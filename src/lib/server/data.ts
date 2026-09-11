@@ -114,6 +114,45 @@ export async function createSong(
 	return row;
 }
 
+export type UpdateSongResult =
+	| { ok: true; song: typeof song.$inferSelect }
+	| { ok: false; error: string; field: "title" | "slug" | "description" };
+
+/** Title, URL slug (unique within the project) and description. */
+export async function updateSong(
+	accountId: string,
+	songId: string,
+	input: { title: string; slug: string; description: string },
+): Promise<UpdateSongResult> {
+	const title = input.title.trim();
+	if (!title) return { ok: false, field: "title", error: "Give the song a title." };
+	const parsed = v.safeParse(SlugSchema, input.slug);
+	if (!parsed.success) return { ok: false, field: "slug", error: parsed.issues[0].message };
+	const slug = parsed.output;
+	const existing = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true, projectId: true },
+	});
+	if (!existing) return { ok: false, field: "title", error: "Song not found." };
+	const clash = await db.query.song.findFirst({
+		where: and(eq(song.projectId, existing.projectId), eq(song.slug, slug)),
+		columns: { id: true },
+	});
+	if (clash && clash.id !== songId) {
+		return {
+			ok: false,
+			field: "slug",
+			error: `Another song in this project already uses "${slug}".`,
+		};
+	}
+	const [row] = await db
+		.update(song)
+		.set({ title, slug, description: input.description.trim() })
+		.where(eq(song.id, songId))
+		.returning();
+	return { ok: true, song: row };
+}
+
 export async function getSong(accountId: string, projectSlug: string, songSlug: string) {
 	const proj = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),

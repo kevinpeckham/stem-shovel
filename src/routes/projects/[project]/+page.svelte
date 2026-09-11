@@ -122,7 +122,12 @@
 						class="flex items-baseline justify-between gap-4 px-4 py-3 hover:underline"
 						href="/projects/{data.project.slug}/{song.slug}"
 					>
-						<span>{song.title}</span>
+						<span>
+							{song.title}
+							{#if song.description}
+								<span class="block text-sm text-dim">{song.description}</span>
+							{/if}
+						</span>
 						<span class="shrink-0 text-sm text-dim">
 							{ready}
 							{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(

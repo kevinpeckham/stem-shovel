@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `description` text DEFAULT '' NOT NULL;

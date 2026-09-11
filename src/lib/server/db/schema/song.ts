@@ -26,7 +26,8 @@ export const song = table(
 		musicalKey: t.text("musical_key"),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
-		notes: t.text("notes").notNull().default(""),
+		/** Optional free text shown under the title. */
+		description: t.text("description").notNull().default(""),
 		/** Chords, lyrics and arrangement as markdown. History in song_chart_version. */
 		chartMarkdown: t.text("chart_markdown").notNull().default(""),
 		/** SHA-256 of chartMarkdown; a save only creates a version when it changes. */

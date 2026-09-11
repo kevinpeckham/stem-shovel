@@ -4,8 +4,25 @@
 	import StemUploader from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
 
+	import { slugify } from "$lib/slug";
+	import { updateSong } from "$lib/remote/songs.remote";
+
 	let { data } = $props();
 	let deleting = $state(false);
+
+	// Settings form (title, URL, description) on the updateSong remote form.
+	let settingsOpen = $state(false);
+	let settingsSaved = $state(false);
+	const fields = updateSong.fields;
+	let title = $derived(fields.title.value() ?? data.song.title);
+	let slug = $derived(fields.slug.value() ?? data.song.slug);
+	let description = $derived(fields.description.value() ?? data.song.description);
+	let settingsDirty = $derived(
+		title.trim() !== data.song.title ||
+			slug.trim() !== data.song.slug ||
+			description.trim() !== data.song.description,
+	);
+	let slugTouched = $state(false);
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 </script>
@@ -22,7 +39,18 @@
 				href="/projects/{data.song.project.slug}">{data.song.project.name}</a
 			>
 			<h1 class="text-xl font-semibold">{data.song.title}</h1>
+			{#if data.song.description}
+				<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
+			{/if}
 		</div>
+		<button
+			class="text-sm text-dim underline underline-offset-4"
+			type="button"
+			aria-expanded={settingsOpen}
+			onclick={() => (settingsOpen = !settingsOpen)}
+		>
+			{settingsOpen ? "Close settings" : "Settings"}
+		</button>
 		<form
 			method="POST"
 			action="?/delete"
@@ -46,6 +74,88 @@
 			</button>
 		</form>
 	</header>
+
+	{#if settingsOpen}
+		<form
+			class="mb-8 rounded-lg bg-row px-4 py-4"
+			{...updateSong.enhance(async ({ submit }) => {
+				settingsSaved = false;
+				await submit();
+				if (!fields.allIssues()) {
+					settingsSaved = true;
+					settingsOpen = false;
+				}
+			})}
+		>
+			<input {...fields.id.as("hidden", data.song.id)} />
+			<div class="grid gap-4 sm:grid-cols-2">
+				<label class="block">
+					<span class="text-sm text-dim">Title</span>
+					<input
+						class="mt-1 block w-full rounded border border-line bg-panel px-3 py-2"
+						{...fields.title.as("text", data.song.title)}
+						oninput={(e) => {
+							if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
+						}}
+						required
+					/>
+					{#each fields.title.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-solo">{issue.message}</p>
+					{/each}
+				</label>
+				<label class="block">
+					<span class="text-sm text-dim">URL</span>
+					<span class="mt-1 flex items-center rounded border border-line bg-panel">
+						<span class="truncate pl-3 text-sm text-dim">/projects/{data.song.project.slug}/</span>
+						<input
+							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
+							{...fields.slug.as("text", data.song.slug)}
+							oninput={() => (slugTouched = true)}
+							required
+						/>
+					</span>
+					{#each fields.slug.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-solo">{issue.message}</p>
+					{/each}
+					{#if slug !== slugify(title)}
+						<button
+							class="mt-1 text-xs text-dim underline underline-offset-4"
+							type="button"
+							onclick={() => {
+								fields.slug.set(slugify(title));
+								slugTouched = false;
+							}}>Use title</button
+						>
+					{/if}
+				</label>
+				<label class="block sm:col-span-2">
+					<span class="text-sm text-dim"
+						>Description <span class="opacity-60">(optional)</span></span
+					>
+					<textarea
+						class="mt-1 block w-full rounded border border-line bg-panel px-3 py-2 text-sm"
+						rows="3"
+						{...fields.description.as("text", data.song.description)}></textarea>
+					{#each fields.description.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-solo">{issue.message}</p>
+					{/each}
+				</label>
+			</div>
+			{#if slug.trim() !== data.song.slug}
+				<p class="mt-2 text-xs text-dim">Changing the URL breaks existing links to this song.</p>
+			{/if}
+			<div class="mt-4">
+				<button
+					class="rounded bg-ink px-4 py-2 text-panel disabled:opacity-40"
+					disabled={!settingsDirty || !!updateSong.pending}
+				>
+					{updateSong.pending ? "Saving…" : "Save"}
+				</button>
+			</div>
+		</form>
+	{:else if settingsSaved}
+		<p class="mb-6 text-sm text-dim">Saved.</p>
+	{/if}
 
 	{#if data.manifest.stems.length > 0}
 		{#key data.manifest.stems.map((s) => s.id).join()}

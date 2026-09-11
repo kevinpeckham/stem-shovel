@@ -133,7 +133,7 @@ Indexes: `(account_id)`, unique `(account_id, slug)`.
 | bpm              | real null                   |                                                   |
 | musical_key      | text null                   | "D", "F#m"; free text for now                     |
 | duration_seconds | real null                   | longest stem; updated when stems change           |
-| notes            | text, default ""            |                                                   |
+| description      | text, default ""            | optional free text shown under the title          |
 | chart_markdown   | text, default ""            | current chart; history in song_chart_version      |
 | chart_hash       | text null                   | SHA-256 of chart_markdown                         |
 | chart_version    | integer, default 0          | number of the current version; 0 = never saved    |
