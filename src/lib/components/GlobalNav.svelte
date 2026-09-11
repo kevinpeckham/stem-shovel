@@ -6,7 +6,10 @@
 	}
 	let { account }: Props = $props();
 
-	const items = [{ label: "Projects", href: "/projects" }];
+	const items = [
+		{ label: "Projects", href: "/projects" },
+		{ label: "Settings", href: "/settings" },
+	];
 	let current = $derived(page.url.pathname);
 </script>
 

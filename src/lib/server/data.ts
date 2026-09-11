@@ -15,7 +15,72 @@ import * as v from "valibot";
  * `event.locals.account` (see hooks.server.ts).
  */
 
-const { project, song, stem, songDocVersion } = schema;
+const { account, project, song, stem, songDocVersion } = schema;
+
+// ---- account (org) --------------------------------------------------------
+
+export type UpdateAccountResult =
+	| { ok: true; account: typeof account.$inferSelect }
+	| { ok: false; error: string; field: "name" | "slug" };
+
+/** Renames the account and/or changes its slug (unique across all accounts). */
+export async function updateAccount(
+	accountId: string,
+	input: { name: string; slug: string },
+): Promise<UpdateAccountResult> {
+	const name = input.name.trim();
+	if (!name) return { ok: false, field: "name", error: "Give the account a name." };
+	const parsed = v.safeParse(SlugSchema, input.slug);
+	if (!parsed.success) return { ok: false, field: "slug", error: parsed.issues[0].message };
+	const slug = parsed.output;
+	const clash = await db.query.account.findFirst({
+		where: eq(account.slug, slug),
+		columns: { id: true },
+	});
+	if (clash && clash.id !== accountId) {
+		return { ok: false, field: "slug", error: `Another account already uses "${slug}".` };
+	}
+	const [row] = await db
+		.update(account)
+		.set({ name, slug })
+		.where(eq(account.id, accountId))
+		.returning();
+	if (!row) return { ok: false, field: "name", error: "Account not found." };
+	return { ok: true, account: row };
+}
+
+/** What the account holds: counts and Blob bytes, for the settings page. */
+export async function accountUsage(accountId: string) {
+	const [projects] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(project)
+		.where(eq(project.accountId, accountId));
+	const [songs] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(song)
+		.where(eq(song.accountId, accountId));
+	const [stems] = await db
+		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
+		.from(stem)
+		.where(and(eq(stem.accountId, accountId), eq(stem.status, "ready")));
+	const row = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		with: { members: { with: { user: { columns: { name: true, email: true } } } } },
+	});
+	return {
+		projects: projects.n,
+		songs: songs.n,
+		stems: stems.n,
+		bytes: stems.bytes ?? 0,
+		storageLimitBytes: row?.storageLimitBytes ?? null,
+		members: (row?.members ?? []).map((m) => ({
+			role: m.role,
+			name: m.user.name,
+			email: m.user.email,
+		})),
+		createdAt: row?.createdAt ?? null,
+	};
+}
 
 // ---- projects -------------------------------------------------------------
 
