@@ -29,8 +29,10 @@
 <div class="flex flex-wrap items-center gap-4">
 	<button
 		type="button"
-		class="grid h-14 w-14 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95"
+		class="grid h-14 w-14 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:(opacity-40 cursor-wait)"
 		aria-label={engine.playing ? "Pause" : "Play"}
+		title={engine.status === "ready" ? undefined : "Decoding…"}
+		disabled={engine.status !== "ready"}
 		onclick={() => engine.toggle()}
 	>
 		<span

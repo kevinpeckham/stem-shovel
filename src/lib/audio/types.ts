@@ -3,6 +3,12 @@ export interface StemSource {
 	id: string; // nanoid in production; any unique string in the PoC manifest
 	label: string; // "Bass DI", "Drums OH"
 	url: string; // static path now, Vercel Blob URL later
+	// Known before decoding when the row came from the database (recorded at
+	// upload). They let the player render the rows and waveforms at once;
+	// the decoded values replace them.
+	duration?: number;
+	channels?: number;
+	peaks?: number[];
 }
 
 /** Reactive per-stem state exposed by the engine to the UI. */
@@ -17,6 +23,7 @@ export interface StemState {
 	collapsed: boolean; // file was stereo with identical channels; kept as mono
 	decodedBytes: number; // PCM footprint in RAM (length * channels * 4)
 	peaks: number[]; // PEAK_BINS values in 0..1, max-abs per bin
+	decoded: boolean; // false while the row shows manifest data only
 }
 
 export type EngineStatus = "idle" | "loading" | "ready" | "error";

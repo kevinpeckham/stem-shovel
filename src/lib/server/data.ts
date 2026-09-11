@@ -260,7 +260,14 @@ export function manifestFor(s: {
 		title: s.title,
 		stems: s.stems
 			.filter((st) => st.status === "ready" && st.url)
-			.map((st) => ({ id: st.id, label: st.label, url: st.url })),
+			.map((st) => ({
+				id: st.id,
+				label: st.label,
+				url: st.url,
+				duration: st.durationSeconds ?? undefined,
+				channels: st.channels ?? undefined,
+				peaks: st.peaks ?? undefined,
+			})),
 	};
 }
 

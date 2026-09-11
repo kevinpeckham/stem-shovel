@@ -41,9 +41,14 @@
 	<div class="min-w-0">
 		<div class="truncate font-medium {silenced ? 'text-dim' : ''}">{stem.label}</div>
 		<div class="text-xs text-dim">
-			{stem.collapsed ? "dual mono → mono" : stem.channels === 1 ? "mono" : "stereo"}, {formatTime(
-				stem.duration,
-			)}
+			{#if !stem.decoded}
+				decoding…{#if stem.duration}
+					{formatTime(stem.duration)}{/if}
+			{:else}
+				{stem.collapsed ? "dual mono → mono" : stem.channels === 1 ? "mono" : "stereo"}, {formatTime(
+					stem.duration,
+				)}
+			{/if}
 		</div>
 	</div>
 
@@ -88,7 +93,7 @@
 			peaks={stem.peaks}
 			{progress}
 			{span}
-			dimmed={silenced}
+			dimmed={silenced || !stem.decoded}
 			label={stem.label}
 			onseek={(f) => engine.seek(f * engine.duration)}
 		/>

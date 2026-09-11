@@ -61,11 +61,7 @@
 	{/if}
 </div>
 
-{#if engine.status === "loading"}
-	<p class="mt-6 text-dim" aria-live="polite">
-		Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}…
-	</p>
-{:else if engine.status === "error"}
+{#if engine.status === "error"}
 	<div class="mt-6 surface p-4">
 		<p class="font-medium">Couldn't load the stems.</p>
 		<p class="mt-1 text-sm text-dim">{engine.error}</p>
@@ -73,7 +69,7 @@
 			<p class="mt-3 text-sm">{@render errorHint()}</p>
 		{/if}
 	</div>
-{:else if engine.status === "ready"}
+{:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="mt-6 surface px-4 py-3">
 		<Transport {engine} />
 	</div>
@@ -84,7 +80,12 @@
 		{/each}
 	</section>
 
-	<p class="mt-6 text-xs text-dim">
-		Space plays and pauses. Click a waveform to seek. Focus a row and press M or S.
+	<p class="mt-6 text-xs text-dim" aria-live="polite">
+		{#if engine.status === "loading"}
+			Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
+			enable when every stem is ready.
+		{:else}
+			Space plays and pauses. Click a waveform to seek. Focus a row and press M or S.
+		{/if}
 	</p>
 {/if}

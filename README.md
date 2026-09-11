@@ -214,6 +214,12 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   is imported in the browser only. After `vp build`, the CommonJS packages
   left in `.vercel/output/functions/*/node_modules` all come from drizzle,
   libsql, varlock and @vercel/blob and predate the problem.
+- **The player renders before decoding finishes.** `manifestFor` passes each
+  stem's recorded duration, channels and peaks along with its URL, so rows and
+  waveforms appear at once (dimmed, "decoding…"); each brightens as its file
+  decodes, and play/seek enable when every stem is ready — a partial mix is
+  not the song. Stem actions (download, rename, upload new version, remove)
+  live in each row's ⋯ menu, supplied by the song page as a snippet.
 - **Dual-mono files are collapsed to one channel after decoding**
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one and the row says "dual mono → mono". Real

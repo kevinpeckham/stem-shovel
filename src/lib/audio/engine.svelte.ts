@@ -79,7 +79,24 @@ export class StemEngine {
 
 		const ctx = this.#context();
 		const master = this.#masterNode as GainNode;
-		const next: StemState[] = [];
+
+		// Rows appear immediately from what the manifest knows (duration, peaks
+		// recorded at upload); each is filled in as its file decodes. Playback
+		// waits for all of them — a partial mix is not the song.
+		this.stems = sources.map((src) => ({
+			id: src.id,
+			label: src.label,
+			gain: 1,
+			muted: false,
+			soloed: false,
+			duration: src.duration ?? 0,
+			channels: src.channels ?? 0,
+			collapsed: false,
+			decodedBytes: 0,
+			peaks: src.peaks ?? [],
+			decoded: false,
+		}));
+		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
 
 		try {
 			for (const src of sources) {
@@ -96,22 +113,18 @@ export class StemEngine {
 				this.#buffers.set(src.id, buffer);
 				this.#gains.set(src.id, gain);
 
-				next.push({
-					id: src.id,
-					label: src.label,
-					gain: 1,
-					muted: false,
-					soloed: false,
-					duration: buffer.duration,
-					channels: buffer.numberOfChannels,
-					collapsed: decoded.numberOfChannels === 2 && buffer.numberOfChannels === 1,
-					decodedBytes: buffer.length * buffer.numberOfChannels * 4,
-					peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
-				});
+				const stem = this.stems.find((s) => s.id === src.id);
+				if (stem) {
+					stem.duration = buffer.duration;
+					stem.channels = buffer.numberOfChannels;
+					stem.collapsed = decoded.numberOfChannels === 2 && buffer.numberOfChannels === 1;
+					stem.decodedBytes = buffer.length * buffer.numberOfChannels * 4;
+					stem.peaks = Array.from(computePeaks(buffer, PEAK_BINS));
+					stem.decoded = true;
+				}
+				this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
 				this.loaded += 1;
 			}
-			this.stems = next;
-			this.duration = next.reduce((max, s) => Math.max(max, s.duration), 0);
 			this.#applyGains(true);
 			this.status = "ready";
 		} catch (e) {
@@ -163,6 +176,7 @@ export class StemEngine {
 
 	/** Seeking = stop every source and reschedule from the new offset. */
 	seek(seconds: number): void {
+		if (this.status !== "ready") return;
 		const target = clamp(seconds, 0, this.duration);
 		const wasPlaying = this.playing;
 		if (wasPlaying) {
