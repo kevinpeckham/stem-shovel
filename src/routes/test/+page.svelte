@@ -8,9 +8,9 @@
 	<title>{data.manifest.title} — Stem Shovel</title>
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6">
-	<header class="mb-2">
-		<h1 class="page-title">{data.manifest.title}</h1>
+<main class="page">
+	<header>
+		<h1 class="display">{data.manifest.title}</h1>
 	</header>
 
 	<StemPlayer manifest={data.manifest}>

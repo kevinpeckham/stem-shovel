@@ -8,9 +8,9 @@
 	<title>Projects — Stem Shovel</title>
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6">
-	<header class="mb-6 flex items-baseline justify-between gap-4">
-		<h1 class="page-title">Projects</h1>
+<main class="page">
+	<header class="flex flex-wrap items-baseline justify-between gap-4">
+		<h1 class="display">Projects</h1>
 		<span class="text-sm text-dim">{data.account.name}</span>
 	</header>
 

@@ -3,6 +3,10 @@
 		"fallow": {
 			"command": "npx",
 			"args": ["fallow-mcp"]
+		},
+		"playwright": {
+			"command": "npx",
+			"args": ["-y", "@playwright/mcp@latest", "--headless"]
 		}
 	}
 }

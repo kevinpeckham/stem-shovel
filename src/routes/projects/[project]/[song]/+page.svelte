@@ -105,13 +105,13 @@
 	<title>{data.song.title} — Stem Shovel</title>
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6" data-song-id={data.song.id}>
-	<header class="mb-2 flex items-baseline justify-between gap-4">
+<main class="page" data-song-id={data.song.id}>
+	<header class="flex flex-wrap items-baseline justify-between gap-4">
 		<div>
 			<a class="text-sm link-dim" href="/projects/{data.song.project.slug}"
 				>{data.song.project.name}</a
 			>
-			<h1 class="page-title">{data.song.title}</h1>
+			<h1 class="display">{data.song.title}</h1>
 			{#if data.song.description}
 				<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 			{/if}
@@ -268,7 +268,7 @@
 
 	<section class="mt-8" aria-label="Files">
 		<div class="mb-2 flex items-baseline justify-between gap-4">
-			<h2 class="section-title">Files</h2>
+			<h2 class="heading-2">Files</h2>
 			{#if ready.length > 0}
 				<button
 					class="text-sm link-dim disabled:opacity-50"

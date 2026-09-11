@@ -1,6 +1,5 @@
 <script lang="ts">
 	import "uno.css";
-	import "$lib/styles/chart.css";
 	import GlobalFooter from "$lib/components/GlobalFooter.svelte";
 	import GlobalNav from "$lib/components/GlobalNav.svelte";
 

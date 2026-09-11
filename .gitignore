@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 # generated test audio (run `npm run stems` to recreate)
 static/stems/*.wav
 .fallow/
+
+# agent screenshots (bun run shot)
+.screenshots/

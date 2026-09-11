@@ -126,8 +126,10 @@ registered for Claude Code in `.mcp.json`.
   either document behind a Chart / Lyrics toggle; `server/markdown.ts` renders
   with barkdown's renderer (what the editor seeds from) and
   `server/sanitize.ts`, an allowlist pass over parse5 (ESM; see "Server
-  dependencies are ESM only" below). Typography for both is
-  `src/lib/styles/chart.css`.
+  dependencies are ESM only" below). Typography for both is the
+  `chart-body` shortcut (and `chart-editor` for the editor chrome) in
+  `uno.config.ts` — every style in the app is a UnoCSS class or shortcut;
+  there are no stylesheets of our own.
 - `src/lib/val/` — valibot schemas, one file per concept as in replicator:
   the value array, the schema and the inferred type (`ARCHIVE_STATUSES`,
   `ArchiveStatusSchema`, `ArchiveStatus`). Table files import only the types;
@@ -166,9 +168,14 @@ registered for Claude Code in `.mcp.json`.
 - **The look is lightningjar.com's.** `uno.config.ts` mirrors
   lightning-jar/lj-website's: wind4 + its reset, Atkinson Hyperlegible and
   Bungee Shade from bunny, the same layers, palette and shortcuts (`button`,
-  `button-accent`, `page-x-padding`, `display`, `heading-2`), plus app
-  shortcuts (`page-title`, `section-title`, `surface`, `field`, `link-dim`,
-  `tab-active`/`tab-idle`). `src/lib/theme.ts` holds that palette and maps
+  `button-accent`, `page-x-padding`, `main-y-padding`, `max-w-article`,
+  `display`, `heading-2`), plus the app's own, all inline in the config:
+  `page`, `surface`,
+  `tile`, `field`, `link-dim`, `tab-active`/`tab-idle`, and `chart-body`,
+  written like replicator's `article-body`. Pages are structured like
+  lj-website's: a `page` wrapper (`page-x-padding main-y-padding`), a
+  `display` title, `heading-2` sections. Classes used in `src/app.html` are
+  safelisted because that file is outside the Svelte pipeline. `src/lib/theme.ts` holds that palette and maps
   the app's semantic tokens onto it (`bg-panel`, `bg-row`, `text-dim`,
   `bg-playhead`, `bg-solo`), and the canvas waveform reads the same object.
   `@unocss/extractor-svelte` is on, so `class:` directives work too.

@@ -130,17 +130,17 @@
 	<title>{label} · {data.song.title} — Stem Shovel</title>
 </svelte:head>
 
-<form bind:this={formEl} class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6" {...enhanced}>
+<form bind:this={formEl} class="page" {...enhanced}>
 	<input {...fields.songId.as("hidden", data.song.id)} />
 	<input {...fields.kind.as("hidden", data.kind)} />
 	<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? data.markdown)} />
 	<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
 
-	<header class="mb-6 flex flex-wrap items-center gap-3">
+	<header class="flex flex-wrap items-center gap-3">
 		<a class="text-sm link-dim" href="/projects/{data.song.project.slug}/{data.song.slug}"
 			>← {data.song.title}</a
 		>
-		<h1 class="grow page-title">{label}</h1>
+		<h1 class="grow display">{label}</h1>
 		<div
 			class="flex overflow-hidden rounded border border-white/15 text-xs"
 			role="tablist"
