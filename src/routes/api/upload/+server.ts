@@ -1,6 +1,6 @@
 import { findUploadingStem, recordStemUrl } from "$lib/server/data";
 import { blobAuth } from "$lib/server/blob";
-import { STEM_CONTENT_TYPES, STEM_MAX_BYTES } from "$lib/slug";
+import { STEM_MAX_BYTES } from "$lib/slug";
 import { json } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";
@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const row = await findUploadingStem(locals.account.id, pathname);
 				if (!row) throw new Error(`No reserved stem for "${pathname}"`);
 				return {
-					allowedContentTypes: STEM_CONTENT_TYPES,
+					allowedContentTypes: [row.contentType], // decided from the extension at reserve time
 					maximumSizeInBytes: STEM_MAX_BYTES,
 					addRandomSuffix: false,
 					allowOverwrite: true, // a retry of the same reservation replaces the partial blob

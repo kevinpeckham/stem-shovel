@@ -80,7 +80,6 @@ for (const n of names) {
 	const { stemId, pathname } = await post("/api/stems", {
 		songId,
 		filename,
-		contentType: "audio/wav",
 		sizeBytes: bytes.length,
 	});
 	const blob = await upload(pathname, bytes, {

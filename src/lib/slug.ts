@@ -9,25 +9,38 @@ export function slugify(input: string): string {
 		.slice(0, 64);
 }
 
-/** Audio types a stem upload may declare. Matches what browsers report for File.type. */
-export const STEM_CONTENT_TYPES = [
-	"audio/wav",
-	"audio/x-wav",
-	"audio/wave",
-	"audio/vnd.wave",
-	"audio/flac",
-	"audio/x-flac",
-	"audio/mpeg",
-	"audio/mp3",
-	"audio/ogg",
-	"audio/opus",
-	"audio/aac",
-	"audio/mp4",
-	"audio/x-m4a",
-	"audio/aiff",
-	"audio/x-aiff",
-	"audio/webm",
-];
+/**
+ * Stem formats, keyed by file extension. Validation is by extension, not the
+ * browser's declared MIME type: Firefox says `audio/x-wav`, some files arrive
+ * with no type at all, and the extension is what the user can actually see.
+ *
+ * Only formats every browser's `decodeAudioData` handles are listed; the
+ * player hands the uploaded file straight to it. AIFF (no Firefox), Ogg/Opus
+ * and WebM (no Safari) stay out until there is a transcoding step.
+ */
+export const STEM_FORMATS: Record<string, string> = {
+	wav: "audio/wav",
+	flac: "audio/flac",
+	mp3: "audio/mpeg",
+	m4a: "audio/mp4",
+	aac: "audio/aac",
+};
+
+/** Content type for a filename, or null if the extension is not a stem format. */
+export function stemContentType(filename: string): string | null {
+	const ext = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+	return ext ? (STEM_FORMATS[ext] ?? null) : null;
+}
+
+/** `accept` attribute for the file input. */
+export const STEM_ACCEPT = Object.keys(STEM_FORMATS)
+	.map((ext) => `.${ext}`)
+	.join(",");
+
+/** Human-readable list for hints: "WAV, FLAC, MP3, M4A, AAC". */
+export const STEM_FORMAT_LIST = Object.keys(STEM_FORMATS)
+	.map((ext) => ext.toUpperCase())
+	.join(", ");
 
 /** Per-stem size cap for browser uploads (multipart), in bytes. */
 export const STEM_MAX_BYTES = 500 * 1024 * 1024;

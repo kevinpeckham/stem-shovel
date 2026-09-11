@@ -2,7 +2,7 @@
 	import { invalidateAll } from "$app/navigation";
 	import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 	import { formatBytes } from "$lib/format";
-	import { STEM_MAX_BYTES } from "$lib/slug";
+	import { STEM_ACCEPT, STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
 	import { upload } from "@vercel/blob/client";
 
 	interface Props {
@@ -24,7 +24,10 @@
 
 	let picked = $derived(files ? Array.from(files) : []);
 	let tooBig = $derived(picked.filter((f) => f.size > STEM_MAX_BYTES));
-	let canSubmit = $derived(!busy && picked.length > 0 && tooBig.length === 0);
+	let unsupported = $derived(picked.filter((f) => !stemContentType(f.name)));
+	let canSubmit = $derived(
+		!busy && picked.length > 0 && tooBig.length === 0 && unsupported.length === 0,
+	);
 
 	/**
 	 * One stem = three round trips: reserve the row (/api/stems), send the
@@ -46,12 +49,7 @@
 				const reserve = await fetch("/api/stems", {
 					method: "POST",
 					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						songId,
-						filename: job.file.name,
-						contentType: job.file.type || "application/octet-stream",
-						sizeBytes: job.file.size,
-					}),
+					body: JSON.stringify({ songId, filename: job.file.name, sizeBytes: job.file.size }),
 				});
 				if (!reserve.ok) throw new Error(await errorText(reserve));
 				const { stemId, pathname } = (await reserve.json()) as {
@@ -62,7 +60,8 @@
 				const blob = await upload(pathname, job.file, {
 					access: "public",
 					handleUploadUrl: "/api/upload",
-					contentType: job.file.type || undefined,
+					// Must match what the server reserved, which it decided from the extension.
+					contentType: stemContentType(job.file.name) ?? undefined,
 					multipart: true,
 					onUploadProgress: ({ percentage }) => (job.percent = percentage),
 				});
@@ -111,7 +110,7 @@
 		<input
 			class="mt-1 block w-full text-sm"
 			type="file"
-			accept="audio/*,.wav,.flac,.mp3,.ogg,.opus,.m4a,.aif,.aiff"
+			accept={STEM_ACCEPT}
 			multiple
 			required
 			bind:files
@@ -119,6 +118,15 @@
 		/>
 	</label>
 
+	<p class="text-xs text-dim">
+		{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy.
+	</p>
+
+	{#if unsupported.length > 0}
+		<p class="text-sm text-solo">
+			Not a supported format: {unsupported.map((f) => f.name).join(", ")}
+		</p>
+	{/if}
 	{#if tooBig.length > 0}
 		<p class="text-sm text-solo">
 			Over the {formatBytes(STEM_MAX_BYTES)} limit: {tooBig.map((f) => f.name).join(", ")}
