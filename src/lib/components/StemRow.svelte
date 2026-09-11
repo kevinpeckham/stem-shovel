@@ -2,14 +2,17 @@
 	import { FADER_MAX, type StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 	import { formatTime } from "$lib/format";
+	import type { Snippet } from "svelte";
 	import Waveform from "./Waveform.svelte";
 
 	interface Props {
 		stem: StemState;
 		engine: StemEngine;
+		/** Row actions, rendered after the waveform (see StemPlayer's `stemMenu`). */
+		menu?: Snippet<[StemState]>;
 	}
 
-	let { stem, engine }: Props = $props();
+	let { stem, engine, menu }: Props = $props();
 
 	// Audible right now? Mirrors the engine's effective-gain rule for the visuals.
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
@@ -30,7 +33,7 @@
      children (buttons, fader, waveform), so the a11y rule doesn't apply here. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-	class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[9rem_auto_6rem_1fr]"
+	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[9rem_auto_6rem_1fr_auto]"
 	role="group"
 	aria-label={stem.label}
 	{onkeydown}
@@ -80,7 +83,7 @@
 		oninput={(e) => engine.setGain(stem.id, e.currentTarget.valueAsNumber)}
 	/>
 
-	<div class="col-span-2 sm:col-span-1">
+	<div class="col-span-3 sm:col-span-1">
 		<Waveform
 			peaks={stem.peaks}
 			{progress}
@@ -90,4 +93,8 @@
 			onseek={(f) => engine.seek(f * engine.duration)}
 		/>
 	</div>
+
+	{#if menu}
+		<div class="row-start-1 col-start-3 sm:col-start-5 sm:row-auto">{@render menu(stem)}</div>
+	{/if}
 </div>

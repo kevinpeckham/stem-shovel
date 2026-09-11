@@ -33,18 +33,10 @@
 		aria-label={engine.playing ? "Pause" : "Play"}
 		onclick={() => engine.toggle()}
 	>
-		{#if engine.playing}
-			<!-- pause glyph -->
-			<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-				<rect x="4" y="3" width="5" height="16" fill="currentColor" />
-				<rect x="13" y="3" width="5" height="16" fill="currentColor" />
-			</svg>
-		{:else}
-			<!-- play glyph -->
-			<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-				<path d="M6 3 L19 11 L6 19 Z" fill="currentColor" />
-			</svg>
-		{/if}
+		<span
+			class="{engine.playing ? 'i-ph-pause-fill' : 'i-ph-play-fill'} text-26px"
+			aria-hidden="true"
+		></span>
 	</button>
 
 	<!-- tabular-nums keeps the readout from jittering as digits change -->

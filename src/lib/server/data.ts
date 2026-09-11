@@ -404,6 +404,15 @@ export async function recordStemUrl(pathname: string, url: string) {
 		.where(and(eq(stem.pathname, pathname), eq(stem.status, "uploading")));
 }
 
+export async function renameStem(accountId: string, stemId: string, label: string) {
+	const [row] = await db
+		.update(stem)
+		.set({ label: label.trim() })
+		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
+		.returning({ id: stem.id, label: stem.label });
+	return row ?? null;
+}
+
 export async function deleteStem(accountId: string, stemId: string) {
 	const [row] = await db
 		.delete(stem)

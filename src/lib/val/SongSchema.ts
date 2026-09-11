@@ -33,3 +33,6 @@ export const SongCreateSchema = v.object({ projectId: NanoIdSchema, title: NameS
 
 /** Form boundary for deleting a song or a stem by id. */
 export const IdSchema = v.object({ id: NanoIdSchema });
+
+/** Argument of the renameStem command. */
+export const StemRenameSchema = v.object({ id: NanoIdSchema, label: NameSchema });

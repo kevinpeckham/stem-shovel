@@ -2,10 +2,11 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
+	import type { StemState } from "$lib/audio/types";
 
 	import { slugify, STEM_ACCEPT } from "$lib/slug";
 	import { postJson, type Reservation, saveAs, uploadStemFile } from "$lib/upload";
-	import { deleteSong, deleteStem, updateSong } from "$lib/remote/songs.remote";
+	import { deleteSong, deleteStem, renameStem, updateSong } from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { untrack } from "svelte";
 
@@ -66,6 +67,19 @@
 			await ctx.close();
 		}
 	}
+
+	// Rename from the row menu. A prompt keeps this one-click; the load refresh
+	// carries the new label into the player without re-decoding (StemPlayer
+	// relabels in place).
+	async function rename(stemId: string, current: string) {
+		const label = prompt("Stem name", current)?.trim();
+		if (!label || label === current) return;
+		await renameStem({ id: stemId, label });
+		await invalidateAll();
+	}
+
+	// The database row behind a player stem (filename, size, url).
+	let stemRows = $derived(new Map(data.song.stems.map((s) => [s.id, s])));
 
 	// Download every ready stem as one zip, built in the browser from the Blob
 	// files (they allow cross-origin reads). Stored, not compressed: audio
@@ -220,15 +234,51 @@
 	{/if}
 
 	{#if data.manifest.stems.length > 0}
-		{#key data.manifest.stems.map((s) => s.id).join()}
-			<StemPlayer manifest={data.manifest}>
-				{#snippet errorHint()}
-					A stem's file is missing from the Blob store. Delete it below and upload it again.
-				{/snippet}
-			</StemPlayer>
-		{/key}
+		<StemPlayer manifest={data.manifest} {stemMenu} {headerExtras}>
+			{#snippet errorHint()}
+				A stem's file is missing from the Blob store. Remove it from its menu and upload it again.
+			{/snippet}
+		</StemPlayer>
 	{:else}
 		<p class="text-sm text-dim">No stems yet. Upload some below.</p>
+	{/if}
+
+	{#if pending.length > 0}
+		<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
+			{#each pending as stem (stem.id)}
+				{@const job = replacing[stem.id]}
+				{@const remove = deleteStem.for(stem.id)}
+				<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+					<span class="truncate">
+						{stem.label}
+						<span class="text-dim">
+							· {stem.filename} · {job
+								? job.stage === "uploading"
+									? `${Math.round(job.percent)}%`
+									: job.stage
+								: "not ready — the upload was interrupted"}
+						</span>
+					</span>
+					<span class="flex items-center gap-3">
+						<label class="cursor-pointer link-dim">
+							Upload file
+							<input
+								class="sr-only"
+								type="file"
+								accept={STEM_ACCEPT}
+								disabled={!!job}
+								onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+							/>
+						</label>
+						<form {...remove}>
+							<input {...remove.fields.id.as("hidden", stem.id)} />
+							<button class="link-dim" disabled={!!remove.pending}>Remove</button>
+						</form>
+					</span>
+					{#if job?.error}<p class="w-full text-xs text-solo">{job.error}</p>{/if}
+				</li>
+			{/each}
+		</ul>
 	{/if}
 
 	<section class="mt-8" aria-label="Chart and lyrics">
@@ -266,86 +316,88 @@
 		{/if}
 	</section>
 
-	<section class="mt-8" aria-label="Files">
-		<div class="mb-2 flex items-baseline justify-between gap-4">
-			<h2 class="heading-2">Files</h2>
-			{#if ready.length > 0}
-				<button
-					class="text-sm link-dim disabled:opacity-50"
-					type="button"
-					disabled={!!zipping}
-					onclick={downloadAll}
-				>
-					{zipping ??
-						`Download all (${ready.length} ${ready.length === 1 ? "stem" : "stems"}, .zip)`}
-				</button>
-			{/if}
-		</div>
-		{#if data.song.stems.length === 0}
-			<p class="text-sm text-dim">Nothing uploaded.</p>
-		{:else}
-			<ul class="divide-y divide-white/10 surface text-sm">
-				{#each data.song.stems as stem (stem.id)}
-					{@const job = replacing[stem.id]}
-					{@const remove = deleteStem.for(stem.id)}
-					<li class="px-4 py-2">
-						<div class="flex items-center justify-between gap-4">
-							<span class="truncate">
-								{stem.label}
-								<span class="text-dim">
-									· {stem.filename} · {formatBytes(stem.sizeBytes)}
-									{#if job}
-										· {job.stage === "uploading" ? `${Math.round(job.percent)}%` : job.stage}
-									{:else if stem.status !== "ready"}
-										· {stem.status}
-									{/if}
-								</span>
-							</span>
-							<span class="flex shrink-0 items-center gap-3">
-								{#if stem.status === "ready" && stem.url}
-									<button
-										class="link-dim"
-										type="button"
-										onclick={() => saveAs(stem.url, stem.filename)}>Download</button
-									>
-								{/if}
-								<label class="cursor-pointer link-dim">
-									{stem.status === "ready" ? "Upload new version" : "Upload file"}
-									<input
-										class="sr-only"
-										type="file"
-										accept={STEM_ACCEPT}
-										disabled={!!job}
-										onchange={(e) => replaceStem(stem.id, e.currentTarget)}
-									/>
-								</label>
-								<form {...remove}>
-									<input {...remove.fields.id.as("hidden", stem.id)} />
-									<button class="link-dim" disabled={!!remove.pending}>
-										{remove.pending ? "Removing…" : "Remove"}
-									</button>
-								</form>
-							</span>
-						</div>
-						{#if job && job.stage !== "error"}
-							<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
-								<div class="h-full bg-playhead" style:width="{job.percent}%"></div>
-							</div>
-						{:else if job?.error}
-							<p class="mt-1 text-xs text-solo">{job.error}</p>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-		{#if pending.length > 0}
-			<p class="mt-2 text-xs text-dim">
-				{pending.length} not ready: an upload that was interrupted. Remove it and upload again.
-			</p>
-		{/if}
-	</section>
-
 	<section class="mt-8" aria-label="Upload">
 		<StemUploader songId={data.song.id} stemCount={data.song.stems.length} />
 	</section>
 </main>
+
+{#snippet headerExtras()}
+	{#if ready.length > 0}
+		<button
+			class="text-sm link-dim disabled:opacity-50"
+			type="button"
+			disabled={!!zipping}
+			onclick={downloadAll}
+		>
+			{zipping ?? `Download all (${ready.length} ${ready.length === 1 ? "stem" : "stems"}, .zip)`}
+		</button>
+	{/if}
+{/snippet}
+
+{#snippet stemMenu(stem: StemState)}
+	{@const row = stemRows.get(stem.id)}
+	{@const job = replacing[stem.id]}
+	{@const remove = deleteStem.for(stem.id)}
+	{#if row}
+		<details class="relative">
+			<summary
+				class="grid h-8 w-8 cursor-pointer list-none place-items-center rounded border border-white/25 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
+				title="{stem.label}: options"
+				aria-label="{stem.label}: options"
+				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary
+			>
+			<div
+				class="absolute right-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxfordDark p-1 text-sm shadow-lg shadow-black/50"
+			>
+				<div class="truncate px-3 py-1.5 text-xs text-dim">
+					{row.filename} · {formatBytes(row.sizeBytes)}
+				</div>
+				<button
+					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+					type="button"
+					onclick={() => saveAs(row.url, row.filename)}
+				>
+					<span class="i-ph-download-simple mr-2" aria-hidden="true"></span>Download
+				</button>
+				<button
+					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+					type="button"
+					onclick={() => rename(stem.id, stem.label)}
+				>
+					<span class="i-ph-pencil-simple mr-2" aria-hidden="true"></span>Rename
+				</button>
+				<label class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10">
+					<span class="i-ph-upload-simple mr-2" aria-hidden="true"></span>{job
+						? job.stage === "uploading"
+							? `Uploading ${Math.round(job.percent)}%`
+							: job.stage
+						: "Upload new version"}
+					<input
+						class="sr-only"
+						type="file"
+						accept={STEM_ACCEPT}
+						disabled={!!job}
+						onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+					/>
+				</label>
+				<form
+					{...remove.enhance(async ({ submit }) => {
+						if (!confirm(`Remove "${stem.label}" and its file?`)) return;
+						await submit();
+					})}
+				>
+					<input {...remove.fields.id.as("hidden", stem.id)} />
+					<button
+						class="block w-full rounded px-3 py-1.5 text-left text-solo hover:bg-white/10"
+						disabled={!!remove.pending}
+					>
+						<span class="i-ph-trash mr-2" aria-hidden="true"></span>{remove.pending
+							? "Removing…"
+							: "Remove"}
+					</button>
+				</form>
+				{#if job?.error}<p class="px-3 py-1 text-xs text-solo">{job.error}</p>{/if}
+			</div>
+		</details>
+	{/if}
+{/snippet}

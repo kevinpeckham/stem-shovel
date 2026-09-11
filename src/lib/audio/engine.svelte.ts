@@ -205,6 +205,37 @@ export class StemEngine {
 		node.gain.setTargetAtTime(this.master, ctx.currentTime, RAMP);
 	}
 
+	/**
+	 * Drop one stem without touching the others: its source (if playing), gain
+	 * and buffer go, the track length shrinks if it was the longest. Used when
+	 * a stem is removed on the server so the rest need not be decoded again.
+	 */
+	remove(id: string): void {
+		const source = this.#sources.get(id);
+		if (source) {
+			try {
+				source.stop();
+			} catch {
+				// never started / already ended
+			}
+			source.disconnect();
+			this.#sources.delete(id);
+		}
+		this.#gains.get(id)?.disconnect();
+		this.#gains.delete(id);
+		this.#buffers.delete(id);
+		this.stems = this.stems.filter((s) => s.id !== id);
+		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+		if (this.#offset > this.duration) this.seek(this.duration);
+		this.#applyGains();
+	}
+
+	/** The label is display-only; changing it never needs a reload. */
+	relabel(id: string, label: string): void {
+		const stem = this.stems.find((s) => s.id === id);
+		if (stem) stem.label = label;
+	}
+
 	/** Release everything, including the AudioContext. Call from component teardown. */
 	dispose(): void {
 		this.#reset();

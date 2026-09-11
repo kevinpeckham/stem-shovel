@@ -166,14 +166,16 @@
 			type="button"
 			onclick={() => editor?.undo()}
 			disabled={!editor?.canUndo}
-			title="Undo (⌘Z / Ctrl+Z)">↶ Undo</button
+			title="Undo (⌘Z / Ctrl+Z)"
+			><span class="i-ph-arrow-counter-clockwise mr-1" aria-hidden="true"></span>Undo</button
 		>
 		<button
 			class="text-xs text-dim disabled:opacity-30"
 			type="button"
 			onclick={() => editor?.redo()}
 			disabled={!editor?.canRedo}
-			title="Redo (⌘⇧Z / Ctrl+Y)">↷ Redo</button
+			title="Redo (⌘⇧Z / Ctrl+Y)"
+			><span class="i-ph-arrow-clockwise mr-1" aria-hidden="true"></span>Redo</button
 		>
 		{#if editor?.hasEdits}
 			<button class="text-xs link-dim" type="button" onclick={discard}> Discard </button>

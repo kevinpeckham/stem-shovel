@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { StemEngine } from "$lib/audio/engine.svelte";
-	import type { StemManifest } from "$lib/audio/types";
+	import type { StemManifest, StemState } from "$lib/audio/types";
 	import StemRow from "$lib/components/StemRow.svelte";
 	import Transport from "$lib/components/Transport.svelte";
 	import { formatBytes } from "$lib/format";
@@ -10,30 +10,56 @@
 		manifest: StemManifest;
 		/** Shown under the error message; tells the user where the URLs come from. */
 		errorHint?: Snippet;
+		/** Per-row actions (download, rename, …), rendered at the end of each row. */
+		stemMenu?: Snippet<[StemState]>;
+		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
+		headerExtras?: Snippet;
 	}
 
-	let { manifest, errorHint }: Props = $props();
+	let { manifest, errorHint, stemMenu, headerExtras }: Props = $props();
 
 	const engine = new StemEngine();
 
 	// Effects only run in the browser (no AudioContext during SSR).
-	// The only dependency we want is `manifest` — so this reloads if the route's
-	// data changes (e.g. navigating between songs on the same page component).
-	// The load call itself is wrapped in untrack(): load() reads the engine's
-	// own $state synchronously, and letting those become dependencies would
-	// re-run the effect mid-decode and dispose the context.
-	// The teardown releases the context on navigation away or before a reload.
+	//
+	// What is loaded is identified by the stems' ids + urls, not the manifest
+	// object: a refreshed load (after a rename, a settings save…) hands us a new
+	// object with the same stems, which must not re-decode 70 MB files. Three
+	// cases: nothing loaded yet or a stem added/replaced → full load; only
+	// stems removed → engine.remove each; labels changed → engine.relabel.
+	// load() reads the engine's own $state synchronously, so the calls are in
+	// untrack() — otherwise they would become dependencies and re-run the
+	// effect mid-decode. The teardown releases the context on navigation away.
+	let loadedKeys = new Map<string, string>(); // id → url of what the engine holds
 	$effect(() => {
 		const stems = manifest.stems;
-		untrack(() => void engine.load(stems));
-		return () => engine.dispose();
+		untrack(() => {
+			const nextKeys = new Map(stems.map((s) => [s.id, s.url]));
+			const sameOrFewer =
+				loadedKeys.size > 0 && [...nextKeys].every(([id, url]) => loadedKeys.get(id) === url);
+			if (sameOrFewer) {
+				for (const id of loadedKeys.keys()) if (!nextKeys.has(id)) engine.remove(id);
+				for (const s of stems) engine.relabel(s.id, s.label);
+			} else {
+				void engine.load(stems);
+			}
+			loadedKeys = nextKeys;
+		});
 	});
+	$effect(() => () => engine.dispose());
 </script>
 
-<p class="text-sm text-dim">
-	{manifest.stems.length} stems{#if engine.status === "ready"}, {formatBytes(engine.decodedBytes)} decoded
-		in memory{/if}
-</p>
+<div class="flex flex-wrap items-baseline justify-between gap-4">
+	<p class="text-sm text-dim">
+		{manifest.stems.length}
+		{manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.status === "ready"}, {formatBytes(
+				engine.decodedBytes,
+			)} decoded in memory{/if}
+	</p>
+	{#if headerExtras}
+		{@render headerExtras()}
+	{/if}
+</div>
 
 {#if engine.status === "loading"}
 	<p class="mt-6 text-dim" aria-live="polite">
@@ -54,7 +80,7 @@
 
 	<section class="mt-4" aria-label="Stems">
 		{#each engine.stems as stem (stem.id)}
-			<StemRow {stem} {engine} />
+			<StemRow {stem} {engine} menu={stemMenu} />
 		{/each}
 	</section>
 

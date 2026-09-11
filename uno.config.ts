@@ -2,6 +2,7 @@ import extractorSvelte from "@unocss/extractor-svelte";
 import presetWind4 from "@unocss/preset-wind4";
 import {
 	defineConfig,
+	presetIcons,
 	presetWebFonts,
 	transformerDirectives,
 	transformerVariantGroup,
@@ -28,6 +29,12 @@ export default defineConfig({
 	],
 	presets: [
 		presetWind4({ preflights: { reset: true } }),
+		// Phosphor icons as classes (`i-ph-play-fill`), as in replicator
+		presetIcons({
+			warn: true,
+			// Icons are empty <span>s; without a display they collapse to nothing.
+			extraProperties: { display: "inline-block", "vertical-align": "-0.15em" },
+		}),
 		presetWebFonts({
 			provider: "bunny",
 			fonts: {

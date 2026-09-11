@@ -1,9 +1,10 @@
-import { form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent } from "$app/server";
 import {
 	createSong as create,
 	deleteSong as removeSong,
 	deleteStem as removeStem,
 	projectSlug,
+	renameStem as rename,
 	saveSongDoc,
 	songSlugs,
 	updateSong as update,
@@ -13,6 +14,7 @@ import {
 	SongCreateSchema,
 	SongDocSaveSchema,
 	SongSettingsSchema,
+	StemRenameSchema,
 } from "$lib/val/SongSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -84,4 +86,12 @@ export const deleteStem = form(IdSchema, async ({ id }) => {
 	const { accountId } = requireAccount();
 	if (!(await removeStem(accountId, id))) error(404, "Stem not found");
 	return { deleted: true };
+});
+
+/** Relabels a stem. A command (not a form): called from the row menu's prompt. */
+export const renameStem = command(StemRenameSchema, async ({ id, label }) => {
+	const { accountId } = requireAccount();
+	const row = await rename(accountId, id, label);
+	if (!row) error(404, "Stem not found");
+	return row;
 });
