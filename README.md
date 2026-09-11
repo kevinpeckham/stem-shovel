@@ -104,7 +104,13 @@ registered for Claude Code in `.mcp.json`.
 - `src/routes/api/stems/` (reserve a row), `src/routes/api/upload/`
   (`handleUpload()` token exchange, only for reserved pathnames),
   `src/routes/api/stems/[id]/ready/` (browser reports duration, channels,
-  peaks after decoding). `StemUploader.svelte` drives the three steps.
+  peaks after decoding). `StemUploader.svelte` drives the three steps;
+  `src/lib/upload.ts` is the shared browser half, also used by "Upload new
+  version" (`/api/stems/[id]/replace` reserves a new `-vN` pathname for the
+  same row — Blob serves files with a 30-day cache header, so a replacement
+  needs a new URL — and deletes the old blob). Per-stem Download and the
+  "Download all (.zip)" button fetch the Blob files in the browser
+  (`client-zip`, stored not compressed) so nothing goes through the server.
   **No auth yet**; fine behind Tailscale, not for a public deploy.
 - `src/routes/projects/` — project list, song list, song page (player +
   files + uploader), all with form actions.

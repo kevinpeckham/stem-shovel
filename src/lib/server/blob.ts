@@ -9,10 +9,21 @@ import { ENV } from "varlock/env";
  */
 export const blobAuth = () => ({ token: ENV.BLOB_READ_WRITE_TOKEN });
 
-/** Blob pathname for a stem. IDs, not slugs, so renames never move files. */
-export function stemPathname(accountId: string, songId: string, stemId: string, filename: string) {
+/**
+ * Blob pathname for a stem. IDs, not slugs, so renames never move files.
+ * `version` is appended for replacements: Blob serves files with a 30-day
+ * cache header, so a new file must get a new URL or browsers keep the old one.
+ */
+export function stemPathname(
+	accountId: string,
+	songId: string,
+	stemId: string,
+	filename: string,
+	version = 0,
+) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
-	return `accounts/${accountId}/songs/${songId}/${stemId}.${ext}`;
+	const name = version > 0 ? `${stemId}-v${version}` : stemId;
+	return `accounts/${accountId}/songs/${songId}/${name}.${ext}`;
 }
 
 /** Deletes blobs by URL; ignores empty lists and blobs that are already gone. */

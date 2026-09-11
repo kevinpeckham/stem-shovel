@@ -4,8 +4,10 @@
 	import StemUploader from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
 
-	import { slugify } from "$lib/slug";
+	import { slugify, STEM_ACCEPT } from "$lib/slug";
+	import { postJson, type Reservation, saveAs, uploadStemFile } from "$lib/upload";
 	import { updateSong } from "$lib/remote/songs.remote";
+	import { invalidateAll } from "$app/navigation";
 
 	let { data } = $props();
 	let deleting = $state(false);
@@ -25,6 +27,72 @@
 	let slugTouched = $state(false);
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
+	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
+
+	// "Upload new version" for one stem: same pipeline as adding, but the
+	// reservation is /api/stems/[id]/replace, which keeps the row and label.
+	let replacing = $state<Record<string, { percent: number; stage: string; error?: string }>>({});
+	async function replaceStem(stemId: string, input: HTMLInputElement) {
+		const file = input.files?.[0];
+		input.value = "";
+		if (!file) return;
+		const ctx = new AudioContext({ sampleRate: 32_000 });
+		replacing[stemId] = { percent: 0, stage: "uploading" };
+		try {
+			await uploadStemFile(
+				file,
+				() =>
+					postJson<Reservation>(`/api/stems/${stemId}/replace`, {
+						filename: file.name,
+						sizeBytes: file.size,
+					}),
+				{
+					ctx,
+					onProgress: (p) => (replacing[stemId] = { ...replacing[stemId], percent: p }),
+					onDecoding: () => (replacing[stemId] = { ...replacing[stemId], stage: "decoding" }),
+				},
+			);
+			delete replacing[stemId];
+			await invalidateAll();
+		} catch (err) {
+			replacing[stemId] = { ...replacing[stemId], stage: "error", error: (err as Error).message };
+		} finally {
+			await ctx.close();
+		}
+	}
+
+	// Download every ready stem as one zip, built in the browser from the Blob
+	// files (they allow cross-origin reads). Stored, not compressed: audio
+	// does not shrink and stored entries stream straight through.
+	let zipping = $state<string | null>(null);
+	async function downloadAll() {
+		if (ready.length === 0 || zipping) return;
+		zipping = "Preparing…";
+		try {
+			const { downloadZip } = await import("client-zip");
+			const seen = new Set<string>();
+			const stems = ready;
+			// Fetched lazily as the zip is written, one file at a time.
+			async function* entries() {
+				for (const s of stems) {
+					let name = s.filename;
+					if (seen.has(name)) name = `${s.label}-${name}`;
+					seen.add(name);
+					const res = await fetch(s.url);
+					if (!res.ok) throw new Error(`${s.label}: ${res.status} ${res.statusText}`);
+					yield { name, input: res };
+				}
+			}
+			const blob = await downloadZip(entries()).blob();
+			const a = document.createElement("a");
+			a.href = URL.createObjectURL(blob);
+			a.download = `${data.song.project.slug}-${data.song.slug}-stems.zip`;
+			a.click();
+			setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+		} finally {
+			zipping = null;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -190,24 +258,70 @@
 	</section>
 
 	<section class="mt-8" aria-label="Files">
-		<h2 class="mb-2 text-sm font-medium">Files</h2>
+		<div class="mb-2 flex items-baseline justify-between gap-4">
+			<h2 class="text-sm font-medium">Files</h2>
+			{#if ready.length > 0}
+				<button
+					class="text-sm text-dim underline underline-offset-4 disabled:opacity-50"
+					type="button"
+					disabled={!!zipping}
+					onclick={downloadAll}
+				>
+					{zipping ??
+						`Download all (${ready.length} ${ready.length === 1 ? "stem" : "stems"}, .zip)`}
+				</button>
+			{/if}
+		</div>
 		{#if data.song.stems.length === 0}
 			<p class="text-sm text-dim">Nothing uploaded.</p>
 		{:else}
 			<ul class="divide-y divide-line rounded-lg bg-row text-sm">
 				{#each data.song.stems as stem (stem.id)}
-					<li class="flex items-center justify-between gap-4 px-4 py-2">
-						<span class="truncate">
-							{stem.label}
-							<span class="text-dim">
-								· {stem.filename} · {formatBytes(stem.sizeBytes)}
-								{#if stem.status !== "ready"}· {stem.status}{/if}
+					{@const job = replacing[stem.id]}
+					<li class="px-4 py-2">
+						<div class="flex items-center justify-between gap-4">
+							<span class="truncate">
+								{stem.label}
+								<span class="text-dim">
+									· {stem.filename} · {formatBytes(stem.sizeBytes)}
+									{#if job}
+										· {job.stage === "uploading" ? `${Math.round(job.percent)}%` : job.stage}
+									{:else if stem.status !== "ready"}
+										· {stem.status}
+									{/if}
+								</span>
 							</span>
-						</span>
-						<form method="POST" action="?/deleteStem" use:enhance>
-							<input type="hidden" name="id" value={stem.id} />
-							<button class="shrink-0 text-dim underline underline-offset-4">Remove</button>
-						</form>
+							<span class="flex shrink-0 items-center gap-3">
+								{#if stem.status === "ready" && stem.url}
+									<button
+										class="text-dim underline underline-offset-4"
+										type="button"
+										onclick={() => saveAs(stem.url, stem.filename)}>Download</button
+									>
+								{/if}
+								<label class="cursor-pointer text-dim underline underline-offset-4">
+									{stem.status === "ready" ? "Upload new version" : "Upload file"}
+									<input
+										class="sr-only"
+										type="file"
+										accept={STEM_ACCEPT}
+										disabled={!!job}
+										onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+									/>
+								</label>
+								<form method="POST" action="?/deleteStem" use:enhance>
+									<input type="hidden" name="id" value={stem.id} />
+									<button class="text-dim underline underline-offset-4">Remove</button>
+								</form>
+							</span>
+						</div>
+						{#if job && job.stage !== "error"}
+							<div class="mt-2 h-1 overflow-hidden rounded bg-panel">
+								<div class="h-full bg-playhead" style:width="{job.percent}%"></div>
+							</div>
+						{:else if job?.error}
+							<p class="mt-1 text-xs text-solo">{job.error}</p>
+						{/if}
 					</li>
 				{/each}
 			</ul>

@@ -25,6 +25,7 @@
 		"@libsql/client": "0.18.0",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/blob": "2.8.0",
+		"client-zip": "^2.5.0",
 		"drizzle-orm": "0.45.2",
 		"isomorphic-dompurify": "^4.2.0",
 		"marked": "18.0.5",

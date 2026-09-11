@@ -237,6 +237,45 @@ export async function createStem(
 	return row;
 }
 
+/**
+ * "Upload new version": keep the row (id, label, order) but point it at a
+ * fresh pathname and put it back into `uploading`. The old blob is deleted
+ * now; if the upload then fails the stem shows as not ready and can be
+ * replaced again or removed.
+ */
+export async function reserveStemReplacement(accountId: string, stemId: string, file: NewStemFile) {
+	const existing = await db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.id, stemId)),
+	});
+	if (!existing) return null;
+	const version = (existing.pathname.match(/-v(\d+)\.[a-z0-9]+$/)?.[1] ?? 0) as number;
+	const pathname = stemPathname(
+		accountId,
+		existing.songId,
+		stemId,
+		file.filename,
+		Number(version) + 1,
+	);
+	await deleteBlobs([existing.url]);
+	const [row] = await db
+		.update(stem)
+		.set({
+			status: "uploading",
+			url: "",
+			pathname,
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+			durationSeconds: null,
+			channels: null,
+			peaks: null,
+		})
+		.where(eq(stem.id, stemId))
+		.returning();
+	await refreshSongDuration(existing.songId);
+	return row;
+}
+
 /** Step 2 (server side of handleUpload): the pathname must belong to a reserved row. */
 export function findUploadingStem(accountId: string, pathname: string) {
 	return db.query.stem.findFirst({

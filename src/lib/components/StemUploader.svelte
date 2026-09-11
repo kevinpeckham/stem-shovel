@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { invalidateAll } from "$app/navigation";
-	import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 	import { formatBytes } from "$lib/format";
 	import {
 		MAX_STEMS_PER_SONG,
@@ -9,7 +8,7 @@
 		STEM_MAX_BYTES,
 		stemContentType,
 	} from "$lib/slug";
-	import { upload } from "@vercel/blob/client";
+	import { postJson, type Reservation, uploadStemFile } from "$lib/upload";
 
 	interface Props {
 		songId: string;
@@ -56,39 +55,20 @@
 		for (const job of jobs) {
 			try {
 				job.status = "uploading";
-				const reserve = await fetch("/api/stems", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ songId, filename: job.file.name, sizeBytes: job.file.size }),
-				});
-				if (!reserve.ok) throw new Error(await errorText(reserve));
-				const { stemId, pathname } = (await reserve.json()) as {
-					stemId: string;
-					pathname: string;
-				};
-
-				const blob = await upload(pathname, job.file, {
-					access: "public",
-					handleUploadUrl: "/api/upload",
-					// Must match what the server reserved, which it decided from the extension.
-					contentType: stemContentType(job.file.name) ?? undefined,
-					multipart: true,
-					onUploadProgress: ({ percentage }) => (job.percent = percentage),
-				});
-
-				job.status = "decoding";
-				const buffer = await ctx.decodeAudioData(await job.file.arrayBuffer());
-				const ready = await fetch(`/api/stems/${stemId}/ready`, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						url: blob.url,
-						durationSeconds: buffer.duration,
-						channels: buffer.numberOfChannels,
-						peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
-					}),
-				});
-				if (!ready.ok) throw new Error(await errorText(ready));
+				await uploadStemFile(
+					job.file,
+					() =>
+						postJson<Reservation>("/api/stems", {
+							songId,
+							filename: job.file.name,
+							sizeBytes: job.file.size,
+						}),
+					{
+						ctx,
+						onProgress: (p) => (job.percent = p),
+						onDecoding: () => (job.status = "decoding"),
+					},
+				);
 				job.status = "done";
 				job.percent = 100;
 			} catch (err) {
@@ -102,15 +82,6 @@
 		files = null;
 		if (failed === 0) jobs = [];
 		await invalidateAll();
-	}
-
-	async function errorText(res: Response): Promise<string> {
-		try {
-			const body = (await res.json()) as { message?: string; error?: string };
-			return body.message ?? body.error ?? `${res.status} ${res.statusText}`;
-		} catch {
-			return `${res.status} ${res.statusText}`;
-		}
 	}
 </script>
 
