@@ -5,7 +5,7 @@ import { varlockVitePlugin } from "@varlock/vite-integration";
 import { defineConfig } from "vite-plus";
 
 // One config for dev/build (Vite), lint (Oxlint) and format (Oxfmt).
-export default defineConfig({
+export default defineConfig(({ command }) => ({
 	// Oxlint. It has no Svelte template linting yet, so .svelte files are only
 	// covered by svelte-check (`npm run check`); Oxlint covers .ts/.js/.svelte.ts.
 	lint: {
@@ -20,6 +20,18 @@ export default defineConfig({
 		printWidth: 100,
 		svelte: true, // needs the `svelte` package present, which SvelteKit provides
 		ignorePatterns: ["src/env.d.ts", "drizzle/**"], // generated: varlock types, drizzle-kit migrations
+	},
+	// Vercel's function runtime cannot require() ESM from CommonJS, so a CJS
+	// dependency that imports an ESM-only package (sanitize-html → htmlparser2
+	// v10) fails at cold start when left external. Bundling the markdown
+	// packages into the server output removes the module-format boundary.
+	// Build only: Vite's dev SSR runner evaluates a bundled CJS module as
+	// ESM, where `require` is undefined.
+	ssr: {
+		noExternal:
+			command === "build"
+				? ["sanitize-html", "@kevinpeckham/barkdown", "marked", "marked-footnote"]
+				: [],
 	},
 	plugins: [
 		// varlock replaces Vite's .env loading with .env.schema (validated, typed,
@@ -40,4 +52,4 @@ export default defineConfig({
 			adapter: adapter(),
 		}),
 	],
-});
+}));
