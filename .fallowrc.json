@@ -14,8 +14,8 @@
 		//   "**/generated/**"     // OpenAPI, Protobuf codegen
 		// ]
 	},
-	// 1password-plugin: loaded by varlock via config. @libsql/client: imported by drizzle-orm/libsql.
-	"ignoreDependencies": ["@varlock/1password-plugin", "@libsql/client"],
+	// 1password-plugin: loaded by varlock via config. @libsql/client: drizzle-orm/libsql. isomorphic-dompurify: woof-editor peer.
+	"ignoreDependencies": ["@varlock/1password-plugin", "@libsql/client", "isomorphic-dompurify"],
 	// Value arrays back validation/UI; tables consume only the types for now.
 	"ignoreExports": [{ "file": "src/lib/val/picklists.ts", "exports": ["*"] }],
 	"rules": {}

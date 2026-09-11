@@ -1,24 +1,35 @@
 <script lang="ts">
-	import { browser } from "$app/environment";
 	import { enhance } from "$app/forms";
-	import { MarkdownEditor, MarkdownEditorState } from "@kevinpeckham/woof-editor";
-	import { untrack } from "svelte";
+	import type { MarkdownEditor, MarkdownEditorState } from "@kevinpeckham/woof-editor";
+	import { onMount, untrack } from "svelte";
 
 	let { data, form } = $props();
 
-	// Constructed once. Post-save `update()` re-runs load with the same song,
-	// so re-seeding on every `data` change would stomp live editor state
-	// (replicator learned this the hard way). Re-seed only when the song
-	// identity changes; markAsSaved() is the post-save sync.
-	const editor = new MarkdownEditorState({ markdown: untrack(() => data.song.chartMarkdown) });
+	// The editor package is imported in the browser only (type imports above
+	// are erased). Its server build pulls in isomorphic-dompurify → jsdom,
+	// which Vercel's function runtime cannot load; and the surface is
+	// contenteditable, so there is nothing useful to render on the server.
+	let Editor = $state<typeof MarkdownEditor | null>(null);
+	let editor = $state<MarkdownEditorState | null>(null);
 	let loadedSongId = untrack(() => data.song.id);
+
+	onMount(async () => {
+		const mod = await import("@kevinpeckham/woof-editor");
+		editor = new mod.MarkdownEditorState({ markdown: data.song.chartMarkdown });
+		Editor = mod.MarkdownEditor;
+	});
+
+	// Post-save `update()` re-runs load with the same song, so re-seeding on
+	// every `data` change would stomp live editor state (replicator learned
+	// this the hard way). Re-seed only when the song identity changes;
+	// markAsSaved() is the post-save sync.
 	$effect(() => {
 		const id = data.song.id;
 		const md = data.song.chartMarkdown;
 		untrack(() => {
 			if (id === loadedSongId) return;
 			loadedSongId = id;
-			editor.reset(md);
+			editor?.reset(md);
 		});
 	});
 
@@ -40,7 +51,7 @@
 		}) => {
 			saving = false;
 			if (result.type === "success") {
-				editor.markAsSaved();
+				editor?.markAsSaved();
 				if (typeof result.data?.version === "number") version = result.data.version;
 				confirmEmpty = false;
 			} else if (result.type === "failure") {
@@ -53,6 +64,7 @@
 	}
 
 	function discard() {
+		if (!editor) return;
 		if (editor.hasEdits && !confirm("Discard unsaved changes?")) return;
 		editor.reset(data.song.chartMarkdown);
 	}
@@ -61,11 +73,11 @@
 	function onkeydown(e: KeyboardEvent) {
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
 			e.preventDefault();
-			if (editor.hasEdits && !saving) formEl?.requestSubmit();
+			if (editor?.hasEdits && !saving) formEl?.requestSubmit();
 		}
 	}
 	function onbeforeunload(e: BeforeUnloadEvent) {
-		if (editor.hasEdits) e.preventDefault();
+		if (editor?.hasEdits) e.preventDefault();
 	}
 </script>
 
@@ -82,7 +94,7 @@
 	action="?/save"
 	use:enhance={handleSave}
 >
-	<input type="hidden" name="markdown" value={editor.markdownCurrent} />
+	<input type="hidden" name="markdown" value={editor?.markdownCurrent ?? data.song.chartMarkdown} />
 	<input type="hidden" name="confirmEmpty" value={confirmEmpty ? "true" : "false"} />
 
 	<header class="mb-6 flex flex-wrap items-center gap-3">
@@ -94,18 +106,18 @@
 		<button
 			class="text-xs text-dim disabled:opacity-30"
 			type="button"
-			onclick={() => editor.undo()}
-			disabled={!editor.canUndo}
+			onclick={() => editor?.undo()}
+			disabled={!editor?.canUndo}
 			title="Undo (⌘Z / Ctrl+Z)">↶ Undo</button
 		>
 		<button
 			class="text-xs text-dim disabled:opacity-30"
 			type="button"
-			onclick={() => editor.redo()}
-			disabled={!editor.canRedo}
+			onclick={() => editor?.redo()}
+			disabled={!editor?.canRedo}
 			title="Redo (⌘⇧Z / Ctrl+Y)">↷ Redo</button
 		>
-		{#if editor.hasEdits}
+		{#if editor?.hasEdits}
 			<button class="text-xs text-dim underline underline-offset-4" type="button" onclick={discard}>
 				Discard
 			</button>
@@ -113,7 +125,7 @@
 		<button
 			class="rounded bg-ink px-3 py-1.5 text-sm text-panel disabled:opacity-40"
 			type="submit"
-			disabled={!editor.hasEdits || saving}
+			disabled={!editor?.hasEdits || saving}
 			title="Save (⌘S / Ctrl+S)"
 		>
 			{saving ? "Saving…" : confirmEmpty ? "Save empty chart" : "Save"}
@@ -131,8 +143,8 @@
 	</p>
 
 	<div class="chart-editor rounded-lg bg-row py-4 pr-6 pl-12">
-		{#if browser}
-			<MarkdownEditor {editor} class="chart-body" />
+		{#if Editor && editor}
+			<Editor {editor} class="chart-body" />
 		{:else}
 			<div class="chart-body min-h-40 text-dim">Loading editor…</div>
 		{/if}

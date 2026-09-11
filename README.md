@@ -114,7 +114,9 @@ registered for Claude Code in `.mcp.json`.
   action. `data.saveChart` hash-gates a new `song_chart_version` row and
   keeps the last 10; blanking a chart with content needs a second save.
   `server/markdown.ts` renders the read view with barkdown's renderer (what
-  the editor seeds from) plus DOMPurify. Typography for both is
+  the editor seeds from) plus sanitize-html — not DOMPurify, whose server
+  build needs jsdom, which Vercel's function runtime cannot load (the editor
+  package is therefore imported in the browser only). Typography for both is
   `src/lib/styles/chart.css`.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
