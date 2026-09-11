@@ -27,6 +27,12 @@ export const song = table(
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		notes: t.text("notes").notNull().default(""),
+		/** Chords, lyrics and arrangement as markdown. History in song_chart_version. */
+		chartMarkdown: t.text("chart_markdown").notNull().default(""),
+		/** SHA-256 of chartMarkdown; a save only creates a version when it changes. */
+		chartHash: t.text("chart_hash"),
+		/** Sequential number of the current chart version; 0 = never saved. */
+		chartVersion: t.integer("chart_version").notNull().default(0),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

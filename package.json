@@ -20,10 +20,15 @@
 		"db:seed": "varlock run -- bun scripts/seed.ts"
 	},
 	"dependencies": {
+		"@kevinpeckham/barkdown": "0.1.1",
+		"@kevinpeckham/woof-editor": "0.2.1",
 		"@libsql/client": "0.18.0",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/blob": "2.8.0",
 		"drizzle-orm": "0.45.2",
+		"isomorphic-dompurify": "^4.2.0",
+		"marked": "18.0.5",
+		"marked-footnote": "^1.4.0",
 		"nanoid": "6.0.1",
 		"varlock": "^1.18.0"
 	},

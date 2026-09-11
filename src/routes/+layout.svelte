@@ -1,6 +1,7 @@
 <script lang="ts">
 	import "@unocss/reset/tailwind.css";
 	import "virtual:uno.css";
+	import "$lib/styles/chart.css";
 
 	let { children } = $props();
 </script>

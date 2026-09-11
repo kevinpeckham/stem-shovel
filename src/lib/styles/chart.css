@@ -1,0 +1,98 @@
+/*
+ * Chart typography, shared by the read-only <article> on the song page and
+ * the woof-editor surface (passed via its `class` prop; the editor's own
+ * body styles are zero-specificity so these win). Chords are usually kept
+ * in code blocks, so monospace blocks get the most care.
+ */
+.chart-body {
+	line-height: 1.6;
+	font-size: 0.95rem;
+}
+.chart-body h1 {
+	font-size: 1.4rem;
+	font-weight: 600;
+	margin: 0 0 0.6em;
+}
+.chart-body h2 {
+	font-size: 1.15rem;
+	font-weight: 600;
+	margin: 1.4em 0 0.4em;
+}
+.chart-body h3,
+.chart-body h4 {
+	font-size: 1rem;
+	font-weight: 600;
+	margin: 1.2em 0 0.3em;
+}
+.chart-body p {
+	margin: 0 0 0.8em;
+	white-space: pre-wrap; /* lyric lines keep their breaks and spacing */
+}
+.chart-body ul,
+.chart-body ol {
+	margin: 0 0 0.8em 1.4em;
+}
+.chart-body li {
+	margin: 0.15em 0;
+}
+.chart-body blockquote {
+	margin: 0 0 0.8em;
+	padding-left: 0.8em;
+	border-left: 3px solid var(--chart-accent, #0e7c86);
+	color: var(--chart-dim, #6b6e76);
+}
+.chart-body pre {
+	margin: 0 0 1em;
+	padding: 0.7em 0.9em;
+	border-radius: 6px;
+	background: var(--chart-code-bg, #e9e7e1);
+	overflow-x: auto;
+	font-size: 0.9em;
+	line-height: 1.5;
+}
+.chart-body code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.chart-body :not(pre) > code {
+	padding: 0.05em 0.35em;
+	border-radius: 4px;
+	background: var(--chart-code-bg, #e9e7e1);
+}
+.chart-body hr {
+	border: 0;
+	border-top: 1px solid var(--chart-line, #d3d1ca);
+	margin: 1.2em 0;
+}
+.chart-body a {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.chart-body table {
+	border-collapse: collapse;
+	margin: 0 0 1em;
+}
+.chart-body th,
+.chart-body td {
+	border: 1px solid var(--chart-line, #d3d1ca);
+	padding: 0.25em 0.6em;
+}
+
+/* Editor chrome: map woof-editor's tokens onto the app palette. The gutter
+   button sits 38px left of the surface, hence the wrapper's padding-left. */
+.chart-editor {
+	--woof-accent: #0e7c86;
+	--woof-accent-soft: #7fc4ca;
+	--woof-menu-bg: #24262b;
+	--woof-menu-fg: #f6f5f1;
+	--woof-menu-hover: #3b3f47;
+	--woof-gutter-bg: #24262b;
+	--woof-gutter-fg: #f6f5f1;
+	--woof-input-bg: #16181c;
+	--woof-popover-bg: #f6f5f1;
+	--woof-popover-fg: #24262b;
+	--woof-popover-border: #d3d1ca;
+}
+.chart-editor .woof-editor-body {
+	min-height: 16rem;
+	outline: none;
+}

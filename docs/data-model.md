@@ -40,6 +40,11 @@ erDiagram
   one song without an account. Cheap to add now, so it is in the first
   migration.
 
+- **song_chart_version** — history of the song's chart (chords, lyrics,
+  arrangement). The current markdown lives on `song.chart_markdown`; a save
+  writes a version row only when the SHA-256 changes, and the newest ten
+  are kept. Text is stored in the row, not Blob: a chart is a few KB.
+
 Not in the first cut, easy to add later: `mix` (saved fader/mute/solo state
 per song), stem versions (replicator's `audio_version` pattern), comments.
 
@@ -129,6 +134,9 @@ Indexes: `(account_id)`, unique `(account_id, slug)`.
 | musical_key      | text null                   | "D", "F#m"; free text for now                     |
 | duration_seconds | real null                   | longest stem; updated when stems change           |
 | notes            | text, default ""            |                                                   |
+| chart_markdown   | text, default ""            | current chart; history in song_chart_version      |
+| chart_hash       | text null                   | SHA-256 of chart_markdown                         |
+| chart_version    | integer, default 0          | number of the current version; 0 = never saved    |
 | status           | text, default active        | `active` \| `archived`                            |
 | sort_order       | integer, default 0          | inside the project                                |
 | created_by       | text FK → user (set null)   |                                                   |
@@ -161,6 +169,21 @@ Indexes: `(account_id)`, `(project_id)`, unique `(project_id, slug)`.
 | updated_at       | timestamp_ms                |                                                             |
 
 Indexes: `(song_id, sort_order)`, `(account_id)`.
+
+### song_chart_version
+
+| column         | type                      | notes                      |
+| -------------- | ------------------------- | -------------------------- |
+| id             | text PK                   |                            |
+| song_id        | text FK → song (cascade)  |                            |
+| version_number | integer not null          | 1, 2, 3… per song          |
+| markdown       | text not null             | full text of that revision |
+| content_hash   | text not null             |                            |
+| created_by     | text FK → user (set null) |                            |
+| created_at     | timestamp_ms              |                            |
+| updated_at     | timestamp_ms              |                            |
+
+Index: `(song_id, version_number)`.
 
 ### share_link
 

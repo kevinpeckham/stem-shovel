@@ -1,8 +1,9 @@
 import type { StemManifest } from "$lib/audio/types";
 import { deleteBlobs, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
+import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
@@ -11,7 +12,7 @@ import { nanoid } from "nanoid";
  * `event.locals.account` (see hooks.server.ts).
  */
 
-const { project, song, stem } = schema;
+const { project, song, stem, songChartVersion } = schema;
 
 // ---- projects -------------------------------------------------------------
 
@@ -228,4 +229,82 @@ function uniqueSlug(base: string, taken: Set<string>): string {
 		const candidate = `${base.slice(0, 60)}-${n}`;
 		if (!taken.has(candidate)) return candidate;
 	}
+}
+
+// ---- chart (chords / lyrics / arrangement) ------------------------------
+
+const CHART_VERSIONS_TO_KEEP = 10;
+/** Blanking a chart longer than this needs `confirmEmpty` (accidental-wipe guard). */
+const CHART_WIPE_GUARD_CHARS = 200;
+
+export type SaveChartResult =
+	| { ok: true; version: number; changed: boolean }
+	| { ok: false; error: string; needsConfirm?: boolean };
+
+/**
+ * Saves the chart. Mirrors replicator's blog save: the markdown's hash gates
+ * whether a new version row is written (a no-op save stays on the current
+ * version), and only the most recent CHART_VERSIONS_TO_KEEP are kept.
+ */
+export async function saveChart(
+	accountId: string,
+	userId: string,
+	songId: string,
+	markdown: string,
+	opts: { confirmEmpty?: boolean } = {},
+): Promise<SaveChartResult> {
+	const existing = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true, chartMarkdown: true, chartHash: true, chartVersion: true },
+	});
+	if (!existing) return { ok: false, error: "Song not found." };
+
+	const next = markdown.replace(/\r\n/g, "\n");
+	if (
+		next.trim() === "" &&
+		existing.chartMarkdown.trim().length > CHART_WIPE_GUARD_CHARS &&
+		!opts.confirmEmpty
+	) {
+		return {
+			ok: false,
+			needsConfirm: true,
+			error: "This would empty a chart with content. Save again to confirm.",
+		};
+	}
+
+	const contentHash = await hashMarkdown(next);
+	if (contentHash === existing.chartHash) {
+		return { ok: true, version: existing.chartVersion, changed: false };
+	}
+
+	const versionNumber = existing.chartVersion + 1;
+	await db.insert(songChartVersion).values({
+		songId,
+		versionNumber,
+		markdown: next,
+		contentHash,
+		createdBy: userId,
+	});
+	await db
+		.update(song)
+		.set({ chartMarkdown: next, chartHash: contentHash, chartVersion: versionNumber })
+		.where(eq(song.id, songId));
+
+	// Prune, keeping the newest N. Best-effort; a failure here does not fail the save.
+	const stale = await db
+		.select({ id: songChartVersion.id })
+		.from(songChartVersion)
+		.where(eq(songChartVersion.songId, songId))
+		.orderBy(desc(songChartVersion.versionNumber))
+		.limit(1000) // SQLite requires LIMIT alongside OFFSET
+		.offset(CHART_VERSIONS_TO_KEEP);
+	if (stale.length > 0) {
+		await db.delete(songChartVersion).where(
+			inArray(
+				songChartVersion.id,
+				stale.map((r) => r.id),
+			),
+		);
+	}
+	return { ok: true, version: versionNumber, changed: true };
 }

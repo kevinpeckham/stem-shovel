@@ -18,7 +18,7 @@ export function slugify(input: string): string {
  * player hands the uploaded file straight to it. AIFF (no Firefox), Ogg/Opus
  * and WebM (no Safari) stay out until there is a transcoding step.
  */
-export const STEM_FORMATS: Record<string, string> = {
+const STEM_FORMATS: Record<string, string> = {
 	wav: "audio/wav",
 	flac: "audio/flac",
 	mp3: "audio/mpeg",

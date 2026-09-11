@@ -59,6 +59,26 @@
 		<p class="text-sm text-dim">No stems yet. Upload some below.</p>
 	{/if}
 
+	<section class="mt-8" aria-label="Chart">
+		<div class="mb-2 flex items-baseline justify-between gap-4">
+			<h2 class="text-sm font-medium">Chart</h2>
+			<a
+				class="text-sm text-dim underline underline-offset-4"
+				href="/projects/{data.song.project.slug}/{data.song.slug}/chart"
+			>
+				{data.chartHtml ? "Edit chart" : "Add chart"}
+			</a>
+		</div>
+		{#if data.chartHtml}
+			<article class="chart-body rounded-lg bg-row px-6 py-4">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
+				{@html data.chartHtml}
+			</article>
+		{:else}
+			<p class="text-sm text-dim">No chart yet. Chords, lyrics and arrangement go here.</p>
+		{/if}
+	</section>
+
 	<section class="mt-8" aria-label="Files">
 		<h2 class="mb-2 text-sm font-medium">Files</h2>
 		{#if data.song.stems.length === 0}

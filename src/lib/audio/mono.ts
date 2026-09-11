@@ -6,10 +6,10 @@
  */
 
 /** Largest per-sample L/R difference still treated as "the same signal". */
-export const DUAL_MONO_TOLERANCE = 1e-3;
+const DUAL_MONO_TOLERANCE = 1e-3;
 
 /** True when every sample of `left` and `right` is within `tolerance`. */
-export function channelsMatch(
+function channelsMatch(
 	left: Float32Array,
 	right: Float32Array,
 	tolerance = DUAL_MONO_TOLERANCE,

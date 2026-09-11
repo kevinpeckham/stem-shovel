@@ -20,8 +20,10 @@ bun run dev          # open http://localhost:5173/
 ```
 
 Pages: `/projects` lists and creates projects, `/projects/[project]` lists
-and creates songs, `/projects/[project]/[song]` plays a song, uploads stems
-into it and deletes stems or the song. `/test` plays the static files.
+and creates songs, `/projects/[project]/[song]` plays a song, shows its
+chart, uploads stems into it and deletes stems or the song.
+`/projects/[project]/[song]/chart` edits the chart. `/test` plays the
+static files.
 `bun run smoke:blob` runs the whole flow (create project + song, reserve,
 upload, report) against the dev server.
 
@@ -106,6 +108,14 @@ registered for Claude Code in `.mcp.json`.
   **No auth yet**; fine behind Tailscale, not for a public deploy.
 - `src/routes/projects/` — project list, song list, song page (player +
   files + uploader), all with form actions.
+- **Chart** (chords, lyrics, arrangement): markdown on `song.chart_markdown`,
+  edited at `…/[song]/chart` with `@kevinpeckham/woof-editor` (the same
+  WYSIWYG-markdown editor replicator's blog uses), saved through a form
+  action. `data.saveChart` hash-gates a new `song_chart_version` row and
+  keeps the last 10; blanking a chart with content needs a second save.
+  `server/markdown.ts` renders the read view with barkdown's renderer (what
+  the editor seeds from) plus DOMPurify. Typography for both is
+  `src/lib/styles/chart.css`.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
   and server.
@@ -170,4 +180,4 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
 6. Auth (Better Auth, as in replicator) before going public; today every
    request is the seeded owner.
-7. Stem ordering / relabeling UI, saved mixes.
+7. Stem ordering / relabeling UI, saved mixes, chart version restore UI.
