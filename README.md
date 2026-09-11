@@ -110,8 +110,9 @@ registered for Claude Code in `.mcp.json`.
   files + uploader), all with form actions.
 - **Chart** (chords, lyrics, arrangement): markdown on `song.chart_markdown`,
   edited at `…/[song]/chart` with `@kevinpeckham/woof-editor` (the same
-  WYSIWYG-markdown editor replicator's blog uses), saved through a form
-  action. `data.saveChart` hash-gates a new `song_chart_version` row and
+  WYSIWYG-markdown editor replicator's blog uses) with a Rendered / Markdown
+  toggle — the source pane is a textarea bound to the same editor state, so
+  undo, discard and save cover both — saved through a form action. `data.saveChart` hash-gates a new `song_chart_version` row and
   keeps the last 10; blanking a chart with content needs a second save.
   `server/markdown.ts` renders the read view with barkdown's renderer (what
   the editor seeds from) and `server/sanitize.ts`, an allowlist pass over
