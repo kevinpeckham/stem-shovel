@@ -50,10 +50,17 @@ const note = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
 mkdirSync(OUT, { recursive: true });
 
-// Kick: pitched-down sine on every beat
+// Kick: sine that sweeps from ~150 Hz down to 50 Hz on every beat.
+// The phase is the *integral* of the frequency sweep, measured from the start
+// of each hit; multiplying a time-varying frequency by absolute time instead
+// makes the pitch run away (a chirp), because d/dt[f(t)·t] = f + t·f'.
 writeWav("kick.wav", 20, (t) => {
 	const pos = t % BEAT;
-	return 0.9 * env(pos, 0.002, 0.12) * Math.sin(2 * Math.PI * (45 + 80 * Math.exp(-pos * 40)) * t);
+	const base = 50; // Hz the hit settles to
+	const sweep = 100; // extra Hz at the start of the hit
+	const rate = 30; // how fast the sweep decays (1/s)
+	const phase = 2 * Math.PI * (base * pos + (sweep / rate) * (1 - Math.exp(-rate * pos)));
+	return 0.9 * env(pos, 0.002, 0.14) * Math.sin(phase);
 });
 
 // Hats: noise bursts on eighths, accented on the offbeat
