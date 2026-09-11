@@ -21,6 +21,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@unocss/preset-uno": "^66.10.2",
 		"@unocss/reset": "^66.10.2",
+		"fallow": "3.25.0",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",

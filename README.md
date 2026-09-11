@@ -29,6 +29,10 @@ and list them in `static/stems/manifest.json`:
 `bun run check` runs svelte-check. `bun run lint` runs `vp check` (format
 check + Oxlint + tsgolint). `bun run format` runs `vp fmt`.
 
+`bunx fallow` runs [Fallow](https://docs.fallow.tools/) (dead code,
+duplication, health). Config is `.fallowrc.json`; its MCP server is
+registered for Claude Code in `.mcp.json`.
+
 ## Where things live
 
 - `src/lib/audio/engine.svelte.ts` — `StemEngine`: one `AudioContext`, one
