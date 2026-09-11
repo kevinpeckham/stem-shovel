@@ -30,7 +30,7 @@
 		"marked": "18.0.5",
 		"marked-footnote": "^1.4.0",
 		"nanoid": "6.0.1",
-		"sanitize-html": "2.17.7",
+		"sanitize-html": "2.17.0",
 		"varlock": "^1.18.0"
 	},
 	"devDependencies": {

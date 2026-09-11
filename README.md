@@ -166,13 +166,14 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   which is why four 20-second mono stems decode to ~9.5 MB, not ~14 MB.
 - **Server dependencies that `require()` ESM break on Vercel.** Its function
   runtime uses a loader without `require(esm)` support, so a CommonJS package
-  that depends on an ESM-only one (sanitize-html → htmlparser2 v10;
-  DOMPurify's server build → jsdom → html-encoding-sniffer) throws
-  `ERR_REQUIRE_ESM` at cold start and takes every route down. Local Node is
-  fine, so it only shows in production. `vite.config.ts` lists such packages
-  in `ssr.noExternal` for builds, which bundles them into the server chunk;
-  builds only, because Vite's dev SSR runner evaluates a bundled CJS module
-  as ESM. Check `.vercel/output/functions/*/node_modules` after `vp build`.
+  that depends on an ESM-only one throws `ERR_REQUIRE_ESM` at cold start and
+  takes every route down. Local Node is fine, so it only shows in production.
+  Two hit this: DOMPurify's server build (jsdom → html-encoding-sniffer 5+),
+  replaced by sanitize-html; and sanitize-html 2.17.7 itself (htmlparser2
+  10+), so it is pinned exactly to 2.17.0, the last release on htmlparser2 8.
+  Bundling via `ssr.noExternal` does not help: the bundler leaves the inner
+  `require()` in place. After `vp build`, check
+  `.vercel/output/functions/*/node_modules` before bumping server deps.
 - **Dual-mono files are collapsed to one channel after decoding**
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one and the row says "dual mono → mono". Real
