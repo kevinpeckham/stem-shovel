@@ -27,3 +27,9 @@ export const SongDocSaveSchema = v.object({
 });
 
 export type SongDocSave = v.InferOutput<typeof SongDocSaveSchema>;
+
+/** Form boundary for creating a song in a project. */
+export const SongCreateSchema = v.object({ projectId: NanoIdSchema, title: NameSchema });
+
+/** Form boundary for deleting a song or a stem by id. */
+export const IdSchema = v.object({ id: NanoIdSchema });

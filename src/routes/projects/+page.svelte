@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { enhance } from "$app/forms";
+	import { createProject } from "$lib/remote/projects.remote";
 
-	let { data, form } = $props();
+	let { data } = $props();
 </script>
 
 <svelte:head>
@@ -28,21 +28,21 @@
 		</ul>
 	{/if}
 
-	<form class="mt-8 flex items-end gap-3" method="POST" action="?/create" use:enhance>
+	<form class="mt-8 flex items-end gap-3" {...createProject}>
 		<label class="grow">
 			<span class="text-sm text-dim">New project</span>
 			<input
 				class="mt-1 block w-full rounded border border-line bg-row px-3 py-2"
-				name="name"
-				type="text"
+				{...createProject.fields.name.as("text")}
 				placeholder="Album, session, client…"
-				value={form?.name ?? ""}
 				required
 			/>
 		</label>
-		<button class="rounded bg-ink px-4 py-2 text-panel">Create</button>
+		<button class="rounded bg-ink px-4 py-2 text-panel" disabled={!!createProject.pending}
+			>Create</button
+		>
 	</form>
-	{#if form?.error}
-		<p class="mt-2 text-sm text-solo">{form.error}</p>
-	{/if}
+	{#each createProject.fields.name.issues() ?? [] as issue (issue.message)}
+		<p class="mt-2 text-sm text-solo">{issue.message}</p>
+	{/each}
 </main>

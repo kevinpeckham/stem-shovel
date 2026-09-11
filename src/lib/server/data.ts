@@ -75,6 +75,25 @@ export async function updateProject(
 	return { ok: true, project: row };
 }
 
+/** Slug of a project by id, scoped to the account. */
+export async function projectSlug(accountId: string, projectId: string) {
+	const row = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { slug: true },
+	});
+	return row?.slug ?? null;
+}
+
+/** Project + song slugs of a song by id, scoped to the account. */
+export async function songSlugs(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { slug: true },
+		with: { project: { columns: { slug: true } } },
+	});
+	return row ? { project: row.project.slug, song: row.slug } : null;
+}
+
 export function getProject(accountId: string, slug: string) {
 	return db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, slug)),

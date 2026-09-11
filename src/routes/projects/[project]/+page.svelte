@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance } from "$app/forms";
 	import { formatTime } from "$lib/format";
 	import { slugify } from "$lib/slug";
 	import { updateProject } from "$lib/remote/projects.remote";
+	import { createSong } from "$lib/remote/songs.remote";
 
-	let { data, form } = $props();
+	let { data } = $props();
 
 	let open = $state(false);
 	let saved = $state(false);
@@ -140,21 +140,22 @@
 		</ul>
 	{/if}
 
-	<form class="mt-8 flex items-end gap-3" method="POST" action="?/createSong" use:enhance>
+	<form class="mt-8 flex items-end gap-3" {...createSong}>
+		<input {...createSong.fields.projectId.as("hidden", data.project.id)} />
 		<label class="grow">
 			<span class="text-sm text-dim">New song</span>
 			<input
 				class="mt-1 block w-full rounded border border-line bg-row px-3 py-2"
-				name="title"
-				type="text"
+				{...createSong.fields.title.as("text")}
 				placeholder="Song title"
-				value={form?.title ?? ""}
 				required
 			/>
 		</label>
-		<button class="rounded bg-ink px-4 py-2 text-panel">Create</button>
+		<button class="rounded bg-ink px-4 py-2 text-panel" disabled={!!createSong.pending}
+			>Create</button
+		>
 	</form>
-	{#if form?.error}
-		<p class="mt-2 text-sm text-solo">{form.error}</p>
-	{/if}
+	{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
+		<p class="mt-2 text-sm text-solo">{issue.message}</p>
+	{/each}
 </main>

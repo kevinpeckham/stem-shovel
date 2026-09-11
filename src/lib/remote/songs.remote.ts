@@ -1,7 +1,20 @@
 import { form, getRequestEvent } from "$app/server";
-import { saveSongDoc, updateSong as update } from "$lib/server/data";
-import { SongDocSaveSchema, SongSettingsSchema } from "$lib/val/SongSchema";
-import { invalid, redirect } from "@sveltejs/kit";
+import {
+	createSong as create,
+	deleteSong as removeSong,
+	deleteStem as removeStem,
+	projectSlug,
+	saveSongDoc,
+	songSlugs,
+	updateSong as update,
+} from "$lib/server/data";
+import {
+	IdSchema,
+	SongCreateSchema,
+	SongDocSaveSchema,
+	SongSettingsSchema,
+} from "$lib/val/SongSchema";
+import { error, invalid, redirect } from "@sveltejs/kit";
 
 /** Who is acting. Until sign-in exists this is the seeded owner (hooks.server.ts). */
 function requireAccount() {
@@ -20,11 +33,10 @@ export const updateSong = form(
 		const { accountId } = requireAccount();
 		const result = await update(accountId, id, { title, slug, description });
 		if (!result.ok) invalid(issue[result.field](result.error));
-		const { url } = getRequestEvent();
-		const [, , projectSlug, currentSlug] = url.pathname.split("/");
-		if (result.song.slug !== currentSlug)
-			redirect(303, `/projects/${projectSlug}/${result.song.slug}`);
-		return { saved: true };
+		// Land on the (possibly new) address; derived from data, not the request URL.
+		const slugs = await songSlugs(accountId, id);
+		if (!slugs) error(404, "Song not found");
+		redirect(303, `/projects/${slugs.project}/${slugs.song}`);
 	},
 );
 
@@ -48,3 +60,28 @@ export const saveDoc = form(
 		return { version: result.version, changed: result.changed };
 	},
 );
+
+/** New song in a project; lands on its page. */
+export const createSong = form(SongCreateSchema, async ({ projectId, title }) => {
+	const { accountId, userId } = requireAccount();
+	const slug = await projectSlug(accountId, projectId);
+	if (!slug) error(404, "Project not found");
+	const row = await create(accountId, userId, projectId, title);
+	redirect(303, `/projects/${slug}/${row.slug}`);
+});
+
+/** Deletes the song, its stems and their blobs; lands on the project. */
+export const deleteSong = form(IdSchema, async ({ id }) => {
+	const { accountId } = requireAccount();
+	const slugs = await songSlugs(accountId, id);
+	if (!slugs) error(404, "Song not found");
+	await removeSong(accountId, id);
+	redirect(303, `/projects/${slugs.project}`);
+});
+
+/** Deletes one stem and its blob. Used with `.for(stem.id)` in the Files list. */
+export const deleteStem = form(IdSchema, async ({ id }) => {
+	const { accountId } = requireAccount();
+	if (!(await removeStem(accountId, id))) error(404, "Stem not found");
+	return { deleted: true };
+});

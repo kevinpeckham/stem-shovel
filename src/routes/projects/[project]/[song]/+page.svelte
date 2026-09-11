@@ -1,17 +1,15 @@
 <script lang="ts">
-	import { enhance } from "$app/forms";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
 
 	import { slugify, STEM_ACCEPT } from "$lib/slug";
 	import { postJson, type Reservation, saveAs, uploadStemFile } from "$lib/upload";
-	import { updateSong } from "$lib/remote/songs.remote";
+	import { deleteSong, deleteStem, updateSong } from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { untrack } from "svelte";
 
 	let { data } = $props();
-	let deleting = $state(false);
 
 	// Settings form (title, URL, description) on the updateSong remote form.
 	let settingsOpen = $state(false);
@@ -128,25 +126,17 @@
 			{settingsOpen ? "Close settings" : "Settings"}
 		</button>
 		<form
-			method="POST"
-			action="?/delete"
-			use:enhance={({ cancel }) => {
-				if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) {
-					cancel();
-					return;
-				}
-				deleting = true;
-				return async ({ update }) => {
-					await update();
-					deleting = false;
-				};
-			}}
+			{...deleteSong.enhance(async ({ submit }) => {
+				if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
+				await submit();
+			})}
 		>
+			<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
 			<button
 				class="text-sm text-dim underline underline-offset-4 disabled:opacity-50"
-				disabled={deleting}
+				disabled={!!deleteSong.pending}
 			>
-				{deleting ? "Deleting…" : "Delete song"}
+				{deleteSong.pending ? "Deleting…" : "Delete song"}
 			</button>
 		</form>
 	</header>
@@ -304,6 +294,7 @@
 			<ul class="divide-y divide-line rounded-lg bg-row text-sm">
 				{#each data.song.stems as stem (stem.id)}
 					{@const job = replacing[stem.id]}
+					{@const remove = deleteStem.for(stem.id)}
 					<li class="px-4 py-2">
 						<div class="flex items-center justify-between gap-4">
 							<span class="truncate">
@@ -335,9 +326,11 @@
 										onchange={(e) => replaceStem(stem.id, e.currentTarget)}
 									/>
 								</label>
-								<form method="POST" action="?/deleteStem" use:enhance>
-									<input type="hidden" name="id" value={stem.id} />
-									<button class="text-dim underline underline-offset-4">Remove</button>
+								<form {...remove}>
+									<input {...remove.fields.id.as("hidden", stem.id)} />
+									<button class="text-dim underline underline-offset-4" disabled={!!remove.pending}>
+										{remove.pending ? "Removing…" : "Remove"}
+									</button>
 								</form>
 							</span>
 						</div>

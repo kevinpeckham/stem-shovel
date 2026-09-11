@@ -133,10 +133,16 @@ registered for Claude Code in `.mcp.json`.
   `ArchiveStatusSchema`, `ArchiveStatus`). Table files import only the types;
   remote functions validate with the schemas at the form boundary
   (`ProjectSettingsSchema`).
-- `src/lib/remote/*.remote.ts` — SvelteKit remote functions (`form`,
-  `query`, `command`) for server mutations, replacing form actions; enabled
-  by `experimental.remoteFunctions` + `compilerOptions.experimental.async`
-  in `vite.config.ts`. Project settings (name + URL) is the first one.
+- `src/lib/remote/*.remote.ts` — every server mutation is a SvelteKit remote
+  `form` function (no form actions remain): create/update projects, create/
+  update/delete songs, delete stems, save chart/lyrics. Each validates with a
+  `$val` schema, reports domain errors onto fields with `invalid()`, and
+  derives redirect targets from the database rather than the request URL
+  (inside a remote function `url` is the calling page only when a browser
+  supplies it). Enabled by `experimental.remoteFunctions` +
+  `compilerOptions.experimental.async` in `vite.config.ts`. The smoke script
+  submits them the way the browser does, to `/_app/remote/<id>`; the id is
+  read from the dev server's transform of the module.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
   and server.

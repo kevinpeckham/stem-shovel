@@ -11,3 +11,6 @@ export const ProjectSettingsSchema = v.object({
 });
 
 export type ProjectSettings = v.InferOutput<typeof ProjectSettingsSchema>;
+
+/** Form boundary for creating a project. */
+export const ProjectCreateSchema = v.object({ name: NameSchema });

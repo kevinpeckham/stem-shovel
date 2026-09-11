@@ -2,30 +2,41 @@
  * End-to-end smoke test for the upload flow, driven exactly as the browser
  * does it, against a running dev server:
  *
- *   form action  POST /projects?/create            → project
- *   form action  POST /projects/<p>?/createSong    → song
+ *   remote form  createProject                     → project
+ *   remote form  createSong                        → song
  *   per file:    POST /api/stems (reserve)  →  upload() to Blob  →  POST /api/stems/<id>/ready
  *
  * Usage: bun run stems && bun run smoke:blob [kick,hats,bass,keys]
  */
 import { upload } from "@vercel/blob/client";
+import { parse as devalueParse } from "devalue";
 import { readFile } from "node:fs/promises";
 
 const base = process.env.SMOKE_BASE ?? "http://localhost:5173";
 const names = (process.argv[2] ?? "kick,hats,bass,keys").split(",");
 const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
 
-async function action(path, name, fields) {
+/**
+ * Submits a remote `form` function the way the browser does. The id is read
+ * from the dev server's transform of the .remote.ts module (dev only, which
+ * is where this script runs).
+ */
+async function remoteForm(file, name, fields) {
+	const src = await (await fetch(`${base}/src/lib/remote/${file}`)).text();
+	const id = src.match(new RegExp(`form\\('([^']+/${name})'\\)`))?.[1];
+	if (!id) throw new Error(`remote form ${name} not found in ${file}`);
 	const body = new FormData();
 	for (const [k, v] of Object.entries(fields)) body.set(k, v);
-	const res = await fetch(`${base}${path}?/${name}`, {
+	const res = await fetch(`${base}/_app/remote/${id}`, {
 		method: "POST",
-		headers: { origin: base, "x-sveltekit-action": "true" },
+		headers: { origin: base },
 		body,
 	});
 	const json = await res.json();
-	if (json.type !== "redirect") throw new Error(`${name}: ${JSON.stringify(json).slice(0, 200)}`);
-	return json.location;
+	// The payload is devalue-encoded; a handler that redirected reports it here.
+	const data = json.type === "result" ? devalueParse(json.data) : json;
+	if (!data?.redirect) throw new Error(`${name}: ${JSON.stringify(json).slice(0, 200)}`);
+	return data.redirect;
 }
 
 async function post(path, payload) {
@@ -66,8 +77,16 @@ function analyzeWav(buf, bins = 1024) {
 	return { durationSeconds: frames / sampleRate, channels, peaks };
 }
 
-const projectUrl = await action("/projects", "create", { name: `Smoke ${stamp}` });
-const songUrl = await action(projectUrl, "createSong", { title: "Test loop in D" });
+const projectUrl = await remoteForm("projects.remote.ts", "createProject", {
+	name: `Smoke ${stamp}`,
+});
+const projectId = (await (await fetch(`${base}${projectUrl}`)).text()).match(
+	/name="projectId"[^>]*value="([^"]+)"/,
+)?.[1];
+const songUrl = await remoteForm("songs.remote.ts", "createSong", {
+	projectId,
+	title: "Test loop in D",
+});
 const html = await (await fetch(`${base}${songUrl}`)).text();
 const songId = html.match(/data-song-id="([^"]+)"/)?.[1];
 if (!songId) throw new Error("song id not found on the song page");
