@@ -1,17 +1,11 @@
-<div class="mx-auto max-w-3xl px-4 py-16">
-	<h1 class="text-2xl font-semibold">Stem Shovel</h1>
-	<p class="mt-2 text-dim">
-		Proof of concept. Stems are uploaded straight from the browser to Vercel Blob, catalogued in
-		Turso, and played back in sync.
+<div class="mx-auto max-w-3xl px-4 pt-16 pb-24 sm:px-6">
+	<h1 class="display">Stem Shovel</h1>
+	<p class="mt-2 max-w-prose text-17px opacity-90">
+		Upload a song's stems straight from the browser, play them back in sync with per-stem faders,
+		mute and solo, and keep the chart and lyrics beside them.
 	</p>
-	<ul class="mt-6 space-y-2">
-		<li>
-			<a class="underline decoration-playhead underline-offset-4" href="/projects">Projects</a>
-		</li>
-		<li>
-			<a class="underline decoration-playhead underline-offset-4" href="/test"
-				>Test page (static files)</a
-			>
-		</li>
-	</ul>
+	<div class="mt-8 flex flex-wrap gap-3">
+		<a class="button-accent" href="/projects">Projects →</a>
+		<a class="button" href="/test">Static test page</a>
+	</div>
 </div>

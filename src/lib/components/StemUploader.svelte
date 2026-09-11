@@ -121,11 +121,7 @@
 		</p>
 	{/if}
 
-	<button
-		class="rounded bg-ink px-4 py-2 text-panel disabled:opacity-40"
-		type="submit"
-		disabled={!canSubmit}
-	>
+	<button class="button-accent disabled:opacity-40" type="submit" disabled={!canSubmit}>
 		{busy
 			? "Uploading…"
 			: `Upload ${picked.length || ""} ${picked.length === 1 ? "stem" : "stems"}`}
@@ -133,7 +129,7 @@
 </form>
 
 {#if jobs.length > 0}
-	<ul class="mt-4 divide-y divide-line rounded-lg bg-row" aria-live="polite">
+	<ul class="mt-4 divide-y divide-white/10 surface" aria-live="polite">
 		{#each jobs as job (job.file.name)}
 			<li class="px-4 py-3">
 				<div class="flex items-baseline justify-between gap-4 text-sm">
@@ -152,7 +148,7 @@
 						{/if}
 					</span>
 				</div>
-				<div class="mt-2 h-1 overflow-hidden rounded bg-panel">
+				<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 					<div
 						class="h-full {job.status === 'error' ? 'bg-solo' : 'bg-playhead'}"
 						style:width="{job.percent}%"

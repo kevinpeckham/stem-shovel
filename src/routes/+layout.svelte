@@ -1,11 +1,14 @@
 <script lang="ts">
-	import "@unocss/reset/tailwind.css";
-	import "virtual:uno.css";
+	import "uno.css";
 	import "$lib/styles/chart.css";
+	import GlobalFooter from "$lib/components/GlobalFooter.svelte";
+	import GlobalNav from "$lib/components/GlobalNav.svelte";
 
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 
-<div class="min-h-screen bg-panel text-ink antialiased">
+<GlobalNav account={data.account} />
+<div class="min-w-0">
 	{@render children()}
 </div>
+<GlobalFooter />

@@ -40,7 +40,7 @@
 		Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}…
 	</p>
 {:else if engine.status === "error"}
-	<div class="mt-6 rounded border border-line bg-row p-4">
+	<div class="mt-6 surface p-4">
 		<p class="font-medium">Couldn't load the stems.</p>
 		<p class="mt-1 text-sm text-dim">{engine.error}</p>
 		{#if errorHint}
@@ -48,7 +48,7 @@
 		{/if}
 	</div>
 {:else if engine.status === "ready"}
-	<div class="mt-6 rounded-lg bg-row px-4 py-3">
+	<div class="mt-6 surface px-4 py-3">
 		<Transport {engine} />
 	</div>
 

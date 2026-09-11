@@ -105,20 +105,19 @@
 	<title>{data.song.title} — Stem Shovel</title>
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-4 py-8" data-song-id={data.song.id}>
+<main class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6" data-song-id={data.song.id}>
 	<header class="mb-2 flex items-baseline justify-between gap-4">
 		<div>
-			<a
-				class="text-sm text-dim underline underline-offset-4"
-				href="/projects/{data.song.project.slug}">{data.song.project.name}</a
+			<a class="text-sm link-dim" href="/projects/{data.song.project.slug}"
+				>{data.song.project.name}</a
 			>
-			<h1 class="text-xl font-semibold">{data.song.title}</h1>
+			<h1 class="page-title">{data.song.title}</h1>
 			{#if data.song.description}
 				<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 			{/if}
 		</div>
 		<button
-			class="text-sm text-dim underline underline-offset-4"
+			class="text-sm link-dim"
 			type="button"
 			aria-expanded={settingsOpen}
 			onclick={() => (settingsOpen = !settingsOpen)}
@@ -132,10 +131,7 @@
 			})}
 		>
 			<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
-			<button
-				class="text-sm text-dim underline underline-offset-4 disabled:opacity-50"
-				disabled={!!deleteSong.pending}
-			>
+			<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
 				{deleteSong.pending ? "Deleting…" : "Delete song"}
 			</button>
 		</form>
@@ -143,7 +139,7 @@
 
 	{#if settingsOpen}
 		<form
-			class="mb-8 rounded-lg bg-row px-4 py-4"
+			class="mb-8 surface px-4 py-4"
 			{...updateSong.enhance(async ({ submit }) => {
 				settingsSaved = false;
 				await submit();
@@ -158,7 +154,7 @@
 				<label class="block">
 					<span class="text-sm text-dim">Title</span>
 					<input
-						class="mt-1 block w-full rounded border border-line bg-panel px-3 py-2"
+						class="mt-1 field"
 						{...fields.title.as("text", data.song.title)}
 						oninput={(e) => {
 							if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
@@ -171,7 +167,7 @@
 				</label>
 				<label class="block">
 					<span class="text-sm text-dim">URL</span>
-					<span class="mt-1 flex items-center rounded border border-line bg-panel">
+					<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
 						<span class="truncate pl-3 text-sm text-dim">/projects/{data.song.project.slug}/</span>
 						<input
 							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
@@ -185,7 +181,7 @@
 					{/each}
 					{#if slug !== slugify(title)}
 						<button
-							class="mt-1 text-xs text-dim underline underline-offset-4"
+							class="mt-1 text-xs link-dim"
 							type="button"
 							onclick={() => {
 								fields.slug.set(slugify(title));
@@ -199,7 +195,7 @@
 						>Description <span class="opacity-60">(optional)</span></span
 					>
 					<textarea
-						class="mt-1 block w-full rounded border border-line bg-panel px-3 py-2 text-sm"
+						class="mt-1 field text-sm"
 						rows="3"
 						{...fields.description.as("text", data.song.description)}></textarea>
 					{#each fields.description.issues() ?? [] as issue (issue.message)}
@@ -212,7 +208,7 @@
 			{/if}
 			<div class="mt-4">
 				<button
-					class="rounded bg-ink px-4 py-2 text-panel disabled:opacity-40"
+					class="button-accent disabled:opacity-40"
 					disabled={!settingsDirty || !!updateSong.pending}
 				>
 					{updateSong.pending ? "Saving…" : "Save"}
@@ -238,7 +234,7 @@
 	<section class="mt-8" aria-label="Chart and lyrics">
 		<div class="mb-2 flex items-baseline justify-between gap-4">
 			<div
-				class="flex overflow-hidden rounded border border-line text-xs"
+				class="flex overflow-hidden rounded border border-white/15 text-xs"
 				role="tablist"
 				aria-label="Document"
 			>
@@ -247,22 +243,19 @@
 						type="button"
 						role="tab"
 						aria-selected={doc === kind}
-						class="px-3 py-1 {doc === kind ? 'bg-ink text-panel' : 'text-dim'}"
+						class={doc === kind ? "tab-active" : "tab-idle"}
 						onclick={() => (doc = kind)}>{DOC_LABELS[kind]}</button
 					>
 				{/each}
 			</div>
-			<a
-				class="text-sm text-dim underline underline-offset-4"
-				href="/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
-			>
+			<a class="text-sm link-dim" href="/projects/{data.song.project.slug}/{data.song.slug}/{doc}">
 				{data.docs[doc]
 					? `Edit ${DOC_LABELS[doc].toLowerCase()}`
 					: `Add ${DOC_LABELS[doc].toLowerCase()}`}
 			</a>
 		</div>
 		{#if data.docs[doc]}
-			<article class="chart-body rounded-lg bg-row px-6 py-4">
+			<article class="chart-body surface px-6 py-4">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html data.docs[doc]}
 			</article>
@@ -275,10 +268,10 @@
 
 	<section class="mt-8" aria-label="Files">
 		<div class="mb-2 flex items-baseline justify-between gap-4">
-			<h2 class="text-sm font-medium">Files</h2>
+			<h2 class="section-title">Files</h2>
 			{#if ready.length > 0}
 				<button
-					class="text-sm text-dim underline underline-offset-4 disabled:opacity-50"
+					class="text-sm link-dim disabled:opacity-50"
 					type="button"
 					disabled={!!zipping}
 					onclick={downloadAll}
@@ -291,7 +284,7 @@
 		{#if data.song.stems.length === 0}
 			<p class="text-sm text-dim">Nothing uploaded.</p>
 		{:else}
-			<ul class="divide-y divide-line rounded-lg bg-row text-sm">
+			<ul class="divide-y divide-white/10 surface text-sm">
 				{#each data.song.stems as stem (stem.id)}
 					{@const job = replacing[stem.id]}
 					{@const remove = deleteStem.for(stem.id)}
@@ -311,12 +304,12 @@
 							<span class="flex shrink-0 items-center gap-3">
 								{#if stem.status === "ready" && stem.url}
 									<button
-										class="text-dim underline underline-offset-4"
+										class="link-dim"
 										type="button"
 										onclick={() => saveAs(stem.url, stem.filename)}>Download</button
 									>
 								{/if}
-								<label class="cursor-pointer text-dim underline underline-offset-4">
+								<label class="cursor-pointer link-dim">
 									{stem.status === "ready" ? "Upload new version" : "Upload file"}
 									<input
 										class="sr-only"
@@ -328,14 +321,14 @@
 								</label>
 								<form {...remove}>
 									<input {...remove.fields.id.as("hidden", stem.id)} />
-									<button class="text-dim underline underline-offset-4" disabled={!!remove.pending}>
+									<button class="link-dim" disabled={!!remove.pending}>
 										{remove.pending ? "Removing…" : "Remove"}
 									</button>
 								</form>
 							</span>
 						</div>
 						{#if job && job.stage !== "error"}
-							<div class="mt-2 h-1 overflow-hidden rounded bg-panel">
+							<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 								<div class="h-full bg-playhead" style:width="{job.percent}%"></div>
 							</div>
 						{:else if job?.error}

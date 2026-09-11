@@ -39,6 +39,7 @@
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@unocss/extractor-svelte": "^66.10.2",
 		"@unocss/preset-uno": "^66.10.2",
 		"@unocss/reset": "^66.10.2",
 		"@varlock/vite-integration": "1.5.1",

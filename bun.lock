@@ -24,6 +24,7 @@
         "@sveltejs/adapter-vercel": "^6.3.4",
         "@sveltejs/kit": "^2.63.0",
         "@sveltejs/vite-plugin-svelte": "^7.1.2",
+        "@unocss/extractor-svelte": "^66.10.2",
         "@unocss/preset-uno": "^66.10.2",
         "@unocss/reset": "^66.10.2",
         "@varlock/vite-integration": "1.5.1",
@@ -463,6 +464,8 @@
     "@unocss/core": ["@unocss/core@66.10.2", "", {}, "sha512-KerWey/koorvS8DlBn0Vy98oFYvD0x3wAz+Huw8EDijlXg6rBgmY97lv388at2k98gercEP8eIun1h73JB+Nwg=="],
 
     "@unocss/extractor-arbitrary-variants": ["@unocss/extractor-arbitrary-variants@66.10.2", "", { "dependencies": { "@unocss/core": "66.10.2" } }, "sha512-Y9Hv5SO9Xuni2VVpiQEFNIjcD4o5jarEcUVOw6jdW8DseJQT4AfXR8QwUHhOK2miIdz6k9nQABfdJIcBzD8ZqQ=="],
+
+    "@unocss/extractor-svelte": ["@unocss/extractor-svelte@66.10.2", "", {}, "sha512-Si3iMg/OeeZSHM7ZomKzP4fPxPQBtjrbeZkon3vN2A7a9iAJIaEiRGD7pnFl/PTuV7OoSFwPMqE+xFO0b9uaxQ=="],
 
     "@unocss/inspector": ["@unocss/inspector@66.10.2", "", { "dependencies": { "@devframes/service-shiki": "^0.9.11", "@devframes/vite": "^0.9.11", "@unocss/config": "66.10.2", "@unocss/core": "66.10.2", "@unocss/rule-utils": "66.10.2", "@vitejs/devtools-kit": "^0.7.1", "colorette": "^2.0.20", "devframe": "^0.9.11", "tinyglobby": "^0.2.17", "unplugin-utils": "^0.3.2" } }, "sha512-09aiNVCBqzX8h6ZpcZj+/NrsQoEL8usCXiWAFhSArpPoO250bdTaBacDRlDZ7ZFk1qylvDAFz+zD2gtYW/uK0A=="],
 

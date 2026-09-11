@@ -23,14 +23,14 @@
 	<title>{data.project.name} — Stem Shovel</title>
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-4 py-8">
+<main class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6">
 	<header class="mb-6 flex items-baseline justify-between gap-4">
 		<div>
-			<a class="text-sm text-dim underline underline-offset-4" href="/projects">Projects</a>
-			<h1 class="text-xl font-semibold">{data.project.name}</h1>
+			<a class="text-sm link-dim" href="/projects">Projects</a>
+			<h1 class="page-title">{data.project.name}</h1>
 		</div>
 		<button
-			class="text-sm text-dim underline underline-offset-4"
+			class="text-sm link-dim"
 			type="button"
 			aria-expanded={open}
 			onclick={() => (open = !open)}
@@ -41,7 +41,7 @@
 
 	{#if open}
 		<form
-			class="mb-8 rounded-lg bg-row px-4 py-4"
+			class="mb-8 surface px-4 py-4"
 			{...updateProject.enhance(async ({ submit }) => {
 				saved = false;
 				await submit();
@@ -56,7 +56,7 @@
 				<label class="block">
 					<span class="text-sm text-dim">Name</span>
 					<input
-						class="mt-1 block w-full rounded border border-line bg-panel px-3 py-2"
+						class="mt-1 field"
 						{...fields.name.as("text", data.project.name)}
 						oninput={(e) => {
 							if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
@@ -69,7 +69,7 @@
 				</label>
 				<label class="block">
 					<span class="text-sm text-dim">URL</span>
-					<span class="mt-1 flex items-center rounded border border-line bg-panel">
+					<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
 						<span class="pl-3 text-sm text-dim">/projects/</span>
 						<input
 							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
@@ -83,7 +83,7 @@
 					{/each}
 					{#if slug !== slugify(name)}
 						<button
-							class="mt-1 text-xs text-dim underline underline-offset-4"
+							class="mt-1 text-xs link-dim"
 							type="button"
 							onclick={() => {
 								fields.slug.set(slugify(name));
@@ -100,7 +100,7 @@
 			{/if}
 			<div class="mt-4 flex items-center gap-3">
 				<button
-					class="rounded bg-ink px-4 py-2 text-panel disabled:opacity-40"
+					class="button-accent disabled:opacity-40"
 					disabled={!dirty || !!updateProject.pending}
 				>
 					{updateProject.pending ? "Saving…" : "Save"}
@@ -114,7 +114,7 @@
 	{#if data.project.songs.length === 0}
 		<p class="text-dim">No songs yet.</p>
 	{:else}
-		<ul class="divide-y divide-line rounded-lg bg-row">
+		<ul class="divide-y divide-white/10 surface">
 			{#each data.project.songs as song (song.id)}
 				{@const ready = song.stems.filter((s) => s.status === "ready").length}
 				<li>
@@ -145,15 +145,13 @@
 		<label class="grow">
 			<span class="text-sm text-dim">New song</span>
 			<input
-				class="mt-1 block w-full rounded border border-line bg-row px-3 py-2"
+				class="mt-1 field"
 				{...createSong.fields.title.as("text")}
 				placeholder="Song title"
 				required
 			/>
 		</label>
-		<button class="rounded bg-ink px-4 py-2 text-panel" disabled={!!createSong.pending}
-			>Create</button
-		>
+		<button class="button-accent" disabled={!!createSong.pending}>Create</button>
 	</form>
 	{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
 		<p class="mt-2 text-sm text-solo">{issue.message}</p>

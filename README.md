@@ -146,7 +146,7 @@ registered for Claude Code in `.mcp.json`.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
   and server.
-- `src/lib/theme.ts` — colours shared by `uno.config.ts` and the canvas renderer.
+- `src/lib/theme.ts` — the lj-website palette + the app's semantic tokens, shared by `uno.config.ts` and the canvas renderer.
 - `scripts/make-test-stems.mjs` — synthetic test audio, no ffmpeg needed.
 
 ## Things worth knowing
@@ -163,10 +163,15 @@ registered for Claude Code in `.mcp.json`.
   `$effect` does the redraws. Attachments are element-scoped, so they replace
   `bind:this` + null guards — they are not a replacement for page-level
   lifecycle like the engine load above.
-- **Conditional UnoCSS classes are written as literal strings**
-  (`{muted ? 'bg-ink text-panel' : ''}`), not `class:` directives, because the
-  default extractor doesn't split on the `class:` prefix. Adding
-  `@unocss/extractor-svelte` would lift that restriction.
+- **The look is lightningjar.com's.** `uno.config.ts` mirrors
+  lightning-jar/lj-website's: wind4 + its reset, Atkinson Hyperlegible and
+  Bungee Shade from bunny, the same layers, palette and shortcuts (`button`,
+  `button-accent`, `page-x-padding`, `display`, `heading-2`), plus app
+  shortcuts (`page-title`, `section-title`, `surface`, `field`, `link-dim`,
+  `tab-active`/`tab-idle`). `src/lib/theme.ts` holds that palette and maps
+  the app's semantic tokens onto it (`bg-panel`, `bg-row`, `text-dim`,
+  `bg-playhead`, `bg-solo`), and the canvas waveform reads the same object.
+  `@unocss/extractor-svelte` is on, so `class:` directives work too.
 - **Vite+ instead of Biome.** `vp migrate` rewrote the scripts to `vp dev/build/
 preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   package to `@voidzero-dev/vite-plus-core` via `overrides` — that alias is

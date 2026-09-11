@@ -130,20 +130,19 @@
 	<title>{label} · {data.song.title} — Stem Shovel</title>
 </svelte:head>
 
-<form bind:this={formEl} class="mx-auto max-w-4xl px-4 py-8" {...enhanced}>
+<form bind:this={formEl} class="mx-auto max-w-4xl px-4 pt-8 pb-14 sm:px-6" {...enhanced}>
 	<input {...fields.songId.as("hidden", data.song.id)} />
 	<input {...fields.kind.as("hidden", data.kind)} />
 	<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? data.markdown)} />
 	<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
 
 	<header class="mb-6 flex flex-wrap items-center gap-3">
-		<a
-			class="text-sm text-dim underline underline-offset-4"
-			href="/projects/{data.song.project.slug}/{data.song.slug}">← {data.song.title}</a
+		<a class="text-sm link-dim" href="/projects/{data.song.project.slug}/{data.song.slug}"
+			>← {data.song.title}</a
 		>
-		<h1 class="grow text-xl font-semibold">{label}</h1>
+		<h1 class="grow page-title">{label}</h1>
 		<div
-			class="flex overflow-hidden rounded border border-line text-xs"
+			class="flex overflow-hidden rounded border border-white/15 text-xs"
 			role="tablist"
 			aria-label="Chart view"
 		>
@@ -151,14 +150,14 @@
 				type="button"
 				role="tab"
 				aria-selected={view === "rendered"}
-				class="px-3 py-1 {view === 'rendered' ? 'bg-ink text-panel' : 'text-dim'}"
+				class={view === "rendered" ? "tab-active" : "tab-idle"}
 				onclick={() => (view = "rendered")}>Rendered</button
 			>
 			<button
 				type="button"
 				role="tab"
 				aria-selected={view === "markdown"}
-				class="px-3 py-1 {view === 'markdown' ? 'bg-ink text-panel' : 'text-dim'}"
+				class={view === "markdown" ? "tab-active" : "tab-idle"}
 				onclick={() => (view = "markdown")}>Markdown</button
 			>
 		</div>
@@ -177,12 +176,10 @@
 			title="Redo (⌘⇧Z / Ctrl+Y)">↷ Redo</button
 		>
 		{#if editor?.hasEdits}
-			<button class="text-xs text-dim underline underline-offset-4" type="button" onclick={discard}>
-				Discard
-			</button>
+			<button class="text-xs link-dim" type="button" onclick={discard}> Discard </button>
 		{/if}
 		<button
-			class="rounded bg-ink px-3 py-1.5 text-sm text-panel disabled:opacity-40"
+			class="button-accent text-sm disabled:opacity-40"
 			type="submit"
 			disabled={!editor?.hasEdits || !!saveDoc.pending}
 			title="Save (⌘S / Ctrl+S)"
@@ -202,7 +199,7 @@
 				? "Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept."
 				: "Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus)."}
 		</p>
-		<div class="chart-editor rounded-lg bg-row py-4 pr-6 pl-12">
+		<div class="chart-editor surface py-4 pr-6 pl-12">
 			{#if Editor && editor}
 				<Editor {editor} class="chart-body" />
 			{:else}
@@ -216,14 +213,14 @@
 		</p>
 		{#if editor}
 			<textarea
-				class="chart-source block w-full rounded-lg bg-row px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none"
+				class="chart-source block w-full surface px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none"
 				bind:value={editor.markdownCurrent}
 				rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 				spellcheck="false"
 				placeholder="# Song title&#10;&#10;## Verse&#10;```&#10;| D | A |&#10;```"></textarea>
 		{:else}
 			<textarea
-				class="chart-source block w-full rounded-lg bg-row px-4 py-3 font-mono text-sm leading-relaxed"
+				class="chart-source block w-full surface px-4 py-3 font-mono text-sm leading-relaxed"
 				rows="16"
 				disabled>{data.markdown}</textarea
 			>

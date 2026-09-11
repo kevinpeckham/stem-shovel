@@ -10,12 +10,14 @@
 }
 .chart-body h1 {
 	font-size: 1.4rem;
-	font-weight: 600;
+	font-weight: 700;
+	color: #ebf92f;
 	margin: 0 0 0.6em;
 }
 .chart-body h2 {
 	font-size: 1.15rem;
-	font-weight: 600;
+	font-weight: 700;
+	color: #ebf92f;
 	margin: 1.4em 0 0.4em;
 }
 .chart-body h3,
@@ -38,14 +40,14 @@
 .chart-body blockquote {
 	margin: 0 0 0.8em;
 	padding-left: 0.8em;
-	border-left: 3px solid var(--chart-accent, #0e7c86);
-	color: var(--chart-dim, #6b6e76);
+	border-left: 3px solid var(--chart-accent, #ebf92f);
+	color: var(--chart-dim, #cbd5e1);
 }
 .chart-body pre {
 	margin: 0 0 1em;
 	padding: 0.7em 0.9em;
 	border-radius: 6px;
-	background: var(--chart-code-bg, #e9e7e1);
+	background: var(--chart-code-bg, rgba(0, 0, 0, 0.3));
 	overflow-x: auto;
 	font-size: 0.9em;
 	line-height: 1.5;
@@ -56,16 +58,17 @@
 .chart-body :not(pre) > code {
 	padding: 0.05em 0.35em;
 	border-radius: 4px;
-	background: var(--chart-code-bg, #e9e7e1);
+	background: var(--chart-code-bg, rgba(0, 0, 0, 0.3));
 }
 .chart-body hr {
 	border: 0;
-	border-top: 1px solid var(--chart-line, #d3d1ca);
+	border-top: 1px solid var(--chart-line, rgba(255, 255, 255, 0.12));
 	margin: 1.2em 0;
 }
 .chart-body a {
 	text-decoration: underline;
 	text-underline-offset: 3px;
+	color: #ebf92f;
 }
 .chart-body table {
 	border-collapse: collapse;
@@ -73,24 +76,24 @@
 }
 .chart-body th,
 .chart-body td {
-	border: 1px solid var(--chart-line, #d3d1ca);
+	border: 1px solid var(--chart-line, rgba(255, 255, 255, 0.12));
 	padding: 0.25em 0.6em;
 }
 
 /* Editor chrome: map woof-editor's tokens onto the app palette. The gutter
    button sits 38px left of the surface, hence the wrapper's padding-left. */
 .chart-editor {
-	--woof-accent: #0e7c86;
-	--woof-accent-soft: #7fc4ca;
-	--woof-menu-bg: #24262b;
-	--woof-menu-fg: #f6f5f1;
-	--woof-menu-hover: #3b3f47;
-	--woof-gutter-bg: #24262b;
-	--woof-gutter-fg: #f6f5f1;
-	--woof-input-bg: #16181c;
-	--woof-popover-bg: #f6f5f1;
-	--woof-popover-fg: #24262b;
-	--woof-popover-border: #d3d1ca;
+	--woof-accent: #ebf92f;
+	--woof-accent-soft: #f5fb8f;
+	--woof-menu-bg: hsl(217, 48%, 12%);
+	--woof-menu-fg: #f5f5f5;
+	--woof-menu-hover: #21355b;
+	--woof-gutter-bg: #21355b;
+	--woof-gutter-fg: #f5f5f5;
+	--woof-input-bg: hsl(217, 48%, 10%);
+	--woof-popover-bg: #21355b;
+	--woof-popover-fg: #f5f5f5;
+	--woof-popover-border: rgba(255, 255, 255, 0.2);
 }
 .chart-editor .woof-editor-body {
 	min-height: 16rem;

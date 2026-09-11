@@ -30,14 +30,12 @@
      children (buttons, fader, waveform), so the a11y rule doesn't apply here. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-	class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-line py-3 sm:grid-cols-[9rem_auto_6rem_1fr]"
+	class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[9rem_auto_6rem_1fr]"
 	role="group"
 	aria-label={stem.label}
 	{onkeydown}
 >
 	<div class="min-w-0">
-		<!-- Conditional classes are written as literal strings (not class: directives)
-		     so UnoCSS's default extractor can find them. -->
 		<div class="truncate font-medium {silenced ? 'text-dim' : ''}">{stem.label}</div>
 		<div class="text-xs text-dim">
 			{stem.collapsed ? "dual mono → mono" : stem.channels === 1 ? "mono" : "stereo"}, {formatTime(
@@ -49,8 +47,8 @@
 	<div class="flex gap-1">
 		<button
 			type="button"
-			class="h-8 w-8 rounded border border-line text-sm font-semibold transition-colors {stem.muted
-				? 'bg-ink text-panel'
+			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.muted
+				? 'bg-neutral-100 text-oxford border-neutral-100'
 				: ''}"
 			aria-pressed={stem.muted}
 			aria-label="Mute {stem.label}"
@@ -60,8 +58,8 @@
 		</button>
 		<button
 			type="button"
-			class="h-8 w-8 rounded border border-line text-sm font-semibold transition-colors {stem.soloed
-				? 'bg-solo text-panel'
+			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.soloed
+				? 'bg-solo text-oxford border-solo'
 				: ''}"
 			aria-pressed={stem.soloed}
 			aria-label="Solo {stem.label}"
