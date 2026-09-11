@@ -26,7 +26,7 @@ client flow against the dev server.
 ## Configuration (varlock + 1Password)
 
 `.env.schema` declares every variable and is committed. Secrets are not: the
-1Password plugin loads them from a 1Password *environment* at build time.
+1Password plugin loads them from a 1Password _environment_ at build time.
 
 - **Locally** `.env.local` (gitignored) holds `OP_TOKEN` and `OP_ENV_ID`;
   `vercel link` / `vercel env pull` writes it. Everything else comes from
@@ -37,8 +37,8 @@ client flow against the dev server.
   `vite.config.ts` with `ssrInjectMode: "resolved-env"`: the build resolves the
   schema and injects the values into the SSR bundle. In preview/production
   `@encryptInjectedEnv` encrypts that blob with `_VARLOCK_ENV_KEY`, which must
-  be set at build *and* runtime (`varlock generate-key --plain | vercel env add
-  _VARLOCK_ENV_KEY production --sensitive`). Server code reads
+  be set at build _and_ runtime (`varlock generate-key --plain | vercel env add
+_VARLOCK_ENV_KEY production --sensitive`). Server code reads
   `ENV.BLOB_READ_WRITE_TOKEN` from `varlock/env`; `src/env.d.ts` is generated
   from the schema (`@generateTsTypes`) and excluded from formatting.
 - `@vercel/blob` calls always pass `token` explicitly. Left to its defaults
