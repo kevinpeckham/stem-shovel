@@ -1,0 +1,25 @@
+{
+	"title": "Test loop in D",
+	"stems": [
+		{
+			"id": "kick",
+			"label": "Kick",
+			"url": "/stems/kick.wav"
+		},
+		{
+			"id": "hats",
+			"label": "Hats",
+			"url": "/stems/hats.wav"
+		},
+		{
+			"id": "bass",
+			"label": "Bass",
+			"url": "/stems/bass.wav"
+		},
+		{
+			"id": "keys",
+			"label": "Keys",
+			"url": "/stems/keys.wav"
+		}
+	]
+}
