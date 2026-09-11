@@ -1,6 +1,6 @@
 <script lang="ts">
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
-	import StemUploader from "$lib/components/StemUploader.svelte";
+	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
 	import type { StemState } from "$lib/audio/types";
 
@@ -34,6 +34,8 @@
 	);
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
+	let uploadJobs = $state<UploadJob[]>([]);
+	let uploadNotice = $state<string | null>(null);
 	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
 
 	// "Upload new version" for one stem: same pipeline as adding, but the
@@ -120,168 +122,208 @@
 </svelte:head>
 
 <main class="page" data-song-id={data.song.id}>
-	<header class="flex flex-wrap items-baseline justify-between gap-4">
-		<div>
-			<a class="text-sm link-dim" href="/projects/{data.song.project.slug}"
-				>{data.song.project.name}</a
+	<!-- 1. header: title, description, song settings -->
+	<header class="grid gap-3">
+		<div class="flex flex-wrap items-baseline justify-between gap-4">
+			<div>
+				<a class="text-sm link-dim" href="/projects/{data.song.project.slug}"
+					>{data.song.project.name}</a
+				>
+				<h1 class="display">{data.song.title}</h1>
+				{#if data.song.description}
+					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
+				{/if}
+			</div>
+			<button
+				class="text-sm link-dim"
+				type="button"
+				aria-expanded={settingsOpen}
+				onclick={() => (settingsOpen = !settingsOpen)}
 			>
-			<h1 class="display">{data.song.title}</h1>
-			{#if data.song.description}
-				<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
-			{/if}
-		</div>
-		<button
-			class="text-sm link-dim"
-			type="button"
-			aria-expanded={settingsOpen}
-			onclick={() => (settingsOpen = !settingsOpen)}
-		>
-			{settingsOpen ? "Close settings" : "Settings"}
-		</button>
-		<form
-			{...deleteSong.enhance(async ({ submit }) => {
-				if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
-				await submit();
-			})}
-		>
-			<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
-			<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
-				{deleteSong.pending ? "Deleting…" : "Delete song"}
+				{settingsOpen ? "Close settings" : "Settings"}
 			</button>
-		</form>
-	</header>
-
-	{#if settingsOpen}
-		<form
-			class="mb-8 surface px-4 py-4"
-			{...updateSong.enhance(async ({ submit }) => {
-				settingsSaved = false;
-				await submit();
-				if (!fields.allIssues()) {
-					settingsSaved = true;
-					settingsOpen = false;
-				}
-			})}
-		>
-			<input {...fields.id.as("hidden", data.song.id)} />
-			<div class="grid gap-4 sm:grid-cols-2">
-				<label class="block">
-					<span class="text-sm text-dim">Title</span>
-					<input
-						class="mt-1 field"
-						{...fields.title.as("text", data.song.title)}
-						oninput={(e) => {
-							if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-						}}
-						required
-					/>
-					{#each fields.title.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-solo">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm text-dim">URL</span>
-					<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-						<span class="truncate pl-3 text-sm text-dim">/projects/{data.song.project.slug}/</span>
+			<form
+				{...deleteSong.enhance(async ({ submit }) => {
+					if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
+					await submit();
+				})}
+			>
+				<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
+				<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
+					{deleteSong.pending ? "Deleting…" : "Delete song"}
+				</button>
+			</form>
+		</div>
+		{#if settingsOpen}
+			<form
+				class="mb-8 surface px-4 py-4"
+				{...updateSong.enhance(async ({ submit }) => {
+					settingsSaved = false;
+					await submit();
+					if (!fields.allIssues()) {
+						settingsSaved = true;
+						settingsOpen = false;
+					}
+				})}
+			>
+				<input {...fields.id.as("hidden", data.song.id)} />
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="block">
+						<span class="text-sm text-dim">Title</span>
 						<input
-							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
-							{...fields.slug.as("text", data.song.slug)}
-							oninput={() => (slugTouched = true)}
+							class="mt-1 field"
+							{...fields.title.as("text", data.song.title)}
+							oninput={(e) => {
+								if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
+							}}
 							required
 						/>
-					</span>
-					{#each fields.slug.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-solo">{issue.message}</p>
-					{/each}
-					{#if slug !== slugify(title)}
-						<button
-							class="mt-1 text-xs link-dim"
-							type="button"
-							onclick={() => {
-								fields.slug.set(slugify(title));
-								slugTouched = false;
-							}}>Use title</button
-						>
-					{/if}
-				</label>
-				<label class="block sm:col-span-2">
-					<span class="text-sm text-dim"
-						>Description <span class="opacity-60">(optional)</span></span
-					>
-					<textarea
-						class="mt-1 field text-sm"
-						rows="3"
-						{...fields.description.as("text", data.song.description)}></textarea>
-					{#each fields.description.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-solo">{issue.message}</p>
-					{/each}
-				</label>
-			</div>
-			{#if slug.trim() !== data.song.slug}
-				<p class="mt-2 text-xs text-dim">Changing the URL breaks existing links to this song.</p>
-			{/if}
-			<div class="mt-4">
-				<button
-					class="button-accent disabled:opacity-40"
-					disabled={!settingsDirty || !!updateSong.pending}
-				>
-					{updateSong.pending ? "Saving…" : "Save"}
-				</button>
-			</div>
-		</form>
-	{:else if settingsSaved}
-		<p class="mb-6 text-sm text-dim">Saved.</p>
-	{/if}
-
-	{#if data.manifest.stems.length > 0}
-		<StemPlayer manifest={data.manifest} {stemMenu} {headerExtras}>
-			{#snippet errorHint()}
-				A stem's file is missing from the Blob store. Remove it from its menu and upload it again.
-			{/snippet}
-		</StemPlayer>
-	{:else}
-		<p class="text-sm text-dim">No stems yet. Upload some below.</p>
-	{/if}
-
-	{#if pending.length > 0}
-		<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
-			{#each pending as stem (stem.id)}
-				{@const job = replacing[stem.id]}
-				{@const remove = deleteStem.for(stem.id)}
-				<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
-					<span class="truncate">
-						{stem.label}
-						<span class="text-dim">
-							· {stem.filename} · {job
-								? job.stage === "uploading"
-									? `${Math.round(job.percent)}%`
-									: job.stage
-								: "not ready — the upload was interrupted"}
-						</span>
-					</span>
-					<span class="flex items-center gap-3">
-						<label class="cursor-pointer link-dim">
-							Upload file
+						{#each fields.title.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+						{/each}
+					</label>
+					<label class="block">
+						<span class="text-sm text-dim">URL</span>
+						<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
+							<span class="truncate pl-3 text-sm text-dim">/projects/{data.song.project.slug}/</span
+							>
 							<input
-								class="sr-only"
-								type="file"
-								accept={STEM_ACCEPT}
-								disabled={!!job}
-								onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+								class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
+								{...fields.slug.as("text", data.song.slug)}
+								oninput={() => (slugTouched = true)}
+								required
 							/>
-						</label>
-						<form {...remove}>
-							<input {...remove.fields.id.as("hidden", stem.id)} />
-							<button class="link-dim" disabled={!!remove.pending}>Remove</button>
-						</form>
-					</span>
-					{#if job?.error}<p class="w-full text-xs text-solo">{job.error}</p>{/if}
-				</li>
-			{/each}
-		</ul>
-	{/if}
+						</span>
+						{#each fields.slug.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+						{/each}
+						{#if slug !== slugify(title)}
+							<button
+								class="mt-1 text-xs link-dim"
+								type="button"
+								onclick={() => {
+									fields.slug.set(slugify(title));
+									slugTouched = false;
+								}}>Use title</button
+							>
+						{/if}
+					</label>
+					<label class="block sm:col-span-2">
+						<span class="text-sm text-dim"
+							>Description <span class="opacity-60">(optional)</span></span
+						>
+						<textarea
+							class="mt-1 field text-sm"
+							rows="3"
+							{...fields.description.as("text", data.song.description)}></textarea>
+						{#each fields.description.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+						{/each}
+					</label>
+				</div>
+				{#if slug.trim() !== data.song.slug}
+					<p class="mt-2 text-xs text-dim">Changing the URL breaks existing links to this song.</p>
+				{/if}
+				<div class="mt-4">
+					<button
+						class="button-accent disabled:opacity-40"
+						disabled={!settingsDirty || !!updateSong.pending}
+					>
+						{updateSong.pending ? "Saving…" : "Save"}
+					</button>
+				</div>
+			</form>
+		{:else if settingsSaved}
+			<p class="mb-6 text-sm text-dim">Saved.</p>
+		{/if}
+	</header>
 
-	<section class="mt-8" aria-label="Chart and lyrics">
+	<!-- 2. player: transport + waveforms, with the stem actions -->
+	<section class="grid gap-4" aria-label="Player">
+		{#if data.manifest.stems.length > 0}
+			<div>
+				<StemPlayer manifest={data.manifest} {stemMenu} {headerExtras}>
+					{#snippet errorHint()}
+						A stem's file is missing from the Blob store. Remove it from its menu and upload it
+						again.
+					{/snippet}
+				</StemPlayer>
+			</div>
+		{:else}
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<p class="text-sm text-dim">No stems yet.</p>
+				{@render headerExtras()}
+			</div>
+		{/if}
+		{#if uploadNotice}
+			<p class="text-sm text-solo">{uploadNotice}</p>
+		{/if}
+		{#if uploadJobs.length > 0}
+			<ul class="divide-y divide-white/10 surface" aria-live="polite" aria-label="Uploading">
+				{#each uploadJobs as job (job.file.name)}
+					<li class="px-4 py-3">
+						<div class="flex items-baseline justify-between gap-4 text-sm">
+							<span class="truncate">{job.file.name}</span>
+							<span class="shrink-0 text-dim">
+								{#if job.status === "error"}failed{:else if job.status === "done"}{formatBytes(
+										job.file.size,
+									)}{:else if job.status === "decoding"}decoding…{:else if job.status === "uploading"}{Math.round(
+										job.percent,
+									)}%{:else}queued{/if}
+							</span>
+						</div>
+						<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
+							<div
+								class="h-full {job.status === 'error' ? 'bg-solo' : 'bg-playhead'}"
+								style:width="{job.percent}%"
+							></div>
+						</div>
+						{#if job.error}<p class="mt-1 text-xs text-solo">{job.error}</p>{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
+		{#if pending.length > 0}
+			<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
+				{#each pending as stem (stem.id)}
+					{@const job = replacing[stem.id]}
+					{@const remove = deleteStem.for(stem.id)}
+					<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+						<span class="truncate">
+							{stem.label}
+							<span class="text-dim">
+								· {stem.filename} · {job
+									? job.stage === "uploading"
+										? `${Math.round(job.percent)}%`
+										: job.stage
+									: "not ready — the upload was interrupted"}
+							</span>
+						</span>
+						<span class="flex items-center gap-3">
+							<label class="cursor-pointer link-dim">
+								Upload file
+								<input
+									class="sr-only"
+									type="file"
+									accept={STEM_ACCEPT}
+									disabled={!!job}
+									onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+								/>
+							</label>
+							<form {...remove}>
+								<input {...remove.fields.id.as("hidden", stem.id)} />
+								<button class="link-dim" disabled={!!remove.pending}>Remove</button>
+							</form>
+						</span>
+						{#if job?.error}<p class="w-full text-xs text-solo">{job.error}</p>{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+
+	<!-- 3. chart & lyrics -->
+	<section class="grid gap-2" aria-label="Chart and lyrics">
 		<div class="mb-2 flex items-baseline justify-between gap-4">
 			<div
 				class="flex overflow-hidden rounded border border-white/15 text-xs"
@@ -315,23 +357,23 @@
 			</p>
 		{/if}
 	</section>
-
-	<section class="mt-8" aria-label="Upload">
-		<StemUploader songId={data.song.id} stemCount={data.song.stems.length} />
-	</section>
 </main>
 
 {#snippet headerExtras()}
-	{#if ready.length > 0}
-		<button
-			class="text-sm link-dim disabled:opacity-50"
-			type="button"
-			disabled={!!zipping}
-			onclick={downloadAll}
-		>
-			{zipping ?? `Download all (${ready.length} ${ready.length === 1 ? "stem" : "stems"}, .zip)`}
-		</button>
-	{/if}
+	<div class="flex flex-wrap items-center gap-2">
+		<StemUploader
+			songId={data.song.id}
+			stemCount={data.song.stems.length}
+			bind:jobs={uploadJobs}
+			bind:notice={uploadNotice}
+		/>
+		{#if ready.length > 0}
+			<button class="button" type="button" disabled={!!zipping} onclick={downloadAll}>
+				<span class="i-ph-download-simple" aria-hidden="true"></span>
+				{zipping ?? "Download All"}
+			</button>
+		{/if}
+	</div>
 {/snippet}
 
 {#snippet stemMenu(stem: StemState)}

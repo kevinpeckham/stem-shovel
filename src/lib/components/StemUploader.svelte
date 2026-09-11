@@ -10,43 +10,53 @@
 	} from "$lib/slug";
 	import { postJson, type Reservation, uploadStemFile } from "$lib/upload";
 
-	interface Props {
-		songId: string;
-		/** Stems the song already has, in-flight ones included. */
-		stemCount: number;
-	}
-
-	interface Job {
+	export interface UploadJob {
 		file: File;
 		percent: number;
 		status: "queued" | "uploading" | "decoding" | "done" | "error";
 		error?: string;
 	}
 
-	let { songId, stemCount }: Props = $props();
-
-	let files = $state<FileList | null>(null);
-	let jobs = $state<Job[]>([]);
-	let busy = $state(false);
-
-	let picked = $derived(files ? Array.from(files) : []);
-	let tooBig = $derived(picked.filter((f) => f.size > STEM_MAX_BYTES));
-	let unsupported = $derived(picked.filter((f) => !stemContentType(f.name)));
-	let room = $derived(Math.max(0, MAX_STEMS_PER_SONG - stemCount));
-	let overCap = $derived(picked.length > room);
-	let canSubmit = $derived(
-		!busy && picked.length > 0 && tooBig.length === 0 && unsupported.length === 0 && !overCap,
-	);
+	interface Props {
+		songId: string;
+		/** Stems the song already has, in-flight ones included. */
+		stemCount: number;
+		/** Progress of the current batch, for the parent to render where it likes. */
+		jobs?: UploadJob[];
+		/** Why a pick was refused (format, size, cap), or null. */
+		notice?: string | null;
+	}
 
 	/**
-	 * One stem = three round trips: reserve the row (/api/stems), send the
-	 * bytes browser → Blob (token from /api/upload), then decode locally and
-	 * report duration/channels/peaks (/api/stems/[id]/ready). Sequential keeps
-	 * the progress readable and avoids saturating the uplink.
+	 * "Add New Stems": one button that opens the file picker and starts
+	 * uploading on pick — reserve the row, send the bytes browser → Blob,
+	 * decode locally and report peaks (see $lib/upload). Sequential keeps the
+	 * progress readable and avoids saturating the uplink.
 	 */
-	async function submit(event: SubmitEvent) {
-		event.preventDefault();
-		if (!canSubmit) return;
+	let { songId, stemCount, jobs = $bindable([]), notice = $bindable(null) }: Props = $props();
+
+	let busy = $state(false);
+	let room = $derived(Math.max(0, MAX_STEMS_PER_SONG - stemCount));
+
+	async function onpick(input: HTMLInputElement) {
+		const picked = Array.from(input.files ?? []);
+		input.value = "";
+		if (picked.length === 0) return;
+		const unsupported = picked.filter((f) => !stemContentType(f.name));
+		const tooBig = picked.filter((f) => f.size > STEM_MAX_BYTES);
+		if (unsupported.length) {
+			notice = `Not a supported format (${STEM_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`;
+			return;
+		}
+		if (tooBig.length) {
+			notice = `Over the ${formatBytes(STEM_MAX_BYTES)} limit: ${tooBig.map((f) => f.name).join(", ")}`;
+			return;
+		}
+		if (picked.length > room) {
+			notice = `Only ${room} more ${room === 1 ? "stem" : "stems"} fit in this song (${MAX_STEMS_PER_SONG} max).`;
+			return;
+		}
+		notice = null;
 		busy = true;
 		jobs = picked.map((file) => ({ file, percent: 0, status: "queued" }));
 
@@ -79,85 +89,23 @@
 		}
 		await ctx.close();
 		busy = false;
-		files = null;
 		if (failed === 0) jobs = [];
 		await invalidateAll();
 	}
 </script>
 
-<form class="space-y-3" onsubmit={submit}>
-	<label class="block">
-		<span class="text-sm text-dim">Add stems (one file per stem)</span>
-		<input
-			class="mt-1 block w-full text-sm"
-			type="file"
-			accept={STEM_ACCEPT}
-			multiple
-			required
-			bind:files
-			disabled={busy}
-		/>
-	</label>
-
-	<p class="text-xs text-dim">
-		{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG}
-		stems used.
-	</p>
-
-	{#if overCap}
-		<p class="text-sm text-solo">
-			Only {room} more {room === 1 ? "stem" : "stems"} fit in this song.
-		</p>
-	{/if}
-
-	{#if unsupported.length > 0}
-		<p class="text-sm text-solo">
-			Not a supported format: {unsupported.map((f) => f.name).join(", ")}
-		</p>
-	{/if}
-	{#if tooBig.length > 0}
-		<p class="text-sm text-solo">
-			Over the {formatBytes(STEM_MAX_BYTES)} limit: {tooBig.map((f) => f.name).join(", ")}
-		</p>
-	{/if}
-
-	<button class="button-accent disabled:opacity-40" type="submit" disabled={!canSubmit}>
-		{busy
-			? "Uploading…"
-			: `Upload ${picked.length || ""} ${picked.length === 1 ? "stem" : "stems"}`}
-	</button>
-</form>
-
-{#if jobs.length > 0}
-	<ul class="mt-4 divide-y divide-white/10 surface" aria-live="polite">
-		{#each jobs as job (job.file.name)}
-			<li class="px-4 py-3">
-				<div class="flex items-baseline justify-between gap-4 text-sm">
-					<span class="truncate">{job.file.name}</span>
-					<span class="shrink-0 text-dim">
-						{#if job.status === "error"}
-							failed
-						{:else if job.status === "done"}
-							{formatBytes(job.file.size)}
-						{:else if job.status === "decoding"}
-							decoding…
-						{:else if job.status === "uploading"}
-							{Math.round(job.percent)}%
-						{:else}
-							queued
-						{/if}
-					</span>
-				</div>
-				<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
-					<div
-						class="h-full {job.status === 'error' ? 'bg-solo' : 'bg-playhead'}"
-						style:width="{job.percent}%"
-					></div>
-				</div>
-				{#if job.error}
-					<p class="mt-1 text-xs text-solo">{job.error}</p>
-				{/if}
-			</li>
-		{/each}
-	</ul>
-{/if}
+<label
+	class="button-accent cursor-pointer {busy ? 'pointer-events-none opacity-60' : ''}"
+	title="{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems used."
+>
+	<span class="i-ph-plus" aria-hidden="true"></span>
+	{busy ? "Uploading…" : "Add New Stems"}
+	<input
+		class="sr-only"
+		type="file"
+		accept={STEM_ACCEPT}
+		multiple
+		disabled={busy || room === 0}
+		onchange={(e) => onpick(e.currentTarget)}
+	/>
+</label>
