@@ -50,7 +50,7 @@ export async function postJson<T>(path: string, payload: unknown): Promise<T> {
 	return (await res.json()) as T;
 }
 
-export async function errorText(res: Response): Promise<string> {
+async function errorText(res: Response): Promise<string> {
 	try {
 		const body = (await res.json()) as { message?: string; error?: string };
 		return body.message ?? body.error ?? `${res.status} ${res.statusText}`;
