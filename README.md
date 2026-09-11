@@ -116,9 +116,12 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   with `oxc_allocator ... fixed_size.rs`. Plain `oxlint` without JS plugins
   works everywhere. Vercel builds only run `vp build`, which is unaffected.
 - **Bun is the package manager.** `package.json` pins it with a
-  `packageManager` field and `bun.lock` is the only lock file, so Vercel
-  installs with Bun too. `vp migrate` had written a `devEngines.packageManager`
-  pin for npm instead; that was removed.
+  `packageManager` field and `bun.lock` is the only lock file. Vercel's
+  built-in Bun lags behind (1.3.x) and cannot read the v2 lock file Bun 1.4
+  writes, so `vercel.json` sets an `installCommand` that runs the pinned Bun
+  via `npx bun@<version>`; keep that version in step with `packageManager`.
+  `vp migrate` had written a `devEngines.packageManager` pin for npm instead;
+  that was removed.
 - The context is created at 32 kHz; `decodeAudioData` resamples into it,
   which is why four 20-second mono stems decode to ~9.5 MB, not ~14 MB.
 - Playback is verified in headless Chromium (load, play, mute/solo, seek,
