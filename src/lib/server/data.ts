@@ -4,6 +4,7 @@ import { db, schema } from "$lib/server/db";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { SlugSchema } from "$lib/val/SlugSchema";
+import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as v from "valibot";
@@ -14,7 +15,7 @@ import * as v from "valibot";
  * `event.locals.account` (see hooks.server.ts).
  */
 
-const { project, song, stem, songChartVersion } = schema;
+const { project, song, stem, songDocVersion } = schema;
 
 // ---- projects -------------------------------------------------------------
 
@@ -346,55 +347,72 @@ function uniqueSlug(base: string, taken: Set<string>): string {
 	}
 }
 
-// ---- chart (chords / lyrics / arrangement) ------------------------------
+// ---- song documents: chart + lyrics ------------------------------------
 
-const CHART_VERSIONS_TO_KEEP = 10;
-/** Blanking a chart longer than this needs `confirmEmpty` (accidental-wipe guard). */
-const CHART_WIPE_GUARD_CHARS = 200;
+const DOC_VERSIONS_TO_KEEP = 10;
+/** Blanking a document longer than this needs `confirmEmpty` (accidental-wipe guard). */
+const DOC_WIPE_GUARD_CHARS = 200;
 
-export type SaveChartResult =
+const DOC_COLUMNS = {
+	chart: { markdown: "chartMarkdown", hash: "chartHash", version: "chartVersion" },
+	lyrics: { markdown: "lyricsMarkdown", hash: "lyricsHash", version: "lyricsVersion" },
+} as const;
+
+export type SaveDocResult =
 	| { ok: true; version: number; changed: boolean }
 	| { ok: false; error: string; needsConfirm?: boolean };
 
+/** The markdown of one document, for pages that need only that. */
+export function docText(s: { chartMarkdown: string; lyricsMarkdown: string }, kind: SongDocKind) {
+	return s[DOC_COLUMNS[kind].markdown];
+}
+
+export function docVersion(s: { chartVersion: number; lyricsVersion: number }, kind: SongDocKind) {
+	return s[DOC_COLUMNS[kind].version];
+}
+
 /**
- * Saves the chart. Mirrors replicator's blog save: the markdown's hash gates
- * whether a new version row is written (a no-op save stays on the current
- * version), and only the most recent CHART_VERSIONS_TO_KEEP are kept.
+ * Saves a song document. Mirrors replicator's blog save: the markdown's hash
+ * gates whether a new version row is written (a no-op save stays on the
+ * current version), and only the most recent DOC_VERSIONS_TO_KEEP are kept.
  */
-export async function saveChart(
+export async function saveSongDoc(
 	accountId: string,
 	userId: string,
 	songId: string,
+	kind: SongDocKind,
 	markdown: string,
 	opts: { confirmEmpty?: boolean } = {},
-): Promise<SaveChartResult> {
+): Promise<SaveDocResult> {
+	const cols = DOC_COLUMNS[kind];
 	const existing = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { id: true, chartMarkdown: true, chartHash: true, chartVersion: true },
 	});
 	if (!existing) return { ok: false, error: "Song not found." };
+	const currentText = existing[cols.markdown];
+	const currentHash = existing[cols.hash];
+	const currentVersion = existing[cols.version];
 
 	const next = markdown.replace(/\r\n/g, "\n");
 	if (
 		next.trim() === "" &&
-		existing.chartMarkdown.trim().length > CHART_WIPE_GUARD_CHARS &&
+		currentText.trim().length > DOC_WIPE_GUARD_CHARS &&
 		!opts.confirmEmpty
 	) {
 		return {
 			ok: false,
 			needsConfirm: true,
-			error: "This would empty a chart with content. Save again to confirm.",
+			error: `This would empty the ${kind} while it has content. Save again to confirm.`,
 		};
 	}
 
 	const contentHash = await hashMarkdown(next);
-	if (contentHash === existing.chartHash) {
-		return { ok: true, version: existing.chartVersion, changed: false };
-	}
+	if (contentHash === currentHash) return { ok: true, version: currentVersion, changed: false };
 
-	const versionNumber = existing.chartVersion + 1;
-	await db.insert(songChartVersion).values({
+	const versionNumber = currentVersion + 1;
+	await db.insert(songDocVersion).values({
 		songId,
+		kind,
 		versionNumber,
 		markdown: next,
 		contentHash,
@@ -402,21 +420,21 @@ export async function saveChart(
 	});
 	await db
 		.update(song)
-		.set({ chartMarkdown: next, chartHash: contentHash, chartVersion: versionNumber })
+		.set({ [cols.markdown]: next, [cols.hash]: contentHash, [cols.version]: versionNumber })
 		.where(eq(song.id, songId));
 
-	// Prune, keeping the newest N. Best-effort; a failure here does not fail the save.
+	// Prune, keeping the newest N of this document. Best-effort.
 	const stale = await db
-		.select({ id: songChartVersion.id })
-		.from(songChartVersion)
-		.where(eq(songChartVersion.songId, songId))
-		.orderBy(desc(songChartVersion.versionNumber))
+		.select({ id: songDocVersion.id })
+		.from(songDocVersion)
+		.where(and(eq(songDocVersion.songId, songId), eq(songDocVersion.kind, kind)))
+		.orderBy(desc(songDocVersion.versionNumber))
 		.limit(1000) // SQLite requires LIMIT alongside OFFSET
-		.offset(CHART_VERSIONS_TO_KEEP);
+		.offset(DOC_VERSIONS_TO_KEEP);
 	if (stale.length > 0) {
-		await db.delete(songChartVersion).where(
+		await db.delete(songDocVersion).where(
 			inArray(
-				songChartVersion.id,
+				songDocVersion.id,
 				stale.map((r) => r.id),
 			),
 		);

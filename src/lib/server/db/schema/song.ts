@@ -28,12 +28,15 @@ export const song = table(
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */
 		description: t.text("description").notNull().default(""),
-		/** Chords, lyrics and arrangement as markdown. History in song_chart_version. */
+		// Two markdown documents per song, "chart" (chords, arrangement) and
+		// "lyrics", with the same save semantics: the hash gates a new row in
+		// song_doc_version and the version number counts saves. 0 = never saved.
 		chartMarkdown: t.text("chart_markdown").notNull().default(""),
-		/** SHA-256 of chartMarkdown; a save only creates a version when it changes. */
 		chartHash: t.text("chart_hash"),
-		/** Sequential number of the current chart version; 0 = never saved. */
 		chartVersion: t.integer("chart_version").notNull().default(0),
+		lyricsMarkdown: t.text("lyrics_markdown").notNull().default(""),
+		lyricsHash: t.text("lyrics_hash"),
+		lyricsVersion: t.integer("lyrics_version").notNull().default(0),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

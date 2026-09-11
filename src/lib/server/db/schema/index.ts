@@ -6,6 +6,6 @@ export * from "./project";
 export * from "./relations";
 export * from "./shareLink";
 export * from "./song";
-export * from "./songChartVersion";
+export * from "./songDocVersion";
 export * from "./stem";
 export * from "./user";

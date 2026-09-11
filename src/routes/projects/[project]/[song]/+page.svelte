@@ -8,6 +8,7 @@
 	import { postJson, type Reservation, saveAs, uploadStemFile } from "$lib/upload";
 	import { updateSong } from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
+	import { untrack } from "svelte";
 
 	let { data } = $props();
 	let deleting = $state(false);
@@ -25,6 +26,13 @@
 			description.trim() !== data.song.description,
 	);
 	let slugTouched = $state(false);
+
+	// Chart / Lyrics toggle for the read view. Starts on whichever has content.
+	const DOC_KINDS = ["chart", "lyrics"] as const;
+	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics" } as const;
+	let doc = $state<(typeof DOC_KINDS)[number]>(
+		untrack(() => (!data.docs.chart && data.docs.lyrics ? "lyrics" : "chart")),
+	);
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
@@ -237,23 +245,41 @@
 		<p class="text-sm text-dim">No stems yet. Upload some below.</p>
 	{/if}
 
-	<section class="mt-8" aria-label="Chart">
+	<section class="mt-8" aria-label="Chart and lyrics">
 		<div class="mb-2 flex items-baseline justify-between gap-4">
-			<h2 class="text-sm font-medium">Chart</h2>
+			<div
+				class="flex overflow-hidden rounded border border-line text-xs"
+				role="tablist"
+				aria-label="Document"
+			>
+				{#each DOC_KINDS as kind (kind)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={doc === kind}
+						class="px-3 py-1 {doc === kind ? 'bg-ink text-panel' : 'text-dim'}"
+						onclick={() => (doc = kind)}>{DOC_LABELS[kind]}</button
+					>
+				{/each}
+			</div>
 			<a
 				class="text-sm text-dim underline underline-offset-4"
-				href="/projects/{data.song.project.slug}/{data.song.slug}/chart"
+				href="/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
 			>
-				{data.chartHtml ? "Edit chart" : "Add chart"}
+				{data.docs[doc]
+					? `Edit ${DOC_LABELS[doc].toLowerCase()}`
+					: `Add ${DOC_LABELS[doc].toLowerCase()}`}
 			</a>
 		</div>
-		{#if data.chartHtml}
+		{#if data.docs[doc]}
 			<article class="chart-body rounded-lg bg-row px-6 py-4">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-				{@html data.chartHtml}
+				{@html data.docs[doc]}
 			</article>
 		{:else}
-			<p class="text-sm text-dim">No chart yet. Chords, lyrics and arrangement go here.</p>
+			<p class="text-sm text-dim">
+				{doc === "chart" ? "No chart yet. Chords and arrangement go here." : "No lyrics yet."}
+			</p>
 		{/if}
 	</section>
 

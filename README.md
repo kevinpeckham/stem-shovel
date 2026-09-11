@@ -114,15 +114,19 @@ registered for Claude Code in `.mcp.json`.
   **No auth yet**; fine behind Tailscale, not for a public deploy.
 - `src/routes/projects/` — project list, song list, song page (player +
   files + uploader), all with form actions.
-- **Chart** (chords, lyrics, arrangement): markdown on `song.chart_markdown`,
-  edited at `…/[song]/chart` with `@kevinpeckham/woof-editor` (the same
-  WYSIWYG-markdown editor replicator's blog uses) with a Rendered / Markdown
-  toggle — the source pane is a textarea bound to the same editor state, so
-  undo, discard and save cover both — saved through a form action. `data.saveChart` hash-gates a new `song_chart_version` row and
-  keeps the last 10; blanking a chart with content needs a second save.
-  `server/markdown.ts` renders the read view with barkdown's renderer (what
-  the editor seeds from) and `server/sanitize.ts`, an allowlist pass over
-  parse5 (ESM; see "Server dependencies are ESM only" below). Typography for both is
+- **Chart and lyrics**: two markdown documents per song
+  (`song.chart_markdown`, `song.lyrics_markdown`), edited at
+  `…/[song]/chart` and `…/[song]/lyrics` — one route, `[doc=songDoc]` — with
+  `@kevinpeckham/woof-editor` (the same WYSIWYG-markdown editor replicator's
+  blog uses) and a Rendered / Markdown toggle; the source pane is a textarea
+  bound to the same editor state, so undo, discard and save cover both. Saved
+  through the `saveDoc` remote form: `data.saveSongDoc` hash-gates a
+  `song_doc_version` row (kind = chart | lyrics) and keeps the last 10;
+  blanking a document with content needs a second save. The song page shows
+  either document behind a Chart / Lyrics toggle; `server/markdown.ts` renders
+  with barkdown's renderer (what the editor seeds from) and
+  `server/sanitize.ts`, an allowlist pass over parse5 (ESM; see "Server
+  dependencies are ESM only" below). Typography for both is
   `src/lib/styles/chart.css`.
 - `src/lib/val/` — valibot schemas, one file per concept as in replicator:
   the value array, the schema and the inferred type (`ARCHIVE_STATUSES`,
@@ -210,4 +214,4 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
 6. Auth (Better Auth, as in replicator) before going public; today every
    request is the seeded owner.
-7. Stem ordering / relabeling UI, saved mixes, chart version restore UI.
+7. Stem ordering / relabeling UI, saved mixes, document version restore UI.

@@ -2,6 +2,7 @@ import * as v from "valibot";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
+import { SongDocKindSchema } from "./SongDocKindSchema";
 
 /** Form boundary for the song settings form (title, URL, description). */
 export const SongSettingsSchema = v.object({
@@ -15,3 +16,14 @@ export const SongSettingsSchema = v.object({
 });
 
 export type SongSettings = v.InferOutput<typeof SongSettingsSchema>;
+
+/** Form boundary for saving a song document (chart or lyrics). */
+export const SongDocSaveSchema = v.object({
+	songId: NanoIdSchema,
+	kind: SongDocKindSchema,
+	markdown: v.pipe(v.string(), v.maxLength(200_000)),
+	/** "true" on the second submit of an intentionally empty document (hidden inputs carry strings). */
+	confirmEmpty: v.optional(v.picklist(["true", "false"]), "false"),
+});
+
+export type SongDocSave = v.InferOutput<typeof SongDocSaveSchema>;

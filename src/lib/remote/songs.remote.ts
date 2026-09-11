@@ -1,6 +1,6 @@
 import { form, getRequestEvent } from "$app/server";
-import { updateSong as update } from "$lib/server/data";
-import { SongSettingsSchema } from "$lib/val/SongSchema";
+import { saveSongDoc, updateSong as update } from "$lib/server/data";
+import { SongDocSaveSchema, SongSettingsSchema } from "$lib/val/SongSchema";
 import { invalid, redirect } from "@sveltejs/kit";
 
 /** Who is acting. Until sign-in exists this is the seeded owner (hooks.server.ts). */
@@ -25,5 +25,26 @@ export const updateSong = form(
 		if (result.song.slug !== currentSlug)
 			redirect(303, `/projects/${projectSlug}/${result.song.slug}`);
 		return { saved: true };
+	},
+);
+
+/**
+ * Save a song document (chart or lyrics) from the editor. Returns the new
+ * version number; a no-op save reports `changed: false`. Blanking a document
+ * that has content is refused once (`needsConfirm`) so a second submit with
+ * `confirmEmpty` is required.
+ */
+export const saveDoc = form(
+	SongDocSaveSchema,
+	async ({ songId, kind, markdown, confirmEmpty }, issue) => {
+		const { accountId, userId } = requireAccount();
+		const result = await saveSongDoc(accountId, userId, songId, kind, markdown, {
+			confirmEmpty: confirmEmpty === "true",
+		});
+		if (!result.ok) {
+			if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
+			invalid(issue.markdown(result.error));
+		}
+		return { version: result.version, changed: result.changed };
 	},
 );

@@ -4,7 +4,7 @@ import { accountMember } from "./accountMember";
 import { project } from "./project";
 import { shareLink } from "./shareLink";
 import { song } from "./song";
-import { songChartVersion } from "./songChartVersion";
+import { songDocVersion } from "./songDocVersion";
 import { stem } from "./stem";
 import { user } from "./user";
 
@@ -33,7 +33,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	creator: one(user, { fields: [song.createdBy], references: [user.id] }),
 	stems: many(stem),
 	shareLinks: many(shareLink),
-	chartVersions: many(songChartVersion),
+	docVersions: many(songDocVersion),
 }));
 
 export const stemRelations = relations(stem, ({ one }) => ({
@@ -52,7 +52,7 @@ export const userRelations = relations(user, ({ many }) => ({
 	uploadedStems: many(stem),
 }));
 
-export const songChartVersionRelations = relations(songChartVersion, ({ one }) => ({
-	song: one(song, { fields: [songChartVersion.songId], references: [song.id] }),
-	author: one(user, { fields: [songChartVersion.createdBy], references: [user.id] }),
+export const songDocVersionRelations = relations(songDocVersion, ({ one }) => ({
+	song: one(song, { fields: [songDocVersion.songId], references: [song.id] }),
+	author: one(user, { fields: [songDocVersion.createdBy], references: [user.id] }),
 }));

@@ -7,7 +7,14 @@ import type { Actions, PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const song = await getSong(locals.account.id, params.project, params.song);
 	if (!song) error(404, `No song "${params.song}" in "${params.project}"`);
-	return { song, manifest: manifestFor(song), chartHtml: renderMarkdown(song.chartMarkdown) };
+	return {
+		song,
+		manifest: manifestFor(song),
+		docs: {
+			chart: renderMarkdown(song.chartMarkdown),
+			lyrics: renderMarkdown(song.lyricsMarkdown),
+		},
+	};
 };
 
 export const actions: Actions = {

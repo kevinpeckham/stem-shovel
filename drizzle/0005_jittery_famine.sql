@@ -1,0 +1,1 @@
+DROP TABLE `song_chart_version`;
