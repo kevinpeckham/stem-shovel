@@ -3,8 +3,10 @@ import { deleteBlobs, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
+import { SlugSchema } from "$lib/val/SlugSchema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import * as v from "valibot";
 
 /**
  * Every function takes the caller's accountId first and scopes by it, so a
@@ -35,6 +37,41 @@ export async function createProject(accountId: string, userId: string, name: str
 		.values({ accountId, name: name.trim(), slug: uniqueSlug(base, taken), createdBy: userId })
 		.returning();
 	return row;
+}
+
+export type UpdateProjectResult =
+	| { ok: true; project: typeof project.$inferSelect }
+	| { ok: false; error: string; field: "name" | "slug" };
+
+/**
+ * Renames a project and/or changes its slug (its URL). The slug must match
+ * SLUG_PATTERN and be unique within the account; songs keep working because
+ * they reference the project id, not the slug.
+ */
+export async function updateProject(
+	accountId: string,
+	projectId: string,
+	input: { name: string; slug: string },
+): Promise<UpdateProjectResult> {
+	const name = input.name.trim();
+	if (!name) return { ok: false, field: "name", error: "Give the project a name." };
+	const parsed = v.safeParse(SlugSchema, input.slug);
+	if (!parsed.success) return { ok: false, field: "slug", error: parsed.issues[0].message };
+	const slug = parsed.output;
+	const clash = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.slug, slug)),
+		columns: { id: true },
+	});
+	if (clash && clash.id !== projectId) {
+		return { ok: false, field: "slug", error: `Another project already uses /projects/${slug}.` };
+	}
+	const [row] = await db
+		.update(project)
+		.set({ name, slug })
+		.where(and(eq(project.accountId, accountId), eq(project.id, projectId)))
+		.returning();
+	if (!row) return { ok: false, field: "name", error: "Project not found." };
+	return { ok: true, project: row };
 }
 
 export function getProject(accountId: string, slug: string) {

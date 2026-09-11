@@ -1,6 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
-import type { ArchiveStatus } from "../../../val/picklists";
+import type { ArchiveStatus } from "../../../val/ArchiveStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { project } from "./project";

@@ -1,6 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
-import type { StemStatus } from "../../../val/picklists";
+import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { song } from "./song";

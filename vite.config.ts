@@ -35,7 +35,11 @@ export default defineConfig({
 				// Runes mode everywhere except node_modules (removable in Svelte 6)
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes("node_modules") ? undefined : true,
+				// `await` in components, required by remote functions
+				experimental: { async: true },
 			},
+			// Server mutations/queries are remote functions (*.remote.ts), not form actions
+			experimental: { remoteFunctions: true },
 			// Vercel runs SvelteKit on Node; Bun is only used locally for install/scripts
 			adapter: adapter(),
 		}),

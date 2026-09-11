@@ -1,6 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
-import type { MemberRole } from "../../../val/picklists";
+import type { MemberRole } from "../../../val/MemberRoleSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { user } from "./user";

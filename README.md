@@ -118,6 +118,15 @@ registered for Claude Code in `.mcp.json`.
   the editor seeds from) and `server/sanitize.ts`, an allowlist pass over
   parse5 (ESM; see "Server dependencies are ESM only" below). Typography for both is
   `src/lib/styles/chart.css`.
+- `src/lib/val/` — valibot schemas, one file per concept as in replicator:
+  the value array, the schema and the inferred type (`ARCHIVE_STATUSES`,
+  `ArchiveStatusSchema`, `ArchiveStatus`). Table files import only the types;
+  remote functions validate with the schemas at the form boundary
+  (`ProjectSettingsSchema`).
+- `src/lib/remote/*.remote.ts` — SvelteKit remote functions (`form`,
+  `query`, `command`) for server mutations, replacing form actions; enabled
+  by `experimental.remoteFunctions` + `compilerOptions.experimental.async`
+  in `vite.config.ts`. Project settings (name + URL) is the first one.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
   and server.
