@@ -1,4 +1,4 @@
-import { computePeaks } from "./peaks";
+import { computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
@@ -8,7 +8,6 @@ const RAMP = 0.015;
 /** Lead time before a scheduled start so every source.start() call lands before the deadline. */
 const START_LEAD = 0.05;
 /** Waveform resolution. 1024 bins ≈ 8 KB as JSON, which is fine to store per stem. */
-const PEAK_BINS = 1024;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

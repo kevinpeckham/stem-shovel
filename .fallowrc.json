@@ -14,7 +14,9 @@
 		//   "**/generated/**"     // OpenAPI, Protobuf codegen
 		// ]
 	},
-	// Loaded by varlock via config, never imported from source.
-	"ignoreDependencies": ["@varlock/1password-plugin"],
+	// 1password-plugin: loaded by varlock via config. @libsql/client: imported by drizzle-orm/libsql.
+	"ignoreDependencies": ["@varlock/1password-plugin", "@libsql/client"],
+	// Value arrays back validation/UI; tables consume only the types for now.
+	"ignoreExports": [{ "file": "src/lib/val/picklists.ts", "exports": ["*"] }],
 	"rules": {}
 }

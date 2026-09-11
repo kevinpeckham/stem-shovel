@@ -2,12 +2,13 @@
 
 Proof-of-concept multi-stem player: synced playback of N audio files in the
 browser with per-stem fader, mute and solo, waveform seek, and a memory
-readout. Stems are uploaded straight from the browser to Vercel Blob and
-played back from there; the original static-file test page still works.
+readout. Stems are uploaded straight from the browser to Vercel Blob,
+catalogued in Turso (accounts → projects → songs → stems), and played back
+from there; the original static-file test page still works.
 
 Stack: SvelteKit 5 (runes), TypeScript, UnoCSS (`preset-uno`), Vite+ (Vite,
 Oxlint, Oxfmt in one `vp` CLI), `@sveltejs/adapter-vercel`, Vercel Blob for
-audio, varlock + 1Password for configuration. No database yet.
+audio, Turso + Drizzle for data, varlock + 1Password for configuration.
 
 ## Run it
 
@@ -18,10 +19,33 @@ bun run stems        # generates 4 synthetic WAV stems + manifest into static/st
 bun run dev          # open http://localhost:5173/
 ```
 
-Pages: `/upload` sends stems browser → Blob, `/songs` lists what's in the
-store, `/songs/[slug]` plays one song (and can delete it), `/test` plays the
-static files. `bun run smoke:blob` uploads the generated WAVs through the real
-client flow against the dev server.
+Pages: `/projects` lists and creates projects, `/projects/[project]` lists
+and creates songs, `/projects/[project]/[song]` plays a song, uploads stems
+into it and deletes stems or the song. `/test` plays the static files.
+`bun run smoke:blob` runs the whole flow (create project + song, reserve,
+upload, report) against the dev server.
+
+## Database (Turso + Drizzle)
+
+Design and rationale: [docs/data-model.md](docs/data-model.md). Schema files
+are the source of truth: `src/lib/server/db/schema/*.ts`, one per table, with
+every `relations()` in `relations.ts`.
+
+```sh
+bun run db:generate   # write a migration from schema changes into drizzle/
+bun run db:migrate    # apply migrations to the Turso database
+bun run db:seed       # idempotent: the one account + user the app runs as
+bun run db:studio     # drizzle-kit studio
+```
+
+drizzle-kit runs outside Vite, so those scripts go through `varlock run` to
+get `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`. Migrations are committed and
+applied from a developer machine, not during the Vercel build.
+
+**No sign-in yet.** `src/hooks.server.ts` puts the seeded owner of the
+`lightning-jar` account on `event.locals`; every server function takes
+`accountId` from there and scopes its queries by it. Adding Better Auth
+replaces the hook, not the queries.
 
 ## Configuration (varlock + 1Password)
 
@@ -71,16 +95,20 @@ registered for Claude Code in `.mcp.json`.
   Later this JSON is what gets stored in Turso alongside the Blob URL.
 - `src/lib/components/` — `StemPlayer` (engine lifecycle + transport + rows),
   `Transport`, `StemRow`, `Waveform` (canvas + DOM playhead).
-- `src/lib/server/blob.ts` — songs are folders under `stems/` in the Blob
-  store; a song's manifest is derived from a listing (title from slug, label
-  from filename) until Turso holds it.
-- `src/routes/api/upload/` — `handleUpload()` token route for client uploads.
-  Validates the `stems/<slug>/<file>` pathname, audio content types and size.
+- `src/lib/server/data.ts` — every query, always scoped by `accountId`
+  first. Projects, songs, and the three-step stem upload.
+- `src/lib/server/blob.ts` — Blob auth + pathname layout
+  (`accounts/<id>/songs/<id>/<stemId>.<ext>`, IDs so renames never move files).
+- `src/routes/api/stems/` (reserve a row), `src/routes/api/upload/`
+  (`handleUpload()` token exchange, only for reserved pathnames),
+  `src/routes/api/stems/[id]/ready/` (browser reports duration, channels,
+  peaks after decoding). `StemUploader.svelte` drives the three steps.
   **No auth yet**; fine behind Tailscale, not for a public deploy.
-- `src/routes/upload/`, `src/routes/songs/` — upload form, song list, player
-  with a delete form action.
+- `src/routes/projects/` — project list, song list, song page (player +
+  files + uploader), all with form actions.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
-- `src/lib/slug.ts` — slug + pathname helpers shared by client and server.
+- `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
+  and server.
 - `src/lib/theme.ts` — colours shared by `uno.config.ts` and the canvas renderer.
 - `scripts/make-test-stems.mjs` — synthetic test audio, no ffmpeg needed.
 
@@ -129,9 +157,11 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
 
 ## Next (from the plan)
 
-2. Peaks are already computed — persist them.
+2. ~~Peaks are already computed — persist them.~~ Done (`stem.peaks`); the
+   waveform could now draw from the row before audio finishes decoding.
 3. ~~Client-side uploads to Vercel Blob via `@vercel/blob/client`.~~ Done.
-4. Load the manifest shape from Turso instead of a Blob listing (keeps the
-   user's title and stem order; `onUploadCompleted` is where rows get written).
-5. Share links.
-6. Auth on `/api/upload` and the delete action before going public.
+4. ~~Load the manifest from Turso.~~ Done.
+5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
+6. Auth (Better Auth, as in replicator) before going public; today every
+   request is the seeded owner.
+7. Stem ordering / relabeling UI, saved mixes.

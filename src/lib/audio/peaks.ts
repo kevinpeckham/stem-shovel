@@ -4,7 +4,10 @@
  * later, what gets stored in Turso so reviewers never have to decode audio
  * just to see a waveform.
  */
-export function computePeaks(buffer: AudioBuffer, bins = 1024): Float32Array {
+/** Number of waveform bins per stem; also what gets stored in the database. */
+export const PEAK_BINS = 1024;
+
+export function computePeaks(buffer: AudioBuffer, bins = PEAK_BINS): Float32Array {
 	const peaks = new Float32Array(bins);
 	const length = buffer.length;
 	const samplesPerBin = length / bins;
