@@ -30,5 +30,9 @@
 	},
 	"overrides": {
 		"vite": "npm:@voidzero-dev/vite-plus-core@0.3.1"
+	},
+	"dependencies": {
+		"@varlock/1password-plugin": "^2.0.4",
+		"varlock": "^1.18.0"
 	}
 }
