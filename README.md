@@ -11,7 +11,7 @@ blob storage yet.
 ## Run it
 
 ```sh
-bun install          # or npm install
+bun install          # Bun is pinned via package.json `packageManager`
 bun run stems        # generates 4 synthetic WAV stems + manifest into static/stems/
 bun run dev          # open http://localhost:5173/test
 ```
@@ -72,9 +72,10 @@ check + Oxlint + tsgolint). `bun run format` runs `vp fmt`.
   box that's fine; in tight containers (e.g. minimal CI images) it panics
   with `oxc_allocator ... fixed_size.rs`. Plain `oxlint` without JS plugins
   works everywhere. Vercel builds only run `vp build`, which is unaffected.
-- **`vp migrate` writes a `devEngines.packageManager` pin** for whichever
-  package manager it detects. It was removed here because it pinned npm 12
-  and the CI image had npm 10; with Bun locally you'll want it to say bun.
+- **Bun is the package manager.** `package.json` pins it with a
+  `packageManager` field and `bun.lock` is the only lock file, so Vercel
+  installs with Bun too. `vp migrate` had written a `devEngines.packageManager`
+  pin for npm instead; that was removed.
 - The context is created at 32 kHz; `decodeAudioData` resamples into it,
   which is why four 20-second mono stems decode to ~9.5 MB, not ~14 MB.
 - Playback is verified in headless Chromium (load, play, mute/solo, seek,

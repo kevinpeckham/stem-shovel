@@ -47,7 +47,7 @@
 			<p class="mt-1 text-sm text-dim">{engine.error}</p>
 			<p class="mt-3 text-sm">
 				Check that every <code>url</code> in <code>static/stems/manifest.json</code> points at a
-				file that exists, or run <code>npm run stems</code> to generate test audio.
+				file that exists, or run <code>bun run stems</code> to generate test audio.
 			</p>
 		</div>
 	{:else if engine.status === "ready"}
