@@ -40,7 +40,9 @@
 		     so UnoCSS's default extractor can find them. -->
 		<div class="truncate font-medium {silenced ? 'text-dim' : ''}">{stem.label}</div>
 		<div class="text-xs text-dim">
-			{stem.channels === 1 ? "mono" : "stereo"}, {formatTime(stem.duration)}
+			{stem.collapsed ? "dual mono → mono" : stem.channels === 1 ? "mono" : "stereo"}, {formatTime(
+				stem.duration,
+			)}
 		</div>
 	</div>
 

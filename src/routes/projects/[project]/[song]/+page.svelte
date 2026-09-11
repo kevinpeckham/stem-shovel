@@ -90,6 +90,6 @@
 	</section>
 
 	<section class="mt-8" aria-label="Upload">
-		<StemUploader songId={data.song.id} />
+		<StemUploader songId={data.song.id} stemCount={data.song.stems.length} />
 	</section>
 </main>

@@ -152,6 +152,12 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   that was removed.
 - The context is created at 32 kHz; `decodeAudioData` resamples into it,
   which is why four 20-second mono stems decode to ~9.5 MB, not ~14 MB.
+- **Dual-mono files are collapsed to one channel after decoding**
+  (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
+  buffer is replaced by a mono one and the row says "dual mono → mono". Real
+  stereo is untouched. Memory is the binding limit — ~128 KB per second per
+  channel — so a song is capped at `MAX_STEMS_PER_SONG` (32) stems, enforced
+  when a stem is reserved; a phone will run out well before that.
 - Playback is verified in headless Chromium (load, play, mute/solo, seek,
   pause). Not yet tested on iOS Safari.
 

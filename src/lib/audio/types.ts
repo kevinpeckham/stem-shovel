@@ -13,7 +13,8 @@ export interface StemState {
 	muted: boolean;
 	soloed: boolean;
 	duration: number; // seconds, from the decoded buffer
-	channels: number; // 1 = mono, 2 = stereo
+	channels: number; // 1 = mono, 2 = stereo (after any dual-mono collapse)
+	collapsed: boolean; // file was stereo with identical channels; kept as mono
 	decodedBytes: number; // PCM footprint in RAM (length * channels * 4)
 	peaks: number[]; // PEAK_BINS values in 0..1, max-abs per bin
 }

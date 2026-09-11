@@ -50,3 +50,11 @@ export function labelFromFilename(filename: string): string {
 	const base = filename.split(/[/\\]/).pop() ?? filename;
 	return base.replace(/\.[^.]+$/, "") || base;
 }
+
+/**
+ * Soft cap on stems per song. The real limit is the listener's browser: every
+ * stem is decoded to PCM (~128 KB per second per channel at the 32 kHz
+ * context), so a 4-minute stereo stem is ~60 MB and a phone gives out well
+ * before this number. The cap just keeps a song from growing by accident.
+ */
+export const MAX_STEMS_PER_SONG = 32;

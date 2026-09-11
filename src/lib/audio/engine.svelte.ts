@@ -1,3 +1,4 @@
+import { collapseDualMono } from "./mono";
 import { computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, StemSource, StemState } from "./types";
 
@@ -86,7 +87,9 @@ export class StemEngine {
 				if (!res.ok)
 					throw new Error(`${src.label}: ${res.status} ${res.statusText} for ${src.url}`);
 				const bytes = await res.arrayBuffer();
-				const buffer = await ctx.decodeAudioData(bytes);
+				const decoded = await ctx.decodeAudioData(bytes);
+				// Dual-mono files keep one channel; the decoded original is released.
+				const buffer = collapseDualMono(decoded, ctx);
 
 				const gain = ctx.createGain();
 				gain.connect(master);
@@ -101,6 +104,7 @@ export class StemEngine {
 					soloed: false,
 					duration: buffer.duration,
 					channels: buffer.numberOfChannels,
+					collapsed: decoded.numberOfChannels === 2 && buffer.numberOfChannels === 1,
 					decodedBytes: buffer.length * buffer.numberOfChannels * 4,
 					peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
 				});

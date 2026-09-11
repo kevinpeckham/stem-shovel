@@ -2,11 +2,19 @@
 	import { invalidateAll } from "$app/navigation";
 	import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 	import { formatBytes } from "$lib/format";
-	import { STEM_ACCEPT, STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
+	import {
+		MAX_STEMS_PER_SONG,
+		STEM_ACCEPT,
+		STEM_FORMAT_LIST,
+		STEM_MAX_BYTES,
+		stemContentType,
+	} from "$lib/slug";
 	import { upload } from "@vercel/blob/client";
 
 	interface Props {
 		songId: string;
+		/** Stems the song already has, in-flight ones included. */
+		stemCount: number;
 	}
 
 	interface Job {
@@ -16,7 +24,7 @@
 		error?: string;
 	}
 
-	let { songId }: Props = $props();
+	let { songId, stemCount }: Props = $props();
 
 	let files = $state<FileList | null>(null);
 	let jobs = $state<Job[]>([]);
@@ -25,8 +33,10 @@
 	let picked = $derived(files ? Array.from(files) : []);
 	let tooBig = $derived(picked.filter((f) => f.size > STEM_MAX_BYTES));
 	let unsupported = $derived(picked.filter((f) => !stemContentType(f.name)));
+	let room = $derived(Math.max(0, MAX_STEMS_PER_SONG - stemCount));
+	let overCap = $derived(picked.length > room);
 	let canSubmit = $derived(
-		!busy && picked.length > 0 && tooBig.length === 0 && unsupported.length === 0,
+		!busy && picked.length > 0 && tooBig.length === 0 && unsupported.length === 0 && !overCap,
 	);
 
 	/**
@@ -119,8 +129,15 @@
 	</label>
 
 	<p class="text-xs text-dim">
-		{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy.
+		{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG}
+		stems used.
 	</p>
+
+	{#if overCap}
+		<p class="text-sm text-solo">
+			Only {room} more {room === 1 ? "stem" : "stems"} fit in this song.
+		</p>
+	{/if}
 
 	{#if unsupported.length > 0}
 		<p class="text-sm text-solo">

@@ -1,7 +1,7 @@
 import type { StemManifest } from "$lib/audio/types";
 import { deleteBlobs, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
-import { labelFromFilename, slugify } from "$lib/slug";
+import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -122,7 +122,8 @@ export interface NewStemFile {
 /**
  * Step 1 of an upload: reserve a row in `uploading` state and hand back the
  * pathname the browser must upload to. The URL is unknown until the blob
- * exists, so it is "" for now.
+ * exists, so it is "" for now. Returns null for an unknown song and "full"
+ * when the song already has MAX_STEMS_PER_SONG stems (counting in-flight ones).
  */
 export async function createStem(
 	accountId: string,
@@ -136,6 +137,7 @@ export async function createStem(
 		with: { stems: { columns: { sortOrder: true } } },
 	});
 	if (!owner) return null;
+	if (owner.stems.length >= MAX_STEMS_PER_SONG) return "full";
 	const sortOrder = owner.stems.reduce((m, s) => Math.max(m, s.sortOrder + 1), 0);
 	const id = nanoid(); // needed before insert to build the pathname
 	const [row] = await db
