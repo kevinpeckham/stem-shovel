@@ -114,9 +114,8 @@ registered for Claude Code in `.mcp.json`.
   action. `data.saveChart` hash-gates a new `song_chart_version` row and
   keeps the last 10; blanking a chart with content needs a second save.
   `server/markdown.ts` renders the read view with barkdown's renderer (what
-  the editor seeds from) plus sanitize-html — not DOMPurify, whose server
-  build needs jsdom, which Vercel's function runtime cannot load (the editor
-  package is therefore imported in the browser only). Typography for both is
+  the editor seeds from) and `server/sanitize.ts`, an allowlist pass over
+  parse5 (ESM; see "Server dependencies are ESM only" below). Typography for both is
   `src/lib/styles/chart.css`.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
@@ -164,16 +163,19 @@ preview`, changed the `vite` import to `vite-plus`, and aliased the `vite`
   that was removed.
 - The context is created at 32 kHz; `decodeAudioData` resamples into it,
   which is why four 20-second mono stems decode to ~9.5 MB, not ~14 MB.
-- **Server dependencies that `require()` ESM break on Vercel.** Its function
-  runtime uses a loader without `require(esm)` support, so a CommonJS package
-  that depends on an ESM-only one throws `ERR_REQUIRE_ESM` at cold start and
-  takes every route down. Local Node is fine, so it only shows in production.
-  Two hit this: DOMPurify's server build (jsdom → html-encoding-sniffer 5+),
-  replaced by sanitize-html; and sanitize-html 2.17.7 itself (htmlparser2
-  10+), so it is pinned exactly to 2.17.0, the last release on htmlparser2 8.
-  Bundling via `ssr.noExternal` does not help: the bundler leaves the inner
-  `require()` in place. After `vp build`, check
-  `.vercel/output/functions/*/node_modules` before bumping server deps.
+- **Server dependencies are ESM only.** Vercel's Node 24 function runtime
+  (a custom launcher, `/opt/rust/nodejs.js`) has refused CommonJS
+  `require()` of an ES module at cold start, taking every route down with
+  `ERR_REQUIRE_ESM`, while local Node was fine. Two sanitizers hit it:
+  DOMPurify's server build (jsdom → html-encoding-sniffer → `@exodus/bytes`)
+  and sanitize-html (htmlparser2 10). Replicator ships the same jsdom chain
+  and its three-day-older deployment loads it, so the exact trigger is not
+  pinned down; the policy that avoids the whole class is: no CommonJS
+  packages in server code. The chart's read view is sanitized by our own
+  allowlist pass over parse5 (`server/sanitize.ts`), and the editor package
+  is imported in the browser only. After `vp build`, the CommonJS packages
+  left in `.vercel/output/functions/*/node_modules` all come from drizzle,
+  libsql, varlock and @vercel/blob and predate the problem.
 - **Dual-mono files are collapsed to one channel after decoding**
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one and the row says "dual mono → mono". Real
