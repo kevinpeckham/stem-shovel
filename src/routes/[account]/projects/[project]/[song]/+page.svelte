@@ -91,12 +91,10 @@
 
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
-	const MIX_MODES = ["original", "custom"] as const;
-	const MIX_LABELS = { original: "Original", custom: "As Mixed Above" };
-	let mixMode = $state<(typeof MIX_MODES)[number]>("original");
-	let mixing = $state<string | null>(null);
+	type MixMode = "original" | "custom";
+	let mixing = $state<MixMode | null>(null);
 	let mixError = $state<string | null>(null);
-	async function downloadMix(engine?: StemEngine) {
+	async function downloadMix(mixMode: MixMode, engine?: StemEngine) {
 		if (mixing) return;
 		mixError = null;
 		const params = new URLSearchParams();
@@ -110,7 +108,7 @@
 			params.set("master", mix.master.toFixed(3));
 		}
 		const query = params.size ? `?${params}` : "";
-		mixing = "Rendering…";
+		mixing = mixMode;
 		try {
 			await saveAs(
 				`/api/songs/${data.song.id}/mix${query}`,
@@ -491,35 +489,26 @@
 				<span class="i-ph-download-simple" aria-hidden="true"></span>
 				{zipping ?? "Download Stems"}
 			</button>
-			<span class="inline-flex items-center" role="group" aria-label="Download MP3">
-				<button
-					class="button button-sm rounded-r-none border-r-none"
-					type="button"
-					disabled={!!mixing}
-					onclick={() => downloadMix(engine)}
-					title={mixMode === "custom"
-						? "Download an MP3 of what is audible now (mute, solo, faders)"
-						: "Download an MP3 of the full mix"}
-				>
-					<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
-					{mixing ?? "Download MP3"}
-				</button>
-				{#each MIX_MODES as mode, index (mode)}
-					<button
-						type="button"
-						role="radio"
-						aria-checked={mixMode === mode}
-						class="{mixMode === mode
-							? 'button button-sm bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-							: 'button button-sm opacity-80 hover-bg-blue-200 hover-border-blue-200'} rounded-l-none {index ===
-						0
-							? 'rounded-r-none border-r-none'
-							: ''}"
-						disabled={!!mixing}
-						onclick={() => (mixMode = mode)}>{MIX_LABELS[mode]}</button
-					>
-				{/each}
-			</span>
+			<button
+				class="button button-sm"
+				type="button"
+				disabled={!!mixing}
+				onclick={() => downloadMix("original", engine)}
+				title="Download an MP3 of the full mix"
+			>
+				<span class="i-ph-download-simple" aria-hidden="true"></span>
+				{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
+			</button>
+			<button
+				class="button button-sm"
+				type="button"
+				disabled={!!mixing}
+				onclick={() => downloadMix("custom", engine)}
+				title="Download an MP3 of what is audible now (mute, solo, faders)"
+			>
+				<span class="i-ph-download-simple" aria-hidden="true"></span>
+				{mixing === "custom" ? "Rendering…" : "Custom Mix (MP3)"}
+			</button>
 			{#if mixError}
 				<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
 			{/if}
