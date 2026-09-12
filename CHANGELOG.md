@@ -18,6 +18,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   (migration 0006). No email verification or password reset yet (no email
   provider).
 
+- **No indexing**: robots.txt disallows everything, every page carries a
+  `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 - **Playback renditions**: after an upload the server renders an AAC M4A
   of the stem with ffmpeg (about a tenth of the WAV) and the player streams
   that; the source file stays for downloads. Missing renditions are rendered

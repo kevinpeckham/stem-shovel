@@ -37,5 +37,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}))
 		: [];
 
-	return svelteKitHandler({ auth, event, resolve, building });
+	const response = await svelteKitHandler({ auth, event, resolve, building });
+	// Nothing here is for search engines (robots.txt and the meta tag say the
+	// same; vercel.json adds the header to static files the CDN serves).
+	response.headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+	return response;
 };
