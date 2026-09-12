@@ -26,6 +26,10 @@ public by URL; editing needs a signed-in member.
 - **Existing users** (the seeded owner predates sign-in) get a credential
   with `PASSWORD='…' bun run db:set-password <email>`; the script hashes with
   Better Auth's own hasher and writes the `auth_account` row.
+- **Screenshot bypass**: a request with the `x-preview-token` header (or
+  `preview_token` cookie) equal to `PREVIEW_AUTH_TOKEN` is the Screenshot Bot
+  user, checked before the session (`src/lib/server/previewAuth.ts`,
+  docs/agent-screenshots.md). Fail-closed when the variable is unset.
 - **Not yet**: email verification, password reset and 2FA all need an email
   provider (replicator uses Resend); `requireEmailVerification` is off.
   GitHub OAuth needs an OAuth app; add `socialProviders.github` when there

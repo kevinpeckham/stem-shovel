@@ -2,8 +2,11 @@
  * Screenshot a page of the running dev server so the agent (or you) can look
  * at it: `bun run shot /projects [out.png] [width] [height]`. Full page unless
  * `SHOT_VIEWPORT=1`; `SHOT_CLICK=<selector>` clicks something first (open a
- * menu, switch a tab). Same idea as replicator's agent-screenshot setup, minus
- * the auth bypass: there is no sign-in here yet.
+ * menu, switch a tab). When `PREVIEW_AUTH_TOKEN` is set (bun run shot goes
+ * through varlock, so .env.local supplies it) the browser carries it as the
+ * `preview_token` cookie for the app's origin only, so the page renders as the
+ * Screenshot Bot (src/lib/server/previewAuth.ts) and the token never reaches
+ * Blob or any other host. `SHOT_ANON=1` captures the signed-out view instead.
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
@@ -19,8 +22,10 @@ const [
 const file = resolve(out);
 mkdirSync(dirname(file), { recursive: true });
 
+const token = process.env.SHOT_ANON === "1" ? "" : (process.env.PREVIEW_AUTH_TOKEN ?? "");
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 const page = await browser.newPage({ viewport: { width: Number(w), height: Number(h) } });
+if (token) await page.context().addCookies([{ name: "preview_token", value: token, url: base }]);
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {

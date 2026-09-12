@@ -18,6 +18,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   (migration 0006). No email verification or password reset yet (no email
   provider).
 
+- **Screenshot auth bypass** (replicator's `PREVIEW_AUTH_TOKEN`): with the
+  token in `.env.local`, `bun run shot` renders pages as the Screenshot Bot
+  user, enrolled per account with `bun run db:preview-bot <slug>`. Fail-closed
+  when unset (`src/lib/server/previewAuth.ts`, docs/agent-screenshots.md).
+
 ### Changed
 
 - **Accounts are in the URL**: `/[account]/projects/…` and
