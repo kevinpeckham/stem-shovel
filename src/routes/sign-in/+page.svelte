@@ -46,7 +46,7 @@
 				required
 			/>
 		</label>
-		{#if error}<p class="text-sm text-solo">{error}</p>{/if}
+		{#if error}<p class="text-sm text-red-400">{error}</p>{/if}
 		<div class="flex items-center gap-4">
 			<button class="button-accent" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
 			<a class="text-sm link-dim" href="/sign-up">Create an account</a>

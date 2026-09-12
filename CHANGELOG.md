@@ -26,6 +26,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   uploading, renaming, deleting, settings and the editors need membership,
   which every mutation checks on the server (`src/lib/server/access.ts`)
   and pages use only to show or hide controls.
+- **Song settings are a popover** opened from the gear in the song header
+  (native `popover="auto"`: top layer, Esc and click-outside close it). The
+  delete-song action lives at the bottom of that panel.
+- Validation and error text uses `text-red-400`; the removed `solo`,
+  `playhead` and `oxfordDark` palette tokens are no longer referenced by
+  components.
 
 ## [0.1.0] - 2026-09-12
 

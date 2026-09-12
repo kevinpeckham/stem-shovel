@@ -13,7 +13,7 @@ import {
  * app shares its look: wind4 + reset, Atkinson Hyperlegible / Bungee Shade
  *  * from bunny, the same palette and shortcuts. On top of that, the
  * app's semantic colour tokens; the waveform canvas reads its colour from the
- * element (`text-wave` / `text-waveDim`), so nothing imports the palette.
+ * element (a `text-*` utility), so nothing imports the palette.
  */
 export default defineConfig({
 	extractors: [extractorSvelte()],

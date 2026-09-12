@@ -46,7 +46,7 @@
 					required
 				/>
 				{#each fields.name.issues() ?? [] as issue (issue.message)}
-					<p class="mt-1 text-sm text-solo">{issue.message}</p>
+					<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 				{/each}
 			</label>
 			<label class="block">
@@ -61,7 +61,7 @@
 					Identifies the account; not part of any URL yet.
 				</span>
 				{#each fields.slug.issues() ?? [] as issue (issue.message)}
-					<p class="mt-1 text-sm text-solo">{issue.message}</p>
+					<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 				{/each}
 			</label>
 			<div>

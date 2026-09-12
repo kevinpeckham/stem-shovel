@@ -67,7 +67,7 @@
 						required
 					/>
 					{#each fields.name.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-solo">{issue.message}</p>
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 					{/each}
 				</label>
 				<label class="block">
@@ -82,7 +82,7 @@
 						/>
 					</span>
 					{#each fields.slug.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-solo">{issue.message}</p>
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 					{/each}
 					{#if slug !== slugify(name)}
 						<button
@@ -160,7 +160,7 @@
 			<button class="button-accent" disabled={!!createSong.pending}>Create</button>
 		</form>
 		{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
-			<p class="mt-2 text-sm text-solo">{issue.message}</p>
+			<p class="mt-2 text-sm text-red-400">{issue.message}</p>
 		{/each}
 	{/if}
 </main>

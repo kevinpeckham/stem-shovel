@@ -13,7 +13,7 @@
 	let { data } = $props();
 
 	// Settings form (title, URL, description) on the updateSong remote form.
-	let settingsOpen = $state(false);
+	let settingsPanel = $state<HTMLDivElement | null>(null);
 	let settingsSaved = $state(false);
 	const fields = updateSong.fields;
 	let title = $derived(fields.title.value() ?? data.song.title);
@@ -152,34 +152,45 @@
 				<button
 					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
 					type="button"
-					aria-expanded={settingsOpen}
-					onclick={() => (settingsOpen = !settingsOpen)}
-					title={settingsOpen ? "Close settings" : ""}
+					popovertarget="song-settings"
+					title="Song settings"
+					aria-label="Song settings"
 				>
 					<span class="block i-ph-gear"></span>
 				</button>
-				<!-- <form
-					{...deleteSong.enhance(async ({ submit }) => {
-						if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
-						await submit();
-					})}
-				>
-					<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
-					<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
-						{deleteSong.pending ? "Deleting…" : "Delete song"}
-					</button>
-				</form> -->
 			{/if}
 		</div>
-		{#if settingsOpen}
+		{#if settingsSaved}
+			<p class="text-sm text-dim">Saved.</p>
+		{/if}
+	</header>
+
+	{#if data.canEdit}
+		<!-- Settings as a native popover: top layer, light-dismiss, Esc closes. -->
+		<div
+			id="song-settings"
+			popover="auto"
+			bind:this={settingsPanel}
+			class="w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+		>
+			<div class="mb-4 flex items-center justify-between gap-4">
+				<h2 class="heading-2 mb-0">Song settings</h2>
+				<button
+					class="button button-xs"
+					type="button"
+					popovertarget="song-settings"
+					popovertargetaction="hide"
+				>
+					Close
+				</button>
+			</div>
 			<form
-				class="mb-8 surface px-4 py-4"
 				{...updateSong.enhance(async ({ submit }) => {
 					settingsSaved = false;
 					await submit();
 					if (!fields.allIssues()) {
 						settingsSaved = true;
-						settingsOpen = false;
+						settingsPanel?.hidePopover();
 					}
 				})}
 			>
@@ -196,7 +207,7 @@
 							required
 						/>
 						{#each fields.title.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 					</label>
 					<label class="block">
@@ -212,7 +223,7 @@
 							/>
 						</span>
 						{#each fields.slug.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 						{#if slug !== slugify(title)}
 							<button
@@ -234,7 +245,7 @@
 							rows="3"
 							{...fields.description.as("text", data.song.description)}></textarea>
 						{#each fields.description.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-solo">{issue.message}</p>
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 					</label>
 				</div>
@@ -250,10 +261,31 @@
 					</button>
 				</div>
 			</form>
-		{:else if settingsSaved}
-			<p class="mb-6 text-sm text-dim">Saved.</p>
-		{/if}
-	</header>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
+				<p class="mt-1 text-sm text-dim">
+					Removes the song, its chart and lyrics, and every stem file.
+				</p>
+				<form
+					class="mt-3"
+					{...deleteSong.enhance(async ({ submit }) => {
+						if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
+						await submit();
+					})}
+				>
+					<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
+					<button
+						class="button text-red-400 hover-bg-red-400 hover-text-oxford"
+						disabled={!!deleteSong.pending}
+					>
+						<span class="i-ph-trash" aria-hidden="true"></span>
+						{deleteSong.pending ? "Deleting…" : "Delete song"}
+					</button>
+				</form>
+			</div>
+		</div>
+	{/if}
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section class="grid grid-cols-1 place-content-start" aria-label="Player">
@@ -298,11 +330,11 @@
 						</div>
 						<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 							<div
-								class="h-full {job.status === 'error' ? 'bg-solo' : 'bg-playhead'}"
+								class="h-full {job.status === 'error' ? 'bg-red-400' : 'bg-maximumYellow'}"
 								style:width="{job.percent}%"
 							></div>
 						</div>
-						{#if job.error}<p class="mt-1 text-xs text-solo">{job.error}</p>{/if}
+						{#if job.error}<p class="mt-1 text-xs text-red-400">{job.error}</p>{/if}
 					</li>
 				{/each}
 			</ul>
@@ -342,7 +374,7 @@
 								</form>
 							{/if}
 						</span>
-						{#if job?.error}<p class="w-full text-xs text-solo">{job.error}</p>{/if}
+						{#if job?.error}<p class="w-full text-xs text-red-400">{job.error}</p>{/if}
 					</li>
 				{/each}
 			</ul>
@@ -441,7 +473,7 @@
 				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary
 			>
 			<div
-				class="absolute right-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxfordDark p-1 text-sm shadow-lg shadow-black/50"
+				class="absolute right-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
 			>
 				<div class="truncate px-3 py-1.5 text-xs text-dim">
 					{row.filename} · {formatBytes(row.sizeBytes)}
@@ -485,7 +517,7 @@
 					>
 						<input {...remove.fields.id.as("hidden", stem.id)} />
 						<button
-							class="block w-full rounded px-3 py-1.5 text-left text-solo hover:bg-white/10"
+							class="block w-full rounded px-3 py-1.5 text-left text-red-400 hover:bg-white/10"
 							disabled={!!remove.pending}
 						>
 							<span class="i-ph-trash mr-2" aria-hidden="true"></span>{remove.pending
@@ -494,7 +526,7 @@
 						</button>
 					</form>
 				{/if}
-				{#if job?.error}<p class="px-3 py-1 text-xs text-solo">{job.error}</p>{/if}
+				{#if job?.error}<p class="px-3 py-1 text-xs text-red-400">{job.error}</p>{/if}
 			</div>
 		</details>
 	{/if}

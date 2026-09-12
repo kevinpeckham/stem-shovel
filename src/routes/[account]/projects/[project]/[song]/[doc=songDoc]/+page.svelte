@@ -194,7 +194,7 @@
 	</header>
 
 	{#if saveError}
-		<p class="mb-4 rounded bg-row px-3 py-2 text-sm text-solo">{saveError}</p>
+		<p class="mb-4 rounded bg-row px-3 py-2 text-sm text-red-400">{saveError}</p>
 	{/if}
 
 	{#if view === "rendered"}

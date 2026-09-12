@@ -42,7 +42,7 @@
 			<button class="button-accent" disabled={!!createProject.pending}>Create</button>
 		</form>
 		{#each createProject.fields.name.issues() ?? [] as issue (issue.message)}
-			<p class="mt-2 text-sm text-solo">{issue.message}</p>
+			<p class="mt-2 text-sm text-red-400">{issue.message}</p>
 		{/each}
 	{/if}
 </main>

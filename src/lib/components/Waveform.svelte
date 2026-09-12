@@ -48,7 +48,7 @@
 		el.height = Math.round(h * dpr);
 		ctx.scale(dpr, dpr);
 		ctx.clearRect(0, 0, w, h);
-		// The colour is the canvas's own `color`, set by `text-wave` / `text-waveDim`
+		// The colour is the canvas's own `color` (a text-* utility on the element)
 		// below, so the palette stays in uno.config.ts and nothing is imported.
 		ctx.fillStyle = getComputedStyle(el).color;
 

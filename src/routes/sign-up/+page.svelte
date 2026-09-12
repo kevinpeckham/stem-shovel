@@ -61,7 +61,7 @@
 			/>
 			<span class="mt-1 block text-13px text-dim">At least 8 characters.</span>
 		</label>
-		{#if error}<p class="text-sm text-solo">{error}</p>{/if}
+		{#if error}<p class="text-sm text-red-400">{error}</p>{/if}
 		<div class="flex items-center gap-4">
 			<button class="button-accent" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
 			<a class="text-sm link-dim" href="/sign-in">I have an account</a>
