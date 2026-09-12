@@ -8,6 +8,8 @@ export const FADER_MAX = 1.25;
 const RAMP = 0.015;
 /** Lead time before a scheduled start so every source.start() call lands before the deadline. */
 const START_LEAD = 0.05;
+/** Stems fetched + decoded at once while loading a song. */
+const LOAD_CONCURRENCY = 3;
 /** Waveform resolution. 1024 bins ≈ 8 KB as JSON, which is fine to store per stem. */
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -68,8 +70,9 @@ export class StemEngine {
 	}
 
 	/**
-	 * Fetch and decode every stem. Deliberately sequential: decoding in parallel
-	 * briefly holds compressed + decoded data for all files and can double peak memory.
+	 * Fetch and decode every stem, LOAD_CONCURRENCY at a time. A few in flight
+	 * overlaps network with decoding; more only raises peak memory (compressed +
+	 * decoded data is held for every file in flight) without finishing sooner.
 	 */
 	async load(sources: StemSource[]): Promise<void> {
 		this.#reset();
@@ -98,33 +101,38 @@ export class StemEngine {
 		}));
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
 
-		try {
-			for (const src of sources) {
-				const res = await fetch(src.url);
-				if (!res.ok)
-					throw new Error(`${src.label}: ${res.status} ${res.statusText} for ${src.url}`);
-				const bytes = await res.arrayBuffer();
-				const decoded = await ctx.decodeAudioData(bytes);
-				// Dual-mono files keep one channel; the decoded original is released.
-				const buffer = collapseDualMono(decoded, ctx);
+		const loadOne = async (src: StemSource) => {
+			const res = await fetch(src.url);
+			if (!res.ok) throw new Error(`${src.label}: ${res.status} ${res.statusText} for ${src.url}`);
+			const bytes = await res.arrayBuffer();
+			const decoded = await ctx.decodeAudioData(bytes);
+			// Dual-mono files keep one channel; the decoded original is released.
+			const buffer = collapseDualMono(decoded, ctx);
 
-				const gain = ctx.createGain();
-				gain.connect(master);
-				this.#buffers.set(src.id, buffer);
-				this.#gains.set(src.id, gain);
+			const gain = ctx.createGain();
+			gain.connect(master);
+			this.#buffers.set(src.id, buffer);
+			this.#gains.set(src.id, gain);
 
-				const stem = this.stems.find((s) => s.id === src.id);
-				if (stem) {
-					stem.duration = buffer.duration;
-					stem.channels = buffer.numberOfChannels;
-					stem.collapsed = decoded.numberOfChannels === 2 && buffer.numberOfChannels === 1;
-					stem.decodedBytes = buffer.length * buffer.numberOfChannels * 4;
-					stem.peaks = Array.from(computePeaks(buffer, PEAK_BINS));
-					stem.decoded = true;
-				}
-				this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
-				this.loaded += 1;
+			const stem = this.stems.find((s) => s.id === src.id);
+			if (stem) {
+				stem.duration = buffer.duration;
+				stem.channels = buffer.numberOfChannels;
+				stem.collapsed = decoded.numberOfChannels === 2 && buffer.numberOfChannels === 1;
+				stem.decodedBytes = buffer.length * buffer.numberOfChannels * 4;
+				stem.peaks = Array.from(computePeaks(buffer, PEAK_BINS));
+				stem.decoded = true;
 			}
+			this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+			this.loaded += 1;
+		};
+
+		try {
+			const queue = [...sources];
+			const workers = Array.from({ length: Math.min(LOAD_CONCURRENCY, queue.length) }, async () => {
+				for (let src = queue.shift(); src; src = queue.shift()) await loadOne(src);
+			});
+			await Promise.all(workers);
 			this.#applyGains(true);
 			this.status = "ready";
 		} catch (e) {

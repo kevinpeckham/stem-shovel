@@ -25,6 +25,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Stems load three at a time** instead of one after another (fetch and
+  decode overlap); a six-stem song was ready in half the time on a fast
+  connection.
 - **Accounts are in the URL**: `/[account]/projects/…` and
   `/[account]/settings`; old `/projects…` and `/settings` addresses redirect
   to the user's first account. Viewing and playing are public by URL;
