@@ -1,3 +1,4 @@
+import { collapseDualMono } from "$lib/audio/mono";
 import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 import { upload } from "@vercel/blob/client";
 
@@ -26,7 +27,12 @@ export async function uploadStemFile(
 		onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
 	});
 	opts.onDecoding?.();
-	const buffer = await opts.ctx.decodeAudioData(await file.arrayBuffer());
+	// Channels are reported after the same dual-mono collapse the player does,
+	// so a dual-mono file gets a mono rendition.
+	const buffer = collapseDualMono(
+		await opts.ctx.decodeAudioData(await file.arrayBuffer()),
+		opts.ctx,
+	);
 	const ready = await fetch(`/api/stems/${stemId}/ready`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },

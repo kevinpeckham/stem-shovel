@@ -18,6 +18,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   (migration 0006). No email verification or password reset yet (no email
   provider).
 
+- **Playback renditions**: after an upload the server renders an AAC M4A
+  of the stem with ffmpeg (about a tenth of the WAV) and the player streams
+  that; the source file stays for downloads. Missing renditions are rendered
+  on first view of the song. Migration 0007 adds the `playback_*` columns.
 - **Screenshot auth bypass** (replicator's `PREVIEW_AUTH_TOKEN`): with the
   token in `.env.local`, `bun run shot` renders pages as the Screenshot Bot
   user, enrolled per account with `bun run db:preview-bot <slug>`. Fail-closed

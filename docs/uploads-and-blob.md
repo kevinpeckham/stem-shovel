@@ -20,13 +20,25 @@ in three steps driven by `src/lib/upload.ts`:
   keeps the row and label but reserves `<stemId>-vN.<ext>` and deletes the
   old blob: Blob serves files with a 30-day cache header, so a replacement
   needs a new URL.
+- **Playback renditions** (`src/lib/server/transcode.ts`). After step 3 the
+  server renders an AAC-LC M4A of the source (192 kbps stereo, 128 kbps mono
+  — the browser reports channels after its dual-mono collapse) with the
+  `ffmpeg-static` binary and stores it at `<stemId>[-vN].play-<stamp>.m4a`.
+  About a tenth of the WAV, so a tenth of the download, decode time and
+  Blob egress per listen; the source stays for downloads. The render runs
+  after the response (`waitUntil` through Vercel's request context; the
+  route sets `maxDuration: 300`) and the song page schedules any stem still
+  without one (never tried, failed over an hour ago, or "pending" for more
+  than 15 minutes), so uploads that predate renditions get them on first
+  view. `claimPlayback` is the lock. The manifest points at the rendition
+  once `playbackStatus` is "ready"; deleting or replacing a stem removes it.
+  Vercel's tracer has a special case for `ffmpeg-static`, and `bun install`
+  needs it in `trustedDependencies` for its postinstall download.
 - **Downloads** fetch the Blob file in the browser and save it under its
   original name (`download` is ignored cross-origin; Blob's `?download=1`
   names the file by pathname). "Download All" builds a stored zip with
   `client-zip`. Nothing goes through the server.
 - The store is public with open CORS, which the engine relies on.
-- **No auth yet**: anyone who can reach `/api/upload` can upload. Fine behind
-  Tailscale, not for a public deploy.
 - `bun run smoke:blob [kick,hats,bass,keys]` creates a smoke project + song
   through the remote forms and uploads the generated WAVs through this exact
   flow against the dev server; delete the `smoke-*` project afterwards.

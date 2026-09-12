@@ -10,6 +10,10 @@ fields are `$state`, so components read `engine.position` directly.
   and fills each entry in as its file decodes. Rows and waveforms render at
   once, dimmed and labelled "decoding…"; play and seek enable when every stem
   is ready — a partial mix is not the song.
+- **Loading is three stems at a time** (`LOAD_CONCURRENCY`): fetch and decode
+  overlap; more in flight only raises peak memory. The manifest URL is the
+  AAC playback rendition when one exists (docs/uploads-and-blob.md), which
+  on a 50 Mbps connection took a six-stem song from 68 s to 9 s.
 - **Memory is the binding limit**: ~128 KB per second per channel at the
   32 kHz context, so a 4-minute stereo stem is ~60 MB decoded. Songs are
   capped at `MAX_STEMS_PER_SONG` (32) stems, enforced when a stem is

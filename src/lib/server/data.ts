@@ -4,6 +4,7 @@ import { db, schema } from "$lib/server/db";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { SlugSchema } from "$lib/val/SlugSchema";
+import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -265,7 +266,8 @@ export function manifestFor(s: {
 			.map((st) => ({
 				id: st.id,
 				label: st.label,
-				url: st.url,
+				// The player streams the rendition once it exists; the source until then.
+				url: st.playbackStatus === "ready" && st.playbackUrl ? st.playbackUrl : st.url,
 				duration: st.durationSeconds ?? undefined,
 				channels: st.channels ?? undefined,
 				peaks: st.peaks ?? undefined,
@@ -275,10 +277,10 @@ export function manifestFor(s: {
 
 export async function deleteSong(accountId: string, songId: string) {
 	const rows = await db
-		.select({ url: stem.url })
+		.select({ url: stem.url, playbackUrl: stem.playbackUrl })
 		.from(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.songId, songId)));
-	await deleteBlobs(rows.map((r) => r.url));
+	await deleteBlobs(rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]));
 	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
 }
 
@@ -350,7 +352,7 @@ export async function reserveStemReplacement(accountId: string, stemId: string, 
 		file.filename,
 		Number(version) + 1,
 	);
-	await deleteBlobs([existing.url]);
+	await deleteBlobs([existing.url, existing.playbackUrl ?? ""]);
 	const [row] = await db
 		.update(stem)
 		.set({
@@ -363,6 +365,7 @@ export async function reserveStemReplacement(accountId: string, stemId: string, 
 			durationSeconds: null,
 			channels: null,
 			peaks: null,
+			...NO_PLAYBACK,
 		})
 		.where(eq(stem.id, stemId))
 		.returning();
@@ -426,11 +429,95 @@ export async function deleteStem(accountId: string, stemId: string) {
 	const [row] = await db
 		.delete(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
-		.returning({ url: stem.url, songId: stem.songId });
+		.returning({ url: stem.url, playbackUrl: stem.playbackUrl, songId: stem.songId });
 	if (!row) return false;
-	await deleteBlobs([row.url]);
+	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	await refreshSongDuration(row.songId);
 	return true;
+}
+
+// ---- playback renditions (see src/lib/server/transcode.ts) ----------------
+
+const NO_PLAYBACK = {
+	playbackStatus: null,
+	playbackUrl: null,
+	playbackPathname: null,
+	playbackBytes: null,
+	playbackStartedAt: null,
+};
+
+/** A failed render is retried after this; a "pending" older than this is presumed crashed. */
+const PLAYBACK_RETRY_MS = 60 * 60 * 1000;
+const PLAYBACK_STALE_MS = 15 * 60 * 1000;
+
+/** Which of a song's ready stems still want a rendition (never tried, failed a while ago, or stuck). */
+export function stemsWantingPlayback(
+	stems: {
+		id: string;
+		status: string;
+		url: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return stems
+		.filter((s) => s.status === "ready" && s.url)
+		.filter((s) => {
+			const age = now - (s.playbackStartedAt?.getTime() ?? 0);
+			if (s.playbackStatus === null) return true;
+			if (s.playbackStatus === "failed") return age > PLAYBACK_RETRY_MS;
+			if (s.playbackStatus === "pending") return age > PLAYBACK_STALE_MS;
+			return false;
+		})
+		.map((s) => s.id);
+}
+
+/**
+ * Marks a stem "pending" and returns what the transcoder needs, or null when
+ * another request already claimed it (the update is the lock).
+ */
+export async function claimPlayback(stemId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(stem)
+		.set({ playbackStatus: "pending", playbackStartedAt: now })
+		.where(
+			and(
+				eq(stem.id, stemId),
+				eq(stem.status, "ready"),
+				sql`(${stem.playbackStatus} is null
+					or (${stem.playbackStatus} = 'failed' and ${stem.playbackStartedAt} < ${now.getTime() - PLAYBACK_RETRY_MS})
+					or (${stem.playbackStatus} = 'pending' and ${stem.playbackStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS}))`,
+			),
+		)
+		.returning({
+			id: stem.id,
+			url: stem.url,
+			pathname: stem.pathname,
+			channels: stem.channels,
+			playbackUrl: stem.playbackUrl,
+		});
+	return row ?? null;
+}
+
+export async function finishPlayback(
+	stemId: string,
+	r: { url: string; pathname: string; bytes: number },
+) {
+	await db
+		.update(stem)
+		.set({
+			playbackStatus: "ready",
+			playbackUrl: r.url,
+			playbackPathname: r.pathname,
+			playbackBytes: r.bytes,
+		})
+		.where(eq(stem.id, stemId));
+}
+
+export async function failPlayback(stemId: string) {
+	await db.update(stem).set({ playbackStatus: "failed" }).where(eq(stem.id, stemId));
 }
 
 async function refreshSongDuration(songId: string) {

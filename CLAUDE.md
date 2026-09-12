@@ -67,7 +67,9 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `onMount`; type imports are fine. `better-auth` is bundled into the server
   chunk (`ssr.noExternal`) because Vercel's tracer drops its `dist/`.
 - **Blob pathnames are ID-based** (`accounts/<id>/songs/<id>/<stemId>[-vN].ext`)
-  and never reused: Blob serves a 30-day cache header.
+  and never reused: Blob serves a 30-day cache header. Each stem also gets an
+  AAC playback rendition (`…play-<stamp>.m4a`, `src/lib/server/transcode.ts`,
+  `ffmpeg-static`); the player streams it, downloads use the source.
 
 ## Working agreement
 

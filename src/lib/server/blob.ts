@@ -1,4 +1,4 @@
-import { del } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 import { ENV } from "varlock/env";
 
 /**
@@ -24,6 +24,26 @@ export function stemPathname(
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
 	const name = version > 0 ? `${stemId}-v${version}` : stemId;
 	return `accounts/${accountId}/songs/${songId}/${name}.${ext}`;
+}
+
+/**
+ * Pathname of a stem's playback rendition, next to its source. The stamp
+ * makes every render a new URL (same 30-day cache reason as `version`).
+ */
+export function playbackPathname(sourcePathname: string) {
+	const base = sourcePathname.replace(/\.[a-z0-9]+$/i, "");
+	return `${base}.play-${Date.now().toString(36)}.m4a`;
+}
+
+/** Uploads a server-side file (a rendition) with the same long cache as browser uploads. */
+export async function putBlob(pathname: string, body: Buffer, contentType: string) {
+	return put(pathname, body, {
+		access: "public",
+		contentType,
+		addRandomSuffix: false,
+		cacheControlMaxAge: 60 * 60 * 24 * 30,
+		...blobAuth(),
+	});
 }
 
 /** Deletes blobs by URL; ignores empty lists and blobs that are already gone. */

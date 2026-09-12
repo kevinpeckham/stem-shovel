@@ -1,7 +1,12 @@
 import { accountOfStem, memberOf } from "$lib/server/access";
 import { markStemReady } from "$lib/server/data";
+import { schedulePlayback } from "$lib/server/transcode";
 import { error, json } from "@sveltejs/kit";
+import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";
+
+/** The rendition renders after the response, inside this function's lifetime. */
+export const config: Config = { maxDuration: 300 };
 
 /** Step 3 of an upload: the browser decoded the file and reports what it learned. */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -31,5 +36,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		peaks,
 	});
 	if (!row) error(404, "Stem not found");
+	schedulePlayback([params.id]);
 	return json({ ok: true });
 };

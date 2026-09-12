@@ -1,5 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
+import type { PlaybackStatus } from "../../../val/PlaybackStatusSchema";
 import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
@@ -36,6 +37,16 @@ export const stem = table(
 		channels: t.integer("channels"),
 		/** 1024 max-abs values in 0..1 (see lib/audio/peaks.ts). ~8 KB per row. */
 		peaks: t.text("peaks", { mode: "json" }).$type<number[]>(),
+		/**
+		 * Playback rendition (AAC in M4A, src/lib/server/transcode.ts): what the
+		 * player streams when `playbackStatus` is "ready"; the source file above
+		 * stays the download. Null status = not attempted yet.
+		 */
+		playbackStatus: t.text("playback_status").$type<PlaybackStatus>(),
+		playbackUrl: t.text("playback_url"),
+		playbackPathname: t.text("playback_pathname"),
+		playbackBytes: t.integer("playback_bytes"),
+		playbackStartedAt: t.integer("playback_started_at", { mode: "timestamp_ms" }),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},
