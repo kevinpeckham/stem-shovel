@@ -8,23 +8,42 @@
 
 	let { engine }: Props = $props();
 
+	/**
+	 * Space is the transport from anywhere (DAW convention), Home goes back to
+	 * the start. The only exception is text entry — inputs, textareas, the
+	 * contenteditable editor, selects — where Space must type a space. A
+	 * focused button therefore does NOT activate on Space (Enter still does,
+	 * and M / S remain the row shortcuts); preventing the keydown default is
+	 * what stops the browser from firing the button's click on keyup.
+	 */
+	function isTextEntry(t: EventTarget | null): boolean {
+		if (!(t instanceof HTMLElement)) return false;
+		if (t.isContentEditable || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement)
+			return true;
+		if (t instanceof HTMLInputElement) {
+			return !["button", "checkbox", "radio", "range", "file", "submit", "reset"].includes(t.type);
+		}
+		return false;
+	}
+
 	function onwindowkeydown(e: KeyboardEvent): void {
-		// Space = play/pause from anywhere, unless the user is on a control that
-		// already consumes space (buttons, faders). Home = back to start.
-		// The waveform (role=slider) doesn't use space, so it's not excluded.
-		const t = e.target;
-		const onControl = t instanceof HTMLButtonElement || t instanceof HTMLInputElement;
-		if (e.key === " " && !onControl) {
+		if (e.metaKey || e.ctrlKey || e.altKey || isTextEntry(e.target)) return;
+		if (e.key === " ") {
 			e.preventDefault();
-			engine.toggle();
-		} else if (e.key === "Home" && !onControl) {
+			if (!e.repeat) engine.toggle();
+		} else if (e.key === "Home") {
 			e.preventDefault();
 			engine.seek(0);
 		}
 	}
+
+	/** Belt and braces: some browsers activate buttons on Space keyup. */
+	function onwindowkeyup(e: KeyboardEvent): void {
+		if (e.key === " " && !isTextEntry(e.target)) e.preventDefault();
+	}
 </script>
 
-<svelte:window onkeydown={onwindowkeydown} />
+<svelte:window onkeydown={onwindowkeydown} onkeyup={onwindowkeyup} />
 
 <div class="flex flex-wrap items-center gap-4">
 	<button

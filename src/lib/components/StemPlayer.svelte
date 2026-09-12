@@ -85,7 +85,8 @@
 			Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
 			enable when every stem is ready.
 		{:else}
-			Space plays and pauses. Click a waveform to seek. Focus a row and press M or S.
+			Space plays and pauses from anywhere; Enter activates a focused button. Click a waveform to
+			seek. Focus a row and press M or S.
 		{/if}
 	</p>
 {/if}
