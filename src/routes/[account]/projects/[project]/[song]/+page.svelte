@@ -92,7 +92,7 @@
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
 	const MIX_MODES = ["original", "custom"] as const;
-	const MIX_LABELS = { original: "Original", custom: "Custom" };
+	const MIX_LABELS = { original: "Original", custom: "As Mixed Above" };
 	let mixMode = $state<(typeof MIX_MODES)[number]>("original");
 	let mixing = $state<string | null>(null);
 	let mixError = $state<string | null>(null);

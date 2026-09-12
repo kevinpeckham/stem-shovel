@@ -8,6 +8,7 @@
 
 	let open = $state(false);
 	let saved = $state(false);
+	let addSongPanel = $state<HTMLDivElement | null>(null);
 	const fields = updateProject.fields;
 
 	// Live values: `value()` is undefined until the user edits, so fall back
@@ -114,10 +115,29 @@
 		<p class="mb-6 text-sm text-dim">Saved.</p>
 	{/if}
 
-	<h2 class="opacity-90 text-16px mb-2">Songs</h2>
+	<div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+		<h2 class="opacity-90 text-16px">Songs</h2>
+		{#if data.canEdit}
+			<button
+				class="button button-sm"
+				type="button"
+				popovertarget="add-song"
+				title="Add a song to this project"
+			>
+				<span class="i-ph-plus" aria-hidden="true"></span>
+				Add Song
+			</button>
+		{/if}
+	</div>
 
 	{#if data.project.songs.length === 0}
-		<p class="text-dim">No songs yet.</p>
+		<p class="text-dim">
+			No songs yet.{#if data.canEdit}
+				<button class="ml-1 link-dim" type="button" popovertarget="add-song"
+					>Add the first one.</button
+				>
+			{/if}
+		</p>
 	{:else}
 		<ul class="grid grid-cols-1 gap-2">
 			{#each data.project.songs as song (song.id)}
@@ -146,21 +166,54 @@
 	{/if}
 
 	{#if data.canEdit}
-		<form class="mt-8 flex items-end gap-3" {...createSong}>
-			<input {...createSong.fields.projectId.as("hidden", data.project.id)} />
-			<label class="grow">
-				<span class="text-sm text-dim">New song</span>
-				<input
-					class="mt-1 field"
-					{...createSong.fields.title.as("text")}
-					placeholder="Song title"
-					required
-				/>
-			</label>
-			<button class="button-accent" disabled={!!createSong.pending}>Create</button>
-		</form>
-		{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
-			<p class="mt-2 text-sm text-red-400">{issue.message}</p>
-		{/each}
+		<!-- Same native popover as the song settings: top layer, Esc / click-outside close. -->
+		<div
+			id="add-song"
+			popover="auto"
+			bind:this={addSongPanel}
+			class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+		>
+			<div class="mb-4 flex items-center justify-between gap-4">
+				<h2 class="heading-2 mb-0">Add a song</h2>
+				<button
+					class="button button-xs"
+					type="button"
+					popovertarget="add-song"
+					popovertargetaction="hide"
+				>
+					Close
+				</button>
+			</div>
+			<form
+				{...createSong.enhance(async ({ submit }) => {
+					await submit();
+					// The remote function redirects to the new song on success; only issues keep us here.
+					if (!createSong.fields.allIssues()) addSongPanel?.hidePopover();
+				})}
+			>
+				<input {...createSong.fields.projectId.as("hidden", data.project.id)} />
+				<label class="block">
+					<span class="text-sm text-dim">Title</span>
+					<input
+						class="mt-1 field"
+						{...createSong.fields.title.as("text")}
+						placeholder="Song title"
+						autocomplete="off"
+						required
+					/>
+					{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				<p class="mt-2 text-xs text-dim">
+					You can add stems, a chart and lyrics on the song's page.
+				</p>
+				<div class="mt-4">
+					<button class="button-accent disabled:opacity-40" disabled={!!createSong.pending}>
+						{createSong.pending ? "Creating…" : "Create song"}
+					</button>
+				</div>
+			</form>
+		</div>
 	{/if}
 </main>

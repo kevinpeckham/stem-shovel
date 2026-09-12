@@ -44,6 +44,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   decode overlap); a six-stem song was ready in half the time on a fast
   connection, and with the renditions a 50 Mbps connection went from 68 s
   to 9 s until Play enables.
+- **Adding a song is a popover** opened from an "Add Song" button beside the
+  Songs heading on the project page (and from the empty state), replacing
+  the form at the bottom of the page.
+- **MP3 toggle wording**: "As Mixed Above" instead of "Custom".
 - **Song settings are a popover** opened from the gear in the song header
   (native `popover="auto"`: top layer, Esc and click-outside close it). The
   delete-song action lives at the bottom of that panel.
