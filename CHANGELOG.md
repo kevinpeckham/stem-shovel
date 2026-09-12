@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Download MP3** next to "Download Stems": a stereo MP3 mixdown rendered
+  on the server with ffmpeg. "Original" is the full mix (cached per set of
+  stem files); "Custom" is what is audible in the player — mute, solo and
+  faders. Migration 0008 adds the song's mix cache columns.
 - **Sign-in with Better Auth** (email + password; `/sign-in`, `/sign-up`,
   `/sign-out`). A new user gets their own account; existing users get a
   credential with `bun run db:set-password`. Anonymous visitors still see

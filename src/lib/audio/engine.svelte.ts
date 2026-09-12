@@ -1,6 +1,6 @@
 import { collapseDualMono } from "./mono";
 import { computePeaks, PEAK_BINS } from "./peaks";
-import type { EngineStatus, StemSource, StemState } from "./types";
+import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
 export const FADER_MAX = 1.25;
@@ -250,6 +250,19 @@ export class StemEngine {
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
 		if (this.#offset > this.duration) this.seek(this.duration);
 		this.#applyGains();
+	}
+
+	/**
+	 * What is audible right now, for a server mixdown: each stem's effective
+	 * gain (fader, mute and solo folded in; silent stems left out) and master.
+	 */
+	mix(): MixSnapshot {
+		return {
+			master: this.master,
+			stems: this.stems
+				.map((s) => ({ id: s.id, gain: this.#effectiveGain(s) }))
+				.filter((s) => s.gain > 0),
+		};
 	}
 
 	/** The label is display-only; changing it never needs a reload. */

@@ -13,7 +13,7 @@
 		/** Per-row actions (download, rename, …), rendered at the end of each row. */
 		stemMenu?: Snippet<[StemState]>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
-		headerExtras?: Snippet;
+		headerExtras?: Snippet<[StemEngine]>;
 	}
 
 	let { manifest, errorHint, stemMenu, headerExtras }: Props = $props();
@@ -51,7 +51,7 @@
 
 {#if headerExtras}
 	<div class="flex flex-wrap items-baseline justify-between gap-4 mb-4">
-		{@render headerExtras()}
+		{@render headerExtras(engine)}
 	</div>
 {/if}
 

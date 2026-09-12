@@ -34,6 +34,17 @@ in three steps driven by `src/lib/upload.ts`:
   once `playbackStatus` is "ready"; deleting or replacing a stem removes it.
   Vercel's tracer has a special case for `ffmpeg-static`, and `bun install`
   needs it in `trustedDependencies` for its postinstall download.
+- **MP3 mixdowns** (`src/lib/server/mix.ts`, `GET /api/songs/[id]/mix`).
+  "Download MP3" renders a stereo 48 kHz 192 kbps MP3 with ffmpeg from the
+  playback renditions (sources if a rendition is missing): each input forced
+  to stereo and scaled by its gain, summed without amix's attenuation, then
+  master and a limiter. **Original** is every stem at unity; it is rendered
+  once per set of stem files and cached in Blob (`song.mixUrl`, keyed by
+  `song.mixKey`; a new, replaced or removed stem changes the key). **Custom**
+  sends what the player has audible (`engine.mix()`: mute, solo and faders
+  folded into per-stem gains, plus master) as `?stems=id:gain,…&master=m`
+  and is rendered on demand, never cached. Public like the rest of a song;
+  the route has `maxDuration: 300`.
 - **Downloads** fetch the Blob file in the browser and save it under its
   original name (`download` is ignored cross-origin; Blob's `?download=1`
   names the file by pathname). "Download All" builds a stored zip with

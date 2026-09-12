@@ -2,6 +2,7 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { formatBytes } from "$lib/format";
+	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 
 	import { slugify, STEM_ACCEPT } from "$lib/slug";
@@ -87,6 +88,40 @@
 	// files (they allow cross-origin reads). Stored, not compressed: audio
 	// does not shrink and stored entries stream straight through.
 	let zipping = $state<string | null>(null);
+
+	// MP3 mixdown: "original" is every stem at unity (cached on the server);
+	// "custom" is what the player has audible right now — mute, solo and faders.
+	const MIX_MODES = ["original", "custom"] as const;
+	const MIX_LABELS = { original: "Original", custom: "Custom" };
+	let mixMode = $state<(typeof MIX_MODES)[number]>("original");
+	let mixing = $state<string | null>(null);
+	let mixError = $state<string | null>(null);
+	async function downloadMix(engine?: StemEngine) {
+		if (mixing) return;
+		mixError = null;
+		const params = new URLSearchParams();
+		if (mixMode === "custom") {
+			const mix = engine?.mix() ?? { stems: [], master: 1 };
+			if (mix.stems.length === 0) {
+				mixError = "Nothing is audible — unmute a stem first.";
+				return;
+			}
+			params.set("stems", mix.stems.map((s) => `${s.id}:${s.gain.toFixed(3)}`).join(","));
+			params.set("master", mix.master.toFixed(3));
+		}
+		const query = params.size ? `?${params}` : "";
+		mixing = "Rendering…";
+		try {
+			await saveAs(
+				`/api/songs/${data.song.id}/mix${query}`,
+				`${data.song.project.slug}-${data.song.slug}-${mixMode === "custom" ? "custom-mix" : "mix"}.mp3`,
+			);
+		} catch (e) {
+			mixError = e instanceof Error ? e.message : String(e);
+		} finally {
+			mixing = null;
+		}
+	}
 	async function downloadAll() {
 		if (ready.length === 0 || zipping) return;
 		zipping = "Preparing…";
@@ -435,7 +470,7 @@
 	</section>
 </main>
 
-{#snippet headerExtras()}
+{#snippet headerExtras(engine?: StemEngine)}
 	<div class="flex flex-wrap items-center gap-2">
 		{#if data.canEdit}
 			<StemUploader
@@ -456,6 +491,38 @@
 				<span class="i-ph-download-simple" aria-hidden="true"></span>
 				{zipping ?? "Download Stems"}
 			</button>
+			<span class="inline-flex items-center" role="group" aria-label="Download MP3">
+				<button
+					class="button button-sm rounded-r-none border-r-none"
+					type="button"
+					disabled={!!mixing}
+					onclick={() => downloadMix(engine)}
+					title={mixMode === "custom"
+						? "Download an MP3 of what is audible now (mute, solo, faders)"
+						: "Download an MP3 of the full mix"}
+				>
+					<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
+					{mixing ?? "Download MP3"}
+				</button>
+				{#each MIX_MODES as mode, index (mode)}
+					<button
+						type="button"
+						role="radio"
+						aria-checked={mixMode === mode}
+						class="{mixMode === mode
+							? 'button button-sm bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+							: 'button button-sm opacity-80 hover-bg-blue-200 hover-border-blue-200'} rounded-l-none {index ===
+						0
+							? 'rounded-r-none border-r-none'
+							: ''}"
+						disabled={!!mixing}
+						onclick={() => (mixMode = mode)}>{MIX_LABELS[mode]}</button
+					>
+				{/each}
+			</span>
+			{#if mixError}
+				<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
+			{/if}
 		{/if}
 	</div>
 {/snippet}

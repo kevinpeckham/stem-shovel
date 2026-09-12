@@ -280,7 +280,11 @@ export async function deleteSong(accountId: string, songId: string) {
 		.select({ url: stem.url, playbackUrl: stem.playbackUrl })
 		.from(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.songId, songId)));
-	await deleteBlobs(rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]));
+	const s = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { mixUrl: true },
+	});
+	await deleteBlobs([...rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]), s?.mixUrl ?? ""]);
 	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
 }
 
@@ -434,6 +438,39 @@ export async function deleteStem(accountId: string, stemId: string) {
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	await refreshSongDuration(row.songId);
 	return true;
+}
+
+// ---- mixdowns (see src/lib/server/mix.ts) ---------------------------------
+
+/** A song with its ready stems and the names a mix file needs, by id (public: viewing needs no member). */
+export async function songForMix(songId: string) {
+	const row = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { id: true, title: true, slug: true, mixUrl: true, mixKey: true },
+		with: {
+			project: { columns: { slug: true }, with: { account: { columns: { name: true } } } },
+			stems: {
+				columns: {
+					id: true,
+					status: true,
+					url: true,
+					channels: true,
+					playbackStatus: true,
+					playbackUrl: true,
+				},
+				orderBy: [asc(stem.sortOrder)],
+			},
+		},
+	});
+	if (!row) return null;
+	return { ...row, stems: row.stems.filter((s) => s.status === "ready" && s.url) };
+}
+
+export async function setSongMix(songId: string, mix: { url: string; key: string } | null) {
+	await db
+		.update(song)
+		.set({ mixUrl: mix?.url ?? null, mixKey: mix?.key ?? null })
+		.where(eq(song.id, songId));
 }
 
 // ---- playback renditions (see src/lib/server/transcode.ts) ----------------

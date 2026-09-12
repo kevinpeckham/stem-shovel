@@ -35,6 +35,11 @@ export function playbackPathname(sourcePathname: string) {
 	return `${base}.play-${Date.now().toString(36)}.m4a`;
 }
 
+/** Pathname of a song's cached original mixdown; `key` identifies the stem files mixed, the stamp keeps every render a new blob. */
+export function mixPathname(accountId: string, songId: string, key: string) {
+	return `accounts/${accountId}/songs/${songId}/mix-${key}-${Date.now().toString(36)}.mp3`;
+}
+
 /** Uploads a server-side file (a rendition) with the same long cache as browser uploads. */
 export async function putBlob(pathname: string, body: Buffer, contentType: string) {
 	return put(pathname, body, {

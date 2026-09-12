@@ -22,6 +22,9 @@ fields are `$state`, so components read `engine.position` directly.
 - **Dual-mono files collapse to one channel** after decoding
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one; real stereo is untouched.
+- **`mix()`** returns the audible mix (effective gain per stem with mute,
+  solo and fader folded in, silent stems omitted, and master) for the
+  server-side MP3 mixdown (docs/uploads-and-blob.md).
 - **`remove(id)` and `relabel(id, label)`** let the player drop or rename a
   stem without re-decoding the rest. `StemPlayer` identifies what it has
   loaded by stem id + url: a refreshed load with the same stems relabels in

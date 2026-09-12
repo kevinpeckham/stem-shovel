@@ -26,6 +26,12 @@ export interface StemState {
 	decoded: boolean; // false while the row shows manifest data only
 }
 
+/** The audible mix as the engine has it: effective per-stem gains (silent stems omitted) and master. */
+export interface MixSnapshot {
+	master: number;
+	stems: { id: string; gain: number }[];
+}
+
 export type EngineStatus = "idle" | "loading" | "ready" | "error";
 
 /** Shape of static/stems/manifest.json for the PoC test page. */

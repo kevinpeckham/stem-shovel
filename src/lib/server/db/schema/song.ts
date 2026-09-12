@@ -37,6 +37,12 @@ export const song = table(
 		lyricsMarkdown: t.text("lyrics_markdown").notNull().default(""),
 		lyricsHash: t.text("lyrics_hash"),
 		lyricsVersion: t.integer("lyrics_version").notNull().default(0),
+		/**
+		 * Cached "original" MP3 mixdown (src/lib/server/mix.ts). `mixKey` names
+		 * the set of stem files it was made from; a different set means re-render.
+		 */
+		mixUrl: t.text("mix_url"),
+		mixKey: t.text("mix_key"),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
