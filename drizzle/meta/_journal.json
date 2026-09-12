@@ -43,6 +43,13 @@
       "when": 1789159531599,
       "tag": "0005_jittery_famine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789188539003,
+      "tag": "0006_rare_zaladane",
+      "breakpoints": true
     }
   ]
 }

@@ -4,8 +4,9 @@ declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			user: { id: string; name: string; email: string };
-			/** Accounts the user belongs to; the URL's [account] must be one of them. */
+			/** Signed-in user, or null. */
+			user: { id: string; name: string; email: string } | null;
+			/** Accounts the user belongs to (empty when signed out). */
 			memberships: { accountId: string; slug: string; name: string; role: string }[];
 		}
 		// interface PageData {}

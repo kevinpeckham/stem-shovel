@@ -1,11 +1,12 @@
-import { requireMember } from "$lib/server/access";
+import { requireMember, requireSignedIn } from "$lib/server/access";
 import { docText, docVersion, getSong } from "$lib/server/data";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 /** One editor for both song documents; `params.doc` is "chart" or "lyrics" (see src/params/songDoc.ts). */
-export const load: PageServerLoad = async ({ params, parent, locals }) => {
+export const load: PageServerLoad = async ({ params, parent, locals, url }) => {
+	requireSignedIn(locals, url);
 	const { account } = await parent();
 	requireMember(locals, account.id); // editing needs membership; the song page shows the read view
 	const song = await getSong(account.id, params.project, params.song);

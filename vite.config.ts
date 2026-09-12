@@ -21,6 +21,11 @@ export default defineConfig({
 		svelte: true, // needs the `svelte` package present, which SvelteKit provides
 		ignorePatterns: ["src/env.d.ts", "drizzle/**"], // generated: varlock types, drizzle-kit migrations
 	},
+	// better-auth is pure ESM but Vercel's file tracer (@vercel/nft) resolves
+	// its package to package.json alone and never copies dist/, so the function
+	// would fail with "Cannot find module 'better-auth'". Bundling it into the
+	// server chunk sidesteps the tracer; its dependencies trace fine.
+	ssr: { noExternal: [/^better-auth(\/|$)/] },
 	plugins: [
 		// varlock replaces Vite's .env loading with .env.schema (validated, typed,
 		// secrets pulled from 1Password). Must come before the SvelteKit plugin.

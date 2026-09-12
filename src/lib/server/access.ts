@@ -1,5 +1,5 @@
 import { db, schema } from "$lib/server/db";
-import { error } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 
 /**
@@ -8,6 +8,18 @@ import { eq } from "drizzle-orm";
  * mutations look up the entity's account and check membership too, so a
  * forged id from another tenant is "not found".
  */
+
+/** The signed-in user, or 401 (API routes and remote functions). */
+export function requireUser(locals: App.Locals) {
+	if (!locals.user) error(401, "Sign in first");
+	return locals.user;
+}
+
+/** Pages that need a member: anonymous visitors go to sign-in and come back. */
+export function requireSignedIn(locals: App.Locals, url: URL) {
+	if (!locals.user) redirect(303, `/sign-in?next=${encodeURIComponent(url.pathname)}`);
+	return locals.user;
+}
 
 export function requireMember(locals: App.Locals, accountId: string) {
 	const m = locals.memberships.find((m) => m.accountId === accountId);

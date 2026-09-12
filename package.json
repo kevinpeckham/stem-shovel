@@ -18,7 +18,8 @@
 		"db:generate": "varlock run -- drizzle-kit generate",
 		"db:migrate": "varlock run -- drizzle-kit migrate",
 		"db:studio": "varlock run -- drizzle-kit studio",
-		"db:seed": "varlock run -- bun scripts/seed.ts"
+		"db:seed": "varlock run -- bun scripts/seed.ts",
+		"db:set-password": "varlock run -- bun scripts/set-password.ts"
 	},
 	"dependencies": {
 		"@kevinpeckham/barkdown": "0.1.1",
@@ -26,6 +27,7 @@
 		"@libsql/client": "0.18.0",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/blob": "2.8.0",
+		"better-auth": "^1.7.4",
 		"client-zip": "^2.5.0",
 		"drizzle-orm": "0.45.2",
 		"isomorphic-dompurify": "^4.2.0",

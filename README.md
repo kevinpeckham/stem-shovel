@@ -30,11 +30,12 @@ documents; `/[account]/settings` is the account. `/test` plays the static
 files. Old `/projects…` and `/settings` addresses redirect to the user's
 first account.
 
-**Viewing is public, editing needs membership.** Anyone with a URL can open
-an account's projects and play its songs; the controls (upload, rename,
-delete, settings, the editors) appear only for members, and every mutation
-checks membership on the server regardless. There is no sign-in yet, so
-every request is the seeded owner — see [docs/environment.md](docs/environment.md).
+**Viewing is public, editing needs a signed-in member.** Anyone with a URL
+can open an account's projects and play its songs; the controls (upload,
+rename, delete, settings, the editors) appear only for members, and every
+mutation checks membership on the server regardless. Sign-in is Better Auth
+with email + password (`/sign-in`, `/sign-up`); a new user gets their own
+account. See [docs/auth.md](docs/auth.md).
 
 ## Configuration
 
@@ -110,6 +111,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems, chart/lyrics versions.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, the ESM-only rule, Turso + Drizzle.
+- [docs/auth.md](docs/auth.md) — Better Auth: sign-in, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
 - [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, downloads.
@@ -124,7 +126,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 3. ~~Client-side uploads to Vercel Blob via `@vercel/blob/client`.~~ Done.
 4. ~~Load the manifest from Turso.~~ Done.
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
-6. Auth (Better Auth, as in replicator) before going public; today every
-   request is the seeded owner.
+6. ~~Auth (Better Auth).~~ Done; email verification, password reset and
+   invitations still need an email provider.
 7. ~~Accounts in the URL.~~ Done. Stem ordering, saved mixes, document
    version restore UI.

@@ -1,38 +1,35 @@
+import { building } from "$app/environment";
+import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
 import type { Handle } from "@sveltejs/kit";
+import { svelteKitHandler } from "better-auth/svelte-kit";
 import { eq } from "drizzle-orm";
 
 /**
- * There is no sign-in yet. Every request runs as the seeded user (see
- * scripts/seed.ts) with their account memberships. The account itself is
- * chosen by the URL — `/[account]/…` — and checked against the memberships
- * in that route's layout and in every remote function / API route. When
- * Better Auth arrives this hook resolves the session instead.
+ * Resolves the Better Auth session into `locals.user` (null when signed out)
+ * and the user's account memberships. The account a request touches is
+ * chosen by the URL (`/[account]/…`) and checked against these memberships
+ * by pages, remote functions and API routes (src/lib/server/access.ts).
+ * Viewing is public, so an anonymous request still resolves.
  */
-const SEED_EMAIL = "kevin@lightningjar.com";
-
-let cached: App.Locals | null = null;
-
-async function principal(): Promise<App.Locals> {
-	if (cached) return cached;
-	const user = await db.query.user.findFirst({
-		where: eq(schema.user.email, SEED_EMAIL),
-		with: { memberships: { with: { account: true } } },
-	});
-	if (!user) throw new Error(`No seeded user ${SEED_EMAIL} — run \`bun run db:seed\``);
-	cached = {
-		user: { id: user.id, name: user.name, email: user.email },
-		memberships: user.memberships.map((m) => ({
-			accountId: m.accountId,
-			slug: m.account.slug,
-			name: m.account.name,
-			role: m.role,
-		})),
-	};
-	return cached;
-}
-
 export const handle: Handle = async ({ event, resolve }) => {
-	Object.assign(event.locals, await principal());
-	return resolve(event);
+	const session = await auth.api.getSession({ headers: event.request.headers });
+	const user = session?.user && session.user.isActive !== false ? session.user : null;
+
+	event.locals.user = user ? { id: user.id, name: user.name, email: user.email } : null;
+	event.locals.memberships = user
+		? (
+				await db.query.accountMember.findMany({
+					where: eq(schema.accountMember.userId, user.id),
+					with: { account: { columns: { slug: true, name: true } } },
+				})
+			).map((m) => ({
+				accountId: m.accountId,
+				slug: m.account.slug,
+				name: m.account.name,
+				role: m.role,
+			}))
+		: [];
+
+	return svelteKitHandler({ auth, event, resolve, building });
 };

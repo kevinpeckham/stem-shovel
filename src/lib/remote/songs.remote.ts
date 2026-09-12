@@ -1,5 +1,11 @@
 import { command, form, getRequestEvent } from "$app/server";
-import { accountOfProject, accountOfSong, accountOfStem, memberOf } from "$lib/server/access";
+import {
+	accountOfProject,
+	accountOfSong,
+	accountOfStem,
+	memberOf,
+	requireUser,
+} from "$lib/server/access";
 import {
 	createSong as create,
 	deleteSong as removeSong,
@@ -50,7 +56,7 @@ export const saveDoc = form(
 	async ({ songId, kind, markdown, confirmEmpty }, issue) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSong, songId);
-		const result = await saveSongDoc(accountId, locals.user.id, songId, kind, markdown, {
+		const result = await saveSongDoc(accountId, requireUser(locals).id, songId, kind, markdown, {
 			confirmEmpty: confirmEmpty === "true",
 		});
 		if (!result.ok) {
@@ -67,7 +73,7 @@ export const createSong = form(SongCreateSchema, async ({ projectId, title }) =>
 	const { accountId } = await memberOf(locals, accountOfProject, projectId);
 	const slugs = await projectSlugs(accountId, projectId);
 	if (!slugs) error(404, "Project not found");
-	const row = await create(accountId, locals.user.id, projectId, title);
+	const row = await create(accountId, requireUser(locals).id, projectId, title);
 	redirect(303, `/${slugs.account}/projects/${slugs.project}/${row.slug}`);
 });
 

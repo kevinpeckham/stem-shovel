@@ -11,8 +11,8 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
   resolves. Anything that runs outside Vite (drizzle-kit, scripts) goes
   through `bunx varlock run -- <cmd>`.
 - **On Vercel** the only project variables are `OP_TOKEN`, `OP_ENV_ID` and
-  `_VARLOCK_ENV_KEY`, per environment. Blob and Turso credentials never live
-  in Vercel.
+  `_VARLOCK_ENV_KEY`, per environment. Blob, Turso and Better Auth
+  credentials never live in Vercel.
 - **How values reach the server.** `@varlock/vite-integration` runs in
   `vite.config.ts` with `ssrInjectMode: "resolved-env"`: the build resolves
   the schema and injects the values into the SSR bundle. In preview and
@@ -65,12 +65,7 @@ Migrations are committed and applied from a developer machine, not during
 the Vercel build. When a change would make drizzle-kit ask about a rename,
 split it into two generates (drop, then add).
 
-**No sign-in yet.** `src/hooks.server.ts` puts the seeded user and their
-account memberships on `event.locals`. The account is chosen by the URL
-(`/[account]/…`): `[account]/+layout.server.ts` resolves it for anyone
-(viewing and playing are public by URL) and reports `canEdit` — whether the
-user is a member — which pages use only to show or hide controls. Every
-mutation (remote functions, API routes) and the editor and settings pages
-check membership themselves through `src/lib/server/access.ts`, deriving the
-account from the entity being touched rather than from the request. Adding
-Better Auth replaces the hook's principal, not the checks.
+**Sign-in** is Better Auth ([auth.md](auth.md)). `src/hooks.server.ts` puts
+the signed-in user (or null) and their memberships on `event.locals`; the
+URL's `[account]` segment picks the account, viewing is public, and every
+mutation checks membership through `src/lib/server/access.ts`.

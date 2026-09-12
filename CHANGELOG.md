@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Sign-in with Better Auth** (email + password; `/sign-in`, `/sign-up`,
+  `/sign-out`). A new user gets their own account; existing users get a
+  credential with `bun run db:set-password`. Anonymous visitors still see
+  and play everything by URL; the controls and the members-only pages need a
+  signed-in member. Tables `session`, `auth_account`, `verification`
+  (migration 0006). No email verification or password reset yet (no email
+  provider).
+
 ### Changed
 
 - **Accounts are in the URL**: `/[account]/projects/…` and

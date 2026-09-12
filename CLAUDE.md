@@ -48,9 +48,9 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   a row from another tenant is "not found". The account comes from the URL
   (`/[account]/…`, resolved in `[account]/+layout.server.ts`) for pages, and
   from the entity itself (`src/lib/server/access.ts`: `memberOf`,
-  `accountOf*`) for mutations. **Viewing is public by URL; editing needs
-  membership** — gate controls on `data.canEdit`, never rely on it for
-  security.
+  `accountOf*`) for mutations. **Viewing is public by URL; editing needs a
+  signed-in member** — gate controls on `data.canEdit`, never rely on it for
+  security; `locals.user` is null when signed out (Better Auth, docs/auth.md).
 - **Styling is UnoCSS only**: utilities and the shortcuts inline in
   `uno.config.ts` (no stylesheets, no `<style>`, no abstraction of the config
   into modules). Follow lj-website for page structure (`page` wrapper,
@@ -62,7 +62,8 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   CommonJS `require()` of ES modules at cold start; prefer ESM packages, and
   after a build check `.vercel/output/functions/*/node_modules`.
 - **Browser-only packages** (woof-editor) are imported dynamically in
-  `onMount`; type imports are fine.
+  `onMount`; type imports are fine. `better-auth` is bundled into the server
+  chunk (`ssr.noExternal`) because Vercel's tracer drops its `dist/`.
 - **Blob pathnames are ID-based** (`accounts/<id>/songs/<id>/<stemId>[-vN].ext`)
   and never reused: Blob serves a 30-day cache header.
 

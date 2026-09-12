@@ -1,5 +1,5 @@
 import { form, getRequestEvent } from "$app/server";
-import { accountOfProject, memberOf, requireMember } from "$lib/server/access";
+import { accountOfProject, memberOf, requireMember, requireUser } from "$lib/server/access";
 import { createProject as create, projectSlugs, updateProject as update } from "$lib/server/data";
 import { ProjectCreateSchema, ProjectSettingsSchema } from "$lib/val/ProjectSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
@@ -24,6 +24,6 @@ export const updateProject = form(ProjectSettingsSchema, async ({ id, name, slug
 export const createProject = form(ProjectCreateSchema, async ({ accountId, name }) => {
 	const { locals } = getRequestEvent();
 	const m = requireMember(locals, accountId);
-	const row = await create(accountId, locals.user.id, name);
+	const row = await create(accountId, requireUser(locals).id, name);
 	redirect(303, `/${m.slug}/projects/${row.slug}`);
 });

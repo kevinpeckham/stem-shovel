@@ -22,7 +22,7 @@
 		<h1 class="display">Settings</h1>
 		<p class="opacity-90">
 			The account everything here belongs to. Sign-in comes later; for now every request is
-			{data.user.name}.
+			{data.user?.name}.
 		</p>
 	</header>
 

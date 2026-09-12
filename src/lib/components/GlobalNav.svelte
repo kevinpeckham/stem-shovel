@@ -2,10 +2,11 @@
 	import { page } from "$app/state";
 
 	interface Props {
+		user: { name: string } | null;
 		/** Accounts the user belongs to; the current one is in the URL. */
 		memberships: { accountId: string; slug: string; name: string }[];
 	}
-	let { memberships }: Props = $props();
+	let { user, memberships }: Props = $props();
 
 	let accountSlug = $derived(page.params.account ?? memberships[0]?.slug);
 	let member = $derived(memberships.find((m) => m.slug === accountSlug));
@@ -42,10 +43,17 @@
 			>
 		{/each}
 	</nav>
-	{#if accountName}
-		<a
-			class="ml-auto text-13px opacity-60 truncate hover:opacity-100"
-			href="/{accountSlug}/settings">{accountName}</a
-		>
-	{/if}
+	<div class="ml-auto flex items-center gap-4 text-13px">
+		{#if accountName}
+			<a class="opacity-60 truncate hover:opacity-100" href="/{accountSlug}/projects"
+				>{accountName}</a
+			>
+		{/if}
+		{#if user}
+			<span class="opacity-60 truncate">{user.name}</span>
+			<a class="link-dim" href="/sign-out">Sign out</a>
+		{:else}
+			<a class="link-dim" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
+		{/if}
+	</div>
 </header>
