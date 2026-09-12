@@ -121,29 +121,44 @@
 	<title>{data.song.title} — Stem Shovel</title>
 </svelte:head>
 
-<main class="page" data-song-id={data.song.id}>
+<main
+	class="page-x-padding pt-6 mb-2 grid grid-cols-1 xl-grid-cols-2 gap-8"
+	data-song-id={data.song.id}
+>
 	<!-- 1. header: title, description, song settings -->
-	<header class="grid gap-3">
+	<header class="grid gap-3 col-span-full">
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
-			<div>
-				<a class="text-sm link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
+			<div class="flex flex-wrap items-baseline gap-4">
+				<!-- <a class="text-sm link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
 					>{data.song.project.name}</a
+				> -->
+				<h1 class="heading-1">{data.song.title}</h1>
+				<span class="opacity-90 text-15px"
+					>a song in the <a
+						class="underline underline-offset-2"
+						href="/{data.account.slug}/projects/{data.song.project.slug}"
+						>{data.song.project.name}</a
+					>
+					project from
+					<a class="underline underline-offset-2" href="/{data.account.slug}/projects"
+						>{data.account.name}</a
+					></span
 				>
-				<h1 class="display">{data.song.title}</h1>
-				{#if data.song.description}
+				<!-- {#if data.song.description}
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
-				{/if}
+				{/if} -->
 			</div>
 			{#if data.canEdit}
 				<button
-					class="text-sm link-dim"
+					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
 					type="button"
 					aria-expanded={settingsOpen}
 					onclick={() => (settingsOpen = !settingsOpen)}
+					title={settingsOpen ? "Close settings" : ""}
 				>
-					{settingsOpen ? "Close settings" : "Settings"}
+					<span class="block i-ph-gear"></span>
 				</button>
-				<form
+				<!-- <form
 					{...deleteSong.enhance(async ({ submit }) => {
 						if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
 						await submit();
@@ -153,7 +168,7 @@
 					<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
 						{deleteSong.pending ? "Deleting…" : "Delete song"}
 					</button>
-				</form>
+				</form> -->
 			{/if}
 		</div>
 		{#if settingsOpen}
@@ -241,10 +256,11 @@
 	</header>
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
-	<section class="grid gap-4" aria-label="Player">
+	<section class="grid grid-cols-1 place-content-start" aria-label="Player">
+		<!-- transport and waveforms -->
 		{#if data.manifest.stems.length > 0}
-			<div>
-				<StemPlayer manifest={data.manifest} {stemMenu} {headerExtras}>
+			<div class="mb-5">
+				<StemPlayer manifest={data.manifest} {stemMenu}>
 					{#snippet errorHint()}
 						A stem's file is missing from the Blob store. Remove it from its menu and upload it
 						again.
@@ -254,14 +270,20 @@
 		{:else}
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<p class="text-sm text-dim">No stems yet.</p>
-				{@render headerExtras()}
 			</div>
 		{/if}
+
+		{@render headerExtras?.()}
+
+		<!-- upload notice -->
 		{#if uploadNotice}
-			<p class="text-sm text-solo">{uploadNotice}</p>
+			<p class="text-sm px-3 py-2 border border-current/40 rounded-md mb-2 bg-blue-300/5">
+				{uploadNotice}
+			</p>
 		{/if}
+
 		{#if uploadJobs.length > 0}
-			<ul class="divide-y divide-white/10 surface" aria-live="polite" aria-label="Uploading">
+			<ul class="divide-y divide-white/10" aria-live="polite" aria-label="Uploading">
 				{#each uploadJobs as job (job.file.name)}
 					<li class="px-4 py-3">
 						<div class="flex items-baseline justify-between gap-4 text-sm">
@@ -285,6 +307,7 @@
 				{/each}
 			</ul>
 		{/if}
+
 		{#if pending.length > 0}
 			<ul class="mt-4 surface divide-y divide-white/10 text-sm" aria-label="Stems not ready">
 				{#each pending as stem (stem.id)}
@@ -327,42 +350,56 @@
 	</section>
 
 	<!-- 3. chart & lyrics -->
-	<section class="grid gap-2" aria-label="Chart and lyrics">
-		<div class="mb-2 flex items-baseline justify-between gap-4">
+	<section
+		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full max-w-full overflow-hidden grid-rows-1fr relative"
+		aria-label="Chart and lyrics"
+	>
+		<!-- <div class="h-full relative"> -->
+		{#if data.docs[doc]}
+			<article
+				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+			>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
+				{@html data.docs[doc]}
+			</article>
+		{:else}
+			<p
+				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+			>
+				{doc === "chart" ? "No chart yet." : "No lyrics yet."}
+			</p>
+		{/if}
+		<!-- tool bar  -->
+		<div class="absolute top-2 right-3 mb-2 grid grid-cols-[auto_auto] place-content-end gap-4">
 			<div
-				class="flex overflow-hidden rounded border border-white/15 text-xs"
+				class="flex overflow-hidden rounded border border-white/15 items-center"
 				role="tablist"
 				aria-label="Document"
 			>
-				{#each DOC_KINDS as kind (kind)}
+				{#each DOC_KINDS as kind, index (kind)}
 					<button
 						type="button"
 						role="tab"
 						aria-selected={doc === kind}
-						class={doc === kind ? "tab-active" : "tab-idle"}
+						class="{doc === kind
+							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
+							? 'rounded-r-none border-r-none'
+							: 'rounded-l-none'}"
 						onclick={() => (doc = kind)}>{DOC_LABELS[kind]}</button
 					>
 				{/each}
 			</div>
 			<a
-				class="text-sm link-dim {data.canEdit ? '' : 'hidden'}"
+				class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
 				href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
 			>
-				{data.docs[doc]
-					? `Edit ${DOC_LABELS[doc].toLowerCase()}`
-					: `Add ${DOC_LABELS[doc].toLowerCase()}`}
+				{@html data.docs[doc]
+					? `<span class="i-ph-pencil"></span>`
+					: `<span class="i-ph-plus"></span>`}
 			</a>
 		</div>
-		{#if data.docs[doc]}
-			<article class="chart-body surface px-6 py-4">
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-				{@html data.docs[doc]}
-			</article>
-		{:else}
-			<p class="text-sm text-dim">
-				{doc === "chart" ? "No chart yet. Chords and arrangement go here." : "No lyrics yet."}
-			</p>
-		{/if}
+		<!-- </div> -->
 	</section>
 </main>
 
@@ -377,9 +414,15 @@
 			/>
 		{/if}
 		{#if ready.length > 0}
-			<button class="button" type="button" disabled={!!zipping} onclick={downloadAll}>
+			<button
+				class="button button-sm"
+				type="button"
+				disabled={!!zipping}
+				onclick={downloadAll}
+				title="Download all stems"
+			>
 				<span class="i-ph-download-simple" aria-hidden="true"></span>
-				{zipping ?? "Download All"}
+				{zipping ?? "Download Stems"}
 			</button>
 		{/if}
 	</div>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Attachment } from "svelte/attachments";
-	import { colors } from "$lib/theme";
 
 	interface Props {
 		peaks: number[];
@@ -39,7 +38,7 @@
 		ctx: CanvasRenderingContext2D,
 		data: number[],
 		fraction: number,
-		dim: boolean,
+		_dim: boolean, // tracked by the effect so a mute/solo change redraws
 		w: number,
 		h: number,
 	): void {
@@ -49,7 +48,9 @@
 		el.height = Math.round(h * dpr);
 		ctx.scale(dpr, dpr);
 		ctx.clearRect(0, 0, w, h);
-		ctx.fillStyle = dim ? colors.waveDim : colors.wave;
+		// The colour is the canvas's own `color`, set by `text-wave` / `text-waveDim`
+		// below, so the palette stays in uno.config.ts and nothing is imported.
+		ctx.fillStyle = getComputedStyle(el).color;
 
 		const mid = h / 2;
 		const drawWidth = w * fraction; // stem length in px
@@ -93,10 +94,13 @@
 	onclick={seekFromPointer}
 	{onkeydown}
 >
-	<canvas {@attach waveform} class="absolute inset-0 h-full w-full"></canvas>
+	<canvas
+		{@attach waveform}
+		class="absolute inset-0 h-full w-full text-white {dimmed ? 'opacity-20' : 'opacity-90'}"
+	></canvas>
 	<!-- Playhead: positioned by percentage so it stays correct on resize -->
 	<div
-		class="pointer-events-none absolute inset-y-0 w-0.5 bg-playhead"
+		class="pointer-events-none absolute inset-y-0 w-0.5 bg-maximumYellow"
 		style:left="{progress * 100}%"
 	></div>
 </div>

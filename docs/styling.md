@@ -21,9 +21,10 @@ Rules:
 - **Page structure follows lj-website**: a `page` wrapper, a `display` title,
   `heading-2` sections, `max-w-article` for prose.
 - **Semantic tokens** (`bg-panel`, `bg-row`, `text-dim`, `border-line`,
-  `bg-playhead`, `bg-solo`) are mapped onto the palette in
-  `src/lib/theme.ts`, which the canvas waveform reads as well, so both stay
-  in sync.
+  `bg-playhead`, `bg-solo`, `text-wave`, `text-waveDim`) are defined with the
+  palette in `uno.config.ts`. The waveform canvas reads its colour from its
+  own computed `color` (set by `text-wave` / `text-waveDim`), so no module
+  exports the palette.
 - **Classes used in `src/app.html` are safelisted**; that file is outside the
   Svelte pipeline.
 - Icons are empty `<span>`s; `presetIcons` is configured with

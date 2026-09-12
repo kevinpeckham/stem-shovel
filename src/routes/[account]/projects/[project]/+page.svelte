@@ -23,12 +23,13 @@
 	<title>{data.project.name} — Stem Shovel</title>
 </svelte:head>
 
-<main class="page">
-	<header class="flex flex-wrap items-baseline justify-between gap-4">
-		<div>
-			<a class="text-sm link-dim" href="/{data.account.slug}/projects">Projects</a>
-			<h1 class="display">{data.project.name}</h1>
-		</div>
+<main class="page-x-padding pt-6 mb-2">
+	<header class="flex flex-wrap items-baseline justify-start gap-4">
+		<!-- <div class="flex gap-2">
+			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
+		<h1 class="heading-1">{data.project.name}</h1>
+		<span class="opacity-90 text-15px">a project from {data.account.name}</span>
+		<!-- </div> -->
 		{#if data.canEdit}
 			<button
 				class="text-sm link-dim"
@@ -113,24 +114,26 @@
 		<p class="mb-6 text-sm text-dim">Saved.</p>
 	{/if}
 
+	<h2 class="opacity-90 text-16px mb-2">Songs</h2>
+
 	{#if data.project.songs.length === 0}
 		<p class="text-dim">No songs yet.</p>
 	{:else}
-		<ul class="divide-y divide-white/10 surface">
+		<ul class="grid grid-cols-1 gap-2">
 			{#each data.project.songs as song (song.id)}
 				{@const ready = song.stems.filter((s) => s.status === "ready").length}
 				<li>
 					<a
-						class="flex items-baseline justify-between gap-4 px-4 py-3 hover:underline"
+						class="list-tile flex justify-between items-baseline group"
 						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
 						<span>
 							{song.title}
 							{#if song.description}
-								<span class="block text-sm text-dim">{song.description}</span>
+								<span class="block text-sm">{song.description}</span>
 							{/if}
 						</span>
-						<span class="shrink-0 text-sm text-dim">
+						<span class="shrink-0 text-sm opacity-90 text-white font-400 group-hover:opacity-100">
 							{ready}
 							{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
 									song.durationSeconds,

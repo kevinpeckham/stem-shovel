@@ -104,7 +104,6 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
   and server.
-- `src/lib/theme.ts` — the lj-website palette + the app's semantic tokens, shared by `uno.config.ts` and the canvas renderer.
 - `scripts/make-test-stems.mjs` — synthetic test audio, no ffmpeg needed.
 
 ## Documentation

@@ -7,47 +7,84 @@ import {
 	transformerDirectives,
 	transformerVariantGroup,
 } from "unocss";
-import { colors, lj } from "./src/lib/theme";
 
 /**
  * Mirrors lightningjar.com's uno.config (lightning-jar/lj-website) so the
  * app shares its look: wind4 + reset, Atkinson Hyperlegible / Bungee Shade
  *  * from bunny, the same palette and shortcuts. On top of that, the
- * app's semantic colour tokens (see src/lib/theme.ts).
+ * app's semantic colour tokens; the waveform canvas reads its colour from the
+ * element (`text-wave` / `text-waveDim`), so nothing imports the palette.
  */
 export default defineConfig({
-	content: {
-		pipeline: { include: [/\.(svelte|md|json|html)($|\?)/] },
-		filesystem: ["./src/app.html"],
-	},
 	extractors: [extractorSvelte()],
-	preflights: [
-		{
-			layer: "preflights",
-			getCSS: () => `html { --accent: ${lj.accent} }`,
-		},
-	],
+	preflights: [],
 	presets: [
 		presetWind4({ preflights: { reset: true } }),
 		// Phosphor icons as classes (`i-ph-play-fill`), as in replicator
 		presetIcons({
 			warn: true,
-			// Icons are empty <span>s; without a display they collapse to nothing.
-			extraProperties: { display: "inline-block", "vertical-align": "-0.15em" },
 		}),
 		presetWebFonts({
 			provider: "bunny",
 			fonts: {
-				display: "Bungee Shade",
+				brand: "Bahiana",
+				// display: "Bahiana",
 				sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
 			},
 		}),
 	],
 	theme: {
 		colors: {
-			...lj,
-			...colors,
-			accent: "var(--accent)", // themeable at runtime, like lj-website
+			accent: "#ebf92f",
+			oxford: {
+				50: "oklch(0.95 0.048 259.91)",
+				100: "oklch(0.9 0.048 259.91)",
+				200: "oklch(0.8 0.048 259.91)",
+				300: "oklch(0.7 0.048 259.91)",
+				400: "oklch(0.6 0.048 259.91)",
+				500: "oklch(0.5 0.048 259.91)",
+				600: "oklch(0.4 0.048 259.91)",
+				700: "oklch(0.3 0.048 259.91)",
+				800: "oklch(0.2 0.048 259.91)",
+				900: "oklch(0.1 0.048 259.91)",
+				950: "oklch(0.05 0.048 259.91)",
+				DEFAULT: "oklch(0.252 0.048 259.91)",
+			},
+			maximumYellow: {
+				50: "oklch(0.95 0.201 113.9)",
+				100: "oklch(0.9 0.201 113.9)",
+				200: "oklch(0.8 0.201 113.9)",
+				300: "oklch(0.7 0.201 113.9)",
+				400: "oklch(0.6 0.201 113.9)",
+				500: "oklch(0.5 0.201 113.9)",
+				600: "oklch(0.4 0.201 113.9)",
+				700: "oklch(0.3 0.201 113.9)",
+				800: "oklch(0.2 0.201 113.9)",
+				900: "oklch(0.1 0.201 113.9)",
+				950: "oklch(0.05 0.201 113.9)",
+				DEFAULT: "oklch(0.9406 0.201 113.9)",
+			},
+			cultured: {
+				50: "oklch(0.95 0 0)",
+				100: "oklch(0.9 0 0)",
+				200: "oklch(0.8 0 0)",
+				300: "oklch(0.7 0 0)",
+				400: "oklch(0.6 0 0)",
+				500: "oklch(0.5 0 0)",
+				600: "oklch(0.4 0 0)",
+				700: "oklch(0.3 0 0)",
+				800: "oklch(0.2 0 0)",
+				900: "oklch(0.1 0 0)",
+				950: "oklch(0.05 0 0)",
+				DEFAULT: "oklch(0.9431 0 0)",
+			},
+			offWhite: "oklch(0.9904 0.002 286.4)",
+			// ---
+			// panel: "oklch(0.252 0.048 259.91)", // page background
+			row: "rgba(255, 255, 255, 0.05)", // stem row / card surface on the oxford ground
+			ink: "#f5f5f5", // primary text (neutral-100); active mute button
+			dim: "#cbd5e1", // secondary text (slate-300)
+			line: "rgba(255, 255, 255, 0.12)", // hairline borders,
 		},
 	},
 	// Everything src/app.html uses: it is outside the Svelte pipeline, so the
@@ -73,20 +110,42 @@ export default defineConfig({
 		// ---- lj-website -------------------------------------------------------
 		[
 			"button",
-			"flex max-w-fit gap-2 px-3 py-2 rounded border border-current opacity-90 text-[0.9em] hover:text-accent hover:opacity-100 hover:shadow hover:shadow-current disabled:(opacity-40 pointer-events-none)",
+			`
+				border
+				border-current
+				flex
+				gap-2
+				items-center
+				max-w-fit
+				opacity-90
+				px-3
+				py-1.5
+				rounded
+				text-[0.9em]
+				disabled-opacity-40
+				disabled-pointer-events-none
+				hover-text-oxford
+				hover-bg-accent
+				hover-opacity-100
+
+			`,
 		],
-		["button-accent", "button text-accent hover:text-oxford hover:bg-accent"],
+		["button-sm", "text-14px py-1"],
+		["button-xs", "text-12px py-1"],
+		["button-accent", "button text-accent hover-text-oxford"],
 		["page-x-padding", "px-4 sm:px-6 md:px-7 lg:px-8 xl:px-16 2xl:px-24"],
 		["main-y-padding", "pt-10 pb-14 lg:(pt-12 pb-16) xl:(pt-14 pb-20) 2xl:(pt-16 pb-22)"],
 		[
 			"max-w-article",
 			"max-w-none sm:max-w-[34rem] md:max-w-[36rem] lg:max-w-[38rem] xl:max-w-[40rem] 2xl:max-w-[45rem]",
 		],
+		["heading-1", "text-balance font-700 text-accent mb-3 text-32px lg:text-32px leading-snug"],
+		["heading-2", "font-700 text-accent mb-3 text-20px lg:text-24px"],
+		["nav-link", "underline underline-offset-4 hover:text-maximumYellow opacity-90"],
 		[
-			"display",
-			"text-balance font-700 font-display text-maximumYellow mb-3 text-32px lg:text-42px leading-snug",
+			"list-tile",
+			"bg-white/5 rounded-md border border-current/40 block px-4 py-3 hover-text-accent hover-border-accent hover-bg-accent/5 heading-2",
 		],
-		["heading-2", "font-700 text-maximumYellow mb-3 text-20px lg:text-24px"],
 
 		// ---- app ---------------------------------------------------------------
 		["page", "page-x-padding main-y-padding grid grid-cols-1 gap-8 place-content-start"],

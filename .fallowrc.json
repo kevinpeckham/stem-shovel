@@ -1,7 +1,13 @@
 {
 	// This file is JSONC: fallow reads these comments; generic JSON tools may not.
 	"$schema": "./node_modules/fallow/schema.json",
-	"entry": ["src/index.{ts,tsx,js,jsx}", "src/main.{ts,tsx,js,jsx}"],
+	"entry": [
+		"src/index.{ts,tsx,js,jsx}",
+		"src/main.{ts,tsx,js,jsx}",
+		"uno.config.ts",
+		"vite.config.ts",
+		"drizzle.config.ts"
+	],
 	"duplicates": {
 		// Hide pair-only clones; focus on widespread copy-paste
 		// worth refactoring. Lower to 2 to report every duplicate pair.
@@ -15,7 +21,13 @@
 		// ]
 	},
 	// 1password-plugin: loaded by varlock via config. @libsql/client: drizzle-orm/libsql. isomorphic-dompurify: woof-editor peer.
-	"ignoreDependencies": ["@varlock/1password-plugin", "@libsql/client", "isomorphic-dompurify"],
+	"ignoreDependencies": [
+		"@varlock/1password-plugin",
+		"@libsql/client",
+		"isomorphic-dompurify",
+		"@iconify-json/ph",
+		"uno.css"
+	],
 	// $val schemas export arrays, schemas and types as a set; not every member is used yet.
 	"ignoreExports": [{ "file": "src/lib/val/**", "exports": ["*"] }],
 	"rules": {}

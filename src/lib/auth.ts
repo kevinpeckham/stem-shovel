@@ -5,7 +5,6 @@ import { slugify } from "$lib/slug";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { sveltekitCookies } from "better-auth/svelte-kit";
-import { eq } from "drizzle-orm";
 import { ENV } from "varlock/env";
 
 /**
@@ -19,7 +18,7 @@ import { ENV } from "varlock/env";
 const PRODUCTION_URL = "https://www.stem-shovel.com";
 const baseURL = dev ? undefined : PRODUCTION_URL;
 
-export const trustedOrigins = [
+const trustedOrigins = [
 	PRODUCTION_URL,
 	"http://localhost:5173",
 	...(dev
@@ -81,8 +80,3 @@ export const auth = betterAuth({
 		sveltekitCookies(getRequestEvent), // keep last
 	],
 });
-
-/** Marks a user as signed out everywhere: not used yet, kept for the admin flow. */
-export async function deactivateUser(userId: string) {
-	await db.update(schema.user).set({ isActive: false }).where(eq(schema.user.id, userId));
-}

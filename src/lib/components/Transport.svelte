@@ -55,7 +55,7 @@
 		onclick={() => engine.toggle()}
 	>
 		<span
-			class="{engine.playing ? 'i-ph-pause-fill' : 'i-ph-play-fill'} text-26px"
+			class="{engine.playing ? 'i-ph-pause-fill' : 'i-ph-play-fill'} text-24px"
 			aria-hidden="true"
 		></span>
 	</button>
@@ -70,7 +70,7 @@
 		Master
 		<input
 			type="range"
-			class="w-32 accent-ink"
+			class="w-32 accent-blue-300"
 			min="0"
 			max="1"
 			step="0.01"

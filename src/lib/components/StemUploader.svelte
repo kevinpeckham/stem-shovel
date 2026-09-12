@@ -95,11 +95,14 @@
 </script>
 
 <label
-	class="button-accent cursor-pointer {busy ? 'pointer-events-none opacity-60' : ''}"
-	title="{STEM_FORMAT_LIST}. WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems used."
+	class="button button-accent button-sm cursor-pointer {busy
+		? 'pointer-events-none opacity-60'
+		: ''}"
+	title="Upload new stems to this song."
 >
+	<!-- WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems -->
 	<span class="i-ph-plus" aria-hidden="true"></span>
-	{busy ? "Uploading…" : "Add New Stems"}
+	{busy ? "Uploading…" : "Add Stems"}
 	<input
 		class="sr-only"
 		type="file"

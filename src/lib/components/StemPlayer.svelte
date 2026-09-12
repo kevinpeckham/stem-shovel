@@ -49,20 +49,14 @@
 	$effect(() => () => engine.dispose());
 </script>
 
-<div class="flex flex-wrap items-baseline justify-between gap-4">
-	<p class="text-sm text-dim">
-		{manifest.stems.length}
-		{manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.status === "ready"}, {formatBytes(
-				engine.decodedBytes,
-			)} decoded in memory{/if}
-	</p>
-	{#if headerExtras}
+{#if headerExtras}
+	<div class="flex flex-wrap items-baseline justify-between gap-4 mb-4">
 		{@render headerExtras()}
-	{/if}
-</div>
+	</div>
+{/if}
 
 {#if engine.status === "error"}
-	<div class="mt-6 surface p-4">
+	<div class="mt-6 p-4">
 		<p class="font-medium">Couldn't load the stems.</p>
 		<p class="mt-1 text-sm text-dim">{engine.error}</p>
 		{#if errorHint}
@@ -70,23 +64,31 @@
 		{/if}
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
-	<div class="mt-6 surface px-4 py-3">
+	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
 		<Transport {engine} />
 	</div>
 
-	<section class="mt-4" aria-label="Stems">
+	<section
+		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start mb-5"
+		aria-label="Stems"
+	>
 		{#each engine.stems as stem (stem.id)}
 			<StemRow {stem} {engine} menu={stemMenu} />
 		{/each}
 	</section>
 
-	<p class="mt-6 text-xs text-dim" aria-live="polite">
+	<div
+		class="mt-3 border rounded-md px-3 py-2 flex items-center gap-2 text-14px opacity-90"
+		aria-live="polite"
+	>
 		{#if engine.status === "loading"}
 			Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
 			enable when every stem is ready.
-		{:else}
-			Space plays and pauses from anywhere; Enter activates a focused button. Click a waveform to
-			seek. Focus a row and press M or S.
+		{:else if engine.status === "ready"}
+			{manifest.stems.length}
+			{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.status === "ready"}, {formatBytes(
+					engine.decodedBytes,
+				)} decoded in memory <span class="text-green-300 i-ph-check"></span>{/if}
 		{/if}
-	</p>
+	</div>
 {/if}

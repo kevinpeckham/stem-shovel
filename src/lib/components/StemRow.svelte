@@ -52,11 +52,11 @@
 		</div>
 	</div>
 
-	<div class="flex gap-1">
+	<div class="flex gap-2">
 		<button
 			type="button"
 			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.muted
-				? 'bg-neutral-100 text-oxford border-neutral-100'
+				? 'bg-blue-300 text-oxford border-blue-300'
 				: ''}"
 			aria-pressed={stem.muted}
 			aria-label="Mute {stem.label}"
@@ -67,7 +67,7 @@
 		<button
 			type="button"
 			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.soloed
-				? 'bg-solo text-oxford border-solo'
+				? 'bg-maximumYellow text-oxford border-maximumYellow'
 				: ''}"
 			aria-pressed={stem.soloed}
 			aria-label="Solo {stem.label}"
@@ -79,7 +79,7 @@
 
 	<input
 		type="range"
-		class="w-full accent-ink sm:w-24"
+		class="w-full accent-blue-300 sm:w-24"
 		min="0"
 		max={FADER_MAX}
 		step="0.01"

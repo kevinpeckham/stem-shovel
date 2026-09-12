@@ -46,12 +46,6 @@ export function canEdit(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
-export function requireAccountBySlug(locals: App.Locals, slug: string) {
-	const m = locals.memberships.find((m) => m.slug === slug);
-	if (!m) error(404, `No account "${slug}"`);
-	return { id: m.accountId, slug: m.slug, name: m.name, role: m.role };
-}
-
 const { project, song, stem } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireMember. */

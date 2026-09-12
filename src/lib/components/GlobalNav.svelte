@@ -23,13 +23,18 @@
 	let accountName = $derived(member?.name ?? (page.data.account?.name as string | undefined) ?? "");
 </script>
 
-<header class="page-x-padding flex items-center gap-6 py-4 border-b border-white/10">
+<header
+	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10"
+>
 	<a
-		class="font-display text-maximumYellow text-20px md:text-24px leading-none tracking-wide"
+		class="font-brand text-maximumYellow text-20px md-text-24px lg-text-28px leading-none tracking-wide"
 		href="/"
 		title="Stem Shovel home"
 	>
 		Stem Shovel
+		<!-- {#if accountSlug }
+			<span class="text-sm opacity-90 text-white font-sans">{accountSlug}</span>
+		{/if} -->
 	</a>
 	<nav aria-label="Primary" class="flex items-center gap-4 text-15px">
 		{#each items as item (item.href)}
@@ -42,9 +47,8 @@
 				href={item.href}>{item.label}</a
 			>
 		{/each}
-	</nav>
-	<div class="ml-auto flex items-center gap-4 text-13px">
-		{#if accountName}
+
+		{#if user && accountName}
 			<a class="opacity-60 truncate hover:opacity-100" href="/{accountSlug}/projects"
 				>{accountName}</a
 			>
@@ -53,7 +57,7 @@
 			<span class="opacity-60 truncate">{user.name}</span>
 			<a class="link-dim" href="/sign-out">Sign out</a>
 		{:else}
-			<a class="link-dim" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
+			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
 		{/if}
-	</div>
+	</nav>
 </header>

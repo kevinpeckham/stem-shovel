@@ -8,21 +8,19 @@
 	<title>Projects — Stem Shovel</title>
 </svelte:head>
 
-<main class="page">
-	<header class="flex flex-wrap items-baseline justify-between gap-4">
-		<h1 class="display">Projects</h1>
-		<span class="text-sm text-dim">{data.account.name}</span>
+<main class="page-x-padding pt-6">
+	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-2">
+		<h1 class="heading-1">{data.account.name}</h1>
 	</header>
 
+	<h2 class="opacity-90 text-15px mb-2">Projects</h2>
 	{#if data.projects.length === 0}
 		<p class="text-dim">No projects yet.</p>
 	{:else}
-		<ul class="divide-y divide-white/10 surface">
+		<ul class="grid grid-cols-1 gap-4">
 			{#each data.projects as project (project.id)}
 				<li>
-					<a
-						class="block px-4 py-3 hover:underline"
-						href="/{data.account.slug}/projects/{project.slug}">{project.name}</a
+					<a class="list-tile" href="/{data.account.slug}/projects/{project.slug}">{project.name}</a
 					>
 				</li>
 			{/each}
