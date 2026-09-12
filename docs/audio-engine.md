@@ -1,0 +1,35 @@
+# Audio engine
+
+`src/lib/audio/engine.svelte.ts` — `StemEngine`: one `AudioContext` at
+32 kHz, one `GainNode` per stem, every source scheduled against the same
+clock timestamp on play, so sync is sample-accurate by construction. Public
+fields are `$state`, so components read `engine.position` directly.
+
+- **Progressive load.** `load()` seeds `engine.stems` from the manifest
+  (duration, channels and peaks recorded at upload travel with each stem)
+  and fills each entry in as its file decodes. Rows and waveforms render at
+  once, dimmed and labelled "decoding…"; play and seek enable when every stem
+  is ready — a partial mix is not the song.
+- **Memory is the binding limit**: ~128 KB per second per channel at the
+  32 kHz context, so a 4-minute stereo stem is ~60 MB decoded. Songs are
+  capped at `MAX_STEMS_PER_SONG` (32) stems, enforced when a stem is
+  reserved. Blob serves files with a 30-day cache header, so repeat loads
+  are decode time, not download time.
+- **Dual-mono files collapse to one channel** after decoding
+  (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
+  buffer is replaced by a mono one; real stereo is untouched.
+- **`remove(id)` and `relabel(id, label)`** let the player drop or rename a
+  stem without re-decoding the rest. `StemPlayer` identifies what it has
+  loaded by stem id + url: a refreshed load with the same stems relabels in
+  place, a removal drops one stem, anything else is a full load.
+- **Keyboard.** Space is the transport from anywhere except text entry
+  (buttons activate with Enter); Home returns to the start; M / S toggle
+  mute / solo for the focused row; arrows seek on a focused waveform.
+- **Peaks**: `lib/audio/peaks.ts` reduces a buffer to 1024 max-abs bins; the
+  same function runs in the browser after an upload and the result is stored
+  on the stem row.
+- The engine is loaded from an `$effect` with `untrack()`: `load()` reads
+  the engine's own `$state` synchronously, and letting those become
+  dependencies would re-run the effect mid-decode.
+- The waveform canvas uses `{@attach}`; the attachment gets the 2D context
+  once and a nested `$effect` redraws.
