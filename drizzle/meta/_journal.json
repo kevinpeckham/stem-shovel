@@ -64,6 +64,13 @@
       "when": 1789236590925,
       "tag": "0008_smart_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789257434221,
+      "tag": "0009_curious_pride",
+      "breakpoints": true
     }
   ]
 }

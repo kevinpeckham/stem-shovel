@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `mix_started_at` integer;

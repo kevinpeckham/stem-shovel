@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { formatTime } from "$lib/format";
+	import { isTextEntry } from "$lib/keys";
 
 	interface Props {
 		engine: StemEngine;
@@ -8,24 +9,10 @@
 
 	let { engine }: Props = $props();
 
-	/**
-	 * Space is the transport from anywhere (DAW convention), Home goes back to
-	 * the start. The only exception is text entry — inputs, textareas, the
-	 * contenteditable editor, selects — where Space must type a space. A
-	 * focused button therefore does NOT activate on Space (Enter still does,
-	 * and M / S remain the row shortcuts); preventing the keydown default is
-	 * what stops the browser from firing the button's click on keyup.
-	 */
-	function isTextEntry(t: EventTarget | null): boolean {
-		if (!(t instanceof HTMLElement)) return false;
-		if (t.isContentEditable || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement)
-			return true;
-		if (t instanceof HTMLInputElement) {
-			return !["button", "checkbox", "radio", "range", "file", "submit", "reset"].includes(t.type);
-		}
-		return false;
-	}
-
+	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
+	// A focused button therefore does NOT activate on Space (Enter still does, and
+	// M / S remain the row shortcuts); preventing the keydown default is what
+	// stops the browser from firing the button's click on keyup.
 	function onwindowkeydown(e: KeyboardEvent): void {
 		if (e.metaKey || e.ctrlKey || e.altKey || isTextEntry(e.target)) return;
 		if (e.key === " ") {

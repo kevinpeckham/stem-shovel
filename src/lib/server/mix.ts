@@ -1,5 +1,6 @@
 import { deleteBlobs, mixPathname, putBlob } from "$lib/server/blob";
-import { setSongMix, songForMix } from "$lib/server/data";
+import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "$lib/server/data";
+import { background } from "$lib/server/transcode";
 import { FADER_MAX } from "$lib/audio/engine.svelte";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
@@ -41,8 +42,18 @@ export interface MixRequest {
 export type Mixable = NonNullable<Awaited<ReturnType<typeof songForMix>>>;
 
 /** Identifies the set of files an original mix is made from. */
-export function originalMixKey(song: Mixable) {
-	const parts = song.stems.map((s) => `${s.id}:${playbackOrSource(s)}`).sort();
+export function originalMixKey(song: Pick<Mixable, "stems">) {
+	return mixKeyOf(song.stems);
+}
+
+/** The stem fields the key depends on; any row shape with them will do. */
+export type MixKeyStem = Pick<
+	Mixable["stems"][number],
+	"id" | "playbackStatus" | "playbackUrl" | "url"
+>;
+
+export function mixKeyOf(stems: MixKeyStem[]) {
+	const parts = stems.map((s) => `${s.id}:${playbackOrSource(s)}`).sort();
 	return createHash("sha1").update(parts.join("\n")).digest("hex").slice(0, 16);
 }
 
@@ -79,7 +90,9 @@ export function parseMixRequest(song: Mixable, params: URLSearchParams): MixRequ
 	return { stems, master: Math.round(master * 1000) / 1000 };
 }
 
-function playbackOrSource(s: Mixable["stems"][number]) {
+function playbackOrSource(
+	s: Pick<Mixable["stems"][number], "playbackStatus" | "playbackUrl" | "url">,
+) {
 	return s.playbackStatus === "ready" && s.playbackUrl ? s.playbackUrl : s.url;
 }
 
@@ -162,4 +175,38 @@ export async function originalMix(song: Mixable, accountId: string): Promise<Buf
 	await setSongMix(song.id, { url: blob.url, key });
 	if (song.mixUrl && song.mixUrl !== blob.url) await deleteBlobs([song.mixUrl]);
 	return bytes;
+}
+
+/**
+ * Keeps the cached original mix current after stems change, so the project
+ * page can play it without waiting: renders when the key differs, once every
+ * ready stem has a rendition (or has given up on one), under the song's lock.
+ * Called after a rendition completes, after a stem is removed, and from page
+ * loads as a backstop.
+ */
+export async function ensureOriginalMix(songId: string): Promise<void> {
+	const song = await songForMix(songId);
+	if (!song || song.stems.length === 0) return;
+	if (song.stems.some((s) => s.playbackStatus === null || s.playbackStatus === "pending")) return;
+	const key = originalMixKey(song);
+	if (song.mixUrl && song.mixKey === key) return;
+	if (!(await claimSongMix(songId, key))) return;
+	try {
+		const bytes = await renderMix(song, originalMixRequest(song));
+		const blob = await putBlob(mixPathname(song.accountId, song.id, key), bytes, "audio/mpeg");
+		await setSongMix(song.id, { url: blob.url, key });
+		if (song.mixUrl && song.mixUrl !== blob.url) await deleteBlobs([song.mixUrl]);
+	} catch (e) {
+		await releaseSongMix(songId);
+		throw e;
+	}
+}
+
+/** Renders the songs' original mixes in the background, one after another. */
+export function scheduleMix(songIds: string[]) {
+	const ids = [...new Set(songIds)];
+	if (ids.length === 0) return;
+	background(async () => {
+		for (const id of ids) await ensureOriginalMix(id);
+	});
 }

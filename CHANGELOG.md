@@ -47,6 +47,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Adding a song is a popover** opened from an "Add Song" button beside the
   Songs heading on the project page (and from the empty state), replacing
   the form at the bottom of the page.
+- **Project playlist**: the project page has a player that plays the
+  songs' original mixes in order (previous / play / next, position slider,
+  Space and Home), and a play button on each song row. Mixes are now
+  rendered ahead of time whenever a song's stems change, and page loads
+  catch up any that are missing. Migration 0009 adds the render lock.
 - **Go to beginning** button on the transport, left of Play (Home does the
   same from the keyboard).
 - **Two MP3 buttons** — "Original Mix (MP3)" and "Custom Mix (MP3)" — in

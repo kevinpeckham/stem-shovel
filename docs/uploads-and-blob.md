@@ -45,6 +45,15 @@ in three steps driven by `src/lib/upload.ts`:
   folded into per-stem gains, plus master) as `?stems=id:gain,…&master=m`
   and is rendered on demand, never cached. Public like the rest of a song;
   the route has `maxDuration: 300`.
+- **The original mix is kept current, not just cached on demand**
+  (`ensureOriginalMix`): after a stem's rendition completes, after a stem
+  is removed, and from the project and song page loads as a backstop, the
+  song's mix is re-rendered when its key no longer matches — once every
+  ready stem has a rendition (or gave up on one). `song.mixStartedAt` is the
+  lock (stale after 15 minutes). A multi-file upload re-renders the mix as
+  each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
+  The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
+  a plain `<audio>` element streaming from Blob).
 - **Downloads** fetch the Blob file in the browser and save it under its
   original name (`download` is ignored cross-origin; Blob's `?download=1`
   names the file by pathname). "Download All" builds a stored zip with

@@ -169,7 +169,11 @@ export function getProject(accountId: string, slug: string) {
 			songs: {
 				where: eq(song.status, "active"),
 				orderBy: [asc(song.sortOrder), asc(song.title)],
-				with: { stems: { columns: { id: true, status: true } } },
+				with: {
+					stems: {
+						columns: { id: true, status: true, url: true, playbackStatus: true, playbackUrl: true },
+					},
+				},
 			},
 		},
 	});
@@ -434,10 +438,10 @@ export async function deleteStem(accountId: string, stemId: string) {
 		.delete(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ url: stem.url, playbackUrl: stem.playbackUrl, songId: stem.songId });
-	if (!row) return false;
+	if (!row) return null;
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	await refreshSongDuration(row.songId);
-	return true;
+	return { songId: row.songId };
 }
 
 // ---- mixdowns (see src/lib/server/mix.ts) ---------------------------------
@@ -446,7 +450,15 @@ export async function deleteStem(accountId: string, stemId: string) {
 export async function songForMix(songId: string) {
 	const row = await db.query.song.findFirst({
 		where: eq(song.id, songId),
-		columns: { id: true, title: true, slug: true, mixUrl: true, mixKey: true },
+		columns: {
+			id: true,
+			accountId: true,
+			title: true,
+			slug: true,
+			mixUrl: true,
+			mixKey: true,
+			mixStartedAt: true,
+		},
 		with: {
 			project: { columns: { slug: true }, with: { account: { columns: { name: true } } } },
 			stems: {
@@ -469,8 +481,60 @@ export async function songForMix(songId: string) {
 export async function setSongMix(songId: string, mix: { url: string; key: string } | null) {
 	await db
 		.update(song)
-		.set({ mixUrl: mix?.url ?? null, mixKey: mix?.key ?? null })
+		.set({ mixUrl: mix?.url ?? null, mixKey: mix?.key ?? null, mixStartedAt: null })
 		.where(eq(song.id, songId));
+}
+
+const MIX_STALE_MS = 15 * 60 * 1000;
+
+/**
+ * Takes the song for a background mix render: true when its cached mix is
+ * not `key` and no other render holds it (a hold older than MIX_STALE_MS is
+ * presumed crashed). The update is the lock.
+ */
+export async function claimSongMix(songId: string, key: string) {
+	const now = Date.now();
+	const rows = await db
+		.update(song)
+		.set({ mixStartedAt: new Date(now) })
+		.where(
+			and(
+				eq(song.id, songId),
+				sql`(${song.mixKey} is null or ${song.mixKey} != ${key} or ${song.mixUrl} is null)`,
+				sql`(${song.mixStartedAt} is null or ${song.mixStartedAt} < ${now - MIX_STALE_MS})`,
+			),
+		)
+		.returning({ id: song.id });
+	return rows.length > 0;
+}
+
+export async function releaseSongMix(songId: string) {
+	await db.update(song).set({ mixStartedAt: null }).where(eq(song.id, songId));
+}
+
+/** Ids of songs whose cached mix does not match their current stems (for page-load backstops). */
+export function songsWantingMix(
+	songs: {
+		id: string;
+		mixKey: string | null;
+		mixUrl: string | null;
+		stems: {
+			id: string;
+			status: string;
+			url: string;
+			playbackStatus: PlaybackStatus | null;
+			playbackUrl: string | null;
+		}[];
+	}[],
+	keyOf: (stems: (typeof songs)[number]["stems"]) => string,
+) {
+	return songs
+		.filter((s) => s.stems.some((st) => st.status === "ready" && st.url))
+		.filter(
+			(s) =>
+				!s.mixUrl || s.mixKey !== keyOf(s.stems.filter((st) => st.status === "ready" && st.url)),
+		)
+		.map((s) => s.id);
 }
 
 // ---- playback renditions (see src/lib/server/transcode.ts) ----------------
@@ -530,6 +594,7 @@ export async function claimPlayback(stemId: string) {
 		)
 		.returning({
 			id: stem.id,
+			songId: stem.songId,
 			url: stem.url,
 			pathname: stem.pathname,
 			channels: stem.channels,

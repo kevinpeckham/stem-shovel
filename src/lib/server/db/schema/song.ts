@@ -43,6 +43,8 @@ export const song = table(
 		 */
 		mixUrl: t.text("mix_url"),
 		mixKey: t.text("mix_key"),
+		/** Set while a background render holds the song; stale after 15 minutes. */
+		mixStartedAt: t.integer("mix_started_at", { mode: "timestamp_ms" }),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import { formatTime } from "$lib/format";
 	import { slugify } from "$lib/slug";
 	import { updateProject } from "$lib/remote/projects.remote";
@@ -9,6 +10,9 @@
 	let open = $state(false);
 	let saved = $state(false);
 	let addSongPanel = $state<HTMLDivElement | null>(null);
+	let player = $state<ProjectPlayer | null>(null);
+	let playing = $state<string | null>(null);
+	let paused = $state(true);
 	const fields = updateProject.fields;
 
 	// Live values: `value()` is undefined until the user edits, so fall back
@@ -115,6 +119,15 @@
 		<p class="mb-6 text-sm text-dim">Saved.</p>
 	{/if}
 
+	<div class="mb-6">
+		<ProjectPlayer
+			bind:this={player}
+			songs={data.project.songs}
+			bind:current={playing}
+			bind:paused
+		/>
+	</div>
+
 	<div class="flex flex-wrap items-center justify-between gap-3 mb-2">
 		<h2 class="opacity-90 text-16px">Songs</h2>
 		{#if data.canEdit}
@@ -142,9 +155,24 @@
 		<ul class="grid grid-cols-1 gap-2">
 			{#each data.project.songs as song (song.id)}
 				{@const ready = song.stems.filter((s) => s.status === "ready").length}
-				<li>
+				<li class="flex items-stretch gap-2">
+					<button
+						type="button"
+						class="shrink-0 grid w-12 place-items-center rounded border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
+						aria-label={playing === song.id && !paused
+							? `Pause ${song.title}`
+							: `Play ${song.title}`}
+						title={song.mixUrl ? "Play the mix" : "No mix yet"}
+						disabled={!song.mixUrl}
+						onclick={() => player?.play(song.id)}
+					>
+						<span
+							class={playing === song.id && !paused ? "i-ph-pause-fill" : "i-ph-play-fill"}
+							aria-hidden="true"
+						></span>
+					</button>
 					<a
-						class="list-tile flex justify-between items-baseline group"
+						class="list-tile grow flex justify-between items-baseline group"
 						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
 						<span>

@@ -30,7 +30,8 @@ fields are `$state`, so components read `engine.position` directly.
   loaded by stem id + url: a refreshed load with the same stems relabels in
   place, a removal drops one stem, anything else is a full load.
 - **Keyboard.** Space is the transport from anywhere except text entry
-  (buttons activate with Enter); Home returns to the start; M / S toggle
+  (`$lib/keys.ts` decides what counts as text entry; the project playlist
+  player uses the same rule; buttons activate with Enter); Home returns to the start; M / S toggle
   mute / solo for the focused row; arrows seek on a focused waveform.
 - **Peaks**: `lib/audio/peaks.ts` reduces a buffer to 1024 max-abs bins; the
   same function runs in the browser after an upload and the result is stored

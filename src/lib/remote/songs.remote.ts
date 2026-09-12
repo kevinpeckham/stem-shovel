@@ -1,4 +1,5 @@
 import { command, form, getRequestEvent } from "$app/server";
+import { scheduleMix } from "$lib/server/mix";
 import {
 	accountOfProject,
 	accountOfSong,
@@ -91,7 +92,9 @@ export const deleteSong = form(IdSchema, async ({ id }) => {
 export const deleteStem = form(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfStem, id);
-	if (!(await removeStem(accountId, id))) error(404, "Stem not found");
+	const removed = await removeStem(accountId, id);
+	if (!removed) error(404, "Stem not found");
+	scheduleMix([removed.songId]);
 	return { deleted: true };
 });
 

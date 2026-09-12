@@ -1,5 +1,6 @@
 import { claimPlayback, failPlayback, finishPlayback } from "$lib/server/data";
 import { deleteBlobs, playbackPathname, putBlob } from "$lib/server/blob";
+import { ensureOriginalMix } from "$lib/server/mix";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";
@@ -35,17 +36,26 @@ export function background(work: () => Promise<void>) {
 	ctx?.get?.()?.waitUntil?.(promise);
 }
 
-/** Renders the stems in turn (one ffmpeg at a time keeps memory flat). */
+/**
+ * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
+ * refreshes the cached original mix of every song touched.
+ */
 export function schedulePlayback(stemIds: string[]) {
 	if (stemIds.length === 0) return;
 	background(async () => {
-		for (const id of stemIds) await transcodeStem(id);
+		const songIds = new Set<string>();
+		for (const id of stemIds) {
+			const songId = await transcodeStem(id);
+			if (songId) songIds.add(songId);
+		}
+		for (const id of songIds) await ensureOriginalMix(id);
 	});
 }
 
-export async function transcodeStem(stemId: string): Promise<void> {
+/** Returns the stem's song id when a rendition was made, null when nothing was done. */
+export async function transcodeStem(stemId: string): Promise<string | null> {
 	const claim = await claimPlayback(stemId);
-	if (!claim) return;
+	if (!claim) return null;
 	if (!ffmpegPath) {
 		await failPlayback(stemId);
 		throw new Error("ffmpeg binary is not available on this platform");
@@ -91,6 +101,7 @@ export async function transcodeStem(stemId: string): Promise<void> {
 		const blob = await putBlob(pathname, bytes, "audio/mp4");
 		await finishPlayback(stemId, { url: blob.url, pathname, bytes: bytes.byteLength });
 		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
+		return claim.songId;
 	} catch (e) {
 		await failPlayback(stemId);
 		throw e;
