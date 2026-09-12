@@ -47,6 +47,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Adding a song is a popover** opened from an "Add Song" button beside the
   Songs heading on the project page (and from the empty state), replacing
   the form at the bottom of the page.
+- **Go to beginning** button on the transport, left of Play (Home does the
+  same from the keyboard).
 - **Two MP3 buttons** — "Original Mix (MP3)" and "Custom Mix (MP3)" — in
   place of one button with a toggle.
 - **Song settings are a popover** opened from the gear in the song header

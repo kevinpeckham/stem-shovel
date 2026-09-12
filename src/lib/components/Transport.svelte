@@ -48,6 +48,16 @@
 <div class="flex flex-wrap items-center gap-4">
 	<button
 		type="button"
+		class="grid h-14 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 text-neutral-100 transition-all hover-bg-white/10 hover-text-accent active:scale-95 disabled:(opacity-40 cursor-wait)"
+		aria-label="Go to beginning"
+		title="Go to beginning (Home)"
+		disabled={engine.status !== "ready"}
+		onclick={() => engine.seek(0)}
+	>
+		<span class="i-ph-skip-back-fill text-20px" aria-hidden="true"></span>
+	</button>
+	<button
+		type="button"
 		class="grid h-14 w-14 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:(opacity-40 cursor-wait)"
 		aria-label={engine.playing ? "Pause" : "Play"}
 		title={engine.status === "ready" ? undefined : "Decoding…"}
