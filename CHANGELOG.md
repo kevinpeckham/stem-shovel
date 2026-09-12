@@ -10,10 +10,6 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Download MP3** next to "Download Stems": a stereo MP3 mixdown rendered
-  on the server with ffmpeg. "Original" is the full mix (cached per set of
-  stem files); "Custom" is what is audible in the player — mute, solo and
-  faders. Migration 0008 adds the song's mix cache columns.
 - **Sign-in with Better Auth** (email + password; `/sign-in`, `/sign-up`,
   `/sign-out`). A new user gets their own account; existing users get a
   credential with `bun run db:set-password`. Anonymous visitors still see
@@ -21,35 +17,42 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   signed-in member. Tables `session`, `auth_account`, `verification`
   (migration 0006). No email verification or password reset yet (no email
   provider).
-
-- **No indexing**: robots.txt disallows everything, every page carries a
-  `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 - **Playback renditions**: after an upload the server renders an AAC M4A
   of the stem with ffmpeg (about a tenth of the WAV) and the player streams
   that; the source file stays for downloads. Missing renditions are rendered
   on first view of the song. Migration 0007 adds the `playback_*` columns.
+- **Download MP3** next to "Download Stems": a stereo MP3 mixdown rendered
+  on the server with ffmpeg. "Original" is the full mix (cached per set of
+  stem files); "Custom" is what is audible in the player — mute, solo and
+  faders. Migration 0008 adds the song's mix cache columns.
 - **Screenshot auth bypass** (replicator's `PREVIEW_AUTH_TOKEN`): with the
   token in `.env.local`, `bun run shot` renders pages as the Screenshot Bot
   user, enrolled per account with `bun run db:preview-bot <slug>`. Fail-closed
   when unset (`src/lib/server/previewAuth.ts`, docs/agent-screenshots.md).
+- **No indexing**: robots.txt disallows everything, every page carries a
+  `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 
 ### Changed
 
-- **Stems load three at a time** instead of one after another (fetch and
-  decode overlap); a six-stem song was ready in half the time on a fast
-  connection.
 - **Accounts are in the URL**: `/[account]/projects/…` and
   `/[account]/settings`; old `/projects…` and `/settings` addresses redirect
   to the user's first account. Viewing and playing are public by URL;
   uploading, renaming, deleting, settings and the editors need membership,
   which every mutation checks on the server (`src/lib/server/access.ts`)
   and pages use only to show or hide controls.
+- **Stems load three at a time** instead of one after another (fetch and
+  decode overlap); a six-stem song was ready in half the time on a fast
+  connection, and with the renditions a 50 Mbps connection went from 68 s
+  to 9 s until Play enables.
 - **Song settings are a popover** opened from the gear in the song header
   (native `popover="auto"`: top layer, Esc and click-outside close it). The
   delete-song action lives at the bottom of that panel.
-- Validation and error text uses `text-red-400`; the removed `solo`,
-  `playhead` and `oxfordDark` palette tokens are no longer referenced by
-  components.
+- **Layout and style pass** (brand font Bahiana, tiles and panels, two-column
+  song page); validation and error text uses `text-red-400`, and the removed
+  `solo`, `playhead` and `oxfordDark` palette tokens are no longer referenced
+  by components.
+- **Uploads report channels after the dual-mono collapse**, so a dual-mono
+  file gets a mono rendition.
 
 ## [0.1.0] - 2026-09-12
 
