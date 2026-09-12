@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Accounts are in the URL**: `/[account]/projects/…` and
+  `/[account]/settings`; old `/projects…` and `/settings` addresses redirect
+  to the user's first account. Viewing and playing are public by URL;
+  uploading, renaming, deleting, settings and the editors need membership,
+  which every mutation checks on the server (`src/lib/server/access.ts`)
+  and pages use only to show or hide controls.
+
 ## [0.1.0] - 2026-09-12
 
 First versioned release: the proof-of-concept player became a working

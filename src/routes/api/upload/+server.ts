@@ -1,3 +1,4 @@
+import { accountOfStemPathname, memberOf } from "$lib/server/access";
 import { findUploadingStem, recordStemUrl } from "$lib/server/data";
 import { blobAuth } from "$lib/server/blob";
 import { STEM_MAX_BYTES } from "$lib/slug";
@@ -20,7 +21,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			request,
 			...blobAuth(),
 			onBeforeGenerateToken: async (pathname) => {
-				const row = await findUploadingStem(locals.account.id, pathname);
+				const { accountId } = await memberOf(locals, accountOfStemPathname, pathname);
+				const row = await findUploadingStem(accountId, pathname);
 				if (!row) throw new Error(`No reserved stem for "${pathname}"`);
 				return {
 					allowedContentTypes: [row.contentType], // decided from the extension at reserve time

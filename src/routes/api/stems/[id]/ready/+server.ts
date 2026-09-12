@@ -1,3 +1,4 @@
+import { accountOfStem, memberOf } from "$lib/server/access";
 import { markStemReady } from "$lib/server/data";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
@@ -22,7 +23,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	) {
 		error(400, "url, durationSeconds, channels and peaks (0..1) are required");
 	}
-	const row = await markStemReady(locals.account.id, params.id, {
+	const { accountId } = await memberOf(locals, accountOfStem, params.id);
+	const row = await markStemReady(accountId, params.id, {
 		url,
 		durationSeconds,
 		channels,

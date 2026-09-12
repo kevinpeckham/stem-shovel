@@ -5,7 +5,8 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			user: { id: string; name: string; email: string };
-			account: { id: string; name: string; slug: string };
+			/** Accounts the user belongs to; the URL's [account] must be one of them. */
+			memberships: { accountId: string; slug: string; name: string; role: string }[];
 		}
 		// interface PageData {}
 		// interface PageState {}

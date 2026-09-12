@@ -126,7 +126,7 @@
 	<header class="grid gap-3">
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
 			<div>
-				<a class="text-sm link-dim" href="/projects/{data.song.project.slug}"
+				<a class="text-sm link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
 					>{data.song.project.name}</a
 				>
 				<h1 class="display">{data.song.title}</h1>
@@ -134,25 +134,27 @@
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 				{/if}
 			</div>
-			<button
-				class="text-sm link-dim"
-				type="button"
-				aria-expanded={settingsOpen}
-				onclick={() => (settingsOpen = !settingsOpen)}
-			>
-				{settingsOpen ? "Close settings" : "Settings"}
-			</button>
-			<form
-				{...deleteSong.enhance(async ({ submit }) => {
-					if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
-					await submit();
-				})}
-			>
-				<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
-				<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
-					{deleteSong.pending ? "Deleting…" : "Delete song"}
+			{#if data.canEdit}
+				<button
+					class="text-sm link-dim"
+					type="button"
+					aria-expanded={settingsOpen}
+					onclick={() => (settingsOpen = !settingsOpen)}
+				>
+					{settingsOpen ? "Close settings" : "Settings"}
 				</button>
-			</form>
+				<form
+					{...deleteSong.enhance(async ({ submit }) => {
+						if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
+						await submit();
+					})}
+				>
+					<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
+					<button class="text-sm link-dim disabled:opacity-50" disabled={!!deleteSong.pending}>
+						{deleteSong.pending ? "Deleting…" : "Delete song"}
+					</button>
+				</form>
+			{/if}
 		</div>
 		{#if settingsOpen}
 			<form
@@ -300,20 +302,22 @@
 							</span>
 						</span>
 						<span class="flex items-center gap-3">
-							<label class="cursor-pointer link-dim">
-								Upload file
-								<input
-									class="sr-only"
-									type="file"
-									accept={STEM_ACCEPT}
-									disabled={!!job}
-									onchange={(e) => replaceStem(stem.id, e.currentTarget)}
-								/>
-							</label>
-							<form {...remove}>
-								<input {...remove.fields.id.as("hidden", stem.id)} />
-								<button class="link-dim" disabled={!!remove.pending}>Remove</button>
-							</form>
+							{#if data.canEdit}
+								<label class="cursor-pointer link-dim">
+									Upload file
+									<input
+										class="sr-only"
+										type="file"
+										accept={STEM_ACCEPT}
+										disabled={!!job}
+										onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+									/>
+								</label>
+								<form {...remove}>
+									<input {...remove.fields.id.as("hidden", stem.id)} />
+									<button class="link-dim" disabled={!!remove.pending}>Remove</button>
+								</form>
+							{/if}
 						</span>
 						{#if job?.error}<p class="w-full text-xs text-solo">{job.error}</p>{/if}
 					</li>
@@ -340,7 +344,10 @@
 					>
 				{/each}
 			</div>
-			<a class="text-sm link-dim" href="/projects/{data.song.project.slug}/{data.song.slug}/{doc}">
+			<a
+				class="text-sm link-dim {data.canEdit ? '' : 'hidden'}"
+				href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
+			>
 				{data.docs[doc]
 					? `Edit ${DOC_LABELS[doc].toLowerCase()}`
 					: `Add ${DOC_LABELS[doc].toLowerCase()}`}
@@ -361,12 +368,14 @@
 
 {#snippet headerExtras()}
 	<div class="flex flex-wrap items-center gap-2">
-		<StemUploader
-			songId={data.song.id}
-			stemCount={data.song.stems.length}
-			bind:jobs={uploadJobs}
-			bind:notice={uploadNotice}
-		/>
+		{#if data.canEdit}
+			<StemUploader
+				songId={data.song.id}
+				stemCount={data.song.stems.length}
+				bind:jobs={uploadJobs}
+				bind:notice={uploadNotice}
+			/>
+		{/if}
 		{#if ready.length > 0}
 			<button class="button" type="button" disabled={!!zipping} onclick={downloadAll}>
 				<span class="i-ph-download-simple" aria-hidden="true"></span>
@@ -401,43 +410,47 @@
 				>
 					<span class="i-ph-download-simple mr-2" aria-hidden="true"></span>Download
 				</button>
-				<button
-					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
-					type="button"
-					onclick={() => rename(stem.id, stem.label)}
-				>
-					<span class="i-ph-pencil-simple mr-2" aria-hidden="true"></span>Rename
-				</button>
-				<label class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10">
-					<span class="i-ph-upload-simple mr-2" aria-hidden="true"></span>{job
-						? job.stage === "uploading"
-							? `Uploading ${Math.round(job.percent)}%`
-							: job.stage
-						: "Upload new version"}
-					<input
-						class="sr-only"
-						type="file"
-						accept={STEM_ACCEPT}
-						disabled={!!job}
-						onchange={(e) => replaceStem(stem.id, e.currentTarget)}
-					/>
-				</label>
-				<form
-					{...remove.enhance(async ({ submit }) => {
-						if (!confirm(`Remove "${stem.label}" and its file?`)) return;
-						await submit();
-					})}
-				>
-					<input {...remove.fields.id.as("hidden", stem.id)} />
+				{#if data.canEdit}
 					<button
-						class="block w-full rounded px-3 py-1.5 text-left text-solo hover:bg-white/10"
-						disabled={!!remove.pending}
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						type="button"
+						onclick={() => rename(stem.id, stem.label)}
 					>
-						<span class="i-ph-trash mr-2" aria-hidden="true"></span>{remove.pending
-							? "Removing…"
-							: "Remove"}
+						<span class="i-ph-pencil-simple mr-2" aria-hidden="true"></span>Rename
 					</button>
-				</form>
+					<label
+						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10"
+					>
+						<span class="i-ph-upload-simple mr-2" aria-hidden="true"></span>{job
+							? job.stage === "uploading"
+								? `Uploading ${Math.round(job.percent)}%`
+								: job.stage
+							: "Upload new version"}
+						<input
+							class="sr-only"
+							type="file"
+							accept={STEM_ACCEPT}
+							disabled={!!job}
+							onchange={(e) => replaceStem(stem.id, e.currentTarget)}
+						/>
+					</label>
+					<form
+						{...remove.enhance(async ({ submit }) => {
+							if (!confirm(`Remove "${stem.label}" and its file?`)) return;
+							await submit();
+						})}
+					>
+						<input {...remove.fields.id.as("hidden", stem.id)} />
+						<button
+							class="block w-full rounded px-3 py-1.5 text-left text-solo hover:bg-white/10"
+							disabled={!!remove.pending}
+						>
+							<span class="i-ph-trash mr-2" aria-hidden="true"></span>{remove.pending
+								? "Removing…"
+								: "Remove"}
+						</button>
+					</form>
+				{/if}
 				{#if job?.error}<p class="px-3 py-1 text-xs text-solo">{job.error}</p>{/if}
 			</div>
 		</details>

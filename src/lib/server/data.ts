@@ -11,8 +11,9 @@ import * as v from "valibot";
 
 /**
  * Every function takes the caller's accountId first and scopes by it, so a
- * row from another tenant is simply "not found". Callers get it from
- * `event.locals.account` (see hooks.server.ts).
+ * row from another tenant is simply "not found". Callers get it from the
+ * URL's [account] (checked against locals.memberships) or from the entity's
+ * own account via src/lib/server/access.ts.
  */
 
 const { account, project, song, stem, songDocVersion } = schema;
@@ -140,23 +141,24 @@ export async function updateProject(
 	return { ok: true, project: row };
 }
 
-/** Slug of a project by id, scoped to the account. */
-export async function projectSlug(accountId: string, projectId: string) {
+/** Account + project slugs of a project by id, scoped to the account. */
+export async function projectSlugs(accountId: string, projectId: string) {
 	const row = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
 		columns: { slug: true },
+		with: { account: { columns: { slug: true } } },
 	});
-	return row?.slug ?? null;
+	return row ? { account: row.account.slug, project: row.slug } : null;
 }
 
-/** Project + song slugs of a song by id, scoped to the account. */
+/** Account + project + song slugs of a song by id, scoped to the account. */
 export async function songSlugs(accountId: string, songId: string) {
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { slug: true },
-		with: { project: { columns: { slug: true } } },
+		with: { project: { columns: { slug: true } }, account: { columns: { slug: true } } },
 	});
-	return row ? { project: row.project.slug, song: row.slug } : null;
+	return row ? { account: row.account.slug, project: row.project.slug, song: row.slug } : null;
 }
 
 export function getProject(accountId: string, slug: string) {

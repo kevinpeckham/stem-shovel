@@ -26,17 +26,19 @@
 <main class="page">
 	<header class="flex flex-wrap items-baseline justify-between gap-4">
 		<div>
-			<a class="text-sm link-dim" href="/projects">Projects</a>
+			<a class="text-sm link-dim" href="/{data.account.slug}/projects">Projects</a>
 			<h1 class="display">{data.project.name}</h1>
 		</div>
-		<button
-			class="text-sm link-dim"
-			type="button"
-			aria-expanded={open}
-			onclick={() => (open = !open)}
-		>
-			{open ? "Close settings" : "Settings"}
-		</button>
+		{#if data.canEdit}
+			<button
+				class="text-sm link-dim"
+				type="button"
+				aria-expanded={open}
+				onclick={() => (open = !open)}
+			>
+				{open ? "Close settings" : "Settings"}
+			</button>
+		{/if}
 	</header>
 
 	{#if open}
@@ -70,7 +72,7 @@
 				<label class="block">
 					<span class="text-sm text-dim">URL</span>
 					<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-						<span class="pl-3 text-sm text-dim">/projects/</span>
+						<span class="pl-3 text-sm text-dim">/{data.account.slug}/projects/</span>
 						<input
 							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
 							{...fields.slug.as("text", data.project.slug)}
@@ -120,7 +122,7 @@
 				<li>
 					<a
 						class="flex items-baseline justify-between gap-4 px-4 py-3 hover:underline"
-						href="/projects/{data.project.slug}/{song.slug}"
+						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
 						<span>
 							{song.title}
@@ -140,20 +142,22 @@
 		</ul>
 	{/if}
 
-	<form class="mt-8 flex items-end gap-3" {...createSong}>
-		<input {...createSong.fields.projectId.as("hidden", data.project.id)} />
-		<label class="grow">
-			<span class="text-sm text-dim">New song</span>
-			<input
-				class="mt-1 field"
-				{...createSong.fields.title.as("text")}
-				placeholder="Song title"
-				required
-			/>
-		</label>
-		<button class="button-accent" disabled={!!createSong.pending}>Create</button>
-	</form>
-	{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
-		<p class="mt-2 text-sm text-solo">{issue.message}</p>
-	{/each}
+	{#if data.canEdit}
+		<form class="mt-8 flex items-end gap-3" {...createSong}>
+			<input {...createSong.fields.projectId.as("hidden", data.project.id)} />
+			<label class="grow">
+				<span class="text-sm text-dim">New song</span>
+				<input
+					class="mt-1 field"
+					{...createSong.fields.title.as("text")}
+					placeholder="Song title"
+					required
+				/>
+			</label>
+			<button class="button-accent" disabled={!!createSong.pending}>Create</button>
+		</form>
+		{#each createSong.fields.title.issues() ?? [] as issue (issue.message)}
+			<p class="mt-2 text-sm text-solo">{issue.message}</p>
+		{/each}
+	{/if}
 </main>

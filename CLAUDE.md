@@ -45,7 +45,12 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   Migrations are generated and committed; when a change would make
   drizzle-kit ask about a rename, split it into two generates.
 - **Every query is scoped by `accountId` first** (`src/lib/server/data.ts`);
-  a row from another tenant is "not found".
+  a row from another tenant is "not found". The account comes from the URL
+  (`/[account]/…`, resolved in `[account]/+layout.server.ts`) for pages, and
+  from the entity itself (`src/lib/server/access.ts`: `memberOf`,
+  `accountOf*`) for mutations. **Viewing is public by URL; editing needs
+  membership** — gate controls on `data.canEdit`, never rely on it for
+  security.
 - **Styling is UnoCSS only**: utilities and the shortcuts inline in
   `uno.config.ts` (no stylesheets, no `<style>`, no abstraction of the config
   into modules). Follow lj-website for page structure (`page` wrapper,

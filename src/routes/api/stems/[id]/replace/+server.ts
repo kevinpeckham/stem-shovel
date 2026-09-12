@@ -1,3 +1,4 @@
+import { accountOfStem, memberOf } from "$lib/server/access";
 import { reserveStemReplacement } from "$lib/server/data";
 import { STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
 import { error, json } from "@sveltejs/kit";
@@ -12,7 +13,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!contentType)
 		error(415, `"${filename}" is not a supported stem format (${STEM_FORMAT_LIST})`);
 	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-stem limit");
-	const row = await reserveStemReplacement(locals.account.id, params.id, {
+	const { accountId } = await memberOf(locals, accountOfStem, params.id);
+	const row = await reserveStemReplacement(accountId, params.id, {
 		filename,
 		contentType,
 		sizeBytes,

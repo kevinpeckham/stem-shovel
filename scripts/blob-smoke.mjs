@@ -13,6 +13,7 @@ import { parse as devalueParse } from "devalue";
 import { readFile } from "node:fs/promises";
 
 const base = process.env.SMOKE_BASE ?? "http://localhost:5173";
+const account = process.env.SMOKE_ACCOUNT ?? "lightning-jar";
 const names = (process.argv[2] ?? "kick,hats,bass,keys").split(",");
 const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
 
@@ -77,7 +78,11 @@ function analyzeWav(buf, bins = 1024) {
 	return { durationSeconds: frames / sampleRate, channels, peaks };
 }
 
+const accountId = (await (await fetch(`${base}/${account}/projects`)).text()).match(
+	/name="accountId"[^>]*value="([^"]+)"/,
+)?.[1];
 const projectUrl = await remoteForm("projects.remote.ts", "createProject", {
+	accountId,
 	name: `Smoke ${stamp}`,
 });
 const projectId = (await (await fetch(`${base}${projectUrl}`)).text()).match(
@@ -115,5 +120,5 @@ for (const n of names) {
 }
 
 const page = await (await fetch(`${base}${songUrl}`)).text();
-const ready = (page.match(/\d+ stems/) ?? ["?"])[0];
+const ready = (page.match(/\d+ (?:stem|stems)(?=,|<)/) ?? ["?"])[0];
 console.log(`song page reports: ${ready} · open ${base}${songUrl}`);

@@ -65,7 +65,12 @@ Migrations are committed and applied from a developer machine, not during
 the Vercel build. When a change would make drizzle-kit ask about a rename,
 split it into two generates (drop, then add).
 
-**No sign-in yet.** `src/hooks.server.ts` puts the seeded owner of the
-`lightning-jar` account on `event.locals`; every server function takes
-`accountId` from there and scopes its queries by it. Adding Better Auth
-replaces the hook, not the queries.
+**No sign-in yet.** `src/hooks.server.ts` puts the seeded user and their
+account memberships on `event.locals`. The account is chosen by the URL
+(`/[account]/…`): `[account]/+layout.server.ts` resolves it for anyone
+(viewing and playing are public by URL) and reports `canEdit` — whether the
+user is a member — which pages use only to show or hide controls. Every
+mutation (remote functions, API routes) and the editor and settings pages
+check membership themselves through `src/lib/server/access.ts`, deriving the
+account from the entity being touched rather than from the request. Adding
+Better Auth replaces the hook's principal, not the checks.

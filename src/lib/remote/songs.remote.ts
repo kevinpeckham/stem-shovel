@@ -1,9 +1,10 @@
 import { command, form, getRequestEvent } from "$app/server";
+import { accountOfProject, accountOfSong, accountOfStem, memberOf } from "$lib/server/access";
 import {
 	createSong as create,
 	deleteSong as removeSong,
 	deleteStem as removeStem,
-	projectSlug,
+	projectSlugs,
 	renameStem as rename,
 	saveSongDoc,
 	songSlugs,
@@ -18,27 +19,23 @@ import {
 } from "$lib/val/SongSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
-/** Who is acting. Until sign-in exists this is the seeded owner (hooks.server.ts). */
-function requireAccount() {
-	const { locals } = getRequestEvent();
-	return { accountId: locals.account.id, userId: locals.user.id };
-}
-
 /**
- * Song settings: title, URL slug and description. Same shape as the project
- * form: schema validates the fields, the handler reports uniqueness through
- * `invalid()`, and a slug change redirects to the song's new address.
+ * Song mutations. The account is never taken from the request: each handler
+ * looks up the entity's account and checks the caller's membership
+ * (src/lib/server/access.ts), then scopes the data call by it.
  */
+
+/** Title, URL slug and description; a slug change redirects to the new address. */
 export const updateSong = form(
 	SongSettingsSchema,
 	async ({ id, title, slug, description }, issue) => {
-		const { accountId } = requireAccount();
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfSong, id);
 		const result = await update(accountId, id, { title, slug, description });
 		if (!result.ok) invalid(issue[result.field](result.error));
-		// Land on the (possibly new) address; derived from data, not the request URL.
 		const slugs = await songSlugs(accountId, id);
 		if (!slugs) error(404, "Song not found");
-		redirect(303, `/projects/${slugs.project}/${slugs.song}`);
+		redirect(303, `/${slugs.account}/projects/${slugs.project}/${slugs.song}`);
 	},
 );
 
@@ -51,8 +48,9 @@ export const updateSong = form(
 export const saveDoc = form(
 	SongDocSaveSchema,
 	async ({ songId, kind, markdown, confirmEmpty }, issue) => {
-		const { accountId, userId } = requireAccount();
-		const result = await saveSongDoc(accountId, userId, songId, kind, markdown, {
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfSong, songId);
+		const result = await saveSongDoc(accountId, locals.user.id, songId, kind, markdown, {
 			confirmEmpty: confirmEmpty === "true",
 		});
 		if (!result.ok) {
@@ -65,32 +63,36 @@ export const saveDoc = form(
 
 /** New song in a project; lands on its page. */
 export const createSong = form(SongCreateSchema, async ({ projectId, title }) => {
-	const { accountId, userId } = requireAccount();
-	const slug = await projectSlug(accountId, projectId);
-	if (!slug) error(404, "Project not found");
-	const row = await create(accountId, userId, projectId, title);
-	redirect(303, `/projects/${slug}/${row.slug}`);
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfProject, projectId);
+	const slugs = await projectSlugs(accountId, projectId);
+	if (!slugs) error(404, "Project not found");
+	const row = await create(accountId, locals.user.id, projectId, title);
+	redirect(303, `/${slugs.account}/projects/${slugs.project}/${row.slug}`);
 });
 
 /** Deletes the song, its stems and their blobs; lands on the project. */
 export const deleteSong = form(IdSchema, async ({ id }) => {
-	const { accountId } = requireAccount();
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
 	const slugs = await songSlugs(accountId, id);
 	if (!slugs) error(404, "Song not found");
 	await removeSong(accountId, id);
-	redirect(303, `/projects/${slugs.project}`);
+	redirect(303, `/${slugs.account}/projects/${slugs.project}`);
 });
 
-/** Deletes one stem and its blob. Used with `.for(stem.id)` in the Files list. */
+/** Deletes one stem and its blob. Used with `.for(stem.id)` in the row menu. */
 export const deleteStem = form(IdSchema, async ({ id }) => {
-	const { accountId } = requireAccount();
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfStem, id);
 	if (!(await removeStem(accountId, id))) error(404, "Stem not found");
 	return { deleted: true };
 });
 
 /** Relabels a stem. A command (not a form): called from the row menu's prompt. */
 export const renameStem = command(StemRenameSchema, async ({ id, label }) => {
-	const { accountId } = requireAccount();
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfStem, id);
 	const row = await rename(accountId, id, label);
 	if (!row) error(404, "Stem not found");
 	return row;

@@ -1,3 +1,4 @@
+import { accountOfSong, memberOf } from "$lib/server/access";
 import { createStem } from "$lib/server/data";
 import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
 import { error, json } from "@sveltejs/kit";
@@ -15,7 +16,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(415, `"${filename}" is not a supported stem format (${STEM_FORMAT_LIST})`);
 	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-stem limit");
 
-	const row = await createStem(locals.account.id, locals.user.id, songId, {
+	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const row = await createStem(accountId, locals.user.id, songId, {
 		filename,
 		contentType,
 		sizeBytes,

@@ -137,7 +137,9 @@
 	<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
 
 	<header class="flex flex-wrap items-center gap-3">
-		<a class="text-sm link-dim" href="/projects/{data.song.project.slug}/{data.song.slug}"
+		<a
+			class="text-sm link-dim"
+			href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}"
 			>← {data.song.title}</a
 		>
 		<h1 class="grow display">{label}</h1>

@@ -20,13 +20,21 @@ bun run stems        # generates 4 synthetic WAV stems + manifest into static/st
 bun run dev          # open http://localhost:5173/
 ```
 
-Pages: `/projects` lists and creates projects; `/projects/[project]` lists
-and creates songs and edits the project's name and URL; `/projects/[project]/
-[song]` plays a song (each row's ⋯ menu downloads, renames, replaces or
-removes the stem), adds stems, downloads them all, shows the chart or lyrics
-and edits the song's title, URL and description;
-`/projects/[project]/[song]/chart` and `…/lyrics` edit those documents;
-`/settings` is the account; `/test` plays the static files.
+URLs carry the account: `/[account]/projects` lists and creates projects;
+`/[account]/projects/[project]` lists and creates songs and edits the
+project's name and URL; `/[account]/projects/[project]/[song]` plays a song
+(each row's ⋯ menu downloads, renames, replaces or removes the stem), adds
+stems, downloads them all, shows the chart or lyrics and edits the song's
+title, URL and description; `…/[song]/chart` and `…/lyrics` edit those
+documents; `/[account]/settings` is the account. `/test` plays the static
+files. Old `/projects…` and `/settings` addresses redirect to the user's
+first account.
+
+**Viewing is public, editing needs membership.** Anyone with a URL can open
+an account's projects and play its songs; the controls (upload, rename,
+delete, settings, the editors) appear only for members, and every mutation
+checks membership on the server regardless. There is no sign-in yet, so
+every request is the seeded owner — see [docs/environment.md](docs/environment.md).
 
 ## Configuration
 
@@ -118,5 +126,5 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
 6. Auth (Better Auth, as in replicator) before going public; today every
    request is the seeded owner.
-7. Accounts in the URL (`/[account]/…`), stem ordering, saved mixes,
-   document version restore UI.
+7. ~~Accounts in the URL.~~ Done. Stem ordering, saved mixes, document
+   version restore UI.

@@ -6,7 +6,7 @@
 	let { children, data } = $props();
 </script>
 
-<GlobalNav account={data.account} />
+<GlobalNav memberships={data.memberships} />
 <div class="min-w-0">
 	{@render children()}
 </div>

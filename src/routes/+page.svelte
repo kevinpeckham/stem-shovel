@@ -1,3 +1,7 @@
+<script lang="ts">
+	let { data } = $props();
+</script>
+
 <main class="page min-h-screen">
 	<h1 class="display">Stem Shovel</h1>
 	<p class="mt-2 max-w-prose text-17px opacity-90">
@@ -5,7 +9,9 @@
 		mute and solo, and keep the chart and lyrics beside them.
 	</p>
 	<div class="mt-8 flex flex-wrap gap-3">
-		<a class="button-accent" href="/projects">Projects →</a>
+		{#each data.memberships as m (m.accountId)}
+			<a class="button-accent" href="/{m.slug}/projects">{m.name} →</a>
+		{/each}
 		<a class="button" href="/test">Static test page</a>
 	</div>
 </main>

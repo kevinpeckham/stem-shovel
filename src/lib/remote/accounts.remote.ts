@@ -1,6 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
 import { updateAccount as update } from "$lib/server/data";
 import { AccountSettingsSchema } from "$lib/val/AccountSchema";
+import { requireMember } from "$lib/server/access";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -9,8 +10,11 @@ import { error, invalid, redirect } from "@sveltejs/kit";
  */
 export const updateAccount = form(AccountSettingsSchema, async ({ id, name, slug }, issue) => {
 	const { locals } = getRequestEvent();
-	if (id !== locals.account.id) error(403, "Not your account");
+	const m = requireMember(locals, id);
+	if (m.role !== "owner" && m.role !== "admin") {
+		error(403, "Only owners and admins can change account settings");
+	}
 	const result = await update(id, { name, slug });
 	if (!result.ok) invalid(issue[result.field](result.error));
-	redirect(303, "/settings");
+	redirect(303, `/${result.account.slug}/settings`);
 });

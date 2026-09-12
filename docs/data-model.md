@@ -231,9 +231,11 @@ stems ordered by `sort_order`; `peaks` from the row lets the waveform draw
 before the audio finishes decoding.
 
 **Until there is auth.** Seed one `account` ("Lightning Jar"), one `user`
-(Kevin) and an `owner` membership. A `hooks.server.ts` stub puts that user on
-`event.locals`. Every server function takes `accountId` from locals, so the
-switch to Better Auth is a change to the hook, not to the queries.
+(Kevin) and an `owner` membership. `hooks.server.ts` puts the user and their
+memberships on `event.locals`; the URL's `[account]` segment picks the
+account. Viewing is public by URL; editing requires membership, checked per
+mutation against the entity's own account, so the switch to Better Auth is a
+change to the hook, not to the queries.
 
 ## Wiring
 
