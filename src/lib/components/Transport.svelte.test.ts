@@ -1,8 +1,9 @@
 import { fakeEngine } from "../../../tests/helpers/fakeEngine";
 import { barGrid } from "$lib/audio/measures";
+import { readout } from "$lib/audio/readout.svelte";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import Transport from "./Transport.svelte";
 
 const grid = barGrid(
@@ -14,37 +15,36 @@ const grid = barGrid(
 );
 
 describe("Transport", () => {
+	// The readout choice is module state shared by every test; start each one on automatic.
+	beforeEach(() => {
+		readout.mode = null;
+		localStorage.clear();
+	});
 	test("Play is disabled until every stem has decoded", () => {
 		render(Transport, { props: { engine: fakeEngine({ status: "loading" }) } });
 		expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
 	});
-	test("the readout shows position over duration", () => {
-		render(Transport, { props: { engine: fakeEngine({ position: 88.25 }) } });
-		expect(screen.getByRole("button", { name: /Readout format/ })).toHaveTextContent(
-			"1:28.3 / 4:16.7",
-		);
+	test("the readout shows the position as timecode by default", () => {
+		render(Transport, { props: { engine: fakeEngine({ position: 88.25 }), fps: 25 } });
+		expect(screen.getByRole("button", { name: /Readout format/ })).toHaveTextContent("01:28:06.20");
 	});
-	test("clicking the readout cycles time → timecode → bars when there is a grid", async () => {
+	test("with a tempo and meter the readout defaults to bars; a click toggles to timecode and back", async () => {
 		const user = userEvent.setup();
 		render(Transport, { props: { engine: fakeEngine({ position: 88.25 }), grid, fps: 25 } });
-		const readout = screen.getByRole("button", { name: /Readout format/ });
-		expect(readout).toHaveTextContent("1:28.3");
-		await user.click(readout);
-		expect(readout).toHaveTextContent("01:28:06.20");
-		await user.click(readout);
-		expect(readout).toHaveTextContent("45|1");
-		await user.click(readout);
-		expect(readout).toHaveTextContent("1:28.3");
+		const button = screen.getByRole("button", { name: /Readout format/ });
+		expect(button).toHaveTextContent("45 | 1");
+		await user.click(button);
+		expect(button).toHaveTextContent("01:28:06.20");
+		await user.click(button);
+		expect(button).toHaveTextContent("45 | 1");
 	});
-	test("without a grid the cycle skips bars", async () => {
+	test("without a grid the readout stays on timecode", async () => {
 		const user = userEvent.setup();
-		render(Transport, { props: { engine: fakeEngine({ position: 10 }) } });
+		render(Transport, { props: { engine: fakeEngine({ position: 10 }), fps: 25 } });
 		const readout = screen.getByRole("button", { name: /Readout format/ });
-		expect(readout).toHaveTextContent("0:10.0");
-		await user.click(readout);
 		expect(readout).toHaveTextContent("00:10:00.00");
 		await user.click(readout);
-		expect(readout).toHaveTextContent("0:10.0");
+		expect(readout).toHaveTextContent("00:10:00.00");
 	});
 	test("Go to beginning seeks to 0 and Play toggles", async () => {
 		const user = userEvent.setup();

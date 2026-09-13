@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { barGrid, formatBarSpan, formatPosition } from "$lib/audio/measures";
-	import { readout } from "$lib/audio/readout.svelte";
+	import { readoutMode } from "$lib/audio/readout.svelte";
 	import { type SongChange } from "$lib/val/SongChangeSchema";
 	import { formatSongChange } from "$lib/utils/formatSongChange";
 	import { timelineKinds } from "$lib/utils/timelineKinds";
@@ -21,7 +21,7 @@
 
 	let { engine, sections, changes = [], startAt = null, endAt = null, fps = 25 }: Props = $props();
 	let ctx = $derived({ fps, grid: barGrid(changes, startAt) });
-	const at = (seconds: number) => formatPosition(readout.mode, seconds, ctx);
+	const at = (seconds: number) => formatPosition(readoutMode(!!ctx.grid), seconds, ctx);
 
 	// Each block runs from its start to the next start (the last to the end).
 	// Laid out on the same grid as a stem row so the blocks sit over the waveforms.

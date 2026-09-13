@@ -19,6 +19,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Readout formats are timecode and bars** — digital time is gone from the
+  display. A song with a tempo and a time signature shows bars by default;
+  clicking the readout switches and the choice is remembered. Bars read as
+  `45 | 1`, and positions typed with spaces around the bars parse too.
 - **Project settings are a popover** opened from a gear in the project
   header, matching the song page, instead of a form that unfolded in place.
 

@@ -6,7 +6,7 @@
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "$lib/audio/measures";
-	import { readout } from "$lib/audio/readout.svelte";
+	import { readoutMode } from "$lib/audio/readout.svelte";
 	import { type SongChange } from "$lib/val/SongChangeSchema";
 	import { timelineKinds } from "$lib/utils/timelineKinds";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
@@ -104,7 +104,7 @@
 					type="button"
 					disabled={engine.status !== "ready"}
 					title="Mark a section starting at the current position ({formatPosition(
-						readout.mode,
+						readoutMode(!!barGrid(changes, startAt)),
 						engine.position,
 						{ fps, grid: barGrid(changes, startAt) },
 					)})"

@@ -36,11 +36,11 @@ describe("SectionTimeline", () => {
 		await user.click(screen.getByRole("tab", { name: "II" }));
 		expect(seek).toHaveBeenCalledWith(90);
 	});
-	test("without a tempo and meter the tooltip falls back to the time range", () => {
+	test("without a tempo and meter the tooltip falls back to the timecode range", () => {
 		render(SectionTimeline, { props: { engine: fakeEngine(), sections } });
 		expect(screen.getByRole("tab", { name: "I" })).toHaveAttribute(
 			"title",
-			"I · Intro · 0:00.0 – 1:30.0",
+			"I · Intro · 00:00:00.00 – 01:30:00.00",
 		);
 	});
 	test("a kind with a single change at 0:00 draws no marker; a change does, and the one in force is highlighted", () => {
@@ -50,8 +50,8 @@ describe("SectionTimeline", () => {
 		});
 		const markers = screen.getAllByTitle(/ from /);
 		expect(markers.map((m) => m.getAttribute("title"))).toEqual([
-			"120 bpm from 0:00.0",
-			"140 bpm from 1:00.0",
+			"120 bpm from 1 | 1",
+			"140 bpm from 31 | 1",
 		]);
 		expect(markers[1].className).toContain("border-maximumYellow");
 		expect(markers[0].className).not.toContain("border-maximumYellow");

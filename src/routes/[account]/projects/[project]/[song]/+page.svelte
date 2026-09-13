@@ -5,7 +5,7 @@
 	import { bumpVersion } from "$lib/utils/bumpVersion";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { parseBarsText } from "$lib/utils/parseBarsText";
-	import { readout } from "$lib/audio/readout.svelte";
+	import { readoutMode } from "$lib/audio/readout.svelte";
 	import { FRAME_RATES } from "$lib/constants/frameRates";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import { formatMonth } from "$lib/utils/formatMonth";
@@ -65,11 +65,11 @@
 		fps: data.song.frameRate,
 		grid: barGrid(data.song.changes, data.song.startAt),
 	});
-	const showPos = (seconds: number) => formatPosition(readout.mode, seconds, posCtx);
+	let mode = $derived(readoutMode(!!posCtx.grid));
+	const showPos = (seconds: number) => formatPosition(mode, seconds, posCtx);
 	// Editors show full precision (milliseconds, beat fractions) so a row that
 	// is saved unedited keeps its exact seconds; see rowSeconds.
-	const editPos = (seconds: number) =>
-		formatPosition(readout.mode, seconds, posCtx, { precise: true });
+	const editPos = (seconds: number) => formatPosition(mode, seconds, posCtx, { precise: true });
 	/** The exact stored seconds when the text was not touched, else what the text says (null = not a position). */
 	const rowSeconds = (row: { time: string; shown: string; seconds: number | null }) =>
 		row.seconds !== null && row.time.trim() === row.shown ? row.seconds : readPos(row.time);
@@ -616,7 +616,7 @@
 						<span class="mt-1 flex items-center gap-2">
 							<input
 								class="field font-mono text-sm"
-								placeholder={POSITION_PLACEHOLDER[readout.mode]}
+								placeholder={POSITION_PLACEHOLDER[mode]}
 								autocomplete="off"
 								bind:value={startAtEntry}
 								aria-label="Start of bar 1"
@@ -644,7 +644,7 @@
 						<span class="mt-1 flex items-center gap-2">
 							<input
 								class="field font-mono text-sm"
-								placeholder={POSITION_PLACEHOLDER[readout.mode]}
+								placeholder={POSITION_PLACEHOLDER[mode]}
 								autocomplete="off"
 								bind:value={endAtEntry}
 								aria-label="End"
@@ -695,7 +695,7 @@
 						</select>
 					</label>
 					<p class="text-xs text-dim self-end pb-2">
-						Positions read and are typed as {POSITION_MODE_LABELS[readout.mode].toLowerCase()} — the transport's
+						Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
 						readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3) is accepted
 						anywhere.
 					</p>
@@ -774,7 +774,7 @@
 								/>
 								<input
 									class="field font-mono text-sm"
-									placeholder={POSITION_PLACEHOLDER[readout.mode]}
+									placeholder={POSITION_PLACEHOLDER[mode]}
 									bind:value={row.time}
 									aria-label="Start time"
 								/>
@@ -838,7 +838,7 @@
 							<div class="grid grid-cols-[6rem_9rem_1fr_auto] items-center gap-2">
 								<input
 									class="field font-mono text-sm"
-									placeholder={POSITION_PLACEHOLDER[readout.mode]}
+									placeholder={POSITION_PLACEHOLDER[mode]}
 									bind:value={row.time}
 									aria-label="Change time"
 								/>
@@ -1234,7 +1234,9 @@
 {/if}
 
 {#snippet headerExtras(engine?: StemEngine)}
-	<div class="flex flex-wrap items-center gap-2">
+	<div
+		class="flex flex-wrap items-center gap-3 w-full border py-4 px-3 rounded-md border-current/40 bg-blue-300/5 text-15px"
+	>
 		{#if data.canEdit}
 			<StemUploader
 				songId={data.song.id}
@@ -1246,7 +1248,7 @@
 		{/if}
 		{#if ready.length > 0}
 			<button
-				class="button button-sm"
+				class="button button-xs"
 				type="button"
 				disabled={!!zipping}
 				onclick={downloadAll}
@@ -1256,7 +1258,7 @@
 				{zipping ?? "Download Stems"}
 			</button>
 			<button
-				class="button button-sm"
+				class="button button-xs"
 				type="button"
 				disabled={!!mixing}
 				onclick={() => downloadMix("original", engine)}
@@ -1266,7 +1268,7 @@
 				{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
 			</button>
 			<button
-				class="button button-sm"
+				class="button button-xs"
 				type="button"
 				disabled={!!mixing}
 				onclick={() => downloadMix("custom", engine)}

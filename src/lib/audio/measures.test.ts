@@ -83,16 +83,15 @@ describe("parsePosition / formatPosition", () => {
 	test("bars need a grid", () => {
 		expect(parsePosition("5|3", { fps: 25, grid: null })).toBeNull();
 	});
-	test("formats in each mode; precise editors keep fractions", () => {
-		expect(formatPosition("time", 88.25, ctx)).toBe("1:28.3"); // toFixed rounds the half up
-		expect(formatPosition("time", 88.25, ctx, { precise: true })).toBe("1:28.250");
+	test("formats in each mode; precise editors keep fractions; plain time still parses", () => {
+		expect(parsePosition("1:28.25", ctx)).toBe(88.25);
 		expect(formatPosition("timecode", 10, ctx)).toBe("00:10:00.00");
-		expect(formatPosition("bars", 88.25, ctx)).toBe("45|1");
-		expect(formatPosition("bars", 88.25, ctx, { precise: true })).toBe("45|1|0.5");
-		expect(formatPosition("bars", 10, { fps: 25, grid: null })).toBe("0:10.0");
+		expect(formatPosition("bars", 88.25, ctx)).toBe("45 | 1");
+		expect(formatPosition("bars", 88.25, ctx, { precise: true })).toBe("45 | 1 | 0.5");
+		expect(formatPosition("bars", 10, { fps: 25, grid: null })).toBe("00:10:00.00"); // no grid: timecode
 	});
 	test("round-trips through every format", () => {
-		for (const mode of ["time", "timecode", "bars"] as const) {
+		for (const mode of ["timecode", "bars"] as const) {
 			const text = formatPosition(mode, 88.25, ctx, { precise: true });
 			expect(parsePosition(text, ctx)).toBeCloseTo(88.25, 2);
 		}

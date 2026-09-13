@@ -1,4 +1,3 @@
-import { formatTime } from "$lib/utils/formatTime";
 import { formatTimecode } from "$lib/utils/formatTimecode";
 import { parseBarsText } from "$lib/utils/parseBarsText";
 import { parseTime } from "$lib/utils/parseTime";
@@ -135,7 +134,7 @@ export function parsePosition(
 	return parseTime(text);
 }
 
-/** A position in the given mode; bars fall back to time without a grid. */
+/** A position in the given mode; bars fall back to timecode without a grid. */
 export function formatPosition(
 	mode: PositionMode,
 	seconds: number,
@@ -147,9 +146,10 @@ export function formatPosition(
 		// The readout shows whole beats; editors show the fraction too so it survives a round trip.
 		const p = barAt(ctx.grid, seconds);
 		const fraction = Math.round(p.fraction * 1000) / 1000;
-		return `${p.bar}|${p.beat}${opts.precise && fraction > 0 && fraction < 1 ? `|${fraction}` : ""}`;
+		return `${p.bar} | ${p.beat}${opts.precise && fraction > 0 && fraction < 1 ? ` | ${fraction}` : ""}`;
 	}
-	return formatTime(seconds, opts.precise ? 3 : 1);
+	// Bars without a grid: timecode.
+	return formatTimecode(seconds, ctx.fps);
 }
 
 /** "8 bars", "8 bars 2 beats" — a span's length in the meter in force where it starts. */

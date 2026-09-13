@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { type BarGrid, formatPosition } from "$lib/audio/measures";
-	import { cycleReadoutMode, readout } from "$lib/audio/readout.svelte";
+	import { cycleReadoutMode, readoutMode } from "$lib/audio/readout.svelte";
 	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/constants/positionModes";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
 
@@ -19,16 +19,12 @@
 
 	// The readout format is shared with tooltips and the settings rows ($lib/audio/readout).
 	let ctx = $derived({ fps, grid });
-	let now = $derived(formatPosition(readout.mode, engine.position, ctx));
-	let total = $derived(formatPosition(readout.mode, endAt ?? engine.duration, ctx));
+	let mode = $derived(readoutMode(!!grid));
+	let now = $derived(formatPosition(mode, engine.position, ctx));
+	let total = $derived(formatPosition(mode, endAt ?? engine.duration, ctx));
+	// The other mode, when the song can count bars; timecode alone otherwise.
 	let nextMode = $derived(
-		POSITION_MODE_LABELS[
-			(readout.mode === "time"
-				? "timecode"
-				: readout.mode === "timecode" && grid
-					? "bars"
-					: "time") as PositionMode
-		],
+		POSITION_MODE_LABELS[(grid && mode === "timecode" ? "bars" : "timecode") as PositionMode],
 	);
 
 	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
@@ -57,7 +53,7 @@
 <div class="flex flex-wrap items-center gap-4">
 	<button
 		type="button"
-		class="grid h-14 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 text-neutral-100 transition-all hover-bg-white/10 hover-text-accent active:scale-95 disabled:(opacity-40 cursor-wait)"
+		class="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 text-neutral-100 transition-all hover-bg-white/10 hover-text-accent active:scale-95 disabled:(opacity-40 cursor-wait)"
 		aria-label="Go to beginning"
 		title="Go to beginning (Home)"
 		disabled={engine.status !== "ready"}
@@ -67,7 +63,7 @@
 	</button>
 	<button
 		type="button"
-		class="grid h-14 w-14 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:(opacity-40 cursor-wait)"
+		class="grid h-10 w-10 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:(opacity-40 cursor-wait)"
 		aria-label={engine.playing ? "Pause" : "Play"}
 		title={engine.status === "ready" ? undefined : "Decoding…"}
 		disabled={engine.status !== "ready"}
@@ -82,20 +78,20 @@
 	<!-- tabular-nums keeps the readout from jittering as digits change -->
 	<button
 		type="button"
-		class="cursor-pointer text-left tabular-nums hover-text-accent {readout.mode === 'time'
-			? 'text-2xl'
-			: 'text-xl'}"
-		title="{POSITION_MODE_LABELS[readout.mode]} — click for {nextMode}{grid
+		class="cursor-pointer text-left tabular-nums hover-text-accent"
+		title="{POSITION_MODE_LABELS[mode]} — click for {nextMode}{grid
 			? ''
 			: ' (bars need a tempo and a time signature in song settings)'}"
-		aria-label="Readout format: {POSITION_MODE_LABELS[readout.mode]}"
+		aria-label="Readout format: {POSITION_MODE_LABELS[mode]}"
 		onclick={() => cycleReadoutMode(!!grid)}
 	>
-		{now}
-		<span class="text-dim">/ {total}</span>
-		{#if readout.mode !== "time"}
-			<span class="ml-1 text-xs text-dim">{readout.mode === "bars" && grid ? "bars" : "tc"}</span>
-		{/if}
+		<div class="bg-black/40 h-auto px-3 py-2 text-28px leading-none rounded-md relative">
+			{now}
+			<!-- <div class="absolute text-8px uppercase font-600 leading-none tracking-wider opacity-60">
+				{mode === "bars" ? "bar" : "tc"}
+			</div> -->
+		</div>
+		<!-- <span class="opacity-60 text-12px">{total}</span> -->
 	</button>
 
 	<label class="ml-auto flex items-center gap-2 text-sm text-dim">
