@@ -1,4 +1,5 @@
 import { command, form, getRequestEvent } from "$app/server";
+import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
 import { scheduleMix } from "$lib/server/mix";
 import {
@@ -19,6 +20,7 @@ import {
 	saveSongDoc,
 	songSlugs,
 	updateSong as update,
+	updateSongChanges,
 	updateSongSections,
 } from "$lib/server/data";
 import {
@@ -123,6 +125,15 @@ export const saveSections = command(SongSectionsSaveSchema, async ({ id, section
 	const result = await updateSongSections(accountId, id, sections);
 	if (!result.ok) error(400, result.error);
 	return result.sections;
+});
+
+/** Replaces a song's tempo / key / time signature changes. A command, from song settings. */
+export const saveChanges = command(SongChangesSaveSchema, async ({ id, changes }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const result = await updateSongChanges(accountId, id, changes);
+	if (!result.ok) error(400, result.error);
+	return result.changes;
 });
 
 /** Relabels a stem. A command (not a form): called from the row menu's prompt. */

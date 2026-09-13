@@ -1,19 +1,41 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { formatTime } from "$lib/format";
+	import { formatSongChange, SONG_CHANGE_KINDS, type SongChange } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 
 	interface Props {
 		engine: StemEngine;
-		/** Sorted by start; the parent hides this row when empty. */
+		/** Sorted by start; the parent hides this row when both are empty. */
 		sections: SongSection[];
+		/** Tempo / key / time signature changes, sorted by start: markers above the blocks. */
+		changes?: SongChange[];
 	}
 
-	let { engine, sections }: Props = $props();
+	let { engine, sections, changes = [] }: Props = $props();
 
 	// Each block runs from its start to the next start (the last to the end).
 	// Laid out on the same grid as a stem row so the blocks sit over the waveforms.
-	let duration = $derived(Math.max(engine.duration, sections.at(-1)?.start ?? 0, 1));
+	let duration = $derived(
+		Math.max(engine.duration, sections.at(-1)?.start ?? 0, changes.at(-1)?.start ?? 0, 1),
+	);
+	// Markers by kind, each running to the next of its kind (or the end).
+	const LANE_REM = 0.875;
+	let lanes = $derived(
+		SONG_CHANGE_KINDS.map((kind) => {
+			const of = changes.filter((c) => c.kind === kind);
+			return {
+				kind,
+				markers: of.map((c, i) => ({ ...c, end: of[i + 1]?.start ?? duration })),
+			};
+		}).filter((l) => l.markers.length > 0),
+	);
+	// What is in force at the playhead, one per kind, in the order tempo · key · meter.
+	let current = $derived(
+		SONG_CHANGE_KINDS.map((kind) =>
+			changes.findLast((c) => c.kind === kind && engine.position >= c.start),
+		).filter((c) => c !== undefined),
+	);
 	let blocks = $derived(
 		sections.map((s, i) => {
 			const end = sections[i + 1]?.start ?? duration;
@@ -36,31 +58,54 @@
 	<div class="text-xs text-dim">
 		Sections
 		{#if currentIndex >= 0}
-			<span class="text-neutral-100">· {blocks[currentIndex].name}</span>
+			<span class="ml-1 text-neutral-100">· {blocks[currentIndex].name}</span>
 		{/if}
+		{#each current as c (c.kind)}
+			<span class="ml-1 text-neutral-100">· {formatSongChange(c)}</span>
+		{/each}
 	</div>
 	<!-- the stem rows' M / S buttons (2 × w-8 + gap-2) and fader (6rem) columns, kept empty so the bar sits over the waveforms -->
 	<div class="hidden sm:block sm:w-18" aria-hidden="true"></div>
 	<div class="hidden sm:block" aria-hidden="true"></div>
-	<div class="relative col-span-3 h-7 sm:col-span-1" role="tablist" aria-label="Jump to section">
-		{#each blocks as b, i (b.start)}
-			<button
-				type="button"
-				role="tab"
-				aria-selected={i === currentIndex}
-				class="absolute top-0 h-full overflow-hidden rounded border px-1.5 text-left text-xs leading-7 whitespace-nowrap transition-colors disabled:cursor-default {i ===
-				currentIndex
-					? 'border-maximumYellow bg-maximumYellow/20 text-neutral-100'
-					: 'border-white/15 bg-white/5 text-dim hover-bg-white/10 hover-text-neutral-100'}"
-				style:left="{b.left}%"
-				style:width="calc({b.width}% - 2px)"
-				title="{b.name} · {formatTime(b.start)} – {formatTime(b.end)}"
-				disabled={engine.status !== "ready"}
-				onclick={() => engine.seek(b.start)}
-			>
-				{b.name}
-			</button>
+	<div class="relative col-span-3 sm:col-span-1" style:padding-top="{lanes.length * LANE_REM}rem">
+		{#each lanes as lane, li (lane.kind)}
+			<!-- one lane per kind; each marker runs to the next marker of its kind, so its label clips instead of colliding -->
+			{#each lane.markers as m (m.start)}
+				<span
+					class="absolute h-3.5 overflow-hidden border-l pl-1 font-mono text-10px leading-3.5 whitespace-nowrap {current.some(
+						(c) => c.kind === m.kind && c.start === m.start,
+					)
+						? 'border-maximumYellow text-neutral-100'
+						: 'border-white/30 text-dim'}"
+					style:top="{li * LANE_REM}rem"
+					style:left="{(m.start / duration) * 100}%"
+					style:width="calc({((m.end - m.start) / duration) * 100}% - 1px)"
+					title="{formatSongChange(m)} from {formatTime(m.start)}"
+				>
+					{formatSongChange(m)}
+				</span>
+			{/each}
 		{/each}
+		<div class="relative h-7" role="tablist" aria-label="Jump to section">
+			{#each blocks as b, i (b.start)}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={i === currentIndex}
+					class="absolute top-0 h-full overflow-hidden rounded border px-1.5 text-left text-xs leading-7 whitespace-nowrap transition-colors disabled:cursor-default {i ===
+					currentIndex
+						? 'border-maximumYellow bg-maximumYellow/20 text-neutral-100'
+						: 'border-white/15 bg-white/5 text-dim hover-bg-white/10 hover-text-neutral-100'}"
+					style:left="{b.left}%"
+					style:width="calc({b.width}% - 2px)"
+					title="{b.name} · {formatTime(b.start)} – {formatTime(b.end)}"
+					disabled={engine.status !== "ready"}
+					onclick={() => engine.seek(b.start)}
+				>
+					{b.name}
+				</button>
+			{/each}
+		</div>
 	</div>
 	<!-- the stem rows end with a menu button; keep the column so the bar lines up with the waveforms -->
 	<div class="hidden sm:block sm:w-8" aria-hidden="true"></div>

@@ -1,6 +1,7 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { ArchiveStatus } from "../../../val/ArchiveStatusSchema";
+import type { SongChange } from "../../../val/SongChangeSchema";
 import type { SongSection } from "../../../val/SongSectionSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
@@ -22,9 +23,6 @@ export const song = table(
 			.references(() => project.id, { onDelete: "cascade" }),
 		title: t.text("title").notNull(),
 		slug: t.text("slug").notNull(),
-		bpm: t.real("bpm"),
-		/** "D", "F#m" — free text for now. */
-		musicalKey: t.text("musical_key"),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */
@@ -44,6 +42,11 @@ export const song = table(
 		notesMarkdown: t.text("notes_markdown").notNull().default(""),
 		notesHash: t.text("notes_hash"),
 		notesVersion: t.integer("notes_version").notNull().default(0),
+		/**
+		 * Tempo, key and time signature as timed changes: [{ kind, start, value }],
+		 * start in seconds, sorted. A song's tempo is the "tempo" change at 0.
+		 */
+		changes: t.text("changes", { mode: "json" }).$type<SongChange[]>().notNull().default([]),
 		/** Song structure: [{ name, start }] with start in seconds, sorted; empty = no timeline. */
 		sections: t.text("sections", { mode: "json" }).$type<SongSection[]>().notNull().default([]),
 		/**

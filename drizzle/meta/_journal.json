@@ -99,6 +99,27 @@
       "when": 1789306937380,
       "tag": "0013_lucky_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1789308034577,
+      "tag": "0014_strong_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1789308296660,
+      "tag": "0015_fresh_omega_red",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1789308298911,
+      "tag": "0016_unusual_otto_octavius",
+      "breakpoints": true
     }
   ]
 }

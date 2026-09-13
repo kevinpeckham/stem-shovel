@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `time_signature` text;

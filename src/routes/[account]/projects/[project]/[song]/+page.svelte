@@ -2,6 +2,14 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { formatBytes, formatMonth, formatTime, parseTime } from "$lib/format";
+	import {
+		formatSongChange,
+		SONG_CHANGE_KINDS,
+		SONG_CHANGE_LABELS,
+		type SongChange,
+		type SongChangeKind,
+		songChangeValueError,
+	} from "$lib/val/SongChangeSchema";
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 
@@ -27,6 +35,7 @@
 		deleteSong,
 		deleteStem,
 		renameStem,
+		saveChanges,
 		saveSections,
 		updateSong,
 	} from "$lib/remote/songs.remote";
@@ -125,6 +134,13 @@
 		]
 			.filter(Boolean)
 			.join(", "),
+	);
+	// "120 bpm · F#m · 4/4" under the title: the first change of each kind.
+	let metaLine = $derived(
+		SONG_CHANGE_KINDS.map((kind) => data.song.changes.find((c) => c.kind === kind))
+			.filter((c) => c !== undefined)
+			.map(formatSongChange)
+			.join(" · "),
 	);
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	let slugTouched = $state(false);
@@ -233,6 +249,45 @@
 		await persistSections(parsed);
 	}
 
+	// Tempo / key / time signature changes: rows of time (m:ss.s), kind and value.
+	let changeRows = $state<{ time: string; kind: SongChangeKind; value: string }[]>([]);
+	let changeError = $state<string | null>(null);
+	let changesSaving = $state(false);
+	function resetChangeRows() {
+		changeRows = data.song.changes.map((c) => ({
+			time: formatTime(c.start),
+			kind: c.kind,
+			value: c.value,
+		}));
+	}
+	async function saveChangeRows() {
+		changeError = null;
+		const parsed: SongChange[] = [];
+		for (const row of changeRows) {
+			const start = parseTime(row.time);
+			if (start === null) {
+				changeError = `"${row.time}" is not a time. Use the transport's format, like 1:23.4.`;
+				return;
+			}
+			const bad = songChangeValueError(row.kind, row.value);
+			if (bad) {
+				changeError = `${SONG_CHANGE_LABELS[row.kind]} at ${row.time}: ${bad}`;
+				return;
+			}
+			parsed.push({ kind: row.kind, start, value: row.value.trim() });
+		}
+		changesSaving = true;
+		try {
+			await saveChanges({ id: data.song.id, changes: parsed });
+			await invalidateAll();
+			resetChangeRows();
+		} catch (e) {
+			changeError = e instanceof Error ? e.message : String(e);
+		} finally {
+			changesSaving = false;
+		}
+	}
+
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
@@ -320,8 +375,11 @@
 						>{data.account.name}</a
 					></span
 				>
-				{#if writtenLine}
-					<p class="w-full text-sm text-dim">{writtenLine}</p>
+				{#if metaLine || writtenLine}
+					<p class="w-full text-sm text-dim">
+						{#if metaLine}<span class="text-neutral-100">{metaLine}</span>{/if}
+						{#if metaLine && writtenLine}<span class="opacity-60"> — </span>{/if}{writtenLine}
+					</p>
 				{/if}
 				<!-- {#if data.song.description}
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
@@ -349,7 +407,12 @@
 		<div
 			id="song-settings"
 			popover="auto"
-			ontoggle={(e) => e.newState === "open" && resetSectionRows()}
+			onbeforetoggle={(e) => {
+				if (e.newState === "open") {
+					resetSectionRows();
+					resetChangeRows();
+				}
+			}}
 			bind:this={settingsPanel}
 			class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 		>
@@ -531,6 +594,81 @@
 
 			<div class="mt-8 border-t border-white/15 pt-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
+					<h3 class="text-15px font-700">Tempo, key and time signature</h3>
+					<button
+						class="button button-xs"
+						type="button"
+						onclick={() =>
+							(changeRows = [
+								...changeRows,
+								{ time: changeRows.length ? "" : "0:00.0", kind: "tempo", value: "" },
+							])}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						Add change
+					</button>
+				</div>
+				<p class="mt-1 text-sm text-dim">
+					Each from the time it starts (0:00.0 for the song's own tempo, key and time signature;
+					later rows are changes). They show on the timeline above the stems.
+				</p>
+				{#if changeRows.length > 0}
+					<div class="mt-3 grid gap-2">
+						{#each changeRows as row, i (i)}
+							<div class="grid grid-cols-[6rem_9rem_1fr_auto] items-center gap-2">
+								<input
+									class="field font-mono text-sm"
+									placeholder="0:00.0"
+									bind:value={row.time}
+									aria-label="Change time"
+								/>
+								<select class="field text-sm" bind:value={row.kind} aria-label="What changes">
+									{#each SONG_CHANGE_KINDS as kind (kind)}
+										<option value={kind}>{SONG_CHANGE_LABELS[kind]}</option>
+									{/each}
+								</select>
+								<input
+									class="field font-mono text-sm"
+									placeholder={row.kind === "tempo" ? "120" : row.kind === "key" ? "F#m" : "4/4"}
+									list={row.kind === "meter" ? "time-signatures" : undefined}
+									autocomplete="off"
+									bind:value={row.value}
+									aria-label="Value"
+								/>
+								<button
+									class="link-dim text-xs"
+									type="button"
+									onclick={() => (changeRows = changeRows.filter((_, j) => j !== i))}>Remove</button
+								>
+							</div>
+						{/each}
+					</div>
+					<datalist id="time-signatures">
+						{#each ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "12/8"] as ts (ts)}
+							<option value={ts}></option>
+						{/each}
+					</datalist>
+				{/if}
+				{#if changeError}
+					<p class="mt-2 text-sm text-red-400" role="alert">{changeError}</p>
+				{/if}
+				<div class="mt-3 flex items-center gap-3">
+					<button
+						class="button-accent disabled:opacity-40"
+						type="button"
+						disabled={changesSaving}
+						onclick={saveChangeRows}
+					>
+						{changesSaving ? "Saving…" : "Save changes"}
+					</button>
+					<button class="link-dim text-xs" type="button" onclick={resetChangeRows}
+						>Discard edits</button
+					>
+				</div>
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h3 class="text-15px font-700">Demo recordings</h3>
 					<label
 						class="button button-xs cursor-pointer {demoBusy
@@ -627,6 +765,7 @@
 					manifest={data.manifest}
 					{stemMenu}
 					sections={data.song.sections}
+					changes={data.song.changes}
 					onaddsection={data.canEdit ? addSectionAt : undefined}
 					onengine={(e) => (playerEngine = e)}
 				>

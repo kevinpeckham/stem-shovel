@@ -6,6 +6,7 @@ import { labelFromFilename, MAX_DEMOS_PER_SONG, MAX_STEMS_PER_SONG, slugify } fr
 import { SlugSchema } from "$lib/val/SlugSchema";
 import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
+import type { SongChange } from "$lib/val/SongChangeSchema";
 import type { SongSection } from "$lib/val/SongSectionSchema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -495,6 +496,31 @@ export async function updateSongSections(
 		.returning({ sections: song.sections });
 	if (!row) return { ok: false, error: "Song not found." };
 	return { ok: true, sections: row.sections };
+}
+
+export type SaveChangesResult = { ok: true; changes: SongChange[] } | { ok: false; error: string };
+
+/** Replaces the song's tempo / key / time signature changes: sorted by start, one per kind per time. */
+export async function updateSongChanges(
+	accountId: string,
+	songId: string,
+	input: SongChange[],
+): Promise<SaveChangesResult> {
+	const changes = input
+		.map((c) => ({ kind: c.kind, start: Math.round(c.start * 10) / 10, value: c.value.trim() }))
+		.sort((a, b) => a.start - b.start || a.kind.localeCompare(b.kind));
+	for (let i = 1; i < changes.length; i++) {
+		if (changes[i].start === changes[i - 1].start && changes[i].kind === changes[i - 1].kind) {
+			return { ok: false, error: `Two ${changes[i].kind} changes start at ${changes[i].start}s.` };
+		}
+	}
+	const [row] = await db
+		.update(song)
+		.set({ changes })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+		.returning({ changes: song.changes });
+	if (!row) return { ok: false, error: "Song not found." };
+	return { ok: true, changes: row.changes };
 }
 
 // ---- demo recordings --------------------------------------------------------

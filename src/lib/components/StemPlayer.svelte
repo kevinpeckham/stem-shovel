@@ -6,6 +6,7 @@
 	import { formatBytes } from "$lib/format";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { formatTime } from "$lib/format";
+	import type { SongChange } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import { untrack, type Snippet } from "svelte";
 
@@ -17,8 +18,9 @@
 		stemMenu?: Snippet<[StemState]>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
-		/** Song structure; the timeline row shows only when there is at least one. */
+		/** Song structure; the timeline row shows when there is a section or a change. */
 		sections?: SongSection[];
+		changes?: SongChange[];
 		/** When given, members get an "Add section at playhead" button. */
 		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
@@ -31,6 +33,7 @@
 		stemMenu,
 		headerExtras,
 		sections = [],
+		changes = [],
 		onaddsection,
 		onengine,
 	}: Props = $props();
@@ -104,8 +107,8 @@
 		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start mb-5"
 		aria-label="Stems"
 	>
-		{#if sections.length > 0}
-			<SectionTimeline {engine} {sections} />
+		{#if sections.length > 0 || changes.length > 0}
+			<SectionTimeline {engine} {sections} {changes} />
 		{/if}
 		{#each engine.stems as stem (stem.id)}
 			<StemRow {stem} {engine} menu={stemMenu} />

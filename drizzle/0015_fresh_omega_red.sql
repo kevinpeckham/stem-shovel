@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `changes` text DEFAULT '[]' NOT NULL;
