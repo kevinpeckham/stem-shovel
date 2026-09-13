@@ -25,6 +25,8 @@
 		jobs?: UploadJob[];
 		/** Why a pick was refused (format, size, cap), or null. */
 		notice?: string | null;
+		/** Called once a batch finishes with at least one stem uploaded. */
+		onuploaded?: () => void;
 	}
 
 	/**
@@ -33,7 +35,13 @@
 	 * decode locally and report peaks (see $lib/upload). Sequential keeps the
 	 * progress readable and avoids saturating the uplink.
 	 */
-	let { songId, stemCount, jobs = $bindable([]), notice = $bindable(null) }: Props = $props();
+	let {
+		songId,
+		stemCount,
+		jobs = $bindable([]),
+		notice = $bindable(null),
+		onuploaded,
+	}: Props = $props();
 
 	let busy = $state(false);
 	let room = $derived(Math.max(0, MAX_STEMS_PER_SONG - stemCount));
@@ -91,6 +99,7 @@
 		busy = false;
 		if (failed === 0) jobs = [];
 		await invalidateAll();
+		if (failed < jobs.length || jobs.length === 0) onuploaded?.();
 	}
 </script>
 

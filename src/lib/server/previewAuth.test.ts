@@ -5,7 +5,7 @@ const { env, findFirst } = vi.hoisted(() => ({
 	env: {} as { PREVIEW_AUTH_TOKEN?: string },
 	findFirst: vi.fn(),
 }));
-vi.mock("varlock/env", () => ({ ENV: env }));
+vi.mock("varlock/env", () => ({ ENV: env, initVarlockEnv: () => {} })); // the varlock Vite plugin also injects initVarlockEnv
 vi.mock("$lib/server/db", () => ({
 	db: { query: { user: { findFirst } } },
 	schema: { user: { email: "email" } },

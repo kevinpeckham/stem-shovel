@@ -47,6 +47,10 @@ export const song = table(
 		 * start in seconds, sorted. A song's tempo is the "tempo" change at 0.
 		 */
 		changes: t.text("changes", { mode: "json" }).$type<SongChange[]>().notNull().default([]),
+		/** User-managed semantic version of the song as a whole ("0.0.1"); never bumped automatically. */
+		version: t.text("version").notNull().default("0.0.1"),
+		/** When a stem was last added, replaced or removed. */
+		stemsUpdatedAt: t.integer("stems_updated_at", { mode: "timestamp_ms" }),
 		/** Frame rate for timecode display and entry (Logic's list; 25 by default). */
 		frameRate: t.real("frame_rate").notNull().default(25),
 		/** Where bar 1 begins (leading silence, a count-in) and where the song ends, in seconds; null = 0 / the last stem. */

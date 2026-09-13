@@ -4,6 +4,16 @@ import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
 import { SongDocKindSchema } from "./SongDocKindSchema";
 
+/** "major.minor.patch", each a plain number. */
+export const SongVersionSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.regex(/^\d+\.\d+\.\d+$/, "Versions look like 1.2.3."),
+);
+
+/** Argument of the setSongVersion command. */
+export const SongVersionSetSchema = v.object({ id: NanoIdSchema, version: SongVersionSchema });
+
 /** Form boundary for the song settings form (title, URL, description). */
 export const SongSettingsSchema = v.object({
 	id: NanoIdSchema,
@@ -26,6 +36,8 @@ export const SongSettingsSchema = v.object({
 		v.union([v.literal(""), v.pipe(v.string(), v.trim(), v.decimal("Not a time."))]),
 		"",
 	),
+	/** Semantic version, user-managed: "1.2.3". */
+	version: v.optional(SongVersionSchema, "0.0.1"),
 	/** Frame rate for timecode, as a string from a select. */
 	frameRate: v.optional(v.picklist(["23.976", "24", "25", "29.97", "30"]), "25"),
 	/** "YYYY-MM-DD" from a date input, or empty. */

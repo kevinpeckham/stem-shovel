@@ -2,6 +2,8 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
+	import { bumpVersion } from "$lib/utils/bumpVersion";
+	import { formatDate } from "$lib/utils/formatDate";
 	import { parseBarsText } from "$lib/utils/parseBarsText";
 	import { readout } from "$lib/audio/readout.svelte";
 	import { FRAME_RATES } from "$lib/constants/frameRates";
@@ -40,6 +42,7 @@
 		renameStem,
 		saveChanges,
 		saveSections,
+		setSongVersion,
 		updateSong,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
@@ -83,6 +86,21 @@
 	let startAt = $derived(startAtEntry);
 	let endAt = $derived(endAtEntry);
 	let frameRate = $derived(fields.frameRate.value() ?? String(data.song.frameRate));
+	let version = $derived(fields.version.value() ?? data.song.version);
+
+	// After stems change, offer a version bump; the user decides, nothing bumps itself.
+	let versionOffer = $state(false);
+	let versionBusy = $state(false);
+	async function bump(level: "major" | "minor" | "patch") {
+		versionBusy = true;
+		try {
+			await setSongVersion({ id: data.song.id, version: bumpVersion(data.song.version, level) });
+			await invalidateAll();
+		} finally {
+			versionBusy = false;
+			versionOffer = false;
+		}
+	}
 	let positionError = $state<string | null>(null);
 	const POSITION_PLACEHOLDER = { time: "0:00.0", timecode: "00:00:00.00", bars: "1|1" } as const;
 	let settingsDirty = $derived(
@@ -93,7 +111,8 @@
 			writtenOn !== (data.song.writtenOn ?? "") ||
 			startAt.trim() !== startAtText ||
 			endAt.trim() !== endAtText ||
-			frameRate !== String(data.song.frameRate),
+			frameRate !== String(data.song.frameRate) ||
+			version.trim() !== data.song.version,
 	);
 
 	// Demo recordings: uploaded from settings (no decoding, just the file),
@@ -170,6 +189,15 @@
 			.filter(Boolean)
 			.join(", "),
 	);
+	// "v0.0.1 · stems updated Sep 13, 2026" under the title.
+	let versionLine = $derived(
+		[
+			`v${data.song.version}`,
+			data.song.stemsUpdatedAt ? `stems updated ${formatDate(data.song.stemsUpdatedAt)}` : "",
+		]
+			.filter(Boolean)
+			.join(" · "),
+	);
 	// "120 bpm · F#m · 4/4" under the title: the first change of each kind.
 	let metaLine = $derived(
 		SONG_CHANGE_KINDS.map((kind) => data.song.changes.find((c) => c.kind === kind))
@@ -217,6 +245,7 @@
 			);
 			delete replacing[stemId];
 			await invalidateAll();
+			versionOffer = true;
 		} catch (err) {
 			replacing[stemId] = { ...replacing[stemId], stage: "error", error: (err as Error).message };
 		} finally {
@@ -435,12 +464,13 @@
 						>{data.account.name}</a
 					></span
 				>
-				{#if metaLine || writtenLine}
-					<p class="w-full text-sm text-dim">
-						{#if metaLine}<span class="text-neutral-100">{metaLine}</span>{/if}
-						{#if metaLine && writtenLine}<span class="opacity-60"> — </span>{/if}{writtenLine}
-					</p>
-				{/if}
+				<p class="w-full text-sm text-dim">
+					<span class="text-neutral-100">{versionLine}</span>
+					{#if metaLine}<span class="opacity-60"> — </span><span class="text-neutral-100"
+							>{metaLine}</span
+						>{/if}
+					{#if writtenLine}<span class="opacity-60"> — </span>{writtenLine}{/if}
+				</p>
 				<!-- {#if data.song.description}
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 				{/if} -->
@@ -633,6 +663,21 @@
 						<span class="mt-1 block text-xs text-dim">Where the song ends, for the bars total.</span
 						>
 						{#each fields.endAt.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
+					<label class="block">
+						<span class="text-sm text-dim">Version</span>
+						<input
+							class="mt-1 field font-mono text-sm"
+							placeholder="0.0.1"
+							autocomplete="off"
+							{...fields.version.as("text", data.song.version)}
+						/>
+						<span class="mt-1 block text-xs text-dim">
+							Yours to manage (major.minor.patch); after stems change you are offered a bump.
+						</span>
+						{#each fields.version.issues() ?? [] as issue (issue.message)}
 							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 					</label>
@@ -960,6 +1005,41 @@
 
 		{@render headerExtras?.(playerEngine ?? undefined)}
 
+		{#if versionOffer && data.canEdit}
+			<div
+				class="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-current/40 bg-blue-300/5 px-3 py-2 text-sm"
+				role="status"
+			>
+				<span>Stems changed. Bump the song version from v{data.song.version}?</span>
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={versionBusy}
+					onclick={() => bump("patch")}
+				>
+					{bumpVersion(data.song.version, "patch")}
+				</button>
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={versionBusy}
+					onclick={() => bump("minor")}
+				>
+					{bumpVersion(data.song.version, "minor")}
+				</button>
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={versionBusy}
+					onclick={() => bump("major")}
+				>
+					{bumpVersion(data.song.version, "major")}
+				</button>
+				<button class="link-dim text-xs" type="button" onclick={() => (versionOffer = false)}
+					>Keep v{data.song.version}</button
+				>
+			</div>
+		{/if}
 		<!-- upload notice -->
 		{#if uploadNotice}
 			<p class="text-sm px-3 py-2 border border-current/40 rounded-md mb-2 bg-blue-300/5">
@@ -1161,6 +1241,7 @@
 				stemCount={data.song.stems.length}
 				bind:jobs={uploadJobs}
 				bind:notice={uploadNotice}
+				onuploaded={() => (versionOffer = true)}
 			/>
 		{/if}
 		{#if ready.length > 0}

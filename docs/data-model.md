@@ -41,6 +41,11 @@ erDiagram
   `[{ kind, start, value }]` with `kind` tempo | key | meter, `start` in
   seconds and `value` as text ("120", "F#m", "6/8"), sorted. The old
   single-value `bpm` / `musical_key` columns are gone (migration 0016).
+- **song.version** — the song's own semantic version ("0.0.1" by default),
+  managed by the user: nothing bumps it automatically, but after a stem is
+  added, replaced or removed the song page offers a patch, minor or major
+  bump. **song.stems_updated_at** is stamped by the server on those same
+  three events (backfilled from the newest ready stem in migration 0019).
 - **song.frame_rate** — 23.976 | 24 | 25 | 29.97 | 30, for timecode display
   and entry (25 by default, as in Logic).
 - **song.start_at / end_at** — seconds where bar 1 begins and where the song

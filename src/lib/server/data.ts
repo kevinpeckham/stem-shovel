@@ -228,6 +228,7 @@ export async function updateSong(
 		startAt: string;
 		endAt: string;
 		frameRate: string;
+		version: string;
 	},
 ): Promise<UpdateSongResult> {
 	const title = input.title.trim();
@@ -262,6 +263,7 @@ export async function updateSong(
 			startAt: input.startAt ? Number(input.startAt) : null,
 			endAt: input.endAt ? Number(input.endAt) : null,
 			frameRate: Number(input.frameRate),
+			version: input.version,
 		})
 		.where(eq(song.id, songId))
 		.returning();
@@ -446,7 +448,23 @@ export async function markStemReady(accountId: string, stemId: string, r: StemDe
 		})
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ songId: stem.songId });
-	if (row) await refreshSongDuration(row.songId);
+	if (row) await stemsChanged(row.songId);
+	return row ?? null;
+}
+
+/** A stem was added, replaced or removed: refresh the song's length and stamp `stemsUpdatedAt`. */
+async function stemsChanged(songId: string) {
+	await refreshSongDuration(songId);
+	await db.update(song).set({ stemsUpdatedAt: new Date() }).where(eq(song.id, songId));
+}
+
+/** Sets the song's user-managed version ("1.2.3"). */
+export async function setSongVersion(accountId: string, songId: string, version: string) {
+	const [row] = await db
+		.update(song)
+		.set({ version })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+		.returning({ version: song.version });
 	return row ?? null;
 }
 
@@ -474,7 +492,7 @@ export async function deleteStem(accountId: string, stemId: string) {
 		.returning({ url: stem.url, playbackUrl: stem.playbackUrl, songId: stem.songId });
 	if (!row) return null;
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
-	await refreshSongDuration(row.songId);
+	await stemsChanged(row.songId);
 	return { songId: row.songId };
 }
 

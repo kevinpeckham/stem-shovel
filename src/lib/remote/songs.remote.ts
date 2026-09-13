@@ -18,6 +18,7 @@ import {
 	projectSlugs,
 	renameStem as rename,
 	saveSongDoc,
+	setSongVersion as setVersion,
 	songSlugs,
 	updateSong as update,
 	updateSongChanges,
@@ -28,6 +29,7 @@ import {
 	SongCreateSchema,
 	SongDocSaveSchema,
 	SongSettingsSchema,
+	SongVersionSetSchema,
 	StemRenameSchema,
 } from "$lib/val/SongSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
@@ -42,7 +44,7 @@ import { error, invalid, redirect } from "@sveltejs/kit";
 export const updateSong = form(
 	SongSettingsSchema,
 	async (
-		{ id, title, slug, description, songwriter, writtenOn, startAt, endAt, frameRate },
+		{ id, title, slug, description, songwriter, writtenOn, startAt, endAt, frameRate, version },
 		issue,
 	) => {
 		const { locals } = getRequestEvent();
@@ -56,6 +58,7 @@ export const updateSong = form(
 			startAt,
 			endAt,
 			frameRate,
+			version,
 		});
 		if (!result.ok) invalid(issue[result.field](result.error));
 		const slugs = await songSlugs(accountId, id);
@@ -122,6 +125,15 @@ export const deleteDemo = form(IdSchema, async ({ id }) => {
 	const { accountId } = await memberOf(locals, accountOfDemo, id);
 	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");
 	return { deleted: true };
+});
+
+/** Sets the song's version, e.g. after the "stems changed — bump?" offer. A command. */
+export const setSongVersion = command(SongVersionSetSchema, async ({ id, version }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const row = await setVersion(accountId, id, version);
+	if (!row) error(404, "Song not found");
+	return row.version;
 });
 
 /** Replaces a song's sections (structure timeline). A command: called from the timeline and settings. */

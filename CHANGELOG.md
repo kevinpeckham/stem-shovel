@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Song version and "stems updated"**: each song carries a semantic
+  version you manage (0.0.1 to start, editable in settings, shown under the
+  title and on the project's song rows). It never bumps itself; after a
+  stem is added, replaced or removed the page offers the next patch, minor
+  or major version in one click. The header also shows when stems last
+  changed. Migration 0019.
+
 ### Changed
 
 - **Project settings are a popover** opened from a gear in the project

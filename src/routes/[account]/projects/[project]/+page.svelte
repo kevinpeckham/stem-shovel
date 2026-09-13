@@ -209,7 +209,7 @@
 						<span
 							class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
 						>
-							{ready}
+							v{song.version} · {ready}
 							{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
 									song.durationSeconds,
 								)}{/if}
