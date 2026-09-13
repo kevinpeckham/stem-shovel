@@ -4,7 +4,7 @@ import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-/** One editor for both song documents; `params.doc` is "chart" or "lyrics" (see src/params/songDoc.ts). */
+/** One editor for every song document; `params.doc` is "chart", "lyrics" or "notes" (see src/params/songDoc.ts). */
 export const load: PageServerLoad = async ({ params, parent, locals, url }) => {
 	requireSignedIn(locals, url);
 	const { account } = await parent();

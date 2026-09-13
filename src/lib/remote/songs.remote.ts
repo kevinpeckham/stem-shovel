@@ -55,7 +55,7 @@ export const updateSong = form(
 );
 
 /**
- * Save a song document (chart or lyrics) from the editor. Returns the new
+ * Save a song document (chart, lyrics or notes) from the editor. Returns the new
  * version number; a no-op save reports `changed: false`. Blanking a document
  * that has content is refused once (`needsConfirm`) so a second submit with
  * `confirmEmpty` is required.

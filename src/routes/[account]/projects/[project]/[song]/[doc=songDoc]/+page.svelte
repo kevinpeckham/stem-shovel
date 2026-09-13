@@ -5,7 +5,14 @@
 
 	let { data } = $props();
 
-	const LABELS = { chart: "Chart", lyrics: "Lyrics" } as const;
+	const LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
+	const HINTS = {
+		chart:
+			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
+		lyrics:
+			"Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus).",
+		notes: "Notes. Anything about the song — ideas, references, production to-dos, who plays what.",
+	} as const;
 	let label = $derived(LABELS[data.kind]);
 
 	// The editor package is imported in the browser only (type imports above
@@ -199,9 +206,7 @@
 
 	{#if view === "rendered"}
 		<p class="mb-2 text-xs text-dim">
-			{data.kind === "chart"
-				? "Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept."
-				: "Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus)."}
+			{HINTS[data.kind]}
 		</p>
 		<div class="chart-editor surface py-4 pr-6 pl-12">
 			{#if Editor && editor}

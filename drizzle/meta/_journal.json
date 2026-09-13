@@ -85,6 +85,13 @@
       "when": 1789301805237,
       "tag": "0011_cloudy_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789303582816,
+      "tag": "0012_easy_bucky",
+      "breakpoints": true
     }
   ]
 }

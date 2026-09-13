@@ -128,11 +128,11 @@
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	let slugTouched = $state(false);
 
-	// Chart / Lyrics toggle for the read view. Starts on whichever has content.
-	const DOC_KINDS = ["chart", "lyrics"] as const;
-	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics" } as const;
+	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
+	const DOC_KINDS = ["chart", "lyrics", "notes"] as const;
+	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
 	let doc = $state<(typeof DOC_KINDS)[number]>(
-		untrack(() => (!data.docs.chart && data.docs.lyrics ? "lyrics" : "chart")),
+		untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "chart"),
 	);
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
@@ -494,7 +494,7 @@
 			<div class="mt-8 border-t border-white/15 pt-4">
 				<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
 				<p class="mt-1 text-sm text-dim">
-					Removes the song, its chart and lyrics, every stem file and every demo recording.
+					Removes the song, its chart, lyrics and notes, every stem file and every demo recording.
 				</p>
 				<form
 					class="mt-3"
@@ -610,10 +610,10 @@
 		{/if}
 	</section>
 
-	<!-- 3. chart & lyrics -->
+	<!-- 3. chart, lyrics & notes -->
 	<section
 		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full max-w-full overflow-hidden grid-rows-1fr relative"
-		aria-label="Chart and lyrics"
+		aria-label="Chart, lyrics and notes"
 	>
 		<!-- <div class="h-full relative"> -->
 		{#if data.docs[doc]}
@@ -627,7 +627,7 @@
 			<p
 				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 			>
-				{doc === "chart" ? "No chart yet." : "No lyrics yet."}
+				No {doc} yet.
 			</p>
 		{/if}
 		<!-- tool bar  -->

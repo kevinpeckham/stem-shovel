@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Song notes**: a third markdown document beside Chart and Lyrics, with
+  the same editor, versioning and toggle (`…/[song]/notes`; migration 0012).
+
 ## [0.2.1] - 2026-09-13
 
 ### Fixed

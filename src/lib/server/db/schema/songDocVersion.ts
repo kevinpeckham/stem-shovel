@@ -6,7 +6,7 @@ import { song } from "./song";
 import { user } from "./user";
 
 /**
- * One saved revision of a song document (chart or lyrics). Only written
+ * One saved revision of a song document (chart, lyrics or notes). Only written
  * when the markdown's hash changes; the ten most recent per document are
  * kept (see data.saveSongDoc). Full text lives here: a document is a few KB.
  */

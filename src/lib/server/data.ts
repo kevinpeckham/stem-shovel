@@ -796,7 +796,7 @@ function uniqueSlug(base: string, taken: Set<string>): string {
 	}
 }
 
-// ---- song documents: chart + lyrics ------------------------------------
+// ---- song documents: chart, lyrics, notes --------------------------------
 
 const DOC_VERSIONS_TO_KEEP = 10;
 /** Blanking a document longer than this needs `confirmEmpty` (accidental-wipe guard). */
@@ -805,6 +805,7 @@ const DOC_WIPE_GUARD_CHARS = 200;
 const DOC_COLUMNS = {
 	chart: { markdown: "chartMarkdown", hash: "chartHash", version: "chartVersion" },
 	lyrics: { markdown: "lyricsMarkdown", hash: "lyricsHash", version: "lyricsVersion" },
+	notes: { markdown: "notesMarkdown", hash: "notesHash", version: "notesVersion" },
 } as const;
 
 export type SaveDocResult =
@@ -812,11 +813,17 @@ export type SaveDocResult =
 	| { ok: false; error: string; needsConfirm?: boolean };
 
 /** The markdown of one document, for pages that need only that. */
-export function docText(s: { chartMarkdown: string; lyricsMarkdown: string }, kind: SongDocKind) {
+export function docText(
+	s: { chartMarkdown: string; lyricsMarkdown: string; notesMarkdown: string },
+	kind: SongDocKind,
+) {
 	return s[DOC_COLUMNS[kind].markdown];
 }
 
-export function docVersion(s: { chartVersion: number; lyricsVersion: number }, kind: SongDocKind) {
+export function docVersion(
+	s: { chartVersion: number; lyricsVersion: number; notesVersion: number },
+	kind: SongDocKind,
+) {
 	return s[DOC_COLUMNS[kind].version];
 }
 

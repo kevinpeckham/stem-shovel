@@ -21,6 +21,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),
+			notes: renderMarkdown(song.notesMarkdown),
 		},
 	};
 };

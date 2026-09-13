@@ -31,8 +31,8 @@ export const song = table(
 		/** Who wrote it (free text) and when it was first written (ISO date, "YYYY-MM-DD"). */
 		songwriter: t.text("songwriter").notNull().default(""),
 		writtenOn: t.text("written_on"),
-		// Two markdown documents per song, "chart" (chords, arrangement) and
-		// "lyrics", with the same save semantics: the hash gates a new row in
+		// Three markdown documents per song, "chart" (chords, arrangement),
+		// "lyrics" and "notes" (anything else), with the same save semantics: the hash gates a new row in
 		// song_doc_version and the version number counts saves. 0 = never saved.
 		chartMarkdown: t.text("chart_markdown").notNull().default(""),
 		chartHash: t.text("chart_hash"),
@@ -40,6 +40,9 @@ export const song = table(
 		lyricsMarkdown: t.text("lyrics_markdown").notNull().default(""),
 		lyricsHash: t.text("lyrics_hash"),
 		lyricsVersion: t.integer("lyrics_version").notNull().default(0),
+		notesMarkdown: t.text("notes_markdown").notNull().default(""),
+		notesHash: t.text("notes_hash"),
+		notesVersion: t.integer("notes_version").notNull().default(0),
 		/**
 		 * Cached "original" MP3 mixdown (src/lib/server/mix.ts). `mixKey` names
 		 * the set of stem files it was made from; a different set means re-render.

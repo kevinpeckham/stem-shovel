@@ -2,7 +2,7 @@
 
 A multi-stem player for bands and producers: synced playback of a song's
 stems in the browser with per-stem fader, mute and solo, waveform seek and a
-memory readout; a chart and lyrics document per song; demo recordings of the
+memory readout; chart, lyrics and notes documents per song; demo recordings of the
 original idea; MP3 mixdowns (the full mix, or what is audible right now) and
 a project-level playlist of every song's mix. Stems upload straight from the
 browser to Vercel Blob, are catalogued in Turso (accounts → projects → songs
@@ -88,16 +88,16 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   Song" popover, playlist player), song page (transport, stem rows with a
   per-stem menu, download row, settings popover with demo recordings,
   chart / lyrics), account settings; `src/routes/sign-in|sign-up`.
-- **Chart and lyrics**: two markdown documents per song
-  (`song.chart_markdown`, `song.lyrics_markdown`), edited at
-  `…/[song]/chart` and `…/[song]/lyrics` — one route, `[doc=songDoc]` — with
+- **Chart, lyrics and notes**: three markdown documents per song
+  (`song.chart_markdown`, `lyrics_markdown`, `notes_markdown`), edited at
+  `…/[song]/chart`, `/lyrics` and `/notes` — one route, `[doc=songDoc]` — with
   `@kevinpeckham/woof-editor` (the same WYSIWYG-markdown editor replicator's
   blog uses) and a Rendered / Markdown toggle; the source pane is a textarea
   bound to the same editor state, so undo, discard and save cover both. Saved
   through the `saveDoc` remote form: `data.saveSongDoc` hash-gates a
-  `song_doc_version` row (kind = chart | lyrics) and keeps the last 10;
+  `song_doc_version` row (kind = chart | lyrics | notes) and keeps the last 10;
   blanking a document with content needs a second save. The song page shows
-  either document behind a Chart / Lyrics toggle; `server/markdown.ts` renders
+  one document at a time behind a Chart / Lyrics / Notes toggle; `server/markdown.ts` renders
   with barkdown's renderer (what the editor seeds from) and
   `server/sanitize.ts`, an allowlist pass over parse5 (ESM; see "Server
   dependencies are ESM only" below). Typography for both is the
@@ -130,7 +130,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 
 ## Documentation
 
-- [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics versions.
+- [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
