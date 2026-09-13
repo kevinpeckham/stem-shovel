@@ -92,6 +92,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **Test suite**: Vitest through Vite+ (`bun run test`) with a Node `unit`
+  project and a jsdom `components` project using @testing-library/svelte —
+  73 tests over the utils, bar math, dual-mono and peaks, the valibot
+  schemas, the mix request parser and the screenshot bypass (database and
+  Blob mocked), and the Transport, SectionTimeline and ProjectPlayer
+  components. `/test` skill; `bun run test` opens the release gates.
 - Helpers moved to `src/lib/utils/` (one function per file) and constants
   to `src/lib/constants/`, replacing `format.ts`, `slug.ts` and `keys.ts`;
   song change kinds live in `constants/songChanges.ts` so the schema and

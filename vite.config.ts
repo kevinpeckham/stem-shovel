@@ -2,6 +2,7 @@ import adapter from "@sveltejs/adapter-vercel";
 import { sveltekit } from "@sveltejs/kit/vite";
 import UnoCSS from "unocss/vite";
 import { varlockVitePlugin } from "@varlock/vite-integration";
+import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite-plus";
 
 // One config for dev/build (Vite), lint (Oxlint) and format (Oxfmt).
@@ -49,4 +50,31 @@ export default defineConfig({
 			adapter: adapter(),
 		}),
 	],
+	// Vitest (bundled with Vite+, `bun run test`). Two projects, as in
+	// replicator: unit tests run in Node; component tests in jsdom with
+	// @testing-library/svelte. Naming: `*.test.ts` and `*.svelte.test.ts`,
+	// co-located with what they test (helpers in tests/ for the mocks).
+	test: {
+		projects: [
+			{
+				extends: true,
+				test: {
+					name: "unit",
+					environment: "node",
+					include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+					exclude: ["src/**/*.svelte.test.ts"],
+				},
+			},
+			{
+				extends: true,
+				plugins: [svelteTesting()],
+				test: {
+					name: "components",
+					environment: "jsdom",
+					include: ["src/**/*.svelte.test.ts"],
+					setupFiles: ["tests/setup-components.ts"],
+				},
+			},
+		],
+	},
 });

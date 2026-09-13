@@ -8,6 +8,7 @@ working agreement.
 
 ```bash
 bun run dev          # the VM runs this as a systemd unit on :5173 — do not start a second one
+bun run test         # Vitest: unit (Node) + component (jsdom) projects — docs/testing.md
 bun run check        # svelte-check
 bun run lint         # vp check: format check + Oxlint + tsgolint
 bun run format       # Oxfmt (formats .svelte templates too)
@@ -65,6 +66,10 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `src/lib/constants/`. `$lib/val/` holds valibot schemas and their types
   only — a helper that a schema needs (like `songChangeValueError`) is a
   util the schema imports, never the other way round (Fallow flags cycles).
+- **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
+  import the runner from `vite-plus/test`, and mock the database, Blob and
+  ffmpeg in server tests (docs/testing.md). Run `bun run test` before a
+  push that touches logic.
 - **Server dependencies must be ESM.** Vercel's Node 24 launcher has refused
   CommonJS `require()` of ES modules at cold start; prefer ESM packages, and
   after a build check `.vercel/output/functions/*/node_modules`.

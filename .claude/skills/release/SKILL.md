@@ -16,6 +16,7 @@ for fixes, minor for features, major for breaking changes to URLs or data).
 Run in order, fixing anything that fails before moving on:
 
 ```
+bun run test       # Vitest (unit + component projects) — all green
 bun run format     # Oxfmt; auto-fixes are expected
 bun run lint       # vp check: format check + Oxlint + tsgolint — 0 errors
 bun run check      # svelte-check — 0 errors
@@ -23,7 +24,7 @@ bunx fallow        # dead code / health; new unused exports mean unwired code
 bun run build      # production build; also proves the varlock resolution
 ```
 
-There is no test suite yet. For changes to uploads or the database, also run
+For changes to uploads or the database, also run
 `bun run stems && bun run smoke:blob` against the dev server, then delete
 the `smoke-*` project it creates (see scripts/blob-smoke.mjs).
 

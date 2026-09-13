@@ -23,6 +23,7 @@ bun install          # Bun is pinned via package.json `packageManager`
 vercel link          # once; also pulls OP_TOKEN + OP_ENV_ID into .env.local
 bun run stems        # generates 4 synthetic WAV stems + manifest into static/stems/
 bun run dev          # open http://localhost:5173/
+bun run test         # Vitest, unit + component projects
 ```
 
 URLs carry the account: `/[account]/projects` lists and creates projects;
@@ -140,6 +141,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
 - [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, renditions, mixdowns, demos, downloads.
+- [docs/testing.md](docs/testing.md) — Vitest: unit and component projects, helpers, what is mocked.
 - [docs/agent-screenshots.md](docs/agent-screenshots.md) — `bun run shot` and the Playwright MCP.
 - [CHANGELOG.md](CHANGELOG.md) — releases; cut one with the `/release` skill.
 - [CLAUDE.md](CLAUDE.md) — conventions and the working agreement for the agent.
