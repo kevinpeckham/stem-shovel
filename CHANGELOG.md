@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-13
+
+### Fixed
+
+- **"Custom Mix (MP3)" said nothing was audible** even with stems soloed or
+  unmuted: the download row is rendered outside the player since the layout
+  pass and no longer had the engine. The player now hands its engine to the
+  page.
+
 ## [0.2.0] - 2026-09-13
 
 ### Added

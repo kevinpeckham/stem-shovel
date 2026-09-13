@@ -14,11 +14,14 @@
 		stemMenu?: Snippet<[StemState]>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
+		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
+		onengine?: (engine: StemEngine) => void;
 	}
 
-	let { manifest, errorHint, stemMenu, headerExtras }: Props = $props();
+	let { manifest, errorHint, stemMenu, headerExtras, onengine }: Props = $props();
 
 	const engine = new StemEngine();
+	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
 
 	// Effects only run in the browser (no AudioContext during SSR).
 	//

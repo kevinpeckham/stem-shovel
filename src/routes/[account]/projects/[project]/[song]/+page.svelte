@@ -193,6 +193,8 @@
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
 	type MixMode = "original" | "custom";
+	// The player's engine, for the custom mix (the download row lives outside the player).
+	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
 	let mixError = $state<string | null>(null);
 	async function downloadMix(mixMode: MixMode, engine?: StemEngine) {
@@ -519,7 +521,7 @@
 		<!-- transport and waveforms -->
 		{#if data.manifest.stems.length > 0}
 			<div class="mb-5">
-				<StemPlayer manifest={data.manifest} {stemMenu}>
+				<StemPlayer manifest={data.manifest} {stemMenu} onengine={(e) => (playerEngine = e)}>
 					{#snippet errorHint()}
 						A stem's file is missing from the Blob store. Remove it from its menu and upload it
 						again.
@@ -532,7 +534,7 @@
 			</div>
 		{/if}
 
-		{@render headerExtras?.()}
+		{@render headerExtras?.(playerEngine ?? undefined)}
 
 		<!-- upload notice -->
 		{#if uploadNotice}
