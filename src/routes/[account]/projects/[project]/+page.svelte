@@ -7,7 +7,7 @@
 
 	let { data } = $props();
 
-	let open = $state(false);
+	let settingsPanel = $state<HTMLDivElement | null>(null);
 	let saved = $state(false);
 	let addSongPanel = $state<HTMLDivElement | null>(null);
 	let player = $state<ProjectPlayer | null>(null);
@@ -37,86 +37,106 @@
 		<!-- </div> -->
 		{#if data.canEdit}
 			<button
-				class="text-sm link-dim"
+				class="ml-auto block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
 				type="button"
-				aria-expanded={open}
-				onclick={() => (open = !open)}
+				popovertarget="project-settings"
+				title="Project settings"
+				aria-label="Project settings"
 			>
-				{open ? "Close settings" : "Settings"}
+				<span class="block i-ph-gear"></span>
 			</button>
 		{/if}
 	</header>
+	{#if saved}
+		<p class="mt-2 text-sm text-dim">Saved.</p>
+	{/if}
 
-	{#if open}
-		<form
-			class="mb-8 surface px-4 py-4"
-			{...updateProject.enhance(async ({ submit }) => {
-				saved = false;
-				await submit();
-				if (!fields.allIssues()) {
-					saved = true;
-					open = false;
-				}
-			})}
+	{#if data.canEdit}
+		<!-- Same native popover as the song settings: top layer, Esc / click-outside close. -->
+		<div
+			id="project-settings"
+			popover="auto"
+			bind:this={settingsPanel}
+			class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 		>
-			<input {...fields.id.as("hidden", data.project.id)} />
-			<div class="grid gap-4 sm:grid-cols-2">
-				<label class="block">
-					<span class="text-sm text-dim">Name</span>
-					<input
-						class="mt-1 field"
-						{...fields.name.as("text", data.project.name)}
-						oninput={(e) => {
-							if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-						}}
-						required
-					/>
-					{#each fields.name.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-				</label>
-				<label class="block">
-					<span class="text-sm text-dim">URL</span>
-					<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-						<span class="pl-3 text-sm text-dim">/{data.account.slug}/projects/</span>
-						<input
-							class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
-							{...fields.slug.as("text", data.project.slug)}
-							oninput={() => (slugTouched = true)}
-							required
-						/>
-					</span>
-					{#each fields.slug.issues() ?? [] as issue (issue.message)}
-						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-					{/each}
-					{#if slug !== slugify(name)}
-						<button
-							class="mt-1 text-xs link-dim"
-							type="button"
-							onclick={() => {
-								fields.slug.set(slugify(name));
-								slugTouched = false;
-							}}>Use name</button
-						>
-					{/if}
-				</label>
-			</div>
-			{#if slug.trim() !== data.project.slug}
-				<p class="mt-2 text-xs text-dim">
-					Changing the URL also moves every song under it. Old links stop working.
-				</p>
-			{/if}
-			<div class="mt-4 flex items-center gap-3">
+			<div class="mb-4 flex items-center justify-between gap-4">
+				<h2 class="heading-2 mb-0">Project settings</h2>
 				<button
-					class="button-accent disabled:opacity-40"
-					disabled={!dirty || !!updateProject.pending}
+					class="button button-xs"
+					type="button"
+					popovertarget="project-settings"
+					popovertargetaction="hide"
 				>
-					{updateProject.pending ? "Saving…" : "Save"}
+					Close
 				</button>
 			</div>
-		</form>
-	{:else if saved}
-		<p class="mb-6 text-sm text-dim">Saved.</p>
+			<form
+				{...updateProject.enhance(async ({ submit }) => {
+					saved = false;
+					await submit();
+					if (!fields.allIssues()) {
+						saved = true;
+						settingsPanel?.hidePopover();
+					}
+				})}
+			>
+				<input {...fields.id.as("hidden", data.project.id)} />
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="block">
+						<span class="text-sm text-dim">Name</span>
+						<input
+							class="mt-1 field"
+							{...fields.name.as("text", data.project.name)}
+							oninput={(e) => {
+								if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
+							}}
+							required
+						/>
+						{#each fields.name.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
+					<label class="block">
+						<span class="text-sm text-dim">URL</span>
+						<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
+							<span class="pl-3 text-sm text-dim">/{data.account.slug}/projects/</span>
+							<input
+								class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
+								{...fields.slug.as("text", data.project.slug)}
+								oninput={() => (slugTouched = true)}
+								required
+							/>
+						</span>
+						{#each fields.slug.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+						{#if slug !== slugify(name)}
+							<button
+								class="mt-1 text-xs link-dim"
+								type="button"
+								onclick={() => {
+									fields.slug.set(slugify(name));
+									slugTouched = false;
+								}}>Use name</button
+							>
+						{/if}
+					</label>
+				</div>
+				{#if slug.trim() !== data.project.slug}
+					<p class="mt-2 text-xs text-dim">
+						Changing the URL also moves every song under it. Old links stop working.
+					</p>
+				{/if}
+				<div class="mt-4 flex items-center gap-3">
+					<button
+						class="button-accent disabled:opacity-40"
+						disabled={!dirty || !!updateProject.pending}
+					>
+						{updateProject.pending ? "Saving…" : "Save"}
+					</button>
+				</div>
+			</form>
+		</div>
 	{/if}
 
 	<div class="mb-8">

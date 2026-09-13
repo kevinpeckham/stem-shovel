@@ -2,6 +2,7 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
+	import { parseBarsText } from "$lib/utils/parseBarsText";
 	import { readout } from "$lib/audio/readout.svelte";
 	import { FRAME_RATES } from "$lib/constants/frameRates";
 	import { formatBytes } from "$lib/utils/formatBytes";
@@ -70,6 +71,11 @@
 	const rowSeconds = (row: { time: string; shown: string; seconds: number | null }) =>
 		row.seconds !== null && row.time.trim() === row.shown ? row.seconds : readPos(row.time);
 	const readPos = (text: string) => parsePosition(text, posCtx);
+	/** Why `text` did not parse: bars typed on a song without a tempo and meter get their own message. */
+	const positionMessage = (text: string) =>
+		parseBarsText(text) && !posCtx.grid
+			? `"${text}" is in bars, but bars need a tempo and a time signature — add both under "Tempo, key and time signature" first, or enter the position as time (1:23.4) or timecode (01:23:15.72).`
+			: `"${text}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 	let startAtText = $derived(data.song.startAt === null ? "" : editPos(data.song.startAt));
 	let endAtText = $derived(data.song.endAt === null ? "" : editPos(data.song.endAt));
 	let startAtEntry = $state("");
@@ -273,7 +279,7 @@
 		for (const row of sectionRows) {
 			const start = rowSeconds(row);
 			if (start === null) {
-				sectionError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
+				sectionError = positionMessage(row.time);
 				return;
 			}
 			parsed.push({ index: row.index, name: row.name, start });
@@ -302,7 +308,7 @@
 		for (const row of changeRows) {
 			const start = rowSeconds(row);
 			if (start === null) {
-				changeError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
+				changeError = positionMessage(row.time);
 				return;
 			}
 			const bad = songChangeValueError(row.kind, row.value);
@@ -493,7 +499,7 @@
 					] as const) {
 						const seconds = !text.trim() ? 0 : rowSeconds({ time: text, shown, seconds: stored });
 						if (seconds === null) {
-							positionError = `${label}: "${text}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
+							positionError = `${label}: ${positionMessage(text)}`;
 							return;
 						}
 						field.set(text.trim() ? String(seconds) : "");

@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Project settings are a popover** opened from a gear in the project
+  header, matching the song page, instead of a form that unfolded in place.
+
+### Fixed
+
+- **Typing a position in bars on a song without a tempo and time
+  signature** now says so and points at the settings section to fill in,
+  instead of the generic "not a position" message.
+
 ## [0.3.0] - 2026-09-13
 
 ### Added
