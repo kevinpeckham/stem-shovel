@@ -30,6 +30,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   and accept any of the three when typed. Times are now stored to a tenth
   of a millisecond instead of a tenth of a second. Section tooltips show
   the length in bars when the song has a tempo and a meter. Migration 0018.
+- **"Add section at playhead" is hidden** for now; the player still
+  supports it through its `onaddsection` prop.
 - **Settings rows keep exact times**: a section or change saved without
   editing its time keeps its stored seconds, whatever the display format
   rounds to; editors show full precision (milliseconds, beat fractions).

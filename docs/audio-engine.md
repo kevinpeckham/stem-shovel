@@ -28,8 +28,8 @@ fields are `$state`, so components read `engine.position` directly.
   the blocks sit over the waveforms, labelled with the section's `index`
   (roman numerals by default, the name on hover — the column is narrow);
   the block containing `engine.position`
-  is highlighted and clicking one seeks to its start. Members add one at
-  the playhead from the transport, and edit names and times (entered in the
+  is highlighted and clicking one seeks to its start. Members edit index,
+  names and times (entered in the
   transport's `m:ss.s` format, `parseTime` in `$lib/format`) in song
   settings; the `saveSections` command sorts by start and refuses two at
   the same time.

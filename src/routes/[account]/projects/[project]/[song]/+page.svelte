@@ -246,8 +246,8 @@
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
 	type MixMode = "original" | "custom";
-	// Song sections. "Add section at playhead" on the player inserts one at the
-	// current position; the list in settings edits names and times (m:ss.s).
+	// Song sections: the list in settings edits index, name and start. (The player
+	// can also offer "Add section at playhead" via its onaddsection prop; off for now.)
 	let sectionRows = $state<
 		{ index: string; name: string; time: string; shown: string; seconds: number | null }[]
 	>([]);
@@ -274,13 +274,6 @@
 		} finally {
 			sectionsSaving = false;
 		}
-	}
-	async function addSectionAt(start: number) {
-		const name = prompt(`Name the section starting at ${showPos(start)}:`)?.trim();
-		if (!name) return;
-		// Index by position in time: the section's ordinal as a roman numeral.
-		const before = data.song.sections.filter((s) => s.start < start).length;
-		await persistSections([...data.song.sections, { index: toRoman(before + 1), name, start }]);
 	}
 	async function saveSectionRows() {
 		const parsed: SongSection[] = [];
@@ -698,7 +691,7 @@
 				<p class="mt-1 text-sm text-dim">
 					Song structure for the timeline above the stems: a short index (roman numerals, shown on
 					the timeline; the name shows on hover), a name, and where it starts — time, timecode or
-					bars. "Add section at playhead" on the player fills this in while you listen.
+					bars.
 				</p>
 				{#if sectionRows.length > 0}
 					<div class="mt-3 grid gap-2">
@@ -934,7 +927,6 @@
 					startAt={data.song.startAt}
 					endAt={data.song.endAt}
 					fps={data.song.frameRate}
-					onaddsection={data.canEdit ? addSectionAt : undefined}
 					onengine={(e) => (playerEngine = e)}
 				>
 					{#snippet errorHint()}
