@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-13
+
 ### Added
 
 - **Demo recordings per song**: upload phone memos or rough takes from song
@@ -85,6 +87,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   by components.
 - **Uploads report channels after the dual-mono collapse**, so a dual-mono
   file gets a mono rendition.
+
+### Technical
+
+- Migrations 0006–0011: Better Auth tables, `playback_*` on stems and
+  demos, the song's mix cache and render lock, `songwriter` / `written_on`,
+  the `demo` table.
+- `ffmpeg-static` (in `trustedDependencies`; Vercel's tracer packages the
+  binary), `server/background.ts` around Vercel's request-context
+  `waitUntil`, `maxDuration: 300` on the routes that render after responding.
+- Route `config` exports and `$val` schemas are ignored by Fallow's
+  dead-code check; the transcode ↔ mix import cycle is gone.
 
 ## [0.1.0] - 2026-09-12
 

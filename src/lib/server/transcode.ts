@@ -7,6 +7,7 @@ import {
 	finishPlayback,
 } from "$lib/server/data";
 import { deleteBlobs, playbackPathname, putBlob } from "$lib/server/blob";
+import { background } from "$lib/server/background";
 import { ensureOriginalMix } from "$lib/server/mix";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
@@ -34,15 +35,6 @@ import { promisify } from "node:util";
 const BITRATE = { mono: "128k", stereo: "192k" };
 const run = promisify(execFile);
 
-/** Vercel's request context keeps the function alive for the promise; elsewhere it just runs. */
-export function background(work: () => Promise<void>) {
-	const promise = work().catch((e) => console.error("[transcode]", e));
-	const ctx = (
-		globalThis as Record<symbol, { get?: () => { waitUntil?: (p: Promise<unknown>) => void } }>
-	)[Symbol.for("@vercel/request-context")];
-	ctx?.get?.()?.waitUntil?.(promise);
-}
-
 /**
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
  * refreshes the cached original mix of every song touched.
@@ -60,7 +52,7 @@ export function schedulePlayback(stemIds: string[]) {
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */
-export async function transcodeStem(stemId: string): Promise<string | null> {
+async function transcodeStem(stemId: string): Promise<string | null> {
 	const claim = await claimPlayback(stemId);
 	if (!claim) return null;
 	if (!ffmpegPath) {
@@ -130,7 +122,7 @@ export function scheduleDemoPlayback(demoIds: string[]) {
  * AMR — which browsers cannot all play. The MP3 is what the page plays and
  * offers for download; the original stays in Blob.
  */
-export async function transcodeDemo(demoId: string): Promise<void> {
+async function transcodeDemo(demoId: string): Promise<void> {
 	const claim = await claimDemoPlayback(demoId);
 	if (!claim) return;
 	if (!ffmpegPath) {

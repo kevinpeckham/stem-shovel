@@ -70,7 +70,7 @@ export async function accountOfStem(stemId: string) {
 	});
 	return row?.accountId ?? null;
 }
-export async function accountOfStemPathname(pathname: string) {
+async function accountOfStemPathname(pathname: string) {
 	const row = await db.query.stem.findFirst({
 		where: eq(stem.pathname, pathname),
 		columns: { accountId: true },

@@ -22,15 +22,14 @@ import { ENV } from "varlock/env";
  *   token cannot mint identities.
  */
 
-export const PREVIEW_TOKEN_HEADER = "x-preview-token";
-export const PREVIEW_TOKEN_COOKIE = "preview_token";
-export const BOT_EMAIL = "screenshot-bot@stem-shovel.com";
-export const BOT_NAME = "Screenshot Bot";
+const PREVIEW_TOKEN_HEADER = "x-preview-token";
+const PREVIEW_TOKEN_COOKIE = "preview_token";
+const BOT_EMAIL = "screenshot-bot@stem-shovel.com";
 
 const MIN_TOKEN_LENGTH = 32;
 
 /** True only when the bypass is enabled and `provided` matches exactly. */
-export function isValidPreviewToken(provided: string | null | undefined): boolean {
+function isValidPreviewToken(provided: string | null | undefined): boolean {
 	const expected = ENV.PREVIEW_AUTH_TOKEN ?? "";
 	if (typeof expected !== "string" || expected.length < MIN_TOKEN_LENGTH) return false;
 	if (typeof provided !== "string" || provided.length === 0) return false;

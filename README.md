@@ -1,10 +1,14 @@
 # Stem Shovel
 
-Proof-of-concept multi-stem player: synced playback of N audio files in the
-browser with per-stem fader, mute and solo, waveform seek, and a memory
-readout. Stems are uploaded straight from the browser to Vercel Blob,
-catalogued in Turso (accounts → projects → songs → stems), and played back
-from there; the original static-file test page still works.
+A multi-stem player for bands and producers: synced playback of a song's
+stems in the browser with per-stem fader, mute and solo, waveform seek and a
+memory readout; a chart and lyrics document per song; demo recordings of the
+original idea; MP3 mixdowns (the full mix, or what is audible right now) and
+a project-level playlist of every song's mix. Stems upload straight from the
+browser to Vercel Blob, are catalogued in Turso (accounts → projects → songs
+→ stems), get an AAC playback rendition from ffmpeg on the server, and play
+back from there. Viewing and playing are public by URL; editing needs a
+signed-in member of the account (Better Auth).
 
 Stack: SvelteKit 2 + Svelte 5 (runes, remote functions), TypeScript, UnoCSS
 (wind4, lightningjar.com's config), Vite+ (Vite, Oxlint, Oxfmt in one `vp`
@@ -65,11 +69,25 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   version" (`/api/stems/[id]/replace` reserves a new `-vN` pathname for the
   same row — Blob serves files with a 30-day cache header, so a replacement
   needs a new URL — and deletes the old blob). Per-stem Download and the
-  "Download all (.zip)" button fetch the Blob files in the browser
+  "Download Stems" button fetch the Blob files in the browser
   (`client-zip`, stored not compressed) so nothing goes through the server.
-  **No auth yet**; fine behind Tailscale, not for a public deploy.
-- `src/routes/projects/` — project list, song list, song page (player +
-  files + uploader), all with form actions.
+  Demo recordings (`src/routes/api/demos/`) share the route and the
+  three steps, minus the decode.
+- `src/lib/server/transcode.ts` — after an upload, ffmpeg (`ffmpeg-static`,
+  traced into the Vercel function) renders an AAC playback rendition of each
+  stem and an MP3 of each demo, in the background of the request
+  (`server/background.ts` wraps Vercel's `waitUntil`); page loads schedule
+  any that are missing. `src/lib/server/mix.ts` renders MP3 mixdowns from
+  the renditions: the original mix is cached in Blob and kept current as
+  stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
+- `src/lib/server/access.ts` and `src/lib/server/previewAuth.ts` — tenant
+  checks (every query scoped by account; viewing public, editing for
+  members) and the screenshot bot's token bypass (docs/auth.md,
+  docs/agent-screenshots.md).
+- `src/routes/[account]/…` — project list, project page (song list, "Add
+  Song" popover, playlist player), song page (transport, stem rows with a
+  per-stem menu, download row, settings popover with demo recordings,
+  chart / lyrics), account settings; `src/routes/sign-in|sign-up`.
 - **Chart and lyrics**: two markdown documents per song
   (`song.chart_markdown`, `song.lyrics_markdown`), edited at
   `…/[song]/chart` and `…/[song]/lyrics` — one route, `[doc=songDoc]` — with
@@ -93,7 +111,8 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   (`ProjectSettingsSchema`).
 - `src/lib/remote/*.remote.ts` — every server mutation is a SvelteKit remote
   `form` function (no form actions remain): create/update projects, create/
-  update/delete songs, delete stems, save chart/lyrics. Each validates with a
+  update/delete songs, delete stems and demos, save chart/lyrics, account
+  settings, sign out. Each validates with a
   `$val` schema, reports domain errors onto fields with `invalid()`, and
   derives redirect targets from the database rather than the request URL
   (inside a remote function `url` is the calling page only when a browser
@@ -102,18 +121,21 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   submits them the way the browser does, to `/_app/remote/<id>`; the id is
   read from the dev server's transform of the module.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
-- `src/lib/slug.ts` — slug, label and upload-limit helpers shared by client
-  and server.
+- `src/lib/slug.ts` — slug, label, format and upload-limit helpers shared by
+  client and server.
+- `src/lib/components/ProjectPlayer.svelte` — the project page's playlist
+  (a plain `<audio>` streaming each song's cached mix); `src/lib/keys.ts`
+  is the shared "is this text entry" rule behind the Space shortcut.
 - `scripts/make-test-stems.mjs` — synthetic test audio, no ffmpeg needed.
 
 ## Documentation
 
-- [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems, chart/lyrics versions.
+- [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics versions.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
-- [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, downloads.
+- [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, renditions, mixdowns, demos, downloads.
 - [docs/agent-screenshots.md](docs/agent-screenshots.md) — `bun run shot` and the Playwright MCP.
 - [CHANGELOG.md](CHANGELOG.md) — releases; cut one with the `/release` skill.
 - [CLAUDE.md](CLAUDE.md) — conventions and the working agreement for the agent.
@@ -127,5 +149,8 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
 6. ~~Auth (Better Auth).~~ Done; email verification, password reset and
    invitations still need an email provider.
-7. ~~Accounts in the URL.~~ Done. Stem ordering, saved mixes, document
-   version restore UI.
+7. ~~Accounts in the URL.~~ Done.
+8. ~~Playback renditions, MP3 mixdowns, project playlist, demo
+   recordings.~~ Done (v0.2.0).
+9. Stem ordering, saved mixes, document version restore UI, invitations
+   (needs an email provider), share links.

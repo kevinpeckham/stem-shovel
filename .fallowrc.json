@@ -29,6 +29,10 @@
 		"uno.css"
 	],
 	// $val schemas export arrays, schemas and types as a set; not every member is used yet.
-	"ignoreExports": [{ "file": "src/lib/val/**", "exports": ["*"] }],
+	"ignoreExports": [
+		{ "file": "src/lib/val/**", "exports": ["*"] },
+		// SvelteKit reads a route's `config` (maxDuration etc.); nothing imports it.
+		{ "file": "src/routes/**/+*.ts", "exports": ["config"] }
+	],
 	"rules": {}
 }

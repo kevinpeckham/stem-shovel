@@ -1,6 +1,6 @@
 import { deleteBlobs, mixPathname, putBlob } from "$lib/server/blob";
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "$lib/server/data";
-import { background } from "$lib/server/transcode";
+import { background } from "$lib/server/background";
 import { FADER_MAX } from "$lib/audio/engine.svelte";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
@@ -42,7 +42,7 @@ export interface MixRequest {
 export type Mixable = NonNullable<Awaited<ReturnType<typeof songForMix>>>;
 
 /** Identifies the set of files an original mix is made from. */
-export function originalMixKey(song: Pick<Mixable, "stems">) {
+function originalMixKey(song: Pick<Mixable, "stems">) {
 	return mixKeyOf(song.stems);
 }
 
@@ -57,7 +57,7 @@ export function mixKeyOf(stems: MixKeyStem[]) {
 	return createHash("sha1").update(parts.join("\n")).digest("hex").slice(0, 16);
 }
 
-export function originalMixRequest(song: Mixable): MixRequest {
+function originalMixRequest(song: Mixable): MixRequest {
 	return { stems: song.stems.map((s) => ({ id: s.id, gain: 1 })), master: 1 };
 }
 
