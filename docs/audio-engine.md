@@ -22,6 +22,15 @@ fields are `$state`, so components read `engine.position` directly.
 - **Dual-mono files collapse to one channel** after decoding
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one; real stereo is untouched.
+- **Sections timeline** (`SectionTimeline.svelte`): when a song has
+  sections (`song.sections`, `[{ name, start }]` in seconds), a row above
+  the stems shows a block per section on the same grid as a stem row, so
+  the blocks sit over the waveforms; the block containing `engine.position`
+  is highlighted and clicking one seeks to its start. Members add one at
+  the playhead from the transport, and edit names and times (entered in the
+  transport's `m:ss.s` format, `parseTime` in `$lib/format`) in song
+  settings; the `saveSections` command sorts by start and refuses two at
+  the same time.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

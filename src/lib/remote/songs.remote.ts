@@ -1,4 +1,5 @@
 import { command, form, getRequestEvent } from "$app/server";
+import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
 import { scheduleMix } from "$lib/server/mix";
 import {
 	accountOfProject,
@@ -18,6 +19,7 @@ import {
 	saveSongDoc,
 	songSlugs,
 	updateSong as update,
+	updateSongSections,
 } from "$lib/server/data";
 import {
 	IdSchema,
@@ -112,6 +114,15 @@ export const deleteDemo = form(IdSchema, async ({ id }) => {
 	const { accountId } = await memberOf(locals, accountOfDemo, id);
 	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");
 	return { deleted: true };
+});
+
+/** Replaces a song's sections (structure timeline). A command: called from the timeline and settings. */
+export const saveSections = command(SongSectionsSaveSchema, async ({ id, sections }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const result = await updateSongSections(accountId, id, sections);
+	if (!result.ok) error(400, result.error);
+	return result.sections;
 });
 
 /** Relabels a stem. A command (not a form): called from the row menu's prompt. */

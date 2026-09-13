@@ -2,7 +2,8 @@
 
 A multi-stem player for bands and producers: synced playback of a song's
 stems in the browser with per-stem fader, mute and solo, waveform seek and a
-memory readout; chart, lyrics and notes documents per song; demo recordings of the
+memory readout; a section timeline over the stems; chart, lyrics and notes
+documents per song; demo recordings of the
 original idea; MP3 mixdowns (the full mix, or what is audible right now) and
 a project-level playlist of every song's mix. Stems upload straight from the
 browser to Vercel Blob, are catalogued in Turso (accounts → projects → songs

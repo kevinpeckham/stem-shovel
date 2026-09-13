@@ -12,6 +12,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Song notes**: a third markdown document beside Chart and Lyrics, with
   the same editor, versioning and toggle (`…/[song]/notes`; migration 0012).
+- **Song sections**: mark the structure (Intro, Verse…) with a start time
+  each; a timeline row over the stems shows the blocks, highlights the one
+  the playhead is in and seeks on click. "Add section at playhead" on the
+  transport, or edit names and times (in the transport's `m:ss.s` format)
+  in song settings. Hidden when a song has no sections. Migration 0013.
 
 ## [0.2.1] - 2026-09-13
 

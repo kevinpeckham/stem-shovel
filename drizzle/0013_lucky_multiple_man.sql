@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `sections` text DEFAULT '[]' NOT NULL;

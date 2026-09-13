@@ -6,6 +6,7 @@ import { labelFromFilename, MAX_DEMOS_PER_SONG, MAX_STEMS_PER_SONG, slugify } fr
 import { SlugSchema } from "$lib/val/SlugSchema";
 import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
+import type { SongSection } from "$lib/val/SongSectionSchema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as v from "valibot";
@@ -465,6 +466,35 @@ export async function deleteStem(accountId: string, stemId: string) {
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	await refreshSongDuration(row.songId);
 	return { songId: row.songId };
+}
+
+// ---- song sections ----------------------------------------------------------
+
+export type SaveSectionsResult =
+	| { ok: true; sections: SongSection[] }
+	| { ok: false; error: string };
+
+/** Replaces the song's sections: sorted by start, no two at the same time. */
+export async function updateSongSections(
+	accountId: string,
+	songId: string,
+	input: SongSection[],
+): Promise<SaveSectionsResult> {
+	const sections = input
+		.map((s) => ({ name: s.name.trim(), start: Math.round(s.start * 10) / 10 }))
+		.sort((a, b) => a.start - b.start);
+	for (let i = 1; i < sections.length; i++) {
+		if (sections[i].start === sections[i - 1].start) {
+			return { ok: false, error: `Two sections start at ${sections[i].start}s.` };
+		}
+	}
+	const [row] = await db
+		.update(song)
+		.set({ sections })
+		.where(and(eq(song.accountId, accountId), eq(song.id, songId)))
+		.returning({ sections: song.sections });
+	if (!row) return { ok: false, error: "Song not found." };
+	return { ok: true, sections: row.sections };
 }
 
 // ---- demo recordings --------------------------------------------------------

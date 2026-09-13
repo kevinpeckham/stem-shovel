@@ -4,6 +4,9 @@
 	import StemRow from "$lib/components/StemRow.svelte";
 	import Transport from "$lib/components/Transport.svelte";
 	import { formatBytes } from "$lib/format";
+	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
+	import { formatTime } from "$lib/format";
+	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import { untrack, type Snippet } from "svelte";
 
 	interface Props {
@@ -14,11 +17,23 @@
 		stemMenu?: Snippet<[StemState]>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
+		/** Song structure; the timeline row shows only when there is at least one. */
+		sections?: SongSection[];
+		/** When given, members get an "Add section at playhead" button. */
+		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
 		onengine?: (engine: StemEngine) => void;
 	}
 
-	let { manifest, errorHint, stemMenu, headerExtras, onengine }: Props = $props();
+	let {
+		manifest,
+		errorHint,
+		stemMenu,
+		headerExtras,
+		sections = [],
+		onaddsection,
+		onengine,
+	}: Props = $props();
 
 	const engine = new StemEngine();
 	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
@@ -69,12 +84,29 @@
 {:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
 		<Transport {engine} />
+		{#if onaddsection}
+			<div class="mt-2 flex justify-end">
+				<button
+					class="button button-xs"
+					type="button"
+					disabled={engine.status !== "ready"}
+					title="Mark a section starting at the current position ({formatTime(engine.position)})"
+					onclick={() => onaddsection(engine.position)}
+				>
+					<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
+					Add section at playhead
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	<section
 		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start mb-5"
 		aria-label="Stems"
 	>
+		{#if sections.length > 0}
+			<SectionTimeline {engine} {sections} />
+		{/if}
 		{#each engine.stems as stem (stem.id)}
 			<StemRow {stem} {engine} menu={stemMenu} />
 		{/each}

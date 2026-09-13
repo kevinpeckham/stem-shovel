@@ -34,6 +34,9 @@ erDiagram
 - **song** — one piece of music with N stems. Carries the musical metadata
   (bpm, key) and the denormalized `account_id` so tenant scoping never needs a
   join through `project`.
+- **song.sections** — the song's structure as JSON, `[{ name, start }]`
+  with `start` in seconds, kept sorted; empty means no timeline. Marks are
+  song-level, so replacing a stem never moves them.
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):
   one audio file in Blob at `accounts/<id>/songs/<id>/demos/<demoId>.<ext>`,
   with the same reserve → upload → ready lifecycle as a stem but no

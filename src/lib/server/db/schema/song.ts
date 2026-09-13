@@ -1,6 +1,7 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { ArchiveStatus } from "../../../val/ArchiveStatusSchema";
+import type { SongSection } from "../../../val/SongSectionSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { project } from "./project";
@@ -43,6 +44,8 @@ export const song = table(
 		notesMarkdown: t.text("notes_markdown").notNull().default(""),
 		notesHash: t.text("notes_hash"),
 		notesVersion: t.integer("notes_version").notNull().default(0),
+		/** Song structure: [{ name, start }] with start in seconds, sorted; empty = no timeline. */
+		sections: t.text("sections", { mode: "json" }).$type<SongSection[]>().notNull().default([]),
 		/**
 		 * Cached "original" MP3 mixdown (src/lib/server/mix.ts). `mixKey` names
 		 * the set of stem files it was made from; a different set means re-render.

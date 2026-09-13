@@ -1,7 +1,7 @@
 <script lang="ts">
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { formatBytes, formatMonth } from "$lib/format";
+	import { formatBytes, formatMonth, formatTime, parseTime } from "$lib/format";
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 
@@ -27,6 +27,7 @@
 		deleteSong,
 		deleteStem,
 		renameStem,
+		saveSections,
 		updateSong,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
@@ -193,6 +194,45 @@
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
 	type MixMode = "original" | "custom";
+	// Song sections. "Add section at playhead" on the player inserts one at the
+	// current position; the list in settings edits names and times (m:ss.s).
+	let sectionRows = $state<{ name: string; time: string }[]>([]);
+	let sectionError = $state<string | null>(null);
+	let sectionsSaving = $state(false);
+	function resetSectionRows() {
+		sectionRows = data.song.sections.map((s) => ({ name: s.name, time: formatTime(s.start) }));
+	}
+	async function persistSections(next: { name: string; start: number }[]) {
+		sectionError = null;
+		sectionsSaving = true;
+		try {
+			await saveSections({ id: data.song.id, sections: next });
+			await invalidateAll();
+			resetSectionRows();
+		} catch (e) {
+			sectionError = e instanceof Error ? e.message : String(e);
+		} finally {
+			sectionsSaving = false;
+		}
+	}
+	async function addSectionAt(start: number) {
+		const name = prompt(`Name the section starting at ${formatTime(start)}:`)?.trim();
+		if (!name) return;
+		await persistSections([...data.song.sections, { name, start }]);
+	}
+	async function saveSectionRows() {
+		const parsed: { name: string; start: number }[] = [];
+		for (const row of sectionRows) {
+			const start = parseTime(row.time);
+			if (start === null) {
+				sectionError = `"${row.time}" is not a time. Use the transport's format, like 1:23.4.`;
+				return;
+			}
+			parsed.push({ name: row.name, start });
+		}
+		await persistSections(parsed);
+	}
+
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
@@ -309,6 +349,7 @@
 		<div
 			id="song-settings"
 			popover="auto"
+			ontoggle={(e) => e.newState === "open" && resetSectionRows()}
 			bind:this={settingsPanel}
 			class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 		>
@@ -429,6 +470,67 @@
 
 			<div class="mt-8 border-t border-white/15 pt-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
+					<h3 class="text-15px font-700">Sections</h3>
+					<button
+						class="button button-xs"
+						type="button"
+						onclick={() => (sectionRows = [...sectionRows, { name: "", time: "0:00.0" }])}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						Add row
+					</button>
+				</div>
+				<p class="mt-1 text-sm text-dim">
+					Song structure for the timeline above the stems: a name and the time it starts, in the
+					transport's format (1:23.4). "Add section at playhead" on the player fills this in while
+					you listen.
+				</p>
+				{#if sectionRows.length > 0}
+					<div class="mt-3 grid gap-2">
+						{#each sectionRows as row, i (i)}
+							<div class="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
+								<input
+									class="field"
+									placeholder="Intro"
+									bind:value={row.name}
+									aria-label="Section name"
+								/>
+								<input
+									class="field font-mono text-sm"
+									placeholder="0:00.0"
+									bind:value={row.time}
+									aria-label="Start time"
+								/>
+								<button
+									class="link-dim text-xs"
+									type="button"
+									onclick={() => (sectionRows = sectionRows.filter((_, j) => j !== i))}
+									>Remove</button
+								>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				{#if sectionError}
+					<p class="mt-2 text-sm text-red-400" role="alert">{sectionError}</p>
+				{/if}
+				<div class="mt-3 flex items-center gap-3">
+					<button
+						class="button-accent disabled:opacity-40"
+						type="button"
+						disabled={sectionsSaving}
+						onclick={saveSectionRows}
+					>
+						{sectionsSaving ? "Saving…" : "Save sections"}
+					</button>
+					<button class="link-dim text-xs" type="button" onclick={resetSectionRows}
+						>Discard changes</button
+					>
+				</div>
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h3 class="text-15px font-700">Demo recordings</h3>
 					<label
 						class="button button-xs cursor-pointer {demoBusy
@@ -521,7 +623,13 @@
 		<!-- transport and waveforms -->
 		{#if data.manifest.stems.length > 0}
 			<div class="mb-5">
-				<StemPlayer manifest={data.manifest} {stemMenu} onengine={(e) => (playerEngine = e)}>
+				<StemPlayer
+					manifest={data.manifest}
+					{stemMenu}
+					sections={data.song.sections}
+					onaddsection={data.canEdit ? addSectionAt : undefined}
+					onengine={(e) => (playerEngine = e)}
+				>
 					{#snippet errorHint()}
 						A stem's file is missing from the Blob store. Remove it from its menu and upload it
 						again.
