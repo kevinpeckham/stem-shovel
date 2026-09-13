@@ -33,14 +33,24 @@
      children (buttons, fader, waveform), so the a11y rule doesn't apply here. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[9rem_auto_6rem_1fr_auto]"
+	class="
+		grid
+		grid-cols-[1fr_auto_auto]
+		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr]"
 	role="group"
 	aria-label={stem.label}
 	{onkeydown}
 >
-	<div class="min-w-0">
-		<div class="truncate font-medium {silenced ? 'text-dim' : ''}">{stem.label}</div>
-		<div class="text-xs text-dim">
+	<!-- track name & meta -->
+	<div class="w-full">
+		<div
+			class="truncate text-16px font-500 text-blue-300 {silenced
+				? 'opacity-60 text-slate-100'
+				: ''}"
+		>
+			{stem.label}
+		</div>
+		<!-- <div class="text-xs text-dim">
 			{#if !stem.decoded}
 				decoding…{#if stem.duration}
 					{formatTime(stem.duration)}{/if}
@@ -49,10 +59,39 @@
 					stem.duration,
 				)}
 			{/if}
+		</div> -->
+		<div class="flex gap-1 text-11px mt-1">
+			<button
+				type="button"
+				class="h-6 w-6 rounded border border-white/25 font-500 transition-colors hover:border-white/60 {stem.muted
+					? 'bg-blue-300 text-oxford border-blue-300'
+					: ''}"
+				aria-pressed={stem.muted}
+				aria-label="Mute {stem.label}"
+				onclick={() => engine.toggleMute(stem.id)}
+			>
+				M
+			</button>
+			<button
+				type="button"
+				class="h-6 w-6 rounded border border-white/25 font-semibold transition-colors hover:border-white/60 {stem.soloed
+					? 'bg-maximumYellow text-oxford border-maximumYellow'
+					: ''}"
+				aria-pressed={stem.soloed}
+				aria-label="Solo {stem.label}"
+				onclick={() => engine.toggleSolo(stem.id)}
+			>
+				S
+			</button>
+
+			{#if menu}
+				<div class="">{@render menu(stem)}</div>
+			{/if}
 		</div>
 	</div>
 
-	<div class="flex gap-2">
+	<!-- mute & solo buttons -->
+	<!-- <div class="flex gap-2">
 		<button
 			type="button"
 			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.muted
@@ -75,20 +114,24 @@
 		>
 			S
 		</button>
+	</div> -->
+
+	<!-- volume slider -->
+	<div class="flex items-end h-full pb-2">
+		<input
+			type="range"
+			class="w-full accent-blue-300 sm:w-20"
+			min="0"
+			max={FADER_MAX}
+			step="0.01"
+			value={stem.gain}
+			aria-label="{stem.label} level"
+			oninput={(e) => engine.setGain(stem.id, e.currentTarget.valueAsNumber)}
+		/>
 	</div>
 
-	<input
-		type="range"
-		class="w-full accent-blue-300 sm:w-24"
-		min="0"
-		max={FADER_MAX}
-		step="0.01"
-		value={stem.gain}
-		aria-label="{stem.label} level"
-		oninput={(e) => engine.setGain(stem.id, e.currentTarget.valueAsNumber)}
-	/>
-
-	<div class="col-span-3 sm:col-span-1">
+	<!-- waveform -->
+	<div class="col-span-3 sm-col-span-1 bg-blue-300/5 rounded">
 		<Waveform
 			peaks={stem.peaks}
 			{progress}
@@ -99,7 +142,8 @@
 		/>
 	</div>
 
-	{#if menu}
+	<!-- context menu -->
+	<!-- {#if menu}
 		<div class="row-start-1 col-start-3 sm:col-start-5 sm:row-auto">{@render menu(stem)}</div>
-	{/if}
+	{/if} -->
 </div>

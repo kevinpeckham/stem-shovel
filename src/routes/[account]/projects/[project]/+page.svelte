@@ -148,7 +148,7 @@
 		/>
 	</div>
 
-	<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+	<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
 		<div>
 			<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Songs in Progress</h2>
 			<p class="opacity-90 text-15px">
@@ -201,7 +201,7 @@
 						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
 						<div>
-							<span class="text-20px">{song.title}</span>
+							<span class="">{song.title}</span>
 							{#if song.description}
 								<span class="block text-sm">{song.description}</span>
 							{/if}

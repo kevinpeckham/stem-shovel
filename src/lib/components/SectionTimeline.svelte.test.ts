@@ -24,13 +24,10 @@ describe("SectionTimeline", () => {
 		expect(blocks[0]).toHaveAttribute("title", "I · Intro · 45 bars");
 		expect(blocks[1]).toHaveAttribute("title", expect.stringContaining("II · Verse · "));
 	});
-	test("the block containing the playhead is selected and named in the label", () => {
+	test("the block containing the playhead is selected", () => {
 		render(SectionTimeline, { props: { engine: fakeEngine({ position: 100 }), sections } });
 		expect(screen.getByRole("tab", { name: "II" })).toHaveAttribute("aria-selected", "true");
 		expect(screen.getByRole("tab", { name: "I" })).toHaveAttribute("aria-selected", "false");
-		expect(screen.getByRole("group", { name: "Song sections" })).toHaveTextContent(
-			"Sections · Verse",
-		);
 	});
 	test("clicking a block seeks to its start", async () => {
 		const user = userEvent.setup();

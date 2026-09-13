@@ -68,13 +68,13 @@
 </script>
 
 <div
-	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 sm:grid-cols-[9rem_auto_6rem_1fr_auto]"
+	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 sm:grid-cols-[80px_80px_1fr] leading-none"
 	role="group"
 	aria-label="Song sections"
 >
-	<div class="text-xs text-dim">
+	<div class="text-11px">
 		Sections
-		{#if currentIndex >= 0}
+	{#if currentIndex >= 0}
 			<span class="ml-1 text-neutral-100">· {blocks[currentIndex].name}</span>
 		{/if}
 		{#each current as c (c.kind)}
@@ -83,27 +83,29 @@
 	</div>
 	<!-- the stem rows' M / S buttons (2 × w-8 + gap-2) and fader (6rem) columns, kept empty so the bar sits over the waveforms -->
 	<div class="hidden sm:block sm:w-18" aria-hidden="true"></div>
-	<div class="hidden sm:block" aria-hidden="true"></div>
-	<div class="relative col-span-3 sm:col-span-1" style:padding-top="{lanes.length * LANE_REM}rem">
+	<div
+		class="relative col-span-3 sm-col-span-1 gap-y-1 text-10px"
+		style:padding-top="{lanes.length * LANE_REM}rem"
+	>
 		{#each lanes as lane, li (lane.kind)}
 			<!-- one lane per kind; each marker runs to the next marker of its kind, so its label clips instead of colliding -->
 			{#each lane.markers as m (m.start)}
-				<span
-					class="absolute h-3.5 overflow-hidden border-l pl-1 font-mono text-10px leading-3.5 whitespace-nowrap {current.some(
+				<div
+					class="absolute h-3.5 overflow-hidden border-l pl-1 font-mono leading-3.5 whitespace-nowrap {current.some(
 						(c) => c.kind === m.kind && c.start === m.start,
 					)
 						? 'border-maximumYellow text-neutral-100'
-						: 'border-white/30 text-dim'}"
+						: 'border-white/30'}"
 					style:top="{li * LANE_REM}rem"
 					style:left="{(m.start / duration) * 100}%"
 					style:width="calc({((m.end - m.start) / duration) * 100}% - 1px)"
 					title="{formatSongChange(m)} from {at(m.start)}"
 				>
 					{formatSongChange(m)}
-				</span>
+				</div>
 			{/each}
 		{/each}
-		<div class="relative h-7" role="tablist" aria-label="Jump to section">
+		<div class="relative h-6 mt-1" role="tablist" aria-label="Jump to section">
 			{#if startAt !== null && startAt > 0}
 				<span
 					class="pointer-events-none absolute top-0 z-10 h-full border-l border-dashed border-green-300/80"
@@ -123,10 +125,10 @@
 					type="button"
 					role="tab"
 					aria-selected={i === currentIndex}
-					class="absolute top-0 h-full overflow-hidden rounded border px-1.5 text-left text-xs leading-7 whitespace-nowrap transition-colors disabled:cursor-default {i ===
+					class="absolute top-0 h-full overflow-hidden rounded //border pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
 					currentIndex
 						? 'border-maximumYellow bg-maximumYellow/20 text-neutral-100'
-						: 'border-white/15 bg-white/5 text-dim hover-bg-white/10 hover-text-neutral-100'}"
+						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'}"
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"
 					title="{b.index ? `${b.index} · ` : ''}{b.name} · {ctx.grid

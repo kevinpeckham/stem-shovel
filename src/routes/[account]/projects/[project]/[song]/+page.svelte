@@ -1300,13 +1300,13 @@
 	{#if row}
 		<details class="relative" data-stem-menu>
 			<summary
-				class="grid h-8 w-8 cursor-pointer list-none place-items-center rounded border border-white/25 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
+				class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded border border-white/10 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
 				title="{stem.label}: options"
 				aria-label="{stem.label}: options"
 				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary
 			>
 			<div
-				class="absolute right-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
+				class="absolute left-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
 			>
 				<div class="truncate px-3 py-1.5 text-xs text-dim">
 					{row.filename} · {formatBytes(row.sizeBytes)}
