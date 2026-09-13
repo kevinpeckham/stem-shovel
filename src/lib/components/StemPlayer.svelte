@@ -6,7 +6,7 @@
 	import { formatBytes } from "$lib/format";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { formatTime } from "$lib/format";
-	import type { SongChange } from "$lib/val/SongChangeSchema";
+	import { type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import { untrack, type Snippet } from "svelte";
 
@@ -18,7 +18,7 @@
 		stemMenu?: Snippet<[StemState]>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
-		/** Song structure; the timeline row shows when there is a section or a change. */
+		/** Song structure; the timeline row shows when there is a section or a change worth a lane (timelineKinds). */
 		sections?: SongSection[];
 		changes?: SongChange[];
 		/** When given, members get an "Add section at playhead" button. */
@@ -107,7 +107,7 @@
 		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start mb-5"
 		aria-label="Stems"
 	>
-		{#if sections.length > 0 || changes.length > 0}
+		{#if sections.length > 0 || timelineKinds(changes).length > 0}
 			<SectionTimeline {engine} {sections} {changes} />
 		{/if}
 		{#each engine.stems as stem (stem.id)}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { formatTime } from "$lib/format";
-	import { formatSongChange, SONG_CHANGE_KINDS, type SongChange } from "$lib/val/SongChangeSchema";
+	import { formatSongChange, type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 
 	interface Props {
@@ -19,22 +19,24 @@
 	let duration = $derived(
 		Math.max(engine.duration, sections.at(-1)?.start ?? 0, changes.at(-1)?.start ?? 0, 1),
 	);
-	// Markers by kind, each running to the next of its kind (or the end).
+	// Lanes for the kinds that actually change (timelineKinds); each marker runs to the next of its kind.
 	const LANE_REM = 0.875;
 	let lanes = $derived(
-		SONG_CHANGE_KINDS.map((kind) => {
-			const of = changes.filter((c) => c.kind === kind);
-			return {
-				kind,
-				markers: of.map((c, i) => ({ ...c, end: of[i + 1]?.start ?? duration })),
-			};
-		}).filter((l) => l.markers.length > 0),
+		timelineKinds(changes)
+			.map((kind) => {
+				const of = changes.filter((c) => c.kind === kind);
+				return {
+					kind,
+					markers: of.map((c, i) => ({ ...c, end: of[i + 1]?.start ?? duration })),
+				};
+			})
+			.filter((l) => l.markers.length > 0),
 	);
 	// What is in force at the playhead, one per kind, in the order tempo · key · meter.
 	let current = $derived(
-		SONG_CHANGE_KINDS.map((kind) =>
-			changes.findLast((c) => c.kind === kind && engine.position >= c.start),
-		).filter((c) => c !== undefined),
+		timelineKinds(changes)
+			.map((kind) => changes.findLast((c) => c.kind === kind && engine.position >= c.start))
+			.filter((c) => c !== undefined),
 	);
 	let blocks = $derived(
 		sections.map((s, i) => {

@@ -19,9 +19,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   in song settings. Hidden when a song has no sections. Migration 0013.
 - **Tempo, key and time signature** as timed changes: each has a start
   time, so a song can change tempo or meter partway. Edited in song
-  settings as rows of time, kind and value; the timeline draws a lane per
-  kind, highlights what is in force at the playhead and names it, and the
-  header shows the song's opening tempo, key and meter. Migrations 0015
+  settings as rows of time, kind and value; the header shows the song's
+  opening tempo, key and meter, and the timeline draws a lane for each kind
+  that actually changes, highlighting and naming what is in force at the
+  playhead. A song with fixed values and no sections shows no timeline. Migrations 0015
   (the `changes` column) and 0016 (drops `bpm` / `musical_key`).
 - **Tall popovers scroll** within the viewport instead of overflowing it.
 

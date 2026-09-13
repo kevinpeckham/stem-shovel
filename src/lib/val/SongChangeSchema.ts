@@ -66,3 +66,14 @@ export const SongChangesSaveSchema = v.object({
 export function formatSongChange(c: SongChange): string {
 	return c.kind === "tempo" ? `${c.value} bpm` : c.value;
 }
+
+/**
+ * The kinds worth a timeline lane: a kind with a single change at 0:00 is
+ * the song's fixed tempo / key / meter (the header shows it), not a change.
+ */
+export function timelineKinds(changes: SongChange[]): SongChangeKind[] {
+	return SONG_CHANGE_KINDS.filter((kind) => {
+		const of = changes.filter((c) => c.kind === kind);
+		return of.length > 1 || (of.length === 1 && of[0].start > 0);
+	});
+}

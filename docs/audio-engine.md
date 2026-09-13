@@ -35,10 +35,12 @@ fields are `$state`, so components read `engine.position` directly.
   (`song.changes`, `[{ kind, start, value }]`, kind `tempo | key | meter`),
   edited in song settings as rows of time (`m:ss.s`), kind and value; the
   `saveChanges` command sorts them and refuses two of a kind at one time.
-  The timeline row draws one lane per kind with a marker at each change,
-  each clipped at the next of its kind, highlights what is in force at the
-  playhead and names it in the row's label; the header shows the first of
-  each kind. The row shows whenever a song has sections or changes.
+  The timeline row draws one lane per kind that actually changes
+  (`timelineKinds`: more than one change, or one that starts after 0:00 —
+  a single change at 0:00 is the song's fixed value and only the header
+  shows it), a marker per change clipped at the next of its kind, and
+  highlights and names what is in force at the playhead. The row shows
+  only when a song has sections or such a lane.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).
