@@ -331,6 +331,17 @@
 		}
 	}
 
+	// A stem row's menu is a <details>; it closes on Escape, on a click outside
+	// it, and when another menu opens (that click is outside the first).
+	function closeStemMenus(e: Event) {
+		for (const menu of document.querySelectorAll<HTMLDetailsElement>(
+			"details[data-stem-menu][open]",
+		)) {
+			if (e.type === "pointerdown" && menu.contains(e.target as Node)) continue;
+			menu.open = false;
+		}
+	}
+
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
@@ -390,6 +401,13 @@
 		}
 	}
 </script>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === "Escape") closeStemMenus(e);
+	}}
+	onpointerdown={closeStemMenus}
+/>
 
 <svelte:head>
 	<title>{data.song.title} — Stem Shovel</title>
@@ -1200,7 +1218,7 @@
 	{@const job = replacing[stem.id]}
 	{@const remove = deleteStem.for(stem.id)}
 	{#if row}
-		<details class="relative">
+		<details class="relative" data-stem-menu>
 			<summary
 				class="grid h-8 w-8 cursor-pointer list-none place-items-center rounded border border-white/25 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
 				title="{stem.label}: options"

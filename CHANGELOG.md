@@ -92,6 +92,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **Stem row menus close** on Escape, on a click outside them, and when
+  another row's menu opens.
 - **Uploads of `.m4a` files from a Mac or iPhone** were refused: the browser
   labels them `audio/x-m4a` and the upload token only allowed `audio/mp4`.
   The content type now comes from the extension for stems and demos alike.
