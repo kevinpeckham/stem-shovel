@@ -37,6 +37,10 @@ erDiagram
 - **song.sections** — the song's structure as JSON, `[{ name, start }]`
   with `start` in seconds, kept sorted; empty means no timeline. Marks are
   song-level, so replacing a stem never moves them.
+- **song.changes** — tempo, key and time signature as timed changes,
+  `[{ kind, start, value }]` with `kind` tempo | key | meter, `start` in
+  seconds and `value` as text ("120", "F#m", "6/8"), sorted. The old
+  single-value `bpm` / `musical_key` columns are gone (migration 0016).
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):
   one audio file in Blob at `accounts/<id>/songs/<id>/demos/<demoId>.<ext>`,
   with the same reserve → upload → ready lifecycle as a stem but no

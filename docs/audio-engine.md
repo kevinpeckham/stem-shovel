@@ -31,6 +31,14 @@ fields are `$state`, so components read `engine.position` directly.
   transport's `m:ss.s` format, `parseTime` in `$lib/format`) in song
   settings; the `saveSections` command sorts by start and refuses two at
   the same time.
+- **Tempo, key and time signature** are timed changes on the song
+  (`song.changes`, `[{ kind, start, value }]`, kind `tempo | key | meter`),
+  edited in song settings as rows of time (`m:ss.s`), kind and value; the
+  `saveChanges` command sorts them and refuses two of a kind at one time.
+  The timeline row draws one lane per kind with a marker at each change,
+  each clipped at the next of its kind, highlights what is in force at the
+  playhead and names it in the row's label; the header shows the first of
+  each kind. The row shows whenever a song has sections or changes.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

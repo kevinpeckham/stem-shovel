@@ -17,6 +17,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   the playhead is in and seeks on click. "Add section at playhead" on the
   transport, or edit names and times (in the transport's `m:ss.s` format)
   in song settings. Hidden when a song has no sections. Migration 0013.
+- **Tempo, key and time signature** as timed changes: each has a start
+  time, so a song can change tempo or meter partway. Edited in song
+  settings as rows of time, kind and value; the timeline draws a lane per
+  kind, highlights what is in force at the playhead and names it, and the
+  header shows the song's opening tempo, key and meter. Migrations 0015
+  (the `changes` column) and 0016 (drops `bpm` / `musical_key`).
+- **Tall popovers scroll** within the viewport instead of overflowing it.
 
 ## [0.2.1] - 2026-09-13
 
