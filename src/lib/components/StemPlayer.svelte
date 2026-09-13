@@ -5,6 +5,7 @@
 	import Transport from "$lib/components/Transport.svelte";
 	import { formatBytes } from "$lib/format";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
+	import { barGrid } from "$lib/audio/measures";
 	import { formatTime } from "$lib/format";
 	import { type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
@@ -21,6 +22,9 @@
 		/** Song structure; the timeline row shows when there is a section or a change worth a lane (timelineKinds). */
 		sections?: SongSection[];
 		changes?: SongChange[];
+		/** Bar 1 and the song's end, seconds (null = 0 / the last stem). */
+		startAt?: number | null;
+		endAt?: number | null;
 		/** When given, members get an "Add section at playhead" button. */
 		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
@@ -34,6 +38,8 @@
 		headerExtras,
 		sections = [],
 		changes = [],
+		startAt = null,
+		endAt = null,
 		onaddsection,
 		onengine,
 	}: Props = $props();
@@ -86,7 +92,7 @@
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-		<Transport {engine} />
+		<Transport {engine} grid={barGrid(changes, startAt)} {endAt} />
 		{#if onaddsection}
 			<div class="mt-2 flex justify-end">
 				<button
@@ -108,7 +114,7 @@
 		aria-label="Stems"
 	>
 		{#if sections.length > 0 || timelineKinds(changes).length > 0}
-			<SectionTimeline {engine} {sections} {changes} />
+			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} />
 		{/if}
 		{#each engine.stems as stem (stem.id)}
 			<StemRow {stem} {engine} menu={stemMenu} />

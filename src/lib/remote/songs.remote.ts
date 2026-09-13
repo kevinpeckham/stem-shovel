@@ -41,7 +41,7 @@ import { error, invalid, redirect } from "@sveltejs/kit";
 /** Title, URL, description, songwriter and date; a slug change redirects to the new address. */
 export const updateSong = form(
 	SongSettingsSchema,
-	async ({ id, title, slug, description, songwriter, writtenOn }, issue) => {
+	async ({ id, title, slug, description, songwriter, writtenOn, startAt, endAt }, issue) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSong, id);
 		const result = await update(accountId, id, {
@@ -50,6 +50,8 @@ export const updateSong = form(
 			description,
 			songwriter,
 			writtenOn,
+			startAt,
+			endAt,
 		});
 		if (!result.ok) invalid(issue[result.field](result.error));
 		const slugs = await songSlugs(accountId, id);

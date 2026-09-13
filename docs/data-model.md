@@ -41,6 +41,8 @@ erDiagram
   `[{ kind, start, value }]` with `kind` tempo | key | meter, `start` in
   seconds and `value` as text ("120", "F#m", "6/8"), sorted. The old
   single-value `bpm` / `musical_key` columns are gone (migration 0016).
+- **song.start_at / end_at** — seconds where bar 1 begins and where the song
+  ends (null = 0 / the last stem), for the bars readout and the timeline.
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):
   one audio file in Blob at `accounts/<id>/songs/<id>/demos/<demoId>.<ext>`,
   with the same reserve → upload → ready lifecycle as a stem but no

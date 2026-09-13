@@ -1,13 +1,37 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
+	import { barAt, type BarGrid, formatBars } from "$lib/audio/measures";
 	import { formatTime } from "$lib/format";
 	import { isTextEntry } from "$lib/keys";
 
 	interface Props {
 		engine: StemEngine;
+		/** When the song has a tempo and a meter, the readout can show bars instead of time. */
+		grid?: BarGrid | null;
+		/** Song end for the bars total (null = the last stem). */
+		endAt?: number | null;
 	}
 
-	let { engine }: Props = $props();
+	let { engine, grid = null, endAt = null }: Props = $props();
+
+	// Time or bars. Remembered per browser; falls back to time when no grid.
+	let showBars = $state(false);
+	try {
+		showBars = localStorage.getItem("transport.bars") === "1";
+	} catch {
+		// private mode etc.
+	}
+	function toggleReadout() {
+		if (!grid) return;
+		showBars = !showBars;
+		try {
+			localStorage.setItem("transport.bars", showBars ? "1" : "0");
+		} catch {
+			// ignore
+		}
+	}
+	let barsNow = $derived(grid ? formatBars(barAt(grid, engine.position)) : "");
+	let barsTotal = $derived(grid ? formatBars(barAt(grid, endAt ?? engine.duration)) : "");
 
 	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
 	// A focused button therefore does NOT activate on Space (Enter still does, and
@@ -58,10 +82,28 @@
 	</button>
 
 	<!-- tabular-nums keeps the readout from jittering as digits change -->
-	<div class="text-2xl tabular-nums">
-		{formatTime(engine.position)}
-		<span class="text-dim">/ {formatTime(engine.duration)}</span>
-	</div>
+	<button
+		type="button"
+		class="text-left text-2xl tabular-nums {grid
+			? 'cursor-pointer hover-text-accent'
+			: 'cursor-default'}"
+		title={grid
+			? showBars
+				? "Bars · beats — click for time"
+				: "Time — click for bars · beats"
+			: "Add a tempo and a time signature in song settings to count bars"}
+		aria-label={grid ? "Toggle time or bars" : undefined}
+		onclick={toggleReadout}
+	>
+		{#if grid && showBars}
+			{barsNow}
+			<span class="text-dim">/ {barsTotal}</span>
+			<span class="ml-1 text-xs text-dim">bars</span>
+		{:else}
+			{formatTime(engine.position)}
+			<span class="text-dim">/ {formatTime(endAt ?? engine.duration)}</span>
+		{/if}
+	</button>
 
 	<label class="ml-auto flex items-center gap-2 text-sm text-dim">
 		Master

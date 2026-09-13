@@ -1,6 +1,7 @@
 import type { StemManifest } from "$lib/audio/types";
 import { deleteBlobs, demoPathname, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
+import { parseTime } from "$lib/format";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_DEMOS_PER_SONG, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { SlugSchema } from "$lib/val/SlugSchema";
@@ -222,6 +223,8 @@ export async function updateSong(
 		description: string;
 		songwriter: string;
 		writtenOn: string;
+		startAt: string;
+		endAt: string;
 	},
 ): Promise<UpdateSongResult> {
 	const title = input.title.trim();
@@ -253,6 +256,8 @@ export async function updateSong(
 			description: input.description.trim(),
 			songwriter: input.songwriter.trim(),
 			writtenOn: input.writtenOn || null,
+			startAt: input.startAt ? parseTime(input.startAt) : null,
+			endAt: input.endAt ? parseTime(input.endAt) : null,
 		})
 		.where(eq(song.id, songId))
 		.returning();

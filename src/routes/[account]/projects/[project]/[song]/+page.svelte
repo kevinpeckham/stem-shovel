@@ -53,12 +53,18 @@
 	let description = $derived(fields.description.value() ?? data.song.description);
 	let songwriter = $derived(fields.songwriter.value() ?? data.song.songwriter);
 	let writtenOn = $derived(fields.writtenOn.value() ?? data.song.writtenOn ?? "");
+	let startAtText = $derived(data.song.startAt === null ? "" : formatTime(data.song.startAt));
+	let endAtText = $derived(data.song.endAt === null ? "" : formatTime(data.song.endAt));
+	let startAt = $derived(fields.startAt.value() ?? startAtText);
+	let endAt = $derived(fields.endAt.value() ?? endAtText);
 	let settingsDirty = $derived(
 		title.trim() !== data.song.title ||
 			slug.trim() !== data.song.slug ||
 			description.trim() !== data.song.description ||
 			songwriter.trim() !== data.song.songwriter ||
-			writtenOn !== (data.song.writtenOn ?? ""),
+			writtenOn !== (data.song.writtenOn ?? "") ||
+			startAt.trim() !== startAtText ||
+			endAt.trim() !== endAtText,
 	);
 
 	// Demo recordings: uploaded from settings (no decoding, just the file),
@@ -505,6 +511,59 @@
 							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 					</label>
+					<label class="block">
+						<span class="text-sm text-dim"
+							>Start of bar 1 <span class="opacity-60">(optional)</span></span
+						>
+						<span class="mt-1 flex items-center gap-2">
+							<input
+								class="field font-mono text-sm"
+								placeholder="0:00.0"
+								autocomplete="off"
+								{...fields.startAt.as("text", startAtText)}
+							/>
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								title="Use the transport's current position"
+								disabled={!playerEngine || playerEngine.status !== "ready"}
+								onclick={() => fields.startAt.set(formatTime(playerEngine?.position ?? 0))}
+							>
+								Playhead
+							</button>
+						</span>
+						<span class="mt-1 block text-xs text-dim"
+							>Leading silence or a count-in: bars are counted from here.</span
+						>
+						{#each fields.startAt.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
+					<label class="block">
+						<span class="text-sm text-dim">End <span class="opacity-60">(optional)</span></span>
+						<span class="mt-1 flex items-center gap-2">
+							<input
+								class="field font-mono text-sm"
+								placeholder="0:00.0"
+								autocomplete="off"
+								{...fields.endAt.as("text", endAtText)}
+							/>
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								title="Use the transport's current position"
+								disabled={!playerEngine || playerEngine.status !== "ready"}
+								onclick={() => fields.endAt.set(formatTime(playerEngine?.position ?? 0))}
+							>
+								Playhead
+							</button>
+						</span>
+						<span class="mt-1 block text-xs text-dim">Where the song ends, for the bars total.</span
+						>
+						{#each fields.endAt.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
 					<label class="block sm:col-span-2">
 						<span class="text-sm text-dim"
 							>Description <span class="opacity-60">(optional)</span></span
@@ -766,6 +825,8 @@
 					{stemMenu}
 					sections={data.song.sections}
 					changes={data.song.changes}
+					startAt={data.song.startAt}
+					endAt={data.song.endAt}
 					onaddsection={data.canEdit ? addSectionAt : undefined}
 					onengine={(e) => (playerEngine = e)}
 				>

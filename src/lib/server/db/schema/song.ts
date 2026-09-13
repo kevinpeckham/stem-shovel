@@ -47,6 +47,9 @@ export const song = table(
 		 * start in seconds, sorted. A song's tempo is the "tempo" change at 0.
 		 */
 		changes: t.text("changes", { mode: "json" }).$type<SongChange[]>().notNull().default([]),
+		/** Where bar 1 begins (leading silence, a count-in) and where the song ends, in seconds; null = 0 / the last stem. */
+		startAt: t.real("start_at"),
+		endAt: t.real("end_at"),
 		/** Song structure: [{ name, start }] with start in seconds, sorted; empty = no timeline. */
 		sections: t.text("sections", { mode: "json" }).$type<SongSection[]>().notNull().default([]),
 		/**

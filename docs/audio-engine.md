@@ -41,6 +41,16 @@ fields are `$state`, so components read `engine.position` directly.
   shows it), a marker per change clipped at the next of its kind, and
   highlights and names what is in force at the playhead. The row shows
   only when a song has sections or such a lane.
+- **Bars on the transport** (`lib/audio/measures.ts`): when a song has at
+  least one tempo and one time signature, clicking the readout toggles
+  between time and `bar.beat` (remembered per browser). Tempo is beats per
+  minute where a beat is the meter's bottom number, so 6/8 at 120 is 120
+  eighths a minute; beats are integrated across tempo changes and the bar
+  count restarts at each meter change. `song.startAt` is where bar 1 begins
+  (leading silence, a count-in — set it from the playhead in song settings)
+  and `song.endAt` the song's end for the total; both draw as dashed lines
+  on the timeline. Before the start the count runs through bar 0, -1, … as
+  a DAW does.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

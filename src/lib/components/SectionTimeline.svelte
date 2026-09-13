@@ -10,14 +10,23 @@
 		sections: SongSection[];
 		/** Tempo / key / time signature changes, sorted by start: markers above the blocks. */
 		changes?: SongChange[];
+		/** Bar 1 and the song's end, drawn as lines through the blocks. */
+		startAt?: number | null;
+		endAt?: number | null;
 	}
 
-	let { engine, sections, changes = [] }: Props = $props();
+	let { engine, sections, changes = [], startAt = null, endAt = null }: Props = $props();
 
 	// Each block runs from its start to the next start (the last to the end).
 	// Laid out on the same grid as a stem row so the blocks sit over the waveforms.
 	let duration = $derived(
-		Math.max(engine.duration, sections.at(-1)?.start ?? 0, changes.at(-1)?.start ?? 0, 1),
+		Math.max(
+			engine.duration,
+			sections.at(-1)?.start ?? 0,
+			changes.at(-1)?.start ?? 0,
+			endAt ?? 0,
+			1,
+		),
 	);
 	// Lanes for the kinds that actually change (timelineKinds); each marker runs to the next of its kind.
 	const LANE_REM = 0.875;
@@ -89,6 +98,20 @@
 			{/each}
 		{/each}
 		<div class="relative h-7" role="tablist" aria-label="Jump to section">
+			{#if startAt !== null && startAt > 0}
+				<span
+					class="pointer-events-none absolute top-0 z-10 h-full border-l border-dashed border-green-300/80"
+					style:left="{(startAt / duration) * 100}%"
+					title="Start (bar 1) · {formatTime(startAt)}"
+				></span>
+			{/if}
+			{#if endAt !== null && endAt > 0}
+				<span
+					class="pointer-events-none absolute top-0 z-10 h-full border-l border-dashed border-green-300/80"
+					style:left="{(endAt / duration) * 100}%"
+					title="End · {formatTime(endAt)}"
+				></span>
+			{/if}
 			{#each blocks as b, i (b.start)}
 				<button
 					type="button"

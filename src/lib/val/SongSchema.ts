@@ -2,7 +2,24 @@ import * as v from "valibot";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
+import { parseTime } from "../format";
 import { SongDocKindSchema } from "./SongDocKindSchema";
+
+/** "" or a time the transport would show: "1:23.4", "83", "1:02:03". */
+const TimeTextSchema = v.optional(
+	v.union(
+		[
+			v.literal(""),
+			v.pipe(
+				v.string(),
+				v.trim(),
+				v.check((t) => parseTime(t) !== null, "Use the transport's format, like 0:01.5."),
+			),
+		],
+		"Use the transport's format, like 0:01.5.",
+	),
+	"",
+);
 
 /** Form boundary for the song settings form (title, URL, description). */
 export const SongSettingsSchema = v.object({
@@ -17,6 +34,9 @@ export const SongSettingsSchema = v.object({
 		v.pipe(v.string(), v.trim(), v.maxLength(200, "Keep the songwriter under 200 characters.")),
 		"",
 	),
+	/** Start of bar 1 and the song's end, typed in the transport's format ("0:01.5"), or empty. */
+	startAt: TimeTextSchema,
+	endAt: TimeTextSchema,
 	/** "YYYY-MM-DD" from a date input, or empty. */
 	writtenOn: v.optional(
 		v.union(
