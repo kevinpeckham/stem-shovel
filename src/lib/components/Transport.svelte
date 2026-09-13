@@ -2,8 +2,8 @@
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { type BarGrid, formatPosition } from "$lib/audio/measures";
 	import { cycleReadoutMode, readout } from "$lib/audio/readout.svelte";
-	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/format";
-	import { isTextEntry } from "$lib/keys";
+	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/constants/positionModes";
+	import { isTextEntry } from "$lib/utils/isTextEntry";
 
 	interface Props {
 		engine: StemEngine;

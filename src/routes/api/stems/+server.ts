@@ -1,6 +1,7 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
 import { createStem } from "$lib/server/data";
-import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
+import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { stemContentType } from "$lib/utils/stemContentType";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

@@ -122,8 +122,11 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   submits them the way the browser does, to `/_app/remote/<id>`; the id is
   read from the dev server's transform of the module.
 - `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
-- `src/lib/slug.ts` — slug, label, format and upload-limit helpers shared by
-  client and server.
+- `src/lib/utils/` — one function per file, as in replicator's `$utils`
+  (`slugify`, `formatTime`, `parseTimecode`, `toRoman`, `isTextEntry`,
+  `timelineKinds`, …); `src/lib/constants/` holds the shared constants
+  (stem and demo formats and limits, frame rates, position modes, song
+  change kinds). Imported as `$lib/utils/<name>` and `$lib/constants/<name>`.
 - `src/lib/components/ProjectPlayer.svelte` — the project page's playlist
   (a plain `<audio>` streaming each song's cached mix); `src/lib/keys.ts`
   is the shared "is this text entry" rule behind the Space shortcut.

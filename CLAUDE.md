@@ -60,6 +60,11 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   idiom for rendered-markdown typography (`chart-body`). Icons are Phosphor
   via `presetIcons` (`i-ph-…`). Classes used in `src/app.html` must be
   safelisted.
+- **Helpers live in `src/lib/utils/`, one function per file** named after
+  the function (replicator's `$utils` layout), and shared constants in
+  `src/lib/constants/`. `$lib/val/` holds valibot schemas and their types
+  only — a helper that a schema needs (like `songChangeValueError`) is a
+  util the schema imports, never the other way round (Fallow flags cycles).
 - **Server dependencies must be ESM.** Vercel's Node 24 launcher has refused
   CommonJS `require()` of ES modules at cold start; prefer ESM packages, and
   after a build check `.vercel/output/functions/*/node_modules`.

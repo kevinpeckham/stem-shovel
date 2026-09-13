@@ -1,5 +1,5 @@
 import { browser } from "$app/environment";
-import { POSITION_MODES, type PositionMode } from "$lib/format";
+import { POSITION_MODES, type PositionMode } from "$lib/constants/positionModes";
 
 /**
  * The position format in use — on the transport, in tooltips and in the
@@ -20,7 +20,7 @@ function stored(): PositionMode {
 
 export const readout = $state({ mode: stored() });
 
-export function setReadoutMode(mode: PositionMode) {
+function setReadoutMode(mode: PositionMode) {
 	readout.mode = mode;
 	try {
 		localStorage.setItem(KEY, mode);

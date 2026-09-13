@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { invalidateAll } from "$app/navigation";
-	import { formatBytes } from "$lib/format";
+	import { formatBytes } from "$lib/utils/formatBytes";
 	import {
 		MAX_STEMS_PER_SONG,
 		STEM_ACCEPT,
 		STEM_FORMAT_LIST,
 		STEM_MAX_BYTES,
-		stemContentType,
-	} from "$lib/slug";
+	} from "$lib/constants/stemFormats";
+	import { stemContentType } from "$lib/utils/stemContentType";
 	import { postJson, type Reservation, uploadStemFile } from "$lib/upload";
 
 	export interface UploadJob {

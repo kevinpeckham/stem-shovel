@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { formatTime } from "$lib/format";
-	import { isTextEntry } from "$lib/keys";
+	import { formatTime } from "$lib/utils/formatTime";
+	import { isTextEntry } from "$lib/utils/isTextEntry";
 	import { tick } from "svelte";
 
 	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. */

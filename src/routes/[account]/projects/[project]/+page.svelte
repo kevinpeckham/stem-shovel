@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
-	import { formatTime } from "$lib/format";
-	import { slugify } from "$lib/slug";
+	import { formatTime } from "$lib/utils/formatTime";
+	import { slugify } from "$lib/utils/slugify";
 	import { updateProject } from "$lib/remote/projects.remote";
 	import { createSong } from "$lib/remote/songs.remote";
 

@@ -1,6 +1,7 @@
 import { collapseDualMono } from "$lib/audio/mono";
 import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
-import { demoContentType, stemContentType } from "$lib/slug";
+import { demoContentType } from "$lib/utils/demoContentType";
+import { stemContentType } from "$lib/utils/stemContentType";
 import { upload } from "@vercel/blob/client";
 
 export interface Reservation {

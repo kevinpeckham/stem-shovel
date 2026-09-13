@@ -90,6 +90,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **No indexing**: robots.txt disallows everything, every page carries a
   `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 
+### Technical
+
+- Helpers moved to `src/lib/utils/` (one function per file) and constants
+  to `src/lib/constants/`, replacing `format.ts`, `slug.ts` and `keys.ts`;
+  song change kinds live in `constants/songChanges.ts` so the schema and
+  its validator no longer import each other.
+
 ### Fixed
 
 - **Stem row menus close** on Escape, on a click outside them, and when

@@ -1,6 +1,8 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
 import { createDemo } from "$lib/server/data";
-import { DEMO_FORMAT_LIST, demoContentType, MAX_DEMOS_PER_SONG, STEM_MAX_BYTES } from "$lib/slug";
+import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
+import { demoContentType } from "$lib/utils/demoContentType";
+import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

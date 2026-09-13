@@ -3,34 +3,27 @@
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
 	import { readout } from "$lib/audio/readout.svelte";
-	import {
-		FRAME_RATES,
-		formatBytes,
-		formatMonth,
-		POSITION_MODE_LABELS,
-		toRoman,
-	} from "$lib/format";
+	import { FRAME_RATES } from "$lib/constants/frameRates";
+	import { formatBytes } from "$lib/utils/formatBytes";
+	import { formatMonth } from "$lib/utils/formatMonth";
+	import { POSITION_MODE_LABELS } from "$lib/constants/positionModes";
+	import { toRoman } from "$lib/utils/toRoman";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
+	import { type SongChange } from "$lib/val/SongChangeSchema";
 	import {
-		formatSongChange,
 		SONG_CHANGE_KINDS,
 		SONG_CHANGE_LABELS,
-		type SongChange,
 		type SongChangeKind,
-		songChangeValueError,
-	} from "$lib/val/SongChangeSchema";
+	} from "$lib/constants/songChanges";
+	import { formatSongChange } from "$lib/utils/formatSongChange";
+	import { songChangeValueError } from "$lib/utils/songChangeValueError";
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 
-	import {
-		DEMO_ACCEPT,
-		DEMO_FORMAT_LIST,
-		demoContentType,
-		MAX_DEMOS_PER_SONG,
-		slugify,
-		STEM_ACCEPT,
-		STEM_MAX_BYTES,
-	} from "$lib/slug";
+	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
+	import { demoContentType } from "$lib/utils/demoContentType";
+	import { slugify } from "$lib/utils/slugify";
+	import { STEM_ACCEPT, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 	import {
 		type DemoReservation,
 		postJson,

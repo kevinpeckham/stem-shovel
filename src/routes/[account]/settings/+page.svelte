@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { formatBytes } from "$lib/format";
+	import { formatBytes } from "$lib/utils/formatBytes";
 	import { updateAccount } from "$lib/remote/accounts.remote";
-	import { slugify } from "$lib/slug";
+	import { slugify } from "$lib/utils/slugify";
 
 	let { data } = $props();
 

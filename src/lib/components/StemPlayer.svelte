@@ -3,11 +3,12 @@
 	import type { StemManifest, StemState } from "$lib/audio/types";
 	import StemRow from "$lib/components/StemRow.svelte";
 	import Transport from "$lib/components/Transport.svelte";
-	import { formatBytes } from "$lib/format";
+	import { formatBytes } from "$lib/utils/formatBytes";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "$lib/audio/measures";
 	import { readout } from "$lib/audio/readout.svelte";
-	import { type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
+	import { type SongChange } from "$lib/val/SongChangeSchema";
+	import { timelineKinds } from "$lib/utils/timelineKinds";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import { untrack, type Snippet } from "svelte";
 

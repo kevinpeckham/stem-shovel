@@ -6,7 +6,7 @@ import {
 	recordStemUrl,
 } from "$lib/server/data";
 import { blobAuth } from "$lib/server/blob";
-import { STEM_MAX_BYTES } from "$lib/slug";
+import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { json } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";

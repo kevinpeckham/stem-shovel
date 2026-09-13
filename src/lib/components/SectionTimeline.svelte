@@ -2,7 +2,9 @@
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import { barGrid, formatBarSpan, formatPosition } from "$lib/audio/measures";
 	import { readout } from "$lib/audio/readout.svelte";
-	import { formatSongChange, type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
+	import { type SongChange } from "$lib/val/SongChangeSchema";
+	import { formatSongChange } from "$lib/utils/formatSongChange";
+	import { timelineKinds } from "$lib/utils/timelineKinds";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 
 	interface Props {

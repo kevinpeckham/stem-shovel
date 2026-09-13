@@ -1,7 +1,7 @@
 import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
-import { slugify } from "$lib/slug";
+import { slugify } from "$lib/utils/slugify";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { sveltekitCookies } from "better-auth/svelte-kit";

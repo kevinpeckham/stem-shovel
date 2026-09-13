@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { FADER_MAX, type StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
-	import { formatTime } from "$lib/format";
+	import { formatTime } from "$lib/utils/formatTime";
 	import type { Snippet } from "svelte";
 	import Waveform from "./Waveform.svelte";
 

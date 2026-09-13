@@ -1,11 +1,9 @@
-import {
-	formatTime,
-	formatTimecode,
-	parseBarsText,
-	parseTime,
-	parseTimecode,
-	type PositionMode,
-} from "$lib/format";
+import { formatTime } from "$lib/utils/formatTime";
+import { formatTimecode } from "$lib/utils/formatTimecode";
+import { parseBarsText } from "$lib/utils/parseBarsText";
+import { parseTime } from "$lib/utils/parseTime";
+import { parseTimecode } from "$lib/utils/parseTimecode";
+import type { PositionMode } from "$lib/constants/positionModes";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 
 /**
@@ -39,7 +37,7 @@ const valueAt = <T extends { start: number }>(list: T[], t: number) =>
 	list.findLast((x) => t >= x.start) ?? list[0];
 
 /** Beats elapsed between two times, integrating the tempo in force across its changes. */
-export function beatsBetween(grid: BarGrid, from: number, to: number): number {
+function beatsBetween(grid: BarGrid, from: number, to: number): number {
 	if (to < from) return -beatsBetween(grid, to, from);
 	const cuts = [from, ...grid.tempos.map((t) => t.start).filter((s) => s > from && s < to), to];
 	let beats = 0;
@@ -81,11 +79,6 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 		beat: beatIn + 1,
 		fraction: Math.max(0, Math.min(1, beats - whole)),
 	};
-}
-
-/** "12.3" — bar.beat, the DAW convention. */
-export function formatBars(p: BarPosition): string {
-	return `${p.bar}.${p.beat}`;
 }
 
 /** Seconds at a bar position: the inverse of `barAt` (bars before the start run negative). */
