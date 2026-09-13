@@ -128,10 +128,12 @@
 		/>
 	</div>
 
-	<div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+	<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
 		<div>
-			<h2 class="opacity-90 text-16px heading-2">Songs in Progress</h2>
-			<p class="opacity-90">Click on a song below to view and edit its stems, chart, lyrics etc.</p>
+			<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Songs in Progress</h2>
+			<p class="opacity-90 text-15px">
+				Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
+			</p>
 		</div>
 		{#if data.canEdit}
 			<button
@@ -155,13 +157,13 @@
 			{/if}
 		</p>
 	{:else}
-		<ul class="grid grid-cols-1 gap-2">
+		<ul class="grid grid-cols-1 gap-3">
 			{#each data.project.songs as song (song.id)}
 				{@const ready = song.stems.filter((s) => s.status === "ready").length}
-				<li class="flex items-stretch gap-2">
+				<li class="grid grid-cols-[auto_1fr] gap-3">
 					<button
 						type="button"
-						class="shrink-0 grid w-12 place-items-center rounded border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
+						class="shrink-0 grid w-12 place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
 						aria-label={playing === song.id && !paused
 							? `Pause ${song.title}`
 							: `Play ${song.title}`}
@@ -175,16 +177,18 @@
 						></span>
 					</button>
 					<a
-						class="list-tile grow flex justify-between items-baseline group"
+						class="list-tile grow flex justify-between items-baseline group !mb-0"
 						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
-						<span>
-							{song.title}
+						<div>
+							<span class="text-20px">{song.title}</span>
 							{#if song.description}
 								<span class="block text-sm">{song.description}</span>
 							{/if}
-						</span>
-						<span class="shrink-0 text-sm opacity-90 text-white font-400 group-hover:opacity-100">
+						</div>
+						<span
+							class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
+						>
 							{ready}
 							{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
 									song.durationSeconds,
