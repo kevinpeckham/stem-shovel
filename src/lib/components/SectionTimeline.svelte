@@ -68,21 +68,23 @@
 </script>
 
 <div
-	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 sm:grid-cols-[80px_80px_1fr] leading-none"
+	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 sm:grid-cols-[172px_1fr] leading-none"
 	role="group"
 	aria-label="Song sections"
 >
 	<div class="text-11px">
-		Sections
-	{#if currentIndex >= 0}
-			<span class="ml-1 text-neutral-100">· {blocks[currentIndex].name}</span>
-		{/if}
-		{#each current as c (c.kind)}
-			<span class="ml-1 text-neutral-100">· {formatSongChange(c)}</span>
-		{/each}
+		<div class="font-500 mb-1 opacity-90">Current Section:</div>
+		<div class="flex gap-2 w-full flex-wrap">
+			{#if currentIndex >= 0}
+				<div class="px-2 py-1 border rounded opacity-90 max-w-fit">{blocks[currentIndex].name}</div>
+			{/if}
+
+			<!-- {#each current as c (c.kind)}
+				<span class="px-2 py-1 border rounded opacity-90 max-w-fit"> {formatSongChange(c)}</span>
+			{/each} -->
+		</div>
 	</div>
-	<!-- the stem rows' M / S buttons (2 × w-8 + gap-2) and fader (6rem) columns, kept empty so the bar sits over the waveforms -->
-	<div class="hidden sm:block sm:w-18" aria-hidden="true"></div>
+
 	<div
 		class="relative col-span-3 sm-col-span-1 gap-y-1 text-10px"
 		style:padding-top="{lanes.length * LANE_REM}rem"
@@ -125,7 +127,7 @@
 					type="button"
 					role="tab"
 					aria-selected={i === currentIndex}
-					class="absolute top-0 h-full overflow-hidden rounded //border pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
+					class="absolute top-0 h-full overflow-hidden rounded pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
 					currentIndex
 						? 'border-maximumYellow bg-maximumYellow/20 text-neutral-100'
 						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'}"
