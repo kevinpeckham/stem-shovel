@@ -69,9 +69,16 @@
 		grid: barGrid(data.song.changes, data.song.startAt),
 	});
 	const showPos = (seconds: number) => formatPosition(readout.mode, seconds, posCtx);
+	// Editors show full precision (milliseconds, beat fractions) so a row that
+	// is saved unedited keeps its exact seconds; see rowSeconds.
+	const editPos = (seconds: number) =>
+		formatPosition(readout.mode, seconds, posCtx, { precise: true });
+	/** The exact stored seconds when the text was not touched, else what the text says (null = not a position). */
+	const rowSeconds = (row: { time: string; shown: string; seconds: number | null }) =>
+		row.seconds !== null && row.time.trim() === row.shown ? row.seconds : readPos(row.time);
 	const readPos = (text: string) => parsePosition(text, posCtx);
-	let startAtText = $derived(data.song.startAt === null ? "" : showPos(data.song.startAt));
-	let endAtText = $derived(data.song.endAt === null ? "" : showPos(data.song.endAt));
+	let startAtText = $derived(data.song.startAt === null ? "" : editPos(data.song.startAt));
+	let endAtText = $derived(data.song.endAt === null ? "" : editPos(data.song.endAt));
 	let startAtEntry = $state("");
 	let endAtEntry = $state("");
 	let startAt = $derived(startAtEntry);
@@ -241,14 +248,18 @@
 	type MixMode = "original" | "custom";
 	// Song sections. "Add section at playhead" on the player inserts one at the
 	// current position; the list in settings edits names and times (m:ss.s).
-	let sectionRows = $state<{ index: string; name: string; time: string }[]>([]);
+	let sectionRows = $state<
+		{ index: string; name: string; time: string; shown: string; seconds: number | null }[]
+	>([]);
 	let sectionError = $state<string | null>(null);
 	let sectionsSaving = $state(false);
 	function resetSectionRows() {
 		sectionRows = data.song.sections.map((s) => ({
 			index: s.index ?? "",
 			name: s.name,
-			time: showPos(s.start),
+			time: editPos(s.start),
+			shown: editPos(s.start),
+			seconds: s.start,
 		}));
 	}
 	async function persistSections(next: SongSection[]) {
@@ -274,7 +285,7 @@
 	async function saveSectionRows() {
 		const parsed: SongSection[] = [];
 		for (const row of sectionRows) {
-			const start = readPos(row.time);
+			const start = rowSeconds(row);
 			if (start === null) {
 				sectionError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 				return;
@@ -285,12 +296,16 @@
 	}
 
 	// Tempo / key / time signature changes: rows of time (m:ss.s), kind and value.
-	let changeRows = $state<{ time: string; kind: SongChangeKind; value: string }[]>([]);
+	let changeRows = $state<
+		{ time: string; shown: string; seconds: number | null; kind: SongChangeKind; value: string }[]
+	>([]);
 	let changeError = $state<string | null>(null);
 	let changesSaving = $state(false);
 	function resetChangeRows() {
 		changeRows = data.song.changes.map((c) => ({
-			time: showPos(c.start),
+			time: editPos(c.start),
+			shown: editPos(c.start),
+			seconds: c.start,
 			kind: c.kind,
 			value: c.value,
 		}));
@@ -299,7 +314,7 @@
 		changeError = null;
 		const parsed: SongChange[] = [];
 		for (const row of changeRows) {
-			const start = readPos(row.time);
+			const start = rowSeconds(row);
 			if (start === null) {
 				changeError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 				return;
@@ -468,11 +483,11 @@
 				{...updateSong.enhance(async ({ submit }) => {
 					settingsSaved = false;
 					positionError = null;
-					for (const [label, text, field] of [
-						["Start of bar 1", startAtEntry, fields.startAt],
-						["End", endAtEntry, fields.endAt],
+					for (const [label, text, field, shown, stored] of [
+						["Start of bar 1", startAtEntry, fields.startAt, startAtText, data.song.startAt],
+						["End", endAtEntry, fields.endAt, endAtText, data.song.endAt],
 					] as const) {
-						const seconds = text.trim() ? readPos(text) : 0;
+						const seconds = !text.trim() ? 0 : rowSeconds({ time: text, shown, seconds: stored });
 						if (seconds === null) {
 							positionError = `${label}: "${text}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 							return;
@@ -572,7 +587,7 @@
 								type="button"
 								title="Use the transport's current position"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => (startAtEntry = showPos(playerEngine?.position ?? 0))}
+								onclick={() => (startAtEntry = editPos(playerEngine?.position ?? 0))}
 							>
 								Playhead
 							</button>
@@ -600,7 +615,7 @@
 								type="button"
 								title="Use the transport's current position"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => (endAtEntry = showPos(playerEngine?.position ?? 0))}
+								onclick={() => (endAtEntry = editPos(playerEngine?.position ?? 0))}
 							>
 								Playhead
 							</button>
@@ -667,7 +682,13 @@
 						onclick={() =>
 							(sectionRows = [
 								...sectionRows,
-								{ index: toRoman(sectionRows.length + 1), name: "", time: showPos(0) },
+								{
+									index: toRoman(sectionRows.length + 1),
+									name: "",
+									time: editPos(0),
+									shown: "",
+									seconds: null,
+								},
 							])}
 					>
 						<span class="i-ph-plus" aria-hidden="true"></span>
@@ -739,7 +760,13 @@
 						onclick={() =>
 							(changeRows = [
 								...changeRows,
-								{ time: changeRows.length ? "" : showPos(0), kind: "tempo", value: "" },
+								{
+									time: changeRows.length ? "" : editPos(0),
+									shown: "",
+									seconds: null,
+									kind: "tempo",
+									value: "",
+								},
 							])}
 					>
 						<span class="i-ph-plus" aria-hidden="true"></span>

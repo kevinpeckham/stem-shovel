@@ -147,14 +147,16 @@ export function formatPosition(
 	mode: PositionMode,
 	seconds: number,
 	ctx: { fps: number; grid: BarGrid | null },
+	opts: { precise?: boolean } = {},
 ): string {
 	if (mode === "timecode") return formatTimecode(seconds, ctx.fps);
 	if (mode === "bars" && ctx.grid) {
-		// Whole beats only: fractions are for typing ("12|3|0.5"), not reading.
+		// The readout shows whole beats; editors show the fraction too so it survives a round trip.
 		const p = barAt(ctx.grid, seconds);
-		return `${p.bar}|${p.beat}`;
+		const fraction = Math.round(p.fraction * 1000) / 1000;
+		return `${p.bar}|${p.beat}${opts.precise && fraction > 0 && fraction < 1 ? `|${fraction}` : ""}`;
 	}
-	return formatTime(seconds);
+	return formatTime(seconds, opts.precise ? 3 : 1);
 }
 
 /** "8 bars", "8 bars 2 beats" — a span's length in the meter in force where it starts. */
