@@ -41,6 +41,8 @@ erDiagram
   `[{ kind, start, value }]` with `kind` tempo | key | meter, `start` in
   seconds and `value` as text ("120", "F#m", "6/8"), sorted. The old
   single-value `bpm` / `musical_key` columns are gone (migration 0016).
+- **stem.midi_url / midi_pathname / midi_filename / midi_size_bytes** — the
+  stem's optional MIDI file in Blob (migration 0020); null when none.
 - **song.version** — the song's own semantic version ("0.0.1" by default),
   managed by the user: nothing bumps it automatically, but after a stem is
   added, replaced or removed the song page offers a patch, minor or major

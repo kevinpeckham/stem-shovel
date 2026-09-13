@@ -26,6 +26,12 @@ export function stemPathname(
 	return `accounts/${accountId}/songs/${songId}/${name}.${ext}`;
 }
 
+/** Blob pathname for a stem's MIDI file; the stamp keeps every upload a new URL. */
+export function midiPathname(accountId: string, songId: string, stemId: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "mid").toLowerCase();
+	return `accounts/${accountId}/songs/${songId}/midi/${stemId}-${Date.now().toString(36)}.${ext}`;
+}
+
 /** Blob pathname for a demo recording, under the song like its stems. */
 export function demoPathname(accountId: string, songId: string, demoId: string, filename: string) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();

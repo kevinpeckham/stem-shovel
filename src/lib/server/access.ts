@@ -86,10 +86,15 @@ export async function accountOfDemo(demoId: string) {
 	return row?.accountId ?? null;
 }
 
-/** The account owning whatever reserved this upload pathname: a stem or a demo. */
+/** The account owning whatever reserved this upload pathname: a stem, its MIDI file, or a demo. */
 export async function accountOfUploadPathname(pathname: string) {
 	const fromStem = await accountOfStemPathname(pathname);
 	if (fromStem) return fromStem;
+	const midi = await db.query.stem.findFirst({
+		where: eq(stem.midiPathname, pathname),
+		columns: { accountId: true },
+	});
+	if (midi) return midi.accountId;
 	const row = await db.query.demo.findFirst({
 		where: eq(demo.pathname, pathname),
 		columns: { accountId: true },

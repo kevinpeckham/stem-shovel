@@ -10,9 +10,11 @@
 		engine: StemEngine;
 		/** Row actions, rendered after the waveform (see StemPlayer's `stemMenu`). */
 		menu?: Snippet<[StemState]>;
+		/** Small marks beside the name (a "midi" chip when the stem has a MIDI file). */
+		badge?: Snippet<[StemState]>;
 	}
 
-	let { stem, engine, menu }: Props = $props();
+	let { stem, engine, menu, badge }: Props = $props();
 
 	// Audible right now? Mirrors the engine's effective-gain rule for the visuals.
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
@@ -43,12 +45,16 @@
 >
 	<!-- track name & meta -->
 	<div class="w-full">
-		<div
-			class="truncate text-16px font-500 text-blue-300 {silenced
-				? 'opacity-60 text-slate-100'
-				: ''}"
-		>
-			{stem.label}
+		<div class="flex min-w-0 items-center gap-2">
+			<div
+				class="truncate text-16px font-500 text-blue-300 {silenced
+					? 'opacity-60 text-slate-100'
+					: ''}"
+				title={stem.label}
+			>
+				{stem.label}
+			</div>
+			{#if badge}{@render badge(stem)}{/if}
 		</div>
 		<!-- <div class="text-xs text-dim">
 			{#if !stem.decoded}

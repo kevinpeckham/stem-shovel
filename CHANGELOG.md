@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **MIDI file per stem**: upload one from the stem's row menu ("Upload
+  MIDI", later "Replace MIDI" / "Remove MIDI"); a "midi" chip beside the
+  stem name marks it and "Download MIDI" joins the menu. Migration 0020.
+
+### Changed
+
+- The row menu's "Download" is now "Download Stem", and a truncated stem
+  name shows in full on hover.
+
 ## [0.4.0] - 2026-09-13
 
 ### Added

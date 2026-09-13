@@ -16,6 +16,7 @@ import {
 	deleteStem as removeStem,
 	deleteDemo as removeDemo,
 	projectSlugs,
+	removeStemMidi as dropMidi,
 	renameStem as rename,
 	saveSongDoc,
 	setSongVersion as setVersion,
@@ -152,6 +153,14 @@ export const saveChanges = command(SongChangesSaveSchema, async ({ id, changes }
 	const result = await updateSongChanges(accountId, id, changes);
 	if (!result.ok) error(400, result.error);
 	return result.changes;
+});
+
+/** Removes a stem's MIDI file and its blob. Used with `.for(stem.id)` in the row menu. */
+export const removeStemMidi = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfStem, id);
+	if (!(await dropMidi(accountId, id))) error(404, "Stem not found");
+	return { removed: true };
 });
 
 /** Relabels a stem. A command (not a form): called from the row menu's prompt. */

@@ -54,6 +54,15 @@ in three steps driven by `src/lib/upload.ts`:
   each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
   The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
   a plain `<audio>` element streaming from Blob).
+- **MIDI files per stem** (`…/midi/<stemId>-<stamp>.mid`, columns
+  `stem.midi_*`): "Upload MIDI" in the row menu reserves the pathname on
+  the stem (`/api/stems/[id]/midi`), the browser uploads through the same
+  `/api/upload` token handler (`/midi/` in the pathname picks the branch,
+  `audio/midi`, a 5 MB cap) and reports the URL to `/api/stems/[id]/midi/ready`,
+  which swaps in the new file and deletes the previous one. A "midi" chip
+  beside the stem name marks stems that have one; "Download MIDI" and
+  "Remove MIDI" sit in the row menu. Deleting the stem or song deletes the
+  file. MIDI is not part of "Download Stems" or the mixes.
 - **Demo recordings** use the same three steps with `/api/demos` and
   `/api/demos/[id]/ready` (`uploadDemoFile` in `src/lib/upload.ts`), minus
   the decode: the browser only reports the blob URL. `/api/upload` tells the

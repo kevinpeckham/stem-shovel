@@ -81,6 +81,30 @@ export async function uploadDemoFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
+/** A stem's MIDI file: reserve on the stem, send the bytes to Blob, report the URL. */
+export async function uploadMidiFile(
+	stemId: string,
+	file: File,
+	onProgress?: (percent: number) => void,
+): Promise<void> {
+	const { pathname } = await postJson<{ stemId: string; pathname: string }>(
+		`/api/stems/${stemId}/midi`,
+		{ filename: file.name, sizeBytes: file.size },
+	);
+	const blob = await upload(pathname, file, {
+		access: "public",
+		handleUploadUrl: "/api/upload",
+		contentType: "audio/midi",
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/stems/${stemId}/midi/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+}
+
 export async function postJson<T>(path: string, payload: unknown): Promise<T> {
 	const res = await fetch(path, {
 		method: "POST",

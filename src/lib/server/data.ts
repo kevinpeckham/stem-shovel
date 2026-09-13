@@ -1,5 +1,5 @@
 import type { StemManifest } from "$lib/audio/types";
-import { deleteBlobs, demoPathname, stemPathname } from "$lib/server/blob";
+import { deleteBlobs, demoPathname, midiPathname, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
@@ -309,7 +309,7 @@ export function manifestFor(s: {
 
 export async function deleteSong(accountId: string, songId: string) {
 	const rows = await db
-		.select({ url: stem.url, playbackUrl: stem.playbackUrl })
+		.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })
 		.from(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.songId, songId)));
 	const s = await db.query.song.findFirst({
@@ -321,7 +321,7 @@ export async function deleteSong(accountId: string, songId: string) {
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.songId, songId)));
 	await deleteBlobs([
-		...rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
+		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
@@ -489,9 +489,14 @@ export async function deleteStem(accountId: string, stemId: string) {
 	const [row] = await db
 		.delete(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
-		.returning({ url: stem.url, playbackUrl: stem.playbackUrl, songId: stem.songId });
+		.returning({
+			url: stem.url,
+			playbackUrl: stem.playbackUrl,
+			midiUrl: stem.midiUrl,
+			songId: stem.songId,
+		});
 	if (!row) return null;
-	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
+	await deleteBlobs([row.url, row.playbackUrl ?? "", row.midiUrl ?? ""]);
 	await stemsChanged(row.songId);
 	return { songId: row.songId };
 }
@@ -556,6 +561,68 @@ export async function updateSongChanges(
 		.returning({ changes: song.changes });
 	if (!row) return { ok: false, error: "Song not found." };
 	return { ok: true, changes: row.changes };
+}
+
+// ---- stem MIDI files --------------------------------------------------------
+
+/** Step 1 of a MIDI upload: reserve the pathname on the stem (the previous file, if any, stays until the new one lands). */
+export async function reserveStemMidi(accountId: string, stemId: string, file: NewStemFile) {
+	const existing = await db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.id, stemId)),
+		columns: { id: true, songId: true },
+	});
+	if (!existing) return null;
+	const pathname = midiPathname(accountId, existing.songId, stemId, file.filename);
+	await db
+		.update(stem)
+		.set({ midiPathname: pathname, midiFilename: file.filename, midiSizeBytes: file.sizeBytes })
+		.where(eq(stem.id, stemId));
+	return { stemId, pathname, contentType: file.contentType };
+}
+
+/** Step 2: the pathname must be a reserved MIDI upload. */
+export function findStemByMidiPathname(accountId: string, pathname: string) {
+	return db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.midiPathname, pathname)),
+		columns: { id: true, midiFilename: true },
+	});
+}
+
+/** Step 3: the file landed; swap the URL in and drop the previous file. */
+export async function markStemMidiReady(accountId: string, stemId: string, url: string) {
+	const before = await db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.id, stemId)),
+		columns: { midiUrl: true },
+	});
+	if (!before) return null;
+	await db.update(stem).set({ midiUrl: url }).where(eq(stem.id, stemId));
+	if (before.midiUrl && before.midiUrl !== url) await deleteBlobs([before.midiUrl]);
+	return { stemId };
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordStemMidiUrl(pathname: string, url: string) {
+	const row = await db.query.stem.findFirst({
+		where: eq(stem.midiPathname, pathname),
+		columns: { midiUrl: true, id: true },
+	});
+	if (!row || row.midiUrl === url) return;
+	await db.update(stem).set({ midiUrl: url }).where(eq(stem.id, row.id));
+	if (row.midiUrl) await deleteBlobs([row.midiUrl]);
+}
+
+export async function removeStemMidi(accountId: string, stemId: string) {
+	const before = await db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.id, stemId)),
+		columns: { midiUrl: true },
+	});
+	if (!before) return false;
+	await db
+		.update(stem)
+		.set({ midiUrl: null, midiPathname: null, midiFilename: null, midiSizeBytes: null })
+		.where(eq(stem.id, stemId));
+	if (before.midiUrl) await deleteBlobs([before.midiUrl]);
+	return true;
 }
 
 // ---- demo recordings --------------------------------------------------------

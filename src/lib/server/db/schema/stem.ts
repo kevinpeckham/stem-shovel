@@ -47,6 +47,14 @@ export const stem = table(
 		playbackPathname: t.text("playback_pathname"),
 		playbackBytes: t.integer("playback_bytes"),
 		playbackStartedAt: t.integer("playback_started_at", { mode: "timestamp_ms" }),
+		/**
+		 * Optional MIDI version of the stem, in Blob under `…/midi/`. `midiPathname`
+		 * is set when an upload is reserved and `midiUrl` when it lands.
+		 */
+		midiUrl: t.text("midi_url"),
+		midiPathname: t.text("midi_pathname"),
+		midiFilename: t.text("midi_filename"),
+		midiSizeBytes: t.integer("midi_size_bytes"),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

@@ -3,6 +3,7 @@
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
 	import { bumpVersion } from "$lib/utils/bumpVersion";
+	import { midiContentType } from "$lib/utils/midiContentType";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { parseBarsText } from "$lib/utils/parseBarsText";
 	import { readoutMode } from "$lib/audio/readout.svelte";
@@ -26,6 +27,7 @@
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 	import { demoContentType } from "$lib/utils/demoContentType";
 	import { slugify } from "$lib/utils/slugify";
+	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 	import {
 		type DemoReservation,
@@ -33,12 +35,14 @@
 		type Reservation,
 		saveAs,
 		uploadDemoFile,
+		uploadMidiFile,
 		uploadStemFile,
 	} from "$lib/upload";
 	import {
 		deleteDemo,
 		deleteSong,
 		deleteStem,
+		removeStemMidi,
 		renameStem,
 		saveChanges,
 		saveSections,
@@ -367,6 +371,44 @@
 		)) {
 			if (e.type === "pointerdown" && menu.contains(e.target as Node)) continue;
 			menu.open = false;
+		}
+	}
+
+	// A stem's optional MIDI file: uploaded from the row menu; a badge on the row when present.
+	let midiJobs = $state<Record<string, { percent: number; error?: string }>>({});
+	async function uploadMidi(stemId: string, input: HTMLInputElement) {
+		const file = input.files?.[0];
+		input.value = "";
+		if (!file) return;
+		if (!midiContentType(file.name)) {
+			midiJobs = {
+				...midiJobs,
+				[stemId]: { percent: 0, error: `${file.name} is not a MIDI file (.mid or .midi).` },
+			};
+			return;
+		}
+		if (file.size > MIDI_MAX_BYTES) {
+			midiJobs[stemId] = {
+				percent: 0,
+				error: `${file.name} is over ${formatBytes(MIDI_MAX_BYTES)}.`,
+			};
+			return;
+		}
+		midiJobs = { ...midiJobs, [stemId]: { percent: 0 } };
+		try {
+			await uploadMidiFile(
+				stemId,
+				file,
+				(percent) => (midiJobs = { ...midiJobs, [stemId]: { percent } }),
+			);
+			await invalidateAll();
+			// Reassign rather than delete: a removed key does not notify the row.
+			midiJobs = Object.fromEntries(Object.entries(midiJobs).filter(([id]) => id !== stemId));
+		} catch (e) {
+			midiJobs = {
+				...midiJobs,
+				[stemId]: { percent: 0, error: e instanceof Error ? e.message : String(e) },
+			};
 		}
 	}
 
@@ -984,6 +1026,7 @@
 				<StemPlayer
 					manifest={data.manifest}
 					{stemMenu}
+					{stemBadge}
 					sections={data.song.sections}
 					changes={data.song.changes}
 					startAt={data.song.startAt}
@@ -1295,10 +1338,23 @@
 	</div>
 {/snippet}
 
+{#snippet stemBadge(stem: StemState)}
+	{#if stemRows.get(stem.id)?.midiUrl}
+		<span
+			class="shrink-0 rounded border border-white/20 px-1 text-9px font-600 uppercase tracking-wider opacity-80"
+			title="MIDI available — download it from the row menu"
+		>
+			midi
+		</span>
+	{/if}
+{/snippet}
+
 {#snippet stemMenu(stem: StemState)}
 	{@const row = stemRows.get(stem.id)}
 	{@const job = replacing[stem.id]}
 	{@const remove = deleteStem.for(stem.id)}
+	{@const dropMidi = removeStemMidi.for(stem.id)}
+	{@const midi = midiJobs[stem.id]}
 	{#if row}
 		<details class="relative" data-stem-menu>
 			<summary
@@ -1318,8 +1374,54 @@
 					type="button"
 					onclick={() => saveAs(row.url, row.filename)}
 				>
-					<span class="i-ph-download-simple mr-2" aria-hidden="true"></span>Download
+					<span class="i-ph-download-simple mr-2" aria-hidden="true"></span>Download Stem
 				</button>
+				{#if row.midiUrl && row.midiFilename}
+					<button
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						type="button"
+						onclick={() => saveAs(row.midiUrl ?? "", row.midiFilename ?? "stem.mid")}
+					>
+						<span class="i-ph-music-notes mr-2" aria-hidden="true"></span>Download MIDI
+					</button>
+				{/if}
+				{#if data.canEdit}
+					<label
+						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10"
+					>
+						<span class="i-ph-file-plus mr-2" aria-hidden="true"></span>{midi && !midi.error
+							? `Uploading MIDI ${Math.round(midi.percent)}%`
+							: row.midiUrl
+								? "Replace MIDI"
+								: "Upload MIDI"}
+						<input
+							class="sr-only"
+							type="file"
+							accept={MIDI_ACCEPT}
+							disabled={!!midi && !midi.error}
+							onchange={(e) => uploadMidi(stem.id, e.currentTarget)}
+						/>
+					</label>
+					{#if row.midiUrl}
+						<form
+							{...dropMidi.enhance(async ({ submit }) => {
+								if (!confirm(`Remove the MIDI file for "${stem.label}"?`)) return;
+								await submit();
+							})}
+						>
+							<input {...dropMidi.fields.id.as("hidden", stem.id)} />
+							<button
+								class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+								disabled={!!dropMidi.pending}
+							>
+								<span class="i-ph-file-x mr-2" aria-hidden="true"></span>{dropMidi.pending
+									? "Removing…"
+									: "Remove MIDI"}
+							</button>
+						</form>
+					{/if}
+					{#if midi?.error}<p class="px-3 py-1 text-xs text-red-400">{midi.error}</p>{/if}
+				{/if}
 				{#if data.canEdit}
 					<button
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
