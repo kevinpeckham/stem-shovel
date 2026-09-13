@@ -6,12 +6,13 @@
 	import type { StemState } from "$lib/audio/types";
 
 	import {
+		DEMO_ACCEPT,
+		DEMO_FORMAT_LIST,
+		demoContentType,
 		MAX_DEMOS_PER_SONG,
 		slugify,
 		STEM_ACCEPT,
-		STEM_FORMAT_LIST,
 		STEM_MAX_BYTES,
-		stemContentType,
 	} from "$lib/slug";
 	import {
 		type DemoReservation,
@@ -29,7 +30,7 @@
 		updateSong,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
-	import { untrack } from "svelte";
+	import { tick, untrack } from "svelte";
 
 	let { data } = $props();
 
@@ -59,11 +60,11 @@
 		const picked = Array.from(input.files ?? []);
 		input.value = "";
 		if (picked.length === 0) return;
-		const unsupported = picked.filter((f) => !stemContentType(f.name));
+		const unsupported = picked.filter((f) => !demoContentType(f.name));
 		const tooBig = picked.filter((f) => f.size > STEM_MAX_BYTES);
 		const room = Math.max(0, MAX_DEMOS_PER_SONG - data.song.demos.length);
 		if (unsupported.length) {
-			demoNotice = `Not a supported format (${STEM_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`;
+			demoNotice = `Not a supported format (${DEMO_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`;
 			return;
 		}
 		if (tooBig.length) {
@@ -98,16 +99,22 @@
 		if (demoJobs.every((j) => !j.error)) demoJobs = [];
 	}
 
-	// The demo player: one <audio>, whichever demo was last pressed.
+	// The demo player: one audio element, whichever demo was last pressed.
 	let demoPlaying = $state<string | null>(null);
 	let demoPaused = $state(true);
 	let demoTrack = $derived(data.song.demos.find((d) => d.id === demoPlaying) ?? null);
-	function playDemo(id: string) {
-		if (demoPlaying === id) demoPaused = !demoPaused;
-		else {
-			demoPlaying = id;
-			demoPaused = false;
+	let demoAudio = $state<HTMLAudioElement | null>(null);
+	async function playDemo(id: string) {
+		if (demoPlaying === id) {
+			demoPaused = !demoPaused;
+			return;
 		}
+		// Swapping `src` fires a pause event that flips the bound state, so start
+		// the new track explicitly once the element has it.
+		demoPlaying = id;
+		demoPaused = false;
+		await tick();
+		await demoAudio?.play().catch(() => {});
 	}
 	// "Written by X, first written June 2019" under the title.
 	let writtenLine = $derived(
@@ -431,7 +438,7 @@
 						<input
 							class="sr-only"
 							type="file"
-							accept={STEM_ACCEPT}
+							accept={DEMO_ACCEPT}
 							multiple
 							disabled={demoBusy}
 							onchange={(e) => uploadDemos(e.currentTarget)}
@@ -439,7 +446,8 @@
 					</label>
 				</div>
 				<p class="mt-1 text-sm text-dim">
-					Phone memos, rough takes, the original idea — kept as uploaded, up to {MAX_DEMOS_PER_SONG}.
+					Phone memos, rough takes, the original idea — any audio format; each is converted to MP3
+					for listening and download. Up to {MAX_DEMOS_PER_SONG}.
 				</p>
 				{#if demoNotice}
 					<p class="mt-2 text-sm text-red-400" role="alert">{demoNotice}</p>
@@ -460,20 +468,21 @@
 									{d.label}
 									<span class="text-dim"
 										>· {formatBytes(d.sizeBytes)}{#if d.status !== "ready"}
-											· uploading{/if}</span
+											· uploading{:else if d.playbackStatus !== "ready"}
+											· converting to MP3…{/if}</span
 									>
+									<form
+										{...remove.enhance(async ({ submit }) => {
+											if (!confirm(`Remove the demo "${d.label}"?`)) return;
+											await submit();
+										})}
+									>
+										<input {...remove.fields.id.as("hidden", d.id)} />
+										<button class="link-dim text-xs" disabled={!!remove.pending}>
+											{remove.pending ? "Removing…" : "Remove"}
+										</button>
+									</form>
 								</span>
-								<form
-									{...remove.enhance(async ({ submit }) => {
-										if (!confirm(`Remove the demo "${d.label}"?`)) return;
-										await submit();
-									})}
-								>
-									<input {...remove.fields.id.as("hidden", d.id)} />
-									<button class="link-dim text-xs" disabled={!!remove.pending}>
-										{remove.pending ? "Removing…" : "Remove"}
-									</button>
-								</form>
 							</li>
 						{/each}
 					</ul>
@@ -673,7 +682,8 @@
 		{#if demoTrack}
 			<!-- svelte-ignore a11y_media_has_caption -->
 			<audio
-				src={demoTrack.url}
+				bind:this={demoAudio}
+				src={demoTrack.playbackUrl ?? demoTrack.url}
 				bind:paused={demoPaused}
 				preload="auto"
 				onended={() => (demoPaused = true)}
@@ -702,8 +712,9 @@
 					<button
 						type="button"
 						class="button button-xs"
-						title="Download {d.filename}"
-						onclick={() => saveAs(d.url, d.filename)}
+						title={d.playbackUrl ? `Download ${d.label}.mp3` : `Download ${d.filename}`}
+						onclick={() =>
+							d.playbackUrl ? saveAs(d.playbackUrl, `${d.label}.mp3`) : saveAs(d.url, d.filename)}
 					>
 						<span class="i-ph-download-simple" aria-hidden="true"></span>
 						Download

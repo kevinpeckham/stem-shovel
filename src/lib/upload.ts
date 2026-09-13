@@ -1,5 +1,6 @@
 import { collapseDualMono } from "$lib/audio/mono";
 import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
+import { demoContentType, stemContentType } from "$lib/slug";
 import { upload } from "@vercel/blob/client";
 
 export interface Reservation {
@@ -19,10 +20,13 @@ export async function uploadStemFile(
 	opts: { ctx: AudioContext; onProgress?: (percent: number) => void; onDecoding?: () => void },
 ): Promise<void> {
 	const { stemId, pathname } = await reserve();
+	const contentType = stemContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
 		access: "public",
 		handleUploadUrl: "/api/upload",
-		contentType: file.type || undefined,
+		// The reservation allows exactly the type derived from the extension; the
+		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
+		contentType,
 		multipart: true,
 		onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
 	});
@@ -58,10 +62,13 @@ export async function uploadDemoFile(
 	onProgress?: (percent: number) => void,
 ): Promise<void> {
 	const { demoId, pathname } = await reserve();
+	const contentType = demoContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
 		access: "public",
 		handleUploadUrl: "/api/upload",
-		contentType: file.type || undefined,
+		// The reservation allows exactly the type derived from the extension; the
+		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
+		contentType,
 		multipart: true,
 		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
 	});

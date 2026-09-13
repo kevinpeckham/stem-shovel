@@ -304,12 +304,12 @@ export async function deleteSong(accountId: string, songId: string) {
 		columns: { mixUrl: true },
 	});
 	const demos = await db
-		.select({ url: demo.url })
+		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.songId, songId)));
 	await deleteBlobs([
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
-		...demos.map((d) => d.url),
+		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
 	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
@@ -540,10 +540,66 @@ export async function deleteDemo(accountId: string, demoId: string) {
 	const [row] = await db
 		.delete(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.id, demoId)))
-		.returning({ url: demo.url });
+		.returning({ url: demo.url, playbackUrl: demo.playbackUrl });
 	if (!row) return false;
-	await deleteBlobs([row.url]);
+	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
+}
+
+/** Which of a song's ready demos still want an MP3 (same rules as stems' renditions). */
+export function demosWantingPlayback(
+	demos: {
+		id: string;
+		status: string;
+		url: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return stemsWantingPlayback(demos, now);
+}
+
+export async function claimDemoPlayback(demoId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(demo)
+		.set({ playbackStatus: "pending", playbackStartedAt: now })
+		.where(
+			and(
+				eq(demo.id, demoId),
+				eq(demo.status, "ready"),
+				sql`(${demo.playbackStatus} is null
+					or (${demo.playbackStatus} = 'failed' and ${demo.playbackStartedAt} < ${now.getTime() - PLAYBACK_RETRY_MS})
+					or (${demo.playbackStatus} = 'pending' and ${demo.playbackStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS}))`,
+			),
+		)
+		.returning({
+			id: demo.id,
+			url: demo.url,
+			pathname: demo.pathname,
+			playbackUrl: demo.playbackUrl,
+		});
+	return row ?? null;
+}
+
+export async function finishDemoPlayback(
+	demoId: string,
+	r: { url: string; pathname: string; bytes: number },
+) {
+	await db
+		.update(demo)
+		.set({
+			playbackStatus: "ready",
+			playbackUrl: r.url,
+			playbackPathname: r.pathname,
+			playbackBytes: r.bytes,
+		})
+		.where(eq(demo.id, demoId));
+}
+
+export async function failDemoPlayback(demoId: string) {
+	await db.update(demo).set({ playbackStatus: "failed" }).where(eq(demo.id, demoId));
 }
 
 // ---- mixdowns (see src/lib/server/mix.ts) ---------------------------------

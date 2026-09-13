@@ -57,9 +57,19 @@ in three steps driven by `src/lib/upload.ts`:
 - **Demo recordings** use the same three steps with `/api/demos` and
   `/api/demos/[id]/ready` (`uploadDemoFile` in `src/lib/upload.ts`), minus
   the decode: the browser only reports the blob URL. `/api/upload` tells the
-  two apart by the `/demos/` segment of the reserved pathname. Uploaded and
-  removed from song settings; played (a plain `<audio>` element) and
-  downloaded from the "Demos" popover in the song's download row.
+  two apart by the `/demos/` segment of the reserved pathname. They accept a
+  broader format list (`DEMO_FORMATS`: AIFF, OGG/Opus, CAF, WebM, AMR, 3GP,
+  MP4 on top of the stem formats) because the server converts every demo to
+  a 192 kbps MP3 (`transcodeDemo`, `demo.playback*` columns, same claim and
+  retry rules as stem renditions) — browsers cannot all play what phones
+  produce, Voice Memos' lossless ALAC `.m4a` for one. The page plays and
+  downloads the MP3 once it exists and the original until then; the
+  original stays in Blob. Uploaded and removed from song settings; played
+  and downloaded from the "Demos" popover in the song's download row.
+- **Content type on upload comes from the extension**, not the browser's
+  guess: the reservation allows exactly `stemContentType(name)` /
+  `demoContentType(name)`, and macOS reports a Voice Memo as
+  `audio/x-m4a`, which the token would refuse.
 - **Downloads** fetch the Blob file in the browser and save it under its
   original name (`download` is ignored cross-origin; Blob's `?download=1`
   names the file by pathname). "Download All" builds a stored zip with

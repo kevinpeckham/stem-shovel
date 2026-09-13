@@ -1,5 +1,5 @@
-import { getSong, manifestFor, stemsWantingPlayback } from "$lib/server/data";
-import { schedulePlayback } from "$lib/server/transcode";
+import { demosWantingPlayback, getSong, manifestFor, stemsWantingPlayback } from "$lib/server/data";
+import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/transcode";
 import { renderMarkdown } from "$lib/server/markdown";
 import { error } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -14,6 +14,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	if (!song) error(404, `No song "${params.song}" in "${params.project}"`);
 	// Backstop for renditions the upload request did not finish (or predating them).
 	schedulePlayback(stemsWantingPlayback(song.stems));
+	scheduleDemoPlayback(demosWantingPlayback(song.demos));
 	return {
 		song,
 		manifest: manifestFor(song),

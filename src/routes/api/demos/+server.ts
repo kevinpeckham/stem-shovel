@@ -1,6 +1,6 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
 import { createDemo } from "$lib/server/data";
-import { MAX_DEMOS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES, stemContentType } from "$lib/slug";
+import { DEMO_FORMAT_LIST, demoContentType, MAX_DEMOS_PER_SONG, STEM_MAX_BYTES } from "$lib/slug";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -11,9 +11,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!songId || !filename || typeof sizeBytes !== "number") {
 		error(400, "songId, filename and sizeBytes are required");
 	}
-	const contentType = stemContentType(filename);
+	const contentType = demoContentType(filename);
 	if (!contentType)
-		error(415, `"${filename}" is not a supported audio format (${STEM_FORMAT_LIST})`);
+		error(415, `"${filename}" is not a supported audio format (${DEMO_FORMAT_LIST})`);
 	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-file limit");
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);

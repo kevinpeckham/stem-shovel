@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatTime } from "$lib/format";
 	import { isTextEntry } from "$lib/keys";
+	import { tick } from "svelte";
 
 	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. */
 	export interface PlaylistSong {
@@ -26,13 +27,17 @@
 	let duration = $state(0);
 
 	/** Play a song (from its row or the playlist); the same song toggles. */
-	export function play(id: string) {
+	export async function play(id: string) {
 		if (current === id) {
 			paused = !paused;
 			return;
 		}
+		// Swapping `src` fires a pause event that flips the bound state, so start
+		// the new track explicitly once the element has it.
 		current = id;
 		paused = false;
+		await tick();
+		await audio?.play().catch(() => {});
 	}
 
 	function playAll() {

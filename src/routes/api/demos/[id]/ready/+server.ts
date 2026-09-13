@@ -1,7 +1,12 @@
 import { accountOfDemo, memberOf } from "$lib/server/access";
 import { markDemoReady } from "$lib/server/data";
+import { scheduleDemoPlayback } from "$lib/server/transcode";
+import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+
+/** The MP3 renders after the response, inside this function's lifetime. */
+export const config: Config = { maxDuration: 300 };
 
 /** Step 3 of a demo upload: the browser reports the blob URL. */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -11,5 +16,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const { accountId } = await memberOf(locals, accountOfDemo, params.id);
 	const row = await markDemoReady(accountId, params.id, body.url);
 	if (!row) error(404, "Demo not found");
+	scheduleDemoPlayback([params.id]);
 	return json({ ok: true });
 };

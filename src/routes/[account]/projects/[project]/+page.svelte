@@ -29,7 +29,7 @@
 </svelte:head>
 
 <main class="page-x-padding pt-6 mb-2">
-	<header class="flex flex-wrap items-baseline justify-start gap-4">
+	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-5">
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
 		<h1 class="heading-1">{data.project.name}</h1>
@@ -119,7 +119,7 @@
 		<p class="mb-6 text-sm text-dim">Saved.</p>
 	{/if}
 
-	<div class="mb-6">
+	<div class="mb-8">
 		<ProjectPlayer
 			bind:this={player}
 			songs={data.project.songs}
@@ -129,7 +129,10 @@
 	</div>
 
 	<div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-		<h2 class="opacity-90 text-16px">Songs</h2>
+		<div>
+			<h2 class="opacity-90 text-16px heading-2">Songs in Progress</h2>
+			<p class="opacity-90">Click on a song below to view and edit its stems, chart, lyrics etc.</p>
+		</div>
 		{#if data.canEdit}
 			<button
 				class="button button-sm"
