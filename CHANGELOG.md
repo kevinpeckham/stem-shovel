@@ -32,6 +32,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **No indexing**: robots.txt disallows everything, every page carries a
   `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 
+### Fixed
+
+- **Hovering "Sign out" signed you out.** The nav link pointed at a page
+  whose load ended the session, and links preload on hover. Signing out is
+  now a POST (remote form); the `/sign-out` page is gone.
+
 ### Changed
 
 - **Accounts are in the URL**: `/[account]/projects/…` and

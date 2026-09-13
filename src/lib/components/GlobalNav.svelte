@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { signOut } from "$lib/remote/auth.remote";
 	import { page } from "$app/state";
 
 	interface Props {
@@ -55,7 +56,9 @@
 		{/if}
 		{#if user}
 			<span class="opacity-60 truncate">{user.name}</span>
-			<a class="link-dim" href="/sign-out">Sign out</a>
+			<form {...signOut}>
+				<button class="link-dim">Sign out</button>
+			</form>
 		{:else}
 			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
 		{/if}

@@ -16,8 +16,9 @@ public by URL; editing needs a signed-in member.
 - **Hook**: `src/hooks.server.ts` resolves the session into `locals.user`
   (null when signed out) and `locals.memberships`, then hands the request to
   `svelteKitHandler` so `/api/auth/*` is served.
-- **Routes**: `/sign-in`, `/sign-up`, `/sign-out` (visiting it ends the
-  session). Members-only pages (`/[account]/settings`, the chart/lyrics
+- **Routes**: `/sign-in`, `/sign-up`; signing out is the `signOut` remote
+  form (`src/lib/remote/auth.remote.ts`), a POST from the nav — a GET page
+  was being preloaded on hover and signing people out. Members-only pages (`/[account]/settings`, the chart/lyrics
   editors) redirect anonymous visitors to `/sign-in?next=…`.
 - **New users get their own account**: the `user.create.after` hook creates
   an `account` named after them (slug from the name, made unique) and an
