@@ -1,37 +1,35 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import { barAt, type BarGrid, formatBars } from "$lib/audio/measures";
-	import { formatTime } from "$lib/format";
+	import { type BarGrid, formatPosition } from "$lib/audio/measures";
+	import { cycleReadoutMode, readout } from "$lib/audio/readout.svelte";
+	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/format";
 	import { isTextEntry } from "$lib/keys";
 
 	interface Props {
 		engine: StemEngine;
 		/** When the song has a tempo and a meter, the readout can show bars instead of time. */
 		grid?: BarGrid | null;
-		/** Song end for the bars total (null = the last stem). */
+		/** Song end for the total (null = the last stem). */
 		endAt?: number | null;
+		/** Frame rate for the timecode readout. */
+		fps?: number;
 	}
 
-	let { engine, grid = null, endAt = null }: Props = $props();
+	let { engine, grid = null, endAt = null, fps = 25 }: Props = $props();
 
-	// Time or bars. Remembered per browser; falls back to time when no grid.
-	let showBars = $state(false);
-	try {
-		showBars = localStorage.getItem("transport.bars") === "1";
-	} catch {
-		// private mode etc.
-	}
-	function toggleReadout() {
-		if (!grid) return;
-		showBars = !showBars;
-		try {
-			localStorage.setItem("transport.bars", showBars ? "1" : "0");
-		} catch {
-			// ignore
-		}
-	}
-	let barsNow = $derived(grid ? formatBars(barAt(grid, engine.position)) : "");
-	let barsTotal = $derived(grid ? formatBars(barAt(grid, endAt ?? engine.duration)) : "");
+	// The readout format is shared with tooltips and the settings rows ($lib/audio/readout).
+	let ctx = $derived({ fps, grid });
+	let now = $derived(formatPosition(readout.mode, engine.position, ctx));
+	let total = $derived(formatPosition(readout.mode, endAt ?? engine.duration, ctx));
+	let nextMode = $derived(
+		POSITION_MODE_LABELS[
+			(readout.mode === "time"
+				? "timecode"
+				: readout.mode === "timecode" && grid
+					? "bars"
+					: "time") as PositionMode
+		],
+	);
 
 	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
 	// A focused button therefore does NOT activate on Space (Enter still does, and
@@ -84,24 +82,19 @@
 	<!-- tabular-nums keeps the readout from jittering as digits change -->
 	<button
 		type="button"
-		class="text-left text-2xl tabular-nums {grid
-			? 'cursor-pointer hover-text-accent'
-			: 'cursor-default'}"
-		title={grid
-			? showBars
-				? "Bars · beats — click for time"
-				: "Time — click for bars · beats"
-			: "Add a tempo and a time signature in song settings to count bars"}
-		aria-label={grid ? "Toggle time or bars" : undefined}
-		onclick={toggleReadout}
+		class="cursor-pointer text-left tabular-nums hover-text-accent {readout.mode === 'time'
+			? 'text-2xl'
+			: 'text-xl'}"
+		title="{POSITION_MODE_LABELS[readout.mode]} — click for {nextMode}{grid
+			? ''
+			: ' (bars need a tempo and a time signature in song settings)'}"
+		aria-label="Readout format: {POSITION_MODE_LABELS[readout.mode]}"
+		onclick={() => cycleReadoutMode(!!grid)}
 	>
-		{#if grid && showBars}
-			{barsNow}
-			<span class="text-dim">/ {barsTotal}</span>
-			<span class="ml-1 text-xs text-dim">bars</span>
-		{:else}
-			{formatTime(engine.position)}
-			<span class="text-dim">/ {formatTime(endAt ?? engine.duration)}</span>
+		{now}
+		<span class="text-dim">/ {total}</span>
+		{#if readout.mode !== "time"}
+			<span class="ml-1 text-xs text-dim">{readout.mode === "bars" && grid ? "bars" : "tc"}</span>
 		{/if}
 	</button>
 

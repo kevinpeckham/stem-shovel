@@ -59,3 +59,64 @@ export function toRoman(n: number): string {
 		}
 	return out;
 }
+
+/** Frame rates a song can be set to (Logic's list, minus drop-frame). */
+export const FRAME_RATES = [23.976, 24, 25, 29.97, 30] as const;
+export type FrameRate = (typeof FRAME_RATES)[number];
+/** Logic divides a frame into 80 subframes. */
+export const SUBFRAMES = 80;
+
+/**
+ * Logic's timecode: [hh:]mm:ss:ff.sub — frames at the song's frame rate and
+ * subframes (80 per frame). "02:03:15.72" is 2 min 3 s 15 frames 72 subframes.
+ */
+export function formatTimecode(seconds: number, fps: number): string {
+	const total = Math.max(0, seconds);
+	const whole = Math.floor(total + 1e-9);
+	const frames = (total - whole) * fps;
+	const ff = Math.floor(frames + 1e-6);
+	const sub = Math.floor((frames - ff) * SUBFRAMES + 1e-6);
+	const h = Math.floor(whole / 3600);
+	const m = Math.floor((whole % 3600) / 60);
+	const sec = whole % 60;
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${h ? `${pad(h)}:` : ""}${pad(m)}:${pad(sec)}:${pad(ff)}.${pad(sub)}`;
+}
+
+/** "mm:ss:ff.sub" (or with hours) → seconds; null if not timecode. */
+export function parseTimecode(text: string, fps: number): number | null {
+	const m = text.trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2}):(\d{1,2})(?:\.(\d{1,2}))?$/);
+	if (!m) return null;
+	const [, h = "0", mm, ss, ff, sub = "0"] = m;
+	if (
+		Number(mm) >= 60 ||
+		Number(ss) >= 60 ||
+		Number(ff) >= Math.ceil(fps) ||
+		Number(sub) >= SUBFRAMES
+	) {
+		return null;
+	}
+	return (
+		Number(h) * 3600 + Number(mm) * 60 + Number(ss) + (Number(ff) + Number(sub) / SUBFRAMES) / fps
+	);
+}
+
+/** "12|3" or "12|3|0.5" — bar, beat and a fraction of the beat; null if not bars. */
+export function parseBarsText(
+	text: string,
+): { bar: number; beat: number; fraction: number } | null {
+	const m = text.trim().match(/^(-?\d+)\|(\d+)(?:\|(\d*\.?\d+))?$/);
+	if (!m) return null;
+	const [, bar, beat, fraction = "0"] = m;
+	if (Number(beat) < 1 || Number(fraction) >= 1) return null;
+	return { bar: Number(bar), beat: Number(beat), fraction: Number(fraction) };
+}
+
+/** How positions read and are typed: the transport's readout mode. */
+export const POSITION_MODES = ["time", "timecode", "bars"] as const;
+export type PositionMode = (typeof POSITION_MODES)[number];
+export const POSITION_MODE_LABELS: Record<PositionMode, string> = {
+	time: "Time",
+	timecode: "Timecode",
+	bars: "Bars",
+};

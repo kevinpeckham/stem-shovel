@@ -1,7 +1,6 @@
 import type { StemManifest } from "$lib/audio/types";
 import { deleteBlobs, demoPathname, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
-import { parseTime } from "$lib/format";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename, MAX_DEMOS_PER_SONG, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { SlugSchema } from "$lib/val/SlugSchema";
@@ -225,6 +224,7 @@ export async function updateSong(
 		writtenOn: string;
 		startAt: string;
 		endAt: string;
+		frameRate: string;
 	},
 ): Promise<UpdateSongResult> {
 	const title = input.title.trim();
@@ -256,8 +256,9 @@ export async function updateSong(
 			description: input.description.trim(),
 			songwriter: input.songwriter.trim(),
 			writtenOn: input.writtenOn || null,
-			startAt: input.startAt ? parseTime(input.startAt) : null,
-			endAt: input.endAt ? parseTime(input.endAt) : null,
+			startAt: input.startAt ? Number(input.startAt) : null,
+			endAt: input.endAt ? Number(input.endAt) : null,
+			frameRate: Number(input.frameRate),
 		})
 		.where(eq(song.id, songId))
 		.returning();
@@ -490,7 +491,7 @@ export async function updateSongSections(
 		.map((s) => ({
 			index: (s.index ?? "").trim(),
 			name: s.name.trim(),
-			start: Math.round(s.start * 10) / 10,
+			start: Math.round(s.start * 10_000) / 10_000, // a tenth of a millisecond: finer than a Logic subframe
 		}))
 		.sort((a, b) => a.start - b.start);
 	for (let i = 1; i < sections.length; i++) {
@@ -516,7 +517,11 @@ export async function updateSongChanges(
 	input: SongChange[],
 ): Promise<SaveChangesResult> {
 	const changes = input
-		.map((c) => ({ kind: c.kind, start: Math.round(c.start * 10) / 10, value: c.value.trim() }))
+		.map((c) => ({
+			kind: c.kind,
+			start: Math.round(c.start * 10_000) / 10_000,
+			value: c.value.trim(),
+		}))
 		.sort((a, b) => a.start - b.start || a.kind.localeCompare(b.kind));
 	for (let i = 1; i < changes.length; i++) {
 		if (changes[i].start === changes[i - 1].start && changes[i].kind === changes[i - 1].kind) {

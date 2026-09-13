@@ -24,6 +24,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   that actually changes, highlighting and naming what is in force at the
   playhead. A song with fixed values and no sections shows no timeline. Migrations 0015
   (the `changes` column) and 0016 (drops `bpm` / `musical_key`).
+- **Timecode and bars everywhere**: the transport readout cycles time,
+  Logic-style timecode (`mm:ss:ff.sub` at the song's frame rate, a new
+  setting) and bars; section and change times display in the same format
+  and accept any of the three when typed. Times are now stored to a tenth
+  of a millisecond instead of a tenth of a second. Section tooltips show
+  the length in bars when the song has a tempo and a meter. Migration 0018.
 - **Section index**: each section has a short index (roman numerals by
   default, filled in by position) shown on the timeline blocks, where names
   would not fit; the name shows on hover.

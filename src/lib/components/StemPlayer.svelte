@@ -5,8 +5,8 @@
 	import Transport from "$lib/components/Transport.svelte";
 	import { formatBytes } from "$lib/format";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
-	import { barGrid } from "$lib/audio/measures";
-	import { formatTime } from "$lib/format";
+	import { barGrid, formatPosition } from "$lib/audio/measures";
+	import { readout } from "$lib/audio/readout.svelte";
 	import { type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import { untrack, type Snippet } from "svelte";
@@ -25,6 +25,8 @@
 		/** Bar 1 and the song's end, seconds (null = 0 / the last stem). */
 		startAt?: number | null;
 		endAt?: number | null;
+		/** Frame rate for timecode. */
+		fps?: number;
 		/** When given, members get an "Add section at playhead" button. */
 		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
@@ -40,6 +42,7 @@
 		changes = [],
 		startAt = null,
 		endAt = null,
+		fps = 25,
 		onaddsection,
 		onengine,
 	}: Props = $props();
@@ -92,14 +95,18 @@
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-		<Transport {engine} grid={barGrid(changes, startAt)} {endAt} />
+		<Transport {engine} grid={barGrid(changes, startAt)} {endAt} {fps} />
 		{#if onaddsection}
 			<div class="mt-2 flex justify-end">
 				<button
 					class="button button-xs"
 					type="button"
 					disabled={engine.status !== "ready"}
-					title="Mark a section starting at the current position ({formatTime(engine.position)})"
+					title="Mark a section starting at the current position ({formatPosition(
+						readout.mode,
+						engine.position,
+						{ fps, grid: barGrid(changes, startAt) },
+					)})"
 					onclick={() => onaddsection(engine.position)}
 				>
 					<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
@@ -114,7 +121,7 @@
 		aria-label="Stems"
 	>
 		{#if sections.length > 0 || timelineKinds(changes).length > 0}
-			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} />
+			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
 		{/if}
 		{#each engine.stems as stem (stem.id)}
 			<StemRow {stem} {engine} menu={stemMenu} />

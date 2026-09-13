@@ -41,6 +41,8 @@ erDiagram
   `[{ kind, start, value }]` with `kind` tempo | key | meter, `start` in
   seconds and `value` as text ("120", "F#m", "6/8"), sorted. The old
   single-value `bpm` / `musical_key` columns are gone (migration 0016).
+- **song.frame_rate** — 23.976 | 24 | 25 | 29.97 | 30, for timecode display
+  and entry (25 by default, as in Logic).
 - **song.start_at / end_at** — seconds where bar 1 begins and where the song
   ends (null = 0 / the last stem), for the bars readout and the timeline.
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):

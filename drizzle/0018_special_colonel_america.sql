@@ -1,0 +1,1 @@
+ALTER TABLE `song` ADD `frame_rate` real DEFAULT 25 NOT NULL;

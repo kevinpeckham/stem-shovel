@@ -1,7 +1,15 @@
 <script lang="ts">
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { formatBytes, formatMonth, formatTime, parseTime, toRoman } from "$lib/format";
+	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
+	import { readout } from "$lib/audio/readout.svelte";
+	import {
+		FRAME_RATES,
+		formatBytes,
+		formatMonth,
+		POSITION_MODE_LABELS,
+		toRoman,
+	} from "$lib/format";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import {
 		formatSongChange,
@@ -54,10 +62,23 @@
 	let description = $derived(fields.description.value() ?? data.song.description);
 	let songwriter = $derived(fields.songwriter.value() ?? data.song.songwriter);
 	let writtenOn = $derived(fields.writtenOn.value() ?? data.song.writtenOn ?? "");
-	let startAtText = $derived(data.song.startAt === null ? "" : formatTime(data.song.startAt));
-	let endAtText = $derived(data.song.endAt === null ? "" : formatTime(data.song.endAt));
-	let startAt = $derived(fields.startAt.value() ?? startAtText);
-	let endAt = $derived(fields.endAt.value() ?? endAtText);
+	// Positions read and are typed in the readout's format (time, timecode or bars);
+	// the form carries them as seconds, converted on the way in and out.
+	let posCtx = $derived({
+		fps: data.song.frameRate,
+		grid: barGrid(data.song.changes, data.song.startAt),
+	});
+	const showPos = (seconds: number) => formatPosition(readout.mode, seconds, posCtx);
+	const readPos = (text: string) => parsePosition(text, posCtx);
+	let startAtText = $derived(data.song.startAt === null ? "" : showPos(data.song.startAt));
+	let endAtText = $derived(data.song.endAt === null ? "" : showPos(data.song.endAt));
+	let startAtEntry = $state("");
+	let endAtEntry = $state("");
+	let startAt = $derived(startAtEntry);
+	let endAt = $derived(endAtEntry);
+	let frameRate = $derived(fields.frameRate.value() ?? String(data.song.frameRate));
+	let positionError = $state<string | null>(null);
+	const POSITION_PLACEHOLDER = { time: "0:00.0", timecode: "00:00:00.00", bars: "1|1" } as const;
 	let settingsDirty = $derived(
 		title.trim() !== data.song.title ||
 			slug.trim() !== data.song.slug ||
@@ -65,7 +86,8 @@
 			songwriter.trim() !== data.song.songwriter ||
 			writtenOn !== (data.song.writtenOn ?? "") ||
 			startAt.trim() !== startAtText ||
-			endAt.trim() !== endAtText,
+			endAt.trim() !== endAtText ||
+			frameRate !== String(data.song.frameRate),
 	);
 
 	// Demo recordings: uploaded from settings (no decoding, just the file),
@@ -226,7 +248,7 @@
 		sectionRows = data.song.sections.map((s) => ({
 			index: s.index ?? "",
 			name: s.name,
-			time: formatTime(s.start),
+			time: showPos(s.start),
 		}));
 	}
 	async function persistSections(next: SongSection[]) {
@@ -243,7 +265,7 @@
 		}
 	}
 	async function addSectionAt(start: number) {
-		const name = prompt(`Name the section starting at ${formatTime(start)}:`)?.trim();
+		const name = prompt(`Name the section starting at ${showPos(start)}:`)?.trim();
 		if (!name) return;
 		// Index by position in time: the section's ordinal as a roman numeral.
 		const before = data.song.sections.filter((s) => s.start < start).length;
@@ -252,9 +274,9 @@
 	async function saveSectionRows() {
 		const parsed: SongSection[] = [];
 		for (const row of sectionRows) {
-			const start = parseTime(row.time);
+			const start = readPos(row.time);
 			if (start === null) {
-				sectionError = `"${row.time}" is not a time. Use the transport's format, like 1:23.4.`;
+				sectionError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 				return;
 			}
 			parsed.push({ index: row.index, name: row.name, start });
@@ -268,7 +290,7 @@
 	let changesSaving = $state(false);
 	function resetChangeRows() {
 		changeRows = data.song.changes.map((c) => ({
-			time: formatTime(c.start),
+			time: showPos(c.start),
 			kind: c.kind,
 			value: c.value,
 		}));
@@ -277,9 +299,9 @@
 		changeError = null;
 		const parsed: SongChange[] = [];
 		for (const row of changeRows) {
-			const start = parseTime(row.time);
+			const start = readPos(row.time);
 			if (start === null) {
-				changeError = `"${row.time}" is not a time. Use the transport's format, like 1:23.4.`;
+				changeError = `"${row.time}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
 				return;
 			}
 			const bad = songChangeValueError(row.kind, row.value);
@@ -424,6 +446,8 @@
 				if (e.newState === "open") {
 					resetSectionRows();
 					resetChangeRows();
+					startAtEntry = startAtText;
+					endAtEntry = endAtText;
 				}
 			}}
 			bind:this={settingsPanel}
@@ -443,6 +467,18 @@
 			<form
 				{...updateSong.enhance(async ({ submit }) => {
 					settingsSaved = false;
+					positionError = null;
+					for (const [label, text, field] of [
+						["Start of bar 1", startAtEntry, fields.startAt],
+						["End", endAtEntry, fields.endAt],
+					] as const) {
+						const seconds = text.trim() ? readPos(text) : 0;
+						if (seconds === null) {
+							positionError = `${label}: "${text}" is not a position (time 1:23.4, timecode 01:23:15.72, or bars 12|3).`;
+							return;
+						}
+						field.set(text.trim() ? String(seconds) : "");
+					}
 					await submit();
 					if (!fields.allIssues()) {
 						settingsSaved = true;
@@ -525,16 +561,18 @@
 						<span class="mt-1 flex items-center gap-2">
 							<input
 								class="field font-mono text-sm"
-								placeholder="0:00.0"
+								placeholder={POSITION_PLACEHOLDER[readout.mode]}
 								autocomplete="off"
-								{...fields.startAt.as("text", startAtText)}
+								bind:value={startAtEntry}
+								aria-label="Start of bar 1"
 							/>
+							<input {...fields.startAt.as("hidden", "")} />
 							<button
 								class="button button-xs shrink-0"
 								type="button"
 								title="Use the transport's current position"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => fields.startAt.set(formatTime(playerEngine?.position ?? 0))}
+								onclick={() => (startAtEntry = showPos(playerEngine?.position ?? 0))}
 							>
 								Playhead
 							</button>
@@ -551,16 +589,18 @@
 						<span class="mt-1 flex items-center gap-2">
 							<input
 								class="field font-mono text-sm"
-								placeholder="0:00.0"
+								placeholder={POSITION_PLACEHOLDER[readout.mode]}
 								autocomplete="off"
-								{...fields.endAt.as("text", endAtText)}
+								bind:value={endAtEntry}
+								aria-label="End"
 							/>
+							<input {...fields.endAt.as("hidden", "")} />
 							<button
 								class="button button-xs shrink-0"
 								type="button"
 								title="Use the transport's current position"
 								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => fields.endAt.set(formatTime(playerEngine?.position ?? 0))}
+								onclick={() => (endAtEntry = showPos(playerEngine?.position ?? 0))}
 							>
 								Playhead
 							</button>
@@ -571,6 +611,24 @@
 							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
 					</label>
+					<label class="block">
+						<span class="text-sm text-dim"
+							>Frame rate <span class="opacity-60">(timecode)</span></span
+						>
+						<select
+							class="mt-1 field text-sm"
+							{...fields.frameRate.as("select", String(data.song.frameRate))}
+						>
+							{#each FRAME_RATES as rate (rate)}
+								<option value={String(rate)}>{rate} fps</option>
+							{/each}
+						</select>
+					</label>
+					<p class="text-xs text-dim self-end pb-2">
+						Positions read and are typed as {POSITION_MODE_LABELS[readout.mode].toLowerCase()} — the transport's
+						readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3) is accepted
+						anywhere.
+					</p>
 					<label class="block sm:col-span-2">
 						<span class="text-sm text-dim"
 							>Description <span class="opacity-60">(optional)</span></span
@@ -584,6 +642,9 @@
 						{/each}
 					</label>
 				</div>
+				{#if positionError}
+					<p class="mt-2 text-sm text-red-400" role="alert">{positionError}</p>
+				{/if}
 				{#if slug.trim() !== data.song.slug}
 					<p class="mt-2 text-xs text-dim">Changing the URL breaks existing links to this song.</p>
 				{/if}
@@ -606,7 +667,7 @@
 						onclick={() =>
 							(sectionRows = [
 								...sectionRows,
-								{ index: toRoman(sectionRows.length + 1), name: "", time: "0:00.0" },
+								{ index: toRoman(sectionRows.length + 1), name: "", time: showPos(0) },
 							])}
 					>
 						<span class="i-ph-plus" aria-hidden="true"></span>
@@ -615,8 +676,8 @@
 				</div>
 				<p class="mt-1 text-sm text-dim">
 					Song structure for the timeline above the stems: a short index (roman numerals, shown on
-					the timeline; the name shows on hover), a name, and the time it starts in the transport's
-					format (1:23.4). "Add section at playhead" on the player fills this in while you listen.
+					the timeline; the name shows on hover), a name, and where it starts — time, timecode or
+					bars. "Add section at playhead" on the player fills this in while you listen.
 				</p>
 				{#if sectionRows.length > 0}
 					<div class="mt-3 grid gap-2">
@@ -637,7 +698,7 @@
 								/>
 								<input
 									class="field font-mono text-sm"
-									placeholder="0:00.0"
+									placeholder={POSITION_PLACEHOLDER[readout.mode]}
 									bind:value={row.time}
 									aria-label="Start time"
 								/>
@@ -678,7 +739,7 @@
 						onclick={() =>
 							(changeRows = [
 								...changeRows,
-								{ time: changeRows.length ? "" : "0:00.0", kind: "tempo", value: "" },
+								{ time: changeRows.length ? "" : showPos(0), kind: "tempo", value: "" },
 							])}
 					>
 						<span class="i-ph-plus" aria-hidden="true"></span>
@@ -695,7 +756,7 @@
 							<div class="grid grid-cols-[6rem_9rem_1fr_auto] items-center gap-2">
 								<input
 									class="field font-mono text-sm"
-									placeholder="0:00.0"
+									placeholder={POSITION_PLACEHOLDER[readout.mode]}
 									bind:value={row.time}
 									aria-label="Change time"
 								/>
@@ -845,6 +906,7 @@
 					changes={data.song.changes}
 					startAt={data.song.startAt}
 					endAt={data.song.endAt}
+					fps={data.song.frameRate}
 					onaddsection={data.canEdit ? addSectionAt : undefined}
 					onengine={(e) => (playerEngine = e)}
 				>

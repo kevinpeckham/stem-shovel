@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import { formatTime } from "$lib/format";
+	import { barGrid, formatBarSpan, formatPosition } from "$lib/audio/measures";
+	import { readout } from "$lib/audio/readout.svelte";
 	import { formatSongChange, type SongChange, timelineKinds } from "$lib/val/SongChangeSchema";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
 
@@ -13,9 +14,12 @@
 		/** Bar 1 and the song's end, drawn as lines through the blocks. */
 		startAt?: number | null;
 		endAt?: number | null;
+		fps?: number;
 	}
 
-	let { engine, sections, changes = [], startAt = null, endAt = null }: Props = $props();
+	let { engine, sections, changes = [], startAt = null, endAt = null, fps = 25 }: Props = $props();
+	let ctx = $derived({ fps, grid: barGrid(changes, startAt) });
+	const at = (seconds: number) => formatPosition(readout.mode, seconds, ctx);
 
 	// Each block runs from its start to the next start (the last to the end).
 	// Laid out on the same grid as a stem row so the blocks sit over the waveforms.
@@ -91,7 +95,7 @@
 					style:top="{li * LANE_REM}rem"
 					style:left="{(m.start / duration) * 100}%"
 					style:width="calc({((m.end - m.start) / duration) * 100}% - 1px)"
-					title="{formatSongChange(m)} from {formatTime(m.start)}"
+					title="{formatSongChange(m)} from {at(m.start)}"
 				>
 					{formatSongChange(m)}
 				</span>
@@ -102,14 +106,14 @@
 				<span
 					class="pointer-events-none absolute top-0 z-10 h-full border-l border-dashed border-green-300/80"
 					style:left="{(startAt / duration) * 100}%"
-					title="Start (bar 1) · {formatTime(startAt)}"
+					title="Start (bar 1) · {at(startAt)}"
 				></span>
 			{/if}
 			{#if endAt !== null && endAt > 0}
 				<span
 					class="pointer-events-none absolute top-0 z-10 h-full border-l border-dashed border-green-300/80"
 					style:left="{(endAt / duration) * 100}%"
-					title="End · {formatTime(endAt)}"
+					title="End · {at(endAt)}"
 				></span>
 			{/if}
 			{#each blocks as b, i (b.start)}
@@ -123,9 +127,9 @@
 						: 'border-white/15 bg-white/5 text-dim hover-bg-white/10 hover-text-neutral-100'}"
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"
-					title="{b.index ? `${b.index} · ` : ''}{b.name} · {formatTime(b.start)} – {formatTime(
-						b.end,
-					)}"
+					title="{b.index ? `${b.index} · ` : ''}{b.name} · {ctx.grid
+						? formatBarSpan(ctx.grid, b.start, b.end)
+						: `${at(b.start)} – ${at(b.end)}`}"
 					disabled={engine.status !== "ready"}
 					onclick={() => engine.seek(b.start)}
 				>

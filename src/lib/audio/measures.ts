@@ -1,3 +1,11 @@
+import {
+	formatTime,
+	formatTimecode,
+	parseBarsText,
+	parseTime,
+	parseTimecode,
+	type PositionMode,
+} from "$lib/format";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 
 /**
@@ -31,7 +39,7 @@ const valueAt = <T extends { start: number }>(list: T[], t: number) =>
 	list.findLast((x) => t >= x.start) ?? list[0];
 
 /** Beats elapsed between two times, integrating the tempo in force across its changes. */
-function beatsBetween(grid: BarGrid, from: number, to: number): number {
+export function beatsBetween(grid: BarGrid, from: number, to: number): number {
 	if (to < from) return -beatsBetween(grid, to, from);
 	const cuts = [from, ...grid.tempos.map((t) => t.start).filter((s) => s > from && s < to), to];
 	let beats = 0;
@@ -78,4 +86,85 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 /** "12.3" — bar.beat, the DAW convention. */
 export function formatBars(p: BarPosition): string {
 	return `${p.bar}.${p.beat}`;
+}
+
+/** Seconds at a bar position: the inverse of `barAt` (bars before the start run negative). */
+export function secondsAtBar(grid: BarGrid, bar: number, beat = 1, fraction = 0): number {
+	// Walk meter segments from the start to find which one holds the bar.
+	const segs = grid.meters.filter((m) => m.start > grid.startAt).sort((a, b) => a.start - b.start);
+	let segBar = 1;
+	let segStart = grid.startAt;
+	let bpb = valueAt(grid.meters, grid.startAt).beatsPerBar;
+	for (const m of segs) {
+		const barsIn = Math.ceil(beatsBetween(grid, segStart, m.start) / bpb - 1e-9);
+		if (bar < segBar + barsIn) break;
+		segBar += barsIn;
+		segStart = m.start;
+		bpb = m.beatsPerBar;
+	}
+	const beats = (bar - segBar) * bpb + (beat - 1) + fraction;
+	return secondsAfterBeats(grid, segStart, beats);
+}
+
+/** Seconds reached after `beats` beats from `from`, through tempo changes (negative beats go backwards). */
+function secondsAfterBeats(grid: BarGrid, from: number, beats: number): number {
+	let t = from;
+	let left = beats;
+	const dir = beats >= 0 ? 1 : -1;
+	for (let guard = 0; guard < 1000 && Math.abs(left) > 1e-9; guard++) {
+		const bpm = valueAt(grid.tempos, dir > 0 ? t : t - 1e-9).bpm;
+		const next =
+			dir > 0
+				? grid.tempos.map((x) => x.start).find((s) => s > t)
+				: grid.tempos.map((x) => x.start).findLast((s) => s < t);
+		const span = next === undefined ? Infinity : Math.abs(next - t);
+		const beatsToNext = (span * bpm) / 60;
+		if (Math.abs(left) <= beatsToNext) return t + (dir * Math.abs(left) * 60) / bpm;
+		t += dir * span;
+		left -= dir * beatsToNext;
+	}
+	return t;
+}
+
+/**
+ * A position typed in any of the three formats → seconds. Digital time
+ * ("1:23.4"), timecode ("01:23:15.72" — three or four colon groups) and bars
+ * ("12|3", needs a grid). null when it is none of them.
+ */
+export function parsePosition(
+	text: string,
+	ctx: { fps: number; grid: BarGrid | null },
+): number | null {
+	const bars = parseBarsText(text);
+	if (bars) return ctx.grid ? secondsAtBar(ctx.grid, bars.bar, bars.beat, bars.fraction) : null;
+	const groups = text.trim().split(":").length;
+	if (groups >= 3) return parseTimecode(text, ctx.fps);
+	return parseTime(text);
+}
+
+/** A position in the given mode; bars fall back to time without a grid. */
+export function formatPosition(
+	mode: PositionMode,
+	seconds: number,
+	ctx: { fps: number; grid: BarGrid | null },
+): string {
+	if (mode === "timecode") return formatTimecode(seconds, ctx.fps);
+	if (mode === "bars" && ctx.grid) {
+		// Whole beats only: fractions are for typing ("12|3|0.5"), not reading.
+		const p = barAt(ctx.grid, seconds);
+		return `${p.bar}|${p.beat}`;
+	}
+	return formatTime(seconds);
+}
+
+/** "8 bars", "8 bars 2 beats" — a span's length in the meter in force where it starts. */
+export function formatBarSpan(grid: BarGrid, from: number, to: number): string {
+	const bpb = valueAt(grid.meters, from).beatsPerBar;
+	const beats = Math.round(beatsBetween(grid, from, to) * 100) / 100;
+	const bars = Math.floor(beats / bpb + 1e-9);
+	const rest = Math.round((beats - bars * bpb) * 10) / 10;
+	const parts = [];
+	if (bars) parts.push(`${bars} ${bars === 1 ? "bar" : "bars"}`);
+	if (rest) parts.push(`${rest} ${rest === 1 ? "beat" : "beats"}`);
+	return parts.join(" ") || "0 bars";
 }
