@@ -1,7 +1,11 @@
 import * as v from "valibot";
 
-/** One song section: a name and where it starts, in seconds. */
+/** One song section: a name, a short index for the timeline (roman numerals: "I", "VI"), and where it starts. */
 export const SongSectionSchema = v.object({
+	index: v.optional(
+		v.pipe(v.string(), v.trim(), v.maxLength(8, "Keep the index under 8 characters.")),
+		"",
+	),
 	name: v.pipe(
 		v.string(),
 		v.trim(),

@@ -123,11 +123,14 @@
 						: 'border-white/15 bg-white/5 text-dim hover-bg-white/10 hover-text-neutral-100'}"
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"
-					title="{b.name} · {formatTime(b.start)} – {formatTime(b.end)}"
+					title="{b.index ? `${b.index} · ` : ''}{b.name} · {formatTime(b.start)} – {formatTime(
+						b.end,
+					)}"
 					disabled={engine.status !== "ready"}
 					onclick={() => engine.seek(b.start)}
 				>
-					{b.name}
+					<!-- the index (roman numerals) fits where a name would not; the name is the tooltip -->
+					{b.index || b.name}
 				</button>
 			{/each}
 		</div>

@@ -487,7 +487,11 @@ export async function updateSongSections(
 	input: SongSection[],
 ): Promise<SaveSectionsResult> {
 	const sections = input
-		.map((s) => ({ name: s.name.trim(), start: Math.round(s.start * 10) / 10 }))
+		.map((s) => ({
+			index: (s.index ?? "").trim(),
+			name: s.name.trim(),
+			start: Math.round(s.start * 10) / 10,
+		}))
 		.sort((a, b) => a.start - b.start);
 	for (let i = 1; i < sections.length; i++) {
 		if (sections[i].start === sections[i - 1].start) {

@@ -25,7 +25,9 @@ fields are `$state`, so components read `engine.position` directly.
 - **Sections timeline** (`SectionTimeline.svelte`): when a song has
   sections (`song.sections`, `[{ name, start }]` in seconds), a row above
   the stems shows a block per section on the same grid as a stem row, so
-  the blocks sit over the waveforms; the block containing `engine.position`
+  the blocks sit over the waveforms, labelled with the section's `index`
+  (roman numerals by default, the name on hover — the column is narrow);
+  the block containing `engine.position`
   is highlighted and clicking one seeks to its start. Members add one at
   the playhead from the transport, and edit names and times (entered in the
   transport's `m:ss.s` format, `parseTime` in `$lib/format`) in song

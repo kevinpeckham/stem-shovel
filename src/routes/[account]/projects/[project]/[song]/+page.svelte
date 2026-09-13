@@ -1,7 +1,8 @@
 <script lang="ts">
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { formatBytes, formatMonth, formatTime, parseTime } from "$lib/format";
+	import { formatBytes, formatMonth, formatTime, parseTime, toRoman } from "$lib/format";
+	import type { SongSection } from "$lib/val/SongSectionSchema";
 	import {
 		formatSongChange,
 		SONG_CHANGE_KINDS,
@@ -218,13 +219,17 @@
 	type MixMode = "original" | "custom";
 	// Song sections. "Add section at playhead" on the player inserts one at the
 	// current position; the list in settings edits names and times (m:ss.s).
-	let sectionRows = $state<{ name: string; time: string }[]>([]);
+	let sectionRows = $state<{ index: string; name: string; time: string }[]>([]);
 	let sectionError = $state<string | null>(null);
 	let sectionsSaving = $state(false);
 	function resetSectionRows() {
-		sectionRows = data.song.sections.map((s) => ({ name: s.name, time: formatTime(s.start) }));
+		sectionRows = data.song.sections.map((s) => ({
+			index: s.index ?? "",
+			name: s.name,
+			time: formatTime(s.start),
+		}));
 	}
-	async function persistSections(next: { name: string; start: number }[]) {
+	async function persistSections(next: SongSection[]) {
 		sectionError = null;
 		sectionsSaving = true;
 		try {
@@ -240,17 +245,19 @@
 	async function addSectionAt(start: number) {
 		const name = prompt(`Name the section starting at ${formatTime(start)}:`)?.trim();
 		if (!name) return;
-		await persistSections([...data.song.sections, { name, start }]);
+		// Index by position in time: the section's ordinal as a roman numeral.
+		const before = data.song.sections.filter((s) => s.start < start).length;
+		await persistSections([...data.song.sections, { index: toRoman(before + 1), name, start }]);
 	}
 	async function saveSectionRows() {
-		const parsed: { name: string; start: number }[] = [];
+		const parsed: SongSection[] = [];
 		for (const row of sectionRows) {
 			const start = parseTime(row.time);
 			if (start === null) {
 				sectionError = `"${row.time}" is not a time. Use the transport's format, like 1:23.4.`;
 				return;
 			}
-			parsed.push({ name: row.name, start });
+			parsed.push({ index: row.index, name: row.name, start });
 		}
 		await persistSections(parsed);
 	}
@@ -596,21 +603,32 @@
 					<button
 						class="button button-xs"
 						type="button"
-						onclick={() => (sectionRows = [...sectionRows, { name: "", time: "0:00.0" }])}
+						onclick={() =>
+							(sectionRows = [
+								...sectionRows,
+								{ index: toRoman(sectionRows.length + 1), name: "", time: "0:00.0" },
+							])}
 					>
 						<span class="i-ph-plus" aria-hidden="true"></span>
 						Add row
 					</button>
 				</div>
 				<p class="mt-1 text-sm text-dim">
-					Song structure for the timeline above the stems: a name and the time it starts, in the
-					transport's format (1:23.4). "Add section at playhead" on the player fills this in while
-					you listen.
+					Song structure for the timeline above the stems: a short index (roman numerals, shown on
+					the timeline; the name shows on hover), a name, and the time it starts in the transport's
+					format (1:23.4). "Add section at playhead" on the player fills this in while you listen.
 				</p>
 				{#if sectionRows.length > 0}
 					<div class="mt-3 grid gap-2">
 						{#each sectionRows as row, i (i)}
-							<div class="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
+							<div class="grid grid-cols-[4rem_1fr_7rem_auto] items-center gap-2">
+								<input
+									class="field font-mono text-sm"
+									placeholder="I"
+									bind:value={row.index}
+									aria-label="Section index"
+									title="Short index shown on the timeline (roman numerals); the name shows on hover"
+								/>
 								<input
 									class="field"
 									placeholder="Intro"

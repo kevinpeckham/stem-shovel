@@ -24,6 +24,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   that actually changes, highlighting and naming what is in force at the
   playhead. A song with fixed values and no sections shows no timeline. Migrations 0015
   (the `changes` column) and 0016 (drops `bpm` / `musical_key`).
+- **Section index**: each section has a short index (roman numerals by
+  default, filled in by position) shown on the timeline blocks, where names
+  would not fit; the name shows on hover.
 - **Bars on the transport**: with a tempo and a time signature set, click
   the time readout to count in bars and beats instead (remembered per
   browser). Song settings gain "Start of bar 1" and "End" times, each
