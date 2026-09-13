@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-13
+
 ### Added
 
 - **Song notes**: a third markdown document beside Chart and Lyrics, with
@@ -45,6 +47,24 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   count from the right place; both show as dashed lines on the timeline.
   Migration 0017.
 - **Tall popovers scroll** within the viewport instead of overflowing it.
+
+### Technical
+
+- **Test suite**: Vitest through Vite+ (`bun run test`) with a Node `unit`
+  project and a jsdom `components` project using @testing-library/svelte —
+  73 tests over the utils, bar math, dual-mono and peaks, the valibot
+  schemas, the mix request parser and the screenshot bypass (database and
+  Blob mocked), and the Transport, SectionTimeline and ProjectPlayer
+  components. `/test` skill; `bun run test` opens the release gates.
+- Helpers moved to `src/lib/utils/` (one function per file) and constants
+  to `src/lib/constants/`, replacing `format.ts`, `slug.ts` and `keys.ts`;
+  song change kinds live in `constants/songChanges.ts` so the schema and
+  its validator no longer import each other.
+
+### Fixed
+
+- **Stem row menus close** on Escape, on a click outside them, and when
+  another row's menu opens.
 
 ## [0.2.1] - 2026-09-13
 
@@ -90,23 +110,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **No indexing**: robots.txt disallows everything, every page carries a
   `noindex, nofollow` meta tag and every response an `X-Robots-Tag` header.
 
-### Technical
-
-- **Test suite**: Vitest through Vite+ (`bun run test`) with a Node `unit`
-  project and a jsdom `components` project using @testing-library/svelte —
-  73 tests over the utils, bar math, dual-mono and peaks, the valibot
-  schemas, the mix request parser and the screenshot bypass (database and
-  Blob mocked), and the Transport, SectionTimeline and ProjectPlayer
-  components. `/test` skill; `bun run test` opens the release gates.
-- Helpers moved to `src/lib/utils/` (one function per file) and constants
-  to `src/lib/constants/`, replacing `format.ts`, `slug.ts` and `keys.ts`;
-  song change kinds live in `constants/songChanges.ts` so the schema and
-  its validator no longer import each other.
-
 ### Fixed
 
-- **Stem row menus close** on Escape, on a click outside them, and when
-  another row's menu opens.
 - **Uploads of `.m4a` files from a Mac or iPhone** were refused: the browser
   labels them `audio/x-m4a` and the upload token only allowed `audio/mp4`.
   The content type now comes from the extension for stems and demos alike.
