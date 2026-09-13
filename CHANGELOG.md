@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-13
+
 ### Added
 
 - **Song version and "stems updated"**: each song carries a semantic
@@ -23,6 +25,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   display. A song with a tempo and a time signature shows bars by default;
   clicking the readout switches and the choice is remembered. Bars read as
   `45 | 1`, and positions typed with spaces around the bars parse too.
+- **Stem rows and transport restyled** (Kevin): name, mute, solo and menu
+  stacked in one column with wider waveforms; the section timeline follows
+  the same columns and shows the current section as a chip; the transport
+  readout sits in its own block with a format badge.
 - **Project settings are a popover** opened from a gear in the project
   header, matching the song page, instead of a form that unfolded in place.
 

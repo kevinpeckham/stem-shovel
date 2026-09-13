@@ -29,8 +29,7 @@ fields are `$state`, so components read `engine.position` directly.
   (roman numerals by default, the name on hover — the column is narrow);
   the block containing `engine.position`
   is highlighted and clicking one seeks to its start. Members edit index,
-  names and times (entered in the
-  transport's `m:ss.s` format, `parseTime` in `$lib/format`) in song
+  names and start positions (in any position format, see below) in song
   settings; the `saveSections` command sorts by start and refuses two at
   the same time.
 - **Tempo, key and time signature** are timed changes on the song
@@ -43,15 +42,19 @@ fields are `$state`, so components read `engine.position` directly.
   shows it), a marker per change clipped at the next of its kind, and
   highlights and names what is in force at the playhead. The row shows
   only when a song has sections or such a lane.
-- **Position formats** (`lib/format.ts`, `lib/audio/measures.ts`,
-  `lib/audio/readout.svelte.ts`): the transport's readout cycles time
-  (`1:23.4`) → timecode (Logic's `[hh:]mm:ss:ff.sub` at the song's frame
-  rate, 80 subframes a frame) → bars (`bar|beat`, when the song has a tempo
-  and a time signature), remembered per browser. The same mode drives the
-  tooltips and how section and change times display in settings; any of the
-  three is accepted when typing (three or four colon groups = timecode, a
-  `|` = bars, else time). Times are stored as seconds to a tenth of a
-  millisecond, finer than a subframe. Section tooltips give the span in
+- **Position formats** (`lib/utils/formatTimecode.ts`, `parseTimecode.ts`,
+  `parseBarsText.ts`, `lib/audio/measures.ts`, `lib/audio/readout.svelte.ts`):
+  the transport's readout shows timecode (Logic's `[hh:]mm:ss:ff.sub` at the
+  song's frame rate, 80 subframes a frame) or bars (`45 | 1`). A song with a
+  tempo and a time signature shows bars by default and timecode otherwise;
+  clicking the readout switches and the choice is remembered per browser
+  (`readoutMode()` resolves the automatic default). The same mode drives the
+  tooltips and how section and change times display in settings, and the
+  editors show full precision (`45 | 1 | 0.5`). When typing, timecode
+  (three or four colon groups), bars (a `|`, spaces allowed, needs the
+  grid) and plain digital time (`1:23.4`, `83`) are all accepted. Times
+  are stored as seconds to a tenth of a millisecond, finer than a
+  subframe; a row saved without editing its text keeps its exact seconds. Section tooltips give the span in
   bars when a grid exists ("8 bars 2 beats"). Tempo is beats per
   minute where a beat is the meter's bottom number, so 6/8 at 120 is 120
   eighths a minute; beats are integrated across tempo changes and the bar
