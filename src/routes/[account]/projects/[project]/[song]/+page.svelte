@@ -646,7 +646,9 @@
 							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
 							? 'rounded-r-none border-r-none'
-							: 'rounded-l-none'}"
+							: index === DOC_KINDS.length - 1
+								? 'rounded-l-none'
+								: 'rounded-none border-r-none'}"
 						onclick={() => (doc = kind)}>{DOC_LABELS[kind]}</button
 					>
 				{/each}
