@@ -1,13 +1,33 @@
 <script lang="ts">
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { formatBytes } from "$lib/format";
+	import { formatBytes, formatMonth } from "$lib/format";
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 
-	import { slugify, STEM_ACCEPT } from "$lib/slug";
-	import { postJson, type Reservation, saveAs, uploadStemFile } from "$lib/upload";
-	import { deleteSong, deleteStem, renameStem, updateSong } from "$lib/remote/songs.remote";
+	import {
+		MAX_DEMOS_PER_SONG,
+		slugify,
+		STEM_ACCEPT,
+		STEM_FORMAT_LIST,
+		STEM_MAX_BYTES,
+		stemContentType,
+	} from "$lib/slug";
+	import {
+		type DemoReservation,
+		postJson,
+		type Reservation,
+		saveAs,
+		uploadDemoFile,
+		uploadStemFile,
+	} from "$lib/upload";
+	import {
+		deleteDemo,
+		deleteSong,
+		deleteStem,
+		renameStem,
+		updateSong,
+	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { untrack } from "svelte";
 
@@ -20,11 +40,85 @@
 	let title = $derived(fields.title.value() ?? data.song.title);
 	let slug = $derived(fields.slug.value() ?? data.song.slug);
 	let description = $derived(fields.description.value() ?? data.song.description);
+	let songwriter = $derived(fields.songwriter.value() ?? data.song.songwriter);
+	let writtenOn = $derived(fields.writtenOn.value() ?? data.song.writtenOn ?? "");
 	let settingsDirty = $derived(
 		title.trim() !== data.song.title ||
 			slug.trim() !== data.song.slug ||
-			description.trim() !== data.song.description,
+			description.trim() !== data.song.description ||
+			songwriter.trim() !== data.song.songwriter ||
+			writtenOn !== (data.song.writtenOn ?? ""),
 	);
+
+	// Demo recordings: uploaded from settings (no decoding, just the file),
+	// played and downloaded from the "Demos" popover in the download row.
+	let demoJobs = $state<{ name: string; percent: number; error?: string }[]>([]);
+	let demoNotice = $state<string | null>(null);
+	let demoBusy = $state(false);
+	async function uploadDemos(input: HTMLInputElement) {
+		const picked = Array.from(input.files ?? []);
+		input.value = "";
+		if (picked.length === 0) return;
+		const unsupported = picked.filter((f) => !stemContentType(f.name));
+		const tooBig = picked.filter((f) => f.size > STEM_MAX_BYTES);
+		const room = Math.max(0, MAX_DEMOS_PER_SONG - data.song.demos.length);
+		if (unsupported.length) {
+			demoNotice = `Not a supported format (${STEM_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`;
+			return;
+		}
+		if (tooBig.length) {
+			demoNotice = `Over the ${formatBytes(STEM_MAX_BYTES)} limit: ${tooBig.map((f) => f.name).join(", ")}`;
+			return;
+		}
+		if (picked.length > room) {
+			demoNotice = `Only ${room} more ${room === 1 ? "demo" : "demos"} fit on this song (${MAX_DEMOS_PER_SONG} max).`;
+			return;
+		}
+		demoNotice = null;
+		demoBusy = true;
+		demoJobs = picked.map((f) => ({ name: f.name, percent: 0 }));
+		for (const [i, file] of picked.entries()) {
+			try {
+				await uploadDemoFile(
+					file,
+					() =>
+						postJson<DemoReservation>("/api/demos", {
+							songId: data.song.id,
+							filename: file.name,
+							sizeBytes: file.size,
+						}),
+					(percent) => (demoJobs[i].percent = percent),
+				);
+			} catch (e) {
+				demoJobs[i].error = e instanceof Error ? e.message : String(e);
+			}
+		}
+		await invalidateAll();
+		demoBusy = false;
+		if (demoJobs.every((j) => !j.error)) demoJobs = [];
+	}
+
+	// The demo player: one <audio>, whichever demo was last pressed.
+	let demoPlaying = $state<string | null>(null);
+	let demoPaused = $state(true);
+	let demoTrack = $derived(data.song.demos.find((d) => d.id === demoPlaying) ?? null);
+	function playDemo(id: string) {
+		if (demoPlaying === id) demoPaused = !demoPaused;
+		else {
+			demoPlaying = id;
+			demoPaused = false;
+		}
+	}
+	// "Written by X, first written June 2019" under the title.
+	let writtenLine = $derived(
+		[
+			data.song.songwriter ? `Written by ${data.song.songwriter}` : "",
+			data.song.writtenOn ? `first written ${formatMonth(data.song.writtenOn)}` : "",
+		]
+			.filter(Boolean)
+			.join(", "),
+	);
+	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	let slugTouched = $state(false);
 
 	// Chart / Lyrics toggle for the read view. Starts on whichever has content.
@@ -177,6 +271,9 @@
 						>{data.account.name}</a
 					></span
 				>
+				{#if writtenLine}
+					<p class="w-full text-sm text-dim">{writtenLine}</p>
+				{/if}
 				<!-- {#if data.song.description}
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 				{/if} -->
@@ -269,6 +366,32 @@
 							>
 						{/if}
 					</label>
+					<label class="block">
+						<span class="text-sm text-dim"
+							>Songwriter <span class="opacity-60">(optional)</span></span
+						>
+						<input
+							class="mt-1 field"
+							{...fields.songwriter.as("text", data.song.songwriter)}
+							placeholder="Who wrote it"
+						/>
+						{#each fields.songwriter.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
+					<label class="block">
+						<span class="text-sm text-dim"
+							>First written <span class="opacity-60">(optional)</span></span
+						>
+						<input
+							class="mt-1 field"
+							type="date"
+							{...fields.writtenOn.as("text", data.song.writtenOn ?? "")}
+						/>
+						{#each fields.writtenOn.issues() ?? [] as issue (issue.message)}
+							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+						{/each}
+					</label>
 					<label class="block sm:col-span-2">
 						<span class="text-sm text-dim"
 							>Description <span class="opacity-60">(optional)</span></span
@@ -296,9 +419,71 @@
 			</form>
 
 			<div class="mt-8 border-t border-white/15 pt-4">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<h3 class="text-15px font-700">Demo recordings</h3>
+					<label
+						class="button button-xs cursor-pointer {demoBusy
+							? 'opacity-50 pointer-events-none'
+							: ''}"
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						{demoBusy ? "Uploading…" : "Upload demo"}
+						<input
+							class="sr-only"
+							type="file"
+							accept={STEM_ACCEPT}
+							multiple
+							disabled={demoBusy}
+							onchange={(e) => uploadDemos(e.currentTarget)}
+						/>
+					</label>
+				</div>
+				<p class="mt-1 text-sm text-dim">
+					Phone memos, rough takes, the original idea — kept as uploaded, up to {MAX_DEMOS_PER_SONG}.
+				</p>
+				{#if demoNotice}
+					<p class="mt-2 text-sm text-red-400" role="alert">{demoNotice}</p>
+				{/if}
+				{#each demoJobs as job (job.name)}
+					<p class="mt-2 text-sm {job.error ? 'text-red-400' : 'text-dim'}">
+						{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
+					</p>
+				{/each}
+				{#if data.song.demos.length > 0}
+					<ul class="mt-3 grid gap-1">
+						{#each data.song.demos as d (d.id)}
+							{@const remove = deleteDemo.for(d.id)}
+							<li
+								class="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2 text-sm"
+							>
+								<span class="min-w-0 truncate">
+									{d.label}
+									<span class="text-dim"
+										>· {formatBytes(d.sizeBytes)}{#if d.status !== "ready"}
+											· uploading{/if}</span
+									>
+								</span>
+								<form
+									{...remove.enhance(async ({ submit }) => {
+										if (!confirm(`Remove the demo "${d.label}"?`)) return;
+										await submit();
+									})}
+								>
+									<input {...remove.fields.id.as("hidden", d.id)} />
+									<button class="link-dim text-xs" disabled={!!remove.pending}>
+										{remove.pending ? "Removing…" : "Remove"}
+									</button>
+								</form>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
 				<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
 				<p class="mt-1 text-sm text-dim">
-					Removes the song, its chart and lyrics, and every stem file.
+					Removes the song, its chart and lyrics, every stem file and every demo recording.
 				</p>
 				<form
 					class="mt-3"
@@ -468,6 +653,67 @@
 	</section>
 </main>
 
+{#if readyDemos.length > 0}
+	<div
+		id="song-demos"
+		popover="auto"
+		class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">Demo recordings</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="song-demos"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		{#if demoTrack}
+			<!-- svelte-ignore a11y_media_has_caption -->
+			<audio
+				src={demoTrack.url}
+				bind:paused={demoPaused}
+				preload="auto"
+				onended={() => (demoPaused = true)}
+			></audio>
+		{/if}
+		<ul class="grid gap-2">
+			{#each readyDemos as d (d.id)}
+				<li class="flex items-center gap-3 rounded border border-white/10 px-3 py-2">
+					<button
+						type="button"
+						class="grid h-9 w-9 shrink-0 place-items-center rounded bg-maximumYellow text-oxford active:scale-95"
+						aria-label={demoPlaying === d.id && !demoPaused
+							? `Pause ${d.label}`
+							: `Play ${d.label}`}
+						onclick={() => playDemo(d.id)}
+					>
+						<span
+							class={demoPlaying === d.id && !demoPaused ? "i-ph-pause-fill" : "i-ph-play-fill"}
+							aria-hidden="true"
+						></span>
+					</button>
+					<span class="min-w-0 grow truncate">
+						{d.label}
+						<span class="block text-xs text-dim">{formatBytes(d.sizeBytes)}</span>
+					</span>
+					<button
+						type="button"
+						class="button button-xs"
+						title="Download {d.filename}"
+						onclick={() => saveAs(d.url, d.filename)}
+					>
+						<span class="i-ph-download-simple" aria-hidden="true"></span>
+						Download
+					</button>
+				</li>
+			{/each}
+		</ul>
+	</div>
+{/if}
+
 {#snippet headerExtras(engine?: StemEngine)}
 	<div class="flex flex-wrap items-center gap-2">
 		{#if data.canEdit}
@@ -512,6 +758,17 @@
 			{#if mixError}
 				<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
 			{/if}
+		{/if}
+		{#if readyDemos.length > 0}
+			<button
+				class="button button-sm"
+				type="button"
+				popovertarget="song-demos"
+				title="Listen to or download the demo recordings"
+			>
+				<span class="i-ph-microphone" aria-hidden="true"></span>
+				Demos ({readyDemos.length})
+			</button>
 		{/if}
 	</div>
 {/snippet}

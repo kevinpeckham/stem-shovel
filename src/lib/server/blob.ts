@@ -26,6 +26,12 @@ export function stemPathname(
 	return `accounts/${accountId}/songs/${songId}/${name}.${ext}`;
 }
 
+/** Blob pathname for a demo recording, under the song like its stems. */
+export function demoPathname(accountId: string, songId: string, demoId: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
+}
+
 /**
  * Pathname of a stem's playback rendition, next to its source. The stamp
  * makes every render a new URL (same 30-day cache reason as `version`).

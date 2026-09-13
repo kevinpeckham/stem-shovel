@@ -1,8 +1,8 @@
 import type { StemManifest } from "$lib/audio/types";
-import { deleteBlobs, stemPathname } from "$lib/server/blob";
+import { deleteBlobs, demoPathname, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
 import { hashMarkdown } from "$lib/server/markdown";
-import { labelFromFilename, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
+import { labelFromFilename, MAX_DEMOS_PER_SONG, MAX_STEMS_PER_SONG, slugify } from "$lib/slug";
 import { SlugSchema } from "$lib/val/SlugSchema";
 import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
@@ -17,7 +17,7 @@ import * as v from "valibot";
  * own account via src/lib/server/access.ts.
  */
 
-const { account, project, song, stem, songDocVersion } = schema;
+const { account, project, song, stem, songDocVersion, demo } = schema;
 
 // ---- account (org) --------------------------------------------------------
 
@@ -214,7 +214,13 @@ export type UpdateSongResult =
 export async function updateSong(
 	accountId: string,
 	songId: string,
-	input: { title: string; slug: string; description: string },
+	input: {
+		title: string;
+		slug: string;
+		description: string;
+		songwriter: string;
+		writtenOn: string;
+	},
 ): Promise<UpdateSongResult> {
 	const title = input.title.trim();
 	if (!title) return { ok: false, field: "title", error: "Give the song a title." };
@@ -239,7 +245,13 @@ export async function updateSong(
 	}
 	const [row] = await db
 		.update(song)
-		.set({ title, slug, description: input.description.trim() })
+		.set({
+			title,
+			slug,
+			description: input.description.trim(),
+			songwriter: input.songwriter.trim(),
+			writtenOn: input.writtenOn || null,
+		})
 		.where(eq(song.id, songId))
 		.returning();
 	return { ok: true, song: row };
@@ -253,7 +265,10 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 	if (!proj) return null;
 	const row = await db.query.song.findFirst({
 		where: and(eq(song.projectId, proj.id), eq(song.slug, songSlug)),
-		with: { stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] } },
+		with: {
+			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
+			demos: { orderBy: [asc(demo.createdAt)] },
+		},
 	});
 	return row ? { ...row, project: proj } : null;
 }
@@ -288,7 +303,15 @@ export async function deleteSong(accountId: string, songId: string) {
 		where: eq(song.id, songId),
 		columns: { mixUrl: true },
 	});
-	await deleteBlobs([...rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]), s?.mixUrl ?? ""]);
+	const demos = await db
+		.select({ url: demo.url })
+		.from(demo)
+		.where(and(eq(demo.accountId, accountId), eq(demo.songId, songId)));
+	await deleteBlobs([
+		...rows.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
+		...demos.map((d) => d.url),
+		s?.mixUrl ?? "",
+	]);
 	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
 }
 
@@ -442,6 +465,85 @@ export async function deleteStem(accountId: string, stemId: string) {
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	await refreshSongDuration(row.songId);
 	return { songId: row.songId };
+}
+
+// ---- demo recordings --------------------------------------------------------
+
+/**
+ * Step 1 of a demo upload: reserve the row (same lifecycle as a stem, without
+ * decoding). Returns null for an unknown song, "full" at MAX_DEMOS_PER_SONG.
+ */
+export async function createDemo(
+	accountId: string,
+	userId: string,
+	songId: string,
+	file: NewStemFile,
+) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(demo)
+		.where(eq(demo.songId, songId));
+	if (n >= MAX_DEMOS_PER_SONG) return "full" as const;
+	const id = nanoid();
+	const [row] = await db
+		.insert(demo)
+		.values({
+			id,
+			accountId,
+			songId,
+			label: labelFromFilename(file.filename),
+			url: "",
+			pathname: demoPathname(accountId, songId, id, file.filename),
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+			uploadedBy: userId,
+		})
+		.returning();
+	return row;
+}
+
+export function findUploadingDemo(accountId: string, pathname: string) {
+	return db.query.demo.findFirst({
+		where: and(
+			eq(demo.accountId, accountId),
+			eq(demo.pathname, pathname),
+			eq(demo.status, "uploading"),
+		),
+	});
+}
+
+/** Step 3: the browser reports the blob URL; the row becomes ready. */
+export async function markDemoReady(accountId: string, demoId: string, url: string) {
+	const [row] = await db
+		.update(demo)
+		.set({ status: "ready", url })
+		.where(and(eq(demo.accountId, accountId), eq(demo.id, demoId)))
+		.returning({ id: demo.id });
+	return row ?? null;
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordDemoUrl(pathname: string, url: string) {
+	await db
+		.update(demo)
+		.set({ url, status: "ready" })
+		.where(and(eq(demo.pathname, pathname), eq(demo.status, "uploading")));
+}
+
+export async function deleteDemo(accountId: string, demoId: string) {
+	const [row] = await db
+		.delete(demo)
+		.where(and(eq(demo.accountId, accountId), eq(demo.id, demoId)))
+		.returning({ url: demo.url });
+	if (!row) return false;
+	await deleteBlobs([row.url]);
+	return true;
 }
 
 // ---- mixdowns (see src/lib/server/mix.ts) ---------------------------------

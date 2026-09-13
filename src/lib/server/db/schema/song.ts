@@ -28,6 +28,9 @@ export const song = table(
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */
 		description: t.text("description").notNull().default(""),
+		/** Who wrote it (free text) and when it was first written (ISO date, "YYYY-MM-DD"). */
+		songwriter: t.text("songwriter").notNull().default(""),
+		writtenOn: t.text("written_on"),
 		// Two markdown documents per song, "chart" (chords, arrangement) and
 		// "lyrics", with the same save semantics: the hash gates a new row in
 		// song_doc_version and the version number counts saves. 0 = never saved.

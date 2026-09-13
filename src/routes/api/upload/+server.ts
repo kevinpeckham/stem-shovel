@@ -1,5 +1,10 @@
-import { accountOfStemPathname, memberOf } from "$lib/server/access";
-import { findUploadingStem, recordStemUrl } from "$lib/server/data";
+import { accountOfUploadPathname, memberOf } from "$lib/server/access";
+import {
+	findUploadingDemo,
+	findUploadingStem,
+	recordDemoUrl,
+	recordStemUrl,
+} from "$lib/server/data";
 import { blobAuth } from "$lib/server/blob";
 import { STEM_MAX_BYTES } from "$lib/slug";
 import { json } from "@sveltejs/kit";
@@ -13,6 +18,8 @@ import type { RequestHandler } from "./$types";
  *
  * Authorization is "whoever locals says you are" until real auth exists.
  */
+const isDemo = (pathname: string) => pathname.includes("/demos/");
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json()) as HandleUploadBody;
 	try {
@@ -21,22 +28,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			request,
 			...blobAuth(),
 			onBeforeGenerateToken: async (pathname) => {
-				const { accountId } = await memberOf(locals, accountOfStemPathname, pathname);
-				const row = await findUploadingStem(accountId, pathname);
-				if (!row) throw new Error(`No reserved stem for "${pathname}"`);
+				const { accountId } = await memberOf(locals, accountOfUploadPathname, pathname);
+				// Stems and demo recordings share this route; the reservation decides which.
+				const row = isDemo(pathname)
+					? await findUploadingDemo(accountId, pathname)
+					: await findUploadingStem(accountId, pathname);
+				if (!row) throw new Error(`No reservation for "${pathname}"`);
 				return {
 					allowedContentTypes: [row.contentType], // decided from the extension at reserve time
 					maximumSizeInBytes: STEM_MAX_BYTES,
 					addRandomSuffix: false,
 					allowOverwrite: true, // a retry of the same reservation replaces the partial blob
-					tokenPayload: JSON.stringify({ stemId: row.id }),
+					tokenPayload: JSON.stringify({ id: row.id }),
 				};
 			},
 			onUploadCompleted: async ({ blob }) => {
 				// Vercel calls this after the browser finishes — in production only,
 				// it cannot reach localhost. The browser normally reports first via
 				// /api/stems/[id]/ready; this is the backstop if that never arrives.
-				await recordStemUrl(blob.pathname, blob.url);
+				if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
+				else await recordStemUrl(blob.pathname, blob.url);
 			},
 		});
 		return json(result);

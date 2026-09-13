@@ -46,7 +46,7 @@ export function canEdit(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
-const { project, song, stem } = schema;
+const { project, song, stem, demo } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireMember. */
 export async function accountOfProject(projectId: string) {
@@ -73,6 +73,25 @@ export async function accountOfStem(stemId: string) {
 export async function accountOfStemPathname(pathname: string) {
 	const row = await db.query.stem.findFirst({
 		where: eq(stem.pathname, pathname),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfDemo(demoId: string) {
+	const row = await db.query.demo.findFirst({
+		where: eq(demo.id, demoId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** The account owning whatever reserved this upload pathname: a stem or a demo. */
+export async function accountOfUploadPathname(pathname: string) {
+	const fromStem = await accountOfStemPathname(pathname);
+	if (fromStem) return fromStem;
+	const row = await db.query.demo.findFirst({
+		where: eq(demo.pathname, pathname),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

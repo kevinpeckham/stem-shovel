@@ -46,6 +46,33 @@ export async function uploadStemFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
+export interface DemoReservation {
+	demoId: string;
+	pathname: string;
+}
+
+/** A demo recording: reserve, send the bytes to Blob, report the URL. No decoding. */
+export async function uploadDemoFile(
+	file: File,
+	reserve: () => Promise<DemoReservation>,
+	onProgress?: (percent: number) => void,
+): Promise<void> {
+	const { demoId, pathname } = await reserve();
+	const blob = await upload(pathname, file, {
+		access: "public",
+		handleUploadUrl: "/api/upload",
+		contentType: file.type || undefined,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/demos/${demoId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+}
+
 export async function postJson<T>(path: string, payload: unknown): Promise<T> {
 	const res = await fetch(path, {
 		method: "POST",

@@ -58,3 +58,6 @@ export function labelFromFilename(filename: string): string {
  * before this number. The cap just keeps a song from growing by accident.
  */
 export const MAX_STEMS_PER_SONG = 32;
+
+/** Demo recordings per song (phone memos, rough takes). */
+export const MAX_DEMOS_PER_SONG = 12;

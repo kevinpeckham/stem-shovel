@@ -10,6 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Demo recordings per song**: upload phone memos or rough takes from song
+  settings (up to 12, any supported audio format, kept as uploaded), remove
+  them there, and listen to or download them from a "Demos" popover in the
+  song's download row. New `demo` table (migration 0010).
+- **Songwriter and date first written** on a song, edited in song settings
+  and shown under the title ("Written by …, first written June 2019").
 - **Sign-in with Better Auth** (email + password; `/sign-in`, `/sign-up`,
   `/sign-out`). A new user gets their own account; existing users get a
   credential with `bun run db:set-password`. Anonymous visitors still see

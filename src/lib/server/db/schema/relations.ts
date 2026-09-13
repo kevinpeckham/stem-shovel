@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { account } from "./account";
 import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
+import { demo } from "./demo";
 import { project } from "./project";
 import { session } from "./session";
 import { shareLink } from "./shareLink";
@@ -34,8 +35,15 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	project: one(project, { fields: [song.projectId], references: [project.id] }),
 	creator: one(user, { fields: [song.createdBy], references: [user.id] }),
 	stems: many(stem),
+	demos: many(demo),
 	shareLinks: many(shareLink),
 	docVersions: many(songDocVersion),
+}));
+
+export const demoRelations = relations(demo, ({ one }) => ({
+	account: one(account, { fields: [demo.accountId], references: [account.id] }),
+	song: one(song, { fields: [demo.songId], references: [song.id] }),
+	uploader: one(user, { fields: [demo.uploadedBy], references: [user.id] }),
 }));
 
 export const stemRelations = relations(stem, ({ one }) => ({

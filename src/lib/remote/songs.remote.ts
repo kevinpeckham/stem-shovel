@@ -2,6 +2,7 @@ import { command, form, getRequestEvent } from "$app/server";
 import { scheduleMix } from "$lib/server/mix";
 import {
 	accountOfProject,
+	accountOfDemo,
 	accountOfSong,
 	accountOfStem,
 	memberOf,
@@ -11,6 +12,7 @@ import {
 	createSong as create,
 	deleteSong as removeSong,
 	deleteStem as removeStem,
+	deleteDemo as removeDemo,
 	projectSlugs,
 	renameStem as rename,
 	saveSongDoc,
@@ -32,13 +34,19 @@ import { error, invalid, redirect } from "@sveltejs/kit";
  * (src/lib/server/access.ts), then scopes the data call by it.
  */
 
-/** Title, URL slug and description; a slug change redirects to the new address. */
+/** Title, URL, description, songwriter and date; a slug change redirects to the new address. */
 export const updateSong = form(
 	SongSettingsSchema,
-	async ({ id, title, slug, description }, issue) => {
+	async ({ id, title, slug, description, songwriter, writtenOn }, issue) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSong, id);
-		const result = await update(accountId, id, { title, slug, description });
+		const result = await update(accountId, id, {
+			title,
+			slug,
+			description,
+			songwriter,
+			writtenOn,
+		});
 		if (!result.ok) invalid(issue[result.field](result.error));
 		const slugs = await songSlugs(accountId, id);
 		if (!slugs) error(404, "Song not found");
@@ -95,6 +103,14 @@ export const deleteStem = form(IdSchema, async ({ id }) => {
 	const removed = await removeStem(accountId, id);
 	if (!removed) error(404, "Stem not found");
 	scheduleMix([removed.songId]);
+	return { deleted: true };
+});
+
+/** Deletes a demo recording and its blob. Used with `.for(demo.id)` in song settings. */
+export const deleteDemo = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfDemo, id);
+	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");
 	return { deleted: true };
 });
 

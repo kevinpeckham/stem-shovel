@@ -13,6 +13,18 @@ export const SongSettingsSchema = v.object({
 		v.pipe(v.string(), v.trim(), v.maxLength(2000, "Keep the description under 2000 characters.")),
 		"",
 	),
+	songwriter: v.optional(
+		v.pipe(v.string(), v.trim(), v.maxLength(200, "Keep the songwriter under 200 characters.")),
+		"",
+	),
+	/** "YYYY-MM-DD" from a date input, or empty. */
+	writtenOn: v.optional(
+		v.union(
+			[v.literal(""), v.pipe(v.string(), v.isoDate("Enter the date as YYYY-MM-DD."))],
+			"Enter the date as YYYY-MM-DD.",
+		),
+		"",
+	),
 });
 
 export type SongSettings = v.InferOutput<typeof SongSettingsSchema>;
@@ -31,7 +43,7 @@ export type SongDocSave = v.InferOutput<typeof SongDocSaveSchema>;
 /** Form boundary for creating a song in a project. */
 export const SongCreateSchema = v.object({ projectId: NanoIdSchema, title: NameSchema });
 
-/** Form boundary for deleting a song or a stem by id. */
+/** Form boundary for deleting a song, a stem or a demo by id. */
 export const IdSchema = v.object({ id: NanoIdSchema });
 
 /** Argument of the renameStem command. */

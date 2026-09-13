@@ -54,6 +54,12 @@ in three steps driven by `src/lib/upload.ts`:
   each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
   The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
   a plain `<audio>` element streaming from Blob).
+- **Demo recordings** use the same three steps with `/api/demos` and
+  `/api/demos/[id]/ready` (`uploadDemoFile` in `src/lib/upload.ts`), minus
+  the decode: the browser only reports the blob URL. `/api/upload` tells the
+  two apart by the `/demos/` segment of the reserved pathname. Uploaded and
+  removed from song settings; played (a plain `<audio>` element) and
+  downloaded from the "Demos" popover in the song's download row.
 - **Downloads** fetch the Blob file in the browser and save it under its
   original name (`download` is ignored cross-origin; Blob's `?download=1`
   names the file by pathname). "Download All" builds a stored zip with

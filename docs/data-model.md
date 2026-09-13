@@ -17,6 +17,7 @@ erDiagram
     account ||--o{ project : "owns"
     project ||--o{ song : "contains"
     song ||--o{ stem : "made of"
+    song ||--o{ demo : "remembered by"
     song ||--o{ share_link : "shared via"
     user ||--o{ stem : "uploaded"
 ```
@@ -33,6 +34,12 @@ erDiagram
 - **song** — one piece of music with N stems. Carries the musical metadata
   (bpm, key) and the denormalized `account_id` so tenant scoping never needs a
   join through `project`.
+- **demo** — a demo recording of the song idea (a phone memo, a rough take):
+  one audio file in Blob at `accounts/<id>/songs/<id>/demos/<demoId>.<ext>`,
+  with the same reserve → upload → ready lifecycle as a stem but no
+  decoding, peaks or renditions. Played and downloaded as uploaded; up to
+  `MAX_DEMOS_PER_SONG` per song. The song also carries `songwriter` (free
+  text) and `written_on` (ISO date), edited from song settings.
 - **stem** — one audio file in Vercel Blob, plus what the engine learns when it
   decodes it (duration, channels, sample rate, 1024 peaks). This is where plan
   step 2 ("persist peaks") lands.
