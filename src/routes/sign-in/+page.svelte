@@ -12,10 +12,18 @@
 		e.preventDefault();
 		error = "";
 		busy = true;
-		const result = await authClient.signIn.email({ email, password });
+		const result = await authClient.signIn.email({
+			email,
+			password,
+			callbackURL: "/verify-email?verified=1",
+		});
 		busy = false;
 		if (result.error) {
-			error = result.error.message ?? "Sign-in failed";
+			// 403 = the address is not verified yet; Better Auth has just sent a new link.
+			error =
+				result.error.status === 403
+					? "Verify your email address first — we have just sent you a new link."
+					: (result.error.message ?? "Sign-in failed");
 			return;
 		}
 		await invalidateAll();
@@ -50,6 +58,7 @@
 		<div class="flex items-center gap-4">
 			<button class="button-accent" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
 			<a class="text-sm link-dim" href="/sign-up">Create an account</a>
+			<a class="text-sm link-dim" href="/forgot-password">Forgot password?</a>
 		</div>
 	</form>
 </main>

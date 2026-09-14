@@ -11,7 +11,9 @@ import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 import type { SongSection } from "$lib/val/SongSectionSchema";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import type { MemberRole } from "$lib/val/MemberRoleSchema";
+import { INVITATION_TTL_MS } from "$lib/val/InvitationSchema";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -22,7 +24,7 @@ import * as v from "valibot";
  * own account via src/lib/server/access.ts.
  */
 
-const { account, project, song, stem, songDocVersion, demo } = schema;
+const { account, accountMember, project, song, stem, songDocVersion, demo, invitation } = schema;
 
 // ---- account (org) --------------------------------------------------------
 
@@ -563,6 +565,94 @@ export async function updateSongChanges(
 	return { ok: true, changes: row.changes };
 }
 
+// ---- invitations ------------------------------------------------------------
+
+/** A pending invitation for `email` into the account, or a fresh one; the token is the link. */
+export async function createInvitation(
+	accountId: string,
+	invitedBy: string,
+	email: string,
+	role: MemberRole,
+) {
+	const address = email.trim().toLowerCase();
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		with: { user: { columns: { email: true } } },
+	});
+	if (members.some((m) => m.user.email.toLowerCase() === address)) return "member" as const;
+	const [row] = await db
+		.insert(invitation)
+		.values({
+			accountId,
+			email: address,
+			role,
+			token: nanoid(32),
+			invitedBy,
+			expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+		})
+		.returning();
+	return row;
+}
+
+/** Open invitations for the settings page. */
+export function pendingInvitations(accountId: string) {
+	return db.query.invitation.findMany({
+		where: and(
+			eq(invitation.accountId, accountId),
+			isNull(invitation.acceptedAt),
+			isNull(invitation.revokedAt),
+		),
+		orderBy: [desc(invitation.createdAt)],
+		columns: { id: true, email: true, role: true, expiresAt: true, createdAt: true },
+	});
+}
+
+export async function revokeInvitation(accountId: string, id: string) {
+	const [row] = await db
+		.update(invitation)
+		.set({ revokedAt: new Date() })
+		.where(
+			and(
+				eq(invitation.accountId, accountId),
+				eq(invitation.id, id),
+				isNull(invitation.acceptedAt),
+			),
+		)
+		.returning({ id: invitation.id });
+	return !!row;
+}
+
+/** The invitation behind a link, with its account, or why it cannot be used. */
+export async function invitationByToken(token: string) {
+	const row = await db.query.invitation.findFirst({
+		where: eq(invitation.token, token),
+		with: { account: { columns: { id: true, name: true, slug: true } } },
+	});
+	if (!row) return { status: "missing" as const };
+	if (row.acceptedAt) return { status: "accepted" as const, invitation: row };
+	if (row.revokedAt) return { status: "revoked" as const, invitation: row };
+	if (row.expiresAt.getTime() < Date.now()) return { status: "expired" as const, invitation: row };
+	return { status: "open" as const, invitation: row };
+}
+
+/** Joins the account: the invitee's address must match the invitation's. */
+export async function acceptInvitation(token: string, user: { id: string; email: string }) {
+	const found = await invitationByToken(token);
+	if (found.status !== "open") return found.status;
+	const inv = found.invitation;
+	if (inv.email !== user.email.toLowerCase()) return "mismatch" as const;
+	const existing = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, inv.accountId), eq(accountMember.userId, user.id)),
+	});
+	if (!existing) {
+		await db
+			.insert(accountMember)
+			.values({ accountId: inv.accountId, userId: user.id, role: inv.role });
+	}
+	await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
+	return { status: "joined" as const, account: inv.account };
+}
+
 // ---- stem MIDI files --------------------------------------------------------
 
 /** Step 1 of a MIDI upload: reserve the pathname on the stem (the previous file, if any, stays until the new one lands). */
@@ -776,7 +866,10 @@ export async function songForMix(songId: string) {
 			mixStartedAt: true,
 		},
 		with: {
-			project: { columns: { slug: true }, with: { account: { columns: { name: true } } } },
+			project: {
+				columns: { slug: true, name: true },
+				with: { account: { columns: { name: true } } },
+			},
 			stems: {
 				columns: {
 					id: true,

@@ -10,6 +10,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Email through Resend**: sign-up now sends a verification link and
+  sign-in needs a verified address (existing users were marked verified);
+  "Forgot password?" emails a one-hour reset link; owners and admins invite
+  people into an account from settings, with a role, and can revoke pending
+  invitations; the song header gains a share-by-email button that sends the
+  song's link with a note. New `invitation` table (migration 0021), new
+  `RESEND_API_KEY` / `RESEND_MAIL_DOMAIN` variables.
 - **MIDI file per stem**: upload one from the stem's row menu ("Upload
   MIDI", later "Replace MIDI" / "Remove MIDI"); a "midi" chip beside the
   stem name marks it and "Download MIDI" joins the menu. Migration 0020.

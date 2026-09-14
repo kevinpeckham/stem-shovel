@@ -16,10 +16,25 @@ public by URL; editing needs a signed-in member.
 - **Hook**: `src/hooks.server.ts` resolves the session into `locals.user`
   (null when signed out) and `locals.memberships`, then hands the request to
   `svelteKitHandler` so `/api/auth/*` is served.
-- **Routes**: `/sign-in`, `/sign-up`; signing out is the `signOut` remote
-  form (`src/lib/remote/auth.remote.ts`), a POST from the nav — a GET page
-  was being preloaded on hover and signing people out. Members-only pages (`/[account]/settings`, the chart/lyrics
-  editors) redirect anonymous visitors to `/sign-in?next=…`.
+- **Routes**: `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`
+  (from the emailed link, `?token=`), `/verify-email` (where verification
+  links land, `?verified=1` or `?error=`), `/invite/[token]`. Signing out is
+  the `signOut` remote form, a POST from the nav.
+- **Email** goes through Resend (`src/lib/server/email.ts`, templates
+  rendered by `lib/utils/renderEmail.ts`) as `no-reply@RESEND_MAIL_DOMAIN`.
+  Sign-in needs a verified address: `requireEmailVerification`, the link
+  sent on sign-up and again at the sign-in wall, `autoSignInAfterVerification`.
+  Password reset is Better Auth's flow (`requestPasswordReset` →
+  `resetPassword`); finishing a reset also marks the address verified, which
+  is how a user created outside sign-up gets in. Migration 0021 marked every
+  user that existed before verification as verified.
+- **Invitations** (`invitation` table): owners and admins invite an address
+  with a role from account settings; the email carries `/invite/<token>`
+  (14-day expiry). Accepting needs a signed-in user whose address matches and
+  creates the membership; the settings page lists and revokes pending ones.
+- **Share by email**: members send a song's public link with a note from the
+  paper-plane button in the song header (`shareSong` command, a few per
+  minute per user).
 - **New users get their own account**: the `user.create.after` hook creates
   an `account` named after them (slug from the name, made unique) and an
   `owner` membership. Inviting people into an existing account is not built
@@ -31,8 +46,7 @@ public by URL; editing needs a signed-in member.
   `preview_token` cookie) equal to `PREVIEW_AUTH_TOKEN` is the Screenshot Bot
   user, checked before the session (`src/lib/server/previewAuth.ts`,
   docs/agent-screenshots.md). Fail-closed when the variable is unset.
-- **Not yet**: email verification, password reset and 2FA all need an email
-  provider (replicator uses Resend); `requireEmailVerification` is off.
+- **Not yet**: 2FA, changing the email address, removing members.
   GitHub OAuth needs an OAuth app; add `socialProviders.github` when there
   is one.
 - **Env**: `BETTER_AUTH_SECRET` (in the 1Password environment; a random

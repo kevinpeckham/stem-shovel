@@ -1,6 +1,8 @@
 import { command, form, getRequestEvent } from "$app/server";
 import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
+import { ShareSongSchema } from "$lib/val/ShareSongSchema";
+import { sendShareEmail } from "$lib/server/email";
 import { scheduleMix } from "$lib/server/mix";
 import {
 	accountOfProject,
@@ -20,6 +22,7 @@ import {
 	renameStem as rename,
 	saveSongDoc,
 	setSongVersion as setVersion,
+	songForMix,
 	songSlugs,
 	updateSong as update,
 	updateSongChanges,
@@ -161,6 +164,34 @@ export const removeStemMidi = form(IdSchema, async ({ id }) => {
 	const { accountId } = await memberOf(locals, accountOfStem, id);
 	if (!(await dropMidi(accountId, id))) error(404, "Stem not found");
 	return { removed: true };
+});
+
+/** Emails a song's link to someone (members only; a few per minute per user). */
+const shareWindow = new Map<string, number[]>();
+export const shareSong = command(ShareSongSchema, async ({ songId, to, message }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const now = Date.now();
+	const recent = (shareWindow.get(user.id) ?? []).filter((t) => now - t < 60 * 60 * 1000);
+	if (recent.filter((t) => now - t < 60 * 1000).length >= 5 || recent.length >= 30) {
+		error(429, "Too many emails; try again in a little while.");
+	}
+	shareWindow.set(user.id, [...recent, now]);
+	const song = await songForMix(songId);
+	const slugs = await songSlugs(accountId, songId);
+	if (!song || !slugs) error(404, "Song not found");
+	const { url } = getRequestEvent();
+	await sendShareEmail({
+		to,
+		url: `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}`,
+		songTitle: song.title,
+		projectName: song.project.name,
+		senderName: user.name || user.email,
+		senderEmail: user.email,
+		message,
+	});
+	return { sent: to };
 });
 
 /** Relabels a stem. A command (not a form): called from the row menu's prompt. */

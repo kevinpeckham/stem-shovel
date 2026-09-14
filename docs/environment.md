@@ -69,3 +69,9 @@ split it into two generates (drop, then add).
 the signed-in user (or null) and their memberships on `event.locals`; the
 URL's `[account]` segment picks the account, viewing is public, and every
 mutation checks membership through `src/lib/server/access.ts`.
+
+## Email (Resend)
+
+`RESEND_API_KEY` (secret) and `RESEND_MAIL_DOMAIN` (the domain verified in
+Resend; mail goes out as `no-reply@` it) come from 1Password like the other
+secrets. `delivered@resend.dev` is Resend's sink address for tests.

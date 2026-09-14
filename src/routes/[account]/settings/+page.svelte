@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { formatBytes } from "$lib/utils/formatBytes";
-	import { updateAccount } from "$lib/remote/accounts.remote";
+	import { inviteMember, revokeInvitation, updateAccount } from "$lib/remote/accounts.remote";
+	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
+	import { formatDate } from "$lib/utils/formatDate";
 	import { slugify } from "$lib/utils/slugify";
 
 	let { data } = $props();
@@ -20,10 +22,7 @@
 <main class="page">
 	<header class="max-w-article">
 		<h1 class="display">Settings</h1>
-		<p class="opacity-90">
-			The account everything here belongs to. Sign-in comes later; for now every request is
-			{data.user?.name}.
-		</p>
+		<p class="opacity-90">The account everything here belongs to.</p>
 	</header>
 
 	<section class="max-w-article">
@@ -115,6 +114,63 @@
 				</li>
 			{/each}
 		</ul>
-		<p class="mt-2 text-13px text-dim">Inviting people arrives with sign-in.</p>
+		{#if data.canInvite}
+			<h3 class="mt-6 text-15px font-700">Invite someone</h3>
+			<form
+				class="mt-2 flex flex-wrap items-end gap-3"
+				{...inviteMember.enhance(async ({ submit }) => {
+					await submit();
+				})}
+			>
+				<input {...inviteMember.fields.accountId.as("hidden", data.account.id)} />
+				<label class="block grow">
+					<span class="text-13px text-dim">Email</span>
+					<input
+						class="mt-1 field"
+						type="email"
+						autocomplete="off"
+						{...inviteMember.fields.email.as("text")}
+						required
+					/>
+				</label>
+				<label class="block">
+					<span class="text-13px text-dim">Role</span>
+					<select class="mt-1 field" {...inviteMember.fields.role.as("select", "member")}>
+						{#each INVITE_ROLES as role (role)}
+							<option value={role}>{role}</option>
+						{/each}
+					</select>
+				</label>
+				<button class="button-accent" disabled={!!inviteMember.pending}>
+					{inviteMember.pending ? "Sending…" : "Send invitation"}
+				</button>
+			</form>
+			{#each inviteMember.fields.email.issues() ?? [] as issue (issue.message)}
+				<p class="mt-2 text-sm text-red-400">{issue.message}</p>
+			{/each}
+			{#if inviteMember.result?.sent}
+				<p class="mt-2 text-sm text-dim">Invitation sent to {inviteMember.result.sent}.</p>
+			{/if}
+			{#if data.invitations.length > 0}
+				<h3 class="mt-6 text-15px font-700">Pending invitations</h3>
+				<ul class="mt-2 surface divide-y divide-white/10 text-15px">
+					{#each data.invitations as inv (inv.id)}
+						{@const revoke = revokeInvitation.for(inv.id)}
+						<li class="flex flex-wrap items-baseline justify-between gap-4 px-5 py-3">
+							<span>
+								{inv.email}
+								<span class="text-dim">· {inv.role} · expires {formatDate(inv.expiresAt)}</span>
+							</span>
+							<form {...revoke}>
+								<input {...revoke.fields.id.as("hidden", inv.id)} />
+								<button class="text-13px link-dim" disabled={!!revoke.pending}>
+									{revoke.pending ? "Revoking…" : "Revoke"}
+								</button>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{/if}
 	</section>
 </main>

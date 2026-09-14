@@ -47,6 +47,7 @@
 		saveChanges,
 		saveSections,
 		setSongVersion,
+		shareSong,
 		updateSong,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
@@ -412,6 +413,34 @@
 		}
 	}
 
+	// Share by email: the song's public link plus a note, sent through Resend.
+	let sharePanel = $state<HTMLDivElement | null>(null);
+	let shareTo = $state("");
+	let shareMessage = $state("");
+	let shareBusy = $state(false);
+	let shareError = $state<string | null>(null);
+	let shareSent = $state<string | null>(null);
+	async function sendShare(e: SubmitEvent) {
+		e.preventDefault();
+		shareError = null;
+		shareSent = null;
+		shareBusy = true;
+		try {
+			const { sent } = await shareSong({
+				songId: data.song.id,
+				to: shareTo,
+				message: shareMessage,
+			});
+			shareSent = sent;
+			shareTo = "";
+			shareMessage = "";
+		} catch (err) {
+			shareError = err instanceof Error ? err.message : String(err);
+		} finally {
+			shareBusy = false;
+		}
+	}
+
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
@@ -490,11 +519,13 @@
 	<!-- 1. header: title, description, song settings -->
 	<header class="grid gap-3 col-span-full">
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
+			<!-- song header & metadata -->
 			<div class="flex flex-wrap items-baseline gap-4">
 				<!-- <a class="text-sm link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
 					>{data.song.project.name}</a
 				> -->
 				<h1 class="heading-1">{data.song.title}</h1>
+				<span>v{data.song.version}</span>
 				<span class="opacity-90 text-15px"
 					>a song in the <a
 						class="underline underline-offset-2"
@@ -517,7 +548,18 @@
 					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
 				{/if} -->
 			</div>
+
+			<!-- settings button -->
 			{#if data.canEdit}
+				<button
+					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+					type="button"
+					popovertarget="song-share"
+					title="Share this song by email"
+					aria-label="Share this song by email"
+				>
+					<span class="block i-ph-paper-plane-tilt"></span>
+				</button>
 				<button
 					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
 					type="button"
@@ -529,6 +571,7 @@
 				</button>
 			{/if}
 		</div>
+		<!-- move to a toast or similar that evaporates after a few seconds -->
 		{#if settingsSaved}
 			<p class="text-sm text-dim">Saved.</p>
 		{/if}
@@ -1291,7 +1334,7 @@
 		{/if}
 		{#if ready.length > 0}
 			<button
-				class="button button-xs"
+				class="button button-sm lg-button-xs"
 				type="button"
 				disabled={!!zipping}
 				onclick={downloadAll}
@@ -1301,7 +1344,7 @@
 				{zipping ?? "Download Stems"}
 			</button>
 			<button
-				class="button button-xs"
+				class="button button-sm lg-button-xs"
 				type="button"
 				disabled={!!mixing}
 				onclick={() => downloadMix("original", engine)}
@@ -1311,7 +1354,7 @@
 				{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
 			</button>
 			<button
-				class="button button-xs"
+				class="button button-sm lg-button-xs"
 				type="button"
 				disabled={!!mixing}
 				onclick={() => downloadMix("custom", engine)}
@@ -1337,6 +1380,45 @@
 		{/if}
 	</div>
 {/snippet}
+
+{#if data.canEdit}
+	<div
+		id="song-share"
+		popover="auto"
+		bind:this={sharePanel}
+		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">Share by email</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="song-share"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		<p class="mb-3 text-sm text-dim">
+			Sends the link to this page. Anyone with it can listen, read the chart and download the mixes.
+		</p>
+		<form class="grid gap-3" onsubmit={sendShare}>
+			<label class="block">
+				<span class="text-sm text-dim">To</span>
+				<input class="mt-1 field" type="email" bind:value={shareTo} required autocomplete="off" />
+			</label>
+			<label class="block">
+				<span class="text-sm text-dim">Note <span class="opacity-60">(optional)</span></span>
+				<textarea class="mt-1 field text-sm" rows="3" bind:value={shareMessage}></textarea>
+			</label>
+			{#if shareError}<p class="text-sm text-red-400" role="alert">{shareError}</p>{/if}
+			{#if shareSent}<p class="text-sm text-dim" role="status">Sent to {shareSent}.</p>{/if}
+			<button class="button-accent justify-self-start" disabled={shareBusy}>
+				{shareBusy ? "Sending…" : "Send"}
+			</button>
+		</form>
+	</div>
+{/if}
 
 {#snippet stemBadge(stem: StemState)}
 	{#if stemRows.get(stem.id)?.midiUrl}

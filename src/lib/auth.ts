@@ -1,6 +1,8 @@
 import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
+import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
+import { eq } from "drizzle-orm";
 import { slugify } from "$lib/utils/slugify";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -8,8 +10,8 @@ import { sveltekitCookies } from "better-auth/svelte-kit";
 import { ENV } from "varlock/env";
 
 /**
- * Better Auth, following replicator's setup, minus what needs an email
- * provider (verification, password reset, 2FA) — none is wired yet.
+ * Better Auth, following replicator's setup: email + password with address
+ * verification and password reset over Resend (src/lib/server/email.ts). No 2FA.
  *
  * baseURL is Better Auth's identity for path matching: dev is reached from
  * several origins (localhost, the Tailscale name), so dev leaves it unset and
@@ -56,8 +58,25 @@ export const auth = betterAuth({
 	account: { modelName: "authAccount" },
 	emailAndPassword: {
 		enabled: true,
-		// No email provider yet, so no verification wall and no reset flow.
-		requireEmailVerification: false,
+		// Sign-in needs a verified address (Resend sends the link, docs/auth.md).
+		requireEmailVerification: true,
+		sendResetPassword: async ({ user, url }) => {
+			await sendPasswordResetEmail(user.email, url, user.name);
+		},
+		// Finishing a reset proves the inbox as well as a verification link does —
+		// it is how a user created outside sign-up (an invitee, the seed) gets past the wall.
+		onPasswordReset: async ({ user }) => {
+			await db.update(schema.user).set({ emailVerified: true }).where(eq(schema.user.id, user.id));
+		},
+	},
+	emailVerification: {
+		sendOnSignUp: true,
+		// An unverified user at the sign-in wall gets a fresh link instead of a dead end.
+		sendOnSignIn: true,
+		autoSignInAfterVerification: true,
+		sendVerificationEmail: async ({ user, url }) => {
+			await sendVerificationEmail(user.email, url, user.name);
+		},
 	},
 	session: {
 		cookieCache: { enabled: true, maxAge: 5 * 60 },
