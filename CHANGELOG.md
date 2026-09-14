@@ -17,7 +17,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   "Seek here" / "Comment here" at that spot. Located comments sit as icons
   on a timeline under the stems, each opening a card anchored to it.
   Authors edit and delete their own; owners and admins delete any.
-  Migration 0022.
+  The timeline row draws the mix's waveform (stems summed once decoded,
+  their stored peaks combined before that) behind the icons, and the open
+  comment is marked with a line on it. Migration 0022.
 
 ### Changed
 

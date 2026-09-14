@@ -1816,7 +1816,7 @@
 {#snippet commentCard(id: string)}
 	{@const c = data.comments.find((x) => x.id === id)}
 	{#if c}
-		{@const remove = deleteComment.for(c.id)}
+		{@const remove = deleteComment.for(`timeline:${c.id}`)}
 		<div class="flex items-baseline justify-between gap-3">
 			<h3 class="font-600">{c.title}</h3>
 			{#if c.editedAt}<span

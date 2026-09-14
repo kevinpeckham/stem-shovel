@@ -78,7 +78,10 @@ fields are `$state`, so components read `engine.position` directly.
   server). Ctrl / ⌘-click or right-click on a waveform or MIDI roll opens a
   menu at the pointer with "Seek here" and "Comment here" (position
   prefilled). Located comments draw as icons on a row under the last stem,
-  on the waveform column; clicking one opens a card anchored to it.
+  on the waveform column, over the mix's waveform (`engine.mixPeaks`, the
+  decoded stems summed by `computeMixPeaks`; `combinePeaks` stands in from
+  the stored per-stem peaks until then); clicking one marks the point with
+  a line and opens a card anchored to the icon. The row seeks like a stem.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

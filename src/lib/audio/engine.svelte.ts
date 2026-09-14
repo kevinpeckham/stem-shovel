@@ -1,5 +1,5 @@
 import { collapseDualMono } from "./mono";
-import { computePeaks, PEAK_BINS } from "./peaks";
+import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
@@ -36,6 +36,8 @@ export class StemEngine {
 	duration = $state(0); // longest stem, seconds
 	master = $state(1);
 	stems = $state<StemState[]>([]);
+	/** Waveform of every stem summed, filled once all of them are decoded. */
+	mixPeaks = $state.raw<number[]>([]);
 
 	anySolo = $derived(this.stems.some((s) => s.soloed));
 	decodedBytes = $derived(this.stems.reduce((sum, s) => sum + s.decodedBytes, 0));
@@ -133,6 +135,7 @@ export class StemEngine {
 				for (let src = queue.shift(); src; src = queue.shift()) await loadOne(src);
 			});
 			await Promise.all(workers);
+			this.mixPeaks = Array.from(computeMixPeaks([...this.#buffers.values()], PEAK_BINS));
 			this.#applyGains(true);
 			this.status = "ready";
 		} catch (e) {
@@ -352,6 +355,7 @@ export class StemEngine {
 		this.#gains.clear();
 		this.#buffers.clear();
 		this.stems = [];
+		this.mixPeaks = [];
 		this.duration = 0;
 		this.position = 0;
 		this.#offset = 0;
