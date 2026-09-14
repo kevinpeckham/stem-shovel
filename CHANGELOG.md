@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Notifications instead of inline "Saved." lines**: confirmations (song,
+  project and account settings, sections and changes, version bumps,
+  invitations, shares) appear as notices fixed to the bottom-right corner
+  that fade out after a few seconds or can be dismissed, so page content no
+  longer shifts.
+
 ## [0.5.0] - 2026-09-14
 
 ### Added

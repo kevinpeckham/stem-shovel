@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
+	import { notify } from "$lib/state/notifications.svelte";
 	import { slugify } from "$lib/utils/slugify";
 	import { updateProject } from "$lib/remote/projects.remote";
 	import { createSong } from "$lib/remote/songs.remote";
@@ -8,7 +9,6 @@
 	let { data } = $props();
 
 	let settingsPanel = $state<HTMLDivElement | null>(null);
-	let saved = $state(false);
 	let addSongPanel = $state<HTMLDivElement | null>(null);
 	let player = $state<ProjectPlayer | null>(null);
 	let playing = $state<string | null>(null);
@@ -47,9 +47,6 @@
 			</button>
 		{/if}
 	</header>
-	{#if saved}
-		<p class="mt-2 text-sm text-dim">Saved.</p>
-	{/if}
 
 	{#if data.canEdit}
 		<!-- Same native popover as the song settings: top layer, Esc / click-outside close. -->
@@ -72,10 +69,9 @@
 			</div>
 			<form
 				{...updateProject.enhance(async ({ submit }) => {
-					saved = false;
 					await submit();
 					if (!fields.allIssues()) {
-						saved = true;
+						notify("Project settings saved");
 						settingsPanel?.hidePopover();
 					}
 				})}

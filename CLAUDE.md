@@ -66,6 +66,10 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `src/lib/constants/`. `$lib/val/` holds valibot schemas and their types
   only — a helper that a schema needs (like `songChangeValueError`) is a
   util the schema imports, never the other way round (Fallow flags cycles).
+- **Transient feedback is a notification**, never a line of page content:
+  `notify("Song settings saved")` from `$lib/state/notifications.svelte`
+  (success evaporates in 4 s, errors stay until dismissed); the stack is
+  rendered once in the root layout, fixed to a corner.
 - **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a

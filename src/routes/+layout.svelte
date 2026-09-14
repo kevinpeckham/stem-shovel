@@ -2,6 +2,7 @@
 	import "uno.css";
 	import GlobalFooter from "$lib/components/GlobalFooter.svelte";
 	import GlobalNav from "$lib/components/GlobalNav.svelte";
+	import Notifications from "$lib/components/Notifications.svelte";
 
 	let { children, data } = $props();
 </script>
@@ -11,3 +12,4 @@
 	{@render children()}
 </div>
 <GlobalFooter />
+<Notifications />

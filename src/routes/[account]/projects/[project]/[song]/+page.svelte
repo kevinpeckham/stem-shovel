@@ -9,6 +9,7 @@
 	import { formatDate } from "$lib/utils/formatDate";
 	import { parseBarsText } from "$lib/utils/parseBarsText";
 	import { readoutMode } from "$lib/audio/readout.svelte";
+	import { notify } from "$lib/state/notifications.svelte";
 	import { FRAME_RATES } from "$lib/constants/frameRates";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import { formatMonth } from "$lib/utils/formatMonth";
@@ -59,7 +60,6 @@
 
 	// Settings form (title, URL, description) on the updateSong remote form.
 	let settingsPanel = $state<HTMLDivElement | null>(null);
-	let settingsSaved = $state(false);
 	const fields = updateSong.fields;
 	let title = $derived(fields.title.value() ?? data.song.title);
 	let slug = $derived(fields.slug.value() ?? data.song.slug);
@@ -101,8 +101,10 @@
 	async function bump(level: "major" | "minor" | "patch") {
 		versionBusy = true;
 		try {
-			await setSongVersion({ id: data.song.id, version: bumpVersion(data.song.version, level) });
+			const next = bumpVersion(data.song.version, level);
+			await setSongVersion({ id: data.song.id, version: next });
 			await invalidateAll();
+			notify(`Version bumped to v${next}`);
 		} finally {
 			versionBusy = false;
 			versionOffer = false;
@@ -296,6 +298,7 @@
 			await saveSections({ id: data.song.id, sections: next });
 			await invalidateAll();
 			resetSectionRows();
+			notify("Sections saved");
 		} catch (e) {
 			sectionError = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -351,6 +354,7 @@
 			await saveChanges({ id: data.song.id, changes: parsed });
 			await invalidateAll();
 			resetChangeRows();
+			notify("Tempo, key and time signature saved");
 		} catch (e) {
 			changeError = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -440,11 +444,9 @@
 	let shareMessage = $state("");
 	let shareBusy = $state(false);
 	let shareError = $state<string | null>(null);
-	let shareSent = $state<string | null>(null);
 	async function sendShare(e: SubmitEvent) {
 		e.preventDefault();
 		shareError = null;
-		shareSent = null;
 		shareBusy = true;
 		try {
 			const { sent } = await shareSong({
@@ -452,9 +454,10 @@
 				to: shareTo,
 				message: shareMessage,
 			});
-			shareSent = sent;
 			shareTo = "";
 			shareMessage = "";
+			notify(`Sent to ${sent}`);
+			sharePanel?.hidePopover();
 		} catch (err) {
 			shareError = err instanceof Error ? err.message : String(err);
 		} finally {
@@ -590,10 +593,6 @@
 				</div>
 			{/if}
 		</div>
-		<!-- move to a toast or similar that evaporates after a few seconds -->
-		{#if settingsSaved}
-			<p class="text-sm text-dim">Saved.</p>
-		{/if}
 	</header>
 
 	{#if data.canEdit}
@@ -625,7 +624,6 @@
 			</div>
 			<form
 				{...updateSong.enhance(async ({ submit }) => {
-					settingsSaved = false;
 					positionError = null;
 					for (const [label, text, field, shown, stored] of [
 						["Start of bar 1", startAtEntry, fields.startAt, startAtText, data.song.startAt],
@@ -640,7 +638,7 @@
 					}
 					await submit();
 					if (!fields.allIssues()) {
-						settingsSaved = true;
+						notify("Song settings saved");
 						settingsPanel?.hidePopover();
 					}
 				})}
@@ -1486,7 +1484,6 @@
 				<textarea class="mt-1 field text-sm" rows="3" bind:value={shareMessage}></textarea>
 			</label>
 			{#if shareError}<p class="text-sm text-red-400" role="alert">{shareError}</p>{/if}
-			{#if shareSent}<p class="text-sm text-dim" role="status">Sent to {shareSent}.</p>{/if}
 			<button class="button-accent justify-self-start" disabled={shareBusy}>
 				{shareBusy ? "Sending…" : "Send"}
 			</button>

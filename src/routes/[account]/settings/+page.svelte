@@ -3,6 +3,7 @@
 	import { inviteMember, revokeInvitation, updateAccount } from "$lib/remote/accounts.remote";
 	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
 	import { formatDate } from "$lib/utils/formatDate";
+	import { notify } from "$lib/state/notifications.svelte";
 	import { slugify } from "$lib/utils/slugify";
 
 	let { data } = $props();
@@ -31,6 +32,7 @@
 			class="grid gap-5"
 			{...updateAccount.enhance(async ({ submit }) => {
 				await submit();
+				if (!fields.allIssues()) notify("Account settings saved");
 			})}
 		>
 			<input {...fields.id.as("hidden", data.account.id)} />
@@ -120,6 +122,7 @@
 				class="mt-2 flex flex-wrap items-end gap-3"
 				{...inviteMember.enhance(async ({ submit }) => {
 					await submit();
+					if (inviteMember.result?.sent) notify(`Invitation sent to ${inviteMember.result.sent}`);
 				})}
 			>
 				<input {...inviteMember.fields.accountId.as("hidden", data.account.id)} />
@@ -148,9 +151,6 @@
 			{#each inviteMember.fields.email.issues() ?? [] as issue (issue.message)}
 				<p class="mt-2 text-sm text-red-400">{issue.message}</p>
 			{/each}
-			{#if inviteMember.result?.sent}
-				<p class="mt-2 text-sm text-dim">Invitation sent to {inviteMember.result.sent}.</p>
-			{/if}
 			{#if data.invitations.length > 0}
 				<h3 class="mt-6 text-15px font-700">Pending invitations</h3>
 				<ul class="mt-2 surface divide-y divide-white/10 text-15px">
