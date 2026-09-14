@@ -88,6 +88,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
 - `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
   on a song (docs/audio-engine.md), with a `comment` table.
+- `src/lib/server/signUpGate.ts` — sign-up is invitation-only: the rule
+  Better Auth's user-create hook applies (docs/auth.md); invite codes live in
+  `invite_code` and are managed from account settings.
 - `src/lib/server/email.ts` — Resend: verification and reset mail for Better
   Auth, invitations (`/invite/[token]`) and share-by-email, from templates
   in `lib/utils/renderEmail.ts`.

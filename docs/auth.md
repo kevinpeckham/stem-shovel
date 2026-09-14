@@ -32,6 +32,24 @@ public by URL; editing needs a signed-in member.
   with a role from account settings; the email carries `/invite/<token>`
   (14-day expiry). Accepting needs a signed-in user whose address matches and
   creates the membership; the settings page lists and revokes pending ones.
+- **Sign-up is closed** (`src/lib/server/signUpGate.ts`, run from Better
+  Auth's `user.create.before` hook in `src/lib/auth.ts`): the sign-up
+  request must carry an invitation token (`/sign-up?invite=<token>`, where
+  the invitation page sends a newcomer; the address is locked to the
+  invitation's) or an invite code (`/sign-up?code=…` or typed). The hook
+  refuses with a 400 and a reason — not a 403, which the sign-up route
+  turns into a fake success as its duplicate-email cover. The
+  `create.after` hook then joins the inviting account (accepts the
+  invitation or counts a use of the code) besides creating the personal
+  one. Users made outside sign-up (seed, scripts) have no request context
+  and pass.
+- **Invite codes** (`invite_code` table, migration 0023): owners and admins
+  generate them in account settings with a role, an optional note, a use
+  limit (blank = unlimited) and an expiry (never / 7 / 30 / 90 days), copy
+  the code or its sign-up link, and revoke them; the list shows uses and
+  whether a code is open, used up, expired or revoked. Codes are 12
+  characters from an alphabet without 0/O/1/I/L, shown in groups of four;
+  `normalizeInviteCode` makes case and separators irrelevant.
 - **Share by email**: members send a song's public link with a note from the
   paper-plane button in the song header (`shareSong` command, a few per
   minute per user).

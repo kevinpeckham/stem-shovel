@@ -5,6 +5,7 @@ import { authAccount } from "./authAccount";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { invitation } from "./invitation";
+import { inviteCode } from "./inviteCode";
 import { project } from "./project";
 import { session } from "./session";
 import { shareLink } from "./shareLink";
@@ -20,6 +21,12 @@ export const accountRelations = relations(account, ({ many }) => ({
 	members: many(accountMember),
 	projects: many(project),
 	invitations: many(invitation),
+	inviteCodes: many(inviteCode),
+}));
+
+export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
+	account: one(account, { fields: [inviteCode.accountId], references: [account.id] }),
+	creator: one(user, { fields: [inviteCode.createdBy], references: [user.id] }),
 }));
 
 export const invitationRelations = relations(invitation, ({ one }) => ({

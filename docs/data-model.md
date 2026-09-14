@@ -56,6 +56,8 @@ erDiagram
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may
   post; the author edits and deletes their own, owners and admins delete any.
+- **invite_code** — a reusable sign-up code for an account: role, note,
+  `max_uses` (null = unlimited), `uses`, optional `expires_at`, `revoked_at`.
 - **invitation** — an invitation into an account: email, role, one-time
   token, who sent it, expiry, and when it was accepted or revoked.
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):

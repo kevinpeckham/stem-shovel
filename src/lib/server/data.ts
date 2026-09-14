@@ -13,9 +13,10 @@ import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 import type { SongSection } from "$lib/val/SongSectionSchema";
 import type { MemberRole } from "$lib/val/MemberRoleSchema";
-import { INVITATION_TTL_MS } from "$lib/val/InvitationSchema";
+import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
+import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
 /**
@@ -25,8 +26,18 @@ import * as v from "valibot";
  * own account via src/lib/server/access.ts.
  */
 
-const { account, accountMember, project, song, stem, songDocVersion, demo, invitation, comment } =
-	schema;
+const {
+	account,
+	accountMember,
+	project,
+	song,
+	stem,
+	songDocVersion,
+	demo,
+	invitation,
+	inviteCode,
+	comment,
+} = schema;
 
 // ---- account (org) --------------------------------------------------------
 
@@ -731,6 +742,86 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 	}
 	await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
 	return { status: "joined" as const, account: inv.account };
+}
+
+// ---- invite codes -----------------------------------------------------------
+
+const newCode = customAlphabet(INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH);
+
+export async function createInviteCode(
+	accountId: string,
+	createdBy: string,
+	opts: { role: InviteRole; note: string; maxUses: number | null; expiresDays: number },
+) {
+	const [row] = await db
+		.insert(inviteCode)
+		.values({
+			accountId,
+			code: newCode(),
+			role: opts.role,
+			note: opts.note,
+			createdBy,
+			maxUses: opts.maxUses,
+			expiresAt: opts.expiresDays > 0 ? new Date(Date.now() + opts.expiresDays * 86_400_000) : null,
+		})
+		.returning();
+	return row;
+}
+
+/** Every code the account has issued, newest first, with whether it still works. */
+export async function listInviteCodes(accountId: string) {
+	const rows = await db.query.inviteCode.findMany({
+		where: eq(inviteCode.accountId, accountId),
+		orderBy: [desc(inviteCode.createdAt)],
+		with: { creator: { columns: { name: true } } },
+	});
+	return rows.map((r) => ({ ...r, state: inviteCodeState(r) }));
+}
+
+type InviteCodeRow = typeof inviteCode.$inferSelect;
+
+function inviteCodeState(r: InviteCodeRow) {
+	if (r.revokedAt) return "revoked" as const;
+	if (r.expiresAt && r.expiresAt.getTime() < Date.now()) return "expired" as const;
+	if (r.maxUses !== null && r.uses >= r.maxUses) return "used up" as const;
+	return "open" as const;
+}
+
+export async function revokeInviteCode(accountId: string, id: string) {
+	const [row] = await db
+		.update(inviteCode)
+		.set({ revokedAt: new Date() })
+		.where(and(eq(inviteCode.accountId, accountId), eq(inviteCode.id, id)))
+		.returning({ id: inviteCode.id });
+	return !!row;
+}
+
+/** The code someone typed (already normalised), with its account, or why it cannot be used. */
+export async function inviteCodeByCode(code: string) {
+	const row = await db.query.inviteCode.findFirst({
+		where: eq(inviteCode.code, code),
+		with: { account: { columns: { id: true, name: true, slug: true } } },
+	});
+	if (!row) return { status: "missing" as const };
+	return { status: inviteCodeState(row), code: row };
+}
+
+/** Joins the code's account and counts the use. */
+export async function redeemInviteCode(code: string, userId: string) {
+	const found = await inviteCodeByCode(code);
+	if (found.status !== "open") return found.status;
+	const row = found.code;
+	const existing = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, row.accountId), eq(accountMember.userId, userId)),
+	});
+	if (!existing) {
+		await db.insert(accountMember).values({ accountId: row.accountId, userId, role: row.role });
+	}
+	await db
+		.update(inviteCode)
+		.set({ uses: sql`${inviteCode.uses} + 1` })
+		.where(eq(inviteCode.id, row.id));
+	return { status: "joined" as const, account: row.account };
 }
 
 // ---- stem MIDI files --------------------------------------------------------

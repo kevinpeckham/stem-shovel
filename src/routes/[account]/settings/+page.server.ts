@@ -1,5 +1,5 @@
 import { requireMember, requireSignedIn } from "$lib/server/access";
-import { accountUsage, pendingInvitations } from "$lib/server/data";
+import { accountUsage, listInviteCodes, pendingInvitations } from "$lib/server/data";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
@@ -11,5 +11,6 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		usage: await accountUsage(account.id),
 		canInvite,
 		invitations: canInvite ? await pendingInvitations(account.id) : [],
+		inviteCodes: canInvite ? await listInviteCodes(account.id) : [],
 	};
 };

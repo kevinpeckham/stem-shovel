@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { formatBytes } from "$lib/utils/formatBytes";
-	import { inviteMember, revokeInvitation, updateAccount } from "$lib/remote/accounts.remote";
+	import {
+		createInviteCode,
+		inviteMember,
+		revokeInviteCode,
+		revokeInvitation,
+		updateAccount,
+	} from "$lib/remote/accounts.remote";
 	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
+	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
+	import { formatInviteCode } from "$lib/utils/formatInviteCode";
+	import { page } from "$app/state";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { slugify } from "$lib/utils/slugify";
@@ -14,6 +23,17 @@
 	let dirty = $derived(name.trim() !== data.account.name || slug.trim() !== data.account.slug);
 	let slugTouched = $state(false);
 	let limit = $derived(data.usage.storageLimitBytes);
+
+	/** The sign-up link an invite code goes out as. */
+	const signUpLink = (code: string) => `${page.url.origin}/sign-up?code=${code}`;
+	async function copy(text: string, what: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			notify(`${what} copied`);
+		} catch {
+			notify(`Could not copy the ${what.toLowerCase()}`, { kind: "error" });
+		}
+	}
 </script>
 
 <svelte:head>
@@ -167,6 +187,114 @@
 									{revoke.pending ? "Revoking…" : "Revoke"}
 								</button>
 							</form>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			<h3 class="mt-8 text-15px font-700">Invite codes</h3>
+			<p class="mt-1 text-sm opacity-90">
+				Sign-up is invitation-only. A code lets anyone who has it create an account and join
+				{data.account.name}; hand it out in person, or send the link.
+			</p>
+			<form
+				class="mt-2 flex flex-wrap items-end gap-3"
+				{...createInviteCode.enhance(async ({ submit }) => {
+					await submit();
+					if (createInviteCode.result?.code) notify("Invite code created");
+				})}
+			>
+				<input {...createInviteCode.fields.accountId.as("hidden", data.account.id)} />
+				<label class="block grow">
+					<span class="text-13px text-dim">Note (optional)</span>
+					<input
+						class="mt-1 field"
+						type="text"
+						autocomplete="off"
+						placeholder="who it is for"
+						{...createInviteCode.fields.note.as("text")}
+					/>
+				</label>
+				<label class="block">
+					<span class="text-13px text-dim">Role</span>
+					<select class="mt-1 field" {...createInviteCode.fields.role.as("select", "member")}>
+						{#each INVITE_ROLES as role (role)}
+							<option value={role}>{role}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="block w-24">
+					<span class="text-13px text-dim">Max uses</span>
+					<input
+						class="mt-1 field"
+						type="number"
+						min="1"
+						max="1000"
+						placeholder="∞"
+						{...createInviteCode.fields.maxUses.as("text")}
+					/>
+				</label>
+				<label class="block">
+					<span class="text-13px text-dim">Expires</span>
+					<select class="mt-1 field" {...createInviteCode.fields.expiresDays.as("select", "0")}>
+						{#each INVITE_CODE_EXPIRY_DAYS as days (days)}
+							<option value={String(days)}>{days === 0 ? "never" : `in ${days} days`}</option>
+						{/each}
+					</select>
+				</label>
+				<button class="button-accent" disabled={!!createInviteCode.pending}>
+					{createInviteCode.pending ? "Creating…" : "New code"}
+				</button>
+			</form>
+			{#each createInviteCode.fields.allIssues() ?? [] as issue (issue.message)}
+				<p class="mt-2 text-sm text-red-400">{issue.message}</p>
+			{/each}
+			{#if data.inviteCodes.length > 0}
+				<ul class="mt-4 surface divide-y divide-white/10 text-15px">
+					{#each data.inviteCodes as c (c.id)}
+						{@const revoke = revokeInviteCode.for(c.id)}
+						<li
+							class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3 {c.state ===
+							'open'
+								? ''
+								: 'opacity-50'}"
+						>
+							<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+								<code class="font-mono tracking-wider">{formatInviteCode(c.code)}</code>
+								<span class="text-13px text-dim">
+									{c.role}
+									· {c.uses}{c.maxUses === null ? "" : ` of ${c.maxUses}`} used
+									{#if c.expiresAt}
+										· expires {formatDate(c.expiresAt)}
+									{/if}
+									{#if c.note}
+										· {c.note}
+									{/if}
+									{#if c.state !== "open"}
+										· <span class="uppercase tracking-wider">{c.state}</span>
+									{/if}
+								</span>
+							</div>
+							{#if c.state === "open"}
+								<div class="flex items-center gap-3 text-13px">
+									<button
+										type="button"
+										class="link-dim"
+										onclick={() => copy(formatInviteCode(c.code), "Code")}>Copy code</button
+									>
+									<button
+										type="button"
+										class="link-dim"
+										onclick={() => copy(signUpLink(c.code), "Sign-up link")}>Copy link</button
+									>
+									<form {...revoke}>
+										<input {...revoke.fields.id.as("hidden", c.id)} />
+										<button class="link-dim" disabled={!!revoke.pending}>
+											{revoke.pending ? "Revoking…" : "Revoke"}
+										</button>
+									</form>
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>

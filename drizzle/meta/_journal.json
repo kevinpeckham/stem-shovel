@@ -162,6 +162,13 @@
       "when": 1789395599828,
       "tag": "0022_far_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1789402213765,
+      "tag": "0023_invite_code",
+      "breakpoints": true
     }
   ]
 }

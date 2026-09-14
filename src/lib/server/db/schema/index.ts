@@ -6,6 +6,7 @@ export * from "./authAccount";
 export * from "./comment";
 export * from "./demo";
 export * from "./invitation";
+export * from "./inviteCode";
 export * from "./project";
 export * from "./relations";
 export * from "./session";

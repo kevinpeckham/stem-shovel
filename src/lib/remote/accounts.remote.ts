@@ -2,13 +2,16 @@ import { form, getRequestEvent } from "$app/server";
 import { requireMember, requireUser } from "$lib/server/access";
 import {
 	acceptInvitation as accept,
+	createInviteCode as newInviteCode,
 	createInvitation,
+	revokeInviteCode as dropInviteCode,
 	revokeInvitation as revoke,
 	updateAccount as update,
 } from "$lib/server/data";
 import { sendInvitationEmail } from "$lib/server/email";
 import { AccountSettingsSchema } from "$lib/val/AccountSchema";
 import { InvitationIdSchema, InvitationTokenSchema, InviteSchema } from "$lib/val/InvitationSchema";
+import { InviteCodeCreateSchema, InviteCodeIdSchema } from "$lib/val/InviteCodeSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -66,4 +69,26 @@ export const acceptInvitation = form(InvitationTokenSchema, async ({ token }) =>
 			`This invitation is ${result === "mismatch" ? "for a different email address" : result}.`,
 		);
 	redirect(303, `/${result.account.slug}/projects`);
+});
+
+/** Generates a reusable invite code for the account (owners and admins). */
+export const createInviteCode = form(
+	InviteCodeCreateSchema,
+	async ({ accountId, role, note, maxUses, expiresDays }) => {
+		const { locals } = getRequestEvent();
+		const user = requireUser(locals);
+		const m = requireMember(locals, accountId);
+		if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
+		const row = await newInviteCode(accountId, user.id, { role, note, maxUses, expiresDays });
+		return { code: row.code };
+	},
+);
+
+export const revokeInviteCode = form(InviteCodeIdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	for (const m of locals.memberships) {
+		if (m.role !== "owner" && m.role !== "admin") continue;
+		if (await dropInviteCode(m.accountId, id)) return { revoked: true };
+	}
+	error(404, "Invite code not found");
 });

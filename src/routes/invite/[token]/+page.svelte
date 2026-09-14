@@ -34,12 +34,7 @@
 			</p>
 			<div class="mt-3 flex flex-wrap gap-3">
 				<a class="button-accent" href="/sign-in?next={encodeURIComponent(next)}">Sign in</a>
-				<a
-					class="button"
-					href="/sign-up?email={encodeURIComponent(data.email ?? '')}&next={encodeURIComponent(
-						next,
-					)}"
-				>
+				<a class="button" href="/sign-up?invite={encodeURIComponent(data.token)}">
 					Create an account
 				</a>
 			</div>

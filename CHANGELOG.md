@@ -8,7 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Invitation-only sign-up**: creating an account needs an invitation link
+  or an invite code; the sign-up page says so, locks the address to the
+  invitation when it arrives from one, and reports a bad, used-up, expired
+  or withdrawn code. Signing up through either joins the inviting account
+  straight away. Owners and admins generate **invite codes** in account
+  settings (role, note, use limit, expiry), copy the code or its sign-up
+  link, and revoke them. New `invite_code` table (migration 0023).
+
 ### Changed
+
+- The demo upload button on the song page uses the same size classes as
+  the other section buttons.
 
 - **Project page splits songs into "Songs in Progress" and "Song Ideas"**:
   a song is in progress once it has a finished stem; until then it is an

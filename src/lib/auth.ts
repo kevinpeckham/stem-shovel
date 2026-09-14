@@ -1,7 +1,15 @@
 import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
+import {
+	acceptInvitation,
+	inviteCodeByCode,
+	invitationByToken,
+	redeemInviteCode,
+} from "$lib/server/data";
 import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
+import { checkSignUp } from "$lib/server/signUpGate";
+import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { slugify } from "$lib/utils/slugify";
 import { betterAuth } from "better-auth";
@@ -48,6 +56,17 @@ async function createPersonalAccount(user: { id: string; name: string; email: st
 	return account;
 }
 
+const gateLookups = {
+	invitation: async (token: string) => {
+		const found = await invitationByToken(token);
+		return {
+			status: found.status,
+			email: "invitation" in found ? found.invitation?.email : undefined,
+		};
+	},
+	code: async (code: string) => ({ status: (await inviteCodeByCode(code)).status }),
+};
+
 export const auth = betterAuth({
 	baseURL,
 	secret: ENV.BETTER_AUTH_SECRET,
@@ -89,8 +108,32 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				after: async (user) => {
+				// Sign-up is closed: the request must carry an invitation token
+				// or an invite code (src/lib/server/signUpGate.ts). Users created
+				// any other way (the seed, scripts) have no request context and pass.
+				before: async (user, ctx) => {
+					if (!ctx || ctx.path !== "/sign-up/email") return;
+					const body = (ctx.body ?? {}) as Record<string, unknown>;
+					const pass = await checkSignUp(
+						{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
+						gateLookups,
+					);
+					// Not FORBIDDEN: the sign-up route turns a 403 into a fake success
+					// (its duplicate-email cover), which would hide the message.
+					if (!pass.ok) throw new APIError("BAD_REQUEST", { message: pass.message });
+				},
+				after: async (user, ctx) => {
 					await createPersonalAccount(user);
+					// The same request's invitation or code joins its account too.
+					if (!ctx || ctx.path !== "/sign-up/email") return;
+					const body = (ctx.body ?? {}) as Record<string, unknown>;
+					const pass = await checkSignUp(
+						{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
+						gateLookups,
+					);
+					if (!pass.ok) return;
+					if (pass.via === "invitation") await acceptInvitation(pass.token, user);
+					else await redeemInviteCode(pass.code, user.id);
 				},
 			},
 		},
