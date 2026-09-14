@@ -22,6 +22,24 @@
 	let dirty = $derived(name.trim() !== data.project.name || slug.trim() !== data.project.slug);
 	// Keep the slug following the name until the slug is edited by hand.
 	let slugTouched = $state(false);
+
+	// A song is "in progress" once it has a stem that finished uploading;
+	// until then it is an idea — a place for lyrics, a chart, notes and demos.
+	const readyStems = (song: (typeof data.project.songs)[number]) =>
+		song.stems.filter((s) => s.status === "ready").length;
+	let inProgress = $derived(data.project.songs.filter((s) => readyStems(s) > 0));
+	let ideas = $derived(data.project.songs.filter((s) => readyStems(s) === 0));
+
+	/** What an idea holds so far, for its tile. */
+	function gathered(song: (typeof data.project.songs)[number]): string {
+		const parts: string[] = [];
+		if (song.lyricsMarkdown.trim()) parts.push("lyrics");
+		if (song.chartMarkdown.trim()) parts.push("chart");
+		if (song.notesMarkdown.trim()) parts.push("notes");
+		const demos = song.demos.filter((d) => d.status === "ready").length;
+		if (demos > 0) parts.push(`${demos} ${demos === 1 ? "demo" : "demos"}`);
+		return parts.length ? parts.join(" · ") : "nothing yet";
+	}
 </script>
 
 <svelte:head>
@@ -136,12 +154,7 @@
 	{/if}
 
 	<div class="mb-8">
-		<ProjectPlayer
-			bind:this={player}
-			songs={data.project.songs}
-			bind:current={playing}
-			bind:paused
-		/>
+		<ProjectPlayer bind:this={player} songs={inProgress} bind:current={playing} bind:paused />
 	</div>
 
 	<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
@@ -164,18 +177,22 @@
 		{/if}
 	</div>
 
-	{#if data.project.songs.length === 0}
+	{#if inProgress.length === 0}
 		<p class="text-dim">
-			No songs yet.{#if data.canEdit}
-				<button class="ml-1 link-dim" type="button" popovertarget="add-song"
-					>Add the first one.</button
-				>
+			{#if data.project.songs.length === 0}
+				No songs yet.{#if data.canEdit}
+					<button class="ml-1 link-dim" type="button" popovertarget="add-song"
+						>Add the first one.</button
+					>
+				{/if}
+			{:else}
+				No songs with stems yet. A song idea moves up here once a stem is uploaded.
 			{/if}
 		</p>
 	{:else}
 		<ul class="grid grid-cols-1 gap-3">
-			{#each data.project.songs as song (song.id)}
-				{@const ready = song.stems.filter((s) => s.status === "ready").length}
+			{#each inProgress as song (song.id)}
+				{@const ready = readyStems(song)}
 				<li class="grid grid-cols-[auto_1fr] gap-3">
 					<button
 						type="button"
@@ -214,6 +231,47 @@
 				</li>
 			{/each}
 		</ul>
+	{/if}
+
+	{#if ideas.length > 0 || data.canEdit}
+		<div class="flex flex-wrap items-center justify-between gap-3 mt-10 mb-5 lg-mb-3">
+			<div>
+				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Song Ideas</h2>
+				<p class="opacity-90 text-15px">
+					Songs without stems yet: a place to gather lyrics, a chart, notes and demo recordings.
+				</p>
+			</div>
+		</div>
+		{#if ideas.length === 0}
+			<p class="text-dim">
+				No ideas waiting.{#if data.canEdit}
+					<button class="ml-1 link-dim" type="button" popovertarget="add-song">Add one.</button>
+				{/if}
+			</p>
+		{:else}
+			<ul class="grid grid-cols-1 gap-3">
+				{#each ideas as song (song.id)}
+					<li>
+						<a
+							class="list-tile flex justify-between items-baseline group !mb-0"
+							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
+						>
+							<div>
+								<span>{song.title}</span>
+								{#if song.description}
+									<span class="block text-sm">{song.description}</span>
+								{/if}
+							</div>
+							<span
+								class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
+							>
+								{gathered(song)}
+							</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 
 	{#if data.canEdit}
@@ -257,7 +315,7 @@
 					{/each}
 				</label>
 				<p class="mt-2 text-xs text-dim">
-					You can add stems, a chart and lyrics on the song's page.
+					It starts as a song idea; add stems, a chart, lyrics, notes and demos on its page.
 				</p>
 				<div class="mt-4">
 					<button class="button-accent disabled:opacity-40" disabled={!!createSong.pending}>

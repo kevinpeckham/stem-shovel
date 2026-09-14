@@ -182,6 +182,7 @@ export function getProject(accountId: string, slug: string) {
 					stems: {
 						columns: { id: true, status: true, url: true, playbackStatus: true, playbackUrl: true },
 					},
+					demos: { columns: { id: true, status: true } },
 				},
 			},
 		},

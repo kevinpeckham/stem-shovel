@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Project page splits songs into "Songs in Progress" and "Song Ideas"**:
+  a song is in progress once it has a finished stem; until then it is an
+  idea, listed below with what it holds so far (lyrics, chart, notes,
+  demos) and left out of the project playlist.
+
 ## [0.6.0] - 2026-09-14
 
 ### Added
