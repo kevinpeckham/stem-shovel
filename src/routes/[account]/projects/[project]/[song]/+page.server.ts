@@ -1,4 +1,10 @@
-import { demosWantingPlayback, getSong, manifestFor, stemsWantingPlayback } from "$lib/server/data";
+import {
+	demosWantingPlayback,
+	getSong,
+	listComments,
+	manifestFor,
+	stemsWantingPlayback,
+} from "$lib/server/data";
 import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/transcode";
 import { renderMarkdown } from "$lib/server/markdown";
 import { error } from "@sveltejs/kit";
@@ -17,6 +23,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
 	return {
 		song,
+		comments: await listComments(song.id),
 		manifest: manifestFor(song),
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),

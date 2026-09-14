@@ -86,6 +86,8 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   any that are missing. `src/lib/server/mix.ts` renders MP3 mixdowns from
   the renditions: the original mix is cached in Blob and kept current as
   stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
+- `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
+  on a song (docs/audio-engine.md), with a `comment` table.
 - `src/lib/server/email.ts` — Resend: verification and reset mail for Better
   Auth, invitations (`/invite/[token]`) and share-by-email, from templates
   in `lib/utils/renderEmail.ts`.

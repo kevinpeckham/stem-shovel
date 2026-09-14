@@ -22,6 +22,10 @@
 		stemBadge?: Snippet<[StemState]>;
 		/** Stems showing their MIDI piano roll instead of the waveform, by stem id. */
 		midiViews?: Record<string, MidiSummary>;
+		/** Ctrl / ⌘-click or right-click on a row's waveform or roll. */
+		onstemcontext?: (stem: StemState, seconds: number, x: number, y: number) => void;
+		/** Rendered after the last stem row, inside the stems section (the comment timeline). */
+		afterRows?: Snippet;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
 		/** Song structure; the timeline row shows when there is a section or a change worth a lane (timelineKinds). */
@@ -44,6 +48,8 @@
 		stemMenu,
 		stemBadge,
 		midiViews = {},
+		onstemcontext,
+		afterRows,
 		headerExtras,
 		sections = [],
 		changes = [],
@@ -137,8 +143,10 @@
 				menu={stemMenu}
 				badge={stemBadge}
 				roll={midiViews[stem.id] ?? null}
+				oncontext={onstemcontext}
 			/>
 		{/each}
+		{#if afterRows}{@render afterRows()}{/if}
 	</section>
 
 	<div

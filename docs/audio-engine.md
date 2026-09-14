@@ -70,6 +70,15 @@ fields are `$state`, so components read `engine.position` directly.
   is fetched from Blob and parsed in the browser once per URL — a small
   SMF reader that merges tracks, follows tempo changes and keeps note
   on/off only.
+- **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
+  the documents panel has a Comments tab (scrollable list, newest last,
+  author, date, an "edited" badge, the position as a link that seeks) and
+  a + button opening one popover for posting and editing (title, text,
+  position typed in any format and read against the song's grid on the
+  server). Ctrl / ⌘-click or right-click on a waveform or MIDI roll opens a
+  menu at the pointer with "Seek here" and "Comment here" (position
+  prefilled). Located comments draw as icons on a row under the last stem,
+  on the waveform column; clicking one opens a card anchored to it.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

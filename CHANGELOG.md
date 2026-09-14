@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Comments on songs**: a Comments tab in the documents panel lists them
+  (author, date, an "edited" badge, a position that seeks); the + button
+  opens a popover to post one with a title, text and an optional position
+  in any format. Ctrl / ⌘-click or right-click a waveform or MIDI roll for
+  "Seek here" / "Comment here" at that spot. Located comments sit as icons
+  on a timeline under the stems, each opening a card anchored to it.
+  Authors edit and delete their own; owners and admins delete any.
+  Migration 0022.
+
 ### Changed
 
 - **Notifications instead of inline "Saved." lines**: confirmations (song,

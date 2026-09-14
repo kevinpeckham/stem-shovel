@@ -52,6 +52,10 @@ erDiagram
   and entry (25 by default, as in Logic).
 - **song.start_at / end_at** — seconds where bar 1 begins and where the song
   ends (null = 0 / the last stem), for the bars readout and the timeline.
+- **comment** — a member's comment on a song: title, plain text, an
+  optional position (`at`, seconds) that puts it on the comment timeline
+  under the stems, and `edited_at` once changed. Anyone in the account may
+  post; the author edits and deletes their own, owners and admins delete any.
 - **invitation** — an invitation into an account: email, role, one-time
   token, who sent it, expiry, and when it was accepted or revoked.
 - **demo** — a demo recording of the song idea (a phone memo, a rough take):

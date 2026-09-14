@@ -11,9 +11,11 @@
 		dimmed?: boolean;
 		label: string;
 		onseek?: (fraction: number) => void;
+		/** Ctrl / ⌘-click or right-click: a menu for this position instead of a seek. */
+		oncontext?: (fraction: number, x: number, y: number) => void;
 	}
 
-	let { peaks, progress, span = 1, dimmed = false, label, onseek }: Props = $props();
+	let { peaks, progress, span = 1, dimmed = false, label, onseek, oncontext }: Props = $props();
 
 	// Measured by bind:clientWidth / bind:clientHeight on the wrapper.
 	let width = $state(0);
@@ -63,7 +65,17 @@
 		}
 	}
 
+	function fractionAt(e: MouseEvent): number {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+	}
+
 	function seekFromPointer(e: MouseEvent): void {
+		if ((e.ctrlKey || e.metaKey) && oncontext) {
+			e.preventDefault();
+			oncontext(fractionAt(e), e.clientX, e.clientY);
+			return;
+		}
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
 		onseek?.(fraction);
@@ -92,6 +104,11 @@
 	bind:clientWidth={width}
 	bind:clientHeight={height}
 	onclick={seekFromPointer}
+	oncontextmenu={(e) => {
+		if (!oncontext) return;
+		e.preventDefault();
+		oncontext(fractionAt(e), e.clientX, e.clientY);
+	}}
 	{onkeydown}
 >
 	<canvas

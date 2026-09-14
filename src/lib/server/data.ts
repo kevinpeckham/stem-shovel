@@ -1,6 +1,7 @@
 import type { StemManifest } from "$lib/audio/types";
 import { deleteBlobs, demoPathname, midiPathname, stemPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
+import { barGrid } from "$lib/audio/measures";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
@@ -24,7 +25,8 @@ import * as v from "valibot";
  * own account via src/lib/server/access.ts.
  */
 
-const { account, accountMember, project, song, stem, songDocVersion, demo, invitation } = schema;
+const { account, accountMember, project, song, stem, songDocVersion, demo, invitation, comment } =
+	schema;
 
 // ---- account (org) --------------------------------------------------------
 
@@ -563,6 +565,83 @@ export async function updateSongChanges(
 		.returning({ changes: song.changes });
 	if (!row) return { ok: false, error: "Song not found." };
 	return { ok: true, changes: row.changes };
+}
+
+// ---- comments ---------------------------------------------------------------
+
+/** What parsePosition needs to read a typed position for this song. */
+export async function songGrid(songId: string) {
+	const s = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { changes: true, startAt: true, frameRate: true },
+	});
+	return s ? { fps: s.frameRate, grid: barGrid(s.changes, s.startAt) } : null;
+}
+
+export interface CommentInput {
+	title: string;
+	body: string;
+	at: number | null;
+}
+
+/** A song's comments, oldest first, with who wrote them. */
+export async function listComments(songId: string) {
+	const rows = await db.query.comment.findMany({
+		where: eq(comment.songId, songId),
+		orderBy: [asc(comment.createdAt)],
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return rows.map((c) => ({
+		id: c.id,
+		userId: c.userId,
+		authorName: c.author.name,
+		title: c.title,
+		body: c.body,
+		at: c.at,
+		createdAt: c.createdAt,
+		editedAt: c.editedAt,
+	}));
+}
+
+export async function createComment(
+	accountId: string,
+	songId: string,
+	userId: string,
+	input: CommentInput,
+) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [row] = await db
+		.insert(comment)
+		.values({ accountId, songId, userId, title: input.title, body: input.body, at: input.at })
+		.returning({ id: comment.id });
+	return row;
+}
+
+/** The comment's account and author, for permission checks. */
+export async function commentOwnership(id: string) {
+	return db.query.comment.findFirst({
+		where: eq(comment.id, id),
+		columns: { id: true, accountId: true, userId: true, songId: true },
+	});
+}
+
+/** Edits a comment (the caller has checked it is theirs); stamps editedAt. */
+export async function updateComment(id: string, input: CommentInput) {
+	const [row] = await db
+		.update(comment)
+		.set({ title: input.title, body: input.body, at: input.at, editedAt: new Date() })
+		.where(eq(comment.id, id))
+		.returning({ id: comment.id });
+	return row ?? null;
+}
+
+export async function deleteComment(id: string) {
+	const [row] = await db.delete(comment).where(eq(comment.id, id)).returning({ id: comment.id });
+	return !!row;
 }
 
 // ---- invitations ------------------------------------------------------------

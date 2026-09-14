@@ -16,9 +16,12 @@
 		badge?: Snippet<[StemState]>;
 		/** When given, a piano roll of the stem's MIDI file replaces the waveform. */
 		roll?: MidiSummary | null;
+		/** Ctrl / ⌘-click or right-click on the waveform or roll, with the position in seconds. */
+		oncontext?: (stem: StemState, seconds: number, x: number, y: number) => void;
 	}
 
-	let { stem, engine, menu, badge, roll = null }: Props = $props();
+	let { stem, engine, menu, badge, roll = null, oncontext }: Props = $props();
+	const context = (f: number, x: number, y: number) => oncontext?.(stem, f * engine.duration, x, y);
 
 	// Audible right now? Mirrors the engine's effective-gain rule for the visuals.
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
@@ -152,6 +155,7 @@
 				dimmed={silenced}
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}
+				oncontext={context}
 			/>
 		{:else}
 			<Waveform
@@ -161,6 +165,7 @@
 				dimmed={silenced || !stem.decoded}
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}
+				oncontext={context}
 			/>
 		{/if}
 	</div>

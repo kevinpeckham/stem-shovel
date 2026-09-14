@@ -1,5 +1,7 @@
 <script lang="ts">
+	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
+	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
@@ -212,9 +214,58 @@
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
 	const DOC_KINDS = ["chart", "lyrics", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	let doc = $state<(typeof DOC_KINDS)[number]>(
-		untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "chart"),
+	// The documents panel also shows the comments; "comments" is a panel, not a document.
+	const PANELS = [...DOC_KINDS, "comments"] as const;
+	type Panel = (typeof PANELS)[number];
+	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments" } as const;
+	let panel = $state<Panel>("chart");
+	let showing = $derived(panel === "comments" ? null : panel);
+
+	// Comments: who may do what, the located ones for the timeline, and the
+	// popover form (one popover, create or edit).
+	let membership = $derived(data.memberships?.find((m) => m.accountId === data.account.id));
+	let isAdmin = $derived(membership?.role === "owner" || membership?.role === "admin");
+	const canEditComment = (c: { userId: string }) => data.user?.id === c.userId;
+	const canDeleteComment = (c: { userId: string }) => canEditComment(c) || isAdmin;
+	let locatedComments = $derived(
+		data.comments
+			.filter((c) => c.at !== null)
+			.map((c) => ({ id: c.id, title: c.title, at: c.at ?? 0 }))
+			.sort((a, b) => a.at - b.at),
 	);
+	let commentPanel = $state<HTMLDivElement | null>(null);
+	let commentDraft = $state<{ id: string | null; title: string; body: string; at: string }>({
+		id: null,
+		title: "",
+		body: "",
+		at: "",
+	});
+	let commentError = $state<string | null>(null);
+	function openComment(draft: Partial<typeof commentDraft> = {}) {
+		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
+		commentError = null;
+		// The form fields keep what was last typed; push the draft into them explicitly.
+		const f = commentDraft.id ? updateComment.fields : createComment.fields;
+		f.title.set(commentDraft.title);
+		f.body.set(commentDraft.body);
+		f.position.set(commentDraft.at);
+		commentPanel?.showPopover();
+	}
+	function editComment(c: (typeof data.comments)[number]) {
+		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : editPos(c.at) });
+	}
+
+	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
+	let stemMenuAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
+	function onStemContext(stem: StemState, seconds: number, x: number, y: number) {
+		stemMenuAt = { stem, seconds, x, y };
+	}
+	function closeStemContext(e: Event) {
+		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
+	}
+	let doc = $derived(showing ?? "chart");
+	// Start on the first document with content.
+	panel = untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "chart");
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 	let uploadJobs = $state<UploadJob[]>([]);
@@ -527,9 +578,15 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === "Escape") closeStemMenus(e);
+		if (e.key === "Escape") {
+			closeStemMenus(e);
+			stemMenuAt = null;
+		}
 	}}
-	onpointerdown={closeStemMenus}
+	onpointerdown={(e) => {
+		closeStemMenus(e);
+		closeStemContext(e);
+	}}
 />
 
 <svelte:head>
@@ -1094,6 +1151,8 @@
 					endAt={data.song.endAt}
 					fps={data.song.frameRate}
 					onengine={(e) => (playerEngine = e)}
+					onstemcontext={onStemContext}
+					{afterRows}
 				>
 					{#snippet errorHint()}
 						A stem's file is missing from the Blob store. Remove it from its menu and upload it
@@ -1221,10 +1280,73 @@
 	<!-- 3. chart, lyrics & notes -->
 	<section
 		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full max-w-full overflow-hidden grid-rows-1fr relative"
-		aria-label="Chart, lyrics and notes"
+		aria-label="Chart, lyrics, notes and comments"
 	>
 		<!-- <div class="h-full relative"> -->
-		{#if data.docs[doc]}
+		{#if panel === "comments"}
+			<div
+				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
+			>
+				{#if data.comments.length === 0}
+					<p class="opacity-80">No comments yet.</p>
+				{:else}
+					<ol class="grid gap-4">
+						{#each data.comments as c (c.id)}
+							{@const remove = deleteComment.for(c.id)}
+							<li
+								class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
+								id="comment-{c.id}"
+							>
+								<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+									<h3 class="font-600">{c.title}</h3>
+									<span class="text-12px opacity-70">
+										{c.authorName} · {formatDate(c.createdAt)}
+										{#if c.editedAt}<span
+												class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
+												title="Edited {formatDate(c.editedAt)}">edited</span
+											>{/if}
+									</span>
+								</div>
+								{#if c.at !== null}
+									<button
+										type="button"
+										class="mt-1 text-12px link-dim"
+										onclick={() => playerEngine?.seek(c.at ?? 0)}
+										title="Go to this position"
+									>
+										<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
+									</button>
+								{/if}
+								<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
+								{#if canEditComment(c) || canDeleteComment(c)}
+									<div class="mt-2 flex gap-3 text-12px">
+										{#if canEditComment(c)}
+											<button type="button" class="link-dim" onclick={() => editComment(c)}
+												>Edit</button
+											>
+										{/if}
+										{#if canDeleteComment(c)}
+											<form
+												{...remove.enhance(async ({ submit }) => {
+													if (!confirm(`Delete the comment "${c.title}"?`)) return;
+													await submit();
+													notify("Comment deleted");
+												})}
+											>
+												<input {...remove.fields.id.as("hidden", c.id)} />
+												<button class="link-dim" disabled={!!remove.pending}>
+													{remove.pending ? "Deleting…" : "Delete"}
+												</button>
+											</form>
+										{/if}
+									</div>
+								{/if}
+							</li>
+						{/each}
+					</ol>
+				{/if}
+			</div>
+		{:else if data.docs[doc]}
 			<article
 				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 			>
@@ -1245,30 +1367,42 @@
 				role="tablist"
 				aria-label="Document"
 			>
-				{#each DOC_KINDS as kind, index (kind)}
+				{#each PANELS as kind, index (kind)}
 					<button
 						type="button"
 						role="tab"
-						aria-selected={doc === kind}
-						class="{doc === kind
+						aria-selected={panel === kind}
+						class="{panel === kind
 							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
 							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
 							? 'rounded-r-none border-r-none'
-							: index === DOC_KINDS.length - 1
+							: index === PANELS.length - 1
 								? 'rounded-l-none'
 								: 'rounded-none border-r-none'}"
-						onclick={() => (doc = kind)}>{DOC_LABELS[kind]}</button
+						onclick={() => (panel = kind)}>{PANEL_LABELS[kind]}</button
 					>
 				{/each}
 			</div>
-			<a
-				class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
-				href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
-			>
-				{@html data.docs[doc]
-					? `<span class="i-ph-pencil"></span>`
-					: `<span class="i-ph-plus"></span>`}
-			</a>
+			{#if panel === "comments"}
+				<button
+					class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
+					type="button"
+					title="Add a comment"
+					aria-label="Add a comment"
+					onclick={() => openComment()}
+				>
+					<span class="i-ph-plus"></span>
+				</button>
+			{:else}
+				<a
+					class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
+					href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
+				>
+					{@html data.docs[doc]
+						? `<span class="i-ph-pencil"></span>`
+						: `<span class="i-ph-plus"></span>`}
+				</a>
+			{/if}
 		</div>
 		<!-- </div> -->
 	</section>
@@ -1490,6 +1624,243 @@
 		</form>
 	</div>
 {/if}
+
+{#if data.canEdit}
+	<!-- One popover for posting and editing a comment. -->
+	<div
+		id="song-comment"
+		popover="auto"
+		bind:this={commentPanel}
+		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">{commentDraft.id ? "Edit comment" : "Add a comment"}</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="song-comment"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		{#if commentDraft.id}
+			{@const remoteForm = updateComment}
+			<form
+				class="grid gap-3"
+				{...remoteForm.enhance(async ({ submit }) => {
+					commentError = null;
+					await submit();
+					if (!remoteForm.fields.allIssues()) {
+						notify("Comment updated");
+						commentPanel?.hidePopover();
+					}
+				})}
+			>
+				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
+				<label class="block">
+					<span class="text-sm opacity-80">Title</span>
+					<input
+						class="mt-1 field"
+						{...remoteForm.fields.title.as("text", commentDraft.title)}
+						required
+					/>
+					{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				<label class="block">
+					<span class="text-sm opacity-80">Comment</span>
+					<textarea
+						class="mt-1 field text-sm"
+						rows="5"
+						{...remoteForm.fields.body.as("text", commentDraft.body)}
+						required></textarea>
+					{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				<label class="block">
+					<span class="text-sm opacity-80">Position <span class="opacity-60">(optional)</span></span
+					>
+					<span class="mt-1 flex items-center gap-2">
+						<input
+							class="field font-mono text-sm"
+							placeholder={POSITION_PLACEHOLDER[mode]}
+							{...remoteForm.fields.position.as("text", commentDraft.at)}
+						/>
+						<button
+							class="button button-xs shrink-0"
+							type="button"
+							disabled={!playerEngine || playerEngine.status !== "ready"}
+							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+							>Playhead</button
+						>
+					</span>
+					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				{#if commentError}<p class="text-sm text-red-400" role="alert">{commentError}</p>{/if}
+				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
+					>{remoteForm.pending ? "Saving…" : "Save"}</button
+				>
+			</form>
+		{:else}
+			{@const remoteForm = createComment}
+			<form
+				class="grid gap-3"
+				{...remoteForm.enhance(async ({ submit }) => {
+					commentError = null;
+					await submit();
+					if (!remoteForm.fields.allIssues()) {
+						notify("Comment posted");
+						panel = "comments";
+						commentPanel?.hidePopover();
+					}
+				})}
+			>
+				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
+				<label class="block">
+					<span class="text-sm opacity-80">Title</span>
+					<input
+						class="mt-1 field"
+						{...remoteForm.fields.title.as("text", commentDraft.title)}
+						required
+					/>
+					{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				<label class="block">
+					<span class="text-sm opacity-80">Comment</span>
+					<textarea
+						class="mt-1 field text-sm"
+						rows="5"
+						{...remoteForm.fields.body.as("text", commentDraft.body)}
+						required></textarea>
+					{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				<label class="block">
+					<span class="text-sm opacity-80">Position <span class="opacity-60">(optional)</span></span
+					>
+					<span class="mt-1 flex items-center gap-2">
+						<input
+							class="field font-mono text-sm"
+							placeholder={POSITION_PLACEHOLDER[mode]}
+							{...remoteForm.fields.position.as("text", commentDraft.at)}
+						/>
+						<button
+							class="button button-xs shrink-0"
+							type="button"
+							disabled={!playerEngine || playerEngine.status !== "ready"}
+							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+							>Playhead</button
+						>
+					</span>
+					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
+						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+					{/each}
+				</label>
+				{#if commentError}<p class="text-sm text-red-400" role="alert">{commentError}</p>{/if}
+				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
+					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
+				>
+			</form>
+		{/if}
+	</div>
+{/if}
+
+{#if stemMenuAt}
+	<!-- Ctrl / ⌘-click menu at the pointer -->
+	<div
+		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
+		style:left="{Math.min(stemMenuAt.x, window.innerWidth - 240)}px"
+		style:top="{stemMenuAt.y + 4}px"
+		role="menu"
+		data-stem-context
+	>
+		<div class="truncate px-3 py-1.5 text-xs opacity-70">
+			{stemMenuAt.stem.label} · {showPos(stemMenuAt.seconds)}
+		</div>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			onclick={() => {
+				playerEngine?.seek(stemMenuAt?.seconds ?? 0);
+				stemMenuAt = null;
+			}}
+		>
+			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
+		</button>
+		{#if data.canEdit}
+			<button
+				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+				type="button"
+				role="menuitem"
+				onclick={() => {
+					const at = editPos(stemMenuAt?.seconds ?? 0);
+					stemMenuAt = null;
+					openComment({ at });
+				}}
+			>
+				<span class="i-ph-chat-circle-dots mr-2" aria-hidden="true"></span>Comment here
+			</button>
+		{/if}
+	</div>
+{/if}
+
+{#snippet commentCard(id: string)}
+	{@const c = data.comments.find((x) => x.id === id)}
+	{#if c}
+		{@const remove = deleteComment.for(c.id)}
+		<div class="flex items-baseline justify-between gap-3">
+			<h3 class="font-600">{c.title}</h3>
+			{#if c.editedAt}<span
+					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
+					>edited</span
+				>{/if}
+		</div>
+		<p class="mt-1 text-12px opacity-70">
+			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
+				· {showPos(c.at)}{/if}
+		</p>
+		<p class="mt-2 whitespace-pre-line">{c.body}</p>
+		<div class="mt-3 flex gap-3 text-12px">
+			{#if c.at !== null}
+				<button type="button" class="link-dim" onclick={() => playerEngine?.seek(c.at ?? 0)}
+					>Go to</button
+				>
+			{/if}
+			{#if canEditComment(c)}
+				<button type="button" class="link-dim" onclick={() => editComment(c)}>Edit</button>
+			{/if}
+			{#if canDeleteComment(c)}
+				<form
+					{...remove.enhance(async ({ submit }) => {
+						if (!confirm(`Delete the comment "${c.title}"?`)) return;
+						await submit();
+						notify("Comment deleted");
+					})}
+				>
+					<input {...remove.fields.id.as("hidden", c.id)} />
+					<button class="link-dim" disabled={!!remove.pending}
+						>{remove.pending ? "Deleting…" : "Delete"}</button
+					>
+				</form>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet afterRows()}
+	{#if locatedComments.length > 0 && playerEngine}
+		<CommentTimeline engine={playerEngine} comments={locatedComments} card={commentCard} />
+	{/if}
+{/snippet}
 
 {#snippet stemBadge(stem: StemState)}
 	{#if stemRows.get(stem.id)?.midiUrl}
