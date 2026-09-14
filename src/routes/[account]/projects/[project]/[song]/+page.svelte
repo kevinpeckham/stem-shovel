@@ -1050,7 +1050,7 @@
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h3 class="text-15px font-700">Demo recordings</h3>
 					<label
-						class="button button-xs cursor-pointer {demoBusy
+						class="button button-sm lg-button-xs cursor-pointer {demoBusy
 							? 'opacity-50 pointer-events-none'
 							: ''}"
 					>
