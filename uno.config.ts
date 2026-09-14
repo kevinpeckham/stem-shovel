@@ -83,7 +83,7 @@ export default defineConfig({
 			// panel: "oklch(0.252 0.048 259.91)", // page background
 			row: "rgba(255, 255, 255, 0.05)", // stem row / card surface on the oxford ground
 			ink: "#f5f5f5", // primary text (neutral-100); active mute button
-			dim: "#cbd5e1", // secondary text (slate-300)
+			// dim: "#cbd5e1", // secondary text (slate-300)
 			line: "rgba(255, 255, 255, 0.12)", // hairline borders,
 		},
 	},
@@ -149,7 +149,7 @@ export default defineConfig({
 
 		// ---- app ---------------------------------------------------------------
 		["page", "page-x-padding main-y-padding grid grid-cols-1 gap-8 place-content-start"],
-		["link-dim", "text-dim underline underline-offset-4 hover:text-maximumYellow"],
+		["link-dim", "underline underline-offset-4 hover:text-maximumYellow"],
 		["surface", "rounded border border-white/10 bg-row"],
 		["tile", "border border-white/10 rounded p-6"],
 		[
@@ -158,7 +158,7 @@ export default defineConfig({
 		],
 		["tab", "px-3 py-1 text-xs"],
 		["tab-active", "tab bg-maximumYellow text-oxford"],
-		["tab-idle", "tab text-dim hover:text-neutral-100"],
+		["tab-idle", "tab hover-text-neutral-100"],
 
 		// Chart / lyrics typography, shared by the read-only <article> and the
 		// woof-editor surface (its own body styles are zero-specificity, so these
@@ -185,7 +185,7 @@ export default defineConfig({
 				"[&>ul,&>ol]:(grid grid-cols-1 gap-1 opacity-90)",
 				"[&>ul_+*,&>ol_+*]:mt-3",
 				// quotes
-				"[&>blockquote]:(pl-3 border-l-3 border-maximumYellow/60 text-dim)",
+				"[&>blockquote]:(pl-3 border-l-3 border-maximumYellow/60)",
 				"[&>blockquote_+*]:mt-3",
 				// code: chord grids
 				"[&>pre]:(px-3.5 py-3 rounded-md bg-black/30 overflow-x-auto text-14px leading-normal)",
@@ -197,7 +197,7 @@ export default defineConfig({
 				"[&_a]:(underline underline-offset-3 text-maximumYellow)",
 				"[&>table]:(border-collapse mt-3)",
 				"[&_th,&_td]:(border border-white/15 px-2 py-1)",
-				"[&_section.footnotes]:(mt-6 pt-3 border-t border-white/15 text-13px text-dim)",
+				"[&_section.footnotes]:(mt-6 pt-3 border-t border-white/15 text-13px)",
 			].join(" "),
 		],
 		[

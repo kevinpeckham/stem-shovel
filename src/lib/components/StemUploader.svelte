@@ -104,7 +104,9 @@
 </script>
 
 <label
-	class="button button-xs cursor-pointer {busy ? 'pointer-events-none opacity-60' : ''}"
+	class="button button-sm lg-button-xs cursor-pointer {busy
+		? 'pointer-events-none opacity-60'
+		: ''}"
 	title="Upload new stems to this song."
 >
 	<!-- WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems -->

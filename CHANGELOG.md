@@ -23,6 +23,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Song info popover** (an info button in the song header) holds the
+  description, writer and date, tempo · key · meter, version, stem count
+  and last change, and the project; the header itself is one line again
+  (Kevin's layout pass), and the transport shows the key, tempo and meter
+  in force at the playhead beside the readout.
 - The row menu's "Download" is now "Download Stem", and a truncated stem
   name shows in full on hover.
 

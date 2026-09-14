@@ -186,6 +186,13 @@
 		await demoAudio?.play().catch(() => {});
 	}
 	// "Written by X, first written June 2019" under the title.
+	// Shown in the song-info popover: the song's fixed tempo, key and meter, and its version.
+	let metaLine = $derived(
+		SONG_CHANGE_KINDS.map((kind) => data.song.changes.find((c) => c.kind === kind))
+			.filter((c) => c !== undefined)
+			.map(formatSongChange)
+			.join(" · "),
+	);
 	let writtenLine = $derived(
 		[
 			data.song.songwriter ? `Written by ${data.song.songwriter}` : "",
@@ -194,22 +201,7 @@
 			.filter(Boolean)
 			.join(", "),
 	);
-	// "v0.0.1 · stems updated Sep 13, 2026" under the title.
-	let versionLine = $derived(
-		[
-			`v${data.song.version}`,
-			data.song.stemsUpdatedAt ? `stems updated ${formatDate(data.song.stemsUpdatedAt)}` : "",
-		]
-			.filter(Boolean)
-			.join(" · "),
-	);
-	// "120 bpm · F#m · 4/4" under the title: the first change of each kind.
-	let metaLine = $derived(
-		SONG_CHANGE_KINDS.map((kind) => data.song.changes.find((c) => c.kind === kind))
-			.filter((c) => c !== undefined)
-			.map(formatSongChange)
-			.join(" · "),
-	);
+
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	let slugTouched = $state(false);
 
@@ -521,10 +513,7 @@
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
 			<!-- song header & metadata -->
 			<div class="flex flex-wrap items-baseline gap-4">
-				<!-- <a class="text-sm link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
-					>{data.song.project.name}</a
-				> -->
-				<h1 class="heading-1">{data.song.title}</h1>
+				<h1 class="heading-2 mb-0">{data.song.title}</h1>
 				<span>v{data.song.version}</span>
 				<span class="opacity-90 text-15px"
 					>a song in the <a
@@ -537,38 +526,39 @@
 						>{data.account.name}</a
 					></span
 				>
-				<p class="w-full text-sm text-dim">
-					<span class="text-neutral-100">{versionLine}</span>
-					{#if metaLine}<span class="opacity-60"> — </span><span class="text-neutral-100"
-							>{metaLine}</span
-						>{/if}
-					{#if writtenLine}<span class="opacity-60"> — </span>{writtenLine}{/if}
-				</p>
-				<!-- {#if data.song.description}
-					<p class="mt-1 max-w-prose text-sm text-dim">{data.song.description}</p>
-				{/if} -->
 			</div>
 
 			<!-- settings button -->
 			{#if data.canEdit}
-				<button
-					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
-					type="button"
-					popovertarget="song-share"
-					title="Share this song by email"
-					aria-label="Share this song by email"
-				>
-					<span class="block i-ph-paper-plane-tilt"></span>
-				</button>
-				<button
-					class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
-					type="button"
-					popovertarget="song-settings"
-					title="Song settings"
-					aria-label="Song settings"
-				>
-					<span class="block i-ph-gear"></span>
-				</button>
+				<div class="flex gap-2">
+					<button
+						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						type="button"
+						popovertarget="song-share"
+						title="Share this song by email"
+						aria-label="Share this song by email"
+					>
+						<span class="block i-ph-paper-plane-tilt"></span>
+					</button>
+					<button
+						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						type="button"
+						popovertarget="song-info"
+						title="About this song"
+						aria-label="About this song"
+					>
+						<span class="block i-ph-info"></span>
+					</button>
+					<button
+						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						type="button"
+						popovertarget="song-settings"
+						title="Song settings"
+						aria-label="Song settings"
+					>
+						<span class="block i-ph-gear"></span>
+					</button>
+				</div>
 			{/if}
 		</div>
 		<!-- move to a toast or similar that evaporates after a few seconds -->
@@ -1380,6 +1370,60 @@
 		{/if}
 	</div>
 {/snippet}
+
+<!-- Song info: what the header used to spell out, for anyone who opens it. -->
+<div
+	id="song-info"
+	popover="auto"
+	class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+>
+	<div class="mb-4 flex items-center justify-between gap-4">
+		<h2 class="heading-2 mb-0">{data.song.title}</h2>
+		<button
+			class="button button-xs"
+			type="button"
+			popovertarget="song-info"
+			popovertargetaction="hide"
+		>
+			Close
+		</button>
+	</div>
+	<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-15px">
+		{#if data.song.description}
+			<dt class="opacity-70">About</dt>
+			<dd class="max-w-prose whitespace-pre-line">{data.song.description}</dd>
+		{/if}
+		{#if writtenLine}
+			<dt class="opacity-70">Written</dt>
+			<dd>{writtenLine.replace(/^Written by /, "")}</dd>
+		{/if}
+		{#if metaLine}
+			<dt class="opacity-70">Music</dt>
+			<dd>{metaLine}</dd>
+		{/if}
+		<dt class="opacity-70">Version</dt>
+		<dd>v{data.song.version}</dd>
+		<dt class="opacity-70">Stems</dt>
+		<dd>
+			{ready.length}
+			{ready.length === 1 ? "stem" : "stems"}{#if data.song.stemsUpdatedAt}, last changed {formatDate(
+					data.song.stemsUpdatedAt,
+				)}{/if}
+		</dd>
+		<dt class="opacity-70">Project</dt>
+		<dd>
+			<a class="link-dim" href="/{data.account.slug}/projects/{data.song.project.slug}"
+				>{data.song.project.name}</a
+			>
+			from {data.account.name}
+		</dd>
+	</dl>
+	{#if !data.song.description && !writtenLine && !metaLine && data.canEdit}
+		<p class="mt-4 text-sm opacity-70">
+			Add a description, songwriter, tempo, key and time signature in song settings.
+		</p>
+	{/if}
+</div>
 
 {#if data.canEdit}
 	<div

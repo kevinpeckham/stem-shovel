@@ -98,7 +98,7 @@
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-		<Transport {engine} grid={barGrid(changes, startAt)} {endAt} {fps} />
+		<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} />
 		{#if onaddsection}
 			<div class="mt-2 flex justify-end">
 				<button

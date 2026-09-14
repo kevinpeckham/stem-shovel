@@ -4,6 +4,7 @@
 	import { cycleReadoutMode, readoutMode } from "$lib/audio/readout.svelte";
 	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/constants/positionModes";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
+	import { type SongChange } from "$lib/val/SongChangeSchema";
 
 	interface Props {
 		engine: StemEngine;
@@ -13,9 +14,10 @@
 		endAt?: number | null;
 		/** Frame rate for the timecode readout. */
 		fps?: number;
+		changes?: SongChange[];
 	}
 
-	let { engine, grid = null, endAt = null, fps = 25 }: Props = $props();
+	let { engine, grid = null, endAt = null, fps = 25, changes = [] }: Props = $props();
 
 	// The readout format is shared with tooltips and the settings rows ($lib/audio/readout).
 	let ctx = $derived({ fps, grid });
@@ -26,6 +28,16 @@
 	let nextMode = $derived(
 		POSITION_MODE_LABELS[(grid && mode === "timecode" ? "bars" : "timecode") as PositionMode],
 	);
+
+	// The tempo, key and meter in force at the playhead (the last change at or
+	// before it; the first change when the playhead is ahead of them all).
+	const inForce = (kind: SongChange["kind"]) => {
+		const of = changes.filter((c) => c.kind === kind);
+		return of.findLast((c) => engine.position >= c.start) ?? of[0];
+	};
+	let key = $derived(inForce("key")?.value ?? "");
+	let tempo = $derived(inForce("tempo") ? `${inForce("tempo")?.value} bpm` : "");
+	let meter = $derived(inForce("meter")?.value ?? "");
 
 	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
 	// A focused button therefore does NOT activate on Space (Enter still does, and
@@ -75,24 +87,28 @@
 		></span>
 	</button>
 
-	<!-- tabular-nums keeps the readout from jittering as digits change -->
-	<button
-		type="button"
-		class="cursor-pointer text-left tabular-nums hover-text-accent"
-		title="{POSITION_MODE_LABELS[mode]} — click for {nextMode}{grid
-			? ''
-			: ' (bars need a tempo and a time signature in song settings)'}"
-		aria-label="Readout format: {POSITION_MODE_LABELS[mode]}"
-		onclick={() => cycleReadoutMode(!!grid)}
-	>
-		<div class="bg-black/40 h-auto px-3 py-2 text-28px leading-none rounded-md relative">
+	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4">
+		<!-- position readout -->
+		<button
+			type="button"
+			class="cursor-pointer text-left tabular-nums hover-text-accent h-auto text-28px"
+			title="{POSITION_MODE_LABELS[mode]} — click for {nextMode}{grid
+				? ''
+				: ' (bars need a tempo and a time signature in song settings)'}"
+			aria-label="Readout format: {POSITION_MODE_LABELS[mode]}"
+			onclick={() => cycleReadoutMode(!!grid)}
+		>
 			{now}
-			<!-- <div class="absolute text-8px uppercase font-600 leading-none tracking-wider opacity-60">
-				{mode === "bars" ? "bar" : "tc"}
-			</div> -->
+			<!-- <span class="opacity-60 text-12px">{total}</span> -->
+		</button>
+
+		<!-- metadata -->
+		<div class="opacity-85 text-12px grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+			<div class="col-span-2">{key}</div>
+			<div>{tempo}</div>
+			<div>{meter}</div>
 		</div>
-		<!-- <span class="opacity-60 text-12px">{total}</span> -->
-	</button>
+	</div>
 
 	<label class="ml-auto flex items-center gap-2 text-sm text-dim">
 		Master
