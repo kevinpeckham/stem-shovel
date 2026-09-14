@@ -6,6 +6,10 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite-plus";
 
 // One config for dev/build (Vite), lint (Oxlint) and format (Oxfmt).
+/** Where stems, renditions, mixes and demos are served from (any public Blob store). */
+const BLOB_STORE = "https://*.public.blob.vercel-storage.com";
+const production = process.env.NODE_ENV === "production";
+
 export default defineConfig({
 	// Oxlint. It has no Svelte template linting yet, so .svelte files are only
 	// covered by svelte-check (`npm run check`); Oxlint covers .ts/.js/.svelte.ts.
@@ -46,6 +50,29 @@ export default defineConfig({
 			},
 			// Server mutations/queries are remote functions (*.remote.ts), not form actions
 			experimental: { remoteFunctions: true },
+			// Content Security Policy (docs/environment.md). SvelteKit adds a nonce
+			// for its own inline script; inline styles stay allowed because
+			// `style:` attributes and transitions need them. Audio and uploads
+			// talk to Vercel Blob: files come from the public store, client
+			// uploads go to Blob's API on vercel.com.
+			csp: {
+				mode: "auto",
+				directives: {
+					"default-src": ["self"],
+					"script-src": ["self"],
+					"style-src": ["self", "unsafe-inline"],
+					"img-src": ["self", "data:", "blob:"],
+					"font-src": ["self", "data:", "https://fonts.bunny.net"],
+					"media-src": ["self", "blob:", BLOB_STORE],
+					"connect-src": ["self", BLOB_STORE, "https://vercel.com/api/blob/"],
+					"worker-src": ["self", "blob:"],
+					"object-src": ["none"],
+					"base-uri": ["self"],
+					"form-action": ["self"],
+					"frame-ancestors": ["none"],
+					...(production ? { "upgrade-insecure-requests": true } : {}),
+				},
+			},
 			// Vercel runs SvelteKit on Node; Bun is only used locally for install/scripts
 			adapter: adapter(),
 		}),

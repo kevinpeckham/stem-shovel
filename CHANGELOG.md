@@ -20,6 +20,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Security headers and a Content Security Policy** on every response,
+  after lj-website: no third-party scripts (SvelteKit nonces its own
+  inline script), fonts from bunny.net only, audio and uploads limited to
+  Vercel Blob, no framing, no sniffing, HSTS, device APIs switched off.
 - The demo upload button on the song page uses the same size classes as
   the other section buttons.
 

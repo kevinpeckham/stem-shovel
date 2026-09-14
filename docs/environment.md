@@ -48,6 +48,37 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 - Browser-only packages (the woof-editor) are imported dynamically in
   `onMount` so their server builds never enter the function.
 
+## Response headers and CSP
+
+Following lj-website's `vercel.ts`: `src/lib/constants/securityHeaders.ts`
+lists the headers every response carries (`X-Robots-Tag`, `nosniff`,
+`X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a `Permissions-Policy`
+that switches off device APIs — `autoplay` is deliberately not listed
+because disabling it blocks `play()` too), set in `src/hooks.server.ts` and
+repeated in `vercel.json` for the static files the CDN serves. Keep the two
+lists in step.
+
+The `Content-Security-Policy` comes from SvelteKit's `csp` option in
+`vite.config.ts` (mode `auto`: a nonce on its inline script per request),
+so it is not in `vercel.json`. What it allows and why:
+
+- `script-src 'self'` plus the nonce — no third-party scripts.
+- `style-src 'self' 'unsafe-inline'` — `style:` attributes and transitions.
+- `font-src` adds `https://fonts.bunny.net` (UnoCSS inlines the `@font-face`
+  CSS at build time, so only the font files are fetched).
+- `media-src` and `connect-src` add `https://*.public.blob.vercel-storage.com`
+  (`<audio>` plays mixes and demos from the store; the player fetches
+  renditions and MIDI files) and `blob:` for the mixes rendered in the
+  browser; `connect-src` also adds `https://vercel.com/api/blob/`, where
+  `@vercel/blob`'s client `upload()` PUTs.
+- `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'none'`; `upgrade-insecure-requests` in production only
+  (dev is plain http on localhost).
+
+When a new external resource is added, `bun run dev` shows the refusal in
+the browser console; `.screenshots/csp-sweep.mjs`-style Playwright runs
+that collect "Refused to" console lines are how the policy was checked.
+
 ## Turso + Drizzle
 
 Design and rationale: [data-model.md](data-model.md). Schema files are the

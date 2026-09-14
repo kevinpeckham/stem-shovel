@@ -1,6 +1,7 @@
 import { building } from "$app/environment";
 import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
+import { SECURITY_HEADERS } from "$lib/constants/securityHeaders";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
@@ -38,8 +39,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		: [];
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });
-	// Nothing here is for search engines (robots.txt and the meta tag say the
-	// same; vercel.json adds the header to static files the CDN serves).
-	response.headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+	// Nothing here is for search engines, and nothing frames or sniffs it
+	// (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
 	return response;
 };
