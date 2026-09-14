@@ -11,13 +11,13 @@ import { ENV } from "varlock/env";
 const from = (name = "Stem Shovel") => `${name} <no-reply@${ENV.RESEND_MAIL_DOMAIN}>`;
 
 /** Header-safe: no line breaks, no angle brackets, bounded length. */
-export const headerSafe = (s: string) =>
+const headerSafe = (s: string) =>
 	s
 		.replace(/[\r\n<>]/g, " ")
 		.trim()
 		.slice(0, 120);
 
-export async function sendEmail(options: {
+async function sendEmail(options: {
 	to: string;
 	subject: string;
 	html: string;

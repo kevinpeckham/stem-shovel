@@ -37,8 +37,7 @@ public by URL; editing needs a signed-in member.
   minute per user).
 - **New users get their own account**: the `user.create.after` hook creates
   an `account` named after them (slug from the name, made unique) and an
-  `owner` membership. Inviting people into an existing account is not built
-  yet — insert an `account_member` row for now.
+  `owner` membership. Others join through invitations (below).
 - **Existing users** (the seeded owner predates sign-in) get a credential
   with `PASSWORD='…' bun run db:set-password <email>`; the script hashes with
   Better Auth's own hasher and writes the `auth_account` row.

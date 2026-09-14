@@ -40,8 +40,10 @@ first account.
 can open an account's projects and play its songs; the controls (upload,
 rename, delete, settings, the editors) appear only for members, and every
 mutation checks membership on the server regardless. Sign-in is Better Auth
-with email + password (`/sign-in`, `/sign-up`); a new user gets their own
-account. See [docs/auth.md](docs/auth.md).
+with email + password and a verified address (`/sign-in`, `/sign-up`,
+`/forgot-password`); a new user gets their own account, and owners invite
+others by email from account settings. Mail goes through Resend. See
+[docs/auth.md](docs/auth.md).
 
 ## Configuration
 
@@ -73,8 +75,10 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   needs a new URL — and deletes the old blob). Per-stem Download and the
   "Download Stems" button fetch the Blob files in the browser
   (`client-zip`, stored not compressed) so nothing goes through the server.
-  Demo recordings (`src/routes/api/demos/`) share the route and the
-  three steps, minus the decode.
+  Demo recordings (`src/routes/api/demos/`) and per-stem MIDI files
+  (`src/routes/api/stems/[id]/midi/`) share the route and the three steps,
+  minus the decode; `MidiBadge` / `MidiRoll` show a MIDI file as a piano
+  roll in the row (`src/lib/audio/midi.ts` parses it in the browser).
 - `src/lib/server/transcode.ts` — after an upload, ffmpeg (`ffmpeg-static`,
   traced into the Vercel function) renders an AAC playback rendition of each
   stem and an MP3 of each demo, in the background of the request
@@ -82,6 +86,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   any that are missing. `src/lib/server/mix.ts` renders MP3 mixdowns from
   the renditions: the original mix is cached in Blob and kept current as
   stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
+- `src/lib/server/email.ts` — Resend: verification and reset mail for Better
+  Auth, invitations (`/invite/[token]`) and share-by-email, from templates
+  in `lib/utils/renderEmail.ts`.
 - `src/lib/server/access.ts` and `src/lib/server/previewAuth.ts` — tenant
   checks (every query scoped by account; viewing public, editing for
   members) and the screenshot bot's token bypass (docs/auth.md,
@@ -153,10 +160,12 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 3. ~~Client-side uploads to Vercel Blob via `@vercel/blob/client`.~~ Done.
 4. ~~Load the manifest from Turso.~~ Done.
 5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
-6. ~~Auth (Better Auth).~~ Done; email verification, password reset and
-   invitations still need an email provider.
+6. ~~Auth (Better Auth).~~ Done, with email verification, password reset,
+   invitations and share-by-email over Resend (v0.5.0).
 7. ~~Accounts in the URL.~~ Done.
 8. ~~Playback renditions, MP3 mixdowns, project playlist, demo
    recordings.~~ Done (v0.2.0).
-9. Stem ordering, saved mixes, document version restore UI, invitations
-   (needs an email provider), share links.
+9. ~~Song version, sections, timed changes, timecode and bars, MIDI per
+   stem.~~ Done (v0.3.0–v0.5.0).
+10. Stem ordering, saved mixes, document version restore UI, share links,
+    removing members, 2FA.
