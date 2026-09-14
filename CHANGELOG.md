@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-14
+
 ### Added
 
 - **Comments on songs**: a Comments tab in the documents panel lists them
@@ -19,7 +21,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Authors edit and delete their own; owners and admins delete any.
   The timeline row draws the mix's waveform (stems summed once decoded,
   their stored peaks combined before that) behind the icons, and the open
-  comment is marked with a line on it. Migration 0022.
+  comment is marked with a line on it. The row seeks like a stem row.
+
+### Technical
+
+- New `comment` table (migration 0022). `engine.mixPeaks` holds the
+  summed waveform (`computeMixPeaks`; `combinePeaks` from stored per-stem
+  peaks before decoding).
 
 ### Changed
 

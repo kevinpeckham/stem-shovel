@@ -16,7 +16,7 @@ export interface Notification {
 	dismissable: boolean;
 }
 
-export interface NotifyOptions {
+interface NotifyOptions {
 	id?: string;
 	kind?: NotificationKind;
 	timeout?: number | null;
