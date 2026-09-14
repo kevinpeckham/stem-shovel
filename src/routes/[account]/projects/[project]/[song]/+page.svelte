@@ -31,6 +31,7 @@
 
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 	import { demoContentType } from "$lib/utils/demoContentType";
+	import { clearForm } from "$lib/utils/clearForm";
 	import { slugify } from "$lib/utils/slugify";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
@@ -659,6 +660,8 @@
 			popover="auto"
 			onbeforetoggle={(e) => {
 				if (e.newState === "open") {
+					clearForm(updateSong); // saved values, not the last edit
+					positionError = null;
 					resetSectionRows();
 					resetChangeRows();
 					startAtEntry = startAtText;

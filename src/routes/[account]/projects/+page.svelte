@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { createProject } from "$lib/remote/projects.remote";
+	import { clearForm } from "$lib/utils/clearForm";
 
 	let { data } = $props();
+
+	// The form keeps the last name across navigations (it redirects to the
+	// new project); start each visit empty.
+	$effect(() => clearForm(createProject));
 </script>
 
 <svelte:head>

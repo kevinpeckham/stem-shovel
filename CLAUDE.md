@@ -66,6 +66,11 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `src/lib/constants/`. `$lib/val/` holds valibot schemas and their types
   only — a helper that a schema needs (like `songChangeValueError`) is a
   util the schema imports, never the other way round (Fallow flags cycles).
+- **A remote form remembers its last values** for the life of the page
+  (module state), so a popover that holds one calls `clearForm(form)` from
+  `$lib/utils/clearForm` in `onbeforetoggle` when it opens (inputs fall back
+  to their `.as(type, value)` defaults), and a form that stays on the page
+  calls it plus `element.reset()` after a successful submit.
 - **Transient feedback is a notification**, never a line of page content:
   `notify("Song settings saved")` from `$lib/state/notifications.svelte`
   (success evaporates in 4 s, errors stay until dismissed); the stack is

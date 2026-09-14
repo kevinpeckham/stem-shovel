@@ -18,6 +18,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   settings (role, note, use limit, expiry), copy the code or its sign-up
   link, and revoke them. New `invite_code` table (migration 0023).
 
+### Fixed
+
+- **Popover forms no longer show the previous entry**: a remote form keeps
+  what was last typed or submitted for the life of the page, so "Add a
+  song" opened on the last title and settings popovers on the last edit.
+  Popovers now open on saved values (or empty), the invite and invite-code
+  forms clear after sending, and the new-project field starts empty.
+
 ### Changed
 
 - **Security headers and a Content Security Policy** on every response,

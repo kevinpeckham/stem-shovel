@@ -13,6 +13,7 @@
 	import { page } from "$app/state";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
+	import { clearForm } from "$lib/utils/clearForm";
 	import { slugify } from "$lib/utils/slugify";
 
 	let { data } = $props();
@@ -140,9 +141,13 @@
 			<h3 class="mt-6 text-15px font-700">Invite someone</h3>
 			<form
 				class="mt-2 flex flex-wrap items-end gap-3"
-				{...inviteMember.enhance(async ({ submit }) => {
+				{...inviteMember.enhance(async ({ submit, element }) => {
 					await submit();
-					if (inviteMember.result?.sent) notify(`Invitation sent to ${inviteMember.result.sent}`);
+					if (inviteMember.result?.sent) {
+						notify(`Invitation sent to ${inviteMember.result.sent}`);
+						clearForm(inviteMember);
+						element.reset();
+					}
 				})}
 			>
 				<input {...inviteMember.fields.accountId.as("hidden", data.account.id)} />
@@ -199,9 +204,13 @@
 			</p>
 			<form
 				class="mt-2 flex flex-wrap items-end gap-3"
-				{...createInviteCode.enhance(async ({ submit }) => {
+				{...createInviteCode.enhance(async ({ submit, element }) => {
 					await submit();
-					if (createInviteCode.result?.code) notify("Invite code created");
+					if (createInviteCode.result?.code) {
+						notify("Invite code created");
+						clearForm(createInviteCode);
+						element.reset();
+					}
 				})}
 			>
 				<input {...createInviteCode.fields.accountId.as("hidden", data.account.id)} />
