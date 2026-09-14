@@ -4,6 +4,7 @@
 	import StemRow from "$lib/components/StemRow.svelte";
 	import Transport from "$lib/components/Transport.svelte";
 	import { formatBytes } from "$lib/utils/formatBytes";
+	import type { MidiSummary } from "$lib/audio/midi";
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "$lib/audio/measures";
 	import { readoutMode } from "$lib/audio/readout.svelte";
@@ -19,6 +20,8 @@
 		/** Per-row actions (download, rename, …), rendered at the end of each row. */
 		stemMenu?: Snippet<[StemState]>;
 		stemBadge?: Snippet<[StemState]>;
+		/** Stems showing their MIDI piano roll instead of the waveform, by stem id. */
+		midiViews?: Record<string, MidiSummary>;
 		/** Rendered to the right of the "N stems" line (e.g. "Download all"). */
 		headerExtras?: Snippet<[StemEngine]>;
 		/** Song structure; the timeline row shows when there is a section or a change worth a lane (timelineKinds). */
@@ -40,6 +43,7 @@
 		errorHint,
 		stemMenu,
 		stemBadge,
+		midiViews = {},
 		headerExtras,
 		sections = [],
 		changes = [],
@@ -127,7 +131,13 @@
 			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
 		{/if}
 		{#each engine.stems as stem (stem.id)}
-			<StemRow {stem} {engine} menu={stemMenu} badge={stemBadge} />
+			<StemRow
+				{stem}
+				{engine}
+				menu={stemMenu}
+				badge={stemBadge}
+				roll={midiViews[stem.id] ?? null}
+			/>
 		{/each}
 	</section>
 

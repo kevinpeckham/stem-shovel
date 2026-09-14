@@ -1,4 +1,6 @@
 <script lang="ts">
+	import MidiRoll from "$lib/components/MidiRoll.svelte";
+	import type { MidiSummary } from "$lib/audio/midi";
 	import { FADER_MAX, type StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
 	import { formatTime } from "$lib/utils/formatTime";
@@ -12,9 +14,11 @@
 		menu?: Snippet<[StemState]>;
 		/** Small marks beside the name (a "midi" chip when the stem has a MIDI file). */
 		badge?: Snippet<[StemState]>;
+		/** When given, a piano roll of the stem's MIDI file replaces the waveform. */
+		roll?: MidiSummary | null;
 	}
 
-	let { stem, engine, menu, badge }: Props = $props();
+	let { stem, engine, menu, badge, roll = null }: Props = $props();
 
 	// Audible right now? Mirrors the engine's effective-gain rule for the visuals.
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
@@ -38,7 +42,7 @@
 	class="
 		grid
 		grid-cols-[1fr_auto_auto]
-		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr]"
+		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr] relative"
 	role="group"
 	aria-label={stem.label}
 	{onkeydown}
@@ -54,7 +58,7 @@
 			>
 				{stem.label}
 			</div>
-			{#if badge}{@render badge(stem)}{/if}
+			{#if badge}<div class="absolute left-96px top-3">{@render badge(stem)}</div>{/if}
 		</div>
 		<!-- <div class="text-xs text-dim">
 			{#if !stem.decoded}
@@ -138,14 +142,27 @@
 
 	<!-- waveform -->
 	<div class="col-span-3 sm-col-span-1 bg-blue-300/5 rounded">
-		<Waveform
-			peaks={stem.peaks}
-			{progress}
-			{span}
-			dimmed={silenced || !stem.decoded}
-			label={stem.label}
-			onseek={(f) => engine.seek(f * engine.duration)}
-		/>
+		{#if roll}
+			<MidiRoll
+				notes={roll.notes}
+				lowest={roll.lowest}
+				highest={roll.highest}
+				{progress}
+				songDuration={engine.duration}
+				dimmed={silenced}
+				label={stem.label}
+				onseek={(f) => engine.seek(f * engine.duration)}
+			/>
+		{:else}
+			<Waveform
+				peaks={stem.peaks}
+				{progress}
+				{span}
+				dimmed={silenced || !stem.decoded}
+				label={stem.label}
+				onseek={(f) => engine.seek(f * engine.duration)}
+			/>
+		{/if}
 	</div>
 
 	<!-- context menu -->

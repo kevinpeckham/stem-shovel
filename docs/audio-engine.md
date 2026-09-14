@@ -63,6 +63,13 @@ fields are `$state`, so components read `engine.position` directly.
   and `song.endAt` the song's end for the total; both draw as dashed lines
   on the timeline. Before the start the count runs through bar 0, -1, … as
   a DAW does.
+- **MIDI view** (`lib/audio/midi.ts`, `MidiRoll.svelte`, `MidiBadge.svelte`):
+  a stem with a MIDI file shows a "MIDI" chip beside its name; clicking it
+  swaps the row's waveform for a piano roll of the file's notes on the
+  song's time scale (same seek and keyboard behaviour), and back. The file
+  is fetched from Blob and parsed in the browser once per URL — a small
+  SMF reader that merges tracks, follows tempo changes and keeps note
+  on/off only.
 - **`mix()`** returns the audible mix (effective gain per stem with mute,
   solo and fader folded in, silent stems omitted, and master) for the
   server-side MP3 mixdown (docs/uploads-and-blob.md).

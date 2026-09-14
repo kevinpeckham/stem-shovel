@@ -18,8 +18,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   song's link with a note. New `invitation` table (migration 0021), new
   `RESEND_API_KEY` / `RESEND_MAIL_DOMAIN` variables.
 - **MIDI file per stem**: upload one from the stem's row menu ("Upload
-  MIDI", later "Replace MIDI" / "Remove MIDI"); a "midi" chip beside the
-  stem name marks it and "Download MIDI" joins the menu. Migration 0020.
+  MIDI", later "Replace MIDI" / "Remove MIDI"); a "MIDI" chip beside the
+  stem name marks it and "Download MIDI" joins the menu. Clicking the chip
+  swaps the row's waveform for a piano roll of the file's notes, and back.
+  Migration 0020.
 
 ### Changed
 

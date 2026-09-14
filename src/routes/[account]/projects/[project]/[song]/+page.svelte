@@ -1,5 +1,7 @@
 <script lang="ts">
+	import MidiBadge from "$lib/components/MidiBadge.svelte";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
+	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
 	import { bumpVersion } from "$lib/utils/bumpVersion";
@@ -364,6 +366,33 @@
 		)) {
 			if (e.type === "pointerdown" && menu.contains(e.target as Node)) continue;
 			menu.open = false;
+		}
+	}
+
+	// The MIDI badge toggles a piano roll in place of the row's waveform; files
+	// are fetched from Blob and parsed once per URL.
+	let midiViews = $state<Record<string, MidiSummary>>({});
+	const midiCache = new Map<string, Promise<MidiSummary>>();
+	async function toggleMidiView(stemId: string) {
+		if (midiViews[stemId]) {
+			midiViews = Object.fromEntries(Object.entries(midiViews).filter(([id]) => id !== stemId));
+			return;
+		}
+		const url = stemRows.get(stemId)?.midiUrl;
+		if (!url) return;
+		let parsed = midiCache.get(url);
+		if (!parsed) {
+			parsed = fetch(url).then(async (res) => {
+				if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+				return parseMidi(await res.arrayBuffer());
+			});
+			midiCache.set(url, parsed);
+		}
+		try {
+			midiViews = { ...midiViews, [stemId]: await parsed };
+		} catch (e) {
+			midiCache.delete(url);
+			alert(`Could not read the MIDI file: ${e instanceof Error ? e.message : e}`);
 		}
 	}
 
@@ -1060,6 +1089,7 @@
 					manifest={data.manifest}
 					{stemMenu}
 					{stemBadge}
+					{midiViews}
 					sections={data.song.sections}
 					changes={data.song.changes}
 					startAt={data.song.startAt}
@@ -1466,12 +1496,7 @@
 
 {#snippet stemBadge(stem: StemState)}
 	{#if stemRows.get(stem.id)?.midiUrl}
-		<span
-			class="shrink-0 rounded border border-white/20 px-1 text-9px font-600 uppercase tracking-wider opacity-80"
-			title="MIDI available — download it from the row menu"
-		>
-			midi
-		</span>
+		<MidiBadge active={!!midiViews[stem.id]} onclick={() => toggleMidiView(stem.id)} />
 	{/if}
 {/snippet}
 
