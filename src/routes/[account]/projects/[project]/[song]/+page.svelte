@@ -521,6 +521,9 @@
 	let playerEngine = $state<StemEngine | null>(null);
 	let mixing = $state<MixMode | null>(null);
 	let mixError = $state<string | null>(null);
+	/** `project-song-v1.2.3`: every download names the song version it was made from. */
+	let downloadStem = $derived(`${data.song.project.slug}-${data.song.slug}-v${data.song.version}`);
+
 	async function downloadMix(mixMode: MixMode, engine?: StemEngine) {
 		if (mixing) return;
 		mixError = null;
@@ -539,7 +542,7 @@
 		try {
 			await saveAs(
 				`/api/songs/${data.song.id}/mix${query}`,
-				`${data.song.project.slug}-${data.song.slug}-${mixMode === "custom" ? "custom-mix" : "mix"}.mp3`,
+				`${downloadStem}-${mixMode === "custom" ? "custom-mix" : "mix"}.mp3`,
 			);
 		} catch (e) {
 			mixError = e instanceof Error ? e.message : String(e);
@@ -568,7 +571,7 @@
 			const blob = await downloadZip(entries()).blob();
 			const a = document.createElement("a");
 			a.href = URL.createObjectURL(blob);
-			a.download = `${data.song.project.slug}-${data.song.slug}-stems.zip`;
+			a.download = `${downloadStem}-stems.zip`;
 			a.click();
 			setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
 		} finally {

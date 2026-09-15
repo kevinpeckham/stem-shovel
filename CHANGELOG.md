@@ -28,6 +28,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Mix downloads carry the song version**: the original and custom mix
+  MP3s (and the stems zip) are named `project-song-v1.2.3-mix.mp3` and so
+  on.
 - **Security headers and a Content Security Policy** on every response,
   after lj-website: no third-party scripts (SvelteKit nonces its own
   inline script), fonts from bunny.net only, audio and uploads limited to
