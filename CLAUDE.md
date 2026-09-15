@@ -20,6 +20,7 @@ bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ —
                      # signed in as the Screenshot Bot when PREVIEW_AUTH_TOKEN is set (docs/agent-screenshots.md)
 bun run db:generate / db:migrate / db:seed / db:studio   # drizzle-kit via varlock
 bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
+bun run db:system-admin <email>         # make a user the operator (/admin)
 ```
 
 Bun is the package manager (`packageManager` pin; `bun.lock` only). varlock

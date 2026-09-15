@@ -748,8 +748,9 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 
 const newCode = customAlphabet(INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH);
 
+/** `accountId` null = a system code that only opens sign-up (no account to join). */
 export async function createInviteCode(
-	accountId: string,
+	accountId: string | null,
 	createdBy: string,
 	opts: { role: InviteRole; note: string; maxUses: number | null; expiresDays: number },
 ) {
@@ -769,9 +770,9 @@ export async function createInviteCode(
 }
 
 /** Every code the account has issued, newest first, with whether it still works. */
-export async function listInviteCodes(accountId: string) {
+export async function listInviteCodes(accountId: string | null) {
 	const rows = await db.query.inviteCode.findMany({
-		where: eq(inviteCode.accountId, accountId),
+		where: accountId === null ? isNull(inviteCode.accountId) : eq(inviteCode.accountId, accountId),
 		orderBy: [desc(inviteCode.createdAt)],
 		with: { creator: { columns: { name: true } } },
 	});
@@ -787,11 +788,16 @@ function inviteCodeState(r: InviteCodeRow) {
 	return "open" as const;
 }
 
-export async function revokeInviteCode(accountId: string, id: string) {
+export async function revokeInviteCode(accountId: string | null, id: string) {
 	const [row] = await db
 		.update(inviteCode)
 		.set({ revokedAt: new Date() })
-		.where(and(eq(inviteCode.accountId, accountId), eq(inviteCode.id, id)))
+		.where(
+			and(
+				accountId === null ? isNull(inviteCode.accountId) : eq(inviteCode.accountId, accountId),
+				eq(inviteCode.id, id),
+			),
+		)
 		.returning({ id: inviteCode.id });
 	return !!row;
 }
@@ -811,17 +817,65 @@ export async function redeemInviteCode(code: string, userId: string) {
 	const found = await inviteCodeByCode(code);
 	if (found.status !== "open") return found.status;
 	const row = found.code;
-	const existing = await db.query.accountMember.findFirst({
-		where: and(eq(accountMember.accountId, row.accountId), eq(accountMember.userId, userId)),
-	});
-	if (!existing) {
-		await db.insert(accountMember).values({ accountId: row.accountId, userId, role: row.role });
+	// A system code (no account) only opens sign-up; the personal workspace is made by auth.ts.
+	if (row.accountId) {
+		const existing = await db.query.accountMember.findFirst({
+			where: and(eq(accountMember.accountId, row.accountId), eq(accountMember.userId, userId)),
+		});
+		if (!existing) {
+			await db.insert(accountMember).values({ accountId: row.accountId, userId, role: row.role });
+		}
 	}
 	await db
 		.update(inviteCode)
 		.set({ uses: sql`${inviteCode.uses} + 1` })
 		.where(eq(inviteCode.id, row.id));
 	return { status: "joined" as const, account: row.account };
+}
+
+// ---- system admin -----------------------------------------------------------
+
+/** Every account with its size, and every user, for /admin. */
+export async function systemOverview() {
+	const accounts = await db.query.account.findMany({
+		orderBy: [asc(account.name)],
+		with: { members: { with: { user: { columns: { name: true, email: true } } } } },
+	});
+	const counts = await db
+		.select({ accountId: song.accountId, songs: sql<number>`count(*)` })
+		.from(song)
+		.groupBy(song.accountId);
+	const storage = await db
+		.select({ accountId: stem.accountId, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
+		.from(stem)
+		.where(eq(stem.status, "ready"))
+		.groupBy(stem.accountId);
+	const songsOf = new Map(counts.map((c) => [c.accountId, c.songs]));
+	const bytesOf = new Map(storage.map((b) => [b.accountId, b.bytes ?? 0]));
+	const users = await db.query.user.findMany({
+		orderBy: [asc(schema.user.name)],
+		columns: {
+			id: true,
+			name: true,
+			email: true,
+			emailVerified: true,
+			isActive: true,
+			isSystemAdmin: true,
+			createdAt: true,
+		},
+	});
+	return {
+		accounts: accounts.map((a) => ({
+			id: a.id,
+			name: a.name,
+			slug: a.slug,
+			createdAt: a.createdAt,
+			songs: songsOf.get(a.id) ?? 0,
+			bytes: bytesOf.get(a.id) ?? 0,
+			members: a.members.map((m) => ({ role: m.role, name: m.user.name, email: m.user.email })),
+		})),
+		users,
+	};
 }
 
 // ---- stem MIDI files --------------------------------------------------------

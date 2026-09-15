@@ -14,5 +14,7 @@ export const user = table("user", {
 	emailVerified: t.integer("email_verified", { mode: "boolean" }).default(false).notNull(),
 	image: t.text("image"),
 	isActive: t.integer("is_active", { mode: "boolean" }).default(true).notNull(),
+	/** Operator of the whole app (/admin): set by `bun run db:system-admin <email>`, never from a request. */
+	isSystemAdmin: t.integer("is_system_admin", { mode: "boolean" }).default(false).notNull(),
 	...timestamps,
 });

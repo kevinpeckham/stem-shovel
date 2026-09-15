@@ -103,6 +103,7 @@ export const auth = betterAuth({
 	user: {
 		additionalFields: {
 			isActive: { type: "boolean", required: true, defaultValue: true, input: false },
+			isSystemAdmin: { type: "boolean", required: true, defaultValue: false, input: false },
 		},
 	},
 	databaseHooks: {

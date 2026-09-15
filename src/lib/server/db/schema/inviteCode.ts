@@ -6,19 +6,18 @@ import { id, timestamps } from "./columns";
 import { user } from "./user";
 
 /**
- * A reusable code that lets someone sign up and join the account (sign-up is
- * otherwise closed). Owners and admins generate them from account settings;
- * `maxUses` null means unlimited, `expiresAt` null never expires, and
- * `revokedAt` closes it early.
+ * A reusable code that lets someone sign up (sign-up is otherwise closed).
+ * With an account it also joins them to it: owners and admins generate
+ * those from account settings. Without one (`accountId` null) it only
+ * opens sign-up — the newcomer gets their own workspace — and only a
+ * system admin (/admin) can mint it. `maxUses` null means unlimited,
+ * `expiresAt` null never expires, and `revokedAt` closes it early.
  */
 export const inviteCode = table(
 	"invite_code",
 	{
 		id: id(),
-		accountId: t
-			.text("account_id")
-			.notNull()
-			.references(() => account.id, { onDelete: "cascade" }),
+		accountId: t.text("account_id").references(() => account.id, { onDelete: "cascade" }),
 		code: t.text("code").notNull().unique(),
 		role: t.text("role").$type<InviteRole>().notNull().default("member"),
 		/** A label for the settings list, e.g. who it is for. */

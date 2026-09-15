@@ -26,6 +26,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Popovers now open on saved values (or empty), the invite and invite-code
   forms clear after sending, and the new-project field starts empty.
 
+### Added
+
+- **System admin and new-account invite codes**: `bun run db:system-admin
+<email>` makes a user the operator; `/admin` (a 404 for anyone else)
+  lists every account with members, songs and storage, every user, and
+  issues invite codes that open sign-up without joining an account, so a
+  newcomer gets a workspace of their own. Migration 0024 (`user.is_system_admin`,
+  `invite_code.account_id` nullable).
+
 ### Changed
 
 - **Mix downloads carry the song version**: the original and custom mix

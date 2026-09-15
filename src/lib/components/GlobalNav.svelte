@@ -3,7 +3,7 @@
 	import { page } from "$app/state";
 
 	interface Props {
-		user: { name: string } | null;
+		user: { name: string; isSystemAdmin?: boolean } | null;
 		/** Accounts the user belongs to; the current one is in the URL. */
 		memberships: { accountId: string; slug: string; name: string }[];
 	}
@@ -17,8 +17,11 @@
 			? [
 					{ label: "Projects", href: `/${accountSlug}/projects` },
 					...(member ? [{ label: "Settings", href: `/${accountSlug}/settings` }] : []),
+					...(user?.isSystemAdmin ? [{ label: "Admin", href: "/admin" }] : []),
 				]
-			: [],
+			: user?.isSystemAdmin
+				? [{ label: "Admin", href: "/admin" }]
+				: [],
 	);
 	// Members see their account's name; a visitor sees the account they are viewing.
 	let accountName = $derived(member?.name ?? (page.data.account?.name as string | undefined) ?? "");

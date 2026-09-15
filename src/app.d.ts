@@ -5,7 +5,7 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			/** Signed-in user, or null. */
-			user: { id: string; name: string; email: string } | null;
+			user: { id: string; name: string; email: string; isSystemAdmin: boolean } | null;
 			/** Accounts the user belongs to (empty when signed out). */
 			memberships: { accountId: string; slug: string; name: string; role: string }[];
 		}

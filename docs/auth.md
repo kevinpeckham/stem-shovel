@@ -43,6 +43,14 @@ public by URL; editing needs a signed-in member.
   invitation or counts a use of the code) besides creating the personal
   one. Users made outside sign-up (seed, scripts) have no request context
   and pass.
+- **System admin** (`user.is_system_admin`, migration 0024): the operator
+  of the app, set only by `bun run db:system-admin <email>` (`--remove` to
+  undo), never from a request. `/admin` (404 for everyone else, so it is not
+  advertised) lists every account with its members, songs and storage,
+  every user, and mints **new-account invite codes**: `invite_code` rows
+  with no `account_id`, which open sign-up without joining anything — the
+  newcomer gets only their own workspace. `requireSystemAdmin` in
+  `src/lib/server/access.ts` guards the page and `src/lib/remote/admin.remote.ts`.
 - **Invite codes** (`invite_code` table, migration 0023): owners and admins
   generate them in account settings with a role, an optional note, a use
   limit (blank = unlimited) and an expiry (never / 7 / 30 / 90 days), copy

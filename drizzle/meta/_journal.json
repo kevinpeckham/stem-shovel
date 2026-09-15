@@ -169,6 +169,13 @@
       "when": 1789402213765,
       "tag": "0023_invite_code",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1789513323108,
+      "tag": "0024_system_admin_and_system_codes",
+      "breakpoints": true
     }
   ]
 }

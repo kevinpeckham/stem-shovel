@@ -20,7 +20,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!user) {
 		const session = await auth.api.getSession({ headers: event.request.headers });
 		const su = session?.user && session.user.isActive !== false ? session.user : null;
-		user = su ? { id: su.id, name: su.name, email: su.email } : null;
+		user = su
+			? { id: su.id, name: su.name, email: su.email, isSystemAdmin: su.isSystemAdmin === true }
+			: null;
 	}
 
 	event.locals.user = user;

@@ -43,6 +43,9 @@ export const InviteCodeCreateSchema = v.object({
 	),
 });
 
+/** A system admin's code: opens sign-up only, so no account and no role. */
+export const SystemInviteCodeCreateSchema = v.omit(InviteCodeCreateSchema, ["accountId", "role"]);
+
 export const InviteCodeIdSchema = v.object({ id: NanoIdSchema });
 
 export type InviteCodeCreate = v.InferOutput<typeof InviteCodeCreateSchema>;

@@ -21,6 +21,12 @@ export function requireSignedIn(locals: App.Locals, url: URL) {
 	return locals.user;
 }
 
+/** The operator of the app (user.isSystemAdmin); everyone else sees a 404, so /admin is not advertised. */
+export function requireSystemAdmin(locals: App.Locals) {
+	if (!locals.user?.isSystemAdmin) error(404, "Not found");
+	return locals.user;
+}
+
 export function requireMember(locals: App.Locals, accountId: string) {
 	const m = locals.memberships.find((m) => m.accountId === accountId);
 	if (!m) error(404, "Not found");

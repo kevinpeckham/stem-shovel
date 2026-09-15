@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
-import { InviteCodeCreateSchema, InviteCodeSchema } from "./InviteCodeSchema";
+import {
+	InviteCodeCreateSchema,
+	InviteCodeSchema,
+	SystemInviteCodeCreateSchema,
+} from "./InviteCodeSchema";
 
 describe("InviteCodeSchema", () => {
 	test("normalises what was typed", () => {
@@ -38,5 +42,16 @@ describe("InviteCodeCreateSchema", () => {
 		expect(v.safeParse(InviteCodeCreateSchema, { accountId, expiresDays: "3" }).success).toBe(
 			false,
 		);
+	});
+});
+
+describe("SystemInviteCodeCreateSchema", () => {
+	test("needs no account and takes no role", () => {
+		expect(v.parse(SystemInviteCodeCreateSchema, { maxUses: "3" })).toEqual({
+			note: "",
+			maxUses: 3,
+			expiresDays: 0,
+		});
+		expect("role" in v.parse(SystemInviteCodeCreateSchema, { role: "admin" })).toBe(false);
 	});
 });
