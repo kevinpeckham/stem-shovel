@@ -127,36 +127,46 @@
 </script>
 
 {#if editing && canEdit}
-	<form
-		bind:this={formEl}
-		class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
-		{...enhanced}
-	>
-		<input {...fields.songId.as("hidden", songId)} />
-		<input {...fields.kind.as("hidden", kind)} />
-		<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? markdown)} />
-		<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
-		<MarkdownDocEditor
-			bind:editor
-			{markdown}
-			docKey="{songId}/{kind}"
-			{label}
-			{hint}
-			backHref=""
-			backLabel=""
-			version={savedVersion}
-			pending={!!saveDoc.pending}
-			{confirmEmpty}
-			{saveError}
-			mode="embedded"
-			{view}
-			onsave={() => formEl?.requestSubmit()}
-			onclose={() => void close()}
-		/>
-	</form>
+	<!-- The box scrolls inside; the edit-mode badge is anchored to its corner, clear of the text. -->
+	<div class="relative h-full min-h-full">
+		<form
+			bind:this={formEl}
+			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-16"
+			{...enhanced}
+		>
+			<input {...fields.songId.as("hidden", songId)} />
+			<input {...fields.kind.as("hidden", kind)} />
+			<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? markdown)} />
+			<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
+			<MarkdownDocEditor
+				bind:editor
+				{markdown}
+				docKey="{songId}/{kind}"
+				{label}
+				{hint}
+				backHref=""
+				backLabel=""
+				version={savedVersion}
+				pending={!!saveDoc.pending}
+				{confirmEmpty}
+				{saveError}
+				mode="embedded"
+				{view}
+				onsave={() => formEl?.requestSubmit()}
+				onclose={() => void close()}
+			/>
+		</form>
+		<div class="pointer-events-none absolute right-6 bottom-4" aria-hidden="true">
+			<span
+				class="rounded border border-current/40 bg-oxford px-2 py-1 text-11px font-600 tracking-wider uppercase text-dim"
+			>
+				Edit mode
+			</span>
+		</div>
+	</div>
 {:else if html}
 	<article
-		class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 	>
 		{@render above?.()}
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
@@ -164,7 +174,7 @@
 	</article>
 {:else}
 	<div
-		class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 	>
 		{@render above?.()}
 		<p>

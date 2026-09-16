@@ -172,8 +172,11 @@ fields are `$state`, so components read `engine.position` directly.
   emptied document), no title, the hint as the ⓘ tooltip, no shading, the
   text keeping the reading view's margin with the block buttons tucked
   into the panel's padding while the editor is hovered or focused, and no
-  Done (the toolbar's check button and Escape close instead). The default
-  `"standalone"` mode is the full-page editor. The page renders only the
+  Done (the toolbar's check button and Escape close instead). The box is
+  bounded (70vh) and scrolls inside, in both modes, and while editing an
+  "Edit mode" badge is anchored to its bottom-right corner, outside the
+  scrolling form. The default `"standalone"` mode is the full-page editor.
+  The page renders only the
   active document (a remote form attaches to one element) and closes it
   through the panel's exported `close()`, which waits a serialise debounce
   (the WYSIWYG writes markdown 250 ms after a keystroke), saves what is
