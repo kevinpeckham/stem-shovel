@@ -1,4 +1,7 @@
 <script lang="ts">
+	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
+	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
+
 	let { data } = $props();
 
 	const description =
@@ -67,14 +70,32 @@
 		</div>
 
 		<div class="">
-			<img
-				class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
-				loading="eager"
-				src="/images/stem-shovel-screenshot-01.webp"
-				alt="Stem Shovel screenshot"
-			/>
+			{#if data.demo}
+				<!-- A live song, chosen on /admin/home: the player as visitors get it. -->
+				<div class="mt-4">
+					<SongPlayerDemo view={data.demo} href={data.demo.href} />
+				</div>
+			{:else}
+				<img
+					class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
+					loading="eager"
+					src="/images/stem-shovel-screenshot-01.webp"
+					alt="Stem Shovel screenshot"
+				/>
+			{/if}
 		</div>
 	</div>
+
+	{#if data.demo}
+		<section class="mt-12">
+			<h2 class="heading-2 leading-tight">Charts, lyrics, notes and comments</h2>
+			<p class="opacity-90 text-17px max-w-740px mb-4">
+				Every song carries its own chart, lyrics and notes, written in place by the band, and a
+				comment thread pinned to moments in the music. Here they are for the song above.
+			</p>
+			<SongDocsDemo view={data.demo} href={data.demo.href} />
+		</section>
+	{/if}
 
 	<div class="mt-8 flex flex-wrap gap-3">
 		{#if data.user}

@@ -88,6 +88,11 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
 - `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
   on a song (docs/audio-engine.md), with a `comment` table.
+- `src/routes/+page.server.ts`, `SongPlayerDemo.svelte`, `SongDocsDemo.svelte`,
+  `src/lib/server/songView.ts` — the front page demos a public song (chosen
+  on /admin/home, stored in `app_setting`): the player with its downloads,
+  and the documents panel, read-only; the song page loads through the same
+  `songView`.
 - `src/routes/admin/`, `src/lib/remote/admin.remote.ts` — the operator's area
   (a side-nav layout with a page per concern: accounts, users, invite codes,
   bug reports, feature requests, AI requests, audit log), for users flagged

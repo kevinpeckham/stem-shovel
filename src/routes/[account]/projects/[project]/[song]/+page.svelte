@@ -21,6 +21,7 @@
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "$lib/audio/measures";
+	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "$lib/audio/downloads";
 	import { bumpVersion } from "$lib/utils/bumpVersion";
 	import { midiContentType } from "$lib/utils/midiContentType";
 	import { formatDate } from "$lib/utils/formatDate";
@@ -377,7 +378,6 @@
 
 	// MP3 mixdown: "original" is every stem at unity (cached on the server);
 	// "custom" is what the player has audible right now — mute, solo and faders.
-	type MixMode = "original" | "custom";
 	// Song sections: the list in settings edits index, name and start. (The player
 	// can also offer "Add section at playhead" via its onaddsection prop; off for now.)
 	let sectionRows = $state<
@@ -888,23 +888,14 @@
 	async function downloadMix(mixMode: MixMode, engine?: StemEngine) {
 		if (mixing) return;
 		mixError = null;
-		const params = new URLSearchParams();
-		if (mixMode === "custom") {
-			const mix = engine?.mix() ?? { stems: [], master: 1 };
-			if (mix.stems.length === 0) {
-				mixError = "Nothing is audible — unmute a stem first.";
-				return;
-			}
-			params.set("stems", mix.stems.map((s) => `${s.id}:${s.gain.toFixed(3)}`).join(","));
-			params.set("master", mix.master.toFixed(3));
+		const query = mixQuery(mixMode, engine);
+		if (query === null) {
+			mixError = "Nothing is audible — unmute a stem first.";
+			return;
 		}
-		const query = params.size ? `?${params}` : "";
 		mixing = mixMode;
 		try {
-			await saveAs(
-				`/api/songs/${data.song.id}/mix${query}`,
-				`${downloadStem}-${mixMode === "custom" ? "custom-mix" : "mix"}.mp3`,
-			);
+			await saveMix(data.song.id, downloadStem, mixMode, query);
 		} catch (e) {
 			mixError = errorMessage(e);
 		} finally {
@@ -915,26 +906,7 @@
 		if (ready.length === 0 || zipping) return;
 		zipping = "Preparing…";
 		try {
-			const { downloadZip } = await import("client-zip");
-			const seen = new Set<string>();
-			const stems = ready;
-			// Fetched lazily as the zip is written, one file at a time.
-			async function* entries() {
-				for (const s of stems) {
-					let name = s.filename;
-					if (seen.has(name)) name = `${s.label}-${name}`;
-					seen.add(name);
-					const res = await fetch(s.url);
-					if (!res.ok) throw new Error(`${s.label}: ${res.status} ${res.statusText}`);
-					yield { name, input: res };
-				}
-			}
-			const blob = await downloadZip(entries()).blob();
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = `${downloadStem}-stems.zip`;
-			a.click();
-			setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+			await saveStemsZip(ready, downloadStem);
 		} finally {
 			zipping = null;
 		}
