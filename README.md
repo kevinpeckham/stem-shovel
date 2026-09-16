@@ -192,4 +192,4 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 9. ~~Song version, sections, timed changes, timecode and bars, MIDI per
    stem.~~ Done (v0.3.0–v0.5.0).
 10. Stem ordering, saved mixes, document version restore UI, share links,
-    removing members, 2FA.
+    removing members.

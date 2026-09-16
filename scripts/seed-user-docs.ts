@@ -23,6 +23,7 @@ const ORDER = [
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",
+	"security",
 	"reporting-a-bug",
 	"privacy-policy",
 	"copyright-policy",

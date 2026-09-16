@@ -25,10 +25,12 @@
 <main class="page-x-padding main-y-padding min-h-full">
 	<h1 class="heading-2 mb-4">What is Stem Shovel?</h1>
 	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
-		<div class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5">
+		<div
+			class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5"
+		>
 			<blockquote class="max-w-prose mb-8 text-balance">
-				Stem Shovel is a SaaS collaboration tool for musicians, bands and producers with emphasis on creativity,
-				simplicity, and affordability.
+				Stem Shovel is a SaaS collaboration tool for musicians, bands and producers with emphasis on
+				creativity, simplicity, and affordability.
 			</blockquote>
 
 			<h2 class="heading-2">Mission</h2>
@@ -58,9 +60,9 @@
 				Stem Shovel 0.0.1 was built by Kevin Peckham at Lightning Jar as part of our side-projects
 				program. Lightning Jar is a small web studio founded in 2002, with the goal of helping
 				organizations adjust to a world that is more digital every day. Stem Shovel is 100% owned
-				and maintained by Lightning Jar and we don't plan on taking on any investors. We're Ok with
-				growing slowly and we're not out to change the world. We want to keep this tool simple,
-				useful, and sustainable and if it pays its own bills one day we're happy.
+				and maintained by Lightning Jar and we don't plan on taking on any investors. We're okay
+				with growing slowly and we're not out to change the world. We want to keep this tool simple,
+				useful, and sustainable to maintain. If it helps you create more music, we're happy.
 			</p>
 		</div>
 

@@ -119,6 +119,28 @@ export async function sendShareEmail(opts: {
 	});
 }
 
+/** Two-factor switched on or off: the user hears, in case it was not them. */
+export async function sendTwoFactorChangedEmail(to: string, name: string, enabled: boolean) {
+	const body = renderEmail({
+		greeting: `Hi ${name || "there"},`,
+		lines: enabled
+			? [
+					"Two-factor authentication is now on for your Stem Shovel account. From now on, signing in asks for a code from your authenticator app (or one of your backup codes).",
+					"If this was not you, reset your password right away.",
+				]
+			: [
+					"Two-factor authentication has been switched off for your Stem Shovel account. Signing in now needs your password alone.",
+					"If this was not you, reset your password right away and turn two-factor back on from Security in the account menu.",
+				],
+		cta: { label: "Security settings", url: "https://www.stem-shovel.com/settings/security" },
+	});
+	await sendEmail({
+		to,
+		subject: enabled ? "Two-factor authentication is on" : "Two-factor authentication is off",
+		...body,
+	});
+}
+
 /** A new bug report or feature request, to each system admin; replies go to the reporter. */
 export async function sendBugReportEmail(opts: {
 	to: string;

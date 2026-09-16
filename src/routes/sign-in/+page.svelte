@@ -19,6 +19,11 @@
 			callbackURL: "/verify-email?verified=1",
 		});
 		busy = false;
+		// Password accepted, code still needed: the session is not signed in yet.
+		if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+			await goto(`/verify-2fa?next=${encodeURIComponent(safeNext(data.next))}`);
+			return;
+		}
 		if (result.error) {
 			// 403 = the address is not verified yet; Better Auth has just sent a new link.
 			error =

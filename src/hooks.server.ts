@@ -28,6 +28,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					email: su.email,
 					isSystemAdmin: su.isSystemAdmin === true,
 					isSuperAdmin: su.isSuperAdmin === true,
+					twoFactorEnabled: su.twoFactorEnabled === true,
 				}
 			: null;
 	}

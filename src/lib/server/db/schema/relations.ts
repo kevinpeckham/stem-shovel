@@ -17,6 +17,7 @@ import { songDocVersion } from "./songDocVersion";
 import { userDoc } from "./userDoc";
 import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
+import { twoFactor } from "./twoFactor";
 import { user } from "./user";
 
 // All relations live here so table files only import their foreign-key
@@ -104,6 +105,11 @@ export const userRelations = relations(user, ({ many }) => ({
 	uploadedStems: many(stem),
 	sessions: many(session),
 	authAccounts: many(authAccount),
+	twoFactors: many(twoFactor),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+	user: one(user, { fields: [twoFactor.userId], references: [user.id] }),
 }));
 
 export const userDocRelations = relations(userDoc, ({ one, many }) => ({

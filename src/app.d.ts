@@ -11,6 +11,7 @@ declare global {
 				email: string;
 				isSystemAdmin: boolean;
 				isSuperAdmin: boolean;
+				twoFactorEnabled: boolean;
 			} | null;
 			/** Accounts the user belongs to (empty when signed out). */
 			/** Accounts the user belongs to; a super admin also carries every other account as an acting owner. */

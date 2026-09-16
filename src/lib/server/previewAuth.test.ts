@@ -51,6 +51,7 @@ describe("resolvePreviewAuth (fail-closed screenshot bypass)", () => {
 			email: "screenshot-bot@stem-shovel.com",
 			isSystemAdmin: false,
 			isSuperAdmin: false,
+			twoFactorEnabled: false,
 		});
 	});
 	test("the cookie works too, and a missing or inactive bot is nobody", async () => {

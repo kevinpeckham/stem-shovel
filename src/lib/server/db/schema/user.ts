@@ -18,5 +18,7 @@ export const user = table("user", {
 	isSystemAdmin: t.integer("is_system_admin", { mode: "boolean" }).default(false).notNull(),
 	/** Acts as owner of every account (audited); `bun run db:super-admin <email>`. */
 	isSuperAdmin: t.integer("is_super_admin", { mode: "boolean" }).default(false).notNull(),
+	/** Better Auth's twoFactor plugin flips this; the secret lives in `two_factor`. */
+	twoFactorEnabled: t.integer("two_factor_enabled", { mode: "boolean" }).default(false).notNull(),
 	...timestamps,
 });

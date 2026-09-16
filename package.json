@@ -47,6 +47,7 @@
 		"marked-footnote": "^1.4.0",
 		"nanoid": "6.0.1",
 		"parse5": "^8.0.1",
+		"qrcode": "1.5.4",
 		"resend": "^6.28.0",
 		"valibot": "^1.5.0",
 		"varlock": "^1.18.0"
@@ -59,6 +60,7 @@
 		"@testing-library/jest-dom": "^7.0.1",
 		"@testing-library/svelte": "^5.4.2",
 		"@testing-library/user-event": "^14.6.7",
+		"@types/qrcode": "1.5.6",
 		"@unocss/extractor-svelte": "^66.10.2",
 		"@unocss/preset-wind4": "^66.10.2",
 		"@unocss/reset": "^66.10.2",

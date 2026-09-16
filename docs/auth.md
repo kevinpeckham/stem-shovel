@@ -113,7 +113,20 @@ public by URL; editing needs a signed-in member.
   `preview_token` cookie) equal to `PREVIEW_AUTH_TOKEN` is the Screenshot Bot
   user, checked before the session (`src/lib/server/previewAuth.ts`,
   docs/agent-screenshots.md). Fail-closed when the variable is unset.
-- **Not yet**: 2FA, changing the email address, removing members.
+- **Two-factor (TOTP)**, replicator's setup: Better Auth's `twoFactor`
+  plugin (issuer "Stem Shovel", 6 digits / 30 s, ten 8-character backup
+  codes, a 30-day trust-device cookie) with the `two_factor` table and
+  `user.two_factor_enabled` (migration 0035). The user drives it from the
+  browser: `/settings/security` (enable with password → QR from the
+  `totpURI` + backup codes → first code; disable; new codes) through
+  `authClient.twoFactor.*`; the server only sends the "it changed" email
+  (`notifyTwoFactorChanged` in `security.remote.ts`). Sign-in with it on
+  answers `twoFactorRedirect` instead of a session, and the sign-in page
+  goes to `/verify-2fa?next=…`, where a TOTP or backup code completes the
+  session. `locals.user.twoFactorEnabled` mirrors the flag; the Screenshot
+  Bot has none. The plugin rate-limits `/two-factor/*` (3 per 10 s) and
+  locks after repeated failures.
+- **Not yet**: changing the email address, removing members.
   GitHub OAuth needs an OAuth app; add `socialProviders.github` when there
   is one.
 - **Env**: `BETTER_AUTH_SECRET` (in the 1Password environment; a random

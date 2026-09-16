@@ -14,12 +14,15 @@ import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { twoFactor } from "better-auth/plugins";
 import { sveltekitCookies } from "better-auth/svelte-kit";
 import { ENV } from "varlock/env";
 
 /**
  * Better Auth, following replicator's setup: email + password with address
- * verification and password reset over Resend (src/lib/server/email.ts). No 2FA.
+ * verification and password reset over Resend (src/lib/server/email.ts), and
+ * optional TOTP two-factor (the `twoFactor` plugin: /settings/security to set
+ * up, /verify-2fa at sign-in; docs/auth.md).
  *
  * baseURL is Better Auth's identity for path matching: dev is reached from
  * several origins (localhost, the Tailscale name), so dev leaves it unset and
@@ -139,6 +142,13 @@ export const auth = betterAuth({
 		},
 	},
 	plugins: [
+		twoFactor({
+			issuer: "Stem Shovel",
+			totpOptions: { digits: 6, period: 30 },
+			backupCodeOptions: { amount: 10, length: 8 },
+			// "Trust this device" skips the code for 30 days (a signed cookie).
+			trustDeviceMaxAge: 30 * 24 * 60 * 60,
+		}),
 		sveltekitCookies(getRequestEvent), // keep last
 	],
 });

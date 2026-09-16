@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Two-factor authentication**: Security in the account menu turns on TOTP (QR code or key for any authenticator app, ten single-use backup codes), makes new backup codes, or turns it off, each with the password; sign-in then asks for the code (or a backup code) with a 30-day "trust this device" option, and an email confirms every change. Better Auth's twoFactor plugin, as in replicator.
+
 ### Changed
 
 - **/admin is a section with a side navigation** (the docs layout): one page each for accounts, users, invite codes, bug reports, feature requests, AI requests and the audit log, each loading only its own data; /admin opens Accounts.

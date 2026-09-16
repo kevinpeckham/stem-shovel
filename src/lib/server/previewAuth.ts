@@ -74,5 +74,6 @@ export async function resolvePreviewAuth(event: {
 		email: bot.email,
 		isSystemAdmin: bot.isSystemAdmin === true,
 		isSuperAdmin: bot.isSuperAdmin === true,
+		twoFactorEnabled: false,
 	};
 }

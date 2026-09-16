@@ -22,9 +22,9 @@
 		<div>Copyright 2026 Lightning Jar. All rights reserved.</div>
 		<div class="opacity-70">|</div>
 		<div class="opacity-70">
-			Built by <a
+			<a
 				class="inline hover-underline underline-offset-4 hover-text-maximumYellow"
-				href="https://www.lightningjar.com">⚡️ Lightning Jar</a
+				href="https://www.lightningjar.com">Built by ⚡️ Lightning Jar</a
 			>
 		</div>
 	</div>

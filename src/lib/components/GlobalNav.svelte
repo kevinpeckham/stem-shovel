@@ -170,9 +170,22 @@
 								></span>New account
 							</a>
 						{/if}
+						<a
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(
+								'/settings/security',
+							)
+								? 'text-maximumYellow'
+								: ''}"
+							role="menuitem"
+							href="/settings/security"
+							onclick={() => (open = false)}
+						>
+							<span class="i-ph-lock-key mr-2 inline-block align-[-2px]" aria-hidden="true"
+							></span>Security
+						</a>
 						{#if user.isSystemAdmin}
 							<a
-								class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
 									'/admin',
 								)
 									? 'text-maximumYellow'
