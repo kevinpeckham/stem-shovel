@@ -1527,7 +1527,7 @@
 		{/if}
 		{#if readyDemos.length > 0}
 			<button
-				class="button button-sm"
+				class="button button-sm lg-button-xs"
 				type="button"
 				popovertarget="song-demos"
 				title="Listen to or download the demo recordings"
