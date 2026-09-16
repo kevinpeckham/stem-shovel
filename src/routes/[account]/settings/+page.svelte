@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import {
 		createInviteCode,
@@ -48,7 +49,15 @@
 <main class="page">
 	<header class="max-w-article">
 		<h1 class="display">Settings</h1>
-		<p class="opacity-90">The account everything here belongs to.</p>
+		<p class="flex flex-wrap items-center gap-3 opacity-90">
+			The account everything here belongs to.
+			<PlanBadge
+				plan={data.account.plan}
+				lifetimeFree={data.account.lifetimeFree}
+				isFounder={data.account.isFounder}
+				size="md"
+			/>
+		</p>
 		{#if data.memberships?.find((m) => m.accountId === data.account.id)?.actingAs}
 			<p class="mt-2 rounded border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm">
 				You are not a member of this account. As a super admin you act as its owner here, and every

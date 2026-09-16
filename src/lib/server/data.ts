@@ -1,3 +1,4 @@
+import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
 	deleteBlobs,
@@ -934,6 +935,9 @@ export async function systemOverview() {
 			slug: a.slug,
 			status: a.status,
 			createdAt: a.createdAt,
+			plan: a.plan,
+			lifetimeFree: a.lifetimeFree,
+			isFounder: a.isFounder,
 			songs: songsOf.get(a.id) ?? 0,
 			bytes: bytesOf.get(a.id) ?? 0,
 			members: a.members.map((m) => ({ role: m.role, name: m.user.name, email: m.user.email })),
@@ -1244,9 +1248,21 @@ export async function createOwnedAccount(userId: string, name: string) {
 	const taken = new Set((await db.select({ slug: account.slug }).from(account)).map((r) => r.slug));
 	let slug = base;
 	for (let n = 2; taken.has(slug); n++) slug = `${base.slice(0, 60)}-${n}`;
-	const [row] = await db.insert(account).values({ name, slug }).returning();
+	// The first FOUNDER_SEATS accounts ever created are founders (docs/billing.md).
+	const isFounder = taken.size < FOUNDER_SEATS;
+	const [row] = await db.insert(account).values({ name, slug, isFounder }).returning();
 	await db.insert(accountMember).values({ accountId: row.id, userId, role: "owner" });
 	return row;
+}
+
+/** Founder status, granted or revoked by a super admin from /admin. */
+export async function setAccountFounder(id: string, isFounder: boolean) {
+	const [row] = await db
+		.update(account)
+		.set({ isFounder })
+		.where(eq(account.id, id))
+		.returning({ id: account.id });
+	return !!row;
 }
 
 // ---- memberships ------------------------------------------------------------
@@ -1256,7 +1272,18 @@ export async function accountsOf(userId: string) {
 	const rows = await db.query.accountMember.findMany({
 		where: eq(accountMember.userId, userId),
 		with: {
-			account: { columns: { id: true, name: true, slug: true, status: true, createdAt: true } },
+			account: {
+				columns: {
+					id: true,
+					name: true,
+					slug: true,
+					status: true,
+					createdAt: true,
+					plan: true,
+					lifetimeFree: true,
+					isFounder: true,
+				},
+			},
 		},
 	});
 	const counts = await db
@@ -1277,6 +1304,9 @@ export async function accountsOf(userId: string) {
 			name: m.account.name,
 			slug: m.account.slug,
 			status: m.account.status,
+			plan: m.account.plan,
+			lifetimeFree: m.account.lifetimeFree,
+			isFounder: m.account.isFounder,
 			role: m.role,
 			projects: projectsOf.get(m.accountId) ?? 0,
 			/** An owner may leave only when another owner remains. */

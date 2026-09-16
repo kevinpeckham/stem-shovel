@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { createSystemInviteCode, revokeSystemInviteCode } from "$lib/remote/admin.remote";
 	import { manageAccount, manageUser } from "$lib/remote/admin.remote";
 	import { setBugStatus } from "$lib/remote/bugs.remote";
@@ -271,7 +272,10 @@
 				{@const act = manageAccount.for(a.id)}
 				<li class="px-5 py-3 {a.status === 'active' ? '' : 'opacity-60'}">
 					<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-						<a class="link-dim" href="/{a.slug}/projects">{a.name}</a>
+						<span class="flex items-center gap-2">
+							<a class="link-dim" href="/{a.slug}/projects">{a.name}</a>
+							<PlanBadge plan={a.plan} lifetimeFree={a.lifetimeFree} isFounder={a.isFounder} />
+						</span>
 						<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
 							<span class="text-13px text-dim">
 								{a.songs}
@@ -298,12 +302,28 @@
 												? `${a.name} deleted`
 												: act.result.action === "suspend"
 													? `${a.name} suspended`
-													: `${a.name} reactivated`,
+													: act.result.action === "founder"
+														? `${a.name} is a founder account`
+														: act.result.action === "unfounder"
+															? `${a.name} is no longer a founder account`
+															: `${a.name} reactivated`,
 										);
 									}
 								})}
 							>
 								<input {...act.fields.id.as("hidden", a.id)} />
+								{#if data.superAdmin}
+									<button
+										class="link-dim"
+										disabled={!!act.pending}
+										title={a.isFounder
+											? "Revoke founder status"
+											: "Founder: never charged, unlimited data, every feature"}
+										{...act.fields.action.as("submit", a.isFounder ? "unfounder" : "founder")}
+									>
+										{a.isFounder ? "Revoke founder" : "Make founder"}
+									</button>
+								{/if}
 								<button
 									class="link-dim"
 									disabled={!!act.pending}

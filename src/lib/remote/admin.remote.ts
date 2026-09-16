@@ -1,8 +1,9 @@
 import { form, getRequestEvent } from "$app/server";
-import { requireSystemAdmin } from "$lib/server/access";
+import { requireSuperAdmin, requireSystemAdmin } from "$lib/server/access";
 import {
 	createInviteCode,
 	deleteAccount,
+	setAccountFounder,
 	deleteUser,
 	revokeInviteCode,
 	setAccountStatus,
@@ -54,10 +55,19 @@ export const manageUser = form(UserAdminSchema, async ({ id, action }) => {
 	return { action, accountsRemoved: 0 };
 });
 
-/** Suspend (closes every page and mutation of the account), reactivate, or delete an account with all its files. */
+/**
+ * Suspend (closes every page and mutation of the account), reactivate, or
+ * delete an account with all its files; grant or revoke founder status
+ * (super admins only).
+ */
 export const manageAccount = form(AccountAdminSchema, async ({ id, action }) => {
 	const { locals } = getRequestEvent();
 	requireSystemAdmin(locals);
+	if (action === "founder" || action === "unfounder") {
+		requireSuperAdmin(locals);
+		if (!(await setAccountFounder(id, action === "founder"))) error(404, "Account not found");
+		return { action };
+	}
 	if (action === "delete") {
 		if (!(await deleteAccount(id))) error(404, "Account not found");
 		return { action };

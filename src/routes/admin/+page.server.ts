@@ -17,6 +17,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		inviteCodes: await listInviteCodes(null),
 		bugReports: await listBugReports(),
 		me: admin.id,
+		superAdmin: admin.isSuperAdmin === true,
 		aiRequests: await listAiRequests(),
 		auditLog: await listAuditLog(),
 	};

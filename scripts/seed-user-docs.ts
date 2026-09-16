@@ -22,6 +22,7 @@ const ORDER = [
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",
+	"accounts-and-plans",
 	"reporting-a-bug",
 	"privacy-policy",
 	"copyright-policy",

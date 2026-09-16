@@ -225,6 +225,13 @@
       "when": 1789567831381,
       "tag": "0031_no_ai_and_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1789578511600,
+      "tag": "0032_account_plans",
+      "breakpoints": true
     }
   ]
 }

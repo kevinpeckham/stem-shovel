@@ -133,15 +133,18 @@ per song), stem versions (replicator's `audio_version` pattern), comments.
 
 ### account
 
-| column              | type                 | notes                                              |
-| ------------------- | -------------------- | -------------------------------------------------- |
-| id                  | text PK              | nanoid; also the top-level Blob folder (see below) |
-| name                | text not null        |                                                    |
-| slug                | text not null unique | URL-safe, for `/a/<slug>/…` routes                 |
-| status              | text, default active | `active` \| `suspended`                            |
-| storage_limit_bytes | integer null         | null = unlimited; enforced at token issue time     |
-| created_at          | timestamp_ms         |                                                    |
-| updated_at          | timestamp_ms         |                                                    |
+| column              | type                 | notes                                                                              |
+| ------------------- | -------------------- | ---------------------------------------------------------------------------------- |
+| id                  | text PK              | nanoid; also the top-level Blob folder (see below)                                 |
+| name                | text not null        |                                                                                    |
+| slug                | text not null unique | URL-safe, for `/a/<slug>/…` routes                                                 |
+| status              | text, default active | `active` \| `suspended`                                                            |
+| storage_limit_bytes | integer null         | null = unlimited; enforced at token issue time                                     |
+| plan                | text, default free   | subscription tier; only `free` today (docs/billing.md)                             |
+| lifetime_free       | integer bool, def. 1 | never a base subscription cost                                                     |
+| is_founder          | integer bool, def. 0 | never charged, unlimited data, every feature; first 20 accounts, then super admins |
+| created_at          | timestamp_ms         |                                                                                    |
+| updated_at          | timestamp_ms         |                                                                                    |
 
 ### account_member
 

@@ -1,5 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
+import type { AccountPlan } from "../../../val/AccountPlanSchema";
 import type { AccountStatus } from "../../../val/AccountStatusSchema";
 import { id, timestamps } from "./columns";
 
@@ -15,5 +16,11 @@ export const account = table("account", {
 	status: t.text("status").$type<AccountStatus>().notNull().default("active"),
 	/** null = unlimited. Checked when a stem upload token is issued. */
 	storageLimitBytes: t.integer("storage_limit_bytes"),
+	/** Subscription tier (docs/billing.md). Only "free" exists today. */
+	plan: t.text("plan").$type<AccountPlan>().notNull().default("free"),
+	/** No base subscription cost, ever: the promise made to every account created before paid tiers exist. */
+	lifetimeFree: t.integer("lifetime_free", { mode: "boolean" }).notNull().default(true),
+	/** Founder: never charged, unlimited data, every premium feature. The first FOUNDER_SEATS accounts, then by a super admin. */
+	isFounder: t.integer("is_founder", { mode: "boolean" }).notNull().default(false),
 	...timestamps,
 });

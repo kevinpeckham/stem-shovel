@@ -30,6 +30,12 @@ export function requireSystemAdmin(locals: App.Locals) {
 	return locals.user;
 }
 
+/** A super admin (user.isSuperAdmin): the only one who grants founder status. 404 like the rest. */
+export function requireSuperAdmin(locals: App.Locals) {
+	if (!locals.user?.isSuperAdmin) error(404, "Not found");
+	return locals.user;
+}
+
 export function requireMember(locals: App.Locals, accountId: string) {
 	const m = locals.memberships.find((m) => m.accountId === accountId);
 	if (!m) error(404, "Not found");
@@ -58,7 +64,15 @@ function auditActing(userId: string, accountId: string) {
 export async function publicAccountBySlug(slug: string) {
 	const row = await db.query.account.findFirst({
 		where: eq(schema.account.slug, slug),
-		columns: { id: true, name: true, slug: true, status: true },
+		columns: {
+			id: true,
+			name: true,
+			slug: true,
+			status: true,
+			plan: true,
+			lifetimeFree: true,
+			isFounder: true,
+		},
 	});
 	if (!row) error(404, `No account "${slug}"`);
 	return row;

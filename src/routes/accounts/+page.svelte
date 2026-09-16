@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { createAccount, leaveAccount } from "$lib/remote/accounts.remote";
 	import { clearForm } from "$lib/utils/clearForm";
 	import { page } from "$app/state";
@@ -45,6 +46,7 @@
 					>
 						<span>
 							<a class="link-dim" href="/{a.slug}/projects">{a.name}</a>
+							<PlanBadge plan={a.plan} lifetimeFree={a.lifetimeFree} isFounder={a.isFounder} />
 							<span class="block text-13px text-dim">
 								<span class="uppercase tracking-wider">{a.role}</span>
 								· {a.projects}
