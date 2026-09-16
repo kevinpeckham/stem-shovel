@@ -28,6 +28,10 @@ The frame rate used by the timecode readout, matching your DAW project.
 
 Upload a phone recording or a rough bounce as a **demo** (most audio formats are accepted and converted to MP3 for playback; up to 12 per song). Demos appear as a **Demos** button in the download row, where anyone can listen or download them.
 
+## Private
+
+A song is public by default: anyone with its address can open it. **Make private** limits it to members of the account and to people with a viewing link (see _Downloads and sharing_). A song in a private project is private already.
+
 ## Deleting a song
 
 At the bottom of the settings panel. This removes the stems and everything else on the song and cannot be undone.

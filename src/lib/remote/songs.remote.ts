@@ -27,6 +27,7 @@ import {
 	updateSong as update,
 	updateSongChanges,
 	updateSongSections,
+	createShareLink,
 } from "$lib/server/data";
 import {
 	IdSchema,
@@ -182,9 +183,21 @@ export const shareSong = command(ShareSongSchema, async ({ songId, to, message }
 	const slugs = await songSlugs(accountId, songId);
 	if (!song || !slugs) error(404, "Song not found");
 	const { url } = getRequestEvent();
+	// A private song's address alone would be a wall for the recipient: the
+	// email carries a viewing link made for them (visible in the share popover).
+	const pageUrl = `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}`;
+	const needsLink = song.isPrivate || song.project.isPrivate;
+	const link = needsLink
+		? await createShareLink(
+				accountId,
+				user.id,
+				{ songId },
+				{ note: `emailed to ${to}`, maxUses: null, expiresDays: 0 },
+			)
+		: null;
 	await sendShareEmail({
 		to,
-		url: `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}`,
+		url: link ? `${pageUrl}?share=${link.code}` : pageUrl,
 		songTitle: song.title,
 		projectName: song.project.name,
 		senderName: user.name || user.email,

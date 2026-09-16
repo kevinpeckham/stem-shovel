@@ -60,6 +60,10 @@ erDiagram
   `/docs/<slug>`: title, slug, sort order, markdown with the same hash-gated
   versioning as song documents (ten revisions kept). Written by system
   admins with the shared `MarkdownDocEditor`.
+- **share_link** — a viewing code for one private song or one project
+  (exactly one of `song_id` / `project_id`): note, creator, optional
+  `expires_at` and `max_uses`, `uses`, `revoked_at`. Projects and songs carry
+  `is_private`.
 - **bug_report** — a signed-in user's bug report from the footer: title,
   body, the page they were on and their browser (captured by the form),
   `status` open/closed and `closed_at`. Listed and closed on `/admin`.

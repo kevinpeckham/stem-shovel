@@ -28,6 +28,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Private projects and songs with viewing links**: everything stays
+  public by default; any member makes a project or a song private from
+  its settings (a private project covers its songs). Private means
+  members only, or a viewing link: any member makes one from the song's
+  share popover or the project's settings (note, expiry, use limit, copy,
+  revoke), and the link is the page address plus `?share=code`, remembered
+  for the visit so playback and mix downloads keep working. Private things
+  are left out of lists for those who cannot open them; a refusal shows a
+  Private page with a sign-in button. Sharing a private song by email sends
+  a viewing link made for the recipient. Migrations 0027 and 0028.
 - **Starting user docs**: eight pages (getting started, stems and playback,
   song settings, charts/lyrics/notes, comments, downloads and sharing,
   accounts and members, reporting a bug) live in `scripts/user-docs` and

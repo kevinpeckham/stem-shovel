@@ -16,6 +16,8 @@ export const project = table(
 			.references(() => account.id, { onDelete: "cascade" }),
 		name: t.text("name").notNull(),
 		slug: t.text("slug").notNull(),
+		/** Private: members only, or a share link (docs/auth.md); every song inside inherits it. */
+		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
 		description: t.text("description").notNull().default(""),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		archivedAt: t.integer("archived_at", { mode: "timestamp_ms" }),

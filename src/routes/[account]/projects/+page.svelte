@@ -25,7 +25,12 @@
 		<ul class="grid grid-cols-1 gap-4">
 			{#each data.projects as project (project.id)}
 				<li>
-					<a class="list-tile" href="/{data.account.slug}/projects/{project.slug}">{project.name}</a
+					<a class="list-tile" href="/{data.account.slug}/projects/{project.slug}"
+						>{#if project.isPrivate}<span
+								class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
+								title="Private"
+								aria-label="Private"
+							></span>{/if}{project.name}</a
 					>
 				</li>
 			{/each}

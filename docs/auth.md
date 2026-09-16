@@ -32,6 +32,24 @@ public by URL; editing needs a signed-in member.
   with a role from account settings; the email carries `/invite/<token>`
   (14-day expiry). Accepting needs a signed-in user whose address matches and
   creates the membership; the settings page lists and revokes pending ones.
+- **Privacy** (`project.is_private`, `song.is_private`, migration 0028):
+  everything is public by default; any member makes a project or a
+  song private from its settings (a private project makes every song in it
+  private). Private means a signed-in member of the account, or a visitor
+  carrying an open **share link** code. `share_link` rows (any member makes
+  them, for one song or one project; note, optional expiry and use limit,
+  revocable) are 12-character codes; the link is the page URL plus
+  `?share=<code>`. `[account]/+layout.server.ts` validates an arriving code,
+  counts the use, stores it in the `share` cookie (30 days, up to ten
+  codes) and hands the open grants to the loaders, which decide with the
+  pure rules in `src/lib/server/viewAccess.ts`; the mix endpoint applies the
+  same rule from the cookie. A share link grants viewing only. Refusals are
+  403s rendered by `src/routes/+error.svelte` with a sign-in button. Private
+  projects are left out of the projects list for anyone who cannot open
+  them; private songs likewise on the project page. Share-by-email on a
+  private song mints a viewing link for the recipient. The stems and mixes
+  themselves are still served from the public Blob store until the private
+  store lands (`BLOB_PRIVATE_*` are declared, unused).
 - **Sign-up is closed** (`src/lib/server/signUpGate.ts`, run from Better
   Auth's `user.create.before` hook in `src/lib/auth.ts`): the sign-up
   request must carry an invitation token (`/sign-up?invite=<token>`, where

@@ -81,6 +81,8 @@ export const stemRelations = relations(stem, ({ one }) => ({
 }));
 
 export const shareLinkRelations = relations(shareLink, ({ one }) => ({
+	account: one(account, { fields: [shareLink.accountId], references: [account.id] }),
+	project: one(project, { fields: [shareLink.projectId], references: [project.id] }),
 	song: one(song, { fields: [shareLink.songId], references: [song.id] }),
 	creator: one(user, { fields: [shareLink.createdBy], references: [user.id] }),
 }));

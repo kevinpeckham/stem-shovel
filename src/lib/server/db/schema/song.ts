@@ -23,6 +23,8 @@ export const song = table(
 			.references(() => project.id, { onDelete: "cascade" }),
 		title: t.text("title").notNull(),
 		slug: t.text("slug").notNull(),
+		/** Private: members only, or a share link; a private project makes its songs private too. */
+		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */

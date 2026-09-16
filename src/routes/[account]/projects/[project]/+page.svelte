@@ -1,5 +1,7 @@
 <script lang="ts">
+	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
+	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -51,7 +53,15 @@
 	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-5">
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
-		<h1 class="heading-1">{data.project.name}</h1>
+		<h1 class="heading-1">
+			{#if data.project.isPrivate}
+				<span
+					class="i-ph-lock mr-1 inline-block align-[-3px] text-24px opacity-70"
+					title="Private: members and viewing links only"
+					aria-label="Private"
+				></span>
+			{/if}{data.project.name}
+		</h1>
 		<span class="opacity-90 text-15px">a project from {data.account.name}</span>
 		<!-- </div> -->
 		{#if data.canEdit}
@@ -158,6 +168,22 @@
 					</button>
 				</div>
 			</form>
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<PrivacyToggle
+					kind="project"
+					id={data.project.id}
+					isPrivate={data.project.isPrivate}
+					canChange={data.canEdit}
+				/>
+			</div>
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<ShareLinks
+					target={{ projectId: data.project.id }}
+					links={data.shareLinks}
+					path="/{data.account.slug}/projects/{data.project.slug}"
+					isPrivate={data.project.isPrivate}
+				/>
+			</div>
 		</div>
 	{/if}
 
@@ -222,7 +248,13 @@
 						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 					>
 						<div>
-							<span class="">{song.title}</span>
+							<span class=""
+								>{#if song.isPrivate && !data.project.isPrivate}<span
+										class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
+										title="Private"
+										aria-label="Private"
+									></span>{/if}{song.title}</span
+							>
 							{#if song.description}
 								<span class="block text-sm">{song.description}</span>
 							{/if}
@@ -265,7 +297,13 @@
 							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 						>
 							<div>
-								<span>{song.title}</span>
+								<span
+									>{#if song.isPrivate && !data.project.isPrivate}<span
+											class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
+											title="Private"
+											aria-label="Private"
+										></span>{/if}{song.title}</span
+								>
 								{#if song.description}
 									<span class="block text-sm">{song.description}</span>
 								{/if}

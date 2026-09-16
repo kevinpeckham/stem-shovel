@@ -16,6 +16,7 @@ import type { MemberRole } from "$lib/val/MemberRoleSchema";
 import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
 import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
 import type { BugStatus } from "$lib/val/BugReportSchema";
+import type { ShareGrant } from "$lib/server/viewAccess";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -41,6 +42,7 @@ const {
 	bugReport,
 	userDoc,
 	userDocVersion,
+	shareLink,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -293,7 +295,7 @@ export async function updateSong(
 export async function getSong(accountId: string, projectSlug: string, songSlug: string) {
 	const proj = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),
-		columns: { id: true, name: true, slug: true },
+		columns: { id: true, name: true, slug: true, isPrivate: true },
 	});
 	if (!proj) return null;
 	const row = await db.query.song.findFirst({
@@ -1059,6 +1061,96 @@ export async function deleteUser(id: string) {
 	return { accountsRemoved };
 }
 
+// ---- privacy and share links ------------------------------------------------
+
+export async function setProjectPrivacy(accountId: string, id: string, isPrivate: boolean) {
+	const [row] = await db
+		.update(project)
+		.set({ isPrivate })
+		.where(and(eq(project.accountId, accountId), eq(project.id, id)))
+		.returning({ id: project.id });
+	return !!row;
+}
+
+export async function setSongPrivacy(accountId: string, id: string, isPrivate: boolean) {
+	const [row] = await db
+		.update(song)
+		.set({ isPrivate })
+		.where(and(eq(song.accountId, accountId), eq(song.id, id)))
+		.returning({ id: song.id });
+	return !!row;
+}
+
+export async function createShareLink(
+	accountId: string,
+	createdBy: string,
+	target: { songId?: string; projectId?: string },
+	opts: { note: string; maxUses: number | null; expiresDays: number },
+) {
+	const [row] = await db
+		.insert(shareLink)
+		.values({
+			accountId,
+			songId: target.songId ?? null,
+			projectId: target.projectId ?? null,
+			code: newCode(),
+			note: opts.note,
+			createdBy,
+			maxUses: opts.maxUses,
+			expiresAt: opts.expiresDays > 0 ? new Date(Date.now() + opts.expiresDays * 86_400_000) : null,
+		})
+		.returning();
+	return row;
+}
+
+type ShareLinkRow = typeof shareLink.$inferSelect;
+
+function shareLinkState(r: ShareLinkRow) {
+	if (r.revokedAt) return "revoked" as const;
+	if (r.expiresAt && r.expiresAt.getTime() < Date.now()) return "expired" as const;
+	if (r.maxUses !== null && r.uses >= r.maxUses) return "used up" as const;
+	return "open" as const;
+}
+
+/** The links made for one song or one project, newest first, with whether each still works. */
+export async function listShareLinks(target: { songId: string } | { projectId: string }) {
+	const rows = await db.query.shareLink.findMany({
+		where:
+			"songId" in target
+				? eq(shareLink.songId, target.songId)
+				: eq(shareLink.projectId, target.projectId),
+		orderBy: [desc(shareLink.createdAt)],
+		with: { creator: { columns: { name: true } } },
+	});
+	return rows.map((r) => ({ ...r, state: shareLinkState(r) }));
+}
+
+export async function revokeShareLink(accountId: string, id: string) {
+	const [row] = await db
+		.update(shareLink)
+		.set({ revokedAt: new Date() })
+		.where(and(eq(shareLink.accountId, accountId), eq(shareLink.id, id)))
+		.returning({ id: shareLink.id });
+	return !!row;
+}
+
+/** Which of the codes a visitor carries are open, and what each opens. */
+export async function openShareLinks(codes: string[]): Promise<ShareGrant[]> {
+	if (codes.length === 0) return [];
+	const rows = await db.query.shareLink.findMany({ where: inArray(shareLink.code, codes) });
+	return rows
+		.filter((r) => shareLinkState(r) === "open")
+		.map((r) => ({ code: r.code, projectId: r.projectId, songId: r.songId }));
+}
+
+/** A visitor arrived with the code: count the use. */
+export async function useShareLink(code: string) {
+	await db
+		.update(shareLink)
+		.set({ uses: sql`${shareLink.uses} + 1` })
+		.where(eq(shareLink.code, code));
+}
+
 // ---- stem MIDI files --------------------------------------------------------
 
 /** Step 1 of a MIDI upload: reserve the pathname on the stem (the previous file, if any, stays until the new one lands). */
@@ -1265,6 +1357,8 @@ export async function songForMix(songId: string) {
 		columns: {
 			id: true,
 			accountId: true,
+			projectId: true,
+			isPrivate: true,
 			title: true,
 			slug: true,
 			mixUrl: true,
@@ -1273,7 +1367,7 @@ export async function songForMix(songId: string) {
 		},
 		with: {
 			project: {
-				columns: { slug: true, name: true },
+				columns: { slug: true, name: true, isPrivate: true },
 				with: { account: { columns: { name: true } } },
 			},
 			stems: {

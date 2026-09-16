@@ -99,6 +99,8 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - `src/lib/remote/bugs.remote.ts`, `GlobalFooter.svelte` — "Report a bug" in
   the footer for signed-in users; a `bug_report` row and an email to every
   system admin.
+- `src/lib/server/viewAccess.ts`, `src/lib/remote/share.remote.ts` — privacy:
+  private projects and songs, viewing links (docs/auth.md).
 - `src/lib/server/signUpGate.ts` — sign-up is invitation-only: the rule
   Better Auth's user-create hook applies (docs/auth.md); invite codes live in
   `invite_code` and are managed from account settings.

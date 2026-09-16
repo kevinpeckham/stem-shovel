@@ -1,5 +1,7 @@
 <script lang="ts">
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
+	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
+	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
@@ -606,7 +608,15 @@
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
 			<!-- song header & metadata -->
 			<div class="flex flex-wrap items-baseline gap-4">
-				<h1 class="heading-2 mb-0">{data.song.title}</h1>
+				<h1 class="heading-2 mb-0">
+					{#if data.song.isPrivate || data.song.project.isPrivate}
+						<span
+							class="i-ph-lock mr-1 inline-block align-[-2px] text-18px opacity-70"
+							title="Private: members and viewing links only"
+							aria-label="Private"
+						></span>
+					{/if}{data.song.title}
+				</h1>
 				<span>v{data.song.version}</span>
 				<span class="opacity-90 text-15px"
 					>a song in the <a
@@ -1117,6 +1127,16 @@
 			</div>
 
 			<div class="mt-8 border-t border-white/15 pt-4">
+				<PrivacyToggle
+					kind="song"
+					id={data.song.id}
+					isPrivate={data.song.isPrivate}
+					inherited={data.song.project.isPrivate}
+					canChange={data.canEdit}
+				/>
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
 				<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
 				<p class="mt-1 text-sm text-dim">
 					Removes the song, its chart, lyrics and notes, every stem file and every demo recording.
@@ -1612,7 +1632,13 @@
 			</button>
 		</div>
 		<p class="mb-3 text-sm text-dim">
-			Sends the link to this page. Anyone with it can listen, read the chart and download the mixes.
+			{#if data.song.isPrivate || data.song.project.isPrivate}
+				Sends a viewing link to this song, made for the recipient (it appears below and can be
+				revoked). With it they can listen, read the chart and download the mixes.
+			{:else}
+				Sends the link to this page. Anyone with it can listen, read the chart and download the
+				mixes.
+			{/if}
 		</p>
 		<form class="grid gap-3" onsubmit={sendShare}>
 			<label class="block">
@@ -1628,6 +1654,14 @@
 				{shareBusy ? "Sending…" : "Send"}
 			</button>
 		</form>
+		<div class="mt-6 border-t border-white/15 pt-4">
+			<ShareLinks
+				target={{ songId: data.song.id }}
+				links={data.shareLinks}
+				path="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}"
+				isPrivate={data.song.isPrivate || data.song.project.isPrivate}
+			/>
+		</div>
 	</div>
 {/if}
 
