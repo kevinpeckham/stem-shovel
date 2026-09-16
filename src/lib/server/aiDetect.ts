@@ -23,9 +23,16 @@ export interface Candidates {
 	meter: string | null;
 }
 
+const Bpm = v.pipe(v.number(), v.minValue(20), v.maxValue(400));
 const AnswerSchema = v.object({
-	tempo: v.pipe(v.number(), v.minValue(20), v.maxValue(400)),
-	meter: v.pipe(v.string(), v.regex(/^\d{1,2}\/\d{1,2}$/)),
+	/** null = no fixed tempo (rubato, free time). */
+	tempo: v.nullable(Bpm),
+	/** Discrete tempo shifts after the start, in order; empty when the tempo holds. */
+	tempoChanges: v.optional(
+		v.pipe(v.array(v.object({ at: v.pipe(v.number(), v.minValue(0)), bpm: Bpm })), v.maxLength(12)),
+		[],
+	),
+	meter: v.union([v.pipe(v.string(), v.regex(/^\d{1,2}\/\d{1,2}$/)), v.literal("free")]),
 	key: v.pipe(v.string(), v.trim(), v.maxLength(20)),
 	confidence: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	notes: v.optional(v.pipe(v.string(), v.maxLength(400)), ""),
@@ -46,7 +53,14 @@ export async function askAiAboutMix(mixUrl: string, candidates: Candidates): Pro
 	].filter(Boolean);
 	const { text } = await generateText({
 		model: gateway(MODEL),
-		system: `You are a musician with perfect time and pitch. Listen to the recording and report its tempo in beats per minute (a number, precise to the beat, not rounded to a multiple of 5 unless it truly is), its time signature (like 4/4, 3/4, 6/8, 7/8), and its key (like "D major" or "B minor"; write "atonal" if there is none). Reply with JSON only, no prose, in exactly this shape: {"tempo": 128, "meter": "4/4", "key": "D major", "confidence": 0.8, "notes": "one short sentence on anything uncertain"}. Confidence is 0 to 1 for the whole answer.`,
+		system: `You are a musician with perfect time and pitch. Listen to the whole recording and report:
+- "tempo": the beats per minute at the start, precise to the beat (not rounded to a multiple of 5 unless it truly is). If the piece has no fixed pulse (rubato, free time, ambient), answer null — that is a valid and common answer; do not invent a number.
+- "tempoChanges": any discrete tempo shifts after the start, as a list of {"at": seconds from the start, "bpm": the new tempo}, in order. Gradual drift or a rallentando at the very end is not a shift; a new section at a clearly different tempo is. Empty list when the tempo holds.
+- "meter": the time signature (like 4/4, 3/4, 6/8, 7/8, or "free" if there is no meter).
+- "key": like "D major" or "B minor"; "atonal" if there is none.
+- "confidence": 0 to 1 for the whole answer.
+- "notes": one short sentence on anything uncertain, such as a half/double-time ambiguity or a modulation.
+Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 95.5, "bpm": 140}], "meter": "4/4", "key": "D major", "confidence": 0.8, "notes": "..."}`,
 		messages: [
 			{
 				role: "user",
@@ -55,8 +69,8 @@ export async function askAiAboutMix(mixUrl: string, candidates: Candidates): Pro
 					{
 						type: "text",
 						text: known.length
-							? `A detector estimated: ${known.join(", ")}. Confirm or correct each from what you hear.`
-							: "What are the tempo, time signature and key?",
+							? `A detector estimated: ${known.join(", ")}. Confirm or correct each from what you hear; it cannot tell a free tempo or a tempo shift from a steady one, so check those yourself.`
+							: "What are the tempo (or none), any tempo shifts, the time signature and the key?",
 					},
 				],
 			},

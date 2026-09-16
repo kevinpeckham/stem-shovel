@@ -88,8 +88,9 @@ fields are `$state`, so components read `engine.position` directly.
 - **Ask AI to check** (`src/lib/server/aiDetect.ts`, `askAiAboutSong` in
   songs.remote.ts): a member sends the rendered original mix, with the
   song's current tempo, key and meter as candidates, to
-  `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo,
-  meter, key, confidence, notes) shows under the changes editor with "Use
+  `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo or null for no
+  fixed pulse, `tempoChanges` as `{at, bpm}` shifts, meter or "free", key,
+  confidence, notes) shows under the changes editor with "Use
   these", which puts the values into rows at 0:00 for the user to save. Ten
   per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. First
   live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,

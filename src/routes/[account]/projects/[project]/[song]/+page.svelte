@@ -408,14 +408,31 @@
 	}
 	function useAiAnswer() {
 		if (!aiAnswer) return;
-		const values: Record<string, string> = {
-			tempo: String(Math.round(aiAnswer.tempo)),
-			key: aiAnswer.key,
-			meter: aiAnswer.meter,
-		};
-		const rows = changeRows.filter((r) => !(r.seconds === 0 && r.kind in values));
-		for (const kind of ["tempo", "key", "meter"] as const) {
-			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value: values[kind] });
+		// Rows at 0:00 for what the model is sure of (no row for a free tempo or no meter),
+		// plus a tempo row at each shift; other rows the user typed stay.
+		const at0: { kind: SongChangeKind; value: string }[] = [
+			...(aiAnswer.tempo === null
+				? []
+				: [{ kind: "tempo" as const, value: String(Math.round(aiAnswer.tempo)) }]),
+			...(aiAnswer.key ? [{ kind: "key" as const, value: aiAnswer.key }] : []),
+			...(aiAnswer.meter === "free" ? [] : [{ kind: "meter" as const, value: aiAnswer.meter }]),
+		];
+		const replaced = new Set(at0.map((r) => r.kind));
+		const rows = changeRows.filter(
+			(r) =>
+				!((r.seconds === 0 && replaced.has(r.kind)) || (r.kind === "tempo" && r.seconds !== 0)),
+		);
+		for (const { kind, value } of at0) {
+			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value });
+		}
+		for (const c of aiAnswer.tempoChanges) {
+			rows.push({
+				time: editPos(c.at),
+				shown: editPos(c.at),
+				seconds: c.at,
+				kind: "tempo",
+				value: String(Math.round(c.bpm)),
+			});
 		}
 		changeRows = rows;
 		aiAnswer = null;
@@ -1097,8 +1114,12 @@
 				{#if aiAnswer}
 					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 						AI hears <strong
-							>{Math.round(aiAnswer.tempo)} bpm · {aiAnswer.key} · {aiAnswer.meter}</strong
-						>
+							>{aiAnswer.tempo === null ? "no fixed tempo" : `${Math.round(aiAnswer.tempo)} bpm`} · {aiAnswer.key}
+							· {aiAnswer.meter === "free" ? "no meter" : aiAnswer.meter}</strong
+						>{#if aiAnswer.tempoChanges.length > 0}
+							, then {aiAnswer.tempoChanges
+								.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
+								.join(", ")}{/if}
 						({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
 							? ` — ${aiAnswer.notes}`
 							: ""}

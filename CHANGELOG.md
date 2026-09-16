@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The AI check can answer "no fixed tempo"** and report discrete tempo
+  shifts (with the time and the new tempo), or "no meter"; "Use these"
+  turns shifts into tempo rows at their times and leaves out what has no
+  value.
+
 ### Fixed
 
 - Spacing of the AI check's note after its confidence.
