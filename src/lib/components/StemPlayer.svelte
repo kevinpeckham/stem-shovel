@@ -150,7 +150,7 @@
 	</section>
 
 	<div
-		class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-14px opacity-90 bg-blue-300/5"
+		class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-16px lg-text-13px opacity-90 bg-blue-300/5"
 		aria-live="polite"
 	>
 		{#if engine.status === "loading"}
