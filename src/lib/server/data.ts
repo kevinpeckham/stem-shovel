@@ -1447,6 +1447,15 @@ export async function setSongNoAi(accountId: string, id: string, noAi: boolean) 
 	return !!row;
 }
 
+export async function setSongFinished(accountId: string, id: string, isFinished: boolean) {
+	const [row] = await db
+		.update(song)
+		.set({ isFinished })
+		.where(and(eq(song.accountId, accountId), eq(song.id, id)))
+		.returning({ id: song.id });
+	return !!row;
+}
+
 /** What the transcription job needs: flags, stems with their files, progress so far. */
 export function songForNotes(songId: string) {
 	return db.query.song.findFirst({

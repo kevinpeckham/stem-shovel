@@ -197,6 +197,7 @@ Indexes: `(account_id)`, unique `(account_id, slug)`.
 | lyrics_hash      | text null                   |                                                   |
 | lyrics_version   | integer, default 0          |                                                   |
 | status           | text, default active        | `active` \| `archived`                            |
+| is_finished      | integer bool, default 0     | done: filed under "Finished Songs" (any member)   |
 | sort_order       | integer, default 0          | inside the project                                |
 | created_by       | text FK → user (set null)   |                                                   |
 | created_at       | timestamp_ms                |                                                   |

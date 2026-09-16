@@ -12,6 +12,7 @@
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
 	import AiToggle from "$lib/components/AiToggle.svelte";
+	import FinishedToggle from "$lib/components/FinishedToggle.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
@@ -977,6 +978,10 @@
 						<span
 							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
 							title="No AI touches this song">no AI</span
+						>{/if}{#if data.song.isFinished}
+						<span
+							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
+							title="Marked as finished">finished</span
 						>{/if}
 				</h1>
 				<span>v{data.song.version}</span>
@@ -1605,6 +1610,14 @@
 						{/each}
 					</ul>
 				{/if}
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<FinishedToggle
+					id={data.song.id}
+					finished={data.song.isFinished}
+					canChange={data.canEdit}
+				/>
 			</div>
 
 			<div class="mt-8 border-t border-white/15 pt-4">

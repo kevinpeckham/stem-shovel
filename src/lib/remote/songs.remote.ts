@@ -26,6 +26,7 @@ import {
 	songForMix,
 	chartExamples,
 	getSongById,
+	setSongFinished as setSongFinished_,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -44,6 +45,7 @@ import {
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
+import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -313,4 +315,12 @@ export const songNotes = query(IdSchema, async ({ id }) => {
 	const found = await songNotesFor(accountId, id);
 	if (!found) error(404, "Song not found");
 	return found;
+});
+
+/** Finished or back in progress (any member); the project page files finished songs apart. */
+export const setSongFinished = form(SongFinishedSchema, async ({ id, finished }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfSong, id);
+	if (!(await setSongFinished_(m.accountId, id, finished === "true"))) error(404, "Song not found");
+	return { finished: finished === "true" };
 });

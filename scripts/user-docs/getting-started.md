@@ -19,6 +19,7 @@ Once signed in, the button at the top right names the account you are in. It ope
 
 An account holds **projects**; a project holds **songs**. On a project page:
 
+- **Finished Songs** are the ones a member has marked finished in the song's settings; they stay playable and editable.
 - **Songs in Progress** are songs that have at least one stem. Each has a play button, and the transport at the top plays them in order as a playlist.
 - **Song Ideas** are songs with no stems yet: a place to gather lyrics, a chart, notes and demo recordings before the parts exist. A song moves up on its own the moment a stem is uploaded.
 - **Add Song** creates a song from a title. Everything else happens on the song's page.

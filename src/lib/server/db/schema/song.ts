@@ -27,6 +27,8 @@ export const song = table(
 		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
 		/** No AI touches this song; a project's flag covers its songs too. */
 		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
+		/** Done: listed under "Finished Songs" on the project page. Any member toggles it. */
+		isFinished: t.integer("is_finished", { mode: "boolean" }).default(false).notNull(),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */

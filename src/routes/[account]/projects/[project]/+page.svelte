@@ -28,12 +28,16 @@
 	// Keep the slug following the name until the slug is edited by hand.
 	let slugTouched = $state(false);
 
-	// A song is "in progress" once it has a stem that finished uploading;
-	// until then it is an idea — a place for lyrics, a chart, notes and demos.
+	// A song marked finished (song settings) is filed first. Otherwise it is
+	// "in progress" once it has a stem that finished uploading; until then it
+	// is an idea — a place for lyrics, a chart, notes and demos.
 	const readyStems = (song: (typeof data.project.songs)[number]) =>
 		song.stems.filter((s) => s.status === "ready").length;
-	let inProgress = $derived(data.project.songs.filter((s) => readyStems(s) > 0));
-	let ideas = $derived(data.project.songs.filter((s) => readyStems(s) === 0));
+	let finished = $derived(data.project.songs.filter((s) => s.isFinished));
+	let inProgress = $derived(data.project.songs.filter((s) => !s.isFinished && readyStems(s) > 0));
+	let ideas = $derived(data.project.songs.filter((s) => !s.isFinished && readyStems(s) === 0));
+	/** The playlist: finished songs, then the ones in progress, as listed. */
+	let playable = $derived([...finished, ...inProgress]);
 
 	/** What an idea holds so far, for its tile. */
 	function gathered(song: (typeof data.project.songs)[number]): string {
@@ -210,8 +214,22 @@
 	{/if}
 
 	<div class="mb-8">
-		<ProjectPlayer bind:this={player} songs={inProgress} bind:current={playing} bind:paused />
+		<ProjectPlayer bind:this={player} songs={playable} bind:current={playing} bind:paused />
 	</div>
+
+	{#if finished.length > 0}
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
+			<div>
+				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Finished Songs</h2>
+				<p class="opacity-90 text-15px">Done, and marked so in their settings.</p>
+			</div>
+		</div>
+		<ul class="grid grid-cols-1 gap-3 mb-10">
+			{#each finished as song (song.id)}
+				{@render songRow(song)}
+			{/each}
+		</ul>
+	{/if}
 
 	<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
 		<div>
@@ -248,49 +266,7 @@
 	{:else}
 		<ul class="grid grid-cols-1 gap-3">
 			{#each inProgress as song (song.id)}
-				{@const ready = readyStems(song)}
-				<li class="grid grid-cols-[auto_1fr] gap-3">
-					<button
-						type="button"
-						class="shrink-0 grid w-12 place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
-						aria-label={playing === song.id && !paused
-							? `Pause ${song.title}`
-							: `Play ${song.title}`}
-						title={song.mixUrl ? "Play the mix" : "No mix yet"}
-						disabled={!song.mixUrl}
-						onclick={() => player?.play(song.id)}
-					>
-						<span
-							class={playing === song.id && !paused ? "i-ph-pause-fill" : "i-ph-play-fill"}
-							aria-hidden="true"
-						></span>
-					</button>
-					<a
-						class="list-tile grow flex justify-between items-baseline group !mb-0"
-						href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
-					>
-						<div>
-							<span class=""
-								>{#if song.isPrivate && !data.project.isPrivate}<span
-										class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
-										title="Private"
-										aria-label="Private"
-									></span>{/if}{song.title}</span
-							>
-							{#if song.description}
-								<span class="block text-sm">{song.description}</span>
-							{/if}
-						</div>
-						<span
-							class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
-						>
-							v{song.version} · {ready}
-							{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
-									song.durationSeconds,
-								)}{/if}
-						</span>
-					</a>
-				</li>
+				{@render songRow(song)}
 			{/each}
 		</ul>
 	{/if}
@@ -397,3 +373,45 @@
 		</div>
 	{/if}
 </main>
+
+{#snippet songRow(song: (typeof data.project.songs)[number])}
+	{@const ready = readyStems(song)}
+	<li class="grid grid-cols-[auto_1fr] gap-3">
+		<button
+			type="button"
+			class="shrink-0 grid w-12 place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
+			aria-label={playing === song.id && !paused ? `Pause ${song.title}` : `Play ${song.title}`}
+			title={song.mixUrl ? "Play the mix" : "No mix yet"}
+			disabled={!song.mixUrl}
+			onclick={() => player?.play(song.id)}
+		>
+			<span
+				class={playing === song.id && !paused ? "i-ph-pause-fill" : "i-ph-play-fill"}
+				aria-hidden="true"
+			></span>
+		</button>
+		<a
+			class="list-tile grow flex justify-between items-baseline group !mb-0"
+			href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
+		>
+			<div>
+				<span class=""
+					>{#if song.isPrivate && !data.project.isPrivate}<span
+							class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
+							title="Private"
+							aria-label="Private"
+						></span>{/if}{song.title}</span
+				>
+				{#if song.description}
+					<span class="block text-sm">{song.description}</span>
+				{/if}
+			</div>
+			<span class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100">
+				v{song.version} · {ready}
+				{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
+						song.durationSeconds,
+					)}{/if}
+			</span>
+		</a>
+	</li>
+{/snippet}

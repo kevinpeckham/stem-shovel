@@ -34,6 +34,10 @@ Upload a phone recording or a rough bounce as a **demo** (most audio formats are
 
 Some artists' contracts rule out any AI touching their work. **Do not use AI** in the song's settings (or the project's, which covers all its songs) switches every AI feature off for it: no chart drafts, no AI checks, no transcription. Tempo and key detection, which is plain signal processing in your browser, still works.
 
+## Finished
+
+**Mark as finished** in the song's settings files the song under Finished Songs on the project page, above the ones in progress. Nothing else changes: it still plays, and everything stays editable. **Back to in progress** moves it back.
+
 ## Private
 
 A song is public by default: anyone with its address can open it. **Make private** limits it to members of the account and to people with a viewing link (see _Downloads and sharing_). A song in a private project is private already.
