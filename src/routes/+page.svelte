@@ -23,15 +23,15 @@
 </svelte:head>
 
 <main class="page-x-padding main-y-padding">
-	<h1 class="heading-1 mb-8">What is Stem Shovel?</h1>
+	<h1 class="heading-2 mb-4">What is Stem Shovel?</h1>
 	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
-		<div class="opacity-90 text-17px max-w-740px grid grid-cols-1 gap-3">
-			<blockquote class="max-w-prose font-serif italic">
-				A collaboration tool for musicians, bands and producers with emphasis on creativity,
+		<div class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5">
+			<blockquote class="max-w-prose mb-8 text-balance">
+				Stem Shovel is a SaaS collaboration tool for musicians, bands and producers with emphasis on creativity,
 				simplicity, and affordability.
 			</blockquote>
 
-			<h2 class="heading-2 leading-tight mb-0">About</h2>
+			<h2 class="heading-2">Mission</h2>
 			<p class="">
 				Stem Shovel was conceived as a place to manage songwriting, arranging, and recording
 				projects with an emphasis on creativity and collaboration. Built by musicians for musicians,
@@ -64,9 +64,9 @@
 			</p>
 		</div>
 
-		<div>
+		<div class="">
 			<img
-				class="w-full h-auto border border-white/40 rounded mt-4"
+				class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
 				loading="eager"
 				src="/images/stem-shovel-screenshot-01.webp"
 				alt="Stem Shovel screenshot"

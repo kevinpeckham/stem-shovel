@@ -145,7 +145,7 @@ export default defineConfig({
 		["nav-link", "underline underline-offset-4 hover:text-maximumYellow opacity-90"],
 		[
 			"list-tile",
-			"bg-white/5 rounded-md border border-current/40 block px-4 py-3 text-18px hover-text-accent hover-border-accent hover-bg-accent/5 lg-text-20px leading-tight",
+			"bg-blue-300/5 rounded-md border border-current/40 block px-4 py-3 text-18px hover-text-accent hover-border-accent hover-bg-accent/5 lg-text-20px leading-tight",
 		],
 
 		// ---- app ---------------------------------------------------------------
