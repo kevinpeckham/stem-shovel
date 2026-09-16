@@ -1910,43 +1910,46 @@
 					>
 				{/each}
 			</div>
-			{#if panel === "comments"}
-				<button
-					class="button button-xs flex items-center {data.canEdit ? '' : 'hidden'}"
-					type="button"
-					title="Add a comment"
-					aria-label="Add a comment"
-					onclick={() => openComment()}
-				>
-					<span class="i-ph-plus"></span>
-				</button>
-			{:else}
-				<button
-					class="button button-xs flex items-center {data.canEdit ? '' : 'hidden'} {docEditing
-						? 'bg-blue-300 text-oxford border-blue-300'
-						: ''}"
-					type="button"
-					title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
-					aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
-					aria-pressed={docEditing}
-					onclick={async () => {
-						if (docEditing) await docPanel?.close();
-						else docEditing = true;
-					}}
-				>
-					<span
-						class={docEditing
-							? docSaving
-								? "i-ph-circle-notch animate-spin"
-								: "i-ph-check"
-							: data.docs[doc]
-								? "i-ph-pencil"
-								: "i-ph-plus"}
-					></span>
-				</button>
-			{/if}
-			{#if data.canEdit && panel !== "comments" && (docEditing || (panel === "chart" && data.aiAvailable))}
-				<!-- Panel menu: the editor's pane while editing, and the chart's AI draft. -->
+			<div class="flex items-stretch gap-1.5 {data.canEdit ? '' : 'hidden'}">
+				{#if panel === "comments"}
+					<button
+						class="button button-xs flex items-center"
+						type="button"
+						title="Add a comment"
+						aria-label="Add a comment"
+						onclick={() => openComment()}
+					>
+						<span class="i-ph-plus"></span>
+					</button>
+				{:else}
+					<button
+						class="button button-xs flex items-center {docEditing
+							? 'bg-blue-300 text-oxford border-blue-300'
+							: ''}"
+						type="button"
+						title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
+						aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
+						aria-pressed={docEditing}
+						onclick={async () => {
+							if (docEditing) await docPanel?.close();
+							else docEditing = true;
+						}}
+					>
+						<span
+							class={docEditing
+								? docSaving
+									? "i-ph-circle-notch animate-spin"
+									: "i-ph-check"
+								: data.docs[doc]
+									? "i-ph-pencil"
+									: "i-ph-plus"}
+						></span>
+					</button>
+				{/if}
+				<!--
+				Panel menu: the editor's pane while editing, and the chart's AI draft.
+				Always present (with a placeholder when empty) so the toolbar never shifts.
+			-->
 				<details class="relative flex" bind:this={chartMenuEl}>
 					<summary
 						class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
@@ -1964,6 +1967,9 @@
 						class="absolute top-full right-0 z-20 mt-1 min-w-56 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
 						role="menu"
 					>
+						{#if !docEditing && !(panel === "chart" && data.aiAvailable)}
+							<div class="px-2 py-1 text-xs text-dim">Nothing to do here yet</div>
+						{/if}
 						{#if docEditing}
 							{#each DOC_VIEWS as v (v.id)}
 								<button
@@ -2020,7 +2026,7 @@
 						{/if}
 					</div>
 				</details>
-			{/if}
+			</div>
 		</div>
 		<!-- </div> -->
 	</section>
