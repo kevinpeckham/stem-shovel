@@ -91,6 +91,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - `src/routes/admin/`, `src/lib/remote/admin.remote.ts` — the operator's page
   (bug reports, accounts, users, new-account invite codes), for users flagged
   by `bun run db:system-admin`.
+- `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
+  public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
+  editor the song-document pages use too.
 - `src/lib/remote/bugs.remote.ts`, `GlobalFooter.svelte` — "Report a bug" in
   the footer for signed-in users; a `bug_report` row and an email to every
   system admin.

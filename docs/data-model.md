@@ -56,6 +56,10 @@ erDiagram
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may
   post; the author edits and deletes their own, owners and admins delete any.
+- **user_doc** / **user_doc_version** — the public documentation at
+  `/docs/<slug>`: title, slug, sort order, markdown with the same hash-gated
+  versioning as song documents (ten revisions kept). Written by system
+  admins with the shared `MarkdownDocEditor`.
 - **bug_report** — a signed-in user's bug report from the footer: title,
   body, the page they were on and their browser (captured by the form),
   `status` open/closed and `closed_at`. Listed and closed on `/admin`.

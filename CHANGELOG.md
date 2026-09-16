@@ -28,6 +28,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **User docs** at `/docs`, linked from the footer: an index and one page
+  per topic with a sidebar, readable by anyone. System admins add pages,
+  edit them with the same editor as song charts, lyrics and notes (WYSIWYG
+  and markdown views, undo, ⌘S, versioned saves), and rename, reorder or
+  delete them from a settings popover. New `user_doc` and
+  `user_doc_version` tables (migration 0026).
 - **Report a bug**: signed-in users get a footer link that opens a form
   (title, what happened); the page they were on and their browser are
   attached. Reports land on `/admin`, where system admins close and reopen

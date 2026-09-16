@@ -12,6 +12,8 @@ import { session } from "./session";
 import { shareLink } from "./shareLink";
 import { song } from "./song";
 import { songDocVersion } from "./songDocVersion";
+import { userDoc } from "./userDoc";
+import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
 import { user } from "./user";
 
@@ -88,6 +90,16 @@ export const userRelations = relations(user, ({ many }) => ({
 	uploadedStems: many(stem),
 	sessions: many(session),
 	authAccounts: many(authAccount),
+}));
+
+export const userDocRelations = relations(userDoc, ({ one, many }) => ({
+	editor: one(user, { fields: [userDoc.updatedBy], references: [user.id] }),
+	versions: many(userDocVersion),
+}));
+
+export const userDocVersionRelations = relations(userDocVersion, ({ one }) => ({
+	doc: one(userDoc, { fields: [userDocVersion.docId], references: [userDoc.id] }),
+	author: one(user, { fields: [userDocVersion.createdBy], references: [user.id] }),
 }));
 
 export const songDocVersionRelations = relations(songDocVersion, ({ one }) => ({

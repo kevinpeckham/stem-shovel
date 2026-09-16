@@ -183,6 +183,13 @@
       "when": 1789522047802,
       "tag": "0025_bug_report",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1789522451921,
+      "tag": "0026_user_docs",
+      "breakpoints": true
     }
   ]
 }

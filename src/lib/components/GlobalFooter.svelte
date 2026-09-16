@@ -27,6 +27,10 @@
 	</div>
 
 	<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+		<a
+			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
+			href="/docs">Docs</a
+		>
 		{#if user}
 			<button
 				type="button"

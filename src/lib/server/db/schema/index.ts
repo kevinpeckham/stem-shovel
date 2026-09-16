@@ -16,4 +16,6 @@ export * from "./song";
 export * from "./songDocVersion";
 export * from "./stem";
 export * from "./user";
+export * from "./userDoc";
+export * from "./userDocVersion";
 export * from "./verification";

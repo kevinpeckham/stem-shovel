@@ -39,6 +39,8 @@ const {
 	inviteCode,
 	comment,
 	bugReport,
+	userDoc,
+	userDocVersion,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -917,6 +919,103 @@ export async function systemAdminEmails() {
 		columns: { email: true },
 	});
 	return rows.map((r) => r.email);
+}
+
+// ---- user docs --------------------------------------------------------------
+
+/** Every page, in reading order, without the markdown. */
+export function listUserDocs() {
+	return db.query.userDoc.findMany({
+		orderBy: [asc(userDoc.sortOrder), asc(userDoc.title)],
+		columns: { id: true, slug: true, title: true, sortOrder: true, version: true, updatedAt: true },
+	});
+}
+
+export function getUserDoc(slug: string) {
+	return db.query.userDoc.findFirst({
+		where: eq(userDoc.slug, slug),
+		with: { editor: { columns: { name: true } } },
+	});
+}
+
+export async function createUserDoc(userId: string, title: string) {
+	const taken = new Set((await db.select({ slug: userDoc.slug }).from(userDoc)).map((r) => r.slug));
+	const [row] = await db
+		.insert(userDoc)
+		.values({ title, slug: uniqueSlug(slugify(title) || "page", taken), updatedBy: userId })
+		.returning();
+	return row;
+}
+
+export async function updateUserDocMeta(
+	id: string,
+	meta: { title: string; slug: string; sortOrder: number },
+) {
+	const clash = await db.query.userDoc.findFirst({ where: eq(userDoc.slug, meta.slug) });
+	if (clash && clash.id !== id)
+		return { ok: false as const, error: "Another page has that address." };
+	const [row] = await db.update(userDoc).set(meta).where(eq(userDoc.id, id)).returning();
+	return row ? { ok: true as const, doc: row } : { ok: false as const, error: "Page not found." };
+}
+
+export async function deleteUserDoc(id: string) {
+	const [row] = await db.delete(userDoc).where(eq(userDoc.id, id)).returning({ id: userDoc.id });
+	return !!row;
+}
+
+/** Same rules as saveSongDoc: wipe guard, hash-gated versions, the newest DOC_VERSIONS_TO_KEEP kept. */
+export async function saveUserDoc(
+	id: string,
+	userId: string,
+	markdown: string,
+	opts: { confirmEmpty?: boolean } = {},
+): Promise<SaveDocResult> {
+	const existing = await db.query.userDoc.findFirst({ where: eq(userDoc.id, id) });
+	if (!existing) return { ok: false, error: "Page not found." };
+	const next = markdown.replace(/\r\n/g, "\n");
+	if (
+		next.trim() === "" &&
+		existing.markdown.trim().length > DOC_WIPE_GUARD_CHARS &&
+		!opts.confirmEmpty
+	) {
+		return {
+			ok: false,
+			needsConfirm: true,
+			error: "This would empty the page while it has content. Save again to confirm.",
+		};
+	}
+	const contentHash = await hashMarkdown(next);
+	if (contentHash === existing.contentHash) {
+		return { ok: true, version: existing.version, changed: false };
+	}
+	const versionNumber = existing.version + 1;
+	await db.insert(userDocVersion).values({
+		docId: id,
+		versionNumber,
+		markdown: next,
+		contentHash,
+		createdBy: userId,
+	});
+	await db
+		.update(userDoc)
+		.set({ markdown: next, contentHash, version: versionNumber, updatedBy: userId })
+		.where(eq(userDoc.id, id));
+	const stale = await db
+		.select({ id: userDocVersion.id })
+		.from(userDocVersion)
+		.where(eq(userDocVersion.docId, id))
+		.orderBy(desc(userDocVersion.versionNumber))
+		.limit(1000)
+		.offset(DOC_VERSIONS_TO_KEEP);
+	if (stale.length > 0) {
+		await db.delete(userDocVersion).where(
+			inArray(
+				userDocVersion.id,
+				stale.map((r) => r.id),
+			),
+		);
+	}
+	return { ok: true, version: versionNumber, changed: true };
 }
 
 // ---- stem MIDI files --------------------------------------------------------
