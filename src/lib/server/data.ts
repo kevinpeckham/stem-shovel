@@ -1018,6 +1018,47 @@ export async function saveUserDoc(
 	return { ok: true, version: versionNumber, changed: true };
 }
 
+/** Suspending signs the user out everywhere; reactivating just lifts the flag. */
+export async function setUserActive(id: string, active: boolean) {
+	const [row] = await db
+		.update(schema.user)
+		.set({ isActive: active })
+		.where(eq(schema.user.id, id))
+		.returning({ id: schema.user.id });
+	if (row && !active) await db.delete(schema.session).where(eq(schema.session.userId, id));
+	return !!row;
+}
+
+/**
+ * Removes the user (sessions, sign-in methods, memberships and comments go
+ * with them). An account they were the last member of is deleted too when
+ * it holds no projects; one with content is kept, member-less, so nothing
+ * with stems disappears by accident.
+ */
+export async function deleteUser(id: string) {
+	const memberships = await db.query.accountMember.findMany({
+		where: eq(accountMember.userId, id),
+		columns: { accountId: true },
+	});
+	const [row] = await db
+		.delete(schema.user)
+		.where(eq(schema.user.id, id))
+		.returning({ id: schema.user.id });
+	if (!row) return null;
+	let accountsRemoved = 0;
+	for (const { accountId } of memberships) {
+		const left = await db.query.accountMember.findFirst({
+			where: eq(accountMember.accountId, accountId),
+		});
+		if (left) continue;
+		const content = await db.query.project.findFirst({ where: eq(project.accountId, accountId) });
+		if (content) continue;
+		await db.delete(account).where(eq(account.id, accountId));
+		accountsRemoved += 1;
+	}
+	return { accountsRemoved };
+}
+
 // ---- stem MIDI files --------------------------------------------------------
 
 /** Step 1 of a MIDI upload: reserve the pathname on the stem (the previous file, if any, stays until the new one lands). */

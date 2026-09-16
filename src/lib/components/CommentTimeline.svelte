@@ -22,9 +22,12 @@
 		engine: StemEngine;
 		comments: LocatedComment[];
 		card: Snippet<[string]>;
+		/** A member: the row explains how to add a comment when it has none. */
+		canComment?: boolean;
 	}
 
-	let { engine, comments, card }: Props = $props();
+	let { engine, comments, card, canComment = false }: Props = $props();
+	const HOW_TO = "⌘-click (Ctrl-click) or right-click a waveform to leave a comment at that spot.";
 	let open = $state<string | null>(null);
 	let duration = $derived(Math.max(engine.duration, ...comments.map((c) => c.at), 1));
 	let peaks = $derived(
@@ -52,8 +55,8 @@
 	role="group"
 	aria-label="Comments on the timeline"
 >
-	<div class="text-11px opacity-90">Comments</div>
-	<div class="relative col-span-3 sm-col-span-1">
+	<div class="text-11px opacity-90" title={canComment ? HOW_TO : undefined}>Comments</div>
+	<div class="relative col-span-3 sm-col-span-1" title={canComment ? HOW_TO : undefined}>
 		<div class="opacity-50">
 			<Waveform
 				{peaks}
@@ -63,6 +66,12 @@
 				onseek={(f) => engine.seek(f * duration)}
 			/>
 		</div>
+		{#if canComment && comments.length === 0}
+			<p class="pointer-events-none absolute inset-0 grid place-items-center px-3">
+				<span class="rounded bg-oxford/85 px-2 py-1 text-center text-12px opacity-90">{HOW_TO}</span
+				>
+			</p>
+		{/if}
 		{#if marked}
 			<div
 				class="pointer-events-none absolute inset-y-0 w-px bg-accent"

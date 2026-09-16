@@ -28,6 +28,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **User management on `/admin`**: suspend (signs the user out and blocks
+  sign-in), reactivate, and delete a user; deleting removes their sign-in,
+  memberships and comments, and an account only they belonged to when it
+  holds nothing.
+- **The comment row is always there for members** on a song with stems,
+  with a hint to ⌘-click, Ctrl-click or right-click a waveform to comment
+  when there are none yet; visitors see it only when comments exist.
 - **User docs** at `/docs`, linked from the footer: an index and one page
   per topic with a sidebar, readable by anyone. System admins add pages,
   edit them with the same editor as song charts, lyrics and notes (WYSIWYG

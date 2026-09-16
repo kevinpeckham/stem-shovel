@@ -47,7 +47,11 @@ public by URL; editing needs a signed-in member.
   of the app, set only by `bun run db:system-admin <email>` (`--remove` to
   undo), never from a request. `/admin` (404 for everyone else, so it is not
   advertised) lists every account with its members, songs and storage,
-  every user, and mints **new-account invite codes**: `invite_code` rows
+  every user (with suspend — signs them out and blocks sign-in via the
+  `isActive` check in `hooks.server.ts`, up to the session cookie cache's
+  five minutes — reactivate, and delete, which cascades their sessions,
+  memberships and comments and removes an account they alone belonged to
+  only when it has no projects), and mints **new-account invite codes**: `invite_code` rows
   with no `account_id`, which open sign-up without joining anything — the
   newcomer gets only their own workspace. `requireSystemAdmin` in
   `src/lib/server/access.ts` guards the page and `src/lib/remote/admin.remote.ts`.

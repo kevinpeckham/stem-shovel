@@ -1863,8 +1863,14 @@
 {/snippet}
 
 {#snippet afterRows()}
-	{#if locatedComments.length > 0 && playerEngine}
-		<CommentTimeline engine={playerEngine} comments={locatedComments} card={commentCard} />
+	<!-- Members always see the row, so they learn comments exist; visitors only when there are some. -->
+	{#if playerEngine && (locatedComments.length > 0 || data.canEdit)}
+		<CommentTimeline
+			engine={playerEngine}
+			comments={locatedComments}
+			card={commentCard}
+			canComment={data.canEdit}
+		/>
 	{/if}
 {/snippet}
 
