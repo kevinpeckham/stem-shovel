@@ -24,6 +24,9 @@
 		/** Asked to submit the surrounding form (⌘S). */
 		onsave: () => void;
 		editor?: MarkdownEditorState | null;
+		/** Inside a panel: no back link or page title, a Done button instead. */
+		compact?: boolean;
+		onclose?: () => void;
 	}
 
 	let {
@@ -39,6 +42,8 @@
 		saveError,
 		onsave,
 		editor = $bindable(null),
+		compact = false,
+		onclose,
 	}: Props = $props();
 
 	// The editor package is imported in the browser only (type imports above
@@ -128,8 +133,12 @@
 <svelte:window {onkeydown} {onbeforeunload} />
 
 <header class="flex flex-wrap items-center gap-3">
-	<a class="text-sm link-dim" href={backHref}>← {backLabel}</a>
-	<h1 class="grow display">{label}</h1>
+	{#if compact}
+		<span class="grow text-sm font-600">{label}</span>
+	{:else}
+		<a class="text-sm link-dim" href={backHref}>← {backLabel}</a>
+		<h1 class="grow display">{label}</h1>
+	{/if}
 	<div
 		class="flex overflow-hidden rounded border border-white/15 text-xs"
 		role="tablist"
@@ -178,6 +187,18 @@
 		{pending ? "Saving…" : confirmEmpty ? `Save empty ${label.toLowerCase()}` : "Save"}
 	</button>
 	<span class="text-xs text-dim tabular-nums" title="Current version">v{version}</span>
+	{#if compact && onclose}
+		<button
+			class="button button-xs"
+			type="button"
+			onclick={() => {
+				if (editor?.hasEdits && !confirm("Close without saving your changes?")) return;
+				onclose();
+			}}
+		>
+			Done
+		</button>
+	{/if}
 </header>
 
 {#if saveError}
@@ -186,7 +207,7 @@
 
 {#if view === "rendered"}
 	<p class="mb-2 text-xs text-dim">{hint}</p>
-	<div class="chart-editor surface py-4 pr-6 pl-12">
+	<div class="chart-editor surface py-4 pr-6 pl-12 {compact ? 'mt-3' : ''}">
 		{#if Editor && editor}
 			<Editor {editor} class="chart-body" />
 		{:else}

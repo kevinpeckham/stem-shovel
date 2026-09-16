@@ -4,6 +4,7 @@
 	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
+	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
@@ -274,6 +275,26 @@
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
 	}
 	let doc = $derived(showing ?? "chart");
+	// In-panel editing (SongDocPanel): which document is open for editing, and whether it has unsaved edits.
+	let docEditing = $state(false);
+	let docDirty = $state(false);
+	const DOC_HINTS = {
+		chart:
+			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
+		lyrics:
+			"Lyrics. One line per lyric line; a blank line starts a new section, and a heading names it (Verse, Chorus).",
+		notes: "Notes. Anything about the song — ideas, references, production to-dos, who plays what.",
+	} as const;
+	let DOC_TEXT = $derived({
+		chart: data.song.chartMarkdown,
+		lyrics: data.song.lyricsMarkdown,
+		notes: data.song.notesMarkdown,
+	});
+	let DOC_VERSION = $derived({
+		chart: data.song.chartVersion,
+		lyrics: data.song.lyricsVersion,
+		notes: data.song.notesVersion,
+	});
 	// Start on the first document with content.
 	panel = untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "chart");
 
@@ -1771,21 +1792,22 @@
 					</ol>
 				{/if}
 			</div>
-		{:else if data.docs[doc]}
-			<article
-				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
-			>
-				{#if panel === "chart"}{@render draftInPanel()}{/if}
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
-				{@html data.docs[doc]}
-			</article>
 		{:else}
-			<div
-				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
-			>
-				{#if panel === "chart"}{@render draftInPanel()}{/if}
-				<p>No {doc} yet.</p>
-			</div>
+			{#key doc}
+				<SongDocPanel
+					songId={data.song.id}
+					kind={doc}
+					label={DOC_LABELS[doc]}
+					hint={DOC_HINTS[doc]}
+					markdown={DOC_TEXT[doc]}
+					html={data.docs[doc]}
+					version={DOC_VERSION[doc]}
+					canEdit={data.canEdit}
+					bind:editing={docEditing}
+					bind:dirty={docDirty}
+					above={panel === "chart" ? draftInPanel : undefined}
+				/>
+			{/key}
 		{/if}
 		{#if panel === "chart" && data.canEdit && data.aiAvailable}
 			<!-- Draft the chart from the stems: chords first (if not done), then the model. -->
@@ -1829,7 +1851,12 @@
 							: index === PANELS.length - 1
 								? 'rounded-l-none'
 								: 'rounded-none border-r-none'}"
-						onclick={() => (panel = kind)}>{PANEL_LABELS[kind]}</button
+						onclick={() => {
+							if (kind === panel) return;
+							if (docEditing && docDirty && !confirm("Leave without saving your changes?")) return;
+							docEditing = false;
+							panel = kind;
+						}}>{PANEL_LABELS[kind]}</button
 					>
 				{/each}
 			</div>
@@ -1844,14 +1871,22 @@
 					<span class="i-ph-plus"></span>
 				</button>
 			{:else}
-				<a
-					class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
-					href="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}/{doc}"
+				<button
+					class="button button-xs h-full {data.canEdit ? '' : 'hidden'} {docEditing
+						? 'bg-blue-300 text-oxford border-blue-300'
+						: ''}"
+					type="button"
+					title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
+					aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
+					aria-pressed={docEditing}
+					onclick={() => {
+						if (docEditing && docDirty && !confirm("Close without saving your changes?")) return;
+						docEditing = !docEditing;
+					}}
 				>
-					{@html data.docs[doc]
-						? `<span class="i-ph-pencil"></span>`
-						: `<span class="i-ph-plus"></span>`}
-				</a>
+					<span class={docEditing ? "i-ph-check" : data.docs[doc] ? "i-ph-pencil" : "i-ph-plus"}
+					></span>
+				</button>
 			{/if}
 		</div>
 		<!-- </div> -->

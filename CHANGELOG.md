@@ -13,6 +13,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Detect chords** in song settings: the tonal stems are transcribed to
   notes in the browser (Spotify's Basic Pitch) and read as one chord per
   bar on the song's grid, shown as chart lines.
+- **Charts, lyrics and notes are edited in place**: the pencil on the
+  documents panel opens the same editor inside the panel (rendered and
+  markdown views, undo, ⌘S, versioned saves); the tick closes it, saving
+  re-renders the document where it was, and switching documents or
+  closing with unsaved edits asks first. The full-page editor route still
+  works for deep links.
 - **Draft chart with AI** sits at the top left of the Chart panel's
   toolbar and runs the chord detection itself when needed; the draft
   appears in the panel above the chart. It also stays in song settings.

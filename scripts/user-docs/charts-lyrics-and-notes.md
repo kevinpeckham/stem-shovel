@@ -1,6 +1,6 @@
 # Charts, lyrics and notes
 
-Every song has three documents, shown in the panel beside the player: the **Chart** (chords and arrangement), the **Lyrics**, and **Notes** (anything else: ideas, references, who plays what). Anyone can read them; members edit them with the pencil button.
+Every song has three documents, shown in the panel beside the player: the **Chart** (chords and arrangement), the **Lyrics**, and **Notes** (anything else: ideas, references, who plays what). Anyone can read them; members edit them right there with the pencil button, and the tick closes the editor again.
 
 ## The editor
 

@@ -144,6 +144,14 @@ fields are `$state`, so components read `engine.position` directly.
   error, duration, tokens) and listed on `/admin` for review. First
   live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,
   in eight seconds, matching the song's settings.
+- **Documents in the panel** (`SongDocPanel.svelte`): one component reads
+  a chart, lyrics or notes document (its sanitised HTML) and, when
+  `editing`, mounts `MarkdownDocEditor` in `compact` mode inside a form on
+  the `saveDoc` remote form, so the document is edited without leaving the
+  song; a save re-renders through `invalidateAll()`. The page renders only
+  the active document (a remote form attaches to one element) and binds
+  `dirty` to guard tab switches. The `[doc=songDoc]` route keeps the
+  full-page editor.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
   the documents panel has a Comments tab (scrollable list, newest last,
   author, date, an "edited" badge, the position as a link that seeks) and
