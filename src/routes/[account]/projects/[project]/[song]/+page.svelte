@@ -2403,9 +2403,12 @@
 				</span>
 			</div>
 			{#if draft.chords.trim()}
-				<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{aiChordLines(
-						draft.chords,
-					)}</pre>
+				<details class="mt-2 text-12px">
+					<summary class="cursor-pointer text-dim">Chords by bar</summary>
+					<pre class="mt-1 whitespace-pre-wrap font-mono opacity-90">{aiChordLines(
+							draft.chords,
+						)}</pre>
+				</details>
 			{/if}
 			<p class="mt-1 text-13px">
 				{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
