@@ -1,4 +1,11 @@
 <script lang="ts">
+	import {
+		analyse,
+		combineFeatures,
+		extractFeatures,
+		type Detection,
+		type Features,
+	} from "$lib/audio/analysis";
 	import { invalidateAll } from "$app/navigation";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import {
@@ -27,6 +34,8 @@
 		notice?: string | null;
 		/** Called once a batch finishes with at least one stem uploaded. */
 		onuploaded?: () => void;
+		/** Tempo, key and time signature detected from the batch, once every stem in it has decoded. */
+		onanalysis?: (detection: Detection) => void;
 	}
 
 	/**
@@ -41,6 +50,7 @@
 		jobs = $bindable([]),
 		notice = $bindable(null),
 		onuploaded,
+		onanalysis,
 	}: Props = $props();
 
 	let busy = $state(false);
@@ -70,6 +80,7 @@
 
 		const ctx = new AudioContext({ sampleRate: 32_000 });
 		let failed = 0;
+		const features: Features[] = [];
 		for (const job of jobs) {
 			try {
 				job.status = "uploading";
@@ -85,6 +96,10 @@
 						ctx,
 						onProgress: (p) => (job.percent = p),
 						onDecoding: () => (job.status = "decoding"),
+						onDecoded: (buffer) => {
+							// Cheap next to the upload itself; the batch is analysed as one mix below.
+							if (onanalysis) features.push(extractFeatures(buffer));
+						},
 					},
 				);
 				job.status = "done";
@@ -97,6 +112,8 @@
 		}
 		await ctx.close();
 		busy = false;
+		const combined = combineFeatures(features);
+		if (combined && onanalysis) onanalysis(analyse(combined));
 		if (failed === 0) jobs = [];
 		await invalidateAll();
 		if (failed < jobs.length || jobs.length === 0) onuploaded?.();

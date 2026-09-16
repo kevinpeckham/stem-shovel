@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Detection } from "$lib/audio/analysis";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
@@ -516,6 +517,50 @@
 			shareError = err instanceof Error ? err.message : String(err);
 		} finally {
 			shareBusy = false;
+		}
+	}
+
+	/**
+	 * What the uploader heard in a batch of stems. A song with no tempo, key
+	 * or time signature yet gets them as its first changes; one that has them
+	 * only hears the detection, so nothing typed is overwritten.
+	 */
+	async function applyDetection(d: Detection) {
+		const parts = [
+			d.tempo.bpm ? `${Math.round(d.tempo.bpm)} bpm` : "",
+			d.key.value,
+			d.tempo.bpm ? d.meter.value : "",
+		].filter(Boolean);
+		if (parts.length === 0) return;
+		const summary = parts.join(" · ");
+		if (data.song.changes.length > 0) {
+			notify(`Detected ${summary}; the song's own settings are kept`, { kind: "info" });
+			return;
+		}
+		const changes = [
+			...(d.tempo.bpm
+				? [{ kind: "tempo" as const, start: 0, value: String(Math.round(d.tempo.bpm)) }]
+				: []),
+			...(d.key.value ? [{ kind: "key" as const, start: 0, value: d.key.value }] : []),
+			...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
+		];
+		try {
+			await saveChanges({ id: data.song.id, changes });
+			await invalidateAll();
+			resetChangeRows();
+			notify(
+				`Detected ${summary} — set as the song's tempo, key and time signature. Change them in settings.`,
+				{
+					timeout: 12_000,
+				},
+			);
+		} catch (e) {
+			notify(
+				`Detected ${summary}, but it could not be saved: ${e instanceof Error ? e.message : String(e)}`,
+				{
+					kind: "error",
+				},
+			);
 		}
 	}
 
@@ -1508,6 +1553,7 @@
 				bind:jobs={uploadJobs}
 				bind:notice={uploadNotice}
 				onuploaded={() => (versionOffer = true)}
+				onanalysis={applyDetection}
 			/>
 		{/if}
 		{#if ready.length > 0}

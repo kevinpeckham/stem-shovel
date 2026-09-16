@@ -20,7 +20,13 @@ export interface Reservation {
 export async function uploadStemFile(
 	file: File,
 	reserve: () => Promise<Reservation>,
-	opts: { ctx: AudioContext; onProgress?: (percent: number) => void; onDecoding?: () => void },
+	opts: {
+		ctx: AudioContext;
+		onProgress?: (percent: number) => void;
+		onDecoding?: () => void;
+		/** The decoded audio, for anything else the caller wants to learn from it (tempo, key). */
+		onDecoded?: (buffer: AudioBuffer) => void;
+	},
 ): Promise<void> {
 	const { stemId, pathname, access = "public" } = await reserve();
 	const contentType = stemContentType(file.name) ?? undefined;
@@ -40,6 +46,7 @@ export async function uploadStemFile(
 		await opts.ctx.decodeAudioData(await file.arrayBuffer()),
 		opts.ctx,
 	);
+	opts.onDecoded?.(buffer);
 	const ready = await fetch(`/api/stems/${stemId}/ready`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },

@@ -6,6 +6,10 @@ On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A
 
 Each stem is kept as uploaded (that is what you download later) and a lighter playback rendition is made from it, so a song loads quickly even when the stems are large WAVs.
 
+## What the upload detects
+
+As stems upload, Stem Shovel listens to them and works out the tempo, the key and whether the song is in four or three. If the song has no tempo, key or time signature yet, they are set for you and a notice says what was found; check them in the song's settings, since detection is a good guess rather than a promise, and change them if the song knows better. A song that already has them keeps its own.
+
 ## The player
 
 Every stem gets a row: its waveform, **M** (mute), **S** (solo) and a fader. Solo one or more stems to hear only those; mute drops a stem from the mix. The **Master** fader scales everything.

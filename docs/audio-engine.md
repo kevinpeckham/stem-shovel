@@ -70,6 +70,21 @@ fields are `$state`, so components read `engine.position` directly.
   is fetched from Blob and parsed in the browser once per URL — a small
   SMF reader that merges tracks, follows tempo changes and keeps note
   on/off only.
+- **Tempo, key and time-signature detection** (`src/lib/audio/analysis.ts`):
+  while stems upload, each decoded buffer yields an onset-strength envelope
+  (spectral flux, 2048-point FFT, hop 512) and a chroma profile (a finer
+  8192-point FFT, 110 Hz – 4.2 kHz, linear magnitude, since 15 Hz bins put
+  low notes a semitone off); the batch's features are summed and analysed
+  as one mix: tempo by autocorrelation of the detrended envelope over
+  50–210 bpm with a log-normal prior around 110, refined by a parabola;
+  meter by comparing the raw envelope's autocorrelation at 3+6 beats
+  against 4+8 (3/4 needs a 3 % win); key by correlating the chroma with
+  the Krumhansl-Kessler major and minor profiles. Only the first 90 s are
+  analysed. The uploader hands the result to the song page: a song with
+  no tempo/key/meter changes yet gets them at 0:00 and a long notice says
+  so; one that has them only hears the detection. Tests use synthetic
+  click tracks and chords. The synthetic test loop in `static/stems`
+  (100 bpm, D) is detected exactly.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
   the documents panel has a Comments tab (scrollable list, newest last,
   author, date, an "edited" badge, the position as a link that seeks) and

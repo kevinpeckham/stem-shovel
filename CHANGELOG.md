@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Tempo, key and time signature are detected from the stems as they
+  upload** (in the browser, from the audio it already decodes: onset
+  autocorrelation for tempo, beat groupings for 4/4 against 3/4, chroma
+  against key profiles for the key). A song with none set yet gets them as
+  its first tempo, key and meter changes, with a notice; a song that has
+  them only hears what was detected.
+
 ## [0.7.1] - 2026-09-16
 
 ### Security
