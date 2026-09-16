@@ -16,5 +16,7 @@ export const user = table("user", {
 	isActive: t.integer("is_active", { mode: "boolean" }).default(true).notNull(),
 	/** Operator of the whole app (/admin): set by `bun run db:system-admin <email>`, never from a request. */
 	isSystemAdmin: t.integer("is_system_admin", { mode: "boolean" }).default(false).notNull(),
+	/** Acts as owner of every account (audited); `bun run db:super-admin <email>`. */
+	isSuperAdmin: t.integer("is_super_admin", { mode: "boolean" }).default(false).notNull(),
 	...timestamps,
 });

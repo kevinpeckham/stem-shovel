@@ -5,13 +5,20 @@
 	interface Props {
 		user: { name: string; email?: string; isSystemAdmin?: boolean } | null;
 		/** Accounts the user belongs to; the current one is in the URL. */
-		memberships: { accountId: string; slug: string; name: string; role: string }[];
+		memberships: {
+			accountId: string;
+			slug: string;
+			name: string;
+			role: string;
+			actingAs?: boolean;
+		}[];
 		/** The user's own account for pages outside any account (src/lib/server/currentAccount.ts). */
 		currentSlug?: string | null;
 	}
 	let { user, memberships, currentSlug = null }: Props = $props();
 
-	let accountSlug = $derived(page.params.account ?? currentSlug ?? memberships[0]?.slug);
+	let own = $derived(memberships.filter((m) => !m.actingAs));
+	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
 	let member = $derived(memberships.find((m) => m.slug === accountSlug));
 	let current = $derived(page.url.pathname);
 	// A visitor sees the name of the account they are viewing.
@@ -62,6 +69,13 @@
 				>
 					<span class="i-ph-user-circle text-18px" aria-hidden="true"></span>
 					<span class="max-w-40 truncate">{member?.name ?? user.name}</span>
+					{#if member?.actingAs}
+						<span
+							class="rounded bg-red-400/20 px-1.5 py-0.5 text-10px uppercase tracking-wider text-red-300"
+							title="You are not a member here; as a super admin you act as its owner, and every action is logged"
+							>acting as owner</span
+						>
+					{/if}
 					<span
 						class="i-ph-caret-down text-12px transition-transform {open ? 'rotate-180' : ''}"
 						aria-hidden="true"
@@ -82,7 +96,7 @@
 						</div>
 						{#if member}
 							<div class="px-4 pt-2 pb-1 text-11px uppercase tracking-wider opacity-60">
-								{member.name} · {member.role}
+								{member.name} · {member.actingAs ? "acting as owner" : member.role}
 							</div>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
@@ -111,13 +125,13 @@
 								></span>Account settings
 							</a>
 						{/if}
-						{#if memberships.length > 1}
+						{#if own.length > 1 || (member?.actingAs && own.length > 0)}
 							<div
 								class="mt-1 border-t border-white/10 px-4 pt-2 pb-1 text-11px uppercase tracking-wider opacity-60"
 							>
 								Switch account
 							</div>
-							{#each memberships.filter((m) => m.slug !== member?.slug) as m (m.accountId)}
+							{#each own.filter((m) => m.slug !== member?.slug) as m (m.accountId)}
 								<a
 									class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow"
 									role="menuitem"
@@ -145,7 +159,7 @@
 							<span class="i-ph-users-three mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Your accounts
 						</a>
-						{#if memberships.length > 0}
+						{#if own.length > 0}
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow"
 								role="menuitem"

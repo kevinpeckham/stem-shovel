@@ -64,6 +64,8 @@ erDiagram
   (exactly one of `song_id` / `project_id`): note, creator, optional
   `expires_at` and `max_uses`, `uses`, `revoked_at`. Projects and songs carry
   `is_private`.
+- **audit_log** — a super admin's request inside an account they do not
+  belong to: user, account, `METHOD path`. Users carry `is_super_admin`.
 - **ai_request** — one call to a model through the AI Gateway: kind, model,
   user, song, the text sent (no audio), the raw reply, the parsed answer or
   the error, duration and tokens. Reviewed on `/admin`.

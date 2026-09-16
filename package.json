@@ -22,6 +22,7 @@
 		"db:set-password": "varlock run -- bun scripts/set-password.ts",
 		"db:preview-bot": "varlock run -- bun scripts/preview-bot.ts",
 		"db:system-admin": "varlock run -- bun scripts/system-admin.ts",
+		"db:super-admin": "varlock run -- bun scripts/super-admin.ts",
 		"db:seed-docs": "varlock run -- bun scripts/seed-user-docs.ts",
 		"test": "vp test run",
 		"test:watch": "vp test watch",

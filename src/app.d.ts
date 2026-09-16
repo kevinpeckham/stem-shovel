@@ -5,9 +5,22 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			/** Signed-in user, or null. */
-			user: { id: string; name: string; email: string; isSystemAdmin: boolean } | null;
+			user: {
+				id: string;
+				name: string;
+				email: string;
+				isSystemAdmin: boolean;
+				isSuperAdmin: boolean;
+			} | null;
 			/** Accounts the user belongs to (empty when signed out). */
-			memberships: { accountId: string; slug: string; name: string; role: string }[];
+			/** Accounts the user belongs to; a super admin also carries every other account as an acting owner. */
+			memberships: {
+				accountId: string;
+				slug: string;
+				name: string;
+				role: string;
+				actingAs?: boolean;
+			}[];
 		}
 		// interface PageData {}
 		// interface PageState {}

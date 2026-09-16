@@ -58,7 +58,14 @@ export async function resolvePreviewAuth(event: {
 	if (!isValidPreviewToken(provided)) return null;
 	const bot = await db.query.user.findFirst({
 		where: eq(schema.user.email, BOT_EMAIL),
-		columns: { id: true, name: true, email: true, isActive: true, isSystemAdmin: true },
+		columns: {
+			id: true,
+			name: true,
+			email: true,
+			isActive: true,
+			isSystemAdmin: true,
+			isSuperAdmin: true,
+		},
 	});
 	if (!bot || !bot.isActive) return null;
 	return {
@@ -66,5 +73,6 @@ export async function resolvePreviewAuth(event: {
 		name: bot.name,
 		email: bot.email,
 		isSystemAdmin: bot.isSystemAdmin === true,
+		isSuperAdmin: bot.isSuperAdmin === true,
 	};
 }

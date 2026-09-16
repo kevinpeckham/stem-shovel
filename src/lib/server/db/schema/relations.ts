@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { account } from "./account";
 import { aiRequest } from "./aiRequest";
+import { auditLog } from "./auditLog";
 import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
@@ -31,6 +32,11 @@ export const accountRelations = relations(account, ({ many }) => ({
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
 	account: one(account, { fields: [inviteCode.accountId], references: [account.id] }),
 	creator: one(user, { fields: [inviteCode.createdBy], references: [user.id] }),
+}));
+
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+	user: one(user, { fields: [auditLog.userId], references: [user.id] }),
+	account: one(account, { fields: [auditLog.accountId], references: [account.id] }),
 }));
 
 export const aiRequestRelations = relations(aiRequest, ({ one }) => ({

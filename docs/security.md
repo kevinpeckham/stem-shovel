@@ -14,6 +14,16 @@ What protects what, and where each rule lives. The first security pass ran on
   function and API route resolves the account from the entity it touches
   (`memberOf`, `accountOf*` in `src/lib/server/access.ts`), never from the
   URL, and every query in `data.ts` is scoped by `accountId`.
+- **Super admins** (`user.is_super_admin`, set only by `bun run db:super-admin`,
+  separate from the system-admin flag) count as an owner of every account
+  they do not belong to: the hook adds those accounts to their memberships
+  marked `actingAs` (`src/lib/utils/actingMemberships.ts`), so every
+  membership check passes without a second code path. Every request that
+  uses such a membership is written to `audit_log` (who, which account,
+  method and path) and listed on `/admin`; the header shows "acting as
+  owner" and the account's settings page carries a notice. Acting accounts
+  stay out of the account menu, the accounts page and the current-account
+  choice.
 - **Owners and admins** invite, manage members and account settings;
   **system admins** (`user.is_system_admin`, set only by a script) reach
   `/admin` and the user-doc editor; everyone else gets a 404 there.

@@ -10,6 +10,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Super admin**: a separate flag (`bun run db:super-admin <email>`) that
+  makes its holder an acting owner of every account they are not a member
+  of. The header shows "acting as owner", the account's settings carry a
+  notice, and every request made that way is written to an audit log shown
+  on `/admin`. Migration 0030.
 - **AI request log on `/admin`**: every model call is recorded (the text
   sent, the reply, the parsed answer or the error, duration, tokens) and
   the latest fifty show with the prompt and reply expandable. New

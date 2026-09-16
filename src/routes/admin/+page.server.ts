@@ -1,5 +1,11 @@
 import { requireSystemAdmin } from "$lib/server/access";
-import { listAiRequests, listBugReports, listInviteCodes, systemOverview } from "$lib/server/data";
+import {
+	listAiRequests,
+	listAuditLog,
+	listBugReports,
+	listInviteCodes,
+	systemOverview,
+} from "$lib/server/data";
 import type { PageServerLoad } from "./$types";
 
 /** The operator's page: every account and user, and system invite codes. 404 for anyone else. */
@@ -12,5 +18,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		bugReports: await listBugReports(),
 		me: admin.id,
 		aiRequests: await listAiRequests(),
+		auditLog: await listAuditLog(),
 	};
 };

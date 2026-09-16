@@ -1,6 +1,7 @@
 import { building } from "$app/environment";
 import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
+import { withActingMemberships } from "$lib/utils/actingMemberships";
 import { SECURITY_HEADERS } from "$lib/constants/securityHeaders";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle } from "@sveltejs/kit";
@@ -21,12 +22,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const session = await auth.api.getSession({ headers: event.request.headers });
 		const su = session?.user && session.user.isActive !== false ? session.user : null;
 		user = su
-			? { id: su.id, name: su.name, email: su.email, isSystemAdmin: su.isSystemAdmin === true }
+			? {
+					id: su.id,
+					name: su.name,
+					email: su.email,
+					isSystemAdmin: su.isSystemAdmin === true,
+					isSuperAdmin: su.isSuperAdmin === true,
+				}
 			: null;
 	}
 
 	event.locals.user = user;
-	event.locals.memberships = user
+	const real = user
 		? (
 				await db.query.accountMember.findMany({
 					where: eq(schema.accountMember.userId, user.id),
@@ -42,6 +49,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 					role: m.role,
 				}))
 		: [];
+	// A super admin is an acting owner everywhere else (src/lib/utils/actingMemberships.ts).
+	event.locals.memberships = user?.isSuperAdmin
+		? withActingMemberships(
+				real,
+				await db.query.account.findMany({
+					where: eq(schema.account.status, "active"),
+					columns: { id: true, slug: true, name: true },
+				}),
+			)
+		: real;
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });
 	// Nothing here is for search engines, and nothing frames or sniffs it

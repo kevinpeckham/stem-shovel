@@ -1,4 +1,7 @@
+import { getRequestEvent } from "$app/server";
+import { background } from "$lib/server/background";
 import { db, schema } from "$lib/server/db";
+import { logAudit } from "$lib/server/data";
 import { error, redirect } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 
@@ -30,7 +33,20 @@ export function requireSystemAdmin(locals: App.Locals) {
 export function requireMember(locals: App.Locals, accountId: string) {
 	const m = locals.memberships.find((m) => m.accountId === accountId);
 	if (!m) error(404, "Not found");
+	if (m.actingAs && locals.user) auditActing(locals.user.id, accountId);
 	return m;
+}
+
+/** A super admin used their acting ownership: one line per request, written after the response. */
+function auditActing(userId: string, accountId: string) {
+	let action = "unknown";
+	try {
+		const { request } = getRequestEvent();
+		action = `${request.method} ${new URL(request.url).pathname}`;
+	} catch {
+		// outside a request (should not happen); still worth a line
+	}
+	background(() => logAudit({ userId, accountId, action }));
 }
 
 /**

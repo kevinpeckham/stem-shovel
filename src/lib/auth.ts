@@ -91,6 +91,7 @@ export const auth = betterAuth({
 		additionalFields: {
 			isActive: { type: "boolean", required: true, defaultValue: true, input: false },
 			isSystemAdmin: { type: "boolean", required: true, defaultValue: false, input: false },
+			isSuperAdmin: { type: "boolean", required: true, defaultValue: false, input: false },
 		},
 	},
 	databaseHooks: {

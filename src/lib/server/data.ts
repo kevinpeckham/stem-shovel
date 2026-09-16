@@ -51,6 +51,7 @@ const {
 	userDocVersion,
 	shareLink,
 	aiRequest,
+	auditLog,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -913,6 +914,7 @@ export async function systemOverview() {
 			emailVerified: true,
 			isActive: true,
 			isSystemAdmin: true,
+			isSuperAdmin: true,
 			createdAt: true,
 		},
 	});
@@ -1341,6 +1343,21 @@ export async function reservedPathname(
 	});
 	if (!st) return null;
 	return kind === "midi" ? st.midiPathname : st.pathname;
+}
+
+// ---- audit log --------------------------------------------------------------
+
+export async function logAudit(entry: { userId: string; accountId: string; action: string }) {
+	await db.insert(auditLog).values(entry);
+}
+
+/** The latest acting-owner uses, newest first, for /admin. */
+export function listAuditLog(limit = 50) {
+	return db.query.auditLog.findMany({
+		orderBy: [desc(auditLog.createdAt)],
+		limit,
+		with: { user: { columns: { name: true } }, account: { columns: { name: true, slug: true } } },
+	});
 }
 
 // ---- AI requests ------------------------------------------------------------

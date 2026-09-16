@@ -49,6 +49,12 @@
 	<header class="max-w-article">
 		<h1 class="display">Settings</h1>
 		<p class="opacity-90">The account everything here belongs to.</p>
+		{#if data.memberships?.find((m) => m.accountId === data.account.id)?.actingAs}
+			<p class="mt-2 rounded border border-red-400/40 bg-red-400/10 px-3 py-2 text-sm">
+				You are not a member of this account. As a super admin you act as its owner here, and every
+				request is written to the audit log.
+			</p>
+		{/if}
 	</header>
 
 	<section class="max-w-article">

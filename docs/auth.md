@@ -91,6 +91,8 @@ public by URL; editing needs a signed-in member.
   with no `account_id`, which open sign-up without joining anything — the
   newcomer gets only their own workspace. `requireSystemAdmin` in
   `src/lib/server/access.ts` guards the page and `src/lib/remote/admin.remote.ts`.
+- **Super admin** (`user.is_super_admin`, migration 0030): acts as owner
+  of every account, audited; docs/security.md has the details.
 - **Invite codes** (`invite_code` table, migration 0023): owners and admins
   generate them in account settings with a role, an optional note, a use
   limit (blank = unlimited) and an expiry (never / 7 / 30 / 90 days), copy
