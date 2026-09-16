@@ -11,8 +11,9 @@
 	 * One song document (chart, lyrics or notes) in the documents panel:
 	 * the rendered HTML to read, and, when `editing`, the same editor the
 	 * full-page route uses, saving through the same remote form, without
-	 * leaving the song. Render one at a time — the remote form attaches to a
-	 * single <form>.
+	 * leaving the song. In the panel the editor autosaves and shows no title,
+	 * version or shading (the tab names the document and the panel frames it).
+	 * Render one at a time — the remote form attaches to a single <form>.
 	 */
 	interface Props {
 		songId: string;
@@ -59,26 +60,58 @@
 		savedVersion = version;
 	});
 
+	// close() waits for the save it starts; the resolver is kept until that
+	// save reports back.
+	let closeResolve: (() => void) | null = null;
+	/**
+	 * Save what is unsaved, then leave edit mode. Resolves once the save has
+	 * reported (at once when there is nothing to save); a refused save (an
+	 * emptied document) keeps the editor open with the message.
+	 */
+	export async function close(): Promise<void> {
+		// The WYSIWYG writes its markdown on a 250 ms debounce: let the last keystrokes land.
+		await new Promise((r) => setTimeout(r, 300));
+		if (!editor?.hasEdits || !formEl) {
+			editing = false;
+			return;
+		}
+		await new Promise<void>((resolve) => {
+			closeResolve = resolve;
+			formEl?.requestSubmit();
+		});
+	}
+	function settleClose(saved: boolean) {
+		if (!closeResolve) return;
+		if (saved) editing = false;
+		closeResolve();
+		closeResolve = null;
+	}
+
 	const enhanced = saveDoc.enhance(async ({ submit }) => {
 		saveError = null;
+		const sent = editor?.markdownCurrent;
 		await submit();
 		const issues = fields.allIssues();
 		const result = saveDoc.result;
 		if (issues?.length) {
 			saveError = issues.map((i) => i.message).join(" ");
+			settleClose(false);
 			return;
 		}
 		if (result && "needsConfirm" in result) {
 			saveError = result.error ?? "Save refused; save again to confirm.";
 			confirmEmpty = true;
+			settleClose(false);
 			return;
 		}
 		if (result && "version" in result) {
-			editor?.markAsSaved();
+			// Edits typed while the save was in flight stay unsaved (autosave sends them next).
+			if (editor && editor.markdownCurrent === sent) editor.markAsSaved();
 			savedVersion = result.version;
 			confirmEmpty = false;
 			// The page re-renders the document's HTML from what was saved.
 			await invalidateAll();
+			settleClose(true);
 		}
 	});
 </script>
@@ -106,8 +139,12 @@
 			{confirmEmpty}
 			{saveError}
 			compact
+			autosave
+			showTitle={false}
+			hintAsTooltip
+			bare
 			onsave={() => formEl?.requestSubmit()}
-			onclose={() => (editing = false)}
+			onclose={() => void close()}
 		/>
 	</form>
 {:else if html}

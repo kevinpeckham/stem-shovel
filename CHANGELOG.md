@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- Editing a chart, lyrics or notes in the song page panel autosaves (1.5 s after the last change, ⌘S at once) and shows no title, Save button, version or shading; the hint sits behind an ⓘ tooltip. Done and switching documents save what is unsaved first. The full-page editors keep their Save button (`MarkdownDocEditor` props `autosave`, `showTitle`, `hintAsTooltip`, `bare`).
 - Deleting a project needs it archived first: project settings offer Archive on an active project, and Restore or Delete (owners and admins) on an archived one; the server refuses to delete an active project.
 - The AI draft previews its suggested chart with the Chart panel's styling (rendered markdown), with the raw markdown folded beneath; the card has a Discard control.
 - Chord detection and the AI draft can be cancelled from the Chart panel toolbar or song settings; a cancelled run's result is dropped when it arrives.

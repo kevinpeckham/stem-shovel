@@ -27,6 +27,18 @@
 		/** Inside a panel: no back link or page title, a Done button instead. */
 		compact?: boolean;
 		onclose?: () => void;
+		/**
+		 * Save on idle (and ⌘S) instead of through a Save button, and show no
+		 * version. The button still appears for one case autosave skips: an
+		 * emptied document, which the server asks to confirm.
+		 */
+		autosave?: boolean;
+		/** Show the label in the header (false where a panel's tab already names the document). */
+		showTitle?: boolean;
+		/** Offer the hint as an ⓘ tooltip in the header instead of a line above the pane. */
+		hintAsTooltip?: boolean;
+		/** No shading or border around the panes (for a panel that has its own). */
+		bare?: boolean;
 	}
 
 	let {
@@ -44,6 +56,10 @@
 		editor = $bindable(null),
 		compact = false,
 		onclose,
+		autosave = false,
+		showTitle = true,
+		hintAsTooltip = false,
+		bare = false,
 	}: Props = $props();
 
 	// The editor package is imported in the browser only (type imports above
@@ -97,6 +113,32 @@
 		});
 	});
 
+	// Autosave: a save is asked for AUTOSAVE_MS after the last change, unless
+	// one is in flight (then shortly after) or the document has been emptied
+	// (that needs the explicit, confirmed Save). The page marks the editor
+	// saved only when nothing changed meanwhile, so later edits are not lost.
+	const AUTOSAVE_MS = 1500;
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	let empty = $derived(!editor?.markdownCurrent.trim());
+	$effect(() => {
+		if (!autosave || !editor) return;
+		void editor.markdownCurrent;
+		untrack(() => scheduleSave(AUTOSAVE_MS));
+		return () => {
+			if (saveTimer) clearTimeout(saveTimer);
+			saveTimer = null;
+		};
+	});
+	function scheduleSave(ms: number) {
+		if (saveTimer) clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => {
+			saveTimer = null;
+			if (!editor?.hasEdits || !editor.markdownCurrent.trim()) return;
+			if (pending) return scheduleSave(500);
+			onsave();
+		}, ms);
+	}
+
 	function discard() {
 		if (!editor) return;
 		if (editor.hasEdits && !confirm("Discard unsaved changes?")) return;
@@ -132,13 +174,17 @@
 
 <svelte:window {onkeydown} {onbeforeunload} />
 
-<header class="flex flex-wrap items-center gap-3">
+<header class="flex flex-wrap items-center gap-3 border-t border-t-current/40 pt-2">
 	{#if compact}
-		<span class="grow text-sm font-600">{label}</span>
+		<span class="grow text-sm font-600">
+			{#if showTitle}{label}{:else}<span class="sr-only">{label}</span>{/if}
+		</span>
 	{:else}
 		<a class="text-sm link-dim" href={backHref}>← {backLabel}</a>
-		<h1 class="grow display">{label}</h1>
+		<h3 class="grow display">{label}</h3>
 	{/if}
+
+	<!-- rendered / markdown toggle -->
 	<div
 		class="flex overflow-hidden rounded border border-white/15 text-xs"
 		role="tablist"
@@ -159,8 +205,12 @@
 			onclick={() => (view = "markdown")}>Markdown</button
 		>
 	</div>
+	{#if hintAsTooltip}
+		<span class="i-ph-info text-dim cursor-help" role="img" title={hint} aria-label={hint}></span>
+	{/if}
+	<!-- undo/redo buttons -->
 	<button
-		class="text-xs text-dim disabled:opacity-30"
+		class="text-xs text-dim disabled:opacity-30 hidden"
 		type="button"
 		onclick={() => editor?.undo()}
 		disabled={!editor?.canUndo}
@@ -168,31 +218,38 @@
 		><span class="i-ph-arrow-counter-clockwise mr-1" aria-hidden="true"></span>Undo</button
 	>
 	<button
-		class="text-xs text-dim disabled:opacity-30"
+		class="text-xs text-dim disabled:opacity-30 hidden"
 		type="button"
 		onclick={() => editor?.redo()}
 		disabled={!editor?.canRedo}
 		title="Redo (⌘⇧Z / Ctrl+Y)"
 		><span class="i-ph-arrow-clockwise mr-1" aria-hidden="true"></span>Redo</button
 	>
-	{#if editor?.hasEdits}
+	{#if editor?.hasEdits && !autosave}
 		<button class="text-xs link-dim" type="button" onclick={discard}> Discard </button>
 	{/if}
-	<button
-		class="button-accent text-sm disabled:opacity-40"
-		type="submit"
-		disabled={!editor?.hasEdits || pending}
-		title="Save (⌘S / Ctrl+S)"
-	>
-		{pending ? "Saving…" : confirmEmpty ? `Save empty ${label.toLowerCase()}` : "Save"}
-	</button>
-	<span class="text-xs text-dim tabular-nums" title="Current version">v{version}</span>
+	{#if autosave && pending}
+		<span class="text-xs text-dim">Saving…</span>
+	{/if}
+	{#if !autosave || (editor?.hasEdits && empty)}
+		<button
+			class="button-accent button-sm lg-button-xs disabled:opacity-40"
+			type="submit"
+			disabled={!editor?.hasEdits || pending}
+			title="Save (⌘S / Ctrl+S)"
+		>
+			{pending ? "Saving…" : confirmEmpty ? `Save empty ${label.toLowerCase()}` : "Save"}
+		</button>
+	{/if}
+	{#if !autosave}
+		<span class="text-xs text-dim tabular-nums" title="Current version">v{version}</span>
+	{/if}
 	{#if compact && onclose}
 		<button
 			class="button button-xs"
 			type="button"
 			onclick={() => {
-				if (editor?.hasEdits && !confirm("Close without saving your changes?")) return;
+				if (!autosave && editor?.hasEdits && !confirm("Close without saving your changes?")) return;
 				onclose();
 			}}
 		>
@@ -206,8 +263,8 @@
 {/if}
 
 {#if view === "rendered"}
-	<p class="mb-2 text-xs text-dim">{hint}</p>
-	<div class="chart-editor surface py-4 pr-6 pl-12 {compact ? 'mt-3' : ''}">
+	{#if !hintAsTooltip}<p class="mb-2 text-xs text-dim">{hint}</p>{/if}
+	<div class="chart-editor {bare ? '' : 'surface'} py-4 pr-6 pl-12 {compact ? 'mt-3' : ''}">
 		{#if Editor && editor}
 			<Editor {editor} class="chart-body" />
 		{:else}
@@ -215,20 +272,26 @@
 		{/if}
 	</div>
 {:else}
-	<p class="mb-2 text-xs text-dim">
-		Markdown source. Edits here and in the rendered view are the same document; fenced code blocks
-		(```) keep chord spacing.
-	</p>
+	{#if !hintAsTooltip}
+		<p class="mb-2 text-xs text-dim">
+			Markdown source. Edits here and in the rendered view are the same document; fenced code blocks
+			(```) keep chord spacing.
+		</p>
+	{/if}
 	{#if editor}
 		<textarea
-			class="chart-source block w-full surface px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none"
+			class="chart-source block w-full {bare
+				? 'bg-transparent'
+				: 'surface'} px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none min-h-full"
 			bind:value={editor.markdownCurrent}
 			rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 			spellcheck="false"
 			placeholder="# Title&#10;&#10;## Section&#10;```&#10;| D | A |&#10;```"></textarea>
 	{:else}
 		<textarea
-			class="chart-source block w-full surface px-4 py-3 font-mono text-sm leading-relaxed"
+			class="chart-source block w-full {bare
+				? 'bg-transparent'
+				: 'surface'} px-4 py-3 font-mono text-sm leading-relaxed min-h-full"
 			rows="16"
 			disabled>{markdown}</textarea
 		>

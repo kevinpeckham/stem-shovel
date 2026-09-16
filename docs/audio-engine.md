@@ -163,12 +163,19 @@ fields are `$state`, so components read `engine.position` directly.
   in eight seconds, matching the song's settings.
 - **Documents in the panel** (`SongDocPanel.svelte`): one component reads
   a chart, lyrics or notes document (its sanitised HTML) and, when
-  `editing`, mounts `MarkdownDocEditor` in `compact` mode inside a form on
-  the `saveDoc` remote form, so the document is edited without leaving the
-  song; a save re-renders through `invalidateAll()`. The page renders only
-  the active document (a remote form attaches to one element) and binds
-  `dirty` to guard tab switches. The `[doc=songDoc]` route keeps the
-  full-page editor.
+  `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
+  remote form, so the document is edited without leaving the song; a save
+  re-renders through `invalidateAll()`. In the panel the editor runs with
+  `compact`, `autosave` (a save 1.5 s after the last change, ⌘S at once;
+  no Save button or version, except the Save that confirms an emptied
+  document), `showTitle={false}`, `hintAsTooltip` (the ⓘ in the header)
+  and `bare` (no shading, the panel frames it). The page renders only the
+  active document (a remote form attaches to one element) and closes it
+  through the panel's exported `close()`, which waits a serialise debounce
+  (the WYSIWYG writes markdown 250 ms after a keystroke), saves what is
+  unsaved and then leaves edit mode; a save marks the editor clean only if
+  nothing changed while it was in flight. The `[doc=songDoc]` route and
+  the user docs keep the full-page editor with its Save button.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
   the documents panel has a Comments tab (scrollable list, newest last,
   author, date, an "edited" badge, the position as a link that seeks) and

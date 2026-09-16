@@ -284,9 +284,10 @@
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
 	}
 	let doc = $derived(showing ?? "chart");
-	// In-panel editing (SongDocPanel): which document is open for editing, and whether it has unsaved edits.
+	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
+	// The panel autosaves; closing goes through its close(), which flushes first.
 	let docEditing = $state(false);
-	let docDirty = $state(false);
+	let docPanel = $state<SongDocPanel | null>(null);
 	const DOC_HINTS = {
 		chart:
 			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
@@ -1855,6 +1856,7 @@
 		{:else}
 			{#key doc}
 				<SongDocPanel
+					bind:this={docPanel}
 					songId={data.song.id}
 					kind={doc}
 					label={DOC_LABELS[doc]}
@@ -1864,7 +1866,6 @@
 					version={DOC_VERSION[doc]}
 					canEdit={data.canEdit}
 					bind:editing={docEditing}
-					bind:dirty={docDirty}
 					above={panel === "chart" ? draftInPanel : undefined}
 				/>
 			{/key}
@@ -1915,9 +1916,9 @@
 							: index === PANELS.length - 1
 								? 'rounded-l-none'
 								: 'rounded-none border-r-none'}"
-						onclick={() => {
+						onclick={async () => {
 							if (kind === panel) return;
-							if (docEditing && docDirty && !confirm("Leave without saving your changes?")) return;
+							if (docEditing) await docPanel?.close();
 							docEditing = false;
 							panel = kind;
 						}}>{PANEL_LABELS[kind]}</button
@@ -1943,9 +1944,9 @@
 					title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
 					aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
 					aria-pressed={docEditing}
-					onclick={() => {
-						if (docEditing && docDirty && !confirm("Close without saving your changes?")) return;
-						docEditing = !docEditing;
+					onclick={async () => {
+						if (docEditing) await docPanel?.close();
+						else docEditing = true;
 					}}
 				>
 					<span class={docEditing ? "i-ph-check" : data.docs[doc] ? "i-ph-pencil" : "i-ph-plus"}
