@@ -1,7 +1,7 @@
 import { canEdit, publicAccountBySlug } from "$lib/server/access";
 import { openShareLinks, useShareLink } from "$lib/server/data";
 import { rememberAccount } from "$lib/server/currentAccount";
-import { rememberShareCodes, shareCodesFrom } from "$lib/server/viewAccess";
+import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "$lib/server/viewAccess";
 import { error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
@@ -23,7 +23,7 @@ export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) =
 	const grants = await openShareLinks(carried);
 	const arriving = url.searchParams.get("share")?.trim();
 	if (arriving && grants.some((g) => g.code === arriving)) {
-		const remembered = (cookies.get("share") ?? "").split(",").filter(Boolean);
+		const remembered = (cookies.get(SHARE_COOKIE) ?? "").split(",").filter(Boolean);
 		if (!remembered.includes(arriving)) {
 			await useShareLink(arriving);
 			rememberShareCodes(cookies, [arriving, ...remembered]);

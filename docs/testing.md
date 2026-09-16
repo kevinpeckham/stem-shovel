@@ -40,3 +40,9 @@ bunx vp test run src/lib/audio/measures.test.ts   # one file
   Playwright scripts driven as the Screenshot Bot (docs/agent-screenshots.md)
   and by Kevin.
 - `bun run test` is the first gate in the `/release` and `/test` skills.
+
+`tests/helpers/fakeRemoteForm.ts` stands in for a remote `form` in component
+tests (spread attributes, `enhance()`, `fields.<name>.as()`, `for()`), and
+`tests/setup-components.ts` stubs `ResizeObserver` for components that bind
+their size. Component tests cover Notifications, ProjectPlayer,
+SectionTimeline, Transport, PrivacyToggle, GlobalNav and CommentTimeline.

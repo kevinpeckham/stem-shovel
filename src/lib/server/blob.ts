@@ -22,9 +22,6 @@ export function blobAuth(access: BlobAccess = "public") {
 /** A token pasted into 1Password with quotes or whitespace around it is still the token. */
 const cleanToken = (t: string) => t.trim().replace(/^["']+|["']+$/g, "");
 
-/** The token for the store a file already lives in. */
-export const blobAuthFor = (url: string) => blobAuth(accessOfUrl(url));
-
 /**
  * Blob pathname for a stem. IDs, not slugs, so renames never move files.
  * `version` is appended for replacements: Blob serves files with a 30-day
@@ -117,7 +114,7 @@ export async function readBlob(url: string): Promise<Response> {
 }
 
 /** How long a presigned URL handed to a page stays good. Long enough to finish listening and downloading. */
-export const PRESIGN_TTL_MS = 12 * 60 * 60 * 1000;
+const PRESIGN_TTL_MS = 12 * 60 * 60 * 1000;
 
 let delegation: { token: Awaited<ReturnType<typeof issueSignedToken>>; validUntil: number } | null =
 	null;

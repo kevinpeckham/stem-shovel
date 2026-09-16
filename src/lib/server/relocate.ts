@@ -6,10 +6,7 @@ import { and, eq } from "drizzle-orm";
 const { song, stem, demo } = schema;
 
 /** The store a song's files belong in: private when it or its project is. */
-export function accessOfSong(s: {
-	isPrivate: boolean;
-	project: { isPrivate: boolean };
-}): BlobAccess {
+function accessOfSong(s: { isPrivate: boolean; project: { isPrivate: boolean } }): BlobAccess {
 	return s.isPrivate || s.project.isPrivate ? "private" : "public";
 }
 
