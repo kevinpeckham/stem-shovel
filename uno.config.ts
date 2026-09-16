@@ -140,7 +140,8 @@ export default defineConfig({
 			"max-w-none sm:max-w-[34rem] md:max-w-[36rem] lg:max-w-[38rem] xl:max-w-[40rem] 2xl:max-w-[45rem]",
 		],
 		["heading-1", "text-balance font-700 text-accent mb-3 text-32px lg:text-32px leading-snug"],
-		["heading-2", "font-700 text-accent mb-3 text-20px lg:text-24px"],
+		["heading-2", "font-700 text-white mb-3 text-20px lg:text-22px"],
+		["heading-3", "font-500 text-white mb-3 text-18px lg:text-18px"],
 		["nav-link", "underline underline-offset-4 hover:text-maximumYellow opacity-90"],
 		[
 			"list-tile",

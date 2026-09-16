@@ -13,6 +13,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Detect chords** in song settings: the tonal stems are transcribed to
   notes in the browser (Spotify's Basic Pitch) and read as one chord per
   bar on the song's grid, shown as chart lines.
+- **Archive, restore and delete projects** from project settings: any
+  member archives a project (it moves to a collapsed "Archived" section on
+  the projects page, everything in it kept) and restores it; owners and
+  admins delete one with every song and file behind it, after a
+  confirmation. An archived project's page carries a badge.
 - **"Do not use AI"** on a project or a song, set by any member in its
   settings: no model is called for it and nothing is transcribed; the AI
   buttons disappear, the commands refuse, and the song shows a "no AI"
