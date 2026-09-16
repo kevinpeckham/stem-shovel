@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- Spacing of the AI check's note after its confidence.
+
 ## [0.8.0] - 2026-09-16
 
 ### Added

@@ -91,8 +91,9 @@ fields are `$state`, so components read `engine.position` directly.
   `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo,
   meter, key, confidence, notes) shows under the changes editor with "Use
   these", which puts the values into rows at 0:00 for the user to save. Ten
-  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. Built
-  from replicator's pattern, not yet exercised against the live model.
+  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. First
+  live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,
+  in eight seconds, matching the song's settings.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
   the documents panel has a Comments tab (scrollable list, newest last,
   author, date, an "edited" badge, the position as a link that seeks) and

@@ -1099,8 +1099,9 @@
 						AI hears <strong
 							>{Math.round(aiAnswer.tempo)} bpm · {aiAnswer.key} · {aiAnswer.meter}</strong
 						>
-						({Math.round(aiAnswer.confidence * 100)}% sure){#if aiAnswer.notes}
-							— {aiAnswer.notes}{/if}
+						({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
+							? ` — ${aiAnswer.notes}`
+							: ""}
 						<button class="ml-2 link-dim" type="button" onclick={useAiAnswer}>Use these</button>
 						<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
 							>Dismiss</button
