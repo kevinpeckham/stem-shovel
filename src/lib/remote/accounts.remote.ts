@@ -1,17 +1,27 @@
 import { form, getRequestEvent } from "$app/server";
+import { db, schema } from "$lib/server/db";
+import { and, eq } from "drizzle-orm";
 import { requireMember, requireUser } from "$lib/server/access";
 import {
 	acceptInvitation as accept,
 	createInviteCode as newInviteCode,
 	createInvitation,
 	revokeInviteCode as dropInviteCode,
+	removeMembership,
 	revokeInvitation as revoke,
+	setMemberRole as changeRole,
 	updateAccount as update,
 } from "$lib/server/data";
 import { sendInvitationEmail } from "$lib/server/email";
 import { AccountSettingsSchema } from "$lib/val/AccountSchema";
 import { InvitationIdSchema, InvitationTokenSchema, InviteSchema } from "$lib/val/InvitationSchema";
 import { InviteCodeCreateSchema, InviteCodeIdSchema } from "$lib/val/InviteCodeSchema";
+import {
+	LeaveAccountSchema,
+	MemberRoleChangeSchema,
+	MembershipSchema,
+} from "$lib/val/MembershipSchema";
+import { CURRENT_ACCOUNT_COOKIE } from "$lib/server/currentAccount";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -92,3 +102,58 @@ export const revokeInviteCode = form(InviteCodeIdSchema, async ({ id }) => {
 	}
 	error(404, "Invite code not found");
 });
+
+/** A member leaves an account of their own accord (never the last owner). */
+export const leaveAccount = form(LeaveAccountSchema, async ({ accountId }, issue) => {
+	const { locals, cookies } = getRequestEvent();
+	const user = requireUser(locals);
+	requireMember(locals, accountId);
+	const result = await removeMembership(accountId, user.id);
+	if (!result.ok) invalid(issue.accountId(result.error));
+	if (cookies.get(CURRENT_ACCOUNT_COOKIE)) cookies.delete(CURRENT_ACCOUNT_COOKIE, { path: "/" });
+	redirect(303, "/accounts");
+});
+
+/** Owners and admins remove a member; only an owner removes another owner, and never the last one. */
+export const removeMember = form(MembershipSchema, async ({ accountId, userId }, issue) => {
+	const { locals } = getRequestEvent();
+	const me = requireUser(locals);
+	const m = requireMember(locals, accountId);
+	if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins remove members");
+	if (userId === me.id) error(400, "Leave the account instead of removing yourself");
+	const target = await db.query.accountMember.findFirst({
+		where: and(
+			eq(schema.accountMember.accountId, accountId),
+			eq(schema.accountMember.userId, userId),
+		),
+	});
+	if (!target) error(404, "Not a member");
+	if (target.role === "owner" && m.role !== "owner") error(403, "Only an owner removes an owner");
+	const result = await removeMembership(accountId, userId);
+	if (!result.ok) invalid(issue.userId(result.error));
+	return { removed: true };
+});
+
+/** Owners change roles (and so hand over ownership); admins may set member or viewer. */
+export const setMemberRole = form(
+	MemberRoleChangeSchema,
+	async ({ accountId, userId, role }, issue) => {
+		const { locals } = getRequestEvent();
+		const m = requireMember(locals, accountId);
+		if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins change roles");
+		if (m.role !== "owner" && (role === "owner" || role === "admin")) {
+			error(403, "Only an owner grants owner or admin");
+		}
+		const target = await db.query.accountMember.findFirst({
+			where: and(
+				eq(schema.accountMember.accountId, accountId),
+				eq(schema.accountMember.userId, userId),
+			),
+		});
+		if (!target) error(404, "Not a member");
+		if (target.role === "owner" && m.role !== "owner") error(403, "Only an owner changes an owner");
+		const result = await changeRole(accountId, userId, role);
+		if (!result.ok) invalid(issue.role(result.error));
+		return { role };
+	},
+);

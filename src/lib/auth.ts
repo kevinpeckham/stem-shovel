@@ -124,17 +124,28 @@ export const auth = betterAuth({
 					if (!pass.ok) throw new APIError("BAD_REQUEST", { message: pass.message });
 				},
 				after: async (user, ctx) => {
-					await createPersonalAccount(user);
-					// The same request's invitation or code joins its account too.
-					if (!ctx || ctx.path !== "/sign-up/email") return;
-					const body = (ctx.body ?? {}) as Record<string, unknown>;
-					const pass = await checkSignUp(
-						{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
-						gateLookups,
-					);
-					if (!pass.ok) return;
-					if (pass.via === "invitation") await acceptInvitation(pass.token, user);
-					else await redeemInviteCode(pass.code, user.id);
+					// Joining an account through an invitation or an account's code is
+					// the whole sign-up: no personal workspace beside it. A new-account
+					// code (no account), or a user made outside sign-up, gets one.
+					const body = ((ctx?.path === "/sign-up/email" && ctx.body) || {}) as Record<
+						string,
+						unknown
+					>;
+					const pass = ctx
+						? await checkSignUp(
+								{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
+								gateLookups,
+							)
+						: null;
+					let joined = false;
+					if (pass?.ok && pass.via === "invitation") {
+						const result = await acceptInvitation(pass.token, user);
+						joined = typeof result !== "string";
+					} else if (pass?.ok && pass.via === "code") {
+						const result = await redeemInviteCode(pass.code, user.id);
+						joined = typeof result !== "string" && result.account !== null;
+					}
+					if (!joined) await createPersonalAccount(user);
 				},
 			},
 		},

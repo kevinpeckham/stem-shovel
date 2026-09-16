@@ -5,11 +5,13 @@
 	interface Props {
 		user: { name: string; email?: string; isSystemAdmin?: boolean } | null;
 		/** Accounts the user belongs to; the current one is in the URL. */
-		memberships: { accountId: string; slug: string; name: string }[];
+		memberships: { accountId: string; slug: string; name: string; role: string }[];
+		/** The user's own account for pages outside any account (src/lib/server/currentAccount.ts). */
+		currentSlug?: string | null;
 	}
-	let { user, memberships }: Props = $props();
+	let { user, memberships, currentSlug = null }: Props = $props();
 
-	let accountSlug = $derived(page.params.account ?? memberships[0]?.slug);
+	let accountSlug = $derived(page.params.account ?? currentSlug ?? memberships[0]?.slug);
 	let member = $derived(memberships.find((m) => m.slug === accountSlug));
 	let current = $derived(page.url.pathname);
 	// A visitor sees the name of the account they are viewing.
@@ -80,7 +82,7 @@
 						</div>
 						{#if member}
 							<div class="px-4 pt-2 pb-1 text-11px uppercase tracking-wider opacity-60">
-								{member.name}
+								{member.name} · {member.role}
 							</div>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
@@ -126,9 +128,23 @@
 										class="i-ph-arrows-left-right mr-2 inline-block align-[-2px]"
 										aria-hidden="true"
 									></span>{m.name}
+									<span class="ml-1 text-11px uppercase tracking-wider opacity-60">{m.role}</span>
 								</a>
 							{/each}
 						{/if}
+						<a
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(
+								'/accounts',
+							)
+								? 'text-maximumYellow'
+								: ''}"
+							role="menuitem"
+							href="/accounts"
+							onclick={() => (open = false)}
+						>
+							<span class="i-ph-users-three mr-2 inline-block align-[-2px]" aria-hidden="true"
+							></span>Your accounts
+						</a>
 						{#if user.isSystemAdmin}
 							<a
 								class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(

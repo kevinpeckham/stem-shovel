@@ -103,6 +103,7 @@ export async function accountUsage(accountId: string) {
 		bytes: stems.bytes ?? 0,
 		storageLimitBytes: row?.storageLimitBytes ?? null,
 		members: (row?.members ?? []).map((m) => ({
+			userId: m.userId,
 			role: m.role,
 			name: m.user.name,
 			email: m.user.email,
@@ -1188,6 +1189,82 @@ export async function deleteAccount(id: string) {
 	]);
 	const [row] = await db.delete(account).where(eq(account.id, id)).returning({ id: account.id });
 	return !!row;
+}
+
+// ---- memberships ------------------------------------------------------------
+
+/** Every account the user belongs to, with their role and the account's size, for /accounts. */
+export async function accountsOf(userId: string) {
+	const rows = await db.query.accountMember.findMany({
+		where: eq(accountMember.userId, userId),
+		with: {
+			account: { columns: { id: true, name: true, slug: true, status: true, createdAt: true } },
+		},
+	});
+	const counts = await db
+		.select({ accountId: project.accountId, n: sql<number>`count(*)` })
+		.from(project)
+		.where(eq(project.status, "active"))
+		.groupBy(project.accountId);
+	const projectsOf = new Map(counts.map((c) => [c.accountId, c.n]));
+	const owners = await db
+		.select({ accountId: accountMember.accountId, n: sql<number>`count(*)` })
+		.from(accountMember)
+		.where(eq(accountMember.role, "owner"))
+		.groupBy(accountMember.accountId);
+	const ownersOf = new Map(owners.map((o) => [o.accountId, o.n]));
+	return rows
+		.map((m) => ({
+			accountId: m.accountId,
+			name: m.account.name,
+			slug: m.account.slug,
+			status: m.account.status,
+			role: m.role,
+			projects: projectsOf.get(m.accountId) ?? 0,
+			/** An owner may leave only when another owner remains. */
+			canLeave: m.role !== "owner" || (ownersOf.get(m.accountId) ?? 0) > 1,
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function ownerCount(accountId: string) {
+	const [row] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(accountMember)
+		.where(and(eq(accountMember.accountId, accountId), eq(accountMember.role, "owner")));
+	return row?.n ?? 0;
+}
+
+/** Ends a membership; the last owner cannot go. */
+export async function removeMembership(accountId: string, userId: string) {
+	const m = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, accountId), eq(accountMember.userId, userId)),
+	});
+	if (!m) return { ok: false as const, error: "Not a member." };
+	if (m.role === "owner" && (await ownerCount(accountId)) <= 1) {
+		return {
+			ok: false as const,
+			error: "The last owner cannot leave. Make someone else an owner first.",
+		};
+	}
+	await db.delete(accountMember).where(eq(accountMember.id, m.id));
+	return { ok: true as const, role: m.role };
+}
+
+/** Changes a member's role; the last owner cannot be demoted. */
+export async function setMemberRole(accountId: string, userId: string, role: MemberRole) {
+	const m = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, accountId), eq(accountMember.userId, userId)),
+	});
+	if (!m) return { ok: false as const, error: "Not a member." };
+	if (m.role === "owner" && role !== "owner" && (await ownerCount(accountId)) <= 1) {
+		return {
+			ok: false as const,
+			error: "The last owner cannot be demoted. Make someone else an owner first.",
+		};
+	}
+	await db.update(accountMember).set({ role }).where(eq(accountMember.id, m.id));
+	return { ok: true as const, previous: m.role };
 }
 
 // ---- stem MIDI files --------------------------------------------------------

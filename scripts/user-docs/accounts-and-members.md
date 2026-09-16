@@ -23,6 +23,14 @@ A code is for handing out in person or pasting into a message. Generate one with
 
 The settings page shows how many projects, songs and stems the account holds and how much storage they use.
 
+## Managing members
+
+In **Account settings**, owners can change anyone's role, including making someone else an owner to hand the account over, and remove members. Admins can set members and viewers and remove them. The last owner cannot leave or be demoted.
+
+## Belonging to several accounts
+
+You can be an owner of one account and a member of others. The account menu at the top right shows your role in each and switches between them; **Your accounts** lists them all, and you can leave any account there. Pages outside an account, such as the docs, treat the account you last opened as yours.
+
 ## Your own workspace
 
-Everyone who signs up also gets a personal account. It works like any other; invite people into it if you like.
+Someone who signs up with a new-account code gets a workspace of their own. Joining through an invitation or an account's code puts you straight into that account, without a separate workspace.

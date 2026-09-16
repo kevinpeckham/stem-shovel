@@ -28,6 +28,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Belonging to several accounts**: the account menu shows your role in
+  each account and links to a new "Your accounts" page (roles, project
+  counts, leave). Neutral pages and the old `/projects` and `/settings`
+  shortcuts go to the account you last opened, else one you own. In
+  account settings owners change roles (handing over ownership) and
+  remove members; admins manage members and viewers; anyone can leave
+  except the last owner. Joining through an invitation or an account's
+  invite code no longer also creates a personal workspace.
 - **Private projects and songs with viewing links**: everything stays
   public by default; any member makes a project or a song private from
   its settings (a private project covers its songs). Private means
@@ -42,6 +50,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   song settings, charts/lyrics/notes, comments, downloads and sharing,
   accounts and members, reporting a bug) live in `scripts/user-docs` and
   `bun run db:seed-docs` adds any that are missing, never overwriting edits.
+- **Acceptable-use rules** on the copyright page: hate speech, sexual
+  content involving minors, pornography, graphic violence, illegal activity
+  and harassment are banned, with removal and suspension as consequences.
 - **Privacy policy and copyright policy** as docs pages, linked from the
   footer and from the sign-up form, which now states that creating an
   account means agreeing to them. Both are deliberately short.

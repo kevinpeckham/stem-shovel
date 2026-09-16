@@ -3,10 +3,14 @@
 	import {
 		createInviteCode,
 		inviteMember,
+		leaveAccount,
+		removeMember,
 		revokeInviteCode,
 		revokeInvitation,
+		setMemberRole,
 		updateAccount,
 	} from "$lib/remote/accounts.remote";
+	import { MEMBER_ROLES } from "$lib/val/MemberRoleSchema";
 	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
 	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
 	import { formatInviteCode } from "$lib/utils/formatInviteCode";
@@ -130,13 +134,94 @@
 	<section class="max-w-article">
 		<h2 class="heading-2">Members</h2>
 		<ul class="surface divide-y divide-white/10 text-15px">
-			{#each data.usage.members as m (m.email)}
-				<li class="flex items-baseline justify-between gap-4 px-5 py-3">
-					<span>{m.name} <span class="text-dim">· {m.email}</span></span>
-					<span class="text-13px uppercase tracking-wider text-dim">{m.role}</span>
+			{#each data.usage.members as m (m.userId)}
+				{@const roleForm = setMemberRole.for(m.userId)}
+				{@const remove = removeMember.for(m.userId)}
+				{@const isMe = m.userId === data.user?.id}
+				{@const mayChange =
+					data.canInvite && !isMe && (data.myRole === "owner" || m.role !== "owner")}
+				<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3">
+					<span
+						>{m.name}
+						<span class="text-dim">· {m.email}{isMe ? " · you" : ""}</span></span
+					>
+					<span class="flex flex-wrap items-center gap-x-4 gap-y-1 text-13px">
+						{#if mayChange}
+							<form
+								{...roleForm.enhance(async ({ submit }) => {
+									await submit();
+									const issue = roleForm.fields.allIssues()?.[0];
+									if (issue) notify(issue.message, { kind: "error" });
+									else if (roleForm.result?.role)
+										notify(`${m.name} is now ${roleForm.result.role}`);
+								})}
+							>
+								<input {...roleForm.fields.accountId.as("hidden", data.account.id)} />
+								<input {...roleForm.fields.userId.as("hidden", m.userId)} />
+								<select
+									class="field py-1 text-13px uppercase tracking-wider"
+									aria-label="Role of {m.name}"
+									{...roleForm.fields.role.as("select", m.role)}
+									onchange={(e) => e.currentTarget.form?.requestSubmit()}
+								>
+									{#each MEMBER_ROLES as role (role)}
+										<option
+											value={role}
+											disabled={data.myRole !== "owner" && (role === "owner" || role === "admin")}
+										>
+											{role}
+										</option>
+									{/each}
+								</select>
+							</form>
+							<form
+								{...remove.enhance(async ({ submit }) => {
+									if (!confirm(`Remove ${m.name} from ${data.account.name}?`)) return;
+									await submit();
+									const issue = remove.fields.allIssues()?.[0];
+									if (issue) notify(issue.message, { kind: "error" });
+									else if (remove.result?.removed) notify(`${m.name} removed`);
+								})}
+							>
+								<input {...remove.fields.accountId.as("hidden", data.account.id)} />
+								<input {...remove.fields.userId.as("hidden", m.userId)} />
+								<button class="link-dim" disabled={!!remove.pending}>
+									{remove.pending ? "Removing…" : "Remove"}
+								</button>
+							</form>
+						{:else}
+							<span class="uppercase tracking-wider text-dim">{m.role}</span>
+						{/if}
+						{#if isMe}
+							<form
+								{...leaveAccount.enhance(async ({ submit }) => {
+									if (
+										!confirm(
+											`Leave ${data.account.name}? You will need a new invitation to come back.`,
+										)
+									)
+										return;
+									await submit();
+									const issue = leaveAccount.fields.allIssues()?.[0];
+									if (issue) notify(issue.message, { kind: "error" });
+								})}
+							>
+								<input {...leaveAccount.fields.accountId.as("hidden", data.account.id)} />
+								<button class="link-dim" disabled={!!leaveAccount.pending}>
+									{leaveAccount.pending ? "Leaving…" : "Leave"}
+								</button>
+							</form>
+						{/if}
+					</span>
 				</li>
 			{/each}
 		</ul>
+		{#if data.myRole === "owner"}
+			<p class="mt-2 text-12px text-dim">
+				Hand over ownership by making someone else an owner; the last owner cannot leave or be
+				demoted.
+			</p>
+		{/if}
 		{#if data.canInvite}
 			<h3 class="mt-6 text-15px font-700">Invite someone</h3>
 			<form

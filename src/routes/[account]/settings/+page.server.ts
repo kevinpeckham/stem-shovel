@@ -10,6 +10,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	return {
 		usage: await accountUsage(account.id),
 		canInvite,
+		myRole: member.role,
 		invitations: canInvite ? await pendingInvitations(account.id) : [],
 		inviteCodes: canInvite ? await listInviteCodes(account.id) : [],
 	};

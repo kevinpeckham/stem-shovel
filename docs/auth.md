@@ -32,6 +32,18 @@ public by URL; editing needs a signed-in member.
   with a role from account settings; the email carries `/invite/<token>`
   (14-day expiry). Accepting needs a signed-in user whose address matches and
   creates the membership; the settings page lists and revokes pending ones.
+- **Several accounts per user**: memberships carry a role each. The
+  "current" account for neutral pages (home, docs, admin, the `/projects`
+  and `/settings` shortcuts, the post-verification landing) is the
+  `current_account` cookie, set whenever a member opens an account's pages,
+  else the first account they own, else the first membership
+  (`src/lib/server/currentAccount.ts`). `/accounts` lists a user's accounts
+  with roles and lets them leave (never the last owner). In account
+  settings owners change any role (that is how ownership is handed over)
+  and remove anyone; admins set member/viewer and remove non-owners.
+  Signing up through an invitation or an account's invite code joins that
+  account only — the personal workspace is created only for a new-account
+  code or a user made outside sign-up.
 - **Privacy** (`project.is_private`, `song.is_private`, migration 0028):
   everything is public by default; any member makes a project or a
   song private from its settings (a private project makes every song in it

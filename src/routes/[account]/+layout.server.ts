@@ -1,5 +1,6 @@
 import { canEdit, publicAccountBySlug } from "$lib/server/access";
 import { openShareLinks, useShareLink } from "$lib/server/data";
+import { rememberAccount } from "$lib/server/currentAccount";
 import { rememberShareCodes, shareCodesFrom } from "$lib/server/viewAccess";
 import { error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
@@ -28,5 +29,7 @@ export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) =
 			rememberShareCodes(cookies, [arriving, ...remembered]);
 		}
 	}
-	return { account, canEdit: canEdit(locals, account.id), shareGrants: grants };
+	const member = canEdit(locals, account.id);
+	if (member) rememberAccount(cookies, account.slug); // "your" account, for the neutral pages
+	return { account, canEdit: member, shareGrants: grants };
 };

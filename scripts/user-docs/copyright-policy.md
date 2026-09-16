@@ -14,7 +14,15 @@ If you believe material on Stem Shovel infringes a copyright you hold, email inq
 
 ## Acceptable use
 
-Do not use Stem Shovel to store or distribute anything unlawful, to harass anyone, or to interfere with the service or other users' accounts.
+Stem Shovel is for music. Do not upload, write, or share, anywhere on the service, including lyrics, notes, comments, artwork and recordings:
+
+- hate speech, or anything that attacks people for who they are
+- pornography or sexual content involving minors in any form
+- graphic descriptions or depictions of violence, or threats against anyone
+- material that promotes or is part of illegal activity
+- harassment of other users, or anything meant to interfere with the service or other people's accounts
+
+We may remove material that crosses these lines and may suspend or close the account responsible. Songs can deal with hard subjects; the line is content whose purpose is to demean, sexualise minors, glorify violence, or break the law.
 
 ## Changes
 
