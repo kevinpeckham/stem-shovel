@@ -497,6 +497,11 @@
 			chordBusy = null;
 		}
 	}
+	/** The chart panel's button: detect chords first when that has not run, then draft. */
+	async function draftFromPanel() {
+		if (!chordSegments) await detectChords();
+		if (chordSegments) await draftFromChords();
+	}
 	async function draftFromChords() {
 		if (!chordSegments) return;
 		draftBusy = true;
@@ -1362,41 +1367,7 @@
 							)}</pre>
 					</div>
 				{/if}
-				{#if draft}
-					<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-						<div class="flex flex-wrap items-center justify-between gap-2">
-							<span class="font-600">AI draft</span>
-							<span class="flex items-center gap-3">
-								<button class="link-dim" type="button" onclick={saveDraftSections}
-									>Save sections</button
-								>
-								<button class="link-dim" type="button" onclick={saveDraftChart}
-									>Save as chart</button
-								>
-							</span>
-						</div>
-						{#if draft.chords.length > 0}
-							<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{aiChordLines(
-									draft.chords,
-								)}</pre>
-						{/if}
-						<p class="mt-1 text-13px">
-							{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
-								{sec.name} @ bar {sec.bar}{/each}
-						</p>
-						<ul class="mt-1 text-13px opacity-90">
-							{#each draft.progressions as pr (pr.section)}
-								<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
-							{/each}
-						</ul>
-						{#if draft.notes}<p class="mt-1 text-12px text-dim">{draft.notes}</p>{/if}
-						<details class="mt-1 text-12px">
-							<summary class="cursor-pointer text-dim">Chart markdown</summary>
-							<pre
-								class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{draft.chart}</pre>
-						</details>
-					</div>
-				{/if}
+				{#if draft}{@render draftCard()}{/if}
 				{#if scanResult}
 					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 						{#if scanResult.applied}
@@ -1804,15 +1775,40 @@
 			<article
 				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 			>
+				{#if panel === "chart"}{@render draftInPanel()}{/if}
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
 				{@html data.docs[doc]}
 			</article>
 		{:else}
-			<p
+			<div
 				class="h-full min-h-full bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 			>
-				No {doc} yet.
-			</p>
+				{#if panel === "chart"}{@render draftInPanel()}{/if}
+				<p>No {doc} yet.</p>
+			</div>
+		{/if}
+		{#if panel === "chart" && data.canEdit && data.aiAvailable}
+			<!-- Draft the chart from the stems: chords first (if not done), then the model. -->
+			<div class="absolute top-2 left-3">
+				<button
+					class="button button-xs h-full"
+					type="button"
+					disabled={draftBusy ||
+						!!chordBusy ||
+						!playerEngine ||
+						playerEngine.status !== "ready" ||
+						!posCtx.grid}
+					title={!posCtx.grid
+						? "Needs a tempo and a time signature first (song settings)"
+						: playerEngine?.status !== "ready"
+							? "Available once every stem has decoded"
+							: "Transcribe the stems and have the AI draft sections, progressions and a chart"}
+					onclick={draftFromPanel}
+				>
+					<span class="i-ph-sparkle" aria-hidden="true"></span>
+					{draftBusy ? "Drafting…" : (chordBusy ?? "Draft chart with AI")}
+				</button>
+			</div>
 		{/if}
 		<!-- tool bar  -->
 		<div class="absolute top-2 right-3 mb-2 grid grid-cols-[auto_auto] place-content-end gap-4">
@@ -2322,6 +2318,46 @@
 				</form>
 			{/if}
 		</div>
+	{/if}
+{/snippet}
+
+{#snippet draftCard()}
+	{#if draft}
+		<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<span class="font-600">AI draft</span>
+				<span class="flex items-center gap-3">
+					<button class="link-dim" type="button" onclick={saveDraftSections}>Save sections</button>
+					<button class="link-dim" type="button" onclick={saveDraftChart}>Save as chart</button>
+				</span>
+			</div>
+			{#if draft.chords.length > 0}
+				<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{aiChordLines(
+						draft.chords,
+					)}</pre>
+			{/if}
+			<p class="mt-1 text-13px">
+				{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
+					{sec.name} @ bar {sec.bar}{/each}
+			</p>
+			<ul class="mt-1 text-13px opacity-90">
+				{#each draft.progressions as pr (pr.section)}
+					<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
+				{/each}
+			</ul>
+			{#if draft.notes}<p class="mt-1 text-12px text-dim">{draft.notes}</p>{/if}
+			<details class="mt-1 text-12px">
+				<summary class="cursor-pointer text-dim">Chart markdown</summary>
+				<pre class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{draft.chart}</pre>
+			</details>
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet draftInPanel()}
+	{#if chordError}<p class="mb-4 text-sm text-red-400" role="alert">{chordError}</p>{/if}
+	{#if draft}
+		<div class="mb-6">{@render draftCard()}</div>
 	{/if}
 {/snippet}
 

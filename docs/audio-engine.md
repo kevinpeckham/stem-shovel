@@ -124,6 +124,9 @@ fields are `$state`, so components read `engine.position` directly.
   over notes 38, Gemini listening to the audio 23), and on the full song
   its verse, chorus and second verse match the band's chart bar for bar.
   About two minutes, ~38k tokens in and ~11k out for a 156-bar song.
+  The button lives at the top left of the Chart panel's toolbar (and in
+  settings) and runs Detect chords first when that has not happened; the
+  draft renders in the panel above the chart.
   "Save sections" writes them (bars → seconds on the grid; confirms when
   sections exist); "Save as chart" writes the chart document (confirms
   when one exists; `saveChartDraft`). Five drafts per user per hour;

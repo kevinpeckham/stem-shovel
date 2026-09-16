@@ -13,6 +13,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Detect chords** in song settings: the tonal stems are transcribed to
   notes in the browser (Spotify's Basic Pitch) and read as one chord per
   bar on the song's grid, shown as chart lines.
+- **Draft chart with AI** sits at the top left of the Chart panel's
+  toolbar and runs the chord detection itself when needed; the draft
+  appears in the panel above the chart. It also stays in song settings.
 - **Draft chart with AI**: the transcribed notes of every bar go to a
   frontier text model (Claude Fable 5.1 through the AI Gateway), which
   names the chords, the sections and each section's progression and
