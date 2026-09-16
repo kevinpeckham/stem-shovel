@@ -31,6 +31,14 @@
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
 			href="/docs">Docs</a
 		>
+		<a
+			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
+			href="/docs/privacy-policy">Privacy</a
+		>
+		<a
+			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
+			href="/docs/copyright-policy">Copyright</a
+		>
 		{#if user}
 			<button
 				type="button"

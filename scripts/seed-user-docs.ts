@@ -23,6 +23,8 @@ const ORDER = [
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"reporting-a-bug",
+	"privacy-policy",
+	"copyright-policy",
 ];
 
 const db = drizzle({

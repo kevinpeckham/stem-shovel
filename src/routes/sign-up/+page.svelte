@@ -131,6 +131,12 @@
 				<span class="mt-1 block text-13px text-dim">At least 8 characters.</span>
 			</label>
 			{#if error}<p class="text-sm text-red-400" role="alert">{error}</p>{/if}
+			<p class="text-13px text-dim">
+				By creating an account you agree to the
+				<a class="link-dim" href="/docs/copyright-policy">copyright and acceptable-use policy</a>
+				and the <a class="link-dim" href="/docs/privacy-policy">privacy policy</a>: upload and share
+				only material you own or have permission to use.
+			</p>
 			<div class="flex items-center gap-4">
 				<button class="button-accent" disabled={busy}
 					>{busy ? "Creating…" : "Create account"}</button
