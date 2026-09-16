@@ -1910,7 +1910,7 @@
 					>
 				{/each}
 			</div>
-			<div class="flex items-stretch gap-1.5 {data.canEdit ? '' : 'hidden'}">
+			<div class="flex items-stretch gap-2 {data.canEdit ? '' : 'hidden'}">
 				{#if panel === "comments"}
 					<button
 						class="button button-xs flex items-center"
