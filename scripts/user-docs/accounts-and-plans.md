@@ -4,7 +4,7 @@ Every Stem Shovel account today is a **free account, for life**. There is no bas
 
 ## Free for life
 
-An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account will have is an upper limit on stored data: stems are large files, and storing them is the one cost that grows with every upload. The limit has not been set yet; when it is, it will be generous enough for a working band's projects, and nothing you have already uploaded will be removed.
+An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account will have is an upper limit on stored data: stems are large files, and storing them is the one cost that grows with every upload. The free limit will be **10 GB** of stored files per account, enough for a working band's projects; it is not enforced yet, and nothing you have already uploaded will be removed when it is.
 
 ## Founder accounts
 

@@ -43,7 +43,7 @@
 			<p>
 				Stem Shovel is in early beta and you will need an invite to join and use it. Our plan is to
 				offer a generous free tier for independent bands, musicians, producers and educators, with
-				no recurring subscription and free data storage up to 100GB.
+				no recurring subscription and free data storage up to 10 GB.
 			</p>
 
 			<h2 class="heading-2 leading-tight mb-0">Is this a desktop app?</h2>
