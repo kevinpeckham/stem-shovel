@@ -8,17 +8,25 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-16
+
 ### Changed
 
-- Editing a chart, lyrics or notes in the song page panel autosaves (1.5 s after the last change, ⌘S at once) and shows no title, Save button, version, Done button or shading; the hint sits behind an ⓘ tooltip; the text keeps the reading view's margin, with the block buttons tucked into the panel's padding on hover. While editing, the same ⋯ menu switches the editor between Rich Text and Markdown; the check button spins while a save is in flight, and an "Edit mode" badge sits at the box's bottom corner. The document box is bounded (70vh) and scrolls inside, like the comments panel. The check button, Escape and switching documents save what is unsaved first. The editor's view toggle reads "Rich Text" / "Markdown". The full-page editors keep their Save button (`MarkdownDocEditor` `mode`: `"standalone"` or `"embedded"`).
-- Deleting a project needs it archived first: project settings offer Archive on an active project, and Restore or Delete (owners and admins) on an archived one; the server refuses to delete an active project.
-- The AI draft previews its suggested chart with the Chart panel's styling (rendered markdown), with the raw markdown folded beneath; the card has a Discard control.
-- The Chart panel's "Draft chart with AI" button moved into a ⋯ menu beside the edit button, which also holds Cancel while a run is listening or drafting (song settings keep their buttons); a cancelled run's result is dropped when it arrives.
+- **Editing in the song page panel** autosaves (1.5 s after the last change, ⌘S at once) with no header at all: no title, Save button, version, Done button or shading. The text keeps the reading view's margin, with the editor's block buttons tucked into the panel's padding on hover. The check button spins while a save is in flight, and an "Edit mode" badge sits at the box's bottom corner. The check button, Escape and switching documents save what is unsaved first. `MarkdownDocEditor` takes `mode`: `"standalone"` (the full-page editors, unchanged apart from the toggle reading "Rich Text" / "Markdown") or `"embedded"`.
+- **A ⋯ menu beside the edit button** on the document panel switches the editor between Rich Text and Markdown while editing and, on the Chart panel, holds "Draft chart with AI" (with progress and Cancel while a run is listening or drafting) in place of the old top-left button. Song settings keep their buttons.
+- **The document box is bounded** (70vh) and scrolls inside, like the comments panel, in both modes.
+- **The AI draft previews** its suggested chart with the Chart panel's styling (rendered markdown), with the raw markdown folded beneath; the card has a Discard control, and a cancelled run's result is dropped when it arrives.
+- **Deleting a project needs it archived first**: project settings offer Archive on an active project, and Restore or Delete (owners and admins) on an archived one; the server refuses to delete an active project.
+- **The player's status bar** uses 16px text on small screens and 13px from the lg breakpoint.
 
 ### Fixed
 
-- The AI draft card crashed the song page when the draft named two sections alike (two verses): the lists were keyed by section name.
-- A failed chord detection or AI draft now shows a notification with the reason; a remote function's `error()` was displayed as its JSON body (`errorMessage` util).
+- **The AI draft card crashed the song page** when the draft named two sections alike (two verses): the lists were keyed by section name.
+- **A failed chord detection or AI draft** now shows a notification with the reason; a remote function's `error()` was displayed as its JSON body (`errorMessage` util), and AI failures arrive as a 502 with their message instead of production's "Internal Error".
+
+### Technical
+
+- Dropped the unused `@tensorflow/tfjs-backend-wasm` dependency (transcription runs on the CPU backend in the server child process and WebGL in the browser).
 
 ## [0.9.0] - 2026-09-16
 
