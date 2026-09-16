@@ -24,8 +24,9 @@
 		/** Asked to submit the surrounding form (⌘S). */
 		onsave: () => void;
 		editor?: MarkdownEditorState | null;
-		/** Inside a panel: no back link or page title, a Done button instead. */
+		/** Inside a panel: no back link or page title. */
 		compact?: boolean;
+		/** Given, a Done button closes through it; omit it where the panel has its own close control. */
 		onclose?: () => void;
 		/**
 		 * Save on idle (and ⌘S) instead of through a Save button, and show no

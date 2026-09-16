@@ -12,7 +12,8 @@
 	 * the rendered HTML to read, and, when `editing`, the same editor the
 	 * full-page route uses, saving through the same remote form, without
 	 * leaving the song. In the panel the editor autosaves and shows no title,
-	 * version or shading (the tab names the document and the panel frames it).
+	 * version, shading or Done button (the tab names the document, the panel
+	 * frames it, and the toolbar's edit/check button closes through close()).
 	 * Render one at a time — the remote form attaches to a single <form>.
 	 */
 	interface Props {
@@ -144,7 +145,6 @@
 			hintAsTooltip
 			bare
 			onsave={() => formEl?.requestSubmit()}
-			onclose={() => void close()}
 		/>
 	</form>
 {:else if html}

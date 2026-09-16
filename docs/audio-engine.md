@@ -169,7 +169,9 @@ fields are `$state`, so components read `engine.position` directly.
   `compact`, `autosave` (a save 1.5 s after the last change, ⌘S at once;
   no Save button or version, except the Save that confirms an emptied
   document), `showTitle={false}`, `hintAsTooltip` (the ⓘ in the header)
-  and `bare` (no shading, the panel frames it). The page renders only the
+  and `bare` (no shading, the panel frames it), and without `onclose`, so
+  there is no Done button (the toolbar's check button closes). The page
+  renders only the
   active document (a remote form attaches to one element) and closes it
   through the panel's exported `close()`, which waits a serialise debounce
   (the WYSIWYG writes markdown 250 ms after a keystroke), saves what is
