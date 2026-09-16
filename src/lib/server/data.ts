@@ -50,6 +50,7 @@ const {
 	userDoc,
 	userDocVersion,
 	shareLink,
+	aiRequest,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -1340,6 +1341,31 @@ export async function reservedPathname(
 	});
 	if (!st) return null;
 	return kind === "midi" ? st.midiPathname : st.pathname;
+}
+
+// ---- AI requests ------------------------------------------------------------
+
+export type AiRequestLog = Omit<typeof aiRequest.$inferInsert, "id" | "createdAt" | "updatedAt">;
+
+export async function logAiRequest(entry: AiRequestLog) {
+	await db.insert(aiRequest).values(entry);
+}
+
+/** The latest calls, newest first, with who and which song, for /admin. */
+export function listAiRequests(limit = 50) {
+	return db.query.aiRequest.findMany({
+		orderBy: [desc(aiRequest.createdAt)],
+		limit,
+		with: {
+			user: { columns: { name: true } },
+			song: {
+				columns: { title: true, slug: true },
+				with: {
+					project: { columns: { slug: true }, with: { account: { columns: { slug: true } } } },
+				},
+			},
+		},
+	});
 }
 
 // ---- stem MIDI files --------------------------------------------------------

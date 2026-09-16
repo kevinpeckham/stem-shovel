@@ -1,6 +1,7 @@
 // One file per table, relations declared beside each table. drizzle-kit loads
 // this barrel outside SvelteKit, so schema files use relative imports only.
 export * from "./account";
+export * from "./aiRequest";
 export * from "./accountMember";
 export * from "./authAccount";
 export * from "./bugReport";

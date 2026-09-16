@@ -226,5 +226,9 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	return askAiAboutMix(song.mixUrl, { tempo: at0("tempo"), key: at0("key"), meter: at0("meter") });
+	return askAiAboutMix(
+		song.mixUrl,
+		{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
+		{ userId: user.id, songId: id },
+	);
 });

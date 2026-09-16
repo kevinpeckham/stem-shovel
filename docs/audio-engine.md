@@ -92,7 +92,9 @@ fields are `$state`, so components read `engine.position` directly.
   fixed pulse, `tempoChanges` as `{at, bpm}` shifts, meter or "free", key,
   confidence, notes) shows under the changes editor with "Use
   these", which puts the values into rows at 0:00 for the user to save. Ten
-  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. First
+  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. Every
+  call is logged to `ai_request` (prompt text, reply, parsed answer or
+  error, duration, tokens) and listed on `/admin` for review. First
   live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,
   in eight seconds, matching the song's settings.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):

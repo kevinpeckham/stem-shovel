@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **AI request log on `/admin`**: every model call is recorded (the text
+  sent, the reply, the parsed answer or the error, duration, tokens) and
+  the latest fifty show with the prompt and reply expandable. New
+  `ai_request` table (migration 0029).
+
 ### Changed
 
 - **The AI check can answer "no fixed tempo"** and report discrete tempo
