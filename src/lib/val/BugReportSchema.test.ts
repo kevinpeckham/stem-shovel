@@ -5,11 +5,24 @@ import { BugReportCreateSchema, BugReportStatusSchema } from "./BugReportSchema"
 describe("BugReportCreateSchema", () => {
 	test("trims and defaults the captured fields", () => {
 		expect(v.parse(BugReportCreateSchema, { title: " Play stops ", body: " at 1:30 " })).toEqual({
+			kind: "bug",
 			title: "Play stops",
 			body: "at 1:30",
 			pageUrl: "",
 			userAgent: "",
 		});
+	});
+	test("a feature request is the same form with kind = feature", () => {
+		expect(
+			v.parse(BugReportCreateSchema, {
+				kind: "feature",
+				title: "Loop a section",
+				body: "for practice",
+			}).kind,
+		).toBe("feature");
+		expect(
+			v.safeParse(BugReportCreateSchema, { kind: "wish", title: "x", body: "y" }).success,
+		).toBe(false);
 	});
 	test("needs a title and a description", () => {
 		expect(v.safeParse(BugReportCreateSchema, { title: "", body: "x" }).success).toBe(false);

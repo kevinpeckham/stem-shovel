@@ -239,6 +239,13 @@
       "when": 1789579982553,
       "tag": "0033_song_finished",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1789580733728,
+      "tag": "0034_report_kind",
+      "breakpoints": true
     }
   ]
 }

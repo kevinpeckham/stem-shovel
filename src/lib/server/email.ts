@@ -119,9 +119,10 @@ export async function sendShareEmail(opts: {
 	});
 }
 
-/** A new bug report, to each system admin; replies go to the reporter. */
+/** A new bug report or feature request, to each system admin; replies go to the reporter. */
 export async function sendBugReportEmail(opts: {
 	to: string;
+	kind: "bug" | "feature";
 	title: string;
 	body: string;
 	pageUrl: string;
@@ -132,15 +133,18 @@ export async function sendBugReportEmail(opts: {
 	const body = renderEmail({
 		greeting: "Hi,",
 		lines: [
-			`${opts.reporterName} (${opts.reporterEmail}) reported a bug on Stem Shovel: "${opts.title}".`,
+			`${opts.reporterName} (${opts.reporterEmail}) ${opts.kind === "feature" ? "requested a feature on" : "reported a bug on"} Stem Shovel: "${opts.title}".`,
 			opts.body,
 			...(opts.pageUrl ? [`Page: ${opts.pageUrl}`] : []),
 		],
-		cta: { label: "Open the bug reports", url: opts.adminUrl },
+		cta: {
+			label: opts.kind === "feature" ? "Open the feature requests" : "Open the bug reports",
+			url: opts.adminUrl,
+		},
 	});
 	await sendEmail({
 		to: opts.to,
-		subject: `Bug report: ${opts.title}`,
+		subject: `${opts.kind === "feature" ? "Feature request" : "Bug report"}: ${opts.title}`,
 		replyTo: opts.reporterEmail,
 		...body,
 	});

@@ -1,3 +1,4 @@
+import type { ReportKind } from "$lib/val/BugReportSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
@@ -950,7 +951,7 @@ export async function systemOverview() {
 
 export async function createBugReport(
 	userId: string,
-	input: { title: string; body: string; pageUrl: string; userAgent: string },
+	input: { kind: ReportKind; title: string; body: string; pageUrl: string; userAgent: string },
 ) {
 	const [row] = await db
 		.insert(bugReport)

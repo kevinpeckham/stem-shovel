@@ -1,20 +1,21 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
-import type { BugStatus } from "../../../val/BugReportSchema";
+import type { BugStatus, ReportKind } from "../../../val/BugReportSchema";
 import { id, timestamps } from "./columns";
 import { user } from "./user";
 
 /**
- * A bug report from a signed-in user (the footer's "Report a bug"): what
- * they typed, plus the page they were on and their browser, captured for
- * them. System admins read and close them on /admin and get an email when
- * one comes in.
+ * A bug report or feature request from a signed-in user (the footer's
+ * "Report a bug" / "Request a feature"): what they typed, plus the page they
+ * were on and their browser, captured for them. System admins read and
+ * close them on /admin and get an email when one comes in.
  */
 export const bugReport = table(
 	"bug_report",
 	{
 		id: id(),
 		userId: t.text("user_id").references(() => user.id, { onDelete: "set null" }),
+		kind: t.text("kind").$type<ReportKind>().notNull().default("bug"),
 		title: t.text("title").notNull(),
 		body: t.text("body").notNull(),
 		pageUrl: t.text("page_url").notNull().default(""),

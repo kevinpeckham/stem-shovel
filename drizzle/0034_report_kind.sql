@@ -1,0 +1,1 @@
+ALTER TABLE `bug_report` ADD `kind` text DEFAULT 'bug' NOT NULL;

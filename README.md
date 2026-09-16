@@ -96,9 +96,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.
-- `src/lib/remote/bugs.remote.ts`, `GlobalFooter.svelte` — "Report a bug" in
-  the footer for signed-in users; a `bug_report` row and an email to every
-  system admin.
+- `src/lib/remote/bugs.remote.ts`, `GlobalFooter.svelte` — "Report a bug" and
+  "Request a feature" in the footer for signed-in users; a `bug_report` row
+  (`kind`) and an email to every system admin; two lists on /admin.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
 - `src/lib/audio/analysis.ts` — tempo, key and meter detection at upload;
   `transcribe.ts` + `chords.ts` — chords per bar via Basic Pitch;

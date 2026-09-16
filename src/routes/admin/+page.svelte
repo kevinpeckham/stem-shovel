@@ -141,49 +141,12 @@
 
 	<section class="max-w-article" id="bug-reports">
 		<h2 class="heading-2">Bug reports</h2>
-		{#if data.bugReports.length === 0}
-			<p class="text-dim">None yet.</p>
-		{:else}
-			<ul class="surface divide-y divide-white/10 text-15px">
-				{#each data.bugReports as b (b.id)}
-					{@const toggle = setBugStatus.for(b.id)}
-					<li class="px-5 py-3 {b.status === 'closed' ? 'opacity-50' : ''}">
-						<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-							<span class="font-600">{b.title}</span>
-							<span class="text-13px text-dim">
-								{b.reporter?.name ?? "someone"} · {formatDate(b.createdAt)}
-								{#if b.status === "closed"}
-									· <span class="uppercase tracking-wider">closed</span>
-								{/if}
-							</span>
-						</div>
-						<p class="mt-1 whitespace-pre-wrap text-sm">{b.body}</p>
-						<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-13px text-dim">
-							{#if b.pageUrl}
-								<a class="link-dim truncate max-w-full" href={b.pageUrl}>{b.pageUrl}</a>
-							{/if}
-							{#if b.userAgent}
-								<span class="truncate max-w-full" title={b.userAgent}>{b.userAgent}</span>
-							{/if}
-							<form
-								{...toggle.enhance(async ({ submit }) => {
-									await submit();
-									if (toggle.result?.status) notify(`Report ${toggle.result.status}`);
-								})}
-							>
-								<input {...toggle.fields.id.as("hidden", b.id)} />
-								<input
-									{...toggle.fields.status.as("hidden", b.status === "open" ? "closed" : "open")}
-								/>
-								<button class="link-dim" disabled={!!toggle.pending}>
-									{b.status === "open" ? "Close" : "Reopen"}
-								</button>
-							</form>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		{@render reportList(data.bugReports.filter((b) => b.kind !== "feature"))}
+	</section>
+
+	<section class="max-w-article" id="feature-requests">
+		<h2 class="heading-2">Feature requests</h2>
+		{@render reportList(data.bugReports.filter((b) => b.kind === "feature"))}
 	</section>
 
 	<section class="max-w-article" id="audit-log">
@@ -431,3 +394,49 @@
 		</ul>
 	</section>
 </main>
+
+{#snippet reportList(items: typeof data.bugReports)}
+	{#if items.length === 0}
+		<p class="text-dim">None yet.</p>
+	{:else}
+		<ul class="surface divide-y divide-white/10 text-15px">
+			{#each items as b (b.id)}
+				{@const toggle = setBugStatus.for(b.id)}
+				<li class="px-5 py-3 {b.status === 'closed' ? 'opacity-50' : ''}">
+					<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+						<span class="font-600">{b.title}</span>
+						<span class="text-13px text-dim">
+							{b.reporter?.name ?? "someone"} · {formatDate(b.createdAt)}
+							{#if b.status === "closed"}
+								· <span class="uppercase tracking-wider">closed</span>
+							{/if}
+						</span>
+					</div>
+					<p class="mt-1 whitespace-pre-wrap text-sm">{b.body}</p>
+					<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-13px text-dim">
+						{#if b.pageUrl}
+							<a class="link-dim truncate max-w-full" href={b.pageUrl}>{b.pageUrl}</a>
+						{/if}
+						{#if b.userAgent}
+							<span class="truncate max-w-full" title={b.userAgent}>{b.userAgent}</span>
+						{/if}
+						<form
+							{...toggle.enhance(async ({ submit }) => {
+								await submit();
+								if (toggle.result?.status) notify(`Report ${toggle.result.status}`);
+							})}
+						>
+							<input {...toggle.fields.id.as("hidden", b.id)} />
+							<input
+								{...toggle.fields.status.as("hidden", b.status === "open" ? "closed" : "open")}
+							/>
+							<button class="link-dim" disabled={!!toggle.pending}>
+								{b.status === "open" ? "Close" : "Reopen"}
+							</button>
+						</form>
+					</div>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+{/snippet}

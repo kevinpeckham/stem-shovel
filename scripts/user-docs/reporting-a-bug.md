@@ -9,3 +9,7 @@ What helps most:
 - whether it happens every time
 
 Reports go straight to the people who run Stem Shovel, and replies to any follow-up email reach you directly.
+
+## Requesting a feature
+
+Have an idea? **Request a feature** in the footer, next to Report a bug, opens the same kind of form: a title and a description. Say what you are trying to do and how the feature would help; an example from your own work is the most useful thing you can give. Requests reach the same people and are read the same way.
