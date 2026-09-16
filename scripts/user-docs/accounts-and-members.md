@@ -31,6 +31,10 @@ In **Account settings**, owners can change anyone's role, including making someo
 
 You can be an owner of one account and a member of others. The account menu at the top right shows your role in each and switches between them; **Your accounts** lists them all, and you can leave any account there. Pages outside an account, such as the docs, treat the account you last opened as yours.
 
+## Starting another account
+
+Once you belong to any account you can start another of your own: **New account** in the account menu, or on the Your accounts page. You become its owner and invite people from its settings.
+
 ## Your own workspace
 
 Someone who signs up with a new-account code gets a workspace of their own. Joining through an invitation or an account's code puts you straight into that account, without a separate workspace.

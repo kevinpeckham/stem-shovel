@@ -7,13 +7,14 @@ import {
 	createInviteCode as newInviteCode,
 	createInvitation,
 	revokeInviteCode as dropInviteCode,
+	createOwnedAccount,
 	removeMembership,
 	revokeInvitation as revoke,
 	setMemberRole as changeRole,
 	updateAccount as update,
 } from "$lib/server/data";
 import { sendInvitationEmail } from "$lib/server/email";
-import { AccountSettingsSchema } from "$lib/val/AccountSchema";
+import { AccountCreateSchema, AccountSettingsSchema } from "$lib/val/AccountSchema";
 import { InvitationIdSchema, InvitationTokenSchema, InviteSchema } from "$lib/val/InvitationSchema";
 import { InviteCodeCreateSchema, InviteCodeIdSchema } from "$lib/val/InviteCodeSchema";
 import {
@@ -21,7 +22,7 @@ import {
 	MemberRoleChangeSchema,
 	MembershipSchema,
 } from "$lib/val/MembershipSchema";
-import { CURRENT_ACCOUNT_COOKIE } from "$lib/server/currentAccount";
+import { CURRENT_ACCOUNT_COOKIE, rememberAccount } from "$lib/server/currentAccount";
 import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -160,3 +161,18 @@ export const setMemberRole = form(
 		return { role };
 	},
 );
+
+/**
+ * A new account, owned by the caller. Anyone who already belongs to an
+ * account may start another (they were invited in once); no code needed.
+ */
+export const createAccount = form(AccountCreateSchema, async ({ name }) => {
+	const { locals, cookies } = getRequestEvent();
+	const user = requireUser(locals);
+	if (locals.memberships.length === 0) error(403, "Join an account first");
+	if (rateLimited(`newaccount:${user.id}`, 5, HOUR))
+		error(429, "Too many new accounts in one hour.");
+	const row = await createOwnedAccount(user.id, name);
+	rememberAccount(cookies, row.slug);
+	redirect(303, `/${row.slug}/projects`);
+});

@@ -16,6 +16,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   against key profiles for the key). A song with none set yet gets them as
   its first tempo, key and meter changes, with a notice; a song that has
   them only hears what was detected.
+- **New account** from the account menu or the Your accounts page: anyone
+  who already belongs to an account can start another and owns it, no
+  code needed.
 - **Ask AI to check** in the song's tempo/key/meter settings: the rendered
   mix goes to a listening model through Vercel's AI Gateway and its answer
   can be dropped into the changes for saving. Needs `AI_GATEWAY_API_KEY`;

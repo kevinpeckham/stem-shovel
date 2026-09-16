@@ -11,3 +11,6 @@ export const AccountSettingsSchema = v.object({
 });
 
 export type AccountSettings = v.InferOutput<typeof AccountSettingsSchema>;
+
+/** A member of any account starting another one of their own. */
+export const AccountCreateSchema = v.object({ name: NameSchema });

@@ -3,6 +3,7 @@ import { getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
 import {
 	acceptInvitation,
+	createOwnedAccount,
 	inviteCodeByCode,
 	invitationByToken,
 	redeemInviteCode,
@@ -11,7 +12,6 @@ import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email
 import { checkSignUp } from "$lib/server/signUpGate";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
-import { slugify } from "$lib/utils/slugify";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { sveltekitCookies } from "better-auth/svelte-kit";
@@ -39,22 +39,8 @@ const trustedOrigins = [
 ];
 
 /** A new user gets their own account (tenant) and owns it. */
-async function createPersonalAccount(user: { id: string; name: string; email: string }) {
-	const base = slugify(user.name || user.email.split("@")[0]) || "account";
-	const taken = new Set(
-		(await db.select({ slug: schema.account.slug }).from(schema.account)).map((r) => r.slug),
-	);
-	let slug = base;
-	for (let n = 2; taken.has(slug); n++) slug = `${base.slice(0, 60)}-${n}`;
-	const [account] = await db
-		.insert(schema.account)
-		.values({ name: user.name || user.email, slug })
-		.returning();
-	await db
-		.insert(schema.accountMember)
-		.values({ accountId: account.id, userId: user.id, role: "owner" });
-	return account;
-}
+const createPersonalAccount = (user: { id: string; name: string; email: string }) =>
+	createOwnedAccount(user.id, user.name || user.email);
 
 const gateLookups = {
 	invitation: async (token: string) => {

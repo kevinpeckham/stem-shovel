@@ -145,6 +145,17 @@
 							<span class="i-ph-users-three mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Your accounts
 						</a>
+						{#if memberships.length > 0}
+							<a
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow"
+								role="menuitem"
+								href="/accounts?new=1"
+								onclick={() => (open = false)}
+							>
+								<span class="i-ph-plus-circle mr-2 inline-block align-[-2px]" aria-hidden="true"
+								></span>New account
+							</a>
+						{/if}
 						{#if user.isSystemAdmin}
 							<a
 								class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(

@@ -1234,6 +1234,17 @@ export async function deleteAccount(id: string) {
 	return !!row;
 }
 
+/** A new account with the user as its owner; the slug comes from the name and is made unique. */
+export async function createOwnedAccount(userId: string, name: string) {
+	const base = slugify(name) || "account";
+	const taken = new Set((await db.select({ slug: account.slug }).from(account)).map((r) => r.slug));
+	let slug = base;
+	for (let n = 2; taken.has(slug); n++) slug = `${base.slice(0, 60)}-${n}`;
+	const [row] = await db.insert(account).values({ name, slug }).returning();
+	await db.insert(accountMember).values({ accountId: row.id, userId, role: "owner" });
+	return row;
+}
+
 // ---- memberships ------------------------------------------------------------
 
 /** Every account the user belongs to, with their role and the account's size, for /accounts. */

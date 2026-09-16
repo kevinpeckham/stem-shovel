@@ -41,8 +41,9 @@ public by URL; editing needs a signed-in member.
   with roles and lets them leave (never the last owner). In account
   settings owners change any role (that is how ownership is handed over)
   and remove anyone; admins set member/viewer and remove non-owners.
-  Signing up through an invitation or an account's invite code joins that
-  account only — the personal workspace is created only for a new-account
+  Anyone who belongs to an account can start another of their own (`createAccount`,
+  owner role, from the menu or `/accounts`). Signing up through an invitation or
+  an account's invite code joins that account only — the personal workspace is created only for a new-account
   code or a user made outside sign-up.
 - **Privacy** (`project.is_private`, `song.is_private`, migration 0028):
   everything is public by default; any member makes a project or a
