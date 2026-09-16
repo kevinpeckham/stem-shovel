@@ -88,8 +88,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
 - `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
   on a song (docs/audio-engine.md), with a `comment` table.
-- `src/routes/admin/`, `src/lib/remote/admin.remote.ts` — the operator's page
-  (bug reports, accounts, users, new-account invite codes), for users flagged
+- `src/routes/admin/`, `src/lib/remote/admin.remote.ts` — the operator's area
+  (a side-nav layout with a page per concern: accounts, users, invite codes,
+  bug reports, feature requests, AI requests, audit log), for users flagged
   by `bun run db:system-admin`.
 - `scripts/user-docs/*.md`, `scripts/seed-user-docs.ts` — the starting user
   docs; `bun run db:seed-docs` adds the missing ones.

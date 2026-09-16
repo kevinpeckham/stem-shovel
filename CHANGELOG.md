@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **/admin is a section with a side navigation** (the docs layout): one page each for accounts, users, invite codes, bug reports, feature requests, AI requests and the audit log, each loading only its own data; /admin opens Accounts.
+
+### Changed
+
 - **The front page is open to search engines**: robots.txt allows `/` alone (with a one-entry sitemap), the noindex header and meta now apply to every other path, and the home page carries a title, description, canonical and Open Graph tags. New home page copy and screenshot (the free storage figure is 10 GB), and a copyright line in the footer.
 
 ### Added

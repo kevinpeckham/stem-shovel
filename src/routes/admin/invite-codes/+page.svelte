@@ -1,0 +1,130 @@
+<script lang="ts">
+	import { createSystemInviteCode, revokeSystemInviteCode } from "$lib/remote/admin.remote";
+	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
+	import { clearForm } from "$lib/utils/clearForm";
+	import { formatDate } from "$lib/utils/formatDate";
+	import { formatInviteCode } from "$lib/utils/formatInviteCode";
+	import { notify } from "$lib/state/notifications.svelte";
+	import { page } from "$app/state";
+
+	let { data } = $props();
+
+	const signUpLink = (code: string) => `${page.url.origin}/sign-up?code=${code}`;
+	async function copy(text: string, what: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			notify(`${what} copied`);
+		} catch {
+			notify(`Could not copy the ${what.toLowerCase()}`, { kind: "error" });
+		}
+	}
+</script>
+
+<svelte:head>
+	<title>Invite codes · Admin — Stem Shovel</title>
+</svelte:head>
+
+<section>
+	<h1 class="display">New-account invite codes</h1>
+	<p class="mt-1 text-sm opacity-90">
+		Sign-up is invitation-only. A code from here lets someone create an account and get a workspace
+		of their own, without joining anyone's. Codes that also join an account come from that account's
+		settings.
+	</p>
+	<form
+		class="mt-2 flex flex-wrap items-end gap-3"
+		{...createSystemInviteCode.enhance(async ({ submit, element }) => {
+			await submit();
+			if (createSystemInviteCode.result?.code) {
+				notify("Invite code created");
+				clearForm(createSystemInviteCode);
+				element.reset();
+			}
+		})}
+	>
+		<label class="block grow">
+			<span class="text-13px text-dim">Note (optional)</span>
+			<input
+				class="mt-1 field"
+				type="text"
+				autocomplete="off"
+				placeholder="who it is for"
+				{...createSystemInviteCode.fields.note.as("text")}
+			/>
+		</label>
+		<label class="block w-24">
+			<span class="text-13px text-dim">Max uses</span>
+			<input
+				class="mt-1 field"
+				type="number"
+				min="1"
+				max="1000"
+				placeholder="∞"
+				{...createSystemInviteCode.fields.maxUses.as("text")}
+			/>
+		</label>
+		<label class="block">
+			<span class="text-13px text-dim">Expires</span>
+			<select class="mt-1 field" {...createSystemInviteCode.fields.expiresDays.as("select", "0")}>
+				{#each INVITE_CODE_EXPIRY_DAYS as days (days)}
+					<option value={String(days)}>{days === 0 ? "never" : `in ${days} days`}</option>
+				{/each}
+			</select>
+		</label>
+		<button class="button-accent" disabled={!!createSystemInviteCode.pending}>
+			{createSystemInviteCode.pending ? "Creating…" : "New code"}
+		</button>
+	</form>
+	{#each createSystemInviteCode.fields.allIssues() ?? [] as issue (issue.message)}
+		<p class="mt-2 text-sm text-red-400">{issue.message}</p>
+	{/each}
+	{#if data.inviteCodes.length > 0}
+		<ul class="mt-4 surface divide-y divide-white/10 text-15px">
+			{#each data.inviteCodes as c (c.id)}
+				{@const revoke = revokeSystemInviteCode.for(c.id)}
+				<li
+					class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3 {c.state ===
+					'open'
+						? ''
+						: 'opacity-50'}"
+				>
+					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+						<code class="font-mono tracking-wider">{formatInviteCode(c.code)}</code>
+						<span class="text-13px text-dim">
+							{c.uses}{c.maxUses === null ? "" : ` of ${c.maxUses}`} used
+							{#if c.expiresAt}
+								· expires {formatDate(c.expiresAt)}
+							{/if}
+							{#if c.note}
+								· {c.note}
+							{/if}
+							{#if c.state !== "open"}
+								· <span class="uppercase tracking-wider">{c.state}</span>
+							{/if}
+						</span>
+					</div>
+					{#if c.state === "open"}
+						<div class="flex items-center gap-3 text-13px">
+							<button
+								type="button"
+								class="link-dim"
+								onclick={() => copy(formatInviteCode(c.code), "Code")}>Copy code</button
+							>
+							<button
+								type="button"
+								class="link-dim"
+								onclick={() => copy(signUpLink(c.code), "Sign-up link")}>Copy link</button
+							>
+							<form {...revoke}>
+								<input {...revoke.fields.id.as("hidden", c.id)} />
+								<button class="link-dim" disabled={!!revoke.pending}>
+									{revoke.pending ? "Revoking…" : "Revoke"}
+								</button>
+							</form>
+						</div>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>

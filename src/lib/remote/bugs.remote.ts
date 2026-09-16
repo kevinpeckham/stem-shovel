@@ -15,7 +15,7 @@ export const reportBug = form(BugReportCreateSchema, async (input) => {
 		error(429, "That is a lot of reports for one hour; try again later.");
 	const row = await createBugReport(user.id, input);
 	// The admins hear by email after the response; a mail failure never fails the report.
-	const adminUrl = `${url.origin}/admin#${input.kind === "feature" ? "feature-requests" : "bug-reports"}`;
+	const adminUrl = `${url.origin}/admin/${input.kind === "feature" ? "feature-requests" : "bug-reports"}`;
 	background(async () => {
 		for (const to of await systemAdminEmails()) {
 			await sendBugReportEmail({
