@@ -100,6 +100,8 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   the footer for signed-in users; a `bug_report` row and an email to every
   system admin.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
+- `src/lib/audio/analysis.ts` — tempo, key and meter detection at upload;
+  `src/lib/server/aiDetect.ts` — the AI Gateway second opinion (docs/audio-engine.md).
 - `src/lib/server/viewAccess.ts`, `src/lib/remote/share.remote.ts` — privacy:
   private projects and songs, viewing links (docs/auth.md).
 - `src/lib/server/signUpGate.ts` — sign-up is invitation-only: the rule

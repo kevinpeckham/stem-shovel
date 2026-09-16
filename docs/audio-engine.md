@@ -85,6 +85,14 @@ fields are `$state`, so components read `engine.position` directly.
   so; one that has them only hears the detection. Tests use synthetic
   click tracks and chords. The synthetic test loop in `static/stems`
   (100 bpm, D) is detected exactly.
+- **Ask AI to check** (`src/lib/server/aiDetect.ts`, `askAiAboutSong` in
+  songs.remote.ts): a member sends the rendered original mix, with the
+  song's current tempo, key and meter as candidates, to
+  `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo,
+  meter, key, confidence, notes) shows under the changes editor with "Use
+  these", which puts the values into rows at 0:00 for the user to save. Ten
+  per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. Built
+  from replicator's pattern, not yet exercised against the live model.
 - **Comments** (`CommentTimeline.svelte`, `lib/remote/comments.remote.ts`):
   the documents panel has a Comments tab (scrollable list, newest last,
   author, date, an "edited" badge, the position as a link that seeks) and

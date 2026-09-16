@@ -37,6 +37,7 @@ import {
 	SongVersionSetSchema,
 	StemRenameSchema,
 } from "$lib/val/SongSchema";
+import { aiAvailable, askAiAboutMix } from "$lib/server/aiDetect";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -211,4 +212,19 @@ export const renameStem = command(StemRenameSchema, async ({ id, label }) => {
 	const row = await rename(accountId, id, label);
 	if (!row) error(404, "Stem not found");
 	return row;
+});
+
+/** Asks the AI Gateway model to check the song's tempo, key and meter against its rendered mix (members; a few per hour). */
+export const askAiAboutSong = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!aiAvailable()) error(503, "The AI check is not configured");
+	if (rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
+	const song = await songForMix(id);
+	if (!song || song.accountId !== accountId) error(404, "Song not found");
+	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
+	const at0 = (kind: string) =>
+		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	return askAiAboutMix(song.mixUrl, { tempo: at0("tempo"), key: at0("key"), meter: at0("meter") });
 });

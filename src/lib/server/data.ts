@@ -1544,6 +1544,7 @@ export async function songForMix(songId: string) {
 			mixUrl: true,
 			mixKey: true,
 			mixStartedAt: true,
+			changes: true,
 		},
 		with: {
 			project: {

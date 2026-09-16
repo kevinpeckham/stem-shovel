@@ -7,6 +7,7 @@ import {
 	presentSongFiles,
 	stemsWantingPlayback,
 } from "$lib/server/data";
+import { aiAvailable } from "$lib/server/aiDetect";
 import { canViewSong } from "$lib/server/viewAccess";
 import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/transcode";
 import { renderMarkdown } from "$lib/server/markdown";
@@ -32,6 +33,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		song: await presentSongFiles(song),
 		comments: await listComments(song.id),
 		shareLinks: canEdit ? await listShareLinks({ songId: song.id }) : [],
+		aiAvailable: canEdit && aiAvailable(),
 		manifest: await manifestFor(song),
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),

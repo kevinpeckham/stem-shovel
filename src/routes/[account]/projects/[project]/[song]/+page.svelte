@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Detection } from "$lib/audio/analysis";
+	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
@@ -53,6 +54,7 @@
 		deleteStem,
 		removeStemMidi,
 		renameStem,
+		askAiAboutSong,
 		saveChanges,
 		saveSections,
 		setSongVersion,
@@ -387,6 +389,36 @@
 			kind: c.kind,
 			value: c.value,
 		}));
+	}
+	// "Ask AI to check": a second opinion on the rendered mix (src/lib/server/aiDetect.ts);
+	// "Use these" puts the answer into the rows at 0:00 for the user to save.
+	let aiBusy = $state(false);
+	let aiAnswer = $state<AiAnswer | null>(null);
+	let aiError = $state<string | null>(null);
+	async function askAi() {
+		aiBusy = true;
+		aiError = null;
+		try {
+			aiAnswer = await askAiAboutSong({ id: data.song.id });
+		} catch (e) {
+			aiError = e instanceof Error ? e.message : String(e);
+		} finally {
+			aiBusy = false;
+		}
+	}
+	function useAiAnswer() {
+		if (!aiAnswer) return;
+		const values: Record<string, string> = {
+			tempo: String(Math.round(aiAnswer.tempo)),
+			key: aiAnswer.key,
+			meter: aiAnswer.meter,
+		};
+		const rows = changeRows.filter((r) => !(r.seconds === 0 && r.kind in values));
+		for (const kind of ["tempo", "key", "meter"] as const) {
+			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value: values[kind] });
+		}
+		changeRows = rows;
+		aiAnswer = null;
 	}
 	async function saveChangeRows() {
 		changeError = null;
@@ -1029,25 +1061,53 @@
 			<div class="mt-8 border-t border-white/15 pt-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h3 class="text-15px font-700">Tempo, key and time signature</h3>
-					<button
-						class="button button-xs"
-						type="button"
-						onclick={() =>
-							(changeRows = [
-								...changeRows,
-								{
-									time: changeRows.length ? "" : editPos(0),
-									shown: "",
-									seconds: null,
-									kind: "tempo",
-									value: "",
-								},
-							])}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>
-						Add change
-					</button>
+					<div class="flex items-center gap-2">
+						{#if data.aiAvailable}
+							<button
+								class="button button-xs"
+								type="button"
+								disabled={aiBusy}
+								title="Send the rendered mix to a model that listens and reports tempo, key and time signature"
+								onclick={askAi}
+							>
+								<span class="i-ph-sparkle" aria-hidden="true"></span>
+								{aiBusy ? "Listening…" : "Ask AI to check"}
+							</button>
+						{/if}
+						<button
+							class="button button-xs"
+							type="button"
+							onclick={() =>
+								(changeRows = [
+									...changeRows,
+									{
+										time: changeRows.length ? "" : editPos(0),
+										shown: "",
+										seconds: null,
+										kind: "tempo",
+										value: "",
+									},
+								])}
+						>
+							<span class="i-ph-plus" aria-hidden="true"></span>
+							Add change
+						</button>
+					</div>
 				</div>
+				{#if aiAnswer}
+					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+						AI hears <strong
+							>{Math.round(aiAnswer.tempo)} bpm · {aiAnswer.key} · {aiAnswer.meter}</strong
+						>
+						({Math.round(aiAnswer.confidence * 100)}% sure){#if aiAnswer.notes}
+							— {aiAnswer.notes}{/if}
+						<button class="ml-2 link-dim" type="button" onclick={useAiAnswer}>Use these</button>
+						<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
+							>Dismiss</button
+						>
+					</p>
+				{/if}
+				{#if aiError}<p class="mt-2 text-sm text-red-400" role="alert">{aiError}</p>{/if}
 				<p class="mt-1 text-sm text-dim">
 					Each from the time it starts (0:00.0 for the song's own tempo, key and time signature;
 					later rows are changes). They show on the timeline above the stems.

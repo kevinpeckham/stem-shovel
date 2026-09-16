@@ -29,11 +29,13 @@
 		"test:components": "vp test run --project components"
 	},
 	"dependencies": {
+		"@ai-sdk/gateway": "^4.0.82",
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.2.1",
 		"@libsql/client": "0.18.0",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/blob": "2.8.0",
+		"ai": "^7.0.102",
 		"better-auth": "^1.7.4",
 		"client-zip": "^2.5.0",
 		"drizzle-orm": "0.45.2",

@@ -48,6 +48,13 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 - Browser-only packages (the woof-editor) are imported dynamically in
   `onMount` so their server builds never enter the function.
 
+## AI Gateway
+
+`AI_GATEWAY_API_KEY` (optional, 1Password) switches on "Ask AI to check" in a
+song's settings: the rendered mix goes to `google/gemini-3-flash` through
+Vercel's AI Gateway with `@ai-sdk/gateway` + `ai`, replicator's pattern
+(`src/lib/server/aiDetect.ts`). Without the key the button is not shown.
+
 ## Vercel Blob stores
 
 `BLOB_READ_WRITE_TOKEN` / `BLOB_STORE_ID` are the public store every file used
