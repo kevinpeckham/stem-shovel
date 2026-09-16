@@ -61,5 +61,10 @@ export async function resolvePreviewAuth(event: {
 		columns: { id: true, name: true, email: true, isActive: true, isSystemAdmin: true },
 	});
 	if (!bot || !bot.isActive) return null;
-	return { id: bot.id, name: bot.name, email: bot.email, isSystemAdmin: bot.isSystemAdmin === true };
+	return {
+		id: bot.id,
+		name: bot.name,
+		email: bot.email,
+		isSystemAdmin: bot.isSystemAdmin === true,
+	};
 }
