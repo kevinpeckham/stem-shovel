@@ -255,6 +255,11 @@ export class StemEngine {
 		this.#applyGains();
 	}
 
+	/** The decoded stems, for analysis (tempo, key) without fetching anything again. Empty until ready. */
+	buffers(): AudioBuffer[] {
+		return [...this.#buffers.values()];
+	}
+
 	/**
 	 * What is audible right now, for a server mixdown: each stem's effective
 	 * gain (fader, mute and solo folded in; silent stems left out) and master.

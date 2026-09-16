@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Scan stems** in the song's tempo, key and time signature settings: the
+  upload-time detector run again on the stems the player has loaded. Empty
+  settings are filled and the values shown; filled ones get an offer to
+  replace, with the current values beside the suggestion.
 - **Super admin**: a separate flag (`bun run db:super-admin <email>`) that
   makes its holder an acting owner of every account they are not a member
   of. The header shows "acting as owner", the account's settings carry a
@@ -22,6 +26,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Tempo detection prefers the 80–170 bpm band** when the half- or
+  double-time pulse correlates as well as the beat; on the real mixes in
+  MMKK every declared tempo now comes back within two bpm, where two of
+  five had come back at half time.
 - **The AI check can answer "no fixed tempo"** and report discrete tempo
   shifts (with the time and the new tempo), or "no meter"; "Use these"
   turns shifts into tempo rows at their times and leaves out what has no

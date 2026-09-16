@@ -12,6 +12,8 @@ The gear button in a song's header opens its settings. Everything here is option
 
 These are entered as **changes**, each with a start position, so a song that speeds up or modulates is described exactly. The first change usually starts at the beginning. With a tempo and a time signature in place, positions can be shown and typed in bars, and the timeline shows a lane for whatever changes during the song.
 
+**Scan stems** listens to the loaded stems again and fills these in when they are empty, or offers to replace what is there. **Ask AI to check** sends the mix to a model for a second opinion, useful for songs in three, six or seven, or with a tempo change.
+
 ## Sections
 
 A section has a **numeral** (I, II, III …), a **name** (Intro, Verse, Chorus …) and a **start** position. Sections show as a row above the stems; the numeral is what you see, and the name appears on hover.

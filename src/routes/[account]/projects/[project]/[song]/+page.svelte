@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Detection } from "$lib/audio/analysis";
+	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
@@ -390,6 +390,82 @@
 			value: c.value,
 		}));
 	}
+	// "Scan stems": the upload-time detector again, on the buffers the player already
+	// holds. Fills empty settings straight away; offers to replace filled ones.
+	let scanning = $state(false);
+	let scanResult = $state<{
+		detection: Detection;
+		summary: string;
+		current: string;
+		applied: boolean;
+	} | null>(null);
+	function detectionValues(d: Detection): { kind: SongChangeKind; value: string }[] {
+		return [
+			...(d.tempo.bpm ? [{ kind: "tempo" as const, value: String(Math.round(d.tempo.bpm)) }] : []),
+			...(d.key.value ? [{ kind: "key" as const, value: d.key.value }] : []),
+			...(d.tempo.bpm ? [{ kind: "meter" as const, value: d.meter.value }] : []),
+		];
+	}
+	const describe = (rows: { kind: SongChangeKind; value: string }[]) =>
+		rows.map((r) => (r.kind === "tempo" ? `${r.value} bpm` : r.value)).join(" · ") || "nothing";
+	async function scanStems() {
+		if (!playerEngine || playerEngine.status !== "ready") return;
+		scanning = true;
+		scanResult = null;
+		try {
+			// Yield first so the button repaints; the analysis blocks the thread for a moment.
+			await new Promise((r) => setTimeout(r, 30));
+			const combined = combineFeatures(playerEngine.buffers().map((b) => extractFeatures(b)));
+			if (!combined) return;
+			const detection = analyse(combined);
+			const values = detectionValues(detection);
+			if (values.length === 0) {
+				notify("Nothing could be detected from these stems", { kind: "info" });
+				return;
+			}
+			const existing = data.song.changes.filter((c) => c.start === 0);
+			if (existing.length === 0) {
+				await saveChanges({
+					id: data.song.id,
+					changes: [...data.song.changes, ...values.map((r) => ({ ...r, start: 0 }))],
+				});
+				await invalidateAll();
+				resetChangeRows();
+				scanResult = { detection, summary: describe(values), current: "", applied: true };
+				notify("Tempo, key and time signature set from the stems");
+			} else {
+				scanResult = {
+					detection,
+					summary: describe(values),
+					current: describe(existing.map((c) => ({ kind: c.kind, value: c.value }))),
+					applied: false,
+				};
+			}
+		} catch (e) {
+			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+		} finally {
+			scanning = false;
+		}
+	}
+	async function replaceFromScan() {
+		if (!scanResult) return;
+		const values = detectionValues(scanResult.detection);
+		const replaced = new Set(values.map((r) => r.kind));
+		const kept = data.song.changes.filter((c) => !(c.start === 0 && replaced.has(c.kind)));
+		try {
+			await saveChanges({
+				id: data.song.id,
+				changes: [...kept, ...values.map((r) => ({ ...r, start: 0 }))],
+			});
+			await invalidateAll();
+			resetChangeRows();
+			notify("Tempo, key and time signature replaced from the stems");
+			scanResult = { ...scanResult, applied: true };
+		} catch (e) {
+			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+		}
+	}
+
 	// "Ask AI to check": a second opinion on the rendered mix (src/lib/server/aiDetect.ts);
 	// "Use these" puts the answer into the rows at 0:00 for the user to save.
 	let aiBusy = $state(false);
@@ -1079,6 +1155,18 @@
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h3 class="text-15px font-700">Tempo, key and time signature</h3>
 					<div class="flex items-center gap-2">
+						<button
+							class="button button-xs"
+							type="button"
+							disabled={scanning || !playerEngine || playerEngine.status !== "ready"}
+							title={playerEngine?.status === "ready"
+								? "Listen to the loaded stems for tempo, key and time signature"
+								: "Available once every stem has decoded"}
+							onclick={scanStems}
+						>
+							<span class="i-ph-waveform" aria-hidden="true"></span>
+							{scanning ? "Scanning…" : "Scan stems"}
+						</button>
 						{#if data.aiAvailable}
 							<button
 								class="button button-xs"
@@ -1111,6 +1199,21 @@
 						</button>
 					</div>
 				</div>
+				{#if scanResult}
+					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+						{#if scanResult.applied}
+							Set from the stems: <strong>{scanResult.summary}</strong>. Adjust below if the song
+							knows better.
+						{:else}
+							The stems suggest <strong>{scanResult.summary}</strong>; the song has
+							{scanResult.current}. Replace?
+							<button class="ml-2 link-dim" type="button" onclick={replaceFromScan}>Replace</button>
+							<button class="ml-2 link-dim" type="button" onclick={() => (scanResult = null)}
+								>Keep current</button
+							>
+						{/if}
+					</p>
+				{/if}
 				{#if aiAnswer}
 					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 						AI hears <strong

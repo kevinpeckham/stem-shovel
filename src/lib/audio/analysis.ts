@@ -179,8 +179,13 @@ function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
 	let bestScore = -Infinity;
 	for (let lag = minLag; lag <= maxLag; lag++) {
 		const bpm = (60 * fps) / lag;
-		// Log-normal prior around 110 bpm (Ellis 2007), gentle enough to keep real fast tempos.
-		const prior = Math.exp(-0.5 * (Math.log2(bpm / 110) / 0.9) ** 2);
+		// Octave choice: band music mostly sits in 80–170 bpm, and the half- or
+		// double-time lag often correlates as well as the beat, so candidates
+		// outside that band are held back and a gentle log-normal around 120
+		// breaks the rest (tuned on the real mixes in MMKK: 145, 132, 120, 115
+		// and 112 bpm songs all resolve to the declared tempo).
+		const inBand = bpm >= 80 && bpm <= 170 ? 1 : 0.55;
+		const prior = inBand * Math.exp(-0.5 * (Math.log2(bpm / 120) / 1.2) ** 2);
 		const score = (autocorrelation(x, lag) / zero) * prior;
 		scores[lag] = score;
 		if (score > bestScore) {

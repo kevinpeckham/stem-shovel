@@ -76,7 +76,9 @@ fields are `$state`, so components read `engine.position` directly.
   8192-point FFT, 110 Hz – 4.2 kHz, linear magnitude, since 15 Hz bins put
   low notes a semitone off); the batch's features are summed and analysed
   as one mix: tempo by autocorrelation of the detrended envelope over
-  50–210 bpm with a log-normal prior around 110, refined by a parabola;
+  50–210 bpm, candidates outside 80–170 held back (the half- or
+  double-time lag often correlates as well as the beat; tuned on MMKK's
+  real mixes) with a gentle log-normal around 120, refined by a parabola;
   meter by comparing the raw envelope's autocorrelation at 3+6 beats
   against 4+8 (3/4 needs a 3 % win); key by correlating the chroma with
   the Krumhansl-Kessler major and minor profiles. Only the first 90 s are
@@ -84,7 +86,10 @@ fields are `$state`, so components read `engine.position` directly.
   no tempo/key/meter changes yet gets them at 0:00 and a long notice says
   so; one that has them only hears the detection. Tests use synthetic
   click tracks and chords. The synthetic test loop in `static/stems`
-  (100 bpm, D) is detected exactly.
+  (100 bpm, D) is detected exactly. **Scan stems** in the song's settings
+  runs the same detector on `engine.buffers()` (nothing is fetched again):
+  empty settings are filled at once, filled ones get a replace offer that
+  keeps rows after 0:00.
 - **Ask AI to check** (`src/lib/server/aiDetect.ts`, `askAiAboutSong` in
   songs.remote.ts): a member sends the rendered original mix, with the
   song's current tempo, key and meter as candidates, to
