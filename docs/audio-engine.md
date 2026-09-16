@@ -123,7 +123,7 @@ fields are `$state`, so components read `engine.position` directly.
   bars (roots right: Fable over notes 43, template matcher 38, Gemini
   over notes 38, Gemini listening to the audio 23), and on the full song
   its verse, chorus and second verse match the band's chart bar for bar.
-  About two minutes and ~100k tokens per song.
+  About two minutes, ~38k tokens in and ~11k out for a 156-bar song.
   "Save sections" writes them (bars → seconds on the grid; confirms when
   sections exist); "Save as chart" writes the chart document (confirms
   when one exists; `saveChartDraft`). Five drafts per user per hour;
