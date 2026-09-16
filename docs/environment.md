@@ -62,7 +62,7 @@ files stay where they are and the relocation logs an error.
 
 Following lj-website's `vercel.ts`: `src/lib/constants/securityHeaders.ts`
 lists the headers every response carries (`X-Robots-Tag`, `nosniff`,
-`X-Frame-Options: DENY`, `Referrer-Policy`, HSTS, a `Permissions-Policy`
+`X-Frame-Options: DENY`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, HSTS, a `Permissions-Policy`
 that switches off device APIs — `autoplay` is deliberately not listed
 because disabling it blocks `play()` too), set in `src/hooks.server.ts` and
 repeated in `vercel.json` for the static files the CDN serves. Keep the two

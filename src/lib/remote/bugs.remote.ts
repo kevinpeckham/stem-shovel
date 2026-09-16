@@ -4,12 +4,15 @@ import { background } from "$lib/server/background";
 import { createBugReport, setBugReportStatus, systemAdminEmails } from "$lib/server/data";
 import { sendBugReportEmail } from "$lib/server/email";
 import { BugReportCreateSchema, BugReportStatusSchema } from "$lib/val/BugReportSchema";
+import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { error } from "@sveltejs/kit";
 
 /** Any signed-in user; the page and browser come from the form's hidden fields. */
 export const reportBug = form(BugReportCreateSchema, async (input) => {
 	const { locals, url } = getRequestEvent();
 	const user = requireUser(locals);
+	if (rateLimited(`bug:${user.id}`, 10, HOUR))
+		error(429, "That is a lot of reports for one hour; try again later.");
 	const row = await createBugReport(user.id, input);
 	// The admins hear by email after the response; a mail failure never fails the report.
 	const adminUrl = `${url.origin}/admin#bug-reports`;

@@ -37,6 +37,7 @@ import {
 	SongVersionSetSchema,
 	StemRenameSchema,
 } from "$lib/val/SongSchema";
+import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -168,17 +169,13 @@ export const removeStemMidi = form(IdSchema, async ({ id }) => {
 });
 
 /** Emails a song's link to someone (members only; a few per minute per user). */
-const shareWindow = new Map<string, number[]>();
 export const shareSong = command(ShareSongSchema, async ({ songId, to, message }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
-	const now = Date.now();
-	const recent = (shareWindow.get(user.id) ?? []).filter((t) => now - t < 60 * 60 * 1000);
-	if (recent.filter((t) => now - t < 60 * 1000).length >= 5 || recent.length >= 30) {
+	if (rateLimited(`share:${user.id}:m`, 5, MINUTE) || rateLimited(`share:${user.id}:h`, 30, HOUR)) {
 		error(429, "Too many emails; try again in a little while.");
 	}
-	shareWindow.set(user.id, [...recent, now]);
 	const song = await songForMix(songId);
 	const slugs = await songSlugs(accountId, songId);
 	if (!song || !slugs) error(404, "Song not found");

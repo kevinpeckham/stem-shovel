@@ -1,5 +1,6 @@
 import { accountOfStem, memberOf } from "$lib/server/access";
-import { markStemReady } from "$lib/server/data";
+import { isOurBlobUrl } from "$lib/server/blob";
+import { markStemReady, reservedPathname } from "$lib/server/data";
 import { schedulePlayback } from "$lib/server/transcode";
 import { error, json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -29,6 +30,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		error(400, "url, durationSeconds, channels and peaks (0..1) are required");
 	}
 	const { accountId } = await memberOf(locals, accountOfStem, params.id);
+	// Only the file this reservation was for, in one of our stores.
+	const pathname = await reservedPathname(accountId, "stem", params.id);
+	if (!pathname || !isOurBlobUrl(url, pathname)) error(400, "That is not the uploaded file's URL");
 	const row = await markStemReady(accountId, params.id, {
 		url,
 		durationSeconds,

@@ -2,6 +2,7 @@ import { accountOfSong, canEdit } from "$lib/server/access";
 import { openShareLinks, songForMix } from "$lib/server/data";
 import { canViewSong, shareCodesFrom } from "$lib/server/viewAccess";
 import { isOriginal, originalMix, parseMixRequest, renderMix } from "$lib/server/mix";
+import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { error } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";
@@ -14,7 +15,7 @@ export const config: Config = { maxDuration: 300 };
  * = a custom mix of what the player has audible. Viewable like the song itself:
  * a private one needs membership or a share code (the cookie rides along).
  */
-export const GET: RequestHandler = async ({ params, url, locals, cookies }) => {
+export const GET: RequestHandler = async ({ params, url, locals, cookies, getClientAddress }) => {
 	const song = await songForMix(params.id);
 	if (!song || song.stems.length === 0) error(404, "No stems to mix");
 	const accountId = await accountOfSong(song.id);
@@ -27,6 +28,10 @@ export const GET: RequestHandler = async ({ params, url, locals, cookies }) => {
 	if (!req) error(400, "Bad mix request");
 
 	const original = isOriginal(song, req);
+	// A custom mix runs ffmpeg for every request; the original is cached. Bound the former per caller.
+	if (!original && rateLimited(`mix:${locals.user?.id ?? getClientAddress()}`, 20, HOUR)) {
+		error(429, "Too many custom mixes in one hour; try again later.");
+	}
 	const bytes = original ? await originalMix(song, accountId) : await renderMix(song, req);
 	const name = `${song.project.slug}-${song.slug}-${original ? "mix" : "custom-mix"}.mp3`;
 	return new Response(new Uint8Array(bytes), {

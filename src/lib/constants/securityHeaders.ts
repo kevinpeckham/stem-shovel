@@ -11,6 +11,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
 	"x-content-type-options": "nosniff",
 	"x-frame-options": "DENY",
 	"referrer-policy": "strict-origin-when-cross-origin",
+	"cross-origin-opener-policy": "same-origin",
 	"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
 	// Nothing here uses device APIs; playback needs no feature, so `autoplay`
 	// is left out rather than switched off (it would block play() too).

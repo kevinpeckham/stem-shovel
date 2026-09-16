@@ -22,6 +22,7 @@ import {
 	MembershipSchema,
 } from "$lib/val/MembershipSchema";
 import { CURRENT_ACCOUNT_COOKIE } from "$lib/server/currentAccount";
+import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -45,6 +46,7 @@ export const inviteMember = form(InviteSchema, async ({ accountId, email, role }
 	const user = requireUser(locals);
 	const m = requireMember(locals, accountId);
 	if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
+	if (rateLimited(`invite:${user.id}`, 30, HOUR)) error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(accountId, user.id, email, role);
 	if (row === "member") invalid(issue.email("That address already belongs to a member."));
 	await sendInvitationEmail({
@@ -89,6 +91,7 @@ export const createInviteCode = form(
 		const user = requireUser(locals);
 		const m = requireMember(locals, accountId);
 		if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
+		if (rateLimited(`invitecode:${user.id}`, 30, HOUR)) error(429, "Too many codes in one hour.");
 		const row = await newInviteCode(accountId, user.id, { role, note, maxUses, expiresDays });
 		return { code: row.code };
 	},

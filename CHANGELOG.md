@@ -8,6 +8,23 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-16
+
+### Security
+
+- **Upload completion is pinned to the reserved file**: the URL a browser
+  reports for a stem, MIDI file or demo must be that reservation's file in
+  one of our Blob stores, and the server never fetches a URL outside them
+  (closes a server-side request forgery through a reported URL).
+- **Sign-in redirects stay on this site**: `?next=` refuses absolute and
+  protocol-relative targets.
+- **Rate limits** on custom mixes, bug reports, invitations, invite codes,
+  viewing links and share emails.
+- **Session cache shortened to a minute**, so suspensions, deletions and
+  admin changes apply promptly; `Cross-Origin-Opener-Policy: same-origin`
+  added to every response.
+- A security model document, docs/security.md.
+
 ## [0.7.0] - 2026-09-16
 
 ### Added

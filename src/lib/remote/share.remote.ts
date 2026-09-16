@@ -15,6 +15,7 @@ import {
 import { PrivacySchema, ShareLinkCreateSchema, ShareLinkIdSchema } from "$lib/val/ShareLinkSchema";
 import { background } from "$lib/server/background";
 import { relocateProjectFiles, relocateSongFiles } from "$lib/server/relocate";
+import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { error } from "@sveltejs/kit";
 
 /** Any member makes a project private (members and share links only) or public again. */
@@ -45,6 +46,7 @@ export const createShareLink = form(
 	async ({ songId, projectId, note, maxUses, expiresDays }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
+		if (rateLimited(`sharelink:${user.id}`, 60, HOUR)) error(429, "Too many links in one hour.");
 		const m = songId
 			? await memberOf(locals, accountOfSong, songId)
 			: await memberOf(locals, accountOfProject, projectId);

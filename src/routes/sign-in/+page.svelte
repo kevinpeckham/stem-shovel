@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { safeNext } from "$lib/utils/safeNext";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
 
@@ -27,7 +28,7 @@
 			return;
 		}
 		await invalidateAll();
-		await goto(data.next.startsWith("/") ? data.next : "/");
+		await goto(safeNext(data.next));
 	}
 </script>
 

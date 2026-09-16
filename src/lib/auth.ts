@@ -98,7 +98,8 @@ export const auth = betterAuth({
 		},
 	},
 	session: {
-		cookieCache: { enabled: true, maxAge: 5 * 60 },
+		// Short, so a suspension, deletion or a revoked admin flag takes effect within a minute.
+		cookieCache: { enabled: true, maxAge: 60 },
 	},
 	user: {
 		additionalFields: {

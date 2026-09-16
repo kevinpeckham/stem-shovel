@@ -11,7 +11,7 @@ vi.mock("@vercel/blob", () => ({
 	put: vi.fn(),
 }));
 
-const { blobAuth, movedPathname, songIdOfPathname } = await import("./blob");
+const { blobAuth, isOurBlobUrl, movedPathname, songIdOfPathname } = await import("./blob");
 
 describe("blob helpers", () => {
 	test("tokens lose stray quotes and whitespace", () => {
@@ -32,5 +32,20 @@ describe("blob helpers", () => {
 		expect(songIdOfPathname("accounts/acc/songs/song1/stem.wav")).toBe("song1");
 		expect(songIdOfPathname("accounts/acc/songs/song1/demos/d.m4a")).toBe("song1");
 		expect(songIdOfPathname("probe/x.txt")).toBeNull();
+	});
+	test("only URLs in our stores pass, and only the reserved file when a pathname is given", () => {
+		const pub = "https://1k3otzjcamptyygd.public.blob.vercel-storage.com/accounts/a/songs/s/x.wav";
+		const priv =
+			"https://qnjagy8fzsu7uy10.private.blob.vercel-storage.com/accounts/a/songs/s/x.wav";
+		expect(isOurBlobUrl(pub)).toBe(true);
+		expect(isOurBlobUrl(priv)).toBe(true);
+		expect(isOurBlobUrl(pub, "accounts/a/songs/s/x.wav")).toBe(true);
+		expect(isOurBlobUrl(pub, "accounts/a/songs/s/other.wav")).toBe(false);
+		expect(isOurBlobUrl("https://evil.example/accounts/a/songs/s/x.wav")).toBe(false);
+		expect(isOurBlobUrl("https://other.public.blob.vercel-storage.com/x.wav")).toBe(false);
+		expect(isOurBlobUrl("http://1k3otzjcamptyygd.public.blob.vercel-storage.com/x.wav")).toBe(
+			false,
+		);
+		expect(isOurBlobUrl("not a url")).toBe(false);
 	});
 });

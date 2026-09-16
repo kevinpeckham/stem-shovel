@@ -1,5 +1,6 @@
 import { accountOfDemo, memberOf } from "$lib/server/access";
-import { markDemoReady } from "$lib/server/data";
+import { isOurBlobUrl } from "$lib/server/blob";
+import { markDemoReady, reservedPathname } from "$lib/server/data";
 import { scheduleDemoPlayback } from "$lib/server/transcode";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
@@ -14,6 +15,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (typeof body.url !== "string" || !body.url.startsWith("https://"))
 		error(400, "url is required");
 	const { accountId } = await memberOf(locals, accountOfDemo, params.id);
+	const pathname = await reservedPathname(accountId, "demo", params.id);
+	if (!pathname || !isOurBlobUrl(body.url, pathname)) {
+		error(400, "That is not the uploaded file's URL");
+	}
 	const row = await markDemoReady(accountId, params.id, body.url);
 	if (!row) error(404, "Demo not found");
 	scheduleDemoPlayback([params.id]);

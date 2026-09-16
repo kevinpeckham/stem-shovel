@@ -1310,6 +1310,27 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 	return { ok: true as const, previous: m.role };
 }
 
+/** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
+export async function reservedPathname(
+	accountId: string,
+	kind: "stem" | "midi" | "demo",
+	id: string,
+): Promise<string | null> {
+	if (kind === "demo") {
+		const d = await db.query.demo.findFirst({
+			where: and(eq(demo.accountId, accountId), eq(demo.id, id)),
+			columns: { pathname: true },
+		});
+		return d?.pathname ?? null;
+	}
+	const st = await db.query.stem.findFirst({
+		where: and(eq(stem.accountId, accountId), eq(stem.id, id)),
+		columns: { pathname: true, midiPathname: true },
+	});
+	if (!st) return null;
+	return kind === "midi" ? st.midiPathname : st.pathname;
+}
+
 // ---- stem MIDI files --------------------------------------------------------
 
 /** Step 1 of a MIDI upload: reserve the pathname on the stem (the previous file, if any, stays until the new one lands). */

@@ -51,6 +51,32 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
+/** Hostnames of our two stores: `store_1K3OTzJ…` → `1k3otzj….public.blob.vercel-storage.com`. */
+function storeHosts(): string[] {
+	const host = (id: string | undefined, access: BlobAccess) =>
+		id ? `${id.replace(/^store_/, "").toLowerCase()}.${access}.blob.vercel-storage.com` : null;
+	return [host(ENV.BLOB_STORE_ID, "public"), host(ENV.BLOB_PRIVATE_STORE_ID, "private")].filter(
+		(h): h is string => !!h,
+	);
+}
+
+/**
+ * True for a URL in one of our stores — and, when a pathname is given, for
+ * exactly that file. Browsers report the URL of what they uploaded; without
+ * this check a member could store any address and the server would fetch
+ * it when transcoding or mixing.
+ */
+export function isOurBlobUrl(url: string, pathname?: string): boolean {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return false;
+	}
+	if (parsed.protocol !== "https:" || !storeHosts().includes(parsed.hostname)) return false;
+	return pathname === undefined || blobPathname(url) === pathname;
+}
+
 /** The song id inside any upload pathname (`accounts/<a>/songs/<s>/…`), or null. */
 export function songIdOfPathname(pathname: string): string | null {
 	return pathname.match(/^accounts\/[^/]+\/songs\/([^/]+)\//)?.[1] ?? null;
@@ -102,6 +128,7 @@ export async function deleteBlobs(urls: string[]): Promise<void> {
  * a Response either way so callers stream or buffer as they like.
  */
 export async function readBlob(url: string): Promise<Response> {
+	if (!isOurBlobUrl(url)) throw new Error(`refusing to read a file outside our stores: ${url}`);
 	if (accessOfUrl(url) === "public") return fetch(url);
 	// Straight from origin: the CDN can lag a file written moments ago (a fresh
 	// upload about to be transcoded, a mix about to be moved).
