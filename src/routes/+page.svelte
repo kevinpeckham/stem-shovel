@@ -22,7 +22,7 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
-<main class="page-x-padding main-y-padding">
+<main class="page-x-padding main-y-padding min-h-full">
 	<h1 class="heading-2 mb-4">What is Stem Shovel?</h1>
 	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
 		<div class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5">

@@ -93,7 +93,10 @@ export default defineConfig({
 	safelist: [
 		"font-sans",
 		"bg-oxford",
+		"bg-oxford-800",
+		"bg-oxford-900",
 		"bg-gradient-to-br",
+		"bg-#090E19",
 		"from-oxfordDark",
 		"to-oxford",
 		"text-neutral-100",
