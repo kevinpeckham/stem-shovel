@@ -141,9 +141,9 @@ fields are `$state`, so components read `engine.position` directly.
   its verse, chorus and second verse match the band's chart bar for bar.
   The chords come back as one space-separated string ("D5 % A5 …") and the
   chart is capped, so the answer is a fraction of its earlier 11k tokens.
-  The button lives at the top left of the Chart panel's toolbar (and in
-  settings) and runs Detect chords first when that has not happened; the
-  draft renders in the panel above the chart.
+  The action sits in the Chart panel's ⋯ menu (next to the edit button;
+  while a run is listening or drafting the menu shows its progress and a
+  Cancel) and in song settings.
   "Save sections" writes them (bars → seconds on the grid; confirms when
   sections exist); "Save as chart" writes the chart document (confirms
   when one exists; `saveChartDraft`). Five drafts per user per hour;
@@ -165,13 +165,14 @@ fields are `$state`, so components read `engine.position` directly.
   a chart, lyrics or notes document (its sanitised HTML) and, when
   `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
   remote form, so the document is edited without leaving the song; a save
-  re-renders through `invalidateAll()`. In the panel the editor runs with
-  `compact`, `autosave` (a save 1.5 s after the last change, ⌘S at once;
-  no Save button or version, except the Save that confirms an emptied
-  document), `showTitle={false}`, `hintAsTooltip` (the ⓘ in the header)
-  and `bare` (no shading, the panel frames it), and without `onclose`, so
-  there is no Done button (the toolbar's check button closes). The page
-  renders only the
+  re-renders through `invalidateAll()`. In the panel the editor runs in
+  its `mode="embedded"`: autosave (a save 1.5 s after the last change, ⌘S
+  at once; no Save button or version, except the Save that confirms an
+  emptied document), no title, the hint as the ⓘ tooltip, no shading, the
+  text keeping the reading view's margin with the block buttons tucked
+  into the panel's padding while the editor is hovered or focused, and no
+  Done (the toolbar's check button and Escape close instead). The default
+  `"standalone"` mode is the full-page editor. The page renders only the
   active document (a remote form attaches to one element) and closes it
   through the panel's exported `close()`, which waits a serialise debounce
   (the WYSIWYG writes markdown 250 ms after a keystroke), saves what is

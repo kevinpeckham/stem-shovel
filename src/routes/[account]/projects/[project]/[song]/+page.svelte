@@ -282,12 +282,22 @@
 	}
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
+		if (chartMenuEl?.open && !chartMenuEl.contains(e.target as Node)) chartMenuEl.open = false;
 	}
 	let doc = $derived(showing ?? "chart");
 	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
 	// The panel autosaves; closing goes through its close(), which flushes first.
 	let docEditing = $state(false);
 	let docPanel = $state<SongDocPanel | null>(null);
+	/** The document panel's ⋯ menu (a <details>): closed on a choice or a click elsewhere. */
+	let chartMenuEl = $state<HTMLDetailsElement | null>(null);
+	/** The editor pane while editing in the panel, chosen in that menu. */
+	let docView = $state<"rendered" | "markdown">("rendered");
+	let docSaving = $state(false);
+	const DOC_VIEWS = [
+		{ id: "rendered", name: "Rich Text" },
+		{ id: "markdown", name: "Markdown" },
+	] as const;
 	const DOC_HINTS = {
 		chart:
 			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
@@ -1866,39 +1876,14 @@
 					version={DOC_VERSION[doc]}
 					canEdit={data.canEdit}
 					bind:editing={docEditing}
+					bind:saving={docSaving}
+					view={docView}
 					above={panel === "chart" ? draftInPanel : undefined}
 				/>
 			{/key}
 		{/if}
-		{#if panel === "chart" && data.canEdit && data.aiAvailable}
-			<!-- Draft the chart from the stems: chords first (if not done), then the model. -->
-			<div class="absolute top-2 left-3 flex gap-2">
-				<button
-					class="button button-xs h-full"
-					type="button"
-					disabled={draftBusy ||
-						!!chordBusy ||
-						!playerEngine ||
-						playerEngine.status !== "ready" ||
-						!posCtx.grid}
-					title={!posCtx.grid
-						? "Needs a tempo and a time signature first (song settings)"
-						: playerEngine?.status !== "ready"
-							? "Available once every stem has decoded"
-							: "Transcribe the stems and have the AI draft sections, progressions and a chart"}
-					onclick={draftFromPanel}
-				>
-					<span class="i-ph-sparkle" aria-hidden="true"></span>
-					{draftBusy ? "Drafting…" : (chordBusy ?? "Draft chart with AI")}
-				</button>
-				{#if draftBusy || chordBusy}
-					<button class="button button-xs h-full" type="button" onclick={cancelDraft}>Cancel</button
-					>
-				{/if}
-			</div>
-		{/if}
 		<!-- tool bar  -->
-		<div class="absolute top-2 right-3 mb-2 grid grid-cols-[auto_auto] place-content-end gap-4">
+		<div class="absolute top-2 right-3 mb-2 flex items-stretch gap-4">
 			<div
 				class="flex overflow-hidden rounded border border-white/15 items-center"
 				role="tablist"
@@ -1927,7 +1912,7 @@
 			</div>
 			{#if panel === "comments"}
 				<button
-					class="button button-xs h-full {data.canEdit ? '' : 'hidden'}"
+					class="button button-xs flex items-center {data.canEdit ? '' : 'hidden'}"
 					type="button"
 					title="Add a comment"
 					aria-label="Add a comment"
@@ -1937,7 +1922,7 @@
 				</button>
 			{:else}
 				<button
-					class="button button-xs h-full {data.canEdit ? '' : 'hidden'} {docEditing
+					class="button button-xs flex items-center {data.canEdit ? '' : 'hidden'} {docEditing
 						? 'bg-blue-300 text-oxford border-blue-300'
 						: ''}"
 					type="button"
@@ -1949,9 +1934,92 @@
 						else docEditing = true;
 					}}
 				>
-					<span class={docEditing ? "i-ph-check" : data.docs[doc] ? "i-ph-pencil" : "i-ph-plus"}
+					<span
+						class={docEditing
+							? docSaving
+								? "i-ph-circle-notch animate-spin"
+								: "i-ph-check"
+							: data.docs[doc]
+								? "i-ph-pencil"
+								: "i-ph-plus"}
 					></span>
 				</button>
+			{/if}
+			{#if data.canEdit && panel !== "comments" && (docEditing || (panel === "chart" && data.aiAvailable))}
+				<!-- Panel menu: the editor's pane while editing, and the chart's AI draft. -->
+				<details class="relative flex" bind:this={chartMenuEl}>
+					<summary
+						class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
+						title="More"
+						aria-label="{PANEL_LABELS[panel]} menu"
+					>
+						<span
+							class={draftBusy || chordBusy
+								? "i-ph-circle-notch animate-spin"
+								: "i-ph-dots-three-outline-vertical-fill"}
+							aria-hidden="true"
+						></span>
+					</summary>
+					<div
+						class="absolute top-full right-0 z-20 mt-1 min-w-56 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+						role="menu"
+					>
+						{#if docEditing}
+							{#each DOC_VIEWS as v (v.id)}
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+									type="button"
+									role="menuitemradio"
+									aria-checked={docView === v.id}
+									onclick={() => {
+										docView = v.id;
+										if (chartMenuEl) chartMenuEl.open = false;
+									}}
+								>
+									<span class="i-ph-check {docView === v.id ? '' : 'invisible'}" aria-hidden="true"
+									></span>{v.name}
+								</button>
+							{/each}
+							{#if panel === "chart" && data.aiAvailable}
+								<hr class="my-1 border-white/15" />
+							{/if}
+						{/if}
+						{#if panel === "chart" && data.aiAvailable}
+							{#if draftBusy || chordBusy}
+								<div class="px-2 py-1 text-xs text-dim">{draftBusy ? "Drafting…" : chordBusy}</div>
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+									type="button"
+									role="menuitem"
+									onclick={() => {
+										if (chartMenuEl) chartMenuEl.open = false;
+										cancelDraft();
+									}}
+								>
+									<span class="i-ph-x" aria-hidden="true"></span>Cancel
+								</button>
+							{:else}
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
+									type="button"
+									role="menuitem"
+									disabled={!playerEngine || playerEngine.status !== "ready" || !posCtx.grid}
+									title={!posCtx.grid
+										? "Needs a tempo and a time signature first (song settings)"
+										: playerEngine?.status !== "ready"
+											? "Available once every stem has decoded"
+											: "Transcribe the stems and have the AI draft sections, progressions and a chart"}
+									onclick={() => {
+										if (chartMenuEl) chartMenuEl.open = false;
+										draftFromPanel();
+									}}
+								>
+									<span class="i-ph-sparkle" aria-hidden="true"></span>Draft chart with AI
+								</button>
+							{/if}
+						{/if}
+					</div>
+				</details>
 			{/if}
 		</div>
 		<!-- </div> -->

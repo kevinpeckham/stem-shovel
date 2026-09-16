@@ -11,9 +11,9 @@
 	 * One song document (chart, lyrics or notes) in the documents panel:
 	 * the rendered HTML to read, and, when `editing`, the same editor the
 	 * full-page route uses, saving through the same remote form, without
-	 * leaving the song. In the panel the editor autosaves and shows no title,
-	 * version, shading or Done button (the tab names the document, the panel
-	 * frames it, and the toolbar's edit/check button closes through close()).
+	 * leaving the song, in its "embedded" mode (autosave, no header or
+	 * shading: the tab names the document, the panel frames it, its ⋯ menu
+	 * picks the `view`, and the check button or Escape close through close()).
 	 * Render one at a time — the remote form attaches to a single <form>.
 	 */
 	interface Props {
@@ -32,6 +32,10 @@
 		dirty?: boolean;
 		/** Rendered above the document, e.g. an AI draft. */
 		above?: Snippet;
+		/** The editor pane to show while editing; the page's panel menu sets it. */
+		view?: "rendered" | "markdown";
+		/** A save is in flight (the page shows it on its check button). */
+		saving?: boolean;
 	}
 
 	let {
@@ -46,6 +50,8 @@
 		editing = $bindable(false),
 		dirty = $bindable(false),
 		above,
+		view = "rendered",
+		saving = $bindable(false),
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -56,6 +62,9 @@
 	let formEl = $state<HTMLFormElement | null>(null);
 	$effect(() => {
 		dirty = !!editor?.hasEdits;
+	});
+	$effect(() => {
+		saving = !!saveDoc.pending;
 	});
 	$effect(() => {
 		savedVersion = version;
@@ -139,12 +148,10 @@
 			pending={!!saveDoc.pending}
 			{confirmEmpty}
 			{saveError}
-			compact
-			autosave
-			showTitle={false}
-			hintAsTooltip
-			bare
+			mode="embedded"
+			{view}
 			onsave={() => formEl?.requestSubmit()}
+			onclose={() => void close()}
 		/>
 	</form>
 {:else if html}
