@@ -143,7 +143,8 @@ fields are `$state`, so components read `engine.position` directly.
   chart is capped, so the answer is a fraction of its earlier 11k tokens.
   The action sits in the Chart panel's ⋯ menu (next to the edit button;
   while a run is listening or drafting the menu shows its progress and a
-  Cancel) and in song settings.
+  Cancel) and in song settings; it runs Detect chords first when that has
+  not happened, and the draft renders in the panel above the chart.
   "Save sections" writes them (bars → seconds on the grid; confirms when
   sections exist); "Save as chart" writes the chart document (confirms
   when one exists; `saveChartDraft`). Five drafts per user per hour;
