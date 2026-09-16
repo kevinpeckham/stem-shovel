@@ -72,16 +72,22 @@ fields are `$state`, so components read `engine.position` directly.
   on/off only.
 - **Tempo, key and time-signature detection** (`src/lib/audio/analysis.ts`):
   while stems upload, each decoded buffer yields an onset-strength envelope
-  (spectral flux, 2048-point FFT, hop 512) and a chroma profile (a finer
-  8192-point FFT, 110 Hz – 4.2 kHz, linear magnitude, since 15 Hz bins put
-  low notes a semitone off); the batch's features are summed and analysed
+  (spectral flux, 2048-point FFT, hop 256 = 125 fps) and two chroma
+  profiles (8192-point FFT from 110 Hz to 4.2 kHz, and a 16384-point bass
+  one from 55 to 260 Hz; spectral peaks only, each frame normalised, so
+  drums do not smear them); the batch's features are summed and analysed
   as one mix: tempo by autocorrelation of the detrended envelope over
   50–210 bpm, candidates outside 80–170 held back (the half- or
   double-time lag often correlates as well as the beat; tuned on MMKK's
-  real mixes) with a gentle log-normal around 120, refined by a parabola;
+  real mixes) with a gentle log-normal around 120, refined by a parabola and then by
+  the autocorrelation peak at 2, 4, 8, 16 and 32 beats (each pins the
+  period to 1/k frame), which is what makes DAW tempos come back exactly;
   meter by comparing the raw envelope's autocorrelation at 3+6 beats
   against 4+8 (3/4 needs a 3 % win); key by correlating the chroma with
-  the Krumhansl-Kessler major and minor profiles. Only the first 90 s are
+  the Krumhansl-Kessler major and minor profiles, the bass chroma deciding
+  between a key and its fifth when they rank level. Measured on MMKK's
+  mixes (2026-09-16): every declared tempo exact, four of five keys right
+  (Mop Heart hears E where A is declared), the 3/4 song in 3/4. Only the first 90 s are
   analysed. The uploader hands the result to the song page: a song with
   no tempo/key/meter changes yet gets them at 0:00 and a long notice says
   so; one that has them only hears the detection. Tests use synthetic

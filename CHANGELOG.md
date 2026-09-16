@@ -26,6 +26,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Detection accuracy on real songs**: the beat period is refined over up
+  to 32 beats at twice the onset resolution, so declared DAW tempos come
+  back exactly (145, 132, 120, 115, 112); the key uses chroma from
+  spectral peaks, normalised per frame, so drums no longer smear it (four
+  of five MMKK keys right, up from three); and the bass settles a key
+  against its fifth when the profiles cannot.
 - **Tempo detection prefers the 80–170 bpm band** when the half- or
   double-time pulse correlates as well as the beat; on the real mixes in
   MMKK every declared tempo now comes back within two bpm, where two of
