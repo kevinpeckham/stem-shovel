@@ -1,7 +1,9 @@
 import { form, getRequestEvent } from "$app/server";
 import { accountOfProject, memberOf, requireMember, requireUser } from "$lib/server/access";
 import { createProject as create, projectSlugs, updateProject as update } from "$lib/server/data";
+import { deleteProject as removeProject, setProjectStatus } from "$lib/server/projectLifecycle";
 import { ProjectCreateSchema, ProjectSettingsSchema } from "$lib/val/ProjectSchema";
+import { IdSchema } from "$lib/val/SongSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -26,4 +28,30 @@ export const createProject = form(ProjectCreateSchema, async ({ accountId, name 
 	const m = requireMember(locals, accountId);
 	const row = await create(accountId, requireUser(locals).id, name);
 	redirect(303, `/${m.slug}/projects/${row.slug}`);
+});
+
+/** Any member archives a project: it leaves the list for the "Archived" section; songs and files stay. */
+export const archiveProject = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfProject, id);
+	if (!(await setProjectStatus(m.accountId, id, "archived"))) error(404, "Project not found");
+	redirect(303, `/${m.slug}/projects`);
+});
+
+export const restoreProject = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfProject, id);
+	if (!(await setProjectStatus(m.accountId, id, "active"))) error(404, "Project not found");
+	const slugs = await projectSlugs(m.accountId, id);
+	redirect(303, slugs ? `/${slugs.account}/projects/${slugs.project}` : `/${m.slug}/projects`);
+});
+
+/** Owners and admins delete a project with every song and file in it. */
+export const deleteProject = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfProject, id);
+	if (m.role !== "owner" && m.role !== "admin")
+		error(403, "Only owners and admins delete projects");
+	if (!(await removeProject(m.accountId, id))) error(404, "Project not found");
+	redirect(303, `/${m.slug}/projects`);
 });
