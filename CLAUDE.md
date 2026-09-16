@@ -77,7 +77,10 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 - **Transient feedback is a notification**, never a line of page content:
   `notify("Song settings saved")` from `$lib/state/notifications.svelte`
   (success evaporates in 4 s, errors stay until dismissed); the stack is
-  rendered once in the root layout, fixed to a corner.
+  rendered once in the root layout, fixed to a corner. Show a caught error with
+  `errorMessage(e)` from `$lib/utils/errorMessage`: a remote function's
+  `error(status, message)` reaches the client as an `HttpError` that is not an
+  `Error` (`String(e)` is its JSON body).
 - **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a

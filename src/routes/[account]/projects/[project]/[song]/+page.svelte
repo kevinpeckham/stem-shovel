@@ -46,6 +46,7 @@
 	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 	import { demoContentType } from "$lib/utils/demoContentType";
 	import { clearForm } from "$lib/utils/clearForm";
+	import { errorMessage } from "$lib/utils/errorMessage";
 	import { slugify } from "$lib/utils/slugify";
 	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 	import { STEM_ACCEPT, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
@@ -185,7 +186,7 @@
 					(percent) => (demoJobs[i].percent = percent),
 				);
 			} catch (e) {
-				demoJobs[i].error = e instanceof Error ? e.message : String(e);
+				demoJobs[i].error = errorMessage(e);
 			}
 		}
 		await invalidateAll();
@@ -390,7 +391,7 @@
 			resetSectionRows();
 			notify("Sections saved");
 		} catch (e) {
-			sectionError = e instanceof Error ? e.message : String(e);
+			sectionError = errorMessage(e);
 		} finally {
 			sectionsSaving = false;
 		}
@@ -475,7 +476,7 @@
 				};
 			}
 		} catch (e) {
-			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+			notify(errorMessage(e), { kind: "error" });
 		} finally {
 			scanning = false;
 		}
@@ -533,7 +534,8 @@
 			if (chordSegments.length === 0)
 				chordError = "No bars to read; check the tempo and time signature.";
 		} catch (e) {
-			chordError = e instanceof Error ? e.message : String(e);
+			chordError = errorMessage(e);
+			notify(`Chord detection failed: ${chordError}`, { kind: "error" });
 		} finally {
 			chordBusy = null;
 		}
@@ -554,7 +556,8 @@
 				bars: chordBars,
 			});
 		} catch (e) {
-			chordError = e instanceof Error ? e.message : String(e);
+			chordError = errorMessage(e);
+			notify(`The draft failed: ${chordError}`, { kind: "error" });
 		} finally {
 			draftBusy = false;
 		}
@@ -588,7 +591,7 @@
 			resetSectionRows();
 			notify("Sections saved from the draft");
 		} catch (e) {
-			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+			notify(errorMessage(e), { kind: "error" });
 		}
 	}
 	async function saveDraftChart() {
@@ -600,7 +603,7 @@
 			await invalidateAll();
 			notify("Chart saved from the draft");
 		} catch (e) {
-			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+			notify(errorMessage(e), { kind: "error" });
 		}
 	}
 	async function replaceFromScan() {
@@ -618,7 +621,7 @@
 			notify("Tempo, key and time signature replaced from the stems");
 			scanResult = { ...scanResult, applied: true };
 		} catch (e) {
-			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+			notify(errorMessage(e), { kind: "error" });
 		}
 	}
 
@@ -633,7 +636,7 @@
 		try {
 			aiAnswer = await askAiAboutSong({ id: data.song.id });
 		} catch (e) {
-			aiError = e instanceof Error ? e.message : String(e);
+			aiError = errorMessage(e);
 		} finally {
 			aiBusy = false;
 		}
@@ -692,7 +695,7 @@
 			resetChangeRows();
 			notify("Tempo, key and time signature saved");
 		} catch (e) {
-			changeError = e instanceof Error ? e.message : String(e);
+			changeError = errorMessage(e);
 		} finally {
 			changesSaving = false;
 		}
@@ -732,7 +735,7 @@
 			midiViews = { ...midiViews, [stemId]: await parsed };
 		} catch (e) {
 			midiCache.delete(url);
-			alert(`Could not read the MIDI file: ${e instanceof Error ? e.message : e}`);
+			alert(`Could not read the MIDI file: ${errorMessage(e)}`);
 		}
 	}
 
@@ -769,7 +772,7 @@
 		} catch (e) {
 			midiJobs = {
 				...midiJobs,
-				[stemId]: { percent: 0, error: e instanceof Error ? e.message : String(e) },
+				[stemId]: { percent: 0, error: errorMessage(e) },
 			};
 		}
 	}
@@ -795,7 +798,7 @@
 			notify(`Sent to ${sent}`);
 			sharePanel?.hidePopover();
 		} catch (err) {
-			shareError = err instanceof Error ? err.message : String(err);
+			shareError = errorMessage(err);
 		} finally {
 			shareBusy = false;
 		}
@@ -836,12 +839,9 @@
 				},
 			);
 		} catch (e) {
-			notify(
-				`Detected ${summary}, but it could not be saved: ${e instanceof Error ? e.message : String(e)}`,
-				{
-					kind: "error",
-				},
-			);
+			notify(`Detected ${summary}, but it could not be saved: ${errorMessage(e)}`, {
+				kind: "error",
+			});
 		}
 	}
 
@@ -873,7 +873,7 @@
 				`${downloadStem}-${mixMode === "custom" ? "custom-mix" : "mix"}.mp3`,
 			);
 		} catch (e) {
-			mixError = e instanceof Error ? e.message : String(e);
+			mixError = errorMessage(e);
 		} finally {
 			mixing = null;
 		}
@@ -2411,11 +2411,12 @@
 				</details>
 			{/if}
 			<p class="mt-1 text-13px">
-				{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
+				<!-- Unkeyed on purpose: a draft is replaced whole, and section names repeat (two verses). -->
+				{#each draft.sections as sec, i}{i > 0 ? " · " : ""}{sec.index}
 					{sec.name} @ bar {sec.bar}{/each}
 			</p>
 			<ul class="mt-1 text-13px opacity-90">
-				{#each draft.progressions as pr (pr.section)}
+				{#each draft.progressions as pr}
 					<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
 				{/each}
 			</ul>

@@ -232,12 +232,26 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
-	return askAiAboutMix(
-		song.mixUrl,
-		{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
-		{ userId: user.id, songId: id },
+	return aiOrError(
+		askAiAboutMix(
+			song.mixUrl,
+			{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
+			{ userId: user.id, songId: id },
+		),
 	);
 });
+
+/**
+ * An AI failure (gateway down, model answered nonsense) as a 502 carrying its message;
+ * thrown as a plain Error the client would only see "Internal Error" in production.
+ */
+async function aiOrError<T>(work: Promise<T>): Promise<T> {
+	try {
+		return await work;
+	} catch (e) {
+		error(502, e instanceof Error ? e.message : "The AI did not answer");
+	}
+}
 
 /** Names sections, progressions and a chart from the browser's chord detection (members; a few per hour). */
 export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars }) => {
@@ -255,22 +269,24 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 	const existingSections = grid
 		? song.sections.map((s) => ({ index: s.index, name: s.name, bar: barAt(grid, s.start).bar }))
 		: [];
-	return draftChartWithAi(
-		{
-			title: song.title,
-			tempo: at0("tempo"),
-			key: at0("key"),
-			meter: at0("meter"),
-			existingSections,
-			chords,
-			bars,
-			examples: (await chartExamples(accountId, id)).map((e) => ({
-				title: e.title,
-				sections: e.sections.map((s) => ({ index: s.index, name: s.name })),
-				chart: e.chart,
-			})),
-		},
-		{ userId: user.id, songId: id },
+	return aiOrError(
+		draftChartWithAi(
+			{
+				title: song.title,
+				tempo: at0("tempo"),
+				key: at0("key"),
+				meter: at0("meter"),
+				existingSections,
+				chords,
+				bars,
+				examples: (await chartExamples(accountId, id)).map((e) => ({
+					title: e.title,
+					sections: e.sections.map((s) => ({ index: s.index, name: s.name })),
+					chart: e.chart,
+				})),
+			},
+			{ userId: user.id, songId: id },
+		),
 	);
 });
 

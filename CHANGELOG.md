@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- The AI draft card crashed the song page when the draft named two sections alike (two verses): the lists were keyed by section name.
+- A failed chord detection or AI draft now shows a notification with the reason; a remote function's `error()` was displayed as its JSON body (`errorMessage` util).
+
 ## [0.9.0] - 2026-09-16
 
 ### Added
