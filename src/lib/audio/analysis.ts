@@ -168,7 +168,7 @@ function autocorrelation(x: Float32Array, lag: number): number {
 }
 
 /** Tempo in the 50–210 bpm range, preferring the octave nearest 110 bpm. */
-export function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
+function detectTempo(onset: Float32Array, fps: number): Detection["tempo"] {
 	const x = detrend(onset, fps);
 	if (x.length < fps * 4) return { bpm: 0, confidence: 0 };
 	const minLag = Math.floor((60 / 210) * fps);
@@ -204,7 +204,7 @@ export function detectTempo(onset: Float32Array, fps: number): Detection["tempo"
 }
 
 /** 4/4 against 3/4: which grouping of beats the onsets repeat in. */
-export function detectMeter(onset: Float32Array, fps: number, bpm: number): Detection["meter"] {
+function detectMeter(onset: Float32Array, fps: number, bpm: number): Detection["meter"] {
 	if (!bpm) return { value: "4/4", confidence: 0 };
 	// The raw envelope keeps the accent pattern the comparison relies on.
 	const x = onset;

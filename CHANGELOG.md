@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-16
+
 ### Added
 
 - **Tempo, key and time signature are detected from the stems as they
