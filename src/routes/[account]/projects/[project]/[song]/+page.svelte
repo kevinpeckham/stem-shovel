@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
+	import { chordChart, chordsPerBar, type ChordSegment } from "$lib/audio/chords";
+	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
@@ -9,7 +11,7 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { barGrid, formatPosition, parsePosition } from "$lib/audio/measures";
+	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "$lib/audio/measures";
 	import { bumpVersion } from "$lib/utils/bumpVersion";
 	import { midiContentType } from "$lib/utils/midiContentType";
 	import { formatDate } from "$lib/utils/formatDate";
@@ -55,6 +57,8 @@
 		removeStemMidi,
 		renameStem,
 		askAiAboutSong,
+		draftChart,
+		saveChartDraft,
 		saveChanges,
 		saveSections,
 		setSongVersion,
@@ -445,6 +449,101 @@
 			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
 		} finally {
 			scanning = false;
+		}
+	}
+	// "Detect chords": Basic Pitch on the tonal stems, one chord per bar on the
+	// song's grid; then "Draft chart with AI" turns them into sections, a
+	// progression per section and a chart, each saved on request.
+	let chordBusy = $state<string | null>(null);
+	let chordSegments = $state<ChordSegment[] | null>(null);
+	let chordError = $state<string | null>(null);
+	let draft = $state<ChartDraftAnswer | null>(null);
+	let draftBusy = $state(false);
+	async function detectChords() {
+		const grid = posCtx.grid;
+		if (!playerEngine || playerEngine.status !== "ready" || !grid) return;
+		chordBusy = "Listening…";
+		chordError = null;
+		chordSegments = null;
+		draft = null;
+		try {
+			const { transcribeNotes } = await import("$lib/audio/transcribe");
+			const buffers = playerEngine.buffers();
+			const features = buffers.map((b) => extractFeatures(b, 30));
+			const top = Math.max(...features.map((f) => f.tonal), 1e-9);
+			const duration = playerEngine.duration;
+			const notes = await transcribeNotes(
+				buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
+				duration,
+				(p) => (chordBusy = `Listening… ${Math.round(p * 100)}%`),
+			);
+			const barStarts: number[] = [];
+			for (let bar = 1; bar < 2000; bar++) {
+				const t = secondsAtBar(grid, bar);
+				if (t > duration) break;
+				barStarts.push(t);
+			}
+			barStarts.push(Math.min(duration, secondsAtBar(grid, barStarts.length + 1)));
+			if (import.meta.env.DEV)
+				(window as unknown as { __stemNotes?: unknown }).__stemNotes = { notes, barStarts };
+			chordSegments = chordsPerBar(notes, barStarts);
+			if (chordSegments.length === 0)
+				chordError = "No bars to read; check the tempo and time signature.";
+		} catch (e) {
+			chordError = e instanceof Error ? e.message : String(e);
+		} finally {
+			chordBusy = null;
+		}
+	}
+	async function draftFromChords() {
+		if (!chordSegments) return;
+		draftBusy = true;
+		chordError = null;
+		try {
+			draft = await draftChart({
+				id: data.song.id,
+				chords: chordSegments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
+			});
+		} catch (e) {
+			chordError = e instanceof Error ? e.message : String(e);
+		} finally {
+			draftBusy = false;
+		}
+	}
+	async function saveDraftSections() {
+		const grid = posCtx.grid;
+		if (!draft || !grid) return;
+		if (
+			data.song.sections.length > 0 &&
+			!confirm("Replace the song's sections with the drafted ones?")
+		)
+			return;
+		try {
+			await saveSections({
+				id: data.song.id,
+				sections: draft.sections.map((s) => ({
+					index: s.index,
+					name: s.name,
+					start: secondsAtBar(grid, s.bar),
+				})),
+			});
+			await invalidateAll();
+			resetSectionRows();
+			notify("Sections saved from the draft");
+		} catch (e) {
+			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
+		}
+	}
+	async function saveDraftChart() {
+		if (!draft) return;
+		const hasChart = !!data.docs.chart;
+		if (hasChart && !confirm("Replace the song's chart with the drafted one?")) return;
+		try {
+			await saveChartDraft({ id: data.song.id, markdown: draft.chart, replace: hasChart });
+			await invalidateAll();
+			notify("Chart saved from the draft");
+		} catch (e) {
+			notify(e instanceof Error ? e.message : String(e), { kind: "error" });
 		}
 	}
 	async function replaceFromScan() {
@@ -1167,6 +1266,21 @@
 							<span class="i-ph-waveform" aria-hidden="true"></span>
 							{scanning ? "Scanning…" : "Scan stems"}
 						</button>
+						<button
+							class="button button-xs"
+							type="button"
+							disabled={!!chordBusy ||
+								!playerEngine ||
+								playerEngine.status !== "ready" ||
+								!posCtx.grid}
+							title={!posCtx.grid
+								? "Needs a tempo and a time signature first"
+								: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
+							onclick={detectChords}
+						>
+							<span class="i-ph-music-notes" aria-hidden="true"></span>
+							{chordBusy ?? "Detect chords"}
+						</button>
 						{#if data.aiAvailable}
 							<button
 								class="button button-xs"
@@ -1199,6 +1313,74 @@
 						</button>
 					</div>
 				</div>
+				{#if chordError}<p class="mt-2 text-sm text-red-400" role="alert">{chordError}</p>{/if}
+				{#if chordSegments}
+					<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+						<div class="flex flex-wrap items-center justify-between gap-2">
+							<span
+								>Chords by bar ({chordSegments.reduce((n, c) => n + c.bars, 0)} bars,
+								{Math.round(
+									(chordSegments.reduce((n, c) => n + c.confidence * c.bars, 0) /
+										Math.max(
+											1,
+											chordSegments.reduce((n, c) => n + c.bars, 0),
+										)) *
+										100,
+								)}% sure on average)</span
+							>
+							<span class="flex items-center gap-3">
+								{#if data.aiAvailable}
+									<button
+										class="link-dim"
+										type="button"
+										disabled={draftBusy}
+										onclick={draftFromChords}
+									>
+										{draftBusy ? "Drafting…" : "Draft chart with AI"}
+									</button>
+								{/if}
+								<button
+									class="link-dim"
+									type="button"
+									onclick={() => ((chordSegments = null), (draft = null))}>Dismiss</button
+								>
+							</span>
+						</div>
+						<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
+								chordSegments,
+							)}</pre>
+					</div>
+				{/if}
+				{#if draft}
+					<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+						<div class="flex flex-wrap items-center justify-between gap-2">
+							<span class="font-600">AI draft</span>
+							<span class="flex items-center gap-3">
+								<button class="link-dim" type="button" onclick={saveDraftSections}
+									>Save sections</button
+								>
+								<button class="link-dim" type="button" onclick={saveDraftChart}
+									>Save as chart</button
+								>
+							</span>
+						</div>
+						<p class="mt-1 text-13px">
+							{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
+								{sec.name} @ bar {sec.bar}{/each}
+						</p>
+						<ul class="mt-1 text-13px opacity-90">
+							{#each draft.progressions as pr (pr.section)}
+								<li><span class="font-600">{pr.section}:</span> {pr.chords}</li>
+							{/each}
+						</ul>
+						{#if draft.notes}<p class="mt-1 text-12px text-dim">{draft.notes}</p>{/if}
+						<details class="mt-1 text-12px">
+							<summary class="cursor-pointer text-dim">Chart markdown</summary>
+							<pre
+								class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{draft.chart}</pre>
+						</details>
+					</div>
+				{/if}
 				{#if scanResult}
 					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
 						{#if scanResult.applied}

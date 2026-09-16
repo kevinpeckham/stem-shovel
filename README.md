@@ -101,6 +101,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   system admin.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
 - `src/lib/audio/analysis.ts` — tempo, key and meter detection at upload;
+  `transcribe.ts` + `chords.ts` — chords per bar via Basic Pitch;
   `src/lib/server/aiDetect.ts` — the AI Gateway second opinion (docs/audio-engine.md).
 - `src/lib/server/viewAccess.ts`, `src/lib/remote/share.remote.ts` — privacy:
   private projects and songs, viewing links (docs/auth.md).

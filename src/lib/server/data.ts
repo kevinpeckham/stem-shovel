@@ -1360,6 +1360,40 @@ export function listAuditLog(limit = 50) {
 	});
 }
 
+/** A song by id within its account: title, changes, sections, start marker and chart. */
+export function getSongById(accountId: string, songId: string) {
+	return db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: {
+			id: true,
+			title: true,
+			changes: true,
+			sections: true,
+			startAt: true,
+			chartMarkdown: true,
+		},
+	});
+}
+
+/** Up to two other songs of the account with a chart and sections, as style examples for an AI draft. */
+export async function chartExamples(accountId: string, excludeSongId: string) {
+	const rows = await db.query.song.findMany({
+		where: and(eq(song.accountId, accountId), eq(song.status, "active")),
+		columns: { id: true, title: true, chartMarkdown: true, sections: true, changes: true },
+	});
+	return rows
+		.filter(
+			(r) => r.id !== excludeSongId && r.chartMarkdown.trim().length > 80 && r.sections.length > 0,
+		)
+		.slice(0, 2)
+		.map((r) => ({
+			title: r.title,
+			sections: r.sections,
+			changes: r.changes,
+			chart: r.chartMarkdown.slice(0, 3000),
+		}));
+}
+
 // ---- AI requests ------------------------------------------------------------
 
 export type AiRequestLog = Omit<typeof aiRequest.$inferInsert, "id" | "createdAt" | "updatedAt">;

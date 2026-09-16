@@ -55,6 +55,13 @@ describe("tempo and meter", () => {
 		expect(Math.abs(d.tempo.bpm - 96)).toBeLessThan(1.5);
 		expect(d.meter.value).toBe("3/4");
 	});
+	test("a click track is far less tonal than a chord, and its chroma is weighted down", () => {
+		const clicks = extractFeatures(clickTrack(120, 4));
+		const keys = extractFeatures(chord([62, 66, 69, 74], 24)); // D major
+		expect(clicks.tonal).toBeLessThan(keys.tonal * 0.5);
+		const both = combineFeatures([clicks, keys])!;
+		expect(detectKey(both.chroma, both.bassChroma).value).toBe("D major");
+	});
 	test("stems add up: a quiet second stem does not change the answer", () => {
 		const a = extractFeatures(clickTrack(140, 4));
 		const b = extractFeatures(chord([60, 64, 67], 24));

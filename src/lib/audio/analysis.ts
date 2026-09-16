@@ -15,6 +15,8 @@ export interface Features {
 	chroma: Float32Array;
 	/** The same for the bass (55–260 Hz), where the roots live; settles tonic against fifth. */
 	bassChroma: Float32Array;
+	/** 0..1: how much of the spectrum sits in peaks. Drums and noise are low, keys and bass high. */
+	tonal: number;
 }
 
 export interface Detection {
@@ -103,13 +105,14 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 		onset[t] = flux;
 		previous = magnitude;
 	}
-	chromaOf(mono, sr, chroma, 110, 4200, CHROMA_FRAME);
+	const tonal = chromaOf(mono, sr, chroma, 110, 4200, CHROMA_FRAME);
 	chromaOf(mono, sr, bassChroma, 55, 260, CHROMA_FRAME * 2);
-	return { onset, fps: sr / HOP, chroma, bassChroma };
+	return { onset, fps: sr / HOP, chroma, bassChroma, tonal };
 }
 
 /**
- * Adds the pitch-class energy of `mono` between `lo` and `hi` Hz into `chroma`.
+ * Adds the pitch-class energy of `mono` between `lo` and `hi` Hz into `chroma`
+ * and returns how tonal the band is (the share of its energy in peaks).
  * Only spectral peaks count (a bin louder than its two neighbours each side),
  * which drops the broadband smear of drums and noise, and each frame's
  * chroma is normalised before it is added, so a loud hit does not outweigh
@@ -123,7 +126,7 @@ function chromaOf(
 	lo: number,
 	hi: number,
 	frame: number,
-): void {
+): number {
 	const hop = frame / 2;
 	const bins = frame / 2;
 	const binClass = new Int8Array(bins).fill(-1);
@@ -141,6 +144,8 @@ function chromaOf(
 	const magnitude = new Float32Array(bins);
 	const frameChroma = new Float32Array(12);
 	const frames = Math.floor((mono.length - frame) / hop) + 1;
+	let peakEnergy = 0;
+	let bandEnergy = 0;
 	for (let t = 0; t < frames; t++) {
 		const start = t * hop;
 		for (let i = 0; i < frame; i++) {
@@ -153,6 +158,7 @@ function chromaOf(
 		for (let b = 2; b < bins - 2; b++) {
 			if (binClass[b] < 0) continue;
 			const m = magnitude[b];
+			bandEnergy += m;
 			if (
 				m > magnitude[b - 1] &&
 				m >= magnitude[b + 1] &&
@@ -160,11 +166,13 @@ function chromaOf(
 				m > magnitude[b + 2]
 			) {
 				frameChroma[binClass[b]] += m;
+				peakEnergy += m;
 			}
 		}
 		const total = frameChroma.reduce((a, b) => a + b, 0);
 		if (total > 0) for (let c = 0; c < 12; c++) chroma[c] += frameChroma[c] / total;
 	}
+	return bandEnergy > 0 ? peakEnergy / bandEnergy : 0;
 }
 
 /** Sums features of several stems into one (the mix's), padding onsets to the longest. */
@@ -175,14 +183,21 @@ export function combineFeatures(list: Features[]): Features | null {
 	const onset = new Float32Array(frames);
 	const chroma = new Float32Array(12);
 	const bassChroma = new Float32Array(12);
+	// Every stem's onsets count (drums carry the beat); chroma is weighted by
+	// how tonal a stem is, relative to the most tonal one, so drums, noise and
+	// percussion drop out of the key without anyone naming them.
+	const top = Math.max(...list.map((f) => f.tonal), 1e-9);
+	let tonal = 0;
 	for (const f of list) {
 		for (let i = 0; i < f.onset.length; i++) onset[i] += f.onset[i];
+		const w = (f.tonal / top) ** 2;
 		for (let c = 0; c < 12; c++) {
-			chroma[c] += f.chroma[c];
-			bassChroma[c] += f.bassChroma[c];
+			chroma[c] += f.chroma[c] * w;
+			bassChroma[c] += f.bassChroma[c] * w;
 		}
+		tonal = Math.max(tonal, f.tonal);
 	}
-	return { onset, fps, chroma, bassChroma };
+	return { onset, fps, chroma, bassChroma, tonal };
 }
 
 /** Removes the slow trend from an onset envelope and rectifies it. */

@@ -10,6 +10,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Detect chords** in song settings: the tonal stems are transcribed to
+  notes in the browser (Spotify's Basic Pitch) and read as one chord per
+  bar on the song's grid, shown as chart lines.
+- **Draft chart with AI**: from the detected chords, the model names the
+  sections, writes each section's progression and drafts the chart in the
+  account's own style, using the account's existing charts as examples;
+  the sections and the chart can each be saved, with a confirmation when
+  they would replace something.
+- **Key detection ignores drums**: each stem's chroma is weighted by how
+  tonal it is.
 - **Scan stems** in the song's tempo, key and time signature settings: the
   upload-time detector run again on the stems the player has loaded. Empty
   settings are filled and the values shown; filled ones get an offer to

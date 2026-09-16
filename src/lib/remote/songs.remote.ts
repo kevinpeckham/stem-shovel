@@ -1,4 +1,5 @@
 import { command, form, getRequestEvent } from "$app/server";
+import { barAt, barGrid } from "$lib/audio/measures";
 import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
 import { ShareSongSchema } from "$lib/val/ShareSongSchema";
@@ -23,6 +24,8 @@ import {
 	saveSongDoc,
 	setSongVersion as setVersion,
 	songForMix,
+	chartExamples,
+	getSongById,
 	songSlugs,
 	updateSong as update,
 	updateSongChanges,
@@ -37,7 +40,8 @@ import {
 	SongVersionSetSchema,
 	StemRenameSchema,
 } from "$lib/val/SongSchema";
-import { aiAvailable, askAiAboutMix } from "$lib/server/aiDetect";
+import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
+import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -231,4 +235,50 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 		{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
 		{ userId: user.id, songId: id },
 	);
+});
+
+/** Names sections, progressions and a chart from the browser's chord detection (members; a few per hour). */
+export const draftChart = command(ChartDraftSchema, async ({ id, chords }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!aiAvailable()) error(503, "The AI draft is not configured");
+	if (rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
+	const song = await getSongById(accountId, id);
+	if (!song) error(404, "Song not found");
+	const at0 = (kind: string) =>
+		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	const grid = barGrid(song.changes, song.startAt);
+	const existingSections = grid
+		? song.sections.map((s) => ({ index: s.index, name: s.name, bar: barAt(grid, s.start).bar }))
+		: [];
+	return draftChartWithAi(
+		{
+			title: song.title,
+			tempo: at0("tempo"),
+			key: at0("key"),
+			meter: at0("meter"),
+			existingSections,
+			chords,
+			examples: (await chartExamples(accountId, id)).map((e) => ({
+				title: e.title,
+				sections: e.sections.map((s) => ({ index: s.index, name: s.name })),
+				chart: e.chart,
+			})),
+		},
+		{ userId: user.id, songId: id },
+	);
+});
+
+/** Saves a drafted chart as the song's chart; refuses to overwrite content unless `replace`. */
+export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, replace }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const song = await getSongById(accountId, id);
+	if (!song) error(404, "Song not found");
+	if (song.chartMarkdown.trim() && !replace) error(409, "The song already has a chart");
+	const result = await saveSongDoc(accountId, user.id, id, "chart", markdown);
+	if (!result.ok) error(400, result.error);
+	return { version: result.version };
 });

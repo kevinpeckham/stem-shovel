@@ -2,6 +2,11 @@ import { readBlob } from "$lib/server/blob";
 import { logAiRequest } from "$lib/server/data";
 import { createGateway } from "@ai-sdk/gateway";
 import { generateText } from "ai";
+import {
+	type ChartDraftAnswer,
+	ChartDraftAnswerSchema,
+	type ChordSegmentInput,
+} from "$lib/val/ChartDraftSchema";
 import * as v from "valibot";
 import { ENV } from "varlock/env";
 
@@ -120,6 +125,94 @@ Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 
 		parsed: parsed?.success ? parsed.output : null,
 		error,
 		durationMs,
+		inputTokens: usage.inputTokens ?? null,
+		outputTokens: usage.outputTokens ?? null,
+	});
+	if (error || !parsed?.success) throw new Error(error ?? "The model's answer did not make sense");
+	return parsed.output;
+}
+
+export interface ChartDraftInput {
+	title: string;
+	tempo: string | null;
+	key: string | null;
+	meter: string | null;
+	existingSections: { index: string; name: string; bar: number }[];
+	chords: ChordSegmentInput[];
+	examples: { title: string; sections: { index: string; name: string }[]; chart: string }[];
+}
+
+/**
+ * From the detected chords, the model names the sections, the progression
+ * of each, and drafts the chart in the account's own style (two of its
+ * songs' charts and section lists ride along as examples). Text only.
+ */
+export async function draftChartWithAi(
+	input: ChartDraftInput,
+	who: { userId: string; songId: string },
+): Promise<ChartDraftAnswer> {
+	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
+	const chordLines = input.chords
+		.map((c) => `bar ${c.bar}${c.bars > 1 ? `–${c.bar + c.bars - 1}` : ""}: ${c.chord}`)
+		.join("\n");
+	const examples = input.examples
+		.map(
+			(e, i) =>
+				`EXAMPLE ${i + 1}: "${e.title}"\nsections: ${e.sections.map((s) => `${s.index} ${s.name}`).join(", ")}\nchart:\n${e.chart}`,
+		)
+		.join("\n\n");
+	const system = `You are a music director preparing a chord chart for a band from a chord detection of their recording.
+Given the chords per bar (from an automatic detector — trust the harmony but expect the odd wrong bar), the tempo, key and time signature, and the way this band writes its charts (examples), do three things:
+1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses). Each section gets a roman-numeral index in order (I, II, III…), a name, and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
+2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "D(7)sus4 · D5 x2" or "| D | A | Bm | G |").
+3. Draft the chart in markdown in the same style as the examples: a heading per section, the progression under it, a short structure line at the top. Do not invent lyrics.
+Reply with JSON only: {"sections":[{"index":"I","name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
+	const question = `SONG: "${input.title}"${input.tempo ? `, ${input.tempo} bpm` : ""}${input.key ? `, ${input.key}` : ""}${input.meter ? `, ${input.meter}` : ""}
+${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.index} ${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}CHORDS PER BAR:
+${chordLines}
+
+${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts yet; use clear markdown with a heading per section."}`;
+	const started = Date.now();
+	const log = {
+		kind: "chart-draft",
+		model: MODEL,
+		userId: who.userId,
+		songId: who.songId,
+		prompt: `SYSTEM:\n${system}\n\nUSER:\n${question}`,
+	};
+	let text = "";
+	let usage: { inputTokens?: number; outputTokens?: number } = {};
+	try {
+		const result = await generateText({ model: gateway(MODEL), system, prompt: question });
+		text = result.text;
+		usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
+	} catch (e) {
+		await logAiRequest({
+			...log,
+			error: e instanceof Error ? e.message : String(e),
+			durationMs: Date.now() - started,
+		});
+		throw e;
+	}
+	const json = text.match(/\{[\s\S]*\}/)?.[0];
+	let parsed: v.SafeParseResult<typeof ChartDraftAnswerSchema> | null = null;
+	try {
+		parsed = json ? v.safeParse(ChartDraftAnswerSchema, JSON.parse(json)) : null;
+	} catch {
+		parsed = null;
+	}
+	const error = !json
+		? "The model did not answer in the expected form"
+		: parsed?.success
+			? null
+			: "The model's answer did not make sense";
+	await logAiRequest({
+		...log,
+		response: text,
+		parsed: parsed?.success ? parsed.output : null,
+		error,
+		durationMs: Date.now() - started,
 		inputTokens: usage.inputTokens ?? null,
 		outputTokens: usage.outputTokens ?? null,
 	});

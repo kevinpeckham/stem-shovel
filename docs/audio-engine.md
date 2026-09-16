@@ -96,6 +96,31 @@ fields are `$state`, so components read `engine.position` directly.
   runs the same detector on `engine.buffers()` (nothing is fetched again):
   empty settings are filled at once, filled ones get a replace offer that
   keeps rows after 0:00.
+- **Detect chords** (`src/lib/audio/transcribe.ts`, `src/lib/audio/chords.ts`):
+  in song settings, once stems are decoded and the song has a tempo and a
+  time signature. The stems weighted as tonal are summed, resampled to
+  22050 Hz and transcribed to notes in the browser with Spotify's Basic
+  Pitch (Apache 2.0; model files in `static/basic-pitch`, TensorFlow.js
+  loaded on demand, pre-bundled in dev by `optimizeDeps`). Each bar's notes
+  become a pitch-class profile (duration × loudness, the lowest note
+  doubled as the likely root) matched against chord templates (major,
+  minor, 7, maj7, m7, sus4, 7sus4, sus2, dim, aug, 5); a chord rooted on
+  the bass gets a bonus, the previous bar's chord is kept when it fits
+  nearly as well, and a bass outside the chord shows as a slash chord.
+  Consecutive equal bars merge; the result shows as `| D | A | Bm | G |`
+  lines. Tuned on Peaceful Dreams against its chart: the verse roots match
+  bar for bar; the intro's D pedal still wanders. Takes a few minutes on a
+  CPU-only browser, tens of seconds with WebGL.
+- **Draft chart with AI** (`draftChartWithAi`, `draftChart` in
+  songs.remote.ts): the detected chords, the song's tempo/key/meter, its
+  existing sections (as bars) and up to two of the account's own charts
+  with their sections go to the model, which returns sections (index,
+  name, start bar), a progression per section and a chart in markdown.
+  "Save sections" writes them (bars → seconds on the grid; confirms when
+  sections exist); "Save as chart" writes the chart document (confirms
+  when one exists; `saveChartDraft`). Five drafts per user per hour;
+  logged to `ai_request` as `chart-draft`. On Peaceful Dreams the draft
+  kept the song's ten sections at their bars.
 - **Ask AI to check** (`src/lib/server/aiDetect.ts`, `askAiAboutSong` in
   songs.remote.ts): a member sends the rendered original mix, with the
   song's current tempo, key and meter as candidates, to
