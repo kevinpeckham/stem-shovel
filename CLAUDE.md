@@ -21,6 +21,7 @@ bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ —
 bun run db:generate / db:migrate / db:seed / db:studio   # drizzle-kit via varlock
 bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
 bun run db:system-admin <email>         # make a user the operator (/admin)
+bun run db:seed-docs                    # add the starting user docs (scripts/user-docs) where missing
 ```
 
 Bun is the package manager (`packageManager` pin; `bun.lock` only). varlock
