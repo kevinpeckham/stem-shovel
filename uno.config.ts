@@ -27,7 +27,7 @@ export default defineConfig({
 		presetWebFonts({
 			provider: "bunny",
 			fonts: {
-				brand: "Bahiana",
+				brand: "Bangers",
 				// display: "Bahiana",
 				sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
 			},
@@ -158,8 +158,8 @@ export default defineConfig({
 			"block w-full rounded border border-white/15 bg-black/20 px-3 py-2 text-neutral-100 placeholder:text-slate-400 focus:(border-maximumYellow outline-none)",
 		],
 		["tab", "px-3 py-1 text-xs"],
-		["tab-active", "tab bg-maximumYellow text-oxford"],
-		["tab-idle", "tab hover-text-neutral-100"],
+		["tab-active", "tab bg-accent text-oxford"],
+		["tab-idle", "tab hover-current/80"],
 
 		// Chart / lyrics typography, shared by the read-only <article> and the
 		// woof-editor surface (its own body styles are zero-specificity, so these
