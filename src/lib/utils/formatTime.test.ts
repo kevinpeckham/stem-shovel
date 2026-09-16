@@ -3,6 +3,11 @@ import { formatTime } from "./formatTime";
 import { parseTime } from "./parseTime";
 
 describe("formatTime", () => {
+	test("zero decimals gives m:ss", () => {
+		expect(formatTime(44, 0)).toBe("0:44");
+		expect(formatTime(4, 0)).toBe("0:04");
+		expect(formatTime(83.6, 0)).toBe("1:24");
+	});
 	test("m:ss.s, tenths by default", () => {
 		expect(formatTime(0)).toBe("0:00.0");
 		expect(formatTime(83.4)).toBe("1:23.4");

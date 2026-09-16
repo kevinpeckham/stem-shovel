@@ -6,9 +6,12 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async () => {
 	const row = await featuredSong();
 	if (!row) return { demo: null };
+	// Real comments stay private to the account: the demo shows examples instead.
+	const view = await songView(row);
 	return {
 		demo: {
-			...(await songView(row)),
+			...view,
+			comments: [],
 			href: `/${row.accountSlug}/projects/${row.project.slug}/${row.slug}`,
 		},
 	};

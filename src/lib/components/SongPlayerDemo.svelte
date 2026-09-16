@@ -1,5 +1,7 @@
 <script lang="ts">
+	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
+	import type { DemoComment } from "$lib/constants/demoComments";
 	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "$lib/audio/downloads";
 	import type { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemState } from "$lib/audio/types";
@@ -7,6 +9,10 @@
 	import { saveAs } from "$lib/upload";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatBytes } from "$lib/utils/formatBytes";
+	import { formatDate } from "$lib/utils/formatDate";
+	import { formatTime } from "$lib/utils/formatTime";
+	import { parseTime } from "$lib/utils/parseTime";
+	import { notify } from "$lib/state/notifications.svelte";
 	import { tick } from "svelte";
 
 	/**
@@ -18,8 +24,60 @@
 		view: SongView;
 		/** The song's own page. */
 		href: string;
+		/** The demo's comments (examples plus the visitor's own); shared with the documents demo. */
+		comments: DemoComment[];
 	}
-	let { view, href }: Props = $props();
+	let { view, href, comments = $bindable() }: Props = $props();
+	let located = $derived(
+		comments
+			.filter((c) => c.at !== null)
+			.map((c) => ({ id: c.id, title: c.title, at: c.at ?? 0 }))
+			.sort((a, b) => a.at - b.at),
+	);
+
+	// Ctrl / ⌘-click (or right-click) on a waveform: seek, or comment at that spot.
+	let contextAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
+	function closeContext(e: Event) {
+		if (contextAt && !(e.target as HTMLElement).closest("[data-stem-context]")) contextAt = null;
+	}
+
+	// A comment lives in this page only: no request, no row, gone on reload.
+	let commentPanel = $state<HTMLDivElement | null>(null);
+	let draft = $state({ title: "", body: "", at: "" });
+	let draftError = $state<string | null>(null);
+	function openComment(at = "") {
+		draft = { title: "", body: "", at };
+		draftError = null;
+		commentPanel?.showPopover();
+	}
+	function postComment(e: SubmitEvent) {
+		e.preventDefault();
+		let at: number | null = null;
+		if (draft.at.trim()) {
+			at = parseTime(draft.at.trim());
+			if (at === null) {
+				draftError = "Position as m:ss, like 1:24";
+				return;
+			}
+		}
+		comments = [
+			...comments,
+			{
+				id: `mine-${Date.now()}`,
+				authorName: "You",
+				title: draft.title.trim(),
+				body: draft.body.trim(),
+				at,
+				createdAt: new Date(),
+				mine: true,
+			},
+		];
+		commentPanel?.hidePopover();
+		notify("Comment added to the demo (it lives on this page only)");
+	}
+	function removeComment(id: string) {
+		comments = comments.filter((c) => c.id !== id);
+	}
 	let song = $derived(view.song);
 	let ready = $derived(song.stems.filter((s) => s.status === "ready" && s.url));
 	let readyDemos = $derived(song.demos.filter((d) => d.status === "ready"));
@@ -94,6 +152,8 @@
 			endAt={song.endAt}
 			fps={song.frameRate}
 			onengine={(e) => (engine = e)}
+			onstemcontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
+			{afterRows}
 		>
 			{#snippet errorHint()}
 				A stem's file could not be loaded.
@@ -216,6 +276,137 @@
 		</ul>
 	</div>
 {/if}
+
+<svelte:window
+	onpointerdown={closeContext}
+	onkeydown={(e) => {
+		if (e.key === "Escape") contextAt = null;
+	}}
+/>
+
+{#snippet afterRows()}
+	{#if engine}
+		<CommentTimeline {engine} comments={located} card={commentCard} canComment />
+	{/if}
+{/snippet}
+
+{#snippet commentCard(id: string)}
+	{@const c = comments.find((x) => x.id === id)}
+	{#if c}
+		<h3 class="font-600">{c.title}</h3>
+		<p class="mt-1 text-12px opacity-70">
+			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
+				· {formatTime(c.at)}{/if}
+		</p>
+		<p class="mt-2 whitespace-pre-line">{c.body}</p>
+		<div class="mt-3 flex gap-3 text-12px">
+			{#if c.at !== null}
+				<button type="button" class="link-dim" onclick={() => engine?.seek(c.at ?? 0)}>Go to</button
+				>
+			{/if}
+			{#if c.mine}
+				<button type="button" class="link-dim" onclick={() => removeComment(c.id)}>Delete</button>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#if contextAt}
+	<div
+		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
+		style:left="{Math.min(contextAt.x, window.innerWidth - 240)}px"
+		style:top="{contextAt.y + 4}px"
+		role="menu"
+		data-stem-context
+	>
+		<div class="truncate px-3 py-1.5 text-xs opacity-70">
+			{contextAt.stem.label} · {formatTime(contextAt.seconds)}
+		</div>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			onclick={() => {
+				engine?.seek(contextAt?.seconds ?? 0);
+				contextAt = null;
+			}}
+		>
+			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
+		</button>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			onclick={() => {
+				const at = formatTime(contextAt?.seconds ?? 0, 0);
+				contextAt = null;
+				openComment(at);
+			}}
+		>
+			<span class="i-ph-chat-circle-dots mr-2" aria-hidden="true"></span>Comment here
+		</button>
+	</div>
+{/if}
+
+<!-- The demo's comment form: what members get, minus the saving. -->
+<div
+	id="demo-comment"
+	popover="auto"
+	bind:this={commentPanel}
+	class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+>
+	<div class="mb-4 flex items-center justify-between gap-4">
+		<h2 class="heading-2 mb-0">Add a comment</h2>
+		<button
+			class="button button-xs"
+			type="button"
+			popovertarget="demo-comment"
+			popovertargetaction="hide"
+		>
+			Close
+		</button>
+	</div>
+	<p class="mb-3 text-sm opacity-80">
+		Try it: this is the form members use. On the demo a comment lives on this page only and is gone
+		when you leave.
+	</p>
+	<form class="grid gap-3" onsubmit={postComment}>
+		<label class="block">
+			<span class="text-sm opacity-80">Title</span>
+			<input class="mt-1 field" type="text" bind:value={draft.title} required maxlength="120" />
+		</label>
+		<label class="block">
+			<span class="text-sm opacity-80">Comment</span>
+			<textarea
+				class="mt-1 field text-sm"
+				rows="4"
+				bind:value={draft.body}
+				required
+				maxlength="2000"></textarea>
+		</label>
+		<label class="block">
+			<span class="text-sm opacity-80"
+				>Position <span class="opacity-60">(optional, m:ss)</span></span
+			>
+			<span class="mt-1 flex items-center gap-2">
+				<input
+					class="field font-mono text-sm"
+					type="text"
+					placeholder="1:24"
+					bind:value={draft.at}
+				/>
+				<button
+					class="button button-xs shrink-0"
+					type="button"
+					disabled={!engine || engine.status !== "ready"}
+					onclick={() => (draft.at = formatTime(engine?.position ?? 0, 0))}>Playhead</button
+				>
+			</span>
+		</label>
+		{#if draftError}<p class="text-sm text-red-400" role="alert">{draftError}</p>{/if}
+		<button class="button-accent justify-self-start">Add comment</button>
+	</form>
+</div>
 
 {#snippet stemMenu(stem: StemState)}
 	{@const row = stemRows.get(stem.id)}

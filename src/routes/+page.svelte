@@ -1,8 +1,11 @@
 <script lang="ts">
 	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
 	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
+	import { exampleComments } from "$lib/constants/demoComments";
 
 	let { data } = $props();
+	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
+	let demoComments = $state(exampleComments());
 
 	const description =
 		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
@@ -69,11 +72,15 @@
 			</p>
 		</div>
 
-		<div class="">
+		<div class="bg-white/5 px-3">
 			{#if data.demo}
 				<!-- A live song, chosen on /admin/home: the player as visitors get it. -->
-				<div class="mt-4">
-					<SongPlayerDemo view={data.demo} href={data.demo.href} />
+				<div class="grid gap-3">
+					<h2 class="heading-2 leading-tight mb-0">Share Stems, Build Custom Mixes</h2>
+					<p class="opacity-90 text-17px max-w-740px">
+						Mute, solo and download stems or leave comments on the timeline for your collaborators.
+					</p>
+					<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
 				</div>
 			{:else}
 				<img
@@ -93,7 +100,12 @@
 				Every song carries its own chart, lyrics and notes, written in place by the band, and a
 				comment thread pinned to moments in the music. Here they are for the song above.
 			</p>
-			<SongDocsDemo view={data.demo} href={data.demo.href} />
+			<SongDocsDemo
+				view={data.demo}
+				href={data.demo.href}
+				comments={demoComments}
+				onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+			/>
 		</section>
 	{/if}
 
