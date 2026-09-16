@@ -267,6 +267,16 @@
 				>
 					<span>
 						{u.name} <span class="text-dim">· {u.email}</span>
+						<span class="block text-13px text-dim">
+							{#if u.memberships.length === 0}
+								no accounts
+							{:else}
+								{#each u.memberships as m, i (m.slug)}
+									{i > 0 ? " · " : ""}{m.role} of
+									<a class="link-dim" href="/{m.slug}/projects">{m.account}</a>
+								{/each}
+							{/if}
+						</span>
 					</span>
 					<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<span class="text-13px uppercase tracking-wider text-dim">

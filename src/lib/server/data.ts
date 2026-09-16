@@ -871,6 +871,14 @@ export async function systemOverview() {
 			createdAt: true,
 		},
 	});
+	const rolesOf = new Map<string, { account: string; slug: string; role: string }[]>();
+	for (const a of accounts) {
+		for (const m of a.members) {
+			const list = rolesOf.get(m.userId) ?? [];
+			list.push({ account: a.name, slug: a.slug, role: m.role });
+			rolesOf.set(m.userId, list);
+		}
+	}
 	return {
 		accounts: accounts.map((a) => ({
 			id: a.id,
@@ -882,7 +890,7 @@ export async function systemOverview() {
 			bytes: bytesOf.get(a.id) ?? 0,
 			members: a.members.map((m) => ({ role: m.role, name: m.user.name, email: m.user.email })),
 		})),
-		users,
+		users: users.map((u) => ({ ...u, memberships: rolesOf.get(u.id) ?? [] })),
 	};
 }
 

@@ -45,6 +45,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Privacy policy and copyright policy** as docs pages, linked from the
   footer and from the sign-up form, which now states that creating an
   account means agreeing to them. Both are deliberately short.
+- The `/admin` user list shows each user's role in each account ("owner of
+  MMKK"); a new user is the owner of the workspace made for them.
 - **Account management on `/admin`**: suspend an account (its pages close
   for everyone and its members lose editing until reactivated), reactivate
   it, or delete it with every project, song and file.
