@@ -30,14 +30,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 		? (
 				await db.query.accountMember.findMany({
 					where: eq(schema.accountMember.userId, user.id),
-					with: { account: { columns: { slug: true, name: true } } },
+					with: { account: { columns: { slug: true, name: true, status: true } } },
 				})
-			).map((m) => ({
-				accountId: m.accountId,
-				slug: m.account.slug,
-				name: m.account.name,
-				role: m.role,
-			}))
+			)
+				// A suspended account counts as no membership: its pages, mutations and uploads all close.
+				.filter((m) => m.account.status === "active")
+				.map((m) => ({
+					accountId: m.accountId,
+					slug: m.account.slug,
+					name: m.account.name,
+					role: m.role,
+				}))
 		: [];
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });

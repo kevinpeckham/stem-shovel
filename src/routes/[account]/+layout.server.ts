@@ -1,6 +1,7 @@
 import { canEdit, publicAccountBySlug } from "$lib/server/access";
 import { openShareLinks, useShareLink } from "$lib/server/data";
 import { rememberShareCodes, shareCodesFrom } from "$lib/server/viewAccess";
+import { error } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
 /**
@@ -14,6 +15,9 @@ import type { LayoutServerLoad } from "./$types";
  */
 export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) => {
 	const account = await publicAccountBySlug(params.account);
+	if (account.status !== "active") {
+		error(403, "This account is suspended. Its pages are closed until it is reactivated.");
+	}
 	const carried = shareCodesFrom(url, cookies);
 	const grants = await openShareLinks(carried);
 	const arriving = url.searchParams.get("share")?.trim();

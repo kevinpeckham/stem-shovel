@@ -1,7 +1,15 @@
 import { form, getRequestEvent } from "$app/server";
 import { requireSystemAdmin } from "$lib/server/access";
-import { createInviteCode, deleteUser, revokeInviteCode, setUserActive } from "$lib/server/data";
+import {
+	createInviteCode,
+	deleteAccount,
+	deleteUser,
+	revokeInviteCode,
+	setAccountStatus,
+	setUserActive,
+} from "$lib/server/data";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
+import { AccountAdminSchema } from "$lib/val/AccountAdminSchema";
 import { UserAdminSchema } from "$lib/val/UserAdminSchema";
 import { error } from "@sveltejs/kit";
 
@@ -44,4 +52,18 @@ export const manageUser = form(UserAdminSchema, async ({ id, action }) => {
 	}
 	if (!(await setUserActive(id, action === "reactivate"))) error(404, "User not found");
 	return { action, accountsRemoved: 0 };
+});
+
+/** Suspend (closes every page and mutation of the account), reactivate, or delete an account with all its files. */
+export const manageAccount = form(AccountAdminSchema, async ({ id, action }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	if (action === "delete") {
+		if (!(await deleteAccount(id))) error(404, "Account not found");
+		return { action };
+	}
+	if (!(await setAccountStatus(id, action === "suspend" ? "suspended" : "active"))) {
+		error(404, "Account not found");
+	}
+	return { action };
 });

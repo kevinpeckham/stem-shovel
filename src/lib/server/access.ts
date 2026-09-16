@@ -42,7 +42,7 @@ export function requireMember(locals: App.Locals, accountId: string) {
 export async function publicAccountBySlug(slug: string) {
 	const row = await db.query.account.findFirst({
 		where: eq(schema.account.slug, slug),
-		columns: { id: true, name: true, slug: true },
+		columns: { id: true, name: true, slug: true, status: true },
 	});
 	if (!row) error(404, `No account "${slug}"`);
 	return row;

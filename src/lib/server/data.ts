@@ -16,6 +16,7 @@ import type { MemberRole } from "$lib/val/MemberRoleSchema";
 import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
 import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
 import type { BugStatus } from "$lib/val/BugReportSchema";
+import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
@@ -875,6 +876,7 @@ export async function systemOverview() {
 			id: a.id,
 			name: a.name,
 			slug: a.slug,
+			status: a.status,
 			createdAt: a.createdAt,
 			songs: songsOf.get(a.id) ?? 0,
 			bytes: bytesOf.get(a.id) ?? 0,
@@ -1149,6 +1151,35 @@ export async function useShareLink(code: string) {
 		.update(shareLink)
 		.set({ uses: sql`${shareLink.uses} + 1` })
 		.where(eq(shareLink.code, code));
+}
+
+export async function setAccountStatus(id: string, status: AccountStatus) {
+	const [row] = await db
+		.update(account)
+		.set({ status })
+		.where(eq(account.id, id))
+		.returning({ id: account.id });
+	return !!row;
+}
+
+/** Removes the account and everything in it, files included (stems, renditions, MIDI, demos, mixes). */
+export async function deleteAccount(id: string) {
+	const stems = await db
+		.select({ url: stem.url, playbackUrl: stem.playbackUrl, midiUrl: stem.midiUrl })
+		.from(stem)
+		.where(eq(stem.accountId, id));
+	const demos = await db
+		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
+		.from(demo)
+		.where(eq(demo.accountId, id));
+	const mixes = await db.select({ mixUrl: song.mixUrl }).from(song).where(eq(song.accountId, id));
+	await deleteBlobs([
+		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
+		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...mixes.map((m) => m.mixUrl ?? ""),
+	]);
+	const [row] = await db.delete(account).where(eq(account.id, id)).returning({ id: account.id });
+	return !!row;
 }
 
 // ---- stem MIDI files --------------------------------------------------------

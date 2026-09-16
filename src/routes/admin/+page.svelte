@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createSystemInviteCode, revokeSystemInviteCode } from "$lib/remote/admin.remote";
-	import { manageUser } from "$lib/remote/admin.remote";
+	import { manageAccount, manageUser } from "$lib/remote/admin.remote";
 	import { setBugStatus } from "$lib/remote/bugs.remote";
 	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -189,14 +189,60 @@
 		<h2 class="heading-2">Accounts</h2>
 		<ul class="surface divide-y divide-white/10 text-15px">
 			{#each data.accounts as a (a.id)}
-				<li class="px-5 py-3">
-					<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+				{@const act = manageAccount.for(a.id)}
+				<li class="px-5 py-3 {a.status === 'active' ? '' : 'opacity-60'}">
+					<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
 						<a class="link-dim" href="/{a.slug}/projects">{a.name}</a>
-						<span class="text-13px text-dim">
-							{a.songs}
-							{a.songs === 1 ? "song" : "songs"} · {formatBytes(a.bytes)} · since {formatDate(
-								a.createdAt,
-							)}
+						<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
+							<span class="text-13px text-dim">
+								{a.songs}
+								{a.songs === 1 ? "song" : "songs"} · {formatBytes(a.bytes)} · since {formatDate(
+									a.createdAt,
+								)}{#if a.status !== "active"}
+									· <span class="uppercase tracking-wider">{a.status}</span>{/if}
+							</span>
+							<form
+								class="flex items-center gap-3 text-13px"
+								{...act.enhance(async ({ submit }) => {
+									const action = act.fields.action.value();
+									if (
+										action === "delete" &&
+										!confirm(
+											`Delete the account ${a.name} with its ${a.songs} ${a.songs === 1 ? "song" : "songs"} and every file (${formatBytes(a.bytes)})? Members keep their users. This cannot be undone.`,
+										)
+									)
+										return;
+									await submit();
+									if (act.result?.action) {
+										notify(
+											act.result.action === "delete"
+												? `${a.name} deleted`
+												: act.result.action === "suspend"
+													? `${a.name} suspended`
+													: `${a.name} reactivated`,
+										);
+									}
+								})}
+							>
+								<input {...act.fields.id.as("hidden", a.id)} />
+								<button
+									class="link-dim"
+									disabled={!!act.pending}
+									{...act.fields.action.as(
+										"submit",
+										a.status === "active" ? "suspend" : "reactivate",
+									)}
+								>
+									{a.status === "active" ? "Suspend" : "Reactivate"}
+								</button>
+								<button
+									class="text-red-400 hover:underline"
+									disabled={!!act.pending}
+									{...act.fields.action.as("submit", "delete")}
+								>
+									Delete
+								</button>
+							</form>
 						</span>
 					</div>
 					<p class="mt-1 text-13px text-dim">

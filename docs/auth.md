@@ -69,7 +69,11 @@ public by URL; editing needs a signed-in member.
   `isActive` check in `hooks.server.ts`, up to the session cookie cache's
   five minutes — reactivate, and delete, which cascades their sessions,
   memberships and comments and removes an account they alone belonged to
-  only when it has no projects), and mints **new-account invite codes**: `invite_code` rows
+  only when it has no projects), and suspends, reactivates or deletes **accounts** (suspended: every page
+  under it is a 403 for everyone and its memberships count as none, so
+  mutations and uploads close; deleted: every row and every Blob file of
+  the account go, members keep their users), and mints **new-account
+  invite codes**: `invite_code` rows
   with no `account_id`, which open sign-up without joining anything — the
   newcomer gets only their own workspace. `requireSystemAdmin` in
   `src/lib/server/access.ts` guards the page and `src/lib/remote/admin.remote.ts`.

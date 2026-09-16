@@ -42,6 +42,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   song settings, charts/lyrics/notes, comments, downloads and sharing,
   accounts and members, reporting a bug) live in `scripts/user-docs` and
   `bun run db:seed-docs` adds any that are missing, never overwriting edits.
+- **Account management on `/admin`**: suspend an account (its pages close
+  for everyone and its members lose editing until reactivated), reactivate
+  it, or delete it with every project, song and file.
 - **User management on `/admin`**: suspend (signs the user out and blocks
   sign-in), reactivate, and delete a user; deleting removes their sign-in,
   memberships and comments, and an account only they belonged to when it
