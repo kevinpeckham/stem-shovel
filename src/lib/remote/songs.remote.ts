@@ -238,7 +238,7 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 });
 
 /** Names sections, progressions and a chart from the browser's chord detection (members; a few per hour). */
-export const draftChart = command(ChartDraftSchema, async ({ id, chords }) => {
+export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
@@ -260,6 +260,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords }) => {
 			meter: at0("meter"),
 			existingSections,
 			chords,
+			bars,
 			examples: (await chartExamples(accountId, id)).map((e) => ({
 				title: e.title,
 				sections: e.sections.map((s) => ({ index: s.index, name: s.name })),

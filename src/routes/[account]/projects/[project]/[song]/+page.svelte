@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
-	import { chordChart, chordsPerBar, type ChordSegment } from "$lib/audio/chords";
+	import { chordChart, chordsPerBar, describeBars, type ChordSegment } from "$lib/audio/chords";
 	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
@@ -456,6 +456,7 @@
 	// progression per section and a chart, each saved on request.
 	let chordBusy = $state<string | null>(null);
 	let chordSegments = $state<ChordSegment[] | null>(null);
+	let chordBars = $state<{ bar: number; notes: string }[]>([]);
 	let chordError = $state<string | null>(null);
 	let draft = $state<ChartDraftAnswer | null>(null);
 	let draftBusy = $state(false);
@@ -487,6 +488,7 @@
 			if (import.meta.env.DEV)
 				(window as unknown as { __stemNotes?: unknown }).__stemNotes = { notes, barStarts };
 			chordSegments = chordsPerBar(notes, barStarts);
+			chordBars = describeBars(notes, barStarts);
 			if (chordSegments.length === 0)
 				chordError = "No bars to read; check the tempo and time signature.";
 		} catch (e) {
@@ -503,12 +505,21 @@
 			draft = await draftChart({
 				id: data.song.id,
 				chords: chordSegments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
+				bars: chordBars,
 			});
 		} catch (e) {
 			chordError = e instanceof Error ? e.message : String(e);
 		} finally {
 			draftBusy = false;
 		}
+	}
+	/** The model's chords as chart lines, four bars each. */
+	function aiChordLines(chords: { bar: number; chord: string }[]): string {
+		const cells = chords.map((c) => c.chord);
+		const lines: string[] = [];
+		for (let i = 0; i < cells.length; i += 4)
+			lines.push(`| ${cells.slice(i, i + 4).join(" | ")} |`);
+		return lines.join("\n");
 	}
 	async function saveDraftSections() {
 		const grid = posCtx.grid;
@@ -1364,6 +1375,11 @@
 								>
 							</span>
 						</div>
+						{#if draft.chords.length > 0}
+							<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{aiChordLines(
+									draft.chords,
+								)}</pre>
+						{/if}
 						<p class="mt-1 text-13px">
 							{#each draft.sections as sec, i (sec.index + sec.bar)}{i > 0 ? " · " : ""}{sec.index}
 								{sec.name} @ bar {sec.bar}{/each}

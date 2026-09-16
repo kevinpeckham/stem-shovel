@@ -3,6 +3,7 @@ import { logAiRequest } from "$lib/server/data";
 import { createGateway } from "@ai-sdk/gateway";
 import { generateText } from "ai";
 import {
+	type BarNotesInput,
 	type ChartDraftAnswer,
 	ChartDraftAnswerSchema,
 	type ChordSegmentInput,
@@ -18,6 +19,8 @@ import { ENV } from "varlock/env";
  * meter above all. Off entirely without AI_GATEWAY_API_KEY.
  */
 const MODEL = "google/gemini-3-flash";
+/** The chart draft reads transcribed notes, no listening needed: a frontier text model reads them best (docs/audio-engine.md). */
+const DRAFT_MODEL = "anthropic/claude-fable-5-1";
 /** Gemini takes inline audio up to about 20 MB; the mixes are MP3s of a few MB. */
 const MAX_AUDIO_BYTES = 18 * 1024 * 1024;
 
@@ -139,6 +142,7 @@ export interface ChartDraftInput {
 	meter: string | null;
 	existingSections: { index: string; name: string; bar: number }[];
 	chords: ChordSegmentInput[];
+	bars: BarNotesInput[];
 	examples: { title: string; sections: { index: string; name: string }[]; chart: string }[];
 }
 
@@ -153,8 +157,14 @@ export async function draftChartWithAi(
 ): Promise<ChartDraftAnswer> {
 	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
-	const chordLines = input.chords
-		.map((c) => `bar ${c.bar}${c.bars > 1 ? `–${c.bar + c.bars - 1}` : ""}: ${c.chord}`)
+	const hint = new Map<number, string>();
+	for (const c of input.chords) {
+		for (let i = 0; i < c.bars; i++) hint.set(c.bar + i, i === 0 ? c.chord : "%");
+	}
+	const barLines = input.bars
+		.map(
+			(b) => `bar ${b.bar}${hint.has(b.bar) ? ` [matcher: ${hint.get(b.bar)}]` : ""}: ${b.notes}`,
+		)
 		.join("\n");
 	const examples = input.examples
 		.map(
@@ -162,21 +172,22 @@ export async function draftChartWithAi(
 				`EXAMPLE ${i + 1}: "${e.title}"\nsections: ${e.sections.map((s) => `${s.index} ${s.name}`).join(", ")}\nchart:\n${e.chart}`,
 		)
 		.join("\n\n");
-	const system = `You are a music director preparing a chord chart for a band from a chord detection of their recording.
-Given the chords per bar (from an automatic detector — trust the harmony but expect the odd wrong bar), the tempo, key and time signature, and the way this band writes its charts (examples), do three things:
+	const system = `You are a music director preparing a chord chart for a band from a transcription of their recording.
+For each bar you get the notes an automatic transcriber (Spotify Basic Pitch) heard, lowest to highest, as pitch+octave × seconds sounding @ loudness 0..1. The transcription is noisy: weak, short notes are often wrong; long, loud, low notes are reliable. A simple template matcher's guess follows each bar in brackets — a hint, not an answer. You also get the tempo, key and time signature, and the way this band writes its charts (examples). Do four things:
+0. Name the chord in every bar, in this band's chart notation (D, Bm, A7, G5, D7sus4, Dsus4, G/B); think like a rock musician reading a chart — simple, plausible progressions in the key over exotic spellings; power chords (5) and sus chords are common here. Write "%" for a bar that repeats the previous chord and "N.C." for silence.
 1. Split the song into sections (Intro, Verse, Chorus, Bridge, Solo, Outro… reuse names the band uses). Each section gets a roman-numeral index in order (I, II, III…), a name, and the bar it starts on. If the song already has sections, keep their names and starts unless the chords plainly say otherwise.
 2. Write each section's chord progression as a compact line, one chord per bar, "|"-separated, with "x2"/"x4" for repeats, in the band's own notation (see the examples: e.g. "D(7)sus4 · D5 x2" or "| D | A | Bm | G |").
 3. Draft the chart in markdown in the same style as the examples: a heading per section, the progression under it, a short structure line at the top. Do not invent lyrics.
-Reply with JSON only: {"sections":[{"index":"I","name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
+Reply with JSON only: {"chords":[{"bar":1,"chord":"D7sus4"},{"bar":2,"chord":"%"},…],"sections":[{"index":"I","name":"Intro","bar":1},…],"progressions":[{"section":"Intro","chords":"…"}],"chart":"markdown…","notes":"one sentence on anything uncertain"}`;
 	const question = `SONG: "${input.title}"${input.tempo ? `, ${input.tempo} bpm` : ""}${input.key ? `, ${input.key}` : ""}${input.meter ? `, ${input.meter}` : ""}
-${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.index} ${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}CHORDS PER BAR:
-${chordLines}
+${input.existingSections.length ? `EXISTING SECTIONS: ${input.existingSections.map((s) => `${s.index} ${s.name} @ bar ${s.bar}`).join(", ")}\n` : ""}NOTES PER BAR:
+${barLines}
 
 ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts yet; use clear markdown with a heading per section."}`;
 	const started = Date.now();
 	const log = {
 		kind: "chart-draft",
-		model: MODEL,
+		model: DRAFT_MODEL,
 		userId: who.userId,
 		songId: who.songId,
 		prompt: `SYSTEM:\n${system}\n\nUSER:\n${question}`,
@@ -184,7 +195,12 @@ ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts 
 	let text = "";
 	let usage: { inputTokens?: number; outputTokens?: number } = {};
 	try {
-		const result = await generateText({ model: gateway(MODEL), system, prompt: question });
+		const result = await generateText({
+			model: gateway(DRAFT_MODEL),
+			system,
+			prompt: question,
+			maxOutputTokens: 16_000,
+		});
 		text = result.text;
 		usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
 	} catch (e) {

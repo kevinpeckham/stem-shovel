@@ -8,9 +8,18 @@ export const ChordSegmentSchema = v.object({
 	chord: v.pipe(v.string(), v.trim(), v.maxLength(12)),
 });
 
+/** What the transcriber heard in one bar, as text the model reads (lowest to highest, pitch+octave × seconds @ loudness). */
+export const BarNotesSchema = v.object({
+	bar: v.pipe(v.number(), v.integer(), v.minValue(1)),
+	notes: v.pipe(v.string(), v.maxLength(2000)),
+});
+
 export const ChartDraftSchema = v.object({
 	id: NanoIdSchema,
+	/** The template matcher's chords, as a hint. */
 	chords: v.pipe(v.array(ChordSegmentSchema), v.minLength(1), v.maxLength(1000)),
+	/** The notes per bar, which the model reads like a chart reader would. */
+	bars: v.pipe(v.array(BarNotesSchema), v.minLength(1), v.maxLength(1000)),
 });
 
 /** Saving a drafted chart; `replace` confirms overwriting one that has content. */
@@ -22,6 +31,16 @@ export const ChartSaveSchema = v.object({
 
 /** What the model must return. */
 export const ChartDraftAnswerSchema = v.object({
+	/** One chord per bar, in order; "%" repeats the previous bar. */
+	chords: v.pipe(
+		v.array(
+			v.object({
+				bar: v.pipe(v.number(), v.integer(), v.minValue(1)),
+				chord: v.pipe(v.string(), v.trim(), v.maxLength(12)),
+			}),
+		),
+		v.maxLength(1000),
+	),
 	sections: v.pipe(
 		v.array(
 			v.object({
@@ -43,3 +62,4 @@ export const ChartDraftAnswerSchema = v.object({
 });
 export type ChartDraftAnswer = v.InferOutput<typeof ChartDraftAnswerSchema>;
 export type ChordSegmentInput = v.InferOutput<typeof ChordSegmentSchema>;
+export type BarNotesInput = v.InferOutput<typeof BarNotesSchema>;

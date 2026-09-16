@@ -112,10 +112,18 @@ fields are `$state`, so components read `engine.position` directly.
   bar for bar; the intro's D pedal still wanders. Takes a few minutes on a
   CPU-only browser, tens of seconds with WebGL.
 - **Draft chart with AI** (`draftChartWithAi`, `draftChart` in
-  songs.remote.ts): the detected chords, the song's tempo/key/meter, its
-  existing sections (as bars) and up to two of the account's own charts
-  with their sections go to the model, which returns sections (index,
-  name, start bar), a progression per section and a chart in markdown.
+  songs.remote.ts): the transcribed notes per bar (`describeBars`: pitch,
+  octave, seconds sounding, loudness), the template matcher's chords as a
+  hint, the song's tempo/key/meter, its existing sections (as bars) and up
+  to two of the account's own charts with their sections go to
+  **`anthropic/claude-fable-5-1`** through the AI Gateway, which names the
+  chord in every bar, the sections (index, name, start bar), a
+  progression per section and a chart in markdown. A frontier text model
+  reading the notes beat everything else on Peaceful Dreams' first 48
+  bars (roots right: Fable over notes 43, template matcher 38, Gemini
+  over notes 38, Gemini listening to the audio 23), and on the full song
+  its verse, chorus and second verse match the band's chart bar for bar.
+  About two minutes and ~100k tokens per song.
   "Save sections" writes them (bars → seconds on the grid; confirms when
   sections exist); "Save as chart" writes the chart document (confirms
   when one exists; `saveChartDraft`). Five drafts per user per hour;

@@ -50,9 +50,10 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 
 ## AI Gateway
 
-`AI_GATEWAY_API_KEY` (optional, 1Password) switches on "Ask AI to check" in a
-song's settings: the rendered mix goes to `google/gemini-3-flash` through
-Vercel's AI Gateway with `@ai-sdk/gateway` + `ai`, replicator's pattern
+`AI_GATEWAY_API_KEY` (optional, 1Password) switches on "Ask AI to check" and
+"Draft chart with AI" in a song's settings: the rendered mix goes to
+`google/gemini-3-flash` (it listens) and the transcribed notes to
+`anthropic/claude-fable-5-1` (it reads) through Vercel's AI Gateway with `@ai-sdk/gateway` + `ai`, replicator's pattern
 (`src/lib/server/aiDetect.ts`). Without the key the button is not shown.
 
 ## Vercel Blob stores
