@@ -48,6 +48,16 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 - Browser-only packages (the woof-editor) are imported dynamically in
   `onMount` so their server builds never enter the function.
 
+## Vercel Blob stores
+
+`BLOB_READ_WRITE_TOKEN` / `BLOB_STORE_ID` are the public store every file used
+to live in; `BLOB_PRIVATE_READ_WRITE_TOKEN`, `BLOB_PRIVATE_STORE_ID` and
+`BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY` are the private store that holds the files of
+private songs (docs/uploads-and-blob.md). All come from 1Password. Tokens are
+trimmed of stray quotes and whitespace on use (a paste once carried a closing
+`"`). Without the private token, making a song private still works but its
+files stay where they are and the relocation logs an error.
+
 ## Response headers and CSP
 
 Following lj-website's `vercel.ts`: `src/lib/constants/securityHeaders.ts`
@@ -67,6 +77,7 @@ so it is not in `vercel.json`. What it allows and why:
 - `font-src` adds `https://fonts.bunny.net` (UnoCSS inlines the `@font-face`
   CSS at build time, so only the font files are fetched).
 - `media-src` and `connect-src` add `https://*.public.blob.vercel-storage.com`
+  and `https://*.private.blob.vercel-storage.com` (presigned URLs)
   (`<audio>` plays mixes and demos from the store; the player fetches
   renditions and MIDI files) and `blob:` for the mixes rendered in the
   browser; `connect-src` also adds `https://vercel.com/api/blob/`, where

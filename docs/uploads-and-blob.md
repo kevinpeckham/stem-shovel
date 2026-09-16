@@ -15,6 +15,28 @@ in three steps driven by `src/lib/upload.ts`:
    song's duration. `onUploadCompleted` is a production-only backstop (Blob
    cannot reach localhost).
 
+- **Two stores** (`src/lib/server/blob.ts`). Public songs' files live in the
+  public store and are fetched by their URLs; the files of a private song
+  (its own flag or its project's, docs/auth.md) live in a **private store**
+  (`BLOB_PRIVATE_READ_WRITE_TOKEN`), whose URLs answer 403 unless
+  presigned. The URL's host says which store a file is in
+  (`src/lib/utils/blobAccess.ts`), so no column records it. Pages hand the
+  browser `presentUrl()` results: the URL itself for public files, a
+  presigned GET URL (12 h) for private ones — `manifestFor` and
+  `presentSongFiles` on the song page, the playlist's mix URLs on the
+  project page. The server reads either store with `readBlob()` (an
+  authenticated `get`, CDN bypassed, for private files) when transcoding,
+  mixing or moving. Uploads: the reservation answers with `access`, the
+  browser uploads with it, and `/api/upload` picks the store's token from
+  the song named in the pathname. Renditions and mixes land in the store
+  of the source they came from. Changing a song's or project's privacy
+  moves every file in the background (`src/lib/server/relocate.ts`): each
+  is streamed into the other store under a freshly stamped pathname
+  (`stem.m<stamp>.wav`; the CDN remembers a deleted pathname as gone for a
+  while), confirmed readable through the CDN, then the old copy is deleted
+  and the row updated. A page open during the move may hold URLs that are
+  about to disappear; a reload fixes it. A public copy can be served from
+  the edge cache for a short time after it is deleted.
 - **Pathnames are ID-based**: `accounts/<id>/songs/<id>/<stemId>.<ext>`, so
   renames never move files. "Upload new version" (`/api/stems/[id]/replace`)
   keeps the row and label but reserves `<stemId>-vN.<ext>` and deletes the

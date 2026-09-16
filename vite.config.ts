@@ -8,6 +8,8 @@ import { defineConfig } from "vite-plus";
 // One config for dev/build (Vite), lint (Oxlint) and format (Oxfmt).
 /** Where stems, renditions, mixes and demos are served from (any public Blob store). */
 const BLOB_STORE = "https://*.public.blob.vercel-storage.com";
+/** The private store, reached with presigned URLs (src/lib/server/blob.ts). */
+const BLOB_PRIVATE_STORE = "https://*.private.blob.vercel-storage.com";
 const production = process.env.NODE_ENV === "production";
 
 export default defineConfig({
@@ -63,8 +65,8 @@ export default defineConfig({
 					"style-src": ["self", "unsafe-inline"],
 					"img-src": ["self", "data:", "blob:"],
 					"font-src": ["self", "data:", "https://fonts.bunny.net"],
-					"media-src": ["self", "blob:", BLOB_STORE],
-					"connect-src": ["self", BLOB_STORE, "https://vercel.com/api/blob/"],
+					"media-src": ["self", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
+					"connect-src": ["self", BLOB_STORE, BLOB_PRIVATE_STORE, "https://vercel.com/api/blob/"],
 					"worker-src": ["self", "blob:"],
 					"object-src": ["none"],
 					"base-uri": ["self"],

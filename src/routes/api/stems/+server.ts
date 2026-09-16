@@ -2,6 +2,7 @@ import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
 import { createStem } from "$lib/server/data";
 import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { stemContentType } from "$lib/utils/stemContentType";
+import { accessOfPathname } from "$lib/server/relocate";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -25,5 +26,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 	if (!row) error(404, "Song not found");
 	if (row === "full") error(409, `A song can have at most ${MAX_STEMS_PER_SONG} stems`);
-	return json({ stemId: row.id, pathname: row.pathname });
+	return json({
+		stemId: row.id,
+		pathname: row.pathname,
+		access: await accessOfPathname(row.pathname),
+	});
 };

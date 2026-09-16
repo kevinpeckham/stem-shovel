@@ -1,5 +1,11 @@
 import type { StemManifest } from "$lib/audio/types";
-import { deleteBlobs, demoPathname, midiPathname, stemPathname } from "$lib/server/blob";
+import {
+	deleteBlobs,
+	demoPathname,
+	midiPathname,
+	presentUrl,
+	stemPathname,
+} from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
 import { barGrid } from "$lib/audio/measures";
 import { hashMarkdown } from "$lib/server/markdown";
@@ -311,23 +317,60 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 }
 
 /** The shape the StemPlayer wants: ready stems only. */
-export function manifestFor(s: {
+export async function manifestFor(s: {
 	title: string;
 	stems: (typeof stem.$inferSelect)[];
-}): StemManifest {
+}): Promise<StemManifest> {
+	const ready = s.stems.filter((st) => st.status === "ready" && st.url);
 	return {
 		title: s.title,
-		stems: s.stems
-			.filter((st) => st.status === "ready" && st.url)
-			.map((st) => ({
+		stems: await Promise.all(
+			ready.map(async (st) => ({
 				id: st.id,
 				label: st.label,
 				// The player streams the rendition once it exists; the source until then.
-				url: st.playbackStatus === "ready" && st.playbackUrl ? st.playbackUrl : st.url,
+				// A private song's file gets a presigned URL the browser may fetch.
+				url:
+					(await presentUrl(
+						st.playbackStatus === "ready" && st.playbackUrl ? st.playbackUrl : st.url,
+					)) ?? "",
 				duration: st.durationSeconds ?? undefined,
 				channels: st.channels ?? undefined,
 				peaks: st.peaks ?? undefined,
 			})),
+		),
+	};
+}
+
+/**
+ * A song as a page may send it: every file URL replaced by one the browser
+ * can fetch (its own for the public store, presigned for the private one).
+ */
+export async function presentSongFiles<
+	S extends {
+		mixUrl: string | null;
+		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
+		demos: { url: string; playbackUrl: string | null }[];
+	},
+>(s: S): Promise<S> {
+	return {
+		...s,
+		mixUrl: await presentUrl(s.mixUrl),
+		stems: await Promise.all(
+			s.stems.map(async (st) => ({
+				...st,
+				url: (await presentUrl(st.url)) ?? st.url,
+				playbackUrl: await presentUrl(st.playbackUrl),
+				midiUrl: await presentUrl(st.midiUrl),
+			})),
+		),
+		demos: await Promise.all(
+			s.demos.map(async (d) => ({
+				...d,
+				url: (await presentUrl(d.url)) ?? d.url,
+				playbackUrl: await presentUrl(d.playbackUrl),
+			})),
+		),
 	};
 }
 

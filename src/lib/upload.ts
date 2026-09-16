@@ -7,6 +7,8 @@ import { upload } from "@vercel/blob/client";
 export interface Reservation {
 	stemId: string;
 	pathname: string;
+	/** Which store the server reserved it in (private songs' files live apart). */
+	access?: "public" | "private";
 }
 
 /**
@@ -20,10 +22,10 @@ export async function uploadStemFile(
 	reserve: () => Promise<Reservation>,
 	opts: { ctx: AudioContext; onProgress?: (percent: number) => void; onDecoding?: () => void },
 ): Promise<void> {
-	const { stemId, pathname } = await reserve();
+	const { stemId, pathname, access = "public" } = await reserve();
 	const contentType = stemContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
-		access: "public",
+		access,
 		handleUploadUrl: "/api/upload",
 		// The reservation allows exactly the type derived from the extension; the
 		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
@@ -54,6 +56,7 @@ export async function uploadStemFile(
 export interface DemoReservation {
 	demoId: string;
 	pathname: string;
+	access?: "public" | "private";
 }
 
 /** A demo recording: reserve, send the bytes to Blob, report the URL. No decoding. */
@@ -62,10 +65,10 @@ export async function uploadDemoFile(
 	reserve: () => Promise<DemoReservation>,
 	onProgress?: (percent: number) => void,
 ): Promise<void> {
-	const { demoId, pathname } = await reserve();
+	const { demoId, pathname, access = "public" } = await reserve();
 	const contentType = demoContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
-		access: "public",
+		access,
 		handleUploadUrl: "/api/upload",
 		// The reservation allows exactly the type derived from the extension; the
 		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
@@ -87,12 +90,13 @@ export async function uploadMidiFile(
 	file: File,
 	onProgress?: (percent: number) => void,
 ): Promise<void> {
-	const { pathname } = await postJson<{ stemId: string; pathname: string }>(
-		`/api/stems/${stemId}/midi`,
-		{ filename: file.name, sizeBytes: file.size },
-	);
+	const { pathname, access = "public" } = await postJson<{
+		stemId: string;
+		pathname: string;
+		access?: "public" | "private";
+	}>(`/api/stems/${stemId}/midi`, { filename: file.name, sizeBytes: file.size });
 	const blob = await upload(pathname, file, {
-		access: "public",
+		access,
 		handleUploadUrl: "/api/upload",
 		contentType: "audio/midi",
 		onUploadProgress: ({ percentage }) => onProgress?.(percentage),

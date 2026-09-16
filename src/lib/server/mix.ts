@@ -1,4 +1,5 @@
-import { deleteBlobs, mixPathname, putBlob } from "$lib/server/blob";
+import { accessOfUrl } from "$lib/utils/blobAccess";
+import { deleteBlobs, mixPathname, putBlob, readBlob } from "$lib/server/blob";
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "$lib/server/data";
 import { background } from "$lib/server/background";
 import { FADER_MAX } from "$lib/audio/engine.svelte";
@@ -42,6 +43,12 @@ export interface MixRequest {
 export type Mixable = NonNullable<Awaited<ReturnType<typeof songForMix>>>;
 
 /** Identifies the set of files an original mix is made from. */
+/** A mix lives where its stems do: the first ready stem's store. */
+function mixAccess(song: Pick<Mixable, "stems">) {
+	const first = song.stems.find((s) => s.url);
+	return first ? accessOfUrl(first.url) : "public";
+}
+
 function originalMixKey(song: Pick<Mixable, "stems">) {
 	return mixKeyOf(song.stems);
 }
@@ -109,7 +116,7 @@ export async function renderMix(song: Mixable, req: MixRequest): Promise<Buffer>
 		const files = await Promise.all(
 			inputs.map(async ({ url }, i) => {
 				const file = join(dir, `in-${i}`);
-				const res = await fetch(url);
+				const res = await readBlob(url);
 				if (!res.ok || !res.body)
 					throw new Error(`${res.status} ${res.statusText} fetching ${url}`);
 				await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
@@ -167,11 +174,16 @@ export async function renderMix(song: Mixable, req: MixRequest): Promise<Buffer>
 export async function originalMix(song: Mixable, accountId: string): Promise<Buffer> {
 	const key = originalMixKey(song);
 	if (song.mixUrl && song.mixKey === key) {
-		const res = await fetch(song.mixUrl);
+		const res = await readBlob(song.mixUrl);
 		if (res.ok) return Buffer.from(await res.arrayBuffer());
 	}
 	const bytes = await renderMix(song, originalMixRequest(song));
-	const blob = await putBlob(mixPathname(accountId, song.id, key), bytes, "audio/mpeg");
+	const blob = await putBlob(
+		mixPathname(accountId, song.id, key),
+		bytes,
+		"audio/mpeg",
+		mixAccess(song),
+	);
 	await setSongMix(song.id, { url: blob.url, key });
 	if (song.mixUrl && song.mixUrl !== blob.url) await deleteBlobs([song.mixUrl]);
 	return bytes;
@@ -193,7 +205,12 @@ export async function ensureOriginalMix(songId: string): Promise<void> {
 	if (!(await claimSongMix(songId, key))) return;
 	try {
 		const bytes = await renderMix(song, originalMixRequest(song));
-		const blob = await putBlob(mixPathname(song.accountId, song.id, key), bytes, "audio/mpeg");
+		const blob = await putBlob(
+			mixPathname(song.accountId, song.id, key),
+			bytes,
+			"audio/mpeg",
+			mixAccess(song),
+		);
 		await setSongMix(song.id, { url: blob.url, key });
 		if (song.mixUrl && song.mixUrl !== blob.url) await deleteBlobs([song.mixUrl]);
 	} catch (e) {

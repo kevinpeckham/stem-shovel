@@ -59,9 +59,10 @@ public by URL; editing needs a signed-in member.
   403s rendered by `src/routes/+error.svelte` with a sign-in button. Private
   projects are left out of the projects list for anyone who cannot open
   them; private songs likewise on the project page. Share-by-email on a
-  private song mints a viewing link for the recipient. The stems and mixes
-  themselves are still served from the public Blob store until the private
-  store lands (`BLOB_PRIVATE_*` are declared, unused).
+  private song mints a viewing link for the recipient. A private song's
+  files live in the private Blob store and reach the browser only as
+  presigned URLs (docs/uploads-and-blob.md), so a direct file URL is no
+  back door.
 - **Sign-up is closed** (`src/lib/server/signUpGate.ts`, run from Better
   Auth's `user.create.before` hook in `src/lib/auth.ts`): the sign-up
   request must carry an invitation token (`/sign-up?invite=<token>`, where

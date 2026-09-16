@@ -1,4 +1,5 @@
 import { getProject, listShareLinks, songsWantingMix } from "$lib/server/data";
+import { presentUrl } from "$lib/server/blob";
 import { canViewProject, canViewSong } from "$lib/server/viewAccess";
 import { mixKeyOf, scheduleMix } from "$lib/server/mix";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -22,7 +23,13 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	// Backstop: songs whose cached mix predates their current stems.
 	scheduleMix(songsWantingMix(songs, mixKeyOf));
 	return {
-		project: { ...project, songs },
+		project: {
+			...project,
+			// The playlist plays each song's mix; a private song's needs a presigned URL.
+			songs: await Promise.all(
+				songs.map(async (s) => ({ ...s, mixUrl: await presentUrl(s.mixUrl) })),
+			),
+		},
 		shareLinks: canEdit ? await listShareLinks({ projectId: project.id }) : [],
 	};
 };

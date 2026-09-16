@@ -6,7 +6,8 @@ import {
 	finishDemoPlayback,
 	finishPlayback,
 } from "$lib/server/data";
-import { deleteBlobs, playbackPathname, putBlob } from "$lib/server/blob";
+import { accessOfUrl } from "$lib/utils/blobAccess";
+import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
 import { background } from "$lib/server/background";
 import { ensureOriginalMix } from "$lib/server/mix";
 import ffmpegPath from "ffmpeg-static";
@@ -63,7 +64,7 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 	try {
 		const input = join(dir, "source");
 		const output = join(dir, "playback.m4a");
-		const res = await fetch(claim.url);
+		const res = await readBlob(claim.url);
 		if (!res.ok || !res.body)
 			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
 		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(input));
@@ -97,7 +98,7 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 
 		const bytes = await readFile(output);
 		const pathname = playbackPathname(claim.pathname);
-		const blob = await putBlob(pathname, bytes, "audio/mp4");
+		const blob = await putBlob(pathname, bytes, "audio/mp4", accessOfUrl(claim.url));
 		await finishPlayback(stemId, { url: blob.url, pathname, bytes: bytes.byteLength });
 		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
 		return claim.songId;
@@ -133,7 +134,7 @@ async function transcodeDemo(demoId: string): Promise<void> {
 	try {
 		const input = join(dir, "source");
 		const output = join(dir, "demo.mp3");
-		const res = await fetch(claim.url);
+		const res = await readBlob(claim.url);
 		if (!res.ok || !res.body)
 			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
 		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(input));
@@ -166,7 +167,7 @@ async function transcodeDemo(demoId: string): Promise<void> {
 		const bytes = await readFile(output);
 		const pathname =
 			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;
-		const blob = await putBlob(pathname, bytes, "audio/mpeg");
+		const blob = await putBlob(pathname, bytes, "audio/mpeg", accessOfUrl(claim.url));
 		await finishDemoPlayback(demoId, { url: blob.url, pathname, bytes: bytes.byteLength });
 		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
 	} catch (e) {

@@ -7,7 +7,8 @@ import {
 	recordStemMidiUrl,
 	recordStemUrl,
 } from "$lib/server/data";
-import { blobAuth } from "$lib/server/blob";
+import { blobAuth, songIdOfPathname } from "$lib/server/blob";
+import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { json } from "@sveltejs/kit";
@@ -27,10 +28,17 @@ const isMidi = (pathname: string) => pathname.includes("/midi/");
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json()) as HandleUploadBody;
 	try {
+		// The store (and so the token) follows the song's privacy; the pathname names the song.
+		const pathname =
+			body.type === "blob.generate-client-token"
+				? body.payload.pathname
+				: body.payload.blob.pathname;
+		const songId = songIdOfPathname(pathname);
+		const access = (songId && (await accessOfSongId(songId))) || "public";
 		const result = await handleUpload({
 			body,
 			request,
-			...blobAuth(),
+			...blobAuth(access),
 			onBeforeGenerateToken: async (pathname) => {
 				const { accountId } = await memberOf(locals, accountOfUploadPathname, pathname);
 				// Stems and demo recordings share this route; the reservation decides which.

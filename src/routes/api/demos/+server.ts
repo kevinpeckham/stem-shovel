@@ -3,6 +3,7 @@ import { createDemo } from "$lib/server/data";
 import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { accessOfPathname } from "$lib/server/relocate";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -26,5 +27,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 	if (!row) error(404, "Song not found");
 	if (row === "full") error(409, `A song can have at most ${MAX_DEMOS_PER_SONG} demo recordings`);
-	return json({ demoId: row.id, pathname: row.pathname });
+	return json({
+		demoId: row.id,
+		pathname: row.pathname,
+		access: await accessOfPathname(row.pathname),
+	});
 };

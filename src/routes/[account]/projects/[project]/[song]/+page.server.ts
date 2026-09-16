@@ -4,6 +4,7 @@ import {
 	listComments,
 	listShareLinks,
 	manifestFor,
+	presentSongFiles,
 	stemsWantingPlayback,
 } from "$lib/server/data";
 import { canViewSong } from "$lib/server/viewAccess";
@@ -27,10 +28,11 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	schedulePlayback(stemsWantingPlayback(song.stems));
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
 	return {
-		song,
+		// File URLs the browser may fetch (presigned for a private song); renditions above used the originals.
+		song: await presentSongFiles(song),
 		comments: await listComments(song.id),
 		shareLinks: canEdit ? await listShareLinks({ songId: song.id }) : [],
-		manifest: manifestFor(song),
+		manifest: await manifestFor(song),
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),

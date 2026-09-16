@@ -28,6 +28,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Private storage for private songs**: the files of a private song
+  (stems, renditions, MIDI, demos, mixes) now live in a private Vercel Blob
+  store whose URLs are refused without a signature; pages hand the browser
+  presigned URLs good for twelve hours, and uploads to a private song go
+  straight there. Making a song or project private moves its files across
+  in the background, and making it public moves them back. New variables
+  `BLOB_PRIVATE_READ_WRITE_TOKEN`, `BLOB_PRIVATE_STORE_ID`,
+  `BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY`.
 - **Belonging to several accounts**: the account menu shows your role in
   each account and links to a new "Your accounts" page (roles, project
   counts, leave). Neutral pages and the old `/projects` and `/settings`

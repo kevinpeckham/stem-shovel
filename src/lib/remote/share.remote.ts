@@ -13,6 +13,8 @@ import {
 	setSongPrivacy,
 } from "$lib/server/data";
 import { PrivacySchema, ShareLinkCreateSchema, ShareLinkIdSchema } from "$lib/val/ShareLinkSchema";
+import { background } from "$lib/server/background";
+import { relocateProjectFiles, relocateSongFiles } from "$lib/server/relocate";
 import { error } from "@sveltejs/kit";
 
 /** Any member makes a project private (members and share links only) or public again. */
@@ -20,6 +22,10 @@ export const setProjectPrivate = form(PrivacySchema, async ({ id, isPrivate }) =
 	const { locals } = getRequestEvent();
 	const m = await memberOf(locals, accountOfProject, id);
 	if (!(await setProjectPrivacy(m.accountId, id, isPrivate === "true"))) error(404, "Not found");
+	// Files follow: into the private store, or back out (src/lib/server/relocate.ts).
+	background(async () => {
+		await relocateProjectFiles(id);
+	});
 	return { isPrivate: isPrivate === "true" };
 });
 
@@ -27,6 +33,9 @@ export const setSongPrivate = form(PrivacySchema, async ({ id, isPrivate }) => {
 	const { locals } = getRequestEvent();
 	const m = await memberOf(locals, accountOfSong, id);
 	if (!(await setSongPrivacy(m.accountId, id, isPrivate === "true"))) error(404, "Not found");
+	background(async () => {
+		await relocateSongFiles(id);
+	});
 	return { isPrivate: isPrivate === "true" };
 });
 

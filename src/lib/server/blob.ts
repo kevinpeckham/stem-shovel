@@ -1,13 +1,29 @@
-import { del, put } from "@vercel/blob";
+import { accessOfUrl, type BlobAccess, blobPathname } from "$lib/utils/blobAccess";
+import { del, get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { ENV } from "varlock/env";
 
 /**
- * The token is passed explicitly on every `@vercel/blob` call. Left to its
- * defaults the SDK prefers OIDC whenever VERCEL_OIDC_TOKEN is present (it is,
- * in .env.local), and that fails in development. The token comes from
- * 1Password via varlock, not from Vercel's env vars.
+ * Two stores: the public one every file used to live in, and a private one
+ * for the files of private songs (docs/auth.md, privacy). A file's URL says
+ * which (src/lib/utils/blobAccess.ts). The token is passed explicitly on
+ * every `@vercel/blob` call: left to its defaults the SDK prefers OIDC
+ * whenever VERCEL_OIDC_TOKEN is present (it is, in .env.local), and that
+ * fails in development. Tokens come from 1Password via varlock.
  */
-export const blobAuth = () => ({ token: ENV.BLOB_READ_WRITE_TOKEN });
+export function blobAuth(access: BlobAccess = "public") {
+	if (access === "private") {
+		if (!ENV.BLOB_PRIVATE_READ_WRITE_TOKEN)
+			throw new Error("BLOB_PRIVATE_READ_WRITE_TOKEN is not configured");
+		return { token: cleanToken(ENV.BLOB_PRIVATE_READ_WRITE_TOKEN) };
+	}
+	return { token: cleanToken(ENV.BLOB_READ_WRITE_TOKEN) };
+}
+
+/** A token pasted into 1Password with quotes or whitespace around it is still the token. */
+const cleanToken = (t: string) => t.trim().replace(/^["']+|["']+$/g, "");
+
+/** The token for the store a file already lives in. */
+export const blobAuthFor = (url: string) => blobAuth(accessOfUrl(url));
 
 /**
  * Blob pathname for a stem. IDs, not slugs, so renames never move files.
@@ -38,6 +54,11 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
+/** The song id inside any upload pathname (`accounts/<a>/songs/<s>/…`), or null. */
+export function songIdOfPathname(pathname: string): string | null {
+	return pathname.match(/^accounts\/[^/]+\/songs\/([^/]+)\//)?.[1] ?? null;
+}
+
 /**
  * Pathname of a stem's playback rendition, next to its source. The stamp
  * makes every render a new URL (same 30-day cache reason as `version`).
@@ -52,19 +73,123 @@ export function mixPathname(accountId: string, songId: string, key: string) {
 	return `accounts/${accountId}/songs/${songId}/mix-${key}-${Date.now().toString(36)}.mp3`;
 }
 
-/** Uploads a server-side file (a rendition) with the same long cache as browser uploads. */
-export async function putBlob(pathname: string, body: Buffer, contentType: string) {
+/** Uploads a server-side file (a rendition, a mix) into the given store with the same long cache as browser uploads. */
+export async function putBlob(
+	pathname: string,
+	body: Buffer | ReadableStream,
+	contentType: string,
+	access: BlobAccess = "public",
+) {
 	return put(pathname, body, {
-		access: "public",
+		access,
 		contentType,
 		addRandomSuffix: false,
+		allowOverwrite: true,
 		cacheControlMaxAge: 60 * 60 * 24 * 30,
-		...blobAuth(),
+		...blobAuth(access),
 	});
 }
 
-/** Deletes blobs by URL; ignores empty lists and blobs that are already gone. */
+/** Deletes blobs by URL from whichever store each is in; ignores empty lists and blobs already gone. */
 export async function deleteBlobs(urls: string[]): Promise<void> {
 	const real = urls.filter((u) => u.startsWith("https://"));
-	if (real.length > 0) await del(real, blobAuth());
+	for (const access of ["public", "private"] as const) {
+		const mine = real.filter((u) => accessOfUrl(u) === access);
+		if (mine.length > 0) await del(mine, blobAuth(access));
+	}
+}
+
+/**
+ * Reads a file the server needs (to transcode, mix, or move): a plain fetch
+ * for the public store, an authenticated `get` for the private one. Returns
+ * a Response either way so callers stream or buffer as they like.
+ */
+export async function readBlob(url: string): Promise<Response> {
+	if (accessOfUrl(url) === "public") return fetch(url);
+	// Straight from origin: the CDN can lag a file written moments ago (a fresh
+	// upload about to be transcoded, a mix about to be moved).
+	const found = await get(url, { access: "private", useCache: false, ...blobAuth("private") });
+	if (!found) return new Response(null, { status: 404, statusText: "Not Found" });
+	return new Response(found.stream, {
+		status: 200,
+		headers: { "content-type": found.blob.contentType ?? "application/octet-stream" },
+	});
+}
+
+/** How long a presigned URL handed to a page stays good. Long enough to finish listening and downloading. */
+export const PRESIGN_TTL_MS = 12 * 60 * 60 * 1000;
+
+let delegation: { token: Awaited<ReturnType<typeof issueSignedToken>>; validUntil: number } | null =
+	null;
+
+/** One whole-store read delegation, reused until it nears expiry; presigning each URL is then local. */
+async function readDelegation() {
+	const now = Date.now();
+	if (delegation && delegation.validUntil - now > 60 * 60 * 1000) return delegation.token;
+	const validUntil = now + PRESIGN_TTL_MS + 60 * 60 * 1000;
+	const token = await issueSignedToken({
+		pathname: "*",
+		operations: ["get", "head"],
+		validUntil,
+		...blobAuth("private"),
+	});
+	delegation = { token, validUntil };
+	return token;
+}
+
+/**
+ * The URL a browser may use: a public file's own URL, or a presigned one for
+ * a private file (valid PRESIGN_TTL_MS). Pages call this on every file URL
+ * they hand to the player, the demo player or the download buttons.
+ */
+export async function presentUrl(
+	url: string | null | undefined,
+	operation: "get" | "head" = "get",
+): Promise<string | null> {
+	if (!url) return url ?? null;
+	if (accessOfUrl(url) === "public") return url;
+	// A URL signed for GET is not valid for HEAD (and vice versa): sign for the method used.
+	const { presignedUrl } = await presignUrl(await readDelegation(), {
+		operation,
+		pathname: blobPathname(url),
+		access: "private",
+		validUntil: Date.now() + PRESIGN_TTL_MS,
+	});
+	return presignedUrl;
+}
+
+/**
+ * Moves a file to the other store (same pathname), returning its new URL.
+ * Streams, so a 500 MB stem never sits in memory; the old copy is deleted
+ * once the new one is in place.
+ */
+export async function moveBlob(url: string, to: BlobAccess): Promise<string> {
+	if (accessOfUrl(url) === to) return url;
+	const res = await readBlob(url);
+	if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} reading ${url}`);
+	const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+	// A fresh pathname each move: the CDN remembers a deleted pathname as gone
+	// for a while, so moving back onto the old one would answer 404 at first.
+	const moved = await putBlob(movedPathname(blobPathname(url)), res.body, contentType, to);
+	// The CDN can lag a fresh put by a moment; keep the old copy until the new
+	// one answers, so a page that loads mid-move never points at nothing.
+	await untilReadable(moved.url);
+	await deleteBlobs([url]);
+	return moved.url;
+}
+
+async function untilReadable(url: string, tries = 8): Promise<void> {
+	for (let i = 0; i < tries; i++) {
+		const fetchable = (await presentUrl(url, "head")) ?? url;
+		const res = await fetch(fetchable, { method: "HEAD" }).catch(() => null);
+		if (res?.ok) return;
+		await new Promise((r) => setTimeout(r, 1500));
+	}
+	throw new Error(`moved file did not become readable: ${url}`);
+}
+
+/** `…/stem.wav` → `…/stem.m<stamp>.wav`; an earlier stamp is replaced, not stacked. */
+export function movedPathname(pathname: string) {
+	const stamp = `m${Date.now().toString(36)}`;
+	return pathname.replace(/(\.m[a-z0-9]+)?(\.[a-z0-9]+)$/i, `.${stamp}$2`);
 }

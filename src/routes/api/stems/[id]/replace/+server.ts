@@ -2,6 +2,7 @@ import { accountOfStem, memberOf } from "$lib/server/access";
 import { reserveStemReplacement } from "$lib/server/data";
 import { STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { stemContentType } from "$lib/utils/stemContentType";
+import { accessOfPathname } from "$lib/server/relocate";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -21,5 +22,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		sizeBytes,
 	});
 	if (!row) error(404, "Stem not found");
-	return json({ stemId: row.id, pathname: row.pathname });
+	return json({
+		stemId: row.id,
+		pathname: row.pathname,
+		access: await accessOfPathname(row.pathname),
+	});
 };
