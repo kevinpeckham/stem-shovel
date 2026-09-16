@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
-	import { chordChart, chordsPerBar, describeBars, type ChordSegment } from "$lib/audio/chords";
+	import {
+		chordChart,
+		chordsPerBar,
+		describeBars,
+		type ChordSegment,
+		type Note,
+	} from "$lib/audio/chords";
 	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
 	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
+	import AiToggle from "$lib/components/AiToggle.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
@@ -59,6 +66,7 @@
 		renameStem,
 		askAiAboutSong,
 		draftChart,
+		songNotes,
 		saveChartDraft,
 		saveChanges,
 		saveSections,
@@ -489,16 +497,28 @@
 		chordSegments = null;
 		draft = null;
 		try {
-			const { transcribeNotes } = await import("$lib/audio/transcribe");
-			const buffers = playerEngine.buffers();
-			const features = buffers.map((b) => extractFeatures(b, 30));
-			const top = Math.max(...features.map((f) => f.tonal), 1e-9);
 			const duration = playerEngine.duration;
-			const notes = await transcribeNotes(
-				buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
-				duration,
-				(p) => (chordBusy = `Listening… ${Math.round(p * 100)}%`),
-			);
+			// The server transcribes after upload; use its notes when they cover the song,
+			// otherwise transcribe here (the server copy keeps growing in the background).
+			const stored = await songNotes({ id: data.song.id }).catch(() => null);
+			let notes: Note[];
+			if (stored?.complete) {
+				notes = stored.notes;
+			} else {
+				chordBusy =
+					stored && stored.doneSeconds > 0
+						? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
+						: "Listening…";
+				const { transcribeNotes } = await import("$lib/audio/transcribe");
+				const buffers = playerEngine.buffers();
+				const features = buffers.map((b) => extractFeatures(b, 30));
+				const top = Math.max(...features.map((f) => f.tonal), 1e-9);
+				notes = await transcribeNotes(
+					buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
+					duration,
+					(p) => (chordBusy = `Listening… ${Math.round(p * 100)}%`),
+				);
+			}
 			const barStarts: number[] = [];
 			for (let bar = 1; bar < 2000; bar++) {
 				const t = secondsAtBar(grid, bar);
@@ -539,9 +559,9 @@
 			draftBusy = false;
 		}
 	}
-	/** The model's chords as chart lines, four bars each. */
-	function aiChordLines(chords: { bar: number; chord: string }[]): string {
-		const cells = chords.map((c) => c.chord);
+	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
+	function aiChordLines(chords: string): string {
+		const cells = chords.split(/\s+/).filter(Boolean);
 		const lines: string[] = [];
 		for (let i = 0; i < cells.length; i += 4)
 			lines.push(`| ${cells.slice(i, i + 4).join(" | ")} |`);
@@ -921,7 +941,11 @@
 							title="Private: members and viewing links only"
 							aria-label="Private"
 						></span>
-					{/if}{data.song.title}
+					{/if}{data.song.title}{#if data.song.noAi || data.song.project.noAi}
+						<span
+							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
+							title="No AI touches this song">no AI</span
+						>{/if}
 				</h1>
 				<span>v{data.song.version}</span>
 				<span class="opacity-90 text-15px"
@@ -1303,21 +1327,23 @@
 							<span class="i-ph-waveform" aria-hidden="true"></span>
 							{scanning ? "Scanning…" : "Scan stems"}
 						</button>
-						<button
-							class="button button-xs"
-							type="button"
-							disabled={!!chordBusy ||
-								!playerEngine ||
-								playerEngine.status !== "ready" ||
-								!posCtx.grid}
-							title={!posCtx.grid
-								? "Needs a tempo and a time signature first"
-								: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
-							onclick={detectChords}
-						>
-							<span class="i-ph-music-notes" aria-hidden="true"></span>
-							{chordBusy ?? "Detect chords"}
-						</button>
+						{#if !data.noAi}
+							<button
+								class="button button-xs"
+								type="button"
+								disabled={!!chordBusy ||
+									!playerEngine ||
+									playerEngine.status !== "ready" ||
+									!posCtx.grid}
+								title={!posCtx.grid
+									? "Needs a tempo and a time signature first"
+									: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
+								onclick={detectChords}
+							>
+								<span class="i-ph-music-notes" aria-hidden="true"></span>
+								{chordBusy ?? "Detect chords"}
+							</button>
+						{/if}
 						{#if data.aiAvailable}
 							<button
 								class="button button-xs"
@@ -1544,6 +1570,16 @@
 						{/each}
 					</ul>
 				{/if}
+			</div>
+
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<AiToggle
+					kind="song"
+					id={data.song.id}
+					noAi={data.song.noAi}
+					inherited={data.song.project.noAi}
+					canChange={data.canEdit}
+				/>
 			</div>
 
 			<div class="mt-8 border-t border-white/15 pt-4">
@@ -2366,7 +2402,7 @@
 					<button class="link-dim" type="button" onclick={saveDraftChart}>Save as chart</button>
 				</span>
 			</div>
-			{#if draft.chords.length > 0}
+			{#if draft.chords.trim()}
 				<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{aiChordLines(
 						draft.chords,
 					)}</pre>

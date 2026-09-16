@@ -10,6 +10,8 @@ import { accessOfUrl } from "$lib/utils/blobAccess";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
 import { background } from "$lib/server/background";
 import { ensureOriginalMix } from "$lib/server/mix";
+import { ensureSongNotes } from "$lib/server/notes";
+import { getRequestEvent } from "$app/server";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";
@@ -40,7 +42,7 @@ const run = promisify(execFile);
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
  * refreshes the cached original mix of every song touched.
  */
-export function schedulePlayback(stemIds: string[]) {
+export function schedulePlayback(stemIds: string[], origin = originOfRequest()) {
 	if (stemIds.length === 0) return;
 	background(async () => {
 		const songIds = new Set<string>();
@@ -49,7 +51,18 @@ export function schedulePlayback(stemIds: string[]) {
 			if (songId) songIds.add(songId);
 		}
 		for (const id of songIds) await ensureOriginalMix(id);
+		// Then the notes the chart draft reads (skipped for no-AI songs; resumes if cut short).
+		for (const id of songIds) await ensureSongNotes(id, origin);
 	});
+}
+
+/** The site's origin, for fetching our own static model files from a background job. */
+function originOfRequest(): string {
+	try {
+		return getRequestEvent().url.origin;
+	} catch {
+		return "https://www.stem-shovel.com";
+	}
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */

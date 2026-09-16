@@ -60,6 +60,8 @@ erDiagram
   `/docs/<slug>`: title, slug, sort order, markdown with the same hash-gated
   versioning as song documents (ten revisions kept). Written by system
   admins with the shared `MarkdownDocEditor`.
+- Projects and songs carry `no_ai`; songs also hold the transcribed notes
+  (`notes_json`, `notes_key`, `notes_done_seconds`, `notes_started_at`).
 - **share_link** — a viewing code for one private song or one project
   (exactly one of `song_id` / `project_id`): note, creator, optional
   `expires_at` and `max_uses`, `uses`, `revoked_at`. Projects and songs carry

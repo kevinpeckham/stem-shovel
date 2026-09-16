@@ -31,16 +31,8 @@ export const ChartSaveSchema = v.object({
 
 /** What the model must return. */
 export const ChartDraftAnswerSchema = v.object({
-	/** One chord per bar, in order; "%" repeats the previous bar. */
-	chords: v.pipe(
-		v.array(
-			v.object({
-				bar: v.pipe(v.number(), v.integer(), v.minValue(1)),
-				chord: v.pipe(v.string(), v.trim(), v.maxLength(12)),
-			}),
-		),
-		v.maxLength(1000),
-	),
+	/** One chord per bar, in order, space-separated: "D5 D5 A5 % G5" ("%" repeats, "N.C." for silence). */
+	chords: v.pipe(v.string(), v.trim(), v.maxLength(12_000)),
 	sections: v.pipe(
 		v.array(
 			v.object({

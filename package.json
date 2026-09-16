@@ -35,6 +35,7 @@
 		"@kevinpeckham/woof-editor": "0.2.1",
 		"@libsql/client": "0.18.0",
 		"@spotify/basic-pitch": "^1.0.1",
+		"@tensorflow/tfjs-backend-wasm": "3.21.0",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/blob": "2.8.0",
 		"ai": "^7.0.102",

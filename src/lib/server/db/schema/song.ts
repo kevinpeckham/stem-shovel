@@ -25,6 +25,8 @@ export const song = table(
 		slug: t.text("slug").notNull(),
 		/** Private: members only, or a share link; a private project makes its songs private too. */
 		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
+		/** No AI touches this song; a project's flag covers its songs too. */
+		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */
@@ -68,6 +70,18 @@ export const song = table(
 		mixKey: t.text("mix_key"),
 		/** Set while a background render holds the song; stale after 15 minutes. */
 		mixStartedAt: t.integer("mix_started_at", { mode: "timestamp_ms" }),
+		/**
+		 * Notes transcribed from the tonal stems by Basic Pitch on the server
+		 * (src/lib/server/notes.ts), in segments: `notesJson` grows as
+		 * `notesDoneSeconds` advances; `notesKey` names the stems it came from
+		 * (mixKeyOf) once complete; `notesStartedAt` is the job's claim.
+		 */
+		notesJson: t
+			.text("notes_json", { mode: "json" })
+			.$type<import("../../../audio/chords").Note[]>(),
+		notesKey: t.text("notes_key"),
+		notesDoneSeconds: t.real("notes_done_seconds").default(0).notNull(),
+		notesStartedAt: t.integer("notes_started_at", { mode: "timestamp_ms" }),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

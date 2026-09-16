@@ -13,6 +13,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **Detect chords** in song settings: the tonal stems are transcribed to
   notes in the browser (Spotify's Basic Pitch) and read as one chord per
   bar on the song's grid, shown as chart lines.
+- **"Do not use AI"** on a project or a song, set by any member in its
+  settings: no model is called for it and nothing is transcribed; the AI
+  buttons disappear, the commands refuse, and the song shows a "no AI"
+  chip. For artists whose contracts rule AI out.
+- **Notes are transcribed on the server after upload** (in a child
+  process, in resumable one-minute segments) and stored on the song, so a
+  chart draft uses them at once instead of transcribing in the browser;
+  the browser path remains as a fallback while the server copy is still
+  being made.
+- **Leaner chart drafts**: the model returns the chords as one compact
+  line and a capped chart, cutting its reply to a fraction of the tokens.
 - **Charts, lyrics and notes are edited in place**: the pencil on the
   documents panel opens the same editor inside the panel (rendered and
   markdown views, undo, ⌘S, versioned saves); the tick closes it, saving

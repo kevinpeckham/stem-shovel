@@ -24,6 +24,7 @@ import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSch
 import type { BugStatus } from "$lib/val/BugReportSchema";
 import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
+import type { Note } from "$lib/audio/chords";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -305,7 +306,7 @@ export async function updateSong(
 export async function getSong(accountId: string, projectSlug: string, songSlug: string) {
 	const proj = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),
-		columns: { id: true, name: true, slug: true, isPrivate: true },
+		columns: { id: true, name: true, slug: true, isPrivate: true, noAi: true },
 	});
 	if (!proj) return null;
 	const row = await db.query.song.findFirst({
@@ -1371,7 +1372,9 @@ export function getSongById(accountId: string, songId: string) {
 			sections: true,
 			startAt: true,
 			chartMarkdown: true,
+			noAi: true,
 		},
+		with: { project: { columns: { noAi: true } } },
 	});
 }
 
@@ -1392,6 +1395,128 @@ export async function chartExamples(accountId: string, excludeSongId: string) {
 			changes: r.changes,
 			chart: r.chartMarkdown.slice(0, 3000),
 		}));
+}
+
+// ---- no AI, and transcribed notes ------------------------------------------
+
+export async function setProjectNoAi(accountId: string, id: string, noAi: boolean) {
+	const [row] = await db
+		.update(project)
+		.set({ noAi })
+		.where(and(eq(project.accountId, accountId), eq(project.id, id)))
+		.returning({ id: project.id });
+	return !!row;
+}
+
+export async function setSongNoAi(accountId: string, id: string, noAi: boolean) {
+	const [row] = await db
+		.update(song)
+		.set({ noAi })
+		.where(and(eq(song.accountId, accountId), eq(song.id, id)))
+		.returning({ id: song.id });
+	return !!row;
+}
+
+/** What the transcription job needs: flags, stems with their files, progress so far. */
+export function songForNotes(songId: string) {
+	return db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { id: true, noAi: true, notesKey: true, notesDoneSeconds: true, notesStartedAt: true },
+		with: {
+			project: { columns: { noAi: true } },
+			stems: {
+				columns: {
+					id: true,
+					status: true,
+					url: true,
+					playbackStatus: true,
+					playbackUrl: true,
+					durationSeconds: true,
+				},
+			},
+		},
+	});
+}
+
+const NOTES_STALE_MS = 10 * 60 * 1000;
+
+/**
+ * Marks the job started (a stale claim is taken over) and records which stems
+ * it is transcribing, so a later run with the same stems carries on where
+ * this one stopped; `fresh` (the stems changed) wipes what was there.
+ */
+export async function claimSongNotes(songId: string, key: string, fresh: boolean) {
+	const now = Date.now();
+	const rows = await db
+		.update(song)
+		.set({
+			notesStartedAt: new Date(now),
+			notesKey: key,
+			...(fresh ? { notesJson: [], notesDoneSeconds: 0 } : {}),
+		})
+		.where(
+			and(
+				eq(song.id, songId),
+				sql`(${song.notesStartedAt} is null or ${song.notesStartedAt} < ${now - NOTES_STALE_MS})`,
+			),
+		)
+		.returning({ id: song.id });
+	return rows.length > 0;
+}
+
+/** Appends a segment's notes; a compare-and-set on the progress so two writers can never interleave. */
+export async function appendSongNotes(songId: string, notes: Note[], doneSeconds: number) {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const row = await db.query.song.findFirst({
+			where: eq(song.id, songId),
+			columns: { notesJson: true, notesDoneSeconds: true },
+		});
+		if (!row) return;
+		const rows = await db
+			.update(song)
+			.set({ notesJson: [...(row.notesJson ?? []), ...notes], notesDoneSeconds: doneSeconds })
+			.where(and(eq(song.id, songId), eq(song.notesDoneSeconds, row.notesDoneSeconds)))
+			.returning({ id: song.id });
+		if (rows.length > 0) return;
+	}
+	throw new Error("could not append notes: another writer kept changing the song");
+}
+
+export async function finishSongNotes(songId: string) {
+	await db.update(song).set({ notesStartedAt: null }).where(eq(song.id, songId));
+}
+
+export async function releaseSongNotes(songId: string) {
+	await db.update(song).set({ notesStartedAt: null }).where(eq(song.id, songId));
+}
+
+/** The stored notes for a member's page, with whether they are complete for the current stems. */
+export async function songNotesFor(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { notesJson: true, notesKey: true, notesDoneSeconds: true },
+		with: {
+			stems: {
+				columns: {
+					id: true,
+					status: true,
+					url: true,
+					playbackStatus: true,
+					playbackUrl: true,
+					durationSeconds: true,
+				},
+			},
+		},
+	});
+	if (!row) return null;
+	const stems = row.stems.filter((s) => s.status === "ready" && s.url);
+	const duration = Math.max(0, ...stems.map((s) => s.durationSeconds ?? 0));
+	return {
+		notes: row.notesJson ?? [],
+		doneSeconds: row.notesDoneSeconds,
+		duration,
+		complete: row.notesKey !== null && row.notesDoneSeconds >= duration && duration > 0,
+	};
 }
 
 // ---- AI requests ------------------------------------------------------------
@@ -1627,6 +1752,7 @@ export async function songForMix(songId: string) {
 			accountId: true,
 			projectId: true,
 			isPrivate: true,
+			noAi: true,
 			title: true,
 			slug: true,
 			mixUrl: true,
@@ -1636,7 +1762,7 @@ export async function songForMix(songId: string) {
 		},
 		with: {
 			project: {
-				columns: { slug: true, name: true, isPrivate: true },
+				columns: { slug: true, name: true, isPrivate: true, noAi: true },
 				with: { account: { columns: { name: true } } },
 			},
 			stems: {

@@ -27,6 +27,13 @@ What protects what, and where each rule lives. The first security pass ran on
 - **Owners and admins** invite, manage members and account settings;
   **system admins** (`user.is_system_admin`, set only by a script) reach
   `/admin` and the user-doc editor; everyone else gets a 404 there.
+- **No AI** (`project.no_ai`, `song.no_ai`; any member sets it from the
+  project's or song's settings): with it set, nothing from the song goes to
+  a model and nothing is transcribed — the AI buttons are hidden, the
+  `askAiAboutSong` and `draftChart` commands answer 403, and the notes job
+  skips the song. A project's flag covers its songs. The song header shows
+  a "no AI" chip. Tempo and key detection (plain signal processing, in the
+  browser) is not affected. For artists whose contracts rule AI out.
 - **Sign-up** is closed: an invitation token or an invite code, checked in
   Better Auth's `user.create.before` hook (`signUpGate.ts`). Email addresses
   must be verified before sign-in.

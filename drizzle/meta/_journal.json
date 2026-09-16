@@ -218,6 +218,13 @@
       "when": 1789557148491,
       "tag": "0030_super_admin_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1789567831381,
+      "tag": "0031_no_ai_and_notes",
+      "breakpoints": true
     }
   ]
 }

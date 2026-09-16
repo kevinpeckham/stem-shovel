@@ -18,6 +18,8 @@ export const project = table(
 		slug: t.text("slug").notNull(),
 		/** Private: members only, or a share link (docs/auth.md); every song inside inherits it. */
 		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
+		/** No AI touches this project's songs (docs/security.md): no model calls, no transcription. */
+		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
 		description: t.text("description").notNull().default(""),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		archivedAt: t.integer("archived_at", { mode: "timestamp_ms" }),

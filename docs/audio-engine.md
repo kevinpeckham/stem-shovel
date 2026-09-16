@@ -111,6 +111,22 @@ fields are `$state`, so components read `engine.position` directly.
   lines. Tuned on Peaceful Dreams against its chart: the verse roots match
   bar for bar; the intro's D pedal still wanders. Takes a few minutes on a
   CPU-only browser, tens of seconds with WebGL.
+- **Notes transcribed on the server** (`src/lib/server/notes.ts`): after a
+  song's renditions and mix, and from the song page as a backstop for
+  members, `ensureSongNotes` downloads the stems' renditions, weighs their
+  tonalness on 30 s, and transcribes the weighted mono of the tonal ones
+  with Basic Pitch in 60-second segments, appending to `song.notes_json`
+  and advancing `notes_done_seconds`; it stops after 200 s of work and the
+  next trigger carries on, `notes_key` (the mix key of the stems) marking
+  completion, a fresh stem set starting over. The model runs in a **child
+  process** (`process.execPath --input-type=module -e …`, packages by
+  `import.meta.resolve` URL, the model from `/basic-pitch` on our own
+  origin): TensorFlow.js on the CPU is about a minute of solid compute per
+  minute of audio, and in the server's own event loop it stalled every
+  other request on the instance (a docs page took 18 s; 2 s with the
+  child). Skipped for no-AI songs. `songNotes` (a remote query, members)
+  hands the notes to the page, which uses them when complete and falls
+  back to transcribing in the browser otherwise.
 - **Draft chart with AI** (`draftChartWithAi`, `draftChart` in
   songs.remote.ts): the transcribed notes per bar (`describeBars`: pitch,
   octave, seconds sounding, loudness), the template matcher's chords as a
@@ -123,7 +139,8 @@ fields are `$state`, so components read `engine.position` directly.
   bars (roots right: Fable over notes 43, template matcher 38, Gemini
   over notes 38, Gemini listening to the audio 23), and on the full song
   its verse, chorus and second verse match the band's chart bar for bar.
-  About two minutes, ~38k tokens in and ~11k out for a 156-bar song.
+  The chords come back as one space-separated string ("D5 % A5 …") and the
+  chart is capped, so the answer is a fraction of its earlier 11k tokens.
   The button lives at the top left of the Chart panel's toolbar (and in
   settings) and runs Detect chords first when that has not happened; the
   draft renders in the panel above the chart.

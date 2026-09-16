@@ -1,4 +1,4 @@
-import { command, form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent, query } from "$app/server";
 import { barAt, barGrid } from "$lib/audio/measures";
 import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
@@ -26,6 +26,7 @@ import {
 	songForMix,
 	chartExamples,
 	getSongById,
+	songNotesFor,
 	songSlugs,
 	updateSong as update,
 	updateSongChanges,
@@ -224,9 +225,10 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
 	if (!aiAvailable()) error(503, "The AI check is not configured");
-	if (rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
 	const song = await songForMix(id);
 	if (!song || song.accountId !== accountId) error(404, "Song not found");
+	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
+	if (rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
@@ -243,9 +245,10 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, id);
 	if (!aiAvailable()) error(503, "The AI draft is not configured");
-	if (rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const song = await getSongById(accountId, id);
 	if (!song) error(404, "Song not found");
+	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
+	if (rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
 	const grid = barGrid(song.changes, song.startAt);
@@ -282,4 +285,13 @@ export const saveChartDraft = command(ChartSaveSchema, async ({ id, markdown, re
 	const result = await saveSongDoc(accountId, user.id, id, "chart", markdown);
 	if (!result.ok) error(400, result.error);
 	return { version: result.version };
+});
+
+/** The notes the server transcribed for the chart draft (members), and whether they are complete. */
+export const songNotes = query(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	const found = await songNotesFor(accountId, id);
+	if (!found) error(404, "Song not found");
+	return found;
 });

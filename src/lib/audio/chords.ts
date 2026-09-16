@@ -133,21 +133,22 @@ export function chordChart(segments: ChordSegment[], perLine = 4): string {
 
 /**
  * A bar's notes as a line a chart reader (or a model) can read: lowest to
- * highest, `D2×1.60s@0.80` = pitch and octave, seconds sounding in the bar,
- * loudness. Notes sounding under 50 ms are left out.
+ * highest, `D2×1.6@0.8` = pitch and octave, seconds sounding in the bar,
+ * loudness. Notes sounding under 150 ms are left out.
  */
 export function describeBars(notes: Note[], barStarts: number[]): { bar: number; notes: string }[] {
 	const out: { bar: number; notes: string }[] = [];
 	for (let b = 0; b + 1 < barStarts.length; b++) {
 		const from = barStarts[b];
 		const to = barStarts[b + 1];
+		// One decimal each and nothing under 150 ms: a fifth fewer tokens for the model, same chords.
 		const rows = notes
 			.map((n) => ({ ...n, overlap: Math.min(n.end, to) - Math.max(n.start, from) }))
-			.filter((n) => n.overlap > 0.05)
+			.filter((n) => n.overlap >= 0.15)
 			.sort((a, c) => a.pitch - c.pitch)
 			.map(
 				(n) =>
-					`${NAMES[((n.pitch % 12) + 12) % 12]}${Math.floor(n.pitch / 12) - 1}×${n.overlap.toFixed(2)}s@${n.amplitude.toFixed(2)}`,
+					`${NAMES[((n.pitch % 12) + 12) % 12]}${Math.floor(n.pitch / 12) - 1}×${n.overlap.toFixed(1)}@${n.amplitude.toFixed(1)}`,
 			);
 		out.push({ bar: b + 1, notes: rows.join(" ") || "(silence)" });
 	}

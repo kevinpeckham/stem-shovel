@@ -1,5 +1,7 @@
 <script lang="ts">
+	import AiToggle from "$lib/components/AiToggle.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
+	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
@@ -53,14 +55,18 @@
 	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-5">
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
-		<h1 class="heading-1">
+		<h1 class="heading-2">
 			{#if data.project.isPrivate}
 				<span
 					class="i-ph-lock mr-1 inline-block align-[-3px] text-24px opacity-70"
 					title="Private: members and viewing links only"
 					aria-label="Private"
 				></span>
-			{/if}{data.project.name}
+			{/if}{data.project.name}{#if data.project.status === "archived"}
+				<span
+					class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
+					title="Archived: out of the projects list; restore it in settings">archived</span
+				>{/if}
 		</h1>
 		<span class="opacity-90 text-15px">a project from {data.account.name}</span>
 		<!-- </div> -->
@@ -169,6 +175,14 @@
 				</div>
 			</form>
 			<div class="mt-8 border-t border-white/15 pt-4">
+				<AiToggle
+					kind="project"
+					id={data.project.id}
+					noAi={data.project.noAi}
+					canChange={data.canEdit}
+				/>
+			</div>
+			<div class="mt-8 border-t border-white/15 pt-4">
 				<PrivacyToggle
 					kind="project"
 					id={data.project.id}
@@ -184,6 +198,14 @@
 					isPrivate={data.project.isPrivate}
 				/>
 			</div>
+			<ProjectLifecycle
+				projectId={data.project.id}
+				name={data.project.name}
+				status={data.project.status}
+				songCount={data.project.songs.length}
+				canDelete={(data.memberships?.find((m) => m.accountId === data.account.id)?.role ?? "") in
+					{ owner: 1, admin: 1 }}
+			/>
 		</div>
 	{/if}
 
