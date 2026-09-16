@@ -77,10 +77,14 @@ from a 31-symbol alphabet.
 
 ## Headers
 
-`securityHeaders.ts` + `vercel.json`: no indexing, nosniff, no framing,
-`Referrer-Policy`, `Cross-Origin-Opener-Policy: same-origin`, HSTS, a
-`Permissions-Policy` that switches off device APIs, and SvelteKit's CSP with a
-per-request script nonce (docs/environment.md).
+`securityHeaders.ts` + `vercel.json`: nosniff, no framing, `Referrer-Policy`,
+`Cross-Origin-Opener-Policy: same-origin`, HSTS, a `Permissions-Policy` that
+switches off device APIs, and SvelteKit's CSP with a per-request script nonce
+(docs/environment.md). Search engines get the front page only: every other
+path carries `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and
+vercel.json's `/(.+)` rule for static files) and a matching robots meta from
+the root layout; `static/robots.txt` allows `/` alone and points at a
+one-entry sitemap.
 
 ## Known gaps
 

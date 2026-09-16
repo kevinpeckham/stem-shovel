@@ -6,10 +6,6 @@
 			"source": "/(.*)",
 			"headers": [
 				{
-					"key": "X-Robots-Tag",
-					"value": "noindex, nofollow, noarchive"
-				},
-				{
 					"key": "X-Content-Type-Options",
 					"value": "nosniff"
 				},
@@ -32,6 +28,15 @@
 				{
 					"key": "Permissions-Policy",
 					"value": "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()"
+				}
+			]
+		},
+		{
+			"source": "/(.+)",
+			"headers": [
+				{
+					"key": "X-Robots-Tag",
+					"value": "noindex, nofollow, noarchive"
 				}
 			]
 		}

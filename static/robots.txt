@@ -1,3 +1,6 @@
-# Private app: no crawling or indexing anywhere.
+# Only the front page is for search engines; everything else is a private app
+# (its responses also carry X-Robots-Tag: noindex).
 User-agent: *
+Allow: /$
 Disallow: /
+Sitemap: https://www.stem-shovel.com/sitemap.xml

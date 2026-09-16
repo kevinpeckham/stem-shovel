@@ -2,7 +2,7 @@ import { building } from "$app/environment";
 import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
 import { withActingMemberships } from "$lib/utils/actingMemberships";
-import { SECURITY_HEADERS } from "$lib/constants/securityHeaders";
+import { ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
@@ -61,8 +61,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		: real;
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });
-	// Nothing here is for search engines, and nothing frames or sniffs it
-	// (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
+	// Only the front page is for search engines, and nothing frames or sniffs
+	// anything (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
+	if (event.url.pathname !== "/") response.headers.set("x-robots-tag", ROBOTS_NOINDEX);
 	return response;
 };
