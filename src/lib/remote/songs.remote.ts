@@ -42,6 +42,7 @@ import {
 	StemRenameSchema,
 } from "$lib/val/SongSchema";
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
+import { renderMarkdown } from "$lib/server/markdown";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
@@ -269,7 +270,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 	const existingSections = grid
 		? song.sections.map((s) => ({ index: s.index, name: s.name, bar: barAt(grid, s.start).bar }))
 		: [];
-	return aiOrError(
+	const answer = await aiOrError(
 		draftChartWithAi(
 			{
 				title: song.title,
@@ -288,6 +289,8 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 			{ userId: user.id, songId: id },
 		),
 	);
+	// The chart is previewed with the panel's styling before it is saved.
+	return { ...answer, chartHtml: renderMarkdown(answer.chart) };
 });
 
 /** Saves a drafted chart as the song's chart; refuses to overwrite content unless `replace`. */

@@ -488,11 +488,21 @@
 	let chordSegments = $state<ChordSegment[] | null>(null);
 	let chordBars = $state<{ bar: number; notes: string }[]>([]);
 	let chordError = $state<string | null>(null);
-	let draft = $state<ChartDraftAnswer | null>(null);
+	let draft = $state<(ChartDraftAnswer & { chartHtml: string }) | null>(null);
 	let draftBusy = $state(false);
-	async function detectChords() {
+	/** Bumped by Cancel: a run whose number no longer matches drops its result. */
+	let draftRun = 0;
+	class DraftCancelled extends Error {}
+	function cancelDraft() {
+		draftRun++;
+		chordBusy = null;
+		draftBusy = false;
+		notify("Cancelled", { kind: "info" });
+	}
+	async function detectChords(run = ++draftRun) {
 		const grid = posCtx.grid;
 		if (!playerEngine || playerEngine.status !== "ready" || !grid) return;
+		const cancelled = () => run !== draftRun;
 		chordBusy = "Listening…";
 		chordError = null;
 		chordSegments = null;
@@ -502,6 +512,7 @@
 			// The server transcribes after upload; use its notes when they cover the song,
 			// otherwise transcribe here (the server copy keeps growing in the background).
 			const stored = await songNotes({ id: data.song.id }).catch(() => null);
+			if (cancelled()) return;
 			let notes: Note[];
 			if (stored?.complete) {
 				notes = stored.notes;
@@ -517,9 +528,13 @@
 				notes = await transcribeNotes(
 					buffers.map((buffer, i) => ({ buffer, weight: features[i].tonal / top })),
 					duration,
-					(p) => (chordBusy = `Listening… ${Math.round(p * 100)}%`),
+					(p) => {
+						if (cancelled()) throw new DraftCancelled();
+						chordBusy = `Listening… ${Math.round(p * 100)}%`;
+					},
 				);
 			}
+			if (cancelled()) return;
 			const barStarts: number[] = [];
 			for (let bar = 1; bar < 2000; bar++) {
 				const t = secondsAtBar(grid, bar);
@@ -534,32 +549,38 @@
 			if (chordSegments.length === 0)
 				chordError = "No bars to read; check the tempo and time signature.";
 		} catch (e) {
+			if (cancelled() || e instanceof DraftCancelled) return;
 			chordError = errorMessage(e);
 			notify(`Chord detection failed: ${chordError}`, { kind: "error" });
 		} finally {
-			chordBusy = null;
+			if (!cancelled()) chordBusy = null;
 		}
 	}
 	/** The chart panel's button: detect chords first when that has not run, then draft. */
 	async function draftFromPanel() {
-		if (!chordSegments) await detectChords();
-		if (chordSegments) await draftFromChords();
+		const run = ++draftRun;
+		if (!chordSegments) await detectChords(run);
+		if (chordSegments && run === draftRun) await draftFromChords(run);
 	}
-	async function draftFromChords() {
+	async function draftFromChords(run = ++draftRun) {
 		if (!chordSegments) return;
+		const cancelled = () => run !== draftRun;
 		draftBusy = true;
 		chordError = null;
 		try {
-			draft = await draftChart({
+			const answer = await draftChart({
 				id: data.song.id,
 				chords: chordSegments.map((c) => ({ bar: c.bar, bars: c.bars, chord: c.chord })),
 				bars: chordBars,
 			});
+			if (cancelled()) return;
+			draft = answer;
 		} catch (e) {
+			if (cancelled()) return;
 			chordError = errorMessage(e);
 			notify(`The draft failed: ${chordError}`, { kind: "error" });
 		} finally {
-			draftBusy = false;
+			if (!cancelled()) draftBusy = false;
 		}
 	}
 	/** The model's chords ("D5 % A5 …") as chart lines, four bars each. */
@@ -1338,11 +1359,14 @@
 								title={!posCtx.grid
 									? "Needs a tempo and a time signature first"
 									: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
-								onclick={detectChords}
+								onclick={() => detectChords()}
 							>
 								<span class="i-ph-music-notes" aria-hidden="true"></span>
 								{chordBusy ?? "Detect chords"}
 							</button>
+							{#if chordBusy || draftBusy}
+								<button class="button button-xs" type="button" onclick={cancelDraft}>Cancel</button>
+							{/if}
 						{/if}
 						{#if data.aiAvailable}
 							<button
@@ -1397,7 +1421,7 @@
 										class="link-dim"
 										type="button"
 										disabled={draftBusy}
-										onclick={draftFromChords}
+										onclick={() => draftFromChords()}
 									>
 										{draftBusy ? "Drafting…" : "Draft chart with AI"}
 									</button>
@@ -1847,7 +1871,7 @@
 		{/if}
 		{#if panel === "chart" && data.canEdit && data.aiAvailable}
 			<!-- Draft the chart from the stems: chords first (if not done), then the model. -->
-			<div class="absolute top-2 left-3">
+			<div class="absolute top-2 left-3 flex gap-2">
 				<button
 					class="button button-xs h-full"
 					type="button"
@@ -1866,6 +1890,10 @@
 					<span class="i-ph-sparkle" aria-hidden="true"></span>
 					{draftBusy ? "Drafting…" : (chordBusy ?? "Draft chart with AI")}
 				</button>
+				{#if draftBusy || chordBusy}
+					<button class="button button-xs h-full" type="button" onclick={cancelDraft}>Cancel</button
+					>
+				{/if}
 			</div>
 		{/if}
 		<!-- tool bar  -->
@@ -2400,6 +2428,7 @@
 				<span class="flex items-center gap-3">
 					<button class="link-dim" type="button" onclick={saveDraftSections}>Save sections</button>
 					<button class="link-dim" type="button" onclick={saveDraftChart}>Save as chart</button>
+					<button class="link-dim" type="button" onclick={() => (draft = null)}>Discard</button>
 				</span>
 			</div>
 			{#if draft.chords.trim()}
@@ -2421,6 +2450,11 @@
 				{/each}
 			</ul>
 			{#if draft.notes}<p class="mt-1 text-12px text-dim">{draft.notes}</p>{/if}
+			<!-- The suggested chart as it would look once saved (the panel's chart-body typography). -->
+			<article class="mt-3 chart-body rounded-md border border-current/40 bg-blue-300/5 px-6 py-6">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
+				{@html draft.chartHtml}
+			</article>
 			<details class="mt-1 text-12px">
 				<summary class="cursor-pointer text-dim">Chart markdown</summary>
 				<pre class="mt-1 whitespace-pre-wrap rounded bg-black/20 p-2 opacity-90">{draft.chart}</pre>

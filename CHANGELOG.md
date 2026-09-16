@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- The AI draft previews its suggested chart with the Chart panel's styling (rendered markdown), with the raw markdown folded beneath; the card has a Discard control.
+- Chord detection and the AI draft can be cancelled from the Chart panel toolbar or song settings; a cancelled run's result is dropped when it arrives.
+
 ### Fixed
 
 - The AI draft card crashed the song page when the draft named two sections alike (two verses): the lists were keyed by section name.
