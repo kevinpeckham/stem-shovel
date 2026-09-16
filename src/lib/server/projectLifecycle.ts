@@ -9,9 +9,10 @@ const { project, song, stem, demo } = schema;
  * Archiving and deleting projects (src/lib/remote/projects.remote.ts). Any
  * member archives or restores: an archived project leaves the projects
  * list for an "Archived" section and keeps its songs and files. Only an
- * owner or admin deletes: that removes every song and every Blob file
- * behind them (stems, renditions, MIDI, demos, mixes), across both stores,
- * then the row, which cascades to the rest.
+ * owner or admin deletes, and only an archived project (archiving first is
+ * the safety catch): that removes every song and every Blob file behind
+ * them (stems, renditions, MIDI, demos, mixes), across both stores, then
+ * the row, which cascades to the rest.
  */
 export async function setProjectStatus(accountId: string, id: string, status: ArchiveStatus) {
 	const [row] = await db
@@ -30,7 +31,17 @@ export function listArchivedProjects(accountId: string) {
 	});
 }
 
-export async function deleteProject(accountId: string, id: string) {
+/** "deleted", or why not: "active" (archive it first) or "missing". */
+export async function deleteProject(
+	accountId: string,
+	id: string,
+): Promise<"deleted" | "active" | "missing"> {
+	const target = await db.query.project.findFirst({
+		columns: { status: true },
+		where: and(eq(project.accountId, accountId), eq(project.id, id)),
+	});
+	if (!target) return "missing";
+	if (target.status !== "archived") return "active";
 	const songs = await db
 		.select({ id: song.id, mixUrl: song.mixUrl })
 		.from(song)
@@ -55,7 +66,9 @@ export async function deleteProject(accountId: string, id: string) {
 	]);
 	const [row] = await db
 		.delete(project)
-		.where(and(eq(project.accountId, accountId), eq(project.id, id)))
+		.where(
+			and(eq(project.accountId, accountId), eq(project.id, id), eq(project.status, "archived")),
+		)
 		.returning({ id: project.id });
-	return !!row;
+	return row ? "deleted" : "missing";
 }

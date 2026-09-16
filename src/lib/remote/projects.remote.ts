@@ -46,12 +46,14 @@ export const restoreProject = form(IdSchema, async ({ id }) => {
 	redirect(303, slugs ? `/${slugs.account}/projects/${slugs.project}` : `/${m.slug}/projects`);
 });
 
-/** Owners and admins delete a project with every song and file in it. */
+/** Owners and admins delete an archived project with every song and file in it. */
 export const deleteProject = form(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const m = await memberOf(locals, accountOfProject, id);
 	if (m.role !== "owner" && m.role !== "admin")
 		error(403, "Only owners and admins delete projects");
-	if (!(await removeProject(m.accountId, id))) error(404, "Project not found");
+	const result = await removeProject(m.accountId, id);
+	if (result === "missing") error(404, "Project not found");
+	if (result === "active") error(409, "Archive the project before deleting it");
 	redirect(303, `/${m.slug}/projects`);
 });

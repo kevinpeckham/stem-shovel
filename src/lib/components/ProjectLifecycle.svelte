@@ -2,9 +2,10 @@
 	import { archiveProject, deleteProject, restoreProject } from "$lib/remote/projects.remote";
 
 	/**
-	 * The bottom of project settings: archive or restore (any member), and
-	 * delete (owners and admins only — the button is not shown to others,
-	 * and the remote function refuses them regardless).
+	 * The bottom of project settings. An active project offers Archive (any
+	 * member). An archived one offers Restore, and Delete to owners and admins
+	 * — deleting needs the archive step first, and the remote function refuses
+	 * an active project or another role regardless of what is shown.
 	 */
 	interface Props {
 		projectId: string;
@@ -24,7 +25,7 @@
 		</h3>
 		<p class="mt-1 text-sm opacity-90">
 			This project is archived: it is out of the projects list, in the Archived section, and
-			everything in it is kept. Restore it to bring it back.
+			everything in it is kept. Restore it to bring it back{#if canDelete}, or delete it below{/if}.
 		</p>
 		<form class="mt-2" {...restoreProject}>
 			<input {...restoreProject.fields.id.as("hidden", projectId)} />
@@ -38,7 +39,8 @@
 		</h3>
 		<p class="mt-1 text-sm opacity-90">
 			Archiving moves the project out of the projects list into an Archived section. Its {songs}
-			and their files stay, and any member can restore it later.
+			and their files stay, and any member can restore it later. An archived project can then be deleted
+			for good.
 		</p>
 		<form
 			class="mt-2"
@@ -55,12 +57,12 @@
 	{/if}
 </div>
 
-{#if canDelete}
+{#if canDelete && status === "archived"}
 	<div class="mt-8 border-t border-white/15 pt-4">
 		<h3 class="text-15px font-700 text-red-400">Delete this project</h3>
 		<p class="mt-1 text-sm text-dim">
 			Removes the project, its {songs}, and every stem, demo, MIDI file and mix behind them. This
-			cannot be undone; archive instead if you may want it back.
+			cannot be undone; leave it archived if you may want it back.
 		</p>
 		<form
 			class="mt-3"
