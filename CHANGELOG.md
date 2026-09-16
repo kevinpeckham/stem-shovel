@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-16
+
 ### Added
 
 - **Detect chords** in song settings: the tonal stems are transcribed to

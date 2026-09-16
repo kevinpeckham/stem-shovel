@@ -7,7 +7,7 @@ import type { Note } from "./chords";
  * served from /basic-pitch (copied from the package). Loaded on demand —
  * TensorFlow.js is a megabyte the page does not need otherwise.
  */
-export const MODEL_URL = "/basic-pitch/model.json";
+const MODEL_URL = "/basic-pitch/model.json";
 const MODEL_RATE = 22050;
 
 export async function transcribeNotes(
