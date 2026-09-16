@@ -37,6 +37,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Account menu in the header**: the row of links (Projects, Settings,
+  Admin, account name, user name, Sign out) is now one button showing the
+  account, opening a menu with your name and address, Projects, Account
+  settings, other accounts to switch to, Admin for system admins, and
+  Sign out. Visitors still see the account name and Sign in.
 - **Mix downloads carry the song version**: the original and custom mix
   MP3s (and the stems zip) are named `project-song-v1.2.3-mix.mp3` and so
   on.
