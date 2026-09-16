@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { account } from "./account";
 import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
+import { bugReport } from "./bugReport";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { invitation } from "./invitation";
@@ -27,6 +28,10 @@ export const accountRelations = relations(account, ({ many }) => ({
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
 	account: one(account, { fields: [inviteCode.accountId], references: [account.id] }),
 	creator: one(user, { fields: [inviteCode.createdBy], references: [user.id] }),
+}));
+
+export const bugReportRelations = relations(bugReport, ({ one }) => ({
+	reporter: one(user, { fields: [bugReport.userId], references: [user.id] }),
 }));
 
 export const invitationRelations = relations(invitation, ({ one }) => ({

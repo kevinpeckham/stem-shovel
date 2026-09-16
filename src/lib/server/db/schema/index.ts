@@ -3,6 +3,7 @@
 export * from "./account";
 export * from "./accountMember";
 export * from "./authAccount";
+export * from "./bugReport";
 export * from "./comment";
 export * from "./demo";
 export * from "./invitation";

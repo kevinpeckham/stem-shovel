@@ -11,5 +11,5 @@
 <div class="min-w-0">
 	{@render children()}
 </div>
-<GlobalFooter />
+<GlobalFooter user={data.user} />
 <Notifications />

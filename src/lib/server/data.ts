@@ -15,6 +15,7 @@ import type { SongSection } from "$lib/val/SongSectionSchema";
 import type { MemberRole } from "$lib/val/MemberRoleSchema";
 import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
 import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
+import type { BugStatus } from "$lib/val/BugReportSchema";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -37,6 +38,7 @@ const {
 	invitation,
 	inviteCode,
 	comment,
+	bugReport,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -876,6 +878,45 @@ export async function systemOverview() {
 		})),
 		users,
 	};
+}
+
+// ---- bug reports ------------------------------------------------------------
+
+export async function createBugReport(
+	userId: string,
+	input: { title: string; body: string; pageUrl: string; userAgent: string },
+) {
+	const [row] = await db
+		.insert(bugReport)
+		.values({ userId, ...input })
+		.returning();
+	return row;
+}
+
+/** Newest first, open ones before closed, with who reported each. */
+export function listBugReports() {
+	return db.query.bugReport.findMany({
+		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
+		with: { reporter: { columns: { name: true, email: true } } },
+	});
+}
+
+export async function setBugReportStatus(id: string, status: BugStatus) {
+	const [row] = await db
+		.update(bugReport)
+		.set({ status, closedAt: status === "closed" ? new Date() : null })
+		.where(eq(bugReport.id, id))
+		.returning({ id: bugReport.id });
+	return !!row;
+}
+
+/** Who hears about new bug reports. */
+export async function systemAdminEmails() {
+	const rows = await db.query.user.findMany({
+		where: and(eq(schema.user.isSystemAdmin, true), eq(schema.user.isActive, true)),
+		columns: { email: true },
+	});
+	return rows.map((r) => r.email);
 }
 
 // ---- stem MIDI files --------------------------------------------------------

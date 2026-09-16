@@ -118,3 +118,30 @@ export async function sendShareEmail(opts: {
 		...body,
 	});
 }
+
+/** A new bug report, to each system admin; replies go to the reporter. */
+export async function sendBugReportEmail(opts: {
+	to: string;
+	title: string;
+	body: string;
+	pageUrl: string;
+	reporterName: string;
+	reporterEmail: string;
+	adminUrl: string;
+}) {
+	const body = renderEmail({
+		greeting: "Hi,",
+		lines: [
+			`${opts.reporterName} (${opts.reporterEmail}) reported a bug on Stem Shovel: "${opts.title}".`,
+			opts.body,
+			...(opts.pageUrl ? [`Page: ${opts.pageUrl}`] : []),
+		],
+		cta: { label: "Open the bug reports", url: opts.adminUrl },
+	});
+	await sendEmail({
+		to: opts.to,
+		subject: `Bug report: ${opts.title}`,
+		replyTo: opts.reporterEmail,
+		...body,
+	});
+}

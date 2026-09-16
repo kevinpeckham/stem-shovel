@@ -28,6 +28,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Report a bug**: signed-in users get a footer link that opens a form
+  (title, what happened); the page they were on and their browser are
+  attached. Reports land on `/admin`, where system admins close and reopen
+  them, and every system admin gets an email with the report. New
+  `bug_report` table (migration 0025).
 - **System admin and new-account invite codes**: `bun run db:system-admin
 <email>` makes a user the operator; `/admin` (a 404 for anyone else)
   lists every account with members, songs and storage, every user, and

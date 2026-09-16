@@ -56,6 +56,9 @@ erDiagram
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may
   post; the author edits and deletes their own, owners and admins delete any.
+- **bug_report** — a signed-in user's bug report from the footer: title,
+  body, the page they were on and their browser (captured by the form),
+  `status` open/closed and `closed_at`. Listed and closed on `/admin`.
 - **invite_code** — a reusable sign-up code: `account_id` (null for a
   system admin's new-account code, which joins nothing), role, note,
   `max_uses` (null = unlimited), `uses`, optional `expires_at`, `revoked_at`.
