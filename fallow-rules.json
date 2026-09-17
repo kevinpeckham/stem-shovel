@@ -1,0 +1,56 @@
+{
+	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/rule-pack-schema.json",
+	"name": "stem-shovel-house-rules",
+	"version": 1,
+	"description": "The conventions in CLAUDE.md that can be checked mechanically, for `fallow audit` (CI) and `fallow guard`.",
+	"rules": [
+		{
+			"id": "no-sveltekit-env",
+			"kind": "banned-import",
+			"severity": "error",
+			"specifiers": [
+				"$env/static/public",
+				"$env/static/private",
+				"$env/dynamic/public",
+				"$env/dynamic/private"
+			],
+			"message": "Read configuration through `import { ENV } from \"varlock/env\"`, never SvelteKit's $env/* (docs/environment.md)."
+		},
+		{
+			"id": "no-form-actions",
+			"kind": "banned-export",
+			"severity": "error",
+			"files": ["src/routes/**/+page.server.ts", "src/routes/**/+layout.server.ts"],
+			"exports": ["actions"],
+			"message": "Every mutation is a `form` or `command` remote function in src/lib/remote/*.remote.ts, validated by a valibot schema; no form actions (CLAUDE.md)."
+		},
+		{
+			"id": "no-replaced-packages",
+			"kind": "banned-import",
+			"severity": "error",
+			"specifiers": ["zod", "moment", "lodash", "lodash-es", "dotenv", "axios"],
+			"message": "valibot for validation, native Intl/Date for dates, fetch for HTTP and varlock for env; these packages are not used here."
+		},
+		{
+			"id": "svelte-effect-last-resort",
+			"kind": "banned-call",
+			"severity": "warn",
+			"files": ["src/**/*.svelte", "src/**/*.svelte.ts"],
+			"callees": ["$effect", "$effect.pre"],
+			"message": "$effect is a last resort: $derived for computed values, event handlers for reactions to input, {@attach} for DOM work (svelte core best practices)."
+		},
+		{
+			"id": "no-raw-global-listeners",
+			"kind": "banned-call",
+			"severity": "warn",
+			"files": ["src/**/*.svelte"],
+			"callees": [
+				"window.addEventListener",
+				"window.removeEventListener",
+				"document.addEventListener",
+				"document.removeEventListener"
+			],
+			"message": "In a component, listen on window/document with <svelte:window on…> / <svelte:document on…>, which clean up with the component."
+		}
+	]
+}

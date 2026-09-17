@@ -1,0 +1,34 @@
+name: Fallow
+
+# Dead code, complexity, duplication and the house rules (fallow-rules.json)
+# over the files a push or pull request changes. The SARIF goes to GitHub's
+# code-scanning tab beside CodeQL; the verdict is advisory (continue-on-error)
+# while the baseline settles.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bunx fallow audit --ci --format sarif --output fallow.sarif
+        continue-on-error: true
+      - if: always() && hashFiles('fallow.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: fallow.sarif
+          category: fallow

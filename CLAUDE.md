@@ -14,6 +14,9 @@ bun run lint         # vp check: format check + Oxlint + tsgolint
 bun run format       # Oxfmt (formats .svelte templates too)
 bun run build        # vp build; output in .vercel/output
 bunx fallow          # dead code, duplication, health
+bunx fallow audit    # what CI gates on changed files, incl. the house rules (fallow-rules.json)
+bunx fallow guard <file>   # which rules and import boundaries apply to a file, before editing it
+bun run spell        # cspell over the prose (docs, user docs, README, changelog)
 bun run stems        # generate the static test WAVs (gitignored)
 bun run smoke:blob   # create a smoke project + song and upload through the real flow
 bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ — then Read it
@@ -81,6 +84,15 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   `errorMessage(e)` from `$lib/utils/errorMessage`: a remote function's
   `error(status, message)` reaches the client as an `HttpError` that is not an
   `Error` (`String(e)` is its JSON body).
+- **House rules are machine-checked** (`fallow-rules.json`, wired in
+  `.fallowrc.json`, run by `fallow audit` in CI with the findings in GitHub's
+  code-scanning tab): no `$env/*` imports (varlock only), no form actions
+  (`actions` exports), no zod/moment/lodash/dotenv/axios, and warnings for
+  `$effect` and raw window/document listeners in components. Import
+  boundaries: nothing in `src/lib` imports from `src/routes` except types;
+  `src/lib/val` imports only val, utils and constants; constants import only
+  constants and val. Suppress a single line with
+  `// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/<id> -- <reason>`.
 - **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a

@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **House rules as Fallow policy** (`fallow-rules.json`): no `$env/*`, no form actions, no zod/moment/lodash/dotenv/axios, warnings for `$effect` and raw global listeners, plus import boundaries between routes, lib, val, utils and constants; `fallow audit` runs in CI and reports to code scanning. `fallow guard <file>` shows what applies before editing.
+- **Spell check** (cspell) over the prose in CI, with a project word list.
+- **Validation failures are logged**: a remote-function payload that fails its schema logs the route, issue count and client address.
+
 ## [0.12.0] - 2026-09-17
 
 ### Added

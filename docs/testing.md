@@ -1,5 +1,11 @@
 # Testing
 
+Besides the tests below, CI (`.github/workflows/ci.yml`) runs lint, check,
+the tests and the spell check; `.github/workflows/fallow.yml` runs
+`fallow audit` over the changed files (dead code, complexity, duplication
+and the house rules in `fallow-rules.json`) and uploads the findings to
+GitHub's code-scanning tab. Both run without secrets.
+
 Vitest, bundled with Vite+ (`vp test`), in two projects configured in
 `vite.config.ts` — replicator's split, with Vitest for both halves:
 

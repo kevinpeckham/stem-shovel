@@ -1,13 +1,42 @@
 {
 	// This file is JSONC: fallow reads these comments; generic JSON tools may not.
 	"$schema": "./node_modules/fallow/schema.json",
+	// SvelteKit's own entry points, plus the config and script files.
 	"entry": [
-		"src/index.{ts,tsx,js,jsx}",
-		"src/main.{ts,tsx,js,jsx}",
+		"src/routes/**/+page.{svelte,ts}",
+		"src/routes/**/+page.server.ts",
+		"src/routes/**/+layout.{svelte,ts}",
+		"src/routes/**/+layout.server.ts",
+		"src/routes/**/+server.ts",
+		"src/routes/**/+error.svelte",
+		"src/hooks.server.ts",
+		"src/hooks.client.ts",
+		"src/instrumentation.server.ts",
+		"src/app.d.ts",
+		"src/lib/remote/**/*.ts",
+		"scripts/**/*.{ts,mjs}",
 		"uno.config.ts",
 		"vite.config.ts",
 		"drizzle.config.ts"
 	],
+	// The house rules (CLAUDE.md, mechanised): `fallow audit` in CI, `fallow guard <file>` before editing.
+	"rulePacks": ["fallow-rules.json"],
+	// Library code never reaches into routes (types excepted); schemas and utils stay leaf-like.
+	"boundaries": {
+		"zones": [
+			{ "name": "routes", "patterns": ["src/routes/**"] },
+			{ "name": "val", "patterns": ["src/lib/val/**"] },
+			{ "name": "utils", "patterns": ["src/lib/utils/**"] },
+			{ "name": "constants", "patterns": ["src/lib/constants/**"] },
+			{ "name": "lib", "patterns": ["src/lib/**"] }
+		],
+		"rules": [
+			{ "from": "lib", "allow": ["lib", "val", "utils", "constants"], "allowTypeOnly": ["routes"] },
+			{ "from": "val", "allow": ["val", "utils", "constants"] },
+			{ "from": "constants", "allow": ["constants", "val"] }
+		]
+	},
+	"ignorePatterns": [".svelte-kit/**", ".vercel/**", ".screenshots/**", "static/**", "drizzle/**"],
 	"duplicates": {
 		// Hide pair-only clones; focus on widespread copy-paste
 		// worth refactoring. Lower to 2 to report every duplicate pair.
