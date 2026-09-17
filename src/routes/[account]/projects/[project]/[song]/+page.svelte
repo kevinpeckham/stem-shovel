@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
+	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "$lib/utils/docMonoPreference";
 	import {
 		chordChart,
 		chordsPerBar,
@@ -80,7 +81,7 @@
 		saveDefaultMix,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
-	import { tick, untrack } from "svelte";
+	import { onMount, tick, untrack } from "svelte";
 
 	let { data } = $props();
 
@@ -96,6 +97,11 @@
 	] as const;
 	type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
 	let settingsTab = $state<SettingsTab>("details");
+	/** The phone's settings panel picker (a <details>), closed like the other menus. */
+	let settingsNavEl = $state<HTMLDetailsElement | null>(null);
+	const settingsTabLabel = $derived(
+		SETTINGS_TABS.find((t) => t.id === settingsTab)?.label ?? "Details",
+	);
 	const fields = updateSong.fields;
 	let title = $derived(fields.title.value() ?? data.song.title);
 	let slug = $derived(fields.slug.value() ?? data.song.slug);
@@ -303,7 +309,7 @@
 	}
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
-		for (const menu of [chartMenuEl, uploadsMenuEl, downloadsMenuEl]) {
+		for (const menu of [chartMenuEl, panelMenuEl, settingsNavEl, uploadsMenuEl, downloadsMenuEl]) {
 			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
 		}
 	}
@@ -314,6 +320,17 @@
 	let docPanel = $state<SongDocPanel | null>(null);
 	/** The document panel's ⋯ menu (a <details>): closed on a choice or a click elsewhere. */
 	let chartMenuEl = $state<HTMLDetailsElement | null>(null);
+	/** The phone's document picker (a <details> that opens downward; a native select opens where iOS likes). */
+	let panelMenuEl = $state<HTMLDetailsElement | null>(null);
+	/** Monospace or regular text per document kind, this browser's choice (docMonoPreference). */
+	let docMono = $state({ ...DEFAULT_DOC_MONO });
+	onMount(() => {
+		docMono = loadDocMono();
+	});
+	function toggleDocMono(kind: keyof typeof docMono) {
+		docMono = { ...docMono, [kind]: !docMono[kind] };
+		saveDocMono(docMono);
+	}
 	/** The Uploads and Downloads menus in the player's action row, closed the same way. */
 	let uploadsMenuEl = $state<HTMLDetailsElement | null>(null);
 	let downloadsMenuEl = $state<HTMLDetailsElement | null>(null);
@@ -1089,11 +1106,11 @@
 				>
 			</div>
 
-			<!-- settings button -->
+			<!-- share, info and settings: real buttons on a phone, quiet icons from sm up -->
 			{#if data.canEdit}
 				<div class="flex gap-2">
 					<button
-						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
 						type="button"
 						popovertarget="song-share"
 						title="Share this song by email"
@@ -1102,7 +1119,7 @@
 						<span class="block i-ph-paper-plane-tilt"></span>
 					</button>
 					<button
-						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
 						type="button"
 						popovertarget="song-info"
 						title="About this song"
@@ -1111,7 +1128,7 @@
 						<span class="block i-ph-info"></span>
 					</button>
 					<button
-						class="block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
+						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
 						type="button"
 						popovertarget="song-settings"
 						title="Song settings"
@@ -1153,19 +1170,50 @@
 					Close
 				</button>
 			</div>
-			<!-- One panel at a time: wrapping tabs on a phone, a column beside the panel from sm up. -->
+			<!-- One panel at a time: a dropdown on a phone, a column beside the panel from sm up. -->
 			<div class="flex min-h-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-8">
+				<details class="relative shrink-0 sm:hidden" bind:this={settingsNavEl}>
+					<summary
+						class="button button-sm flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden"
+						aria-label="Settings panel"
+					>
+						{settingsTabLabel}
+						<span class="i-ph-caret-down text-10px" aria-hidden="true"></span>
+					</summary>
+					<div
+						class="absolute top-full left-0 z-20 mt-1 min-w-44 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+						role="menu"
+					>
+						{#each SETTINGS_TABS as tab (tab.id)}
+							<button
+								class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/10"
+								type="button"
+								role="menuitemradio"
+								aria-checked={settingsTab === tab.id}
+								onclick={() => {
+									if (settingsNavEl) settingsNavEl.open = false;
+									settingsTab = tab.id;
+								}}
+							>
+								<span
+									class="i-ph-check {settingsTab === tab.id ? '' : 'invisible'}"
+									aria-hidden="true"
+								></span>{tab.label}
+							</button>
+						{/each}
+					</div>
+				</details>
 				<nav
-					class="flex shrink-0 flex-wrap gap-x-1 gap-y-2 sm:w-44 sm:flex-col sm:flex-nowrap sm:gap-y-1"
+					class="hidden shrink-0 sm:flex sm:w-44 sm:flex-col sm:gap-y-1"
 					aria-label="Settings panels"
 				>
 					{#each SETTINGS_TABS as tab (tab.id)}
 						<button
 							type="button"
-							class="button button-sm whitespace-nowrap sm:justify-start sm:text-left {settingsTab ===
+							class="button button-sm justify-start whitespace-nowrap text-left {settingsTab ===
 							tab.id
 								? 'bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-								: 'opacity-80 border-transparent bg-blue-300/5 hover-bg-blue-200 hover-border-blue-200 sm:bg-transparent'}"
+								: 'opacity-80 border-transparent hover-bg-blue-200 hover-border-blue-200'}"
 							aria-current={settingsTab === tab.id ? "page" : undefined}
 							onclick={() => (settingsTab = tab.id)}>{tab.label}</button
 						>
@@ -2063,23 +2111,43 @@
 					bind:editing={docEditing}
 					bind:saving={docSaving}
 					view={docView}
+					mono={docMono[doc]}
 					above={panel === "chart" ? draftInPanel : undefined}
 				/>
 			{/key}
 		{/if}
 		<!-- tool bar  -->
 		<div class="absolute top-2 right-3 mb-2 flex items-stretch gap-4">
-			<!-- A dropdown on a phone, the segmented control from sm up. -->
-			<select
-				class="field py-1 text-sm sm:hidden"
-				aria-label="Document"
-				value={panel}
-				onchange={(e) => showPanel(e.currentTarget.value as Panel)}
-			>
-				{#each PANELS as kind (kind)}
-					<option value={kind}>{PANEL_LABELS[kind]}</option>
-				{/each}
-			</select>
+			<!-- A dropdown on a phone (our own, so it opens downward with room for the caret), the segmented control from sm up. -->
+			<details class="relative sm:hidden" bind:this={panelMenuEl}>
+				<summary
+					class="button button-xs flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden"
+					aria-label="Document"
+				>
+					{PANEL_LABELS[panel]}
+					<span class="i-ph-caret-down text-10px" aria-hidden="true"></span>
+				</summary>
+				<div
+					class="absolute top-full left-0 z-20 mt-1 min-w-40 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+					role="menu"
+				>
+					{#each PANELS as kind (kind)}
+						<button
+							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/10"
+							type="button"
+							role="menuitemradio"
+							aria-checked={panel === kind}
+							onclick={() => {
+								if (panelMenuEl) panelMenuEl.open = false;
+								void showPanel(kind);
+							}}
+						>
+							<span class="i-ph-check {panel === kind ? '' : 'invisible'}" aria-hidden="true"
+							></span>{PANEL_LABELS[kind]}
+						</button>
+					{/each}
+				</div>
+			</details>
 			<div
 				class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
 				role="tablist"
@@ -2158,7 +2226,25 @@
 						class="absolute top-full right-0 z-20 mt-1 min-w-56 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
 						role="menu"
 					>
-						{#if !docEditing && !(panel === "chart" && data.aiAvailable)}
+						{#if panel !== "comments"}
+							<button
+								class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+								type="button"
+								role="menuitemcheckbox"
+								aria-checked={docMono[doc]}
+								title="Fixed-width text, so chord grids line up"
+								onclick={() => {
+									toggleDocMono(doc);
+									if (chartMenuEl) chartMenuEl.open = false;
+								}}
+							>
+								<span class="i-ph-check {docMono[doc] ? '' : 'invisible'}" aria-hidden="true"
+								></span>Monospace
+							</button>
+							{#if docEditing || (panel === "chart" && data.aiAvailable)}
+								<hr class="my-1 border-white/15" />
+							{/if}
+						{:else}
 							<div class="px-2 py-1 text-xs text-dim">Nothing to do here yet</div>
 						{/if}
 						{#if docEditing}

@@ -27,6 +27,13 @@
 		comments: "Comments",
 	};
 	let panel = $state<Panel>("chart");
+	/** The phone's document picker (a <details>): closed on a choice, a click elsewhere or Escape. */
+	let pickerEl = $state<HTMLDetailsElement | null>(null);
+	function closePicker(e: Event) {
+		if (pickerEl?.open && !(e.type === "pointerdown" && pickerEl.contains(e.target as Node))) {
+			pickerEl.open = false;
+		}
+	}
 	let song = $derived(view.song);
 	let doc = $derived(panel === "comments" ? "chart" : panel);
 	const DOC_TEXT = $derived({
@@ -41,9 +48,14 @@
 	});
 </script>
 
-<div
-	class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full overflow-hidden relative min-h-600px"
->
+<svelte:window
+	onpointerdown={closePicker}
+	onkeydown={(e) => {
+		if (e.key === "Escape") closePicker(e);
+	}}
+/>
+
+<div class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-600px">
 	{#if panel === "comments"}
 		<div
 			class="h-full min-h-64 max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
@@ -94,17 +106,36 @@
 		{/key}
 	{/if}
 	<div class="absolute top-2 right-3 flex items-stretch gap-4">
-		<!-- A dropdown on a phone, the segmented control from sm up. -->
-		<select
-			class="field py-1 text-sm sm:hidden"
-			aria-label="Document"
-			value={panel}
-			onchange={(e) => (panel = e.currentTarget.value as Panel)}
-		>
-			{#each PANELS as kind (kind)}
-				<option value={kind}>{LABELS[kind]}</option>
-			{/each}
-		</select>
+		<!-- A dropdown on a phone (our own, so it opens downward), the segmented control from sm up. -->
+		<details class="relative sm:hidden" bind:this={pickerEl}>
+			<summary
+				class="button button-xs flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden"
+				aria-label="Document"
+			>
+				{LABELS[panel]}
+				<span class="i-ph-caret-down text-10px" aria-hidden="true"></span>
+			</summary>
+			<div
+				class="absolute top-full left-0 z-20 mt-1 min-w-40 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+				role="menu"
+			>
+				{#each PANELS as kind (kind)}
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/10"
+						type="button"
+						role="menuitemradio"
+						aria-checked={panel === kind}
+						onclick={() => {
+							if (pickerEl) pickerEl.open = false;
+							panel = kind;
+						}}
+					>
+						<span class="i-ph-check {panel === kind ? '' : 'invisible'}" aria-hidden="true"
+						></span>{LABELS[kind]}
+					</button>
+				{/each}
+			</div>
+		</details>
 		<div
 			class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
 			role="tablist"

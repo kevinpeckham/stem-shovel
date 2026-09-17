@@ -18,10 +18,11 @@
 </script>
 
 <footer
-	class="page-x-padding pt-4 pb-4 border-t border-white/10 text-11px flex flex-wrap gap-x-6 gap-y-10 sm:gap-y-2 justify-between"
+	class="page-x-padding pt-4 pb-4 border-t border-white/10 text-11px flex flex-col gap-x-6 gap-y-10 sm:flex-row sm:flex-wrap sm:gap-y-2 justify-between"
 >
 	<!-- <span>Stem Shovel</span> -->
-	<div class="flex flex-wrap gap-2">
+	<!-- Second on a phone (the links come first), first from sm up. -->
+	<div class="flex flex-wrap gap-2 order-2 sm:order-1">
 		<div>Copyright 2026 Lightning Jar. All rights reserved.</div>
 		<div class="opacity-70">|</div>
 		<div class="opacity-70">
@@ -40,8 +41,10 @@
 		</div>
 	</div>
 
-	<!-- Tappable on a phone: 16px links that wrap; the desktop keeps the small print. -->
-	<div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-16px sm:gap-y-2 sm:text-11px">
+	<!-- Tappable on a phone: 15px links that wrap, above the copyright; the desktop keeps the small print. -->
+	<div
+		class="flex flex-wrap items-center gap-x-6 gap-y-3 text-15px order-1 sm:order-2 sm:gap-y-2 sm:text-11px"
+	>
 		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
 			href="/docs">Docs</a

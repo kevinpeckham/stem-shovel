@@ -36,6 +36,8 @@
 		view?: "rendered" | "markdown";
 		/** A save is in flight (the page shows it on its check button). */
 		saving?: boolean;
+		/** Monospace in every view (chord grids line up); the page's panel menu toggles it. */
+		mono?: boolean;
 	}
 
 	let {
@@ -52,9 +54,8 @@
 		above,
 		view = "rendered",
 		saving = $bindable(false),
+		mono = false,
 	}: Props = $props();
-	/** Charts are monospace in every view, so chord grids line up. */
-	let mono = $derived(kind === "chart");
 
 	const fields = saveDoc.fields;
 	let editor = $state<MarkdownEditorState | null>(null);

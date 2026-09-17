@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { createUserDoc } from "$lib/remote/userDocs.remote";
 	import { clearForm } from "$lib/utils/clearForm";
-	import { formatDate } from "$lib/utils/formatDate";
 
 	let { data } = $props();
 	let addPanel = $state<HTMLDivElement | null>(null);
@@ -12,11 +11,12 @@
 </svelte:head>
 
 <main class="page-x-padding pt-8 pb-12 min-h-screen">
-	<header class="flex flex-wrap items-baseline justify-between gap-4 max-w-article">
-		<div class="mb-6">
+	<!-- The margin sits on the header, so the New page button (which wraps under the text on a phone) also clears the list. -->
+	<header class="mb-6 flex flex-wrap items-baseline justify-between gap-4 max-w-article">
+		<div>
 			<h1 class="heading-2">Docs</h1>
 			<p class="opacity-90 text-balance">
-				Learn how to use Stem Shove, discover new features, and impress your bandmates by knowing
+				Learn how to use Stem Shovel, discover new features, and impress your bandmates by knowing
 				about all the features.
 			</p>
 		</div>
@@ -45,11 +45,9 @@
 						href="/docs/{doc.slug}"
 					>
 						<span>{doc.title}</span>
-						<span
-							class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
-						>
-							{doc.version === 0 ? "empty" : `updated ${formatDate(doc.updatedAt)}`}
-						</span>
+						{#if doc.version === 0}
+							<span class="shrink-0 text-sm opacity-90 text-offWhite font-400">empty</span>
+						{/if}
 					</a>
 				</li>
 			{/each}
