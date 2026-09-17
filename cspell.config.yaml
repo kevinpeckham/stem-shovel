@@ -3,28 +3,25 @@
 version: "0.2"
 language: en,en-GB
 files:
-  - "README.md"
-  - "SECURITY.md"
+  - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
+  - "/`[^`]*`/g" # inline code
+  - "/```[\\s\\S]*?```/g" # fenced code
+  - "/https?:\\/\\/\\S+/g" # urls
   - "CHANGELOG.md"
   - "CLAUDE.md"
   - "docs/**/*.md"
+  - "README.md"
   - "scripts/user-docs/*.md"
-ignorePaths:
-  - node_modules
+  - "SECURITY.md"
   - .svelte-kit
-allowCompoundWords: true
-ignoreRegExpList:
-  - "/`[^`]*`/g" # inline code
-  - "/```[\\s\\S]*?```/g" # fenced code
-  - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
-  - "/https?:\\/\\/\\S+/g" # urls
-words:
   - ALAC
   - Authy
   - Bahiana
+  - demuxer
   - HSTS
   - Krumhansl
   - MMKK
+  - node_modules
   - TOTP
   - Turso
   - unmuted
