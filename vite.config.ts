@@ -1,3 +1,4 @@
+import { sentrySvelteKit } from "@sentry/sveltekit";
 import adapter from "@sveltejs/adapter-vercel";
 import { sveltekit } from "@sveltejs/kit/vite";
 import UnoCSS from "unocss/vite";
@@ -12,6 +13,8 @@ const BLOB_PRIVATE_STORE = "https://*.private.blob.vercel-storage.com";
 const production = process.env.NODE_ENV === "production";
 /** Vercel Web Analytics' debug script, loaded in dev only (production is same-origin). */
 const ANALYTICS_DEBUG_HOST = "https://va.vercel-scripts.com" as const;
+/** Sentry's ingest host for this project (the DSN's host; src/hooks.client.ts). */
+const SENTRY_INGEST = "https://o4505247956860928.ingest.us.sentry.io" as const;
 
 // CI has no 1Password: it sets SKIP_VARLOCK=1 and runs lint, check and the tests
 // (which mock the env) without the plugin. The plugin module reads .env.schema
@@ -50,6 +53,14 @@ export default defineConfig({
 	// server chunk sidesteps the tracer; its dependencies trace fine.
 	ssr: { noExternal: [/^better-auth(\/|$)/] },
 	plugins: [
+		// Sentry (docs/environment.md): instruments load functions and, on Vercel
+		// builds only, uploads source maps with SENTRY_AUTH_TOKEN. Before SvelteKit.
+		sentrySvelteKit({
+			org: "lightning-jar",
+			project: "stem-shovel",
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			autoUploadSourceMaps: !!process.env.VERCEL && !!process.env.SENTRY_AUTH_TOKEN,
+		}),
 		// varlock replaces Vite's .env loading with .env.schema (validated, typed,
 		// secrets pulled from 1Password). Must come before the SvelteKit plugin.
 		// `resolved-env` bakes the resolved values into the SSR bundle at build
@@ -67,7 +78,8 @@ export default defineConfig({
 				experimental: { async: true },
 			},
 			// Server mutations/queries are remote functions (*.remote.ts), not form actions
-			experimental: { remoteFunctions: true },
+			// Server mutations/queries are remote functions; instrumentation.server.ts (Sentry) runs before the app.
+			experimental: { remoteFunctions: true, instrumentation: { server: true } },
 			// Content Security Policy (docs/environment.md). SvelteKit adds a nonce
 			// for its own inline script; inline styles stay allowed because
 			// `style:` attributes and transitions need them. Audio and uploads
@@ -83,7 +95,13 @@ export default defineConfig({
 					"img-src": ["self", "data:", "blob:"],
 					"font-src": ["self", "data:", "https://fonts.bunny.net"],
 					"media-src": ["self", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
-					"connect-src": ["self", BLOB_STORE, BLOB_PRIVATE_STORE, "https://vercel.com/api/blob/"],
+					"connect-src": [
+						"self",
+						BLOB_STORE,
+						BLOB_PRIVATE_STORE,
+						"https://vercel.com/api/blob/",
+						SENTRY_INGEST,
+					],
 					"worker-src": ["self", "blob:"],
 					"object-src": ["none"],
 					"base-uri": ["self"],

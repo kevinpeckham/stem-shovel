@@ -35,6 +35,7 @@
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.2.1",
 		"@libsql/client": "0.18.0",
+		"@sentry/sveltekit": "^10",
 		"@spotify/basic-pitch": "^1.0.1",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/analytics": "^2.0.1",

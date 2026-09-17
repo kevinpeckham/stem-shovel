@@ -29,3 +29,6 @@ static/stems/*.wav
 
 # agent screenshots (bun run shot)
 .screenshots/
+
+# Sentry Config File
+.env.sentry-build-plugin

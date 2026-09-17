@@ -86,6 +86,17 @@ vercel.json's `/(.+)` rule for static files) and a matching robots meta from
 the root layout; `static/robots.txt` allows `/` alone and points at a
 one-entry sitemap.
 
+## Error reports
+
+Sentry (`@sentry/sveltekit`; `src/hooks.client.ts` for the browser,
+`src/instrumentation.server.ts` for the server, loaded before the app by
+SvelteKit's `experimental.instrumentation.server`) receives unhandled errors
+with the stack, route and browser, plus a 20 % sample of traces. No user
+identity and no request bodies are sent (`dataCollection` off,
+`sendDefaultPii: false`); Replay samples 10 % of sessions and every session
+with an error, with text and inputs masked. Development reports too, under its own environment tag. The CSP allows the ingest host in `connect-src`. Source maps go
+up from Vercel builds only, with `SENTRY_AUTH_TOKEN`.
+
 ## Analytics
 
 Vercel Web Analytics (`@vercel/analytics/sveltekit`, called once in

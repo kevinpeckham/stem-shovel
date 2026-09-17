@@ -98,6 +98,29 @@ When a new external resource is added, `bun run dev` shows the refusal in
 the browser console; `.screenshots/csp-sweep.mjs`-style Playwright runs
 that collect "Refused to" console lines are how the policy was checked.
 
+## Sentry
+
+`@sentry/sveltekit` 10 (set up with Sentry's wizard, then trimmed).
+`src/hooks.client.ts` initialises the browser SDK and `src/hooks.server.ts`
+wraps `handle` with `sentryHandle()` and exports `handleErrorWithSentry()`;
+the server `Sentry.init` lives in `src/instrumentation.server.ts`, which
+SvelteKit loads before the app because `experimental.instrumentation.server`
+is on in `vite.config.ts` (adapter-vercel supports it). The DSN is a public
+value and is written inline in both files; the project is `lightning-jar /
+stem-shovel`. Environments: `development` locally, `preview`/`production`
+from `VERCEL_ENV`. Sample rates: 20 % of traces, 10 % of sessions for
+Replay and every session with an error; no user identity or request bodies
+(docs/security.md).
+
+`sentrySvelteKit()` in `vite.config.ts` instruments load functions and
+uploads source maps only when `VERCEL` and `SENTRY_AUTH_TOKEN` are both set,
+so local builds never upload. The token is an organisation auth token from
+Sentry (Settings → Auth Tokens) with `project:releases` and `org:read`; add
+it to the Vercel project as a sensitive environment variable (it is a
+build-time value, not one the app reads, so it is declared `@optional` in
+`.env.schema` and not kept in 1Password). The wizard left a copy in the
+gitignored `.env.sentry-build-plugin` for local use.
+
 ## Turso + Drizzle
 
 Design and rationale: [data-model.md](data-model.md). Schema files are the

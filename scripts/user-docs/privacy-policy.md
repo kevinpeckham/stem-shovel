@@ -9,6 +9,7 @@ Stem Shovel is run by Lightning Jar. This is what we keep and why. It is deliber
 - **What you upload and write**: stems, MIDI files, demo recordings, charts, lyrics, notes, comments, song and project details, and the settings around them. Audio files are stored with Vercel Blob; everything else in a Turso database.
 - **Bug reports** you send, with the page you were on and your browser's description of itself.
 - **Technical records**: server logs kept by our hosting provider (Vercel) for a short time, and a session cookie so you stay signed in. A viewing link you open is remembered in a cookie for thirty days.
+- **Error reports**: when something breaks, a report goes to Sentry with the error, the page and the browser, and sometimes a recording of the screen with all text and typing masked, so we can fix it. It does not include who you are or what you sent.
 - **Visit counts**: Vercel Web Analytics tells us how many people visit which pages and from which countries and browsers. It sets no cookie and stores nothing that identifies you; one-time links and codes are stripped from what it records.
 
 We use no advertising trackers, and we ask search engines to index only the front page.

@@ -1,3 +1,5 @@
+import { sequence } from "@sveltejs/kit/hooks";
+import * as Sentry from "@sentry/sveltekit";
 import { building } from "$app/environment";
 import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
@@ -16,7 +18,7 @@ import { eq } from "drizzle-orm";
  * Viewing is public, so an anonymous request still resolves. A request with
  * a valid preview token is the screenshot bot (src/lib/server/previewAuth.ts).
  */
-export const handle: Handle = async ({ event, resolve }) => {
+export const handle: Handle = sequence(Sentry.sentryHandle(), async ({ event, resolve }) => {
 	let user = await resolvePreviewAuth(event);
 	if (!user) {
 		const session = await auth.api.getSession({ headers: event.request.headers });
@@ -67,4 +69,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
 	if (event.url.pathname !== "/") response.headers.set("x-robots-tag", ROBOTS_NOINDEX);
 	return response;
-};
+});
+export const handleError = Sentry.handleErrorWithSentry();
