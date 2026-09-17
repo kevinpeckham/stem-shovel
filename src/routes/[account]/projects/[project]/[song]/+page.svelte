@@ -1706,8 +1706,16 @@
 				</StemPlayer>
 			</div>
 		{:else}
-			<div class="flex flex-wrap items-center justify-between gap-4">
+			<!-- The player's box, empty: the page keeps its shape before the first stem arrives. -->
+			<div
+				class="mb-5 grid min-h-560px place-content-center rounded-md border border-current/40 bg-blue/5 px-4 py-3 text-center"
+			>
 				<p class="text-sm text-dim">No stems yet.</p>
+				{#if data.canEdit}
+					<p class="mt-1 text-sm opacity-80">
+						Add stems below, or start with a demo recording of the idea.
+					</p>
+				{/if}
 			</div>
 		{/if}
 
