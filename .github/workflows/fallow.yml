@@ -14,6 +14,9 @@ permissions:
   contents: read
   security-events: write
 
+env:
+  SKIP_VARLOCK: "1"
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -25,7 +28,8 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: bunx fallow audit --ci --format sarif --output fallow.sarif
+      # --ci = SARIF, fail on issues, quiet.
+      - run: bunx fallow audit --ci --output-file fallow.sarif
         continue-on-error: true
       - if: always() && hashFiles('fallow.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
