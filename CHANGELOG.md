@@ -8,9 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-09-17
+
 ### Changed
 
-- **The site moves to stemshovel.com** (www): auth base URL, canonical and Open Graph tags, sitemap and robots, the two-factor email link and the docs. The hyphenated domain redirects to it, so old bookmarks and emailed links keep working; the switch signs everyone out once.
+- **The site moved to www.stemshovel.com.** Better Auth's base URL, the canonical and Open Graph tags, the sitemap, robots and the two-factor email link use the new domain; `stem-shovel.com`, `www.stem-shovel.com`, the apex `stemshovel.com` and `stem-shovel.vercel.app` redirect to it permanently with the path and query intact, so old bookmarks, invitations, invite codes, waitlist and reset links keep working. Everyone signs in once more on the new domain. Mail now comes from `no-reply@mail.stemshovel.com`.
 
 ### Technical
 

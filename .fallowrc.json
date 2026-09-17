@@ -61,7 +61,13 @@
 	"ignoreExports": [
 		{ "file": "src/lib/val/**", "exports": ["*"] },
 		// SvelteKit reads a route's `config` (maxDuration etc.); nothing imports it.
-		{ "file": "src/routes/**/+*.ts", "exports": ["config"] }
+		{ "file": "src/routes/**/+*.ts", "exports": ["config"] },
+		// SvelteKit reads the hooks by name.
+		{
+			"file": "src/hooks.server.ts",
+			"exports": ["handle", "handleError", "handleValidationError"]
+		},
+		{ "file": "src/hooks.client.ts", "exports": ["handleError"] }
 	],
 	"rules": {}
 }

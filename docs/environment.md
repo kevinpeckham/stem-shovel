@@ -37,8 +37,11 @@ page, sitemap and robots). The apex `stemshovel.com`, the first domain
 redirects to it (308, path and query preserved), so every old bookmark and
 emailed link keeps working; the old origins stay in Better Auth's
 `trustedOrigins`. Cookies are per host, so the switch signs everyone out
-once (and resets two-factor's trusted-device flag). Resend keeps sending
-from `RESEND_MAIL_DOMAIN` until the new domain is verified there.
+once (and resets two-factor's trusted-device flag). Mail comes from
+`no-reply@mail.stemshovel.com` (`RESEND_MAIL_DOMAIN`, verified in Resend).
+A change to any 1Password value needs a production redeploy (`vercel
+redeploy`) and a dev-server restart: the build bakes the resolved
+environment in.
 
 - Framework preset SvelteKit, Node 24, `main` deploys to production.
 - Vercel's bundled Bun lags and cannot read the v2 lock file Bun 1.4 writes,
