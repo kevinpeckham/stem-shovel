@@ -99,13 +99,16 @@ up from Vercel builds only, with `SENTRY_AUTH_TOKEN`.
 
 ## Analytics
 
-Vercel Web Analytics (`@vercel/analytics/sveltekit`, called once in
-`src/routes/+layout.ts`) counts page views by route. It is cookieless and
+Vercel Web Analytics and Speed Insights (`@vercel/analytics/sveltekit` and
+`@vercel/speed-insights/sveltekit`, each called once in
+`src/routes/+layout.ts`) count page views by route and collect Core Web
+Vitals per route. It is cookieless and
 keeps no identifier; its script and beacons are same-origin under
-`/_vercel/insights/`, so the CSP allows them as `self` (dev alone allows
-Vercel's debug script host). `beforeSend` drops every query string and
-replaces the token segment of confirmation, manage and invitation links, so
-one-time links never reach the analytics store.
+`/_vercel/insights/` and `/_vercel/speed-insights/`, so the CSP allows them
+as `self` (dev alone allows Vercel's debug script host). Both share a
+`beforeSend` that drops every query string and replaces the token segment of
+confirmation, manage and invitation links, so one-time links never reach
+either store.
 
 ## Known gaps
 

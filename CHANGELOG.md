@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Vercel Speed Insights**: Core Web Vitals per route, with the same URL scrubbing as Analytics.
 - **Sentry error reporting** in the browser and on the server (no user identity or request bodies; masked session replay on errors; source maps uploaded from Vercel builds); the privacy policy says so.
 
 ### Technical

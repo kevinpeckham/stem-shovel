@@ -147,11 +147,11 @@
 				</p>
 				<h3>Are you going to lure us in with a generous free tier then increase prices later?</h3>
 				<p>
-					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not
-					a startup, this is not our primary revenue stream and we do not plan on taking on any
-					investors. Which is to say we're not here to get rich and we feel no pressure to grow. All
-					we need to do is cover our expenses, and those primarily have to do with servers,
-					security, data storage, and support.
+					Emphatically no. Stem Shovel is built, managed, and maintained by Lightning Jar and select
+					volunteers and we are not a startup, this is not our primary revenue stream and we do not
+					plan on taking on any investors. Which is to say we're not here to get rich and we feel no
+					pressure to grow. All we need to do is cover our expenses, and those primarily have to do
+					with servers, security, data storage, and support.
 				</p>
 				<h3>Does this project have AI Features?</h3>
 				<p>

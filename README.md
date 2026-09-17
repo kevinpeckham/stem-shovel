@@ -1,20 +1,26 @@
 # Stem Shovel
 
-A multi-stem player for bands and producers: synced playback of a song's
-stems in the browser with per-stem fader, mute and solo, waveform seek and a
-memory readout; a section timeline over the stems; chart, lyrics and notes
-documents per song; demo recordings of the
-original idea; MP3 mixdowns (the full mix, or what is audible right now) and
-a project-level playlist of every song's mix. Stems upload straight from the
-browser to Vercel Blob, are catalogued in Turso (accounts → projects → songs
-→ stems), get an AAC playback rendition from ffmpeg on the server, and play
-back from there. Viewing and playing are public by URL; editing needs a
-signed-in member of the account (Better Auth).
+A web-based collaboration tool for musicians, bands and producers, run as a
+service at [www.stem-shovel.com](https://www.stem-shovel.com) by Lightning
+Jar. Each account holds projects; each project holds songs; each song holds
+its stems, a chart, lyrics, notes, comments pinned to moments in the music,
+and demo recordings of the original idea. The song page plays every stem in
+sync in the browser (fader, mute and solo per stem, waveform seek, a section
+timeline, timecode or bars), downloads stems, mixes and a zip, and edits the
+documents in place; the project page lists finished songs, songs in progress
+and song ideas with a playlist of every mix. Tempo, key and time signature
+are detected at upload, and, unless an account or song opts out, Basic
+Pitch transcribes the stems so a model can draft the chart. Viewing is public
+by URL unless a project or song is made private; editing needs a signed-in
+member. Sign-up is invitation-only during the beta, with a waitlist.
 
 Stack: SvelteKit 2 + Svelte 5 (runes, remote functions), TypeScript, UnoCSS
 (wind4, lightningjar.com's config), Vite+ (Vite, Oxlint, Oxfmt in one `vp`
-CLI), `@sveltejs/adapter-vercel`, Vercel Blob for audio, Turso + Drizzle for
-data, varlock + 1Password for configuration, valibot for validation.
+CLI), `@sveltejs/adapter-vercel`, Vercel Blob for audio (a public and a
+private store), Turso + Drizzle for data, Better Auth (email + password,
+optional TOTP two-factor), Resend for mail, Vercel AI Gateway for the AI
+features, varlock + 1Password for configuration, valibot for validation,
+Sentry, Vercel Web Analytics and Speed Insights.
 
 ## Run it
 
@@ -27,30 +33,38 @@ bun run test         # Vitest, unit + component projects
 ```
 
 URLs carry the account: `/[account]/projects` lists and creates projects;
-`/[account]/projects/[project]` lists and creates songs and edits the
-project's name and URL; `/[account]/projects/[project]/[song]` plays a song
-(each row's ⋯ menu downloads, renames, replaces or removes the stem), adds
-stems, downloads them all, shows the chart or lyrics and edits the song's
-title, URL and description; `…/[song]/chart` and `…/lyrics` edit those
-documents; `/[account]/settings` is the account. `/test` plays the static
-files. Old `/projects…` and `/settings` addresses redirect to the user's
-first account.
+`/[account]/projects/[project]` lists songs (finished, in progress, ideas),
+plays the project playlist and holds the project's settings (name, URL,
+privacy, no-AI, archive and delete); `/[account]/projects/[project]/[song]`
+is the song page (player, stem rows with a per-stem menu, download row,
+settings popover with tempo/key/meter, sections, demo recordings, version,
+privacy, finished and no-AI flags, the chart / lyrics / notes / comments
+panel with in-place editing and the AI chart draft); `…/[song]/chart`,
+`/lyrics` and `/notes` are the full-page editors; `/[account]/settings` is
+the account (members, invitations, invite codes, usage, plan). Neutral
+pages: `/` (the front page with live demos of a public song), `/waitlist`,
+`/docs` (user documentation, editable by system admins), `/accounts`,
+`/settings/security` (two-factor), `/admin` (operators). Old `/projects…`
+and `/settings` addresses redirect to the user's current account.
 
 **Viewing is public, editing needs a signed-in member.** Anyone with a URL
 can open an account's projects and play its songs; the controls (upload,
 rename, delete, settings, the editors) appear only for members, and every
 mutation checks membership on the server regardless. Sign-in is Better Auth
 with email + password and a verified address (`/sign-in`, `/sign-up`,
-`/forgot-password`); a new user gets their own account, and owners invite
-others by email from account settings. Mail goes through Resend. See
-[docs/auth.md](docs/auth.md).
+`/forgot-password`), optional two-factor (`/settings/security`), and
+invitation-only sign-up: an invitation link or an invite code from an
+account, or a new-account code from an operator; the waitlist hands those
+out during the beta. Mail goes through Resend. See [docs/auth.md](docs/auth.md).
 
 ## Configuration
 
 Secrets come from a 1Password environment through varlock; Vercel holds only
-`OP_TOKEN`, `OP_ENV_ID` and `_VARLOCK_ENV_KEY`. Details, plus the Turso +
-Drizzle commands and the ESM-only rule for server dependencies, are in
-[docs/environment.md](docs/environment.md).
+`OP_TOKEN`, `OP_ENV_ID`, `_VARLOCK_ENV_KEY` and the build-time
+`SENTRY_AUTH_TOKEN`. Details, plus the Turso + Drizzle commands, Sentry,
+analytics and the ESM-only rule for server dependencies, are in
+[docs/environment.md](docs/environment.md). CI (GitHub Actions) runs lint,
+check and the tests without any secret.
 
 ## Where things live
 
@@ -109,6 +123,11 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   "Request a feature" in the footer for signed-in users; a `bug_report` row
   (`kind`) and an email to every system admin; two lists on /admin.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
+- `src/hooks.client.ts`, `src/instrumentation.server.ts`, `src/routes/+layout.ts` —
+  Sentry in the browser and on the server, Web Analytics and Speed Insights
+  (docs/environment.md); `src/routes/settings/security/` — two-factor.
+- `src/lib/val/AccountPlanSchema.ts`, `PlanBadge.svelte`, `docs/billing.md` —
+  plans: free for life, founder accounts, the cost model and the Stripe plan.
 - `src/lib/audio/analysis.ts` — tempo, key and meter detection at upload;
   `transcribe.ts` + `chords.ts` — chords per bar via Basic Pitch;
   `src/lib/server/aiDetect.ts` — the AI Gateway second opinion (docs/audio-engine.md).
@@ -127,7 +146,7 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - `src/routes/[account]/…` — project list, project page (song list, "Add
   Song" popover, playlist player), song page (transport, stem rows with a
   per-stem menu, download row, settings popover with demo recordings,
-  chart / lyrics), account settings; `src/routes/sign-in|sign-up`.
+  chart / lyrics / notes / comments), account settings; `src/routes/sign-in|sign-up`.
 - **Chart, lyrics and notes**: three markdown documents per song
   (`song.chart_markdown`, `lyrics_markdown`, `notes_markdown`), edited at
   `…/[song]/chart`, `/lyrics` and `/notes` — one route, `[doc=songDoc]` — with
@@ -160,7 +179,6 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   `compilerOptions.experimental.async` in `vite.config.ts`. The smoke script
   submits them the way the browser does, to `/_app/remote/<id>`; the id is
   read from the dev server's transform of the module.
-- `src/routes/test/` — loads `static/stems/manifest.json` and drives the engine.
 - `src/lib/utils/` — one function per file, as in replicator's `$utils`
   (`slugify`, `formatTime`, `parseTimecode`, `toRoman`, `isTextEntry`,
   `timelineKinds`, …); `src/lib/constants/` holds the shared constants
@@ -174,9 +192,10 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 ## Documentation
 
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
+- [docs/security.md](docs/security.md) — the security model, what is enforced where, error reports and analytics, known gaps.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
-- [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, the ESM-only rule, Turso + Drizzle.
-- [docs/auth.md](docs/auth.md) — Better Auth: sign-in, memberships, what is public, what needs a member.
+- [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
+- [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
 - [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, renditions, mixdowns, demos, downloads.
@@ -184,23 +203,6 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
 - [docs/agent-screenshots.md](docs/agent-screenshots.md) — `bun run shot` and the Playwright MCP.
 - [CHANGELOG.md](CHANGELOG.md) — releases; cut one with the `/release` skill.
 - [CLAUDE.md](CLAUDE.md) — conventions and the working agreement for the agent.
-
-## Next (from the plan)
-
-2. ~~Peaks are already computed — persist them.~~ Done; the player draws
-   them before decoding finishes.
-3. ~~Client-side uploads to Vercel Blob via `@vercel/blob/client`.~~ Done.
-4. ~~Load the manifest from Turso.~~ Done.
-5. Share links (`share_link` table exists; no UI or `/s/[token]` route yet).
-6. ~~Auth (Better Auth).~~ Done, with email verification, password reset,
-   invitations and share-by-email over Resend (v0.5.0).
-7. ~~Accounts in the URL.~~ Done.
-8. ~~Playback renditions, MP3 mixdowns, project playlist, demo
-   recordings.~~ Done (v0.2.0).
-9. ~~Song version, sections, timed changes, timecode and bars, MIDI per
-   stem.~~ Done (v0.3.0–v0.5.0).
-10. Stem ordering, saved mixes, document version restore UI, share links,
-    removing members.
 
 ## License
 
