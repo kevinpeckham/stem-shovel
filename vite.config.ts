@@ -1,7 +1,6 @@
 import adapter from "@sveltejs/adapter-vercel";
 import { sveltekit } from "@sveltejs/kit/vite";
 import UnoCSS from "unocss/vite";
-import { varlockVitePlugin } from "@varlock/vite-integration";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite-plus";
 
@@ -13,6 +12,18 @@ const BLOB_PRIVATE_STORE = "https://*.private.blob.vercel-storage.com";
 const production = process.env.NODE_ENV === "production";
 /** Vercel Web Analytics' debug script, loaded in dev only (production is same-origin). */
 const ANALYTICS_DEBUG_HOST = "https://va.vercel-scripts.com" as const;
+
+// CI has no 1Password: it sets SKIP_VARLOCK=1 and runs lint, check and the tests
+// (which mock the env) without the plugin. The plugin module reads .env.schema
+// the moment it is imported (and complains without a token), so it is imported
+// only when it is going to be used. Never set SKIP_VARLOCK for a build.
+const varlockPlugins = process.env.SKIP_VARLOCK
+	? []
+	: [
+			(await import("@varlock/vite-integration")).varlockVitePlugin({
+				ssrInjectMode: "resolved-env",
+			}),
+		];
 
 export default defineConfig({
 	// Loaded on demand by the chord detector; pre-bundling them at start-up
@@ -44,9 +55,7 @@ export default defineConfig({
 		// `resolved-env` bakes the resolved values into the SSR bundle at build
 		// time, encrypted in preview/production (see @encryptInjectedEnv in
 		// .env.schema), so Vercel functions need no Blob env vars of their own.
-		// CI has no 1Password: it sets SKIP_VARLOCK=1 and runs lint, check and the
-		// tests (which mock the env) without the plugin. Never set it for a build.
-		...(process.env.SKIP_VARLOCK ? [] : [varlockVitePlugin({ ssrInjectMode: "resolved-env" })]),
+		...varlockPlugins,
 		// UnoCSS must come before the SvelteKit plugin so `virtual:uno.css` resolves
 		UnoCSS(),
 		sveltekit({
