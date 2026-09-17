@@ -62,6 +62,26 @@ describe("tempo and meter", () => {
 		const both = combineFeatures([clicks, keys])!;
 		expect(detectKey(both.chroma, both.bassChroma).value).toBe("D major");
 	});
+	test("a three-feel riff over four-beat drums stays 4/4 (fleeing the capitol planet)", () => {
+		// Hat and bass in four, a guitar riff in three, and a kick on every beat that says nothing.
+		const parts = [
+			extractFeatures(clickTrack(120, 4)),
+			extractFeatures(clickTrack(120, 4)),
+			extractFeatures(clickTrack(120, 3)),
+			extractFeatures(clickTrack(120, 1)),
+		];
+		const d = analyse(combineFeatures(parts)!);
+		expect(Math.abs(d.tempo.bpm - 120)).toBeLessThan(1.5);
+		expect(d.meter.value).toBe("4/4");
+	});
+	test("two waltz stems and a flat kick are still a waltz", () => {
+		const parts = [
+			extractFeatures(clickTrack(96, 3)),
+			extractFeatures(clickTrack(96, 3)),
+			extractFeatures(clickTrack(96, 1)),
+		];
+		expect(analyse(combineFeatures(parts)!).meter.value).toBe("3/4");
+	});
 	test("stems add up: a quiet second stem does not change the answer", () => {
 		const a = extractFeatures(clickTrack(140, 4));
 		const b = extractFeatures(chord([60, 64, 67], 24));

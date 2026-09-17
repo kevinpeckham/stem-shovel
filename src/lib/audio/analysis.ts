@@ -17,6 +17,8 @@ export interface Features {
 	bassChroma: Float32Array;
 	/** 0..1: how much of the spectrum sits in peaks. Drums and noise are low, keys and bass high. */
 	tonal: number;
+	/** Each stem's own onset envelope when combined from several; the meter is decided per stem. */
+	parts?: Float32Array[];
 }
 
 export interface Detection {
@@ -197,7 +199,7 @@ export function combineFeatures(list: Features[]): Features | null {
 		}
 		tonal = Math.max(tonal, f.tonal);
 	}
-	return { onset, fps, chroma, bassChroma, tonal };
+	return { onset, fps, chroma, bassChroma, tonal, parts: list.map((f) => f.onset) };
 }
 
 /** Removes the slow trend from an onset envelope and rectifies it. */
@@ -294,11 +296,12 @@ function refinePeriod(x: Float32Array, period: number): number {
 	return refined;
 }
 
-/** 4/4 against 3/4: which grouping of beats the onsets repeat in. */
-function detectMeter(onset: Float32Array, fps: number, bpm: number): Detection["meter"] {
-	if (!bpm) return { value: "4/4", confidence: 0 };
-	// The raw envelope keeps the accent pattern the comparison relies on.
-	const x = onset;
+/**
+ * How much an onset envelope prefers groups of three beats over four:
+ * positive leans 3/4, negative 4/4, near zero says nothing (a four-on-the-
+ * floor kick repeats the same at every lag).
+ */
+function meterLean(x: Float32Array, fps: number, bpm: number): number {
 	const beat = (60 * fps) / bpm;
 	const at = (beats: number) => {
 		// Take the best lag within a small window, since the beat length is fractional.
@@ -311,10 +314,35 @@ function detectMeter(onset: Float32Array, fps: number, bpm: number): Detection["
 	};
 	const four = at(4) + at(8);
 	const three = at(3) + at(6);
-	// 4/4 is the prior; 3/4 has to win, if only slightly.
-	const value = three > four * 1.03 ? "3/4" : "4/4";
-	const margin = Math.abs(three - four) / Math.max(three, four, 1e-9);
-	return { value, confidence: Math.max(0, Math.min(1, margin)) };
+	return (three - four) / Math.max(three, four, 1e-9);
+}
+
+/**
+ * 4/4 against 3/4. With several stems each votes with its own envelope,
+ * weighted by how decisive it is: a kick that repeats every beat says
+ * nothing, a hat or bass with a clear four-beat pattern says a lot, and one
+ * riff with a three-feel cannot outvote them — which is what happened when
+ * the summed envelope alone decided. 4/4 is the prior: 3/4 needs a clear
+ * lean. The confidence is the size of the agreed lean.
+ */
+function detectMeter(
+	onset: Float32Array,
+	fps: number,
+	bpm: number,
+	parts?: Float32Array[],
+): Detection["meter"] {
+	if (!bpm) return { value: "4/4", confidence: 0 };
+	const envelopes = parts && parts.length > 1 ? parts : [onset];
+	let total = 0;
+	let weight = 0;
+	for (const x of envelopes) {
+		const lean = meterLean(x, fps, bpm);
+		total += lean * Math.abs(lean);
+		weight += Math.abs(lean);
+	}
+	const lean = weight > 0 ? total / weight : 0;
+	const value = lean > 0.03 ? "3/4" : "4/4";
+	return { value, confidence: Math.max(0, Math.min(1, Math.abs(lean))) };
 }
 
 // Krumhansl-Kessler key profiles, C major / C minor, rotated for the others.
@@ -379,7 +407,7 @@ export function analyse(features: Features): Detection {
 	const tempo = detectTempo(features.onset, features.fps);
 	return {
 		tempo,
-		meter: detectMeter(features.onset, features.fps, tempo.bpm),
+		meter: detectMeter(features.onset, features.fps, tempo.bpm, features.parts),
 		key: detectKey(features.chroma, features.bassChroma),
 	};
 }
