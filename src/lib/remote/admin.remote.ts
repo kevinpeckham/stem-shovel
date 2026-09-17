@@ -8,6 +8,7 @@ import {
 	removeWaitlist,
 	setAccountFounder,
 	setAppSetting,
+	setUserFounder,
 	waitlistById,
 	deleteUser,
 	revokeInviteCode,
@@ -55,6 +56,12 @@ export const revokeSystemInviteCode = form(InviteCodeIdSchema, async ({ id }) =>
 export const manageUser = form(UserAdminSchema, async ({ id, action }) => {
 	const { locals } = getRequestEvent();
 	const admin = requireSystemAdmin(locals);
+	if (action === "founder" || action === "unfounder") {
+		requireSuperAdmin(locals);
+		const accounts = await setUserFounder(id, action === "founder");
+		if (accounts === 0) error(409, "That user owns no account");
+		return { action, accountsRemoved: 0, accounts };
+	}
 	if (id === admin.id) error(400, "You cannot suspend or delete your own user");
 	if (action === "delete") {
 		const result = await deleteUser(id);

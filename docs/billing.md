@@ -124,8 +124,11 @@ higher. Founders have no cap (`storage_limit_bytes` null).
   while fewer than `FOUNDER_SEATS` (20, `src/lib/constants/plans.ts`) exist.
 - `account.storage_limit_bytes` (older): null = unlimited, checked when a
   stem upload token is issued. This is the enforcement point for data tiers.
-- Super admins grant or revoke founder status from `/admin` (`manageAccount`
-  actions `founder` / `unfounder`, `requireSuperAdmin`).
+- Super admins grant or revoke founder status from `/admin`: per account on
+  Accounts (`manageAccount` actions `founder` / `unfounder`), or per user on
+  Users, which sets the flag on every account the user owns (`manageUser`
+  actions `founder` / `unfounder`, `setUserFounder`); both need
+  `requireSuperAdmin`.
 - `PlanBadge.svelte` shows Founder / Free for life / the plan name in account
   settings, on Your accounts, and in the admin list. The user-docs page
   "Accounts and plans" explains the promise.

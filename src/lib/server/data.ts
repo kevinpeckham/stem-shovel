@@ -921,11 +921,14 @@ export async function systemOverview() {
 			createdAt: true,
 		},
 	});
-	const rolesOf = new Map<string, { account: string; slug: string; role: string }[]>();
+	const rolesOf = new Map<
+		string,
+		{ account: string; slug: string; role: string; isFounder: boolean }[]
+	>();
 	for (const a of accounts) {
 		for (const m of a.members) {
 			const list = rolesOf.get(m.userId) ?? [];
-			list.push({ account: a.name, slug: a.slug, role: m.role });
+			list.push({ account: a.name, slug: a.slug, role: m.role, isFounder: a.isFounder });
 			rolesOf.set(m.userId, list);
 		}
 	}
@@ -1254,6 +1257,25 @@ export async function createOwnedAccount(userId: string, name: string) {
 	const [row] = await db.insert(account).values({ name, slug, isFounder }).returning();
 	await db.insert(accountMember).values({ accountId: row.id, userId, role: "owner" });
 	return row;
+}
+
+/** Founder status for every account the user owns (the users page on /admin); returns how many changed. */
+export async function setUserFounder(userId: string, isFounder: boolean) {
+	const owned = await db
+		.select({ accountId: accountMember.accountId })
+		.from(accountMember)
+		.where(and(eq(accountMember.userId, userId), eq(accountMember.role, "owner")));
+	if (owned.length === 0) return 0;
+	await db
+		.update(account)
+		.set({ isFounder })
+		.where(
+			inArray(
+				account.id,
+				owned.map((o) => o.accountId),
+			),
+		);
+	return owned.length;
 }
 
 /** Founder status, granted or revoked by a super admin from /admin. */

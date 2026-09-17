@@ -14,6 +14,9 @@
 	<ul class="surface divide-y divide-white/10 text-15px">
 		{#each data.users as u (u.id)}
 			{@const act = manageUser.for(u.id)}
+			{@const founderAct = manageUser.for(`founder:${u.id}`)}
+			{@const owned = u.memberships.filter((m) => m.role === "owner")}
+			{@const founder = owned.length > 0 && owned.every((m) => m.isFounder)}
 			<li
 				class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3 {u.isActive
 					? ''
@@ -34,10 +37,37 @@
 				</span>
 				<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
 					<span class="text-13px uppercase tracking-wider text-dim">
-						{u.isSuperAdmin ? "super admin · " : ""}{u.isSystemAdmin
+						{founder ? "founder · " : ""}{u.isSuperAdmin ? "super admin · " : ""}{u.isSystemAdmin
 							? "system admin · "
 							: ""}{u.emailVerified ? "verified" : "unverified"}{u.isActive ? "" : " · suspended"}
 					</span>
+					{#if data.superAdmin && owned.length > 0}
+						<!-- Founder is an account flag; this sets it on every account the user owns. -->
+						<form
+							class="flex items-center text-13px"
+							{...founderAct.enhance(async ({ submit }) => {
+								await submit();
+								if (founderAct.result?.action) {
+									const n = founderAct.result.accounts ?? 0;
+									notify(
+										`${u.name}: ${founderAct.result.action === "founder" ? "founder" : "no longer founder"} on ${n} ${n === 1 ? "account" : "accounts"}`,
+									);
+								}
+							})}
+						>
+							<input {...founderAct.fields.id.as("hidden", u.id)} />
+							<button
+								class="link-dim"
+								disabled={!!founderAct.pending}
+								title={founder
+									? "Revoke founder status on every account this user owns"
+									: "Founder on every account this user owns: never charged, unlimited data, every feature"}
+								{...founderAct.fields.action.as("submit", founder ? "unfounder" : "founder")}
+							>
+								{founder ? "Revoke founder" : "Make founder"}
+							</button>
+						</form>
+					{/if}
 					{#if u.id !== data.me}
 						<form
 							class="flex items-center gap-3 text-13px"
