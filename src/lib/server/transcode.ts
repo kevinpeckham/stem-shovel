@@ -61,7 +61,7 @@ function originOfRequest(): string {
 	try {
 		return getRequestEvent().url.origin;
 	} catch {
-		return "https://www.stem-shovel.com";
+		return "https://www.stemshovel.com";
 	}
 }
 

@@ -3,4 +3,4 @@
 User-agent: *
 Allow: /$
 Disallow: /
-Sitemap: https://www.stem-shovel.com/sitemap.xml
+Sitemap: https://www.stemshovel.com/sitemap.xml

@@ -9,7 +9,7 @@ bun run shot /test out.png 1280 700         # custom file, viewport
 SHOT_VIEWPORT=1 bun run shot /test          # viewport only
 SHOT_WAIT=2500 bun run shot /projects/x/y   # wait longer (decoding, fonts)
 SHOT_CLICK='section[aria-label="Stems"] summary' bun run shot …   # click first
-SHOT_BASE=https://www.stem-shovel.com bun run shot /projects      # live site
+SHOT_BASE=https://www.stemshovel.com bun run shot /projects      # live site
 SHOT_ANON=1 bun run shot /mmkk/projects                           # signed-out view
 SHOT_CLICK='button[popovertarget="song-settings"]' bun run shot /mmkk/projects/x/y
 ```

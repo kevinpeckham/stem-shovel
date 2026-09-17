@@ -1,7 +1,7 @@
 # Stem Shovel
 
 A web-based collaboration tool for musicians, bands and producers, run as a
-service at [www.stem-shovel.com](https://www.stem-shovel.com) by Lightning
+service at [www.stemshovel.com](https://www.stemshovel.com) by Lightning
 Jar. Each account holds projects; each project holds songs; each song holds
 its stems, a chart, lyrics, notes, comments pinned to moments in the music,
 and demo recordings of the original idea. The song page plays every stem in

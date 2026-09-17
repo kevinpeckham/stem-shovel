@@ -29,6 +29,17 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 
 ## Vercel
 
+**Domains.** Production is `www.stemshovel.com` (`PRODUCTION_URL` in
+`src/lib/auth.ts`, Better Auth's base URL and the canonical in the front
+page, sitemap and robots). The apex `stemshovel.com`, the first domain
+`stem-shovel.com` / `www.stem-shovel.com`, and the spare names
+(`stemshove.app`, `stemshovel.music`) are attached to the Vercel project as
+redirects to it (308, path and query preserved), so every old bookmark and
+emailed link keeps working; the old origins stay in Better Auth's
+`trustedOrigins`. Cookies are per host, so the switch signs everyone out
+once (and resets two-factor's trusted-device flag). Resend keeps sending
+from `RESEND_MAIL_DOMAIN` until the new domain is verified there.
+
 - Framework preset SvelteKit, Node 24, `main` deploys to production.
 - Vercel's bundled Bun lags and cannot read the v2 lock file Bun 1.4 writes,
   so `vercel.json` sets `installCommand` to `npx bun@<version> install

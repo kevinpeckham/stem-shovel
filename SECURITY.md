@@ -1,6 +1,6 @@
 # Security
 
-Stem Shovel is a hosted service (www.stem-shovel.com) whose code is public
+Stem Shovel is a hosted service (www.stemshovel.com) whose code is public
 under the Apache License 2.0. Security reports about the code or the service
 are welcome.
 

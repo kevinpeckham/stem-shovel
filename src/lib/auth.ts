@@ -28,11 +28,17 @@ import { ENV } from "varlock/env";
  * several origins (localhost, the Tailscale name), so dev leaves it unset and
  * each request infers itself; production pins it.
  */
-const PRODUCTION_URL = "https://www.stem-shovel.com";
+const PRODUCTION_URL = "https://www.stemshovel.com";
 const baseURL = dev ? undefined : PRODUCTION_URL;
 
 const trustedOrigins = [
 	PRODUCTION_URL,
+	"https://stemshovel.com",
+	// The first domain; Vercel redirects it to the new one, but a request that
+	// arrives before the redirect (an old bookmark, a form already open) still
+	// passes the origin check during the switch.
+	"https://www.stem-shovel.com",
+	"https://stem-shovel.com",
 	"http://localhost:5173",
 	...(dev
 		? ["https://stem-shovel.wr.lj.dev", "https://wandering-rodeo.tail59777f.ts.net:8444"]

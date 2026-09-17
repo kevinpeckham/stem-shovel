@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The site moves to stemshovel.com** (www): auth base URL, canonical and Open Graph tags, sitemap and robots, the two-factor email link and the docs. The hyphenated domain redirects to it, so old bookmarks and emailed links keep working; the switch signs everyone out once.
+
 ### Technical
 
 - **House rules as Fallow policy** (`fallow-rules.json`): no `$env/*`, no form actions, no zod/moment/lodash/dotenv/axios, warnings for `$effect` and raw global listeners, plus import boundaries between routes, lib, val, utils and constants; `fallow audit` runs in CI and reports to code scanning. `fallow guard <file>` shows what applies before editing.

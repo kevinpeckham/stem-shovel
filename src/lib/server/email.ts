@@ -176,7 +176,7 @@ export async function sendTwoFactorChangedEmail(to: string, name: string, enable
 					"Two-factor authentication has been switched off for your Stem Shovel account. Signing in now needs your password alone.",
 					"If this was not you, reset your password right away and turn two-factor back on from Security in the account menu.",
 				],
-		cta: { label: "Security settings", url: "https://www.stem-shovel.com/settings/security" },
+		cta: { label: "Security settings", url: "https://www.stemshovel.com/settings/security" },
 	});
 	await sendEmail({
 		to,
