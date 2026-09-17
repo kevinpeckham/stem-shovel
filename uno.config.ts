@@ -24,14 +24,14 @@ export default defineConfig({
 		presetIcons({
 			warn: true,
 		}),
-		presetWebFonts({
-			provider: "bunny",
-			fonts: {
-				brand: "Bangers",
-				// display: "Bahiana",
-				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
-			},
-		}),
+		// presetWebFonts({
+		// 	provider: "bunny",
+		// 	fonts: {
+		// 		// brand: "Bangers",
+		// 		// display: "Bahiana",
+		// 		// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
+		// 	},
+		// }),
 	],
 	theme: {
 		colors: {

@@ -140,7 +140,7 @@
 			<a class="hover:text-maximumYellow" {href}>{song.title}</a>
 			<span class="ml-2 text-13px font-400 opacity-70">v{song.version} · {song.project.name}</span>
 		</h3>
-		<a class="button button-xs" {href}><span class="">
+		<a class="button button-accent button-xs " {href}><span class="">
 			Go to song page</span> <span class="i-ph-arrow-right"></span></a>
 	</div>
 	{#if view.manifest.stems.length > 0}

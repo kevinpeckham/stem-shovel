@@ -136,7 +136,19 @@
 				</p>
 				<h3>Are you going to lure us in with a generous free tier then increase prices later?</h3>
 				<p>
-					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security and data storage.
+					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our primary revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security, data storage, and support.
+				</p>
+				<h3>Does this project have AI Features?</h3>
+				<p>
+					Some of the product features like advanced chord detection are powered by AI. However we are sensitive to the fact that some artists do not want to use AI features and require that their original music never touch 3rd party LLM models. For that reason all LLM-powered features can be easily turned off with a single click either at the project or song level.
+				</p>
+				<h3>Was this app vibe-coded?</h3>
+				<p>
+					If you're not familiar with the term, vibe coding means building something entirely from AI prompts.  While we do use AI as part of our process to speed up development, this app was not vibe-coded. Our team has been building websites and web apps for over 25 years and we have a deep understanding of what it takes to build a high-quality product, with human-driven architecture and design decisions following an approach to app building that mirrors our own experience and expertise.
+				</p>
+				<h3>Is the app open source?</h3>
+				<p>
+					Yes. You can find our source code on Github at <a class="underline underline-offset-4 hover-text-accent" href="https://github.com/kevinpeckham/stem-shovel">https://github.com/stem-shovel/stem-shovel</a>. You're welcome to clone the project and set up your own private version on your own servers. We don't have a team in place to handle 3rd party pull requests, so we don't accept them. However you can submit feature suggestions vial a link in the footer, though you must be logged-in to do so.
 				</p>
 
 			</div>

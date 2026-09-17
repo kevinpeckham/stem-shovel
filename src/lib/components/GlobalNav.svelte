@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { signOut } from "$lib/remote/auth.remote";
 	import { page } from "$app/state";
+	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg"
 
 	interface Props {
 		user: { name: string; email?: string; isSystemAdmin?: boolean } | null;
@@ -45,9 +46,10 @@
 	<a
 		class="font-brand text-maximumYellow text-20px md-text-24px lg-text-28px leading-none tracking-wide"
 		href="/"
-		title="Stem Shovel home"
+		title="Back to home"
 	>
-		Stem Shovel
+		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
+		<div class="sr-only">Stem Shovel App</div>
 	</a>
 	<nav aria-label="Primary" class="flex items-center gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
