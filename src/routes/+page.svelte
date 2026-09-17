@@ -28,74 +28,36 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
-<main class="page-x-padding main-y-padding min-h-full">
-	<h1 class="heading-2 mb-2">Introducing Stem Shovel</h1>
-	<div class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 place-content-start">
-		<div
-			class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5 place-content-start"
-		>
-			<p class="max-w-prose mb-4 text-balance">
-				Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
-				creativity, simplicity, and affordability.
-			</p>
+<main class="page-x-padding pt-4 pb-16 min-h-full">
+	<div class="border-b border-b-current/40 pb-3 mb-8">
+		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
+		<h1 class="max-w-prose mb-4 text-balance">
+			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
+			creativity, simplicity, and affordability.
+		</h1>
+	</div>
 
-			<h2 class="heading-2">Mission</h2>
-			<p class="">
-				Stem Shovel was conceived as a place to manage songwriting, arranging, and recording
-				projects with an emphasis on creativity and collaboration. Built by musicians for musicians,
-				this web-app is intended to be an easy-to-use and affordable location for storing and
-				sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter,
-				up-sells, or feature bloat.
-			</p>
-			<h2 class="heading-2 leading-tight mb-0">How do I get started?</h2>
-			<p>
-				Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, you can sign up for the waitlist to get early access (coming soon).
-			</p>
+	<div class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 xl-gap-20 2xl-gap-24 place-content-start ">
 
-			<h2 class="heading-2 leading-tight mb-0">How much does it cost?</h2>
-			<p>
-				During the early beta period all subscriptions are free. Beyond that, our plan is to
-				offer a generous free tier for independent bands, musicians, producers and educators, with
-				no recurring subscription and free data storage up to 10 GB.
-			</p>
-
-			<h2 class="heading-2 leading-tight mb-0">Is this a desktop app?</h2>
-			<p>
-				Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud
-				platform. It works cross browser and cross platform and is accessible from any device with a
-				web browser and internet connection.
-			</p>
-
-			<h2 class="heading-2 leading-tight mb-0">Who is the dev team behind Stem Shovel?</h2>
-			<p>
-				Stem Shovel 0.0.1 was built by Kevin Peckham at Lightning Jar as part of our side-projects
-				program. Lightning Jar is a small web studio founded in 2002, with the goal of helping
-				organizations adjust to a world that is more digital every day.
-			</p>
-			<h2 class="heading-2 leading-tight mb-0">Are you going to lure us in with a generous free tier then increase prices later?</h2>
-			<p>
-				Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security and data storage.
-			</p>
-
-		</div>
 
 		<!-- stem player demo -->
 		<div class="">
 			{#if data.demo}
+				<h2 class="text-accent mb-5">Features</h2>
 				<!-- A live song, chosen on /admin/home: the player as visitors get it. -->
-				<section class="grid gap-3">
-					<h2 class="heading-2 leading-tight mb-0">Share Stems + Leave Feedback</h2>
-					<p class="opacity-90 text-16px max-w-740px mb-3">
+				<section class="">
+					<h3 class="text-18px font-600 leading-tight mb-2">Share Stems, Leave Feedback</h3>
+					<p class="opacity-90 text-16px max-w-740px mb-3 text-balance">
 						Mute, solo and download stems or leave comments on the timeline for your collaborators. Try it out in the working demo below.
 					</p>
-					<div class="bg-black/20 px-4 pt-4 pb-5 rounded-md">
-					<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
+					<div class="bg-black/20 px-5 pt-4 pb-5 rounded-lg border border-current/40 mt-6">
+						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
 					</div>
 				</section>
 
 
 				<section class="mt-12">
-					<h2 class="heading-2 leading-tight">Charts, lyrics, notes and comments</h2>
+					<h3 class="text-18px font-600 leading-tight mb-2">Charts, Lyrics, Notes and Comments</h3>
 					<p class="opacity-90 text-16px max-w-740px mb-5">
 						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation for the song above.
 					</p>
@@ -117,22 +79,56 @@
 				/>
 			{/if}
 		</div>
-	</div>
 
-	<!-- {#if data.demo}
-		<section class="mt-12">
-			<h2 class="heading-2 leading-tight">Charts, lyrics, notes and comments</h2>
-			<p class="opacity-90 text-17px max-w-740px mb-5">
-				Easily edit and share lyrics, notes, charts and more. The demo below shows a live song.
-			</p>
-			<SongDocsDemo
-				view={data.demo}
-				href={data.demo.href}
-				comments={demoComments}
-				onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
-			/>
+		<section>
+
+			<h2 class="text-accent mb-2">Frequently Asked Questions</h2>
+
+			<div
+				class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5 place-content-start [&>h3]-(mt-5 mb-2 leading-tight font-600 text-18px) [&>p]-(mb-3)"
+			>
+
+				<h3>What's the big idea?</h3>
+				<p class="">
+					Stem Shovel was conceived as a place to manage songwriting, arranging, and recording
+					projects with an emphasis on creativity and collaboration. Built by musicians for musicians,
+					this web-app is intended to be an easy-to-use and affordable location for storing and
+					sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter,
+					up-sells, or feature bloat.
+				</p>
+				<h3>How do I get started?</h3>
+				<p>
+					Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, you can sign up for the waitlist to get early access (coming soon).
+				</p>
+
+				<h3>How much does it cost?</h3>
+				<p>
+					During the early beta period all subscriptions are free. Beyond that, our plan is to
+					offer a generous free tier for independent bands, musicians, producers and educators, with
+					no recurring subscription and free data storage up to 10 GB.
+				</p>
+
+				<h3>Is this a desktop app?</h3>
+				<p>
+					Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud
+					platform. It works cross browser and cross platform and is accessible from any device with a
+					web browser and internet connection.
+				</p>
+
+				<h3>Who is the dev team behind Stem Shovel?</h3>
+				<p>
+					Stem Shovel 0.0.1 was built by Kevin Peckham at Lightning Jar as part of our side-projects
+					program. Lightning Jar is a small web studio founded in 2002, with the goal of helping
+					organizations adjust to a world that is more digital every day.
+				</p>
+				<h3>Are you going to lure us in with a generous free tier then increase prices later?</h3>
+				<p>
+					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security and data storage.
+				</p>
+
+			</div>
 		</section>
-	{/if} -->
+	</div>
 
 	<div class="mt-8 flex flex-wrap gap-3">
 		{#if data.user}
