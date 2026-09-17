@@ -6,6 +6,24 @@ the tests and the spell check; `.github/workflows/fallow.yml` runs
 and the house rules in `fallow-rules.json`) and uploads the findings to
 GitHub's code-scanning tab. Both run without secrets.
 
+## Smoke test of every URL
+
+`bun run smoke:urls` (`scripts/smoke-urls.mjs`, through varlock for the
+database) requests every route twice, signed out and as the Screenshot Bot
+(`x-preview-token`), and checks the status each pass expects: public pages
+200, member pages a 303 to sign-in when signed out, admin pages 404 when
+signed out, POST-only API routes 405, token routes their "not valid" page
+for a made-up token, plus robots, sitemap, the icon and a 404 for an
+unknown path; any HTML body containing a security checkpoint or an error
+page fails too. Dynamic segments come from the database (the bot's first
+account, its first public project and song with a mix, the first user doc).
+Every `+page.svelte` and `+server.ts` under `src/routes` must have a row in
+the script, or it exits 2 naming the missing ones, so new routes join the
+test when they are written. `SMOKE_BASE=https://www.stemshovel.com` runs it
+against production, where the signed-in pass is skipped unless the token is
+recognised there (it is kept out of 1Password on purpose); the dev VM's
+address bypasses the firewall's bot challenge (docs/security.md).
+
 Vitest, bundled with Vite+ (`vp test`), in two projects configured in
 `vite.config.ts` — replicator's split, with Vitest for both halves:
 

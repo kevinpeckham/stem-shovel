@@ -16,6 +16,7 @@
 		"format": "vp fmt",
 		"stems": "node scripts/make-test-stems.mjs",
 		"smoke:blob": "node scripts/blob-smoke.mjs",
+		"smoke:urls": "varlock run -- node scripts/smoke-urls.mjs",
 		"shot": "varlock run -- node scripts/screenshot.mjs",
 		"db:generate": "varlock run -- drizzle-kit generate",
 		"db:migrate": "varlock run -- drizzle-kit migrate",
