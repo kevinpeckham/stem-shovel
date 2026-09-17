@@ -31,6 +31,23 @@ jobs:
       # --ci = SARIF, fail on issues, quiet.
       - run: bunx fallow audit --ci --output-file fallow.sarif
         continue-on-error: true
+      # Fallow writes one SARIF run per analysis; code scanning takes one run
+      # per category, so fold them into a single run before uploading.
+      - if: always() && hashFiles('fallow.sarif') != ''
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const sarif = JSON.parse(fs.readFileSync("fallow.sarif", "utf8"));
+            const [first, ...rest] = sarif.runs;
+            for (const run of rest) {
+              first.results.push(...(run.results ?? []));
+              const rules = first.tool.driver.rules ?? (first.tool.driver.rules = []);
+              for (const rule of run.tool.driver.rules ?? []) if (!rules.some((r) => r.id === rule.id)) rules.push(rule);
+            }
+            sarif.runs = [first];
+            fs.writeFileSync("fallow.sarif", JSON.stringify(sarif));
+            console.log(`fallow: ${first.results.length} finding(s) in one run`);
+          '
       - if: always() && hashFiles('fallow.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
