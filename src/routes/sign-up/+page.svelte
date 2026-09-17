@@ -140,11 +140,11 @@
 				and the <a class="link-dim" href="/docs/privacy-policy">privacy policy</a>: upload and share
 				only material you own or have permission to use.
 			</p>
-			<div class="flex items-center gap-4">
-				<button class="button-accent" disabled={busy}
+			<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+				<button class="button-accent whitespace-nowrap" disabled={busy}
 					>{busy ? "Creating…" : "Create account"}</button
 				>
-				<a class="text-sm link-dim" href="/sign-in">I have an account</a>
+				<a class="text-sm link-dim whitespace-nowrap" href="/sign-in">I have an account</a>
 			</div>
 		</form>
 	{/if}

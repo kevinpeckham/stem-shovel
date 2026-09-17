@@ -94,8 +94,19 @@
 		{/key}
 	{/if}
 	<div class="absolute top-2 right-3 flex items-stretch gap-4">
+		<!-- A dropdown on a phone, the segmented control from sm up. -->
+		<select
+			class="field py-1 text-sm sm:hidden"
+			aria-label="Document"
+			value={panel}
+			onchange={(e) => (panel = e.currentTarget.value as Panel)}
+		>
+			{#each PANELS as kind (kind)}
+				<option value={kind}>{LABELS[kind]}</option>
+			{/each}
+		</select>
 		<div
-			class="flex overflow-hidden rounded border border-white/15 items-center"
+			class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
 			role="tablist"
 			aria-label="Document"
 		>

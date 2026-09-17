@@ -70,7 +70,10 @@
 						Mute, solo and download stems or leave comments on the timeline for your collaborators.
 						Try it out in the working demo below.
 					</p>
-					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow">
+					<!-- Full bleed on a phone (the page padding is px-4 there), a card from sm up. -->
+					<div
+						class="bg-black/30 -mx-4 px-4 pt-4 pb-5 border-y border-current/5 mt-6 shadow sm:mx-0 sm:px-5 sm:rounded-lg sm:border"
+					>
 						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
 					</div>
 				</section>
@@ -82,7 +85,7 @@
 						for the song above.
 					</p>
 					<div
-						class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow min-h-600px"
+						class="bg-black/30 -mx-4 px-4 pt-4 pb-5 border-y border-current/5 mt-6 shadow min-h-600px sm:mx-0 sm:px-5 sm:rounded-lg sm:border"
 					>
 						<SongDocsDemo
 							view={data.demo}

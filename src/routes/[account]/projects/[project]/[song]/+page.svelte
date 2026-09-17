@@ -86,6 +86,16 @@
 
 	// Settings form (title, URL, description) on the updateSong remote form.
 	let settingsPanel = $state<HTMLDivElement | null>(null);
+	/** The settings popover shows one panel at a time (too much at once otherwise, and unusable on a phone). */
+	const SETTINGS_TABS = [
+		{ id: "details", label: "Details" },
+		{ id: "sections", label: "Sections" },
+		{ id: "tempo", label: "Tempo & key" },
+		{ id: "demos", label: "Demos" },
+		{ id: "options", label: "Options" },
+	] as const;
+	type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
+	let settingsTab = $state<SettingsTab>("details");
 	const fields = updateSong.fields;
 	let title = $derived(fields.title.value() ?? data.song.title);
 	let slug = $derived(fields.slug.value() ?? data.song.slug);
@@ -242,6 +252,13 @@
 	const PANELS = [...DOC_KINDS, "comments"] as const;
 	type Panel = (typeof PANELS)[number];
 	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments" } as const;
+	/** Switch the right-hand panel, closing an open editor first. */
+	async function showPanel(kind: Panel) {
+		if (kind === panel) return;
+		if (docEditing) await docPanel?.close();
+		docEditing = false;
+		panel = kind;
+	}
 	let panel = $state<Panel>("chart");
 	let showing = $derived(panel === "comments" ? null : panel);
 
@@ -704,6 +721,7 @@
 				try {
 					const answer = await askAiAboutSong({ id: data.song.id });
 					aiAnswer = answer;
+					settingsTab = "tempo";
 					// The card sits in the settings popover, so say here whether the AI agrees.
 					const meter = answer.meter === "free" ? "no fixed meter" : answer.meter;
 					notify(
@@ -1122,9 +1140,9 @@
 				}
 			}}
 			bind:this={settingsPanel}
-			class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(40rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+			class="[&:popover-open]:flex h-full max-h-none w-full flex-col bg-oxford p-4 text-neutral-100 sm:m-auto sm:h-[min(46rem,calc(100dvh-2rem))] sm:w-[min(58rem,calc(100vw-2rem))] sm:rounded-md sm:border sm:border-white/15 sm:p-6 sm:shadow-2xl sm:shadow-black/60 [&::backdrop]:bg-black/60"
 		>
-			<div class="mb-4 flex items-center justify-between gap-4">
+			<div class="mb-4 flex shrink-0 items-center justify-between gap-4">
 				<h2 class="heading-2 mb-0">Song settings</h2>
 				<button
 					class="button button-xs"
@@ -1135,613 +1153,676 @@
 					Close
 				</button>
 			</div>
-			<form
-				{...updateSong.enhance(async ({ submit }) => {
-					positionError = null;
-					for (const [label, text, field, shown, stored] of [
-						["Start of bar 1", startAtEntry, fields.startAt, startAtText, data.song.startAt],
-						["End", endAtEntry, fields.endAt, endAtText, data.song.endAt],
-					] as const) {
-						const seconds = !text.trim() ? 0 : rowSeconds({ time: text, shown, seconds: stored });
-						if (seconds === null) {
-							positionError = `${label}: ${positionMessage(text)}`;
-							return;
-						}
-						field.set(text.trim() ? String(seconds) : "");
-					}
-					await submit();
-					if (!fields.allIssues()) {
-						notify("Song settings saved");
-						settingsPanel?.hidePopover();
-					}
-				})}
-			>
-				<input {...fields.id.as("hidden", data.song.id)} />
-				<div class="grid gap-4 sm:grid-cols-2">
-					<label class="block">
-						<span class="text-sm text-dim">Title</span>
-						<input
-							class="mt-1 field"
-							{...fields.title.as("text", data.song.title)}
-							oninput={(e) => {
-								if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-							}}
-							required
-						/>
-						{#each fields.title.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim">URL</span>
-						<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-							<span class="truncate pl-3 text-sm text-dim">/projects/{data.song.project.slug}/</span
-							>
-							<input
-								class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
-								{...fields.slug.as("text", data.song.slug)}
-								oninput={() => (slugTouched = true)}
-								required
-							/>
-						</span>
-						{#each fields.slug.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-						{#if slug !== slugify(title)}
-							<button
-								class="mt-1 text-xs link-dim"
-								type="button"
-								onclick={() => {
-									fields.slug.set(slugify(title));
-									slugTouched = false;
-								}}>Use title</button
-							>
-						{/if}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim"
-							>Songwriter <span class="opacity-60">(optional)</span></span
-						>
-						<input
-							class="mt-1 field"
-							{...fields.songwriter.as("text", data.song.songwriter)}
-							placeholder="Who wrote it"
-						/>
-						{#each fields.songwriter.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim"
-							>First written <span class="opacity-60">(optional)</span></span
-						>
-						<input
-							class="mt-1 field"
-							type="date"
-							{...fields.writtenOn.as("text", data.song.writtenOn ?? "")}
-						/>
-						{#each fields.writtenOn.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim"
-							>Start of bar 1 <span class="opacity-60">(optional)</span></span
-						>
-						<span class="mt-1 flex items-center gap-2">
-							<input
-								class="field font-mono text-sm"
-								placeholder={POSITION_PLACEHOLDER[mode]}
-								autocomplete="off"
-								bind:value={startAtEntry}
-								aria-label="Start of bar 1"
-							/>
-							<input {...fields.startAt.as("hidden", "")} />
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								title="Use the transport's current position"
-								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => (startAtEntry = editPos(playerEngine?.position ?? 0))}
-							>
-								Playhead
-							</button>
-						</span>
-						<span class="mt-1 block text-xs text-dim"
-							>Leading silence or a count-in: bars are counted from here.</span
-						>
-						{#each fields.startAt.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim">End <span class="opacity-60">(optional)</span></span>
-						<span class="mt-1 flex items-center gap-2">
-							<input
-								class="field font-mono text-sm"
-								placeholder={POSITION_PLACEHOLDER[mode]}
-								autocomplete="off"
-								bind:value={endAtEntry}
-								aria-label="End"
-							/>
-							<input {...fields.endAt.as("hidden", "")} />
-							<button
-								class="button button-xs shrink-0"
-								type="button"
-								title="Use the transport's current position"
-								disabled={!playerEngine || playerEngine.status !== "ready"}
-								onclick={() => (endAtEntry = editPos(playerEngine?.position ?? 0))}
-							>
-								Playhead
-							</button>
-						</span>
-						<span class="mt-1 block text-xs text-dim">Where the song ends, for the bars total.</span
-						>
-						{#each fields.endAt.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim">Version</span>
-						<input
-							class="mt-1 field font-mono text-sm"
-							placeholder="0.0.1"
-							autocomplete="off"
-							{...fields.version.as("text", data.song.version)}
-						/>
-						<span class="mt-1 block text-xs text-dim">
-							Yours to manage (major.minor.patch); after stems change you are offered a bump.
-						</span>
-						{#each fields.version.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-					<label class="block">
-						<span class="text-sm text-dim"
-							>Frame rate <span class="opacity-60">(timecode)</span></span
-						>
-						<select
-							class="mt-1 field text-sm"
-							{...fields.frameRate.as("select", String(data.song.frameRate))}
-						>
-							{#each FRAME_RATES as rate (rate)}
-								<option value={String(rate)}>{rate} fps</option>
-							{/each}
-						</select>
-					</label>
-					<p class="text-xs text-dim self-end pb-2">
-						Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
-						readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3) is accepted
-						anywhere.
-					</p>
-					<label class="block sm:col-span-2">
-						<span class="text-sm text-dim"
-							>Description <span class="opacity-60">(optional)</span></span
-						>
-						<textarea
-							class="mt-1 field text-sm"
-							rows="3"
-							{...fields.description.as("text", data.song.description)}></textarea>
-						{#each fields.description.issues() ?? [] as issue (issue.message)}
-							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-						{/each}
-					</label>
-				</div>
-				{#if positionError}
-					<p class="mt-2 text-sm text-red-400" role="alert">{positionError}</p>
-				{/if}
-				{#if slug.trim() !== data.song.slug}
-					<p class="mt-2 text-xs text-dim">Changing the URL breaks existing links to this song.</p>
-				{/if}
-				<div class="mt-4">
-					<button
-						class="button-accent disabled:opacity-40"
-						disabled={!settingsDirty || !!updateSong.pending}
-					>
-						{updateSong.pending ? "Saving…" : "Save"}
-					</button>
-				</div>
-			</form>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h3 class="text-15px font-700">Sections</h3>
-					<button
-						class="button button-xs"
-						type="button"
-						onclick={() =>
-							(sectionRows = [
-								...sectionRows,
-								{
-									index: toRoman(sectionRows.length + 1),
-									name: "",
-									time: editPos(0),
-									shown: "",
-									seconds: null,
-								},
-							])}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>
-						Add row
-					</button>
-				</div>
-				<p class="mt-1 text-sm text-dim">
-					Song structure for the timeline above the stems: a short index (roman numerals, shown on
-					the timeline; the name shows on hover), a name, and where it starts — time, timecode or
-					bars.
-				</p>
-				{#if sectionRows.length > 0}
-					<div class="mt-3 grid gap-2">
-						{#each sectionRows as row, i (i)}
-							<div class="grid grid-cols-[4rem_1fr_7rem_auto] items-center gap-2">
-								<input
-									class="field font-mono text-sm"
-									placeholder="I"
-									bind:value={row.index}
-									aria-label="Section index"
-									title="Short index shown on the timeline (roman numerals); the name shows on hover"
-								/>
-								<input
-									class="field"
-									placeholder="Intro"
-									bind:value={row.name}
-									aria-label="Section name"
-								/>
-								<input
-									class="field font-mono text-sm"
-									placeholder={POSITION_PLACEHOLDER[mode]}
-									bind:value={row.time}
-									aria-label="Start time"
-								/>
-								<button
-									class="link-dim text-xs"
-									type="button"
-									onclick={() => (sectionRows = sectionRows.filter((_, j) => j !== i))}
-									>Remove</button
-								>
-							</div>
-						{/each}
-					</div>
-				{/if}
-				{#if sectionError}
-					<p class="mt-2 text-sm text-red-400" role="alert">{sectionError}</p>
-				{/if}
-				<div class="mt-3 flex items-center gap-3">
-					<button
-						class="button-accent disabled:opacity-40"
-						type="button"
-						disabled={sectionsSaving}
-						onclick={saveSectionRows}
-					>
-						{sectionsSaving ? "Saving…" : "Save sections"}
-					</button>
-					<button class="link-dim text-xs" type="button" onclick={resetSectionRows}
-						>Discard changes</button
-					>
-				</div>
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h3 class="text-15px font-700">Tempo, key and time signature</h3>
-					<div class="flex items-center gap-2">
-						<button
-							class="button button-xs"
-							type="button"
-							disabled={scanning || !playerEngine || playerEngine.status !== "ready"}
-							title={playerEngine?.status === "ready"
-								? "Listen to the loaded stems for tempo, key and time signature"
-								: "Available once every stem has decoded"}
-							onclick={scanStems}
-						>
-							<span class="i-ph-waveform" aria-hidden="true"></span>
-							{scanning ? "Scanning…" : "Scan stems"}
-						</button>
-						{#if !data.noAi}
-							<button
-								class="button button-xs"
-								type="button"
-								disabled={!!chordBusy ||
-									!playerEngine ||
-									playerEngine.status !== "ready" ||
-									!posCtx.grid}
-								title={!posCtx.grid
-									? "Needs a tempo and a time signature first"
-									: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
-								onclick={() => detectChords()}
-							>
-								<span class="i-ph-music-notes" aria-hidden="true"></span>
-								{chordBusy ?? "Detect chords"}
-							</button>
-							{#if chordBusy || draftBusy}
-								<button class="button button-xs" type="button" onclick={cancelDraft}>Cancel</button>
-							{/if}
-						{/if}
-						{#if data.aiAvailable}
-							<button
-								class="button button-xs"
-								type="button"
-								disabled={aiBusy}
-								title="Send the rendered mix to a model that listens and reports tempo, key and time signature"
-								onclick={askAi}
-							>
-								<span class="i-ph-sparkle" aria-hidden="true"></span>
-								{aiBusy ? "Listening…" : "Ask AI to check"}
-							</button>
-						{/if}
-						<button
-							class="button button-xs"
-							type="button"
-							onclick={() =>
-								(changeRows = [
-									...changeRows,
-									{
-										time: changeRows.length ? "" : editPos(0),
-										shown: "",
-										seconds: null,
-										kind: "tempo",
-										value: "",
-									},
-								])}
-						>
-							<span class="i-ph-plus" aria-hidden="true"></span>
-							Add change
-						</button>
-					</div>
-				</div>
-				{#if chordError}<p class="mt-2 text-sm text-red-400" role="alert">{chordError}</p>{/if}
-				{#if chordSegments}
-					<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-						<div class="flex flex-wrap items-center justify-between gap-2">
-							<span
-								>Chords by bar ({chordSegments.reduce((n, c) => n + c.bars, 0)} bars,
-								{Math.round(
-									(chordSegments.reduce((n, c) => n + c.confidence * c.bars, 0) /
-										Math.max(
-											1,
-											chordSegments.reduce((n, c) => n + c.bars, 0),
-										)) *
-										100,
-								)}% sure on average)</span
-							>
-							<span class="flex items-center gap-3">
-								{#if data.aiAvailable}
-									<button
-										class="link-dim"
-										type="button"
-										disabled={draftBusy}
-										onclick={() => draftFromChords()}
-									>
-										{draftBusy ? "Drafting…" : "Draft chart with AI"}
-									</button>
-								{/if}
-								<button
-									class="link-dim"
-									type="button"
-									onclick={() => ((chordSegments = null), (draft = null))}>Dismiss</button
-								>
-							</span>
-						</div>
-						<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
-								chordSegments,
-							)}</pre>
-					</div>
-				{/if}
-				{#if draft}{@render draftCard()}{/if}
-				{#if scanResult}
-					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-						{#if scanResult.applied}
-							Set from the stems: <strong>{scanResult.summary}</strong>. Adjust below if the song
-							knows better.
-						{:else}
-							The stems suggest <strong>{scanResult.summary}</strong>; the song has
-							{scanResult.current}. Replace?
-							<button class="ml-2 link-dim" type="button" onclick={replaceFromScan}>Replace</button>
-							<button class="ml-2 link-dim" type="button" onclick={() => (scanResult = null)}
-								>Keep current</button
-							>
-						{/if}
-					</p>
-				{/if}
-				{#if aiAnswer}
-					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-						{aiAuto
-							? "The time signature was a close call, so the AI listened too. It hears"
-							: "AI hears"}
-						<strong
-							>{aiAnswer.tempo === null ? "no fixed tempo" : `${Math.round(aiAnswer.tempo)} bpm`} · {aiAnswer.key}
-							· {aiAnswer.meter === "free" ? "no meter" : aiAnswer.meter}</strong
-						>{#if aiAnswer.tempoChanges.length > 0}
-							, then {aiAnswer.tempoChanges
-								.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
-								.join(", ")}{/if}
-						({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
-							? ` — ${aiAnswer.notes}`
-							: ""}
-						<button
-							class="ml-2 link-dim"
-							type="button"
-							disabled={changesSaving}
-							onclick={useAiAnswer}>{changesSaving ? "Saving…" : "Use these"}</button
-						>
-						<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
-							>Dismiss</button
-						>
-					</p>
-				{/if}
-				{#if aiError}<p class="mt-2 text-sm text-red-400" role="alert">{aiError}</p>{/if}
-				<p class="mt-1 text-sm text-dim">
-					Each from the time it starts (0:00.0 for the song's own tempo, key and time signature;
-					later rows are changes). They show on the timeline above the stems.
-				</p>
-				{#if changeRows.length > 0}
-					<div class="mt-3 grid gap-2">
-						{#each changeRows as row, i (i)}
-							<div class="grid grid-cols-[6rem_9rem_1fr_auto] items-center gap-2">
-								<input
-									class="field font-mono text-sm"
-									placeholder={POSITION_PLACEHOLDER[mode]}
-									bind:value={row.time}
-									aria-label="Change time"
-								/>
-								<select class="field text-sm" bind:value={row.kind} aria-label="What changes">
-									{#each SONG_CHANGE_KINDS as kind (kind)}
-										<option value={kind}>{SONG_CHANGE_LABELS[kind]}</option>
-									{/each}
-								</select>
-								<input
-									class="field font-mono text-sm"
-									placeholder={row.kind === "tempo" ? "120" : row.kind === "key" ? "F#m" : "4/4"}
-									list={row.kind === "meter" ? "time-signatures" : undefined}
-									autocomplete="off"
-									bind:value={row.value}
-									aria-label="Value"
-								/>
-								<button
-									class="link-dim text-xs"
-									type="button"
-									onclick={() => (changeRows = changeRows.filter((_, j) => j !== i))}>Remove</button
-								>
-							</div>
-						{/each}
-					</div>
-					<datalist id="time-signatures">
-						{#each ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "12/8"] as ts (ts)}
-							<option value={ts}></option>
-						{/each}
-					</datalist>
-				{/if}
-				{#if changeError}
-					<p class="mt-2 text-sm text-red-400" role="alert">{changeError}</p>
-				{/if}
-				<div class="mt-3 flex items-center gap-3">
-					<button
-						class="button-accent disabled:opacity-40"
-						type="button"
-						disabled={changesSaving}
-						onclick={saveChangeRows}
-					>
-						{changesSaving ? "Saving…" : "Save changes"}
-					</button>
-					<button class="link-dim text-xs" type="button" onclick={resetChangeRows}
-						>Discard edits</button
-					>
-				</div>
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h3 class="text-15px font-700">Demo recordings</h3>
-					<label
-						class="button button-sm lg-button-xs cursor-pointer {demoBusy
-							? 'opacity-50 pointer-events-none'
-							: ''}"
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>
-						{demoBusy ? "Uploading…" : "Upload demo"}
-						<input
-							class="sr-only"
-							type="file"
-							accept={DEMO_ACCEPT}
-							multiple
-							disabled={demoBusy}
-							onchange={(e) => uploadDemos(e.currentTarget)}
-						/>
-					</label>
-				</div>
-				<p class="mt-1 text-sm text-dim">
-					Phone memos, rough takes, the original idea — any audio format; each is converted to MP3
-					for listening and download. Up to {MAX_DEMOS_PER_SONG}.
-				</p>
-				{#if demoNotice}
-					<p class="mt-2 text-sm text-red-400" role="alert">{demoNotice}</p>
-				{/if}
-				{#each demoJobs as job (job.name)}
-					<p class="mt-2 text-sm {job.error ? 'text-red-400' : 'text-dim'}">
-						{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
-					</p>
-				{/each}
-				{#if data.song.demos.length > 0}
-					<ul class="mt-3 grid gap-1">
-						{#each data.song.demos as d (d.id)}
-							{@const remove = deleteDemo.for(d.id)}
-							<li
-								class="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2 text-sm"
-							>
-								<span class="min-w-0 truncate">
-									{d.label}
-									<span class="text-dim"
-										>· {formatBytes(d.sizeBytes)}{#if d.status !== "ready"}
-											· uploading{:else if d.playbackStatus !== "ready"}
-											· converting to MP3…{/if}</span
-									>
-									<form
-										{...remove.enhance(async ({ submit }) => {
-											if (!confirm(`Remove the demo "${d.label}"?`)) return;
-											await submit();
-										})}
-									>
-										<input {...remove.fields.id.as("hidden", d.id)} />
-										<button class="link-dim text-xs" disabled={!!remove.pending}>
-											{remove.pending ? "Removing…" : "Remove"}
-										</button>
-									</form>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<FinishedToggle
-					id={data.song.id}
-					finished={data.song.isFinished}
-					canChange={data.canEdit}
-				/>
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<AiToggle
-					kind="song"
-					id={data.song.id}
-					noAi={data.song.noAi}
-					inherited={data.song.project.noAi}
-					canChange={data.canEdit}
-				/>
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<PrivacyToggle
-					kind="song"
-					id={data.song.id}
-					isPrivate={data.song.isPrivate}
-					inherited={data.song.project.isPrivate}
-					canChange={data.canEdit}
-				/>
-			</div>
-
-			<div class="mt-8 border-t border-white/15 pt-4">
-				<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
-				<p class="mt-1 text-sm text-dim">
-					Removes the song, its chart, lyrics and notes, every stem file and every demo recording.
-				</p>
-				<form
-					class="mt-3"
-					{...deleteSong.enhance(async ({ submit }) => {
-						if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
-						await submit();
-					})}
+			<!-- One panel at a time: wrapping tabs on a phone, a column beside the panel from sm up. -->
+			<div class="flex min-h-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-8">
+				<nav
+					class="flex shrink-0 flex-wrap gap-x-1 gap-y-2 sm:w-44 sm:flex-col sm:flex-nowrap sm:gap-y-1"
+					aria-label="Settings panels"
 				>
-					<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
-					<button
-						class="button text-red-400 hover-bg-red-400 hover-text-oxford"
-						disabled={!!deleteSong.pending}
-					>
-						<span class="i-ph-trash" aria-hidden="true"></span>
-						{deleteSong.pending ? "Deleting…" : "Delete song"}
-					</button>
-				</form>
+					{#each SETTINGS_TABS as tab (tab.id)}
+						<button
+							type="button"
+							class="button button-sm whitespace-nowrap sm:justify-start sm:text-left {settingsTab ===
+							tab.id
+								? 'bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+								: 'opacity-80 border-transparent bg-blue-300/5 hover-bg-blue-200 hover-border-blue-200 sm:bg-transparent'}"
+							aria-current={settingsTab === tab.id ? "page" : undefined}
+							onclick={() => (settingsTab = tab.id)}>{tab.label}</button
+						>
+					{/each}
+				</nav>
+				<div class="min-h-0 flex-1 overflow-y-auto sm:pr-2">
+					{#if settingsTab === "details"}
+						<form
+							{...updateSong.enhance(async ({ submit }) => {
+								positionError = null;
+								for (const [label, text, field, shown, stored] of [
+									["Start of bar 1", startAtEntry, fields.startAt, startAtText, data.song.startAt],
+									["End", endAtEntry, fields.endAt, endAtText, data.song.endAt],
+								] as const) {
+									const seconds = !text.trim()
+										? 0
+										: rowSeconds({ time: text, shown, seconds: stored });
+									if (seconds === null) {
+										positionError = `${label}: ${positionMessage(text)}`;
+										return;
+									}
+									field.set(text.trim() ? String(seconds) : "");
+								}
+								await submit();
+								if (!fields.allIssues()) {
+									notify("Song settings saved");
+									settingsPanel?.hidePopover();
+								}
+							})}
+						>
+							<input {...fields.id.as("hidden", data.song.id)} />
+							<div class="grid gap-4 sm:grid-cols-2">
+								<label class="block">
+									<span class="text-sm text-dim">Title</span>
+									<input
+										class="mt-1 field"
+										{...fields.title.as("text", data.song.title)}
+										oninput={(e) => {
+											if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
+										}}
+										required
+									/>
+									{#each fields.title.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim">URL</span>
+									<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
+										<span class="truncate pl-3 text-sm text-dim"
+											>/projects/{data.song.project.slug}/</span
+										>
+										<input
+											class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
+											{...fields.slug.as("text", data.song.slug)}
+											oninput={() => (slugTouched = true)}
+											required
+										/>
+									</span>
+									{#each fields.slug.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+									{#if slug !== slugify(title)}
+										<button
+											class="mt-1 text-xs link-dim"
+											type="button"
+											onclick={() => {
+												fields.slug.set(slugify(title));
+												slugTouched = false;
+											}}>Use title</button
+										>
+									{/if}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim"
+										>Songwriter <span class="opacity-60">(optional)</span></span
+									>
+									<input
+										class="mt-1 field"
+										{...fields.songwriter.as("text", data.song.songwriter)}
+										placeholder="Who wrote it"
+									/>
+									{#each fields.songwriter.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim"
+										>First written <span class="opacity-60">(optional)</span></span
+									>
+									<!-- color-scheme dark: the browser draws the calendar icon light on the dark field. -->
+									<input
+										class="mt-1 field [color-scheme:dark]"
+										type="date"
+										{...fields.writtenOn.as("text", data.song.writtenOn ?? "")}
+									/>
+									{#each fields.writtenOn.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim"
+										>Start of bar 1 <span class="opacity-60">(optional)</span></span
+									>
+									<span class="mt-1 flex items-center gap-2">
+										<input
+											class="field font-mono text-sm"
+											placeholder={POSITION_PLACEHOLDER[mode]}
+											autocomplete="off"
+											bind:value={startAtEntry}
+											aria-label="Start of bar 1"
+										/>
+										<input {...fields.startAt.as("hidden", "")} />
+										<button
+											class="button button-xs shrink-0"
+											type="button"
+											title="Use the transport's current position"
+											disabled={!playerEngine || playerEngine.status !== "ready"}
+											onclick={() => (startAtEntry = editPos(playerEngine?.position ?? 0))}
+										>
+											Playhead
+										</button>
+									</span>
+									<span class="mt-1 block text-xs text-dim"
+										>Leading silence or a count-in: bars are counted from here.</span
+									>
+									{#each fields.startAt.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim"
+										>End <span class="opacity-60">(optional)</span></span
+									>
+									<span class="mt-1 flex items-center gap-2">
+										<input
+											class="field font-mono text-sm"
+											placeholder={POSITION_PLACEHOLDER[mode]}
+											autocomplete="off"
+											bind:value={endAtEntry}
+											aria-label="End"
+										/>
+										<input {...fields.endAt.as("hidden", "")} />
+										<button
+											class="button button-xs shrink-0"
+											type="button"
+											title="Use the transport's current position"
+											disabled={!playerEngine || playerEngine.status !== "ready"}
+											onclick={() => (endAtEntry = editPos(playerEngine?.position ?? 0))}
+										>
+											Playhead
+										</button>
+									</span>
+									<span class="mt-1 block text-xs text-dim"
+										>Where the song ends, for the bars total.</span
+									>
+									{#each fields.endAt.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim">Version</span>
+									<input
+										class="mt-1 field font-mono text-sm"
+										placeholder="0.0.1"
+										autocomplete="off"
+										{...fields.version.as("text", data.song.version)}
+									/>
+									<span class="mt-1 block text-xs text-dim">
+										Yours to manage (major.minor.patch); after stems change you are offered a bump.
+									</span>
+									{#each fields.version.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+								<label class="block">
+									<span class="text-sm text-dim"
+										>Frame rate <span class="opacity-60">(timecode)</span></span
+									>
+									<select
+										class="mt-1 field text-sm"
+										{...fields.frameRate.as("select", String(data.song.frameRate))}
+									>
+										{#each FRAME_RATES as rate (rate)}
+											<option value={String(rate)}>{rate} fps</option>
+										{/each}
+									</select>
+								</label>
+								<p class="text-xs text-dim self-end pb-2">
+									Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
+									readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3)
+									is accepted anywhere.
+								</p>
+								<label class="block sm:col-span-2">
+									<span class="text-sm text-dim"
+										>Description <span class="opacity-60">(optional)</span></span
+									>
+									<textarea
+										class="mt-1 field text-sm"
+										rows="3"
+										{...fields.description.as("text", data.song.description)}></textarea>
+									{#each fields.description.issues() ?? [] as issue (issue.message)}
+										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+									{/each}
+								</label>
+							</div>
+							{#if positionError}
+								<p class="mt-2 text-sm text-red-400" role="alert">{positionError}</p>
+							{/if}
+							{#if slug.trim() !== data.song.slug}
+								<p class="mt-2 text-xs text-dim">
+									Changing the URL breaks existing links to this song.
+								</p>
+							{/if}
+							<div class="mt-4">
+								<button
+									class="button-accent disabled:opacity-40"
+									disabled={!settingsDirty || !!updateSong.pending}
+								>
+									{updateSong.pending ? "Saving…" : "Save"}
+								</button>
+							</div>
+						</form>
+					{/if}
+					{#if settingsTab === "sections"}
+						<div>
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<h3 class="text-15px font-700">Sections</h3>
+								<button
+									class="button button-xs"
+									type="button"
+									onclick={() =>
+										(sectionRows = [
+											...sectionRows,
+											{
+												index: toRoman(sectionRows.length + 1),
+												name: "",
+												time: editPos(0),
+												shown: "",
+												seconds: null,
+											},
+										])}
+								>
+									<span class="i-ph-plus" aria-hidden="true"></span>
+									Add row
+								</button>
+							</div>
+							<p class="mt-1 text-sm text-dim">
+								Song structure for the timeline above the stems: a short index (roman numerals,
+								shown on the timeline; the name shows on hover), a name, and where it starts — time,
+								timecode or bars.
+							</p>
+							{#if sectionRows.length > 0}
+								<div class="mt-3 grid gap-2">
+									{#each sectionRows as row, i (i)}
+										<!-- Two lines on a phone (index + name, start + remove), one from sm up. -->
+										<div
+											class="mb-2 grid grid-cols-[4rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[4rem_1fr_7rem_auto]"
+										>
+											<input
+												class="field font-mono text-sm"
+												placeholder="I"
+												bind:value={row.index}
+												aria-label="Section index"
+												title="Short index shown on the timeline (roman numerals); the name shows on hover"
+											/>
+											<input
+												class="field col-span-2 sm:col-span-1"
+												placeholder="Intro"
+												bind:value={row.name}
+												aria-label="Section name"
+											/>
+											<input
+												class="field col-span-2 font-mono text-sm sm:col-span-1"
+												placeholder={POSITION_PLACEHOLDER[mode]}
+												bind:value={row.time}
+												aria-label="Start time"
+											/>
+											<button
+												class="link-dim text-xs justify-self-start"
+												type="button"
+												onclick={() => (sectionRows = sectionRows.filter((_, j) => j !== i))}
+												>Remove</button
+											>
+										</div>
+									{/each}
+								</div>
+							{/if}
+							{#if sectionError}
+								<p class="mt-2 text-sm text-red-400" role="alert">{sectionError}</p>
+							{/if}
+							<div class="mt-3 flex items-center gap-3">
+								<button
+									class="button-accent disabled:opacity-40"
+									type="button"
+									disabled={sectionsSaving}
+									onclick={saveSectionRows}
+								>
+									{sectionsSaving ? "Saving…" : "Save sections"}
+								</button>
+								<button class="link-dim text-xs" type="button" onclick={resetSectionRows}
+									>Discard changes</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if settingsTab === "tempo"}
+						<div>
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<h3 class="text-15px font-700">Tempo, key and time signature</h3>
+								<div class="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
+									<button
+										class="button button-xs"
+										type="button"
+										disabled={scanning || !playerEngine || playerEngine.status !== "ready"}
+										title={playerEngine?.status === "ready"
+											? "Listen to the loaded stems for tempo, key and time signature"
+											: "Available once every stem has decoded"}
+										onclick={scanStems}
+									>
+										<span class="i-ph-waveform" aria-hidden="true"></span>
+										{scanning ? "Scanning…" : "Scan stems"}
+									</button>
+									{#if !data.noAi}
+										<button
+											class="button button-xs"
+											type="button"
+											disabled={!!chordBusy ||
+												!playerEngine ||
+												playerEngine.status !== "ready" ||
+												!posCtx.grid}
+											title={!posCtx.grid
+												? "Needs a tempo and a time signature first"
+												: "Transcribe the tonal stems and read a chord per bar (takes a while)"}
+											onclick={() => detectChords()}
+										>
+											<span class="i-ph-music-notes" aria-hidden="true"></span>
+											{chordBusy ?? "Detect chords"}
+										</button>
+										{#if chordBusy || draftBusy}
+											<button class="button button-xs" type="button" onclick={cancelDraft}
+												>Cancel</button
+											>
+										{/if}
+									{/if}
+									{#if data.aiAvailable}
+										<button
+											class="button button-xs"
+											type="button"
+											disabled={aiBusy}
+											title="Send the rendered mix to a model that listens and reports tempo, key and time signature"
+											onclick={askAi}
+										>
+											<span class="i-ph-sparkle" aria-hidden="true"></span>
+											{aiBusy ? "Listening…" : "Ask AI to check"}
+										</button>
+									{/if}
+									<button
+										class="button button-xs"
+										type="button"
+										onclick={() =>
+											(changeRows = [
+												...changeRows,
+												{
+													time: changeRows.length ? "" : editPos(0),
+													shown: "",
+													seconds: null,
+													kind: "tempo",
+													value: "",
+												},
+											])}
+									>
+										<span class="i-ph-plus" aria-hidden="true"></span>
+										Add change
+									</button>
+								</div>
+							</div>
+							{#if chordError}<p class="mt-2 text-sm text-red-400" role="alert">
+									{chordError}
+								</p>{/if}
+							{#if chordSegments}
+								<div class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+									<div class="flex flex-wrap items-center justify-between gap-2">
+										<span
+											>Chords by bar ({chordSegments.reduce((n, c) => n + c.bars, 0)} bars,
+											{Math.round(
+												(chordSegments.reduce((n, c) => n + c.confidence * c.bars, 0) /
+													Math.max(
+														1,
+														chordSegments.reduce((n, c) => n + c.bars, 0),
+													)) *
+													100,
+											)}% sure on average)</span
+										>
+										<span class="flex items-center gap-3">
+											{#if data.aiAvailable}
+												<button
+													class="link-dim"
+													type="button"
+													disabled={draftBusy}
+													onclick={() => draftFromChords()}
+												>
+													{draftBusy ? "Drafting…" : "Draft chart with AI"}
+												</button>
+											{/if}
+											<button
+												class="link-dim"
+												type="button"
+												onclick={() => ((chordSegments = null), (draft = null))}>Dismiss</button
+											>
+										</span>
+									</div>
+									<pre class="mt-2 whitespace-pre-wrap font-mono text-12px opacity-90">{chordChart(
+											chordSegments,
+										)}</pre>
+								</div>
+							{/if}
+							{#if draft}{@render draftCard()}{/if}
+							{#if scanResult}
+								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+									{#if scanResult.applied}
+										Set from the stems: <strong>{scanResult.summary}</strong>. Adjust below if the
+										song knows better.
+									{:else}
+										The stems suggest <strong>{scanResult.summary}</strong>; the song has
+										{scanResult.current}. Replace?
+										<button class="ml-2 link-dim" type="button" onclick={replaceFromScan}
+											>Replace</button
+										>
+										<button class="ml-2 link-dim" type="button" onclick={() => (scanResult = null)}
+											>Keep current</button
+										>
+									{/if}
+								</p>
+							{/if}
+							{#if aiAnswer}
+								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+									{aiAuto
+										? "The time signature was a close call, so the AI listened too. It hears"
+										: "AI hears"}
+									<strong
+										>{aiAnswer.tempo === null
+											? "no fixed tempo"
+											: `${Math.round(aiAnswer.tempo)} bpm`} · {aiAnswer.key}
+										· {aiAnswer.meter === "free" ? "no meter" : aiAnswer.meter}</strong
+									>{#if aiAnswer.tempoChanges.length > 0}
+										, then {aiAnswer.tempoChanges
+											.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
+											.join(", ")}{/if}
+									({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
+										? ` — ${aiAnswer.notes}`
+										: ""}
+									<button
+										class="ml-2 link-dim"
+										type="button"
+										disabled={changesSaving}
+										onclick={useAiAnswer}>{changesSaving ? "Saving…" : "Use these"}</button
+									>
+									<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
+										>Dismiss</button
+									>
+								</p>
+							{/if}
+							{#if aiError}<p class="mt-2 text-sm text-red-400" role="alert">{aiError}</p>{/if}
+							<p class="mt-1 text-sm text-dim">
+								Each from the time it starts (0:00.0 for the song's own tempo, key and time
+								signature; later rows are changes). They show on the timeline above the stems.
+							</p>
+							{#if changeRows.length > 0}
+								<div class="mt-3 grid gap-2">
+									{#each changeRows as row, i (i)}
+										<!-- Two lines on a phone (time + kind, value + remove), one from sm up. -->
+										<div
+											class="mb-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2 sm:mb-0 sm:grid-cols-[6rem_9rem_1fr_auto]"
+										>
+											<input
+												class="field font-mono text-sm"
+												placeholder={POSITION_PLACEHOLDER[mode]}
+												bind:value={row.time}
+												aria-label="Change time"
+											/>
+											<select
+												class="field col-span-2 text-sm sm:col-span-1"
+												bind:value={row.kind}
+												aria-label="What changes"
+											>
+												{#each SONG_CHANGE_KINDS as kind (kind)}
+													<option value={kind}>{SONG_CHANGE_LABELS[kind]}</option>
+												{/each}
+											</select>
+											<input
+												class="field col-span-2 font-mono text-sm sm:col-span-1"
+												placeholder={row.kind === "tempo"
+													? "120"
+													: row.kind === "key"
+														? "F#m"
+														: "4/4"}
+												list={row.kind === "meter" ? "time-signatures" : undefined}
+												autocomplete="off"
+												bind:value={row.value}
+												aria-label="Value"
+											/>
+											<button
+												class="link-dim text-xs justify-self-start"
+												type="button"
+												onclick={() => (changeRows = changeRows.filter((_, j) => j !== i))}
+												>Remove</button
+											>
+										</div>
+									{/each}
+								</div>
+								<datalist id="time-signatures">
+									{#each ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "12/8"] as ts (ts)}
+										<option value={ts}></option>
+									{/each}
+								</datalist>
+							{/if}
+							{#if changeError}
+								<p class="mt-2 text-sm text-red-400" role="alert">{changeError}</p>
+							{/if}
+							<div class="mt-3 flex items-center gap-3">
+								<button
+									class="button-accent disabled:opacity-40"
+									type="button"
+									disabled={changesSaving}
+									onclick={saveChangeRows}
+								>
+									{changesSaving ? "Saving…" : "Save changes"}
+								</button>
+								<button class="link-dim text-xs" type="button" onclick={resetChangeRows}
+									>Discard edits</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if settingsTab === "demos"}
+						<div>
+							<h3 class="text-15px font-700">Demo recordings</h3>
+							<p class="mt-1 text-sm text-dim">
+								Phone memos, rough takes, the original idea — any audio format; each is converted to
+								MP3 for listening and download. Up to {MAX_DEMOS_PER_SONG}.
+							</p>
+							{#if demoNotice}
+								<p class="mt-2 text-sm text-red-400" role="alert">{demoNotice}</p>
+							{/if}
+							{#each demoJobs as job (job.name)}
+								<p class="mt-2 text-sm {job.error ? 'text-red-400' : 'text-dim'}">
+									{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
+								</p>
+							{/each}
+							{#if data.song.demos.length > 0}
+								<ul class="mt-3 grid gap-1">
+									{#each data.song.demos as d (d.id)}
+										{@const remove = deleteDemo.for(d.id)}
+										<li
+											class="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2 text-sm"
+										>
+											<span class="min-w-0 truncate">
+												{d.label}
+												<span class="text-dim"
+													>· {formatBytes(d.sizeBytes)}{#if d.status !== "ready"}
+														· uploading{:else if d.playbackStatus !== "ready"}
+														· converting to MP3…{/if}</span
+												>
+												<form
+													{...remove.enhance(async ({ submit }) => {
+														if (!confirm(`Remove the demo "${d.label}"?`)) return;
+														await submit();
+													})}
+												>
+													<input {...remove.fields.id.as("hidden", d.id)} />
+													<button class="link-dim text-xs" disabled={!!remove.pending}>
+														{remove.pending ? "Removing…" : "Remove"}
+													</button>
+												</form>
+											</span>
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p
+									class="mt-3 rounded border border-dashed border-white/15 px-3 py-4 text-center text-sm text-dim"
+								>
+									No demos yet.
+								</p>
+							{/if}
+							<div class="mt-3">
+								<label
+									class="button button-sm lg-button-xs cursor-pointer {demoBusy
+										? 'opacity-50 pointer-events-none'
+										: ''}"
+								>
+									<span class="i-ph-plus" aria-hidden="true"></span>
+									{demoBusy ? "Uploading…" : "Upload demo"}
+									<input
+										class="sr-only"
+										type="file"
+										accept={DEMO_ACCEPT}
+										multiple
+										disabled={demoBusy}
+										onchange={(e) => uploadDemos(e.currentTarget)}
+									/>
+								</label>
+							</div>
+						</div>
+					{/if}
+					{#if settingsTab === "options"}
+						<div>
+							<FinishedToggle
+								id={data.song.id}
+								finished={data.song.isFinished}
+								canChange={data.canEdit}
+							/>
+						</div>
+						<div class="mt-8 border-t border-white/15 pt-4">
+							<AiToggle
+								kind="song"
+								id={data.song.id}
+								noAi={data.song.noAi}
+								inherited={data.song.project.noAi}
+								canChange={data.canEdit}
+							/>
+						</div>
+						<div class="mt-8 border-t border-white/15 pt-4">
+							<PrivacyToggle
+								kind="song"
+								id={data.song.id}
+								isPrivate={data.song.isPrivate}
+								inherited={data.song.project.isPrivate}
+								canChange={data.canEdit}
+							/>
+						</div>
+						<div class="mt-8 border-t border-white/15 pt-4">
+							<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
+							<p class="mt-1 text-sm text-dim">
+								Removes the song, its chart, lyrics and notes, every stem file and every demo
+								recording.
+							</p>
+							<form
+								class="mt-3"
+								{...deleteSong.enhance(async ({ submit }) => {
+									if (!confirm(`Delete "${data.song.title}" and all of its stems?`)) return;
+									await submit();
+								})}
+							>
+								<input {...deleteSong.fields.id.as("hidden", data.song.id)} />
+								<button
+									class="button text-red-400 hover-bg-red-400 hover-text-oxford"
+									disabled={!!deleteSong.pending}
+								>
+									<span class="i-ph-trash" aria-hidden="true"></span>
+									{deleteSong.pending ? "Deleting…" : "Delete song"}
+								</button>
+							</form>
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -1988,8 +2069,19 @@
 		{/if}
 		<!-- tool bar  -->
 		<div class="absolute top-2 right-3 mb-2 flex items-stretch gap-4">
+			<!-- A dropdown on a phone, the segmented control from sm up. -->
+			<select
+				class="field py-1 text-sm sm:hidden"
+				aria-label="Document"
+				value={panel}
+				onchange={(e) => showPanel(e.currentTarget.value as Panel)}
+			>
+				{#each PANELS as kind (kind)}
+					<option value={kind}>{PANEL_LABELS[kind]}</option>
+				{/each}
+			</select>
 			<div
-				class="flex overflow-hidden rounded border border-white/15 items-center"
+				class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
 				role="tablist"
 				aria-label="Document"
 			>
@@ -2005,12 +2097,7 @@
 							: index === PANELS.length - 1
 								? 'rounded-l-none'
 								: 'rounded-none border-r-none'}"
-						onclick={async () => {
-							if (kind === panel) return;
-							if (docEditing) await docPanel?.close();
-							docEditing = false;
-							panel = kind;
-						}}>{PANEL_LABELS[kind]}</button
+						onclick={() => showPanel(kind)}>{PANEL_LABELS[kind]}</button
 					>
 				{/each}
 			</div>
