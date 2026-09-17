@@ -36,6 +36,8 @@
 		notice?: string | null;
 		onuploaded?: () => void;
 		onanalysis?: (detection: Detection) => void;
+		/** Rendered as an item inside a menu instead of a button. */
+		menu?: boolean;
 	}
 	let {
 		songId,
@@ -44,6 +46,7 @@
 		notice = $bindable(null),
 		onuploaded,
 		onanalysis,
+		menu = false,
 	}: Props = $props();
 	let busy = $state(false);
 
@@ -154,12 +157,14 @@
 </script>
 
 <label
-	class="button button-sm lg-button-xs cursor-pointer {busy
+	class="{menu
+		? 'block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10'
+		: 'button button-sm lg-button-xs cursor-pointer'} {busy
 		? 'pointer-events-none opacity-60'
 		: ''}"
 	title="Pick the song's new set of stems: same names replace, new names are added, the rest are removed."
 >
-	<span class="i-ph-arrows-clockwise" aria-hidden="true"></span>
+	<span class="i-ph-arrows-clockwise {menu ? 'mr-2' : ''}" aria-hidden="true"></span>
 	{busy ? "Replacing…" : "Replace Stems"}
 	<input
 		class="sr-only"

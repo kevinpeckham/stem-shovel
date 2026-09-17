@@ -36,6 +36,8 @@
 		onuploaded?: () => void;
 		/** Tempo, key and time signature detected from the batch, once every stem in it has decoded. */
 		onanalysis?: (detection: Detection) => void;
+		/** Rendered as an item inside a menu instead of a button. */
+		menu?: boolean;
 	}
 
 	/**
@@ -51,6 +53,7 @@
 		notice = $bindable(null),
 		onuploaded,
 		onanalysis,
+		menu = false,
 	}: Props = $props();
 
 	let busy = $state(false);
@@ -121,13 +124,15 @@
 </script>
 
 <label
-	class="button button-sm lg-button-xs cursor-pointer {busy
+	class="{menu
+		? 'block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10'
+		: 'button button-sm lg-button-xs cursor-pointer'} {busy
 		? 'pointer-events-none opacity-60'
 		: ''}"
 	title="Upload new stems to this song."
 >
 	<!-- WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems -->
-	<span class="i-ph-plus" aria-hidden="true"></span>
+	<span class="i-ph-plus {menu ? 'mr-2' : ''}" aria-hidden="true"></span>
 	{busy ? "Uploading…" : "Add Stems"}
 	<input
 		class="sr-only"

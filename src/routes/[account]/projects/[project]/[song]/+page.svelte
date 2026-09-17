@@ -286,7 +286,9 @@
 	}
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
-		if (chartMenuEl?.open && !chartMenuEl.contains(e.target as Node)) chartMenuEl.open = false;
+		for (const menu of [chartMenuEl, uploadsMenuEl, downloadsMenuEl]) {
+			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
+		}
 	}
 	let doc = $derived(showing ?? "chart");
 	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
@@ -295,6 +297,9 @@
 	let docPanel = $state<SongDocPanel | null>(null);
 	/** The document panel's ⋯ menu (a <details>): closed on a choice or a click elsewhere. */
 	let chartMenuEl = $state<HTMLDetailsElement | null>(null);
+	/** The Uploads and Downloads menus in the player's action row, closed the same way. */
+	let uploadsMenuEl = $state<HTMLDetailsElement | null>(null);
+	let downloadsMenuEl = $state<HTMLDetailsElement | null>(null);
 	/** The editor pane while editing in the panel, chosen in that menu. */
 	let docView = $state<"rendered" | "markdown">("rendered");
 	let docSaving = $state(false);
@@ -2136,59 +2141,142 @@
 		class="flex flex-wrap items-center gap-3 w-full border py-4 px-3 rounded-md border-current/40 bg-blue-300/5 text-15px"
 	>
 		{#if data.canEdit}
-			<StemUploader
-				songId={data.song.id}
-				stemCount={data.song.stems.length}
-				bind:jobs={uploadJobs}
-				bind:notice={uploadNotice}
-				onuploaded={() => (versionOffer = true)}
-				onanalysis={applyDetection}
-			/>
-			{#if data.song.stems.length > 0}
-				<StemReplacer
-					songId={data.song.id}
-					stems={data.song.stems.map((s) => ({ id: s.id, label: s.label, filename: s.filename }))}
-					bind:jobs={uploadJobs}
-					bind:notice={uploadNotice}
-					onuploaded={() => (versionOffer = true)}
-					onanalysis={applyDetection}
-				/>
-			{/if}
+			<!-- Uploads: add or replace stems, upload demo recordings. -->
+			<details class="relative" bind:this={uploadsMenuEl}>
+				<summary
+					class="button button-sm lg-button-xs list-none [&::-webkit-details-marker]:hidden"
+					title="Add or replace stems, upload demo recordings"
+				>
+					<span class="i-ph-upload-simple" aria-hidden="true"></span>
+					Uploads
+					<span class="i-ph-caret-down ml-1 text-10px" aria-hidden="true"></span>
+				</summary>
+				<div
+					class="absolute top-full left-0 z-20 mt-1 min-w-52 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+					role="menu"
+					tabindex="-1"
+					onclick={() => {
+						if (uploadsMenuEl) uploadsMenuEl.open = false;
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Escape" && uploadsMenuEl) uploadsMenuEl.open = false;
+					}}
+				>
+					<StemUploader
+						songId={data.song.id}
+						stemCount={data.song.stems.length}
+						bind:jobs={uploadJobs}
+						bind:notice={uploadNotice}
+						onuploaded={() => (versionOffer = true)}
+						onanalysis={applyDetection}
+						menu
+					/>
+					{#if data.song.stems.length > 0}
+						<StemReplacer
+							songId={data.song.id}
+							stems={data.song.stems.map((s) => ({
+								id: s.id,
+								label: s.label,
+								filename: s.filename,
+							}))}
+							bind:jobs={uploadJobs}
+							bind:notice={uploadNotice}
+							onuploaded={() => (versionOffer = true)}
+							onanalysis={applyDetection}
+							menu
+						/>
+					{/if}
+					<label
+						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10 {demoBusy
+							? 'opacity-50 pointer-events-none'
+							: ''}"
+						title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+					>
+						<span class="i-ph-microphone mr-2" aria-hidden="true"></span>
+						{demoBusy ? "Uploading…" : "Upload Demos"}
+						<input
+							class="sr-only"
+							type="file"
+							accept={DEMO_ACCEPT}
+							multiple
+							disabled={demoBusy || readyDemos.length >= MAX_DEMOS_PER_SONG}
+							onchange={(e) => uploadDemos(e.currentTarget)}
+						/>
+					</label>
+				</div>
+			</details>
 		{/if}
-		{#if ready.length > 0}
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				disabled={!!zipping}
-				onclick={downloadAll}
-				title="Download all stems"
-			>
-				<span class="i-ph-download-simple" aria-hidden="true"></span>
-				{zipping ?? "Download Stems"}
-			</button>
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				disabled={!!mixing}
-				onclick={() => downloadMix("original", engine)}
-				title="Download an MP3 of the full mix"
-			>
-				<span class="i-ph-download-simple" aria-hidden="true"></span>
-				{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
-			</button>
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				disabled={!!mixing}
-				onclick={() => downloadMix("custom", engine)}
-				title="Download an MP3 of what is audible now (mute, solo, faders)"
-			>
-				<span class="i-ph-download-simple" aria-hidden="true"></span>
-				{mixing === "custom" ? "Rendering…" : "Custom Mix (MP3)"}
-			</button>
-			{#if mixError}
-				<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
-			{/if}
+		{#if ready.length > 0 || readyDemos.length > 0}
+			<!-- Downloads: the stems, the two mixes, the demo recordings. -->
+			<details class="relative" bind:this={downloadsMenuEl}>
+				<summary
+					class="button button-sm lg-button-xs list-none [&::-webkit-details-marker]:hidden"
+					title="Download the stems, a mix or the demo recordings"
+				>
+					<span class="i-ph-download-simple" aria-hidden="true"></span>
+					Downloads
+					<span class="i-ph-caret-down ml-1 text-10px" aria-hidden="true"></span>
+				</summary>
+				<div
+					class="absolute top-full left-0 z-20 mt-1 min-w-52 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+					role="menu"
+					tabindex="-1"
+					onclick={() => {
+						if (downloadsMenuEl) downloadsMenuEl.open = false;
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Escape" && downloadsMenuEl) downloadsMenuEl.open = false;
+					}}
+				>
+					{#if ready.length > 0}
+						<button
+							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
+							type="button"
+							role="menuitem"
+							disabled={!!zipping}
+							onclick={downloadAll}
+							title="Every stem as one zip"
+						>
+							<span class="i-ph-file-zip mr-2" aria-hidden="true"></span>
+							{zipping ?? "Download Stems"}
+						</button>
+						<button
+							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
+							type="button"
+							role="menuitem"
+							disabled={!!mixing}
+							onclick={() => downloadMix("original", engine)}
+							title="An MP3 of the song's default mix"
+						>
+							<span class="i-ph-music-note mr-2" aria-hidden="true"></span>
+							{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
+						</button>
+						<button
+							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
+							type="button"
+							role="menuitem"
+							disabled={!!mixing}
+							onclick={() => downloadMix("custom", engine)}
+							title="An MP3 of what is audible now (mute, solo, faders)"
+						>
+							<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
+							{mixing === "custom" ? "Rendering…" : "Custom Mix (MP3)"}
+						</button>
+					{/if}
+					{#if readyDemos.length > 0}
+						<button
+							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+							type="button"
+							role="menuitem"
+							popovertarget="song-demos"
+							title="Listen to or download the demo recordings"
+						>
+							<span class="i-ph-microphone mr-2" aria-hidden="true"></span>
+							Demos ({readyDemos.length})
+						</button>
+					{/if}
+				</div>
+			</details>
 		{/if}
 		{#if engine && mixDirty}
 			<button
@@ -2213,39 +2301,11 @@
 				{savingMix ? "Saving…" : "Save as Default Mix"}
 			</button>
 		{/if}
-		{#if readyDemos.length > 0}
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				popovertarget="song-demos"
-				title="Listen to or download the demo recordings"
-			>
-				<span class="i-ph-microphone" aria-hidden="true"></span>
-				Demos ({readyDemos.length})
-			</button>
+		{#if mixError}
+			<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
 		{/if}
-		{#if data.canEdit && ready.length === 0}
-			<!-- A song idea starts with a demo more often than a stem; once stems exist, demos are managed in settings. -->
-			<label
-				class="button button-sm lg-button-xs cursor-pointer {demoBusy
-					? 'opacity-50 pointer-events-none'
-					: ''}"
-				title="Upload demo recordings: phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
-			>
-				<span class="i-ph-microphone" aria-hidden="true"></span>
-				{demoBusy ? "Uploading…" : "Add Demos"}
-				<input
-					class="sr-only"
-					type="file"
-					accept={DEMO_ACCEPT}
-					multiple
-					disabled={demoBusy || readyDemos.length >= MAX_DEMOS_PER_SONG}
-					onchange={(e) => uploadDemos(e.currentTarget)}
-				/>
-			</label>
-			{#if demoNotice}
-				<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
-			{/if}
+		{#if demoNotice}
+			<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
 		{/if}
 	</div>
 {/snippet}

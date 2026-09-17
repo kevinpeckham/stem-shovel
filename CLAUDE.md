@@ -111,9 +111,14 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 
 ## Working agreement
 
-- Commit and push each completed change (main deploys to production);
-  watch the deployment and check the live pages. Kevin verifies interaction
-  in a real browser; use `bun run shot` + Read for layout before reporting.
+- **Branches: `staging` is what Kevin previews; `main` is production.**
+  The VM's dev server serves whatever branch is checked out, so keep
+  `staging` checked out here and commit each completed change to it, then
+  push it (Vercel also builds a preview deployment per branch). Merge
+  `staging` into `main` only when Kevin has reviewed and says so; a push to
+  `main` deploys production, so watch the deployment and check the live
+  pages afterwards. Kevin verifies interaction in a real browser; use
+  `bun run shot` + Read for layout before reporting.
 - Reference repos on GitHub: `lightning-jar/replicator` (patterns: remote
   functions, $val schemas, editors, screenshots) and `lightning-jar/lj-website`
   (look and feel, uno config, page structure). Read them with `gh api`.
