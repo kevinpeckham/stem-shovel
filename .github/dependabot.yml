@@ -1,11 +1,10 @@
 version: 2
 updates:
-  - package-ecosystem: "bun"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+  # GitHub Actions used by the workflows.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+  # No `bun` entry for now: Dependabot's bun support reads bun.lock
+  # lockfileVersion 1 only, and Bun 1.4 writes version 2 (checked 2026-09-17).
+  # Until it catches up, `bun outdated` / `bun audit` from a checkout stand in.

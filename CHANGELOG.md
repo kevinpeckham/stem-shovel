@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- Dependabot watches GitHub Actions only for now (its bun support reads lockfile version 1; Bun 1.4 writes 2), and a workflow approves and auto-merges its minor and patch bumps once CI and CodeQL pass.
+
 ### Added
 
 - **Vercel Web Analytics**: cookieless page-view counts by route, with query strings and one-time link tokens stripped before anything is sent; the privacy policy says so.
