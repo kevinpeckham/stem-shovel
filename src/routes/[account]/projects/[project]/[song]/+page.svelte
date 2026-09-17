@@ -2278,6 +2278,18 @@
 				</div>
 			</details>
 		{/if}
+		{#if readyDemos.length > 0}
+			<!-- Also under Downloads; the button keeps listening one click away. -->
+			<button
+				class="button button-sm lg-button-xs"
+				type="button"
+				popovertarget="song-demos"
+				title="Listen to or download the demo recordings"
+			>
+				<span class="i-ph-microphone" aria-hidden="true"></span>
+				Demos ({readyDemos.length})
+			</button>
+		{/if}
 		{#if engine && mixDirty}
 			<button
 				class="button button-sm lg-button-xs"
