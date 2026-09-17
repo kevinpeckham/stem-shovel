@@ -1,12 +1,18 @@
 <script lang="ts">
+	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
+	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
+	import { exampleComments } from "$lib/constants/demoComments";
+
 	let { data } = $props();
+	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
+	let demoComments = $state(exampleComments());
 
 	const description =
 		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
 </script>
 
 <svelte:head>
-	<title>Stem Shovel — a collaboration tool for musicians, bands and producers</title>
+	<title>Stem Shovel —  Cllaboration tool for musicians, bands and producers</title>
 	<meta name="description" content={description} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href="https://www.stem-shovel.com/" />
@@ -23,15 +29,15 @@
 </svelte:head>
 
 <main class="page-x-padding main-y-padding min-h-full">
-	<h1 class="heading-2 mb-4">What is Stem Shovel?</h1>
-	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
+	<h1 class="heading-2 mb-2">Introducing Stem Shovel</h1>
+	<div class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 place-content-start">
 		<div
-			class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5"
+			class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5 place-content-start"
 		>
-			<blockquote class="max-w-prose mb-8 text-balance">
-				Stem Shovel is a SaaS collaboration tool for musicians, bands and producers with emphasis on
+			<p class="max-w-prose mb-4 text-balance">
+				Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
 				creativity, simplicity, and affordability.
-			</blockquote>
+			</p>
 
 			<h2 class="heading-2">Mission</h2>
 			<p class="">
@@ -43,7 +49,12 @@
 			</p>
 			<h2 class="heading-2 leading-tight mb-0">How do I get started?</h2>
 			<p>
-				Stem Shovel is in early beta and you will need an invite to join and use it. Our plan is to
+				Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, you can sign up for the waitlist to get early access (coming soon).
+			</p>
+
+			<h2 class="heading-2 leading-tight mb-0">How much does it cost?</h2>
+			<p>
+				During the early beta period all subscriptions are free. Beyond that, our plan is to
 				offer a generous free tier for independent bands, musicians, producers and educators, with
 				no recurring subscription and free data storage up to 10 GB.
 			</p>
@@ -55,26 +66,73 @@
 				web browser and internet connection.
 			</p>
 
-			<h2 class="heading-2 leading-tight mb-0">Who is behind Stem Shovel and What's Your Plan?</h2>
+			<h2 class="heading-2 leading-tight mb-0">Who is the dev team behind Stem Shovel?</h2>
 			<p>
 				Stem Shovel 0.0.1 was built by Kevin Peckham at Lightning Jar as part of our side-projects
 				program. Lightning Jar is a small web studio founded in 2002, with the goal of helping
-				organizations adjust to a world that is more digital every day. Stem Shovel is 100% owned
-				and maintained by Lightning Jar and we don't plan on taking on any investors. We're okay
-				with growing slowly and we're not out to change the world. We want to keep this tool simple,
-				useful, and sustainable to maintain. If it helps you create more music, we're happy.
+				organizations adjust to a world that is more digital every day.
 			</p>
+			<h2 class="heading-2 leading-tight mb-0">Are you going to lure us in with a generous free tier then increase prices later?</h2>
+			<p>
+				Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security and data storage.
+			</p>
+
 		</div>
 
+		<!-- stem player demo -->
 		<div class="">
-			<img
-				class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
-				loading="eager"
-				src="/images/stem-shovel-screenshot-01.webp"
-				alt="Stem Shovel screenshot"
-			/>
+			{#if data.demo}
+				<!-- A live song, chosen on /admin/home: the player as visitors get it. -->
+				<section class="grid gap-3">
+					<h2 class="heading-2 leading-tight mb-0">Share Stems + Leave Feedback</h2>
+					<p class="opacity-90 text-16px max-w-740px mb-3">
+						Mute, solo and download stems or leave comments on the timeline for your collaborators. Try it out in the working demo below.
+					</p>
+					<div class="bg-black/20 px-4 pt-4 pb-5 rounded-md">
+					<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
+					</div>
+				</section>
+
+
+				<section class="mt-12">
+					<h2 class="heading-2 leading-tight">Charts, lyrics, notes and comments</h2>
+					<p class="opacity-90 text-16px max-w-740px mb-5">
+						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation for the song above.
+					</p>
+					<SongDocsDemo
+						view={data.demo}
+						href={data.demo.href}
+						comments={demoComments}
+						onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+					/>
+				</section>
+
+
+			{:else}
+				<img
+					class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
+					loading="eager"
+					src="/images/stem-shovel-screenshot-01.webp"
+					alt="Stem Shovel screenshot"
+				/>
+			{/if}
 		</div>
 	</div>
+
+	<!-- {#if data.demo}
+		<section class="mt-12">
+			<h2 class="heading-2 leading-tight">Charts, lyrics, notes and comments</h2>
+			<p class="opacity-90 text-17px max-w-740px mb-5">
+				Easily edit and share lyrics, notes, charts and more. The demo below shows a live song.
+			</p>
+			<SongDocsDemo
+				view={data.demo}
+				href={data.demo.href}
+				comments={demoComments}
+				onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+			/>
+		</section>
+	{/if} -->
 
 	<div class="mt-8 flex flex-wrap gap-3">
 		{#if data.user}

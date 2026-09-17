@@ -3,7 +3,9 @@ import { requireSuperAdmin, requireSystemAdmin } from "$lib/server/access";
 import {
 	createInviteCode,
 	deleteAccount,
+	listPublicSongs,
 	setAccountFounder,
+	setAppSetting,
 	deleteUser,
 	revokeInviteCode,
 	setAccountStatus,
@@ -11,6 +13,7 @@ import {
 } from "$lib/server/data";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
 import { AccountAdminSchema } from "$lib/val/AccountAdminSchema";
+import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
 import { UserAdminSchema } from "$lib/val/UserAdminSchema";
 import { error } from "@sveltejs/kit";
 
@@ -76,4 +79,14 @@ export const manageAccount = form(AccountAdminSchema, async ({ id, action }) => 
 		error(404, "Account not found");
 	}
 	return { action };
+});
+
+/** The song the home page demos: any public song with stems (system admins). */
+export const setFeaturedSong = form(FeaturedSongSchema, async ({ songId }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	if (!(await listPublicSongs()).some((s) => s.id === songId))
+		error(400, "That song is not public, or has no stems");
+	await setAppSetting("featuredSongId", songId);
+	return { saved: true };
 });

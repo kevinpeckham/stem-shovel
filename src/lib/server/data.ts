@@ -2083,3 +2083,100 @@ export async function saveSongDoc(
 	}
 	return { ok: true, version: versionNumber, changed: true };
 }
+
+// ---- app settings and the home page demo ----------------------------------
+
+/** The song the home page demos, when none is chosen: Kevin's "Eat All the Clocks". */
+export const DEFAULT_FEATURED_SONG = {
+	account: "mmkk",
+	project: "badverbs",
+	song: "eat-all-the-clocks",
+} as const;
+
+export async function getAppSetting(key: string) {
+	const row = await db.query.appSetting.findFirst({ where: eq(schema.appSetting.key, key) });
+	return row?.value ?? null;
+}
+
+export async function setAppSetting(key: string, value: string) {
+	await db
+		.insert(schema.appSetting)
+		.values({ key, value })
+		.onConflictDoUpdate({ target: schema.appSetting.key, set: { value } });
+}
+
+/** A song by its address, the shape the song page loads. */
+export async function songByPath(accountSlug: string, projectSlug: string, songSlug: string) {
+	const acct = await db.query.account.findFirst({
+		where: eq(account.slug, accountSlug),
+		columns: { id: true, slug: true, status: true },
+	});
+	if (!acct || acct.status !== "active") return null;
+	const row = await getSong(acct.id, projectSlug, songSlug);
+	return row ? { ...row, accountSlug: acct.slug } : null;
+}
+
+/**
+ * The home page's featured song: the chosen one if it is still public and
+ * live, else the default. Public means the song and its project are not
+ * private and the account is active; nothing else ever reaches the page.
+ */
+export async function featuredSong() {
+	const chosen = await getAppSetting("featuredSongId");
+	if (chosen) {
+		const found = await db.query.song.findFirst({
+			where: and(eq(song.id, chosen), eq(song.status, "active")),
+			columns: { slug: true },
+			with: {
+				project: { columns: { slug: true }, with: { account: { columns: { slug: true } } } },
+			},
+		});
+		if (found) {
+			const row = await songByPath(found.project.account.slug, found.project.slug, found.slug);
+			if (row && isPublicSong(row)) return row;
+		}
+	}
+	const fallback = await songByPath(
+		DEFAULT_FEATURED_SONG.account,
+		DEFAULT_FEATURED_SONG.project,
+		DEFAULT_FEATURED_SONG.song,
+	);
+	return fallback && isPublicSong(fallback) ? fallback : null;
+}
+
+function isPublicSong(s: { isPrivate: boolean; status: string; project: { isPrivate: boolean } }) {
+	return !s.isPrivate && !s.project.isPrivate && s.status === "active";
+}
+
+/** Every public, playable song on the platform, for the admin's featured-song picker. */
+export async function listPublicSongs() {
+	const rows = await db.query.song.findMany({
+		where: and(eq(song.isPrivate, false), eq(song.status, "active")),
+		columns: { id: true, title: true, slug: true, version: true },
+		with: {
+			project: {
+				columns: { name: true, slug: true, isPrivate: true, status: true },
+				with: { account: { columns: { name: true, slug: true, status: true } } },
+			},
+			stems: { columns: { status: true } },
+		},
+	});
+	return rows
+		.filter(
+			(r) =>
+				!r.project.isPrivate &&
+				r.project.status === "active" &&
+				r.project.account.status === "active" &&
+				r.stems.some((st) => st.status === "ready"),
+		)
+		.map((r) => ({
+			id: r.id,
+			title: r.title,
+			version: r.version,
+			project: r.project.name,
+			account: r.project.account.name,
+			path: `/${r.project.account.slug}/projects/${r.project.slug}/${r.slug}`,
+			stems: r.stems.filter((st) => st.status === "ready").length,
+		}))
+		.sort((a, b) => a.account.localeCompare(b.account) || a.title.localeCompare(b.title));
+}
