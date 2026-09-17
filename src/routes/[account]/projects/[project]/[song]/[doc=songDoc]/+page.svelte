@@ -63,6 +63,7 @@
 		docKey="{data.song.id}/{data.kind}"
 		{label}
 		hint={HINTS[data.kind]}
+		mono={data.kind === "chart"}
 		backHref="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}"
 		backLabel={data.song.title}
 		{version}

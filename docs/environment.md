@@ -117,11 +117,13 @@ uploads source maps only when `VERCEL` and `SENTRY_AUTH_TOKEN` are both set,
 so local builds never upload. The token is an organisation auth token from
 Sentry (Settings → Auth Tokens) with `project:releases` and `org:read`, kept
 in the 1Password environment like every other secret and declared
-`@optional` in `.env.schema`. Vite's config is evaluated before varlock's
-plugin injects values into `process.env`, so `bun run build` is
-`varlock run -- vp build`: the environment is populated before Vite starts
-and the Sentry plugin sees the token on every pass. The wizard left a copy
-in the gitignored `.env.sentry-build-plugin`, which the plugin also reads.
+`@optional` in `.env.schema`. It reaches the Sentry plugin because
+`@varlock/vite-integration` runs `varlock load` and fills `process.env` the
+moment its module is imported, which `vite.config.ts` does before creating
+the Sentry plugin (`varlock run -- vp build` is not an option on Vercel:
+the CLI there cannot read the encrypted integration variables). The wizard
+left a copy in the gitignored `.env.sentry-build-plugin`, which the plugin
+also reads.
 
 ## Turso + Drizzle
 

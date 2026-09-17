@@ -39,6 +39,8 @@
 		view?: "rendered" | "markdown";
 		/** Leave edit mode (embedded: Escape). */
 		onclose?: () => void;
+		/** Monospace throughout (charts: chord grids line up); the source pane is monospace anyway. */
+		mono?: boolean;
 	}
 
 	let {
@@ -58,6 +60,7 @@
 		mode = "standalone",
 		view = $bindable("rendered"),
 		onclose,
+		mono = false,
 	}: Props = $props();
 	let embedded = $derived(mode === "embedded");
 
@@ -261,7 +264,7 @@
 		24px padding and show while the editor is hovered or focused.
 	-->
 	<div
-		class="chart-editor {embedded
+		class="chart-editor {mono ? 'font-mono' : ''} {embedded
 			? '-ml-6 pt-0 pb-4 pr-0 pl-6 [&_.woof-gutter-btn]:(![left:-24px] !min-w-5 !px-0 !opacity-0) [&:hover_.woof-gutter-btn]:!opacity-60 [&:focus-within_.woof-gutter-btn]:!opacity-60'
 			: 'surface py-4 pr-6 pl-12'}"
 	>

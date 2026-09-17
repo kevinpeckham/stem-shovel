@@ -53,6 +53,8 @@
 		view = "rendered",
 		saving = $bindable(false),
 	}: Props = $props();
+	/** Charts are monospace in every view, so chord grids line up. */
+	let mono = $derived(kind === "chart");
 
 	const fields = saveDoc.fields;
 	let editor = $state<MarkdownEditorState | null>(null);
@@ -152,6 +154,7 @@
 				{saveError}
 				mode="embedded"
 				{view}
+				{mono}
 				onsave={() => formEl?.requestSubmit()}
 				onclose={() => void close()}
 			/>
@@ -166,7 +169,9 @@
 	</div>
 {:else if html}
 	<article
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8 {mono
+			? 'font-mono'
+			: ''}"
 	>
 		{@render above?.()}
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized server-side in renderMarkdown -->
@@ -174,7 +179,9 @@
 	</article>
 {:else}
 	<div
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8 {mono
+			? 'font-mono'
+			: ''}"
 	>
 		{@render above?.()}
 		<p>
