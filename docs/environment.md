@@ -115,11 +115,13 @@ Replay and every session with an error; no user identity or request bodies
 `sentrySvelteKit()` in `vite.config.ts` instruments load functions and
 uploads source maps only when `VERCEL` and `SENTRY_AUTH_TOKEN` are both set,
 so local builds never upload. The token is an organisation auth token from
-Sentry (Settings → Auth Tokens) with `project:releases` and `org:read`; add
-it to the Vercel project as a sensitive environment variable (it is a
-build-time value, not one the app reads, so it is declared `@optional` in
-`.env.schema` and not kept in 1Password). The wizard left a copy in the
-gitignored `.env.sentry-build-plugin` for local use.
+Sentry (Settings → Auth Tokens) with `project:releases` and `org:read`, kept
+in the 1Password environment like every other secret and declared
+`@optional` in `.env.schema`. Vite's config is evaluated before varlock's
+plugin injects values into `process.env`, so `bun run build` is
+`varlock run -- vp build`: the environment is populated before Vite starts
+and the Sentry plugin sees the token on every pass. The wizard left a copy
+in the gitignored `.env.sentry-build-plugin`, which the plugin also reads.
 
 ## Turso + Drizzle
 
