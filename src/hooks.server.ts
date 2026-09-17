@@ -6,7 +6,7 @@ import { db, schema } from "$lib/server/db";
 import { withActingMemberships } from "$lib/utils/actingMemberships";
 import { ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
-import type { Handle } from "@sveltejs/kit";
+import type { Handle, HandleValidationError } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 import { eq } from "drizzle-orm";
 
@@ -71,3 +71,15 @@ export const handle: Handle = sequence(Sentry.sentryHandle(), async ({ event, re
 	return response;
 });
 export const handleError = Sentry.handleErrorWithSentry();
+
+/**
+ * A remote function's payload failed its valibot schema. The forms never send
+ * such payloads (they validate the same schema first), so this is a hand-made
+ * request; log where and how much, never the values, and answer plainly.
+ */
+export const handleValidationError: HandleValidationError = ({ event, issues }) => {
+	console.warn(
+		`[validation] ${event.request.method} ${event.url.pathname}: ${issues.length} issue${issues.length === 1 ? "" : "s"} from ${event.getClientAddress()}`,
+	);
+	return { message: "That request was not valid." };
+};
