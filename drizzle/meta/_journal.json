@@ -267,6 +267,13 @@
       "when": 1789651635518,
       "tag": "0037_waitlist_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1789671554316,
+      "tag": "0038_stem_gain",
+      "breakpoints": true
     }
   ]
 }

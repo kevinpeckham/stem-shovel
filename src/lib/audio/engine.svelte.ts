@@ -91,7 +91,7 @@ export class StemEngine {
 		this.stems = sources.map((src) => ({
 			id: src.id,
 			label: src.label,
-			gain: 1,
+			gain: clamp(src.gain ?? 1, 0, FADER_MAX),
 			muted: false,
 			soloed: false,
 			duration: src.duration ?? 0,

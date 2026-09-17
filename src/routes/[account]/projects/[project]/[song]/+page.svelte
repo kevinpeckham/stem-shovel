@@ -77,6 +77,7 @@
 		setSongVersion,
 		shareSong,
 		updateSong,
+		saveDefaultMix,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { tick, untrack } from "svelte";
@@ -881,6 +882,45 @@
 
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
+	let player = $state<StemPlayer | null>(null);
+	/** The song's default mix per stem; the faders start here for everyone. */
+	let defaultGains = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.gain ?? 1])));
+	/** The listener moved something (fader, mute, solo or master) away from the default mix. */
+	let mixDirty = $derived(
+		!!playerEngine &&
+			(playerEngine.master !== 1 ||
+				playerEngine.stems.some(
+					(s) => s.muted || s.soloed || Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6,
+				)),
+	);
+	/** The faders alone differ from the default: there is a new default to save. */
+	let fadersDirty = $derived(
+		!!playerEngine &&
+			playerEngine.stems.some((s) => Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6),
+	);
+	let savingMix = $state(false);
+	async function saveMixAsDefault() {
+		if (!playerEngine || savingMix) return;
+		if (!confirm("Save these fader levels as the default mix for everyone who opens this song?"))
+			return;
+		savingMix = true;
+		try {
+			await saveDefaultMix({
+				id: data.song.id,
+				gains: playerEngine.stems.map((s) => ({
+					id: s.id,
+					gain: Math.round(s.gain * 1000) / 1000,
+				})),
+			});
+			player?.forgetLocalMix();
+			await invalidateAll();
+			notify("Saved as the default mix; the original mixdown is re-rendering");
+		} catch (e) {
+			notify(`Could not save the mix: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			savingMix = false;
+		}
+	}
 	let mixing = $state<MixMode | null>(null);
 	let mixError = $state<string | null>(null);
 	/** `project-song-v1.2.3`: every download names the song version it was made from. */
@@ -1639,7 +1679,7 @@
 	{/if}
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
-	<section class="grid grid-cols-1 place-content-start" aria-label="Player">
+	<section class="grid grid-cols-1 place-content-start min-h-560px" aria-label="Player">
 		<!-- transport and waveforms -->
 		{#if data.manifest.stems.length > 0}
 			<div class="mb-5">
@@ -1656,6 +1696,8 @@
 					onengine={(e) => (playerEngine = e)}
 					onstemcontext={onStemContext}
 					{afterRows}
+					songId={data.song.id}
+					bind:this={player}
 				>
 					{#snippet errorHint()}
 						A stem's file is missing from the Blob store. Remove it from its menu and upload it
@@ -1782,7 +1824,7 @@
 
 	<!-- 3. chart, lyrics & notes -->
 	<section
-		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full max-w-full overflow-hidden grid-rows-1fr relative"
+		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full min-h-560px max-w-full overflow-hidden grid-rows-1fr relative"
 		aria-label="Chart, lyrics, notes and comments"
 	>
 		<!-- <div class="h-full relative"> -->
@@ -2139,6 +2181,29 @@
 			{#if mixError}
 				<p class="w-full text-sm text-red-400" role="alert">{mixError}</p>
 			{/if}
+		{/if}
+		{#if engine && mixDirty}
+			<button
+				class="button button-sm lg-button-xs"
+				type="button"
+				onclick={() => player?.resetMix()}
+				title="Back to the song's default mix (your own levels are kept in this browser only)"
+			>
+				<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+				Reset Mix
+			</button>
+		{/if}
+		{#if data.canEdit && engine && fadersDirty}
+			<button
+				class="button button-sm lg-button-xs"
+				type="button"
+				disabled={savingMix}
+				onclick={saveMixAsDefault}
+				title="Save these fader levels as the default mix for every listener"
+			>
+				<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+				{savingMix ? "Saving…" : "Save as Default Mix"}
+			</button>
 		{/if}
 		{#if readyDemos.length > 0}
 			<button

@@ -27,6 +27,8 @@ export const stem = table(
 		/** "Bass DI"; defaults to the filename minus its extension. */
 		label: t.text("label").notNull(),
 		sortOrder: t.integer("sort_order").notNull().default(0),
+		/** The song's default mix: this stem's fader, 0..FADER_MAX (1 = unity). Members save it; listeners start from it. */
+		gain: t.real("gain").notNull().default(1),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

@@ -207,26 +207,27 @@ Indexes: `(account_id)`, `(project_id)`, unique `(project_id, slug)`.
 
 ### stem
 
-| column           | type                        | notes                                                       |
-| ---------------- | --------------------------- | ----------------------------------------------------------- |
-| id               | text PK                     | used in the Blob pathname, so renames never move files      |
-| account_id       | text FK → account (cascade) |                                                             |
-| song_id          | text FK → song (cascade)    |                                                             |
-| label            | text not null               | "Bass DI"; defaults to the filename minus extension         |
-| sort_order       | integer, default 0          | row order in the player                                     |
-| status           | text, default uploading     | `uploading` \| `ready` \| `failed` (see upload flow)        |
-| url              | text not null               | Blob URL                                                    |
-| pathname         | text not null unique        | Blob pathname                                               |
-| filename         | text not null               | original name from the browser                              |
-| content_type     | text not null               |                                                             |
-| size_bytes       | integer not null            |                                                             |
-| duration_seconds | real null                   | filled after the browser decodes it                         |
-| channels         | integer null                | 1 mono, 2 stereo                                            |
-| sample_rate      | integer null                | of the file, not the 32 kHz context                         |
-| peaks            | text json null              | `number[]` of 1024 values 0..1, from `peaks.ts` (~8 KB/row) |
-| uploaded_by      | text FK → user (set null)   |                                                             |
-| created_at       | timestamp_ms                |                                                             |
-| updated_at       | timestamp_ms                |                                                             |
+| column           | type                        | notes                                                        |
+| ---------------- | --------------------------- | ------------------------------------------------------------ |
+| id               | text PK                     | used in the Blob pathname, so renames never move files       |
+| account_id       | text FK → account (cascade) |                                                              |
+| song_id          | text FK → song (cascade)    |                                                              |
+| label            | text not null               | "Bass DI"; defaults to the filename minus extension          |
+| sort_order       | integer, default 0          | row order in the player                                      |
+| gain             | real, default 1             | the default mix: this stem's fader, 0..1.25; members save it |
+| status           | text, default uploading     | `uploading` \| `ready` \| `failed` (see upload flow)         |
+| url              | text not null               | Blob URL                                                     |
+| pathname         | text not null unique        | Blob pathname                                                |
+| filename         | text not null               | original name from the browser                               |
+| content_type     | text not null               |                                                              |
+| size_bytes       | integer not null            |                                                              |
+| duration_seconds | real null                   | filled after the browser decodes it                          |
+| channels         | integer null                | 1 mono, 2 stereo                                             |
+| sample_rate      | integer null                | of the file, not the 32 kHz context                          |
+| peaks            | text json null              | `number[]` of 1024 values 0..1, from `peaks.ts` (~8 KB/row)  |
+| uploaded_by      | text FK → user (set null)   |                                                              |
+| created_at       | timestamp_ms                |                                                              |
+| updated_at       | timestamp_ms                |                                                              |
 
 Indexes: `(song_id, sort_order)`, `(account_id)`.
 

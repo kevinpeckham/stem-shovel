@@ -154,6 +154,7 @@
 			endAt={song.endAt}
 			fps={song.frameRate}
 			onengine={(e) => (engine = e)}
+			songId={song.id}
 			onstemcontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
 			{afterRows}
 		>

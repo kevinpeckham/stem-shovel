@@ -26,6 +26,7 @@ import {
 	songForMix,
 	chartExamples,
 	getSongById,
+	setDefaultMix,
 	setSongFinished as setSongFinished_,
 	songNotesFor,
 	songSlugs,
@@ -42,6 +43,7 @@ import {
 	SongVersionSetSchema,
 	StemRenameSchema,
 	StemIdsSchema,
+	DefaultMixSchema,
 } from "$lib/val/SongSchema";
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
@@ -337,4 +339,13 @@ export const setSongFinished = form(SongFinishedSchema, async ({ id, finished })
 	const m = await memberOf(locals, accountOfSong, id);
 	if (!(await setSongFinished_(m.accountId, id, finished === "true"))) error(404, "Song not found");
 	return { finished: finished === "true" };
+});
+
+/** Saves the faders as the song's default mix for every listener (members); the original mixdown re-renders. */
+export const saveDefaultMix = command(DefaultMixSchema, async ({ id, gains }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!(await setDefaultMix(accountId, id, gains))) error(404, "Song not found");
+	scheduleMix([id]);
+	return { saved: gains.length };
 });

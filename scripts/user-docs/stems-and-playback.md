@@ -4,6 +4,10 @@
 
 On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A or AAC, up to 500 MB each and 32 stems per song. The name of the stem comes from the filename; rename it later from the row's ⋯ menu.
 
+## Your mix and the default mix
+
+Every song has a **default mix**: the fader level each stem starts at, the same for everyone who opens the song, and the balance the Original Mix MP3 and the project playlist use. Moving a fader, muting, soloing or changing the master only changes **your mix**, kept in your browser: it is there when you come back, and nobody else hears it. **Reset Mix** puts everything back to the default. Members who want everyone to hear their balance use **Save as Default Mix**, which stores the current fader levels on the song (mutes, solos and the master are not part of it) and re-renders the Original Mix.
+
 A song with no stems yet also shows **Add Demos** beside Add Stems, since an idea usually starts as a phone memo or a rough take; once stems exist, demos are added from the song's settings and played from the Demos button.
 
 **Replace Stems** takes the song's whole new set at once, for a fresh bounce from the session: a file with the same name as an existing stem (the filename, or the stem's name) replaces it in place, keeping its name, order and MIDI; a file with a new name is added; and existing stems with no file in the pick are removed. You see the three lists and confirm before anything is uploaded, and nothing is removed unless every upload succeeds. Afterwards the song offers a version bump, as after any stem change.

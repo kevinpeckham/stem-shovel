@@ -67,7 +67,7 @@ in three steps driven by `src/lib/upload.ts`:
   folded into per-stem gains, plus master) as `?stems=id:gain,…&master=m`
   and is rendered on demand, never cached. Public like the rest of a song;
   the route has `maxDuration: 300`.
-- **The original mix is kept current, not just cached on demand**
+- **The original mix (the song's default mix: every stem at its saved `gain`, so a saved default re-renders it — the key includes the gains) is kept current, not just cached on demand**
   (`ensureOriginalMix`): after a stem's rendition completes, after a stem
   is removed, and from the project and song page loads as a backstop, the
   song's mix is re-rendered when its key no longer matches — once every

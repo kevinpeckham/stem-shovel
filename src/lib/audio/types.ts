@@ -9,6 +9,8 @@ export interface StemSource {
 	duration?: number;
 	channels?: number;
 	peaks?: number[];
+	/** The song's default mix fader for this stem (1 when absent). */
+	gain?: number;
 }
 
 /** Reactive per-stem state exposed by the engine to the UI. */

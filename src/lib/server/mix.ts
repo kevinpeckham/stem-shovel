@@ -56,16 +56,18 @@ function originalMixKey(song: Pick<Mixable, "stems">) {
 /** The stem fields the key depends on; any row shape with them will do. */
 export type MixKeyStem = Pick<
 	Mixable["stems"][number],
-	"id" | "playbackStatus" | "playbackUrl" | "url"
+	"id" | "playbackStatus" | "playbackUrl" | "url" | "gain"
 >;
 
+/** The files and the default mix's gains: a saved mix renders a fresh original. */
 export function mixKeyOf(stems: MixKeyStem[]) {
-	const parts = stems.map((s) => `${s.id}:${playbackOrSource(s)}`).sort();
+	const parts = stems.map((s) => `${s.id}:${playbackOrSource(s)}:${s.gain ?? 1}`).sort();
 	return createHash("sha1").update(parts.join("\n")).digest("hex").slice(0, 16);
 }
 
+/** The original mix is the song's default mix: every ready stem at its saved fader. */
 function originalMixRequest(song: Mixable): MixRequest {
-	return { stems: song.stems.map((s) => ({ id: s.id, gain: 1 })), master: 1 };
+	return { stems: song.stems.map((s) => ({ id: s.id, gain: s.gain ?? 1 })), master: 1 };
 }
 
 /** True when a custom request is just the original (so the cache can serve it). */
@@ -73,7 +75,10 @@ export function isOriginal(song: Mixable, req: MixRequest) {
 	return (
 		req.master === 1 &&
 		req.stems.length === song.stems.length &&
-		req.stems.every((s) => s.gain === 1 && song.stems.some((t) => t.id === s.id))
+		req.stems.every((s) => {
+			const t = song.stems.find((t) => t.id === s.id);
+			return !!t && Math.abs(s.gain - (t.gain ?? 1)) < 1e-6;
+		})
 	);
 }
 

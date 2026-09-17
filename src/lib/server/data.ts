@@ -210,7 +210,14 @@ export function getProject(accountId: string, slug: string) {
 				orderBy: [asc(song.sortOrder), asc(song.title)],
 				with: {
 					stems: {
-						columns: { id: true, status: true, url: true, playbackStatus: true, playbackUrl: true },
+						columns: {
+							id: true,
+							status: true,
+							url: true,
+							playbackStatus: true,
+							playbackUrl: true,
+							gain: true,
+						},
 					},
 					demos: { columns: { id: true, status: true } },
 				},
@@ -342,6 +349,7 @@ export async function manifestFor(s: {
 				duration: st.durationSeconds ?? undefined,
 				channels: st.channels ?? undefined,
 				peaks: st.peaks ?? undefined,
+				gain: st.gain,
 			})),
 		),
 	};
@@ -528,6 +536,30 @@ export async function markStemReady(accountId: string, stemId: string, r: StemDe
 async function stemsChanged(songId: string) {
 	await refreshSongDuration(songId);
 	await db.update(song).set({ stemsUpdatedAt: new Date() }).where(eq(song.id, songId));
+}
+
+/**
+ * The song's default mix: one fader per stem, saved by a member for every
+ * listener. The cached original mixdown follows it (its key includes the
+ * gains), so the project playlist and the MP3 change too.
+ */
+export async function setDefaultMix(
+	accountId: string,
+	songId: string,
+	gains: { id: string; gain: number }[],
+) {
+	const owned = await db.query.stem.findMany({
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId)),
+		columns: { id: true },
+	});
+	const ids = new Set(owned.map((s) => s.id));
+	const wanted = gains.filter((g) => ids.has(g.id));
+	if (wanted.length === 0) return false;
+	for (const g of wanted) {
+		await db.update(stem).set({ gain: g.gain }).where(eq(stem.id, g.id));
+	}
+	await stemsChanged(songId);
+	return true;
 }
 
 /** Sets the song's user-managed version ("1.2.3"). */
@@ -1493,6 +1525,7 @@ export function songForNotes(songId: string) {
 					url: true,
 					playbackStatus: true,
 					playbackUrl: true,
+					gain: true,
 					durationSeconds: true,
 				},
 			},
@@ -1565,6 +1598,7 @@ export async function songNotesFor(accountId: string, songId: string) {
 					url: true,
 					playbackStatus: true,
 					playbackUrl: true,
+					gain: true,
 					durationSeconds: true,
 				},
 			},
@@ -1835,6 +1869,7 @@ export async function songForMix(songId: string) {
 					channels: true,
 					playbackStatus: true,
 					playbackUrl: true,
+					gain: true,
 				},
 				orderBy: [asc(stem.sortOrder)],
 			},
@@ -1890,6 +1925,7 @@ export function songsWantingMix(
 			url: string;
 			playbackStatus: PlaybackStatus | null;
 			playbackUrl: string | null;
+			gain: number;
 		}[];
 	}[],
 	keyOf: (stems: (typeof songs)[number]["stems"]) => string,

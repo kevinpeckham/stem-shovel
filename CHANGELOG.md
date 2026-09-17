@@ -8,8 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-17
+
 ### Added
 
+- **Your mix and the default mix**: fader, mute, solo and master changes are kept per browser (Reset Mix puts the default back); members save the current faders as the song's default mix for every listener, which the Original Mix MP3 and the project playlist follow.
 - **Add Demos** beside Add Stems on a song that has no stems yet, since an idea usually starts with a demo recording.
 - **Replace Stems** on the song page: pick the whole new set; matching names replace in place (name, order and MIDI kept), new names are added, and stems without a new file are removed, after one confirmation listing all three; nothing is removed unless every upload succeeds.
 
@@ -18,6 +21,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Technical
 
 - **`bun run smoke:urls`**: a repeatable smoke test of every route, signed out and as the Screenshot Bot, on the dev server or production; a route without a row in the script fails the run.
+
+### Changed
+
+- **Panel minimum heights**: the player and the documents panel keep at least 560px, so an empty song does not collapse.
+- **Home page title** typo fixed.
 
 ## [0.13.0] - 2026-09-17
 

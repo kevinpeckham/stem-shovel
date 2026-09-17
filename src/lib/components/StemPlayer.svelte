@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { applyLocalMix, loadLocalMix, saveLocalMix, snapshotLocalMix } from "$lib/audio/localMix";
 	import { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemManifest, StemState } from "$lib/audio/types";
 	import StemRow from "$lib/components/StemRow.svelte";
@@ -40,6 +41,8 @@
 		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
 		onengine?: (engine: StemEngine) => void;
+		/** When given, the listener's fader/mute/solo/master changes persist in this browser (localMix). */
+		songId?: string;
 	}
 
 	let {
@@ -58,9 +61,25 @@
 		fps = 25,
 		onaddsection,
 		onengine,
+		songId,
 	}: Props = $props();
 
 	const engine = new StemEngine();
+	/** The song's default mix per stem, from the manifest. */
+	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
+	/** The listener's own mix differs from the default (there is something to reset). */
+	export function hasLocalMix() {
+		return !!snapshotLocalMix(engine, defaults);
+	}
+	/** Back to the song's default mix, and forget the local one. */
+	export function resetMix() {
+		applyLocalMix(engine, null, defaults);
+		if (songId) saveLocalMix(songId, null);
+	}
+	/** After a member saved the current faders as the default: they are the default now, nothing local left. */
+	export function forgetLocalMix() {
+		if (songId) saveLocalMix(songId, null);
+	}
 	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
 
 	// Effects only run in the browser (no AudioContext during SSR).
@@ -85,8 +104,25 @@
 				for (const s of stems) engine.relabel(s.id, s.label);
 			} else {
 				void engine.load(stems);
+				// load() sets up the stems synchronously; the listener's own mix goes on top of the default.
+				if (songId) {
+					const local = loadLocalMix(songId);
+					if (local) applyLocalMix(engine, local, defaults);
+				}
 			}
 			loadedKeys = nextKeys;
+		});
+	});
+	// Persist the listener's mix as it changes (nothing stored when it equals the default).
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	$effect(() => {
+		if (!songId) return;
+		const id = songId;
+		const snapshot = snapshotLocalMix(engine, defaults);
+		untrack(() => {
+			if (engine.status !== "ready" && engine.status !== "loading") return;
+			if (saveTimer) clearTimeout(saveTimer);
+			saveTimer = setTimeout(() => saveLocalMix(id, snapshot), 300);
 		});
 	});
 	$effect(() => () => engine.dispose());

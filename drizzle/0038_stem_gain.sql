@@ -1,0 +1,1 @@
+ALTER TABLE `stem` ADD `gain` real DEFAULT 1 NOT NULL;
