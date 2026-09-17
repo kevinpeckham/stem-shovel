@@ -82,8 +82,14 @@ fields are `$state`, so components read `engine.position` directly.
   real mixes) with a gentle log-normal around 120, refined by a parabola and then by
   the autocorrelation peak at 2, 4, 8, 16 and 32 beats (each pins the
   period to 1/k frame), which is what makes DAW tempos come back exactly;
-  meter by comparing the raw envelope's autocorrelation at 3+6 beats
-  against 4+8 (3/4 needs a 3 % win); key by correlating the chroma with
+  meter by a vote of the stems: each stem's raw envelope compares its
+  autocorrelation at 3+6 beats against 4+8 and leans one way, the leans
+  are combined weighted by their size (a flat kick abstains, a riff with
+  a three-note feel cannot outvote the rhythm section; before, the summed
+  envelope tipped a user's 4/4 song to 3/4), and 3/4 needs a 3 % win. The
+  meter confidence is the agreed lean; under 0.15 the song page asks the
+  AI to listen as well, waiting for the mix to render after an upload (up
+  to three minutes), and its answer shows with "Use these". Key by correlating the chroma with
   the Krumhansl-Kessler major and minor profiles, the bass chroma deciding
   between a key and its fifth when they rank level. Measured on MMKK's
   mixes (2026-09-16): every declared tempo exact, four of five keys right
@@ -156,7 +162,8 @@ fields are `$state`, so components read `engine.position` directly.
   `google/gemini-3-flash` through the AI Gateway; the JSON answer (tempo or null for no
   fixed pulse, `tempoChanges` as `{at, bpm}` shifts, meter or "free", key,
   confidence, notes) shows under the changes editor with "Use
-  these", which puts the values into rows at 0:00 for the user to save. Ten
+  these", which saves the values into rows at 0:00 at once. It also runs
+  unasked after a detection whose time signature is a close call (above). Ten
   per user per hour; needs `AI_GATEWAY_API_KEY`, otherwise hidden. Every
   call is logged to `ai_request` (prompt text, reply, parsed answer or
   error, duration, tokens) and listed on `/admin` for review. First

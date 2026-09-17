@@ -12,6 +12,9 @@
 	// Captured when a popover opens, so the report says where it came from.
 	let pageUrl = $state("");
 	let userAgent = $state("");
+	/** Which build is running: package.json's version and, when known, the commit. */
+	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;
+	const CHANGELOG = "https://github.com/kevinpeckham/stem-shovel/blob/main/CHANGELOG.md";
 </script>
 
 <footer
@@ -25,6 +28,14 @@
 			<a
 				class="inline hover-underline underline-offset-4 hover-text-maximumYellow"
 				href="https://www.lightningjar.com">Built by ⚡️ Lightning Jar</a
+			>
+		</div>
+		<div class="opacity-70">|</div>
+		<div class="opacity-70 font-mono">
+			<a
+				class="inline hover-underline underline-offset-4 hover-text-maximumYellow"
+				href={CHANGELOG}
+				title="What changed in this version">{build}</a
 			>
 		</div>
 	</div>

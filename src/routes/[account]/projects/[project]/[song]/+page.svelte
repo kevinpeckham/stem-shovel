@@ -494,6 +494,7 @@
 					applied: false,
 				};
 			}
+			void checkUnsureMeter(detection);
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -670,13 +671,63 @@
 	let aiBusy = $state(false);
 	let aiAnswer = $state<AiAnswer | null>(null);
 	let aiError = $state<string | null>(null);
+	/** The answer came unasked, because the detector's time signature was a close call. */
+	let aiAuto = $state(false);
 	async function askAi() {
+		aiAuto = false;
 		aiBusy = true;
 		aiError = null;
 		try {
 			aiAnswer = await askAiAboutSong({ id: data.song.id });
 		} catch (e) {
 			aiError = errorMessage(e);
+		} finally {
+			aiBusy = false;
+		}
+	}
+	/**
+	 * Below this the detector's 3/4-or-4/4 lean is a coin toss (a user's 4/4
+	 * song came back 3/4 at 0.08), so the model listens too when it can.
+	 */
+	const UNSURE_METER = 0.15;
+	/** After an upload the mix renders in the background; the check waits for it this long. */
+	const MIX_WAIT_TRIES = 18;
+	const MIX_WAIT_MS = 10_000;
+	async function checkUnsureMeter(d: Detection) {
+		if (!data.aiAvailable || aiBusy || !d.tempo.bpm || d.meter.confidence >= UNSURE_METER) return;
+		notify(`${d.meter.value} time is a close call; asking the AI to listen too`, { kind: "info" });
+		aiAuto = true;
+		aiBusy = true;
+		aiError = null;
+		try {
+			for (let attempt = 1; ; attempt++) {
+				try {
+					const answer = await askAiAboutSong({ id: data.song.id });
+					aiAnswer = answer;
+					// The card sits in the settings popover, so say here whether the AI agrees.
+					const meter = answer.meter === "free" ? "no fixed meter" : answer.meter;
+					notify(
+						answer.meter === d.meter.value
+							? `The AI agrees: ${meter}`
+							: `The AI hears ${meter} instead; open settings to use its answer`,
+						{ kind: "info", timeout: 12_000 },
+					);
+					return;
+				} catch (e) {
+					// 409: the mix is not rendered yet (renditions still transcoding after an upload).
+					const status = (e as { status?: unknown }).status;
+					if (status !== 409 || attempt >= MIX_WAIT_TRIES) throw e;
+					await new Promise((r) => setTimeout(r, MIX_WAIT_MS));
+				}
+			}
+		} catch (e) {
+			const status = (e as { status?: unknown }).status;
+			if (status === 409) {
+				notify("The mix is still rendering; use Ask AI to check once it is ready", {
+					kind: "info",
+				});
+			} else aiError = errorMessage(e);
+			aiAuto = false;
 		} finally {
 			aiBusy = false;
 		}
@@ -881,6 +932,7 @@
 					timeout: 12_000,
 				},
 			);
+			void checkUnsureMeter(d);
 		} catch (e) {
 			notify(`Detected ${summary}, but it could not be saved: ${errorMessage(e)}`, {
 				kind: "error",
@@ -1493,7 +1545,10 @@
 				{/if}
 				{#if aiAnswer}
 					<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-						AI hears <strong
+						{aiAuto
+							? "The time signature was a close call, so the AI listened too. It hears"
+							: "AI hears"}
+						<strong
 							>{aiAnswer.tempo === null ? "no fixed tempo" : `${Math.round(aiAnswer.tempo)} bpm`} · {aiAnswer.key}
 							· {aiAnswer.meter === "free" ? "no meter" : aiAnswer.meter}</strong
 						>{#if aiAnswer.tempoChanges.length > 0}

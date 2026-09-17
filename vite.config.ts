@@ -4,6 +4,8 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import UnoCSS from "unocss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite-plus";
+import { execSync } from "node:child_process";
+import pkg from "./package.json" with { type: "json" };
 
 // One config for dev/build (Vite), lint (Oxlint) and format (Oxfmt).
 /** Where stems, renditions, mixes and demos are served from (any public Blob store). */
@@ -15,6 +17,18 @@ const production = process.env.NODE_ENV === "production";
 const ANALYTICS_DEBUG_HOST = "https://va.vercel-scripts.com" as const;
 /** Sentry's ingest host for this project (the DSN's host; src/hooks.client.ts). */
 const SENTRY_INGEST = "https://o4505247956860928.ingest.us.sentry.io" as const;
+/** The commit being built, for the footer: Vercel sets it; locally git answers; CI tarballs may have neither. */
+function buildSha(): string {
+	const fromVercel = process.env.VERCEL_GIT_COMMIT_SHA;
+	if (fromVercel) return fromVercel.slice(0, 7);
+	try {
+		return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+			.toString()
+			.trim();
+	} catch {
+		return "";
+	}
+}
 
 // CI has no 1Password: it sets SKIP_VARLOCK=1 and runs lint, check and the tests
 // (which mock the env) without the plugin. The plugin module reads .env.schema
@@ -29,6 +43,11 @@ const varlockPlugins = process.env.SKIP_VARLOCK
 		];
 
 export default defineConfig({
+	// The build version shown in the footer (src/lib/components/GlobalFooter.svelte).
+	define: {
+		__APP_VERSION__: JSON.stringify(pkg.version),
+		__BUILD_SHA__: JSON.stringify(buildSha()),
+	},
 	// Loaded on demand by the chord detector; pre-bundling them at start-up
 	// spares the dev server a mid-session re-optimisation (a 504 on first use).
 	optimizeDeps: { include: ["@spotify/basic-pitch", "@tensorflow/tfjs"] },
