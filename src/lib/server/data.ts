@@ -2106,7 +2106,7 @@ export async function setAppSetting(key: string, value: string) {
 }
 
 /** A song by its address, the shape the song page loads. */
-export async function songByPath(accountSlug: string, projectSlug: string, songSlug: string) {
+async function songByPath(accountSlug: string, projectSlug: string, songSlug: string) {
 	const acct = await db.query.account.findFirst({
 		where: eq(account.slug, accountSlug),
 		columns: { id: true, slug: true, status: true },
