@@ -201,3 +201,10 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
    stem.~~ Done (v0.3.0–v0.5.0).
 10. Stem ordering, saved mixes, document version restore UI, share links,
     removing members.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE). Use the code in your own
+projects, modify it, redistribute it; the license grants a patent licence
+too and asks only for attribution. Stem Shovel the service is run by
+Lightning Jar. Security reports: [SECURITY.md](SECURITY.md).

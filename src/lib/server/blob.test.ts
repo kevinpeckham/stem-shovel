@@ -1,7 +1,13 @@
 import { describe, expect, test, vi } from "vite-plus/test";
 
+// The store ids are public (they are in every file URL); the tokens are stand-ins.
 vi.mock("varlock/env", () => ({
-	ENV: { BLOB_READ_WRITE_TOKEN: "pub", BLOB_PRIVATE_READ_WRITE_TOKEN: '"priv"\n' },
+	ENV: {
+		BLOB_READ_WRITE_TOKEN: "pub",
+		BLOB_PRIVATE_READ_WRITE_TOKEN: '"priv"\n',
+		BLOB_STORE_ID: "store_1K3OTzjCaMpTYyGd",
+		BLOB_PRIVATE_STORE_ID: "store_QNJAGy8fZsu7uY10",
+	},
 }));
 vi.mock("@vercel/blob", () => ({
 	del: vi.fn(),

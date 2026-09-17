@@ -42,7 +42,9 @@ export default defineConfig({
 		// `resolved-env` bakes the resolved values into the SSR bundle at build
 		// time, encrypted in preview/production (see @encryptInjectedEnv in
 		// .env.schema), so Vercel functions need no Blob env vars of their own.
-		varlockVitePlugin({ ssrInjectMode: "resolved-env" }),
+		// CI has no 1Password: it sets SKIP_VARLOCK=1 and runs lint, check and the
+		// tests (which mock the env) without the plugin. Never set it for a build.
+		...(process.env.SKIP_VARLOCK ? [] : [varlockVitePlugin({ ssrInjectMode: "resolved-env" })]),
 		// UnoCSS must come before the SvelteKit plugin so `virtual:uno.css` resolves
 		UnoCSS(),
 		sveltekit({
