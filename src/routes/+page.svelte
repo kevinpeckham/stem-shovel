@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-	<title>Stem Shovel — Cllaboration tool for musicians, bands and producers</title>
+	<title>Stem Shovel — Collaboration tool for musicians, bands and producers</title>
 	<meta name="description" content={description} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href="https://www.stemshovel.com/" />
