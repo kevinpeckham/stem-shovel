@@ -15,7 +15,10 @@
 	<header class="flex flex-wrap items-baseline justify-between gap-4 max-w-article">
 		<div class="mb-6">
 			<h1 class="heading-2">Docs</h1>
-			<p class="opacity-90 text-balance">Learn how to use Stem Shove, discover new features, and impress your bandmates by knowing about all the features.</p>
+			<p class="opacity-90 text-balance">
+				Learn how to use Stem Shove, discover new features, and impress your bandmates by knowing
+				about all the features.
+			</p>
 		</div>
 		{#if data.canEdit}
 			<button class="button button-sm" type="button" popovertarget="add-doc">

@@ -8,8 +8,8 @@
 
 <main class="page min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Join the waitlist</h1>
-		<p class="opacity-90 max-w-prose">
+		<h1 class="heading-2">Join the waitlist</h1>
+		<p class="opacity-90 max-w-prose text-balance">
 			Stem Shovel is in early beta and sign-up needs an invite code. Leave your address, confirm it
 			from the email we send, and we will send you a code as seats open.
 		</p>

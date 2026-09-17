@@ -63,8 +63,14 @@
 		{#if error}<p class="text-sm text-red-400">{error}</p>{/if}
 		<div class="flex items-center gap-4">
 			<button class="button-accent" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-			<a class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent" href="/sign-up">Create an account</a>
-			<a class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent" href="/forgot-password">Forgot password?</a>
+			<a
+				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent"
+				href="/sign-up">Create an account</a
+			>
+			<a
+				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent"
+				href="/forgot-password">Forgot password?</a
+			>
 		</div>
 	</form>
 </main>

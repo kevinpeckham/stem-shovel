@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { signOut } from "$lib/remote/auth.remote";
 	import { page } from "$app/state";
-	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg"
+	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg";
 
 	interface Props {
 		user: { name: string; email?: string; isSystemAdmin?: boolean } | null;

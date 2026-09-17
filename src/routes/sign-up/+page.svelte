@@ -51,9 +51,9 @@
 				You were invited to <strong>{data.invitation.account}</strong> as {data.invitation.role}.
 			</p>
 		{:else}
-			<p class="opacity-90 text-balance">
+			<p class="opacity-90 text-balance mb-5">
 				Stem Shovel is invitation-only. You need an invitation link or an invite code from an
-				account admin. Need an invite? <a class="underline underline-offset-2" href="/waitlist"
+				account admin. Need an invite? <a class="underline underline-offset-4 hover-text-accent" href="/waitlist"
 					>Join the waitlist</a
 				>.
 			</p>

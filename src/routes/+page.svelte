@@ -46,14 +46,14 @@
 				<a class="button button-sm" href="/sign-up">Register</a>
 			{/if}
 		</div>
-		{#if !data.user}
+		<!-- {#if !data.user}
 			<div class="mt-6">
 				<p class="mb-2 text-15px opacity-90">
 					No invite yet? Join the beta waitlist and we will send you a code as seats open.
 				</p>
 				<WaitlistForm compact />
 			</div>
-		{/if}
+		{/if} -->
 	</div>
 
 	<div
