@@ -29,7 +29,7 @@
 </svelte:head>
 
 <main class="page-x-padding pt-4 pb-16 min-h-full">
-	<div class="border-b border-b-current/40 pb-3 mb-8">
+	<div class="/border-b border-b-current/40 pb-3 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
 		<h1 class="max-w-prose mb-4 text-balance">
 			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
@@ -50,7 +50,7 @@
 					<p class="opacity-90 text-16px max-w-740px mb-3 text-balance">
 						Mute, solo and download stems or leave comments on the timeline for your collaborators. Try it out in the working demo below.
 					</p>
-					<div class="bg-black/20 px-5 pt-4 pb-5 rounded-lg border border-current/40 mt-6">
+					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow">
 						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
 					</div>
 				</section>
@@ -58,15 +58,17 @@
 
 				<section class="mt-12">
 					<h3 class="text-18px font-600 leading-tight mb-2">Charts, Lyrics, Notes and Comments</h3>
-					<p class="opacity-90 text-16px max-w-740px mb-5">
+					<p class="opacity-90 text-16px max-w-740px mb-5 text-balance">
 						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation for the song above.
 					</p>
+					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow">
 					<SongDocsDemo
 						view={data.demo}
 						href={data.demo.href}
 						comments={demoComments}
 						onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
 					/>
+					</div>
 				</section>
 
 
@@ -88,9 +90,9 @@
 				class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5 place-content-start [&>h3]-(mt-5 mb-2 leading-tight font-600 text-18px) [&>p]-(mb-3)"
 			>
 
-				<h3>What's the big idea?</h3>
+				<h3>What is Stem Shovel?</h3>
 				<p class="">
-					Stem Shovel was conceived as a place to manage songwriting, arranging, and recording
+					Stem Shovel is a web app for managing songwriting, arranging, and recording
 					projects with an emphasis on creativity and collaboration. Built by musicians for musicians,
 					this web-app is intended to be an easy-to-use and affordable location for storing and
 					sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter,

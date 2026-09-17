@@ -29,7 +29,7 @@ export default defineConfig({
 			fonts: {
 				brand: "Bangers",
 				// display: "Bahiana",
-				sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
+				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
 			},
 		}),
 	],

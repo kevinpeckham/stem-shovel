@@ -17,6 +17,7 @@
 		hint: string;
 		backHref: string;
 		backLabel: string;
+		classes?: string;
 		version: number;
 		pending: boolean;
 		confirmEmpty: boolean;
@@ -47,6 +48,7 @@
 		hint,
 		backHref,
 		backLabel,
+		classes = "",
 		version,
 		pending,
 		confirmEmpty,
@@ -280,7 +282,7 @@
 		<textarea
 			class="chart-source block w-full {embedded
 				? 'bg-transparent px-0 pt-0 pb-3'
-				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed focus:outline-none min-h-full"
+				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed focus:outline-none min-h-full {classes}"
 			bind:value={editor.markdownCurrent}
 			rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 			spellcheck="false"
@@ -289,7 +291,7 @@
 		<textarea
 			class="chart-source block w-full {embedded
 				? 'bg-transparent px-0 pt-0 pb-3'
-				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed min-h-full"
+				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed min-h-full {classes}"
 			rows="16"
 			disabled>{markdown}</textarea
 		>
