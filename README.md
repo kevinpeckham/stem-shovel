@@ -93,6 +93,9 @@ Drizzle commands and the ESM-only rule for server dependencies, are in
   on /admin/home, stored in `app_setting`): the player with its downloads,
   and the documents panel, read-only; the song page loads through the same
   `songView`.
+- `src/lib/remote/waitlist.remote.ts`, `WaitlistForm.svelte`, `src/routes/waitlist/` —
+  the beta waitlist with email confirmation and a separate consent to
+  project updates (docs/auth.md); invites go out from /admin/waitlist.
 - `src/routes/admin/`, `src/lib/remote/admin.remote.ts` — the operator's area
   (a side-nav layout with a page per concern: accounts, users, invite codes,
   bug reports, feature requests, AI requests, audit log), for users flagged

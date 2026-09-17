@@ -53,7 +53,9 @@
 		{:else}
 			<p class="opacity-90 text-balance">
 				Stem Shovel is invitation-only. You need an invitation link or an invite code from an
-				account admin. Need an invite? Sign up for the waitlist (coming soon).
+				account admin. Need an invite? <a class="underline underline-offset-2" href="/waitlist"
+					>Join the waitlist</a
+				>.
 			</p>
 		{/if}
 	</header>

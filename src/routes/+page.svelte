@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
 	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
+	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "$lib/constants/demoComments";
 
 	let { data } = $props();
@@ -12,7 +13,7 @@
 </script>
 
 <svelte:head>
-	<title>Stem Shovel —  Cllaboration tool for musicians, bands and producers</title>
+	<title>Stem Shovel — Cllaboration tool for musicians, bands and producers</title>
 	<meta name="description" content={description} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href="https://www.stem-shovel.com/" />
@@ -32,8 +33,8 @@
 	<div class="border-b border-b-current/10 pb-5 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
 		<h1 class="max-w-prose mb-4 text-balance">
-			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
-			creativity, simplicity, and affordability.
+			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis
+			on creativity, simplicity, and affordability.
 		</h1>
 		<div class="mt-4 flex flex-wrap gap-3">
 			{#if data.user}
@@ -44,13 +45,20 @@
 				<a class="button-accent button-sm" href="/sign-in">Sign in</a>
 				<a class="button button-sm" href="/sign-up">Register</a>
 			{/if}
-
 		</div>
+		{#if !data.user}
+			<div class="mt-6">
+				<p class="mb-2 text-15px opacity-90">
+					No invite yet? Join the beta waitlist and we will send you a code as seats open.
+				</p>
+				<WaitlistForm compact />
+			</div>
+		{/if}
 	</div>
 
-	<div class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 xl-gap-20 2xl-gap-24 place-content-start ">
-
-
+	<div
+		class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 xl-gap-20 2xl-gap-24 place-content-start"
+	>
 		<!-- stem player demo -->
 		<div class="">
 			{#if data.demo}
@@ -59,20 +67,23 @@
 				<section class="">
 					<h3 class="text-18px font-600 leading-tight mb-2">Share Stems, Leave Feedback</h3>
 					<p class="opacity-90 text-16px max-w-740px mb-3 text-balance">
-						Mute, solo and download stems or leave comments on the timeline for your collaborators. Try it out in the working demo below.
+						Mute, solo and download stems or leave comments on the timeline for your collaborators.
+						Try it out in the working demo below.
 					</p>
 					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow">
 						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
 					</div>
 				</section>
 
-
 				<section class="mt-12">
 					<h3 class="text-18px font-600 leading-tight mb-2">Charts, Lyrics, Notes and Comments</h3>
 					<p class="opacity-90 text-16px max-w-740px mb-5 text-balance">
-						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation for the song above.
+						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation
+						for the song above.
 					</p>
-					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow min-h-600px">
+					<div
+						class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow min-h-600px"
+					>
 						<SongDocsDemo
 							view={data.demo}
 							href={data.demo.href}
@@ -81,8 +92,6 @@
 						/>
 					</div>
 				</section>
-
-
 			{:else}
 				<img
 					class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"
@@ -94,38 +103,40 @@
 		</div>
 
 		<section>
-
 			<h2 class="text-accent mb-2">Frequently Asked Questions</h2>
 
 			<div
 				class="text-17px max-w-740px grid grid-cols-1 gap-0 [&>p]-mb-3 [&>p]-opacity-90 [&>h2]-mb-2 [&>h2]-mt-5 place-content-start [&>h3]-(mt-5 mb-2 leading-tight font-600 text-18px) [&>p]-(mb-3)"
 			>
-
 				<h3>What is Stem Shovel?</h3>
 				<p class="">
-					Stem Shovel is a web app for managing songwriting, arranging, and recording
-					projects with an emphasis on creativity and collaboration. Built by musicians for musicians,
-					this web-app is intended to be an easy-to-use and affordable location for storing and
-					sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter,
+					Stem Shovel is a web app for managing songwriting, arranging, and recording projects with
+					an emphasis on creativity and collaboration. Built by musicians for musicians, this
+					web-app is intended to be an easy-to-use and affordable location for storing and sharing
+					demos, stems, lyrics, chord charts and other songwriting assets. Without clutter,
 					up-sells, or feature bloat.
 				</p>
 				<h3>How do I get started?</h3>
 				<p>
-					Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, you can sign up for the waitlist to get early access (coming soon).
+					Stem Shovel is in early beta and you will need an invite or invite code to join and use
+					it. If you are eager to try it out, <a
+						class="underline underline-offset-2"
+						href="/waitlist">join the waitlist</a
+					> and we will send you a code as seats open.
 				</p>
 
 				<h3>How much does it cost?</h3>
 				<p>
-					During the early beta period all subscriptions are free. Beyond that, our plan is to
-					offer a generous free tier for independent bands, musicians, producers and educators, with
-					no recurring subscription and free data storage up to 10 GB.
+					During the early beta period all subscriptions are free. Beyond that, our plan is to offer
+					a generous free tier for independent bands, musicians, producers and educators, with no
+					recurring subscription and free data storage up to 10 GB.
 				</p>
 
 				<h3>Is this a desktop app?</h3>
 				<p>
 					Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud
-					platform. It works cross browser and cross platform and is accessible from any device with a
-					web browser and internet connection.
+					platform. It works cross browser and cross platform and is accessible from any device with
+					a web browser and internet connection.
 				</p>
 
 				<h3>Who is the dev team behind Stem Shovel?</h3>
@@ -136,25 +147,43 @@
 				</p>
 				<h3>Are you going to lure us in with a generous free tier then increase prices later?</h3>
 				<p>
-					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not a startup, this is not our primary revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security, data storage, and support.
+					Emphatically no. Stem Shovel is 100% owned and maintained by Lightning Jar and we are not
+					a startup, this is not our primary revenue stream and we do not plan on taking on any
+					investors. Which is to say we're not here to get rich and we feel no pressure to grow. All
+					we need to do is cover our expenses, and those primarily have to do with servers,
+					security, data storage, and support.
 				</p>
 				<h3>Does this project have AI Features?</h3>
 				<p>
-					Some of the product features like advanced chord detection are powered by AI. However we are sensitive to the fact that some artists do not want to use AI features and require that their original music never touch 3rd party LLM models. For that reason all LLM-powered features can be easily turned off with a single click either at the project or song level.
+					Some of the product features like advanced chord detection are powered by AI. However we
+					are sensitive to the fact that some artists do not want to use AI features and require
+					that their original music never touch 3rd party LLM models. For that reason all
+					LLM-powered features can be easily turned off with a single click either at the project or
+					song level.
 				</p>
 				<h3>Was this app vibe-coded?</h3>
 				<p>
-					If you're not familiar with the term, vibe coding means building something entirely from AI prompts.  While we do use AI as part of our process to speed up development, this app was not vibe-coded. Our team has been building websites and web apps for over 25 years and we have a deep understanding of what it takes to build a high-quality product, with human-driven architecture and design decisions following an approach to app building that mirrors our own experience and expertise.
+					If you're not familiar with the term, vibe coding means building something entirely from
+					AI prompts. While we do use AI as part of our process to speed up development, this app
+					was not vibe-coded. Our team has been building websites and web apps for over 25 years and
+					we have a deep understanding of what it takes to build a high-quality product, with
+					human-driven architecture and design decisions following an approach to app building that
+					mirrors our own experience and expertise.
 				</p>
 				<h3>Is the app open source?</h3>
 				<p>
-					Yes. You can find our source code on Github at <a class="underline underline-offset-4 hover-text-accent" href="https://github.com/kevinpeckham/stem-shovel">https://github.com/stem-shovel/stem-shovel</a>. You're welcome to clone the project and set up your own private version on your own servers. We don't have a team in place to handle 3rd party pull requests, so we don't accept them. However you can submit feature suggestions vial a link in the footer, though you must be logged-in to do so.
+					Yes. You can find our source code on Github at <a
+						class="underline underline-offset-4 hover-text-accent"
+						href="https://github.com/kevinpeckham/stem-shovel"
+						>https://github.com/stem-shovel/stem-shovel</a
+					>. You're welcome to clone the project and set up your own private version on your own
+					servers. We don't have a team in place to handle 3rd party pull requests, so we don't
+					accept them. However you can submit feature suggestions vial a link in the footer, though
+					you must be logged-in to do so.
 				</p>
-
 			</div>
 		</section>
 	</div>
-
 
 	<!-- {#if !data.user}
 		<p class="mt-6 max-w-prose text-15px text-dim">

@@ -4,8 +4,11 @@ import {
 	createInviteCode,
 	deleteAccount,
 	listPublicSongs,
+	markWaitlistInvited,
+	removeWaitlist,
 	setAccountFounder,
 	setAppSetting,
+	waitlistById,
 	deleteUser,
 	revokeInviteCode,
 	setAccountStatus,
@@ -14,6 +17,10 @@ import {
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
 import { AccountAdminSchema } from "$lib/val/AccountAdminSchema";
 import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
+import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
+import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
+import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "$lib/server/email";
+import { background } from "$lib/server/background";
 import { UserAdminSchema } from "$lib/val/UserAdminSchema";
 import { error } from "@sveltejs/kit";
 
@@ -89,4 +96,55 @@ export const setFeaturedSong = form(FeaturedSongSchema, async ({ songId }) => {
 		error(400, "That song is not public, or has no stems");
 	await setAppSetting("featuredSongId", songId);
 	return { saved: true };
+});
+
+const WAITLIST_INVITE_DAYS = 30;
+
+/**
+ * The waitlist from /admin: invite (a single-use new-account code, emailed),
+ * resend a confirmation, or remove the entry. Only a confirmed address can
+ * be invited.
+ */
+export const manageWaitlist = form(WaitlistAdminSchema, async ({ id, action }) => {
+	const { locals, url } = getRequestEvent();
+	const admin = requireSystemAdmin(locals);
+	const entry = await waitlistById(id);
+	if (!entry) error(404, "Not on the waitlist");
+	if (action === "remove") {
+		await removeWaitlist(id);
+		return { action };
+	}
+	if (action === "resend") {
+		if (entry.status !== "pending") error(409, "That address is not waiting for confirmation");
+		background(() =>
+			sendWaitlistConfirmEmail({
+				to: entry.email,
+				name: entry.name,
+				confirmUrl: `${url.origin}/waitlist/confirm/${entry.confirmToken}`,
+				manageUrl: waitlistManageUrl(url.origin, entry.manageToken),
+				updatesOk: entry.updatesOk,
+			}),
+		);
+		return { action };
+	}
+	if (entry.status !== "confirmed") error(409, "Only a confirmed address can be invited");
+	const code = await createInviteCode(null, admin.id, {
+		role: "member",
+		note: `waitlist: ${entry.email}`,
+		maxUses: 1,
+		expiresDays: WAITLIST_INVITE_DAYS,
+	});
+	await markWaitlistInvited(entry.id, code.id);
+	// Sent after the response; the code is on the page regardless.
+	background(() =>
+		sendWaitlistInviteEmail({
+			to: entry.email,
+			name: entry.name,
+			code: code.code,
+			signUpUrl: `${url.origin}/sign-up?code=${code.code}`,
+			manageUrl: waitlistManageUrl(url.origin, entry.manageToken),
+			expiresDays: WAITLIST_INVITE_DAYS,
+		}),
+	);
+	return { action };
 });

@@ -19,6 +19,7 @@ import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
 import { twoFactor } from "./twoFactor";
 import { user } from "./user";
+import { waitlistSignup } from "./waitlistSignup";
 
 // All relations live here so table files only import their foreign-key
 // targets (a DAG) instead of importing each other back for `many()`.
@@ -133,4 +134,11 @@ export const sessionRelations = relations(session, ({ one }) => ({
 
 export const authAccountRelations = relations(authAccount, ({ one }) => ({
 	user: one(user, { fields: [authAccount.userId], references: [user.id] }),
+}));
+
+export const waitlistSignupRelations = relations(waitlistSignup, ({ one }) => ({
+	inviteCode: one(inviteCode, {
+		fields: [waitlistSignup.inviteCodeId],
+		references: [inviteCode.id],
+	}),
 }));

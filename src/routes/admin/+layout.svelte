@@ -8,6 +8,7 @@
 		{ slug: "accounts", title: "Accounts" },
 		{ slug: "users", title: "Users" },
 		{ slug: "invite-codes", title: "Invite codes" },
+		{ slug: "waitlist", title: "Waitlist" },
 		{ slug: "bug-reports", title: "Bug reports" },
 		{ slug: "feature-requests", title: "Feature requests" },
 		{ slug: "ai-requests", title: "AI requests" },

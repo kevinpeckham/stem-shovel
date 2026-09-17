@@ -2180,3 +2180,113 @@ export async function listPublicSongs() {
 		}))
 		.sort((a, b) => a.account.localeCompare(b.account) || a.title.localeCompare(b.title));
 }
+
+// ---- the beta waitlist ---------------------------------------------------------
+
+const { waitlistSignup } = schema;
+
+/**
+ * Joins the waitlist, or refreshes an existing entry. Returns what to do
+ * next: "confirm" (a confirmation email is due, for a new or still-pending
+ * address), "already" (confirmed or invited; nothing to send), or "removed"
+ * (they left; the entry is revived as pending and a confirmation is due).
+ */
+export async function joinWaitlist(input: {
+	email: string;
+	name: string;
+	updatesOk: boolean;
+	source: string;
+}) {
+	const existing = await db.query.waitlistSignup.findFirst({
+		where: eq(waitlistSignup.email, input.email),
+	});
+	if (existing) {
+		if (existing.status === "confirmed" || existing.status === "invited") {
+			return { next: "already" as const, row: existing };
+		}
+		const [row] = await db
+			.update(waitlistSignup)
+			.set({
+				name: input.name || existing.name,
+				updatesOk: input.updatesOk || existing.updatesOk,
+				status: "pending",
+				confirmToken: nanoid(32),
+			})
+			.where(eq(waitlistSignup.id, existing.id))
+			.returning();
+		return { next: "confirm" as const, row };
+	}
+	const [row] = await db
+		.insert(waitlistSignup)
+		.values({
+			email: input.email,
+			name: input.name,
+			updatesOk: input.updatesOk,
+			confirmToken: nanoid(32),
+			manageToken: nanoid(32),
+			source: input.source,
+		})
+		.returning();
+	return { next: "confirm" as const, row };
+}
+
+/** The confirmation link: pending → confirmed. Returns the entry, or null for a token that is not open. */
+export async function confirmWaitlist(token: string) {
+	const [row] = await db
+		.update(waitlistSignup)
+		.set({ status: "confirmed", confirmedAt: new Date() })
+		.where(and(eq(waitlistSignup.confirmToken, token), eq(waitlistSignup.status, "pending")))
+		.returning();
+	return row ?? null;
+}
+
+export function waitlistByManageToken(token: string) {
+	return db.query.waitlistSignup.findFirst({ where: eq(waitlistSignup.manageToken, token) });
+}
+
+/** The manage link: consent on or off, or leave the list (the row stays as "removed" so a re-join needs a new confirmation). */
+export async function setWaitlistPrefs(
+	token: string,
+	action: "updates-on" | "updates-off" | "leave",
+) {
+	const [row] = await db
+		.update(waitlistSignup)
+		.set(
+			action === "leave"
+				? { status: "removed", updatesOk: false }
+				: { updatesOk: action === "updates-on" },
+		)
+		.where(eq(waitlistSignup.manageToken, token))
+		.returning();
+	return row ?? null;
+}
+
+/** Every entry for /admin/waitlist: confirmed first, then pending, newest first within each. */
+export async function listWaitlist() {
+	const rows = await db.query.waitlistSignup.findMany({
+		orderBy: [asc(waitlistSignup.status), desc(waitlistSignup.createdAt)],
+		with: { inviteCode: { columns: { code: true, uses: true, maxUses: true, revokedAt: true } } },
+	});
+	const order: Record<string, number> = { confirmed: 0, pending: 1, invited: 2, removed: 3 };
+	return rows.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+}
+
+export function waitlistById(id: string) {
+	return db.query.waitlistSignup.findFirst({ where: eq(waitlistSignup.id, id) });
+}
+
+/** An invite went out: the entry keeps the code it was sent. */
+export async function markWaitlistInvited(id: string, inviteCodeId: string) {
+	await db
+		.update(waitlistSignup)
+		.set({ status: "invited", invitedAt: new Date(), inviteCodeId })
+		.where(eq(waitlistSignup.id, id));
+}
+
+export async function removeWaitlist(id: string) {
+	const [row] = await db
+		.delete(waitlistSignup)
+		.where(eq(waitlistSignup.id, id))
+		.returning({ id: waitlistSignup.id });
+	return !!row;
+}

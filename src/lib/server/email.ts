@@ -119,6 +119,50 @@ export async function sendShareEmail(opts: {
 	});
 }
 
+/** The waitlist's double opt-in: nothing is kept as confirmed until this link is opened. */
+export async function sendWaitlistConfirmEmail(opts: {
+	to: string;
+	name: string;
+	confirmUrl: string;
+	manageUrl: string;
+	updatesOk: boolean;
+}) {
+	const body = renderEmail({
+		greeting: greet(opts.name),
+		lines: [
+			"You asked to join the Stem Shovel beta waitlist. Confirm your address and you are on it; invite codes go out to the list as we open more seats.",
+			opts.updatesOk
+				? "You also said yes to project updates (a note now and then about what is new). Change your mind any time from the link at the end of this email."
+				: "You will only hear from us about the waitlist itself — your confirmation and your invite. If you would like project updates too, the link at the end of this email turns them on.",
+		],
+		cta: { label: "Confirm my address", url: opts.confirmUrl },
+		footer: `Not you? Ignore this email and nothing happens. Manage your waitlist entry or leave the list: ${opts.manageUrl}`,
+	});
+	await sendEmail({ to: opts.to, subject: "Confirm your Stem Shovel waitlist address", ...body });
+}
+
+/** The invite: a code that opens sign-up, single-use, with its expiry. */
+export async function sendWaitlistInviteEmail(opts: {
+	to: string;
+	name: string;
+	code: string;
+	signUpUrl: string;
+	manageUrl: string;
+	expiresDays: number;
+}) {
+	const body = renderEmail({
+		greeting: greet(opts.name),
+		lines: [
+			"Your Stem Shovel invite is here. The code below opens sign-up; it works once.",
+			`Invite code: ${opts.code}`,
+			`It expires in ${opts.expiresDays} days. Sign up with the address this email reached and you get a workspace of your own.`,
+		],
+		cta: { label: "Sign up with this code", url: opts.signUpUrl },
+		footer: `Manage your waitlist entry: ${opts.manageUrl}`,
+	});
+	await sendEmail({ to: opts.to, subject: "Your Stem Shovel invite code", ...body });
+}
+
 /** Two-factor switched on or off: the user hears, in case it was not them. */
 export async function sendTwoFactorChangedEmail(to: string, name: string, enabled: boolean) {
 	const body = renderEmail({

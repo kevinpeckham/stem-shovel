@@ -260,6 +260,13 @@
       "when": 1789591312132,
       "tag": "0036_app_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1789651635518,
+      "tag": "0037_waitlist_signup",
+      "breakpoints": true
     }
   ]
 }

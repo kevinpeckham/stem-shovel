@@ -23,3 +23,4 @@ export * from "./user";
 export * from "./userDoc";
 export * from "./userDocVersion";
 export * from "./verification";
+export * from "./waitlistSignup";

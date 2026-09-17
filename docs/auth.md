@@ -126,7 +126,19 @@ public by URL; editing needs a signed-in member.
   session. `locals.user.twoFactorEnabled` mirrors the flag; the Screenshot
   Bot has none. The plugin rate-limits `/two-factor/*` (3 per 10 s) and
   locks after repeated failures.
-- **Not yet**: changing the email address, removing members.
+- **The beta waitlist** (`waitlist_signup`, `waitlist.remote.ts`,
+  `WaitlistForm.svelte` on the front page and `/waitlist`): an address joins
+  with an optional name and a separate, off-by-default consent to
+  project-update email; a confirmation email (double opt-in) carries
+  `/waitlist/confirm/<token>`, and every waitlist email carries
+  `/waitlist/manage/<token>` to change the consent or leave. A honeypot field
+  and per-address and per-IP rate limits keep bots out. Confirmed entries
+  are invited from `/admin/waitlist`: a single-use, 30-day new-account
+  invite code is made and emailed, and the entry keeps the code. Waitlist
+  mail (confirmation, invite) is transactional and always sent; project
+  updates are not sent by the app yet — the consent is stored for when they
+  are.
+- **Not yet**: changing the email address, removing members, sending project updates.
   GitHub OAuth needs an OAuth app; add `socialProviders.github` when there
   is one.
 - **Env**: `BETTER_AUTH_SECRET` (in the 1Password environment; a random
