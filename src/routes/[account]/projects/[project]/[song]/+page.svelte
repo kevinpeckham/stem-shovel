@@ -1247,7 +1247,7 @@
 							<input {...fields.id.as("hidden", data.song.id)} />
 							<div class="grid gap-4 sm:grid-cols-2">
 								<label class="block">
-									<span class="text-sm text-dim">Title</span>
+									<span class="text-sm opacity-90">Title</span>
 									<input
 										class="mt-1 field"
 										{...fields.title.as("text", data.song.title)}
@@ -1261,9 +1261,9 @@
 									{/each}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim">URL</span>
+									<span class="text-sm opacity-90">URL</span>
 									<span class="mt-1 flex items-center rounded border border-white/15 bg-black/20">
-										<span class="truncate pl-3 text-sm text-dim"
+										<span class="truncate pl-3 text-sm opacity-90"
 											>/projects/{data.song.project.slug}/</span
 										>
 										<input
@@ -1288,7 +1288,7 @@
 									{/if}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>Songwriter <span class="opacity-60">(optional)</span></span
 									>
 									<input
@@ -1301,7 +1301,7 @@
 									{/each}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>First written <span class="opacity-60">(optional)</span></span
 									>
 									<!-- color-scheme dark: the browser draws the calendar icon light on the dark field. -->
@@ -1315,7 +1315,7 @@
 									{/each}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>Start of bar 1 <span class="opacity-60">(optional)</span></span
 									>
 									<span class="mt-1 flex items-center gap-2">
@@ -1337,7 +1337,7 @@
 											Playhead
 										</button>
 									</span>
-									<span class="mt-1 block text-xs text-dim"
+									<span class="mt-1 block text-xs opacity-90"
 										>Leading silence or a count-in: bars are counted from here.</span
 									>
 									{#each fields.startAt.issues() ?? [] as issue (issue.message)}
@@ -1345,7 +1345,7 @@
 									{/each}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>End <span class="opacity-60">(optional)</span></span
 									>
 									<span class="mt-1 flex items-center gap-2">
@@ -1367,22 +1367,32 @@
 											Playhead
 										</button>
 									</span>
-									<span class="mt-1 block text-xs text-dim"
+									<span class="mt-1 block text-xs opacity-90"
 										>Where the song ends, for the bars total.</span
 									>
 									{#each fields.endAt.issues() ?? [] as issue (issue.message)}
 										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 									{/each}
 								</label>
+								<p
+									class="flex items-start gap-2 rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-xs opacity-90 sm:col-span-2"
+								>
+									<span class="i-ph-info mt-px shrink-0 text-14px" aria-hidden="true"></span>
+									<span>
+										Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
+										readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3)
+										is accepted anywhere.
+									</span>
+								</p>
 								<label class="block">
-									<span class="text-sm text-dim">Version</span>
+									<span class="text-sm opacity-90">Version</span>
 									<input
 										class="mt-1 field font-mono text-sm"
 										placeholder="0.0.1"
 										autocomplete="off"
 										{...fields.version.as("text", data.song.version)}
 									/>
-									<span class="mt-1 block text-xs text-dim">
+									<span class="mt-1 block text-xs opacity-90">
 										Yours to manage (major.minor.patch); after stems change you are offered a bump.
 									</span>
 									{#each fields.version.issues() ?? [] as issue (issue.message)}
@@ -1390,7 +1400,7 @@
 									{/each}
 								</label>
 								<label class="block">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>Frame rate <span class="opacity-60">(timecode)</span></span
 									>
 									<select
@@ -1402,13 +1412,8 @@
 										{/each}
 									</select>
 								</label>
-								<p class="text-xs text-dim self-end pb-2">
-									Positions read and are typed as {POSITION_MODE_LABELS[mode].toLowerCase()} — the transport's
-									readout sets the format. Any of time (1:23.4), timecode (01:23:15.72) or bars (12|3)
-									is accepted anywhere.
-								</p>
 								<label class="block sm:col-span-2">
-									<span class="text-sm text-dim"
+									<span class="text-sm opacity-90"
 										>Description <span class="opacity-60">(optional)</span></span
 									>
 									<textarea
@@ -1424,7 +1429,7 @@
 								<p class="mt-2 text-sm text-red-400" role="alert">{positionError}</p>
 							{/if}
 							{#if slug.trim() !== data.song.slug}
-								<p class="mt-2 text-xs text-dim">
+								<p class="mt-2 text-xs opacity-90">
 									Changing the URL breaks existing links to this song.
 								</p>
 							{/if}
@@ -1461,7 +1466,7 @@
 									Add row
 								</button>
 							</div>
-							<p class="mt-1 text-sm text-dim">
+							<p class="mt-1 text-sm opacity-90">
 								Song structure for the timeline above the stems: a short index (roman numerals,
 								shown on the timeline; the name shows on hover), a name, and where it starts — time,
 								timecode or bars.
@@ -1678,7 +1683,7 @@
 								</p>
 							{/if}
 							{#if aiError}<p class="mt-2 text-sm text-red-400" role="alert">{aiError}</p>{/if}
-							<p class="mt-1 text-sm text-dim">
+							<p class="mt-1 text-sm opacity-90">
 								Each from the time it starts (0:00.0 for the song's own tempo, key and time
 								signature; later rows are changes). They show on the timeline above the stems.
 							</p>
@@ -1752,7 +1757,7 @@
 					{#if settingsTab === "demos"}
 						<div>
 							<h3 class="text-15px font-700">Demo recordings</h3>
-							<p class="mt-1 text-sm text-dim">
+							<p class="mt-1 text-sm opacity-90">
 								Phone memos, rough takes, the original idea — any audio format; each is converted to
 								MP3 for listening and download. Up to {MAX_DEMOS_PER_SONG}.
 							</p>
@@ -1760,7 +1765,7 @@
 								<p class="mt-2 text-sm text-red-400" role="alert">{demoNotice}</p>
 							{/if}
 							{#each demoJobs as job (job.name)}
-								<p class="mt-2 text-sm {job.error ? 'text-red-400' : 'text-dim'}">
+								<p class="mt-2 text-sm {job.error ? 'text-red-400' : 'opacity-90'}">
 									{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
 								</p>
 							{/each}
@@ -1773,7 +1778,7 @@
 										>
 											<span class="min-w-0 truncate">
 												{d.label}
-												<span class="text-dim"
+												<span class="opacity-90"
 													>· {formatBytes(d.sizeBytes)}{#if d.status !== "ready"}
 														· uploading{:else if d.playbackStatus !== "ready"}
 														· converting to MP3…{/if}</span
@@ -1795,7 +1800,7 @@
 								</ul>
 							{:else}
 								<p
-									class="mt-3 rounded border border-dashed border-white/15 px-3 py-4 text-center text-sm text-dim"
+									class="mt-3 rounded border border-dashed border-white/15 px-3 py-4 text-center text-sm opacity-90"
 								>
 									No demos yet.
 								</p>
@@ -1848,7 +1853,7 @@
 						</div>
 						<div class="mt-8 border-t border-white/15 pt-4">
 							<h3 class="text-15px font-700 text-red-400">Delete this song</h3>
-							<p class="mt-1 text-sm text-dim">
+							<p class="mt-1 text-sm opacity-90">
 								Removes the song, its chart, lyrics and notes, every stem file and every demo
 								recording.
 							</p>
