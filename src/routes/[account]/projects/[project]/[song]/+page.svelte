@@ -681,7 +681,8 @@
 			aiBusy = false;
 		}
 	}
-	function useAiAnswer() {
+	/** Fill the rows from the model's answer and save at once (a bug report: filling alone looked like nothing happened). */
+	async function useAiAnswer() {
 		if (!aiAnswer) return;
 		// Rows at 0:00 for what the model is sure of (no row for a free tempo or no meter),
 		// plus a tempo row at each shift; other rows the user typed stay.
@@ -710,7 +711,9 @@
 			});
 		}
 		changeRows = rows;
-		aiAnswer = null;
+		await saveChangeRows();
+		if (changeError) notify(`Could not apply the AI's answer: ${changeError}`, { kind: "error" });
+		else aiAnswer = null;
 	}
 	async function saveChangeRows() {
 		changeError = null;
@@ -1500,7 +1503,12 @@
 						({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
 							? ` — ${aiAnswer.notes}`
 							: ""}
-						<button class="ml-2 link-dim" type="button" onclick={useAiAnswer}>Use these</button>
+						<button
+							class="ml-2 link-dim"
+							type="button"
+							disabled={changesSaving}
+							onclick={useAiAnswer}>{changesSaving ? "Saving…" : "Use these"}</button
+						>
 						<button class="ml-2 link-dim" type="button" onclick={() => (aiAnswer = null)}
 							>Dismiss</button
 						>
