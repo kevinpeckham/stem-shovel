@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Vercel Web Analytics**: cookieless page-view counts by route, with query strings and one-time link tokens stripped before anything is sent; the privacy policy says so.
+
+### Added
+
 - **Open source under Apache-2.0**: LICENSE, a license note in the README, SECURITY.md with a private disclosure route, CODEOWNERS, a CI workflow (lint, check, test on pushes and pull requests) and Dependabot for packages and actions.
 
 ### Added

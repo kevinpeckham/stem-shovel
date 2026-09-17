@@ -11,6 +11,8 @@ const BLOB_STORE = "https://*.public.blob.vercel-storage.com";
 /** The private store, reached with presigned URLs (src/lib/server/blob.ts). */
 const BLOB_PRIVATE_STORE = "https://*.private.blob.vercel-storage.com";
 const production = process.env.NODE_ENV === "production";
+/** Vercel Web Analytics' debug script, loaded in dev only (production is same-origin). */
+const ANALYTICS_DEBUG_HOST = "https://va.vercel-scripts.com" as const;
 
 export default defineConfig({
 	// Loaded on demand by the chord detector; pre-bundling them at start-up
@@ -66,7 +68,8 @@ export default defineConfig({
 				mode: "auto",
 				directives: {
 					"default-src": ["self"],
-					"script-src": ["self"],
+					// Vercel Web Analytics is same-origin in production; dev loads its debug script from Vercel.
+					"script-src": ["self", ...(production ? [] : [ANALYTICS_DEBUG_HOST])],
 					"style-src": ["self", "unsafe-inline"],
 					"img-src": ["self", "data:", "blob:"],
 					"font-src": ["self", "data:", "https://fonts.bunny.net"],

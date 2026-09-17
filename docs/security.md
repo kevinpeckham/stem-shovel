@@ -86,6 +86,16 @@ vercel.json's `/(.+)` rule for static files) and a matching robots meta from
 the root layout; `static/robots.txt` allows `/` alone and points at a
 one-entry sitemap.
 
+## Analytics
+
+Vercel Web Analytics (`@vercel/analytics/sveltekit`, called once in
+`src/routes/+layout.ts`) counts page views by route. It is cookieless and
+keeps no identifier; its script and beacons are same-origin under
+`/_vercel/insights/`, so the CSP allows them as `self` (dev alone allows
+Vercel's debug script host). `beforeSend` drops every query string and
+replaces the token segment of confirmation, manage and invitation links, so
+one-time links never reach the analytics store.
+
 ## Known gaps
 
 - Rate limits and the Blob read delegation live in process memory, per
