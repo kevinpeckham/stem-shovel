@@ -41,9 +41,9 @@
 	<title>Sign in — Stem Shovel</title>
 </svelte:head>
 
-<main class="page min-h-screen">
+<main class="page-x-padding pt-8 min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Sign in</h1>
+		<h1 class="heading-2">Sign in</h1>
 	</header>
 	<form class="grid max-w-sm gap-5" onsubmit={submit}>
 		<label class="block">
@@ -63,8 +63,8 @@
 		{#if error}<p class="text-sm text-red-400">{error}</p>{/if}
 		<div class="flex items-center gap-4">
 			<button class="button-accent" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-			<a class="text-sm link-dim" href="/sign-up">Create an account</a>
-			<a class="text-sm link-dim" href="/forgot-password">Forgot password?</a>
+			<a class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent" href="/sign-up">Create an account</a>
+			<a class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent" href="/forgot-password">Forgot password?</a>
 		</div>
 	</form>
 </main>

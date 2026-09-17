@@ -43,17 +43,17 @@
 	<title>Create an account — Stem Shovel</title>
 </svelte:head>
 
-<main class="page min-h-screen">
+<main class="page-x-padding pt-8 min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Create an account</h1>
+		<h1 class="heading-2">Create an account</h1>
 		{#if data.invitation}
 			<p class="opacity-90">
 				You were invited to <strong>{data.invitation.account}</strong> as {data.invitation.role}.
 			</p>
 		{:else}
-			<p class="opacity-90">
+			<p class="opacity-90 text-balance">
 				Stem Shovel is invitation-only. You need an invitation link or an invite code from an
-				account admin.
+				account admin. Need an invite? Sign up for the waitlist (coming soon).
 			</p>
 		{/if}
 	</header>

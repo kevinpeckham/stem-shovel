@@ -29,12 +29,23 @@
 </svelte:head>
 
 <main class="page-x-padding pt-4 pb-16 min-h-full">
-	<div class="/border-b border-b-current/40 pb-3 mb-8">
+	<div class="border-b border-b-current/10 pb-5 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
 		<h1 class="max-w-prose mb-4 text-balance">
 			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis on
 			creativity, simplicity, and affordability.
 		</h1>
+		<div class="mt-4 flex flex-wrap gap-3">
+			{#if data.user}
+				<!-- {#each data.memberships as m (m.accountId)}
+					<a class="button-accent" href="/{m.slug}/projects">{m.name} →</a>
+				{/each} -->
+			{:else}
+				<a class="button-accent button-sm" href="/sign-in">Sign in</a>
+				<a class="button button-sm" href="/sign-up">Register</a>
+			{/if}
+
+		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-x-8 gap-y-1 xl-grid-cols-2 xl-gap-20 2xl-gap-24 place-content-start ">
@@ -61,13 +72,13 @@
 					<p class="opacity-90 text-16px max-w-740px mb-5 text-balance">
 						Easily edit and share lyrics, notes, charts and more. The demo below shows documentation for the song above.
 					</p>
-					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow">
-					<SongDocsDemo
-						view={data.demo}
-						href={data.demo.href}
-						comments={demoComments}
-						onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
-					/>
+					<div class="bg-black/30 px-5 pt-4 pb-5 rounded-lg border border-current/5 mt-6 shadow min-h-600px">
+						<SongDocsDemo
+							view={data.demo}
+							href={data.demo.href}
+							comments={demoComments}
+							onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+						/>
 					</div>
 				</section>
 
@@ -132,17 +143,7 @@
 		</section>
 	</div>
 
-	<div class="mt-8 flex flex-wrap gap-3">
-		{#if data.user}
-			{#each data.memberships as m (m.accountId)}
-				<a class="button-accent" href="/{m.slug}/projects">{m.name} →</a>
-			{/each}
-		{:else}
-			<a class="button-accent" href="/sign-in">Sign in</a>
-			<a class="button" href="/sign-up">Register</a>
-		{/if}
-		<!-- <a class="button" href="/test">Static test page</a> -->
-	</div>
+
 	<!-- {#if !data.user}
 		<p class="mt-6 max-w-prose text-15px text-dim">
 			Anyone with a link can listen. Signing in lets you upload and edit.

@@ -42,11 +42,11 @@
 </script>
 
 <div
-	class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full overflow-hidden relative"
+	class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full overflow-hidden relative min-h-600px"
 >
 	{#if panel === "comments"}
 		<div
-			class="min-h-64 max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
+			class="h-full min-h-64 max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
 		>
 			<p class="mb-3 text-13px opacity-70">
 				Example comments. Add your own from the player above (⌘-click or right-click a waveform); on

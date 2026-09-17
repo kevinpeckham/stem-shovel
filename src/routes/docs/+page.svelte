@@ -11,11 +11,11 @@
 	<title>Docs — Stem Shovel</title>
 </svelte:head>
 
-<main class="page">
+<main class="page-x-padding pt-8 pb-12 min-h-screen">
 	<header class="flex flex-wrap items-baseline justify-between gap-4 max-w-article">
-		<div>
-			<h1 class="display">Docs</h1>
-			<p class="opacity-90">How to use Stem Shovel.</p>
+		<div class="mb-6">
+			<h1 class="heading-2">Docs</h1>
+			<p class="opacity-90 text-balance">Learn how to use Stem Shove, discover new features, and impress your bandmates by knowing about all the features.</p>
 		</div>
 		{#if data.canEdit}
 			<button class="button button-sm" type="button" popovertarget="add-doc">
