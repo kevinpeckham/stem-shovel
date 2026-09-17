@@ -2151,6 +2151,29 @@
 				Demos ({readyDemos.length})
 			</button>
 		{/if}
+		{#if data.canEdit && ready.length === 0}
+			<!-- A song idea starts with a demo more often than a stem; once stems exist, demos are managed in settings. -->
+			<label
+				class="button button-sm lg-button-xs cursor-pointer {demoBusy
+					? 'opacity-50 pointer-events-none'
+					: ''}"
+				title="Upload demo recordings: phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+			>
+				<span class="i-ph-microphone" aria-hidden="true"></span>
+				{demoBusy ? "Uploading…" : "Add Demos"}
+				<input
+					class="sr-only"
+					type="file"
+					accept={DEMO_ACCEPT}
+					multiple
+					disabled={demoBusy || readyDemos.length >= MAX_DEMOS_PER_SONG}
+					onchange={(e) => uploadDemos(e.currentTarget)}
+				/>
+			</label>
+			{#if demoNotice}
+				<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
+			{/if}
+		{/if}
 	</div>
 {/snippet}
 
