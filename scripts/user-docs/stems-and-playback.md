@@ -4,6 +4,8 @@
 
 On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A or AAC, up to 500 MB each and 32 stems per song. The name of the stem comes from the filename; rename it later from the row's ⋯ menu.
 
+**Replace Stems** takes the song's whole new set at once, for a fresh bounce from the session: a file with the same name as an existing stem (the filename, or the stem's name) replaces it in place, keeping its name, order and MIDI; a file with a new name is added; and existing stems with no file in the pick are removed. You see the three lists and confirm before anything is uploaded, and nothing is removed unless every upload succeeds. Afterwards the song offers a version bump, as after any stem change.
+
 Each stem is kept as uploaded (that is what you download later) and a lighter playback rendition is made from it, so a song loads quickly even when the stems are large WAVs.
 
 ## What the upload detects

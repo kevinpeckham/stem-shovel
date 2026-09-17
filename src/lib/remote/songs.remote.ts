@@ -41,6 +41,7 @@ import {
 	SongSettingsSchema,
 	SongVersionSetSchema,
 	StemRenameSchema,
+	StemIdsSchema,
 } from "$lib/val/SongSchema";
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
@@ -125,6 +126,19 @@ export const deleteSong = form(IdSchema, async ({ id }) => {
 });
 
 /** Deletes one stem and its blob. Used with `.for(stem.id)` in the row menu. */
+/** The stems a "Replace Stems" batch drops (members): each checked against the caller's accounts, the mix rendered once. */
+export const removeStems = command(StemIdsSchema, async ({ ids }) => {
+	const { locals } = getRequestEvent();
+	const songIds = new Set<string>();
+	for (const id of ids) {
+		const { accountId } = await memberOf(locals, accountOfStem, id);
+		const removed = await removeStem(accountId, id);
+		if (removed) songIds.add(removed.songId);
+	}
+	scheduleMix([...songIds]);
+	return { removed: ids.length };
+});
+
 export const deleteStem = form(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfStem, id);

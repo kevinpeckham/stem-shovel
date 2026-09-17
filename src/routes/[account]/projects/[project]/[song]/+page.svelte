@@ -19,6 +19,7 @@
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
+	import StemReplacer from "$lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
 	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "$lib/audio/measures";
 	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "$lib/audio/downloads";
@@ -2093,6 +2094,16 @@
 				onuploaded={() => (versionOffer = true)}
 				onanalysis={applyDetection}
 			/>
+			{#if data.song.stems.length > 0}
+				<StemReplacer
+					songId={data.song.id}
+					stems={data.song.stems.map((s) => ({ id: s.id, label: s.label, filename: s.filename }))}
+					bind:jobs={uploadJobs}
+					bind:notice={uploadNotice}
+					onuploaded={() => (versionOffer = true)}
+					onanalysis={applyDetection}
+				/>
+			{/if}
 		{/if}
 		{#if ready.length > 0}
 			<button
