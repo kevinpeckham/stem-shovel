@@ -1,0 +1,30 @@
+# Spell check for prose: the user docs, the privacy and copyright pages, the
+# project docs, README, SECURITY and the changelog. `bun run spell`; CI runs it.
+version: "0.2"
+language: en,en-GB
+files:
+  - "README.md"
+  - "SECURITY.md"
+  - "CHANGELOG.md"
+  - "CLAUDE.md"
+  - "docs/**/*.md"
+  - "scripts/user-docs/*.md"
+ignorePaths:
+  - node_modules
+  - .svelte-kit
+allowCompoundWords: true
+ignoreRegExpList:
+  - "/`[^`]*`/g" # inline code
+  - "/```[\\s\\S]*?```/g" # fenced code
+  - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
+  - "/https?:\\/\\/\\S+/g" # urls
+words:
+  - ALAC
+  - Authy
+  - Bahiana
+  - HSTS
+  - Krumhansl
+  - MMKK
+  - TOTP
+  - Turso
+  - unmuted
