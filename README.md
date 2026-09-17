@@ -37,8 +37,8 @@ URLs carry the account: `/[account]/projects` lists and creates projects;
 plays the project playlist and holds the project's settings (name, URL,
 privacy, no-AI, archive and delete); `/[account]/projects/[project]/[song]`
 is the song page (player, stem rows with a per-stem menu, download row,
-settings popover with tempo/key/meter, sections, demo recordings, version,
-privacy, finished and no-AI flags, the chart / lyrics / notes / comments
+panelled settings popover (details, sections, tempo/key/meter, demo
+recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
 `/lyrics` and `/notes` are the full-page editors; `/[account]/settings` is
 the account (members, invitations, invite codes, usage, plan). Neutral
@@ -145,7 +145,7 @@ check and the tests without any secret.
   docs/agent-screenshots.md).
 - `src/routes/[account]/…` — project list, project page (song list, "Add
   Song" popover, playlist player), song page (transport, stem rows with a
-  per-stem menu, download row, settings popover with demo recordings,
+  per-stem menu, Uploads/Downloads menus, panelled settings popover,
   chart / lyrics / notes / comments), account settings; `src/routes/sign-in|sign-up`.
 - **Chart, lyrics and notes**: three markdown documents per song
   (`song.chart_markdown`, `lyrics_markdown`, `notes_markdown`), edited at
