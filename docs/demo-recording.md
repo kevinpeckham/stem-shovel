@@ -25,19 +25,41 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   or a phone switching apps resumes it on the next visit (an idea that was
   never created gets one with the title it had). Measured in Chromium:
   Stop to Record enabled in about 70–105 ms. No pause, no review step.
-- **New idea** starts a fresh one ("Untitled Idea N", editable at the top
-  of the recorder) with an empty note board; the idea row is created on
-  first use (a take, notes or a title). The note board is the song page's
-  document panel (`IdeaNotesPanel.svelte`, `saveIdeaNotes`).
-- **The list** under the recorder shows the user's ideas newest first, each
-  opening to its takes; picking a take loads it, its idea's title and notes
-  come with it. A **Search** popover finds ideas by title or notes and takes
-  by name or number. The separate library page is gone. With more than
-  one take in the idea, the loaded take's "Take N" label is a dropdown
-  listing every take (number, name, length) for a quick jump. Below the
-  two-column width (`xl`) the list is replaced by a `<select>` of the ideas
-  above the recorder, with Search and New beside it, and the notes come
-  right after the recorder so both are in view on a phone.
+- **New idea** (the header button or the recorder's ⋯ menu) starts a fresh
+  one ("Untitled Idea N", editable at the top of the recorder) with an
+  empty note board; the idea row is created on first use (a take or
+  notes; a title alone never saves one) and **removed again when nothing
+  is left in it** (`deleteIdeaIfEmpty` after the last take, after the
+  notes are cleared, after a discarded upload; `deleteEmptyIdeas` sweeps
+  hour-old empties when the page loads). The note board is the song
+  documents' embedded markdown editor, always in edit mode with autosave,
+  Escape or ⌘S saving at once, and a trash button to clear it
+  (`IdeaNotesPanel.svelte`, `saveIdeaNotes`).
+- **Take names** go in the field beside the "Take N" label before, during
+  or after recording: with no take loaded the field names the next take,
+  and a name typed mid-take goes out with it. Starting a take from a
+  loaded one clears the field.
+- **The list** under the recorder shows the user's ideas newest first as a
+  plain accordion (a click on the name only folds or unfolds; the open set
+  is page state and the native toggle is cancelled, because a toggle event
+  landing after an autosave re-render fought it); clicking a take loads it
+  and its idea's title and notes come with it; each take has a menu (Add
+  as demo…, Create new song…, Delete take) and each idea one (Delete idea;
+  deleting an idea other than the loaded one leaves the player alone). An
+  idea unfolds when its take lands or when it is picked from Search or the
+  phone picker. A **Search** popover finds ideas by title or notes and
+  takes by name or number. With more than one take in the idea, the loaded
+  take's "Take N" label is a dropdown listing every take (number, name,
+  length) for a quick jump. On a phone the notes come right after the
+  recorder so both are in view and the list gives way to a `ComboBox` of
+  the ideas above the recorder.
+- **Recorder settings** (the gear in the header, a popover): "Discard takes
+  shorter than 3 seconds automatically", on by default, per browser
+  (`src/lib/utils/discardShortTakes.ts`; the recorder's `minTakeSeconds`).
+- **Reusable bits** that came out of this page: `ComboBox.svelte`
+  (replicator's, restyled: field-like trigger, listbox, keyboard complete)
+  and `InfoTip.svelte` (an info button opening a native popover placed
+  under it; tap or click, not hover, so it works on a phone).
 - **Into a song**: "Add as demo…" and "Create new song…" in the recorder's
   ⋯ menu and in each take's menu open one popover (`RecordingActions.svelte`
   in add or new mode); "Merge the idea's notes into the song's notes"
@@ -58,7 +80,7 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   (`copyRecordingToSong`), so the recording stays in the library and the
   demo lives and dies with the song. "New song from it" creates the song in
   a project and adds the recording as its first demo.
-- **Pages.** `/[account]/ideas/recorder` is the idea recorder ("Idea Recorder" in the app) (members only;
+- **Pages** (as of Phase 1; the library page is gone since "Ideas and takes" above). `/[account]/ideas/recorder` is the idea recorder ("Idea Recorder" in the app) (members only;
   `?song=<id>` remembers the song it was opened from and offers "Add to
   that song" first); `/[account]/ideas/recordings` is the library (play, rename,
   download, add to a song, delete). Both are in the account menu; the song

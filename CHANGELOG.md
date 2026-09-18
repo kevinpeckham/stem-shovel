@@ -8,9 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-18
+
 ### Added
 
-- **Idea Recorder.** `/[account]/ideas/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/ideas/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
+- **Idea Recorder** at `/[account]/ideas/recorder` (Projects and Idea Recorder sit in the header for members; the song header has a microphone button and the song page's Uploads menu and empty player link to it). An **idea** is a title, a markdown note board and numbered **takes**, and ideas are the user's own within the account. Record starts a take from the microphone (voice processing off so instruments sound like themselves, a clock, an input level meter, a screen wake lock) and Stop saves it at once as the next number: the take goes to a background upload queue, so Record is free again in about a tenth of a second, uploads run in recording order, an Uploads strip shows progress with Retry and Discard, and every pending take is written to IndexedDB first so a refresh, a crash or a phone switching apps resumes it. A saved take stays loaded (Play, a volume slider, a "Take N" label that becomes a dropdown to jump between the idea's takes) and can be named before, during or after recording. The ⋯ menu offers Add as demo…, Create new song…, Download, Delete take, New idea and Delete idea; the song actions open a popover with a "Merge the idea's notes into the song's notes" box (ticked by default) and copy the take in as a demo, so it stays with the idea.
+- **Ideas list.** Under the recorder, newest first, each row an accordion opening to its takes with a menu per take (Add as demo…, Create new song…, Delete take) and a menu per idea (Delete idea); clicking a take loads it with its idea's title and notes. A Search popover finds ideas by title or notes and takes by name or number. Ideas with neither takes nor notes are never kept: they go with their last take, with their cleared notes or with a discarded upload, and hour-old empties are swept on load.
+- **Notes for an idea**: the panel beside the recorder is the song documents' embedded markdown editor, always in edit mode with autosave, and a trash button clears it.
+- **Recorder settings** (the gear in the header): "Discard takes shorter than 3 seconds automatically", on by default and remembered per browser.
+- **Phone layout**: the notes follow the recorder so both are in view, the ideas list gives way to a combo box above the recorder, and the header copy is short with an info button for the rest.
+- **Reusable components**: `ComboBox` (a keyboard-complete single select with ARIA combobox and listbox roles) and `InfoTip` (a small info button opening an anchored native popover).
+- **Page titles** say `DEV | ` or `STAGE | ` off production and use a plain hyphen before "Stem Shovel".
 
 ### Fixed
 
@@ -19,10 +27,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
-- **Staging and previews are never indexed**: every non-production stage sends `X-Robots-Tag: noindex` on every page, the robots meta everywhere, and a robots.txt that disallows all (the file is a route now); production keeps its front-page-only rule.
-- **Dev and staging run on their own databases and stores** (docs/environments.md), restored from a snapshot of the MMKK and sirrobert accounts (`db:snapshot-accounts`, `db:restore-accounts`, `db:reset-stage --restore`); `db:copy-database` copies a whole database for the production move to Turso's newer platform; database URLs may use the `turso://` scheme.
-- **Towards one environment per stage** (docs/environments.md): `bun run db:reset-stage` rebuilds dev or staging from the seed (migrations, seed account, user docs, operator flags, the bot) and refuses production; Better Auth pins production to the domain Vercel reports instead of a literal and trusts `staging.stemshovel.dev` on previews; Sentry's browser tag distinguishes previews; the schema comments, CLAUDE.md and docs describe the three stages. The databases, Blob stores and 1Password environments themselves are provisioned outside the repo.
-- Migration 0039: `recording` table. Recording files go to the private Blob store when one is configured. Permissions-Policy allows `microphone=(self)` and `screen-wake-lock=(self)`. Account usage counts recordings' bytes; deleting an account removes their files.
+- **Migrations 0039–0041**: `recording` (takes; files in the private Blob store when one is configured; account usage counts their bytes and deleting an account removes them), `recording.notes` (unused since 0041, to drop in a later release) and `idea` (`recording.idea_id`, `take_number`; one idea per earlier recording). Permissions-Policy allows `microphone=(self)` and `screen-wake-lock=(self)`.
+- **One environment per stage** (docs/environments.md): dev, staging and production each have their own 1Password environment, Turso database (Turso's newer platform, `turso://` URLs accepted) and Blob store pair; dev and staging were restored from a snapshot of the MMKK and sirrobert accounts (`db:snapshot-accounts`, `db:restore-accounts`, `db:reset-stage --restore`, which refuses production); `db:copy-database` moved production to `stem-shovel-prod`. Better Auth pins production to the domain Vercel reports and trusts `staging.stemshovel.dev` on previews; Sentry's browser tag distinguishes previews.
+- **Staging and previews are never indexed**: every non-production stage sends `X-Robots-Tag: noindex`, the robots meta everywhere, and a robots.txt that disallows all (the file is a route now); production keeps its front-page-only rule.
 
 ## [0.15.0] - 2026-09-17
 
