@@ -181,9 +181,13 @@ bun run db:copy-database -- --verify` copies every table (schema,
   only seeded and test addresses live there, so nothing reaches real
   users. A `[staging]` subject prefix from `APP_ENV` is a five-line option
   if that ever changes.
-- **Two-factor** enrolments live in the database, so Kevin's account on
-  staging and dev starts without 2FA (and its own password, set with
-  `db:set-password`). The seed can create his user with a known password.
+- **Two-factor** enrolments do not survive a restore: Better Auth encrypts
+  each TOTP secret with the stage's `BETTER_AUTH_SECRET`, so the restore
+  skips `two_factor` rows and clears `two_factor_enabled` on restored
+  users (a copied row gave "invalid code", then Better Auth's built-in
+  limit of three `/two-factor/*` requests per ten seconds, 2026-09-18).
+  Passwords do survive (their hashes carry their own salt); re-enrol 2FA
+  per stage from /settings/security.
 - **Costs**: Turso's free tier covers several small databases; four small
   Blob stores are cents per month; nothing else is billed per environment.
 - **Effort**: about half a day, most of it clicking through Turso, Vercel

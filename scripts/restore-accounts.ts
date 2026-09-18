@@ -8,6 +8,10 @@
  *   bun run db:restore-accounts <name>          # from .snapshots/<name>
  *
  * Rows already present (same id) are replaced, so it can be run again.
+ * Two-factor enrolments are not restored: Better Auth encrypts each TOTP
+ * secret with the stage's BETTER_AUTH_SECRET, so a copied row can never be
+ * verified on another stage (the user gets "invalid code", then Better
+ * Auth's 3-per-10-seconds limit on /two-factor/*). Users re-enrol per stage.
  */
 import { createClient, type InValue } from "@libsql/client";
 import { put } from "@vercel/blob";
@@ -51,7 +55,9 @@ const c = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AU
 // source store for a moment, which is harmless on a stage being rebuilt.
 await c.execute("pragma foreign_keys = off");
 for (const [table, list] of Object.entries(rows)) {
+	if (table === "two_factor") continue;
 	for (const row of list) {
+		if (table === "user" && "two_factor_enabled" in row) row.two_factor_enabled = 0;
 		const cols = Object.keys(row);
 		await c.execute({
 			sql: `insert or replace into "${table}" (${cols.map((k) => `"${k}"`).join(",")}) values (${cols.map(() => "?").join(",")})`,
