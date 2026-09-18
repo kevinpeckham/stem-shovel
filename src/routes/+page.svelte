@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
 	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
@@ -13,7 +14,9 @@
 </script>
 
 <svelte:head>
-	<title>Stem Shovel — Collaboration tool for musicians, bands and producers</title>
+	<title
+		>{pageTitle("Stem Shovel - Collaboration tool for musicians, bands and producers", true)}</title
+	>
 	<meta name="description" content={description} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href="https://www.stemshovel.com/" />

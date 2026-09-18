@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { page } from "$app/state";
 
 	let status = $derived(page.status);
@@ -7,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>{status} — Stem Shovel</title>
+	<title>{pageTitle(String(status))}</title>
 </svelte:head>
 
 <main class="page min-h-[60vh]">
