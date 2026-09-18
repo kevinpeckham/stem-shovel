@@ -25,6 +25,8 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let currentTime = $state(0);
 	let duration = $state(0);
+	/** The playlist's own volume (0..1), kept across tracks; no position control yet. */
+	let volume = $state(1);
 
 	/** Play a song (from its row or the playlist); the same song toggles. */
 	export async function play(id: string) {
@@ -81,6 +83,7 @@
 		bind:paused
 		bind:currentTime
 		bind:duration
+		bind:volume
 		{onended}
 		preload="auto"
 	></audio>
@@ -135,18 +138,18 @@
 			<p class="text-dim">Mixes appear here once a song has stems.</p>
 		{/if}
 	</div>
-	{#if track}
+	<!-- Volume only for now; seeking within a track comes later. -->
+	<label class="flex items-center gap-2 text-sm text-dim w-full sm:w-auto">
+		<span class="i-ph-speaker-high" aria-hidden="true"></span>
+		<span class="sr-only">Volume</span>
 		<input
 			type="range"
-			class="w-full sm:w-56 accent-blue-300"
+			class="w-full sm:w-40 accent-blue-300"
 			min="0"
-			max={duration || 0}
-			step="0.1"
-			value={currentTime}
-			aria-label="Position"
-			oninput={(e) => {
-				if (audio) audio.currentTime = e.currentTarget.valueAsNumber;
-			}}
+			max="1"
+			step="0.01"
+			bind:value={volume}
+			aria-label="Volume"
 		/>
-	{/if}
+	</label>
 </div>
