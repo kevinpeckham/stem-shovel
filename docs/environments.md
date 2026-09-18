@@ -113,11 +113,20 @@ the code, scripts and docs are Claude's. In order:
    ceremony (dev is disposable), and staging can be reset from the seed
    whenever it drifts.
 
-## Moving production to the newer Turso platform (plan)
+## Moving production to the newer Turso platform
 
-Dev and staging were provisioned on Turso's newer platform (2026-09-18),
-which supports concurrent writes; production still runs on the older one.
-Once staging has run on it for a while, production moves the same way.
+**Done on 2026-09-18 (about 14:10 UTC):** production now runs on
+`stem-shovel-prod` on the newer platform, copied from the old database
+with `db:copy-database --verify` (297 rows in 25 tables, every count
+matching) and switched by changing the two `TURSO_*` values in the
+production 1Password environment and redeploying (`vercel redeploy` of
+the live production deployment). The import-a-SQLite-file option in
+Turso's wizard only creates old-format databases, so it was not used.
+The value had to be written as `libsql://` because `main` was still at
+v0.15.0, which predates the `turso://` normalisation; either form works
+once that ships. The old database is kept untouched until 2026-09-25 for
+rollback (the two values and a redeploy), then renamed `-legacy` and
+deleted. The plan it followed:
 The Blob stores do not move (URLs stay valid), so this is a database copy
 and a config change. The gotchas met on dev and staging apply: the new
 dashboard prints `turso://` URLs (accepted since `libsqlUrl`), the
