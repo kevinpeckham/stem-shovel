@@ -44,6 +44,10 @@
 		onnewsong?: (take: Take) => void;
 		/** Delete the whole idea (from the ⋯ menu). */
 		ondeleteidea?: () => void;
+		/** The idea's takes, so the "Take N" label can jump between them. */
+		takes?: Take[];
+		/** A take chosen from the label's dropdown. */
+		onpick?: (take: Take) => void;
 		/** A new take is starting. */
 		onstart?: () => void;
 		/** Every phase change, so the page can freeze its list mid-take. */
@@ -58,9 +62,12 @@
 		onaddtosong,
 		onnewsong,
 		ondeleteidea,
+		takes = [],
+		onpick,
 		onstart,
 		onphase,
 	}: Props = $props();
+	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
 
 	type Phase = "idle" | "requesting" | "recording" | "saved";
 	/** A just-stopped take is `local:<id>` until the upload lands and the page resolves it. */
@@ -240,8 +247,8 @@
 		playbackPaused = !playbackPaused;
 	}
 	function closeMenu(e: Event) {
-		if (menuEl?.open && !(e.type === "pointerdown" && menuEl.contains(e.target as Node))) {
-			menuEl.open = false;
+		for (const el of [menuEl, takeMenuEl]) {
+			if (el?.open && !(e.type === "pointerdown" && el.contains(e.target as Node))) el.open = false;
 		}
 	}
 	/** "<idea> - take 3.m4a", the take's extension (a loaded file's from its URL). */
@@ -379,6 +386,44 @@
 					New take
 				{:else if loaded && isLocal(loaded.id)}
 					Saving take…
+				{:else if loaded && takes.length > 1}
+					<!-- A quick jump to any other take of the idea. -->
+					<details class="relative inline-block" bind:this={takeMenuEl}>
+						<summary
+							class="cursor-pointer list-none hover:text-accent [&::-webkit-details-marker]:hidden"
+							aria-label="Take {loaded.takeNumber}: jump to another take"
+						>
+							Take {loaded.takeNumber}
+							<span class="i-ph-caret-down inline-block text-10px align-middle" aria-hidden="true"
+							></span>
+						</summary>
+						<div
+							class="absolute top-full left-0 z-20 mt-1 min-w-48 max-h-64 overflow-y-auto rounded border border-white/15 bg-oxford p-1 font-sans text-sm shadow-lg"
+							role="menu"
+						>
+							{#each takes as t (t.id)}
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+									type="button"
+									role="menuitemradio"
+									aria-checked={t.id === loaded.id}
+									onclick={() => {
+										if (takeMenuEl) takeMenuEl.open = false;
+										if (t.id !== loaded?.id) onpick?.(t);
+									}}
+								>
+									<span
+										class="i-ph-check {t.id === loaded.id ? '' : 'invisible'}"
+										aria-hidden="true"
+									></span>
+									Take {t.takeNumber}{t.title ? ` · ${t.title}` : ""}
+									<span class="ml-auto tabular-nums opacity-70"
+										>{t.durationSeconds !== null ? formatTime(t.durationSeconds, 0) : ""}</span
+									>
+								</button>
+							{/each}
+						</div>
+					</details>
 				{:else if loaded}
 					Take {loaded.takeNumber}
 				{:else}

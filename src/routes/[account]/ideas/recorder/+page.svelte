@@ -267,6 +267,11 @@
 				onaddtosong={(t) => idea && songDialog(idea, t, "add")}
 				onnewsong={(t) => idea && songDialog(idea, t, "new")}
 				ondeleteidea={() => idea && removeIdea(idea)}
+				takes={idea?.takes ?? []}
+				onpick={(t) => {
+					const row = idea?.takes.find((x) => x.id === t.id);
+					if (idea && row) show(idea, row);
+				}}
 				onstart={() => (takeId = null)}
 				onqueued={(t) => {
 					takeId = t.localId;
