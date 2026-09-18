@@ -44,6 +44,14 @@ export const saveRecordingNotes = command(RecordingNotesSchema, async ({ id, mar
 	return { saved: true };
 });
 
+/** The title, from the recorder's title field (a command: it saves on blur or Enter). */
+export const setRecordingTitle = command(RecordingRenameSchema, async ({ id, title }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfRecording, id);
+	if (!(await rename(accountId, id, title))) error(404, "Recording not found");
+	return { title };
+});
+
 export const deleteRecording = form(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfRecording, id);

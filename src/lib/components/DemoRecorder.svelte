@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { postJson, uploadRecordingFile, type RecordingReservation } from "$lib/upload";
+	import { postJson, saveAs, uploadRecordingFile, type RecordingReservation } from "$lib/upload";
+	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
@@ -14,14 +15,22 @@
 	interface Props {
 		accountId: string;
 		/** Called with the new recording's id and title once the upload is reported. */
-		onsaved: (recording: { id: string; title: string }) => void;
+		onsaved: (recording: { id: string; title: string; durationSeconds: number }) => void;
 		/** Notes written before the take was saved; stored with the recording. */
 		getNotes?: () => string;
+		/** A new take is starting (the page drops its selection and shows the notes draft). */
+		onstart?: () => void;
+		/** The title of the loaded recording was edited (blur or Enter). */
+		ontitlechange?: (recording: { id: string; title: string }) => void;
+		/** Every phase change, so the page can freeze its list mid-take. */
+		onphase?: (phase: Phase) => void;
 	}
-	let { accountId, onsaved, getNotes }: Props = $props();
+	let { accountId, onsaved, getNotes, onstart, ontitlechange, onphase }: Props = $props();
 
 	type Phase = "idle" | "requesting" | "recording" | "paused" | "reviewing" | "saving" | "saved";
 	let phase = $state<Phase>("idle");
+	/** The saved recording in the player: just saved here, or loaded from the list. */
+	let loadedId = $state<string | null>(null);
 	let elapsed = $state(0);
 	let level = $state(0);
 	let peak = $state(0);
@@ -39,9 +48,71 @@
 	let menuEl = $state<HTMLDetailsElement | null>(null);
 	/** A take exists to play: reviewing, saving or saved. */
 	const hasTake = $derived(phase === "reviewing" || phase === "saving" || phase === "saved");
-	/** The file name a download gets: the title, made safe, plus the take's extension. */
-	const downloadName = () =>
-		`${(title.trim() || "recording").replace(/[^\w.-]+/g, "-").toLowerCase()}.${format?.ext ?? "webm"}`;
+	/** The file name a download gets: the title, made safe, plus the take's extension (a loaded file's from its URL). */
+	const downloadName = () => {
+		const fromUrl = takeUrl?.startsWith("blob:")
+			? null
+			: takeUrl?.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
+		const ext = take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a");
+		return `${(title.trim() || "recording").replace(/[^\w.-]+/g, "-").toLowerCase()}.${ext}`;
+	};
+	/** The take as a file: the local blob straight away, a loaded recording fetched first. */
+	async function download() {
+		if (menuEl) menuEl.open = false;
+		if (!takeUrl) return;
+		try {
+			if (take) {
+				const a = document.createElement("a");
+				a.href = takeUrl;
+				a.download = downloadName();
+				a.click();
+			} else await saveAs(takeUrl, downloadName());
+		} catch (e) {
+			notify(`Download failed: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/**
+	 * Show a saved recording from the list: its file plays on demand, its
+	 * title fills the field, and Record starts the next take. Ignored while
+	 * a take is in progress.
+	 */
+	export function load(rec: {
+		id: string;
+		title: string;
+		url: string;
+		durationSeconds: number | null;
+	}) {
+		if (phase === "recording" || phase === "paused" || phase === "requesting" || phase === "saving")
+			return;
+		playbackPaused = true;
+		discardTake();
+		takeUrl = rec.url;
+		loadedId = rec.id;
+		title = rec.title;
+		elapsed = rec.durationSeconds ?? 0;
+		notice = null;
+		setPhase("saved");
+	}
+	/** Back to an empty recorder (the page's "New idea", or after a delete). */
+	export function reset() {
+		if (phase === "recording" || phase === "paused" || phase === "requesting" || phase === "saving")
+			return;
+		playbackPaused = true;
+		discardTake();
+		loadedId = null;
+		elapsed = 0;
+		title = defaultTitle();
+		notice = null;
+		setPhase("idle");
+	}
+	function setPhase(next: Phase) {
+		phase = next;
+		onphase?.(next);
+	}
+	function titleEdited() {
+		if (phase === "saved" && loadedId && title.trim())
+			ontitlechange?.({ id: loadedId, title: title.trim() });
+	}
 	function togglePlayback() {
 		if (!hasTake) return;
 		playbackPaused = !playbackPaused;
@@ -98,16 +169,19 @@
 		if (phase === "saved") {
 			playbackPaused = true;
 			discardTake();
+			loadedId = null;
 			elapsed = 0;
+			title = defaultTitle();
 		}
-		phase = "requesting";
+		onstart?.();
+		setPhase("requesting");
 		try {
 			// The three voice processors are on by default and ruin an instrument.
 			stream = await navigator.mediaDevices.getUserMedia({
 				audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
 			});
 		} catch (e) {
-			phase = "idle";
+			setPhase("idle");
 			const name = (e as { name?: string }).name;
 			notice =
 				name === "NotAllowedError"
@@ -133,7 +207,7 @@
 		runStart = performance.now();
 		elapsed = 0;
 		tick = setInterval(() => (elapsed = runBase + (performance.now() - runStart) / 1000), 100);
-		phase = "recording";
+		setPhase("recording");
 		void keepAwake();
 	}
 
@@ -144,7 +218,7 @@
 		if (tick) clearInterval(tick);
 		tick = null;
 		elapsed = runBase;
-		phase = "paused";
+		setPhase("paused");
 	}
 
 	function resume() {
@@ -152,7 +226,7 @@
 		recorder.resume();
 		runStart = performance.now();
 		tick = setInterval(() => (elapsed = runBase + (performance.now() - runStart) / 1000), 100);
-		phase = "recording";
+		setPhase("recording");
 	}
 
 	function stop() {
@@ -177,13 +251,13 @@
 		chunks = [];
 		if (blob.size === 0 || elapsed < 0.5) {
 			notice = "Nothing was recorded.";
-			phase = "idle";
+			setPhase("idle");
 			return;
 		}
 		take = blob;
 		takeUrl = URL.createObjectURL(blob);
 		if (!title) title = defaultTitle();
-		phase = "reviewing";
+		setPhase("reviewing");
 		if (saveAfterStop) {
 			saveAfterStop = false;
 			void save();
@@ -217,18 +291,18 @@
 		}
 		discardTake();
 		elapsed = 0;
-		phase = "idle";
+		setPhase("idle");
 	}
 
 	function discardTake() {
-		if (takeUrl) URL.revokeObjectURL(takeUrl);
+		if (takeUrl?.startsWith("blob:")) URL.revokeObjectURL(takeUrl);
 		takeUrl = null;
 		take = null;
 	}
 
 	async function save() {
 		if (!take || !format) return;
-		phase = "saving";
+		setPhase("saving");
 		progress = 0;
 		const name = (title.trim() || defaultTitle()).slice(0, 120);
 		const file = new File([take], `${name.replace(/[^\w.-]+/g, "-").toLowerCase()}.${format.ext}`, {
@@ -251,11 +325,12 @@
 			);
 			// The take stays playable and downloadable until the next one starts.
 			playbackPaused = true;
-			phase = "saved";
-			onsaved({ id, title: name });
+			loadedId = id;
+			setPhase("saved");
+			onsaved({ id, title: name, durationSeconds: duration });
 		} catch (e) {
 			notice = `The recording could not be saved: ${errorMessage(e)}. It is still here; try again.`;
-			phase = "reviewing";
+			setPhase("reviewing");
 		}
 	}
 
@@ -360,6 +435,10 @@
 			data-bwignore
 			bind:value={title}
 			disabled={phase === "saving"}
+			onchange={titleEdited}
+			onkeydown={(e) => {
+				if (e.key === "Enter") e.currentTarget.blur();
+			}}
 		/>
 	</label>
 	{#if !supported}
@@ -539,17 +618,14 @@
 				role="menu"
 			>
 				{#if phase === "saved" && takeUrl}
-					<a
+					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+						type="button"
 						role="menuitem"
-						href={takeUrl}
-						download={downloadName()}
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-						}}
+						onclick={download}
 					>
 						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
-					</a>
+					</button>
 				{:else}
 					<div class="px-2 py-1 text-xs opacity-70">
 						{hasTake ? "Save the take to download it" : "Nothing to do here yet"}

@@ -18,8 +18,12 @@
 		recording: { id: string | null; notes: string };
 		/** Receives the draft on every autosave while there is no recording yet. */
 		ondraft?: (markdown: string) => void;
+		/** Receives the notes after every save, draft or server, so the page can carry them into the next take. */
+		onchange?: (markdown: string) => void;
+		/** "Clear notes" in the menu: the page empties the panel (and the recording's notes, when there is one). */
+		onclear?: () => void;
 	}
-	let { recording, ondraft }: Props = $props();
+	let { recording, ondraft, onchange, onclear }: Props = $props();
 
 	let editing = $state(false);
 	let editor = $state<MarkdownEditorState | null>(null);
@@ -51,6 +55,7 @@
 		const sent = editor.markdownCurrent;
 		if (!recording.id) {
 			ondraft?.(sent);
+			onchange?.(sent);
 			editor.markAsSaved();
 			version++;
 			return;
@@ -61,6 +66,7 @@
 			await saveRecordingNotes({ id: recording.id, markdown: sent });
 			if (editor.markdownCurrent === sent) editor.markAsSaved();
 			version++;
+			onchange?.(sent);
 		} catch (e) {
 			saveError = errorMessage(e);
 			notify(`Notes not saved: ${saveError}`, { kind: "error" });
@@ -206,9 +212,21 @@
 								></span>{v.name}
 							</button>
 						{/each}
-					{:else}
-						<div class="px-2 py-1 text-xs text-dim">Nothing to do here yet</div>
+						<hr class="my-1 border-white/15" />
 					{/if}
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
+						type="button"
+						role="menuitem"
+						disabled={!current().trim()}
+						title="Empty the notes; they otherwise carry over from take to take"
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							if (confirm("Clear the notes?")) onclear?.();
+						}}
+					>
+						<span class="i-ph-eraser" aria-hidden="true"></span>Clear notes
+					</button>
 				</div>
 			</details>
 		</div>
