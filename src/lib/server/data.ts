@@ -1869,7 +1869,7 @@ export async function failDemoPlayback(demoId: string) {
 export async function createRecording(
 	accountId: string,
 	userId: string,
-	file: NewStemFile & { title: string },
+	file: NewStemFile & { title: string; notes?: string },
 ) {
 	const id = nanoid();
 	const [row] = await db
@@ -1879,6 +1879,7 @@ export async function createRecording(
 			accountId,
 			recordedBy: userId,
 			title: file.title,
+			notes: file.notes ?? "",
 			url: "",
 			pathname: recordingPathname(accountId, id, file.filename),
 			filename: file.filename,

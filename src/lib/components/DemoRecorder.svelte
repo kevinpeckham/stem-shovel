@@ -15,8 +15,10 @@
 		accountId: string;
 		/** Called with the new recording's id and title once the upload is reported. */
 		onsaved: (recording: { id: string; title: string }) => void;
+		/** Notes written before the take was saved; stored with the recording. */
+		getNotes?: () => string;
 	}
-	let { accountId, onsaved }: Props = $props();
+	let { accountId, onsaved, getNotes }: Props = $props();
 
 	type Phase = "idle" | "requesting" | "recording" | "paused" | "reviewing" | "saving";
 	let phase = $state<Phase>("idle");
@@ -187,6 +189,7 @@
 					postJson<RecordingReservation>("/api/recordings", {
 						accountId,
 						title: name,
+						notes: getNotes?.() ?? "",
 						filename: file.name,
 						sizeBytes: file.size,
 					}),

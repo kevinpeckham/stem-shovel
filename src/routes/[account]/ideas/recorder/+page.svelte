@@ -8,8 +8,10 @@
 	let { data } = $props();
 	/** The recording just saved, until the next one starts. */
 	let saved = $state<{ id: string; title: string } | null>(null);
-	/** Bumped for a fresh recorder after a save. */
+	/** Bumped for a fresh recorder and notes after a save. */
 	let round = $state(0);
+	/** Notes jotted before the take is saved (chords, a title, where it might go); stored with it. */
+	let notesDraft = $state("");
 </script>
 
 <svelte:head>
@@ -35,44 +37,61 @@
 		</a>
 	</header>
 
-	<section class="max-w-article" aria-label="Recorder">
-		{#key round}
-			<DemoRecorder
-				accountId={data.account.id}
-				onsaved={(r) => {
-					saved = r;
-					notify(`Saved “${r.title}” to your recordings`);
-				}}
-			/>
-		{/key}
-	</section>
+	<!-- Like the song page: the recorder where the player is, the notes where the documents are. -->
+	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
+		<section class="grid gap-6 place-content-start" aria-label="Recorder">
+			{#key round}
+				<DemoRecorder
+					accountId={data.account.id}
+					getNotes={() => notesDraft}
+					onsaved={(r) => {
+						saved = r;
+						notify(`Saved “${r.title}” to your recordings`);
+					}}
+				/>
+			{/key}
 
-	{#if saved}
-		<section class="max-w-article surface grid gap-5 px-5 py-5" aria-label="Saved recording">
-			<div class="flex flex-wrap items-baseline justify-between gap-3">
-				<h2 class="heading-2 mb-0">Saved: {saved.title}</h2>
-				<button
-					class="link-dim text-sm"
-					type="button"
-					onclick={() => {
-						saved = null;
-						round++;
-					}}>Record another</button
-				>
-			</div>
-			<RecordingNotes recording={{ id: saved.id, notes: "" }} />
-			<p class="text-sm opacity-90">
-				It is in <a class="link-dim" href="/{data.account.slug}/ideas/recordings">your recordings</a
-				>
-				either way. To make it a demo:
+			{#if saved}
+				<div class="surface grid gap-5 px-5 py-5" aria-label="Saved recording">
+					<div class="flex flex-wrap items-baseline justify-between gap-3">
+						<h2 class="heading-2 mb-0">Saved: {saved.title}</h2>
+						<button
+							class="link-dim text-sm"
+							type="button"
+							onclick={() => {
+								saved = null;
+								notesDraft = "";
+								round++;
+							}}>Record another</button
+						>
+					</div>
+					<p class="text-sm opacity-90">
+						It is in <a class="link-dim" href="/{data.account.slug}/ideas/recordings"
+							>your recordings</a
+						>
+						either way, notes included. To make it a demo:
+					</p>
+					<RecordingActions recording={saved} projects={data.projects} fromSong={data.fromSong} />
+				</div>
+			{/if}
+
+			<p class="text-13px opacity-70">
+				Tips: keep the screen on and the app in front while recording (a phone stops the microphone
+				when it sleeps or switches apps). Voice processing is switched off so instruments sound like
+				themselves. The take is saved as your browser recorded it and converted to MP3 for playback.
 			</p>
-			<RecordingActions recording={saved} projects={data.projects} fromSong={data.fromSong} />
 		</section>
-	{/if}
 
-	<p class="max-w-article text-13px opacity-70">
-		Tips: keep the screen on and the app in front while recording (a phone stops the microphone when
-		it sleeps or switches apps). Voice processing is switched off so instruments sound like
-		themselves. The take is saved as your browser recorded it and converted to MP3 for playback.
-	</p>
+		<!-- Notes are open from the start: chords, a working title, where the idea might go. -->
+		<section class="min-h-560px" aria-label="Notes">
+			{#key round}
+				<RecordingNotes
+					recording={{ id: saved?.id ?? null, notes: notesDraft }}
+					docKey="recorder/{round}"
+					ondraft={(m) => (notesDraft = m)}
+					panel
+				/>
+			{/key}
+		</section>
+	</div>
 </main>

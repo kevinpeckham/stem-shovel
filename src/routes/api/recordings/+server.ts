@@ -11,10 +11,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json()) as {
 		accountId?: string;
 		title?: string;
+		notes?: string;
 		filename?: string;
 		sizeBytes?: number;
 	};
-	const { accountId, title, filename, sizeBytes } = body;
+	const { accountId, title, notes, filename, sizeBytes } = body;
 	if (!accountId || !filename || typeof sizeBytes !== "number") {
 		error(400, "accountId, filename and sizeBytes are required");
 	}
@@ -26,6 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	requireMember(locals, accountId);
 	const row = await createRecording(accountId, user.id, {
 		title: (title ?? "").trim().slice(0, 120) || "Recording",
+		notes: typeof notes === "string" ? notes.slice(0, 50_000) : "",
 		filename,
 		contentType,
 		sizeBytes,

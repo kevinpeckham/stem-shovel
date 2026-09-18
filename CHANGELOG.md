@@ -29,7 +29,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Added
 
 - **The AI listens when the time signature is a close call.** After a detection (at upload or from Scan stems) whose 3/4-or-4/4 lean is under 0.15, the song page asks the AI to check on its own, waits for the mix to render when the stems have just been uploaded, and shows the answer with "Use these"; the card says the check was automatic.
-- **Notes on an idea.** After saving a recording, the recorder page shows a Notes editor (the song documents' embedded markdown editor, autosaving on idle); each library row has a collapsible Notes section with a one-line preview. Migration 0040 adds `recording.notes`.
+- **Notes on an idea.** The recorder page is laid out like the song page, the recorder on the left and a Notes panel open on the right from the start, so chords or a working title can be jotted before the take; the notes are stored with the recording when it is saved and autosave from then on (the song documents' embedded markdown editor). Each library row has a collapsible Notes section with a one-line preview. Migration 0040 adds `recording.notes`.
 - **Page titles** say `DEV | ` or `STAGE | ` off production, and use a plain hyphen before "Stem Shovel" (one helper, `pageTitle`, builds every title).
 - **Top nav links for members**: Projects and Idea Recorder sit in the header from tablet width up (the account menu keeps them on a phone); the recorder page has an All recordings button.
 - **Idea Recorder link on the song page**: an icon button between share and info opens the recorder for that song (members). The header's share, info and settings buttons share one style, and their icons no longer vanish on hover.
