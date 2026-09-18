@@ -20,7 +20,7 @@
 	}
 	let { accountId, onsaved, getNotes }: Props = $props();
 
-	type Phase = "idle" | "requesting" | "recording" | "paused" | "reviewing" | "saving";
+	type Phase = "idle" | "requesting" | "recording" | "paused" | "reviewing" | "saving" | "saved";
 	let phase = $state<Phase>("idle");
 	let elapsed = $state(0);
 	let level = $state(0);
@@ -31,6 +31,26 @@
 	let title = $state("");
 	let progress = $state(0);
 	let inputLabel = $state<string | null>(null);
+	/** Playback of the take, through our own controls (the browser's player is hidden). */
+	let audio = $state<HTMLAudioElement | null>(null);
+	let playbackPaused = $state(true);
+	let playhead = $state(0);
+	let volume = $state(1);
+	let menuEl = $state<HTMLDetailsElement | null>(null);
+	/** A take exists to play: reviewing, saving or saved. */
+	const hasTake = $derived(phase === "reviewing" || phase === "saving" || phase === "saved");
+	/** The file name a download gets: the title, made safe, plus the take's extension. */
+	const downloadName = () =>
+		`${(title.trim() || "recording").replace(/[^\w.-]+/g, "-").toLowerCase()}.${format?.ext ?? "webm"}`;
+	function togglePlayback() {
+		if (!hasTake) return;
+		playbackPaused = !playbackPaused;
+	}
+	function closeMenu(e: Event) {
+		if (menuEl?.open && !(e.type === "pointerdown" && menuEl.contains(e.target as Node))) {
+			menuEl.open = false;
+		}
+	}
 
 	let stream: MediaStream | null = null;
 	let recorder: MediaRecorder | null = null;
@@ -73,6 +93,12 @@
 		if (!format) {
 			notice = "This browser cannot record audio. Try Safari, Chrome or Firefox.";
 			return;
+		}
+		// A new take after a saved one: the old file goes, the row starts fresh.
+		if (phase === "saved") {
+			playbackPaused = true;
+			discardTake();
+			elapsed = 0;
 		}
 		phase = "requesting";
 		try {
@@ -223,10 +249,9 @@
 				duration,
 				(percent) => (progress = percent),
 			);
-			discardTake();
-			elapsed = 0;
-			title = "";
-			phase = "idle";
+			// The take stays playable and downloadable until the next one starts.
+			playbackPaused = true;
+			phase = "saved";
 			onsaved({ id, title: name });
 		} catch (e) {
 			notice = `The recording could not be saved: ${errorMessage(e)}. It is still here; try again.`;
@@ -301,7 +326,24 @@
 	onbeforeunload={(e) => {
 		if (busy) e.preventDefault();
 	}}
+	onpointerdown={closeMenu}
+	onkeydown={(e) => {
+		if (e.key === "Escape") closeMenu(e);
+	}}
 />
+
+{#if takeUrl && hasTake}
+	<!-- svelte-ignore a11y_media_has_caption -->
+	<audio
+		bind:this={audio}
+		src={takeUrl}
+		bind:paused={playbackPaused}
+		bind:currentTime={playhead}
+		bind:volume
+		preload="auto"
+		onended={() => (playbackPaused = true)}
+	></audio>
+{/if}
 
 <div
 	class="grid grid-cols-1 place-content-start gap-5 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md h-full min-h-560px"
@@ -330,7 +372,7 @@
 	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4">
 		<div class="flex flex-wrap items-baseline justify-between gap-3">
 			<span class="font-mono text-40px leading-none tabular-nums sm:text-56px" aria-live="off"
-				>{formatTime(elapsed, 1)}</span
+				>{formatTime(hasTake && !playbackPaused ? playhead : elapsed, 1)}</span
 			>
 			<span class="text-sm opacity-90 font-mono">
 				{#if phase === "recording"}
@@ -339,9 +381,14 @@
 				{:else if phase === "paused"}
 					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-500"
 					></span>Paused
+				{:else if hasTake && !playbackPaused}
+					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
+					></span>Playing
 				{:else if phase === "reviewing"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
 					></span>Take ready
+				{:else if phase === "saved"}
+					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Saved
 				{:else if phase === "saving"}
 					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-500"
 					></span>Saving… {Math.round(progress)}%
@@ -397,14 +444,29 @@
 			<button
 				class="button-accent text-16px px-5 py-2.5 disabled:opacity-40"
 				type="button"
-				disabled={!supported || phase !== "idle"}
-				title={phase === "reviewing" ? "Undo the take first to record again" : "Start a take"}
+				disabled={!supported || (phase !== "idle" && phase !== "saved")}
+				title={phase === "reviewing"
+					? "Retake first to record again"
+					: phase === "saved"
+						? "Start the next take (this one is saved)"
+						: "Start a take"}
 				onclick={start}
 			>
 				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
 				Record
 			</button>
 		{/if}
+		<button
+			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			type="button"
+			disabled={!hasTake}
+			aria-label={playbackPaused ? "Play the take" : "Pause the take"}
+			title={playbackPaused ? "Play the take" : "Pause the take"}
+			onclick={togglePlayback}
+		>
+			<span class={playbackPaused ? "i-ph-play-fill" : "i-ph-pause-fill"} aria-hidden="true"></span>
+			{playbackPaused ? "Play" : "Pause"}
+		</button>
 		<button
 			class="button text-16px px-5 py-2.5 disabled:opacity-40"
 			type="button"
@@ -436,9 +498,49 @@
 			<span class="i-ph-floppy-disk" aria-hidden="true"></span>
 			{phase === "saving" ? `Saving… ${Math.round(progress)}%` : "Save"}
 		</button>
+		<label class="ml-auto flex items-center gap-2 text-sm opacity-90">
+			<span class="i-ph-speaker-high" aria-hidden="true"></span>
+			<span class="sr-only">Volume</span>
+			<input
+				type="range"
+				class="w-28 accent-blue-300"
+				min="0"
+				max="1"
+				step="0.01"
+				bind:value={volume}
+				aria-label="Volume"
+			/>
+		</label>
+		<details class="relative flex" bind:this={menuEl}>
+			<summary
+				class="button button-sm flex items-center list-none [&::-webkit-details-marker]:hidden"
+				title="More"
+				aria-label="Take menu"
+			>
+				<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
+			</summary>
+			<div
+				class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+				role="menu"
+			>
+				{#if phase === "saved" && takeUrl}
+					<a
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+						role="menuitem"
+						href={takeUrl}
+						download={downloadName()}
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+						}}
+					>
+						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
+					</a>
+				{:else}
+					<div class="px-2 py-1 text-xs opacity-70">
+						{hasTake ? "Save the take to download it" : "Nothing to do here yet"}
+					</div>
+				{/if}
+			</div>
+		</details>
 	</div>
-	{#if takeUrl && (phase === "reviewing" || phase === "saving")}
-		<!-- svelte-ignore a11y_media_has_caption -->
-		<audio class="w-full" controls preload="auto" src={takeUrl}></audio>
-	{/if}
 </div>
