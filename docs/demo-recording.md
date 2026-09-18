@@ -13,10 +13,18 @@ within the idea, each with an optional name). Ideas are the user's own
 within the account; other members do not see them until a take is added to
 a song (a share feature may come later). On `/[account]/ideas/recorder`:
 
-- **Record → Stop** completes a take and saves it at once as the next
-  number; it stays loaded for playback (Play, a volume slider, the ⋯ menu
-  with Download and Delete take). Record again starts the next take. No
-  pause, no review step.
+- **Record → Stop** completes a take and hands it to a background upload
+  queue (`src/lib/audio/takeQueue.svelte.ts`): Record is available again
+  at once, the take stays loaded for playback (Play, a volume slider, the
+  ⋯ menu with Download and Delete take) and gets its number when the
+  upload lands. Uploads run one at a time in recording order, so the
+  server's numbers follow the order the takes were made; an Uploads strip
+  under the recorder shows progress with Retry and Discard on failure.
+  Every pending take is written to IndexedDB (`stem-shovel` /
+  `pendingTakes`) before upload and removed after, so a refresh, a crash
+  or a phone switching apps resumes it on the next visit (an idea that was
+  never created gets one with the title it had). Measured in Chromium:
+  Stop to Record enabled in about 70–105 ms. No pause, no review step.
 - **New idea** starts a fresh one ("Untitled Idea N", editable at the top
   of the recorder) with an empty note board; the idea row is created on
   first use (a take, notes or a title). The note board is the song page's

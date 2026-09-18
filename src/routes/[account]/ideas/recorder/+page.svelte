@@ -10,7 +10,8 @@
 	import { formatDate } from "$lib/utils/formatDate";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { invalidateAll } from "$app/navigation";
-	import { untrack } from "svelte";
+	import { onMount, untrack } from "svelte";
+	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
 
 	let { data } = $props();
 	type Idea = (typeof data.ideas)[number];
@@ -35,6 +36,32 @@
 	);
 	/** A new idea's placeholder: "Untitled Idea N", N counting the user's ideas. */
 	const placeholder = () => `Untitled Idea ${data.ideas.length + 1}`;
+
+	/**
+	 * Uploads run in the background so Record is available the moment Stop is
+	 * pressed; a take waits on disk (IndexedDB) until its upload lands.
+	 */
+	const queue = new TakeQueue({
+		// The idea the take was recorded for, created now if it never was; a
+		// take restored from an earlier visit whose idea was never created gets
+		// one with the title it had then.
+		ideaFor: async (item) => {
+			if (item.ideaId) return item.ideaId;
+			if (item.ideaTitle !== ideaTitle || ideaId) {
+				const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
+				await invalidateAll();
+				return created.id;
+			}
+			return ensureIdea();
+		},
+		onsaved: async (saved) => {
+			recorder?.resolve(saved.localId, saved);
+			if (takeId === saved.localId) takeId = saved.id;
+			notify(`Take ${saved.takeNumber} saved`);
+			await invalidateAll();
+		},
+	});
+	onMount(() => void queue.restore());
 
 	/** The current idea's id, creating the idea on first use (a take, notes, a title). */
 	async function ensureIdea(): Promise<string> {
@@ -218,8 +245,9 @@
 	<header class="max-w-article">
 		<h1 class="heading-2">Idea Recorder</h1>
 		<p class="opacity-90 text-balance">
-			An idea is a note board and one or more takes. Stop saves the take; Record starts the next.
-			Add a take to a song to make it a demo.
+			Record your demos, riffs, or quick ideas here. An idea consists of one or more audio recording
+			takes and optionally some written notes. Hitting record starts a new take. Starting a new idea
+			clears the noteboard and starts over at take 1.
 			{#if data.fromSong}
 				Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
 			{/if}
@@ -232,7 +260,6 @@
 			<DemoRecorder
 				bind:this={recorder}
 				bind:ideaTitle
-				{ensureIdea}
 				onphase={(p) => (phase = p)}
 				ontitlechange={titleChanged}
 				ontakename={takeNamed}
@@ -241,12 +268,46 @@
 				onnewsong={(t) => idea && songDialog(idea, t, "new")}
 				ondeleteidea={() => idea && removeIdea(idea)}
 				onstart={() => (takeId = null)}
-				onsaved={async (t) => {
-					notify(`Take ${t.takeNumber} saved`);
-					takeId = t.id;
-					await invalidateAll();
+				onqueued={(t) => {
+					takeId = t.localId;
+					queue.enqueue({
+						...t,
+						ideaId,
+						ideaTitle,
+						createdAt: Date.now(),
+					});
 				}}
 			/>
+
+			{#if queue.items.length > 0}
+				<ul class="grid gap-1 text-sm" aria-label="Uploads">
+					{#each queue.items as u (u.localId)}
+						<li
+							class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-white/15 bg-blue-300/5 px-3 py-2"
+						>
+							<span class="i-ph-cloud-arrow-up" aria-hidden="true"></span>
+							<span class="min-w-0 grow truncate">
+								{u.ideaTitle}{u.name ? ` · ${u.name}` : ""} · {formatTime(u.durationSeconds, 0)}
+							</span>
+							{#if u.status === "failed"}
+								<span class="text-red-400">{u.error}</span>
+								<button class="link-dim" type="button" onclick={() => queue.retry(u.localId)}
+									>Retry</button
+								>
+								<button class="link-dim" type="button" onclick={() => queue.discard(u.localId)}
+									>Discard</button
+								>
+							{:else}
+								<span class="tabular-nums opacity-80"
+									>{u.status === "uploading"
+										? `Saving… ${Math.round(u.progress)}%`
+										: "Waiting…"}</span
+								>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
 
 			<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
 			<div class="grid gap-2" aria-label="Ideas">

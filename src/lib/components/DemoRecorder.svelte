@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { postJson, saveAs, uploadRecordingFile, type RecordingReservation } from "$lib/upload";
+	import { saveAs } from "$lib/upload";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
@@ -8,10 +8,10 @@
 
 	/**
 	 * The Idea Recorder's take recorder (docs/demo-recording.md). Record
-	 * starts a take of the current idea; Stop completes it and saves it at
-	 * once as the next numbered take, which stays loaded for playback. Record
-	 * again starts the next take. The page owns the idea (title, notes, the
-	 * list) and hands the recorder an idea id when a take needs one.
+	 * starts a take of the current idea; Stop completes it and hands it to
+	 * the page's upload queue at once, so Record is available immediately;
+	 * the take stays loaded for playback and gets its number when the upload
+	 * lands. The page owns the idea (title, notes, the list) and the queue.
 	 */
 	export interface Take {
 		id: string;
@@ -24,9 +24,15 @@
 	interface Props {
 		/** The idea's title, shown and edited in the panel (the page saves it). */
 		ideaTitle: string;
-		/** The id of the idea a take belongs to, creating the idea if there is none yet. */
-		ensureIdea: () => Promise<string>;
-		onsaved: (take: Take) => void;
+		/** A stopped take, with its audio: the page queues the upload. */
+		onqueued: (take: {
+			localId: string;
+			blob: Blob;
+			mimeType: string;
+			ext: string;
+			name: string;
+			durationSeconds: number;
+		}) => void;
 		/** The idea's title was edited (blur or Enter). */
 		ontitlechange: (title: string) => void;
 		/** The loaded take's name was edited (blur or Enter). */
@@ -45,8 +51,7 @@
 	}
 	let {
 		ideaTitle = $bindable(),
-		ensureIdea,
-		onsaved,
+		onqueued,
 		ontitlechange,
 		ontakename,
 		ondeletetake,
@@ -57,13 +62,14 @@
 		onphase,
 	}: Props = $props();
 
-	type Phase = "idle" | "requesting" | "recording" | "saving" | "saved";
+	type Phase = "idle" | "requesting" | "recording" | "saved";
+	/** A just-stopped take is `local:<id>` until the upload lands and the page resolves it. */
+	const isLocal = (id: string) => id.startsWith("local:");
 	let phase = $state<Phase>("idle");
 	let elapsed = $state(0);
 	let level = $state(0);
 	let peak = $state(0);
 	let notice = $state<string | null>(null);
-	let progress = $state(0);
 	let inputLabel = $state<string | null>(null);
 	/** The take in the player: just recorded here, or loaded from the list. */
 	let loaded = $state<Take | null>(null);
@@ -88,8 +94,8 @@
 	let tick: ReturnType<typeof setInterval> | null = null;
 
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
-	const hasTake = $derived(phase === "saved" || phase === "saving");
-	const busy = $derived(phase === "recording" || phase === "requesting" || phase === "saving");
+	const hasTake = $derived(phase === "saved");
+	const busy = $derived(phase === "recording" || phase === "requesting");
 
 	function setPhase(next: Phase) {
 		phase = next;
@@ -174,47 +180,29 @@
 		}
 		take = blob;
 		takeUrl = URL.createObjectURL(blob);
-		await save();
+		const localId = `local:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+		loaded = {
+			id: localId,
+			takeNumber: 0,
+			title: takeName.trim().slice(0, 120),
+			url: takeUrl,
+			durationSeconds: elapsed,
+		};
+		playbackPaused = true;
+		setPhase("saved");
+		onqueued({
+			localId,
+			blob,
+			mimeType: format?.mimeType ?? "application/octet-stream",
+			ext: format?.ext ?? "webm",
+			name: loaded.title,
+			durationSeconds: elapsed,
+		});
 	}
 
-	async function save() {
-		if (!take || !format) return;
-		setPhase("saving");
-		progress = 0;
-		const duration = elapsed;
-		const name = takeName.trim().slice(0, 120);
-		const file = new File([take], `take-${Date.now().toString(36)}.${format.ext}`, {
-			type: format.mimeType,
-		});
-		try {
-			const ideaId = await ensureIdea();
-			const { recordingId, takeNumber } = await uploadRecordingFile(
-				file,
-				() =>
-					postJson<RecordingReservation>("/api/recordings", {
-						ideaId,
-						title: name,
-						filename: file.name,
-						sizeBytes: file.size,
-					}),
-				duration,
-				(percent) => (progress = percent),
-			);
-			loaded = {
-				id: recordingId,
-				takeNumber,
-				title: name,
-				url: takeUrl ?? "",
-				durationSeconds: duration,
-			};
-			playbackPaused = true;
-			setPhase("saved");
-			onsaved(loaded);
-		} catch (e) {
-			notice = `The take could not be saved: ${errorMessage(e)}. Record it again.`;
-			discardTake();
-			setPhase("idle");
-		}
+	/** The upload landed: the loaded take, if it is still this one, takes the server's id and number. */
+	export function resolve(localId: string, saved: { id: string; takeNumber: number }) {
+		if (loaded?.id === localId) loaded = { ...loaded, id: saved.id, takeNumber: saved.takeNumber };
 	}
 
 	/** Show a take from the list: its file plays on demand; Record starts the next take. */
@@ -379,7 +367,6 @@
 				data-lpignore="true"
 				data-bwignore
 				bind:value={ideaTitle}
-				disabled={phase === "saving"}
 				onchange={() => ontitlechange(ideaTitle.trim())}
 				onkeydown={(e) => {
 					if (e.key === "Enter") e.currentTarget.blur();
@@ -390,6 +377,8 @@
 			<span class="font-mono opacity-90 whitespace-nowrap">
 				{#if phase === "recording"}
 					New take
+				{:else if loaded && isLocal(loaded.id)}
+					Saving take…
 				{:else if loaded}
 					Take {loaded.takeNumber}
 				{:else}
@@ -406,10 +395,11 @@
 				data-lpignore="true"
 				data-bwignore
 				bind:value={takeName}
-				disabled={!loaded || phase === "saving"}
+				disabled={!loaded || isLocal(loaded.id)}
 				aria-label="Take name"
 				onchange={() => {
-					if (loaded) ontakename?.({ id: loaded.id, title: takeName.trim() });
+					if (loaded && !isLocal(loaded.id))
+						ontakename?.({ id: loaded.id, title: takeName.trim() });
 				}}
 				onkeydown={(e) => {
 					if (e.key === "Enter") e.currentTarget.blur();
@@ -437,9 +427,9 @@
 				{:else if hasTake && !playbackPaused}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
 					></span>Playing
-				{:else if phase === "saving"}
+				{:else if phase === "saved" && loaded && isLocal(loaded.id)}
 					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-500"
-					></span>Saving… {Math.round(progress)}%
+					></span>Saving in the background
 				{:else if phase === "saved"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Saved
 				{:else if phase === "requesting"}
@@ -540,7 +530,17 @@
 				class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
 				role="menu"
 			>
-				{#if phase === "saved" && loaded}
+				{#if phase === "saved" && loaded && isLocal(loaded.id)}
+					<div class="px-2 py-1 text-xs opacity-70">Saving… song actions follow in a moment</div>
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						onclick={download}
+					>
+						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
+					</button>
+				{:else if phase === "saved" && loaded}
 					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"
