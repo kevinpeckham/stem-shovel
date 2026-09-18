@@ -369,12 +369,14 @@
 	{/if}
 
 	<!-- the clock and the meter -->
-	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4">
-		<div class="flex flex-wrap items-baseline justify-between gap-3">
-			<span class="font-mono text-40px leading-none tabular-nums sm:text-56px" aria-live="off"
-				>{formatTime(hasTake && !playbackPaused ? playhead : elapsed, 1)}</span
+	<div class="bg-black/40 px-3 py-2 leading-none grid grid-cols-[auto_1fr] gap-4 lg-gap-8 relative">
+		<!-- clock and status -->
+		<div class="rounded-md grid grid-cols-1 gap-2">
+			<span
+				class="font-mono text-28px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
+				aria-live="off">{formatTime(hasTake && !playbackPaused ? playhead : elapsed, 1)}</span
 			>
-			<span class="text-sm opacity-90 font-mono">
+			<div class="text-sm opacity-90 font-mono">
 				{#if phase === "recording"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
 					></span>Recording
@@ -398,28 +400,50 @@
 				{:else}
 					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Ready
 				{/if}
-			</span>
+			</div>
 		</div>
-		<div
-			class="relative h-3 overflow-hidden rounded bg-black/40"
-			role="meter"
-			aria-label="Input level"
-			aria-valuemin="0"
-			aria-valuemax="100"
-			aria-valuenow={Math.round(level * 100)}
-		>
+
+		<!-- meter and input label -->
+		<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px">
 			<div
-				class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-maximumYellow'}"
-				style:width="{level * 100}%"
-			></div>
-			<div
-				class="absolute top-0 h-full w-0.5 {peak > 0.98 ? 'bg-red-500' : 'bg-white/70'}"
-				style:left="{Math.min(99.5, peak * 100)}%"
-			></div>
+				class="mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+				role="meter"
+				aria-label="Input level"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={Math.round(level * 100)}
+			>
+				<span class="i-ph-microphone flex" aria-hidden="true"></span>
+				<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
+					<div
+						class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-maximumYellow'}"
+						style:width="{level * 100}%"
+					></div>
+					<div
+						class="absolute top-0 h-full w-0.5 {peak > 0.98 ? 'bg-red-500' : 'bg-white/70'}"
+						style:left="{Math.min(99.5, peak * 100)}%"
+					></div>
+				</div>
+			</div>
+
+			<label class="w-full grid grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90">
+				<span class="i-ph-speaker-high" aria-hidden="true"></span>
+				<span class="sr-only">Volume</span>
+				<input
+					type="range"
+					class="accent-blue-300"
+					min="0"
+					max="1"
+					step="0.01"
+					bind:value={volume}
+					aria-label="Volume"
+				/>
+			</label>
+
+			{#if inputLabel && (phase === "recording" || phase === "paused")}
+				<p class="text-12px opacity-70 w-ful text-truncate w-full">Input: {inputLabel}</p>
+			{/if}
 		</div>
-		{#if inputLabel && (phase === "recording" || phase === "paused")}
-			<p class="text-12px opacity-70">Input: {inputLabel}</p>
-		{/if}
 	</div>
 
 	{#if notice}
@@ -430,19 +454,20 @@
 
 	<!-- the controls: one row that never changes shape; a button is greyed out until it applies -->
 	<div class="flex flex-wrap items-center gap-3">
+		<!-- record / pause -->
 		{#if phase === "recording"}
-			<button class="button text-16px px-5 py-2.5" type="button" onclick={pause}>
+			<button class="button-record" type="button" onclick={pause}>
 				<span class="i-ph-pause-fill" aria-hidden="true"></span>
 				Pause
 			</button>
 		{:else if phase === "paused"}
-			<button class="button-accent text-16px px-5 py-2.5" type="button" onclick={resume}>
-				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+			<button class="button-record" type="button" onclick={resume}>
+				<span class="i-ph-record-fill" aria-hidden="true"></span>
 				Resume
 			</button>
 		{:else}
 			<button
-				class="button-accent text-16px px-5 py-2.5 disabled:opacity-40"
+				class="button-record"
 				type="button"
 				disabled={!supported || (phase !== "idle" && phase !== "saved")}
 				title={phase === "reviewing"
@@ -452,12 +477,14 @@
 						: "Start a take"}
 				onclick={start}
 			>
-				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+				<span class="i-ph-record-fill" aria-hidden="true"></span>
 				Record
 			</button>
 		{/if}
+
+		<!-- play / stop -->
 		<button
-			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			class="button button-sm"
 			type="button"
 			disabled={!hasTake}
 			aria-label={playbackPaused ? "Play the take" : "Pause the take"}
@@ -468,7 +495,7 @@
 			{playbackPaused ? "Play" : "Pause"}
 		</button>
 		<button
-			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			class="button button-sm"
 			type="button"
 			disabled={phase !== "recording" && phase !== "paused"}
 			onclick={stop}
@@ -477,7 +504,7 @@
 			Stop
 		</button>
 		<button
-			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			class="button button-sm"
 			type="button"
 			disabled={phase !== "recording" && phase !== "paused" && phase !== "reviewing"}
 			title={phase === "reviewing"
@@ -489,7 +516,7 @@
 			{phase === "reviewing" ? "Retake" : "Undo"}
 		</button>
 		<button
-			class="button-accent text-16px px-5 py-2.5 disabled:opacity-40"
+			class="button button-sm"
 			type="button"
 			disabled={phase !== "paused" && phase !== "reviewing"}
 			title={phase === "paused" ? "Stop the take and save it" : "Save the take"}
@@ -498,22 +525,10 @@
 			<span class="i-ph-floppy-disk" aria-hidden="true"></span>
 			{phase === "saving" ? `Saving… ${Math.round(progress)}%` : "Save"}
 		</button>
-		<label class="ml-auto flex items-center gap-2 text-sm opacity-90">
-			<span class="i-ph-speaker-high" aria-hidden="true"></span>
-			<span class="sr-only">Volume</span>
-			<input
-				type="range"
-				class="w-28 accent-blue-300"
-				min="0"
-				max="1"
-				step="0.01"
-				bind:value={volume}
-				aria-label="Volume"
-			/>
-		</label>
-		<details class="relative flex" bind:this={menuEl}>
+
+		<details class="relative ml-auto" bind:this={menuEl}>
 			<summary
-				class="button button-sm flex items-center list-none [&::-webkit-details-marker]:hidden"
+				class="button button-sm flex items-center list-none !min-h-31px [&::-webkit-details-marker]:hidden"
 				title="More"
 				aria-label="Take menu"
 			>

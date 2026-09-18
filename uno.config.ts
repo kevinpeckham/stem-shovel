@@ -136,6 +136,10 @@ export default defineConfig({
 		["button-sm", "text-14px py-1"],
 		["button-xs", "text-12px py-1"],
 		["button-accent", "button text-accent hover-text-oxford"],
+		[
+			"button-record",
+			"button button-sm bg-red-500 text-white disabled-opacity-40 hover-bg-red-600 !hover-text-white text-nowrap",
+		],
 		["page-x-padding", "px-4 sm:px-6 md:px-7 lg:px-8 xl:px-16 2xl:px-24"],
 		["main-y-padding", "pt-10 pb-14 lg:(pt-12 pb-16) xl:(pt-14 pb-20) 2xl:(pt-16 pb-22)"],
 		[
