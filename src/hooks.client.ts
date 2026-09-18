@@ -10,7 +10,12 @@ import * as Sentry from "@sentry/sveltekit";
  */
 Sentry.init({
 	dsn: "https://d6929e5d1424ced35084d71f487d9aca@o4505247956860928.ingest.us.sentry.io/4512102516457472",
-	environment: dev ? "development" : "production",
+	// The server tags by VERCEL_ENV; the browser has only its hostname to go on.
+	environment: dev
+		? "development"
+		: location.hostname === "www.stemshovel.com"
+			? "production"
+			: "preview",
 	tracesSampleRate: 0.2,
 	replaysSessionSampleRate: 0.1,
 	replaysOnErrorSampleRate: 1.0,

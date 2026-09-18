@@ -18,6 +18,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **Towards one environment per stage** (docs/environments.md): `bun run db:reset-stage` rebuilds dev or staging from the seed (migrations, seed account, user docs, operator flags, the bot) and refuses production; Better Auth pins production to the domain Vercel reports instead of a literal and trusts `staging.stemshovel.dev` on previews; Sentry's browser tag distinguishes previews; the schema comments, CLAUDE.md and docs describe the three stages. The databases, Blob stores and 1Password environments themselves are provisioned outside the repo.
 - Migration 0039: `recording` table. Recording files go to the private Blob store when one is configured. Permissions-Policy allows `microphone=(self)` and `screen-wake-lock=(self)`. Account usage counts recordings' bytes; deleting an account removes their files.
 
 ## [0.15.0] - 2026-09-17

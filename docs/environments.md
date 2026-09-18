@@ -1,6 +1,11 @@
 # One environment each: dev, staging, production (plan)
 
-Status: **plan, nothing changed yet** (2026-09-18). Today every deployment
+Status: **in progress** (2026-09-18): the code, the `db:reset-stage`
+script and the docs are done; the consoles (Turso, Blob, 1Password, Vercel)
+are Kevin's steps below, and the switch happens when the new ids reach
+`.env.local` and Vercel. Staging's address is `https://staging.stemshovel.dev`
+(a domain attached to the Preview environment; deployment protection is off).
+Before this change every deployment
 and the VM's dev server share one 1Password environment, one Turso
 database and one pair of Blob stores. That is why a migration generated on
 dev lands in production the moment it is applied, why throwaway test songs
@@ -14,6 +19,7 @@ staging and production their own set of everything.
 | ---------------------------- | -------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
 | 1Password environment        | `stem-shovel-dev`                                  | `stem-shovel-staging`                       | `stem-shovel-production` (today's, renamed)                          |
 | `OP_ENV_ID` comes from       | `.env.local`                                       | Vercel env var, Preview scope               | Vercel env var, Production scope                                     |
+| `OP_TOKEN` (service account) | the narrow one: dev + staging only                 | the full one                                | the full one                                                         |
 | Turso database               | `stem-shovel-dev`                                  | `stem-shovel-staging`                       | `stem-shovel` (today's)                                              |
 | Blob stores (public/private) | `stem-shovel-dev` / `…-dev-private`                | `stem-shovel-staging` / `…-staging-private` | today's two                                                          |
 | `BETTER_AUTH_SECRET`         | its own                                            | its own                                     | today's                                                              |

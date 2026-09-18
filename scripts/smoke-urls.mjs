@@ -4,7 +4,8 @@
  * the dev server or production.
  *
  *   bun run smoke:urls                                   # dev server, both passes
- *   SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls   # production
+ *   SMOKE_BASE=https://staging.stemshovel.dev bun run smoke:urls  # staging (bot pass once its token is there)
+ *   SMOKE_BASE=https://www.stemshovel.com bun run smoke:urls   # production (anonymous pass only)
  *
  * Dynamic segments are filled from the database (an account the bot
  * belongs to, its first project and song, a user doc); token routes get a

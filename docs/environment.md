@@ -25,7 +25,15 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
   whenever `VERCEL_OIDC_TOKEN` is present (it is, in `.env.local`), and that
   fails in development.
 - `APP_ENV` is `fallback($VERCEL_ENV, development)`; `forEnv()` in the
-  schema keys off it.
+  schema keys off it, and varlock also loads `.env.<APP_ENV>.local`, which
+  is how the VM addresses staging: `APP_ENV=preview bunx varlock run -- <cmd>`
+  with staging's `OP_ENV_ID` in `.env.preview.local`.
+- **Stages.** dev (the VM), staging (`https://staging.stemshovel.dev`,
+  the preview deployment of the `staging` branch) and production each load
+  their own 1Password environment with their own Turso database, Blob
+  stores and Better Auth secret; the VM's service-account token can read
+  dev and staging only. [environments.md](environments.md) has the layout
+  and the switch-over steps.
 
 ## Vercel
 
@@ -153,8 +161,13 @@ bun run db:studio     # drizzle-kit studio
 ```
 
 Migrations are committed and applied from a developer machine, not during
-the Vercel build. When a change would make drizzle-kit ask about a rename,
-split it into two generates (drop, then add).
+the Vercel build: dev on the VM as you go, staging (`APP_ENV=preview`) when
+`dev` merges into `staging`, production from Kevin's machine when `staging`
+merges into `main`, each before the push. `bun run db:reset-stage` rebuilds
+dev or staging from the seed and refuses production. When a change would
+make drizzle-kit ask about a rename, split it into two generates (drop,
+then add); within a stage the old code still runs for the minutes between
+the migration and the deploy, so additive first.
 
 **Sign-in** is Better Auth ([auth.md](auth.md)). `src/hooks.server.ts` puts
 the signed-in user (or null) and their memberships on `event.locals`; the

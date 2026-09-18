@@ -28,10 +28,15 @@ import { ENV } from "varlock/env";
  * ignores a request whose origin differs from it (every /api/auth/* answered
  * the app's 404 on the staging preview, 2026-09-18). Dev is reached from
  * several origins (localhost, the Tailscale name, the exe.dev proxy) and a
- * preview deployment has its own *.vercel.app name, so both leave it unset
- * and each request infers itself; only production pins it.
+ * preview deployment has its own names (staging.stemshovel.dev, *.vercel.app),
+ * so both leave it unset and each request infers itself; only production
+ * pins it, to the domain Vercel says is production (so a forged Host header
+ * can never reach the links in the emails we send). The literal is the
+ * fallback for a build outside Vercel.
  */
-const PRODUCTION_URL = "https://www.stemshovel.com";
+const PRODUCTION_URL = ENV.VERCEL_PROJECT_PRODUCTION_URL
+	? `https://${ENV.VERCEL_PROJECT_PRODUCTION_URL}`
+	: "https://www.stemshovel.com";
 const baseURL = dev || ENV.VERCEL_ENV === "preview" ? undefined : PRODUCTION_URL;
 
 const trustedOrigins = [
@@ -46,8 +51,10 @@ const trustedOrigins = [
 	...(dev
 		? ["https://stem-shovel.wr.lj.dev", "https://wandering-rodeo.tail59777f.ts.net:8444"]
 		: []),
-	// Vercel preview deployments
-	...(ENV.VERCEL_ENV === "preview" ? ["https://*.vercel.app"] : []),
+	// Preview deployments: staging's domain and Vercel's own names
+	...(ENV.VERCEL_ENV === "preview"
+		? ["https://staging.stemshovel.dev", "https://*.vercel.app"]
+		: []),
 ];
 
 /** A new user gets their own account (tenant) and owns it. */

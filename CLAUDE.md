@@ -27,6 +27,7 @@ bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
 bun run db:system-admin <email>         # make a user the operator (/admin)
 bun run db:super-admin <email>          # owner of every account, audited (docs/security.md)
 bun run db:seed-docs                    # add the starting user docs (scripts/user-docs) where missing
+bun run db:reset-stage [-- --wipe --admin <email>]   # rebuild dev or staging from the seed (never production); APP_ENV=preview for staging
 ```
 
 Bun is the package manager (`packageManager` pin; `bun.lock` only). varlock
@@ -114,9 +115,9 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 - **Three branches.** `dev` is where work lands and what the VM's dev
   server serves (it serves whatever is checked out, so keep `dev` checked
   out here); Kevin previews there. `staging` is the production-like test:
-  Vercel builds it as a preview deployment (its stable address is
-  `https://stem-shovel-git-staging-lightning-jar.vercel.app`, behind
-  deployment protection). `main` is production. Commit each completed
+  Vercel builds it as a preview deployment at
+  `https://staging.stemshovel.dev` (no deployment protection; the app's
+  own sign-in gates it). `main` is production. Commit each completed
   change to `dev` and push it; merge `dev` into `staging`, and `staging`
   into `main`, only when Kevin says so. A push to `main` deploys
   production: watch the deployment and check the live pages afterwards.
