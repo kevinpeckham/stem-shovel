@@ -3,7 +3,7 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
-	import { onDestroy } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 
 	/**
 	 * The demo recorder (docs/demo-recording.md): one take at a time from the
@@ -47,12 +47,25 @@
 
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
+	/** "Untitled - Sep 18, 2026 - 3:45 pm", in the browser's clock; the field shows it from the start and stays editable. */
 	function defaultTitle() {
 		const now = new Date();
-		const day = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-		const time = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-		return `Recording ${day} ${time}`;
+		const day = now.toLocaleDateString("en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
+		const time = now
+			.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+			.toLowerCase();
+		return `Untitled - ${day} - ${time}`;
 	}
+	// In the browser, not at render: the server's clock and time zone are not the user's.
+	onMount(() => {
+		title = defaultTitle();
+	});
+	/** Save pressed while paused: the take is stopped first, then saved as soon as it is ready. */
+	let saveAfterStop = false;
 
 	async function start() {
 		notice = null;
@@ -145,6 +158,20 @@
 		takeUrl = URL.createObjectURL(blob);
 		if (!title) title = defaultTitle();
 		phase = "reviewing";
+		if (saveAfterStop) {
+			saveAfterStop = false;
+			void save();
+		}
+	}
+
+	/** The Save button: from paused, stop and then save; from reviewing, save. */
+	function saveNow() {
+		if (phase === "paused") {
+			saveAfterStop = true;
+			stop();
+		} else if (phase === "reviewing") {
+			void save();
+		}
 	}
 
 	/** Undo: throw the take away (while recording, paused or reviewing) and start over. */
@@ -279,6 +306,20 @@
 <div
 	class="grid grid-cols-1 place-content-start gap-5 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md h-full min-h-560px"
 >
+	<label class="block">
+		<span class="sr-only">Title</span>
+		<input
+			class="field"
+			type="text"
+			maxlength="120"
+			autocomplete="off"
+			data-1p-ignore
+			data-lpignore="true"
+			data-bwignore
+			bind:value={title}
+			disabled={phase === "saving"}
+		/>
+	</label>
 	{#if !supported}
 		<p class="rounded border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm" role="alert">
 			This browser cannot record audio. Try Safari, Chrome or Firefox.
@@ -286,7 +327,7 @@
 	{/if}
 
 	<!-- the clock and the meter -->
-	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4 max-w-fit">
+	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4">
 		<div class="flex flex-wrap items-baseline justify-between gap-3">
 			<span class="font-mono text-40px leading-none tabular-nums sm:text-56px" aria-live="off"
 				>{formatTime(elapsed, 1)}</span
@@ -340,86 +381,64 @@
 		</p>
 	{/if}
 
-	<!-- the controls -->
-	{#if phase === "idle" || phase === "requesting"}
-		<div class="flex flex-wrap items-center gap-3">
+	<!-- the controls: one row that never changes shape; a button is greyed out until it applies -->
+	<div class="flex flex-wrap items-center gap-3">
+		{#if phase === "recording"}
+			<button class="button text-16px px-5 py-2.5" type="button" onclick={pause}>
+				<span class="i-ph-pause-fill" aria-hidden="true"></span>
+				Pause
+			</button>
+		{:else if phase === "paused"}
+			<button class="button-accent text-16px px-5 py-2.5" type="button" onclick={resume}>
+				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+				Resume
+			</button>
+		{:else}
 			<button
-				class="button-accent text-18px px-6 py-3"
+				class="button-accent text-16px px-5 py-2.5 disabled:opacity-40"
 				type="button"
-				disabled={!supported || phase === "requesting"}
+				disabled={!supported || phase !== "idle"}
+				title={phase === "reviewing" ? "Undo the take first to record again" : "Start a take"}
 				onclick={start}
 			>
 				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
 				Record
 			</button>
-		</div>
-	{:else if phase === "recording" || phase === "paused"}
-		<div class="flex flex-wrap items-center gap-3">
-			{#if phase === "recording"}
-				<button class="button text-16px px-5 py-2.5" type="button" onclick={pause}>
-					<span class="i-ph-pause-fill" aria-hidden="true"></span>
-					Pause
-				</button>
-			{:else}
-				<button class="button-accent text-16px px-5 py-2.5" type="button" onclick={resume}>
-					<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
-					Resume
-				</button>
-			{/if}
-			<button class="button-accent text-16px px-5 py-2.5" type="button" onclick={stop}>
-				<span class="i-ph-stop-fill" aria-hidden="true"></span>
-				Stop
-			</button>
-			<button
-				class="button text-16px px-5 py-2.5"
-				type="button"
-				title="Throw this take away and start over"
-				onclick={retake}
-			>
-				<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
-				Undo
-			</button>
-		</div>
-	{:else if phase === "reviewing" || phase === "saving"}
-		<div class="grid gap-4">
-			{#if takeUrl}
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<audio class="w-full" controls preload="auto" src={takeUrl}></audio>
-			{/if}
-			<label class="block">
-				<span class="text-sm opacity-90">Title</span>
-				<input
-					class="mt-1 field"
-					type="text"
-					maxlength="120"
-					autocomplete="off"
-					data-1p-ignore
-					data-lpignore="true"
-					data-bwignore
-					bind:value={title}
-					disabled={phase === "saving"}
-				/>
-			</label>
-			<div class="flex flex-wrap items-center gap-3">
-				<button
-					class="button-accent text-16px px-5 py-2.5"
-					type="button"
-					disabled={phase === "saving"}
-					onclick={save}
-				>
-					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-					{phase === "saving" ? `Saving… ${Math.round(progress)}%` : "Save"}
-				</button>
-				<button
-					class="button text-16px px-5 py-2.5"
-					type="button"
-					disabled={phase === "saving"}
-					onclick={retake}
-				>
-					<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
-					Retake
-				</button>
-			</div>
-		</div>
+		{/if}
+		<button
+			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			type="button"
+			disabled={phase !== "recording" && phase !== "paused"}
+			onclick={stop}
+		>
+			<span class="i-ph-stop-fill" aria-hidden="true"></span>
+			Stop
+		</button>
+		<button
+			class="button text-16px px-5 py-2.5 disabled:opacity-40"
+			type="button"
+			disabled={phase !== "recording" && phase !== "paused" && phase !== "reviewing"}
+			title={phase === "reviewing"
+				? "Throw this take away and record another"
+				: "Throw away what has been recorded so far"}
+			onclick={retake}
+		>
+			<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+			{phase === "reviewing" ? "Retake" : "Undo"}
+		</button>
+		<button
+			class="button-accent text-16px px-5 py-2.5 disabled:opacity-40"
+			type="button"
+			disabled={phase !== "paused" && phase !== "reviewing"}
+			title={phase === "paused" ? "Stop the take and save it" : "Save the take"}
+			onclick={saveNow}
+		>
+			<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+			{phase === "saving" ? `Saving… ${Math.round(progress)}%` : "Save"}
+		</button>
+	</div>
+	{#if takeUrl && (phase === "reviewing" || phase === "saving")}
+		<!-- svelte-ignore a11y_media_has_caption -->
+		<audio class="w-full" controls preload="auto" src={takeUrl}></audio>
 	{/if}
 </div>
