@@ -2,6 +2,7 @@
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import DemoRecorder from "$lib/components/DemoRecorder.svelte";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
+	import RecordingNotes from "$lib/components/RecordingNotes.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 
 	let { data } = $props();
@@ -59,6 +60,7 @@
 					}}>Record another</button
 				>
 			</div>
+			<RecordingNotes recording={{ id: saved.id, notes: "" }} />
 			<p class="text-sm opacity-90">
 				It is in <a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>
 				either way. To make it a demo:

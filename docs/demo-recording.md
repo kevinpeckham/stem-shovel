@@ -31,6 +31,9 @@ with a guitar and a phone and records a demo with start, stop, pause, undo
   recording store), `/api/recordings/[id]/ready` reports the URL and the
   timed length, and the same ffmpeg step as demos makes the MP3
   (`scheduleRecordingPlayback`).
+- **Notes** (2026-09-18): a markdown notes field per recording, edited in
+  the song documents' embedded editor on the recorder page after a save and
+  on each library row (`RecordingNotes.svelte`, `saveRecordingNotes`).
 - **Headers.** Permissions-Policy allows `microphone=(self)` and
   `screen-wake-lock=(self)`.
 - Verified end to end in Chromium with a fake microphone fed by the test

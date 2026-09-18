@@ -89,7 +89,8 @@ erDiagram
   (docs/demo-recording.md): one audio file per account at
   `accounts/<id>/recordings/<recordingId>.<ext>` (the private store when
   configured), with a title, who recorded it, the timed duration and the
-  same MP3 rendition columns as a demo. Not tied to a song: adding it to a
+  same MP3 rendition columns as a demo, and markdown `notes` on the idea.
+  Not tied to a song: adding it to a
   song copies the file into a `demo` row of that song.
 - **stem** — one audio file in Vercel Blob, plus what the engine learns when it
   decodes it (duration, channels, sample rate, 1024 peaks). This is where plan

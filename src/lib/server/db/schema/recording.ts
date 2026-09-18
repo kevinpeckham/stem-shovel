@@ -24,6 +24,8 @@ export const recording = table(
 		/** Who recorded it; kept when they leave. */
 		recordedBy: t.text("recorded_by").references(() => user.id, { onDelete: "set null" }),
 		title: t.text("title").notNull(),
+		/** Markdown notes on the idea (what it is, where it might go), edited beside the recorder. */
+		notes: t.text("notes").notNull().default(""),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

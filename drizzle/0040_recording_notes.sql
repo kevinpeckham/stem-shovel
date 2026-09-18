@@ -1,0 +1,1 @@
+ALTER TABLE `recording` ADD `notes` text DEFAULT '' NOT NULL;

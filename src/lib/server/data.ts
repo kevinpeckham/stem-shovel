@@ -1947,6 +1947,15 @@ export async function renameRecording(accountId: string, recordingId: string, ti
 	return !!row;
 }
 
+export async function setRecordingNotes(accountId: string, recordingId: string, notes: string) {
+	const [row] = await db
+		.update(recording)
+		.set({ notes })
+		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
+		.returning({ id: recording.id });
+	return !!row;
+}
+
 export async function deleteRecording(accountId: string, recordingId: string) {
 	const [row] = await db
 		.delete(recording)

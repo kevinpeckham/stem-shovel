@@ -18,6 +18,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		recordings: recordings.map((r) => ({
 			id: r.id,
 			title: r.title,
+			notes: r.notes,
 			url: r.url,
 			playbackUrl: r.playbackUrl,
 			playbackStatus: r.playbackStatus,

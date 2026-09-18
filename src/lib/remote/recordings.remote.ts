@@ -12,11 +12,13 @@ import {
 	deleteRecording as removeRecording,
 	projectSlugs,
 	renameRecording as rename,
+	setRecordingNotes,
 	songSlugs,
 } from "$lib/server/data";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { IdSchema } from "$lib/val/SongSchema";
 import {
+	RecordingNotesSchema,
 	RecordingRenameSchema,
 	RecordingToNewSongSchema,
 	RecordingToSongSchema,
@@ -30,6 +32,14 @@ export const renameRecording = form(RecordingRenameSchema, async ({ id, title })
 	const { accountId } = await memberOf(locals, accountOfRecording, id);
 	if (!(await rename(accountId, id, title))) error(404, "Recording not found");
 	return { renamed: true };
+});
+
+/** The idea's notes, saved whole (the editor autosaves on idle). */
+export const saveRecordingNotes = command(RecordingNotesSchema, async ({ id, markdown }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfRecording, id);
+	if (!(await setRecordingNotes(accountId, id, markdown))) error(404, "Recording not found");
+	return { saved: true };
 });
 
 export const deleteRecording = form(IdSchema, async ({ id }) => {

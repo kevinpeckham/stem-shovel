@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
+	import RecordingNotes from "$lib/components/RecordingNotes.svelte";
 	import { deleteRecording, renameRecording } from "$lib/remote/recordings.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -70,6 +71,21 @@
 					</div>
 					<!-- svelte-ignore a11y_media_has_caption -->
 					<audio class="w-full" controls preload="none" src={r.playbackUrl ?? r.url}></audio>
+					<!-- The idea's notes: closed by default, a line of preview when there are any. -->
+					<details class="group">
+						<summary class="cursor-pointer list-none text-sm [&::-webkit-details-marker]:hidden">
+							<span
+								class="i-ph-caret-right inline-block align-[-2px] group-open:rotate-90"
+								aria-hidden="true"
+							></span>
+							Notes{#if r.notes.trim()}<span class="ml-2 opacity-70"
+									>{r.notes.trim().split("\n")[0].slice(0, 80)}</span
+								>{/if}
+						</summary>
+						<div class="mt-2">
+							<RecordingNotes recording={r} compact />
+						</div>
+					</details>
 					{#if r.playbackStatus !== "ready"}
 						<p class="text-12px opacity-70">
 							{r.playbackStatus === "failed"
