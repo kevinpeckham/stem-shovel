@@ -14,6 +14,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **Landing on "/undefined" after the two-factor code.** The verify page reloaded its data before navigating; the reload redirected (the user was now signed in) and swapped the page data out, so the target read as undefined. Both the verify page and the sign-in page now capture the target first and navigate with a single reload.
 - **Sign-in on preview deployments** (staging): Better Auth's base URL was pinned to the production origin for every non-dev build, and its handler ignores requests from another origin, so every `/api/auth/*` call on a `*.vercel.app` preview answered the app's 404 page. Previews now infer the URL from the request like dev does.
 
 ### Technical

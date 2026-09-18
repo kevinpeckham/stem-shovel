@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { errorMessage } from "$lib/utils/errorMessage";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { goto } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
 
 	let { data } = $props();
@@ -16,6 +16,10 @@
 		if (busy) return;
 		error = "";
 		busy = true;
+		// Read the target before anything reloads: once signed in, this page's
+		// loader redirects, and `data` is swapped for the next page's (which has
+		// no `next`), so reading it after the fact gave goto(undefined) → "/undefined".
+		const next = data.next;
 		try {
 			const result = useBackup
 				? await authClient.twoFactor.verifyBackupCode({ code: backupCode.trim(), trustDevice })
@@ -24,8 +28,7 @@
 				error = result.error.message ?? "That code did not work";
 				return;
 			}
-			await invalidateAll();
-			await goto(data.next);
+			await goto(next, { invalidateAll: true });
 		} catch (e) {
 			error = errorMessage(e);
 		} finally {

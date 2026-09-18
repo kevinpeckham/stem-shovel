@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { safeNext } from "$lib/utils/safeNext";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { goto } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
 
 	let { data } = $props();
@@ -13,6 +13,7 @@
 		e.preventDefault();
 		error = "";
 		busy = true;
+		const next = safeNext(data.next); // before any reload swaps `data` (see verify-2fa)
 		const result = await authClient.signIn.email({
 			email,
 			password,
@@ -21,7 +22,7 @@
 		busy = false;
 		// Password accepted, code still needed: the session is not signed in yet.
 		if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
-			await goto(`/verify-2fa?next=${encodeURIComponent(safeNext(data.next))}`);
+			await goto(`/verify-2fa?next=${encodeURIComponent(next)}`);
 			return;
 		}
 		if (result.error) {
@@ -32,8 +33,7 @@
 					: (result.error.message ?? "Sign-in failed");
 			return;
 		}
-		await invalidateAll();
-		await goto(safeNext(data.next));
+		await goto(next, { invalidateAll: true });
 	}
 </script>
 
