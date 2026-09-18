@@ -47,7 +47,7 @@
 
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
-	/** "Untitled - Sep 18, 2026 - 3:45 pm", in the browser's clock; the field shows it from the start and stays editable. */
+	/** "Untitled Recording - Sep 18, 2026 - 3:45 pm", in the browser's clock; the field shows it from the start and stays editable. */
 	function defaultTitle() {
 		const now = new Date();
 		const day = now.toLocaleDateString("en-US", {
@@ -58,7 +58,7 @@
 		const time = now
 			.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 			.toLowerCase();
-		return `Untitled - ${day} - ${time}`;
+		return `Untitled Recording - ${day} - ${time}`;
 	}
 	// In the browser, not at render: the server's clock and time zone are not the user's.
 	onMount(() => {
