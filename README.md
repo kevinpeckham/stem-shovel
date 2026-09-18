@@ -41,7 +41,7 @@ panelled settings popover (details, sections, tempo/key/meter, demo
 recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
 `/lyrics` and `/notes` are the full-page editors; `/[account]/recorder` is
-the demo recorder and `/[account]/recordings` the library of scratch
+the idea recorder and `/[account]/recordings` the library of scratch
 recordings it makes (added to a song, one becomes a demo);
 `/[account]/settings` is the account (members, invitations, invite codes,
 usage, plan). Neutral

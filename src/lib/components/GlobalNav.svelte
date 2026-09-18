@@ -124,7 +124,7 @@
 								onclick={() => (open = false)}
 							>
 								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Demo recorder
+								></span>Idea Recorder
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(

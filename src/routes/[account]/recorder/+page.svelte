@@ -11,12 +11,12 @@
 </script>
 
 <svelte:head>
-	<title>Demo recorder — Stem Shovel</title>
+	<title>Idea Recorder — Stem Shovel</title>
 </svelte:head>
 
 <main class="page">
 	<header class="max-w-article">
-		<h1 class="heading-2">Demo recorder</h1>
+		<h1 class="heading-2">Idea Recorder</h1>
 		<p class="opacity-90 text-balance">
 			A riff, a lick, a melody idea or a whole take. Recordings go to
 			<a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>; add one to a

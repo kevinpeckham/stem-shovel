@@ -1106,11 +1106,11 @@
 				>
 			</div>
 
-			<!-- share, info and settings: real buttons on a phone, quiet icons from sm up -->
+			<!-- share, idea recorder, info and settings -->
 			{#if data.canEdit}
 				<div class="flex gap-2">
 					<button
-						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
 						type="button"
 						popovertarget="song-share"
 						title="Share this song by email"
@@ -1118,8 +1118,16 @@
 					>
 						<span class="block i-ph-paper-plane-tilt"></span>
 					</button>
+					<a
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+						href="/{data.account.slug}/recorder?song={data.song.id}"
+						title="Idea recorder: record a riff, a melody or a demo for this song"
+						aria-label="Idea recorder"
+					>
+						<span class="block i-ph-microphone"></span>
+					</a>
 					<button
-						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
 						type="button"
 						popovertarget="song-info"
 						title="About this song"
@@ -1128,7 +1136,7 @@
 						<span class="block i-ph-info"></span>
 					</button>
 					<button
-						class="button button-sm sm:border-transparent sm:px-1 sm:py-1 sm:opacity-90 sm:hover-text-accent sm:hover-opacity-100"
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
 						type="button"
 						popovertarget="song-settings"
 						title="Song settings"
@@ -2451,7 +2459,7 @@
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						role="menuitem"
 						href="/{data.account.slug}/recorder?song={data.song.id}"
-						title="Record a demo with the microphone (docs: demo recorder)"
+						title="Idea recorder: record a riff, a melody or a demo for this song"
 					>
 						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
 						Record Demo

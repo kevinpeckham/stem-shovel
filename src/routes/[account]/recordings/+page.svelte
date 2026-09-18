@@ -35,7 +35,7 @@
 		<div>
 			<h1 class="heading-2">Recordings</h1>
 			<p class="opacity-90 text-balance">
-				Scratch recordings from the demo recorder: riffs, licks, melody ideas, whole takes. They are
+				Scratch recordings from the idea recorder: riffs, licks, melody ideas, whole takes. They are
 				not demos until you add one to a song.
 			</p>
 		</div>

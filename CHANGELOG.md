@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Demo recorder.** `/[account]/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
+- **Idea Recorder.** `/[account]/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
 
 ### Fixed
 
@@ -29,6 +29,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Added
 
 - **The AI listens when the time signature is a close call.** After a detection (at upload or from Scan stems) whose 3/4-or-4/4 lean is under 0.15, the song page asks the AI to check on its own, waits for the mix to render when the stems have just been uploaded, and shows the answer with "Use these"; the card says the check was automatic.
+- **Idea Recorder link on the song page**: an icon button between share and info opens the recorder for that song (members). The header's share, info and settings buttons share one style, and their icons no longer vanish on hover.
 - **Build version in the footer**: the app version and the short commit of the running build, linked to the changelog.
 
 ### Fixed

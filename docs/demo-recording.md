@@ -15,7 +15,7 @@ with a guitar and a phone and records a demo with start, stop, pause, undo
   (`copyRecordingToSong`), so the recording stays in the library and the
   demo lives and dies with the song. "New song from it" creates the song in
   a project and adds the recording as its first demo.
-- **Pages.** `/[account]/recorder` is the demo recorder (members only;
+- **Pages.** `/[account]/recorder` is the idea recorder ("Idea Recorder" in the app) (members only;
   `?song=<id>` remembers the song it was opened from and offers "Add to
   that song" first); `/[account]/recordings` is the library (play, rename,
   download, add to a song, delete). Both are in the account menu; the song

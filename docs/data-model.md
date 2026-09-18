@@ -85,7 +85,7 @@ erDiagram
   decoding, peaks or renditions. Played and downloaded as uploaded; up to
   `MAX_DEMOS_PER_SONG` per song. The song also carries `songwriter` (free
   text) and `written_on` (ISO date), edited from song settings.
-- **recording** — a scratch recording from the in-app demo recorder
+- **recording** — a scratch recording from the in-app idea recorder
   (docs/demo-recording.md): one audio file per account at
   `accounts/<id>/recordings/<recordingId>.<ext>` (the private store when
   configured), with a title, who recorded it, the timed duration and the
