@@ -145,7 +145,16 @@ export default defineConfig({
 		["heading-1", "text-balance font-700 text-accent mb-3 text-32px lg:text-32px leading-snug"],
 		["heading-2", "font-700 text-white mb-3 text-20px lg:text-22px"],
 		["heading-3", "font-500 text-white mb-3 text-18px lg:text-18px"],
-		["nav-link", "underline underline-offset-4 hover:text-maximumYellow opacity-90"],
+		[
+			"nav-link",
+			`
+			decoration-current/10
+			opacity-90
+			underline
+			underline-offset-4
+			hover-opacity-100
+			hover-text-accent`,
+		],
 		[
 			"list-tile",
 			"bg-blue-300/5 rounded-md border border-current/40 block px-4 py-3 text-18px hover-text-accent hover-border-accent hover-bg-accent/5 lg-text-20px leading-tight",
@@ -153,7 +162,7 @@ export default defineConfig({
 
 		// ---- app ---------------------------------------------------------------
 		["page", "page-x-padding main-y-padding grid grid-cols-1 gap-8 place-content-start"],
-		["link-dim", "underline underline-offset-4 hover:text-maximumYellow"],
+		["link-dim", "underline underline-offset-4 hover:text-accent"],
 		["surface", "rounded border border-white/10 bg-row"],
 		["tile", "border border-white/10 rounded p-6"],
 		[

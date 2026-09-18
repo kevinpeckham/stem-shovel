@@ -22,14 +22,14 @@
 			<h1 class="heading-2">Idea Recorder</h1>
 			<p class="opacity-90 text-balance">
 				A riff, a lick, a melody idea or a whole take. Recordings go to
-				<a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>; add one to a
-				song to make it a demo.
+				<a class="link-dim" href="/{data.account.slug}/ideas/recordings">your recordings</a>; add
+				one to a song to make it a demo.
 				{#if data.fromSong}
 					Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
 				{/if}
 			</p>
 		</div>
-		<a class="button button-sm" href="/{data.account.slug}/recordings">
+		<a class="button button-sm" href="/{data.account.slug}/ideas/recordings">
 			<span class="i-ph-waveform" aria-hidden="true"></span>
 			All recordings
 		</a>
@@ -62,7 +62,8 @@
 			</div>
 			<RecordingNotes recording={{ id: saved.id, notes: "" }} />
 			<p class="text-sm opacity-90">
-				It is in <a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>
+				It is in <a class="link-dim" href="/{data.account.slug}/ideas/recordings">your recordings</a
+				>
 				either way. To make it a demo:
 			</p>
 			<RecordingActions recording={saved} projects={data.projects} fromSong={data.fromSong} />

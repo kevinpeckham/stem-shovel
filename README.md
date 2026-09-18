@@ -40,8 +40,8 @@ is the song page (player, stem rows with a per-stem menu, download row,
 panelled settings popover (details, sections, tempo/key/meter, demo
 recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
-`/lyrics` and `/notes` are the full-page editors; `/[account]/recorder` is
-the idea recorder and `/[account]/recordings` the library of scratch
+`/lyrics` and `/notes` are the full-page editors; `/[account]/ideas/recorder` is
+the idea recorder and `/[account]/ideas/recordings` the library of scratch
 recordings it makes (added to a song, one becomes a demo);
 `/[account]/settings` is the account (members, invitations, invite codes,
 usage, plan). Neutral

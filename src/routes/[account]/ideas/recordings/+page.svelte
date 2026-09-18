@@ -41,7 +41,7 @@
 				not demos until you add one to a song.
 			</p>
 		</div>
-		<a class="button button-sm" href="/{data.account.slug}/recorder">
+		<a class="button button-sm" href="/{data.account.slug}/ideas/recorder">
 			<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
 			Record
 		</a>
@@ -51,7 +51,7 @@
 		<p
 			class="max-w-article rounded border border-dashed border-white/15 px-4 py-6 text-center text-sm opacity-90"
 		>
-			Nothing recorded yet. <a class="link-dim" href="/{data.account.slug}/recorder"
+			Nothing recorded yet. <a class="link-dim" href="/{data.account.slug}/ideas/recorder"
 				>Open the recorder.</a
 			>
 		</p>

@@ -60,16 +60,16 @@
 		{#if user && member}
 			<!-- The two places a member goes most; the rest stays in the account menu. Hidden on a phone, where the menu has them. -->
 			<a
-				class="nav-link hidden sm:inline {active(`/${member.slug}/projects`)
-					? 'text-maximumYellow'
+				class="nav-link hidden sm-inline-block {active(`/${member.slug}/projects`)
+					? 'text-accent !decoration-current'
 					: ''}"
 				href="/{member.slug}/projects">Projects</a
 			>
 			<a
-				class="nav-link hidden sm:inline {active(`/${member.slug}/recorder`)
-					? 'text-maximumYellow'
+				class="nav-link hidden sm-inline-block {active(`/${member.slug}/ideas/recorder`)
+					? 'text-accent !decoration-current'
 					: ''}"
-				href="/{member.slug}/recorder">Idea Recorder</a
+				href="/{member.slug}/ideas/recorder">Idea Recorder</a
 			>
 		{/if}
 		{#if user}
@@ -130,12 +130,12 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
-									`/${member.slug}/recorder`,
+									`/${member.slug}/ideas/recorder`,
 								)
 									? 'text-maximumYellow'
 									: ''}"
 								role="menuitem"
-								href="/{member.slug}/recorder"
+								href="/{member.slug}/ideas/recorder"
 								onclick={() => (open = false)}
 							>
 								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"
@@ -143,12 +143,12 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
-									`/${member.slug}/recordings`,
+									`/${member.slug}/ideas/recordings`,
 								)
 									? 'text-maximumYellow'
 									: ''}"
 								role="menuitem"
-								href="/{member.slug}/recordings"
+								href="/{member.slug}/ideas/recordings"
 								onclick={() => (open = false)}
 							>
 								<span class="i-ph-waveform mr-2 inline-block align-[-2px]" aria-hidden="true"

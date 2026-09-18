@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Idea Recorder.** `/[account]/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
+- **Idea Recorder.** `/[account]/ideas/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/ideas/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
 
 ### Fixed
 

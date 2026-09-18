@@ -1121,7 +1121,7 @@
 					</button>
 					<a
 						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						href="/{data.account.slug}/recorder?song={data.song.id}"
+						href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
 						title="Idea recorder: record a riff, a melody or a demo for this song"
 						aria-label="Idea recorder"
 					>
@@ -1925,7 +1925,7 @@
 				{#if data.canEdit}
 					<p class="mt-1 text-sm opacity-80">
 						Add stems below, start with a demo recording of the idea, or
-						<a class="link-dim" href="/{data.account.slug}/recorder?song={data.song.id}"
+						<a class="link-dim" href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
 							>record one now</a
 						>.
 					</p>
@@ -2459,7 +2459,7 @@
 					<a
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						role="menuitem"
-						href="/{data.account.slug}/recorder?song={data.song.id}"
+						href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
 						title="Idea recorder: record a riff, a melody or a demo for this song"
 					>
 						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
