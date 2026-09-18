@@ -152,6 +152,16 @@ bun run db:copy-database -- --verify` copies every table (schema,
 
 ## Details worth knowing before starting
 
+- **`.env.local` layers under every stage on the VM.** varlock reads
+  `.env.local` for `APP_ENV=preview` too, so a value that lives only there
+  (the bot's `PREVIEW_AUTH_TOKEN` did) looks present when probing staging
+  from the VM while the staging build never had it. Keep `.env.local` to
+  `OP_TOKEN` and `OP_ENV_ID`; everything else belongs in 1Password.
+- **A `vercel redeploy` of a preview does not move the branch domain.**
+  `staging.stemshovel.dev` follows the latest deployment built from a push
+  to `staging`; to rebuild staging with new 1Password values, push to the
+  branch.
+
 - **Blob's completion webhook** (`onUploadCompleted`) calls back to
   `VERCEL_PROJECT_PRODUCTION_URL`, which on a preview is still the
   production host; production then answers 400 for an unknown reservation
