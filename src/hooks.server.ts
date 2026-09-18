@@ -4,7 +4,8 @@ import { building } from "$app/environment";
 import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
 import { withActingMemberships } from "$lib/utils/actingMemberships";
-import { ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
+import { indexableStage, ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
+import { ENV } from "varlock/env";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle, HandleValidationError } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
@@ -64,10 +65,13 @@ export const handle: Handle = sequence(Sentry.sentryHandle(), async ({ event, re
 		: real;
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });
-	// Only the front page is for search engines, and nothing frames or sniffs
-	// anything (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
+	// Only production's front page is for search engines (staging and previews
+	// never are), and nothing frames or sniffs anything
+	// (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
-	if (event.url.pathname !== "/") response.headers.set("x-robots-tag", ROBOTS_NOINDEX);
+	if (event.url.pathname !== "/" || !indexableStage(ENV.VERCEL_ENV)) {
+		response.headers.set("x-robots-tag", ROBOTS_NOINDEX);
+	}
 	return response;
 });
 export const handleError = Sentry.handleErrorWithSentry();

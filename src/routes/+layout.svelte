@@ -10,8 +10,8 @@
 </script>
 
 <svelte:head>
-	<!-- Only the front page is indexable; the response header says the same. -->
-	{#if page.url.pathname !== "/"}
+	<!-- Only production's front page is indexable; the response header says the same. -->
+	{#if page.url.pathname !== "/" || !data.indexable}
 		<meta name="robots" content={ROBOTS_NOINDEX} />
 	{/if}
 </svelte:head>

@@ -21,7 +21,7 @@ const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, APP_ENV } = process.env;
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN) throw new Error("run via `varlock run`");
 if (APP_ENV === "production") throw new Error("refusing to reset production");
 // Belt and braces: the stage databases carry their stage in the name.
-if (!/stem-shovel-(dev|staging)/.test(TURSO_DATABASE_URL)) {
+if (!/stem-shovel-(dev|stag(e|ing))/.test(TURSO_DATABASE_URL)) {
 	throw new Error(`refusing: ${TURSO_DATABASE_URL} is not a dev or staging database`);
 }
 
@@ -39,7 +39,7 @@ const db = drizzle(client);
 if (wipe) {
 	if (process.env.CONFIRM !== "yes") throw new Error("--wipe needs CONFIRM=yes in the environment");
 	const tables = await client.execute(
-		"select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name not like '_litestream%'",
+		"select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name not like '_litestream%' and name not like '\\_\\_turso%' escape '\\'",
 	);
 	await client.execute("pragma foreign_keys = off");
 	for (const row of tables.rows) {

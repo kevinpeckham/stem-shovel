@@ -12,6 +12,13 @@
 /** The X-Robots-Tag / robots meta value for everything but the front page. */
 export const ROBOTS_NOINDEX = "noindex, nofollow, noarchive";
 
+/**
+ * Only production is for search engines at all: staging, previews and dev
+ * carry the noindex header on every page, the meta everywhere, and a
+ * robots.txt that disallows everything (src/routes/robots.txt/+server.ts).
+ */
+export const indexableStage = (vercelEnv: string | undefined) => vercelEnv === "production";
+
 export const SECURITY_HEADERS: Record<string, string> = {
 	"x-content-type-options": "nosniff",
 	"x-frame-options": "DENY",

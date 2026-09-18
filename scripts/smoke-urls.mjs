@@ -79,6 +79,7 @@ const ROUTES = [
 	["api/demos (server)", "/api/demos", [405], [405]],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
 	["api/recordings (server)", "/api/recordings", [405], [405]],
+	["robots.txt (server)", "/robots.txt", [200], [200]],
 	["api/recordings/[id]/ready (server)", "/api/recordings/x/ready", [405], [405]],
 	["api/stems (server)", "/api/stems", [405], [405]],
 	["api/stems/[id]/ready (server)", "/api/stems/x/ready", [405], [405]],
@@ -128,7 +129,8 @@ if (missing.length) {
 // ---- the values for dynamic segments -------------------------------------------
 
 const db = createClient({
-	url: process.env.TURSO_DATABASE_URL,
+	// Turso's newer dashboard prints turso:// URLs; the client wants libsql:// (src/lib/utils/libsqlUrl.ts).
+	url: process.env.TURSO_DATABASE_URL.replace(/^turso:\/\//i, "libsql://"),
 	authToken: process.env.TURSO_AUTH_TOKEN,
 });
 const q = async (sql, args = []) => (await db.execute({ sql, args })).rows;

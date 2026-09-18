@@ -18,6 +18,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **Staging and previews are never indexed**: every non-production stage sends `X-Robots-Tag: noindex` on every page, the robots meta everywhere, and a robots.txt that disallows all (the file is a route now); production keeps its front-page-only rule.
+- **Dev and staging run on their own databases and stores** (docs/environments.md), restored from a snapshot of the MMKK and sirrobert accounts (`db:snapshot-accounts`, `db:restore-accounts`, `db:reset-stage --restore`); `db:copy-database` copies a whole database for the production move to Turso's newer platform; database URLs may use the `turso://` scheme.
 - **Towards one environment per stage** (docs/environments.md): `bun run db:reset-stage` rebuilds dev or staging from the seed (migrations, seed account, user docs, operator flags, the bot) and refuses production; Better Auth pins production to the domain Vercel reports instead of a literal and trusts `staging.stemshovel.dev` on previews; Sentry's browser tag distinguishes previews; the schema comments, CLAUDE.md and docs describe the three stages. The databases, Blob stores and 1Password environments themselves are provisioned outside the repo.
 - Migration 0039: `recording` table. Recording files go to the private Blob store when one is configured. Permissions-Policy allows `microphone=(self)` and `screen-wake-lock=(self)`. Account usage counts recordings' bytes; deleting an account removes their files.
 

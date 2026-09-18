@@ -25,7 +25,7 @@ const {
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN || !BLOB_READ_WRITE_TOKEN)
 	throw new Error("run via `varlock run`");
 if (APP_ENV === "production") throw new Error("refusing to restore into production");
-if (!/stem-shovel-(dev|staging)/.test(TURSO_DATABASE_URL)) {
+if (!/stem-shovel-(dev|stag(e|ing))/.test(TURSO_DATABASE_URL)) {
 	throw new Error(`refusing: ${TURSO_DATABASE_URL} is not a dev or staging database`);
 }
 const [name] = process.argv.slice(2);

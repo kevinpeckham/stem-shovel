@@ -1,9 +1,10 @@
 # One environment each: dev, staging, production (plan)
 
-Status: **in progress** (2026-09-18): the code, the `db:reset-stage`
-script and the docs are done; the consoles (Turso, Blob, 1Password, Vercel)
-are Kevin's steps below, and the switch happens when the new ids reach
-`.env.local` and Vercel. Staging's address is `https://staging.stemshovel.dev`
+Status: **done for dev and staging** (2026-09-18): both run on their own
+1Password environment, Turso database (the newer platform, names
+`stem-shovel-dev` and `stem-shovel-stage`) and Blob stores, restored from
+the production snapshot of the MMKK and sirrobert accounts; production is
+unchanged until the move below. Staging's address is `https://staging.stemshovel.dev`
 (a domain attached to the Preview environment; deployment protection is off).
 Before this change every deployment
 and the VM's dev server share one 1Password environment, one Turso
@@ -111,6 +112,43 @@ the code, scripts and docs are Claude's. In order:
 9. **After the switch**: throwaway test projects on dev no longer need
    ceremony (dev is disposable), and staging can be reset from the seed
    whenever it drifts.
+
+## Moving production to the newer Turso platform (plan)
+
+Dev and staging were provisioned on Turso's newer platform (2026-09-18),
+which supports concurrent writes; production still runs on the older one.
+Once staging has run on it for a while, production moves the same way.
+The Blob stores do not move (URLs stay valid), so this is a database copy
+and a config change. The gotchas met on dev and staging apply: the new
+dashboard prints `turso://` URLs (accepted since `libsqlUrl`), the
+database's auth token is a JWT starting `eyJ` (a platform API token is
+not it), and the system table `__turso_internal_mvcc_meta` must be left
+alone.
+
+1. **Provision** `stem-shovel-prod` on the new platform with a token. Put
+   nothing in 1Password yet.
+2. **Rehearse** from a machine with the production token:
+   `APP_ENV=production TARGET_DATABASE_URL=… TARGET_AUTH_TOKEN=…
+bun run db:copy-database -- --verify` copies every table (schema,
+   indexes, rows, `__drizzle_migrations`) from the live database and
+   checks row counts. Point a preview at the copy if a rehearsal under the
+   real build is wanted (a temporary 1Password environment with the new
+   `TURSO_*` values and the production stores).
+3. **Cut over** at a quiet hour, in this order, about five minutes in
+   all: copy again with `--wipe --verify` (the delta since the rehearsal
+   is what matters; the copy of a few MB takes seconds), change `TURSO_*`
+   in the production 1Password environment to the new database, and
+   redeploy production (`vercel redeploy <deployment-url>` or a push to
+   `main`); the build bakes the new values in. Writes that land in the old
+   database between the copy and the new deployment going live are the
+   only exposure: compare `max(updated_at)` per table on the old database
+   afterwards and re-copy those rows by hand if any appeared. Sessions are
+   copied, so nobody is signed out.
+4. **Verify**: the production smoke test, a sign-in, a page with stems, an
+   upload. Keep the old database untouched for a week; rolling back is
+   the 1Password value and a redeploy.
+5. **Afterwards** rename the old database `stem-shovel-legacy` and delete
+   it when the week is up.
 
 ## Details worth knowing before starting
 

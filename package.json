@@ -30,6 +30,7 @@
 		"db:reset-stage": "varlock run -- bun scripts/reset-stage.ts",
 		"db:snapshot-accounts": "varlock run -- bun scripts/snapshot-accounts.ts",
 		"db:restore-accounts": "varlock run -- bun scripts/restore-accounts.ts",
+		"db:copy-database": "varlock run -- bun scripts/copy-database.ts",
 		"test": "vp test run",
 		"test:watch": "vp test watch",
 		"test:unit": "vp test run --project unit",
