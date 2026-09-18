@@ -24,12 +24,15 @@ import { ENV } from "varlock/env";
  * optional TOTP two-factor (the `twoFactor` plugin: /settings/security to set
  * up, /verify-2fa at sign-in; docs/auth.md).
  *
- * baseURL is Better Auth's identity for path matching: dev is reached from
- * several origins (localhost, the Tailscale name), so dev leaves it unset and
- * each request infers itself; production pins it.
+ * baseURL is Better Auth's identity for path matching: its SvelteKit handler
+ * ignores a request whose origin differs from it (every /api/auth/* answered
+ * the app's 404 on the staging preview, 2026-09-18). Dev is reached from
+ * several origins (localhost, the Tailscale name, the exe.dev proxy) and a
+ * preview deployment has its own *.vercel.app name, so both leave it unset
+ * and each request infers itself; only production pins it.
  */
 const PRODUCTION_URL = "https://www.stemshovel.com";
-const baseURL = dev ? undefined : PRODUCTION_URL;
+const baseURL = dev || ENV.VERCEL_ENV === "preview" ? undefined : PRODUCTION_URL;
 
 const trustedOrigins = [
 	PRODUCTION_URL,
