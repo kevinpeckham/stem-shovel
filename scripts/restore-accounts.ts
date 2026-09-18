@@ -13,6 +13,7 @@ import { createClient, type InValue } from "@libsql/client";
 import { put } from "@vercel/blob";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const {
 	TURSO_DATABASE_URL,
@@ -44,7 +45,7 @@ const files = JSON.parse(await readFile(join(dir, "files.json"), "utf8")) as {
 }[];
 const clean = (t: string) => t.trim().replace(/^["']+|["']+$/g, "");
 
-const c = createClient({ url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN });
+const c = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN });
 
 // Rows first, files second: a row whose file has not arrived yet points at the
 // source store for a moment, which is harmless on a stage being rebuilt.

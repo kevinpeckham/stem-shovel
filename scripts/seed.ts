@@ -5,12 +5,13 @@
 import { drizzle } from "drizzle-orm/libsql";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/lib/server/db/schema";
+import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN } = process.env;
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN)
 	throw new Error("Turso vars missing; run via varlock");
 const db = drizzle({
-	connection: { url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN },
+	connection: { url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN },
 	schema,
 });
 

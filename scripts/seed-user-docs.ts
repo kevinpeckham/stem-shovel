@@ -13,6 +13,7 @@ import { readFile } from "node:fs/promises";
 import { drizzle } from "drizzle-orm/libsql";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/lib/server/db/schema";
+import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const ORDER = [
 	"getting-started",
@@ -30,7 +31,10 @@ const ORDER = [
 ];
 
 const db = drizzle({
-	connection: { url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN! },
+	connection: {
+		url: libsqlUrl(process.env.TURSO_DATABASE_URL!),
+		authToken: process.env.TURSO_AUTH_TOKEN!,
+	},
 	schema,
 });
 

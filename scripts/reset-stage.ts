@@ -15,6 +15,7 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { spawnSync } from "node:child_process";
+import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, APP_ENV } = process.env;
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN) throw new Error("run via `varlock run`");
@@ -32,7 +33,7 @@ const restoreAt = args.indexOf("--restore");
 const restore = restoreAt >= 0 ? args[restoreAt + 1] : null;
 const stage = APP_ENV ?? "development";
 
-const client = createClient({ url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN });
+const client = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN });
 const db = drizzle(client);
 
 if (wipe) {

@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { accessOfUrl, blobPathname } from "../src/lib/utils/blobAccess";
+import { libsqlUrl } from "../src/lib/utils/libsqlUrl";
 
 const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, BLOB_PRIVATE_READ_WRITE_TOKEN } = process.env;
 if (!TURSO_DATABASE_URL || !TURSO_AUTH_TOKEN) throw new Error("run via `varlock run`");
@@ -28,7 +29,7 @@ const slugs = slugArgs.length ? slugArgs : ["mmkk", "sirrobert"];
 const dir = join(".snapshots", name);
 await mkdir(join(dir, "files"), { recursive: true });
 
-const c = createClient({ url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN });
+const c = createClient({ url: libsqlUrl(TURSO_DATABASE_URL), authToken: TURSO_AUTH_TOKEN });
 const q = async (sql: string, args: (string | number)[] = []) =>
 	(await c.execute({ sql, args })).rows;
 const marks = (n: number) => Array(n).fill("?").join(",");
