@@ -57,6 +57,21 @@
 				>{viewedName}</a
 			>
 		{/if}
+		{#if user && member}
+			<!-- The two places a member goes most; the rest stays in the account menu. Hidden on a phone, where the menu has them. -->
+			<a
+				class="nav-link hidden sm:inline {active(`/${member.slug}/projects`)
+					? 'text-maximumYellow'
+					: ''}"
+				href="/{member.slug}/projects">Projects</a
+			>
+			<a
+				class="nav-link hidden sm:inline {active(`/${member.slug}/recorder`)
+					? 'text-maximumYellow'
+					: ''}"
+				href="/{member.slug}/recorder">Idea Recorder</a
+			>
+		{/if}
 		{#if user}
 			<div class="relative" bind:this={menu}>
 				<button

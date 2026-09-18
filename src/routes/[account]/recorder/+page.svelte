@@ -15,16 +15,22 @@
 </svelte:head>
 
 <main class="page">
-	<header class="max-w-article">
-		<h1 class="heading-2">Idea Recorder</h1>
-		<p class="opacity-90 text-balance">
-			A riff, a lick, a melody idea or a whole take. Recordings go to
-			<a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>; add one to a
-			song to make it a demo.
-			{#if data.fromSong}
-				Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
-			{/if}
-		</p>
+	<header class="max-w-article flex flex-wrap items-start justify-between gap-4">
+		<div>
+			<h1 class="heading-2">Idea Recorder</h1>
+			<p class="opacity-90 text-balance">
+				A riff, a lick, a melody idea or a whole take. Recordings go to
+				<a class="link-dim" href="/{data.account.slug}/recordings">your recordings</a>; add one to a
+				song to make it a demo.
+				{#if data.fromSong}
+					Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
+				{/if}
+			</p>
+		</div>
+		<a class="button button-sm" href="/{data.account.slug}/recordings">
+			<span class="i-ph-waveform" aria-hidden="true"></span>
+			All recordings
+		</a>
 	</header>
 
 	<section class="max-w-article" aria-label="Recorder">
