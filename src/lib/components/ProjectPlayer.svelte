@@ -86,7 +86,9 @@
 	></audio>
 {/if}
 
-<div class="surface px-4 py-3 flex flex-wrap items-center gap-4">
+<div
+	class="bg-black/20 border border-current/40 rounded-md px-4 py-3 flex flex-wrap items-center gap-4"
+>
 	<div class="flex items-center gap-2">
 		<button
 			type="button"

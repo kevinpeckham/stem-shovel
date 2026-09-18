@@ -57,34 +57,47 @@
 </svelte:head>
 
 <main class="page-x-padding pt-6 mb-2">
-	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-5">
+	<header class="flex flex-wrap items-baseline justify-between justify-start gap-4 mb-5">
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
-		<h1 class="heading-2">
-			{#if data.project.isPrivate}
-				<span
-					class="i-ph-lock mr-1 inline-block align-[-3px] text-24px opacity-70"
-					title="Private: members and viewing links only"
-					aria-label="Private"
-				></span>
-			{/if}{data.project.name}{#if data.project.status === "archived"}
-				<span
-					class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
-					title="Archived: out of the projects list; restore it in settings">archived</span
-				>{/if}
-		</h1>
-		<span class="opacity-90 text-15px">a project from {data.account.name}</span>
+		<div class="flex gap-4 items-baseline">
+			<h1 class="heading-2">
+				{#if data.project.isPrivate}
+					<span
+						class="i-ph-lock mr-1 inline-block align-[-3px] text-24px opacity-70"
+						title="Private: members and viewing links only"
+						aria-label="Private"
+					></span>
+				{/if}{data.project.name}{#if data.project.status === "archived"}
+					<span
+						class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
+						title="Archived: out of the projects list; restore it in settings">archived</span
+					>{/if}
+			</h1>
+			<span class="opacity-90 text-15px"
+				>a project from <a
+					class="underline hover-text-accent underline-offset-4"
+					href="/{data.account.slug}/projects">{data.account.name}</a
+				></span
+			>
+		</div>
 		<!-- </div> -->
 		{#if data.canEdit}
-			<button
-				class="ml-auto block hover-text-accent opacity-90 border border-transparent px-1 py-1 rounded hover-opacity-100"
-				type="button"
-				popovertarget="project-settings"
-				title="Project settings"
-				aria-label="Project settings"
-			>
-				<span class="block i-ph-gear"></span>
-			</button>
+			<div class="flex gap-4 items-center">
+				<button class="button button-sm button-accent" type="button" popovertarget="add-song"
+					><span class="i-ph-plus"></span>Add Song
+				</button>
+
+				<button
+					class="button button-sm"
+					type="button"
+					popovertarget="project-settings"
+					title="Project settings"
+					aria-label="Project settings"
+				>
+					<span class="block i-ph-gear"></span>Project Settings
+				</button>
+			</div>
 		{/if}
 	</header>
 
@@ -214,80 +227,72 @@
 		</div>
 	{/if}
 
-	<div class="mb-8">
+	<section class="mt-10">
+		<div class="mb-5">
+			<h2 class="text-18px font-700 leading-none text-nowrap mb-1">Playlist</h2>
+			<p class="opacity-90">Listen to a playlist of your current stem mixes.</p>
+		</div>
 		<ProjectPlayer bind:this={player} songs={playable} bind:current={playing} bind:paused />
-	</div>
+	</section>
 
+	<!-- finished songs -->
 	{#if finished.length > 0}
-		<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
-			<div>
-				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Finished Songs</h2>
+		<div class="mt-10">
+			<div class="mb-5">
+				<h2 class="text-18px font-700 leading-none text-nowrap mb-1">Finished Songs</h2>
 				<p class="opacity-90 text-15px">Done, and marked so in their settings.</p>
 			</div>
+			<ul class="grid grid-cols-1 gap-3 mb-10">
+				{#each finished as song (song.id)}
+					{@render songRow(song)}
+				{/each}
+			</ul>
 		</div>
-		<ul class="grid grid-cols-1 gap-3 mb-10">
-			{#each finished as song (song.id)}
-				{@render songRow(song)}
-			{/each}
-		</ul>
 	{/if}
 
-	<div class="flex flex-wrap items-center justify-between gap-3 mb-5 lg-mb-3">
-		<div>
-			<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Songs in Progress</h2>
-			<p class="opacity-90 text-15px">
-				Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
-			</p>
+	<!-- no songs yet -->
+	{#if inProgress.length === 0 && ideas.length === 0}
+		<div class="mb-5">
+			<h2 class="text-18px font-700 leading-none text-nowrap mb-2">Songs</h2>
+			<p class="opacity-90">No songs yet.</p>
 		</div>
 		{#if data.canEdit}
-			<button
-				class="button button-sm"
-				type="button"
-				popovertarget="add-song"
-				title="Add a song to this project"
+			<button class="button" type="button" popovertarget="add-song"
+				><span class="i-ph-plus"></span>Add Song</button
 			>
-				<span class="i-ph-plus" aria-hidden="true"></span>
-				Add Song
-			</button>
+		{:else}
+			<div>No songs yet.</div>
 		{/if}
-	</div>
-
-	{#if inProgress.length === 0}
-		<p class="text-dim">
-			{#if data.project.songs.length === 0}
-				No songs yet.{#if data.canEdit}
-					<button class="ml-1 link-dim" type="button" popovertarget="add-song"
-						>Add the first one.</button
-					>
-				{/if}
-			{:else}
-				No songs with stems yet. A song idea moves up here once a stem is uploaded.
-			{/if}
-		</p>
-	{:else}
-		<ul class="grid grid-cols-1 gap-3">
-			{#each inProgress as song (song.id)}
-				{@render songRow(song)}
-			{/each}
-		</ul>
 	{/if}
 
-	{#if ideas.length > 0 || data.canEdit}
-		<div class="flex flex-wrap items-center justify-between gap-3 mt-10 mb-5 lg-mb-3">
-			<div>
-				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-1">Song Ideas</h2>
+	<!-- songs in progress -->
+	{#if inProgress.length > 0}
+		<div class="mt-10">
+			<div class="mb-5">
+				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-2">
+					Songs in Progress
+				</h2>
+				<p class="opacity-90 text-15px">
+					Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
+				</p>
+			</div>
+			<ul class="grid grid-cols-1 gap-3">
+				{#each inProgress as song (song.id)}
+					{@render songRow(song)}
+				{/each}
+			</ul>
+		</div>
+	{/if}
+
+	<!-- song ideas -->
+	{#if ideas.length > 0 && !data.project.isPrivate}
+		<div class="mt-10">
+			<div class="mb-5">
+				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-2">Song Ideas</h2>
 				<p class="opacity-90 text-15px">
 					Songs without stems yet: a place to gather lyrics, a chart, notes and demo recordings.
 				</p>
 			</div>
-		</div>
-		{#if ideas.length === 0}
-			<p class="text-dim">
-				No ideas waiting.{#if data.canEdit}
-					<button class="ml-1 link-dim" type="button" popovertarget="add-song">Add one.</button>
-				{/if}
-			</p>
-		{:else}
 			<ul class="grid grid-cols-1 gap-3">
 				{#each ideas as song (song.id)}
 					<li>
@@ -297,7 +302,7 @@
 						>
 							<div>
 								<span
-									>{#if song.isPrivate && !data.project.isPrivate}<span
+									>{#if song.isPrivate}<span
 											class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
 											title="Private"
 											aria-label="Private"
@@ -316,7 +321,15 @@
 					</li>
 				{/each}
 			</ul>
-		{/if}
+		</div>
+	{/if}
+
+	{#if inProgress.length > 0 || ideas.length > 0}
+		<div class="mt-10">
+			<button class="button button-accent" type="button" popovertarget="add-song"
+				><span class="i-ph-plus"></span>Add New Song</button
+			>
+		</div>
 	{/if}
 
 	{#if data.canEdit}
