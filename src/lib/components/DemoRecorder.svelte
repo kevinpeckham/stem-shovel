@@ -276,7 +276,9 @@
 	}}
 />
 
-<div class="grid gap-5">
+<div
+	class="grid grid-cols-1 place-content-start gap-5 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md h-full min-h-560px"
+>
 	{#if !supported}
 		<p class="rounded border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm" role="alert">
 			This browser cannot record audio. Try Safari, Chrome or Firefox.
@@ -284,25 +286,29 @@
 	{/if}
 
 	<!-- the clock and the meter -->
-	<div class="surface grid gap-4 px-5 py-5">
+	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4 max-w-fit">
 		<div class="flex flex-wrap items-baseline justify-between gap-3">
 			<span class="font-mono text-40px leading-none tabular-nums sm:text-56px" aria-live="off"
 				>{formatTime(elapsed, 1)}</span
 			>
-			<span class="text-sm opacity-90">
+			<span class="text-sm opacity-90 font-mono">
 				{#if phase === "recording"}
-					<span class="mr-1 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
+					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
 					></span>Recording
 				{:else if phase === "paused"}
-					Paused
+					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-500"
+					></span>Paused
 				{:else if phase === "reviewing"}
-					Take ready
+					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
+					></span>Take ready
 				{:else if phase === "saving"}
-					Saving… {Math.round(progress)}%
+					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-500"
+					></span>Saving… {Math.round(progress)}%
 				{:else if phase === "requesting"}
-					Waiting for the microphone…
+					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
+					></span>Waiting for the microphone…
 				{:else}
-					Ready
+					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Ready
 				{/if}
 			</span>
 		</div>

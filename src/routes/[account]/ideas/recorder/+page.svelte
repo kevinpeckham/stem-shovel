@@ -39,7 +39,7 @@
 
 	<!-- Like the song page: the recorder where the player is, the notes where the documents are. -->
 	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
-		<section class="grid gap-6 place-content-start" aria-label="Recorder">
+		<section class="grid grid-cols-1 gap-6 place-content-start h-full w-full" aria-label="Recorder">
 			{#key round}
 				<DemoRecorder
 					accountId={data.account.id}
@@ -74,12 +74,6 @@
 					<RecordingActions recording={saved} projects={data.projects} fromSong={data.fromSong} />
 				</div>
 			{/if}
-
-			<p class="text-13px opacity-70">
-				Tips: keep the screen on and the app in front while recording (a phone stops the microphone
-				when it sleeps or switches apps). Voice processing is switched off so instruments sound like
-				themselves. The take is saved as your browser recorded it and converted to MP3 for playback.
-			</p>
 		</section>
 
 		<!-- Notes are open from the start: chords, a working title, where the idea might go. -->
@@ -91,5 +85,11 @@
 				/>
 			{/key}
 		</section>
+
+		<p class="text-13px opacity-70">
+			Tips: keep the screen on and the app in front while recording (a phone stops the microphone
+			when it sleeps or switches apps). Voice processing is switched off so instruments sound like
+			themselves. The take is saved as your browser recorded it and converted to MP3 for playback.
+		</p>
 	</div>
 </main>
