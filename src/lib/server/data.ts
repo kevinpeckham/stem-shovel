@@ -2,12 +2,16 @@ import type { ReportKind } from "$lib/val/BugReportSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
+	copyBlob,
 	deleteBlobs,
 	demoPathname,
 	midiPathname,
 	presentUrl,
+	recordingAccess,
+	recordingPathname,
 	stemPathname,
 } from "$lib/server/blob";
+import { accessOfSongId } from "$lib/server/relocate";
 import { db, schema } from "$lib/server/db";
 import { barGrid } from "$lib/audio/measures";
 import { hashMarkdown } from "$lib/server/markdown";
@@ -55,6 +59,7 @@ const {
 	shareLink,
 	aiRequest,
 	auditLog,
+	recording,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -103,6 +108,13 @@ export async function accountUsage(accountId: string) {
 		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${stem.sizeBytes})` })
 		.from(stem)
 		.where(and(eq(stem.accountId, accountId), eq(stem.status, "ready")));
+	const [recordings] = await db
+		.select({
+			n: sql<number>`count(*)`,
+			bytes: sql<number | null>`sum(${recording.sizeBytes})`,
+		})
+		.from(recording)
+		.where(and(eq(recording.accountId, accountId), eq(recording.status, "ready")));
 	const row = await db.query.account.findFirst({
 		where: eq(account.id, accountId),
 		with: { members: { with: { user: { columns: { name: true, email: true } } } } },
@@ -111,7 +123,9 @@ export async function accountUsage(accountId: string) {
 		projects: projects.n,
 		songs: songs.n,
 		stems: stems.n,
-		bytes: stems.bytes ?? 0,
+		recordings: recordings.n,
+		/** Stems and scratch recordings; demos and renditions are not counted. */
+		bytes: (stems.bytes ?? 0) + (recordings.bytes ?? 0),
 		storageLimitBytes: row?.storageLimitBytes ?? null,
 		members: (row?.members ?? []).map((m) => ({
 			userId: m.userId,
@@ -1269,9 +1283,14 @@ export async function deleteAccount(id: string) {
 		.from(demo)
 		.where(eq(demo.accountId, id));
 	const mixes = await db.select({ mixUrl: song.mixUrl }).from(song).where(eq(song.accountId, id));
+	const recordings = await db
+		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
+		.from(recording)
+		.where(eq(recording.accountId, id));
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...mixes.map((m) => m.mixUrl ?? ""),
 	]);
 	const [row] = await db.delete(account).where(eq(account.id, id)).returning({ id: account.id });
@@ -1413,9 +1432,16 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo",
+	kind: "stem" | "midi" | "demo" | "recording",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "recording") {
+		const r = await db.query.recording.findFirst({
+			where: and(eq(recording.accountId, accountId), eq(recording.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "demo") {
 		const d = await db.query.demo.findFirst({
 			where: and(eq(demo.accountId, accountId), eq(demo.id, id)),
@@ -1835,6 +1861,263 @@ export async function finishDemoPlayback(
 
 export async function failDemoPlayback(demoId: string) {
 	await db.update(demo).set({ playbackStatus: "failed" }).where(eq(demo.id, demoId));
+}
+
+// ---- scratch recordings (docs/demo-recording.md) ---------------------------
+
+/** Step 1 of a recording upload: the row, its pathname and the store it goes to. */
+export async function createRecording(
+	accountId: string,
+	userId: string,
+	file: NewStemFile & { title: string },
+) {
+	const id = nanoid();
+	const [row] = await db
+		.insert(recording)
+		.values({
+			id,
+			accountId,
+			recordedBy: userId,
+			title: file.title,
+			url: "",
+			pathname: recordingPathname(accountId, id, file.filename),
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+		})
+		.returning();
+	return row;
+}
+
+export function findUploadingRecording(accountId: string, pathname: string) {
+	return db.query.recording.findFirst({
+		where: and(
+			eq(recording.accountId, accountId),
+			eq(recording.pathname, pathname),
+			eq(recording.status, "uploading"),
+		),
+	});
+}
+
+/** Step 3: the browser reports the blob URL and the length it timed. */
+export async function markRecordingReady(
+	accountId: string,
+	recordingId: string,
+	url: string,
+	durationSeconds: number | null,
+) {
+	const [row] = await db
+		.update(recording)
+		.set({ status: "ready", url, durationSeconds })
+		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
+		.returning({ id: recording.id });
+	return row ?? null;
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordRecordingUrl(pathname: string, url: string) {
+	await db
+		.update(recording)
+		.set({ url, status: "ready" })
+		.where(and(eq(recording.pathname, pathname), eq(recording.status, "uploading")));
+}
+
+/** The account's library, newest first, with URLs the browser may fetch. */
+export async function listRecordings(accountId: string) {
+	const rows = await db.query.recording.findMany({
+		where: and(eq(recording.accountId, accountId), eq(recording.status, "ready")),
+		orderBy: [desc(recording.createdAt)],
+		with: { recorder: { columns: { name: true } } },
+	});
+	return Promise.all(
+		rows.map(async (r) => ({
+			...r,
+			url: (await presentUrl(r.url)) ?? r.url,
+			playbackUrl: await presentUrl(r.playbackUrl),
+		})),
+	);
+}
+
+export async function renameRecording(accountId: string, recordingId: string, title: string) {
+	const [row] = await db
+		.update(recording)
+		.set({ title })
+		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
+		.returning({ id: recording.id });
+	return !!row;
+}
+
+export async function deleteRecording(accountId: string, recordingId: string) {
+	const [row] = await db
+		.delete(recording)
+		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
+		.returning({ url: recording.url, playbackUrl: recording.playbackUrl });
+	if (!row) return false;
+	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
+	return true;
+}
+
+/**
+ * Adds a recording to a song as a demo: the file (and its MP3, when
+ * rendered) are copied under the song, in the song's store, so the
+ * recording stays in the library and the demo lives and dies with the song.
+ */
+export async function copyRecordingToSong(
+	accountId: string,
+	userId: string,
+	recordingId: string,
+	songId: string,
+) {
+	const rec = await db.query.recording.findFirst({
+		where: and(
+			eq(recording.accountId, accountId),
+			eq(recording.id, recordingId),
+			eq(recording.status, "ready"),
+		),
+	});
+	if (!rec) return null;
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(demo)
+		.where(eq(demo.songId, songId));
+	if (n >= MAX_DEMOS_PER_SONG) return "full" as const;
+	const access = (await accessOfSongId(songId)) ?? "public";
+	const id = nanoid();
+	const pathname = demoPathname(accountId, songId, id, rec.filename);
+	const url = await copyBlob(rec.url, pathname, access);
+	let playback: { url: string; pathname: string; bytes: number } | null = null;
+	if (rec.playbackStatus === "ready" && rec.playbackUrl && rec.playbackPathname) {
+		const playbackPath =
+			pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;
+		playback = {
+			url: await copyBlob(rec.playbackUrl, playbackPath, access),
+			pathname: playbackPath,
+			bytes: rec.playbackBytes ?? 0,
+		};
+	}
+	const [row] = await db
+		.insert(demo)
+		.values({
+			id,
+			accountId,
+			songId,
+			label: rec.title,
+			status: "ready",
+			url,
+			pathname,
+			filename: rec.filename,
+			contentType: rec.contentType,
+			sizeBytes: rec.sizeBytes,
+			uploadedBy: userId,
+			...(playback
+				? {
+						playbackStatus: "ready" as const,
+						playbackUrl: playback.url,
+						playbackPathname: playback.pathname,
+						playbackBytes: playback.bytes,
+						playbackStartedAt: new Date(),
+					}
+				: {}),
+		})
+		.returning({ id: demo.id });
+	return row;
+}
+
+/** Which recordings still want an MP3 (same rules as stems' renditions). */
+export function recordingsWantingPlayback(
+	rows: {
+		id: string;
+		status: string;
+		url: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return stemsWantingPlayback(rows, now);
+}
+
+export async function claimRecordingPlayback(recordingId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(recording)
+		.set({ playbackStatus: "pending", playbackStartedAt: now })
+		.where(
+			and(
+				eq(recording.id, recordingId),
+				eq(recording.status, "ready"),
+				sql`(${recording.playbackStatus} is null
+					or (${recording.playbackStatus} = 'failed' and ${recording.playbackStartedAt} < ${now.getTime() - PLAYBACK_RETRY_MS})
+					or (${recording.playbackStatus} = 'pending' and ${recording.playbackStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS}))`,
+			),
+		)
+		.returning({
+			id: recording.id,
+			url: recording.url,
+			pathname: recording.pathname,
+			playbackUrl: recording.playbackUrl,
+		});
+	return row ?? null;
+}
+
+export async function finishRecordingPlayback(
+	recordingId: string,
+	r: { url: string; pathname: string; bytes: number },
+) {
+	await db
+		.update(recording)
+		.set({
+			playbackStatus: "ready",
+			playbackUrl: r.url,
+			playbackPathname: r.pathname,
+			playbackBytes: r.bytes,
+		})
+		.where(eq(recording.id, recordingId));
+}
+
+export async function failRecordingPlayback(recordingId: string) {
+	await db.update(recording).set({ playbackStatus: "failed" }).where(eq(recording.id, recordingId));
+}
+
+/** The store a recording's own upload goes to (the upload handler's token). */
+export const recordingStore = recordingAccess;
+
+/** Active projects with their active songs, for the "add this recording to a song" picker. */
+export async function songPicker(accountId: string) {
+	const rows = await db.query.project.findMany({
+		where: and(eq(project.accountId, accountId), eq(project.status, "active")),
+		orderBy: [asc(project.sortOrder), asc(project.name)],
+		columns: { id: true, name: true },
+		with: {
+			songs: {
+				where: eq(song.status, "active"),
+				orderBy: [asc(song.title)],
+				columns: { id: true, title: true },
+			},
+		},
+	});
+	return rows;
+}
+
+/** A song's title and page, for the recorder opened from that song. */
+export async function songLink(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true, title: true, slug: true },
+		with: { project: { columns: { slug: true } }, account: { columns: { slug: true } } },
+	});
+	return row
+		? {
+				id: row.id,
+				title: row.title,
+				href: `/${row.account.slug}/projects/${row.project.slug}/${row.slug}`,
+			}
+		: null;
 }
 
 // ---- mixdowns (see src/lib/server/mix.ts) ---------------------------------

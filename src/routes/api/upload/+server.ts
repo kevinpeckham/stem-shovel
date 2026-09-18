@@ -2,12 +2,14 @@ import { accountOfUploadPathname, memberOf } from "$lib/server/access";
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
+	findUploadingRecording,
 	findUploadingStem,
 	recordDemoUrl,
+	recordRecordingUrl,
 	recordStemMidiUrl,
 	recordStemUrl,
 } from "$lib/server/data";
-import { blobAuth, songIdOfPathname } from "$lib/server/blob";
+import { blobAuth, isRecordingPathname, recordingAccess, songIdOfPathname } from "$lib/server/blob";
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
@@ -34,7 +36,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				? body.payload.pathname
 				: body.payload.blob.pathname;
 		const songId = songIdOfPathname(pathname);
-		const access = (songId && (await accessOfSongId(songId))) || "public";
+		// A scratch recording has no song: it goes to the private store when there is one.
+		const access = isRecordingPathname(pathname)
+			? recordingAccess()
+			: (songId && (await accessOfSongId(songId))) || "public";
 		const result = await handleUpload({
 			body,
 			request,
@@ -46,7 +51,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					? await findStemByMidiPathname(accountId, pathname)
 					: isDemo(pathname)
 						? await findUploadingDemo(accountId, pathname)
-						: await findUploadingStem(accountId, pathname);
+						: isRecordingPathname(pathname)
+							? await findUploadingRecording(accountId, pathname)
+							: await findUploadingStem(accountId, pathname);
 				if (!row) throw new Error(`No reservation for "${pathname}"`);
 				return {
 					// decided from the extension at reserve time; MIDI is always audio/midi
@@ -63,6 +70,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				// /api/stems/[id]/ready; this is the backstop if that never arrives.
 				if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
+				else if (isRecordingPathname(blob.pathname))
+					await recordRecordingUrl(blob.pathname, blob.url);
 				else await recordStemUrl(blob.pathname, blob.url);
 			},
 		});

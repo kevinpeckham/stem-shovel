@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Demo recorder.** `/[account]/recorder` records from the microphone with Record, Pause / Resume, Stop, Undo (retake) and Save, a clock, an input level meter and a screen wake lock; voice processing is off so instruments sound like themselves. A saved take is a **scratch recording** in the account's library (`/[account]/recordings`: play, rename, download, delete), not a demo, until it is added to a song ("Add to a song" copies it in as a demo; "New song from it" creates the song with it as the first demo). The song page's Uploads menu and empty player link to the recorder, which then offers that song first. Both pages are in the account menu.
+
+### Technical
+
+- Migration 0039: `recording` table. Recording files go to the private Blob store when one is configured. Permissions-Policy allows `microphone=(self)` and `screen-wake-lock=(self)`. Account usage counts recordings' bytes; deleting an account removes their files.
+
 ## [0.15.0] - 2026-09-17
 
 ### Added

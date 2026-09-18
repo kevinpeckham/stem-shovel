@@ -18,8 +18,10 @@ export const SECURITY_HEADERS: Record<string, string> = {
 	"referrer-policy": "strict-origin-when-cross-origin",
 	"cross-origin-opener-policy": "same-origin",
 	"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-	// Nothing here uses device APIs; playback needs no feature, so `autoplay`
-	// is left out rather than switched off (it would block play() too).
+	// The recorder (docs/demo-recording.md) needs the microphone and keeps the
+	// screen awake mid-take; everything else is off. Playback needs no
+	// feature, so `autoplay` is left out rather than switched off (it would
+	// block play() too).
 	"permissions-policy":
-		"accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()",
+		"accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(self), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()",
 };

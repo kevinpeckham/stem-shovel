@@ -40,8 +40,11 @@ is the song page (player, stem rows with a per-stem menu, download row,
 panelled settings popover (details, sections, tempo/key/meter, demo
 recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
-`/lyrics` and `/notes` are the full-page editors; `/[account]/settings` is
-the account (members, invitations, invite codes, usage, plan). Neutral
+`/lyrics` and `/notes` are the full-page editors; `/[account]/recorder` is
+the demo recorder and `/[account]/recordings` the library of scratch
+recordings it makes (added to a song, one becomes a demo);
+`/[account]/settings` is the account (members, invitations, invite codes,
+usage, plan). Neutral
 pages: `/` (the front page with live demos of a public song), `/waitlist`,
 `/docs` (user documentation, editable by system admins), `/accounts`,
 `/settings/security` (two-factor), `/admin` (operators). Old `/projects…`
@@ -194,7 +197,7 @@ check and the tests without any secret.
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
 - [docs/security.md](docs/security.md) — the security model, what is enforced where, error reports and analytics, known gaps.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
-- [docs/demo-recording.md](docs/demo-recording.md) — plan for recording demos in the app from a phone (nothing built yet).
+- [docs/demo-recording.md](docs/demo-recording.md) — the in-app demo recorder: what shipped, the plan it came from, and the phone realities.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.

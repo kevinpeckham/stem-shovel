@@ -1,8 +1,44 @@
-# Recording demos in the app (plan)
+# Recording demos in the app
 
-Status: **plan only, nothing built** (2026-09-17). Kevin's use case: someone
-sits down with a guitar and a phone and records a demo with start, stop,
-pause, undo (retake), save and delete. Nothing more.
+Status: **Phase 1 built** (2026-09-18); the rest of this page is the plan
+it came from, with what shipped marked. Kevin's use case: someone sits down
+with a guitar and a phone and records a demo with start, stop, pause, undo
+(retake), save and delete.
+
+## What shipped (Phase 1)
+
+- **Scratch recordings, not demos.** A take goes into the account's library
+  (`recording` table, `accounts/<id>/recordings/<id>.<ext>` in the private
+  store when one is configured, else the public one) as a riff, a lick, a
+  melody idea or a whole take. It becomes a demo only when a member adds it
+  to a song: the file and its MP3 are **copied** under the song
+  (`copyRecordingToSong`), so the recording stays in the library and the
+  demo lives and dies with the song. "New song from it" creates the song in
+  a project and adds the recording as its first demo.
+- **Pages.** `/[account]/recorder` is the demo recorder (members only;
+  `?song=<id>` remembers the song it was opened from and offers "Add to
+  that song" first); `/[account]/recordings` is the library (play, rename,
+  download, add to a song, delete). Both are in the account menu; the song
+  page's Uploads menu and empty player box link to the recorder.
+- **The recorder** (`DemoRecorder.svelte`): one take with Record, Pause /
+  Resume (`MediaRecorder.pause()`), Stop, Undo (retake) and Save; a clock,
+  an input level meter with peak hold (an `AnalyserNode`, not connected to
+  the output), the input's name, a screen wake lock while recording, and
+  the voice processors (echo cancellation, noise suppression, auto gain)
+  off. A track that ends mid-take (a call) keeps what was recorded. Saving
+  reuses the demo upload path: `POST /api/recordings` reserves,
+  `/api/upload` issues the token (recording pathnames are routed to the
+  recording store), `/api/recordings/[id]/ready` reports the URL and the
+  timed length, and the same ffmpeg step as demos makes the MP3
+  (`scheduleRecordingPlayback`).
+- **Headers.** Permissions-Policy allows `microphone=(self)` and
+  `screen-wake-lock=(self)`.
+- Verified end to end in Chromium with a fake microphone fed by the test
+  WAV (record, pause, resume, stop, save, new song with the demo, library).
+  Not yet tried on an iPhone.
+
+Not built yet (Phase 2): segments with undo of the last one, crash
+recovery from IndexedDB, the server-side join, count-in, play-along, trim.
 
 ## What already exists
 

@@ -1915,7 +1915,10 @@
 				<p class="text-sm text-dim">No stems yet.</p>
 				{#if data.canEdit}
 					<p class="mt-1 text-sm opacity-80">
-						Add stems below, or start with a demo recording of the idea.
+						Add stems below, start with a demo recording of the idea, or
+						<a class="link-dim" href="/{data.account.slug}/recorder?song={data.song.id}"
+							>record one now</a
+						>.
 					</p>
 				{/if}
 			</div>
@@ -2444,6 +2447,15 @@
 							onchange={(e) => uploadDemos(e.currentTarget)}
 						/>
 					</label>
+					<a
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						role="menuitem"
+						href="/{data.account.slug}/recorder?song={data.song.id}"
+						title="Record a demo with the microphone (docs: demo recorder)"
+					>
+						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
+						Record Demo
+					</a>
 				</div>
 			</details>
 		{/if}

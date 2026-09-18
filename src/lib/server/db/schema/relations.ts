@@ -7,6 +7,7 @@ import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
 import { comment } from "./comment";
 import { demo } from "./demo";
+import { recording } from "./recording";
 import { invitation } from "./invitation";
 import { inviteCode } from "./inviteCode";
 import { project } from "./project";
@@ -29,6 +30,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	projects: many(project),
 	invitations: many(invitation),
 	inviteCodes: many(inviteCode),
+	recordings: many(recording),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -80,6 +82,11 @@ export const songRelations = relations(song, ({ one, many }) => ({
 export const commentRelations = relations(comment, ({ one }) => ({
 	song: one(song, { fields: [comment.songId], references: [song.id] }),
 	author: one(user, { fields: [comment.userId], references: [user.id] }),
+}));
+
+export const recordingRelations = relations(recording, ({ one }) => ({
+	account: one(account, { fields: [recording.accountId], references: [account.id] }),
+	recorder: one(user, { fields: [recording.recordedBy], references: [user.id] }),
 }));
 
 export const demoRelations = relations(demo, ({ one }) => ({

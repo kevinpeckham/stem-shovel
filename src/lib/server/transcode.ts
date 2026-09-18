@@ -1,10 +1,13 @@
 import {
 	claimDemoPlayback,
 	claimPlayback,
+	claimRecordingPlayback,
 	failDemoPlayback,
 	failPlayback,
+	failRecordingPlayback,
 	finishDemoPlayback,
 	finishPlayback,
+	finishRecordingPlayback,
 } from "$lib/server/data";
 import { accessOfUrl } from "$lib/utils/blobAccess";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
@@ -127,20 +130,49 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 export function scheduleDemoPlayback(demoIds: string[]) {
 	if (demoIds.length === 0) return;
 	background(async () => {
-		for (const id of demoIds) await transcodeDemo(id);
+		for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
 	});
 }
+
+/** Scratch recordings (docs/demo-recording.md) get the same MP3. */
+export function scheduleRecordingPlayback(recordingIds: string[]) {
+	if (recordingIds.length === 0) return;
+	background(async () => {
+		for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
+	});
+}
+
+/** The row family an MP3 is made for: how to claim it, record the result or give up. */
+interface Mp3Target {
+	claim: (id: string) => Promise<{
+		url: string;
+		pathname: string;
+		playbackUrl: string | null;
+	} | null>;
+	finish: (id: string, r: { url: string; pathname: string; bytes: number }) => Promise<void>;
+	fail: (id: string) => Promise<void>;
+}
+const DEMO_TARGET: Mp3Target = {
+	claim: claimDemoPlayback,
+	finish: finishDemoPlayback,
+	fail: failDemoPlayback,
+};
+const RECORDING_TARGET: Mp3Target = {
+	claim: claimRecordingPlayback,
+	finish: finishRecordingPlayback,
+	fail: failRecordingPlayback,
+};
 
 /**
  * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
  * AMR — which browsers cannot all play. The MP3 is what the page plays and
  * offers for download; the original stays in Blob.
  */
-async function transcodeDemo(demoId: string): Promise<void> {
-	const claim = await claimDemoPlayback(demoId);
+async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
+	const claim = await target.claim(id);
 	if (!claim) return;
 	if (!ffmpegPath) {
-		await failDemoPlayback(demoId);
+		await target.fail(id);
 		throw new Error("ffmpeg binary is not available on this platform");
 	}
 	const dir = await mkdtemp(join(tmpdir(), "demo-"));
@@ -181,10 +213,10 @@ async function transcodeDemo(demoId: string): Promise<void> {
 		const pathname =
 			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;
 		const blob = await putBlob(pathname, bytes, "audio/mpeg", accessOfUrl(claim.url));
-		await finishDemoPlayback(demoId, { url: blob.url, pathname, bytes: bytes.byteLength });
+		await target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength });
 		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
 	} catch (e) {
-		await failDemoPlayback(demoId);
+		await target.fail(id);
 		throw e;
 	} finally {
 		await rm(dir, { recursive: true, force: true });

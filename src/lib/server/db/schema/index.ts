@@ -12,6 +12,7 @@ export * from "./demo";
 export * from "./invitation";
 export * from "./inviteCode";
 export * from "./project";
+export * from "./recording";
 export * from "./relations";
 export * from "./session";
 export * from "./shareLink";

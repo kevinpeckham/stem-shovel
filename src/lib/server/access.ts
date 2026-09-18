@@ -1,5 +1,6 @@
 import { getRequestEvent } from "$app/server";
 import { background } from "$lib/server/background";
+import { isRecordingPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
 import { logAudit } from "$lib/server/data";
 import { error, redirect } from "@sveltejs/kit";
@@ -82,7 +83,7 @@ export function canEdit(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
-const { project, song, stem, demo } = schema;
+const { project, song, stem, demo, recording } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireMember. */
 export async function accountOfProject(projectId: string) {
@@ -122,10 +123,25 @@ export async function accountOfDemo(demoId: string) {
 	return row?.accountId ?? null;
 }
 
-/** The account owning whatever reserved this upload pathname: a stem, its MIDI file, or a demo. */
+export async function accountOfRecording(recordingId: string) {
+	const row = await db.query.recording.findFirst({
+		where: eq(recording.id, recordingId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+/** The account owning whatever reserved this upload pathname: a stem, its MIDI file, a demo or a recording. */
 export async function accountOfUploadPathname(pathname: string) {
 	const fromStem = await accountOfStemPathname(pathname);
 	if (fromStem) return fromStem;
+	if (isRecordingPathname(pathname)) {
+		const rec = await db.query.recording.findFirst({
+			where: eq(recording.pathname, pathname),
+			columns: { accountId: true },
+		});
+		return rec?.accountId ?? null;
+	}
 	const midi = await db.query.stem.findFirst({
 		where: eq(stem.midiPathname, pathname),
 		columns: { accountId: true },

@@ -91,6 +91,40 @@ export async function uploadDemoFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
+export interface RecordingReservation {
+	recordingId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/**
+ * A scratch recording from the in-app recorder (docs/demo-recording.md):
+ * reserve, send the bytes to Blob, report the URL and the timed length.
+ */
+export async function uploadRecordingFile(
+	file: File,
+	reserve: () => Promise<RecordingReservation>,
+	durationSeconds: number,
+	onProgress?: (percent: number) => void,
+): Promise<string> {
+	const { recordingId, pathname, access = "public" } = await reserve();
+	const contentType = demoContentType(file.name) ?? undefined;
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/recordings/${recordingId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url, durationSeconds }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return recordingId;
+}
+
 /** A stem's MIDI file: reserve on the stem, send the bytes to Blob, report the URL. */
 export async function uploadMidiFile(
 	stemId: string,

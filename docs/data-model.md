@@ -85,6 +85,12 @@ erDiagram
   decoding, peaks or renditions. Played and downloaded as uploaded; up to
   `MAX_DEMOS_PER_SONG` per song. The song also carries `songwriter` (free
   text) and `written_on` (ISO date), edited from song settings.
+- **recording** — a scratch recording from the in-app demo recorder
+  (docs/demo-recording.md): one audio file per account at
+  `accounts/<id>/recordings/<recordingId>.<ext>` (the private store when
+  configured), with a title, who recorded it, the timed duration and the
+  same MP3 rendition columns as a demo. Not tied to a song: adding it to a
+  song copies the file into a `demo` row of that song.
 - **stem** — one audio file in Vercel Blob, plus what the engine learns when it
   decodes it (duration, channels, sample rate, 1024 peaks). This is where plan
   step 2 ("persist peaks") lands.

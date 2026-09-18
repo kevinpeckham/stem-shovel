@@ -51,6 +51,36 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
+/** Blob pathname for a scratch recording: under the account, not a song (docs/demo-recording.md). */
+export function recordingPathname(accountId: string, recordingId: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/recordings/${recordingId}.${ext}`;
+}
+
+/** True for a recording's pathname (the upload handler and access checks route on it). */
+export const isRecordingPathname = (pathname: string) => pathname.includes("/recordings/");
+
+/**
+ * Scratch recordings are members-only, so they go to the private store when
+ * one is configured; without it they live in the public store like everything
+ * else did before privacy (the pathname carries an unguessable id).
+ */
+export function recordingAccess(): BlobAccess {
+	return ENV.BLOB_PRIVATE_READ_WRITE_TOKEN ? "private" : "public";
+}
+
+/**
+ * Copies a file to a new pathname in the given store (adding a recording to a
+ * song as a demo). Streams like `moveBlob`; the source stays.
+ */
+export async function copyBlob(url: string, toPathname: string, to: BlobAccess): Promise<string> {
+	const res = await readBlob(url);
+	if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} reading ${url}`);
+	const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+	const copied = await putBlob(toPathname, res.body, contentType, to);
+	return copied.url;
+}
+
 /** Hostnames of our two stores: `store_1K3OTzJ…` → `1k3otzj….public.blob.vercel-storage.com`. */
 function storeHosts(): string[] {
 	const host = (id: string | undefined, access: BlobAccess) =>
