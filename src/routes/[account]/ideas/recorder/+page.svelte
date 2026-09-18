@@ -254,9 +254,61 @@
 		</p>
 	</header>
 
-	<!-- Like the song page: the recorder where the player is, the notes where the documents are. -->
-	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2">
-		<section class="grid grid-cols-1 gap-6 place-content-start h-full w-full" aria-label="Recorder">
+	<!--
+		Like the song page: the recorder where the player is, the notes where the
+		documents are, the ideas list under the recorder. On a phone the recorder
+		and the notes follow each other so both are in view, the list gives way to
+		a picker above the recorder, and the takes are reached from the recorder's
+		"Take N" dropdown.
+	-->
+	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2 xl-grid-rows-[auto_1fr]">
+		<section
+			class="grid grid-cols-1 gap-6 place-content-start w-full xl-col-start-1 xl-row-start-1"
+			aria-label="Recorder"
+		>
+			<!-- Phone: the ideas as a picker (the full list is from xl up). -->
+			<div class="flex items-end gap-2 xl-hidden">
+				<label class="block min-w-0 grow">
+					<span class="sr-only">Idea</span>
+					<select
+						class="field w-full text-sm"
+						value={ideaId ?? ""}
+						disabled={recorderBusy}
+						onchange={(e) => {
+							const i = data.ideas.find((x) => x.id === e.currentTarget.value);
+							if (i) show(i, i.takes.at(-1) ?? null);
+						}}
+					>
+						{#if !ideaId}
+							<option value="">{ideaTitle} (new)</option>
+						{/if}
+						{#each data.ideas as i (i.id)}
+							<option value={i.id}
+								>{i.title} · {i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</option
+							>
+						{/each}
+					</select>
+				</label>
+				<button
+					class="button button-sm shrink-0"
+					type="button"
+					popovertarget="idea-search"
+					title="Search ideas and takes"
+					aria-label="Search ideas and takes"
+				>
+					<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0"
+					type="button"
+					disabled={recorderBusy || (!ideaId && !takeId && phase === "idle")}
+					onclick={newIdea}
+				>
+					<span class="i-ph-plus" aria-hidden="true"></span>
+					New
+				</button>
+			</div>
+
 			<DemoRecorder
 				bind:this={recorder}
 				bind:ideaTitle
@@ -313,154 +365,10 @@
 					{/each}
 				</ul>
 			{/if}
-
-			<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
-			<div class="grid gap-2" aria-label="Ideas">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h2 class="heading-3 mb-0">Ideas</h2>
-					<div class="flex items-center gap-2">
-						<button
-							class="button button-xs"
-							type="button"
-							popovertarget="idea-search"
-							title="Search ideas and takes"
-						>
-							<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
-							Search
-						</button>
-						<button
-							class="button button-xs"
-							type="button"
-							disabled={recorderBusy || (!ideaId && !takeId && phase === "idle")}
-							onclick={newIdea}
-						>
-							<span class="i-ph-plus" aria-hidden="true"></span>
-							New idea
-						</button>
-					</div>
-				</div>
-				{#if data.ideas.length === 0}
-					<p
-						class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
-					>
-						Nothing recorded yet. Your ideas and their takes will list here.
-					</p>
-				{:else}
-					<ul
-						class="max-h-[60vh] min-h-64 overflow-y-auto rounded border border-current/40 bg-blue-300/5 divide-y divide-white/10 {recorderBusy
-							? 'opacity-60'
-							: ''}"
-					>
-						{#each data.ideas as i (i.id)}
-							<li>
-								<details open={i.id === ideaId}>
-									<summary
-										class="grid cursor-pointer grid-cols-[auto_1fr_auto] items-baseline gap-x-3 px-4 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {i.id ===
-										ideaId
-											? 'bg-blue-300/10'
-											: ''}"
-										onclick={(e) => {
-											// Choosing the idea shows it (its latest take) and opens it; the
-											// disclosure follows the selection rather than toggling on its own
-											// (the native toggle would close what the selection just opened).
-											e.preventDefault();
-											if (!recorderBusy) show(i, i.takes.at(-1) ?? null);
-										}}
-									>
-										<span
-											class="i-ph-caret-right inline-block text-12px opacity-70"
-											aria-hidden="true"
-										></span>
-										<span class="min-w-0">
-											<span class="block truncate font-500">{i.title}</span>
-											<span class="block truncate text-12px opacity-70">
-												{fmtWhen(i.createdAt)}{#if i.notes.trim()}
-													· {i.notes.trim().split("\n")[0].slice(0, 60)}{/if}
-											</span>
-										</span>
-										<span class="text-sm tabular-nums opacity-80"
-											>{i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</span
-										>
-									</summary>
-									{#if i.takes.length > 0}
-										<ul class="divide-y divide-white/5 border-t border-white/10 bg-black/10">
-											{#each i.takes as t (t.id)}
-												<li
-													class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 {t.id === takeId
-														? 'bg-blue-300/15'
-														: ''}"
-												>
-													<button
-														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-10 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
-														type="button"
-														aria-current={t.id === takeId ? "true" : undefined}
-														disabled={recorderBusy}
-														onclick={() => show(i, t)}
-													>
-														<span class="truncate text-sm">{takeLabel(t)}</span>
-														<span class="text-sm tabular-nums opacity-80"
-															>{t.durationSeconds !== null
-																? formatTime(t.durationSeconds, 0)
-																: "–:––"}</span
-														>
-														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
-													</button>
-													<details class="relative" data-take-menu>
-														<summary
-															class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
-															title="Take menu"
-															aria-label="Menu for {takeLabel(t)}"
-														>
-															<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"
-															></span>
-														</summary>
-														<div
-															class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-															role="menu"
-														>
-															<button
-																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-																type="button"
-																role="menuitem"
-																onclick={() => songDialog(i, t, "add")}
-															>
-																<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
-															</button>
-															<button
-																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-																type="button"
-																role="menuitem"
-																onclick={() => songDialog(i, t, "new")}
-															>
-																<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create
-																new song…
-															</button>
-															<hr class="my-1 border-white/15" />
-															<button
-																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
-																type="button"
-																role="menuitem"
-																disabled={recorderBusy}
-																onclick={() => removeTake(t)}
-															>
-																<span class="i-ph-trash" aria-hidden="true"></span>Delete take
-															</button>
-														</div>
-													</details>
-												</li>
-											{/each}
-										</ul>
-									{/if}
-								</details>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
 		</section>
 
 		<!-- The idea's note board; a new idea's notes create it on the first save. -->
-		<section class="min-h-560px" aria-label="Notes">
+		<section class="min-h-560px xl-col-start-2 xl-row-start-1 xl-row-span-2" aria-label="Notes">
 			<!-- Keyed on explicit switches only: creating the idea on the first save must not remount the editor. -->
 			{#key notesKey}
 				<IdeaNotesPanel
@@ -472,7 +380,154 @@
 			{/key}
 		</section>
 
-		<p class="text-13px opacity-70">
+		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
+		<section
+			class="hidden xl-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2"
+			aria-label="Ideas"
+		>
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<h2 class="heading-3 mb-0">Ideas</h2>
+				<div class="flex items-center gap-2">
+					<button
+						class="button button-xs"
+						type="button"
+						popovertarget="idea-search"
+						title="Search ideas and takes"
+					>
+						<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+						Search
+					</button>
+					<button
+						class="button button-xs"
+						type="button"
+						disabled={recorderBusy || (!ideaId && !takeId && phase === "idle")}
+						onclick={newIdea}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>
+						New idea
+					</button>
+				</div>
+			</div>
+			{#if data.ideas.length === 0}
+				<p
+					class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
+				>
+					Nothing recorded yet. Your ideas and their takes will list here.
+				</p>
+			{:else}
+				<ul
+					class="max-h-[60vh] min-h-64 overflow-y-auto rounded border border-current/40 bg-blue-300/5 divide-y divide-white/10 {recorderBusy
+						? 'opacity-60'
+						: ''}"
+				>
+					{#each data.ideas as i (i.id)}
+						<li>
+							<details open={i.id === ideaId}>
+								<summary
+									class="grid cursor-pointer grid-cols-[auto_1fr_auto] items-baseline gap-x-3 px-4 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {i.id ===
+									ideaId
+										? 'bg-blue-300/10'
+										: ''}"
+									onclick={(e) => {
+										// Choosing the idea shows it (its latest take) and opens it; the
+										// disclosure follows the selection rather than toggling on its own
+										// (the native toggle would close what the selection just opened).
+										e.preventDefault();
+										if (!recorderBusy) show(i, i.takes.at(-1) ?? null);
+									}}
+								>
+									<span
+										class="i-ph-caret-right inline-block text-12px opacity-70"
+										aria-hidden="true"
+									></span>
+									<span class="min-w-0">
+										<span class="block truncate font-500">{i.title}</span>
+										<span class="block truncate text-12px opacity-70">
+											{fmtWhen(i.createdAt)}{#if i.notes.trim()}
+												· {i.notes.trim().split("\n")[0].slice(0, 60)}{/if}
+										</span>
+									</span>
+									<span class="text-sm tabular-nums opacity-80"
+										>{i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</span
+									>
+								</summary>
+								{#if i.takes.length > 0}
+									<ul class="divide-y divide-white/5 border-t border-white/10 bg-black/10">
+										{#each i.takes as t (t.id)}
+											<li
+												class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 {t.id === takeId
+													? 'bg-blue-300/15'
+													: ''}"
+											>
+												<button
+													class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-10 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
+													type="button"
+													aria-current={t.id === takeId ? "true" : undefined}
+													disabled={recorderBusy}
+													onclick={() => show(i, t)}
+												>
+													<span class="truncate text-sm">{takeLabel(t)}</span>
+													<span class="text-sm tabular-nums opacity-80"
+														>{t.durationSeconds !== null
+															? formatTime(t.durationSeconds, 0)
+															: "–:––"}</span
+													>
+													<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
+												</button>
+												<details class="relative" data-take-menu>
+													<summary
+														class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
+														title="Take menu"
+														aria-label="Menu for {takeLabel(t)}"
+													>
+														<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"
+														></span>
+													</summary>
+													<div
+														class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+														role="menu"
+													>
+														<button
+															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+															type="button"
+															role="menuitem"
+															onclick={() => songDialog(i, t, "add")}
+														>
+															<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
+														</button>
+														<button
+															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+															type="button"
+															role="menuitem"
+															onclick={() => songDialog(i, t, "new")}
+														>
+															<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create
+															new song…
+														</button>
+														<hr class="my-1 border-white/15" />
+														<button
+															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
+															type="button"
+															role="menuitem"
+															disabled={recorderBusy}
+															onclick={() => removeTake(t)}
+														>
+															<span class="i-ph-trash" aria-hidden="true"></span>Delete take
+														</button>
+													</div>
+												</details>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</details>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+
+		<p class="text-13px opacity-70 xl-col-span-2">
 			Tips: keep the screen on and the app in front while recording (a phone stops the microphone
 			when it sleeps or switches apps). Voice processing is switched off so instruments sound like
 			themselves. Takes are saved as your browser recorded them and converted to MP3 for playback.

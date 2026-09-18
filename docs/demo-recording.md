@@ -34,7 +34,10 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   come with it. A **Search** popover finds ideas by title or notes and takes
   by name or number. The separate library page is gone. With more than
   one take in the idea, the loaded take's "Take N" label is a dropdown
-  listing every take (number, name, length) for a quick jump.
+  listing every take (number, name, length) for a quick jump. Below the
+  two-column width (`xl`) the list is replaced by a `<select>` of the ideas
+  above the recorder, with Search and New beside it, and the notes come
+  right after the recorder so both are in view on a phone.
 - **Into a song**: "Add as demo…" and "Create new song…" in the recorder's
   ⋯ menu and in each take's menu open one popover (`RecordingActions.svelte`
   in add or new mode); "Merge the idea's notes into the song's notes"
