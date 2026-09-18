@@ -427,7 +427,7 @@
 		</section>
 
 		<!-- Phone: the ideas as a picker (the full list is from xl up). -->
-		<div class="flex items-end gap-2 xl-hidden">
+		<!-- <div class="flex items-end gap-2 sm-hidden">
 			<div class="min-w-0 grow">
 				<ComboBox
 					id="idea-picker"
@@ -458,11 +458,11 @@
 			>
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
 			</button>
-		</div>
+		</div> -->
 
 		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
 		<section
-			class="hidden xl-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2"
+			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2"
 			aria-label="Ideas"
 		>
 			<div class="flex flex-wrap items-center justify-between gap-3">
