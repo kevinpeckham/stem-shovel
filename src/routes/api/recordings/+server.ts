@@ -2,7 +2,7 @@ import { accountOfIdea, memberOf, requireUser } from "$lib/server/access";
 import { createRecording, recordingStore, userOwnsIdea } from "$lib/server/data";
 import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
 import { demoContentType } from "$lib/utils/demoContentType";
-import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "$lib/constants/takeLimits";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -21,7 +21,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const contentType = demoContentType(filename);
 	if (!contentType)
 		error(415, `"${filename}" is not a supported audio format (${DEMO_FORMAT_LIST})`);
-	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-file limit");
+	if (sizeBytes > MAX_TAKE_BYTES) {
+		error(
+			413,
+			`A take is at most ${Math.round(MAX_TAKE_BYTES / 1024 / 1024)} MB (about ${MAX_TAKE_SECONDS / 60} minutes)`,
+		);
+	}
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfIdea, ideaId);
 	if (!(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Idea not found");

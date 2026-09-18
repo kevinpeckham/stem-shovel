@@ -53,6 +53,17 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   length) for a quick jump. On a phone the notes come right after the
   recorder so both are in view and the list gives way to a `ComboBox` of
   the ideas above the recorder.
+- **Ceilings** (`src/lib/constants/takeLimits.ts`, `takeStopReason`): the
+  recorder's 100 ms watch stops a take at `MAX_TAKE_SECONDS` (15 min; a
+  notice at 10) and after `SILENCE_STOP_SECONDS` (2 min) of input under
+  `SILENCE_LEVEL` (meter level 0.01, about -50 dBFS), saving it when it ever
+  had sound and discarding it when it never did; the level is sampled in
+  the watch timer as well as the meter's animation frame, since a
+  background tab throttles frames but keeps timers. The reservation
+  (`POST /api/recordings`) and the upload token refuse more than
+  `MAX_TAKE_BYTES` (32 MB, the time limit at twice the 128 kbit/s asked of
+  MediaRecorder). Phones stop the microphone themselves when the app
+  leaves the front.
 - **Recorder settings** (the gear in the header, a popover): "Discard takes
   shorter than 3 seconds automatically", on by default, per browser
   (`src/lib/utils/discardShortTakes.ts`; the recorder's `minTakeSeconds`).

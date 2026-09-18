@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Ceilings on a take**, so a recorder left running does not fill the store with silence: a take stops and saves at 15 minutes (a notice at 10), and after 2 minutes of silence it stops, saved when it had sound and discarded when it never did. The server refuses a file over 32 MB at the reservation and in the upload token, and the browser asks for 128 kbit/s. The numbers live in `src/lib/constants/takeLimits.ts`.
+
 ## [0.16.0] - 2026-09-18
 
 ### Added

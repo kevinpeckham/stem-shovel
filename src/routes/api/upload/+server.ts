@@ -13,6 +13,7 @@ import { blobAuth, isRecordingPathname, recordingAccess, songIdOfPathname } from
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 import { json } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";
@@ -58,7 +59,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return {
 					// decided from the extension at reserve time; MIDI is always audio/midi
 					allowedContentTypes: ["contentType" in row ? row.contentType : "audio/midi"],
-					maximumSizeInBytes: isMidi(pathname) ? MIDI_MAX_BYTES : STEM_MAX_BYTES,
+					maximumSizeInBytes: isMidi(pathname)
+						? MIDI_MAX_BYTES
+						: isRecordingPathname(pathname)
+							? MAX_TAKE_BYTES
+							: STEM_MAX_BYTES,
 					addRandomSuffix: false,
 					allowOverwrite: true, // a retry of the same reservation replaces the partial blob
 					tokenPayload: JSON.stringify({ id: row.id }),

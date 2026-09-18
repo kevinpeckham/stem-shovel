@@ -1,4 +1,12 @@
 <script lang="ts">
+	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
+	import {
+		takeStopNotice,
+		takeStopReason,
+		takeWarningDue,
+		takeWarningNotice,
+		type TakeStopReason,
+	} from "$lib/utils/takeStopReason";
 	import { saveAs } from "$lib/upload";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
@@ -107,6 +115,12 @@
 	let wakeLock: WakeLockSentinel | null = null;
 	let runStart = 0;
 	let tick: ReturnType<typeof setInterval> | null = null;
+	/** Silence watch: when the input was last above SILENCE_LEVEL, and whether it ever was. */
+	let lastLoudAt = 0;
+	let everLoud = false;
+	let warned = false;
+	/** Why the take is stopping on its own, read by finishTake. */
+	let stopReason: TakeStopReason | null = null;
 
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 	const hasTake = $derived(phase === "saved");
@@ -156,17 +170,49 @@
 		if (track) track.onended = () => onTrackEnded();
 		startMeter(stream);
 		chunks = [];
-		recorder = new MediaRecorder(stream, { mimeType: format.mimeType });
+		recorder = new MediaRecorder(stream, {
+			mimeType: format.mimeType,
+			audioBitsPerSecond: RECORDING_BITS_PER_SECOND,
+		});
 		recorder.ondataavailable = (e) => {
 			if (e.data.size > 0) chunks.push(e.data);
 		};
 		recorder.onstop = () => void finishTake();
 		recorder.start(1000);
 		runStart = performance.now();
+		lastLoudAt = runStart;
+		everLoud = false;
+		warned = false;
+		stopReason = null;
 		elapsed = 0;
-		tick = setInterval(() => (elapsed = (performance.now() - runStart) / 1000), 100);
+		tick = setInterval(watch, 100);
 		setPhase("recording");
 		void keepAwake();
+	}
+
+	/**
+	 * Every 100 ms while recording: the clock, and the two ceilings (the time
+	 * limit, a stretch of silence) that stop a take left running. The level is
+	 * sampled here as well as in the meter, since a background tab throttles
+	 * animation frames but keeps timers.
+	 */
+	function watch() {
+		const now = performance.now();
+		elapsed = (now - runStart) / 1000;
+		if (sampleLevel() > SILENCE_LEVEL) {
+			lastLoudAt = now;
+			everLoud = true;
+		}
+		if (!warned && takeWarningDue(elapsed)) {
+			warned = true;
+			notice = takeWarningNotice();
+		}
+		const reason = takeStopReason(elapsed, (now - lastLoudAt) / 1000, everLoud);
+		if (reason) {
+			stopReason = reason;
+			notice = takeStopNotice(reason);
+			stop();
+		}
 	}
 
 	/** Stop completes the take: it is saved as the idea's next numbered take. */
@@ -192,6 +238,10 @@
 		if (blob.size === 0 || elapsed < 0.5) {
 			notice = "Nothing was recorded.";
 			setPhase("idle");
+			return;
+		}
+		if (stopReason === "silent") {
+			setPhase("idle"); // the notice already says the take was discarded
 			return;
 		}
 		if (elapsed < minTakeSeconds) {
@@ -295,24 +345,31 @@
 		analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
 		source.connect(analyser); // not to the destination: no monitoring through the speaker
-		const buf = new Float32Array(analyser.fftSize);
+		meterBuf = new Float32Array(analyser.fftSize);
 		let hold = 0;
 		const loop = () => {
 			if (!analyser) return;
-			analyser.getFloatTimeDomainData(buf);
-			let sum = 0;
-			let max = 0;
-			for (const x of buf) {
-				sum += x * x;
-				if (Math.abs(x) > max) max = Math.abs(x);
-			}
-			level = Math.min(1, Math.sqrt(sum / buf.length) * 3);
+			const max = sampleLevel();
 			if (max >= hold) hold = max;
 			else hold = Math.max(max, hold - 0.01);
 			peak = hold;
 			meterFrame = requestAnimationFrame(loop);
 		};
 		meterFrame = requestAnimationFrame(loop);
+	}
+	let meterBuf: Float32Array<ArrayBuffer> | null = null;
+	/** Reads the input once: sets `level` (RMS × 3, capped at 1) and returns the sample peak. */
+	function sampleLevel(): number {
+		if (!analyser || !meterBuf) return 0;
+		analyser.getFloatTimeDomainData(meterBuf);
+		let sum = 0;
+		let max = 0;
+		for (const x of meterBuf) {
+			sum += x * x;
+			if (Math.abs(x) > max) max = Math.abs(x);
+		}
+		level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
+		return max;
 	}
 
 	function stopStream() {
