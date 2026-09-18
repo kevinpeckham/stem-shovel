@@ -289,7 +289,7 @@
 			bind:value={editor.markdownCurrent}
 			rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 			spellcheck="false"
-			placeholder="# Title&#10;&#10;## Section&#10;```&#10;| D | A |&#10;```"></textarea>
+			placeholder="Enter notes here"></textarea>
 	{:else}
 		<textarea
 			class="chart-source block w-full {embedded

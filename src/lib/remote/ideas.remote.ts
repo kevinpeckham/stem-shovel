@@ -3,6 +3,7 @@ import { accountOfIdea, memberOf, requireMember, requireUser } from "$lib/server
 import {
 	createIdea as create,
 	deleteIdea as remove,
+	deleteIdeaIfEmpty,
 	renameIdea as rename,
 	setIdeaNotes,
 	userOwnsIdea,
@@ -44,10 +45,18 @@ export const renameIdea = command(IdeaRenameSchema, async ({ id, title }) => {
 });
 
 /** The note board, saved whole (the editor autosaves on idle). */
+/** Saves the notes; clearing them on an idea without takes removes the idea instead. */
 export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) => {
 	const accountId = await ownIdea(id);
 	if (!(await setIdeaNotes(accountId, id, markdown))) error(404, "Idea not found");
-	return { saved: true };
+	const ideaDeleted = !markdown.trim() && (await deleteIdeaIfEmpty(accountId, id));
+	return { saved: true, ideaDeleted };
+});
+
+/** Removes the idea if it has neither takes nor notes (after a discarded upload). */
+export const dropIdeaIfEmpty = command(IdSchema, async ({ id }) => {
+	const accountId = await ownIdea(id);
+	return { ideaDeleted: await deleteIdeaIfEmpty(accountId, id) };
 });
 
 /** Removes the idea and all its takes (files included); a command for the recorder's menu. */

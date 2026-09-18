@@ -23,7 +23,7 @@
 	<!-- <span>Stem Shovel</span> -->
 	<!-- Second on a phone (the links come first), first from sm up. -->
 	<div class="flex flex-wrap gap-2 order-2 sm:order-1">
-		<div>Copyright 2026 Lightning Jar. All rights reserved.</div>
+		<div class="opacity-70">Copyright 2026 Lightning Jar. All rights reserved.</div>
 		<div class="opacity-70">|</div>
 		<div class="opacity-70">
 			<a
@@ -43,7 +43,7 @@
 
 	<!-- Tappable on a phone: 15px links that wrap, above the copyright; the desktop keeps the small print. -->
 	<div
-		class="flex flex-wrap items-center gap-x-6 gap-y-3 text-15px order-1 sm:order-2 sm:gap-y-2 sm:text-11px"
+		class="flex flex-wrap items-center gap-x-6 sm-gap-x-3 gap-y-3 text-15px order-1 sm:order-2 sm:gap-y-2 sm:text-11px"
 	>
 		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
@@ -75,7 +75,7 @@
 		{/if}
 		<!-- Rick Roll Easter Egg -->
 		<a
-			class="underline underline-offset-4 hover:text-maximumYellow opacity-70 underline underline-offset-4 hover-text-maximumYellow"
+			class="hidden sm-block underline underline-offset-4 hover:text-maximumYellow opacity-70 underline underline-offset-4 hover-text-maximumYellow"
 			href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 			title="Click in case of emergency">RR</a
 		>

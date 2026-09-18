@@ -31,7 +31,7 @@ import type { BugStatus } from "$lib/val/BugReportSchema";
 import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -1941,6 +1941,46 @@ export async function setIdeaNotes(accountId: string, ideaId: string, notes: str
 	return !!row;
 }
 
+/**
+ * Removes the idea when it has neither takes nor notes (nothing worth
+ * keeping): after its last take goes, after its notes are cleared, after a
+ * failed upload is discarded. True when it went.
+ */
+export async function deleteIdeaIfEmpty(accountId: string, ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { notes: true },
+		with: { takes: { columns: { id: true }, limit: 1 } },
+	});
+	if (!row || row.notes.trim() || row.takes.length > 0) return false;
+	return deleteIdea(accountId, ideaId);
+}
+
+/**
+ * Sweeps the user's ideas that never got a take or notes and are older than
+ * `olderThanMs` (a fresh one may still have its first take uploading).
+ * Runs when the recorder page loads.
+ */
+export async function deleteEmptyIdeas(accountId: string, userId: string, olderThanMs: number) {
+	const cutoff = new Date(Date.now() - olderThanMs);
+	const rows = await db
+		.select({ id: idea.id })
+		.from(idea)
+		.where(
+			and(
+				eq(idea.accountId, accountId),
+				eq(idea.createdBy, userId),
+				lt(idea.createdAt, cutoff),
+				sql`trim(${idea.notes}) = ''`,
+				notExists(
+					db.select({ id: recording.id }).from(recording).where(eq(recording.ideaId, idea.id)),
+				),
+			),
+		);
+	for (const r of rows) await deleteIdea(accountId, r.id);
+	return rows.length;
+}
+
 /** Removes the idea and every take, files included. */
 export async function deleteIdea(accountId: string, ideaId: string) {
 	const takes = await db
@@ -2038,10 +2078,14 @@ export async function deleteRecording(accountId: string, recordingId: string) {
 	const [row] = await db
 		.delete(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
-		.returning({ url: recording.url, playbackUrl: recording.playbackUrl });
-	if (!row) return false;
+		.returning({
+			url: recording.url,
+			playbackUrl: recording.playbackUrl,
+			ideaId: recording.ideaId,
+		});
+	if (!row) return null;
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
-	return true;
+	return { ideaId: row.ideaId };
 }
 
 /**

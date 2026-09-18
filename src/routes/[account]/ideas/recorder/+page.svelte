@@ -3,7 +3,15 @@
 	import DemoRecorder, { type Take } from "$lib/components/DemoRecorder.svelte";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
-	import { createIdea, deleteIdeaNow, renameIdea, saveIdeaNotes } from "$lib/remote/ideas.remote";
+	import ComboBox from "$lib/components/ComboBox.svelte";
+	import InfoTip from "$lib/components/InfoTip.svelte";
+	import {
+		createIdea,
+		deleteIdeaNow,
+		dropIdeaIfEmpty,
+		renameIdea,
+		saveIdeaNotes,
+	} from "$lib/remote/ideas.remote";
 	import { deleteTake, setTakeName } from "$lib/remote/recordings.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
@@ -11,7 +19,13 @@
 	import { formatTime } from "$lib/utils/formatTime";
 	import { invalidateAll } from "$app/navigation";
 	import { onMount, untrack } from "svelte";
+	import { SvelteSet } from "svelte/reactivity";
 	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
+	import {
+		loadDiscardShortTakes,
+		saveDiscardShortTakes,
+		SHORT_TAKE_SECONDS,
+	} from "$lib/utils/discardShortTakes";
 
 	let { data } = $props();
 	type Idea = (typeof data.ideas)[number];
@@ -31,6 +45,8 @@
 	/** Bumped to re-seed the notes panel (another idea, a clear). */
 	let notesKey = $state(0);
 	let phase = $state("idle");
+	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
+	let discardShort = $state(true);
 	let recorderBusy = $derived(
 		phase === "recording" || phase === "requesting" || phase === "saving",
 	);
@@ -56,12 +72,18 @@
 		},
 		onsaved: async (saved) => {
 			recorder?.resolve(saved.localId, saved);
-			if (takeId === saved.localId) takeId = saved.id;
+			if (takeId === saved.localId) {
+				takeId = saved.id;
+				if (ideaId) openIdeas.add(ideaId); // the new take shows in the list
+			}
 			notify(`Take ${saved.takeNumber} saved`);
 			await invalidateAll();
 		},
 	});
-	onMount(() => void queue.restore());
+	onMount(() => {
+		discardShort = loadDiscardShortTakes();
+		void queue.restore();
+	});
 
 	/** The current idea's id, creating the idea on first use (a take, notes, a title). */
 	async function ensureIdea(): Promise<string> {
@@ -87,11 +109,14 @@
 		recorder.reset();
 	}
 
+	/** Which ideas are unfolded in the list: a plain accordion, the loaded idea opened when it is shown. */
+	const openIdeas = new SvelteSet<string>();
 	function show(i: Idea, t: TakeRow | null) {
 		if (recorderBusy || !recorder) return;
 		const switching = ideaId !== i.id;
 		ideaId = i.id;
 		ideaTitle = i.title;
+		openIdeas.add(i.id);
 		if (switching) {
 			notes = i.notes;
 			notesKey++;
@@ -132,11 +157,25 @@
 		notesKey++;
 		if (ideaId) {
 			try {
-				await saveIdeaNotes({ id: ideaId, markdown: "" });
+				const r = await saveIdeaNotes({ id: ideaId, markdown: "" });
+				if (r.ideaDeleted) ideaId = null; // nothing left in it; the title stays for the next take
 				await invalidateAll();
 			} catch (e) {
 				notify(errorMessage(e), { kind: "error" });
 			}
+		}
+	}
+	/** A failed upload discarded: the idea goes too when it was created for that take and holds nothing else. */
+	async function discardUpload(u: { localId: string; ideaId: string | null }) {
+		queue.discard(u.localId);
+		const id = u.ideaId ?? ideaId;
+		if (!id) return;
+		try {
+			const r = await dropIdeaIfEmpty({ id });
+			if (r.ideaDeleted && id === ideaId) ideaId = null;
+			await invalidateAll();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
 		}
 	}
 	async function removeTake(t: Take) {
@@ -147,10 +186,12 @@
 		)
 			return;
 		try {
-			await deleteTake({ id: t.id });
+			const r = await deleteTake({ id: t.id });
 			notify(`Take ${t.takeNumber} deleted`);
 			takeId = null;
 			recorder?.reset();
+			// The last take of an idea without notes takes the idea with it.
+			if (r.ideaDeleted && idea?.takes.some((x) => x.id === t.id)) ideaId = null;
 			await invalidateAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
@@ -181,12 +222,15 @@
 		try {
 			await deleteIdeaNow({ id: i.id });
 			notify("Idea deleted");
-			ideaId = null;
-			takeId = null;
-			notes = "";
-			ideaTitle = placeholder();
-			notesKey++;
-			recorder?.reset();
+			// Deleting the idea in the player empties it; another one leaves it alone.
+			if (i.id === ideaId) {
+				ideaId = null;
+				takeId = null;
+				notes = "";
+				ideaTitle = placeholder();
+				notesKey++;
+				recorder?.reset();
+			}
 			await invalidateAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
@@ -241,17 +285,57 @@
 	}}
 />
 
-<main class="page">
-	<header class="max-w-article">
-		<h1 class="heading-2">Idea Recorder</h1>
-		<p class="opacity-90 text-balance">
-			Record your demos, riffs, or quick ideas here. An idea consists of one or more audio recording
-			takes and optionally some written notes. Hitting record starts a new take. Starting a new idea
-			clears the noteboard and starts over at take 1.
-			{#if data.fromSong}
-				Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
-			{/if}
-		</p>
+<main class="sm-page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16">
+	<header class="flex justify-between items-start w-full px-3">
+		<div class="max-w-article">
+			<h1 class="sm-heading-2 flex items-center gap-2">
+				Idea Recorder
+				<InfoTip
+					label="About the Idea Recorder"
+					text="An idea consists of one or more audio recording takes and optionally some written notes.
+					Hitting record starts a new take. Starting a new idea clears the note board and starts over
+					at take 1."
+				/>
+			</h1>
+			<p class="opacity-90 text-balance mb-3">
+				<span class="hidden sm-inline">Record your demos, riffs, or quick ideas here.</span>
+
+				{#if data.fromSong}
+					Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
+				{/if}
+			</p>
+		</div>
+		<div class="flex gap-2">
+			<button
+				class="button button-sm sm-bg-accent sm-text-oxford shrink-0"
+				type="button"
+				disabled={recorderBusy}
+				title="New idea"
+				aria-label="New idea"
+				onclick={newIdea}
+			>
+				<span class="i-ph-plus" aria-hidden="true"></span>
+				<span class="hidden sm-inline">New Idea</span>
+			</button>
+			<button
+				class="button button-sm shrink-0"
+				type="button"
+				popovertarget="idea-search"
+				title="Search ideas and takes"
+				aria-label="Search ideas and takes"
+			>
+				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+			</button>
+			<button
+				class="button button-sm shrink-0"
+				type="button"
+				popovertarget="recorder-settings"
+				title="Recorder settings"
+				aria-label="Recorder settings"
+			>
+				<span class="i-ph-gear" aria-hidden="true"></span>
+			</button>
+		</div>
 	</header>
 
 	<!--
@@ -261,54 +345,13 @@
 		a picker above the recorder, and the takes are reached from the recorder's
 		"Take N" dropdown.
 	-->
-	<div class="grid grid-cols-1 gap-8 xl-grid-cols-2 xl-grid-rows-[auto_1fr]">
+	<div
+		class="px-1 grid grid-cols-1 gap-2 sm-gap-x-8 sm-gap-y-4 xl-grid-cols-2 xl-grid-rows-[auto_1fr]"
+	>
 		<section
 			class="grid grid-cols-1 gap-6 place-content-start w-full xl-col-start-1 xl-row-start-1"
 			aria-label="Recorder"
 		>
-			<!-- Phone: the ideas as a picker (the full list is from xl up). -->
-			<div class="flex items-end gap-2 xl-hidden">
-				<label class="block min-w-0 grow">
-					<span class="sr-only">Idea</span>
-					<select
-						class="field w-full text-sm"
-						value={ideaId ?? ""}
-						disabled={recorderBusy}
-						onchange={(e) => {
-							const i = data.ideas.find((x) => x.id === e.currentTarget.value);
-							if (i) show(i, i.takes.at(-1) ?? null);
-						}}
-					>
-						{#if !ideaId}
-							<option value="">{ideaTitle} (new)</option>
-						{/if}
-						{#each data.ideas as i (i.id)}
-							<option value={i.id}
-								>{i.title} · {i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</option
-							>
-						{/each}
-					</select>
-				</label>
-				<button
-					class="button button-sm shrink-0"
-					type="button"
-					popovertarget="idea-search"
-					title="Search ideas and takes"
-					aria-label="Search ideas and takes"
-				>
-					<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
-				</button>
-				<button
-					class="button button-sm shrink-0"
-					type="button"
-					disabled={recorderBusy || (!ideaId && !takeId && phase === "idle")}
-					onclick={newIdea}
-				>
-					<span class="i-ph-plus" aria-hidden="true"></span>
-					New
-				</button>
-			</div>
-
 			<DemoRecorder
 				bind:this={recorder}
 				bind:ideaTitle
@@ -319,6 +362,9 @@
 				onaddtosong={(t) => idea && songDialog(idea, t, "add")}
 				onnewsong={(t) => idea && songDialog(idea, t, "new")}
 				ondeleteidea={() => idea && removeIdea(idea)}
+				onnewidea={newIdea}
+				minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
+				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
 				takes={idea?.takes ?? []}
 				onpick={(t) => {
 					const row = idea?.takes.find((x) => x.id === t.id);
@@ -351,7 +397,7 @@
 								<button class="link-dim" type="button" onclick={() => queue.retry(u.localId)}
 									>Retry</button
 								>
-								<button class="link-dim" type="button" onclick={() => queue.discard(u.localId)}
+								<button class="link-dim" type="button" onclick={() => discardUpload(u)}
 									>Discard</button
 								>
 							{:else}
@@ -380,32 +426,57 @@
 			{/key}
 		</section>
 
+		<!-- Phone: the ideas as a picker (the full list is from xl up). -->
+		<div class="flex items-end gap-2 xl-hidden">
+			<div class="min-w-0 grow">
+				<ComboBox
+					id="idea-picker"
+					ariaLabel="Idea"
+					value={ideaId ?? ""}
+					disabled={recorderBusy}
+					placeholder={data.ideas.length ? "Choose an idea" : "No ideas yet"}
+					options={[
+						...(ideaId ? [] : [{ value: "", label: ideaTitle, description: "new" }]),
+						...data.ideas.map((i) => ({
+							value: i.id,
+							label: i.title,
+							description: `${i.takes.length} ${i.takes.length === 1 ? "take" : "takes"}`,
+						})),
+					]}
+					onchange={(id) => {
+						const i = data.ideas.find((x) => x.id === id);
+						if (i) show(i, i.takes.at(-1) ?? null);
+					}}
+				/>
+			</div>
+			<button
+				class="button button-sm shrink-0"
+				type="button"
+				popovertarget="idea-search"
+				title="Search ideas and takes"
+				aria-label="Search ideas and takes"
+			>
+				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+			</button>
+		</div>
+
 		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
 		<section
 			class="hidden xl-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2"
 			aria-label="Ideas"
 		>
 			<div class="flex flex-wrap items-center justify-between gap-3">
-				<h2 class="heading-3 mb-0">Ideas</h2>
-				<div class="flex items-center gap-2">
-					<button
+				<h2 class="text-16px mb-1 font-500 leading-tight">Your Ideas</h2>
+				<div class="flex items-baseline gap-2">
+					<!-- <button
 						class="button button-xs"
 						type="button"
 						popovertarget="idea-search"
 						title="Search ideas and takes"
 					>
 						<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
-						Search
-					</button>
-					<button
-						class="button button-xs"
-						type="button"
-						disabled={recorderBusy || (!ideaId && !takeId && phase === "idle")}
-						onclick={newIdea}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>
-						New idea
-					</button>
+						Search Ideas
+					</button> -->
 				</div>
 			</div>
 			{#if data.ideas.length === 0}
@@ -416,40 +487,69 @@
 				</p>
 			{:else}
 				<ul
-					class="max-h-[60vh] min-h-64 overflow-y-auto rounded border border-current/40 bg-blue-300/5 divide-y divide-white/10 {recorderBusy
+					class="max-h-[60vh] min-h-64 overflow-y-auto rounded border border-current/40 bg-black/40 divide-y divide-white/10 {recorderBusy
 						? 'opacity-60'
 						: ''}"
 				>
 					{#each data.ideas as i (i.id)}
 						<li>
-							<details open={i.id === ideaId}>
+							<!--
+								An accordion and nothing more: the row only folds and unfolds; a take
+								loads. The set is the one source of truth (the native toggle is
+								cancelled): a toggle event lands after a re-render from an autosave
+								and the two would otherwise fight over the state.
+							-->
+							<details open={openIdeas.has(i.id)}>
 								<summary
-									class="grid cursor-pointer grid-cols-[auto_1fr_auto] items-baseline gap-x-3 px-4 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {i.id ===
+									class="grid cursor-pointer grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-4 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {i.id ===
 									ideaId
 										? 'bg-blue-300/10'
 										: ''}"
 									onclick={(e) => {
-										// Choosing the idea shows it (its latest take) and opens it; the
-										// disclosure follows the selection rather than toggling on its own
-										// (the native toggle would close what the selection just opened).
+										if ((e.target as HTMLElement).closest("[data-take-menu]")) return; // the idea's menu
 										e.preventDefault();
-										if (!recorderBusy) show(i, i.takes.at(-1) ?? null);
+										if (openIdeas.has(i.id)) openIdeas.delete(i.id);
+										else openIdeas.add(i.id);
 									}}
 								>
 									<span
 										class="i-ph-caret-right inline-block text-12px opacity-70"
 										aria-hidden="true"
 									></span>
-									<span class="min-w-0">
+									<span class="min-w-0 inline-block h-full">
 										<span class="block truncate font-500">{i.title}</span>
 										<span class="block truncate text-12px opacity-70">
 											{fmtWhen(i.createdAt)}{#if i.notes.trim()}
 												· {i.notes.trim().split("\n")[0].slice(0, 60)}{/if}
 										</span>
 									</span>
-									<span class="text-sm tabular-nums opacity-80"
+									<span class="text-14px tabular-nums opacity-80 h-full inline-flex items-center"
 										>{i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</span
 									>
+									<!-- The idea's own menu; its clicks must not select the idea (the summary's handler). -->
+									<details class="relative self-center" data-take-menu>
+										<summary
+											class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
+											title="Idea menu"
+											aria-label="Menu for {i.title}"
+										>
+											<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
+										</summary>
+										<div
+											class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm font-400 shadow-lg"
+											role="menu"
+										>
+											<button
+												class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10 disabled:opacity-40"
+												type="button"
+												role="menuitem"
+												disabled={recorderBusy}
+												onclick={() => removeIdea(i)}
+											>
+												<span class="i-ph-trash" aria-hidden="true"></span>Delete idea
+											</button>
+										</div>
+									</details>
 								</summary>
 								{#if i.takes.length > 0}
 									<ul class="divide-y divide-white/5 border-t border-white/10 bg-black/10">
@@ -466,17 +566,20 @@
 													disabled={recorderBusy}
 													onclick={() => show(i, t)}
 												>
-													<span class="truncate text-sm">{takeLabel(t)}</span>
-													<span class="text-sm tabular-nums opacity-80"
+													<span class="inline-grid w-full grid-cols-1">
+														<span class="truncate text-sm">{takeLabel(t)}</span>
+														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
+													</span>
+													<span
+														class="text-sm tabular-nums opacity-80 inline-flex h-full items-center"
 														>{t.durationSeconds !== null
 															? formatTime(t.durationSeconds, 0)
 															: "–:––"}</span
 													>
-													<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
 												</button>
 												<details class="relative" data-take-menu>
 													<summary
-														class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
+														class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
 														title="Take menu"
 														aria-label="Menu for {takeLabel(t)}"
 													>
@@ -527,11 +630,11 @@
 			{/if}
 		</section>
 
-		<p class="text-13px opacity-70 xl-col-span-2">
+		<!-- <p class="text-13px opacity-70 xl-col-span-2">
 			Tips: keep the screen on and the app in front while recording (a phone stops the microphone
 			when it sleeps or switches apps). Voice processing is switched off so instruments sound like
 			themselves. Takes are saved as your browser recorded them and converted to MP3 for playback.
-		</p>
+		</p> -->
 	</div>
 
 	<!-- A take into a song: add as a demo, or create a new song. -->
@@ -561,6 +664,39 @@
 				/>
 			{/key}
 		{/if}
+	</div>
+
+	<!-- Recorder settings: per-browser preferences (localStorage), the gear in the header. -->
+	<div
+		id="recorder-settings"
+		popover="auto"
+		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">Recorder settings</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="recorder-settings"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		<label class="flex items-start gap-3 text-sm">
+			<input
+				class="mt-1 accent-maximumYellow"
+				type="checkbox"
+				bind:checked={discardShort}
+				onchange={() => saveDiscardShortTakes(discardShort)}
+			/>
+			<span>
+				Discard takes shorter than {SHORT_TAKE_SECONDS} seconds automatically
+				<span class="block text-13px opacity-70"
+					>A mis-tap on Record is dropped instead of saved. Remembered on this device.</span
+				>
+			</span>
+		</label>
 	</div>
 
 	<!-- Search: ideas by title or notes, takes by name or number. -->

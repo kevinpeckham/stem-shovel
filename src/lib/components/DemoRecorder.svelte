@@ -44,6 +44,9 @@
 		onnewsong?: (take: Take) => void;
 		/** Delete the whole idea (from the ⋯ menu). */
 		ondeleteidea?: () => void;
+		/** Start a new idea (from the ⋯ menu); `newIdeaDisabled` when there is nothing to leave. */
+		onnewidea?: () => void;
+		newIdeaDisabled?: boolean;
 		/** The idea's takes, so the "Take N" label can jump between them. */
 		takes?: Take[];
 		/** A take chosen from the label's dropdown. */
@@ -52,6 +55,8 @@
 		onstart?: () => void;
 		/** Every phase change, so the page can freeze its list mid-take. */
 		onphase?: (phase: Phase) => void;
+		/** Drop a take shorter than this many seconds (a mis-tap) instead of saving it; 0 keeps every take. */
+		minTakeSeconds?: number;
 	}
 	let {
 		ideaTitle = $bindable(),
@@ -62,10 +67,13 @@
 		onaddtosong,
 		onnewsong,
 		ondeleteidea,
+		onnewidea,
+		newIdeaDisabled = false,
 		takes = [],
 		onpick,
 		onstart,
 		onphase,
+		minTakeSeconds = 0,
 	}: Props = $props();
 	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
 
@@ -117,11 +125,12 @@
 			notice = "This browser cannot record audio. Try Safari, Chrome or Firefox.";
 			return;
 		}
-		// The previous take leaves the player; it is in the list.
+		// The previous take leaves the player; it is in the list. Its name goes
+		// with it; a name typed with no take loaded is for this one.
 		playbackPaused = true;
 		discardTake();
+		if (loaded) takeName = "";
 		loaded = null;
-		takeName = "";
 		elapsed = 0;
 		onstart?.();
 		setPhase("requesting");
@@ -182,6 +191,11 @@
 		chunks = [];
 		if (blob.size === 0 || elapsed < 0.5) {
 			notice = "Nothing was recorded.";
+			setPhase("idle");
+			return;
+		}
+		if (elapsed < minTakeSeconds) {
+			notice = `Take discarded: shorter than ${minTakeSeconds} seconds (Recorder settings).`;
 			setPhase("idle");
 			return;
 		}
@@ -359,14 +373,15 @@
 {/if}
 
 <div
-	class="grid grid-cols-1 place-content-start gap-4 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md"
+	class="rounded bg-transparent bg-gradient-to-br from-black/30 to-black/40 grid grid-cols-1 place-content-start gap-4 border border-current/20 sm-border-current/40 pt-5 pb-6 px-3 sm-px-5 sm-py-5 sm-rounded-md"
 >
 	<!-- the idea's title and, once there is a take, its number and name -->
-	<div class="grid gap-2">
+	<div class="grid grid-cols-[1fr_auto] sm-grid-cols-1 gap-2 sm-gap-3">
+		<!-- idea name -->
 		<label class="block">
-			<span class="sr-only">Idea title</span>
+			<span class="sr-only">Idea Title</span>
 			<input
-				class="field text-18px font-600"
+				class="bg-white/5 rounded px-2 w-full max-w-120ch text-16px sm-text-17px sm-font-500 border border-transparent focus:(border-maximumYellow outline-none)"
 				type="text"
 				maxlength="120"
 				autocomplete="off"
@@ -380,8 +395,11 @@
 				}}
 			/>
 		</label>
+		<!-- take number and name -->
 		<label class="grid grid-cols-[auto_1fr] items-center gap-3 text-sm">
-			<span class="font-mono opacity-90 whitespace-nowrap">
+			<span
+				class="whitespace-nowrap bg-white/4 h-full w-auto px-2 flex justify-center items-center rounded"
+			>
 				{#if phase === "recording"}
 					New take
 				{:else if loaded && isLocal(loaded.id)}
@@ -390,10 +408,10 @@
 					<!-- A quick jump to any other take of the idea. -->
 					<details class="relative inline-block" bind:this={takeMenuEl}>
 						<summary
-							class="cursor-pointer list-none hover:text-accent [&::-webkit-details-marker]:hidden"
+							class="cursor-pointer opacity-90 list-none hover:text-accent [&::-webkit-details-marker]:hidden"
 							aria-label="Take {loaded.takeNumber}: jump to another take"
 						>
-							Take {loaded.takeNumber}
+							Take {loaded.takeNumber} of {takes.length}
 							<span class="i-ph-caret-down inline-block text-10px align-middle" aria-hidden="true"
 							></span>
 						</summary>
@@ -427,20 +445,22 @@
 				{:else if loaded}
 					Take {loaded.takeNumber}
 				{:else}
-					No take yet
+					Take 1
 				{/if}
 			</span>
 			<input
-				class="field text-sm"
+				class="hidden sm-block field text-sm"
 				type="text"
 				maxlength="120"
-				placeholder={loaded ? "Name this take (optional)" : ""}
+				placeholder={loaded || phase === "recording" || phase === "requesting"
+					? "Name this take (optional)"
+					: "Name the next take (optional)"}
 				autocomplete="off"
 				data-1p-ignore
 				data-lpignore="true"
 				data-bwignore
 				bind:value={takeName}
-				disabled={!loaded || isLocal(loaded.id)}
+				disabled={loaded ? isLocal(loaded.id) : false}
 				aria-label="Take name"
 				onchange={() => {
 					if (loaded && !isLocal(loaded.id))
@@ -459,13 +479,15 @@
 	{/if}
 
 	<!-- the clock and the meter -->
-	<div class="bg-black/40 px-3 py-2 leading-none grid grid-cols-[auto_1fr] gap-4 lg-gap-8 relative">
-		<div class="rounded-md grid grid-cols-1 gap-2">
+	<div
+		class="px-3 pb-1 sm-pb-2 leading-none grid sm-grid-cols-[auto_1fr] gap-4 sm-gap-8 relative rounded-md overflow-hidden"
+	>
+		<div class="rounded-md flex justify-between items-center sm-grid sm-grid-cols-1 gap-2">
 			<span
-				class="font-mono text-28px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
+				class="font-mono text-20px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
 				aria-live="off">{formatTime(hasTake && !playbackPaused ? playhead : elapsed, 1)}</span
 			>
-			<div class="text-sm opacity-90 font-mono">
+			<div class="text-sm opacity-90">
 				{#if phase === "recording"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
 					></span>Recording
@@ -488,7 +510,7 @@
 
 		<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px">
 			<div
-				class="mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+				class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 				role="meter"
 				aria-label="Input level"
 				aria-valuemin="0"
@@ -507,7 +529,9 @@
 					></div>
 				</div>
 			</div>
-			<label class="w-full grid grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90">
+			<label
+				class="hidden sm-grid w-full grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90"
+			>
 				<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				<span class="sr-only">Volume</span>
 				<input
@@ -565,7 +589,7 @@
 
 		<details class="relative ml-auto" bind:this={menuEl}>
 			<summary
-				class="button button-sm flex items-center list-none !min-h-31px [&::-webkit-details-marker]:hidden"
+				class="button button-sm border-current/10 flex items-center list-none !min-h-31px [&::-webkit-details-marker]:hidden"
 				title="More"
 				aria-label="Take menu"
 			>
@@ -629,6 +653,23 @@
 						<span class="i-ph-trash" aria-hidden="true"></span>Delete take
 					</button>
 				{/if}
+				{#if onnewidea && (phase === "saved" || phase === "idle")}
+					{#if phase === "saved"}
+						<hr class="my-1 border-white/15" />
+					{/if}
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
+						type="button"
+						role="menuitem"
+						disabled={newIdeaDisabled}
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							onnewidea?.();
+						}}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>New idea
+					</button>
+				{/if}
 				{#if ondeleteidea && (phase === "saved" || phase === "idle")}
 					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
@@ -641,7 +682,7 @@
 					>
 						<span class="i-ph-trash" aria-hidden="true"></span>Delete idea
 					</button>
-				{:else if phase !== "saved"}
+				{:else if phase !== "saved" && !onnewidea}
 					<div class="px-2 py-1 text-xs opacity-70">Nothing to do here yet</div>
 				{/if}
 			</div>

@@ -9,6 +9,7 @@ import {
 import {
 	copyRecordingToSong,
 	createSong,
+	deleteIdeaIfEmpty,
 	mergeIdeaNotesIntoSong,
 	deleteRecording as removeRecording,
 	projectSlugs,
@@ -41,10 +42,13 @@ export const setTakeName = command(TakeNameSchema, async ({ id, title }) => {
 });
 
 /** Delete a take from the recorder's menu. */
+/** Removes the take; the idea too when that leaves it with neither takes nor notes. */
 export const deleteTake = command(IdSchema, async ({ id }) => {
 	const { accountId } = await ownTake(id);
-	if (!(await removeRecording(accountId, id))) error(404, "Recording not found");
-	return { deleted: true };
+	const gone = await removeRecording(accountId, id);
+	if (!gone) error(404, "Recording not found");
+	const ideaDeleted = gone.ideaId ? await deleteIdeaIfEmpty(accountId, gone.ideaId) : false;
+	return { deleted: true, ideaDeleted };
 });
 
 /** Copies the recording into the song as a demo; answers with the song's page. */
