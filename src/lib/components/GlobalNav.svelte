@@ -143,19 +143,6 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
-									`/${member.slug}/ideas/recordings`,
-								)
-									? 'text-maximumYellow'
-									: ''}"
-								role="menuitem"
-								href="/{member.slug}/ideas/recordings"
-								onclick={() => (open = false)}
-							>
-								<span class="i-ph-waveform mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Recordings
-							</a>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
 									`/${member.slug}/settings`,
 								)
 									? 'text-maximumYellow'

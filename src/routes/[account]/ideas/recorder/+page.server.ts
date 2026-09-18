@@ -1,8 +1,8 @@
 import { requireMember, requireSignedIn } from "$lib/server/access";
-import { listRecordings, recordingsWantingPlayback, songLink, songPicker } from "$lib/server/data";
+import { listIdeas, recordingsWantingPlayback, songLink, songPicker } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/transcode";
-import type { Config } from "@sveltejs/adapter-vercel";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
+import type { Config } from "@sveltejs/adapter-vercel";
 import * as v from "valibot";
 import type { PageServerLoad } from "./$types";
 
@@ -10,27 +10,32 @@ import type { PageServerLoad } from "./$types";
 export const config: Config = { maxDuration: 300 };
 
 /**
- * The idea recorder (docs/demo-recording.md): members only; `?song=<id>`
- * remembers where it was opened from. The account's recordings come along
- * as metadata (title, length, notes, a URL to play on demand), for the
- * list under the recorder.
+ * The Idea Recorder (docs/demo-recording.md): members only; `?song=<id>`
+ * remembers where it was opened from. The user's own ideas come along with
+ * their takes' metadata (a URL to play on demand, never the audio itself).
  */
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
-	requireSignedIn(locals, url);
+	const user = requireSignedIn(locals, url);
 	const { account } = await parent();
 	requireMember(locals, account.id);
 	const songParam = url.searchParams.get("song");
 	const songId = v.safeParse(NanoIdSchema, songParam ?? "");
-	const recordings = await listRecordings(account.id);
-	scheduleRecordingPlayback(recordingsWantingPlayback(recordings));
+	const ideas = await listIdeas(account.id, user.id);
+	scheduleRecordingPlayback(recordingsWantingPlayback(ideas.flatMap((i) => i.takes)));
 	return {
-		recordings: recordings.map((r) => ({
-			id: r.id,
-			title: r.title,
-			notes: r.notes,
-			url: r.playbackUrl ?? r.url,
-			durationSeconds: r.durationSeconds,
-			createdAt: r.createdAt,
+		ideas: ideas.map((i) => ({
+			id: i.id,
+			title: i.title,
+			notes: i.notes,
+			createdAt: i.createdAt,
+			takes: i.takes.map((t) => ({
+				id: t.id,
+				takeNumber: t.takeNumber,
+				title: t.title,
+				url: t.playbackUrl ?? t.url,
+				durationSeconds: t.durationSeconds,
+				createdAt: t.createdAt,
+			})),
 		})),
 		projects: await songPicker(account.id),
 		fromSong: songId.success ? await songLink(account.id, songId.output) : null,

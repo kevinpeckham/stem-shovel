@@ -4,124 +4,69 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
-	import { onDestroy, onMount } from "svelte";
+	import { onDestroy } from "svelte";
 
 	/**
-	 * The demo recorder (docs/demo-recording.md): one take at a time from the
-	 * microphone, with pause, stop, undo (retake) and save. Saving uploads the
-	 * take as a scratch recording of the account; the page decides what
-	 * happens next (add to a song, keep in the library).
+	 * The Idea Recorder's take recorder (docs/demo-recording.md). Record
+	 * starts a take of the current idea; Stop completes it and saves it at
+	 * once as the next numbered take, which stays loaded for playback. Record
+	 * again starts the next take. The page owns the idea (title, notes, the
+	 * list) and hands the recorder an idea id when a take needs one.
 	 */
+	export interface Take {
+		id: string;
+		takeNumber: number;
+		/** The take's own name; "" shows as "Take N". */
+		title: string;
+		url: string;
+		durationSeconds: number | null;
+	}
 	interface Props {
-		accountId: string;
-		/** Called with the new recording's id and title once the upload is reported. */
-		onsaved: (recording: { id: string; title: string; durationSeconds: number }) => void;
-		/** Notes written before the take was saved; stored with the recording. */
-		getNotes?: () => string;
-		/** A new take is starting (the page drops its selection and shows the notes draft). */
+		/** The idea's title, shown and edited in the panel (the page saves it). */
+		ideaTitle: string;
+		/** The id of the idea a take belongs to, creating the idea if there is none yet. */
+		ensureIdea: () => Promise<string>;
+		onsaved: (take: Take) => void;
+		/** The idea's title was edited (blur or Enter). */
+		ontitlechange: (title: string) => void;
+		/** The loaded take's name was edited (blur or Enter). */
+		ontakename?: (take: { id: string; title: string }) => void;
+		/** Delete the loaded take (from the ⋯ menu). */
+		ondeletetake?: (take: Take) => void;
+		/** A new take is starting. */
 		onstart?: () => void;
-		/** The title of the loaded recording was edited (blur or Enter). */
-		ontitlechange?: (recording: { id: string; title: string }) => void;
 		/** Every phase change, so the page can freeze its list mid-take. */
 		onphase?: (phase: Phase) => void;
 	}
-	let { accountId, onsaved, getNotes, onstart, ontitlechange, onphase }: Props = $props();
+	let {
+		ideaTitle = $bindable(),
+		ensureIdea,
+		onsaved,
+		ontitlechange,
+		ontakename,
+		ondeletetake,
+		onstart,
+		onphase,
+	}: Props = $props();
 
-	type Phase = "idle" | "requesting" | "recording" | "paused" | "reviewing" | "saving" | "saved";
+	type Phase = "idle" | "requesting" | "recording" | "saving" | "saved";
 	let phase = $state<Phase>("idle");
-	/** The saved recording in the player: just saved here, or loaded from the list. */
-	let loadedId = $state<string | null>(null);
 	let elapsed = $state(0);
 	let level = $state(0);
 	let peak = $state(0);
 	let notice = $state<string | null>(null);
-	let take = $state<Blob | null>(null);
-	let takeUrl = $state<string | null>(null);
-	let title = $state("");
 	let progress = $state(0);
 	let inputLabel = $state<string | null>(null);
-	/** Playback of the take, through our own controls (the browser's player is hidden). */
-	let audio = $state<HTMLAudioElement | null>(null);
+	/** The take in the player: just recorded here, or loaded from the list. */
+	let loaded = $state<Take | null>(null);
+	let takeName = $state("");
+	let take: Blob | null = null;
+	let takeUrl = $state<string | null>(null);
+	/** Playback through our own controls (the browser's player is hidden). */
 	let playbackPaused = $state(true);
 	let playhead = $state(0);
 	let volume = $state(1);
 	let menuEl = $state<HTMLDetailsElement | null>(null);
-	/** A take exists to play: reviewing, saving or saved. */
-	const hasTake = $derived(phase === "reviewing" || phase === "saving" || phase === "saved");
-	/** The file name a download gets: the title, made safe, plus the take's extension (a loaded file's from its URL). */
-	const downloadName = () => {
-		const fromUrl = takeUrl?.startsWith("blob:")
-			? null
-			: takeUrl?.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
-		const ext = take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a");
-		return `${(title.trim() || "recording").replace(/[^\w.-]+/g, "-").toLowerCase()}.${ext}`;
-	};
-	/** The take as a file: the local blob straight away, a loaded recording fetched first. */
-	async function download() {
-		if (menuEl) menuEl.open = false;
-		if (!takeUrl) return;
-		try {
-			if (take) {
-				const a = document.createElement("a");
-				a.href = takeUrl;
-				a.download = downloadName();
-				a.click();
-			} else await saveAs(takeUrl, downloadName());
-		} catch (e) {
-			notify(`Download failed: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-	/**
-	 * Show a saved recording from the list: its file plays on demand, its
-	 * title fills the field, and Record starts the next take. Ignored while
-	 * a take is in progress.
-	 */
-	export function load(rec: {
-		id: string;
-		title: string;
-		url: string;
-		durationSeconds: number | null;
-	}) {
-		if (phase === "recording" || phase === "paused" || phase === "requesting" || phase === "saving")
-			return;
-		playbackPaused = true;
-		discardTake();
-		takeUrl = rec.url;
-		loadedId = rec.id;
-		title = rec.title;
-		elapsed = rec.durationSeconds ?? 0;
-		notice = null;
-		setPhase("saved");
-	}
-	/** Back to an empty recorder (the page's "New idea", or after a delete). */
-	export function reset() {
-		if (phase === "recording" || phase === "paused" || phase === "requesting" || phase === "saving")
-			return;
-		playbackPaused = true;
-		discardTake();
-		loadedId = null;
-		elapsed = 0;
-		title = defaultTitle();
-		notice = null;
-		setPhase("idle");
-	}
-	function setPhase(next: Phase) {
-		phase = next;
-		onphase?.(next);
-	}
-	function titleEdited() {
-		if (phase === "saved" && loadedId && title.trim())
-			ontitlechange?.({ id: loadedId, title: title.trim() });
-	}
-	function togglePlayback() {
-		if (!hasTake) return;
-		playbackPaused = !playbackPaused;
-	}
-	function closeMenu(e: Event) {
-		if (menuEl?.open && !(e.type === "pointerdown" && menuEl.contains(e.target as Node))) {
-			menuEl.open = false;
-		}
-	}
 
 	let stream: MediaStream | null = null;
 	let recorder: MediaRecorder | null = null;
@@ -131,48 +76,32 @@
 	let analyser: AnalyserNode | null = null;
 	let meterFrame = 0;
 	let wakeLock: WakeLockSentinel | null = null;
-	/** The timer: accumulated seconds before the current run, and when the run started. */
 	let runStart = 0;
-	let runBase = 0;
 	let tick: ReturnType<typeof setInterval> | null = null;
 
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
+	const hasTake = $derived(phase === "saved" || phase === "saving");
+	const busy = $derived(phase === "recording" || phase === "requesting" || phase === "saving");
 
-	/** "Untitled - Sep 18, 2026 - 3:45 pm", in the browser's clock; the field shows it from the start and stays editable. */
-	function defaultTitle() {
-		const now = new Date();
-		const day = now.toLocaleDateString("en-US", {
-			month: "short",
-			day: "numeric",
-			year: "numeric",
-		});
-		const time = now
-			.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-			.toLowerCase();
-		return `Untitled - ${day} - ${time}`;
+	function setPhase(next: Phase) {
+		phase = next;
+		onphase?.(next);
 	}
-	// In the browser, not at render: the server's clock and time zone are not the user's.
-	onMount(() => {
-		title = defaultTitle();
-	});
-	/** Save pressed while paused: the take is stopped first, then saved as soon as it is ready. */
-	let saveAfterStop = false;
 
 	async function start() {
+		if (busy) return;
 		notice = null;
 		format = recordingMimeType((t) => MediaRecorder.isTypeSupported(t));
 		if (!format) {
 			notice = "This browser cannot record audio. Try Safari, Chrome or Firefox.";
 			return;
 		}
-		// A new take after a saved one: the old file goes, the row starts fresh.
-		if (phase === "saved") {
-			playbackPaused = true;
-			discardTake();
-			loadedId = null;
-			elapsed = 0;
-			title = defaultTitle();
-		}
+		// The previous take leaves the player; it is in the list.
+		playbackPaused = true;
+		discardTake();
+		loaded = null;
+		takeName = "";
+		elapsed = 0;
 		onstart?.();
 		setPhase("requesting");
 		try {
@@ -201,51 +130,32 @@
 		recorder.ondataavailable = (e) => {
 			if (e.data.size > 0) chunks.push(e.data);
 		};
-		recorder.onstop = () => finishTake();
+		recorder.onstop = () => void finishTake();
 		recorder.start(1000);
-		runBase = 0;
 		runStart = performance.now();
 		elapsed = 0;
-		tick = setInterval(() => (elapsed = runBase + (performance.now() - runStart) / 1000), 100);
+		tick = setInterval(() => (elapsed = (performance.now() - runStart) / 1000), 100);
 		setPhase("recording");
 		void keepAwake();
 	}
 
-	function pause() {
-		if (!recorder || phase !== "recording") return;
-		recorder.pause();
-		runBase += (performance.now() - runStart) / 1000;
-		if (tick) clearInterval(tick);
-		tick = null;
-		elapsed = runBase;
-		setPhase("paused");
-	}
-
-	function resume() {
-		if (!recorder || phase !== "paused") return;
-		recorder.resume();
-		runStart = performance.now();
-		tick = setInterval(() => (elapsed = runBase + (performance.now() - runStart) / 1000), 100);
-		setPhase("recording");
-	}
-
+	/** Stop completes the take: it is saved as the idea's next numbered take. */
 	function stop() {
-		if (!recorder || (phase !== "recording" && phase !== "paused")) return;
-		if (phase === "recording") runBase += (performance.now() - runStart) / 1000;
+		if (!recorder || phase !== "recording") return;
+		elapsed = (performance.now() - runStart) / 1000;
 		if (tick) clearInterval(tick);
 		tick = null;
-		elapsed = runBase;
 		recorder.stop(); // finishTake() runs from onstop once the last chunk is in
 	}
 
 	function onTrackEnded() {
-		if (phase === "recording" || phase === "paused") {
-			notice = "The microphone stopped (a call, or the input went away). The take so far is kept.";
+		if (phase === "recording") {
+			notice = "The microphone stopped (a call, or the input went away). The take so far is saved.";
 			stop();
 		}
 	}
 
-	function finishTake() {
+	async function finishTake() {
 		stopStream();
 		const blob = new Blob(chunks, { type: format?.mimeType ?? "application/octet-stream" });
 		chunks = [];
@@ -256,41 +166,70 @@
 		}
 		take = blob;
 		takeUrl = URL.createObjectURL(blob);
-		if (!title) title = defaultTitle();
-		setPhase("reviewing");
-		if (saveAfterStop) {
-			saveAfterStop = false;
-			void save();
+		await save();
+	}
+
+	async function save() {
+		if (!take || !format) return;
+		setPhase("saving");
+		progress = 0;
+		const duration = elapsed;
+		const name = takeName.trim().slice(0, 120);
+		const file = new File([take], `take-${Date.now().toString(36)}.${format.ext}`, {
+			type: format.mimeType,
+		});
+		try {
+			const ideaId = await ensureIdea();
+			const { recordingId, takeNumber } = await uploadRecordingFile(
+				file,
+				() =>
+					postJson<RecordingReservation>("/api/recordings", {
+						ideaId,
+						title: name,
+						filename: file.name,
+						sizeBytes: file.size,
+					}),
+				duration,
+				(percent) => (progress = percent),
+			);
+			loaded = {
+				id: recordingId,
+				takeNumber,
+				title: name,
+				url: takeUrl ?? "",
+				durationSeconds: duration,
+			};
+			playbackPaused = true;
+			setPhase("saved");
+			onsaved(loaded);
+		} catch (e) {
+			notice = `The take could not be saved: ${errorMessage(e)}. Record it again.`;
+			discardTake();
+			setPhase("idle");
 		}
 	}
 
-	/** The Save button: from paused, stop and then save; from reviewing, save. */
-	function saveNow() {
-		if (phase === "paused") {
-			saveAfterStop = true;
-			stop();
-		} else if (phase === "reviewing") {
-			void save();
-		}
-	}
-
-	/** Undo: throw the take away (while recording, paused or reviewing) and start over. */
-	function retake() {
-		if (phase === "recording" || phase === "paused") {
-			if (elapsed > 3 && !confirm("Throw away this take?")) return;
-			if (recorder) {
-				recorder.onstop = null;
-				recorder.stop();
-			}
-			if (tick) clearInterval(tick);
-			tick = null;
-			stopStream();
-			chunks = [];
-		} else if (phase === "reviewing") {
-			if (!confirm("Throw away this take?")) return;
-		}
+	/** Show a take from the list: its file plays on demand; Record starts the next take. */
+	export function load(t: Take) {
+		if (busy) return;
+		playbackPaused = true;
 		discardTake();
+		takeUrl = t.url;
+		loaded = t;
+		takeName = t.title;
+		elapsed = t.durationSeconds ?? 0;
+		notice = null;
+		setPhase("saved");
+	}
+	/** An empty player (New idea, or after a delete). */
+	export function reset() {
+		if (busy) return;
+		playbackPaused = true;
+		discardTake();
+		loaded = null;
+		takeName = "";
 		elapsed = 0;
+		notice = null;
 		setPhase("idle");
 	}
 
@@ -300,37 +239,36 @@
 		take = null;
 	}
 
-	async function save() {
-		if (!take || !format) return;
-		setPhase("saving");
-		progress = 0;
-		const name = (title.trim() || defaultTitle()).slice(0, 120);
-		const file = new File([take], `${name.replace(/[^\w.-]+/g, "-").toLowerCase()}.${format.ext}`, {
-			type: format.mimeType,
-		});
-		const duration = elapsed;
+	function togglePlayback() {
+		if (!hasTake) return;
+		playbackPaused = !playbackPaused;
+	}
+	function closeMenu(e: Event) {
+		if (menuEl?.open && !(e.type === "pointerdown" && menuEl.contains(e.target as Node))) {
+			menuEl.open = false;
+		}
+	}
+	/** "<idea> - take 3.m4a", the take's extension (a loaded file's from its URL). */
+	function downloadName() {
+		const fromUrl = takeUrl?.startsWith("blob:")
+			? null
+			: takeUrl?.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
+		const ext = take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a");
+		const base = `${ideaTitle.trim() || "idea"} - take ${loaded?.takeNumber ?? 1}${takeName.trim() ? ` - ${takeName.trim()}` : ""}`;
+		return `${base.replace(/[^\w.-]+/g, "-").toLowerCase()}.${ext}`;
+	}
+	async function download() {
+		if (menuEl) menuEl.open = false;
+		if (!takeUrl) return;
 		try {
-			const id = await uploadRecordingFile(
-				file,
-				() =>
-					postJson<RecordingReservation>("/api/recordings", {
-						accountId,
-						title: name,
-						notes: getNotes?.() ?? "",
-						filename: file.name,
-						sizeBytes: file.size,
-					}),
-				duration,
-				(percent) => (progress = percent),
-			);
-			// The take stays playable and downloadable until the next one starts.
-			playbackPaused = true;
-			loadedId = id;
-			setPhase("saved");
-			onsaved({ id, title: name, durationSeconds: duration });
+			if (take) {
+				const a = document.createElement("a");
+				a.href = takeUrl;
+				a.download = downloadName();
+				a.click();
+			} else await saveAs(takeUrl, downloadName());
 		} catch (e) {
-			notice = `The recording could not be saved: ${errorMessage(e)}. It is still here; try again.`;
-			setPhase("reviewing");
+			notify(`Download failed: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
 
@@ -379,7 +317,7 @@
 		try {
 			wakeLock = (await navigator.wakeLock?.request("screen")) ?? null;
 		} catch {
-			wakeLock = null; // not granted or not supported: the take still records while the screen is on
+			wakeLock = null;
 		}
 	}
 
@@ -393,8 +331,6 @@
 		if (stream) stopStream();
 		discardTake();
 	});
-
-	const busy = $derived(phase === "recording" || phase === "paused" || phase === "reviewing");
 </script>
 
 <svelte:window
@@ -410,7 +346,6 @@
 {#if takeUrl && hasTake}
 	<!-- svelte-ignore a11y_media_has_caption -->
 	<audio
-		bind:this={audio}
 		src={takeUrl}
 		bind:paused={playbackPaused}
 		bind:currentTime={playhead}
@@ -421,26 +356,59 @@
 {/if}
 
 <div
-	class="grid grid-cols-1 place-content-start gap-5 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md h-full min-h-560px"
+	class="grid grid-cols-1 place-content-start gap-4 bg-blue-300/5 border border-current/40 px-5 py-5 rounded-md"
 >
-	<label class="block">
-		<span class="sr-only">Title</span>
-		<input
-			class="field"
-			type="text"
-			maxlength="120"
-			autocomplete="off"
-			data-1p-ignore
-			data-lpignore="true"
-			data-bwignore
-			bind:value={title}
-			disabled={phase === "saving"}
-			onchange={titleEdited}
-			onkeydown={(e) => {
-				if (e.key === "Enter") e.currentTarget.blur();
-			}}
-		/>
-	</label>
+	<!-- the idea's title and, once there is a take, its number and name -->
+	<div class="grid gap-2">
+		<label class="block">
+			<span class="sr-only">Idea title</span>
+			<input
+				class="field text-18px font-600"
+				type="text"
+				maxlength="120"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				bind:value={ideaTitle}
+				disabled={phase === "saving"}
+				onchange={() => ontitlechange(ideaTitle.trim())}
+				onkeydown={(e) => {
+					if (e.key === "Enter") e.currentTarget.blur();
+				}}
+			/>
+		</label>
+		<label class="grid grid-cols-[auto_1fr] items-center gap-3 text-sm">
+			<span class="font-mono opacity-90 whitespace-nowrap">
+				{#if phase === "recording"}
+					New take
+				{:else if loaded}
+					Take {loaded.takeNumber}
+				{:else}
+					No take yet
+				{/if}
+			</span>
+			<input
+				class="field text-sm"
+				type="text"
+				maxlength="120"
+				placeholder={loaded ? "Name this take (optional)" : ""}
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				bind:value={takeName}
+				disabled={!loaded || phase === "saving"}
+				aria-label="Take name"
+				onchange={() => {
+					if (loaded) ontakename?.({ id: loaded.id, title: takeName.trim() });
+				}}
+				onkeydown={(e) => {
+					if (e.key === "Enter") e.currentTarget.blur();
+				}}
+			/>
+		</label>
+	</div>
 	{#if !supported}
 		<p class="rounded border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm" role="alert">
 			This browser cannot record audio. Try Safari, Chrome or Firefox.
@@ -449,7 +417,6 @@
 
 	<!-- the clock and the meter -->
 	<div class="bg-black/40 px-3 py-2 leading-none grid grid-cols-[auto_1fr] gap-4 lg-gap-8 relative">
-		<!-- clock and status -->
 		<div class="rounded-md grid grid-cols-1 gap-2">
 			<span
 				class="font-mono text-28px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
@@ -459,20 +426,14 @@
 				{#if phase === "recording"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
 					></span>Recording
-				{:else if phase === "paused"}
-					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-500"
-					></span>Paused
 				{:else if hasTake && !playbackPaused}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
 					></span>Playing
-				{:else if phase === "reviewing"}
-					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
-					></span>Take ready
-				{:else if phase === "saved"}
-					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Saved
 				{:else if phase === "saving"}
 					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-500"
 					></span>Saving… {Math.round(progress)}%
+				{:else if phase === "saved"}
+					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Saved
 				{:else if phase === "requesting"}
 					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
 					></span>Waiting for the microphone…
@@ -482,7 +443,6 @@
 			</div>
 		</div>
 
-		<!-- meter and input label -->
 		<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px">
 			<div
 				class="mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
@@ -504,7 +464,6 @@
 					></div>
 				</div>
 			</div>
-
 			<label class="w-full grid grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90">
 				<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				<span class="sr-only">Volume</span>
@@ -518,9 +477,8 @@
 					aria-label="Volume"
 				/>
 			</label>
-
-			{#if inputLabel && (phase === "recording" || phase === "paused")}
-				<p class="text-12px opacity-70 w-ful text-truncate w-full">Input: {inputLabel}</p>
+			{#if inputLabel && phase === "recording"}
+				<p class="text-12px opacity-70 text-truncate w-full">Input: {inputLabel}</p>
 			{/if}
 		</div>
 	</div>
@@ -531,37 +489,25 @@
 		</p>
 	{/if}
 
-	<!-- the controls: one row that never changes shape; a button is greyed out until it applies -->
+	<!-- the controls: Record (or Stop), Play, the take menu -->
 	<div class="flex flex-wrap items-center gap-3">
-		<!-- record / pause -->
 		{#if phase === "recording"}
-			<button class="button-record" type="button" onclick={pause}>
-				<span class="i-ph-pause-fill" aria-hidden="true"></span>
-				Pause
-			</button>
-		{:else if phase === "paused"}
-			<button class="button-record" type="button" onclick={resume}>
-				<span class="i-ph-record-fill" aria-hidden="true"></span>
-				Resume
+			<button class="button-record" type="button" onclick={stop}>
+				<span class="i-ph-stop-fill" aria-hidden="true"></span>
+				Stop
 			</button>
 		{:else}
 			<button
 				class="button-record"
 				type="button"
-				disabled={!supported || (phase !== "idle" && phase !== "saved")}
-				title={phase === "reviewing"
-					? "Retake first to record again"
-					: phase === "saved"
-						? "Start the next take (this one is saved)"
-						: "Start a take"}
+				disabled={!supported || busy}
+				title={loaded ? "Record the next take" : "Record a take"}
 				onclick={start}
 			>
 				<span class="i-ph-record-fill" aria-hidden="true"></span>
 				Record
 			</button>
 		{/if}
-
-		<!-- play / stop -->
 		<button
 			class="button button-sm"
 			type="button"
@@ -572,37 +518,6 @@
 		>
 			<span class={playbackPaused ? "i-ph-play-fill" : "i-ph-pause-fill"} aria-hidden="true"></span>
 			{playbackPaused ? "Play" : "Pause"}
-		</button>
-		<button
-			class="button button-sm"
-			type="button"
-			disabled={phase !== "recording" && phase !== "paused"}
-			onclick={stop}
-		>
-			<span class="i-ph-stop-fill" aria-hidden="true"></span>
-			Stop
-		</button>
-		<button
-			class="button button-sm"
-			type="button"
-			disabled={phase !== "recording" && phase !== "paused" && phase !== "reviewing"}
-			title={phase === "reviewing"
-				? "Throw this take away and record another"
-				: "Throw away what has been recorded so far"}
-			onclick={retake}
-		>
-			<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
-			{phase === "reviewing" ? "Retake" : "Undo"}
-		</button>
-		<button
-			class="button button-sm"
-			type="button"
-			disabled={phase !== "paused" && phase !== "reviewing"}
-			title={phase === "paused" ? "Stop the take and save it" : "Save the take"}
-			onclick={saveNow}
-		>
-			<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-			{phase === "saving" ? `Saving… ${Math.round(progress)}%` : "Save"}
 		</button>
 
 		<details class="relative ml-auto" bind:this={menuEl}>
@@ -617,7 +532,7 @@
 				class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
 				role="menu"
 			>
-				{#if phase === "saved" && takeUrl}
+				{#if phase === "saved" && loaded}
 					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"
@@ -626,10 +541,19 @@
 					>
 						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
 					</button>
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							if (loaded) ondeletetake?.(loaded);
+						}}
+					>
+						<span class="i-ph-trash" aria-hidden="true"></span>Delete take
+					</button>
 				{:else}
-					<div class="px-2 py-1 text-xs opacity-70">
-						{hasTake ? "Save the take to download it" : "Nothing to do here yet"}
-					</div>
+					<div class="px-2 py-1 text-xs opacity-70">Nothing to do here yet</div>
 				{/if}
 			</div>
 		</details>

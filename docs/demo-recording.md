@@ -5,6 +5,31 @@ it came from, with what shipped marked. Kevin's use case: someone sits down
 with a guitar and a phone and records a demo with start, stop, pause, undo
 (retake), save and delete.
 
+## Ideas and takes (2026-09-18)
+
+The model settled on after a day of use: an **idea** is a title, one
+markdown note board and one or more **takes** (audio recordings, numbered
+within the idea, each with an optional name). Ideas are the user's own
+within the account; other members do not see them until a take is added to
+a song (a share feature may come later). On `/[account]/ideas/recorder`:
+
+- **Record → Stop** completes a take and saves it at once as the next
+  number; it stays loaded for playback (Play, a volume slider, the ⋯ menu
+  with Download and Delete take). Record again starts the next take. No
+  pause, no review step.
+- **New idea** starts a fresh one ("Untitled Idea N", editable at the top
+  of the recorder) with an empty note board; the idea row is created on
+  first use (a take, notes or a title). The note board is the song page's
+  document panel (`IdeaNotesPanel.svelte`, `saveIdeaNotes`).
+- **The list** under the recorder shows the user's ideas newest first, each
+  opening to its takes; picking a take loads it, its idea's title and notes
+  come with it. A **Search** popover finds ideas by title or notes and takes
+  by name or number. The separate library page is gone.
+- Takes are `recording` rows (`idea_id`, `take_number`, `title` = take
+  name); migration 0041 made one idea per earlier recording. Remote
+  functions: `ideas.remote.ts` (create, rename, notes, delete, render) and
+  `recordings.remote.ts` (take name, delete, add to a song, new song).
+
 ## What shipped (Phase 1)
 
 - **Scratch recordings, not demos.** A take goes into the account's library

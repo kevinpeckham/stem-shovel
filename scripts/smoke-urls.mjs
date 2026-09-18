@@ -44,7 +44,6 @@ const ROUTES = [
 	],
 	["[account]/ideas", "/{account}/ideas", [303], [303]],
 	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [200]],
-	["[account]/ideas/recordings", "/{account}/ideas/recordings", [303], [200]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["admin/accounts", "/admin/accounts", [404], [200]],
 	["admin/ai-requests", "/admin/ai-requests", [404], [200]],

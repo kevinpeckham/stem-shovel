@@ -83,7 +83,7 @@ export function canEdit(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
-const { project, song, stem, demo, recording } = schema;
+const { project, song, stem, demo, recording, idea } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireMember. */
 export async function accountOfProject(projectId: string) {
@@ -118,6 +118,14 @@ async function accountOfStemPathname(pathname: string) {
 export async function accountOfDemo(demoId: string) {
 	const row = await db.query.demo.findFirst({
 		where: eq(demo.id, demoId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfIdea(ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: eq(idea.id, ideaId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

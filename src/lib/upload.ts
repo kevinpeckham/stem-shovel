@@ -93,6 +93,7 @@ export async function uploadDemoFile(
 
 export interface RecordingReservation {
 	recordingId: string;
+	takeNumber: number;
 	pathname: string;
 	access?: "public" | "private";
 }
@@ -106,8 +107,8 @@ export async function uploadRecordingFile(
 	reserve: () => Promise<RecordingReservation>,
 	durationSeconds: number,
 	onProgress?: (percent: number) => void,
-): Promise<string> {
-	const { recordingId, pathname, access = "public" } = await reserve();
+): Promise<{ recordingId: string; takeNumber: number }> {
+	const { recordingId, takeNumber, pathname, access = "public" } = await reserve();
 	const contentType = demoContentType(file.name) ?? undefined;
 	const blob = await upload(pathname, file, {
 		access,
@@ -122,7 +123,7 @@ export async function uploadRecordingFile(
 		body: JSON.stringify({ url: blob.url, durationSeconds }),
 	});
 	if (!ready.ok) throw new Error(await errorText(ready));
-	return recordingId;
+	return { recordingId, takeNumber };
 }
 
 /** A stem's MIDI file: reserve on the stem, send the bytes to Blob, report the URL. */

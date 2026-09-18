@@ -60,6 +60,7 @@ const {
 	aiRequest,
 	auditLog,
 	recording,
+	idea,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -1866,11 +1867,111 @@ export async function failDemoPlayback(demoId: string) {
 // ---- scratch recordings (docs/demo-recording.md) ---------------------------
 
 /** Step 1 of a recording upload: the row, its pathname and the store it goes to. */
+/** A new idea: a title and an empty note board; takes come later. */
+export async function createIdea(accountId: string, userId: string, title: string) {
+	const [row] = await db
+		.insert(idea)
+		.values({ accountId, createdBy: userId, title: title.trim() || "Untitled" })
+		.returning();
+	return row;
+}
+
+/**
+ * Ideas are the user's own within the account: other members do not see
+ * them until a take is added to a song (a share feature may come later).
+ */
+export async function userOwnsIdea(accountId: string, userId: string, ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.createdBy, userId)),
+		columns: { id: true },
+	});
+	return !!row;
+}
+
+/** A take is the user's when its idea is. */
+export async function userOwnsRecording(accountId: string, userId: string, recordingId: string) {
+	const row = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
+		columns: { ideaId: true },
+	});
+	return !!row?.ideaId && (await userOwnsIdea(accountId, userId, row.ideaId));
+}
+
+/** The user's ideas in the account, newest first, each with its ready takes in order and URLs the browser may fetch. */
+export async function listIdeas(accountId: string, userId: string) {
+	const rows = await db.query.idea.findMany({
+		where: and(eq(idea.accountId, accountId), eq(idea.createdBy, userId)),
+		orderBy: [desc(idea.createdAt)],
+		with: {
+			takes: {
+				where: eq(recording.status, "ready"),
+				orderBy: [asc(recording.takeNumber), asc(recording.createdAt)],
+			},
+		},
+	});
+	return Promise.all(
+		rows.map(async (i) => ({
+			...i,
+			takes: await Promise.all(
+				i.takes.map(async (t) => ({
+					...t,
+					url: (await presentUrl(t.url)) ?? t.url,
+					playbackUrl: await presentUrl(t.playbackUrl),
+				})),
+			),
+		})),
+	);
+}
+
+export async function renameIdea(accountId: string, ideaId: string, title: string) {
+	const [row] = await db
+		.update(idea)
+		.set({ title })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
+		.returning({ id: idea.id });
+	return !!row;
+}
+
+export async function setIdeaNotes(accountId: string, ideaId: string, notes: string) {
+	const [row] = await db
+		.update(idea)
+		.set({ notes })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
+		.returning({ id: idea.id });
+	return !!row;
+}
+
+/** Removes the idea and every take, files included. */
+export async function deleteIdea(accountId: string, ideaId: string) {
+	const takes = await db
+		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
+		.from(recording)
+		.where(and(eq(recording.accountId, accountId), eq(recording.ideaId, ideaId)));
+	const [row] = await db
+		.delete(idea)
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
+		.returning({ id: idea.id });
+	if (!row) return false;
+	await deleteBlobs(takes.flatMap((t) => [t.url, t.playbackUrl ?? ""]));
+	return true;
+}
+
+/** Step 1 of saving a take: the row (numbered after the idea's last take), its pathname and the store it goes to. */
 export async function createRecording(
 	accountId: string,
 	userId: string,
-	file: NewStemFile & { title: string; notes?: string },
+	ideaId: string,
+	file: NewStemFile & { title: string },
 ) {
+	const owner = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const [{ last }] = await db
+		.select({ last: sql<number | null>`max(${recording.takeNumber})` })
+		.from(recording)
+		.where(eq(recording.ideaId, ideaId));
 	const id = nanoid();
 	const [row] = await db
 		.insert(recording)
@@ -1878,8 +1979,9 @@ export async function createRecording(
 			id,
 			accountId,
 			recordedBy: userId,
+			ideaId,
+			takeNumber: (last ?? 0) + 1,
 			title: file.title,
-			notes: file.notes ?? "",
 			url: "",
 			pathname: recordingPathname(accountId, id, file.filename),
 			filename: file.filename,
@@ -1923,35 +2025,10 @@ export async function recordRecordingUrl(pathname: string, url: string) {
 		.where(and(eq(recording.pathname, pathname), eq(recording.status, "uploading")));
 }
 
-/** The account's library, newest first, with URLs the browser may fetch. */
-export async function listRecordings(accountId: string) {
-	const rows = await db.query.recording.findMany({
-		where: and(eq(recording.accountId, accountId), eq(recording.status, "ready")),
-		orderBy: [desc(recording.createdAt)],
-		with: { recorder: { columns: { name: true } } },
-	});
-	return Promise.all(
-		rows.map(async (r) => ({
-			...r,
-			url: (await presentUrl(r.url)) ?? r.url,
-			playbackUrl: await presentUrl(r.playbackUrl),
-		})),
-	);
-}
-
 export async function renameRecording(accountId: string, recordingId: string, title: string) {
 	const [row] = await db
 		.update(recording)
 		.set({ title })
-		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
-		.returning({ id: recording.id });
-	return !!row;
-}
-
-export async function setRecordingNotes(accountId: string, recordingId: string, notes: string) {
-	const [row] = await db
-		.update(recording)
-		.set({ notes })
 		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
 		.returning({ id: recording.id });
 	return !!row;

@@ -9,6 +9,7 @@ export * from "./authAccount";
 export * from "./bugReport";
 export * from "./comment";
 export * from "./demo";
+export * from "./idea";
 export * from "./invitation";
 export * from "./inviteCode";
 export * from "./project";

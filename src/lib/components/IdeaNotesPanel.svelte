@@ -1,29 +1,28 @@
 <script lang="ts">
 	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
-	import { renderNotes, saveRecordingNotes } from "$lib/remote/recordings.remote";
+	import { renderNotes, saveIdeaNotes } from "$lib/remote/ideas.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { onMount } from "svelte";
 
 	/**
-	 * The notes panel of the Idea Recorder: the song page's document panel,
-	 * for one document. A read view with a pencil to edit, the embedded
-	 * editor with autosave while editing, a check (or Escape) to finish, the
-	 * ⋯ menu choosing Rich Text or Markdown, and the edit-mode badge. Before
-	 * the recording exists the notes are a draft the page hands to the save;
-	 * once it has an id they autosave to the server.
+	 * An idea's note board: the song page's document panel, for one document.
+	 * A read view with a pencil to edit, the embedded editor with autosave
+	 * while editing, a check (or Escape) to finish, the ⋯ menu choosing Rich
+	 * Text or Markdown, the edit-mode badge. The idea is created on the first
+	 * save when the page has none yet (`ensureIdea`).
 	 */
 	interface Props {
-		recording: { id: string | null; notes: string };
-		/** Receives the draft on every autosave while there is no recording yet. */
-		ondraft?: (markdown: string) => void;
-		/** Receives the notes after every save, draft or server, so the page can carry them into the next take. */
+		idea: { id: string | null; notes: string };
+		/** The idea's id, creating the idea if there is none yet. */
+		ensureIdea: () => Promise<string>;
+		/** Receives the notes after every save, so the page keeps its copy current. */
 		onchange?: (markdown: string) => void;
-		/** "Clear notes" in the menu: the page empties the panel (and the recording's notes, when there is one). */
+		/** "Clear notes" in the menu. */
 		onclear?: () => void;
 	}
-	let { recording, ondraft, onchange, onclear }: Props = $props();
+	let { idea, ensureIdea, onchange, onclear }: Props = $props();
 
 	let editing = $state(false);
 	let editor = $state<MarkdownEditorState | null>(null);
@@ -31,7 +30,6 @@
 	let saveError = $state<string | null>(null);
 	let version = $state(0);
 	let view = $state<"rendered" | "markdown">("rendered");
-	/** The read view's HTML, rendered on the server like the song documents. */
 	let html = $state("");
 	let menuEl = $state<HTMLDetailsElement | null>(null);
 	const VIEWS = [
@@ -39,31 +37,24 @@
 		{ id: "markdown", name: "Markdown" },
 	] as const;
 
-	/** What the editor holds, or the notes as given before any edit. */
-	const current = () => editor?.markdownCurrent ?? recording.notes;
+	const current = () => editor?.markdownCurrent ?? idea.notes;
 
 	async function render() {
 		const markdown = current();
 		html = markdown.trim() ? await renderNotes(markdown) : "";
 	}
 	onMount(() => {
-		if (recording.notes.trim()) void render();
+		if (idea.notes.trim()) void render();
 	});
 
 	async function save() {
 		if (!editor || pending) return;
 		const sent = editor.markdownCurrent;
-		if (!recording.id) {
-			ondraft?.(sent);
-			onchange?.(sent);
-			editor.markAsSaved();
-			version++;
-			return;
-		}
 		pending = true;
 		saveError = null;
 		try {
-			await saveRecordingNotes({ id: recording.id, markdown: sent });
+			const id = idea.id ?? (await ensureIdea());
+			await saveIdeaNotes({ id, markdown: sent });
 			if (editor.markdownCurrent === sent) editor.markAsSaved();
 			version++;
 			onchange?.(sent);
@@ -77,8 +68,7 @@
 
 	/** Save what is unsaved, render the read view, leave edit mode. */
 	async function close() {
-		// The WYSIWYG writes its markdown on a 250 ms debounce: let the last keystrokes land.
-		await new Promise((r) => setTimeout(r, 300));
+		await new Promise((r) => setTimeout(r, 300)); // the WYSIWYG's 250 ms markdown debounce
 		if (editor?.hasEdits) await save();
 		await render();
 		editing = false;
@@ -102,7 +92,6 @@
 	class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full min-h-560px max-w-full grid-rows-1fr relative"
 >
 	{#if editing}
-		<!-- The box scrolls inside; the edit-mode badge is anchored to its corner, clear of the text. -->
 		<div class="relative h-full min-h-full">
 			<div
 				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-16"
@@ -145,7 +134,7 @@
 			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8"
 		>
 			<p>
-				No notes yet.
+				Add notes about your idea: lyrics, chords, etc.
 				<button class="ml-1 link-dim" type="button" onclick={() => (editing = true)}
 					>Write them.</button
 				>
@@ -153,7 +142,6 @@
 		</div>
 	{/if}
 
-	<!-- tool bar, as on the song page: the document's name, edit / done, and the ⋯ menu -->
 	<div class="absolute top-2 right-3 mb-2 flex items-stretch gap-4">
 		<div class="flex overflow-hidden rounded border border-white/15 items-center">
 			<span class="button button-xs bg-blue-300 text-oxford border-blue-300 cursor-default"
@@ -219,7 +207,6 @@
 						type="button"
 						role="menuitem"
 						disabled={!current().trim()}
-						title="Empty the notes; they otherwise carry over from take to take"
 						onclick={() => {
 							if (menuEl) menuEl.open = false;
 							if (confirm("Clear the notes?")) onclear?.();
