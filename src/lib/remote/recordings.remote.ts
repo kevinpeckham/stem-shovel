@@ -1,4 +1,4 @@
-import { command, form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent, query } from "$app/server";
 import {
 	accountOfProject,
 	accountOfRecording,
@@ -23,7 +23,9 @@ import {
 	RecordingToNewSongSchema,
 	RecordingToSongSchema,
 } from "$lib/val/RecordingSchema";
+import { renderMarkdown } from "$lib/server/markdown";
 import { error } from "@sveltejs/kit";
+import * as v from "valibot";
 
 /** Scratch recordings (docs/demo-recording.md): rename, delete, and add to a song as a demo. */
 
@@ -82,3 +84,9 @@ export const newSongFromRecording = command(
 		return { href: `/${slugs.account}/projects/${slugs.project}/${song.slug}` };
 	},
 );
+
+/** The read view of an idea's notes: the same sanitised renderer as the song documents (any signed-in user). */
+export const renderNotes = query(v.pipe(v.string(), v.maxLength(50_000)), async (markdown) => {
+	requireUser(getRequestEvent().locals);
+	return renderMarkdown(markdown);
+});

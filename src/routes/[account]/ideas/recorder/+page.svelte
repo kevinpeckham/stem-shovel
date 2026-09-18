@@ -2,7 +2,7 @@
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import DemoRecorder from "$lib/components/DemoRecorder.svelte";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
-	import RecordingNotes from "$lib/components/RecordingNotes.svelte";
+	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 
 	let { data } = $props();
@@ -85,11 +85,9 @@
 		<!-- Notes are open from the start: chords, a working title, where the idea might go. -->
 		<section class="min-h-560px" aria-label="Notes">
 			{#key round}
-				<RecordingNotes
+				<IdeaNotesPanel
 					recording={{ id: saved?.id ?? null, notes: notesDraft }}
-					docKey="recorder/{round}"
 					ondraft={(m) => (notesDraft = m)}
-					panel
 				/>
 			{/key}
 		</section>
