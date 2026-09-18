@@ -6,6 +6,7 @@
  *   bun run db:reset-stage                       # migrate + seed the stage varlock resolves (APP_ENV)
  *   bun run db:reset-stage -- --wipe             # drop every table first (CONFIRM=yes required)
  *   bun run db:reset-stage -- --admin you@x.com  # also flag that user system + super admin
+ *   bun run db:reset-stage -- --restore <name>   # put .snapshots/<name> (accounts + files) in first
  *
  * Staging from the VM: APP_ENV=preview bun run db:reset-stage (loads .env.preview.local).
  * Everything runs through the existing scripts, so this stays a thin orchestrator.
@@ -27,6 +28,8 @@ const args = process.argv.slice(2);
 const wipe = args.includes("--wipe");
 const adminAt = args.indexOf("--admin");
 const admin = adminAt >= 0 ? args[adminAt + 1] : null;
+const restoreAt = args.indexOf("--restore");
+const restore = restoreAt >= 0 ? args[restoreAt + 1] : null;
 const stage = APP_ENV ?? "development";
 
 const client = createClient({ url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN });
@@ -57,6 +60,8 @@ function run(script: string, ...scriptArgs: string[]) {
 	if (result.status !== 0) throw new Error(`${script} failed`);
 }
 
+// The snapshot's users (by their production ids) go in before the seed, which finds them by email.
+if (restore) run("restore-accounts.ts", restore);
 run("seed.ts");
 run("seed-user-docs.ts");
 if (admin) {

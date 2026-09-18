@@ -81,14 +81,17 @@ the code, scripts and docs are Claude's. In order:
    (gitignored) with the staging id lets `APP_ENV=preview bunx varlock run
 -- <cmd>` address staging from the VM (migrations, the bot enrolment,
    smoke tests). Restart the dev server.
-6. **Seed the new databases**: `bun run db:migrate`, `db:seed` (the demo
-   account and songs), `db:seed-docs` (the user docs), `db:system-admin`
-   and `db:super-admin` for Kevin, `db:preview-bot` for the bot, and
-   `bun run smoke:blob` once so each stage has a song with real files.
-   The home page's featured song is chosen on `/admin/home` per stage.
-   Claude adds a `db:reset-stage` script that does all of that against
-   whichever `APP_ENV` is set, so staging can be wiped and rebuilt in a
-   minute.
+6. **Seed the new databases** with real data: `bun run db:reset-stage --
+--wipe --restore prod-2026-09-18 --admin kevin@lightningjar.com`
+   (`APP_ENV=preview` for staging) migrates, restores the snapshot of the
+   MMKK and sirrobert accounts (rows with their production ids, every file
+   uploaded to the stage's own stores at the same pathnames, members with
+   their passwords and 2FA, the bot as admin of MMKK), then runs the seed,
+   the user docs and the operator flags. The snapshot was taken on
+   2026-09-18 with `bun run db:snapshot-accounts prod-2026-09-18` into the
+   gitignored `.snapshots/` (79 files, 1.4 GB); take a fresh one any time
+   the VM can still read production. The home page's featured song is
+   chosen on `/admin/home` per stage.
 7. **Migrations per stage**: dev migrates on the VM as now; staging
    migrates from the VM with `APP_ENV=preview` when `dev` is merged into
    `staging`; production migrates from Kevin's machine (or the VM with the
