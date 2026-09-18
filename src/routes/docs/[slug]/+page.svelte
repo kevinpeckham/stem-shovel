@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { deleteUserDoc, updateUserDoc } from "$lib/remote/userDocs.remote";
 	import { clearForm } from "$lib/utils/clearForm";
 	import { formatDate } from "$lib/utils/formatDate";
@@ -10,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.doc.title} · Docs — Stem Shovel</title>
+	<title>{pageTitle(`${data.doc.title} · Docs`)}</title>
 </svelte:head>
 
 <main class="page-x-padding pt-6 mb-8 grid gap-8 lg:grid-cols-[220px_1fr]">

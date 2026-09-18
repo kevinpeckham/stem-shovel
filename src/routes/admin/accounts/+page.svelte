@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { manageAccount } from "$lib/remote/admin.remote";
 	import { formatBytes } from "$lib/utils/formatBytes";
@@ -9,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>Accounts · Admin — Stem Shovel</title>
+	<title>{pageTitle("Accounts · Admin")}</title>
 </svelte:head>
 
 <section>

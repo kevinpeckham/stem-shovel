@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import DemoRecorder from "$lib/components/DemoRecorder.svelte";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -11,7 +12,7 @@
 </script>
 
 <svelte:head>
-	<title>Idea Recorder — Stem Shovel</title>
+	<title>{pageTitle("Idea Recorder")}</title>
 </svelte:head>
 
 <main class="page">

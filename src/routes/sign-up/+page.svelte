@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { authClient } from "$lib/auth-client";
 
 	let { data } = $props();
@@ -40,7 +41,7 @@
 </script>
 
 <svelte:head>
-	<title>Create an account — Stem Shovel</title>
+	<title>{pageTitle("Create an account")}</title>
 </svelte:head>
 
 <main class="page-x-padding pt-8 min-h-screen">

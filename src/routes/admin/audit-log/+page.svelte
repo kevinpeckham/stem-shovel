@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { formatDate } from "$lib/utils/formatDate";
 
 	let { data } = $props();
 </script>
 
 <svelte:head>
-	<title>Audit log · Admin — Stem Shovel</title>
+	<title>{pageTitle("Audit log · Admin")}</title>
 </svelte:head>
 
 <section>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { safeNext } from "$lib/utils/safeNext";
 	import { goto } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
@@ -38,7 +39,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign in — Stem Shovel</title>
+	<title>{pageTitle("Sign in")}</title>
 </svelte:head>
 
 <main class="page-x-padding pt-8 min-h-screen">

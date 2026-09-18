@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 </script>
 
 <svelte:head>
-	<title>Join the waitlist — Stem Shovel</title>
+	<title>{pageTitle("Join the waitlist")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

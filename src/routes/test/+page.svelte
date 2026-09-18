@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 
 	let { data } = $props();
 </script>
 
 <svelte:head>
-	<title>{data.manifest.title} — Stem Shovel</title>
+	<title>{pageTitle(data.manifest.title)}</title>
 </svelte:head>
 
 <main class="page">

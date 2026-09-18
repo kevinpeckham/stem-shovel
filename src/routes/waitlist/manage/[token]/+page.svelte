@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { prefs } from "$lib/remote/waitlist.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { invalidateAll } from "$app/navigation";
@@ -7,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Your waitlist entry — Stem Shovel</title>
+	<title>{pageTitle("Your waitlist entry")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "$lib/remote/songs.remote";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
@@ -49,7 +50,7 @@
 </script>
 
 <svelte:head>
-	<title>{label} · {data.song.title} — Stem Shovel</title>
+	<title>{pageTitle(`${label} · ${data.song.title}`)}</title>
 </svelte:head>
 
 <form bind:this={formEl} class="page" {...enhanced}>

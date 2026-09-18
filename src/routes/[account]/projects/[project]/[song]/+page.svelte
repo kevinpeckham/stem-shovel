@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "$lib/utils/docMonoPreference";
 	import {
@@ -1063,7 +1064,7 @@
 />
 
 <svelte:head>
-	<title>{data.song.title} — Stem Shovel</title>
+	<title>{pageTitle(data.song.title)}</title>
 </svelte:head>
 
 <main

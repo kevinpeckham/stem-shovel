@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { page } from "$app/state";
 
 	let { data } = $props();
@@ -7,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Verify email — Stem Shovel</title>
+	<title>{pageTitle("Verify email")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

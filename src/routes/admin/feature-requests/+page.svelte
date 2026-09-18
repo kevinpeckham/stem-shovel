@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import ReportList from "$lib/components/ReportList.svelte";
 
 	let { data } = $props();
 </script>
 
 <svelte:head>
-	<title>Feature requests · Admin — Stem Shovel</title>
+	<title>{pageTitle("Feature requests · Admin")}</title>
 </svelte:head>
 
 <section>

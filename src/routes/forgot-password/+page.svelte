@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { authClient } from "$lib/auth-client";
 
 	let email = $state("");
@@ -24,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Forgot password — Stem Shovel</title>
+	<title>{pageTitle("Forgot password")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

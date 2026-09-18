@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { goto } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
@@ -38,7 +39,7 @@
 </script>
 
 <svelte:head>
-	<title>Two-factor code — Stem Shovel</title>
+	<title>{pageTitle("Two-factor code")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

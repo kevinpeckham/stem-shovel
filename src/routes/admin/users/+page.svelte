@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { manageUser } from "$lib/remote/admin.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 
@@ -6,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Users · Admin — Stem Shovel</title>
+	<title>{pageTitle("Users · Admin")}</title>
 </svelte:head>
 
 <section>

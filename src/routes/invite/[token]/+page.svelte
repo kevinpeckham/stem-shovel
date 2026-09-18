@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { acceptInvitation } from "$lib/remote/accounts.remote";
 
 	let { data } = $props();
@@ -6,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Invitation — Stem Shovel</title>
+	<title>{pageTitle("Invitation")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import QrCode from "$lib/components/QrCode.svelte";
 	import { notifyTwoFactorChanged } from "$lib/remote/security.remote";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -102,7 +103,7 @@
 </script>
 
 <svelte:head>
-	<title>Security — Stem Shovel</title>
+	<title>{pageTitle("Security")}</title>
 </svelte:head>
 
 <main class="page">

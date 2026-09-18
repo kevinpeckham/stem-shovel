@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
 	import { deleteRecording, renameRecording } from "$lib/remote/recordings.remote";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -27,7 +28,7 @@
 </script>
 
 <svelte:head>
-	<title>Recordings — Stem Shovel</title>
+	<title>{pageTitle("Recordings")}</title>
 </svelte:head>
 
 <main class="page">

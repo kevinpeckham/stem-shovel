@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	let { data } = $props();
 </script>
 
 <svelte:head>
-	<title>Waitlist — Stem Shovel</title>
+	<title>{pageTitle("Waitlist")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

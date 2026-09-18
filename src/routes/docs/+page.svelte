@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { createUserDoc } from "$lib/remote/userDocs.remote";
 	import { clearForm } from "$lib/utils/clearForm";
 
@@ -7,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Docs — Stem Shovel</title>
+	<title>{pageTitle("Docs")}</title>
 </svelte:head>
 
 <main class="page-x-padding pt-8 pb-12 min-h-screen">

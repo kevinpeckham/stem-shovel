@@ -7,6 +7,8 @@ import type { LayoutServerLoad } from "./$types";
 export const load: LayoutServerLoad = ({ locals, cookies }) => ({
 	/** Production only: staging and previews tell search engines to stay away everywhere. */
 	indexable: indexableStage(ENV.VERCEL_ENV),
+	/** development | preview | production: the tab title carries a DEV or STAGE tag off production (src/lib/utils/pageTitle.ts). */
+	stage: ENV.APP_ENV,
 	user: locals.user,
 	memberships: locals.memberships,
 	/** The account neutral pages treat as the user's own (src/lib/server/currentAccount.ts). */

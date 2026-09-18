@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import {
@@ -43,7 +44,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings · {data.account.name} — Stem Shovel</title>
+	<title>{pageTitle(`Settings · ${data.account.name}`)}</title>
 </svelte:head>
 
 <main class="page">

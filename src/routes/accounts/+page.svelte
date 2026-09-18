@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { createAccount, leaveAccount } from "$lib/remote/accounts.remote";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -14,7 +15,7 @@
 </script>
 
 <svelte:head>
-	<title>Your accounts — Stem Shovel</title>
+	<title>{pageTitle("Your accounts")}</title>
 </svelte:head>
 
 <main class="page">

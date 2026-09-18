@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { createSystemInviteCode, revokeSystemInviteCode } from "$lib/remote/admin.remote";
 	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -21,7 +22,7 @@
 </script>
 
 <svelte:head>
-	<title>Invite codes · Admin — Stem Shovel</title>
+	<title>{pageTitle("Invite codes · Admin")}</title>
 </svelte:head>
 
 <section>

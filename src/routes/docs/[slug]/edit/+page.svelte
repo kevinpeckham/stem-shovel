@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
 	import { saveUserDoc } from "$lib/remote/userDocs.remote";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
@@ -38,7 +39,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit · {data.doc.title} · Docs — Stem Shovel</title>
+	<title>{pageTitle(`Edit · ${data.doc.title} · Docs`)}</title>
 </svelte:head>
 
 <form bind:this={formEl} class="page" {...enhanced}>

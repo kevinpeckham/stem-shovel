@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import { authClient } from "$lib/auth-client";
@@ -31,7 +32,7 @@
 </script>
 
 <svelte:head>
-	<title>Reset password — Stem Shovel</title>
+	<title>{pageTitle("Reset password")}</title>
 </svelte:head>
 
 <main class="page min-h-screen">

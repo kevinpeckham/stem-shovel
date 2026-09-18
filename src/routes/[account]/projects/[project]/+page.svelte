@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import AiToggle from "$lib/components/AiToggle.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
@@ -52,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.project.name} — Stem Shovel</title>
+	<title>{pageTitle(data.project.name)}</title>
 </svelte:head>
 
 <main class="page-x-padding pt-6 mb-2">

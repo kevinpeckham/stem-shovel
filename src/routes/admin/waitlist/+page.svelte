@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { manageWaitlist } from "$lib/remote/admin.remote";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { formatInviteCode } from "$lib/utils/formatInviteCode";
@@ -14,7 +15,7 @@
 </script>
 
 <svelte:head>
-	<title>Waitlist · Admin — Stem Shovel</title>
+	<title>{pageTitle("Waitlist · Admin")}</title>
 </svelte:head>
 
 <section>

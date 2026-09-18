@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from "$lib/utils/pageTitle";
 	import { setFeaturedSong } from "$lib/remote/admin.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 
@@ -7,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Home page · Admin — Stem Shovel</title>
+	<title>{pageTitle("Home page · Admin")}</title>
 </svelte:head>
 
 <section>
