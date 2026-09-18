@@ -50,6 +50,13 @@ export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) =
 	return { saved: true };
 });
 
+/** Removes the idea and all its takes (files included); a command for the recorder's menu. */
+export const deleteIdeaNow = command(IdSchema, async ({ id }) => {
+	const accountId = await ownIdea(id);
+	if (!(await remove(accountId, id))) error(404, "Idea not found");
+	return { deleted: true };
+});
+
 /** Removes the idea and all its takes (files included). */
 export const deleteIdea = form(IdSchema, async ({ id }) => {
 	const accountId = await ownIdea(id);

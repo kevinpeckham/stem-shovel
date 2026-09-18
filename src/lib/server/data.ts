@@ -2115,6 +2115,36 @@ export async function copyRecordingToSong(
 	return row;
 }
 
+/**
+ * The idea's notes join the song's notes document (a new version, like any
+ * edit): appended under a heading naming the idea and take, or the whole
+ * document when the song had none. Empty idea notes change nothing.
+ */
+export async function mergeIdeaNotesIntoSong(
+	accountId: string,
+	userId: string,
+	songId: string,
+	recordingId: string,
+) {
+	const take = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
+		with: { idea: { columns: { title: true, notes: true } } },
+	});
+	const notes = take?.idea?.notes.trim() ?? "";
+	if (!take?.idea || !notes) return false;
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { notesMarkdown: true },
+	});
+	if (!s) return false;
+	const label = `${take.idea.title} · Take ${take.takeNumber}${take.title ? ` · ${take.title}` : ""}`;
+	const merged = s.notesMarkdown.trim()
+		? `${s.notesMarkdown.replace(/\s+$/, "")}\n\n## ${label}\n\n${notes}\n`
+		: `${notes}\n`;
+	const result = await saveSongDoc(accountId, userId, songId, "notes", merged);
+	return result.ok;
+}
+
 /** Which recordings still want an MP3 (same rules as stems' renditions). */
 export function recordingsWantingPlayback(
 	rows: {

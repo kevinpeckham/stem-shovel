@@ -3,7 +3,7 @@
 	import DemoRecorder, { type Take } from "$lib/components/DemoRecorder.svelte";
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
-	import { createIdea, deleteIdea, renameIdea, saveIdeaNotes } from "$lib/remote/ideas.remote";
+	import { createIdea, deleteIdeaNow, renameIdea, saveIdeaNotes } from "$lib/remote/ideas.remote";
 	import { deleteTake, setTakeName } from "$lib/remote/recordings.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
@@ -130,6 +130,50 @@
 		}
 	}
 
+	// ---- a take into a song: one popover, two modes, one target ----
+	let songTarget = $state<{ id: string; label: string; ideaTitle: string } | null>(null);
+	let songMode = $state<"add" | "new">("add");
+	let songPanel = $state<HTMLDivElement | null>(null);
+	function songDialog(
+		i: { title: string },
+		t: { id: string; takeNumber: number; title: string },
+		mode: "add" | "new",
+	) {
+		songTarget = { id: t.id, label: `${i.title} · ${takeLabel(t)}`, ideaTitle: i.title };
+		songMode = mode;
+		songPanel?.showPopover();
+	}
+	async function removeIdea(i: Idea) {
+		const n = i.takes.length;
+		if (
+			!confirm(
+				`Delete “${i.title}” and its ${n} ${n === 1 ? "take" : "takes"}? Demos made from them stay on their songs.`,
+			)
+		)
+			return;
+		try {
+			await deleteIdeaNow({ id: i.id });
+			notify("Idea deleted");
+			ideaId = null;
+			takeId = null;
+			notes = "";
+			ideaTitle = placeholder();
+			notesKey++;
+			recorder?.reset();
+			await invalidateAll();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+	/** One take menu open at a time in the list; a click elsewhere closes it. */
+	function closeTakeMenus(e: Event) {
+		for (const d of document.querySelectorAll<HTMLDetailsElement>(
+			"details[data-take-menu][open]",
+		)) {
+			if (!(e.type === "pointerdown" && d.contains(e.target as Node))) d.open = false;
+		}
+	}
+
 	// ---- search (a popover over the list) ----
 	let searchOpen = $state(false);
 	let searchText = $state("");
@@ -163,6 +207,13 @@
 	<title>{pageTitle("Idea Recorder")}</title>
 </svelte:head>
 
+<svelte:window
+	onpointerdown={closeTakeMenus}
+	onkeydown={(e) => {
+		if (e.key === "Escape") closeTakeMenus(e);
+	}}
+/>
+
 <main class="page">
 	<header class="max-w-article">
 		<h1 class="heading-2">Idea Recorder</h1>
@@ -186,6 +237,9 @@
 				ontitlechange={titleChanged}
 				ontakename={takeNamed}
 				ondeletetake={removeTake}
+				onaddtosong={(t) => idea && songDialog(idea, t, "add")}
+				onnewsong={(t) => idea && songDialog(idea, t, "new")}
+				ondeleteidea={() => idea && removeIdea(idea)}
 				onstart={() => (takeId = null)}
 				onsaved={async (t) => {
 					notify(`Take ${t.takeNumber} saved`);
@@ -240,9 +294,11 @@
 											? 'bg-blue-300/10'
 											: ''}"
 										onclick={(e) => {
-											// Choosing the idea shows it (its latest take); the disclosure still toggles.
-											if (recorderBusy) e.preventDefault();
-											else show(i, i.takes.at(-1) ?? null);
+											// Choosing the idea shows it (its latest take) and opens it; the
+											// disclosure follows the selection rather than toggling on its own
+											// (the native toggle would close what the selection just opened).
+											e.preventDefault();
+											if (!recorderBusy) show(i, i.takes.at(-1) ?? null);
 										}}
 									>
 										<span
@@ -263,12 +319,13 @@
 									{#if i.takes.length > 0}
 										<ul class="divide-y divide-white/5 border-t border-white/10 bg-black/10">
 											{#each i.takes as t (t.id)}
-												<li>
+												<li
+													class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 {t.id === takeId
+														? 'bg-blue-300/15'
+														: ''}"
+												>
 													<button
-														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-10 pr-4 text-left hover:bg-white/5 disabled:cursor-default {t.id ===
-														takeId
-															? 'bg-blue-300/15'
-															: ''}"
+														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-10 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
 														type="button"
 														aria-current={t.id === takeId ? "true" : undefined}
 														disabled={recorderBusy}
@@ -282,6 +339,48 @@
 														>
 														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
 													</button>
+													<details class="relative" data-take-menu>
+														<summary
+															class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
+															title="Take menu"
+															aria-label="Menu for {takeLabel(t)}"
+														>
+															<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"
+															></span>
+														</summary>
+														<div
+															class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
+															role="menu"
+														>
+															<button
+																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+																type="button"
+																role="menuitem"
+																onclick={() => songDialog(i, t, "add")}
+															>
+																<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
+															</button>
+															<button
+																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+																type="button"
+																role="menuitem"
+																onclick={() => songDialog(i, t, "new")}
+															>
+																<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create
+																new song…
+															</button>
+															<hr class="my-1 border-white/15" />
+															<button
+																class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
+																type="button"
+																role="menuitem"
+																disabled={recorderBusy}
+																onclick={() => removeTake(t)}
+															>
+																<span class="i-ph-trash" aria-hidden="true"></span>Delete take
+															</button>
+														</div>
+													</details>
 												</li>
 											{/each}
 										</ul>
@@ -292,53 +391,6 @@
 					</ul>
 				{/if}
 			</div>
-
-			{#if idea}
-				{@const removeIdea = deleteIdea.for(idea.id)}
-				<div class="surface grid gap-5 px-5 py-5" aria-label="Selected idea">
-					<div class="flex flex-wrap items-baseline justify-between gap-3">
-						<h2 class="heading-3 mb-0">
-							{idea.title}{#if loadedTake}
-								<span class="opacity-70"> · {takeLabel(loadedTake)}</span>{/if}
-						</h2>
-						<form
-							{...removeIdea.enhance(async ({ submit }) => {
-								if (
-									!confirm(
-										`Delete “${idea?.title}” and its ${idea?.takes.length ?? 0} takes? Demos made from them stay on their songs.`,
-									)
-								)
-									return;
-								await submit();
-								if (removeIdea.result?.deleted) {
-									notify("Idea deleted");
-									ideaId = null;
-									takeId = null;
-									notes = "";
-									ideaTitle = placeholder();
-									notesKey++;
-									recorder?.reset();
-									await invalidateAll();
-								}
-							})}
-						>
-							<input {...removeIdea.fields.id.as("hidden", idea.id)} />
-							<button class="link-dim text-sm text-red-400" disabled={!!removeIdea.pending}>
-								{removeIdea.pending ? "Deleting…" : "Delete idea"}
-							</button>
-						</form>
-					</div>
-					{#if loadedTake}
-						<RecordingActions
-							recording={{ id: loadedTake.id, title: `${idea.title} - ${takeLabel(loadedTake)}` }}
-							projects={data.projects}
-							fromSong={data.fromSong}
-						/>
-					{:else}
-						<p class="text-sm opacity-90">Pick a take to add it to a song.</p>
-					{/if}
-				</div>
-			{/if}
 		</section>
 
 		<!-- The idea's note board; a new idea's notes create it on the first save. -->
@@ -359,6 +411,35 @@
 			when it sleeps or switches apps). Voice processing is switched off so instruments sound like
 			themselves. Takes are saved as your browser recorded them and converted to MP3 for playback.
 		</p>
+	</div>
+
+	<!-- A take into a song: add as a demo, or create a new song. -->
+	<div
+		id="take-song"
+		popover="auto"
+		bind:this={songPanel}
+		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(36rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">{songMode === "add" ? "Add as demo" : "Create new song"}</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="take-song"
+				popovertargetaction="hide">Close</button
+			>
+		</div>
+		{#if songTarget}
+			<p class="mb-4 text-sm opacity-90">{songTarget.label}</p>
+			{#key `${songTarget.id}/${songMode}`}
+				<RecordingActions
+					mode={songMode}
+					take={songTarget}
+					projects={data.projects}
+					fromSong={data.fromSong}
+				/>
+			{/key}
+		{/if}
 	</div>
 
 	<!-- Search: ideas by title or notes, takes by name or number. -->

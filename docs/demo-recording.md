@@ -25,6 +25,11 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   opening to its takes; picking a take loads it, its idea's title and notes
   come with it. A **Search** popover finds ideas by title or notes and takes
   by name or number. The separate library page is gone.
+- **Into a song**: "Add as demo…" and "Create new song…" in the recorder's
+  ⋯ menu and in each take's menu open one popover (`RecordingActions.svelte`
+  in add or new mode); "Merge the idea's notes into the song's notes"
+  (default on) appends them as a new version of the song's notes document
+  under a heading naming the idea and take (`mergeIdeaNotesIntoSong`).
 - Takes are `recording` rows (`idea_id`, `take_number`, `title` = take
   name); migration 0041 made one idea per earlier recording. Remote
   functions: `ideas.remote.ts` (create, rename, notes, delete, render) and

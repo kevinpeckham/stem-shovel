@@ -33,6 +33,11 @@
 		ontakename?: (take: { id: string; title: string }) => void;
 		/** Delete the loaded take (from the ⋯ menu). */
 		ondeletetake?: (take: Take) => void;
+		/** The loaded take into a song (the page opens its popover). */
+		onaddtosong?: (take: Take) => void;
+		onnewsong?: (take: Take) => void;
+		/** Delete the whole idea (from the ⋯ menu). */
+		ondeleteidea?: () => void;
 		/** A new take is starting. */
 		onstart?: () => void;
 		/** Every phase change, so the page can freeze its list mid-take. */
@@ -45,6 +50,9 @@
 		ontitlechange,
 		ontakename,
 		ondeletetake,
+		onaddtosong,
+		onnewsong,
+		ondeleteidea,
 		onstart,
 		onphase,
 	}: Props = $props();
@@ -537,10 +545,33 @@
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"
 						role="menuitem"
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							if (loaded) onaddtosong?.(loaded);
+						}}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
+					</button>
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							if (loaded) onnewsong?.(loaded);
+						}}
+					>
+						<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create new song…
+					</button>
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+						type="button"
+						role="menuitem"
 						onclick={download}
 					>
 						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
 					</button>
+					<hr class="my-1 border-white/15" />
 					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
 						type="button"
@@ -552,7 +583,20 @@
 					>
 						<span class="i-ph-trash" aria-hidden="true"></span>Delete take
 					</button>
-				{:else}
+				{/if}
+				{#if ondeleteidea && (phase === "saved" || phase === "idle")}
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						onclick={() => {
+							if (menuEl) menuEl.open = false;
+							ondeleteidea?.();
+						}}
+					>
+						<span class="i-ph-trash" aria-hidden="true"></span>Delete idea
+					</button>
+				{:else if phase !== "saved"}
 					<div class="px-2 py-1 text-xs opacity-70">Nothing to do here yet</div>
 				{/if}
 			</div>
