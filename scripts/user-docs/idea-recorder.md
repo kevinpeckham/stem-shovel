@@ -16,7 +16,7 @@ The panel beside the recorder is a markdown note board for the idea: lyrics, cho
 
 ## The list
 
-Under the recorder, your ideas are listed newest first. Click an idea's name to fold or unfold its takes; click a take to load it into the player. Each take has a ⋯ menu (add as a demo, create a song, delete) and each idea has one too (delete the idea and all its takes). **Search** finds ideas by title or notes and takes by name or number. On a phone the list gives way to a picker above the recorder.
+Under the recorder, your ideas are listed newest first. Click an idea's name to fold or unfold its takes; click a take to load it into the player. Each take has a ⋯ menu (add as a demo, create a song, delete) and each idea has one too (delete the idea and all its takes). **Search** opens a sheet listing every idea (full screen on a phone); typing filters them by title, notes, take name or number, and an idea unfolds to its takes. On a phone the main list gives way to a picker above the recorder.
 
 Ideas are yours: other members of the account see them only once a take becomes a demo on a song.
 

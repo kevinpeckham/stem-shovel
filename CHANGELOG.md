@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Search in the Idea Recorder is a filter over every idea**: the sheet lists all ideas from the start (full screen on a phone, a tall sheet on a desktop), each unfolding to its takes; typing narrows the list by title, notes, take label or number and opens the ideas whose takes matched, with those takes highlighted. A take loads and closes the sheet.
 - **The recorder's ⋯ menu downloads either file**: "Download source (ALAC lossless)", named for the take's codec, hands over the take as recorded; "Download MP3" the 192 kbit/s rendition, greyed out until it is made.
 - **An empty song's player box offers three buttons** on their own row: Upload stems, Upload a demo and Record a demo, instead of a sentence with a link.
 

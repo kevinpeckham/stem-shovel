@@ -295,27 +295,31 @@
 		}
 	}
 
-	// ---- search (a popover over the list) ----
+	// ---- search (a popover over the list: every idea, filtered as you type) ----
 	let searchOpen = $state(false);
 	let searchText = $state("");
-	let hits = $derived.by(() => {
+	/**
+	 * Every idea by default, narrowed by the query: an idea stays when its
+	 * title or notes match or any take's label or number does; the takes that
+	 * matched are flagged so the row opens on them.
+	 */
+	let filtered = $derived.by(() => {
 		const q = searchText.trim().toLowerCase();
-		if (!q) return [];
-		const out: { idea: Idea; take: TakeRow | null; label: string }[] = [];
+		const out: { idea: Idea; byTake: boolean; matching: Set<string> }[] = [];
 		for (const i of data.ideas) {
-			const inIdea = i.title.toLowerCase().includes(q) || i.notes.toLowerCase().includes(q);
-			if (inIdea) out.push({ idea: i, take: null, label: i.title });
-			for (const t of i.takes) {
-				if (t.title.toLowerCase().includes(q) || `take ${t.takeNumber}`.includes(q)) {
-					out.push({
-						idea: i,
-						take: t,
-						label: `${i.title} · Take ${t.takeNumber}${t.title ? ` · ${t.title}` : ""}`,
-					});
-				}
-			}
+			const inIdea = !q || i.title.toLowerCase().includes(q) || i.notes.toLowerCase().includes(q);
+			const matching = new Set(
+				q
+					? i.takes
+							.filter(
+								(t) => t.title.toLowerCase().includes(q) || `take ${t.takeNumber}`.includes(q),
+							)
+							.map((t) => t.id)
+					: [],
+			);
+			if (inIdea || matching.size > 0) out.push({ idea: i, byTake: !inIdea, matching });
 		}
-		return out.slice(0, 30);
+		return out;
 	});
 
 	const fmtWhen = (d: Date) =>
@@ -846,57 +850,114 @@
 			searchOpen = e.newState === "open";
 			if (searchOpen) searchText = "";
 		}}
-		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(36rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+		class="m-0 h-dvh max-h-none w-screen max-w-none rounded-none border-0 bg-oxford text-neutral-100 shadow-2xl shadow-black/60 sm:m-auto sm:h-[min(85dvh,52rem)] sm:w-[min(48rem,calc(100vw-2rem))] sm:rounded-md sm:border sm:border-white/15 [&::backdrop]:bg-black/60 [&:popover-open]:flex [&:popover-open]:flex-col"
 	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Search ideas</h2>
+		<!-- Full screen on a phone, a tall sheet on a desktop: the search box stays put, the list scrolls. -->
+		<div class="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
+			<label class="block min-w-0 grow">
+				<span class="sr-only">Search ideas</span>
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					class="field"
+					type="search"
+					placeholder="Filter by title, notes, take label or number…"
+					autocomplete="off"
+					data-1p-ignore
+					data-lpignore="true"
+					data-bwignore
+					bind:value={searchText}
+					autofocus={searchOpen}
+				/>
+			</label>
 			<button
-				class="button button-xs"
+				class="button button-xs shrink-0"
 				type="button"
 				popovertarget="idea-search"
 				popovertargetaction="hide">Close</button
 			>
 		</div>
-		<label class="block">
-			<span class="sr-only">Search</span>
-			<!-- svelte-ignore a11y_autofocus -->
-			<input
-				class="field"
-				type="search"
-				placeholder="Title, notes, take label…"
-				autocomplete="off"
-				data-1p-ignore
-				data-lpignore="true"
-				data-bwignore
-				bind:value={searchText}
-				autofocus={searchOpen}
-			/>
-		</label>
-		{#if searchText.trim()}
-			{#if hits.length === 0}
-				<p class="mt-4 text-sm opacity-80">Nothing matches.</p>
+		<div class="min-h-0 grow overflow-y-auto px-4 py-3 sm:px-6">
+			{#if filtered.length === 0}
+				<p class="py-6 text-center text-sm opacity-80">
+					{data.ideas.length === 0 ? "Nothing recorded yet." : "Nothing matches."}
+				</p>
 			{:else}
-				<ul
-					class="mt-4 max-h-[50vh] overflow-y-auto divide-y divide-white/10 rounded border border-white/15"
-				>
-					{#each hits as h (h.take ? h.take.id : h.idea.id)}
+				<p class="mb-2 text-12px uppercase tracking-wider opacity-60">
+					{filtered.length} of {data.ideas.length}
+					{data.ideas.length === 1 ? "idea" : "ideas"}
+				</p>
+				<ul class="divide-y divide-white/10 rounded border border-white/15 bg-blue-300/5">
+					{#each filtered as f (f.idea.id)}
 						<li>
-							<button
-								class="block w-full px-4 py-2 text-left hover:bg-white/10"
-								type="button"
-								popovertarget="idea-search"
-								popovertargetaction="hide"
-								onclick={() => show(h.idea, h.take ?? h.idea.takes.at(-1) ?? null)}
-							>
-								<span class="block truncate">{h.label}</span>
-								<span class="block text-12px opacity-70"
-									>{fmtWhen(h.take ? h.take.createdAt : h.idea.createdAt)}</span
+							<!-- A plain accordion, opened on the takes a query matched; a take loads and closes the sheet. -->
+							<details open={f.matching.size > 0}>
+								<summary
+									class="grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-x-3 px-3 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {f
+										.idea.id === ideaId
+										? 'bg-blue-300/10'
+										: ''}"
 								>
-							</button>
+									<span
+										class="i-ph-caret-right inline-block text-12px opacity-70"
+										aria-hidden="true"
+									></span>
+									<span class="min-w-0">
+										<span class="block truncate font-500">{f.idea.title}</span>
+										<span class="block truncate text-12px opacity-70">
+											{fmtWhen(f.idea.createdAt)}{#if f.idea.notes.trim()}
+												· {f.idea.notes.trim().split("\n")[0].slice(0, 60)}{/if}
+										</span>
+									</span>
+									<span class="text-sm tabular-nums opacity-80">
+										{f.idea.takes.length}
+										{f.idea.takes.length === 1 ? "take" : "takes"}
+									</span>
+								</summary>
+								<div class="border-t border-white/10 bg-black/10">
+									{#if f.idea.takes.length === 0}
+										<button
+											class="block w-full px-3 py-2 pl-9 text-left text-sm hover:bg-white/5"
+											type="button"
+											popovertarget="idea-search"
+											popovertargetaction="hide"
+											onclick={() => show(f.idea, null)}
+										>
+											Open the idea (notes only, no takes yet)
+										</button>
+									{:else}
+										<ul class="divide-y divide-white/5">
+											{#each f.idea.takes as t (t.id)}
+												<li>
+													<button
+														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-9 pr-3 text-left hover:bg-white/5 {f.matching.has(
+															t.id,
+														)
+															? 'bg-maximumYellow/10'
+															: ''}"
+														type="button"
+														aria-current={t.id === takeId ? "true" : undefined}
+														popovertarget="idea-search"
+														popovertargetaction="hide"
+														onclick={() => show(f.idea, t)}
+													>
+														<span class="truncate text-sm">{takeLabel(t)}</span>
+														<span class="text-sm tabular-nums opacity-80"
+															>{t.durationSeconds !== null
+																? formatTime(t.durationSeconds, 0)
+																: "–:––"}</span
+														>
+														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</div>
+							</details>
 						</li>
 					{/each}
 				</ul>
 			{/if}
-		{/if}
+		</div>
 	</div>
 </main>

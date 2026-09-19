@@ -47,8 +47,10 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   as demo…, Create new song…, Delete take) and each idea one (Delete idea;
   deleting an idea other than the loaded one leaves the player alone). An
   idea unfolds when its take lands or when it is picked from Search or the
-  phone picker. A **Search** popover finds ideas by title or notes and
-  takes by name or number. With more than one take in the idea, the loaded
+  phone picker. **Search** is a sheet (full screen below `sm`) listing
+  every idea as an accordion, filtered as you type by title, notes, take
+  label or number (`filtered` in the page); ideas whose takes matched open
+  on them. With more than one take in the idea, the loaded
   take's "Take N" label is a dropdown listing every take (number, name,
   length) for a quick jump. On a phone the notes come right after the
   recorder so both are in view and the list gives way to a `ComboBox` of
