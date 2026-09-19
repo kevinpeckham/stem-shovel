@@ -1,7 +1,8 @@
 /**
  * Whether the Idea Recorder drops a take shorter than `SHORT_TAKE_SECONDS`
- * (a mis-tap on Record) instead of saving it. On by default; the checkbox
- * under the recorder toggles it, remembered per browser (localStorage).
+ * (a mis-tap on Record) instead of saving it. Off by default, since it
+ * throws a take away (Kevin's rule for destructive settings); the checkbox
+ * in Recorder settings turns it on, remembered per browser (localStorage).
  */
 const KEY = "stemshovel.discardShortTakes";
 
@@ -9,9 +10,9 @@ export const SHORT_TAKE_SECONDS = 3;
 
 export function loadDiscardShortTakes(): boolean {
 	try {
-		return localStorage.getItem(KEY) !== "false";
+		return localStorage.getItem(KEY) === "true";
 	} catch {
-		return true;
+		return false;
 	}
 }
 

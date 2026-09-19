@@ -90,7 +90,8 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   comes near it). Phones stop the microphone themselves when the app
   leaves the front.
 - **Recorder settings** (the gear in the header, a popover): "Discard takes
-  shorter than 3 seconds automatically", on by default, per browser
+  shorter than 3 seconds automatically", off by default (it throws a take
+  away), per browser
   (`src/lib/utils/discardShortTakes.ts`; the recorder's `minTakeSeconds`);
   "Trim silence at the start and end", off by default
   (`recorderPreferences.trimSilence`). The flag travels with the take's

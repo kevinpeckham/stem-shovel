@@ -52,7 +52,7 @@
 	let notesKey = $state(0);
 	let phase = $state("idle");
 	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
-	let discardShort = $state(true);
+	let discardShort = $state(false);
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
 	/** The microphones the browser lists once permission is granted. */

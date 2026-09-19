@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **"Discard takes shorter than 3 seconds" is off by default.** It throws a take away, so it is opt-in like Trim silence; a browser that had turned it on keeps it on.
+
 ### Added
 
 - **The Idea Recorder shows a take's length and position.** With a take loaded the clock reads position / length, and a position slider under the meter follows playback and seeks.
