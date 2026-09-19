@@ -1923,46 +1923,7 @@
 					bind:this={demoPanel}
 					demos={readyDemos}
 					minHeight={Math.max(560, stemBoxHeight)}
-				>
-					{#snippet actions()}
-						{#if data.canEdit}
-							<label
-								class="button button-sm inline-flex cursor-pointer items-center gap-2 {demoBusy ||
-								readyDemos.length >= MAX_DEMOS_PER_SONG
-									? 'pointer-events-none opacity-50'
-									: ''}"
-								title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
-							>
-								<span class="i-ph-microphone" aria-hidden="true"></span>
-								{demoBusy ? "Uploading…" : "Upload a demo"}
-								<input
-									class="sr-only"
-									type="file"
-									accept={DEMO_ACCEPT}
-									multiple
-									disabled={demoBusy || readyDemos.length >= MAX_DEMOS_PER_SONG}
-									onchange={(e) => uploadDemos(e.currentTarget)}
-								/>
-							</label>
-							<a
-								class="button button-sm inline-flex items-center gap-2"
-								href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
-								title="Idea recorder: record a riff, a melody or a demo for this song"
-							>
-								<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
-								Record a demo
-							</a>
-							{#if demoNotice}
-								<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
-							{/if}
-							{#each demoJobs as job (job.name)}
-								<p class="w-full text-sm text-dim">
-									{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
-								</p>
-							{/each}
-						{/if}
-					{/snippet}
-				</DemoPanel>
+				/>
 			</div>
 		{:else if data.manifest.stems.length > 0}
 			<div class="mb-5" bind:clientHeight={stemBoxHeight}>
@@ -2585,6 +2546,16 @@
 					{/if}
 				</div>
 			</details>
+		{/if}
+		{#if data.canEdit}
+			<a
+				class="button button-sm lg-button-xs"
+				href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+				title="Idea recorder: record a riff, a melody or a demo for this song"
+			>
+				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+				Record Demo
+			</a>
 		{/if}
 		{#if engine && mixDirty}
 			<button

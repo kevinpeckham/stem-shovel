@@ -95,7 +95,7 @@ in three steps driven by `src/lib/upload.ts`:
   retry rules as stem renditions) — browsers cannot all play what phones
   produce, Voice Memos' lossless ALAC `.m4a` for one. The page plays and
   downloads the MP3 once it exists and the original until then; the
-  original stays in Blob. Uploaded from song settings or the demos view,
+  original stays in Blob. Uploaded from the Uploads menu or song settings,
   removed from song settings; played and downloaded from the demos view
   of the song page's player box (`DemoPanel.svelte`: a Stems / Demos
   toggle above the box, demos first when a song has demos but no stems).
