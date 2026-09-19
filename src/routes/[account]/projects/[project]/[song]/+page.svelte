@@ -3007,7 +3007,7 @@
 
 {#snippet afterRows()}
 	<!-- Members always see the row, so they learn comments exist; visitors only when there are some. -->
-	{#if playerEngine && (locatedComments.length > 0 || data.canEdit)}
+	{#if playerEngine && (locatedComments.length > 0 || data.canComment)}
 		<CommentTimeline
 			engine={playerEngine}
 			comments={locatedComments}
