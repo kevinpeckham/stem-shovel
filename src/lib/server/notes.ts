@@ -37,8 +37,10 @@ const MODEL_RATE = 22050;
  * The model runs in a child process, like ffmpeg: TensorFlow.js on the CPU
  * is a minute of solid compute per minute of audio, and in the server's own
  * event loop that would stall every other request on the instance. The
- * child gets the packages by absolute URL (resolved here, so the deployment
- * bundle carries them) and the model from our own static files.
+ * child gets the packages by absolute URL (resolved here) and the model from
+ * our own static files, fetched with Node's fetch under a named user agent:
+ * tfjs's node-fetch client looks like a bot to Vercel's firewall (a 429
+ * challenge on 2026-09-19, docs/environment.md).
  */
 const CHILD_SCRIPT = `
 const [tfUrl, bpUrl, modelUrl, inFile] = process.argv.slice(1);
@@ -49,7 +51,9 @@ const { BasicPitch, noteFramesToTime, outputToNotesPoly } = await import(bpUrl);
 const { readFileSync } = await import("node:fs");
 const raw = readFileSync(inFile);
 const audio = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
-const model = new BasicPitch(tf.loadGraphModel(modelUrl));
+// Node's own fetch, named: tfjs's node-fetch client is challenged (429) by Vercel's bot protection.
+const fetchModel = (u, init) => fetch(u, { ...init, headers: { ...(init && init.headers), "user-agent": "stem-shovel-jobs (+https://www.stemshovel.com)" } });
+const model = new BasicPitch(tf.loadGraphModel(tf.io.http(modelUrl, { fetchFunc: fetchModel })));
 const frames = [], onsets = [];
 await model.evaluateModel(audio, (f, o) => { frames.push(...f); onsets.push(...o); }, () => {});
 const notes = noteFramesToTime(outputToNotesPoly(frames, onsets, 0.5, 0.3, 11, true, 3000, 40, true, 11));
