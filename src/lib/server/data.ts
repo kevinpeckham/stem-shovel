@@ -1,4 +1,4 @@
-import type { ReportKind } from "$lib/val/BugReportSchema";
+import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
@@ -58,6 +58,7 @@ const {
 	inviteCode,
 	comment,
 	bugReport,
+	bugReportVote,
 	supportRequest,
 	userDoc,
 	userDocVersion,
@@ -1215,12 +1216,50 @@ export async function createBugReport(
 	return row;
 }
 
-/** Newest first, open ones before closed, with who reported each. */
-export function listBugReports() {
-	return db.query.bugReport.findMany({
+/** Newest first, open ones before closed, with who reported each and the vote score. */
+export async function listBugReports() {
+	const rows = await db.query.bugReport.findMany({
 		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
-		with: { reporter: { columns: { name: true, email: true } } },
+		with: {
+			reporter: { columns: { name: true, email: true } },
+			votes: { columns: { value: true } },
+		},
 	});
+	return rows.map(({ votes, ...r }) => ({ ...r, score: votes.reduce((n, v) => n + v.value, 0) }));
+}
+
+/** Records, changes or withdraws (`none`) a user's thumbs on a request; null when the request is unknown. */
+export async function voteOnBugReport(reportId: string, userId: string, vote: ReportVote) {
+	const exists = await db.query.bugReport.findFirst({
+		where: eq(bugReport.id, reportId),
+		columns: { id: true },
+	});
+	if (!exists) return null;
+	if (vote === "none") {
+		await db
+			.delete(bugReportVote)
+			.where(and(eq(bugReportVote.reportId, reportId), eq(bugReportVote.userId, userId)));
+	} else {
+		const value = vote === "up" ? 1 : -1;
+		await db
+			.insert(bugReportVote)
+			.values({ reportId, userId, value })
+			.onConflictDoUpdate({
+				target: [bugReportVote.reportId, bugReportVote.userId],
+				set: { value, updatedAt: new Date() },
+			});
+	}
+	const votes = await db.query.bugReportVote.findMany({
+		where: eq(bugReportVote.reportId, reportId),
+		columns: { value: true },
+	});
+	return tally(votes, vote);
+}
+
+function tally(votes: { value: number }[], mine: ReportVote) {
+	const up = votes.filter((v) => v.value > 0).length;
+	const down = votes.length - up;
+	return { up, down, score: up - down, mine };
 }
 
 // ---- support requests (/support; src/lib/remote/support.remote.ts) ---------
@@ -1343,9 +1382,13 @@ export async function deleteBugReport(id: string) {
 	return !!row;
 }
 
-/** Feature requests as signed-in users see them: no reporter, open first, then complete, then closed. */
-export function listFeatureRequestsPublic() {
-	return db.query.bugReport.findMany({
+/**
+ * Feature requests as signed-in users see them: no reporter, each with its
+ * vote tally and the viewer's own thumbs; open ones by score (then newest),
+ * then complete, then closed.
+ */
+export async function listFeatureRequestsPublic(userId: string | null) {
+	const rows = await db.query.bugReport.findMany({
 		where: eq(bugReport.kind, "feature"),
 		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
 		columns: {
@@ -1358,7 +1401,19 @@ export function listFeatureRequestsPublic() {
 			respondedAt: true,
 			createdAt: true,
 		},
+		with: { votes: { columns: { value: true, userId: true } } },
 	});
+	return rows
+		.map(({ votes, ...r }) => {
+			const own = votes.find((v) => v.userId === userId);
+			const mine: ReportVote = own ? (own.value > 0 ? "up" : "down") : "none";
+			return { ...r, votes: tally(votes, mine) };
+		})
+		.sort((a, b) =>
+			a.status !== b.status
+				? 0
+				: b.votes.score - a.votes.score || b.createdAt.getTime() - a.createdAt.getTime(),
+		);
 }
 
 /** Who hears about new bug reports. */

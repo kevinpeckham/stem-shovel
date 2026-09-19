@@ -12,4 +12,4 @@ Reports go straight to the people who run Stem Shovel. Tick the box at the botto
 
 ## Requesting a feature
 
-Have an idea? **Feature Requests** in the footer opens the page that lists what members have asked for, what we said, and what has shipped. **Request a feature** there opens the same kind of form as a bug report: a title and a description. Say what you are trying to do and how the feature would help; an example from your own work is the most useful thing you can give. Tick the box to be emailed about it, so we can learn more and tell you when it ships.
+Have an idea? **Feature Requests** in the footer opens the page that lists what members have asked for, what we said, and what has shipped. Give the ones you want a thumbs up (or down); the favourites rise to the top, and a second press on your own thumbs takes it back. **Request a feature** there opens the same kind of form as a bug report: a title and a description. Say what you are trying to do and how the feature would help; an example from your own work is the most useful thing you can give. Tick the box to be emailed about it, so we can learn more and tell you when it ships.

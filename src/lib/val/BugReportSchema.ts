@@ -68,4 +68,10 @@ export const BugReportCreateSchema = v.object({
 
 export const BugReportStatusSchema = v.object({ id: NanoIdSchema, status: BugStatusSchema });
 
+/** A signed-in user's thumbs on a feature request; "none" withdraws it. */
+export const REPORT_VOTES = ["up", "down", "none"] as const;
+export const ReportVoteSchema = v.picklist(REPORT_VOTES);
+export type ReportVote = v.InferOutput<typeof ReportVoteSchema>;
+export const BugReportVoteSchema = v.object({ id: NanoIdSchema, vote: ReportVoteSchema });
+
 export type BugReportCreate = v.InferOutput<typeof BugReportCreateSchema>;

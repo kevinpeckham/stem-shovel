@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
-import { BugReportCreateSchema, BugReportStatusSchema } from "./BugReportSchema";
+import {
+	BugReportCreateSchema,
+	BugReportStatusSchema,
+	BugReportVoteSchema,
+} from "./BugReportSchema";
 
 describe("BugReportCreateSchema", () => {
 	test("trims and defaults the captured fields", () => {
@@ -43,6 +47,15 @@ describe("BugReportCreateSchema", () => {
 		expect(v.safeParse(BugReportCreateSchema, { title: "x".repeat(121), body: "y" }).success).toBe(
 			false,
 		);
+	});
+});
+
+describe("BugReportVoteSchema", () => {
+	test("up, down or none", () => {
+		const id = "V1StGXR8_Z5jdHi6B-myT";
+		expect(v.safeParse(BugReportVoteSchema, { id, vote: "up" }).success).toBe(true);
+		expect(v.safeParse(BugReportVoteSchema, { id, vote: "none" }).success).toBe(true);
+		expect(v.safeParse(BugReportVoteSchema, { id, vote: "meh" }).success).toBe(false);
 	});
 });
 

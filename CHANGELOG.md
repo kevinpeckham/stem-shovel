@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Vote on feature requests.** Signed-in users give a request a thumbs up or down on /feature-requests (a second press takes it back); open requests list by score, the admin list shows it. `bug_report_vote`, migration 0047.
+
 ## [0.23.0] - 2026-09-19
 
 ### Added

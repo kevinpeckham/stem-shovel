@@ -21,6 +21,8 @@
 			userAgent: string;
 			/** Where they said we may write about it, when they offered one. */
 			contactEmail: string | null;
+			/** Thumbs up minus thumbs down from signed-in users. */
+			score: number;
 			createdAt: Date;
 			reporter: { name: string } | null;
 		}[];
@@ -56,6 +58,9 @@
 						{/if}
 					</span>
 					<span class="text-13px text-dim">
+						{#if kind === "feature"}
+							<span title="Thumbs up minus thumbs down">score {b.score}</span> ·
+						{/if}
 						{b.reporter?.name ?? "someone"} · {formatDate(b.createdAt)}
 						{#if b.status !== "open"}
 							· <span

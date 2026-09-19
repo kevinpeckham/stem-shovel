@@ -144,8 +144,9 @@ check and the tests without any secret.
 - `src/lib/remote/bugs.remote.ts`, `ReportForm.svelte` — "Report a bug" in the
   footer and "Request a feature" on /feature-requests for signed-in users,
   with an optional address for follow-up; a `bug_report` row (`kind`) and an
-  email to every system admin; priorities, responses and completion on
-  /admin, the requester emailed when a request ships.
+  email to every system admin; thumbs up and down from signed-in users sort
+  the open ones; priorities, responses and completion on /admin, the
+  requester emailed when a request ships.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
 - `src/hooks.client.ts`, `src/instrumentation.server.ts`, `src/routes/+layout.ts` —
   Sentry in the browser and on the server, Web Analytics and Speed Insights

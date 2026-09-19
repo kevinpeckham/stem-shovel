@@ -7,6 +7,7 @@ export * from "./auditLog";
 export * from "./accountMember";
 export * from "./authAccount";
 export * from "./bugReport";
+export * from "./bugReportVote";
 export * from "./comment";
 export * from "./demo";
 export * from "./idea";

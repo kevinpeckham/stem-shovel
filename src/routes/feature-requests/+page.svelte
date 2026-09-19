@@ -2,6 +2,9 @@
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import { formatDate } from "$lib/utils/formatDate";
 	import ReportForm from "$lib/components/ReportForm.svelte";
+	import { voteOnBug } from "$lib/remote/bugs.remote";
+	import { errorMessage } from "$lib/utils/errorMessage";
+	import { notify } from "$lib/state/notifications.svelte";
 
 	let { data } = $props();
 	const LABEL = { open: "Open", complete: "Complete", closed: "Closed" } as const;
@@ -24,7 +27,8 @@
 	<header class="max-w-article mb-6">
 		<h1 class="heading-2">Feature requests</h1>
 		<p class="opacity-90 text-balance">
-			What members have asked for, what we said, and what has shipped.
+			What members have asked for, what we said, and what has shipped. Give the ones you want a
+			thumbs up: the favourites rise to the top.
 		</p>
 		<div class="mt-4 flex flex-wrap items-center gap-4">
 			<button class="button-accent" type="button" popovertarget="feature-request">
@@ -36,6 +40,37 @@
 			{/if}
 		</div>
 	</header>
+
+	{#snippet thumb(id: string, kind: "up" | "down", mine: string, count: number)}
+		{@const vote = voteOnBug.for(`${id}:${kind}`)}
+		{@const active = mine === kind}
+		<form
+			{...vote.enhance(async ({ submit }) => {
+				try {
+					await submit();
+				} catch (e) {
+					notify(errorMessage(e), { kind: "error" });
+				}
+			})}
+		>
+			<input {...vote.fields.id.as("hidden", id)} />
+			<!-- A second press on your own thumbs takes it back. -->
+			<input {...vote.fields.vote.as("hidden", active ? "none" : kind)} />
+			<button
+				class="button button-xs {active ? 'border-maximumYellow text-maximumYellow' : ''}"
+				aria-pressed={active}
+				aria-label="Thumbs {kind}"
+				disabled={!!vote.pending}
+			>
+				<span
+					class="{kind === 'up' ? 'i-ph-thumbs-up' : 'i-ph-thumbs-down'} {active
+						? ''
+						: 'opacity-80'}"
+				></span>
+				{count}
+			</button>
+		</form>
+	{/snippet}
 
 	{#snippet list(items: typeof data.requests, heading: string)}
 		{#if items.length > 0}
@@ -63,6 +98,13 @@
 								</span>
 							</div>
 							<p class="mt-1 whitespace-pre-wrap text-sm opacity-90">{r.body}</p>
+							<div class="mt-2 flex items-center gap-2 text-13px" aria-label="Votes">
+								{@render thumb(r.id, "up", r.votes.mine, r.votes.up)}
+								{@render thumb(r.id, "down", r.votes.mine, r.votes.down)}
+								<span class="text-dim" title="Thumbs up minus thumbs down"
+									>score {r.votes.score}</span
+								>
+							</div>
 							{#if r.response}
 								<div class="mt-2 rounded border border-white/10 bg-blue-300/5 px-3 py-2 text-sm">
 									<span class="text-11px uppercase tracking-wider text-dim"

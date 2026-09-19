@@ -70,7 +70,7 @@ production, so it is closed there.
 ## Abuse limits
 
 `src/lib/server/rateLimit.ts` (per function instance): custom mixes 20/h per
-user or address, bug reports 10/h, invitations 30/h, invite codes 30/h,
+user or address, bug reports 10/h, feature-request votes 120/h, invitations 30/h, invite codes 30/h,
 viewing links 60/h, share emails 5/min and 30/h. Better Auth's own limiter
 covers sign-in and password endpoints in production. Codes are 12 characters
 from a 31-symbol alphabet.

@@ -330,6 +330,13 @@
       "when": 1789849933605,
       "tag": "0046_recording_trim_silence",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1789853287485,
+      "tag": "0047_bug_report_vote",
+      "breakpoints": true
     }
   ]
 }

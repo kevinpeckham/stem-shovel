@@ -6,6 +6,7 @@ import { auditLog } from "./auditLog";
 import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
+import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { idea } from "./idea";
@@ -51,8 +52,14 @@ export const aiRequestRelations = relations(aiRequest, ({ one }) => ({
 	song: one(song, { fields: [aiRequest.songId], references: [song.id] }),
 }));
 
-export const bugReportRelations = relations(bugReport, ({ one }) => ({
+export const bugReportRelations = relations(bugReport, ({ one, many }) => ({
 	reporter: one(user, { fields: [bugReport.userId], references: [user.id] }),
+	votes: many(bugReportVote),
+}));
+
+export const bugReportVoteRelations = relations(bugReportVote, ({ one }) => ({
+	report: one(bugReport, { fields: [bugReportVote.reportId], references: [bugReport.id] }),
+	user: one(user, { fields: [bugReportVote.userId], references: [user.id] }),
 }));
 
 export const supportRequestRelations = relations(supportRequest, ({ one }) => ({

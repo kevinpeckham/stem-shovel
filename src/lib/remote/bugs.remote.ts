@@ -8,6 +8,7 @@ import {
 	setBugReportPriority,
 	setBugReportStatus,
 	systemAdminEmails,
+	voteOnBugReport,
 } from "$lib/server/data";
 import {
 	sendBugReportEmail,
@@ -19,6 +20,7 @@ import {
 	BugReportPrioritySchema,
 	BugReportResponseSchema,
 	BugReportStatusSchema,
+	BugReportVoteSchema,
 } from "$lib/val/BugReportSchema";
 import { IdSchema } from "$lib/val/SongSchema";
 import { HOUR, rateLimited } from "$lib/server/rateLimit";
@@ -49,6 +51,16 @@ export const reportBug = form(BugReportCreateSchema, async (input) => {
 		}
 	});
 	return { sent: true };
+});
+
+/** Any signed-in user gives a feature request a thumbs up or down, or takes it back (`none`); the page re-sorts by score. */
+export const voteOnBug = form(BugReportVoteSchema, async ({ id, vote }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	if (await rateLimited(`vote:${user.id}`, 120, HOUR)) error(429, "Too many votes for one hour.");
+	const tally = await voteOnBugReport(id, user.id, vote);
+	if (!tally) error(404, "Feature request not found");
+	return tally;
 });
 
 /** System admins mark reports complete, close and reopen them on /admin; a completed feature request tells its requester when they offered an address for that. */
