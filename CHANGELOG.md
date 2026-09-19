@@ -11,6 +11,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Added
 
 - **A Releases page** at `/releases`: every version's notes from this changelog, newest first, rendered at build time; the footer's version number and a Releases link lead to it.
+- **A Record Idea button** beside Add New Song at the bottom of a project page, opening the Idea Recorder.
 - **The Idea Recorder on the front page**: the real recorder in its phone layout with a note board, nothing uploaded; takes stay on the page as playable, downloadable blobs, and the copy sends a visitor to sign in or a member to their own recorder.
 
 ## [0.19.0] - 2026-09-19

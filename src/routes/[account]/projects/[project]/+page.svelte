@@ -325,10 +325,20 @@
 	{/if}
 
 	{#if inProgress.length > 0 || ideas.length > 0}
-		<div class="mt-10">
+		<div class="mt-10 flex flex-wrap items-center gap-3">
 			<button class="button button-accent" type="button" popovertarget="add-song"
 				><span class="i-ph-plus"></span>Add New Song</button
 			>
+			{#if data.canEdit}
+				<a
+					class="button"
+					href="/{data.account.slug}/ideas/recorder"
+					title="Idea recorder: record a riff, a melody or a demo, then make a song of it"
+				>
+					<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+					Record Idea
+				</a>
+			{/if}
 		</div>
 	{/if}
 
