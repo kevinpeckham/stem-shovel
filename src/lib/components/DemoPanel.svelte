@@ -22,10 +22,12 @@
 	}
 	interface Props {
 		demos: PanelDemo[];
+		/** At least this tall (the stem player's box, so the page keeps its shape across the toggle); the actions sit at the bottom. */
+		minHeight?: number;
 		/** Editors get Upload and Record buttons under the list (`actions`). */
 		actions?: import("svelte").Snippet;
 	}
-	let { demos, actions }: Props = $props();
+	let { demos, actions, minHeight = 0 }: Props = $props();
 
 	let current = $state<string | null>(null);
 	let paused = $state(true);
@@ -97,7 +99,8 @@
 
 <div
 	bind:this={panelEl}
-	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4"
+	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4 grid-rows-[auto_auto_1fr_auto]"
+	style:min-height={minHeight ? `${minHeight}px` : undefined}
 	aria-label="Demo recordings"
 >
 	<div class="flex flex-wrap items-center gap-4">
@@ -173,7 +176,7 @@
 		aria-label="Position"
 	/>
 	{#if demos.length > 0}
-		<ul class="grid gap-2" aria-label="Demos">
+		<ul class="grid gap-2 content-start" aria-label="Demos">
 			{#each demos as d (d.id)}
 				{@const playing = current === d.id && !paused}
 				<li
@@ -237,9 +240,11 @@
 				</li>
 			{/each}
 		</ul>
+	{:else}
+		<div></div>
 	{/if}
 	{#if actions}
-		<div class="flex flex-wrap items-center gap-3">
+		<div class="flex flex-wrap items-center gap-3 self-end">
 			{@render actions()}
 		</div>
 	{/if}

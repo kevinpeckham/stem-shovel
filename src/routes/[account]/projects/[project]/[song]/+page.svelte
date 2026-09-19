@@ -238,6 +238,8 @@
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
 	let demoPanel = $state<DemoPanel | null>(null);
+	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
+	let stemBoxHeight = $state(0);
 	let chosenView = $state<"stems" | "demos" | null>(null);
 	let playerView = $derived(
 		chosenView ?? (data.manifest.stems.length === 0 && readyDemos.length > 0 ? "demos" : "stems"),
@@ -1917,7 +1919,11 @@
 		</div>
 		{#if playerView === "demos"}
 			<div class="mb-5">
-				<DemoPanel bind:this={demoPanel} demos={readyDemos}>
+				<DemoPanel
+					bind:this={demoPanel}
+					demos={readyDemos}
+					minHeight={Math.max(560, stemBoxHeight)}
+				>
 					{#snippet actions()}
 						{#if data.canEdit}
 							<label
@@ -1959,7 +1965,7 @@
 				</DemoPanel>
 			</div>
 		{:else if data.manifest.stems.length > 0}
-			<div class="mb-5">
+			<div class="mb-5" bind:clientHeight={stemBoxHeight}>
 				<StemPlayer
 					manifest={data.manifest}
 					{stemMenu}
