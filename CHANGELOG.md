@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-19
+
 ### Added
 
 - **Feature requests: an address for follow-up.** The form has a box to tick to be emailed about the request (prefilled with the account's address, editable); the admin list shows it, responses go there, and Mark complete emails the requester that it shipped (migration 0045, `bug_report.contact_email`).
@@ -16,6 +18,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Feature Requests in the footer** links to the page that lists every request; "Request a feature" is a button at the top of that page, and system admins see a Manage requests link there. The form is `ReportForm.svelte`, shared with the footer's Report a bug.
 - **Admin feature requests**: Mark complete, Close/Reopen and Respond are small buttons.
+- **BETA** beside the wordmark in the header, 13px on the baseline.
 - **Front-page demo notice** reads "Note: this demo does not store recordings beyond your current session."
 
 ### Fixed
