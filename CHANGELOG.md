@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-19
+
 ### Added
 
 - **A user drill-down in the admin** (`/admin/users/[id]`, each name in the Users list links to it): joined, last sign-in and last seen (from sessions), open sessions and the newest one's browser and address, sign-in methods and whether a password is set, two-factor state, memberships with roles and founder status, and what the user has made across every account (ideas and takes with their length and size, projects, songs, stems, document edits, AI requests, bug reports, invitations, share links, invite codes), plus their recent audit lines. The list itself now shows two-factor state and the last sign-in date.
