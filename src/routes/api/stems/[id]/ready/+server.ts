@@ -1,7 +1,7 @@
 import { accountOfStem, memberOf } from "$lib/server/access";
 import { isOurBlobUrl } from "$lib/server/blob";
 import { markStemReady, reservedPathname } from "$lib/server/data";
-import { schedulePlayback } from "$lib/server/transcode";
+import { schedulePlayback } from "$lib/server/jobs";
 import { error, json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";

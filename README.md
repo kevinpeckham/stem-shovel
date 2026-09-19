@@ -96,13 +96,17 @@ check and the tests without any secret.
   (`src/routes/api/stems/[id]/midi/`) share the route and the three steps,
   minus the decode; `MidiBadge` / `MidiRoll` show a MIDI file as a piano
   roll in the row (`src/lib/audio/midi.ts` parses it in the browser).
-- `src/lib/server/transcode.ts` — after an upload, ffmpeg (`ffmpeg-static`,
-  traced into the Vercel function) renders an AAC playback rendition of each
-  stem and an MP3 of each demo, in the background of the request
-  (`server/background.ts` wraps Vercel's `waitUntil`); page loads schedule
-  any that are missing. `src/lib/server/mix.ts` renders MP3 mixdowns from
-  the renditions: the original mix is cached in Blob and kept current as
-  stems change, custom mixes (`?stems=id:gain,…&master=m`) render on demand.
+- `src/lib/server/transcode.ts` — after an upload, ffmpeg (`ffmpeg-static`)
+  renders an AAC playback rendition of each stem and an MP3 of each demo and
+  take; page loads schedule any that are missing. `src/lib/server/mix.ts`
+  renders MP3 mixdowns from the renditions: the original mix is cached in
+  Blob and kept current as stems change, custom mixes
+  (`?stems=id:gain,…&master=m`) render on demand. All of it runs in the
+  app's own **jobs function**: `src/lib/server/jobs.ts` posts the job to
+  `POST /api/jobs` after the response (`server/background.ts` wraps
+  Vercel's `waitUntil`), and that route is its own Vercel function, the only
+  one carrying ffmpeg and the transcription stack, so page functions stay
+  small and start fast (docs/environment.md "Cold starts").
 - `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
   on a song (docs/audio-engine.md), with a `comment` table.
 - `src/routes/+page.server.ts`, `SongPlayerDemo.svelte`, `SongDocsDemo.svelte`,

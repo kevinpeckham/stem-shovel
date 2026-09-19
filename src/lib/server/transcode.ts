@@ -11,10 +11,8 @@ import {
 } from "$lib/server/data";
 import { accessOfUrl } from "$lib/utils/blobAccess";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
-import { background } from "$lib/server/background";
 import { ensureOriginalMix } from "$lib/server/mix";
 import { ensureSongNotes } from "$lib/server/notes";
-import { getRequestEvent } from "$app/server";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";
@@ -32,10 +30,10 @@ import { promisify } from "node:util";
  * egress per listen. AAC because every browser's decodeAudioData takes it
  * (Safari and iPads included), which is not verified for Opus.
  *
- * Runs in the background of the request that made the stem ready
- * (`waitUntil`, so the response is not held) and again from the song page for
- * any stem still without one (never tried, failed a while ago, or stuck).
- * `claimPlayback` is the lock: a stem is rendered by one request at a time.
+ * Runs in the jobs function (src/lib/server/jobs.ts) after the request that
+ * made the stem ready, and again from the song page for any stem still
+ * without one (never tried, failed a while ago, or stuck). `claimPlayback`
+ * is the lock: a stem is rendered by one job at a time.
  */
 
 const BITRATE = { mono: "128k", stereo: "192k" };
@@ -43,29 +41,18 @@ const run = promisify(execFile);
 
 /**
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
- * refreshes the cached original mix of every song touched.
+ * refreshes the cached original mix of every song touched, then the notes
+ * the chart draft reads (skipped for no-AI songs; resumes if cut short).
+ * `origin` serves the transcription model (docs/environment.md).
  */
-export function schedulePlayback(stemIds: string[], origin = originOfRequest()) {
-	if (stemIds.length === 0) return;
-	background(async () => {
-		const songIds = new Set<string>();
-		for (const id of stemIds) {
-			const songId = await transcodeStem(id);
-			if (songId) songIds.add(songId);
-		}
-		for (const id of songIds) await ensureOriginalMix(id);
-		// Then the notes the chart draft reads (skipped for no-AI songs; resumes if cut short).
-		for (const id of songIds) await ensureSongNotes(id, origin);
-	});
-}
-
-/** The site's origin, for fetching our own static model files from a background job. */
-function originOfRequest(): string {
-	try {
-		return getRequestEvent().url.origin;
-	} catch {
-		return "https://www.stemshovel.com";
+export async function renderStems(stemIds: string[], origin: string): Promise<void> {
+	const songIds = new Set<string>();
+	for (const id of stemIds) {
+		const songId = await transcodeStem(id);
+		if (songId) songIds.add(songId);
 	}
+	for (const id of songIds) await ensureOriginalMix(id);
+	for (const id of songIds) await ensureSongNotes(id, origin);
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */
@@ -127,19 +114,13 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 }
 
 /** Demo recordings become MP3s (192 kbps, source channels up to stereo), one at a time. */
-export function scheduleDemoPlayback(demoIds: string[]) {
-	if (demoIds.length === 0) return;
-	background(async () => {
-		for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
-	});
+export async function renderDemos(demoIds: string[]): Promise<void> {
+	for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
 }
 
-/** Scratch recordings (docs/demo-recording.md) get the same MP3. */
-export function scheduleRecordingPlayback(recordingIds: string[]) {
-	if (recordingIds.length === 0) return;
-	background(async () => {
-		for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
-	});
+/** Takes (docs/demo-recording.md) get the same MP3. */
+export async function renderRecordings(recordingIds: string[]): Promise<void> {
+	for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
 }
 
 /** The row family an MP3 is made for: how to claim it, record the result or give up. */

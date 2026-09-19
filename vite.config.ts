@@ -79,6 +79,9 @@ export default defineConfig({
 			project: "stem-shovel",
 			authToken: process.env.SENTRY_AUTH_TOKEN,
 			autoUploadSourceMaps: !!process.env.VERCEL && !!process.env.SENTRY_AUTH_TOKEN,
+			// No load wrappers: they import @sentry/sveltekit's server entry into every
+			// route, which carries the Vite plugin (src/instrumentation.server.ts).
+			autoInstrument: false,
 		}),
 		// varlock replaces Vite's .env loading with .env.schema (validated, typed,
 		// secrets pulled from 1Password). Must come before the SvelteKit plugin.

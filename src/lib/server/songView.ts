@@ -7,7 +7,7 @@ import {
 	stemsWantingPlayback,
 } from "$lib/server/data";
 import { renderMarkdown } from "$lib/server/markdown";
-import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/transcode";
+import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/jobs";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 
@@ -20,10 +20,16 @@ export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 export async function songView(song: SongRow) {
 	schedulePlayback(stemsWantingPlayback(song.stems));
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
+	// Three independent lookups (file URLs, the manifest, the comments) run together.
+	const [presented, manifest, comments] = await Promise.all([
+		presentSongFiles(song),
+		manifestFor(song),
+		listComments(song.id),
+	]);
 	return {
-		song: await presentSongFiles(song),
-		manifest: await manifestFor(song),
-		comments: await listComments(song.id),
+		song: presented,
+		manifest,
+		comments,
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),

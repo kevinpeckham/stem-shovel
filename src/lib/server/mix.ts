@@ -1,7 +1,6 @@
 import { accessOfUrl } from "$lib/utils/blobAccess";
 import { deleteBlobs, mixPathname, putBlob, readBlob } from "$lib/server/blob";
 import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "$lib/server/data";
-import { background } from "$lib/server/background";
 import { FADER_MAX } from "$lib/audio/engine.svelte";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
@@ -222,13 +221,4 @@ export async function ensureOriginalMix(songId: string): Promise<void> {
 		await releaseSongMix(songId);
 		throw e;
 	}
-}
-
-/** Renders the songs' original mixes in the background, one after another. */
-export function scheduleMix(songIds: string[]) {
-	const ids = [...new Set(songIds)];
-	if (ids.length === 0) return;
-	background(async () => {
-		for (const id of ids) await ensureOriginalMix(id);
-	});
 }

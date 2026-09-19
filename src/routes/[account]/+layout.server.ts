@@ -15,12 +15,14 @@ import type { LayoutServerLoad } from "./$types";
  * (src/lib/server/viewAccess.ts).
  */
 export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) => {
-	const account = await publicAccountBySlug(params.account);
+	// The account and the visitor's share codes are independent lookups: together.
+	const [account, grants] = await Promise.all([
+		publicAccountBySlug(params.account),
+		openShareLinks(shareCodesFrom(url, cookies)),
+	]);
 	if (account.status !== "active") {
 		error(403, "This account is suspended. Its pages are closed until it is reactivated.");
 	}
-	const carried = shareCodesFrom(url, cookies);
-	const grants = await openShareLinks(carried);
 	const arriving = url.searchParams.get("share")?.trim();
 	if (arriving && grants.some((g) => g.code === arriving)) {
 		const remembered = (cookies.get(SHARE_COOKIE) ?? "").split(",").filter(Boolean);

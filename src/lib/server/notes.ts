@@ -1,7 +1,6 @@
 import { extractFeatures } from "$lib/audio/analysis";
 import type { Note } from "$lib/audio/chords";
 import { readBlob } from "$lib/server/blob";
-import { background } from "$lib/server/background";
 import {
 	appendSongNotes,
 	claimSongNotes,
@@ -185,11 +184,13 @@ export async function ensureSongNotes(songId: string, origin: string): Promise<v
 	}
 }
 
-/** After the response: transcribe these songs (each picks up where it left off). */
-export function scheduleNotes(songIds: string[], origin: string) {
-	const ids = [...new Set(songIds)];
-	if (ids.length === 0) return;
-	background(async () => {
-		for (const id of ids) await ensureSongNotes(id, origin);
-	});
+/**
+ * Never called. The child process above resolves tfjs and Basic Pitch by
+ * name, which Vercel's file tracer cannot see; these literal imports make
+ * it pack both with the jobs function (they were missing on Vercel until
+ * 2026-09-19, so notes were never transcribed there).
+ */
+export async function traceTranscriptionDeps(): Promise<void> {
+	await import("@tensorflow/tfjs");
+	await import("@spotify/basic-pitch");
 }

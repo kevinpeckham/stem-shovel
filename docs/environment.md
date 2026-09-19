@@ -70,6 +70,43 @@ environment in.
 - Browser-only packages (the woof-editor) are imported dynamically in
   `onMount` so their server builds never enter the function.
 
+### Cold starts and the jobs function
+
+Warm requests answer in 0.15–0.35 s; a **cold start** of the page function
+cost 5–6 s (measured 2026-09-19 against idle deployments), and with one or
+two people using the app most sessions began with one. Three things keep it
+down now:
+
+- **Background work runs in its own function.** Renditions, mixes and notes
+  transcription used to run inside the page function after the response,
+  which put ffmpeg (77 MB) and the transcription stack in every route's
+  bundle. `src/lib/server/jobs.ts` now posts each job to `POST /api/jobs`
+  (`src/routes/api/jobs/+server.ts`, `config.split = true`, 300 s), which
+  answers 202 and does the work under its own `waitUntil`. The route trusts
+  a bearer token derived from `BETTER_AUTH_SECRET` (an HMAC, no extra
+  secret per stage) and validates the body with `JobSchema`. In
+  development the dev server serves both sides. The page function's
+  `node_modules` went from 131 MB to 33 MB; the jobs function carries
+  117 MB including tfjs and Basic Pitch, which the tracer only packs
+  because `notes.ts` names them in a literal `import()`
+  (`traceTranscriptionDeps`); before that, notes were never transcribed on
+  Vercel ("Cannot find package '@tensorflow/tfjs'" in every song page's
+  background).
+- **Sentry is `@sentry/node` on the server**, without its ESM loader hook and
+  without tracing (see "Sentry" below). The SvelteKit server entry
+  re-exports the Vite plugin, which dragged Vite, esbuild and Babel into
+  every cold start, and the loader hook slowed every import after it.
+- **A cron keeps the page function warm**: `vercel.json` calls
+  `GET /api/warm` every five minutes on production (crons run on
+  production only), which does one `select 1` and answers ok.
+
+The emulated cold start (importing the built function with `node`, on the
+VM) went from 1.8 s to 1.2 s before the first request; Lambda multiplies
+that. Measure a real one by hitting an idle deployment's own URL twice.
+Page loads also run their independent queries together (`songView`, the
+song, project and account loaders), which trims a warm request by tens of
+milliseconds.
+
 ## AI Gateway
 
 `AI_GATEWAY_API_KEY` (optional, 1Password) switches on "Ask AI to check" and
@@ -122,21 +159,27 @@ that collect "Refused to" console lines are how the policy was checked.
 
 ## Sentry
 
-`@sentry/sveltekit` 10 (set up with Sentry's wizard, then trimmed).
-`src/hooks.client.ts` initialises the browser SDK and `src/hooks.server.ts`
-wraps `handle` with `sentryHandle()` and exports `handleErrorWithSentry()`;
-the server `Sentry.init` lives in `src/instrumentation.server.ts`, which
-SvelteKit loads before the app because `experimental.instrumentation.server`
-is on in `vite.config.ts` (adapter-vercel supports it). The DSN is a public
-value and is written inline in both files; the project is `lightning-jar /
-stem-shovel`. Environments: `development` locally, `preview`/`production`
-from `VERCEL_ENV`. Sample rates: 20 % of traces, 10 % of sessions for
+`@sentry/sveltekit` 10 in the browser (set up with Sentry's wizard, then
+trimmed): `src/hooks.client.ts` initialises the browser SDK. On the server
+it is **`@sentry/node`** (same version, a direct dependency): the server
+`Sentry.init` lives in `src/instrumentation.server.ts`, which SvelteKit
+loads before the app because `experimental.instrumentation.server` is on in
+`vite.config.ts` (adapter-vercel supports it), with
+`registerEsmLoaderHooks: false` and `tracesSampleRate: 0` (errors only), and
+`src/hooks.server.ts` exports a `handleError` that captures every unexpected
+error (never a 404) with the route as a tag. Why not the SvelteKit server
+entry: it re-exports the Vite plugin, and the loader hook slows every import
+(see "Cold starts and the jobs function"). The DSN is a public value and is
+written inline in both files; the project is `lightning-jar / stem-shovel`.
+Environments: `development` locally, `preview`/`production` from
+`VERCEL_ENV`. Browser sample rates: 20 % of traces, 10 % of sessions for
 Replay and every session with an error; no user identity or request bodies
 (docs/security.md).
 
-`sentrySvelteKit()` in `vite.config.ts` instruments load functions and
-uploads source maps only when `VERCEL` and `SENTRY_AUTH_TOKEN` are both set,
-so local builds never upload. The token is an organisation auth token from
+`sentrySvelteKit()` in `vite.config.ts` uploads source maps only when
+`VERCEL` and `SENTRY_AUTH_TOKEN` are both set, so local builds never upload;
+its load-function wrappers are off (`autoInstrument: false`), since they
+import the SvelteKit server entry into every route. The token is an organisation auth token from
 Sentry (Settings → Auth Tokens) with `project:releases` and `org:read`, kept
 in the 1Password environment like every other secret and declared
 `@optional` in `.env.schema`. It reaches the Sentry plugin because

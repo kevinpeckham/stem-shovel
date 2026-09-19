@@ -1,7 +1,7 @@
 import { accountOfRecording, memberOf } from "$lib/server/access";
 import { isOurBlobUrl } from "$lib/server/blob";
 import { markRecordingReady, reservedPathname } from "$lib/server/data";
-import { scheduleRecordingPlayback } from "$lib/server/transcode";
+import { scheduleRecordingPlayback } from "$lib/server/jobs";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

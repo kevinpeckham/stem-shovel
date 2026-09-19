@@ -6,7 +6,7 @@ import {
 	songLink,
 	songPicker,
 } from "$lib/server/data";
-import { scheduleRecordingPlayback } from "$lib/server/transcode";
+import { scheduleRecordingPlayback } from "$lib/server/jobs";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
 import * as v from "valibot";

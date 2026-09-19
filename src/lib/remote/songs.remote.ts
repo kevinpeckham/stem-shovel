@@ -4,7 +4,7 @@ import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
 import { ShareSongSchema } from "$lib/val/ShareSongSchema";
 import { sendShareEmail } from "$lib/server/email";
-import { scheduleMix } from "$lib/server/mix";
+import { scheduleMix } from "$lib/server/jobs";
 import {
 	accountOfProject,
 	accountOfDemo,
