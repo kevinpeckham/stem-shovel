@@ -8,11 +8,11 @@ export interface Release {
 }
 
 /**
- * CHANGELOG.md (Keep a Changelog style: `## [x.y.z] - YYYY-MM-DD` sections
- * with `### Added` / `### Changed` / `### Fixed` / `### Technical`) as the
- * releases page shows it: every version, newest first, the Technical
- * subsection left out as the operator's business, and the Unreleased
- * section only when it has something in it.
+ * A Keep-a-Changelog file (`## [x.y.z] - YYYY-MM-DD` sections with
+ * `### Added` / `### Changed` / `### Fixed` / `### Technical`) as the
+ * releases page shows it: every version, newest first, any Technical
+ * subsection left out, and the Unreleased section only when it has
+ * something in it. The page reads RELEASES.md, the user-facing notes.
  */
 export function parseChangelog(markdown: string): Release[] {
 	const out: Release[] = [];

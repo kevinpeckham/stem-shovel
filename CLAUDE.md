@@ -143,4 +143,8 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   functions, $val schemas, editors, screenshots) and `lightning-jar/lj-website`
   (look and feel, uno config, page structure). Read them with `gh api`.
 - Releases: `/release <version>` (`.claude/skills/release/SKILL.md`).
+  Two files per release: CHANGELOG.md is the full record; RELEASES.md
+  feeds `/releases` and carries only what a user would notice (features,
+  changes, fixes), never permissions, admin actions, security or
+  architecture.
 - Do not record in memory what the repo already documents.

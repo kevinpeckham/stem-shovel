@@ -48,6 +48,16 @@ Set `version` in `package.json` to the target version.
 4. Bold the lead phrase of each entry, one entry per user-visible change;
    match the existing style.
 
+## Step 3b: RELEASES.md (the /releases page)
+
+Add the same version section to `RELEASES.md`, in the same shape, with
+only what a user would notice: new features, improved or changed features,
+fixes worth knowing about, in plain words. Leave out permissions,
+admin-only actions, security work, infrastructure, migrations, tooling,
+docs-for-developers and anything about how the app is built; those stay in
+CHANGELOG.md. Move the Unreleased entries there under the version heading
+and leave `## [Unreleased]` empty.
+
 ## Step 4: Documentation and memory
 
 - README.md: keep the overview, commands and "where things live" current.

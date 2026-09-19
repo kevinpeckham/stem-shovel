@@ -6,6 +6,7 @@ files:
   - "README.md"
   - "SECURITY.md"
   - "CHANGELOG.md"
+  - "RELEASES.md"
   - "CLAUDE.md"
   - "docs/**/*.md"
   - "scripts/user-docs/*.md"
