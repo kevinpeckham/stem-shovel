@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-19
+
 ### Security
 
 - **Viewers can no longer edit.** Every mutation, upload and editing page now requires an owner, admin or member; a viewer sees the account's private work, can comment, and gets a 404 from everything else, and the pages hide the controls from them.
