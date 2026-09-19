@@ -95,8 +95,10 @@ in three steps driven by `src/lib/upload.ts`:
   retry rules as stem renditions) — browsers cannot all play what phones
   produce, Voice Memos' lossless ALAC `.m4a` for one. The page plays and
   downloads the MP3 once it exists and the original until then; the
-  original stays in Blob. Uploaded and removed from song settings; played
-  and downloaded from the "Demos" popover in the song's download row.
+  original stays in Blob. Uploaded from song settings or the demos view,
+  removed from song settings; played and downloaded from the demos view
+  of the song page's player box (`DemoPanel.svelte`: a Stems / Demos
+  toggle above the box, demos first when a song has demos but no stems).
 - **Content type on upload comes from the extension**, not the browser's
   guess: the reservation allows exactly `stemContentType(name)` /
   `demoContentType(name)`, and macOS reports a Voice Memo as

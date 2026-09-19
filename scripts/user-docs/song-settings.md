@@ -28,7 +28,7 @@ The frame rate used by the timecode readout, matching your DAW project.
 
 ## Demo recordings
 
-Upload a phone recording or a rough bounce as a **demo** (most audio formats are accepted and converted to MP3 for playback; up to 12 per song). Demos appear as a **Demos** button in the download row, where anyone can listen or download them.
+Upload a phone recording or a rough bounce as a **demo** (most audio formats are accepted and converted to MP3 for playback; up to 12 per song). Demos play in the song page's **Demos** view: a Stems / Demos switch above the player shows one or the other, and a song with demos but no stems opens on the demos. Anyone can listen or download them there; remove one here.
 
 ## No AI
 

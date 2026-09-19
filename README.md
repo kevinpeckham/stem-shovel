@@ -5,7 +5,7 @@ service at [www.stemshovel.com](https://www.stemshovel.com) by Lightning
 Jar. Each account holds projects; each project holds songs; each song holds
 its stems, a chart, lyrics, notes, comments pinned to moments in the music,
 and demo recordings of the original idea. The song page plays every stem in
-sync in the browser (fader, mute and solo per stem, waveform seek, a section
+sync in the browser (or, in its Demos view, the demo recordings) (fader, mute and solo per stem, waveform seek, a section
 timeline, timecode or bars), downloads stems, mixes and a zip, and edits the
 documents in place; the project page lists finished songs, songs in progress
 and song ideas with a playlist of every mix. Tempo, key and time signature

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Demos view on the song page.** The player's box shows either the stems or the demo recordings, switched by Stems / Demos tabs above it (and the Demos button in the download row); a song with demos but no stems opens on the demos. The demos view (`DemoPanel.svelte`) has a transport with previous, play/pause, next, a position slider and volume over the list of demos, each with its own play and Download buttons, and Upload a demo / Record a demo for editors. It replaces the Demos popover.
+
 ## [0.24.0] - 2026-09-19
 
 ### Added

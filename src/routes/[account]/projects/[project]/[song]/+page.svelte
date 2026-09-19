@@ -20,6 +20,7 @@
 	import MidiBadge from "$lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
+	import DemoPanel from "$lib/components/DemoPanel.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemReplacer from "$lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
@@ -215,23 +216,6 @@
 		if (demoJobs.every((j) => !j.error)) demoJobs = [];
 	}
 
-	// The demo player: one audio element, whichever demo was last pressed.
-	let demoPlaying = $state<string | null>(null);
-	let demoPaused = $state(true);
-	let demoTrack = $derived(data.song.demos.find((d) => d.id === demoPlaying) ?? null);
-	let demoAudio = $state<HTMLAudioElement | null>(null);
-	async function playDemo(id: string) {
-		if (demoPlaying === id) {
-			demoPaused = !demoPaused;
-			return;
-		}
-		// Swapping `src` fires a pause event that flips the bound state, so start
-		// the new track explicitly once the element has it.
-		demoPlaying = id;
-		demoPaused = false;
-		await tick();
-		await demoAudio?.play().catch(() => {});
-	}
 	// "Written by X, first written June 2019" under the title.
 	// Shown in the song-info popover: the song's fixed tempo, key and meter, and its version.
 	let metaLine = $derived(
@@ -250,6 +234,20 @@
 	);
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
+	// The demos view: the player's box shows either the stems or the demos.
+	// Until the visitor picks, a song with stems opens on them and a song with
+	// demos only on those; the visitor's pick sticks for the visit.
+	let demoPanel = $state<DemoPanel | null>(null);
+	let chosenView = $state<"stems" | "demos" | null>(null);
+	let playerView = $derived(
+		chosenView ?? (data.manifest.stems.length === 0 && readyDemos.length > 0 ? "demos" : "stems"),
+	);
+	const PLAYER_VIEWS = ["stems", "demos"] as const;
+	function showView(view: "stems" | "demos") {
+		chosenView = view;
+		if (view === "stems") demoPanel?.pause();
+		else playerEngine?.pause();
+	}
 	let slugTouched = $state(false);
 
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
@@ -1891,8 +1889,78 @@
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section class="grid grid-cols-1 place-content-start min-h-560px" aria-label="Player">
-		<!-- transport and waveforms -->
-		{#if data.manifest.stems.length > 0}
+		{#if readyDemos.length > 0}
+			<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos. -->
+			<div class="mb-3 flex items-center gap-3">
+				<div
+					class="flex items-center overflow-hidden rounded border border-white/15"
+					role="tablist"
+					aria-label="Player view"
+				>
+					{#each PLAYER_VIEWS as view, index (view)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={playerView === view}
+							class="{playerView === view
+								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+							0
+								? 'rounded-r-none border-r-none'
+								: 'rounded-l-none'}"
+							onclick={() => showView(view)}
+							>{view === "stems"
+								? `Stems (${data.manifest.stems.length})`
+								: `Demos (${readyDemos.length})`}</button
+						>
+					{/each}
+				</div>
+			</div>
+		{/if}
+		{#if playerView === "demos"}
+			<div class="mb-5">
+				<DemoPanel bind:this={demoPanel} demos={readyDemos}>
+					{#snippet actions()}
+						{#if data.canEdit}
+							<label
+								class="button button-sm inline-flex cursor-pointer items-center gap-2 {demoBusy ||
+								readyDemos.length >= MAX_DEMOS_PER_SONG
+									? 'pointer-events-none opacity-50'
+									: ''}"
+								title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+							>
+								<span class="i-ph-microphone" aria-hidden="true"></span>
+								{demoBusy ? "Uploading…" : "Upload a demo"}
+								<input
+									class="sr-only"
+									type="file"
+									accept={DEMO_ACCEPT}
+									multiple
+									disabled={demoBusy || readyDemos.length >= MAX_DEMOS_PER_SONG}
+									onchange={(e) => uploadDemos(e.currentTarget)}
+								/>
+							</label>
+							<a
+								class="button button-sm inline-flex items-center gap-2"
+								href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+								title="Idea recorder: record a riff, a melody or a demo for this song"
+							>
+								<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+								Record a demo
+							</a>
+							{#if demoNotice}
+								<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
+							{/if}
+							{#each demoJobs as job (job.name)}
+								<p class="w-full text-sm text-dim">
+									{job.name}: {job.error ?? `${job.percent.toFixed(0)}%`}
+								</p>
+							{/each}
+						{/if}
+					{/snippet}
+				</DemoPanel>
+			</div>
+		{:else if data.manifest.stems.length > 0}
 			<div class="mb-5">
 				<StemPlayer
 					manifest={data.manifest}
@@ -2360,69 +2428,6 @@
 	</section>
 </main>
 
-{#if readyDemos.length > 0}
-	<div
-		id="song-demos"
-		popover="auto"
-		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Demo recordings</h2>
-			<button
-				class="button button-xs"
-				type="button"
-				popovertarget="song-demos"
-				popovertargetaction="hide"
-			>
-				Close
-			</button>
-		</div>
-		{#if demoTrack}
-			<!-- svelte-ignore a11y_media_has_caption -->
-			<audio
-				bind:this={demoAudio}
-				src={demoTrack.playbackUrl ?? demoTrack.url}
-				bind:paused={demoPaused}
-				preload="auto"
-				onended={() => (demoPaused = true)}
-			></audio>
-		{/if}
-		<ul class="grid gap-2">
-			{#each readyDemos as d (d.id)}
-				<li class="flex items-center gap-3 rounded border border-white/10 px-3 py-2">
-					<button
-						type="button"
-						class="grid h-9 w-9 shrink-0 place-items-center rounded bg-maximumYellow text-oxford active:scale-95"
-						aria-label={demoPlaying === d.id && !demoPaused
-							? `Pause ${d.label}`
-							: `Play ${d.label}`}
-						onclick={() => playDemo(d.id)}
-					>
-						<span
-							class={demoPlaying === d.id && !demoPaused ? "i-ph-pause-fill" : "i-ph-play-fill"}
-							aria-hidden="true"
-						></span>
-					</button>
-					<span class="min-w-0 grow truncate">
-						{d.label}
-						<span class="block text-xs text-dim">{formatBytes(d.sizeBytes)}</span>
-					</span>
-					<button
-						type="button"
-						class="button button-xs"
-						title={d.playbackUrl ? `Download ${d.label}.mp3` : `Download ${d.filename}`}
-						onclick={() =>
-							d.playbackUrl ? saveAs(d.playbackUrl, `${d.label}.mp3`) : saveAs(d.url, d.filename)}
-					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>
-						Download
-					</button>
-				</li>
-			{/each}
-		</ul>
-	</div>
-{/if}
-
 {#snippet headerExtras(engine?: StemEngine)}
 	<div
 		class="flex flex-wrap items-center gap-3 w-full border py-4 px-3 rounded-md border-current/40 bg-blue-300/5 text-15px"
@@ -2564,8 +2569,8 @@
 							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 							type="button"
 							role="menuitem"
-							popovertarget="song-demos"
-							title="Listen to or download the demo recordings"
+							onclick={() => showView("demos")}
+							title="Show the demo recordings in the player"
 						>
 							<span class="i-ph-microphone mr-2" aria-hidden="true"></span>
 							Demos ({readyDemos.length})
@@ -2579,8 +2584,9 @@
 			<button
 				class="button button-sm lg-button-xs"
 				type="button"
-				popovertarget="song-demos"
-				title="Listen to or download the demo recordings"
+				aria-pressed={playerView === "demos"}
+				onclick={() => showView(playerView === "demos" ? "stems" : "demos")}
+				title="Show the demo recordings in the player"
 			>
 				<span class="i-ph-microphone" aria-hidden="true"></span>
 				Demos ({readyDemos.length})
