@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-19
+
 ### Changed
 
 - **Faster first loads.** Song and project pages sometimes took five seconds to open: not the database (a few milliseconds away) but a cold start of the Vercel function. Three changes bring it down (docs/environment.md "Cold starts and the jobs function"): the background work (playback renditions, mixes, notes transcription) moved to the app's own jobs function (`POST /api/jobs`, a separate Vercel function with the 300 s budget), so the page function no longer carries ffmpeg or the transcription stack (its bundle went from 131 MB to 33 MB); Sentry on the server is `@sentry/node` without its ESM loader hook or the Vite plugin the SvelteKit entry drags in, errors only; and a cron calls `/api/warm` every five minutes on production to keep the page function warm. Page loads also run their independent queries together.
