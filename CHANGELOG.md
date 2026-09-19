@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-09-19
+
 ### Changed
 
 - **A song page visit no longer posts a notes job unless there is something to do.** Notes are transcribed after a stem upload; a member's visit now checks the song row first (`songWantsNotes`: missing, behind the stems, or a run stuck for over ten minutes) and only then hands the resume or recovery to the jobs function. Finished songs never touch it.
