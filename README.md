@@ -222,6 +222,7 @@ check and the tests without any secret.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
+- [docs/stem-engine.md](docs/stem-engine.md) — a plain-language tour of the StemEngine: graph, loading, sync, transport, mixing.
 - [docs/uploads-and-blob.md](docs/uploads-and-blob.md) — the three-step upload, replacements, renditions, mixdowns, demos, downloads.
 - [docs/testing.md](docs/testing.md) — Vitest: unit and component projects, helpers, what is mocked.
 - [docs/agent-screenshots.md](docs/agent-screenshots.md) — `bun run shot` and the Playwright MCP.
