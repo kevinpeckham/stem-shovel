@@ -1,3 +1,4 @@
+import { playThroughSilentSwitch } from "$lib/audio/playThroughSilentSwitch";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
@@ -147,6 +148,8 @@ export class StemEngine {
 	async play(): Promise<void> {
 		if (this.status !== "ready" || this.playing) return;
 		const ctx = this.#context();
+		// iOS plays media through the ring/silent switch but not Web Audio: ask for the media rules.
+		playThroughSilentSwitch();
 		// Browsers (iOS especially) start contexts suspended until a user gesture.
 		if (ctx.state !== "running") await ctx.resume();
 		if (this.#offset >= this.duration) this.#offset = 0;

@@ -221,3 +221,16 @@ fields are `$state`, so components read `engine.position` directly.
   dependencies would re-run the effect mid-decode.
 - The waveform canvas uses `{@attach}`; the attachment gets the 2D context
   once and a nested `$effect` redraws.
+
+## iOS and the ring/silent switch
+
+iOS silences the Web Audio API under the ring/silent switch but lets media
+elements play, like a music app. The recorder, the demos and the project
+playlist use `<audio>` elements, so they play on a muted phone; the stem
+engine runs on an `AudioContext`, so it did not. Before it plays, the
+engine calls `playThroughSilentSwitch()` (`src/lib/audio/`): on iOS it sets
+`navigator.audioSession.type = "playback"` (the AudioSession API, Safari
+17+), and where that is missing it starts a silent looping `<audio>`
+element on the same gesture, the older trick that moves Web Audio onto the
+media channel. Nothing detects the switch itself: no web API exposes it.
+

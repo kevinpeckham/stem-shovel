@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
+	import { isIOS } from "$lib/utils/isIOS";
 	import {
 		takeStopNotice,
 		takeStopReason,
@@ -84,11 +85,7 @@
 		minTakeSeconds = 0,
 	}: Props = $props();
 	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
-	/** iPhone, iPod, and iPad (which reports itself as a Mac with touch). */
-	const onIOS =
-		typeof navigator !== "undefined" &&
-		(/iP(hone|ad|od)/.test(navigator.platform) ||
-			(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+	const onIOS = isIOS();
 
 	type Phase = "idle" | "requesting" | "recording" | "saved";
 	/** A just-stopped take is `local:<id>` until the upload lands and the page resolves it. */

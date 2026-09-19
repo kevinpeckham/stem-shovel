@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The stem player is heard on an iPhone with the ring/silent switch on.** iOS mutes Web Audio under the switch but not media playback; before it plays, the engine now asks for the media rules (the AudioSession API on Safari 17+, a silent looping audio element on older iOS), the same way music apps play through the switch. The recorder, demos and playlist already used media elements and were unaffected.
+
 ## [0.17.3] - 2026-09-19
 
 ### Changed
