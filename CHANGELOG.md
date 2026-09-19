@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-09-19
+
+### Added
+
+- **User docs for the Idea Recorder** (`/docs/idea-recorder`, seeded by `db:seed-docs`): ideas and takes, notes, the list, into a song, settings and limits, phone tips; Getting started mentions it.
+
+### Changed
+
+- **The recorder's volume slider is hidden on iPhone and iPad**, where iOS keeps playback volume on the hardware buttons and the slider did nothing.
+- **README and CLAUDE.md** describe the Idea Recorder's modules, the jobs function rule (never import ffmpeg or tfjs modules from page code; decide on the row you hold before scheduling), how to ship a file with a function, and how to measure a cold start.
+
 ## [0.17.1] - 2026-09-19
 
 ### Changed

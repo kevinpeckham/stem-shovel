@@ -13,7 +13,7 @@ Either way you also get a personal workspace of your own. After signing up, chec
 
 ## The account menu
 
-Once signed in, the button at the top right names the account you are in. It opens a menu with **Projects**, **Account settings**, any other accounts you belong to, and **Sign out**.
+Once signed in, the button at the top right names the account you are in. It opens a menu with **Projects**, the **Idea Recorder** (record riffs and rough takes straight from the microphone; see its own page in these docs), **Account settings**, any other accounts you belong to, and **Sign out**. From tablet width up, Projects and Idea Recorder also sit in the header.
 
 ## Projects and songs
 

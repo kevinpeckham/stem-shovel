@@ -41,8 +41,13 @@ panelled settings popover (details, sections, tempo/key/meter, demo
 recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
 `/lyrics` and `/notes` are the full-page editors; `/[account]/ideas/recorder`
-is the Idea Recorder: the user's ideas (a note board and numbered takes)
-with a searchable list, and a take added to a song becomes a demo;
+is the Idea Recorder (docs/demo-recording.md): the user's own ideas, each a
+title, a markdown note board and numbered takes recorded from the
+microphone (Record → Stop saves at once through a background upload queue;
+names before, during or after; a "Take N" dropdown to jump between takes;
+ceilings of 15 minutes, 2 minutes of silence and 32 MB), a searchable list
+with per-idea and per-take menus, Recorder settings, and "Add as demo…" /
+"Create new song…" which copy a take into a song as a demo;
 `/[account]/settings` is the account (members, invitations, invite codes,
 usage, plan). Neutral
 pages: `/` (the front page with live demos of a public song), `/waitlist`,
@@ -109,6 +114,15 @@ check and the tests without any secret.
   small and start fast (docs/environment.md "Cold starts").
 - `src/lib/remote/comments.remote.ts`, `CommentTimeline.svelte` — comments
   on a song (docs/audio-engine.md), with a `comment` table.
+- `DemoRecorder.svelte`, `src/lib/audio/takeQueue.svelte.ts`,
+  `IdeaNotesPanel.svelte`, `RecordingActions.svelte`, `ComboBox.svelte`,
+  `InfoTip.svelte`, `src/lib/remote/ideas.remote.ts` and
+  `recordings.remote.ts` — the Idea Recorder (docs/demo-recording.md):
+  MediaRecorder capture with a level meter and wake lock, the persisted
+  upload queue (IndexedDB) that makes the next take instant, the idea's
+  note board, the add-as-demo / new-song popover, and two reusable
+  components that came out of the page. `src/lib/constants/takeLimits.ts`
+  holds the ceilings; `src/lib/utils/takeStopReason.ts` decides a stop.
 - `src/routes/+page.server.ts`, `SongPlayerDemo.svelte`, `SongDocsDemo.svelte`,
   `src/lib/server/songView.ts` — the front page demos a public song (chosen
   on /admin/home, stored in `app_setting`): the player with its downloads,
@@ -201,7 +215,7 @@ check and the tests without any secret.
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
 - [docs/security.md](docs/security.md) — the security model, what is enforced where, error reports and analytics, known gaps.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
-- [docs/environments.md](docs/environments.md) — plan for separate dev, staging and production environments (1Password, Turso, Blob), nothing changed yet.
+- [docs/environments.md](docs/environments.md) — the three stages (dev, staging, production), each with its own 1Password environment, Turso database and Blob stores; migrations per stage; snapshots and restores.
 - [docs/demo-recording.md](docs/demo-recording.md) — the in-app demo recorder: what shipped, the plan it came from, and the phone realities.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.

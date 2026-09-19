@@ -109,6 +109,22 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   and never reused: Blob serves a 30-day cache header. Each stem also gets an
   AAC playback rendition (`…play-<stamp>.m4a`, `src/lib/server/transcode.ts`,
   `ffmpeg-static`); the player streams it, downloads use the source.
+- **Background work goes through the jobs function.** Renditions, mixes and
+  notes transcription run in `POST /api/jobs` (its own Vercel function);
+  page loads, remote functions and API routes only call the `schedule*`
+  helpers in `src/lib/server/jobs.ts`. Never import `transcode.ts`,
+  `mix.ts` (beyond `mixKeyOf`) or `notes.ts` from page code: they carry
+  ffmpeg and tfjs, and a page function's cold start is what users feel
+  (docs/environment.md "Cold starts and the jobs function"). Decide on the
+  row you already hold before scheduling (`songsWantingMix`,
+  `songWantsNotes`), so a visit with nothing to do posts nothing.
+- **Shipping a file with a function**: import it as JSON (Vite bundles it).
+  The adapter traces from the filesystem root, so `process.cwd()` paths and
+  static files are never packed, and the firewall's bot protection answers
+  the function's own fetches of the site with a 429.
+- **Measuring a cold start**: hit a fresh preview deployment's own URL twice
+  (`vercel ls`); the first hit is cold. Keep server-side Sentry on
+  `@sentry/node` without loader hooks.
 
 ## Working agreement
 

@@ -20,6 +20,7 @@ const ORDER = [
 	"stems-and-playback",
 	"song-settings",
 	"charts-lyrics-and-notes",
+	"idea-recorder",
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",

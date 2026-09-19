@@ -84,6 +84,11 @@
 		minTakeSeconds = 0,
 	}: Props = $props();
 	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
+	/** iPhone, iPod, and iPad (which reports itself as a Mac with touch). */
+	const onIOS =
+		typeof navigator !== "undefined" &&
+		(/iP(hone|ad|od)/.test(navigator.platform) ||
+			(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
 	type Phase = "idle" | "requesting" | "recording" | "saved";
 	/** A just-stopped take is `local:<id>` until the upload lands and the page resolves it. */
@@ -586,8 +591,11 @@
 					></div>
 				</div>
 			</div>
+			<!-- iOS keeps playback volume on the hardware buttons: a slider there does nothing. -->
 			<label
-				class="hidden sm-grid w-full grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90"
+				class="{onIOS
+					? 'hidden'
+					: 'hidden sm-grid'} w-full grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90"
 			>
 				<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				<span class="sr-only">Volume</span>
