@@ -50,7 +50,12 @@ bunx vp test run src/lib/audio/measures.test.ts   # one file
   server modules' pure parts. Server modules pull in the database, Blob and
   ffmpeg, so their tests `vi.mock` those (`src/lib/server/mix.test.ts`,
   `previewAuth.test.ts`); inputs a mock factory needs go through
-  `vi.hoisted`, since factories are hoisted above imports.
+  `vi.hoisted`, since factories are hoisted above imports. CI runs the
+  tests with `SKIP_VARLOCK=1` and no 1Password, where `$lib/server/db`
+  throws the moment it loads, so a test of a pure function must not import
+  it through a server module (`data.ts` reaches the database): put the
+  function in `src/lib/utils/` and test it there, or mock the module.
+  `SKIP_VARLOCK=1 bun run test` reproduces CI locally.
 - **Component tests** render with `@testing-library/svelte`, query by role
   and name, and drive clicks with `@testing-library/user-event`. The engine
   is `fakeEngine()` — the reactive fields components read plus spies for

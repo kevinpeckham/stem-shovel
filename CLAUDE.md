@@ -98,7 +98,10 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 - **Tests go beside what they test** (`x.test.ts`, `X.svelte.test.ts`),
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a
-  push that touches logic.
+  push that touches logic, and `SKIP_VARLOCK=1 bun run test` when a test is
+  new: CI has no 1Password, and a test that loads `$lib/server/db` (through
+  `data.ts`, say) fails there. Pure functions from server modules go in
+  `src/lib/utils/` with their tests.
 - **Server dependencies must be ESM.** Vercel's Node 24 launcher has refused
   CommonJS `require()` of ES modules at cold start; prefer ESM packages, and
   after a build check `.vercel/output/functions/*/node_modules`.

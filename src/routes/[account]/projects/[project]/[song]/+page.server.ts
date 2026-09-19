@@ -1,4 +1,5 @@
-import { getSong, listShareLinks, songWantsNotes } from "$lib/server/data";
+import { getSong, listShareLinks } from "$lib/server/data";
+import { songWantsNotes } from "$lib/utils/songWantsNotes";
 import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { scheduleNotes } from "$lib/server/jobs";

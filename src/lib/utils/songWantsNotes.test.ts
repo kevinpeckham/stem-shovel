@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { songWantsNotes } from "./data";
+import { songWantsNotes } from "./songWantsNotes";
 
 const keyOf = (stems: { id: string }[]) =>
 	stems
