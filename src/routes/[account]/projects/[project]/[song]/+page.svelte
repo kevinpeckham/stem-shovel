@@ -1924,10 +1924,17 @@
 				<p class="text-sm text-dim">No stems yet.</p>
 				{#if data.canEdit}
 					<p class="mt-1 text-sm opacity-80">
-						Add stems below, start with a demo recording of the idea, or
-						<a class="link-dim" href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
-							>record one now</a
-						>.
+						Add stems below, start with a demo recording of the idea, or record one now.
+					</p>
+					<p class="mt-4">
+						<a
+							class="button button-sm inline-flex items-center gap-2"
+							href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+							title="Idea recorder: record a riff, a melody or a demo for this song"
+						>
+							<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+							Record a demo
+						</a>
 					</p>
 				{/if}
 			</div>
