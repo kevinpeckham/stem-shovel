@@ -104,7 +104,7 @@
 					<h3 class="text-18px font-600 leading-tight mb-2">High Fidelity Idea Recorder</h3>
 					<p class="opacity-90 text-16px max-w-740px mb-5 text-balance">
 						Record your song ideas, demos and save them along with your notes. Supports multiple
-						takes.
+						takes. Try the working demo below.
 					</p>
 					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
 					<div

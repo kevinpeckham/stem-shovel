@@ -726,8 +726,12 @@
 				/>
 			</label>
 			{#if inputLabel && phase === "recording"}
-				<p class="text-12px opacity-70 text-truncate w-full">
-					Input: {inputLabel}{formatLine ? ` · ${formatLine}` : ""}
+				<!-- Two short lines, wrapped rather than cut: the input's name, then what is being recorded. -->
+				<p class="w-full text-12px leading-snug opacity-70 text-balance">
+					<span class="break-words">Input: {inputLabel}</span>
+					{#if formatLine}
+						<span class="block whitespace-nowrap">{formatLine}</span>
+					{/if}
 				</p>
 			{/if}
 		</div>
