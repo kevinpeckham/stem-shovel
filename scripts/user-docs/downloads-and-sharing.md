@@ -7,7 +7,7 @@ The row under the player offers:
 - **Download Stems**: every stem as uploaded, in one zip.
 - **Original Mix (MP3)**: all stems mixed as they are.
 - **Custom Mix (MP3)**: the mix as you hear it right now, with your mutes, solos and fader positions.
-- **Demos**: switches the player to the demo recordings, where each has a Download button.
+- **Demos**: switches the player to the demo recordings; each row's ⋯ menu downloads the MP3 or the original file.
 
 Single stems, and a stem's MIDI file, download from the ⋯ menu on the stem's row.
 

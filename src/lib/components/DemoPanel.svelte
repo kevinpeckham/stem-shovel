@@ -7,7 +7,8 @@
 	/**
 	 * The song page's demos view, sharing the player's box with the stem
 	 * player: a transport (previous, play/pause, next, seek, volume) over the
-	 * list of demo recordings, each with its own play button and a download.
+	 * list of demo recordings, each with its own play button and a ⋯ menu
+	 * holding its downloads.
 	 * The page decides which view shows; `pause()` lets it quiet this one
 	 * when the stems take over.
 	 */
@@ -34,6 +35,14 @@
 	let currentTime = $state(0);
 	let duration = $state(0);
 	let volume = $state(1);
+	let panelEl = $state<HTMLDivElement | null>(null);
+
+	/** A press outside an open row menu closes it, as the page's own menus do. */
+	function closeMenus(e: PointerEvent) {
+		for (const menu of panelEl?.querySelectorAll<HTMLDetailsElement>("details[open]") ?? []) {
+			if (!menu.contains(e.target as Node)) menu.open = false;
+		}
+	}
 
 	/** Play a demo (from its row or the transport); the same demo toggles. */
 	export async function play(id: string) {
@@ -70,6 +79,8 @@
 	}
 </script>
 
+<svelte:window onpointerdown={closeMenus} />
+
 {#if track}
 	<!-- svelte-ignore a11y_media_has_caption -->
 	<audio
@@ -85,6 +96,7 @@
 {/if}
 
 <div
+	bind:this={panelEl}
 	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4"
 	aria-label="Demo recordings"
 >
@@ -181,16 +193,47 @@
 						{d.label}
 						<span class="block text-xs text-dim">{formatBytes(d.sizeBytes)}</span>
 					</span>
-					<button
-						type="button"
-						class="button button-xs"
-						title={d.playbackUrl ? `Download ${d.label}.mp3` : `Download ${d.filename}`}
-						onclick={() =>
-							d.playbackUrl ? saveAs(d.playbackUrl, `${d.label}.mp3`) : saveAs(d.url, d.filename)}
-					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>
-						Download
-					</button>
+					<!-- The row's menu: the downloads, out of the way of Play. -->
+					<details class="relative self-center">
+						<summary
+							class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
+							title="Demo menu"
+							aria-label="Menu for {d.label}"
+						>
+							<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
+						</summary>
+						<div
+							class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm font-400 shadow-lg"
+							role="menu"
+							onclick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}
+							onkeydown={(e) => {
+								if (e.key === "Escape")
+									(e.currentTarget.parentElement as HTMLDetailsElement).open = false;
+							}}
+						>
+							{#if d.playbackUrl}
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+									type="button"
+									role="menuitem"
+									onclick={() => saveAs(d.playbackUrl!, `${d.label}.mp3`)}
+								>
+									<span class="i-ph-download-simple" aria-hidden="true"></span>Download MP3
+								</button>
+							{/if}
+							<button
+								class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+								type="button"
+								role="menuitem"
+								title={d.filename}
+								onclick={() => saveAs(d.url, d.filename)}
+							>
+								<span class="i-ph-file-audio" aria-hidden="true"></span>Download {d.playbackUrl
+									? "original"
+									: "file"}
+							</button>
+						</div>
+					</details>
 				</li>
 			{/each}
 		</ul>
