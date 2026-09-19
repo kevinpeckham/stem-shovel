@@ -17,13 +17,12 @@ import type { RequestHandler } from "./$types";
  */
 export const config: Config = { split: true, maxDuration: 300 };
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
 	if (!isJobsToken(bearer)) error(401, "Not this app's jobs token");
 	const parsed = v.safeParse(JobSchema, await request.json().catch(() => null));
 	if (!parsed.success) error(400, "kind and ids are required");
 	const { kind, ids } = parsed.output;
-	const origin = url.origin;
 	if (ids.length < 0) await traceTranscriptionDeps(); // never runs: keeps tfjs in this function's trace
 	background(async () => {
 		switch (kind) {
@@ -31,10 +30,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				for (const id of ids) await ensureOriginalMix(id);
 				break;
 			case "notes":
-				for (const id of ids) await ensureSongNotes(id, origin);
+				for (const id of ids) await ensureSongNotes(id);
 				break;
 			case "stem-playback":
-				await renderStems(ids, origin);
+				await renderStems(ids);
 				break;
 			case "demo-playback":
 				await renderDemos(ids);

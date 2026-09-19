@@ -43,16 +43,15 @@ const run = promisify(execFile);
  * Renders the stems in turn (one ffmpeg at a time keeps memory flat), then
  * refreshes the cached original mix of every song touched, then the notes
  * the chart draft reads (skipped for no-AI songs; resumes if cut short).
- * `origin` serves the transcription model (docs/environment.md).
  */
-export async function renderStems(stemIds: string[], origin: string): Promise<void> {
+export async function renderStems(stemIds: string[]): Promise<void> {
 	const songIds = new Set<string>();
 	for (const id of stemIds) {
 		const songId = await transcodeStem(id);
 		if (songId) songIds.add(songId);
 	}
 	for (const id of songIds) await ensureOriginalMix(id);
-	for (const id of songIds) await ensureSongNotes(id, origin);
+	for (const id of songIds) await ensureSongNotes(id);
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */

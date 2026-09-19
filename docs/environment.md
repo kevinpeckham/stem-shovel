@@ -91,7 +91,14 @@ down now:
   because `notes.ts` names them in a literal `import()`
   (`traceTranscriptionDeps`); before that, notes were never transcribed on
   Vercel ("Cannot find package '@tensorflow/tfjs'" in every song page's
-  background).
+  background). The Basic Pitch model itself is bundled into the module as
+  JSON (`src/lib/server/basic-pitch/`, ~1 MB, the same files as
+  `static/basic-pitch`) and written to the job's temp dir for the child
+  process: fetching it from the site is answered with a 429 by the
+  firewall's managed bot protection (challenge mode challenges requests
+  from inside the function too), and the adapter traces from the
+  filesystem root, so a `process.cwd()` file path never resolves at build
+  time and static files are not packed.
 - **Sentry is `@sentry/node` on the server**, without its ESM loader hook and
   without tracing (see "Sentry" below). The SvelteKit server entry
   re-exports the Vite plugin, which dragged Vite, esbuild and Babel into

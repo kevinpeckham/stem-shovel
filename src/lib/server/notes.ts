@@ -1,4 +1,6 @@
 import { extractFeatures } from "$lib/audio/analysis";
+import modelSpec from "./basic-pitch/model.json";
+import modelWeights from "./basic-pitch/weights.json";
 import type { Note } from "$lib/audio/chords";
 import { readBlob } from "$lib/server/blob";
 import {
@@ -11,10 +13,10 @@ import {
 import { mixKeyOf } from "$lib/server/mix";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
@@ -38,12 +40,26 @@ const MODEL_RATE = 22050;
  * is a minute of solid compute per minute of audio, and in the server's own
  * event loop that would stall every other request on the instance. The
  * child gets the packages by absolute URL (resolved here) and the model from
- * our own static files, fetched with Node's fetch under a named user agent:
- * tfjs's node-fetch client looks like a bot to Vercel's firewall (a 429
- * challenge on 2026-09-19, docs/environment.md).
+ * two files written into the job's temp dir from copies bundled into this
+ * module (src/lib/server/basic-pitch: the model JSON and its weights as
+ * base64, about 1 MB, the same files as static/basic-pitch): fetching them
+ * over HTTP from inside the function is answered by the firewall's bot
+ * challenge (a 429 on 2026-09-19), and the adapter traces from the
+ * filesystem root, so a `process.cwd()` path never resolves at build time
+ * (docs/environment.md).
  */
+/** The model files, once per job dir (the child reads them from disk). */
+async function modelFiles(dir: string): Promise<{ json: string; weights: string }> {
+	const json = join(dir, "model.json");
+	const weights = join(dir, "weights.bin");
+	if (!existsSync(json)) {
+		await writeFile(json, JSON.stringify(modelSpec));
+		await writeFile(weights, Buffer.from(modelWeights.base64, "base64"));
+	}
+	return { json, weights };
+}
 const CHILD_SCRIPT = `
-const [tfUrl, bpUrl, modelUrl, inFile] = process.argv.slice(1);
+const [tfUrl, bpUrl, modelJson, modelWeights, inFile] = process.argv.slice(1);
 const tf = await import(tfUrl);
 await tf.setBackend("cpu");
 await tf.ready();
@@ -51,9 +67,16 @@ const { BasicPitch, noteFramesToTime, outputToNotesPoly } = await import(bpUrl);
 const { readFileSync } = await import("node:fs");
 const raw = readFileSync(inFile);
 const audio = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
-// Node's own fetch, named: tfjs's node-fetch client is challenged (429) by Vercel's bot protection.
-const fetchModel = (u, init) => fetch(u, { ...init, headers: { ...(init && init.headers), "user-agent": "stem-shovel-jobs (+https://www.stemshovel.com)" } });
-const model = new BasicPitch(tf.loadGraphModel(tf.io.http(modelUrl, { fetchFunc: fetchModel })));
+// The model from disk, not over HTTP (the firewall challenges requests from inside the function).
+const spec = JSON.parse(readFileSync(modelJson, "utf8"));
+const weights = readFileSync(modelWeights);
+const artifacts = {
+	modelTopology: spec.modelTopology,
+	weightSpecs: spec.weightsManifest.flatMap((g) => g.weights),
+	weightData: weights.buffer.slice(weights.byteOffset, weights.byteOffset + weights.byteLength),
+	format: spec.format, generatedBy: spec.generatedBy, convertedBy: spec.convertedBy,
+};
+const model = new BasicPitch(tf.loadGraphModel(tf.io.fromMemory(artifacts)));
 const frames = [], onsets = [];
 await model.evaluateModel(audio, (f, o) => { frames.push(...f); onsets.push(...o); }, () => {});
 const notes = noteFramesToTime(outputToNotesPoly(frames, onsets, 0.5, 0.3, 11, true, 3000, 40, true, 11));
@@ -61,7 +84,8 @@ process.stdout.write(JSON.stringify(notes.map((e) => [e.startTimeSeconds, e.dura
 `;
 
 /** Transcribes one f32le mono 22050 Hz file in a child process; seconds are relative to the file. */
-async function transcribeFile(file: string, origin: string): Promise<Note[]> {
+async function transcribeFile(file: string): Promise<Note[]> {
+	const model = await modelFiles(dirname(file));
 	const { stdout } = await run(
 		process.execPath,
 		[
@@ -70,7 +94,8 @@ async function transcribeFile(file: string, origin: string): Promise<Note[]> {
 			CHILD_SCRIPT,
 			import.meta.resolve("@tensorflow/tfjs"),
 			import.meta.resolve("@spotify/basic-pitch"),
-			`${origin}/basic-pitch/model.json`,
+			model.json,
+			model.weights,
 			file,
 		],
 		{ maxBuffer: 64 * 1024 * 1024, timeout: 240_000 },
@@ -124,7 +149,7 @@ const asBuffer = (data: Float32Array, sampleRate: number) =>
 		getChannelData: () => data,
 	}) as unknown as AudioBuffer;
 
-export async function ensureSongNotes(songId: string, origin: string): Promise<void> {
+export async function ensureSongNotes(songId: string): Promise<void> {
 	const song = await songForNotes(songId);
 	if (!song || song.noAi || song.project.noAi) return;
 	const stems = song.stems.filter((s) => s.status === "ready" && s.url);
@@ -171,7 +196,7 @@ export async function ensureSongNotes(songId: string, origin: string): Promise<v
 				if (peak > 0) for (let k = 0; k < mono.length; k++) mono[k] /= peak;
 				const segmentFile = join(dir, `segment-${Math.round(done)}.raw`);
 				await writeFile(segmentFile, Buffer.from(mono.buffer, mono.byteOffset, mono.byteLength));
-				for (const n of await transcribeFile(segmentFile, origin)) {
+				for (const n of await transcribeFile(segmentFile)) {
 					notes.push({ ...n, start: done + n.start, end: done + n.end });
 				}
 			}
