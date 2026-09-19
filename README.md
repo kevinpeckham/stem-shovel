@@ -140,9 +140,11 @@ check and the tests without any secret.
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.
-- `src/lib/remote/bugs.remote.ts`, `GlobalFooter.svelte` — "Report a bug" and
-  "Request a feature" in the footer for signed-in users; a `bug_report` row
-  (`kind`) and an email to every system admin; two lists on /admin.
+- `src/lib/remote/bugs.remote.ts`, `ReportForm.svelte` — "Report a bug" in the
+  footer and "Request a feature" on /feature-requests for signed-in users,
+  with an optional address for follow-up; a `bug_report` row (`kind`) and an
+  email to every system admin; priorities, responses and completion on
+  /admin, the requester emailed when a request ships.
 - `docs/security.md` — the security model, what is enforced where, known gaps.
 - `src/hooks.client.ts`, `src/instrumentation.server.ts`, `src/routes/+layout.ts` —
   Sentry in the browser and on the server, Web Analytics and Speed Insights

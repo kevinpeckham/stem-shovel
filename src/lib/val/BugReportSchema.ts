@@ -48,6 +48,22 @@ export const BugReportCreateSchema = v.object({
 	),
 	pageUrl: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(500)), ""),
 	userAgent: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(300)), ""),
+	/** Given when the requester is happy to be emailed about it (to learn more, or when it ships); empty otherwise. */
+	contactEmail: v.optional(
+		v.pipe(
+			v.string(),
+			v.trim(),
+			v.union([
+				v.literal(""),
+				v.pipe(
+					v.string(),
+					v.email("Enter a valid email address, or untick the box."),
+					v.maxLength(254),
+				),
+			]),
+		),
+		"",
+	),
 });
 
 export const BugReportStatusSchema = v.object({ id: NanoIdSchema, status: BugStatusSchema });

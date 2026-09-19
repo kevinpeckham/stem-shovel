@@ -1,0 +1,1 @@
+ALTER TABLE `bug_report` ADD `contact_email` text;

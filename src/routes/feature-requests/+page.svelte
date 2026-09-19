@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import { formatDate } from "$lib/utils/formatDate";
+	import ReportForm from "$lib/components/ReportForm.svelte";
 
 	let { data } = $props();
 	const LABEL = { open: "Open", complete: "Complete", closed: "Closed" } as const;
@@ -23,9 +24,17 @@
 	<header class="max-w-article mb-6">
 		<h1 class="heading-2">Feature requests</h1>
 		<p class="opacity-90 text-balance">
-			What members have asked for, what we said, and what has shipped. Add yours with "Request a
-			feature" in the footer.
+			What members have asked for, what we said, and what has shipped.
 		</p>
+		<div class="mt-4 flex flex-wrap items-center gap-4">
+			<button class="button-accent" type="button" popovertarget="feature-request">
+				<span class="i-ph-lightbulb text-lg"></span>
+				Request a feature
+			</button>
+			{#if data.user?.isSystemAdmin}
+				<a class="link-dim text-sm" href="/admin/feature-requests">Manage requests</a>
+			{/if}
+		</div>
 	</header>
 
 	{#snippet list(items: typeof data.requests, heading: string)}
@@ -76,3 +85,7 @@
 	{@render list(complete, "Complete")}
 	{@render list(closed, "Closed")}
 </main>
+
+{#if data.user}
+	<ReportForm id="feature-request" kind="feature" user={data.user} />
+{/if}

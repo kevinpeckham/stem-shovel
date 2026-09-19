@@ -19,6 +19,8 @@
 			response: string;
 			pageUrl: string;
 			userAgent: string;
+			/** Where they said we may write about it, when they offered one. */
+			contactEmail: string | null;
 			createdAt: Date;
 			reporter: { name: string } | null;
 		}[];
@@ -64,6 +66,13 @@
 					</span>
 				</div>
 				<p class="mt-1 whitespace-pre-wrap text-sm">{b.body}</p>
+				{#if b.contactEmail}
+					<p class="mt-1 text-13px text-dim">
+						Happy to be emailed at <a class="link-dim" href="mailto:{b.contactEmail}"
+							>{b.contactEmail}</a
+						>{#if kind === "feature"}; told when it ships{/if}.
+					</p>
+				{/if}
 				{#if b.response}
 					<p
 						class="mt-2 whitespace-pre-wrap rounded border border-white/10 bg-blue-300/5 px-3 py-2 text-sm"
@@ -115,7 +124,8 @@
 							>
 								<input {...complete.fields.id.as("hidden", b.id)} />
 								<input {...complete.fields.status.as("hidden", "complete")} />
-								<button class="link-dim" disabled={!!complete.pending}>Mark complete</button>
+								<button class="button button-sm" disabled={!!complete.pending}>Mark complete</button
+								>
 							</form>
 						{/if}
 					{/if}
@@ -129,12 +139,14 @@
 						<input
 							{...toggle.fields.status.as("hidden", b.status === "open" ? "closed" : "open")}
 						/>
-						<button class="link-dim" disabled={!!toggle.pending}>
+						<button class="button button-sm" disabled={!!toggle.pending}>
 							{b.status === "open" ? "Close" : "Reopen"}
 						</button>
 					</form>
 					<details class="w-full">
-						<summary class="cursor-pointer link-dim list-none [&::-webkit-details-marker]:hidden">
+						<summary
+							class="button button-sm cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+						>
 							{b.response ? "Edit response" : "Respond"}
 						</summary>
 						<form

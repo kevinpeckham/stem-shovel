@@ -9,7 +9,11 @@ import {
 	setBugReportStatus,
 	systemAdminEmails,
 } from "$lib/server/data";
-import { sendBugReportEmail, sendReportResponseEmail } from "$lib/server/email";
+import {
+	sendBugReportEmail,
+	sendFeatureShippedEmail,
+	sendReportResponseEmail,
+} from "$lib/server/email";
 import {
 	BugReportCreateSchema,
 	BugReportPrioritySchema,
@@ -39,6 +43,7 @@ export const reportBug = form(BugReportCreateSchema, async (input) => {
 				pageUrl: row.pageUrl,
 				reporterName: user.name || user.email,
 				reporterEmail: user.email,
+				contactEmail: row.contactEmail,
 				adminUrl,
 			});
 		}
@@ -46,11 +51,18 @@ export const reportBug = form(BugReportCreateSchema, async (input) => {
 	return { sent: true };
 });
 
-/** System admins mark reports complete, close and reopen them on /admin. */
+/** System admins mark reports complete, close and reopen them on /admin; a completed feature request tells its requester when they offered an address for that. */
 export const setBugStatus = form(BugReportStatusSchema, async ({ id, status }) => {
-	const { locals } = getRequestEvent();
+	const { locals, url } = getRequestEvent();
 	requireSystemAdmin(locals);
-	if (!(await setBugReportStatus(id, status))) error(404, "Bug report not found");
+	const row = await setBugReportStatus(id, status);
+	if (!row) error(404, "Bug report not found");
+	if (status === "complete" && row.kind === "feature" && row.contactEmail) {
+		const to = row.contactEmail;
+		background(() =>
+			sendFeatureShippedEmail({ to, title: row.title, pageUrl: `${url.origin}/feature-requests` }),
+		);
+	}
 	return { status };
 });
 
@@ -67,11 +79,13 @@ export const respondToBug = form(BugReportResponseSchema, async ({ id, response 
 	requireSystemAdmin(locals);
 	const saved = await respondToBugReport(id, response);
 	if (!saved) error(404, "Bug report not found");
-	if (response && saved.reporter) {
-		const { email, name } = saved.reporter;
+	// To the address they offered for follow-up, else the account's; the reporter may be gone.
+	const to = saved.contactEmail ?? saved.reporter?.email;
+	if (response && to) {
+		const name = saved.reporter?.name;
 		background(() =>
 			sendReportResponseEmail({
-				to: email,
+				to,
 				name: name || null,
 				kind: saved.kind,
 				title: saved.title,

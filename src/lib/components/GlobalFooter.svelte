@@ -1,17 +1,11 @@
 <script lang="ts">
-	import { reportBug } from "$lib/remote/bugs.remote";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { page } from "$app/state";
+	import ReportForm from "$lib/components/ReportForm.svelte";
 
 	interface Props {
-		user: { name: string } | null;
+		user: { name: string; email: string } | null;
 	}
 	let { user }: Props = $props();
 
-	// Captured when a popover opens, so the report says where it came from.
-	let pageUrl = $state("");
-	let userAgent = $state("");
 	/** Which build is running: package.json's version and, when known, the commit. */
 	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;
 	const CHANGELOG = "/releases";
@@ -73,13 +67,10 @@
 			>
 				Report a bug
 			</button>
-			<button
-				type="button"
+			<a
 				class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
-				popovertarget="feature-request"
+				href="/feature-requests">Feature Requests</a
 			>
-				Request a feature
-			</button>
 		{/if}
 		<!-- Rick Roll Easter Egg -->
 		<a
@@ -90,118 +81,6 @@
 	</div>
 </footer>
 
-{#snippet reportPanel(
-	id: string,
-	kind: "bug" | "feature",
-	heading: string,
-	titleLabel: string,
-	titlePlaceholder: string,
-	bodyLabel: string,
-	bodyPlaceholder: string,
-	thanks: string,
-)}
-	{@const report = reportBug.for(kind)}
-	<!-- Same native popover as the settings panels: top layer, Esc / click-outside close. -->
-	<div
-		{id}
-		popover="auto"
-		onbeforetoggle={(e) => {
-			if (e.newState === "open") {
-				clearForm(report);
-				pageUrl = page.url.href;
-				userAgent = navigator.userAgent;
-			}
-		}}
-		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">
-				{heading}
-				{#if kind === "feature"}
-					<a class="ml-3 link-dim text-13px font-400" href="/feature-requests">See all requests</a>
-				{/if}
-			</h2>
-			<button class="button button-xs" type="button" popovertarget={id} popovertargetaction="hide">
-				Close
-			</button>
-		</div>
-		<form
-			{...report.enhance(async ({ submit }) => {
-				await submit();
-				if (report.result?.sent) {
-					notify(thanks);
-					document.getElementById(id)?.hidePopover();
-				}
-			})}
-		>
-			<input {...report.fields.kind.as("hidden", kind)} />
-			<input {...report.fields.pageUrl.as("hidden", pageUrl)} />
-			<input {...report.fields.userAgent.as("hidden", userAgent)} />
-			<label class="block">
-				<span class="text-sm text-dim">{titleLabel}</span>
-				<!-- Not a login form: the lone text input made iOS offer the password manager instead of a keyboard. -->
-				<input
-					class="mt-1 field"
-					{...report.fields.title.as("text")}
-					placeholder={titlePlaceholder}
-					autocomplete="off"
-					data-1p-ignore
-					data-lpignore="true"
-					data-bwignore
-					enterkeyhint="next"
-					required
-				/>
-				{#each report.fields.title.issues() ?? [] as issue (issue.message)}
-					<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-				{/each}
-			</label>
-			<label class="mt-4 block">
-				<span class="text-sm text-dim">{bodyLabel}</span>
-				<textarea
-					class="mt-1 field text-sm"
-					rows="5"
-					{...report.fields.body.as("text")}
-					placeholder={bodyPlaceholder}
-					autocomplete="off"
-					data-1p-ignore
-					data-lpignore="true"
-					data-bwignore
-					required></textarea>
-				{#each report.fields.body.issues() ?? [] as issue (issue.message)}
-					<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-				{/each}
-			</label>
-			<p class="mt-2 text-xs text-dim">
-				The page you are on ({pageUrl || "this page"}) and your browser are included.
-			</p>
-			<div class="mt-4">
-				<button class="button-accent disabled:opacity-40" disabled={!!report.pending}>
-					{report.pending ? "Sending…" : kind === "feature" ? "Send request" : "Send report"}
-				</button>
-			</div>
-		</form>
-	</div>
-{/snippet}
-
 {#if user}
-	{@render reportPanel(
-		"bug-report",
-		"bug",
-		"Report a bug",
-		"What went wrong?",
-		"A short title",
-		"What happened, and what did you expect?",
-		"Steps to reproduce help a lot.",
-		"Thanks — the bug report is in",
-	)}
-	{@render reportPanel(
-		"feature-request",
-		"feature",
-		"Request a feature",
-		"What would you like Stem Shovel to do?",
-		"A short title",
-		"Tell us about it: what you are trying to do, and how this would help.",
-		"An example from your own work is the most useful thing you can give us.",
-		"Thanks — the feature request is in",
-	)}
+	<ReportForm id="bug-report" kind="bug" {user} />
 {/if}

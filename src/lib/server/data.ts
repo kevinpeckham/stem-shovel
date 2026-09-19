@@ -1199,11 +1199,18 @@ export async function userDetail(userId: string) {
 
 export async function createBugReport(
 	userId: string,
-	input: { kind: ReportKind; title: string; body: string; pageUrl: string; userAgent: string },
+	input: {
+		kind: ReportKind;
+		title: string;
+		body: string;
+		pageUrl: string;
+		userAgent: string;
+		contactEmail: string;
+	},
 ) {
 	const [row] = await db
 		.insert(bugReport)
-		.values({ userId, ...input })
+		.values({ userId, ...input, contactEmail: input.contactEmail || null })
 		.returning();
 	return row;
 }
@@ -1281,13 +1288,19 @@ export async function deleteSupportRequest(id: string) {
 	return !!row;
 }
 
+/** Sets the status; returns the row's kind, title and contact email (for the "it shipped" email) or null when unknown. */
 export async function setBugReportStatus(id: string, status: BugStatus) {
 	const [row] = await db
 		.update(bugReport)
 		.set({ status, closedAt: status === "open" ? null : new Date() })
 		.where(eq(bugReport.id, id))
-		.returning({ id: bugReport.id });
-	return !!row;
+		.returning({
+			id: bugReport.id,
+			kind: bugReport.kind,
+			title: bugReport.title,
+			contactEmail: bugReport.contactEmail,
+		});
+	return row ?? null;
 }
 
 export async function setBugReportPriority(id: string, priority: ReportPriority | null) {
@@ -1310,6 +1323,7 @@ export async function respondToBugReport(id: string, response: string) {
 			title: bugReport.title,
 			kind: bugReport.kind,
 			userId: bugReport.userId,
+			contactEmail: bugReport.contactEmail,
 		});
 	if (!row) return null;
 	const reporter = row.userId
@@ -1318,7 +1332,7 @@ export async function respondToBugReport(id: string, response: string) {
 				columns: { email: true, name: true },
 			})
 		: null;
-	return { title: row.title, kind: row.kind, reporter };
+	return { title: row.title, kind: row.kind, contactEmail: row.contactEmail, reporter };
 }
 
 export async function deleteBugReport(id: string) {

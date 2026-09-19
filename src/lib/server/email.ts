@@ -239,6 +239,23 @@ export async function sendReportResponseEmail(opts: {
 	});
 }
 
+/** A feature request marked complete: to the address its requester offered for the news. */
+export async function sendFeatureShippedEmail(opts: {
+	to: string;
+	title: string;
+	pageUrl: string;
+}) {
+	const body = renderEmail({
+		greeting: "Hi,",
+		lines: [
+			`Good news: the feature you asked for on Stem Shovel, "${opts.title}", has shipped.`,
+			"Thanks for asking for it. The feature requests page has the details, and the Releases page what else is new.",
+		],
+		cta: { label: "See the feature requests", url: opts.pageUrl },
+	});
+	await sendEmail({ to: opts.to, subject: `Shipped: "${opts.title}"`, ...body });
+}
+
 export async function sendBugReportEmail(opts: {
 	to: string;
 	kind: "bug" | "feature";
@@ -247,6 +264,8 @@ export async function sendBugReportEmail(opts: {
 	pageUrl: string;
 	reporterName: string;
 	reporterEmail: string;
+	/** Where the requester said we may write about it, when they offered one. */
+	contactEmail?: string | null;
 	adminUrl: string;
 }) {
 	const body = renderEmail({
@@ -255,6 +274,9 @@ export async function sendBugReportEmail(opts: {
 			`${opts.reporterName} (${opts.reporterEmail}) ${opts.kind === "feature" ? "requested a feature on" : "reported a bug on"} Stem Shovel: "${opts.title}".`,
 			opts.body,
 			...(opts.pageUrl ? [`Page: ${opts.pageUrl}`] : []),
+			...(opts.contactEmail
+				? [`They are happy to be emailed about it at ${opts.contactEmail}.`]
+				: []),
 		],
 		cta: {
 			label: opts.kind === "feature" ? "Open the feature requests" : "Open the bug reports",

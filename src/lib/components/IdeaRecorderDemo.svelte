@@ -94,13 +94,11 @@
 	</label>
 
 	<p class="text-13px opacity-80 text-balance">
+		Note: this demo does not store recordings beyond your current session.
 		{#if signedIn && recorderHref}
-			This is the demo: takes stay on this page. <a class="link-dim" href={recorderHref}
-				>Open your Idea Recorder</a
-			> to keep them with your ideas, notes and all.
+			<a class="link-dim" href={recorderHref}>Open your Idea Recorder</a>
 		{:else}
-			This is the demo: takes stay on this page until you leave it, and the ⋯ menu downloads them.
-			<a class="link-dim" href="/sign-in">Sign in</a> to keep takes with your ideas, notes and all.
+			<a class="link-dim" href="/sign-in">Sign in</a>
 		{/if}
 	</p>
 </div>

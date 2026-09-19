@@ -10,7 +10,18 @@ describe("BugReportCreateSchema", () => {
 			body: "at 1:30",
 			pageUrl: "",
 			userAgent: "",
+			contactEmail: "",
 		});
+	});
+	test("the contact email is optional, trimmed, and must be an address when given", () => {
+		const base = { title: "x", body: "y" };
+		expect(
+			v.parse(BugReportCreateSchema, { ...base, contactEmail: " kev@example.com " }).contactEmail,
+		).toBe("kev@example.com");
+		expect(v.parse(BugReportCreateSchema, { ...base, contactEmail: "  " }).contactEmail).toBe("");
+		expect(
+			v.safeParse(BugReportCreateSchema, { ...base, contactEmail: "not an email" }).success,
+		).toBe(false);
 	});
 	test("a feature request is the same form with kind = feature", () => {
 		expect(

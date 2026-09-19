@@ -71,9 +71,12 @@ erDiagram
 - **ai_request** — one call to a model through the AI Gateway: kind, model,
   user, song, the text sent (no audio), the raw reply, the parsed answer or
   the error, duration and tokens. Reviewed on `/admin`.
-- **bug_report** — a signed-in user's bug report or feature request (`kind`) from the footer: title,
-  body, the page they were on and their browser (captured by the form),
-  `status` open/closed and `closed_at`. Listed and closed on `/admin`.
+- **bug_report** — a signed-in user's bug report (the footer) or feature
+  request (`kind`; the Feature Requests page): title, body, the page they
+  were on and their browser (captured by the form), `contact_email` when
+  they offered one for follow-up, `status` open/complete/closed and
+  `closed_at`, the admin's `priority`, `response` and `responded_at`.
+  Managed on `/admin`.
 - **invite_code** — a reusable sign-up code: `account_id` (null for a
   system admin's new-account code, which joins nothing), role, note,
   `max_uses` (null = unlimited), `uses`, optional `expires_at`, `revoked_at`.

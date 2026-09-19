@@ -8,8 +8,8 @@ What helps most:
 - the song or project it happened on (the page address is already included)
 - whether it happens every time
 
-Reports go straight to the people who run Stem Shovel, and replies to any follow-up email reach you directly.
+Reports go straight to the people who run Stem Shovel. Tick the box at the bottom of the form if we may email you for more detail.
 
 ## Requesting a feature
 
-Have an idea? **Request a feature** in the footer, next to Report a bug, opens the same kind of form: a title and a description. Say what you are trying to do and how the feature would help; an example from your own work is the most useful thing you can give. Requests reach the same people and are read the same way.
+Have an idea? **Feature Requests** in the footer opens the page that lists what members have asked for, what we said, and what has shipped. **Request a feature** there opens the same kind of form as a bug report: a title and a description. Say what you are trying to do and how the feature would help; an example from your own work is the most useful thing you can give. Tick the box to be emailed about it, so we can learn more and tell you when it ships.
