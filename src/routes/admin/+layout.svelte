@@ -11,6 +11,7 @@
 		{ slug: "waitlist", title: "Waitlist" },
 		{ slug: "bug-reports", title: "Bug reports" },
 		{ slug: "feature-requests", title: "Feature requests" },
+		{ slug: "support-requests", title: "Support requests" },
 		{ slug: "ai-requests", title: "AI requests" },
 		{ slug: "audit-log", title: "Audit log" },
 		{ slug: "home", title: "Home page" },

@@ -32,6 +32,7 @@ import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
 import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from "drizzle-orm";
+import type { SupportStatus } from "$lib/val/SupportRequestSchema";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -55,6 +56,7 @@ const {
 	inviteCode,
 	comment,
 	bugReport,
+	supportRequest,
 	userDoc,
 	userDocVersion,
 	shareLink,
@@ -1210,6 +1212,71 @@ export function listBugReports() {
 		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
 		with: { reporter: { columns: { name: true, email: true } } },
 	});
+}
+
+// ---- support requests (/support; src/lib/remote/support.remote.ts) ---------
+
+/** A user by email with the active accounts they belong to, for the /support line-up. Null when unknown. */
+export async function userAccountsByEmail(email: string) {
+	const u = await db.query.user.findFirst({
+		where: eq(schema.user.email, email),
+		columns: { id: true, name: true, email: true, isActive: true },
+		with: {
+			memberships: {
+				with: { account: { columns: { id: true, name: true, status: true } } },
+			},
+		},
+	});
+	if (!u) return null;
+	return {
+		id: u.id,
+		name: u.name,
+		email: u.email,
+		isActive: u.isActive,
+		accounts: u.memberships
+			.filter((m) => m.account.status === "active")
+			.map((m) => ({ id: m.account.id, name: m.account.name })),
+	};
+}
+
+export async function createSupportRequest(input: {
+	email: string;
+	userId: string | null;
+	accountId: string | null;
+	message: string;
+	verifiedBy: "signed-in" | "challenge";
+	ipAddress: string;
+	userAgent: string;
+}) {
+	const [row] = await db.insert(supportRequest).values(input).returning();
+	return row;
+}
+
+export function listSupportRequests() {
+	return db.query.supportRequest.findMany({
+		orderBy: [asc(supportRequest.status), desc(supportRequest.createdAt)],
+		with: {
+			sender: { columns: { name: true } },
+			account: { columns: { name: true, slug: true } },
+		},
+	});
+}
+
+export async function setSupportRequestStatus(id: string, status: SupportStatus) {
+	const [row] = await db
+		.update(supportRequest)
+		.set({ status, closedAt: status === "closed" ? new Date() : null })
+		.where(eq(supportRequest.id, id))
+		.returning({ id: supportRequest.id });
+	return !!row;
+}
+
+export async function deleteSupportRequest(id: string) {
+	const [row] = await db
+		.delete(supportRequest)
+		.where(eq(supportRequest.id, id))
+		.returning({ id: supportRequest.id });
+	return !!row;
 }
 
 export async function setBugReportStatus(id: string, status: BugStatus) {

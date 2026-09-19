@@ -302,6 +302,13 @@
       "when": 1789825879560,
       "tag": "0042_recording_codec",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1789833599374,
+      "tag": "0043_support_request",
+      "breakpoints": true
     }
   ]
 }

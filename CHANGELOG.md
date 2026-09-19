@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Help / support requests** at `/support` (Help in the footer, "Need help signing in?" on the sign-in page), open to visitors since the trouble may be sign-in itself. A visitor gives the email of their account and picks it out of a line-up of five partly hidden account names ("M*KK", "M***ny"), four made up and one theirs, before writing the message; an unregistered email gets five made-up names and the page cannot tell the cases apart, so nothing reveals which account an email belongs to. The answer travels in a sealed token (AES-GCM under a key from the auth secret, 15 minutes), attempts are rate limited by address and by email, and a honeypot field catches bots. A signed-in member skips the line-up. Requests are stored (`support_request`, migration 0043), system admins get an email and read, close and delete them on `/admin/support-requests`.
+
 ## [0.20.1] - 2026-09-19
 
 ### Changed

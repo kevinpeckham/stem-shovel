@@ -54,6 +54,10 @@
 			href="/releases">Releases</a
 		>
 		<a
+			class="underline underline-offset-4 hover:text-maximumYellow opacity-70 underline underline-offset-4 hover-text-maximumYellow"
+			href="/support">Help</a
+		>
+		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
 			href="/docs/privacy-policy">Privacy</a
 		>

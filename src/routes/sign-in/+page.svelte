@@ -74,6 +74,10 @@
 				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
 				href="/forgot-password">Forgot password?</a
 			>
+			<a
+				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
+				href="/support">Need help signing in?</a
+			>
 		</div>
 	</form>
 </main>

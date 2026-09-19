@@ -110,6 +110,23 @@ as `self` (dev alone allows Vercel's debug script host). Both share a
 confirmation, manage and invitation links, so one-time links never reach
 either store.
 
+## Support requests (/support)
+
+Open to signed-out visitors, so it must not become an oracle for which
+email belongs to which account. The visitor enters an email and gets five
+partly hidden account names (`obscureName`: "MMKK" → "M*KK"); when the
+email is a member's, one of them is theirs, otherwise all five are made up
+(`fakeAccountNames`), and the response looks the same either way. The
+correct index, the account and the email travel in a sealed token
+(`src/lib/server/supportChallenge.ts`: AES-256-GCM under a key derived
+from `BETTER_AUTH_SECRET`, 15-minute expiry), so nothing is kept between
+the two steps and the page cannot read the answer. Rate limits: 20 starts
+and 20 picks an hour per address, 8 starts and 5 picks an hour per email,
+so a guess is a one-in-five shot a few times an hour and confirms only a
+partly hidden name. A honeypot field rejects bots. Signed-in members skip
+the line-up; every request records the verification path, address and
+user agent for the admin page.
+
 ## Known gaps
 
 - Rate limits and the Blob read delegation live in process memory, per

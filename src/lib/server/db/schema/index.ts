@@ -20,6 +20,7 @@ export * from "./shareLink";
 export * from "./song";
 export * from "./songDocVersion";
 export * from "./stem";
+export * from "./supportRequest";
 export * from "./twoFactor";
 export * from "./user";
 export * from "./userDoc";

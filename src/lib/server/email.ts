@@ -186,6 +186,32 @@ export async function sendTwoFactorChangedEmail(to: string, name: string, enable
 }
 
 /** A new bug report or feature request, to each system admin; replies go to the reporter. */
+export async function sendSupportRequestEmail(opts: {
+	to: string;
+	email: string;
+	senderName: string | null;
+	accountName: string | null;
+	message: string;
+	verifiedBy: string;
+	adminUrl: string;
+}) {
+	const who = opts.senderName ? `${opts.senderName} (${opts.email})` : opts.email;
+	const body = renderEmail({
+		greeting: "Hi,",
+		lines: [
+			`${who} asked for help on Stem Shovel${opts.accountName ? ` (account: ${opts.accountName})` : ""}, verified by ${opts.verifiedBy}.`,
+			opts.message,
+		],
+		cta: { label: "Open the support requests", url: opts.adminUrl },
+	});
+	await sendEmail({
+		to: opts.to,
+		subject: `Support request from ${opts.email}`,
+		replyTo: opts.email,
+		...body,
+	});
+}
+
 export async function sendBugReportEmail(opts: {
 	to: string;
 	kind: "bug" | "feature";
