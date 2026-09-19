@@ -134,7 +134,7 @@
 	<div class="relative h-full min-h-full">
 		<form
 			bind:this={formEl}
-			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-16"
+			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
 			{...enhanced}
 		>
 			<input {...fields.songId.as("hidden", songId)} />
@@ -170,7 +170,7 @@
 	</div>
 {:else if html}
 	<article
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8 {mono
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
 			? 'font-mono'
 			: ''}"
 	>
@@ -180,7 +180,7 @@
 	</article>
 {:else}
 	<div
-		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 pb-8 {mono
+		class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 chart-body border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8 {mono
 			? 'font-mono'
 			: ''}"
 	>

@@ -1889,34 +1889,32 @@
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section class="grid grid-cols-1 place-content-start min-h-560px" aria-label="Player">
-		{#if readyDemos.length > 0}
-			<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos. -->
-			<div class="mb-3 flex items-center gap-3">
-				<div
-					class="flex items-center overflow-hidden rounded border border-white/15"
-					role="tablist"
-					aria-label="Player view"
-				>
-					{#each PLAYER_VIEWS as view, index (view)}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={playerView === view}
-							class="{playerView === view
-								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-							0
-								? 'rounded-r-none border-r-none'
-								: 'rounded-l-none'}"
-							onclick={() => showView(view)}
-							>{view === "stems"
-								? `Stems (${data.manifest.stems.length})`
-								: `Demos (${readyDemos.length})`}</button
-						>
-					{/each}
-				</div>
+		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
+		     The tabs show whenever there are demos, and always at xl, where the documents' tool bar sits in the same row. -->
+		<div class="mb-3 items-center gap-3 {readyDemos.length > 0 ? 'flex' : 'hidden xl:flex'}">
+			<div
+				class="flex items-center overflow-hidden rounded border border-white/15"
+				role="tablist"
+				aria-label="Player view"
+			>
+				{#each PLAYER_VIEWS as view, index (view)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={playerView === view}
+						class="{playerView === view
+							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
+							? 'rounded-r-none border-r-none'
+							: 'rounded-l-none'}"
+						onclick={() => showView(view)}
+						>{view === "stems"
+							? `Stems (${data.manifest.stems.length})`
+							: `Demos (${readyDemos.length})`}</button
+					>
+				{/each}
 			</div>
-		{/if}
+		</div>
 		{#if playerView === "demos"}
 			<div class="mb-5">
 				<DemoPanel bind:this={demoPanel} demos={readyDemos}>
@@ -2147,14 +2145,15 @@
 	</section>
 
 	<!-- 3. chart, lyrics & notes -->
+	<!-- At xl the tool bar sits in a row above the panel, level with the player's Stems / Demos tabs; below that it overlays the panel's top-right corner. -->
 	<section
-		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full min-h-560px max-w-full overflow-hidden grid-rows-1fr relative"
+		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full min-h-560px max-w-full overflow-hidden grid-rows-1fr xl:grid-rows-[auto_1fr] relative"
 		aria-label="Chart, lyrics, notes and comments"
 	>
 		<!-- <div class="h-full relative"> -->
 		{#if panel === "comments"}
 			<div
-				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"
+				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8"
 			>
 				{#if data.comments.length === 0}
 					<p class="opacity-80">No comments yet.</p>
@@ -2236,7 +2235,9 @@
 			{/key}
 		{/if}
 		<!-- tool bar  -->
-		<div class="absolute top-2 right-3 mb-2 flex items-stretch gap-4">
+		<div
+			class="absolute top-2 right-3 mb-2 flex items-stretch gap-4 xl:static xl:order-first xl:mb-1 xl:justify-end"
+		>
 			<!-- A dropdown on a phone (our own, so it opens downward with room for the caret), the segmented control from sm up. -->
 			<details class="relative sm:hidden" bind:this={panelMenuEl}>
 				<summary
@@ -2578,19 +2579,6 @@
 					{/if}
 				</div>
 			</details>
-		{/if}
-		{#if readyDemos.length > 0}
-			<!-- Also under Downloads; the button keeps listening one click away. -->
-			<button
-				class="button button-sm lg-button-xs"
-				type="button"
-				aria-pressed={playerView === "demos"}
-				onclick={() => showView(playerView === "demos" ? "stems" : "demos")}
-				title="Show the demo recordings in the player"
-			>
-				<span class="i-ph-microphone" aria-hidden="true"></span>
-				Demos ({readyDemos.length})
-			</button>
 		{/if}
 		{#if engine && mixDirty}
 			<button
