@@ -378,7 +378,7 @@
 		takeUrl = sourceFor(t);
 		loaded = t;
 		takeName = t.title;
-		elapsed = t.durationSeconds ?? 0;
+		elapsed = 0; // the clock reads 0:00 for a take from the list (the list shows its length)
 		notice = null;
 		setPhase("saved");
 	}
@@ -398,6 +398,7 @@
 		if (takeUrl?.startsWith("blob:")) URL.revokeObjectURL(takeUrl);
 		takeUrl = null;
 		take = null;
+		playhead = 0; // the transport starts at zero for whatever is loaded next
 	}
 
 	function togglePlayback() {
