@@ -136,7 +136,8 @@ check and the tests without any secret.
   bug reports, feature requests, AI requests, audit log), for users flagged
   by `bun run db:system-admin`.
 - `scripts/user-docs/*.md`, `scripts/seed-user-docs.ts` — the starting user
-  docs; `bun run db:seed-docs` adds the missing ones.
+  docs; `bun run db:seed-docs` adds the missing ones and
+  `bun run db:update-docs <slug...>` refreshes named pages from the sources.
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.

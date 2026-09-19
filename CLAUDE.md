@@ -27,6 +27,7 @@ bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
 bun run db:system-admin <email>         # make a user the operator (/admin)
 bun run db:super-admin <email>          # owner of every account, audited (docs/security.md)
 bun run db:seed-docs                    # add the starting user docs (scripts/user-docs) where missing
+bun run db:update-docs <slug...>        # refresh those pages from scripts/user-docs after the source changed
 bun run db:reset-stage [-- --wipe --admin <email>]   # rebuild dev or staging from the seed (never production); APP_ENV=preview for staging
 ```
 
