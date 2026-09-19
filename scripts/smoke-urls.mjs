@@ -53,6 +53,7 @@ const ROUTES = [
 	["admin/home", "/admin/home", [404], [200]],
 	["admin/invite-codes", "/admin/invite-codes", [404], [200]],
 	["admin/users", "/admin/users", [404], [200]],
+	["admin/users/[id]", "/admin/users/x", [404], [404]],
 	["admin/waitlist", "/admin/waitlist", [404], [200]],
 	["docs", "/docs", [200], [200]],
 	["docs/[slug]", "/docs/{doc}", [200], [200]],

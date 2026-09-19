@@ -965,9 +965,16 @@ export async function systemOverview() {
 			isActive: true,
 			isSystemAdmin: true,
 			isSuperAdmin: true,
+			twoFactorEnabled: true,
 			createdAt: true,
 		},
 	});
+	// The newest session per user is their last sign-in (sessions are created at sign-in).
+	const signIns = await db
+		.select({ userId: schema.session.userId, last: sql<number>`max(${schema.session.createdAt})` })
+		.from(schema.session)
+		.groupBy(schema.session.userId);
+	const lastSignInOf = new Map(signIns.map((s) => [s.userId, new Date(Number(s.last))]));
 	const rolesOf = new Map<
 		string,
 		{ account: string; slug: string; role: string; isFounder: boolean }[]
@@ -993,7 +1000,193 @@ export async function systemOverview() {
 			bytes: bytesOf.get(a.id) ?? 0,
 			members: a.members.map((m) => ({ role: m.role, name: m.user.name, email: m.user.email })),
 		})),
-		users: users.map((u) => ({ ...u, memberships: rolesOf.get(u.id) ?? [] })),
+		users: users.map((u) => ({
+			...u,
+			memberships: rolesOf.get(u.id) ?? [],
+			lastSignInAt: lastSignInOf.get(u.id) ?? null,
+		})),
+	};
+}
+
+/**
+ * Everything the operator wants to know about one user, for
+ * /admin/users/[id]: identity and flags, how they sign in (providers, a
+ * password, two-factor), their sessions (last sign-in, last seen, how many
+ * still open, the newest one's client), their memberships, what they have
+ * made across every account (ideas and takes, songs, projects, stems, doc
+ * versions, AI requests, bug reports, invitations, share links, invite
+ * codes), and their recent audit lines. Null when there is no such user.
+ */
+export async function userDetail(userId: string) {
+	const u = await db.query.user.findFirst({ where: eq(schema.user.id, userId) });
+	if (!u) return null;
+	const now = Date.now();
+	const [
+		memberships,
+		sessions,
+		providers,
+		twoFactorRow,
+		ideas,
+		takes,
+		songs,
+		projects,
+		stems,
+		docVersions,
+		aiRequests,
+		bugReports,
+		invitations,
+		shareLinks,
+		inviteCodes,
+		audit,
+	] = await Promise.all([
+		db.query.accountMember.findMany({
+			where: eq(schema.accountMember.userId, userId),
+			with: {
+				account: { columns: { id: true, name: true, slug: true, status: true, isFounder: true } },
+			},
+		}),
+		db.query.session.findMany({
+			where: eq(schema.session.userId, userId),
+			orderBy: [desc(schema.session.createdAt)],
+			columns: {
+				createdAt: true,
+				updatedAt: true,
+				expiresAt: true,
+				ipAddress: true,
+				userAgent: true,
+			},
+		}),
+		db.query.authAccount.findMany({
+			where: eq(schema.authAccount.userId, userId),
+			columns: { providerId: true, password: true, createdAt: true },
+		}),
+		db.query.twoFactor.findFirst({
+			where: eq(schema.twoFactor.userId, userId),
+			columns: { userId: true },
+		}),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.idea)
+			.where(eq(schema.idea.createdBy, userId)),
+		db
+			.select({
+				n: sql<number>`count(*)`,
+				bytes: sql<number | null>`sum(${schema.recording.sizeBytes})`,
+				seconds: sql<number | null>`sum(${schema.recording.durationSeconds})`,
+				last: sql<number | null>`max(${schema.recording.createdAt})`,
+			})
+			.from(schema.recording)
+			.where(eq(schema.recording.recordedBy, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.song)
+			.where(eq(schema.song.createdBy, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.project)
+			.where(eq(schema.project.createdBy, userId)),
+		db
+			.select({
+				n: sql<number>`count(*)`,
+				bytes: sql<number | null>`sum(${schema.stem.sizeBytes})`,
+				last: sql<number | null>`max(${schema.stem.createdAt})`,
+			})
+			.from(schema.stem)
+			.where(eq(schema.stem.uploadedBy, userId)),
+		db
+			.select({
+				n: sql<number>`count(*)`,
+				last: sql<number | null>`max(${schema.songDocVersion.createdAt})`,
+			})
+			.from(schema.songDocVersion)
+			.where(eq(schema.songDocVersion.createdBy, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.aiRequest)
+			.where(eq(schema.aiRequest.userId, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.bugReport)
+			.where(eq(schema.bugReport.userId, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.invitation)
+			.where(eq(schema.invitation.invitedBy, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.shareLink)
+			.where(eq(schema.shareLink.createdBy, userId)),
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.inviteCode)
+			.where(eq(schema.inviteCode.createdBy, userId)),
+		db.query.auditLog.findMany({
+			where: eq(schema.auditLog.userId, userId),
+			orderBy: [desc(schema.auditLog.createdAt)],
+			limit: 25,
+			with: { account: { columns: { name: true, slug: true } } },
+		}),
+	]);
+	const n = (rows: { n: number }[]) => Number(rows[0]?.n ?? 0);
+	const at = (v: number | null | undefined) => (v ? new Date(Number(v)) : null);
+	const newest = sessions[0] ?? null;
+	return {
+		id: u.id,
+		name: u.name,
+		email: u.email,
+		emailVerified: u.emailVerified,
+		isActive: u.isActive,
+		isSystemAdmin: u.isSystemAdmin,
+		isSuperAdmin: u.isSuperAdmin,
+		createdAt: u.createdAt,
+		updatedAt: u.updatedAt,
+		signIn: {
+			providers: providers.map((p) => p.providerId),
+			hasPassword: providers.some((p) => !!p.password),
+			twoFactorEnabled: u.twoFactorEnabled,
+			twoFactorEnrolled: !!twoFactorRow,
+			lastSignInAt: newest?.createdAt ?? null,
+			lastSeenAt: sessions.reduce<Date | null>(
+				(m, s) => (!m || s.updatedAt > m ? s.updatedAt : m),
+				null,
+			),
+			openSessions: sessions.filter((s) => s.expiresAt.getTime() > now).length,
+			totalSessions: sessions.length,
+			lastClient: newest ? { ip: newest.ipAddress, userAgent: newest.userAgent } : null,
+		},
+		memberships: memberships.map((m) => ({
+			role: m.role,
+			account: m.account.name,
+			slug: m.account.slug,
+			status: m.account.status,
+			isFounder: m.account.isFounder,
+			since: m.createdAt,
+		})),
+		activity: {
+			ideas: n(ideas),
+			takes: n(takes),
+			takeBytes: Number(takes[0]?.bytes ?? 0),
+			takeSeconds: Number(takes[0]?.seconds ?? 0),
+			lastTakeAt: at(takes[0]?.last),
+			songs: n(songs),
+			projects: n(projects),
+			stems: n(stems),
+			stemBytes: Number(stems[0]?.bytes ?? 0),
+			lastStemAt: at(stems[0]?.last),
+			docVersions: n(docVersions),
+			lastDocAt: at(docVersions[0]?.last),
+			aiRequests: n(aiRequests),
+			bugReports: n(bugReports),
+			invitations: n(invitations),
+			shareLinks: n(shareLinks),
+			inviteCodes: n(inviteCodes),
+		},
+		audit: audit.map((a) => ({
+			id: a.id,
+			action: a.action,
+			account: a.account ? { name: a.account.name, slug: a.account.slug } : null,
+			at: a.createdAt,
+		})),
 	};
 }
 

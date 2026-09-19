@@ -2,6 +2,7 @@
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import { manageUser } from "$lib/remote/admin.remote";
 	import { notify } from "$lib/state/notifications.svelte";
+	import { formatDate } from "$lib/utils/formatDate";
 
 	let { data } = $props();
 </script>
@@ -24,7 +25,8 @@
 					: 'opacity-60'}"
 			>
 				<span>
-					{u.name} <span class="text-dim">· {u.email}</span>
+					<a class="link-dim" href="/admin/users/{u.id}">{u.name}</a>
+					<span class="text-dim">· {u.email}</span>
 					<span class="block text-13px text-dim">
 						{#if u.memberships.length === 0}
 							no accounts
@@ -41,6 +43,8 @@
 						{founder ? "founder · " : ""}{u.isSuperAdmin ? "super admin · " : ""}{u.isSystemAdmin
 							? "system admin · "
 							: ""}{u.emailVerified ? "verified" : "unverified"}{u.isActive ? "" : " · suspended"}
+						· 2FA {u.twoFactorEnabled ? "on" : "off"}
+						· {u.lastSignInAt ? `signed in ${formatDate(u.lastSignInAt)}` : "never signed in"}
 					</span>
 					{#if data.superAdmin && owned.length > 0}
 						<!-- Founder is an account flag; this sets it on every account the user owns. -->
