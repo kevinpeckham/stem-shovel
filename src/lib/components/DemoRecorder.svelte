@@ -127,6 +127,13 @@
 	/** Playback through our own controls (the browser's player is hidden). */
 	let playbackPaused = $state(true);
 	let playhead = $state(0);
+	/** The audio element's length; a fresh WebM take reports Infinity, so the timed length stands in. */
+	let takeDuration = $state(0);
+	let takeLength = $derived(
+		Number.isFinite(takeDuration) && takeDuration > 0
+			? takeDuration
+			: (loaded?.durationSeconds ?? elapsed),
+	);
 	let volume = $state(1);
 	let menuEl = $state<HTMLDetailsElement | null>(null);
 
@@ -534,6 +541,7 @@
 		src={takeUrl}
 		bind:paused={playbackPaused}
 		bind:currentTime={playhead}
+		bind:duration={takeDuration}
 		bind:volume
 		preload="auto"
 		onended={() => (playbackPaused = true)}
@@ -663,7 +671,11 @@
 		<div class="rounded-md flex justify-between items-center sm-grid sm-grid-cols-1 gap-2">
 			<span
 				class="font-mono text-20px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
-				aria-live="off">{formatTime(hasTake && !playbackPaused ? playhead : elapsed, 1)}</span
+				aria-live="off"
+				>{formatTime(hasTake ? playhead : elapsed, 1)}{#if hasTake}<span
+						class="text-[0.5em] opacity-60"
+						aria-label="Length">&#8239;/&#8239;{formatTime(takeLength, 0)}</span
+					>{/if}</span
 			>
 			<div class="text-sm opacity-90">
 				{#if phase === "recording"}
@@ -707,6 +719,25 @@
 					></div>
 				</div>
 			</div>
+			{#if hasTake}
+				<!-- Where playback is in the take; drag to seek. -->
+				<label class="w-full grid grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90">
+					<span class="i-ph-play flex" aria-hidden="true"></span>
+					<span class="sr-only">Position</span>
+					<input
+						type="range"
+						class="accent-maximumYellow"
+						min="0"
+						max={takeLength || 0}
+						step="0.1"
+						value={playhead}
+						disabled={!takeLength}
+						oninput={(e) => (playhead = Number(e.currentTarget.value))}
+						aria-label="Position"
+						aria-valuetext="{formatTime(playhead, 0)} of {formatTime(takeLength, 0)}"
+					/>
+				</label>
+			{/if}
 			<!-- iOS keeps playback volume on the hardware buttons: a slider there does nothing. -->
 			<label
 				class="{onIOS
