@@ -44,12 +44,14 @@
 	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10"
 >
 	<a
-		class="font-brand text-maximumYellow text-20px md-text-24px lg-text-28px leading-none tracking-wide"
+		class="font-brand text-maximumYellow text-20px md-text-24px lg-text-28px leading-none tracking-wide flex items-baseline gap-2"
 		href="/"
 		title="Back to home"
 	>
 		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
 		<div class="sr-only">Stem Shovel App</div>
+		<!-- The image's baseline is its bottom edge, where the wordmark's letters sit. -->
+		<span class="text-15px uppercase leading-none tracking-wider">Beta</span>
 	</a>
 	<nav aria-label="Primary" class="flex items-center gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
