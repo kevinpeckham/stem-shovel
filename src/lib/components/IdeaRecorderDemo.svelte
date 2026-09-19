@@ -1,6 +1,5 @@
 <script lang="ts">
 	import DemoRecorder, { type Take } from "$lib/components/DemoRecorder.svelte";
-	import { SHORT_TAKE_SECONDS } from "$lib/utils/discardShortTakes";
 	import { onDestroy } from "svelte";
 
 	/**
@@ -8,7 +7,8 @@
 	 * (recorder, then notes; no ideas list), with nothing uploaded. Takes stay
 	 * in this page as blobs, numbered as they would be, playable and
 	 * downloadable from the ⋯ menu; a reload forgets them. A visitor is told
-	 * to sign in to keep takes; a member is sent to their own recorder.
+	 * to sign in to keep takes; a member is sent to their own recorder. No
+	 * short-take rule here: a first try is often a two-second test.
 	 */
 	interface Props {
 		signedIn: boolean;
@@ -46,7 +46,7 @@
 		bind:ideaTitle
 		ontitlechange={(t) => (ideaTitle = t || ideaTitle)}
 		onphase={(p) => (phase = p)}
-		minTakeSeconds={SHORT_TAKE_SECONDS}
+		minTakeSeconds={0}
 		{takes}
 		onpick={(t) => recorder?.load(t)}
 		onqueued={(q) => {
