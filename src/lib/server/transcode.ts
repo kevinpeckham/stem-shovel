@@ -11,6 +11,8 @@ import {
 	replaceRecordingSource,
 } from "$lib/server/data";
 import { accessOfUrl } from "$lib/utils/blobAccess";
+import { silenceBounds, type SilenceBounds } from "$lib/utils/silenceBounds";
+import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "$lib/constants/trimSilence";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
 import { ensureOriginalMix } from "$lib/server/mix";
 import { ensureSongNotes } from "$lib/server/notes";
@@ -129,10 +131,14 @@ interface Mp3Target {
 		url: string;
 		pathname: string;
 		playbackUrl: string | null;
+		/** Takes only: the source's type and codec, and whether the recorder asked for a silence trim. */
+		contentType?: string;
+		codec?: string | null;
+		trimSilence?: boolean;
 	} | null>;
 	finish: (id: string, r: { url: string; pathname: string; bytes: number }) => Promise<void>;
 	fail: (id: string) => Promise<void>;
-	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead. */
+	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead, and a trim replaces the source too. */
 	replaceSource?: (
 		id: string,
 		r: {
@@ -141,7 +147,8 @@ interface Mp3Target {
 			filename: string;
 			contentType: string;
 			sizeBytes: number;
-			codec: string;
+			codec: string | null;
+			durationSeconds?: number;
 		},
 	) => Promise<void>;
 }
@@ -171,6 +178,38 @@ async function isRawPcm(file: string): Promise<boolean> {
 }
 
 /**
+ * Where a take's sound starts and ends, from a silencedetect pass over the
+ * whole file; null when there is nothing worth cutting (src/lib/utils/silenceBounds.ts).
+ */
+async function findSilence(file: string): Promise<SilenceBounds | null> {
+	if (!ffmpegPath) return null;
+	try {
+		const { stderr } = await run(
+			ffmpegPath,
+			[
+				"-hide_banner",
+				"-i",
+				file,
+				"-vn",
+				"-af",
+				`silencedetect=noise=${TRIM_NOISE_DB}dB:d=${TRIM_MIN_SILENCE_SECONDS}`,
+				"-f",
+				"null",
+				"-",
+			],
+			{ maxBuffer: 4 * 1024 * 1024 },
+		);
+		return silenceBounds(stderr);
+	} catch {
+		return null; // an unreadable file: the MP3 step reports it
+	}
+}
+
+/** `-ss`/`-to` after the input, so a re-encode cuts to the sample and a stream copy to the packet. */
+const cut = (b: SilenceBounds | null) =>
+	b ? ["-ss", b.start.toFixed(3), "-to", b.end.toFixed(3)] : [];
+
+/**
  * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
  * AMR — which browsers cannot all play. The MP3 is what the page plays and
  * offers for download; the original stays in Blob.
@@ -184,12 +223,17 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 	}
 	const dir = await mkdtemp(join(tmpdir(), "demo-"));
 	try {
-		const input = join(dir, "source");
+		const source = join(dir, "source");
 		const output = join(dir, "demo.mp3");
 		const res = await readBlob(claim.url);
 		if (!res.ok || !res.body)
 			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
-		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(input));
+		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(source));
+		// The recorder may ask for the silence at both ends to be cut. The cut is
+		// made on the source, and the MP3 below is made from the cut source, so
+		// the two stay the same length and timecode.
+		let input = source;
+		const bounds = target.replaceSource && claim.trimSilence ? await findSilence(source) : null;
 		// Chrome's lossless recording is raw PCM in WebM, twice the size it needs to be
 		// and playable almost nowhere: the source becomes FLAC (same samples, half the bytes).
 		if (target.replaceSource && (await isRawPcm(input))) {
@@ -203,6 +247,7 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 					"-y",
 					"-i",
 					input,
+					...cut(bounds),
 					"-vn",
 					"-map_metadata",
 					"-1",
@@ -224,8 +269,51 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				contentType: "audio/flac",
 				sizeBytes: bytes.byteLength,
 				codec: "flac",
+				...(bounds ? { durationSeconds: bounds.end - bounds.start } : {}),
 			});
 			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
+			input = flac;
+		} else if (target.replaceSource && bounds) {
+			// Lossless sources (ALAC, FLAC) are re-encoded to the sample; a compressed
+			// one (Opus, AAC) is stream-copied, cut at a packet, so nothing is re-encoded.
+			const ext = claim.pathname.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin";
+			const lossless = claim.codec === "alac" || claim.codec === "flac";
+			const trimmed = join(dir, `trimmed.${ext}`);
+			await run(
+				ffmpegPath,
+				[
+					"-hide_banner",
+					"-loglevel",
+					"error",
+					"-y",
+					"-i",
+					input,
+					...cut(bounds),
+					"-vn",
+					"-map_metadata",
+					"-1",
+					"-c:a",
+					lossless ? claim.codec! : "copy",
+					trimmed,
+				],
+				{ maxBuffer: 1024 * 1024 },
+			);
+			const bytes = await readFile(trimmed);
+			const pathname =
+				claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `-t${Date.now().toString(36)}.${ext}`;
+			const contentType = claim.contentType ?? "application/octet-stream";
+			const blob = await putBlob(pathname, bytes, contentType, accessOfUrl(claim.url));
+			await target.replaceSource(id, {
+				url: blob.url,
+				pathname,
+				filename: pathname.split("/").pop() ?? `take.${ext}`,
+				contentType,
+				sizeBytes: bytes.byteLength,
+				codec: claim.codec ?? null,
+				durationSeconds: bounds.end - bounds.start,
+			});
+			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
+			input = trimmed;
 		}
 		await run(
 			ffmpegPath,

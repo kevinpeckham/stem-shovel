@@ -1,0 +1,1 @@
+ALTER TABLE `recording` ADD `trim_silence` integer DEFAULT false NOT NULL;

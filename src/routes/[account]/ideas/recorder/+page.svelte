@@ -435,6 +435,7 @@
 						...t,
 						ideaId,
 						ideaTitle,
+						trimSilence: prefs.trimSilence,
 						createdAt: Date.now(),
 					});
 				}}
@@ -835,6 +836,21 @@
 					Discard takes shorter than {SHORT_TAKE_SECONDS} seconds automatically
 					<span class="block text-13px opacity-70"
 						>A mis-tap on Record is dropped instead of saved.</span
+					>
+				</span>
+			</label>
+			<label class="flex items-start gap-3">
+				<input
+					class="mt-1 accent-maximumYellow"
+					type="checkbox"
+					bind:checked={prefs.trimSilence}
+					onchange={savePrefs}
+				/>
+				<span>
+					Trim silence at the start and end
+					<span class="block text-13px opacity-70"
+						>Once a take is saved, the silence before the first sound and after the last is cut from
+						the take and its MP3 alike, leaving a little room. Off unless you turn it on.</span
 					>
 				</span>
 			</label>

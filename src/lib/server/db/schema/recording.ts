@@ -40,8 +40,10 @@ export const recording = table(
 		sizeBytes: t.integer("size_bytes").notNull(),
 		/** alac, pcm, flac, opus or aac as the browser reported at reservation (src/lib/constants/recordingCodecs.ts); null before migration 0042. */
 		codec: t.text("codec"),
-		/** As timed by the recorder; the browser's own files carry no duration. */
+		/** As timed by the recorder; the browser's own files carry no duration. Set again by the jobs function after a trim. */
 		durationSeconds: t.real("duration_seconds"),
+		/** The recorder asked for silence at the start and end to be cut (migration 0046); cleared once the jobs function has done it. */
+		trimSilence: t.integer("trim_silence", { mode: "boolean" }).notNull().default(false),
 		playbackStatus: t.text("playback_status").$type<PlaybackStatus>(),
 		playbackUrl: t.text("playback_url"),
 		playbackPathname: t.text("playback_pathname"),

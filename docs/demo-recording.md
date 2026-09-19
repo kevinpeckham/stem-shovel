@@ -91,7 +91,20 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   leaves the front.
 - **Recorder settings** (the gear in the header, a popover): "Discard takes
   shorter than 3 seconds automatically", on by default, per browser
-  (`src/lib/utils/discardShortTakes.ts`; the recorder's `minTakeSeconds`).
+  (`src/lib/utils/discardShortTakes.ts`; the recorder's `minTakeSeconds`);
+  "Trim silence at the start and end", off by default
+  (`recorderPreferences.trimSilence`). The flag travels with the take's
+  reservation (`recording.trim_silence`, migration 0046) and the jobs
+  function honours it when it renders the MP3: a `silencedetect` pass
+  (−40 dB, gaps of 0.3 s or more; `src/lib/utils/silenceBounds.ts` reads
+  the log) finds the first and last sound, the source is cut to 0.3 s
+  before the first and 0.5 s after the last (re-encoded to the sample for
+  ALAC, FLAC and raw PCM, stream-copied at the packet for Opus and AAC) and
+  stored under a new pathname, the MP3 is made from the cut source so both
+  have the same length, `duration_seconds` is set from the cut and the
+  flag cleared so a retry cuts nothing twice. Less than 0.1 s to gain, or
+  a take that is silent throughout, is left as recorded
+  (`src/lib/constants/trimSilence.ts`).
 - **Reusable bits** that came out of this page: `ComboBox.svelte`
   (replicator's, restyled: field-like trigger, listbox, keyboard complete)
   and `InfoTip.svelte` (an info button opening a native popover placed

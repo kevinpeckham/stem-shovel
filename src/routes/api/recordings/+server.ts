@@ -15,6 +15,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		filename?: string;
 		sizeBytes?: number;
 		codec?: string;
+		trimSilence?: boolean;
 	};
 	const { ideaId, title, filename, sizeBytes } = body;
 	const codec = RECORDING_CODECS.includes(body.codec as RecordingCodec)
@@ -41,6 +42,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		contentType,
 		sizeBytes,
 		codec,
+		trimSilence: body.trimSilence === true,
 	});
 	if (!row) error(404, "Idea not found");
 	return json({

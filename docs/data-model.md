@@ -95,7 +95,9 @@ erDiagram
 - **recording** — one take of an idea: an audio file at
   `accounts/<id>/recordings/<recordingId>.<ext>` (the private store when
   configured), numbered within the idea (`take_number`), with an optional
-  name (`title`), the timed duration, the codec the browser reported at
+  name (`title`), the timed duration (set again after a silence trim), a
+  `trim_silence` request from the recorder (migration 0046, cleared once
+  done), the codec the browser reported at
   reservation (`codec`: alac, pcm, flac, opus or aac, migration 0042; the
   player asks `canPlayType` about the original before falling back to the
   MP3) and the same MP3 rendition columns as a demo. Adding a take to a song copies the file into a `demo` row of that

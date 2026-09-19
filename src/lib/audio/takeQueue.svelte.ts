@@ -22,6 +22,8 @@ export interface PendingTake {
 	ext: string;
 	/** alac, pcm, opus or aac, as the recorder chose (src/lib/constants/recordingCodecs.ts); absent on old queued takes. */
 	codec?: string;
+	/** Cut silence off the ends once saved (the Recorder setting at the time). */
+	trimSilence?: boolean;
 	createdAt: number;
 	blob: Blob;
 }
@@ -153,6 +155,7 @@ export class TakeQueue {
 								filename: file.name,
 								sizeBytes: file.size,
 								codec: item.codec ?? null,
+								trimSilence: item.trimSilence === true,
 							}),
 						item.durationSeconds,
 						(percent) => (item.progress = percent),

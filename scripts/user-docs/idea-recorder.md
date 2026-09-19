@@ -34,6 +34,7 @@ The gear in the header opens **Recorder settings**, remembered on the device:
 - **Stereo input**, for an audio interface with two channels. A phone microphone is mono anyway, and stereo doubles the file.
 - **Microphone.** Tap _Find microphones_ once to grant permission and list the inputs, then pick an interface or a better mic. It shows on any device an interface is plugged into.
 - **Discard takes shorter than 3 seconds automatically**, on by default, drops a mis-tap on Record.
+- **Trim silence at the start and end**, off by default. Once a take is saved, the silence before the first sound and after the last is cut from the take and its MP3 alike, leaving a little room (about a third of a second before, half a second after). A take that is silent throughout, or has nothing worth cutting, is left as recorded. The trim happens in the background a minute or so after saving, so the take's length in the list updates then.
 
 A take stops and saves on its own at 15 minutes (a notice appears at 10), and after 2 minutes of silence: saved when it had sound, discarded when it never did. A take is at most 120 MB. Whatever the format, every take is also converted to MP3 for playback, so a take recorded losslessly on one device plays on any other.
 

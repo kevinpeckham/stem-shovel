@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Trim silence** in Recorder settings, off by default: once a take is saved, the jobs function cuts the silence before the first sound and after the last from the source and makes the MP3 from the cut source, so both keep the same length and timecode (0.3 s left before, 0.5 s after; lossless sources re-encoded to the sample, compressed ones stream-copied). `recording.trim_silence` (migration 0046) carries the request and is cleared when done; `duration_seconds` follows the cut.
+
 ## [0.22.0] - 2026-09-19
 
 ### Added

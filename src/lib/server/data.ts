@@ -2336,7 +2336,7 @@ export async function createRecording(
 	accountId: string,
 	userId: string,
 	ideaId: string,
-	file: NewStemFile & { title: string; codec: string | null },
+	file: NewStemFile & { title: string; codec: string | null; trimSilence: boolean },
 ) {
 	const owner = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
@@ -2363,6 +2363,7 @@ export async function createRecording(
 			contentType: file.contentType,
 			sizeBytes: file.sizeBytes,
 			codec: file.codec,
+			trimSilence: file.trimSilence,
 		})
 		.returning();
 	return row;
@@ -2558,6 +2559,9 @@ export async function claimRecordingPlayback(recordingId: string) {
 			url: recording.url,
 			pathname: recording.pathname,
 			playbackUrl: recording.playbackUrl,
+			contentType: recording.contentType,
+			codec: recording.codec,
+			trimSilence: recording.trimSilence,
 		});
 	return row ?? null;
 }
@@ -2578,9 +2582,11 @@ export async function finishRecordingPlayback(
 }
 
 /**
- * The take's source file was replaced (raw PCM from Chrome turned into FLAC
- * by the jobs function): the row follows, and the copy a song may already
- * hold keeps the old file.
+ * The take's source file was replaced by the jobs function (raw PCM from
+ * Chrome turned into FLAC, or silence trimmed off the ends): the row
+ * follows, with the new length when it changed, and the trim request is
+ * cleared so a retry does not cut again. The copy a song may already hold
+ * keeps the old file.
  */
 export async function replaceRecordingSource(
 	recordingId: string,
@@ -2590,7 +2596,8 @@ export async function replaceRecordingSource(
 		filename: string;
 		contentType: string;
 		sizeBytes: number;
-		codec: string;
+		codec: string | null;
+		durationSeconds?: number;
 	},
 ) {
 	await db
@@ -2602,6 +2609,8 @@ export async function replaceRecordingSource(
 			contentType: r.contentType,
 			sizeBytes: r.sizeBytes,
 			codec: r.codec,
+			...(r.durationSeconds !== undefined ? { durationSeconds: r.durationSeconds } : {}),
+			trimSilence: false,
 		})
 		.where(eq(recording.id, recordingId));
 }
