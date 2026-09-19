@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **Listening back right after a lossless take.** The recorder plays the browser's own recording at once, then switches to the MP3 rendition the moment the jobs function has made it (the page follows it for a minute), so a take plays on the device that recorded it and on every other; where a browser cannot play its own lossless output, a notice says so until the MP3 takes over. After capture the audio session returns to its default category, so playback routes as it did before.
 - **"AudioSession category is not compatible with audio capture"** on an iPhone when the recorder was opened after playing a song in the same tab: the stem player had set the page's audio session to playback (for the silent switch) and WebKit refuses to capture under it. The recorder now sets "play-and-record" before asking for the microphone, and the player sets playback again on every play.
 
 ### Added

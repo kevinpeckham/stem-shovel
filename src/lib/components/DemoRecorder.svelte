@@ -328,6 +328,25 @@
 		if (loaded?.id === localId) loaded = { ...loaded, id: saved.id, takeNumber: saved.takeNumber };
 	}
 
+	/**
+	 * The loaded take's MP3 rendition has landed: play that from now on. The
+	 * browser's own recording plays until then (a blob of what it captured),
+	 * except where it cannot play its own lossless output, which `playError`
+	 * reports.
+	 */
+	export function refreshUrl(id: string, url: string) {
+		if (loaded?.id !== id || takeUrl === url) return;
+		const wasPlaying = !playbackPaused;
+		const at = playhead;
+		discardTake();
+		takeUrl = url;
+		loaded = { ...loaded, url };
+		playError = null;
+		playhead = at;
+		if (wasPlaying) playbackPaused = false;
+	}
+	let playError = $state<string | null>(null);
+
 	/** Show a take from the list: its file plays on demand; Record starts the next take. */
 	export function load(t: Take) {
 		if (busy) return;
@@ -432,6 +451,9 @@
 		for (const t of stream?.getTracks() ?? []) t.stop();
 		stream = null;
 		recorder = null;
+		// Capture is over: back to the default category, so playback routes and behaves as before.
+		const session = audioSession();
+		if (session && session.type === "play-and-record") session.type = "auto";
 		level = 0;
 		peak = 0;
 		void wakeLock?.release();
@@ -478,6 +500,11 @@
 		bind:volume
 		preload="auto"
 		onended={() => (playbackPaused = true)}
+		onerror={(e) => {
+			const code = (e.currentTarget as HTMLAudioElement).error?.code;
+			playbackPaused = true;
+			playError = `This browser cannot play the take's own recording here${code ? ` (media error ${code})` : ""}; the MP3 made for playback takes over as soon as it is ready.`;
+		}}
 	></audio>
 {/if}
 
@@ -667,6 +694,11 @@
 	{#if notice}
 		<p class="rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-sm" role="status">
 			{notice}
+		</p>
+	{/if}
+	{#if playError}
+		<p class="rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-sm" role="status">
+			{playError}
 		</p>
 	{/if}
 

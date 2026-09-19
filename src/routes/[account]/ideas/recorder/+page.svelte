@@ -108,8 +108,27 @@
 			}
 			notify(`Take ${saved.takeNumber} saved`);
 			await invalidateAll();
+			void followRendition(saved.id);
 		},
 	});
+	/**
+	 * The jobs function makes the take's MP3 within a minute or so; when it
+	 * lands, the player switches to it (a browser cannot always play its own
+	 * lossless recording, and another device never can). Polls the page data
+	 * a few times, then gives up quietly: the next visit has it anyway.
+	 */
+	async function followRendition(takeId: string) {
+		for (let i = 0; i < 12; i++) {
+			await new Promise((r) => setTimeout(r, 5000));
+			await invalidateAll();
+			const take = data.ideas.flatMap((i) => i.takes).find((t) => t.id === takeId);
+			if (!take) return;
+			if (/\.mp3(\?|$)/.test(take.url)) {
+				recorder?.refreshUrl(take.id, take.url);
+				return;
+			}
+		}
+	}
 	onMount(() => {
 		discardShort = loadDiscardShortTakes();
 		prefs = loadRecorderPreferences();
