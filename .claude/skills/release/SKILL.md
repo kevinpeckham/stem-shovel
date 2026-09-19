@@ -48,15 +48,19 @@ Set `version` in `package.json` to the target version.
 4. Bold the lead phrase of each entry, one entry per user-visible change;
    match the existing style.
 
-## Step 3b: RELEASES.md (the /releases page)
+## Step 3b: the Releases page (user-facing notes)
 
-Add the same version section to `RELEASES.md`, in the same shape, with
+The `/releases` page is the "releases" user doc, stored in each stage's
+database and edited in the app (`/docs/releases/edit`, system admins), not
+a file. Draft the version's section in the same shape as CHANGELOG.md
+(`## [x.y.z] - YYYY-MM-DD`, `### Added` / `### Changed` / `### Fixed`) with
 only what a user would notice: new features, improved or changed features,
 fixes worth knowing about, in plain words. Leave out permissions,
 admin-only actions, security work, infrastructure, migrations, tooling,
-docs-for-developers and anything about how the app is built; those stay in
-CHANGELOG.md. Move the Unreleased entries there under the version heading
-and leave `## [Unreleased]` empty.
+docs-for-developers and anything about how the app is built. Put the
+draft in the release report for Kevin to paste at the top of the page on
+production (and on staging/dev when he wants them in step). The seed
+source `scripts/user-docs/releases.md` is only the starting content.
 
 ## Step 4: Documentation and memory
 

@@ -31,7 +31,8 @@ import type { BugStatus } from "$lib/val/BugReportSchema";
 import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
-import { and, asc, desc, eq, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from "drizzle-orm";
+import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -1232,8 +1233,10 @@ export async function systemAdminEmails() {
 // ---- user docs --------------------------------------------------------------
 
 /** Every page, in reading order, without the markdown. */
+/** The documentation pages, without the release notes (they have their own page, /releases). */
 export function listUserDocs() {
 	return db.query.userDoc.findMany({
+		where: ne(userDoc.slug, RELEASES_DOC_SLUG),
 		orderBy: [asc(userDoc.sortOrder), asc(userDoc.title)],
 		columns: { id: true, slug: true, title: true, sortOrder: true, version: true, updatedAt: true },
 	});

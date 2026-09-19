@@ -212,7 +212,7 @@ check and the tests without any secret.
 
 ## Documentation
 
-- [RELEASES.md](RELEASES.md) — the user-facing release notes behind `/releases`; CHANGELOG.md is the full record.
+- `/releases` — the user-facing release notes, a user doc page in the database (`scripts/user-docs/releases.md` seeds the starting content); CHANGELOG.md is the full record.
 - [docs/data-model.md](docs/data-model.md) — accounts → projects → songs → stems and demos, chart/lyrics/notes versions.
 - [docs/security.md](docs/security.md) — the security model, what is enforced where, error reports and analytics, known gaps.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.

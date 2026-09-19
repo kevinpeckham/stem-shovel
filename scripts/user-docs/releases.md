@@ -1,12 +1,6 @@
 # Releases
 
-What changed for people using Stem Shovel, one section per version, newest
-first. This is the source of the `/releases` page: new features, improved
-or changed features, and fixes worth knowing about. Nothing about
-permissions, administration or how the app is built belongs here; that is
-CHANGELOG.md.
-
-## [Unreleased]
+What changed for people using Stem Shovel, one section per version, newest first.
 
 ## [0.20.0] - 2026-09-19
 

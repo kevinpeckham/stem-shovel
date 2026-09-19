@@ -13,15 +13,26 @@
 </svelte:head>
 
 <main class="page">
-	<header class="max-w-article mb-6">
-		<h1 class="heading-2">Releases</h1>
-		<p class="opacity-90 text-balance">
-			What changed in each version of Stem Shovel, newest first. The build you are looking at is
-			named in the footer.
-		</p>
+	<header class="max-w-article mb-6 flex flex-wrap items-start justify-between gap-4">
+		<div>
+			<h1 class="heading-2">Releases</h1>
+			<p class="opacity-90 text-balance">
+				What changed in each version of Stem Shovel, newest first. The build you are looking at is
+				named in the footer.
+			</p>
+		</div>
+		{#if data.canEdit}
+			<a class="button button-sm" href="/docs/releases/edit">
+				<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+				Edit
+			</a>
+		{/if}
 	</header>
 
 	<div class="grid gap-8 max-w-article">
+		{#if data.releases.length === 0}
+			<p class="opacity-80">No release notes yet.</p>
+		{/if}
 		{#each data.releases as r (r.version)}
 			<section id="v{r.version}" class="scroll-mt-20">
 				<h2 class="heading-3 flex flex-wrap items-baseline gap-x-3">

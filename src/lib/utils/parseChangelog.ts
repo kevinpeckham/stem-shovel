@@ -12,7 +12,7 @@ export interface Release {
  * `### Added` / `### Changed` / `### Fixed` / `### Technical`) as the
  * releases page shows it: every version, newest first, any Technical
  * subsection left out, and the Unreleased section only when it has
- * something in it. The page reads RELEASES.md, the user-facing notes.
+ * something in it. The /releases page feeds it the "releases" user doc.
  */
 export function parseChangelog(markdown: string): Release[] {
 	const out: Release[] = [];

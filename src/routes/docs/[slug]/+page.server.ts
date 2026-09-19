@@ -1,10 +1,12 @@
 import { getUserDoc, listUserDocs } from "$lib/server/data";
 import { renderMarkdown } from "$lib/server/markdown";
-import { error } from "@sveltejs/kit";
+import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 /** One documentation page, rendered; public. */
 export const load: PageServerLoad = async ({ params, locals }) => {
+	if (params.slug === RELEASES_DOC_SLUG) redirect(307, "/releases"); // its own page
 	const doc = await getUserDoc(params.slug);
 	if (!doc) error(404, `No page "${params.slug}"`);
 	return {
