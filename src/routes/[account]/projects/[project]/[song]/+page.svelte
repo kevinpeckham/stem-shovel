@@ -1924,9 +1924,36 @@
 				<p class="text-sm text-dim">No stems yet.</p>
 				{#if data.canEdit}
 					<p class="mt-1 text-sm opacity-80">
-						Add stems below, start with a demo recording of the idea, or record one now.
+						Upload stems, start with a demo recording of the idea, or record one now.
 					</p>
-					<p class="mt-4">
+					<div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+						<StemUploader
+							songId={data.song.id}
+							stemCount={data.song.stems.length}
+							bind:jobs={uploadJobs}
+							bind:notice={uploadNotice}
+							onuploaded={() => (versionOffer = true)}
+							onanalysis={applyDetection}
+							label="Upload stems"
+							class="inline-flex items-center gap-2"
+						/>
+						<label
+							class="button button-sm inline-flex cursor-pointer items-center gap-2 {demoBusy
+								? 'pointer-events-none opacity-50'
+								: ''}"
+							title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+						>
+							<span class="i-ph-microphone" aria-hidden="true"></span>
+							{demoBusy ? "Uploading…" : "Upload a demo"}
+							<input
+								class="sr-only"
+								type="file"
+								accept={DEMO_ACCEPT}
+								multiple
+								disabled={demoBusy}
+								onchange={(e) => uploadDemos(e.currentTarget)}
+							/>
+						</label>
 						<a
 							class="button button-sm inline-flex items-center gap-2"
 							href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
@@ -1935,7 +1962,7 @@
 							<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
 							Record a demo
 						</a>
-					</p>
+					</div>
 				{/if}
 			</div>
 		{/if}

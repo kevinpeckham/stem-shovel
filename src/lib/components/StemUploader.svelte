@@ -38,6 +38,10 @@
 		onanalysis?: (detection: Detection) => void;
 		/** Rendered as an item inside a menu instead of a button. */
 		menu?: boolean;
+		/** The button's text ("Add Stems" unless given); the menu item keeps its own. */
+		label?: string;
+		/** Extra classes on the button (a size, a layout), when not in a menu. */
+		class?: string;
 	}
 
 	/**
@@ -54,6 +58,8 @@
 		onuploaded,
 		onanalysis,
 		menu = false,
+		label = "Add Stems",
+		class: cls = "",
 	}: Props = $props();
 
 	let busy = $state(false);
@@ -126,14 +132,14 @@
 <label
 	class="{menu
 		? 'block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10'
-		: 'button button-sm lg-button-xs cursor-pointer'} {busy
+		: `button button-sm cursor-pointer ${cls || 'lg-button-xs'}`} {busy
 		? 'pointer-events-none opacity-60'
 		: ''}"
 	title="Upload new stems to this song."
 >
 	<!-- WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems -->
 	<span class="i-ph-plus {menu ? 'mr-2' : ''}" aria-hidden="true"></span>
-	{busy ? "Uploading…" : "Add Stems"}
+	{busy ? "Uploading…" : label}
 	<input
 		class="sr-only"
 		type="file"

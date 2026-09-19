@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **"Record a demo" is a button** on its own row in an empty song's player box, instead of a link inside the sentence.
+- **An empty song's player box offers three buttons** on their own row: Upload stems, Upload a demo and Record a demo, instead of a sentence with a link.
 
 ### Fixed
 
