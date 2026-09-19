@@ -22,6 +22,8 @@ Ideas are yours: other members of the account see them only once a take becomes 
 
 ## Into a song
 
+The recorder's ⋯ menu also downloads the loaded take: **Download source** hands over the take exactly as recorded (named for its format, for example "ALAC lossless"), and **Download MP3** the playback rendition once it is made.
+
 From the recorder's ⋯ menu or a take's menu, **Add as demo…** puts the take on an existing song as a demo recording, and **Create new song…** makes a song in one of your projects with the take as its first demo. Either way the take is copied, so it stays with the idea too. Tick **Merge the idea's notes into the song's notes** (on by default) to append the note board to the song's notes under a heading naming the idea and take.
 
 ## Settings and limits

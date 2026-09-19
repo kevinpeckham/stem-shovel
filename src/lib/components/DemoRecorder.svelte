@@ -411,26 +411,37 @@
 		}
 	}
 	/** "<idea> - take 3.m4a", the take's extension (a loaded file's from its URL). */
-	function downloadName() {
-		const fromUrl = takeUrl?.startsWith("blob:")
-			? null
-			: takeUrl?.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
+	/** "<idea> - take 3 - <name>.<ext>", the extension from the file being saved. */
+	function downloadName(url: string) {
+		const fromUrl = url.startsWith("blob:") ? null : url.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
 		const ext = take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a");
 		const base = `${ideaTitle.trim() || "idea"} - take ${loaded?.takeNumber ?? 1}${takeName.trim() ? ` - ${takeName.trim()}` : ""}`;
 		return `${base.replace(/[^\w.-]+/g, "-").toLowerCase()}.${ext}`;
 	}
-	async function download() {
+	/** What the source download is called in the menu: its codec when known. */
+	const sourceLabel = $derived.by(() => {
+		const codec = loaded?.codec ?? format?.codec.toLowerCase() ?? null;
+		const names: Record<string, string> = {
+			alac: "ALAC lossless",
+			flac: "FLAC lossless",
+			pcm: "PCM lossless",
+			opus: "Opus",
+			aac: "AAC",
+		};
+		return codec && names[codec] ? `Download source (${names[codec]})` : "Download source";
+	});
+	/** "source" is the take as recorded (a take just made is its own blob); "mp3" the playback rendition. */
+	async function download(kind: "source" | "mp3") {
 		if (menuEl) menuEl.open = false;
-		// The original, whatever is playing (a take just made is its own blob).
-		const source = take ? takeUrl : (loaded?.url ?? takeUrl);
-		if (!source) return;
+		const url = kind === "mp3" ? loaded?.playbackUrl : take ? takeUrl : (loaded?.url ?? takeUrl);
+		if (!url) return;
 		try {
-			if (take) {
+			if (take && kind === "source") {
 				const a = document.createElement("a");
-				a.href = source;
-				a.download = downloadName();
+				a.href = url;
+				a.download = downloadName(url);
 				a.click();
-			} else await saveAs(source, downloadName());
+			} else await saveAs(url, downloadName(url));
 		} catch (e) {
 			notify(`Download failed: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -782,9 +793,9 @@
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"
 						role="menuitem"
-						onclick={download}
+						onclick={() => download("source")}
 					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
+						<span class="i-ph-download-simple" aria-hidden="true"></span>{sourceLabel}
 					</button>
 				{:else if phase === "saved" && loaded}
 					<button
@@ -813,9 +824,21 @@
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"
 						role="menuitem"
-						onclick={download}
+						onclick={() => download("source")}
 					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>Download
+						<span class="i-ph-download-simple" aria-hidden="true"></span>{sourceLabel}
+					</button>
+					<button
+						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
+						type="button"
+						role="menuitem"
+						disabled={!loaded.playbackUrl}
+						title={loaded.playbackUrl
+							? "The 192 kbit/s MP3 made for playback"
+							: "The MP3 is still being made"}
+						onclick={() => download("mp3")}
+					>
+						<span class="i-ph-download-simple" aria-hidden="true"></span>Download MP3
 					</button>
 					<hr class="my-1 border-white/15" />
 					<button
