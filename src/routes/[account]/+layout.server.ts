@@ -1,4 +1,4 @@
-import { canEdit, publicAccountBySlug } from "$lib/server/access";
+import { canEdit, isMember, publicAccountBySlug } from "$lib/server/access";
 import { openShareLinks, useShareLink } from "$lib/server/data";
 import { rememberAccount } from "$lib/server/currentAccount";
 import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "$lib/server/viewAccess";
@@ -33,5 +33,11 @@ export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) =
 	}
 	const member = canEdit(locals, account.id);
 	if (member) rememberAccount(cookies, account.slug); // "your" account, for the neutral pages
-	return { account, canEdit: member, shareGrants: grants };
+	// A viewer is a member without edit rights: sees private work, may comment.
+	return {
+		account,
+		canEdit: member,
+		canComment: isMember(locals, account.id),
+		shareGrants: grants,
+	};
 };

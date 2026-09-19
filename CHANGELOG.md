@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Security
+
+- **Viewers can no longer edit.** Every mutation, upload and editing page now requires an owner, admin or member; a viewer sees the account's private work, can comment, and gets a 404 from everything else, and the pages hide the controls from them.
+- **Rate limits are shared across function instances**: counted in Upstash Redis (one database per stage, `KV_REST_API_URL` / `KV_REST_API_TOKEN`), so the limits on invitations, share mail, AI, support requests, the waitlist and custom mixes mean what they say, and Better Auth's sign-in and two-factor limits count there too. Without Redis each instance counts in memory as before.
+- **A secrets scan in CI** (gitleaks, whole history, every push) and the operator's address removed from the docs.
+- **The stem-player test page** (`/test`) is gone.
+
 ### Added
 
 - **Feature requests have a page** (`/feature-requests`, signed-in users): every request with its status (open, complete, closed), its priority and the admin's response, requesters unnamed. In the admin, a feature request can be marked complete, given a high, medium or low priority, answered (the response is saved on the request and emailed to the requester) and deleted; bug reports get respond and delete too. Migration 0044 adds `priority`, `response` and `responded_at` to `bug_report`.

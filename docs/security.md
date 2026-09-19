@@ -127,11 +127,30 @@ partly hidden name. A honeypot field rejects bots. Signed-in members skip
 the line-up; every request records the verification path, address and
 user agent for the admin page.
 
+## Roles
+
+Owner, admin, member and viewer. Every mutation, upload and editing page
+goes through `requireEditor` (`memberOf` uses it): owner, admin and member
+pass, a viewer gets the same 404 a non-member would. `canEdit`, which the
+pages use to show controls, is false for a viewer; `isMember` is what a
+viewer still has: the account's private work is theirs to see, and
+comments are the one mutation open to them (`memberOf(…, { viewers: true })`).
+Owner-only and admin-only actions check the role themselves in
+`accounts.remote.ts`.
+
+## Rate limits
+
+`rateLimited(key, max, window)` counts in Upstash Redis when a stage has it
+(`KV_REST_API_URL`, `KV_REST_API_TOKEN`; docs/environment.md), a fixed
+window per key shared by every function instance, so a limit means what it
+says; Better Auth's own limiter (sign-in, password reset, two-factor) uses
+the same Redis through `authRateLimitStorage`. Without Redis, or if it
+fails, each function instance counts in its own memory, which bounds abuse
+rather than counting exactly (a warning is logged once).
+
 ## Known gaps
 
-- Rate limits and the Blob read delegation live in process memory, per
-  function instance.
-- The viewer role can edit; roles below admin are not yet distinguished.
+- The Blob read delegation lives in process memory, per function instance.
 - `bun audit` reports esbuild advisories in development-only tooling
   (drizzle-kit's and vite-plus's `tsx`); nothing shipped is affected.
 - A public copy of a file can be served from the edge cache for a short

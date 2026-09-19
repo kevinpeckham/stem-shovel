@@ -68,7 +68,6 @@ const ROUTES = [
 	["settings/security", "/settings/security", [401], [200]],
 	["sign-in", "/sign-in", [200], [303]],
 	["sign-up", "/sign-up", [200], [200, 303]],
-	["test", "/test", [200], [200]],
 	["verify-2fa", "/verify-2fa", [200], [303]],
 	["verify-email", "/verify-email", [200], [200, 303]],
 	["waitlist", "/waitlist", [200], [200]],

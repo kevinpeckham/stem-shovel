@@ -198,7 +198,10 @@ export const shareSong = command(ShareSongSchema, async ({ songId, to, message }
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
-	if (rateLimited(`share:${user.id}:m`, 5, MINUTE) || rateLimited(`share:${user.id}:h`, 30, HOUR)) {
+	if (
+		(await rateLimited(`share:${user.id}:m`, 5, MINUTE)) ||
+		(await rateLimited(`share:${user.id}:h`, 30, HOUR))
+	) {
 		error(429, "Too many emails; try again in a little while.");
 	}
 	const song = await songForMix(songId);
@@ -247,7 +250,7 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	const song = await songForMix(id);
 	if (!song || song.accountId !== accountId) error(404, "Song not found");
 	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
-	if (rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
+	if (await rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
@@ -281,7 +284,7 @@ export const draftChart = command(ChartDraftSchema, async ({ id, chords, bars })
 	const song = await getSongById(accountId, id);
 	if (!song) error(404, "Song not found");
 	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
-	if (rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
+	if (await rateLimited(`chart:${user.id}`, 5, HOUR)) error(429, "Too many drafts in one hour.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
 	const grid = barGrid(song.changes, song.startAt);

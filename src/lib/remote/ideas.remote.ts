@@ -1,5 +1,5 @@
 import { command, form, getRequestEvent, query } from "$app/server";
-import { accountOfIdea, memberOf, requireMember, requireUser } from "$lib/server/access";
+import { accountOfIdea, memberOf, requireEditor, requireUser } from "$lib/server/access";
 import {
 	createIdea as create,
 	deleteIdea as remove,
@@ -23,7 +23,7 @@ export const createIdea = command(
 	async ({ accountId, title }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
-		requireMember(locals, accountId);
+		requireEditor(locals, accountId);
 		const row = await create(accountId, user.id, title);
 		return { id: row.id, title: row.title };
 	},

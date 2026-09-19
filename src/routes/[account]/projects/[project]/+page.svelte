@@ -324,7 +324,7 @@
 		</div>
 	{/if}
 
-	{#if inProgress.length > 0 || ideas.length > 0}
+	{#if data.canEdit && (inProgress.length > 0 || ideas.length > 0)}
 		<div class="mt-10 flex flex-wrap items-center gap-3">
 			<button class="button button-accent" type="button" popovertarget="add-song"
 				><span class="i-ph-plus"></span>Add New Song</button

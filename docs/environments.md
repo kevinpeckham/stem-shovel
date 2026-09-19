@@ -83,7 +83,7 @@ the code, scripts and docs are Claude's. In order:
 -- <cmd>` address staging from the VM (migrations, the bot enrolment,
    smoke tests). Restart the dev server.
 6. **Seed the new databases** with real data: `bun run db:reset-stage --
---wipe --restore prod-2026-09-18 --admin kevin@lightningjar.com`
+--wipe --restore prod-2026-09-18 --admin <the operator email>`
    (`APP_ENV=preview` for staging) migrates, restores the snapshot of the
    MMKK and sirrobert accounts (rows with their production ids, every file
    uploaded to the stage's own stores at the same pathnames, members with

@@ -1,4 +1,4 @@
-import { requireMember, requireSignedIn } from "$lib/server/access";
+import { requireEditor, requireSignedIn } from "$lib/server/access";
 import {
 	deleteEmptyIdeas,
 	listIdeas,
@@ -26,7 +26,7 @@ export const config: Config = { maxDuration: 300 };
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const { account } = await parent();
-	requireMember(locals, account.id);
+	requireEditor(locals, account.id);
 	const songParam = url.searchParams.get("song");
 	const songId = v.safeParse(NanoIdSchema, songParam ?? "");
 	// Ideas that never got a take or notes are not worth listing; sweep the old ones.

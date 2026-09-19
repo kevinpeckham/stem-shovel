@@ -40,8 +40,8 @@ export const startSupport = form(SupportStartSchema, async ({ email, website }) 
 	const { getClientAddress } = getRequestEvent();
 	if (website) error(400, "That request was not valid."); // the honeypot
 	if (
-		rateLimited(`support-start:${getClientAddress()}`, 20, HOUR) ||
-		rateLimited(`support-start:${email}`, 8, HOUR)
+		(await rateLimited(`support-start:${getClientAddress()}`, 20, HOUR)) ||
+		(await rateLimited(`support-start:${email}`, 8, HOUR))
 	) {
 		error(429, "Too many attempts for now; try again in a while.");
 	}
@@ -97,8 +97,8 @@ export const submitSupport = form(
 		const { getClientAddress, request } = getRequestEvent();
 		if (website) error(400, "That request was not valid.");
 		if (
-			rateLimited(`support-pick:${getClientAddress()}`, 20, HOUR) ||
-			rateLimited(`support-pick:${email}`, 5, HOUR)
+			(await rateLimited(`support-pick:${getClientAddress()}`, 20, HOUR)) ||
+			(await rateLimited(`support-pick:${email}`, 5, HOUR))
 		) {
 			error(429, "Too many attempts for now; try again in a while.");
 		}
@@ -133,7 +133,7 @@ export const submitSupportSignedIn = form(SupportSignedInSchema, async ({ messag
 	const user = locals.user;
 	if (!user) error(401, "Sign in, or use the form for visitors.");
 	if (website) error(400, "That request was not valid.");
-	if (rateLimited(`support-user:${user.id}`, 5, HOUR))
+	if (await rateLimited(`support-user:${user.id}`, 5, HOUR))
 		error(429, "That is a lot of requests for one hour; try again later.");
 	const account = locals.memberships[0] ?? null;
 	const row = await createSupportRequest({

@@ -164,6 +164,18 @@ When a new external resource is added, `bun run dev` shows the refusal in
 the browser console; `.screenshots/csp-sweep.mjs`-style Playwright runs
 that collect "Refused to" console lines are how the policy was checked.
 
+## Upstash Redis
+
+One Upstash Redis database per stage (dev, staging, production), reached
+over its REST API with `KV_REST_API_URL` and `KV_REST_API_TOKEN` from the
+stage's 1Password environment (the names Vercel's KV integration uses).
+`src/lib/server/redis.ts` posts a pipeline of commands; there is no client
+library. Today it holds the rate-limit counters (`rateLimit.ts`,
+`authRateLimit.ts`), shared across function instances; it is the place for
+any other state that must be shared or must survive an instance, such as
+the Blob read delegation cache. Both variables are optional: without them
+the app runs with per-instance memory.
+
 ## Sentry
 
 `@sentry/sveltekit` 10 in the browser (set up with Sentry's wizard, then

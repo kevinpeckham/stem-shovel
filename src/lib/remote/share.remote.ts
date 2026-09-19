@@ -46,7 +46,8 @@ export const createShareLink = form(
 	async ({ songId, projectId, note, maxUses, expiresDays }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
-		if (rateLimited(`sharelink:${user.id}`, 60, HOUR)) error(429, "Too many links in one hour.");
+		if (await rateLimited(`sharelink:${user.id}`, 60, HOUR))
+			error(429, "Too many links in one hour.");
 		const m = songId
 			? await memberOf(locals, accountOfSong, songId)
 			: await memberOf(locals, accountOfProject, projectId);

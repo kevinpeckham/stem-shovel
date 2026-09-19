@@ -47,7 +47,8 @@ export const inviteMember = form(InviteSchema, async ({ accountId, email, role }
 	const user = requireUser(locals);
 	const m = requireMember(locals, accountId);
 	if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
-	if (rateLimited(`invite:${user.id}`, 30, HOUR)) error(429, "Too many invitations in one hour.");
+	if (await rateLimited(`invite:${user.id}`, 30, HOUR))
+		error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(accountId, user.id, email, role);
 	if (row === "member") invalid(issue.email("That address already belongs to a member."));
 	await sendInvitationEmail({
@@ -92,7 +93,8 @@ export const createInviteCode = form(
 		const user = requireUser(locals);
 		const m = requireMember(locals, accountId);
 		if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
-		if (rateLimited(`invitecode:${user.id}`, 30, HOUR)) error(429, "Too many codes in one hour.");
+		if (await rateLimited(`invitecode:${user.id}`, 30, HOUR))
+			error(429, "Too many codes in one hour.");
 		const row = await newInviteCode(accountId, user.id, { role, note, maxUses, expiresDays });
 		return { code: row.code };
 	},
@@ -170,7 +172,7 @@ export const createAccount = form(AccountCreateSchema, async ({ name }) => {
 	const { locals, cookies } = getRequestEvent();
 	const user = requireUser(locals);
 	if (locals.memberships.length === 0) error(403, "Join an account first");
-	if (rateLimited(`newaccount:${user.id}`, 5, HOUR))
+	if (await rateLimited(`newaccount:${user.id}`, 5, HOUR))
 		error(429, "Too many new accounts in one hour.");
 	const row = await createOwnedAccount(user.id, name);
 	rememberAccount(cookies, row.slug);

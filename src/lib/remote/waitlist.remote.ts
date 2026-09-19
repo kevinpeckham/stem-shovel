@@ -17,8 +17,8 @@ import { error } from "@sveltejs/kit";
 export const join = form(WaitlistJoinSchema, async ({ email, name, updates }) => {
 	const { url, getClientAddress } = getRequestEvent();
 	if (
-		rateLimited(`waitlist:${getClientAddress()}`, 5, HOUR) ||
-		rateLimited(`waitlist:${email}`, 3, HOUR)
+		(await rateLimited(`waitlist:${getClientAddress()}`, 5, HOUR)) ||
+		(await rateLimited(`waitlist:${email}`, 3, HOUR))
 	)
 		error(429, "That is a lot of sign-ups; try again in a while.");
 	const { next, row } = await joinWaitlist({

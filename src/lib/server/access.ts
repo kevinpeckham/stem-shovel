@@ -44,6 +44,23 @@ export function requireMember(locals: App.Locals, accountId: string) {
 	return m;
 }
 
+/** Whether a membership may change things: every role but viewer. */
+export function isEditor(role: string): boolean {
+	return role !== "viewer";
+}
+
+/**
+ * A member who may change things (owner, admin or member): the gate for
+ * mutations, uploads and the pages that only exist to edit. A viewer is a
+ * member of the account (sees private work, can comment) but gets a 404
+ * here like a non-member would.
+ */
+export function requireEditor(locals: App.Locals, accountId: string) {
+	const m = requireMember(locals, accountId);
+	if (!isEditor(m.role)) error(404, "Not found");
+	return m;
+}
+
 /** A super admin used their acting ownership: one line per request, written after the response. */
 function auditActing(userId: string, accountId: string) {
 	let action = "unknown";
@@ -80,12 +97,17 @@ export async function publicAccountBySlug(slug: string) {
 }
 
 export function canEdit(locals: App.Locals, accountId: string): boolean {
+	return locals.memberships.some((m) => m.accountId === accountId && isEditor(m.role));
+}
+
+/** Any membership, viewers included: the account's private work is theirs to see. */
+export function isMember(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
 const { project, song, stem, demo, recording, idea } = schema;
 
-/** Account of an entity by id (unscoped lookup); pair with requireMember. */
+/** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
 export async function accountOfProject(projectId: string) {
 	const row = await db.query.project.findFirst({
 		where: eq(project.id, projectId),
@@ -167,8 +189,9 @@ export async function memberOf(
 	locals: App.Locals,
 	lookup: (id: string) => Promise<string | null>,
 	id: string,
+	{ viewers = false }: { viewers?: boolean } = {},
 ) {
 	const accountId = await lookup(id);
 	if (!accountId) error(404, "Not found");
-	return requireMember(locals, accountId);
+	return viewers ? requireMember(locals, accountId) : requireEditor(locals, accountId);
 }

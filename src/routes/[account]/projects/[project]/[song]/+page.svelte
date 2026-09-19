@@ -3012,7 +3012,7 @@
 			engine={playerEngine}
 			comments={locatedComments}
 			card={commentCard}
-			canComment={data.canEdit}
+			canComment={data.canComment}
 		/>
 	{/if}
 {/snippet}

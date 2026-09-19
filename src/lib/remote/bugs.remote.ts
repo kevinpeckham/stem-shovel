@@ -24,7 +24,7 @@ import { error } from "@sveltejs/kit";
 export const reportBug = form(BugReportCreateSchema, async (input) => {
 	const { locals, url } = getRequestEvent();
 	const user = requireUser(locals);
-	if (rateLimited(`bug:${user.id}`, 10, HOUR))
+	if (await rateLimited(`bug:${user.id}`, 10, HOUR))
 		error(429, "That is a lot of reports for one hour; try again later.");
 	const row = await createBugReport(user.id, input);
 	// The admins hear by email after the response; a mail failure never fails the report.

@@ -32,7 +32,8 @@ export const createComment = form(
 	async ({ songId, title, body, position }, issue) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
-		const { accountId } = await memberOf(locals, accountOfSong, songId);
+		// A viewer may comment: that is what the role is for.
+		const { accountId } = await memberOf(locals, accountOfSong, songId, { viewers: true });
 		const at = await resolvePosition(songId, position);
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
 		const row = await create(accountId, songId, user.id, { title, body, at });

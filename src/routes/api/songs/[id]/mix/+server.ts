@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ params, url, locals, cookies, getCli
 
 	const original = isOriginal(song, req);
 	// A custom mix runs ffmpeg for every request; the original is cached. Bound the former per caller.
-	if (!original && rateLimited(`mix:${locals.user?.id ?? getClientAddress()}`, 20, HOUR)) {
+	if (!original && (await rateLimited(`mix:${locals.user?.id ?? getClientAddress()}`, 20, HOUR))) {
 		error(429, "Too many custom mixes in one hour; try again later.");
 	}
 	const bytes = original ? await originalMix(song, accountId) : await renderMix(song, req);

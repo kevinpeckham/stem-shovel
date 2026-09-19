@@ -1,3 +1,4 @@
+import { authRateLimitStorage } from "$lib/server/authRateLimit";
 import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
@@ -77,6 +78,8 @@ export const auth = betterAuth({
 	secret: ENV.BETTER_AUTH_SECRET,
 	trustedOrigins,
 	database: drizzleAdapter(db, { provider: "sqlite", schema }),
+	// Sign-in and two-factor attempts are counted in Redis across every function instance (docs/security.md).
+	rateLimit: { customStorage: authRateLimitStorage },
 	// This app's tenant table is `account`; Better Auth's provider-link model
 	// lives in `auth_account` (schema key `authAccount`).
 	account: { modelName: "authAccount" },
