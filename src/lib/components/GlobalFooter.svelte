@@ -14,7 +14,7 @@
 	let userAgent = $state("");
 	/** Which build is running: package.json's version and, when known, the commit. */
 	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;
-	const CHANGELOG = "https://github.com/kevinpeckham/stem-shovel/blob/main/CHANGELOG.md";
+	const CHANGELOG = "/releases";
 </script>
 
 <footer
@@ -48,6 +48,10 @@
 		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"
 			href="/docs">Docs</a
+		>
+		<a
+			class="underline underline-offset-4 hover:text-maximumYellow opacity-70 underline underline-offset-4 hover-text-maximumYellow"
+			href="/releases">Releases</a
 		>
 		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-maximumYellow"

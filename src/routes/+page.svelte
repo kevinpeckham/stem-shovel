@@ -2,6 +2,7 @@
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
 	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
+	import IdeaRecorderDemo from "$lib/components/IdeaRecorderDemo.svelte";
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "$lib/constants/demoComments";
 
@@ -95,6 +96,23 @@
 							href={data.demo.href}
 							comments={demoComments}
 							onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+						/>
+					</div>
+				</section>
+
+				<section class="mt-12">
+					<h3 class="text-18px font-600 leading-tight mb-2">High Fidelity Idea Recorder</h3>
+					<p class="opacity-90 text-16px max-w-740px mb-5 text-balance">
+						Record your song ideas, demos and save them along with your notes. Supports multiple
+						takes.
+					</p>
+					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
+					<div
+						class="bg-black/30 -mx-4 px-4 pt-4 pb-5 border-y border-current/5 mt-6 shadow sm:mx-0 sm:px-5 sm:rounded-lg sm:border"
+					>
+						<IdeaRecorderDemo
+							signedIn={!!data.user}
+							recorderHref={data.currentSlug ? `/${data.currentSlug}/ideas/recorder` : null}
 						/>
 					</div>
 				</section>

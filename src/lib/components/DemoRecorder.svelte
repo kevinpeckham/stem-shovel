@@ -798,28 +798,32 @@
 						<span class="i-ph-download-simple" aria-hidden="true"></span>{sourceLabel}
 					</button>
 				{:else if phase === "saved" && loaded}
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-							if (loaded) onaddtosong?.(loaded);
-						}}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
-					</button>
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-							if (loaded) onnewsong?.(loaded);
-						}}
-					>
-						<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create new song…
-					</button>
+					{#if onaddtosong}
+						<button
+							class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+							type="button"
+							role="menuitem"
+							onclick={() => {
+								if (menuEl) menuEl.open = false;
+								if (loaded) onaddtosong?.(loaded);
+							}}
+						>
+							<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
+						</button>
+					{/if}
+					{#if onnewsong}
+						<button
+							class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+							type="button"
+							role="menuitem"
+							onclick={() => {
+								if (menuEl) menuEl.open = false;
+								if (loaded) onnewsong?.(loaded);
+							}}
+						>
+							<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create new song…
+						</button>
+					{/if}
 					<button
 						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
 						type="button"

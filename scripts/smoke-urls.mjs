@@ -56,6 +56,7 @@ const ROUTES = [
 	["admin/users/[id]", "/admin/users/x", [404], [404]],
 	["admin/waitlist", "/admin/waitlist", [404], [200]],
 	["docs", "/docs", [200], [200]],
+	["releases", "/releases", [200], [200]],
 	["docs/[slug]", "/docs/{doc}", [200], [200]],
 	["docs/[slug]/edit", "/docs/{doc}/edit", [401, 403, 404], [200]],
 	["forgot-password", "/forgot-password", [200], [200, 303]],
@@ -98,12 +99,16 @@ const STATIC = [
 	["/lj-icon.svg", [200]],
 	["/no-such-page-" + Date.now(), [404]],
 ];
-/** Any of these in an HTML body is a failure regardless of status. */
+/**
+ * Any of these in an HTML body is a failure regardless of status. The error
+ * wordings are matched as rendered text between tags, so a page that merely
+ * mentions them in prose (the releases page quoting an old fix) passes.
+ */
 const BAD_BODY = [
 	"Vercel Security Checkpoint",
-	"Internal Error",
-	"Error 500",
-	"Something went wrong",
+	">Internal Error<",
+	">Error 500<",
+	">Something went wrong<",
 ];
 
 // ---- every route file must be listed ------------------------------------------

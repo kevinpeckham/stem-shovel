@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Releases page** at `/releases`: every version's notes from this changelog, newest first, rendered at build time; the footer's version number and a Releases link lead to it.
+- **The Idea Recorder on the front page**: the real recorder in its phone layout with a note board, nothing uploaded; takes stay on the page as playable, downloadable blobs, and the copy sends a visitor to sign in or a member to their own recorder.
+
 ## [0.19.0] - 2026-09-19
 
 ### Changed
