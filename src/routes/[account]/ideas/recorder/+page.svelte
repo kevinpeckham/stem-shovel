@@ -123,8 +123,8 @@
 			await invalidateAll();
 			const take = data.ideas.flatMap((i) => i.takes).find((t) => t.id === takeId);
 			if (!take) return;
-			if (/\.mp3(\?|$)/.test(take.url)) {
-				recorder?.refreshUrl(take.id, take.url);
+			if (take.playbackUrl) {
+				recorder?.refreshUrl(take);
 				return;
 			}
 		}

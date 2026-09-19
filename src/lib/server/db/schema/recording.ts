@@ -38,6 +38,8 @@ export const recording = table(
 		filename: t.text("filename").notNull(),
 		contentType: t.text("content_type").notNull(),
 		sizeBytes: t.integer("size_bytes").notNull(),
+		/** alac, pcm, flac, opus or aac as the browser reported at reservation (src/lib/constants/recordingCodecs.ts); null before migration 0042. */
+		codec: t.text("codec"),
 		/** As timed by the recorder; the browser's own files carry no duration. */
 		durationSeconds: t.real("duration_seconds"),
 		playbackStatus: t.text("playback_status").$type<PlaybackStatus>(),

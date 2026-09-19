@@ -20,6 +20,8 @@ export interface PendingTake {
 	durationSeconds: number;
 	mimeType: string;
 	ext: string;
+	/** alac, pcm, opus or aac, as the recorder chose (src/lib/constants/recordingCodecs.ts); absent on old queued takes. */
+	codec?: string;
 	createdAt: number;
 	blob: Blob;
 }
@@ -150,6 +152,7 @@ export class TakeQueue {
 								title: item.name,
 								filename: file.name,
 								sizeBytes: file.size,
+								codec: item.codec ?? null,
 							}),
 						item.durationSeconds,
 						(percent) => (item.progress = percent),

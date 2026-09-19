@@ -2,6 +2,7 @@
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
 	import { isIOS } from "$lib/utils/isIOS";
 	import { audioSession } from "$lib/utils/audioSession";
+	import { playbackMime } from "$lib/utils/playbackMime";
 	import type { RecordingFormat, RecordingQuality } from "$lib/utils/recordingMimeType";
 	import {
 		takeStopNotice,
@@ -29,7 +30,12 @@
 		takeNumber: number;
 		/** The take's own name; "" shows as "Take N". */
 		title: string;
+		/** The original as recorded (a blob: URL for a take just made). */
 		url: string;
+		/** The MP3 rendition once the jobs function has made it. */
+		playbackUrl: string | null;
+		/** alac, pcm, flac, opus, aac; null on takes from before it was recorded. */
+		codec: string | null;
 		durationSeconds: number | null;
 	}
 	interface Props {
@@ -41,6 +47,7 @@
 			blob: Blob;
 			mimeType: string;
 			ext: string;
+			codec: string;
 			name: string;
 			durationSeconds: number;
 		}) => void;
@@ -309,6 +316,8 @@
 			takeNumber: 0,
 			title: takeName.trim().slice(0, 120),
 			url: takeUrl,
+			playbackUrl: null,
+			codec: (format?.codec ?? "opus").toLowerCase(),
 			durationSeconds: elapsed,
 		};
 		playbackPaused = true;
@@ -318,6 +327,7 @@
 			blob,
 			mimeType: format?.mimeType ?? "application/octet-stream",
 			ext: format?.ext ?? "webm",
+			codec: (format?.codec ?? "opus").toLowerCase(),
 			name: loaded.title,
 			durationSeconds: elapsed,
 		});
@@ -329,18 +339,19 @@
 	}
 
 	/**
-	 * The loaded take's MP3 rendition has landed: play that from now on. The
-	 * browser's own recording plays until then (a blob of what it captured),
-	 * except where it cannot play its own lossless output, which `playError`
-	 * reports.
+	 * The loaded take's row was refreshed (its MP3 rendition landed, or Chrome's
+	 * raw PCM became FLAC). A take just made keeps playing the browser's own
+	 * blob unless that failed; a take from the list follows `sourceFor`.
 	 */
-	export function refreshUrl(id: string, url: string) {
-		if (loaded?.id !== id || takeUrl === url) return;
+	export function refreshUrl(t: Take) {
+		if (!loaded || loaded.id !== t.id) return;
+		const next = takeUrl?.startsWith("blob:") && !playError ? takeUrl : sourceFor(t);
+		loaded = { ...loaded, url: t.url, playbackUrl: t.playbackUrl, codec: t.codec };
+		if (takeUrl === next) return;
 		const wasPlaying = !playbackPaused;
 		const at = playhead;
 		discardTake();
-		takeUrl = url;
-		loaded = { ...loaded, url };
+		takeUrl = next;
 		playError = null;
 		playhead = at;
 		if (wasPlaying) playbackPaused = false;
@@ -348,11 +359,23 @@
 	let playError = $state<string | null>(null);
 
 	/** Show a take from the list: its file plays on demand; Record starts the next take. */
+	/**
+	 * What to play for a saved take: the original whenever this browser can
+	 * decode it (the same device that recorded it always can, a Mac plays an
+	 * iPhone's ALAC, everything plays FLAC), else the MP3 rendition, else the
+	 * original anyway (the rendition is not made yet; a media error then
+	 * shows a notice until it is).
+	 */
+	function sourceFor(t: Take): string {
+		const mime = playbackMime(t.codec);
+		const canPlay = mime ? document.createElement("audio").canPlayType(mime) !== "" : false;
+		return canPlay ? t.url : (t.playbackUrl ?? t.url);
+	}
 	export function load(t: Take) {
 		if (busy) return;
 		playbackPaused = true;
 		discardTake();
-		takeUrl = t.url;
+		takeUrl = sourceFor(t);
 		loaded = t;
 		takeName = t.title;
 		elapsed = t.durationSeconds ?? 0;
@@ -397,14 +420,16 @@
 	}
 	async function download() {
 		if (menuEl) menuEl.open = false;
-		if (!takeUrl) return;
+		// The original, whatever is playing (a take just made is its own blob).
+		const source = take ? takeUrl : (loaded?.url ?? takeUrl);
+		if (!source) return;
 		try {
 			if (take) {
 				const a = document.createElement("a");
-				a.href = takeUrl;
+				a.href = source;
 				a.download = downloadName();
 				a.click();
-			} else await saveAs(takeUrl, downloadName());
+			} else await saveAs(source, downloadName());
 		} catch (e) {
 			notify(`Download failed: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -503,6 +528,11 @@
 		onerror={(e) => {
 			const code = (e.currentTarget as HTMLAudioElement).error?.code;
 			playbackPaused = true;
+			// The original would not play: the rendition, when there is one; a notice until then.
+			if (loaded?.playbackUrl && takeUrl !== loaded.playbackUrl) {
+				takeUrl = loaded.playbackUrl;
+				return;
+			}
 			playError = `This browser cannot play the take's own recording here${code ? ` (media error ${code})` : ""}; the MP3 made for playback takes over as soon as it is ready.`;
 		}}
 	></audio>

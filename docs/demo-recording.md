@@ -65,9 +65,17 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   the jobs function before the MP3 rendition is made (`isRawPcm` +
   `replaceRecordingSource` in transcode.ts; the row's url, pathname,
   filename, content type and size follow, the WebM is deleted); ALAC stays
-  as recorded. Playback is always the MP3 rendition, so a lossless take
-  plays on every device. Preferences live in `recorderPreferences.ts`
-  (localStorage). The byte cap is 120 MB (`MAX_TAKE_BYTES`).
+  as recorded. **Playback prefers the original**: the take's codec is
+  stored at reservation (`recording.codec`, migration 0042) and the
+  recorder asks `canPlayType` (`playbackMime.ts`) before choosing the
+  original over the MP3 rendition, so the device that recorded a take
+  hears it lossless, a Mac plays an iPhone's ALAC, everything plays FLAC,
+  and Chrome facing ALAC gets the MP3; a media error on the original
+  falls back to the rendition. A take just made plays the browser's own
+  blob until the page sees its rendition (`followRendition` polls for a
+  minute, `refreshUrl`). Downloads always hand over the original.
+  Preferences live in `recorderPreferences.ts` (localStorage). The byte
+  cap is 120 MB (`MAX_TAKE_BYTES`).
 - **Ceilings** (`src/lib/constants/takeLimits.ts`, `takeStopReason`): the
   recorder's 100 ms watch stops a take at `MAX_TAKE_SECONDS` (15 min; a
   notice at 10) and after `SILENCE_STOP_SECONDS` (2 min) of input under

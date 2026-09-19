@@ -135,7 +135,14 @@ interface Mp3Target {
 	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead. */
 	replaceSource?: (
 		id: string,
-		r: { url: string; pathname: string; filename: string; contentType: string; sizeBytes: number },
+		r: {
+			url: string;
+			pathname: string;
+			filename: string;
+			contentType: string;
+			sizeBytes: number;
+			codec: string;
+		},
 	) => Promise<void>;
 }
 const DEMO_TARGET: Mp3Target = {
@@ -216,6 +223,7 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 				filename: pathname.split("/").pop() ?? "take.flac",
 				contentType: "audio/flac",
 				sizeBytes: bytes.byteLength,
+				codec: "flac",
 			});
 			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
 		}

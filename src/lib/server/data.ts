@@ -2110,6 +2110,7 @@ export async function listIdeas(accountId: string, userId: string) {
 					...t,
 					url: (await presentUrl(t.url)) ?? t.url,
 					playbackUrl: await presentUrl(t.playbackUrl),
+					codec: t.codec,
 				})),
 			),
 		})),
@@ -2194,7 +2195,7 @@ export async function createRecording(
 	accountId: string,
 	userId: string,
 	ideaId: string,
-	file: NewStemFile & { title: string },
+	file: NewStemFile & { title: string; codec: string | null },
 ) {
 	const owner = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
@@ -2220,6 +2221,7 @@ export async function createRecording(
 			filename: file.filename,
 			contentType: file.contentType,
 			sizeBytes: file.sizeBytes,
+			codec: file.codec,
 		})
 		.returning();
 	return row;
@@ -2441,7 +2443,14 @@ export async function finishRecordingPlayback(
  */
 export async function replaceRecordingSource(
 	recordingId: string,
-	r: { url: string; pathname: string; filename: string; contentType: string; sizeBytes: number },
+	r: {
+		url: string;
+		pathname: string;
+		filename: string;
+		contentType: string;
+		sizeBytes: number;
+		codec: string;
+	},
 ) {
 	await db
 		.update(recording)
@@ -2451,6 +2460,7 @@ export async function replaceRecordingSource(
 			filename: r.filename,
 			contentType: r.contentType,
 			sizeBytes: r.sizeBytes,
+			codec: r.codec,
 		})
 		.where(eq(recording.id, recordingId));
 }
