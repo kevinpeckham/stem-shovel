@@ -2434,6 +2434,27 @@ export async function finishRecordingPlayback(
 		.where(eq(recording.id, recordingId));
 }
 
+/**
+ * The take's source file was replaced (raw PCM from Chrome turned into FLAC
+ * by the jobs function): the row follows, and the copy a song may already
+ * hold keeps the old file.
+ */
+export async function replaceRecordingSource(
+	recordingId: string,
+	r: { url: string; pathname: string; filename: string; contentType: string; sizeBytes: number },
+) {
+	await db
+		.update(recording)
+		.set({
+			url: r.url,
+			pathname: r.pathname,
+			filename: r.filename,
+			contentType: r.contentType,
+			sizeBytes: r.sizeBytes,
+		})
+		.where(eq(recording.id, recordingId));
+}
+
 export async function failRecordingPlayback(recordingId: string) {
 	await db.update(recording).set({ playbackStatus: "failed" }).where(eq(recording.id, recordingId));
 }

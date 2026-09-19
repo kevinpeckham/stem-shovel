@@ -8,6 +8,7 @@ import {
 	finishDemoPlayback,
 	finishPlayback,
 	finishRecordingPlayback,
+	replaceRecordingSource,
 } from "$lib/server/data";
 import { accessOfUrl } from "$lib/utils/blobAccess";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
@@ -131,6 +132,11 @@ interface Mp3Target {
 	} | null>;
 	finish: (id: string, r: { url: string; pathname: string; bytes: number }) => Promise<void>;
 	fail: (id: string) => Promise<void>;
+	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead. */
+	replaceSource?: (
+		id: string,
+		r: { url: string; pathname: string; filename: string; contentType: string; sizeBytes: number },
+	) => Promise<void>;
 }
 const DEMO_TARGET: Mp3Target = {
 	claim: claimDemoPlayback,
@@ -141,7 +147,21 @@ const RECORDING_TARGET: Mp3Target = {
 	claim: claimRecordingPlayback,
 	finish: finishRecordingPlayback,
 	fail: failRecordingPlayback,
+	replaceSource: replaceRecordingSource,
 };
+
+/** Whether a file's audio is raw PCM (ffmpeg's probe line names the codec). */
+async function isRawPcm(file: string): Promise<boolean> {
+	if (!ffmpegPath) return false;
+	try {
+		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+	} catch (e) {
+		// ffmpeg exits 1 with no output file; the probe is in stderr.
+		const err = String((e as { stderr?: string }).stderr ?? "");
+		return /Audio: pcm_/.test(err);
+	}
+	return false;
+}
 
 /**
  * A demo as uploaded may be anything a phone produces — ALAC in .m4a, CAF,
@@ -163,6 +183,42 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 		if (!res.ok || !res.body)
 			throw new Error(`${res.status} ${res.statusText} fetching ${claim.url}`);
 		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(input));
+		// Chrome's lossless recording is raw PCM in WebM, twice the size it needs to be
+		// and playable almost nowhere: the source becomes FLAC (same samples, half the bytes).
+		if (target.replaceSource && (await isRawPcm(input))) {
+			const flac = join(dir, "source.flac");
+			await run(
+				ffmpegPath,
+				[
+					"-hide_banner",
+					"-loglevel",
+					"error",
+					"-y",
+					"-i",
+					input,
+					"-vn",
+					"-map_metadata",
+					"-1",
+					"-c:a",
+					"flac",
+					"-compression_level",
+					"5",
+					flac,
+				],
+				{ maxBuffer: 1024 * 1024 },
+			);
+			const bytes = await readFile(flac);
+			const pathname = claim.pathname.replace(/\.[a-z0-9]+$/i, "") + ".flac";
+			const blob = await putBlob(pathname, bytes, "audio/flac", accessOfUrl(claim.url));
+			await target.replaceSource(id, {
+				url: blob.url,
+				pathname,
+				filename: pathname.split("/").pop() ?? "take.flac",
+				contentType: "audio/flac",
+				sizeBytes: bytes.byteLength,
+			});
+			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
+		}
 		await run(
 			ffmpegPath,
 			[

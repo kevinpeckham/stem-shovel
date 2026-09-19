@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
 	import { isIOS } from "$lib/utils/isIOS";
+	import type { RecordingFormat, RecordingQuality } from "$lib/utils/recordingMimeType";
 	import {
 		takeStopNotice,
 		takeStopReason,
@@ -66,6 +67,14 @@
 		onphase?: (phase: Phase) => void;
 		/** Drop a take shorter than this many seconds (a mis-tap) instead of saving it; 0 keeps every take. */
 		minTakeSeconds?: number;
+		/** Lossless where the browser can, or compressed (src/lib/utils/recorderPreferences.ts). */
+		quality?: RecordingQuality;
+		/** Ask the input for two channels (an interface); a phone microphone gives one anyway. */
+		stereo?: boolean;
+		/** A microphone's deviceId, or null for the default. */
+		inputId?: string | null;
+		/** The microphones the browser lists once permission is granted (labels need it). */
+		oninputs?: (inputs: { id: string; label: string }[]) => void;
 	}
 	let {
 		ideaTitle = $bindable(),
@@ -83,7 +92,13 @@
 		onstart,
 		onphase,
 		minTakeSeconds = 0,
+		quality = "lossless",
+		stereo = false,
+		inputId = null,
+		oninputs,
 	}: Props = $props();
+	/** What the take is really being recorded as, from the track and the recorder. */
+	let formatLine = $state<string | null>(null);
 	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
 	const onIOS = isIOS();
 
@@ -110,7 +125,7 @@
 	let stream: MediaStream | null = null;
 	let recorder: MediaRecorder | null = null;
 	let chunks: Blob[] = [];
-	let format: { mimeType: string; ext: string } | null = null;
+	let format: RecordingFormat | null = null;
 	let ctx: AudioContext | null = null;
 	let analyser: AnalyserNode | null = null;
 	let meterFrame = 0;
@@ -136,7 +151,7 @@
 	async function start() {
 		if (busy) return;
 		notice = null;
-		format = recordingMimeType((t) => MediaRecorder.isTypeSupported(t));
+		format = recordingMimeType((t) => MediaRecorder.isTypeSupported(t), quality);
 		if (!format) {
 			notice = "This browser cannot record audio. Try Safari, Chrome or Firefox.";
 			return;
@@ -153,7 +168,14 @@
 		try {
 			// The three voice processors are on by default and ruin an instrument.
 			stream = await navigator.mediaDevices.getUserMedia({
-				audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+				audio: {
+					echoCancellation: false,
+					noiseSuppression: false,
+					autoGainControl: false,
+					sampleRate: { ideal: 48000 },
+					channelCount: { ideal: stereo ? 2 : 1 },
+					...(inputId ? { deviceId: { exact: inputId } } : {}),
+				},
 			});
 		} catch (e) {
 			setPhase("idle");
@@ -168,13 +190,36 @@
 		}
 		const track = stream.getAudioTracks()[0];
 		inputLabel = track?.label || null;
+		// The format line: codec from the recorder, rate and channels from the track (Safari may omit them).
+		const settings = track?.getSettings() ?? {};
+		formatLine = [
+			format.codec + (format.lossless ? " lossless" : ""),
+			settings.sampleRate ? `${Math.round(settings.sampleRate / 1000)} kHz` : null,
+			settings.channelCount ? (settings.channelCount >= 2 ? "stereo" : "mono") : null,
+		]
+			.filter(Boolean)
+			.join(" · ");
+		// With permission granted the microphones have labels: let the settings offer them.
+		if (oninputs) {
+			void navigator.mediaDevices
+				.enumerateDevices()
+				.then((list) =>
+					oninputs(
+						list
+							.filter((d) => d.kind === "audioinput")
+							.map((d, i) => ({ id: d.deviceId, label: d.label || `Microphone ${i + 1}` })),
+					),
+				)
+				.catch(() => {});
+		}
 		// A phone call or an unplugged interface ends the track: keep what we have.
 		if (track) track.onended = () => onTrackEnded();
 		startMeter(stream);
 		chunks = [];
 		recorder = new MediaRecorder(stream, {
 			mimeType: format.mimeType,
-			audioBitsPerSecond: RECORDING_BITS_PER_SECOND,
+			// A bitrate only means something for a lossy codec.
+			...(format.lossless ? {} : { audioBitsPerSecond: RECORDING_BITS_PER_SECOND }),
 		});
 		recorder.ondataavailable = (e) => {
 			if (e.data.size > 0) chunks.push(e.data);
@@ -607,7 +652,9 @@
 				/>
 			</label>
 			{#if inputLabel && phase === "recording"}
-				<p class="text-12px opacity-70 text-truncate w-full">Input: {inputLabel}</p>
+				<p class="text-12px opacity-70 text-truncate w-full">
+					Input: {inputLabel}{formatLine ? ` · ${formatLine}` : ""}
+				</p>
 			{/if}
 		</div>
 	</div>

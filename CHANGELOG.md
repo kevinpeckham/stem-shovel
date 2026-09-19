@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Lossless takes.** The Idea Recorder records Apple Lossless on an iPhone, iPad or Mac running Safari 18.4 or later and raw PCM on Chrome and Edge, which the jobs function keeps as FLAC; elsewhere Opus or AAC at 256 kbit/s instead of 128. Recorder settings gain **Quality** (lossless where the browser can, or compressed for a metered connection), **Stereo input** for interfaces, and a **Microphone** picker that lists inputs after one permission grant, all remembered on the device. While recording, the line under the meter says what is really being captured ("ALAC lossless · 48 kHz · mono"). A take is at most 120 MB now. Playback stays the MP3 rendition, so a lossless take plays on every device.
+
 ## [0.18.0] - 2026-09-19
 
 ### Added

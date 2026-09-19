@@ -26,6 +26,12 @@
 		saveDiscardShortTakes,
 		SHORT_TAKE_SECONDS,
 	} from "$lib/utils/discardShortTakes";
+	import {
+		DEFAULT_RECORDER_PREFERENCES,
+		loadRecorderPreferences,
+		saveRecorderPreferences,
+		type RecorderPreferences,
+	} from "$lib/utils/recorderPreferences";
 
 	let { data } = $props();
 	type Idea = (typeof data.ideas)[number];
@@ -47,6 +53,30 @@
 	let phase = $state("idle");
 	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
 	let discardShort = $state(true);
+	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
+	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
+	/** The microphones the browser lists once permission is granted. */
+	let inputs = $state<{ id: string; label: string }[]>([]);
+	let findingInputs = $state(false);
+	function savePrefs() {
+		saveRecorderPreferences({ ...prefs });
+	}
+	/** Ask for the microphone once (permission), then list the inputs with their labels. */
+	async function findInputs() {
+		findingInputs = true;
+		try {
+			const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+			for (const t of s.getTracks()) t.stop();
+			const list = await navigator.mediaDevices.enumerateDevices();
+			inputs = list
+				.filter((d) => d.kind === "audioinput")
+				.map((d, i) => ({ id: d.deviceId, label: d.label || `Microphone ${i + 1}` }));
+		} catch (e) {
+			notify(`Could not list microphones: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			findingInputs = false;
+		}
+	}
 	let recorderBusy = $derived(
 		phase === "recording" || phase === "requesting" || phase === "saving",
 	);
@@ -82,6 +112,7 @@
 	});
 	onMount(() => {
 		discardShort = loadDiscardShortTakes();
+		prefs = loadRecorderPreferences();
 		void queue.restore();
 	});
 
@@ -364,6 +395,10 @@
 				ondeleteidea={() => idea && removeIdea(idea)}
 				onnewidea={newIdea}
 				minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
+				quality={prefs.quality}
+				stereo={prefs.stereo}
+				inputId={prefs.inputId}
+				oninputs={(list) => (inputs = list)}
 				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
 				takes={idea?.takes ?? []}
 				onpick={(t) => {
@@ -683,20 +718,105 @@
 				Close
 			</button>
 		</div>
-		<label class="flex items-start gap-3 text-sm">
-			<input
-				class="mt-1 accent-maximumYellow"
-				type="checkbox"
-				bind:checked={discardShort}
-				onchange={() => saveDiscardShortTakes(discardShort)}
-			/>
-			<span>
-				Discard takes shorter than {SHORT_TAKE_SECONDS} seconds automatically
-				<span class="block text-13px opacity-70"
-					>A mis-tap on Record is dropped instead of saved. Remembered on this device.</span
+		<div class="grid gap-5 text-sm">
+			<fieldset class="grid gap-2">
+				<legend class="mb-1 font-500">Quality</legend>
+				<label class="flex items-start gap-3">
+					<input
+						class="mt-1 accent-maximumYellow"
+						type="radio"
+						name="quality"
+						value="lossless"
+						bind:group={prefs.quality}
+						onchange={savePrefs}
+					/>
+					<span>
+						Lossless where the browser can
+						<span class="block text-13px opacity-70"
+							>ALAC on iPhone, iPad and Safari (18.4 or later), raw PCM on Chrome and Edge (kept as
+							FLAC); Opus or AAC elsewhere. About 3 MB a minute in mono.</span
+						>
+					</span>
+				</label>
+				<label class="flex items-start gap-3">
+					<input
+						class="mt-1 accent-maximumYellow"
+						type="radio"
+						name="quality"
+						value="compressed"
+						bind:group={prefs.quality}
+						onchange={savePrefs}
+					/>
+					<span>
+						Compressed
+						<span class="block text-13px opacity-70"
+							>Opus or AAC at 256 kbit/s, about 2 MB a minute: for a slow or metered connection.</span
+						>
+					</span>
+				</label>
+			</fieldset>
+			<label class="flex items-start gap-3">
+				<input
+					class="mt-1 accent-maximumYellow"
+					type="checkbox"
+					bind:checked={prefs.stereo}
+					onchange={savePrefs}
+				/>
+				<span>
+					Stereo input
+					<span class="block text-13px opacity-70"
+						>For an audio interface with two channels; a phone microphone is mono anyway. Doubles
+						the file.</span
+					>
+				</span>
+			</label>
+			<div class="grid gap-1.5">
+				<label class="block" for="recorder-input">Microphone</label>
+				<div class="flex items-center gap-2">
+					<select
+						id="recorder-input"
+						class="field text-sm"
+						bind:value={prefs.inputId}
+						onchange={savePrefs}
+					>
+						<option value={null}>Default microphone</option>
+						{#each inputs as i (i.id)}
+							<option value={i.id}>{i.label}</option>
+						{/each}
+						{#if prefs.inputId && !inputs.some((i) => i.id === prefs.inputId)}
+							<option value={prefs.inputId}>Chosen earlier (not listed yet)</option>
+						{/if}
+					</select>
+					<button
+						class="button button-xs shrink-0"
+						type="button"
+						disabled={findingInputs}
+						onclick={findInputs}
+					>
+						{findingInputs ? "Looking…" : inputs.length ? "Refresh" : "Find microphones"}
+					</button>
+				</div>
+				<span class="text-13px opacity-70"
+					>An interface plugged into a phone or a computer shows up here once the browser has
+					microphone permission.</span
 				>
-			</span>
-		</label>
+			</div>
+			<label class="flex items-start gap-3">
+				<input
+					class="mt-1 accent-maximumYellow"
+					type="checkbox"
+					bind:checked={discardShort}
+					onchange={() => saveDiscardShortTakes(discardShort)}
+				/>
+				<span>
+					Discard takes shorter than {SHORT_TAKE_SECONDS} seconds automatically
+					<span class="block text-13px opacity-70"
+						>A mis-tap on Record is dropped instead of saved.</span
+					>
+				</span>
+			</label>
+			<p class="text-13px opacity-70">Remembered on this device.</p>
+		</div>
 	</div>
 
 	<!-- Search: ideas by title or notes, takes by name or number. -->

@@ -53,6 +53,21 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   length) for a quick jump. On a phone the notes come right after the
   recorder so both are in view and the list gives way to a `ComboBox` of
   the ideas above the recorder.
+- **Fidelity** (2026-09-19). The codec ladder in `recordingMimeType.ts`:
+  lossless where the browser can (ALAC in MP4 on Safari 18.4+, raw PCM in
+  WebM on Chrome and Edge 135+), else Opus or AAC at 256 kbit/s; a Quality
+  setting drops to compressed for a metered connection. Capture asks for
+  48 kHz and one channel (two with the Stereo setting) and a chosen
+  microphone (`deviceId`; the settings list inputs after one permission
+  grant), and the line under the meter reports what the track and the
+  recorder really gave ("ALAC lossless · 48 kHz · mono"), since Safari is
+  known to ignore some requests. Chrome's raw PCM is turned into FLAC by
+  the jobs function before the MP3 rendition is made (`isRawPcm` +
+  `replaceRecordingSource` in transcode.ts; the row's url, pathname,
+  filename, content type and size follow, the WebM is deleted); ALAC stays
+  as recorded. Playback is always the MP3 rendition, so a lossless take
+  plays on every device. Preferences live in `recorderPreferences.ts`
+  (localStorage). The byte cap is 120 MB (`MAX_TAKE_BYTES`).
 - **Ceilings** (`src/lib/constants/takeLimits.ts`, `takeStopReason`): the
   recorder's 100 ms watch stops a take at `MAX_TAKE_SECONDS` (15 min; a
   notice at 10) and after `SILENCE_STOP_SECONDS` (2 min) of input under
@@ -61,8 +76,8 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   the watch timer as well as the meter's animation frame, since a
   background tab throttles frames but keeps timers. The reservation
   (`POST /api/recordings`) and the upload token refuse more than
-  `MAX_TAKE_BYTES` (32 MB, the time limit at twice the 128 kbit/s asked of
-  MediaRecorder). Phones stop the microphone themselves when the app
+  `MAX_TAKE_BYTES` (120 MB since lossless takes; a compressed take never
+  comes near it). Phones stop the microphone themselves when the app
   leaves the front.
 - **Recorder settings** (the gear in the header, a popover): "Discard takes
   shorter than 3 seconds automatically", on by default, per browser

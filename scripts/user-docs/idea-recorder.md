@@ -26,13 +26,18 @@ From the recorder's ⋯ menu or a take's menu, **Add as demo…** puts the take 
 
 ## Settings and limits
 
-The gear in the header opens **Recorder settings**. "Discard takes shorter than 3 seconds automatically" is on by default and drops a mis-tap on Record; it is remembered on the device.
+The gear in the header opens **Recorder settings**, remembered on the device:
 
-A take stops and saves on its own at 15 minutes (a notice appears at 10), and after 2 minutes of silence: saved when it had sound, discarded when it never did. A take is at most 32 MB.
+- **Quality.** _Lossless where the browser can_ is the default: Apple Lossless on an iPhone, iPad or Mac running Safari 18.4 or later, raw PCM on Chrome and Edge (kept as FLAC), and the best compressed codec elsewhere. About 3 MB a minute in mono. _Compressed_ records Opus or AAC at 256 kbit/s, about 2 MB a minute, for a slow or metered connection. While recording, the line under the meter says what is really being captured, for example "ALAC lossless · 48 kHz · mono".
+- **Stereo input**, for an audio interface with two channels. A phone microphone is mono anyway, and stereo doubles the file.
+- **Microphone.** Tap _Find microphones_ once to grant permission and list the inputs, then pick an interface or a better mic. It shows on any device an interface is plugged into.
+- **Discard takes shorter than 3 seconds automatically**, on by default, drops a mis-tap on Record.
+
+A take stops and saves on its own at 15 minutes (a notice appears at 10), and after 2 minutes of silence: saved when it had sound, discarded when it never did. A take is at most 120 MB. Whatever the format, every take is also converted to MP3 for playback, so a take recorded losslessly on one device plays on any other.
 
 ## Tips
 
 - Keep the screen on and the app in front while recording: a phone stops the microphone when it sleeps or switches apps.
 - Voice processing is switched off so instruments sound like themselves; the level meter shows what the microphone hears.
-- Takes are saved as your browser recorded them (AAC on iPhones and Safari, Opus elsewhere) and converted to MP3 for playback.
+- Takes are saved as your browser recorded them (see Quality above) and converted to MP3 for playback; downloads and demos made from a take use the original.
 - On an iPhone or iPad the volume slider is hidden: iOS keeps playback volume on the hardware buttons.
