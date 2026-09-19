@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-09-19
+
 ### Changed
 
 - **The Releases page's notes live in the database** as a user doc (slug `releases`), edited in the app by system admins like every doc page and seeded once from `scripts/user-docs/releases.md`; it stays at `/releases` (its `/docs` address redirects there and it is not listed among the docs). The repository keeps CHANGELOG.md as the technical record, and the short-lived RELEASES.md is gone.
