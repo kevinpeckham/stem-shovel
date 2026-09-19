@@ -724,9 +724,11 @@
 			<input
 				class="field"
 				type="search"
-				placeholder="Title, notes, take name…"
+				placeholder="Title, notes, take label…"
 				autocomplete="off"
 				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
 				bind:value={searchText}
 				autofocus={searchOpen}
 			/>

@@ -289,6 +289,10 @@
 			bind:value={editor.markdownCurrent}
 			rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 			spellcheck="false"
+			autocomplete="off"
+			data-1p-ignore
+			data-lpignore="true"
+			data-bwignore
 			placeholder="Enter notes here"></textarea>
 	{:else}
 		<textarea

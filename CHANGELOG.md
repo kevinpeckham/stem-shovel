@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Password managers are told to leave every free-text field alone**: the markdown editor's textarea (song documents and idea notes) and the recorder's search field now carry the 1Password, LastPass and Bitwarden ignore attributes like the other fields, and the take field's placeholder and accessible name say "label" rather than "name", the word third-party heuristics read as a username. (A report of the password-manager prompt on iOS; Safari's own AutoFill only classifies a field as a credential when a password field is involved, and the page has none.)
+
 ## [0.17.2] - 2026-09-19
 
 ### Added

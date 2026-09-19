@@ -515,15 +515,15 @@
 				type="text"
 				maxlength="120"
 				placeholder={loaded || phase === "recording" || phase === "requesting"
-					? "Name this take (optional)"
-					: "Name the next take (optional)"}
+					? "Label this take (optional)"
+					: "Label the next take (optional)"}
 				autocomplete="off"
 				data-1p-ignore
 				data-lpignore="true"
 				data-bwignore
 				bind:value={takeName}
 				disabled={loaded ? isLocal(loaded.id) : false}
-				aria-label="Take name"
+				aria-label="Take label"
 				onchange={() => {
 					if (loaded && !isLocal(loaded.id))
 						ontakename?.({ id: loaded.id, title: takeName.trim() });
