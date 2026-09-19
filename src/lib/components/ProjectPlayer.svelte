@@ -25,7 +25,7 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let currentTime = $state(0);
 	let duration = $state(0);
-	/** The playlist's own volume (0..1), kept across tracks; no position control yet. */
+	/** The playlist's own volume (0..1), kept across tracks. */
 	let volume = $state(1);
 
 	/** Play a song (from its row or the playlist); the same song toggles. */
@@ -55,6 +55,11 @@
 	function onended() {
 		if (playable[index + 1]) step(1);
 		else paused = true;
+	}
+	function seek(e: Event) {
+		const at = Number((e.currentTarget as HTMLInputElement).value);
+		if (audio) audio.currentTime = at;
+		currentTime = at;
 	}
 
 	// Space toggles the playlist like the song transport; Home rewinds.
@@ -138,7 +143,6 @@
 			<p class="text-dim">Mixes appear here once a song has stems.</p>
 		{/if}
 	</div>
-	<!-- Volume only for now; seeking within a track comes later. -->
 	<label class="flex items-center gap-2 text-sm text-dim w-full sm:w-auto">
 		<span class="i-ph-speaker-high" aria-hidden="true"></span>
 		<span class="sr-only">Volume</span>
@@ -152,4 +156,17 @@
 			aria-label="Volume"
 		/>
 	</label>
+	<!-- Where playback is in the song; drag to seek. -->
+	<input
+		type="range"
+		class="w-full accent-maximumYellow disabled:opacity-40"
+		min="0"
+		max={duration || 0}
+		step="0.1"
+		value={currentTime}
+		disabled={!track || !duration}
+		oninput={seek}
+		aria-label="Position"
+		aria-valuetext="{formatTime(currentTime)} of {formatTime(duration)}"
+	/>
 </div>

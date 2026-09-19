@@ -22,5 +22,7 @@ describe("ProjectPlayer", () => {
 		expect(screen.getByText("2 songs ready to play")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Previous song" })).toBeDisabled();
 		expect(screen.getByRole("button", { name: "Next song" })).toBeDisabled();
+		// Nothing playing yet: the position slider waits.
+		expect(screen.getByRole("slider", { name: "Position" })).toBeDisabled();
 	});
 });
