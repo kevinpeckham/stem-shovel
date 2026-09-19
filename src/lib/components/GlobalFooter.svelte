@@ -115,7 +115,12 @@
 		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">{heading}</h2>
+			<h2 class="heading-2 mb-0">
+				{heading}
+				{#if kind === "feature"}
+					<a class="ml-3 link-dim text-13px font-400" href="/feature-requests">See all requests</a>
+				{/if}
+			</h2>
 			<button class="button button-xs" type="button" popovertarget={id} popovertargetaction="hide">
 				Close
 			</button>

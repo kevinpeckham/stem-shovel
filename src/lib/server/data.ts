@@ -33,6 +33,7 @@ import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
 import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from "drizzle-orm";
 import type { SupportStatus } from "$lib/val/SupportRequestSchema";
+import type { ReportPriority } from "$lib/val/BugReportSchema";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -1282,10 +1283,67 @@ export async function deleteSupportRequest(id: string) {
 export async function setBugReportStatus(id: string, status: BugStatus) {
 	const [row] = await db
 		.update(bugReport)
-		.set({ status, closedAt: status === "closed" ? new Date() : null })
+		.set({ status, closedAt: status === "open" ? null : new Date() })
 		.where(eq(bugReport.id, id))
 		.returning({ id: bugReport.id });
 	return !!row;
+}
+
+export async function setBugReportPriority(id: string, priority: ReportPriority | null) {
+	const [row] = await db
+		.update(bugReport)
+		.set({ priority })
+		.where(eq(bugReport.id, id))
+		.returning({ id: bugReport.id });
+	return !!row;
+}
+
+/** Saves the admin's response; returns the requester's address and the request's title for the email, or null. */
+export async function respondToBugReport(id: string, response: string) {
+	const [row] = await db
+		.update(bugReport)
+		.set({ response, respondedAt: response ? new Date() : null })
+		.where(eq(bugReport.id, id))
+		.returning({
+			id: bugReport.id,
+			title: bugReport.title,
+			kind: bugReport.kind,
+			userId: bugReport.userId,
+		});
+	if (!row) return null;
+	const reporter = row.userId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, row.userId),
+				columns: { email: true, name: true },
+			})
+		: null;
+	return { title: row.title, kind: row.kind, reporter };
+}
+
+export async function deleteBugReport(id: string) {
+	const [row] = await db
+		.delete(bugReport)
+		.where(eq(bugReport.id, id))
+		.returning({ id: bugReport.id });
+	return !!row;
+}
+
+/** Feature requests as signed-in users see them: no reporter, open first, then complete, then closed. */
+export function listFeatureRequestsPublic() {
+	return db.query.bugReport.findMany({
+		where: eq(bugReport.kind, "feature"),
+		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
+		columns: {
+			id: true,
+			title: true,
+			body: true,
+			status: true,
+			priority: true,
+			response: true,
+			respondedAt: true,
+			createdAt: true,
+		},
+	});
 }
 
 /** Who hears about new bug reports. */

@@ -1,6 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
-import type { BugStatus, ReportKind } from "../../../val/BugReportSchema";
+import type { BugStatus, ReportKind, ReportPriority } from "../../../val/BugReportSchema";
 import { id, timestamps } from "./columns";
 import { user } from "./user";
 
@@ -22,6 +22,11 @@ export const bugReport = table(
 		userAgent: t.text("user_agent").notNull().default(""),
 		status: t.text("status").$type<BugStatus>().notNull().default("open"),
 		closedAt: t.integer("closed_at", { mode: "timestamp_ms" }),
+		/** Admin's call on a feature request: high, medium, low, or none yet (migration 0044). */
+		priority: t.text("priority").$type<ReportPriority>(),
+		/** The admin's written response, shown to signed-in users on /feature-requests and emailed to the requester. */
+		response: t.text("response").notNull().default(""),
+		respondedAt: t.integer("responded_at", { mode: "timestamp_ms" }),
 		...timestamps,
 	},
 	(table) => [

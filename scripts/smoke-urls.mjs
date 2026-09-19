@@ -59,6 +59,7 @@ const ROUTES = [
 	["docs", "/docs", [200], [200]],
 	["releases", "/releases", [200], [200]],
 	["support", "/support", [200], [200]],
+	["feature-requests", "/feature-requests", [303], [200]],
 	["docs/[slug]", "/docs/{doc}", [200], [200]],
 	["docs/[slug]/edit", "/docs/{doc}/edit", [401, 403, 404], [200]],
 	["forgot-password", "/forgot-password", [200], [200, 303]],

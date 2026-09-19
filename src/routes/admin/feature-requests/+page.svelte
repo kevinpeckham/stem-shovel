@@ -15,5 +15,5 @@
 		What signed-in users asked for from the footer's Request a feature, newest first, open ones
 		before closed.
 	</p>
-	<ReportList items={data.reports} />
+	<ReportList items={data.reports} kind="feature" />
 </section>

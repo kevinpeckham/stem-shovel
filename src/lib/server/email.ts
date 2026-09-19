@@ -212,6 +212,33 @@ export async function sendSupportRequestEmail(opts: {
 	});
 }
 
+/** The admin's response to a bug report or feature request, to the person who sent it. */
+export async function sendReportResponseEmail(opts: {
+	to: string;
+	name: string | null;
+	kind: "bug" | "feature";
+	title: string;
+	response: string;
+	pageUrl: string;
+}) {
+	const body = renderEmail({
+		greeting: opts.name ? `Hi ${opts.name},` : "Hi,",
+		lines: [
+			`About your ${opts.kind === "feature" ? "feature request" : "bug report"} "${opts.title}":`,
+			opts.response,
+		],
+		cta: {
+			label: opts.kind === "feature" ? "See the feature requests" : "Open Stem Shovel",
+			url: opts.pageUrl,
+		},
+	});
+	await sendEmail({
+		to: opts.to,
+		subject: `Re: ${opts.kind === "feature" ? "feature request" : "bug report"} "${opts.title}"`,
+		...body,
+	});
+}
+
 export async function sendBugReportEmail(opts: {
 	to: string;
 	kind: "bug" | "feature";
