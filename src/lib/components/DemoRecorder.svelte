@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
 	import { isIOS } from "$lib/utils/isIOS";
+	import { audioSession } from "$lib/utils/audioSession";
 	import type { RecordingFormat, RecordingQuality } from "$lib/utils/recordingMimeType";
 	import {
 		takeStopNotice,
@@ -165,6 +166,10 @@
 		elapsed = 0;
 		onstart?.();
 		setPhase("requesting");
+		// The stem player may have set the page's audio session to "playback" (so it
+		// plays through the iOS silent switch); WebKit refuses to capture under it.
+		const session = audioSession();
+		if (session) session.type = "play-and-record";
 		try {
 			// The three voice processors are on by default and ruin an instrument.
 			stream = await navigator.mediaDevices.getUserMedia({

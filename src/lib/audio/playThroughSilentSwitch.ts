@@ -1,3 +1,4 @@
+import { audioSession } from "$lib/utils/audioSession";
 import { isIOS } from "$lib/utils/isIOS";
 
 /**
@@ -6,7 +7,10 @@ import { isIOS } from "$lib/utils/isIOS";
  * engine plays: the AudioSession API (Safari 17+), and, where it is missing,
  * the older trick of a silent looping <audio> element started on the same
  * user gesture, which moves Web Audio onto the media channel. Call from the
- * gesture that starts playback; a no-op off iOS and the second time round.
+ * gesture that starts playback; a no-op off iOS. The session type is set on
+ * every call, since the recorder switches it to "play-and-record" for the
+ * microphone (WebKit refuses to capture under "playback") and a later play
+ * needs it back.
  */
 const SILENT_WAV =
 	"data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -14,18 +18,15 @@ const SILENT_WAV =
 let done = false;
 let keepAlive: HTMLAudioElement | null = null;
 
-interface AudioSessionNavigator {
-	audioSession?: { type: string };
-}
-
 export function playThroughSilentSwitch(): void {
-	if (done || typeof document === "undefined" || !isIOS()) return;
-	done = true;
-	const session = (navigator as Navigator & AudioSessionNavigator).audioSession;
+	if (typeof document === "undefined" || !isIOS()) return;
+	const session = audioSession();
 	if (session) {
 		session.type = "playback";
 		return;
 	}
+	if (done) return;
+	done = true;
 	const el = document.createElement("audio");
 	el.src = SILENT_WAV;
 	el.loop = true;

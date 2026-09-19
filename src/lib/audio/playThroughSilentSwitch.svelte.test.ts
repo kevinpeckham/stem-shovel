@@ -14,12 +14,15 @@ describe("playThroughSilentSwitch", () => {
 		vi.restoreAllMocks();
 	});
 
-	test("prefers the AudioSession API when the browser has it", () => {
+	test("prefers the AudioSession API when the browser has it, and sets it every time", () => {
 		const audioSession = { type: "auto" };
 		iPhone({ audioSession });
 		playThroughSilentSwitch();
 		expect(audioSession.type).toBe("playback");
 		expect(document.querySelector("audio")).toBeNull();
+		audioSession.type = "play-and-record"; // the recorder took the microphone in between
+		playThroughSilentSwitch();
+		expect(audioSession.type).toBe("playback");
 	});
 
 	test("falls back to a silent looping audio element, once", async () => {

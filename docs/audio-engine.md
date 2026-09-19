@@ -232,5 +232,10 @@ engine calls `playThroughSilentSwitch()` (`src/lib/audio/`): on iOS it sets
 `navigator.audioSession.type = "playback"` (the AudioSession API, Safari
 17+), and where that is missing it starts a silent looping `<audio>`
 element on the same gesture, the older trick that moves Web Audio onto the
-media channel. Nothing detects the switch itself: no web API exposes it.
-
+media channel. The session type is set on every play, because the recorder
+sets it to `"play-and-record"` before `getUserMedia` (WebKit refuses to
+capture under `"playback"`: "AudioSession category is not compatible with
+audio capture", seen on 2026-09-19 after playing a song and then opening
+the recorder in the same tab), and either page may follow the other in one
+document. `src/lib/utils/audioSession.ts` is the accessor. Nothing detects
+the switch itself: no web API exposes it.
