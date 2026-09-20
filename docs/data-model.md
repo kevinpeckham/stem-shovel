@@ -95,8 +95,7 @@ erDiagram
   (`/[account]/artists/[id]`, members only, since it shows emails).
 - **song_credit** — an artist credited on a song in a `role`: performer
   (the artist line under the title; the account's name stands in when there
-  is none), composer ("Written by", replacing the legacy `song.songwriter`
-  text once one exists) or producer ("Produced by"); `sort_order` within
+  is none), composer ("Written by") or producer ("Produced by"); `sort_order` within
   the role, one row per song, artist and role.
 - **bug_report** — a signed-in user's bug report (the footer) or feature
   request (`kind`; the Feature Requests page): title, body, the page they
@@ -116,8 +115,9 @@ erDiagram
   one audio file in Blob at `accounts/<id>/songs/<id>/demos/<demoId>.<ext>`,
   with the same reserve → upload → ready lifecycle as a stem but no
   decoding, peaks or renditions. Played and downloaded as uploaded; up to
-  `MAX_DEMOS_PER_SONG` per song. The song also carries `songwriter` (free
-  text) and `written_on` (ISO date), edited from song settings.
+  `MAX_DEMOS_PER_SONG` per song. The song also carries `written_on` (ISO
+  date), edited from song settings; `songwriter` is unused since credits
+  and waits to be dropped with `recording.notes`.
 - **idea** — an idea from the Idea Recorder (docs/demo-recording.md): a
   title, a markdown note board and who made it. Ideas are the user's own
   within the account (other members do not see them until a take is added

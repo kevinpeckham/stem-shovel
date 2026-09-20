@@ -34,6 +34,7 @@ export const song = table(
 		/** Optional free text shown under the title. */
 		description: t.text("description").notNull().default(""),
 		/** Who wrote it (free text) and when it was first written (ISO date, "YYYY-MM-DD"). */
+		/** Unused since credits (v0.26): composers are song_credit rows. The column is dropped in a later release with recording.notes. */
 		songwriter: t.text("songwriter").notNull().default(""),
 		writtenOn: t.text("written_on"),
 		// Three markdown documents per song, "chart" (chords, arrangement),

@@ -321,7 +321,6 @@ export async function updateSong(
 		title: string;
 		slug: string;
 		description: string;
-		songwriter: string;
 		writtenOn: string;
 		startAt: string;
 		endAt: string;
@@ -356,7 +355,6 @@ export async function updateSong(
 			title,
 			slug,
 			description: input.description.trim(),
-			songwriter: input.songwriter.trim(),
 			writtenOn: input.writtenOn || null,
 			startAt: input.startAt ? Number(input.startAt) : null,
 			endAt: input.endAt ? Number(input.endAt) : null,

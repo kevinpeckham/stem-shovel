@@ -113,7 +113,6 @@
 	let title = $derived(fields.title.value() ?? data.song.title);
 	let slug = $derived(fields.slug.value() ?? data.song.slug);
 	let description = $derived(fields.description.value() ?? data.song.description);
-	let songwriter = $derived(fields.songwriter.value() ?? data.song.songwriter);
 	let writtenOn = $derived(fields.writtenOn.value() ?? data.song.writtenOn ?? "");
 	// Positions read and are typed in the readout's format (time, timecode or bars);
 	// the form carries them as seconds, converted on the way in and out.
@@ -165,7 +164,6 @@
 		title.trim() !== data.song.title ||
 			slug.trim() !== data.song.slug ||
 			description.trim() !== data.song.description ||
-			songwriter.trim() !== data.song.songwriter ||
 			writtenOn !== (data.song.writtenOn ?? "") ||
 			startAt.trim() !== startAtText ||
 			endAt.trim() !== endAtText ||
@@ -229,13 +227,13 @@
 			.map(formatSongChange)
 			.join(" · "),
 	);
-	// Credits by role (song_credit rows with their artist); the legacy songwriter text stands in for composers until one is credited.
+	// Credits by role (song_credit rows with their artist).
 	const creditsOf = (role: CreditRole) =>
 		data.song.credits.filter((c) => c.role === role && c.artist).map((c) => c.artist.name);
 	let performers = $derived(creditsOf("performer"));
 	/** The artist line under the title: the performers, or the account's name when none is credited. */
 	let artistName = $derived(artistLine(performers) || data.account.name);
-	let composerLine = $derived(artistLine(creditsOf("composer")) || data.song.songwriter);
+	let composerLine = $derived(artistLine(creditsOf("composer")));
 	let producerLine = $derived(artistLine(creditsOf("producer")));
 	let writtenLine = $derived(
 		[
@@ -1345,89 +1343,75 @@
 										>
 									{/if}
 								</label>
-								<label class="block">
-									<span class="text-sm opacity-90"
-										>Songwriter <span class="opacity-60">(optional)</span></span
-									>
-									<input
-										class="mt-1 field"
-										{...fields.songwriter.as("text", data.song.songwriter)}
-										placeholder="Who wrote it"
-									/>
-									{#each fields.songwriter.issues() ?? [] as issue (issue.message)}
-										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
-									{/each}
-								</label>
-								<!-- Credits: artists from the account's directory (or new ones by name), per role; saved as you go. -->
-								<fieldset class="grid gap-3">
-									<legend class="text-sm opacity-90">Credits</legend>
-									{#each CREDIT_ROLES as role (role)}
-										{@const credits = data.song.credits.filter((c) => c.role === role)}
-										<div>
-											<span class="text-13px opacity-80">{CREDIT_ROLE_LABELS[role].many}</span>
-											{#if credits.length > 0}
-												<ul
-													class="mt-1 flex flex-wrap gap-2"
-													aria-label={CREDIT_ROLE_LABELS[role].many}
-												>
-													{#each credits as c (c.id)}
-														<li
-															class="flex items-center gap-1 rounded border border-white/15 bg-white/5 py-0.5 pl-2 pr-1 text-sm"
+								<!-- Credits: artists from the account's directory (or new ones by name), one field per role, saved as you go. -->
+								{#each CREDIT_ROLES as role (role)}
+									{@const credits = data.song.credits.filter((c) => c.role === role)}
+									<div class="block">
+										<span class="text-sm opacity-90"
+											>{CREDIT_ROLE_LABELS[role].many}
+											<span class="opacity-60">(optional)</span></span
+										>
+										{#if credits.length > 0}
+											<ul
+												class="mt-1 flex flex-wrap gap-2"
+												aria-label={CREDIT_ROLE_LABELS[role].many}
+											>
+												{#each credits as c (c.id)}
+													<li
+														class="flex items-center gap-1 rounded border border-white/15 bg-white/5 py-0.5 pl-2 pr-1 text-sm"
+													>
+														{c.artist.name}
+														<button
+															class="grid h-5 w-5 place-items-center rounded hover:bg-white/10"
+															type="button"
+															aria-label="Remove {c.artist.name} as {CREDIT_ROLE_LABELS[
+																role
+															].one.toLowerCase()}"
+															disabled={creditBusy}
+															onclick={() => removeCredit(c.id)}
 														>
-															{c.artist.name}
-															<button
-																class="grid h-5 w-5 place-items-center rounded hover:bg-white/10"
-																type="button"
-																aria-label="Remove {c.artist.name} as {CREDIT_ROLE_LABELS[
-																	role
-																].one.toLowerCase()}"
-																disabled={creditBusy}
-																onclick={() => removeCredit(c.id)}
-															>
-																<span class="i-ph-x text-12px" aria-hidden="true"></span>
-															</button>
-														</li>
-													{/each}
-												</ul>
-											{/if}
-											<div class="mt-1 flex gap-2">
-												<input
-													class="field text-sm"
-													list="song-artist-names"
-													placeholder="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}, then Enter"
-													aria-label="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}"
-													autocomplete="off"
-													bind:value={creditDraft[role]}
-													disabled={creditBusy}
-													onkeydown={(e) => {
-														if (e.key === "Enter") {
-															e.preventDefault();
-															void addCredit(role);
-														}
-													}}
-												/>
-												<button
-													class="button button-xs shrink-0"
-													type="button"
-													disabled={creditBusy || !creditDraft[role].trim()}
-													onclick={() => addCredit(role)}>Add</button
-												>
-											</div>
+															<span class="i-ph-x text-12px" aria-hidden="true"></span>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{/if}
+										<div class="mt-1 flex gap-2">
+											<input
+												class="field text-sm"
+												list="song-artist-names"
+												placeholder="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}, then Enter"
+												aria-label="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}"
+												autocomplete="off"
+												bind:value={creditDraft[role]}
+												disabled={creditBusy}
+												onkeydown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														void addCredit(role);
+													}
+												}}
+											/>
+											<button
+												class="button button-xs shrink-0"
+												type="button"
+												disabled={creditBusy || !creditDraft[role].trim()}
+												onclick={() => addCredit(role)}>Add</button
+											>
 										</div>
+									</div>
+								{/each}
+								<datalist id="song-artist-names">
+									{#each data.artists as a (a.id)}
+										<option value={a.name}></option>
 									{/each}
-									<datalist id="song-artist-names">
-										{#each data.artists as a (a.id)}
-											<option value={a.name}></option>
-										{/each}
-									</datalist>
-									<p class="text-xs opacity-70">
-										Artists show under the title; with none, the account's name does. Composers
-										replace the songwriter line once one is added. <a
-											class="link-dim"
-											href="/{data.account.slug}/artists">Manage artists</a
-										>.
-									</p>
-								</fieldset>
+								</datalist>
+								<p class="text-xs opacity-70 sm:col-span-2">
+									Artists show under the title; with none, the account's name does. Composers make
+									the "Written by" line. <a class="link-dim" href="/{data.account.slug}/artists"
+										>Manage artists</a
+									>.
+								</p>
 								<label class="block">
 									<span class="text-sm opacity-90"
 										>First written <span class="opacity-60">(optional)</span></span
@@ -2757,7 +2741,7 @@
 	</dl>
 	{#if !data.song.description && !writtenLine && !metaLine && data.canEdit}
 		<p class="mt-4 text-sm opacity-70">
-			Add a description, songwriter, tempo, key and time signature in song settings.
+			Add a description, credits, tempo, key and time signature in song settings.
 		</p>
 	{/if}
 </div>

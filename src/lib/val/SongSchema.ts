@@ -23,10 +23,6 @@ export const SongSettingsSchema = v.object({
 		v.pipe(v.string(), v.trim(), v.maxLength(2000, "Keep the description under 2000 characters.")),
 		"",
 	),
-	songwriter: v.optional(
-		v.pipe(v.string(), v.trim(), v.maxLength(200, "Keep the songwriter under 200 characters.")),
-		"",
-	),
 	/** Start of bar 1 and the song's end, typed in any position format; the page converts to seconds. */
 	startAt: v.optional(
 		v.union([v.literal(""), v.pipe(v.string(), v.trim(), v.decimal("Not a time."))]),

@@ -62,11 +62,11 @@ import { error, invalid, redirect } from "@sveltejs/kit";
  * (src/lib/server/access.ts), then scopes the data call by it.
  */
 
-/** Title, URL, description, songwriter and date; a slug change redirects to the new address. */
+/** Title, URL, description and date; a slug change redirects to the new address. */
 export const updateSong = form(
 	SongSettingsSchema,
 	async (
-		{ id, title, slug, description, songwriter, writtenOn, startAt, endAt, frameRate, version },
+		{ id, title, slug, description, writtenOn, startAt, endAt, frameRate, version },
 		issue,
 	) => {
 		const { locals } = getRequestEvent();
@@ -75,7 +75,6 @@ export const updateSong = form(
 			title,
 			slug,
 			description,
-			songwriter,
 			writtenOn,
 			startAt,
 			endAt,
