@@ -178,21 +178,22 @@
 			{#each demos as d (d.id)}
 				{@const playing = current === d.id && !paused}
 				<li
-					class="flex items-center gap-3 rounded border px-3 py-2 {current === d.id
-						? 'border-maximumYellow/60 bg-white/5'
+					class="group bg-black/5 hover-bg-black/10 flex items-center gap-x-4 rounded-md border border-current/40 px-3 py-2 shadow {current ===
+					d.id
+						? 'bg-white/5'
 						: 'border-white/10'}"
 				>
 					<button
 						type="button"
-						class="grid h-9 w-9 shrink-0 place-items-center rounded bg-maximumYellow text-oxford active:scale-95"
+						class="grid h-9 w-9 shrink-0 place-items-center rounded bg-transparent text-white border border-current/40 active:scale-95 hover-text-accent hover-bg-white/5"
 						aria-label={playing ? `Pause ${d.label}` : `Play ${d.label}`}
 						onclick={() => play(d.id)}
 					>
 						<span class={playing ? "i-ph-pause-fill" : "i-ph-play-fill"} aria-hidden="true"></span>
 					</button>
 					<span class="min-w-0 grow truncate">
-						{d.label}
-						<span class="block text-xs text-dim">{formatBytes(d.sizeBytes)}</span>
+						<span class="block font-500">{d.label}</span>
+						<span class="block text-xs opacity-85">{formatBytes(d.sizeBytes)}</span>
 					</span>
 					<!-- The row's menu: the downloads, out of the way of Play. -->
 					<details class="relative self-center">

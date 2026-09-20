@@ -1783,7 +1783,7 @@
 									{#each data.song.demos as d (d.id)}
 										{@const remove = deleteDemo.for(d.id)}
 										<li
-											class="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2 text-sm"
+											class="flex items-center justify-between gap-3 rounded-md border border-white/10 px-3 bg-black/5 py-2 text-sm shadow"
 										>
 											<span class="min-w-0 truncate">
 												{d.label}
