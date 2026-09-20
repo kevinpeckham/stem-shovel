@@ -145,11 +145,19 @@
 				{setDefaultArtist.pending ? "Saving…" : "Save"}
 			</button>
 		</form>
-		<p class="mt-2 text-13px text-dim">
-			{#if data.artists.length === 0}No artists yet: credit one in a song's settings and it appears
-				here.{:else}<a class="link-dim" href="/{data.account.slug}/artists">Manage artists</a>:
-				websites, people and invitations.{/if}
-		</p>
+		<div class="mt-4 flex flex-wrap items-center gap-3">
+			<a class="button button-sm" href="/{data.account.slug}/artists">
+				<span class="i-ph-users-three" aria-hidden="true"></span>
+				Manage artists
+			</a>
+			<span class="text-13px text-dim">
+				{#if data.artists.length === 0}
+					No artists yet: credit one in a song's settings and it appears in the directory.
+				{:else}
+					The directory: websites, people and invitations.
+				{/if}
+			</span>
+		</div>
 	</section>
 
 	<section class="max-w-article">
