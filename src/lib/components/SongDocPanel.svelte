@@ -38,6 +38,8 @@
 		saving?: boolean;
 		/** Monospace in every view (chord grids line up); the page's panel menu toggles it. */
 		mono?: boolean;
+		/** Keep the text on the page instead of saving it (the front page's demo): called with the markdown on every save. */
+		onlocalsave?: (markdown: string) => Promise<void> | void;
 	}
 
 	let {
@@ -55,6 +57,7 @@
 		view = "rendered",
 		saving = $bindable(false),
 		mono = false,
+		onlocalsave,
 	}: Props = $props();
 
 	const fields = saveDoc.fields;
@@ -84,6 +87,11 @@
 	export async function close(): Promise<void> {
 		// The WYSIWYG writes its markdown on a 250 ms debounce: let the last keystrokes land.
 		await new Promise((r) => setTimeout(r, 300));
+		if (onlocalsave) {
+			await saveLocal();
+			editing = false;
+			return;
+		}
 		if (!editor?.hasEdits || !formEl) {
 			editing = false;
 			return;
@@ -92,6 +100,13 @@
 			closeResolve = resolve;
 			formEl?.requestSubmit();
 		});
+	}
+	/** The demo's save: hand the markdown to the page, which keeps it in memory. */
+	async function saveLocal() {
+		if (!onlocalsave || !editor) return;
+		await onlocalsave(editor.markdownCurrent);
+		editor.markAsSaved();
+		savedVersion += 1;
 	}
 	function settleClose(saved: boolean) {
 		if (!closeResolve) return;
@@ -129,7 +144,40 @@
 	});
 </script>
 
-{#if editing && canEdit}
+{#if editing && canEdit && onlocalsave}
+	<!-- The demo's editor: the same editor, saving into the page's own state. -->
+	<div class="relative h-full min-h-full">
+		<div
+			class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-16"
+		>
+			<MarkdownDocEditor
+				bind:editor
+				{markdown}
+				docKey="demo/{songId}/{kind}"
+				{label}
+				{hint}
+				backHref=""
+				backLabel=""
+				version={savedVersion}
+				pending={false}
+				confirmEmpty={false}
+				saveError={null}
+				mode="embedded"
+				{view}
+				{mono}
+				onsave={() => void saveLocal()}
+				onclose={() => void close()}
+			/>
+		</div>
+		<div class="pointer-events-none absolute right-6 bottom-4" aria-hidden="true">
+			<span
+				class="rounded border border-current/40 bg-oxford px-2 py-1 text-11px font-600 tracking-wider uppercase text-dim"
+			>
+				Edit mode · demo
+			</span>
+		</div>
+	</div>
+{:else if editing && canEdit}
 	<!-- The box scrolls inside; the edit-mode badge is anchored to its corner, clear of the text. -->
 	<div class="relative h-full min-h-full">
 		<form

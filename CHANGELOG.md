@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Front-page demos.** The stem player demo hides the decoded-in-memory line and the download row; the documents demo has the real editor, with saves kept on the page and gone on reload (`renderPreview`, a public rate-limited markdown query, renders what was typed); the Idea Recorder demo lays out as its own page does, recorder and notes side by side from xl.
+
 ### Fixed
 
 - **Deletes remove their children.** Turso does not enforce foreign keys, so the schema's cascades never ran: deleting a song, project, idea, artist, account, user, report or doc left the rows under it behind (files were already removed). Every delete now goes through `src/lib/server/cascade.ts`, and `bun run db:sweep-orphans [--apply]` reports and removes what earlier deletes left.

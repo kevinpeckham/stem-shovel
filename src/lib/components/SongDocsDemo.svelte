@@ -4,11 +4,15 @@
 	import type { SongView } from "$lib/server/songView";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { formatTime } from "$lib/utils/formatTime";
+	import { renderPreview } from "$lib/remote/markdown.remote";
+	import { notify } from "$lib/state/notifications.svelte";
+	import { errorMessage } from "$lib/utils/errorMessage";
 
 	/**
 	 * The song page's documents panel for a visitor, as the home page's
 	 * second demo: the chart, lyrics and notes as members wrote them, and the
-	 * comments. Read-only; the song page has the editing.
+	 * comments. The editing is real, the saving is not: edits live in this
+	 * page and are gone on reload.
 	 */
 	interface Props {
 		view: SongView;
@@ -36,16 +40,39 @@
 	}
 	let song = $derived(view.song);
 	let doc = $derived(panel === "comments" ? "chart" : panel);
-	const DOC_TEXT = $derived({
-		chart: song.chartMarkdown,
-		lyrics: song.lyricsMarkdown,
-		notes: song.notesMarkdown,
+	type Doc = Exclude<Panel, "comments">;
+	/** The visitor's copy of each document: starts as the song has it, changes on save, gone on reload. */
+	let docs = $state<Record<Doc, { markdown: string; html: string; version: number }>>({
+		chart: { markdown: "", html: "", version: 0 },
+		lyrics: { markdown: "", html: "", version: 0 },
+		notes: { markdown: "", html: "", version: 0 },
 	});
-	const DOC_VERSION = $derived({
-		chart: song.chartVersion,
-		lyrics: song.lyricsVersion,
-		notes: song.notesVersion,
+	$effect.pre(() => {
+		docs = {
+			chart: { markdown: song.chartMarkdown, html: view.docs.chart, version: song.chartVersion },
+			lyrics: {
+				markdown: song.lyricsMarkdown,
+				html: view.docs.lyrics,
+				version: song.lyricsVersion,
+			},
+			notes: { markdown: song.notesMarkdown, html: view.docs.notes, version: song.notesVersion },
+		};
 	});
+	let editing = $state(false);
+	let docPanel = $state<SongDocPanel | null>(null);
+	async function keepLocal(kind: Doc, markdown: string) {
+		try {
+			const html = await renderPreview(markdown);
+			docs[kind] = { markdown, html, version: docs[kind].version + 1 };
+			notify("Saved on this page only; a reload brings the song's own text back");
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+	async function showPanel(kind: Panel) {
+		if (editing) await docPanel?.close();
+		panel = kind;
+	}
 </script>
 
 <svelte:window
@@ -94,14 +121,17 @@
 	{:else}
 		{#key doc}
 			<SongDocPanel
+				bind:this={docPanel}
 				songId={song.id}
 				kind={doc}
 				label={LABELS[doc]}
-				hint=""
-				markdown={DOC_TEXT[doc]}
-				html={view.docs[doc]}
-				version={DOC_VERSION[doc]}
-				canEdit={false}
+				hint="Try the editor: changes stay on this page and vanish on reload."
+				markdown={docs[doc].markdown}
+				html={docs[doc].html}
+				version={docs[doc].version}
+				canEdit
+				bind:editing
+				onlocalsave={(md) => keepLocal(doc, md)}
 			/>
 		{/key}
 	{/if}
@@ -127,7 +157,7 @@
 						aria-checked={panel === kind}
 						onclick={() => {
 							if (pickerEl) pickerEl.open = false;
-							panel = kind;
+							void showPanel(kind);
 						}}
 					>
 						<span class="i-ph-check {panel === kind ? '' : 'invisible'}" aria-hidden="true"
@@ -153,10 +183,28 @@
 						: index === PANELS.length - 1
 							? 'rounded-l-none'
 							: 'rounded-none border-r-none'}"
-					onclick={() => (panel = kind)}>{LABELS[kind]}</button
+					onclick={() => showPanel(kind)}>{LABELS[kind]}</button
 				>
 			{/each}
 		</div>
+		{#if panel !== "comments"}
+			<!-- Edit / done, as on the song page; the demo keeps the text to itself. -->
+			<button
+				class="button button-xs flex items-center {editing
+					? 'bg-blue-300 text-oxford border-blue-300'
+					: ''}"
+				type="button"
+				title={editing ? `Done editing the ${doc}` : `Edit the ${doc} here (demo: not saved)`}
+				aria-label={editing ? `Done editing the ${doc}` : `Edit the ${doc}`}
+				aria-pressed={editing}
+				onclick={async () => {
+					if (editing) await docPanel?.close();
+					else editing = true;
+				}}
+			>
+				<span class={editing ? "i-ph-check" : "i-ph-pencil"}></span>
+			</button>
+		{/if}
 		<a class="button button-xs flex items-center" {href} title="Open the song page">
 			<span class="i-ph-arrow-square-out" aria-hidden="true"></span>
 		</a>

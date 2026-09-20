@@ -43,6 +43,8 @@
 		onengine?: (engine: StemEngine) => void;
 		/** When given, the listener's fader/mute/solo/master changes persist in this browser (localMix). */
 		songId?: string;
+		/** The line under the rows saying how many stems are decoded; the front page's demo hides it. */
+		showStatus?: boolean;
 	}
 
 	let {
@@ -62,6 +64,7 @@
 		onaddsection,
 		onengine,
 		songId,
+		showStatus = true,
 	}: Props = $props();
 
 	const engine = new StemEngine();
@@ -186,7 +189,9 @@
 	</section>
 
 	<div
-		class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-16px lg-text-13px opacity-90 bg-blue-300/5"
+		class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-16px lg-text-13px opacity-90 bg-blue-300/5 {showStatus
+			? ''
+			: 'hidden'}"
 		aria-live="polite"
 	>
 		{#if engine.status === "loading"}
