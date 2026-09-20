@@ -45,7 +45,7 @@ export async function deleteProject(
 	if (!target) return "missing";
 	if (target.status !== "archived") return "active";
 	const songs = await db
-		.select({ id: song.id, mixUrl: song.mixUrl })
+		.select({ id: song.id, mixUrl: song.mixUrl, imageUrl: song.imageUrl })
 		.from(song)
 		.where(and(eq(song.accountId, accountId), eq(song.projectId, id)));
 	const songIds = songs.map((s) => s.id);
@@ -64,7 +64,7 @@ export async function deleteProject(
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
-		...songs.map((s) => s.mixUrl ?? ""),
+		...songs.flatMap((s) => [s.mixUrl ?? "", s.imageUrl ?? ""]),
 	]);
 	await deleteProjectRows([id]);
 	return "deleted";

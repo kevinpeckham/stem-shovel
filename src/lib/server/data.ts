@@ -509,10 +509,11 @@ export async function updateArtist(
 export async function deleteArtist(accountId: string, artistId: string) {
 	const owner = await db.query.artist.findFirst({
 		where: and(eq(artist.accountId, accountId), eq(artist.id, artistId)),
-		columns: { id: true },
+		columns: { id: true, imageUrl: true },
 	});
 	if (!owner) return false;
 	await deleteArtistRows([artistId]);
+	if (owner.imageUrl) await deleteBlobs([owner.imageUrl]);
 	await db
 		.update(account)
 		.set({ defaultArtistId: null })
@@ -715,7 +716,7 @@ export async function deleteSong(accountId: string, songId: string) {
 		.where(and(eq(stem.accountId, accountId), eq(stem.songId, songId)));
 	const s = await db.query.song.findFirst({
 		where: eq(song.id, songId),
-		columns: { mixUrl: true },
+		columns: { mixUrl: true, imageUrl: true },
 	});
 	const demos = await db
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
@@ -725,6 +726,7 @@ export async function deleteSong(accountId: string, songId: string) {
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
+		s?.imageUrl ?? "",
 	]);
 	const owned = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
@@ -1986,7 +1988,17 @@ export async function deleteAccount(id: string) {
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
 		.from(demo)
 		.where(eq(demo.accountId, id));
-	const mixes = await db.select({ mixUrl: song.mixUrl }).from(song).where(eq(song.accountId, id));
+	const mixes = await db
+		.select({ mixUrl: song.mixUrl, imageUrl: song.imageUrl })
+		.from(song)
+		.where(eq(song.accountId, id));
+	const pictures = [
+		...(await db
+			.select({ imageUrl: artist.imageUrl })
+			.from(artist)
+			.where(eq(artist.accountId, id))),
+		...(await db.select({ imageUrl: account.imageUrl }).from(account).where(eq(account.id, id))),
+	].map((r) => r.imageUrl ?? "");
 	const recordings = await db
 		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
 		.from(recording)
@@ -1995,7 +2007,8 @@ export async function deleteAccount(id: string) {
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
-		...mixes.map((m) => m.mixUrl ?? ""),
+		...mixes.flatMap((m) => [m.mixUrl ?? "", m.imageUrl ?? ""]),
+		...pictures,
 	]);
 	const exists = await db.query.account.findFirst({
 		where: eq(account.id, id),

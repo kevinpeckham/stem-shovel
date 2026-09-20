@@ -79,7 +79,8 @@ describe("deleteProject", () => {
 			demo: [{ url: "d1", playbackUrl: null }],
 		};
 		expect(await deleteProject("a1", "p1")).toBe("deleted");
-		expect(fake.deleteBlobs).toHaveBeenCalledWith(["st1", "pl1", "", "d1", "", "mix1"]);
+		// …the mix and the song's picture (none here) come last.
+		expect(fake.deleteBlobs).toHaveBeenCalledWith(["st1", "pl1", "", "d1", "", "mix1", ""]);
 		// The rows go through the cascade module (the database runs no cascades of its own).
 		expect(cascade.deleteProjectRows).toHaveBeenCalledWith(["p1"]);
 	});
