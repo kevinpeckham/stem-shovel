@@ -35,7 +35,11 @@
 			{#each data.projects as project (project.id)}
 				<li>
 					<a class="list-tile" href="/{data.account.slug}/projects/{project.slug}"
-						>{#if project.isPrivate}<span
+						>{#if project.imageUrl}<img
+								class="mr-3 inline-block h-9 w-9 rounded border border-white/15 object-cover align-middle"
+								src={project.imageUrl}
+								alt=""
+							/>{/if}{#if project.isPrivate}<span
 								class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
 								title="Private"
 								aria-label="Private"

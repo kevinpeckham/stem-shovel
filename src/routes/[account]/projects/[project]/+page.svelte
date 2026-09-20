@@ -10,6 +10,7 @@
 	import { clearForm } from "$lib/utils/clearForm";
 	import { slugify } from "$lib/utils/slugify";
 	import { updateProject } from "$lib/remote/projects.remote";
+	import ImageUploader from "$lib/components/ImageUploader.svelte";
 	import { artistLine } from "$lib/utils/artistLine";
 	import { PROJECT_TYPES } from "$lib/val/ProjectTypeSchema";
 	import { PROJECT_TYPE_LABELS, VARIOUS_ARTISTS_FROM } from "$lib/constants/projectTypes";
@@ -87,6 +88,13 @@
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
 		<div class="flex gap-4 items-baseline">
+			{#if data.project.imageUrl}
+				<img
+					class="h-14 w-14 self-center rounded-md border border-white/15 object-cover"
+					src={data.project.imageUrl}
+					alt=""
+				/>
+			{/if}
 			<h1 class="heading-2">
 				{#if data.project.isPrivate}
 					<span
@@ -158,6 +166,15 @@
 				>
 					Close
 				</button>
+			</div>
+			<div class="mb-5">
+				<ImageUploader
+					kind="project"
+					id={data.project.id}
+					url={data.project.imageUrl}
+					label={data.project.name}
+					size="h-24 w-24"
+				/>
 			</div>
 			<form
 				{...updateProject.enhance(async ({ submit }) => {

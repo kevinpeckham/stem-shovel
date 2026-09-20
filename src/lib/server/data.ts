@@ -400,7 +400,7 @@ export function listArtists(accountId: string) {
 }
 
 /**
- * Sets or clears the picture of an account, an artist or a song (scoped to
+ * Sets or clears the picture of an account, an artist or a project (scoped to
  * the account); returns the previous URL (to delete its file), null when
  * there was none, or undefined when the row is not the account's.
  */
@@ -432,16 +432,25 @@ export async function setImage(
 			.where(and(eq(artist.accountId, accountId), eq(artist.id, id)));
 		return before.imageUrl;
 	}
-	const before = await db.query.song.findFirst({
-		where: and(eq(song.accountId, accountId), eq(song.id, id)),
+	const before = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, id)),
 		columns: { imageUrl: true },
 	});
 	if (!before) return undefined;
 	await db
-		.update(song)
+		.update(project)
 		.set({ imageUrl })
-		.where(and(eq(song.accountId, accountId), eq(song.id, id)));
+		.where(and(eq(project.accountId, accountId), eq(project.id, id)));
 	return before.imageUrl;
+}
+
+/** Whether a project is private (its picture then lives in the private store); null when not the account's. */
+export async function projectIsPrivate(accountId: string, projectId: string) {
+	const row = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { isPrivate: true },
+	});
+	return row ? row.isPrivate : null;
 }
 
 /** The directory page: every artist with how many songs credit it and how many people it lists. */
@@ -682,7 +691,6 @@ export async function manifestFor(s: {
 export async function presentSongFiles<
 	S extends {
 		mixUrl: string | null;
-		imageUrl?: string | null;
 		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
 		demos: { url: string; playbackUrl: string | null }[];
 	},
@@ -690,7 +698,6 @@ export async function presentSongFiles<
 	return {
 		...s,
 		mixUrl: await presentUrl(s.mixUrl),
-		imageUrl: await presentUrl(s.imageUrl),
 		stems: await Promise.all(
 			s.stems.map(async (st) => ({
 				...st,
@@ -716,7 +723,7 @@ export async function deleteSong(accountId: string, songId: string) {
 		.where(and(eq(stem.accountId, accountId), eq(stem.songId, songId)));
 	const s = await db.query.song.findFirst({
 		where: eq(song.id, songId),
-		columns: { mixUrl: true, imageUrl: true },
+		columns: { mixUrl: true },
 	});
 	const demos = await db
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
@@ -726,7 +733,6 @@ export async function deleteSong(accountId: string, songId: string) {
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
-		s?.imageUrl ?? "",
 	]);
 	const owned = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
@@ -1988,11 +1994,12 @@ export async function deleteAccount(id: string) {
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
 		.from(demo)
 		.where(eq(demo.accountId, id));
-	const mixes = await db
-		.select({ mixUrl: song.mixUrl, imageUrl: song.imageUrl })
-		.from(song)
-		.where(eq(song.accountId, id));
+	const mixes = await db.select({ mixUrl: song.mixUrl }).from(song).where(eq(song.accountId, id));
 	const pictures = [
+		...(await db
+			.select({ imageUrl: project.imageUrl })
+			.from(project)
+			.where(eq(project.accountId, id))),
 		...(await db
 			.select({ imageUrl: artist.imageUrl })
 			.from(artist)
@@ -2007,7 +2014,7 @@ export async function deleteAccount(id: string) {
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
-		...mixes.flatMap((m) => [m.mixUrl ?? "", m.imageUrl ?? ""]),
+		...mixes.map((m) => m.mixUrl ?? ""),
 		...pictures,
 	]);
 	const exists = await db.query.account.findFirst({

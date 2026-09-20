@@ -3,7 +3,7 @@ import { NanoIdSchema } from "./NanoIdSchema";
 import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "$lib/constants/images";
 
 /** What can carry an image. */
-export const IMAGE_KINDS = ["account", "artist", "song"] as const;
+export const IMAGE_KINDS = ["account", "artist", "project"] as const;
 export const ImageKindSchema = v.picklist(IMAGE_KINDS);
 export type ImageKind = v.InferOutput<typeof ImageKindSchema>;
 

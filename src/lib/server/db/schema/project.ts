@@ -24,6 +24,8 @@ export const project = table(
 		description: t.text("description").notNull().default(""),
 		/** Album, EP, single, soundtrack… (migration 0049); "other" shows no label. */
 		type: t.text("type").$type<ProjectType>().notNull().default("other"),
+		/** The project's picture (migration 0053; in the private store when the project is private), or null. */
+		imageUrl: t.text("image_url"),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		archivedAt: t.integer("archived_at", { mode: "timestamp_ms" }),
 		/** Manual ordering inside the account (lower first). */

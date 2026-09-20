@@ -39,13 +39,13 @@ export async function deleteProject(
 	id: string,
 ): Promise<"deleted" | "active" | "missing"> {
 	const target = await db.query.project.findFirst({
-		columns: { status: true },
+		columns: { status: true, imageUrl: true },
 		where: and(eq(project.accountId, accountId), eq(project.id, id)),
 	});
 	if (!target) return "missing";
 	if (target.status !== "archived") return "active";
 	const songs = await db
-		.select({ id: song.id, mixUrl: song.mixUrl, imageUrl: song.imageUrl })
+		.select({ id: song.id, mixUrl: song.mixUrl })
 		.from(song)
 		.where(and(eq(song.accountId, accountId), eq(song.projectId, id)));
 	const songIds = songs.map((s) => s.id);
@@ -64,7 +64,8 @@ export async function deleteProject(
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
-		...songs.flatMap((s) => [s.mixUrl ?? "", s.imageUrl ?? ""]),
+		...songs.map((s) => s.mixUrl ?? ""),
+		target.imageUrl ?? "",
 	]);
 	await deleteProjectRows([id]);
 	return "deleted";

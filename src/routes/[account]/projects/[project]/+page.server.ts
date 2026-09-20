@@ -28,5 +28,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		Promise.all(songs.map(async (s) => ({ ...s, mixUrl: await presentUrl(s.mixUrl) }))),
 		canEdit ? listShareLinks({ projectId: project.id }) : [],
 	]);
-	return { project: { ...project, songs: presented }, shareLinks };
+	return {
+		project: { ...project, songs: presented, imageUrl: await presentUrl(project.imageUrl) },
+		shareLinks,
+	};
 };
