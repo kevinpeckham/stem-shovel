@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-09-20
+
 ### Changed
 
 - **"Discard takes shorter than 3 seconds" is off by default.** It throws a take away, so it is opt-in like Trim silence; a browser that had turned it on keeps it on.
