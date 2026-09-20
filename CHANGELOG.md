@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The Stems / Demos tabs show at every width** on the song page, not only with demos or at xl.
 - **The docs and the Releases page are indexable.** On production, `/docs`, each doc page and `/releases` no longer carry the noindex header and meta; `robots.txt` allows them, `sitemap.xml` lists them with each doc page's last change (a route now, not a static file), and doc pages carry a meta description from their first paragraph. Everything else stays out of search engines.
 
 ## [0.26.0] - 2026-09-20

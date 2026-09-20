@@ -2013,8 +2013,8 @@
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section class="grid grid-cols-1 place-content-start min-h-560px" aria-label="Player">
 		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
-		     The tabs show whenever there are demos, and always at xl, where the documents' tool bar sits in the same row. -->
-		<div class="mb-3 items-center gap-3 {readyDemos.length > 0 ? 'flex' : 'hidden xl:flex'}">
+		     The tabs always show (the Demos view holds Record Demo for a song without demos), level with the documents' tool bar at xl. -->
+		<div class="mb-3 flex items-center gap-3">
 			<div
 				class="flex items-center overflow-hidden rounded border border-white/15"
 				role="tablist"
