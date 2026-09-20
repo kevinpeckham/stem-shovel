@@ -948,7 +948,7 @@
 														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-9 pr-3 text-left hover:bg-white/5 {f.matching.has(
 															t.id,
 														)
-															? 'bg-maximumYellow/10'
+															? 'bg-accent/10'
 															: ''}"
 														type="button"
 														aria-current={t.id === takeId ? "true" : undefined}

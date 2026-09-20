@@ -32,7 +32,7 @@
 	let { items, kind = "bug" }: Props = $props();
 	const PRIORITY_CLASS = {
 		high: "text-red-400",
-		medium: "text-maximumYellow",
+		medium: "text-accent",
 		low: "text-dim",
 	} as const;
 </script>

@@ -131,11 +131,11 @@
 	$effect(() => () => engine.dispose());
 </script>
 
-{#if headerExtras}
+<!-- {#if headerExtras}
 	<div class="flex flex-wrap items-baseline justify-between gap-4 mb-4">
 		{@render headerExtras(engine)}
 	</div>
-{/if}
+{/if} -->
 
 {#if engine.status === "error"}
 	<div class="mt-6 p-4">
@@ -169,7 +169,7 @@
 	</div>
 
 	<section
-		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start mb-5"
+		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start"
 		aria-label="Stems"
 	>
 		{#if sections.length > 0 || timelineKinds(changes).length > 0}

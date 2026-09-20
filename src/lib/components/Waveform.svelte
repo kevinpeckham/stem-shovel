@@ -117,7 +117,7 @@
 	></canvas>
 	<!-- Playhead: positioned by percentage so it stays correct on resize -->
 	<div
-		class="pointer-events-none absolute inset-y-0 w-0.5 bg-maximumYellow"
+		class="pointer-events-none absolute inset-y-0 w-0.5 bg-accent"
 		style:left="{progress * 100}%"
 	></div>
 </div>

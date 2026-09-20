@@ -128,7 +128,7 @@
 		class="absolute inset-0 h-full w-full text-blue-300 {dimmed ? 'opacity-30' : 'opacity-90'}"
 	></canvas>
 	<div
-		class="pointer-events-none absolute inset-y-0 w-0.5 bg-maximumYellow"
+		class="pointer-events-none absolute inset-y-0 w-0.5 bg-accent"
 		style:left="{progress * 100}%"
 	></div>
 </div>

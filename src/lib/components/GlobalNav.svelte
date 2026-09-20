@@ -44,7 +44,7 @@
 	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10"
 >
 	<a
-		class="font-brand text-maximumYellow text-20px md-text-24px lg-text-28px leading-none tracking-wide flex items-baseline gap-2"
+		class="font-brand text-accent text-20px md-text-24px lg-text-28px leading-none tracking-wide flex items-baseline gap-2"
 		href="/"
 		title="Back to home"
 	>
@@ -78,7 +78,7 @@
 			<div class="relative" bind:this={menu}>
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-maximumYellow {open
+					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {open
 						? 'bg-white/10 opacity-100'
 						: ''}"
 					aria-haspopup="menu"
@@ -118,10 +118,10 @@
 								{member.name} · {member.actingAs ? "acting as owner" : member.role}
 							</div>
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/projects`,
 								)
-									? 'text-maximumYellow'
+									? 'text-accent'
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/projects"
@@ -131,10 +131,10 @@
 								></span>Projects
 							</a>
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/ideas/recorder`,
 								)
-									? 'text-maximumYellow'
+									? 'text-accent'
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/ideas/recorder"
@@ -144,10 +144,10 @@
 								></span>Idea Recorder
 							</a>
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/settings`,
 								)
-									? 'text-maximumYellow'
+									? 'text-accent'
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/settings"
@@ -165,7 +165,7 @@
 							</div>
 							{#each own.filter((m) => m.slug !== member?.slug) as m (m.accountId)}
 								<a
-									class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow"
+									class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent"
 									role="menuitem"
 									href="/{m.slug}/projects"
 									onclick={() => (open = false)}
@@ -179,10 +179,10 @@
 							{/each}
 						{/if}
 						<a
-							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {active(
 								'/accounts',
 							)
-								? 'text-maximumYellow'
+								? 'text-accent'
 								: ''}"
 							role="menuitem"
 							href="/accounts"
@@ -193,7 +193,7 @@
 						</a>
 						{#if own.length > 0}
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow"
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent"
 								role="menuitem"
 								href="/accounts?new=1"
 								onclick={() => (open = false)}
@@ -203,10 +203,10 @@
 							</a>
 						{/if}
 						<a
-							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-maximumYellow {active(
+							class="mt-1 block border-t border-white/10 px-4 py-1.5 pt-2 hover:bg-white/10 hover:text-accent {active(
 								'/settings/security',
 							)
-								? 'text-maximumYellow'
+								? 'text-accent'
 								: ''}"
 							role="menuitem"
 							href="/settings/security"
@@ -217,10 +217,8 @@
 						</a>
 						{#if user.isSystemAdmin}
 							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-maximumYellow {active(
-									'/admin',
-								)
-									? 'text-maximumYellow'
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/admin')
+									? 'text-accent'
 									: ''}"
 								role="menuitem"
 								href="/admin"
@@ -232,7 +230,7 @@
 						{/if}
 						<form class="mt-1 border-t border-white/10 pt-1" {...signOut}>
 							<button
-								class="block w-full px-4 py-1.5 text-left hover:bg-white/10 hover:text-maximumYellow"
+								class="block w-full px-4 py-1.5 text-left hover:bg-white/10 hover:text-accent"
 								role="menuitem"
 							>
 								<span class="i-ph-sign-out mr-2 inline-block align-[-2px]" aria-hidden="true"

@@ -26,9 +26,8 @@
 			{#each SECTIONS as s (s.slug)}
 				<li>
 					<a
-						class="block rounded px-2 py-1 hover:bg-white/10 hover:text-maximumYellow {s.slug ===
-						current
-							? 'bg-white/10 text-maximumYellow'
+						class="block rounded px-2 py-1 hover:bg-white/10 hover:text-accent {s.slug === current
+							? 'bg-white/10 text-accent'
 							: 'opacity-80'}"
 						href="/admin/{s.slug}"
 						aria-current={s.slug === current ? "page" : undefined}>{s.title}</a

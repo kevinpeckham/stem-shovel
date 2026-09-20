@@ -72,17 +72,12 @@
 	role="group"
 	aria-label="Song sections"
 >
-	<div class="text-11px">
-		<div class="font-500 mb-1 opacity-90">Current Section:</div>
-		<div class="flex gap-2 w-full flex-wrap">
-			{#if currentIndex >= 0}
-				<div class="px-2 py-1 border rounded opacity-90 max-w-fit">{blocks[currentIndex].name}</div>
-			{/if}
-
-			<!-- {#each current as c (c.kind)}
-				<span class="px-2 py-1 border rounded opacity-90 max-w-fit"> {formatSongChange(c)}</span>
-			{/each} -->
-		</div>
+	<!-- <div class="font-500 mb-2 opacity-90">Current Section:</div> -->
+	<div class="flex gap-2 w-full text-14px opacity-95 leading-snug">
+		{#if currentIndex >= 0}
+			<div class="opacity-80">section:</div>
+			<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
+		{/if}
 	</div>
 
 	<div
@@ -96,7 +91,7 @@
 					class="absolute h-3.5 overflow-hidden border-l pl-1 font-mono leading-3.5 whitespace-nowrap {current.some(
 						(c) => c.kind === m.kind && c.start === m.start,
 					)
-						? 'border-maximumYellow text-neutral-100'
+						? 'border-accent text-neutral-100'
 						: 'border-white/30'}"
 					style:top="{li * LANE_REM}rem"
 					style:left="{(m.start / duration) * 100}%"
@@ -129,7 +124,7 @@
 					aria-selected={i === currentIndex}
 					class="absolute top-0 h-full overflow-hidden rounded pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
 					currentIndex
-						? 'border-maximumYellow bg-maximumYellow/20 text-neutral-100'
+						? 'border-accent bg-accent/20 text-neutral-100'
 						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'}"
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"

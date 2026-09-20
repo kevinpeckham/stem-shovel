@@ -36,7 +36,7 @@
 		{#each data.releases as r (r.version)}
 			<section id="v{r.version}" class="scroll-mt-20">
 				<h2 class="heading-3 flex flex-wrap items-baseline gap-x-3">
-					<a class="hover:text-maximumYellow" href="#v{r.version}"
+					<a class="hover:text-accent" href="#v{r.version}"
 						>{r.version === "Unreleased" ? "Coming next" : `v${r.version}`}</a
 					>
 					{#if r.date}

@@ -95,12 +95,12 @@
 {/if}
 
 <div
-	class="bg-black/20 border border-current/40 rounded-md px-4 py-3 flex flex-wrap items-center gap-4"
+	class="bg-blue-300/5 border border-current/40 rounded-md px-4 py-3 flex flex-wrap items-center gap-4"
 >
 	<div class="flex items-center gap-2">
 		<button
 			type="button"
-			class="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent active:scale-95 disabled:opacity-40"
+			class="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent active:scale-95 disabled-opacity-60"
 			aria-label="Previous song"
 			disabled={index <= 0}
 			onclick={() => step(-1)}
@@ -109,7 +109,7 @@
 		</button>
 		<button
 			type="button"
-			class="grid h-12 w-12 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:opacity-40"
+			class="grid h-12 w-12 place-items-center rounded-lg bg-accent text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:opacity-40"
 			aria-label={paused ? "Play" : "Pause"}
 			title={playable.length ? "Play the project's songs in order" : "No mixes rendered yet"}
 			disabled={playable.length === 0}
@@ -120,7 +120,7 @@
 		</button>
 		<button
 			type="button"
-			class="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent active:scale-95 disabled:opacity-40"
+			class="grid h-10 w-10 place-items-center rounded-lg border border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent active:scale-95 disabled-opacity-60"
 			aria-label="Next song"
 			disabled={index < 0 || index >= playable.length - 1}
 			onclick={() => step(1)}

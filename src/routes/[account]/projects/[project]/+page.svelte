@@ -83,11 +83,11 @@
 	<title>{pageTitle(data.project.name)}</title>
 </svelte:head>
 
-<main class="page-x-padding pt-6 mb-2">
+<main class="page-x-padding pt-6 mb-2 pb-24">
 	<header class="flex flex-wrap items-baseline justify-between justify-start gap-4 mb-5">
 		<!-- <div class="flex gap-2">
 			<a class="text-sm opacity-80 hover-underline underline-offset-4 hover-opacity-100 hover-text-accent" title="back to all projects" href="/{data.account.slug}/projects">Project</a> -->
-		<div class="flex gap-4 items-baseline">
+		<div class="">
 			{#if data.project.imageUrl}
 				<img
 					class="h-14 w-14 self-center rounded-md border border-white/15 object-cover"
@@ -95,47 +95,63 @@
 					alt=""
 				/>
 			{/if}
-			<h1 class="heading-2">
+
+			<!-- Project Title -->
+			<h1 class="flex gap-4 items-center app-page-heading mb-2">
 				{#if data.project.isPrivate}
 					<span
-						class="i-ph-lock mr-1 inline-block align-[-3px] text-24px opacity-70"
+						class="block h-33px i-ph-lock opacity-70"
 						title="Private: members and viewing links only"
 						aria-label="Private"
 					></span>
-				{/if}{data.project.name}{#if data.project.status === "archived"}
-					<span
-						class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
-						title="Archived: out of the projects list; restore it in settings">archived</span
-					>{/if}
+				{/if}
+				<span class="block mb-0">{data.project.name}</span>
+
+				{#if data.project.status === "archived"}
+					<div class="flex items-end h-full">
+						<span
+							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 text-10px uppercase tracking-wider opacity-70"
+							title="Archived: out of the projects list; restore it in settings">archived</span
+						>
+					</div>
+				{/if}
 			</h1>
-			<span
-				class="text-lg font-500 opacity-90"
-				aria-label="Artists"
-				title={performers.length >= VARIOUS_ARTISTS_FROM ? performers.join(", ") : undefined}
-				>{subtitle}</span
-			>
-			<span class="opacity-90 text-15px"
-				>a project from <a
-					class="underline hover-text-accent underline-offset-4"
-					href="/{data.account.slug}/projects">{data.account.name}</a
-				></span
-			>
+
+			<!-- Artists / Account -->
+			<div class="gap-4 items-center">
+				<span class="opacity-90 text-15px"
+					>a project from: <a
+						class="underline hover-text-accent underline-offset-4"
+						href="/{data.account.slug}/projects">{data.account.name}</a
+					></span
+				>
+				{#if performers}<div
+						class="text-15px font-400 opacity-90"
+						aria-label="Artists"
+						title={performers.length >= VARIOUS_ARTISTS_FROM ? performers.join(", ") : undefined}
+					>
+						aritst: {subtitle}
+					</div>
+				{/if}
+			</div>
 		</div>
 		<!-- </div> -->
 		{#if data.canEdit}
-			<div class="flex gap-4 items-center">
-				<button class="button button-sm button-accent" type="button" popovertarget="add-song"
-					><span class="i-ph-plus"></span>Add Song
+			<div class="flex gap-4 items-center mt-5">
+				<button class="button sm-button-sm" type="button" popovertarget="add-song">
+					<span class="i-ph-plus"></span>
+					<span class="hidden sm-inline">Add Song</span>
 				</button>
 
 				<button
-					class="button button-sm"
+					class="button sm-button-sm"
 					type="button"
 					popovertarget="project-settings"
 					title="Project settings"
 					aria-label="Project settings"
 				>
-					<span class="block i-ph-gear"></span>Project Settings
+					<span class="block i-ph-gear"></span>
+					<span class="hidden sm-inline">Project Settings</span>
 				</button>
 			</div>
 		{/if}
@@ -289,7 +305,7 @@
 
 	<section class="mt-10">
 		<div class="mb-5">
-			<h2 class="text-18px font-700 leading-none text-nowrap mb-1">Playlist</h2>
+			<h2 class="app-section-heading">Playlist</h2>
 			<p class="opacity-90">Listen to a playlist of your current stem mixes.</p>
 		</div>
 		<ProjectPlayer bind:this={player} songs={playable} bind:current={playing} bind:paused />
@@ -297,9 +313,9 @@
 
 	<!-- finished songs -->
 	{#if finished.length > 0}
-		<div class="mt-10">
+		<section class="mt-10">
 			<div class="mb-5">
-				<h2 class="text-18px font-700 leading-none text-nowrap mb-1">Finished Songs</h2>
+				<h2 class="marketing-section-heading">Finished Songs</h2>
 				<p class="opacity-90 text-15px">Done, and marked so in their settings.</p>
 			</div>
 			<ul class="grid grid-cols-1 gap-3 mb-10">
@@ -307,32 +323,32 @@
 					{@render songRow(song)}
 				{/each}
 			</ul>
-		</div>
+		</section>
 	{/if}
 
 	<!-- no songs yet -->
 	{#if inProgress.length === 0 && ideas.length === 0}
-		<div class="mb-5">
-			<h2 class="text-18px font-700 leading-none text-nowrap mb-2">Songs</h2>
-			<p class="opacity-90">No songs yet.</p>
-		</div>
-		{#if data.canEdit}
-			<button class="button" type="button" popovertarget="add-song"
-				><span class="i-ph-plus"></span>Add Song</button
-			>
-		{:else}
-			<div>No songs yet.</div>
-		{/if}
+		<section class="mt-10">
+			<div class="mb-5">
+				<h2 class="app-section-heading">Songs</h2>
+				<p class="app-section-subheading text-balance">No songs yet.</p>
+			</div>
+			{#if data.canEdit}
+				<button class="button" type="button" popovertarget="add-song"
+					><span class="i-ph-plus"></span>Add Song</button
+				>
+			{:else}
+				<div>No songs yet.</div>
+			{/if}
+		</section>
 	{/if}
 
 	<!-- songs in progress -->
 	{#if inProgress.length > 0}
-		<div class="mt-10">
+		<section class="mt-10">
 			<div class="mb-5">
-				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-2">
-					Songs in Progress
-				</h2>
-				<p class="opacity-90 text-15px">
+				<h2 class="app-section-heading">Songs in Progress</h2>
+				<p class="app-section-subheading text-balance">
 					Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
 				</p>
 			</div>
@@ -341,15 +357,15 @@
 					{@render songRow(song)}
 				{/each}
 			</ul>
-		</div>
+		</section>
 	{/if}
 
 	<!-- song ideas -->
 	{#if ideas.length > 0 && !data.project.isPrivate}
-		<div class="mt-10">
+		<section class="mt-10">
 			<div class="mb-5">
-				<h2 class="opacity-90 text-18px font-700 leading-none text-nowrap mb-2">Song Ideas</h2>
-				<p class="opacity-90 text-15px">
+				<h2 class="app-section-heading">Song Ideas</h2>
+				<p class="app-section-subheading text-balance">
 					Songs without stems yet: a place to gather lyrics, a chart, notes and demo recordings.
 				</p>
 			</div>
@@ -357,31 +373,36 @@
 				{#each ideas as song (song.id)}
 					<li>
 						<a
-							class="list-tile flex justify-between items-baseline group !mb-0"
+							class="app-list-tile"
 							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 						>
-							<div>
-								<span
-									>{#if song.isPrivate}<span
-											class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
-											title="Private"
-											aria-label="Private"
-										></span>{/if}{song.title}</span
-								>
-								{#if song.description}
-									<span class="block text-sm">{song.description}</span>
+							<!-- title -->
+							<div class="app-tile-heading">
+								{#if song.isPrivate}
+									<span
+										class="i-ph-lock flex bg-accent opacity-70"
+										title="Private"
+										aria-label="Private"
+									>
+									</span>
 								{/if}
+								{song.title}
 							</div>
-							<span
-								class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100"
-							>
+
+							<!-- description -->
+							{#if song.description}
+								<div class="app-tile-text">{song.description}</div>
+							{/if}
+
+							<!-- metadata -->
+							<div class="app-tile-meta">
 								{gathered(song)}
-							</span>
+							</div>
 						</a>
 					</li>
 				{/each}
 			</ul>
-		</div>
+		</section>
 	{/if}
 
 	{#if data.canEdit && (inProgress.length > 0 || ideas.length > 0)}
@@ -460,10 +481,10 @@
 
 {#snippet songRow(song: (typeof data.project.songs)[number])}
 	{@const ready = readyStems(song)}
-	<li class="grid grid-cols-[auto_1fr] gap-3">
+	<li class="grid grid-cols-[auto_1fr] gap-3 place-content-center w-full">
 		<button
 			type="button"
-			class="shrink-0 grid w-12 place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
+			class="shrink-0 grid w-12 h-auto place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
 			aria-label={playing === song.id && !paused ? `Pause ${song.title}` : `Play ${song.title}`}
 			title={song.mixUrl ? "Play the mix" : "No mix yet"}
 			disabled={!song.mixUrl}
@@ -474,28 +495,28 @@
 				aria-hidden="true"
 			></span>
 		</button>
+
 		<a
-			class="list-tile grow flex justify-between items-baseline group !mb-0"
+			class="app-list-tile w-full"
 			href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
 		>
 			<div>
-				<span class=""
-					>{#if song.isPrivate && !data.project.isPrivate}<span
-							class="i-ph-lock mr-1 inline-block align-[-2px] opacity-70"
-							title="Private"
-							aria-label="Private"
-						></span>{/if}{song.title}</span
-				>
+				<div class="app-tile-heading">
+					{#if song.isPrivate && !data.project.isPrivate}
+						<span class="i-ph-lock flex bg-accent opacity-70" title="Private" aria-label="Private"
+						></span>{/if}{song.title}
+				</div>
 				{#if song.description}
-					<span class="block text-sm">{song.description}</span>
+					<div class="app-tile-text">{song.description}</div>
 				{/if}
 			</div>
-			<span class="shrink-0 text-sm opacity-90 text-offWhite font-400 group-hover-opacity-100">
+
+			<div class="app-tile-meta">
 				v{song.version} · {ready}
 				{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
 						song.durationSeconds,
 					)}{/if}
-			</span>
+			</div>
 		</a>
 	</li>
 {/snippet}

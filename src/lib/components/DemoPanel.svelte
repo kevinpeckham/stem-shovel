@@ -114,7 +114,7 @@
 			</button>
 			<button
 				type="button"
-				class="grid h-12 w-12 place-items-center rounded-lg bg-maximumYellow text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:opacity-40"
+				class="grid h-12 w-12 place-items-center rounded-lg bg-accent text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:opacity-40"
 				aria-label={paused ? "Play" : "Pause"}
 				title={demos.length ? "Play the demos in order" : "No demos yet"}
 				disabled={demos.length === 0}

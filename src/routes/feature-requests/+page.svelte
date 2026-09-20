@@ -13,7 +13,7 @@
 		complete: "border-green-400/60 text-green-400",
 		closed: "border-white/20 text-dim",
 	} as const;
-	const PRIORITY = { high: "text-red-400", medium: "text-maximumYellow", low: "text-dim" } as const;
+	const PRIORITY = { high: "text-red-400", medium: "text-accent", low: "text-dim" } as const;
 	const open = $derived(data.requests.filter((r) => r.status === "open"));
 	const complete = $derived(data.requests.filter((r) => r.status === "complete"));
 	const closed = $derived(data.requests.filter((r) => r.status === "closed"));
@@ -57,7 +57,7 @@
 			<!-- A second press on your own thumbs takes it back. -->
 			<input {...vote.fields.vote.as("hidden", active ? "none" : kind)} />
 			<button
-				class="button button-xs {active ? 'border-maximumYellow text-maximumYellow' : ''}"
+				class="button button-xs {active ? 'border-accent text-accent' : ''}"
 				aria-pressed={active}
 				aria-label="Thumbs {kind}"
 				disabled={!!vote.pending}

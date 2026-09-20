@@ -54,7 +54,7 @@
 	<div class="w-full">
 		<div class="flex min-w-0 items-center gap-2">
 			<div
-				class="truncate text-16px font-500 text-blue-300 {silenced
+				class="truncate text-14.5px font-500 text-blue-300 {silenced
 					? 'opacity-60 text-slate-100'
 					: ''}"
 				title={stem.label}
@@ -88,7 +88,7 @@
 			<button
 				type="button"
 				class="h-6 w-6 rounded border border-white/25 font-semibold transition-colors hover:border-white/60 {stem.soloed
-					? 'bg-maximumYellow text-oxford border-maximumYellow'
+					? 'bg-accent text-oxford border-accent'
 					: ''}"
 				aria-pressed={stem.soloed}
 				aria-label="Solo {stem.label}"
@@ -119,7 +119,7 @@
 		<button
 			type="button"
 			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.soloed
-				? 'bg-maximumYellow text-oxford border-maximumYellow'
+				? 'bg-accent text-oxford border-accent'
 				: ''}"
 			aria-pressed={stem.soloed}
 			aria-label="Solo {stem.label}"

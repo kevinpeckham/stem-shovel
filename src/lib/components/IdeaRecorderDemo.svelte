@@ -96,10 +96,10 @@
 
 	<p class="text-13px opacity-80 text-balance xl-col-span-2">
 		Note: this demo does not store recordings beyond your current session.
-		{#if signedIn && recorderHref}
+		<!-- {#if signedIn && recorderHref}
 			<a class="link-dim" href={recorderHref}>Open your Idea Recorder</a>
 		{:else}
 			<a class="link-dim" href="/sign-in">Sign in</a>
-		{/if}
+		{/if} -->
 	</p>
 </div>

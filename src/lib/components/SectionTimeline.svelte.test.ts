@@ -53,8 +53,8 @@ describe("SectionTimeline", () => {
 			"120 bpm from 1 | 1",
 			"140 bpm from 31 | 1",
 		]);
-		expect(markers[1].className).toContain("border-maximumYellow");
-		expect(markers[0].className).not.toContain("border-maximumYellow");
+		expect(markers[1].className).toContain("border-accent");
+		expect(markers[0].className).not.toContain("border-accent");
 		expect(screen.getByRole("group", { name: "Song sections" })).toHaveTextContent("140 bpm");
 	});
 });

@@ -195,7 +195,7 @@
 		{#if limit}
 			<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 				<div
-					class="h-full bg-maximumYellow"
+					class="h-full bg-accent"
 					style:width="{Math.min(100, (100 * data.usage.bytes) / limit)}%"
 				></div>
 			</div>

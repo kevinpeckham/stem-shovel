@@ -567,7 +567,7 @@
 		<label class="block">
 			<span class="sr-only">Idea Title</span>
 			<input
-				class="bg-white/5 rounded px-2 w-full max-w-120ch text-16px sm-text-17px sm-font-500 border border-transparent focus:(border-maximumYellow outline-none)"
+				class="bg-white/5 rounded px-2 w-full max-w-120ch text-16px sm-text-17px sm-font-500 border border-transparent focus:(border-accent outline-none)"
 				type="text"
 				maxlength="120"
 				autocomplete="off"
@@ -710,7 +710,7 @@
 				<span class="i-ph-microphone flex" aria-hidden="true"></span>
 				<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
 					<div
-						class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-maximumYellow'}"
+						class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-accent'}"
 						style:width="{level * 100}%"
 					></div>
 					<div

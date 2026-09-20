@@ -16,7 +16,7 @@
 	<button
 		type="button"
 		class="shrink-0 cursor-pointer rounded border px-1 text-9px font-600 uppercase tracking-wider transition-colors {active
-			? 'border-maximumYellow bg-maximumYellow text-oxford'
+			? 'border-accent bg-accent text-oxford'
 			: 'border-current/20 opacity-80 hover-text-accent hover-opacity-100'}"
 		title={active
 			? "Showing MIDI notes — click for the waveform"

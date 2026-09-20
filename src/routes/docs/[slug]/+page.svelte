@@ -21,9 +21,9 @@
 			{#each data.docs as d (d.id)}
 				<li>
 					<a
-						class="block rounded px-2 py-1 hover:bg-white/10 hover:text-maximumYellow {d.slug ===
+						class="block rounded px-2 py-1 hover:bg-white/10 hover:text-accent {d.slug ===
 						data.doc.slug
-							? 'bg-white/10 text-maximumYellow'
+							? 'bg-white/10 text-accent'
 							: 'opacity-80'}"
 						href="/docs/{d.slug}"
 						aria-current={d.slug === data.doc.slug ? "page" : undefined}>{d.title}</a

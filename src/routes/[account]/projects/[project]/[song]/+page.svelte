@@ -1121,15 +1121,17 @@
 	<header class="grid gap-3 col-span-full">
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
 			<!-- song header & metadata -->
-			<div class="flex flex-wrap items-baseline gap-4">
-				<h1 class="heading-2 mb-0">
+			<div class="">
+				<h1 class="app-page-heading">
 					{#if data.song.isPrivate || data.song.project.isPrivate}
 						<span
 							class="i-ph-lock mr-1 inline-block align-[-2px] text-18px opacity-70"
 							title="Private: members and viewing links only"
 							aria-label="Private"
 						></span>
-					{/if}{data.song.title}{#if data.song.noAi || data.song.project.noAi}
+					{/if}{data.song.title}
+					<span class="text-14px">v{data.song.version}</span>
+					{#if data.song.noAi || data.song.project.noAi}
 						<span
 							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
 							title="No AI touches this song">no AI</span
@@ -1139,19 +1141,35 @@
 							title="Marked as finished">finished</span
 						>{/if}
 				</h1>
-				<span class="text-lg font-500 opacity-90" aria-label="Artist">{artistName}</span>
-				<span>v{data.song.version}</span>
-				<span class="opacity-90 text-15px"
-					>a song in the <a
-						class="underline underline-offset-2"
-						href="/{data.account.slug}/projects/{data.song.project.slug}"
-						>{data.song.project.name}</a
+
+				<div class="flex flex-wrap gap-2 text-15px opacity-90">
+					{#if artistName}
+						<span aria-label="Artist">artist: {artistName}</span>
+						<span>|</span>
+					{/if}
+
+					{#if data.account.name}
+						<span
+							>account: <a
+								class="underline underline-offset-2"
+								href="/{data.account.slug}/projects"
+								aria-label="Account"
+							>
+								{data.account.name}</a
+							></span
+						>
+						<span>|</span>
+					{/if}
+
+					<span class="opacity-90 text-15px"
+						>a song in the <a
+							class="underline underline-offset-2"
+							href="/{data.account.slug}/projects/{data.song.project.slug}"
+							>{data.song.project.name}</a
+						>
+						project</span
 					>
-					project from
-					<a class="underline underline-offset-2" href="/{data.account.slug}/projects"
-						>{data.account.name}</a
-					></span
-				>
+				</div>
 			</div>
 
 			<!-- share, idea recorder, info and settings -->
@@ -2019,6 +2037,19 @@
 					>
 				{/each}
 			</div>
+			{#if playerView === "stems" && playerEngine}
+				<!-- The player's status, as plain text at the row's end (the player's own box is hidden). -->
+				<span class="ml-auto text-13px opacity-70" aria-live="polite">
+					{#if playerEngine.status === "loading"}
+						Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
+					{:else if playerEngine.status === "ready"}
+						{data.manifest.stems.length}
+						{data.manifest.stems.length === 1 ? "stem" : "stems"}, {formatBytes(
+							playerEngine.decodedBytes,
+						)} decoded <span class="i-ph-check text-green-300 align-[-2px]"></span>
+					{/if}
+				</span>
+			{/if}
 		</div>
 		{#if playerView === "demos"}
 			<div class="mb-5">
@@ -2032,6 +2063,7 @@
 			<div class="mb-5" bind:clientHeight={stemBoxHeight}>
 				<StemPlayer
 					manifest={data.manifest}
+					showStatus={false}
 					{stemMenu}
 					{stemBadge}
 					{midiViews}
@@ -2103,7 +2135,7 @@
 			</div>
 		{/if}
 
-		{@render headerExtras?.(playerEngine ?? undefined)}
+		{@render actionButtons?.(playerEngine ?? undefined)}
 
 		{#if versionOffer && data.canEdit}
 			<div
@@ -2163,7 +2195,7 @@
 						</div>
 						<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 							<div
-								class="h-full {job.status === 'error' ? 'bg-red-400' : 'bg-maximumYellow'}"
+								class="h-full {job.status === 'error' ? 'bg-red-400' : 'bg-accent'}"
 								style:width="{job.percent}%"
 							></div>
 						</div>
@@ -2499,7 +2531,7 @@
 	</section>
 </main>
 
-{#snippet headerExtras(engine?: StemEngine)}
+{#snippet actionButtons(engine?: StemEngine)}
 	<div
 		class="flex flex-wrap items-center gap-3 w-full border py-4 px-3 rounded-md border-current/40 bg-blue-300/5 text-15px"
 	>
@@ -2507,7 +2539,7 @@
 			<!-- Uploads: add or replace stems, upload demo recordings. -->
 			<details class="relative" bind:this={uploadsMenuEl}>
 				<summary
-					class="button button-sm lg-button-xs list-none [&::-webkit-details-marker]:hidden"
+					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
 					title="Add or replace stems, upload demo recordings"
 				>
 					<span class="i-ph-upload-simple" aria-hidden="true"></span>
@@ -2582,7 +2614,7 @@
 			<!-- Downloads: the stems, the two mixes, the demo recordings. -->
 			<details class="relative" bind:this={downloadsMenuEl}>
 				<summary
-					class="button button-sm lg-button-xs list-none [&::-webkit-details-marker]:hidden"
+					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
 					title="Download the stems, a mix or the demo recordings"
 				>
 					<span class="i-ph-download-simple" aria-hidden="true"></span>
@@ -2652,7 +2684,7 @@
 		{/if}
 		{#if data.canEdit}
 			<a
-				class="button button-sm lg-button-xs"
+				class="button button-sm"
 				href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
 				title="Idea recorder: record a riff, a melody or a demo for this song"
 			>

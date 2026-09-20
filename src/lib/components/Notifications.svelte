@@ -7,7 +7,7 @@
 	 * region as a polite live region.
 	 */
 	const tone = {
-		success: "border-maximumYellow/60",
+		success: "border-accent/60",
 		info: "border-blue-300/60",
 		error: "border-red-400/70",
 	} as const;
