@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { account } from "./account";
 import { aiRequest } from "./aiRequest";
 import { artist } from "./artist";
+import { artistMember } from "./artistMember";
 import { songCredit } from "./songCredit";
 import { supportRequest } from "./supportRequest";
 import { auditLog } from "./auditLog";
@@ -101,6 +102,11 @@ export const songRelations = relations(song, ({ one, many }) => ({
 export const artistRelations = relations(artist, ({ one, many }) => ({
 	account: one(account, { fields: [artist.accountId], references: [account.id] }),
 	credits: many(songCredit),
+	members: many(artistMember),
+}));
+
+export const artistMemberRelations = relations(artistMember, ({ one }) => ({
+	artist: one(artist, { fields: [artistMember.artistId], references: [artist.id] }),
 }));
 
 export const songCreditRelations = relations(songCredit, ({ one }) => ({

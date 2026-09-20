@@ -105,7 +105,7 @@ export function isMember(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
 }
 
-const { project, song, stem, demo, recording, idea, songCredit } = schema;
+const { project, song, stem, demo, recording, idea, songCredit, artist, artistMember } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
 export async function accountOfProject(projectId: string) {
@@ -121,6 +121,20 @@ export async function accountOfSong(songId: string) {
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
+}
+export async function accountOfArtist(artistId: string) {
+	const row = await db.query.artist.findFirst({
+		where: eq(artist.id, artistId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+export async function accountOfArtistMember(memberId: string) {
+	const row = await db.query.artistMember.findFirst({
+		where: eq(artistMember.id, memberId),
+		with: { artist: { columns: { accountId: true } } },
+	});
+	return row?.artist.accountId ?? null;
 }
 export async function accountOfCredit(creditId: string) {
 	const row = await db.query.songCredit.findFirst({

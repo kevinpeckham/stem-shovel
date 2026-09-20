@@ -351,6 +351,13 @@
       "when": 1789870865204,
       "tag": "0049_project_type_default_artist",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1789871190622,
+      "tag": "0050_artist_member",
+      "breakpoints": true
     }
   ]
 }

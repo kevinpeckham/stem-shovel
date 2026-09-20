@@ -231,7 +231,7 @@
 	);
 	// Credits by role (song_credit rows with their artist); the legacy songwriter text stands in for composers until one is credited.
 	const creditsOf = (role: CreditRole) =>
-		data.song.credits.filter((c) => c.role === role).map((c) => c.artist.name);
+		data.song.credits.filter((c) => c.role === role && c.artist).map((c) => c.artist.name);
 	let performers = $derived(creditsOf("performer"));
 	/** The artist line under the title: the performers, or the account's name when none is credited. */
 	let artistName = $derived(artistLine(performers) || data.account.name);
@@ -1422,7 +1422,10 @@
 									</datalist>
 									<p class="text-xs opacity-70">
 										Artists show under the title; with none, the account's name does. Composers
-										replace the songwriter line once one is added.
+										replace the songwriter line once one is added. <a
+											class="link-dim"
+											href="/{data.account.slug}/artists">Manage artists</a
+										>.
 									</p>
 								</fieldset>
 								<label class="block">

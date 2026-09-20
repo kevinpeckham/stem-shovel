@@ -4,6 +4,7 @@ export * from "./account";
 export * from "./aiRequest";
 export * from "./appSetting";
 export * from "./artist";
+export * from "./artistMember";
 export * from "./auditLog";
 export * from "./accountMember";
 export * from "./authAccount";

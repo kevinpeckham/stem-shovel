@@ -62,6 +62,7 @@ const {
 	bugReport,
 	bugReportVote,
 	artist,
+	artistMember,
 	songCredit,
 	supportRequest,
 	userDoc,
@@ -389,6 +390,129 @@ export function listArtists(accountId: string) {
 	});
 }
 
+/** The directory page: every artist with how many songs credit it and how many people it lists. */
+export async function listArtistsWithCounts(accountId: string) {
+	const rows = await db.query.artist.findMany({
+		where: eq(artist.accountId, accountId),
+		orderBy: [asc(artist.sortName), asc(artist.name)],
+		with: {
+			credits: { columns: { songId: true } },
+			members: { columns: { id: true } },
+		},
+	});
+	return rows.map(({ credits, members, ...a }) => ({
+		...a,
+		songCount: new Set(credits.map((c) => c.songId)).size,
+		memberCount: members.length,
+	}));
+}
+
+/** One artist with its people and the songs that credit it (each with its project, for links). */
+export function getArtist(accountId: string, artistId: string) {
+	return db.query.artist.findFirst({
+		where: and(eq(artist.accountId, accountId), eq(artist.id, artistId)),
+		with: {
+			members: { orderBy: [asc(artistMember.sortOrder), asc(artistMember.createdAt)] },
+			credits: {
+				with: {
+					song: {
+						columns: { id: true, title: true, slug: true, status: true },
+						with: { project: { columns: { name: true, slug: true } } },
+					},
+				},
+			},
+		},
+	});
+}
+
+/** The artist's own details; false when another artist of the account has the name. */
+export async function updateArtist(
+	accountId: string,
+	artistId: string,
+	input: { name: string; sortName: string; website: string; note: string },
+) {
+	const clash = await db.query.artist.findFirst({
+		where: and(eq(artist.accountId, accountId), sql`lower(${artist.name}) = lower(${input.name})`),
+		columns: { id: true },
+	});
+	if (clash && clash.id !== artistId) return false;
+	const [row] = await db
+		.update(artist)
+		.set(input)
+		.where(and(eq(artist.accountId, accountId), eq(artist.id, artistId)))
+		.returning({ id: artist.id });
+	return !!row;
+}
+
+/** Removes the artist, its people and every credit naming it (explicitly: the database does not enforce the cascades); the default artist is cleared if it was this one. */
+export async function deleteArtist(accountId: string, artistId: string) {
+	const owner = await db.query.artist.findFirst({
+		where: and(eq(artist.accountId, accountId), eq(artist.id, artistId)),
+		columns: { id: true },
+	});
+	if (!owner) return false;
+	await db.delete(songCredit).where(eq(songCredit.artistId, artistId));
+	await db.delete(artistMember).where(eq(artistMember.artistId, artistId));
+	const [row] = await db
+		.delete(artist)
+		.where(and(eq(artist.accountId, accountId), eq(artist.id, artistId)))
+		.returning({ id: artist.id });
+	if (!row) return false;
+	await db
+		.update(account)
+		.set({ defaultArtistId: null })
+		.where(and(eq(account.id, accountId), eq(account.defaultArtistId, artistId)));
+	return true;
+}
+
+export async function addArtistMember(
+	accountId: string,
+	artistId: string,
+	input: { name: string; role: string; email: string },
+) {
+	const owner = await db.query.artist.findFirst({
+		where: and(eq(artist.accountId, accountId), eq(artist.id, artistId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const [{ last }] = await db
+		.select({ last: sql<number | null>`max(${artistMember.sortOrder})` })
+		.from(artistMember)
+		.where(eq(artistMember.artistId, artistId));
+	const [row] = await db
+		.insert(artistMember)
+		.values({ artistId, ...input, email: input.email.toLowerCase(), sortOrder: (last ?? 0) + 1 })
+		.returning();
+	return row;
+}
+
+export async function removeArtistMember(accountId: string, memberId: string) {
+	const row = await db.query.artistMember.findFirst({
+		where: eq(artistMember.id, memberId),
+		with: { artist: { columns: { accountId: true } } },
+	});
+	if (!row || row.artist.accountId !== accountId) return false;
+	await db.delete(artistMember).where(eq(artistMember.id, memberId));
+	return true;
+}
+
+/** An artist's member with the artist's account, for an invitation. */
+export function artistMemberById(memberId: string) {
+	return db.query.artistMember.findFirst({
+		where: eq(artistMember.id, memberId),
+		with: { artist: { columns: { accountId: true, name: true } } },
+	});
+}
+
+/** The emails of the account's members, lowercased: the artist page marks people who are already in. */
+export async function memberEmails(accountId: string) {
+	const rows = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		with: { user: { columns: { email: true } } },
+	});
+	return new Set(rows.map((r) => r.user.email.toLowerCase()));
+}
+
 /** The artist new songs are credited to, or null. */
 export async function accountDefaultArtist(accountId: string) {
 	const row = await db.query.account.findFirst({
@@ -537,6 +661,7 @@ export async function deleteSong(accountId: string, songId: string) {
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
+	await db.delete(songCredit).where(eq(songCredit.songId, songId));
 	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
 }
 

@@ -145,11 +145,11 @@
 				{setDefaultArtist.pending ? "Saving…" : "Save"}
 			</button>
 		</form>
-		{#if data.artists.length === 0}
-			<p class="mt-2 text-13px text-dim">
-				No artists yet: credit one in a song's settings and it appears here.
-			</p>
-		{/if}
+		<p class="mt-2 text-13px text-dim">
+			{#if data.artists.length === 0}No artists yet: credit one in a song's settings and it appears
+				here.{:else}<a class="link-dim" href="/{data.account.slug}/artists">Manage artists</a>:
+				websites, people and invitations.{/if}
+		</p>
 	</section>
 
 	<section class="max-w-article">

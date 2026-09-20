@@ -38,7 +38,7 @@
 	let performers = $derived([
 		...new Set(
 			data.project.songs.flatMap((s) =>
-				s.credits.filter((c) => c.role === "performer").map((c) => c.artist.name),
+				s.credits.filter((c) => c.role === "performer" && c.artist).map((c) => c.artist.name),
 			),
 		),
 	]);
