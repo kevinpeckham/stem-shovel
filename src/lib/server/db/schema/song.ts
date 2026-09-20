@@ -36,6 +36,8 @@ export const song = table(
 		/** Who wrote it (free text) and when it was first written (ISO date, "YYYY-MM-DD"). */
 		/** Unused since credits (v0.26): composers are song_credit rows. The column is dropped in a later release with recording.notes. */
 		songwriter: t.text("songwriter").notNull().default(""),
+		/** The song's picture (migration 0052; in the private store when the song is private), or null. */
+		imageUrl: t.text("image_url"),
 		writtenOn: t.text("written_on"),
 		// Three markdown documents per song, "chart" (chords, arrangement),
 		// "lyrics" and "notes" (anything else), with the same save semantics: the hash gates a new row in

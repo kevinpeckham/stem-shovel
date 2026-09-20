@@ -24,5 +24,7 @@ export const account = table("account", {
 	isFounder: t.integer("is_founder", { mode: "boolean" }).notNull().default(false),
 	/** The artist a new song is credited to as performer (an `artist` row of this account; no FK, since artist imports account), or null (migration 0049). */
 	defaultArtistId: t.text("default_artist_id"),
+	/** The account's picture (a resized WebP in Blob, migration 0052), or null. */
+	imageUrl: t.text("image_url"),
 	...timestamps,
 });

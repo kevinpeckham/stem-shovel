@@ -28,6 +28,8 @@ export const artist = table(
 		sortName: t.text("sort_name").notNull().default(""),
 		website: t.text("website").notNull().default(""),
 		note: t.text("note").notNull().default(""),
+		/** The artist's picture (migration 0052), or null. */
+		imageUrl: t.text("image_url"),
 		...timestamps,
 	},
 	(table) => [

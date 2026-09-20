@@ -39,6 +39,10 @@ erDiagram
   else hangs off an account, and every query is scoped by it.
   `default_artist_id` (migration 0049, no FK: artist imports account) names
   the artist every new song is credited to as performer, or null.
+  `image_url` (migration 0052; also on `artist` and `song`) is a picture the
+  browser shrank to 1024 px and uploaded through `images.remote.ts`, kept
+  in Blob under the account (a private song's in the private store); a new
+  image gets a new pathname and the old file is deleted.
 - **account_member** — which users are in which account, with a role.
 - **project** — a grouping of songs inside an account: an album, a session, a
   client job. Slug unique within the account. `type` (album, ep, single,

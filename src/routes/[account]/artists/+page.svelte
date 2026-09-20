@@ -23,8 +23,17 @@
 	{:else}
 		<ul class="max-w-article surface divide-y divide-white/10 text-15px" aria-label="Artists">
 			{#each data.artists as a (a.id)}
-				<li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3">
-					<span class="font-600">
+				<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3">
+					<span class="flex items-center gap-3 font-600">
+						{#if a.imageUrl}
+							<img
+								class="h-9 w-9 shrink-0 object-cover border border-white/15 {a.kind === 'person'
+									? 'rounded-full'
+									: 'rounded'}"
+								src={a.imageUrl}
+								alt=""
+							/>
+						{/if}
 						<a
 							class="hover-text-accent underline-offset-4 hover-underline"
 							href="/{data.account.slug}/artists/{a.id}">{a.name}</a

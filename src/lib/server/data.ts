@@ -1,6 +1,7 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
 import type { ArtistKind } from "$lib/val/ArtistKindSchema";
+import type { ImageKind } from "$lib/val/ImageSchema";
 import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
@@ -398,6 +399,51 @@ export function listArtists(accountId: string) {
 	});
 }
 
+/**
+ * Sets or clears the picture of an account, an artist or a song (scoped to
+ * the account); returns the previous URL (to delete its file), null when
+ * there was none, or undefined when the row is not the account's.
+ */
+export async function setImage(
+	kind: ImageKind,
+	accountId: string,
+	id: string,
+	imageUrl: string | null,
+): Promise<string | null | undefined> {
+	if (kind === "account") {
+		if (id !== accountId) return undefined;
+		const before = await db.query.account.findFirst({
+			where: eq(account.id, accountId),
+			columns: { imageUrl: true },
+		});
+		if (!before) return undefined;
+		await db.update(account).set({ imageUrl }).where(eq(account.id, accountId));
+		return before.imageUrl;
+	}
+	if (kind === "artist") {
+		const before = await db.query.artist.findFirst({
+			where: and(eq(artist.accountId, accountId), eq(artist.id, id)),
+			columns: { imageUrl: true },
+		});
+		if (!before) return undefined;
+		await db
+			.update(artist)
+			.set({ imageUrl })
+			.where(and(eq(artist.accountId, accountId), eq(artist.id, id)));
+		return before.imageUrl;
+	}
+	const before = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, id)),
+		columns: { imageUrl: true },
+	});
+	if (!before) return undefined;
+	await db
+		.update(song)
+		.set({ imageUrl })
+		.where(and(eq(song.accountId, accountId), eq(song.id, id)));
+	return before.imageUrl;
+}
+
 /** The directory page: every artist with how many songs credit it and how many people it lists. */
 export async function listArtistsWithCounts(accountId: string) {
 	const rows = await db.query.artist.findMany({
@@ -635,6 +681,7 @@ export async function manifestFor(s: {
 export async function presentSongFiles<
 	S extends {
 		mixUrl: string | null;
+		imageUrl?: string | null;
 		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
 		demos: { url: string; playbackUrl: string | null }[];
 	},
@@ -642,6 +689,7 @@ export async function presentSongFiles<
 	return {
 		...s,
 		mixUrl: await presentUrl(s.mixUrl),
+		imageUrl: await presentUrl(s.imageUrl),
 		stems: await Promise.all(
 			s.stems.map(async (st) => ({
 				...st,

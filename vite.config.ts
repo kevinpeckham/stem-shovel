@@ -114,7 +114,8 @@ export default defineConfig({
 					// Vercel Web Analytics is same-origin in production; dev loads its debug script from Vercel.
 					"script-src": ["self", ...(production ? [] : [ANALYTICS_DEBUG_HOST])],
 					"style-src": ["self", "unsafe-inline"],
-					"img-src": ["self", "data:", "blob:"],
+					// Pictures of accounts, artists and songs live in the Blob stores too.
+					"img-src": ["self", "data:", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
 					"font-src": ["self", "data:", "https://fonts.bunny.net"],
 					"media-src": ["self", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],
 					"connect-src": [

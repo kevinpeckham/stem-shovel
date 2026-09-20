@@ -122,6 +122,18 @@ export function playbackPathname(sourcePathname: string) {
 }
 
 /** Pathname of a song's cached original mixdown; `key` identifies the stem files mixed, the stamp keeps every render a new blob. */
+/** Blob pathname for an account's, artist's or song's picture; stamped, since a new image must get a new URL. */
+export function imagePathname(
+	kind: "account" | "artist" | "song",
+	accountId: string,
+	id: string,
+	ext: string,
+) {
+	const stamp = Date.now().toString(36);
+	if (kind === "account") return `accounts/${accountId}/image-${stamp}.${ext}`;
+	return `accounts/${accountId}/${kind}s/${id}/image-${stamp}.${ext}`;
+}
+
 export function mixPathname(accountId: string, songId: string, key: string) {
 	return `accounts/${accountId}/songs/${songId}/mix-${key}-${Date.now().toString(36)}.mp3`;
 }

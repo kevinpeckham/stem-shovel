@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
+	import ImageUploader from "$lib/components/ImageUploader.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
 	import { CREDIT_ROLE_LABELS } from "$lib/constants/creditRoles";
@@ -46,7 +47,19 @@
 <main class="page grid gap-8">
 	<header class="max-w-article">
 		<a class="link-dim text-sm" href="/{data.account.slug}/artists">← Artists</a>
-		<h1 class="heading-2 mt-2">{data.artist.name}</h1>
+		<div class="mt-2 flex items-center gap-4">
+			{#if data.artist.imageUrl}
+				<img
+					class="h-16 w-16 shrink-0 object-cover border border-white/15 {data.artist.kind ===
+					'person'
+						? 'rounded-full'
+						: 'rounded-md'}"
+					src={data.artist.imageUrl}
+					alt=""
+				/>
+			{/if}
+			<h1 class="heading-2 mb-0">{data.artist.name}</h1>
+		</div>
 		{#if data.artist.website}
 			<a class="link-dim text-sm" href={data.artist.website} rel="noopener">{data.artist.website}</a
 			>
@@ -56,6 +69,15 @@
 	{#if data.canEdit}
 		<section class="max-w-article">
 			<h2 class="heading-3">Details</h2>
+			<div class="mb-4">
+				<ImageUploader
+					kind="artist"
+					id={data.artist.id}
+					url={data.artist.imageUrl}
+					label={data.artist.name}
+					round={kind === "person"}
+				/>
+			</div>
 			<form
 				class="grid gap-4"
 				{...updateArtist.enhance(async ({ submit }) => {

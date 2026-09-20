@@ -90,6 +90,7 @@ export async function publicAccountBySlug(slug: string) {
 			plan: true,
 			lifetimeFree: true,
 			isFounder: true,
+			imageUrl: true,
 		},
 	});
 	if (!row) error(404, `No account "${slug}"`);

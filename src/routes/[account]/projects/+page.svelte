@@ -15,7 +15,14 @@
 </svelte:head>
 
 <main class="page-x-padding pt-6">
-	<header class="flex flex-wrap items-baseline justify-start gap-4 mb-2">
+	<header class="flex flex-wrap items-center justify-start gap-4 mb-2">
+		{#if data.account.imageUrl}
+			<img
+				class="h-14 w-14 rounded-md border border-white/15 object-cover"
+				src={data.account.imageUrl}
+				alt=""
+			/>
+		{/if}
 		<h1 class="heading-2">{data.account.name}</h1>
 	</header>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
+	import ImageUploader from "$lib/components/ImageUploader.svelte";
 	import PlanBadge from "$lib/components/PlanBadge.svelte";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import {
@@ -70,6 +71,14 @@
 
 	<section class="max-w-article">
 		<h2 class="heading-2">Account</h2>
+		<div class="mb-5">
+			<ImageUploader
+				kind="account"
+				id={data.account.id}
+				url={data.account.imageUrl}
+				label="Account"
+			/>
+		</div>
 		<form
 			class="grid gap-5"
 			{...updateAccount.enhance(async ({ submit }) => {

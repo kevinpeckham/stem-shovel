@@ -28,6 +28,8 @@ The frame rate used by the timecode readout, matching your DAW project.
 
 ## Credits
 
+**Image.** At the top of Details, add a picture for the song (a cover, a photo from the session); it appears beside the title. JPEG, PNG or WebP, shrunk on your device before upload. Artists take a picture on their page and the account in its settings.
+
 **Credits** names the people on the song by role: **Artists** (who performs it; the line under the song's title, which otherwise shows the account's name), **Composers** (the "Written by" line) and **Producers**. Type a name and press Enter, or pick one you have used before: every name goes into the account's artist directory, so the same act on twenty songs is one entry, and a name typed with different capitals finds the existing one. Credits save as you add and remove them. In account settings, **Default artist for new songs** picks the artist every new song starts credited to, handy for a band's own account. **Manage artists** (from account settings or the credits) opens the directory: whether each artist is a solo artist (with their own email) or a band or group (with the people in it, what they do and an email), plus website and notes, and, for owners and admins, an **Invite to account** button beside anyone with an email who is not a member yet. A song can have several of each, a hip-hop collaboration for instance, and a soundtrack project's artists are simply everyone credited on its songs.
 
 ## Demo recordings

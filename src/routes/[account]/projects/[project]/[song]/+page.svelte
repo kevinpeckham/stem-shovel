@@ -21,6 +21,7 @@
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
+	import ImageUploader from "$lib/components/ImageUploader.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemReplacer from "$lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
@@ -1122,6 +1123,13 @@
 		<div class="flex flex-wrap items-baseline justify-between gap-4">
 			<!-- song header & metadata -->
 			<div class="flex flex-wrap items-baseline gap-4">
+				{#if data.song.imageUrl}
+					<img
+						class="h-14 w-14 self-center rounded-md border border-white/15 object-cover"
+						src={data.song.imageUrl}
+						alt=""
+					/>
+				{/if}
 				<h1 class="heading-2 mb-0">
 					{#if data.song.isPrivate || data.song.project.isPrivate}
 						<span
@@ -1277,6 +1285,15 @@
 				</nav>
 				<div class="min-h-0 flex-1 overflow-y-auto sm:pr-2">
 					{#if settingsTab === "details"}
+						<div class="mb-5">
+							<ImageUploader
+								kind="song"
+								id={data.song.id}
+								url={data.song.imageUrl}
+								label={data.song.title}
+								size="h-24 w-24"
+							/>
+						</div>
 						<form
 							{...updateSong.enhance(async ({ submit }) => {
 								positionError = null;
