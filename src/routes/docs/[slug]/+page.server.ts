@@ -1,5 +1,6 @@
 import { getUserDoc, listUserDocs } from "$lib/server/data";
 import { renderMarkdown } from "$lib/server/markdown";
+import { excerpt } from "$lib/utils/excerpt";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
@@ -20,6 +21,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			editor: doc.editor?.name ?? null,
 		},
 		html: renderMarkdown(doc.markdown),
+		/** The first paragraph, for the meta description search engines show. */
+		description: excerpt(doc.markdown),
 		docs: await listUserDocs(),
 		canEdit: !!locals.user?.isSystemAdmin,
 	};

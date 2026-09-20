@@ -4,6 +4,7 @@ import { auth } from "$lib/auth";
 import { db, schema } from "$lib/server/db";
 import { withActingMemberships } from "$lib/utils/actingMemberships";
 import { indexableStage, ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
+import { isIndexablePath } from "$lib/utils/isIndexablePath";
 import { ENV } from "varlock/env";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle, HandleServerError, HandleValidationError } from "@sveltejs/kit";
@@ -64,11 +65,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		: real;
 
 	const response = await svelteKitHandler({ auth, event, resolve, building });
-	// Only production's front page is for search engines (staging and previews
-	// never are), and nothing frames or sniffs anything
+	// Only production's front page, docs and Releases page are for search engines
+	// (staging and previews never are), and nothing frames or sniffs anything
 	// (src/lib/constants/securityHeaders.ts; vercel.json covers static files).
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
-	if (event.url.pathname !== "/" || !indexableStage(ENV.VERCEL_ENV)) {
+	if (!isIndexablePath(event.url.pathname) || !indexableStage(ENV.VERCEL_ENV)) {
 		response.headers.set("x-robots-tag", ROBOTS_NOINDEX);
 	}
 	return response;

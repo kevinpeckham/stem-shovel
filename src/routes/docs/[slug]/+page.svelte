@@ -12,6 +12,7 @@
 
 <svelte:head>
 	<title>{pageTitle(`${data.doc.title} · Docs`)}</title>
+	{#if data.description}<meta name="description" content={data.description} />{/if}
 </svelte:head>
 
 <main class="page-x-padding pt-6 mb-8 grid gap-8 lg:grid-cols-[220px_1fr]">

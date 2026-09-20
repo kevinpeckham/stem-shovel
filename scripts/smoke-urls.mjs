@@ -86,6 +86,7 @@ const ROUTES = [
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
 	["api/recordings (server)", "/api/recordings", [405], [405]],
 	["robots.txt (server)", "/robots.txt", [200], [200]],
+	["sitemap.xml", "/sitemap.xml", [200], [200]],
 	["api/warm (server)", "/api/warm", [200], [200]],
 	["api/jobs (server)", "/api/jobs", [405], [405]],
 	["api/recordings/[id]/ready (server)", "/api/recordings/x/ready", [405], [405]],
@@ -99,7 +100,6 @@ const ROUTES = [
 /** Not routes, but must serve. */
 const STATIC = [
 	["/robots.txt", [200]],
-	["/sitemap.xml", [200]],
 	["/lj-icon.svg", [200]],
 	["/no-such-page-" + Date.now(), [404]],
 ];

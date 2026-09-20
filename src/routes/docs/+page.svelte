@@ -9,6 +9,10 @@
 
 <svelte:head>
 	<title>{pageTitle("Docs")}</title>
+	<meta
+		name="description"
+		content="How Stem Shovel works: stems and playback, song settings, charts, lyrics and notes, the Idea Recorder, comments, downloads and sharing, accounts and plans."
+	/>
 </svelte:head>
 
 <main class="page-x-padding pt-8 pb-12 min-h-screen">

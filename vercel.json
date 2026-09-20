@@ -33,7 +33,7 @@
 			]
 		},
 		{
-			"source": "/(.+)",
+			"source": "/((?!docs|releases).+)",
 			"headers": [
 				{
 					"key": "X-Robots-Tag",

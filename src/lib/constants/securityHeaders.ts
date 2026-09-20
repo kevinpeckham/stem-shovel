@@ -2,14 +2,15 @@
  * Response headers every page and API response carries, set in
  * src/hooks.server.ts; vercel.json repeats them for the static files the
  * CDN serves without reaching the app (keep the two in step). Search
- * engines get only the front page: every other path carries
- * ROBOTS_NOINDEX (the hook and vercel.json's `/(.+)` rule) and a robots
- * meta from the root layout, and static/robots.txt allows `/` alone. The
+ * engines get the front page, the docs and the Releases page
+ * (src/lib/utils/isIndexablePath.ts): every other path carries
+ * ROBOTS_NOINDEX (the hook and vercel.json's rule) and a robots meta from
+ * the root layout, and robots.txt allows those paths alone. The
  * Content-Security-Policy itself comes from SvelteKit's `csp` option in
  * vite.config.ts so its inline script gets a nonce. Modelled on
  * lightning-jar/lj-website's vercel.ts.
  */
-/** The X-Robots-Tag / robots meta value for everything but the front page. */
+/** The X-Robots-Tag / robots meta value for everything search engines may not index. */
 export const ROBOTS_NOINDEX = "noindex, nofollow, noarchive";
 
 /**

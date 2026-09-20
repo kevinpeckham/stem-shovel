@@ -4,14 +4,15 @@
 	import GlobalNav from "$lib/components/GlobalNav.svelte";
 	import Notifications from "$lib/components/Notifications.svelte";
 	import { ROBOTS_NOINDEX } from "$lib/constants/securityHeaders";
+	import { isIndexablePath } from "$lib/utils/isIndexablePath";
 	import { page } from "$app/state";
 
 	let { children, data } = $props();
 </script>
 
 <svelte:head>
-	<!-- Only production's front page is indexable; the response header says the same. -->
-	{#if page.url.pathname !== "/" || !data.indexable}
+	<!-- Only production's front page, docs and Releases page are indexable; the response header says the same. -->
+	{#if !isIndexablePath(page.url.pathname) || !data.indexable}
 		<meta name="robots" content={ROBOTS_NOINDEX} />
 	{/if}
 </svelte:head>

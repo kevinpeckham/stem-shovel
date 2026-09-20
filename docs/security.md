@@ -80,11 +80,14 @@ from a 31-symbol alphabet.
 `securityHeaders.ts` + `vercel.json`: nosniff, no framing, `Referrer-Policy`,
 `Cross-Origin-Opener-Policy: same-origin`, HSTS, a `Permissions-Policy` that
 switches off device APIs, and SvelteKit's CSP with a per-request script nonce
-(docs/environment.md). Search engines get the front page only: every other
-path carries `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and
-vercel.json's `/(.+)` rule for static files) and a matching robots meta from
-the root layout; `static/robots.txt` allows `/` alone and points at a
-one-entry sitemap.
+(docs/environment.md). Search engines get the front page, the user docs
+(`/docs`, each page, not the editors) and the Releases page
+(`src/lib/utils/isIndexablePath.ts`): every other path carries
+`X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and vercel.json's
+rule for static files) and a matching robots meta from the root layout;
+`robots.txt` allows those paths alone and points at `sitemap.xml`, which
+lists them with each doc page's last change. Doc pages carry a meta
+description from their first paragraph.
 
 ## Error reports
 
