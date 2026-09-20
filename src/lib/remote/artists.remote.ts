@@ -8,6 +8,7 @@ import {
 } from "$lib/server/access";
 import {
 	addArtistMember as addMember,
+	artistById,
 	artistMemberById,
 	createInvitation,
 	deleteArtist as removeArtist,
@@ -18,6 +19,7 @@ import { sendInvitationEmail } from "$lib/server/email";
 import { HOUR, rateLimited } from "$lib/server/rateLimit";
 import { IdSchema } from "$lib/val/SongSchema";
 import {
+	ArtistInviteSchema,
 	ArtistMemberAddSchema,
 	ArtistMemberInviteSchema,
 	ArtistUpdateSchema,
@@ -73,6 +75,30 @@ export const inviteArtistMember = form(ArtistMemberInviteSchema, async ({ id, ro
 	if (await rateLimited(`invite:${user.id}`, 30, HOUR))
 		error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(m.accountId, user.id, person.email, role);
+	if (row === "member") invalid(issue.id("They are already a member of this account."));
+	await sendInvitationEmail({
+		to: row.email,
+		url: `${url.origin}/invite/${row.token}`,
+		accountName: m.name,
+		inviterName: user.name || user.email,
+		inviterEmail: user.email,
+		role: row.role,
+	});
+	return { sent: true, email: row.email };
+});
+
+/** Invites a solo artist (the email on the record) into the account. */
+export const inviteArtist = form(ArtistInviteSchema, async ({ id, role }, issue) => {
+	const { locals, url } = getRequestEvent();
+	const user = requireUser(locals);
+	const who = await artistById(id);
+	if (!who) error(404, "Artist not found");
+	const m = requireMember(locals, who.accountId);
+	if (m.role !== "owner" && m.role !== "admin") error(403, "Only owners and admins can invite");
+	if (!who.email) invalid(issue.id("Add the artist's email address first."));
+	if (await rateLimited(`invite:${user.id}`, 30, HOUR))
+		error(429, "Too many invitations in one hour.");
+	const row = await createInvitation(m.accountId, user.id, who.email, role);
 	if (row === "member") invalid(issue.id("They are already a member of this account."));
 	await sendInvitationEmail({
 		to: row.email,

@@ -1,5 +1,6 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
+import type { ArtistKind } from "../../../val/ArtistKindSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 
@@ -19,6 +20,10 @@ export const artist = table(
 			.notNull()
 			.references(() => account.id, { onDelete: "cascade" }),
 		name: t.text("name").notNull(),
+		/** "person" (a solo artist, with their own email here) or "group" (a band; its people are artist_member rows). Migration 0051. */
+		kind: t.text("kind").$type<ArtistKind>().notNull().default("group"),
+		/** A solo artist's email, for the member badge and an invitation; empty for a group. */
+		email: t.text("email").notNull().default(""),
 		/** For ordering: "Beatles, The"; empty means the name itself. */
 		sortName: t.text("sort_name").notNull().default(""),
 		website: t.text("website").notNull().default(""),

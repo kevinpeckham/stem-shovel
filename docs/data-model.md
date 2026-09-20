@@ -87,8 +87,9 @@ erDiagram
   the error, duration and tokens. Reviewed on `/admin`.
 - **artist** — an account's artist directory (migration 0048): `name`
   (unique within the account, matched case-insensitively when a credit is
-  added by name), `sort_name`, `website`, `note`. Details such as members
-  come later.
+  added by name), `kind` (person or group, migration 0051), `email` (a
+  solo artist's own; a group's people carry theirs), `sort_name`,
+  `website`, `note`.
 - **artist_member** — a person in an artist (migration 0050): `name`,
   `role` ("drums"), `email`; the artist's page marks those whose email is
   an account member's and lets an owner or admin invite the others

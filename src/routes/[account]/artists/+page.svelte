@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
+	import { ARTIST_KIND_LABELS } from "$lib/constants/artistKinds";
 
 	let { data } = $props();
 </script>
@@ -36,6 +37,7 @@
 						{/if}
 					</span>
 					<span class="text-13px text-dim">
+						{ARTIST_KIND_LABELS[a.kind].short} ·
 						{a.songCount}
 						{a.songCount === 1 ? "song" : "songs"} · {a.memberCount}
 						{a.memberCount === 1 ? "person" : "people"}

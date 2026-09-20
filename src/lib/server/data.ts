@@ -1,5 +1,6 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
+import type { ArtistKind } from "$lib/val/ArtistKindSchema";
 import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
@@ -393,7 +394,7 @@ export function listArtists(accountId: string) {
 	return db.query.artist.findMany({
 		where: eq(artist.accountId, accountId),
 		orderBy: [asc(artist.sortName), asc(artist.name)],
-		columns: { id: true, name: true, website: true },
+		columns: { id: true, name: true, website: true, kind: true },
 	});
 }
 
@@ -436,7 +437,14 @@ export function getArtist(accountId: string, artistId: string) {
 export async function updateArtist(
 	accountId: string,
 	artistId: string,
-	input: { name: string; sortName: string; website: string; note: string },
+	input: {
+		name: string;
+		kind: ArtistKind;
+		email: string;
+		sortName: string;
+		website: string;
+		note: string;
+	},
 ) {
 	const clash = await db.query.artist.findFirst({
 		where: and(eq(artist.accountId, accountId), sql`lower(${artist.name}) = lower(${input.name})`),
@@ -445,7 +453,7 @@ export async function updateArtist(
 	if (clash && clash.id !== artistId) return false;
 	const [row] = await db
 		.update(artist)
-		.set(input)
+		.set({ ...input, email: input.email.toLowerCase() })
 		.where(and(eq(artist.accountId, accountId), eq(artist.id, artistId)))
 		.returning({ id: artist.id });
 	return !!row;
@@ -495,6 +503,14 @@ export async function removeArtistMember(accountId: string, memberId: string) {
 	if (!row || row.artist.accountId !== accountId) return false;
 	await db.delete(artistMember).where(eq(artistMember.id, memberId));
 	return true;
+}
+
+/** An artist with its account, for a solo artist's invitation. */
+export function artistById(artistId: string) {
+	return db.query.artist.findFirst({
+		where: eq(artist.id, artistId),
+		columns: { id: true, accountId: true, name: true, kind: true, email: true },
+	});
 }
 
 /** An artist's member with the artist's account, for an invitation. */

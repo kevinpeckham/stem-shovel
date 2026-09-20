@@ -16,8 +16,11 @@ export const load: PageServerLoad = async ({ params, parent, locals, url }) => {
 	return {
 		artist: {
 			...artist,
+			inAccount: !!artist.email && emails.has(artist.email),
 			members: artist.members.map((m) => ({ ...m, inAccount: !!m.email && emails.has(m.email) })),
 		},
 		canInvite: member.role === "owner" || member.role === "admin",
+		/** Members' emails (lowercased), so the page can say as you type whether a person is already in. */
+		memberEmails: [...emails],
 	};
 };

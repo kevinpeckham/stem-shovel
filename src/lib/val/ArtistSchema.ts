@@ -3,6 +3,7 @@ import { NanoIdSchema } from "./NanoIdSchema";
 import { CreditRoleSchema } from "./CreditRoleSchema";
 import { EmailSchema } from "./EmailSchema";
 import { InviteRoleSchema } from "./InvitationSchema";
+import { ArtistKindSchema } from "./ArtistKindSchema";
 
 /** An artist's name as typed: the account's directory matches it case-insensitively. */
 export const ArtistNameSchema = v.pipe(
@@ -39,6 +40,8 @@ export const WebsiteSchema = v.optional(
 export const ArtistUpdateSchema = v.object({
 	id: NanoIdSchema,
 	name: ArtistNameSchema,
+	kind: v.optional(ArtistKindSchema, "group"),
+	email: v.optional(v.union([v.literal(""), EmailSchema]), ""),
 	sortName: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(120)), ""),
 	website: WebsiteSchema,
 	note: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(2000)), ""),
@@ -55,6 +58,12 @@ export const ArtistMemberAddSchema = v.object({
 	),
 	role: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(120)), ""),
 	email: v.optional(v.union([v.literal(""), EmailSchema]), ""),
+});
+
+/** Invite a solo artist (by the email on the record) into the account. */
+export const ArtistInviteSchema = v.object({
+	id: NanoIdSchema,
+	role: v.optional(InviteRoleSchema, "member"),
 });
 
 /** Invite an artist's member (by their recorded email) into the account. */
