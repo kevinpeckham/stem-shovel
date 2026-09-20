@@ -1,4 +1,5 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
+import type { CreditRole } from "$lib/val/CreditRoleSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
@@ -59,6 +60,8 @@ const {
 	comment,
 	bugReport,
 	bugReportVote,
+	artist,
+	songCredit,
 	supportRequest,
 	userDoc,
 	userDocVersion,
@@ -344,9 +347,73 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 		with: {
 			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
+			credits: {
+				orderBy: [asc(songCredit.sortOrder), asc(songCredit.createdAt)],
+				with: { artist: { columns: { id: true, name: true } } },
+			},
 		},
 	});
 	return row ? { ...row, project: proj } : null;
+}
+
+// ---- artists and credits (src/lib/remote/songs.remote.ts) ----------------
+
+/** The account's artist directory, by name. */
+export function listArtists(accountId: string) {
+	return db.query.artist.findMany({
+		where: eq(artist.accountId, accountId),
+		orderBy: [asc(artist.sortName), asc(artist.name)],
+		columns: { id: true, name: true, website: true },
+	});
+}
+
+/** The account's artist by name (case-insensitive), or a new one. */
+export async function findOrCreateArtist(accountId: string, name: string) {
+	const existing = await db.query.artist.findFirst({
+		where: and(eq(artist.accountId, accountId), sql`lower(${artist.name}) = lower(${name})`),
+		columns: { id: true, name: true },
+	});
+	if (existing) return existing;
+	const [row] = await db
+		.insert(artist)
+		.values({ accountId, name })
+		.returning({ id: artist.id, name: artist.name });
+	return row;
+}
+
+/** Credits an artist (found or created by name) on the song in a role; a repeat is a no-op. Null when the song is not the account's. */
+export async function addSongCredit(
+	accountId: string,
+	songId: string,
+	role: CreditRole,
+	name: string,
+) {
+	const owner = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const who = await findOrCreateArtist(accountId, name);
+	const [{ last }] = await db
+		.select({ last: sql<number | null>`max(${songCredit.sortOrder})` })
+		.from(songCredit)
+		.where(and(eq(songCredit.songId, songId), eq(songCredit.role, role)));
+	await db
+		.insert(songCredit)
+		.values({ songId, artistId: who.id, role, sortOrder: (last ?? 0) + 1 })
+		.onConflictDoNothing();
+	return who;
+}
+
+/** Removes one credit; the artist stays in the directory. */
+export async function removeSongCredit(accountId: string, creditId: string) {
+	const row = await db.query.songCredit.findFirst({
+		where: eq(songCredit.id, creditId),
+		with: { song: { columns: { accountId: true } } },
+	});
+	if (!row || row.song.accountId !== accountId) return false;
+	await db.delete(songCredit).where(eq(songCredit.id, creditId));
+	return true;
 }
 
 /** The shape the StemPlayer wants: ready stems only. */

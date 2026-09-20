@@ -26,6 +26,10 @@ If the audio has silence before the first bar, set where **bar 1** starts so the
 
 The frame rate used by the timecode readout, matching your DAW project.
 
+## Credits
+
+Under the songwriter field, **Credits** names the people on the song by role: **Artists** (who performs it; the line under the song's title, which otherwise shows the account's name), **Composers** (the "Written by" line, replacing the songwriter field once one is added) and **Producers**. Type a name and press Enter, or pick one you have used before: every name goes into the account's artist directory, so the same act on twenty songs is one entry, and a name typed with different capitals finds the existing one. Credits save as you add and remove them. A song can have several of each, a hip-hop collaboration for instance, and a soundtrack project's artists are simply everyone credited on its songs.
+
 ## Demo recordings
 
 Upload a phone recording or a rough bounce as a **demo** (most audio formats are accepted and converted to MP3 for playback; up to 12 per song). Demos play in the song page's **Demos** view: a Stems / Demos switch above the player shows one or the other, and a song with demos but no stems opens on the demos. Anyone can listen or download them there; remove one here.

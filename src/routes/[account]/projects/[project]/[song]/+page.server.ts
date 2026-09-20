@@ -1,4 +1,4 @@
-import { getSong, listShareLinks } from "$lib/server/data";
+import { getSong, listArtists, listShareLinks } from "$lib/server/data";
 import { songWantsNotes } from "$lib/utils/songWantsNotes";
 import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
@@ -24,13 +24,16 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	const noAi = song.noAi || song.project.noAi;
 	if (canEdit && songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
-	const [view, shareLinks] = await Promise.all([
+	const [view, shareLinks, artists] = await Promise.all([
 		songView(song),
 		canEdit ? listShareLinks({ songId: song.id }) : [],
+		canEdit ? listArtists(account.id) : [],
 	]);
 	return {
 		...view,
 		shareLinks,
+		/** The account's artist directory, for the credits picker. */
+		artists,
 		aiAvailable: canEdit && !noAi && aiAvailable(),
 		noAi,
 	};

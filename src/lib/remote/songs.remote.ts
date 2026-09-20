@@ -7,6 +7,7 @@ import { sendShareEmail } from "$lib/server/email";
 import { scheduleMix } from "$lib/server/jobs";
 import {
 	accountOfProject,
+	accountOfCredit,
 	accountOfDemo,
 	accountOfSong,
 	accountOfStem,
@@ -34,6 +35,8 @@ import {
 	updateSongChanges,
 	updateSongSections,
 	createShareLink,
+	addSongCredit as addCredit,
+	removeSongCredit as removeCredit,
 } from "$lib/server/data";
 import {
 	IdSchema,
@@ -49,6 +52,7 @@ import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDete
 import { renderMarkdown } from "$lib/server/markdown";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
 import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
+import { SongCreditAddSchema } from "$lib/val/ArtistSchema";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -351,4 +355,21 @@ export const saveDefaultMix = command(DefaultMixSchema, async ({ id, gains }) =>
 	if (!(await setDefaultMix(accountId, id, gains))) error(404, "Song not found");
 	scheduleMix([id]);
 	return { saved: gains.length };
+});
+
+/** Credits an artist on a song (the account's directory by name, or a new artist) in a role. */
+export const addSongCredit = command(SongCreditAddSchema, async ({ songId, role, name }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const who = await addCredit(accountId, songId, role, name);
+	if (!who) error(404, "Song not found");
+	return { artistId: who.id, name: who.name };
+});
+
+/** Takes a credit off a song; the artist stays in the account's directory. */
+export const removeSongCredit = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfCredit, id);
+	if (!(await removeCredit(accountId, id))) error(404, "Credit not found");
+	return { removed: true };
 });

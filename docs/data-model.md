@@ -71,6 +71,15 @@ erDiagram
 - **ai_request** — one call to a model through the AI Gateway: kind, model,
   user, song, the text sent (no audio), the raw reply, the parsed answer or
   the error, duration and tokens. Reviewed on `/admin`.
+- **artist** — an account's artist directory (migration 0048): `name`
+  (unique within the account, matched case-insensitively when a credit is
+  added by name), `sort_name`, `website`, `note`. Details such as members
+  come later.
+- **song_credit** — an artist credited on a song in a `role`: performer
+  (the artist line under the title; the account's name stands in when there
+  is none), composer ("Written by", replacing the legacy `song.songwriter`
+  text once one exists) or producer ("Produced by"); `sort_order` within
+  the role, one row per song, artist and role.
 - **bug_report** — a signed-in user's bug report (the footer) or feature
   request (`kind`; the Feature Requests page): title, body, the page they
   were on and their browser (captured by the form), `contact_email` when

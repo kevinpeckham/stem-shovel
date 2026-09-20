@@ -3,6 +3,7 @@
 export * from "./account";
 export * from "./aiRequest";
 export * from "./appSetting";
+export * from "./artist";
 export * from "./auditLog";
 export * from "./accountMember";
 export * from "./authAccount";
@@ -19,6 +20,7 @@ export * from "./relations";
 export * from "./session";
 export * from "./shareLink";
 export * from "./song";
+export * from "./songCredit";
 export * from "./songDocVersion";
 export * from "./stem";
 export * from "./supportRequest";

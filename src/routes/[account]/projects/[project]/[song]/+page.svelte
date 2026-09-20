@@ -34,6 +34,9 @@
 	import { notify } from "$lib/state/notifications.svelte";
 	import { FRAME_RATES } from "$lib/constants/frameRates";
 	import { formatBytes } from "$lib/utils/formatBytes";
+	import { artistLine } from "$lib/utils/artistLine";
+	import { CREDIT_ROLE_LABELS } from "$lib/constants/creditRoles";
+	import { CREDIT_ROLES, type CreditRole } from "$lib/val/CreditRoleSchema";
 	import { formatMonth } from "$lib/utils/formatMonth";
 	import { POSITION_MODE_LABELS } from "$lib/constants/positionModes";
 	import { toRoman } from "$lib/utils/toRoman";
@@ -81,6 +84,8 @@
 		shareSong,
 		updateSong,
 		saveDefaultMix,
+		addSongCredit,
+		removeSongCredit,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { onMount, tick, untrack } from "svelte";
@@ -224,14 +229,57 @@
 			.map(formatSongChange)
 			.join(" · "),
 	);
+	// Credits by role (song_credit rows with their artist); the legacy songwriter text stands in for composers until one is credited.
+	const creditsOf = (role: CreditRole) =>
+		data.song.credits.filter((c) => c.role === role).map((c) => c.artist.name);
+	let performers = $derived(creditsOf("performer"));
+	/** The artist line under the title: the performers, or the account's name when none is credited. */
+	let artistName = $derived(artistLine(performers) || data.account.name);
+	let composerLine = $derived(artistLine(creditsOf("composer")) || data.song.songwriter);
+	let producerLine = $derived(artistLine(creditsOf("producer")));
 	let writtenLine = $derived(
 		[
-			data.song.songwriter ? `Written by ${data.song.songwriter}` : "",
+			composerLine ? `Written by ${composerLine}` : "",
+			producerLine ? `produced by ${producerLine}` : "",
 			data.song.writtenOn ? `first written ${formatMonth(data.song.writtenOn)}` : "",
 		]
 			.filter(Boolean)
 			.join(", "),
 	);
+
+	// The credits editor in song settings: a name per role, added on Enter or with the button.
+	let creditDraft = $state<Record<CreditRole, string>>({
+		performer: "",
+		composer: "",
+		producer: "",
+	});
+	let creditBusy = $state(false);
+	async function addCredit(role: CreditRole) {
+		const name = creditDraft[role].trim();
+		if (!name || creditBusy) return;
+		creditBusy = true;
+		try {
+			await addSongCredit({ songId: data.song.id, role, name });
+			creditDraft[role] = "";
+			await invalidateAll();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			creditBusy = false;
+		}
+	}
+	async function removeCredit(id: string) {
+		if (creditBusy) return;
+		creditBusy = true;
+		try {
+			await removeSongCredit({ id });
+			await invalidateAll();
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			creditBusy = false;
+		}
+	}
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	// The demos view: the player's box shows either the stems or the demos.
@@ -1093,6 +1141,7 @@
 							title="Marked as finished">finished</span
 						>{/if}
 				</h1>
+				<span class="text-lg font-500 opacity-90" aria-label="Artist">{artistName}</span>
 				<span>v{data.song.version}</span>
 				<span class="opacity-90 text-15px"
 					>a song in the <a
@@ -1309,6 +1358,73 @@
 										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 									{/each}
 								</label>
+								<!-- Credits: artists from the account's directory (or new ones by name), per role; saved as you go. -->
+								<fieldset class="grid gap-3">
+									<legend class="text-sm opacity-90">Credits</legend>
+									{#each CREDIT_ROLES as role (role)}
+										{@const credits = data.song.credits.filter((c) => c.role === role)}
+										<div>
+											<span class="text-13px opacity-80">{CREDIT_ROLE_LABELS[role].many}</span>
+											{#if credits.length > 0}
+												<ul
+													class="mt-1 flex flex-wrap gap-2"
+													aria-label={CREDIT_ROLE_LABELS[role].many}
+												>
+													{#each credits as c (c.id)}
+														<li
+															class="flex items-center gap-1 rounded border border-white/15 bg-white/5 py-0.5 pl-2 pr-1 text-sm"
+														>
+															{c.artist.name}
+															<button
+																class="grid h-5 w-5 place-items-center rounded hover:bg-white/10"
+																type="button"
+																aria-label="Remove {c.artist.name} as {CREDIT_ROLE_LABELS[
+																	role
+																].one.toLowerCase()}"
+																disabled={creditBusy}
+																onclick={() => removeCredit(c.id)}
+															>
+																<span class="i-ph-x text-12px" aria-hidden="true"></span>
+															</button>
+														</li>
+													{/each}
+												</ul>
+											{/if}
+											<div class="mt-1 flex gap-2">
+												<input
+													class="field text-sm"
+													list="song-artist-names"
+													placeholder="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}, then Enter"
+													aria-label="Add {CREDIT_ROLE_LABELS[role].one.toLowerCase()}"
+													autocomplete="off"
+													bind:value={creditDraft[role]}
+													disabled={creditBusy}
+													onkeydown={(e) => {
+														if (e.key === "Enter") {
+															e.preventDefault();
+															void addCredit(role);
+														}
+													}}
+												/>
+												<button
+													class="button button-xs shrink-0"
+													type="button"
+													disabled={creditBusy || !creditDraft[role].trim()}
+													onclick={() => addCredit(role)}>Add</button
+												>
+											</div>
+										</div>
+									{/each}
+									<datalist id="song-artist-names">
+										{#each data.artists as a (a.id)}
+											<option value={a.name}></option>
+										{/each}
+									</datalist>
+									<p class="text-xs opacity-70">
+										Artists show under the title; with none, the account's name does. Composers
+										replace the songwriter line once one is added.
+									</p>
+								</fieldset>
 								<label class="block">
 									<span class="text-sm opacity-90"
 										>First written <span class="opacity-60">(optional)</span></span
