@@ -80,6 +80,10 @@ erDiagram
   (unique within the account, matched case-insensitively when a credit is
   added by name), `sort_name`, `website`, `note`. Details such as members
   come later.
+- **artist_member** — a person in an artist (migration 0050): `name`,
+  `role` ("drums"), `email`; the artist's page marks those whose email is
+  an account member's and lets an owner or admin invite the others
+  (`/[account]/artists/[id]`, members only, since it shows emails).
 - **song_credit** — an artist credited on a song in a `role`: performer
   (the artist line under the title; the account's name stands in when there
   is none), composer ("Written by", replacing the legacy `song.songwriter`
