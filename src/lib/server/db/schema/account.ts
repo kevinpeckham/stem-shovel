@@ -22,5 +22,7 @@ export const account = table("account", {
 	lifetimeFree: t.integer("lifetime_free", { mode: "boolean" }).notNull().default(true),
 	/** Founder: never charged, unlimited data, every premium feature. The first FOUNDER_SEATS accounts, then by a super admin. */
 	isFounder: t.integer("is_founder", { mode: "boolean" }).notNull().default(false),
+	/** The artist a new song is credited to as performer (an `artist` row of this account; no FK, since artist imports account), or null (migration 0049). */
+	defaultArtistId: t.text("default_artist_id"),
 	...timestamps,
 });

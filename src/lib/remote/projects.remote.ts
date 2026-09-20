@@ -12,15 +12,18 @@ import { error, invalid, redirect } from "@sveltejs/kit";
  * `invalid()` so the message lands on the field. The account comes from the
  * project itself, checked against the caller's memberships.
  */
-export const updateProject = form(ProjectSettingsSchema, async ({ id, name, slug }, issue) => {
-	const { locals } = getRequestEvent();
-	const { accountId } = await memberOf(locals, accountOfProject, id);
-	const result = await update(accountId, id, { name, slug });
-	if (!result.ok) invalid(issue[result.field](result.error));
-	const slugs = await projectSlugs(accountId, id);
-	if (!slugs) error(404, "Project not found");
-	redirect(303, `/${slugs.account}/projects/${slugs.project}`);
-});
+export const updateProject = form(
+	ProjectSettingsSchema,
+	async ({ id, name, slug, type }, issue) => {
+		const { locals } = getRequestEvent();
+		const { accountId } = await memberOf(locals, accountOfProject, id);
+		const result = await update(accountId, id, { name, slug, type });
+		if (!result.ok) invalid(issue[result.field](result.error));
+		const slugs = await projectSlugs(accountId, id);
+		if (!slugs) error(404, "Project not found");
+		redirect(303, `/${slugs.account}/projects/${slugs.project}`);
+	},
+);
 
 /** New project in the given account; lands on its page. */
 export const createProject = form(ProjectCreateSchema, async ({ accountId, name }) => {

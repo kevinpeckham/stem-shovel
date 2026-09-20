@@ -28,9 +28,14 @@ erDiagram
   provider-credential table) are added with it, not now.
 - **account** — the tenant: a studio, band, or client workspace. Everything
   else hangs off an account, and every query is scoped by it.
+  `default_artist_id` (migration 0049, no FK: artist imports account) names
+  the artist every new song is credited to as performer, or null.
 - **account_member** — which users are in which account, with a role.
 - **project** — a grouping of songs inside an account: an album, a session, a
-  client job. Slug unique within the account.
+  client job. Slug unique within the account. `type` (album, ep, single,
+  soundtrack, compilation, demos, other; migration 0049) labels the page;
+  a project's artists are not stored but derived from its songs' performer
+  credits ("Various artists" from four).
 - **song** — one piece of music with N stems. Carries the musical metadata
   (bpm, key) and the denormalized `account_id` so tenant scoping never needs a
   join through `project`.

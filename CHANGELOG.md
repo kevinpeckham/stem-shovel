@@ -11,6 +11,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Added
 
 - **Artists and credits.** Each account has an artist directory (`artist`, migration 0048), and a song credits artists by role (`song_credit`): performers make the artist line under the song's title (the account's name when there are none), composers the "Written by" line (the legacy songwriter text stands in until one is credited), producers "produced by". Song settings has the editor: type a name (the directory suggests earlier ones, matched case-insensitively) and press Enter; credits save as you go.
+- **Project type and artists.** Project settings has a type (album, EP, single, soundtrack, compilation, demos, other; migration 0049); the project page shows it with the artists on its songs, derived from their performer credits ("Various artists" from four, the names on hover), or the account's name.
+- **A default artist for new songs**, chosen in account settings from the artist directory (`account.default_artist_id`): every new song is credited to it as performer until changed. None by default, for producers working with many acts.
 
 ## [0.25.0] - 2026-09-20
 

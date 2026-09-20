@@ -1,7 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
 import { db, schema } from "$lib/server/db";
 import { and, eq } from "drizzle-orm";
-import { requireMember, requireUser } from "$lib/server/access";
+import { requireEditor, requireMember, requireUser } from "$lib/server/access";
 import {
 	acceptInvitation as accept,
 	createInviteCode as newInviteCode,
@@ -11,10 +11,15 @@ import {
 	removeMembership,
 	revokeInvitation as revoke,
 	setMemberRole as changeRole,
+	setAccountDefaultArtist,
 	updateAccount as update,
 } from "$lib/server/data";
 import { sendInvitationEmail } from "$lib/server/email";
-import { AccountCreateSchema, AccountSettingsSchema } from "$lib/val/AccountSchema";
+import {
+	AccountCreateSchema,
+	AccountDefaultArtistSchema,
+	AccountSettingsSchema,
+} from "$lib/val/AccountSchema";
 import { InvitationIdSchema, InvitationTokenSchema, InviteSchema } from "$lib/val/InvitationSchema";
 import { InviteCodeCreateSchema, InviteCodeIdSchema } from "$lib/val/InviteCodeSchema";
 import {
@@ -178,3 +183,15 @@ export const createAccount = form(AccountCreateSchema, async ({ name }) => {
 	rememberAccount(cookies, row.slug);
 	redirect(303, `/${row.slug}/projects`);
 });
+
+/** The artist every new song in the account is credited to (any editor may set it; empty clears it). */
+export const setDefaultArtist = form(
+	AccountDefaultArtistSchema,
+	async ({ accountId, artistId }) => {
+		const { locals } = getRequestEvent();
+		requireEditor(locals, accountId);
+		if (!(await setAccountDefaultArtist(accountId, artistId || null)))
+			error(404, "Artist not found");
+		return { artistId: artistId || null };
+	},
+);

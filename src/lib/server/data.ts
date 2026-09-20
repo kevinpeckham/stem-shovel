@@ -1,5 +1,6 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
+import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import {
@@ -182,7 +183,7 @@ export type UpdateProjectResult =
 export async function updateProject(
 	accountId: string,
 	projectId: string,
-	input: { name: string; slug: string },
+	input: { name: string; slug: string; type: ProjectType },
 ): Promise<UpdateProjectResult> {
 	const name = input.name.trim();
 	if (!name) return { ok: false, field: "name", error: "Give the project a name." };
@@ -198,7 +199,7 @@ export async function updateProject(
 	}
 	const [row] = await db
 		.update(project)
-		.set({ name, slug })
+		.set({ name, slug, type: input.type })
 		.where(and(eq(project.accountId, accountId), eq(project.id, projectId)))
 		.returning();
 	if (!row) return { ok: false, field: "name", error: "Project not found." };
@@ -244,6 +245,10 @@ export function getProject(accountId: string, slug: string) {
 						},
 					},
 					demos: { columns: { id: true, status: true } },
+					credits: {
+						columns: { role: true },
+						with: { artist: { columns: { id: true, name: true } } },
+					},
 				},
 			},
 		},
@@ -274,6 +279,23 @@ export async function createSong(
 			createdBy: userId,
 		})
 		.returning();
+	// The account's default artist performs every new song until someone says otherwise.
+	const acct = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		columns: { defaultArtistId: true },
+	});
+	if (acct?.defaultArtistId) {
+		const who = await db.query.artist.findFirst({
+			where: and(eq(artist.id, acct.defaultArtistId), eq(artist.accountId, accountId)),
+			columns: { id: true },
+		});
+		if (who) {
+			await db
+				.insert(songCredit)
+				.values({ songId: row.id, artistId: who.id, role: "performer", sortOrder: 1 })
+				.onConflictDoNothing();
+		}
+	}
 	return row;
 }
 
@@ -365,6 +387,28 @@ export function listArtists(accountId: string) {
 		orderBy: [asc(artist.sortName), asc(artist.name)],
 		columns: { id: true, name: true, website: true },
 	});
+}
+
+/** The artist new songs are credited to, or null. */
+export async function accountDefaultArtist(accountId: string) {
+	const row = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		columns: { defaultArtistId: true },
+	});
+	return row?.defaultArtistId ?? null;
+}
+
+/** Sets or clears the account's default artist; false when the artist is not the account's. */
+export async function setAccountDefaultArtist(accountId: string, artistId: string | null) {
+	if (artistId) {
+		const who = await db.query.artist.findFirst({
+			where: and(eq(artist.id, artistId), eq(artist.accountId, accountId)),
+			columns: { id: true },
+		});
+		if (!who) return false;
+	}
+	await db.update(account).set({ defaultArtistId: artistId }).where(eq(account.id, accountId));
+	return true;
 }
 
 /** The account's artist by name (case-insensitive), or a new one. */

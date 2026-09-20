@@ -11,6 +11,7 @@
 		revokeInvitation,
 		setMemberRole,
 		updateAccount,
+		setDefaultArtist,
 	} from "$lib/remote/accounts.remote";
 	import { MEMBER_ROLES } from "$lib/val/MemberRoleSchema";
 	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
@@ -112,6 +113,43 @@
 				</button>
 			</div>
 		</form>
+	</section>
+
+	<section class="max-w-article">
+		<h2 class="heading-2">Artists</h2>
+		<p class="mb-3 text-sm opacity-90">
+			Every name credited on a song joins the account's artist directory. Pick the one new songs
+			should be credited to: a band's own name, or none for a producer working with many.
+		</p>
+		<form
+			class="flex flex-wrap items-end gap-3"
+			{...setDefaultArtist.enhance(async ({ submit }) => {
+				await submit();
+				if (setDefaultArtist.result) notify("Default artist saved");
+			})}
+		>
+			<input {...setDefaultArtist.fields.accountId.as("hidden", data.account.id)} />
+			<label class="block grow sm:max-w-xs">
+				<span class="text-sm text-dim">Default artist for new songs</span>
+				<select
+					class="mt-1 field"
+					{...setDefaultArtist.fields.artistId.as("select", data.defaultArtistId ?? "")}
+				>
+					<option value="">None</option>
+					{#each data.artists as a (a.id)}
+						<option value={a.id}>{a.name}</option>
+					{/each}
+				</select>
+			</label>
+			<button class="button-accent" disabled={!!setDefaultArtist.pending}>
+				{setDefaultArtist.pending ? "Saving…" : "Save"}
+			</button>
+		</form>
+		{#if data.artists.length === 0}
+			<p class="mt-2 text-13px text-dim">
+				No artists yet: credit one in a song's settings and it appears here.
+			</p>
+		{/if}
 	</section>
 
 	<section class="max-w-article">

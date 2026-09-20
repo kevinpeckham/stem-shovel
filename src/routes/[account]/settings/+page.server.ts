@@ -1,5 +1,11 @@
 import { requireMember, requireSignedIn } from "$lib/server/access";
-import { accountUsage, listInviteCodes, pendingInvitations } from "$lib/server/data";
+import {
+	accountDefaultArtist,
+	accountUsage,
+	listArtists,
+	listInviteCodes,
+	pendingInvitations,
+} from "$lib/server/data";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
@@ -13,5 +19,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		myRole: member.role,
 		invitations: canInvite ? await pendingInvitations(account.id) : [],
 		inviteCodes: canInvite ? await listInviteCodes(account.id) : [],
+		/** The artist directory and which artist new songs are credited to. */
+		artists: await listArtists(account.id),
+		defaultArtistId: await accountDefaultArtist(account.id),
 	};
 };

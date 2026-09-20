@@ -10,6 +10,9 @@
 	import { clearForm } from "$lib/utils/clearForm";
 	import { slugify } from "$lib/utils/slugify";
 	import { updateProject } from "$lib/remote/projects.remote";
+	import { artistLine } from "$lib/utils/artistLine";
+	import { PROJECT_TYPES } from "$lib/val/ProjectTypeSchema";
+	import { PROJECT_TYPE_LABELS, VARIOUS_ARTISTS_FROM } from "$lib/constants/projectTypes";
 	import { createSong } from "$lib/remote/songs.remote";
 
 	let { data } = $props();
@@ -25,7 +28,30 @@
 	// to what the project has now.
 	let name = $derived(fields.name.value() ?? data.project.name);
 	let slug = $derived(fields.slug.value() ?? data.project.slug);
-	let dirty = $derived(name.trim() !== data.project.name || slug.trim() !== data.project.slug);
+	let type = $derived(fields.type.value() ?? data.project.type);
+	let dirty = $derived(
+		name.trim() !== data.project.name ||
+			slug.trim() !== data.project.slug ||
+			type !== data.project.type,
+	);
+	// The project's artists are whoever performs its songs: one act on an album, many on a soundtrack.
+	let performers = $derived([
+		...new Set(
+			data.project.songs.flatMap((s) =>
+				s.credits.filter((c) => c.role === "performer").map((c) => c.artist.name),
+			),
+		),
+	]);
+	let artistsLine = $derived(
+		performers.length >= VARIOUS_ARTISTS_FROM
+			? "Various artists"
+			: artistLine(performers) || data.account.name,
+	);
+	let subtitle = $derived(
+		[data.project.type === "other" ? "" : PROJECT_TYPE_LABELS[data.project.type], artistsLine]
+			.filter(Boolean)
+			.join(" · "),
+	);
 	// Keep the slug following the name until the slug is edited by hand.
 	let slugTouched = $state(false);
 
@@ -74,6 +100,12 @@
 						title="Archived: out of the projects list; restore it in settings">archived</span
 					>{/if}
 			</h1>
+			<span
+				class="text-lg font-500 opacity-90"
+				aria-label="Artists"
+				title={performers.length >= VARIOUS_ARTISTS_FROM ? performers.join(", ") : undefined}
+				>{subtitle}</span
+			>
 			<span class="opacity-90 text-15px"
 				>a project from <a
 					class="underline hover-text-accent underline-offset-4"
@@ -178,6 +210,17 @@
 						{/if}
 					</label>
 				</div>
+				<label class="mt-4 block sm:max-w-xs">
+					<span class="text-sm text-dim">Type</span>
+					<select class="mt-1 field" {...fields.type.as("select", data.project.type)}>
+						{#each PROJECT_TYPES as t (t)}
+							<option value={t}>{PROJECT_TYPE_LABELS[t]}</option>
+						{/each}
+					</select>
+					<span class="mt-1 block text-13px text-dim">
+						Shown under the name with the artists on its songs; "Other" shows no label.
+					</span>
+				</label>
 				{#if slug.trim() !== data.project.slug}
 					<p class="mt-2 text-xs text-dim">
 						Changing the URL also moves every song under it. Old links stop working.

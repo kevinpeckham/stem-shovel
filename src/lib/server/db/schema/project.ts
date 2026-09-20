@@ -1,6 +1,7 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { ArchiveStatus } from "../../../val/ArchiveStatusSchema";
+import type { ProjectType } from "../../../val/ProjectTypeSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { user } from "./user";
@@ -21,6 +22,8 @@ export const project = table(
 		/** No AI touches this project's songs (docs/security.md): no model calls, no transcription. */
 		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
 		description: t.text("description").notNull().default(""),
+		/** Album, EP, single, soundtrack… (migration 0049); "other" shows no label. */
+		type: t.text("type").$type<ProjectType>().notNull().default("other"),
 		status: t.text("status").$type<ArchiveStatus>().notNull().default("active"),
 		archivedAt: t.integer("archived_at", { mode: "timestamp_ms" }),
 		/** Manual ordering inside the account (lower first). */

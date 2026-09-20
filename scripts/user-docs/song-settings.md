@@ -28,7 +28,7 @@ The frame rate used by the timecode readout, matching your DAW project.
 
 ## Credits
 
-Under the songwriter field, **Credits** names the people on the song by role: **Artists** (who performs it; the line under the song's title, which otherwise shows the account's name), **Composers** (the "Written by" line, replacing the songwriter field once one is added) and **Producers**. Type a name and press Enter, or pick one you have used before: every name goes into the account's artist directory, so the same act on twenty songs is one entry, and a name typed with different capitals finds the existing one. Credits save as you add and remove them. A song can have several of each, a hip-hop collaboration for instance, and a soundtrack project's artists are simply everyone credited on its songs.
+Under the songwriter field, **Credits** names the people on the song by role: **Artists** (who performs it; the line under the song's title, which otherwise shows the account's name), **Composers** (the "Written by" line, replacing the songwriter field once one is added) and **Producers**. Type a name and press Enter, or pick one you have used before: every name goes into the account's artist directory, so the same act on twenty songs is one entry, and a name typed with different capitals finds the existing one. Credits save as you add and remove them. In account settings, **Default artist for new songs** picks the artist every new song starts credited to, handy for a band's own account. A song can have several of each, a hip-hop collaboration for instance, and a soundtrack project's artists are simply everyone credited on its songs.
 
 ## Demo recordings
 
