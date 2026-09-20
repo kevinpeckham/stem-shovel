@@ -54,6 +54,11 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 - **Drizzle**: one file per table under `src/lib/server/db/schema/`, all
   `relations()` in `relations.ts` (keeps table imports a DAG), text nanoid
   ids, `timestamps` from `columns.ts`, an index on every foreign key.
+  **Turso does not enforce foreign keys** (`PRAGMA foreign_keys` is 0), so
+  the schema's `onDelete` rules are documentation: a delete removes its
+  children itself through `src/lib/server/cascade.ts`, and a new child
+  table joins the right function there. `bun run db:sweep-orphans` reports
+  what earlier deletes left; `--apply` removes it.
   Migrations are generated and committed; when a change would make
   drizzle-kit ask about a rename, split it into two generates.
 - **Every query is scoped by `accountId` first** (`src/lib/server/data.ts`);

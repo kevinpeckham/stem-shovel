@@ -1,4 +1,5 @@
 import { deleteBlobs } from "$lib/server/blob";
+import { deleteProjectRows } from "$lib/server/cascade";
 import { db, schema } from "$lib/server/db";
 import type { ArchiveStatus } from "$lib/val/ArchiveStatusSchema";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -12,7 +13,8 @@ const { project, song, stem, demo } = schema;
  * owner or admin deletes, and only an archived project (archiving first is
  * the safety catch): that removes every song and every Blob file behind
  * them (stems, renditions, MIDI, demos, mixes), across both stores, then
- * the row, which cascades to the rest.
+ * the rows, children first (src/lib/server/cascade.ts: the database does
+ * not run the schema's cascades).
  */
 export async function setProjectStatus(accountId: string, id: string, status: ArchiveStatus) {
 	const [row] = await db
@@ -64,11 +66,6 @@ export async function deleteProject(
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...songs.map((s) => s.mixUrl ?? ""),
 	]);
-	const [row] = await db
-		.delete(project)
-		.where(
-			and(eq(project.accountId, accountId), eq(project.id, id), eq(project.status, "archived")),
-		)
-		.returning({ id: project.id });
-	return row ? "deleted" : "missing";
+	await deleteProjectRows([id]);
+	return "deleted";
 }

@@ -13,6 +13,15 @@ import {
 	recordingPathname,
 	stemPathname,
 } from "$lib/server/blob";
+import {
+	deleteAccountRows,
+	deleteArtistRows,
+	deleteBugReportRows,
+	deleteIdeaRows,
+	deleteSongRows,
+	deleteUserDocRows,
+	deleteUserRows,
+} from "$lib/server/cascade";
 import { accessOfSongId } from "$lib/server/relocate";
 import { db, schema } from "$lib/server/db";
 import { barGrid } from "$lib/audio/measures";
@@ -451,13 +460,7 @@ export async function deleteArtist(accountId: string, artistId: string) {
 		columns: { id: true },
 	});
 	if (!owner) return false;
-	await db.delete(songCredit).where(eq(songCredit.artistId, artistId));
-	await db.delete(artistMember).where(eq(artistMember.artistId, artistId));
-	const [row] = await db
-		.delete(artist)
-		.where(and(eq(artist.accountId, accountId), eq(artist.id, artistId)))
-		.returning({ id: artist.id });
-	if (!row) return false;
+	await deleteArtistRows([artistId]);
 	await db
 		.update(account)
 		.set({ defaultArtistId: null })
@@ -661,8 +664,11 @@ export async function deleteSong(accountId: string, songId: string) {
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
-	await db.delete(songCredit).where(eq(songCredit.songId, songId));
-	await db.delete(song).where(and(eq(song.accountId, accountId), eq(song.id, songId))); // stems cascade
+	const owned = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (owned) await deleteSongRows([songId]);
 }
 
 // ---- stems ----------------------------------------------------------------
@@ -1611,11 +1617,13 @@ export async function respondToBugReport(id: string, response: string) {
 }
 
 export async function deleteBugReport(id: string) {
-	const [row] = await db
-		.delete(bugReport)
-		.where(eq(bugReport.id, id))
-		.returning({ id: bugReport.id });
-	return !!row;
+	const row = await db.query.bugReport.findFirst({
+		where: eq(bugReport.id, id),
+		columns: { id: true },
+	});
+	if (!row) return false;
+	await deleteBugReportRows([id]);
+	return true;
 }
 
 /**
@@ -1701,8 +1709,13 @@ export async function updateUserDocMeta(
 }
 
 export async function deleteUserDoc(id: string) {
-	const [row] = await db.delete(userDoc).where(eq(userDoc.id, id)).returning({ id: userDoc.id });
-	return !!row;
+	const row = await db.query.userDoc.findFirst({
+		where: eq(userDoc.id, id),
+		columns: { id: true },
+	});
+	if (!row) return false;
+	await deleteUserDocRows([id]);
+	return true;
 }
 
 /** Same rules as saveSongDoc: wipe guard, hash-gated versions, the newest DOC_VERSIONS_TO_KEEP kept. */
@@ -1782,11 +1795,12 @@ export async function deleteUser(id: string) {
 		where: eq(accountMember.userId, id),
 		columns: { accountId: true },
 	});
-	const [row] = await db
-		.delete(schema.user)
-		.where(eq(schema.user.id, id))
-		.returning({ id: schema.user.id });
-	if (!row) return null;
+	const exists = await db.query.user.findFirst({
+		where: eq(schema.user.id, id),
+		columns: { id: true },
+	});
+	if (!exists) return null;
+	await deleteUserRows(id);
 	let accountsRemoved = 0;
 	for (const { accountId } of memberships) {
 		const left = await db.query.accountMember.findFirst({
@@ -1795,7 +1809,7 @@ export async function deleteUser(id: string) {
 		if (left) continue;
 		const content = await db.query.project.findFirst({ where: eq(project.accountId, accountId) });
 		if (content) continue;
-		await db.delete(account).where(eq(account.id, accountId));
+		await deleteAccountRows(accountId);
 		accountsRemoved += 1;
 	}
 	return { accountsRemoved };
@@ -1921,8 +1935,13 @@ export async function deleteAccount(id: string) {
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...mixes.map((m) => m.mixUrl ?? ""),
 	]);
-	const [row] = await db.delete(account).where(eq(account.id, id)).returning({ id: account.id });
-	return !!row;
+	const exists = await db.query.account.findFirst({
+		where: eq(account.id, id),
+		columns: { id: true },
+	});
+	if (!exists) return false;
+	await deleteAccountRows(id);
+	return true;
 }
 
 /** A new account with the user as its owner; the slug comes from the name and is made unique. */
@@ -2613,11 +2632,12 @@ export async function deleteIdea(accountId: string, ideaId: string) {
 		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.ideaId, ideaId)));
-	const [row] = await db
-		.delete(idea)
-		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
-		.returning({ id: idea.id });
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { id: true },
+	});
 	if (!row) return false;
+	await deleteIdeaRows([ideaId]);
 	await deleteBlobs(takes.flatMap((t) => [t.url, t.playbackUrl ?? ""]));
 	return true;
 }

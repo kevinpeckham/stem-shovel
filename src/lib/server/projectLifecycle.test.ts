@@ -48,6 +48,8 @@ const fake = vi.hoisted(() => {
 });
 vi.mock("$lib/server/db", () => ({ db: fake.db, schema: fake.schema }));
 vi.mock("$lib/server/blob", () => ({ deleteBlobs: fake.deleteBlobs }));
+const cascade = vi.hoisted(() => ({ deleteProjectRows: vi.fn(async () => {}) }));
+vi.mock("$lib/server/cascade", () => cascade);
 vi.mock("drizzle-orm", () => ({
 	and: (...a: unknown[]) => a,
 	eq: (a: unknown, b: unknown) => [a, b],
@@ -67,7 +69,7 @@ describe("deleteProject", () => {
 		fake.state.status = "active";
 		expect(await deleteProject("a1", "p1")).toBe("active");
 		expect(fake.deleteBlobs).not.toHaveBeenCalled();
-		expect(fake.state.deleted).toEqual([]);
+		expect(cascade.deleteProjectRows).not.toHaveBeenCalled();
 	});
 	test("an archived project goes with every file behind its songs", async () => {
 		fake.state.status = "archived";
@@ -78,6 +80,7 @@ describe("deleteProject", () => {
 		};
 		expect(await deleteProject("a1", "p1")).toBe("deleted");
 		expect(fake.deleteBlobs).toHaveBeenCalledWith(["st1", "pl1", "", "d1", "", "mix1"]);
-		expect(fake.state.deleted).toEqual(["project"]);
+		// The rows go through the cascade module (the database runs no cascades of its own).
+		expect(cascade.deleteProjectRows).toHaveBeenCalledWith(["p1"]);
 	});
 });

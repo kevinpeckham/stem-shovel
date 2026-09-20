@@ -26,6 +26,15 @@ erDiagram
   shape so adding Better Auth later (as replicator did) needs no migration of
   this table. Better Auth's own tables (`session`, `verification`, and its
   provider-credential table) are added with it, not now.
+  **Deletes are explicit.** Turso runs with `PRAGMA foreign_keys = 0`, so the
+  `onDelete: cascade` and `set null` rules below never fire on their own;
+  `src/lib/server/cascade.ts` removes a parent's children in the order the
+  graph demands (song → credits, doc versions, comments, links, demos, stems;
+  project → songs, links; idea → takes; artist → people, credits; account →
+  all of it; user → memberships, sessions, sign-in records, two-factor,
+  votes, comments, and the author cleared elsewhere), and
+  `scripts/sweep-orphans.ts` finds and removes what older deletes left.
+
 - **account** — the tenant: a studio, band, or client workspace. Everything
   else hangs off an account, and every query is scoped by it.
   `default_artist_id` (migration 0049, no FK: artist imports account) names
