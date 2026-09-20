@@ -20,23 +20,23 @@
 		},
 		{
 			question: "How do I get started?",
-			answer: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open.`,
+			answer: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open. You will not be required to provide any payment or credit card info to sign up.`,
 		},
 		{
 			question: "How much does it cost?",
-			answer: `Our basic tier is a free account, that offers full access to all available features with free data storage up to 10GB. Free accounts require no payment or credit card info to sign up and remain free for life. During the beta period only free accounts are available. Beyond that, we will continue to support and focus on free accounts for independent bands, musicians, producers and educators, and will introduce paid plans for those who need more storage or more advanced features.`,
+			answer: `Our basic tier is a free account. That offers full access to all available features with free data storage up to 10GB. Free accounts require no payment or credit card info to sign up and remain free for life. During the beta period only free accounts are available. Beyond that, we will continue to support and focus on free accounts for independent bands, musicians, producers and educators, and will introduce paid plans for those who need more storage or more advanced features.`,
 		},
 		{
 			question: "Is this a desktop app?",
-			answer: `Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud platform. It works cross browser and cross platform and is accessible from any device with a web browser and internet connection.`,
+			answer: `Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud platform. It works cross browser and cross platform and is accessible from any device with a web browser and internet connection. We have no plans to build a desktop app in the near future, a web app fits our needs, and is easy to support.`,
 		},
 		{
 			question: "Who is the dev team behind Stem Shovel?",
 			answer: `The first iteration of Stem Shovel was built by Kevin Peckham at Lightning Jar as part of our side-projects program, where team members are encouraged to spend time pursuing passion projects, research, and pay with new technologies. Lightning Jar is a small web studio founded in 2002, with the goal of helping organizations adjust to a world that is more digital every day.`,
 		},
 		{
-			question: "Are you going to lure us in with a generous free tier then increase prices later?",
-			answer: `Emphatically no. Stem Shovel is built, managed, and maintained by Lightning Jar and select volunteers and we are not a startup, this is not our primary revenue stream and we do not plan on taking on any investors. Which is to say we're not here to get rich and we feel no pressure to grow. All we need to do is cover our expenses, and those primarily have to do with servers, security, data storage, and support.`,
+			question: "Is the free tier really free?",
+			answer: `Emphatically yes. We are not a startup, this is not our primary revenue stream, and we do not plan on taking on any investors. Which is to say all we need to do is cover our expenses, and those primarily have to do with servers, security, data storage, and support.`,
 		},
 		{
 			question: "Does this project have AI Features?",
@@ -44,7 +44,7 @@
 		},
 		{
 			question: "Was this app vibe-coded?",
-			answer: `If you're not familiar with the term, vibe coding means building something entirely from AI prompts. While we do use AI as part of our process to speed up development, this app	was not vibe-coded. Our team has been building websites and web apps for over 25 years and	we have a deep understanding of what it takes to build a high-quality product, with human-driven architecture and design decisions following an approach to app building that mirrors our own experience and expertise.`,
+			answer: `While we do use AI as part of our process to speed up development, this app	was not vibe-coded. Our team has been building websites and web apps for over 25 years and	we have a deep understanding of what it takes to build a high-quality product, with human-driven architecture and design decisions following an approach to app building that mirrors our own experience and expertise.`,
 		},
 		{
 			question: "Is the app open source?",
