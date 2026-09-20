@@ -11,10 +11,10 @@
 	<title>{pageTitle("Your waitlist entry")}</title>
 </svelte:head>
 
-<main class="page min-h-screen">
+<main class="page-x-padding main-y-padding min-h-screen">
 	<header class="max-w-article">
-		<h1 class="display">Your waitlist entry</h1>
-		<p class="opacity-90">
+		<h1 class="app-page-heading mb-5">Your waitlist entry</h1>
+		<p class="app-page-subheading">
 			<strong>{data.email}</strong> ·
 			{#if data.status === "removed"}
 				removed from the list
@@ -27,7 +27,7 @@
 			{/if}
 		</p>
 	</header>
-	<section class="max-w-article">
+	<section class="max-w-article mt-8">
 		{#if data.status === "removed"}
 			<p class="opacity-90">
 				You have left the waitlist and will get no more email from it. <a

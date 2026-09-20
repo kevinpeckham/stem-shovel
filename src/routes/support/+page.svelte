@@ -14,10 +14,10 @@
 	<title>{pageTitle("Help")}</title>
 </svelte:head>
 
-<main class="page">
-	<header class="max-w-article mb-6">
-		<h1 class="heading-2">Help</h1>
-		<p class="opacity-90 text-balance">
+<main class="page-x-padding main-y-padding">
+	<header class="max-w-article mb-8">
+		<h1 class="app-page-heading mb-5">Help</h1>
+		<p class="app-page-subheading">
 			Something not working, locked out, or a question? Tell us and we will reply by email.
 		</p>
 	</header>
@@ -83,7 +83,7 @@
 				})}
 			>
 				<label class="block">
-					<span class="text-sm opacity-90">The email address of your account</span>
+					<div class="opacity-90 mb-3">The email address of your account</div>
 					<input
 						class="mt-1 field"
 						type="email"
@@ -105,7 +105,10 @@
 					<button class="button button-accent" disabled={!!startSupport.pending}>
 						{startSupport.pending ? "One moment…" : "Continue"}
 					</button>
-					<a class="link-dim text-sm" href="/sign-in">Signed in already? Sign in first</a>
+					<a
+						class="text-13px opacity-85 underline hover-text-accent underline-offset-4 hover-opacity-100"
+						href="/sign-in">Sign in to skip this step.</a
+					>
 				</div>
 			</form>
 		{:else}

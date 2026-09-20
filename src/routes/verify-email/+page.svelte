@@ -11,9 +11,9 @@
 	<title>{pageTitle("Verify email")}</title>
 </svelte:head>
 
-<main class="page min-h-screen">
-	<header class="max-w-article">
-		<h1 class="display">
+<main class="page-x-padding main-y-padding min-h-screen">
+	<header class="max-w-article mb-8">
+		<h1 class="app-page-heading mb-5">
 			{problem ? "That link did not work" : verified ? "Email verified" : "Verify your email"}
 		</h1>
 	</header>

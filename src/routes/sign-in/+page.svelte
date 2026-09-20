@@ -42,11 +42,12 @@
 	<title>{pageTitle("Sign in")}</title>
 </svelte:head>
 
-<main class="page-x-padding pt-8 min-h-screen">
+<main class="page-x-padding main-y-padding min-h-screen">
 	<header class="max-w-article">
-		<h1 class="heading-2">Sign in</h1>
+		<h1 class="app-page-heading mb-5">Sign in</h1>
+		<p class="app-page-subheading">Sign in to access your account.</p>
 	</header>
-	<form class="grid max-w-sm gap-5" onsubmit={submit}>
+	<form class="grid max-w-sm gap-5 mt-8" onsubmit={submit}>
 		<label class="block">
 			<span class="text-15px text-dim">Email</span>
 			<input class="mt-1 field" type="email" autocomplete="email" bind:value={email} required />
@@ -67,17 +68,17 @@
 				>{busy ? "Signing in…" : "Sign in"}</button
 			>
 			<a
-				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
+				class="opacity-85 underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
 				href="/sign-up">Create an account</a
 			>
 			<a
-				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
+				class="opacity-85 underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
 				href="/forgot-password">Forgot password?</a
 			>
-			<a
-				class="opacity-85 link-dim underline underline-offset-4 text-0.9em hover-text-accent whitespace-nowrap"
-				href="/support">Need help signing in?</a
-			>
 		</div>
+		<!-- <a
+			class="mt-48"
+			href="/support"><span class="text-14px opacity-70">Need help signing in?</span></a
+		> -->
 	</form>
 </main>

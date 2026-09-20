@@ -11,18 +11,24 @@
 	<title>{pageTitle(String(status))}</title>
 </svelte:head>
 
-<main class="page min-h-[60vh]">
-	<header class="max-w-article">
-		<h1 class="display">
-			{status === 404 ? "Not found" : status === 403 ? "Private" : `Error ${status}`}
+<main class="page-x-padding main-y-padding min-h-screen">
+	<header class="max-w-article mb-8">
+		<h1 class="app-page-heading mb-5">
+			{status === 404
+				? "404 Error: Not found"
+				: status === 403
+					? "403 Error: Private"
+					: `Error ${status}`}
 		</h1>
-		<p class="opacity-90">{message}</p>
+		<p class="app-page-subheading">
+			No one feels worse about this than we do. We hope you find what you're looking for.
+		</p>
 	</header>
 	{#if status === 403 && !page.data.user}
 		<div class="flex flex-wrap gap-3">
 			<a class="button-accent" href="/sign-in?next={encodeURIComponent(next)}">Sign in</a>
 		</div>
 	{:else if status === 404}
-		<a class="link-dim" href="/">Home</a>
+		<a class="button button-accent" href="/">Back to Home</a>
 	{/if}
 </main>

@@ -7,15 +7,15 @@
 	<title>{pageTitle("Join the waitlist")}</title>
 </svelte:head>
 
-<main class="page min-h-screen">
+<main class="page-x-padding main-y-padding min-h-screen">
 	<header class="max-w-article">
-		<h1 class="heading-2">Join the waitlist</h1>
-		<p class="opacity-90 max-w-prose text-balance">
+		<h1 class="app-page-heading mb-5">Join the waitlist</h1>
+		<p class="app-page-subheading">
 			Stem Shovel is in early beta and sign-up needs an invite code. Leave your address, confirm it
 			from the email we send, and we will send you a code as seats open.
 		</p>
 	</header>
-	<section class="max-w-article">
+	<section class="max-w-article mt-8">
 		<WaitlistForm />
 	</section>
 </main>

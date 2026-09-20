@@ -42,10 +42,10 @@
 	<title>{pageTitle("Two-factor code")}</title>
 </svelte:head>
 
-<main class="page min-h-screen">
-	<header class="max-w-article">
-		<h1 class="display">One more step</h1>
-		<p class="opacity-90">
+<main class="page-x-padding main-y-padding min-h-screen">
+	<header class="max-w-article mb-8">
+		<h1 class="app-page-heading mb-5">One More Step</h1>
+		<p class="app-page-subheading">
 			{useBackup
 				? "Enter one of your backup codes. Each works once."
 				: "Enter the six-digit code from your authenticator app."}
