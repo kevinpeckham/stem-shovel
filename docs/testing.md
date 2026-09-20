@@ -55,7 +55,10 @@ bunx vp test run src/lib/audio/measures.test.ts   # one file
   throws the moment it loads, so a test of a pure function must not import
   it through a server module (`data.ts` reaches the database): put the
   function in `src/lib/utils/` and test it there, or mock the module.
-  `SKIP_VARLOCK=1 bun run test` reproduces CI locally.
+  `SKIP_VARLOCK=1 bun run test` reproduces CI locally. The same flag (and
+  Vitest's own `VITEST`) makes `uno.config.ts` skip the web-fonts preset,
+  which fetches font CSS from the provider when the config loads and timed
+  out in CI; builds still inline the fonts.
 - **Component tests** render with `@testing-library/svelte`, query by role
   and name, and drive clicks with `@testing-library/user-event`. The engine
   is `fakeEngine()` — the reactive fields components read plus spies for

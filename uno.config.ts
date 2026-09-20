@@ -24,17 +24,24 @@ export default defineConfig({
 		presetIcons({
 			warn: true,
 		}),
-		presetWebFonts({
-			provider: "bunny",
-			fonts: {
-				// brand: "Bangers",
-				// display: "Bahiana",
-				mono: "Noto Mono",
-				serif: "Noto Serif",
-				sans: "Noto Sans",
-				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
-			},
-		}),
+		// The fonts are fetched from the provider when the config loads, which CI's
+		// test job cannot always reach (and never needs): skip them under Vitest and
+		// in the no-1Password CI environment; builds still inline them.
+		...(process.env.VITEST || process.env.SKIP_VARLOCK
+			? []
+			: [
+					presetWebFonts({
+						provider: "bunny",
+						fonts: {
+							// brand: "Bangers",
+							// display: "Bahiana",
+							mono: "Noto Mono",
+							serif: "Noto Serif",
+							sans: "Noto Sans",
+							// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
+						},
+					}),
+				]),
 	],
 	theme: {
 		colors: {
