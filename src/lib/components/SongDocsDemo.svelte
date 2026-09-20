@@ -41,29 +41,31 @@
 	let song = $derived(view.song);
 	let doc = $derived(panel === "comments" ? "chart" : panel);
 	type Doc = Exclude<Panel, "comments">;
-	/** The visitor's copy of each document: starts as the song has it, changes on save, gone on reload. */
-	let docs = $state<Record<Doc, { markdown: string; html: string; version: number }>>({
-		chart: { markdown: "", html: "", version: 0 },
-		lyrics: { markdown: "", html: "", version: 0 },
-		notes: { markdown: "", html: "", version: 0 },
-	});
-	$effect.pre(() => {
-		docs = {
-			chart: { markdown: song.chartMarkdown, html: view.docs.chart, version: song.chartVersion },
-			lyrics: {
-				markdown: song.lyricsMarkdown,
-				html: view.docs.lyrics,
-				version: song.lyricsVersion,
-			},
-			notes: { markdown: song.notesMarkdown, html: view.docs.notes, version: song.notesVersion },
-		};
+	/** The visitor's edits, by document; a document without one shows the song's own text. Gone on reload. */
+	let edits = $state<Partial<Record<Doc, { markdown: string; html: string; version: number }>>>({});
+	let docs = $derived<Record<Doc, { markdown: string; html: string; version: number }>>({
+		chart: edits.chart ?? {
+			markdown: song.chartMarkdown,
+			html: view.docs.chart,
+			version: song.chartVersion,
+		},
+		lyrics: edits.lyrics ?? {
+			markdown: song.lyricsMarkdown,
+			html: view.docs.lyrics,
+			version: song.lyricsVersion,
+		},
+		notes: edits.notes ?? {
+			markdown: song.notesMarkdown,
+			html: view.docs.notes,
+			version: song.notesVersion,
+		},
 	});
 	let editing = $state(false);
 	let docPanel = $state<SongDocPanel | null>(null);
 	async function keepLocal(kind: Doc, markdown: string) {
 		try {
 			const html = await renderPreview(markdown);
-			docs[kind] = { markdown, html, version: docs[kind].version + 1 };
+			edits[kind] = { markdown, html, version: docs[kind].version + 1 };
 			notify("Saved on this page only; a reload brings the song's own text back");
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });

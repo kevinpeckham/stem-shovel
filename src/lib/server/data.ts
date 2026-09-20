@@ -609,7 +609,7 @@ export async function setAccountDefaultArtist(accountId: string, artistId: strin
 }
 
 /** The account's artist by name (case-insensitive), or a new one. */
-export async function findOrCreateArtist(accountId: string, name: string) {
+async function findOrCreateArtist(accountId: string, name: string) {
 	const existing = await db.query.artist.findFirst({
 		where: and(eq(artist.accountId, accountId), sql`lower(${artist.name}) = lower(${name})`),
 		columns: { id: true, name: true },
