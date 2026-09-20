@@ -179,7 +179,7 @@
 		</section>
 
 		<!-- faqs -->
-		<section>
+		<section class="mt-12">
 			<h2 class="marketing-section-heading">Frequently Asked Questions</h2>
 			<div
 				class="
