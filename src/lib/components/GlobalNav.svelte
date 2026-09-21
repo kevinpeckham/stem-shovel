@@ -246,10 +246,8 @@
 				href="/pricing">Pricing</a
 			>
 			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
-			<a
-				class="nav-link {active('/sign-up') ? 'text-accent !decoration-current' : ''}"
-				href="/sign-up">Sign up</a
-			>
+			<!-- The call to action: a small solid accent button, not another link. -->
+			<a class="button-accent-solid button-sm" href="/sign-up">Sign up</a>
 		{/if}
 	</nav>
 </header>
