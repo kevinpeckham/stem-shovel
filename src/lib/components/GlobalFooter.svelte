@@ -21,6 +21,7 @@
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/pricing">Pricing</a>
 		<a class="footer-link" href="/blog">Blog</a>
+		<a class="footer-link" href="/built-with">Built With</a>
 		<a class="footer-link" href="/support">Help</a>
 		<a class="footer-link" href="/feature-requests">Feature Requests</a>
 

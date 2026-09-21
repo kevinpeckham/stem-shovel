@@ -87,7 +87,7 @@ switches off device APIs, and SvelteKit's CSP with a per-request script nonce
 (docs/environment.md). Search engines get the front page, the user docs
 (`/docs`, each page, not the editors), the blog (`/blog`, each published
 post; a draft carries noindex and is a 404 to everyone but a system admin),
-the Releases page, the tuner and the pricing page (`src/lib/utils/isIndexablePath.ts`): every other path carries
+the Releases page, the tuner, the pricing page and the built-with page (`src/lib/utils/isIndexablePath.ts`): every other path carries
 `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and vercel.json's
 rule for static files) and a matching robots meta from the root layout;
 `robots.txt` allows those paths alone and points at `sitemap.xml`, which

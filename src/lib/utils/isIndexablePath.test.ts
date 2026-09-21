@@ -11,6 +11,7 @@ describe("isIndexablePath", () => {
 			"/releases",
 			"/tuner",
 			"/pricing",
+			"/built-with",
 			"/blog",
 			"/blog/why-stems",
 		]) {

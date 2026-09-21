@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A built-with page** at `/built-with` (footer link, indexable, in the sitemap): the technologies the app runs on, grouped, each with a line on what it does here.
+
 ### Changed
 
 - **Navigation**: the footer's Feature Requests link shows to everyone (the page is public); a visitor's header has Pricing beside Sign in and a Sign up button.

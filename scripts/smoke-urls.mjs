@@ -64,6 +64,7 @@ const ROUTES = [
 	["tuner", "/tuner", [200], [200]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
+	["built-with", "/built-with", [200], [200]],
 	// The newest published post, or a 404 on a stage with none yet (an array of expectations, or a function of the fetched rows).
 	["blog/[slug]", "/blog/{post}", () => (post ? [200] : [404]), () => (post ? [200] : [404])],
 	["blog/[slug]/edit", "/blog/{post}/edit", [401, 403, 404], () => (post ? [200] : [404])],
