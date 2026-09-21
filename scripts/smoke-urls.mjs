@@ -64,6 +64,9 @@ const ROUTES = [
 	["tuner", "/tuner", [200], [200]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
+	// The newest published post, or a 404 on a stage with none yet (an array of expectations, or a function of the fetched rows).
+	["blog/[slug]", "/blog/{post}", () => (post ? [200] : [404]), () => (post ? [200] : [404])],
+	["blog/[slug]/edit", "/blog/{post}/edit", [401, 403, 404], () => (post ? [200] : [404])],
 	["feature-requests", "/feature-requests", [200], [200]],
 	["docs/[slug]", "/docs/{doc}", [200], [200]],
 	["docs/[slug]/edit", "/docs/{doc}/edit", [401, 403, 404], [200]],
@@ -168,14 +171,20 @@ const [song] = await q(
 	 order by s.created_at asc limit 1`,
 	[acct.slug, proj.slug],
 );
-const [doc] = await q("select slug from user_doc order by sort_order asc limit 1");
+const [doc] = await q(
+	"select slug from user_doc where kind = 'doc' order by sort_order asc limit 1",
+);
+const [post] = await q(
+	"select slug from user_doc where kind = 'post' and published_at is not null order by published_at desc limit 1",
+);
 const fill = (url) =>
 	url
 		.replace("{account}", acct.slug)
 		.replace("{project}", proj.slug)
 		.replace("{song}", song.slug)
 		.replace("{songId}", song.id)
-		.replace("{doc}", doc.slug);
+		.replace("{doc}", doc.slug)
+		.replace("{post}", post?.slug ?? "no-post-yet");
 
 // ---- run --------------------------------------------------------------------------
 
@@ -195,7 +204,10 @@ async function probe(url, headers) {
 async function pass(name, headers, pick) {
 	let failed = 0;
 	console.log(`\n${name}  (${base})`);
-	const checks = [...ROUTES.map((r) => [r[1], pick(r)]), ...STATIC];
+	const checks = [...ROUTES.map((r) => [r[1], pick(r)]), ...STATIC].map(([url, ok]) => [
+		url,
+		typeof ok === "function" ? ok() : ok,
+	]);
 	for (const [url, ok] of checks) {
 		const target = fill(url);
 		let r;
