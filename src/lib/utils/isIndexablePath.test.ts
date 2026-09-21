@@ -10,6 +10,7 @@ describe("isIndexablePath", () => {
 			"/docs/getting-started/",
 			"/releases",
 			"/tuner",
+			"/pricing",
 		]) {
 			expect(isIndexablePath(p)).toBe(true);
 		}

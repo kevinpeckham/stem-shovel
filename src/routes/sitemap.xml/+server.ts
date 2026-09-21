@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			...docs.map((d) => entry(url.origin, `/docs/${d.slug}`, "monthly", d.updatedAt)),
 			entry(url.origin, "/releases", "weekly"),
 			entry(url.origin, "/tuner", "monthly"),
+			entry(url.origin, "/pricing", "monthly"),
 		);
 	}
 	const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;

@@ -12,7 +12,7 @@ export const prerender = false;
  */
 export const GET: RequestHandler = ({ url }) => {
 	const body = indexableStage(ENV.VERCEL_ENV)
-		? `# The front page, the docs and the releases page are for search engines; everything else is a private app.\nUser-agent: *\nAllow: /$\nAllow: /docs\nAllow: /releases$\nAllow: /tuner$\nDisallow: /docs/*/edit\nDisallow: /\nSitemap: ${url.origin}/sitemap.xml\n`
+		? `# The front page, the docs and the releases page are for search engines; everything else is a private app.\nUser-agent: *\nAllow: /$\nAllow: /docs\nAllow: /releases$\nAllow: /tuner$\nAllow: /pricing$\nDisallow: /docs/*/edit\nDisallow: /\nSitemap: ${url.origin}/sitemap.xml\n`
 		: `# Not production: nothing here is for search engines.\nUser-agent: *\nDisallow: /\n`;
 	return new Response(body, {
 		headers: {

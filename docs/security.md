@@ -85,8 +85,8 @@ from a 31-symbol alphabet.
 `Cross-Origin-Opener-Policy: same-origin`, HSTS, a `Permissions-Policy` that
 switches off device APIs, and SvelteKit's CSP with a per-request script nonce
 (docs/environment.md). Search engines get the front page, the user docs
-(`/docs`, each page, not the editors) and the Releases page
-(`src/lib/utils/isIndexablePath.ts`): every other path carries
+(`/docs`, each page, not the editors), the Releases page, the tuner and the
+pricing page (`src/lib/utils/isIndexablePath.ts`): every other path carries
 `X-Robots-Tag: noindex, nofollow, noarchive` (the hook, and vercel.json's
 rule for static files) and a matching robots meta from the root layout;
 `robots.txt` allows those paths alone and points at `sitemap.xml`, which
