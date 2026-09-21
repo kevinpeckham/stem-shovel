@@ -242,12 +242,14 @@
 			</div>
 		{:else}
 			<a
-				class="nav-link {active('/pricing') ? 'text-accent !decoration-current' : ''}"
+				class="nav-link hidden sm-inline-block {active('/pricing')
+					? 'text-accent !decoration-current'
+					: ''}"
 				href="/pricing">Pricing</a
 			>
 			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
-			<!-- The call to action: a small solid accent button, not another link. -->
-			<a class="button-accent-solid button-sm" href="/sign-up">Sign up</a>
+			<!-- The call to action: a small solid accent button. A phone has room for one link beside the logo, so Pricing and Sign up hide there (both are in the footer and on the front page). -->
+			<a class="button-accent-solid button-sm hidden sm-flex" href="/sign-up">Sign up</a>
 		{/if}
 	</nav>
 </header>

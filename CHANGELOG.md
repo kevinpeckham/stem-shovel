@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-09-21
+
 ### Added
 
 - **Passkeys.** Security in the account menu adds a passkey (a name, then the device's prompt) and lists or removes them; the sign-in page has "Sign in with a passkey" and offers saved passkeys in the email field. A passkey signs in with no password and no two-factor code. Emails confirm an added or removed passkey. `@better-auth/passkey`, the `passkey` table (migration 0057), `rpID` per stage (docs/auth.md).
@@ -15,7 +17,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **Navigation**: the footer's Feature Requests link shows to everyone (the page is public); a visitor's header has Pricing beside Sign in and a Sign up button.
+- **Navigation**: the footer's Feature Requests link shows to everyone (the page is public); a visitor's header has Pricing beside Sign in and a Sign up button. On a phone the header keeps Sign in alone (Pricing and Sign up are in the footer and on the front page); the Built With link sits beside Privacy and Copyright.
+
+### Fixed
+
+- **Passkey sign-in was blocked by our own Permissions-Policy header** (`publickey-credentials-get=()`); it now allows the page itself, in the header constant and vercel.json.
+
+### Technical
+
+- Migration 0057 (`passkey`); `@better-auth/passkey` (pulls `@simplewebauthn/server`, dual-format, checked in the build output). The `security` user doc changed (`bun run db:update-docs security`).
 
 ## [0.28.0] - 2026-09-21
 
