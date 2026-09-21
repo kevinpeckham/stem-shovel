@@ -28,7 +28,7 @@ From the recorder's ⋯ menu or a take's menu, **Add as demo…** puts the take 
 
 ## Tuner
 
-The ear icon in the header opens a chromatic tuner. It listens while the popover is open: the nearest note shows large, a needle reads how many cents sharp or flat (green within five), and the string of your tuning it is lights up. Pick the tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele) and set A4 if your band tunes to 442; both are remembered on the device. Pressing Record closes the tuner so the microphone is free for the take. The same tuner is at `/tuner` for anyone, signed in or not.
+The ear icon in the header opens a chromatic tuner. It listens while the popover is open: the nearest note shows large, a needle reads how many cents sharp or flat (green within five), and the string of your tuning it is lights up. Pick the tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele), or **Chromatic** for any other instrument or tuning, which just names whatever it hears and set A4 if your band tunes to 442; both are remembered on the device. Pressing Record closes the tuner so the microphone is free for the take. The same tuner is at `/tuner` for anyone, signed in or not.
 
 ## Settings and limits
 

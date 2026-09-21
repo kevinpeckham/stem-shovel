@@ -1,4 +1,4 @@
-/** Tunings the tuner offers, low string first, as MIDI notes (E2 = 40, A4 = 69). */
+/** Tunings the tuner offers, low string first, as MIDI notes (E2 = 40, A4 = 69); the chromatic one lists no strings and suits any instrument or tuning. */
 export interface Tuning {
 	id: string;
 	label: string;
@@ -6,6 +6,7 @@ export interface Tuning {
 }
 
 export const TUNINGS: Tuning[] = [
+	{ id: "chromatic", label: "Chromatic · any instrument or tuning", notes: [] },
 	{ id: "standard", label: "Guitar · standard (E A D G B E)", notes: [40, 45, 50, 55, 59, 64] },
 	{ id: "drop-d", label: "Guitar · drop D (D A D G B E)", notes: [38, 45, 50, 55, 59, 64] },
 	{

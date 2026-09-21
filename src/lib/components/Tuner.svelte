@@ -43,7 +43,7 @@
 	let note = $derived(reading ? noteFromFrequency(reading.frequency, prefs.a4) : null);
 	/** The string of the tuning nearest the note heard. */
 	let nearestString = $derived.by(() => {
-		if (!note) return null;
+		if (!note || tuning.notes.length === 0) return null;
 		let best = tuning.notes[0];
 		for (const n of tuning.notes)
 			if (Math.abs(n - note.midi) < Math.abs(best - note.midi)) best = n;
@@ -186,22 +186,24 @@
 		</div>
 	</div>
 
-	<!-- The strings of the chosen tuning; the one nearest the note heard lights up. -->
-	<div class="flex flex-wrap items-center justify-center gap-2" role="list" aria-label="Strings">
-		{#each tuning.notes as midi (midi)}
-			<span
-				role="listitem"
-				class="rounded border px-3 py-1 font-mono text-sm tabular-nums {nearestString === midi
-					? inTune
-						? 'border-green-300 text-green-300'
-						: 'border-maximumYellow text-maximumYellow'
-					: 'border-white/15 opacity-70'}"
-				title="{frequencyOfMidi(midi, prefs.a4).toFixed(2)} Hz"
-			>
-				{noteLabel(midi)}
-			</span>
-		{/each}
-	</div>
+	<!-- The strings of the chosen tuning; the one nearest the note heard lights up. Chromatic mode has none. -->
+	{#if tuning.notes.length > 0}
+		<div class="flex flex-wrap items-center justify-center gap-2" role="list" aria-label="Strings">
+			{#each tuning.notes as midi (midi)}
+				<span
+					role="listitem"
+					class="rounded border px-3 py-1 font-mono text-sm tabular-nums {nearestString === midi
+						? inTune
+							? 'border-green-300 text-green-300'
+							: 'border-maximumYellow text-maximumYellow'
+						: 'border-white/15 opacity-70'}"
+					title="{frequencyOfMidi(midi, prefs.a4).toFixed(2)} Hz"
+				>
+					{noteLabel(midi)}
+				</span>
+			{/each}
+		</div>
+	{/if}
 
 	<div class="flex flex-wrap items-end gap-3 text-sm">
 		<label class="block grow">
@@ -249,7 +251,8 @@
 		<p class="text-sm text-red-400" role="alert">{error}</p>
 	{/if}
 	<p class="text-13px text-dim">
-		A string reads in tune within ±{IN_TUNE_CENTS} cents. Turn off any effects and let the note ring;
+		A note reads in tune within ±{IN_TUNE_CENTS} cents. Chromatic mode names whatever it hears, for any
+		instrument or tuning; a preset also lights the string. Turn off any effects and let the note ring;
 		the needle settles as the string does.
 	</p>
 </div>

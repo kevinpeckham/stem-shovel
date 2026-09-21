@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The tuner has a chromatic mode** for any instrument or tuning: it names whatever it hears, with no string row.
+
 ## [0.27.0] - 2026-09-21
 
 ### Added
