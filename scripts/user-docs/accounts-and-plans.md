@@ -4,11 +4,13 @@ Every Stem Shovel account today is a **free account, for life**. There is no bas
 
 ## Free for life
 
-An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account will have is an upper limit on stored data: stems are large files, and storing them is the one cost that grows with every upload. The free limit will be **10 GB** of stored files per account, enough for a working band's projects; it is not enforced yet, and nothing you have already uploaded will be removed when it is.
+An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account has is an upper limit on stored data and on members: stems are large files, and storing them is the one cost that grows with every upload. A free account holds **10 GB** of files (stems, demos and Idea Recorder takes; the playback versions we make from them do not count) and **up to 5 members** of any role; viewers you share with are not members and are unlimited.
+
+The account's **Settings** page shows how much of each is used. When the storage is full, an upload is refused with a message until files are removed; nothing already uploaded is ever removed for you. When every seat is taken, invitations and invite codes stop working until a member is removed.
 
 ## Founder accounts
 
-The first twenty accounts ever created are **Founder** accounts, marked with a star. A founder account is never charged, has no data limit, and gets every feature Stem Shovel ever adds, including the premium ones. After the first twenty, a founder account can only be granted by the people who run Stem Shovel.
+The first twenty accounts ever created are **Founder** accounts, marked with a star. A founder account is never charged, has no storage or member limit, and gets every feature Stem Shovel ever adds, including the premium ones. After the first twenty, a founder account can only be granted by the people who run Stem Shovel.
 
 ## What is coming
 

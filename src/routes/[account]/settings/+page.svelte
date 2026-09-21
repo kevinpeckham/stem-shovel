@@ -32,6 +32,10 @@
 	let dirty = $derived(name.trim() !== data.account.name || slug.trim() !== data.account.slug);
 	let slugTouched = $state(false);
 	let limit = $derived(data.usage.storageLimitBytes);
+	/** null = unlimited seats. */
+	let seatsLeft = $derived(
+		data.usage.memberLimit === null ? null : data.usage.memberLimit - data.usage.members.length,
+	);
 
 	/** The sign-up link an invite code goes out as. */
 	const signUpLink = (code: string) => `${page.url.origin}/sign-up?code=${code}`;
@@ -188,22 +192,41 @@
 				<dt class="text-13px text-dim">Storage</dt>
 				<dd class="text-20px font-700 tabular-nums">
 					{formatBytes(data.usage.bytes)}
-					{#if limit}<span class="text-13px font-400 text-dim"> / {formatBytes(limit)}</span>{/if}
+					<span class="text-13px font-400 text-dim">
+						{#if limit !== null}/ {formatBytes(limit)}{:else}· no limit{/if}
+					</span>
 				</dd>
 			</div>
 		</dl>
-		{#if limit}
+		{#if limit !== null}
 			<div class="mt-2 h-1 overflow-hidden rounded bg-white/10">
 				<div
-					class="h-full bg-accent"
+					class="h-full {data.usage.bytes >= limit ? 'bg-red-400' : 'bg-accent'}"
 					style:width="{Math.min(100, (100 * data.usage.bytes) / limit)}%"
 				></div>
 			</div>
+			<p class="mt-2 text-13px text-dim">
+				Stems, demos and takes count; the playback renditions and mixes we make from them do not.
+				{#if data.usage.bytes >= limit}
+					The account is full: uploads are refused until files are removed.
+				{/if}
+			</p>
+		{:else}
+			<p class="mt-2 text-13px text-dim">
+				{data.usage.isFounder ? "A founder account has no storage or member limit." : "No limit."}
+			</p>
 		{/if}
 	</section>
 
 	<section class="max-w-article">
-		<h2 class="heading-2">Members</h2>
+		<h2 class="heading-2">
+			Members
+			<span class="ml-2 text-13px font-400 text-dim tabular-nums">
+				{data.usage.members.length}{data.usage.memberLimit === null
+					? ""
+					: ` of ${data.usage.memberLimit}`}
+			</span>
+		</h2>
 		<ul class="surface divide-y divide-white/10 text-15px">
 			{#each data.usage.members as m (m.userId)}
 				{@const roleForm = setMemberRole.for(m.userId)}
@@ -293,7 +316,12 @@
 				demoted.
 			</p>
 		{/if}
-		{#if data.canInvite}
+		{#if data.canInvite && seatsLeft === 0}
+			<p class="mt-6 text-sm text-dim">
+				Every seat is taken ({data.usage.memberLimit} on this plan). Remove a member to invite someone
+				else; invite codes stop working until then.
+			</p>
+		{:else if data.canInvite}
 			<h3 class="mt-6 text-15px font-700">Invite someone</h3>
 			<form
 				class="mt-2 flex flex-wrap items-end gap-3"

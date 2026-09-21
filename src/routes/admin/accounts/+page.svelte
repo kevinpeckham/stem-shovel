@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import PlanBadge from "$lib/components/PlanBadge.svelte";
-	import { manageAccount } from "$lib/remote/admin.remote";
+	import { manageAccount, setStorageLimit } from "$lib/remote/admin.remote";
+	import { accountLimits } from "$lib/utils/accountLimits";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -18,6 +19,8 @@
 	<ul class="surface divide-y divide-white/10 text-15px">
 		{#each data.accounts as a (a.id)}
 			{@const act = manageAccount.for(a.id)}
+			{@const storage = setStorageLimit.for(a.id)}
+			{@const limits = accountLimits(a)}
 			<li class="px-5 py-3 {a.status === 'active' ? '' : 'opacity-60'}">
 				<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
 					<span class="flex items-center gap-2">
@@ -27,7 +30,13 @@
 					<span class="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<span class="text-13px text-dim">
 							{a.songs}
-							{a.songs === 1 ? "song" : "songs"} · {formatBytes(a.bytes)} · since {formatDate(
+							{a.songs === 1 ? "song" : "songs"} · {formatBytes(a.bytes)}{limits.storageBytes ===
+							null
+								? " of no limit"
+								: ` of ${formatBytes(limits.storageBytes)}`} · {a.members.length}{limits.members ===
+							null
+								? ""
+								: ` of ${limits.members}`} seats · since {formatDate(
 								a.createdAt,
 							)}{#if a.status !== "active"}
 								· <span class="uppercase tracking-wider">{a.status}</span>{/if}
@@ -97,6 +106,40 @@
 						{i > 0 ? " · " : ""}{m.name} ({m.role})
 					{/each}
 				</p>
+				{#if !a.isFounder}
+					<form
+						class="mt-1 flex flex-wrap items-center gap-2 text-13px"
+						{...storage.enhance(async ({ submit }) => {
+							await submit();
+							const issue = storage.fields.allIssues()?.[0];
+							if (issue) notify(issue.message, { kind: "error" });
+							else if (storage.result)
+								notify(
+									storage.result.gigabytes === null
+										? `${a.name}: storage limit back to the plan's`
+										: `${a.name}: storage limit ${storage.result.gigabytes} GB`,
+								);
+						})}
+					>
+						<input {...storage.fields.id.as("hidden", a.id)} />
+						<label class="flex items-center gap-2">
+							<span class="text-dim">Storage limit (GB, blank = plan)</span>
+							<input
+								class="field w-24 py-0.5 text-13px tabular-nums"
+								type="number"
+								min="0"
+								step="1"
+								{...storage.fields.gigabytes.as(
+									"text",
+									a.storageLimitBytes === null
+										? ""
+										: String(Math.round(a.storageLimitBytes / 1024 ** 3)),
+								)}
+							/>
+						</label>
+						<button class="link-dim" disabled={!!storage.pending}>Save</button>
+					</form>
+				{/if}
 			</li>
 		{/each}
 	</ul>

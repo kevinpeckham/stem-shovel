@@ -1,5 +1,6 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createStem } from "$lib/server/data";
+import { createStem, storageRoom } from "$lib/server/data";
+import { formatBytes } from "$lib/utils/formatBytes";
 import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { stemContentType } from "$lib/utils/stemContentType";
 import { accessOfPathname } from "$lib/server/relocate";
@@ -19,6 +20,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-stem limit");
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const room = await storageRoom(accountId, sizeBytes);
+	if (!room.ok) {
+		error(
+			409,
+			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
+		);
+	}
 	const row = await createStem(accountId, requireUser(locals).id, songId, {
 		filename,
 		contentType,

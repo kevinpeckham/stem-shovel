@@ -14,9 +14,10 @@ import {
 	revokeInviteCode,
 	setAccountStatus,
 	setUserActive,
+	setAccountStorageLimit,
 } from "$lib/server/data";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
-import { AccountAdminSchema } from "$lib/val/AccountAdminSchema";
+import { AccountAdminSchema, AccountStorageLimitSchema } from "$lib/val/AccountAdminSchema";
 import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
 import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
 import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
@@ -93,6 +94,15 @@ export const manageAccount = form(AccountAdminSchema, async ({ id, action }) => 
 		error(404, "Account not found");
 	}
 	return { action };
+});
+
+/** Raise or clear one account's storage limit (blank = the plan's; a founder account ignores it). */
+export const setStorageLimit = form(AccountStorageLimitSchema, async ({ id, gigabytes }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	const bytes = gigabytes === null ? null : Math.round(gigabytes * 1024 ** 3);
+	if (!(await setAccountStorageLimit(id, bytes))) error(404, "Account not found");
+	return { gigabytes };
 });
 
 /** The song the home page demos: any public song with stems (system admins). */

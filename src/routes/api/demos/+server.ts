@@ -1,5 +1,6 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createDemo } from "$lib/server/data";
+import { createDemo, storageRoom } from "$lib/server/data";
+import { formatBytes } from "$lib/utils/formatBytes";
 import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
@@ -20,6 +21,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-file limit");
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const room = await storageRoom(accountId, sizeBytes);
+	if (!room.ok) {
+		error(
+			409,
+			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
+		);
+	}
 	const row = await createDemo(accountId, requireUser(locals).id, songId, {
 		filename,
 		contentType,

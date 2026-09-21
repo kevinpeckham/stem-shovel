@@ -76,6 +76,7 @@ export const inviteArtistMember = form(ArtistMemberInviteSchema, async ({ id, ro
 		error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(m.accountId, user.id, person.email, role);
 	if (row === "member") invalid(issue.id("They are already a member of this account."));
+	if (row === "full") invalid(issue.id("This account has no seats left. Remove a member first."));
 	await sendInvitationEmail({
 		to: row.email,
 		url: `${url.origin}/invite/${row.token}`,
@@ -100,6 +101,7 @@ export const inviteArtist = form(ArtistInviteSchema, async ({ id, role }, issue)
 		error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(m.accountId, user.id, who.email, role);
 	if (row === "member") invalid(issue.id("They are already a member of this account."));
+	if (row === "full") invalid(issue.id("This account has no seats left. Remove a member first."));
 	await sendInvitationEmail({
 		to: row.email,
 		url: `${url.origin}/invite/${row.token}`,

@@ -7,6 +7,7 @@ import {
 	createOwnedAccount,
 	inviteCodeByCode,
 	invitationByToken,
+	memberHeadroom,
 	redeemInviteCode,
 } from "$lib/server/data";
 import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
@@ -147,6 +148,22 @@ export const auth = betterAuth({
 					// Not FORBIDDEN: the sign-up route turns a 403 into a fake success
 					// (its duplicate-email cover), which would hide the message.
 					if (!pass.ok) throw new APIError("BAD_REQUEST", { message: pass.message });
+					// The account the invitation or code joins must have a seat left (docs/billing.md).
+					const found =
+						pass.via === "invitation"
+							? await invitationByToken(pass.token)
+							: await inviteCodeByCode(pass.code);
+					const joining =
+						"invitation" in found
+							? (found.invitation?.accountId ?? null)
+							: "code" in found
+								? (found.code?.accountId ?? null) // null for a system code: nothing to join
+								: null;
+					if (joining && (await memberHeadroom(joining)).full) {
+						throw new APIError("BAD_REQUEST", {
+							message: "That account has no seats left. Ask its owner to make room first.",
+						});
+					}
 				},
 				after: async (user, ctx) => {
 					// Joining an account through an invitation or an account's code is

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Storage and seat limits are enforced.** A free account holds 10 GB of stems, demos and takes and up to five members, as the pricing page says; a founder account has no limits. An upload past the limit is refused at reservation with what is used and what the limit is; a sixth member is refused at invitation, acceptance, invite-code redemption and sign-up. Account settings show usage against both limits, and `/admin/accounts` can raise one account's storage (`account.storage_limit_bytes`; `PLAN_LIMITS`, `accountLimits`, `storageRoom`, `memberHeadroom`).
+
 ## [0.29.0] - 2026-09-21
 
 ### Added

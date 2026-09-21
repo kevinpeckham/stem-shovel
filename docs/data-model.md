@@ -36,7 +36,9 @@ erDiagram
   `scripts/sweep-orphans.ts` finds and removes what older deletes left.
 
 - **account** — the tenant: a studio, band, or client workspace. Everything
-  else hangs off an account, and every query is scoped by it.
+  else hangs off an account, and every query is scoped by it. `plan`,
+  `is_founder` and `storage_limit_bytes` (an admin's override, null = the
+  plan's) decide what it may hold (docs/billing.md; `src/lib/utils/accountLimits.ts`).
   `default_artist_id` (migration 0049, no FK: artist imports account) names
   the artist every new song is credited to as performer, or null.
   `image_url` (migration 0052; also on `artist`, and on `project` from

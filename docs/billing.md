@@ -3,6 +3,16 @@
 Two things are decided: every account today is **free for life** (no base
 subscription cost, ever), and the first twenty accounts are **founders**
 (never charged, unlimited data, every feature). Paid tiers do not exist yet.
+
+**Enforced since v0.30.0** (`src/lib/constants/plans.ts` `PLAN_LIMITS`,
+`src/lib/utils/accountLimits.ts`): a free account holds 10 GB of user files
+(stems, demos and takes, counting reservations still uploading; renditions
+and mixes are not counted) and 5 members of any role. `storageRoom` refuses
+the reservation in `/api/stems`, `/api/demos` and `/api/recordings` with a
+409 the upload UI shows; `memberHeadroom` refuses a new invitation, an
+invitation's acceptance, an invite code's redemption and the sign-up hook. A
+founder account has no limits; a system admin raises one account's storage
+on `/admin/accounts` (`account.storage_limit_bytes`, null = the plan's).
 This document estimates what an account costs us, so the free data limit
 and the paid data tiers can be priced, and lays out how Stripe will be wired
 in when the time comes. Nothing in the payment section is built.

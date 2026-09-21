@@ -63,6 +63,7 @@ import type { SupportStatus } from "$lib/val/SupportRequestSchema";
 import type { ReportPriority } from "$lib/val/BugReportSchema";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import type { UserDocKind } from "$lib/val/UserDocKindSchema";
+import { accountLimits, storageFits } from "$lib/utils/accountLimits";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -131,6 +132,69 @@ export async function updateAccount(
 	return { ok: true, account: row };
 }
 
+// ---- limits -----------------------------------------------------------------
+
+/** The account's limits (plan, founder, admin override): src/lib/utils/accountLimits.ts. */
+export async function accountLimitsOf(accountId: string) {
+	const row = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		columns: { plan: true, isFounder: true, storageLimitBytes: true },
+	});
+	return row ? accountLimits(row) : null;
+}
+
+/**
+ * Bytes of user files the account holds: stems, demos and takes, counting
+ * reservations still uploading (so two uploads cannot both slip under the
+ * line) and not failed ones. Renditions and mixes are derived, not counted.
+ */
+export async function accountStorageBytes(accountId: string) {
+	const [stems] = await db
+		.select({ bytes: sql<number | null>`sum(${stem.sizeBytes})` })
+		.from(stem)
+		.where(and(eq(stem.accountId, accountId), ne(stem.status, "failed")));
+	const [demos] = await db
+		.select({ bytes: sql<number | null>`sum(${demo.sizeBytes})` })
+		.from(demo)
+		.where(and(eq(demo.accountId, accountId), ne(demo.status, "failed")));
+	const [takes] = await db
+		.select({ bytes: sql<number | null>`sum(${recording.sizeBytes})` })
+		.from(recording)
+		.where(and(eq(recording.accountId, accountId), ne(recording.status, "failed")));
+	return (stems.bytes ?? 0) + (demos.bytes ?? 0) + (takes.bytes ?? 0);
+}
+
+/** Before reserving an upload: does the file fit? The refusal carries what the page should say. */
+export async function storageRoom(accountId: string, incomingBytes: number) {
+	const limits = await accountLimitsOf(accountId);
+	if (!limits || limits.storageBytes === null) return { ok: true as const };
+	const used = await accountStorageBytes(accountId);
+	if (storageFits(used, incomingBytes, limits.storageBytes)) return { ok: true as const };
+	return { ok: false as const, used, limit: limits.storageBytes };
+}
+
+/** Seats: members of any role against the plan's cap (null = unlimited). */
+export async function memberHeadroom(accountId: string) {
+	const limits = await accountLimitsOf(accountId);
+	const [row] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(accountMember)
+		.where(eq(accountMember.accountId, accountId));
+	const members = Number(row?.n ?? 0);
+	const limit = limits?.members ?? null;
+	return { members, limit, full: limit !== null && members >= limit };
+}
+
+/** A system admin raises (or clears) one account's storage limit; null = the plan's. */
+export async function setAccountStorageLimit(accountId: string, bytes: number | null) {
+	const [row] = await db
+		.update(account)
+		.set({ storageLimitBytes: bytes })
+		.where(eq(account.id, accountId))
+		.returning({ id: account.id });
+	return !!row;
+}
+
 /** What the account holds: counts and Blob bytes, for the settings page. */
 export async function accountUsage(accountId: string) {
 	const [projects] = await db
@@ -152,18 +216,27 @@ export async function accountUsage(accountId: string) {
 		})
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.status, "ready")));
+	const [demos] = await db
+		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${demo.sizeBytes})` })
+		.from(demo)
+		.where(and(eq(demo.accountId, accountId), eq(demo.status, "ready")));
 	const row = await db.query.account.findFirst({
 		where: eq(account.id, accountId),
 		with: { members: { with: { user: { columns: { name: true, email: true } } } } },
 	});
+	const limits = row ? accountLimits(row) : { storageBytes: null, members: null };
 	return {
 		projects: projects.n,
 		songs: songs.n,
 		stems: stems.n,
 		recordings: recordings.n,
-		/** Stems and scratch recordings; demos and renditions are not counted. */
-		bytes: (stems.bytes ?? 0) + (recordings.bytes ?? 0),
-		storageLimitBytes: row?.storageLimitBytes ?? null,
+		demos: demos.n,
+		/** Stems, demos and takes that are ready; renditions and mixes are not counted. */
+		bytes: (stems.bytes ?? 0) + (recordings.bytes ?? 0) + (demos.bytes ?? 0),
+		/** null = unlimited (a founder account). */
+		storageLimitBytes: limits.storageBytes,
+		memberLimit: limits.members,
+		isFounder: row?.isFounder ?? false,
 		members: (row?.members ?? []).map((m) => ({
 			userId: m.userId,
 			role: m.role,
@@ -1106,6 +1179,7 @@ export async function createInvitation(
 		with: { user: { columns: { email: true } } },
 	});
 	if (members.some((m) => m.user.email.toLowerCase() === address)) return "member" as const;
+	if ((await memberHeadroom(accountId)).full) return "full" as const;
 	const [row] = await db
 		.insert(invitation)
 		.values({
@@ -1171,6 +1245,7 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 		where: and(eq(accountMember.accountId, inv.accountId), eq(accountMember.userId, user.id)),
 	});
 	if (!existing) {
+		if ((await memberHeadroom(inv.accountId)).full) return "full" as const;
 		await db
 			.insert(accountMember)
 			.values({ accountId: inv.accountId, userId: user.id, role: inv.role });
@@ -1258,6 +1333,7 @@ export async function redeemInviteCode(code: string, userId: string) {
 			where: and(eq(accountMember.accountId, row.accountId), eq(accountMember.userId, userId)),
 		});
 		if (!existing) {
+			if ((await memberHeadroom(row.accountId)).full) return "full" as const;
 			await db.insert(accountMember).values({ accountId: row.accountId, userId, role: row.role });
 		}
 	}
@@ -1328,6 +1404,7 @@ export async function systemOverview() {
 			plan: a.plan,
 			lifetimeFree: a.lifetimeFree,
 			isFounder: a.isFounder,
+			storageLimitBytes: a.storageLimitBytes,
 			songs: songsOf.get(a.id) ?? 0,
 			bytes: bytesOf.get(a.id) ?? 0,
 			members: a.members.map((m) => ({ role: m.role, name: m.user.name, email: m.user.email })),

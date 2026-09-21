@@ -56,6 +56,10 @@ export const inviteMember = form(InviteSchema, async ({ accountId, email, role }
 		error(429, "Too many invitations in one hour.");
 	const row = await createInvitation(accountId, user.id, email, role);
 	if (row === "member") invalid(issue.email("That address already belongs to a member."));
+	if (row === "full")
+		invalid(
+			issue.email("This account has no seats left. Remove a member, or ask about more seats."),
+		);
 	await sendInvitationEmail({
 		to: row.email,
 		url: `${url.origin}/invite/${row.token}`,
@@ -82,6 +86,8 @@ export const acceptInvitation = form(InvitationTokenSchema, async ({ token }) =>
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const result = await accept(token, user);
+	if (result === "full")
+		error(400, "This account has no seats left. Ask its owner to make room before you join.");
 	if (typeof result === "string")
 		error(
 			400,
