@@ -390,7 +390,7 @@
 				title="Tuner"
 				aria-label="Tuner"
 			>
-				<span class="i-ph-guitar" aria-hidden="true"></span>
+				<span class="i-ph-ear" aria-hidden="true"></span>
 			</button>
 			<button
 				class="button button-sm shrink-0"
