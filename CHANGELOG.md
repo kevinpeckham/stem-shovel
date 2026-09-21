@@ -12,6 +12,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **A pricing page** at `/pricing` (footer link, indexable, in the sitemap): the Free plan, the Professional plan marked launching soon, what every plan includes, and the tax disclaimer.
 
+- **A blog** at `/blog` (footer link, indexable, in the sitemap), written by system admins in the same editor as the docs: a post is a draft until its settings publish it (`user_doc.kind`, `published_at`, migration 0056; the docs list and pages now select `kind = doc`), the index shows the date, author and first paragraph, and drafts show only to admins.
+
 ### Changed
 
 - **The feature-requests page is public, read-only.** Anyone can read approved requests and their votes; voting and requesting still need a sign-in, and the page stays out of search engines. A new request shows once a system admin approves it (`approved_at`, migrations 0054 and 0055, the second approving the requests that already existed; Approve / Hide from public on the admin list), and a profanity check at creation flags words on the admin list and in the notification email (`src/lib/utils/profanity.ts`).

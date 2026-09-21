@@ -393,6 +393,13 @@
       "when": 1789993571113,
       "tag": "0055_approve_existing_feature_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1789993978764,
+      "tag": "0056_user_doc_kind_published",
+      "breakpoints": true
     }
   ]
 }

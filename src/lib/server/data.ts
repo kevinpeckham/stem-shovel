@@ -46,10 +46,23 @@ import type { BugStatus } from "$lib/val/BugReportSchema";
 import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
-import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	lt,
+	ne,
+	notExists,
+	sql,
+} from "drizzle-orm";
 import type { SupportStatus } from "$lib/val/SupportRequestSchema";
 import type { ReportPriority } from "$lib/val/BugReportSchema";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
+import type { UserDocKind } from "$lib/val/UserDocKindSchema";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -1762,13 +1775,32 @@ export async function systemAdminEmails() {
 
 // ---- user docs --------------------------------------------------------------
 
-/** Every page, in reading order, without the markdown. */
-/** The documentation pages, without the release notes (they have their own page, /releases). */
+/** The documentation pages in reading order, without the markdown or the release notes (they have their own page, /releases). */
 export function listUserDocs() {
 	return db.query.userDoc.findMany({
-		where: ne(userDoc.slug, RELEASES_DOC_SLUG),
+		where: and(eq(userDoc.kind, "doc"), ne(userDoc.slug, RELEASES_DOC_SLUG)),
 		orderBy: [asc(userDoc.sortOrder), asc(userDoc.title)],
 		columns: { id: true, slug: true, title: true, sortOrder: true, version: true, updatedAt: true },
+	});
+}
+
+/** The blog posts, newest first; drafts (unpublished) only when asked, for a system admin. */
+export function listBlogPosts(includeDrafts = false) {
+	return db.query.userDoc.findMany({
+		where: includeDrafts
+			? eq(userDoc.kind, "post")
+			: and(eq(userDoc.kind, "post"), isNotNull(userDoc.publishedAt)),
+		orderBy: [desc(userDoc.publishedAt), desc(userDoc.createdAt)],
+		columns: {
+			id: true,
+			slug: true,
+			title: true,
+			markdown: true,
+			publishedAt: true,
+			version: true,
+			updatedAt: true,
+		},
+		with: { editor: { columns: { name: true } } },
 	});
 }
 
@@ -1779,34 +1811,49 @@ export function getUserDoc(slug: string) {
 	});
 }
 
-export async function createUserDoc(userId: string, title: string) {
+export async function createUserDoc(userId: string, title: string, kind: UserDocKind = "doc") {
 	const taken = new Set((await db.select({ slug: userDoc.slug }).from(userDoc)).map((r) => r.slug));
 	const [row] = await db
 		.insert(userDoc)
-		.values({ title, slug: uniqueSlug(slugify(title) || "page", taken), updatedBy: userId })
+		.values({ title, kind, slug: uniqueSlug(slugify(title) || kind, taken), updatedBy: userId })
 		.returning();
 	return row;
 }
 
+/** Title, address and order; for a post also whether it is published (the date is set once, on first publishing). */
 export async function updateUserDocMeta(
 	id: string,
-	meta: { title: string; slug: string; sortOrder: number },
+	meta: { title: string; slug: string; sortOrder: number; published?: boolean },
 ) {
+	const existing = await db.query.userDoc.findFirst({ where: eq(userDoc.id, id) });
+	if (!existing) return { ok: false as const, error: "Page not found." };
 	const clash = await db.query.userDoc.findFirst({ where: eq(userDoc.slug, meta.slug) });
 	if (clash && clash.id !== id)
 		return { ok: false as const, error: "Another page has that address." };
-	const [row] = await db.update(userDoc).set(meta).where(eq(userDoc.id, id)).returning();
+	const { published, ...rest } = meta;
+	const publishedAt =
+		existing.kind === "post"
+			? published
+				? (existing.publishedAt ?? new Date())
+				: null
+			: undefined;
+	const [row] = await db
+		.update(userDoc)
+		.set({ ...rest, ...(publishedAt === undefined ? {} : { publishedAt }) })
+		.where(eq(userDoc.id, id))
+		.returning();
 	return row ? { ok: true as const, doc: row } : { ok: false as const, error: "Page not found." };
 }
 
+/** Removes a page or post and its versions; returns what it was (the caller picks where to go). */
 export async function deleteUserDoc(id: string) {
 	const row = await db.query.userDoc.findFirst({
 		where: eq(userDoc.id, id),
-		columns: { id: true },
+		columns: { id: true, kind: true },
 	});
-	if (!row) return false;
+	if (!row) return null;
 	await deleteUserDocRows([id]);
-	return true;
+	return row;
 }
 
 /** Same rules as saveSongDoc: wipe guard, hash-gated versions, the newest DOC_VERSIONS_TO_KEEP kept. */

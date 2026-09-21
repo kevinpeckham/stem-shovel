@@ -20,6 +20,7 @@
 		<a class="footer-link" href="/releases">Releases</a>
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/pricing">Pricing</a>
+		<a class="footer-link" href="/blog">Blog</a>
 		<a class="footer-link" href="/support">Help</a>
 
 		{#if user}

@@ -76,9 +76,11 @@ erDiagram
   under the stems, and `edited_at` once changed. Anyone in the account may
   post; the author edits and deletes their own, owners and admins delete any.
 - **user_doc** / **user_doc_version** — the public documentation at
-  `/docs/<slug>`: title, slug, sort order, markdown with the same hash-gated
-  versioning as song documents (ten revisions kept). Written by system
-  admins with the shared `MarkdownDocEditor`.
+  `/docs/<slug>` and, with `kind = 'post'`, the blog at `/blog/<slug>`:
+  title, slug, sort order, markdown with the same hash-gated versioning as
+  song documents (ten revisions kept), and for a post `published_at`
+  (null is a draft only system admins see; set once, on first publishing).
+  Written by system admins with the shared `MarkdownDocEditor`.
 - Projects and songs carry `no_ai`; songs also hold the transcribed notes
   (`notes_json`, `notes_key`, `notes_done_seconds`, `notes_started_at`).
 - **share_link** — a viewing code for one private song or one project

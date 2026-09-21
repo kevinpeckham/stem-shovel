@@ -7,7 +7,7 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params, locals }) => {
 	requireSystemAdmin(locals);
 	const doc = await getUserDoc(params.slug);
-	if (!doc) error(404, `No page "${params.slug}"`);
+	if (!doc || doc.kind !== "doc") error(404, `No page "${params.slug}"`);
 	return {
 		doc: { id: doc.id, slug: doc.slug, title: doc.title },
 		markdown: doc.markdown,

@@ -11,6 +11,8 @@ describe("isIndexablePath", () => {
 			"/releases",
 			"/tuner",
 			"/pricing",
+			"/blog",
+			"/blog/why-stems",
 		]) {
 			expect(isIndexablePath(p)).toBe(true);
 		}
@@ -18,6 +20,7 @@ describe("isIndexablePath", () => {
 	test("nothing else", () => {
 		for (const p of [
 			"/docs/getting-started/edit",
+			"/blog/why-stems/edit",
 			"/mmkk/projects",
 			"/sign-in",
 			"/admin",

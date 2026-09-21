@@ -8,13 +8,19 @@ describe("UserDocSchema", () => {
 	test("a new page needs a title", () => {
 		expect(v.parse(UserDocCreateSchema, { title: " Getting started " })).toEqual({
 			title: "Getting started",
+			kind: "doc",
 		});
+		expect(v.parse(UserDocCreateSchema, { title: "Why stems", kind: "post" }).kind).toBe("post");
+		expect(v.safeParse(UserDocCreateSchema, { title: "x", kind: "page" }).success).toBe(false);
 		expect(v.safeParse(UserDocCreateSchema, { title: " " }).success).toBe(false);
 	});
 	test("meta reads the order a form sends and checks the slug", () => {
 		expect(
 			v.parse(UserDocMetaSchema, { id, title: "Uploads", slug: "uploads", sortOrder: "2" }),
-		).toEqual({ id, title: "Uploads", slug: "uploads", sortOrder: 2 });
+		).toEqual({ id, title: "Uploads", slug: "uploads", sortOrder: 2, published: false });
+		expect(
+			v.parse(UserDocMetaSchema, { id, title: "x", slug: "x", published: true }).published,
+		).toBe(true);
 		expect(v.parse(UserDocMetaSchema, { id, title: "Uploads", slug: "uploads" }).sortOrder).toBe(0);
 		expect(
 			v.safeParse(UserDocMetaSchema, { id, title: "Uploads", slug: "Not A Slug" }).success,

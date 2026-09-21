@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
+import { UserDocKindSchema } from "./UserDocKindSchema";
 
 const TitleSchema = v.pipe(
 	v.string(),
@@ -9,8 +10,11 @@ const TitleSchema = v.pipe(
 	v.maxLength(120, "Keep the title under 120 characters."),
 );
 
-/** New page: the slug comes from the title. */
-export const UserDocCreateSchema = v.object({ title: TitleSchema });
+/** New page or post: the slug comes from the title. */
+export const UserDocCreateSchema = v.object({
+	title: TitleSchema,
+	kind: v.optional(UserDocKindSchema, "doc"),
+});
 
 /** Title, address and order of an existing page. */
 export const UserDocMetaSchema = v.object({
@@ -27,6 +31,8 @@ export const UserDocMetaSchema = v.object({
 		),
 		"0",
 	),
+	/** Posts only (a checkbox): published shows the post to everyone. */
+	published: v.optional(v.boolean(), false),
 });
 
 /** The editor's save, as for song documents (hidden inputs carry strings). */

@@ -10,30 +10,39 @@ import { IdSchema } from "$lib/val/SongSchema";
 import { UserDocCreateSchema, UserDocMetaSchema, UserDocSaveSchema } from "$lib/val/UserDocSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
-/** User documentation (/docs) is written by system admins only; reading is public. */
-export const createUserDoc = form(UserDocCreateSchema, async ({ title }) => {
+/** Where a page or post lives: the docs or the blog. */
+const sectionOf = (kind: string) => (kind === "post" ? "/blog" : "/docs");
+
+/** User documentation (/docs) and the blog (/blog) are written by system admins only; reading is public. */
+export const createUserDoc = form(UserDocCreateSchema, async ({ title, kind }) => {
 	const { locals } = getRequestEvent();
 	const user = requireSystemAdmin(locals);
-	const row = await create(user.id, title);
-	redirect(303, `/docs/${row.slug}/edit`);
+	const row = await create(user.id, title, kind);
+	redirect(303, `${sectionOf(row.kind)}/${row.slug}/edit`);
 });
 
 export const updateUserDoc = form(
 	UserDocMetaSchema,
-	async ({ id, title, slug, sortOrder }, issue) => {
+	async ({ id, title, slug, sortOrder, published }, issue) => {
 		const { locals } = getRequestEvent();
 		requireSystemAdmin(locals);
-		const result = await updateUserDocMeta(id, { title, slug, sortOrder });
+		const result = await updateUserDocMeta(id, {
+			title,
+			slug,
+			sortOrder,
+			published,
+		});
 		if (!result.ok) invalid(issue.slug(result.error));
-		redirect(303, `/docs/${result.doc.slug}`);
+		redirect(303, `${sectionOf(result.doc.kind)}/${result.doc.slug}`);
 	},
 );
 
 export const deleteUserDoc = form(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	requireSystemAdmin(locals);
-	if (!(await drop(id))) error(404, "Page not found");
-	redirect(303, "/docs");
+	const row = await drop(id);
+	if (!row) error(404, "Page not found");
+	redirect(303, sectionOf(row.kind));
 });
 
 /** The editor's save; mirrors songs.remote's saveDoc. */

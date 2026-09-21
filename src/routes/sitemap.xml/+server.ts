@@ -1,5 +1,5 @@
 import { indexableStage } from "$lib/constants/securityHeaders";
-import { listUserDocs } from "$lib/server/data";
+import { listBlogPosts, listUserDocs } from "$lib/server/data";
 import type { RequestHandler } from "./$types";
 import { ENV } from "varlock/env";
 
@@ -14,6 +14,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const entries: string[] = [];
 	if (indexableStage(ENV.VERCEL_ENV)) {
 		const docs = await listUserDocs();
+		const posts = await listBlogPosts();
 		entries.push(
 			entry(url.origin, "/", "monthly"),
 			entry(url.origin, "/docs", "weekly"),
@@ -21,6 +22,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			entry(url.origin, "/releases", "weekly"),
 			entry(url.origin, "/tuner", "monthly"),
 			entry(url.origin, "/pricing", "monthly"),
+			entry(url.origin, "/blog", "weekly"),
+			...posts.map((p) => entry(url.origin, `/blog/${p.slug}`, "monthly", p.updatedAt)),
 		);
 	}
 	const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
