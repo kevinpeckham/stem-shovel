@@ -249,7 +249,7 @@
 		<p class="text-sm text-red-400" role="alert">{error}</p>
 	{/if}
 	<p class="text-13px text-dim">
-		Standard tuning is in tune within ±{IN_TUNE_CENTS} cents. Turn off any effects and let the note ring;
+		A string reads in tune within ±{IN_TUNE_CENTS} cents. Turn off any effects and let the note ring;
 		the needle settles as the string does.
 	</p>
 </div>
