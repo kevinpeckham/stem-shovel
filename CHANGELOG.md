@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-09-21
+
 ### Added
 
 - **A tuner.** The guitar icon in the Idea Recorder's header opens a chromatic tuner: the nearest note, a needle in cents, the string of the chosen tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele) and a settable A4, remembered per device. Pressing Record closes it. The same tuner is public at `/tuner` (`Tuner.svelte`, `src/lib/audio/pitch.ts`).
