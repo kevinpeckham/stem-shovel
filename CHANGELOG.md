@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Navigation**: the footer's Feature Requests link shows to everyone (the page is public); a visitor's header has Pricing and Sign up beside Sign in.
+
 ## [0.28.0] - 2026-09-21
 
 ### Added

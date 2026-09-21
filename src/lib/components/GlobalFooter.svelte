@@ -22,10 +22,10 @@
 		<a class="footer-link" href="/pricing">Pricing</a>
 		<a class="footer-link" href="/blog">Blog</a>
 		<a class="footer-link" href="/support">Help</a>
+		<a class="footer-link" href="/feature-requests">Feature Requests</a>
 
 		{#if user}
 			<button type="button" class="footer-link" popovertarget="bug-report"> Report a bug </button>
-			<a class="footer-link" href="/feature-requests">Feature Requests</a>
 		{/if}
 		<!-- Rick Roll Easter Egg -->
 		<!-- <a
