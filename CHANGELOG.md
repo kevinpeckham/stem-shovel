@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-09-21
+
 ### Added
 
 - **A pricing page** at `/pricing` (footer link, indexable, in the sitemap): the Free plan, the Professional plan marked launching soon, what every plan includes, and the tax disclaimer.
@@ -22,6 +24,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The tuner page was marked noindex in production**: vercel.json's `X-Robots-Tag` rule for static files was never widened for `/tuner` (nor now `/pricing`); it is.
+
+### Technical
+
+- Migrations 0054 (`bug_report.approved_at`, `flags`), 0055 (approves the feature requests that existed) and 0056 (`user_doc.kind`, `published_at`). The `reporting-a-bug` user doc changed (`bun run db:update-docs reporting-a-bug`). The smoke test's blog rows expect a 404 until a stage has a published post.
 
 ## [0.27.0] - 2026-09-21
 
