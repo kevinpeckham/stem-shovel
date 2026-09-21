@@ -6,6 +6,7 @@ import {
 	deleteBugReport as removeReport,
 	respondToBugReport,
 	setBugReportPriority,
+	setBugReportApproval,
 	setBugReportStatus,
 	systemAdminEmails,
 	voteOnBugReport,
@@ -20,6 +21,7 @@ import {
 	BugReportPrioritySchema,
 	BugReportResponseSchema,
 	BugReportStatusSchema,
+	BugReportApprovalSchema,
 	BugReportVoteSchema,
 } from "$lib/val/BugReportSchema";
 import { IdSchema } from "$lib/val/SongSchema";
@@ -46,6 +48,7 @@ export const reportBug = form(BugReportCreateSchema, async (input) => {
 				reporterName: user.name || user.email,
 				reporterEmail: user.email,
 				contactEmail: row.contactEmail,
+				flags: row.flags ? row.flags.split(",") : [],
 				adminUrl,
 			});
 		}
@@ -61,6 +64,14 @@ export const voteOnBug = form(BugReportVoteSchema, async ({ id, vote }) => {
 	const tally = await voteOnBugReport(id, user.id, vote);
 	if (!tally) error(404, "Feature request not found");
 	return tally;
+});
+
+/** System admins approve a feature request for the public page, or hide it again. */
+export const approveBug = form(BugReportApprovalSchema, async ({ id, approved }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	if (!(await setBugReportApproval(id, approved === "true"))) error(404, "Bug report not found");
+	return { approved: approved === "true" };
 });
 
 /** System admins mark reports complete, close and reopen them on /admin; a completed feature request tells its requester when they offered an address for that. */

@@ -27,14 +27,18 @@
 	<header class="max-w-article mb-6">
 		<h1 class="heading-2">Feature requests</h1>
 		<p class="opacity-90 text-balance">
-			What members have asked for, what we said, and what has shipped. Give the ones you want a
-			thumbs up: the favourites rise to the top.
+			What members have asked for, what we said, and what has shipped. Members give the ones they
+			want a thumbs up: the favourites rise to the top. A new request appears once we have read it.
 		</p>
 		<div class="mt-4 flex flex-wrap items-center gap-4">
-			<button class="button-accent" type="button" popovertarget="feature-request">
-				<span class="i-ph-lightbulb text-lg"></span>
-				Request a feature
-			</button>
+			{#if data.user}
+				<button class="button-accent" type="button" popovertarget="feature-request">
+					<span class="i-ph-lightbulb text-lg"></span>
+					Request a feature
+				</button>
+			{:else}
+				<a class="button-accent" href="/sign-in">Sign in to vote or request a feature</a>
+			{/if}
 			{#if data.user?.isSystemAdmin}
 				<a class="link-dim text-sm" href="/admin/feature-requests">Manage requests</a>
 			{/if}
@@ -98,12 +102,23 @@
 								</span>
 							</div>
 							<p class="mt-1 whitespace-pre-wrap text-sm opacity-90">{r.body}</p>
-							<div class="mt-2 flex items-center gap-2 text-13px" aria-label="Votes">
-								{@render thumb(r.id, "up", r.votes.mine, r.votes.up)}
-								{@render thumb(r.id, "down", r.votes.mine, r.votes.down)}
+							<div class="mt-2 flex flex-wrap items-center gap-2 text-13px" aria-label="Votes">
+								{#if data.user}
+									{@render thumb(r.id, "up", r.votes.mine, r.votes.up)}
+									{@render thumb(r.id, "down", r.votes.mine, r.votes.down)}
+								{:else}
+									<span class="text-dim">{r.votes.up} up · {r.votes.down} down</span>
+								{/if}
 								<span class="text-dim" title="Thumbs up minus thumbs down"
 									>score {r.votes.score}</span
 								>
+								{#if !r.approved}
+									<span
+										class="rounded border border-accent/60 px-1.5 py-0.5 text-11px uppercase tracking-wider text-accent"
+										title="Only you and the admins see it until then"
+										>{r.mine ? "yours · awaiting review" : "awaiting approval"}</span
+									>
+								{/if}
 							</div>
 							{#if r.response}
 								<div class="mt-2 rounded border border-white/10 bg-blue-300/5 px-3 py-2 text-sm">

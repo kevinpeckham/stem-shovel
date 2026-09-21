@@ -107,8 +107,10 @@ erDiagram
   request (`kind`; the Feature Requests page): title, body, the page they
   were on and their browser (captured by the form), `contact_email` when
   they offered one for follow-up, `status` open/complete/closed and
-  `closed_at`, the admin's `priority`, `response` and `responded_at`.
-  Managed on `/admin`.
+  `closed_at`, the admin's `priority`, `response` and `responded_at`,
+  `approved_at` (a feature request shows on the public page once an admin
+  approves it; migration 0054, with 0055 approving the requests that existed before) and `flags` (words the profanity check
+  found at creation, for the admin's attention). Managed on `/admin`.
 - **bug_report_vote** — a signed-in user's thumbs up (+1) or down (−1) on
   a request, one per user and request (migration 0047); open feature
   requests list by the sum on `/feature-requests`.

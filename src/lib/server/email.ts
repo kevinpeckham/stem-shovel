@@ -266,6 +266,8 @@ export async function sendBugReportEmail(opts: {
 	reporterEmail: string;
 	/** Where the requester said we may write about it, when they offered one. */
 	contactEmail?: string | null;
+	/** Words the profanity check found; the subject says so. */
+	flags?: string[];
 	adminUrl: string;
 }) {
 	const body = renderEmail({
@@ -277,6 +279,12 @@ export async function sendBugReportEmail(opts: {
 			...(opts.contactEmail
 				? [`They are happy to be emailed about it at ${opts.contactEmail}.`]
 				: []),
+			...(opts.flags?.length
+				? [`The profanity check flagged: ${opts.flags.join(", ")}. It waits for your approval.`]
+				: []),
+			...(opts.kind === "feature"
+				? ["Feature requests show on the public page once approved."]
+				: []),
 		],
 		cta: {
 			label: opts.kind === "feature" ? "Open the feature requests" : "Open the bug reports",
@@ -285,7 +293,7 @@ export async function sendBugReportEmail(opts: {
 	});
 	await sendEmail({
 		to: opts.to,
-		subject: `${opts.kind === "feature" ? "Feature request" : "Bug report"}: ${opts.title}`,
+		subject: `${opts.flags?.length ? "[flagged] " : ""}${opts.kind === "feature" ? "Feature request" : "Bug report"}: ${opts.title}`,
 		replyTo: opts.reporterEmail,
 		...body,
 	});

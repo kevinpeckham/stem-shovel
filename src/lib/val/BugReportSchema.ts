@@ -68,6 +68,12 @@ export const BugReportCreateSchema = v.object({
 
 export const BugReportStatusSchema = v.object({ id: NanoIdSchema, status: BugStatusSchema });
 
+/** Admin: show a feature request on the public page, or take it back off. */
+export const BugReportApprovalSchema = v.object({
+	id: NanoIdSchema,
+	approved: v.picklist(["true", "false"]),
+});
+
 /** A signed-in user's thumbs on a feature request; "none" withdraws it. */
 export const REPORT_VOTES = ["up", "down", "none"] as const;
 export const ReportVoteSchema = v.picklist(REPORT_VOTES);

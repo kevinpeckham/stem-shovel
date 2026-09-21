@@ -30,6 +30,10 @@ export const bugReport = table(
 		/** The admin's written response, shown to signed-in users on /feature-requests and emailed to the requester. */
 		response: t.text("response").notNull().default(""),
 		respondedAt: t.integer("responded_at", { mode: "timestamp_ms" }),
+		/** A feature request shows on the public page once a system admin approves it (migration 0054); null until then. */
+		approvedAt: t.integer("approved_at", { mode: "timestamp_ms" }),
+		/** Words the profanity check found in the title or body, comma-separated, for the admin's attention; empty when clean. */
+		flags: t.text("flags").notNull().default(""),
 		...timestamps,
 	},
 	(table) => [

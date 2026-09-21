@@ -1,5 +1,6 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
+import { flagProfanity } from "$lib/utils/profanity";
 import type { ArtistKind } from "$lib/val/ArtistKindSchema";
 import type { ImageKind } from "$lib/val/ImageSchema";
 import type { ProjectType } from "$lib/val/ProjectTypeSchema";
@@ -1521,11 +1522,22 @@ export async function createBugReport(
 		contactEmail: string;
 	},
 ) {
+	const flags = flagProfanity(`${input.title}\n${input.body}`);
 	const [row] = await db
 		.insert(bugReport)
-		.values({ userId, ...input, contactEmail: input.contactEmail || null })
+		.values({ userId, ...input, contactEmail: input.contactEmail || null, flags: flags.join(",") })
 		.returning();
 	return row;
+}
+
+/** Shows a feature request on the public page (or hides it again). */
+export async function setBugReportApproval(id: string, approved: boolean) {
+	const [row] = await db
+		.update(bugReport)
+		.set({ approvedAt: approved ? new Date() : null })
+		.where(eq(bugReport.id, id))
+		.returning({ id: bugReport.id });
+	return !!row;
 }
 
 /** Newest first, open ones before closed, with who reported each and the vote score. */
@@ -1697,11 +1709,12 @@ export async function deleteBugReport(id: string) {
 }
 
 /**
- * Feature requests as signed-in users see them: no reporter, each with its
- * vote tally and the viewer's own thumbs; open ones by score (then newest),
- * then complete, then closed.
+ * Feature requests as the public page shows them: approved ones, plus the
+ * viewer's own while they wait (and all of them for an admin); no reporter,
+ * each with its vote tally and the viewer's own thumbs; open ones by score
+ * (then newest), then complete, then closed.
  */
-export async function listFeatureRequestsPublic(userId: string | null) {
+export async function listFeatureRequestsPublic(userId: string | null, everything = false) {
 	const rows = await db.query.bugReport.findMany({
 		where: eq(bugReport.kind, "feature"),
 		orderBy: [asc(bugReport.status), desc(bugReport.createdAt)],
@@ -1714,14 +1727,22 @@ export async function listFeatureRequestsPublic(userId: string | null) {
 			response: true,
 			respondedAt: true,
 			createdAt: true,
+			approvedAt: true,
+			userId: true,
 		},
 		with: { votes: { columns: { value: true, userId: true } } },
 	});
 	return rows
-		.map(({ votes, ...r }) => {
+		.filter((r) => everything || r.approvedAt || (userId && r.userId === userId))
+		.map(({ votes, userId: reporterId, approvedAt, ...r }) => {
 			const own = votes.find((v) => v.userId === userId);
 			const mine: ReportVote = own ? (own.value > 0 ? "up" : "down") : "none";
-			return { ...r, votes: tally(votes, mine) };
+			return {
+				...r,
+				approved: !!approvedAt,
+				mine: !!userId && reporterId === userId,
+				votes: tally(votes, mine),
+			};
 		})
 		.sort((a, b) =>
 			a.status !== b.status

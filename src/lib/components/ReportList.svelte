@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { deleteBug, respondToBug, setBugPriority, setBugStatus } from "$lib/remote/bugs.remote";
+	import {
+		approveBug,
+		deleteBug,
+		respondToBug,
+		setBugPriority,
+		setBugStatus,
+	} from "$lib/remote/bugs.remote";
 	import { REPORT_PRIORITIES } from "$lib/val/BugReportSchema";
 	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -23,6 +29,10 @@
 			contactEmail: string | null;
 			/** Thumbs up minus thumbs down from signed-in users. */
 			score: number;
+			/** Shown on the public page since; null while it waits for an admin. */
+			approvedAt: Date | null;
+			/** Words the profanity check found, comma-separated; empty when clean. */
+			flags: string;
 			createdAt: Date;
 			reporter: { name: string } | null;
 		}[];
@@ -47,6 +57,7 @@
 			{@const priority = setBugPriority.for(b.id)}
 			{@const respond = respondToBug.for(b.id)}
 			{@const remove = deleteBug.for(b.id)}
+			{@const approve = approveBug.for(b.id)}
 			<li class="px-5 py-3 {b.status === 'closed' ? 'opacity-50' : ''}">
 				<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
 					<span class="font-600">
@@ -71,6 +82,20 @@
 					</span>
 				</div>
 				<p class="mt-1 whitespace-pre-wrap text-sm">{b.body}</p>
+				{#if b.flags || (kind === "feature" && !b.approvedAt)}
+					<p class="mt-1 flex flex-wrap gap-2 text-11px uppercase tracking-wider">
+						{#if kind === "feature" && !b.approvedAt}
+							<span class="rounded border border-accent/60 px-1.5 py-0.5 text-accent"
+								>awaiting approval</span
+							>
+						{/if}
+						{#if b.flags}
+							<span class="rounded border border-red-400/60 px-1.5 py-0.5 text-red-400"
+								>flagged: {b.flags.split(",").join(", ")}</span
+							>
+						{/if}
+					</p>
+				{/if}
 				{#if b.contactEmail}
 					<p class="mt-1 text-13px text-dim">
 						Happy to be emailed at <a class="link-dim" href="mailto:{b.contactEmail}"
@@ -119,6 +144,26 @@
 									{/each}
 								</select>
 							</label>
+						</form>
+						<form
+							{...approve.enhance(async ({ submit }) => {
+								await submit();
+								if (approve.result)
+									notify(
+										approve.result.approved
+											? "Shown on the public page"
+											: "Hidden from the public page",
+									);
+							})}
+						>
+							<input {...approve.fields.id.as("hidden", b.id)} />
+							<input {...approve.fields.approved.as("hidden", b.approvedAt ? "false" : "true")} />
+							<button
+								class="button button-sm {b.approvedAt ? '' : 'button-accent'}"
+								disabled={!!approve.pending}
+							>
+								{b.approvedAt ? "Hide from public" : "Approve"}
+							</button>
 						</form>
 						{#if b.status !== "complete"}
 							<form

@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The feature-requests page is public, read-only.** Anyone can read approved requests and their votes; voting and requesting still need a sign-in, and the page stays out of search engines. A new request shows once a system admin approves it (`approved_at`, migrations 0054 and 0055, the second approving the requests that already existed; Approve / Hide from public on the admin list), and a profanity check at creation flags words on the admin list and in the notification email (`src/lib/utils/profanity.ts`).
 - **The tuner has a chromatic mode** for any instrument or tuning: it names whatever it hears, with no string row.
 
 ## [0.27.0] - 2026-09-21
