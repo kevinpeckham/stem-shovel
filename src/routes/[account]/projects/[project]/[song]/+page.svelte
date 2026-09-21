@@ -1233,7 +1233,7 @@
 				}
 			}}
 			bind:this={settingsPanel}
-			class="[&:popover-open]:flex m-0 h-dvh max-h-none w-screen max-w-none flex-col overflow-y-auto bg-oxford p-4 text-neutral-100 sm:m-auto sm:h-[min(46rem,calc(100dvh-2rem))] sm:w-[min(58rem,calc(100vw-2rem))] sm:rounded-md sm:border sm:border-white/15 sm:p-6 sm:shadow-2xl sm:shadow-black/60 [&::backdrop]:bg-black/60"
+			class="[&:popover-open]:flex m-0 h-dvh max-h-none w-screen max-w-none flex-col overflow-y-auto overflow-x-hidden bg-oxford p-4 text-neutral-100 sm:m-auto sm:h-[min(46rem,calc(100dvh-2rem))] sm:w-[min(58rem,calc(100vw-2rem))] sm:rounded-md sm:border sm:border-white/15 sm:p-6 sm:shadow-2xl sm:shadow-black/60 [&::backdrop]:bg-black/60"
 		>
 			<div class="mb-4 flex shrink-0 items-center justify-between gap-4">
 				<h2 class="heading-2 mb-0">Song settings</h2>

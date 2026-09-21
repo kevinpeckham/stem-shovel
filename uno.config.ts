@@ -268,7 +268,7 @@ export default defineConfig({
 		["tile", "border border-white/10 rounded p-6"],
 		[
 			"field",
-			"block w-full rounded border border-white/15 bg-black/20 px-3 py-2 text-neutral-100 placeholder:text-slate-400 focus:(border-accent outline-none)",
+			"block w-full min-w-0 rounded border border-white/15 bg-black/20 px-3 py-2 text-neutral-100 placeholder:text-slate-400 focus:(border-accent outline-none)",
 		],
 		["tab", "px-3 py-1 text-xs"],
 		["tab-active", "tab bg-accent text-oxford"],
