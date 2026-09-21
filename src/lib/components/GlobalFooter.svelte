@@ -18,6 +18,7 @@
 	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
 		<a class="footer-link" href="/docs">Docs</a>
 		<a class="footer-link" href="/releases">Releases</a>
+		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/support">Help</a>
 
 		{#if user}

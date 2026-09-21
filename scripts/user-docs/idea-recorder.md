@@ -26,6 +26,10 @@ The recorder's ⋯ menu also downloads the loaded take: **Download source** hand
 
 From the recorder's ⋯ menu or a take's menu, **Add as demo…** puts the take on an existing song as a demo recording, and **Create new song…** makes a song in one of your projects with the take as its first demo. Either way the take is copied, so it stays with the idea too. Tick **Merge the idea's notes into the song's notes** (on by default) to append the note board to the song's notes under a heading naming the idea and take.
 
+## Tuner
+
+The guitar icon in the header opens a chromatic tuner. It listens while the popover is open: the nearest note shows large, a needle reads how many cents sharp or flat (green within five), and the string of your tuning it is lights up. Pick the tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele) and set A4 if your band tunes to 442; both are remembered on the device. Pressing Record closes the tuner so the microphone is free for the take. The same tuner is at `/tuner` for anyone, signed in or not.
+
 ## Settings and limits
 
 The gear in the header opens **Recorder settings**, remembered on the device:

@@ -5,6 +5,7 @@
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
+	import Tuner from "$lib/components/Tuner.svelte";
 	import {
 		createIdea,
 		deleteIdeaNow,
@@ -53,6 +54,8 @@
 	let phase = $state("idle");
 	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
 	let discardShort = $state(false);
+	/** The tuner in its popover; a take starting closes it, which frees the microphone. */
+	let tuner = $state<Tuner | null>(null);
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
 	/** The microphones the browser lists once permission is granted. */
@@ -383,6 +386,15 @@
 			<button
 				class="button button-sm shrink-0"
 				type="button"
+				popovertarget="tuner"
+				title="Tuner"
+				aria-label="Tuner"
+			>
+				<span class="i-ph-guitar" aria-hidden="true"></span>
+			</button>
+			<button
+				class="button button-sm shrink-0"
+				type="button"
 				popovertarget="recorder-settings"
 				title="Recorder settings"
 				aria-label="Recorder settings"
@@ -428,7 +440,10 @@
 					const row = idea?.takes.find((x) => x.id === t.id);
 					if (idea && row) show(idea, row);
 				}}
-				onstart={() => (takeId = null)}
+				onstart={() => {
+					takeId = null;
+					document.getElementById("tuner")?.hidePopover();
+				}}
 				onqueued={(t) => {
 					takeId = t.localId;
 					queue.enqueue({
@@ -723,6 +738,33 @@
 				/>
 			{/key}
 		{/if}
+	</div>
+
+	<!-- The tuner: listens while open, quiet again when closed or when a take starts. -->
+	<div
+		id="tuner"
+		popover="auto"
+		onbeforetoggle={(e) => {
+			if (e.newState === "open") void tuner?.start();
+			else tuner?.stop();
+		}}
+		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(30rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">Tuner</h2>
+			<div class="flex items-center gap-3">
+				<a class="link-dim text-13px" href="/tuner">Full page</a>
+				<button
+					class="button button-xs"
+					type="button"
+					popovertarget="tuner"
+					popovertargetaction="hide"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+		<Tuner bind:this={tuner} />
 	</div>
 
 	<!-- Recorder settings: per-browser preferences (localStorage), the gear in the header. -->

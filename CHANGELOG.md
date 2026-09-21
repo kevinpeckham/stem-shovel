@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A tuner.** The guitar icon in the Idea Recorder's header opens a chromatic tuner: the nearest note, a needle in cents, the string of the chosen tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele) and a settable A4, remembered per device. Pressing Record closes it. The same tuner is public at `/tuner` (`Tuner.svelte`, `src/lib/audio/pitch.ts`).
+
 ### Fixed
 
 - **A deploy no longer leaves open tabs unstyled.** The client polls for a new build once a minute and, after one, the next navigation is a full page load, so it never fetches the previous build's retired stylesheet or chunks (which showed as an empty-looking dark page).

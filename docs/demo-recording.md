@@ -106,6 +106,13 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   flag cleared so a retry cuts nothing twice. Less than 0.1 s to gain, or
   a take that is silent throughout, is left as recorded
   (`src/lib/constants/trimSilence.ts`).
+- **Tuner** (`Tuner.svelte`, a popover from the header and the public
+  `/tuner` page): `src/lib/audio/pitch.ts` reads the pitch of a 4096-sample
+  window twenty times a second with McLeod's normalised square difference
+  (tested on synthesized strings within a cent), `constants/tunings.ts`
+  lists the tunings, `utils/tunerPreferences.ts` remembers the tuning and
+  A4. It opens the microphone with the recorder's constraints and audio
+  session; a take starting hides the popover, which stops it.
 - **Reusable bits** that came out of this page: `ComboBox.svelte`
   (replicator's, restyled: field-like trigger, listbox, keyboard complete)
   and `InfoTip.svelte` (an info button opening a native popover placed
