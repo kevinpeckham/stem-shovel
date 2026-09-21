@@ -133,6 +133,14 @@ export default defineConfig({
 					...(production ? { "upgrade-insecure-requests": true } : {}),
 				},
 			},
+			// A deploy retires the previous build's hashed assets, so a page loaded before it
+			// would fetch a missing stylesheet or chunk on its next client-side navigation
+			// (unstyled, dark-on-dark). The client polls for a new version and the root layout
+			// turns the next navigation into a full page load (docs/environment.md).
+			version: {
+				name: process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now()),
+				pollInterval: 60_000,
+			},
 			// Vercel runs SvelteKit on Node; Bun is only used locally for install/scripts
 			adapter: adapter(),
 		}),

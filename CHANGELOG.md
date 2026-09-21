@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A deploy no longer leaves open tabs unstyled.** The client polls for a new build once a minute and, after one, the next navigation is a full page load, so it never fetches the previous build's retired stylesheet or chunks (which showed as an empty-looking dark page).
+
 ### Changed
 
 - **The Stems / Demos tabs show at every width** on the song page, not only with demos or at xl.

@@ -37,6 +37,17 @@ the `@varlock/1password-plugin` loads them from a 1Password _environment_
 
 ## Vercel
 
+**Deploys and open tabs.** Every deploy retires the previous build's hashed
+assets (a stylesheet from the build before returns 404 through the live
+domain), so a page loaded before a deploy would fetch a missing chunk or
+stylesheet on its next client-side navigation and come up unstyled
+(dark text on the dark ground looks like an empty page). `kit.version`
+in vite.config.ts names each build after its commit and polls
+`_app/version.json` every minute; the root layout's `beforeNavigate` turns
+the next navigation after a new version into a full page load. Vercel's
+Skew Protection (a Pro-plan project setting, honoured by the adapter through
+`VERCEL_SKEW_PROTECTION_ENABLED`) would keep old assets serving as well.
+
 **Domains.** Production is `www.stemshovel.com` (`PRODUCTION_URL` in
 `src/lib/auth.ts`, Better Auth's base URL and the canonical in the front
 page, sitemap and robots). The apex `stemshovel.com`, the first domain
