@@ -1,7 +1,7 @@
 import { command, getRequestEvent } from "$app/server";
 import { requireUser } from "$lib/server/access";
 import { background } from "$lib/server/background";
-import { sendTwoFactorChangedEmail } from "$lib/server/email";
+import { sendPasskeyChangedEmail, sendTwoFactorChangedEmail } from "$lib/server/email";
 import * as v from "valibot";
 
 /**
@@ -15,6 +15,20 @@ export const notifyTwoFactorChanged = command(
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		background(() => sendTwoFactorChangedEmail(user.email, user.name, enabled));
+		return { sent: true };
+	},
+);
+
+/** The same for a passkey added or removed (the plugin did the work; this is the email). */
+export const notifyPasskeyChanged = command(
+	v.object({
+		added: v.boolean(),
+		name: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(80)), ""),
+	}),
+	async ({ added, name }) => {
+		const { locals } = getRequestEvent();
+		const user = requireUser(locals);
+		background(() => sendPasskeyChangedEmail(user.email, user.name, added, name));
 		return { sent: true };
 	},
 );

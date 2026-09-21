@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import QrCode from "$lib/components/QrCode.svelte";
-	import { notifyTwoFactorChanged } from "$lib/remote/security.remote";
+	import { notifyPasskeyChanged, notifyTwoFactorChanged } from "$lib/remote/security.remote";
+	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { invalidateAll } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
+	import { onMount } from "svelte";
 
 	/**
 	 * Two-factor (TOTP) for the signed-in user, driven through Better Auth's
@@ -92,6 +94,58 @@
 			notify("New backup codes made; the old ones no longer work");
 		});
 	}
+	// ---- passkeys: the plugin registers and removes; the page only lists and mails.
+	let passkeyName = $state("");
+	let passkeyBusy = $state(false);
+	let passkeyError = $state("");
+	let addingPasskey = $state(false);
+	let passkeysSupported = $state(true);
+	onMount(() => {
+		passkeysSupported = "PublicKeyCredential" in window;
+	});
+	async function addPasskey() {
+		passkeyError = "";
+		passkeyBusy = true;
+		try {
+			const name = passkeyName.trim();
+			const result = await authClient.passkey.addPasskey({ name: name || undefined });
+			if (result?.error) {
+				passkeyError = result.error.message ?? "The passkey could not be added";
+				return;
+			}
+			addingPasskey = false;
+			passkeyName = "";
+			await invalidateAll();
+			notify("Passkey added");
+			void notifyPasskeyChanged({ added: true, name }).catch(() => {});
+		} catch (e) {
+			// The browser's own cancel (NotAllowedError) is not an error worth showing.
+			if ((e as { name?: string }).name !== "NotAllowedError") passkeyError = errorMessage(e);
+		} finally {
+			passkeyBusy = false;
+		}
+	}
+	async function removePasskey(id: string, name: string | null) {
+		if (!confirm(`Remove ${name ? `"${name}"` : "this passkey"}? It will no longer sign you in.`))
+			return;
+		passkeyError = "";
+		passkeyBusy = true;
+		try {
+			const result = await authClient.passkey.deletePasskey({ id });
+			if (result.error) {
+				passkeyError = result.error.message ?? "The passkey could not be removed";
+				return;
+			}
+			await invalidateAll();
+			notify("Passkey removed");
+			void notifyPasskeyChanged({ added: false, name: name ?? "" }).catch(() => {});
+		} catch (e) {
+			passkeyError = errorMessage(e);
+		} finally {
+			passkeyBusy = false;
+		}
+	}
+
 	async function copyCodes() {
 		try {
 			await navigator.clipboard.writeText(backupCodes.join("\n"));
@@ -235,6 +289,94 @@
 					<button class="button button-sm" type="button" onclick={copyCodes}>Copy codes</button>
 					<button class="text-sm link-dim" type="button" onclick={() => reset()}>Done</button>
 				</div>
+			</div>
+		{/if}
+	</section>
+
+	<section class="max-w-article">
+		<h2 class="heading-2">Passkeys</h2>
+		<p class="mt-1 text-sm opacity-90">
+			A passkey signs you in with your fingerprint, face or device PIN, with no password and no code
+			to type. It lives on your device or in your password manager and is never sent to us. Add one
+			for each device you sign in from.
+		</p>
+
+		{#if passkeyError}<p class="mt-3 text-sm text-red-400" role="alert">{passkeyError}</p>{/if}
+
+		{#if data.passkeys.length > 0}
+			<ul class="mt-4 grid gap-2" aria-label="Your passkeys">
+				{#each data.passkeys as p (p.id)}
+					<li
+						class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded border border-white/15 bg-black/20 px-4 py-2"
+					>
+						<div class="min-w-0">
+							<div class="truncate font-500">
+								<span class="i-ph-key mr-1 inline-block align-[-2px] text-accent" aria-hidden="true"
+								></span>{p.name || "Passkey"}
+							</div>
+							<div class="text-13px text-dim">
+								{#if p.createdAt}Added {formatDate(p.createdAt)} ·
+								{/if}{p.backedUp ? "synced across your devices" : "on one device only"}
+							</div>
+						</div>
+						<button
+							class="text-sm text-red-400 hover:underline"
+							type="button"
+							disabled={passkeyBusy}
+							onclick={() => removePasskey(p.id, p.name)}
+						>
+							Remove
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+
+		{#if !passkeysSupported}
+			<p class="mt-4 text-sm text-dim">This browser cannot make passkeys.</p>
+		{:else if addingPasskey}
+			<form
+				class="mt-4 grid max-w-sm gap-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void addPasskey();
+				}}
+			>
+				<label class="block">
+					<span class="text-15px text-dim">A name for it (the device or manager it lives in)</span>
+					<input
+						class="mt-1 field"
+						type="text"
+						autocomplete="off"
+						placeholder="My phone"
+						maxlength="80"
+						bind:value={passkeyName}
+						disabled={passkeyBusy}
+					/>
+				</label>
+				<div class="flex items-center gap-4">
+					<button class="button-accent" disabled={passkeyBusy}>
+						{passkeyBusy ? "Waiting for your device…" : "Create passkey"}
+					</button>
+					<button
+						class="text-sm link-dim"
+						type="button"
+						onclick={() => {
+							addingPasskey = false;
+							passkeyError = "";
+						}}>Cancel</button
+					>
+				</div>
+			</form>
+		{:else}
+			<div class="mt-4">
+				<button
+					class={data.passkeys.length ? "button button-sm" : "button-accent"}
+					type="button"
+					onclick={() => (addingPasskey = true)}
+				>
+					Add a passkey
+				</button>
 			</div>
 		{/if}
 	</section>

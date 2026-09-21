@@ -32,7 +32,7 @@ erDiagram
   graph demands (song → credits, doc versions, comments, links, demos, stems;
   project → songs, links; idea → takes; artist → people, credits; account →
   all of it; user → memberships, sessions, sign-in records, two-factor,
-  votes, comments, and the author cleared elsewhere), and
+  passkeys, votes, comments, and the author cleared elsewhere), and
   `scripts/sweep-orphans.ts` finds and removes what older deletes left.
 
 - **account** — the tenant: a studio, band, or client workspace. Everything

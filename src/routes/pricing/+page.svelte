@@ -17,7 +17,7 @@
 		{ label: "Support", free: "Basic", pro: "Priority" },
 	] as const;
 	const INCLUDED = [
-		"Two-factor authentication",
+		"Two-factor authentication and passkeys",
 		"Public projects",
 		"Private projects",
 		"Stem player",

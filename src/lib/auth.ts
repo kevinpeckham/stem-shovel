@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twoFactor } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { sveltekitCookies } from "better-auth/svelte-kit";
 import { ENV } from "varlock/env";
 
@@ -23,7 +24,9 @@ import { ENV } from "varlock/env";
  * Better Auth, following replicator's setup: email + password with address
  * verification and password reset over Resend (src/lib/server/email.ts), and
  * optional TOTP two-factor (the `twoFactor` plugin: /settings/security to set
- * up, /verify-2fa at sign-in; docs/auth.md).
+ * up, /verify-2fa at sign-in; docs/auth.md) and passkeys (the `passkey`
+ * plugin: registered on /settings/security, a one-tap sign-in that stands in
+ * for password and code).
  *
  * baseURL is Better Auth's identity for path matching: its SvelteKit handler
  * ignores a request whose origin differs from it (every /api/auth/* answered
@@ -39,6 +42,18 @@ const PRODUCTION_URL = ENV.VERCEL_PROJECT_PRODUCTION_URL
 	? `https://${ENV.VERCEL_PROJECT_PRODUCTION_URL}`
 	: "https://www.stemshovel.com";
 const baseURL = dev || ENV.VERCEL_ENV === "preview" ? undefined : PRODUCTION_URL;
+
+/**
+ * The passkey relying-party id: the domain a credential is bound to. The
+ * registrable domain in production (so www and the bare domain share the
+ * keys), the preview's own host on staging, and the proxy name Kevin
+ * previews on in dev (a passkey made on localhost would not match it).
+ */
+const PASSKEY_RP_ID = dev
+	? "stem-shovel.wr.lj.dev"
+	: ENV.VERCEL_ENV === "preview"
+		? "staging.stemshovel.dev"
+		: new URL(PRODUCTION_URL).hostname.replace(/^www\./, "");
 
 const trustedOrigins = [
 	PRODUCTION_URL,
@@ -167,6 +182,13 @@ export const auth = betterAuth({
 			backupCodeOptions: { amount: 10, length: 8 },
 			// "Trust this device" skips the code for 30 days (a signed cookie).
 			trustDeviceMaxAge: 30 * 24 * 60 * 60,
+		}),
+		// The origin is checked against the request (trustedOrigins gates it); rpID is the domain.
+		passkey({
+			rpID: PASSKEY_RP_ID,
+			rpName: "Stem Shovel",
+			// A discoverable credential with user verification, so the sign-in page can offer "Sign in with a passkey" with no email typed.
+			authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
 		}),
 		sveltekitCookies(getRequestEvent), // keep last
 	],

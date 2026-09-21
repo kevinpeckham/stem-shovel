@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Passkeys.** Security in the account menu adds a passkey (a name, then the device's prompt) and lists or removes them; the sign-in page has "Sign in with a passkey" and offers saved passkeys in the email field. A passkey signs in with no password and no two-factor code. Emails confirm an added or removed passkey. `@better-auth/passkey`, the `passkey` table (migration 0057), `rpID` per stage (docs/auth.md).
 - **A built-with page** at `/built-with` (footer link, indexable, in the sitemap): the technologies the app runs on, grouped, each with a line on what it does here.
 
 ### Changed

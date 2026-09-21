@@ -83,7 +83,8 @@ from a 31-symbol alphabet.
 
 `securityHeaders.ts` + `vercel.json`: nosniff, no framing, `Referrer-Policy`,
 `Cross-Origin-Opener-Policy: same-origin`, HSTS, a `Permissions-Policy` that
-switches off device APIs, and SvelteKit's CSP with a per-request script nonce
+switches off device APIs (passkeys keep `publickey-credentials-get=(self)`; the
+default for `-create` is already self), and SvelteKit's CSP with a per-request script nonce
 (docs/environment.md). Search engines get the front page, the user docs
 (`/docs`, each page, not the editors), the blog (`/blog`, each published
 post; a draft carries noindex and is a 404 to everyone but a system admin),
@@ -151,7 +152,7 @@ Owner-only and admin-only actions check the role themselves in
 `rateLimited(key, max, window)` counts in Upstash Redis when a stage has it
 (`KV_REST_API_URL`, `KV_REST_API_TOKEN`; docs/environment.md), a fixed
 window per key shared by every function instance, so a limit means what it
-says; Better Auth's own limiter (sign-in, password reset, two-factor) uses
+says; Better Auth's own limiter (sign-in, password reset, two-factor, passkeys) uses
 the same Redis through `authRateLimitStorage`. Without Redis, or if it
 fails, each function instance counts in its own memory, which bounds abuse
 rather than counting exactly (a warning is logged once).

@@ -185,6 +185,34 @@ export async function sendTwoFactorChangedEmail(to: string, name: string, enable
 	});
 }
 
+/** A passkey was added to or removed from the user's sign-in (the Security page). */
+export async function sendPasskeyChangedEmail(
+	to: string,
+	name: string,
+	added: boolean,
+	passkeyName: string,
+) {
+	const which = passkeyName ? `the passkey "${passkeyName}"` : "a passkey";
+	const body = renderEmail({
+		greeting: `Hi ${name || "there"},`,
+		lines: added
+			? [
+					`${which[0].toUpperCase()}${which.slice(1)} was just added to your Stem Shovel sign-in. It can sign you in on its own, without your password or a two-factor code.`,
+					"If this was not you, remove it from Security in the account menu and reset your password right away.",
+				]
+			: [
+					`${which[0].toUpperCase()}${which.slice(1)} was just removed from your Stem Shovel sign-in.`,
+					"If this was not you, reset your password right away.",
+				],
+		cta: { label: "Security settings", url: "https://www.stemshovel.com/settings/security" },
+	});
+	await sendEmail({
+		to,
+		subject: added ? "A passkey was added" : "A passkey was removed",
+		...body,
+	});
+}
+
 /** A new bug report or feature request, to each system admin; replies go to the reporter. */
 export async function sendSupportRequestEmail(opts: {
 	to: string;

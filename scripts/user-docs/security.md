@@ -14,6 +14,16 @@ With two-factor on, signing in needs your password and a six-digit code from an 
 
 **Turning it off**: **Turn off** in Security, with your password. Signing in then needs your password alone. An email confirms the change; if you did not make it, reset your password straight away.
 
+## Passkeys
+
+A passkey signs you in with your fingerprint, face or device PIN instead of a password and a code. It is made by your device or your password manager (iCloud Keychain, Google Password Manager, 1Password and others), stays there, and is never sent to us; what we keep cannot be used to sign in from anywhere else.
+
+**Adding one**: open Security, choose **Add a passkey**, give it a name you will recognise (the device or manager it lives in) and follow your device's prompt. You will get an email confirming the change. Add one for each device you sign in from, or one in a password manager that syncs between them; the list shows which kind each is.
+
+**Signing in**: choose **Sign in with a passkey** on the sign-in page, or pick the passkey your browser offers in the email field. No password and no two-factor code are asked for: the device has already checked it is you.
+
+**Removing one**: **Remove** beside it in Security. An email confirms the change; if you did not make it, reset your password straight away.
+
 ## Passwords
 
 Passwords are never stored in a readable form. **Forgot password?** on the sign-in page sends a reset link to your address.

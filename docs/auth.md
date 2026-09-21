@@ -126,6 +126,21 @@ public by URL; editing needs a signed-in member.
   session. `locals.user.twoFactorEnabled` mirrors the flag; the Screenshot
   Bot has none. The plugin rate-limits `/two-factor/*` (3 per 10 s) and
   locks after repeated failures.
+- **Passkeys** (WebAuthn): `@better-auth/passkey` with the `passkey` table
+  (migration 0057; columns named as the plugin's fields, since the Drizzle
+  adapter maps by property). `rpID` is the domain a credential is bound to:
+  `stemshovel.com` in production (www and the bare domain share keys),
+  `staging.stemshovel.dev` on the preview, the proxy name
+  `stem-shovel.wr.lj.dev` in dev; the origin is checked against the request
+  (gated by `trustedOrigins`). `residentKey: "preferred"` asks for a
+  discoverable credential so `/sign-in` can offer "Sign in with a passkey"
+  and browser autofill (`autocomplete="username webauthn"`, conditional
+  mediation on mount) with no email typed. A passkey sign-in makes a full
+  session with no two-factor step (the device verified the person). The
+  Security page lists the user's passkeys (`listPasskeys` in data.ts),
+  adds one through `authClient.passkey.addPasskey({ name })` and removes
+  through `deletePasskey`; `notifyPasskeyChanged` sends the "added" or
+  "removed" email. Deleting a user removes their passkeys (cascade.ts).
 - **The beta waitlist** (`waitlist_signup`, `waitlist.remote.ts`,
   `WaitlistForm.svelte` on the front page and `/waitlist`): an address joins
   with an optional name and a separate, off-by-default consent to

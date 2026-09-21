@@ -31,5 +31,5 @@ export const SECURITY_HEADERS: Record<string, string> = {
 	// feature, so `autoplay` is left out rather than switched off (it would
 	// block play() too).
 	"permissions-policy":
-		"accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(self), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()",
+		"accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), midi=(), payment=(), publickey-credentials-get=(self), screen-wake-lock=(self), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()",
 };

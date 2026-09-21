@@ -15,6 +15,7 @@ export * from "./demo";
 export * from "./idea";
 export * from "./invitation";
 export * from "./inviteCode";
+export * from "./passkey";
 export * from "./project";
 export * from "./recording";
 export * from "./relations";

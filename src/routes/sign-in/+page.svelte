@@ -3,12 +3,47 @@
 	import { safeNext } from "$lib/utils/safeNext";
 	import { goto } from "$app/navigation";
 	import { authClient } from "$lib/auth-client";
+	import { errorMessage } from "$lib/utils/errorMessage";
+	import { onMount } from "svelte";
 
 	let { data } = $props();
 	let email = $state("");
 	let password = $state("");
 	let error = $state("");
 	let busy = $state(false);
+	let passkeyBusy = $state(false);
+
+	/**
+	 * A passkey signs in on its own: no password, and no two-factor step
+	 * (the device already verified the person). `autoFill` lets the browser
+	 * offer saved passkeys in the email field's suggestions.
+	 */
+	async function signInWithPasskey(autoFill = false) {
+		if (typeof window === "undefined" || !("PublicKeyCredential" in window)) return;
+		if (!autoFill) {
+			error = "";
+			passkeyBusy = true;
+		}
+		const next = safeNext(data.next);
+		try {
+			const result = await authClient.signIn.passkey({ autoFill });
+			if (result?.error) {
+				if (!autoFill) error = result.error.message ?? "Passkey sign-in failed";
+				return;
+			}
+			if (result?.data) await goto(next, { invalidateAll: true });
+		} catch (e) {
+			// The browser's own cancel (NotAllowedError) is not an error worth showing.
+			if (!autoFill && (e as { name?: string }).name !== "NotAllowedError") error = errorMessage(e);
+		} finally {
+			if (!autoFill) passkeyBusy = false;
+		}
+	}
+
+	onMount(() => {
+		// Conditional mediation: the browser shows saved passkeys as the email field's suggestions.
+		void signInWithPasskey(true);
+	});
 
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
@@ -50,7 +85,13 @@
 	<form class="grid max-w-sm gap-5 mt-8" onsubmit={submit}>
 		<label class="block">
 			<span class="text-15px text-dim">Email</span>
-			<input class="mt-1 field" type="email" autocomplete="email" bind:value={email} required />
+			<input
+				class="mt-1 field"
+				type="email"
+				autocomplete="username webauthn"
+				bind:value={email}
+				required
+			/>
 		</label>
 		<label class="block">
 			<span class="text-15px text-dim">Password</span>
@@ -76,6 +117,18 @@
 				href="/forgot-password">Forgot password?</a
 			>
 		</div>
+		<div class="flex items-center gap-3 text-13px text-dim" aria-hidden="true">
+			<span class="h-px grow bg-white/15"></span>or<span class="h-px grow bg-white/15"></span>
+		</div>
+		<button
+			class="button max-w-none justify-center"
+			type="button"
+			disabled={busy || passkeyBusy}
+			onclick={() => signInWithPasskey()}
+		>
+			<span class="i-ph-fingerprint text-18px" aria-hidden="true"></span>
+			{passkeyBusy ? "Waiting for your device…" : "Sign in with a passkey"}
+		</button>
 		<!-- <a
 			class="mt-48"
 			href="/support"><span class="text-14px opacity-70">Need help signing in?</span></a

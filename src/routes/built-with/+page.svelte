@@ -115,7 +115,7 @@
 				{
 					name: "Better Auth",
 					url: "https://www.better-auth.com",
-					what: "Accounts, sessions and two-factor sign-in.",
+					what: "Accounts, sessions, two-factor sign-in and passkeys.",
 				},
 				{
 					name: "Resend",

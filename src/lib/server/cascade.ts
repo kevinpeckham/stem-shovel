@@ -28,6 +28,7 @@ const {
 	idea,
 	invitation,
 	inviteCode,
+	passkey,
 	project,
 	recording,
 	session,
@@ -136,6 +137,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(authAccount).where(eq(authAccount.userId, userId));
 	await db.delete(session).where(eq(session.userId, userId));
 	await db.delete(twoFactor).where(eq(twoFactor.userId, userId));
+	await db.delete(passkey).where(eq(passkey.userId, userId));
 	await db.delete(bugReportVote).where(eq(bugReportVote.userId, userId));
 	await db.update(aiRequest).set({ userId: null }).where(eq(aiRequest.userId, userId));
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));

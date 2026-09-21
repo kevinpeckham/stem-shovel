@@ -25,6 +25,7 @@ import { userDoc } from "./userDoc";
 import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
 import { twoFactor } from "./twoFactor";
+import { passkey } from "./passkey";
 import { user } from "./user";
 import { waitlistSignup } from "./waitlistSignup";
 
@@ -156,6 +157,11 @@ export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	authAccounts: many(authAccount),
 	twoFactors: many(twoFactor),
+	passkeys: many(passkey),
+}));
+
+export const passkeyRelations = relations(passkey, ({ one }) => ({
+	user: one(user, { fields: [passkey.userId], references: [user.id] }),
 }));
 
 export const twoFactorRelations = relations(twoFactor, ({ one }) => ({

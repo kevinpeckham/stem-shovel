@@ -21,7 +21,6 @@
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/pricing">Pricing</a>
 		<a class="footer-link" href="/blog">Blog</a>
-		<a class="footer-link" href="/built-with">Built With</a>
 		<a class="footer-link" href="/support">Help</a>
 		<a class="footer-link" href="/feature-requests">Feature Requests</a>
 
@@ -45,6 +44,10 @@
 		<a
 			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-accent"
 			href="/docs/copyright-policy">Copyright</a
+		>
+		<a
+			class="underline underline-offset-4 opacity-70 hover-opacity-100 hover-text-accent"
+			href="/built-with">Built With</a
 		>
 	</div>
 

@@ -1773,6 +1773,17 @@ export async function systemAdminEmails() {
 	return rows.map((r) => r.email);
 }
 
+// ---- passkeys ---------------------------------------------------------------
+
+/** The user's registered passkeys for the Security page; the plugin itself adds and removes them. */
+export function listPasskeys(userId: string) {
+	return db.query.passkey.findMany({
+		where: eq(schema.passkey.userId, userId),
+		orderBy: [desc(schema.passkey.createdAt)],
+		columns: { id: true, name: true, deviceType: true, backedUp: true, createdAt: true },
+	});
+}
+
 // ---- user docs --------------------------------------------------------------
 
 /** The documentation pages in reading order, without the markdown or the release notes (they have their own page, /releases). */
