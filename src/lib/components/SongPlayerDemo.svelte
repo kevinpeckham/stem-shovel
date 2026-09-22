@@ -86,8 +86,9 @@
 			<a class="hover:text-accent" {href}>{song.title}</a>
 			<span class="ml-2 text-13px font-400 opacity-70">v{song.version} · {song.project.name}</span>
 		</h3>
-		<a class="button button-accent button-xs" {href}
-			><span class=""> Go to song page</span> <span class="i-ph-arrow-right"></span></a
+		<a
+			class="text-14px underline underline-offset-4 opacity-90 flex items-center gap-2 hover-text-accent hover-opacity-100"
+			{href}><span class="">Song Page</span> <span class="inline-flex i-ph-arrow-right"></span></a
 		>
 	</div>
 	{#if view.manifest.stems.length > 0}

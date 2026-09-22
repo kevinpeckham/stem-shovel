@@ -135,8 +135,12 @@ export default defineConfig({
 			"mt-8 mb-3 text-blue-300 font-mono uppercase leading-tight text-0.9em",
 		],
 		[
+			"marketing-demo-cta",
+			"flex items-center gap-2 text-blue-300 bg-blue-300/10 max-w-fit rounded-md mt-3 mb-5 px-3 py-1 text-14px relative after-content-['t'] after-i-ph-arrow-down after-inline-flex after-w-4 after-h-4",
+		],
+		[
 			"marketing-demo-container",
-			"bg-blue-300/5 -mx-4 px-4 pt-4 pb-5 border-y border-blue-300/10 shadow sm:mx-0 sm:px-5 sm:rounded-lg sm:border max-w-1600px",
+			"bg-blue-100/2 -mx-4 px-4 pt-4 pb-5 border-y border-blue-300/5 shadow sm:mx-0 sm:px-5 sm:rounded-lg sm:border max-w-1600px",
 		],
 		[
 			"marketing-headline",

@@ -5,6 +5,7 @@
 	import IdeaRecorderDemo from "$lib/components/IdeaRecorderDemo.svelte";
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "$lib/constants/demoComments";
+	import Tuner from "$lib/components/Tuner.svelte";
 
 	let { data } = $props();
 	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
@@ -122,8 +123,8 @@
 					<h4 class="marketing-topic-heading">Share Stems, Leave Feedback</h4>
 					<p class="marketing-paragraph text-balance">
 						Mute, solo and download stems or leave comments on the timeline for your collaborators.
-						Try it out in the working demo below.
 					</p>
+					<div class="marketing-demo-cta">Try the working demo below.</div>
 					<!-- Full bleed on a phone (the page padding is px-4 there), a card from sm up. -->
 					<div class="marketing-demo-container mt-8">
 						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
@@ -136,10 +137,11 @@
 					<div class="marketing-topic-heading">High Fidelity Idea Recorder</div>
 					<p class="marketing-paragraph text-balance">
 						Record your song ideas, demos and save them along with your notes. Supports multiple
-						takes. Try the working demo below.
+						takes.
 					</p>
 					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
-					<div class="marketing-demo-container mt-8">
+					<div class="marketing-demo-cta">Try the working demo below.</div>
+					<div class=" mt-8">
 						<IdeaRecorderDemo
 							signedIn={!!data.user}
 							recorderHref={data.currentSlug ? `/${data.currentSlug}/ideas/recorder` : null}
@@ -157,26 +159,44 @@
 		</section>
 
 		<!-- Documents Demo  -->
-		<section class="mt-12">
-			<h3 class="marketing-section-heading">Song Notes Demo</h3>
-			<div class="marketing-topic-heading">Charts, Lyrics, Notes and Comments</div>
-			<p class="marketing-paragraph text-balance">
-				Easily edit and share lyrics, notes, charts and more in a wiki-style editor. Keep everything
-				organized and easy to access for all members of the project.
-			</p>
-			<div class="marketing-demo-container mt-8">
-				{#if data.demo}
-					<SongDocsDemo
-						view={data.demo}
-						href={data.demo.href}
-						comments={demoComments}
-						onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
-					/>
-				{:else}
-					<p class="text-dim">No demo song is chosen yet.</p>
-				{/if}
-			</div>
-		</section>
+		<div class="grid grid-cols-1 gap-y-12 lg-grid-cols-2 gap-x-12">
+			<section class="mt-12">
+				<h3 class="marketing-section-heading">Song Notes Demo</h3>
+				<div class="marketing-topic-heading">Charts, Lyrics, Notes and Comments</div>
+				<p class="marketing-paragraph text-balance">
+					Easily edit and share lyrics, notes, charts and more in a wiki-style editor. Keep
+					everything organized and easy to access for all members of the project.
+				</p>
+				<div class="marketing-demo-cta">Try the working demo below.</div>
+				<div class="mt-8">
+					{#if data.demo}
+						<SongDocsDemo
+							view={data.demo}
+							href={data.demo.href}
+							comments={demoComments}
+							onremove={(id) => (demoComments = demoComments.filter((c) => c.id !== id))}
+						/>
+					{:else}
+						<p class="text-dim">No demo song is chosen yet.</p>
+					{/if}
+				</div>
+			</section>
+
+			<section class="mt-12">
+				<h3 class="marketing-section-heading">Guitar Tuner Demo</h3>
+				<div class="marketing-topic-heading">Songwriting Tools & Utilities</div>
+				<p class="marketing-paragraph text-balance">
+					The tools you need to be creative and productive as a songwriter all in one place. Like
+					this guitar tuner, which is also available as a pop-over from the idea-recorder, so you
+					can tune your guitar between takes or in the middle of a writing session.
+				</p>
+				<div class="marketing-demo-cta">Try the working demo below.</div>
+				<!-- Not startOnHover: on the home page the microphone opens only from the On / Off button. -->
+				<div class="mt-8">
+					<Tuner />
+				</div>
+			</section>
+		</div>
 
 		<!-- faqs -->
 		<section class="mt-12">

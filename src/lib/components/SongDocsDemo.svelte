@@ -84,7 +84,7 @@
 	}}
 />
 
-<div class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-600px">
+<div class="grid gap-2 grid-cols-1 place-content-[start_stretch] max-w-full relative min-h-540px">
 	{#if panel === "comments"}
 		<div
 			class="h-full min-h-64 max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 pb-8"

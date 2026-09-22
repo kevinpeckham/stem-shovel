@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-09-22
+
+### Added
+
+- **The tuner on the front page**, as a fourth demo beside the song notes (two columns from lg); it listens only once switched on there.
+
+### Changed
+
+- **Front page demos**: each has a "Try the working demo below" call-out (`marketing-demo-cta`), lighter demo containers, the player's link reads "Song Page", the recorder's note says demo recordings are discarded on reload, and the notes demo is a little shorter.
+
 ## [0.31.1] - 2026-09-22
 
 ### Fixed
