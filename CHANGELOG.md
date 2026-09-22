@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-09-22
+
+### Changed
+
+- **The tuner looks like a device.** A dark panel with a power light and an input level, the note and needle in their own window, the strings as lit labels, the tuning in a combobox, A4 behind a ⋯ menu and an On / Off button; on `/tuner` it starts listening when the pointer enters the page and stays off once turned off (`startOnHover`; an instance in a closed popover, the recorder's, waits to be opened). The tuner page's intro sits in an info tip on a phone.
+- **ComboBox is a native popover** placed by CSS anchor positioning with a JS fallback (`utils/anchorFallback.ts`), keyboard complete with `aria-activedescendant`; new **ContextMenu** component (a ⋯ button opening a popover menu of actions, links or snippets). docs/demo-recording.md.
+
 ## [0.30.0] - 2026-09-21
 
 ### Added

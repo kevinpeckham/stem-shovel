@@ -113,10 +113,19 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   lists the tunings, `utils/tunerPreferences.ts` remembers the tuning and
   A4. It opens the microphone with the recorder's constraints and audio
   session; a take starting hides the popover, which stops it.
-- **Reusable bits** that came out of this page: `ComboBox.svelte`
-  (replicator's, restyled: field-like trigger, listbox, keyboard complete)
-  and `InfoTip.svelte` (an info button opening a native popover placed
-  under it; tap or click, not hover, so it works on a phone).
+- **Reusable bits** that came out of this page: `ComboBox.svelte` (a
+  trigger with `popovertarget` opening a listbox that is a native popover,
+  placed under the trigger by CSS anchor positioning through the invoker's
+  implicit anchor, `position-area`; keyboard complete with
+  `aria-activedescendant`; `bind:openState` lets a parent open or close
+  it), `ContextMenu.svelte` (a ⋯ button opening a popover menu of actions,
+  links or snippets the same way, `position` picks the corner) and
+  `InfoTip.svelte` (an info button opening a native popover placed under
+  it; tap or click, not hover, so it works on a phone). Browsers without
+  anchor positioning get `utils/anchorFallback.ts`: `placePopover` sets
+  fixed coordinates through element styles, which a strict CSP allows and follows scroll and
+  resize until the popover closes. Their component tests give jsdom a small
+  popover stand-in (`ComboBox.svelte.test.ts`).
 - **Into a song**: "Add as demo…" and "Create new song…" in the recorder's
   ⋯ menu and in each take's menu open one popover (`RecordingActions.svelte`
   in add or new mode); "Merge the idea's notes into the song's notes"

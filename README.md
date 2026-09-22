@@ -117,7 +117,7 @@ check and the tests without any secret.
   on a song (docs/audio-engine.md), with a `comment` table.
 - `DemoRecorder.svelte`, `src/lib/audio/takeQueue.svelte.ts`,
   `IdeaNotesPanel.svelte`, `RecordingActions.svelte`, `ComboBox.svelte`,
-  `InfoTip.svelte`, `src/lib/remote/ideas.remote.ts` and
+  `ContextMenu.svelte`, `InfoTip.svelte`, `src/lib/remote/ideas.remote.ts` and
   `recordings.remote.ts` — the Idea Recorder (docs/demo-recording.md):
   MediaRecorder capture with a level meter and wake lock, the persisted
   upload queue (IndexedDB) that makes the next take instant, the idea's
