@@ -52,4 +52,18 @@ describe("parseChangelog", () => {
 		expect(next.date).toBeNull();
 		expect(next.body).toContain("Soon.");
 	});
+
+	test("headings the in-app editor saved with escaped brackets", () => {
+		const escaped = String.raw`## \[Unreleased\]
+
+## \[0.31.0\] - 2026-09-22
+
+### Changed
+
+- **The tuner has a new look.**
+`;
+		const out = parseChangelog(escaped);
+		expect(out.map((r) => [r.version, r.date])).toEqual([["0.31.0", "2026-09-22"]]);
+		expect(out[0].body).toContain("The tuner has a new look.");
+	});
 });

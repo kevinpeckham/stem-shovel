@@ -12,15 +12,17 @@ export interface Release {
  * `### Added` / `### Changed` / `### Fixed` / `### Technical`) as the
  * releases page shows it: every version, newest first, any Technical
  * subsection left out, and the Unreleased section only when it has
- * something in it. The /releases page feeds it the "releases" user doc.
+ * something in it. The /releases page feeds it the "releases" user doc,
+ * which the in-app editor saves with the brackets escaped (`## \[0.31.0\]`),
+ * so both spellings of a heading count.
  */
 export function parseChangelog(markdown: string): Release[] {
 	const out: Release[] = [];
-	const parts = markdown.split(/^## \[/m).slice(1);
+	const parts = markdown.split(/^## \\?\[/m).slice(1);
 	for (const part of parts) {
 		const nl = part.indexOf("\n");
 		const heading = part.slice(0, nl);
-		const m = heading.match(/^([^\]]+)\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?/);
+		const m = heading.match(/^([^\]\\]+)\\?\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?/);
 		if (!m) continue;
 		const version = m[1].trim();
 		const date = m[2] ?? null;

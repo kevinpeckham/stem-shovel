@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-09-22
+
+### Fixed
+
+- **The Releases page went blank after an edit in the app.** The editor saves each version heading with its brackets escaped (`## \[0.31.0\]`), which the page's parser did not recognise, so every in-app edit emptied the page until the next script refresh restored it. The parser accepts both spellings (`parseChangelog`).
+
 ## [0.31.0] - 2026-09-22
 
 ### Changed
