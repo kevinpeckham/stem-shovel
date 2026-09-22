@@ -9,6 +9,14 @@ import {
 } from "unocss";
 
 /**
+ * Turn a utility value into a CSS dashed-ident.
+ * anchor-name only accepts dashed idents like `--tooltip`,
+ * so we add the `--` prefix when it's missing.
+ */
+const toDashedIdent = (value: string): string =>
+  value.startsWith('--') ? value : `--${value}`
+
+/**
  * Mirrors lightningjar.com's uno.config (lightning-jar/lj-website) so the
  * app shares its look: wind4 + reset, Atkinson Hyperlegible / Bungee Shade
  *  * from bunny, the same palette and shortcuts. On top of that, the
@@ -333,4 +341,5 @@ export default defineConfig({
 		],
 	],
 	transformers: [transformerDirectives(), transformerVariantGroup()],
+	rules: [],
 });

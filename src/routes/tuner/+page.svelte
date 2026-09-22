@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Tuner from "$lib/components/Tuner.svelte";
 	import { pageTitle } from "$lib/utils/pageTitle";
+	import InfoTip from "$lib/components/InfoTip.svelte";
 </script>
 
 <svelte:head>
@@ -11,19 +12,17 @@
 	/>
 </svelte:head>
 
-<main class="page">
-	<header class="max-w-article mb-6">
-		<h1 class="heading-2">Tuner</h1>
-		<p class="opacity-90 text-balance">
-			Plug in or play near the microphone. The nearest note, how far off it is, and which string it
-			is in the tuning you pick. Nothing is recorded or sent anywhere; the sound stays in your
-			browser.
+<main class="page-x-padding main-y-padding">
+	<header class="mb-8 max-w-prose">
+		<div class="flex items-baseline gap-2 mb-5">
+			<h1 class="app-page-heading">Tuner</h1>
+			<InfoTip class="sm-hidden" text="Free chromatic tuner that works in your browser. Preset tunings for guitar, bass and ukulele." />
+		</div>
+		<p class="app-page-subheading hidden sm-block text-balance">
+			Free chromatic tuner that works in your browser. Preset tunings for guitar, bass and ukulele.
 		</p>
 	</header>
-	<div class="max-w-article surface px-5 py-5">
+	<div class="max-w-article">
 		<Tuner />
 	</div>
-	<p class="max-w-article mt-4 text-13px text-dim">
-		The same tuner sits in the Idea Recorder, a tap away from Record.
-	</p>
 </main>

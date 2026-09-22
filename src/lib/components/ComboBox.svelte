@@ -1,12 +1,11 @@
 <script lang="ts" generics="T extends string">
 	/**
-	 * Single-select combo box (replicator's ComboBox in this app's clothes): a
-	 * trigger showing the current selection that opens a listbox. Keyboard
-	 * complete (arrows / Home / End / Enter / Escape), closes on an outside
-	 * pointerdown, ARIA combobox + listbox semantics. Generic over the value
-	 * union so `bind:value` keeps the host's literal type. The trigger looks
-	 * like a `field`; pass `buttonClass` for the toolbar look.
+	 * Single-select combobox: a trigger showing the current selection that
+	 * opens a listbox popover. Keyboard support: arrows, Home, End, Enter,
+	 * Space, Escape. ARIA combobox + listbox pattern.
 	 */
+	import { placePopover } from "$lib/utils/anchorFallback";
+
 	interface ComboBoxOption {
 		value: T;
 		label: string;
@@ -15,119 +14,168 @@
 	}
 
 	interface Props {
-		options: ComboBoxOption[];
-		value: T;
-		onchange?: (value: T) => void;
 		ariaLabel: string;
-		id?: string;
+		buttonClasses?: string;
 		disabled?: boolean;
-		/** Shown on the trigger when no option matches `value`. */
+		onchange?: (value: T) => void;
+		options: ComboBoxOption[];
+		openState: "open" | "closed";
 		placeholder?: string;
-		buttonClass?: string;
-		listClass?: string;
+		popoverClasses?: string;
+		value: T;
 	}
 	let {
-		options,
-		value = $bindable(),
-		onchange,
 		ariaLabel,
-		id = "combo-box",
+		buttonClasses = "",
 		disabled = false,
+		popoverClasses = "",
+		options,
+		openState = $bindable("closed"),
+		onchange,
 		placeholder = "",
-		buttonClass = "field text-left text-sm disabled:opacity-60",
-		listClass = "",
+		value = $bindable(),
 	}: Props = $props();
 
-	let isOpen = $state(false);
-	let activeIndex = $state(-1);
-	let rootEl = $state<HTMLElement | null>(null);
+	// get component id
+	const uid = $props.id();
+	const buttonId = $derived(`combobox-${uid}-button`);
+	const popoverId = $derived(`combobox-${uid}-popover`);
+
+	// state
 	let buttonEl = $state<HTMLButtonElement | null>(null);
+	let popoverEl = $state<HTMLUListElement | null>(null);
 
+	// Index of the highlighted option (for aria-activedescendant)
+	let activeIndex = $state(-1);
+
+	// Cleanup for the JS positioning fallback while the popover is open
+	let stopFallback: (() => void) | null = null;
+
+	// derived state
 	const selected = $derived(options.find((o) => o.value === value));
+	const optionId = (i: number) => `${popoverId}-opt-${i}`;
 
-	function open() {
-		if (disabled) return;
-		isOpen = true;
-		activeIndex = Math.max(
-			0,
-			options.findIndex((o) => o.value === value),
-		);
+	// Open through the button so it becomes the popover's invoker, and therefore its implicit anchor.
+		// Calling showPopover() directly would leave the popover without an anchor.
+		function open() {
+			if (!popoverEl?.matches(":popover-open")) buttonEl?.click();
+		}
+
+	// Parent -> popover: let bind:openState open/close it too.
+	// No loop: when the popover already matches, this does nothing.
+	$effect(() => {
+		if (!popoverEl) return;
+		const isOpen = popoverEl.matches(":popover-open");
+		if (openState === "open" && !isOpen) open();
+		if (openState === "closed" && isOpen) popoverEl.hidePopover();
+	});
+
+	// Remove fallback listeners if the component unmounts while open
+		$effect(() => () => stopFallback?.());
+
+ /// Before opening: start the highlight on the current selection.
+ // Don't change openState here, because the effect would try to show the popover again mid-show.
+ function onBeforeToggle(e: ToggleEvent) {
+	if (e.newState === "open") {
+		activeIndex = Math.max(0, options.findIndex((o) => o.value === value));
 	}
-	function close() {
-		isOpen = false;
-		activeIndex = -1;
-	}
+ }
+
+ // After the change: sync state. :popover-open now matches,
+ // so the $effect below does nothing and there's no loop.
+ function onToggle(e: ToggleEvent) {
+	openState = e.newState as "open" | "closed";
+
+	if (e.newState === "open" && popoverEl && buttonEl) {
+				stopFallback = placePopover(popoverEl, buttonEl, { align: "stretch" });
+				scrollActive();
+			} else {
+				stopFallback?.();
+				stopFallback = null;
+			}
+ }
+
 	function pick(option: ComboBoxOption) {
 		value = option.value;
 		onchange?.(option.value);
-		close();
+		popoverEl?.hidePopover();
 		buttonEl?.focus();
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (!isOpen) {
-			if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				open();
-			}
-			return;
-		}
-		switch (e.key) {
-			case "ArrowDown":
-				e.preventDefault();
-				activeIndex = Math.min(activeIndex + 1, options.length - 1);
-				break;
-			case "ArrowUp":
-				e.preventDefault();
-				activeIndex = Math.max(activeIndex - 1, 0);
-				break;
-			case "Home":
-				e.preventDefault();
-				activeIndex = 0;
-				break;
-			case "End":
-				e.preventDefault();
-				activeIndex = options.length - 1;
-				break;
-			case "Enter":
-			case " ": {
-				e.preventDefault();
-				const option = options[activeIndex];
-				if (option) pick(option);
-				break;
-			}
-			case "Escape":
-				e.preventDefault();
-				close();
-				buttonEl?.focus();
-				break;
-			case "Tab":
-				close();
-				break;
-		}
+	// Scroll the highlighted option into view
+	function scrollActive() {
+		document.getElementById(optionId(activeIndex))?.scrollIntoView({ block: "nearest" });
 	}
 
-	function handleWindowPointerDown(e: PointerEvent) {
-		if (isOpen && rootEl && !rootEl.contains(e.target as Node)) close();
-	}
+	function onKeydown(e: KeyboardEvent) {
+			if (disabled || options.length === 0) return;
+			const isOpen = openState === "open";
+			const last = options.length - 1;
+
+			switch (e.key) {
+				case "ArrowDown":
+				case "ArrowUp": {
+					e.preventDefault();
+					if (!isOpen) {
+						popoverEl?.showPopover();
+						return;
+					}
+					const step = e.key === "ArrowDown" ? 1 : -1;
+					activeIndex = Math.min(last, Math.max(0, activeIndex + step));
+					scrollActive();
+					break;
+				}
+				case "Home":
+				case "End":
+					if (!isOpen) return;
+					e.preventDefault();
+					activeIndex = e.key === "Home" ? 0 : last;
+					scrollActive();
+					break;
+				case "Enter":
+				case " ":
+					// When closed, let the button's own click open it via popovertarget
+					if (!isOpen) return;
+					e.preventDefault();
+					if (activeIndex >= 0) pick(options[activeIndex]);
+					break;
+				// Escape: popover="auto" already closes on Esc
+			}
+		}
+
 </script>
 
-<svelte:window onpointerdown={handleWindowPointerDown} />
 
-<div class="relative block w-full" bind:this={rootEl}>
+<div
+	class="relative block w-full"
+	>
 	<button
 		type="button"
-		{id}
+		id={buttonId}
 		bind:this={buttonEl}
-		class="{buttonClass} flex items-center gap-2"
+		class="
+			bg-dark
+			disabled-text-current/10
+			flex
+			gap-2
+			items-center
+			rounded-md
+			px-4
+			py-2
+			text-0.95em
+			text-current/90
+			text-left
+			w-full
+			{buttonClasses}"
 		role="combobox"
-		aria-expanded={isOpen}
+		aria-controls="{popoverId}"
+		aria-expanded={openState === "open"}
 		aria-haspopup="listbox"
-		aria-controls="{id}-listbox"
 		aria-label={ariaLabel}
+		aria-activedescendant={openState === "open" && activeIndex >= 0 ? optionId(activeIndex) : undefined}
 		{disabled}
-		onclick={() => (isOpen ? close() : open())}
-		onkeydown={handleKeydown}
+		popovertarget={popoverId}
+		onkeydown={onKeydown}
 	>
 		<span class="min-w-0 grow truncate">
 			{#if selected}
@@ -138,46 +186,66 @@
 			{/if}
 		</span>
 		<span
-			class="i-ph-caret-down shrink-0 text-12px opacity-70 transition-transform {isOpen
+			class="i-ph-caret-down shrink-0 text-12px opacity-70 transition-transform {openState === "open"
 				? 'rotate-180'
 				: ''}"
 			aria-hidden="true"
 		></span>
 	</button>
 
-	{#if isOpen}
+
 		<ul
-			id="{id}-listbox"
+			id="{popoverId}"
 			role="listbox"
+			bind:this={popoverEl}
 			aria-label={ariaLabel}
-			class="absolute left-0 top-full z-30 mt-1 max-h-64 min-w-full overflow-y-auto rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg {listClass}"
+			popover="auto"
+			class="
+				[position-area:bottom_center]
+				[margin:0.25rem_0_0]
+				max-h-64
+				w-full
+				overflow-y-auto
+				rounded
+				bg-oxford
+				px-0
+				pt-1
+				pb-3
+				shadow
+				shadow-dark
+				text-current
+				border-none
+				{popoverClasses}"
+				onbeforetoggle={onBeforeToggle}
+				ontoggle={onToggle}
 		>
+			<!-- <ul class="grid w-full h-full grid-cols-1 gap-0"> -->
 			{#each options as option, i (option.value)}
-				<li role="presentation">
-					<button
-						type="button"
+				<!-- Not focusable: focus stays on the trigger (aria-activedescendant) -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<li
+						id={optionId(i)}
 						role="option"
 						aria-selected={option.value === value}
-						class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left {i === activeIndex
-							? 'bg-white/10'
-							: ''}"
-						onpointerenter={() => (activeIndex = i)}
+						class="flex w-full items-center gap-2 px-2 py-1.5 text-left hover-bg-blue-300/10 {option.value === value ? 'bg-white/5' : ''}"
+						onmousedown={(e) => e.preventDefault()}
+						onmouseenter={() => (activeIndex = i)}
 						onclick={() => pick(option)}
 					>
 						<span
 							class="i-ph-check shrink-0 {option.value === value ? '' : 'invisible'}"
 							aria-hidden="true"
 						></span>
-						<span class="min-w-0 grow truncate">{option.label}</span>
+						<span class="min-w-0 grow truncate text-current/90">{option.label}</span>
 						{#if option.description}
 							<span class="shrink-0 tabular-nums opacity-60">{option.description}</span>
 						{/if}
-					</button>
+
 				</li>
 			{/each}
+
 			{#if options.length === 0}
 				<li class="px-2 py-1.5 opacity-70" role="presentation">Nothing to choose</li>
 			{/if}
 		</ul>
-	{/if}
-</div>
+	</div>

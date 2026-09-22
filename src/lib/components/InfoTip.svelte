@@ -20,7 +20,7 @@
 		class?: string;
 		children?: Snippet;
 	}
-	let { text, label = "More info", width = "w-72", class: cls = "", children }: Props = $props();
+	let { classes = "", text, label = "More info", width = "w-72", class: cls = "", children }: Props = $props();
 
 	const id = `info-tip-${Math.random().toString(36).slice(2, 8)}`;
 	let buttonEl = $state<HTMLButtonElement | null>(null);
