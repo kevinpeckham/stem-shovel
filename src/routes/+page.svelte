@@ -22,7 +22,7 @@
 		{
 			question: "How do I get started?",
 			answer: data.signUpOpen
-				? `<a class="underline underline-offset-4 hover-text-accent" href="/sign-up">Sign up for free</a>: choose the Free plan, enter your name, email and a password, and open the verification link we send. No invitation, no payment and no credit card are needed.`
+				? `<a class="link" href="/sign-up">Sign up for free</a>: choose the Free plan, enter your name, email and a password, and open the verification link we send. No invitation, no payment and no credit card are needed.`
 				: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open. You will not be required to provide any payment or credit card info to sign up.`,
 		},
 		{

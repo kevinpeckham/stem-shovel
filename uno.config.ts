@@ -124,12 +124,22 @@ export default defineConfig({
 		"grid",
 		"grid-cols-1",
 		"grid-rows-[auto_1fr_auto]",
+		"link-dim",
 		"min-h-screen",
 		"via-dark",
 		"w-full",
 	],
 	shortcuts: [
 		["footer-link", "underline underline-offset-4 opacity-80 hover-opacity-100 hover-text-accent"],
+		["infobox-sm", "text-14px grid px-4 py-3 border-current/30 border rounded-md bg-blue-300/10"],
+		[
+			"link",
+			"underline underline-offset-3 opacity-100 hover-text-accent text-nowrap decoration-current/60 hover-decoration-current",
+		],
+		[
+			"link-dim",
+			"inline-block underline underline-offset-3 opacity-90 hover-opacity-100 hover-text-accent text-nowrap decoration-current/80 hover-decoration-current",
+		],
 		[
 			"marketing-demo-heading",
 			"mt-8 mb-3 text-blue-300 font-mono uppercase leading-tight text-0.9em",
@@ -267,7 +277,6 @@ export default defineConfig({
 
 		// ---- app ---------------------------------------------------------------
 		["page", "page-x-padding main-y-padding grid grid-cols-1 gap-8 place-content-start"],
-		["link-dim", "underline underline-offset-4 hover:text-accent"],
 		["surface", "rounded border border-white/10 bg-row"],
 		["tile", "border border-white/10 rounded p-6"],
 		[

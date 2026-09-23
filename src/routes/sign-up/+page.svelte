@@ -125,28 +125,33 @@
 						</span>
 					</span>
 				</label>
-				<p class="text-13px text-dim">
-					A Professional plan with more storage and more members is launching soon. See <a
-						class="link-dim"
-						href="/pricing">pricing</a
-					>.
-				</p>
-				<label class="flex items-start gap-2 text-sm">
+				<div class="infobox-sm">
+					<span class="block mb-2 font-700">Note</span>
+					<span class="opacity-90"
+						>A Professional plan with more storage and more members is launching soon.</span
+					>
+					<a class="block my-3 link" href="/pricing">See pricing</a>
+				</div>
+				<label class="flex items-start gap-4 text-sm my-5 text-balance">
 					<input class="mt-0.5" type="checkbox" bind:checked={acceptTerms} required />
-					<span>
-						I accept the <a class="link-dim" href="/docs/plan-terms" target="_blank"
+					<div class="opacity-90">
+						I accept the <a class="link opacity-100" href="/docs/plan-terms" target="_blank"
 							>Free plan terms</a
 						>, the
-						<a class="link-dim" href="/docs/copyright-policy" target="_blank"
-							>copyright and acceptable-use policy</a
+						<a class="link opacity-100" href="/docs/copyright-policy" target="_blank">copyright</a>
+						and
+						<a class="link opacity-100" href="/docs/copyright-policy" target="_blank"
+							>acceptable use</a
 						>
-						and the
-						<a class="link-dim" href="/docs/privacy-policy" target="_blank">privacy policy</a>.
-					</span>
+						policies and the
+						<a class="link opacity-100" href="/docs/privacy-policy" target="_blank"
+							>privacy policy</a
+						>.
+					</div>
 				</label>
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
 					<button class="button-accent whitespace-nowrap" disabled={!acceptTerms}>Continue</button>
-					<a class="text-sm link-dim whitespace-nowrap" href="/sign-in">I have an account</a>
+					<a class="text-0.9em link" href="/sign-in">I already have an account</a>
 				</div>
 			</form>
 		{:else}
@@ -170,7 +175,7 @@
 					<p class="text-13px uppercase tracking-wider text-dim">
 						Step 2 of 2 · Your details
 						<button
-							class="ml-2 normal-case tracking-normal link-dim"
+							class="ml-2 normal-case tracking-normal link"
 							type="button"
 							onclick={() => (step = "plan")}>Change plan</button
 						>
@@ -231,33 +236,41 @@
 					<span class="mt-1 block text-13px text-dim">At least 8 characters.</span>
 				</label>
 				{#if !data.invitation && data.open}
-					<details class="text-sm">
-						<summary class="cursor-pointer text-dim">Have an invite code?</summary>
-						<label class="mt-2 block">
-							<span class="text-13px text-dim">It joins you to that account as well.</span>
-							<input
-								class="mt-1 field font-mono uppercase"
-								type="text"
-								autocomplete="off"
-								autocapitalize="characters"
-								spellcheck="false"
-								placeholder="ABCD-EFGH-JKLM"
-								bind:value={inviteCode}
-							/>
-						</label>
-					</details>
+					<div class="infobox-sm mb-5">
+						<div class="text-sm">
+							<div class="text-dim">Invite Code (optional)</div>
+							<label class="mt-2 block">
+								<!-- <span class="text-13px text-dim">It joins you to that account as well.</span> -->
+								<input
+									class="mt-1 field font-mono uppercase"
+									type="text"
+									autocomplete="off"
+									autocapitalize="characters"
+									spellcheck="false"
+									placeholder="ABCD-EFGH-JKLM"
+									bind:value={inviteCode}
+								/>
+							</label>
+						</div>
+					</div>
 				{/if}
 				{#if data.invitation}
 					<label class="flex items-start gap-2 text-sm">
 						<input class="mt-0.5" type="checkbox" bind:checked={acceptTerms} required />
-						<span>
-							I accept the <a class="link-dim" href="/docs/plan-terms" target="_blank">plan terms</a
+						<span class="text-balance opacity-90">
+							I accept the <a class="link opacity-100" href="/docs/plan-terms" target="_blank"
+								>plan terms</a
 							>, the
-							<a class="link-dim" href="/docs/copyright-policy" target="_blank"
-								>copyright and acceptable-use policy</a
+							<a class="link opacity-100" href="/docs/copyright-policy" target="_blank">copyright</a
 							>
-							and the
-							<a class="link-dim" href="/docs/privacy-policy" target="_blank">privacy policy</a>.
+							and
+							<a class="link opacity-100" href="/docs/copyright-policy" target="_blank"
+								>acceptable use</a
+							>
+							policies and the
+							<a class="link opacity-100" href="/docs/privacy-policy" target="_blank"
+								>privacy policy</a
+							>.
 						</span>
 					</label>
 				{/if}
@@ -266,7 +279,7 @@
 					<button class="button-accent whitespace-nowrap" disabled={busy || !acceptTerms}
 						>{busy ? "Creating…" : "Create account"}</button
 					>
-					<a class="text-sm link-dim whitespace-nowrap" href="/sign-in">I have an account</a>
+					<a class="text-sm link whitespace-nowrap" href="/sign-in">I already have an account</a>
 				</div>
 			</form>
 		{/if}

@@ -8,10 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-09-23
+
 ### Added
 
 - **Sign-up is open.** Anyone creates a free account from Sign up; the front page's call to action is "Sign Up For Free · No credit card required", the pricing page's Free card and the sign-up page say the same, and the waitlist page points to sign-up. `/admin/sign-up` switches back to invitation-only, which brings the waitlist language back everywhere (`signUpMode` app setting, read by the root layout).
 - **A plan step at sign-up.** Step 1 chooses a plan (only Free today, with what it holds) and accepts the plan terms, a new user doc at `/docs/plan-terms`; step 2 is the details. An invitee skips the plan and ticks the terms in the form. The server refuses a sign-up without the terms and records `user.plan_terms_accepted_at` (migration 0058).
+
+### Changed
+
+- **Links**: a shared `link` shortcut (and `link-dim` restyled, no-wrap) for inline links; the sign-up page's notes sit in small info boxes.
+
+### Technical
+
+- Migration 0058 (`user.plan_terms_accepted_at`); `bun run db:seed-docs` adds the `plan-terms` page and `bun run db:update-docs getting-started` refreshes that one. Smoke row for `/admin/sign-up`.
 
 ## [0.32.2] - 2026-09-23
 
