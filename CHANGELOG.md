@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.32.1] - 2026-09-23
+
+### Fixed
+
+- **The tuner's On button shows it is starting.** On a phone the microphone permission and the audio context can take a moment; the button now spins and reads "Starting…" until the tuner is live, and a suspended audio context (iOS) is resumed so it never reads as on but silent.
+
 ## [0.32.0] - 2026-09-22
 
 ### Added

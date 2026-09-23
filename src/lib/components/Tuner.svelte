@@ -41,6 +41,8 @@
 	let prefs = $state(loadTunerPreferences());
 	let tuning = $derived(TUNINGS.find((t) => t.id === prefs.tuningId) ?? TUNINGS[0]);
 	let running = $state(false);
+	/** Between pressing On and the microphone being live: the permission prompt and the audio context can take a while on a phone. */
+	let starting = $state(false);
 	let error = $state<string | null>(null);
 	/** What the microphone hears right now, or null between notes. */
 	let reading = $state<{ frequency: number; clarity: number } | null>(null);
@@ -68,12 +70,21 @@
 	const buffer = new Float32Array(WINDOW);
 
 	export async function start() {
-		if (running || typeof navigator === "undefined") return;
+		if (running || starting || typeof navigator === "undefined") return;
 		error = null;
 		if (!navigator.mediaDevices?.getUserMedia) {
 			error = "This browser cannot open the microphone.";
 			return;
 		}
+		starting = true;
+		try {
+			await open();
+		} finally {
+			starting = false;
+		}
+	}
+
+	async function open() {
 		// WebKit captures only under "auto" or "play-and-record" (the stem player may have set "playback").
 		const session = audioSession();
 		if (session) session.type = "play-and-record";
@@ -95,6 +106,8 @@
 			return;
 		}
 		ctx = new AudioContext();
+		// iOS can hand back a suspended context, which would read as on but silent.
+		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		analyser = ctx.createAnalyser();
 		analyser.fftSize = WINDOW;
 		analyser.smoothingTimeConstant = 0;
@@ -334,10 +347,15 @@
 					? 'text-current/80'
 					: 'text-current/60'} flex items-center gap-2 rounded-md px-3 py-2 bg-slate-700 text-current text-15px shadow-md hover-bg-slate-800"
 				type="button"
+				disabled={starting}
+				aria-busy={starting}
 				onclick={() => (running ? stop(true) : void start())}
 			>
-				<span class="block text-15px i-ph-power" aria-hidden="true"></span>
-				<span class="text-14px">On / Off</span>
+				<span
+					class="block text-15px {starting ? 'i-ph-circle-notch animate-spin' : 'i-ph-power'}"
+					aria-hidden="true"
+				></span>
+				<span class="text-14px">{starting ? "Starting…" : "On / Off"}</span>
 			</button>
 		</div>
 
