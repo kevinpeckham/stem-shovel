@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `plan_terms_accepted_at` integer;

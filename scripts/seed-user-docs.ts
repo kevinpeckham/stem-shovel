@@ -25,6 +25,7 @@ const ORDER = [
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",
+	"plan-terms",
 	"security",
 	"reporting-a-bug",
 	"privacy-policy",

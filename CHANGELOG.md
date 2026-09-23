@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Sign-up is open.** Anyone creates a free account from Sign up; the front page's call to action is "Sign Up For Free · No credit card required", the pricing page's Free card and the sign-up page say the same, and the waitlist page points to sign-up. `/admin/sign-up` switches back to invitation-only, which brings the waitlist language back everywhere (`signUpMode` app setting, read by the root layout).
+- **A plan step at sign-up.** Step 1 chooses a plan (only Free today, with what it holds) and accepts the plan terms, a new user doc at `/docs/plan-terms`; step 2 is the details. An invitee skips the plan and ticks the terms in the form. The server refuses a sign-up without the terms and records `user.plan_terms_accepted_at` (migration 0058).
+
 ## [0.32.2] - 2026-09-23
 
 ### Changed

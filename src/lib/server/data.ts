@@ -63,6 +63,7 @@ import type { SupportStatus } from "$lib/val/SupportRequestSchema";
 import type { ReportPriority } from "$lib/val/BugReportSchema";
 import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import type { UserDocKind } from "$lib/val/UserDocKindSchema";
+import type { SignUpMode } from "$lib/val/SignUpModeSchema";
 import { accountLimits, storageFits } from "$lib/utils/accountLimits";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
@@ -3517,6 +3518,32 @@ export const DEFAULT_FEATURED_SONG = {
 	project: "badverbs",
 	song: "eat-all-the-clocks",
 } as const;
+
+/**
+ * Whether sign-up is open or invite-only (docs/auth.md): the `signUpMode`
+ * app setting, read on every page load, so it is cached per instance for a
+ * moment; unset means open.
+ */
+let signUpModeCache: { value: SignUpMode; until: number } | null = null;
+export async function signUpMode(): Promise<SignUpMode> {
+	if (signUpModeCache && signUpModeCache.until > Date.now()) return signUpModeCache.value;
+	const value = (await getAppSetting("signUpMode")) === "invite" ? "invite" : "open";
+	signUpModeCache = { value, until: Date.now() + 15_000 };
+	return value;
+}
+
+export async function setSignUpMode(mode: SignUpMode) {
+	await setAppSetting("signUpMode", mode);
+	signUpModeCache = null;
+}
+
+/** The person accepted the plan terms at sign-up (the hook records when). */
+export async function recordPlanTermsAccepted(userId: string) {
+	await db
+		.update(schema.user)
+		.set({ planTermsAcceptedAt: new Date() })
+		.where(eq(schema.user.id, userId));
+}
 
 export async function getAppSetting(key: string) {
 	const row = await db.query.appSetting.findFirst({ where: eq(schema.appSetting.key, key) });

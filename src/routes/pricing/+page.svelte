@@ -84,6 +84,9 @@
 					{#if column === "free"}
 						{#if data.user}
 							<a class="button-accent-solid button-sm" href="/accounts">Your accounts</a>
+						{:else if data.signUpOpen}
+							<a class="button-accent-solid button-sm" href="/sign-up">Sign Up For Free</a>
+							<p class="mt-2 text-13px opacity-80">No credit card required.</p>
 						{:else}
 							<a class="button-accent-solid button-sm" href="/waitlist">Join the Waitlist</a>
 							<p class="mt-2 text-13px opacity-80">

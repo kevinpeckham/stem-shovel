@@ -2,15 +2,25 @@ import * as v from "valibot";
 import { InviteCodeSchema } from "$lib/val/InviteCodeSchema";
 
 /**
- * Sign-up is closed: a new user needs an invitation link (the token from
- * the email) or an invite code an admin handed out. The checks run inside
- * Better Auth's user-create hooks (src/lib/auth.ts); the lookups are passed
- * in so the rule is testable without a database.
+ * Who may sign up. With sign-up open (the `signUpMode` app setting) anyone
+ * can, and an invitation or code offered besides joins that account; with
+ * it invite-only a new user needs an invitation link (the token from the
+ * email) or an invite code an admin handed out. Every sign-up also accepts
+ * the plan terms (/docs/plan-terms). The checks run inside Better Auth's
+ * user-create hooks (src/lib/auth.ts); the lookups are passed in so the
+ * rule is testable without a database.
  */
 export interface SignUpRequest {
 	email: string;
 	inviteToken?: unknown;
 	inviteCode?: unknown;
+	/** "yes" from the sign-up form's checkbox. */
+	acceptPlanTerms?: unknown;
+}
+
+export interface SignUpOptions {
+	/** Sign-up is open: no invitation or code needed. */
+	open?: boolean;
 }
 
 export interface SignUpLookups {
@@ -21,10 +31,12 @@ export interface SignUpLookups {
 export type SignUpPass =
 	| { ok: true; via: "invitation"; token: string }
 	| { ok: true; via: "code"; code: string }
+	| { ok: true; via: "open" }
 	| { ok: false; message: string };
 
 export const SIGN_UP_CLOSED =
 	"Sign-up needs an invitation link or an invite code from an account admin.";
+export const PLAN_TERMS_REQUIRED = "Accept the plan terms to create an account.";
 
 const INVITATION_MESSAGES: Record<string, string> = {
 	missing: "That invitation link is not valid.",
@@ -40,7 +52,12 @@ const CODE_MESSAGES: Record<string, string> = {
 	"used up": "That invite code has no uses left.",
 };
 
-export async function checkSignUp(req: SignUpRequest, lookups: SignUpLookups): Promise<SignUpPass> {
+export async function checkSignUp(
+	req: SignUpRequest,
+	lookups: SignUpLookups,
+	{ open = false }: SignUpOptions = {},
+): Promise<SignUpPass> {
+	if (req.acceptPlanTerms !== "yes") return { ok: false, message: PLAN_TERMS_REQUIRED };
 	const token = typeof req.inviteToken === "string" ? req.inviteToken.trim() : "";
 	const typed = typeof req.inviteCode === "string" ? req.inviteCode : "";
 	if (token) {
@@ -65,5 +82,6 @@ export async function checkSignUp(req: SignUpRequest, lookups: SignUpLookups): P
 		}
 		return { ok: true, via: "code", code: parsed.output };
 	}
+	if (open) return { ok: true, via: "open" };
 	return { ok: false, message: SIGN_UP_CLOSED };
 }

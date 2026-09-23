@@ -9,6 +9,7 @@
 		{ slug: "users", title: "Users" },
 		{ slug: "invite-codes", title: "Invite codes" },
 		{ slug: "waitlist", title: "Waitlist" },
+		{ slug: "sign-up", title: "Sign-up" },
 		{ slug: "bug-reports", title: "Bug reports" },
 		{ slug: "feature-requests", title: "Feature requests" },
 		{ slug: "support-requests", title: "Support requests" },

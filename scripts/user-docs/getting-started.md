@@ -4,12 +4,14 @@ Stem Shovel is a place for a band or a producer to keep the working versions of 
 
 ## Accounts and sign-in
 
-Sign-up is invitation-only. You get in one of two ways:
+**Sign up** (top right) creates a free account: choose the Free plan, accept its terms, enter your name, email and a password, then open the verification link we send. No invitation and no credit card are needed, and you get a workspace of your own.
+
+You can also arrive through someone else's account:
 
 - **An invitation email** from someone in an account. Open the link, create your account with the address the invitation was sent to, and you join that account as soon as your email is verified.
-- **An invite code** someone hands you. Open **Sign in → Create an account**, type the code (dashes and capitals do not matter), and finish the form.
+- **An invite code** someone hands you. Type it on the sign-up page (dashes and capitals do not matter) and you join their account as well.
 
-Either way you also get a personal workspace of your own. After signing up, check your inbox for the verification link; sign-in waits for it. Forgot your password? The sign-in page has a reset link.
+When sign-up is invitation-only, as it was during the early beta, one of those two is required and the waitlist collects everyone else. Forgot your password? The sign-in page has a reset link.
 
 ## The account menu
 

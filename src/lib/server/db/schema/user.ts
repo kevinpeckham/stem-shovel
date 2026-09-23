@@ -20,5 +20,7 @@ export const user = table("user", {
 	isSuperAdmin: t.integer("is_super_admin", { mode: "boolean" }).default(false).notNull(),
 	/** Better Auth's twoFactor plugin flips this; the secret lives in `two_factor`. */
 	twoFactorEnabled: t.integer("two_factor_enabled", { mode: "boolean" }).default(false).notNull(),
+	/** When the person accepted the plan terms at sign-up (/docs/plan-terms); null for users made outside sign-up. */
+	planTermsAcceptedAt: t.integer("plan_terms_accepted_at", { mode: "timestamp_ms" }),
 	...timestamps,
 });

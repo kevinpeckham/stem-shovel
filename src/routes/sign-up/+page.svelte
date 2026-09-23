@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
 	import { authClient } from "$lib/auth-client";
+	import { PLAN_LIMITS } from "$lib/constants/plans";
+	import { formatBytes } from "$lib/utils/formatBytes";
 
 	let { data } = $props();
 
@@ -15,12 +17,23 @@
 	let busy = $state(false);
 	let sent = $state(false);
 
+	/**
+	 * Step 1, choosing a plan and accepting its terms, applies to a newcomer
+	 * who will get an account of their own; an invitee joins an account that
+	 * already has a plan, so they only accept the terms, in the form.
+	 */
+	// svelte-ignore state_referenced_locally
+	let step = $state<"plan" | "details">(data.invitation ? "details" : "plan");
+	let plan = $state<"free">("free");
+	let acceptTerms = $state(false);
+	const free = PLAN_LIMITS.free;
+
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
 		error = "";
 		busy = true;
-		// inviteToken / inviteCode ride along in the body; the user-create hook
-		// reads them (src/lib/auth.ts) and refuses the sign-up without one.
+		// inviteToken / inviteCode / acceptPlanTerms ride along in the body; the
+		// user-create hook reads them (src/lib/auth.ts).
 		const result = await authClient.signUp.email({
 			name,
 			email,
@@ -28,6 +41,8 @@
 			callbackURL: "/verify-email?verified=1",
 			inviteToken: data.invitation?.token ?? "",
 			inviteCode,
+			plan,
+			acceptPlanTerms: acceptTerms ? "yes" : "no",
 		} as Parameters<typeof authClient.signUp.email>[0]);
 		busy = false;
 		if (result.error) {
@@ -41,16 +56,20 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle("Create an account")}</title>
+	<title>{pageTitle(data.open ? "Create a free account" : "Create an account")}</title>
 </svelte:head>
 
 <main class="page-x-padding main-y-padding min-h-screen">
 	<header class="max-w-article">
-		<h1 class="app-page-heading mb-5">Create an account</h1>
+		<h1 class="app-page-heading mb-5">
+			{data.open ? "Create a free account" : "Create an account"}
+		</h1>
 		{#if data.invitation}
 			<p class="app-page-subheading text-balance">
 				You were invited to <strong>{data.invitation.account}</strong> as {data.invitation.role}.
 			</p>
+		{:else if data.open}
+			<p class="app-page-subheading text-balance">Free forever. No credit card required.</p>
 		{:else}
 			<p class="app-page-subheading text-balance">
 				Stem Shovel is invitation-only. You need an invitation link or an invite code from an
@@ -71,20 +90,93 @@
 					signed in.
 				</p>
 			</div>
+		{:else if step === "plan"}
+			<!-- Step 1: the plan. Only Free exists today; the card states what it holds. -->
+			<form
+				class="grid max-w-md gap-5"
+				onsubmit={(e) => {
+					e.preventDefault();
+					if (acceptTerms) step = "details";
+				}}
+			>
+				<p class="text-13px uppercase tracking-wider text-dim">Step 1 of 2 · Choose a plan</p>
+				<label
+					class="marketing-box flex cursor-pointer items-start gap-3 pb-4 {plan === 'free'
+						? 'border-accent/60'
+						: ''}"
+				>
+					<input class="mt-1.5" type="radio" name="plan" value="free" bind:group={plan} required />
+					<span class="grow">
+						<span class="flex flex-wrap items-baseline justify-between gap-2">
+							<span class="text-18px font-700 text-white">Free</span>
+							<span class="font-mono tabular-nums"
+								><span class="text-20px text-white">$0</span><span class="text-dim">
+									/ month</span
+								></span
+							>
+						</span>
+						<span class="mt-1 block text-sm opacity-80">
+							Free forever. No credit card required to get started.
+						</span>
+						<span class="mt-2 grid gap-1 text-sm">
+							<span>Unlimited projects, songs and ideas</span>
+							<span>{formatBytes(free.storageBytes)} of storage</span>
+							<span>Up to {free.members} members · unlimited viewers</span>
+						</span>
+					</span>
+				</label>
+				<p class="text-13px text-dim">
+					A Professional plan with more storage and more members is launching soon. See <a
+						class="link-dim"
+						href="/pricing">pricing</a
+					>.
+				</p>
+				<label class="flex items-start gap-2 text-sm">
+					<input class="mt-0.5" type="checkbox" bind:checked={acceptTerms} required />
+					<span>
+						I accept the <a class="link-dim" href="/docs/plan-terms" target="_blank"
+							>Free plan terms</a
+						>, the
+						<a class="link-dim" href="/docs/copyright-policy" target="_blank"
+							>copyright and acceptable-use policy</a
+						>
+						and the
+						<a class="link-dim" href="/docs/privacy-policy" target="_blank">privacy policy</a>.
+					</span>
+				</label>
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+					<button class="button-accent whitespace-nowrap" disabled={!acceptTerms}>Continue</button>
+					<a class="text-sm link-dim whitespace-nowrap" href="/sign-in">I have an account</a>
+				</div>
+			</form>
 		{:else}
 			{#if data.invitationStatus}
 				<p class="mb-5 max-w-sm text-sm text-red-400" role="alert">
 					{#if data.invitationStatus === "expired"}
-						That invitation link has expired. Ask for a new one, or use an invite code.
+						That invitation link has expired. Ask for a new one{data.open
+							? ""
+							: ", or use an invite code"}.
 					{:else if data.invitationStatus === "accepted"}
-						That invitation has already been used. Sign in instead, or use an invite code.
+						That invitation has already been used. Sign in instead{data.open
+							? ""
+							: ", or use an invite code"}.
 					{:else}
-						That invitation link is not valid. Use an invite code instead.
+						That invitation link is not valid.{data.open ? "" : " Use an invite code instead."}
 					{/if}
 				</p>
 			{/if}
 			<form class="grid max-w-sm gap-5" onsubmit={submit}>
 				{#if !data.invitation}
+					<p class="text-13px uppercase tracking-wider text-dim">
+						Step 2 of 2 · Your details
+						<button
+							class="ml-2 normal-case tracking-normal link-dim"
+							type="button"
+							onclick={() => (step = "plan")}>Change plan</button
+						>
+					</p>
+				{/if}
+				{#if !data.invitation && !data.open}
 					<label class="block">
 						<span class="text-15px text-dim">Invite code</span>
 						<input
@@ -138,15 +230,40 @@
 					/>
 					<span class="mt-1 block text-13px text-dim">At least 8 characters.</span>
 				</label>
+				{#if !data.invitation && data.open}
+					<details class="text-sm">
+						<summary class="cursor-pointer text-dim">Have an invite code?</summary>
+						<label class="mt-2 block">
+							<span class="text-13px text-dim">It joins you to that account as well.</span>
+							<input
+								class="mt-1 field font-mono uppercase"
+								type="text"
+								autocomplete="off"
+								autocapitalize="characters"
+								spellcheck="false"
+								placeholder="ABCD-EFGH-JKLM"
+								bind:value={inviteCode}
+							/>
+						</label>
+					</details>
+				{/if}
+				{#if data.invitation}
+					<label class="flex items-start gap-2 text-sm">
+						<input class="mt-0.5" type="checkbox" bind:checked={acceptTerms} required />
+						<span>
+							I accept the <a class="link-dim" href="/docs/plan-terms" target="_blank">plan terms</a
+							>, the
+							<a class="link-dim" href="/docs/copyright-policy" target="_blank"
+								>copyright and acceptable-use policy</a
+							>
+							and the
+							<a class="link-dim" href="/docs/privacy-policy" target="_blank">privacy policy</a>.
+						</span>
+					</label>
+				{/if}
 				{#if error}<p class="text-sm text-red-400" role="alert">{error}</p>{/if}
-				<p class="text-13px opacity-85">
-					By creating an account you agree to the
-					<a class="link-dim" href="/docs/copyright-policy">copyright and acceptable-use policy</a>
-					and the <a class="link-dim" href="/docs/privacy-policy">privacy policy</a>: upload and
-					share only material you own or have permission to use.
-				</p>
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
-					<button class="button-accent whitespace-nowrap" disabled={busy}
+					<button class="button-accent whitespace-nowrap" disabled={busy || !acceptTerms}
 						>{busy ? "Creating…" : "Create account"}</button
 					>
 					<a class="text-sm link-dim whitespace-nowrap" href="/sign-in">I have an account</a>

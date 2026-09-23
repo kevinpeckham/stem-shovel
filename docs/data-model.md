@@ -46,6 +46,8 @@ erDiagram
   shrank to 1024 px and uploaded through `images.remote.ts`, kept in Blob
   under the account (a private project's in the private store); a new image
   gets a new pathname and the old file is deleted.
+- **user** also carries `plan_terms_accepted_at` (migration 0058): when the
+  person accepted the plan terms at sign-up; null for users made by scripts.
 - **account_member** — which users are in which account, with a role.
 - **project** — a grouping of songs inside an account: an album, a session, a
   client job. Slug unique within the account. `type` (album, ep, single,

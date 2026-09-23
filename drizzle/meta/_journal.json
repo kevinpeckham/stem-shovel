@@ -407,6 +407,13 @@
       "when": 1789998820342,
       "tag": "0057_passkey",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1790170872433,
+      "tag": "0058_plan_terms_accepted",
+      "breakpoints": true
     }
   ]
 }

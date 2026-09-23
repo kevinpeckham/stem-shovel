@@ -8,6 +8,8 @@ import {
 	inviteCodeByCode,
 	invitationByToken,
 	memberHeadroom,
+	recordPlanTermsAccepted,
+	signUpMode,
 	redeemInviteCode,
 } from "$lib/server/data";
 import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
@@ -135,19 +137,27 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				// Sign-up is closed: the request must carry an invitation token
-				// or an invite code (src/lib/server/signUpGate.ts). Users created
-				// any other way (the seed, scripts) have no request context and pass.
+				// Who may sign up (src/lib/server/signUpGate.ts): with sign-up open,
+				// anyone who accepts the plan terms; invite-only, the request must
+				// carry an invitation token or an invite code. Users created any
+				// other way (the seed, scripts) have no request context and pass.
 				before: async (user, ctx) => {
 					if (!ctx || ctx.path !== "/sign-up/email") return;
 					const body = (ctx.body ?? {}) as Record<string, unknown>;
 					const pass = await checkSignUp(
-						{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
+						{
+							email: user.email,
+							inviteToken: body.inviteToken,
+							inviteCode: body.inviteCode,
+							acceptPlanTerms: body.acceptPlanTerms,
+						},
 						gateLookups,
+						{ open: (await signUpMode()) === "open" },
 					);
 					// Not FORBIDDEN: the sign-up route turns a 403 into a fake success
 					// (its duplicate-email cover), which would hide the message.
 					if (!pass.ok) throw new APIError("BAD_REQUEST", { message: pass.message });
+					if (pass.via === "open") return;
 					// The account the invitation or code joins must have a seat left (docs/billing.md).
 					const found =
 						pass.via === "invitation"
@@ -175,10 +185,17 @@ export const auth = betterAuth({
 					>;
 					const pass = ctx
 						? await checkSignUp(
-								{ email: user.email, inviteToken: body.inviteToken, inviteCode: body.inviteCode },
+								{
+									email: user.email,
+									inviteToken: body.inviteToken,
+									inviteCode: body.inviteCode,
+									acceptPlanTerms: body.acceptPlanTerms,
+								},
 								gateLookups,
+								{ open: (await signUpMode()) === "open" },
 							)
 						: null;
+					if (pass?.ok) await recordPlanTermsAccepted(user.id);
 					let joined = false;
 					if (pass?.ok && pass.via === "invitation") {
 						const result = await acceptInvitation(pass.token, user);

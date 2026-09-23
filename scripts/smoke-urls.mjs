@@ -58,6 +58,7 @@ const ROUTES = [
 	["admin/users/[id]", "/admin/users/x", [404], [404]],
 	["admin/support-requests", "/admin/support-requests", [404], [200]],
 	["admin/waitlist", "/admin/waitlist", [404], [200]],
+	["admin/sign-up", "/admin/sign-up", [404], [200]],
 	["docs", "/docs", [200], [200]],
 	["releases", "/releases", [200], [200]],
 	["support", "/support", [200], [200]],

@@ -14,14 +14,16 @@
 	const description =
 		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
 
-	const faqs = [
+	const faqs = $derived([
 		{
 			question: "What is Stem Shovel?",
 			answer: `Stem Shovel is a web app for managing songwriting, arranging, and recording projects with an emphasis on creativity and collaboration. Built by musicians for musicians, this	web-app is intended to be an easy-to-use and affordable location for storing and sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter, up-sells or feature bloat.`,
 		},
 		{
 			question: "How do I get started?",
-			answer: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open. You will not be required to provide any payment or credit card info to sign up.`,
+			answer: data.signUpOpen
+				? `<a class="underline underline-offset-4 hover-text-accent" href="/sign-up">Sign up for free</a>: choose the Free plan, enter your name, email and a password, and open the verification link we send. No invitation, no payment and no credit card are needed.`
+				: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open. You will not be required to provide any payment or credit card info to sign up.`,
 		},
 		{
 			question: "How much does it cost?",
@@ -53,7 +55,7 @@
 		href="https://github.com/kevinpeckham/stem-shovel">https://github.com/stem-shovel/stem-shovel</a>. You're welcome to clone the project and set up your own private version on your own servers. We don't have a team in place to handle 3rd party pull requests, so we don't accept them. However you can submit feature suggestions vial a link in the footer, though
 	you must be logged-in to do so.`,
 		},
-	];
+	]);
 </script>
 
 <svelte:head>
@@ -90,7 +92,11 @@
 				<!-- {#each data.memberships as m (m.accountId)}
 					<a class="button-accent" href="/{m.slug}/projects">{m.name} →</a>
 				{/each} -->
+			{:else if data.signUpOpen}
+				<a class="button-accent-solid button-sm" href="/sign-up">Sign Up For Free</a>
+				<span class="text-0.85em opacity-90">No credit card required.</span>
 			{:else}
+				<!-- Invitation-only (the signUpMode app setting): the waitlist is the way in. -->
 				<a class="button-accent-solid button-sm" href="/waitlist">Join the Waitlist</a>
 				<div class="text-0.85em">
 					<span class="opacity-90">Already have an invite code?</span>

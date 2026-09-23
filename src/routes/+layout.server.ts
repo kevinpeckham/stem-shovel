@@ -2,9 +2,12 @@ import { indexableStage } from "$lib/constants/securityHeaders";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import { ENV } from "varlock/env";
 import { realMemberships } from "$lib/utils/actingMemberships";
+import { signUpMode } from "$lib/server/data";
 import type { LayoutServerLoad } from "./$types";
 
-export const load: LayoutServerLoad = ({ locals, cookies }) => ({
+export const load: LayoutServerLoad = async ({ locals, cookies }) => ({
+	/** Anyone may create an account; false means invite-only and the pages show the waitlist (docs/auth.md). */
+	signUpOpen: (await signUpMode()) === "open",
 	/** Production only: staging and previews tell search engines to stay away everywhere. */
 	indexable: indexableStage(ENV.VERCEL_ENV),
 	/** development | preview | production: the tab title carries a DEV or STAGE tag off production (src/lib/utils/pageTitle.ts). */

@@ -64,7 +64,17 @@ public by URL; editing needs a signed-in member.
   files live in the private Blob store and reach the browser only as
   presigned URLs (docs/uploads-and-blob.md), so a direct file URL is no
   back door.
-- **Sign-up is closed** (`src/lib/server/signUpGate.ts`, run from Better
+- **Sign-up mode** (`signUpMode` app setting, `/admin/sign-up`, read by
+  the root layout as `signUpOpen` and cached 15 s per instance): "open"
+  (the default when unset) lets anyone create a free account, and the
+  front, pricing, sign-up and waitlist pages say so; "invite" brings the
+  waitlist back everywhere. The sign-up page has a plan step (only Free
+  today, from `PLAN_LIMITS`) whose terms checkbox (`/docs/plan-terms`, a
+  seeded user doc) must be ticked: the hook refuses without
+  `acceptPlanTerms: "yes"` and records `user.plan_terms_accepted_at`
+  (migration 0058). An invitee skips the plan step and ticks the terms in
+  the form.
+- **Invite-only sign-up** (`src/lib/server/signUpGate.ts`, run from Better
   Auth's `user.create.before` hook in `src/lib/auth.ts`): the sign-up
   request must carry an invitation token (`/sign-up?invite=<token>`, where
   the invitation page sends a newcomer; the address is locked to the

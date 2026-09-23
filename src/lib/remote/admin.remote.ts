@@ -15,9 +15,11 @@ import {
 	setAccountStatus,
 	setUserActive,
 	setAccountStorageLimit,
+	setSignUpMode,
 } from "$lib/server/data";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
 import { AccountAdminSchema, AccountStorageLimitSchema } from "$lib/val/AccountAdminSchema";
+import { SignUpModeFormSchema } from "$lib/val/SignUpModeSchema";
 import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
 import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
 import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
@@ -103,6 +105,14 @@ export const setStorageLimit = form(AccountStorageLimitSchema, async ({ id, giga
 	const bytes = gigabytes === null ? null : Math.round(gigabytes * 1024 ** 3);
 	if (!(await setAccountStorageLimit(id, bytes))) error(404, "Account not found");
 	return { gigabytes };
+});
+
+/** Open sign-up to everyone, or back to invitation-only (the waitlist reappears). */
+export const setSignUpModeForm = form(SignUpModeFormSchema, async ({ mode }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setSignUpMode(mode);
+	return { mode };
 });
 
 /** The song the home page demos: any public song with stems (system admins). */
