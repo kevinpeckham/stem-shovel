@@ -173,94 +173,98 @@
 <svelte:body onmouseenter={handleMouseEnter}></svelte:body>
 
 <div
-	class="relative bg-slate-400 bg-gradient-to-b from-slate-500/10 via-slate-500/60 to-slate-500/80 px-5 py-5 rounded-md shadow-lg shadow-black min-h-380px w-full max-w-600px"
+	class="relative bg-slate-400 bg-gradient-to-b from-slate-500/10 via-slate-500/60 to-slate-500/80 px-5 py-5 rounded-md shadow-xl shadow-oxford-950 min-h-380px w-full max-w-600px"
 	aria-label="Tuner"
 >
 	<div class="grid grid-cols-1">
-		<!-- The note heard, big; the frequency under it. -->
-		<div
-			class="grid place-items-center gap-1 rounded-md border border-current/10 bg-oxford-900 bg-gradient-to-br from-oxford-900 to-oxford-850 px-4 pt-2 pb-5 inner-shadow relative h-165px pointer-events-none /select-none h-165px"
-		>
-			<div class="grid grid-cols-[1fr_auto] w-full gap-3 items-center">
-				<!-- input level -->
+		<!-- display screen -->
+		<div class="border border-2 border-blue-200/10 rounded-8px border border-current/10">
+			<div class="p-2px bg-black rounded-7px">
 				<div
-					class="h-1 w-full overflow-hidden rounded-lg bg-white/0 shadow-inner shadow-black/0"
-					role="meter"
-					aria-label="Input level"
-					aria-valuemin="0"
-					aria-valuemax="100"
-					aria-valuenow={Math.round(level * 100)}
+					class="grid place-items-center gap-1 rounded-md bg-oxford-900 bg-gradient-to-br from-oxford-900 to-oxford-850 px-4 pt-2 pb-5 inner-shadow relative h-165px pointer-events-none /select-none h-165px"
 				>
+					<div class="grid grid-cols-[1fr_auto] w-full gap-3 items-center">
+						<!-- input level -->
+						<div
+							class="h-1 w-full overflow-hidden rounded-lg bg-white/0 shadow-inner shadow-black/0"
+							role="meter"
+							aria-label="Input level"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow={Math.round(level * 100)}
+						>
+							<div
+								class="h-full rounded bg-blue-100/60 shadow-yellow"
+								style:width="{level * 50}%"
+							></div>
+						</div>
+
+						<!-- on/off light -->
+						<div class="w-3 h-3 rounded-full {running ? 'bg-green-400' : 'bg-oxford-800'}"></div>
+					</div>
+
+					<!-- note name & octave -->
 					<div
-						class="h-full rounded bg-blue-100/60 shadow-yellow"
-						style:width="{level * 50}%"
-					></div>
-				</div>
-
-				<!-- on/off light -->
-				<div class="w-3 h-3 rounded-full {running ? 'bg-green-400' : 'bg-oxford-800'}"></div>
-			</div>
-
-			<!-- note name & octave -->
-			<div
-				class="font-mono text-56px leading-none tabular-nums h-56px leading-none {inTune
-					? 'text-green-300'
-					: ''}"
-				aria-live="polite"
-				aria-atomic="true"
-			>
-				{#if note}
-					<span class="text-blue-100 opacity-95 inline-block font-sans">{note.name}</span><span
-						class="ml-1 text-blue-100 text-24px opacity-90 inline-block font-sans"
-						>{note.octave}</span
+						class="font-mono text-56px leading-none tabular-nums h-56px leading-none {inTune
+							? 'text-green-300'
+							: ''}"
+						aria-live="polite"
+						aria-atomic="true"
 					>
-				{:else}
-					<span class="opacity-30">&nbsp;</span>
-				{/if}
-			</div>
+						{#if note}
+							<span class="text-blue-100 opacity-95 inline-block font-sans">{note.name}</span><span
+								class="ml-1 text-blue-100 text-24px opacity-90 inline-block font-sans"
+								>{note.octave}</span
+							>
+						{:else}
+							<span class="opacity-30">&nbsp;</span>
+						{/if}
+					</div>
 
-			<!-- note details -->
-			<div class="text-13px font-mono tabular-nums opacity-85 h-20px">
-				{#if reading && note}
-					{reading.frequency.toFixed(1)} Hz · {needle > 0 ? "+" : ""}{needle.toFixed(0)} cents
-					{#if inTune}· in tune{:else if needle > 0}· sharp{:else}· flat{/if}
-				{:else if running}
-					&nbsp;
-				{:else}
-					&nbsp;
-				{/if}
-			</div>
-			<!-- The needle: −50 to +50 cents across the bar, green when in tune. -->
-			<div
-				class="relative mt-2 h-3 w-full max-w-sm rounded {running
-					? 'bg-blue-300/10'
-					: 'bg-blue-300/5'}"
-				aria-hidden="true"
-			>
-				<div
-					class="absolute inset-y-0 left-1/2 w-px {running ? 'bg-white/40' : 'bg-white/10'}"
-				></div>
-				<div
-					class="absolute inset-y-0 left-[45%] w-[10%] rounded {running
-						? 'bg-green-400/15'
-						: 'bg-green-400/0'}"
-				></div>
-				{#if note}
+					<!-- note details -->
+					<div class="text-13px font-mono tabular-nums opacity-85 h-20px">
+						{#if reading && note}
+							{reading.frequency.toFixed(1)} Hz · {needle > 0 ? "+" : ""}{needle.toFixed(0)} cents
+							{#if inTune}· in tune{:else if needle > 0}· sharp{:else}· flat{/if}
+						{:else if running}
+							&nbsp;
+						{:else}
+							&nbsp;
+						{/if}
+					</div>
+					<!-- The needle: −50 to +50 cents across the bar, green when in tune. -->
 					<div
-						class="absolute top-1/2 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded {inTune
-							? 'bg-green-300'
-							: 'bg-maximumYellow'}"
-						style:left="{50 + Math.max(-50, Math.min(50, needle))}%"
-					></div>
-				{/if}
-			</div>
-			<div
-				class="flex w-full max-w-sm justify-between text-10px h-15px {running
-					? 'opacity-90'
-					: 'opacity-20'} font-mono"
-				aria-hidden="true"
-			>
-				<span>−50</span><span>0</span><span>+50</span>
+						class="relative mt-2 h-3 w-full max-w-sm rounded {running
+							? 'bg-blue-300/10'
+							: 'bg-blue-300/5'}"
+						aria-hidden="true"
+					>
+						<div
+							class="absolute inset-y-0 left-1/2 w-px {running ? 'bg-white/40' : 'bg-white/10'}"
+						></div>
+						<div
+							class="absolute inset-y-0 left-[45%] w-[10%] rounded {running
+								? 'bg-green-400/15'
+								: 'bg-green-400/0'}"
+						></div>
+						{#if note}
+							<div
+								class="absolute top-1/2 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded {inTune
+									? 'bg-green-300'
+									: 'bg-maximumYellow'}"
+								style:left="{50 + Math.max(-50, Math.min(50, needle))}%"
+							></div>
+						{/if}
+					</div>
+					<div
+						class="flex w-full max-w-sm justify-between text-10px h-15px {running
+							? 'opacity-90'
+							: 'opacity-20'} font-mono"
+						aria-hidden="true"
+					>
+						<span>−50</span><span>0</span><span>+50</span>
+					</div>
+				</div>
 			</div>
 		</div>
 
@@ -273,20 +277,21 @@
 					aria-label="Strings"
 				>
 					{#each tuning.notes as midi (midi)}
-						<span
-							role="listitem"
-							class="bg-oxford-900 rounded border px-3 py-1 font-mono text-14px tabular-nums shadow-inner {nearestString ===
-							midi
-								? inTune
-									? 'border-green-300 text-green-300'
-									: 'border-accent text-accent'
-								: 'border-white/15 text-white/60'}"
-							title="{frequencyOfMidi(midi, prefs.a4).toFixed(2)} Hz"
-						>
-							<span class={running ? "opacity-100" : "opacity-10"}
-								>{noteLabel(midi).replace(/-?\d+$/, "")}</span
+						<div class="border border-1px border-blue-300/10 rounded-5px" role="listitem">
+							<span
+								class="bg-oxford-900 block rounded border px-3 py-1 font-mono text-14px tabular-nums shadow-inner {nearestString ===
+								midi
+									? inTune
+										? 'border-green-400 text-green-400'
+										: 'border-accent text-accent'
+									: 'border-white/10 text-blue-100/60'}"
+								title="{frequencyOfMidi(midi, prefs.a4).toFixed(2)} Hz"
 							>
-						</span>
+								<span class={running ? "opacity-100" : "opacity-10"}
+									>{noteLabel(midi).replace(/-?\d+$/, "")}</span
+								>
+							</span>
+						</div>
 					{/each}
 				</div>
 			{/if}
@@ -296,11 +301,11 @@
 		<div class="grid grid-cols-[1fr_auto] place-content-center gap-3 text-15px mt-5">
 			<!-- select tuning (not a <label>: the listbox popover is a descendant, so a click on an
 			     option would activate the label's control, the trigger, and reopen the list) -->
-			<div class="block">
+			<div class="border-blue-200/10 border-1 rounded-7px">
 				<ComboBox
 					ariaLabel="Tuning"
 					disabled={!running}
-					buttonClasses={running ? "!text-current/80" : "!text-current/5"}
+					buttonClasses={running ? "!text-blue-100/80" : "!text-current/5"}
 					options={TUNINGS_OPTIONS}
 					onchange={savePrefs}
 					bind:value={prefs.tuningId}
@@ -333,19 +338,21 @@
 				</div>
 			{/snippet}
 
-			<ContextMenu
-				disabled={!running}
-				buttonClasses="h-36px bg-blue-300/5"
-				items={[{ snippet: adjustA4 }]}
-			/>
+			<div class="border border-1 border-blue-200/10 rounded-7px">
+				<ContextMenu
+					disabled={!running}
+					buttonClasses="h-37.38px text-blue-100/80 !border-none"
+					items={[{ snippet: adjustA4 }]}
+				/>
+			</div>
 		</div>
 
 		<!-- on / off -->
-		<div class="mt-8">
+		<div class="mt-8 border border-1 border-blue-200/10 rounded-7px max-w-fit">
 			<button
 				class="{running
-					? 'text-current/80'
-					: 'text-current/60'} flex items-center gap-2 rounded-md px-3 py-2 bg-slate-700 text-current text-15px shadow-md hover-bg-slate-800"
+					? 'text-blue-100/80'
+					: 'text-blue-100/70'} flex items-center gap-2 rounded-md px-3 py-2 bg-slate-800 text-shadow text-current text-15px shadow hover-bg-slate-900"
 				type="button"
 				disabled={starting}
 				aria-busy={starting}

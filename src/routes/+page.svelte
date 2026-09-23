@@ -119,7 +119,7 @@
 
 				<!-- Song Demo: A live song, chosen on /admin/home: the player as visitors get it. -->
 				<section>
-					<h3 class="marketing-section-heading">Stem Player Demo</h3>
+					<h3 class="marketing-section-heading">Stem Player & Mix Comments</h3>
 					<h4 class="marketing-topic-heading">Share Stems, Leave Feedback</h4>
 					<p class="marketing-paragraph text-balance">
 						Mute, solo and download stems or leave comments on the timeline for your collaborators.
@@ -133,11 +133,12 @@
 
 				<!-- Idea Recorder Demo: The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
 				<section class="mt-12">
-					<h3 class="marketing-section-heading">Audio Recorder Demo</h3>
+					<h3 class="marketing-section-heading">Audio Recorder</h3>
 					<div class="marketing-topic-heading">High Fidelity Idea Recorder</div>
 					<p class="marketing-paragraph text-balance">
-						Record your song ideas, demos and save them along with your notes. Supports multiple
-						takes.
+						Record your song ideas and demos and save them with integrated notes specific to each
+						idea. Supports multiple takes. Record lossless audio and easily export MP3s or source
+						files.
 					</p>
 					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
 					<div class="marketing-demo-cta">Try the working demo below.</div>
@@ -161,7 +162,7 @@
 		<!-- Documents Demo  -->
 		<div class="grid grid-cols-1 gap-y-12 lg-grid-cols-2 gap-x-12">
 			<section class="mt-12">
-				<h3 class="marketing-section-heading">Song Notes Demo</h3>
+				<h3 class="marketing-section-heading">Song Notes, Charts and Comments</h3>
 				<div class="marketing-topic-heading">Charts, Lyrics, Notes and Comments</div>
 				<p class="marketing-paragraph text-balance">
 					Easily edit and share lyrics, notes, charts and more in a wiki-style editor. Keep

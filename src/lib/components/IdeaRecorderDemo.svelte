@@ -85,7 +85,7 @@
 	<label class="block xl-col-start-2 xl-row-start-1 xl-h-full">
 		<span class="sr-only">Notes</span>
 		<textarea
-			class="block h-full w-full min-h-40 rounded-md border border-current/40 bg-black/40 px-4 py-3 font-mono text-sm leading-relaxed focus:(border-accent outline-none)"
+			class="block h-full w-full min-h-260px rounded-md border border-current/40 bg-black/40 px-4 py-3 font-mono text-sm leading-relaxed focus:(border-accent outline-none)"
 			placeholder="Notes for the idea: lyrics, chords, a tuning…"
 			autocomplete="off"
 			data-1p-ignore

@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.32.2] - 2026-09-23
+
+### Changed
+
+- **Front page copy**: the demo headings name what each section is (Stem Player & Mix Comments, Audio Recorder, Song Notes, Charts and Comments) and the recorder blurb mentions lossless recording and MP3 export; the demo notes box is taller.
+- **Tuner styling**: a bezel around the display, the strings, the picker, the menu and the On / Off button; blue-tinted text.
+
 ## [0.32.1] - 2026-09-23
 
 ### Fixed

@@ -136,7 +136,7 @@ export default defineConfig({
 		],
 		[
 			"marketing-demo-cta",
-			"flex items-center gap-2 text-blue-300 bg-blue-300/10 max-w-fit rounded-md mt-3 mb-5 px-3 py-1 text-14px relative after-content-['t'] after-i-ph-arrow-down after-inline-flex after-w-4 after-h-4",
+			"flex items-center gap-2 text-blue-300 bg-blue-200/10 max-w-fit rounded-md mt-5 mb-5 px-3 py-1 text-14px relative after-content-['t'] after-i-ph-arrow-down after-inline-flex after-w-4 after-h-4",
 		],
 		[
 			"marketing-demo-container",
