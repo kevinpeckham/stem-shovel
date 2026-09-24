@@ -241,11 +241,15 @@
 		try {
 			const r = await deleteTake({ id: t.id });
 			notify(`Take ${t.takeNumber} deleted`);
+			// The take before the deleted one, to show once the list has refreshed.
+			const before = idea?.takes.filter((x) => x.takeNumber < t.takeNumber).at(-1) ?? null;
 			takeId = null;
 			recorder?.reset();
 			// The last take of an idea without notes takes the idea with it.
 			if (r.ideaDeleted && idea?.takes.some((x) => x.id === t.id)) ideaId = null;
 			await invalidateAll();
+			const still = before && idea?.takes.find((x) => x.id === before.id);
+			if (idea && still) show(idea, still);
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
@@ -276,15 +280,17 @@
 			await deleteIdeaNow({ id: i.id });
 			notify("Idea deleted");
 			// Deleting the idea in the player empties it; another one leaves it alone.
-			if (i.id === ideaId) {
+			const emptied = i.id === ideaId;
+			if (emptied) {
 				ideaId = null;
 				takeId = null;
 				notes = "";
-				ideaTitle = placeholder();
 				notesKey++;
 				recorder?.reset();
 			}
 			await invalidateAll();
+			// After the refresh, so the placeholder counts without the deleted idea.
+			if (emptied) ideaTitle = placeholder();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
@@ -344,7 +350,7 @@
 
 <main class="sm-page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16">
 	<header class="flex justify-between items-start w-full px-3">
-		<div class="max-w-article">
+		<div class="md-max-w-article">
 			<h1 class="sm-heading-2 flex items-center gap-2">
 				Idea Recorder
 				<InfoTip
@@ -354,8 +360,10 @@
 					at take 1."
 				/>
 			</h1>
-			<p class="opacity-90 text-balance mb-3">
-				<span class="hidden sm-inline">Record your demos, riffs, or quick ideas here.</span>
+			<p class="opacity-90 md-text-balance mb-3">
+				<span class="sr-only md-not-sr-only md-inline"
+					>Record your demos, riffs, or quick ideas here.</span
+				>
 
 				{#if data.fromSong}
 					Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
@@ -436,8 +444,8 @@
 				oninputs={(list) => (inputs = list)}
 				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
 				takes={idea?.takes ?? []}
-				onpick={(t) => {
-					const row = idea?.takes.find((x) => x.id === t.id);
+				onpick={(id) => {
+					const row = idea?.takes.find((x) => x.id === id);
 					if (idea && row) show(idea, row);
 				}}
 				onstart={() => {

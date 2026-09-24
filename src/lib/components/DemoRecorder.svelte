@@ -17,6 +17,8 @@
 	import { formatTime } from "$lib/utils/formatTime";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
 	import { onDestroy } from "svelte";
+	import ComboBox from "$lib/components/ComboBox.svelte";
+	import ContextMenu from "$lib/components/ContextMenu.svelte";
 
 	/**
 	 * The Idea Recorder's take recorder (docs/demo-recording.md). Record
@@ -68,7 +70,7 @@
 		/** The idea's takes, so the "Take N" label can jump between them. */
 		takes?: Take[];
 		/** A take chosen from the label's dropdown. */
-		onpick?: (take: Take) => void;
+		onpick?: (id: string) => void;
 		/** A new take is starting. */
 		onstart?: () => void;
 		/** Every phase change, so the page can freeze its list mid-take. */
@@ -107,7 +109,6 @@
 	}: Props = $props();
 	/** What the take is really being recorded as, from the track and the recorder. */
 	let formatLine = $state<string | null>(null);
-	let takeMenuEl = $state<HTMLDetailsElement | null>(null);
 	const onIOS = isIOS();
 
 	type Phase = "idle" | "requesting" | "recording" | "saved";
@@ -135,12 +136,13 @@
 			: (loaded?.durationSeconds ?? elapsed),
 	);
 	let volume = $state(1);
-	let menuEl = $state<HTMLDetailsElement | null>(null);
+	let contextMenuOpen: "open" | "closed" = $state("closed");
+	let loopMode: "looping" | "not-looping" = $state("not-looping");
 
 	let stream: MediaStream | null = null;
 	let recorder: MediaRecorder | null = null;
 	let chunks: Blob[] = [];
-	let format: RecordingFormat | null = null;
+	let format = $state<RecordingFormat | null>(null);
 	let ctx: AudioContext | null = null;
 	let analyser: AnalyserNode | null = null;
 	let meterFrame = 0;
@@ -157,6 +159,21 @@
 	const supported = typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 	const hasTake = $derived(phase === "saved");
 	const busy = $derived(phase === "recording" || phase === "requesting");
+
+	interface ComboBoxOption {
+		value: string;
+		label: string;
+		/** Muted text after the label, "2 takes" or a hint. */
+		description?: string;
+	}
+
+	let takeOptions: ComboBoxOption[] = $derived(
+		takes.map((t) => ({
+			value: t.id,
+			label: `Take ${t.takeNumber}${t.title ? ` · ${t.title}` : ""}`,
+			description: t.durationSeconds !== null ? formatTime(t.durationSeconds, 0) : undefined,
+		})),
+	);
 
 	function setPhase(next: Phase) {
 		phase = next;
@@ -378,6 +395,7 @@
 		const canPlay = mime ? document.createElement("audio").canPlayType(mime) !== "" : false;
 		return canPlay ? t.url : (t.playbackUrl ?? t.url);
 	}
+
 	export function load(t: Take) {
 		if (busy) return;
 		playbackPaused = true;
@@ -412,11 +430,7 @@
 		if (!hasTake) return;
 		playbackPaused = !playbackPaused;
 	}
-	function closeMenu(e: Event) {
-		for (const el of [menuEl, takeMenuEl]) {
-			if (el?.open && !(e.type === "pointerdown" && el.contains(e.target as Node))) el.open = false;
-		}
-	}
+
 	/** "<idea> - take 3.m4a", the take's extension (a loaded file's from its URL). */
 	/** "<idea> - take 3 - <name>.<ext>", the extension from the file being saved. */
 	function downloadName(url: string) {
@@ -435,11 +449,12 @@
 			opus: "Opus",
 			aac: "AAC",
 		};
-		return codec && names[codec] ? `Download source (${names[codec]})` : "Download source";
+		return codec && names[codec]
+			? `Download Source <span class="inline-block ml-1 text-0.8em opacity-80">${names[codec]}</span>`
+			: "Download Source";
 	});
 	/** "source" is the take as recorded (a take just made is its own blob); "mp3" the playback rendition. */
 	async function download(kind: "source" | "mp3") {
-		if (menuEl) menuEl.open = false;
 		const url = kind === "mp3" ? loaded?.playbackUrl : take ? takeUrl : (loaded?.url ?? takeUrl);
 		if (!url) return;
 		try {
@@ -529,10 +544,6 @@
 	onbeforeunload={(e) => {
 		if (busy) e.preventDefault();
 	}}
-	onpointerdown={closeMenu}
-	onkeydown={(e) => {
-		if (e.key === "Escape") closeMenu(e);
-	}}
 />
 
 {#if takeUrl && hasTake}
@@ -543,6 +554,7 @@
 		bind:currentTime={playhead}
 		bind:duration={takeDuration}
 		bind:volume
+		loop={loopMode === "looping"}
 		preload="auto"
 		onended={() => (playbackPaused = true)}
 		onerror={(e) => {
@@ -559,15 +571,26 @@
 {/if}
 
 <div
-	class="rounded bg-transparent bg-gradient-to-br from-black/30 to-black/40 grid grid-cols-1 place-content-start gap-4 border border-current/20 sm-border-current/40 pt-5 pb-6 px-3 sm-px-5 sm-py-5 sm-rounded-md"
+	class="
+		rounded
+		device-chrome
+		grid
+		grid-cols-1
+		place-content-start
+		gap-4
+		pb-6
+		px-3
+		sm-border-current/40 pt-5
+		sm-px-5
+		sm-py-5"
 >
 	<!-- the idea's title and, once there is a take, its number and name -->
-	<div class="grid grid-cols-[1fr_auto] sm-grid-cols-1 gap-2 sm-gap-3">
+	<div class="grid grid-cols-[1fr_auto] sm-grid-cols-1 gap-2 sm-gap-3 max-w-60ch">
 		<!-- idea name -->
-		<label class="block">
+		<label class="block device-window-bevel-md">
 			<span class="sr-only">Idea Title</span>
 			<input
-				class="bg-white/5 rounded px-2 w-full max-w-120ch text-16px sm-text-17px sm-font-500 border border-transparent focus:(border-accent outline-none)"
+				class="device-field w-full"
 				type="text"
 				maxlength="120"
 				autocomplete="off"
@@ -582,349 +605,413 @@
 			/>
 		</label>
 		<!-- take number and name -->
-		<label class="grid grid-cols-[auto_1fr] items-center gap-3 text-sm">
-			<span
-				class="whitespace-nowrap bg-white/4 h-full w-auto px-2 flex justify-center items-center rounded"
-			>
-				{#if phase === "recording"}
-					New take
-				{:else if loaded && isLocal(loaded.id)}
-					Saving take…
-				{:else if loaded && takes.length > 1}
-					<!-- A quick jump to any other take of the idea. -->
-					<details class="relative inline-block" bind:this={takeMenuEl}>
-						<summary
-							class="cursor-pointer opacity-90 list-none hover:text-accent [&::-webkit-details-marker]:hidden"
-							aria-label="Take {loaded.takeNumber}: jump to another take"
-						>
-							Take {loaded.takeNumber} of {takes.length}
-							<span class="i-ph-caret-down inline-block text-10px align-middle" aria-hidden="true"
-							></span>
-						</summary>
-						<div
-							class="absolute top-full left-0 z-20 mt-1 min-w-48 max-h-64 overflow-y-auto rounded border border-white/15 bg-oxford p-1 font-sans text-sm shadow-lg"
-							role="menu"
-						>
-							{#each takes as t (t.id)}
-								<button
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									type="button"
-									role="menuitemradio"
-									aria-checked={t.id === loaded.id}
-									onclick={() => {
-										if (takeMenuEl) takeMenuEl.open = false;
-										if (t.id !== loaded?.id) onpick?.(t);
-									}}
-								>
-									<span
-										class="i-ph-check {t.id === loaded.id ? '' : 'invisible'}"
-										aria-hidden="true"
-									></span>
-									Take {t.takeNumber}{t.title ? ` · ${t.title}` : ""}
-									<span class="ml-auto tabular-nums opacity-70"
-										>{t.durationSeconds !== null ? formatTime(t.durationSeconds, 0) : ""}</span
-									>
-								</button>
-							{/each}
-						</div>
-					</details>
-				{:else if loaded}
-					Take {loaded.takeNumber}
-				{:else}
-					Take 1
-				{/if}
-			</span>
-			<input
-				class="hidden sm-block field text-sm"
-				type="text"
-				maxlength="120"
-				placeholder={loaded || phase === "recording" || phase === "requesting"
-					? "Label this take (optional)"
-					: "Label the next take (optional)"}
-				autocomplete="off"
-				data-1p-ignore
-				data-lpignore="true"
-				data-bwignore
-				bind:value={takeName}
-				disabled={loaded ? isLocal(loaded.id) : false}
-				aria-label="Take label"
-				onchange={() => {
-					if (loaded && !isLocal(loaded.id))
-						ontakename?.({ id: loaded.id, title: takeName.trim() });
-				}}
-				onkeydown={(e) => {
-					if (e.key === "Enter") e.currentTarget.blur();
-				}}
-			/>
-		</label>
-	</div>
-	{#if !supported}
-		<p class="rounded border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm" role="alert">
-			This browser cannot record audio. Try Safari, Chrome or Firefox.
-		</p>
-	{/if}
+		<div class="grid grid-cols-1 sm-grid-cols-[auto_1fr] items-center sm-gap-2">
+			<!-- Take Number -->
+			<div class="device-window-bevel-md">
+				<span
+					class="device-field flex justify-start items-center h-full min-w-100px min-h-28.5px !max-w-100px truncate"
+				>
+					{#if phase === "recording"}
+						<span class="truncate">New Take</span>
+					{:else if loaded && isLocal(loaded.id)}
+						<span class="truncate">Saving...</span>
+					{:else if loaded && takes.length > 1}
+						<ComboBox
+							ariaLabel="Select Take"
+							options={takeOptions}
+							onchange={(id) => onpick?.(id)}
+							buttonClasses="!bg-transparent !p-0 !h-full"
+							popoverClasses="min-w-180px"
+							value={loaded.id}
+						/>
+					{:else if loaded}
+						<span class="truncate">Take {loaded.takeNumber}</span>
+					{:else}
+						<span class="truncate">Take 1</span>
+					{/if}
+				</span>
+			</div>
 
-	<!-- the clock and the meter -->
-	<div
-		class="px-3 pb-1 sm-pb-2 leading-none grid sm-grid-cols-[auto_1fr] gap-4 sm-gap-8 relative rounded-md overflow-hidden"
-	>
-		<div class="rounded-md flex justify-between items-center sm-grid sm-grid-cols-1 gap-2">
-			<span
-				class="font-mono text-20px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
-				aria-live="off"
-				>{formatTime(hasTake ? playhead : elapsed, 1)}{#if hasTake}<span
-						class="text-[0.5em] opacity-60"
-						aria-label="Length">&#8239;/&#8239;{formatTime(takeLength, 0)}</span
-					>{/if}</span
-			>
-			<div class="text-sm opacity-90">
-				{#if phase === "recording"}
-					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
-					></span>Recording
-				{:else if hasTake && !playbackPaused}
-					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
-					></span>Playing
-				{:else if phase === "saved" && loaded && isLocal(loaded.id)}
-					<span class="mr-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-500"
-					></span>Saving in the background
-				{:else if phase === "saved"}
-					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Saved
-				{:else if phase === "requesting"}
-					<span class="mr-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-green-500"
-					></span>Waiting for the microphone…
-				{:else}
-					<span class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Ready
-				{/if}
+			<!-- Take Name -->
+			<div class="hidden sm-block device-window-bevel-md">
+				<input
+					class="device-field min-w-full"
+					type="text"
+					maxlength="120"
+					placeholder={loaded || phase === "recording" || phase === "requesting"
+						? "Label this take (optional)"
+						: "Label the next take (optional)"}
+					autocomplete="off"
+					data-1p-ignore
+					data-lpignore="true"
+					data-bwignore
+					bind:value={takeName}
+					disabled={loaded ? isLocal(loaded.id) : false}
+					aria-label="Take label"
+					onchange={() => {
+						if (loaded && !isLocal(loaded.id))
+							ontakename?.({ id: loaded.id, title: takeName.trim() });
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Enter") e.currentTarget.blur();
+					}}
+				/>
 			</div>
 		</div>
+	</div>
 
-		<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px">
-			<div
-				class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
-				role="meter"
-				aria-label="Input level"
-				aria-valuemin="0"
-				aria-valuemax="100"
-				aria-valuenow={Math.round(level * 100)}
-			>
-				<span class="i-ph-microphone flex" aria-hidden="true"></span>
-				<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
-					<div
-						class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-accent'}"
-						style:width="{level * 100}%"
-					></div>
-					<div
-						class="absolute top-0 h-full w-0.5 {peak > 0.98 ? 'bg-red-500' : 'bg-white/70'}"
-						style:left="{Math.min(99.5, peak * 100)}%"
-					></div>
+	<!-- screen -->
+	<div class="device-window-bevel-md">
+		<div class="device-screen leading-none grid gap-4 relative rounded-md overflow-hidden">
+			<!-- the clock and status indicator -->
+			<div class="rounded-md flex justify-between items-center gap-2 h-20px sm-h-auto">
+				<!-- clock -->
+				<div
+					class="font-mono text-20px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
+					aria-live="off"
+				>
+					{formatTime(hasTake ? playhead : elapsed, 1)}{#if hasTake}<span
+							class="text-[0.5em] opacity-60"
+							aria-label="Length">&#8239;/&#8239;{formatTime(takeLength, 0)}</span
+						>{/if}
+				</div>
+
+				<!-- status indicator -->
+				<div class="flex items-center gap-2 justify-end text-0.9em">
+					<!-- status text -->
+					<span class="font-mono"
+						>{phase === "recording"
+							? "Recording"
+							: hasTake && !playbackPaused
+								? "Playing"
+								: phase === "saved" && loaded && isLocal(loaded.id)
+									? "Saving"
+									: phase === "requesting"
+										? "Microphone…"
+										: "Ready"}</span
+					>
+
+					<!-- status light -->
+					<span
+						class="
+					aspect-square
+					mr-2
+					inline-block
+					h-2.5
+					w-2.5
+					rounded-full
+					{phase === 'recording' ? 'bg-red-500' : phase === 'requesting' ? 'bg-orange-500' : 'bg-green-500'}
+					"
+					></span>
 				</div>
 			</div>
-			{#if hasTake}
-				<!-- Where playback is in the take; drag to seek. -->
-				<label class="w-full grid grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90">
-					<span class="i-ph-play flex" aria-hidden="true"></span>
-					<span class="sr-only">Position</span>
-					<input
-						type="range"
-						class="accent-maximumYellow"
-						min="0"
-						max={takeLength || 0}
-						step="0.1"
-						value={playhead}
-						disabled={!takeLength}
-						oninput={(e) => (playhead = Number(e.currentTarget.value))}
-						aria-label="Position"
-						aria-valuetext="{formatTime(playhead, 0)} of {formatTime(takeLength, 0)}"
-					/>
-				</label>
-			{/if}
-			<!-- iOS keeps playback volume on the hardware buttons: a slider there does nothing. -->
-			<label
-				class="{onIOS
-					? 'hidden'
-					: 'hidden sm-grid'} w-full grid-cols-[auto_1fr] items-center gap-2 text-sm opacity-90"
-			>
-				<span class="i-ph-speaker-high" aria-hidden="true"></span>
-				<span class="sr-only">Volume</span>
-				<input
-					type="range"
-					class="accent-blue-300"
-					min="0"
-					max="1"
-					step="0.01"
-					bind:value={volume}
-					aria-label="Volume"
-				/>
-			</label>
-			{#if inputLabel && phase === "recording"}
-				<!-- Two short lines, wrapped rather than cut: the input's name, then what is being recorded. -->
-				<p class="w-full text-12px leading-snug opacity-70 text-balance">
-					<span class="break-words">Input: {inputLabel}</span>
-					{#if formatLine}
-						<span class="block whitespace-nowrap">{formatLine}</span>
-					{/if}
-				</p>
-			{/if}
+
+			<!-- input meter, playback controls, recording metadata  -->
+			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px min-h-80px">
+				<!-- input meter -->
+				<div
+					class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+					role="meter"
+					aria-label="Input level"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					aria-valuenow={Math.round(level * 100)}
+				>
+					<span class="i-ph-microphone flex" aria-hidden="true"></span>
+					<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
+						<div
+							class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-accent'}"
+							style:width="{level * 100}%"
+						></div>
+						<div
+							class="absolute top-0 h-full w-0.5 {peak > 0.98 ? 'bg-red-500' : 'bg-white/70'}"
+							style:left="{Math.min(99.5, peak * 100)}%"
+						></div>
+					</div>
+				</div>
+
+				<!-- recording metadata: input source and data format -->
+				{#if inputLabel && phase === "recording"}
+					<!-- Two short lines, wrapped rather than cut: the input's name, then what is being recorded. -->
+					<p class="w-full text-13px leading-normal opacity-90 text-balance">
+						<span class="break-words">Input: {inputLabel}</span>
+						{#if formatLine}
+							<span class="block whitespace-nowrap">{formatLine}</span>
+						{/if}
+					</p>
+				{/if}
+
+				{#if notice || playError}
+					<div class="w-full text-13px leading-normal opacity-90 text-balance" role="status">
+						{#if notice}<div>{notice}</div>{/if}
+						{#if playError}<div>{playError}</div>{/if}
+					</div>
+				{/if}
+			</div>
+
+			<div class="flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
+				<!-- loop status -->
+				<span
+					class="i-ph-arrows-clockwise-fill {loopMode === 'looping'
+						? 'bg-yellow-500'
+						: 'bg-blue-100/10'}"
+				></span>
+
+				<!-- volume -->
+				<div
+					class="text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
+						? ''
+						: 'opacity-10'}"
+				>
+					Vol: {String(Math.round(volume * 10)).padStart(2, "0")}
+				</div>
+			</div>
 		</div>
 	</div>
 
-	{#if notice}
-		<p class="rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-sm" role="status">
-			{notice}
-		</p>
-	{/if}
-	{#if playError}
-		<p class="rounded border border-white/15 bg-blue-300/5 px-4 py-3 text-sm" role="status">
-			{playError}
-		</p>
-	{/if}
-
 	<!-- the controls: Record (or Stop), Play, the take menu -->
-	<div class="flex flex-wrap items-center gap-3">
-		{#if phase === "recording"}
-			<button class="button-record" type="button" onclick={stop}>
-				<span class="i-ph-stop-fill" aria-hidden="true"></span>
-				Stop
-			</button>
-		{:else}
-			<button
-				class="button-record"
-				type="button"
-				disabled={!supported || busy}
-				title={loaded ? "Record the next take" : "Record a take"}
-				onclick={start}
-			>
-				<span class="i-ph-record-fill" aria-hidden="true"></span>
-				Record
-			</button>
-		{/if}
-		<button
-			class="button button-sm"
-			type="button"
-			disabled={!hasTake}
-			aria-label={playbackPaused ? "Play the take" : "Pause the take"}
-			title={playbackPaused ? "Play the take" : "Pause the take"}
-			onclick={togglePlayback}
-		>
-			<span class={playbackPaused ? "i-ph-play-fill" : "i-ph-pause-fill"} aria-hidden="true"></span>
-			{playbackPaused ? "Play" : "Pause"}
-		</button>
+	<div class="flex items-center flex-wrap gap-3">
+		<!-- Always in place, disabled until there is a take, so the panel keeps its shape. -->
+		{#if true}
+			<label class="w-full grid grid-cols-1 items-center gap-2 text-sm opacity-90 mb-2">
+				<!-- <span class="i-ph-play flex" aria-hidden="true"></span> -->
+				<span class="sr-only">Position</span>
+				<input
+					type="range"
+					class="
+						accent-slate-800
+						appearance-none
+						bg-oxford-950
+						cursor-pointer
+						h-1
+						w-full
+					 shadow-sm
+						rounded-full
+						bg-oxford-950
 
-		<details class="relative ml-auto" bind:this={menuEl}>
-			<summary
-				class="button button-sm border-current/10 flex items-center list-none !min-h-31px [&::-webkit-details-marker]:hidden"
-				title="More"
-				aria-label="Take menu"
+						[&::-webkit-slider-thumb]:appearance-none
+				    [&::-webkit-slider-thumb]:size-5
+				    [&::-webkit-slider-thumb]:-mt-.5
+				    [&::-webkit-slider-thumb]:rounded-full
+				    [&::-webkit-slider-thumb]:bg-slate-800
+				    [&::-webkit-slider-thumb]:shadow
+				    [&::-webkit-slider-thumb]:transition-transform
+				    [&::-webkit-slider-thumb]:hover:scale-110
+						"
+					min="0"
+					max={takeLength || 0}
+					step="0.1"
+					value={playhead}
+					disabled={!takeLength}
+					oninput={(e) => (playhead = Number(e.currentTarget.value))}
+					aria-label="Position"
+					aria-valuetext="{formatTime(playhead, 0)} of {formatTime(takeLength, 0)}"
+				/>
+			</label>
+		{/if}
+
+		<!-- record / stop button -->
+		<div class="device-window-bezel-sm">
+			<button
+				class="device-button-lg {phase === 'recording'
+					? 'device-button-stop'
+					: 'device-button-record'}"
+				onclick={phase === "recording" ? stop : start}
+				title={phase === "recording"
+					? "Stop Recording"
+					: loaded
+						? "Record the next take"
+						: "Record a take"}
+				type="button"
 			>
-				<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
-			</summary>
-			<div
-				class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-				role="menu"
+				{phase === "recording" ? "Stop" : "Record"}
+			</button>
+		</div>
+
+		<!-- Back to the beginning button -->
+		<div class="device-window-bezel-sm">
+			<button
+				class="device-button-lg device-button-skip-back !max-w-fit !min-w-fit"
+				type="button"
+				disabled={!(hasTake && loaded)}
+				aria-label="Go back to the beginning"
+				title="Go back to the beginning"
+				onclick={() => {
+					playhead = 0;
+					playbackPaused = true;
+				}}
 			>
-				{#if phase === "saved" && loaded && isLocal(loaded.id)}
-					<div class="px-2 py-1 text-xs opacity-70">Saving… song actions follow in a moment</div>
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => download("source")}
-					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>{sourceLabel}
-					</button>
-				{:else if phase === "saved" && loaded}
-					{#if onaddtosong}
-						<button
-							class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-							type="button"
-							role="menuitem"
-							onclick={() => {
-								if (menuEl) menuEl.open = false;
-								if (loaded) onaddtosong?.(loaded);
-							}}
-						>
-							<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
-						</button>
-					{/if}
-					{#if onnewsong}
-						<button
-							class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-							type="button"
-							role="menuitem"
-							onclick={() => {
-								if (menuEl) menuEl.open = false;
-								if (loaded) onnewsong?.(loaded);
-							}}
-						>
-							<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create new song…
-						</button>
-					{/if}
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => download("source")}
-					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>{sourceLabel}
-					</button>
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
-						type="button"
-						role="menuitem"
-						disabled={!loaded.playbackUrl}
-						title={loaded.playbackUrl
-							? "The 192 kbit/s MP3 made for playback"
-							: "The MP3 is still being made"}
-						onclick={() => download("mp3")}
-					>
-						<span class="i-ph-download-simple" aria-hidden="true"></span>Download MP3
-					</button>
-					<hr class="my-1 border-white/15" />
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-							if (loaded) ondeletetake?.(loaded);
-						}}
-					>
-						<span class="i-ph-trash" aria-hidden="true"></span>Delete take
-					</button>
-				{/if}
-				{#if onnewidea && (phase === "saved" || phase === "idle")}
-					{#if phase === "saved"}
-						<hr class="my-1 border-white/15" />
-					{/if}
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
-						type="button"
-						role="menuitem"
-						disabled={newIdeaDisabled}
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-							onnewidea?.();
-						}}
-					>
-						<span class="i-ph-plus" aria-hidden="true"></span>New idea
-					</button>
-				{/if}
-				{#if ondeleteidea && (phase === "saved" || phase === "idle")}
-					<button
-						class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
-						type="button"
-						role="menuitem"
-						onclick={() => {
-							if (menuEl) menuEl.open = false;
-							ondeleteidea?.();
-						}}
-					>
-						<span class="i-ph-trash" aria-hidden="true"></span>Delete idea
-					</button>
-				{:else if phase !== "saved" && !onnewidea}
-					<div class="px-2 py-1 text-xs opacity-70">Nothing to do here yet</div>
-				{/if}
+			</button>
+		</div>
+
+		<!-- play / pause button -->
+		<div class="device-window-bezel-sm">
+			<button
+				class="device-button-lg {playbackPaused
+					? 'device-button-play'
+					: 'device-button-pause'}  !max-w-fit !min-w-fit"
+				type="button"
+				disabled={!hasTake}
+				aria-label={playbackPaused ? "Play the take" : "Pause the take"}
+				title={playbackPaused ? "Play the take" : "Pause the take"}
+				onclick={togglePlayback}
+			>
+			</button>
+		</div>
+
+		<!--right-aligned -->
+		<div class="ml-auto flex gap-3">
+			<!-- volume up and down -->
+			<!-- iOS keeps playback volume on the hardware buttons: the software control does nothing there. -->
+			<div class="{onIOS ? 'hidden' : 'grid'} device-window-bezel-sm grid-cols-2 gap-x-1 gap-y-0">
+				<button
+					class="device-button-bump-down !max-w-fit !min-w-fit text-slate-800"
+					type="button"
+					aria-label="Volume down"
+					title="Volume down"
+					onclick={() => {
+						volume = volume <= 0 ? 0 : Math.round((volume - 0.1) * 10) / 10;
+					}}
+				>
+				</button>
+
+				<button
+					class="block device-button-bump-up !max-w-fit !min-w-fit text-slate-800"
+					type="button"
+					aria-label="Volume up"
+					title="Volume up"
+					onclick={() => {
+						volume = volume < 1 ? Math.round((volume + 0.1) * 10) / 10 : 1;
+					}}
+				>
+				</button>
 			</div>
-		</details>
+
+			<!-- toggle loopMode -->
+			<div class="device-window-bezel-sm">
+				<button
+					class="device-button-lg device-button-loop !max-w-fit !min-w-fit"
+					type="button"
+					disabled={!hasTake}
+					aria-label="Toggle looping playback mode"
+					title="Toggle looping playback mode"
+					onclick={() => {
+						loopMode = loopMode === "looping" ? "not-looping" : "looping";
+					}}
+				>
+				</button>
+			</div>
+			<!-- context menu -->
+			<div class="device-window-bezel-sm ml-auto">
+				<ContextMenu
+					bind:openState={contextMenuOpen}
+					buttonClasses="bg-slate-800 hover-bg-slate-900 h-38.5px shadow-sm {contextMenuOpen ===
+					'open'
+						? 'text-blue-100'
+						: 'text-blue-100/80'} hover-text-blue-100"
+					items={[
+						{
+							id: "saving-notice",
+							kind: "notice",
+							condition: phase === "saved" && !!loaded && isLocal(loaded.id),
+							notice: "Saving… song actions follow in a moment",
+						},
+						{
+							id: "browse-ideas",
+							label: "Browse All Ideas",
+							iconClass: "i-ph-magnifying-glass",
+							kind: "button",
+							popovertarget: "idea-search",
+						},
+						{
+							id: "divider-0",
+							kind: "divider",
+						},
+						{
+							id: "add-to-song",
+							label: "Add to Existing Song",
+							iconClass: "i-ph-plus-circle",
+							disabled: !(onaddtosong && phase === "saved" && loaded !== null),
+							action: () => {
+								if (loaded) onaddtosong?.(loaded);
+							},
+						},
+						{
+							id: "create-new-song",
+							label: "Create New Song",
+							iconClass: "i-ph-music-notes-plus",
+							disabled: !(onnewsong && phase === "saved" && loaded !== null),
+							kind: "button",
+							action: () => {
+								if (loaded) onnewsong?.(loaded);
+							},
+						},
+						{
+							id: "divider-1",
+							kind: "divider",
+						},
+						{
+							id: "download-take-source",
+							label: sourceLabel,
+							title: loaded?.codec
+								? `Download the high-fidelity source audio file in (${loaded.codec}) format`
+								: "Source file is not yet available",
+							iconClass: "i-ph-download-simple",
+							disabled: phase !== "saved" || loaded === null,
+							// The file keeps the container it was recorded in: .webm on Chrome (Opus), .m4a on Safari.
+							action: () => download("source"),
+						},
+						{
+							id: "download-mp3",
+							label: `Download MP3`,
+							iconClass: "i-ph-download-simple",
+							disabled: phase !== "saved" || !loaded?.playbackUrl,
+							title: loaded?.playbackUrl
+								? "The 192 kbit/s MP3 made for playback"
+								: "The MP3 is not yet available",
+							action: () => download("mp3"),
+						},
+						{
+							id: "divider-2",
+							kind: "divider",
+						},
+						{
+							id: "delete-take",
+							label: "Delete Take",
+							iconClass: "i-ph-trash-simple",
+							disabled: !(ondeletetake && loaded && !isLocal(loaded.id)),
+							// The page deletes and then shows the previous take (or empties the player): only it knows the outcome.
+							action: () => {
+								if (loaded) ondeletetake?.(loaded);
+							},
+						},
+						{
+							id: "delete-idea",
+							label: "Delete Idea",
+							iconClass: "i-ph-trash-simple",
+							disabled: !(ondeleteidea && loaded),
+							action: () => ondeleteidea?.(),
+						},
+						{
+							id: "divider-3",
+							kind: "divider",
+						},
+						{
+							id: "new-idea",
+							label: "Start New Idea",
+							iconClass: "i-ph-plus",
+							disabled: false,
+							action: () => onnewidea?.(),
+						},
+					]}
+				></ContextMenu>
+			</div>
+		</div>
 	</div>
 </div>
+
+{#if !supported}
+	<p class="rounded border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm" role="alert">
+		This browser cannot record audio. Try Safari, Chrome or Firefox.
+	</p>
+{/if}

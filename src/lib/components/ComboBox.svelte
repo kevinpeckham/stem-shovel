@@ -22,6 +22,7 @@
 		openState?: "open" | "closed";
 		placeholder?: string;
 		popoverClasses?: string;
+		showDescriptionInButton?: boolean;
 		value: T;
 	}
 	let {
@@ -33,6 +34,7 @@
 		openState = $bindable("closed"),
 		onchange,
 		placeholder = "",
+		showDescriptionInButton = false,
 		value = $bindable(),
 	}: Props = $props();
 
@@ -166,7 +168,9 @@
 			text-0.95em
 			text-current/90
 			text-left
+			truncate
 			w-full
+			max-w-full
 			{buttonClasses}"
 		role="combobox"
 		aria-controls={popoverId}
@@ -182,7 +186,8 @@
 	>
 		<span class="min-w-0 grow truncate">
 			{#if selected}
-				{selected.label}{#if selected.description}
+				{selected.label}
+				{#if selected.description && showDescriptionInButton}
 					<span class="ml-1.5 opacity-60">{selected.description}</span>{/if}
 			{:else}
 				<span class="text-slate-400">{placeholder}</span>

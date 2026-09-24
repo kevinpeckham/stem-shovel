@@ -49,7 +49,10 @@
 		onphase={(p) => (phase = p)}
 		minTakeSeconds={0}
 		{takes}
-		onpick={(t) => recorder?.load(t)}
+		onpick={(id) => {
+			const take = takes.find((x) => x.id === id);
+			if (take) recorder?.load(take);
+		}}
 		onqueued={(q) => {
 			// "Saved" at once: the take is this page's own blob.
 			const takeNumber = takes.length + 1;

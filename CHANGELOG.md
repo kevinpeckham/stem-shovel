@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-09-24
+
+### Changed
+
+- **The Idea Recorder looks like a device.** A bezelled panel with a screen for the clock, status and meter; the take picker is a ComboBox; Record, back-to-start, play, volume up and down, loop and a ⋯ menu (browse ideas, add to a song, new song, downloads, delete take, delete idea, new idea) sit in a control row. The position slider is always in place; playback can loop.
+- **ContextMenu** items take an icon, a kind (link, button, notice, divider, snippet), a condition and a disabled flag; **ComboBox** hides an option's description on the trigger unless asked.
+
+### Fixed
+
+- **Download MP3 downloaded the source file.** It downloads the MP3 (and is disabled until the rendition exists); the source keeps the container it was recorded in.
+- **Deleting a take shows the previous take** once the list has refreshed, instead of an empty player; deleting the idea in the player gives the title a fresh "Untitled Idea N" that counts without the deleted one.
+- The recorder's status reads Saving and Microphone… in those states again.
+
 ## [0.33.0] - 2026-09-23
 
 ### Added

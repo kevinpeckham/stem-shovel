@@ -13,14 +13,22 @@
 	type Position = "bottom left" | "bottom right" | "top left" | "top right";
 
 	interface ContextMenuItem {
-		/** The text of a plain item; a snippet item brings its own markup. */
-		label?: string;
+		/** Show the item at all (default yes). */
+		condition?: boolean | (() => boolean);
+		disabled?: boolean | null;
+		/** The text of a plain item, rendered as HTML (never user text); a snippet item brings its own markup. */
+		label?: string | (() => string);
 		action?: () => void | Promise<void> | null;
 		href?: string | null;
+		iconClass?: string | null;
+		kind?: "link" | "button" | "notice" | "snippet" | "divider" | null;
+		notice?: string | null;
+		popovertarget?: string | null;
 		title?: string | null;
 		target?: string | null;
 		/** Fully custom item; can contain any markup, including interactive elements. **/
 		snippet?: Snippet;
+		id?: string;
 	}
 
 	interface Props {
@@ -102,6 +110,7 @@
 </script>
 
 <div class="grid">
+	<!-- button -->
 	<button
 		bind:this={buttonEl}
 		type="button"
@@ -120,46 +129,74 @@
 			border-current/10
 			leading-none
 			rounded-md
+			disabled-opacity-60
 			{buttonClasses}"
 	>
 		<span class="i-ph-dots-three-vertical-bold" aria-hidden="true"></span>
 	</button>
+
+	<!-- popover -->
 	<div
 		id={popoverId}
 		bind:this={popoverEl}
 		popover="auto"
 		class="{positionClasses[
 			position ?? 'bottom left'
-		]} h-auto overflow-hidden absolute shadow-lg bg-oxford rounded-md mt-1 text-current px-4 pt-3 pb-4 border border-current/20"
+		]} h-auto overflow-hidden absolute bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em"
 		ontoggle={onToggle}
 		onfocusout={onFocusOut}
 	>
-		<ul class="m-0 p-0 list-none">
-			{#each items ?? [] as item, i (item.label ?? i)}
-				<li>
-					{#if item.snippet}
-						{@render item.snippet()}
-					{:else if item.href}
-						<a
-							href={item.href}
-							title={item.title}
-							target={item.target}
-							onclick={() => popoverEl?.hidePopover()}
-							class="block py-1.5"
-						>
-							{item.label}
-						</a>
-					{:else if item.action}
-						<button
-							type="button"
-							title={item.title}
-							onclick={() => run(item)}
-							class="block w-full text-left rounded px-2 py-1.5 hover:bg-white/10 focus-visible:bg-white/10"
-						>
-							{item.label}
-						</button>
-					{/if}
-				</li>
+		<ul class="m-0 p-0 list-none grid grid-cols-1">
+			{#each items ?? [] as item, i (item.id ?? i)}
+				{#if item.condition == null || (typeof item.condition === "function" ? item.condition() : item.condition)}
+					<li class="bg-transparent">
+						{#if item.snippet && (item.kind === "snippet" || !item.kind)}
+							{@render item.snippet()}
+						{:else if item.href && (item.kind === "link" || !item.kind)}
+							<a
+								id={item.id ?? null}
+								href={item.href}
+								title={item.title}
+								target={item.target}
+								onclick={() => popoverEl?.hidePopover()}
+								class="block w-full text-left opacity-90 px-3 py-1.5 hover-bg-blue-100/10 hover-opacity-100 focus-visible:bg-white/10"
+							>
+								{#if item.notice}
+									<div>{item.notice}</div>
+								{/if}
+								<div class="flex items-center gap-2">
+									{#if item.iconClass}
+										<div class="w-1em {item.iconClass}"></div>
+									{/if}
+									<span>{@html typeof item.label === "function" ? item.label() : item.label}</span>
+								</div>
+							</a>
+						{:else if (item.action && !item.kind) || item.kind === "button"}
+							<button
+								id={item.id ?? null}
+								disabled={item.disabled ?? false}
+								type="button"
+								title={item.title}
+								onclick={() => run(item)}
+								popovertarget={item.popovertarget ?? null}
+								class="block w-full text-left opacity-90 px-3 py-1.5 hover-bg-blue-100/10 hover-opacity-100 disabled-opacity-60 disabled-hover-bg-transparent focus-visible-bg-white/10"
+							>
+								<div class="flex items-center gap-2">
+									{#if item.iconClass}
+										<div class="w-1em {item.iconClass}"></div>
+									{/if}
+									<span>{@html typeof item.label === "function" ? item.label() : item.label}</span>
+								</div>
+							</button>
+						{:else if item.notice && (item.kind === "notice" || !item.kind)}
+							<div class="border-b border-current/20 px-3 pb-2 opacity-80">
+								{item.notice}
+							</div>
+						{:else if item.kind === "divider"}
+							<div class="border-b border-current/10 px-3 pb-2 opacity-80"></div>
+						{/if}
+					</li>
+				{/if}
 			{/each}
 		</ul>
 	</div>
