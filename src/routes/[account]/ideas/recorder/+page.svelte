@@ -408,8 +408,10 @@
 				<span class="i-ph-plus" aria-hidden="true"></span>
 				<span class="hidden sm-inline">New Idea</span>
 			</button>
+			<!-- The search sheet anchors here whatever opened it (the ⋯ menu's item is hidden once the menu closes). -->
 			<button
 				class="button button-sm shrink-0"
+				style:anchor-name="--idea-search"
 				type="button"
 				popovertarget="idea-search"
 				title="Search ideas and takes"
@@ -773,7 +775,6 @@
 		class="
 			fixed
 			h-screen
-
 			left-0
 			overflow-y-auto
 			pb-6
@@ -806,12 +807,11 @@
 			<div class="flex items-center gap-3">
 				<!-- <a class="link-dim text-13px" href="/tuner">Full page</a> -->
 				<button
-					class="button button-xs"
+					class="button-popover-close"
 					type="button"
 					popovertarget="tuner"
 					popovertargetaction="hide"
 				>
-					<span class="i-ph-x-bold"></span>
 					<span class="sr-only">Close</span>
 				</button>
 			</div>
@@ -823,17 +823,44 @@
 	<div
 		id="recorder-settings"
 		popover="auto"
-		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+		class="fixed
+		h-screen
+		left-0
+		overflow-y-auto
+		pb-6
+		px-3
+		pt-5
+		rounded-md
+		text-blue-100
+		top-0
+		w-full
+		sm-[position-area:bottom_span-left]
+		sm-absolute
+		sm-h-auto
+		sm-max-h-fit
+		sm-mt-4
+		sm-max-h-[calc(100dvh-2rem)]
+		sm-w-[min(640px,100vw)]
+		sm-border
+		sm-border-white/5
+		bg-oxford
+		sm-px-8
+		sm-pt-5
+		sm-pb-12
+	 sm-shadow-2xl
+		sm-shadow-black/60
+		sm-[&::backdrop]-bg-black/60
+		sm-[&::backdrop]-backdrop-blur-none"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Recorder settings</h2>
+			<h2 class="mb-0">Recorder settings</h2>
 			<button
-				class="button button-xs"
+				class="button-popover-close"
 				type="button"
 				popovertarget="recorder-settings"
 				popovertargetaction="hide"
 			>
-				Close
+				<span class="sr-only">Close</span>
 			</button>
 		</div>
 		<div class="grid gap-5 text-sm">
@@ -961,25 +988,48 @@
 			if (searchOpen) searchText = "";
 		}}
 		class="
-			m-0
-			h-dvh
-			max-h-none
-			w-screen
-			max-w-none
-			rounded-none
-			border-0
-			bg-oxford
-			text-neutral-100
-			shadow-2xl
-			shadow-black/60
-			sm:m-auto
-			sm:h-[min(85dvh,52rem)]
-			sm:w-[min(48rem,calc(100vw-2rem))]
-			sm:rounded-md sm:border sm:border-white/15 [&::backdrop]:bg-black/60 [&:popover-open]:flex [&:popover-open]:flex-col"
+		fixed
+		h-screen
+		left-0
+		overflow-y-auto
+		pb-6
+		px-3
+		pt-5
+		rounded-md
+		text-blue-100
+		top-0
+		w-full
+		sm-[position-area:bottom_span-left]
+		sm-absolute
+		sm-mt-4
+		sm-max-h-[calc(100dvh-2rem)]
+		sm-w-[min(640px,100vw)]
+		sm-border
+		sm-border-white/5
+		bg-oxford
+		sm-px-8
+		sm-pt-5
+		sm-pb-12
+	 sm-shadow-2xl
+		sm-shadow-black/60
+		sm-[&::backdrop]-bg-black/60
+		sm-[&::backdrop]-backdrop-blur-none
+		[&:popover-open]:flex
+		[&:popover-open]:flex-col
+		sm-h-[min(85dvh,52rem)]"
+		style:position-anchor="--idea-search"
 	>
 		<!-- Full screen on a phone, a tall sheet on a desktop: the search box stays put, the list scrolls. -->
-		<div class="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
-			<label class="block min-w-0 grow">
+		<div class="shrink-0">
+			<button
+				class="button-popover-close ml-auto"
+				type="button"
+				popovertarget="idea-search"
+				popovertargetaction="hide"
+			>
+				<span class="sr-only">Close</span>
+			</button>
+			<label class="flex mt-4">
 				<span class="sr-only">Search ideas</span>
 				<!-- svelte-ignore a11y_autofocus -->
 				<input
@@ -994,14 +1044,8 @@
 					autofocus={searchOpen}
 				/>
 			</label>
-			<button
-				class="button button-xs shrink-0"
-				type="button"
-				popovertarget="idea-search"
-				popovertargetaction="hide">Close</button
-			>
 		</div>
-		<div class="min-h-0 grow overflow-y-auto px-4 py-3 sm:px-6">
+		<div class="min-h-0 grow overflow-y-auto mt-4">
 			{#if filtered.length === 0}
 				<p class="py-6 text-center text-sm opacity-80">
 					{data.ideas.length === 0 ? "Nothing recorded yet." : "Nothing matches."}

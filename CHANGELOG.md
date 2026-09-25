@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-09-25
+
+### Changed
+
+- **The recorder's popovers share one look**: settings and the ideas search fill a phone's screen and sit under their buttons on larger screens, each closed by a corner ✕ (`button-popover-close`); the recorder carries an "SS Recorder 001" badge. The ideas search anchors to the header's Ideas button whichever way it was opened (the ⋯ menu's item is hidden once the menu closes and would give it no anchor), keeps its search box in place while the list scrolls, and stands 85 % of the viewport tall on larger screens.
+
 ## [0.35.0] - 2026-09-25
 
 ### Changed

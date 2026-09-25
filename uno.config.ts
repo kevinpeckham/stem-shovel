@@ -332,6 +332,25 @@ export default defineConfig({
 
 			`,
 		],
+		[
+			"button-popover-close",
+			`
+				after-content-['_']
+				after-block
+				after-i-ph-x-bold
+				border
+				border-blue-100/5
+				flex
+				items-center
+				justify-center
+				text-1em w-2em
+				h-1.5em
+				opacity-90
+				rounded-md
+				text-1.25em
+				hover-opacity-100
+				hover-bg-blue-100/5`,
+		],
 		["button-sm", "text-14px py-1"],
 		["button-xs", "text-12px py-1"],
 		["button-accent", "button text-accent hover-text-oxford"],

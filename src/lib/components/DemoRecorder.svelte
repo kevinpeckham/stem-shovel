@@ -903,6 +903,12 @@
 			</button>
 		</div>
 
+		<div
+			class="hidden sm-block ml-2 text-12px text-oxford uppercase text-shadow opacity-90 font-600 select-none pointer-events-none"
+		>
+			SS Recorder 001
+		</div>
+
 		<!--right-aligned -->
 		<div class="ml-auto flex gap-3">
 			<!-- volume up and down -->
