@@ -1,4 +1,5 @@
 import { invitationByToken } from "$lib/server/data";
+import { realMemberships } from "$lib/utils/actingMemberships";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -9,7 +10,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const found = await invitationByToken(params.token);
 	if (found.status !== "open") return { status: found.status, token: params.token };
 	const inv = found.invitation;
-	const alreadyMember = locals.memberships.some((m) => m.accountId === inv.accountId);
+	// Real memberships only: a super admin acts as owner everywhere, but that is not membership, and the invitation is how they join for real.
+	const alreadyMember = realMemberships(locals.memberships).some(
+		(m) => m.accountId === inv.accountId,
+	);
 	return {
 		status: alreadyMember ? ("member" as const) : ("open" as const),
 		token: params.token,

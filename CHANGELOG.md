@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A super admin could not accept an invitation.** The invitation page took their acting-owner access to every account for membership and said they already belonged, leaving the invitation pending; it now counts real memberships only.
+
 ## [0.35.1] - 2026-09-25
 
 ### Changed
