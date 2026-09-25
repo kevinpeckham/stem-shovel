@@ -38,6 +38,30 @@
 	type Idea = (typeof data.ideas)[number];
 	type TakeRow = Idea["takes"][number];
 
+	/**
+	 * On a phone the recorder fills the viewport and the page must not scroll
+	 * behind it: the document is locked while the phone layout applies and
+	 * unlocked when it stops applying or the page is left (nothing leaks to
+	 * other pages). A media query, not a width binding, so it runs only when
+	 * the answer changes.
+	 */
+	onMount(() => {
+		const phone = window.matchMedia("(max-width: 639.98px)");
+		const root = document.documentElement;
+		const before = { maxHeight: root.style.maxHeight, overflowY: root.style.overflowY };
+		const apply = () => {
+			root.style.maxHeight = phone.matches ? "100svh" : before.maxHeight;
+			root.style.overflowY = phone.matches ? "hidden" : before.overflowY;
+		};
+		apply();
+		phone.addEventListener("change", apply);
+		return () => {
+			phone.removeEventListener("change", apply);
+			root.style.maxHeight = before.maxHeight;
+			root.style.overflowY = before.overflowY;
+		};
+	});
+
 	let recorder = $state<DemoRecorder | null>(null);
 	/** The idea in the recorder and the notes panel; null = a new idea not yet saved. */
 	let ideaId = $state<string | null>(null);
@@ -348,8 +372,10 @@
 	}}
 />
 
-<main class="sm-page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16">
-	<header class="flex justify-between items-start w-full px-3">
+<main
+	class="max-h-[calc(100svh-72px)] h-[calc(100svh-72px)] grid grid-rows-[auto_1fr] sm-block sm-max-h-none sm-h-auto px-3 sm-!page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16"
+>
+	<header class="flex justify-between items-start w-full mb-1 sm-mb-3">
 		<div class="md-max-w-article">
 			<h1 class="sm-heading-2 flex items-center gap-2">
 				Idea Recorder
@@ -357,7 +383,7 @@
 					label="About the Idea Recorder"
 					text="An idea consists of one or more audio recording takes and optionally some written notes.
 					Hitting record starts a new take. Starting a new idea clears the note board and starts over
-					at take 1."
+					at take one."
 				/>
 			</h1>
 			<p class="opacity-90 md-text-balance mb-3">
@@ -390,6 +416,7 @@
 				aria-label="Search ideas and takes"
 			>
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+				<span class="hidden sm-inline-block">Ideas</span>
 			</button>
 			<button
 				class="button button-sm shrink-0"
@@ -420,7 +447,7 @@
 		"Take N" dropdown.
 	-->
 	<div
-		class="px-1 grid grid-cols-1 gap-2 sm-gap-x-8 sm-gap-y-4 xl-grid-cols-2 xl-grid-rows-[auto_1fr]"
+		class="gap-y-2 grid grid-cols-1 grid-rows-[auto_1fr] h-full place-content-stretch max-h-full sm-h-auto sm-max-h-none sm-grid-rows-auto gap-4 sm-gap-x-8 sm-gap-y-4 xl-grid-cols-2 xl-grid-rows-[auto_1fr] overflow-x-hidden relative"
 	>
 		<section
 			class="grid grid-cols-1 gap-6 place-content-start w-full xl-col-start-1 xl-row-start-1"
@@ -496,51 +523,38 @@
 		</section>
 
 		<!-- The idea's note board; a new idea's notes create it on the first save. -->
-		<section class="min-h-560px xl-col-start-2 xl-row-start-1 xl-row-span-2" aria-label="Notes">
+		<section
+			class="h-full max-h-full overflow-y-scroll sm-h-auto sm-max-h-none sm-min-h-560px xl-col-start-2 xl-row-start-1 xl-row-span-2 max-w-full overflow-x-hidden sm-overflow-y-visible rounded-md"
+			aria-label="Notes"
+		>
+			<div class="justify-between w-full items-center mb-3 hidden sm-flex">
+				<div class="opacity-90"><span>Notes for:</span> "{ideaTitle}"</div>
+				<button
+					class="px-2 py-1 bg-blue-300/5 hover-bg-blue-300/10 opacity-80 rounded-md flex items-center disabled-opacity-80 border border-blue-300/5 hover-border-current"
+					type="button"
+					title="Clear the notes"
+					aria-label="Clear the notes"
+					onclick={() => {
+						if (confirm("Clear the notes?")) clearNotes?.();
+					}}
+				>
+					<span class="i-ph-trash" aria-hidden="true"></span>
+				</button>
+			</div>
 			<!-- Keyed on explicit switches only: creating the idea on the first save must not remount the editor. -->
 			{#key notesKey}
 				<IdeaNotesPanel
-					idea={{ id: ideaId, notes }}
+					idea={{ id: ideaId, notes, title: ideaTitle }}
 					{ensureIdea}
 					onchange={(m) => (notes = m)}
-					onclear={clearNotes}
+					onsaved={async ({ ideaDeleted }) => {
+						// Emptied notes on an idea without takes remove the idea; the list shows the first line of the notes.
+						if (ideaDeleted) ideaId = null;
+						await invalidateAll();
+					}}
 				/>
 			{/key}
 		</section>
-
-		<!-- Phone: the ideas as a picker (the full list is from xl up). -->
-		<!-- <div class="flex items-end gap-2 sm-hidden">
-			<div class="min-w-0 grow">
-				<ComboBox
-					id="idea-picker"
-					ariaLabel="Idea"
-					value={ideaId ?? ""}
-					disabled={recorderBusy}
-					placeholder={data.ideas.length ? "Choose an idea" : "No ideas yet"}
-					options={[
-						...(ideaId ? [] : [{ value: "", label: ideaTitle, description: "new" }]),
-						...data.ideas.map((i) => ({
-							value: i.id,
-							label: i.title,
-							description: `${i.takes.length} ${i.takes.length === 1 ? "take" : "takes"}`,
-						})),
-					]}
-					onchange={(id) => {
-						const i = data.ideas.find((x) => x.id === id);
-						if (i) show(i, i.takes.at(-1) ?? null);
-					}}
-				/>
-			</div>
-			<button
-				class="button button-sm shrink-0"
-				type="button"
-				popovertarget="idea-search"
-				title="Search ideas and takes"
-				aria-label="Search ideas and takes"
-			>
-				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
-			</button>
-		</div> -->
 
 		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
 		<section
@@ -756,19 +770,49 @@
 			if (e.newState === "open") void tuner?.start();
 			else tuner?.stop();
 		}}
-		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(30rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+		class="
+			fixed
+			h-screen
+
+			left-0
+			overflow-y-auto
+			pb-6
+			px-3
+			pt-5
+			rounded-md
+			text-blue-100
+			top-0
+			w-full
+			sm-[position-area:bottom_span-left]
+			sm-absolute
+			sm-h-auto
+			sm-max-h-fit
+			sm-mt-4
+			sm-max-h-[calc(100dvh-2rem)]
+			sm-w-[min(30rem,100vw)]
+			sm-border
+			sm-border-white/5
+			bg-oxford
+			sm-px-8
+			sm-pt-5
+			sm-pb-12
+		 sm-shadow-2xl
+			sm-shadow-black/60
+			sm-[&::backdrop]-bg-black/60
+			sm-[&::backdrop]-backdrop-blur-none"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Tuner</h2>
+			<h2 class="mb-0">Instrument Tuner</h2>
 			<div class="flex items-center gap-3">
-				<a class="link-dim text-13px" href="/tuner">Full page</a>
+				<!-- <a class="link-dim text-13px" href="/tuner">Full page</a> -->
 				<button
 					class="button button-xs"
 					type="button"
 					popovertarget="tuner"
 					popovertargetaction="hide"
 				>
-					Close
+					<span class="i-ph-x-bold"></span>
+					<span class="sr-only">Close</span>
 				</button>
 			</div>
 		</div>
@@ -916,7 +960,22 @@
 			searchOpen = e.newState === "open";
 			if (searchOpen) searchText = "";
 		}}
-		class="m-0 h-dvh max-h-none w-screen max-w-none rounded-none border-0 bg-oxford text-neutral-100 shadow-2xl shadow-black/60 sm:m-auto sm:h-[min(85dvh,52rem)] sm:w-[min(48rem,calc(100vw-2rem))] sm:rounded-md sm:border sm:border-white/15 [&::backdrop]:bg-black/60 [&:popover-open]:flex [&:popover-open]:flex-col"
+		class="
+			m-0
+			h-dvh
+			max-h-none
+			w-screen
+			max-w-none
+			rounded-none
+			border-0
+			bg-oxford
+			text-neutral-100
+			shadow-2xl
+			shadow-black/60
+			sm:m-auto
+			sm:h-[min(85dvh,52rem)]
+			sm:w-[min(48rem,calc(100vw-2rem))]
+			sm:rounded-md sm:border sm:border-white/15 [&::backdrop]:bg-black/60 [&:popover-open]:flex [&:popover-open]:flex-col"
 	>
 		<!-- Full screen on a phone, a tall sheet on a desktop: the search box stays put, the list scrolls. -->
 		<div class="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-6">

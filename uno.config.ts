@@ -27,21 +27,21 @@ export default defineConfig({
 		// The fonts are fetched from the provider when the config loads, which CI's
 		// test job cannot always reach (and never needs): skip them under Vitest and
 		// in the no-1Password CI environment; builds still inline them.
-		...(process.env.VITEST || process.env.SKIP_VARLOCK
-			? []
-			: [
-					presetWebFonts({
-						provider: "bunny",
-						fonts: {
-							// brand: "Bangers",
-							// display: "Bahiana",
-							mono: "Noto Mono",
-							serif: "Noto Serif",
-							sans: "Noto Sans",
-							// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
-						},
-					}),
-				]),
+		// Always the same preset (a conditional spread here broke CSS hot reload in
+		// dev, 2026-09-25); under Vitest and in the no-1Password CI environment the
+		// "none" provider emits nothing and fetches nothing (CI's test job cannot
+		// always reach the font provider, and never needs it). Builds inline them.
+		presetWebFonts({
+			provider: process.env.VITEST || process.env.SKIP_VARLOCK ? "none" : "bunny",
+			fonts: {
+				// brand: "Bangers",
+				// display: "Bahiana",
+				mono: "Noto Mono",
+				serif: "Noto Serif",
+				sans: "Noto Sans",
+				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
+			},
+		}),
 	],
 	theme: {
 		colors: {
@@ -335,6 +335,7 @@ export default defineConfig({
 		["button-sm", "text-14px py-1"],
 		["button-xs", "text-12px py-1"],
 		["button-accent", "button text-accent hover-text-oxford"],
+		["button-red", "button hover-text-current hover-bg-red-500"],
 		[
 			"button-accent-solid",
 			"button text-oxford bg-accent hover-outline outline-accent outline-offset-4 hover-text-oxford hover-shadow-lg",

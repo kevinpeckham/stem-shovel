@@ -607,10 +607,13 @@
 		grid
 		grid-cols-1
 		place-content-start
-		gap-4
-		pb-6
+		gap-2
+		pt-2
+		pb-3
 		px-3
-		sm-border-current/40 pt-5
+		sm-border-current/40
+		sm-gap-4
+		sm-pt-5
 		sm-px-5
 		sm-py-5"
 >
@@ -691,7 +694,7 @@
 	</div>
 
 	<!-- screen -->
-	<div class="device-window-bevel-md">
+	<div class="device-window-bevel-md mb-1 sm-mb-0">
 		<div class="device-screen leading-none grid gap-4 relative rounded-md overflow-hidden">
 			<!-- the clock and status indicator -->
 			<div class="rounded-md flex justify-between items-center gap-2 h-20px sm-h-auto">
@@ -708,6 +711,13 @@
 
 				<!-- status indicator -->
 				<div class="flex items-center gap-2 justify-end text-0.9em">
+					<!-- looping indicator (mobile-only) -->
+					<span
+						class="sm-hidden i-ph-arrows-clockwise-fill {loopMode === 'looping'
+							? 'bg-yellow-500'
+							: 'bg-blue-100/10'}"
+					></span>
+
 					<!-- status text -->
 					<span class="font-mono"
 						>{phase === "recording"
@@ -741,7 +751,7 @@
 			</div>
 
 			<!-- input meter, playback controls, recording metadata  -->
-			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px min-h-80px">
+			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px sm-min-h-80px">
 				<!-- input meter -->
 				<div
 					class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
@@ -783,7 +793,7 @@
 				{/if}
 			</div>
 
-			<div class="flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
+			<div class="hidden sm-block flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
 				<!-- loop status -->
 				<span
 					class="i-ph-arrows-clockwise-fill {loopMode === 'looping'

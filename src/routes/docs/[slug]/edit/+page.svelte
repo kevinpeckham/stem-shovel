@@ -42,7 +42,7 @@
 	<title>{pageTitle(`Edit · ${data.doc.title} · Docs`)}</title>
 </svelte:head>
 
-<form bind:this={formEl} class="page" {...enhanced}>
+<form bind:this={formEl} class="page-x-padding pt-4 main-y-padding" {...enhanced}>
 	<input {...fields.id.as("hidden", data.doc.id)} />
 	<input {...fields.markdown.as("hidden", editor?.markdownCurrent ?? data.markdown)} />
 	<input {...fields.confirmEmpty.as("hidden", confirmEmpty ? "true" : "false")} />
@@ -51,9 +51,10 @@
 		markdown={data.markdown}
 		docKey={data.doc.id}
 		label={data.doc.title}
-		hint="Write for someone using Stem Shovel for the first time. Headings split the page into sections; select text for formatting, and the ⋮ next to a block changes its type."
+		hint=""
 		backHref="/docs/{data.doc.slug}"
-		backLabel={data.doc.title}
+		backLabel="Exit edit mode"
+		view="markdown"
 		{version}
 		pending={!!saveUserDoc.pending}
 		{confirmEmpty}

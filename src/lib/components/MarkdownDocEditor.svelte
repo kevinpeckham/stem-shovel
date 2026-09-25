@@ -91,8 +91,8 @@
 	});
 
 	const VIEWS = [
-		{ id: "rendered", name: "Rich Text" },
 		{ id: "markdown", name: "Markdown" },
+		{ id: "rendered", name: "Rich Text" },
 	] as const;
 
 	// The WYSIWYG pushes undo snapshots itself; textarea edits arrive here as
@@ -113,10 +113,10 @@
 		});
 	});
 
-	// Autosave: a save is asked for AUTOSAVE_MS after the last change, unless
-	// one is in flight (then shortly after) or the document has been emptied
-	// (that needs the explicit, confirmed Save). The page marks the editor
-	// saved only when nothing changed meanwhile, so later edits are not lost.
+	// Autosave (embedded only): a save is asked for AUTOSAVE_MS after the last
+	// change, unless one is in flight (then shortly after). An emptied board
+	// saves too: the page treats it as clearing the notes. The page marks the
+	// editor saved only when nothing changed meanwhile, so later edits are not lost.
 	const AUTOSAVE_MS = 1500;
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	let empty = $derived(!editor?.markdownCurrent.trim());
@@ -133,7 +133,7 @@
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
 			saveTimer = null;
-			if (!editor?.hasEdits || !editor.markdownCurrent.trim()) return;
+			if (!editor?.hasEdits) return;
 			if (pending) return scheduleSave(500);
 			onsave();
 		}, ms);
@@ -192,7 +192,7 @@
 
 {#snippet saveButton()}
 	<button
-		class="button-accent button-sm lg-button-xs disabled:opacity-40"
+		class="button button-accent disabled:opacity-40"
 		type="submit"
 		disabled={!editor?.hasEdits || pending}
 		title="Save (⌘S / Ctrl+S)"
@@ -201,54 +201,90 @@
 	</button>
 {/snippet}
 
-{#if embedded}
-	<!-- No header: the panel names and controls the document. Only the Save that confirms an emptied one. -->
-	{#if editor?.hasEdits && empty}
-		<div class="mb-2 flex justify-end">{@render saveButton()}</div>
-	{/if}
-{:else}
-	<header class="flex flex-wrap items-center gap-3 border-t border-t-current/40 pt-2">
-		<a class="text-sm link-dim" href={backHref}>← {backLabel}</a>
-		<h3 class="grow display">{label}</h3>
+<!-- embedded mode = no header: the panel names and controls the document.  -->
 
-		<!-- rich text / markdown toggle -->
-		<div
-			class="flex overflow-hidden rounded border border-white/15 text-xs"
-			role="tablist"
-			aria-label="{label} view"
+<!-- not embedded -->
+{#if !embedded}
+	{#if backHref}
+		<a
+			class="flex items-center gap-1 text-0.85em mb-4 hover-underline underline-offset-2 opacity-80 hover-text-accent hover-opacity-100"
+			href={backHref}><span class="i-ph-arrow-left-fill underline-none">←</span>{backLabel}</a
 		>
-			{#each VIEWS as v (v.id)}
-				<button
-					type="button"
-					role="tab"
-					aria-selected={view === v.id}
-					class={view === v.id ? "tab-active" : "tab-idle"}
-					onclick={() => (view = v.id)}>{v.name}</button
-				>
-			{/each}
+	{/if}
+	<header
+		class="grid grid-cols-1 sm-flex sm-justify-between items-center gap-3 sm-mb-5 xl-max-w-960px"
+	>
+		<div class="mb-4 sm-mb-0">
+			<div class="flex gap-2 items-baseline">
+				<h3 class="app-page-heading">{label}</h3>
+				<span class="text-xs text-dim tabular-nums" title="Current version">v{version}</span>
+			</div>
 		</div>
-		<!-- undo/redo buttons -->
-		<button
-			class="text-xs text-dim disabled:opacity-30 hidden"
-			type="button"
-			onclick={() => editor?.undo()}
-			disabled={!editor?.canUndo}
-			title="Undo (⌘Z / Ctrl+Z)"
-			><span class="i-ph-arrow-counter-clockwise mr-1" aria-hidden="true"></span>Undo</button
-		>
-		<button
-			class="text-xs text-dim disabled:opacity-30 hidden"
-			type="button"
-			onclick={() => editor?.redo()}
-			disabled={!editor?.canRedo}
-			title="Redo (⌘⇧Z / Ctrl+Y)"
-			><span class="i-ph-arrow-clockwise mr-1" aria-hidden="true"></span>Redo</button
-		>
-		{#if editor?.hasEdits}
-			<button class="text-xs link-dim" type="button" onclick={discard}> Discard </button>
-		{/if}
-		{@render saveButton()}
-		<span class="text-xs text-dim tabular-nums" title="Current version">v{version}</span>
+
+		<!-- toolbar -->
+		<div class="flex flex-wrap justify-between gap-3 items-center mb-6 sm-mb-0">
+			<!-- rich text / markdown toggle -->
+			<div
+				class="flex overflow-hidden rounded border border-white/15 max-w-fit text-1em"
+				role="tablist"
+				aria-label="{label} view"
+			>
+				{#each VIEWS as v (v.id)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={view === v.id}
+						class="px-3 py-1.5 text-0.9em text-nowrap {view === v.id
+							? 'bg-blue-100/90 font-500 text-dark'
+							: 'tab-idle'}"
+						onclick={() => (view = v.id)}>{v.name}</button
+					>
+				{/each}
+			</div>
+
+			<!-- undo/redo (hidden) buttons -->
+			<div class="hidden">
+				<button
+					class="text-xs text-dim disabled:opacity-30"
+					type="button"
+					onclick={() => editor?.undo()}
+					disabled={!editor?.canUndo}
+					title="Undo (⌘Z / Ctrl+Z)"
+					><span class="i-ph-arrow-counter-clockwise mr-1" aria-hidden="true"></span>Undo</button
+				>
+				<button
+					class=""
+					type="button"
+					onclick={() => editor?.redo()}
+					disabled={!editor?.canRedo}
+					title="Redo (⌘⇧Z / Ctrl+Y)"
+					><span class="i-ph-arrow-clockwise mr-1" aria-hidden="true"></span>Redo</button
+				>
+			</div>
+
+			<!-- discard & save pairing -->
+			<div class="flex gap-3 items-center">
+				<!-- discard button -->
+				<button
+					class="button disabled-opacity-10"
+					disabled={!editor?.hasEdits}
+					type="button"
+					onclick={discard}
+				>
+					Discard
+				</button>
+
+				<!-- save button -->
+				<button
+					class="button button-accent disabled-text-current disabled-opacity-10"
+					type="submit"
+					disabled={!editor?.hasEdits || pending}
+					title="Save (⌘S / Ctrl+S)"
+				>
+					{pending ? "Saving…" : confirmEmpty ? `Save empty ${label.toLowerCase()}` : "Save"}
+				</button>
+			</div>
+		</div>
 	</header>
 {/if}
 
@@ -256,17 +292,33 @@
 	<p class="mb-4 rounded bg-row px-3 py-2 text-sm text-red-400">{saveError}</p>
 {/if}
 
+<!-- rendered view-->
 {#if view === "rendered"}
-	{#if !embedded && hint.trim()}<p class="mb-2 text-xs text-dim">{hint}</p>{/if}
+	{#if !embedded && hint.trim()}<p class="mb-5 opacity-90">{hint}</p>{/if}
 	<!--
 		Embedded: the text keeps the reading view's margin. The block buttons
 		(woof's gutter, normally 38px left of the text) tuck into the panel's
 		24px padding and show while the editor is hovered or focused.
 	-->
 	<div
-		class="chart-editor {mono ? 'font-mono' : ''} {embedded
+		class="
+			chart-editor
+			{mono ? 'font-mono' : ''}
+			{embedded
 			? '-ml-6 pt-0 pb-4 pr-0 pl-6 [&_.woof-gutter-btn]:(![left:-24px] !min-w-5 !px-0 !opacity-0) [&:hover_.woof-gutter-btn]:!opacity-60 [&:focus-within_.woof-gutter-btn]:!opacity-60'
-			: 'surface py-4 pr-6 pl-12'}"
+			: `
+				bg-blue-100/5
+				block
+				leading-relaxed
+				min-h-full
+				pb-6
+				pt-5
+				px-5
+				resize-none
+				rounded-md
+				focus-outline-none
+				w-full
+				xl-max-w-960px`}"
 	>
 		{#if Editor && editor}
 			<Editor {editor} class="chart-body" />
@@ -274,18 +326,29 @@
 			<div class="chart-body min-h-40 text-dim">Loading editor…</div>
 		{/if}
 	</div>
-{:else}
-	{#if !embedded}
-		<p class="mb-2 text-xs text-dim">
-			Markdown source. Edits here and in the rendered view are the same document; fenced code blocks
-			(```) keep chord spacing.
-		</p>
-	{/if}
+{/if}
+
+<!-- markdown -->
+{#if view === "markdown"}
+	{@const md_classes = `
+				bg-blue-100/5
+				block
+				font-mono
+				leading-relaxed
+				min-h-full
+				pb-6
+				pt-5
+				px-5
+				resize-none
+				rounded-md
+				focus-outline-none
+				w-full
+				xl-max-w-960px
+				${classes}`}
 	{#if editor}
 		<textarea
-			class="chart-source block w-full {embedded
-				? 'bg-transparent px-0 pt-0 pb-3'
-				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed focus:outline-none min-h-full {classes}"
+			class="
+				{md_classes}"
 			bind:value={editor.markdownCurrent}
 			rows={Math.max(16, editor.markdownCurrent.split("\n").length + 2)}
 			spellcheck="false"
@@ -293,14 +356,10 @@
 			data-1p-ignore
 			data-lpignore="true"
 			data-bwignore
-			placeholder="Enter notes here"></textarea>
+			placeholder="Enter idea notes here, app will save as you type."></textarea>
 	{:else}
-		<textarea
-			class="chart-source block w-full {embedded
-				? 'bg-transparent px-0 pt-0 pb-3'
-				: 'surface px-4 py-3'} font-mono text-sm leading-relaxed min-h-full {classes}"
-			rows="16"
-			disabled>{markdown}</textarea
+		<textarea class={md_classes} rows={Math.max(16, markdown.split("\n").length + 2)} disabled
+			>{markdown}</textarea
 		>
 	{/if}
 {/if}

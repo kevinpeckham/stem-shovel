@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-09-25
+
+### Changed
+
+- **The Idea Recorder fills a phone's screen**: the recorder and the note board share the viewport with no page scroll (the document is locked while the phone layout applies and released on leaving), the header keeps an Ideas button, and the tuner and search popovers take the whole screen there; on larger screens the tuner popover sits under its button.
+- **The docs editor** opens in the markdown view with a plain toolbar (view toggle, Discard, Save), an "Exit edit mode" link and no hint; the notes board says it saves as you type. The note board's trash button moved beside its title.
+- The front page's recorder demo points registered users to the real Idea Recorder; the header's Beta tag is a shade quieter; the header takes an optional `collapsed` prop.
+
+### Fixed
+
+- **Notes stopped saving after being emptied.** Emptying a note board on an idea without takes removes the idea; the page now learns that from the save and drops the idea's id, so the next notes create a fresh idea instead of failing against a deleted one. An emptied board autosaves like any other edit.
+- **"Your Ideas" shows the first line of the notes as soon as they save**, not after the next take or reload.
+- CSS changes hot-reload in dev again: the web-fonts preset is always present and uses the no-fetch provider under Vitest and CI instead of being spliced out.
+
 ## [0.34.1] - 2026-09-25
 
 ### Fixed

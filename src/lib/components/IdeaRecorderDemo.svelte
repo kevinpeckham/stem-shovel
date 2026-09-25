@@ -97,12 +97,13 @@
 			bind:value={notes}></textarea>
 	</label>
 
-	<p class="text-13px opacity-80 text-balance xl-col-span-2 text-blue-100">
-		Note: demo recordings are discarded on page reload.
-		<!-- {#if signedIn && recorderHref}
-			<a class="link-dim" href={recorderHref}>Open your Idea Recorder</a>
+	<p class="text-13px opacity-80 text-balance xl-col-span-2 text-blue-100 max-w-prose">
+		Note: recordings made in the home page demo are discarded on page reload. Registered users can
+		access the full experience here:
+		{#if signedIn && recorderHref}
+			<a class="link" href={recorderHref}>Idea Recorder</a>
 		{:else}
-			<a class="link-dim" href="/sign-in">Sign in</a>
-		{/if} -->
+			<a class="link" href="/sign-in">Sign in</a>
+		{/if}
 	</p>
 </div>

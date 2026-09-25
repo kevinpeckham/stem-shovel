@@ -4,6 +4,8 @@
 	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg";
 
 	interface Props {
+		/** Hide the header (a phone layout that needs the whole viewport). */
+		collapsed?: boolean;
 		user: { name: string; email?: string; isSystemAdmin?: boolean } | null;
 		/** Accounts the user belongs to; the current one is in the URL. */
 		memberships: {
@@ -16,7 +18,7 @@
 		/** The user's own account for pages outside any account (src/lib/server/currentAccount.ts). */
 		currentSlug?: string | null;
 	}
-	let { user, memberships, currentSlug = null }: Props = $props();
+	let { collapsed = $bindable(false), user, memberships, currentSlug = null }: Props = $props();
 
 	let own = $derived(memberships.filter((m) => !m.actingAs));
 	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
@@ -41,7 +43,9 @@
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
 
 <header
-	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10"
+	class="page-x-padding flex items-center justify-between gap-6 py-4 border-b border-white/10 {collapsed
+		? 'max-h-0 overflow-hidden !py-0'
+		: ''}"
 >
 	<a
 		class="font-brand text-accent text-20px md-text-24px lg-text-28px leading-none tracking-wide flex items-baseline gap-2"
@@ -51,7 +55,9 @@
 		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
 		<div class="sr-only">Stem Shovel App</div>
 		<!-- The image's baseline is its bottom edge, where the wordmark's letters sit. -->
-		<span class="text-13px uppercase leading-none tracking-wider">Beta</span>
+		<span class="text-12px uppercase leading-none tracking-wider opacity-80 text-blue-100"
+			>Beta</span
+		>
 	</a>
 	<nav aria-label="Primary" class="flex items-center gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
