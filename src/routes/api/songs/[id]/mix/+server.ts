@@ -1,5 +1,5 @@
-import { accountOfSong, canEdit } from "$lib/server/access";
-import { openShareLinks, songForMix } from "$lib/server/data";
+import { accountOfSong, viewerOf } from "$lib/server/access";
+import { openShareLinks, projectRoleOf, songForMix } from "$lib/server/data";
 import { canViewSong, shareCodesFrom } from "$lib/server/viewAccess";
 import { isOriginal, originalMix, parseMixRequest, renderMix } from "$lib/server/mix";
 import { HOUR, rateLimited } from "$lib/server/rateLimit";
@@ -20,8 +20,9 @@ export const GET: RequestHandler = async ({ params, url, locals, cookies, getCli
 	if (!song || song.stems.length === 0) error(404, "No stems to mix");
 	const accountId = await accountOfSong(song.id);
 	if (!accountId) error(404, "Not found");
-	const member = canEdit(locals, accountId);
-	if (!canViewSong(song, member, await openShareLinks(shareCodesFrom(url, cookies)))) {
+	const role = locals.user ? await projectRoleOf(song.projectId, locals.user.id) : null;
+	const who = viewerOf(locals, accountId, role ? { [song.projectId]: role } : {});
+	if (!canViewSong(song, who, await openShareLinks(shareCodesFrom(url, cookies)))) {
 		error(403, "This song is private");
 	}
 	const req = parseMixRequest(song, url.searchParams);

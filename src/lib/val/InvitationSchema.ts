@@ -2,8 +2,8 @@ import * as v from "valibot";
 import { EmailSchema } from "./EmailSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
-/** Roles an invitation can grant; ownership is not handed out by email. */
-export const INVITE_ROLES = ["admin", "member", "viewer"] as const;
+/** Roles an account invitation can grant; ownership is not handed out by email, and viewers are invited to a project instead. */
+export const INVITE_ROLES = ["admin", "member"] as const;
 
 export const InviteRoleSchema = v.picklist(INVITE_ROLES);
 
@@ -15,6 +15,9 @@ export const InviteSchema = v.object({
 	email: EmailSchema,
 	role: v.optional(InviteRoleSchema, "member"),
 });
+
+/** Inviting a viewer to one project (any member who may edit the project). */
+export const ProjectInviteSchema = v.object({ projectId: NanoIdSchema, email: EmailSchema });
 
 /** Form boundary for accepting or revoking by token / id. */
 export const InvitationTokenSchema = v.object({ token: v.pipe(v.string(), v.minLength(20)) });

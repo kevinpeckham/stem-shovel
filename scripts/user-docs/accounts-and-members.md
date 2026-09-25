@@ -7,9 +7,8 @@ An account is the workspace a group shares: its projects, songs and members. **A
 - **Owner**: created the account; can do everything.
 - **Admin**: everything an owner can, including inviting people and managing settings.
 - **Member**: uploads, edits songs and documents, comments.
-- **Viewer**: the same for now; kept for finer control later.
 
-Anyone can view any song by its link regardless of role.
+Anyone can view any public song by its link regardless of role. People who should only listen and comment are **viewers**, invited to a project rather than the account (below).
 
 ## Inviting by email
 
@@ -19,13 +18,20 @@ Enter an address and a role and send. The person gets an email with a link; if t
 
 A code is for handing out in person or pasting into a message. Generate one with a role, an optional note (who it is for), a use limit and an expiry; copy the code or the sign-up link, and revoke it when it should stop working. Anyone who signs up with it joins the account.
 
+## People on a project
+
+Every member of the account is on every project. A project's settings have a **People** section for two more cases:
+
+- **Viewers**: someone outside the account who should hear one project and comment on it, such as a producer, a label or a friend. Any member who can edit the project invites them by email from there. A viewer can play the project's songs and stems, read its charts, lyrics and notes, and leave comments; they cannot change anything, and they do not take one of the account's seats. Remove them from the same list.
+- **Restricted projects**: turn on **Restrict to the people added** and only the people listed there, plus the account's owners and admins, can open the project. Other members of the account do not see it. Add the members who should be on it from the same section.
+
 ## Usage
 
 The settings page shows how many projects, songs and stems the account holds and how much storage they use.
 
 ## Managing members
 
-In **Account settings**, owners can change anyone's role, including making someone else an owner to hand the account over, and remove members. Admins can set members and viewers and remove them. The last owner cannot leave or be demoted.
+In **Account settings**, owners can change anyone's role, including making someone else an owner to hand the account over, and remove members. Admins can set members and remove them. The last owner cannot leave or be demoted.
 
 ## Belonging to several accounts
 

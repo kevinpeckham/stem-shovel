@@ -49,6 +49,11 @@ erDiagram
 - **user** also carries `plan_terms_accepted_at` (migration 0058): when the
   person accepted the plan terms at sign-up; null for users made by scripts.
 - **account_member** — which users are in which account, with a role.
+- **project_member** — who is on one project besides the account's owners and
+  admins (migration 0059): an account member added to a restricted project
+  (`member`) or a viewer invited from outside the account (`viewer`).
+  `project.is_restricted` closes a project to everyone else; an invitation
+  with `project_id` is a viewer's (docs/auth.md).
 - **project** — a grouping of songs inside an account: an album, a session, a
   client job. Slug unique within the account. `type` (album, ep, single,
   soundtrack, compilation, demos, other; migration 0049) labels the page;
@@ -210,14 +215,14 @@ per song), stem versions (replicator's `audio_version` pattern), comments.
 
 ### account_member
 
-| column     | type                        | notes                                      |
-| ---------- | --------------------------- | ------------------------------------------ |
-| id         | text PK                     |                                            |
-| account_id | text FK → account (cascade) |                                            |
-| user_id    | text FK → user (cascade)    |                                            |
-| role       | text, default member        | `owner` \| `admin` \| `member` \| `viewer` |
-| created_at | timestamp_ms                |                                            |
-| updated_at | timestamp_ms                |                                            |
+| column     | type                        | notes                                                     |
+| ---------- | --------------------------- | --------------------------------------------------------- |
+| id         | text PK                     |                                                           |
+| account_id | text FK → account (cascade) |                                                           |
+| user_id    | text FK → user (cascade)    |                                                           |
+| role       | text, default member        | `owner` \| `admin` \| `member` (viewers live on projects) |
+| created_at | timestamp_ms                |                                                           |
+| updated_at | timestamp_ms                |                                                           |
 
 Indexes: `(user_id)`, `(account_id)`, unique `(user_id, account_id)`.
 

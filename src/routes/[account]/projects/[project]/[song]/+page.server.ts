@@ -4,7 +4,7 @@ import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { scheduleNotes } from "$lib/server/jobs";
 import { songView } from "$lib/server/songView";
-import { canViewSong } from "$lib/server/viewAccess";
+import { canCommentProject, canEditProject, canViewSong } from "$lib/server/viewAccess";
 import { error } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { PageServerLoad } from "./$types";
@@ -13,12 +13,14 @@ import type { PageServerLoad } from "./$types";
 export const config: Config = { maxDuration: 300 };
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-	const { account, canEdit, shareGrants } = await parent();
+	const { account, who, shareGrants } = await parent();
 	const song = await getSong(account.id, params.project, params.song);
 	if (!song) error(404, `No song "${params.song}" in "${params.project}"`);
-	if (!canViewSong(song, canEdit, shareGrants)) {
+	if (!canViewSong(song, who, shareGrants)) {
 		error(403, "This song is private. Sign in as a member, or open the link you were given.");
 	}
+	// The project's own answer (a restricted project narrows the account's).
+	const canEdit = canEditProject(song.project, who);
 	// The chart draft's notes are made after a stem upload; a member's visit only
 	// posts the job when they are missing, behind the stems or stuck (a resume, a recovery).
 	const noAi = song.noAi || song.project.noAi;
@@ -31,6 +33,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	]);
 	return {
 		...view,
+		canEdit,
+		canComment: canCommentProject(song.project, who),
 		shareLinks,
 		/** The account's artist directory, for the credits picker. */
 		artists,

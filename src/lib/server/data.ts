@@ -40,6 +40,7 @@ import type { SongDocKind } from "$lib/val/SongDocKindSchema";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 import type { SongSection } from "$lib/val/SongSectionSchema";
 import type { MemberRole } from "$lib/val/MemberRoleSchema";
+import type { ProjectRole } from "$lib/val/ProjectRoleSchema";
 import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
 import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
 import type { BugStatus } from "$lib/val/BugReportSchema";
@@ -79,6 +80,7 @@ const {
 	account,
 	accountMember,
 	project,
+	projectMember,
 	song,
 	stem,
 	songDocVersion,
@@ -174,13 +176,13 @@ export async function storageRoom(accountId: string, incomingBytes: number) {
 	return { ok: false as const, used, limit: limits.storageBytes };
 }
 
-/** Seats: members of any role against the plan's cap (null = unlimited). */
+/** Seats: the account's members (owners, admins, members) against the plan's cap (null = unlimited); project viewers take none. */
 export async function memberHeadroom(accountId: string) {
 	const limits = await accountLimitsOf(accountId);
 	const [row] = await db
 		.select({ n: sql<number>`count(*)` })
 		.from(accountMember)
-		.where(eq(accountMember.accountId, accountId));
+		.where(eq(accountMember.accountId, accountId)); // viewers live on projects (0059), so every row is a seat
 	const members = Number(row?.n ?? 0);
 	const limit = limits?.members ?? null;
 	return { members, limit, full: limit !== null && members >= limit };
@@ -310,10 +312,19 @@ export async function updateProject(
 export async function projectSlugs(accountId: string, projectId: string) {
 	const row = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
-		columns: { slug: true },
+		columns: { slug: true, name: true },
 		with: { account: { columns: { slug: true } } },
 	});
-	return row ? { account: row.account.slug, project: row.slug } : null;
+	return row ? { account: row.account.slug, project: row.slug, projectName: row.name } : null;
+}
+
+/** The project a viewer invitation is for (revoking it from the project's settings). */
+export async function invitationProject(id: string) {
+	const row = await db.query.invitation.findFirst({
+		where: eq(invitation.id, id),
+		columns: { projectId: true },
+	});
+	return row?.projectId ? { projectId: row.projectId } : null;
 }
 
 /** Account + project + song slugs of a song by id, scoped to the account. */
@@ -459,7 +470,7 @@ export async function updateSong(
 export async function getSong(accountId: string, projectSlug: string, songSlug: string) {
 	const proj = await db.query.project.findFirst({
 		where: and(eq(project.accountId, accountId), eq(project.slug, projectSlug)),
-		columns: { id: true, name: true, slug: true, isPrivate: true, noAi: true },
+		columns: { id: true, name: true, slug: true, isPrivate: true, isRestricted: true, noAi: true },
 	});
 	if (!proj) return null;
 	const row = await db.query.song.findFirst({
@@ -1165,28 +1176,179 @@ export async function deleteComment(id: string) {
 	return !!row;
 }
 
+// ---- project people ---------------------------------------------------------
+
+/** The person's role on each project of the account they were added to (docs/auth.md). */
+export async function projectRolesOf(
+	accountId: string,
+	userId: string,
+): Promise<Record<string, ProjectRole>> {
+	const rows = await db
+		.select({ projectId: projectMember.projectId, role: projectMember.role })
+		.from(projectMember)
+		.innerJoin(project, eq(project.id, projectMember.projectId))
+		.where(and(eq(project.accountId, accountId), eq(projectMember.userId, userId)));
+	return Object.fromEntries(rows.map((r) => [r.projectId, r.role]));
+}
+
+export async function projectRoleOf(
+	projectId: string,
+	userId: string,
+): Promise<ProjectRole | null> {
+	const row = await db.query.projectMember.findFirst({
+		where: and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)),
+		columns: { role: true },
+	});
+	return row?.role ?? null;
+}
+
+export async function projectRestricted(projectId: string): Promise<boolean> {
+	const row = await db.query.project.findFirst({
+		where: eq(project.id, projectId),
+		columns: { isRestricted: true },
+	});
+	return row?.isRestricted ?? false;
+}
+
+/** Everyone added to the project, and the viewer invitations still open, for its settings. */
+export async function listProjectPeople(accountId: string, projectId: string) {
+	const owned = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { id: true },
+	});
+	if (!owned) return { people: [], invitations: [] };
+	const [people, invitations] = await Promise.all([
+		db.query.projectMember.findMany({
+			where: eq(projectMember.projectId, projectId),
+			with: { user: { columns: { id: true, name: true, email: true } } },
+			orderBy: [asc(projectMember.createdAt)],
+		}),
+		db.query.invitation.findMany({
+			where: and(
+				eq(invitation.projectId, projectId),
+				isNull(invitation.acceptedAt),
+				isNull(invitation.revokedAt),
+			),
+			orderBy: [desc(invitation.createdAt)],
+			columns: { id: true, email: true, expiresAt: true, createdAt: true },
+		}),
+	]);
+	return {
+		people: people.map((m) => ({
+			userId: m.userId,
+			name: m.user.name,
+			email: m.user.email,
+			role: m.role,
+			since: m.createdAt,
+		})),
+		invitations: invitations.filter((i) => i.expiresAt.getTime() > Date.now()),
+	};
+}
+
+/** The account's members (for adding one to a restricted project). */
+export function listAccountMembers(accountId: string) {
+	return db.query.accountMember
+		.findMany({
+			where: eq(accountMember.accountId, accountId),
+			with: { user: { columns: { id: true, name: true, email: true } } },
+		})
+		.then((rows) =>
+			rows.map((m) => ({ userId: m.userId, name: m.user.name, email: m.user.email, role: m.role })),
+		);
+}
+
+/** Adds a member of the account to the project (what a restricted project needs); owners and admins are on every project already. */
+export async function addProjectMember(
+	accountId: string,
+	projectId: string,
+	userId: string,
+	addedBy: string,
+) {
+	const owned = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { id: true },
+	});
+	if (!owned) return { ok: false as const, error: "Project not found." };
+	const m = await db.query.accountMember.findFirst({
+		where: and(eq(accountMember.accountId, accountId), eq(accountMember.userId, userId)),
+	});
+	if (!m) return { ok: false as const, error: "Not a member of this account." };
+	if (m.role === "owner" || m.role === "admin")
+		return { ok: false as const, error: "Owners and admins are on every project already." };
+	const there = await db.query.projectMember.findFirst({
+		where: and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)),
+	});
+	if (there) {
+		if (there.role === "member") return { ok: true as const, already: true };
+		await db.update(projectMember).set({ role: "member" }).where(eq(projectMember.id, there.id));
+		return { ok: true as const, already: false };
+	}
+	await db.insert(projectMember).values({ projectId, userId, role: "member", addedBy });
+	return { ok: true as const, already: false };
+}
+
+export async function removeProjectPerson(accountId: string, projectId: string, userId: string) {
+	const owned = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { id: true },
+	});
+	if (!owned) return false;
+	const [row] = await db
+		.delete(projectMember)
+		.where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)))
+		.returning({ id: projectMember.id });
+	return !!row;
+}
+
+export async function setProjectRestricted(
+	accountId: string,
+	projectId: string,
+	restricted: boolean,
+) {
+	const [row] = await db
+		.update(project)
+		.set({ isRestricted: restricted })
+		.where(and(eq(project.accountId, accountId), eq(project.id, projectId)))
+		.returning({ id: project.id });
+	return !!row;
+}
+
 // ---- invitations ------------------------------------------------------------
 
-/** A pending invitation for `email` into the account, or a fresh one; the token is the link. */
+/**
+ * A fresh invitation for `email`: into the account with a role, or (with
+ * `projectId`) to view one project from outside the account, which takes
+ * no seat. The token is the link.
+ */
 export async function createInvitation(
 	accountId: string,
 	invitedBy: string,
 	email: string,
-	role: MemberRole,
+	role: MemberRole | "viewer",
+	projectId: string | null = null,
 ) {
 	const address = email.trim().toLowerCase();
-	const members = await db.query.accountMember.findMany({
-		where: eq(accountMember.accountId, accountId),
-		with: { user: { columns: { email: true } } },
-	});
-	if (members.some((m) => m.user.email.toLowerCase() === address)) return "member" as const;
-	if ((await memberHeadroom(accountId)).full) return "full" as const;
+	if (projectId) {
+		const people = await db.query.projectMember.findMany({
+			where: eq(projectMember.projectId, projectId),
+			with: { user: { columns: { email: true } } },
+		});
+		if (people.some((m) => m.user.email.toLowerCase() === address)) return "member" as const;
+	} else {
+		const members = await db.query.accountMember.findMany({
+			where: eq(accountMember.accountId, accountId),
+			with: { user: { columns: { email: true } } },
+		});
+		if (members.some((m) => m.user.email.toLowerCase() === address)) return "member" as const;
+		if ((await memberHeadroom(accountId)).full) return "full" as const;
+	}
 	const [row] = await db
 		.insert(invitation)
 		.values({
 			accountId,
+			projectId,
 			email: address,
-			role,
+			role: projectId ? "viewer" : role,
 			token: nanoid(32),
 			invitedBy,
 			expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
@@ -1195,11 +1357,12 @@ export async function createInvitation(
 	return row;
 }
 
-/** Open invitations for the settings page. */
+/** Open invitations into the account, for its settings page (a project's viewer invitations list on the project). */
 export function pendingInvitations(accountId: string) {
 	return db.query.invitation.findMany({
 		where: and(
 			eq(invitation.accountId, accountId),
+			isNull(invitation.projectId),
 			isNull(invitation.acceptedAt),
 			isNull(invitation.revokedAt),
 		),
@@ -1227,7 +1390,10 @@ export async function revokeInvitation(accountId: string, id: string) {
 export async function invitationByToken(token: string) {
 	const row = await db.query.invitation.findFirst({
 		where: eq(invitation.token, token),
-		with: { account: { columns: { id: true, name: true, slug: true } } },
+		with: {
+			account: { columns: { id: true, name: true, slug: true } },
+			project: { columns: { id: true, name: true, slug: true } },
+		},
 	});
 	if (!row) return { status: "missing" as const };
 	if (row.acceptedAt) return { status: "accepted" as const, invitation: row };
@@ -1242,6 +1408,22 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 	if (found.status !== "open") return found.status;
 	const inv = found.invitation;
 	if (inv.email !== user.email.toLowerCase()) return "mismatch" as const;
+	if (inv.projectId) {
+		// A project viewer: added to the project, not the account; no seat.
+		const there = await db.query.projectMember.findFirst({
+			where: and(eq(projectMember.projectId, inv.projectId), eq(projectMember.userId, user.id)),
+		});
+		if (!there) {
+			await db.insert(projectMember).values({
+				projectId: inv.projectId,
+				userId: user.id,
+				role: "viewer",
+				addedBy: inv.invitedBy,
+			});
+		}
+		await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
+		return { status: "joined" as const, account: inv.account, project: inv.project };
+	}
 	const existing = await db.query.accountMember.findFirst({
 		where: and(eq(accountMember.accountId, inv.accountId), eq(accountMember.userId, user.id)),
 	});
@@ -1249,10 +1431,10 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 		if ((await memberHeadroom(inv.accountId)).full) return "full" as const;
 		await db
 			.insert(accountMember)
-			.values({ accountId: inv.accountId, userId: user.id, role: inv.role });
+			.values({ accountId: inv.accountId, userId: user.id, role: inv.role as MemberRole });
 	}
 	await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
-	return { status: "joined" as const, account: inv.account };
+	return { status: "joined" as const, account: inv.account, project: null };
 }
 
 // ---- invite codes -----------------------------------------------------------
@@ -3226,7 +3408,14 @@ export async function songForMix(songId: string) {
 		},
 		with: {
 			project: {
-				columns: { slug: true, name: true, isPrivate: true, noAi: true },
+				columns: {
+					id: true,
+					slug: true,
+					name: true,
+					isPrivate: true,
+					isRestricted: true,
+					noAi: true,
+				},
 				with: { account: { columns: { name: true } } },
 			},
 			stems: {

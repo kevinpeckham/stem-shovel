@@ -19,6 +19,8 @@ export const project = table(
 		slug: t.text("slug").notNull(),
 		/** Private: members only, or a share link (docs/auth.md); every song inside inherits it. */
 		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
+		/** Only the people added to the project (project_member) and the account's owners and admins may open it; a member of the account who was not added sees nothing (migration 0059). */
+		isRestricted: t.integer("is_restricted", { mode: "boolean" }).default(false).notNull(),
 		/** No AI touches this project's songs (docs/security.md): no model calls, no transcription. */
 		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
 		description: t.text("description").notNull().default(""),

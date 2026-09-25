@@ -6,7 +6,7 @@ import type { PageServerLoad } from "./$types";
 
 /** Private projects are listed only for members and for visitors holding a link to them; archived ones only for members. */
 export const load: PageServerLoad = async ({ parent }) => {
-	const { account, canEdit, shareGrants } = await parent();
+	const { account, canEdit, who, shareGrants } = await parent();
 	const projects = await Promise.all(
 		(await listProjects(account.id)).map(async (p) => ({
 			...p,
@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 		})),
 	);
 	return {
-		projects: projects.filter((p) => canViewProject(p, canEdit, shareGrants)),
+		projects: projects.filter((p) => canViewProject(p, who, shareGrants)),
 		archived: canEdit ? await listArchivedProjects(account.id) : [],
 	};
 };

@@ -40,11 +40,36 @@ public by URL; editing needs a signed-in member.
   (`src/lib/server/currentAccount.ts`). `/accounts` lists a user's accounts
   with roles and lets them leave (never the last owner). In account
   settings owners change any role (that is how ownership is handed over)
-  and remove anyone; admins set member/viewer and remove non-owners.
+  and remove anyone; admins set members and remove non-owners. Roles
+  are owner, admin and member (`MEMBER_ROLES`); a **viewer** is not an
+  account role but a person on one project (below).
   Anyone who belongs to an account can start another of their own (`createAccount`,
   owner role, from the menu or `/accounts`). Signing up through an invitation or
   an account's invite code joins that account only — the personal workspace is created only for a new-account
   code or a user made outside sign-up.
+- **People on a project** (`project_member`, migration 0059; `docs/data-model.md`):
+  besides the account's owners and admins, who are on every project, a
+  project carries the account members added to it (role `member`) and
+  **viewers** invited from outside the account (role `viewer`: they see
+  the project's private work and comment, edit nothing, take no seat; the
+  seat count in `memberHeadroom` is the account's members). A viewer is
+  invited by email from the project's settings by anyone who may edit the
+  project (`inviteProjectViewer`; the invitation carries `project_id` and
+  accepting adds the project row, not an account membership, and a
+  newcomer still gets a workspace of their own). A **restricted** project
+  (`project.is_restricted`, the People section of its settings) opens only
+  to the people added to it, the account's owners and admins, and share
+  links; other members of the account do not see it and cannot edit it.
+  The pure rules are `canViewProject`, `canViewSong`, `canEditProject` and
+  `canCommentProject` in `src/lib/server/viewAccess.ts`, fed a `Viewer`
+  (account role plus project roles, looked up once in
+  `[account]/+layout.server.ts`); the project and song pages narrow the
+  layout's `canEdit` with them. Mutations go through `memberOf`, which
+  passes owners and admins, requires a member of a restricted project to
+  have been added, and with `viewers` admits a project viewer as a
+  membership with role "viewer". Migration 0059 turned every account
+  viewer into a viewer on each of the account's projects and revoked
+  viewer invitations and codes.
 - **Privacy** (`project.is_private`, `song.is_private`, migration 0028):
   everything is public by default; any member makes a project or a
   song private from its settings (a private project makes every song in it

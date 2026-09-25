@@ -30,6 +30,7 @@ const {
 	inviteCode,
 	passkey,
 	project,
+	projectMember,
 	recording,
 	session,
 	shareLink,
@@ -66,6 +67,8 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 		.where(inArray(song.projectId, projectIds));
 	await deleteSongRows(songs.map((s) => s.id));
 	await db.delete(shareLink).where(inArray(shareLink.projectId, projectIds));
+	await db.delete(projectMember).where(inArray(projectMember.projectId, projectIds));
+	await db.delete(invitation).where(inArray(invitation.projectId, projectIds));
 	await db.delete(project).where(inArray(project.id, projectIds));
 }
 
@@ -134,6 +137,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 /** A user: memberships, sign-in records, sessions, two-factor, votes and comments go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
+	await db.delete(projectMember).where(eq(projectMember.userId, userId));
+	await db.update(projectMember).set({ addedBy: null }).where(eq(projectMember.addedBy, userId));
 	await db.delete(authAccount).where(eq(authAccount.userId, userId));
 	await db.delete(session).where(eq(session.userId, userId));
 	await db.delete(twoFactor).where(eq(twoFactor.userId, userId));

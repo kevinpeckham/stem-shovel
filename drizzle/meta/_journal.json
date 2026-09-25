@@ -414,6 +414,13 @@
       "when": 1790170872433,
       "tag": "0058_plan_terms_accepted",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1790368056992,
+      "tag": "0059_project_people",
+      "breakpoints": true
     }
   ]
 }

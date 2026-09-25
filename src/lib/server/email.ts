@@ -73,19 +73,31 @@ export async function sendInvitationEmail(opts: {
 	inviterName: string;
 	inviterEmail: string;
 	role: string;
+	/** Set: an invitation to view one project, not to join the account. */
+	projectName?: string;
 }) {
 	const body = renderEmail({
 		greeting: "Hi,",
-		lines: [
-			`${opts.inviterName} invited you to join "${opts.accountName}" on Stem Shovel as ${opts.role === "admin" ? "an admin" : `a ${opts.role}`}.`,
-			"Stem Shovel is where the band's projects, songs and stems live. Accept the invitation with the address this email reached, signing up first if you are new.",
-		],
-		cta: { label: `Join ${opts.accountName}`, url: opts.url },
+		lines: opts.projectName
+			? [
+					`${opts.inviterName} invited you to listen in on "${opts.projectName}", a project of "${opts.accountName}" on Stem Shovel.`,
+					"You will be able to play its songs and stems, read its charts, lyrics and notes, and leave comments. Accept the invitation with the address this email reached, signing up first if you are new.",
+				]
+			: [
+					`${opts.inviterName} invited you to join "${opts.accountName}" on Stem Shovel as ${opts.role === "admin" ? "an admin" : `a ${opts.role}`}.`,
+					"Stem Shovel is where the band's projects, songs and stems live. Accept the invitation with the address this email reached, signing up first if you are new.",
+				],
+		cta: {
+			label: opts.projectName ? `Open ${opts.projectName}` : `Join ${opts.accountName}`,
+			url: opts.url,
+		},
 		footer: "The invitation expires in 14 days. If you were not expecting it, ignore this email.",
 	});
 	await sendEmail({
 		to: opts.to,
-		subject: `${opts.inviterName} invited you to ${opts.accountName} on Stem Shovel`,
+		subject: opts.projectName
+			? `${opts.inviterName} invited you to listen to ${opts.projectName} on Stem Shovel`
+			: `${opts.inviterName} invited you to ${opts.accountName} on Stem Shovel`,
 		from: from(`${headerSafe(opts.inviterName)} via Stem Shovel`),
 		replyTo: opts.inviterEmail,
 		...body,

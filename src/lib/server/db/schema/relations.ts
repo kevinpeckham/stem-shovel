@@ -17,6 +17,7 @@ import { recording } from "./recording";
 import { invitation } from "./invitation";
 import { inviteCode } from "./inviteCode";
 import { project } from "./project";
+import { projectMember } from "./projectMember";
 import { session } from "./session";
 import { shareLink } from "./shareLink";
 import { song } from "./song";
@@ -75,6 +76,7 @@ export const supportRequestRelations = relations(supportRequest, ({ one }) => ({
 export const invitationRelations = relations(invitation, ({ one }) => ({
 	account: one(account, { fields: [invitation.accountId], references: [account.id] }),
 	inviter: one(user, { fields: [invitation.invitedBy], references: [user.id] }),
+	project: one(project, { fields: [invitation.projectId], references: [project.id] }),
 }));
 
 export const accountMemberRelations = relations(accountMember, ({ one }) => ({
@@ -86,6 +88,13 @@ export const projectRelations = relations(project, ({ one, many }) => ({
 	account: one(account, { fields: [project.accountId], references: [account.id] }),
 	creator: one(user, { fields: [project.createdBy], references: [user.id] }),
 	songs: many(song),
+	people: many(projectMember),
+}));
+
+export const projectMemberRelations = relations(projectMember, ({ one }) => ({
+	project: one(project, { fields: [projectMember.projectId], references: [project.id] }),
+	user: one(user, { fields: [projectMember.userId], references: [user.id] }),
+	adder: one(user, { fields: [projectMember.addedBy], references: [user.id] }),
 }));
 
 export const songRelations = relations(song, ({ one, many }) => ({
@@ -153,6 +162,7 @@ export const shareLinkRelations = relations(shareLink, ({ one }) => ({
 
 export const userRelations = relations(user, ({ many }) => ({
 	memberships: many(accountMember),
+	projectMemberships: many(projectMember),
 	uploadedStems: many(stem),
 	sessions: many(session),
 	authAccounts: many(authAccount),

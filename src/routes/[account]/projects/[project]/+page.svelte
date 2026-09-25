@@ -5,6 +5,7 @@
 	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
+	import ProjectPeople from "$lib/components/ProjectPeople.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
@@ -130,7 +131,7 @@
 						aria-label="Artists"
 						title={performers.length >= VARIOUS_ARTISTS_FROM ? performers.join(", ") : undefined}
 					>
-						aritst: {subtitle}
+						artist: {subtitle}
 					</div>
 				{/if}
 			</div>
@@ -290,6 +291,16 @@
 					links={data.shareLinks}
 					path="/{data.account.slug}/projects/{data.project.slug}"
 					isPrivate={data.project.isPrivate}
+				/>
+			</div>
+			<div class="mt-8 border-t border-white/15 pt-4">
+				<ProjectPeople
+					projectId={data.project.id}
+					projectName={data.project.name}
+					isRestricted={data.project.isRestricted}
+					people={data.people}
+					invitations={data.invitations}
+					accountMembers={data.accountMembers}
 				/>
 			</div>
 			<ProjectLifecycle

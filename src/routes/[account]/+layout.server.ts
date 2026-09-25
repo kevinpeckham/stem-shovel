@@ -1,5 +1,5 @@
-import { canEdit, isMember, publicAccountBySlug } from "$lib/server/access";
-import { openShareLinks, useShareLink } from "$lib/server/data";
+import { canEdit, isMember, publicAccountBySlug, viewerOf } from "$lib/server/access";
+import { openShareLinks, projectRolesOf, useShareLink } from "$lib/server/data";
 import { rememberAccount } from "$lib/server/currentAccount";
 import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "$lib/server/viewAccess";
 import { error } from "@sveltejs/kit";
@@ -33,11 +33,19 @@ export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) =
 	}
 	const member = canEdit(locals, account.id);
 	if (member) rememberAccount(cookies, account.slug); // "your" account, for the neutral pages
-	// A viewer is a member without edit rights: sees private work, may comment.
+	// The person as the view rules see them: account role plus the projects they were added to
+	// (a project viewer from outside the account, a member added to a restricted project).
+	const who = viewerOf(
+		locals,
+		account.id,
+		locals.user ? await projectRolesOf(account.id, locals.user.id) : {},
+	);
 	return {
 		account,
+		/** May change things in the account; a project page narrows this to the project (src/lib/server/viewAccess.ts). */
 		canEdit: member,
 		canComment: isMember(locals, account.id),
+		who,
 		shareGrants: grants,
 	};
 };

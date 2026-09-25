@@ -19,7 +19,7 @@ By default every song's address works for anyone, signed in or not, so sending t
 
 ## Private projects and songs
 
-Any member of the account can make a project or a single song **private** from its settings. A private song opens only for members of the account and for people holding a **viewing link**. Making a project private covers every song in it.
+Any member of the account can make a project or a single song **private** from its settings. A private song opens only for members of the account, for the project's viewers (see _Accounts and members_) and for people holding a **viewing link**. Making a project private covers every song in it.
 
 Any member can make viewing links, from the song's share popover or the project's settings: give it a note (who it is for), optionally an expiry and a number of uses, then copy the link. It is the page's own address with a code on the end; whoever opens it once can keep browsing, listening and downloading that song for the rest of their visit. Revoke a link at any time. Sharing a private song by email makes a viewing link for the recipient automatically.
 
@@ -27,4 +27,4 @@ A viewing link lets people listen and read. Editing and commenting still need an
 
 ## Inviting people in
 
-Listening needs no account. Editing, commenting and uploading do. Owners and admins of an account invite people from **Account settings**, either by email or with an invite code; see _Accounts and members_.
+Listening needs no account. Editing, commenting and uploading do. Owners and admins of an account invite members from **Account settings**, either by email or with an invite code; see _Accounts and members_.

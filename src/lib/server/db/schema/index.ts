@@ -17,6 +17,7 @@ export * from "./invitation";
 export * from "./inviteCode";
 export * from "./passkey";
 export * from "./project";
+export * from "./projectMember";
 export * from "./recording";
 export * from "./relations";
 export * from "./session";

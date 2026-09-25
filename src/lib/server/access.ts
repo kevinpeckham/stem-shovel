@@ -2,7 +2,8 @@ import { getRequestEvent } from "$app/server";
 import { background } from "$lib/server/background";
 import { isRecordingPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
-import { logAudit } from "$lib/server/data";
+import { logAudit, projectRestricted, projectRoleOf } from "$lib/server/data";
+import { isAccountAdmin, type Viewer } from "$lib/server/viewAccess";
 import { error, redirect } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 
@@ -101,9 +102,21 @@ export function canEdit(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId && isEditor(m.role));
 }
 
-/** Any membership, viewers included: the account's private work is theirs to see. */
+/** Any membership: the account's private work is theirs to see. */
 export function isMember(locals: App.Locals, accountId: string): boolean {
 	return locals.memberships.some((m) => m.accountId === accountId);
+}
+
+/** The person as viewAccess.ts sees them: their account role and the project roles the layout looked up. */
+export function viewerOf(
+	locals: App.Locals,
+	accountId: string,
+	projectRoles: Viewer["projectRoles"],
+): Viewer {
+	return {
+		accountRole: locals.memberships.find((m) => m.accountId === accountId)?.role ?? null,
+		projectRoles,
+	};
 }
 
 const { project, song, stem, demo, recording, idea, songCredit, artist, artistMember } = schema;
@@ -206,7 +219,77 @@ export async function accountOfUploadPathname(pathname: string) {
 	return row?.accountId ?? null;
 }
 
-/** Membership for an entity's account, or 404. */
+/** The project an entity belongs to, for the lookups that have one (access.ts memberOf checks restriction with it). */
+const PROJECT_OF = new Map<
+	(id: string) => Promise<string | null>,
+	(id: string) => Promise<string | null>
+>([
+	[accountOfProject, async (id) => id],
+	[
+		accountOfSong,
+		async (id) =>
+			(await db.query.song.findFirst({ where: eq(song.id, id), columns: { projectId: true } }))
+				?.projectId ?? null,
+	],
+	[
+		accountOfStem,
+		async (id) =>
+			(
+				await db.query.stem.findFirst({
+					where: eq(stem.id, id),
+					with: { song: { columns: { projectId: true } } },
+				})
+			)?.song.projectId ?? null,
+	],
+	[
+		accountOfDemo,
+		async (id) =>
+			(
+				await db.query.demo.findFirst({
+					where: eq(demo.id, id),
+					with: { song: { columns: { projectId: true } } },
+				})
+			)?.song.projectId ?? null,
+	],
+	[
+		accountOfCredit,
+		async (id) =>
+			(
+				await db.query.songCredit.findFirst({
+					where: eq(songCredit.id, id),
+					with: { song: { columns: { projectId: true } } },
+				})
+			)?.song.projectId ?? null,
+	],
+	[
+		accountOfUploadPathname,
+		async (pathname) => {
+			if (isRecordingPathname(pathname)) return null;
+			const s = await db.query.stem.findFirst({
+				where: eq(stem.pathname, pathname),
+				with: { song: { columns: { projectId: true } } },
+			});
+			if (s) return s.song.projectId;
+			const m = await db.query.stem.findFirst({
+				where: eq(stem.midiPathname, pathname),
+				with: { song: { columns: { projectId: true } } },
+			});
+			if (m) return m.song.projectId;
+			const d = await db.query.demo.findFirst({
+				where: eq(demo.pathname, pathname),
+				with: { song: { columns: { projectId: true } } },
+			});
+			return d?.song.projectId ?? null;
+		},
+	],
+]);
+
+/**
+ * Membership for an entity's account, or 404 (docs/auth.md). The account's
+ * owners and admins pass everywhere. On a restricted project, a member must
+ * have been added to it. With `viewers`, a project viewer from outside the
+ * account passes too (comments), as a membership with role "viewer".
+ */
 export async function memberOf(
 	locals: App.Locals,
 	lookup: (id: string) => Promise<string | null>,
@@ -215,5 +298,24 @@ export async function memberOf(
 ) {
 	const accountId = await lookup(id);
 	if (!accountId) error(404, "Not found");
-	return viewers ? requireMember(locals, accountId) : requireEditor(locals, accountId);
+	const m = locals.memberships.find((m) => m.accountId === accountId);
+	if (m && isAccountAdmin(m.role)) return requireMember(locals, accountId);
+	const projectId = await (PROJECT_OF.get(lookup)?.(id) ?? Promise.resolve(null));
+	const projectRole =
+		projectId && locals.user ? await projectRoleOf(projectId, locals.user.id) : null;
+	if (m) {
+		if (projectId && (await projectRestricted(projectId))) {
+			const allowed = projectRole === "member" || (viewers && projectRole !== null);
+			if (!allowed) error(404, "Not found");
+		}
+		return viewers ? requireMember(locals, accountId) : requireEditor(locals, accountId);
+	}
+	if (viewers && projectRole !== null) {
+		const acct = await db.query.account.findFirst({
+			where: eq(schema.account.id, accountId),
+			columns: { slug: true, name: true },
+		});
+		return { accountId, slug: acct?.slug ?? "", name: acct?.name ?? "", role: "viewer" };
+	}
+	error(404, "Not found");
 }

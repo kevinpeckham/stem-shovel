@@ -316,6 +316,10 @@
 				demoted.
 			</p>
 		{/if}
+		<p class="mt-2 text-13px text-dim">
+			Viewers, people outside the account who should hear one project and comment on it, are invited
+			from that project's settings and take no seat.
+		</p>
 		{#if data.canInvite && seatsLeft === 0}
 			<p class="mt-6 text-sm text-dim">
 				Every seat is taken ({data.usage.memberLimit} on this plan). Remove a member to invite someone

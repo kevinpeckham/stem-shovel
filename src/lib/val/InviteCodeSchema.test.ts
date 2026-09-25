@@ -29,12 +29,12 @@ describe("InviteCodeCreateSchema", () => {
 	test("reads the numbers a form sends", () => {
 		const out = v.parse(InviteCodeCreateSchema, {
 			accountId,
-			role: "viewer",
+			role: "admin",
 			maxUses: "5",
 			expiresDays: "30",
 			note: " band ",
 		});
-		expect(out).toMatchObject({ role: "viewer", maxUses: 5, expiresDays: 30, note: "band" });
+		expect(out).toMatchObject({ role: "admin", maxUses: 5, expiresDays: 30, note: "band" });
 	});
 	test("refuses zero uses, an owner role and an odd duration", () => {
 		expect(v.safeParse(InviteCodeCreateSchema, { accountId, maxUses: "0" }).success).toBe(false);

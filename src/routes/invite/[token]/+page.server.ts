@@ -1,4 +1,4 @@
-import { invitationByToken } from "$lib/server/data";
+import { invitationByToken, projectRoleOf } from "$lib/server/data";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import type { PageServerLoad } from "./$types";
 
@@ -11,15 +11,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (found.status !== "open") return { status: found.status, token: params.token };
 	const inv = found.invitation;
 	// Real memberships only: a super admin acts as owner everywhere, but that is not membership, and the invitation is how they join for real.
-	const alreadyMember = realMemberships(locals.memberships).some(
-		(m) => m.accountId === inv.accountId,
-	);
+	const alreadyMember = inv.projectId
+		? !!locals.user && (await projectRoleOf(inv.projectId, locals.user.id)) !== null
+		: realMemberships(locals.memberships).some((m) => m.accountId === inv.accountId);
 	return {
 		status: alreadyMember ? ("member" as const) : ("open" as const),
 		token: params.token,
 		email: inv.email,
 		role: inv.role,
 		account: inv.account,
+		/** Set for a viewer invitation to one project. */
+		project: inv.project ? { name: inv.project.name, slug: inv.project.slug } : null,
 		mismatch: !!locals.user && locals.user.email.toLowerCase() !== inv.email,
 	};
 };

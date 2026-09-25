@@ -93,7 +93,12 @@ export const acceptInvitation = form(InvitationTokenSchema, async ({ token }) =>
 			400,
 			`This invitation is ${result === "mismatch" ? "for a different email address" : result}.`,
 		);
-	redirect(303, `/${result.account.slug}/projects`);
+	redirect(
+		303,
+		result.project
+			? `/${result.account.slug}/projects/${result.project.slug}`
+			: `/${result.account.slug}/projects`,
+	);
 });
 
 /** Generates a reusable invite code for the account (owners and admins). */

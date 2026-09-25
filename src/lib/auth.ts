@@ -165,7 +165,9 @@ export const auth = betterAuth({
 							: await inviteCodeByCode(pass.code);
 					const joining =
 						"invitation" in found
-							? (found.invitation?.accountId ?? null)
+							? found.invitation?.projectId
+								? null
+								: (found.invitation?.accountId ?? null)
 							: "code" in found
 								? (found.code?.accountId ?? null) // null for a system code: nothing to join
 								: null;
@@ -199,7 +201,8 @@ export const auth = betterAuth({
 					let joined = false;
 					if (pass?.ok && pass.via === "invitation") {
 						const result = await acceptInvitation(pass.token, user);
-						joined = typeof result !== "string";
+						// A project viewer from outside the account gets a workspace of their own besides.
+						joined = typeof result !== "string" && !result.project;
 					} else if (pass?.ok && pass.via === "code") {
 						const result = await redeemInviteCode(pass.code, user.id);
 						joined = typeof result !== "string" && result.account !== null;
