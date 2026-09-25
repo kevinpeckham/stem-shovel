@@ -39,6 +39,7 @@
 		openState?: "open" | "closed";
 		popoverClasses?: string | null;
 		position?: Position | null;
+		title?: string | null;
 	}
 
 	let {
@@ -49,6 +50,7 @@
 		popoverClasses = "",
 		position = "bottom left",
 		openState = $bindable("closed"),
+		title = null,
 	}: Props = $props();
 
 	// get component id
@@ -117,6 +119,7 @@
 		aria-label={ariaLabel}
 		{disabled}
 		popovertarget={popoverId}
+		{title}
 		class="
 			bg-dark
 			cursor-pointer
@@ -142,7 +145,7 @@
 		popover="auto"
 		class="{positionClasses[
 			position ?? 'bottom left'
-		]} h-auto overflow-hidden absolute bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em"
+		]} h-auto overflow-hidden absolute bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em {popoverClasses}"
 		ontoggle={onToggle}
 		onfocusout={onFocusOut}
 	>

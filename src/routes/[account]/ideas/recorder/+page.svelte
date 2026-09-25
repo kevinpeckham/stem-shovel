@@ -4,6 +4,7 @@
 	import RecordingActions from "$lib/components/RecordingActions.svelte";
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
+	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
 	import Tuner from "$lib/components/Tuner.svelte";
 	import {
@@ -319,14 +320,6 @@
 			notify(errorMessage(e), { kind: "error" });
 		}
 	}
-	/** One take menu open at a time in the list; a click elsewhere closes it. */
-	function closeTakeMenus(e: Event) {
-		for (const d of document.querySelectorAll<HTMLDetailsElement>(
-			"details[data-take-menu][open]",
-		)) {
-			if (!(e.type === "pointerdown" && d.contains(e.target as Node))) d.open = false;
-		}
-	}
 
 	// ---- search (a popover over the list: every idea, filtered as you type) ----
 	let searchOpen = $state(false);
@@ -364,13 +357,6 @@
 <svelte:head>
 	<title>{pageTitle("Idea Recorder")}</title>
 </svelte:head>
-
-<svelte:window
-	onpointerdown={closeTakeMenus}
-	onkeydown={(e) => {
-		if (e.key === "Escape") closeTakeMenus(e);
-	}}
-/>
 
 <main
 	class="max-h-[calc(100svh-72px)] h-[calc(100svh-72px)] grid grid-rows-[auto_1fr] sm-block sm-max-h-none sm-h-auto px-3 sm-!page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16"
@@ -560,11 +546,11 @@
 
 		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
 		<section
-			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2"
+			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2 xl-max-h-640px"
 			aria-label="Ideas"
 		>
 			<div class="flex flex-wrap items-center justify-between gap-3">
-				<h2 class="text-16px mb-1 font-500 leading-tight">Your Ideas</h2>
+				<h2 class="text-16px mb-1 font-500 leading-tight text-blue-100/90">Recordings</h2>
 				<div class="flex items-baseline gap-2">
 					<!-- <button
 						class="button button-xs"
@@ -585,9 +571,21 @@
 				</p>
 			{:else}
 				<ul
-					class="max-h-[60vh] min-h-64 overflow-y-auto rounded border border-current/40 bg-black/40 divide-y divide-white/10 {recorderBusy
-						? 'opacity-60'
-						: ''}"
+					class="
+						max-h-[60vh]
+						min-h-64
+						overflow-y-auto
+						rounded
+						bg-slate-400
+						bg-gradient-to-br
+						from-slate-500/10
+						via-slate-500/60
+						to-slate-500/80
+						divide-y
+						divide-dark/30
+					  shadow-xl
+						shadow-oxford-800
+							{recorderBusy ? 'opacity-60' : ''}"
 				>
 					{#each data.ideas as i (i.id)}
 						<li>
@@ -599,73 +597,61 @@
 							-->
 							<details open={openIdeas.has(i.id)}>
 								<summary
-									class="grid cursor-pointer grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-4 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {i.id ===
-									ideaId
-										? 'bg-blue-300/10'
-										: ''}"
+									class="
+										cursor-pointer
+										font-sans
+										grid
+										grid-cols-[auto_1fr_auto_auto]
+										items-center
+										gap-x-3
+										opacity-95
+										px-4
+										py-2.5
+										list-none
+										shadow
+										text-oxford
+										hover-opacity-100
+										[&::-webkit-details-marker]:hidden {i.id === ideaId ? 'bg-blue-300/10' : ''}"
 									onclick={(e) => {
-										if ((e.target as HTMLElement).closest("[data-take-menu]")) return; // the idea's menu
 										e.preventDefault();
 										if (openIdeas.has(i.id)) openIdeas.delete(i.id);
 										else openIdeas.add(i.id);
 									}}
 								>
 									<span
-										class="i-ph-caret-right inline-block text-12px opacity-70"
+										class="i-ph-caret-right-bold inline-block text-1em opacity-90 {openIdeas.has(
+											i.id,
+										)
+											? 'rotate-90'
+											: ''}"
 										aria-hidden="true"
 									></span>
-									<span class="min-w-0 inline-block h-full">
-										<span class="block truncate font-500">{i.title}</span>
-										<span class="block truncate text-12px opacity-70">
-											{fmtWhen(i.createdAt)}{#if i.notes.trim()}
-												· {i.notes.trim().split("\n")[0].slice(0, 60)}{/if}
-										</span>
-									</span>
-									<span class="text-14px tabular-nums opacity-80 h-full inline-flex items-center"
-										>{i.takes.length} {i.takes.length === 1 ? "take" : "takes"}</span
+									<span class="block truncate font-600 w-full font-sans w-full">{i.title}</span>
+									<span class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
+										>{i.takes.length}
+										{i.takes.length === 1 ? "take" : "takes"} | {formatDate(i.createdAt)}</span
 									>
-									<!-- The idea's own menu; its clicks must not select the idea (the summary's handler). -->
-									<details class="relative self-center" data-take-menu>
-										<summary
-											class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
-											title="Idea menu"
-											aria-label="Menu for {i.title}"
-										>
-											<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"></span>
-										</summary>
-										<div
-											class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm font-400 shadow-lg"
-											role="menu"
-										>
-											<button
-												class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10 disabled:opacity-40"
-												type="button"
-												role="menuitem"
-												disabled={recorderBusy}
-												onclick={() => removeIdea(i)}
-											>
-												<span class="i-ph-trash" aria-hidden="true"></span>Delete idea
-											</button>
-										</div>
-									</details>
 								</summary>
 								{#if i.takes.length > 0}
-									<ul class="divide-y divide-white/5 border-t border-white/10 bg-black/10">
+									<ul
+										class="divide-y divide-dark/10 bg-blue-100/40 border-t border-t-dark/30 text-oxford"
+									>
 										{#each i.takes as t (t.id)}
 											<li
-												class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 {t.id === takeId
+												class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 shadow-inner {t.id ===
+												takeId
 													? 'bg-blue-300/15'
 													: ''}"
 											>
 												<button
-													class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-10 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
+													class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
 													type="button"
 													aria-current={t.id === takeId ? "true" : undefined}
 													disabled={recorderBusy}
 													onclick={() => show(i, t)}
 												>
 													<span class="inline-grid w-full grid-cols-1">
-														<span class="truncate text-sm">{takeLabel(t)}</span>
+														<span class="truncate">{takeLabel(t)}</span>
 														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
 													</span>
 													<span
@@ -675,48 +661,35 @@
 															: "–:––"}</span
 													>
 												</button>
-												<details class="relative" data-take-menu>
-													<summary
-														class="button button-xs border-current/10 flex items-center list-none [&::-webkit-details-marker]:hidden"
-														title="Take menu"
-														aria-label="Menu for {takeLabel(t)}"
-													>
-														<span class="i-ph-dots-three-outline-vertical-fill" aria-hidden="true"
-														></span>
-													</summary>
-													<div
-														class="absolute top-full right-0 z-20 mt-1 min-w-48 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-														role="menu"
-													>
-														<button
-															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-															type="button"
-															role="menuitem"
-															onclick={() => songDialog(i, t, "add")}
-														>
-															<span class="i-ph-plus" aria-hidden="true"></span>Add as demo…
-														</button>
-														<button
-															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-															type="button"
-															role="menuitem"
-															onclick={() => songDialog(i, t, "new")}
-														>
-															<span class="i-ph-music-notes-plus" aria-hidden="true"></span>Create
-															new song…
-														</button>
-														<hr class="my-1 border-white/15" />
-														<button
-															class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-red-400 hover:bg-white/10"
-															type="button"
-															role="menuitem"
-															disabled={recorderBusy}
-															onclick={() => removeTake(t)}
-														>
-															<span class="i-ph-trash" aria-hidden="true"></span>Delete take
-														</button>
-													</div>
-												</details>
+												<ContextMenu
+													buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
+													popoverClasses="text-blue-100"
+													title="Take Menu"
+													ariaLabel="Menu for {takeLabel(t)}"
+													items={[
+														{
+															action: () => songDialog(i, t, "add"),
+															kind: "button",
+															iconClass: "i-ph-plus",
+															label: "Add as demo...",
+														},
+														{
+															action: () => songDialog(i, t, "new"),
+															kind: "button",
+															iconClass: "i-ph-music-notes-plus",
+															label: "Create new song...",
+														},
+														{
+															kind: "divider",
+														},
+														{
+															action: () => removeTake(t),
+															kind: "button",
+															iconClass: "i-ph-trash",
+															label: "Delete Take",
+														},
+													]}
+												/>
 											</li>
 										{/each}
 									</ul>
@@ -790,7 +763,7 @@
 			sm-max-h-fit
 			sm-mt-4
 			sm-max-h-[calc(100dvh-2rem)]
-			sm-w-[min(30rem,100vw)]
+			sm-w-[min(640px,100vw)]
 			sm-border
 			sm-border-white/5
 			bg-oxford
@@ -803,7 +776,7 @@
 			sm-[&::backdrop]-backdrop-blur-none"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="mb-0">Instrument Tuner</h2>
+			<h2 class="font-600">Instrument Tuner</h2>
 			<div class="flex items-center gap-3">
 				<!-- <a class="link-dim text-13px" href="/tuner">Full page</a> -->
 				<button
@@ -853,7 +826,7 @@
 		sm-[&::backdrop]-backdrop-blur-none"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="mb-0">Recorder settings</h2>
+			<h2 class="font-600">Recorder Settings</h2>
 			<button
 				class="button-popover-close"
 				type="button"
@@ -1021,14 +994,17 @@
 	>
 		<!-- Full screen on a phone, a tall sheet on a desktop: the search box stays put, the list scrolls. -->
 		<div class="shrink-0">
-			<button
-				class="button-popover-close ml-auto"
-				type="button"
-				popovertarget="idea-search"
-				popovertargetaction="hide"
-			>
-				<span class="sr-only">Close</span>
-			</button>
+			<div class="flex items-center justify-between">
+				<h2 class="font-600">Search Ideas</h2>
+				<button
+					class="button-popover-close ml-auto"
+					type="button"
+					popovertarget="idea-search"
+					popovertargetaction="hide"
+				>
+					<span class="sr-only">Close</span>
+				</button>
+			</div>
 			<label class="flex mt-4">
 				<span class="sr-only">Search ideas</span>
 				<!-- svelte-ignore a11y_autofocus -->

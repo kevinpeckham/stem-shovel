@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-09-25
+
+### Changed
+
+- **The recorder's list is "Recordings"**, styled like the device: each idea row shows its take count and date and unfolds its takes, whose ⋯ menu is the shared ContextMenu (add as demo, create a song, delete). The idea's own menu left the list; Delete Idea lives in the recorder's ⋯ menu. The tuner, settings and search popovers carry headings, and the search sheet is 640 px wide on larger screens.
+- **Fonts** load at weights 400, 600 and 700; ContextMenu takes a `title` and applies its `popoverClasses`.
+
 ## [0.36.0] - 2026-09-25
 
 ### Added
