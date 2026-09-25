@@ -66,7 +66,12 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   known to ignore some requests. Chrome's raw PCM is turned into FLAC by
   the jobs function before the MP3 rendition is made (`isRawPcm` +
   `replaceRecordingSource` in transcode.ts; the row's url, pathname,
-  filename, content type and size follow, the WebM is deleted); ALAC stays
+  filename, content type and size follow, the WebM is deleted; on the VM's
+  dev server the jobs self-call goes to localhost, since the proxy origin
+  cannot be called back); Download Source of a take still in raw PCM (just
+  recorded, or saved and not yet converted) decodes it in the browser and
+  hands over a 16-bit WAV (`utils/encodeWav.ts`), a file any player or DAW
+  opens; ALAC stays
   as recorded. **Playback prefers the original**: the take's codec is
   stored at reservation (`recording.codec`, migration 0042) and the
   recorder asks `canPlayType` (`playbackMime.ts`) before choosing the

@@ -15,6 +15,7 @@
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
+	import { encodeWav } from "$lib/utils/encodeWav";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
 	import { onDestroy } from "svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
@@ -433,11 +434,14 @@
 
 	/** "<idea> - take 3.m4a", the take's extension (a loaded file's from its URL). */
 	/** "<idea> - take 3 - <name>.<ext>", the extension from the file being saved. */
-	function downloadName(url: string) {
+	function downloadName(url: string, extOverride?: string) {
 		const fromUrl = url.startsWith("blob:") ? null : url.match(/\.([a-z0-9]+)(?:$|\?)/i)?.[1];
-		const ext = take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a");
+		const ext = extOverride ?? (take ? (format?.ext ?? "webm") : (fromUrl ?? "m4a"));
 		const base = `${ideaTitle.trim() || "idea"} - take ${loaded?.takeNumber ?? 1}${takeName.trim() ? ` - ${takeName.trim()}` : ""}`;
-		return `${base.replace(/[^\w.-]+/g, "-").toLowerCase()}.${ext}`;
+		return `${base
+			.replace(/[^\w.]+/g, "-")
+			.replace(/^-|-$/g, "")
+			.toLowerCase()}.${ext}`;
 	}
 	/** What the source download is called in the menu: its codec when known. */
 	const sourceLabel = $derived.by(() => {
@@ -445,7 +449,7 @@
 		const names: Record<string, string> = {
 			alac: "ALAC lossless",
 			flac: "FLAC lossless",
-			pcm: "PCM lossless",
+			pcm: "WAV lossless",
 			opus: "Opus",
 			aac: "AAC",
 		};
@@ -453,12 +457,38 @@
 			? `Download Source <span class="inline-block ml-1 text-0.8em opacity-80">${names[codec]}</span>`
 			: "Download Source";
 	});
-	/** "source" is the take as recorded (a take just made is its own blob); "mp3" the playback rendition. */
+	/**
+	 * "source" is the take as recorded (a take just made is its own blob; a
+	 * saved one the server's file, FLAC once the jobs function has been at a
+	 * Chrome take); "mp3" the playback rendition. Raw PCM in WebM, Chrome's
+	 * lossless recording, opens almost nowhere, so it is handed over as a
+	 * WAV: decoded here, same samples, a file any player or DAW reads.
+	 */
 	async function download(kind: "source" | "mp3") {
-		const url = kind === "mp3" ? loaded?.playbackUrl : take ? takeUrl : (loaded?.url ?? takeUrl);
+		const serverUrl =
+			loaded && !isLocal(loaded.id) && !loaded.url.startsWith("blob:") ? loaded.url : null;
+		const url = kind === "mp3" ? loaded?.playbackUrl : (serverUrl ?? takeUrl ?? loaded?.url);
 		if (!url) return;
+		const codec = loaded?.codec ?? format?.codec.toLowerCase() ?? null;
 		try {
-			if (take && kind === "source") {
+			if (kind === "source" && codec === "pcm") {
+				// The take just made is its own Blob (the CSP allows no fetch of a blob: URL); a saved one is fetched.
+				const bytes =
+					take && url === takeUrl
+						? await take.arrayBuffer()
+						: await (await fetch(url)).arrayBuffer();
+				const decoder = new AudioContext();
+				const audio = await decoder.decodeAudioData(bytes).finally(() => void decoder.close());
+				const channels = Array.from({ length: audio.numberOfChannels }, (_, i) =>
+					audio.getChannelData(i),
+				);
+				const wav = URL.createObjectURL(encodeWav(channels, audio.sampleRate));
+				const a = document.createElement("a");
+				a.href = wav;
+				a.download = downloadName(url, "wav");
+				a.click();
+				setTimeout(() => URL.revokeObjectURL(wav), 60_000);
+			} else if (url.startsWith("blob:")) {
 				const a = document.createElement("a");
 				a.href = url;
 				a.download = downloadName(url);
@@ -684,11 +714,9 @@
 							? "Recording"
 							: hasTake && !playbackPaused
 								? "Playing"
-								: phase === "saved" && loaded && isLocal(loaded.id)
-									? "Saving"
-									: phase === "requesting"
-										? "Microphone…"
-										: "Ready"}</span
+								: phase === "requesting"
+									? "Loading"
+									: "Ready"}</span
 					>
 
 					<!-- status light -->
@@ -759,7 +787,7 @@
 
 				<!-- volume -->
 				<div
-					class="text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
+					class="hidden sm-block text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
 						? ''
 						: 'opacity-10'}"
 				>
@@ -862,8 +890,8 @@
 		<!--right-aligned -->
 		<div class="ml-auto flex gap-3">
 			<!-- volume up and down -->
-			<!-- iOS keeps playback volume on the hardware buttons: the software control does nothing there. -->
-			<div class="{onIOS ? 'hidden' : 'grid'} device-window-bezel-sm grid-cols-2 gap-x-1 gap-y-0">
+			<!-- Phones keep playback volume on the hardware buttons (iOS ignores a software control), so this is for larger screens. -->
+			<div class="hidden sm-grid device-window-bezel-sm grid-cols-2 gap-x-1 gap-y-0">
 				<button
 					class="device-button-bump-down !max-w-fit !min-w-fit text-slate-800"
 					type="button"
@@ -989,7 +1017,8 @@
 							id: "delete-idea",
 							label: "Delete Idea",
 							iconClass: "i-ph-trash-simple",
-							disabled: !(ondeleteidea && loaded),
+							// The idea in the player, takes or not; never mid-take.
+							disabled: !ondeleteidea || busy,
 							action: () => ondeleteidea?.(),
 						},
 						{

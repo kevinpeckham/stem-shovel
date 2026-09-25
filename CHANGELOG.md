@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Download Source of a Chrome lossless take gave an unplayable file.** Chrome records raw PCM in WebM, which almost nothing opens; the download now decodes it in the browser and saves a 16-bit WAV (the menu says "WAV lossless"). A saved take is FLAC once the jobs function has converted it, and downloads as such.
+- **On the VM's dev server the background jobs never ran** (the self-call used the proxy's origin), so Chrome takes there stayed raw PCM with no MP3; the dev server now calls itself on localhost.
+- The recorder's volume buttons and readout are for larger screens only (phones keep volume on the hardware buttons).
+- Download names no longer carry runs of dashes (`idea-take-1.wav`, not `idea---take-1.wav`).
+
 ## [0.34.0] - 2026-09-24
 
 ### Changed

@@ -1,5 +1,6 @@
 import { background } from "$lib/server/background";
 import type { JobKind } from "$lib/val/JobSchema";
+import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
 import { ENV } from "varlock/env";
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -28,6 +29,8 @@ export function isJobsToken(bearer: string | null): boolean {
 
 /** The origin to call back on: the current request's, else the site's own. */
 function originOfRequest(): string {
+	// The dev server is reached through proxies whose origin it cannot call back; it listens on localhost.
+	if (dev) return "http://localhost:5173";
 	try {
 		return getRequestEvent().url.origin;
 	} catch {
