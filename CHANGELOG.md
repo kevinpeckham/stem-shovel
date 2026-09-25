@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A new take lists the moment Stop is pressed.** The Recordings list shows the take under its idea straight away, marked Saving… with its progress and without a menu until the upload lands, instead of appearing only once saved; a take for a brand-new idea sits under a pending group with that title until the idea exists. The Uploads box now shows failed uploads only (Retry, Discard).
+
+### Changed
+
+- The recorder's tuner button is a tuning fork.
+
 ## [0.36.1] - 2026-09-25
 
 ### Changed

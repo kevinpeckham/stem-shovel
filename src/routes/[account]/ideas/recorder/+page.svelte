@@ -120,13 +120,17 @@
 		// take restored from an earlier visit whose idea was never created gets
 		// one with the title it had then.
 		ideaFor: async (item) => {
-			if (item.ideaId) return item.ideaId;
-			if (item.ideaTitle !== ideaTitle || ideaId) {
-				const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
-				await invalidateAll();
-				return created.id;
-			}
-			return ensureIdea();
+			const id = await (async () => {
+				if (item.ideaId) return item.ideaId;
+				if (item.ideaTitle !== ideaTitle || ideaId) {
+					const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
+					await invalidateAll();
+					return created.id;
+				}
+				return ensureIdea();
+			})();
+			openIdeas.add(id); // the take now lists under this idea: keep it unfolded
+			return id;
 		},
 		onsaved: async (saved) => {
 			recorder?.resolve(saved.localId, saved);
@@ -189,6 +193,48 @@
 
 	/** Which ideas are unfolded in the list: a plain accordion, the loaded idea opened when it is shown. */
 	const openIdeas = new SvelteSet<string>();
+
+	/**
+	 * The list as shown: the ideas from the server plus every take still
+	 * uploading (the queue) under its idea, so a take is listed the moment
+	 * Stop is pressed rather than once its upload lands. A take whose idea
+	 * the server does not have yet sits under a pending group with that
+	 * title until the refresh after the idea is created. Failed uploads stay
+	 * in the Uploads box, which offers Retry and Discard.
+	 */
+	type ShownTake = TakeRow & { pending?: { status: "waiting" | "uploading"; progress: number } };
+	type ShownIdea = Omit<Idea, "takes"> & { takes: ShownTake[]; pending?: boolean };
+	let ideasShown = $derived.by((): ShownIdea[] => {
+		const pending = queue.items.filter((u) => u.status !== "failed");
+		const row = (u: (typeof pending)[number], takeNumber: number): ShownTake => ({
+			id: u.localId,
+			takeNumber,
+			title: u.name,
+			url: "",
+			playbackUrl: null,
+			codec: null,
+			durationSeconds: u.durationSeconds,
+			createdAt: new Date(u.createdAt),
+			pending: { status: u.status === "uploading" ? "uploading" : "waiting", progress: u.progress },
+		});
+		const known = new Set(data.ideas.map((i) => i.id));
+		const ideas: ShownIdea[] = data.ideas.map((i) => {
+			const mine = pending.filter((u) => u.ideaId === i.id);
+			return { ...i, takes: [...i.takes, ...mine.map((u, k) => row(u, i.takes.length + k + 1))] };
+		});
+		const orphans = pending.filter((u) => !u.ideaId || !known.has(u.ideaId));
+		const groups = new Map<string, typeof orphans>();
+		for (const u of orphans) groups.set(u.ideaTitle, [...(groups.get(u.ideaTitle) ?? []), u]);
+		const made: ShownIdea[] = [...groups].map(([title, us]) => ({
+			id: `pending:${us[0].localId}`,
+			title,
+			notes: "",
+			createdAt: new Date(us[0].createdAt),
+			pending: true,
+			takes: us.map((u, k) => row(u, k + 1)),
+		}));
+		return [...made, ...ideas];
+	});
 	function show(i: Idea, t: TakeRow | null) {
 		if (recorderBusy || !recorder) return;
 		const switching = ideaId !== i.id;
@@ -413,7 +459,20 @@
 				title="Tuner"
 				aria-label="Tuner"
 			>
-				<span class="i-ph-ear" aria-hidden="true"></span>
+				<span aria-hidden="true"
+					><svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="14"
+						height="14"
+						viewBox="0 0 500 500"
+						class="w-1em h-1em aspect-square"
+						><path
+							d="M103.383 364.263l32.353 32.353-74.633 74.633c-5.78 5.78-14.204 8.037-22.098 5.921s-14.061-8.281-16.177-16.177.142-16.318 5.921-22.098l74.633-74.633zM337.195 28.748c5.78-5.78 14.202-8.037 22.098-5.921a22.88 22.88 0 0 1 10.255 38.275L234.694 195.881a49.06 49.06 0 0 0 22.035 82.061 49.06 49.06 0 0 0 47.379-12.721l134.779-134.779c4.277-4.289 10.085-6.697 16.141-6.697s11.862 2.409 16.139 6.697a22.78 22.78 0 0 1 6.735 16.173 22.8 22.8 0 0 1-6.735 16.177L336.534 297.571c-14.972 14.966-34.514 24.499-55.525 27.083a94.93 94.93 0 0 1-60.433-12.819l-74.925 74.854-32.353-32.353 74.854-74.925c-10.856-18.138-15.347-39.378-12.764-60.354a94.93 94.93 0 0 1 27.028-55.454z"
+							fill="currentColor"
+							fill-rule="evenodd"
+						/></svg
+					></span
+				>
 			</button>
 			<button
 				class="button button-sm shrink-0"
@@ -469,6 +528,8 @@
 				}}
 				onqueued={(t) => {
 					takeId = t.localId;
+					// The take lists at once, under its idea (or a pending group for a new one): unfold it.
+					openIdeas.add(ideaId ?? `pending:${t.localId}`);
 					queue.enqueue({
 						...t,
 						ideaId,
@@ -479,31 +540,24 @@
 				}}
 			/>
 
-			{#if queue.items.length > 0}
-				<ul class="grid gap-1 text-sm" aria-label="Uploads">
-					{#each queue.items as u (u.localId)}
+			<!-- Uploads that failed: a take still saving is listed under its idea instead. -->
+			{#if queue.items.some((u) => u.status === "failed")}
+				<ul class="grid gap-1 text-sm" aria-label="Failed uploads">
+					{#each queue.items.filter((u) => u.status === "failed") as u (u.localId)}
 						<li
-							class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-white/15 bg-blue-300/5 px-3 py-2"
+							class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-red-400/40 bg-red-400/5 px-3 py-2"
 						>
-							<span class="i-ph-cloud-arrow-up" aria-hidden="true"></span>
+							<span class="i-ph-cloud-warning" aria-hidden="true"></span>
 							<span class="min-w-0 grow truncate">
 								{u.ideaTitle}{u.name ? ` · ${u.name}` : ""} · {formatTime(u.durationSeconds, 0)}
 							</span>
-							{#if u.status === "failed"}
-								<span class="text-red-400">{u.error}</span>
-								<button class="link-dim" type="button" onclick={() => queue.retry(u.localId)}
-									>Retry</button
-								>
-								<button class="link-dim" type="button" onclick={() => discardUpload(u)}
-									>Discard</button
-								>
-							{:else}
-								<span class="tabular-nums opacity-80"
-									>{u.status === "uploading"
-										? `Saving… ${Math.round(u.progress)}%`
-										: "Waiting…"}</span
-								>
-							{/if}
+							<span class="text-red-400">{u.error}</span>
+							<button class="link-dim" type="button" onclick={() => queue.retry(u.localId)}
+								>Retry</button
+							>
+							<button class="link-dim" type="button" onclick={() => discardUpload(u)}
+								>Discard</button
+							>
 						</li>
 					{/each}
 				</ul>
@@ -563,7 +617,7 @@
 					</button> -->
 				</div>
 			</div>
-			{#if data.ideas.length === 0}
+			{#if ideasShown.length === 0}
 				<p
 					class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
 				>
@@ -587,7 +641,7 @@
 						shadow-oxford-800
 							{recorderBusy ? 'opacity-60' : ''}"
 				>
-					{#each data.ideas as i (i.id)}
+					{#each ideasShown as i (i.id)}
 						<li>
 							<!--
 								An accordion and nothing more: the row only folds and unfolds; a take
@@ -611,7 +665,9 @@
 										shadow
 										text-oxford
 										hover-opacity-100
-										[&::-webkit-details-marker]:hidden {i.id === ideaId ? 'bg-blue-300/10' : ''}"
+										[&::-webkit-details-marker]:hidden {i.id === ideaId || (i.pending && !ideaId)
+										? 'bg-blue-300/10'
+										: ''}"
 									onclick={(e) => {
 										e.preventDefault();
 										if (openIdeas.has(i.id)) openIdeas.delete(i.id);
@@ -647,7 +703,7 @@
 													class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
 													type="button"
 													aria-current={t.id === takeId ? "true" : undefined}
-													disabled={recorderBusy}
+													disabled={recorderBusy || !!t.pending}
 													onclick={() => show(i, t)}
 												>
 													<span class="inline-grid w-full grid-cols-1">
@@ -655,41 +711,52 @@
 														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
 													</span>
 													<span
-														class="text-sm tabular-nums opacity-80 inline-flex h-full items-center"
-														>{t.durationSeconds !== null
-															? formatTime(t.durationSeconds, 0)
-															: "–:––"}</span
+														class="text-sm tabular-nums opacity-80 inline-flex h-full items-center gap-1"
 													>
+														{#if t.pending}
+															<span class="i-ph-cloud-arrow-up animate-pulse" aria-hidden="true"
+															></span>
+															{t.pending.status === "uploading"
+																? `Saving… ${Math.round(t.pending.progress)}%`
+																: "Waiting…"}
+														{:else}
+															{t.durationSeconds !== null
+																? formatTime(t.durationSeconds, 0)
+																: "–:––"}
+														{/if}
+													</span>
 												</button>
-												<ContextMenu
-													buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
-													popoverClasses="text-blue-100"
-													title="Take Menu"
-													ariaLabel="Menu for {takeLabel(t)}"
-													items={[
-														{
-															action: () => songDialog(i, t, "add"),
-															kind: "button",
-															iconClass: "i-ph-plus",
-															label: "Add as demo...",
-														},
-														{
-															action: () => songDialog(i, t, "new"),
-															kind: "button",
-															iconClass: "i-ph-music-notes-plus",
-															label: "Create new song...",
-														},
-														{
-															kind: "divider",
-														},
-														{
-															action: () => removeTake(t),
-															kind: "button",
-															iconClass: "i-ph-trash",
-															label: "Delete Take",
-														},
-													]}
-												/>
+												{#if !t.pending}
+													<ContextMenu
+														buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
+														popoverClasses="text-blue-100"
+														title="Take Menu"
+														ariaLabel="Menu for {takeLabel(t)}"
+														items={[
+															{
+																action: () => songDialog(i, t, "add"),
+																kind: "button",
+																iconClass: "i-ph-plus",
+																label: "Add as demo...",
+															},
+															{
+																action: () => songDialog(i, t, "new"),
+																kind: "button",
+																iconClass: "i-ph-music-notes-plus",
+																label: "Create new song...",
+															},
+															{
+																kind: "divider",
+															},
+															{
+																action: () => removeTake(t),
+																kind: "button",
+																iconClass: "i-ph-trash",
+																label: "Delete Take",
+															},
+														]}
+													/>
+												{/if}
 											</li>
 										{/each}
 									</ul>
