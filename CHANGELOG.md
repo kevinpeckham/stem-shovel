@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-09-25
+
 ### Added
 
 - **People on a project.** A project's settings gain a People section: invite a **viewer** from outside the account by email (they play the project's songs and stems, read its docs and comment, change nothing and take no seat; any member who may edit the project can invite), and **restrict** the project so only the people added to it and the account's owners and admins can open it (other members of the account no longer see it; add the members who belong from the same section). `project_member` table, `project.is_restricted`, `invitation.project_id` (migration 0059); the rules are `canViewProject`, `canViewSong`, `canEditProject` and `canCommentProject` in `viewAccess.ts`, fed by the account layout, and `memberOf` enforces them for every mutation.
@@ -19,6 +21,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **A super admin could not accept an invitation.** The invitation page took their acting-owner access to every account for membership and said they already belonged, leaving the invitation pending; it now counts real memberships only.
+
+### Technical
+
+- Migration 0059 (`project_member`, `project.is_restricted`, `invitation.project_id`, the viewer data moves). The `accounts-and-members` and `downloads-and-sharing` user docs changed (`bun run db:update-docs accounts-and-members downloads-and-sharing`).
 
 ## [0.35.1] - 2026-09-25
 
