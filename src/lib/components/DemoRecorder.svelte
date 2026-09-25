@@ -793,17 +793,17 @@
 				{/if}
 			</div>
 
-			<div class="hidden sm-block flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
+			<div class="hidden sm-flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
 				<!-- loop status -->
-				<span
+				<div
 					class="i-ph-arrows-clockwise-fill {loopMode === 'looping'
 						? 'bg-yellow-500'
 						: 'bg-blue-100/10'}"
-				></span>
+				></div>
 
 				<!-- volume -->
 				<div
-					class="hidden sm-block text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
+					class="max-w-fit hidden sm-block text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
 						? ''
 						: 'opacity-10'}"
 				>
