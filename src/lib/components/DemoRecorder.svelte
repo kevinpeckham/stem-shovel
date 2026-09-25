@@ -728,7 +728,13 @@
 					h-2.5
 					w-2.5
 					rounded-full
-					{phase === 'recording' ? 'bg-red-500' : phase === 'requesting' ? 'bg-orange-500' : 'bg-green-500'}
+					{phase === 'recording'
+							? 'bg-red-500 animate-pulse'
+							: phase === 'requesting'
+								? 'bg-orange-500 animate-pulse'
+								: hasTake && !playbackPaused
+									? 'bg-green-500 animate-pulse'
+									: 'bg-green-500'}
 					"
 					></span>
 				</div>
