@@ -13,8 +13,11 @@
 	 */
 	interface Props {
 		compact?: boolean;
+		/** Compact only: when the tempo field shows. "auto" is while running. */
+		tempo?: "auto" | "always" | "never";
 	}
-	let { compact = false }: Props = $props();
+	let { compact = false, tempo = "auto" }: Props = $props();
+	let showTempo = $derived(tempo === "always" || (tempo === "auto" && metronome.running));
 
 	onMount(() => metronome.load());
 </script>
@@ -22,7 +25,9 @@
 {#if compact}
 	<div class="flex items-center gap-1" aria-label="Metronome">
 		<button
-			class="button button-sm shrink-0 {metronome.running ? 'text-accent border-accent' : ''}"
+			class="button button-sm shrink-0 {metronome.running
+				? 'bg-accent text-oxford border-accent opacity-100'
+				: ''}"
 			type="button"
 			aria-pressed={metronome.running}
 			title={metronome.running ? "Stop the metronome" : "Start the metronome"}
@@ -36,7 +41,7 @@
 				aria-hidden="true"
 			></span>
 		</button>
-		{#if metronome.running}
+		{#if showTempo}
 			<label class="flex items-center gap-1 text-13px">
 				<span class="sr-only">Tempo</span>
 				<input

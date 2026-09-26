@@ -124,8 +124,9 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   page never makes it stumble), a higher first beat, 30–300 bpm, two to six
   beats to the bar, tap tempo; the engine is one per page
   (`src/lib/audio/metronome.svelte.ts`) and every `Metronome` component a
-  view of it; compact in the recorder's toolbar (a toggle and the tempo,
-  inside a wrench tools menu with the tuner on a phone), full on
+  view of it; compact in the recorder's toolbar (a toggle and the tempo;
+  on a phone inside a wrench tools menu with the tuner, and while it runs
+  its stop button stands in the menu's place so one tap stops it), full on
   `/metronome` (public, indexable). It keeps running
   through a take on purpose: a click track for headphones.
 - **Reusable bits** that came out of this page: `ComboBox.svelte` (a

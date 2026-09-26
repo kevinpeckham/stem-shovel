@@ -33,6 +33,9 @@
 
 	interface Props {
 		ariaLabel?: string | null;
+		/** The trigger's own look; replaces the default chrome (`button button-sm` makes it one of a toolbar's buttons). */
+		buttonBaseClasses?: string | null;
+		/** Added to the trigger's classes. */
 		buttonClasses?: string | null;
 		disabled?: boolean;
 		/** The trigger's icon; the ⋯ by default. */
@@ -46,6 +49,7 @@
 
 	let {
 		ariaLabel = "More actions",
+		buttonBaseClasses = "bg-dark cursor-pointer disabled-text-current/10 px-3 py-2 grid place-items-center border border-current/10 leading-none rounded-md disabled-opacity-60",
 		buttonClasses = "",
 		disabled = false,
 		iconClass = "i-ph-dots-three-vertical-bold",
@@ -123,20 +127,7 @@
 		{disabled}
 		popovertarget={popoverId}
 		{title}
-		class="
-			bg-dark
-			cursor-pointer
-			disabled-text-current/10
-			px-3
-			py-2
-			grid
-			place-items-center
-			border
-			border-current/10
-			leading-none
-			rounded-md
-			disabled-opacity-60
-			{buttonClasses}"
+		class="{buttonBaseClasses} {buttonClasses}"
 	>
 		<span class={iconClass} aria-hidden="true"></span>
 	</button>

@@ -8,6 +8,7 @@
 	import InfoTip from "$lib/components/InfoTip.svelte";
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
+	import { metronome } from "$lib/audio/metronome.svelte";
 	import {
 		createIdea,
 		deleteIdeaNow,
@@ -462,26 +463,32 @@
 				<div class="flex items-center gap-3 px-3 py-1.5">
 					<span class="w-1em i-ph-metronome" aria-hidden="true"></span>
 					<span class="grow">Metronome</span>
-					<Metronome compact />
+					<Metronome compact tempo="always" />
 				</div>
 			{/snippet}
+			<!-- A phone: the tools menu, or, while the metronome runs, its stop button in the menu's place
+			     (one tap to stop, no digging; the tuner is back in the menu once it stops). -->
 			<div class="sm-hidden">
-				<ContextMenu
-					ariaLabel="Tools"
-					title="Tools"
-					iconClass="i-ph-wrench"
-					buttonClasses="h-full !bg-transparent border-current !rounded"
-					items={[
-						{
-							id: "tools-tuner",
-							kind: "button",
-							label: "Tuner",
-							iconClass: "i-ph-ear",
-							popovertarget: "tuner",
-						},
-						{ id: "metronome", kind: "snippet", snippet: metronomeItem },
-					]}
-				/>
+				{#if metronome.running}
+					<Metronome compact tempo="never" />
+				{:else}
+					<ContextMenu
+						ariaLabel="Tools"
+						title="Tools"
+						iconClass="i-ph-wrench"
+						buttonBaseClasses="button button-sm shrink-0"
+						items={[
+							{
+								id: "tools-tuner",
+								kind: "button",
+								label: "Tuner",
+								iconClass: "i-ph-ear",
+								popovertarget: "tuner",
+							},
+							{ id: "metronome", kind: "snippet", snippet: metronomeItem },
+						]}
+					/>
+				{/if}
 			</div>
 			<button
 				class="button button-sm shrink-0 hidden sm-flex"
