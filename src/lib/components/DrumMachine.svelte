@@ -54,7 +54,11 @@
 	let p = $derived(drumMachine.pattern);
 </script>
 
-<svelte:window {onkeydown} onpointerup={() => (painting = null)} />
+<svelte:window
+	{onkeydown}
+	onpointermove={(e) => paintAt(e.clientX, e.clientY)}
+	onpointerup={() => (painting = null)}
+/>
 
 <div class="device-chrome grid gap-4 px-3 py-4 sm-px-5 sm-py-5 w-full" aria-label="Drum machine">
 	<!-- the readout -->
@@ -155,11 +159,7 @@
 	</div>
 
 	<!-- the grid -->
-	<div
-		class="grid gap-y-3"
-		aria-label="Pattern"
-		onpointermove={(e) => paintAt(e.clientX, e.clientY)}
-	>
+	<div class="grid gap-y-3" aria-label="Pattern">
 		{#each p.rows as row, r (r)}
 			<div
 				class="grid gap-x-2 gap-y-1 items-center sm-grid-cols-[7.5rem_auto_5rem_1fr]"
