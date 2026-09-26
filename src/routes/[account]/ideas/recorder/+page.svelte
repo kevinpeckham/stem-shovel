@@ -7,6 +7,7 @@
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
 	import Tuner from "$lib/components/Tuner.svelte";
+	import Metronome from "$lib/components/Metronome.svelte";
 	import {
 		createIdea,
 		deleteIdeaNow,
@@ -452,6 +453,8 @@
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
 				<span class="hidden sm-inline-block">Ideas</span>
 			</button>
+			<!-- The metronome: a click track through the speakers or headphones while a take records. -->
+			<Metronome compact />
 			<button
 				class="button button-sm shrink-0"
 				type="button"

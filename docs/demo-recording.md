@@ -118,6 +118,13 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   lists the tunings, `utils/tunerPreferences.ts` remembers the tuning and
   A4. It opens the microphone with the recorder's constraints and audio
   session; a take starting hides the popover, which stops it.
+- **Metronome** (`Metronome.svelte`, `utils/tapTempo.ts` with tests,
+  `utils/metronomePreferences.ts`): clicks scheduled a tenth of a second
+  ahead on the Web Audio clock (the "tale of two clocks" pattern, so a busy
+  page never makes it stumble), a higher first beat, 30–300 bpm, two to six
+  beats to the bar, tap tempo; compact in the recorder's toolbar (a toggle
+  and the tempo), full on `/metronome` (public, indexable). It keeps running
+  through a take on purpose: a click track for headphones.
 - **Reusable bits** that came out of this page: `ComboBox.svelte` (a
   trigger with `popovertarget` opening a listbox that is a native popover,
   placed under the trigger by CSS anchor positioning through the invoker's

@@ -10,6 +10,7 @@ describe("isIndexablePath", () => {
 			"/docs/getting-started/",
 			"/releases",
 			"/tuner",
+			"/metronome",
 			"/pricing",
 			"/built-with",
 			"/blog",

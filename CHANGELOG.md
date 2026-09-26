@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A metronome.** In the Idea Recorder's toolbar, a compact one: a toggle with the icon and, once on, the tempo to adjust; it keeps clicking through a take. The full metronome is at `/metronome` (footer link, indexable): 30 to 300 bpm with steps and a slider, tap tempo, two to six beats to the bar with an accented first beat, and a beat indicator. `Metronome.svelte` (clicks scheduled ahead on the Web Audio clock), `tapTempo.ts` with tests, `metronomePreferences.ts` (remembered per browser).
+
 ## [0.37.0] - 2026-09-26
 
 ### Added

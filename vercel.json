@@ -36,7 +36,7 @@
 			]
 		},
 		{
-			"source": "/((?!docs|blog|releases|tuner$|pricing$|built-with$).+)",
+			"source": "/((?!docs|blog|releases|tuner$|metronome$|pricing$|built-with$).+)",
 			"headers": [
 				{
 					"key": "X-Robots-Tag",
