@@ -25,7 +25,7 @@
 </script>
 
 {#if compact}
-	<div class="flex items-center gap-1" aria-label="Metronome">
+	<div class="flex items-stretch gap-1" aria-label="Metronome">
 		<button
 			class="button button-sm shrink-0 {metronome.running
 				? 'bg-accent text-oxford border-accent opacity-100'
