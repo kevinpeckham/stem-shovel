@@ -35,5 +35,5 @@
 <div class="min-w-0">
 	{@render children()}
 </div>
-<GlobalFooter user={data.user} />
+<GlobalFooter user={data.user} memberships={data.memberships} currentSlug={data.currentSlug} />
 <Notifications />

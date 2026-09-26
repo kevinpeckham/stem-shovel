@@ -15,7 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- The footer's links are two rows: the tools, then everything else.
+- The footer's links are two rows: the tools (the Idea Recorder for a member, the front-page demo for a visitor, tuner, metronome, drum machine), then everything else.
 
 ## [0.39.0] - 2026-09-26
 

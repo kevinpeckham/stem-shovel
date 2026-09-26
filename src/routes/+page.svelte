@@ -139,7 +139,7 @@
 				</section>
 
 				<!-- Idea Recorder Demo: The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
-				<section class="mt-12">
+				<section class="mt-12 scroll-mt-6" id="idea-recorder">
 					<h3 class="marketing-section-heading">Audio Recorder</h3>
 					<div class="marketing-topic-heading">High Fidelity Idea Recorder</div>
 					<p class="marketing-paragraph text-balance">

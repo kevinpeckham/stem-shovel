@@ -1,10 +1,20 @@
 <script lang="ts">
 	import ReportForm from "$lib/components/ReportForm.svelte";
+	import { page } from "$app/state";
 
 	interface Props {
 		user: { name: string; email: string } | null;
+		/** Accounts the user belongs to, for the Idea Recorder link (the nav resolves the account the same way). */
+		memberships?: { slug: string; actingAs?: boolean }[];
+		currentSlug?: string | null;
 	}
-	let { user }: Props = $props();
+	let { user, memberships = [], currentSlug = null }: Props = $props();
+
+	let own = $derived(memberships.filter((m) => !m.actingAs));
+	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
+	let member = $derived(memberships.find((m) => m.slug === accountSlug));
+	/** A member's recorder; a visitor gets the working demo on the front page. */
+	let recorderHref = $derived(member ? `/${member.slug}/ideas/recorder` : "/#idea-recorder");
 
 	/** Which build is running: package.json's version and, when known, the commit. */
 	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;
@@ -17,6 +27,7 @@
 	<!-- Two rows of links, tappable on a phone (15px, wrapping): the tools first, everything else under them. -->
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
+		<a class="footer-link" href={recorderHref}>Idea Recorder</a>
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
 		<a class="footer-link" href="/drum-machine">Drum Machine</a>
