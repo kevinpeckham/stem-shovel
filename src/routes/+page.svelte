@@ -209,11 +209,10 @@
 		<!-- Drum Machine Demo -->
 		<section class="mt-12">
 			<h3 class="marketing-section-heading">Drum Machine Demo</h3>
-			<div class="marketing-topic-heading">A Beat to Write To</div>
+			<div class="marketing-topic-heading">Drum Machine &amp; Sequencer</div>
 			<p class="marketing-paragraph text-balance">
-				Sketch a groove in seconds: tap the cells, press Play, and play along. Two kits, swing, and
-				a link that carries your beat to the rest of the band. The full drum machine is at
-				<a class="link" href="/drum-machine">/drum-machine</a>.
+				Experiment with beat ideas, in an intuitive interface. Save, download &amp; share. Or use as
+				a backing track while recording an idea or demo.
 			</p>
 			<div class="marketing-demo-cta">Try the working demo below.</div>
 			<!-- No space-bar shortcut here: the home page needs space for scrolling. -->
