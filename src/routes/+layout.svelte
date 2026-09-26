@@ -26,7 +26,12 @@
 	{/if}
 </svelte:head>
 
-<GlobalNav user={data.user} memberships={data.memberships} currentSlug={data.currentSlug} />
+<GlobalNav
+	user={data.user}
+	memberships={data.memberships}
+	currentSlug={data.currentSlug}
+	unread={data.unread}
+/>
 <div class="min-w-0">
 	{@render children()}
 </div>

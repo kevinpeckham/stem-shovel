@@ -28,6 +28,8 @@ const {
 	idea,
 	invitation,
 	inviteCode,
+	notification,
+	notificationPreference,
 	passkey,
 	project,
 	projectMember,
@@ -124,6 +126,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
 	await db.delete(invitation).where(eq(invitation.accountId, accountId));
+	await db.delete(notification).where(eq(notification.accountId, accountId));
 	await db.delete(inviteCode).where(eq(inviteCode.accountId, accountId));
 	await db.delete(accountMember).where(eq(accountMember.accountId, accountId));
 	await db.update(auditLog).set({ accountId: null }).where(eq(auditLog.accountId, accountId));
@@ -143,6 +146,8 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(session).where(eq(session.userId, userId));
 	await db.delete(twoFactor).where(eq(twoFactor.userId, userId));
 	await db.delete(passkey).where(eq(passkey.userId, userId));
+	await db.delete(notification).where(eq(notification.userId, userId));
+	await db.delete(notificationPreference).where(eq(notificationPreference.userId, userId));
 	await db.delete(bugReportVote).where(eq(bugReportVote.userId, userId));
 	await db.update(aiRequest).set({ userId: null }).where(eq(aiRequest.userId, userId));
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));

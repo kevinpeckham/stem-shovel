@@ -1,6 +1,8 @@
 import { accountOfIdea, memberOf, requireUser } from "$lib/server/access";
 import { createRecording, recordingStore, storageRoom, userOwnsIdea } from "$lib/server/data";
 import { formatBytes } from "$lib/utils/formatBytes";
+import { background } from "$lib/server/background";
+import { checkStorage } from "$lib/server/notifications";
 import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "$lib/constants/takeLimits";
@@ -43,6 +45,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
 		);
 	}
+	// The reservation may have crossed a warning line; the account's admins hear after the response.
+	background(() => checkStorage(accountId));
 	if (!(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Idea not found");
 	const row = await createRecording(accountId, user.id, ideaId, {
 		title: (title ?? "").trim().slice(0, 120),

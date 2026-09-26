@@ -15,6 +15,8 @@ import {
 	updateAccount as update,
 } from "$lib/server/data";
 import { sendInvitationEmail } from "$lib/server/email";
+import { background } from "$lib/server/background";
+import { checkSeats, notifyInvitationAccepted } from "$lib/server/notifications";
 import {
 	AccountCreateSchema,
 	AccountDefaultArtistSchema,
@@ -86,6 +88,10 @@ export const acceptInvitation = form(InvitationTokenSchema, async ({ token }) =>
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const result = await accept(token, user);
+	if (typeof result !== "string") {
+		background(() => notifyInvitationAccepted(result, user.id));
+		if (!result.project) background(() => checkSeats(result.account.id));
+	}
 	if (result === "full")
 		error(400, "This account has no seats left. Ask its owner to make room before you join.");
 	if (typeof result === "string")

@@ -18,6 +18,8 @@ import { invitation } from "./invitation";
 import { inviteCode } from "./inviteCode";
 import { project } from "./project";
 import { projectMember } from "./projectMember";
+import { notification } from "./notification";
+import { notificationPreference } from "./notificationPreference";
 import { session } from "./session";
 import { shareLink } from "./shareLink";
 import { song } from "./song";
@@ -89,6 +91,15 @@ export const projectRelations = relations(project, ({ one, many }) => ({
 	creator: one(user, { fields: [project.createdBy], references: [user.id] }),
 	songs: many(song),
 	people: many(projectMember),
+}));
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+	user: one(user, { fields: [notification.userId], references: [user.id] }),
+	account: one(account, { fields: [notification.accountId], references: [account.id] }),
+}));
+
+export const notificationPreferenceRelations = relations(notificationPreference, ({ one }) => ({
+	user: one(user, { fields: [notificationPreference.userId], references: [user.id] }),
 }));
 
 export const projectMemberRelations = relations(projectMember, ({ one }) => ({
@@ -163,6 +174,7 @@ export const shareLinkRelations = relations(shareLink, ({ one }) => ({
 export const userRelations = relations(user, ({ many }) => ({
 	memberships: many(accountMember),
 	projectMemberships: many(projectMember),
+	notifications: many(notification),
 	uploadedStems: many(stem),
 	sessions: many(session),
 	authAccounts: many(authAccount),

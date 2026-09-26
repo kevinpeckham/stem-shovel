@@ -48,6 +48,8 @@ erDiagram
   gets a new pathname and the old file is deleted.
 - **user** also carries `plan_terms_accepted_at` (migration 0058): when the
   person accepted the plan terms at sign-up; null for users made by scripts.
+- **notification** / **notification_preference** — a person's inbox items
+  and how they want to hear about them (migration 0060; docs/notifications.md).
 - **account_member** — which users are in which account, with a role.
 - **project_member** — who is on one project besides the account's owners and
   admins (migration 0059): an account member added to a restricted project

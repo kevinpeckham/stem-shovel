@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An inbox.** Every signed-in person has one (`/inbox`, in the account menu with an unread badge on the menu button): comments on songs, new stems, new songs and new demos in the projects they belong to, invitations they sent being accepted, and, for an account's owners and admins, storage at 80 %, 95 % and 100 % and every seat taken. Nothing a person did themselves; a burst of stems, demos or comments on one song folds into one item. Opening an item marks it read and goes where it points; Mark all as read.
+- **Email, off by default.** `/settings/notifications`: comments, stems, songs and demos each reach email only when switched on, at once or gathered into a daily or weekly digest (`GET /api/notifications/digest`, a cron once a day); storage and seat warnings and an accepted invitation are always emailed at once. A text-message hook (`deliverSms`, `sms_number`) is in place with nothing behind it yet. `notification` and `notification_preference` tables (migration 0060), `src/lib/server/notifications.ts`, `notificationPolicy.ts` with tests; docs/notifications.md.
+
 ## [0.36.2] - 2026-09-25
 
 ### Fixed

@@ -15,6 +15,8 @@ export * from "./demo";
 export * from "./idea";
 export * from "./invitation";
 export * from "./inviteCode";
+export * from "./notification";
+export * from "./notificationPreference";
 export * from "./passkey";
 export * from "./project";
 export * from "./projectMember";

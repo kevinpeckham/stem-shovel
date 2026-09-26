@@ -1,6 +1,8 @@
 import { form, getRequestEvent } from "$app/server";
 import { parsePosition } from "$lib/audio/measures";
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
+import { background } from "$lib/server/background";
+import { notifyComment } from "$lib/server/notifications";
 import {
 	commentOwnership,
 	createComment as create,
@@ -38,6 +40,7 @@ export const createComment = form(
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
 		const row = await create(accountId, songId, user.id, { title, body, at });
 		if (!row) error(404, "Song not found");
+		background(() => notifyComment(accountId, songId, user.id));
 		return { id: row.id };
 	},
 );

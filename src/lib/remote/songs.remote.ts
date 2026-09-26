@@ -1,4 +1,6 @@
 import { command, form, getRequestEvent, query } from "$app/server";
+import { background } from "$lib/server/background";
+import { notifySong } from "$lib/server/notifications";
 import { barAt, barGrid } from "$lib/audio/measures";
 import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
@@ -116,7 +118,9 @@ export const createSong = form(SongCreateSchema, async ({ projectId, title }) =>
 	const { accountId } = await memberOf(locals, accountOfProject, projectId);
 	const slugs = await projectSlugs(accountId, projectId);
 	if (!slugs) error(404, "Project not found");
-	const row = await create(accountId, requireUser(locals).id, projectId, title);
+	const creator = requireUser(locals).id;
+	const row = await create(accountId, creator, projectId, title);
+	background(() => notifySong(accountId, row.id, creator));
 	redirect(303, `/${slugs.account}/projects/${slugs.project}/${row.slug}`);
 });
 

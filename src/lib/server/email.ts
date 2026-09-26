@@ -225,6 +225,48 @@ export async function sendPasskeyChangedEmail(
 	});
 }
 
+const SITE = "https://www.stemshovel.com";
+
+/** One inbox item, sent at once (a high-priority warning, or an opt-in with no digest). */
+export async function sendNotificationEmail(opts: {
+	to: string;
+	name: string;
+	title: string;
+	body: string;
+	href: string;
+}) {
+	const body = renderEmail({
+		greeting: greet(opts.name),
+		lines: [opts.title, opts.body],
+		cta: { label: "Open in Stem Shovel", url: `${SITE}${opts.href}` },
+		footer: `You chose to hear about this by email; change that at ${SITE}/settings/notifications. Storage and seat warnings always reach the account's owners and admins.`,
+	});
+	await sendEmail({ to: opts.to, subject: opts.title, ...body });
+}
+
+/** The daily or weekly summary of the opt-in items. */
+export async function sendDigestEmail(opts: {
+	to: string;
+	name: string;
+	period: "daily" | "weekly";
+	items: { title: string; body: string; href: string }[];
+}) {
+	const body = renderEmail({
+		greeting: greet(opts.name),
+		lines: [
+			`Here is what happened in your projects ${opts.period === "daily" ? "since yesterday" : "this week"}:`,
+			...opts.items.map((i) => `${i.title}: ${i.body} ${SITE}${i.href}`),
+		],
+		cta: { label: "Open your inbox", url: `${SITE}/inbox` },
+		footer: `This is your ${opts.period} summary; change what it holds, or switch it off, at ${SITE}/settings/notifications.`,
+	});
+	await sendEmail({
+		to: opts.to,
+		subject: `Your ${opts.period} Stem Shovel summary: ${opts.items.length} ${opts.items.length === 1 ? "update" : "updates"}`,
+		...body,
+	});
+}
+
 /** A new bug report or feature request, to each system admin; replies go to the reporter. */
 export async function sendSupportRequestEmail(opts: {
 	to: string;

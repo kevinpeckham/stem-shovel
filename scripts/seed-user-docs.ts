@@ -27,6 +27,7 @@ const ORDER = [
 	"accounts-and-plans",
 	"plan-terms",
 	"security",
+	"notifications",
 	"reporting-a-bug",
 	"privacy-policy",
 	"copyright-policy",

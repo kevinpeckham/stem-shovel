@@ -1,4 +1,6 @@
-import { accountOfDemo, memberOf } from "$lib/server/access";
+import { accountOfDemo, memberOf, requireUser } from "$lib/server/access";
+import { background } from "$lib/server/background";
+import { notifyDemo } from "$lib/server/notifications";
 import { isOurBlobUrl } from "$lib/server/blob";
 import { markDemoReady, reservedPathname } from "$lib/server/data";
 import { scheduleDemoPlayback } from "$lib/server/jobs";
@@ -22,5 +24,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const row = await markDemoReady(accountId, params.id, body.url);
 	if (!row) error(404, "Demo not found");
 	scheduleDemoPlayback([params.id]);
+	const uploader = requireUser(locals).id;
+	background(() => notifyDemo(accountId, params.id, uploader));
 	return json({ ok: true });
 };

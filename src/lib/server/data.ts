@@ -1422,7 +1422,12 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 			});
 		}
 		await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
-		return { status: "joined" as const, account: inv.account, project: inv.project };
+		return {
+			status: "joined" as const,
+			account: inv.account,
+			project: inv.project,
+			invitedBy: inv.invitedBy,
+		};
 	}
 	const existing = await db.query.accountMember.findFirst({
 		where: and(eq(accountMember.accountId, inv.accountId), eq(accountMember.userId, user.id)),
@@ -1434,7 +1439,12 @@ export async function acceptInvitation(token: string, user: { id: string; email:
 			.values({ accountId: inv.accountId, userId: user.id, role: inv.role as MemberRole });
 	}
 	await db.update(invitation).set({ acceptedAt: new Date() }).where(eq(invitation.id, inv.id));
-	return { status: "joined" as const, account: inv.account, project: null };
+	return {
+		status: "joined" as const,
+		account: inv.account,
+		project: null,
+		invitedBy: inv.invitedBy,
+	};
 }
 
 // ---- invite codes -----------------------------------------------------------

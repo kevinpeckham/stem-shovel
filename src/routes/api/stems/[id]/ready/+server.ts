@@ -1,4 +1,6 @@
-import { accountOfStem, memberOf } from "$lib/server/access";
+import { accountOfStem, memberOf, requireUser } from "$lib/server/access";
+import { background } from "$lib/server/background";
+import { notifyStems } from "$lib/server/notifications";
 import { isOurBlobUrl } from "$lib/server/blob";
 import { markStemReady, reservedPathname } from "$lib/server/data";
 import { schedulePlayback } from "$lib/server/jobs";
@@ -41,5 +43,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	});
 	if (!row) error(404, "Stem not found");
 	schedulePlayback([params.id]);
+	const uploader = requireUser(locals).id;
+	background(() => notifyStems(accountId, row.songId, uploader));
 	return json({ ok: true });
 };

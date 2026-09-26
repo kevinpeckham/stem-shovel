@@ -17,8 +17,16 @@
 		}[];
 		/** The user's own account for pages outside any account (src/lib/server/currentAccount.ts). */
 		currentSlug?: string | null;
+		/** Unread inbox items: a badge on the account button and the Inbox item. */
+		unread?: number;
 	}
-	let { collapsed = $bindable(false), user, memberships, currentSlug = null }: Props = $props();
+	let {
+		collapsed = $bindable(false),
+		user,
+		memberships,
+		currentSlug = null,
+		unread = 0,
+	}: Props = $props();
 
 	let own = $derived(memberships.filter((m) => !m.actingAs));
 	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
@@ -94,6 +102,13 @@
 				>
 					<span class="i-ph-user-circle text-18px" aria-hidden="true"></span>
 					<span class="max-w-40 truncate">{member?.name ?? user.name}</span>
+					{#if unread > 0}
+						<span
+							class="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"
+							aria-label="{unread} unread {unread === 1 ? 'notification' : 'notifications'}"
+							>{unread > 99 ? "99+" : unread}</span
+						>
+					{/if}
 					{#if member?.actingAs}
 						<span
 							class="rounded bg-red-400/20 px-1.5 py-0.5 text-10px uppercase tracking-wider text-red-300"
@@ -119,6 +134,24 @@
 								<div class="truncate text-13px opacity-70">{user.email}</div>
 							{/if}
 						</div>
+						<a
+							class="mt-1 flex items-center px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/inbox',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/inbox"
+							onclick={() => (open = false)}
+						>
+							<span class="i-ph-tray mr-2 inline-block align-[-2px]" aria-hidden="true"></span>Inbox
+							{#if unread > 0}
+								<span
+									class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"
+									>{unread > 99 ? "99+" : unread}</span
+								>
+							{/if}
+						</a>
 						{#if member}
 							<div class="px-4 pt-2 pb-1 text-11px uppercase tracking-wider opacity-60">
 								{member.name} · {member.actingAs ? "acting as owner" : member.role}
@@ -220,6 +253,19 @@
 						>
 							<span class="i-ph-lock-key mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Security
+						</a>
+						<a
+							class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/settings/notifications',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/settings/notifications"
+							onclick={() => (open = false)}
+						>
+							<span class="i-ph-bell mr-2 inline-block align-[-2px]" aria-hidden="true"
+							></span>Notifications
 						</a>
 						{#if user.isSystemAdmin}
 							<a

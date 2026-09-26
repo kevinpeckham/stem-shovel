@@ -1,6 +1,8 @@
 import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
 import { createStem, storageRoom } from "$lib/server/data";
 import { formatBytes } from "$lib/utils/formatBytes";
+import { background } from "$lib/server/background";
+import { checkStorage } from "$lib/server/notifications";
 import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { stemContentType } from "$lib/utils/stemContentType";
 import { accessOfPathname } from "$lib/server/relocate";
@@ -27,6 +29,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			`This account's storage is full: ${formatBytes(room.used)} of ${formatBytes(room.limit)}. Remove files you no longer need, or ask about more storage.`,
 		);
 	}
+	// The reservation may have crossed a warning line; the account's admins hear after the response.
+	background(() => checkStorage(accountId));
 	const row = await createStem(accountId, requireUser(locals).id, songId, {
 		filename,
 		contentType,

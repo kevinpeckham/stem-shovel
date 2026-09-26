@@ -13,6 +13,8 @@ import {
 	redeemInviteCode,
 } from "$lib/server/data";
 import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
+import { background } from "$lib/server/background";
+import { checkSeats, notifyInvitationAccepted } from "$lib/server/notifications";
 import { checkSignUp } from "$lib/server/signUpGate";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
@@ -201,11 +203,19 @@ export const auth = betterAuth({
 					let joined = false;
 					if (pass?.ok && pass.via === "invitation") {
 						const result = await acceptInvitation(pass.token, user);
+						if (typeof result !== "string") {
+							background(() => notifyInvitationAccepted(result, user.id));
+							if (!result.project) background(() => checkSeats(result.account.id));
+						}
 						// A project viewer from outside the account gets a workspace of their own besides.
 						joined = typeof result !== "string" && !result.project;
 					} else if (pass?.ok && pass.via === "code") {
 						const result = await redeemInviteCode(pass.code, user.id);
 						joined = typeof result !== "string" && result.account !== null;
+						if (typeof result !== "string" && result.account) {
+							const joinedAccount = result.account.id;
+							background(() => checkSeats(joinedAccount));
+						}
 					}
 					if (!joined) await createPersonalAccount(user);
 				},
