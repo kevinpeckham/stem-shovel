@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-09-26
+
 ### Added
 
 - **A drum machine** at `/drum-machine` (footer link, indexable; docs/drum-machine.md, Phase 1). A step sequencer of up to 12 rows over 8, 16 or 32 sixteenths: tap or drag across cells, Play / Stop (space), 40 to 240 bpm with tap tempo, swing, level, mute and solo per row, an acoustic kit (Groovie's CC0 one-shots in `static/kits/acoustic`, credited on /built-with) and an electronic kit synthesized in the browser, a four-to-the-floor starting beat, the pattern remembered per browser, and Copy link, which puts the pattern in the URL (`encodeDrumPattern` / `decodeDrumPattern`, a versioned bit-packed base64url string; pinned links in the tests keep old links opening). On a phone a bar shows as two lines of eight. `DrumMachine.svelte` is a view of the engine in `src/lib/audio/drumMachine.svelte.ts`; `src/lib/audio/kits/` holds the kits behind one interface; `DrumPatternSchema` checks what localStorage and links carry.
