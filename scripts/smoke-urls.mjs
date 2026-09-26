@@ -78,7 +78,7 @@ const ROUTES = [
 	["settings/security", "/settings/security", [401], [200]],
 	["settings/notifications", "/settings/notifications", [303], [200]],
 	["inbox", "/inbox", [303], [200]],
-	["api/notifications/digest", "/api/notifications/digest", [200], [200]],
+	["api/notifications/digest (server)", "/api/notifications/digest", [200], [200]],
 	["sign-in", "/sign-in", [200], [303]],
 	["sign-up", "/sign-up", [200], [200, 303]],
 	["verify-2fa", "/verify-2fa", [200], [303]],
