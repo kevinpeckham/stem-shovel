@@ -122,8 +122,11 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   `utils/metronomePreferences.ts`): clicks scheduled a tenth of a second
   ahead on the Web Audio clock (the "tale of two clocks" pattern, so a busy
   page never makes it stumble), a higher first beat, 30–300 bpm, two to six
-  beats to the bar, tap tempo; compact in the recorder's toolbar (a toggle
-  and the tempo), full on `/metronome` (public, indexable). It keeps running
+  beats to the bar, tap tempo; the engine is one per page
+  (`src/lib/audio/metronome.svelte.ts`) and every `Metronome` component a
+  view of it; compact in the recorder's toolbar (a toggle and the tempo,
+  inside a wrench tools menu with the tuner on a phone), full on
+  `/metronome` (public, indexable). It keeps running
   through a take on purpose: a click track for headphones.
 - **Reusable bits** that came out of this page: `ComboBox.svelte` (a
   trigger with `popovertarget` opening a listbox that is a native popover,

@@ -35,6 +35,8 @@
 		ariaLabel?: string | null;
 		buttonClasses?: string | null;
 		disabled?: boolean;
+		/** The trigger's icon; the ⋯ by default. */
+		iconClass?: string;
 		items?: ContextMenuItem[] | null;
 		openState?: "open" | "closed";
 		popoverClasses?: string | null;
@@ -46,6 +48,7 @@
 		ariaLabel = "More actions",
 		buttonClasses = "",
 		disabled = false,
+		iconClass = "i-ph-dots-three-vertical-bold",
 		items = [],
 		popoverClasses = "",
 		position = "bottom left",
@@ -135,7 +138,7 @@
 			disabled-opacity-60
 			{buttonClasses}"
 	>
-		<span class="i-ph-dots-three-vertical-bold" aria-hidden="true"></span>
+		<span class={iconClass} aria-hidden="true"></span>
 	</button>
 
 	<!-- popover -->

@@ -1,132 +1,42 @@
 <script lang="ts">
-	import {
-		BEATS_PER_BAR,
-		loadMetronomePreferences,
-		saveMetronomePreferences,
-	} from "$lib/utils/metronomePreferences";
-	import { BPM_MAX, BPM_MIN, tapTempo } from "$lib/utils/tapTempo";
-	import { onDestroy } from "svelte";
+	import { metronome } from "$lib/audio/metronome.svelte";
+	import { BEATS_PER_BAR } from "$lib/utils/metronomePreferences";
+	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
+	import { onMount } from "svelte";
 
 	/**
-	 * A metronome: clicks from the Web Audio clock (a short sine, the first
-	 * beat of the bar higher), scheduled a tenth of a second ahead so a busy
-	 * page never makes it stumble. Full: tempo readout with steps and a
-	 * slider, beats to the bar, tap tempo, a beat indicator. Compact: a
-	 * toggle with the icon and, when on, the tempo to adjust; for a device
-	 * like the Idea Recorder. `start()`, `stop()` and `toggle()` are exported.
+	 * A view of the page's one metronome (src/lib/audio/metronome.svelte.ts).
+	 * Full: tempo readout with steps and a slider, beats to the bar, tap
+	 * tempo, a beat indicator, Start / Stop. Compact: a toggle with the icon
+	 * and, when on, the tempo to adjust; for a device's control row or a
+	 * menu. Several views on one page show the same click.
 	 */
 	interface Props {
 		compact?: boolean;
-		onrunning?: (running: boolean) => void;
 	}
-	let { compact = false, onrunning }: Props = $props();
+	let { compact = false }: Props = $props();
 
-	const LOOKAHEAD_S = 0.1;
-	const TICK_MS = 25;
-
-	let prefs = $state(loadMetronomePreferences());
-	let running = $state(false);
-	/** The beat sounding now, 0-based, for the indicator; -1 between runs. */
-	let beat = $state(-1);
-	let taps: number[] = [];
-
-	let ctx: AudioContext | null = null;
-	let timer: ReturnType<typeof setInterval> | null = null;
-	let nextTime = 0;
-	let nextBeat = 0;
-	let visualTimers: ReturnType<typeof setTimeout>[] = [];
-
-	function click(at: number, accent: boolean) {
-		if (!ctx) return;
-		const osc = ctx.createOscillator();
-		const gain = ctx.createGain();
-		osc.frequency.value = accent ? 1200 : 800;
-		gain.gain.setValueAtTime(0.0001, at);
-		gain.gain.exponentialRampToValueAtTime(accent ? 0.8 : 0.5, at + 0.002);
-		gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
-		osc.connect(gain).connect(ctx.destination);
-		osc.start(at);
-		osc.stop(at + 0.06);
-	}
-	function schedule() {
-		if (!ctx) return;
-		while (nextTime < ctx.currentTime + LOOKAHEAD_S) {
-			const b = nextBeat;
-			click(nextTime, b === 0);
-			const delay = Math.max(0, (nextTime - ctx.currentTime) * 1000);
-			visualTimers.push(setTimeout(() => (beat = b), delay));
-			nextTime += 60 / prefs.bpm;
-			nextBeat = (b + 1) % prefs.beatsPerBar;
-		}
-		visualTimers = visualTimers.slice(-16);
-	}
-
-	export async function start() {
-		if (running) return;
-		ctx ??= new AudioContext();
-		if (ctx.state !== "running") await ctx.resume().catch(() => {});
-		nextTime = ctx.currentTime + 0.05;
-		nextBeat = 0;
-		timer = setInterval(schedule, TICK_MS);
-		running = true;
-		onrunning?.(true);
-	}
-	export function stop() {
-		if (timer) clearInterval(timer);
-		timer = null;
-		for (const t of visualTimers) clearTimeout(t);
-		visualTimers = [];
-		beat = -1;
-		if (running) {
-			running = false;
-			onrunning?.(false);
-		}
-	}
-	export function toggle() {
-		if (running) stop();
-		else void start();
-	}
-
-	function setBpm(v: number) {
-		if (!Number.isFinite(v)) return;
-		prefs.bpm = Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(v)));
-		saveMetronomePreferences(prefs);
-	}
-	function setBeats(n: number) {
-		prefs.beatsPerBar = n;
-		nextBeat = 0;
-		saveMetronomePreferences(prefs);
-	}
-	function tap() {
-		taps = [...taps, performance.now()].slice(-8);
-		const bpm = tapTempo(taps);
-		if (bpm) setBpm(bpm);
-	}
-
-	onDestroy(() => {
-		stop();
-		void ctx?.close();
-		ctx = null;
-	});
+	onMount(() => metronome.load());
 </script>
 
 {#if compact}
-	<!-- A toggle and, when on, the tempo: for a device's control row. -->
 	<div class="flex items-center gap-1" aria-label="Metronome">
 		<button
-			class="button button-sm shrink-0 {running ? 'text-accent border-accent' : ''}"
+			class="button button-sm shrink-0 {metronome.running ? 'text-accent border-accent' : ''}"
 			type="button"
-			aria-pressed={running}
-			title={running ? "Stop the metronome" : "Start the metronome"}
-			aria-label={running ? "Stop the metronome" : "Start the metronome"}
-			onclick={toggle}
+			aria-pressed={metronome.running}
+			title={metronome.running ? "Stop the metronome" : "Start the metronome"}
+			aria-label={metronome.running ? "Stop the metronome" : "Start the metronome"}
+			onclick={() => metronome.toggle()}
 		>
 			<span
-				class="i-ph-metronome {running && beat === 0 ? 'scale-125' : ''} transition-transform"
+				class="i-ph-metronome {metronome.running && metronome.beat === 0
+					? 'scale-125'
+					: ''} transition-transform"
 				aria-hidden="true"
 			></span>
 		</button>
-		{#if running}
+		{#if metronome.running}
 			<label class="flex items-center gap-1 text-13px">
 				<span class="sr-only">Tempo</span>
 				<input
@@ -135,8 +45,8 @@
 					min={BPM_MIN}
 					max={BPM_MAX}
 					step="1"
-					value={prefs.bpm}
-					onchange={(e) => setBpm(Number(e.currentTarget.value))}
+					value={metronome.bpm}
+					onchange={(e) => metronome.setBpm(Number(e.currentTarget.value))}
 					aria-label="Tempo in beats per minute"
 				/>
 				<span class="text-dim">bpm</span>
@@ -149,18 +59,18 @@
 		<div class="device-window-bevel-md">
 			<div class="device-screen grid place-items-center gap-2 py-5 text-blue-100">
 				<div class="flex items-baseline gap-2 font-mono tabular-nums">
-					<span class="text-56px leading-none">{prefs.bpm}</span>
+					<span class="text-56px leading-none">{metronome.bpm}</span>
 					<span class="text-14px opacity-70">bpm</span>
 				</div>
 				<!-- the beat indicator: one light per beat, the first brighter -->
 				<div
 					class="flex items-center gap-2"
 					role="img"
-					aria-label="Beat {beat + 1} of {prefs.beatsPerBar}"
+					aria-label="Beat {metronome.beat + 1} of {metronome.beatsPerBar}"
 				>
-					{#each Array.from({ length: prefs.beatsPerBar }, (_, i) => i) as i (i)}
+					{#each Array.from({ length: metronome.beatsPerBar }, (_, i) => i) as i (i)}
 						<span
-							class="block h-3 w-3 rounded-full transition-colors {beat === i
+							class="block h-3 w-3 rounded-full transition-colors {metronome.beat === i
 								? i === 0
 									? 'bg-accent'
 									: 'bg-green-400'
@@ -169,7 +79,7 @@
 					{/each}
 				</div>
 				<div class="text-12px font-mono opacity-70">
-					{prefs.beatsPerBar} beats to the bar · {running ? "running" : "stopped"}
+					{metronome.beatsPerBar} beats to the bar · {metronome.running ? "running" : "stopped"}
 				</div>
 			</div>
 		</div>
@@ -181,7 +91,7 @@
 					<button
 						class="device-button-lg !min-w-0 px-3"
 						type="button"
-						onclick={() => setBpm(prefs.bpm + d)}
+						onclick={() => metronome.setBpm(metronome.bpm + d)}
 					>
 						{d}
 					</button>
@@ -189,7 +99,7 @@
 				<button
 					class="device-button-lg !min-w-0 px-4"
 					type="button"
-					onclick={tap}
+					onclick={() => metronome.tap()}
 					title="Tap the tempo"
 				>
 					Tap
@@ -198,7 +108,7 @@
 					<button
 						class="device-button-lg !min-w-0 px-3"
 						type="button"
-						onclick={() => setBpm(prefs.bpm + d)}
+						onclick={() => metronome.setBpm(metronome.bpm + d)}
 					>
 						+{d}
 					</button>
@@ -212,8 +122,8 @@
 					min={BPM_MIN}
 					max={BPM_MAX}
 					step="1"
-					value={prefs.bpm}
-					oninput={(e) => setBpm(Number(e.currentTarget.value))}
+					value={metronome.bpm}
+					oninput={(e) => metronome.setBpm(Number(e.currentTarget.value))}
 					aria-label="Tempo in beats per minute"
 				/>
 			</label>
@@ -224,23 +134,25 @@
 			<div class="flex items-center gap-1" role="group" aria-label="Beats to the bar">
 				{#each BEATS_PER_BAR as n (n)}
 					<button
-						class="device-button-lg !min-w-0 px-3 {prefs.beatsPerBar === n ? 'text-accent' : ''}"
+						class="device-button-lg !min-w-0 px-3 {metronome.beatsPerBar === n
+							? 'text-accent'
+							: ''}"
 						type="button"
-						aria-pressed={prefs.beatsPerBar === n}
-						onclick={() => setBeats(n)}
+						aria-pressed={metronome.beatsPerBar === n}
+						onclick={() => metronome.setBeats(n)}
 					>
 						{n}
 					</button>
 				{/each}
 			</div>
 			<button
-				class="device-button-lg {running ? 'text-accent' : ''}"
+				class="device-button-lg {metronome.running ? 'text-accent' : ''}"
 				type="button"
-				aria-pressed={running}
-				onclick={toggle}
+				aria-pressed={metronome.running}
+				onclick={() => metronome.toggle()}
 			>
 				<span class="i-ph-metronome" aria-hidden="true"></span>
-				{running ? "Stop" : "Start"}
+				{metronome.running ? "Stop" : "Start"}
 			</button>
 		</div>
 	</div>

@@ -453,10 +453,38 @@
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
 				<span class="hidden sm-inline-block">Ideas</span>
 			</button>
-			<!-- The metronome: a click track through the speakers or headphones while a take records. -->
-			<Metronome compact />
+			<!-- The tools: the metronome (a click track while a take records) and the tuner. From sm up
+			     they sit in the toolbar; a phone has room for one button, a tools menu holding both. -->
+			<div class="hidden sm-flex gap-2">
+				<Metronome compact />
+			</div>
+			{#snippet metronomeItem()}
+				<div class="flex items-center gap-3 px-3 py-1.5">
+					<span class="w-1em i-ph-metronome" aria-hidden="true"></span>
+					<span class="grow">Metronome</span>
+					<Metronome compact />
+				</div>
+			{/snippet}
+			<div class="sm-hidden">
+				<ContextMenu
+					ariaLabel="Tools"
+					title="Tools"
+					iconClass="i-ph-wrench"
+					buttonClasses="h-full !bg-transparent border-current !rounded"
+					items={[
+						{
+							id: "tools-tuner",
+							kind: "button",
+							label: "Tuner",
+							iconClass: "i-ph-ear",
+							popovertarget: "tuner",
+						},
+						{ id: "metronome", kind: "snippet", snippet: metronomeItem },
+					]}
+				/>
+			</div>
 			<button
-				class="button button-sm shrink-0"
+				class="button button-sm shrink-0 hidden sm-flex"
 				type="button"
 				popovertarget="tuner"
 				title="Tuner"
