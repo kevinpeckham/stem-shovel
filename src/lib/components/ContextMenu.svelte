@@ -21,6 +21,8 @@
 		action?: () => void | Promise<void> | null;
 		href?: string | null;
 		iconClass?: string | null;
+		/** A custom icon (inline SVG, say) in place of `iconClass`. */
+		icon?: Snippet;
 		kind?: "link" | "button" | "notice" | "snippet" | "divider" | null;
 		notice?: string | null;
 		popovertarget?: string | null;
@@ -162,7 +164,9 @@
 									<div>{item.notice}</div>
 								{/if}
 								<div class="flex items-center gap-2">
-									{#if item.iconClass}
+									{#if item.icon}
+										<div class="w-1em grid place-items-center">{@render item.icon()}</div>
+									{:else if item.iconClass}
 										<div class="w-1em {item.iconClass}"></div>
 									{/if}
 									<span>{@html typeof item.label === "function" ? item.label() : item.label}</span>
@@ -179,7 +183,9 @@
 								class="block w-full text-left opacity-90 px-3 py-1.5 hover-bg-blue-100/10 hover-opacity-100 disabled-opacity-60 disabled-hover-bg-transparent focus-visible-bg-white/10"
 							>
 								<div class="flex items-center gap-2">
-									{#if item.iconClass}
+									{#if item.icon}
+										<div class="w-1em grid place-items-center">{@render item.icon()}</div>
+									{:else if item.iconClass}
 										<div class="w-1em {item.iconClass}"></div>
 									{/if}
 									<span>{@html typeof item.label === "function" ? item.label() : item.label}</span>
