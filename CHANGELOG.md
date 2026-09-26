@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-09-26
+
 ### Added
 
 - **A Tools menu in the header**, on every width and for everyone: the Idea Recorder (members), the tuner, the metronome and the drum machine. It replaces the header's Idea Recorder link; a phone shows the wrench alone. The tuning-fork glyph is `TuningForkIcon.svelte`, shared by the menu and the recorder.
