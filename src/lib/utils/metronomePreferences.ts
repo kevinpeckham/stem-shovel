@@ -9,7 +9,7 @@ export interface MetronomePreferences {
 }
 
 export const BEATS_PER_BAR = [2, 3, 4, 6] as const;
-export const DEFAULT_METRONOME_PREFERENCES: MetronomePreferences = { bpm: 120, beatsPerBar: 4 };
+const DEFAULT_METRONOME_PREFERENCES: MetronomePreferences = { bpm: 120, beatsPerBar: 4 };
 
 export function loadMetronomePreferences(): MetronomePreferences {
 	try {
