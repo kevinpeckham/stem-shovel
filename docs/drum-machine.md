@@ -1,6 +1,17 @@
 # A drum machine (plan)
 
-Status: **plan only, nothing built** (2026-09-26). Kevin's brief: a simple
+Status: **Phase 1 built** (2026-09-26, unreleased): `/drum-machine`, the
+engine in `src/lib/audio/drumMachine.svelte.ts`, the kits in
+`src/lib/audio/kits/`, the model and share-link codec in `src/lib/utils/`
+(`drumPattern.test.ts` pins every link that has been shared), the
+component `DrumMachine.svelte`. Decisions taken: both kits; share links
+from the first day; 4/4 only (8, 16, 32 steps; 12 and 24 wait for a
+request); the Idea Recorder waits for Phase 2; the level sliders show
+from sm up and a phone has mute and solo. The share link is the
+base64url string alone (the version is its first byte), so the hash has
+no prefix. Phases 2 and 3 below are still the plan.
+
+Kevin's brief: a simple
 drum machine on its own standalone page, built so it can grow in complexity
 over time. Two precedents he likes: [orDrumbox](https://www.ordrumbox.com)
 ([source](https://github.com/cadeli/ordrumbox-v2)) and

@@ -64,6 +64,7 @@ const ROUTES = [
 	["support", "/support", [200], [200]],
 	["tuner", "/tuner", [200], [200]],
 	["metronome", "/metronome", [200], [200]],
+	["drum-machine", "/drum-machine", [200], [200]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
 	["built-with", "/built-with", [200], [200]],

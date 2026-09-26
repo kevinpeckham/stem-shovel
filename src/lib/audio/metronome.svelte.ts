@@ -3,6 +3,7 @@ import {
 	saveMetronomePreferences,
 } from "$lib/utils/metronomePreferences";
 import { BPM_MAX, BPM_MIN, tapTempo } from "$lib/utils/tapTempo";
+import { startLookahead } from "./lookahead";
 
 /**
  * The one metronome on the page (docs/demo-recording.md): clicks from the
@@ -12,9 +13,6 @@ import { BPM_MAX, BPM_MIN, tapTempo } from "$lib/utils/tapTempo";
  * phone's tools menu show the same click. Tempo and beats to the bar are
  * remembered per browser.
  */
-const LOOKAHEAD_S = 0.1;
-const TICK_MS = 25;
-
 class MetronomeEngine {
 	bpm = $state(120);
 	beatsPerBar = $state(4);
@@ -23,7 +21,7 @@ class MetronomeEngine {
 	beat = $state(-1);
 
 	#ctx: AudioContext | null = null;
-	#timer: ReturnType<typeof setInterval> | null = null;
+	#stopLoop: (() => void) | null = null;
 	#nextTime = 0;
 	#nextBeat = 0;
 	#visualTimers: ReturnType<typeof setTimeout>[] = [];
@@ -55,10 +53,10 @@ class MetronomeEngine {
 		osc.start(at);
 		osc.stop(at + 0.06);
 	}
-	#schedule = () => {
+	#schedule = (until: number) => {
 		const ctx = this.#ctx;
 		if (!ctx) return;
-		while (this.#nextTime < ctx.currentTime + LOOKAHEAD_S) {
+		while (this.#nextTime < until) {
 			const b = this.#nextBeat;
 			this.#click(this.#nextTime, b === 0);
 			const delay = Math.max(0, (this.#nextTime - ctx.currentTime) * 1000);
@@ -76,12 +74,12 @@ class MetronomeEngine {
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
 		this.#nextTime = this.#ctx.currentTime + 0.05;
 		this.#nextBeat = 0;
-		this.#timer = setInterval(this.#schedule, TICK_MS);
+		this.#stopLoop = startLookahead(this.#ctx, this.#schedule);
 		this.running = true;
 	}
 	stop() {
-		if (this.#timer) clearInterval(this.#timer);
-		this.#timer = null;
+		this.#stopLoop?.();
+		this.#stopLoop = null;
 		for (const t of this.#visualTimers) clearTimeout(t);
 		this.#visualTimers = [];
 		this.beat = -1;

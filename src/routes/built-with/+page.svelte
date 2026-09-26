@@ -69,6 +69,11 @@
 					what: "Makes the streaming renditions, the mixes and the downloads.",
 				},
 				{
+					name: "Groovie's samples",
+					url: "https://github.com/maximecb/groovie",
+					what: "The drum machine's acoustic kit: public-domain (CC0) one-shots from Maxime Chevalier-Boisvert's beat sequencer.",
+				},
+				{
 					name: "Basic Pitch",
 					url: "https://github.com/spotify/basic-pitch",
 					what: "Spotify's open-source model that turns a recorded idea into notes.",
