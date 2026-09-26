@@ -15,8 +15,10 @@
 		compact?: boolean;
 		/** Compact only: when the tempo field shows. "auto" is while running. */
 		tempo?: "auto" | "always" | "never";
+		/** Compact only: the toggle shows the metronome icon, or the words On / Off (for a menu row that names it already). */
+		toggle?: "icon" | "text";
 	}
-	let { compact = false, tempo = "auto" }: Props = $props();
+	let { compact = false, tempo = "auto", toggle = "icon" }: Props = $props();
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && metronome.running));
 
 	onMount(() => metronome.load());
@@ -34,12 +36,16 @@
 			aria-label={metronome.running ? "Stop the metronome" : "Start the metronome"}
 			onclick={() => metronome.toggle()}
 		>
-			<span
-				class="i-ph-metronome {metronome.running && metronome.beat === 0
-					? 'scale-125'
-					: ''} transition-transform"
-				aria-hidden="true"
-			></span>
+			{#if toggle === "text"}
+				<span class="w-5 text-center" aria-hidden="true">{metronome.running ? "On" : "Off"}</span>
+			{:else}
+				<span
+					class="i-ph-metronome {metronome.running && metronome.beat === 0
+						? 'scale-125'
+						: ''} transition-transform"
+					aria-hidden="true"
+				></span>
+			{/if}
 		</button>
 		{#if showTempo}
 			<label class="flex items-center gap-1 text-13px">

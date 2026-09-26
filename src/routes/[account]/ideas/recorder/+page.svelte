@@ -477,7 +477,7 @@
 				<div class="flex items-center gap-3 px-3 py-1.5">
 					<span class="w-1em i-ph-metronome" aria-hidden="true"></span>
 					<span class="grow">Metronome</span>
-					<Metronome compact tempo="always" />
+					<Metronome compact tempo="always" toggle="text" />
 				</div>
 			{/snippet}
 			<!-- A phone: the tools menu, or, while the metronome runs, its stop button in the menu's place
