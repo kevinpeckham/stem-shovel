@@ -226,6 +226,7 @@ check and the tests without any secret.
 - [docs/billing.md](docs/billing.md) — what an account costs us (Blob, Turso, Vercel), the free/founder tiers, and the plan for Stripe subscriptions.
 - [docs/environments.md](docs/environments.md) — the three stages (dev, staging, production), each with its own 1Password environment, Turso database and Blob stores; migrations per stage; snapshots and restores.
 - [docs/demo-recording.md](docs/demo-recording.md) — the in-app demo recorder: what shipped, the plan it came from, and the phone realities.
+- [docs/drum-machine.md](docs/drum-machine.md) — a drum machine on its own page (plan): what the precedents teach, three phases, the pattern model and its share-link format.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
 - [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
