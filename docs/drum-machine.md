@@ -1,6 +1,6 @@
 # A drum machine (plan)
 
-Status: **Phase 2 built** (2026-09-26, unreleased): patterns as tabs
+Status: **Phase 2 shipped in v0.41.0** (2026-09-26): patterns as tabs
 with the end-of-cycle switch, velocity per cell, pan per row, humanize,
 WAV and MIDI export (`src/lib/audio/drumRender.ts` shares one step player
 between the live engine and the offline render), the drums in the Idea

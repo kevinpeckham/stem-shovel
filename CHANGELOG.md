@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-09-26
+
 ### Added
 
 - **Drum machine, Phase 2** (docs/drum-machine.md). **Patterns**: up to eight per project as tabs above the grid (new, copy, delete); while playing, the chosen pattern waits for the end of the cycle. **Velocity per cell**: hold, shift-click or right-click a sounding cell for accent or ghost. **Pan per row** (double-click for the centre) and **humanize** (a little scatter in time and level). **Download** the open pattern as a WAV (one seamless cycle rendered offline, `renderDrumPatternWav`) or a Standard MIDI File on General MIDI drum notes (`encodeDrumMidi`, tested against the app's own MIDI reader). **In the Idea Recorder**: a drums toggle beside the metronome (a Drums row in the phone's wrench menu, the stop button taking the wrench's place while it runs); the drums and the metronome never play together, starting one stops the other and takes its tempo. The share-link format is version 2 (a project of patterns, pan, humanize); version 1 links still open, and a version 1 project in localStorage is upgraded on read. The acoustic kit is fetched when the drum machine page opens, or on the first play elsewhere, so the recorder never downloads it unasked. A user doc at /docs/drum-machine and a Drums section in the Idea Recorder doc. `ContextMenu` takes a `label` for its trigger.
