@@ -14,13 +14,16 @@
 <footer class="page-x-padding pt-8 pb-12 border-t border-white/10">
 	<!-- <span>Stem Shovel</span> -->
 
-	<!-- Tappable on a phone: 15px links that wrap, above the copyright; the desktop keeps the small print. -->
-	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
-		<a class="footer-link" href="/docs">Docs</a>
-		<a class="footer-link" href="/releases">Releases</a>
+	<!-- Two rows of links, tappable on a phone (15px, wrapping): the tools first, everything else under them. -->
+	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
+		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
 		<a class="footer-link" href="/drum-machine">Drum Machine</a>
+	</nav>
+	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
+		<a class="footer-link" href="/docs">Docs</a>
+		<a class="footer-link" href="/releases">Releases</a>
 		<a class="footer-link" href="/pricing">Pricing</a>
 		<a class="footer-link" href="/blog">Blog</a>
 		<a class="footer-link" href="/support">Help</a>

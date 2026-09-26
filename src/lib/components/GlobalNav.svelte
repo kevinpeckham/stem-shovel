@@ -2,6 +2,7 @@
 	import { signOut } from "$lib/remote/auth.remote";
 	import { page } from "$app/state";
 	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg";
+	import TuningForkIcon from "./TuningForkIcon.svelte";
 
 	interface Props {
 		/** Hide the header (a phone layout that needs the whole viewport). */
@@ -35,17 +36,28 @@
 	// A visitor sees the name of the account they are viewing.
 	let viewedName = $derived((page.data.account?.name as string | undefined) ?? "");
 
-	// The account menu: everything a signed-in user can reach, behind one
-	// button, instead of a row of links. Closes on outside click or Escape.
-	let open = $state(false);
+	// Two menus: Tools (everyone, every width: the Idea Recorder for a member,
+	// and the tuner, metronome and drum machine) and the account menu,
+	// everything a signed-in user can reach behind one button instead of a row
+	// of links. One open at a time; outside click or Escape closes it.
+	let openMenu = $state<"tools" | "account" | null>(null);
+	let open = $derived(openMenu === "account");
+	let toolsOpen = $derived(openMenu === "tools");
 	let menu = $state<HTMLDivElement | null>(null);
+	let toolsMenu = $state<HTMLDivElement | null>(null);
 	function onwindowpointerdown(e: PointerEvent) {
-		if (open && menu && !menu.contains(e.target as Node)) open = false;
+		const t = e.target as Node;
+		if (openMenu === "account" && menu && !menu.contains(t)) openMenu = null;
+		if (openMenu === "tools" && toolsMenu && !toolsMenu.contains(t)) openMenu = null;
 	}
 	function onwindowkeydown(e: KeyboardEvent) {
-		if (e.key === "Escape") open = false;
+		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
+	const TOOL_PAGES = ["/tuner", "/metronome", "/drum-machine"];
+	let onToolPage = $derived(
+		TOOL_PAGES.some(active) || (member ? active(`/${member.slug}/ideas/recorder`) : false),
+	);
 </script>
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
@@ -56,7 +68,7 @@
 		: ''}"
 >
 	<a
-		class="font-brand text-accent text-20px md-text-24px lg-text-28px leading-none tracking-wide flex items-baseline gap-2"
+		class="font-brand text-accent text-20px md-text-24px lg-text-28px leading-none tracking-wide flex shrink-0 items-baseline gap-2"
 		href="/"
 		title="Back to home"
 	>
@@ -74,20 +86,95 @@
 			>
 		{/if}
 		{#if user && member}
-			<!-- The two places a member goes most; the rest stays in the account menu. Hidden on a phone, where the menu has them. -->
+			<!-- Where a member goes most; the rest is in the menus. Hidden on a phone, where the account menu has it. -->
 			<a
 				class="nav-link hidden sm-inline-block {active(`/${member.slug}/projects`)
 					? 'text-accent !decoration-current'
 					: ''}"
 				href="/{member.slug}/projects">Projects</a
 			>
-			<a
-				class="nav-link hidden sm-inline-block {active(`/${member.slug}/ideas/recorder`)
-					? 'text-accent !decoration-current'
-					: ''}"
-				href="/{member.slug}/ideas/recorder">Idea Recorder</a
-			>
 		{/if}
+		<!-- The tools: the Idea Recorder for a member, and the three free tools for everyone. -->
+		<div class="relative" bind:this={toolsMenu}>
+			<button
+				type="button"
+				class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {toolsOpen
+					? 'bg-white/10 opacity-100'
+					: ''} {onToolPage ? 'text-accent' : ''}"
+				aria-haspopup="menu"
+				aria-expanded={toolsOpen}
+				aria-controls="tools-menu"
+				aria-label="Tools"
+				onclick={() => (openMenu = toolsOpen ? null : "tools")}
+			>
+				<span class="i-ph-wrench text-18px" aria-hidden="true"></span>
+				<!-- A phone has room for the wrench alone beside the account button. -->
+				<span class="hidden sm-inline">Tools</span>
+				<span
+					class="i-ph-caret-down text-12px transition-transform {toolsOpen ? 'rotate-180' : ''}"
+					aria-hidden="true"
+				></span>
+			</button>
+			{#if toolsOpen}
+				<div
+					id="tools-menu"
+					class="absolute right-0 top-full z-40 mt-2 w-56 rounded-md border border-white/15 bg-oxford-800 py-1 text-15px shadow-lg shadow-black/50"
+					role="menu"
+					aria-label="Tools menu"
+				>
+					{#if member}
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								`/${member.slug}/ideas/recorder`,
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/{member.slug}/ideas/recorder"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-microphone w-1em" aria-hidden="true"></span>Idea Recorder
+						</a>
+					{/if}
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/tuner',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/tuner"
+						onclick={() => (openMenu = null)}
+					>
+						<TuningForkIcon />Tuner
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/metronome',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/metronome"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-metronome w-1em" aria-hidden="true"></span>Metronome
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/drum-machine',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/drum-machine"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-dots-nine w-1em" aria-hidden="true"></span>Drum Machine
+					</a>
+				</div>
+			{/if}
+		</div>
 		{#if user}
 			<div class="relative" bind:this={menu}>
 				<button
@@ -98,7 +185,7 @@
 					aria-haspopup="menu"
 					aria-expanded={open}
 					aria-controls="account-menu"
-					onclick={() => (open = !open)}
+					onclick={() => (openMenu = open ? null : "account")}
 				>
 					<span class="i-ph-user-circle text-18px" aria-hidden="true"></span>
 					<span class="max-w-40 truncate">{member?.name ?? user.name}</span>
@@ -142,7 +229,7 @@
 								: ''}"
 							role="menuitem"
 							href="/inbox"
-							onclick={() => (open = false)}
+							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-tray mr-2 inline-block align-[-2px]" aria-hidden="true"></span>Inbox
 							{#if unread > 0}
@@ -164,7 +251,7 @@
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/projects"
-								onclick={() => (open = false)}
+								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-folders mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>Projects
@@ -177,7 +264,7 @@
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/ideas/recorder"
-								onclick={() => (open = false)}
+								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>Idea Recorder
@@ -190,7 +277,7 @@
 									: ''}"
 								role="menuitem"
 								href="/{member.slug}/settings"
-								onclick={() => (open = false)}
+								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-gear mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>Account settings
@@ -207,7 +294,7 @@
 									class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent"
 									role="menuitem"
 									href="/{m.slug}/projects"
-									onclick={() => (open = false)}
+									onclick={() => (openMenu = null)}
 								>
 									<span
 										class="i-ph-arrows-left-right mr-2 inline-block align-[-2px]"
@@ -225,7 +312,7 @@
 								: ''}"
 							role="menuitem"
 							href="/accounts"
-							onclick={() => (open = false)}
+							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-users-three mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Your accounts
@@ -235,7 +322,7 @@
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent"
 								role="menuitem"
 								href="/accounts?new=1"
-								onclick={() => (open = false)}
+								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-plus-circle mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>New account
@@ -249,7 +336,7 @@
 								: ''}"
 							role="menuitem"
 							href="/settings/security"
-							onclick={() => (open = false)}
+							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-lock-key mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Security
@@ -262,7 +349,7 @@
 								: ''}"
 							role="menuitem"
 							href="/settings/notifications"
-							onclick={() => (open = false)}
+							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-bell mr-2 inline-block align-[-2px]" aria-hidden="true"
 							></span>Notifications
@@ -274,7 +361,7 @@
 									: ''}"
 								role="menuitem"
 								href="/admin"
-								onclick={() => (open = false)}
+								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-shield-check mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>Admin

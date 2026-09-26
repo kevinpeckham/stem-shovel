@@ -19,6 +19,12 @@
 	 * On a phone a bar shows as two lines of eight, so every cell stays big
 	 * enough to tap; the level sliders show from sm up.
 	 */
+	interface Props {
+		/** Space plays and stops. Off where the page needs space for scrolling (the home page demo). */
+		keyboard?: boolean;
+	}
+	let { keyboard = true }: Props = $props();
+
 	onMount(() => drumMachine.load());
 
 	const voiceLabel = (id: DrumVoiceId) => DRUM_VOICES.find((v) => v.id === id)?.label ?? id;
@@ -35,7 +41,8 @@
 
 	function onkeydown(e: KeyboardEvent) {
 		const t = e.target as HTMLElement | null;
-		if (e.key !== " " || t?.closest("input, select, textarea, [contenteditable]")) return;
+		if (!keyboard || e.key !== " " || t?.closest("input, select, textarea, [contenteditable]"))
+			return;
 		e.preventDefault();
 		drumMachine.toggle();
 	}

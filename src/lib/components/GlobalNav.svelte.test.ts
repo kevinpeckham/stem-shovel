@@ -25,7 +25,33 @@ describe("GlobalNav", () => {
 			"href",
 			"/sign-in?next=%2Fdocs",
 		);
-		expect(screen.queryByRole("button", { name: /menu/i })).toBeNull();
+		expect(screen.queryByRole("button", { name: /Kevin|Studio/ })).toBeNull();
+	});
+	test("everyone gets the Tools menu; a member's has the Idea Recorder", async () => {
+		const user = userEvent.setup();
+		const { unmount } = render(GlobalNav, { props: { user: null, memberships: [] } });
+		await user.click(screen.getByRole("button", { name: /Tools/ }));
+		const names = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
+		expect(names).toEqual(["Tuner", "Metronome", "Drum Machine"]);
+		expect(screen.getByRole("menuitem", { name: /Drum Machine/ })).toHaveAttribute(
+			"href",
+			"/drum-machine",
+		);
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).toBeNull();
+		unmount();
+		render(GlobalNav, {
+			props: { user: { name: "Kevin" }, memberships, currentSlug: "mine" },
+		});
+		await user.click(screen.getByRole("button", { name: /Tools/ }));
+		expect(screen.getByRole("menuitem", { name: /Idea Recorder/ })).toHaveAttribute(
+			"href",
+			"/mine/ideas/recorder",
+		);
+		// Opening the account menu closes the tools menu
+		await user.click(screen.getByRole("button", { name: /My Studio/ }));
+		expect(screen.getAllByRole("menu")).toHaveLength(1);
+		expect(screen.getByRole("menu")).toHaveAttribute("aria-label", "Account menu");
 	});
 	test("the account menu names the current account, roles, other accounts and Your accounts", async () => {
 		const user = userEvent.setup();
@@ -36,8 +62,8 @@ describe("GlobalNav", () => {
 				currentSlug: "mine",
 			},
 		});
-		const button = screen.getByRole("button", { expanded: false });
-		expect(button).toHaveTextContent("My Studio");
+		const button = screen.getByRole("button", { name: /My Studio/ });
+		expect(button).toHaveAttribute("aria-expanded", "false");
 		await user.click(button);
 		const menu = screen.getByRole("menu");
 		expect(menu).toHaveTextContent("My Studio · owner");
@@ -56,7 +82,7 @@ describe("GlobalNav", () => {
 		render(GlobalNav, {
 			props: { user: { name: "Kevin", isSystemAdmin: true }, memberships, currentSlug: "mine" },
 		});
-		await user.click(screen.getByRole("button", { expanded: false }));
+		await user.click(screen.getByRole("button", { name: /My Studio/ }));
 		expect(screen.getByRole("menuitem", { name: /Admin/ })).toHaveAttribute("href", "/admin");
 	});
 });

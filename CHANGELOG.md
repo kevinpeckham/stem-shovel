@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Tools menu in the header**, on every width and for everyone: the Idea Recorder (members), the tuner, the metronome and the drum machine. It replaces the header's Idea Recorder link; a phone shows the wrench alone. The tuning-fork glyph is `TuningForkIcon.svelte`, shared by the menu and the recorder.
+- **A drum machine demo on the home page**, after the tuner demo (`DrumMachine` takes `keyboard={false}` there, so the space bar stays the stem player's).
+
+### Changed
+
+- The footer's links are two rows: the tools, then everything else.
+
 ## [0.39.0] - 2026-09-26
 
 ### Added

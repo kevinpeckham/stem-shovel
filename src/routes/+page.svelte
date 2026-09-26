@@ -6,6 +6,7 @@
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "$lib/constants/demoComments";
 	import Tuner from "$lib/components/Tuner.svelte";
+	import DrumMachine from "$lib/components/DrumMachine.svelte";
 
 	let { data } = $props();
 	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
@@ -204,6 +205,22 @@
 				</div>
 			</section>
 		</div>
+
+		<!-- Drum Machine Demo -->
+		<section class="mt-12">
+			<h3 class="marketing-section-heading">Drum Machine Demo</h3>
+			<div class="marketing-topic-heading">A Beat to Write To</div>
+			<p class="marketing-paragraph text-balance">
+				Sketch a groove in seconds: tap the cells, press Play, and play along. Two kits, swing, and
+				a link that carries your beat to the rest of the band. The full drum machine is at
+				<a class="link" href="/drum-machine">/drum-machine</a>.
+			</p>
+			<div class="marketing-demo-cta">Try the working demo below.</div>
+			<!-- No space-bar shortcut here: the home page needs space for scrolling. -->
+			<div class="mt-8 max-w-860px">
+				<DrumMachine keyboard={false} />
+			</div>
+		</section>
 
 		<!-- faqs -->
 		<section class="mt-12">
