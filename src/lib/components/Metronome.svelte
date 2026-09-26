@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { BEATS_PER_BAR } from "$lib/utils/metronomePreferences";
 	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
@@ -22,6 +23,15 @@
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && metronome.running));
 
 	onMount(() => metronome.load());
+
+	/** The metronome and the drums never play together: starting one stops the other and takes its tempo. */
+	function toggleRun() {
+		if (!metronome.running && drumMachine.running) {
+			metronome.setBpm(drumMachine.project.bpm);
+			drumMachine.stop();
+		}
+		metronome.toggle();
+	}
 </script>
 
 {#if compact}
@@ -34,7 +44,7 @@
 			aria-pressed={metronome.running}
 			title={metronome.running ? "Stop the metronome" : "Start the metronome"}
 			aria-label={metronome.running ? "Stop the metronome" : "Start the metronome"}
-			onclick={() => metronome.toggle()}
+			onclick={toggleRun}
 		>
 			{#if toggle === "text"}
 				<span class="w-5 text-center" aria-hidden="true">{metronome.running ? "On" : "Off"}</span>
@@ -160,7 +170,7 @@
 				class="device-button-lg {metronome.running ? 'text-accent' : ''}"
 				type="button"
 				aria-pressed={metronome.running}
-				onclick={() => metronome.toggle()}
+				onclick={toggleRun}
 			>
 				<span class="i-ph-metronome" aria-hidden="true"></span>
 				{metronome.running ? "Stop" : "Start"}

@@ -8,6 +8,8 @@
 	import InfoTip from "$lib/components/InfoTip.svelte";
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
+	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import TuningForkIcon from "$lib/components/TuningForkIcon.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import {
@@ -455,10 +457,11 @@
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
 				<span class="hidden sm-inline-block">Ideas</span>
 			</button>
-			<!-- The tools: the metronome (a click track while a take records) and the tuner. From sm up
-			     they sit in the toolbar; a phone has room for one button, a tools menu holding both. -->
+			<!-- The tools: the metronome and the drums (a click or a beat while a take records) and the tuner. From sm up
+			     they sit in the toolbar; a phone has room for one button, a tools menu holding them all. -->
 			<div class="hidden sm-flex gap-2">
 				<Metronome compact />
+				<DrumMachine compact />
 			</div>
 			{#snippet tunerIcon()}
 				<TuningForkIcon />
@@ -470,11 +473,20 @@
 					<Metronome compact tempo="always" toggle="text" />
 				</div>
 			{/snippet}
+			{#snippet drumsItem()}
+				<div class="flex items-center gap-3 px-3 py-1.5">
+					<span class="w-1em i-ph-dots-nine" aria-hidden="true"></span>
+					<span class="grow">Drums</span>
+					<DrumMachine compact tempo="always" toggle="text" />
+				</div>
+			{/snippet}
 			<!-- A phone: the tools menu, or, while the metronome runs, its stop button in the menu's place
 			     (one tap to stop, no digging; the tuner is back in the menu once it stops). -->
 			<div class="sm-hidden">
 				{#if metronome.running}
 					<Metronome compact tempo="never" />
+				{:else if drumMachine.running}
+					<DrumMachine compact tempo="never" />
 				{:else}
 					<ContextMenu
 						ariaLabel="Tools"
@@ -490,6 +502,7 @@
 								popovertarget: "tuner",
 							},
 							{ id: "metronome", kind: "snippet", snippet: metronomeItem },
+							{ id: "drums", kind: "snippet", snippet: drumsItem },
 						]}
 					/>
 				{/if}

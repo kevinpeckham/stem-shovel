@@ -1,6 +1,14 @@
 # A drum machine (plan)
 
-Status: **Phase 1 shipped in v0.39.0** (2026-09-26): `/drum-machine`, the
+Status: **Phase 2 built** (2026-09-26, unreleased): patterns as tabs
+with the end-of-cycle switch, velocity per cell, pan per row, humanize,
+WAV and MIDI export (`src/lib/audio/drumRender.ts` shares one step player
+between the live engine and the offline render), the drums in the Idea
+Recorder's toolbar and phone menu with the metronome hand-off, share
+links at version 2 (version 1 still read; the model is a `DrumProject`
+of `DrumPattern`s in `DrumPatternSchema.ts`). Not built: a third kit and
+the kit per row, which wait for a second sampled kit.
+**Phase 1 shipped in v0.39.0** (2026-09-26): `/drum-machine`, the
 engine in `src/lib/audio/drumMachine.svelte.ts`, the kits in
 `src/lib/audio/kits/`, the model and share-link codec in `src/lib/utils/`
 (`drumPattern.test.ts` pins every link that has been shared), the

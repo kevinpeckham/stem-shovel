@@ -32,7 +32,11 @@ The ear icon in the header opens a chromatic tuner. It listens while the popover
 
 ## Metronome
 
-The metronome icon in the toolbar starts a click; the tempo shows beside it, ready to change. It keeps going while you record, so wear headphones if you do not want the click on the take. The full metronome, with tap tempo and beats to the bar, is at **/metronome** (linked in the footer).
+The metronome icon in the toolbar starts a click; the tempo shows beside it, ready to change. It keeps going while you record, so wear headphones if you do not want the click on the take. The full metronome, with tap tempo and beats to the bar, is at **/metronome** (linked in the footer). On a phone the metronome sits in the toolbar's wrench menu with the tuner and the drums; while it runs, its stop button takes the wrench's place.
+
+## Drums
+
+The grid icon beside the metronome plays the beat you last built at **/drum-machine** as a backing track, with the tempo beside it. It keeps going while you record, like the click, and only the microphone reaches the take, so with headphones on the drums stay off the recording. The drums and the metronome never play together: starting one stops the other and takes over its tempo.
 
 ## Settings and limits
 

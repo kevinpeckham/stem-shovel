@@ -21,6 +21,7 @@ const ORDER = [
 	"song-settings",
 	"charts-lyrics-and-notes",
 	"idea-recorder",
+	"drum-machine",
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",

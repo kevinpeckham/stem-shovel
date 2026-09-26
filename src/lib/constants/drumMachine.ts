@@ -39,5 +39,29 @@ export const MAX_DRUM_ROWS = 12;
 /** A cell holds a velocity: 0 silent, 1 ghost, 2 normal, 3 accent. Phase 1 toggles 0 and 2. */
 export const DRUM_VELOCITY_MAX = 3;
 export const DRUM_VELOCITY_NORMAL = 2;
-/** The share-link format's version, the first byte of every link. */
-export const DRUM_PATTERN_VERSION = 1;
+/** Patterns to a project: the tabs above the grid. */
+export const MAX_DRUM_PATTERNS = 8;
+/** Humanize at full strength scatters a hit this far in time, either way, and a quarter of its gain. */
+export const DRUM_HUMANIZE_MS = 12;
+/**
+ * The share-link format's version, the first byte of every link. Version 1
+ * carried one pattern with the tempo inside it; version 2 carries a project
+ * of patterns with pan per row and humanize. A reader keeps a branch for
+ * every version there has been.
+ */
+export const DRUM_PATTERN_VERSION = 2;
+/** General MIDI drum notes, for the MIDI export (channel 10). */
+export const DRUM_GM_NOTES: Record<DrumVoiceId, number> = {
+	kick: 36,
+	snare: 38,
+	"hat-closed": 42,
+	"hat-open": 46,
+	clap: 39,
+	rim: 37,
+	"tom-low": 45,
+	"tom-mid": 47,
+	"tom-high": 50,
+	ride: 51,
+	crash: 49,
+	cowbell: 56,
+};

@@ -8,14 +8,15 @@ import type { DrumHit, DrumKit } from "./types";
  */
 export class ElectronicKit implements DrumKit {
 	readonly id = "electronic" as const;
-	#noise: { ctx: AudioContext; buffer: AudioBuffer } | null = null;
+	#noise: { ctx: BaseAudioContext; buffer: AudioBuffer } | null = null;
 
+	warm(): void {}
 	load(): Promise<void> {
 		return Promise.resolve();
 	}
 
 	/** A second of white noise, made once per context. */
-	#noiseBuffer(ctx: AudioContext): AudioBuffer {
+	#noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
 		if (this.#noise?.ctx === ctx) return this.#noise.buffer;
 		const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
 		const data = buffer.getChannelData(0);
@@ -24,7 +25,13 @@ export class ElectronicKit implements DrumKit {
 		return buffer;
 	}
 
-	play(voice: DrumVoiceId, ctx: AudioContext, at: number, gain: number, out: AudioNode): DrumHit {
+	play(
+		voice: DrumVoiceId,
+		ctx: BaseAudioContext,
+		at: number,
+		gain: number,
+		out: AudioNode,
+	): DrumHit {
 		const master = ctx.createGain();
 		master.gain.value = gain;
 		master.connect(out);

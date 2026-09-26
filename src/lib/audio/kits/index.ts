@@ -5,7 +5,7 @@ import type { DrumKit } from "./types";
 
 const kits = new Map<DrumKitId, DrumKit>();
 
-/** The kit by id, made once per page (the acoustic one starts fetching its files). */
+/** The kit by id, made once per page. */
 export function drumKit(id: DrumKitId): DrumKit {
 	let kit = kits.get(id);
 	if (!kit) {
