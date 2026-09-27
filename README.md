@@ -13,15 +13,26 @@ and song ideas with a playlist of every mix. Tempo, key and time signature
 are detected at upload, and, unless an account or song opts out, Basic
 Pitch transcribes the stems so a model can draft the chart. Viewing is public
 by URL unless a project or song is made private; editing needs a signed-in
-member. Sign-up is invitation-only during the beta, with a waitlist.
+member, and a project can be restricted to the members added to it, with
+viewers invited from outside. Beside the songs sit the tools a musician
+reaches for: the Idea Recorder (takes from the microphone, with notes),
+a chromatic tuner, a metronome, and a drum machine (a step sequencer with
+patterns, presets, two sampled kits and a synthesized one, WAV and MIDI
+downloads, share links, saved beats, and a tutorial), the last three free
+and public at `/tuner`, `/metronome` and `/drum-machine` and gathered in
+the header's Tools menu. Every member has an inbox with optional email
+digests. Sign-up is open by default (an operator can switch it back to
+invitations and the waitlist), with a plan step; the free plan carries
+storage and seat limits.
 
 Stack: SvelteKit 2 + Svelte 5 (runes, remote functions), TypeScript, UnoCSS
 (wind4, lightningjar.com's config), Vite+ (Vite, Oxlint, Oxfmt in one `vp`
 CLI), `@sveltejs/adapter-vercel`, Vercel Blob for audio (a public and a
 private store), Turso + Drizzle for data, Better Auth (email + password,
-optional TOTP two-factor), Resend for mail, Vercel AI Gateway for the AI
-features, varlock + 1Password for configuration, valibot for validation,
-Sentry, Vercel Web Analytics and Speed Insights.
+passkeys, optional TOTP two-factor), Upstash Redis for rate limits, Resend
+for mail, Vercel AI Gateway for the AI features, varlock + 1Password for
+configuration, valibot for validation, Sentry, Vercel Web Analytics and
+Speed Insights. The full list, with credits, is on `/built-with`.
 
 ## Run it
 
@@ -50,21 +61,31 @@ ceilings of 15 minutes, 2 minutes of silence and 32 MB), a searchable list
 with per-idea and per-take menus, Recorder settings, and "Add as demo…" /
 "Create new song…" which copy a take into a song as a demo;
 `/[account]/settings` is the account (members, invitations, invite codes,
-usage, plan). Neutral
-pages: `/` (the front page with live demos of a public song), `/waitlist`,
-`/docs` (user documentation, editable by system admins), `/accounts`,
-`/settings/security` (two-factor), `/admin` (operators). Old `/projects…`
-and `/settings` addresses redirect to the user's current account.
+usage, plan). The recorder's toolbar carries the metronome, the drums and
+the tuner (a wrench menu on a phone), so a take can be recorded to a click
+or a beat that stays off the microphone. Neutral pages: `/` (the front
+page with live demos of a public song, the recorder, the tuner and the
+drum machine), `/tuner`, `/metronome`, `/drum-machine` (the tools, public
+and indexable), `/inbox` and `/settings/notifications`, `/docs` (user
+documentation, editable by system admins) and `/releases`, `/blog`,
+`/pricing`, `/built-with`, `/feature-requests`, `/support`, `/waitlist`,
+`/accounts`, `/settings/security` (two-factor and passkeys), `/admin`
+(operators). Old `/projects…` and `/settings` addresses redirect to the
+user's current account.
 
 **Viewing is public, editing needs a signed-in member.** Anyone with a URL
 can open an account's projects and play its songs; the controls (upload,
 rename, delete, settings, the editors) appear only for members, and every
 mutation checks membership on the server regardless. Sign-in is Better Auth
 with email + password and a verified address (`/sign-in`, `/sign-up`,
-`/forgot-password`), optional two-factor (`/settings/security`), and
-invitation-only sign-up: an invitation link or an invite code from an
-account, or a new-account code from an operator; the waitlist hands those
-out during the beta. Mail goes through Resend. See [docs/auth.md](docs/auth.md).
+`/forgot-password`), passkeys and optional two-factor
+(`/settings/security`). Sign-up is open by default with a plan step; an
+operator can switch it to invitation-only on `/admin/sign-up`, when an
+invitation link, an account's invite code or an operator's new-account
+code is needed and the waitlist returns. A project is open to every
+member of its account unless restricted to the people added to it, and
+any of them can invite a viewer by email. Mail goes through Resend. See
+[docs/auth.md](docs/auth.md).
 
 ## Configuration
 
@@ -144,7 +165,45 @@ check and the tests without any secret.
   editor the song-document pages use too.
 - `src/lib/components/Tuner.svelte`, `src/lib/audio/pitch.ts` — a chromatic
   tuner (McLeod pitch detection in the browser) in the Idea Recorder's
-  header and on the public /tuner page.
+  header, on the public /tuner page and on the front page.
+- `src/lib/audio/metronome.svelte.ts`, `Metronome.svelte`,
+  `src/lib/audio/lookahead.ts` — the metronome: one engine per page (a
+  lookahead scheduler on the Web Audio clock, shared with the drum
+  machine), compact in the recorder's toolbar, full on /metronome; tap
+  tempo in `src/lib/utils/tapTempo.ts`.
+- `src/lib/audio/drumMachine.svelte.ts`, `drumRender.ts`, `kits/`,
+  `DrumMachine.svelte`, `DrumTutorial.svelte`, `src/lib/constants/drumMachine.ts`,
+  `drumPresets.ts`, `drumTutorial.ts`, `src/lib/val/DrumPatternSchema.ts` —
+  the drum machine (docs/drum-machine.md): a project of patterns (4/4, 3/4,
+  6/8; velocity per cell, pan and level per row, swing, humanize), two
+  sampled kits from Groovie's CC0 one-shots in `static/kits/` and a
+  synthesized one, presets, a tutorial, WAV (`renderDrumPatternWav`) and MIDI
+  (`encodeDrumMidi`) downloads, and a versioned share link
+  (`encodeDrumProject` / `decodeDrumProject`, pinned links in the tests).
+  `src/lib/remote/beats.remote.ts` and the `beat` table keep beats in an
+  account. The compact view sits in the recorder beside the metronome; the
+  two never play together.
+- `src/lib/server/notifications.ts`, `src/lib/utils/notificationPolicy.ts`,
+  `src/routes/inbox/`, `src/routes/settings/notifications/`,
+  `src/routes/api/notifications/digest/` — the inbox and email
+  (docs/notifications.md): comments, stems, songs and demos in one's
+  projects, accepted invitations, storage and seat warnings; email off by
+  default per kind, at once or in a daily or weekly digest (a cron).
+- `src/lib/constants/plans.ts`, `src/lib/utils/accountLimits.ts` — the free
+  plan's storage and seat limits, enforced on upload and invitation;
+  founder accounts are exempt; an operator can raise one account's storage.
+- `src/lib/server/db/schema/projectMember.ts`, `ProjectPeople.svelte`,
+  `src/lib/server/viewAccess.ts` — people on a project: restricted projects,
+  project viewers (a project-level role, invited by email), the rules a
+  page's `Viewer` carries.
+- `src/routes/blog/` — posts written by system admins in the docs editor,
+  on the `user_doc` table (`kind`, `published_at`); `src/routes/pricing/`
+  and `src/routes/built-with/` — the plans and the technologies, with
+  credits.
+- `GlobalNav.svelte`, `GlobalFooter.svelte` — the header's Tools menu (the
+  Idea Recorder for members, the tuner, the metronome, the drum machine)
+  and the footer's two rows; `TuningForkIcon.svelte` and `IconDrumKit.svelte`
+  are the tools' glyphs.
 - `src/lib/remote/bugs.remote.ts`, `ReportForm.svelte` — "Report a bug" in the
   footer and "Request a feature" on /feature-requests for signed-in users,
   with an optional address for follow-up; a `bug_report` row (`kind`) and an
@@ -162,9 +221,11 @@ check and the tests without any secret.
   `src/lib/server/aiDetect.ts` — the AI Gateway second opinion (docs/audio-engine.md).
 - `src/lib/server/viewAccess.ts`, `src/lib/remote/share.remote.ts` — privacy:
   private projects and songs, viewing links (docs/auth.md).
-- `src/lib/server/signUpGate.ts` — sign-up is invitation-only: the rule
-  Better Auth's user-create hook applies (docs/auth.md); invite codes live in
-  `invite_code` and are managed from account settings.
+- `src/lib/server/signUpGate.ts`, `src/routes/admin/sign-up/` — the sign-up
+  rule Better Auth's user-create hook applies (docs/auth.md): open by
+  default with plan terms to accept, or invitation-only on the operator's
+  switch; invite codes live in `invite_code` and are managed from account
+  settings.
 - `src/lib/server/email.ts` — Resend: verification and reset mail for Better
   Auth, invitations (`/invite/[token]`) and share-by-email, from templates
   in `lib/utils/renderEmail.ts`.
@@ -227,9 +288,10 @@ check and the tests without any secret.
 - [docs/environments.md](docs/environments.md) — the three stages (dev, staging, production), each with its own 1Password environment, Turso database and Blob stores; migrations per stage; snapshots and restores.
 - [docs/demo-recording.md](docs/demo-recording.md) — the in-app demo recorder: what shipped, the plan it came from, and the phone realities.
 - [docs/daw-sync.md](docs/daw-sync.md) — DAW project storage and sync as a paid add-on (research): sizes, who has tried, costs, three options, a recommendation.
-- [docs/drum-machine.md](docs/drum-machine.md) — a drum machine on its own page (plan): what the precedents teach, three phases, the pattern model and its share-link format.
+- [docs/drum-machine.md](docs/drum-machine.md) — the drum machine: what the precedents teach, the phases shipped and planned, the pattern model, the share-link format, the samples and their credits.
+- [docs/notifications.md](docs/notifications.md) — the inbox, email and the digest: what is sent, to whom, and when.
 - [docs/environment.md](docs/environment.md) — varlock + 1Password, Vercel, Sentry, the ESM-only rule, Turso + Drizzle.
-- [docs/auth.md](docs/auth.md) — Better Auth: sign-in, two-factor, invitations and the waitlist, memberships, what is public, what needs a member.
+- [docs/auth.md](docs/auth.md) — Better Auth: sign-in, passkeys, two-factor, open and invitation-only sign-up, invitations and the waitlist, memberships and project people, what is public, what needs a member.
 - [docs/styling.md](docs/styling.md) — the lj-website UnoCSS setup and the "utilities only" rule.
 - [docs/audio-engine.md](docs/audio-engine.md) — the engine, progressive loading, memory limits, keyboard.
 - [docs/stem-engine.md](docs/stem-engine.md) — a plain-language tour of the StemEngine: graph, loading, sync, transport, mixing.
