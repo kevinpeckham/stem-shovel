@@ -58,6 +58,8 @@ class DrumMachineEngine {
 	kitReady = $state(false);
 	/** The project as it was before the last preset loaded, until the next edit; `undoPreset` brings it back. */
 	beforePreset = $state<DrumProject | null>(null);
+	/** The name of the preset or saved beat the project is, untouched; null once edited (the readout then says Custom). */
+	loadedName = $state<string | null>(null);
 
 	#ctx: AudioContext | null = null;
 	#master: GainNode | null = null;
@@ -93,6 +95,7 @@ class DrumMachineEngine {
 	}
 	#save() {
 		this.beforePreset = null;
+		this.loadedName = null;
 		saveDrumMachinePreferences($state.snapshot(this.project));
 	}
 	#resetSolo() {
@@ -296,10 +299,14 @@ class DrumMachineEngine {
 	 * is kept for `undoPreset` until the next edit.
 	 */
 	loadPreset(preset: DrumPreset, mode: "replace" | "add") {
-		this.loadProject(drumPresetProject(preset), mode);
+		this.loadProject(drumPresetProject(preset), mode, preset.name);
 	}
-	/** A project from elsewhere (a preset, a saved beat) in place of this one or added to it, with undo. */
-	loadProject(loaded: DrumProject, mode: "replace" | "add") {
+	/**
+	 * A project from elsewhere (a preset, a saved beat) in place of this one
+	 * or added to it, with undo. Replacing keeps the name until the first
+	 * edit; adding makes a mix of two, which has no name.
+	 */
+	loadProject(loaded: DrumProject, mode: "replace" | "add", name: string | null = null) {
 		const before = $state.snapshot(this.project);
 		if (mode === "replace") {
 			this.project = loaded;
@@ -313,6 +320,7 @@ class DrumMachineEngine {
 		}
 		this.#afterSwap(before.kit);
 		this.beforePreset = before;
+		this.loadedName = mode === "replace" ? name : null;
 	}
 	undoPreset() {
 		const before = this.beforePreset;

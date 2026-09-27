@@ -81,6 +81,7 @@
 			const entry = { id: row.id, name: row.name, data, updatedAt: new Date(row.updatedAt) };
 			saved = [entry, ...saved.filter((b) => b.id !== row.id)];
 			openBeat = { id: row.id, name: row.name };
+			drumMachine.loadedName = row.name;
 			notify(id ? `${row.name} saved` : `${row.name} saved to ${account.name}`);
 		} catch (e) {
 			notify(`Could not save the beat: ${errorMessage(e)}`, { kind: "error" });
@@ -89,7 +90,7 @@
 		}
 	}
 	function openSaved(b: SavedBeat) {
-		drumMachine.loadProject($state.snapshot(b.data), "replace");
+		drumMachine.loadProject($state.snapshot(b.data), "replace", b.name);
 		openBeat = { id: b.id, name: b.name };
 		notify(`${b.name} loaded`);
 	}
@@ -112,6 +113,7 @@
 			saved = saved.filter((b) => b.id !== openBeat!.id);
 			notify(`${openBeat.name} deleted`);
 			openBeat = null;
+			drumMachine.loadedName = null;
 		} catch (e) {
 			notify(`Could not delete the beat: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -395,11 +397,10 @@
 					<span class="text-40px leading-none">{p.bpm}</span>
 					<span class="text-13px opacity-70">bpm</span>
 				</div>
+				<!-- What the project is: the preset or saved beat it still matches, the open beat as edited, or Custom. -->
 				<div class="text-12px opacity-70 truncate">
-					{#if openBeat}{openBeat.name} ·
-					{/if}pattern {drumMachine.current + 1} of {p.patterns.length} · {pattern.steps} steps · {kitLabel(
-						p.kit,
-					)}
+					{drumMachine.loadedName ?? (openBeat ? `${openBeat.name} · edited` : "Custom")} · pattern {drumMachine.current +
+						1} of {p.patterns.length} · {pattern.steps} steps · {kitLabel(p.kit)}
 				</div>
 				<div class="text-12px opacity-70" aria-live="polite">
 					{#if drumMachine.running && !drumMachine.kitReady}
@@ -413,6 +414,12 @@
 					{/if}
 				</div>
 			</div>
+		</div>
+		<!-- the device's name, under the display on the right, as the recorder's and the tuner's -->
+		<div
+			class="-mb-1 text-right text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+		>
+			SS Drumbo 001
 		</div>
 
 		<!-- transport, tempo -->
