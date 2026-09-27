@@ -20,6 +20,13 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - Groovie
+  - SyncMuse
+  - Cubase
+  - mixedinkey
+  - Tauri
+  - Backblaze
+  - Kontakt
+  - notarised
   - orDrumbox
   - ordrumbox
   - maximecb
