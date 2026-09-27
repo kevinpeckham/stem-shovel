@@ -2,7 +2,7 @@ import { fakeEngine } from "../../../tests/helpers/fakeEngine";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { createRawSnippet } from "svelte";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 import CommentTimeline from "./CommentTimeline.svelte";
 
 const card = createRawSnippet((id: () => string) => ({
@@ -40,5 +40,24 @@ describe("CommentTimeline", () => {
 		expect(icon).toHaveAttribute("aria-expanded", "true");
 		await user.keyboard("{Escape}");
 		expect(screen.queryByTestId("card")).toBeNull();
+	});
+	test("⌘-click, Ctrl-click and right-click on the row ask the page for its menu at that spot", async () => {
+		const user = userEvent.setup();
+		const oncontext = vi.fn();
+		render(CommentTimeline, { props: { engine: engine(), comments: [], card, oncontext } });
+		const row = screen.getByRole("slider", { name: "Mix position" });
+		row.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 28 }) as DOMRect;
+		await user.pointer({ target: row, coords: { clientX: 50, clientY: 10 }, keys: "[MouseLeft]" });
+		expect(oncontext).not.toHaveBeenCalled(); // a plain click seeks
+		await user.keyboard("{Meta>}");
+		await user.pointer({ target: row, coords: { clientX: 50, clientY: 10 }, keys: "[MouseLeft]" });
+		await user.keyboard("{/Meta}");
+		expect(oncontext).toHaveBeenLastCalledWith(25, 50, 10); // a quarter of a 100 s mix
+		await user.pointer({
+			target: row,
+			coords: { clientX: 150, clientY: 10 },
+			keys: "[MouseRight]",
+		});
+		expect(oncontext).toHaveBeenLastCalledWith(75, 150, 10);
 	});
 });

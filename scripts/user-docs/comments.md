@@ -10,7 +10,7 @@ Comments with a position also appear as icons on the **Comments** row under the 
 
 ## Leaving a comment
 
-- **At a spot in the song**: hold **⌘** (Mac) or **Ctrl** (Windows), or right-click, on any waveform or piano roll, and choose **Comment here**. The position is filled in.
+- **At a spot in the song**: hold **⌘** (Mac) or **Ctrl** (Windows), or right-click, on the **Comments** row, any stem's waveform or a piano roll, and choose **Comment here**. The position is filled in.
 - **About the song in general**: open the Comments tab and press **+**. The position is optional and can be typed in timecode or bars.
 
 A comment has a short title and the text itself.

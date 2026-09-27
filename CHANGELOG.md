@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **⌘-click on the Comments row starts a comment.** The row under the stems took only plain clicks (a seek); ⌘-click, Ctrl-click and right-click there now open the same menu as on a stem's waveform (Seek here, Comment here), headed "Mix" and the time. Reported by Kevin: users tried it first and it felt broken. `CommentTimeline` takes `oncontext`; the hint and the comments doc say the row counts.
+
 ## [0.43.0] - 2026-09-27
 
 ### Added

@@ -8,7 +8,9 @@
 	 * A row under the stems, on the stem-row grid: the mix's waveform (the
 	 * stems summed, or their stored peaks combined until they are decoded)
 	 * with an icon at each located comment. Clicking an icon marks that
-	 * point on the waveform and opens a card anchored to the icon. The card's
+	 * point on the waveform and opens a card anchored to the icon. A ⌘-click,
+	 * Ctrl-click or right-click on the row asks the page for its menu, as a
+	 * stem's waveform does, so a comment can start here too. The card's
 	 * contents come from the page (`card` snippet) so it can offer edit and
 	 * delete with the page's permissions and forms.
 	 */
@@ -24,10 +26,13 @@
 		card: Snippet<[string]>;
 		/** A member: the row explains how to add a comment when it has none. */
 		canComment?: boolean;
+		/** ⌘-click, Ctrl-click or right-click on the row: the spot in seconds and the pointer, for the page's menu (Seek here, Comment here). */
+		oncontext?: (seconds: number, x: number, y: number) => void;
 	}
 
-	let { engine, comments, card, canComment = false }: Props = $props();
-	const HOW_TO = "⌘-click (Ctrl-click) or right-click a waveform to leave a comment at that spot.";
+	let { engine, comments, card, canComment = false, oncontext }: Props = $props();
+	const HOW_TO =
+		"⌘-click (Ctrl-click) or right-click this row or a waveform to leave a comment at that spot.";
 	let open = $state<string | null>(null);
 	let duration = $derived(Math.max(engine.duration, ...comments.map((c) => c.at), 1));
 	let peaks = $derived(
@@ -64,6 +69,7 @@
 				span={engine.duration > 0 ? engine.duration / duration : 1}
 				label="Mix"
 				onseek={(f) => engine.seek(f * duration)}
+				oncontext={oncontext ? (f, x, y) => oncontext(f * duration, x, y) : undefined}
 			/>
 		</div>
 		{#if canComment && comments.length === 0}

@@ -350,8 +350,14 @@
 	}
 
 	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
-	let stemMenuAt = $state<{ stem: StemState; seconds: number; x: number; y: number } | null>(null);
-	function onStemContext(stem: StemState, seconds: number, x: number, y: number) {
+	/** The ⌘-click menu: from a stem's waveform or piano roll, or (stem null) from the Comments row's mix waveform. */
+	let stemMenuAt = $state<{
+		stem: StemState | null;
+		seconds: number;
+		x: number;
+		y: number;
+	} | null>(null);
+	function onStemContext(stem: StemState | null, seconds: number, x: number, y: number) {
 		stemMenuAt = { stem, seconds, x, y };
 	}
 	function closeStemContext(e: Event) {
@@ -2990,7 +2996,7 @@
 		data-stem-context
 	>
 		<div class="truncate px-3 py-1.5 text-xs opacity-70">
-			{stemMenuAt.stem.label} · {showPos(stemMenuAt.seconds)}
+			{stemMenuAt.stem?.label ?? "Mix"} · {showPos(stemMenuAt.seconds)}
 		</div>
 		<button
 			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
@@ -3121,6 +3127,7 @@
 			comments={locatedComments}
 			card={commentCard}
 			canComment={data.canComment}
+			oncontext={(seconds, x, y) => onStemContext(null, seconds, x, y)}
 		/>
 	{/if}
 {/snippet}
