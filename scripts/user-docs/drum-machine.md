@@ -2,6 +2,10 @@
 
 **Drum Machine** in the Tools menu (or **/drum-machine**) is a step sequencer for sketching a beat: to hear an idea against, to play along with, to share with the band, or to take into a DAW. It works without an account, and what you build stays in your browser.
 
+## A first beat, step by step
+
+**Tutorial: a rock beat from scratch**, under the page's heading, walks you through it: an empty kit, the kick on 1 and 3, the snare on 2 and 4, hats, a push, an open hat, accents, humanize, a crash, and a second pattern with a fill. Each step highlights the cells to tap, shows a tick when the grid has caught up, and has a **Do it for me** button. Your own beat is kept; **Undo** brings it back when you close the tutorial.
+
 ## The grid
 
 Rows are drums, columns are sixteenth notes. Tap a cell to turn a hit on or off, or press and drag across several to set them all at once. Beats are shaded in pairs so the bar reads at a glance; while the pattern plays, the sounding column lights up. On a phone each bar shows as two lines of eight.

@@ -1,8 +1,19 @@
 <script lang="ts">
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import DrumTutorial from "$lib/components/DrumTutorial.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
+	import { TUTORIAL_PROJECT } from "$lib/constants/drumTutorial";
+	import { drumTutorial } from "$lib/state/drumTutorial.svelte";
 
 	let { data } = $props();
+
+	/** The walk-through: an empty kit in place of the project (the machine's Undo brings the project back), then the panel. */
+	function startTutorial() {
+		if (drumMachine.running) drumMachine.stop();
+		drumMachine.loadProject(structuredClone(TUTORIAL_PROJECT), "replace");
+		drumTutorial.start();
+	}
 </script>
 
 <svelte:head>
@@ -26,9 +37,16 @@
 			Free drum machine that works in your browser. Tap the cells to build a beat, press Play, and
 			copy a link to share it.
 		</p>
+		{#if !drumTutorial.active}
+			<button class="button button-sm mt-4" type="button" onclick={startTutorial}>
+				<span class="i-ph-graduation-cap" aria-hidden="true"></span>
+				Tutorial: a rock beat from scratch
+			</button>
+		{/if}
 	</header>
 	<div class="max-w-860px">
 		<DrumMachine account={data.account} beats={data.beats} />
+		<DrumTutorial />
 	</div>
 	<p class="max-w-article mt-4 text-13px text-dim">
 		Rows are drums, columns are sixteenth notes. Space plays and stops. Your beat is remembered in

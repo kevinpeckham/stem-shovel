@@ -17,6 +17,7 @@
 	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
 	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
 	import type { DrumProject } from "$lib/val/DrumPatternSchema";
+	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { onMount } from "svelte";
@@ -165,6 +166,7 @@
 	const kitLabel = (id: string) => DRUM_KITS.find((k) => k.id === id)?.label ?? id;
 
 	function togglePlay() {
+		if (!drumMachine.running) tutorial.played = true;
 		if (!drumMachine.running && metronome.running) {
 			drumMachine.setBpm(metronome.bpm);
 			metronome.stop();
@@ -243,6 +245,11 @@
 
 	let p = $derived(drumMachine.project);
 	let pattern = $derived(drumMachine.pattern);
+	/** The tutorial's pointer: an outline on the control or the cells its step names. */
+	const HINT = "outline outline-2 outline-accent outline-offset-2";
+	let hintedCells = $derived(
+		tutorial.hints && tutorial.hints.pattern === drumMachine.current ? tutorial.hints.cells : null,
+	);
 	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
 	let lineClasses = $derived(
@@ -365,7 +372,10 @@
 		<!-- transport, tempo -->
 		<div class="flex flex-wrap items-center gap-2">
 			<button
-				class="device-button-lg {drumMachine.running ? 'text-accent' : ''}"
+				class="device-button-lg {drumMachine.running ? 'text-accent' : ''} {tutorial.control ===
+				'play'
+					? HINT
+					: ''}"
 				type="button"
 				aria-pressed={drumMachine.running}
 				title="Play or stop (space)"
@@ -433,7 +443,11 @@
 					aria-label="Swing"
 				/>
 			</label>
-			<label class="grid gap-1 text-12px text-blue-100/80">
+			<label
+				class="grid gap-1 text-12px text-blue-100/80 rounded {tutorial.control === 'humanize'
+					? HINT
+					: ''}"
+			>
 				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
 				<input
 					class="w-full accent-maximumYellow"
@@ -488,7 +502,7 @@
 				<span class="i-ph-plus" aria-hidden="true"></span>
 			</button>
 			<button
-				class="device-button-lg !min-w-0 px-3"
+				class="device-button-lg !min-w-0 px-3 {tutorial.control === 'copy' ? HINT : ''}"
 				type="button"
 				disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
 				title="A copy of this pattern"
@@ -599,7 +613,7 @@
 												? 'bg-dark/60 border-white/10'
 												: 'bg-dark/30 border-white/10'} {now
 									? 'ring-2 ring-blue-100 ring-inset'
-									: ''}"
+									: ''} {hintedCells?.has(`${row.voice}:${s}`) ? HINT : ''}"
 								type="button"
 								aria-pressed={cell > 0}
 								aria-label="{voiceLabel(row.voice)}, step {s + 1}{cell === 3

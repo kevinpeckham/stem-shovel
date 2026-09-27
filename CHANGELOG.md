@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A drum machine tutorial.** "Tutorial: a rock beat from scratch" on /drum-machine swaps in an empty five-drum kit (the machine's Undo keeps the beat that was there) and opens a step panel that sticks to the bottom of the screen: thirteen steps from the kick on 1 and 3 to a second pattern with a fill, each highlighting the cells or control it points at, ticking when the grid has caught up, with Do it for me. Steps are data in `src/lib/constants/drumTutorial.ts` (tested end to end: no step is done before its change, every step after), state in `src/lib/state/drumTutorial.svelte.ts`, the panel `DrumTutorial.svelte`.
+
 ## [0.43.1] - 2026-09-27
 
 ### Fixed
