@@ -9,6 +9,7 @@
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import TuningForkIcon from "$lib/components/TuningForkIcon.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
@@ -475,7 +476,7 @@
 			{/snippet}
 			{#snippet drumsItem()}
 				<div class="flex items-center gap-3 px-3 py-1.5">
-					<span class="w-1em i-ph-dots-nine" aria-hidden="true"></span>
+					<span class="w-1em grid place-items-center" aria-hidden="true"><IconDrumKit /></span>
 					<span class="grow">Drums</span>
 					<DrumMachine compact tempo="always" toggle="text" />
 				</div>

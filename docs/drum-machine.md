@@ -31,6 +31,34 @@ over time. Two precedents he likes: [orDrumbox](https://www.ordrumbox.com)
 [Groovie](https://maximecb.github.io/groovie/)
 ([source](https://github.com/maximecb/groovie)).
 
+## The samples and their attribution
+
+The sampled kits are Groovie's CC0 one-shots (https://github.com/maximecb/groovie,
+`samples/`), which carry no further provenance; Groovie's README states the
+licence and nothing else about their origin. CC0 asks for no attribution,
+but the app gives it anyway: on `/built-with` and in the user doc. Each of
+our files is one Groovie file renamed, unchanged (44.1 kHz, 16-bit, mono):
+
+| Voice      | Acoustic (`static/kits/acoustic`) | Room (`static/kits/room`) |
+| ---------- | --------------------------------- | ------------------------- |
+| kick       | kick_01                           | kick_12                   |
+| snare      | snare_01                          | snare_09                  |
+| hat-closed | hat_closed_01                     | hat_closed_06             |
+| hat-open   | hat_open_01                       | hat_open_02               |
+| clap       | clap_01                           | clap_02                   |
+| rim        | rimshot_01                        | rimshot_02                |
+| tom-low    | tom_low_01                        | tom_low_02                |
+| tom-mid    | tom_mid_01                        | tom_mid_05                |
+| tom-high   | tom_hi_01                         | tom_hi_05                 |
+| ride       | ride_01                           | ride_02                   |
+| crash      | crash_01                          | crash_02                  |
+| cowbell    | cowbell_01                        | cowbell_02                |
+
+A candidate sample from elsewhere is checked against these by audio, not
+by name, before it goes in (Groovie's own names say nothing about where a
+file came from). The Room kit is about 1.2 MB, the Acoustic 0.6 MB; a kit
+is fetched only when chosen.
+
 ## What the precedents teach
 
 **Groovie** (MIT code, CC0 samples, no backend, no framework). A 16-step

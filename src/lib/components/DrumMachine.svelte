@@ -2,6 +2,7 @@
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import {
 		DRUM_BPM_MAX,
 		DRUM_BPM_MIN,
@@ -189,12 +190,11 @@
 			{#if toggle === "text"}
 				<span class="w-5 text-center" aria-hidden="true">{drumMachine.running ? "On" : "Off"}</span>
 			{:else}
-				<span
-					class="i-ph-dots-nine {drumMachine.running && drumMachine.step % 4 === 0
+				<IconDrumKit
+					class="{drumMachine.running && drumMachine.step % 4 === 0
 						? 'scale-125'
 						: ''} transition-transform"
-					aria-hidden="true"
-				></span>
+				/>
 			{/if}
 		</button>
 		{#if showTempo}

@@ -18,7 +18,9 @@ Each row has a drum picker (twelve to choose from: kick, snare, closed and open 
 
 ## Kits
 
-**Acoustic** is a kit of real drum recordings; **Electronic** is synthesized in the browser, with no files to load. The kit is a choice for the whole project.
+**Acoustic** and **Room** are kits of real drum recordings, the Room kit with longer, roomier hits; **Electronic** is synthesized in the browser, with no files to load. The kit is a choice for the whole project.
+
+The recordings in the Acoustic and Room kits come from [Groovie](https://github.com/maximecb/groovie), Maxime Chevalier-Boisvert's open-source beat sequencer, which publishes its samples in the public domain (CC0). Thank you.
 
 ## Presets
 

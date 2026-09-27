@@ -3,6 +3,7 @@
 	import { page } from "$app/state";
 	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg";
 	import TuningForkIcon from "./TuningForkIcon.svelte";
+	import IconDrumKit from "./IconDrumKit.svelte";
 
 	interface Props {
 		/** Hide the header (a phone layout that needs the whole viewport). */
@@ -170,7 +171,7 @@
 						href="/drum-machine"
 						onclick={() => (openMenu = null)}
 					>
-						<span class="i-ph-dots-nine w-1em" aria-hidden="true"></span>Drum Machine
+						<IconDrumKit />Drum Machine
 					</a>
 				</div>
 			{/if}

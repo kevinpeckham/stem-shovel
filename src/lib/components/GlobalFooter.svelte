@@ -33,12 +33,13 @@
 		<a class="footer-link" href="/drum-machine">Drum Machine</a>
 	</nav>
 	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
-		<a class="footer-link" href="/docs">Docs</a>
-		<a class="footer-link" href="/releases">Releases</a>
-		<a class="footer-link" href="/pricing">Pricing</a>
+		<span class="text-11px uppercase tracking-wider opacity-60">More</span>
 		<a class="footer-link" href="/blog">Blog</a>
-		<a class="footer-link" href="/support">Help</a>
+		<a class="footer-link" href="/docs">Docs</a>
 		<a class="footer-link" href="/feature-requests">Feature Requests</a>
+		<a class="footer-link" href="/support">Help</a>
+		<a class="footer-link" href="/pricing">Pricing</a>
+		<a class="footer-link" href="/releases">Releases</a>
 
 		{#if user}
 			<button type="button" class="footer-link" popovertarget="bug-report"> Report a bug </button>

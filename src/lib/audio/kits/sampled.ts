@@ -1,20 +1,22 @@
-import { DRUM_VOICE_IDS, type DrumVoiceId } from "$lib/constants/drumMachine";
+import { DRUM_VOICE_IDS, type DrumKitId, type DrumVoiceId } from "$lib/constants/drumMachine";
 import type { DrumHit, DrumKit } from "./types";
 
 /**
- * The acoustic kit: one-shot samples from Groovie's CC0 library
- * (static/kits/acoustic/<voice>.wav, credited on /built-with). `warm`
- * fetches the files ahead of the first touch (the drum machine page calls
- * it as it opens; the Idea Recorder waits for the first play, so a page
- * that never uses the drums never downloads them). Decoding needs a
- * context and so happens in `load`; the decoded buffers serve any context
- * after that, an offline one for the WAV export included.
+ * A kit of one-shot samples (static/kits/<id>/<voice>.wav; the acoustic
+ * and room kits are Groovie's CC0 recordings, credited in the docs and on
+ * /built-with). `warm` fetches the files ahead of the first touch (the
+ * drum machine page calls it as it opens; the Idea Recorder waits for the
+ * first play, so a page that never uses the drums never downloads them).
+ * Decoding needs a context and so happens in `load`; the decoded buffers
+ * serve any context after that, an offline one for the WAV export
+ * included.
  */
-export class AcousticKit implements DrumKit {
-	readonly id = "acoustic" as const;
+export class SampledKit implements DrumKit {
 	#files: Map<DrumVoiceId, Promise<ArrayBuffer>> | null = null;
 	#buffers = new Map<DrumVoiceId, AudioBuffer>();
 	#decoding: Promise<void> | null = null;
+
+	constructor(readonly id: DrumKitId) {}
 
 	warm(): void {
 		if (this.#files || typeof fetch === "undefined") return;
@@ -22,7 +24,7 @@ export class AcousticKit implements DrumKit {
 		for (const voice of DRUM_VOICE_IDS) {
 			this.#files.set(
 				voice,
-				fetch(`/kits/acoustic/${voice}.wav`).then((r) => {
+				fetch(`/kits/${this.id}/${voice}.wav`).then((r) => {
 					if (!r.ok) throw new Error(`${voice}: ${r.status}`);
 					return r.arrayBuffer();
 				}),

@@ -71,7 +71,7 @@
 				{
 					name: "Groovie's samples",
 					url: "https://github.com/maximecb/groovie",
-					what: "The drum machine's acoustic kit: public-domain (CC0) one-shots from Maxime Chevalier-Boisvert's beat sequencer.",
+					what: "The drum machine's Acoustic and Room kits: public-domain (CC0) one-shots from Maxime Chevalier-Boisvert's beat sequencer.",
 				},
 				{
 					name: "Basic Pitch",

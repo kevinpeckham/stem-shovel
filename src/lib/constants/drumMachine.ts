@@ -21,10 +21,11 @@ export const DRUM_VOICES = [
 export type DrumVoiceId = (typeof DRUM_VOICES)[number]["id"];
 export const DRUM_VOICE_IDS = DRUM_VOICES.map((v) => v.id) as DrumVoiceId[];
 
-/** Kits, in share-link order too. */
+/** Kits, in share-link order too (two bits: room for one more). Sampled kits have a folder under static/kits. */
 export const DRUM_KITS = [
 	{ id: "acoustic", label: "Acoustic" },
 	{ id: "electronic", label: "Electronic" },
+	{ id: "room", label: "Room" },
 ] as const;
 export type DrumKitId = (typeof DRUM_KITS)[number]["id"];
 export const DRUM_KIT_IDS = DRUM_KITS.map((k) => k.id) as DrumKitId[];
