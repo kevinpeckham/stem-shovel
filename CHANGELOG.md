@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-09-27
+
 ### Changed
 
 - **The drum machine's foot is tidier.** Save, the saved beats, Copy link and the downloads live in one ⋯ menu beside Presets; a row's drum and the kit are chosen with the ComboBox rather than a native select and a row of buttons (Kevin's request). ComboBox options show a pointer cursor. The readout names the preset or saved beat the project still matches, says "edited" after a saved beat changes, and Custom otherwise (Kevin's idea). The device is named SS Drumbo 001 under its display, as the recorder and the tuner are.
