@@ -119,7 +119,8 @@ export function viewerOf(
 	};
 }
 
-const { project, song, stem, demo, recording, idea, songCredit, artist, artistMember } = schema;
+const { project, song, stem, demo, recording, idea, beat, songCredit, artist, artistMember } =
+	schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
 export async function accountOfProject(projectId: string) {
@@ -175,6 +176,14 @@ async function accountOfStemPathname(pathname: string) {
 export async function accountOfDemo(demoId: string) {
 	const row = await db.query.demo.findFirst({
 		where: eq(demo.id, demoId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfBeat(beatId: string) {
+	const row = await db.query.beat.findFirst({
+		where: eq(beat.id, beatId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

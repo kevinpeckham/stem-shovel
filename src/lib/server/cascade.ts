@@ -26,6 +26,7 @@ const {
 	comment,
 	demo,
 	idea,
+	beat,
 	invitation,
 	inviteCode,
 	notification,
@@ -57,6 +58,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(stem).where(inArray(stem.songId, songIds));
 	await db.update(aiRequest).set({ songId: null }).where(inArray(aiRequest.songId, songIds));
+	await db.update(beat).set({ songId: null }).where(inArray(beat.songId, songIds));
 	await db.delete(song).where(inArray(song.id, songIds));
 }
 
@@ -121,6 +123,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	const songs = await db.select({ id: song.id }).from(song).where(eq(song.accountId, accountId));
 	await deleteSongRows(songs.map((s) => s.id));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
+	await db.delete(beat).where(eq(beat.accountId, accountId));
 	await db.delete(comment).where(eq(comment.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
@@ -155,6 +158,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(comment).where(eq(comment.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
+	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));
 	await db.update(invitation).set({ invitedBy: null }).where(eq(invitation.invitedBy, userId));
 	await db.update(inviteCode).set({ createdBy: null }).where(eq(inviteCode.createdBy, userId));
 	await db.update(project).set({ createdBy: null }).where(eq(project.createdBy, userId));

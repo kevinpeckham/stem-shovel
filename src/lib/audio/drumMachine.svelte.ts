@@ -296,7 +296,10 @@ class DrumMachineEngine {
 	 * is kept for `undoPreset` until the next edit.
 	 */
 	loadPreset(preset: DrumPreset, mode: "replace" | "add") {
-		const loaded = drumPresetProject(preset);
+		this.loadProject(drumPresetProject(preset), mode);
+	}
+	/** A project from elsewhere (a preset, a saved beat) in place of this one or added to it, with undo. */
+	loadProject(loaded: DrumProject, mode: "replace" | "add") {
 		const before = $state.snapshot(this.project);
 		if (mode === "replace") {
 			this.project = loaded;

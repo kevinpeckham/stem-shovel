@@ -13,6 +13,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **A Room kit** for the drum machine: a second acoustic kit with longer, roomier hits, twelve more of Groovie's CC0 samples (`static/kits/room`, about 1.2 MB, fetched only when chosen). `SampledKit` takes its folder from the kit id, so a further sampled kit is a folder and a constant.
 - **The samples are credited** in the Drum Machine user doc, on /built-with and, file by file, in docs/drum-machine.md.
 
+- **Saved beats.** A signed-in member's drum machine has Save and a Beats menu: the project is kept in the account under a name (`beat` table, migration 0061; `beats.remote.ts` saveBeat / renameBeat / deleteBeat / listBeats; the page load lists the current account's beats), every member can load one, editors save, rename and delete. Deletes join `cascade.ts` (a song going leaves its beat; an account going takes them).
+
 ### Changed
 
 - The drum machine's icon is Kevin's drum-kit glyph (`IconDrumKit.svelte`) in the header's Tools menu, the recorder's toolbar and the compact toggle. The footer's second row is labelled More and reordered (Kevin).

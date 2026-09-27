@@ -6,6 +6,7 @@ import type { ImageKind } from "$lib/val/ImageSchema";
 import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
+import type { DrumProject } from "$lib/val/DrumPatternSchema";
 import {
 	copyBlob,
 	deleteBlobs,
@@ -101,6 +102,7 @@ const {
 	auditLog,
 	recording,
 	idea,
+	beat,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -3940,4 +3942,54 @@ export async function removeWaitlist(id: string) {
 		.where(eq(waitlistSignup.id, id))
 		.returning({ id: waitlistSignup.id });
 	return !!row;
+}
+
+// ---- beats (docs/drum-machine.md, Phase 3) ----
+
+/** The account's saved beats, newest first, each with its project. */
+export async function listBeats(accountId: string) {
+	return db.query.beat.findMany({
+		where: eq(beat.accountId, accountId),
+		orderBy: [desc(beat.updatedAt)],
+		columns: { id: true, name: true, data: true, songId: true, createdBy: true, updatedAt: true },
+	});
+}
+
+export async function createBeat(
+	accountId: string,
+	userId: string,
+	name: string,
+	data: DrumProject,
+) {
+	const [row] = await db
+		.insert(beat)
+		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled beat", data })
+		.returning();
+	return row!;
+}
+
+export async function updateBeat(
+	accountId: string,
+	id: string,
+	patch: { name: string; data: DrumProject },
+) {
+	const [row] = await db
+		.update(beat)
+		.set({ name: patch.name.trim() || "Untitled beat", data: patch.data })
+		.where(and(eq(beat.id, id), eq(beat.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function renameBeat(accountId: string, id: string, name: string) {
+	const [row] = await db
+		.update(beat)
+		.set({ name: name.trim() || "Untitled beat" })
+		.where(and(eq(beat.id, id), eq(beat.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteBeat(accountId: string, id: string) {
+	await db.delete(beat).where(and(eq(beat.id, id), eq(beat.accountId, accountId)));
 }

@@ -328,6 +328,22 @@ Index: `(song_id, kind, version_number)`.
 | created_by | text FK → user (set null) |                                     |
 | created_at | timestamp_ms              |                                     |
 
+### beat
+
+A saved drum-machine beat (docs/drum-machine.md, Phase 3): the project as
+JSON (the share-link model, its version inside) in an account's library,
+seen by every member and kept by its editors. Optionally a song's.
+
+| column                 | type                        | notes                          |
+| ---------------------- | --------------------------- | ------------------------------ |
+| id                     | text PK (nanoid)            |                                |
+| account_id             | text FK → account (cascade) | scope                          |
+| created_by             | text FK → user (set null)   |                                |
+| song_id                | text FK → song (set null)   | "the demo's beat", optional    |
+| name                   | text                        |                                |
+| data                   | text (JSON, `DrumProject`)  | validated by DrumProjectSchema |
+| created_at, updated_at | timestamp_ms                |                                |
+
 ## How the existing Blob code changes
 
 **Pathnames become ID-based.** Today: `stems/<song-slug>/<filename>`. With

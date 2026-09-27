@@ -1,6 +1,12 @@
 # A drum machine (plan)
 
-Status: **Presets and meters shipped in v0.42.0** (2026-09-27): 22 preset
+Status: **Room kit and saved beats built** (2026-09-27, unreleased): a
+second sampled kit from Groovie's other variants; the first Phase 3 item,
+the `beat` table (migration 0061) with Save and a Beats menu on the page
+for a signed-in member (account-wide, editors write). Still to come in
+Phase 3: beats attached to songs with the song's tempo seeding them and a
+render to a demo, the timeline, the generator, own samples, MIDI input.
+**Presets and meters shipped in v0.42.0** (2026-09-27): 22 preset
 beats in `src/lib/constants/drumPresets.ts` (a readable row-string form,
 `drumPresetProject` builds them, every one tested through the codec),
 a Presets menu with Undo and a shift-to-add mode; a meter per pattern

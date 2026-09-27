@@ -15,6 +15,8 @@
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
 	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
+	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
+	import type { DrumProject } from "$lib/val/DrumPatternSchema";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { onMount } from "svelte";
@@ -37,8 +39,123 @@
 		toggle?: "icon" | "text";
 		/** Space plays and stops. Off where the page needs space for scrolling (the home page demo). */
 		keyboard?: boolean;
+		/** A signed-in member's account: beats can be saved to it and loaded from it (docs/drum-machine.md, Phase 3). */
+		account?: { id: string; name: string; canEdit: boolean } | null;
+		/** The account's saved beats, newest first. */
+		beats?: SavedBeat[];
 	}
-	let { compact = false, tempo = "auto", toggle = "icon", keyboard = true }: Props = $props();
+	interface SavedBeat {
+		id: string;
+		name: string;
+		data: DrumProject;
+		updatedAt: Date;
+	}
+	let {
+		compact = false,
+		tempo = "auto",
+		toggle = "icon",
+		keyboard = true,
+		account = null,
+		beats = [],
+	}: Props = $props();
+
+	// The account's beats, kept here as they change; the one open, if any, is what Save brings up to date.
+	// svelte-ignore state_referenced_locally -- the page's list is the starting point; from here the component keeps it
+	let saved = $state<SavedBeat[]>(beats);
+	let openBeat = $state<{ id: string; name: string } | null>(null);
+	let saving = $state(false);
+	async function save(asNew = false) {
+		if (!account) return;
+		let id = asNew ? undefined : openBeat?.id;
+		let name = openBeat && !asNew ? openBeat.name : null;
+		if (!name) {
+			name = window.prompt("Name this beat", `Beat ${saved.length + 1}`)?.trim() ?? "";
+			if (!name) return;
+		}
+		saving = true;
+		try {
+			const data = $state.snapshot(drumMachine.project);
+			const row = await saveBeat({ accountId: account.id, id, name, data });
+			const entry = { id: row.id, name: row.name, data, updatedAt: new Date(row.updatedAt) };
+			saved = [entry, ...saved.filter((b) => b.id !== row.id)];
+			openBeat = { id: row.id, name: row.name };
+			notify(id ? `${row.name} saved` : `${row.name} saved to ${account.name}`);
+		} catch (e) {
+			notify(`Could not save the beat: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			saving = false;
+		}
+	}
+	function openSaved(b: SavedBeat) {
+		drumMachine.loadProject($state.snapshot(b.data), "replace");
+		openBeat = { id: b.id, name: b.name };
+		notify(`${b.name} loaded`);
+	}
+	async function renameOpen() {
+		if (!openBeat) return;
+		const name = window.prompt("Rename the beat", openBeat.name)?.trim();
+		if (!name || name === openBeat.name) return;
+		try {
+			const row = await renameBeat({ id: openBeat.id, name });
+			saved = saved.map((b) => (b.id === row.id ? { ...b, name: row.name } : b));
+			openBeat = { id: row.id, name: row.name };
+		} catch (e) {
+			notify(`Could not rename the beat: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function deleteOpen() {
+		if (!openBeat || !window.confirm(`Delete "${openBeat.name}" from ${account?.name}?`)) return;
+		try {
+			await deleteBeat({ id: openBeat.id });
+			saved = saved.filter((b) => b.id !== openBeat!.id);
+			notify(`${openBeat.name} deleted`);
+			openBeat = null;
+		} catch (e) {
+			notify(`Could not delete the beat: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	let beatItems = $derived([
+		...(openBeat
+			? [
+					{ id: "open", kind: "notice" as const, notice: `Open: ${openBeat.name}` },
+					{
+						id: "save-as",
+						kind: "button" as const,
+						label: "Save as a new beat",
+						iconClass: "i-ph-copy",
+						action: () => save(true),
+					},
+					{
+						id: "rename",
+						kind: "button" as const,
+						label: "Rename",
+						iconClass: "i-ph-pencil-simple",
+						action: renameOpen,
+					},
+					{
+						id: "delete",
+						kind: "button" as const,
+						label: "Delete",
+						iconClass: "i-ph-trash",
+						action: deleteOpen,
+					},
+					{ id: "sep", kind: "divider" as const },
+				]
+			: []),
+		{
+			id: "heading",
+			kind: "notice" as const,
+			notice: saved.length ? `Saved in ${account?.name}` : `No beats saved in ${account?.name} yet`,
+		},
+		...saved.map((b) => ({
+			id: `beat-${b.id}`,
+			kind: "button" as const,
+			label: `${escapeHtml(b.name)} <span class="opacity-60 text-12px">${b.data.bpm} bpm</span>`,
+			action: () => openSaved(b),
+		})),
+	]);
+	const escapeHtml = (t: string) =>
+		t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
@@ -225,8 +342,9 @@
 					<span class="text-40px leading-none">{p.bpm}</span>
 					<span class="text-13px opacity-70">bpm</span>
 				</div>
-				<div class="text-12px opacity-70">
-					pattern {drumMachine.current + 1} of {p.patterns.length} · {pattern.steps} steps · {kitLabel(
+				<div class="text-12px opacity-70 truncate">
+					{#if openBeat}{openBeat.name} ·
+					{/if}pattern {drumMachine.current + 1} of {p.patterns.length} · {pattern.steps} steps · {kitLabel(
 						p.kit,
 					)}
 				</div>
@@ -583,11 +701,36 @@
 						class="device-button-lg !min-w-0 px-3"
 						type="button"
 						onclick={() => drumMachine.undoPreset()}
-						title="Back to the beat you had before the preset"
+						title="Back to the beat you had before"
 					>
 						<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
 						Undo
 					</button>
+				{/if}
+				{#if account}
+					{#if account.canEdit}
+						<button
+							class="device-button-lg !min-w-0 px-3"
+							type="button"
+							disabled={saving}
+							onclick={() => save()}
+							title={openBeat
+								? `Save ${openBeat.name} to ${account.name}`
+								: `Save this beat to ${account.name}`}
+						>
+							<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+							Save
+						</button>
+					{/if}
+					<ContextMenu
+						ariaLabel="Beats"
+						title="Beats saved in {account.name}"
+						iconClass="i-ph-folder-simple"
+						label="Beats"
+						buttonBaseClasses="device-button-lg !min-w-0 px-3"
+						popoverClasses="max-h-70vh overflow-y-auto min-w-64"
+						items={beatItems}
+					/>
 				{/if}
 				<button
 					class="device-button-lg !min-w-0 px-3"

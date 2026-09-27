@@ -428,6 +428,13 @@
       "when": 1790387354500,
       "tag": "0060_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1790513375576,
+      "tag": "0061_beats",
+      "breakpoints": true
     }
   ]
 }

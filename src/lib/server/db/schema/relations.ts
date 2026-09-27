@@ -12,6 +12,7 @@ import { bugReport } from "./bugReport";
 import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
 import { demo } from "./demo";
+import { beat } from "./beat";
 import { idea } from "./idea";
 import { recording } from "./recording";
 import { invitation } from "./invitation";
@@ -43,6 +44,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	recordings: many(recording),
 	ideas: many(idea),
 	artists: many(artist),
+	beats: many(beat),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -218,4 +220,10 @@ export const waitlistSignupRelations = relations(waitlistSignup, ({ one }) => ({
 		fields: [waitlistSignup.inviteCodeId],
 		references: [inviteCode.id],
 	}),
+}));
+
+export const beatRelations = relations(beat, ({ one }) => ({
+	account: one(account, { fields: [beat.accountId], references: [account.id] }),
+	creator: one(user, { fields: [beat.createdBy], references: [user.id] }),
+	song: one(song, { fields: [beat.songId], references: [song.id] }),
 }));

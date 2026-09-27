@@ -1,6 +1,8 @@
 <script lang="ts">
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
+
+	let { data } = $props();
 </script>
 
 <svelte:head>
@@ -26,11 +28,12 @@
 		</p>
 	</header>
 	<div class="max-w-860px">
-		<DrumMachine />
+		<DrumMachine account={data.account} beats={data.beats} />
 	</div>
 	<p class="max-w-article mt-4 text-13px text-dim">
 		Rows are drums, columns are sixteenth notes. Space plays and stops. Your beat is remembered in
-		this browser; Copy link puts it in the address so it opens the same anywhere. The acoustic kit
-		is built from public-domain samples.
+		this browser; Copy link puts it in the address so it opens the same anywhere{data.account
+			? `, and Save keeps it in ${data.account.name} for the whole band`
+			: ""}. The acoustic kits are built from public-domain samples.
 	</p>
 </main>
