@@ -202,12 +202,7 @@
 			: []),
 	]);
 	const VOICE_OPTIONS = DRUM_VOICES.map((v) => ({ value: v.id, label: v.label }));
-	const KIT_OPTIONS = DRUM_KITS.map((k) => ({
-		value: k.id,
-		label: k.label,
-		description:
-			k.id === "electronic" ? "synthesized" : k.id === "room" ? "longer hits" : "recordings",
-	}));
+	const KIT_OPTIONS = DRUM_KITS.map((k) => ({ value: k.id, label: k.label }));
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
@@ -714,7 +709,7 @@
 					</button>
 				{/each}
 			</div>
-			<div class="w-40" title="Kit">
+			<div class="w-44" title="Kit">
 				<ComboBox
 					ariaLabel="Kit"
 					buttonClasses="!px-3 !py-2 !text-15px"

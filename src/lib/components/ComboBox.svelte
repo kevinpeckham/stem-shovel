@@ -235,7 +235,7 @@
 				id={optionId(i)}
 				role="option"
 				aria-selected={option.value === value}
-				class="flex w-full items-center gap-2 px-2 py-1.5 text-left hover-bg-blue-300/10 {option.value ===
+				class="flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-left hover-bg-blue-300/10 {option.value ===
 				value
 					? 'bg-white/5'
 					: ''}"

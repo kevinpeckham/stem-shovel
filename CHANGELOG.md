@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **The drum machine's foot is tidier.** Save, the saved beats, Copy link and the downloads live in one ⋯ menu beside Presets; a row's drum and the kit are chosen with the ComboBox rather than a native select and a row of buttons (Kevin's request).
+- **The drum machine's foot is tidier.** Save, the saved beats, Copy link and the downloads live in one ⋯ menu beside Presets; a row's drum and the kit are chosen with the ComboBox rather than a native select and a row of buttons (Kevin's request). ComboBox options show a pointer cursor.
 
 ## [0.44.0] - 2026-09-27
 
