@@ -128,7 +128,9 @@
 	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
 	let lineClasses = $derived(
-		pattern.steps % 8 === 0 ? "grid-cols-8 sm-grid-cols-16" : "grid-cols-6 sm-grid-cols-12",
+		(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16) === 16
+			? "grid-cols-8 sm-grid-cols-16"
+			: "grid-cols-6 sm-grid-cols-12",
 	);
 	let stepsLabel = (n: number) => {
 		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
