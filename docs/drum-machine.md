@@ -1,6 +1,6 @@
 # A drum machine (plan)
 
-Status: **Room kit and saved beats built** (2026-09-27, unreleased): a
+Status: **Room kit and saved beats shipped in v0.43.0** (2026-09-27): a
 second sampled kit from Groovie's other variants; the first Phase 3 item,
 the `beat` table (migration 0061) with Save and a Beats menu on the page
 for a signed-in member (account-wide, editors write). Still to come in

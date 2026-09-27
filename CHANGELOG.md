@@ -8,12 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-09-27
+
 ### Added
 
 - **A Room kit** for the drum machine: a second acoustic kit with longer, roomier hits, twelve more of Groovie's CC0 samples (`static/kits/room`, about 1.2 MB, fetched only when chosen). `SampledKit` takes its folder from the kit id, so a further sampled kit is a folder and a constant.
 - **The samples are credited** in the Drum Machine user doc, on /built-with and, file by file, in docs/drum-machine.md.
 
-- **Saved beats.** A signed-in member's drum machine has Save and a Beats menu: the project is kept in the account under a name (`beat` table, migration 0061; `beats.remote.ts` saveBeat / renameBeat / deleteBeat / listBeats; the page load lists the current account's beats), every member can load one, editors save, rename and delete. Deletes join `cascade.ts` (a song going leaves its beat; an account going takes them).
+- **Saved beats.** A signed-in member's drum machine has Save and a Beats menu: the project is kept in the account under a name (`beat` table, migration 0061, applied on production by Kevin; `beats.remote.ts` saveBeat / renameBeat / deleteBeat / listBeats; the page load lists the current account's beats), every member can load one, editors save, rename and delete. Deletes join `cascade.ts` (a song going leaves its beat; an account going takes them).
 
 ### Changed
 
