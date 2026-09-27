@@ -36,11 +36,11 @@ The numbered buttons above the grid are the project's patterns, up to eight. **+
 
 ## Saving, sharing and downloading
 
-Everything is remembered in this browser and comes back when you return. **Copy link** puts the whole project into the page's address and copies it: anyone who opens the link gets the same beat, to play or remix. Links keep working as the drum machine grows.
+Everything is remembered in this browser and comes back when you return. **Copy link**, in the **⋯** menu at the foot of the device, puts the whole project into the page's address and copies it: anyone who opens the link gets the same beat, to play or remix. Links keep working as the drum machine grows.
 
-Signed in, with an account, you also get **Save** and **Beats**. Save keeps the whole project, patterns, kit and tempo, in your account under a name, where every member of the account can find it in the Beats menu; saving again brings the open beat up to date, and the Beats menu has Save as a new beat, Rename and Delete for the beat that is open. Viewers can load beats but not change them.
+Signed in, with an account, the ⋯ menu also has **Save** and lists the account's saved beats. Save keeps the whole project, patterns, kit and tempo, in your account under a name, where every member of the account can find it; saving again brings the open beat up to date, and the menu offers Save as a new beat, Rename and Delete for the beat that is open. Viewers can load beats but not change them.
 
-**Download** offers the open pattern as a **WAV** (one seamless cycle, ready to loop in a music player or a DAW) or as a **MIDI** file, with each drum on its General MIDI note, so it opens as an editable drum track in any DAW.
+The ⋯ menu's **Download** items offer the open pattern as a **WAV** (one seamless cycle, ready to loop in a music player or a DAW) or as a **MIDI** file, with each drum on its General MIDI note, so it opens as an editable drum track in any DAW.
 
 ## In the Idea Recorder
 

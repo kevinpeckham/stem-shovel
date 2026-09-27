@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
+	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import {
@@ -115,48 +116,98 @@
 			notify(`Could not delete the beat: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	let beatItems = $derived([
-		...(openBeat
+	const escapeHtml = (t: string) =>
+		t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+	/** The ⋯ menu: keeping the beat (Save, Copy link, Download) and, signed in, the account's beats. */
+	let moreItems = $derived([
+		...(account?.canEdit
 			? [
-					{ id: "open", kind: "notice" as const, notice: `Open: ${openBeat.name}` },
 					{
-						id: "save-as",
+						id: "save",
 						kind: "button" as const,
-						label: "Save as a new beat",
-						iconClass: "i-ph-copy",
-						action: () => save(true),
+						label: openBeat
+							? `Save ${escapeHtml(openBeat.name)}`
+							: `Save to ${escapeHtml(account.name)}`,
+						iconClass: "i-ph-floppy-disk",
+						disabled: saving,
+						action: () => save(),
 					},
-					{
-						id: "rename",
-						kind: "button" as const,
-						label: "Rename",
-						iconClass: "i-ph-pencil-simple",
-						action: renameOpen,
-					},
-					{
-						id: "delete",
-						kind: "button" as const,
-						label: "Delete",
-						iconClass: "i-ph-trash",
-						action: deleteOpen,
-					},
-					{ id: "sep", kind: "divider" as const },
+					...(openBeat
+						? [
+								{
+									id: "save-as",
+									kind: "button" as const,
+									label: "Save as a new beat",
+									iconClass: "i-ph-copy",
+									action: () => save(true),
+								},
+								{
+									id: "rename",
+									kind: "button" as const,
+									label: "Rename the beat",
+									iconClass: "i-ph-pencil-simple",
+									action: renameOpen,
+								},
+								{
+									id: "delete",
+									kind: "button" as const,
+									label: "Delete the beat",
+									iconClass: "i-ph-trash",
+									action: deleteOpen,
+								},
+							]
+						: []),
+					{ id: "sep-save", kind: "divider" as const },
 				]
 			: []),
 		{
-			id: "heading",
-			kind: "notice" as const,
-			notice: saved.length ? `Saved in ${account?.name}` : `No beats saved in ${account?.name} yet`,
-		},
-		...saved.map((b) => ({
-			id: `beat-${b.id}`,
+			id: "copy-link",
 			kind: "button" as const,
-			label: `${escapeHtml(b.name)} <span class="opacity-60 text-12px">${b.data.bpm} bpm</span>`,
-			action: () => openSaved(b),
-		})),
+			label: "Copy link",
+			iconClass: "i-ph-link",
+			title: "A link to this project",
+			action: copyLink,
+		},
+		{
+			id: "download-wav",
+			kind: "button" as const,
+			label: 'Download WAV <span class="opacity-60 text-12px">one cycle</span>',
+			iconClass: "i-ph-waveform",
+			action: () => download("wav"),
+		},
+		{
+			id: "download-midi",
+			kind: "button" as const,
+			label: 'Download MIDI <span class="opacity-60 text-12px">for a DAW</span>',
+			iconClass: "i-ph-piano-keys",
+			action: () => download("midi"),
+		},
+		...(account
+			? [
+					{ id: "sep-beats", kind: "divider" as const },
+					{
+						id: "heading",
+						kind: "notice" as const,
+						notice: saved.length
+							? `Saved in ${account.name}`
+							: `No beats saved in ${account.name} yet`,
+					},
+					...saved.map((b) => ({
+						id: `beat-${b.id}`,
+						kind: "button" as const,
+						label: `${escapeHtml(b.name)} <span class="opacity-60 text-12px">${b.data.bpm} bpm</span>`,
+						action: () => openSaved(b),
+					})),
+				]
+			: []),
 	]);
-	const escapeHtml = (t: string) =>
-		t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+	const VOICE_OPTIONS = DRUM_VOICES.map((v) => ({ value: v.id, label: v.label }));
+	const KIT_OPTIONS = DRUM_KITS.map((k) => ({
+		value: k.id,
+		label: k.label,
+		description:
+			k.id === "electronic" ? "synthesized" : k.id === "room" ? "longer hits" : "recordings",
+	}));
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
@@ -531,16 +582,15 @@
 					aria-label={voiceLabel(row.voice)}
 				>
 					<div class="flex items-center gap-2 sm-contents">
-						<select
-							class="device-field min-w-0 grow sm-grow-0 py-1.5"
-							aria-label="Voice of row {r + 1}"
-							value={row.voice}
-							onchange={(e) => drumMachine.setVoice(r, e.currentTarget.value as DrumVoiceId)}
-						>
-							{#each DRUM_VOICES as v (v.id)}
-								<option value={v.id}>{v.label}</option>
-							{/each}
-						</select>
+						<div class="min-w-0 grow sm-grow-0">
+							<ComboBox
+								ariaLabel="Voice of row {r + 1}"
+								buttonClasses="!px-3 !py-1.5 !text-0.9em"
+								options={VOICE_OPTIONS}
+								value={row.voice}
+								onchange={(v) => drumMachine.setVoice(r, v)}
+							/>
+						</div>
 						<div class="flex items-center gap-1">
 							<button
 								class="device-button-lg !min-w-0 !h-8 !px-2.5 text-13px {row.mute
@@ -664,17 +714,14 @@
 					</button>
 				{/each}
 			</div>
-			<div class="flex items-center gap-1" role="group" aria-label="Kit">
-				{#each DRUM_KITS as k (k.id)}
-					<button
-						class="device-button-lg !min-w-0 px-3 {p.kit === k.id ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={p.kit === k.id}
-						onclick={() => drumMachine.setKit(k.id)}
-					>
-						{k.label}
-					</button>
-				{/each}
+			<div class="w-40" title="Kit">
+				<ComboBox
+					ariaLabel="Kit"
+					buttonClasses="!px-3 !py-2 !text-15px"
+					options={KIT_OPTIONS}
+					value={p.kit}
+					onchange={(k) => drumMachine.setKit(k)}
+				/>
 			</div>
 			<div class="flex flex-wrap items-center gap-1 ml-auto">
 				<button
@@ -722,64 +769,13 @@
 						Undo
 					</button>
 				{/if}
-				{#if account}
-					{#if account.canEdit}
-						<button
-							class="device-button-lg !min-w-0 px-3"
-							type="button"
-							disabled={saving}
-							onclick={() => save()}
-							title={openBeat
-								? `Save ${openBeat.name} to ${account.name}`
-								: `Save this beat to ${account.name}`}
-						>
-							<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-							Save
-						</button>
-					{/if}
-					<ContextMenu
-						ariaLabel="Beats"
-						position="top left"
-						title="Beats saved in {account.name}"
-						iconClass="i-ph-folder-simple"
-						label="Beats"
-						buttonBaseClasses="device-button-lg !min-w-0 px-3"
-						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
-						items={beatItems}
-					/>
-				{/if}
-				<button
-					class="device-button-lg !min-w-0 px-3"
-					type="button"
-					onclick={copyLink}
-					title="Copy a link to this project"
-				>
-					<span class="i-ph-link" aria-hidden="true"></span>
-					Copy link
-				</button>
 				<ContextMenu
-					ariaLabel="Download"
+					ariaLabel="More"
 					position="top left"
-					title="Download this pattern"
-					iconClass="i-ph-download-simple"
-					label="Download"
+					title="Save, share and download"
 					buttonBaseClasses="device-button-lg !min-w-0 px-3"
-					items={[
-						{
-							id: "download-wav",
-							kind: "button",
-							label: "WAV, one cycle",
-							iconClass: "i-ph-waveform",
-							action: () => download("wav"),
-						},
-						{
-							id: "download-midi",
-							kind: "button",
-							label: "MIDI, for a DAW",
-							iconClass: "i-ph-piano-keys",
-							action: () => download("midi"),
-						},
-					]}
+					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
+					items={moreItems}
 				/>
 			</div>
 		</div>
