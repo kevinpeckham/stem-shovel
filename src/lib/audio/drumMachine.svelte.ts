@@ -6,15 +6,19 @@ import {
 	DRUM_VOICE_IDS,
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_ROWS,
+	drumStepsFor,
 	type DrumKitId,
+	type DrumMeterId,
 	type DrumSteps,
 	type DrumVoiceId,
 } from "$lib/constants/drumMachine";
+import type { DrumPreset } from "$lib/constants/drumPresets";
 import { decodeDrumProject } from "$lib/utils/decodeDrumProject";
 import {
 	loadDrumMachinePreferences,
 	saveDrumMachinePreferences,
 } from "$lib/utils/drumMachinePreferences";
+import { drumPresetProject } from "$lib/utils/drumPresetProject";
 import { drumStepTime } from "$lib/utils/drumStepTime";
 import { emptyDrumPattern } from "$lib/utils/emptyDrumPattern";
 import { encodeDrumMidi } from "$lib/utils/encodeDrumMidi";
@@ -52,6 +56,8 @@ class DrumMachineEngine {
 	step = $state(-1);
 	/** The current kit is decoded and ready (the acoustic one takes a moment on the first play). */
 	kitReady = $state(false);
+	/** The project as it was before the last preset loaded, until the next edit; `undoPreset` brings it back. */
+	beforePreset = $state<DrumProject | null>(null);
 
 	#ctx: AudioContext | null = null;
 	#master: GainNode | null = null;
@@ -86,6 +92,7 @@ class DrumMachineEngine {
 		if (warm) drumKit(this.project.kit).warm();
 	}
 	#save() {
+		this.beforePreset = null;
 		saveDrumMachinePreferences($state.snapshot(this.project));
 	}
 	#resetSolo() {
@@ -265,8 +272,62 @@ class DrumMachineEngine {
 		this.#save();
 	}
 	setSteps(steps: DrumSteps) {
+		if (!drumStepsFor(this.pattern.meter).includes(steps)) return;
 		this.project.patterns[this.current] = resizeDrumPattern($state.snapshot(this.pattern), steps);
 		this.#save();
+	}
+	/** The open pattern's meter; the steps become a bar of it, or two bars if it had two. */
+	setMeter(meter: DrumMeterId) {
+		const pattern = this.pattern;
+		if (pattern.meter === meter) return;
+		const was = drumStepsFor(pattern.meter);
+		const twoBars = pattern.steps === was[was.length - 1];
+		const choices = drumStepsFor(meter);
+		const steps = choices[choices.length - (twoBars ? 1 : 2)]!;
+		this.project.patterns[this.current] = resizeDrumPattern(
+			{ ...$state.snapshot(pattern), meter },
+			steps,
+		);
+		this.#save();
+	}
+	/**
+	 * A preset beat: in place of the project, or its patterns added to the
+	 * project (the tempo, swing, feel and kit stay). The project as it was
+	 * is kept for `undoPreset` until the next edit.
+	 */
+	loadPreset(preset: DrumPreset, mode: "replace" | "add") {
+		const loaded = drumPresetProject(preset);
+		const before = $state.snapshot(this.project);
+		if (mode === "replace") {
+			this.project = loaded;
+			this.current = 0;
+		} else {
+			const room = MAX_DRUM_PATTERNS - this.project.patterns.length;
+			if (room <= 0) return;
+			const first = this.project.patterns.length;
+			this.project.patterns.push(...loaded.patterns.slice(0, room));
+			this.current = first;
+		}
+		this.#afterSwap(before.kit);
+		this.beforePreset = before;
+	}
+	undoPreset() {
+		const before = this.beforePreset;
+		if (!before) return;
+		const kit = this.project.kit;
+		this.project = before;
+		this.current = Math.min(this.current, before.patterns.length - 1);
+		this.#afterSwap(kit);
+	}
+	/** After the project changed under a running machine: solo, the playing pattern and the kit follow. */
+	#afterSwap(previousKit: DrumKitId) {
+		this.#resetSolo();
+		if (this.running) {
+			this.queued = null;
+			this.playing = Math.min(this.current, this.project.patterns.length - 1);
+		}
+		this.#save();
+		if (this.#ctx && (this.project.kit !== previousKit || !this.kitReady)) void this.#readyKit();
 	}
 	setKit(kit: DrumKitId) {
 		if (kit === this.project.kit) return;

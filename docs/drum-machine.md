@@ -1,6 +1,11 @@
 # A drum machine (plan)
 
-Status: **Phase 2 shipped in v0.41.0** (2026-09-26): patterns as tabs
+Status: **Presets and meters built** (2026-09-27, unreleased): 22 preset
+beats in `src/lib/constants/drumPresets.ts` (a readable row-string form,
+`drumPresetProject` builds them, every one tested through the codec),
+a Presets menu with Undo and a shift-to-add mode; a meter per pattern
+(4/4, 3/4, 6/8 with 12 and 24 steps), share links at version 3.
+**Phase 2 shipped in v0.41.0** (2026-09-26): patterns as tabs
 with the end-of-cycle switch, velocity per cell, pan per row, humanize,
 WAV and MIDI export (`src/lib/audio/drumRender.ts` shares one step player
 between the live engine and the offline render), the drums in the Idea

@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Drum machine presets.** A Presets menu of 22 beats by style (`src/lib/constants/drumPresets.ts`, rows written as strings of `.`, `o`, `x`, `X`; `drumPresetProject` builds the project and the test checks every one): rock, pop and funk, hip-hop and electronic, world, other meters, and two-pattern fills. A preset replaces the project (Undo beside the menu brings the beat back until the next edit) or, with shift, adds its patterns to the project.
+- **3/4 and 6/8.** A meter per pattern (4/4, 3/4, 6/8) with 12 and 24 steps; 6/8 shades in sixes, a phone shows its bar as two lines of six, and the MIDI file carries the time signature. Share links move to version 3 (a meter and a wider steps field); versions 1 and 2 still open.
+
 ## [0.41.0] - 2026-09-26
 
 ### Added

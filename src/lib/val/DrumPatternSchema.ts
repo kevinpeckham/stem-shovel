@@ -3,7 +3,9 @@ import {
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
 	DRUM_KIT_IDS,
+	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
+	DRUM_STEP_CHOICES_V2,
 	DRUM_VELOCITY_MAX,
 	DRUM_VOICE_IDS,
 	MAX_DRUM_PATTERNS,
@@ -30,6 +32,8 @@ export const DrumRowSchema = v.object({
 export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
 
 export const DrumPatternSchema = v.object({
+	/** How the bar reads (shading, MIDI); a project stored before meters existed is 4/4. */
+	meter: v.optional(v.picklist(DRUM_METER_IDS), "4/4"),
 	steps: v.picklist(DRUM_STEP_CHOICES),
 	rows: v.pipe(v.array(DrumRowSchema), v.minLength(1), v.maxLength(MAX_DRUM_ROWS)),
 });
@@ -52,7 +56,7 @@ export const DrumProjectV1Schema = v.object({
 	v: v.literal(1),
 	bpm: v.pipe(v.number(), v.integer(), v.minValue(DRUM_BPM_MIN), v.maxValue(DRUM_BPM_MAX)),
 	swing: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
-	steps: v.picklist(DRUM_STEP_CHOICES),
+	steps: v.picklist(DRUM_STEP_CHOICES_V2),
 	kit: v.picklist(DRUM_KIT_IDS),
 	rows: v.pipe(v.array(v.omit(DrumRowSchema, ["pan"])), v.minLength(1), v.maxLength(MAX_DRUM_ROWS)),
 });

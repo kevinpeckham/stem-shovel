@@ -6,12 +6,14 @@
 		DRUM_BPM_MAX,
 		DRUM_BPM_MIN,
 		DRUM_KITS,
-		DRUM_STEP_CHOICES,
+		DRUM_METERS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
 		MAX_DRUM_ROWS,
+		drumStepsFor,
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
+	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { onMount } from "svelte";
@@ -123,6 +125,41 @@
 
 	let p = $derived(drumMachine.project);
 	let pattern = $derived(drumMachine.pattern);
+	/** Sixteenths to a beat for the shading (6 in 6/8), and cells to a line: a beat pair on a phone, a bar from sm up. */
+	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
+	let lineClasses = $derived(
+		pattern.steps % 8 === 0 ? "grid-cols-8 sm-grid-cols-16" : "grid-cols-6 sm-grid-cols-12",
+	);
+	let stepsLabel = (n: number) => {
+		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
+		return n < bar ? "½ bar" : n === bar ? "1 bar" : "2 bars";
+	};
+
+	/** The presets menu: a heading per style, a button per beat; a second, quieter item adds instead of replacing. */
+	let presetItems = $derived(
+		DRUM_PRESET_STYLES.flatMap((style) => [
+			{ id: `style-${style}`, kind: "notice" as const, notice: style },
+			...DRUM_PRESETS.filter((preset) => preset.style === style).map((preset) => ({
+				id: `preset-${preset.id}`,
+				kind: "button" as const,
+				label: `${preset.name} <span class="opacity-60 text-12px">${preset.bpm} bpm${preset.meter && preset.meter !== "4/4" ? ` · ${preset.meter}` : ""}</span>`,
+				title: "Load in place of the project; shift-click to add its patterns to the project",
+				action: () => load(preset.id),
+			})),
+		]),
+	);
+	let addPresets = $state(false);
+	function load(id: string) {
+		const preset = DRUM_PRESETS.find((x) => x.id === id);
+		if (!preset) return;
+		const mode = addPresets ? "add" : "replace";
+		drumMachine.loadPreset(preset, mode);
+		notify(
+			mode === "add"
+				? `${preset.name} added as pattern ${drumMachine.current + 1}`
+				: `${preset.name} loaded; Undo brings your beat back`,
+		);
+	}
 </script>
 
 <!-- The full view's listeners: the space bar, and the paint following the pointer across cells. -->
@@ -426,10 +463,10 @@
 							title="Pan (double-click for the centre)"
 						/>
 					</div>
-					<div class="grid grid-cols-8 sm-grid-cols-16 gap-1 touch-pan-y">
+					<div class="grid {lineClasses} gap-1 touch-pan-y">
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}
-							{@const offBeat = Math.floor(s / 4) % 2 === 1}
+							{@const offBeat = Math.floor(s / group) % 2 === 1}
 							<button
 								class="aspect-square w-full rounded-sm border transition-colors duration-75 {cell ===
 								3
@@ -467,13 +504,26 @@
 
 		<!-- steps, kit, and the rest -->
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+			<div class="flex items-center gap-1" role="group" aria-label="Meter">
+				{#each DRUM_METERS as m (m.id)}
+					<button
+						class="device-button-lg !min-w-0 px-3 {pattern.meter === m.id ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={pattern.meter === m.id}
+						title="{m.label} time"
+						onclick={() => drumMachine.setMeter(m.id)}
+					>
+						{m.label}
+					</button>
+				{/each}
+			</div>
 			<div class="flex items-center gap-1" role="group" aria-label="Steps">
-				{#each DRUM_STEP_CHOICES as n (n)}
+				{#each drumStepsFor(pattern.meter) as n (n)}
 					<button
 						class="device-button-lg !min-w-0 px-3 {pattern.steps === n ? 'text-accent' : ''}"
 						type="button"
 						aria-pressed={pattern.steps === n}
-						title="{n} steps"
+						title="{n} steps, {stepsLabel(n)}"
 						onclick={() => drumMachine.setSteps(n)}
 					>
 						{n}
@@ -510,6 +560,33 @@
 				>
 					Clear
 				</button>
+				<div
+					class="flex items-center gap-1"
+					onpointerdown={(e) => (addPresets = e.shiftKey)}
+					onkeydown={(e) => (addPresets = e.shiftKey)}
+					role="presentation"
+				>
+					<ContextMenu
+						ariaLabel="Presets"
+						title="Preset beats"
+						iconClass="i-ph-music-notes"
+						label="Presets"
+						buttonBaseClasses="device-button-lg !min-w-0 px-3"
+						popoverClasses="max-h-70vh overflow-y-auto min-w-64"
+						items={presetItems}
+					/>
+				</div>
+				{#if drumMachine.beforePreset}
+					<button
+						class="device-button-lg !min-w-0 px-3"
+						type="button"
+						onclick={() => drumMachine.undoPreset()}
+						title="Back to the beat you had before the preset"
+					>
+						<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+						Undo
+					</button>
+				{/if}
 				<button
 					class="device-button-lg !min-w-0 px-3"
 					type="button"

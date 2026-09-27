@@ -8,6 +8,6 @@ export function upgradeDrumProject(p: DrumProjectV1): DrumProject {
 		swing: p.swing,
 		humanize: 0,
 		kit: p.kit,
-		patterns: [{ steps: p.steps, rows: p.rows.map((r) => ({ ...r, pan: 0 })) }],
+		patterns: [{ meter: "4/4", steps: p.steps, rows: p.rows.map((r) => ({ ...r, pan: 0 })) }],
 	};
 }

@@ -14,11 +14,15 @@ Each row has a drum picker (twelve to choose from: kick, snare, closed and open 
 
 **Play** starts and stops the pattern; so does the space bar. Set the tempo with the buttons, the slider or by tapping **Tap** in time, from 40 to 240 beats per minute. **Swing** pushes every second sixteenth late, up to a triplet feel. **Humanize** scatters every hit a little in time and loudness, so a pattern stops repeating itself exactly.
 
-**8**, **16** and **32** set the steps of the open pattern: half a bar, a bar or two bars. Growing a bar to two repeats it, so a fill can go into the second bar; shrinking keeps the start.
+**4/4**, **3/4** and **6/8** set the open pattern's meter, and the buttons beside them its length: half a bar (in 4/4), a bar or two bars. In 6/8 the grid shades in sixes rather than fours. Growing a bar to two repeats it, so a fill can go into the second bar; shrinking keeps the start.
 
 ## Kits
 
 **Acoustic** is a kit of real drum recordings; **Electronic** is synthesized in the browser, with no files to load. The kit is a choice for the whole project.
+
+## Presets
+
+**Presets** holds a couple of dozen beats by style: rock, pop and funk, hip-hop and electronic, world, a waltz and two in 6/8, and fills. Choosing one replaces your project with the preset, tempo and kit included; **Undo** beside it brings your beat back until you make another change. Hold shift while choosing to add the preset's patterns to your project instead, keeping your tempo, feel and kit, which is how a fill joins a groove.
 
 ## Patterns
 

@@ -7,6 +7,7 @@ import type { DrumPattern } from "$lib/val/DrumPatternSchema";
  */
 export function emptyDrumPattern(from: DrumPattern): DrumPattern {
 	return {
+		meter: from.meter,
 		steps: from.steps,
 		rows: from.rows.map((r) => ({ ...r, cells: r.cells.map(() => 0) })),
 	};

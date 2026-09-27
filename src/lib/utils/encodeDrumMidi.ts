@@ -27,7 +27,10 @@ export function encodeDrumMidi(pattern: DrumPattern, bpm: number, swing: number)
 		(usPerQuarter >> 8) & 0xff,
 		usPerQuarter & 0xff,
 	);
-	push(0, 0xff, 0x58, 0x04, 4, 2, 24, 8); // 4/4
+	// The time signature: numerator, denominator as a power of two, MIDI clocks per beat, 32nds per quarter.
+	const [nn, dd, cc] =
+		pattern.meter === "3/4" ? [3, 2, 24] : pattern.meter === "6/8" ? [6, 3, 36] : [4, 2, 24];
+	push(0, 0xff, 0x58, 0x04, nn, dd, cc, 8);
 	for (const row of pattern.rows) {
 		if (row.mute) continue;
 		const note = DRUM_GM_NOTES[row.voice];

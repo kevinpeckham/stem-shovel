@@ -25,6 +25,7 @@ export function startingDrumProject(): DrumProject {
 		kit: "acoustic",
 		patterns: [
 			{
+				meter: "4/4",
 				steps,
 				rows: [
 					row("kick", steps, [0, 4, 8, 12], 0.9),

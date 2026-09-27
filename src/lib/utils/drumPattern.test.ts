@@ -14,10 +14,10 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
  * Links that have been shared are pinned here and this list only grows: a
  * change to the codec that reads one of them differently breaks a link
  * someone has. A version 1 link opens as the project it always did (one
- * pattern, no pan, no humanize) and is not re-encoded; a version 2 link
- * round-trips exactly.
+ * pattern, no pan, no humanize), a version 2 link as a 4/4 project; neither
+ * is re-encoded. A link at the current version round-trips exactly.
  */
-const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 }[] = [
+const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
 		project: startingDrumProject,
@@ -51,6 +51,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 }
 			kit: "acoustic",
 			patterns: [
 				{
+					meter: "4/4",
 					steps: 8,
 					rows: [
 						{ voice: "kick", level: 0.9, pan: -0.5, mute: false, cells: [2, 0, 0, 0, 3, 0, 0, 0] },
@@ -58,6 +59,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 }
 					],
 				},
 				{
+					meter: "4/4",
 					steps: 8,
 					rows: [
 						{ voice: "clap", level: 0.5, pan: 1, mute: false, cells: [0, 0, 0, 0, 2, 0, 0, 0] },
@@ -106,7 +108,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 2) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 3) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });

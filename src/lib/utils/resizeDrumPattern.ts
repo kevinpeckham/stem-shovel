@@ -10,6 +10,7 @@ import type { DrumPattern } from "$lib/val/DrumPatternSchema";
 export function resizeDrumPattern(p: DrumPattern, steps: DrumSteps): DrumPattern {
 	if (steps === p.steps) return p;
 	return {
+		meter: p.meter,
 		steps,
 		rows: p.rows.map((r) => ({
 			...r,
