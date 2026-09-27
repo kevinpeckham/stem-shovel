@@ -1,6 +1,6 @@
 # A drum machine (plan)
 
-Status: **Presets and meters built** (2026-09-27, unreleased): 22 preset
+Status: **Presets and meters shipped in v0.42.0** (2026-09-27): 22 preset
 beats in `src/lib/constants/drumPresets.ts` (a readable row-string form,
 `drumPresetProject` builds them, every one tested through the codec),
 a Presets menu with Undo and a shift-to-add mode; a meter per pattern

@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-09-27
+
 ### Added
 
 - **Drum machine presets.** A Presets menu of 22 beats by style (`src/lib/constants/drumPresets.ts`, rows written as strings of `.`, `o`, `x`, `X`; `drumPresetProject` builds the project and the test checks every one): rock, pop and funk, hip-hop and electronic, world, other meters, and two-pattern fills. A preset replaces the project (Undo beside the menu brings the beat back until the next edit) or, with shift, adds its patterns to the project.
