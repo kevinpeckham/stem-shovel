@@ -688,11 +688,12 @@
 				>
 					<ContextMenu
 						ariaLabel="Presets"
+						position="top left"
 						title="Preset beats"
 						iconClass="i-ph-music-notes"
 						label="Presets"
 						buttonBaseClasses="device-button-lg !min-w-0 px-3"
-						popoverClasses="max-h-70vh overflow-y-auto min-w-64"
+						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={presetItems}
 					/>
 				</div>
@@ -724,11 +725,12 @@
 					{/if}
 					<ContextMenu
 						ariaLabel="Beats"
+						position="top left"
 						title="Beats saved in {account.name}"
 						iconClass="i-ph-folder-simple"
 						label="Beats"
 						buttonBaseClasses="device-button-lg !min-w-0 px-3"
-						popoverClasses="max-h-70vh overflow-y-auto min-w-64"
+						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={beatItems}
 					/>
 				{/if}
@@ -743,6 +745,7 @@
 				</button>
 				<ContextMenu
 					ariaLabel="Download"
+					position="top left"
 					title="Download this pattern"
 					iconClass="i-ph-download-simple"
 					label="Download"

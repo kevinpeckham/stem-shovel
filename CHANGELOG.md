@@ -19,6 +19,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- The drum machine's Presets, Beats and Download menus open upward, above their buttons at the foot of the device. ContextMenu popovers are `position: fixed` and carry `position-try-fallbacks: flip-block`, so a menu that has no room on its side of the button opens on the other side, and a long one scrolls within the room it has.
 - The drum machine's icon is Kevin's drum-kit glyph (`IconDrumKit.svelte`) in the header's Tools menu, the recorder's toolbar and the compact toggle. The footer's second row is labelled More and reordered (Kevin).
 
 ## [0.42.0] - 2026-09-27

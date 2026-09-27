@@ -109,12 +109,20 @@
 		if (next && !popoverEl?.contains(next)) popoverEl?.hidePopover();
 	}
 
-	// Friendly position names -> static classes (no per-instance values, so CSP-safe)
+	// Friendly position names -> static classes (no per-instance values, so CSP-safe).
+	// The popover is position: fixed, so its anchor areas are the visible space beside the button
+	// (absolute would measure from the top of the document, and a menu near the top of a scrolled
+	// page would open off screen instead of flipping).
 	const positionClasses: Record<Position, string> = {
-		"bottom left": "[position-area:bottom_span-left] [margin:0.25rem_0_0]",
-		"bottom right": "[position-area:bottom_span-right] [margin:0.25rem_0_0]",
-		"top left": "[position-area:top_span-left] [margin:0_0_0.25rem]",
-		"top right": "[position-area:top_span-right] [margin:0_0_0.25rem]",
+		// flip-block: a menu that does not fit on its side of the button opens on the other.
+		"bottom left":
+			"[position-area:bottom_span-left] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block]",
+		"bottom right":
+			"[position-area:bottom_span-right] [margin:0.25rem_0_0] [position-try-fallbacks:flip-block]",
+		"top left":
+			"[position-area:top_span-left] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block]",
+		"top right":
+			"[position-area:top_span-right] [margin:0_0_0.25rem] [position-try-fallbacks:flip-block]",
 	};
 
 	async function run(item: ContextMenuItem) {
@@ -145,7 +153,7 @@
 		popover="auto"
 		class="{positionClasses[
 			position ?? 'bottom left'
-		]} h-auto overflow-hidden absolute bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em {popoverClasses}"
+		]} h-auto overflow-hidden fixed bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em {popoverClasses}"
 		ontoggle={onToggle}
 		onfocusout={onFocusOut}
 	>
