@@ -760,7 +760,7 @@
 			<div
 				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
 			>
-				<div class="text-11px uppercase tracking-wider opacity-60">Generate</div>
+				<div class="text-11px uppercase tracking-wider opacity-60">Random Beat Generator</div>
 				<div class="block text-blue-100/80">
 					<span class="device-button-label">Style</span>
 					<ComboBox
