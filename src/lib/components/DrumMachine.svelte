@@ -345,6 +345,12 @@
 	onpointercancel={release}
 />
 
+<!-- <div
+					class="h-full text-right text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+				>
+					SS Drumbo 001
+				</div> -->
+
 {#if compact}
 	<div class="flex items-stretch gap-1" aria-label="Drum machine">
 		<button
@@ -387,22 +393,39 @@
 		{/if}
 	</div>
 {:else}
-	<div class="device-chrome grid gap-4 px-3 py-4 sm-px-5 sm-py-5 w-full" aria-label="Drum machine">
+	<div
+		class="device-chrome grid grid-cols-1 sm-grid-cols-1 gap-4 px-3 py-4 sm-px-5 sm-py-5 w-full max-w-full overflow-hidden"
+		aria-label="Drum machine"
+	>
 		<!-- the readout -->
-		<div class="device-window-bevel-md">
+		<div class="grid grid-cols-1 sm-device-window-bevel-md max-w-full w-full overflow-hidden">
 			<div
-				class="device-screen flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3 text-blue-100 font-mono tabular-nums"
+				class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full md-flex md-flex-wrap md-items-baseline md-justify-between md-gap-x-4 md-gap-y-1 text-blue-100 font-mono tabular-nums overflow-hidden"
 			>
+				<!-- BPM Readout -->
 				<div class="flex items-baseline gap-2">
 					<span class="text-40px leading-none">{p.bpm}</span>
 					<span class="text-13px opacity-70">bpm</span>
 				</div>
+
 				<!-- What the project is: the preset or saved beat it still matches, the open beat as edited, or Custom. -->
-				<div class="text-12px opacity-70 truncate">
-					{drumMachine.loadedName ?? (openBeat ? `${openBeat.name} · edited` : "Custom")} · pattern {drumMachine.current +
-						1} of {p.patterns.length} · {pattern.steps} steps · {kitLabel(p.kit)}
+				<div class=" text-12px opacity-70 flex flex-wrap gap-x-2 gap-y-2">
+					<span
+						>{drumMachine.loadedName ?? (openBeat ? `${openBeat.name} · edited` : "Custom")}</span
+					>
+					<span>· pattern {drumMachine.current + 1} of {p.patterns.length}</span>
+
+					<span class="block sm-inline">
+						<span><span class="hidden sm-inline">·</span> {pattern.steps} steps</span>
+						<span>· {kitLabel(p.kit)}</span>
+					</span>
 				</div>
-				<div class="text-12px opacity-70" aria-live="polite">
+
+				<!-- status -->
+				<div
+					class="text-12px opacity-70 mt-1 rounded border px-2 py-1 max-w-fit"
+					aria-live="polite"
+				>
 					{#if drumMachine.running && !drumMachine.kitReady}
 						loading the kit…
 					{:else if drumMachine.running}
@@ -415,189 +438,238 @@
 				</div>
 			</div>
 		</div>
-		<!-- the device's name, under the display on the right, as the recorder's and the tuner's -->
+
+		<!-- tempo and range controls -->
 		<div
-			class="-mb-1 text-right text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+			class="grid grid-cols-1 sm-grid-cols-[auto_1fr] w-full sm-items-center justify-start gap-4"
 		>
-			SS Drumbo 001
+			<!-- tempo -->
+
+			<button
+				aria-label="Tempo"
+				class="device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
+				type="button"
+				onclick={() => drumMachine.tap()}
+				title="Tap the tempo"
+			>
+				Tap Tempo
+			</button>
+
+			<!-- range controls -->
+			<div class="hidden sm-grid gap-3 sm-grid-cols-3 sm-gap-6 text-dark">
+				<label class="block">
+					<span class="device-button-label">Tempo</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min={DRUM_BPM_MIN}
+						max={DRUM_BPM_MAX}
+						step="1"
+						value={p.bpm}
+						oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
+						aria-label="Tempo in beats per minute"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Swing · {Math.round(p.swing * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.swing * 100)}
+						oninput={(e) => drumMachine.setSwing(Number(e.currentTarget.value) / 100)}
+						aria-label="Swing"
+					/>
+				</label>
+				<label class="block {tutorial.control === 'humanize' ? HINT : ''}">
+					<span class="device-button-label">Humanize · {Math.round(p.humanize * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.humanize * 100)}
+						oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
+						aria-label="Humanize"
+					/>
+				</label>
+			</div>
+			<!-- bring in range controls as context menu in mobile -->
 		</div>
 
-		<!-- transport, tempo -->
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				class="device-button-lg {drumMachine.running ? 'text-accent' : ''} {tutorial.control ===
-				'play'
-					? HINT
-					: ''}"
-				type="button"
-				aria-pressed={drumMachine.running}
-				title="Play or stop (space)"
-				onclick={togglePlay}
-			>
-				<span class={drumMachine.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
-				></span>
-				{drumMachine.running ? "Stop" : "Play"}
-			</button>
-			<div class="flex items-center gap-1" role="group" aria-label="Tempo">
-				{#each [-5, -1] as d (d)}
-					<button
-						class="device-button-lg !min-w-0 px-3"
-						type="button"
-						aria-label="{d} bpm"
-						onclick={() => drumMachine.setBpm(p.bpm + d)}
-					>
-						{d}
-					</button>
-				{/each}
-				<button
-					class="device-button-lg !min-w-0 px-3"
-					type="button"
-					onclick={() => drumMachine.tap()}
-					title="Tap the tempo"
+		<!-- kit, steps, meter and patterns -->
+		<div
+			class="gap-x-4 gap-y-2 md-pt-4 lg-pt-8 sm-grid sm-grid-cols-[auto_auto_auto_1fr] sm-gap-x-3 md-gap-x-4 mb-4"
+		>
+			<!-- kit selector -->
+			<div class="sm-grid grid-cols-1" title="Kit">
+				<div class="device-button-group-label">Kit</div>
+				<ComboBox
+					ariaLabel="Kit"
+					clearDefaultButtonClasses={true}
+					buttonClasses="device-button-drum-combo"
+					options={KIT_OPTIONS}
+					value={p.kit}
+					onchange={(k) => drumMachine.setKit(k)}
+				/>
+			</div>
+
+			<!-- steps -->
+			<!-- put steps in context menu in mobile -->
+			<div class="hidden sm-block">
+				<div class="device-button-group-label">Steps</div>
+				<div class="flex items-center gap-2 sm-gap-x-1 md-gap-x-2" role="group" aria-label="Steps">
+					{#each drumStepsFor(pattern.meter) as n (n)}
+						<button
+							class="device-button-xs md-device-button-sm {pattern.steps === n
+								? 'text-accent'
+								: ''}"
+							type="button"
+							aria-pressed={pattern.steps === n}
+							title="{n} steps, {stepsLabel(n)}"
+							onclick={() => drumMachine.setSteps(n)}
+						>
+							{n}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<!-- meters -->
+			<!-- put meters in context menu in mobile -->
+			<div class="hidden sm-block">
+				<div class="device-button-group-label">Meters</div>
+				<div class="flex items-center gap-2 sm-gap-x-1 md-gap-x-2" role="group" aria-label="Meter">
+					{#each DRUM_METERS as m (m.id)}
+						<button
+							class="device-button-xs md-device-button-sm {pattern.meter === m.id
+								? 'text-accent'
+								: ''}"
+							type="button"
+							aria-pressed={pattern.meter === m.id}
+							title="{m.label} time"
+							onclick={() => drumMachine.setMeter(m.id)}
+						>
+							{m.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Patterns -->
+			<div class="w-full sm-w-auto gap-5 mt-5 sm-mt-0 sm-ml-auto">
+				<div class="device-button-group-label">Patterns</div>
+				<!-- the patterns: tabs, one open for editing; while playing, a chosen one waits for the end of the cycle -->
+				<div
+					class="ml-auto flex flex-wrap items-center gap-2 sm-ml-0 sm-gap-1 md-gap-2"
+					role="group"
+					aria-label="Patterns"
 				>
-					Tap
-				</button>
-				{#each [1, 5] as d (d)}
+					{#each p.patterns as _, i (i)}
+						{@const open = drumMachine.current === i}
+						{@const sounding = drumMachine.playing === i}
+						{@const next = drumMachine.queued === i}
+						<button
+							class="device-button-sm sm-device-button-xs md-device-button-sm relative {open
+								? 'text-accent'
+								: ''} {next ? 'ring-1 ring-accent' : ''}"
+							type="button"
+							aria-pressed={open}
+							aria-label="Pattern {i + 1}{sounding ? ', playing' : ''}{next ? ', next' : ''}"
+							title={next
+								? "Next, at the end of the cycle"
+								: sounding
+									? "Playing"
+									: "Open this pattern"}
+							onclick={() => drumMachine.select(i)}
+						>
+							{i + 1}
+							{#if sounding}
+								<span
+									class="absolute right-1 top-1 block h-1.5 w-1.5 rounded-full bg-green-400"
+									aria-hidden="true"
+								></span>
+							{/if}
+						</button>
+					{/each}
 					<button
-						class="device-button-lg !min-w-0 px-3"
+						class="device-button-sm sm-device-button-xs md-device-button-sm"
 						type="button"
-						aria-label="+{d} bpm"
-						onclick={() => drumMachine.setBpm(p.bpm + d)}
+						disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
+						title="A new, empty pattern with these rows"
+						aria-label="New pattern"
+						onclick={() => drumMachine.addPattern(false)}
 					>
-						+{d}
+						<span class="i-ph-plus" aria-hidden="true"></span>
 					</button>
-				{/each}
+					<button
+						class="device-button-sm sm-device-button-xs md-device-button-sm {tutorial.control ===
+						'copy'
+							? HINT
+							: ''}"
+						type="button"
+						disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
+						title="A copy of this pattern"
+						aria-label="Copy pattern"
+						onclick={() => drumMachine.addPattern(true)}
+					>
+						<span class="i-ph-copy" aria-hidden="true"></span>
+					</button>
+					<button
+						class="device-button-sm sm-device-button-xs md-device-button-sm"
+						type="button"
+						disabled={p.patterns.length <= 1}
+						title="Delete this pattern"
+						aria-label="Delete pattern {drumMachine.current + 1}"
+						onclick={() => drumMachine.removePattern(drumMachine.current)}
+					>
+						<span class="i-ph-trash" aria-hidden="true"></span>
+					</button>
+				</div>
 			</div>
 		</div>
-		<div class="grid gap-2 sm-grid-cols-3 sm-gap-6">
-			<label class="grid gap-1 text-12px text-blue-100/80">
-				<span>Tempo</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min={DRUM_BPM_MIN}
-					max={DRUM_BPM_MAX}
-					step="1"
-					value={p.bpm}
-					oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
-					aria-label="Tempo in beats per minute"
-				/>
-			</label>
-			<label class="grid gap-1 text-12px text-blue-100/80">
-				<span>Swing · {Math.round(p.swing * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.swing * 100)}
-					oninput={(e) => drumMachine.setSwing(Number(e.currentTarget.value) / 100)}
-					aria-label="Swing"
-				/>
-			</label>
-			<label
-				class="grid gap-1 text-12px text-blue-100/80 rounded {tutorial.control === 'humanize'
-					? HINT
-					: ''}"
-			>
-				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.humanize * 100)}
-					oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
-					aria-label="Humanize"
-				/>
-			</label>
-		</div>
 
-		<!-- the patterns: tabs, one open for editing; while playing, a chosen one waits for the end of the cycle -->
-		<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Patterns">
-			{#each p.patterns as _, i (i)}
-				{@const open = drumMachine.current === i}
-				{@const sounding = drumMachine.playing === i}
-				{@const next = drumMachine.queued === i}
-				<button
-					class="device-button-lg !min-w-0 px-3 relative {open ? 'text-accent' : ''} {next
-						? 'ring-1 ring-accent'
-						: ''}"
-					type="button"
-					aria-pressed={open}
-					aria-label="Pattern {i + 1}{sounding ? ', playing' : ''}{next ? ', next' : ''}"
-					title={next
-						? "Next, at the end of the cycle"
-						: sounding
-							? "Playing"
-							: "Open this pattern"}
-					onclick={() => drumMachine.select(i)}
-				>
-					{i + 1}
-					{#if sounding}
-						<span
-							class="absolute right-1 top-1 block h-1.5 w-1.5 rounded-full bg-green-400"
-							aria-hidden="true"
-						></span>
-					{/if}
-				</button>
-			{/each}
-			<button
-				class="device-button-lg !min-w-0 px-3"
-				type="button"
-				disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
-				title="A new, empty pattern with these rows"
-				aria-label="New pattern"
-				onclick={() => drumMachine.addPattern(false)}
-			>
-				<span class="i-ph-plus" aria-hidden="true"></span>
-			</button>
-			<button
-				class="device-button-lg !min-w-0 px-3 {tutorial.control === 'copy' ? HINT : ''}"
-				type="button"
-				disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
-				title="A copy of this pattern"
-				aria-label="Copy pattern"
-				onclick={() => drumMachine.addPattern(true)}
-			>
-				<span class="i-ph-copy" aria-hidden="true"></span>
-			</button>
-			<button
-				class="device-button-lg !min-w-0 px-3"
-				type="button"
-				disabled={p.patterns.length <= 1}
-				title="Delete this pattern"
-				aria-label="Delete pattern {drumMachine.current + 1}"
-				onclick={() => drumMachine.removePattern(drumMachine.current)}
-			>
-				<span class="i-ph-trash" aria-hidden="true"></span>
-			</button>
-		</div>
+		<hr class="text-dark/20" />
 
 		<!-- the grid -->
-		<div class="grid gap-y-3" aria-label="Pattern {drumMachine.current + 1}">
+		<div
+			class="grid grid-cols-1 gap-y-6 mb-8 w-full"
+			aria-label="Pattern {drumMachine.current + 1}"
+		>
 			{#each pattern.rows as row, r (r)}
 				<div
-					class="grid gap-x-2 gap-y-1 items-center sm-grid-cols-[7.5rem_auto_4rem_4rem_1fr]"
+					class="
+						gap-x-4
+						gap-y-3
+						grid
+						grid-cols-1
+						items-center
+						w-full
+						sm-grid-cols-[auto_1fr]
+						sm-gap-x-4"
 					aria-label={voiceLabel(row.voice)}
 				>
-					<div class="flex items-center gap-2 sm-contents">
-						<div class="min-w-0 grow sm-grow-0">
-							<ComboBox
-								ariaLabel="Voice of row {r + 1}"
-								buttonClasses="!px-3 !py-1.5 !text-0.9em"
-								options={VOICE_OPTIONS}
-								value={row.voice}
-								onchange={(v) => drumMachine.setVoice(r, v)}
-							/>
-						</div>
-						<div class="flex items-center gap-1">
+					<!-- voice & controls -->
+					<div
+						class="gap-2 grid grid-cols-[1fr_auto] items-center sm-grid sm-grid-cols-[100px_auto] sm-gap-1 sm-gap-x-2 md-gap-y-3 md-gap-x-4 md-grid-cols-[120px_auto] lg-grid-cols-[120px_auto_auto]"
+					>
+						<!-- voice -->
+						<ComboBox
+							ariaLabel="Voice of row {r + 1}"
+							clearDefaultButtonClasses={true}
+							buttonClasses="device-button-drum-combo"
+							options={VOICE_OPTIONS}
+							value={row.voice}
+							onchange={(v) => drumMachine.setVoice(r, v)}
+						/>
+
+						<!-- mute, solo, clear  -->
+						<div class="w-full flex items-center gap-2 sm-gap-x-1 md-gap-2">
 							<button
-								class="device-button-lg !min-w-0 !h-8 !px-2.5 text-13px {row.mute
-									? 'text-accent'
-									: ''}"
+								class="device-button-xs md-device-button-sm {row.mute ? 'text-accent' : ''}"
 								type="button"
 								aria-pressed={row.mute}
 								aria-label="Mute {voiceLabel(row.voice)}"
@@ -605,7 +677,7 @@
 								onclick={() => drumMachine.toggleMute(r)}>M</button
 							>
 							<button
-								class="device-button-lg !min-w-0 !h-8 !px-2.5 text-13px {drumMachine.solo[r]
+								class="device-button-xs md-device-button-sm {drumMachine.solo[r]
 									? 'text-accent'
 									: ''}"
 								type="button"
@@ -615,46 +687,66 @@
 								onclick={() => drumMachine.toggleSolo(r)}>S</button
 							>
 							<button
-								class="device-button-lg !min-w-0 !h-8 !px-2 text-13px"
+								class="device-button-xs md-device-button-sm"
 								type="button"
 								aria-label="Remove {voiceLabel(row.voice)}"
 								title="Remove the row"
 								disabled={pattern.rows.length <= 1}
 								onclick={() => drumMachine.removeRow(r)}
 							>
-								<span class="i-ph-x" aria-hidden="true"></span>
+								<span class="i-ph-x-bold" aria-hidden="true"></span>
 							</button>
 						</div>
-						<input
-							class="hidden sm-block w-full accent-maximumYellow"
-							type="range"
-							min="0"
-							max="1"
-							step="0.01"
-							value={row.level}
-							oninput={(e) => drumMachine.setLevel(r, Number(e.currentTarget.value))}
-							aria-label="Level of {voiceLabel(row.voice)}"
-							title="Level"
-						/>
-						<input
-							class="hidden sm-block w-full accent-blue-300"
-							type="range"
-							min="-1"
-							max="1"
-							step="0.01"
-							value={row.pan}
-							oninput={(e) => drumMachine.setPan(r, Number(e.currentTarget.value))}
-							ondblclick={() => drumMachine.setPan(r, 0)}
-							aria-label="Pan of {voiceLabel(row.voice)}"
-							title="Pan (double-click for the centre)"
-						/>
+
+						<!-- volume & pan  > md -->
+						<div class="hidden lg-grid grid-cols-2 gap-3 sm-w-112px">
+							<!-- volume -->
+							<div class="h-38.5px flex items-center relative w-full overflow-visible">
+								<input
+									class="w-full accent-maximumYellow"
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value={row.level}
+									oninput={(e) => drumMachine.setLevel(r, Number(e.currentTarget.value))}
+									aria-label="Level of {voiceLabel(row.voice)}"
+									title="Level"
+								/>
+							</div>
+
+							<!--pan -->
+							<div class="h-38.5px flex items-center relative w-full overflow-visible">
+								<input
+									class="hidden sm-block w-full accent-blue-300"
+									type="range"
+									min="-1"
+									max="1"
+									step="0.01"
+									value={row.pan}
+									oninput={(e) => drumMachine.setPan(r, Number(e.currentTarget.value))}
+									ondblclick={() => drumMachine.setPan(r, 0)}
+									aria-label="Pan of {voiceLabel(row.voice)}"
+									title="Pan (double-click for the centre)"
+								/>
+							</div>
+						</div>
+
+						<!-- volume & pan -- context menu < md -->
+						<!-- come back to this -- disable for now -->
+						<!-- <ContextMenu
+							buttonClasses="!device-button-xs !md-device-button-sm"
+							items={[{label: "lorem", kind:"link", href:"/test"}]}
+							/> -->
 					</div>
-					<div class="grid {lineClasses} gap-1 touch-pan-y">
+
+					<!-- events -->
+					<div class="grid {lineClasses} gap-1 md-gap-6px lg-gap-2 touch-pan-y">
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}
 							{@const offBeat = Math.floor(s / group) % 2 === 1}
 							<button
-								class="aspect-square w-full rounded-sm border transition-colors duration-75 {cell ===
+								class="device-button-xs !min-w-auto md-device-button-sm transition-colors duration-75 {cell ===
 								3
 									? 'bg-accent border-white'
 									: cell === 2
@@ -688,46 +780,13 @@
 			{/each}
 		</div>
 
-		<!-- steps, kit, and the rest -->
-		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-			<div class="flex items-center gap-1" role="group" aria-label="Meter">
-				{#each DRUM_METERS as m (m.id)}
-					<button
-						class="device-button-lg !min-w-0 px-3 {pattern.meter === m.id ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={pattern.meter === m.id}
-						title="{m.label} time"
-						onclick={() => drumMachine.setMeter(m.id)}
-					>
-						{m.label}
-					</button>
-				{/each}
-			</div>
-			<div class="flex items-center gap-1" role="group" aria-label="Steps">
-				{#each drumStepsFor(pattern.meter) as n (n)}
-					<button
-						class="device-button-lg !min-w-0 px-3 {pattern.steps === n ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={pattern.steps === n}
-						title="{n} steps, {stepsLabel(n)}"
-						onclick={() => drumMachine.setSteps(n)}
-					>
-						{n}
-					</button>
-				{/each}
-			</div>
-			<div class="w-44" title="Kit">
-				<ComboBox
-					ariaLabel="Kit"
-					buttonClasses="!px-3 !py-2 !text-15px"
-					options={KIT_OPTIONS}
-					value={p.kit}
-					onchange={(k) => drumMachine.setKit(k)}
-				/>
-			</div>
-			<div class="flex flex-wrap items-center gap-1 ml-auto">
+		<!-- Pattern & Transport -->
+		<div class="flex justify-between">
+			<!-- pattern controls -->
+			<div class="flex flex-wrap items-center gap-1">
+				<!-- add row -->
 				<button
-					class="device-button-lg !min-w-0 px-3"
+					class="device-button-xs px-3 md-device-button-sm"
 					type="button"
 					disabled={pattern.rows.length >= MAX_DRUM_ROWS}
 					onclick={() => drumMachine.addRow()}
@@ -735,16 +794,32 @@
 					<span class="i-ph-plus" aria-hidden="true"></span>
 					Row
 				</button>
+
+				<!-- clear -->
 				<button
-					class="device-button-lg !min-w-0 px-3"
+					class="device-button-xs px-3 md-device-button-sm"
 					type="button"
 					onclick={() => drumMachine.clear()}
 					title="Every cell off"
 				>
 					Clear
 				</button>
+
+				<!-- undo -->
+				<button
+					class="device-button-xs px-3 md-device-button-sm disabled-opacity-40"
+					type="button"
+					disabled={!drumMachine.beforePreset}
+					onclick={() => drumMachine.undoPreset()}
+					title="Back to the beat you had before a preset or a saved beat loaded"
+				>
+					<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+					Undo
+				</button>
+
+				<!-- presets -->
 				<div
-					class="flex items-center gap-1"
+					class=""
 					onpointerdown={(e) => (addPresets = e.shiftKey)}
 					onkeydown={(e) => (addPresets = e.shiftKey)}
 					role="presentation"
@@ -755,31 +830,35 @@
 						title="Preset beats"
 						iconClass="i-ph-music-notes"
 						label="Presets"
-						buttonBaseClasses="device-button-lg !min-w-0 px-3"
+						buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
 						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={presetItems}
 					/>
 				</div>
-				{#if drumMachine.beforePreset}
-					<button
-						class="device-button-lg !min-w-0 px-3"
-						type="button"
-						onclick={() => drumMachine.undoPreset()}
-						title="Back to the beat you had before"
-					>
-						<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
-						Undo
-					</button>
-				{/if}
+
 				<ContextMenu
 					ariaLabel="More"
 					position="top left"
 					title="Save, share and download"
-					buttonBaseClasses="device-button-lg !min-w-0 px-3"
+					buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
 					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 					items={moreItems}
 				/>
 			</div>
+
+			<button
+				class="device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
+					? 'text-accent'
+					: ''} {tutorial.control === 'play' ? HINT : ''}"
+				type="button"
+				aria-pressed={drumMachine.running}
+				title="Play or stop (space)"
+				onclick={togglePlay}
+			>
+				<span class={drumMachine.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
+				></span>
+				{drumMachine.running ? "Stop" : "Play"}
+			</button>
 		</div>
 	</div>
 {/if}

@@ -24,7 +24,7 @@
 	/>
 </svelte:head>
 
-<main class="page-x-padding main-y-padding">
+<main class="page-x-padding main-y-padding max-w-full w-full">
 	<header class="mb-8 max-w-prose">
 		<div class="flex items-baseline gap-2 mb-5">
 			<h1 class="app-page-heading">Drum Machine</h1>
@@ -44,14 +44,28 @@
 			</button>
 		{/if}
 	</header>
-	<div class="max-w-860px">
+	<div class="w-1200px max-w-full w-full">
 		<DrumMachine account={data.account} beats={data.beats} />
 		<DrumTutorial />
 	</div>
-	<p class="max-w-article mt-4 text-13px text-dim">
-		Rows are drums, columns are sixteenth notes. Space plays and stops. Your beat is remembered in
-		this browser; Copy link puts it in the address so it opens the same anywhere{data.account
-			? `, and Save keeps it in ${data.account.name} for the whole band`
-			: ""}. The acoustic kits are built from public-domain samples.
-	</p>
+
+	<section
+		class="mt-8 [&>_p]-(max-w-article mt-4 text-16px opacity-90) rounded-md border px-5 pt-6 pb-7"
+	>
+		<h2 class="font-600">How to use the Drum Machine</h2>
+		<p>
+			Each row on the grid is a different drum. Each column represents a 16th note. Light up a
+			square by pressing the grid button to play a beat at that point in time. Then press the play
+			button to start the loop and hear your beat played back.
+		</p>
+		<h3 class="font-600 mb-3 mt-5">Quick Tips</h3>
+		<ul class="list-disc pl-4 opacity-90 grid grid-cols-1 gap-y-2">
+			<li>To get started quickly select one of the Presets beats from the menu.</li>
+			<li>Try the tutorial to learn how to make your own beats.</li>
+			<li>Use the tap tempo button to set your tempo.</li>
+			<li>Use the space bar to start and stop the drum machine.</li>
+			<li>If you are signed into your account you can save and share beats.</li>
+		</ul>
+		<p></p>
+	</section>
 </main>

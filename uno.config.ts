@@ -192,6 +192,71 @@ export default defineConfig({
 			`,
 		],
 		[
+			"device-button-xs",
+			`text-blue-100/80
+			flex
+			h-28px
+			items-center
+			justify-center
+			gap-2
+			rounded-md
+			px-1
+			py-2
+			bg-slate-800
+			text-center
+			text-shadow
+			text-current
+			text-13px
+			shadow
+			min-w-32px
+			hover-bg-slate-900`,
+		],
+		[
+			"device-button-sm",
+			`text-blue-100/80
+			flex
+			h-38.5px
+			items-center
+			justify-center
+			gap-2
+			rounded-md
+			px-1
+			py-2
+			bg-slate-800
+			text-center
+			text-shadow
+			text-current
+			text-13px
+			shadow
+			min-w-32px
+			hover-bg-slate-900`,
+		],
+		[
+			"device-button-drum-combo",
+			`
+			flex
+			bg-dark
+			items-center
+			justify-start
+			min-w-100px
+			px-2
+			py-1
+			rounded-md
+			truncate
+			text-14px
+			text-blue-100/80
+			text-shadow
+			w-160px
+			sm-h-28px
+			sm-text-13.5px
+			sm-min-w-96px
+			sm-w-96px
+			md-h-40px
+			md-min-w-120px
+			md-w-120px
+			lg-text-15px`,
+		],
+		[
 			"device-button-lg",
 			`text-blue-100/80
 			flex
@@ -209,6 +274,56 @@ export default defineConfig({
 			min-w-100px
 			hover-bg-slate-900`,
 		],
+		[
+			"device-button-xl",
+			`text-blue-100/80
+			flex
+			h-38.5px
+			items-center
+			gap-2
+			rounded-md
+			px-3
+			py-2
+			bg-slate-800
+			text-shadow
+			text-current
+			text-18px
+			shadow
+			min-w-100px
+			hover-bg-slate-900`,
+		],
+		[
+			"device-button-group-label",
+			`
+			border-b
+			border-current/50
+			font-500
+			leading-tight
+			mb-2
+			min-w-fit
+			opacity-80
+			pb-1
+			text-16px
+			text-dark
+			sm-text-12px
+			md-text-13px
+			`,
+		],
+		[
+			"device-button-label",
+			`
+
+			font-500
+			leading-tight
+			mb-1
+			min-w-fit
+			opacity-80
+			text-16px
+			text-dark
+			sm-text-12px
+			md-text-13px`,
+		],
+
 		[
 			"device-button-record",
 			`

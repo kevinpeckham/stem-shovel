@@ -16,6 +16,8 @@
 	interface Props {
 		ariaLabel: string;
 		buttonClasses?: string;
+		/** Drop the trigger's own chrome so `buttonClasses` is the whole look (the drum machine's device buttons). */
+		clearDefaultButtonClasses?: boolean;
 		disabled?: boolean;
 		onchange?: (value: T) => void;
 		options: ComboBoxOption[];
@@ -28,6 +30,7 @@
 	let {
 		ariaLabel,
 		buttonClasses = "",
+		clearDefaultButtonClasses = false,
 		disabled = false,
 		popoverClasses = "",
 		options,
@@ -59,6 +62,26 @@
 
 	/** What the popover actually is (from its toggle events), so the effect below never loops. */
 	let actuallyOpen = $state(false);
+
+	// default button classes
+	let defaultButtonClasses = $derived(
+		clearDefaultButtonClasses
+			? ""
+			: `bg-dark
+	disabled-text-current/10
+	flex
+	gap-2
+	items-center
+	rounded-md
+	px-4
+	py-2
+	text-0.95em
+	text-current/90
+	text-left
+	truncate
+	w-full
+	max-w-full`,
+	);
 
 	// Open through the button so it becomes the popover's invoker, and therefore its implicit anchor.
 	// Calling showPopover() directly would leave the popover without an anchor.
@@ -157,20 +180,7 @@
 		id={buttonId}
 		bind:this={buttonEl}
 		class="
-			bg-dark
-			disabled-text-current/10
-			flex
-			gap-2
-			items-center
-			rounded-md
-			px-4
-			py-2
-			text-0.95em
-			text-current/90
-			text-left
-			truncate
-			w-full
-			max-w-full
+			{defaultButtonClasses}
 			{buttonClasses}"
 		role="combobox"
 		aria-controls={popoverId}
