@@ -2,6 +2,8 @@ import * as v from "valibot";
 import {
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
+	DEFAULT_DRUM_FX,
+	DRUM_DELAY_STEPS,
 	DRUM_KIT_IDS,
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
@@ -27,10 +29,23 @@ export const DrumRowSchema = v.object({
 	/** -1 left, 0 centre, 1 right. */
 	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
 	mute: v.boolean(),
+	/** How much of the row goes to the delay and the reverb, 0 to 1, on top of the dry signal. Rows stored before the effects existed send nothing. */
+	delaySend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
+	reverbSend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
 	/** One velocity per step, 0 to DRUM_VELOCITY_MAX. */
 	cells: v.array(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(DRUM_VELOCITY_MAX))),
 });
 export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
+
+/** The project's effects: the delay's time (sixteenths), feedback and return, the reverb's size and return. */
+export const DrumFxSchema = v.object({
+	delayTime: v.picklist(DRUM_DELAY_STEPS),
+	delayFeedback: v.pipe(v.number(), v.minValue(0), v.maxValue(0.9)),
+	delayReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	reverbSize: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	reverbReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+});
+export type DrumFx = v.InferOutput<typeof DrumFxSchema>;
 
 export const DrumPatternSchema = v.object({
 	/** How the bar reads (shading, MIDI); a project stored before meters existed is 4/4. */
@@ -50,6 +65,8 @@ export const DrumProjectSchema = v.object({
 	/** 0 exact to 1: every hit scattered a little in time and level, so the pattern stops repeating itself exactly. */
 	humanize: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	kit: v.picklist(DRUM_KIT_IDS),
+	/** Projects stored before the effects existed get the defaults (and their rows send nothing). */
+	fx: v.optional(DrumFxSchema, () => ({ ...DEFAULT_DRUM_FX })),
 	patterns: v.pipe(v.array(DrumPatternSchema), v.minLength(1), v.maxLength(MAX_DRUM_PATTERNS)),
 });
 export type DrumProject = v.InferOutput<typeof DrumProjectSchema>;
@@ -61,6 +78,10 @@ export const DrumProjectV1Schema = v.object({
 	swing: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	steps: v.picklist(DRUM_STEP_CHOICES_V2),
 	kit: v.picklist(DRUM_KIT_IDS),
-	rows: v.pipe(v.array(v.omit(DrumRowSchema, ["pan"])), v.minLength(1), v.maxLength(MAX_DRUM_ROWS)),
+	rows: v.pipe(
+		v.array(v.omit(DrumRowSchema, ["pan", "delaySend", "reverbSend"])),
+		v.minLength(1),
+		v.maxLength(MAX_DRUM_ROWS),
+	),
 });
 export type DrumProjectV1 = v.InferOutput<typeof DrumProjectV1Schema>;

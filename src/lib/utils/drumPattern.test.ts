@@ -8,6 +8,7 @@ import { encodeDrumProject } from "./encodeDrumProject";
 import { resizeDrumPattern } from "./resizeDrumPattern";
 import { startingDrumProject } from "./startingDrumProject";
 import { upgradeDrumProject } from "./upgradeDrumProject";
+import { DEFAULT_DRUM_FX } from "$lib/constants/drumMachine";
 import type { DrumProject } from "$lib/val/DrumPatternSchema";
 
 /**
@@ -15,10 +16,11 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
  * change to the codec that reads one of them differently breaks a link
  * someone has. A version 1 link opens as the project it always did (one
  * pattern, no pan, no humanize), a version 2 link as a 4/4 project, a
- * version 3 link with the 1/16 swing grid; none is re-encoded. A link at
+ * version 3 link with the 1/16 swing grid, a version 4 link with the
+ * default effects; none is re-encoded. A link at
  * the current version round-trips exactly.
  */
-const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 | 4 }[] = [
+const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 | 4 | 5 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
 		// The starting pattern as it was shared then: no humanize (a version 1 link has none).
@@ -36,9 +38,24 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 				steps: 8,
 				kit: "electronic",
 				rows: [
-					{ voice: "kick", level: 1, mute: false, cells: [2, 0, 0, 2, 0, 0, 2, 0] },
-					{ voice: "hat-open", level: 0, mute: true, cells: [0, 0, 0, 0, 0, 0, 0, 0] },
-					{ voice: "cowbell", level: 0.5, mute: false, cells: [3, 0, 1, 0, 2, 0, 2, 0] },
+					{
+						voice: "kick",
+						level: 1,
+						mute: false,
+						cells: [2, 0, 0, 2, 0, 0, 2, 0],
+					},
+					{
+						voice: "hat-open",
+						level: 0,
+						mute: true,
+						cells: [0, 0, 0, 0, 0, 0, 0, 0],
+					},
+					{
+						voice: "cowbell",
+						level: 0.5,
+						mute: false,
+						cells: [3, 0, 1, 0, 2, 0, 2, 0],
+					},
 				],
 			}),
 	},
@@ -51,21 +68,46 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			swing: 0,
 			swingGrid: 16,
 			humanize: 0.25,
+			fx: { ...DEFAULT_DRUM_FX },
 			kit: "acoustic",
 			patterns: [
 				{
 					meter: "4/4",
 					steps: 8,
 					rows: [
-						{ voice: "kick", level: 0.9, pan: -0.5, mute: false, cells: [2, 0, 0, 0, 3, 0, 0, 0] },
-						{ voice: "snare", level: 0.8, pan: 0.5, mute: true, cells: [0, 0, 1, 0, 0, 0, 2, 0] },
+						{
+							voice: "kick",
+							level: 0.9,
+							pan: -0.5,
+							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
+							cells: [2, 0, 0, 0, 3, 0, 0, 0],
+						},
+						{
+							voice: "snare",
+							level: 0.8,
+							pan: 0.5,
+							mute: true,
+							delaySend: 0,
+							reverbSend: 0,
+							cells: [0, 0, 1, 0, 0, 0, 2, 0],
+						},
 					],
 				},
 				{
 					meter: "4/4",
 					steps: 8,
 					rows: [
-						{ voice: "clap", level: 0.5, pan: 1, mute: false, cells: [0, 0, 0, 0, 2, 0, 0, 0] },
+						{
+							voice: "clap",
+							level: 0.5,
+							pan: 1,
+							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
+							cells: [0, 0, 0, 0, 2, 0, 0, 0],
+						},
 					],
 				},
 			],
@@ -80,6 +122,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			swing: 0.1,
 			swingGrid: 16,
 			humanize: 0,
+			fx: { ...DEFAULT_DRUM_FX },
 			kit: "electronic",
 			patterns: [
 				{
@@ -91,6 +134,8 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.9,
 							pan: 0,
 							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
 							cells: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 						},
 						{
@@ -98,6 +143,8 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.4,
 							pan: 0.4,
 							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
 							cells: [0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
 						},
 					],
@@ -105,7 +152,17 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 				{
 					meter: "6/8",
 					steps: 24,
-					rows: [{ voice: "snare", level: 0.8, pan: -0.25, mute: true, cells: Array(24).fill(1) }],
+					rows: [
+						{
+							voice: "snare",
+							level: 0.8,
+							pan: -0.25,
+							mute: true,
+							delaySend: 0,
+							reverbSend: 0,
+							cells: Array(24).fill(1),
+						},
+					],
 				},
 			],
 		}),
@@ -119,6 +176,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			swing: 1,
 			swingGrid: 8,
 			humanize: 0.14,
+			fx: { ...DEFAULT_DRUM_FX },
 			kit: "room",
 			patterns: [
 				{
@@ -130,6 +188,8 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.9,
 							pan: 0,
 							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
 							cells: [2, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 0],
 						},
 						{
@@ -137,7 +197,54 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.6,
 							pan: 0.1,
 							mute: false,
+							delaySend: 0,
+							reverbSend: 0,
 							cells: [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
+						},
+					],
+				},
+			],
+		}),
+	},
+	{
+		link: "BVQoONvGoPEAIMjIACoCAVkjIJkCCA",
+		version: 5,
+		project: () => ({
+			v: 2,
+			bpm: 124,
+			swing: 0.2,
+			swingGrid: 16,
+			humanize: 0.14,
+			fx: {
+				delayTime: 6,
+				delayFeedback: 0.55,
+				delayReturn: 0.7,
+				reverbSize: 0.8,
+				reverbReturn: 0.6,
+			},
+			kit: "electronic",
+			patterns: [
+				{
+					meter: "4/4",
+					steps: 8,
+					rows: [
+						{
+							voice: "kick",
+							level: 1,
+							pan: 0,
+							mute: false,
+							delaySend: 0,
+							reverbSend: 0.1,
+							cells: [2, 0, 0, 0, 2, 0, 0, 0],
+						},
+						{
+							voice: "rim",
+							level: 0.5,
+							pan: -0.3,
+							mute: false,
+							delaySend: 0.65,
+							reverbSend: 0.25,
+							cells: [0, 0, 0, 2, 0, 0, 2, 0],
 						},
 					],
 				},
@@ -147,11 +254,11 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 ];
 
 describe("encodeDrumProject / decodeDrumProject", () => {
-	test("round-trips the starting project in under 90 characters", () => {
+	test("round-trips the starting project in under 120 characters", () => {
 		const p = startingDrumProject();
 		const s = encodeDrumProject(p);
 		expect(s).toMatch(/^[A-Za-z0-9_-]+$/);
-		expect(s.length).toBeLessThan(90);
+		expect(s.length).toBeLessThan(120);
 		expect(decodeDrumProject(s)).toEqual(p);
 	});
 	test("keeps level and pan to a hundredth", () => {
@@ -167,11 +274,26 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		p.kit = "electronic";
 		p.humanize = 1;
 		const big = resizeDrumPattern(p.patterns[0]!, 32);
-		big.rows.push({ voice: "cowbell", level: 1, pan: 0.25, mute: true, cells: Array(32).fill(3) });
+		big.rows.push({
+			voice: "cowbell",
+			level: 1,
+			pan: 0.25,
+			mute: true,
+			delaySend: 0,
+			reverbSend: 0,
+			cells: Array(32).fill(3),
+		});
 		p.patterns = Array.from({ length: 8 }, () => structuredClone(big));
 		const s = encodeDrumProject(p);
-		expect(s.length).toBeLessThan(1100);
+		expect(s.length).toBeLessThan(1300);
 		expect(decodeDrumProject(s)).toEqual(p);
+	});
+	test("carries the effects and the sends", () => {
+		const p = startingDrumProject();
+		p.fx = { delayTime: 8, delayFeedback: 0.9, delayReturn: 0.33, reverbSize: 1, reverbReturn: 0 };
+		p.patterns[0]!.rows[1]!.delaySend = 0.45;
+		p.patterns[0]!.rows[1]!.reverbSend = 1;
+		expect(decodeDrumProject(encodeDrumProject(p))).toEqual(p);
 	});
 	test("refuses what is not a link", () => {
 		expect(decodeDrumProject("")).toBeNull();
@@ -184,7 +306,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 4) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 5) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });

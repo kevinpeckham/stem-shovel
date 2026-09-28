@@ -1,4 +1,8 @@
-import { DEFAULT_HUMANIZE, DRUM_VELOCITY_NORMAL } from "$lib/constants/drumMachine";
+import {
+	DEFAULT_DRUM_FX,
+	DEFAULT_HUMANIZE,
+	DRUM_VELOCITY_NORMAL,
+} from "$lib/constants/drumMachine";
 import type { DrumProject, DrumRow } from "$lib/val/DrumPatternSchema";
 
 /** A row from a list of the steps it plays on. */
@@ -6,7 +10,7 @@ function row(voice: DrumRow["voice"], steps: number, on: number[], level = 0.8):
 	const cells = Array.from({ length: steps }, (_, i) =>
 		on.includes(i) ? DRUM_VELOCITY_NORMAL : 0,
 	);
-	return { voice, level, pan: 0, mute: false, cells };
+	return { voice, level, pan: 0, mute: false, delaySend: 0, reverbSend: 0, cells };
 }
 
 /**
@@ -23,6 +27,7 @@ export function startingDrumProject(): DrumProject {
 		bpm: 100,
 		swing: 0,
 		swingGrid: 16,
+		fx: { ...DEFAULT_DRUM_FX },
 		humanize: DEFAULT_HUMANIZE,
 		kit: "acoustic",
 		patterns: [

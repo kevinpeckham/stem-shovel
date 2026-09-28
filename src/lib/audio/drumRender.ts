@@ -2,13 +2,15 @@ import { DRUM_HUMANIZE_MS } from "$lib/constants/drumMachine";
 import { drumStepTime } from "$lib/utils/drumStepTime";
 import { encodeWav } from "$lib/utils/encodeWav";
 import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+import { createDrumBus, type DrumBus } from "./drumBus";
 import { drumKit } from "./kits";
 import type { DrumHit, DrumKit } from "./kits/types";
 
 /**
- * Playing one step of a pattern into a graph, shared by the live engine
- * and the offline render: each row that sounds gets a panner into `out`,
- * its level squared into a gain and the cell's velocity on top, humanize
+ * Playing one step of a pattern into the bus, shared by the live engine
+ * and the offline render: each row that sounds gets a panner into the dry
+ * input and, by its sends, into the delay and the reverb, its level
+ * squared into a gain and the cell's velocity on top, humanize
  * scattering the hit a little in time and level, and a closed hat choking
  * an open one still ringing. `state` carries the ringing open hat between
  * steps.
@@ -24,7 +26,7 @@ export interface DrumPlayState {
 export function playDrumStep(
 	ctx: BaseAudioContext,
 	kit: DrumKit,
-	out: AudioNode,
+	bus: DrumBus,
 	project: Pick<DrumProject, "humanize">,
 	pattern: DrumPattern,
 	step: number,
@@ -43,7 +45,16 @@ export function playDrumStep(
 			row.level * row.level * (VELOCITY_GAIN[velocity] ?? 1) * (1 - random() * scatter * 0.25);
 		const panner = ctx.createStereoPanner();
 		panner.pan.value = row.pan;
-		panner.connect(out);
+		panner.connect(bus.dry);
+		for (const [send, input] of [
+			[row.delaySend, bus.delay],
+			[row.reverbSend, bus.reverb],
+		] as const) {
+			if (send <= 0) continue;
+			const g = ctx.createGain();
+			g.gain.value = send;
+			panner.connect(g).connect(input);
+		}
 		if (row.voice === "hat-closed") state.openHat?.stop(when);
 		const hit = kit.play(row.voice, ctx, when, gain, panner);
 		if (row.voice === "hat-open") state.openHat = hit;
@@ -65,14 +76,12 @@ export async function renderDrumPatternWav(
 	const cycles = 3;
 	const ctx = new OfflineAudioContext(2, Math.ceil(cycle * cycles * sampleRate), sampleRate);
 	await kit.load(ctx);
-	const master = ctx.createGain();
-	master.gain.value = 0.9;
-	master.connect(ctx.destination);
+	const bus = createDrumBus(ctx, project.fx, project.bpm);
 	const state: DrumPlayState = { openHat: null };
 	for (let c = 0; c < cycles; c++) {
 		for (let s = 0; s < pattern.steps; s++) {
 			const at = c * cycle + drumStepTime(s, project.bpm, project.swing, project.swingGrid);
-			playDrumStep(ctx, kit, master, project, pattern, s, at, state);
+			playDrumStep(ctx, kit, bus, project, pattern, s, at, state);
 		}
 	}
 	const rendered = await ctx.startRendering();

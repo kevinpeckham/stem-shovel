@@ -1,6 +1,9 @@
 # A drum machine (plan)
 
-Status: **beats for a song and the recorder's pattern picker shipped in
+Status: **delay and reverb built** (2026-09-28, unreleased), as planned
+under "Reverb and delay" below: `src/lib/audio/drumBus.ts`, sends per row,
+fx per project, share links version 5.
+**Beats for a song and the recorder's pattern picker shipped in
 v0.48.0** (2026-09-28): `?song=` on the page, `songForBeat` in data.ts,
 Save with a `songId`, a demo from the open pattern through the demo
 upload path; the compact view's pattern ComboBox. Remaining from Phase 3:
@@ -299,10 +302,10 @@ layout and the e2e pass.
 - **Own samples**: a kit per account from uploaded one-shots (Blob,
   counted against storage), and **MIDI input** for finger drumming.
 
-## Reverb and delay (candidate)
+## Reverb and delay (built 2026-09-28)
 
-Both fit the graph as it stands. The row's panner would feed a dry gain
-into the master and two sends: a delay bus (a `DelayNode` with a feedback
+Built as described here. The row's panner feeds a dry gain into the
+master and two sends: a delay bus (a `DelayNode` with a feedback
 gain and a low-pass in the loop, its time in steps so it follows the
 tempo, dotted eighth by default, as Groovie's) and a reverb bus (a
 `ConvolverNode` over an impulse response synthesized at load, a burst of

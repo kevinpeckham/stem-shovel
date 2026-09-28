@@ -27,7 +27,8 @@ import { encodeDrumProject } from "$lib/utils/encodeDrumProject";
 import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
 import { startingDrumProject } from "$lib/utils/startingDrumProject";
 import { tapTempo } from "$lib/utils/tapTempo";
-import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+import type { DrumFx, DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+import { createDrumBus, type DrumBus } from "./drumBus";
 import { playDrumStep, renderDrumPatternWav, type DrumPlayState } from "./drumRender";
 import { drumKit } from "./kits";
 import { startLookahead } from "./lookahead";
@@ -63,7 +64,7 @@ class DrumMachineEngine {
 	loadedName = $state<string | null>(null);
 
 	#ctx: AudioContext | null = null;
-	#master: GainNode | null = null;
+	#bus: DrumBus | null = null;
 	#stopLoop: (() => void) | null = null;
 	#frame: number | null = null;
 	#nextTime = 0;
@@ -114,8 +115,8 @@ class DrumMachineEngine {
 
 	#queue = (until: number) => {
 		const ctx = this.#ctx;
-		const out = this.#master;
-		if (!ctx || !out) return;
+		const bus = this.#bus;
+		if (!ctx || !bus) return;
 		while (this.#nextTime < until) {
 			// A queued pattern takes over at the top of the cycle.
 			if (this.#nextStep === 0 && this.queued !== null) {
@@ -134,7 +135,7 @@ class DrumMachineEngine {
 			playDrumStep(
 				ctx,
 				drumKit(this.project.kit),
-				out,
+				bus,
 				this.project,
 				pattern,
 				s,
@@ -164,11 +165,8 @@ class DrumMachineEngine {
 		this.load();
 		playThroughSilentSwitch();
 		this.#ctx ??= new AudioContext();
-		if (!this.#master) {
-			this.#master = this.#ctx.createGain();
-			this.#master.gain.value = 0.9;
-			this.#master.connect(this.#ctx.destination);
-		}
+		this.#bus ??= createDrumBus(this.#ctx, $state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus.update($state.snapshot(this.project.fx), this.project.bpm);
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
 		this.running = true;
 		this.playing = this.current;
@@ -259,6 +257,23 @@ class DrumMachineEngine {
 		if (!Number.isFinite(v)) return;
 		this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(v)));
 		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+	}
+	/** The effects: the delay's time, feedback and return, the reverb's size and return. */
+	setFx(patch: Partial<DrumFx>) {
+		const fx = { ...this.project.fx, ...patch };
+		fx.delayFeedback = Math.min(0.9, Math.max(0, Math.round(fx.delayFeedback * 100) / 100));
+		for (const k of ["delayReturn", "reverbSize", "reverbReturn"] as const)
+			fx[k] = Math.min(1, Math.max(0, Math.round(fx[k] * 100) / 100));
+		this.project.fx = fx;
+		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+	}
+	setSend(row: number, which: "delaySend" | "reverbSend", v: number) {
+		const r = this.pattern.rows[row];
+		if (!r || !Number.isFinite(v)) return;
+		r[which] = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		this.#save();
 	}
 	/** Tap tempo: the average of the last taps sets the tempo. */
 	tap() {
@@ -344,6 +359,7 @@ class DrumMachineEngine {
 			this.playing = Math.min(this.current, this.project.patterns.length - 1);
 		}
 		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 		if (this.#ctx && (this.project.kit !== previousKit || !this.kitReady)) void this.#readyKit();
 	}
 	setKit(kit: DrumKitId) {
@@ -390,6 +406,8 @@ class DrumMachineEngine {
 			level: 0.8,
 			pan: 0,
 			mute: false,
+			delaySend: 0,
+			reverbSend: 0,
 			cells: Array.from({ length: this.pattern.steps }, () => 0),
 		});
 		this.solo.push(false);

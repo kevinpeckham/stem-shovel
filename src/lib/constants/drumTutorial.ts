@@ -1,5 +1,5 @@
 import type { DrumProject } from "../val/DrumPatternSchema";
-import type { DrumVoiceId } from "./drumMachine";
+import { DEFAULT_DRUM_FX, type DrumVoiceId } from "./drumMachine";
 
 /**
  * The drum machine's walk-through (docs/drum-machine.md): a simple rock
@@ -37,17 +37,58 @@ export const TUTORIAL_PROJECT: DrumProject = {
 	swing: 0,
 	swingGrid: 16,
 	humanize: 0,
+	fx: { ...DEFAULT_DRUM_FX },
 	kit: "acoustic",
 	patterns: [
 		{
 			meter: "4/4",
 			steps: 16,
 			rows: [
-				{ voice: "kick", level: 0.9, pan: 0, mute: false, cells: Array(16).fill(0) },
-				{ voice: "snare", level: 0.8, pan: 0, mute: false, cells: Array(16).fill(0) },
-				{ voice: "hat-closed", level: 0.6, pan: 0, mute: false, cells: Array(16).fill(0) },
-				{ voice: "hat-open", level: 0.5, pan: 0, mute: false, cells: Array(16).fill(0) },
-				{ voice: "crash", level: 0.6, pan: 0, mute: false, cells: Array(16).fill(0) },
+				{
+					voice: "kick",
+					level: 0.9,
+					pan: 0,
+					mute: false,
+					delaySend: 0,
+					reverbSend: 0,
+					cells: Array(16).fill(0),
+				},
+				{
+					voice: "snare",
+					level: 0.8,
+					pan: 0,
+					mute: false,
+					delaySend: 0,
+					reverbSend: 0,
+					cells: Array(16).fill(0),
+				},
+				{
+					voice: "hat-closed",
+					level: 0.6,
+					pan: 0,
+					mute: false,
+					delaySend: 0,
+					reverbSend: 0,
+					cells: Array(16).fill(0),
+				},
+				{
+					voice: "hat-open",
+					level: 0.5,
+					pan: 0,
+					mute: false,
+					delaySend: 0,
+					reverbSend: 0,
+					cells: Array(16).fill(0),
+				},
+				{
+					voice: "crash",
+					level: 0.6,
+					pan: 0,
+					mute: false,
+					delaySend: 0,
+					reverbSend: 0,
+					cells: Array(16).fill(0),
+				},
 			],
 		},
 	],

@@ -20,6 +20,10 @@ Each row has a drum picker (twelve to choose from: kick, snare, closed and open 
 
 **4/4**, **3/4** and **6/8** set the open pattern's meter, and the buttons beside them its length: half a bar (in 4/4), a bar or two bars. In 6/8 the grid shades in sixes rather than fours. Growing a bar to two repeats it, so a fill can go into the second bar; shrinking keeps the start.
 
+## Delay and reverb
+
+Every row has two **sends**, in its mix menu (the sliders button beside M, S and ×): how much of that drum goes to the delay and how much to the reverb, on top of the dry sound. The effects themselves are set once for the whole beat, beside the tempo, swing and humanize sliders (on a phone, in the same menu): the delay's time in the beat (an eighth, a dotted eighth, a quarter, a dotted quarter, a half; it follows the tempo), its feedback and its level; the reverb's size and its level. The two levels are the master controls: turn one down and that effect quietens on every row at once. New beats start with the sends at zero and the levels up, so the first send you raise is heard. The effects travel in links and into WAV downloads.
+
 ## Kits
 
 **Acoustic** and **Room** are kits of real drum recordings, the Room kit with longer, roomier hits; **Electronic** is synthesized in the browser, with no files to load. The kit is a choice for the whole project.

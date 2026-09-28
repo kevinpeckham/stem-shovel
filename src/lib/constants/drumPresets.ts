@@ -1,3 +1,4 @@
+import type { DrumFx } from "../val/DrumPatternSchema";
 import type { DrumKitId, DrumMeterId, DrumSwingGrid, DrumVoiceId } from "./drumMachine";
 
 /**
@@ -13,6 +14,9 @@ export interface DrumPresetRow {
 	cells: string;
 	level?: number;
 	pan?: number;
+	/** Sends to the delay and the reverb, 0 to 1. */
+	delaySend?: number;
+	reverbSend?: number;
 }
 export interface DrumPreset {
 	id: string;
@@ -23,6 +27,8 @@ export interface DrumPreset {
 	/** 16 unless said: a beat with nothing on the sixteenths swings its eighths. */
 	swingGrid?: DrumSwingGrid;
 	humanize?: number;
+	/** The effects, where a preset wants other than the defaults. */
+	fx?: Partial<DrumFx>;
 	kit?: DrumKitId;
 	meter?: DrumMeterId;
 	patterns: DrumPresetRow[][];
@@ -213,7 +219,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 				{ voice: "hat-open", cells: "..x...x...x...x." },
 				{ voice: "hat-closed", cells: "xoxoxoxoxoxoxoxo", level: 0.5 },
 				{ voice: "clap", cells: "....x.......x...", level: 0.6 },
-				{ voice: "rim", cells: "x..x..x.x..x..x.", level: 0.4, pan: -0.4 },
+				{ voice: "rim", cells: "x..x..x.x..x..x.", level: 0.4, pan: -0.4, delaySend: 0.5 },
 			],
 		],
 	},
@@ -240,7 +246,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		patterns: [
 			[
 				{ voice: "kick", cells: "........X......." },
-				{ voice: "rim", cells: "........X......." },
+				{ voice: "rim", cells: "........X.......", delaySend: 0.6, reverbSend: 0.3 },
 				{ voice: "hat-closed", cells: "x.x.x.x.x.x.x.x." },
 				{ voice: "hat-open", cells: "..x...x...x...x.", level: 0.4 },
 			],
@@ -314,7 +320,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.x..." },
-				{ voice: "snare", cells: "......X....." },
+				{ voice: "snare", cells: "......X.....", reverbSend: 0.5 },
 				{ voice: "hat-closed", cells: "x.x.x.x.x.x." },
 				{ voice: "hat-open", cells: "..........x.", level: 0.4 },
 			],

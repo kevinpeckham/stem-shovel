@@ -72,6 +72,32 @@ export const MAX_DRUM_PATTERNS = 8;
  */
 export const DRUM_SWING_GRIDS = [16, 8] as const;
 export type DrumSwingGrid = (typeof DRUM_SWING_GRIDS)[number];
+/**
+ * The delay's time, in sixteenths, so it follows the tempo: an eighth, a
+ * dotted eighth (the classic), a quarter, a dotted quarter, a half. In
+ * share-link order.
+ */
+export const DRUM_DELAY_TIMES = [
+	{ steps: 2, label: "1/8" },
+	{ steps: 3, label: "1/8 dotted" },
+	{ steps: 4, label: "1/4" },
+	{ steps: 6, label: "1/4 dotted" },
+	{ steps: 8, label: "1/2" },
+] as const;
+export type DrumDelayTime = (typeof DRUM_DELAY_TIMES)[number]["steps"];
+export const DRUM_DELAY_STEPS = DRUM_DELAY_TIMES.map((d) => d.steps) as DrumDelayTime[];
+/**
+ * The effects a project starts with: returns up, so the first send that is
+ * raised is heard; a dotted-eighth delay with a moderate feedback; a
+ * medium room. Sends start at zero on every row.
+ */
+export const DEFAULT_DRUM_FX = {
+	delayTime: 3 as DrumDelayTime,
+	delayFeedback: 0.4,
+	delayReturn: 0.8,
+	reverbSize: 0.5,
+	reverbReturn: 0.8,
+};
 /** What a new project and a preset without its own setting start at: enough scatter not to sound like a machine (Kevin's call). */
 export const DEFAULT_HUMANIZE = 0.14;
 /** Humanize at full strength scatters a hit this far in time, either way, and a quarter of its gain. */
@@ -80,10 +106,11 @@ export const DRUM_HUMANIZE_MS = 12;
  * The share-link format's version, the first byte of every link. Version 1
  * carried one pattern with the tempo inside it; version 2 carries a project
  * of patterns with pan per row and humanize; version 3 adds a meter and
- * the 3/4 and 6/8 step counts; version 4 adds the swing grid. A reader
+ * the 3/4 and 6/8 step counts; version 4 adds the swing grid; version 5
+ * adds the effects (sends per row, delay and reverb settings). A reader
  * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 4;
+export const DRUM_PATTERN_VERSION = 5;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
 export const DRUM_GM_NOTES: Record<DrumVoiceId, number> = {
 	kick: 36,

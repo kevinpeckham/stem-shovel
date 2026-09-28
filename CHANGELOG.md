@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Delay and reverb** in the drum machine (docs/drum-machine.md). A mixer bus (`src/lib/audio/drumBus.ts`): each row's panner feeds the dry input and, by two sends per row, a delay bus (a DelayNode with feedback and a low-pass in the loop, timed in sixteenths so it follows the tempo) and a reverb bus (a ConvolverNode over an impulse synthesized at load, no file). Per project the delay's time, feedback and return and the reverb's size and return, the returns being the master effect levels; per row a delay send and a reverb send in the row's mix menu (now at every width). Defaults: sends at zero, returns at 80 %, a dotted-eighth delay, a medium room; the House, Reggae one drop and 6/8 ballad presets use them. Share links move to version 5 (older links and stored projects get the defaults); the offline render shares the bus, so WAV downloads carry the effects; MIDI is unaffected.
+
 ## [0.48.0] - 2026-09-28
 
 ### Added

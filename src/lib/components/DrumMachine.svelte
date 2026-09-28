@@ -9,11 +9,13 @@
 		DRUM_BPM_MIN,
 		DRUM_KITS,
 		DRUM_METERS,
+		DRUM_DELAY_TIMES,
 		DRUM_SWING_GRIDS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
 		MAX_DRUM_ROWS,
 		drumStepsFor,
+		type DrumDelayTime,
 		type DrumSteps,
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
@@ -608,6 +610,84 @@
 				/>
 			</label>
 		{/snippet}
+		{#snippet fxItem()}
+			<div
+				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
+			>
+				<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
+
+				<div class="block" title="Delay time, in the beat">
+					<span class="device-button-label">Delay</span>
+					<ComboBox
+						ariaLabel="Delay time"
+						buttonClasses="!px-2 !py-1 !text-13px"
+						options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
+						value={String(p.fx.delayTime)}
+						onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
+					/>
+				</div>
+				<label class="block">
+					<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="90"
+						step="1"
+						value={Math.round(p.fx.delayFeedback * 100)}
+						oninput={(e) =>
+							drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay feedback"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.delayReturn * 100)}
+						oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay level"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.reverbSize * 100)}
+						oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
+						aria-label="Reverb size"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.reverbReturn * 100)}
+						oninput={(e) =>
+							drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
+						aria-label="Reverb level"
+					/>
+				</label>
+			</div>
+		{/snippet}
 		{#snippet humanizeItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px {tutorial.control === 'humanize' ? HINT : ''}">
 				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
@@ -641,8 +721,8 @@
 				</button>
 				<div class="sm-hidden {tutorial.control === 'humanize' ? HINT : ''}">
 					<ContextMenu
-						ariaLabel="Tempo, swing and humanize"
-						title="Tempo, swing and humanize"
+						ariaLabel="Tempo, swing, humanize and effects"
+						title="Tempo, swing, humanize and effects"
 						iconClass="i-ph-sliders-horizontal"
 						buttonBaseClasses="device-button-lg !min-w-0 px-3"
 						popoverClasses="min-w-64"
@@ -650,6 +730,8 @@
 							{ id: "tempo", kind: "snippet", snippet: tempoItem },
 							{ id: "swing", kind: "snippet", snippet: swingItem },
 							{ id: "humanize", kind: "snippet", snippet: humanizeItem },
+							{ id: "fx-sep", kind: "divider" },
+							{ id: "fx", kind: "snippet", snippet: fxItem },
 						]}
 					/>
 				</div>
@@ -715,7 +797,74 @@
 					/>
 				</label>
 			</div>
-			<!-- bring in range controls as context menu in mobile -->
+		</div>
+
+		<!-- the effects from sm up: the delay's time, feedback and level, the reverb's size and level (a phone has them in the tempo menu) -->
+		<div class="hidden sm-grid gap-3 sm-grid-cols-5 sm-gap-4 text-dark items-end">
+			<div class="block" title="Delay time, in the beat">
+				<span class="device-button-label">Delay</span>
+				<ComboBox
+					ariaLabel="Delay time"
+					buttonClasses="!px-2 !py-1 !text-13px"
+					options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
+					value={String(p.fx.delayTime)}
+					onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
+				/>
+			</div>
+			<label class="block">
+				<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="90"
+					step="1"
+					value={Math.round(p.fx.delayFeedback * 100)}
+					oninput={(e) => drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
+					aria-label="Delay feedback"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Delay level · {Math.round(p.fx.delayReturn * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.fx.delayReturn * 100)}
+					oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
+					aria-label="Delay level"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.fx.reverbSize * 100)}
+					oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
+					aria-label="Reverb size"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label"
+					>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.fx.reverbReturn * 100)}
+					oninput={(e) => drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
+					aria-label="Reverb level"
+				/>
+			</label>
 		</div>
 
 		<!-- kit, steps, meter and patterns -->
@@ -917,7 +1066,7 @@
 							<!-- below lg the row's level and pan live in a menu (the sliders show from lg up) -->
 							{#snippet rowMix()}
 								<div class="grid gap-3 px-3 py-2 w-56">
-									<label class="grid gap-1 text-13px">
+									<label class="grid gap-1 text-13px lg-hidden">
 										<span>Level · {Math.round(row.level * 100)}%</span>
 										<input
 											class="w-full accent-maximumYellow"
@@ -930,7 +1079,7 @@
 											aria-label="Level of {voiceLabel(row.voice)}"
 										/>
 									</label>
-									<label class="grid gap-1 text-13px">
+									<label class="grid gap-1 text-13px lg-hidden">
 										<span
 											>Pan · {row.pan === 0
 												? "centre"
@@ -950,12 +1099,40 @@
 											aria-label="Pan of {voiceLabel(row.voice)}"
 										/>
 									</label>
+									<label class="grid gap-1 text-13px">
+										<span>Delay send · {Math.round(row.delaySend * 100)}%</span>
+										<input
+											class="w-full accent-maximumYellow"
+											type="range"
+											min="0"
+											max="100"
+											step="1"
+											value={Math.round(row.delaySend * 100)}
+											oninput={(e) =>
+												drumMachine.setSend(r, "delaySend", Number(e.currentTarget.value) / 100)}
+											aria-label="Delay send of {voiceLabel(row.voice)}"
+										/>
+									</label>
+									<label class="grid gap-1 text-13px">
+										<span>Reverb send · {Math.round(row.reverbSend * 100)}%</span>
+										<input
+											class="w-full accent-maximumYellow"
+											type="range"
+											min="0"
+											max="100"
+											step="1"
+											value={Math.round(row.reverbSend * 100)}
+											oninput={(e) =>
+												drumMachine.setSend(r, "reverbSend", Number(e.currentTarget.value) / 100)}
+											aria-label="Reverb send of {voiceLabel(row.voice)}"
+										/>
+									</label>
 								</div>
 							{/snippet}
-							<div class="lg-hidden">
+							<div>
 								<ContextMenu
-									ariaLabel="Level and pan of {voiceLabel(row.voice)}"
-									title="Level and pan"
+									ariaLabel="Mix of {voiceLabel(row.voice)}"
+									title="Level, pan and effect sends"
 									iconClass="i-ph-sliders-horizontal"
 									buttonBaseClasses="device-button-xs md-device-button-sm"
 									items={[{ id: "mix", kind: "snippet", snippet: rowMix }]}

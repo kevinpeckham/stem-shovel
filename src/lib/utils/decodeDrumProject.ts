@@ -1,6 +1,8 @@
 import * as v from "valibot";
 import {
 	DRUM_BPM_MIN,
+	DEFAULT_DRUM_FX,
+	DRUM_DELAY_STEPS,
 	DRUM_KIT_IDS,
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
@@ -34,20 +36,23 @@ export function decodeDrumProject(encoded: string): DrumProject | null {
 		if (version === 2) return decodeV2(r);
 		if (version === 3) return decodeV3(r);
 		if (version === 4) return decodeV4(r);
+		if (version === 5) return decodeV5(r);
 		return null;
 	} catch {
 		return null;
 	}
 }
 
-function readRow(r: BitReader, steps: number, withPan: boolean) {
+function readRow(r: BitReader, steps: number, withPan: boolean, withSends = false) {
 	const voice = DRUM_VOICE_IDS[r.read(4)];
 	const level = r.read(7) / 100;
 	const pan = withPan ? (r.read(8) - 100) / 100 : 0;
 	const mute = r.read(1) === 1;
+	const delaySend = withSends ? r.read(7) / 100 : 0;
+	const reverbSend = withSends ? r.read(7) / 100 : 0;
 	const cells = [];
 	for (let i = 0; i < steps; i++) cells.push(r.read(2));
-	return { voice, level, pan, mute, cells };
+	return { voice, level, pan, mute, delaySend, reverbSend, cells };
 }
 
 function decodeV1(r: BitReader): DrumProject | null {
@@ -59,19 +64,29 @@ function decodeV1(r: BitReader): DrumProject | null {
 	if (!steps || !kit) return null;
 	const rows = [];
 	for (let n = 0; n < count; n++) {
-		const { pan: _pan, ...row } = readRow(r, steps, false);
+		const { pan: _pan, delaySend: _d, reverbSend: _v, ...row } = readRow(r, steps, false);
 		rows.push(row);
 	}
 	const parsed = v.safeParse(DrumProjectV1Schema, { v: 1, bpm, swing, steps, kit, rows });
 	return parsed.success ? upgradeDrumProject(parsed.output) : null;
 }
 
-/** Versions 2 to 4 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid. */
-function decodeProject(r: BitReader, version: 2 | 3 | 4): DrumProject | null {
+/** Versions 2 to 5 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid, 5 the effects. */
+function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5): DrumProject | null {
 	const bpm = r.read(8) + DRUM_BPM_MIN;
 	const swing = r.read(7) / 100;
 	const humanize = r.read(7) / 100;
 	const swingGrid = version >= 4 ? DRUM_SWING_GRIDS[r.read(1)] : 16;
+	const fx =
+		version >= 5
+			? {
+					delayTime: DRUM_DELAY_STEPS[r.read(3)],
+					delayFeedback: r.read(7) / 100,
+					delayReturn: r.read(7) / 100,
+					reverbSize: r.read(7) / 100,
+					reverbReturn: r.read(7) / 100,
+				}
+			: { ...DEFAULT_DRUM_FX };
 	const kit = DRUM_KIT_IDS[r.read(2)];
 	const patternCount = r.read(3) + 1;
 	if (!kit) return null;
@@ -82,7 +97,7 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4): DrumProject | null {
 		const rowCount = r.read(4);
 		if (!steps || !meter) return null;
 		const rows = [];
-		for (let i = 0; i < rowCount; i++) rows.push(readRow(r, steps, true));
+		for (let i = 0; i < rowCount; i++) rows.push(readRow(r, steps, true, version >= 5));
 		patterns.push({ meter, steps, rows });
 	}
 	const parsed = v.safeParse(DrumProjectSchema, {
@@ -91,6 +106,7 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4): DrumProject | null {
 		swing,
 		swingGrid,
 		humanize,
+		fx,
 		kit,
 		patterns,
 	});
@@ -99,3 +115,4 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4): DrumProject | null {
 const decodeV2 = (r: BitReader) => decodeProject(r, 2);
 const decodeV3 = (r: BitReader) => decodeProject(r, 3);
 const decodeV4 = (r: BitReader) => decodeProject(r, 4);
+const decodeV5 = (r: BitReader) => decodeProject(r, 5);
