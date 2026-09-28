@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-09-28
+
 ### Changed
 
 - **Humanize starts at 14 %** for a new project and for presets that set none (`DEFAULT_HUMANIZE`), so a beat does not sound like a machine out of the box (Kevin's call).
