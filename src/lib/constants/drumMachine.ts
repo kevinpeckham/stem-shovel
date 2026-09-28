@@ -65,6 +65,8 @@ export const DRUM_VELOCITY_MAX = 3;
 export const DRUM_VELOCITY_NORMAL = 2;
 /** Patterns to a project: the tabs above the grid. */
 export const MAX_DRUM_PATTERNS = 8;
+/** What a new project and a preset without its own setting start at: enough scatter not to sound like a machine (Kevin's call). */
+export const DEFAULT_HUMANIZE = 0.14;
 /** Humanize at full strength scatters a hit this far in time, either way, and a quarter of its gain. */
 export const DRUM_HUMANIZE_MS = 12;
 /**

@@ -388,9 +388,16 @@
 	</div>
 {:else}
 	<div
-		class="device-chrome grid grid-cols-1 sm-grid-cols-1 gap-4 px-3 py-4 sm-px-5 sm-py-5 w-full max-w-full overflow-hidden"
+		class="device-chrome grid grid-cols-1 sm-grid-cols-1 gap-4 pb-14 px-3 py-4 sm-px-5 sm-pt-5 w-full max-w-full overflow-hidden relative"
 		aria-label="Drum machine"
 	>
+		<!-- branding -->
+		<div
+			class="absolute bottom-7 left-5 text-right text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+		>
+			SS Drumbo 001
+		</div>
+
 		<!-- the readout -->
 		<div class="grid grid-cols-1 sm-device-window-bevel-md max-w-full w-full overflow-hidden">
 			<div
@@ -435,7 +442,9 @@
 
 		<!-- a phone: Play / Stop under the display too, a thumb away from the top of the grid (the foot has the other) -->
 		<button
-			class="sm-hidden device-button-sm w-full {drumMachine.running ? 'text-accent' : ''}"
+			class="sm-hidden device-button-sm md-device-button-lg w-full text-15px {drumMachine.running
+				? 'text-accent'
+				: ''}"
 			type="button"
 			aria-pressed={drumMachine.running}
 			title="Play or stop"
@@ -501,7 +510,7 @@
 			<div class="flex items-center gap-2">
 				<button
 					aria-label="Tempo"
-					class="device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30 grow sm-grow-0"
+					class="device-button-lg text-center text-14px sm-text-left sm-device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
 					type="button"
 					onclick={() => drumMachine.tap()}
 					title="Tap the tempo"
@@ -513,7 +522,7 @@
 						ariaLabel="Tempo, swing and humanize"
 						title="Tempo, swing and humanize"
 						iconClass="i-ph-sliders-horizontal"
-						buttonBaseClasses="device-button-xs px-3"
+						buttonBaseClasses="device-button-lg !min-w-0 px-3"
 						popoverClasses="min-w-64"
 						items={[
 							{ id: "tempo", kind: "snippet", snippet: tempoItem },
@@ -890,9 +899,9 @@
 		</div>
 
 		<!-- Pattern & Transport -->
-		<div class="flex justify-between">
-			<!-- pattern controls -->
-			<div class="flex flex-wrap items-center gap-1">
+		<div class="grid grid-cols-1 gap-y-5 sm-flex justify-between">
+			<!-- grid controls -->
+			<div class="flex flex-wrap items-center gap-2 sm-gap-x-2 md-gap-x-3">
 				<!-- add row -->
 				<button
 					class="device-button-xs px-3 md-device-button-sm"
@@ -926,7 +935,20 @@
 					Undo
 				</button>
 
-				<!-- presets -->
+				<ContextMenu
+					ariaLabel="More"
+					position="top left"
+					title="Save, share and download"
+					buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
+					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
+					items={moreItems}
+				/>
+			</div>
+
+			<!-- transport -->
+			<div
+				class="grid grid-cols-1 sm-flex items-center gap-5 mt-5 sm-mt-0 sm-gap-2 md-gap-3 mb-8 sm-mb-0"
+			>
 				<div
 					class=""
 					onpointerdown={(e) => (addPresets = e.shiftKey)}
@@ -939,30 +961,14 @@
 						title="Preset beats"
 						iconClass="i-ph-music-notes"
 						label="Presets"
-						buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
+						buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm "
 						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={presetItems}
 					/>
 				</div>
 
-				<ContextMenu
-					ariaLabel="More"
-					position="top left"
-					title="Save, share and download"
-					buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
-					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
-					items={moreItems}
-				/>
-			</div>
-
-			<div class="flex items-center gap-4">
-				<div
-					class="text-right text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
-				>
-					SS Drumbo 001
-				</div>
 				<button
-					class="device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
+					class="device-button-lg sm-device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
 						? 'text-accent'
 						: ''} {tutorial.control === 'play' ? HINT : ''}"
 					type="button"

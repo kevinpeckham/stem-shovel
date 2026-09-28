@@ -1,5 +1,6 @@
 import { DRUM_STEP_CHOICES, type DrumSteps, type DrumVoiceId } from "$lib/constants/drumMachine";
 import type { DrumPreset } from "$lib/constants/drumPresets";
+import { DEFAULT_HUMANIZE } from "$lib/constants/drumMachine";
 import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
 
 /** The kit's usual balance per voice, for a preset row that names no level. */
@@ -52,7 +53,7 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 		v: 2,
 		bpm: preset.bpm,
 		swing: preset.swing ?? 0,
-		humanize: preset.humanize ?? 0,
+		humanize: preset.humanize ?? DEFAULT_HUMANIZE,
 		kit: preset.kit ?? "acoustic",
 		patterns,
 	};

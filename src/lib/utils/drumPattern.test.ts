@@ -20,7 +20,8 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
 const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
-		project: startingDrumProject,
+		// The starting pattern as it was shared then: no humanize (a version 1 link has none).
+		project: () => ({ ...startingDrumProject(), humanize: 0 }),
 		version: 1,
 	},
 	{

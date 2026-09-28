@@ -19,7 +19,7 @@ import {
 	saveDrumMachinePreferences,
 } from "$lib/utils/drumMachinePreferences";
 import { drumPresetProject } from "$lib/utils/drumPresetProject";
-import { drumStepTime } from "$lib/utils/drumStepTime";
+import { drumSwingDelay } from "$lib/utils/drumSwingDelay";
 import { emptyDrumPattern } from "$lib/utils/emptyDrumPattern";
 import { encodeDrumMidi } from "$lib/utils/encodeDrumMidi";
 import { encodeDrumProject } from "$lib/utils/encodeDrumProject";
@@ -126,8 +126,8 @@ class DrumMachineEngine {
 			const steps = pattern.steps;
 			const s = this.#nextStep % steps;
 			const stepSeconds = 60 / this.project.bpm / 4;
-			const at =
-				this.#nextTime + drumStepTime(s, this.project.bpm, this.project.swing) - s * stepSeconds;
+			// The step's straight time, plus swing's delay on the odd sixteenths.
+			const at = this.#nextTime + drumSwingDelay(s, stepSeconds, this.project.swing);
 			const solo = index === this.current ? this.solo : [];
 			playDrumStep(
 				ctx,

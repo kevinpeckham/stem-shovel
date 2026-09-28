@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import { describe, expect, test } from "vite-plus/test";
-import { DRUM_METERS, drumStepsFor } from "$lib/constants/drumMachine";
+import { DEFAULT_HUMANIZE, DRUM_METERS, drumStepsFor } from "$lib/constants/drumMachine";
 import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
 import { DrumProjectSchema } from "$lib/val/DrumPatternSchema";
 import { decodeDrumProject } from "./decodeDrumProject";
@@ -15,6 +15,12 @@ describe("the preset beats", () => {
 			expect(parsed.success, preset.id).toBe(true);
 			expect(decodeDrumProject(encodeDrumProject(project)), preset.id).toEqual(project);
 		}
+	});
+	test("a preset without its own humanize gets the default, one with keeps it", () => {
+		const funk = DRUM_PRESETS.find((p) => p.id === "funk")!;
+		const boomBap = DRUM_PRESETS.find((p) => p.id === "boom-bap")!;
+		expect(drumPresetProject(funk).humanize).toBe(DEFAULT_HUMANIZE);
+		expect(drumPresetProject(boomBap).humanize).toBe(boomBap.humanize);
 	});
 	test("ids are unique, styles are known, meters fit their steps", () => {
 		const ids = new Set(DRUM_PRESETS.map((p) => p.id));

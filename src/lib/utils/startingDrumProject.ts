@@ -1,4 +1,4 @@
-import { DRUM_VELOCITY_NORMAL } from "$lib/constants/drumMachine";
+import { DEFAULT_HUMANIZE, DRUM_VELOCITY_NORMAL } from "$lib/constants/drumMachine";
 import type { DrumProject, DrumRow } from "$lib/val/DrumPatternSchema";
 
 /** A row from a list of the steps it plays on. */
@@ -12,8 +12,9 @@ function row(voice: DrumRow["voice"], steps: number, on: number[], level = 0.8):
 /**
  * What the page opens with the first time: a plain four-to-the-floor bar
  * at 100 bpm, so the first press of Play makes a sound (the same thinking
- * as the tuner's demo on the front page). Eight rows in the kit's usual
- * order, four of them empty for the person to fill.
+ * as the tuner's demo on the front page), a little humanize so it does not
+ * sound like a machine. Eight rows in the kit's usual order, four of them
+ * empty for the person to fill.
  */
 export function startingDrumProject(): DrumProject {
 	const steps = 16;
@@ -21,7 +22,7 @@ export function startingDrumProject(): DrumProject {
 		v: 2,
 		bpm: 100,
 		swing: 0,
-		humanize: 0,
+		humanize: DEFAULT_HUMANIZE,
 		kit: "acoustic",
 		patterns: [
 			{
