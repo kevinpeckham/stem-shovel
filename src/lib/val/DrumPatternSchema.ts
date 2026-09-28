@@ -39,6 +39,8 @@ export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
 
 /** The project's effects: the delay's time (sixteenths), feedback and return, the reverb's size and return. */
 export const DrumFxSchema = v.object({
+	/** Off: the buses are silent and the master controls hidden. */
+	enabled: v.optional(v.boolean(), true),
 	delayTime: v.picklist(DRUM_DELAY_STEPS),
 	delayFeedback: v.pipe(v.number(), v.minValue(0), v.maxValue(0.9)),
 	delayReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),

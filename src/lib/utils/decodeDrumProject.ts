@@ -80,6 +80,7 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5): DrumProject | null
 	const fx =
 		version >= 5
 			? {
+					enabled: r.read(1) === 1,
 					delayTime: DRUM_DELAY_STEPS[r.read(3)],
 					delayFeedback: r.read(7) / 100,
 					delayReturn: r.read(7) / 100,

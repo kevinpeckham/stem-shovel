@@ -1,5 +1,6 @@
 import {
 	DEFAULT_DRUM_FX,
+	DEFAULT_DRUM_SENDS,
 	DEFAULT_HUMANIZE,
 	DRUM_VELOCITY_NORMAL,
 } from "$lib/constants/drumMachine";
@@ -10,7 +11,7 @@ function row(voice: DrumRow["voice"], steps: number, on: number[], level = 0.8):
 	const cells = Array.from({ length: steps }, (_, i) =>
 		on.includes(i) ? DRUM_VELOCITY_NORMAL : 0,
 	);
-	return { voice, level, pan: 0, mute: false, delaySend: 0, reverbSend: 0, cells };
+	return { voice, level, pan: 0, mute: false, ...DEFAULT_DRUM_SENDS[voice], cells };
 }
 
 /**

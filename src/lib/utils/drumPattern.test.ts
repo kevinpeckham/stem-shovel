@@ -24,7 +24,12 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
 		// The starting pattern as it was shared then: no humanize (a version 1 link has none).
-		project: () => ({ ...startingDrumProject(), humanize: 0 }),
+		project: () => {
+			const p = startingDrumProject();
+			p.humanize = 0;
+			for (const r of p.patterns[0]!.rows) Object.assign(r, { delaySend: 0, reverbSend: 0 });
+			return p;
+		},
 		version: 1,
 	},
 	{
@@ -207,7 +212,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 		}),
 	},
 	{
-		link: "BVQoONvGoPEAIMjIACoCAVkjIJkCCA",
+		link: "BVQoOG3jUHiAEGRkABUBAKyRkEyBBAA",
 		version: 5,
 		project: () => ({
 			v: 2,
@@ -216,6 +221,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			swingGrid: 16,
 			humanize: 0.14,
 			fx: {
+				enabled: false,
 				delayTime: 6,
 				delayFeedback: 0.55,
 				delayReturn: 0.7,
@@ -290,7 +296,14 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 	});
 	test("carries the effects and the sends", () => {
 		const p = startingDrumProject();
-		p.fx = { delayTime: 8, delayFeedback: 0.9, delayReturn: 0.33, reverbSize: 1, reverbReturn: 0 };
+		p.fx = {
+			enabled: true,
+			delayTime: 8,
+			delayFeedback: 0.9,
+			delayReturn: 0.33,
+			reverbSize: 1,
+			reverbReturn: 0,
+		};
 		p.patterns[0]!.rows[1]!.delaySend = 0.45;
 		p.patterns[0]!.rows[1]!.reverbSend = 1;
 		expect(decodeDrumProject(encodeDrumProject(p))).toEqual(p);

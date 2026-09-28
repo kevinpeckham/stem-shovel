@@ -1,6 +1,12 @@
 import * as v from "valibot";
 import { describe, expect, test } from "vite-plus/test";
-import { DEFAULT_HUMANIZE, DRUM_METERS, drumStepsFor } from "$lib/constants/drumMachine";
+import {
+	DEFAULT_HUMANIZE,
+	DRUM_METERS,
+	drumStepsFor,
+	DEFAULT_DRUM_SENDS,
+} from "$lib/constants/drumMachine";
+import { startingDrumProject } from "./startingDrumProject";
 import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
 import { DrumProjectSchema } from "$lib/val/DrumPatternSchema";
 import { decodeDrumProject } from "./decodeDrumProject";
@@ -81,5 +87,24 @@ describe("meters", () => {
 		expect(drumStepsFor("3/4")).toEqual([12, 24]);
 		expect(drumStepsFor("6/8")).toEqual([12, 24]);
 		expect(DRUM_METERS.find((m) => m.id === "6/8")!.group).toBe(6);
+	});
+});
+
+describe("effect defaults", () => {
+	test("a new project starts with the effects on, both master levels at zero, and every drum sending a little", () => {
+		const p = startingDrumProject();
+		expect(p.fx.enabled).toBe(true);
+		expect(p.fx.delayReturn).toBe(0);
+		expect(p.fx.reverbReturn).toBe(0);
+		for (const r of p.patterns[0]!.rows)
+			expect(r.delaySend + r.reverbSend, r.voice).toBeGreaterThan(0);
+		expect(p.patterns[0]!.rows.find((r) => r.voice === "snare")!.reverbSend).toBe(
+			DEFAULT_DRUM_SENDS.snare.reverbSend,
+		);
+	});
+	test("a preset row without its own sends gets its drum's defaults", () => {
+		const funk = drumPresetProject(DRUM_PRESETS.find((p) => p.id === "funk")!);
+		const snare = funk.patterns[0]!.rows.find((r) => r.voice === "snare")!;
+		expect(snare.reverbSend).toBe(DEFAULT_DRUM_SENDS.snare.reverbSend);
 	});
 });

@@ -15,7 +15,7 @@ import { BitWriter } from "./bitWriter";
  * A project as the string a share link carries (docs/drum-machine.md):
  * bits, base64url. Version 5 is a version byte, then the tempo above the
  * minimum (8 bits), swing and humanize in hundredths (7 each), the swing
- * grid (1), the effects (delay time choice 3, feedback, delay return,
+ * grid (1), the effects (on 1, delay time choice 3, feedback, delay return,
  * reverb size and reverb return in hundredths, 7 each), the kit
  * (2), the pattern count less one (3), and for each pattern its meter (2),
  * steps choice (3) and row count (4), and for each row its voice (4), level in
@@ -31,6 +31,7 @@ export function encodeDrumProject(p: DrumProject): string {
 	w.write(Math.round(p.swing * 100), 7);
 	w.write(Math.round(p.humanize * 100), 7);
 	w.write(DRUM_SWING_GRIDS.indexOf(p.swingGrid), 1);
+	w.write(p.fx.enabled ? 1 : 0, 1);
 	w.write(DRUM_DELAY_STEPS.indexOf(p.fx.delayTime), 3);
 	w.write(Math.round(p.fx.delayFeedback * 100), 7);
 	w.write(Math.round(p.fx.delayReturn * 100), 7);

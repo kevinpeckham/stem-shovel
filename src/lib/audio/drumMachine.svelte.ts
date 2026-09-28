@@ -1,4 +1,5 @@
 import {
+	DEFAULT_DRUM_SENDS,
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
 	DRUM_VELOCITY_MAX,
@@ -406,8 +407,7 @@ class DrumMachineEngine {
 			level: 0.8,
 			pan: 0,
 			mute: false,
-			delaySend: 0,
-			reverbSend: 0,
+			...DEFAULT_DRUM_SENDS[voice],
 			cells: Array.from({ length: this.pattern.steps }, () => 0),
 		});
 		this.solo.push(false);

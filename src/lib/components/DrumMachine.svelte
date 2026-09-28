@@ -615,77 +615,94 @@
 				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
 			>
 				<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
-
-				<div class="block" title="Delay time, in the beat">
-					<span class="device-button-label">Delay</span>
-					<ComboBox
-						ariaLabel="Delay time"
-						buttonClasses="!px-2 !py-1 !text-13px"
-						options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
-						value={String(p.fx.delayTime)}
-						onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
-					/>
-				</div>
-				<label class="block">
-					<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="90"
-						step="1"
-						value={Math.round(p.fx.delayFeedback * 100)}
-						oninput={(e) =>
-							drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
-						aria-label="Delay feedback"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label"
-						>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.delayReturn * 100)}
-						oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
-						aria-label="Delay level"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.reverbSize * 100)}
-						oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
-						aria-label="Reverb size"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label"
-						>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.reverbReturn * 100)}
-						oninput={(e) =>
-							drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
-						aria-label="Reverb level"
-					/>
-				</label>
+				<button
+					class="device-button-xs px-3 justify-self-start {p.fx.enabled ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={p.fx.enabled}
+					title={p.fx.enabled
+						? "Effects on: turn the delay and the reverb off"
+						: "Effects off: turn them on"}
+					onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
+				>
+					<span class="i-ph-sparkle" aria-hidden="true"></span>
+					Effects {p.fx.enabled ? "on" : "off"}
+				</button>
+				{#if p.fx.enabled}
+					<div class="block" title="Delay time, in the beat">
+						<span class="device-button-label">Delay</span>
+						<ComboBox
+							ariaLabel="Delay time"
+							buttonClasses="!px-2 !py-1 !text-13px"
+							options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
+							value={String(p.fx.delayTime)}
+							onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
+						/>
+					</div>
+					<label class="block">
+						<span class="device-button-label"
+							>Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
+						>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="0"
+							max="90"
+							step="1"
+							value={Math.round(p.fx.delayFeedback * 100)}
+							oninput={(e) =>
+								drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
+							aria-label="Delay feedback"
+						/>
+					</label>
+					<label class="block">
+						<span class="device-button-label"
+							>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
+						>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="0"
+							max="100"
+							step="1"
+							value={Math.round(p.fx.delayReturn * 100)}
+							oninput={(e) =>
+								drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
+							aria-label="Delay level"
+						/>
+					</label>
+					<label class="block">
+						<span class="device-button-label"
+							>Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
+						>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="0"
+							max="100"
+							step="1"
+							value={Math.round(p.fx.reverbSize * 100)}
+							oninput={(e) =>
+								drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
+							aria-label="Reverb size"
+						/>
+					</label>
+					<label class="block">
+						<span class="device-button-label"
+							>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
+						>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="0"
+							max="100"
+							step="1"
+							value={Math.round(p.fx.reverbReturn * 100)}
+							oninput={(e) =>
+								drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
+							aria-label="Reverb level"
+						/>
+					</label>
+				{/if}
 			</div>
 		{/snippet}
 		{#snippet humanizeItem()}
@@ -799,72 +816,96 @@
 			</div>
 		</div>
 
-		<!-- the effects from sm up: the delay's time, feedback and level, the reverb's size and level (a phone has them in the tempo menu) -->
-		<div class="hidden sm-grid gap-3 sm-grid-cols-5 sm-gap-4 text-dark items-end">
-			<div class="block" title="Delay time, in the beat">
-				<span class="device-button-label">Delay</span>
-				<ComboBox
-					ariaLabel="Delay time"
-					buttonClasses="!px-2 !py-1 !text-13px"
-					options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
-					value={String(p.fx.delayTime)}
-					onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
-				/>
-			</div>
-			<label class="block">
-				<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="90"
-					step="1"
-					value={Math.round(p.fx.delayFeedback * 100)}
-					oninput={(e) => drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
-					aria-label="Delay feedback"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Delay level · {Math.round(p.fx.delayReturn * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.fx.delayReturn * 100)}
-					oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
-					aria-label="Delay level"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.fx.reverbSize * 100)}
-					oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
-					aria-label="Reverb size"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label"
-					>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.fx.reverbReturn * 100)}
-					oninput={(e) => drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
-					aria-label="Reverb level"
-				/>
-			</label>
+		<!-- the effects from sm up: a master on / off, then the delay's time, feedback and level and the reverb's size and level while on (a phone has them in the tempo menu) -->
+		<div
+			class="hidden sm-grid gap-3 sm-grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] sm-gap-4 text-dark items-end"
+		>
+			<button
+				class="device-button-xs md-device-button-sm px-3 self-end {p.fx.enabled
+					? 'text-accent'
+					: ''}"
+				type="button"
+				aria-pressed={p.fx.enabled}
+				title={p.fx.enabled
+					? "Effects on: turn the delay and the reverb off"
+					: "Effects off: turn them on"}
+				onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
+			>
+				<span class="i-ph-sparkle" aria-hidden="true"></span>
+				Effects {p.fx.enabled ? "on" : "off"}
+			</button>
+			{#if p.fx.enabled}
+				<div class="block" title="Delay time, in the beat">
+					<span class="device-button-label">Delay</span>
+					<ComboBox
+						ariaLabel="Delay time"
+						buttonClasses="!px-2 !py-1 !text-13px"
+						options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
+						value={String(p.fx.delayTime)}
+						onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
+					/>
+				</div>
+				<label class="block">
+					<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="90"
+						step="1"
+						value={Math.round(p.fx.delayFeedback * 100)}
+						oninput={(e) =>
+							drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay feedback"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.delayReturn * 100)}
+						oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay level"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.reverbSize * 100)}
+						oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
+						aria-label="Reverb size"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.fx.reverbReturn * 100)}
+						oninput={(e) =>
+							drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
+						aria-label="Reverb level"
+					/>
+				</label>
+			{/if}
 		</div>
 
 		<!-- kit, steps, meter and patterns -->

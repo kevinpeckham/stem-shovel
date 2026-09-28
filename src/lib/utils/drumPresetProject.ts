@@ -1,6 +1,6 @@
 import { DRUM_STEP_CHOICES, type DrumSteps, type DrumVoiceId } from "$lib/constants/drumMachine";
 import type { DrumPreset } from "$lib/constants/drumPresets";
-import { DEFAULT_DRUM_FX, DEFAULT_HUMANIZE } from "$lib/constants/drumMachine";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS, DEFAULT_HUMANIZE } from "$lib/constants/drumMachine";
 import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
 
 /** The kit's usual balance per voice, for a preset row that names no level. */
@@ -44,8 +44,8 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 					level: row.level ?? USUAL_LEVEL[row.voice] ?? 0.8,
 					pan: row.pan ?? 0,
 					mute: false,
-					delaySend: row.delaySend ?? 0,
-					reverbSend: row.reverbSend ?? 0,
+					delaySend: row.delaySend ?? DEFAULT_DRUM_SENDS[row.voice].delaySend,
+					reverbSend: row.reverbSend ?? DEFAULT_DRUM_SENDS[row.voice].reverbSend,
 					cells,
 				};
 			}),

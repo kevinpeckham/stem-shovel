@@ -87,16 +87,34 @@ export const DRUM_DELAY_TIMES = [
 export type DrumDelayTime = (typeof DRUM_DELAY_TIMES)[number]["steps"];
 export const DRUM_DELAY_STEPS = DRUM_DELAY_TIMES.map((d) => d.steps) as DrumDelayTime[];
 /**
- * The effects a project starts with: returns up, so the first send that is
- * raised is heard; a dotted-eighth delay with a moderate feedback; a
- * medium room. Sends start at zero on every row.
+ * The effects a project starts with: on, with both returns at zero, so a
+ * beat starts dry and the first master level someone raises is heard at
+ * once, because every drum already sends a little (DEFAULT_DRUM_SENDS);
+ * a dotted-eighth delay with a moderate feedback; a medium room. Kevin's
+ * call: the master controls are found first, the sends later.
  */
 export const DEFAULT_DRUM_FX = {
+	enabled: true,
 	delayTime: 3 as DrumDelayTime,
 	delayFeedback: 0.4,
-	delayReturn: 0.8,
+	delayReturn: 0,
 	reverbSize: 0.5,
-	reverbReturn: 0.8,
+	reverbReturn: 0,
+};
+/** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks dry, rims into the delay. */
+export const DEFAULT_DRUM_SENDS: Record<DrumVoiceId, { delaySend: number; reverbSend: number }> = {
+	kick: { delaySend: 0, reverbSend: 0.05 },
+	snare: { delaySend: 0.15, reverbSend: 0.4 },
+	"hat-closed": { delaySend: 0.1, reverbSend: 0.15 },
+	"hat-open": { delaySend: 0.15, reverbSend: 0.25 },
+	clap: { delaySend: 0.2, reverbSend: 0.45 },
+	rim: { delaySend: 0.45, reverbSend: 0.2 },
+	"tom-low": { delaySend: 0.1, reverbSend: 0.3 },
+	"tom-mid": { delaySend: 0.1, reverbSend: 0.3 },
+	"tom-high": { delaySend: 0.1, reverbSend: 0.3 },
+	ride: { delaySend: 0.1, reverbSend: 0.3 },
+	crash: { delaySend: 0.1, reverbSend: 0.35 },
+	cowbell: { delaySend: 0.35, reverbSend: 0.15 },
 };
 /** What a new project and a preset without its own setting start at: enough scatter not to sound like a machine (Kevin's call). */
 export const DEFAULT_HUMANIZE = 0.14;

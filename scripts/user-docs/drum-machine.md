@@ -22,7 +22,7 @@ Each row has a drum picker (twelve to choose from: kick, snare, closed and open 
 
 ## Delay and reverb
 
-Every row has two **sends**, in its mix menu (the sliders button beside M, S and ×): how much of that drum goes to the delay and how much to the reverb, on top of the dry sound. The effects themselves are set once for the whole beat, beside the tempo, swing and humanize sliders (on a phone, in the same menu): the delay's time in the beat (an eighth, a dotted eighth, a quarter, a dotted quarter, a half; it follows the tempo), its feedback and its level; the reverb's size and its level. The two levels are the master controls: turn one down and that effect quietens on every row at once. New beats start with the sends at zero and the levels up, so the first send you raise is heard. The effects travel in links and into WAV downloads.
+**Effects on / off**, beside the tempo, swing and humanize sliders (on a phone, in the same menu), shows or hides the effects and silences them when off. On, the settings are set once for the whole beat: the delay's time in the beat (an eighth, a dotted eighth, a quarter, a dotted quarter, a half; it follows the tempo), its feedback and its **level**; the reverb's size and its **level**. The two levels are the master controls and start at zero, so a new beat is dry until you raise one, and then you hear it at once, because every drum already sends a little to each effect: snares and claps more, kicks almost nothing, rims mostly into the delay. Each row's own **sends** are in its mix menu (the sliders button beside M, S and ×): how much of that drum goes to the delay and how much to the reverb, on top of the dry sound. The effects travel in links and into WAV downloads.
 
 ## Kits
 

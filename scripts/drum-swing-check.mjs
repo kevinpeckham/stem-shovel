@@ -23,6 +23,7 @@ await page.waitForLoadState("networkidle");
 
 const result = await page.evaluate(async () => {
 	const { renderDrumPatternWav } = await import("/src/lib/audio/drumRender.ts");
+	const { DEFAULT_DRUM_FX } = await import("/src/lib/constants/drumMachine.ts");
 	const onsets = async (cells, swing, swingGrid = 16) => {
 		const pattern = {
 			meter: "4/4",
@@ -35,6 +36,7 @@ const result = await page.evaluate(async () => {
 			swing,
 			swingGrid,
 			humanize: 0,
+			fx: { ...DEFAULT_DRUM_FX },
 			kit: "electronic",
 			patterns: [pattern],
 		};

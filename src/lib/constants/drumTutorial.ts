@@ -1,5 +1,5 @@
 import type { DrumProject } from "../val/DrumPatternSchema";
-import { DEFAULT_DRUM_FX, type DrumVoiceId } from "./drumMachine";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS, type DrumVoiceId } from "./drumMachine";
 
 /**
  * The drum machine's walk-through (docs/drum-machine.md): a simple rock
@@ -49,8 +49,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 					level: 0.9,
 					pan: 0,
 					mute: false,
-					delaySend: 0,
-					reverbSend: 0,
+					...DEFAULT_DRUM_SENDS["kick"],
 					cells: Array(16).fill(0),
 				},
 				{
@@ -58,8 +57,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 					level: 0.8,
 					pan: 0,
 					mute: false,
-					delaySend: 0,
-					reverbSend: 0,
+					...DEFAULT_DRUM_SENDS["snare"],
 					cells: Array(16).fill(0),
 				},
 				{
@@ -67,8 +65,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 					level: 0.6,
 					pan: 0,
 					mute: false,
-					delaySend: 0,
-					reverbSend: 0,
+					...DEFAULT_DRUM_SENDS["hat-closed"],
 					cells: Array(16).fill(0),
 				},
 				{
@@ -76,8 +73,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 					level: 0.5,
 					pan: 0,
 					mute: false,
-					delaySend: 0,
-					reverbSend: 0,
+					...DEFAULT_DRUM_SENDS["hat-open"],
 					cells: Array(16).fill(0),
 				},
 				{
@@ -85,8 +81,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 					level: 0.6,
 					pan: 0,
 					mute: false,
-					delaySend: 0,
-					reverbSend: 0,
+					...DEFAULT_DRUM_SENDS["crash"],
 					cells: Array(16).fill(0),
 				},
 			],
