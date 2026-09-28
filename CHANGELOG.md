@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-09-28
+
 ### Added
 
 - **Beats for a song** (docs/drum-machine.md, Phase 3). A song page's Uploads menu has Drum Machine: `/drum-machine?song=<id>` seeds a fresh beat at the song's tempo and meter (`songForBeat` reads the changes at 0; the previous beat stays behind Undo), Save attaches it (`beat.song_id`; the ⋯ menu lists it with the song's name), and "Add to … as a demo" renders the open pattern to WAV and sends it through the demo upload path, so it lands in the song's demo recordings with an MP3 rendition like any demo.

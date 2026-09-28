@@ -1,7 +1,7 @@
 # A drum machine (plan)
 
-Status: **beats for a song and the recorder's pattern picker built**
-(2026-09-28, unreleased): `?song=` on the page, `songForBeat` in data.ts,
+Status: **beats for a song and the recorder's pattern picker shipped in
+v0.48.0** (2026-09-28): `?song=` on the page, `songForBeat` in data.ts,
 Save with a `songId`, a demo from the open pattern through the demo
 upload path; the compact view's pattern ComboBox. Remaining from Phase 3:
 the timeline, the generator, own samples, MIDI input; reverb and delay
