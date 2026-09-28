@@ -6,9 +6,10 @@ fx per project, share links version 5.
 **Beats for a song and the recorder's pattern picker shipped in
 v0.48.0** (2026-09-28): `?song=` on the page, `songForBeat` in data.ts,
 Save with a `songId`, a demo from the open pattern through the demo
-upload path; the compact view's pattern ComboBox. Remaining from Phase 3:
-the timeline, the generator, own samples, MIDI input; reverb and delay
-are a candidate (Kevin's question), see below.
+upload path; the compact view's pattern ComboBox. **The timeline built
+2026-09-28** (see "Timeline" below). Remaining from Phase 3: the
+generator, own samples, MIDI input. Reverb and delay were built the same
+day, see below.
 **Room kit and saved beats shipped in v0.43.0** (2026-09-27): a
 second sampled kit from Groovie's other variants; the first Phase 3 item,
 the `beat` table (migration 0061) with Save and a Beats menu on the page
@@ -297,10 +298,32 @@ layout and the e2e pass.
 - **A song's tempo and meter** set the beat's defaults when it is opened
   from a song page; the beat can be rendered as a demo (a WAV uploaded
   through the demo path) or a stem.
-- **A timeline** to arrange patterns into a song, as Groovie's; a
-  **pattern generator** from a style and a density, as orDrumbox's.
+- **A timeline** to arrange patterns into a song, as Groovie's (built,
+  see "Timeline"); a **pattern generator** from a style and a density, as
+  orDrumbox's.
 - **Own samples**: a kit per account from uploaded one-shots (Blob,
   counted against storage), and **MIDI input** for finger drumming.
+
+## Timeline (built 2026-09-28)
+
+A song is a `timeline` on the project: pattern indices, one per bar, up
+to `MAX_DRUM_TIMELINE` (64), empty for projects from before (the schema
+defaults it). Song mode is engine state, not project state
+(`drumMachine.songMode`): on whenever a project with a timeline loads
+(a link, a saved beat, a preset with one), off when the timeline empties,
+switched by the Pattern / Song buttons in the Timeline row and by the
+recorder's picker ("Song" joins the patterns there). In song mode the
+scheduler picks the bar's pattern at the top of each cycle
+(`#nextBar`, wrapping), the grid's step follow carries the bar along with
+the step, and a bar chosen while playing (`queuedBar`) takes over at the
+end of the cycle, like a queued pattern in pattern mode; opening a
+pattern to edit no longer changes what plays. Removing a pattern drops
+its bars and shifts the later ones down. Downloads and the demo follow
+the mode: `renderDrumSongWav` renders the bars once through with two
+seconds of tail (not a loop; a take), and `encodeDrumMidi` takes a
+sequence of bars, writing the time signature where it changes. Share
+links are version 6: the bar count in 7 bits and 3 bits per bar after
+the patterns; version 5 links read as before with an empty timeline.
 
 ## Reverb and delay (built 2026-09-28)
 

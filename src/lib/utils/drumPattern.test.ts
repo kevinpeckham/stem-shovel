@@ -20,234 +20,255 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
  * default effects; none is re-encoded. A link at
  * the current version round-trips exactly.
  */
-const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 | 4 | 5 }[] = [
-	{
-		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
-		// The starting pattern as it was shared then: no humanize (a version 1 link has none).
-		project: () => {
-			const p = startingDrumProject();
-			p.humanize = 0;
-			return p;
-		},
-		version: 1,
-	},
-	{
-		link: "AaRkJhkQQQYCAAFsmJEA",
-		version: 1,
-		project: () =>
-			upgradeDrumProject({
-				v: 1,
-				bpm: 204,
-				swing: 0.5,
-				steps: 8,
-				kit: "electronic",
-				rows: [
-					{
-						voice: "kick",
-						level: 1,
-						mute: false,
-						cells: [2, 0, 0, 2, 0, 0, 2, 0],
-					},
-					{
-						voice: "hat-open",
-						level: 0,
-						mute: true,
-						cells: [0, 0, 0, 0, 0, 0, 0, 0],
-					},
-					{
-						voice: "cowbell",
-						level: 0.5,
-						mute: false,
-						cells: [3, 0, 1, 0, 2, 0, 2, 0],
-					},
-				],
-			}),
-	},
-	{
-		link: "AjwAZCEFoyQGANCWggQCjLIAEAA",
-		version: 2,
-		project: () => ({
-			v: 2,
-			bpm: 100,
-			swing: 0,
-			swingGrid: 16,
-			humanize: 0.25,
-			fx: { ...DEFAULT_DRUM_FX },
-			kit: "acoustic",
-			patterns: [
-				{
-					meter: "4/4",
-					steps: 8,
-					rows: [
-						{
-							voice: "kick",
-							level: 0.9,
-							pan: -0.5,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["kick"],
-							cells: [2, 0, 0, 0, 3, 0, 0, 0],
-						},
-						{
-							voice: "snare",
-							level: 0.8,
-							pan: 0.5,
-							mute: true,
-							...DEFAULT_DRUM_SENDS["snare"],
-							cells: [0, 0, 1, 0, 0, 0, 2, 0],
-						},
-					],
-				},
-				{
-					meter: "4/4",
-					steps: 8,
-					rows: [
-						{
-							voice: "clap",
-							level: 0.5,
-							pan: 1,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["clap"],
-							cells: [0, 0, 0, 0, 2, 0, 0, 0],
-						},
-					],
-				},
-			],
-		}),
-	},
-	{
-		link: "A1wUASsgtMjAAACVEYAICAoI0EuqqqqqqqqA",
-		version: 3,
-		project: () => ({
-			v: 2,
-			bpm: 132,
-			swing: 0.1,
-			swingGrid: 16,
-			humanize: 0,
-			fx: { ...DEFAULT_DRUM_FX },
-			kit: "electronic",
-			patterns: [
-				{
-					meter: "3/4",
-					steps: 12,
-					rows: [
-						{
-							voice: "kick",
-							level: 0.9,
-							pan: 0,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["kick"],
-							cells: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-						},
-						{
-							voice: "ride",
-							level: 0.4,
-							pan: 0.4,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["ride"],
-							cells: [0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
-						},
-					],
-				},
-				{
-					meter: "6/8",
-					steps: 24,
-					rows: [
-						{
-							voice: "snare",
-							level: 0.8,
-							pan: -0.25,
-							mute: true,
-							...DEFAULT_DRUM_SENDS["snare"],
-							cells: Array(24).fill(1),
-						},
-					],
-				},
-			],
-		}),
-	},
-	{
-		link: "BETIOwCQWmRABEAEE8bkREREQA",
-		version: 4,
-		project: () => ({
-			v: 2,
-			bpm: 108,
-			swing: 1,
-			swingGrid: 8,
-			humanize: 0.14,
-			fx: { ...DEFAULT_DRUM_FX },
-			kit: "room",
-			patterns: [
-				{
-					meter: "4/4",
-					steps: 16,
-					rows: [
-						{
-							voice: "kick",
-							level: 0.9,
-							pan: 0,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["kick"],
-							cells: [2, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 0],
-						},
-						{
-							voice: "hat-closed",
-							level: 0.6,
-							pan: 0.1,
-							mute: false,
-							...DEFAULT_DRUM_SENDS["hat-closed"],
-							cells: [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
-						},
-					],
-				},
-			],
-		}),
-	},
-	{
-		link: "BVQoONvGoPEAIMjIACoCAVkjIJkCCA",
-		version: 5,
-		project: () => ({
-			v: 2,
-			bpm: 124,
-			swing: 0.2,
-			swingGrid: 16,
-			humanize: 0.14,
-			fx: {
-				delayTime: 6,
-				delayFeedback: 0.55,
-				delayReturn: 0.7,
-				reverbSize: 0.8,
-				reverbReturn: 0.6,
+const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 | 4 | 5 | 6 }[] =
+	[
+		{
+			link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
+			// The starting pattern as it was shared then: no humanize (a version 1 link has none).
+			project: () => {
+				const p = startingDrumProject();
+				p.humanize = 0;
+				return p;
 			},
-			kit: "electronic",
-			patterns: [
-				{
-					meter: "4/4",
+			version: 1,
+		},
+		{
+			link: "AaRkJhkQQQYCAAFsmJEA",
+			version: 1,
+			project: () =>
+				upgradeDrumProject({
+					v: 1,
+					bpm: 204,
+					swing: 0.5,
 					steps: 8,
+					kit: "electronic",
 					rows: [
 						{
 							voice: "kick",
 							level: 1,
-							pan: 0,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0.1,
-							cells: [2, 0, 0, 0, 2, 0, 0, 0],
+							cells: [2, 0, 0, 2, 0, 0, 2, 0],
 						},
 						{
-							voice: "rim",
+							voice: "hat-open",
+							level: 0,
+							mute: true,
+							cells: [0, 0, 0, 0, 0, 0, 0, 0],
+						},
+						{
+							voice: "cowbell",
 							level: 0.5,
-							pan: -0.3,
 							mute: false,
-							delaySend: 0.65,
-							reverbSend: 0.25,
-							cells: [0, 0, 0, 2, 0, 0, 2, 0],
+							cells: [3, 0, 1, 0, 2, 0, 2, 0],
 						},
 					],
+				}),
+		},
+		{
+			link: "AjwAZCEFoyQGANCWggQCjLIAEAA",
+			version: 2,
+			project: () => ({
+				v: 2,
+				bpm: 100,
+				swing: 0,
+				swingGrid: 16,
+				humanize: 0.25,
+				fx: { ...DEFAULT_DRUM_FX },
+				kit: "acoustic",
+				timeline: [],
+				patterns: [
+					{
+						meter: "4/4",
+						steps: 8,
+						rows: [
+							{
+								voice: "kick",
+								level: 0.9,
+								pan: -0.5,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["kick"],
+								cells: [2, 0, 0, 0, 3, 0, 0, 0],
+							},
+							{
+								voice: "snare",
+								level: 0.8,
+								pan: 0.5,
+								mute: true,
+								...DEFAULT_DRUM_SENDS["snare"],
+								cells: [0, 0, 1, 0, 0, 0, 2, 0],
+							},
+						],
+					},
+					{
+						meter: "4/4",
+						steps: 8,
+						rows: [
+							{
+								voice: "clap",
+								level: 0.5,
+								pan: 1,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["clap"],
+								cells: [0, 0, 0, 0, 2, 0, 0, 0],
+							},
+						],
+					},
+				],
+			}),
+		},
+		{
+			link: "A1wUASsgtMjAAACVEYAICAoI0EuqqqqqqqqA",
+			version: 3,
+			project: () => ({
+				v: 2,
+				bpm: 132,
+				swing: 0.1,
+				swingGrid: 16,
+				humanize: 0,
+				fx: { ...DEFAULT_DRUM_FX },
+				kit: "electronic",
+				timeline: [],
+				patterns: [
+					{
+						meter: "3/4",
+						steps: 12,
+						rows: [
+							{
+								voice: "kick",
+								level: 0.9,
+								pan: 0,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["kick"],
+								cells: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+							},
+							{
+								voice: "ride",
+								level: 0.4,
+								pan: 0.4,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["ride"],
+								cells: [0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
+							},
+						],
+					},
+					{
+						meter: "6/8",
+						steps: 24,
+						rows: [
+							{
+								voice: "snare",
+								level: 0.8,
+								pan: -0.25,
+								mute: true,
+								...DEFAULT_DRUM_SENDS["snare"],
+								cells: Array(24).fill(1),
+							},
+						],
+					},
+				],
+			}),
+		},
+		{
+			link: "BETIOwCQWmRABEAEE8bkREREQA",
+			version: 4,
+			project: () => ({
+				v: 2,
+				bpm: 108,
+				swing: 1,
+				swingGrid: 8,
+				humanize: 0.14,
+				fx: { ...DEFAULT_DRUM_FX },
+				kit: "room",
+				timeline: [],
+				patterns: [
+					{
+						meter: "4/4",
+						steps: 16,
+						rows: [
+							{
+								voice: "kick",
+								level: 0.9,
+								pan: 0,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["kick"],
+								cells: [2, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 0],
+							},
+							{
+								voice: "hat-closed",
+								level: 0.6,
+								pan: 0.1,
+								mute: false,
+								...DEFAULT_DRUM_SENDS["hat-closed"],
+								cells: [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
+							},
+						],
+					},
+				],
+			}),
+		},
+		{
+			link: "BVQoONvGoPEAIMjIACoCAVkjIJkCCA",
+			version: 5,
+			project: () => ({
+				v: 2,
+				bpm: 124,
+				swing: 0.2,
+				swingGrid: 16,
+				humanize: 0.14,
+				fx: {
+					delayTime: 6,
+					delayFeedback: 0.55,
+					delayReturn: 0.7,
+					reverbSize: 0.8,
+					reverbReturn: 0.6,
 				},
-			],
-		}),
-	},
-];
+				kit: "electronic",
+				timeline: [],
+				patterns: [
+					{
+						meter: "4/4",
+						steps: 8,
+						rows: [
+							{
+								voice: "kick",
+								level: 1,
+								pan: 0,
+								mute: false,
+								delaySend: 0,
+								reverbSend: 0.1,
+								cells: [2, 0, 0, 0, 2, 0, 0, 0],
+							},
+							{
+								voice: "rim",
+								level: 0.5,
+								pan: -0.3,
+								mute: false,
+								delaySend: 0.65,
+								reverbSend: 0.25,
+								cells: [0, 0, 0, 2, 0, 0, 2, 0],
+							},
+						],
+					},
+				],
+			}),
+		},
+		{
+			link: "Bk4UOFQAZAAhgLTIABYCAgIAaDIHqACAAIAnjIFD4iIiIA2TIHmQAAAAhIzIKLQAAAABYzIWlAAAAABqDIFHgAAAACKDIFHgAAAAAMBaZAAKAAAAADQZA9QAAAAHE8ZAoeAAAAAGyZA8yAAAAAJGZBRaAAAAALGZC0oAAAAANQZAo8AAAAARQZAo8AAAAACAAQAQ",
+			version: 6,
+			// The starting beat with a fill as a second pattern and an eight-bar timeline: three of the groove, the fill, again.
+			project: () => {
+				const p = startingDrumProject();
+				p.bpm = 118;
+				p.swing = 0.1;
+				const fill = emptyDrumPattern(p.patterns[0]!);
+				fill.rows[1]!.cells[14] = 3;
+				fill.rows[1]!.cells[15] = 2;
+				p.patterns.push(fill);
+				p.timeline = [0, 0, 0, 1, 0, 0, 0, 1];
+				return p;
+			},
+		},
+	];
 
 describe("encodeDrumProject / decodeDrumProject", () => {
 	test("round-trips the starting project in under 120 characters", () => {
@@ -296,6 +317,14 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		p.patterns[0]!.rows[1]!.reverbSend = 1;
 		expect(decodeDrumProject(encodeDrumProject(p))).toEqual(p);
 	});
+	test("carries the timeline, and a link from before the timeline opens with none", () => {
+		const p = startingDrumProject();
+		p.patterns.push(emptyDrumPattern(p.patterns[0]!));
+		p.timeline = Array.from({ length: 64 }, (_, i) => i % 2);
+		const s = encodeDrumProject(p);
+		expect(decodeDrumProject(s)).toEqual(p);
+		expect(decodeDrumProject("BVQoONvGoPEAIMjIACoCAVkjIJkCCA")?.timeline).toEqual([]);
+	});
 	test("refuses what is not a link", () => {
 		expect(decodeDrumProject("")).toBeNull();
 		expect(decodeDrumProject("not a link")).toBeNull();
@@ -307,7 +336,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 5) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 6) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });
@@ -376,5 +405,16 @@ describe("encodeDrumMidi", () => {
 		expect(hats[0]).toBe(0);
 		expect(hats[1]).toBeCloseTo(0.125, 2);
 		expect(hats[2]).toBeCloseTo(0.25 + 0.25 / 3, 2);
+	});
+	test("a song writes its bars one after another, the time signature where it changes", async () => {
+		const p = startingDrumProject();
+		const waltz = resizeDrumPattern({ ...emptyDrumPattern(p.patterns[0]!), meter: "3/4" }, 12);
+		waltz.rows[0]!.cells[0] = 2; // a kick on the one of the 3/4 bar
+		const midi = parseMidi(
+			await encodeDrumMidi([p.patterns[0]!, waltz, p.patterns[0]!], 120, 0).arrayBuffer(),
+		);
+		const kicks = midi.notes.filter((n) => n.pitch === 36).map((n) => n.start);
+		// Bar 1: beats at 0.5 s; bar 2 (three beats) starts at 2 s and has one kick; bar 3 starts at 3.5 s.
+		expect(kicks).toEqual([0, 0.5, 1, 1.5, 2, 3.5, 4, 4.5, 5]);
 	});
 });

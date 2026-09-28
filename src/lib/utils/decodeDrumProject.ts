@@ -37,6 +37,7 @@ export function decodeDrumProject(encoded: string): DrumProject | null {
 		if (version === 3) return decodeV3(r);
 		if (version === 4) return decodeV4(r);
 		if (version === 5) return decodeV5(r);
+		if (version === 6) return decodeV6(r);
 		return null;
 	} catch {
 		return null;
@@ -72,8 +73,8 @@ function decodeV1(r: BitReader): DrumProject | null {
 	return parsed.success ? upgradeDrumProject(parsed.output) : null;
 }
 
-/** Versions 2 to 5 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid, 5 the effects. */
-function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5): DrumProject | null {
+/** Versions 2 to 6 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid, 5 the effects, 6 the timeline. */
+function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5 | 6): DrumProject | null {
 	const bpm = r.read(8) + DRUM_BPM_MIN;
 	const swing = r.read(7) / 100;
 	const humanize = r.read(7) / 100;
@@ -101,6 +102,11 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5): DrumProject | null
 		for (let i = 0; i < rowCount; i++) rows.push(readRow(r, steps, true, version >= 5));
 		patterns.push({ meter, steps, rows });
 	}
+	const timeline: number[] = [];
+	if (version >= 6) {
+		const bars = r.read(7);
+		for (let i = 0; i < bars; i++) timeline.push(r.read(3));
+	}
 	const parsed = v.safeParse(DrumProjectSchema, {
 		v: 2,
 		bpm,
@@ -110,6 +116,7 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5): DrumProject | null
 		fx,
 		kit,
 		patterns,
+		timeline,
 	});
 	return parsed.success ? parsed.output : null;
 }
@@ -117,3 +124,4 @@ const decodeV2 = (r: BitReader) => decodeProject(r, 2);
 const decodeV3 = (r: BitReader) => decodeProject(r, 3);
 const decodeV4 = (r: BitReader) => decodeProject(r, 4);
 const decodeV5 = (r: BitReader) => decodeProject(r, 5);
+const decodeV6 = (r: BitReader) => decodeProject(r, 6);

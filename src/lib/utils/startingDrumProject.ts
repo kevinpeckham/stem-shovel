@@ -31,6 +31,7 @@ export function startingDrumProject(): DrumProject {
 		fx: { ...DEFAULT_DRUM_FX },
 		humanize: DEFAULT_HUMANIZE,
 		kit: "acoustic",
+		timeline: [],
 		patterns: [
 			{
 				meter: "4/4",

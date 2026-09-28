@@ -59,6 +59,7 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 		fx: { ...DEFAULT_DRUM_FX, ...preset.fx },
 		humanize: preset.humanize ?? DEFAULT_HUMANIZE,
 		kit: preset.kit ?? "acoustic",
+		timeline: [],
 		patterns,
 	};
 }

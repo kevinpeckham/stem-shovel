@@ -39,6 +39,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 	humanize: 0,
 	fx: { ...DEFAULT_DRUM_FX },
 	kit: "acoustic",
+	timeline: [],
 	patterns: [
 		{
 			meter: "4/4",

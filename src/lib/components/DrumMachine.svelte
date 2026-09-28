@@ -13,6 +13,7 @@
 		DRUM_SWING_GRIDS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
+		MAX_DRUM_TIMELINE,
 		MAX_DRUM_ROWS,
 		drumStepsFor,
 		type DrumDelayTime,
@@ -256,7 +257,7 @@
 		{
 			id: "download-wav",
 			kind: "button" as const,
-			label: 'Download WAV <span class="opacity-60 text-12px">one cycle</span>',
+			label: `Download WAV <span class="opacity-60 text-12px">${drumMachine.playsSong ? "the song" : "one cycle"}</span>`,
 			iconClass: "i-ph-waveform",
 			action: () => download("wav"),
 		},
@@ -506,14 +507,26 @@
 				<span class="text-dim">bpm</span>
 			</label>
 		{/if}
-		{#if showTempo && p.patterns.length > 1}
-			<div class="w-28" title="Pattern (while playing, it takes over at the end of the cycle)">
+		{#if showTempo && (p.patterns.length > 1 || p.timeline.length > 0)}
+			<div
+				class="w-28"
+				title="Pattern, or the song (while playing, it takes over at the end of the cycle)"
+			>
 				<ComboBox
 					ariaLabel="Drums pattern"
 					buttonClasses="!px-2 !py-1 !text-13px"
-					options={p.patterns.map((_, i) => ({ value: String(i), label: `Pattern ${i + 1}` }))}
-					value={String(drumMachine.current)}
-					onchange={(i) => drumMachine.select(Number(i))}
+					options={[
+						...(p.timeline.length ? [{ value: "song", label: "Song" }] : []),
+						...p.patterns.map((_, i) => ({ value: String(i), label: `Pattern ${i + 1}` })),
+					]}
+					value={drumMachine.playsSong ? "song" : String(drumMachine.current)}
+					onchange={(v) => {
+						if (v === "song") drumMachine.setSongMode(true);
+						else {
+							drumMachine.setSongMode(false);
+							drumMachine.select(Number(v));
+						}
+					}}
 				/>
 			</div>
 		{/if}
@@ -561,6 +574,11 @@
 				>
 					{#if drumMachine.running && !drumMachine.kitReady}
 						loading the kit…
+					{:else if drumMachine.running && drumMachine.playsSong}
+						bar {Math.max(1, drumMachine.bar + 1)} of {p.timeline.length}{drumMachine.queuedBar !==
+						null
+							? ` then ${drumMachine.queuedBar + 1}`
+							: ""} · pattern {drumMachine.playing + 1} · step {drumMachine.step + 1}
 					{:else if drumMachine.running}
 						playing {drumMachine.playing + 1}{drumMachine.queued !== null
 							? ` then ${drumMachine.queued + 1}`
@@ -960,6 +978,88 @@
 						<span class="i-ph-trash" aria-hidden="true"></span>
 					</button>
 				</div>
+			</div>
+		</div>
+
+		<!-- the timeline: bars, each a pattern, making a song; in song mode Play follows it, in pattern mode it loops the open pattern -->
+		<div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+			<div class="device-button-group-label !mb-0">Timeline</div>
+			<div class="flex items-stretch gap-1" role="group" aria-label="Play mode">
+				<button
+					class="device-button-xs px-2 {drumMachine.playsSong ? '' : 'text-accent'}"
+					type="button"
+					aria-pressed={!drumMachine.playsSong}
+					title="Loop the open pattern"
+					onclick={() => drumMachine.setSongMode(false)}>Pattern</button
+				>
+				<button
+					class="device-button-xs px-2 {drumMachine.playsSong ? 'text-accent' : ''}"
+					type="button"
+					disabled={p.timeline.length === 0}
+					aria-pressed={drumMachine.playsSong}
+					title="Play the timeline, bar after bar"
+					onclick={() => drumMachine.setSongMode(true)}>Song</button
+				>
+			</div>
+			<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Bars">
+				{#each p.timeline as bar, i (i)}
+					{@const sounding = drumMachine.playsSong && drumMachine.bar === i}
+					{@const next = drumMachine.queuedBar === i}
+					<span
+						class="flex items-stretch overflow-hidden rounded-md {sounding
+							? 'ring-1 ring-green-400'
+							: next
+								? 'ring-1 ring-accent'
+								: ''}"
+					>
+						<button
+							class="device-button-xs !rounded-none px-2 {drumMachine.current === bar
+								? 'text-accent'
+								: ''}"
+							type="button"
+							aria-label="Bar {i + 1}, pattern {bar + 1}{sounding ? ', playing' : ''}{next
+								? ', next'
+								: ''}"
+							title="Go to this bar and open its pattern · shift + arrow keys move the bar"
+							onclick={() => drumMachine.goToBar(i)}
+							onkeydown={(e) => {
+								if (!e.shiftKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+								e.preventDefault();
+								drumMachine.moveBar(i, e.key === "ArrowLeft" ? -1 : 1);
+							}}>{bar + 1}</button
+						>
+						<button
+							class="device-button-xs !min-w-auto !rounded-none px-1.5 opacity-60 hover-opacity-100"
+							type="button"
+							aria-label="Remove bar {i + 1}"
+							title="Remove this bar"
+							onclick={() => drumMachine.removeBar(i)}
+						>
+							<span class="i-ph-x text-10px" aria-hidden="true"></span>
+						</button>
+					</span>
+				{/each}
+				<button
+					class="device-button-xs px-2"
+					type="button"
+					disabled={p.timeline.length >= MAX_DRUM_TIMELINE}
+					aria-label="Add pattern {drumMachine.current + 1} as a bar"
+					title="The open pattern as the next bar"
+					onclick={() => drumMachine.appendBar()}
+				>
+					<span class="i-ph-plus" aria-hidden="true"></span>
+					{drumMachine.current + 1}
+				</button>
+				{#if p.timeline.length}
+					<button
+						class="device-button-xs px-2"
+						type="button"
+						title="Empty the timeline; the patterns stay"
+						onclick={() => drumMachine.clearTimeline()}>Clear</button
+					>
+				{:else}
+					<span class="text-12px opacity-60">Add bars of the open pattern to arrange a song.</span>
+				{/if}
 			</div>
 		</div>
 

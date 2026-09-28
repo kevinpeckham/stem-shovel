@@ -65,6 +65,8 @@ export const DRUM_VELOCITY_MAX = 3;
 export const DRUM_VELOCITY_NORMAL = 2;
 /** Patterns to a project: the tabs above the grid. */
 export const MAX_DRUM_PATTERNS = 8;
+/** Bars in the timeline that arranges patterns into a song (a share link spends 7 bits on the count). */
+export const MAX_DRUM_TIMELINE = 64;
 /**
  * What swing moves: every second sixteenth (16, the MPC's 1/16 swing) or
  * the off-beat eighths (8, for a beat with nothing on the sixteenths). In
@@ -127,7 +129,7 @@ export const DRUM_HUMANIZE_MS = 12;
  * adds the effects (sends per row, delay and reverb settings). A reader
  * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 5;
+export const DRUM_PATTERN_VERSION = 6;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
 export const DRUM_GM_NOTES: Record<DrumVoiceId, number> = {
 	kick: 36,

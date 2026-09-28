@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Drum machine: a timeline** (docs/drum-machine.md, "Timeline"). A row under the patterns arranges them into a song: bars, each a pattern, added from the open pattern, removed one by one or cleared, moved with shift + arrows; Pattern / Song buttons choose whether Play loops the open pattern or plays the bars in order. The song plays from the same scheduler (the bar's pattern chosen at the top of each cycle; a bar pressed while playing takes over at the end of the cycle; the sounding bar lights and the readout counts them). Song mode is engine state (`songMode`, on when a project with a timeline loads, off when the timeline empties); the timeline is project state (`timeline`, up to 64 pattern indices, `MAX_DRUM_TIMELINE`), so saved beats and share links carry it (links move to version 6; `DrumRowSchema` and older links unaffected). Downloads and "Add to … as a demo" follow the mode: `renderDrumSongWav` renders the bars once through with a two-second tail, `encodeDrumMidi` takes a sequence of bars and writes the time signature where it changes. Removing a pattern drops its bars and renumbers the rest. The recorder's compact picker offers "Song" beside the patterns.
+
 ## [0.50.0] - 2026-09-28
 
 ### Added

@@ -8,6 +8,7 @@ import {
 	DRUM_VOICE_IDS,
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_ROWS,
+	MAX_DRUM_TIMELINE,
 	drumStepsFor,
 	type DrumKitId,
 	type DrumMeterId,
@@ -31,7 +32,12 @@ import { startingDrumProject } from "$lib/utils/startingDrumProject";
 import { tapTempo } from "$lib/utils/tapTempo";
 import type { DrumFx, DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
 import { createDrumBus, type DrumBus } from "./drumBus";
-import { playDrumStep, renderDrumPatternWav, type DrumPlayState } from "./drumRender";
+import {
+	playDrumStep,
+	renderDrumPatternWav,
+	renderDrumSongWav,
+	type DrumPlayState,
+} from "./drumRender";
 import { drumKit } from "./kits";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
@@ -43,8 +49,9 @@ import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
  * loop, the kit's hits scheduled a tenth of a second ahead and the playing
  * step read back off the clock for the grid. One pattern is open for
  * editing; while playing, choosing another queues it for the end of the
- * cycle. The project is remembered per browser; a share link in the URL's
- * hash overrides it.
+ * cycle. In song mode the timeline decides instead: bar after bar, each
+ * a pattern, round and round. The project is remembered per browser; a
+ * share link in the URL's hash overrides it.
  */
 class DrumMachineEngine {
 	project = $state<DrumProject>(startingDrumProject());
@@ -54,6 +61,12 @@ class DrumMachineEngine {
 	playing = $state(-1);
 	/** A pattern chosen while another plays: it starts at the end of the cycle. */
 	queued = $state<number | null>(null);
+	/** Song mode: play the timeline's bars in order rather than looping the open pattern. On whenever a project with a timeline loads; off again when the timeline empties. */
+	songMode = $state(false);
+	/** Song mode: the timeline position sounding, 0-based; -1 between runs or in pattern mode. */
+	bar = $state(-1);
+	/** Song mode: a bar chosen while playing; the song jumps there at the end of the cycle. */
+	queuedBar = $state<number | null>(null);
 	/** Solo per row of the open pattern: a listening choice, not part of the project. */
 	solo = $state<boolean[]>([]);
 	running = $state(false);
@@ -72,7 +85,9 @@ class DrumMachineEngine {
 	#frame: number | null = null;
 	#nextTime = 0;
 	#nextStep = 0;
-	#queuedSteps: { step: number; time: number; pattern: number }[] = [];
+	/** Song mode: the timeline position the next cycle plays. */
+	#nextBar = 0;
+	#queuedSteps: { step: number; time: number; pattern: number; bar: number }[] = [];
 	#play: DrumPlayState = { openHat: null };
 	#taps: number[] = [];
 	#loaded = false;
@@ -97,6 +112,7 @@ class DrumMachineEngine {
 		const shared = hash ? decodeDrumProject(hash) : null;
 		if (shared) this.project = shared;
 		this.current = 0;
+		this.songMode = this.project.timeline.length > 0;
 		this.#resetSolo();
 		if (warm) drumKit(this.project.kit).warm();
 	}
@@ -122,11 +138,25 @@ class DrumMachineEngine {
 		const ctx = this.#ctx;
 		const bus = this.#bus;
 		if (!ctx || !bus) return;
+		const timeline = this.project.timeline;
+		const song = this.songMode && timeline.length > 0;
+		let bar = -1;
 		while (this.#nextTime < until) {
-			// A queued pattern takes over at the top of the cycle.
-			if (this.#nextStep === 0 && this.queued !== null) {
-				this.playing = this.queued;
-				this.queued = null;
+			// The top of the cycle: in song mode the next bar's pattern takes over, else a queued pattern.
+			if (this.#nextStep === 0) {
+				if (song) {
+					if (this.queuedBar !== null) {
+						this.#nextBar = this.queuedBar;
+						this.queuedBar = null;
+					}
+					bar = this.#nextBar % timeline.length;
+					this.playing = Math.min(timeline[bar]!, this.project.patterns.length - 1);
+					this.#nextBar = bar + 1;
+					this.queued = null;
+				} else if (this.queued !== null) {
+					this.playing = this.queued;
+					this.queued = null;
+				}
 			}
 			const index = Math.min(this.playing, this.project.patterns.length - 1);
 			const pattern = this.project.patterns[index]!;
@@ -148,7 +178,7 @@ class DrumMachineEngine {
 				this.#play,
 				solo,
 			);
-			this.#queuedSteps.push({ step: s, time: at, pattern: index });
+			this.#queuedSteps.push({ step: s, time: at, pattern: index, bar });
 			this.#nextTime += stepSeconds;
 			this.#nextStep = (s + 1) % steps;
 		}
@@ -158,10 +188,15 @@ class DrumMachineEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		let current = this.step;
+		let bar = this.bar;
 		while (this.#queuedSteps[0] && this.#queuedSteps[0].time <= ctx.currentTime) {
-			current = this.#queuedSteps.shift()!.step;
+			const due = this.#queuedSteps.shift()!;
+			current = due.step;
+			// A step scheduled mid-cycle carries no bar of its own: the cycle's stands.
+			if (due.bar >= 0) bar = due.bar;
 		}
 		if (current !== this.step) this.step = current;
+		if (bar !== this.bar) this.bar = bar;
 		this.#frame = requestAnimationFrame(this.#follow);
 	};
 
@@ -181,6 +216,8 @@ class DrumMachineEngine {
 		if (!this.running) return; // stopped while the kit loaded
 		this.#nextTime = this.#ctx.currentTime + 0.05;
 		this.#nextStep = 0;
+		this.#nextBar = 0;
+		this.queuedBar = null;
 		this.#queuedSteps = [];
 		this.#stopLoop = startLookahead(this.#ctx, this.#queue);
 		this.#frame = requestAnimationFrame(this.#follow);
@@ -193,8 +230,10 @@ class DrumMachineEngine {
 		this.#frame = null;
 		this.#queuedSteps = [];
 		this.step = -1;
+		this.bar = -1;
 		this.playing = -1;
 		this.queued = null;
+		this.queuedBar = null;
 		this.running = false;
 	}
 	toggle() {
@@ -208,7 +247,7 @@ class DrumMachineEngine {
 		if (!this.project.patterns[index]) return;
 		this.current = index;
 		this.#resetSolo();
-		if (!this.running) return;
+		if (!this.running || (this.songMode && this.project.timeline.length > 0)) return;
 		this.queued = index === this.playing ? null : index;
 	}
 	/** A new pattern in the open one's shape (its rows, every cell off), added at the end and opened. */
@@ -230,8 +269,71 @@ class DrumMachineEngine {
 			else if (this.queued === index) this.queued = null;
 		}
 		this.current = Math.min(this.current > index ? this.current - 1 : this.current, last);
+		// The timeline loses that pattern's bars; later patterns shift down.
+		this.project.timeline = this.project.timeline
+			.filter((bar) => bar !== index)
+			.map((bar) => (bar > index ? bar - 1 : bar));
+		this.#nextBar = 0;
+		this.queuedBar = null;
+		if (this.project.timeline.length === 0) this.songMode = false;
 		this.#resetSolo();
 		this.#save();
+	}
+
+	// ---- the timeline: a song of bars ----
+	/** The pattern at each bar, an index past the end standing for the last pattern (as the player treats it). */
+	get bars(): DrumPattern[] {
+		const last = this.project.patterns.length - 1;
+		return this.project.timeline.map((bar) => this.project.patterns[Math.min(bar, last)]!);
+	}
+	/** Song mode, when there is a song to play: what Play does, and what the downloads and a demo carry. */
+	get playsSong(): boolean {
+		return this.songMode && this.project.timeline.length > 0;
+	}
+	setSongMode(on: boolean) {
+		this.songMode = on;
+		this.#nextBar = 0;
+		this.queuedBar = null;
+		this.queued = null;
+		if (!on) this.bar = -1;
+	}
+	/** A bar at the end of the timeline, of the open pattern unless another is named; the first bar turns song mode on. */
+	appendBar(pattern = this.current) {
+		if (this.project.timeline.length >= MAX_DRUM_TIMELINE || !this.project.patterns[pattern])
+			return;
+		this.project.timeline.push(pattern);
+		if (this.project.timeline.length === 1) this.setSongMode(true);
+		this.#save();
+	}
+	removeBar(position: number) {
+		if (position < 0 || position >= this.project.timeline.length) return;
+		this.project.timeline.splice(position, 1);
+		if (this.queuedBar !== null && this.queuedBar >= this.project.timeline.length)
+			this.queuedBar = null;
+		if (this.project.timeline.length === 0) this.setSongMode(false);
+		this.#save();
+	}
+	/** A bar one place earlier or later. */
+	moveBar(position: number, delta: -1 | 1) {
+		const t = this.project.timeline;
+		const to = position + delta;
+		if (!t[position] && t[position] !== 0) return;
+		if (to < 0 || to >= t.length) return;
+		[t[position], t[to]] = [t[to]!, t[position]!];
+		this.#save();
+	}
+	clearTimeline() {
+		this.project.timeline = [];
+		this.setSongMode(false);
+		this.#save();
+	}
+	/** Go to a bar: while the song plays, at the end of the cycle; otherwise it is where Play starts. Opens its pattern. */
+	goToBar(position: number) {
+		const pattern = this.project.timeline[position];
+		if (pattern === undefined) return;
+		this.select(Math.min(pattern, this.project.patterns.length - 1));
+		if (this.running && this.playsSong) this.queuedBar = position;
+		else this.#nextBar = position;
 	}
 
 	// ---- the open pattern ----
@@ -369,6 +471,9 @@ class DrumMachineEngine {
 	/** After the project changed under a running machine: solo, the playing pattern and the kit follow. */
 	#afterSwap(previousKit: DrumKitId) {
 		this.#resetSolo();
+		this.songMode = this.project.timeline.length > 0;
+		this.#nextBar = 0;
+		this.queuedBar = null;
 		if (this.running) {
 			this.queued = null;
 			this.playing = Math.min(this.current, this.project.patterns.length - 1);
@@ -444,22 +549,27 @@ class DrumMachineEngine {
 	shareUrl(): string {
 		return `${window.location.origin}/drum-machine#${encodeDrumProject($state.snapshot(this.project))}`;
 	}
-	/** The open pattern as one seamless cycle of stereo WAV. */
+	/** The song once through, or the open pattern as one seamless cycle, of stereo WAV. */
 	wav(): Promise<Blob> {
-		return renderDrumPatternWav($state.snapshot(this.project), $state.snapshot(this.pattern));
+		const project = $state.snapshot(this.project);
+		return this.playsSong
+			? renderDrumSongWav(project, $state.snapshot(this.bars))
+			: renderDrumPatternWav(project, $state.snapshot(this.pattern));
 	}
-	/** The open pattern as a Standard MIDI File. */
+	/** The song, or the open pattern, as a Standard MIDI File. */
 	midi(): Blob {
 		return encodeDrumMidi(
-			$state.snapshot(this.pattern),
+			this.playsSong ? $state.snapshot(this.bars) : $state.snapshot(this.pattern),
 			this.project.bpm,
 			this.project.swing,
 			this.project.swingGrid,
 		);
 	}
-	/** "beat-2-100bpm": for the file names. */
+	/** "beat-2-100bpm", or "song-8-bars-100bpm": for the file names. */
 	fileStem(): string {
-		return `beat-${this.current + 1}-${this.project.bpm}bpm`;
+		return this.playsSong
+			? `song-${this.project.timeline.length}-bars-${this.project.bpm}bpm`
+			: `beat-${this.current + 1}-${this.project.bpm}bpm`;
 	}
 }
 

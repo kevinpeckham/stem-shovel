@@ -90,3 +90,39 @@ export async function renderDrumPatternWav(
 	const channels = [0, 1].map((ch) => rendered.getChannelData(ch).slice(from, to));
 	return encodeWav(channels, sampleRate);
 }
+
+/** Seconds of delay and reverb left ringing after a song's last bar. */
+const SONG_TAIL_S = 2;
+
+/**
+ * A song, bar after bar (the timeline's patterns in order), once through
+ * with the effects ringing out for a moment at the end: not a loop, a
+ * take. Rendered as the live engine plays it, cycle by cycle.
+ */
+export async function renderDrumSongWav(
+	project: DrumProject,
+	bars: DrumPattern[],
+	sampleRate = 44100,
+): Promise<Blob> {
+	const kit = drumKit(project.kit);
+	const length = bars.reduce((sum, b) => sum + drumStepTime(b.steps, project.bpm, 0), 0);
+	const ctx = new OfflineAudioContext(
+		2,
+		Math.ceil((length + SONG_TAIL_S) * sampleRate),
+		sampleRate,
+	);
+	await kit.load(ctx);
+	const bus = createDrumBus(ctx, project.fx, project.bpm);
+	const state: DrumPlayState = { openHat: null };
+	let start = 0;
+	for (const bar of bars) {
+		for (let s = 0; s < bar.steps; s++) {
+			const at = start + drumStepTime(s, project.bpm, project.swing, project.swingGrid);
+			playDrumStep(ctx, kit, bus, project, bar, s, at, state);
+		}
+		start += drumStepTime(bar.steps, project.bpm, 0);
+	}
+	const rendered = await ctx.startRendering();
+	const channels = [0, 1].map((ch) => rendered.getChannelData(ch));
+	return encodeWav(channels, sampleRate);
+}

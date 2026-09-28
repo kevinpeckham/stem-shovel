@@ -13,6 +13,7 @@ import {
 	DRUM_VELOCITY_MAX,
 	DRUM_VOICE_IDS,
 	MAX_DRUM_PATTERNS,
+	MAX_DRUM_TIMELINE,
 	MAX_DRUM_ROWS,
 } from "$lib/constants/drumMachine";
 
@@ -78,6 +79,14 @@ export const DrumProjectSchema = v.object({
 	/** Projects stored before the effects existed get the defaults (and their rows send nothing). */
 	fx: v.optional(DrumFxSchema, () => ({ ...DEFAULT_DRUM_FX })),
 	patterns: v.pipe(v.array(DrumPatternSchema), v.minLength(1), v.maxLength(MAX_DRUM_PATTERNS)),
+	/** The song: patterns by index, a bar each, played in order in song mode. Empty (and projects stored before it existed) means loop the open pattern. An index past the last pattern plays the last. */
+	timeline: v.optional(
+		v.pipe(
+			v.array(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_DRUM_PATTERNS - 1))),
+			v.maxLength(MAX_DRUM_TIMELINE),
+		),
+		() => [],
+	),
 });
 export type DrumProject = v.InferOutput<typeof DrumProjectSchema>;
 

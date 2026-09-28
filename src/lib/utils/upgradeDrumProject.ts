@@ -11,6 +11,7 @@ export function upgradeDrumProject(p: DrumProjectV1): DrumProject {
 		fx: { ...DEFAULT_DRUM_FX },
 		humanize: 0,
 		kit: p.kit,
+		timeline: [],
 		patterns: [
 			{
 				meter: "4/4",
