@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **Drum machine layout and buttons** (Kevin): a labelled row for the kit, steps, meters and patterns; the tempo, swing and humanize sliders beside Tap Tempo; smaller device buttons (`device-button-xs` / `-sm` / `-drum-combo` and label shortcuts in `uno.config.ts`); a status pill in the readout; Play at the right of the foot; level and pan from lg up; a how-to section under the device. ComboBox takes `clearDefaultButtonClasses` so a device button style can be its whole look. Undo is always shown, dimmed when there is nothing to undo.
+- **Drum machine layout and buttons** (Kevin): a labelled row for the kit, steps, meters and patterns; the tempo, swing and humanize sliders beside Tap Tempo; smaller device buttons (`device-button-xs` / `-sm` / `-drum-combo` and label shortcuts in `uno.config.ts`); a status pill in the readout; Play at the right of the foot; level and pan from lg up; a how-to section under the device. ComboBox takes `clearDefaultButtonClasses` so a device button style can be its whole look. Undo is always shown, dimmed when there is nothing to undo. On a phone: a second Play / Stop under the display, a menu beside Tap Tempo with the tempo, swing and humanize sliders, and a menu per row with its level and pan (below lg); the device is named SS Drumbo 001 beside Play.
 
 ## [0.45.0] - 2026-09-27
 

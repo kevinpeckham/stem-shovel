@@ -345,12 +345,6 @@
 	onpointercancel={release}
 />
 
-<!-- <div
-					class="h-full text-right text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
-				>
-					SS Drumbo 001
-				</div> -->
-
 {#if compact}
 	<div class="flex items-stretch gap-1" aria-label="Drum machine">
 		<button
@@ -439,21 +433,96 @@
 			</div>
 		</div>
 
+		<!-- a phone: Play / Stop under the display too, a thumb away from the top of the grid (the foot has the other) -->
+		<button
+			class="sm-hidden device-button-sm w-full {drumMachine.running ? 'text-accent' : ''}"
+			type="button"
+			aria-pressed={drumMachine.running}
+			title="Play or stop"
+			onclick={togglePlay}
+		>
+			<span class={drumMachine.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
+			></span>
+			{drumMachine.running ? "Stop" : "Play"}
+		</button>
+
+		<!-- a phone's tempo, swing and humanize, in a menu beside Tap Tempo (the sliders show from sm up) -->
+		{#snippet tempoItem()}
+			<label class="grid gap-1 px-3 py-2 text-13px">
+				<span>Tempo · {p.bpm} bpm</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min={DRUM_BPM_MIN}
+					max={DRUM_BPM_MAX}
+					step="1"
+					value={p.bpm}
+					oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
+					aria-label="Tempo in beats per minute"
+				/>
+			</label>
+		{/snippet}
+		{#snippet swingItem()}
+			<label class="grid gap-1 px-3 py-2 text-13px">
+				<span>Swing · {Math.round(p.swing * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.swing * 100)}
+					oninput={(e) => drumMachine.setSwing(Number(e.currentTarget.value) / 100)}
+					aria-label="Swing"
+				/>
+			</label>
+		{/snippet}
+		{#snippet humanizeItem()}
+			<label class="grid gap-1 px-3 py-2 text-13px {tutorial.control === 'humanize' ? HINT : ''}">
+				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.humanize * 100)}
+					oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
+					aria-label="Humanize"
+				/>
+			</label>
+		{/snippet}
+
 		<!-- tempo and range controls -->
 		<div
 			class="grid grid-cols-1 sm-grid-cols-[auto_1fr] w-full sm-items-center justify-start gap-4"
 		>
 			<!-- tempo -->
-
-			<button
-				aria-label="Tempo"
-				class="device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
-				type="button"
-				onclick={() => drumMachine.tap()}
-				title="Tap the tempo"
-			>
-				Tap Tempo
-			</button>
+			<div class="flex items-center gap-2">
+				<button
+					aria-label="Tempo"
+					class="device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30 grow sm-grow-0"
+					type="button"
+					onclick={() => drumMachine.tap()}
+					title="Tap the tempo"
+				>
+					Tap Tempo
+				</button>
+				<div class="sm-hidden {tutorial.control === 'humanize' ? HINT : ''}">
+					<ContextMenu
+						ariaLabel="Tempo, swing and humanize"
+						title="Tempo, swing and humanize"
+						iconClass="i-ph-sliders-horizontal"
+						buttonBaseClasses="device-button-xs px-3"
+						popoverClasses="min-w-64"
+						items={[
+							{ id: "tempo", kind: "snippet", snippet: tempoItem },
+							{ id: "swing", kind: "snippet", snippet: swingItem },
+							{ id: "humanize", kind: "snippet", snippet: humanizeItem },
+						]}
+					/>
+				</div>
+			</div>
 
 			<!-- range controls -->
 			<div class="hidden sm-grid gap-3 sm-grid-cols-3 sm-gap-6 text-dark">
@@ -696,6 +765,53 @@
 							>
 								<span class="i-ph-x-bold" aria-hidden="true"></span>
 							</button>
+							<!-- below lg the row's level and pan live in a menu (the sliders show from lg up) -->
+							{#snippet rowMix()}
+								<div class="grid gap-3 px-3 py-2 w-56">
+									<label class="grid gap-1 text-13px">
+										<span>Level · {Math.round(row.level * 100)}%</span>
+										<input
+											class="w-full accent-maximumYellow"
+											type="range"
+											min="0"
+											max="1"
+											step="0.01"
+											value={row.level}
+											oninput={(e) => drumMachine.setLevel(r, Number(e.currentTarget.value))}
+											aria-label="Level of {voiceLabel(row.voice)}"
+										/>
+									</label>
+									<label class="grid gap-1 text-13px">
+										<span
+											>Pan · {row.pan === 0
+												? "centre"
+												: row.pan < 0
+													? `L${Math.round(-row.pan * 100)}`
+													: `R${Math.round(row.pan * 100)}`}</span
+										>
+										<input
+											class="w-full accent-blue-300"
+											type="range"
+											min="-1"
+											max="1"
+											step="0.01"
+											value={row.pan}
+											oninput={(e) => drumMachine.setPan(r, Number(e.currentTarget.value))}
+											ondblclick={() => drumMachine.setPan(r, 0)}
+											aria-label="Pan of {voiceLabel(row.voice)}"
+										/>
+									</label>
+								</div>
+							{/snippet}
+							<div class="lg-hidden">
+								<ContextMenu
+									ariaLabel="Level and pan of {voiceLabel(row.voice)}"
+									title="Level and pan"
+									iconClass="i-ph-sliders-horizontal"
+									buttonBaseClasses="device-button-xs md-device-button-sm"
+									items={[{ id: "mix", kind: "snippet", snippet: rowMix }]}
+								/>
+							</div>
 						</div>
 
 						<!-- volume & pan  > md -->
@@ -731,13 +847,6 @@
 								/>
 							</div>
 						</div>
-
-						<!-- volume & pan -- context menu < md -->
-						<!-- come back to this -- disable for now -->
-						<!-- <ContextMenu
-							buttonClasses="!device-button-xs !md-device-button-sm"
-							items={[{label: "lorem", kind:"link", href:"/test"}]}
-							/> -->
 					</div>
 
 					<!-- events -->
@@ -846,19 +955,26 @@
 				/>
 			</div>
 
-			<button
-				class="device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
-					? 'text-accent'
-					: ''} {tutorial.control === 'play' ? HINT : ''}"
-				type="button"
-				aria-pressed={drumMachine.running}
-				title="Play or stop (space)"
-				onclick={togglePlay}
-			>
-				<span class={drumMachine.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
-				></span>
-				{drumMachine.running ? "Stop" : "Play"}
-			</button>
+			<div class="flex items-center gap-4">
+				<div
+					class="text-right text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+				>
+					SS Drumbo 001
+				</div>
+				<button
+					class="device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
+						? 'text-accent'
+						: ''} {tutorial.control === 'play' ? HINT : ''}"
+					type="button"
+					aria-pressed={drumMachine.running}
+					title="Play or stop (space)"
+					onclick={togglePlay}
+				>
+					<span class={drumMachine.running ? "i-ph-stop-fill" : "i-ph-play-fill"} aria-hidden="true"
+					></span>
+					{drumMachine.running ? "Stop" : "Play"}
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
