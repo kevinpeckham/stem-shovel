@@ -628,7 +628,7 @@
 					Effects {p.fx.enabled ? "on" : "off"}
 				</button>
 				{#if p.fx.enabled}
-					<div class="block" title="Delay time, in the beat">
+					<div class="block text-blue-100/80" title="Delay time, in the beat">
 						<span class="device-button-label">Delay</span>
 						<ComboBox
 							ariaLabel="Delay time"
@@ -835,7 +835,7 @@
 				Effects {p.fx.enabled ? "on" : "off"}
 			</button>
 			{#if p.fx.enabled}
-				<div class="block" title="Delay time, in the beat">
+				<div class="block text-blue-100/80" title="Delay time, in the beat">
 					<span class="device-button-label">Delay</span>
 					<ComboBox
 						ariaLabel="Delay time"
