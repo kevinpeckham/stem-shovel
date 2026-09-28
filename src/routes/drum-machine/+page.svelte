@@ -52,7 +52,12 @@
 					: ""}. Save keeps it with the song; the ⋯ menu can add it to the song as a demo.
 			</p>
 		{/if}
-		<DrumMachine account={data.account} beats={data.beats} song={data.song} />
+		<DrumMachine
+			account={data.account}
+			beats={data.beats}
+			song={data.song}
+			textToBeat={data.textToBeat}
+		/>
 		<DrumTutorial />
 	</div>
 

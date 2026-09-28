@@ -1,3 +1,4 @@
+import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import { listBeats, songForBeat } from "$lib/server/data";
 import { realMemberships } from "$lib/utils/actingMemberships";
@@ -22,5 +23,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			: null,
 		beats: member ? await listBeats(member.accountId) : [],
 		song: member && songId ? await songForBeat(member.accountId, songId) : null,
+		// Text-to-Beat needs the AI Gateway (docs/drum-machine.md).
+		textToBeat: aiAvailable(),
 	};
 };

@@ -269,6 +269,7 @@
 					keyboard={spaceTarget === "drums"}
 					starting={data.homeBeat}
 					homeAdmin={!!data.user?.isSystemAdmin}
+					textToBeat={data.textToBeat}
 				/>
 			</div>
 		</section>

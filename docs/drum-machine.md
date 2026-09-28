@@ -326,6 +326,40 @@ pattern in place of the open one or adds it, and keeps the project for
 style, its hint, the density and the two buttons. Not built: tempo or
 kit suggestions per style (the user's stay), and a seed in the link.
 
+## Text-to-Beat (prototype, built 2026-09-28)
+
+A beat from a description through a language model, Kevin's ask: an
+open-weight frontier model by preference. `src/lib/server/textToBeat.ts`
+goes through Vercel's AI Gateway like the song check, over its
+OpenAI-style REST endpoint with `reasoning: { effort: "none" }`: the
+finding of the first afternoon was that a thinking model (Kimi K2.6,
+DeepSeek V4 Flash) spends two to three and a half minutes reasoning
+about a drum pattern and answers no better, while the same Kimi with
+reasoning off answers in about four seconds for a tenth of a cent
+(K2.5 in two). The model is `TEXT_TO_BEAT_MODEL` (default
+`moonshotai/kimi-k2.6`; the gateway also lists DeepSeek V3.2 and V4,
+Qwen 3 Max and 3.8, MiniMax M3, so comparing musicality is an env
+change; DeepSeek V3.2 and Qwen3 Max were both fine and about 3 s).
+The system prompt names the voices, the notation (the presets' row
+strings: `.` `o` `x` `X`), the open pattern's meter and length, the rows
+it already has, and an example of exactly that shape built from the
+starting beat; the model replies with JSON (`TextToBeatReplySchema`:
+rows, optional bpm, swing as a percentage and a note). `parseTextToBeatReply` (a util,
+tested) takes the first JSON object out of whatever prose or fences the
+model adds, validates it, insists on the row length, and reads the rows
+through `drumPresetProject`; a reply that fails goes back to the model
+once with the reason. Every call is logged in `ai_request` (kind
+"text-to-beat", tokens, duration, the parsed pattern), visible on /admin.
+The remote function (`textToBeat.remote.ts`) is open to anyone at the
+machine while the gateway is configured, 20 an hour per user or address.
+The client (`DrumMachine.svelte`, the Text-to-Beat menu, shown when the
+page's load says `aiAvailable()`) sends the description with the open
+pattern's shape and places the answer with `drumMachine.placePattern`
+(undo as for a preset; the tempo and swing come along). Not built: a
+conversation (each ask is fresh), the model's choice of meter or length,
+a seed or the description in the link. Open question for the prototype:
+which model plays best; the log has the answers per model.
+
 ## Timeline (built 2026-09-28)
 
 A song is a `timeline` on the project: pattern indices, one per bar, up

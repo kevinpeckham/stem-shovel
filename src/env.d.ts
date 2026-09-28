@@ -130,6 +130,14 @@ export type CoercedEnvSchema = {
   AI_GATEWAY_API_KEY?: string;
   
   /**
+   * **TEXT_TO_BEAT_MODEL**  
+   * The model behind Text-to-Beat in the drum machine (src/lib/server/textToBeat.ts),  
+   * an AI Gateway id; open-weight by preference. Change it to compare models.  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M29%2022h-5a2.003%202.003%200%200%201-2-2v-6a2%202%200%200%201%202-2h5v2h-5v6h5ZM18%2012h-4V8h-2v14h6a2.003%202.003%200%200%200%202-2v-6a2%202%200%200%200-2-2m-4%208v-6h4v6Zm-6-8H3v2h5v2H4a2%202%200%200%200-2%202v2a2%202%200%200%200%202%202h6v-8a2%202%200%200%200-2-2m0%208H4v-2h4Z%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  TEXT_TO_BEAT_MODEL?: string;
+  
+  /**
    * **RESEND_API_KEY** 🔐 _sensitive_  
    * Resend — https://resend.com — transactional email: address verification,  
    * password reset, invitations, share-by-email. The domain is verified in Resend;  
@@ -176,11 +184,11 @@ export type CoercedEnvSchema = {
   
 };
 
-type _CoercedEnvSchema_1c1125d4 = CoercedEnvSchema;
+type _CoercedEnvSchema_7733d90f = CoercedEnvSchema;
 
 declare module 'varlock/env' {
-  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_1c1125d4> {}
-  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_1c1125d4, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL'>> {}
+  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_7733d90f> {}
+  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_7733d90f, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL'>> {}
 }
 
 
@@ -190,17 +198,17 @@ export type EnvSchemaAsStrings = {
       : (NonNullable<CoercedEnvSchema[Property]> extends boolean ? ('true' | 'false') : string)
 };
 
-type _EnvSchemaAsStrings_1c1125d4 = EnvSchemaAsStrings;
+type _EnvSchemaAsStrings_7733d90f = EnvSchemaAsStrings;
 declare global {
 
   // add types for global import.meta.env
-  interface ImportMetaEnv extends _EnvSchemaAsStrings_1c1125d4 {}
+  interface ImportMetaEnv extends _EnvSchemaAsStrings_7733d90f {}
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
 
   // add types for global process.env
   namespace NodeJS {
-    interface ProcessEnv extends _EnvSchemaAsStrings_1c1125d4 {}
+    interface ProcessEnv extends _EnvSchemaAsStrings_7733d90f {}
   }
 }

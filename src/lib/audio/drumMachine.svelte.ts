@@ -468,9 +468,22 @@ class DrumMachineEngine {
 	 * kept for `undoPreset` until the next edit. Returns the pattern's index.
 	 */
 	generate(style: DrumGeneratorStyle, density: number, mode: "replace" | "add"): number {
-		const before = $state.snapshot(this.project);
 		const seed = Math.floor(Math.random() * 2 ** 32);
 		const pattern = generateDrumPattern(style, density, $state.snapshot(this.pattern), seed);
+		return this.placePattern(pattern, mode);
+	}
+	/**
+	 * A pattern from elsewhere (the generator, Text-to-Beat) in place of the
+	 * open one or added after it, with a tempo and swing when they come with
+	 * it; the project as it was is kept for `undoPreset` until the next
+	 * edit. Returns the pattern's index (the open one when there is no room).
+	 */
+	placePattern(
+		pattern: DrumPattern,
+		mode: "replace" | "add",
+		also: { bpm?: number | null; swing?: number | null } = {},
+	): number {
+		const before = $state.snapshot(this.project);
 		if (mode === "replace") {
 			this.project.patterns[this.current] = pattern;
 		} else {
@@ -478,8 +491,13 @@ class DrumMachineEngine {
 			this.project.patterns.push(pattern);
 			this.select(this.project.patterns.length - 1);
 		}
+		if (also.bpm)
+			this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(also.bpm)));
+		if (also.swing !== null && also.swing !== undefined)
+			this.project.swing = Math.min(1, Math.max(0, Math.round(also.swing * 100) / 100));
 		this.#resetSolo();
 		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 		this.beforePreset = before;
 		return this.current;
 	}

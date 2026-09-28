@@ -24,6 +24,7 @@
 	import { DRUM_GENERATOR_STYLES } from "$lib/constants/drumGenerator";
 	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
 	import { setHomeBeat } from "$lib/remote/admin.remote";
+	import { textToBeat as askForBeat } from "$lib/remote/textToBeat.remote";
 	import type { DrumProject } from "$lib/val/DrumPatternSchema";
 	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -60,6 +61,8 @@
 		starting?: DrumProject | null;
 		/** A system admin on the home page: the ⋯ menu can make the beat in the machine the home page's starting one. */
 		homeAdmin?: boolean;
+		/** Text-to-Beat is on (the AI Gateway is configured): a menu asks a model for a beat from a description. */
+		textToBeat?: boolean;
 	}
 	interface SavedBeat {
 		id: string;
@@ -87,6 +90,7 @@
 		song = null,
 		starting = null,
 		homeAdmin = false,
+		textToBeat = false,
 	}: Props = $props();
 
 	// The account's beats, kept here as they change; the one open, if any, is what Save brings up to date.
@@ -452,6 +456,41 @@
 	let generatorStyle = $state(DRUM_GENERATOR_STYLES[0]!.id);
 	let generatorDensity = $state(0.5);
 	const GENERATOR_OPTIONS = DRUM_GENERATOR_STYLES.map((s) => ({ value: s.id, label: s.name }));
+	// Text-to-Beat: the description, whether the answer joins as a new pattern, and the request in flight.
+	let beatPrompt = $state("");
+	let beatAsNew = $state(false);
+	let beatAsking = $state(false);
+	let beatNote = $state("");
+	let beatError = $state("");
+	async function makeBeat() {
+		const prompt = beatPrompt.trim();
+		if (!prompt || beatAsking) return;
+		beatAsking = true;
+		beatError = "";
+		beatNote = "";
+		try {
+			const reply = await askForBeat({
+				prompt,
+				meter: pattern.meter,
+				steps: pattern.steps,
+				voices: pattern.rows.map((r) => r.voice),
+			});
+			const index = drumMachine.placePattern(reply.pattern, beatAsNew ? "add" : "replace", {
+				bpm: reply.bpm,
+				swing: reply.swing,
+			});
+			beatNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
+			notify(
+				beatAsNew
+					? `Your beat is pattern ${index + 1}`
+					: `Your beat is in pattern ${index + 1}; Undo brings the old one back`,
+			);
+		} catch (e) {
+			beatError = errorMessage(e);
+		} finally {
+			beatAsking = false;
+		}
+	}
 	function generate(mode: "replace" | "add") {
 		const style = DRUM_GENERATOR_STYLES.find((s) => s.id === generatorStyle);
 		if (!style) return;
@@ -754,6 +793,57 @@
 						notify("Effects reset to their defaults");
 					}}>Reset to defaults</button
 				>
+			</div>
+		{/snippet}
+		{#snippet textToBeatItem()}
+			<div
+				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
+			>
+				<div class="text-11px uppercase tracking-wider opacity-60">Text-to-Beat</div>
+				<label class="block">
+					<span class="device-button-label">Describe the beat you want</span>
+					<textarea
+						class="field mt-1 min-h-20 resize-y text-13px"
+						rows="3"
+						placeholder="e.g. a laid-back boom bap with ghost notes on the snare, or a driving punk beat"
+						maxlength="300"
+						disabled={beatAsking}
+						bind:value={beatPrompt}
+						onkeydown={(e) => {
+							if (e.key === "Enter" && !e.shiftKey) {
+								e.preventDefault();
+								void makeBeat();
+							}
+						}}
+						aria-label="Describe the beat you want"></textarea>
+				</label>
+				<label class="flex items-center gap-2 text-12px opacity-80">
+					<input type="checkbox" class="accent-maximumYellow" bind:checked={beatAsNew} />
+					As a new pattern (else it replaces the open one; Undo brings it back)
+				</label>
+				<div class="flex flex-wrap items-center gap-3">
+					<button
+						class="device-button-xs px-3"
+						type="button"
+						disabled={beatAsking || !beatPrompt.trim()}
+						aria-busy={beatAsking}
+						title="Ask the model; it fits the open pattern's meter and length"
+						onclick={() => void makeBeat()}
+					>
+						{#if beatAsking}
+							<span class="i-ph-circle-notch animate-spin" aria-hidden="true"></span>
+							Asking the model…
+						{:else}
+							<span class="i-ph-sparkle" aria-hidden="true"></span>
+							Make the beat
+						{/if}
+					</button>
+				</div>
+				{#if beatError}
+					<p class="text-12px text-red-300" role="alert">{beatError}</p>
+				{:else if beatNote}
+					<p class="text-12px text-green-300" aria-live="polite">{beatNote}</p>
+				{/if}
 			</div>
 		{/snippet}
 		{#snippet generatorItem()}
@@ -1406,6 +1496,19 @@
 			<div
 				class="grid grid-cols-1 sm-flex items-center gap-5 mt-5 sm-mt-0 sm-gap-2 md-gap-3 mb-8 sm-mb-0"
 			>
+				{#if textToBeat}
+					<!-- Text-to-Beat: a description to a model, a pattern back (docs/drum-machine.md) -->
+					<ContextMenu
+						ariaLabel="Text-to-Beat"
+						position="top left"
+						title="Describe the beat you want"
+						iconClass="i-ph-sparkle"
+						label="Text-to-Beat"
+						buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm"
+						popoverClasses="min-w-80"
+						items={[{ id: "text-to-beat", kind: "snippet", snippet: textToBeatItem }]}
+					/>
+				{/if}
 				<!-- the generator: a pattern drawn from a style at a density, in the open pattern's shape -->
 				<ContextMenu
 					ariaLabel="Generate"

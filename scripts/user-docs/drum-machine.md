@@ -38,6 +38,10 @@ The recordings in the Acoustic and Room kits come from [Groovie](https://github.
 
 **Generate**, beside Presets, draws a pattern from a style: rock, pop, funk, hip-hop, house, breakbeat, latin, half-time, or a fill. Each style has a backbone that is always there (the kick and snare that make it that style) and a set of maybes; **Density** decides how many of the maybes come out, from the bare backbone at 0% to a busy bar at 100%. Every press is a fresh draw, so press again until one feels right; **Undo** brings your pattern back. The draw fits the open pattern, its meter and length, and keeps your rows' levels, pans and sends; a drum the style needs is added, one it does not use is left silent. **Add as a pattern** puts the draw after the open pattern instead of replacing it, which is how a fill joins a groove.
 
+## Text-to-Beat
+
+**Text-to-Beat**, beside Generate when it is switched on, asks a language model for a beat from your description: type what you want ("a laid-back boom bap with ghost notes on the snare", "a driving punk beat", "a bossa nova on the rim") and press **Make the beat** (or Enter). The answer fits the open pattern's meter and length and lands in it, with the model's tempo and swing if it suggests them; the line under the button says what it made. **Undo** brings your pattern back, or tick **As a new pattern** to keep yours and add the answer after it. It takes a few seconds, and a few tries an hour are plenty; if the model's answer cannot be read, ask again with a little more detail.
+
 ## Patterns
 
 The numbered buttons above the grid are the project's patterns, up to eight. **+** adds an empty pattern with the same rows, the copy button duplicates the open one, and the bin deletes it. Open a pattern to edit it; while the drums play, the pattern you choose waits for the end of the cycle before it takes over, and the readout says which is playing and which is next.
