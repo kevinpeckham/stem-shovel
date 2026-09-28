@@ -1135,8 +1135,9 @@
 			</div>
 		</div>
 
-		<!-- the timeline: bars, each a pattern, making a song; in song mode Play follows it, in pattern mode it loops the open pattern -->
-		<div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+		<!-- the timeline: bars, each a pattern, making a song; in song mode Play follows it, in pattern mode it loops the open pattern.
+		     Hidden for now (Kevin is refining its design); everything behind it works, and a link or beat with a timeline still plays as a song. -->
+		<div class="mt-4 hidden flex-wrap items-center gap-x-4 gap-y-2">
 			<div class="device-button-group-label !mb-0">Timeline</div>
 			<div class="flex items-stretch gap-1" role="group" aria-label="Play mode">
 				<button

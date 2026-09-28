@@ -46,21 +46,17 @@ The recordings in the Acoustic and Room kits come from [Groovie](https://github.
 
 The numbered buttons above the grid are the project's patterns, up to eight. **+** adds an empty pattern with the same rows, the copy button duplicates the open one, and the bin deletes it. Open a pattern to edit it; while the drums play, the pattern you choose waits for the end of the cycle before it takes over, and the readout says which is playing and which is next.
 
-## Timeline
-
-The **Timeline** row under the patterns arranges them into a song: a row of bars, each one a pattern. **+ 2** adds the open pattern as the next bar (open another pattern to add that one), the × on a bar removes it, **Clear** empties the row, and with a bar focused, shift and the arrow keys move it. **Pattern** and **Song** beside the row choose what Play does: loop the open pattern, as always, or play the bars in order and round again. The first bar you add switches to Song; the bar sounding lights up, the readout counts the bars, and pressing a bar jumps there at the end of the cycle (or, stopped, makes it where Play starts) and opens its pattern for editing. Up to 64 bars. In the Idea Recorder the pattern picker offers **Song** as well.
-
 ## Saving, sharing and downloading
 
 Everything is remembered in this browser and comes back when you return. **Copy link**, in the **⋯** menu at the foot of the device, puts the whole project into the page's address and copies it: anyone who opens the link gets the same beat, to play or remix. Links keep working as the drum machine grows.
 
 Signed in, with an account, the ⋯ menu also has **Save** and lists the account's saved beats. Save keeps the whole project, patterns, kit and tempo, in your account under a name, where every member of the account can find it; saving again brings the open beat up to date, and the menu offers Save as a new beat, Rename and Delete for the beat that is open. Viewers can load beats but not change them.
 
-The ⋯ menu's **Download** items offer the open pattern as a **WAV** (one seamless cycle, ready to loop in a music player or a DAW) or as a **MIDI** file, with each drum on its General MIDI note, so it opens as an editable drum track in any DAW. In Song mode both carry the whole timeline instead: the WAV once through with the effects ringing out at the end, the MIDI bar after bar with the time signature wherever it changes. Links carry the timeline too.
+The ⋯ menu's **Download** items offer the open pattern as a **WAV** (one seamless cycle, ready to loop in a music player or a DAW) or as a **MIDI** file, with each drum on its General MIDI note, so it opens as an editable drum track in any DAW.
 
 ## Beats for a song
 
-On a song's page, **Uploads → Drum Machine** opens the drum machine for that song: a fresh beat at the song's tempo and time signature (your previous beat is kept behind Undo). **Save** keeps it with the song, so it is listed with the song's name in the ⋯ menu, and **Add to … as a demo** renders the open pattern (or, in Song mode, the whole timeline) to a WAV and adds it to the song's demo recordings, ready to play alongside the stems or download. **Back to …** returns to the song.
+On a song's page, **Uploads → Drum Machine** opens the drum machine for that song: a fresh beat at the song's tempo and time signature (your previous beat is kept behind Undo). **Save** keeps it with the song, so it is listed with the song's name in the ⋯ menu, and **Add to … as a demo** renders the open pattern to a WAV and adds it to the song's demo recordings, ready to play alongside the stems or download. **Back to …** returns to the song.
 
 ## In the Idea Recorder
 

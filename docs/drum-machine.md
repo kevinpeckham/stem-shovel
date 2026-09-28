@@ -360,7 +360,22 @@ conversation (each ask is fresh), the model's choice of meter or length,
 a seed or the description in the link. Open question for the prototype:
 which model plays best; the log has the answers per model.
 
-## Timeline (built 2026-09-28)
+## Timeline (built 2026-09-28; its row hidden since v0.51.0 while Kevin refines the design)
+
+The Timeline row in `DrumMachine.svelte` carries a `hidden` class for
+now: the model, engine, codec, downloads and the recorder's "Song" choice
+all stay, and a link or saved beat with a timeline plays as a song. The
+user doc's Timeline section was taken out with it; the text to put back
+(after "Patterns") when the row returns:
+
+> The **Timeline** row under the patterns arranges them into a song: a row of bars, each one a pattern. **+ 2** adds the open pattern as the next bar (open another pattern to add that one), the × on a bar removes it, **Clear** empties the row, and with a bar focused, shift and the arrow keys move it. **Pattern** and **Song** beside the row choose what Play does: loop the open pattern, as always, or play the bars in order and round again. The first bar you add switches to Song; the bar sounding lights up, the readout counts the bars, and pressing a bar jumps there at the end of the cycle (or, stopped, makes it where Play starts) and opens its pattern for editing. Up to 64 bars. In the Idea Recorder the pattern picker offers **Song** as well.
+>
+> And in "Saving, sharing and downloading": In Song mode both downloads
+> carry the whole timeline instead: the WAV once through with the effects
+> ringing out at the end, the MIDI bar after bar with the time signature
+> wherever it changes. Links carry the timeline too. And in "Beats for a
+> song": the demo renders the open pattern (or, in Song mode, the whole
+> timeline).
 
 A song is a `timeline` on the project: pattern indices, one per bar, up
 to `MAX_DRUM_TIMELINE` (64), empty for projects from before (the schema
