@@ -11,7 +11,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **Humanize starts at 14 %** for a new project and for presets that set none (`DEFAULT_HUMANIZE`), so a beat does not sound like a machine out of the box (Kevin's call).
-- **Swing is one rule** (`drumSwingDelay.ts`) shared by the engine, the WAV render and the MIDI file, with unit tests, and `bun run check:swing` renders patterns through the machine and measures the onsets to prove swing reaches the audio. It does: the odd sixteenths move, the eighths never do, so a pattern with nothing on the odd sixteenths sounds the same at any swing (docs/drum-machine.md).
+- **Swing has a grid: 1/16 or 1/8.** A toggle beside the Swing slider (and in the phone's tempo menu). 1/16 moves every second sixteenth, as before and as an MPC does; 1/8 moves the off-beat eighths, so swing is audible on a beat with nothing on the sixteenths, which is most rock. Per project (`swingGrid`), in share links from version 4 (older links and stored projects are 1/16), in the MIDI file too; the Shuffle preset is on 1/8. Swing is one rule (`drumSwingDelay.ts`) shared by the engine, the WAV render and the MIDI file, with unit tests, and `bun run check:swing` renders patterns through the machine and measures the onsets on both grids to prove swing reaches the audio (docs/drum-machine.md).
 - Drum machine layout: the transport under the grid controls on a phone, larger phone buttons, the device name at the foot (Kevin).
 
 ## [0.46.0] - 2026-09-28

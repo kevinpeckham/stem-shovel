@@ -16,7 +16,7 @@ Each row has a drum picker (twelve to choose from: kick, snare, closed and open 
 
 ## Tempo, swing and feel
 
-**Play** starts and stops the pattern; so does the space bar. Set the tempo with the buttons, the slider or by tapping **Tap** in time, from 40 to 240 beats per minute. **Swing** pushes every second sixteenth late, up to a triplet feel. **Humanize** scatters every hit a little in time and loudness, so a pattern stops repeating itself exactly.
+**Play** starts and stops the pattern; so does the space bar. Set the tempo with the buttons, the slider or by tapping **Tap** in time, from 40 to 240 beats per minute. **Swing** pushes notes late, up to a triplet feel. Its **1/16** setting moves every second sixteenth, which is what an MPC does; a beat with nothing on the sixteenths (hats on the eighths, kick and snare on the beats) will not change, so switch it to **1/8** and the off-beat eighths swing instead. **Humanize** scatters every hit a little in time and loudness, so a pattern stops repeating itself exactly.
 
 **4/4**, **3/4** and **6/8** set the open pattern's meter, and the buttons beside them its length: half a bar (in 4/4), a bar or two bars. In 6/8 the grid shades in sixes rather than fours. Growing a bar to two repeats it, so a fill can go into the second bar; shrinking keeps the start.
 

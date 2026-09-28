@@ -4,6 +4,7 @@ import {
 	DRUM_METER_IDS,
 	DRUM_PATTERN_VERSION,
 	DRUM_STEP_CHOICES,
+	DRUM_SWING_GRIDS,
 	DRUM_VOICE_IDS,
 } from "$lib/constants/drumMachine";
 import type { DrumProject } from "$lib/val/DrumPatternSchema";
@@ -11,8 +12,9 @@ import { BitWriter } from "./bitWriter";
 
 /**
  * A project as the string a share link carries (docs/drum-machine.md):
- * bits, base64url. Version 3 is a version byte, then the tempo above the
- * minimum (8 bits), swing and humanize in hundredths (7 each), the kit
+ * bits, base64url. Version 4 is a version byte, then the tempo above the
+ * minimum (8 bits), swing and humanize in hundredths (7 each), the swing
+ * grid (1), the kit
  * (2), the pattern count less one (3), and for each pattern its meter (2),
  * steps choice (3) and row count (4), and for each row its voice (4), level in
  * hundredths (7), pan in hundredths from -1 (8), mute (1) and a velocity
@@ -26,6 +28,7 @@ export function encodeDrumProject(p: DrumProject): string {
 	w.write(p.bpm - DRUM_BPM_MIN, 8);
 	w.write(Math.round(p.swing * 100), 7);
 	w.write(Math.round(p.humanize * 100), 7);
+	w.write(DRUM_SWING_GRIDS.indexOf(p.swingGrid), 1);
 	w.write(DRUM_KIT_IDS.indexOf(p.kit), 2);
 	w.write(p.patterns.length - 1, 3);
 	for (const pattern of p.patterns) {

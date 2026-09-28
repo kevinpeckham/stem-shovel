@@ -1,4 +1,4 @@
-import type { DrumKitId, DrumMeterId, DrumVoiceId } from "./drumMachine";
+import type { DrumKitId, DrumMeterId, DrumSwingGrid, DrumVoiceId } from "./drumMachine";
 
 /**
  * The preset beats (docs/drum-machine.md): each a project written as
@@ -20,6 +20,8 @@ export interface DrumPreset {
 	style: string;
 	bpm: number;
 	swing?: number;
+	/** 16 unless said: a beat with nothing on the sixteenths swings its eighths. */
+	swingGrid?: DrumSwingGrid;
 	humanize?: number;
 	kit?: DrumKitId;
 	meter?: DrumMeterId;
@@ -277,6 +279,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "World",
 		bpm: 108,
 		swing: 1,
+		swingGrid: 8,
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.X.....x." },

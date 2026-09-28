@@ -10,6 +10,7 @@ import {
 	type DrumKitId,
 	type DrumMeterId,
 	type DrumSteps,
+	type DrumSwingGrid,
 	type DrumVoiceId,
 } from "$lib/constants/drumMachine";
 import type { DrumPreset } from "$lib/constants/drumPresets";
@@ -127,7 +128,8 @@ class DrumMachineEngine {
 			const s = this.#nextStep % steps;
 			const stepSeconds = 60 / this.project.bpm / 4;
 			// The step's straight time, plus swing's delay on the odd sixteenths.
-			const at = this.#nextTime + drumSwingDelay(s, stepSeconds, this.project.swing);
+			const at =
+				this.#nextTime + drumSwingDelay(s, stepSeconds, this.project.swing, this.project.swingGrid);
 			const solo = index === this.current ? this.solo : [];
 			playDrumStep(
 				ctx,
@@ -267,6 +269,10 @@ class DrumMachineEngine {
 	setSwing(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.project.swing = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		this.#save();
+	}
+	setSwingGrid(grid: DrumSwingGrid) {
+		this.project.swingGrid = grid;
 		this.#save();
 	}
 	setHumanize(v: number) {
@@ -412,7 +418,12 @@ class DrumMachineEngine {
 	}
 	/** The open pattern as a Standard MIDI File. */
 	midi(): Blob {
-		return encodeDrumMidi($state.snapshot(this.pattern), this.project.bpm, this.project.swing);
+		return encodeDrumMidi(
+			$state.snapshot(this.pattern),
+			this.project.bpm,
+			this.project.swing,
+			this.project.swingGrid,
+		);
 	}
 	/** "beat-2-100bpm": for the file names. */
 	fileStem(): string {

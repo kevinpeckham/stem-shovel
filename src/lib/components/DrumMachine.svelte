@@ -9,6 +9,7 @@
 		DRUM_BPM_MIN,
 		DRUM_KITS,
 		DRUM_METERS,
+		DRUM_SWING_GRIDS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
 		MAX_DRUM_ROWS,
@@ -473,7 +474,25 @@
 		{/snippet}
 		{#snippet swingItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px">
-				<span>Swing · {Math.round(p.swing * 100)}%</span>
+				<span class="flex items-center"
+					>Swing · {Math.round(p.swing * 100)}%<span
+						class="ml-2 inline-flex gap-1 align-middle"
+						role="group"
+						aria-label="Swing grid"
+					>
+						{#each DRUM_SWING_GRIDS as g (g)}
+							<button
+								class="rounded px-1.5 py-0.5 text-11px leading-none {p.swingGrid === g
+									? 'bg-accent text-oxford'
+									: 'bg-dark/40 hover-bg-dark/60'}"
+								type="button"
+								aria-pressed={p.swingGrid === g}
+								title={g === 16 ? "Swing every second sixteenth" : "Swing the off-beat eighths"}
+								onclick={() => drumMachine.setSwingGrid(g)}>1/{g}</button
+							>
+						{/each}
+					</span></span
+				>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
@@ -549,7 +568,25 @@
 					/>
 				</label>
 				<label class="block">
-					<span class="device-button-label">Swing · {Math.round(p.swing * 100)}%</span>
+					<span class="device-button-label flex items-center"
+						>Swing · {Math.round(p.swing * 100)}%<span
+							class="ml-2 inline-flex gap-1 align-middle"
+							role="group"
+							aria-label="Swing grid"
+						>
+							{#each DRUM_SWING_GRIDS as g (g)}
+								<button
+									class="rounded px-1.5 py-0.5 text-11px leading-none {p.swingGrid === g
+										? 'bg-accent text-oxford'
+										: 'bg-dark/40 hover-bg-dark/60'}"
+									type="button"
+									aria-pressed={p.swingGrid === g}
+									title={g === 16 ? "Swing every second sixteenth" : "Swing the off-beat eighths"}
+									onclick={() => drumMachine.setSwingGrid(g)}>1/{g}</button
+								>
+							{/each}
+						</span></span
+					>
 					<input
 						class="w-full accent-maximumYellow"
 						type="range"

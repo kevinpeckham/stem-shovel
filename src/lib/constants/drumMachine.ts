@@ -65,6 +65,13 @@ export const DRUM_VELOCITY_MAX = 3;
 export const DRUM_VELOCITY_NORMAL = 2;
 /** Patterns to a project: the tabs above the grid. */
 export const MAX_DRUM_PATTERNS = 8;
+/**
+ * What swing moves: every second sixteenth (16, the MPC's 1/16 swing) or
+ * the off-beat eighths (8, for a beat with nothing on the sixteenths). In
+ * share-link order.
+ */
+export const DRUM_SWING_GRIDS = [16, 8] as const;
+export type DrumSwingGrid = (typeof DRUM_SWING_GRIDS)[number];
 /** What a new project and a preset without its own setting start at: enough scatter not to sound like a machine (Kevin's call). */
 export const DEFAULT_HUMANIZE = 0.14;
 /** Humanize at full strength scatters a hit this far in time, either way, and a quarter of its gain. */
@@ -73,10 +80,10 @@ export const DRUM_HUMANIZE_MS = 12;
  * The share-link format's version, the first byte of every link. Version 1
  * carried one pattern with the tempo inside it; version 2 carries a project
  * of patterns with pan per row and humanize; version 3 adds a meter and
- * the 3/4 and 6/8 step counts. A reader keeps a branch for every version
- * there has been.
+ * the 3/4 and 6/8 step counts; version 4 adds the swing grid. A reader
+ * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 3;
+export const DRUM_PATTERN_VERSION = 4;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
 export const DRUM_GM_NOTES: Record<DrumVoiceId, number> = {
 	kick: 36,

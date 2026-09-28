@@ -14,10 +14,11 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
  * Links that have been shared are pinned here and this list only grows: a
  * change to the codec that reads one of them differently breaks a link
  * someone has. A version 1 link opens as the project it always did (one
- * pattern, no pan, no humanize), a version 2 link as a 4/4 project; neither
- * is re-encoded. A link at the current version round-trips exactly.
+ * pattern, no pan, no humanize), a version 2 link as a 4/4 project, a
+ * version 3 link with the 1/16 swing grid; none is re-encoded. A link at
+ * the current version round-trips exactly.
  */
-const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 }[] = [
+const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 | 3 | 4 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
 		// The starting pattern as it was shared then: no humanize (a version 1 link has none).
@@ -48,6 +49,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			v: 2,
 			bpm: 100,
 			swing: 0,
+			swingGrid: 16,
 			humanize: 0.25,
 			kit: "acoustic",
 			patterns: [
@@ -64,6 +66,79 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 					steps: 8,
 					rows: [
 						{ voice: "clap", level: 0.5, pan: 1, mute: false, cells: [0, 0, 0, 0, 2, 0, 0, 0] },
+					],
+				},
+			],
+		}),
+	},
+	{
+		link: "A1wUASsgtMjAAACVEYAICAoI0EuqqqqqqqqA",
+		version: 3,
+		project: () => ({
+			v: 2,
+			bpm: 132,
+			swing: 0.1,
+			swingGrid: 16,
+			humanize: 0,
+			kit: "electronic",
+			patterns: [
+				{
+					meter: "3/4",
+					steps: 12,
+					rows: [
+						{
+							voice: "kick",
+							level: 0.9,
+							pan: 0,
+							mute: false,
+							cells: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						},
+						{
+							voice: "ride",
+							level: 0.4,
+							pan: 0.4,
+							mute: false,
+							cells: [0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
+						},
+					],
+				},
+				{
+					meter: "6/8",
+					steps: 24,
+					rows: [{ voice: "snare", level: 0.8, pan: -0.25, mute: true, cells: Array(24).fill(1) }],
+				},
+			],
+		}),
+	},
+	{
+		link: "BETIOwCQWmRABEAEE8bkREREQA",
+		version: 4,
+		project: () => ({
+			v: 2,
+			bpm: 108,
+			swing: 1,
+			swingGrid: 8,
+			humanize: 0.14,
+			kit: "room",
+			patterns: [
+				{
+					meter: "4/4",
+					steps: 16,
+					rows: [
+						{
+							voice: "kick",
+							level: 0.9,
+							pan: 0,
+							mute: false,
+							cells: [2, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 0],
+						},
+						{
+							voice: "hat-closed",
+							level: 0.6,
+							pan: 0.1,
+							mute: false,
+							cells: [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
+						},
 					],
 				},
 			],
@@ -109,7 +184,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 3) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 4) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });
@@ -169,5 +244,14 @@ describe("encodeDrumMidi", () => {
 		const hats = midi.notes.filter((n) => n.pitch === 42).map((n) => n.start);
 		expect(hats[0]).toBe(0);
 		expect(hats[1]).toBeCloseTo(0.125 + 0.125 / 3, 2);
+	});
+	test("on the 1/8 grid swing moves the off-beat eighths, not the sixteenths", async () => {
+		const p = startingDrumProject().patterns[0]!;
+		p.rows[2]!.cells = [2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		const midi = parseMidi(await encodeDrumMidi(p, 120, 1, 8).arrayBuffer());
+		const hats = midi.notes.filter((n) => n.pitch === 42).map((n) => n.start);
+		expect(hats[0]).toBe(0);
+		expect(hats[1]).toBeCloseTo(0.125, 2);
+		expect(hats[2]).toBeCloseTo(0.25 + 0.25 / 3, 2);
 	});
 });

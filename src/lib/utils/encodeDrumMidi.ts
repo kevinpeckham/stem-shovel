@@ -1,10 +1,11 @@
-import { DRUM_GM_NOTES } from "$lib/constants/drumMachine";
+import { DRUM_GM_NOTES, type DrumSwingGrid } from "$lib/constants/drumMachine";
+import { drumSwingDelay } from "./drumSwingDelay";
 import type { DrumPattern } from "$lib/val/DrumPatternSchema";
 
 /**
  * A pattern as a Standard MIDI File (format 0, one track, 96 ticks to the
  * quarter note): the tempo, then every hit as a General MIDI drum note on
- * channel 10, swing moving the off-sixteenths late as the player does.
+ * channel 10, swing moving the swung steps late as the player does.
  * Velocity follows the cell (ghost 50, normal 100, accent 127) and the
  * row's level scales it, so the mix survives the trip into a DAW. Muted
  * rows are left out. Notes last half a step; drums only need the onset.
@@ -13,7 +14,12 @@ const PPQ = 96;
 const STEP_TICKS = PPQ / 4;
 const VELOCITY = [0, 50, 100, 127];
 
-export function encodeDrumMidi(pattern: DrumPattern, bpm: number, swing: number): Blob {
+export function encodeDrumMidi(
+	pattern: DrumPattern,
+	bpm: number,
+	swing: number,
+	grid: DrumSwingGrid = 16,
+): Blob {
 	// Events as absolute ticks, sorted, then written with delta times.
 	const events: { tick: number; bytes: number[] }[] = [];
 	const push = (tick: number, ...bytes: number[]) => events.push({ tick, bytes });
@@ -36,7 +42,7 @@ export function encodeDrumMidi(pattern: DrumPattern, bpm: number, swing: number)
 		const note = DRUM_GM_NOTES[row.voice];
 		row.cells.forEach((cell, step) => {
 			if (!cell) return;
-			const late = step % 2 === 1 ? Math.round((swing * STEP_TICKS) / 3) : 0;
+			const late = Math.round(drumSwingDelay(step, STEP_TICKS, swing, grid));
 			const tick = step * STEP_TICKS + late;
 			const velocity = Math.max(1, Math.round((VELOCITY[cell] ?? 100) * (0.5 + row.level / 2)));
 			push(tick, 0x99, note, velocity);

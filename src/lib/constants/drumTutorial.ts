@@ -35,6 +35,7 @@ export const TUTORIAL_PROJECT: DrumProject = {
 	v: 2,
 	bpm: 110,
 	swing: 0,
+	swingGrid: 16,
 	humanize: 0,
 	kit: "acoustic",
 	patterns: [

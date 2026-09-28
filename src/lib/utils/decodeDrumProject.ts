@@ -5,6 +5,7 @@ import {
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
 	DRUM_STEP_CHOICES_V2,
+	DRUM_SWING_GRIDS,
 	DRUM_VOICE_IDS,
 } from "$lib/constants/drumMachine";
 import {
@@ -32,6 +33,7 @@ export function decodeDrumProject(encoded: string): DrumProject | null {
 		if (version === 1) return decodeV1(r);
 		if (version === 2) return decodeV2(r);
 		if (version === 3) return decodeV3(r);
+		if (version === 4) return decodeV4(r);
 		return null;
 	} catch {
 		return null;
@@ -64,26 +66,36 @@ function decodeV1(r: BitReader): DrumProject | null {
 	return parsed.success ? upgradeDrumProject(parsed.output) : null;
 }
 
-/** Versions 2 and 3 share a shape; 3 adds the meter and a wider steps field. */
-function decodeProject(r: BitReader, version: 2 | 3): DrumProject | null {
+/** Versions 2 to 4 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid. */
+function decodeProject(r: BitReader, version: 2 | 3 | 4): DrumProject | null {
 	const bpm = r.read(8) + DRUM_BPM_MIN;
 	const swing = r.read(7) / 100;
 	const humanize = r.read(7) / 100;
+	const swingGrid = version >= 4 ? DRUM_SWING_GRIDS[r.read(1)] : 16;
 	const kit = DRUM_KIT_IDS[r.read(2)];
 	const patternCount = r.read(3) + 1;
 	if (!kit) return null;
 	const patterns = [];
 	for (let n = 0; n < patternCount; n++) {
-		const meter = version === 3 ? DRUM_METER_IDS[r.read(2)] : "4/4";
-		const steps = version === 3 ? DRUM_STEP_CHOICES[r.read(3)] : DRUM_STEP_CHOICES_V2[r.read(2)];
+		const meter = version >= 3 ? DRUM_METER_IDS[r.read(2)] : "4/4";
+		const steps = version >= 3 ? DRUM_STEP_CHOICES[r.read(3)] : DRUM_STEP_CHOICES_V2[r.read(2)];
 		const rowCount = r.read(4);
 		if (!steps || !meter) return null;
 		const rows = [];
 		for (let i = 0; i < rowCount; i++) rows.push(readRow(r, steps, true));
 		patterns.push({ meter, steps, rows });
 	}
-	const parsed = v.safeParse(DrumProjectSchema, { v: 2, bpm, swing, humanize, kit, patterns });
+	const parsed = v.safeParse(DrumProjectSchema, {
+		v: 2,
+		bpm,
+		swing,
+		swingGrid,
+		humanize,
+		kit,
+		patterns,
+	});
 	return parsed.success ? parsed.output : null;
 }
 const decodeV2 = (r: BitReader) => decodeProject(r, 2);
 const decodeV3 = (r: BitReader) => decodeProject(r, 3);
+const decodeV4 = (r: BitReader) => decodeProject(r, 4);

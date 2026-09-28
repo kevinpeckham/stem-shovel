@@ -22,6 +22,7 @@ export function startingDrumProject(): DrumProject {
 		v: 2,
 		bpm: 100,
 		swing: 0,
+		swingGrid: 16,
 		humanize: DEFAULT_HUMANIZE,
 		kit: "acoustic",
 		patterns: [

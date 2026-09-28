@@ -71,7 +71,7 @@ export async function renderDrumPatternWav(
 	const state: DrumPlayState = { openHat: null };
 	for (let c = 0; c < cycles; c++) {
 		for (let s = 0; s < pattern.steps; s++) {
-			const at = c * cycle + drumStepTime(s, project.bpm, project.swing);
+			const at = c * cycle + drumStepTime(s, project.bpm, project.swing, project.swingGrid);
 			playDrumStep(ctx, kit, master, project, pattern, s, at, state);
 		}
 	}

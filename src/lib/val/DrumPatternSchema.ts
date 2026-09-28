@@ -6,6 +6,7 @@ import {
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
 	DRUM_STEP_CHOICES_V2,
+	DRUM_SWING_GRIDS,
 	DRUM_VELOCITY_MAX,
 	DRUM_VOICE_IDS,
 	MAX_DRUM_PATTERNS,
@@ -42,8 +43,10 @@ export type DrumPattern = v.InferOutput<typeof DrumPatternSchema>;
 export const DrumProjectSchema = v.object({
 	v: v.literal(2),
 	bpm: v.pipe(v.number(), v.integer(), v.minValue(DRUM_BPM_MIN), v.maxValue(DRUM_BPM_MAX)),
-	/** 0 straight to 1 full: the off-sixteenths land late by up to a third of a step. */
+	/** 0 straight to 1 full: the swung steps land late by up to a third of the grid's step. */
 	swing: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	/** 16: every second sixteenth swings; 8: the off-beat eighths. Projects stored before the choice existed are 16. */
+	swingGrid: v.optional(v.picklist(DRUM_SWING_GRIDS), 16),
 	/** 0 exact to 1: every hit scattered a little in time and level, so the pattern stops repeating itself exactly. */
 	humanize: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	kit: v.picklist(DRUM_KIT_IDS),

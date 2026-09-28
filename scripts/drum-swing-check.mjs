@@ -1,6 +1,6 @@
 /**
  * Does swing reach the audio? Renders a sixteenth-note pattern and an
- * eighth-note pattern through the drum machine's own offline render
+ * eighth-note pattern (on both swing grids) through the drum machine's own offline render
  * (`renderDrumPatternWav`, the same step player the live engine uses),
  * straight and fully swung, finds the onsets in the WAV and prints them
  * in milliseconds. Passes when the swung odd sixteenths land a third of a
@@ -23,13 +23,21 @@ await page.waitForLoadState("networkidle");
 
 const result = await page.evaluate(async () => {
 	const { renderDrumPatternWav } = await import("/src/lib/audio/drumRender.ts");
-	const onsets = async (cells, swing) => {
+	const onsets = async (cells, swing, swingGrid = 16) => {
 		const pattern = {
 			meter: "4/4",
 			steps: 16,
 			rows: [{ voice: "rim", level: 1, pan: 0, mute: false, cells }],
 		};
-		const project = { v: 2, bpm: 120, swing, humanize: 0, kit: "electronic", patterns: [pattern] };
+		const project = {
+			v: 2,
+			bpm: 120,
+			swing,
+			swingGrid,
+			humanize: 0,
+			kit: "electronic",
+			patterns: [pattern],
+		};
 		const blob = await renderDrumPatternWav(project, pattern, 44100);
 		const buf = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(
 			await blob.arrayBuffer(),
@@ -52,6 +60,7 @@ const result = await page.evaluate(async () => {
 		sixteenthsSwung: await onsets(sixteenths, 1),
 		eighthsStraight: await onsets(eighths, 0),
 		eighthsSwung: await onsets(eighths, 1),
+		eighthsSwungOn8: await onsets(eighths, 1, 8),
 	};
 });
 await browser.close();
@@ -79,9 +88,19 @@ for (let i = 0; i < 8; i++) {
 		failed = true;
 	}
 }
+for (let i = 0; i < 8; i++) {
+	const straight = result.eighthsStraight[i];
+	const want = i % 2 === 1 ? straight + (step * 2) / 3 : straight; // the off-beat eighths, a third of an eighth late
+	if (!near(result.eighthsSwungOn8[i], want)) {
+		console.error(
+			`1/8 grid, eighth ${i + 1}: expected ${Math.round(want)} ms, got ${Math.round(result.eighthsSwungOn8[i])} ms`,
+		);
+		failed = true;
+	}
+}
 console.log(
 	failed
 		? "swing check failed"
-		: "swing check passed: odd sixteenths late by a third of a step, eighths unmoved",
+		: "swing check passed: 1/16 moves the odd sixteenths a third of a step, 1/8 moves the off-beat eighths a third of an eighth, nothing else moves",
 );
 process.exit(failed ? 1 : 0);

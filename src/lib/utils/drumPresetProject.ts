@@ -53,6 +53,7 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 		v: 2,
 		bpm: preset.bpm,
 		swing: preset.swing ?? 0,
+		swingGrid: preset.swingGrid ?? 16,
 		humanize: preset.humanize ?? DEFAULT_HUMANIZE,
 		kit: preset.kit ?? "acoustic",
 		patterns,

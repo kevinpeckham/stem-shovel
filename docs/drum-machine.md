@@ -39,21 +39,23 @@ over time. Two precedents he likes: [orDrumbox](https://www.ordrumbox.com)
 
 ## Swing, and how to prove it reaches the audio
 
-Swing is one rule, `src/lib/utils/drumSwingDelay.ts`: every second
-sixteenth (the odd steps) lands late by up to a third of a step; the
-eighths never move. The live engine, the WAV render and the MIDI file all
-use it. A consequence worth knowing when it "does nothing": a pattern
-with nothing on the odd sixteenths (hats on the eighths, kick and snare
-on the beats, which is most rock) sounds the same at any swing, because
-there is nothing for swing to move. That is how an MPC's 1/16 swing
-behaves too; a 1/8 swing, which would delay the off-beat eighths instead,
-is not built (2026-09-28).
+Swing is one rule, `src/lib/utils/drumSwingDelay.ts`, with a grid per
+project (`swingGrid`, share links from version 4, 1/16 for older links
+and stored projects). On the 1/16 grid every second sixteenth (the odd
+steps) lands late by up to a third of a sixteenth and the eighths never
+move, so a pattern with nothing on the odd sixteenths (hats on the
+eighths, kick and snare on the beats, which is most rock) sounds the
+same at any swing: that is how an MPC's 1/16 swing behaves, and it is
+what Kevin heard as "swing does nothing". On the 1/8 grid the off-beat
+eighths (steps 2, 6, 10, 14) land late by up to a third of an eighth and
+the sixteenths beside them stay put. The live engine, the WAV render and
+the MIDI file all use the rule; the Shuffle preset is on the 1/8 grid.
 
 `bun run check:swing` (`scripts/drum-swing-check.mjs`) is the proof: it
 renders a sixteenth-note pattern and an eighth-note pattern through
 `renderDrumPatternWav`, the same step player the live engine feeds,
-straight and fully swung, finds the onsets in the WAV and checks that the
-odd sixteenths moved by a third of a step and nothing else moved. It
+straight and fully swung on both grids, finds the onsets in the WAV and
+checks that exactly the right notes moved by exactly the right amount. It
 needs the dev server (it imports the source modules by URL). The unit
 tests cover the rule itself (`drumSwingDelay.test.ts`, `drumPattern.test.ts`)
 and the MIDI ticks.
