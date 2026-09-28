@@ -6,11 +6,30 @@
 	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "$lib/constants/demoComments";
 	import Tuner from "$lib/components/Tuner.svelte";
+	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import { visibleShare } from "$lib/utils/visibleShare";
 
 	let { data } = $props();
 	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
 	let demoComments = $state(exampleComments());
+
+	// The tools section shows one of its two demos at a time.
+	const TOOLS = [
+		{ id: "metronome", name: "Metronome" },
+		{ id: "tuner", name: "Guitar Tuner" },
+	] as const;
+	let tool = $state<(typeof TOOLS)[number]["id"]>("metronome");
+
+	// The space bar goes to the demo the visitor is looking at: the stem player
+	// or the drum machine, whichever shows more of itself, once at least half
+	// of it (or half a screen of it) is on screen; neither otherwise, so space
+	// scrolls the page as usual and a sliver at the edge takes nothing.
+	let playerShare = $state(0);
+	let drumsShare = $state(0);
+	let spaceTarget = $derived(
+		Math.max(playerShare, drumsShare) < 0.5 ? null : playerShare >= drumsShare ? "player" : "drums",
+	);
 
 	const description =
 		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
@@ -133,8 +152,16 @@
 					</p>
 					<div class="marketing-demo-cta">Try the working demo below.</div>
 					<!-- Full bleed on a phone (the page padding is px-4 there), a card from sm up. -->
-					<div class="marketing-demo-container mt-8">
-						<SongPlayerDemo view={data.demo} href={data.demo.href} bind:comments={demoComments} />
+					<div
+						class="marketing-demo-container mt-8"
+						{@attach visibleShare((s) => (playerShare = s))}
+					>
+						<SongPlayerDemo
+							view={data.demo}
+							href={data.demo.href}
+							bind:comments={demoComments}
+							keyboard={spaceTarget === "player"}
+						/>
 					</div>
 				</section>
 
@@ -191,17 +218,38 @@
 			</section>
 
 			<section class="mt-12">
-				<h3 class="marketing-section-heading">Guitar Tuner Demo</h3>
+				<h3 class="marketing-section-heading">Metronome &amp; Tuner Demo</h3>
 				<div class="marketing-topic-heading">Songwriting Tools & Utilities</div>
 				<p class="marketing-paragraph text-balance">
 					The tools you need to be creative and productive as a songwriter all in one place. Like
-					this guitar tuner, which is also available as a pop-over from the idea-recorder, so you
-					can tune your guitar between takes or in the middle of a writing session.
+					this metronome and guitar tuner, both also available as pop-overs from the idea-recorder,
+					so you can keep time or tune up between takes or in the middle of a writing session.
 				</p>
 				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<!-- Not startOnHover: on the home page the microphone opens only from the On / Off button. -->
-				<div class="mt-8">
-					<Tuner />
+				<!-- One demo at a time: the tabs swap the metronome for the tuner. Not startOnHover: on the home page the microphone opens only from the On / Off button. -->
+				<div
+					class="mt-8 flex gap-1 rounded bg-dark/40 p-1 w-fit"
+					role="tablist"
+					aria-label="Tool demo"
+				>
+					{#each TOOLS as t (t.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={tool === t.id}
+							class="rounded px-3 py-1.5 text-sm text-nowrap {tool === t.id
+								? 'bg-accent font-500 text-oxford'
+								: 'hover-bg-dark/60'}"
+							onclick={() => (tool = t.id)}>{t.name}</button
+						>
+					{/each}
+				</div>
+				<div class="mt-4">
+					{#if tool === "metronome"}
+						<Metronome />
+					{:else}
+						<Tuner />
+					{/if}
 				</div>
 			</section>
 		</div>
@@ -215,9 +263,9 @@
 				a backing track while recording an idea or demo.
 			</p>
 			<div class="marketing-demo-cta">Try the working demo below.</div>
-			<!-- No space-bar shortcut here: the home page needs space for scrolling. -->
-			<div class="mt-8 max-w-860px">
-				<DrumMachine keyboard={false} />
+			<!-- Space plays and stops only while this is the demo in view (see spaceTarget): elsewhere the page needs space for scrolling. -->
+			<div class="mt-8 max-w-860px" {@attach visibleShare((s) => (drumsShare = s))}>
+				<DrumMachine keyboard={spaceTarget === "drums"} />
 			</div>
 		</section>
 

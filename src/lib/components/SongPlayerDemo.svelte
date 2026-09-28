@@ -23,8 +23,10 @@
 		href: string;
 		/** The demo's comments (examples plus the visitor's own); shared with the documents demo. */
 		comments: DemoComment[];
+		/** Space and Home drive the transport; the home page turns it off while the drum machine is the demo in view. */
+		keyboard?: boolean;
 	}
-	let { view, href, comments = $bindable() }: Props = $props();
+	let { view, href, comments = $bindable(), keyboard = true }: Props = $props();
 	let located = $derived(
 		comments
 			.filter((c) => c.at !== null)
@@ -103,6 +105,7 @@
 			onengine={(e) => (engine = e)}
 			songId={song.id}
 			showStatus={false}
+			{keyboard}
 			onstemcontext={(stem, seconds, x, y) => (contextAt = { stem, seconds, x, y })}
 			{afterRows}
 		>

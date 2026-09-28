@@ -15,9 +15,18 @@
 		/** Frame rate for the timecode readout. */
 		fps?: number;
 		changes?: SongChange[];
+		/** Space and Home from anywhere on the page. Off while another player on the page has them (the home page gives them to the demo in view). */
+		keyboard?: boolean;
 	}
 
-	let { engine, grid = null, endAt = null, fps = 25, changes = [] }: Props = $props();
+	let {
+		engine,
+		grid = null,
+		endAt = null,
+		fps = 25,
+		changes = [],
+		keyboard = true,
+	}: Props = $props();
 
 	// The readout format is shared with tooltips and the settings rows ($lib/audio/readout).
 	let ctx = $derived({ fps, grid });
@@ -44,7 +53,7 @@
 	// M / S remain the row shortcuts); preventing the keydown default is what
 	// stops the browser from firing the button's click on keyup.
 	function onwindowkeydown(e: KeyboardEvent): void {
-		if (e.metaKey || e.ctrlKey || e.altKey || isTextEntry(e.target)) return;
+		if (!keyboard || e.metaKey || e.ctrlKey || e.altKey || isTextEntry(e.target)) return;
 		if (e.key === " ") {
 			e.preventDefault();
 			if (!e.repeat) engine.toggle();
@@ -56,7 +65,7 @@
 
 	/** Belt and braces: some browsers activate buttons on Space keyup. */
 	function onwindowkeyup(e: KeyboardEvent): void {
-		if (e.key === " " && !isTextEntry(e.target)) e.preventDefault();
+		if (keyboard && e.key === " " && !isTextEntry(e.target)) e.preventDefault();
 	}
 </script>
 

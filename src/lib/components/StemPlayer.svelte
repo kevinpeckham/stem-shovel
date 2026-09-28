@@ -45,6 +45,8 @@
 		songId?: string;
 		/** The line under the rows saying how many stems are decoded; the front page's demo hides it. */
 		showStatus?: boolean;
+		/** Space and Home drive the transport (Transport.svelte); off when another player on the page has them. */
+		keyboard?: boolean;
 	}
 
 	let {
@@ -65,6 +67,7 @@
 		onengine,
 		songId,
 		showStatus = true,
+		keyboard = true,
 	}: Props = $props();
 
 	const engine = new StemEngine();
@@ -147,7 +150,7 @@
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-		<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} />
+		<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} {keyboard} />
 		{#if onaddsection}
 			<div class="mt-2 flex justify-end">
 				<button

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Home page: a metronome demo** beside the tuner. The Songwriting Tools section shows one of the two at a time, chosen by a pair of tabs (Metronome first); the copy names both.
+
+### Changed
+
+- **Home page: the space bar follows the scroll.** Space used to drive the stem player from anywhere on the page and never the drum machine. Now it goes to whichever of the two demos is in view (`src/lib/utils/visibleShare.ts`, an IntersectionObserver attachment; a demo counts once half of it, or half a screen of it, shows; the one showing more wins) and to neither when both are scrolled away, so space scrolls the page there. `Transport`, `StemPlayer` and `SongPlayerDemo` take a `keyboard` prop for it, like `DrumMachine` already did.
+
 ## [0.49.0] - 2026-09-28
 
 ### Added
