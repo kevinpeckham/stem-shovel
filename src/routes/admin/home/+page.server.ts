@@ -1,4 +1,4 @@
-import { DEFAULT_FEATURED_SONG, getAppSetting, listPublicSongs } from "$lib/server/data";
+import { DEFAULT_FEATURED_SONG, getAppSetting, homeBeat, listPublicSongs } from "$lib/server/data";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async () => {
@@ -12,5 +12,7 @@ export const load: PageServerLoad = async () => {
 			songs.find((s) => s.path === defaultPath)?.id ??
 			null,
 		defaultPath,
+		// The drum machine demo's starting beat, when an admin has chosen one from the demo itself.
+		homeBeat: await homeBeat(),
 	};
 };

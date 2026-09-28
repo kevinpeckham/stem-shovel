@@ -265,7 +265,11 @@
 			<div class="marketing-demo-cta">Try the working demo below.</div>
 			<!-- Space plays and stops only while this is the demo in view (see spaceTarget): elsewhere the page needs space for scrolling. -->
 			<div class="mt-8 max-w-860px" {@attach visibleShare((s) => (drumsShare = s))}>
-				<DrumMachine keyboard={spaceTarget === "drums"} />
+				<DrumMachine
+					keyboard={spaceTarget === "drums"}
+					starting={data.homeBeat}
+					homeAdmin={!!data.user?.isSystemAdmin}
+				/>
 			</div>
 		</section>
 

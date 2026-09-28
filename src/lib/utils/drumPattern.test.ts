@@ -8,7 +8,7 @@ import { encodeDrumProject } from "./encodeDrumProject";
 import { resizeDrumPattern } from "./resizeDrumPattern";
 import { startingDrumProject } from "./startingDrumProject";
 import { upgradeDrumProject } from "./upgradeDrumProject";
-import { DEFAULT_DRUM_FX } from "$lib/constants/drumMachine";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "$lib/constants/drumMachine";
 import type { DrumProject } from "$lib/val/DrumPatternSchema";
 
 /**
@@ -27,7 +27,6 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 		project: () => {
 			const p = startingDrumProject();
 			p.humanize = 0;
-			for (const r of p.patterns[0]!.rows) Object.assign(r, { delaySend: 0, reverbSend: 0 });
 			return p;
 		},
 		version: 1,
@@ -85,8 +84,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.9,
 							pan: -0.5,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["kick"],
 							cells: [2, 0, 0, 0, 3, 0, 0, 0],
 						},
 						{
@@ -94,8 +92,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.8,
 							pan: 0.5,
 							mute: true,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["snare"],
 							cells: [0, 0, 1, 0, 0, 0, 2, 0],
 						},
 					],
@@ -109,8 +106,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.5,
 							pan: 1,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["clap"],
 							cells: [0, 0, 0, 0, 2, 0, 0, 0],
 						},
 					],
@@ -139,8 +135,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.9,
 							pan: 0,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["kick"],
 							cells: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 						},
 						{
@@ -148,8 +143,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.4,
 							pan: 0.4,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["ride"],
 							cells: [0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
 						},
 					],
@@ -163,8 +157,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.8,
 							pan: -0.25,
 							mute: true,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["snare"],
 							cells: Array(24).fill(1),
 						},
 					],
@@ -193,8 +186,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.9,
 							pan: 0,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["kick"],
 							cells: [2, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 0],
 						},
 						{
@@ -202,8 +194,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 							level: 0.6,
 							pan: 0.1,
 							mute: false,
-							delaySend: 0,
-							reverbSend: 0,
+							...DEFAULT_DRUM_SENDS["hat-closed"],
 							cells: [2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0],
 						},
 					],
@@ -284,8 +275,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 			level: 1,
 			pan: 0.25,
 			mute: true,
-			delaySend: 0,
-			reverbSend: 0,
+			...DEFAULT_DRUM_SENDS["cowbell"],
 			cells: Array(32).fill(3),
 		});
 		p.patterns = Array.from({ length: 8 }, () => structuredClone(big));

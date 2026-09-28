@@ -149,7 +149,8 @@ check and the tests without any secret.
   `src/lib/server/songView.ts` — the front page demos a public song (chosen
   on /admin/home, stored in `app_setting`): the player with its downloads,
   and the documents panel, read-only; the song page loads through the same
-  `songView`.
+  `songView`. The drum machine demo's starting beat (`homeBeat` in
+  `app_setting`) is chosen by a system admin from the demo's own ⋯ menu.
 - `src/lib/remote/waitlist.remote.ts`, `WaitlistForm.svelte`, `src/routes/waitlist/` —
   the beta waitlist with email confirmation and a separate consent to
   project updates (docs/auth.md); invites go out from /admin/waitlist.

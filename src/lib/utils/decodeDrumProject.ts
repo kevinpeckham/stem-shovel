@@ -48,8 +48,9 @@ function readRow(r: BitReader, steps: number, withPan: boolean, withSends = fals
 	const level = r.read(7) / 100;
 	const pan = withPan ? (r.read(8) - 100) / 100 : 0;
 	const mute = r.read(1) === 1;
-	const delaySend = withSends ? r.read(7) / 100 : 0;
-	const reverbSend = withSends ? r.read(7) / 100 : 0;
+	// Links before version 5 carry no sends: the schema fills in the voice's defaults.
+	const delaySend = withSends ? r.read(7) / 100 : undefined;
+	const reverbSend = withSends ? r.read(7) / 100 : undefined;
 	const cells = [];
 	for (let i = 0; i < steps; i++) cells.push(r.read(2));
 	return { voice, level, pan, mute, delaySend, reverbSend, cells };

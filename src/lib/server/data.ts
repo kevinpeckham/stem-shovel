@@ -6,7 +6,7 @@ import type { ImageKind } from "$lib/val/ImageSchema";
 import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
-import type { DrumProject } from "$lib/val/DrumPatternSchema";
+import { DrumProjectSchema, type DrumProject } from "$lib/val/DrumPatternSchema";
 import {
 	copyBlob,
 	deleteBlobs,
@@ -3756,6 +3756,22 @@ export async function setAppSetting(key: string, value: string) {
 		.insert(schema.appSetting)
 		.values({ key, value })
 		.onConflictDoUpdate({ target: schema.appSetting.key, set: { value } });
+}
+
+export async function deleteAppSetting(key: string) {
+	await db.delete(schema.appSetting).where(eq(schema.appSetting.key, key));
+}
+
+/** The beat the home page's drum machine opens with on a first visit (`homeBeat`, set from the demo itself by a system admin); null for the built-in one. A stored project from an older version upgrades through the schema's defaults. */
+export async function homeBeat(): Promise<DrumProject | null> {
+	const raw = await getAppSetting("homeBeat");
+	if (!raw) return null;
+	try {
+		const parsed = v.safeParse(DrumProjectSchema, JSON.parse(raw));
+		return parsed.success ? parsed.output : null;
+	} catch {
+		return null;
+	}
 }
 
 /** A song by its address, the shape the song page loads. */

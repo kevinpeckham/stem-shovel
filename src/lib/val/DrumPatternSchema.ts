@@ -3,6 +3,7 @@ import {
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
 	DEFAULT_DRUM_FX,
+	DEFAULT_DRUM_SENDS,
 	DRUM_DELAY_STEPS,
 	DRUM_KIT_IDS,
 	DRUM_METER_IDS,
@@ -22,19 +23,28 @@ import {
  * to eight patterns; a pattern is its steps and rows. Solo and which
  * pattern is open are not part of it: listening choices, not the beat.
  */
-export const DrumRowSchema = v.object({
+const DrumRowFieldsSchema = v.object({
 	voice: v.picklist(DRUM_VOICE_IDS),
 	/** 0 silent to 1 full; the slider's position, squared into a gain. */
 	level: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	/** -1 left, 0 centre, 1 right. */
 	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
 	mute: v.boolean(),
-	/** How much of the row goes to the delay and the reverb, 0 to 1, on top of the dry signal. Rows stored before the effects existed send nothing. */
-	delaySend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
-	reverbSend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
+	/** How much of the row goes to the delay and the reverb, 0 to 1, on top of the dry signal. Absent in rows stored before the effects existed: see DrumRowSchema. */
+	delaySend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
+	reverbSend: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 	/** One velocity per step, 0 to DRUM_VELOCITY_MAX. */
 	cells: v.array(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(DRUM_VELOCITY_MAX))),
 });
+/** A row stored before the effects existed (a beat or link from before v0.49.0) gets its voice's usual sends, so the first master level someone raises is heard, as in a new beat. */
+export const DrumRowSchema = v.pipe(
+	DrumRowFieldsSchema,
+	v.transform((r) => ({
+		...r,
+		delaySend: r.delaySend ?? DEFAULT_DRUM_SENDS[r.voice].delaySend,
+		reverbSend: r.reverbSend ?? DEFAULT_DRUM_SENDS[r.voice].reverbSend,
+	})),
+);
 export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
 
 /** The project's effects: the delay's time (sixteenths), feedback and return, the reverb's size and return. */
@@ -79,7 +89,7 @@ export const DrumProjectV1Schema = v.object({
 	steps: v.picklist(DRUM_STEP_CHOICES_V2),
 	kit: v.picklist(DRUM_KIT_IDS),
 	rows: v.pipe(
-		v.array(v.omit(DrumRowSchema, ["pan", "delaySend", "reverbSend"])),
+		v.array(v.omit(DrumRowFieldsSchema, ["pan", "delaySend", "reverbSend"])),
 		v.minLength(1),
 		v.maxLength(MAX_DRUM_ROWS),
 	),

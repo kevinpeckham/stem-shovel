@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { pageTitle } from "$lib/utils/pageTitle";
-	import { setFeaturedSong } from "$lib/remote/admin.remote";
+	import { clearHomeBeat, setFeaturedSong } from "$lib/remote/admin.remote";
+	import { DRUM_KITS } from "$lib/constants/drumMachine";
+	import { invalidateAll } from "$app/navigation";
 	import { notify } from "$lib/state/notifications.svelte";
 
 	let { data } = $props();
 	let chosen = $derived(data.featuredId);
+	let beatKit = $derived(
+		DRUM_KITS.find((k) => k.id === data.homeBeat?.kit)?.label ?? data.homeBeat?.kit,
+	);
 </script>
 
 <svelte:head>
@@ -60,5 +65,37 @@
 				</button>
 			</div>
 		</form>
+	{/if}
+</section>
+
+<section class="mt-10">
+	<h2 class="heading-2">Drum machine demo</h2>
+	<p class="mt-1 text-sm opacity-90">
+		The front page's drum machine opens with a starting beat for a first-time visitor (a browser
+		that remembers a beat keeps its own). To choose it, build or load the beat in the demo on the
+		home page and pick <em>Use as the home page beat</em> from its ⋯ menu.
+	</p>
+	{#if data.homeBeat}
+		<p class="mt-4 text-15px">
+			Chosen: {data.homeBeat.bpm} bpm · {beatKit} · {data.homeBeat.patterns.length}
+			{data.homeBeat.patterns.length === 1 ? "pattern" : "patterns"} · {data.homeBeat.patterns[0]
+				?.meter}
+		</p>
+		<form
+			class="mt-4"
+			{...clearHomeBeat.enhance(async ({ submit }) => {
+				await submit();
+				if (clearHomeBeat.result?.cleared) {
+					notify("Back to the built-in beat");
+					await invalidateAll();
+				}
+			})}
+		>
+			<button class="button" disabled={!!clearHomeBeat.pending}>
+				{clearHomeBeat.pending ? "Clearing…" : "Back to the built-in beat"}
+			</button>
+		</form>
+	{:else}
+		<p class="mt-4 text-dim">None chosen: the built-in starting beat.</p>
 	{/if}
 </section>

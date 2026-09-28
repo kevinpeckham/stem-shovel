@@ -21,6 +21,7 @@
 	} from "$lib/constants/drumMachine";
 	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
 	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
+	import { setHomeBeat } from "$lib/remote/admin.remote";
 	import type { DrumProject } from "$lib/val/DrumPatternSchema";
 	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
@@ -53,6 +54,10 @@
 		/** The account's saved beats, newest first. */
 		beats?: SavedBeat[];
 		song?: BeatSong | null;
+		/** What a first visit opens with when nothing is remembered in the browser (the home page's demo beat, chosen by a system admin). */
+		starting?: DrumProject | null;
+		/** A system admin on the home page: the ⋯ menu can make the beat in the machine the home page's starting one. */
+		homeAdmin?: boolean;
 	}
 	interface SavedBeat {
 		id: string;
@@ -78,6 +83,8 @@
 		account = null,
 		beats = [],
 		song = null,
+		starting = null,
+		homeAdmin = false,
 	}: Props = $props();
 
 	// The account's beats, kept here as they change; the one open, if any, is what Save brings up to date.
@@ -219,6 +226,25 @@
 					{ id: "sep-song", kind: "divider" as const },
 				]
 			: []),
+		...(homeAdmin
+			? [
+					{
+						id: "set-home-beat",
+						kind: "button" as const,
+						label: 'Use as the home page beat <span class="opacity-60 text-12px">admin</span>',
+						iconClass: "i-ph-house",
+						title: "What the drum machine here opens with for a first-time visitor",
+						action: async () => {
+							try {
+								await setHomeBeat({ data: $state.snapshot(drumMachine.project) });
+								notify("Home page beat saved");
+							} catch (e) {
+								notify(errorMessage(e), { kind: "error" });
+							}
+						},
+					},
+				]
+			: []),
 		{
 			id: "copy-link",
 			kind: "button" as const,
@@ -266,7 +292,7 @@
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
 	onMount(() => {
-		drumMachine.load(!compact);
+		drumMachine.load(!compact, starting);
 		// Opened for a song: a fresh beat at its tempo and meter, the beat that was there kept for Undo.
 		if (song && !compact) {
 			const seeded = startingDrumProject();
@@ -685,6 +711,15 @@
 						aria-label="Reverb level"
 					/>
 				</label>
+				<button
+					class="device-button-xs px-3 justify-self-start"
+					type="button"
+					title="Master levels back to zero, every drum back to its usual sends"
+					onclick={() => {
+						drumMachine.resetFx();
+						notify("Effects reset to their defaults");
+					}}>Reset to defaults</button
+				>
 			</div>
 		{/snippet}
 		{#snippet humanizeItem()}
@@ -1104,7 +1139,7 @@
 						</div>
 					</div>
 
-					<!-- events -->
+					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover colour is for the empty ones. -->
 					<div class="grid {lineClasses} gap-1 md-gap-6px lg-gap-2 touch-pan-y">
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}
@@ -1112,11 +1147,11 @@
 							<button
 								class="device-button-xs !min-w-auto md-device-button-sm transition-colors duration-75 {cell ===
 								3
-									? 'bg-accent border-white'
+									? 'bg-accent border-white hover-!bg-accent/85'
 									: cell === 2
-										? 'bg-accent border-accent'
+										? 'bg-accent border-accent hover-!bg-accent/85'
 										: cell === 1
-											? 'bg-accent/40 border-accent/50'
+											? 'bg-accent/40 border-accent/50 hover-!bg-accent/30'
 											: offBeat
 												? 'bg-dark/60 border-white/10'
 												: 'bg-dark/30 border-white/10'} {now

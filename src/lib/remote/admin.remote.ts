@@ -1,4 +1,5 @@
-import { form, getRequestEvent } from "$app/server";
+import { command, form, getRequestEvent } from "$app/server";
+import * as v from "valibot";
 import { requireSuperAdmin, requireSystemAdmin } from "$lib/server/access";
 import {
 	createInviteCode,
@@ -8,6 +9,7 @@ import {
 	removeWaitlist,
 	setAccountFounder,
 	setAppSetting,
+	deleteAppSetting,
 	setUserFounder,
 	waitlistById,
 	deleteUser,
@@ -21,6 +23,7 @@ import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/Invit
 import { AccountAdminSchema, AccountStorageLimitSchema } from "$lib/val/AccountAdminSchema";
 import { SignUpModeFormSchema } from "$lib/val/SignUpModeSchema";
 import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
+import { HomeBeatSchema } from "$lib/val/HomeBeatSchema";
 import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
 import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
 import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "$lib/server/email";
@@ -123,6 +126,22 @@ export const setFeaturedSong = form(FeaturedSongSchema, async ({ songId }) => {
 		error(400, "That song is not public, or has no stems");
 	await setAppSetting("featuredSongId", songId);
 	return { saved: true };
+});
+
+/** The beat the home page's drum machine opens with on a first visit: whatever is in the demo when a system admin chooses it from the ⋯ menu there. */
+export const setHomeBeat = command(HomeBeatSchema, async ({ data }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setAppSetting("homeBeat", JSON.stringify(data));
+	return { saved: true };
+});
+
+/** Back to the built-in starting beat (from /admin/home). */
+export const clearHomeBeat = form(v.object({}), async () => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await deleteAppSetting("homeBeat");
+	return { cleared: true };
 });
 
 const WAITLIST_INVITE_DAYS = 30;

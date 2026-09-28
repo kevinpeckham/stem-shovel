@@ -1,4 +1,4 @@
-import { DEFAULT_DRUM_FX } from "$lib/constants/drumMachine";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "$lib/constants/drumMachine";
 import type { DrumProject, DrumProjectV1 } from "$lib/val/DrumPatternSchema";
 
 /** A version 1 project (one pattern, the tempo inside it) as a version 2 project. */
@@ -15,7 +15,7 @@ export function upgradeDrumProject(p: DrumProjectV1): DrumProject {
 			{
 				meter: "4/4",
 				steps: p.steps,
-				rows: p.rows.map((r) => ({ ...r, pan: 0, delaySend: 0, reverbSend: 0 })),
+				rows: p.rows.map((r) => ({ ...r, pan: 0, ...DEFAULT_DRUM_SENDS[r.voice] })),
 			},
 		],
 	};

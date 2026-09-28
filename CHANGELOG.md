@@ -10,10 +10,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Drum machine: Reset to defaults** in the Effects menu: master levels back to zero, every drum in every pattern back to its usual sends (`drumMachine.resetFx`).
+- **Home page: the demo's starting beat is chosen in the demo.** A system admin builds or loads a beat in the home page's drum machine and picks "Use as the home page beat" from its ⋯ menu (`setHomeBeat`, the `homeBeat` app setting, JSON of the project); a first-time visitor's machine opens with it (`DrumMachine`'s `starting` prop, `drumMachine.load(warm, starting)`), a browser that remembers a beat keeps its own, and a share link still wins. /admin/home shows the chosen beat with a way back to the built-in one (`clearHomeBeat`).
 - **Home page: a metronome demo** beside the tuner. The Songwriting Tools section shows one of the two at a time, chosen by a pair of tabs (Metronome first); the copy names both.
 
 ### Changed
 
+- **Drum machine: beats and links from before the effects get the default sends.** A row stored without sends (a beat saved, or a link made, before 0.49.0) used to come back sending nothing, so raising a master level did nothing until every send was set by hand; it now gets its voice's usual sends (`DrumRowSchema` fills them in on read, `upgradeDrumProject` for version 1, the share-link decoder leaves it to the schema), the same as a new beat. Saved beats keep the effects they were saved with: the delay and reverb settings and the sends are part of the project.
+- **Drum machine: a sounding cell stays lit under the pointer** (the accent at 85%, so the hover still reads); the device button's hover colour is for the empty cells only.
 - **Home page: the space bar follows the scroll.** Space used to drive the stem player from anywhere on the page and never the drum machine. Now it goes to whichever of the two demos is in view (`src/lib/utils/visibleShare.ts`, an IntersectionObserver attachment; a demo counts once half of it, or half a screen of it, shows; the one showing more wins) and to neither when both are scrolled away, so space scrolls the page there. `Transport`, `StemPlayer` and `SongPlayerDemo` take a `keyboard` prop for it, like `DrumMachine` already did.
 
 ## [0.49.0] - 2026-09-28

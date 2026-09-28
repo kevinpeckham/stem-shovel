@@ -1,4 +1,5 @@
 import {
+	DEFAULT_DRUM_FX,
 	DEFAULT_DRUM_SENDS,
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
@@ -84,11 +85,13 @@ class DrumMachineEngine {
 	 * browser. `warm` fetches the sampled kit ahead of the first play, for
 	 * the page that is about the drums; a page that merely offers them waits.
 	 */
-	load(warm = false) {
+	/** Once per page: the remembered project, else `starting` when the page has one (the home page's demo beat), else what it opened with; a share link in the hash beats them all. */
+	load(warm = false, starting: DrumProject | null = null) {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
 		const remembered = loadDrumMachinePreferences();
 		if (remembered) this.project = remembered;
+		else if (starting) this.project = starting;
 		const hash = window.location.hash.slice(1);
 		const shared = hash ? decodeDrumProject(hash) : null;
 		if (shared) this.project = shared;
@@ -267,6 +270,14 @@ class DrumMachineEngine {
 		for (const k of ["delayReturn", "reverbSize", "reverbReturn"] as const)
 			fx[k] = Math.min(1, Math.max(0, Math.round(fx[k] * 100) / 100));
 		this.project.fx = fx;
+		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+	}
+	/** The effects back to their defaults: master levels at zero, every row in every pattern sending its voice's usual amount. */
+	resetFx() {
+		this.project.fx = { ...DEFAULT_DRUM_FX };
+		for (const p of this.project.patterns)
+			for (const r of p.rows) Object.assign(r, DEFAULT_DRUM_SENDS[r.voice]);
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 	}
