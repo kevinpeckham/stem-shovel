@@ -314,7 +314,7 @@
 	/** The presets menu: a heading per style, a button per beat; a second, quieter item adds instead of replacing. */
 	let presetItems = $derived(
 		DRUM_PRESET_STYLES.flatMap((style) => [
-			{ id: `style-${style}`, kind: "notice" as const, notice: style },
+			{ id: `style-${style}`, kind: "heading" as const, label: style },
 			...DRUM_PRESETS.filter((preset) => preset.style === style).map((preset) => ({
 				id: `preset-${preset.id}`,
 				kind: "button" as const,
@@ -394,7 +394,7 @@
 	>
 		<!-- branding -->
 		<div
-			class="absolute bottom-7 left-5 text-right text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+			class="absolute bottom-6 left-5 text-right text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
 		>
 			SS Drumbo 001
 		</div>
@@ -425,7 +425,7 @@
 
 				<!-- status -->
 				<div
-					class="text-12px opacity-70 mt-1 rounded border px-2 py-1 max-w-fit"
+					class="text-12px opacity-70 mt-1 rounded border border-current/40 px-2 py-1 max-w-fit lg-min-w-164px lg-max-w-none lg-text-center"
 					aria-live="polite"
 				>
 					{#if drumMachine.running && !drumMachine.kitReady}

@@ -23,7 +23,7 @@
 		iconClass?: string | null;
 		/** A custom icon (inline SVG, say) in place of `iconClass`. */
 		icon?: Snippet;
-		kind?: "link" | "button" | "notice" | "snippet" | "divider" | null;
+		kind?: "link" | "button" | "notice" | "snippet" | "divider" | "heading" | null;
 		notice?: string | null;
 		popovertarget?: string | null;
 		title?: string | null;
@@ -153,14 +153,14 @@
 		popover="auto"
 		class="{positionClasses[
 			position ?? 'bottom left'
-		]} h-auto overflow-hidden fixed bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em {popoverClasses}"
+		]} h-auto overflow-hidden fixed bg-oxford rounded-md mt-1 text-current px-0 pt-3 pb-4 border border-current/0 text-0.9em max-h-400px {popoverClasses}"
 		ontoggle={onToggle}
 		onfocusout={onFocusOut}
 	>
 		<ul class="m-0 p-0 list-none grid grid-cols-1">
 			{#each items ?? [] as item, i (item.id ?? i)}
 				{#if item.condition == null || (typeof item.condition === "function" ? item.condition() : item.condition)}
-					<li class="bg-transparent">
+					<li class="bg-transparent group">
 						{#if item.snippet && (item.kind === "snippet" || !item.kind)}
 							{@render item.snippet()}
 						{:else if item.href && (item.kind === "link" || !item.kind)}
@@ -206,6 +206,12 @@
 						{:else if item.notice && (item.kind === "notice" || !item.kind)}
 							<div class="border-b border-current/20 px-3 pb-2 opacity-80">
 								{item.notice}
+							</div>
+						{:else if item.kind === "heading" && item.label}
+							<div
+								class="group-not-first-border-t border-current/10 uppercase text-0.8em text-accent px-3 pt-2"
+							>
+								{typeof item.label === "function" ? item.label() : item.label}
 							</div>
 						{:else if item.kind === "divider"}
 							<div class="border-b border-current/10 px-3 pb-2 opacity-80"></div>
