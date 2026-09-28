@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-09-28
+
 ### Added
 
 - **Drum machine: Reset to defaults** in the Effects menu: master levels back to zero, every drum in every pattern back to its usual sends (`drumMachine.resetFx`).
