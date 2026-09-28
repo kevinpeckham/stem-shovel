@@ -615,226 +615,6 @@
 				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
 			>
 				<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
-				<button
-					class="device-button-xs px-3 justify-self-start {p.fx.enabled ? 'text-accent' : ''}"
-					type="button"
-					aria-pressed={p.fx.enabled}
-					title={p.fx.enabled
-						? "Effects on: turn the delay and the reverb off"
-						: "Effects off: turn them on"}
-					onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
-				>
-					<span class="i-ph-sparkle" aria-hidden="true"></span>
-					Effects {p.fx.enabled ? "on" : "off"}
-				</button>
-				{#if p.fx.enabled}
-					<div class="block text-blue-100/80" title="Delay time, in the beat">
-						<span class="device-button-label">Delay</span>
-						<ComboBox
-							ariaLabel="Delay time"
-							buttonClasses="!px-2 !py-1 !text-13px"
-							options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
-							value={String(p.fx.delayTime)}
-							onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
-						/>
-					</div>
-					<label class="block">
-						<span class="device-button-label"
-							>Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
-						>
-						<input
-							class="w-full accent-maximumYellow"
-							type="range"
-							min="0"
-							max="90"
-							step="1"
-							value={Math.round(p.fx.delayFeedback * 100)}
-							oninput={(e) =>
-								drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
-							aria-label="Delay feedback"
-						/>
-					</label>
-					<label class="block">
-						<span class="device-button-label"
-							>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
-						>
-						<input
-							class="w-full accent-maximumYellow"
-							type="range"
-							min="0"
-							max="100"
-							step="1"
-							value={Math.round(p.fx.delayReturn * 100)}
-							oninput={(e) =>
-								drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
-							aria-label="Delay level"
-						/>
-					</label>
-					<label class="block">
-						<span class="device-button-label"
-							>Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
-						>
-						<input
-							class="w-full accent-maximumYellow"
-							type="range"
-							min="0"
-							max="100"
-							step="1"
-							value={Math.round(p.fx.reverbSize * 100)}
-							oninput={(e) =>
-								drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
-							aria-label="Reverb size"
-						/>
-					</label>
-					<label class="block">
-						<span class="device-button-label"
-							>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
-						>
-						<input
-							class="w-full accent-maximumYellow"
-							type="range"
-							min="0"
-							max="100"
-							step="1"
-							value={Math.round(p.fx.reverbReturn * 100)}
-							oninput={(e) =>
-								drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
-							aria-label="Reverb level"
-						/>
-					</label>
-				{/if}
-			</div>
-		{/snippet}
-		{#snippet humanizeItem()}
-			<label class="grid gap-1 px-3 py-2 text-13px {tutorial.control === 'humanize' ? HINT : ''}">
-				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(p.humanize * 100)}
-					oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
-					aria-label="Humanize"
-				/>
-			</label>
-		{/snippet}
-
-		<!-- tempo and range controls -->
-		<div
-			class="grid grid-cols-1 sm-grid-cols-[auto_1fr] w-full sm-items-center justify-start gap-4"
-		>
-			<!-- tempo -->
-			<div class="flex items-center gap-2">
-				<button
-					aria-label="Tempo"
-					class="device-button-lg text-center text-14px sm-text-left sm-device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
-					type="button"
-					onclick={() => drumMachine.tap()}
-					title="Tap the tempo"
-				>
-					Tap Tempo
-				</button>
-				<div class="sm-hidden {tutorial.control === 'humanize' ? HINT : ''}">
-					<ContextMenu
-						ariaLabel="Tempo, swing, humanize and effects"
-						title="Tempo, swing, humanize and effects"
-						iconClass="i-ph-sliders-horizontal"
-						buttonBaseClasses="device-button-lg !min-w-0 px-3"
-						popoverClasses="min-w-64"
-						items={[
-							{ id: "tempo", kind: "snippet", snippet: tempoItem },
-							{ id: "swing", kind: "snippet", snippet: swingItem },
-							{ id: "humanize", kind: "snippet", snippet: humanizeItem },
-							{ id: "fx-sep", kind: "divider" },
-							{ id: "fx", kind: "snippet", snippet: fxItem },
-						]}
-					/>
-				</div>
-			</div>
-
-			<!-- range controls -->
-			<div class="hidden sm-grid gap-3 sm-grid-cols-3 sm-gap-6 text-dark">
-				<label class="block">
-					<span class="device-button-label">Tempo</span>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min={DRUM_BPM_MIN}
-						max={DRUM_BPM_MAX}
-						step="1"
-						value={p.bpm}
-						oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
-						aria-label="Tempo in beats per minute"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label flex items-center"
-						>Swing · {Math.round(p.swing * 100)}%<span
-							class="ml-2 inline-flex gap-1 align-middle"
-							role="group"
-							aria-label="Swing grid"
-						>
-							{#each DRUM_SWING_GRIDS as g (g)}
-								<button
-									class="rounded px-1.5 py-0.5 text-11px leading-none {p.swingGrid === g
-										? 'bg-accent text-oxford'
-										: 'bg-dark/40 hover-bg-dark/60'}"
-									type="button"
-									aria-pressed={p.swingGrid === g}
-									title={g === 16 ? "Swing every second sixteenth" : "Swing the off-beat eighths"}
-									onclick={() => drumMachine.setSwingGrid(g)}>1/{g}</button
-								>
-							{/each}
-						</span></span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.swing * 100)}
-						oninput={(e) => drumMachine.setSwing(Number(e.currentTarget.value) / 100)}
-						aria-label="Swing"
-					/>
-				</label>
-				<label class="block {tutorial.control === 'humanize' ? HINT : ''}">
-					<span class="device-button-label">Humanize · {Math.round(p.humanize * 100)}%</span>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.humanize * 100)}
-						oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
-						aria-label="Humanize"
-					/>
-				</label>
-			</div>
-		</div>
-
-		<!-- the effects from sm up: a master on / off, then the delay's time, feedback and level and the reverb's size and level while on (a phone has them in the tempo menu) -->
-		<div
-			class="hidden sm-grid gap-3 sm-grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] sm-gap-4 text-dark items-end"
-		>
-			<button
-				class="device-button-xs md-device-button-sm px-3 self-end {p.fx.enabled
-					? 'text-accent'
-					: ''}"
-				type="button"
-				aria-pressed={p.fx.enabled}
-				title={p.fx.enabled
-					? "Effects on: turn the delay and the reverb off"
-					: "Effects off: turn them on"}
-				onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
-			>
-				<span class="i-ph-sparkle" aria-hidden="true"></span>
-				Effects {p.fx.enabled ? "on" : "off"}
-			</button>
-			{#if p.fx.enabled}
 				<div class="block text-blue-100/80" title="Delay time, in the beat">
 					<span class="device-button-label">Delay</span>
 					<ComboBox
@@ -905,7 +685,115 @@
 						aria-label="Reverb level"
 					/>
 				</label>
-			{/if}
+			</div>
+		{/snippet}
+		{#snippet humanizeItem()}
+			<label class="grid gap-1 px-3 py-2 text-13px {tutorial.control === 'humanize' ? HINT : ''}">
+				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(p.humanize * 100)}
+					oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
+					aria-label="Humanize"
+				/>
+			</label>
+		{/snippet}
+
+		<!-- tempo and range controls -->
+		<div
+			class="grid grid-cols-1 sm-grid-cols-[auto_1fr] w-full sm-items-center justify-start gap-4"
+		>
+			<!-- tempo -->
+			<div class="flex items-center gap-2">
+				<button
+					aria-label="Tempo"
+					class="device-button-lg text-center text-14px sm-text-left sm-device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
+					type="button"
+					onclick={() => drumMachine.tap()}
+					title="Tap the tempo"
+				>
+					Tap Tempo
+				</button>
+				<div class="sm-hidden {tutorial.control === 'humanize' ? HINT : ''}">
+					<ContextMenu
+						ariaLabel="Tempo, swing and humanize"
+						title="Tempo, swing and humanize"
+						iconClass="i-ph-sliders-horizontal"
+						buttonBaseClasses="device-button-lg !min-w-0 px-3"
+						popoverClasses="min-w-64"
+						items={[
+							{ id: "tempo", kind: "snippet", snippet: tempoItem },
+							{ id: "swing", kind: "snippet", snippet: swingItem },
+							{ id: "humanize", kind: "snippet", snippet: humanizeItem },
+						]}
+					/>
+				</div>
+			</div>
+
+			<!-- range controls -->
+			<div class="hidden sm-grid gap-3 sm-grid-cols-3 sm-gap-6 text-dark">
+				<label class="block">
+					<span class="device-button-label">Tempo</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min={DRUM_BPM_MIN}
+						max={DRUM_BPM_MAX}
+						step="1"
+						value={p.bpm}
+						oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
+						aria-label="Tempo in beats per minute"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label flex items-center"
+						>Swing · {Math.round(p.swing * 100)}%<span
+							class="ml-2 inline-flex gap-1 align-middle"
+							role="group"
+							aria-label="Swing grid"
+						>
+							{#each DRUM_SWING_GRIDS as g (g)}
+								<button
+									class="rounded px-1.5 py-0.5 text-11px leading-none {p.swingGrid === g
+										? 'bg-accent text-oxford'
+										: 'bg-dark/40 hover-bg-dark/60'}"
+									type="button"
+									aria-pressed={p.swingGrid === g}
+									title={g === 16 ? "Swing every second sixteenth" : "Swing the off-beat eighths"}
+									onclick={() => drumMachine.setSwingGrid(g)}>1/{g}</button
+								>
+							{/each}
+						</span></span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.swing * 100)}
+						oninput={(e) => drumMachine.setSwing(Number(e.currentTarget.value) / 100)}
+						aria-label="Swing"
+					/>
+				</label>
+				<label class="block {tutorial.control === 'humanize' ? HINT : ''}">
+					<span class="device-button-label">Humanize · {Math.round(p.humanize * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(p.humanize * 100)}
+						oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
+						aria-label="Humanize"
+					/>
+				</label>
+			</div>
 		</div>
 
 		<!-- kit, steps, meter and patterns -->
@@ -1293,6 +1181,30 @@
 					Undo
 				</button>
 
+				<!-- effects: a master on / off, and their settings in a menu while on -->
+				<button
+					class="device-button-xs px-3 md-device-button-sm {p.fx.enabled ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={p.fx.enabled}
+					title={p.fx.enabled
+						? "Effects on: turn the delay and the reverb off"
+						: "Effects off: turn them on"}
+					onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
+				>
+					<span class="i-ph-sparkle" aria-hidden="true"></span>
+					Effects {p.fx.enabled ? "on" : "off"}
+				</button>
+				{#if p.fx.enabled}
+					<ContextMenu
+						ariaLabel="Effects settings"
+						position="top left"
+						title="Delay and reverb settings"
+						iconClass="i-ph-sliders-horizontal"
+						buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+						popoverClasses="min-w-72"
+						items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
+					/>
+				{/if}
 				<ContextMenu
 					ariaLabel="More"
 					position="top left"
