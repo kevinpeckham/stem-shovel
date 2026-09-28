@@ -5,6 +5,7 @@ import {
 	deleteBeat as remove,
 	listBeats as list,
 	renameBeat as rename,
+	songForBeat,
 	updateBeat,
 } from "$lib/server/data";
 import { BeatListSchema, BeatRenameSchema, BeatSaveSchema } from "$lib/val/BeatSchema";
@@ -23,7 +24,7 @@ export const listBeats = query(BeatListSchema, async ({ accountId }) => {
 });
 
 /** A new beat in the account, or the named one brought up to date; editors only. */
-export const saveBeat = command(BeatSaveSchema, async ({ accountId, id, name, data }) => {
+export const saveBeat = command(BeatSaveSchema, async ({ accountId, id, name, data, songId }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	requireEditor(locals, accountId);
@@ -32,7 +33,9 @@ export const saveBeat = command(BeatSaveSchema, async ({ accountId, id, name, da
 		if (!row) error(404, "Beat not found");
 		return { id: row.id, name: row.name, updatedAt: row.updatedAt };
 	}
-	const row = await createBeat(accountId, user.id, name, data);
+	// A song must be the account's own; anything else saves the beat without one.
+	const song = songId ? await songForBeat(accountId, songId) : null;
+	const row = await createBeat(accountId, user.id, name, data, song?.id ?? null);
 	return { id: row.id, name: row.name, updatedAt: row.updatedAt };
 });
 

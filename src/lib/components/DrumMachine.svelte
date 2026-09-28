@@ -14,6 +14,7 @@
 		MAX_DRUM_PATTERNS,
 		MAX_DRUM_ROWS,
 		drumStepsFor,
+		type DrumSteps,
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
 	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
@@ -22,6 +23,9 @@
 	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
+	import { postJson, uploadDemoFile, type DemoReservation } from "$lib/upload";
+	import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
+	import { startingDrumProject } from "$lib/utils/startingDrumProject";
 	import { onMount } from "svelte";
 
 	/**
@@ -46,12 +50,23 @@
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		/** The account's saved beats, newest first. */
 		beats?: SavedBeat[];
+		song?: BeatSong | null;
 	}
 	interface SavedBeat {
 		id: string;
 		name: string;
 		data: DrumProject;
 		updatedAt: Date;
+		/** The song the beat belongs to, if any. */
+		song?: { id: string; title: string } | null;
+	}
+	/** A song the page opened the machine for (docs/drum-machine.md, Phase 3): seeds a beat, Save attaches it, the ⋯ menu adds it as a demo. */
+	interface BeatSong {
+		id: string;
+		title: string;
+		href: string;
+		bpm: number | null;
+		meter: string | null;
 	}
 	let {
 		compact = false,
@@ -60,6 +75,7 @@
 		keyboard = true,
 		account = null,
 		beats = [],
+		song = null,
 	}: Props = $props();
 
 	// The account's beats, kept here as they change; the one open, if any, is what Save brings up to date.
@@ -67,6 +83,7 @@
 	let saved = $state<SavedBeat[]>(beats);
 	let openBeat = $state<{ id: string; name: string } | null>(null);
 	let saving = $state(false);
+	let addingDemo = $state(false);
 	async function save(asNew = false) {
 		if (!account) return;
 		let id = asNew ? undefined : openBeat?.id;
@@ -78,8 +95,24 @@
 		saving = true;
 		try {
 			const data = $state.snapshot(drumMachine.project);
-			const row = await saveBeat({ accountId: account.id, id, name, data });
-			const entry = { id: row.id, name: row.name, data, updatedAt: new Date(row.updatedAt) };
+			const row = await saveBeat({
+				accountId: account.id,
+				id,
+				name,
+				data,
+				songId: !id && song ? song.id : undefined,
+			});
+			const entry = {
+				id: row.id,
+				name: row.name,
+				data,
+				updatedAt: new Date(row.updatedAt),
+				song: id
+					? saved.find((b) => b.id === id)?.song
+					: song
+						? { id: song.id, title: song.title }
+						: null,
+			};
 			saved = [entry, ...saved.filter((b) => b.id !== row.id)];
 			openBeat = { id: row.id, name: row.name };
 			drumMachine.loadedName = row.name;
@@ -163,6 +196,27 @@
 					{ id: "sep-save", kind: "divider" as const },
 				]
 			: []),
+		...(song
+			? [
+					{
+						id: "add-demo",
+						kind: "button" as const,
+						label: `Add to ${escapeHtml(song.title)} as a demo`,
+						iconClass: "i-ph-microphone",
+						disabled: addingDemo,
+						title: "The open pattern, one cycle, as a WAV demo of the song",
+						action: addAsDemo,
+					},
+					{
+						id: "back-to-song",
+						kind: "link" as const,
+						label: `Back to ${escapeHtml(song.title)}`,
+						iconClass: "i-ph-arrow-left",
+						href: song.href,
+					},
+					{ id: "sep-song", kind: "divider" as const },
+				]
+			: []),
 		{
 			id: "copy-link",
 			kind: "button" as const,
@@ -198,7 +252,7 @@
 					...saved.map((b) => ({
 						id: `beat-${b.id}`,
 						kind: "button" as const,
-						label: `${escapeHtml(b.name)} <span class="opacity-60 text-12px">${b.data.bpm} bpm</span>`,
+						label: `${escapeHtml(b.name)} <span class="opacity-60 text-12px">${b.data.bpm} bpm${b.song ? ` · ${escapeHtml(b.song.title)}` : ""}</span>`,
 						action: () => openSaved(b),
 					})),
 				]
@@ -209,7 +263,45 @@
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
-	onMount(() => drumMachine.load(!compact));
+	onMount(() => {
+		drumMachine.load(!compact);
+		// Opened for a song: a fresh beat at its tempo and meter, the beat that was there kept for Undo.
+		if (song && !compact) {
+			const seeded = startingDrumProject();
+			if (song.bpm) seeded.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, song.bpm));
+			const meter = DRUM_METERS.find((m) => m.id === song.meter);
+			if (meter && meter.id !== "4/4") {
+				seeded.patterns[0] = resizeDrumPattern(
+					{ ...seeded.patterns[0]!, meter: meter.id },
+					meter.barSteps as DrumSteps,
+				);
+			}
+			drumMachine.loadProject(seeded, "replace", null);
+		}
+	});
+
+	/** The open pattern rendered to WAV and added to the song as a demo, through the demo upload path. */
+	async function addAsDemo() {
+		if (!song) return;
+		addingDemo = true;
+		try {
+			const blob = await drumMachine.wav();
+			const name = `${openBeat?.name ?? drumMachine.loadedName ?? "Beat"} (drum machine).wav`;
+			const file = new File([blob], name, { type: "audio/wav" });
+			await uploadDemoFile(file, () =>
+				postJson<DemoReservation>("/api/demos", {
+					songId: song.id,
+					filename: file.name,
+					sizeBytes: file.size,
+				}),
+			);
+			notify(`Added to ${song.title} as a demo`);
+		} catch (e) {
+			notify(`Could not add the demo: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			addingDemo = false;
+		}
+	}
 
 	const voiceLabel = (id: DrumVoiceId) => DRUM_VOICES.find((v) => v.id === id)?.label ?? id;
 	const kitLabel = (id: string) => DRUM_KITS.find((k) => k.id === id)?.label ?? id;
@@ -385,6 +477,17 @@
 				/>
 				<span class="text-dim">bpm</span>
 			</label>
+		{/if}
+		{#if showTempo && p.patterns.length > 1}
+			<div class="w-28" title="Pattern (while playing, it takes over at the end of the cycle)">
+				<ComboBox
+					ariaLabel="Drums pattern"
+					buttonClasses="!px-2 !py-1 !text-13px"
+					options={p.patterns.map((_, i) => ({ value: String(i), label: `Pattern ${i + 1}` }))}
+					value={String(drumMachine.current)}
+					onchange={(i) => drumMachine.select(Number(i))}
+				/>
+			</div>
 		{/if}
 	</div>
 {:else}

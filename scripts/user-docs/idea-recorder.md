@@ -36,7 +36,7 @@ The metronome icon in the toolbar starts a click; the tempo shows beside it, rea
 
 ## Drums
 
-The grid icon beside the metronome plays the beat you last built at **/drum-machine** as a backing track, with the tempo beside it. It keeps going while you record, like the click, and only the microphone reaches the take, so with headphones on the drums stay off the recording. The drums and the metronome never play together: starting one stops the other and takes over its tempo.
+The grid icon beside the metronome plays the beat you last built at **/drum-machine** as a backing track, with the tempo beside it. It keeps going while you record, like the click, and only the microphone reaches the take, so with headphones on the drums stay off the recording. The drums and the metronome never play together: starting one stops the other and takes over its tempo. A beat with several patterns gets a pattern picker beside the tempo.
 
 ## Settings and limits
 

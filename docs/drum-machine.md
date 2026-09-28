@@ -1,6 +1,12 @@
 # A drum machine (plan)
 
-Status: **Room kit and saved beats shipped in v0.43.0** (2026-09-27): a
+Status: **beats for a song and the recorder's pattern picker built**
+(2026-09-28, unreleased): `?song=` on the page, `songForBeat` in data.ts,
+Save with a `songId`, a demo from the open pattern through the demo
+upload path; the compact view's pattern ComboBox. Remaining from Phase 3:
+the timeline, the generator, own samples, MIDI input; reverb and delay
+are a candidate (Kevin's question), see below.
+**Room kit and saved beats shipped in v0.43.0** (2026-09-27): a
 second sampled kit from Groovie's other variants; the first Phase 3 item,
 the `beat` table (migration 0061) with Save and a Beats menu on the page
 for a signed-in member (account-wide, editors write). Still to come in
@@ -292,6 +298,21 @@ layout and the e2e pass.
   **pattern generator** from a style and a density, as orDrumbox's.
 - **Own samples**: a kit per account from uploaded one-shots (Blob,
   counted against storage), and **MIDI input** for finger drumming.
+
+## Reverb and delay (candidate)
+
+Both fit the graph as it stands. The row's panner would feed a dry gain
+into the master and two sends: a delay bus (a `DelayNode` with a feedback
+gain and a low-pass in the loop, its time in steps so it follows the
+tempo, dotted eighth by default, as Groovie's) and a reverb bus (a
+`ConvolverNode` over an impulse response synthesized at load, a burst of
+noise with an exponential decay, so no file is needed; a size control
+sets the decay). Per row a delay send and a reverb send, per project the
+delay time and feedback and the reverb size, all in the share link (a
+format version), the offline render sharing the graph so the WAV carries
+the effects, the MIDI file unaffected. On a phone the sends join the
+row's level and pan menu; the project settings join the tempo menu. About
+a day, mostly listening.
 
 ## Decisions to make before Phase 1
 

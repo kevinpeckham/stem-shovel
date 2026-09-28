@@ -3946,13 +3946,39 @@ export async function removeWaitlist(id: string) {
 
 // ---- beats (docs/drum-machine.md, Phase 3) ----
 
-/** The account's saved beats, newest first, each with its project. */
+/** The account's saved beats, newest first, each with its project and the song it belongs to, if any. */
 export async function listBeats(accountId: string) {
 	return db.query.beat.findMany({
 		where: eq(beat.accountId, accountId),
 		orderBy: [desc(beat.updatedAt)],
 		columns: { id: true, name: true, data: true, songId: true, createdBy: true, updatedAt: true },
+		with: { song: { columns: { id: true, title: true } } },
 	});
+}
+
+/**
+ * What the drum machine needs of a song a beat is for (docs/drum-machine.md,
+ * Phase 3): its title, its page, and its tempo and meter at the start
+ * (the "tempo" and "meter" changes at 0) to seed a new beat. Null when the
+ * song is not the account's.
+ */
+export async function songForBeat(accountId: string, songId: string) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.id, songId), eq(song.accountId, accountId)),
+		columns: { id: true, title: true, slug: true, changes: true },
+		with: { project: { columns: { slug: true } }, account: { columns: { slug: true } } },
+	});
+	if (!s) return null;
+	const at0 = (kind: string) =>
+		s.changes.filter((c) => c.kind === kind).sort((a, b) => a.start - b.start)[0]?.value ?? null;
+	const bpm = Number(at0("tempo"));
+	return {
+		id: s.id,
+		title: s.title,
+		href: `/${s.account.slug}/projects/${s.project.slug}/${s.slug}`,
+		bpm: Number.isFinite(bpm) && bpm > 0 ? Math.round(bpm) : null,
+		meter: at0("meter"),
+	};
 }
 
 export async function createBeat(
@@ -3960,10 +3986,11 @@ export async function createBeat(
 	userId: string,
 	name: string,
 	data: DrumProject,
+	songId: string | null = null,
 ) {
 	const [row] = await db
 		.insert(beat)
-		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled beat", data })
+		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled beat", data, songId })
 		.returning();
 	return row!;
 }

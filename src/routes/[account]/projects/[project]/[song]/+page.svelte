@@ -12,6 +12,7 @@
 	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
 	import type { AiAnswer } from "$lib/server/aiDetect";
 	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
+	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
 	import AiToggle from "$lib/components/AiToggle.svelte";
 	import FinishedToggle from "$lib/components/FinishedToggle.svelte";
@@ -2614,6 +2615,15 @@
 					>
 						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
 						Record Demo
+					</a>
+					<a
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						role="menuitem"
+						href="/drum-machine?song={data.song.id}"
+						title="Drum machine: a beat at this song's tempo, saved to the song or added as a demo"
+					>
+						<span class="mr-2 inline-block align-[-2px]"><IconDrumKit /></span>
+						Drum Machine
 					</a>
 				</div>
 			</details>

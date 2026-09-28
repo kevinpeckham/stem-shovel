@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Beats for a song** (docs/drum-machine.md, Phase 3). A song page's Uploads menu has Drum Machine: `/drum-machine?song=<id>` seeds a fresh beat at the song's tempo and meter (`songForBeat` reads the changes at 0; the previous beat stays behind Undo), Save attaches it (`beat.song_id`; the ⋯ menu lists it with the song's name), and "Add to … as a demo" renders the open pattern to WAV and sends it through the demo upload path, so it lands in the song's demo recordings with an MP3 rendition like any demo.
+- **A pattern picker in the Idea Recorder.** When the beat has more than one pattern, the drums' compact view (the toolbar, the phone's wrench menu) offers a Pattern picker beside the tempo; while playing, the change waits for the end of the cycle.
+
+### Changed
+
+- ContextMenu has a `heading` item kind (the presets menu's styles) and popovers are capped at 400 px, scrolling inside (Kevin).
+
 ## [0.47.0] - 2026-09-28
 
 ### Changed

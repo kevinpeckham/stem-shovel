@@ -45,7 +45,14 @@
 		{/if}
 	</header>
 	<div class="w-1200px max-w-full w-full">
-		<DrumMachine account={data.account} beats={data.beats} />
+		{#if data.song}
+			<p class="mb-3 text-14px opacity-80">
+				A beat for <a class="link" href={data.song.href}>{data.song.title}</a>{data.song.bpm
+					? `, at its ${data.song.bpm} bpm`
+					: ""}. Save keeps it with the song; the ⋯ menu can add it to the song as a demo.
+			</p>
+		{/if}
+		<DrumMachine account={data.account} beats={data.beats} song={data.song} />
 		<DrumTutorial />
 	</div>
 

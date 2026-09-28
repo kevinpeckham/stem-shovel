@@ -42,6 +42,10 @@ Signed in, with an account, the ⋯ menu also has **Save** and lists the account
 
 The ⋯ menu's **Download** items offer the open pattern as a **WAV** (one seamless cycle, ready to loop in a music player or a DAW) or as a **MIDI** file, with each drum on its General MIDI note, so it opens as an editable drum track in any DAW.
 
+## Beats for a song
+
+On a song's page, **Uploads → Drum Machine** opens the drum machine for that song: a fresh beat at the song's tempo and time signature (your previous beat is kept behind Undo). **Save** keeps it with the song, so it is listed with the song's name in the ⋯ menu, and **Add to … as a demo** renders the open pattern to a WAV and adds it to the song's demo recordings, ready to play alongside the stems or download. **Back to …** returns to the song.
+
 ## In the Idea Recorder
 
-The recorder's toolbar has a drums button beside the metronome (on a phone, in the wrench menu). It plays your latest beat as a backing track while you record; with headphones on it stays off the take. See the Idea Recorder page for the details.
+The recorder's toolbar has a drums button beside the metronome (on a phone, in the wrench menu). It plays your latest beat as a backing track while you record; with headphones on it stays off the take. When the beat has more than one pattern, a picker beside the tempo chooses which plays; while the drums run, the change waits for the end of the cycle. See the Idea Recorder page for the details.

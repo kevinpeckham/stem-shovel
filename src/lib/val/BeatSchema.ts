@@ -9,6 +9,8 @@ export const BeatSaveSchema = v.object({
 	id: v.optional(NanoIdSchema),
 	name: NameSchema,
 	data: DrumProjectSchema,
+	/** A new beat can belong to a song of the account (the song page opened the drum machine). */
+	songId: v.optional(NanoIdSchema),
 });
 export type BeatSave = v.InferOutput<typeof BeatSaveSchema>;
 
