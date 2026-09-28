@@ -1,4 +1,5 @@
 import { playThroughSilentSwitch } from "$lib/audio/playThroughSilentSwitch";
+import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
@@ -145,8 +146,12 @@ export class StemEngine {
 		}
 	}
 
+	/** This player as the page's one transport (onlyOnePlays): starting it stops the drums or the metronome. */
+	#transport = { stop: () => this.pause() };
+
 	async play(): Promise<void> {
 		if (this.status !== "ready" || this.playing) return;
+		claimPlayback(this.#transport);
 		const ctx = this.#context();
 		// iOS plays media through the ring/silent switch but not Web Audio: ask for the media rules.
 		playThroughSilentSwitch();
@@ -176,6 +181,7 @@ export class StemEngine {
 
 	pause(): void {
 		if (!this.playing) return;
+		releasePlayback(this.#transport);
 		this.#offset = this.#currentPosition();
 		this.#stopSources();
 		cancelAnimationFrame(this.#raf);

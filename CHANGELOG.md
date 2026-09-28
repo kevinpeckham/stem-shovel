@@ -12,7 +12,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Drum machine: Reset to defaults** in the Effects menu: master levels back to zero, every drum in every pattern back to its usual sends (`drumMachine.resetFx`).
 - **Home page: the demo's starting beat is chosen in the demo.** A system admin builds or loads a beat in the home page's drum machine and picks "Use as the home page beat" from its ⋯ menu (`setHomeBeat`, the `homeBeat` app setting, JSON of the project); a first-time visitor's machine opens with it (`DrumMachine`'s `starting` prop, `drumMachine.load(warm, starting)`), a browser that remembers a beat keeps its own, and a share link still wins. /admin/home shows the chosen beat with a way back to the built-in one (`clearHomeBeat`).
-- **Home page: a metronome demo** beside the tuner. The Songwriting Tools section shows one of the two at a time, chosen by a pair of tabs (Metronome first); the copy names both.
+- **Home page: a metronome demo** beside the tuner. The Songwriting Tools section shows one of the two at a time, chosen by a pair of tabs (the tuner first and open by default); the copy names both. The tuner opens the microphone as half of it scrolls into view and closes it when it scrolls right out (`Tuner`'s `startOnView`, on the same `visibleShare` attachment); once the visitor turns it off, it stays off. Its On / Off button now carries `aria-pressed`.
+- **One transport at a time** (`src/lib/audio/onlyOnePlays.ts`): the stem player, the drum machine and the metronome claim playback as they start, which stops whichever of the others was playing, so a visitor who presses play on the home page's player and scrolls to the drums does not hear both. The drums and the metronome already traded places; this brings the stem player in.
 
 ### Changed
 

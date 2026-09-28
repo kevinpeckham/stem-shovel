@@ -14,12 +14,12 @@
 	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.
 	let demoComments = $state(exampleComments());
 
-	// The tools section shows one of its two demos at a time.
+	// The tools section shows one of its two demos at a time, the tuner first.
 	const TOOLS = [
-		{ id: "metronome", name: "Metronome" },
 		{ id: "tuner", name: "Guitar Tuner" },
+		{ id: "metronome", name: "Metronome" },
 	] as const;
-	let tool = $state<(typeof TOOLS)[number]["id"]>("metronome");
+	let tool = $state<(typeof TOOLS)[number]["id"]>("tuner");
 
 	// The space bar goes to the demo the visitor is looking at: the stem player
 	// or the drum machine, whichever shows more of itself, once at least half
@@ -218,15 +218,15 @@
 			</section>
 
 			<section class="mt-12">
-				<h3 class="marketing-section-heading">Metronome &amp; Tuner Demo</h3>
+				<h3 class="marketing-section-heading">Tuner &amp; Metronome Demo</h3>
 				<div class="marketing-topic-heading">Songwriting Tools & Utilities</div>
 				<p class="marketing-paragraph text-balance">
 					The tools you need to be creative and productive as a songwriter all in one place. Like
-					this metronome and guitar tuner, both also available as pop-overs from the idea-recorder,
-					so you can keep time or tune up between takes or in the middle of a writing session.
+					this guitar tuner and metronome, both also available as pop-overs from the idea-recorder,
+					so you can tune up or keep time between takes or in the middle of a writing session.
 				</p>
 				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<!-- One demo at a time: the tabs swap the metronome for the tuner. Not startOnHover: on the home page the microphone opens only from the On / Off button. -->
+				<!-- One demo at a time: the tabs swap the tuner for the metronome. The tuner opens the microphone as it scrolls into view (startOnView), not on hover. -->
 				<div
 					class="mt-8 flex gap-1 rounded bg-dark/40 p-1 w-fit"
 					role="tablist"
@@ -245,10 +245,10 @@
 					{/each}
 				</div>
 				<div class="mt-4">
-					{#if tool === "metronome"}
-						<Metronome />
+					{#if tool === "tuner"}
+						<Tuner startOnView />
 					{:else}
-						<Tuner />
+						<Metronome />
 					{/if}
 				</div>
 			</section>

@@ -35,6 +35,7 @@ import { playDrumStep, renderDrumPatternWav, type DrumPlayState } from "./drumRe
 import { drumKit } from "./kits";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
+import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
 
 /**
  * The one drum machine on the page (docs/drum-machine.md): a project of
@@ -166,6 +167,7 @@ class DrumMachineEngine {
 
 	async start() {
 		if (this.running) return;
+		claimPlayback(this);
 		this.load();
 		playThroughSilentSwitch();
 		this.#ctx ??= new AudioContext();
@@ -184,6 +186,7 @@ class DrumMachineEngine {
 		this.#frame = requestAnimationFrame(this.#follow);
 	}
 	stop() {
+		releasePlayback(this);
 		this.#stopLoop?.();
 		this.#stopLoop = null;
 		if (this.#frame !== null) cancelAnimationFrame(this.#frame);

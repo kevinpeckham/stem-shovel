@@ -2,6 +2,7 @@ import {
 	loadMetronomePreferences,
 	saveMetronomePreferences,
 } from "$lib/utils/metronomePreferences";
+import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
 import { BPM_MAX, BPM_MIN, tapTempo } from "$lib/utils/tapTempo";
 import { startLookahead } from "./lookahead";
 
@@ -69,6 +70,7 @@ class MetronomeEngine {
 
 	async start() {
 		if (this.running) return;
+		claimPlayback(this);
 		this.load();
 		this.#ctx ??= new AudioContext();
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
@@ -78,6 +80,7 @@ class MetronomeEngine {
 		this.running = true;
 	}
 	stop() {
+		releasePlayback(this);
 		this.#stopLoop?.();
 		this.#stopLoop = null;
 		for (const t of this.#visualTimers) clearTimeout(t);
