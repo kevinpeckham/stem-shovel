@@ -87,14 +87,13 @@ export const DRUM_DELAY_TIMES = [
 export type DrumDelayTime = (typeof DRUM_DELAY_TIMES)[number]["steps"];
 export const DRUM_DELAY_STEPS = DRUM_DELAY_TIMES.map((d) => d.steps) as DrumDelayTime[];
 /**
- * The effects a project starts with: on, with both returns at zero, so a
- * beat starts dry and the first master level someone raises is heard at
- * once, because every drum already sends a little (DEFAULT_DRUM_SENDS);
- * a dotted-eighth delay with a moderate feedback; a medium room. Kevin's
- * call: the master controls are found first, the sends later.
+ * The effects a project starts with: both master levels at zero, so a
+ * beat starts dry and the first level someone raises is heard at once,
+ * because every drum already sends a little (DEFAULT_DRUM_SENDS); a
+ * dotted-eighth delay with a moderate feedback; a medium room. Kevin's
+ * call: effects are applied by turning them up, no switch.
  */
 export const DEFAULT_DRUM_FX = {
-	enabled: true,
 	delayTime: 3 as DrumDelayTime,
 	delayFeedback: 0.4,
 	delayReturn: 0,

@@ -53,8 +53,8 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 		const stepSeconds = 60 / tempo / 4;
 		delay.delayTime.value = Math.min(4, next.delayTime * stepSeconds);
 		feedback.gain.value = next.delayFeedback;
-		delayReturn.gain.value = next.enabled ? next.delayReturn : 0;
-		reverbReturn.gain.value = next.enabled ? next.reverbReturn : 0;
+		delayReturn.gain.value = next.delayReturn;
+		reverbReturn.gain.value = next.reverbReturn;
 		if (next.reverbSize !== impulseSize) {
 			impulseSize = next.reverbSize;
 			convolver.buffer = reverbImpulse(ctx, next.reverbSize);

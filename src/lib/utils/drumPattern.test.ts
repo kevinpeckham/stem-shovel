@@ -212,7 +212,7 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 		}),
 	},
 	{
-		link: "BVQoOG3jUHiAEGRkABUBAKyRkEyBBAA",
+		link: "BVQoONvGoPEAIMjIACoCAVkjIJkCCA",
 		version: 5,
 		project: () => ({
 			v: 2,
@@ -221,7 +221,6 @@ const PINNED_LINKS: { link: string; project: () => DrumProject; version: 1 | 2 |
 			swingGrid: 16,
 			humanize: 0.14,
 			fx: {
-				enabled: false,
 				delayTime: 6,
 				delayFeedback: 0.55,
 				delayReturn: 0.7,
@@ -297,7 +296,6 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 	test("carries the effects and the sends", () => {
 		const p = startingDrumProject();
 		p.fx = {
-			enabled: true,
 			delayTime: 8,
 			delayFeedback: 0.9,
 			delayReturn: 0.33,

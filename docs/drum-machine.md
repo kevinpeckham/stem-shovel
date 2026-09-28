@@ -304,10 +304,11 @@ layout and the e2e pass.
 
 ## Reverb and delay (built 2026-09-28)
 
-Built as described here, with two of Kevin's changes: an on / off master
-(`fx.enabled`) that hides the master controls and mutes the returns, and
-inverted defaults (returns at zero, sends per drum from
-`DEFAULT_DRUM_SENDS`) so the master levels are discovered first. The
+Built as described here, with Kevin's changes: the master controls live
+in an Effects menu at the foot (no on / off switch: a beat is dry until a
+level comes up), and the defaults are inverted (returns at zero, sends
+per drum from `DEFAULT_DRUM_SENDS`) so the master levels are discovered
+first. The
 row's panner feeds a dry gain into the master and two sends: a delay bus (a `DelayNode` with a feedback
 gain and a low-pass in the loop, its time in steps so it follows the
 tempo, dotted eighth by default, as Groovie's) and a reverb bus (a

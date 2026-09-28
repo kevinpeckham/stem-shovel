@@ -1181,30 +1181,17 @@
 					Undo
 				</button>
 
-				<!-- effects: a master on / off, and their settings in a menu while on -->
-				<button
-					class="device-button-xs px-3 md-device-button-sm {p.fx.enabled ? 'text-accent' : ''}"
-					type="button"
-					aria-pressed={p.fx.enabled}
-					title={p.fx.enabled
-						? "Effects on: turn the delay and the reverb off"
-						: "Effects off: turn them on"}
-					onclick={() => drumMachine.setFx({ enabled: !p.fx.enabled })}
-				>
-					<span class="i-ph-sparkle" aria-hidden="true"></span>
-					Effects {p.fx.enabled ? "on" : "off"}
-				</button>
-				{#if p.fx.enabled}
-					<ContextMenu
-						ariaLabel="Effects settings"
-						position="top left"
-						title="Delay and reverb settings"
-						iconClass="i-ph-sliders-horizontal"
-						buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
-						popoverClasses="min-w-72"
-						items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
-					/>
-				{/if}
+				<!-- the effects: delay and reverb settings in a menu; a beat is dry until their levels come up -->
+				<ContextMenu
+					ariaLabel="Effects"
+					position="top left"
+					title="Delay and reverb: turn a level up to hear it"
+					iconClass="i-ph-sliders-horizontal"
+					label="Effects"
+					buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+					popoverClasses="min-w-72"
+					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
+				/>
 				<ContextMenu
 					ariaLabel="More"
 					position="top left"

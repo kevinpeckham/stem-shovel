@@ -91,9 +91,8 @@ describe("meters", () => {
 });
 
 describe("effect defaults", () => {
-	test("a new project starts with the effects on, both master levels at zero, and every drum sending a little", () => {
+	test("a new project starts with both master levels at zero and every drum sending a little", () => {
 		const p = startingDrumProject();
-		expect(p.fx.enabled).toBe(true);
 		expect(p.fx.delayReturn).toBe(0);
 		expect(p.fx.reverbReturn).toBe(0);
 		for (const r of p.patterns[0]!.rows)
