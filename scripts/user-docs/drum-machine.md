@@ -34,6 +34,10 @@ The recordings in the Acoustic and Room kits come from [Groovie](https://github.
 
 **Presets** holds a couple of dozen beats by style: rock, pop and funk, hip-hop and electronic, world, a waltz and two in 6/8, and fills. Choosing one replaces your project with the preset, tempo and kit included; **Undo** beside it brings your beat back until you make another change. Hold shift while choosing to add the preset's patterns to your project instead, keeping your tempo, feel and kit, which is how a fill joins a groove.
 
+## Generate
+
+**Generate**, beside Presets, draws a pattern from a style: rock, pop, funk, hip-hop, house, breakbeat, latin, half-time, or a fill. Each style has a backbone that is always there (the kick and snare that make it that style) and a set of maybes; **Density** decides how many of the maybes come out, from the bare backbone at 0% to a busy bar at 100%. Every press is a fresh draw, so press again until one feels right; **Undo** brings your pattern back. The draw fits the open pattern, its meter and length, and keeps your rows' levels, pans and sends; a drum the style needs is added, one it does not use is left silent. **Add as a pattern** puts the draw after the open pattern instead of replacing it, which is how a fill joins a groove.
+
 ## Patterns
 
 The numbered buttons above the grid are the project's patterns, up to eight. **+** adds an empty pattern with the same rows, the copy button duplicates the open one, and the bin deletes it. Open a pattern to edit it; while the drums play, the pattern you choose waits for the end of the cycle before it takes over, and the readout says which is playing and which is next.

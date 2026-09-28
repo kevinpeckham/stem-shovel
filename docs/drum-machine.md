@@ -6,9 +6,9 @@ fx per project, share links version 5.
 **Beats for a song and the recorder's pattern picker shipped in
 v0.48.0** (2026-09-28): `?song=` on the page, `songForBeat` in data.ts,
 Save with a `songId`, a demo from the open pattern through the demo
-upload path; the compact view's pattern ComboBox. **The timeline built
-2026-09-28** (see "Timeline" below). Remaining from Phase 3: the
-generator, own samples, MIDI input. Reverb and delay were built the same
+upload path; the compact view's pattern ComboBox. **The timeline and the pattern
+generator built 2026-09-28** (see below). Remaining from Phase 3: own
+samples, MIDI input. Reverb and delay were built the same
 day, see below.
 **Room kit and saved beats shipped in v0.43.0** (2026-09-27): a
 second sampled kit from Groovie's other variants; the first Phase 3 item,
@@ -300,9 +300,31 @@ layout and the e2e pass.
   through the demo path) or a stem.
 - **A timeline** to arrange patterns into a song, as Groovie's (built,
   see "Timeline"); a **pattern generator** from a style and a density, as
-  orDrumbox's.
+  orDrumbox's (built, see "Pattern generator").
 - **Own samples**: a kit per account from uploaded one-shots (Blob,
   counted against storage), and **MIDI input** for finger drumming.
+
+## Pattern generator (built 2026-09-28)
+
+`src/lib/constants/drumGenerator.ts` holds a style table in the presets'
+spirit: per style a bar of 4/4 as sixteen characters per voice and a bar
+of 6/8 as twelve, `X` `x` `o` the backbone (always there), a digit a
+maybe with its chance in tenths, `.` never, plus an optional `ghosts`
+string of maybes that come out as ghost notes. `generateDrumPattern
+(style, density, from, seed)` (`src/lib/utils/generateDrumPattern.ts`)
+draws a pattern in the shape of `from`: its meter and steps (3/4 takes
+the first three beats of the 4/4 bar; an eighth-note grid every other
+character; two bars draw each bar on its own), its rows with their
+levels, pans, mutes and sends, a row added for a voice the style plays
+that the pattern lacks (within `MAX_DRUM_ROWS`), a row the style does not
+play kept silent. Density scales every chance: 0 leaves the backbone, 0.5
+is the chance as written, 1 doubles it. The seed (`seededRandom`,
+mulberry32) makes the draw repeatable for the tests; the engine draws a
+fresh one per press. `drumMachine.generate(style, density, mode)` puts the
+pattern in place of the open one or adds it, and keeps the project for
+`undoPreset` like a preset does. The Generate menu at the foot holds the
+style, its hint, the density and the two buttons. Not built: tempo or
+kit suggestions per style (the user's stay), and a seed in the link.
 
 ## Timeline (built 2026-09-28)
 

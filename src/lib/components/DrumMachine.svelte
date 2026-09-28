@@ -21,6 +21,7 @@
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
 	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
+	import { DRUM_GENERATOR_STYLES } from "$lib/constants/drumGenerator";
 	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
 	import { setHomeBeat } from "$lib/remote/admin.remote";
 	import type { DrumProject } from "$lib/val/DrumPatternSchema";
@@ -446,6 +447,21 @@
 		]),
 	);
 	let addPresets = $state(false);
+
+	// The generator's choices, kept while the page lives.
+	let generatorStyle = $state(DRUM_GENERATOR_STYLES[0]!.id);
+	let generatorDensity = $state(0.5);
+	const GENERATOR_OPTIONS = DRUM_GENERATOR_STYLES.map((s) => ({ value: s.id, label: s.name }));
+	function generate(mode: "replace" | "add") {
+		const style = DRUM_GENERATOR_STYLES.find((s) => s.id === generatorStyle);
+		if (!style) return;
+		const index = drumMachine.generate(style, generatorDensity, mode);
+		notify(
+			mode === "add"
+				? `${style.name} generated as pattern ${index + 1}`
+				: `${style.name} generated into pattern ${index + 1}; Undo brings yours back`,
+		);
+	}
 	function load(id: string) {
 		const preset = DRUM_PRESETS.find((x) => x.id === id);
 		if (!preset) return;
@@ -738,6 +754,54 @@
 						notify("Effects reset to their defaults");
 					}}>Reset to defaults</button
 				>
+			</div>
+		{/snippet}
+		{#snippet generatorItem()}
+			<div
+				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
+			>
+				<div class="text-11px uppercase tracking-wider opacity-60">Generate</div>
+				<div class="block text-blue-100/80">
+					<span class="device-button-label">Style</span>
+					<ComboBox
+						ariaLabel="Style"
+						buttonClasses="!py-1 !text-13px w-full"
+						options={GENERATOR_OPTIONS}
+						value={generatorStyle}
+						onchange={(v) => (generatorStyle = v)}
+					/>
+					<p class="mt-1 text-12px opacity-60">
+						{DRUM_GENERATOR_STYLES.find((s) => s.id === generatorStyle)?.hint}
+					</p>
+				</div>
+				<label class="block">
+					<span class="device-button-label">Density · {Math.round(generatorDensity * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(generatorDensity * 100)}
+						oninput={(e) => (generatorDensity = Number(e.currentTarget.value) / 100)}
+						aria-label="Density"
+					/>
+				</label>
+				<div class="flex flex-wrap gap-2">
+					<button
+						class="device-button-xs px-3"
+						type="button"
+						title="A new draw into the open pattern, in its meter and length; Undo brings yours back"
+						onclick={() => generate("replace")}>Generate</button
+					>
+					<button
+						class="device-button-xs px-3"
+						type="button"
+						disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
+						title="A new draw as a new pattern after this one"
+						onclick={() => generate("add")}>Add as a pattern</button
+					>
+				</div>
 			</div>
 		{/snippet}
 		{#snippet humanizeItem()}
@@ -1342,6 +1406,17 @@
 			<div
 				class="grid grid-cols-1 sm-flex items-center gap-5 mt-5 sm-mt-0 sm-gap-2 md-gap-3 mb-8 sm-mb-0"
 			>
+				<!-- the generator: a pattern drawn from a style at a density, in the open pattern's shape -->
+				<ContextMenu
+					ariaLabel="Generate"
+					position="top left"
+					title="Generate a pattern from a style"
+					iconClass="i-ph-shuffle"
+					label="Generate"
+					buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm"
+					popoverClasses="min-w-72"
+					items={[{ id: "generator", kind: "snippet", snippet: generatorItem }]}
+				/>
 				<div
 					class=""
 					onpointerdown={(e) => (addPresets = e.shiftKey)}

@@ -1,20 +1,13 @@
-import { DRUM_STEP_CHOICES, type DrumSteps, type DrumVoiceId } from "$lib/constants/drumMachine";
+import { DRUM_STEP_CHOICES, type DrumSteps } from "$lib/constants/drumMachine";
 import type { DrumPreset } from "$lib/constants/drumPresets";
-import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS, DEFAULT_HUMANIZE } from "$lib/constants/drumMachine";
+import {
+	DEFAULT_DRUM_FX,
+	DEFAULT_DRUM_SENDS,
+	DEFAULT_HUMANIZE,
+	DRUM_USUAL_LEVEL,
+} from "$lib/constants/drumMachine";
 import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
 
-/** The kit's usual balance per voice, for a preset row that names no level. */
-const USUAL_LEVEL: Partial<Record<DrumVoiceId, number>> = {
-	kick: 0.9,
-	snare: 0.8,
-	"hat-closed": 0.6,
-	"hat-open": 0.5,
-	clap: 0.7,
-	rim: 0.7,
-	ride: 0.5,
-	crash: 0.6,
-	cowbell: 0.5,
-};
 const CELL: Record<string, number> = { ".": 0, o: 1, x: 2, X: 3 };
 
 /**
@@ -41,7 +34,7 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 				});
 				return {
 					voice: row.voice,
-					level: row.level ?? USUAL_LEVEL[row.voice] ?? 0.8,
+					level: row.level ?? DRUM_USUAL_LEVEL[row.voice] ?? 0.8,
 					pan: row.pan ?? 0,
 					mute: false,
 					delaySend: row.delaySend ?? DEFAULT_DRUM_SENDS[row.voice].delaySend,

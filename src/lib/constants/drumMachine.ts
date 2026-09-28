@@ -62,6 +62,18 @@ export const DRUM_BPM_MAX = 240;
 export const MAX_DRUM_ROWS = 12;
 /** A cell holds a velocity: 0 silent, 1 ghost, 2 normal, 3 accent. Phase 1 toggles 0 and 2. */
 export const DRUM_VELOCITY_MAX = 3;
+/** The kit's usual balance per voice, for a preset or generated row that names no level. */
+export const DRUM_USUAL_LEVEL: Partial<Record<DrumVoiceId, number>> = {
+	kick: 0.9,
+	snare: 0.8,
+	"hat-closed": 0.6,
+	"hat-open": 0.5,
+	clap: 0.7,
+	rim: 0.7,
+	ride: 0.5,
+	crash: 0.6,
+	cowbell: 0.5,
+};
 export const DRUM_VELOCITY_NORMAL = 2;
 /** Patterns to a project: the tabs above the grid. */
 export const MAX_DRUM_PATTERNS = 8;

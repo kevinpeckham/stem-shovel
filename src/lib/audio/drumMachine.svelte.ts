@@ -26,6 +26,8 @@ import { drumPresetProject } from "$lib/utils/drumPresetProject";
 import { drumSwingDelay } from "$lib/utils/drumSwingDelay";
 import { emptyDrumPattern } from "$lib/utils/emptyDrumPattern";
 import { encodeDrumMidi } from "$lib/utils/encodeDrumMidi";
+import { generateDrumPattern } from "$lib/utils/generateDrumPattern";
+import type { DrumGeneratorStyle } from "$lib/constants/drumGenerator";
 import { encodeDrumProject } from "$lib/utils/encodeDrumProject";
 import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
 import { startingDrumProject } from "$lib/utils/startingDrumProject";
@@ -459,6 +461,27 @@ class DrumMachineEngine {
 		this.#afterSwap(before.kit);
 		this.beforePreset = before;
 		this.loadedName = mode === "replace" ? name : null;
+	}
+	/**
+	 * A generated pattern (generateDrumPattern) in place of the open one, or
+	 * added after it, in the open pattern's shape; the project as it was is
+	 * kept for `undoPreset` until the next edit. Returns the pattern's index.
+	 */
+	generate(style: DrumGeneratorStyle, density: number, mode: "replace" | "add"): number {
+		const before = $state.snapshot(this.project);
+		const seed = Math.floor(Math.random() * 2 ** 32);
+		const pattern = generateDrumPattern(style, density, $state.snapshot(this.pattern), seed);
+		if (mode === "replace") {
+			this.project.patterns[this.current] = pattern;
+		} else {
+			if (this.project.patterns.length >= MAX_DRUM_PATTERNS) return this.current;
+			this.project.patterns.push(pattern);
+			this.select(this.project.patterns.length - 1);
+		}
+		this.#resetSolo();
+		this.#save();
+		this.beforePreset = before;
+		return this.current;
 	}
 	undoPreset() {
 		const before = this.beforePreset;
