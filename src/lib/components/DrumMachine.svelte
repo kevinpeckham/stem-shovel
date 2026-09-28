@@ -1181,7 +1181,7 @@
 					Undo
 				</button>
 
-				<!-- the effects: delay and reverb settings in a menu; a beat is dry until their levels come up -->
+				<!-- the effects: delay and reverb settings in a menu; a beat is dry until their levels come up, and the button lights while either is up -->
 				<ContextMenu
 					ariaLabel="Effects"
 					position="top left"
@@ -1189,6 +1189,7 @@
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+					buttonClasses={p.fx.delayReturn > 0 || p.fx.reverbReturn > 0 ? "text-accent" : ""}
 					popoverClasses="min-w-72"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
