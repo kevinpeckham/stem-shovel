@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-09-28
+
 ### Added
 
 - **Drum machine: a pattern generator** (docs/drum-machine.md, "Pattern generator"). A Generate menu beside Presets draws a pattern from a style (rock, pop, funk, hip-hop, house, breakbeat, latin, half-time, fill) at a density: the style's backbone is always there and the density decides how many of its maybes come out. The draw fits the open pattern's meter and length and keeps its rows' settings; a drum the style needs is added, one it does not play is left silent; Undo brings the pattern back, and "Add as a pattern" puts the draw after the open one. `src/lib/constants/drumGenerator.ts` (the styles, in the presets' row-string spirit), `src/lib/utils/generateDrumPattern.ts` (pure, seeded through `seededRandom`, tested for every style, meter and length), `drumMachine.generate`. The usual level per voice moved to `DRUM_USUAL_LEVEL` in the constants, shared with the presets.
