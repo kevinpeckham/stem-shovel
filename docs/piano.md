@@ -121,7 +121,10 @@ chords, transpose, a reverb; sounds he does not like).
   since iOS 11. Not built: an mp3 fallback should a browser refuse FLAC
   (the button would then be hidden), pedal noises, sympathetic resonance.
 - **Home page demo** (built 2026-09-30): a full-width section under the
-  drum machine; the keyboard goes to it when it is the demo in view
+  drum machine; nothing of the piano downloads at load, the demo tier is
+  fetched as the section scrolls into view (`piano.prefetch`, no audio
+  context yet) so the first touch finds it in, and the drum kit does the
+  same (`drumMachine.warmKit`); the keyboard goes to it when it is the demo in view
   (the home page's `spaceTarget` now weighs the player, the drums and
   the piano).
 - **The nav** (2026-09-30): an Instruments menu between Projects and

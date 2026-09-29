@@ -123,6 +123,10 @@ class PianoEngine {
 		return this.samplesBase ? pianoHiresCached(this.samplesBase) : Promise.resolve(false);
 	}
 	/** The samples, fetched and (once there is a context) decoded; the state for the screen. */
+	/** Fetch the Grand Piano's demo tier without opening the audio (no gesture needed): the home page calls it as the demo scrolls into view, so the first touch finds the samples in. */
+	prefetch() {
+		if (this.instrument === "grand") warmPianoSamples();
+	}
 	#samples() {
 		if (pianoDemoReady()) {
 			this.samples = "ready";

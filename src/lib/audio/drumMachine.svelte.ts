@@ -118,6 +118,10 @@ class DrumMachineEngine {
 		this.#resetSolo();
 		if (warm) drumKit(this.project.kit).warm();
 	}
+	/** Fetch the kit's samples ahead of the first play (the home page, as the demo scrolls into view). */
+	warmKit() {
+		drumKit(this.project.kit).warm();
+	}
 	#save() {
 		this.beforePreset = null;
 		this.loadedName = null;

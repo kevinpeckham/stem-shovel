@@ -9,6 +9,8 @@
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import Piano from "$lib/components/Piano.svelte";
+	import { piano } from "$lib/audio/piano.svelte";
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { visibleShare } from "$lib/utils/visibleShare";
 
 	let { data } = $props();
@@ -268,7 +270,14 @@
 			</p>
 			<div class="marketing-demo-cta">Try the working demo below.</div>
 			<!-- Space plays and stops only while this is the demo in view (see spaceTarget): elsewhere the page needs space for scrolling. -->
-			<div class="mt-8" {@attach visibleShare((s) => (drumsShare = s))}>
+			<!-- The kit's samples are fetched as the demo scrolls into view, not at load: a visitor who never gets here downloads nothing. -->
+			<div
+				class="mt-8"
+				{@attach visibleShare((s) => {
+					drumsShare = s;
+					if (s > 0) drumMachine.warmKit();
+				})}
+			>
 				<DrumMachine
 					keyboard={spaceTarget === "drums"}
 					starting={data.homeBeat}
@@ -293,7 +302,14 @@
 				>
 			</div>
 			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). -->
-			<div class="mt-8" {@attach visibleShare((s) => (pianoShare = s))}>
+			<!-- The Grand Piano's demo samples (3.4 MB) are fetched as the demo scrolls into view, so the first touch finds them in. -->
+			<div
+				class="mt-8"
+				{@attach visibleShare((s) => {
+					pianoShare = s;
+					if (s > 0) piano.prefetch();
+				})}
+			>
 				<Piano keyboard={spaceTarget === "piano"} />
 			</div>
 		</section>
