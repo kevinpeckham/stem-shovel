@@ -54,8 +54,8 @@ class PianoEngine {
 	samples = $state<"idle" | "loading" | "ready" | "failed">("idle");
 	/** The best tier fully in: the demo, the standard tier (loaded in the background on the piano page) or hi-res (the button). */
 	tier = $state<PianoTier>("demo");
-	/** A tier on its way, with its progress. */
-	tierLoading = $state<{ tier: PianoTier; done: number; total: number } | null>(null);
+	/** Tiers on their way, with their progress (the standard tier and hi-res can load side by side). */
+	loadingTiers = $state<Partial<Record<PianoTier, { done: number; total: number }>>>({});
 	/** The Hi-res choice, remembered per browser. */
 	hires = $state(false);
 	/** Where the standard and hi-res tiers live (the page's load says; null where there is no store). */
@@ -86,31 +86,31 @@ class PianoEngine {
 		this.#standardWanted = warm;
 		if (warm && this.instrument === "grand") this.#samples();
 	}
-	/** After the demo tier: the standard tier in the background, then hi-res if chosen (from the cache after the first time). */
+	/** After the demo tier: the standard tier in the background, and hi-res as soon as it is chosen (from the cache after the first time), each on its own. */
 	#tiers() {
 		const ctx = this.#ctx;
 		const base = this.samplesBase;
 		if (!ctx || !base || !this.#standardWanted || this.instrument !== "grand") return;
-		if (this.tierLoading) return;
-		const next: "standard" | "hires" | null = !pianoTierReady("standard")
-			? "standard"
-			: this.hires && !pianoTierReady("hires")
-				? "hires"
-				: null;
-		if (!next) return;
-		this.tierLoading = { tier: next, done: 0, total: 0 };
-		loadPianoTier(ctx, next, base, (done, total) => {
-			if (this.tierLoading?.tier === next) this.tierLoading = { tier: next, done, total };
-		}).then(
-			() => {
-				this.tier = next;
-				this.tierLoading = null;
-				this.#tiers();
-			},
-			() => {
-				this.tierLoading = null;
-			},
-		);
+		const wanted: ("standard" | "hires")[] = ["standard"];
+		if (this.hires) wanted.push("hires");
+		for (const tier of wanted) {
+			if (pianoTierReady(tier) || this.loadingTiers[tier]) continue;
+			this.loadingTiers = { ...this.loadingTiers, [tier]: { done: 0, total: 0 } };
+			loadPianoTier(ctx, tier, base, (done, total) => {
+				if (this.loadingTiers[tier])
+					this.loadingTiers = { ...this.loadingTiers, [tier]: { done, total } };
+			}).then(
+				() => {
+					if (tier === "hires" || this.tier === "demo") this.tier = tier;
+					const { [tier]: _done, ...rest } = this.loadingTiers;
+					this.loadingTiers = rest;
+				},
+				() => {
+					const { [tier]: _failed, ...rest } = this.loadingTiers;
+					this.loadingTiers = rest;
+				},
+			);
+		}
 	}
 	/** The Hi-res button: remember the choice and fetch the tier (the cache serves it on later visits). */
 	enableHires() {

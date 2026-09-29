@@ -42,14 +42,19 @@
 		void piano.hiresCached().then((c) => (hiresCached = c));
 	});
 	const mb = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
+	// The Hi-res button: off, loading (a spinner and the percentage from the press until the last file), or on.
 	let hiresState = $derived(
-		piano.tier === "hires"
-			? "on"
-			: piano.tierLoading?.tier === "hires"
-				? "loading"
-				: piano.hires
-					? "waiting"
-					: "off",
+		piano.tier === "hires" ? "on" : piano.loadingTiers.hires || piano.hires ? "loading" : "off",
+	);
+	const percent = (p: { done: number; total: number } | undefined) =>
+		p?.total ? `${Math.round((100 * p.done) / p.total)}%` : "0%";
+	/** What the screen says about a tier on its way: hi-res first, since that is the one someone pressed for. */
+	let tierProgress = $derived(
+		piano.loadingTiers.hires
+			? `hi-res samples ${percent(piano.loadingTiers.hires)}`
+			: piano.loadingTiers.standard
+				? `standard samples ${percent(piano.loadingTiers.standard)}`
+				: null,
 	);
 	onDestroy(() => piano.allOff());
 
@@ -209,13 +214,8 @@
 					<span>· loading the piano…</span>
 				{:else if piano.instrument === "grand" && piano.samples === "failed"}
 					<span class="text-red-300">· the piano's samples did not load</span>
-				{:else if piano.instrument === "grand" && piano.tierLoading}
-					<span
-						>· {piano.tierLoading.tier === "hires" ? "hi-res" : "standard"} samples {piano
-							.tierLoading.total
-							? `${Math.round((100 * piano.tierLoading.done) / piano.tierLoading.total)}%`
-							: "…"}</span
-					>
+				{:else if piano.instrument === "grand" && tierProgress}
+					<span>· {tierProgress}</span>
 				{:else if piano.instrument === "grand" && piano.tier !== "demo"}
 					<span>· {piano.tier === "hires" ? "hi-res" : "standard"} samples</span>
 				{/if}
@@ -453,12 +453,10 @@
 			{hiresState === "on"
 				? "Hi-res"
 				: hiresState === "loading"
-					? "Hi-res…"
-					: hiresState === "waiting"
-						? "Hi-res soon"
-						: hiresCached
-							? "Hi-res"
-							: `Hi-res · ${mb(PIANO_TIER_BYTES.hires)}`}
+					? `Hi-res ${percent(piano.loadingTiers.hires)}`
+					: hiresCached
+						? "Hi-res"
+						: `Hi-res · ${mb(PIANO_TIER_BYTES.hires)}`}
 		</button>
 	{/snippet}
 

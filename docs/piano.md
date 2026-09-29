@@ -103,7 +103,10 @@ chords, transpose, a reverb; sounds he does not like).
   Samples group; the phone menu) fetches the hires tier once, through the
   Cache API, so the next visit costs no download; the choice is
   remembered (`hires` in the preferences) and the tier comes back from
-  the cache. A note plays the two loaded layers on either side of its
+  the cache. The hires download starts the moment the button is pressed,
+  beside whatever the standard tier still has to fetch (`loadingTiers`
+  holds each tier's progress), and the button shows a spinner and the
+  percentage until the last file is decoded, then lights. A note plays the two loaded layers on either side of its
   velocity, crossfaded with equal power (`pianoLayers.ts`, tested), so a
   hires layer replaces a standard one of the same number as it lands;
   letting go damps the string and, once the releases are in, plays the
