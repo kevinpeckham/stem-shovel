@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ComboBox from "$lib/components/ComboBox.svelte";
+	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import { noteLabel } from "$lib/audio/pitch";
 	import {
@@ -192,8 +193,8 @@
 	</div>
 
 	<!-- the controls -->
-	<div class="flex flex-wrap items-end gap-x-5 gap-y-3">
-		<div class="w-44">
+	<div class="flex flex-wrap items-end gap-x-2 sm-gap-x-5 gap-y-3">
+		<div class="flex-1 min-w-28 sm-flex-none sm-w-44">
 			<div class="device-button-group-label">Sound</div>
 			<ComboBox
 				ariaLabel="Sound"
@@ -206,18 +207,18 @@
 			<div class="device-button-group-label">Octave</div>
 			<div class="flex items-center gap-1" role="group" aria-label="Octave">
 				<button
-					class="device-button-sm px-3"
+					class="device-button-xs sm-device-button-sm px-2 sm-px-3"
 					type="button"
 					disabled={piano.octave <= PIANO_OCTAVE_MIN}
 					aria-label="Octave down"
 					title="Octave down (arrow down)"
 					onclick={() => piano.setOctave(piano.octave - 1)}>−</button
 				>
-				<span class="min-w-10 text-center text-14px tabular-nums text-oxford font-600"
+				<span class="min-w-7 sm-min-w-10 text-center text-14px tabular-nums text-oxford font-600"
 					>C{piano.octave}</span
 				>
 				<button
-					class="device-button-sm px-3"
+					class="device-button-xs sm-device-button-sm px-2 sm-px-3"
 					type="button"
 					disabled={piano.octave >= PIANO_OCTAVE_MAX}
 					aria-label="Octave up"
@@ -226,7 +227,8 @@
 				>
 			</div>
 		</div>
-		<div>
+		<!-- the pedal has no place on a phone (the space bar is its key); the levels and MIDI go into a menu there -->
+		<div class="hidden sm-block">
 			<div class="device-button-group-label">Pedal</div>
 			<button
 				class="device-button-sm px-3 {piano.sustain ? 'text-accent' : ''}"
@@ -239,60 +241,73 @@
 				Sustain
 			</button>
 		</div>
-		<label class="block w-36">
-			<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.volume * 100)}
-				oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
-				aria-label="Volume"
+		<div class="hidden sm-flex flex-wrap items-end gap-x-5 gap-y-3">
+			<label class="block w-36">
+				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.volume * 100)}
+					oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+					aria-label="Volume"
+				/>
+			</label>
+			<label class="block w-36">
+				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.reverb * 100)}
+					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
+					aria-label="Reverb"
+				/>
+			</label>
+			{#if midiSupported}
+				<div>
+					<div class="device-button-group-label">MIDI</div>
+					{#if piano.midi.status === "on"}
+						<button
+							class="device-button-sm px-3 text-accent"
+							type="button"
+							title={piano.midi.inputs.length
+								? `Listening to ${piano.midi.inputs.join(", ")}`
+								: "Listening; plug a controller in"}
+							onclick={() => piano.disconnectMidi()}
+						>
+							<span class="i-ph-usb" aria-hidden="true"></span>
+							{piano.midi.inputs.length ? "Connected" : "No controller"}
+						</button>
+					{:else}
+						<button
+							class="device-button-sm px-3"
+							type="button"
+							title="Play from a MIDI keyboard or pad (the browser asks once)"
+							onclick={() => void piano.connectMidi()}
+						>
+							<span class="i-ph-usb" aria-hidden="true"></span>
+							{piano.midi.status === "denied" ? "MIDI refused" : "Connect MIDI"}
+						</button>
+					{/if}
+				</div>
+			{/if}
+		</div>
+		<div class="sm-hidden">
+			<ContextMenu
+				ariaLabel="Levels and MIDI"
+				title="Volume, reverb and MIDI"
+				iconClass="i-ph-sliders-horizontal"
+				position="bottom left"
+				buttonBaseClasses="device-button-xs px-2"
+				popoverClasses="min-w-64"
+				items={[{ id: "piano-levels", kind: "snippet", snippet: levelsItem }]}
 			/>
-		</label>
-		<label class="block w-36">
-			<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.reverb * 100)}
-				oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
-				aria-label="Reverb"
-			/>
-		</label>
-		{#if midiSupported}
-			<div>
-				<div class="device-button-group-label">MIDI</div>
-				{#if piano.midi.status === "on"}
-					<button
-						class="device-button-sm px-3 text-accent"
-						type="button"
-						title={piano.midi.inputs.length
-							? `Listening to ${piano.midi.inputs.join(", ")}`
-							: "Listening; plug a controller in"}
-						onclick={() => piano.disconnectMidi()}
-					>
-						<span class="i-ph-usb" aria-hidden="true"></span>
-						{piano.midi.inputs.length ? "Connected" : "No controller"}
-					</button>
-				{:else}
-					<button
-						class="device-button-sm px-3"
-						type="button"
-						title="Play from a MIDI keyboard or pad (the browser asks once)"
-						onclick={() => void piano.connectMidi()}
-					>
-						<span class="i-ph-usb" aria-hidden="true"></span>
-						{piano.midi.status === "denied" ? "MIDI refused" : "Connect MIDI"}
-					</button>
-				{/if}
-			</div>
-		{/if}
+		</div>
 	</div>
 
 	<!-- the keys -->
@@ -331,6 +346,56 @@
 			</button>
 		{/each}
 	</div>
+
+	{#snippet levelsItem()}
+		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
+			<label class="block">
+				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.volume * 100)}
+					oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+					aria-label="Volume"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.reverb * 100)}
+					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
+					aria-label="Reverb"
+				/>
+			</label>
+			{#if midiSupported}
+				<button
+					class="device-button-xs px-3 justify-self-start {piano.midi.status === 'on'
+						? 'text-accent'
+						: ''}"
+					type="button"
+					onclick={() =>
+						piano.midi.status === "on" ? piano.disconnectMidi() : void piano.connectMidi()}
+				>
+					<span class="i-ph-usb" aria-hidden="true"></span>
+					{piano.midi.status === "on"
+						? piano.midi.inputs.length
+							? "MIDI connected"
+							: "MIDI: no controller"
+						: piano.midi.status === "denied"
+							? "MIDI refused"
+							: "Connect MIDI"}
+				</button>
+			{/if}
+		</div>
+	{/snippet}
 
 	<!-- branding, as the other devices wear it -->
 	<div
