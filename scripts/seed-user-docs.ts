@@ -22,6 +22,7 @@ const ORDER = [
 	"charts-lyrics-and-notes",
 	"idea-recorder",
 	"drum-machine",
+	"piano",
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",
