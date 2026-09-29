@@ -43,11 +43,13 @@ const GITHUB =
 	"https://raw.githubusercontent.com/sfzinstruments/SalamanderGrandPiano/master/Samples";
 
 const args = new Set(process.argv.slice(2));
-const ffmpeg =
+const ffmpeg: string =
 	(await run("which", ["ffmpeg"]).then(
 		(r) => r.stdout.trim(),
 		() => "",
-	)) || (await import("ffmpeg-static")).default;
+	)) ||
+	(await import("ffmpeg-static")).default ||
+	"";
 if (!ffmpeg) throw new Error("ffmpeg is needed (apt install ffmpeg, or the ffmpeg-static package)");
 
 async function download() {
