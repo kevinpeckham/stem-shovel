@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-09-30
+
 ### Added
 
 - **The piano records into the Idea Recorder** (docs/piano.md, Phase 2; docs/demo-recording.md). A piano button beside the drums in the recorder's toolbar (the wrench menu on a phone) opens the full piano under the recorder, and its sound goes into the take, mixed with the microphone, or alone with "Microphone in the take" unticked. `piano.captureStream()` (a MediaStreamAudioDestinationNode on the piano's master) feeds `DemoRecorder`'s new `instrument` prop, mixed in its metering context into the stream the MediaRecorder records; the meter reads the mix. The recorder page's load passes the sample tiers' base so the Grand Piano fills in there too.
