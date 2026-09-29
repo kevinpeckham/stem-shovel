@@ -198,6 +198,7 @@
 			<div class="device-button-group-label">Sound</div>
 			<ComboBox
 				ariaLabel="Sound"
+				buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
 				options={INSTRUMENT_OPTIONS}
 				value={piano.instrument}
 				onchange={(v) => piano.setInstrument(v as PianoInstrumentId)}
