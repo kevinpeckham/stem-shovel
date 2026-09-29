@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-09-29
+
 ### Changed
 
 - **Home page: the tuner is back to manual On / Off.** Opening the microphone as the tuner scrolled into view (v0.50.0) made the browser ask for permission again and again as the page went up and down; `Tuner`'s `startOnView` is gone.
