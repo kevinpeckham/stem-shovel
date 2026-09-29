@@ -103,6 +103,7 @@
 	}
 	function pointerDown(e: PointerEvent) {
 		if (e.button !== 0 && e.pointerType === "mouse") return;
+		piano.warm();
 		const hit = keyAt(e.clientX, e.clientY);
 		if (!hit) return;
 		e.preventDefault();
@@ -147,6 +148,7 @@
 		const semitone = PIANO_KEY_CODES[e.code];
 		if (semitone === undefined || e.repeat || downCodes.has(e.code)) return;
 		e.preventDefault();
+		piano.warm();
 		downCodes.add(e.code);
 		piano.noteOn(piano.base + semitone, 0.8);
 	}

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Piano on iOS: notes came late, together.** The AudioContext opened on the first note and the note was scheduled at its time before it had resumed, so on iOS (which starts contexts suspended and resumes them slowly) every note pressed in that moment sat at time zero and sounded a second or two later, all at once. The piano now warms the context on the first touch or key (`piano.warm`) and, when the context is not yet running, starts a note only once it is (skipping it if the key was let go meanwhile); the context asks for interactive latency.
+
 ## [0.54.0] - 2026-09-29
 
 ### Added

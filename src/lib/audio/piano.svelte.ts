@@ -66,7 +66,7 @@ class PianoEngine {
 	#graph(): AudioContext {
 		if (this.#ctx) return this.#ctx;
 		playThroughSilentSwitch();
-		const ctx = new AudioContext();
+		const ctx = new AudioContext({ latencyHint: "interactive" });
 		const master = ctx.createGain();
 		master.gain.value = this.volume;
 		master.connect(ctx.destination);
@@ -91,11 +91,34 @@ class PianoEngine {
 		return 12 * (this.octave + 1);
 	}
 
+	/**
+	 * Open and start the audio on a touch, ahead of the first note: iOS
+	 * starts a context suspended and takes a moment to resume, and a note
+	 * scheduled in that moment sits at time zero and sounds late, all the
+	 * pressed notes together, once the context wakes.
+	 */
+	warm() {
+		const ctx = this.#graph();
+		if (ctx.state !== "running") void ctx.resume();
+	}
+
 	noteOn(midi: number, velocity = 0.8) {
 		if (midi < 0 || midi > 127) return;
 		if (!this.#held.on(midi)) return;
 		const ctx = this.#graph();
-		if (ctx.state !== "running") void ctx.resume();
+		if (ctx.state !== "running") {
+			// Not awake yet: start the note once it is, unless the key was let go meanwhile.
+			void ctx.resume().then(() => {
+				if (this.#held.down.has(midi) || this.#held.held.has(midi)) this.#start(midi, velocity);
+			});
+			this.sounding = this.#held.sounding;
+			return;
+		}
+		this.#start(midi, velocity);
+	}
+	#start(midi: number, velocity: number) {
+		const ctx = this.#ctx;
+		if (!ctx || this.#voices.has(midi)) return;
 		const now = ctx.currentTime;
 		// Room for one more: the oldest voice goes.
 		while (this.#order.length >= PIANO_MAX_VOICES) {
