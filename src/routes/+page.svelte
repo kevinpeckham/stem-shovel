@@ -286,7 +286,12 @@
 				Work out melodies, progressions, or chords on the fully playable in-browser piano and synth.
 				Playable on mobile or desktop with keyboard shortcuts and midi control options.
 			</p>
-			<div class="marketing-demo-cta">Try the working demo below.</div>
+			<div class="flex flex-wrap items-center gap-x-5">
+				<div class="marketing-demo-cta">Try the working demo below.</div>
+				<a class="link inline-flex items-center gap-1.5 text-14px" href="/piano"
+					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
+				>
+			</div>
 			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). -->
 			<div class="mt-8" {@attach visibleShare((s) => (pianoShare = s))}>
 				<Piano keyboard={spaceTarget === "piano"} />
