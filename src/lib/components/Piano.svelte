@@ -36,13 +36,17 @@
 	const instrumentLabel = (id: PianoInstrumentId) =>
 		PIANO_INSTRUMENTS.find((i) => i.id === id)?.label ?? id;
 
-	// The keyboard shows three octaves where there is room, two on a phone.
+	// The keyboard shows three octaves where there is room, two on a phone; and on a
+	// phone it stands on end: the keys run down the screen, low notes at the bottom,
+	// black keys along the left, so each key is a finger wide and the height of the
+	// screen is what gets used.
 	let width = $state(0);
 	const measure: Attachment<HTMLElement> = (el) => {
 		const ro = new ResizeObserver(([entry]) => (width = entry?.contentRect.width ?? 0));
 		ro.observe(el);
 		return () => ro.disconnect();
 	};
+	let vertical = $derived(width > 0 && width < 640);
 	let octaves = $derived(width >= 720 ? 3 : 2);
 	/** White key index within an octave per semitone (black keys sit after the white before them). */
 	const WHITE_INDEX = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
@@ -75,8 +79,9 @@
 		const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-note]");
 		if (!el || !board?.contains(el)) return null;
 		const r = el.getBoundingClientRect();
-		// Lower on the key, louder: the one thing a pointer can say about how hard.
-		const velocity = 0.55 + 0.45 * Math.min(1, Math.max(0, (y - r.top) / r.height));
+		// Lower on a key, louder (nearer the player's edge, the right, when the keys stand on end).
+		const along = vertical ? (x - r.left) / r.width : (y - r.top) / r.height;
+		const velocity = 0.55 + 0.45 * Math.min(1, Math.max(0, along));
 		return { midi: Number(el.dataset.note), velocity };
 	}
 	function pointerDown(e: PointerEvent) {
@@ -276,7 +281,9 @@
 
 	<!-- the keys -->
 	<div
-		class="relative h-160px sm-h-200px w-full select-none touch-none rounded-md overflow-hidden"
+		class="relative w-full select-none touch-none rounded-md overflow-hidden {vertical
+			? 'h-[78vh] min-h-560px'
+			: 'h-160px sm-h-200px'}"
 		role="group"
 		aria-label="Keys"
 		bind:this={board}
@@ -289,10 +296,14 @@
 		{#each keys as key (key.midi)}
 			{@const on = sounding.has(key.midi)}
 			<button
-				class="absolute top-0 flex flex-col justify-end items-center pb-2 border border-oxford-950/60 text-11px font-500 transition-colors duration-75 {key.black
-					? `h-60% z-10 rounded-b ${on ? 'bg-accent text-oxford' : 'bg-slate-900 text-slate-300 hover-bg-slate-800'}`
-					: `h-full rounded-b-md ${on ? 'bg-accent text-oxford' : 'bg-slate-100 text-slate-500 hover-bg-white'}`}"
-				style="left: {key.left}%; width: {key.width}%"
+				class="absolute flex items-center border border-oxford-950/60 text-11px font-500 transition-colors duration-75 {vertical
+					? 'left-0 flex-row justify-end pr-3 gap-2'
+					: 'top-0 flex-col justify-end pb-2'} {key.black
+					? `z-10 ${vertical ? 'w-62% rounded-r' : 'h-60% rounded-b'} ${on ? 'bg-accent text-oxford' : 'bg-slate-900 text-slate-300 hover-bg-slate-800'}`
+					: `${vertical ? 'w-full rounded-r-md' : 'h-full rounded-b-md'} ${on ? 'bg-accent text-oxford' : 'bg-slate-100 text-slate-500 hover-bg-white'}`}"
+				style={vertical
+					? `top: ${100 - key.left - key.width}%; height: ${key.width}%`
+					: `left: ${key.left}%; width: ${key.width}%`}
 				type="button"
 				data-note={key.midi}
 				aria-label={noteLabel(key.midi)}

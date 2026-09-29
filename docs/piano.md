@@ -30,7 +30,11 @@ chords, transpose, a reverb; sounds he does not like).
 - `src/lib/components/Piano.svelte`: the device (the drum machine's chrome,
   "SS KEYS 001"). Three octaves of keys where there is room, two on a
   phone (a ResizeObserver attachment), black keys laid over the whites by
-  percentage. Pointer events on the board: each finger holds a note,
+  percentage. Under 640 px the keyboard stands on end (Kevin's ask): the
+  keys run down the screen, low notes at the bottom, black keys along the
+  left, the board 78 vh tall, so a phone's height is what gets used and
+  every key is a finger wide; velocity then comes from how far right the
+  finger lands. Pointer events on the board: each finger holds a note,
   sliding across keys moves it, pressing lower on a key plays louder.
   The computer keyboard by physical key code (`PIANO_KEY_CODES`): the row
   from Z is the first octave with its sharps on the row above, the row from
