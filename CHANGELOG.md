@@ -10,8 +10,6 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [0.55.0] - 2026-09-30
 
-## [0.55.0] - 2026-09-30
-
 ### Added
 
 - **The Grand Piano in three sample tiers** (docs/piano.md, "Sample tiers"; Kevin's ask): the first subset was a 39 kbps mp3 and sounded thin. `scripts/piano-samples.ts` (`bun run samples:piano`, with `--download` and `--upload`) now makes, from the Salamander's lossless recordings: a demo tier (one layer, mp3 VBR q2, 10 s, 3.4 MB in `static/kits/piano`, what the home page plays and the piano page's first sound), a standard tier (four velocity layers and the 88 release samples, mp3, 14.5 MB) and a hi-res tier (six layers and the releases as 16-bit FLAC, 72 MB), the last two in each stage's public Blob store under `piano/v1/` (production uploads from Kevin's machine). The piano page loads the standard tier in the background, middle octaves first; a **Hi-res** button fetches the lossless tier once through the browser's cache and the choice is remembered. Notes crossfade between the two layers around their velocity (`src/lib/utils/pianoLayers.ts`, tested), release samples play on key-up (about 40 dB under the note at most and high-passed, a whisper on a tap, quieter the longer it rang; the first levels were a clunk), and the velocity filter only closes for a light touch now. The screen names the tier and its progress.
