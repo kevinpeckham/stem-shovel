@@ -63,6 +63,8 @@ class PianoEngine {
 	/** The key lit on the keyboard (docs/piano.md, "Key and chords"), and whether its keys are numbered by degree; remembered. */
 	key = $state<PianoKey | null>(null);
 	degrees = $state(false);
+	/** The computer-key letters on the keys; a small toggle hides them. */
+	labels = $state(true);
 	/** Whether this browser decodes FLAC (null until the probe answers): hi-res comes as mp3 where it does not. */
 	flac = $state<boolean | null>(null);
 	/** Where the standard and hi-res tiers live (the page's load says; null where there is no store). */
@@ -91,6 +93,7 @@ class PianoEngine {
 		this.hires = p.hires;
 		this.key = p.key;
 		this.degrees = p.degrees;
+		this.labels = p.labels;
 		void flacSupported().then((ok) => (this.flac = ok));
 		// The piano page: the standard tier follows the demo, and hi-res too if it was chosen before.
 		this.#standardWanted = warm;
@@ -178,6 +181,7 @@ class PianoEngine {
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
+			labels: this.labels,
 		});
 	}
 
@@ -397,6 +401,10 @@ class PianoEngine {
 	}
 	setKey(key: PianoKey | null) {
 		this.key = key;
+		this.#save();
+	}
+	setLabels(on: boolean) {
+		this.labels = on;
 		this.#save();
 	}
 	setDegrees(on: boolean) {

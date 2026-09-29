@@ -20,6 +20,8 @@ export interface PianoPreferences {
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
 	key: PianoKey | null;
 	degrees: boolean;
+	/** The computer-key letters printed on the keys (a small toggle beside the octave); on unless switched off. */
+	labels: boolean;
 }
 
 export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
@@ -30,6 +32,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	hires: false,
 	key: null,
 	degrees: false,
+	labels: true,
 };
 
 const unit = (v: unknown, fallback: number) =>
@@ -63,6 +66,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
+		labels: p.labels !== false,
 	};
 }
 

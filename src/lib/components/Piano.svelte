@@ -361,6 +361,21 @@
 					title="Octave up (arrow up)"
 					onclick={() => piano.setOctave(piano.octave + 1)}>+</button
 				>
+				<!-- A very small toggle: the computer-key letters on the keys, on or off. -->
+				<button
+					class="device-button-xs !min-w-auto px-1.5 ml-1 {piano.labels
+						? 'text-accent'
+						: 'opacity-60'}"
+					type="button"
+					aria-pressed={piano.labels}
+					aria-label="Keyboard letters on the keys"
+					title={piano.labels
+						? "Hide the computer-key letters on the keys"
+						: "Show the computer-key letters on the keys"}
+					onclick={() => piano.setLabels(!piano.labels)}
+				>
+					<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
+				</button>
 			</div>
 		</div>
 		<!-- the pedal has no place on a phone (the space bar is its key); the levels and MIDI go into a menu there -->
@@ -511,7 +526,9 @@
 					<span class="block h-3 text-10px leading-3"
 						>{key.midi % 12 === 0 ? noteLabel(key.midi) : ""}</span
 					>
-					<span class="block h-4 leading-4 opacity-70">{degree !== null ? degree : key.label}</span>
+					<span class="block h-4 leading-4 opacity-70"
+						>{degree !== null ? degree : piano.labels ? key.label : ""}</span
+					>
 				{/if}
 			</button>
 		{/each}

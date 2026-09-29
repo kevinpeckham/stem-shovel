@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Piano: a small toggle for the key letters.** A keyboard-icon button beside the octave control hides or shows the computer-key letters printed on the keys (`labels` in the preferences, on by default); degrees still show when chosen.
+
 ## [0.57.0] - 2026-09-30
 
 ### Added
