@@ -141,8 +141,16 @@ chords, transpose, a reverb; sounds he does not like).
   and mode; name the chord being held.
 - **Record**: into the Idea Recorder as a take, or straight to a WAV
   through the offline path the drum machine uses.
-- **The recorder's toolbar**: the piano beside the drums and the
-  metronome, so a part can be sketched over a take.
+- **The recorder's toolbar** (built 2026-09-30): a piano button beside
+  the drums (the wrench menu on a phone) opens the full `Piano` under the
+  recorder, and its sound goes into the take: `piano.captureStream()` is
+  a MediaStreamAudioDestinationNode on the piano's master, and
+  `DemoRecorder` takes it as `instrument`, mixing it with the microphone
+  in its metering context into a MediaStreamDestination that the
+  MediaRecorder records (`micInMix` false leaves the microphone out, for
+  a clean piano take); the meter reads the mix. The mix is decided as a
+  take starts. Unlike the drums and the click, which only reach the take
+  through the room, the piano is recorded directly.
 
 ## Phase 3 (later)
 

@@ -9,6 +9,8 @@
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import Piano from "$lib/components/Piano.svelte";
+	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import TuningForkIcon from "$lib/components/TuningForkIcon.svelte";
@@ -87,6 +89,14 @@
 	let discardShort = $state(false);
 	/** The tuner in its popover; a take starting closes it, which frees the microphone. */
 	let tuner = $state<Tuner | null>(null);
+	// The piano: a keyboard under the recorder whose sound goes into the take with the microphone (or without it).
+	let pianoOpen = $state(false);
+	let pianoMic = $state(true);
+	function togglePiano() {
+		pianoOpen = !pianoOpen;
+		if (pianoOpen) piano.warm();
+		else piano.allOff();
+	}
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
 	/** The microphones the browser lists once permission is granted. */
@@ -463,6 +473,18 @@
 			<div class="hidden sm-flex gap-2">
 				<Metronome compact />
 				<DrumMachine compact />
+				<button
+					class="button button-sm shrink-0 {pianoOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={pianoOpen}
+					title={pianoOpen ? "Put the piano away" : "Play the piano into the take"}
+					aria-label={pianoOpen ? "Put the piano away" : "Piano"}
+					onclick={togglePiano}
+				>
+					<span class="i-ph-piano-keys" aria-hidden="true"></span>
+				</button>
 			</div>
 			{#snippet tunerIcon()}
 				<TuningForkIcon />
@@ -504,6 +526,13 @@
 							},
 							{ id: "metronome", kind: "snippet", snippet: metronomeItem },
 							{ id: "drums", kind: "snippet", snippet: drumsItem },
+							{
+								id: "tools-piano",
+								kind: "button",
+								label: pianoOpen ? "Put the piano away" : "Piano",
+								iconClass: "i-ph-piano-keys",
+								action: togglePiano,
+							},
 						]}
 					/>
 				{/if}
@@ -558,6 +587,8 @@
 				quality={prefs.quality}
 				stereo={prefs.stereo}
 				inputId={prefs.inputId}
+				instrument={pianoOpen ? piano.captureStream() : null}
+				micInMix={pianoMic}
 				oninputs={(list) => (inputs = list)}
 				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
 				takes={idea?.takes ?? []}
@@ -582,6 +613,26 @@
 					});
 				}}
 			/>
+
+			{#if pianoOpen}
+				<!-- The piano under the recorder: its sound is mixed into the next take (docs/piano.md). -->
+				<div class="grid gap-3" aria-label="Piano for the take">
+					<div
+						class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-13px text-dim"
+					>
+						<span>
+							The piano goes into the take{pianoMic
+								? ", along with the microphone"
+								: "; the microphone stays out"}.
+						</span>
+						<label class="flex items-center gap-2">
+							<input type="checkbox" class="accent-maximumYellow" bind:checked={pianoMic} />
+							Microphone in the take
+						</label>
+					</div>
+					<Piano warm samplesBase={data.pianoSamplesBase} />
+				</div>
+			{/if}
 
 			<!-- Uploads that failed: a take still saving is listed under its idea instead. -->
 			{#if queue.items.some((u) => u.status === "failed")}

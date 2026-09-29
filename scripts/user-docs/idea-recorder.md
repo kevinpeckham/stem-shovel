@@ -38,6 +38,10 @@ The metronome icon in the toolbar starts a click; the tempo shows beside it, rea
 
 The grid icon beside the metronome plays the beat you last built at **/drum-machine** as a backing track, with the tempo beside it. It keeps going while you record, like the click, and only the microphone reaches the take, so with headphones on the drums stay off the recording. The drums and the metronome never play together: starting one stops the other and takes over its tempo. A beat with several patterns gets a pattern picker beside the tempo.
 
+## Piano
+
+The piano icon beside the drums (on a phone, **Piano** in the wrench menu) opens the piano under the recorder: the same instrument as **/piano**, with its sounds, its computer-keyboard mapping and MIDI. Unlike the drums and the click, its sound goes **into the take**, mixed with the microphone, so you can sing over a chord progression or sketch a melody straight into an idea. Untick **Microphone in the take** for a clean piano take with nothing from the room. The Grand Piano's fuller samples load in the background as they do on the piano page.
+
 ## Settings and limits
 
 The gear in the header opens **Recorder settings**, remembered on the device:

@@ -1,3 +1,4 @@
+import { publicBlobUrl } from "$lib/server/blob";
 import { requireEditor, requireSignedIn } from "$lib/server/access";
 import {
 	deleteEmptyIdeas,
@@ -34,6 +35,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const ideas = await listIdeas(account.id, user.id);
 	scheduleRecordingPlayback(recordingsWantingPlayback(ideas.flatMap((i) => i.takes)));
 	return {
+		// The piano under the recorder: where this stage keeps the Grand Piano's fuller sample tiers.
+		pianoSamplesBase: publicBlobUrl("piano/v1"),
 		ideas: ideas.map((i) => ({
 			id: i.id,
 			title: i.title,

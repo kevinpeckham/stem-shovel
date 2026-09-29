@@ -256,6 +256,13 @@ blob). A refresh, a crash or a phone call (which stops the microphone on
 iOS) leaves the take recoverable: on reopening the recorder it offers
 "Continue the take from 21:15 (2:34)" or discards it.
 
+An instrument can play into the take (2026-09-30): the recorder page's
+piano hands `DemoRecorder` a MediaStream (`instrument`), and `startMeter`
+mixes it with the microphone in the metering context into a
+MediaStreamDestination whose stream the MediaRecorder records; `micInMix`
+false leaves the microphone out. The drums and the click are not routed
+this way: they reach a take only through the room. See docs/piano.md.
+
 ### Save
 
 Several segments become one file. Two options:

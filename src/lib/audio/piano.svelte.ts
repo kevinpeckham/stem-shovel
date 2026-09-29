@@ -192,6 +192,21 @@ class PianoEngine {
 		return ctx;
 	}
 
+	#capture: MediaStreamAudioDestinationNode | null = null;
+	/**
+	 * The piano's sound as a MediaStream (what the speaker gets, volume and
+	 * reverb included), for the Idea Recorder to mix into a take. Opens the
+	 * audio if it is not open yet, so call it from a gesture.
+	 */
+	captureStream(): MediaStream {
+		const ctx = this.#graph();
+		if (!this.#capture) {
+			this.#capture = ctx.createMediaStreamDestination();
+			this.#master!.connect(this.#capture);
+		}
+		return this.#capture.stream;
+	}
+
 	/** The lowest MIDI note of the on-screen keyboard: C of the chosen octave. */
 	get base(): number {
 		return 12 * (this.octave + 1);
