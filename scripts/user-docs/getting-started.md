@@ -24,6 +24,9 @@ An account holds **projects**; a project holds **songs**. On a project page:
 - **Finished Songs** are the ones a member has marked finished in the song's settings; they stay playable and editable.
 - **Songs in Progress** are songs that have at least one stem. Each has a play button, and the transport at the top plays them in order as a playlist.
 - **Song Ideas** are songs with no stems yet: a place to gather lyrics, a chart, notes and demo recordings before the parts exist. A song moves up on its own the moment a stem is uploaded.
+
+Members can put the songs in any order: drag a song by the grip before it (the six dots), or focus the grip and press the arrow keys. The order is the project's, so everyone sees it, and the playlist follows it. A new song goes to the end.
+
 - **Add Song** creates a song from a title. Everything else happens on the song's page.
 - A project can carry a **picture** (a cover, a photo from the session) from its settings; it shows beside the project's name and in the projects list. Artists take one on their page and the account in its settings. JPEG, PNG or WebP, shrunk on your device before upload.
 - A project you are done with can be **archived** from its settings: it leaves the list for a collapsed Archived section, keeps everything, and any member can restore it. Once archived, an owner or admin can delete it from the same settings, files and all.

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { applyLocalMix, loadLocalMix, saveLocalMix, snapshotLocalMix } from "$lib/audio/localMix";
+	import { dropIndexAt } from "$lib/utils/dropIndexAt";
+	import { moveId } from "$lib/utils/moveId";
 	import { StemEngine } from "$lib/audio/engine.svelte";
 	import type { StemManifest, StemState } from "$lib/audio/types";
 	import StemRow from "$lib/components/StemRow.svelte";
@@ -145,11 +147,7 @@
 	let dragging = $state<string | null>(null);
 	let orderAtStart: string[] = [];
 	const order = () => engine.stems.map((s) => s.id);
-	function moveTo(id: string, index: number) {
-		const ids = order().filter((x) => x !== id);
-		ids.splice(Math.max(0, Math.min(ids.length, index)), 0, id);
-		engine.reorder(ids);
-	}
+	const moveTo = (id: string, index: number) => engine.reorder(moveId(order(), id, index));
 	function commit() {
 		const ids = order();
 		if (ids.some((id, i) => id !== orderAtStart[i])) void onreorder?.(ids);
@@ -164,15 +162,10 @@
 	function gripMove(e: PointerEvent) {
 		if (!dragging || !rowsEl) return;
 		const rows = [...rowsEl.querySelectorAll<HTMLElement>("[data-stem-row]")];
-		// The row whose middle the pointer has passed: the drop position.
-		let index = rows.length - 1;
-		for (let i = 0; i < rows.length; i++) {
-			const r = rows[i]!.getBoundingClientRect();
-			if (e.clientY < r.top + r.height / 2) {
-				index = i;
-				break;
-			}
-		}
+		const index = dropIndexAt(
+			rows.map((r) => r.getBoundingClientRect()),
+			e.clientY,
+		);
 		const from = order().indexOf(dragging);
 		if (from !== index) moveTo(dragging, index);
 	}

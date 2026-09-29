@@ -10,7 +10,13 @@
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
 	import { slugify } from "$lib/utils/slugify";
-	import { updateProject } from "$lib/remote/projects.remote";
+	import { reorderSongs, updateProject } from "$lib/remote/projects.remote";
+	import { dropIndexAt } from "$lib/utils/dropIndexAt";
+	import { moveId } from "$lib/utils/moveId";
+	import { reorderById } from "$lib/utils/reorderById";
+	import { reorderWithinGroup } from "$lib/utils/reorderWithinGroup";
+	import { errorMessage } from "$lib/utils/errorMessage";
+	import { invalidateAll } from "$app/navigation";
 	import ImageUploader from "$lib/components/ImageUploader.svelte";
 	import { artistLine } from "$lib/utils/artistLine";
 	import { PROJECT_TYPES } from "$lib/val/ProjectTypeSchema";
@@ -62,9 +68,74 @@
 	// is an idea — a place for lyrics, a chart, notes and demos.
 	const readyStems = (song: (typeof data.project.songs)[number]) =>
 		song.stems.filter((s) => s.status === "ready").length;
-	let finished = $derived(data.project.songs.filter((s) => s.isFinished));
-	let inProgress = $derived(data.project.songs.filter((s) => !s.isFinished && readyStems(s) > 0));
-	let ideas = $derived(data.project.songs.filter((s) => !s.isFinished && readyStems(s) === 0));
+	// The songs in the order the page shows: the project's, or the one a member is dragging into shape until it is saved.
+	let songOrder = $state<string[] | null>(null);
+	let songs = $derived(songOrder ? reorderById(data.project.songs, songOrder) : data.project.songs);
+	let finished = $derived(songs.filter((s) => s.isFinished));
+	let inProgress = $derived(songs.filter((s) => !s.isFinished && readyStems(s) > 0));
+	let ideas = $derived(songs.filter((s) => !s.isFinished && readyStems(s) === 0));
+	type Song = (typeof data.project.songs)[number];
+	const groupOf = (song: Song) =>
+		song.isFinished ? "finished" : readyStems(song) > 0 ? "progress" : "ideas";
+	const groupIds = (group: string) =>
+		(group === "finished" ? finished : group === "progress" ? inProgress : ideas).map((s) => s.id);
+
+	// Reordering within a list: a grip is dragged (pointer events, so touch works and
+	// the page does not scroll under it) or moved with the arrow keys; the lists follow
+	// live, and the order is saved once the move is done. One order runs across the
+	// three lists (reorderWithinGroup), so the other lists never shift.
+	let dragging = $state<{ id: string; group: string } | null>(null);
+	let orderAtStart: string[] = [];
+	const order = () => songs.map((s) => s.id);
+	function moveWithin(song: Song, index: number) {
+		const group = groupOf(song);
+		songOrder = reorderWithinGroup(order(), moveId(groupIds(group), song.id, index));
+	}
+	async function commit() {
+		const ids = order();
+		if (!ids.some((id, i) => id !== orderAtStart[i])) return;
+		try {
+			await reorderSongs({ projectId: data.project.id, ids });
+			await invalidateAll();
+			notify("Song order saved");
+		} catch (e) {
+			notify(`Could not save the song order: ${errorMessage(e)}`, { kind: "error" });
+		}
+		songOrder = null;
+	}
+	function gripDown(e: PointerEvent, song: Song) {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		dragging = { id: song.id, group: groupOf(song) };
+		orderAtStart = order();
+	}
+	function gripMove(e: PointerEvent, song: Song) {
+		if (dragging?.id !== song.id) return;
+		const rows = [
+			...document.querySelectorAll<HTMLElement>(
+				`[data-song-group="${dragging.group}"] [data-song-row]`,
+			),
+		];
+		const index = dropIndexAt(
+			rows.map((r) => r.getBoundingClientRect()),
+			e.clientY,
+		);
+		if (groupIds(dragging.group).indexOf(song.id) !== index) moveWithin(song, index);
+	}
+	function gripUp() {
+		if (!dragging) return;
+		dragging = null;
+		void commit();
+	}
+	function gripKey(e: KeyboardEvent, song: Song) {
+		if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+		e.preventDefault();
+		orderAtStart = order();
+		const from = groupIds(groupOf(song)).indexOf(song.id);
+		moveWithin(song, from + (e.key === "ArrowUp" ? -1 : 1));
+		void commit();
+	}
 	/** The playlist: finished songs, then the ones in progress, as listed. */
 	let playable = $derived([...finished, ...inProgress]);
 
@@ -329,7 +400,7 @@
 				<h2 class="marketing-section-heading">Finished Songs</h2>
 				<p class="opacity-90 text-15px">Done, and marked so in their settings.</p>
 			</div>
-			<ul class="grid grid-cols-1 gap-3 mb-10">
+			<ul class="grid grid-cols-1 gap-3 mb-10" data-song-group="finished">
 				{#each finished as song (song.id)}
 					{@render songRow(song)}
 				{/each}
@@ -363,7 +434,7 @@
 					Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
 				</p>
 			</div>
-			<ul class="grid grid-cols-1 gap-3">
+			<ul class="grid grid-cols-1 gap-3" data-song-group="progress">
 				{#each inProgress as song (song.id)}
 					{@render songRow(song)}
 				{/each}
@@ -380,9 +451,13 @@
 					Songs without stems yet: a place to gather lyrics, a chart, notes and demo recordings.
 				</p>
 			</div>
-			<ul class="grid grid-cols-1 gap-3">
+			<ul class="grid grid-cols-1 gap-3 {dragging ? 'select-none' : ''}" data-song-group="ideas">
 				{#each ideas as song (song.id)}
-					<li>
+					<li
+						class="flex items-stretch gap-3 {dragging?.id === song.id ? 'opacity-50' : ''}"
+						data-song-row={song.id}
+					>
+						{#if data.canEdit}{@render grip(song)}{/if}
 						<a
 							class="app-list-tile"
 							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
@@ -490,9 +565,34 @@
 	{/if}
 </main>
 
-{#snippet songRow(song: (typeof data.project.songs)[number])}
+{#snippet grip(song: Song)}
+	<button
+		class="shrink-0 self-center cursor-grab touch-none rounded px-0.5 py-2 opacity-50 hover-opacity-100 focus-visible-opacity-100 {dragging?.id ===
+		song.id
+			? 'cursor-grabbing opacity-100'
+			: ''}"
+		type="button"
+		aria-label="Move {song.title}"
+		title="Drag to reorder, or use the arrow keys"
+		onpointerdown={(e) => gripDown(e, song)}
+		onpointermove={(e) => gripMove(e, song)}
+		onpointerup={gripUp}
+		onpointercancel={gripUp}
+		onkeydown={(e) => gripKey(e, song)}
+	>
+		<span class="i-ph-dots-six-vertical block text-18px" aria-hidden="true"></span>
+	</button>
+{/snippet}
+
+{#snippet songRow(song: Song)}
 	{@const ready = readyStems(song)}
-	<li class="grid grid-cols-[auto_1fr] gap-3 place-content-center w-full">
+	<li
+		class="flex items-stretch gap-3 w-full {dragging ? 'select-none' : ''} {dragging?.id === song.id
+			? 'opacity-50'
+			: ''}"
+		data-song-row={song.id}
+	>
+		{#if data.canEdit}{@render grip(song)}{/if}
 		<button
 			type="button"
 			class="shrink-0 grid w-12 h-auto place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"

@@ -1,11 +1,18 @@
-import { form, getRequestEvent } from "$app/server";
-import { accountOfProject, memberOf, requireMember, requireUser } from "$lib/server/access";
+import { command, form, getRequestEvent } from "$app/server";
+import {
+	accountOfProject,
+	isEditor,
+	memberOf,
+	requireMember,
+	requireUser,
+} from "$lib/server/access";
 import {
 	addProjectMember as addPerson,
 	createInvitation,
 	createProject as create,
 	projectSlugs,
 	removeProjectPerson as removePerson,
+	reorderSongs as reorder,
 	revokeInvitation as revoke,
 	setProjectRestricted as setRestricted,
 	updateProject as update,
@@ -22,6 +29,7 @@ import {
 	ProjectSettingsSchema,
 } from "$lib/val/ProjectSchema";
 import { IdSchema } from "$lib/val/SongSchema";
+import { SongOrderSchema } from "$lib/val/SongOrderSchema";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**
@@ -143,4 +151,12 @@ export const removeProjectPerson = form(ProjectPersonSchema, async ({ projectId,
 	const { accountId } = await memberOf(locals, accountOfProject, projectId);
 	if (!(await removePerson(accountId, projectId, userId))) error(404, "Not on this project");
 	return { removed: true };
+});
+
+/** The songs in a new order, dragged on the project page (editors); the order is the project's, for everyone, and the playlist follows it. */
+export const reorderSongs = command(SongOrderSchema, async ({ projectId, ids }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfProject, projectId);
+	if (!isEditor(m.role)) error(404, "Project not found");
+	return { ids: await reorder(m.accountId, projectId, ids) };
 });

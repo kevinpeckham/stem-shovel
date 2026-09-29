@@ -383,6 +383,11 @@ export async function createSong(
 			(r) => r.slug,
 		),
 	);
+	// A new song goes last: the project's order is the members' (reorderSongs), and it holds.
+	const [last] = await db
+		.select({ last: sql<number | null>`max(${song.sortOrder})` })
+		.from(song)
+		.where(eq(song.projectId, projectId));
 	const [row] = await db
 		.insert(song)
 		.values({
@@ -391,6 +396,7 @@ export async function createSong(
 			title: title.trim(),
 			slug: uniqueSlug(base, taken),
 			createdBy: userId,
+			sortOrder: (last?.last ?? -1) + 1,
 		})
 		.returning();
 	// The account's default artist performs every new song until someone says otherwise.
@@ -1022,6 +1028,28 @@ export async function renameStem(accountId: string, stemId: string, label: strin
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ id: stem.id, label: stem.label });
 	return row ?? null;
+}
+
+/** The project's songs in the given order, top first; ids from elsewhere are ignored, songs left out keep their place after the named ones. */
+export async function reorderSongs(accountId: string, projectId: string, ids: string[]) {
+	const rows = await db.query.song.findMany({
+		where: and(eq(song.accountId, accountId), eq(song.projectId, projectId)),
+		columns: { id: true, sortOrder: true },
+		orderBy: [asc(song.sortOrder), asc(song.title)],
+	});
+	const ordered = reorderById(rows, ids);
+	await Promise.all(
+		ordered
+			.map((row, i) => ({ row, i }))
+			.filter(({ row, i }) => row.sortOrder !== i)
+			.map(({ row, i }) =>
+				db
+					.update(song)
+					.set({ sortOrder: i })
+					.where(and(eq(song.accountId, accountId), eq(song.id, row.id))),
+			),
+	);
+	return ordered.map((row) => row.id);
 }
 
 /** The song's stems in the given order, top first; ids from other songs are ignored, stems left out keep their place after the named ones. */
