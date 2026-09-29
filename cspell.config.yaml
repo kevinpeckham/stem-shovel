@@ -21,6 +21,7 @@ ignoreRegExpList:
 words:
   - Qwen
   - Kimi
+  - tonejs
   - sophiaedu
   - arpeggiator
   - ADSR

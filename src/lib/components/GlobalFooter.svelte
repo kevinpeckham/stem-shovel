@@ -24,14 +24,17 @@
 <footer class="page-x-padding pt-8 pb-12 border-t border-white/10">
 	<!-- <span>Stem Shovel</span> -->
 
-	<!-- Two rows of links, tappable on a phone (15px, wrapping): the tools first, everything else under them. -->
+	<!-- Three rows of links, tappable on a phone (15px, wrapping): the instruments, the tools, everything else under them. -->
+	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Instruments">
+		<span class="text-11px uppercase tracking-wider opacity-60">Instruments</span>
+		<a class="footer-link" href="/drum-machine">Drum Machine</a>
+		<a class="footer-link" href="/piano">Piano</a>
+	</nav>
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
 		<a class="footer-link" href={recorderHref}>Idea Recorder</a>
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
-		<a class="footer-link" href="/drum-machine">Drum Machine</a>
-		<a class="footer-link" href="/piano">Piano</a>
 	</nav>
 	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
 		<span class="text-11px uppercase tracking-wider opacity-60">More</span>

@@ -37,25 +37,32 @@
 	// A visitor sees the name of the account they are viewing.
 	let viewedName = $derived((page.data.account?.name as string | undefined) ?? "");
 
-	// Two menus: Tools (everyone, every width: the Idea Recorder for a member,
-	// and the tuner, metronome and drum machine) and the account menu,
-	// everything a signed-in user can reach behind one button instead of a row
-	// of links. One open at a time; outside click or Escape closes it.
-	let openMenu = $state<"tools" | "account" | null>(null);
+	// Three menus: Instruments (the drum machine and the piano), Tools
+	// (everyone, every width: the Idea Recorder for a member, the tuner and
+	// the metronome) and the account menu, everything a signed-in user can
+	// reach behind one button instead of a row of links. One open at a time;
+	// outside click or Escape closes it.
+	let openMenu = $state<"instruments" | "tools" | "account" | null>(null);
 	let open = $derived(openMenu === "account");
 	let toolsOpen = $derived(openMenu === "tools");
+	let instrumentsOpen = $derived(openMenu === "instruments");
 	let menu = $state<HTMLDivElement | null>(null);
 	let toolsMenu = $state<HTMLDivElement | null>(null);
+	let instrumentsMenu = $state<HTMLDivElement | null>(null);
 	function onwindowpointerdown(e: PointerEvent) {
 		const t = e.target as Node;
 		if (openMenu === "account" && menu && !menu.contains(t)) openMenu = null;
 		if (openMenu === "tools" && toolsMenu && !toolsMenu.contains(t)) openMenu = null;
+		if (openMenu === "instruments" && instrumentsMenu && !instrumentsMenu.contains(t))
+			openMenu = null;
 	}
 	function onwindowkeydown(e: KeyboardEvent) {
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
-	const TOOL_PAGES = ["/tuner", "/metronome", "/drum-machine"];
+	const TOOL_PAGES = ["/tuner", "/metronome"];
+	const INSTRUMENT_PAGES = ["/drum-machine", "/piano"];
+	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) || (member ? active(`/${member.slug}/ideas/recorder`) : false),
 	);
@@ -80,7 +87,8 @@
 			>Beta</span
 		>
 	</a>
-	<nav aria-label="Primary" class="flex items-center gap-4 text-15px">
+	<!-- A phone has room for the three menus' icons alone, close together; from sm up they carry their names. -->
+	<nav aria-label="Primary" class="flex items-center gap-1 sm-gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
 			<a class="opacity-60 truncate hover:opacity-100" href="/{accountSlug}/projects"
 				>{viewedName}</a
@@ -95,7 +103,63 @@
 				href="/{member.slug}/projects">Projects</a
 			>
 		{/if}
-		<!-- The tools: the Idea Recorder for a member, and the three free tools for everyone. -->
+		<!-- The instruments: the drum machine and the piano. -->
+		<div class="relative" bind:this={instrumentsMenu}>
+			<button
+				type="button"
+				class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {instrumentsOpen
+					? 'bg-white/10 opacity-100'
+					: ''} {onInstrumentPage ? 'text-accent' : ''}"
+				aria-haspopup="menu"
+				aria-expanded={instrumentsOpen}
+				aria-controls="instruments-menu"
+				aria-label="Instruments"
+				onclick={() => (openMenu = instrumentsOpen ? null : "instruments")}
+			>
+				<span class="i-ph-piano-keys text-18px" aria-hidden="true"></span>
+				<span class="hidden sm-inline">Instruments</span>
+				<span
+					class="i-ph-caret-down text-12px transition-transform {instrumentsOpen
+						? 'rotate-180'
+						: ''}"
+					aria-hidden="true"
+				></span>
+			</button>
+			{#if instrumentsOpen}
+				<div
+					id="instruments-menu"
+					class="absolute right-0 top-full z-40 mt-2 w-56 rounded-md border border-white/15 bg-oxford-800 py-1 text-15px shadow-lg shadow-black/50"
+					role="menu"
+					aria-label="Instruments menu"
+				>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/drum-machine',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/drum-machine"
+						onclick={() => (openMenu = null)}
+					>
+						<IconDrumKit />Drum Machine
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/piano',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/piano"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-piano-keys w-1em" aria-hidden="true"></span>Piano
+					</a>
+				</div>
+			{/if}
+		</div>
+		<!-- The tools: the Idea Recorder for a member, and the tuner and the metronome for everyone. -->
 		<div class="relative" bind:this={toolsMenu}>
 			<button
 				type="button"
@@ -161,30 +225,6 @@
 					>
 						<span class="i-ph-metronome w-1em" aria-hidden="true"></span>Metronome
 					</a>
-					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/drum-machine',
-						)
-							? 'text-accent'
-							: ''}"
-						role="menuitem"
-						href="/drum-machine"
-						onclick={() => (openMenu = null)}
-					>
-						<IconDrumKit />Drum Machine
-					</a>
-					<a
-						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/piano',
-						)
-							? 'text-accent'
-							: ''}"
-						role="menuitem"
-						href="/piano"
-						onclick={() => (openMenu = null)}
-					>
-						<span class="i-ph-piano-keys w-1em" aria-hidden="true"></span>Piano
-					</a>
 				</div>
 			{/if}
 		</div>
@@ -201,7 +241,7 @@
 					onclick={() => (openMenu = open ? null : "account")}
 				>
 					<span class="i-ph-user-circle text-18px" aria-hidden="true"></span>
-					<span class="max-w-40 truncate">{member?.name ?? user.name}</span>
+					<span class="hidden sm-inline max-w-40 truncate">{member?.name ?? user.name}</span>
 					{#if unread > 0}
 						<span
 							class="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"

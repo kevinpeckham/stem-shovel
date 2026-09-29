@@ -17,7 +17,7 @@ export interface PianoPreferences {
 }
 
 export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
-	instrument: "epiano",
+	instrument: "grand",
 	octave: DEFAULT_PIANO_OCTAVE,
 	volume: 0.8,
 	reverb: 0.25,

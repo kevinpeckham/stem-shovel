@@ -44,7 +44,8 @@ interface Patch {
 	level: number;
 }
 
-const PATCHES: Record<PianoInstrumentId, Patch> = {
+/** The synthesized sounds; the Grand Piano is sampled (pianoSamples.ts). */
+const PATCHES: Record<Exclude<PianoInstrumentId, "grand">, Patch> = {
 	epiano: {
 		partials: [
 			{ type: "sine", ratio: 1, gain: 1 },
@@ -114,7 +115,7 @@ const PATCHES: Record<PianoInstrumentId, Patch> = {
 export function startVoice(
 	ctx: BaseAudioContext,
 	out: AudioNode,
-	instrument: PianoInstrumentId,
+	instrument: Exclude<PianoInstrumentId, "grand">,
 	midi: number,
 	velocity: number,
 	when: number,

@@ -74,6 +74,11 @@
 					what: "The drum machine's Acoustic and Room kits: public-domain (CC0) one-shots from Maxime Chevalier-Boisvert's beat sequencer.",
 				},
 				{
+					name: "Salamander Grand Piano",
+					url: "https://github.com/sfzinstruments/SalamanderGrandPiano",
+					what: "The piano's Grand Piano: Alexander Holm's recordings of a Yamaha C5, CC BY 3.0, in the mp3 subset Tone.js publishes.",
+				},
+				{
 					name: "Basic Pitch",
 					url: "https://github.com/spotify/basic-pitch",
 					what: "Spotify's open-source model that turns a recorded idea into notes.",

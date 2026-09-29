@@ -62,14 +62,32 @@ chords, transpose, a reverb; sounds he does not like).
 - `/piano` page with a how-to; the Tools menu, the footer and the smoke
   list know it.
 
-## Phase 2 (next)
+## Phase 2 (in progress)
 
-- **A sampled piano**, the sound Kevin likes best. A CC-BY set such as
-  Salamander Grand Piano (a subset: one sample every few semitones,
-  two or three velocity layers, pitched in between with `playbackRate`;
-  credit it like the drum kits) under `static/kits/piano/`, decoded on
-  first play like a drum kit; `synthVoice` grows a sampled voice.
-- **Home page demo** in the tools section, a third tab.
+- **A sampled piano** (built 2026-09-30): the Grand Piano, first in the
+  list and the default. Thirty notes of the Salamander Grand Piano
+  (Alexander Holm, CC BY 3.0, a Yamaha C5) in the mp3 subset Tone.js
+  publishes at tonejs.github.io/audio/salamander, one every three
+  semitones from A0 to C8, two megabytes in `static/kits/piano/`;
+  credited on /built-with and in the user doc. `src/lib/audio/pianoSamples.ts`
+  fetches on `warm` (the piano page at mount, through `Piano`'s `warm`
+  prop; the home page's demo on its first touch) and decodes once there is
+  a context, like a drum kit; a note plays the nearest sample at the
+  playbackRate that pitches it, through a low-pass that closes for a soft
+  touch and a gain from the velocity, damped over a quarter second on
+  release. One velocity layer: the recordings are firm strokes, so soft
+  playing is the filter's doing. The screen says "loading the piano…"
+  until the samples are decoded, and a note before that plays the Electric
+  Piano instead, so the first touch is never silent.
+- **Home page demo** (built 2026-09-30): a full-width section under the
+  drum machine; the keyboard goes to it when it is the demo in view
+  (the home page's `spaceTarget` now weighs the player, the drums and
+  the piano).
+- **The nav** (2026-09-30): an Instruments menu between Projects and
+  Tools holds the drum machine and the piano; the footer has an
+  Instruments row above the Tools row. On a phone the nav's three menus
+  are icons alone, close together (the account button loses its name
+  there), so they fit beside the brand.
 - **Scale and chord help** as WebKeys: light the keys of a chosen key
   and mode; name the chord being held.
 - **Record**: into the Idea Recorder as a take, or straight to a WAV

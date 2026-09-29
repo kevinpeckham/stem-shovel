@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The piano's Grand Piano** (docs/piano.md, Phase 2): a sampled concert grand, first in the sound list and the default. Thirty notes of the Salamander Grand Piano (Alexander Holm, CC BY 3.0) in the mp3 subset Tone.js publishes, one every three semitones, two megabytes in `static/kits/piano/`, fetched at the piano page's load (the home page's demo fetches on its first touch) and decoded once there is a context (`src/lib/audio/pianoSamples.ts`); a note plays the nearest sample pitched by its playback rate, through a low-pass that closes for a soft touch, damped on release. The screen says "loading the piano…" until the samples are ready, and the Electric Piano stands in meanwhile. Credited on /built-with and in the piano's doc.
+- **A piano demo on the home page**, full width under the drum machine; the computer keyboard goes to whichever demo is in view, now the piano too.
+- **An Instruments menu** in the nav, between Projects and Tools, with the drum machine and the piano; the Tools menu keeps the Idea Recorder, the tuner and the metronome. The footer has an Instruments row above the Tools row. On a phone the nav's menus sit closer together and the account button shows its icon alone, like the other two.
+
 ## [0.54.1] - 2026-09-30
 
 ### Fixed

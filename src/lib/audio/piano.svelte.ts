@@ -8,6 +8,13 @@ import { HeldNotes } from "$lib/utils/heldNotes";
 import { loadPianoPreferences, savePianoPreferences } from "$lib/utils/pianoPreferences";
 import { reverbImpulse } from "./drumBus";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
+import {
+	loadPianoSamples,
+	pianoSamplesFailed,
+	pianoSamplesReady,
+	startSampledVoice,
+	warmPianoSamples,
+} from "./pianoSamples";
 import { startVoice, type SynthVoice } from "./synthVoice";
 
 /**
@@ -40,6 +47,8 @@ class PianoEngine {
 	starting = $state(false);
 	/** What the audio context says while starting, for the screen: its state and the seconds since the switch. */
 	wake = $state<{ state: string; seconds: number } | null>(null);
+	/** The Grand Piano's samples: fetching and decoding, ready, or failed to load (the synths still play). */
+	samples = $state<"idle" | "loading" | "ready" | "failed">("idle");
 
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
@@ -51,7 +60,8 @@ class PianoEngine {
 	#loaded = false;
 	#access: MIDIAccess | null = null;
 
-	load() {
+	/** Once per page; `warm` fetches the Grand Piano's samples now rather than at the first note (the piano page does; the home page's demo waits for a touch). */
+	load(warm = false) {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
 		const p = loadPianoPreferences();
@@ -59,6 +69,22 @@ class PianoEngine {
 		this.octave = p.octave;
 		this.volume = p.volume;
 		this.reverb = p.reverb;
+		if (warm && this.instrument === "grand") this.#samples();
+	}
+	/** The samples, fetched and (once there is a context) decoded; the state for the screen. */
+	#samples() {
+		if (pianoSamplesReady()) {
+			this.samples = "ready";
+			return;
+		}
+		warmPianoSamples();
+		if (this.samples !== "loading") this.samples = "loading";
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		loadPianoSamples(ctx).then(
+			() => (this.samples = "ready"),
+			() => (this.samples = pianoSamplesFailed() ? "failed" : "idle"),
+		);
 	}
 	#save() {
 		savePianoPreferences({
@@ -114,6 +140,7 @@ class PianoEngine {
 	 */
 	warm() {
 		const ctx = this.#graph();
+		if (this.instrument === "grand" && this.samples !== "ready") this.#samples();
 		if (ctx.state === "running") {
 			this.starting = false;
 			this.wake = null;
@@ -217,7 +244,16 @@ class PianoEngine {
 			this.#voices.get(oldest)?.release(now);
 			this.#voices.delete(oldest);
 		}
-		this.#voices.set(midi, startVoice(ctx, this.#dry!, this.instrument, midi, velocity, now));
+		let voice =
+			this.instrument === "grand"
+				? startSampledVoice(ctx, this.#dry!, midi, velocity, now)
+				: startVoice(ctx, this.#dry!, this.instrument, midi, velocity, now);
+		// The Grand Piano before its samples are decoded: the Electric Piano stands in (the screen says loading).
+		if (!voice) {
+			this.#samples();
+			voice = startVoice(ctx, this.#dry!, "epiano", midi, velocity, now);
+		}
+		this.#voices.set(midi, voice);
 		this.#order.push(midi);
 		this.sounding = this.#held.sounding;
 	}
@@ -249,6 +285,7 @@ class PianoEngine {
 		this.allOff();
 		this.instrument = id;
 		this.#save();
+		if (id === "grand") this.#samples();
 	}
 	setOctave(octave: number) {
 		const next = Math.min(PIANO_OCTAVE_MAX, Math.max(PIANO_OCTAVE_MIN, Math.round(octave)));

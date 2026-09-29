@@ -8,6 +8,7 @@
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import Piano from "$lib/components/Piano.svelte";
 	import { visibleShare } from "$lib/utils/visibleShare";
 
 	let { data } = $props();
@@ -21,15 +22,18 @@
 	] as const;
 	let tool = $state<(typeof TOOLS)[number]["id"]>("tuner");
 
-	// The space bar goes to the demo the visitor is looking at: the stem player
-	// or the drum machine, whichever shows more of itself, once at least half
-	// of it (or half a screen of it) is on screen; neither otherwise, so space
-	// scrolls the page as usual and a sliver at the edge takes nothing.
+	// The keyboard goes to the demo the visitor is looking at: the stem player,
+	// the drum machine or the piano, whichever shows more of itself, once at
+	// least half of it (or half a screen of it) is on screen; none otherwise, so
+	// space scrolls the page as usual and a sliver at the edge takes nothing.
 	let playerShare = $state(0);
 	let drumsShare = $state(0);
-	let spaceTarget = $derived(
-		Math.max(playerShare, drumsShare) < 0.5 ? null : playerShare >= drumsShare ? "player" : "drums",
-	);
+	let pianoShare = $state(0);
+	let spaceTarget = $derived.by(() => {
+		const shares = { player: playerShare, drums: drumsShare, piano: pianoShare };
+		const [best, share] = Object.entries(shares).sort((a, b) => b[1] - a[1])[0]!;
+		return share < 0.5 ? null : best;
+	});
 
 	const description =
 		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
@@ -271,6 +275,21 @@
 					homeAdmin={!!data.user?.isSystemAdmin}
 					textToBeat={data.textToBeat}
 				/>
+			</div>
+		</section>
+
+		<!-- Piano Demo -->
+		<section class="mt-12">
+			<h3 class="marketing-section-heading">Piano Demo</h3>
+			<div class="marketing-topic-heading">Piano &amp; Synth</div>
+			<p class="marketing-paragraph text-balance">
+				A piano and a handful of synths to play from the screen, the computer keyboard or a MIDI
+				controller. Find a part, try a chord, or just play.
+			</p>
+			<div class="marketing-demo-cta">Try the working demo below.</div>
+			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). -->
+			<div class="mt-8" {@attach visibleShare((s) => (pianoShare = s))}>
+				<Piano keyboard={spaceTarget === "piano"} />
 			</div>
 		</section>
 

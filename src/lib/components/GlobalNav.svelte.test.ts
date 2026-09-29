@@ -27,16 +27,23 @@ describe("GlobalNav", () => {
 		);
 		expect(screen.queryByRole("button", { name: /Kevin|Studio/ })).toBeNull();
 	});
-	test("everyone gets the Tools menu; a member's has the Idea Recorder", async () => {
+	test("everyone gets the Instruments and Tools menus; a member's Tools has the Idea Recorder", async () => {
 		const user = userEvent.setup();
 		const { unmount } = render(GlobalNav, { props: { user: null, memberships: [] } });
-		await user.click(screen.getByRole("button", { name: /Tools/ }));
-		const names = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
-		expect(names).toEqual(["Tuner", "Metronome", "Drum Machine", "Piano"]);
+		await user.click(screen.getByRole("button", { name: /Instruments/ }));
+		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
+			"Drum Machine",
+			"Piano",
+		]);
 		expect(screen.getByRole("menuitem", { name: /Drum Machine/ })).toHaveAttribute(
 			"href",
 			"/drum-machine",
 		);
+		// Opening the tools menu closes the instruments menu.
+		await user.click(screen.getByRole("button", { name: /Tools/ }));
+		expect(screen.getAllByRole("menu")).toHaveLength(1);
+		const names = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
+		expect(names).toEqual(["Tuner", "Metronome"]);
 		await user.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).toBeNull();
 		unmount();

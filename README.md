@@ -165,9 +165,11 @@ check and the tests without any secret.
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.
 - `src/lib/components/Piano.svelte`, `src/lib/audio/piano.svelte.ts`,
-  `src/lib/audio/synthVoice.ts` — a piano and synth (docs/piano.md): five
-  synthesized sounds, played from the keys, the computer keyboard or a
-  MIDI controller, with a sustain pedal and a reverb.
+  `src/lib/audio/synthVoice.ts`, `src/lib/audio/pianoSamples.ts` — a piano
+  and synth (docs/piano.md): a sampled grand (the Salamander, CC BY, thirty
+  mp3s in `static/kits/piano/`) and five synthesized sounds, played from
+  the keys, the computer keyboard or a MIDI controller, with a sustain
+  pedal and a reverb.
 - `src/lib/components/Tuner.svelte`, `src/lib/audio/pitch.ts` — a chromatic
   tuner (McLeod pitch detection in the browser) in the Idea Recorder's
   header, on the public /tuner page and on the front page.

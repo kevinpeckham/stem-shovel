@@ -12,8 +12,10 @@ On the computer keyboard the bottom row is the first octave: **Z X C V B N M** a
 
 ## Sounds
 
-**Sound** chooses between an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
+**Sound** chooses between a Grand Piano (a sampled concert grand; it downloads two megabytes the first time and the screen says "loading the piano…" until it is ready), an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
 
 ## A MIDI keyboard
 
 Plug a MIDI keyboard or pad in and press **Connect MIDI**: the browser asks once, and from then on the controller plays the piano, with its velocity and its sustain pedal. This works in Chrome and Edge; other browsers do not offer MIDI to web pages yet.
+
+The Grand Piano is the [Salamander Grand Piano](https://github.com/sfzinstruments/SalamanderGrandPiano), Alexander Holm's recordings of a Yamaha C5, shared under the Creative Commons Attribution 3.0 license, in the subset published by Tone.js. Thank you.

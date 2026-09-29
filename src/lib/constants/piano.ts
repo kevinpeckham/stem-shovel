@@ -1,9 +1,10 @@
 /**
  * The piano (docs/piano.md): a keyboard instrument played from the screen,
- * the computer keyboard or a MIDI controller, with a handful of synthesized
- * sounds (no samples yet). These are its fixed choices.
+ * the computer keyboard or a MIDI controller, with a sampled grand piano
+ * and a handful of synthesized sounds. These are its fixed choices.
  */
 export const PIANO_INSTRUMENTS = [
+	{ id: "grand", label: "Grand Piano", hint: "a sampled concert grand (the Salamander)" },
 	{ id: "epiano", label: "Electric Piano", hint: "a bell-like tine, soft and round" },
 	{ id: "organ", label: "Organ", hint: "drawbars, holds as long as you do" },
 	{

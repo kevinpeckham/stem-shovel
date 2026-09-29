@@ -27,10 +27,12 @@
 	interface Props {
 		/** The computer keyboard plays; off where a page needs the keys for something else. */
 		keyboard?: boolean;
+		/** Fetch the Grand Piano's samples at mount (the piano page); off, they come with the first touch (the home page's demo). */
+		warm?: boolean;
 	}
-	let { keyboard = true }: Props = $props();
+	let { keyboard = true, warm = false }: Props = $props();
 
-	onMount(() => piano.load());
+	onMount(() => piano.load(warm));
 	onDestroy(() => piano.allOff());
 
 	const INSTRUMENT_OPTIONS = PIANO_INSTRUMENTS.map((i) => ({ value: i.id, label: i.label }));
@@ -185,6 +187,11 @@
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
 				<span>{noteLabel(piano.base)} to {noteLabel(top)}</span>
 				<span>· {piano.sustain ? "sustain" : "no sustain"}</span>
+				{#if piano.instrument === "grand" && piano.samples === "loading"}
+					<span>· loading the piano…</span>
+				{:else if piano.instrument === "grand" && piano.samples === "failed"}
+					<span class="text-red-300">· the piano's samples did not load</span>
+				{/if}
 				{#if !piano.on}
 					<span
 						>· {piano.starting ? "starting…" : "off"}{#if piano.wake}

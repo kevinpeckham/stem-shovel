@@ -25,7 +25,7 @@
 			controller.
 		</p>
 	</header>
-	<Piano />
+	<Piano warm />
 	<section class="mt-8 max-w-article [&>_p]-(mt-3 text-15px opacity-90)">
 		<h2 class="heading-2">How to play</h2>
 		<p>
