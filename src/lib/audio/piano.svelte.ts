@@ -34,6 +34,10 @@ class PianoEngine {
 	});
 	/** The last note a MIDI controller played, so the page can say it is alive. */
 	midiActivity = $state(0);
+	/** The audio is open and running: the power switch's state. Off until the switch, a touch on the keys or a computer key. */
+	on = $state(false);
+	/** Between the switch and the audio actually running (a moment on iOS). */
+	starting = $state(false);
 
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
@@ -99,7 +103,25 @@ class PianoEngine {
 	 */
 	warm() {
 		const ctx = this.#graph();
-		if (ctx.state !== "running") void ctx.resume();
+		if (ctx.state === "running") {
+			this.on = true;
+			return;
+		}
+		this.starting = true;
+		void ctx.resume().then(() => {
+			this.starting = false;
+			this.on = ctx.state === "running";
+		});
+	}
+	/** The power switch: on warms the audio ahead of the first note, so the first note is not late; off silences and suspends it. */
+	async setOn(on: boolean) {
+		if (on) {
+			this.warm();
+			return;
+		}
+		this.allOff();
+		this.on = false;
+		await this.#ctx?.suspend().catch(() => {});
 	}
 
 	noteOn(midi: number, velocity = 0.8) {

@@ -181,6 +181,9 @@
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
 				<span>{noteLabel(piano.base)} to {noteLabel(top)}</span>
 				<span>· {piano.sustain ? "sustain" : "no sustain"}</span>
+				{#if !piano.on}
+					<span>· {piano.starting ? "starting…" : "off"}</span>
+				{/if}
 				{#if piano.midi.status === "on"}
 					<span>· MIDI: {piano.midi.inputs.join(", ") || "no inputs"}</span>
 				{/if}
@@ -194,8 +197,41 @@
 		</div>
 	</div>
 
+	<!-- the power switch, full width on a phone: it opens the audio before the first note, which would otherwise be late on iOS -->
+	<button
+		class="sm-hidden device-button-sm w-full text-15px {piano.on ? 'text-accent' : ''}"
+		type="button"
+		aria-pressed={piano.on}
+		aria-busy={piano.starting}
+		title={piano.on ? "Turn the piano off" : "Turn the piano on"}
+		onclick={() => void piano.setOn(!piano.on)}
+	>
+		<span
+			class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
+			aria-hidden="true"
+		></span>
+		{piano.on ? "On" : piano.starting ? "Starting…" : "Off"}
+	</button>
+
 	<!-- the controls -->
 	<div class="flex flex-wrap items-end gap-x-2 sm-gap-x-5 gap-y-3">
+		<div class="hidden sm-block">
+			<div class="device-button-group-label">Power</div>
+			<button
+				class="device-button-sm px-3 {piano.on ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={piano.on}
+				aria-busy={piano.starting}
+				title={piano.on ? "Turn the piano off" : "Turn the piano on"}
+				onclick={() => void piano.setOn(!piano.on)}
+			>
+				<span
+					class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
+					aria-hidden="true"
+				></span>
+				{piano.on ? "On" : "Off"}
+			</button>
+		</div>
 		<div class="flex-1 min-w-28 sm-flex-none sm-w-44">
 			<div class="device-button-group-label">Sound</div>
 			<ComboBox

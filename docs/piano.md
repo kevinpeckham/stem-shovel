@@ -44,6 +44,15 @@ chords, transpose, a reverb; sounds he does not like).
   for silence; the keys print the QWERTY letters. Web MIDI on request
   (`Connect MIDI`, Chrome and Edge): every input plays, note on/off with
   velocity, CC 64 as the pedal, all-notes-off.
+- **iOS and the first note** (found 2026-09-30): iOS starts an
+  AudioContext suspended and resumes it slowly; a note scheduled at
+  `currentTime` before the resume sat at time zero and every note pressed
+  meanwhile sounded together a second or two later. The engine now warms
+  the context on the first touch or key (`warm`) and defers a note until
+  the context runs; and a power switch (On / Off, as the tuner's) lets a
+  phone user open the audio before the first note, since even the
+  deferred first note feels like a glitch. The switch's state is
+  `piano.on` / `piano.starting`.
 - `/piano` page with a how-to; the Tools menu, the footer and the smoke
   list know it.
 
