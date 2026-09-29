@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-09-29
+
 ### Added
 
 - **Songs can be reordered on the project page**, like stems in the player: a member drags a song by the grip before it, or focuses the grip and presses the arrow keys, within its list (Finished, In Progress or Ideas); one order runs across the three lists (`reorderWithinGroup`), so the others never shift. Saved to `song.sort_order` (`reorderSongs` in projects.remote.ts, editors only), and the playlist follows. A new song now takes the last place (`createSong` sets `sortOrder` to max + 1) instead of slotting in by title. The stem player's drag shares the helpers (`dropIndexAt`, `moveId`, tested).
