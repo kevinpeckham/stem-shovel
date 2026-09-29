@@ -10,7 +10,7 @@ On the computer keyboard the bottom row is the first octave: **Z X C V B N M** a
 
 ## Sounds
 
-**Sound** chooses between an electric piano, an organ, a synth lead, a pad and a pluck. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
+**Sound** chooses between an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
 
 ## A MIDI keyboard
 

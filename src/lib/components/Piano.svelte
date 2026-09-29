@@ -192,7 +192,9 @@
 					title="Octave down (arrow down)"
 					onclick={() => piano.setOctave(piano.octave - 1)}>−</button
 				>
-				<span class="min-w-10 text-center text-14px tabular-nums">C{piano.octave}</span>
+				<span class="min-w-10 text-center text-14px tabular-nums text-oxford font-600"
+					>C{piano.octave}</span
+				>
 				<button
 					class="device-button-sm px-3"
 					type="button"
@@ -303,7 +305,10 @@
 		{/each}
 	</div>
 
-	<div class="absolute bottom-3 right-5 text-11px font-600 tracking-wider opacity-60">
-		SS KEYS 001
+	<!-- branding, as the other devices wear it -->
+	<div
+		class="absolute bottom-3 right-5 text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+	>
+		SS Keys 001
 	</div>
 </div>

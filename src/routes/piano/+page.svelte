@@ -7,7 +7,7 @@
 	<title>Piano | Free Online Piano and Synth</title>
 	<meta
 		name="description"
-		content="A free piano and synth in the browser: play the keys with the mouse, a touch screen, the computer keyboard or a MIDI controller, with an electric piano, an organ, a synth lead, a pad and a pluck."
+		content="A free piano and synth in the browser: play the keys with the mouse, a touch screen, the computer keyboard or a MIDI controller, with an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck."
 	/>
 </svelte:head>
 

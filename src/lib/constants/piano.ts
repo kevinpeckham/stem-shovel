@@ -4,11 +4,11 @@
  * sounds (no samples yet). These are its fixed choices.
  */
 export const PIANO_INSTRUMENTS = [
-	{ id: "epiano", label: "Electric piano", hint: "a bell-like tine, soft and round" },
+	{ id: "epiano", label: "Electric Piano", hint: "a bell-like tine, soft and round" },
 	{ id: "organ", label: "Organ", hint: "drawbars, holds as long as you do" },
 	{
 		id: "synth",
-		label: "Synth lead",
+		label: "Synth Lead",
 		hint: "two saws and a sub, a filter that opens with velocity",
 	},
 	{ id: "pad", label: "Pad", hint: "slow to swell, slow to fade" },
