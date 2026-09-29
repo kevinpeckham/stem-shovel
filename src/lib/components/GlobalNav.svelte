@@ -173,6 +173,18 @@
 					>
 						<IconDrumKit />Drum Machine
 					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/piano',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/piano"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-piano-keys w-1em" aria-hidden="true"></span>Piano
+					</a>
 				</div>
 			{/if}
 		</div>

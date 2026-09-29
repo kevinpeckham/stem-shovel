@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A piano and synth** at `/piano` (docs/piano.md, Phase 1), in the Tools menu and the footer. Five synthesized sounds (`src/lib/audio/synthVoice.ts`: electric piano, organ, synth lead, pad, pluck), played from the on-screen keys (three octaves, two on a phone; multi-touch; a slide across the keys; lower on a key is louder), the computer keyboard (the two-row mapping by physical key, arrows for the octave, space for the pedal, escape for silence) or a MIDI controller (`Connect MIDI`, Web MIDI on Chrome and Edge: velocity, the sustain pedal, all-notes-off). A sustain pedal with proper bookkeeping (`HeldNotes`, tested), twenty-four voices with the oldest stolen, a small reverb, volume, and the choices remembered per browser. The engine is `src/lib/audio/piano.svelte.ts`; the user doc is `scripts/user-docs/piano.md` (seed it with `bun run db:seed-docs`).
+
 ## [0.53.0] - 2026-09-29
 
 ### Added

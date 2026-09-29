@@ -21,6 +21,9 @@ ignoreRegExpList:
 words:
   - Qwen
   - Kimi
+  - sophiaedu
+  - arpeggiator
+  - ADSR
   - Groovie
   - SyncMuse
   - Cubase

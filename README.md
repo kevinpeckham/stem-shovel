@@ -16,10 +16,10 @@ by URL unless a project or song is made private; editing needs a signed-in
 member, and a project can be restricted to the members added to it, with
 viewers invited from outside. Beside the songs sit the tools a musician
 reaches for: the Idea Recorder (takes from the microphone, with notes),
-a chromatic tuner, a metronome, and a drum machine (a step sequencer with
+a chromatic tuner, a metronome, a piano and synth, and a drum machine (a step sequencer with
 patterns, presets, two sampled kits and a synthesized one, WAV and MIDI
 downloads, share links, saved beats, and a tutorial), the last three free
-and public at `/tuner`, `/metronome` and `/drum-machine` and gathered in
+and public at `/tuner`, `/metronome`, `/drum-machine` and `/piano` and gathered in
 the header's Tools menu. Every member has an inbox with optional email
 digests. Sign-up is open by default (an operator can switch it back to
 invitations and the waitlist), with a plan step; the free plan carries
@@ -164,6 +164,10 @@ check and the tests without any secret.
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.
+- `src/lib/components/Piano.svelte`, `src/lib/audio/piano.svelte.ts`,
+  `src/lib/audio/synthVoice.ts` — a piano and synth (docs/piano.md): five
+  synthesized sounds, played from the keys, the computer keyboard or a
+  MIDI controller, with a sustain pedal and a reverb.
 - `src/lib/components/Tuner.svelte`, `src/lib/audio/pitch.ts` — a chromatic
   tuner (McLeod pitch detection in the browser) in the Idea Recorder's
   header, on the public /tuner page and on the front page.

@@ -32,7 +32,7 @@ describe("GlobalNav", () => {
 		const { unmount } = render(GlobalNav, { props: { user: null, memberships: [] } });
 		await user.click(screen.getByRole("button", { name: /Tools/ }));
 		const names = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
-		expect(names).toEqual(["Tuner", "Metronome", "Drum Machine"]);
+		expect(names).toEqual(["Tuner", "Metronome", "Drum Machine", "Piano"]);
 		expect(screen.getByRole("menuitem", { name: /Drum Machine/ })).toHaveAttribute(
 			"href",
 			"/drum-machine",
