@@ -63,7 +63,8 @@ async function download() {
 	await Promise.all(
 		Array.from({ length: 8 }, async () => {
 			for (let f = queue.shift(); f; f = queue.shift()) {
-				const url = `${GITHUB}/${f.replace(/^([A-G])s/, "$1#")}.flac`;
+				// A sharp is a `#` in the Salamander's names; in a URL that starts the fragment, so it goes encoded.
+				const url = `${GITHUB}/${f.replace(/^([A-G])s/, "$1%23")}.flac`;
 				const res = await fetch(url);
 				if (!res.ok) throw new Error(`${res.status} for ${url}`);
 				await writeFile(`${SRC}/${f}.flac`, Buffer.from(await res.arrayBuffer()));
