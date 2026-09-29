@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Home page: the tuner is back to manual On / Off.** Opening the microphone as the tuner scrolled into view (v0.50.0) made the browser ask for permission again and again as the page went up and down; `Tuner`'s `startOnView` is gone.
+
+### Fixed
+
+- **/releases showed nothing newer than v0.48.0.** `parseChangelog` only knew `## [x.y.z] - date` headings, and the last three sections were written as `## x.y.z — date`; it now takes both spellings (and a hyphen or an em dash), with a test.
+
 ## [0.51.0] - 2026-09-28
 
 ### Added

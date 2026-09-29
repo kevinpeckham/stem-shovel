@@ -226,7 +226,7 @@
 					so you can tune up or keep time between takes or in the middle of a writing session.
 				</p>
 				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<!-- One demo at a time: the tabs swap the tuner for the metronome. The tuner opens the microphone as it scrolls into view (startOnView), not on hover. -->
+				<!-- One demo at a time: the tabs swap the tuner for the metronome. The tuner's microphone opens only from its On / Off button: opening it on scroll asked for permission again and again as the page went up and down. -->
 				<div
 					class="mt-8 flex gap-1 rounded bg-dark/40 p-1 w-fit"
 					role="tablist"
@@ -246,7 +246,7 @@
 				</div>
 				<div class="mt-4">
 					{#if tool === "tuner"}
-						<Tuner startOnView />
+						<Tuner />
 					{:else}
 						<Metronome />
 					{/if}

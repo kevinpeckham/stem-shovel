@@ -5,7 +5,6 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { loadTunerPreferences, saveTunerPreferences } from "$lib/utils/tunerPreferences";
 	import { onDestroy, onMount } from "svelte";
-	import { visibleShare } from "$lib/utils/visibleShare";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 
@@ -30,14 +29,8 @@
 		 * person turns it off, it stays off.
 		 */
 		startOnHover?: boolean;
-		/**
-		 * Open the microphone when at least half of the tuner scrolls into view
-		 * and close it when it scrolls right out (the home page's demo, which
-		 * a visitor may never reach). Once the person turns it off, it stays off.
-		 */
-		startOnView?: boolean;
 	}
-	let { autostart = false, onrunning, startOnHover = false, startOnView = false }: Props = $props();
+	let { autostart = false, onrunning, startOnHover = false }: Props = $props();
 
 	const WINDOW = 4096;
 	const FRAME_MS = 50;
@@ -175,18 +168,12 @@
 	function handleMouseEnter() {
 		if (startOnHover && !running && !manuallyTurnedOff) void start();
 	}
-	function handleView(share: number) {
-		if (!startOnView || manuallyTurnedOff) return;
-		if (share >= 0.5 && !running) void start();
-		else if (share === 0 && running) stop();
-	}
 </script>
 
 <svelte:body onmouseenter={handleMouseEnter}></svelte:body>
 
 <div
 	class="relative bg-slate-400 bg-gradient-to-b from-slate-500/10 via-slate-500/60 to-slate-500/80 px-5 py-5 rounded-md shadow-xl shadow-oxford-950 min-h-380px w-full max-w-600px"
-	{@attach visibleShare(handleView)}
 	aria-label="Tuner"
 >
 	<div class="grid grid-cols-1">

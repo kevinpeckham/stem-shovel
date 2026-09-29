@@ -66,4 +66,15 @@ describe("parseChangelog", () => {
 		expect(out.map((r) => [r.version, r.date])).toEqual([["0.31.0", "2026-09-22"]]);
 		expect(out[0].body).toContain("The tuner has a new look.");
 	});
+	test("headings written by hand without brackets, with a hyphen or an em dash, and a plain ## heading inside a section", () => {
+		const md = `## 0.51.0 — 2026-09-28\n\n### Added\n- Text-to-Beat.\n\n## 0.50.0 - 2026-09-28\n\n### Added\n- A reset.\n\n## \\[0.49.0\\] - 2026-09-28\n\n### Added\n- Delay and reverb.\n\n## A note\n\nStill 0.49.0's.\n`;
+		const r = parseChangelog(md);
+		expect(r.map((x) => [x.version, x.date])).toEqual([
+			["0.51.0", "2026-09-28"],
+			["0.50.0", "2026-09-28"],
+			["0.49.0", "2026-09-28"],
+		]);
+		expect(r[0]!.body).toBe("### Added\n- Text-to-Beat.");
+		expect(r[2]!.body).toContain("Still 0.49.0's.");
+	});
 });
