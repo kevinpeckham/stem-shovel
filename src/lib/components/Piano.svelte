@@ -186,7 +186,10 @@
 				<span>{noteLabel(piano.base)} to {noteLabel(top)}</span>
 				<span>· {piano.sustain ? "sustain" : "no sustain"}</span>
 				{#if !piano.on}
-					<span>· {piano.starting ? "starting…" : "off"}</span>
+					<span
+						>· {piano.starting ? "starting…" : "off"}{#if piano.wake}
+							· audio {piano.wake.state} at {piano.wake.seconds.toFixed(1)} s{/if}</span
+					>
 				{/if}
 				{#if piano.midi.status === "on"}
 					<span>· MIDI: {piano.midi.inputs.join(", ") || "no inputs"}</span>

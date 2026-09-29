@@ -38,6 +38,8 @@ class PianoEngine {
 	on = $state(false);
 	/** Between the switch and the audio actually running (a moment on iOS). */
 	starting = $state(false);
+	/** What the audio context says while starting, for the screen: its state and the seconds since the switch. */
+	wake = $state<{ state: string; seconds: number } | null>(null);
 
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
@@ -114,6 +116,7 @@ class PianoEngine {
 		const ctx = this.#graph();
 		if (ctx.state === "running") {
 			this.starting = false;
+			this.wake = null;
 			this.on = true;
 			this.#flush();
 			return;
@@ -134,14 +137,19 @@ class PianoEngine {
 			if (ctx.state === "running") {
 				this.#waking = null;
 				this.starting = false;
+				this.wake = null;
 				this.on = true;
 				this.#flush();
 			} else if (Date.now() - began > 3000) {
+				// Given up on this context: let it go, so the next touch gets a fresh one (iOS has been seen to leave one that never starts).
 				this.#waking = null;
 				this.starting = false;
+				this.wake = { state: `${ctx.state}, gave up`, seconds: 3 };
 				this.#pending = [];
+				this.#dropContext();
 			} else {
-				this.#waking = setTimeout(check, 50);
+				this.wake = { state: ctx.state, seconds: Math.round((Date.now() - began) / 100) / 10 };
+				this.#waking = setTimeout(check, 100);
 			}
 		};
 		ctx.onstatechange = () => {
@@ -152,6 +160,20 @@ class PianoEngine {
 			}
 		};
 		this.#waking = setTimeout(check, 50);
+	}
+	/** Forget the audio graph; the next touch builds a new one. */
+	#dropContext() {
+		const ctx = this.#ctx;
+		this.#ctx = null;
+		this.#master = null;
+		this.#dry = null;
+		this.#wet = null;
+		this.#voices.clear();
+		this.#order = [];
+		if (ctx) {
+			ctx.onstatechange = null;
+			void ctx.close().catch(() => {});
+		}
 	}
 	#flush() {
 		const run = this.#pending;
