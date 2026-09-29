@@ -5,12 +5,14 @@
  *
  *   demo      one layer (v10), mp3 VBR q2, 10 s with a fade  → static/kits/piano (committed, ~3.5 MB)
  *   standard  four layers (v4 v8 v12 v16) + the 88 release samples, the same mp3  → Blob, ~16 MB
- *   hires     six layers (v2 v5 v8 v11 v14 v16) + releases, FLAC 16-bit 44.1 kHz, full length → Blob, ~80 MB
+ *   hires     six layers (v2 v5 v8 v11 v14 v16) + releases, FLAC 16-bit 44.1 kHz, full length → Blob, ~72 MB
+ *   hires-mp3 the same six layers and releases as mp3 VBR q0, full length, for browsers without FLAC → Blob
  *
  *   bun run samples:piano -- --download   fetch the FLACs into .samples/salamander (gitignored, ~400 MB)
  *   bun run samples:piano                 encode all three tiers into static/ and .samples/piano
- *   bun run samples:piano -- --upload     put the standard and hires tiers in this stage's public Blob store
- *                                         (APP_ENV=preview for staging; production from Kevin's machine)
+ *   bun run samples:piano -- --upload     put the standard, hires and hires-mp3 tiers in this stage's public Blob store
+ *                                         (APP_ENV=preview for staging; production from Kevin's machine);
+ *                                         --tier hires-mp3 uploads that tier alone
  *
  * The files keep their Salamander names (A0, Ds1, … C8, with `s` for a
  * sharp) and go under piano/v1/<tier>/; a re-encode gets a new version
@@ -28,15 +30,18 @@ const NOTES = Array.from({ length: 30 }, (_, i) => 21 + 3 * i);
 const NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"];
 const name = (midi: number) => `${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
 const TIERS = {
-	demo: { layers: [10], releases: false, ext: "mp3" },
-	standard: { layers: [4, 8, 12, 16], releases: true, ext: "mp3" },
-	hires: { layers: [2, 5, 8, 11, 14, 16], releases: true, ext: "flac" },
+	demo: { layers: [10], releases: false, ext: "mp3", full: false, q: 2 },
+	standard: { layers: [4, 8, 12, 16], releases: true, ext: "mp3", full: false, q: 2 },
+	hires: { layers: [2, 5, 8, 11, 14, 16], releases: true, ext: "flac", full: true, q: 0 },
+	// The same six layers as the best mp3 (VBR q0, about 245 kbps), full length, for a browser that cannot decode FLAC.
+	"hires-mp3": { layers: [2, 5, 8, 11, 14, 16], releases: true, ext: "mp3", full: true, q: 0 },
 } as const;
 const SRC = ".samples/salamander";
-const OUT = {
+const OUT: Record<keyof typeof TIERS, string> = {
 	demo: "static/kits/piano",
 	standard: ".samples/piano/standard",
 	hires: ".samples/piano/hires",
+	"hires-mp3": ".samples/piano/hires-mp3",
 };
 const VERSION = "v1";
 const GITHUB =
@@ -75,12 +80,18 @@ async function download() {
 	console.log(`downloaded ${n} files; ${wanted.size} present`);
 }
 
-async function encodeOne(src: string, dest: string, ext: "mp3" | "flac", seconds: number | null) {
+async function encodeOne(
+	src: string,
+	dest: string,
+	ext: "mp3" | "flac",
+	seconds: number | null,
+	q = 2,
+) {
 	if (existsSync(dest) && (await stat(dest)).size > 0) return false;
 	const trim = seconds ? ["-t", String(seconds), "-af", `afade=t=out:st=${seconds - 1}:d=1`] : [];
 	const codec =
 		ext === "mp3"
-			? ["-c:a", "libmp3lame", "-q:a", "2"]
+			? ["-c:a", "libmp3lame", "-q:a", String(q)]
 			: ["-ar", "44100", "-sample_fmt", "s16", "-c:a", "flac", "-compression_level", "8"];
 	await run(ffmpeg, ["-v", "error", "-y", "-i", src, ...trim, ...codec, dest]).catch(
 		(e: unknown) => {
@@ -89,7 +100,31 @@ async function encodeOne(src: string, dest: string, ext: "mp3" | "flac", seconds
 	);
 }
 
+/** A twentieth of a second of FLAC silence: the piano decodes it once to learn whether the browser can read FLAC at all. */
+async function probe() {
+	const dest = `${OUT.demo}/probe.flac`;
+	if (existsSync(dest)) return;
+	await run(ffmpeg, [
+		"-v",
+		"error",
+		"-y",
+		"-f",
+		"lavfi",
+		"-i",
+		"anullsrc=r=44100:cl=mono",
+		"-t",
+		"0.05",
+		"-sample_fmt",
+		"s16",
+		"-c:a",
+		"flac",
+		dest,
+	]);
+	console.log(`probe: ${dest}, ${(await stat(dest)).size} bytes`);
+}
+
 async function encode() {
+	await probe();
 	for (const [tier, spec] of Object.entries(TIERS) as [
 		keyof typeof TIERS,
 		(typeof TIERS)[keyof typeof TIERS],
@@ -106,12 +141,13 @@ async function encode() {
 		if (spec.releases)
 			for (let i = 1; i <= 88; i++)
 				jobs.push([`${SRC}/rel${i}.flac`, `${out}/rel-${i}.${spec.ext}`]);
-		const seconds = spec.ext === "mp3" ? 10 : null;
+		const seconds = spec.full ? null : 10;
 		let made = 0;
 		await Promise.all(
 			Array.from({ length: 4 }, async () => {
 				for (let j = jobs.shift(); j; j = jobs.shift())
-					if (await encodeOne(j[0], j[1], spec.ext, j[0].includes("/rel") ? null : seconds)) made++;
+					if (await encodeOne(j[0], j[1], spec.ext, j[0].includes("/rel") ? null : seconds, spec.q))
+						made++;
 			}),
 		);
 		const files = (await readdir(out)).filter((f) => f.endsWith(`.${spec.ext}`));
@@ -126,7 +162,9 @@ async function encode() {
 async function upload() {
 	const token = process.env.BLOB_READ_WRITE_TOKEN?.trim().replace(/^["']+|["']+$/g, "");
 	if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is needed (run through varlock)");
-	for (const tier of ["standard", "hires"] as const) {
+	const only = process.argv[process.argv.indexOf("--tier") + 1];
+	const tiers = (["standard", "hires", "hires-mp3"] as const).filter((t) => !only || t === only);
+	for (const tier of tiers) {
 		const out = OUT[tier];
 		const files = (await readdir(out)).filter((f) => f.endsWith(`.${TIERS[tier].ext}`));
 		let n = 0;

@@ -9,6 +9,7 @@ import { loadPianoPreferences, savePianoPreferences } from "$lib/utils/pianoPref
 import { reverbImpulse } from "./drumBus";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
+	flacSupported,
 	loadPianoSamples,
 	loadPianoTier,
 	pianoDemoReady,
@@ -58,6 +59,8 @@ class PianoEngine {
 	loadingTiers = $state<Partial<Record<PianoTier, { done: number; total: number }>>>({});
 	/** The Hi-res choice, remembered per browser. */
 	hires = $state(false);
+	/** Whether this browser decodes FLAC (null until the probe answers): hi-res comes as mp3 where it does not. */
+	flac = $state<boolean | null>(null);
 	/** Where the standard and hi-res tiers live (the page's load says; null where there is no store). */
 	samplesBase: string | null = null;
 	#standardWanted = false;
@@ -82,6 +85,7 @@ class PianoEngine {
 		this.volume = p.volume;
 		this.reverb = p.reverb;
 		this.hires = p.hires;
+		void flacSupported().then((ok) => (this.flac = ok));
 		// The piano page: the standard tier follows the demo, and hi-res too if it was chosen before.
 		this.#standardWanted = warm;
 		if (warm && this.instrument === "grand") this.#samples();

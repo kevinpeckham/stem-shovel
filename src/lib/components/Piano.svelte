@@ -42,6 +42,10 @@
 		void piano.hiresCached().then((c) => (hiresCached = c));
 	});
 	const mb = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
+	/** The hi-res download's size: FLAC, or the mp3 variant where the browser has no FLAC. */
+	let hiresBytes = $derived(
+		piano.flac === false ? PIANO_TIER_BYTES.hiresMp3 : PIANO_TIER_BYTES.hires,
+	);
 	// The Hi-res button: off, loading (a spinner and the percentage from the press until the last file), or on.
 	let hiresState = $derived(
 		piano.tier === "hires" ? "on" : piano.loadingTiers.hires ? "loading" : "off",
@@ -440,12 +444,16 @@
 			aria-pressed={hiresState === "on"}
 			disabled={hiresState !== "off"}
 			title={hiresState === "on"
-				? "The lossless samples are in: six velocity layers and the release samples"
+				? piano.flac === false
+					? "The full samples are in: six velocity layers and the release samples, as mp3 (this browser does not decode FLAC)"
+					: "The lossless samples are in: six velocity layers and the release samples"
 				: piano.instrument !== "grand"
-					? "The Grand Piano's lossless samples; pressing this chooses the Grand Piano"
+					? "The Grand Piano's fullest samples; pressing this chooses the Grand Piano"
 					: hiresCached
-						? "The lossless samples, kept from last time (no download)"
-						: `Download the lossless samples, ${mb(PIANO_TIER_BYTES.hires)}, once; the browser keeps them for next time`}
+						? "The fullest samples, kept from last time (no download)"
+						: piano.flac === false
+							? `Download the fullest samples, ${mb(hiresBytes)}, once, as mp3 (this browser does not decode FLAC); the browser keeps them for next time`
+							: `Download the lossless samples, ${mb(hiresBytes)}, once; the browser keeps them for next time`}
 			onclick={() => piano.enableHires()}
 		>
 			<span
@@ -458,7 +466,7 @@
 					? `Hi-res ${percent(piano.loadingTiers.hires)}`
 					: hiresCached
 						? "Hi-res"
-						: `Hi-res · ${mb(PIANO_TIER_BYTES.hires)}`}
+						: `Hi-res · ${mb(hiresBytes)}`}
 		</button>
 	{/snippet}
 

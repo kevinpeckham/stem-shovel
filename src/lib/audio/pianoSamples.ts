@@ -23,18 +23,42 @@ export const PIANO_SAMPLE_NOTES = Array.from({ length: 30 }, (_, i) => 21 + 3 * 
 const NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"];
 export const pianoNoteName = (midi: number) => `${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
 export type PianoTier = "demo" | "standard" | "hires";
-export const PIANO_TIERS: Record<PianoTier, { layers: number[]; releases: boolean; ext: string }> =
-	{
-		demo: { layers: [10], releases: false, ext: "mp3" },
-		standard: { layers: [4, 8, 12, 16], releases: true, ext: "mp3" },
-		hires: { layers: [2, 5, 8, 11, 14, 16], releases: true, ext: "flac" },
-	};
-/** Bytes per tier, for the button and the screen (what the encode script printed). */
-export const PIANO_TIER_BYTES: Record<PianoTier, number> = {
+export const PIANO_TIERS: Record<PianoTier, { layers: number[]; releases: boolean }> = {
+	demo: { layers: [10], releases: false },
+	standard: { layers: [4, 8, 12, 16], releases: true },
+	hires: { layers: [2, 5, 8, 11, 14, 16], releases: true },
+};
+/** Bytes per tier, for the button and the screen (what the encode script printed); hi-res as FLAC, or as mp3 where the browser has no FLAC. */
+export const PIANO_TIER_BYTES = {
 	demo: 3.4e6,
 	standard: 14.5e6,
 	hires: 71.6e6,
-};
+	hiresMp3: 55.2e6,
+} as const;
+
+/**
+ * Whether this browser decodes FLAC (Chrome, Firefox and Safari since iOS 11
+ * do; the probe settles it): a twentieth of a second of silence from
+ * static/kits/piano/probe.flac through decodeAudioData, once, no gesture
+ * needed. Where it fails the hi-res tier comes as the best mp3 instead
+ * (piano/v1/hires-mp3, the same six layers at VBR q0), a little smaller.
+ */
+let flacSupport: Promise<boolean> | null = null;
+export function flacSupported(): Promise<boolean> {
+	if (flacSupport) return flacSupport;
+	flacSupport = (async () => {
+		try {
+			const res = await fetch("/kits/piano/probe.flac");
+			if (!res.ok) return false;
+			const ctx = new OfflineAudioContext(1, 1, 44100);
+			await ctx.decodeAudioData(await res.arrayBuffer());
+			return true;
+		} catch {
+			return false;
+		}
+	})();
+	return flacSupport;
+}
 const CACHE = "piano-samples-v1";
 
 /** Decoded samples: layer → pitch → buffer; and the release samples by key (1 = A0 … 88 = C8). */
@@ -102,15 +126,17 @@ function place(layer: number, midi: number, buffer: AudioBuffer, tier: PianoTier
 	m.set(midi, buffer);
 }
 
-/** The files a tier is made of, under `base` (…/piano/v1). */
-export function pianoTierFiles(tier: "standard" | "hires"): string[] {
+/** The files a tier is made of, under `base` (…/piano/v1): the standard tier's mp3s, the hi-res tier's FLACs, or its mp3s where FLAC is not decoded. */
+export function pianoTierFiles(tier: "standard" | "hires", flac = true): string[] {
 	const spec = PIANO_TIERS[tier];
+	const dir = tier === "hires" && !flac ? "hires-mp3" : tier;
+	const ext = tier === "hires" && flac ? "flac" : "mp3";
 	const files: string[] = [];
 	// Middle octaves first: they are played most, so the piano improves where it is heard first.
 	const notes = [...PIANO_SAMPLE_NOTES].sort((a, b) => Math.abs(a - 60) - Math.abs(b - 60));
 	for (const midi of notes)
-		for (const v of spec.layers) files.push(`${tier}/${pianoNoteName(midi)}-v${v}.${spec.ext}`);
-	if (spec.releases) for (let i = 1; i <= 88; i++) files.push(`${tier}/rel-${i}.${spec.ext}`);
+		for (const v of spec.layers) files.push(`${dir}/${pianoNoteName(midi)}-v${v}.${ext}`);
+	if (spec.releases) for (let i = 1; i <= 88; i++) files.push(`${dir}/rel-${i}.${ext}`);
 	return files;
 }
 
@@ -127,21 +153,27 @@ export function loadPianoTier(
 ): Promise<void> {
 	const had = loading.get(tier);
 	if (had) return had;
-	const files = pianoTierFiles(tier);
 	let done = 0;
-	const queue = [...files];
-	const p = Promise.all(
-		Array.from({ length: 6 }, async () => {
-			for (let f = queue.shift(); f; f = queue.shift()) {
-				const bytes = await fetchCached(`${base}/${f}`);
-				const buffer = await ctx.decodeAudioData(bytes);
-				const m = f.match(/\/([A-G]s?\d)-v(\d+)\.|\/rel-(\d+)\./);
-				if (m?.[3]) releases.set(Number(m[3]), buffer);
-				else if (m?.[1] && m[2]) place(Number(m[2]), noteMidi(m[1]), buffer, tier);
-				onprogress?.(++done, files.length);
-			}
-		}),
-	)
+	let files: string[] = [];
+	const queue: string[] = [];
+	// Hi-res as FLAC where the browser decodes it, as mp3 where not: the probe says which, once.
+	const p = (tier === "hires" ? flacSupported() : Promise.resolve(true))
+		.then((flac) => {
+			files = pianoTierFiles(tier, flac);
+			queue.push(...files);
+			return Promise.all(
+				Array.from({ length: 6 }, async () => {
+					for (let f = queue.shift(); f; f = queue.shift()) {
+						const bytes = await fetchCached(`${base}/${f}`);
+						const buffer = await ctx.decodeAudioData(bytes);
+						const m = f.match(/\/([A-G]s?\d)-v(\d+)\.|\/rel-(\d+)\./);
+						if (m?.[3]) releases.set(Number(m[3]), buffer);
+						else if (m?.[1] && m[2]) place(Number(m[2]), noteMidi(m[1]), buffer, tier);
+						onprogress?.(++done, files.length);
+					}
+				}),
+			);
+		})
 		.then(() => undefined)
 		.catch((e: unknown) => {
 			loading.delete(tier);
@@ -176,7 +208,7 @@ export async function pianoHiresCached(base: string): Promise<boolean> {
 	try {
 		if (typeof caches === "undefined") return false;
 		const cache = await caches.open(CACHE);
-		const probe = await cache.match(`${base}/${pianoTierFiles("hires")[0]}`);
+		const probe = await cache.match(`${base}/${pianoTierFiles("hires", await flacSupported())[0]}`);
 		return !!probe;
 	} catch {
 		return false;

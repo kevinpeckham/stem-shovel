@@ -123,8 +123,14 @@ chords, transpose, a reverb; sounds he does not like).
   0.03 were still too much on short and middling notes).
   The filter only closes for a light touch now.
   Chromium decodes FLAC natively (33 ms a note); Safari has had FLAC
-  since iOS 11. Not built: an mp3 fallback should a browser refuse FLAC
-  (the button would then be hidden), pedal noises, sympathetic resonance.
+  since iOS 11. Where a browser cannot (built 2026-09-30): `flacSupported`
+  decodes a twentieth of a second of FLAC silence
+  (`static/kits/piano/probe.flac`) once at load, and where that fails
+  the hi-res tier comes from `piano/v1/hires-mp3/`, the same six layers
+  and releases as mp3 VBR q0 (55 MB, the fourth output of the encode
+  script, uploaded per stage with `--tier hires-mp3`); the button says
+  the mp3 size and its title says why. Not built: pedal noises,
+  sympathetic resonance.
 - **Home page demo** (built 2026-09-30): a full-width section under the
   drum machine; nothing of the piano downloads at load, the demo tier is
   fetched as the section scrolls into view (`piano.prefetch`, no audio

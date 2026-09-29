@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { layerMix, layerVelocity } from "./pianoLayers";
+import { pianoTierFiles } from "$lib/audio/pianoSamples";
 
 describe("layerMix", () => {
 	test("one layer plays alone at any velocity", () => {
@@ -19,5 +20,20 @@ describe("layerMix", () => {
 	});
 	test("nothing loaded, nothing to play", () => {
 		expect(layerMix(0.5, [])).toEqual([]);
+	});
+});
+
+describe("pianoTierFiles", () => {
+	test("the standard tier is mp3, hi-res is FLAC, and hi-res without FLAC is the mp3 variant, middle octaves first", () => {
+		const standard = pianoTierFiles("standard");
+		expect(standard).toHaveLength(30 * 4 + 88);
+		expect(standard[0]).toBe("standard/C4-v4.mp3");
+		expect(standard.at(-1)).toBe("standard/rel-88.mp3");
+		const flac = pianoTierFiles("hires");
+		expect(flac).toHaveLength(30 * 6 + 88);
+		expect(flac[0]).toBe("hires/C4-v2.flac");
+		const mp3 = pianoTierFiles("hires", false);
+		expect(mp3[0]).toBe("hires-mp3/C4-v2.mp3");
+		expect(mp3.at(-1)).toBe("hires-mp3/rel-88.mp3");
 	});
 });

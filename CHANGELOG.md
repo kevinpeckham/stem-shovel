@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Hi-res piano samples for browsers without FLAC** (docs/piano.md). The piano decodes a tiny FLAC probe once at load; where the browser cannot, the Hi-res button fetches the same six layers and release samples as the best mp3 instead (`piano/v1/hires-mp3/`, 55 MB, the encode script's fourth tier; upload it per stage with `bun run samples:piano -- --upload --tier hires-mp3`), and says so in its size and title. `pianoTierFiles` takes the choice (tested).
+
 ## [0.56.0] - 2026-09-30
 
 ### Added
