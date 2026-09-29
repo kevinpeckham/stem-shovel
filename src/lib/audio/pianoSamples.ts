@@ -1,63 +1,186 @@
+import { layerMix } from "$lib/utils/pianoLayers";
 import { frequencyOfMidi } from "./pitch";
 
 /**
- * The Grand Piano (docs/piano.md, Phase 2): thirty notes of the Salamander
- * Grand Piano, Alexander Holm's CC-BY 3.0 recordings of a Yamaha C5, in
- * the mp3 subset Tone.js publishes, one sample every three semitones from
- * A0 to C8 (static/kits/piano/<note>.mp3, two megabytes in all). A note
- * plays the nearest sample pitched by its playbackRate, at most a semitone
- * and a half off, which the ear does not catch on a piano. Fetched on
- * `warm` (the piano page at load; the home page's demo on its first touch),
- * decoded on `load` once there is a context, kept for the page's life.
+ * The Grand Piano's samples (docs/piano.md, "Sample tiers"): thirty pitches
+ * of the Salamander Grand Piano, Alexander Holm's CC BY 3.0 recordings of
+ * a Yamaha C5, one every three semitones from A0 to C8, in three tiers
+ * made by scripts/piano-samples.ts:
+ *
+ *   demo      one layer (v10) as mp3 in static/kits/piano, 3.4 MB: what the
+ *             home page's demo plays, and the piano page's first sound;
+ *   standard  four layers and the 88 release samples as mp3 from the Blob
+ *             store, 15 MB, loaded in the background on the piano page;
+ *   hires     six layers and the releases as 16-bit FLAC, 72 MB, on the
+ *             Hi-res button, kept in the browser's cache for next time.
+ *
+ * A note plays the nearest pitch at the playbackRate that tunes it, from
+ * the loaded layers on either side of its velocity, crossfaded
+ * (pianoLayers). Letting go damps the string and, once the release
+ * samples are in, plays the key's release.
  */
 export const PIANO_SAMPLE_NOTES = Array.from({ length: 30 }, (_, i) => 21 + 3 * i);
 const NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"];
-export const pianoSampleFile = (midi: number) =>
-	`${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}.mp3`;
+export const pianoNoteName = (midi: number) => `${NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+export type PianoTier = "demo" | "standard" | "hires";
+export const PIANO_TIERS: Record<PianoTier, { layers: number[]; releases: boolean; ext: string }> =
+	{
+		demo: { layers: [10], releases: false, ext: "mp3" },
+		standard: { layers: [4, 8, 12, 16], releases: true, ext: "mp3" },
+		hires: { layers: [2, 5, 8, 11, 14, 16], releases: true, ext: "flac" },
+	};
+/** Bytes per tier, for the button and the screen (what the encode script printed). */
+export const PIANO_TIER_BYTES: Record<PianoTier, number> = {
+	demo: 3.4e6,
+	standard: 14.5e6,
+	hires: 71.6e6,
+};
+const CACHE = "piano-samples-v1";
 
-let files: Map<number, Promise<ArrayBuffer>> | null = null;
-const buffers = new Map<number, AudioBuffer>();
-let decoding: Promise<void> | null = null;
-let failed = false;
+/** Decoded samples: layer → pitch → buffer; and the release samples by key (1 = A0 … 88 = C8). */
+const layers = new Map<number, Map<number, AudioBuffer>>();
+const releases = new Map<number, AudioBuffer>();
+/** Which tier each layer came from, so hires replaces standard's v8 and v16 rather than the other way round. */
+const layerTier = new Map<number, PianoTier>();
+const TIER_RANK: Record<PianoTier, number> = { demo: 0, standard: 1, hires: 2 };
+let demoFiles: Map<number, Promise<ArrayBuffer>> | null = null;
+const loading = new Map<PianoTier, Promise<void>>();
 
-export function pianoSamplesReady(): boolean {
-	return buffers.size === PIANO_SAMPLE_NOTES.length;
-}
-export function pianoSamplesFailed(): boolean {
-	return failed;
-}
+export const pianoLayersLoaded = () => [...layers.keys()].sort((a, b) => a - b);
+export const pianoDemoReady = () => (layers.get(10)?.size ?? 0) === PIANO_SAMPLE_NOTES.length;
+export const pianoTierReady = (tier: PianoTier) =>
+	PIANO_TIERS[tier].layers.every(
+		(l) => layerTier.get(l) === tier || TIER_RANK[layerTier.get(l) ?? "demo"] > TIER_RANK[tier],
+	) &&
+	(!PIANO_TIERS[tier].releases || releases.size === 88);
 
+/** Fetch the demo tier ahead of the first note (no context needed yet). */
 export function warmPianoSamples(): void {
-	if (files || typeof fetch === "undefined") return;
-	files = new Map(
+	if (demoFiles || typeof fetch === "undefined") return;
+	demoFiles = new Map(
 		PIANO_SAMPLE_NOTES.map((midi) => [
 			midi,
-			fetch(`/kits/piano/${pianoSampleFile(midi)}`).then((r) => {
-				if (!r.ok) throw new Error(`${r.status} for ${pianoSampleFile(midi)}`);
+			fetch(`/kits/piano/${pianoNoteName(midi)}.mp3`).then((r) => {
+				if (!r.ok) throw new Error(`${r.status} for ${pianoNoteName(midi)}.mp3`);
 				return r.arrayBuffer();
 			}),
 		]),
 	);
 }
 
+/** Decode the demo tier once there is a context. */
 export function loadPianoSamples(ctx: BaseAudioContext): Promise<void> {
 	warmPianoSamples();
-	if (decoding) return decoding;
-	decoding = Promise.all(
-		[...files!].map(async ([midi, file]) => {
-			if (buffers.has(midi)) return;
-			const bytes = (await file).slice(0);
-			buffers.set(midi, await ctx.decodeAudioData(bytes));
+	const had = loading.get("demo");
+	if (had) return had;
+	const p = Promise.all(
+		[...demoFiles!].map(async ([midi, file]) => {
+			if (layers.get(10)?.has(midi)) return;
+			const buffer = await ctx.decodeAudioData((await file).slice(0));
+			place(10, midi, buffer, "demo");
 		}),
 	)
 		.then(() => undefined)
 		.catch((e: unknown) => {
-			failed = true;
-			decoding = null;
-			files = null;
+			loading.delete("demo");
+			demoFiles = null;
 			throw e;
 		});
-	return decoding;
+	loading.set("demo", p);
+	return p;
+}
+
+function place(layer: number, midi: number, buffer: AudioBuffer, tier: PianoTier) {
+	const from = layerTier.get(layer);
+	if (from && TIER_RANK[from] > TIER_RANK[tier]) return; // a better one is already in
+	let m = layers.get(layer);
+	if (!m || from !== tier) {
+		m = new Map();
+		layers.set(layer, m);
+		layerTier.set(layer, tier);
+	}
+	m.set(midi, buffer);
+}
+
+/** The files a tier is made of, under `base` (…/piano/v1). */
+export function pianoTierFiles(tier: "standard" | "hires"): string[] {
+	const spec = PIANO_TIERS[tier];
+	const files: string[] = [];
+	// Middle octaves first: they are played most, so the piano improves where it is heard first.
+	const notes = [...PIANO_SAMPLE_NOTES].sort((a, b) => Math.abs(a - 60) - Math.abs(b - 60));
+	for (const midi of notes)
+		for (const v of spec.layers) files.push(`${tier}/${pianoNoteName(midi)}-v${v}.${spec.ext}`);
+	if (spec.releases) for (let i = 1; i <= 88; i++) files.push(`${tier}/rel-${i}.${spec.ext}`);
+	return files;
+}
+
+/**
+ * A tier from the Blob store: fetched through the browser's Cache API
+ * (so the second visit needs no download), decoded, and placed layer by
+ * layer as it arrives; `onprogress` counts files. Six at a time.
+ */
+export function loadPianoTier(
+	ctx: BaseAudioContext,
+	tier: "standard" | "hires",
+	base: string,
+	onprogress?: (done: number, total: number) => void,
+): Promise<void> {
+	const had = loading.get(tier);
+	if (had) return had;
+	const files = pianoTierFiles(tier);
+	let done = 0;
+	const queue = [...files];
+	const p = Promise.all(
+		Array.from({ length: 6 }, async () => {
+			for (let f = queue.shift(); f; f = queue.shift()) {
+				const bytes = await fetchCached(`${base}/${f}`);
+				const buffer = await ctx.decodeAudioData(bytes);
+				const m = f.match(/\/([A-G]s?\d)-v(\d+)\.|\/rel-(\d+)\./);
+				if (m?.[3]) releases.set(Number(m[3]), buffer);
+				else if (m?.[1] && m[2]) place(Number(m[2]), noteMidi(m[1]), buffer, tier);
+				onprogress?.(++done, files.length);
+			}
+		}),
+	)
+		.then(() => undefined)
+		.catch((e: unknown) => {
+			loading.delete(tier);
+			throw e;
+		});
+	loading.set(tier, p);
+	return p;
+}
+
+function noteMidi(name: string): number {
+	const octave = Number(name.slice(-1));
+	return NAMES.indexOf(name.slice(0, -1)) + 12 * (octave + 1);
+}
+
+async function fetchCached(url: string): Promise<ArrayBuffer> {
+	let cache: Cache | null = null;
+	try {
+		cache = typeof caches !== "undefined" ? await caches.open(CACHE) : null;
+		const hit = await cache?.match(url);
+		if (hit) return hit.arrayBuffer();
+	} catch {
+		cache = null;
+	}
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`${res.status} for ${url}`);
+	if (cache) void cache.put(url, res.clone()).catch(() => {});
+	return res.arrayBuffer();
+}
+
+/** Whether the hires tier is already in the browser's cache (a past opt-in): then loading it costs no download. */
+export async function pianoHiresCached(base: string): Promise<boolean> {
+	try {
+		if (typeof caches === "undefined") return false;
+		const cache = await caches.open(CACHE);
+		const probe = await cache.match(`${base}/${pianoTierFiles("hires")[0]}`);
+		return !!probe;
+	} catch {
+		return false;
+	}
 }
 
 /** The sample nearest a note, and the rate that pitches it there. */
@@ -72,10 +195,12 @@ export interface SampledVoice {
 }
 
 /**
- * One note of the Grand Piano into `out`: the nearest sample at the right
- * rate, its level from the velocity, and a low-pass that closes a little
- * for a soft touch (the recordings are of firm strokes). Letting go damps
- * the string over a quarter of a second, as the felt does.
+ * One note of the Grand Piano into `out`: the nearest pitch from the layers
+ * on either side of the velocity, crossfaded, each through a low-pass that
+ * only closes for a light touch (the recordings carry the tone; the filter
+ * is for a single-layer tier, where soft is the filter's doing). Letting
+ * go damps the string over a tenth of a second and plays the key's release
+ * sample where there is one.
  */
 export function startSampledVoice(
 	ctx: BaseAudioContext,
@@ -85,29 +210,53 @@ export function startSampledVoice(
 	when: number,
 ): SampledVoice | null {
 	const { sample, rate } = nearestPianoSample(midi);
-	const buffer = buffers.get(sample);
-	if (!buffer) return null;
 	const v = Math.min(1, Math.max(0, velocity));
-	const source = ctx.createBufferSource();
-	source.buffer = buffer;
-	source.playbackRate.value = rate;
+	const mix = layerMix(
+		v,
+		pianoLayersLoaded().filter((l) => layers.get(l)?.has(sample)),
+	);
+	if (mix.length === 0) return null;
+	const single = mix.length === 1 && pianoLayersLoaded().length === 1;
+	const gain = ctx.createGain();
+	// With real layers the recordings carry most of the dynamics; alone, the gain does.
+	gain.gain.setValueAtTime(single ? 0.15 + 0.85 * v * v : 0.5 + 0.5 * v, when);
+	gain.connect(out);
 	const filter = ctx.createBiquadFilter();
 	filter.type = "lowpass";
-	filter.frequency.value = 2500 + 12000 * v * v;
-	const gain = ctx.createGain();
-	gain.gain.setValueAtTime(0.15 + 0.85 * v * v, when);
-	source.connect(filter);
+	filter.frequency.value = single ? 5000 + 15000 * v : 9000 + 11000 * v;
 	filter.connect(gain);
-	gain.connect(out);
-	source.start(when);
+	const sources: AudioBufferSourceNode[] = [];
+	for (const { layer, gain: g } of mix) {
+		const buffer = layers.get(layer)?.get(sample);
+		if (!buffer) continue;
+		const source = ctx.createBufferSource();
+		source.buffer = buffer;
+		source.playbackRate.value = rate;
+		const lg = ctx.createGain();
+		lg.gain.value = g;
+		source.connect(lg);
+		lg.connect(filter);
+		source.start(when);
+		sources.push(source);
+	}
 	let released = false;
 	return {
 		release(at) {
 			if (released) return;
 			released = true;
 			gain.gain.cancelScheduledValues(at);
-			gain.gain.setTargetAtTime(0.0001, at, 0.07);
-			source.stop(at + 0.5);
+			gain.gain.setTargetAtTime(0.0001, at, 0.03);
+			for (const s of sources) s.stop(at + 0.3);
+			const rel = releases.get(midi - 20);
+			if (rel && at - when > 0.05) {
+				const r = ctx.createBufferSource();
+				r.buffer = rel;
+				const rg = ctx.createGain();
+				rg.gain.value = 0.25 + 0.35 * v;
+				r.connect(rg);
+				rg.connect(out);
+				r.start(at);
+			}
 		},
 	};
 }

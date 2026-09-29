@@ -14,6 +14,8 @@ export interface PianoPreferences {
 	octave: number;
 	volume: number;
 	reverb: number;
+	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
+	hires: boolean;
 }
 
 export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
@@ -21,6 +23,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	octave: DEFAULT_PIANO_OCTAVE,
 	volume: 0.8,
 	reverb: 0.25,
+	hires: false,
 };
 
 const unit = (v: unknown, fallback: number) =>
@@ -51,6 +54,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		octave,
 		volume: unit(p.volume, DEFAULT_PIANO_PREFERENCES.volume),
 		reverb: unit(p.reverb, DEFAULT_PIANO_PREFERENCES.reverb),
+		hires: p.hires === true,
 	};
 }
 

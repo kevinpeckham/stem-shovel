@@ -10,10 +10,13 @@ import { reverbImpulse } from "./drumBus";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
 	loadPianoSamples,
-	pianoSamplesFailed,
-	pianoSamplesReady,
+	loadPianoTier,
+	pianoDemoReady,
+	pianoHiresCached,
+	pianoTierReady,
 	startSampledVoice,
 	warmPianoSamples,
+	type PianoTier,
 } from "./pianoSamples";
 import { startVoice, type SynthVoice } from "./synthVoice";
 
@@ -47,8 +50,17 @@ class PianoEngine {
 	starting = $state(false);
 	/** What the audio context says while starting, for the screen: its state and the seconds since the switch. */
 	wake = $state<{ state: string; seconds: number } | null>(null);
-	/** The Grand Piano's samples: fetching and decoding, ready, or failed to load (the synths still play). */
+	/** The Grand Piano's demo tier: fetching and decoding, ready, or failed to load (the synths still play). */
 	samples = $state<"idle" | "loading" | "ready" | "failed">("idle");
+	/** The best tier fully in: the demo, the standard tier (loaded in the background on the piano page) or hi-res (the button). */
+	tier = $state<PianoTier>("demo");
+	/** A tier on its way, with its progress. */
+	tierLoading = $state<{ tier: PianoTier; done: number; total: number } | null>(null);
+	/** The Hi-res choice, remembered per browser. */
+	hires = $state(false);
+	/** Where the standard and hi-res tiers live (the page's load says; null where there is no store). */
+	samplesBase: string | null = null;
+	#standardWanted = false;
 
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
@@ -69,12 +81,52 @@ class PianoEngine {
 		this.octave = p.octave;
 		this.volume = p.volume;
 		this.reverb = p.reverb;
+		this.hires = p.hires;
+		// The piano page: the standard tier follows the demo, and hi-res too if it was chosen before.
+		this.#standardWanted = warm;
 		if (warm && this.instrument === "grand") this.#samples();
+	}
+	/** After the demo tier: the standard tier in the background, then hi-res if chosen (from the cache after the first time). */
+	#tiers() {
+		const ctx = this.#ctx;
+		const base = this.samplesBase;
+		if (!ctx || !base || !this.#standardWanted || this.instrument !== "grand") return;
+		if (this.tierLoading) return;
+		const next: "standard" | "hires" | null = !pianoTierReady("standard")
+			? "standard"
+			: this.hires && !pianoTierReady("hires")
+				? "hires"
+				: null;
+		if (!next) return;
+		this.tierLoading = { tier: next, done: 0, total: 0 };
+		loadPianoTier(ctx, next, base, (done, total) => {
+			if (this.tierLoading?.tier === next) this.tierLoading = { tier: next, done, total };
+		}).then(
+			() => {
+				this.tier = next;
+				this.tierLoading = null;
+				this.#tiers();
+			},
+			() => {
+				this.tierLoading = null;
+			},
+		);
+	}
+	/** The Hi-res button: remember the choice and fetch the tier (the cache serves it on later visits). */
+	enableHires() {
+		this.hires = true;
+		this.#save();
+		this.#tiers();
+	}
+	/** Whether a past opt-in left the hi-res tier in the browser's cache, for the button's label. */
+	hiresCached(): Promise<boolean> {
+		return this.samplesBase ? pianoHiresCached(this.samplesBase) : Promise.resolve(false);
 	}
 	/** The samples, fetched and (once there is a context) decoded; the state for the screen. */
 	#samples() {
-		if (pianoSamplesReady()) {
+		if (pianoDemoReady()) {
 			this.samples = "ready";
+			this.#tiers();
 			return;
 		}
 		warmPianoSamples();
@@ -82,8 +134,11 @@ class PianoEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		loadPianoSamples(ctx).then(
-			() => (this.samples = "ready"),
-			() => (this.samples = pianoSamplesFailed() ? "failed" : "idle"),
+			() => {
+				this.samples = "ready";
+				this.#tiers();
+			},
+			() => (this.samples = "failed"),
 		);
 	}
 	#save() {
@@ -92,6 +147,7 @@ class PianoEngine {
 			octave: this.octave,
 			volume: this.volume,
 			reverb: this.reverb,
+			hires: this.hires,
 		});
 	}
 

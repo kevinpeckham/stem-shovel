@@ -13,6 +13,7 @@
 		type PianoInstrumentId,
 	} from "$lib/constants/piano";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
+	import { PIANO_TIER_BYTES } from "$lib/audio/pianoSamples";
 	import { onDestroy, onMount } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 
@@ -29,10 +30,27 @@
 		keyboard?: boolean;
 		/** Fetch the Grand Piano's samples at mount (the piano page); off, they come with the first touch (the home page's demo). */
 		warm?: boolean;
+		/** Where the standard and hi-res sample tiers live (the page's load); without it the demo tier is all there is. */
+		samplesBase?: string | null;
 	}
-	let { keyboard = true, warm = false }: Props = $props();
+	let { keyboard = true, warm = false, samplesBase = null }: Props = $props();
 
-	onMount(() => piano.load(warm));
+	let hiresCached = $state(false);
+	onMount(() => {
+		piano.samplesBase = samplesBase;
+		piano.load(warm);
+		void piano.hiresCached().then((c) => (hiresCached = c));
+	});
+	const mb = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
+	let hiresState = $derived(
+		piano.tier === "hires"
+			? "on"
+			: piano.tierLoading?.tier === "hires"
+				? "loading"
+				: piano.hires
+					? "waiting"
+					: "off",
+	);
 	onDestroy(() => piano.allOff());
 
 	const INSTRUMENT_OPTIONS = PIANO_INSTRUMENTS.map((i) => ({ value: i.id, label: i.label }));
@@ -191,6 +209,15 @@
 					<span>· loading the piano…</span>
 				{:else if piano.instrument === "grand" && piano.samples === "failed"}
 					<span class="text-red-300">· the piano's samples did not load</span>
+				{:else if piano.instrument === "grand" && piano.tierLoading}
+					<span
+						>· {piano.tierLoading.tier === "hires" ? "hi-res" : "standard"} samples {piano
+							.tierLoading.total
+							? `${Math.round((100 * piano.tierLoading.done) / piano.tierLoading.total)}%`
+							: "…"}</span
+					>
+				{:else if piano.instrument === "grand" && piano.tier !== "demo"}
+					<span>· {piano.tier === "hires" ? "hi-res" : "standard"} samples</span>
 				{/if}
 				{#if !piano.on}
 					<span
@@ -321,6 +348,12 @@
 					aria-label="Reverb"
 				/>
 			</label>
+			{#if samplesBase && piano.instrument === "grand"}
+				<div>
+					<div class="device-button-group-label">Samples</div>
+					{@render hiresButton("device-button-sm px-3")}
+				</div>
+			{/if}
 			{#if midiSupported}
 				<div>
 					<div class="device-button-group-label">MIDI</div>
@@ -400,6 +433,35 @@
 		{/each}
 	</div>
 
+	{#snippet hiresButton(classes: string)}
+		<button
+			class="{classes} {hiresState === 'on' ? 'text-accent' : ''}"
+			type="button"
+			aria-pressed={hiresState === "on"}
+			disabled={hiresState !== "off"}
+			title={hiresState === "on"
+				? "The lossless samples are in: six velocity layers and the release samples"
+				: hiresCached
+					? "The lossless samples, kept from last time (no download)"
+					: `Download the lossless samples, ${mb(PIANO_TIER_BYTES.hires)}, once; the browser keeps them for next time`}
+			onclick={() => piano.enableHires()}
+		>
+			<span
+				class={hiresState === "loading" ? "i-ph-circle-notch animate-spin" : "i-ph-sparkle"}
+				aria-hidden="true"
+			></span>
+			{hiresState === "on"
+				? "Hi-res"
+				: hiresState === "loading"
+					? "Hi-res…"
+					: hiresState === "waiting"
+						? "Hi-res soon"
+						: hiresCached
+							? "Hi-res"
+							: `Hi-res · ${mb(PIANO_TIER_BYTES.hires)}`}
+		</button>
+	{/snippet}
+
 	{#snippet levelsItem()}
 		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
 			<label class="block">
@@ -428,6 +490,9 @@
 					aria-label="Reverb"
 				/>
 			</label>
+			{#if samplesBase && piano.instrument === "grand"}
+				{@render hiresButton("device-button-xs px-3 justify-self-start")}
+			{/if}
 			{#if midiSupported}
 				<button
 					class="device-button-xs px-3 justify-self-start {piano.midi.status === 'on'

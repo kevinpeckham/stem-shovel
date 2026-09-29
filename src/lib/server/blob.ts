@@ -81,6 +81,13 @@ export async function copyBlob(url: string, toPathname: string, to: BlobAccess):
 	return copied.url;
 }
 
+/** The public store's URL for a pathname (the piano's sample tiers live there, scripts/piano-samples.ts); null without a store. */
+export function publicBlobUrl(pathname: string): string | null {
+	const id = ENV.BLOB_STORE_ID;
+	if (!id) return null;
+	return `https://${id.replace(/^store_/, "").toLowerCase()}.public.blob.vercel-storage.com/${pathname}`;
+}
+
 /** Hostnames of our two stores: `store_1K3OTzJ…` → `1k3otzj….public.blob.vercel-storage.com`. */
 function storeHosts(): string[] {
 	const host = (id: string | undefined, access: BlobAccess) =>

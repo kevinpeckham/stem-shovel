@@ -1,6 +1,8 @@
 <script lang="ts">
 	import InfoTip from "$lib/components/InfoTip.svelte";
 	import Piano from "$lib/components/Piano.svelte";
+
+	let { data } = $props();
 </script>
 
 <svelte:head>
@@ -25,7 +27,7 @@
 			controller.
 		</p>
 	</header>
-	<Piano warm />
+	<Piano warm samplesBase={data.samplesBase} />
 	<section class="mt-8 max-w-article [&>_p]-(mt-3 text-15px opacity-90)">
 		<h2 class="heading-2">How to play</h2>
 		<p>

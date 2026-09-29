@@ -5,12 +5,19 @@ import { DEFAULT_PIANO_PREFERENCES, parsePianoPreferences } from "./pianoPrefere
 describe("parsePianoPreferences", () => {
 	test("keeps what is valid and falls back for the rest", () => {
 		expect(
-			parsePianoPreferences({ instrument: "organ", octave: 5, volume: 0.5, reverb: 2 }),
+			parsePianoPreferences({
+				instrument: "organ",
+				octave: 5,
+				volume: 0.5,
+				reverb: 2,
+				hires: true,
+			}),
 		).toEqual({
 			instrument: "organ",
 			octave: 5,
 			volume: 0.5,
 			reverb: 1,
+			hires: true,
 		});
 		// An unknown sound and a wild volume fall back; an octave off the keyboard is clamped to it.
 		expect(parsePianoPreferences({ instrument: "kazoo", octave: 42, volume: "loud" })).toEqual({

@@ -15,6 +15,7 @@
 		"spell": "cspell --no-progress",
 		"format": "vp fmt",
 		"stems": "node scripts/make-test-stems.mjs",
+		"samples:piano": "varlock run -- bun scripts/piano-samples.ts",
 		"smoke:blob": "node scripts/blob-smoke.mjs",
 		"smoke:urls": "varlock run -- node scripts/smoke-urls.mjs",
 		"check:swing": "varlock run -- node scripts/drum-swing-check.mjs",

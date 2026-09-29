@@ -79,6 +79,38 @@ chords, transpose, a reverb; sounds he does not like).
   playing is the filter's doing. The screen says "loading the piano…"
   until the samples are decoded, and a note before that plays the Electric
   Piano instead, so the first touch is never silent.
+- **Sample tiers** (built 2026-09-30, Kevin's ask: as close to stunning as
+  the load time allows, quick in the demo, an opt-in for hi-res). The
+  first subset (Tone.js's mp3s) averaged 39 kbps and measured 6 dB short
+  above 8 kHz against the lossless source, and the velocity filter closed
+  too early; that was "thin". `scripts/piano-samples.ts` now makes three
+  tiers from the Salamander's FLACs (`--download` fetches them into the
+  gitignored `.samples/`, 400 MB): **demo**, one layer (v10) as mp3 VBR q2
+  cut to 10 s with a fade (the tail is 40 dB down by 8 s), 3.4 MB in
+  `static/kits/piano`, committed, what the home page plays and the piano
+  page's first sound; **standard**, four layers (v4 v8 v12 v16) and the 88
+  release samples as the same mp3, 14.5 MB; **hires**, six layers (v2 v5
+  v8 v11 v14 v16) and the releases as 16-bit 44.1 kHz FLAC at full length,
+  72 MB (24-bit would be four times the size for nothing audible through
+  a graph that resamples every note). `--upload` puts the standard and
+  hires tiers in the stage's public Blob store under `piano/v1/<tier>/`
+  with a year-long cache header (a re-encode gets `v2`); each stage has
+  its own store, so production is uploaded from Kevin's machine like a
+  migration. The client (`pianoSamples.ts`) plays the demo tier at once;
+  on the piano page (`Piano`'s `warm` and `samplesBase` props, the latter
+  from the page's load through `publicBlobUrl`) the standard tier follows
+  in the background, middle octaves first, and a **Hi-res** button (the
+  Samples group; the phone menu) fetches the hires tier once, through the
+  Cache API, so the next visit costs no download; the choice is
+  remembered (`hires` in the preferences) and the tier comes back from
+  the cache. A note plays the two loaded layers on either side of its
+  velocity, crossfaded with equal power (`pianoLayers.ts`, tested), so a
+  hires layer replaces a standard one of the same number as it lands;
+  letting go damps the string and, once the releases are in, plays the
+  key's release sample. The filter only closes for a light touch now.
+  Chromium decodes FLAC natively (33 ms a note); Safari has had FLAC
+  since iOS 11. Not built: an mp3 fallback should a browser refuse FLAC
+  (the button would then be hidden), pedal noises, sympathetic resonance.
 - **Home page demo** (built 2026-09-30): a full-width section under the
   drum machine; the keyboard goes to it when it is the demo in view
   (the home page's `spaceTarget` now weighs the player, the drums and

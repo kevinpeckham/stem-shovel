@@ -283,8 +283,8 @@
 			<h3 class="marketing-section-heading">Piano Demo</h3>
 			<div class="marketing-topic-heading">Piano &amp; Synth</div>
 			<p class="marketing-paragraph text-balance">
-				A piano and a handful of synths to play from the screen, the computer keyboard or a MIDI
-				controller. Find a part, try a chord, or just play.
+				Work out melodies, progressions, or chords on the fully playable in-browser piano and synth.
+				Playable on mobile or desktop with keyboard shortcuts and midi control options.
 			</p>
 			<div class="marketing-demo-cta">Try the working demo below.</div>
 			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). -->

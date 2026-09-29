@@ -12,7 +12,7 @@ On the computer keyboard the bottom row is the first octave: **Z X C V B N M** a
 
 ## Sounds
 
-**Sound** chooses between a Grand Piano (a sampled concert grand; it downloads two megabytes the first time and the screen says "loading the piano…" until it is ready), an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
+**Sound** chooses between a Grand Piano (a sampled concert grand), an Electric Piano, an Organ, a Synth Lead, a Pad and a Pluck. The Grand Piano arrives in stages: a first set of samples in a moment (the screen says "loading the piano…" until then), then a fuller set with four velocity layers in the background on the piano page, and, if you press **Hi-res**, a lossless set with six layers and the sound of each key's release, about 72 MB once; your browser keeps it for next time and the piano remembers the choice. **Volume** and **Reverb** are yours to set; the piano remembers the sound, the octave and the levels in your browser.
 
 ## A MIDI keyboard
 
