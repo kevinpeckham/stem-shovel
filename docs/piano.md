@@ -110,7 +110,10 @@ chords, transpose, a reverb; sounds he does not like).
   velocity, crossfaded with equal power (`pianoLayers.ts`, tested), so a
   hires layer replaces a standard one of the same number as it lands;
   letting go damps the string and, once the releases are in, plays the
-  key's release sample. The filter only closes for a light touch now.
+  key's release sample about 26 dB under the note and 6 dB quieter for
+  every second the note rang (Kevin heard "foot pedal clunking" at the
+  first level, 0.25 to 0.6 of a recording that peaks as loud as a note).
+  The filter only closes for a light touch now.
   Chromium decodes FLAC natively (33 ms a note); Safari has had FLAC
   since iOS 11. Not built: an mp3 fallback should a browser refuse FLAC
   (the button would then be hidden), pedal noises, sympathetic resonance.

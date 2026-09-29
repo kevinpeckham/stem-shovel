@@ -247,12 +247,18 @@ export function startSampledVoice(
 			gain.gain.cancelScheduledValues(at);
 			gain.gain.setTargetAtTime(0.0001, at, 0.03);
 			for (const s of sources) s.stop(at + 0.3);
+			// The key's release: the damper's felt back on the string, a quiet mechanical
+			// sound. The recordings peak as loud as a note, so they go well down (about
+			// 26 dB under the note) and fade further the longer the note rang, as a
+			// sampler's rt_decay does (6 dB a second): a note held ten seconds has
+			// nothing left to damp.
 			const rel = releases.get(midi - 20);
-			if (rel && at - when > 0.05) {
+			const held = at - when;
+			if (rel && held > 0.05) {
 				const r = ctx.createBufferSource();
 				r.buffer = rel;
 				const rg = ctx.createGain();
-				rg.gain.value = 0.25 + 0.35 * v;
+				rg.gain.value = 0.05 * (0.6 + 0.4 * v) * 10 ** (-(6 * held) / 20);
 				r.connect(rg);
 				rg.connect(out);
 				r.start(at);
