@@ -249,7 +249,7 @@ export function startSampledVoice(
 			for (const s of sources) s.stop(at + 0.3);
 			// The key's release: the damper's felt back on the string, a quiet mechanical
 			// sound. The recordings peak as loud as a note, so they go well down (about
-			// 30 dB under the note at best) and fade further the longer the note rang,
+			// 40 dB under the note at best, and high-passed) and fade further the longer the note rang,
 			// as a sampler's rt_decay does (6 dB a second): a note held ten seconds
 			// has nothing left to damp.
 			const rel = releases.get(midi - 20);
@@ -257,10 +257,15 @@ export function startSampledVoice(
 			if (rel && held > 0.05) {
 				const r = ctx.createBufferSource();
 				r.buffer = rel;
-				const rg = ctx.createGain();
 				// Quieter still for a momentary note (a tap has nothing to hide the sound behind): it grows with the hold up to half a second, then decays.
-				rg.gain.value = 0.03 * (0.6 + 0.4 * v) * Math.min(1, held / 0.5) * 10 ** (-(6 * held) / 20);
-				r.connect(rg);
+				const rg = ctx.createGain();
+				rg.gain.value = 0.01 * (0.6 + 0.4 * v) * Math.min(1, held / 0.5) * 10 ** (-(6 * held) / 20);
+				// The recordings carry a low thump of the mechanism; only the felt's whisper is wanted.
+				const hp = ctx.createBiquadFilter();
+				hp.type = "highpass";
+				hp.frequency.value = 400;
+				r.connect(hp);
+				hp.connect(rg);
 				rg.connect(out);
 				r.start(at);
 			}
