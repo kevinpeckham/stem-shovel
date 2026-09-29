@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.55.1] - 2026-09-30
+
 ### Fixed
 
 - **The piano's Hi-res button hid behind another sound.** It only showed while the Grand Piano was chosen, so a browser remembering the Organ had no button. It shows whatever the sound now, and pressing it with another sound chosen switches to the Grand Piano and starts the download. And the tiers decode through an offline context until the piano is on, so a remembered Hi-res choice no longer waits at 0% for the switch.
