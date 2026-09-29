@@ -1,4 +1,5 @@
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
+import { reorderById } from "$lib/utils/reorderById";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
 import { flagProfanity } from "$lib/utils/profanity";
 import type { ArtistKind } from "$lib/val/ArtistKindSchema";
@@ -1021,6 +1022,28 @@ export async function renameStem(accountId: string, stemId: string, label: strin
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ id: stem.id, label: stem.label });
 	return row ?? null;
+}
+
+/** The song's stems in the given order, top first; ids from other songs are ignored, stems left out keep their place after the named ones. */
+export async function reorderStems(accountId: string, songId: string, ids: string[]) {
+	const rows = await db.query.stem.findMany({
+		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId)),
+		columns: { id: true, sortOrder: true },
+		orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
+	});
+	const ordered = reorderById(rows, ids);
+	await Promise.all(
+		ordered
+			.map((row, i) => ({ row, i }))
+			.filter(({ row, i }) => row.sortOrder !== i)
+			.map(({ row, i }) =>
+				db
+					.update(stem)
+					.set({ sortOrder: i })
+					.where(and(eq(stem.accountId, accountId), eq(stem.id, row.id))),
+			),
+	);
+	return ordered.map((row) => row.id);
 }
 
 export async function deleteStem(accountId: string, stemId: string) {

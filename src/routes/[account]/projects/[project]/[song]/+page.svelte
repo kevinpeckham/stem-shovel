@@ -75,6 +75,7 @@
 		deleteStem,
 		removeStemMidi,
 		renameStem,
+		reorderStems,
 		askAiAboutSong,
 		draftChart,
 		songNotes,
@@ -1031,6 +1032,16 @@
 
 	// The player's engine, for the custom mix (the download row lives outside the player).
 	let playerEngine = $state<StemEngine | null>(null);
+	/** A member dragged the rows into a new order: it becomes the song's order, for everyone. */
+	async function saveStemOrder(ids: string[]) {
+		try {
+			await reorderStems({ songId: data.song.id, ids });
+			await invalidateAll();
+			notify("Stem order saved");
+		} catch (e) {
+			notify(`Could not save the stem order: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	let player = $state<StemPlayer | null>(null);
 	/** The song's default mix per stem; the faders start here for everyone. */
 	let defaultGains = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.gain ?? 1])));
@@ -2085,6 +2096,7 @@
 					onstemcontext={onStemContext}
 					{afterRows}
 					songId={data.song.id}
+					onreorder={data.canEdit ? saveStemOrder : undefined}
 					bind:this={player}
 				>
 					{#snippet errorHint()}

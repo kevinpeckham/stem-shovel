@@ -20,7 +20,7 @@ As stems upload, Stem Shovel listens to them and works out the tempo, the key an
 
 ## The player
 
-Every stem gets a row: its waveform, **M** (mute), **S** (solo) and a fader. Solo one or more stems to hear only those; mute drops a stem from the mix. The **Master** fader scales everything.
+Every stem gets a row: its waveform, **M** (mute), **S** (solo) and a fader. Solo one or more stems to hear only those; mute drops a stem from the mix. The **Master** fader scales everything. Members can put the rows in any order: drag a stem by the grip before its name (the six dots), or focus the grip and press the arrow keys. The order is the song's, so everyone sees it, and the downloads follow it.
 
 The transport above the stems has play/pause, a go-to-beginning button and a readout of the position. Click anywhere on a waveform to jump there. **Space** plays and pauses from anywhere on the page, and **Home** goes back to the beginning.
 

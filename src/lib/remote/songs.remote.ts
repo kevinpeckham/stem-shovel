@@ -5,6 +5,7 @@ import { barAt, barGrid } from "$lib/audio/measures";
 import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
 import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
 import { ShareSongSchema } from "$lib/val/ShareSongSchema";
+import { StemOrderSchema } from "$lib/val/StemOrderSchema";
 import { sendShareEmail } from "$lib/server/email";
 import { scheduleMix } from "$lib/server/jobs";
 import {
@@ -15,6 +16,7 @@ import {
 	accountOfStem,
 	memberOf,
 	requireUser,
+	isEditor,
 } from "$lib/server/access";
 import {
 	createSong as create,
@@ -24,6 +26,7 @@ import {
 	projectSlugs,
 	removeStemMidi as dropMidi,
 	renameStem as rename,
+	reorderStems as reorder,
 	saveSongDoc,
 	setSongVersion as setVersion,
 	songForMix,
@@ -246,6 +249,14 @@ export const renameStem = command(StemRenameSchema, async ({ id, label }) => {
 	const row = await rename(accountId, id, label);
 	if (!row) error(404, "Stem not found");
 	return row;
+});
+
+/** The rows in a new order, dragged in the player (editors); the order is the song's, for everyone. */
+export const reorderStems = command(StemOrderSchema, async ({ songId, ids }) => {
+	const { locals } = getRequestEvent();
+	const m = await memberOf(locals, accountOfSong, songId);
+	if (!isEditor(m.role)) error(404, "Song not found");
+	return { ids: await reorder(m.accountId, songId, ids) };
 });
 
 /** Asks the AI Gateway model to check the song's tempo, key and meter against its rendered mix (members; a few per hour). */

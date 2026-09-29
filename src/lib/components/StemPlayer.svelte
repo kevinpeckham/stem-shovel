@@ -47,6 +47,8 @@
 		showStatus?: boolean;
 		/** Space and Home drive the transport (Transport.svelte); off when another player on the page has them. */
 		keyboard?: boolean;
+		/** When given, the rows can be reordered by their grips (a drag, or the arrow keys); called with the stems' ids in the new order once a move is done. */
+		onreorder?: (ids: string[]) => void | Promise<void>;
 	}
 
 	let {
@@ -68,6 +70,7 @@
 		songId,
 		showStatus = true,
 		keyboard = true,
+		onreorder,
 	}: Props = $props();
 
 	const engine = new StemEngine();
@@ -108,6 +111,7 @@
 			if (sameOrFewer) {
 				for (const id of loadedKeys.keys()) if (!nextKeys.has(id)) engine.remove(id);
 				for (const s of stems) engine.relabel(s.id, s.label);
+				engine.reorder(stems.map((s) => s.id));
 			} else {
 				void engine.load(stems);
 				// load() sets up the stems synchronously; the listener's own mix goes on top of the default.
@@ -132,6 +136,59 @@
 		});
 	});
 	$effect(() => () => engine.dispose());
+
+	// Reordering: a row's grip is dragged up or down the list (pointer events,
+	// so touch works and the page does not scroll under it) or moved with the
+	// arrow keys; the engine's rows follow live, and the new order is handed
+	// to `onreorder` once, when the move is done.
+	let rowsEl = $state<HTMLElement | null>(null);
+	let dragging = $state<string | null>(null);
+	let orderAtStart: string[] = [];
+	const order = () => engine.stems.map((s) => s.id);
+	function moveTo(id: string, index: number) {
+		const ids = order().filter((x) => x !== id);
+		ids.splice(Math.max(0, Math.min(ids.length, index)), 0, id);
+		engine.reorder(ids);
+	}
+	function commit() {
+		const ids = order();
+		if (ids.some((id, i) => id !== orderAtStart[i])) void onreorder?.(ids);
+	}
+	function gripDown(e: PointerEvent, id: string) {
+		if (e.button !== 0 || !onreorder) return;
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		dragging = id;
+		orderAtStart = order();
+	}
+	function gripMove(e: PointerEvent) {
+		if (!dragging || !rowsEl) return;
+		const rows = [...rowsEl.querySelectorAll<HTMLElement>("[data-stem-row]")];
+		// The row whose middle the pointer has passed: the drop position.
+		let index = rows.length - 1;
+		for (let i = 0; i < rows.length; i++) {
+			const r = rows[i]!.getBoundingClientRect();
+			if (e.clientY < r.top + r.height / 2) {
+				index = i;
+				break;
+			}
+		}
+		const from = order().indexOf(dragging);
+		if (from !== index) moveTo(dragging, index);
+	}
+	function gripUp() {
+		if (!dragging) return;
+		dragging = null;
+		commit();
+	}
+	function gripKey(e: KeyboardEvent, id: string) {
+		if (!onreorder || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+		e.preventDefault();
+		const from = order().indexOf(id);
+		orderAtStart = order();
+		moveTo(id, from + (e.key === "ArrowUp" ? -1 : 1));
+		commit();
+	}
 </script>
 
 <!-- {#if headerExtras}
@@ -172,8 +229,11 @@
 	</div>
 
 	<section
-		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start"
+		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start {dragging
+			? 'select-none'
+			: ''}"
 		aria-label="Stems"
+		bind:this={rowsEl}
 	>
 		{#if sections.length > 0 || timelineKinds(changes).length > 0}
 			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
@@ -186,6 +246,8 @@
 				badge={stemBadge}
 				roll={midiViews[stem.id] ?? null}
 				oncontext={onstemcontext}
+				handle={onreorder ? grip : undefined}
+				dragging={dragging === stem.id}
 			/>
 		{/each}
 		{#if afterRows}{@render afterRows()}{/if}
@@ -208,3 +270,22 @@
 		{/if}
 	</div>
 {/if}
+
+{#snippet grip(stem: StemState)}
+	<button
+		class="shrink-0 -ml-1 cursor-grab touch-none rounded px-0.5 py-1 opacity-50 hover-opacity-100 focus-visible-opacity-100 {dragging ===
+		stem.id
+			? 'cursor-grabbing opacity-100'
+			: ''}"
+		type="button"
+		aria-label="Move {stem.label}"
+		title="Drag to reorder, or use the arrow keys"
+		onpointerdown={(e) => gripDown(e, stem.id)}
+		onpointermove={gripMove}
+		onpointerup={gripUp}
+		onpointercancel={gripUp}
+		onkeydown={(e) => gripKey(e, stem.id)}
+	>
+		<span class="i-ph-dots-six-vertical block text-16px" aria-hidden="true"></span>
+	</button>
+{/snippet}

@@ -18,9 +18,22 @@
 		roll?: MidiSummary | null;
 		/** Ctrl / ⌘-click or right-click on the waveform or roll, with the position in seconds. */
 		oncontext?: (stem: StemState, seconds: number, x: number, y: number) => void;
+		/** A grip before the name, for reordering (StemPlayer draws it when the rows can be reordered). */
+		handle?: Snippet<[StemState]>;
+		/** This row is the one being dragged. */
+		dragging?: boolean;
 	}
 
-	let { stem, engine, menu, badge, roll = null, oncontext }: Props = $props();
+	let {
+		stem,
+		engine,
+		menu,
+		badge,
+		roll = null,
+		oncontext,
+		handle,
+		dragging = false,
+	}: Props = $props();
 	const context = (f: number, x: number, y: number) => oncontext?.(stem, f * engine.duration, x, y);
 
 	// Audible right now? Mirrors the engine's effective-gain rule for the visuals.
@@ -45,14 +58,18 @@
 	class="
 		grid
 		grid-cols-[1fr_auto_auto]
-		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr] relative"
+		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr] relative {dragging
+		? 'opacity-50'
+		: ''}"
 	role="group"
 	aria-label={stem.label}
+	data-stem-row={stem.id}
 	{onkeydown}
 >
 	<!-- track name & meta -->
 	<div class="w-full">
 		<div class="flex min-w-0 items-center gap-2">
+			{#if handle}{@render handle(stem)}{/if}
 			<div
 				class="truncate text-14.5px font-500 text-blue-300 {silenced
 					? 'opacity-60 text-slate-100'

@@ -1,4 +1,5 @@
 import { playThroughSilentSwitch } from "$lib/audio/playThroughSilentSwitch";
+import { reorderById } from "$lib/utils/reorderById";
 import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
@@ -187,6 +188,12 @@ export class StemEngine {
 		cancelAnimationFrame(this.#raf);
 		this.playing = false;
 		this.position = this.#offset;
+	}
+
+	/** The rows in a new order (a member's drag, or a refreshed manifest); the audio graph does not care. */
+	reorder(ids: string[]): void {
+		const next = reorderById(this.stems, ids);
+		if (next.some((s, i) => s !== this.stems[i])) this.stems = next;
 	}
 
 	toggle(): void {

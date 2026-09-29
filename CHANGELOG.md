@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Stems can be reordered in the player** (a user's request). A member drags a row by the grip before its name, or focuses the grip and presses the arrow keys; the rows follow live and the order is saved to the song (`stem.sort_order`, `reorderStems` in songs.remote.ts, editors only), so everyone sees it and the downloads and the zip follow. Pointer events, so it works by touch. `StemPlayer` takes `onreorder` and draws the grips when it is given; `StemEngine.reorder` (through `reorderById`, tested) also follows a refreshed manifest's order.
+
 ## [0.51.1] - 2026-09-29
 
 ### Changed
