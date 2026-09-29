@@ -220,7 +220,7 @@
 
 {#snippet keyControls(compact: boolean)}
 	<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
-		<div class={compact ? "" : "w-20"}>
+		<div class={compact ? "" : "w-24"}>
 			<div class="device-button-group-label">Key</div>
 			<ComboBox
 				ariaLabel="Key"
@@ -417,6 +417,7 @@
 					title="Reverb and delay"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
+					position="bottom right"
 					buttonBaseClasses="device-button-sm px-3"
 					buttonClasses={piano.reverb > 0 || piano.delay.level > 0 ? "text-accent" : ""}
 					popoverClasses="min-w-72"
