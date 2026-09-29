@@ -6,7 +6,11 @@ import {
 } from "$lib/constants/piano";
 import type { PianoKey } from "$lib/constants/scales";
 import { HeldNotes } from "$lib/utils/heldNotes";
-import { loadPianoPreferences, savePianoPreferences } from "$lib/utils/pianoPreferences";
+import {
+	loadPianoPreferences,
+	savePianoPreferences,
+	type PianoDelay,
+} from "$lib/utils/pianoPreferences";
 import { reverbImpulse } from "./drumBus";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
@@ -36,6 +40,8 @@ class PianoEngine {
 	octave = $state(3);
 	volume = $state(0.8);
 	reverb = $state(0.25);
+	/** The delay: time, feedback, level (docs/piano.md, "Effects"); level 0 is off. */
+	delay = $state<PianoDelay>({ time: 0.35, feedback: 0.35, level: 0 });
 	sustain = $state(false);
 	/** MIDI notes sounding now, for the keys to light. */
 	sounding = $state<number[]>([]);
@@ -74,6 +80,9 @@ class PianoEngine {
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
 	#wet: GainNode | null = null;
+	#delayNode: DelayNode | null = null;
+	#delayFeedback: GainNode | null = null;
+	#delayReturn: GainNode | null = null;
 	#master: GainNode | null = null;
 	#voices = new Map<number, SynthVoice>();
 	#order: number[] = [];
@@ -90,6 +99,7 @@ class PianoEngine {
 		this.octave = p.octave;
 		this.volume = p.volume;
 		this.reverb = p.reverb;
+		this.delay = { ...p.delay };
 		this.hires = p.hires;
 		this.key = p.key;
 		this.degrees = p.degrees;
@@ -178,6 +188,7 @@ class PianoEngine {
 			octave: this.octave,
 			volume: this.volume,
 			reverb: this.reverb,
+			delay: { ...this.delay },
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
@@ -201,10 +212,29 @@ class PianoEngine {
 		dry.connect(convolver);
 		convolver.connect(wet);
 		wet.connect(master);
+		// The delay, as the drum machine's: dry → delay → return → master, with delay → damping → feedback → delay round the loop.
+		const delay = ctx.createDelay(1);
+		delay.delayTime.value = this.delay.time;
+		const damping = ctx.createBiquadFilter();
+		damping.type = "lowpass";
+		damping.frequency.value = 3200;
+		const feedback = ctx.createGain();
+		feedback.gain.value = this.delay.feedback;
+		const delayReturn = ctx.createGain();
+		delayReturn.gain.value = this.delay.level;
+		dry.connect(delay);
+		delay.connect(damping);
+		damping.connect(feedback);
+		feedback.connect(delay);
+		delay.connect(delayReturn);
+		delayReturn.connect(master);
 		this.#ctx = ctx;
 		this.#master = master;
 		this.#dry = dry;
 		this.#wet = wet;
+		this.#delayNode = delay;
+		this.#delayFeedback = feedback;
+		this.#delayReturn = delayReturn;
 		return ctx;
 	}
 
@@ -300,6 +330,9 @@ class PianoEngine {
 		this.#master = null;
 		this.#dry = null;
 		this.#wet = null;
+		this.#delayNode = null;
+		this.#delayFeedback = null;
+		this.#delayReturn = null;
 		this.#voices.clear();
 		this.#order = [];
 		if (ctx) {
@@ -421,6 +454,21 @@ class PianoEngine {
 		if (!Number.isFinite(v)) return;
 		this.reverb = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
 		if (this.#wet) this.#wet.gain.value = this.reverb * 0.5;
+		this.#save();
+	}
+	/** The delay's time (seconds), feedback and level, any of them. */
+	setDelay(patch: Partial<PianoDelay>) {
+		const d = { ...this.delay, ...patch };
+		d.time = Math.min(1, Math.max(0.05, Math.round(d.time * 1000) / 1000));
+		d.feedback = Math.min(0.9, Math.max(0, Math.round(d.feedback * 100) / 100));
+		d.level = Math.min(1, Math.max(0, Math.round(d.level * 100) / 100));
+		this.delay = d;
+		if (this.#ctx && this.#delayNode && this.#delayFeedback && this.#delayReturn) {
+			const at = this.#ctx.currentTime;
+			this.#delayNode.delayTime.setTargetAtTime(d.time, at, 0.02);
+			this.#delayFeedback.gain.setTargetAtTime(d.feedback, at, 0.02);
+			this.#delayReturn.gain.setTargetAtTime(d.level, at, 0.02);
+		}
 		this.#save();
 	}
 

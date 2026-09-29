@@ -409,19 +409,20 @@
 					aria-label="Volume"
 				/>
 			</label>
-			<label class="block w-36">
-				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.reverb * 100)}
-					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
-					aria-label="Reverb"
+			<div>
+				<div class="device-button-group-label">Effects</div>
+				<!-- Reverb and delay in a menu, as the drum machine's; the button lights while either is up. -->
+				<ContextMenu
+					ariaLabel="Effects"
+					title="Reverb and delay"
+					iconClass="i-ph-sliders-horizontal"
+					label="Effects"
+					buttonBaseClasses="device-button-sm px-3"
+					buttonClasses={piano.reverb > 0 || piano.delay.level > 0 ? "text-accent" : ""}
+					popoverClasses="min-w-72"
+					items={[{ id: "piano-fx", kind: "snippet", snippet: fxItem }]}
 				/>
-			</label>
+			</div>
 			{#if samplesBase}
 				<div>
 					<div class="device-button-group-label">Samples</div>
@@ -567,6 +568,68 @@
 		</button>
 	{/snippet}
 
+	{#snippet fxSliders()}
+		<label class="block">
+			<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.reverb * 100)}
+				oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
+				aria-label="Reverb"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Delay time · {Math.round(piano.delay.time * 1000)} ms</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="50"
+				max="1000"
+				step="10"
+				value={Math.round(piano.delay.time * 1000)}
+				oninput={(e) => piano.setDelay({ time: Number(e.currentTarget.value) / 1000 })}
+				aria-label="Delay time"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Feedback · {Math.round(piano.delay.feedback * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="90"
+				step="1"
+				value={Math.round(piano.delay.feedback * 100)}
+				oninput={(e) => piano.setDelay({ feedback: Number(e.currentTarget.value) / 100 })}
+				aria-label="Delay feedback"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Delay level · {Math.round(piano.delay.level * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.delay.level * 100)}
+				oninput={(e) => piano.setDelay({ level: Number(e.currentTarget.value) / 100 })}
+				aria-label="Delay level"
+			/>
+		</label>
+	{/snippet}
+
+	{#snippet fxItem()}
+		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
+			<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
+			{@render fxSliders()}
+		</div>
+	{/snippet}
+
 	{#snippet levelsItem()}
 		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
 			<div class="text-blue-100/80">{@render keyControls(true)}</div>
@@ -583,19 +646,8 @@
 					aria-label="Volume"
 				/>
 			</label>
-			<label class="block">
-				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.reverb * 100)}
-					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
-					aria-label="Reverb"
-				/>
-			</label>
+			<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
+			{@render fxSliders()}
 			{#if samplesBase}
 				{@render hiresButton("device-button-xs px-3 justify-self-start")}
 			{/if}

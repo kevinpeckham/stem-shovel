@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Piano: an Effects menu with a delay** (docs/piano.md, "Effects"). An Effects button in the controls row, as the drum machine's, holds the reverb level (moved out of the row) and a new delay with its time (50 ms to 1 s), feedback and level; the button lights while either is up. The delay is the drum bus's shape in the piano's graph, ramped so sliders do not click, and the settings are remembered. On a phone the sliders sit in the levels menu.
 - **Piano: a small toggle for the key letters.** A keyboard-icon button beside the octave control hides or shows the computer-key letters printed on the keys (`labels` in the preferences, on by default); degrees still show when chosen.
 
 ## [0.57.0] - 2026-09-30

@@ -170,6 +170,19 @@ chords, transpose, a reverb; sounds he does not like).
   take starts. Unlike the drums and the click, which only reach the take
   through the room, the piano is recorded directly.
 
+## Effects (built 2026-09-30)
+
+An Effects menu as the drum machine's (Kevin's ask): the reverb level
+moved into it and a delay joined, the drum bus's shape in the piano's
+graph (`dry → DelayNode(1 s) → lowpass 3.2 kHz → feedback → delay`, the
+delay into a return gain into the master), with time (50 ms to 1 s),
+feedback (to 90 %) and level, level 0 being off; the button lights while
+the reverb or the delay level is up. `piano.setDelay` ramps the nodes
+over 20 ms so a slider does not click. Remembered in the preferences
+(`delay`). On a phone the same sliders sit in the levels menu under an
+Effects heading. Not built: a delay timed to a tempo (the piano has none;
+the recorder's metronome could lend one).
+
 ## Phase 3 (later)
 
 - 88 keys with a scrolling view; a transpose control; MIDI out; a

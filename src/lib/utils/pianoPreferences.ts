@@ -10,11 +10,20 @@ import {
 /** The piano's choices, remembered per browser: the sound, the octave the keys start at, the levels. */
 const KEY = "stemshovel.piano";
 
+export interface PianoDelay {
+	time: number;
+	feedback: number;
+	level: number;
+}
+export const DEFAULT_PIANO_DELAY: PianoDelay = { time: 0.35, feedback: 0.35, level: 0 };
+
 export interface PianoPreferences {
 	instrument: PianoInstrumentId;
 	octave: number;
 	volume: number;
 	reverb: number;
+	/** The delay: its time in seconds, feedback (0 to 0.9) and level (0 = off). */
+	delay: PianoDelay;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
@@ -29,6 +38,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	octave: DEFAULT_PIANO_OCTAVE,
 	volume: 0.8,
 	reverb: 0.25,
+	delay: { ...DEFAULT_PIANO_DELAY },
 	hires: false,
 	key: null,
 	degrees: false,
@@ -63,6 +73,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		octave,
 		volume: unit(p.volume, DEFAULT_PIANO_PREFERENCES.volume),
 		reverb: unit(p.reverb, DEFAULT_PIANO_PREFERENCES.reverb),
+		delay: parseDelay(p.delay),
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
@@ -87,4 +98,17 @@ function parseKey(json: unknown): PianoKey | null {
 		? (k.mode as PianoKey["mode"])
 		: null;
 	return root === null || mode === null ? null : { root, mode };
+}
+
+function parseDelay(json: unknown): PianoDelay {
+	const d = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	const time =
+		typeof d.time === "number" && Number.isFinite(d.time)
+			? Math.min(1, Math.max(0.05, d.time))
+			: DEFAULT_PIANO_DELAY.time;
+	return {
+		time,
+		feedback: Math.min(0.9, unit(d.feedback, DEFAULT_PIANO_DELAY.feedback)),
+		level: unit(d.level, DEFAULT_PIANO_DELAY.level),
+	};
 }

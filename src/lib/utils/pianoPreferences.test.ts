@@ -21,6 +21,7 @@ describe("parsePianoPreferences", () => {
 			key: null,
 			degrees: false,
 			labels: true,
+			delay: { time: 0.35, feedback: 0.35, level: 0 },
 		});
 		// An unknown sound and a wild volume fall back; an octave off the keyboard is clamped to it.
 		expect(parsePianoPreferences({ instrument: "kazoo", octave: 42, volume: "loud" })).toEqual({
