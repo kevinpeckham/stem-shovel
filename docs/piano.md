@@ -32,9 +32,11 @@ chords, transpose, a reverb; sounds he does not like).
   phone (a ResizeObserver attachment), black keys laid over the whites by
   percentage. Under 640 px the keyboard stands on end (Kevin's ask): the
   keys run down the screen, low notes at the bottom, black keys along the
-  left, the board 78 vh tall, so a phone's height is what gets used and
-  every key is a finger wide; velocity then comes from how far right the
-  finger lands. Pointer events on the board: each finger holds a note,
+  left, the board 78 vh tall; a white key is at least 52 px tall, and the
+  board shows as many keys as that allows (a partial octave: ten whites,
+  C3 to E4, on an iPhone; twelve on a taller Pixel), so every key is a
+  finger's target and the octave buttons move the window. Velocity then
+  comes from how far right the finger lands. Pointer events on the board: each finger holds a note,
   sliding across keys moves it, pressing lower on a key plays louder.
   The computer keyboard by physical key code (`PIANO_KEY_CODES`): the row
   from Z is the first octave with its sharps on the row above, the row from

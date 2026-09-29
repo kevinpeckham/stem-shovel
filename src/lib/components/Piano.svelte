@@ -41,25 +41,39 @@
 	// black keys along the left, so each key is a finger wide and the height of the
 	// screen is what gets used.
 	let width = $state(0);
+	let height = $state(0);
 	const measure: Attachment<HTMLElement> = (el) => {
-		const ro = new ResizeObserver(([entry]) => (width = entry?.contentRect.width ?? 0));
+		const ro = new ResizeObserver(([entry]) => {
+			width = entry?.contentRect.width ?? 0;
+			height = entry?.contentRect.height ?? 0;
+		});
 		ro.observe(el);
 		return () => ro.disconnect();
 	};
 	let vertical = $derived(width > 0 && width < 640);
 	let octaves = $derived(width >= 720 ? 3 : 2);
+	/** A white key on end is at least this tall, so a finger lands on one key. */
+	const MIN_KEY = 52;
+	/** White keys shown: whole octaves lying down; on end, as many as the board's height takes at the minimum size (a partial octave, then). */
+	let whites = $derived(
+		vertical
+			? Math.max(7, Math.min(15, Math.floor((height || MIN_KEY * 10) / MIN_KEY)))
+			: 7 * octaves + 1,
+	);
 	/** White key index within an octave per semitone (black keys sit after the white before them). */
 	const WHITE_INDEX = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
 	let keys = $derived.by(() => {
 		const base = piano.base;
 		const out: { midi: number; black: boolean; left: number; width: number; label: string }[] = [];
-		const whites = 7 * octaves + 1;
 		const w = 100 / whites;
-		for (let s = 0; s <= 12 * octaves; s++) {
+		for (let s = 0; s < 12 * 8; s++) {
 			const octave = Math.floor(s / 12);
 			const semitone = s % 12;
-			const black = BLACK_KEYS.has(semitone) && s < 12 * octaves;
+			const black = BLACK_KEYS.has(semitone);
 			const whiteIndex = octave * 7 + WHITE_INDEX[semitone]!;
+			if (whiteIndex >= whites) break;
+			// A black key needs the white on each side of it.
+			if (black && whiteIndex + 1 >= whites) continue;
 			out.push({
 				midi: base + s,
 				black,
@@ -70,6 +84,8 @@
 		}
 		return out;
 	});
+	/** The highest note on the board, for the screen. */
+	let top = $derived(keys.length ? keys[keys.length - 1]!.midi : piano.base);
 	let sounding = $derived(new Set(piano.sounding));
 
 	// Pointers: each finger or the mouse holds one note; sliding onto another key moves it there.
@@ -160,7 +176,7 @@
 		<div>
 			<div class="text-24px sm-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
-				<span>{noteLabel(piano.base)} to {noteLabel(piano.base + 12 * octaves)}</span>
+				<span>{noteLabel(piano.base)} to {noteLabel(top)}</span>
 				<span>· {piano.sustain ? "sustain" : "no sustain"}</span>
 				{#if piano.midi.status === "on"}
 					<span>· MIDI: {piano.midi.inputs.join(", ") || "no inputs"}</span>
