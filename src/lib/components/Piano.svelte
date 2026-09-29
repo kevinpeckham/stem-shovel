@@ -348,7 +348,7 @@
 					aria-label="Reverb"
 				/>
 			</label>
-			{#if samplesBase && piano.instrument === "grand"}
+			{#if samplesBase}
 				<div>
 					<div class="device-button-group-label">Samples</div>
 					{@render hiresButton("device-button-sm px-3")}
@@ -441,9 +441,11 @@
 			disabled={hiresState !== "off"}
 			title={hiresState === "on"
 				? "The lossless samples are in: six velocity layers and the release samples"
-				: hiresCached
-					? "The lossless samples, kept from last time (no download)"
-					: `Download the lossless samples, ${mb(PIANO_TIER_BYTES.hires)}, once; the browser keeps them for next time`}
+				: piano.instrument !== "grand"
+					? "The Grand Piano's lossless samples; pressing this chooses the Grand Piano"
+					: hiresCached
+						? "The lossless samples, kept from last time (no download)"
+						: `Download the lossless samples, ${mb(PIANO_TIER_BYTES.hires)}, once; the browser keeps them for next time`}
 			onclick={() => piano.enableHires()}
 		>
 			<span
@@ -488,7 +490,7 @@
 					aria-label="Reverb"
 				/>
 			</label>
-			{#if samplesBase && piano.instrument === "grand"}
+			{#if samplesBase}
 				{@render hiresButton("device-button-xs px-3 justify-self-start")}
 			{/if}
 			{#if midiSupported}

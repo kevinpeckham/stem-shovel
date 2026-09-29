@@ -100,7 +100,9 @@ chords, transpose, a reverb; sounds he does not like).
   on the piano page (`Piano`'s `warm` and `samplesBase` props, the latter
   from the page's load through `publicBlobUrl`) the standard tier follows
   in the background, middle octaves first, and a **Hi-res** button (the
-  Samples group; the phone menu) fetches the hires tier once, through the
+  Samples group; the phone menu; shown whatever the sound, and choosing
+  it with another sound brings the grand back, since Kevin lost the button
+  behind a remembered Organ) fetches the hires tier once, through the
   Cache API, so the next visit costs no download; the choice is
   remembered (`hires` in the preferences) and the tier comes back from
   the cache. The hires download starts the moment the button is pressed,

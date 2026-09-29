@@ -115,7 +115,10 @@ class PianoEngine {
 	/** The Hi-res button: remember the choice and fetch the tier (the cache serves it on later visits). */
 	enableHires() {
 		this.hires = true;
+		// The samples are the Grand Piano's: pressing the button with another sound chosen brings the grand back.
+		if (this.instrument !== "grand") this.setInstrument("grand");
 		this.#save();
+		this.#samples();
 		this.#tiers();
 	}
 	/** Whether a past opt-in left the hi-res tier in the browser's cache, for the button's label. */
