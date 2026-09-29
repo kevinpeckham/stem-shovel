@@ -87,10 +87,22 @@ class PianoEngine {
 		if (warm && this.instrument === "grand") this.#samples();
 	}
 	/** After the demo tier: the standard tier in the background, and hi-res as soon as it is chosen (from the cache after the first time), each on its own. */
+	/**
+	 * A context to decode samples with before the piano is on: an offline
+	 * one needs no gesture, and a decoded AudioBuffer plays in any context,
+	 * so the tiers can arrive while the piano is off (a remembered Hi-res
+	 * choice used to sit at 0% until the switch).
+	 */
+	#decoder: OfflineAudioContext | null = null;
+	#decodeContext(): BaseAudioContext {
+		if (this.#ctx) return this.#ctx;
+		this.#decoder ??= new OfflineAudioContext(1, 1, 44100);
+		return this.#decoder;
+	}
 	#tiers() {
-		const ctx = this.#ctx;
+		const ctx = this.#decodeContext();
 		const base = this.samplesBase;
-		if (!ctx || !base || !this.#standardWanted || this.instrument !== "grand") return;
+		if (!base || !this.#standardWanted || this.instrument !== "grand") return;
 		const wanted: ("standard" | "hires")[] = ["standard"];
 		if (this.hires) wanted.push("hires");
 		for (const tier of wanted) {
@@ -138,8 +150,7 @@ class PianoEngine {
 		}
 		warmPianoSamples();
 		if (this.samples !== "loading") this.samples = "loading";
-		const ctx = this.#ctx;
-		if (!ctx) return;
+		const ctx = this.#decodeContext();
 		loadPianoSamples(ctx).then(
 			() => {
 				this.samples = "ready";

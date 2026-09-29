@@ -44,7 +44,7 @@
 	const mb = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
 	// The Hi-res button: off, loading (a spinner and the percentage from the press until the last file), or on.
 	let hiresState = $derived(
-		piano.tier === "hires" ? "on" : piano.loadingTiers.hires || piano.hires ? "loading" : "off",
+		piano.tier === "hires" ? "on" : piano.loadingTiers.hires ? "loading" : "off",
 	);
 	const percent = (p: { done: number; total: number } | undefined) =>
 		p?.total ? `${Math.round((100 * p.done) / p.total)}%` : "0%";

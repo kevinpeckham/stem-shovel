@@ -105,7 +105,10 @@ chords, transpose, a reverb; sounds he does not like).
   behind a remembered Organ) fetches the hires tier once, through the
   Cache API, so the next visit costs no download; the choice is
   remembered (`hires` in the preferences) and the tier comes back from
-  the cache. The hires download starts the moment the button is pressed,
+  the cache. Decoding uses an OfflineAudioContext until the piano is on
+  (no gesture needed; an AudioBuffer plays in any context), so the tiers
+  load while the piano is off rather than a remembered Hi-res choice
+  sitting at 0% until the switch (Kevin's find). The hires download starts the moment the button is pressed,
   beside whatever the standard tier still has to fetch (`loadingTiers`
   holds each tier's progress), and the button shows a spinner and the
   percentage until the last file is decoded, then lights. A note plays the two loaded layers on either side of its
