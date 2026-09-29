@@ -4,6 +4,7 @@ import {
 	PIANO_OCTAVE_MIN,
 	type PianoInstrumentId,
 } from "$lib/constants/piano";
+import type { PianoKey } from "$lib/constants/scales";
 import { HeldNotes } from "$lib/utils/heldNotes";
 import { loadPianoPreferences, savePianoPreferences } from "$lib/utils/pianoPreferences";
 import { reverbImpulse } from "./drumBus";
@@ -59,6 +60,9 @@ class PianoEngine {
 	loadingTiers = $state<Partial<Record<PianoTier, { done: number; total: number }>>>({});
 	/** The Hi-res choice, remembered per browser. */
 	hires = $state(false);
+	/** The key lit on the keyboard (docs/piano.md, "Key and chords"), and whether its keys are numbered by degree; remembered. */
+	key = $state<PianoKey | null>(null);
+	degrees = $state(false);
 	/** Whether this browser decodes FLAC (null until the probe answers): hi-res comes as mp3 where it does not. */
 	flac = $state<boolean | null>(null);
 	/** Where the standard and hi-res tiers live (the page's load says; null where there is no store). */
@@ -85,6 +89,8 @@ class PianoEngine {
 		this.volume = p.volume;
 		this.reverb = p.reverb;
 		this.hires = p.hires;
+		this.key = p.key;
+		this.degrees = p.degrees;
 		void flacSupported().then((ok) => (this.flac = ok));
 		// The piano page: the standard tier follows the demo, and hi-res too if it was chosen before.
 		this.#standardWanted = warm;
@@ -170,6 +176,8 @@ class PianoEngine {
 			volume: this.volume,
 			reverb: this.reverb,
 			hires: this.hires,
+			key: this.key,
+			degrees: this.degrees,
 		});
 	}
 
@@ -385,6 +393,14 @@ class PianoEngine {
 		if (next === this.octave) return;
 		this.allOff();
 		this.octave = next;
+		this.#save();
+	}
+	setKey(key: PianoKey | null) {
+		this.key = key;
+		this.#save();
+	}
+	setDegrees(on: boolean) {
+		this.degrees = on;
 		this.#save();
 	}
 	setVolume(v: number) {

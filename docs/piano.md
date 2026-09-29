@@ -143,8 +143,20 @@ chords, transpose, a reverb; sounds he does not like).
   Instruments row above the Tools row. On a phone the nav's three menus
   are icons alone, close together (the account button loses its name
   there), so they fit beside the brand.
-- **Scale and chord help** as WebKeys: light the keys of a chosen key
-  and mode; name the chord being held.
+- **Scale and chord help** (built 2026-09-30, "Key and chords"): a Key
+  group (root and scale ComboBoxes, a 1–7 toggle) in the controls row and
+  the phone menu; `src/lib/constants/scales.ts` holds nine scales as
+  intervals, `scaleDegrees.ts` the scale's pitch classes and degrees, and
+  `chordName.ts` names what is held (a note, an interval, or a chord from
+  a table of interval sets tried against every held note as the root, the
+  bass first, with a slash for an inversion, plus the Roman numeral in the
+  key), all tested. The keys in the scale carry a dot (the root's in the
+  accent), the keys outside it go a shade darker, and the degree can
+  replace the letter; the screen's readout became the chord name. The key
+  and the numbering are remembered. Precedents: WebKeys' scale filter and
+  pianochord.org's reversed chord finder. Also (Kevin's note): the key
+  labels sit on two fixed rows now, the octave name above and the letter
+  below, so the letters line up across the keys.
 - **Record**: into the Idea Recorder as a take, or straight to a WAV
   through the offline path the drum machine uses.
 - **The recorder's toolbar** (built 2026-09-30): a piano button beside

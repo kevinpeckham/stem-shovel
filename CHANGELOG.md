@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Piano: a key and a chord readout** (docs/piano.md, "Key and chords"). A Key group chooses a root and a scale (nine of them); the keys in it carry a mark, the root a yellow one, the rest go a shade darker, and 1–7 numbers them by degree. The screen names what is held: a note, an interval, or the chord with inversions as slash chords, and in a key its Roman numeral. `scales.ts`, `scaleDegrees.ts`, `chordName.ts` (tested); remembered in the preferences.
+
+### Fixed
+
+- **Piano key labels line up.** The octave name on the C keys pushed their letters up; every white key now has two fixed rows, the name above and the letter below.
+
 ## [0.56.1] - 2026-09-30
 
 ### Added

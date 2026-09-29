@@ -13,6 +13,9 @@
 		type PianoInstrumentId,
 	} from "$lib/constants/piano";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
+	import { PITCH_CLASS_NAMES, SCALE_MODES, type ScaleModeId } from "$lib/constants/scales";
+	import { nameChord } from "$lib/utils/chordName";
+	import { degreeOf, scalePitchClasses } from "$lib/utils/scaleDegrees";
 	import { PIANO_TIER_BYTES } from "$lib/audio/pianoSamples";
 	import { onDestroy, onMount } from "svelte";
 	import type { Attachment } from "svelte/attachments";
@@ -118,6 +121,22 @@
 	let top = $derived(keys.length ? keys[keys.length - 1]!.midi : piano.base);
 	let sounding = $derived(new Set(piano.sounding));
 
+	// The key helper: the scale's pitch classes for the marks on the keys, and the chord the held notes make.
+	const ROOT_OPTIONS = PITCH_CLASS_NAMES.map((n, i) => ({ value: String(i), label: n }));
+	const MODE_OPTIONS = SCALE_MODES.map((m) => ({ value: m.id, label: m.label }));
+	let inKey = $derived(piano.key ? scalePitchClasses(piano.key) : null);
+	let chord = $derived(nameChord(piano.sounding, piano.key));
+	/** What the readout says: the chord (with its numeral in the key), or the notes, or silence. */
+	let readout = $derived(
+		!chord ? "silent" : chord.numeral ? `${chord.name} · ${chord.numeral}` : chord.name,
+	);
+	function setKeyRoot(root: number) {
+		piano.setKey({ root, mode: piano.key?.mode ?? "major" });
+	}
+	function setKeyMode(mode: ScaleModeId | "none") {
+		piano.setKey(mode === "none" ? null : { root: piano.key?.root ?? 0, mode });
+	}
+
 	// Pointers: each finger or the mouse holds one note; sliding onto another key moves it there.
 	const pointers = new Map<number, number>();
 	let board = $state<HTMLElement | null>(null);
@@ -199,6 +218,39 @@
 
 <svelte:window {onkeydown} {onkeyup} {onblur} />
 
+{#snippet keyControls(compact: boolean)}
+	<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
+		<div class={compact ? "" : "w-20"}>
+			<div class="device-button-group-label">Key</div>
+			<ComboBox
+				ariaLabel="Key"
+				buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
+				options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
+				value={piano.key ? String(piano.key.root) : "none"}
+				onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
+			/>
+		</div>
+		{#if piano.key}
+			<div class={compact ? "" : "w-40"}>
+				<ComboBox
+					ariaLabel="Scale"
+					buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
+					options={MODE_OPTIONS}
+					value={piano.key.mode}
+					onchange={(v) => setKeyMode(v as ScaleModeId)}
+				/>
+			</div>
+			<button
+				class="device-button-sm px-3 {piano.degrees ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={piano.degrees}
+				title="Number the keys by their degree in the key"
+				onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
+			>
+		{/if}
+	</div>
+{/snippet}
+
 <div
 	class="device-chrome grid gap-4 px-3 py-4 sm-px-5 sm-pt-5 pb-12 w-full max-w-full relative"
 	aria-label="Piano"
@@ -238,7 +290,7 @@
 			class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
 			aria-live="polite"
 		>
-			{piano.sounding.length ? piano.sounding.map(noteLabel).join(" ") : "silent"}
+			{readout}
 		</div>
 	</div>
 
@@ -312,6 +364,9 @@
 			</div>
 		</div>
 		<!-- the pedal has no place on a phone (the space bar is its key); the levels and MIDI go into a menu there -->
+		<div class="hidden sm-block">
+			{@render keyControls(false)}
+		</div>
 		<div class="hidden sm-block">
 			<div class="device-button-group-label">Pedal</div>
 			<button
@@ -416,12 +471,16 @@
 	>
 		{#each keys as key (key.midi)}
 			{@const on = sounding.has(key.midi)}
+			{@const pc = key.midi % 12}
+			{@const outKey = !!inKey && !inKey.has(pc)}
+			{@const isRoot = !!piano.key && piano.key.root === pc}
+			{@const degree = piano.key && piano.degrees ? degreeOf(pc, piano.key) : null}
 			<button
 				class="absolute flex items-center border border-oxford-950/60 text-11px font-500 transition-colors duration-75 {vertical
 					? 'left-0 flex-row justify-end pr-3 gap-2'
 					: 'top-0 flex-col justify-end pb-2'} {key.black
-					? `z-10 ${vertical ? 'w-62% rounded-r' : 'h-60% rounded-b'} ${on ? 'bg-accent text-oxford' : 'bg-slate-900 text-slate-300 hover-bg-slate-800'}`
-					: `${vertical ? 'w-full rounded-r-md' : 'h-full rounded-b-md'} ${on ? 'bg-accent text-oxford' : 'bg-slate-100 text-slate-500 hover-bg-white'}`}"
+					? `z-10 ${vertical ? 'w-62% rounded-r' : 'h-60% rounded-b'} ${on ? 'bg-accent text-oxford' : outKey ? 'bg-slate-800 text-slate-500' : 'bg-slate-900 text-slate-300 hover-bg-slate-800'}`
+					: `${vertical ? 'w-full rounded-r-md' : 'h-full rounded-b-md'} ${on ? 'bg-accent text-oxford' : outKey ? 'bg-slate-300 text-slate-500' : 'bg-slate-100 text-slate-500 hover-bg-white'}`}"
 				style={vertical
 					? `top: ${100 - key.left - key.width}%; height: ${key.width}%`
 					: `left: ${key.left}%; width: ${key.width}%`}
@@ -431,8 +490,29 @@
 				aria-pressed={on}
 				tabindex="-1"
 			>
-				{#if key.label && !vertical}<span class="opacity-70">{key.label}</span>{/if}
-				{#if key.midi % 12 === 0}<span class="text-10px">{noteLabel(key.midi)}</span>{/if}
+				<!-- In a key: a mark on the scale's keys, stronger on the root. -->
+				{#if inKey && !outKey}
+					<span
+						class="{vertical ? 'mr-auto ml-3' : 'mb-1'} block h-1.5 w-1.5 rounded-full {isRoot
+							? 'bg-accent'
+							: on
+								? 'bg-oxford/50'
+								: key.black
+									? 'bg-slate-400'
+									: 'bg-slate-400'}"
+						aria-hidden="true"
+					></span>
+				{/if}
+				{#if vertical}
+					{#if key.midi % 12 === 0}<span class="text-10px">{noteLabel(key.midi)}</span>{/if}
+					{#if degree !== null}<span class="opacity-70">{degree}</span>{/if}
+				{:else}
+					<!-- Two fixed rows on every key, so the letters line up: the octave name (on the Cs) above, the letter or degree below. -->
+					<span class="block h-3 text-10px leading-3"
+						>{key.midi % 12 === 0 ? noteLabel(key.midi) : ""}</span
+					>
+					<span class="block h-4 leading-4 opacity-70">{degree !== null ? degree : key.label}</span>
+				{/if}
 			</button>
 		{/each}
 	</div>
@@ -472,6 +552,7 @@
 
 	{#snippet levelsItem()}
 		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
+			<div class="text-blue-100/80">{@render keyControls(true)}</div>
 			<label class="block">
 				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
 				<input

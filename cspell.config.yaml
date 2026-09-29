@@ -21,6 +21,10 @@ ignoreRegExpList:
 words:
   - Qwen
   - Kimi
+  - dorian
+  - lydian
+  - mixolydian
+  - Gsus
   - tonejs
   - sophiaedu
   - arpeggiator
