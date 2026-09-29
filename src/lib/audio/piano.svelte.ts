@@ -95,23 +95,68 @@ class PianoEngine {
 		return 12 * (this.octave + 1);
 	}
 
+	#pending: (() => void)[] = [];
+	#waking: ReturnType<typeof setTimeout> | null = null;
+
 	/**
 	 * Open and start the audio on a touch, ahead of the first note: iOS
 	 * starts a context suspended and takes a moment to resume, and a note
 	 * scheduled in that moment sits at time zero and sounds late, all the
-	 * pressed notes together, once the context wakes.
+	 * pressed notes together, once the context wakes. The wake is watched
+	 * by polling the context's state (with a statechange listener too),
+	 * not by the promise `resume()` returns: on iOS that promise has been
+	 * seen never to settle although the context does start. A silent
+	 * one-sample buffer is played as well, the old unlock for iOS. After
+	 * three seconds without a running context the switch gives up (and a
+	 * later touch tries again), so it can never spin for ever.
 	 */
 	warm() {
 		const ctx = this.#graph();
 		if (ctx.state === "running") {
+			this.starting = false;
 			this.on = true;
+			this.#flush();
 			return;
 		}
 		this.starting = true;
-		void ctx.resume().then(() => {
-			this.starting = false;
-			this.on = ctx.state === "running";
-		});
+		void ctx.resume().catch(() => {});
+		try {
+			const unlock = ctx.createBufferSource();
+			unlock.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+			unlock.connect(ctx.destination);
+			unlock.start(0);
+		} catch {
+			// Not every browser lets a buffer play before the context runs; the resume alone may do.
+		}
+		if (this.#waking !== null) return;
+		const began = Date.now();
+		const check = () => {
+			if (ctx.state === "running") {
+				this.#waking = null;
+				this.starting = false;
+				this.on = true;
+				this.#flush();
+			} else if (Date.now() - began > 3000) {
+				this.#waking = null;
+				this.starting = false;
+				this.#pending = [];
+			} else {
+				this.#waking = setTimeout(check, 50);
+			}
+		};
+		ctx.onstatechange = () => {
+			if (this.#waking !== null) {
+				clearTimeout(this.#waking);
+				this.#waking = null;
+				check();
+			}
+		};
+		this.#waking = setTimeout(check, 50);
+	}
+	#flush() {
+		const run = this.#pending;
+		this.#pending = [];
+		for (const f of run) f();
 	}
 	/** The power switch: on warms the audio ahead of the first note, so the first note is not late; off silences and suspends it. */
 	async setOn(on: boolean) {
@@ -121,6 +166,7 @@ class PianoEngine {
 		}
 		this.allOff();
 		this.on = false;
+		this.starting = false;
 		await this.#ctx?.suspend().catch(() => {});
 	}
 
@@ -130,9 +176,10 @@ class PianoEngine {
 		const ctx = this.#graph();
 		if (ctx.state !== "running") {
 			// Not awake yet: start the note once it is, unless the key was let go meanwhile.
-			void ctx.resume().then(() => {
+			this.#pending.push(() => {
 				if (this.#held.down.has(midi) || this.#held.held.has(midi)) this.#start(midi, velocity);
 			});
+			this.warm();
 			this.sounding = this.#held.sounding;
 			return;
 		}

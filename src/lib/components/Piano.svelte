@@ -175,7 +175,11 @@
 	aria-label="Piano"
 >
 	<!-- the screen -->
-	<div class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3">
+	<div
+		class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3 transition-opacity {piano.on
+			? ''
+			: '[&>*]-(opacity-25)'}"
+	>
 		<div>
 			<div class="text-24px sm-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
@@ -380,7 +384,7 @@
 				aria-pressed={on}
 				tabindex="-1"
 			>
-				{#if key.label}<span class="opacity-70">{key.label}</span>{/if}
+				{#if key.label && !vertical}<span class="opacity-70">{key.label}</span>{/if}
 				{#if key.midi % 12 === 0}<span class="text-10px">{noteLabel(key.midi)}</span>{/if}
 			</button>
 		{/each}

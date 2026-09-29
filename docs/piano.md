@@ -52,7 +52,13 @@ chords, transpose, a reverb; sounds he does not like).
   the context runs; and a power switch (On / Off, as the tuner's) lets a
   phone user open the audio before the first note, since even the
   deferred first note feels like a glitch. The switch's state is
-  `piano.on` / `piano.starting`.
+  `piano.on` / `piano.starting`. The wake is watched by polling
+  `ctx.state` (plus `onstatechange`), not by the promise from `resume()`:
+  Kevin's phone sat on "Starting…" for minutes because that promise never
+  settled; a silent one-sample buffer is played too (the old iOS unlock),
+  and after three seconds the switch gives up rather than spin. The screen
+  dims while the piano is off, as the tuner's does, and on a phone the keys
+  carry no computer-key letters.
 - `/piano` page with a how-to; the Tools menu, the footer and the smoke
   list know it.
 
