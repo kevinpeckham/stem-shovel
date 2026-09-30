@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.59.0] - 2026-09-30
+
 ### Added
 
 - **Piano: analog delay, chorus and tremolo** (docs/piano.md, "Effects"). The Effects menu gains a Digital/Analog choice for the delay (Analog puts a soft clip and a darker low-pass in the feedback loop and a slow wobble on the time, so repeats darken and soften like tape), a chorus (mix, rate, depth: two swept delay lines panned apart) and a tremolo (depth, rate, Smooth or Chop). The chain now lives in `src/lib/audio/pianoFx.ts`, plain Web Audio that an OfflineAudioContext renders the same, with `update` ramping every level so sliders never click. The menu lays out in two columns from sm and scrolls when the window is short; the button lights while any effect is up; every new setting is off by default and remembered.
