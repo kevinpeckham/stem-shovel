@@ -20,6 +20,8 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - Qwen
+  - Biquad
+  - Goertzel
   - Kimi
   - dorian
   - lydian

@@ -171,7 +171,9 @@ check and the tests without any secret.
   in the Blob store, made by `bun run samples:piano`) and five synthesized
   sounds, played from
   the keys, the computer keyboard or a MIDI controller, with a sustain
-  pedal and a reverb.
+  pedal and a rack of effects. `src/lib/audio/pianoFx.ts` and
+  `src/lib/audio/fxStages.ts` hold the effects, shared in part with the
+  drum bus; docs/effects.md is how they are engineered.
 - `src/lib/components/Tuner.svelte`, `src/lib/audio/pitch.ts` — a chromatic
   tuner (McLeod pitch detection in the browser) in the Idea Recorder's
   header, on the public /tuner page and on the front page.
