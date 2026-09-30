@@ -9,11 +9,17 @@ import { HeldNotes } from "$lib/utils/heldNotes";
 import {
 	DEFAULT_PIANO_CHORUS,
 	DEFAULT_PIANO_DELAY,
+	DEFAULT_PIANO_FUZZ,
+	DEFAULT_PIANO_PHASER,
+	DEFAULT_PIANO_ROTARY,
 	DEFAULT_PIANO_TREMOLO,
 	loadPianoPreferences,
 	savePianoPreferences,
 	type PianoChorus,
 	type PianoDelay,
+	type PianoFuzz,
+	type PianoPhaser,
+	type PianoRotary,
 	type PianoTremolo,
 } from "$lib/utils/pianoPreferences";
 import { createPianoFx, type PianoFx } from "./pianoFx";
@@ -55,9 +61,12 @@ class PianoEngine {
 	reverbSize = $state(0.35);
 	/** The delay: time, feedback, level, analog character (docs/piano.md, "Effects"); level 0 is off. */
 	delay = $state<PianoDelay>({ ...DEFAULT_PIANO_DELAY });
-	/** The chorus (mix 0 is off) and the tremolo (depth 0 is off). */
+	/** The chorus (mix 0 is off), the tremolo (depth 0 is off), the fuzz (drive 0 is off), the phaser (mix 0 is off) and the rotary speaker. */
 	chorus = $state<PianoChorus>({ ...DEFAULT_PIANO_CHORUS });
 	tremolo = $state<PianoTremolo>({ ...DEFAULT_PIANO_TREMOLO });
+	fuzz = $state<PianoFuzz>({ ...DEFAULT_PIANO_FUZZ });
+	phaser = $state<PianoPhaser>({ ...DEFAULT_PIANO_PHASER });
+	rotary = $state<PianoRotary>({ ...DEFAULT_PIANO_ROTARY });
 	sustain = $state(false);
 	/** MIDI notes sounding now, for the keys to light. */
 	sounding = $state<number[]>([]);
@@ -115,6 +124,9 @@ class PianoEngine {
 		this.delay = { ...p.delay };
 		this.chorus = { ...p.chorus };
 		this.tremolo = { ...p.tremolo };
+		this.fuzz = { ...p.fuzz };
+		this.phaser = { ...p.phaser };
+		this.rotary = { ...p.rotary };
 		this.hires = p.hires;
 		this.key = p.key;
 		this.degrees = p.degrees;
@@ -207,6 +219,9 @@ class PianoEngine {
 			delay: { ...this.delay },
 			chorus: { ...this.chorus },
 			tremolo: { ...this.tremolo },
+			fuzz: { ...this.fuzz },
+			phaser: { ...this.phaser },
+			rotary: { ...this.rotary },
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
@@ -231,6 +246,9 @@ class PianoEngine {
 			delay: { ...this.delay },
 			chorus: { ...this.chorus },
 			tremolo: { ...this.tremolo },
+			fuzz: { ...this.fuzz },
+			phaser: { ...this.phaser },
+			rotary: { ...this.rotary },
 		};
 	}
 
@@ -482,6 +500,32 @@ class PianoEngine {
 		t.shape = t.shape === "square" ? "square" : "sine";
 		this.tremolo = t;
 		this.#fx?.update({ tremolo: t });
+		this.#save();
+	}
+	/** The fuzz's drive and tone, either; drive 0 is off. */
+	setFuzz(patch: Partial<PianoFuzz>) {
+		const f = { ...this.fuzz, ...patch };
+		f.drive = clamp(f.drive, 0, 1);
+		f.tone = clamp(f.tone, 0, 1);
+		this.fuzz = f;
+		this.#fx?.update({ fuzz: f });
+		this.#save();
+	}
+	/** The phaser's rate (Hz), depth and mix, any of them; mix 0 is off. */
+	setPhaser(patch: Partial<PianoPhaser>) {
+		const p = { ...this.phaser, ...patch };
+		p.rate = clamp(p.rate, 0.1, 5);
+		p.depth = clamp(p.depth, 0, 1);
+		p.mix = clamp(p.mix, 0, 1);
+		this.phaser = p;
+		this.#fx?.update({ phaser: p });
+		this.#save();
+	}
+	/** The rotary speaker: off, slow or fast (the rotors glide between speeds). */
+	setRotary(speed: PianoRotary["speed"]) {
+		const r = { speed };
+		this.rotary = r;
+		this.#fx?.update({ rotary: r });
 		this.#save();
 	}
 

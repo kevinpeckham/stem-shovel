@@ -175,13 +175,15 @@ chords, transpose, a reverb; sounds he does not like).
 An Effects menu as the drum machine's (Kevin's ask), with the chain in
 `src/lib/audio/pianoFx.ts` (`createPianoFx(ctx, settings)`, plain Web
 Audio so an OfflineAudioContext renders it the same, which is how it is
-measured): voices → chorus → tremolo → dry bus → master, with reverb and
-delay sends off the dry bus into the master. `piano.set*` calls
-`fx.update`, which ramps every level over 20 ms so a slider never clicks;
-the settings are remembered in the preferences (`delay`, `chorus`,
-`tremolo`). The button lights while any of them is up; on a phone the
-same controls sit in the levels menu under an Effects heading, in two
-columns from sm.
+measured): voices → fuzz → chorus → phaser → tremolo → rotary → dry bus →
+master, with reverb and delay sends off the dry bus into the master.
+`piano.set*` calls `fx.update`, which merges a nested patch over what
+stands and ramps every level over 20 ms so a slider never clicks; the
+settings are remembered in the preferences (`delay`, `chorus`, `tremolo`,
+`fuzz`, `phaser`, `rotary`), every effect off by default. The button
+lights while any of them is up; the menu lays out in two columns from sm
+and three from lg, and scrolls when the window is short; on a phone the
+same controls sit in the levels menu under an Effects heading.
 
 - **Reverb**: level and room size (the drum machine's synthesized room,
   the impulse rebuilt as the size slider moves).
@@ -194,17 +196,40 @@ columns from sm.
   - 3 kHz burst the second repeat's 3 kHz sits 20 dB under the digital
     one's and the tail dies sooner, so a longer analog tail wants more
     feedback.
+- **Fuzz**: drive (0 = off) and tone. A gain of 1 + 30·drive into a
+  `tanh` WaveShaper (4× oversampled), a lowpass from 700 Hz (tone 0) to
+  7 kHz (tone 1) after it, and a make-up of 0.27 / tanh(0.3 · gain) so a
+  voice peaking near 0.3 comes out where it went in (measured within 1 dB
+  of clean at every drive). The wet crossfades in over the first quarter
+  of the drive's travel; at a tenth the third harmonic sits 26 dB under
+  the fundamental, at a third it is 10 dB under and the wave is nearly
+  square.
 - **Chorus**: mix (0 = off), rate (0.1 to 5 Hz) and depth. Two delay
   lines at 22 and 28 ms swept up to ±4 ms by one sine LFO in opposite
   directions, panned left and right, added to the dry at `mix` (the wet
   is not subtracted from the dry, so full mix is louder by about 3.5 dB).
+- **Phaser**: mix (0 = off), rate (0.1 to 5 Hz) and depth. Four all-pass
+  filters (`BiquadFilterNode`) in series centred at 500, 800, 1300 and 2100 Hz, each moved by
+  the same LFO up to ±400 Hz; `mix` crossfades the dry towards half and
+  half with the all-passed signal, where the notches are deepest
+  (measured: a 1 kHz tone swings 11 dB as they pass).
 - **Tremolo**: depth (0 = off, 1 = down to silence), rate (0.5 to 12 Hz)
   and shape, Smooth (sine) or Chop (square): a gain sitting at
-  1 − depth/2 with the LFO swinging it ±depth/2.
+  1 − depth/2 with the LFO swinging it ±depth/2. The LFO passes an 80 Hz
+  lowpass so a square's edges take about 5 ms: an instant step in the
+  level clicked on a sustained Electric Piano note (Kevin heard a crunch).
+- **Rotary**: Off, Slow or Fast. The sound splits at 800 Hz (Q 0.5) into a
+  horn and a drum, each spun by its own LFO the opposite way through a
+  Doppler delay (±0.4 ms horn, ±0.15 ms drum around 2 ms), a level swing
+  (30 % and 20 %) and the pan (±0.8 and ±0.6). Slow is 0.8 / 0.7 Hz, Fast
+  6.7 / 5.7 Hz, and the LFO frequencies glide between them (the horn in
+  about a second, the drum in two, a Leslie's inertia); Off lets them
+  coast to a stop and crossfades the dry back. The wet is trimmed to 0.8
+  because the bands overlap at the crossover (measured within 1 dB of the
+  dry at 300 Hz and 1.5 kHz; fast reaches 7 Hz within three seconds).
 
 Not built: a delay timed to a tempo (the piano has none; the recorder's
-metronome could lend one); phaser, a rotary speaker for the Organ and a
-tone control are on the list.
+metronome could lend one); a tone control is on the list.
 
 ## Phase 3 (later)
 

@@ -25,6 +25,9 @@ describe("parsePianoPreferences", () => {
 			delay: { time: 0.35, feedback: 0.35, level: 0, analog: false },
 			chorus: { rate: 0.8, depth: 0.5, mix: 0 },
 			tremolo: { rate: 5, depth: 0, shape: "sine" },
+			fuzz: { drive: 0, tone: 0.5 },
+			phaser: { rate: 0.5, depth: 0.7, mix: 0 },
+			rotary: { speed: "off" },
 		});
 		// The effects clamp to their ranges; an unknown tremolo shape and a non-boolean analog flag fall back.
 		expect(
@@ -32,12 +35,19 @@ describe("parsePianoPreferences", () => {
 				delay: { time: 3, feedback: 1, level: 0.5, analog: "yes" },
 				chorus: { rate: 9, depth: 0.2, mix: 0.3 },
 				tremolo: { rate: 0.1, depth: 2, shape: "saw" },
+				fuzz: { drive: 7, tone: -1 },
+				phaser: { rate: 0, depth: 0.4, mix: 1.5 },
+				rotary: { speed: "warp" },
 			}),
 		).toMatchObject({
 			delay: { time: 1, feedback: 0.9, level: 0.5, analog: false },
 			chorus: { rate: 5, depth: 0.2, mix: 0.3 },
 			tremolo: { rate: 0.5, depth: 1, shape: "sine" },
+			fuzz: { drive: 1, tone: 0 },
+			phaser: { rate: 0.1, depth: 0.4, mix: 1 },
+			rotary: { speed: "off" },
 		});
+		expect(parsePianoPreferences({ rotary: { speed: "fast" } }).rotary).toEqual({ speed: "fast" });
 		// An unknown sound and a wild volume fall back; an octave off the keyboard is clamped to it.
 		expect(parsePianoPreferences({ instrument: "kazoo", octave: 42, volume: "loud" })).toEqual({
 			...DEFAULT_PIANO_PREFERENCES,

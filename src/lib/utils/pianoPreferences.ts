@@ -42,6 +42,28 @@ export interface PianoTremolo {
 	shape: PianoTremoloShape;
 }
 export const DEFAULT_PIANO_TREMOLO: PianoTremolo = { rate: 5, depth: 0, shape: "sine" };
+export interface PianoFuzz {
+	/** How hard the clipper is driven, 0 (off) to 1. */
+	drive: number;
+	/** The tone after the clipper, 0 dark to 1 bright. */
+	tone: number;
+}
+export const DEFAULT_PIANO_FUZZ: PianoFuzz = { drive: 0, tone: 0.5 };
+export interface PianoPhaser {
+	/** The sweep's rate in Hz (0.1 to 5). */
+	rate: number;
+	/** How far the notches sweep, 0 to 1. */
+	depth: number;
+	/** The wet level, 0 (off) to 1. */
+	mix: number;
+}
+export const DEFAULT_PIANO_PHASER: PianoPhaser = { rate: 0.5, depth: 0.7, mix: 0 };
+export const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
+export type PianoRotarySpeed = (typeof PIANO_ROTARY_SPEEDS)[number];
+export interface PianoRotary {
+	speed: PianoRotarySpeed;
+}
+export const DEFAULT_PIANO_ROTARY: PianoRotary = { speed: "off" };
 
 export interface PianoPreferences {
 	instrument: PianoInstrumentId;
@@ -52,9 +74,12 @@ export interface PianoPreferences {
 	reverbSize: number;
 	/** The delay: its time in seconds, feedback (0 to 0.9), level (0 = off) and analog character. */
 	delay: PianoDelay;
-	/** The chorus (mix 0 = off) and tremolo (depth 0 = off). */
+	/** The chorus (mix 0 = off), tremolo (depth 0 = off), fuzz (drive 0 = off), phaser (mix 0 = off) and rotary speaker. */
 	chorus: PianoChorus;
 	tremolo: PianoTremolo;
+	fuzz: PianoFuzz;
+	phaser: PianoPhaser;
+	rotary: PianoRotary;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
@@ -73,6 +98,9 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	delay: { ...DEFAULT_PIANO_DELAY },
 	chorus: { ...DEFAULT_PIANO_CHORUS },
 	tremolo: { ...DEFAULT_PIANO_TREMOLO },
+	fuzz: { ...DEFAULT_PIANO_FUZZ },
+	phaser: { ...DEFAULT_PIANO_PHASER },
+	rotary: { ...DEFAULT_PIANO_ROTARY },
 	hires: false,
 	key: null,
 	degrees: false,
@@ -111,6 +139,9 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		delay: parseDelay(p.delay),
 		chorus: parseChorus(p.chorus),
 		tremolo: parseTremolo(p.tremolo),
+		fuzz: parseFuzz(p.fuzz),
+		phaser: parsePhaser(p.phaser),
+		rotary: parseRotary(p.rotary),
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
@@ -167,5 +198,31 @@ function parseTremolo(json: unknown): PianoTremolo {
 		shape: (PIANO_TREMOLO_SHAPES as readonly string[]).includes(String(t.shape))
 			? (t.shape as PianoTremoloShape)
 			: DEFAULT_PIANO_TREMOLO.shape,
+	};
+}
+
+function parseFuzz(json: unknown): PianoFuzz {
+	const f = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		drive: unit(f.drive, DEFAULT_PIANO_FUZZ.drive),
+		tone: unit(f.tone, DEFAULT_PIANO_FUZZ.tone),
+	};
+}
+
+function parsePhaser(json: unknown): PianoPhaser {
+	const p = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		rate: within(p.rate, 0.1, 5, DEFAULT_PIANO_PHASER.rate),
+		depth: unit(p.depth, DEFAULT_PIANO_PHASER.depth),
+		mix: unit(p.mix, DEFAULT_PIANO_PHASER.mix),
+	};
+}
+
+function parseRotary(json: unknown): PianoRotary {
+	const r = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		speed: (PIANO_ROTARY_SPEEDS as readonly string[]).includes(String(r.speed))
+			? (r.speed as PianoRotarySpeed)
+			: DEFAULT_PIANO_ROTARY.speed,
 	};
 }

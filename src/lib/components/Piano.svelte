@@ -122,7 +122,13 @@
 	let sounding = $derived(new Set(piano.sounding));
 	/** The Effects button lights while any effect is up. */
 	let fxOn = $derived(
-		piano.reverb > 0 || piano.delay.level > 0 || piano.chorus.mix > 0 || piano.tremolo.depth > 0,
+		piano.reverb > 0 ||
+			piano.delay.level > 0 ||
+			piano.chorus.mix > 0 ||
+			piano.tremolo.depth > 0 ||
+			piano.fuzz.drive > 0 ||
+			piano.phaser.mix > 0 ||
+			piano.rotary.speed !== "off",
 	);
 
 	// The key helper: the scale's pitch classes for the marks on the keys, and the chord the held notes make.
@@ -387,7 +393,7 @@
 					position="bottom right"
 					buttonBaseClasses="device-button-xs px-3"
 					buttonClasses={fxOn ? "text-accent" : ""}
-					popoverClasses="min-w-72 !max-h-85vh overflow-y-auto"
+					popoverClasses="min-w-72 lg-min-w-160 !max-h-85vh overflow-y-auto"
 					items={[
 						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
 						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
@@ -630,7 +636,7 @@
 
 	{#snippet fxSlidersMenuBlock()}
 		<div
-			class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 sm-grid-cols-2 gap-x-6 gap-y-4 mb-4"
+			class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-3 gap-x-6 gap-y-4 mb-4"
 		>
 			<div class="grid grid-cols-1 gap-y-3 content-start">
 				<div class="device-button-group-label !text-blue-100/90 !mb-0">Reverb</div>
@@ -722,6 +728,35 @@
 				</div>
 			</div>
 			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Fuzz</div>
+				<label class="block">
+					<span class="device-button-label">Drive · {Math.round(piano.fuzz.drive * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.fuzz.drive * 100)}
+						oninput={(e) => piano.setFuzz({ drive: Number(e.currentTarget.value) / 100 })}
+						aria-label="Fuzz drive"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Tone · {Math.round(piano.fuzz.tone * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.fuzz.tone * 100)}
+						oninput={(e) => piano.setFuzz({ tone: Number(e.currentTarget.value) / 100 })}
+						aria-label="Fuzz tone"
+					/>
+				</label>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
 				<div class="device-button-group-label !text-blue-100/90 !mb-0">Chorus</div>
 				<label class="block">
 					<span class="device-button-label">Mix · {Math.round(piano.chorus.mix * 100)}%</span>
@@ -809,6 +844,81 @@
 						aria-pressed={piano.tremolo.shape === "square"}
 						title="A hard on-off chop"
 						onclick={() => piano.setTremolo({ shape: "square" })}>Chop</button
+					>
+				</div>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Phaser</div>
+				<label class="block">
+					<span class="device-button-label">Mix · {Math.round(piano.phaser.mix * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.phaser.mix * 100)}
+						oninput={(e) => piano.setPhaser({ mix: Number(e.currentTarget.value) / 100 })}
+						aria-label="Phaser mix"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Rate · {piano.phaser.rate.toFixed(1)} Hz</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0.1"
+						max="5"
+						step="0.1"
+						value={piano.phaser.rate}
+						oninput={(e) => piano.setPhaser({ rate: Number(e.currentTarget.value) })}
+						aria-label="Phaser rate"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Depth · {Math.round(piano.phaser.depth * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.phaser.depth * 100)}
+						oninput={(e) => piano.setPhaser({ depth: Number(e.currentTarget.value) / 100 })}
+						aria-label="Phaser depth"
+					/>
+				</label>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Rotary</div>
+				<span class="device-button-label !mb-0">Speaker</span>
+				<div class="flex gap-2" role="group" aria-label="Rotary speaker">
+					<button
+						class="flex-1 device-button-xs border {piano.rotary.speed === 'off'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.rotary.speed === "off"}
+						title="The rotors stop"
+						onclick={() => piano.setRotary("off")}>Off</button
+					>
+					<button
+						class="flex-1 device-button-xs border {piano.rotary.speed === 'slow'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.rotary.speed === "slow"}
+						title="A slow swirl, the horn under once a second"
+						onclick={() => piano.setRotary("slow")}>Slow</button
+					>
+					<button
+						class="flex-1 device-button-xs border {piano.rotary.speed === 'fast'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.rotary.speed === "fast"}
+						title="A fast shimmer, the rotors spun up over a second or two"
+						onclick={() => piano.setRotary("fast")}>Fast</button
 					>
 				</div>
 			</div>
