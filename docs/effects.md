@@ -111,6 +111,36 @@ drive's travel, so drive 0 is clean and the slider's first inch is a
 gentle grit. On the drum bus the fuzz sits on the dry drums only; the
 delay and reverb sends leave before it and stay clean.
 
+#### Why the fuzz oversamples
+
+Digital audio at 44.1 kHz can hold nothing above 22.05 kHz, the Nyquist
+limit. A clipper adds harmonics: a 1 kHz tone pushed into the tanh curve
+comes out with energy at 3, 5, 7 kHz and on upwards, further the harder
+the drive. A harmonic the clipper makes above the limit does not vanish;
+it folds back down, reflected off the limit, and lands at a frequency
+unrelated to the note (25 kHz appears at 19.1 kHz, 41 kHz at 3.1 kHz, in
+the middle of the music). That aliasing is the fizzy, out-of-tune grit of
+cheap digital distortion.
+
+`oversample = "4x"` has the browser run the WaveShaper at four times the
+context rate: inside the node, each block is upsampled to 176.4 kHz, the
+curve applied there, then low-pass filtered and brought back down. At the
+higher rate the limit is 88.2 kHz, so the harmonics have four times the
+headroom before they fold, and the ones that still reach that high are
+very weak, since tanh's series falls off steadily; the low-pass before the
+downsample then removes everything above 22 kHz cleanly. What comes back
+into the graph is the distorted tone with its true harmonics and nothing
+folded on top. One line in `fxStages.ts`; the resampling is the browser's.
+
+The analog delay's loop shaper does not oversample. Its curve is gentle,
+it barely bends at ordinary levels, and a 2 kHz low-pass follows it in
+the loop, so it makes few high harmonics and the damping removes them
+anyway; four times the work there would buy nothing audible. The fuzz is
+driven up to 31 times and meant to sound square, which is exactly where
+aliasing shows. The cost is four times the samples plus two resampling
+filters on one stereo signal, small enough that the drum machine runs
+its fuzz on the whole mix without strain.
+
 ### Chorus
 
 Two DelayNodes at 22 and 28 ms, each swept by one sine oscillator up to
