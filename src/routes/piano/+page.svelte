@@ -28,21 +28,51 @@
 		</p>
 	</header>
 	<Piano warm samplesBase={data.samplesBase} />
-	<section class="mt-8 max-w-article [&>_p]-(mt-3 text-15px opacity-90)">
-		<h2 class="heading-2">How to play</h2>
+	<section
+		class="mt-8 max-w-article [&>_p]-(mt-2 text-15px opacity-90) [&>h3]-(font-600 text-1.05em mt-4 leading-tight)"
+	>
+		<h2 class="heading-2">How to Play</h2>
 		<p>
-			Tap or click the keys; slide across them for a run; on a touch screen, several fingers play
-			several notes. The lower on a key you press, the louder the note.
+			The SS Keys is designed as an intuitive and easy-to-play online piano / synth. It's never
+			going to be as fun as sitting at a real piano or analog synth keyboard, but you might find it
+			useful to bang out a melody or experiment with a chord progression. Also, there are some fun
+			built-in effects (you haven't lived until you've tried grand piano with fuzz distortion).
+			There are some helpful tips below, or just start playing.
+		</p>
+
+		<h3>The Basics</h3>
+		<p>
+			Tap or click the keys to play music. Touch screens will enable you to play chords. Or you can
+			play with the keys on a computer keyboard (more on that below). The lower on a key you press,
+			the louder the note.
+		</p>
+
+		<h3>Instruments, Octaves & Effects</h3>
+		<p>
+			Use the Sound menu to select an instrument voice. Use the octave controls to reach higher and
+			lower notes on the keyboard. Use the effects menu to apply effects such as reverb, delay,
+			chorus, phaser, or fuzz distortion.
+		</p>
+
+		<h3>Playing on the Computer Keyboard</h3>
+		<p>
+			You can play the piano by pressing keys on your computer keyboard. Toggle on the key labels by
+			pressing the button that has a keyboard icon on it.
 		</p>
 		<p>
 			On the computer keyboard the bottom row plays the first octave, from <kbd>Z</kbd> on the white
 			keys with the sharps on the row above (<kbd>S</kbd>, <kbd>D</kbd>, <kbd>G</kbd>…), and the row
 			from <kbd>Q</kbd> plays the octave above it. The arrow keys move the keyboard an octave up or
-			down, the space bar is the sustain pedal, and <kbd>Esc</kbd> stops everything.
+			down, the space bar is the sustain pedal, and <kbd>ESC</kbd> stops everything.
 		</p>
+
+		<h3>MIDI</h3>
 		<p>
-			With a MIDI keyboard plugged in, <strong>Connect MIDI</strong> lets it play the piano, its velocity
-			and sustain pedal included (Chrome and Edge; the browser asks once).
+			With a MIDI keyboard plugged in, the MIDI button <span
+				class="rounded inline-block w-6 i-ph-usb"
+				aria-hidden="true"
+			></span> lets it play the piano, including its velocity and sustain pedal. Unfortunately Web MIDI
+			is currently supported only on Chrome, Edge and other Chromium browsers.
 		</p>
 	</section>
 </main>

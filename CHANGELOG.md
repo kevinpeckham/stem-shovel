@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.60.1] - 2026-09-30
+
+### Changed
+
+- **Piano page copy** (Kevin): the "How to Play" section gains an introduction and sub-headings (The Basics; Instruments, Octaves & Effects; Playing on the Computer Keyboard; MIDI), names the letters toggle, and points at the MIDI button by its icon. Review fixes: grammar, MIDI casing, the inline icon hidden from screen readers.
+
 ## [0.60.0] - 2026-09-30
 
 ### Added
