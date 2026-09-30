@@ -22,7 +22,21 @@ describe("parsePianoPreferences", () => {
 			key: null,
 			degrees: false,
 			labels: true,
-			delay: { time: 0.35, feedback: 0.35, level: 0 },
+			delay: { time: 0.35, feedback: 0.35, level: 0, analog: false },
+			chorus: { rate: 0.8, depth: 0.5, mix: 0 },
+			tremolo: { rate: 5, depth: 0, shape: "sine" },
+		});
+		// The effects clamp to their ranges; an unknown tremolo shape and a non-boolean analog flag fall back.
+		expect(
+			parsePianoPreferences({
+				delay: { time: 3, feedback: 1, level: 0.5, analog: "yes" },
+				chorus: { rate: 9, depth: 0.2, mix: 0.3 },
+				tremolo: { rate: 0.1, depth: 2, shape: "saw" },
+			}),
+		).toMatchObject({
+			delay: { time: 1, feedback: 0.9, level: 0.5, analog: false },
+			chorus: { rate: 5, depth: 0.2, mix: 0.3 },
+			tremolo: { rate: 0.5, depth: 1, shape: "sine" },
 		});
 		// An unknown sound and a wild volume fall back; an octave off the keyboard is clamped to it.
 		expect(parsePianoPreferences({ instrument: "kazoo", octave: 42, volume: "loud" })).toEqual({

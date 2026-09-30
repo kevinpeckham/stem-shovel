@@ -172,16 +172,39 @@ chords, transpose, a reverb; sounds he does not like).
 
 ## Effects (built 2026-09-30)
 
-An Effects menu as the drum machine's (Kevin's ask): the reverb level
-moved into it and a delay joined, the drum bus's shape in the piano's
-graph (`dry → DelayNode(1 s) → lowpass 3.2 kHz → feedback → delay`, the
-delay into a return gain into the master), with time (50 ms to 1 s),
-feedback (to 90 %) and level, level 0 being off; the button lights while
-the reverb or the delay level is up. `piano.setDelay` ramps the nodes
-over 20 ms so a slider does not click. Remembered in the preferences
-(`delay`). On a phone the same sliders sit in the levels menu under an
-Effects heading. Not built: a delay timed to a tempo (the piano has none;
-the recorder's metronome could lend one).
+An Effects menu as the drum machine's (Kevin's ask), with the chain in
+`src/lib/audio/pianoFx.ts` (`createPianoFx(ctx, settings)`, plain Web
+Audio so an OfflineAudioContext renders it the same, which is how it is
+measured): voices → chorus → tremolo → dry bus → master, with reverb and
+delay sends off the dry bus into the master. `piano.set*` calls
+`fx.update`, which ramps every level over 20 ms so a slider never clicks;
+the settings are remembered in the preferences (`delay`, `chorus`,
+`tremolo`). The button lights while any of them is up; on a phone the
+same controls sit in the levels menu under an Effects heading, in two
+columns from sm.
+
+- **Reverb**: level and room size (the drum machine's synthesized room,
+  the impulse rebuilt as the size slider moves).
+- **Delay**: level (0 = off), time (50 ms to 1 s), feedback (to 90 %), and
+  a Digital/Analog choice. Digital is the drum bus's shape (delay →
+  lowpass 3.2 kHz → feedback). Analog puts a soft clip (`tanh`, unity at
+  small signals so the feedback stays what the slider says, the peaks
+  folding down as tape saturates) and a darker lowpass (2 kHz) in the
+  loop, and a 0.4 Hz wobble of ±1.5 ms on the time; measured on a 500 Hz
+  - 3 kHz burst the second repeat's 3 kHz sits 20 dB under the digital
+    one's and the tail dies sooner, so a longer analog tail wants more
+    feedback.
+- **Chorus**: mix (0 = off), rate (0.1 to 5 Hz) and depth. Two delay
+  lines at 22 and 28 ms swept up to ±4 ms by one sine LFO in opposite
+  directions, panned left and right, added to the dry at `mix` (the wet
+  is not subtracted from the dry, so full mix is louder by about 3.5 dB).
+- **Tremolo**: depth (0 = off, 1 = down to silence), rate (0.5 to 12 Hz)
+  and shape, Smooth (sine) or Chop (square): a gain sitting at
+  1 − depth/2 with the LFO swinging it ±depth/2.
+
+Not built: a delay timed to a tempo (the piano has none; the recorder's
+metronome could lend one); phaser, a rotary speaker for the Organ and a
+tone control are on the list.
 
 ## Phase 3 (later)
 

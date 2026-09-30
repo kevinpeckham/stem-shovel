@@ -120,6 +120,10 @@
 	/** The highest note on the board, for the screen. */
 	let top = $derived(keys.length ? keys[keys.length - 1]!.midi : piano.base);
 	let sounding = $derived(new Set(piano.sounding));
+	/** The Effects button lights while any effect is up. */
+	let fxOn = $derived(
+		piano.reverb > 0 || piano.delay.level > 0 || piano.chorus.mix > 0 || piano.tremolo.depth > 0,
+	);
 
 	// The key helper: the scale's pitch classes for the marks on the keys, and the chord the held notes make.
 	const ROOT_OPTIONS = PITCH_CLASS_NAMES.map((n, i) => ({ value: String(i), label: n }));
@@ -382,8 +386,8 @@
 					label="Effects"
 					position="bottom right"
 					buttonBaseClasses="device-button-xs px-3"
-					buttonClasses={piano.reverb > 0 || piano.delay.level > 0 ? "text-accent" : ""}
-					popoverClasses="min-w-72"
+					buttonClasses={fxOn ? "text-accent" : ""}
+					popoverClasses="min-w-72 !max-h-85vh overflow-y-auto"
 					items={[
 						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
 						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
@@ -625,76 +629,189 @@
 	{/snippet}
 
 	{#snippet fxSlidersMenuBlock()}
-		<div class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 gap-y-3 mb-4">
-			<label class="block">
-				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.reverb * 100)}
-					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
-					aria-label="Reverb"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Reverb size · {Math.round(piano.reverbSize * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.reverbSize * 100)}
-					oninput={(e) => piano.setReverbSize(Number(e.currentTarget.value) / 100)}
-					aria-label="Reverb size"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label"
-					>Delay time · {Math.round(piano.delay.time * 1000)} ms</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="50"
-					max="1000"
-					step="10"
-					value={Math.round(piano.delay.time * 1000)}
-					oninput={(e) => piano.setDelay({ time: Number(e.currentTarget.value) / 1000 })}
-					aria-label="Delay time"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Feedback · {Math.round(piano.delay.feedback * 100)}%</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="90"
-					step="1"
-					value={Math.round(piano.delay.feedback * 100)}
-					oninput={(e) => piano.setDelay({ feedback: Number(e.currentTarget.value) / 100 })}
-					aria-label="Delay feedback"
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Delay level · {Math.round(piano.delay.level * 100)}%</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.delay.level * 100)}
-					oninput={(e) => piano.setDelay({ level: Number(e.currentTarget.value) / 100 })}
-					aria-label="Delay level"
-				/>
-			</label>
+		<div
+			class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 sm-grid-cols-2 gap-x-6 gap-y-4 mb-4"
+		>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Reverb</div>
+				<label class="block">
+					<span class="device-button-label">Level · {Math.round(piano.reverb * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.reverb * 100)}
+						oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
+						aria-label="Reverb"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Room size · {Math.round(piano.reverbSize * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.reverbSize * 100)}
+						oninput={(e) => piano.setReverbSize(Number(e.currentTarget.value) / 100)}
+						aria-label="Reverb size"
+					/>
+				</label>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Delay</div>
+				<label class="block">
+					<span class="device-button-label">Level · {Math.round(piano.delay.level * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.delay.level * 100)}
+						oninput={(e) => piano.setDelay({ level: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay level"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Time · {Math.round(piano.delay.time * 1000)} ms</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="50"
+						max="1000"
+						step="10"
+						value={Math.round(piano.delay.time * 1000)}
+						oninput={(e) => piano.setDelay({ time: Number(e.currentTarget.value) / 1000 })}
+						aria-label="Delay time"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Feedback · {Math.round(piano.delay.feedback * 100)}%</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="90"
+						step="1"
+						value={Math.round(piano.delay.feedback * 100)}
+						oninput={(e) => piano.setDelay({ feedback: Number(e.currentTarget.value) / 100 })}
+						aria-label="Delay feedback"
+					/>
+				</label>
+				<div class="flex gap-2" role="group" aria-label="Delay character">
+					<button
+						class="flex-1 device-button-xs border {piano.delay.analog ? '' : 'text-accent'}"
+						type="button"
+						aria-pressed={!piano.delay.analog}
+						title="Clean repeats"
+						onclick={() => piano.setDelay({ analog: false })}>Digital</button
+					>
+					<button
+						class="flex-1 device-button-xs border {piano.delay.analog ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={piano.delay.analog}
+						title="Tape-like repeats: each one darker and softer, with a slow wobble"
+						onclick={() => piano.setDelay({ analog: true })}>Analog</button
+					>
+				</div>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Chorus</div>
+				<label class="block">
+					<span class="device-button-label">Mix · {Math.round(piano.chorus.mix * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.chorus.mix * 100)}
+						oninput={(e) => piano.setChorus({ mix: Number(e.currentTarget.value) / 100 })}
+						aria-label="Chorus mix"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Rate · {piano.chorus.rate.toFixed(1)} Hz</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0.1"
+						max="5"
+						step="0.1"
+						value={piano.chorus.rate}
+						oninput={(e) => piano.setChorus({ rate: Number(e.currentTarget.value) })}
+						aria-label="Chorus rate"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Depth · {Math.round(piano.chorus.depth * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.chorus.depth * 100)}
+						oninput={(e) => piano.setChorus({ depth: Number(e.currentTarget.value) / 100 })}
+						aria-label="Chorus depth"
+					/>
+				</label>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Tremolo</div>
+				<label class="block">
+					<span class="device-button-label">Depth · {Math.round(piano.tremolo.depth * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.tremolo.depth * 100)}
+						oninput={(e) => piano.setTremolo({ depth: Number(e.currentTarget.value) / 100 })}
+						aria-label="Tremolo depth"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Rate · {piano.tremolo.rate.toFixed(1)} Hz</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0.5"
+						max="12"
+						step="0.1"
+						value={piano.tremolo.rate}
+						oninput={(e) => piano.setTremolo({ rate: Number(e.currentTarget.value) })}
+						aria-label="Tremolo rate"
+					/>
+				</label>
+				<div class="flex gap-2" role="group" aria-label="Tremolo shape">
+					<button
+						class="flex-1 device-button-xs border {piano.tremolo.shape === 'sine'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.tremolo.shape === "sine"}
+						title="A smooth swell"
+						onclick={() => piano.setTremolo({ shape: "sine" })}>Smooth</button
+					>
+					<button
+						class="flex-1 device-button-xs border {piano.tremolo.shape === 'square'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.tremolo.shape === "square"}
+						title="A hard on-off chop"
+						onclick={() => piano.setTremolo({ shape: "square" })}>Chop</button
+					>
+				</div>
+			</div>
 		</div>
 	{/snippet}
 

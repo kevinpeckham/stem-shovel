@@ -7,11 +7,16 @@ import {
 import type { PianoKey } from "$lib/constants/scales";
 import { HeldNotes } from "$lib/utils/heldNotes";
 import {
+	DEFAULT_PIANO_CHORUS,
+	DEFAULT_PIANO_DELAY,
+	DEFAULT_PIANO_TREMOLO,
 	loadPianoPreferences,
 	savePianoPreferences,
+	type PianoChorus,
 	type PianoDelay,
+	type PianoTremolo,
 } from "$lib/utils/pianoPreferences";
-import { reverbImpulse } from "./drumBus";
+import { createPianoFx, type PianoFx } from "./pianoFx";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
 	flacSupported,
@@ -34,6 +39,12 @@ import { startVoice, type SynthVoice } from "./synthVoice";
  * the pedal's bookkeeping. The AudioContext opens on the first note (a
  * gesture, as browsers require). The choices are remembered per browser.
  */
+/** A finite number held to [min, max] and rounded to `steps` per unit (100 = hundredths); the fallback for anything else is min. */
+function clamp(v: number, min: number, max: number, steps = 100): number {
+	if (!Number.isFinite(v)) return min;
+	return Math.min(max, Math.max(min, Math.round(v * steps) / steps));
+}
+
 class PianoEngine {
 	instrument = $state<PianoInstrumentId>("epiano");
 	/** The octave the on-screen keyboard's lowest C sits in. */
@@ -42,8 +53,11 @@ class PianoEngine {
 	reverb = $state(0.25);
 	/** The room's size, 0 a small room to 1 a hall (the impulse is synthesized again on change). */
 	reverbSize = $state(0.35);
-	/** The delay: time, feedback, level (docs/piano.md, "Effects"); level 0 is off. */
-	delay = $state<PianoDelay>({ time: 0.35, feedback: 0.35, level: 0 });
+	/** The delay: time, feedback, level, analog character (docs/piano.md, "Effects"); level 0 is off. */
+	delay = $state<PianoDelay>({ ...DEFAULT_PIANO_DELAY });
+	/** The chorus (mix 0 is off) and the tremolo (depth 0 is off). */
+	chorus = $state<PianoChorus>({ ...DEFAULT_PIANO_CHORUS });
+	tremolo = $state<PianoTremolo>({ ...DEFAULT_PIANO_TREMOLO });
 	sustain = $state(false);
 	/** MIDI notes sounding now, for the keys to light. */
 	sounding = $state<number[]>([]);
@@ -80,13 +94,8 @@ class PianoEngine {
 	#standardWanted = false;
 
 	#ctx: AudioContext | null = null;
-	#dry: GainNode | null = null;
-	#wet: GainNode | null = null;
-	#convolver: ConvolverNode | null = null;
-	#delayNode: DelayNode | null = null;
-	#delayFeedback: GainNode | null = null;
-	#delayReturn: GainNode | null = null;
-	#master: GainNode | null = null;
+	/** The effect chain (pianoFx.ts): voices play into `fx.input`; `fx.master` is what the speaker gets. */
+	#fx: PianoFx | null = null;
 	#voices = new Map<number, SynthVoice>();
 	#order: number[] = [];
 	#held = new HeldNotes();
@@ -104,6 +113,8 @@ class PianoEngine {
 		this.reverb = p.reverb;
 		this.reverbSize = p.reverbSize;
 		this.delay = { ...p.delay };
+		this.chorus = { ...p.chorus };
+		this.tremolo = { ...p.tremolo };
 		this.hires = p.hires;
 		this.key = p.key;
 		this.degrees = p.degrees;
@@ -194,6 +205,8 @@ class PianoEngine {
 			reverb: this.reverb,
 			reverbSize: this.reverbSize,
 			delay: { ...this.delay },
+			chorus: { ...this.chorus },
+			tremolo: { ...this.tremolo },
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
@@ -205,43 +218,20 @@ class PianoEngine {
 		if (this.#ctx) return this.#ctx;
 		playThroughSilentSwitch();
 		const ctx = new AudioContext({ latencyHint: "interactive" });
-		const master = ctx.createGain();
-		master.gain.value = this.volume;
-		master.connect(ctx.destination);
-		const dry = ctx.createGain();
-		dry.connect(master);
-		const convolver = ctx.createConvolver();
-		convolver.buffer = reverbImpulse(ctx, this.reverbSize);
-		const wet = ctx.createGain();
-		wet.gain.value = this.reverb * 0.5;
-		dry.connect(convolver);
-		convolver.connect(wet);
-		wet.connect(master);
-		// The delay, as the drum machine's: dry → delay → return → master, with delay → damping → feedback → delay round the loop.
-		const delay = ctx.createDelay(1);
-		delay.delayTime.value = this.delay.time;
-		const damping = ctx.createBiquadFilter();
-		damping.type = "lowpass";
-		damping.frequency.value = 3200;
-		const feedback = ctx.createGain();
-		feedback.gain.value = this.delay.feedback;
-		const delayReturn = ctx.createGain();
-		delayReturn.gain.value = this.delay.level;
-		dry.connect(delay);
-		delay.connect(damping);
-		damping.connect(feedback);
-		feedback.connect(delay);
-		delay.connect(delayReturn);
-		delayReturn.connect(master);
 		this.#ctx = ctx;
-		this.#master = master;
-		this.#dry = dry;
-		this.#wet = wet;
-		this.#convolver = convolver;
-		this.#delayNode = delay;
-		this.#delayFeedback = feedback;
-		this.#delayReturn = delayReturn;
+		this.#fx = createPianoFx(ctx, this.#fxSettings());
 		return ctx;
+	}
+
+	#fxSettings() {
+		return {
+			volume: this.volume,
+			reverb: this.reverb,
+			reverbSize: this.reverbSize,
+			delay: { ...this.delay },
+			chorus: { ...this.chorus },
+			tremolo: { ...this.tremolo },
+		};
 	}
 
 	#capture: MediaStreamAudioDestinationNode | null = null;
@@ -254,7 +244,7 @@ class PianoEngine {
 		const ctx = this.#graph();
 		if (!this.#capture) {
 			this.#capture = ctx.createMediaStreamDestination();
-			this.#master!.connect(this.#capture);
+			this.#fx!.master.connect(this.#capture);
 		}
 		return this.#capture.stream;
 	}
@@ -333,13 +323,7 @@ class PianoEngine {
 	#dropContext() {
 		const ctx = this.#ctx;
 		this.#ctx = null;
-		this.#master = null;
-		this.#dry = null;
-		this.#wet = null;
-		this.#convolver = null;
-		this.#delayNode = null;
-		this.#delayFeedback = null;
-		this.#delayReturn = null;
+		this.#fx = null;
 		this.#voices.clear();
 		this.#order = [];
 		if (ctx) {
@@ -391,12 +375,12 @@ class PianoEngine {
 		}
 		let voice =
 			this.instrument === "grand"
-				? startSampledVoice(ctx, this.#dry!, midi, velocity, now)
-				: startVoice(ctx, this.#dry!, this.instrument, midi, velocity, now);
+				? startSampledVoice(ctx, this.#fx!.input, midi, velocity, now)
+				: startVoice(ctx, this.#fx!.input, this.instrument, midi, velocity, now);
 		// The Grand Piano before its samples are decoded: the Electric Piano stands in (the screen says loading).
 		if (!voice) {
 			this.#samples();
-			voice = startVoice(ctx, this.#dry!, "epiano", midi, velocity, now);
+			voice = startVoice(ctx, this.#fx!.input, "epiano", midi, velocity, now);
 		}
 		this.#voices.set(midi, voice);
 		this.#order.push(midi);
@@ -454,35 +438,50 @@ class PianoEngine {
 	setVolume(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.volume = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
-		if (this.#master) this.#master.gain.value = this.volume;
+		this.#fx?.update({ volume: this.volume });
 		this.#save();
 	}
 	setReverb(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.reverb = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
-		if (this.#wet) this.#wet.gain.value = this.reverb * 0.5;
+		this.#fx?.update({ reverb: this.reverb });
 		this.#save();
 	}
 	setReverbSize(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.reverbSize = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
-		if (this.#ctx && this.#convolver)
-			this.#convolver.buffer = reverbImpulse(this.#ctx, this.reverbSize);
+		this.#fx?.update({ reverbSize: this.reverbSize });
 		this.#save();
 	}
-	/** The delay's time (seconds), feedback and level, any of them. */
+	/** The delay's time (seconds), feedback, level and analog character, any of them. */
 	setDelay(patch: Partial<PianoDelay>) {
 		const d = { ...this.delay, ...patch };
-		d.time = Math.min(1, Math.max(0.05, Math.round(d.time * 1000) / 1000));
-		d.feedback = Math.min(0.9, Math.max(0, Math.round(d.feedback * 100) / 100));
-		d.level = Math.min(1, Math.max(0, Math.round(d.level * 100) / 100));
+		d.time = clamp(d.time, 0.05, 1, 1000);
+		d.feedback = clamp(d.feedback, 0, 0.9);
+		d.level = clamp(d.level, 0, 1);
+		d.analog = d.analog === true;
 		this.delay = d;
-		if (this.#ctx && this.#delayNode && this.#delayFeedback && this.#delayReturn) {
-			const at = this.#ctx.currentTime;
-			this.#delayNode.delayTime.setTargetAtTime(d.time, at, 0.02);
-			this.#delayFeedback.gain.setTargetAtTime(d.feedback, at, 0.02);
-			this.#delayReturn.gain.setTargetAtTime(d.level, at, 0.02);
-		}
+		this.#fx?.update({ delay: d });
+		this.#save();
+	}
+	/** The chorus's rate (Hz), depth and mix, any of them; mix 0 is off. */
+	setChorus(patch: Partial<PianoChorus>) {
+		const c = { ...this.chorus, ...patch };
+		c.rate = clamp(c.rate, 0.1, 5);
+		c.depth = clamp(c.depth, 0, 1);
+		c.mix = clamp(c.mix, 0, 1);
+		this.chorus = c;
+		this.#fx?.update({ chorus: c });
+		this.#save();
+	}
+	/** The tremolo's rate (Hz), depth and shape, any of them; depth 0 is off. */
+	setTremolo(patch: Partial<PianoTremolo>) {
+		const t = { ...this.tremolo, ...patch };
+		t.rate = clamp(t.rate, 0.5, 12);
+		t.depth = clamp(t.depth, 0, 1);
+		t.shape = t.shape === "square" ? "square" : "sine";
+		this.tremolo = t;
+		this.#fx?.update({ tremolo: t });
 		this.#save();
 	}
 

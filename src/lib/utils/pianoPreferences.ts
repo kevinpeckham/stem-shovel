@@ -14,8 +14,34 @@ export interface PianoDelay {
 	time: number;
 	feedback: number;
 	level: number;
+	/** Analog character: a soft clip in the loop, darker repeats and a slow wobble of the time (docs/piano.md, "Effects"). */
+	analog: boolean;
 }
-export const DEFAULT_PIANO_DELAY: PianoDelay = { time: 0.35, feedback: 0.35, level: 0 };
+export const DEFAULT_PIANO_DELAY: PianoDelay = {
+	time: 0.35,
+	feedback: 0.35,
+	level: 0,
+	analog: false,
+};
+export interface PianoChorus {
+	/** The sweep's rate in Hz (0.1 to 5). */
+	rate: number;
+	/** How far the sweep goes, 0 to 1. */
+	depth: number;
+	/** The wet level, 0 (off) to 1. */
+	mix: number;
+}
+export const DEFAULT_PIANO_CHORUS: PianoChorus = { rate: 0.8, depth: 0.5, mix: 0 };
+export const PIANO_TREMOLO_SHAPES = ["sine", "square"] as const;
+export type PianoTremoloShape = (typeof PIANO_TREMOLO_SHAPES)[number];
+export interface PianoTremolo {
+	/** The swing's rate in Hz (0.5 to 12). */
+	rate: number;
+	/** How deep the swing goes, 0 (off) to 1 (down to silence). */
+	depth: number;
+	shape: PianoTremoloShape;
+}
+export const DEFAULT_PIANO_TREMOLO: PianoTremolo = { rate: 5, depth: 0, shape: "sine" };
 
 export interface PianoPreferences {
 	instrument: PianoInstrumentId;
@@ -24,8 +50,11 @@ export interface PianoPreferences {
 	reverb: number;
 	/** The room's size, 0 small to 1 a hall. */
 	reverbSize: number;
-	/** The delay: its time in seconds, feedback (0 to 0.9) and level (0 = off). */
+	/** The delay: its time in seconds, feedback (0 to 0.9), level (0 = off) and analog character. */
 	delay: PianoDelay;
+	/** The chorus (mix 0 = off) and tremolo (depth 0 = off). */
+	chorus: PianoChorus;
+	tremolo: PianoTremolo;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
@@ -42,6 +71,8 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	reverb: 0.25,
 	reverbSize: 0.35,
 	delay: { ...DEFAULT_PIANO_DELAY },
+	chorus: { ...DEFAULT_PIANO_CHORUS },
+	tremolo: { ...DEFAULT_PIANO_TREMOLO },
 	hires: false,
 	key: null,
 	degrees: false,
@@ -78,6 +109,8 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		reverb: unit(p.reverb, DEFAULT_PIANO_PREFERENCES.reverb),
 		reverbSize: unit(p.reverbSize, DEFAULT_PIANO_PREFERENCES.reverbSize),
 		delay: parseDelay(p.delay),
+		chorus: parseChorus(p.chorus),
+		tremolo: parseTremolo(p.tremolo),
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
@@ -104,15 +137,35 @@ function parseKey(json: unknown): PianoKey | null {
 	return root === null || mode === null ? null : { root, mode };
 }
 
+const within = (v: unknown, min: number, max: number, fallback: number) =>
+	typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
+
 function parseDelay(json: unknown): PianoDelay {
 	const d = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
-	const time =
-		typeof d.time === "number" && Number.isFinite(d.time)
-			? Math.min(1, Math.max(0.05, d.time))
-			: DEFAULT_PIANO_DELAY.time;
 	return {
-		time,
+		time: within(d.time, 0.05, 1, DEFAULT_PIANO_DELAY.time),
 		feedback: Math.min(0.9, unit(d.feedback, DEFAULT_PIANO_DELAY.feedback)),
 		level: unit(d.level, DEFAULT_PIANO_DELAY.level),
+		analog: d.analog === true,
+	};
+}
+
+function parseChorus(json: unknown): PianoChorus {
+	const c = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		rate: within(c.rate, 0.1, 5, DEFAULT_PIANO_CHORUS.rate),
+		depth: unit(c.depth, DEFAULT_PIANO_CHORUS.depth),
+		mix: unit(c.mix, DEFAULT_PIANO_CHORUS.mix),
+	};
+}
+
+function parseTremolo(json: unknown): PianoTremolo {
+	const t = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		rate: within(t.rate, 0.5, 12, DEFAULT_PIANO_TREMOLO.rate),
+		depth: unit(t.depth, DEFAULT_PIANO_TREMOLO.depth),
+		shape: (PIANO_TREMOLO_SHAPES as readonly string[]).includes(String(t.shape))
+			? (t.shape as PianoTremoloShape)
+			: DEFAULT_PIANO_TREMOLO.shape,
 	};
 }
