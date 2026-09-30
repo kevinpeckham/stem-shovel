@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-09-30
+
 ### Added
 
 - **Drum machine: MIDI input** (docs/drum-machine.md, "MIDI input"). A MIDI menu beside Effects (where Web MIDI exists) connects a pad or keyboard: General MIDI drum notes play their voices, any other note plays the open pattern's rows in order, each hit through the row's level, pan and sends. With **Record hits into the grid** on, a hit while the beat plays lands at the nearest step as a ghost, normal or accent by velocity, adding a row for a drum the pattern lacks; off by default. The one-hit player is the step player's, factored out (`playDrumHit`).
