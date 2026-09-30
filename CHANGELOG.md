@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-09-30
+
 ### Added
 
 - **Piano: fuzz, phaser and rotary speaker** (docs/piano.md, "Effects"). Three more sections in the Effects menu: a fuzz (drive into a soft clipper with a tone control after, its make-up holding the loudness where the clean sound sits), a phaser (four swept all-pass stages, mix crossfading to half and half where the notches are deepest) and a rotary speaker (the sound split into a horn and a drum spun through Doppler, level and pan, Off/Slow/Fast with the rotors gliding between speeds). Off by default and remembered; the menu takes three columns from lg.

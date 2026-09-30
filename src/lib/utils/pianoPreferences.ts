@@ -32,7 +32,7 @@ export interface PianoChorus {
 	mix: number;
 }
 export const DEFAULT_PIANO_CHORUS: PianoChorus = { rate: 0.8, depth: 0.5, mix: 0 };
-export const PIANO_TREMOLO_SHAPES = ["sine", "square"] as const;
+const PIANO_TREMOLO_SHAPES = ["sine", "square"] as const;
 export type PianoTremoloShape = (typeof PIANO_TREMOLO_SHAPES)[number];
 export interface PianoTremolo {
 	/** The swing's rate in Hz (0.5 to 12). */
@@ -58,7 +58,7 @@ export interface PianoPhaser {
 	mix: number;
 }
 export const DEFAULT_PIANO_PHASER: PianoPhaser = { rate: 0.5, depth: 0.7, mix: 0 };
-export const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
+const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
 export type PianoRotarySpeed = (typeof PIANO_ROTARY_SPEEDS)[number];
 export interface PianoRotary {
 	speed: PianoRotarySpeed;
