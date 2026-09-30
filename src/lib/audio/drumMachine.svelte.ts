@@ -3,6 +3,7 @@ import {
 	DEFAULT_DRUM_SENDS,
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
+	DRUM_MIDI_IN_NOTES,
 	DRUM_VELOCITY_MAX,
 	DRUM_VELOCITY_NORMAL,
 	DRUM_VOICE_IDS,
@@ -35,6 +36,7 @@ import { tapTempo } from "$lib/utils/tapTempo";
 import type { DrumFx, DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
 import { createDrumBus, type DrumBus } from "./drumBus";
 import {
+	playDrumHit,
 	playDrumStep,
 	renderDrumPatternWav,
 	renderDrumSongWav,
@@ -81,6 +83,16 @@ class DrumMachineEngine {
 	/** The name of the preset or saved beat the project is, untouched; null once edited (the readout then says Custom). */
 	loadedName = $state<string | null>(null);
 
+	/** Web MIDI in (docs/drum-machine.md, "MIDI input"): not asked yet, asked and refused or absent, or connected with the inputs' names. */
+	midiIn = $state<{ status: "idle" | "unsupported" | "denied" | "on"; inputs: string[] }>({
+		status: "idle",
+		inputs: [],
+	});
+	/** The last pad hit, so the screen can say the controller is alive. */
+	midiActivity = $state(0);
+	/** While playing, a pad's hit also lands in the grid at the nearest step; off, pads only sound. Off to start: it writes into the beat. */
+	midiRecord = $state(false);
+	#access: MIDIAccess | null = null;
 	#ctx: AudioContext | null = null;
 	#bus: DrumBus | null = null;
 	#stopLoop: (() => void) | null = null;
@@ -206,26 +218,36 @@ class DrumMachineEngine {
 		this.#frame = requestAnimationFrame(this.#follow);
 	};
 
+	/** The context and the bus, made on the first play or pad hit (a gesture, as browsers require), the bus brought up to date. */
+	async #graph(): Promise<{ ctx: AudioContext; bus: DrumBus }> {
+		this.load();
+		playThroughSilentSwitch();
+		const ctx = (this.#ctx ??= new AudioContext());
+		const bus = (this.#bus ??= createDrumBus(
+			ctx,
+			$state.snapshot(this.project.fx),
+			this.project.bpm,
+		));
+		bus.update($state.snapshot(this.project.fx), this.project.bpm);
+		if (ctx.state !== "running") await ctx.resume().catch(() => {});
+		return { ctx, bus };
+	}
+
 	async start() {
 		if (this.running) return;
 		claimPlayback(this);
-		this.load();
-		playThroughSilentSwitch();
-		this.#ctx ??= new AudioContext();
-		this.#bus ??= createDrumBus(this.#ctx, $state.snapshot(this.project.fx), this.project.bpm);
-		this.#bus.update($state.snapshot(this.project.fx), this.project.bpm);
-		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
+		const { ctx } = await this.#graph();
 		this.running = true;
 		this.playing = this.current;
 		this.queued = null;
 		if (!this.kitReady) await this.#readyKit();
 		if (!this.running) return; // stopped while the kit loaded
-		this.#nextTime = this.#ctx.currentTime + 0.05;
+		this.#nextTime = ctx.currentTime + 0.05;
 		this.#nextStep = 0;
 		this.#nextBar = 0;
 		this.queuedBar = null;
 		this.#queuedSteps = [];
-		this.#stopLoop = startLookahead(this.#ctx, this.#queue);
+		this.#stopLoop = startLookahead(ctx, this.#queue);
 		this.#frame = requestAnimationFrame(this.#follow);
 	}
 	stop() {
@@ -374,12 +396,13 @@ class DrumMachineEngine {
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 	}
-	/** The effects: the delay's time, feedback and return, the reverb's size and return. */
+	/** The effects: the delay's time, feedback, return and analog character, the reverb's size and return, the fuzz's drive and tone. */
 	setFx(patch: Partial<DrumFx>) {
 		const fx = { ...this.project.fx, ...patch };
 		fx.delayFeedback = Math.min(0.9, Math.max(0, Math.round(fx.delayFeedback * 100) / 100));
-		for (const k of ["delayReturn", "reverbSize", "reverbReturn"] as const)
+		for (const k of ["delayReturn", "reverbSize", "reverbReturn", "fuzzDrive", "fuzzTone"] as const)
 			fx[k] = Math.min(1, Math.max(0, Math.round(fx[k] * 100) / 100));
+		fx.delayAnalog = fx.delayAnalog === true;
 		this.project.fx = fx;
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
@@ -587,6 +610,100 @@ class DrumMachineEngine {
 	clear() {
 		for (const r of this.pattern.rows) r.cells = r.cells.map(() => 0);
 		this.#save();
+	}
+
+	// ---- pads and MIDI in ----
+	/**
+	 * One hit of a voice now, at a velocity 0 to 1: through the open
+	 * pattern's row for it (its level, pan and sends) or, with none, a plain
+	 * row. While playing with record on, the hit also lands in the grid.
+	 */
+	async hit(voice: DrumVoiceId, velocity = 1) {
+		const { ctx, bus } = await this.#graph();
+		if (!this.kitReady) await this.#readyKit();
+		const row = this.pattern.rows.find((r) => r.voice === voice) ?? {
+			voice,
+			level: 0.8,
+			pan: 0,
+			...DEFAULT_DRUM_SENDS[voice],
+		};
+		playDrumHit(ctx, drumKit(this.project.kit), bus, row, velocity, ctx.currentTime, this.#play);
+		if (this.midiRecord && this.running) this.#record(voice, velocity);
+	}
+	/** A MIDI note in: General MIDI's drum notes play their voices; any other note plays the pattern's rows in order. */
+	hitNote(note: number, velocity = 1) {
+		const voice =
+			DRUM_MIDI_IN_NOTES[note] ??
+			this.pattern.rows[
+				((note % this.pattern.rows.length) + this.pattern.rows.length) % this.pattern.rows.length
+			]!.voice;
+		void this.hit(voice, velocity);
+	}
+	/** The hit into the playing pattern at the nearest step (ghost, normal or accent by velocity), adding a row for a voice it lacks. */
+	#record(voice: DrumVoiceId, velocity: number) {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		const pattern = this.project.patterns[Math.min(this.playing, this.project.patterns.length - 1)];
+		if (!pattern) return;
+		const stepSeconds = 60 / this.project.bpm / 4;
+		const fromNext = Math.round((this.#nextTime - ctx.currentTime) / stepSeconds);
+		const step = (((this.#nextStep - fromNext) % pattern.steps) + pattern.steps) % pattern.steps;
+		let index = pattern.rows.findIndex((r) => r.voice === voice);
+		if (index < 0) {
+			if (pattern.rows.length >= MAX_DRUM_ROWS) return;
+			pattern.rows.push({
+				voice,
+				level: 0.8,
+				pan: 0,
+				mute: false,
+				...DEFAULT_DRUM_SENDS[voice],
+				cells: Array.from({ length: pattern.steps }, () => 0),
+			});
+			if (pattern === this.pattern) this.solo.push(false);
+			index = pattern.rows.length - 1;
+		}
+		pattern.rows[index]!.cells[step] =
+			velocity < 0.4 ? 1 : velocity < 0.8 ? DRUM_VELOCITY_NORMAL : DRUM_VELOCITY_MAX;
+		this.#save();
+	}
+	/** Web MIDI (Chrome and Edge): every input's pads play the drums. */
+	async connectMidi() {
+		if (typeof navigator === "undefined" || !("requestMIDIAccess" in navigator)) {
+			this.midiIn = { status: "unsupported", inputs: [] };
+			return;
+		}
+		try {
+			const access = await navigator.requestMIDIAccess();
+			this.#access = access;
+			const listen = () => {
+				const names: string[] = [];
+				for (const input of access.inputs.values()) {
+					names.push(input.name ?? "MIDI input");
+					input.onmidimessage = this.#onMidi;
+				}
+				this.midiIn = { status: "on", inputs: names };
+			};
+			access.onstatechange = listen;
+			listen();
+			// The kit ready before the first pad lands.
+			this.load();
+			drumKit(this.project.kit).warm();
+		} catch {
+			this.midiIn = { status: "denied", inputs: [] };
+		}
+	}
+	#onMidi = (e: MIDIMessageEvent) => {
+		const data = e.data;
+		if (!data || data.length < 3) return;
+		if ((data[0]! & 0xf0) === 0x90 && data[2]! > 0) {
+			this.hitNote(data[1]!, data[2]! / 127);
+			this.midiActivity = Date.now();
+		}
+	};
+	disconnectMidi() {
+		if (this.#access) for (const input of this.#access.inputs.values()) input.onmidimessage = null;
+		this.#access = null;
+		this.midiIn = { status: "idle", inputs: [] };
 	}
 
 	// ---- out ----

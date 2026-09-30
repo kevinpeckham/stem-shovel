@@ -511,9 +511,10 @@ class PianoEngine {
 		this.#fx?.update({ fuzz: f });
 		this.#save();
 	}
-	/** The phaser's rate (Hz), depth and mix, any of them; mix 0 is off. */
+	/** The phaser or flanger: its mode, rate (Hz), depth and mix, any of them; mix 0 is off. */
 	setPhaser(patch: Partial<PianoPhaser>) {
 		const p = { ...this.phaser, ...patch };
+		p.mode = p.mode === "flanger" ? "flanger" : "phaser";
 		p.rate = clamp(p.rate, 0.1, 5);
 		p.depth = clamp(p.depth, 0, 1);
 		p.mix = clamp(p.mix, 0, 1);

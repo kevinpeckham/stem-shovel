@@ -1,14 +1,16 @@
 import type { DrumFx } from "$lib/val/DrumPatternSchema";
+import { createDelayStage, createFuzzStage } from "./fxStages";
 
 /**
  * The drum machine's mixer bus (docs/drum-machine.md, "Reverb and delay"):
- * a dry input straight into the master, a delay bus (a DelayNode with a
- * feedback gain and a low-pass in the loop, timed in steps so it follows
- * the tempo) and a reverb bus (a ConvolverNode over an impulse response
- * synthesized here, a burst of noise dying away, so no file is needed),
- * each coming back through its own return level. Rows send into the two
- * buses; `update` follows the project's settings and tempo. Shared by the
- * live engine and the offline render, so a WAV carries the effects.
+ * a dry input through a fuzz (fxStages.ts; drive 0 passes it clean) into
+ * the master, a delay bus (the shared delay stage, digital or analog,
+ * timed in steps so it follows the tempo) and a reverb bus (a
+ * ConvolverNode over an impulse response synthesized here, a burst of
+ * noise dying away, so no file is needed), each coming back through its
+ * own return level. Rows send into the two buses; `update` follows the
+ * project's settings and tempo. Shared by the live engine and the offline
+ * render, so a WAV carries the effects.
  */
 export interface DrumBus {
 	dry: AudioNode;
@@ -22,23 +24,15 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	master.gain.value = 0.9;
 	master.connect(ctx.destination);
 
+	// Dry → fuzz → master; a drum hit peaks near 0.8.
 	const dry = ctx.createGain();
-	dry.connect(master);
+	const fuzz = createFuzzStage(ctx, 0.8);
+	dry.connect(fuzz.input);
+	fuzz.output.connect(master);
 
-	// Delay: input → delay → return → master, with delay → damping → feedback → delay round the loop.
-	const delayIn = ctx.createGain();
-	const delay = ctx.createDelay(4);
-	const damping = ctx.createBiquadFilter();
-	damping.type = "lowpass";
-	damping.frequency.value = 3200;
-	const feedback = ctx.createGain();
-	const delayReturn = ctx.createGain();
-	delayIn.connect(delay);
-	delay.connect(damping);
-	damping.connect(feedback);
-	feedback.connect(delay);
-	delay.connect(delayReturn);
-	delayReturn.connect(master);
+	// Delay: input → delay stage → master.
+	const delay = createDelayStage(ctx, 4);
+	delay.output.connect(master);
 
 	// Reverb: input → convolver → return → master.
 	const reverbIn = ctx.createGain();
@@ -51,9 +45,16 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	let impulseSize = -1;
 	const update = (next: DrumFx, tempo: number) => {
 		const stepSeconds = 60 / tempo / 4;
-		delay.delayTime.value = Math.min(4, next.delayTime * stepSeconds);
-		feedback.gain.value = next.delayFeedback;
-		delayReturn.gain.value = next.delayReturn;
+		delay.update(
+			{
+				time: next.delayTime * stepSeconds,
+				feedback: next.delayFeedback,
+				level: next.delayReturn,
+				analog: next.delayAnalog,
+			},
+			0,
+		);
+		fuzz.update(next.fuzzDrive, next.fuzzTone, 0);
 		reverbReturn.gain.value = next.reverbReturn;
 		if (next.reverbSize !== impulseSize) {
 			impulseSize = next.reverbSize;
@@ -61,7 +62,7 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 		}
 	};
 	update(fx, bpm);
-	return { dry, delay: delayIn, reverb: reverbIn, update };
+	return { dry, delay: delay.input, reverb: reverbIn, update };
 }
 
 /**

@@ -111,8 +111,13 @@ export const DEFAULT_DRUM_FX = {
 	delayTime: 3 as DrumDelayTime,
 	delayFeedback: 0.4,
 	delayReturn: 0,
+	/** Tape-like repeats (a soft clip and a darker damping in the loop, a slow wobble); off is the clean digital delay. */
+	delayAnalog: false,
 	reverbSize: 0.5,
 	reverbReturn: 0,
+	/** A fuzz on the dry mix: drive 0 is off; tone 0 dark to 1 bright. */
+	fuzzDrive: 0,
+	fuzzTone: 0.5,
 };
 /** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks dry, rims into the delay. */
 export const DEFAULT_DRUM_SENDS: Record<DrumVoiceId, { delaySend: number; reverbSend: number }> = {
@@ -141,8 +146,32 @@ export const DRUM_HUMANIZE_MS = 12;
  * adds the effects (sends per row, delay and reverb settings). A reader
  * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 6;
+export const DRUM_PATTERN_VERSION = 7;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
+/** A MIDI note in from a pad or keyboard, to the voice it plays: General MIDI's drums (DRUM_GM_NOTES and the usual neighbours: both kicks, both snares, the pedal hat, every tom, both crashes and rides). Notes off the map play the pattern's rows in order (drumMachine.hitNote). */
+export const DRUM_MIDI_IN_NOTES: Record<number, DrumVoiceId> = {
+	35: "kick",
+	36: "kick",
+	37: "rim",
+	38: "snare",
+	39: "clap",
+	40: "snare",
+	41: "tom-low",
+	42: "hat-closed",
+	43: "tom-low",
+	44: "hat-closed",
+	45: "tom-mid",
+	46: "hat-open",
+	47: "tom-mid",
+	48: "tom-high",
+	49: "crash",
+	50: "tom-high",
+	51: "ride",
+	53: "ride",
+	56: "cowbell",
+	57: "crash",
+	59: "ride",
+};
 export const DRUM_GM_NOTES: Record<DrumVoiceId, number> = {
 	kick: 36,
 	snare: 38,

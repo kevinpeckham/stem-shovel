@@ -48,13 +48,21 @@ export const DrumRowSchema = v.pipe(
 );
 export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
 
-/** The project's effects: the delay's time (sixteenths), feedback and return, the reverb's size and return. */
+/**
+ * The project's effects: the delay's time (sixteenths), feedback, return
+ * and analog character, the reverb's size and return, the fuzz's drive and
+ * tone. A beat or link stored before the analog delay and the fuzz existed
+ * (v0.61.0) gets them off.
+ */
 export const DrumFxSchema = v.object({
 	delayTime: v.picklist(DRUM_DELAY_STEPS),
 	delayFeedback: v.pipe(v.number(), v.minValue(0), v.maxValue(0.9)),
 	delayReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	delayAnalog: v.optional(v.boolean(), false),
 	reverbSize: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	reverbReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	fuzzDrive: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
+	fuzzTone: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0.5),
 });
 export type DrumFx = v.InferOutput<typeof DrumFxSchema>;
 

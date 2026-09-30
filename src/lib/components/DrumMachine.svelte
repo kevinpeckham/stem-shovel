@@ -292,6 +292,7 @@
 				]
 			: []),
 	]);
+	const midiSupported = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
 	const VOICE_OPTIONS = DRUM_VOICES.map((v) => ({ value: v.id, label: v.label }));
 	const KIT_OPTIONS = DRUM_KITS.map((k) => ({ value: k.id, label: k.label }));
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
@@ -710,89 +711,187 @@
 			</label>
 		{/snippet}
 		{#snippet fxItem()}
-			<div
-				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
-			>
-				<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
-				<div class="block text-blue-100/80" title="Delay time, in the beat">
-					<span class="device-button-label">Delay</span>
-					<ComboBox
-						ariaLabel="Delay time"
-						buttonClasses="!px-2 !py-1 !text-13px"
-						options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
-						value={String(p.fx.delayTime)}
-						onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
-					/>
+			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
+				<div class="text-11px uppercase tracking-wider opacity-60 mb-3">Effects</div>
+				<div class="grid grid-cols-1 sm-grid-cols-2 gap-x-6 gap-y-3">
+					<div class="grid gap-3 content-start">
+						<div class="block text-blue-100/80" title="Delay time, in the beat">
+							<span class="device-button-label">Delay</span>
+							<ComboBox
+								ariaLabel="Delay time"
+								buttonClasses="!px-2 !py-1 !text-13px"
+								options={DRUM_DELAY_TIMES.map((d) => ({ value: String(d.steps), label: d.label }))}
+								value={String(p.fx.delayTime)}
+								onchange={(v) => drumMachine.setFx({ delayTime: Number(v) as DrumDelayTime })}
+							/>
+						</div>
+						<label class="block">
+							<span class="device-button-label"
+								>Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="90"
+								step="1"
+								value={Math.round(p.fx.delayFeedback * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
+								aria-label="Delay feedback"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label"
+								>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.delayReturn * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
+								aria-label="Delay level"
+							/>
+						</label>
+						<div class="flex gap-2" role="group" aria-label="Delay character">
+							<button
+								class="flex-1 device-button-xs border {p.fx.delayAnalog ? '' : 'text-accent'}"
+								type="button"
+								aria-pressed={!p.fx.delayAnalog}
+								title="Clean repeats"
+								onclick={() => drumMachine.setFx({ delayAnalog: false })}>Digital</button
+							>
+							<button
+								class="flex-1 device-button-xs border {p.fx.delayAnalog ? 'text-accent' : ''}"
+								type="button"
+								aria-pressed={p.fx.delayAnalog}
+								title="Tape-like repeats: each one darker and softer, with a slow wobble"
+								onclick={() => drumMachine.setFx({ delayAnalog: true })}>Analog</button
+							>
+						</div>
+					</div>
+					<div class="grid gap-3 content-start">
+						<label class="block">
+							<span class="device-button-label"
+								>Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.reverbSize * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
+								aria-label="Reverb size"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label"
+								>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.reverbReturn * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
+								aria-label="Reverb level"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label"
+								>Fuzz drive · {Math.round(p.fx.fuzzDrive * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.fuzzDrive * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ fuzzDrive: Number(e.currentTarget.value) / 100 })}
+								aria-label="Fuzz drive"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Fuzz tone · {Math.round(p.fx.fuzzTone * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.fuzzTone * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ fuzzTone: Number(e.currentTarget.value) / 100 })}
+								aria-label="Fuzz tone"
+							/>
+						</label>
+					</div>
 				</div>
-				<label class="block">
-					<span class="device-button-label">Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="90"
-						step="1"
-						value={Math.round(p.fx.delayFeedback * 100)}
-						oninput={(e) =>
-							drumMachine.setFx({ delayFeedback: Number(e.currentTarget.value) / 100 })}
-						aria-label="Delay feedback"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label"
-						>Delay level · {Math.round(p.fx.delayReturn * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.delayReturn * 100)}
-						oninput={(e) => drumMachine.setFx({ delayReturn: Number(e.currentTarget.value) / 100 })}
-						aria-label="Delay level"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label">Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.reverbSize * 100)}
-						oninput={(e) => drumMachine.setFx({ reverbSize: Number(e.currentTarget.value) / 100 })}
-						aria-label="Reverb size"
-					/>
-				</label>
-				<label class="block">
-					<span class="device-button-label"
-						>Reverb level · {Math.round(p.fx.reverbReturn * 100)}%</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round(p.fx.reverbReturn * 100)}
-						oninput={(e) =>
-							drumMachine.setFx({ reverbReturn: Number(e.currentTarget.value) / 100 })}
-						aria-label="Reverb level"
-					/>
-				</label>
 				<button
-					class="device-button-xs px-3 justify-self-start"
+					class="device-button-xs px-3 justify-self-start mt-3"
 					type="button"
-					title="Master levels back to zero, every drum back to its usual sends"
+					title="Master levels and the fuzz back to zero, the delay digital, every drum back to its usual sends"
 					onclick={() => {
 						drumMachine.resetFx();
 						notify("Effects reset to their defaults");
 					}}>Reset to defaults</button
 				>
+			</div>
+		{/snippet}
+		{#snippet midiItem()}
+			<div
+				class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)"
+			>
+				<div class="text-11px uppercase tracking-wider opacity-60">MIDI in</div>
+				{#if drumMachine.midiIn.status === "on"}
+					<div class="text-blue-100/80">
+						{drumMachine.midiIn.inputs.length
+							? `Listening to ${drumMachine.midiIn.inputs.join(", ")}`
+							: "Listening; plug a controller in"}
+					</div>
+					<button
+						class="device-button-xs px-3 justify-self-start"
+						type="button"
+						onclick={() => drumMachine.disconnectMidi()}>Disconnect</button
+					>
+					<button
+						class="device-button-xs px-3 justify-self-start {drumMachine.midiRecord
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={drumMachine.midiRecord}
+						title="While the beat plays, each pad hit lands in the grid at the nearest step"
+						onclick={() => (drumMachine.midiRecord = !drumMachine.midiRecord)}
+					>
+						<span class="i-ph-record" aria-hidden="true"></span>
+						Record hits into the grid
+					</button>
+				{:else}
+					<div class="text-blue-100/80">
+						{drumMachine.midiIn.status === "denied"
+							? "The browser refused MIDI access."
+							: "Pads and keys play the drums: General MIDI drum notes play their sounds, any other note plays the rows in order."}
+					</div>
+					<button
+						class="device-button-xs px-3 justify-self-start"
+						type="button"
+						title="The browser asks once"
+						onclick={() => void drumMachine.connectMidi()}>Connect MIDI</button
+					>
+				{/if}
 			</div>
 		{/snippet}
 		{#snippet textToBeatItem()}
@@ -1474,15 +1573,31 @@
 				<!-- the effects: delay and reverb settings in a menu; a beat is dry until their levels come up, and the button lights while either is up -->
 				<ContextMenu
 					ariaLabel="Effects"
-					position="top left"
-					title="Delay and reverb: turn a level up to hear it"
+					position="top right"
+					title="Delay, reverb and fuzz: turn a level up to hear it"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
-					buttonClasses={p.fx.delayReturn > 0 || p.fx.reverbReturn > 0 ? "text-accent" : ""}
-					popoverClasses="min-w-72"
+					buttonClasses={p.fx.delayReturn > 0 || p.fx.reverbReturn > 0 || p.fx.fuzzDrive > 0
+						? "text-accent"
+						: ""}
+					popoverClasses="min-w-72 sm-min-w-140 !max-h-80vh overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
+				{#if midiSupported}
+					<!-- MIDI in: pads play the drums, and with record on land in the grid (docs/drum-machine.md, "MIDI input") -->
+					<ContextMenu
+						ariaLabel="MIDI"
+						position="top left"
+						title="Play the drums from a MIDI pad or keyboard"
+						iconClass="i-ph-usb"
+						label="MIDI"
+						buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+						buttonClasses={drumMachine.midiIn.status === "on" ? "text-accent" : ""}
+						popoverClasses="min-w-72"
+						items={[{ id: "midi", kind: "snippet", snippet: midiItem }]}
+					/>
+				{/if}
 				<ContextMenu
 					ariaLabel="More"
 					position="top left"

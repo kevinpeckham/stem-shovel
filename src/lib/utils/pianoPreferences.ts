@@ -49,7 +49,11 @@ export interface PianoFuzz {
 	tone: number;
 }
 export const DEFAULT_PIANO_FUZZ: PianoFuzz = { drive: 0, tone: 0.5 };
+export const PIANO_PHASER_MODES = ["phaser", "flanger"] as const;
+export type PianoPhaserMode = (typeof PIANO_PHASER_MODES)[number];
 export interface PianoPhaser {
+	/** One or the other: a phaser (swept all-pass notches) or a flanger (a short swept delay with feedback), sharing the sliders. */
+	mode: PianoPhaserMode;
 	/** The sweep's rate in Hz (0.1 to 5). */
 	rate: number;
 	/** How far the notches sweep, 0 to 1. */
@@ -57,7 +61,7 @@ export interface PianoPhaser {
 	/** The wet level, 0 (off) to 1. */
 	mix: number;
 }
-export const DEFAULT_PIANO_PHASER: PianoPhaser = { rate: 0.5, depth: 0.7, mix: 0 };
+export const DEFAULT_PIANO_PHASER: PianoPhaser = { mode: "phaser", rate: 0.5, depth: 0.7, mix: 0 };
 const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
 export type PianoRotarySpeed = (typeof PIANO_ROTARY_SPEEDS)[number];
 export interface PianoRotary {
@@ -212,6 +216,7 @@ function parseFuzz(json: unknown): PianoFuzz {
 function parsePhaser(json: unknown): PianoPhaser {
 	const p = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
 	return {
+		mode: p.mode === "flanger" ? "flanger" : "phaser",
 		rate: within(p.rate, 0.1, 5, DEFAULT_PIANO_PHASER.rate),
 		depth: unit(p.depth, DEFAULT_PIANO_PHASER.depth),
 		mix: unit(p.mix, DEFAULT_PIANO_PHASER.mix),

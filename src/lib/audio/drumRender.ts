@@ -1,7 +1,7 @@
 import { DRUM_HUMANIZE_MS } from "$lib/constants/drumMachine";
 import { drumStepTime } from "$lib/utils/drumStepTime";
 import { encodeWav } from "$lib/utils/encodeWav";
-import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+import type { DrumPattern, DrumProject, DrumRow } from "$lib/val/DrumPatternSchema";
 import { createDrumBus, type DrumBus } from "./drumBus";
 import { drumKit } from "./kits";
 import type { DrumHit, DrumKit } from "./kits/types";
@@ -41,24 +41,42 @@ export function playDrumStep(
 		if (!velocity || row.mute || (anySolo && !solo[i])) return;
 		const scatter = project.humanize;
 		const when = Math.max(0, at + ((random() * 2 - 1) * scatter * DRUM_HUMANIZE_MS) / 1000);
-		const gain =
-			row.level * row.level * (VELOCITY_GAIN[velocity] ?? 1) * (1 - random() * scatter * 0.25);
-		const panner = ctx.createStereoPanner();
-		panner.pan.value = row.pan;
-		panner.connect(bus.dry);
-		for (const [send, input] of [
-			[row.delaySend, bus.delay],
-			[row.reverbSend, bus.reverb],
-		] as const) {
-			if (send <= 0) continue;
-			const g = ctx.createGain();
-			g.gain.value = send;
-			panner.connect(g).connect(input);
-		}
-		if (row.voice === "hat-closed") state.openHat?.stop(when);
-		const hit = kit.play(row.voice, ctx, when, gain, panner);
-		if (row.voice === "hat-open") state.openHat = hit;
+		const gain = (VELOCITY_GAIN[velocity] ?? 1) * (1 - random() * scatter * 0.25);
+		playDrumHit(ctx, kit, bus, row, gain, when, state);
 	});
+}
+
+/**
+ * One hit of a row's voice into the bus at `gain` (the row's level
+ * squared on top), through a panner into the dry input and, by the row's
+ * sends, into the delay and the reverb; a closed hat chokes an open one
+ * still ringing. The step player and a pad's MIDI hit share it.
+ */
+export function playDrumHit(
+	ctx: BaseAudioContext,
+	kit: DrumKit,
+	bus: DrumBus,
+	row: Pick<DrumRow, "voice" | "level" | "pan" | "delaySend" | "reverbSend">,
+	gain: number,
+	when: number,
+	state: DrumPlayState,
+): DrumHit | null {
+	const panner = ctx.createStereoPanner();
+	panner.pan.value = row.pan;
+	panner.connect(bus.dry);
+	for (const [send, input] of [
+		[row.delaySend, bus.delay],
+		[row.reverbSend, bus.reverb],
+	] as const) {
+		if (send <= 0) continue;
+		const g = ctx.createGain();
+		g.gain.value = send;
+		panner.connect(g).connect(input);
+	}
+	if (row.voice === "hat-closed") state.openHat?.stop(when);
+	const hit = kit.play(row.voice, ctx, when, row.level * row.level * gain, panner);
+	if (row.voice === "hat-open") state.openHat = hit;
+	return hit;
 }
 
 /**

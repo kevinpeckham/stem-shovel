@@ -1,4 +1,5 @@
 import { reverbImpulse } from "./drumBus";
+import { createDelayStage, createFuzzStage } from "./fxStages";
 
 /**
  * The piano's effect chain (docs/piano.md, "Effects"), built once per
@@ -7,14 +8,15 @@ import { reverbImpulse } from "./drumBus";
  * a stereo chorus (two short delays swept by one LFO in opposite
  * directions, mixed against the dry signal), a phaser (four all-pass
  * stages swept by an LFO, mixed against the dry signal so notches move
- * through the sound), a tremolo (a gain swung by an LFO, sine or square)
+ * through the sound) or in its place a flanger (a delay of a few
+ * milliseconds swept by the LFO, with feedback, mixed the same way, so a
+ * comb of notches sweeps instead), a tremolo (a gain swung by an LFO, sine or square)
  * and a rotary speaker (the sound split at 800 Hz into a horn and a drum,
  * each spun by its own LFO through pan, level and a Doppler delay, at a
  * slow or fast speed the LFOs glide between), into the dry bus; from the
  * dry bus, sends into a reverb (the drum machine's synthesized room) and
- * a delay (delay → damping → feedback, with an "analog" character: a
- * soft clip in the loop, darker repeats and a slow wobble of the time),
- * each returning into `master`. Every level is a gain the setters ramp
+ * a delay (fxStages.ts, with its analog character), each returning into
+ * `master`. Every level is a gain the setters ramp
  * over 20 ms so a slider never clicks. Plain Web Audio: an
  * OfflineAudioContext renders the same, which is how it is measured.
  */
@@ -47,6 +49,8 @@ export interface PianoFuzzSettings {
 	tone: number;
 }
 export interface PianoPhaserSettings {
+	/** A phaser (swept all-pass notches) or a flanger (a short swept delay with feedback); one at a time, the sliders shared. */
+	mode: "phaser" | "flanger";
 	/** LFO rate in Hz. */
 	rate: number;
 	/** How far the notches sweep, 0 to 1. */
@@ -81,32 +85,13 @@ const RAMP = 0.02;
 /** The rotary speaker's rotation rates in Hz, horn and drum, at each speed (a Leslie's: the drum lags the horn). */
 const ROTARY_HZ = { off: [0, 0], slow: [0.8, 0.7], fast: [6.7, 5.7] } as const;
 
-function curve(f: (x: number) => number): Float32Array<ArrayBuffer> {
-	const n = 2048;
-	const out = new Float32Array(new ArrayBuffer(n * 4));
-	for (let i = 0; i < n; i++) out[i] = f((i / (n - 1)) * 2 - 1);
-	return out;
-}
-/**
- * A gentle soft clip for the analog delay's loop (unity at small signals,
- * so the feedback stays what the slider says; the peaks fold down as tape
- * saturates); identity for the digital one.
- */
-const shaperCurve = (analog: boolean) => curve(analog ? (x) => Math.tanh(x * 1.6) / 1.6 : (x) => x);
-/** The fuzz's clipper: a tanh the drive gain pushes towards a square. */
-const FUZZ_CURVE = curve((x) => Math.tanh(x));
-/**
- * The fuzz's gain into the clipper, and the make-up after it: a voice peaking
- * near 0.3 comes out of the clipper at tanh(0.3 · pre), so dividing by that
- * holds the peaks where the clean sound's were at every drive (measured: the
- * loudness stays within 2 dB of clean from off to full).
- */
-const fuzzPre = (drive: number) => 1 + drive * 30;
-const fuzzMakeup = (drive: number) => (0.9 * 0.3) / Math.tanh(0.3 * fuzzPre(drive));
-const fuzzTone = (tone: number) => 700 * 10 ** tone; // 700 Hz to 7 kHz
 /** The phaser's four all-pass stages, their centre frequencies and how far the LFO moves each. */
 const PHASER_STAGES = [500, 800, 1300, 2100];
 const PHASER_SWEEP = 400;
+/** The flanger's delay: its centre, how far full depth sweeps it, and the feedback that sharpens the comb. */
+const FLANGER_CENTRE = 0.003;
+const FLANGER_SWEEP = 0.0025;
+const FLANGER_FEEDBACK = 0.5;
 
 /** An oscillator started now, into a gain: the LFO and the gain that scales it. */
 function lfo(ctx: BaseAudioContext, hz: number, amount: number, type: OscillatorType = "sine") {
@@ -129,31 +114,11 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	master.connect(ctx.destination);
 	const input = ctx.createGain();
 
-	// Fuzz: dry and wet in a crossfade the drive settles by a quarter of its travel.
-	const fuzzDry = ctx.createGain();
-	const fuzzPreGain = ctx.createGain();
-	const fuzzShaper = ctx.createWaveShaper();
-	fuzzShaper.curve = FUZZ_CURVE;
-	fuzzShaper.oversample = "4x";
-	const fuzzToneNode = ctx.createBiquadFilter();
-	fuzzToneNode.type = "lowpass";
-	const fuzzWet = ctx.createGain();
-	const fuzzOut = ctx.createGain();
-	input.connect(fuzzDry);
-	fuzzDry.connect(fuzzOut);
-	input.connect(fuzzPreGain);
-	fuzzPreGain.connect(fuzzShaper);
-	fuzzShaper.connect(fuzzToneNode);
-	fuzzToneNode.connect(fuzzWet);
-	fuzzWet.connect(fuzzOut);
-	const applyFuzz = (f: PianoFuzzSettings, tau: number) => {
-		const wet = Math.min(1, f.drive * 4);
-		ramp(fuzzDry.gain, 1 - wet, tau);
-		ramp(fuzzPreGain.gain, fuzzPre(f.drive), tau);
-		ramp(fuzzToneNode.frequency, fuzzTone(f.tone), tau);
-		ramp(fuzzWet.gain, wet * fuzzMakeup(f.drive), tau);
-	};
-	applyFuzz(s.fuzz, 0);
+	// Fuzz (fxStages.ts): a voice peaks near 0.3.
+	const fuzz = createFuzzStage(ctx, 0.3);
+	input.connect(fuzz.input);
+	const fuzzOut = fuzz.output;
+	fuzz.update(s.fuzz.drive, s.fuzz.tone, 0);
 
 	// Chorus: dry through at full, the two swept delays at `mix`, panned apart.
 	const chorusOut = ctx.createGain();
@@ -179,28 +144,53 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	}
 	chorusWet.connect(chorusOut);
 
-	// Phaser: four all-pass stages in series, swept together; `mix` crossfades from dry to half
-	// and half, where the notches are deepest (an all-pass keeps the level, so the sum stays near it).
+	// Phaser or flanger: `mix` crossfades from dry to half and half, where the notches are deepest
+	// (an all-pass keeps the level, so the sum stays near it); the mode picks which wet is open.
 	const phaserOut = ctx.createGain();
 	const phaserDry = ctx.createGain();
-	phaserDry.gain.value = 1 - s.phaser.mix / 2;
 	chorusOut.connect(phaserDry);
 	phaserDry.connect(phaserOut);
 	const phaserWet = ctx.createGain();
-	phaserWet.gain.value = s.phaser.mix / 2;
-	const phaserLfo = lfo(ctx, s.phaser.rate, s.phaser.depth * PHASER_SWEEP);
+	const phaserLfo = lfo(ctx, s.phaser.rate, 1);
+	// The phaser: four all-pass stages in series, swept together.
+	const phaserSweep = ctx.createGain();
+	phaserLfo.gain.connect(phaserSweep);
 	let stage: AudioNode = chorusOut;
 	for (const hz of PHASER_STAGES) {
 		const ap = ctx.createBiquadFilter();
 		ap.type = "allpass";
 		ap.frequency.value = hz;
 		ap.Q.value = 0.7;
-		phaserLfo.gain.connect(ap.frequency);
+		phaserSweep.connect(ap.frequency);
 		stage.connect(ap);
 		stage = ap;
 	}
 	stage.connect(phaserWet);
 	phaserWet.connect(phaserOut);
+	// The flanger: a delay around 3 ms swept by the same LFO, with feedback, in the other wet.
+	const flangerWet = ctx.createGain();
+	const flangerDelay = ctx.createDelay(0.05);
+	flangerDelay.delayTime.value = FLANGER_CENTRE;
+	const flangerSweep = ctx.createGain();
+	phaserLfo.gain.connect(flangerSweep);
+	flangerSweep.connect(flangerDelay.delayTime);
+	const flangerFeedback = ctx.createGain();
+	flangerFeedback.gain.value = FLANGER_FEEDBACK;
+	chorusOut.connect(flangerDelay);
+	flangerDelay.connect(flangerFeedback);
+	flangerFeedback.connect(flangerDelay);
+	flangerDelay.connect(flangerWet);
+	flangerWet.connect(phaserOut);
+	const applyPhaser = (p: PianoPhaserSettings, tau: number) => {
+		const flanger = p.mode === "flanger";
+		ramp(phaserLfo.osc.frequency, p.rate, tau);
+		ramp(phaserSweep.gain, p.depth * PHASER_SWEEP, tau);
+		ramp(flangerSweep.gain, p.depth * FLANGER_SWEEP, tau);
+		ramp(phaserDry.gain, 1 - p.mix / 2, tau);
+		ramp(phaserWet.gain, flanger ? 0 : p.mix / 2, tau);
+		ramp(flangerWet.gain, flanger ? p.mix / 2 : 0, tau);
+	};
+	applyPhaser(s.phaser, 0);
 
 	// Tremolo: the gain sits at 1 - depth/2 and the LFO swings it by ±depth/2. The LFO passes a
 	// low-pass on its way so a square's edges take a few milliseconds: an instant step in the level
@@ -284,27 +274,10 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	convolver.connect(wet);
 	wet.connect(master);
 
-	const delay = ctx.createDelay(1.1);
-	delay.delayTime.value = s.delay.time;
-	const shaper = ctx.createWaveShaper();
-	shaper.curve = shaperCurve(s.delay.analog);
-	const damping = ctx.createBiquadFilter();
-	damping.type = "lowpass";
-	damping.frequency.value = s.delay.analog ? 2000 : 3200;
-	const feedback = ctx.createGain();
-	feedback.gain.value = s.delay.feedback;
-	const delayReturn = ctx.createGain();
-	delayReturn.gain.value = s.delay.level;
-	dry.connect(delay);
-	delay.connect(shaper);
-	shaper.connect(damping);
-	damping.connect(feedback);
-	feedback.connect(delay);
-	delay.connect(delayReturn);
-	delayReturn.connect(master);
-	// The wobble: a slow LFO on the time, only in analog.
-	const wobble = lfo(ctx, 0.4, s.delay.analog ? 0.0015 : 0);
-	wobble.gain.connect(delay.delayTime);
+	const delay = createDelayStage(ctx, 1);
+	dry.connect(delay.input);
+	delay.output.connect(master);
+	delay.update(s.delay, 0);
 
 	const apply: { [K in keyof PianoFxSettings]: (v: PianoFxSettings[K]) => void } = {
 		volume: (v) => ramp(master.gain, v),
@@ -312,14 +285,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 		reverbSize: (v) => {
 			if (v !== s.reverbSize) convolver.buffer = reverbImpulse(ctx, v);
 		},
-		delay: (d) => {
-			ramp(delay.delayTime, d.time);
-			ramp(feedback.gain, d.feedback);
-			ramp(delayReturn.gain, d.level);
-			if (d.analog !== s.delay.analog) shaper.curve = shaperCurve(d.analog);
-			ramp(damping.frequency, d.analog ? 2000 : 3200);
-			ramp(wobble.gain.gain, d.analog ? 0.0015 : 0);
-		},
+		delay: (d) => delay.update(d, RAMP),
 		chorus: (c) => {
 			ramp(chorusLfo.osc.frequency, c.rate);
 			ramp(chorusLfo.gain.gain, c.depth * 0.004);
@@ -331,13 +297,8 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 			ramp(trem.gain, 1 - t.depth / 2);
 			ramp(tremLfo.gain.gain, t.depth / 2);
 		},
-		fuzz: (f) => applyFuzz(f, RAMP),
-		phaser: (p) => {
-			ramp(phaserLfo.osc.frequency, p.rate);
-			ramp(phaserLfo.gain.gain, p.depth * PHASER_SWEEP);
-			ramp(phaserDry.gain, 1 - p.mix / 2);
-			ramp(phaserWet.gain, p.mix / 2);
-		},
+		fuzz: (f) => fuzz.update(f.drive, f.tone, RAMP),
+		phaser: (p) => applyPhaser(p, RAMP),
 		rotary: (r) => applyRotary(r, RAMP),
 	};
 

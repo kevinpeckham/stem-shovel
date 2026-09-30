@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Drum machine: MIDI input** (docs/drum-machine.md, "MIDI input"). A MIDI menu beside Effects (where Web MIDI exists) connects a pad or keyboard: General MIDI drum notes play their voices, any other note plays the open pattern's rows in order, each hit through the row's level, pan and sends. With **Record hits into the grid** on, a hit while the beat plays lands at the nearest step as a ghost, normal or accent by velocity, adding a row for a drum the pattern lacks; off by default. The one-hit player is the step player's, factored out (`playDrumHit`).
+- **Drum machine: analog delay and fuzz.** The Effects menu gains the delay's Digital/Analog choice and a fuzz (drive and tone) on the dry drums, the sends staying clean; both from the stages the piano and the drum bus now share (`src/lib/audio/fxStages.ts`). Part of the beat: saved, in the link (format version 7; older links open with them off) and in the WAV. Reset to defaults covers them.
+- **Piano: a flanger**, in the phaser's place: a Phaser/Flanger switch heads the section and the mix, rate and depth sliders serve whichever is chosen (Kevin: one or the other, to save menu space). Remembered as `phaser.mode`.
+
 ## [0.60.1] - 2026-09-30
 
 ### Changed

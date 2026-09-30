@@ -393,7 +393,7 @@ its bars and shifts the later ones down. Downloads and the demo follow
 the mode: `renderDrumSongWav` renders the bars once through with two
 seconds of tail (not a loop; a take), and `encodeDrumMidi` takes a
 sequence of bars, writing the time signature where it changes. Share
-links are version 6: the bar count in 7 bits and 3 bits per bar after
+links became version 6: the bar count in 7 bits and 3 bits per bar after
 the patterns; version 5 links read as before with an empty timeline.
 
 ## Reverb and delay (built 2026-09-28)
@@ -414,6 +414,41 @@ format version), the offline render sharing the graph so the WAV carries
 the effects, the MIDI file unaffected. On a phone the sends join the
 row's level and pan menu; the project settings join the tempo menu. About
 a day, mostly listening.
+
+### Analog delay and fuzz (built 2026-09-30)
+
+Two of the piano's effects on the drum bus, from the stages both share
+(`src/lib/audio/fxStages.ts`): the delay's Digital/Analog choice (analog
+puts a soft clip and a 2 kHz damping in the loop and a 0.4 Hz wobble on
+the time; measured through the bus on a 500 Hz + 3 kHz burst, the second
+analog repeat's 3 kHz sits 9 dB under the digital one's) and a fuzz on
+the dry mix, drive and tone, the sends staying clean (a hit peaks near
+0.8, so the make-up is tuned to that; measured within 0.3 dB of clean at
+every drive on a 220 Hz tone). `fx.delayAnalog`, `fx.fuzzDrive` and
+`fx.fuzzTone` in the schema with defaults (off, 0, 0.5), so beats and
+links from before open as they were; share links are version 7 (the
+analog flag in 1 bit, drive and tone in 7 each, after the reverb return),
+version 6 links read with them off. Reset to defaults covers them.
+
+## MIDI input (built 2026-09-30)
+
+Finger drumming (the "own samples, MIDI input" line above): a MIDI menu
+beside Effects (shown where Web MIDI exists: Chrome and Edge) with
+Connect, the inputs' names once listening, Disconnect, and a Record
+toggle. `drumMachine.connectMidi` is the piano's, every input's note-ons
+going to `hitNote`: General MIDI's drum notes and their usual neighbours
+map to voices (`DRUM_MIDI_IN_NOTES`: both kicks, both snares, the pedal
+hat, every tom, both crashes and rides), any other note plays the open
+pattern's rows in order, so a keyboard works too. `hit(voice, velocity)`
+plays one hit now through `playDrumHit` (the step player's hit, factored
+out: the row's level, pan and sends, the hat choke), building the context
+and the bus on the first hit as play does (`#graph`), and warms the kit
+on connect so the first pad lands. With Record on while the beat plays,
+a hit also goes into the playing pattern at the nearest step (from the
+scheduler's next step and the clock; swing is not undone), a ghost,
+normal or accent by velocity, adding a row for a voice the pattern
+lacks; off by default, since it writes into the beat. Not built: MIDI
+out, a clock, or velocity curves.
 
 ## Decisions to make before Phase 1
 

@@ -175,12 +175,13 @@ chords, transpose, a reverb; sounds he does not like).
 An Effects menu as the drum machine's (Kevin's ask), with the chain in
 `src/lib/audio/pianoFx.ts` (`createPianoFx(ctx, settings)`, plain Web
 Audio so an OfflineAudioContext renders it the same, which is how it is
-measured): voices → fuzz → chorus → phaser → tremolo → rotary → dry bus →
+measured): voices → fuzz → chorus → phaser or flanger → tremolo → rotary → dry bus →
 master, with reverb and delay sends off the dry bus into the master.
 `piano.set*` calls `fx.update`, which merges a nested patch over what
 stands and ramps every level over 20 ms so a slider never clicks; the
 settings are remembered in the preferences (`delay`, `chorus`, `tremolo`,
-`fuzz`, `phaser`, `rotary`), every effect off by default. The button
+`fuzz`, `phaser`, `rotary`), every effect off by default. The fuzz and
+the delay come from `src/lib/audio/fxStages.ts`, shared with the drum bus. The button
 lights while any of them is up; the menu lays out in two columns from sm
 and three from lg, and scrolls when the window is short; on a phone the
 same controls sit in the levels menu under an Effects heading.
@@ -208,7 +209,12 @@ same controls sit in the levels menu under an Effects heading.
   lines at 22 and 28 ms swept up to ±4 ms by one sine LFO in opposite
   directions, panned left and right, added to the dry at `mix` (the wet
   is not subtracted from the dry, so full mix is louder by about 3.5 dB).
-- **Phaser**: mix (0 = off), rate (0.1 to 5 Hz) and depth. Four all-pass
+- **Phaser or Flanger** (one at a time, Kevin's call to save menu space;
+  `phaser.mode`): mix (0 = off), rate (0.1 to 5 Hz) and depth, shared.
+  The flanger is a delay centred on 3 ms swept ±2.5 ms at full depth by
+  the same LFO, with 0.5 feedback, in a second wet the mode opens instead
+  of the phaser's (measured: a 1 kHz tone swings 14 dB as the comb
+  passes). The phaser: four all-pass
   filters (`BiquadFilterNode`) in series centred at 500, 800, 1300 and 2100 Hz, each moved by
   the same LFO up to ±400 Hz; `mix` crossfades the dry towards half and
   half with the all-passed signal, where the notches are deepest

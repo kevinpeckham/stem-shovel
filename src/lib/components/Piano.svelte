@@ -848,7 +848,29 @@
 				</div>
 			</div>
 			<div class="grid grid-cols-1 gap-y-3 content-start">
-				<div class="device-button-group-label !text-blue-100/90 !mb-0">Phaser</div>
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">
+					{piano.phaser.mode === "flanger" ? "Flanger" : "Phaser"}
+				</div>
+				<div class="flex gap-2" role="group" aria-label="Phaser or flanger">
+					<button
+						class="flex-1 device-button-xs border {piano.phaser.mode === 'phaser'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.phaser.mode === "phaser"}
+						title="Notches swept through the sound"
+						onclick={() => piano.setPhaser({ mode: "phaser" })}>Phaser</button
+					>
+					<button
+						class="flex-1 device-button-xs border {piano.phaser.mode === 'flanger'
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.phaser.mode === "flanger"}
+						title="A jet-like sweep from a short delay"
+						onclick={() => piano.setPhaser({ mode: "flanger" })}>Flanger</button
+					>
+				</div>
 				<label class="block">
 					<span class="device-button-label">Mix · {Math.round(piano.phaser.mix * 100)}%</span>
 					<input
@@ -859,7 +881,7 @@
 						step="1"
 						value={Math.round(piano.phaser.mix * 100)}
 						oninput={(e) => piano.setPhaser({ mix: Number(e.currentTarget.value) / 100 })}
-						aria-label="Phaser mix"
+						aria-label="{piano.phaser.mode === 'flanger' ? 'Flanger' : 'Phaser'} mix"
 					/>
 				</label>
 				<label class="block">
@@ -872,7 +894,7 @@
 						step="0.1"
 						value={piano.phaser.rate}
 						oninput={(e) => piano.setPhaser({ rate: Number(e.currentTarget.value) })}
-						aria-label="Phaser rate"
+						aria-label="{piano.phaser.mode === 'flanger' ? 'Flanger' : 'Phaser'} rate"
 					/>
 				</label>
 				<label class="block">
@@ -885,7 +907,7 @@
 						step="1"
 						value={Math.round(piano.phaser.depth * 100)}
 						oninput={(e) => piano.setPhaser({ depth: Number(e.currentTarget.value) / 100 })}
-						aria-label="Phaser depth"
+						aria-label="{piano.phaser.mode === 'flanger' ? 'Flanger' : 'Phaser'} depth"
 					/>
 				</label>
 			</div>
