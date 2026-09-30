@@ -40,6 +40,8 @@ class PianoEngine {
 	octave = $state(3);
 	volume = $state(0.8);
 	reverb = $state(0.25);
+	/** The room's size, 0 a small room to 1 a hall (the impulse is synthesized again on change). */
+	reverbSize = $state(0.35);
 	/** The delay: time, feedback, level (docs/piano.md, "Effects"); level 0 is off. */
 	delay = $state<PianoDelay>({ time: 0.35, feedback: 0.35, level: 0 });
 	sustain = $state(false);
@@ -80,6 +82,7 @@ class PianoEngine {
 	#ctx: AudioContext | null = null;
 	#dry: GainNode | null = null;
 	#wet: GainNode | null = null;
+	#convolver: ConvolverNode | null = null;
 	#delayNode: DelayNode | null = null;
 	#delayFeedback: GainNode | null = null;
 	#delayReturn: GainNode | null = null;
@@ -99,6 +102,7 @@ class PianoEngine {
 		this.octave = p.octave;
 		this.volume = p.volume;
 		this.reverb = p.reverb;
+		this.reverbSize = p.reverbSize;
 		this.delay = { ...p.delay };
 		this.hires = p.hires;
 		this.key = p.key;
@@ -188,6 +192,7 @@ class PianoEngine {
 			octave: this.octave,
 			volume: this.volume,
 			reverb: this.reverb,
+			reverbSize: this.reverbSize,
 			delay: { ...this.delay },
 			hires: this.hires,
 			key: this.key,
@@ -206,7 +211,7 @@ class PianoEngine {
 		const dry = ctx.createGain();
 		dry.connect(master);
 		const convolver = ctx.createConvolver();
-		convolver.buffer = reverbImpulse(ctx, 0.35);
+		convolver.buffer = reverbImpulse(ctx, this.reverbSize);
 		const wet = ctx.createGain();
 		wet.gain.value = this.reverb * 0.5;
 		dry.connect(convolver);
@@ -232,6 +237,7 @@ class PianoEngine {
 		this.#master = master;
 		this.#dry = dry;
 		this.#wet = wet;
+		this.#convolver = convolver;
 		this.#delayNode = delay;
 		this.#delayFeedback = feedback;
 		this.#delayReturn = delayReturn;
@@ -330,6 +336,7 @@ class PianoEngine {
 		this.#master = null;
 		this.#dry = null;
 		this.#wet = null;
+		this.#convolver = null;
 		this.#delayNode = null;
 		this.#delayFeedback = null;
 		this.#delayReturn = null;
@@ -454,6 +461,13 @@ class PianoEngine {
 		if (!Number.isFinite(v)) return;
 		this.reverb = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
 		if (this.#wet) this.#wet.gain.value = this.reverb * 0.5;
+		this.#save();
+	}
+	setReverbSize(v: number) {
+		if (!Number.isFinite(v)) return;
+		this.reverbSize = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		if (this.#ctx && this.#convolver)
+			this.#convolver.buffer = reverbImpulse(this.#ctx, this.reverbSize);
 		this.#save();
 	}
 	/** The delay's time (seconds), feedback and level, any of them. */

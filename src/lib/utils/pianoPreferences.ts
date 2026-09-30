@@ -22,6 +22,8 @@ export interface PianoPreferences {
 	octave: number;
 	volume: number;
 	reverb: number;
+	/** The room's size, 0 small to 1 a hall. */
+	reverbSize: number;
 	/** The delay: its time in seconds, feedback (0 to 0.9) and level (0 = off). */
 	delay: PianoDelay;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
@@ -38,6 +40,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	octave: DEFAULT_PIANO_OCTAVE,
 	volume: 0.8,
 	reverb: 0.25,
+	reverbSize: 0.35,
 	delay: { ...DEFAULT_PIANO_DELAY },
 	hires: false,
 	key: null,
@@ -73,6 +76,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		octave,
 		volume: unit(p.volume, DEFAULT_PIANO_PREFERENCES.volume),
 		reverb: unit(p.reverb, DEFAULT_PIANO_PREFERENCES.reverb),
+		reverbSize: unit(p.reverbSize, DEFAULT_PIANO_PREFERENCES.reverbSize),
 		delay: parseDelay(p.delay),
 		hires: p.hires === true,
 		key: parseKey(p.key),

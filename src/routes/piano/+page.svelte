@@ -14,7 +14,7 @@
 </svelte:head>
 
 <main class="page-x-padding main-y-padding">
-	<header class="mb-8 max-w-prose">
+	<header class="mb-8 max-w-prose sr-only sm-block">
 		<div class="flex items-baseline gap-2 mb-5">
 			<h1 class="app-page-heading">Piano</h1>
 			<InfoTip

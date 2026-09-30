@@ -218,41 +218,24 @@
 
 <svelte:window {onkeydown} {onkeyup} {onblur} />
 
-{#snippet keyControls(compact: boolean)}
-	<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
-		<div class={compact ? "" : "w-24"}>
-			<div class="device-button-group-label">Key</div>
-			<ComboBox
-				ariaLabel="Key"
-				buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
-				options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
-				value={piano.key ? String(piano.key.root) : "none"}
-				onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
-			/>
-		</div>
-		{#if piano.key}
-			<div class={compact ? "" : "w-40"}>
-				<ComboBox
-					ariaLabel="Scale"
-					buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
-					options={MODE_OPTIONS}
-					value={piano.key.mode}
-					onchange={(v) => setKeyMode(v as ScaleModeId)}
-				/>
-			</div>
-			<button
-				class="device-button-sm px-3 {piano.degrees ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={piano.degrees}
-				title="Number the keys by their degree in the key"
-				onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
-			>
-		{/if}
-	</div>
-{/snippet}
-
 <div
-	class="device-chrome grid gap-4 px-3 py-4 sm-px-5 sm-pt-5 pb-12 w-full max-w-full relative"
+	class="
+		device-chrome
+		gap-3
+		grid
+		pb-12
+		px-3
+		py-4
+		sm-gap-x-4
+		sm-gap-y-4
+		sm-pr-5
+		sm-pl-10
+		md-px-5
+		sm-pt-5
+
+		w-full
+		max-w-full
+		relative"
 	aria-label="Piano"
 >
 	<!-- the screen -->
@@ -294,123 +277,103 @@
 		</div>
 	</div>
 
-	<!-- the power switch, full width on a phone: it opens the audio before the first note, which would otherwise be late on iOS -->
-	<button
-		class="sm-hidden device-button-sm w-full text-15px {piano.on ? 'text-accent' : ''}"
-		type="button"
-		aria-pressed={piano.on}
-		aria-busy={piano.starting}
-		title={piano.on ? "Turn the piano off" : "Turn the piano on"}
-		onclick={() => void piano.setOn(!piano.on)}
-	>
-		<span
-			class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
-			aria-hidden="true"
-		></span>
-		{piano.on ? "On" : piano.starting ? "Starting…" : "Off"}
-	</button>
-
-	<!-- the controls -->
-	<div class="flex flex-wrap items-end gap-x-2 sm-gap-x-5 gap-y-3">
-		<div class="hidden sm-block">
-			<div class="device-button-group-label">Power</div>
-			<button
-				class="device-button-sm px-3 {piano.on ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={piano.on}
-				aria-busy={piano.starting}
-				title={piano.on ? "Turn the piano off" : "Turn the piano on"}
-				onclick={() => void piano.setOn(!piano.on)}
-			>
-				<span
-					class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
-					aria-hidden="true"
-				></span>
-				{piano.on ? "On" : "Off"}
-			</button>
-		</div>
-		<div class="flex-1 min-w-28 sm-flex-none sm-w-44">
-			<div class="device-button-group-label">Sound</div>
-			<ComboBox
-				ariaLabel="Sound"
-				buttonClasses="lt-sm-h-28px lt-sm-!py-0 lt-sm-!px-3 lt-sm-!text-13px"
-				options={INSTRUMENT_OPTIONS}
-				value={piano.instrument}
-				onchange={(v) => piano.setInstrument(v as PianoInstrumentId)}
-			/>
-		</div>
-		<div>
-			<div class="device-button-group-label">Octave</div>
-			<div class="flex items-center gap-1" role="group" aria-label="Octave">
+	<div class="grid grid-cols-1 gap-x-3 gap-y-4 sm-flex">
+		<!-- the controls -->
+		<div
+			class="
+				gap-2
+			 	w-full
+				grid
+				grid-cols-[auto_1fr_auto_auto]
+				place-content-start
+				md-grid-cols-[auto_auto_auto_auto_1fr]
+				lg-grid-cols-[auto_auto_auto_auto_auto_auto_1fr]
+				md-gap-3"
+		>
+			<!-- power -->
+			<div class="">
+				<div class="hidden lg-block device-button-group-label text-dark lg-max-w-fit">Power</div>
+				<!-- on / off -->
 				<button
-					class="device-button-xs sm-device-button-sm px-2 sm-px-3"
-					type="button"
-					disabled={piano.octave <= PIANO_OCTAVE_MIN}
-					aria-label="Octave down"
-					title="Octave down (arrow down)"
-					onclick={() => piano.setOctave(piano.octave - 1)}>−</button
-				>
-				<span class="min-w-7 sm-min-w-10 text-center text-14px tabular-nums text-oxford font-600"
-					>C{piano.octave}</span
-				>
-				<button
-					class="device-button-xs sm-device-button-sm px-2 sm-px-3"
-					type="button"
-					disabled={piano.octave >= PIANO_OCTAVE_MAX}
-					aria-label="Octave up"
-					title="Octave up (arrow up)"
-					onclick={() => piano.setOctave(piano.octave + 1)}>+</button
-				>
-				<!-- A very small toggle: the computer-key letters on the keys, on or off. -->
-				<button
-					class="device-button-xs !min-w-auto px-1.5 ml-1 {piano.labels
+					class="device-button-sm lg-device-button-xs px-3 text-15px lg-text-14px {piano.on
 						? 'text-accent'
-						: 'opacity-60'}"
+						: ''}"
 					type="button"
-					aria-pressed={piano.labels}
-					aria-label="Keyboard letters on the keys"
-					title={piano.labels
-						? "Hide the computer-key letters on the keys"
-						: "Show the computer-key letters on the keys"}
-					onclick={() => piano.setLabels(!piano.labels)}
+					aria-pressed={piano.on}
+					aria-busy={piano.starting}
+					title={piano.on ? "Turn the piano off" : "Turn the piano on"}
+					onclick={() => void piano.setOn(!piano.on)}
 				>
-					<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
+					<span
+						class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
+						aria-hidden="true"
+					></span>
+					<span class="hidden sm-inline-block lg-hidden">{piano.on ? "On" : "Off"}</span>
 				</button>
 			</div>
-		</div>
-		<!-- the pedal has no place on a phone (the space bar is its key); the levels and MIDI go into a menu there -->
-		<div class="hidden sm-block">
-			{@render keyControls(false)}
-		</div>
-		<div class="hidden sm-block">
-			<div class="device-button-group-label">Pedal</div>
-			<button
-				class="device-button-sm px-3 {piano.sustain ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={piano.sustain}
-				title="Sustain: notes ring on after you let go (hold the space bar)"
-				onclick={() => piano.setSustain(!piano.sustain)}
-			>
-				<span class="i-ph-waves" aria-hidden="true"></span>
-				Sustain
-			</button>
-		</div>
-		<div class="hidden sm-flex flex-wrap items-end gap-x-5 gap-y-3">
-			<label class="block w-36">
-				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.volume * 100)}
-					oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
-					aria-label="Volume"
+
+			<!-- instrument voice -->
+			<div class="min-w-28 flex-none md-text-14px">
+				<div class="device-button-group-label text-dark hidden lg-block">Sound</div>
+				<ComboBox
+					ariaLabel="Sound"
+					clearDefaultButtonClasses={true}
+					popoverClasses="text-15px"
+					buttonClasses="device-button-sm lg-device-button-xs px-3 text-15px lg-text-14px w-full"
+					options={INSTRUMENT_OPTIONS}
+					value={piano.instrument}
+					onchange={(v) => piano.setInstrument(v as PianoInstrumentId)}
 				/>
-			</label>
-			<div>
-				<div class="device-button-group-label">Effects</div>
+			</div>
+
+			<!-- octave selector -->
+			<div class="text-14px">
+				<div class="device-button-group-label text-dark hidden lg-block">Octave</div>
+				<div class="flex items-center gap-1 md-gap-2 lg-gap-1" role="group" aria-label="Octave">
+					<button
+						class="min-w-10 device-button-sm lg-device-button-xs lg-min-w-8 px-2 sm-px-3"
+						type="button"
+						disabled={piano.octave <= PIANO_OCTAVE_MIN}
+						aria-label="Octave down"
+						title="Octave down (arrow down)"
+						onclick={() => piano.setOctave(piano.octave - 1)}>−</button
+					>
+					<span
+						class="
+							bg-dark
+							inline-flex
+							h-38.5px
+							items-center
+							justify-center
+							min-w-10
+							rounded-md
+							tabular-nums
+							text-14px
+							text-center
+							lg-h-28px
+							lg-min-w-9
+							lg-text-14px
+							{piano.on ? 'text-blue-100/90' : 'text-blue-100/20'} font-500">C{piano.octave}</span
+					>
+					<button
+						class="min-w-10 device-button-sm px-2 sm-px-3 lg-min-w-8 lg-device-button-xs"
+						type="button"
+						disabled={piano.octave >= PIANO_OCTAVE_MAX}
+						aria-label="Octave up"
+						title="Octave up (arrow up)"
+						onclick={() => piano.setOctave(piano.octave + 1)}>+</button
+					>
+				</div>
+			</div>
+
+			<!-- key selector -->
+			<!-- <div class="hidden lg-block [&_.device-button-group-label]-text-dark">
+				{@render keyControls(false)}
+			</div> -->
+
+			<!-- effects button -->
+			<div class="hidden lg-block">
+				<div class="device-button-group-label text-dark">Effects</div>
 				<!-- Reverb and delay in a menu, as the drum machine's; the button lights while either is up. -->
 				<ContextMenu
 					ariaLabel="Effects"
@@ -418,57 +381,136 @@
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					position="bottom right"
-					buttonBaseClasses="device-button-sm px-3"
+					buttonBaseClasses="device-button-xs px-3"
 					buttonClasses={piano.reverb > 0 || piano.delay.level > 0 ? "text-accent" : ""}
 					popoverClasses="min-w-72"
-					items={[{ id: "piano-fx", kind: "snippet", snippet: fxItem }]}
+					items={[
+						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
+						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
+					]}
 				/>
 			</div>
-			{#if samplesBase}
-				<div>
-					<div class="device-button-group-label">Samples</div>
-					{@render hiresButton("device-button-sm px-3")}
+
+			<!-- controls block -->
+			<div
+				class="hidden lg-grid grid-cols-[32px_32px_32px_32px_32px] lg-gap-x-1 items-end place-content-start"
+			>
+				<!-- label -->
+				<div class="device-button-group-label text-dark col-span-full">More</div>
+
+				<!-- sustain pedal -->
+				<div class="hidden lg-block lg-32px">
+					<div class="device-button-group-label text-dark sr-only">Pedal</div>
+					<button
+						class="device-button-xs {piano.sustain ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={piano.sustain}
+						title="Sustain: notes ring on after you let go (hold the space bar)"
+						onclick={() => piano.setSustain(!piano.sustain)}
+					>
+						<span class="i-ph-waves" aria-hidden="true"></span>
+						<span class="sr-only">Sustain</span>
+					</button>
 				</div>
-			{/if}
-			{#if midiSupported}
-				<div>
-					<div class="device-button-group-label">MIDI</div>
-					{#if piano.midi.status === "on"}
-						<button
-							class="device-button-sm px-3 text-accent"
-							type="button"
-							title={piano.midi.inputs.length
-								? `Listening to ${piano.midi.inputs.join(", ")}`
-								: "Listening; plug a controller in"}
-							onclick={() => piano.disconnectMidi()}
-						>
-							<span class="i-ph-usb" aria-hidden="true"></span>
-							{piano.midi.inputs.length ? "Connected" : "No controller"}
-						</button>
-					{:else}
-						<button
-							class="device-button-sm px-3"
-							type="button"
-							title="Play from a MIDI keyboard or pad (the browser asks once)"
-							onclick={() => void piano.connectMidi()}
-						>
-							<span class="i-ph-usb" aria-hidden="true"></span>
-							{piano.midi.status === "denied" ? "MIDI refused" : "Connect MIDI"}
-						</button>
-					{/if}
+
+				<!-- midi -->
+				{#if midiSupported}
+					<div class="hidden lg-block lg-32px">
+						<div class="device-button-group-label text-dark lg-sr-only">MIDI</div>
+						{@render midiButton("device-button-xs")}
+					</div>
+				{/if}
+
+				<!-- hi-res -->
+				{#if samplesBase}
+					<div class="hidden lg-block">
+						<div class="device-button-group-label text-dark sr-only">Samples</div>
+						{@render hiresButton("device-button-xs px-1 lg-w-8")}
+					</div>
+				{/if}
+
+				<div class="hidden lg-block">
+					{@render keyControls(false)}
 				</div>
-			{/if}
-		</div>
-		<div class="sm-hidden">
-			<ContextMenu
-				ariaLabel="Levels and MIDI"
-				title="Volume, reverb and MIDI"
-				iconClass="i-ph-sliders-horizontal"
-				position="bottom left"
-				buttonBaseClasses="device-button-xs px-2"
-				popoverClasses="min-w-64"
-				items={[{ id: "piano-levels", kind: "snippet", snippet: levelsItem }]}
-			/>
+
+				<!-- Toggle computer key letter labels on piano keys -->
+				<div class="hidden lg-block">
+					<div class="device-button-group-label text-dark sr-only">Keys</div>
+					<button
+						class="device-button-xs {piano.labels ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={piano.labels}
+						aria-label="Keyboard letters on the keys"
+						title={piano.labels
+							? "Hide the computer-key letters on the keys"
+							: "Show the computer-key letters on the keys"}
+						onclick={() => piano.setLabels(!piano.labels)}
+					>
+						<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
+					</button>
+				</div>
+			</div>
+
+			<!-- context menu -->
+			<div>
+				<ContextMenu
+					ariaLabel="Levels and MIDI"
+					title="Volume, reverb and MIDI"
+					iconClass="i-ph-sliders-horizontal"
+					position="bottom left"
+					buttonBaseClasses="device-button-sm px-2 w-10 lg-hidden lg-w-8"
+					popoverClasses="min-w-64 min-h-560px overflow-y-scroll pb-8"
+					items={[
+						{ id: "menu-volume-heading", kind: "heading", label: "volume" },
+						{ id: "menu-volume-slider", kind: "snippet", snippet: volumeSliderMenuBlock },
+						{ id: "menu-fx-heading", kind: "heading", label: "Effects" },
+						{ id: "menu-effects-sliders", kind: "snippet", snippet: fxSlidersMenuBlock },
+						{ id: "other-heading", kind: "heading", label: "More" },
+						{
+							id: "menu-hi-res-button",
+							kind: "snippet",
+							condition: samplesBase !== null,
+							snippet: hiresButtonMenuBlock,
+						},
+						{
+							id: "menu-midi-button",
+							kind: "snippet",
+							condition: midiSupported,
+							snippet: midiButtonMenuBlock,
+						},
+					]}
+				/>
+			</div>
+
+			<!-- volume -->
+			<label
+				class="
+					hidden
+					w-36
+					md-block
+					md-ml-auto
+					lg-grid
+					lg-grid-cols-1
+					lg-grid-rows-[auto_28px]
+					lg-h-57.25px
+					lg-max-w-280px
+					lg-w-auto"
+			>
+				<span
+					class="
+					lg-device-button-group-label
+					hidden
+					text-dark
+					text-14px
+					text-blue-100/90
+					w-full
+					md-block">Volume</span
+				>
+				<div class="flex items-center h-28px">
+					<!-- {Math.round(piano.volume * 100)}% -->
+					{@render volumeSlider()}
+				</div>
+			</label>
 		</div>
 	</div>
 
@@ -511,12 +553,12 @@
 				{#if inKey && !outKey}
 					<span
 						class="{vertical ? 'mr-auto ml-3' : 'mb-1'} block h-1.5 w-1.5 rounded-full {isRoot
-							? 'bg-accent'
+							? 'bg-purple-500'
 							: on
-								? 'bg-oxford/50'
+								? 'bg-blue-200'
 								: key.black
-									? 'bg-slate-400'
-									: 'bg-slate-400'}"
+									? 'bg-blue-400'
+									: 'bg-blue-400'}"
 						aria-hidden="true"
 					></span>
 				{/if}
@@ -525,18 +567,23 @@
 					{#if degree !== null}<span class="opacity-70">{degree}</span>{/if}
 				{:else}
 					<!-- Two fixed rows on every key, so the letters line up: the octave name (on the Cs) above, the letter or degree below. -->
-					<span class="block h-3 text-10px leading-3"
-						>{key.midi % 12 === 0 ? noteLabel(key.midi) : ""}</span
-					>
-					<span class="block h-4 leading-4 opacity-70"
+
+					<span
+						class="block h-3 leading-4 mb-2 {key.black
+							? 'text-blue-400'
+							: 'text-blue-400'} {degree === 1 || key.label === '1' ? '!text-purple-500' : ''}"
 						>{degree !== null ? degree : piano.labels ? key.label : ""}</span
+					>
+					<span
+						class="block h-4 text-10px leading-3 absolute top-2 w-full text-center text-blue-900"
+						>{key.midi % 12 === 0 ? noteLabel(key.midi) : ""}</span
 					>
 				{/if}
 			</button>
 		{/each}
 	</div>
 
-	{#snippet hiresButton(classes: string)}
+	{#snippet hiresButton(classes?: string)}
 		<button
 			class="{classes} {hiresState === 'on' ? 'text-accent' : ''}"
 			type="button"
@@ -559,118 +606,226 @@
 				class={hiresState === "loading" ? "i-ph-circle-notch animate-spin" : "i-ph-sparkle"}
 				aria-hidden="true"
 			></span>
-			{hiresState === "on"
-				? "Hi-res"
-				: hiresState === "loading"
-					? `Hi-res ${percent(piano.loadingTiers.hires)}`
-					: hiresCached
-						? "Hi-res"
-						: `Hi-res · ${mb(hiresBytes)}`}
+			<span class="lg-sr-only"
+				>{hiresState === "on"
+					? "Hi-res"
+					: hiresState === "loading"
+						? `Hi-res ${percent(piano.loadingTiers.hires)}`
+						: hiresCached
+							? "Hi-res"
+							: `Hi-res · ${mb(hiresBytes)}`}
+			</span>
 		</button>
 	{/snippet}
 
-	{#snippet fxSliders()}
-		<label class="block">
-			<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.reverb * 100)}
-				oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
-				aria-label="Reverb"
-			/>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Delay time · {Math.round(piano.delay.time * 1000)} ms</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="50"
-				max="1000"
-				step="10"
-				value={Math.round(piano.delay.time * 1000)}
-				oninput={(e) => piano.setDelay({ time: Number(e.currentTarget.value) / 1000 })}
-				aria-label="Delay time"
-			/>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Feedback · {Math.round(piano.delay.feedback * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="90"
-				step="1"
-				value={Math.round(piano.delay.feedback * 100)}
-				oninput={(e) => piano.setDelay({ feedback: Number(e.currentTarget.value) / 100 })}
-				aria-label="Delay feedback"
-			/>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Delay level · {Math.round(piano.delay.level * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.delay.level * 100)}
-				oninput={(e) => piano.setDelay({ level: Number(e.currentTarget.value) / 100 })}
-				aria-label="Delay level"
-			/>
-		</label>
-	{/snippet}
-
-	{#snippet fxItem()}
-		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
-			<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
-			{@render fxSliders()}
+	{#snippet hiresButtonMenuBlock()}
+		<div class="px-3 pt-3 grid grid-cols-1 w-full text-blue-100/90">
+			{@render hiresButton("device-button-sm bg-slate-800 border")}
 		</div>
 	{/snippet}
 
-	{#snippet levelsItem()}
-		<div class="grid gap-3 px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
-			<div class="text-blue-100/80">{@render keyControls(true)}</div>
+	{#snippet fxSlidersMenuBlock()}
+		<div class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 gap-y-3 mb-4">
 			<label class="block">
-				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
+				<span class="device-button-label">Reverb · {Math.round(piano.reverb * 100)}%</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
 					min="0"
 					max="100"
 					step="1"
-					value={Math.round(piano.volume * 100)}
-					oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
-					aria-label="Volume"
+					value={Math.round(piano.reverb * 100)}
+					oninput={(e) => piano.setReverb(Number(e.currentTarget.value) / 100)}
+					aria-label="Reverb"
 				/>
 			</label>
-			<div class="text-11px uppercase tracking-wider opacity-60">Effects</div>
-			{@render fxSliders()}
-			{#if samplesBase}
-				{@render hiresButton("device-button-xs px-3 justify-self-start")}
-			{/if}
-			{#if midiSupported}
-				<button
-					class="device-button-xs px-3 justify-self-start {piano.midi.status === 'on'
-						? 'text-accent'
-						: ''}"
-					type="button"
-					onclick={() =>
-						piano.midi.status === "on" ? piano.disconnectMidi() : void piano.connectMidi()}
+			<label class="block">
+				<span class="device-button-label">Reverb size · {Math.round(piano.reverbSize * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.reverbSize * 100)}
+					oninput={(e) => piano.setReverbSize(Number(e.currentTarget.value) / 100)}
+					aria-label="Reverb size"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label"
+					>Delay time · {Math.round(piano.delay.time * 1000)} ms</span
 				>
-					<span class="i-ph-usb" aria-hidden="true"></span>
-					{piano.midi.status === "on"
-						? piano.midi.inputs.length
-							? "MIDI connected"
-							: "MIDI: no controller"
-						: piano.midi.status === "denied"
-							? "MIDI refused"
-							: "Connect MIDI"}
-				</button>
-			{/if}
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="50"
+					max="1000"
+					step="10"
+					value={Math.round(piano.delay.time * 1000)}
+					oninput={(e) => piano.setDelay({ time: Number(e.currentTarget.value) / 1000 })}
+					aria-label="Delay time"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Feedback · {Math.round(piano.delay.feedback * 100)}%</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="90"
+					step="1"
+					value={Math.round(piano.delay.feedback * 100)}
+					oninput={(e) => piano.setDelay({ feedback: Number(e.currentTarget.value) / 100 })}
+					aria-label="Delay feedback"
+				/>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Delay level · {Math.round(piano.delay.level * 100)}%</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.delay.level * 100)}
+					oninput={(e) => piano.setDelay({ level: Number(e.currentTarget.value) / 100 })}
+					aria-label="Delay level"
+				/>
+			</label>
+		</div>
+	{/snippet}
+
+	{#snippet volumeSlider()}
+		<input
+			class="w-full accent-maximumYellow"
+			type="range"
+			min="0"
+			max="100"
+			step="1"
+			value={Math.round(piano.volume * 100)}
+			oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+			aria-label="Volume"
+		/>
+	{/snippet}
+
+	{#snippet volumeSliderMenuBlock()}
+		<div class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 gap-y-2 mb-4">
+			<label class="block">
+				<span class="device-button-label">Volume · {Math.round(piano.volume * 100)}%</span>
+				{@render volumeSlider()}
+			</label>
+		</div>
+	{/snippet}
+
+	{#snippet keyControls(compact: boolean)}
+		<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
+			<div class={compact ? "" : "w-20"}>
+				<div class="device-button-group-label sr-only">Key</div>
+				{#snippet keySelectorMenuBlock()}
+					<div
+						class="grid grid-cols-1 gap-y-3 px-3 min-w-200px pt-3 pb-8 text-blue-100/90 text-14px"
+					>
+						<div>
+							<span class="block mb-2">Select a Key</span>
+							<ComboBox
+								ariaLabel="Key"
+								clearDefaultButtonClasses={true}
+								buttonClasses="w-full lg-device-button-xs !lg-slate-400 lg-hover-bg-slate-900 border"
+								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+								options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
+								value={piano.key ? String(piano.key.root) : "none"}
+								onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
+							/>
+						</div>
+						{#if piano.key}
+							<div class={compact ? "" : "w-full"}>
+								<span class="block mb-2">Scale</span>
+								<ComboBox
+									ariaLabel="Scale"
+									clearDefaultButtonClasses={true}
+									buttonClasses="w-full lg-device-button-xs lg-hover-bg-slate-900 border"
+									popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+									options={MODE_OPTIONS}
+									value={piano.key.mode}
+									onchange={(v) => setKeyMode(v as ScaleModeId)}
+								/>
+							</div>
+							<div>
+								<span class="block mb-2">Show Numbers</span>
+								<button
+									class="w-full lg-device-button-xs px-3 lg-hover-bg-slate-900 border {piano.degrees
+										? 'text-accent'
+										: ''}"
+									type="button"
+									aria-pressed={piano.degrees}
+									title="Number the keys by their degree in the key"
+									onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
+								>
+							</div>
+							<hr class="border-current/10" />
+							<div class={compact ? "" : "w-full"}>
+								<span class="block mb-2">Toggle Guides</span>
+								<button
+									class="w-full lg-device-button-xs px-3 lg-hover-bg-slate-900 border"
+									onclick={() => {
+										piano.setDegrees(false);
+										piano.setKey(null);
+									}}
+								>
+									Turn Off All Guides
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/snippet}
+				<ContextMenu
+					ariaLabel="Key Selector"
+					title="Select Key and Scale to show Guides"
+					position="bottom left"
+					buttonClasses="device-button-xs bg-slate-800 !flex text-13px w-8 !p-0"
+					iconClass="i-ph-scales-fill"
+					label=""
+					items={[
+						{ kind: "heading", label: "Show Scales" },
+						{ id: "key-menu-block", kind: "snippet", snippet: keySelectorMenuBlock },
+					]}
+				/>
+			</div>
+		</div>
+	{/snippet}
+
+	{#snippet midiButton(buttonClasses?: string)}
+		{#if piano.midi.status === "on"}
+			<button
+				class="text-accent {buttonClasses}"
+				type="button"
+				title={piano.midi.inputs.length
+					? `Listening to ${piano.midi.inputs.join(", ")}`
+					: "Listening; plug a controller in"}
+				onclick={() => piano.disconnectMidi()}
+			>
+				<span class="i-ph-usb" aria-hidden="true"></span>
+				<span class="lg-sr-only">{piano.midi.inputs.length ? "Connected" : "No controller"}</span>
+			</button>
+		{:else}
+			<button
+				class={buttonClasses}
+				type="button"
+				title="Play from a MIDI keyboard or pad (the browser asks once)"
+				onclick={() => void piano.connectMidi()}
+			>
+				<span class="i-ph-usb" aria-hidden="true"></span>
+				<span class="lg-sr-only">{piano.midi.status === "denied" ? "MIDI refused" : "MIDI"}</span>
+			</button>
+		{/if}
+	{/snippet}
+
+	{#snippet midiButtonMenuBlock()}
+		<div class="px-3 pt-3 grid grid-cols-1 w-full text-blue-100/90">
+			{@render midiButton("device-button-sm bg-slate-800 border")}
 		</div>
 	{/snippet}
 

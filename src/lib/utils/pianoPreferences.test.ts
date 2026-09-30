@@ -17,6 +17,7 @@ describe("parsePianoPreferences", () => {
 			octave: 5,
 			volume: 0.5,
 			reverb: 1,
+			reverbSize: 0.35,
 			hires: true,
 			key: null,
 			degrees: false,
