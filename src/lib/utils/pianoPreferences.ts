@@ -62,6 +62,30 @@ export interface PianoPhaser {
 	mix: number;
 }
 export const DEFAULT_PIANO_PHASER: PianoPhaser = { mode: "phaser", rate: 0.5, depth: 0.7, mix: 0 };
+const PIANO_WAH_MODES = ["touch", "sweep"] as const;
+export type PianoWahMode = (typeof PIANO_WAH_MODES)[number];
+export interface PianoWah {
+	/** Touch opens the filter with how hard you play; Sweep moves it on its own at `rate`. */
+	mode: PianoWahMode;
+	/** Touch: how far a note opens it, 0 to 1. */
+	sensitivity: number;
+	/** Sweep: Hz, 0.1 to 5. */
+	rate: number;
+	/** How far the filter can travel, 0 to 1. */
+	range: number;
+	/** The filter's peak, 0 gentle to 1 sharp. */
+	resonance: number;
+	/** The wet level, 0 (off) to 1. */
+	mix: number;
+}
+export const DEFAULT_PIANO_WAH: PianoWah = {
+	mode: "touch",
+	sensitivity: 0.5,
+	rate: 1,
+	range: 0.7,
+	resonance: 0.5,
+	mix: 0,
+};
 const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
 export type PianoRotarySpeed = (typeof PIANO_ROTARY_SPEEDS)[number];
 export interface PianoRotary {
@@ -82,6 +106,7 @@ export interface PianoPreferences {
 	chorus: PianoChorus;
 	tremolo: PianoTremolo;
 	fuzz: PianoFuzz;
+	wah: PianoWah;
 	phaser: PianoPhaser;
 	rotary: PianoRotary;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
@@ -103,6 +128,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	chorus: { ...DEFAULT_PIANO_CHORUS },
 	tremolo: { ...DEFAULT_PIANO_TREMOLO },
 	fuzz: { ...DEFAULT_PIANO_FUZZ },
+	wah: { ...DEFAULT_PIANO_WAH },
 	phaser: { ...DEFAULT_PIANO_PHASER },
 	rotary: { ...DEFAULT_PIANO_ROTARY },
 	hires: false,
@@ -144,6 +170,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		chorus: parseChorus(p.chorus),
 		tremolo: parseTremolo(p.tremolo),
 		fuzz: parseFuzz(p.fuzz),
+		wah: parseWah(p.wah),
 		phaser: parsePhaser(p.phaser),
 		rotary: parseRotary(p.rotary),
 		hires: p.hires === true,
@@ -229,5 +256,19 @@ function parseRotary(json: unknown): PianoRotary {
 		speed: (PIANO_ROTARY_SPEEDS as readonly string[]).includes(String(r.speed))
 			? (r.speed as PianoRotarySpeed)
 			: DEFAULT_PIANO_ROTARY.speed,
+	};
+}
+
+function parseWah(json: unknown): PianoWah {
+	const w = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		mode: (PIANO_WAH_MODES as readonly string[]).includes(String(w.mode))
+			? (w.mode as PianoWahMode)
+			: DEFAULT_PIANO_WAH.mode,
+		sensitivity: unit(w.sensitivity, DEFAULT_PIANO_WAH.sensitivity),
+		rate: within(w.rate, 0.1, 5, DEFAULT_PIANO_WAH.rate),
+		range: unit(w.range, DEFAULT_PIANO_WAH.range),
+		resonance: unit(w.resonance, DEFAULT_PIANO_WAH.resonance),
+		mix: unit(w.mix, DEFAULT_PIANO_WAH.mix),
 	};
 }

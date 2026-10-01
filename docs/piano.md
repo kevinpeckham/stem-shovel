@@ -175,12 +175,12 @@ chords, transpose, a reverb; sounds he does not like).
 An Effects menu as the drum machine's (Kevin's ask), with the chain in
 `src/lib/audio/pianoFx.ts` (`createPianoFx(ctx, settings)`, plain Web
 Audio so an OfflineAudioContext renders it the same, which is how it is
-measured): voices → fuzz → chorus → phaser or flanger → tremolo → rotary → dry bus →
+measured): voices → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus →
 master, with reverb and delay sends off the dry bus into the master.
 `piano.set*` calls `fx.update`, which merges a nested patch over what
 stands and ramps every level over 20 ms so a slider never clicks; the
 settings are remembered in the preferences (`delay`, `chorus`, `tremolo`,
-`fuzz`, `phaser`, `rotary`), every effect off by default. The fuzz and
+`fuzz`, `wah`, `phaser`, `rotary`), every effect off by default. The fuzz and
 the delay come from `src/lib/audio/fxStages.ts`, shared with the drum bus. The button
 lights while any of them is up; the menu lays out in two columns from sm
 and three from lg, and scrolls when the window is short; on a phone the
@@ -205,6 +205,25 @@ same controls sit in the levels menu under an Effects heading.
   of the drive's travel; at a tenth the third harmonic sits 26 dB under
   the fundamental, at a third it is 10 dB under and the wave is nearly
   square.
+- **Wah** (Kevin's ask, 2026-10-01): mix (0 = off), Touch or Sweep, and
+  range and resonance. A resonant low-pass (a band-pass threw away 19 dB;
+  this keeps the body and moves a peak, the vowel of a wah pedal) with its
+  cutoff at a 350 Hz floor plus up to 1.8 kHz × range, moved by whichever
+  of three summed sources the mode opens: Touch is an envelope follower
+  (the signal rectified by a WaveShaper, smoothed by a 6 Hz low-pass, into
+  a gain set by sensitivity), so the filter opens with how hard you play
+  and closes as the note decays; Sweep is the LFO wrapper at `rate`,
+  sitting mid-travel; and a MIDI mod wheel, expression pedal or foot
+  controller (CC 1, 11, 4) takes over either while it sends
+  (`fx.wahPedal`, a ConstantSourceNode; disconnecting MIDI hands it
+  back). Resonance is the low-pass BiquadFilter's Q, which for a low-pass
+  is in decibels, 0 to 15, the wet trimmed to 0.7 to leave the peak room.
+  Measured on a 110 Hz sawtooth by spectral centroid: a loud note opens
+  the filter to about 530 Hz against 330 for a soft one and the follower
+  settles within 50 ms; Sweep at 1 Hz runs 290 to 820; the pedal 290 to
+  830; full resonance lifts the harmonic at the cutoff 15 dB over the dry
+  saw; fully wet sits within 1 dB of dry; mix 0 is the dry signal to the
+  sample. Sits between the fuzz and the chorus, as on a pedalboard.
 - **Chorus**: mix (0 = off), rate (0.1 to 5 Hz) and depth. Two delay
   lines at 22 and 28 ms swept up to ±4 ms by one sine LFO in opposite
   directions, panned left and right, added to the dry at `mix` (the wet

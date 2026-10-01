@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Piano: a wah** (docs/piano.md, "Effects"; docs/effects.md). A Wah section in the Effects menu between the fuzz and the chorus: a resonant low-pass whose cutoff an envelope follower opens with how hard you play (Touch, with a sensitivity slider), or an LFO sweeps (Sweep, with a rate), with range and resonance (the low-pass's Q, in decibels, 0 to 15) and a mix. A MIDI mod wheel, expression pedal or foot controller (CC 1, 11, 4) rides the wah while it sends. Off by default, remembered, and part of a preset.
+
 ## [0.62.0] - 2026-10-01
 
 ### Added

@@ -13,6 +13,7 @@ import {
 	DEFAULT_PIANO_PHASER,
 	DEFAULT_PIANO_ROTARY,
 	DEFAULT_PIANO_TREMOLO,
+	DEFAULT_PIANO_WAH,
 	loadPianoPreferences,
 	savePianoPreferences,
 	type PianoChorus,
@@ -21,6 +22,7 @@ import {
 	type PianoPhaser,
 	type PianoRotary,
 	type PianoTremolo,
+	type PianoWah,
 } from "$lib/utils/pianoPreferences";
 import type { PianoPresetData } from "$lib/val/PianoPresetSchema";
 import { createPianoFx, type PianoFx } from "./pianoFx";
@@ -66,6 +68,7 @@ class PianoEngine {
 	chorus = $state<PianoChorus>({ ...DEFAULT_PIANO_CHORUS });
 	tremolo = $state<PianoTremolo>({ ...DEFAULT_PIANO_TREMOLO });
 	fuzz = $state<PianoFuzz>({ ...DEFAULT_PIANO_FUZZ });
+	wah = $state<PianoWah>({ ...DEFAULT_PIANO_WAH });
 	phaser = $state<PianoPhaser>({ ...DEFAULT_PIANO_PHASER });
 	rotary = $state<PianoRotary>({ ...DEFAULT_PIANO_ROTARY });
 	sustain = $state(false);
@@ -126,6 +129,7 @@ class PianoEngine {
 		this.chorus = { ...p.chorus };
 		this.tremolo = { ...p.tremolo };
 		this.fuzz = { ...p.fuzz };
+		this.wah = { ...p.wah };
 		this.phaser = { ...p.phaser };
 		this.rotary = { ...p.rotary };
 		this.hires = p.hires;
@@ -221,6 +225,7 @@ class PianoEngine {
 			chorus: { ...this.chorus },
 			tremolo: { ...this.tremolo },
 			fuzz: { ...this.fuzz },
+			wah: { ...this.wah },
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
 			hires: this.hires,
@@ -248,6 +253,7 @@ class PianoEngine {
 			chorus: { ...this.chorus },
 			tremolo: { ...this.tremolo },
 			fuzz: { ...this.fuzz },
+			wah: { ...this.wah },
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
 		};
@@ -512,6 +518,19 @@ class PianoEngine {
 		this.#fx?.update({ fuzz: f });
 		this.#save();
 	}
+	/** The wah: mode, sensitivity, rate, range, resonance and mix, any of them; mix 0 is off. */
+	setWah(patch: Partial<PianoWah>) {
+		const w = { ...this.wah, ...patch };
+		w.mode = w.mode === "sweep" ? "sweep" : "touch";
+		w.sensitivity = clamp(w.sensitivity, 0, 1);
+		w.rate = clamp(w.rate, 0.1, 5);
+		w.range = clamp(w.range, 0, 1);
+		w.resonance = clamp(w.resonance, 0, 1);
+		w.mix = clamp(w.mix, 0, 1);
+		this.wah = w;
+		this.#fx?.update({ wah: w });
+		this.#save();
+	}
 	/** The phaser or flanger: its mode, rate (Hz), depth and mix, any of them; mix 0 is off. */
 	setPhaser(patch: Partial<PianoPhaser>) {
 		const p = { ...this.phaser, ...patch };
@@ -543,6 +562,7 @@ class PianoEngine {
 			phaser: { ...this.phaser },
 			tremolo: { ...this.tremolo },
 			fuzz: { ...this.fuzz },
+			wah: { ...this.wah },
 			rotary: { ...this.rotary },
 		};
 	}
@@ -556,6 +576,7 @@ class PianoEngine {
 		this.setPhaser(p.phaser);
 		this.setTremolo(p.tremolo);
 		this.setFuzz(p.fuzz);
+		this.setWah(p.wah);
 		this.setRotary(p.rotary.speed);
 	}
 
@@ -595,6 +616,9 @@ class PianoEngine {
 			this.noteOff(note);
 		} else if (kind === 0xb0 && note === 64) {
 			this.setSustain(value >= 64);
+		} else if (kind === 0xb0 && (note === 1 || note === 11 || note === 4)) {
+			// The mod wheel, an expression pedal or a foot controller rides the wah while it sends.
+			this.#fx?.wahPedal(value / 127);
 		} else if (kind === 0xb0 && (note === 120 || note === 123)) {
 			this.allOff();
 		}
@@ -603,6 +627,7 @@ class PianoEngine {
 		if (this.#access) for (const input of this.#access.inputs.values()) input.onmidimessage = null;
 		this.#access = null;
 		this.midi = { status: "idle", inputs: [] };
+		this.#fx?.wahPedal(null);
 	}
 }
 

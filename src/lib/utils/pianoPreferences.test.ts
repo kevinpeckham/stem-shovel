@@ -26,6 +26,7 @@ describe("parsePianoPreferences", () => {
 			chorus: { rate: 0.8, depth: 0.5, mix: 0 },
 			tremolo: { rate: 5, depth: 0, shape: "sine" },
 			fuzz: { drive: 0, tone: 0.5 },
+			wah: { mode: "touch", sensitivity: 0.5, rate: 1, range: 0.7, resonance: 0.5, mix: 0 },
 			phaser: { mode: "phaser", rate: 0.5, depth: 0.7, mix: 0 },
 			rotary: { speed: "off" },
 		});
@@ -36,6 +37,7 @@ describe("parsePianoPreferences", () => {
 				chorus: { rate: 9, depth: 0.2, mix: 0.3 },
 				tremolo: { rate: 0.1, depth: 2, shape: "saw" },
 				fuzz: { drive: 7, tone: -1 },
+				wah: { mode: "pedal", sensitivity: 2, rate: 9, mix: 0.4 },
 				phaser: { mode: "wah", rate: 0, depth: 0.4, mix: 1.5 },
 				rotary: { speed: "warp" },
 			}),
@@ -44,6 +46,7 @@ describe("parsePianoPreferences", () => {
 			chorus: { rate: 5, depth: 0.2, mix: 0.3 },
 			tremolo: { rate: 0.5, depth: 1, shape: "sine" },
 			fuzz: { drive: 1, tone: 0 },
+			wah: { mode: "touch", sensitivity: 1, rate: 5, range: 0.7, resonance: 0.5, mix: 0.4 },
 			phaser: { mode: "phaser", rate: 0.1, depth: 0.4, mix: 1 },
 			rotary: { speed: "off" },
 		});

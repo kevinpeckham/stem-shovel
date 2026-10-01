@@ -5,7 +5,8 @@ import { createDelayStage, createFuzzStage } from "./fxStages";
  * The piano's effect chain (docs/piano.md, "Effects"), built once per
  * context and driven by `update`: voices play into `input`, which runs
  * through a fuzz (a hot gain into a soft clipper, a tone low-pass after),
- * a stereo chorus (two short delays swept by one LFO in opposite
+ * a wah (a resonant band-pass whose centre an envelope follower, an LFO
+ * or a MIDI pedal moves), a stereo chorus (two short delays swept by one LFO in opposite
  * directions, mixed against the dry signal), a phaser (four all-pass
  * stages swept by an LFO, mixed against the dry signal so notches move
  * through the sound) or in its place a flanger (a delay of a few
@@ -58,6 +59,20 @@ export interface PianoPhaserSettings {
 	/** Wet level, 0 (off) to 1 (equal to the dry, the deepest notches). */
 	mix: number;
 }
+export interface PianoWahSettings {
+	/** Touch: the filter opens with how hard you play (an envelope follower); Sweep: an LFO moves it. A MIDI pedal (wahPedal) takes over either. */
+	mode: "touch" | "sweep";
+	/** Touch: how far a note opens the filter, 0 to 1. */
+	sensitivity: number;
+	/** Sweep: LFO rate in Hz. */
+	rate: number;
+	/** How far the filter can travel above its floor, 0 to 1. */
+	range: number;
+	/** The filter's peak, 0 gentle to 1 sharp. */
+	resonance: number;
+	/** Wet level, 0 (off) to 1 (all through the filter). */
+	mix: number;
+}
 export interface PianoRotarySettings {
 	speed: "off" | "slow" | "fast";
 }
@@ -69,6 +84,7 @@ export interface PianoFxSettings {
 	chorus: PianoChorusSettings;
 	tremolo: PianoTremoloSettings;
 	fuzz: PianoFuzzSettings;
+	wah: PianoWahSettings;
 	phaser: PianoPhaserSettings;
 	rotary: PianoRotarySettings;
 }
@@ -79,11 +95,35 @@ export interface PianoFx {
 	/** The last node before the destination (the recorder's capture taps it). */
 	master: GainNode;
 	update(patch: Partial<PianoFxSettings>): void;
+	/** A MIDI expression or mod pedal's position, 0 to 1, drives the wah in place of touch or sweep; null hands it back. */
+	wahPedal(position: number | null): void;
 }
 
 const RAMP = 0.02;
 /** The rotary speaker's rotation rates in Hz, horn and drum, at each speed (a Leslie's: the drum lags the horn). */
 const ROTARY_HZ = { off: [0, 0], slow: [0.8, 0.7], fast: [6.7, 5.7] } as const;
+
+/**
+ * The wah's filter: a resonant low-pass (a band-pass threw away too much;
+ * this keeps the body and moves a peak, the vowel of a wah pedal), its
+ * floor and how far full range lifts it, its resonance (a low-pass
+ * BiquadFilter's Q is in decibels: the peak at the cutoff, 0 to 15 dB),
+ * the wet trimmed to leave that peak room, and the follower's smoothing.
+ */
+const WAH_FLOOR = 350;
+const WAH_SPAN = 1800;
+const wahQ = (resonance: number) => resonance * 15;
+const WAH_WET = 0.7;
+const WAH_FOLLOW_HZ = 6;
+/** The follower's gain: a voice peaks near 0.3 and rectifies to about 0.15 at the smoother, so this brings full sensitivity to the top of the range. */
+const WAH_FOLLOW_GAIN = 6;
+/** A full-wave rectifier for the follower. */
+const ABS_CURVE = (() => {
+	const n = 2048;
+	const out = new Float32Array(new ArrayBuffer(n * 4));
+	for (let i = 0; i < n; i++) out[i] = Math.abs((i / (n - 1)) * 2 - 1);
+	return out;
+})();
 
 /** The phaser's four all-pass stages, their centre frequencies and how far the LFO moves each. */
 const PHASER_STAGES = [500, 800, 1300, 2100];
@@ -120,9 +160,58 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const fuzzOut = fuzz.output;
 	fuzz.update(s.fuzz.drive, s.fuzz.tone, 0);
 
+	// Wah: a band-pass whose frequency is the floor plus three movers summed into it, the mode
+	// opening one: the follower (the fuzz's output rectified and smoothed), the LFO, or the pedal.
+	const wahOut = ctx.createGain();
+	const wahDry = ctx.createGain();
+	fuzzOut.connect(wahDry);
+	wahDry.connect(wahOut);
+	const wahFilter = ctx.createBiquadFilter();
+	wahFilter.type = "lowpass";
+	wahFilter.frequency.value = WAH_FLOOR;
+	const wahWet = ctx.createGain();
+	fuzzOut.connect(wahFilter);
+	wahFilter.connect(wahWet);
+	wahWet.connect(wahOut);
+	const rectifier = ctx.createWaveShaper();
+	rectifier.curve = ABS_CURVE;
+	const smoother = ctx.createBiquadFilter();
+	smoother.type = "lowpass";
+	smoother.frequency.value = WAH_FOLLOW_HZ;
+	smoother.Q.value = 0.5;
+	const follow = ctx.createGain();
+	fuzzOut.connect(rectifier);
+	rectifier.connect(smoother);
+	smoother.connect(follow);
+	follow.connect(wahFilter.frequency);
+	const wahLfo = lfo(ctx, s.wah.rate, 0);
+	wahLfo.gain.connect(wahFilter.frequency);
+	const pedal = ctx.createConstantSource();
+	pedal.offset.value = 0;
+	const pedalGain = ctx.createGain();
+	pedal.connect(pedalGain);
+	pedalGain.connect(wahFilter.frequency);
+	pedal.start();
+	let pedalDown = false;
+	const applyWah = (w: PianoWahSettings, tau: number) => {
+		const span = w.range * WAH_SPAN;
+		const touch = !pedalDown && w.mode === "touch";
+		const sweep = !pedalDown && w.mode === "sweep";
+		// Sweep sits in the middle of its travel and swings ±half; touch and the pedal start at the floor.
+		ramp(wahFilter.frequency, WAH_FLOOR + (sweep ? span / 2 : 0), tau);
+		ramp(wahFilter.Q, wahQ(w.resonance), tau);
+		ramp(follow.gain, touch ? w.sensitivity * WAH_FOLLOW_GAIN * span : 0, tau);
+		ramp(wahLfo.osc.frequency, w.rate, tau);
+		ramp(wahLfo.gain.gain, sweep ? span / 2 : 0, tau);
+		ramp(pedalGain.gain, pedalDown ? span : 0, tau);
+		ramp(wahDry.gain, 1 - w.mix, tau);
+		ramp(wahWet.gain, w.mix * WAH_WET, tau);
+	};
+	applyWah(s.wah, 0);
+
 	// Chorus: dry through at full, the two swept delays at `mix`, panned apart.
 	const chorusOut = ctx.createGain();
-	fuzzOut.connect(chorusOut);
+	wahOut.connect(chorusOut);
 	const chorusWet = ctx.createGain();
 	chorusWet.gain.value = s.chorus.mix;
 	const chorusLfo = lfo(ctx, s.chorus.rate, s.chorus.depth * 0.004); // up to ±4 ms
@@ -138,7 +227,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 		mod.connect(d.delayTime);
 		const p = ctx.createStereoPanner();
 		p.pan.value = pan;
-		fuzzOut.connect(d);
+		wahOut.connect(d);
 		d.connect(p);
 		p.connect(chorusWet);
 	}
@@ -298,6 +387,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 			ramp(tremLfo.gain.gain, t.depth / 2);
 		},
 		fuzz: (f) => fuzz.update(f.drive, f.tone, RAMP),
+		wah: (w) => applyWah(w, RAMP),
 		phaser: (p) => applyPhaser(p, RAMP),
 		rotary: (r) => applyRotary(r, RAMP),
 	};
@@ -305,6 +395,14 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	return {
 		input,
 		master,
+		wahPedal(position) {
+			const down = position !== null;
+			if (down !== pedalDown) {
+				pedalDown = down;
+				applyWah(s.wah, RAMP);
+			}
+			if (down) ramp(pedal.offset, Math.min(1, Math.max(0, position)), RAMP);
+		},
 		update(patch) {
 			for (const key of Object.keys(patch) as (keyof PianoFxSettings)[]) {
 				const value = patch[key];

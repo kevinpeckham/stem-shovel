@@ -51,6 +51,24 @@ export const PianoPresetDataSchema = v.object({
 		() => ({ rate: 5, depth: 0, shape: "sine" as const }),
 	),
 	fuzz: v.optional(v.object({ drive: unit(0), tone: unit(0.5) }), () => ({ drive: 0, tone: 0.5 })),
+	wah: v.optional(
+		v.object({
+			mode: v.optional(v.picklist(["touch", "sweep"]), "touch"),
+			sensitivity: unit(0.5),
+			rate: v.optional(v.pipe(v.number(), v.minValue(0.1), v.maxValue(5)), 1),
+			range: unit(0.7),
+			resonance: unit(0.5),
+			mix: unit(0),
+		}),
+		() => ({
+			mode: "touch" as const,
+			sensitivity: 0.5,
+			rate: 1,
+			range: 0.7,
+			resonance: 0.5,
+			mix: 0,
+		}),
+	),
 	rotary: v.optional(
 		v.object({ speed: v.optional(v.picklist(["off", "slow", "fast"]), "off") }),
 		() => ({ speed: "off" as const }),

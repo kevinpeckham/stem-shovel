@@ -1,8 +1,8 @@
 # How the effects are engineered
 
 The piano and the drum machine carry a rack of effects: reverb, delay
-(digital or analog), fuzz, chorus, phaser or flanger, tremolo and a rotary
-speaker. This is how they are built and why they sound the way they do.
+(digital or analog), fuzz, wah, chorus, phaser or flanger, tremolo and a
+rotary speaker. This is how they are built and why they sound the way they do.
 The short version: there is no audio library, no worklet, no WebAssembly
 and no sample file. Every effect is a small graph of the browser's own Web
 Audio nodes, and the numbers that shape it were chosen by rendering test
@@ -13,7 +13,7 @@ tones through the same code offline and measuring the result.
 - `src/lib/audio/fxStages.ts` — the two stages both instruments share: the
   fuzz, and the delay with its analog character.
 - `src/lib/audio/pianoFx.ts` — the piano's chain (`createPianoFx`): voices
-  → fuzz → chorus → phaser or flanger → tremolo → rotary → dry bus, with
+  → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus, with
   reverb and delay sends off the dry bus into the master.
 - `src/lib/audio/drumBus.ts` — the drum mixer (`createDrumBus`): the dry
   drums through the fuzz into the master; a delay send and a reverb send,
@@ -27,7 +27,7 @@ tones through the same code offline and measuring the result.
 ## The building blocks
 
 The Web Audio API is a graph of nodes running on the browser's audio
-thread. The effects use eight of them:
+thread. The effects use nine of them:
 
 - **GainNode** — a multiplier. Every level, mix and send is one, and a
   gain whose `gain` is driven by an oscillator is a tremolo.
@@ -35,10 +35,14 @@ thread. The effects use eight of them:
   can change while it plays. Delay, chorus, flanger and the rotary's
   Doppler are all this node.
 - **BiquadFilterNode** — a second-order filter: low-pass for the delay's
-  damping and the fuzz's tone, high-pass and low-pass as the rotary's
-  crossover, all-pass for the phaser.
+  damping, the fuzz's tone and the wah (resonant, its cutoff moving),
+  high-pass and low-pass as the rotary's crossover, all-pass for the
+  phaser.
 - **ConvolverNode** — convolves its input with a buffer. Given a room's
   impulse response it is a reverb.
+- **ConstantSourceNode** — a steady value as a signal, which a MIDI pedal's
+  position becomes so it can be summed into the wah's cutoff like the
+  oscillators.
 - **WaveShaperNode** — a lookup table: each input sample becomes the
   curve's value at that point. A tanh curve is a soft clipper.
 - **OscillatorNode** — the browser's own oscillator, sine, square, sawtooth
@@ -140,6 +144,33 @@ driven up to 31 times and meant to sound square, which is exactly where
 aliasing shows. The cost is four times the samples plus two resampling
 filters on one stereo signal, small enough that the drum machine runs
 its fuzz on the whole mix without strain.
+
+### Wah
+
+A wah is a resonant filter whose cutoff moves. The stage is one
+BiquadFilterNode in low-pass mode (a band-pass was tried first and threw
+away 19 dB of the sound; the low-pass keeps the body and moves a peak,
+which is the vowel of a pedal), with its cutoff at a 350 Hz floor plus up
+to 1.8 kHz of travel set by the range slider. Three sources are summed
+into the cutoff and the mode opens one of them:
+
+- **Touch** is an envelope follower: the signal through a WaveShaper
+  whose curve is |x| (a full-wave rectifier), then a 6 Hz low-pass to
+  smooth it into a level, then a gain the sensitivity sets, into the
+  filter's frequency. The filter opens with how hard you play and closes
+  as the note dies, within about 50 ms either way.
+- **Sweep** is the chain's LFO wrapper, the filter sitting mid-travel and
+  swinging up and down at the rate.
+- **A pedal**: a ConstantSourceNode whose offset is a MIDI mod wheel,
+  expression pedal or foot controller's position (CC 1, 11 or 4). While
+  one sends, the other two sources ramp to zero and the pedal has the
+  filter; disconnecting MIDI hands it back.
+
+Resonance is the filter's Q, and for a Web Audio low-pass Q is in
+decibels: the height of the peak at the cutoff, 0 to 15 dB here. The wet
+is trimmed to 0.7 to leave that peak room; measured on a sawtooth the
+fully wet sound sits within 1 dB of dry, and full resonance lifts the
+harmonic at the cutoff 15 dB over the dry one.
 
 ### Chorus
 
