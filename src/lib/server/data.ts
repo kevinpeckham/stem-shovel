@@ -24,6 +24,7 @@ import {
 	recordingAccess,
 	recordingPathname,
 	stemPathname,
+	recordingStemPathname,
 } from "$lib/server/blob";
 import {
 	deleteAccountRows,
@@ -110,6 +111,7 @@ const {
 	aiRequest,
 	auditLog,
 	recording,
+	recordingStem,
 	idea,
 	beat,
 	pianoPreset,
@@ -176,7 +178,12 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${recording.sizeBytes})` })
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), ne(recording.status, "failed")));
-	return (stems.bytes ?? 0) + (demos.bytes ?? 0) + (takes.bytes ?? 0);
+	// A multitrack take's sources (docs/demo-recording.md, "Multitrack takes") are files of the account too.
+	const [takeStems] = await db
+		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
+		.from(recordingStem)
+		.where(and(eq(recordingStem.accountId, accountId), ne(recordingStem.status, "failed")));
+	return (stems.bytes ?? 0) + (demos.bytes ?? 0) + (takes.bytes ?? 0) + (takeStems.bytes ?? 0);
 }
 
 /** Before reserving an upload: does the file fit? The refusal carries what the page should say. */
@@ -231,6 +238,10 @@ export async function accountUsage(accountId: string) {
 		})
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.status, "ready")));
+	const [takeStems] = await db
+		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
+		.from(recordingStem)
+		.where(and(eq(recordingStem.accountId, accountId), eq(recordingStem.status, "ready")));
 	const [demos] = await db
 		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${demo.sizeBytes})` })
 		.from(demo)
@@ -247,7 +258,8 @@ export async function accountUsage(accountId: string) {
 		recordings: recordings.n,
 		demos: demos.n,
 		/** Stems, demos and takes that are ready; renditions and mixes are not counted. */
-		bytes: (stems.bytes ?? 0) + (recordings.bytes ?? 0) + (demos.bytes ?? 0),
+		bytes:
+			(stems.bytes ?? 0) + ((recordings.bytes ?? 0) + (takeStems.bytes ?? 0)) + (demos.bytes ?? 0),
 		/** null = unlimited (a founder account). */
 		storageLimitBytes: limits.storageBytes,
 		memberLimit: limits.members,
@@ -2572,9 +2584,16 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo" | "recording",
+	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "recording-stem") {
+		const r = await db.query.recordingStem.findFirst({
+			where: and(eq(recordingStem.accountId, accountId), eq(recordingStem.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "recording") {
 		const r = await db.query.recording.findFirst({
 			where: and(eq(recording.accountId, accountId), eq(recording.id, id)),
@@ -3043,6 +3062,13 @@ export async function listUserIdeas(userId: string) {
 			takes: {
 				where: eq(recording.status, "ready"),
 				orderBy: [asc(recording.takeNumber), asc(recording.createdAt)],
+				with: {
+					stems: {
+						where: eq(recordingStem.status, "ready"),
+						orderBy: [asc(recordingStem.sortOrder)],
+						columns: { id: true, label: true },
+					},
+				},
 			},
 		},
 	});
@@ -3176,13 +3202,21 @@ export async function deleteIdea(accountId: string, ideaId: string) {
 		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.ideaId, ideaId)));
+	const sources = await db
+		.select({ url: recordingStem.url })
+		.from(recordingStem)
+		.innerJoin(recording, eq(recording.id, recordingStem.recordingId))
+		.where(and(eq(recording.accountId, accountId), eq(recording.ideaId, ideaId)));
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
 		columns: { id: true },
 	});
 	if (!row) return false;
 	await deleteIdeaRows([ideaId]);
-	await deleteBlobs(takes.flatMap((t) => [t.url, t.playbackUrl ?? ""]));
+	await deleteBlobs([
+		...takes.flatMap((t) => [t.url, t.playbackUrl ?? ""]),
+		...sources.map((x) => x.url),
+	]);
 	return true;
 }
 
@@ -3226,10 +3260,141 @@ export async function createRecording(
 
 /** The recording a pathname was reserved for, for the upload handler's ownership check (ideas are the user's own). */
 export async function recordingOfPathname(pathname: string) {
-	return db.query.recording.findFirst({
+	const rec = await db.query.recording.findFirst({
 		where: eq(recording.pathname, pathname),
 		columns: { id: true, accountId: true },
 	});
+	if (rec) return rec;
+	// A multitrack take's source: the take it belongs to.
+	const st = await db.query.recordingStem.findFirst({
+		where: eq(recordingStem.pathname, pathname),
+		columns: { recordingId: true, accountId: true },
+	});
+	return st ? { id: st.recordingId, accountId: st.accountId } : null;
+}
+
+/** A multitrack take's source reserved under this pathname, for the upload token. */
+export function findUploadingRecordingStem(accountId: string, pathname: string) {
+	return db.query.recordingStem.findFirst({
+		where: and(
+			eq(recordingStem.accountId, accountId),
+			eq(recordingStem.pathname, pathname),
+			eq(recordingStem.status, "uploading"),
+		),
+	});
+}
+
+/** Step 1 of saving a multitrack take's source: the row under its take and the pathname to upload to. */
+export async function createRecordingStem(
+	accountId: string,
+	recordingId: string,
+	file: NewStemFile & { label: string; sortOrder: number; codec: string | null },
+) {
+	const owner = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const id = nanoid();
+	const [row] = await db
+		.insert(recordingStem)
+		.values({
+			id,
+			accountId,
+			recordingId,
+			label: file.label,
+			sortOrder: file.sortOrder,
+			url: "",
+			pathname: recordingStemPathname(accountId, recordingId, id, file.filename),
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+			codec: file.codec,
+		})
+		.returning();
+	return row;
+}
+
+/** Step 3: the browser reports the source's blob URL and the length it timed. */
+export async function markRecordingStemReady(
+	accountId: string,
+	stemId: string,
+	url: string,
+	durationSeconds: number | null,
+) {
+	const [row] = await db
+		.update(recordingStem)
+		.set({ status: "ready", url, durationSeconds })
+		.where(and(eq(recordingStem.accountId, accountId), eq(recordingStem.id, stemId)))
+		.returning({ id: recordingStem.id, recordingId: recordingStem.recordingId });
+	return row ?? null;
+}
+
+/** A multitrack take's source by id: its account and its take, for the ready route's ownership check. */
+export async function recordingStemById(stemId: string) {
+	const row = await db.query.recordingStem.findFirst({
+		where: eq(recordingStem.id, stemId),
+		columns: { accountId: true, recordingId: true },
+	});
+	return row ?? null;
+}
+
+/**
+ * The take's sources onto a song as stems (docs/demo-recording.md,
+ * "Multitrack takes"): each file copied under the song, in the song's
+ * store, a `stem` row per source with the source's label, ready at once
+ * (the player computes peaks it lacks; the jobs function makes the
+ * playback renditions). Null without the take or the song; "full" when the
+ * song cannot take them all; "none" when the take has no sources.
+ */
+export async function copyRecordingStemsToSong(
+	recordingAccountId: string,
+	userId: string,
+	recordingId: string,
+	songId: string,
+) {
+	const rec = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, recordingAccountId), eq(recording.id, recordingId)),
+		with: {
+			stems: { where: eq(recordingStem.status, "ready"), orderBy: [asc(recordingStem.sortOrder)] },
+		},
+	});
+	if (!rec) return null;
+	if (rec.stems.length === 0) return "none" as const;
+	const s = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { id: true, accountId: true },
+		with: { stems: { columns: { sortOrder: true } } },
+	});
+	if (!s) return null;
+	if (s.stems.length + rec.stems.length > MAX_STEMS_PER_SONG) return "full" as const;
+	const accountId = s.accountId;
+	const access = (await accessOfSongId(songId)) ?? "public";
+	let sortOrder = s.stems.reduce((m, x) => Math.max(m, x.sortOrder + 1), 0);
+	const ids: string[] = [];
+	for (const source of rec.stems) {
+		const id = nanoid();
+		const pathname = stemPathname(accountId, songId, id, source.filename);
+		const url = await copyBlob(source.url, pathname, access);
+		await db.insert(stem).values({
+			id,
+			accountId,
+			songId,
+			label: source.label,
+			sortOrder: sortOrder++,
+			status: "ready",
+			url,
+			pathname,
+			filename: source.filename,
+			contentType: source.contentType,
+			sizeBytes: source.sizeBytes,
+			durationSeconds: source.durationSeconds,
+			uploadedBy: userId,
+		});
+		ids.push(id);
+	}
+	await stemsChanged(songId);
+	return ids;
 }
 
 export function findUploadingRecording(accountId: string, pathname: string) {
@@ -3263,6 +3428,10 @@ export async function recordRecordingUrl(pathname: string, url: string) {
 		.update(recording)
 		.set({ url, status: "ready" })
 		.where(and(eq(recording.pathname, pathname), eq(recording.status, "uploading")));
+	await db
+		.update(recordingStem)
+		.set({ url, status: "ready" })
+		.where(and(eq(recordingStem.pathname, pathname), eq(recordingStem.status, "uploading")));
 }
 
 export async function renameRecording(accountId: string, recordingId: string, title: string) {
@@ -3275,6 +3444,10 @@ export async function renameRecording(accountId: string, recordingId: string, ti
 }
 
 export async function deleteRecording(accountId: string, recordingId: string) {
+	const sources = await db
+		.delete(recordingStem)
+		.where(and(eq(recordingStem.accountId, accountId), eq(recordingStem.recordingId, recordingId)))
+		.returning({ url: recordingStem.url });
 	const [row] = await db
 		.delete(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.id, recordingId)))
@@ -3284,7 +3457,7 @@ export async function deleteRecording(accountId: string, recordingId: string) {
 			ideaId: recording.ideaId,
 		});
 	if (!row) return null;
-	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
+	await deleteBlobs([row.url, row.playbackUrl ?? "", ...sources.map((x) => x.url)]);
 	return { ideaId: row.ideaId };
 }
 

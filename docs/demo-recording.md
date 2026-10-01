@@ -485,6 +485,71 @@ recorder while the drums play or the panel is open; remembered per
 browser under `stemshovel.recorder.drums-in-take`) switches them out,
 so a beat can be a click track that stays out of the recording.
 
+## Multitrack takes (built 2026-10-01)
+
+Kevin: "a toggle … for stereo recording vs multitrack in the idea recorder.
+It only becomes available if an instrument is enabled and by default it
+is set to stereo. Then a finished idea take would have the option to add
+stems to existing song vs. add as demo."
+
+**Recording.** `DemoRecorder` takes `multitrack` (bindable) and
+`multitrackAvailable` (the page passes `drumsInTake || pianoInTake`); a
+Stereo/Multitrack pair of buttons at the top of the meter column shows
+only when available, locked while recording, and the page keeps
+`multitrack` as plain state, so every visit starts in stereo. As the meter
+starts, `startMeter` records the sources: the microphone's own
+`getUserMedia` stream (mono or stereo as the preference says, muted tracks
+and all) and each instrument's capture stream (stereo, from the engines'
+MediaStreamDestinations), labelled "Microphone", "Piano", "Drums". Each
+source gets a `MediaRecorder` of its own in the mix's format (lossless
+where the browser can), started in the same JavaScript tick as the mix's,
+so the files line up within a few milliseconds; `stop()` stops them all,
+and `finishTake` awaits their stop events before closing the streams, then
+hands `onqueued` the take with `stems` (a blob per source, in order). A
+discarded take (silent, short) drops them with it.
+
+**Upload.** The queue item carries `stems` (persisted in IndexedDB with the
+take, so a refresh keeps them), and the loop uploads the mix first, then
+each source through `uploadRecordingStemFile`: `POST
+/api/recordings/[id]/stems` reserves a `recording_stem` row under the take
+(label, sort order, codec; the account's storage room checked as for a
+take), the bytes go to the take's store under
+`accounts/<id>/recordings/<recordingId>/<stemId>.<ext>` (a recording
+pathname to the upload handler, which finds the reservation in either
+table and checks ownership through the take), and `POST
+/api/recording-stems/[id]/ready` marks it ready with the timed length. The
+item remembers `savedId` and `stemsDone`, so a retry after a failed source
+does not save the take twice; progress spans all the files. The sources get
+no playback rendition of their own (the stems made from them do) and the
+silence trim applies to the mix only, so a trimmed take's mix starts
+earlier than its sources; they are used as a set, without the mix.
+
+**Into a song.** The page data lists each take's ready sources (`stems`,
+id and label); a take with any shows "· N stems" in the list and **Add N
+stems to song…** in its menu (the recorder's ⋯ menu has **Add Stems to
+Song** for the loaded take). `RecordingActions` in mode "stems" reuses the
+add-as-demo form (no notes merge) and calls `addRecordingStemsToSong`,
+which checks editorship of the song's account and runs
+`copyRecordingStemsToSong`: a `stem` row per source with the source's
+label, duration and size, the file copied into the song's store, ready at
+once (the player computes the peaks it lacks on decode), then
+`stemsChanged` and `schedulePlayback` for the AAC renditions. "full" when
+the song cannot take them all (MAX_STEMS_PER_SONG), "none" for a stereo
+take. The stem formats list (wav, flac, mp3, m4a, aac) governs uploads
+only; a source in WebM (Chrome's PCM or Opus) becomes a stem whose
+rendition the jobs function makes with ffmpeg as for any stem.
+
+**Housekeeping.** Sources count against the account's storage
+(`accountStorageBytes` and the usage report), are removed with their take
+(`deleteRecording`, `deleteIdea`, the cascades for ideas and accounts) and
+their blobs with them, and `recordRecordingUrl` (Vercel's completion
+webhook) marks either table. Verified on dev with Chromium's fake
+microphone: a take with the beat running and the piano open uploads three
+sources (Microphone, Piano, Drums; PCM WebM, 2.5 s each), the list and
+menu show them, and adding them to a song shows the three stems with
+waveforms (the microphone's test tone, the silent piano, the beat); the
+rows go with the idea.
+
 ## Later, if wanted
 
 - **Count-in and click** from the song's tempo and meter (Web Audio
@@ -528,5 +593,5 @@ demo appears with an MP3 rendition. iOS Safari needs a real phone: Kevin.
 
 ## Not in scope
 
-Multitrack recording, overdubs on stems, effects, and editing beyond a
+Overdubs on stems, effects, and editing beyond a
 trim. Those turn the app into a DAW; the demo is a memo.

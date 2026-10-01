@@ -7,6 +7,7 @@ import {
 	requireUser,
 } from "$lib/server/access";
 import {
+	copyRecordingStemsToSong,
 	copyRecordingToSong,
 	createSong,
 	deleteIdeaIfEmpty,
@@ -18,8 +19,14 @@ import {
 	userOwnsRecording,
 } from "$lib/server/data";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
+import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
+import { schedulePlayback } from "$lib/server/jobs";
 import { IdSchema } from "$lib/val/SongSchema";
-import { RecordingToNewSongSchema, RecordingToSongSchema } from "$lib/val/RecordingSchema";
+import {
+	RecordingStemsToSongSchema,
+	RecordingToNewSongSchema,
+	RecordingToSongSchema,
+} from "$lib/val/RecordingSchema";
 import { TakeNameSchema } from "$lib/val/IdeaSchema";
 import { error } from "@sveltejs/kit";
 
@@ -68,6 +75,30 @@ export const addRecordingToSong = command(
 		const slugs = await songSlugs(songAccount, songId);
 		if (!slugs) error(404, "Song not found");
 		return { href: `/${slugs.account}/projects/${slugs.project}/${slugs.song}` };
+	},
+);
+
+/** A multitrack take's sources onto a song as stems (docs/demo-recording.md, "Multitrack takes"); answers with the song's page. */
+export const addRecordingStemsToSong = command(
+	RecordingStemsToSongSchema,
+	async ({ id, songId }) => {
+		const { accountId, user, locals } = await ownTake(id);
+		const songAccount = await accountOfSong(songId);
+		if (!songAccount) error(404, "Song not found");
+		requireEditor(locals, songAccount);
+		const result = await copyRecordingStemsToSong(accountId, user.id, id, songId);
+		if (!result) error(404, "Recording or song not found");
+		if (result === "none")
+			error(400, "This take was recorded as a stereo mix, not as separate tracks");
+		if (result === "full") error(409, `A song can have at most ${MAX_STEMS_PER_SONG} stems`);
+		// The playback renditions of the new stems render in the jobs function.
+		schedulePlayback(result);
+		const slugs = await songSlugs(songAccount, songId);
+		if (!slugs) error(404, "Song not found");
+		return {
+			href: `/${slugs.account}/projects/${slugs.project}/${slugs.song}`,
+			stems: result.length,
+		};
 	},
 );
 

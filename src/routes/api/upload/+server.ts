@@ -3,6 +3,7 @@ import {
 	findStemByMidiPathname,
 	findUploadingDemo,
 	findUploadingRecording,
+	findUploadingRecordingStem,
 	findUploadingStem,
 	recordDemoUrl,
 	recordRecordingUrl,
@@ -67,7 +68,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					: isDemo(pathname)
 						? await findUploadingDemo(accountId, pathname)
 						: isRecordingPathname(pathname)
-							? await findUploadingRecording(accountId, pathname)
+							? ((await findUploadingRecording(accountId, pathname)) ??
+								(await findUploadingRecordingStem(accountId, pathname)))
 							: await findUploadingStem(accountId, pathname);
 				if (!row) throw new Error(`No reservation for "${pathname}"`);
 				return {

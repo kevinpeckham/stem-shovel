@@ -23,6 +23,7 @@ export * from "./passkey";
 export * from "./project";
 export * from "./projectMember";
 export * from "./recording";
+export * from "./recordingStem";
 export * from "./relations";
 export * from "./session";
 export * from "./shareLink";

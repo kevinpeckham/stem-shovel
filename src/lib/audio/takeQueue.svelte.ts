@@ -1,4 +1,9 @@
-import { postJson, uploadRecordingFile, type RecordingReservation } from "$lib/upload";
+import {
+	postJson,
+	uploadRecordingFile,
+	uploadRecordingStemFile,
+	type RecordingReservation,
+} from "$lib/upload";
 import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 import { errorMessage } from "$lib/utils/errorMessage";
 
@@ -10,6 +15,14 @@ import { errorMessage } from "$lib/utils/errorMessage";
  * IndexedDB first, so a refresh, a crash or a phone switching apps loses
  * nothing: the page resumes the uploads when it comes back.
  */
+/** One source of a multitrack take, recorded on its own beside the mix (docs/demo-recording.md, "Multitrack takes"). */
+export interface PendingStem {
+	label: string;
+	blob: Blob;
+	mimeType: string;
+	ext: string;
+	codec: string;
+}
 export interface PendingTake {
 	/** A local id until the server names it. */
 	localId: string;
@@ -28,6 +41,13 @@ export interface PendingTake {
 	createdAt: number;
 	/** The instruments' settings as the take was recorded (the drum machine's project, the piano's sound and effects), for the idea to keep; an instrument whose "settings with the idea" switch was off is null (docs/demo-recording.md). */
 	instruments?: IdeaInstruments;
+	/** A multitrack take's sources, uploaded after the mix; absent on a stereo take. */
+	stems?: PendingStem[];
+	/** Set once the mix is saved, so a retry after a source failed does not save the take twice. */
+	savedId?: string;
+	savedTakeNumber?: number;
+	/** How many sources are up, for the same reason. */
+	stemsDone?: number;
 	blob: Blob;
 }
 export interface QueueItem extends PendingTake {
@@ -149,23 +169,50 @@ export class TakeQueue {
 						void persist(item);
 					}
 					const ideaId = item.ideaId;
-					const file = new File([item.blob], `take-${item.localId}.${item.ext}`, {
-						type: item.mimeType,
-					});
-					const { recordingId, takeNumber } = await uploadRecordingFile(
-						file,
-						() =>
-							postJson<RecordingReservation>("/api/recordings", {
-								ideaId,
-								title: item.name,
-								filename: file.name,
-								sizeBytes: file.size,
-								codec: item.codec ?? null,
-								trimSilence: item.trimSilence === true,
-							}),
-						item.durationSeconds,
-						(percent) => (item.progress = percent),
-					);
+					// The mix first (the take itself), then a multitrack take's sources one by one; progress spans them all.
+					const stems = item.stems ?? [];
+					const parts = 1 + stems.length;
+					let recordingId = item.savedId;
+					let takeNumber = item.savedTakeNumber ?? 0;
+					if (!recordingId) {
+						const file = new File([item.blob], `take-${item.localId}.${item.ext}`, {
+							type: item.mimeType,
+						});
+						const saved = await uploadRecordingFile(
+							file,
+							() =>
+								postJson<RecordingReservation>("/api/recordings", {
+									ideaId,
+									title: item.name,
+									filename: file.name,
+									sizeBytes: file.size,
+									codec: item.codec ?? null,
+									trimSilence: item.trimSilence === true,
+								}),
+							item.durationSeconds,
+							(percent) => (item.progress = percent / parts),
+						);
+						recordingId = saved.recordingId;
+						takeNumber = saved.takeNumber;
+						item.savedId = recordingId;
+						item.savedTakeNumber = takeNumber;
+						void persist(item);
+					}
+					for (let k = item.stemsDone ?? 0; k < stems.length; k++) {
+						const st = stems[k];
+						const file = new File([st.blob], `${st.label.toLowerCase()}.${st.ext}`, {
+							type: st.mimeType,
+						});
+						await uploadRecordingStemFile(
+							recordingId,
+							file,
+							{ label: st.label, sortOrder: k, codec: st.codec },
+							item.durationSeconds,
+							(percent) => (item.progress = ((k + 1) * 100 + percent) / parts),
+						);
+						item.stemsDone = k + 1;
+						void persist(item);
+					}
 					this.items = this.items.filter((i) => i.localId !== item.localId);
 					await forget(item.localId);
 					this.#onsaved({

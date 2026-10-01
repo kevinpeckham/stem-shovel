@@ -57,6 +57,17 @@ export function recordingPathname(accountId: string, recordingId: string, filena
 	return `accounts/${accountId}/recordings/${recordingId}.${ext}`;
 }
 
+/** Blob pathname for one source of a multitrack take, under its take (docs/demo-recording.md, "Multitrack takes"); a recording pathname to the handlers. */
+export function recordingStemPathname(
+	accountId: string,
+	recordingId: string,
+	stemId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/recordings/${recordingId}/${stemId}.${ext}`;
+}
+
 /** True for a recording's pathname (the upload handler and access checks route on it). */
 export const isRecordingPathname = (pathname: string) => pathname.includes("/recordings/");
 

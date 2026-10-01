@@ -125,6 +125,7 @@ const {
 	stem,
 	demo,
 	recording,
+	recordingStem,
 	idea,
 	beat,
 	pianoPreset,
@@ -233,7 +234,13 @@ export async function accountOfUploadPathname(pathname: string) {
 			where: eq(recording.pathname, pathname),
 			columns: { accountId: true },
 		});
-		return rec?.accountId ?? null;
+		if (rec) return rec.accountId;
+		// A multitrack take's source (docs/demo-recording.md, "Multitrack takes").
+		const st = await db.query.recordingStem.findFirst({
+			where: eq(recordingStem.pathname, pathname),
+			columns: { accountId: true },
+		});
+		return st?.accountId ?? null;
 	}
 	const midi = await db.query.stem.findFirst({
 		where: eq(stem.midiPathname, pathname),

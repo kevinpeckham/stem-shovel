@@ -80,6 +80,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 				codec: t.codec,
 				durationSeconds: t.durationSeconds,
 				createdAt: t.createdAt,
+				// A multitrack take's sources (docs/demo-recording.md, "Multitrack takes"), ready ones; empty for a stereo take.
+				stems: t.stems.map((s) => ({ id: s.id, label: s.label })),
 			})),
 		})),
 		projects,

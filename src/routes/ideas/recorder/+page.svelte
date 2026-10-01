@@ -148,6 +148,8 @@
 			// Private mode: the choice lasts for this page only.
 		}
 	}
+	/** Multitrack takes (docs/demo-recording.md, "Multitrack takes"): the mix plus a file per source; offered with an instrument in the take, stereo by default on every visit (Kevin). */
+	let multitrack = $state(false);
 	/** The piano goes into the take while it is out, unless switched off (its panel's header); remembered per browser. */
 	let pianoInTake = $state(true);
 	const PIANO_IN_TAKE_KEY = "stemshovel.recorder.piano-in-take";
@@ -414,6 +416,7 @@
 			codec: null,
 			durationSeconds: u.durationSeconds,
 			createdAt: new Date(u.createdAt),
+			stems: [],
 			pending: { status: u.status === "uploading" ? "uploading" : "waiting", progress: u.progress },
 		});
 		const known = new Set(data.ideas.map((i) => i.id));
@@ -529,12 +532,12 @@
 
 	// ---- a take into a song: one popover, two modes, one target ----
 	let songTarget = $state<{ id: string; label: string; ideaTitle: string } | null>(null);
-	let songMode = $state<"add" | "new">("add");
+	let songMode = $state<"add" | "new" | "stems">("add");
 	let songPanel = $state<HTMLDivElement | null>(null);
 	function songDialog(
 		i: { title: string },
 		t: { id: string; takeNumber: number; title: string },
-		mode: "add" | "new",
+		mode: "add" | "new" | "stems",
 	) {
 		songTarget = { id: t.id, label: `${i.title} · ${takeLabel(t)}`, ideaTitle: i.title };
 		songMode = mode;
@@ -841,6 +844,9 @@
 					ondeletetake={removeTake}
 					onaddtosong={(t) => idea && songDialog(idea, t, "add")}
 					onnewsong={(t) => idea && songDialog(idea, t, "new")}
+					onaddstems={(t) => idea && songDialog(idea, t, "stems")}
+					bind:multitrack
+					multitrackAvailable={drumsInTake || pianoInTake}
 					ondeleteidea={() => idea && removeIdea(idea)}
 					onnewidea={newIdea}
 					minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
@@ -1181,7 +1187,13 @@
 															onclick={() => show(i, t)}
 														>
 															<span class="inline-grid w-full grid-cols-1">
-																<span class="truncate">{takeLabel(t)}</span>
+																<span class="truncate"
+																	>{takeLabel(t)}{#if t.stems.length > 0}<span
+																			class="ml-2 text-11px opacity-70"
+																			title={t.stems.map((s) => s.label).join(", ")}
+																			>· {t.stems.length} stems</span
+																		>{/if}</span
+																>
 																<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
 															</span>
 															<span
@@ -1212,6 +1224,13 @@
 																		kind: "button",
 																		iconClass: "i-ph-plus",
 																		label: "Add as demo...",
+																	},
+																	{
+																		action: () => songDialog(i, t, "stems"),
+																		kind: "button",
+																		iconClass: "i-ph-stack",
+																		label: `Add ${t.stems.length} stems to song...`,
+																		condition: t.stems.length > 0,
 																	},
 																	{
 																		action: () => songDialog(i, t, "new"),
@@ -1259,7 +1278,13 @@
 		class="m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(36rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">{songMode === "add" ? "Add as demo" : "Create new song"}</h2>
+			<h2 class="heading-2 mb-0">
+				{songMode === "add"
+					? "Add as demo"
+					: songMode === "stems"
+						? "Add as stems"
+						: "Create new song"}
+			</h2>
 			<button
 				class="button button-xs"
 				type="button"

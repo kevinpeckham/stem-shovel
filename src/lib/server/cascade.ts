@@ -36,6 +36,7 @@ const {
 	project,
 	projectMember,
 	recording,
+	recordingStem,
 	session,
 	shareLink,
 	song,
@@ -80,6 +81,17 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 /** Ideas with their takes. */
 export async function deleteIdeaRows(ideaIds: string[]): Promise<void> {
 	if (ideaIds.length === 0) return;
+	const takes = await db
+		.select({ id: recording.id })
+		.from(recording)
+		.where(inArray(recording.ideaId, ideaIds));
+	if (takes.length > 0)
+		await db.delete(recordingStem).where(
+			inArray(
+				recordingStem.recordingId,
+				takes.map((t) => t.id),
+			),
+		);
 	await db.delete(recording).where(inArray(recording.ideaId, ideaIds));
 	await db.delete(idea).where(inArray(idea.id, ideaIds));
 }
@@ -123,6 +135,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	// Anything filed under the account that missed the tree above (a song without a project, a take without an idea).
 	const songs = await db.select({ id: song.id }).from(song).where(eq(song.accountId, accountId));
 	await deleteSongRows(songs.map((s) => s.id));
+	await db.delete(recordingStem).where(eq(recordingStem.accountId, accountId));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
 	await db.delete(beat).where(eq(beat.accountId, accountId));
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));

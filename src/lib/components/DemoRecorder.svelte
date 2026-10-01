@@ -43,6 +43,8 @@
 		/** alac, pcm, flac, opus, aac; null on takes from before it was recorded. */
 		codec: string | null;
 		durationSeconds: number | null;
+		/** A multitrack take's sources (docs/demo-recording.md, "Multitrack takes"); absent or empty on a stereo take. */
+		stems?: { id: string; label: string }[];
 	}
 	/** An instrument playing into the take: its capture stream, the name of its meter and the icon beside it. */
 	export interface InstrumentInput {
@@ -66,6 +68,8 @@
 			codec: string;
 			name: string;
 			durationSeconds: number;
+			/** A multitrack take's sources, in order (the microphone first); absent on a stereo take. */
+			stems?: { label: string; blob: Blob; mimeType: string; ext: string; codec: string }[];
 		}) => void;
 		/** The idea's title was edited (blur or Enter). */
 		ontitlechange: (title: string) => void;
@@ -76,6 +80,11 @@
 		/** The loaded take into a song (the page opens its popover). */
 		onaddtosong?: (take: Take) => void;
 		onnewsong?: (take: Take) => void;
+		/** A multitrack take's sources onto a song as stems. */
+		onaddstems?: (take: Take) => void;
+		/** Record the sources (microphone, each instrument) as files of their own beside the mix; the page offers it only with an instrument in the take, off by default each visit. */
+		multitrack?: boolean;
+		multitrackAvailable?: boolean;
 		/** Delete the whole idea (from the ⋯ menu). */
 		ondeleteidea?: () => void;
 		/** Start a new idea (from the ⋯ menu); `newIdeaDisabled` when there is nothing to leave. */
@@ -108,6 +117,9 @@
 		ondeletetake,
 		onaddtosong,
 		onnewsong,
+		onaddstems,
+		multitrack = $bindable(false),
+		multitrackAvailable = false,
 		ondeleteidea,
 		onnewidea,
 		newIdeaDisabled = false,
@@ -170,6 +182,14 @@
 	let recorder: MediaRecorder | null = null;
 	let chunks: Blob[] = [];
 	let format = $state<RecordingFormat | null>(null);
+	/** The sources of a multitrack take, set as the meter starts; each gets a MediaRecorder of its own started with the mix's. */
+	let sources: { label: string; stream: MediaStream }[] = [];
+	let sourceRecorders: {
+		label: string;
+		recorder: MediaRecorder;
+		chunks: Blob[];
+		done: Promise<void>;
+	}[] = [];
 	let ctx: AudioContext | null = null;
 	let analyser: AnalyserNode | null = null;
 	let meterFrame = 0;
@@ -289,6 +309,23 @@
 		};
 		recorder.onstop = () => void finishTake();
 		waveHistory = [];
+		// The sources' recorders start in the same tick as the mix's, so the files line up within a few milliseconds.
+		sourceRecorders = sources.map((src) => {
+			const r = new MediaRecorder(src.stream, {
+				mimeType: format!.mimeType,
+				...(format!.lossless ? {} : { audioBitsPerSecond: RECORDING_BITS_PER_SECOND }),
+			});
+			const parts: Blob[] = [];
+			r.ondataavailable = (e) => {
+				if (e.data.size > 0) parts.push(e.data);
+			};
+			const done = new Promise<void>((resolve) => {
+				r.onstop = () => resolve();
+				r.onerror = () => resolve();
+			});
+			r.start(1000);
+			return { label: src.label, recorder: r, chunks: parts, done };
+		});
 		recorder.start(1000);
 		runStart = performance.now();
 		lastLoudAt = runStart;
@@ -332,6 +369,7 @@
 		elapsed = (performance.now() - runStart) / 1000;
 		if (tick) clearInterval(tick);
 		tick = null;
+		for (const x of sourceRecorders) if (x.recorder.state !== "inactive") x.recorder.stop();
 		recorder.stop(); // finishTake() runs from onstop once the last chunk is in
 	}
 
@@ -343,6 +381,19 @@
 	}
 
 	async function finishTake() {
+		// The sources' last chunks land on their own stop events; gather them before the streams close.
+		await Promise.all(sourceRecorders.map((x) => x.done));
+		const stems = sourceRecorders
+			.map((x) => ({
+				label: x.label,
+				blob: new Blob(x.chunks, { type: format?.mimeType ?? "application/octet-stream" }),
+				mimeType: format?.mimeType ?? "application/octet-stream",
+				ext: format?.ext ?? "webm",
+				codec: (format?.codec ?? "opus").toLowerCase(),
+			}))
+			.filter((x) => x.blob.size > 0);
+		sourceRecorders = [];
+		sources = [];
 		stopStream();
 		const blob = new Blob(chunks, { type: format?.mimeType ?? "application/octet-stream" });
 		chunks = [];
@@ -382,6 +433,7 @@
 			codec: (format?.codec ?? "opus").toLowerCase(),
 			name: loaded.title,
 			durationSeconds: elapsed,
+			...(stems.length ? { stems } : {}),
 		});
 	}
 
@@ -573,6 +625,14 @@
 		analyser.fftSize = 1024;
 		let recorded = s;
 		const streams = instruments();
+		// Multitrack: every source on its own recorder beside the mix (docs/demo-recording.md, "Multitrack takes").
+		sources =
+			multitrack && streams.length
+				? [
+						{ label: "Microphone", stream: s },
+						...streams.map(({ label, stream }) => ({ label, stream })),
+					]
+				: [];
 		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
 			// Each instrument gets its own meter above the microphone's (Kevin), an AnalyserNode on its source alone.
@@ -876,10 +936,35 @@
 
 			<!-- input meter, playback controls, recording metadata  -->
 			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px @xl-min-h-80px">
+				<!-- stereo mix or multitrack (a file per source beside the mix), offered with an instrument in the take; locked while recording -->
+				{#if multitrackAvailable}
+					<div
+						class="mt-1 @xl-mt-3 flex items-center gap-2 text-12px"
+						role="group"
+						aria-label="Take format"
+					>
+						<button
+							class="device-button-sm {multitrack ? '' : 'text-accent'}"
+							type="button"
+							aria-pressed={!multitrack}
+							disabled={phase === "recording"}
+							title="One stereo file with everything mixed together"
+							onclick={() => (multitrack = false)}>Stereo</button
+						>
+						<button
+							class="device-button-sm {multitrack ? 'text-accent' : ''}"
+							type="button"
+							aria-pressed={multitrack}
+							disabled={phase === "recording"}
+							title="The mix plus a file of its own for the microphone and each instrument, so the take can go to a song as stems"
+							onclick={() => (multitrack = true)}>Multitrack</button
+						>
+					</div>
+				{/if}
 				<!-- a meter per instrument (the piano, the drums), while any play into the take -->
 				{#each instLevels as inst, i (i)}
 					<div
-						class="{i === 0
+						class="{i === 0 && !multitrackAvailable
 							? 'mt-1 @xl-mt-3'
 							: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 						role="meter"
@@ -903,7 +988,7 @@
 				{/each}
 				<!-- input meter -->
 				<div
-					class="{instLevels.length === 0
+					class="{instLevels.length === 0 && !multitrackAvailable
 						? 'mt-1 @xl-mt-3'
 						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"
@@ -1163,6 +1248,22 @@
 							kind: "button",
 							action: () => {
 								if (loaded) onnewsong?.(loaded);
+							},
+						},
+						{
+							id: "add-stems",
+							label: "Add Stems to Song",
+							iconClass: "i-ph-stack",
+							title: "The take's sources (microphone, piano, drums) onto a song as separate stems",
+							disabled: !(
+								onaddstems &&
+								phase === "saved" &&
+								loaded !== null &&
+								(loaded.stems?.length ?? 0) > 0
+							),
+							kind: "button",
+							action: () => {
+								if (loaded) onaddstems?.(loaded);
 							},
 						},
 						{

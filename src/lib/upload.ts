@@ -126,6 +126,45 @@ export async function uploadRecordingFile(
 	return { recordingId, takeNumber };
 }
 
+/** One source of a multitrack take (docs/demo-recording.md, "Multitrack takes"): reserve under the take, send the bytes to Blob, report the URL. */
+export async function uploadRecordingStemFile(
+	recordingId: string,
+	file: File,
+	source: { label: string; sortOrder: number; codec: string | null },
+	durationSeconds: number,
+	onProgress?: (percent: number) => void,
+): Promise<{ stemId: string }> {
+	const {
+		stemId,
+		pathname,
+		access = "public",
+	} = await postJson<{
+		stemId: string;
+		pathname: string;
+		access?: "public" | "private";
+	}>(`/api/recordings/${recordingId}/stems`, {
+		label: source.label,
+		sortOrder: source.sortOrder,
+		codec: source.codec,
+		filename: file.name,
+		sizeBytes: file.size,
+	});
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType: demoContentType(file.name) ?? undefined,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/recording-stems/${stemId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url, durationSeconds }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return { stemId };
+}
+
 /** A stem's MIDI file: reserve on the stem, send the bytes to Blob, report the URL. */
 export async function uploadMidiFile(
 	stemId: string,

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: multitrack takes** (docs/demo-recording.md, "Multitrack takes"). With an instrument in the take, the recorder offers **Stereo** (the default on every visit) or **Multitrack**: beside the mix, the microphone and each instrument are recorded to a file of their own (a MediaRecorder per source started in the same tick as the mix's, the same format), uploaded after the take as its sources (`recording_stem` table, migration 0064; `POST /api/recordings/[id]/stems` to reserve, `/api/recording-stems/[id]/ready`; kept in IndexedDB with the take, so a retry after a failed source does not save the take twice). The take lists with its source count, and **Add N stems to song…** in its menu (and the recorder's ⋯ menu) copies the sources onto a song in any account the user edits as stems with their labels (`addRecordingStemsToSong`, `copyRecordingStemsToSong`), the song's playback renditions following in the jobs function. Sources count against the account's storage and go with the take when it or its idea is deleted.
+
 ### Changed
 
 - **The Idea Recorder is the user's own page at `/ideas/recorder`** (docs/demo-recording.md). Ideas belong to the user, whichever account they were recorded in, and list together; the old `/[account]/ideas/recorder` and `/[account]/ideas` redirect, `?song=` kept. New takes are filed under the current account (the one neutral pages treat as the user's), where their storage counts, and a take can go to a song in any account the user edits (the song picker labels projects with the account's name when there is more than one). Ownership checks (`ownIdea`, `ownTake`, the take reservation, ready and upload-token routes) go by the user who recorded, not membership. `listUserIdeas`, `deleteEmptyIdeas(userId)`; `copyRecordingToSong` and `mergeIdeaNotesIntoSong` file the demo and the notes under the song's account.

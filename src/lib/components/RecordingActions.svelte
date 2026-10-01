@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { addRecordingToSong, newSongFromRecording } from "$lib/remote/recordings.remote";
+	import {
+		addRecordingStemsToSong,
+		addRecordingToSong,
+		newSongFromRecording,
+	} from "$lib/remote/recordings.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { goto } from "$app/navigation";
@@ -11,7 +15,8 @@
 	 * box is unticked. Either way the browser lands on the song.
 	 */
 	interface Props {
-		mode: "add" | "new";
+		/** "stems": a multitrack take's sources onto the song as stems (docs/demo-recording.md, "Multitrack takes"). */
+		mode: "add" | "new" | "stems";
 		/** The take, with a label for messages ("<idea> · Take 2 · slow"). */
 		take: { id: string; label: string; ideaTitle: string };
 		projects: { id: string; name: string; songs: { id: string; title: string }[] }[];
@@ -37,6 +42,12 @@
 	async function addTo(target: string) {
 		busy = true;
 		try {
+			if (mode === "stems") {
+				const { href, stems } = await addRecordingStemsToSong({ id: take.id, songId: target });
+				notify(`${take.label} added as ${stems} ${stems === 1 ? "stem" : "stems"}`);
+				await goto(href);
+				return;
+			}
 			const { href } = await addRecordingToSong({ id: take.id, songId: target, mergeNotes });
 			notify(`${take.label} added as a demo`);
 			await goto(href);
@@ -70,7 +81,7 @@
 
 {#if projects.length === 0}
 	<p class="text-sm opacity-90">No projects yet. Make a project first to put a take on a song.</p>
-{:else if mode === "add"}
+{:else if mode === "add" || mode === "stems"}
 	<form
 		class="grid gap-4"
 		onsubmit={(e) => {
@@ -123,13 +134,15 @@
 				</select>
 			</label>
 		</div>
-		<label class="flex items-center gap-2 text-sm">
-			<input type="checkbox" bind:checked={mergeNotes} />
-			Merge the idea's notes into the song's notes
-		</label>
+		{#if mode === "add"}
+			<label class="flex items-center gap-2 text-sm">
+				<input type="checkbox" bind:checked={mergeNotes} />
+				Merge the idea's notes into the song's notes
+			</label>
+		{/if}
 		<div>
 			<button class="button-accent" disabled={busy || !addSong}>
-				{busy ? "Adding…" : "Add as demo"}
+				{busy ? "Adding…" : mode === "stems" ? "Add as stems" : "Add as demo"}
 			</button>
 		</div>
 	</form>

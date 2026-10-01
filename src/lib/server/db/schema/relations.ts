@@ -16,6 +16,7 @@ import { beat } from "./beat";
 import { pianoPreset } from "./pianoPreset";
 import { idea } from "./idea";
 import { recording } from "./recording";
+import { recordingStem } from "./recordingStem";
 import { invitation } from "./invitation";
 import { inviteCode } from "./inviteCode";
 import { project } from "./project";
@@ -150,10 +151,15 @@ export const ideaRelations = relations(idea, ({ one, many }) => ({
 	takes: many(recording),
 }));
 
-export const recordingRelations = relations(recording, ({ one }) => ({
+export const recordingRelations = relations(recording, ({ one, many }) => ({
 	account: one(account, { fields: [recording.accountId], references: [account.id] }),
 	recorder: one(user, { fields: [recording.recordedBy], references: [user.id] }),
 	idea: one(idea, { fields: [recording.ideaId], references: [idea.id] }),
+	stems: many(recordingStem),
+}));
+
+export const recordingStemRelations = relations(recordingStem, ({ one }) => ({
+	recording: one(recording, { fields: [recordingStem.recordingId], references: [recording.id] }),
 }));
 
 export const demoRelations = relations(demo, ({ one }) => ({
