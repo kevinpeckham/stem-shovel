@@ -277,7 +277,11 @@ sliders:
   only the band's increase is added, in phase with it. Measured on a
   pulsing 55 Hz sawtooth: the fundamental up 2.8 dB at half and
   5.3 dB at full, everything from 110 Hz up unchanged within a
-  tenth of a decibel, and the peak sample up 3.2 dB.
+  tenth of a decibel, and the peak sample up 3.2 dB. Kevin, who used
+  the Type C for years, finds Air and Bottom useful without being the
+  unit's own sound, which is the honest summary: the unit's low-band
+  trick is a compressor, and a compressor without lookahead is not a
+  Web Audio node.
 
 ## Why nothing clicks
 
