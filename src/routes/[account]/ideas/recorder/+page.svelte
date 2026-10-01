@@ -99,6 +99,28 @@
 			void tuner?.start();
 		} else tuner?.stop();
 	}
+	/** The recorder device itself popped out into a panel (from lg), or docked back in its column; remembered per browser. */
+	let recorderFloating = $state(false);
+	const RECORDER_FLOATING_KEY = "stemshovel.recorder.recorder-floating";
+	function setRecorderFloating(on: boolean) {
+		recorderFloating = on;
+		try {
+			localStorage.setItem(RECORDER_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	/** The recordings list popped out into a panel (from lg), or docked back; remembered per browser. */
+	let recordingsFloating = $state(false);
+	const RECORDINGS_FLOATING_KEY = "stemshovel.recorder.recordings-floating";
+	function setRecordingsFloating(on: boolean) {
+		recordingsFloating = on;
+		try {
+			localStorage.setItem(RECORDINGS_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	/** The notes popped out of their column into a panel (from lg), or docked back; remembered per browser. */
 	let notesFloating = $state(false);
 	const NOTES_FLOATING_KEY = "stemshovel.recorder.notes-floating";
@@ -259,6 +281,8 @@
 			drumsInTake = localStorage.getItem(DRUMS_IN_TAKE_KEY) !== "0";
 			pianoInTake = localStorage.getItem(PIANO_IN_TAKE_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
+			recorderFloating = localStorage.getItem(RECORDER_FLOATING_KEY) === "1";
+			recordingsFloating = localStorage.getItem(RECORDINGS_FLOATING_KEY) === "1";
 		} catch {
 			// As above.
 		}
@@ -701,46 +725,75 @@
 			class="grid grid-cols-1 gap-6 place-content-start w-full xl-col-start-1 xl-row-start-1"
 			aria-label="Recorder"
 		>
-			<DemoRecorder
-				bind:this={recorder}
-				bind:ideaTitle
-				onphase={(p) => (phase = p)}
-				ontitlechange={titleChanged}
-				ontakename={takeNamed}
-				ondeletetake={removeTake}
-				onaddtosong={(t) => idea && songDialog(idea, t, "add")}
-				onnewsong={(t) => idea && songDialog(idea, t, "new")}
-				ondeleteidea={() => idea && removeIdea(idea)}
-				onnewidea={newIdea}
-				minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
-				quality={prefs.quality}
-				stereo={prefs.stereo}
-				inputId={prefs.inputId}
-				{instruments}
-				oninputs={(list) => (inputs = list)}
-				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
-				takes={idea?.takes ?? []}
-				onpick={(id) => {
-					const row = idea?.takes.find((x) => x.id === id);
-					if (idea && row) show(idea, row);
-				}}
-				onstart={() => {
-					takeId = null;
-					if (tunerOpen) void toggleTuner();
-				}}
-				onqueued={(t) => {
-					takeId = t.localId;
-					// The take lists at once, under its idea (or a pending group for a new one): unfold it.
-					openIdeas.add(ideaId ?? `pending:${t.localId}`);
-					queue.enqueue({
-						...t,
-						ideaId,
-						ideaTitle,
-						trimSilence: prefs.trimSilence,
-						createdAt: Date.now(),
-					});
-				}}
-			/>
+			<!-- The recorder device: docked at the top of its column, or popped out into a panel of its own from lg (Kevin:
+			     rearrange the screen however you want); one instance either way, so a take in progress is untouched. -->
+			<FloatingPanel
+				open={true}
+				floating={recorderFloating}
+				closable={false}
+				title="Idea Recorder"
+				storageKey="stemshovel.recorder.recorder-panel"
+				width={640}
+				height={640}
+				onminimise={() => setRecorderFloating(false)}
+			>
+				{#snippet controls()}
+					<button
+						class="button button-xs hidden lg-inline-flex"
+						type="button"
+						title={recorderFloating
+							? "Put the recorder back in its column"
+							: "Pop the recorder out into a panel"}
+						aria-label={recorderFloating ? "Dock the recorder" : "Pop out the recorder"}
+						onclick={() => setRecorderFloating(!recorderFloating)}
+					>
+						<span
+							class={recorderFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+							aria-hidden="true"
+						></span>
+					</button>
+				{/snippet}
+				<DemoRecorder
+					bind:this={recorder}
+					bind:ideaTitle
+					onphase={(p) => (phase = p)}
+					ontitlechange={titleChanged}
+					ontakename={takeNamed}
+					ondeletetake={removeTake}
+					onaddtosong={(t) => idea && songDialog(idea, t, "add")}
+					onnewsong={(t) => idea && songDialog(idea, t, "new")}
+					ondeleteidea={() => idea && removeIdea(idea)}
+					onnewidea={newIdea}
+					minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
+					quality={prefs.quality}
+					stereo={prefs.stereo}
+					inputId={prefs.inputId}
+					{instruments}
+					oninputs={(list) => (inputs = list)}
+					newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
+					takes={idea?.takes ?? []}
+					onpick={(id) => {
+						const row = idea?.takes.find((x) => x.id === id);
+						if (idea && row) show(idea, row);
+					}}
+					onstart={() => {
+						takeId = null;
+						if (tunerOpen) void toggleTuner();
+					}}
+					onqueued={(t) => {
+						takeId = t.localId;
+						// The take lists at once, under its idea (or a pending group for a new one): unfold it.
+						openIdeas.add(ideaId ?? `pending:${t.localId}`);
+						queue.enqueue({
+							...t,
+							ideaId,
+							ideaTitle,
+							trimSilence: prefs.trimSilence,
+							createdAt: Date.now(),
+						});
+					}}
+				/>
+			</FloatingPanel>
 
 			{#if drumsOpen || drumMachine.running}
 				<!-- The drums: in the take unless switched off (the beat's sound through the recorder's mix, as the piano's). -->
@@ -894,169 +947,186 @@
 			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2 xl-max-h-640px"
 			aria-label="Ideas"
 		>
-			<div class="flex flex-wrap items-center justify-between gap-3">
-				<h2 class="text-16px mb-1 font-500 leading-tight text-blue-100/90">Recordings</h2>
-				<div class="flex items-baseline gap-2">
-					<!-- <button
-						class="button button-xs"
+			<!-- The list in a docked panel with a pop-out from lg, as the recorder and the notes: the whole screen can be arranged (Kevin). -->
+			<FloatingPanel
+				open={true}
+				floating={recordingsFloating}
+				closable={false}
+				title="Recordings"
+				storageKey="stemshovel.recorder.recordings-panel"
+				width={560}
+				height={600}
+				onminimise={() => setRecordingsFloating(false)}
+			>
+				{#snippet controls()}
+					<button
+						class="button button-xs hidden lg-inline-flex"
 						type="button"
-						popovertarget="idea-search"
-						title="Search ideas and takes"
+						title={recordingsFloating
+							? "Put the recordings back in their column"
+							: "Pop the recordings out into a panel"}
+						aria-label={recordingsFloating ? "Dock the recordings" : "Pop out the recordings"}
+						onclick={() => setRecordingsFloating(!recordingsFloating)}
 					>
-						<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
-						Search Ideas
-					</button> -->
-				</div>
-			</div>
-			{#if ideasShown.length === 0}
-				<p
-					class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
-				>
-					Nothing recorded yet. Your ideas and their takes will list here.
-				</p>
-			{:else}
-				<ul
-					class="
-						max-h-[60vh]
-						min-h-64
-						overflow-y-auto
-						rounded
-						bg-slate-400
-						bg-gradient-to-br
-						from-slate-500/10
-						via-slate-500/60
-						to-slate-500/80
-						divide-y
-						divide-dark/30
-					  shadow-xl
-						shadow-oxford-800
-							{recorderBusy ? 'opacity-60' : ''}"
-				>
-					{#each ideasShown as i (i.id)}
-						<li>
-							<!--
-								An accordion and nothing more: the row only folds and unfolds; a take
-								loads. The set is the one source of truth (the native toggle is
-								cancelled): a toggle event lands after a re-render from an autosave
-								and the two would otherwise fight over the state.
-							-->
-							<details open={openIdeas.has(i.id)}>
-								<summary
-									class="
-										cursor-pointer
-										font-sans
-										grid
-										grid-cols-[auto_1fr_auto_auto]
-										items-center
-										gap-x-3
-										opacity-95
-										px-4
-										py-2.5
-										list-none
-										shadow
-										text-oxford
-										hover-opacity-100
-										[&::-webkit-details-marker]:hidden {i.id === ideaId || (i.pending && !ideaId)
-										? 'bg-blue-300/10'
-										: ''}"
-									onclick={(e) => {
-										e.preventDefault();
-										if (openIdeas.has(i.id)) openIdeas.delete(i.id);
-										else openIdeas.add(i.id);
-									}}
-								>
-									<span
-										class="i-ph-caret-right-bold inline-block text-1em opacity-90 {openIdeas.has(
-											i.id,
-										)
-											? 'rotate-90'
-											: ''}"
-										aria-hidden="true"
-									></span>
-									<span class="block truncate font-600 w-full font-sans w-full">{i.title}</span>
-									<span class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
-										>{i.takes.length}
-										{i.takes.length === 1 ? "take" : "takes"} | {formatDate(i.createdAt)}</span
-									>
-								</summary>
-								{#if i.takes.length > 0}
-									<ul
-										class="divide-y divide-dark/10 bg-blue-100/40 border-t border-t-dark/30 text-oxford"
-									>
-										{#each i.takes as t (t.id)}
-											<li
-												class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 shadow-inner {t.id ===
-												takeId
-													? 'bg-blue-300/15'
+						<span
+							class={recordingsFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+							aria-hidden="true"
+						></span>
+					</button>
+				{/snippet}
+				<div class="grid grid-cols-1 content-start gap-2">
+					{#if ideasShown.length === 0}
+						<p
+							class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
+						>
+							Nothing recorded yet. Your ideas and their takes will list here.
+						</p>
+					{:else}
+						<ul
+							class="
+							max-h-[60vh]
+							min-h-64
+							overflow-y-auto
+							rounded
+							bg-slate-400
+							bg-gradient-to-br
+							from-slate-500/10
+							via-slate-500/60
+							to-slate-500/80
+							divide-y
+							divide-dark/30
+						  shadow-xl
+							shadow-oxford-800
+								{recorderBusy ? 'opacity-60' : ''}"
+						>
+							{#each ideasShown as i (i.id)}
+								<li>
+									<!--
+									An accordion and nothing more: the row only folds and unfolds; a take
+									loads. The set is the one source of truth (the native toggle is
+									cancelled): a toggle event lands after a re-render from an autosave
+									and the two would otherwise fight over the state.
+								-->
+									<details open={openIdeas.has(i.id)}>
+										<summary
+											class="
+											cursor-pointer
+											font-sans
+											grid
+											grid-cols-[auto_1fr_auto_auto]
+											items-center
+											gap-x-3
+											opacity-95
+											px-4
+											py-2.5
+											list-none
+											shadow
+											text-oxford
+											hover-opacity-100
+											[&::-webkit-details-marker]:hidden {i.id === ideaId || (i.pending && !ideaId)
+												? 'bg-blue-300/10'
+												: ''}"
+											onclick={(e) => {
+												e.preventDefault();
+												if (openIdeas.has(i.id)) openIdeas.delete(i.id);
+												else openIdeas.add(i.id);
+											}}
+										>
+											<span
+												class="i-ph-caret-right-bold inline-block text-1em opacity-90 {openIdeas.has(
+													i.id,
+												)
+													? 'rotate-90'
 													: ''}"
+												aria-hidden="true"
+											></span>
+											<span class="block truncate font-600 w-full font-sans w-full">{i.title}</span>
+											<span
+												class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
+												>{i.takes.length}
+												{i.takes.length === 1 ? "take" : "takes"} | {formatDate(i.createdAt)}</span
 											>
-												<button
-													class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
-													type="button"
-													aria-current={t.id === takeId ? "true" : undefined}
-													disabled={recorderBusy || !!t.pending}
-													onclick={() => show(i, t)}
-												>
-													<span class="inline-grid w-full grid-cols-1">
-														<span class="truncate">{takeLabel(t)}</span>
-														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
-													</span>
-													<span
-														class="text-sm tabular-nums opacity-80 inline-flex h-full items-center gap-1"
+										</summary>
+										{#if i.takes.length > 0}
+											<ul
+												class="divide-y divide-dark/10 bg-blue-100/40 border-t border-t-dark/30 text-oxford"
+											>
+												{#each i.takes as t (t.id)}
+													<li
+														class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 shadow-inner {t.id ===
+														takeId
+															? 'bg-blue-300/15'
+															: ''}"
 													>
-														{#if t.pending}
-															<span class="i-ph-cloud-arrow-up animate-pulse" aria-hidden="true"
-															></span>
-															{t.pending.status === "uploading"
-																? `Saving… ${Math.round(t.pending.progress)}%`
-																: "Waiting…"}
-														{:else}
-															{t.durationSeconds !== null
-																? formatTime(t.durationSeconds, 0)
-																: "–:––"}
+														<button
+															class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
+															type="button"
+															aria-current={t.id === takeId ? "true" : undefined}
+															disabled={recorderBusy || !!t.pending}
+															onclick={() => show(i, t)}
+														>
+															<span class="inline-grid w-full grid-cols-1">
+																<span class="truncate">{takeLabel(t)}</span>
+																<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
+															</span>
+															<span
+																class="text-sm tabular-nums opacity-80 inline-flex h-full items-center gap-1"
+															>
+																{#if t.pending}
+																	<span class="i-ph-cloud-arrow-up animate-pulse" aria-hidden="true"
+																	></span>
+																	{t.pending.status === "uploading"
+																		? `Saving… ${Math.round(t.pending.progress)}%`
+																		: "Waiting…"}
+																{:else}
+																	{t.durationSeconds !== null
+																		? formatTime(t.durationSeconds, 0)
+																		: "–:––"}
+																{/if}
+															</span>
+														</button>
+														{#if !t.pending}
+															<ContextMenu
+																buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
+																popoverClasses="text-blue-100"
+																title="Take Menu"
+																ariaLabel="Menu for {takeLabel(t)}"
+																items={[
+																	{
+																		action: () => songDialog(i, t, "add"),
+																		kind: "button",
+																		iconClass: "i-ph-plus",
+																		label: "Add as demo...",
+																	},
+																	{
+																		action: () => songDialog(i, t, "new"),
+																		kind: "button",
+																		iconClass: "i-ph-music-notes-plus",
+																		label: "Create new song...",
+																	},
+																	{
+																		kind: "divider",
+																	},
+																	{
+																		action: () => removeTake(t),
+																		kind: "button",
+																		iconClass: "i-ph-trash",
+																		label: "Delete Take",
+																	},
+																]}
+															/>
 														{/if}
-													</span>
-												</button>
-												{#if !t.pending}
-													<ContextMenu
-														buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
-														popoverClasses="text-blue-100"
-														title="Take Menu"
-														ariaLabel="Menu for {takeLabel(t)}"
-														items={[
-															{
-																action: () => songDialog(i, t, "add"),
-																kind: "button",
-																iconClass: "i-ph-plus",
-																label: "Add as demo...",
-															},
-															{
-																action: () => songDialog(i, t, "new"),
-																kind: "button",
-																iconClass: "i-ph-music-notes-plus",
-																label: "Create new song...",
-															},
-															{
-																kind: "divider",
-															},
-															{
-																action: () => removeTake(t),
-																kind: "button",
-																iconClass: "i-ph-trash",
-																label: "Delete Take",
-															},
-														]}
-													/>
-												{/if}
-											</li>
-										{/each}
-									</ul>
-								{/if}
-							</details>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+													</li>
+												{/each}
+											</ul>
+										{/if}
+									</details>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			</FloatingPanel>
 		</section>
 
 		<!-- <p class="text-13px opacity-70 xl-col-span-2">

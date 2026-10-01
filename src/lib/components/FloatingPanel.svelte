@@ -1,3 +1,8 @@
+<script module lang="ts">
+	/** The stacking order the panels share: a click or focus inside a panel brings it above the others (Kevin). */
+	let topZ = 40;
+</script>
+
 <script lang="ts">
 	import type { Snippet } from "svelte";
 	import type { Attachment } from "svelte/attachments";
@@ -47,6 +52,11 @@
 
 	let x = $state(24);
 	let y = $state(96);
+	let z = $state(40);
+	function raise() {
+		if (z < topZ) z = ++topZ;
+		else if (z === 40) z = ++topZ;
+	}
 	// The props seed the size; from here the panel's own handle and the remembered place set it.
 	// svelte-ignore state_referenced_locally
 	let w = $state(width);
@@ -91,6 +101,7 @@
 		if (open && !placed) {
 			placed = true;
 			place();
+			raise();
 		}
 		if (!open) placed = false;
 	});
@@ -135,18 +146,30 @@
 			sizeTimer = null;
 		};
 	};
+	// The browser's resize handle writes the size into the element's own style, which would hold when the
+	// panel docks back into the page (Kevin: a docked panel goes back to its original size): docking clears it.
+	const undocked: Attachment<HTMLElement> = (node) => {
+		if (!floating) {
+			node.style.width = "";
+			node.style.height = "";
+		}
+	};
 </script>
 
 {#if open}
 	<div
 		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {floating
-			? 'lg-fixed lg-z-40 lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
+			? 'lg-fixed lg-z-[var(--fp-z)] lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
 			: ''}"
 		style:--fp-x="{x}px"
 		style:--fp-y="{y}px"
 		style:--fp-w="{w}px"
 		style:--fp-h="{h}px"
+		style:--fp-z={z}
 		{@attach sized}
+		{@attach undocked}
+		onpointerdowncapture={raise}
+		onfocusincapture={raise}
 		aria-label={title}
 		role="dialog"
 	>
@@ -161,7 +184,10 @@
 			{onpointerup}
 			onpointercancel={onpointerup}
 		>
-			<span class="i-ph-dots-six-vertical opacity-50 hidden lg-inline-block" aria-hidden="true"
+			<!-- The grip shows only where the panel can be dragged: floating, from lg (docked it misled). -->
+			<span
+				class="i-ph-dots-six-vertical opacity-50 hidden {floating ? 'lg-inline-block' : ''}"
+				aria-hidden="true"
 			></span>
 			<span class="font-600 text-14px grow">{title}</span>
 			{@render controls?.()}

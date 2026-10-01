@@ -691,6 +691,7 @@
 
 <div
 	class="
+		@container
 		rounded
 		device-chrome
 		grid
@@ -700,14 +701,14 @@
 		pt-2
 		pb-3
 		px-3
-		sm-border-current/40
-		sm-gap-4
-		sm-pt-5
-		sm-px-5
-		sm-py-5"
+		@xl-border-current/40
+		@xl-gap-4
+		@xl-pt-5
+		@xl-px-5
+		@xl-py-5"
 >
 	<!-- the idea's title and, once there is a take, its number and name -->
-	<div class="grid grid-cols-[1fr_auto] sm-grid-cols-1 gap-2 sm-gap-3 max-w-60ch">
+	<div class="grid grid-cols-[1fr_auto] @xl-grid-cols-1 gap-2 @xl-gap-3 max-w-60ch">
 		<!-- idea name -->
 		<label class="block device-window-bevel-md">
 			<span class="sr-only">Idea Title</span>
@@ -727,7 +728,7 @@
 			/>
 		</label>
 		<!-- take number and name -->
-		<div class="grid grid-cols-1 sm-grid-cols-[auto_1fr] items-center sm-gap-2">
+		<div class="grid grid-cols-1 @xl-grid-cols-[auto_1fr] items-center @xl-gap-2">
 			<!-- Take Number -->
 			<div class="device-window-bevel-md">
 				<span
@@ -755,7 +756,7 @@
 			</div>
 
 			<!-- Take Name -->
-			<div class="hidden sm-block device-window-bevel-md">
+			<div class="hidden @xl-block device-window-bevel-md">
 				<input
 					class="device-field min-w-full"
 					type="text"
@@ -783,13 +784,13 @@
 	</div>
 
 	<!-- screen -->
-	<div class="device-window-bevel-md mb-1 sm-mb-0">
+	<div class="device-window-bevel-md mb-1 @xl-mb-0">
 		<div class="device-screen leading-none grid gap-4 relative rounded-md overflow-hidden">
 			<!-- the clock and status indicator -->
-			<div class="rounded-md flex justify-between items-center gap-2 h-20px sm-h-auto">
+			<div class="rounded-md flex justify-between items-center gap-2 h-20px @xl-h-auto">
 				<!-- clock -->
 				<div
-					class="font-mono text-20px sm-text-34px md-text-38px lg-text-44px leading-none tabular-nums"
+					class="font-mono text-20px @xl-text-34px @2xl-text-38px @4xl-text-44px leading-none tabular-nums"
 					aria-live="off"
 				>
 					{formatTime(hasTake ? playhead : elapsed, 1)}{#if hasTake}<span
@@ -802,7 +803,7 @@
 				<div class="flex items-center gap-2 justify-end text-0.9em">
 					<!-- looping indicator (mobile-only) -->
 					<span
-						class="sm-hidden i-ph-arrows-clockwise-fill {loopMode === 'looping'
+						class="@xl-hidden i-ph-arrows-clockwise-fill {loopMode === 'looping'
 							? 'bg-yellow-500'
 							: 'bg-blue-100/10'}"
 					></span>
@@ -851,11 +852,11 @@
 			/>
 
 			<!-- input meter, playback controls, recording metadata  -->
-			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px sm-min-h-80px">
+			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px @xl-min-h-80px">
 				<!-- the instruments' meter (the piano, the drums), while any play into the take -->
 				{#if instLevel !== null}
 					<div
-						class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+						class="mt-1 @xl-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 						role="meter"
 						aria-label="Instruments level"
 						aria-valuemin="0"
@@ -874,7 +875,7 @@
 				<!-- input meter -->
 				<div
 					class="{instLevel === null
-						? 'mt-1 sm-mt-3'
+						? 'mt-1 @xl-mt-3'
 						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"
 					aria-label="Input level"
@@ -932,7 +933,7 @@
 				{/if}
 			</div>
 
-			<div class="hidden sm-flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
+			<div class="hidden @xl-flex items-center gap-3 justify-end bottom-2.5 right-3 font-mono">
 				<!-- loop status -->
 				<div
 					class="i-ph-arrows-clockwise-fill {loopMode === 'looping'
@@ -942,7 +943,7 @@
 
 				<!-- volume -->
 				<div
-					class="max-w-fit hidden sm-block text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
+					class="max-w-fit hidden @xl-block text-blue-100/80 border border-current/10 bg-current/10 rounded px-2 py-1 tabular-nums font-mono text-0.85em {loaded
 						? ''
 						: 'opacity-10'}"
 				>
@@ -1043,7 +1044,7 @@
 		</div>
 
 		<div
-			class="hidden sm-block ml-2 text-12px text-oxford uppercase text-shadow opacity-90 font-600 select-none pointer-events-none"
+			class="hidden @xl-block ml-2 text-12px text-oxford uppercase text-shadow opacity-90 font-600 select-none pointer-events-none"
 		>
 			SS Recorder 001
 		</div>
@@ -1052,7 +1053,7 @@
 		<div class="ml-auto flex gap-3">
 			<!-- volume up and down -->
 			<!-- Phones keep playback volume on the hardware buttons (iOS ignores a software control), so this is for larger screens. -->
-			<div class="hidden sm-grid device-window-bezel-sm grid-cols-2 gap-x-1 gap-y-0">
+			<div class="hidden @xl-grid device-window-bezel-sm grid-cols-2 gap-x-1 gap-y-0">
 				<button
 					class="device-button-bump-down !max-w-fit !min-w-fit text-slate-800"
 					type="button"

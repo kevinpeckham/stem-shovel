@@ -359,6 +359,35 @@ remembered) and the button docks it back; `floating` on
 `stemshovel.recorder.notes-floating`. One editor instance either way,
 so nothing is remounted and no draft is lost.
 
+**The recorder itself** sits in the same docked, non-closable panel at
+the top of its column, with a pop-out button from lg (Kevin: rearrange
+the screen however you want); popped out it floats like the rest, and
+the button docks it back; `stemshovel.recorder.recorder-floating`. One
+instance either way, so a take in progress is untouched by the move.
+
+**The recordings list** gets the same docked panel with a pop-out, the
+last widget on the page (Kevin: the screen fully malleable);
+`stemshovel.recorder.recordings-floating`.
+
+**Docking restores the size**: the browser's `resize` handle writes the
+size into the element's inline style, which would hold once the panel was
+docked back into its column (Kevin: it should go back to its original
+size), so an attachment clears the inline width and height whenever
+`floating` is off; the remembered size still applies on the next pop-out
+through the CSS variables. The drag grip shows only when the panel is
+floating at lg (docked, it misled).
+
+**Stacking**: the panels share a counter in `FloatingPanel`'s module
+script; opening a panel, a pointer down anywhere in it or focus moving
+into it raises it above the others (Kevin), through a CSS variable the
+`lg-z-` class reads. The instruments' own menus are popovers in the top
+layer, above every panel regardless.
+
+**The recorder device on container queries** (Kevin): `DemoRecorder`'s
+breakpoint classes are `@xl-`, `@2xl-`, `@4xl-` with the device root the
+`@container`, so the device lays itself out by its panel or column, not
+the window, as the piano and drum machine do.
+
 **The space bar**: it is wanted by the drums (play / stop), the piano
 (the sustain pedal) and any focused button (activation). The page keeps
 a `spaceOwner`, the instrument touched last: the drum panel takes it as
