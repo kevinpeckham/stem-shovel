@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-10-01
+
 ### Added
 
 - **Drum machine: a master volume** (docs/drum-machine.md, "Master volume"): a Volume slider beside Humanize (in the tempo menu on a phone), a listening choice remembered per browser and not part of the beat, the link or the WAV.
