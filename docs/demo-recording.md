@@ -321,10 +321,38 @@ lifts the quiet parts.
 Kevin's ask: on a desktop, the full drum machine in a floating panel
 over the recorder page, dragged by its header, resized by the browser's
 corner handle, its place and size remembered per browser
-(`FloatingPanel.svelte`, `stemshovel.recorder.drum-panel`); a button
-beside the toolbar's compact drum control (from lg) opens it, and
-Minimise in its header, or the same button, puts it away; the compact
-control stays as the minimised form, as before. The panel's body is a
+(`FloatingPanel.svelte`, `stemshovel.recorder.drum-panel`). From lg the
+toolbar's drum button opens and closes it (lit while the beat plays with
+the panel closed); below lg the compact control (play, stop, tempo)
+stays as on a phone (Kevin: one button on a desktop, the old experience
+on phones and at sm and md).
+
+**The piano** has the same panel from lg (Kevin), its "Piano in the take"
+switch in the header (as the drums', remembered under
+`stemshovel.recorder.piano-in-take`); the microphone's own switch is a
+mute button beside its meter on the recorder's screen (its tracks
+disabled, so a take records the instruments alone; on by default and
+back on with every page, so no one records silence by accident), which
+replaced the piano's "Microphone in the take"; below lg the same `FloatingPanel` docks in
+the page's flow under the recorder, full width with its header, so one
+piano instance serves both (the panel's place, size, drag and `fixed`
+come through `lg-` variants and CSS variables, nothing in JavaScript
+asks the window's width).
+
+**The space bar**: it is wanted by the drums (play / stop), the piano
+(the sustain pedal) and any focused button (activation). The page keeps
+a `spaceOwner`, the instrument touched last: the drum panel takes it as
+it opens or on a click inside, the piano as it opens or on a click on
+it, and each instrument's `keyboard` prop is on only while it owns the
+key; the toolbar buttons blur themselves after a click, so a focused
+one never swallows the key (the first symptom: space closed the panel
+because its toggle still had focus). Text fields keep the key, as the
+instruments' own handlers already check.
+
+**The instruments' meter**: while any instrument plays into the take, a
+second meter above the microphone's reads their sum alone (a second
+AnalyserNode on the instrument sources; Kevin), so a quiet piano or a
+loud beat shows beside the voice. The panel's body is a
 `@container`, so the machine lays itself out by the panel's width (the
 piano's and drum machine's container-query work was for this). The
 panel's drum machine has the account's saved beats and Text-to-Beat.

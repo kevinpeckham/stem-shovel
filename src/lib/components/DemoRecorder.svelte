@@ -48,8 +48,7 @@
 		ideaTitle: string;
 		/** The instruments' sound (the piano's and the drum machine's capture streams) mixed into the take with the microphone; asked as a take starts (a gesture), so a beat started after Record still goes in. */
 		instruments?: () => MediaStream[];
-		/** With an instrument in the mix, whether the microphone is too (off for a clean instrument take). */
-		micInMix?: boolean;
+
 		/** A stopped take, with its audio: the page queues the upload. */
 		onqueued: (take: {
 			localId: string;
@@ -114,7 +113,6 @@
 		inputId = null,
 		oninputs,
 		instruments = () => [],
-		micInMix = true,
 	}: Props = $props();
 	/** What the take is really being recorded as, from the track and the recorder. */
 	let formatLine = $state<string | null>(null);
@@ -126,6 +124,16 @@
 	let phase = $state<Phase>("idle");
 	let elapsed = $state(0);
 	let level = $state(0);
+	/** The microphone muted (the button beside its meter): its tracks disabled, so a take records the instruments alone; on by default, and back on with every page (Kevin). */
+	let micMuted = $state(false);
+	function setMicMuted(muted: boolean) {
+		micMuted = muted;
+		for (const t of stream?.getAudioTracks() ?? []) t.enabled = !muted;
+	}
+	/** The instruments' level (the piano, the drums) on their own, beside the microphone's; null with none in the mix. */
+	let instLevel = $state<number | null>(null);
+	let instAnalyser: AnalyserNode | null = null;
+	let instBuf: Float32Array<ArrayBuffer> | null = null;
 	let peak = $state(0);
 	let notice = $state<string | null>(null);
 	let inputLabel = $state<string | null>(null);
@@ -542,9 +550,9 @@
 	/**
 	 * The meter, and the stream the recorder takes: the microphone alone, or,
 	 * with instruments playing into the take (the piano, the drums), all of
-	 * them mixed in this context into a MediaStreamDestination, the
-	 * microphone left out of the mix when the page says so. The meter reads
-	 * the mix.
+	 * them mixed in this context into a MediaStreamDestination; the
+	 * microphone's tracks are disabled while it is muted (silence in the
+	 * take and on its meter). The meter reads the mix.
 	 */
 	function startMeter(s: MediaStream): MediaStream {
 		ctx = new AudioContext();
@@ -555,15 +563,22 @@
 		const streams = instruments();
 		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
+			// The instruments' own meter, beside the microphone's (Kevin), reads their sum alone.
+			instAnalyser = ctx.createAnalyser();
+			instAnalyser.fftSize = 1024;
+			instBuf = new Float32Array(instAnalyser.fftSize);
+			instLevel = 0;
 			for (const stream of streams) {
 				const inst = ctx.createMediaStreamSource(stream);
 				inst.connect(mix);
 				inst.connect(analyser);
+				inst.connect(instAnalyser);
 			}
-			if (micInMix) source.connect(mix);
+			source.connect(mix);
 			recorded = mix.stream;
 		}
-		if (!streams.length || micInMix) source.connect(analyser); // not to the destination: no monitoring through the speaker
+		source.connect(analyser); // not to the destination: no monitoring through the speaker
+		for (const t of s.getAudioTracks()) t.enabled = !micMuted;
 		meterBuf = new Float32Array(analyser.fftSize);
 		let hold = 0;
 		const loop = () => {
@@ -594,12 +609,21 @@
 			if (Math.abs(x) > max) max = Math.abs(x);
 		}
 		level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
+		if (instAnalyser && instBuf) {
+			instAnalyser.getFloatTimeDomainData(instBuf);
+			let s2 = 0;
+			for (const x of instBuf) s2 += x * x;
+			instLevel = Math.min(1, Math.sqrt(s2 / instBuf.length) * 3);
+		}
 		return max;
 	}
 
 	function stopStream() {
 		cancelAnimationFrame(meterFrame);
 		analyser = null;
+		instAnalyser = null;
+		instBuf = null;
+		instLevel = null;
 		void ctx?.close();
 		ctx = null;
 		for (const t of stream?.getTracks() ?? []) t.stop();
@@ -828,17 +852,56 @@
 
 			<!-- input meter, playback controls, recording metadata  -->
 			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px sm-min-h-80px">
+				<!-- the instruments' meter (the piano, the drums), while any play into the take -->
+				{#if instLevel !== null}
+					<div
+						class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+						role="meter"
+						aria-label="Instruments level"
+						aria-valuemin="0"
+						aria-valuemax="100"
+						aria-valuenow={Math.round(instLevel * 100)}
+					>
+						<span class="i-ph-piano-keys flex" aria-hidden="true"></span>
+						<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
+							<div
+								class="h-full rounded {instLevel > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
+								style:width="{instLevel * 100}%"
+							></div>
+						</div>
+					</div>
+				{/if}
 				<!-- input meter -->
 				<div
-					class="mt-1 sm-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+					class="{instLevel === null
+						? 'mt-1 sm-mt-3'
+						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"
 					aria-label="Input level"
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={Math.round(level * 100)}
 				>
-					<span class="i-ph-microphone flex" aria-hidden="true"></span>
-					<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
+					<button
+						class="flex items-center justify-center -m-1 p-1 rounded hover-bg-blue-300/10 {micMuted
+							? 'text-red-400'
+							: ''}"
+						type="button"
+						aria-pressed={micMuted}
+						title={micMuted
+							? "Unmute the microphone"
+							: "Mute the microphone (the take records the instruments alone)"}
+						aria-label={micMuted ? "Unmute the microphone" : "Mute the microphone"}
+						onclick={() => setMicMuted(!micMuted)}
+					>
+						<span class={micMuted ? "i-ph-microphone-slash" : "i-ph-microphone"} aria-hidden="true"
+						></span>
+					</button>
+					<div
+						class="relative h-3 overflow-hidden rounded bg-blue-300/10 {micMuted
+							? 'opacity-40'
+							: ''}"
+					>
 						<div
 							class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-accent'}"
 							style:width="{level * 100}%"

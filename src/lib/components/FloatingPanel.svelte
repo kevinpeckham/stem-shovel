@@ -11,6 +11,10 @@
 	 * `storageKey`. Opening clamps it into the viewport, so a panel left off
 	 * a wider screen is reachable on a narrower one. The body is a
 	 * `@container`, so what it holds lays itself out by the panel's width.
+	 * Below the lg breakpoint the same panel docks: a block in the page's
+	 * flow where it is rendered, full width, the header kept (the piano under
+	 * the recorder on a phone), the place and size classes and the drag only
+	 * taking effect from lg, through variants, so one instance serves both.
 	 */
 	interface Props {
 		open: boolean;
@@ -88,7 +92,10 @@
 	// Dragging by the header.
 	let drag: { dx: number; dy: number } | null = null;
 	function onpointerdown(e: PointerEvent) {
-		if ((e.target as HTMLElement).closest("button, input, select, a")) return;
+		if ((e.target as HTMLElement).closest("button, input, select, a, label")) return;
+		// Docked (below lg) there is nothing to drag.
+		const panel = (e.currentTarget as HTMLElement).parentElement;
+		if (panel && getComputedStyle(panel).position !== "fixed") return;
 		drag = { dx: e.clientX - x, dy: e.clientY - y };
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		e.preventDefault();
@@ -107,8 +114,9 @@
 	let sizeTimer: ReturnType<typeof setTimeout> | null = null;
 	const sized: Attachment<HTMLElement> = (node) => {
 		const ro = new ResizeObserver(() => {
-			// The outer size (the border counts, as the style does); a reading under the minimum is the panel on its way out.
-			if (!node.isConnected || node.offsetWidth < 480 || node.offsetHeight < 320) return;
+			// The outer size (the border counts, as the style does); a reading under the minimum is the panel on its way out; docked, the size is the page's.
+			if (!node.isConnected || getComputedStyle(node).position !== "fixed") return;
+			if (node.offsetWidth < 480 || node.offsetHeight < 320) return;
 			w = node.offsetWidth;
 			h = node.offsetHeight;
 			if (sizeTimer) clearTimeout(sizeTimer);
@@ -125,11 +133,11 @@
 
 {#if open}
 	<div
-		class="fixed z-40 grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-2xl shadow-black/60 overflow-hidden resize min-w-480px min-h-320px max-w-[calc(100vw-16px)] max-h-[calc(100vh-16px)]"
-		style:left="{x}px"
-		style:top="{y}px"
-		style:width="{w}px"
-		style:height="{h}px"
+		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden lg-fixed lg-z-40 lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]"
+		style:--fp-x="{x}px"
+		style:--fp-y="{y}px"
+		style:--fp-w="{w}px"
+		style:--fp-h="{h}px"
 		{@attach sized}
 		aria-label={title}
 		role="dialog"
@@ -137,23 +145,24 @@
 		<!-- The drag handle is a pointer affordance; the toolbar button and Minimise cover the keyboard. -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<header
-			class="flex items-center gap-3 px-3 py-2 border-b border-current/10 bg-oxford-800 cursor-move select-none touch-none"
+			class="flex items-center gap-3 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none lg-cursor-move lg-touch-none"
 			{onpointerdown}
 			{onpointermove}
 			{onpointerup}
 			onpointercancel={onpointerup}
 		>
-			<span class="i-ph-dots-six-vertical opacity-50" aria-hidden="true"></span>
+			<span class="i-ph-dots-six-vertical opacity-50 hidden lg-inline-block" aria-hidden="true"
+			></span>
 			<span class="font-600 text-14px grow">{title}</span>
 			{@render controls?.()}
 			<button
 				class="button button-xs"
 				type="button"
-				title="Minimise to the toolbar"
-				aria-label="Minimise {title}"
+				title="Close"
+				aria-label="Close {title}"
 				onclick={onminimise}
 			>
-				<span class="i-ph-arrows-in-simple" aria-hidden="true"></span>
+				<span class="i-ph-x" aria-hidden="true"></span>
 			</button>
 		</header>
 		<div class="@container min-h-0 overflow-auto p-3">
