@@ -496,7 +496,12 @@ boom bap; `drumPresetProject` already spread a preset's `fx` over the
 defaults and a replace-mode load swaps the whole project, so loading a
 preset resets the effects to its own (adding one as a pattern leaves the
 effects alone). The test holds every preset to a room or an echo, reverb
-at most 50 %, delay at most 40 %.
+at most 50 %, delay at most 40 %. The hip-hop and dance presets (boom
+bap, trap, house, techno, drum and bass, half-time, the one drop) carry
+`toneBottom` too, and disco, pop and funk a touch of `toneAir` (Kevin,
+2026-10-01); the generator's hip-hop, house, half-time and breakbeat
+styles bring bottom, pop and funk air, and Text-to-Beat's prompt names
+"bottom", "air" and "tilt" with the styles each suits.
 
 ## Tone (2026-10-01)
 

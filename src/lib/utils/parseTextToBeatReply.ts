@@ -90,6 +90,11 @@ function replyFx(fx: TextToBeatReply["fx"]): Partial<DrumFx> | null {
 	if (fuzz !== undefined) out.fuzzDrive = fuzz;
 	const wah = unit(fx.wah);
 	if (wah !== undefined) out.wahMix = wah;
+	if (fx.tilt !== null && fx.tilt !== undefined) out.toneTilt = Math.round(fx.tilt) / 100;
+	const air = unit(fx.air);
+	if (air !== undefined) out.toneAir = air;
+	const bottom = unit(fx.bottom);
+	if (bottom !== undefined) out.toneBottom = bottom;
 	const time = DRUM_DELAY_TIMES.find((d) => d.label === fx.delayTime);
 	if (time) out.delayTime = time.steps;
 	return Object.keys(out).length ? out : null;

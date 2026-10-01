@@ -35,6 +35,10 @@ export const TextToBeatReplySchema = v.object({
 				delayTime: v.optional(v.nullable(v.picklist(DRUM_DELAY_TIMES.map((d) => d.label)))),
 				fuzz: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
 				wah: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+				/** Tone: tilt -100 dark to 100 bright, air and bottom as percentages. */
+				tilt: v.optional(v.nullable(v.pipe(v.number(), v.minValue(-100), v.maxValue(100)))),
+				air: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+				bottom: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
 			}),
 		),
 	),

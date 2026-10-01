@@ -44,6 +44,13 @@ describe("parseTextToBeatReply", () => {
 			16,
 		);
 		expect(r.fx).toEqual({ reverbReturn: 0.3, delayReturn: 0.35, fuzzDrive: 0, delayTime: 3 });
+		expect(
+			parseTextToBeatReply(
+				'{"fx": {"bottom": 40, "air": 15, "tilt": -20}, "rows": [{"voice": "kick", "cells": "x..............."}]}',
+				"4/4",
+				16,
+			).fx,
+		).toEqual({ toneBottom: 0.4, toneAir: 0.15, toneTilt: -0.2 });
 		const dry = parseTextToBeatReply(
 			'{"rows": [{"voice": "kick", "cells": "x..............."}]}',
 			"4/4",

@@ -83,7 +83,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Half-time",
 		style: "Rock",
 		bpm: 90,
-		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6 },
+		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6, toneBottom: 0.3 },
 		kit: "acoustic",
 		patterns: [
 			[
@@ -115,7 +115,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Pop backbeat",
 		style: "Pop and funk",
 		bpm: 112,
-		fx: { reverbReturn: 0.3, delayReturn: 0.15, delayTime: 3 },
+		fx: { reverbReturn: 0.3, delayReturn: 0.15, delayTime: 3, toneAir: 0.15 },
 		kit: "acoustic",
 		patterns: [
 			[
@@ -147,7 +147,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Funk",
 		style: "Pop and funk",
 		bpm: 104,
-		fx: { reverbReturn: 0.1 },
+		fx: { reverbReturn: 0.1, toneAir: 0.15 },
 		swing: 0.15,
 		kit: "acoustic",
 		patterns: [
@@ -164,7 +164,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Disco",
 		style: "Pop and funk",
 		bpm: 122,
-		fx: { reverbReturn: 0.3, delayReturn: 0.1, delayTime: 2 },
+		fx: { reverbReturn: 0.3, delayReturn: 0.1, delayTime: 2, toneAir: 0.2 },
 		kit: "acoustic",
 		patterns: [
 			[
@@ -182,7 +182,14 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Boom bap",
 		style: "Hip-hop and electronic",
 		bpm: 92,
-		fx: { reverbReturn: 0.15, delayReturn: 0.1, delayTime: 3, delayAnalog: true, fuzzDrive: 0.1 },
+		fx: {
+			reverbReturn: 0.15,
+			delayReturn: 0.1,
+			delayTime: 3,
+			delayAnalog: true,
+			fuzzDrive: 0.1,
+			toneBottom: 0.4,
+		},
 		swing: 0.35,
 		humanize: 0.2,
 		kit: "acoustic",
@@ -200,7 +207,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Trap",
 		style: "Hip-hop and electronic",
 		bpm: 140,
-		fx: { reverbReturn: 0.2, delayReturn: 0.2, delayTime: 2 },
+		fx: { reverbReturn: 0.2, delayReturn: 0.2, delayTime: 2, toneBottom: 0.5 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -216,7 +223,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "House",
 		style: "Hip-hop and electronic",
 		bpm: 124,
-		fx: { reverbReturn: 0.15, delayReturn: 0.25, delayTime: 3 },
+		fx: { reverbReturn: 0.15, delayReturn: 0.25, delayTime: 3, toneBottom: 0.4 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -233,7 +240,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Techno",
 		style: "Hip-hop and electronic",
 		bpm: 132,
-		fx: { reverbReturn: 0.1, delayReturn: 0.3, delayTime: 3, delayAnalog: true },
+		fx: { reverbReturn: 0.1, delayReturn: 0.3, delayTime: 3, delayAnalog: true, toneBottom: 0.4 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -250,7 +257,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Drum and bass",
 		style: "Hip-hop and electronic",
 		bpm: 174,
-		fx: { reverbReturn: 0.2, delayReturn: 0.15, delayTime: 4 },
+		fx: { reverbReturn: 0.2, delayReturn: 0.15, delayTime: 4, toneBottom: 0.4 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -267,7 +274,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Reggae one drop",
 		style: "World",
 		bpm: 76,
-		fx: { reverbReturn: 0.3, delayReturn: 0.35, delayTime: 3, delayAnalog: true },
+		fx: { reverbReturn: 0.3, delayReturn: 0.35, delayTime: 3, delayAnalog: true, toneBottom: 0.3 },
 		kit: "acoustic",
 		patterns: [
 			[
