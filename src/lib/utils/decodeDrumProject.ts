@@ -9,6 +9,7 @@ import {
 	DRUM_STEP_CHOICES_V2,
 	DRUM_SWING_GRIDS,
 	DRUM_VOICE_IDS,
+	DRUM_WAH_BAR_CHOICES,
 } from "$lib/constants/drumMachine";
 import {
 	DrumProjectSchema,
@@ -39,6 +40,7 @@ export function decodeDrumProject(encoded: string): DrumProject | null {
 		if (version === 5) return decodeV5(r);
 		if (version === 6) return decodeV6(r);
 		if (version === 7) return decodeV7(r);
+		if (version === 8) return decodeV8(r);
 		return null;
 	} catch {
 		return null;
@@ -74,8 +76,8 @@ function decodeV1(r: BitReader): DrumProject | null {
 	return parsed.success ? upgradeDrumProject(parsed.output) : null;
 }
 
-/** Versions 2 to 7 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid, 5 the effects, 6 the timeline, 7 the analog delay and the fuzz. */
-function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5 | 6 | 7): DrumProject | null {
+/** Versions 2 to 8 share a shape; 3 adds the meter and a wider steps field, 4 the swing grid, 5 the effects, 6 the timeline, 7 the analog delay and the fuzz, 8 the wah. */
+function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5 | 6 | 7 | 8): DrumProject | null {
 	const bpm = r.read(8) + DRUM_BPM_MIN;
 	const swing = r.read(7) / 100;
 	const humanize = r.read(7) / 100;
@@ -94,6 +96,14 @@ function decodeProject(r: BitReader, version: 2 | 3 | 4 | 5 | 6 | 7): DrumProjec
 								delayAnalog: r.read(1) === 1,
 								fuzzDrive: r.read(7) / 100,
 								fuzzTone: r.read(7) / 100,
+							}
+						: {}),
+					...(version >= 8
+						? {
+								wahBars: DRUM_WAH_BAR_CHOICES[r.read(3)],
+								wahRange: r.read(7) / 100,
+								wahResonance: r.read(7) / 100,
+								wahMix: r.read(7) / 100,
 							}
 						: {}),
 				}
@@ -135,3 +145,4 @@ const decodeV4 = (r: BitReader) => decodeProject(r, 4);
 const decodeV5 = (r: BitReader) => decodeProject(r, 5);
 const decodeV6 = (r: BitReader) => decodeProject(r, 6);
 const decodeV7 = (r: BitReader) => decodeProject(r, 7);
+const decodeV8 = (r: BitReader) => decodeProject(r, 8);

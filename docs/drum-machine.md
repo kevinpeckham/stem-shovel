@@ -430,6 +430,22 @@ links from before open as they were; share links are version 7 (the
 analog flag in 1 bit, drive and tone in 7 each, after the reverb return),
 version 6 links read with them off. Reset to defaults covers them.
 
+### Wah (built 2026-10-01)
+
+The piano's wah stage (`createWahStage` in fxStages.ts, shared) on the
+dry mix after the fuzz, in Sweep mode only, its LFO timed in bars of four
+beats (one cycle per a beat, two beats, one, two or four bars;
+`DRUM_WAH_BARS`) so the filter lands on the downbeat: the filter sweep
+that pulls a loop in and out. Range, resonance (capped at 10 dB on the
+bus: a kick's fundamental under a sharper peak is a bump) and level
+(mix; 0 = off) beside it in the Effects menu's third column. Touch was
+left out: a pattern hits at fixed velocities, so a follower reads as a
+blip on every hit; per-row sends too (the whole bus, as the fuzz). In the
+schema (`wahBars`, `wahRange`, `wahResonance`, `wahMix`) with defaults, so
+older beats and links open with it off; share links are version 8 (the
+bars choice in 3 bits, the three levels in 7 each); Reset to defaults
+covers it; the WAV carries it.
+
 ## MIDI input (built 2026-09-30)
 
 Finger drumming (the "own samples, MIDI input" line above): a MIDI menu

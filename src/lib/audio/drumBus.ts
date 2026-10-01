@@ -1,10 +1,11 @@
 import type { DrumFx } from "$lib/val/DrumPatternSchema";
-import { createDelayStage, createFuzzStage } from "./fxStages";
+import { createDelayStage, createFuzzStage, createWahStage } from "./fxStages";
 
 /**
  * The drum machine's mixer bus (docs/drum-machine.md, "Reverb and delay"):
- * a dry input through a fuzz (fxStages.ts; drive 0 passes it clean) into
- * the master, a delay bus (the shared delay stage, digital or analog,
+ * a dry input through a fuzz and a wah (fxStages.ts; drive 0 and mix 0
+ * pass it clean; the wah sweeps once per some bars, following the tempo)
+ * into the master, a delay bus (the shared delay stage, digital or analog,
  * timed in steps so it follows the tempo) and a reverb bus (a
  * ConvolverNode over an impulse response synthesized here, a burst of
  * noise dying away, so no file is needed), each coming back through its
@@ -28,7 +29,10 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	const dry = ctx.createGain();
 	const fuzz = createFuzzStage(ctx, 0.8);
 	dry.connect(fuzz.input);
-	fuzz.output.connect(master);
+	// A drum hit peaks near 0.8 and a kick's fundamental under a sharp peak is a bump: resonance to 10 dB (a full-resonance sweep on a hot sawtooth peaked at 0.97 with 12).
+	const wah = createWahStage(ctx, 0.8, 10);
+	fuzz.output.connect(wah.input);
+	wah.output.connect(master);
 
 	// Delay: input → delay stage → master.
 	const delay = createDelayStage(ctx, 4);
@@ -55,6 +59,18 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 			0,
 		);
 		fuzz.update(next.fuzzDrive, next.fuzzTone, 0);
+		// One sweep per `wahBars` bars of four beats (sixteen steps).
+		wah.update(
+			{
+				mode: "sweep",
+				sensitivity: 0,
+				rate: 1 / (next.wahBars * 16 * stepSeconds),
+				range: next.wahRange,
+				resonance: next.wahResonance,
+				mix: next.wahMix,
+			},
+			0,
+		);
 		reverbReturn.gain.value = next.reverbReturn;
 		if (next.reverbSize !== impulseSize) {
 			impulseSize = next.reverbSize;

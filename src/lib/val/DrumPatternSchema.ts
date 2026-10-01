@@ -12,6 +12,7 @@ import {
 	DRUM_SWING_GRIDS,
 	DRUM_VELOCITY_MAX,
 	DRUM_VOICE_IDS,
+	DRUM_WAH_BAR_CHOICES,
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_TIMELINE,
 	MAX_DRUM_ROWS,
@@ -51,8 +52,9 @@ export type DrumRow = v.InferOutput<typeof DrumRowSchema>;
 /**
  * The project's effects: the delay's time (sixteenths), feedback, return
  * and analog character, the reverb's size and return, the fuzz's drive and
- * tone. A beat or link stored before the analog delay and the fuzz existed
- * (v0.61.0) gets them off.
+ * tone, the wah's sweep length, range, resonance and mix. A beat or link
+ * stored before the analog delay and the fuzz existed (v0.61.0), or the
+ * wah (v0.64.0), gets them off.
  */
 export const DrumFxSchema = v.object({
 	delayTime: v.picklist(DRUM_DELAY_STEPS),
@@ -63,6 +65,10 @@ export const DrumFxSchema = v.object({
 	reverbReturn: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	fuzzDrive: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
 	fuzzTone: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0.5),
+	wahBars: v.optional(v.picklist(DRUM_WAH_BAR_CHOICES), 1),
+	wahRange: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0.7),
+	wahResonance: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0.5),
+	wahMix: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1)), 0),
 });
 export type DrumFx = v.InferOutput<typeof DrumFxSchema>;
 

@@ -100,6 +100,16 @@ export const DRUM_DELAY_TIMES = [
 ] as const;
 export type DrumDelayTime = (typeof DRUM_DELAY_TIMES)[number]["steps"];
 export const DRUM_DELAY_STEPS = DRUM_DELAY_TIMES.map((d) => d.steps) as DrumDelayTime[];
+/** The wah's sweep, one cycle per this many bars of four beats (share-link order; 3 bits). */
+export const DRUM_WAH_BARS = [
+	{ bars: 0.25, label: "1 beat" },
+	{ bars: 0.5, label: "2 beats" },
+	{ bars: 1, label: "1 bar" },
+	{ bars: 2, label: "2 bars" },
+	{ bars: 4, label: "4 bars" },
+] as const;
+export type DrumWahBars = (typeof DRUM_WAH_BARS)[number]["bars"];
+export const DRUM_WAH_BAR_CHOICES = DRUM_WAH_BARS.map((w) => w.bars) as DrumWahBars[];
 /**
  * The effects a project starts with: both master levels at zero, so a
  * beat starts dry and the first level someone raises is heard at once,
@@ -118,6 +128,11 @@ export const DEFAULT_DRUM_FX = {
 	/** A fuzz on the dry mix: drive 0 is off; tone 0 dark to 1 bright. */
 	fuzzDrive: 0,
 	fuzzTone: 0.5,
+	/** A wah on the dry mix, sweeping once per `wahBars` bars: mix 0 is off. */
+	wahBars: 1 as DrumWahBars,
+	wahRange: 0.7,
+	wahResonance: 0.5,
+	wahMix: 0,
 };
 /** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks dry, rims into the delay. */
 export const DEFAULT_DRUM_SENDS: Record<DrumVoiceId, { delaySend: number; reverbSend: number }> = {
@@ -146,7 +161,7 @@ export const DRUM_HUMANIZE_MS = 12;
  * adds the effects (sends per row, delay and reverb settings). A reader
  * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 7;
+export const DRUM_PATTERN_VERSION = 8;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
 /** A MIDI note in from a pad or keyboard, to the voice it plays: General MIDI's drums (DRUM_GM_NOTES and the usual neighbours: both kicks, both snares, the pedal hat, every tom, both crashes and rides). Notes off the map play the pattern's rows in order (drumMachine.hitNote). */
 export const DRUM_MIDI_IN_NOTES: Record<number, DrumVoiceId> = {

@@ -10,13 +10,13 @@ tones through the same code offline and measuring the result.
 
 ## Where the code is
 
-- `src/lib/audio/fxStages.ts` — the two stages both instruments share: the
-  fuzz, and the delay with its analog character.
+- `src/lib/audio/fxStages.ts` — the stages both instruments share: the
+  fuzz, the delay with its analog character, and the wah.
 - `src/lib/audio/pianoFx.ts` — the piano's chain (`createPianoFx`): voices
   → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus, with
   reverb and delay sends off the dry bus into the master.
 - `src/lib/audio/drumBus.ts` — the drum mixer (`createDrumBus`): the dry
-  drums through the fuzz into the master; a delay send and a reverb send,
+  drums through the fuzz and the wah into the master; a delay send and a reverb send,
   each with its own return level, that every row feeds by its own sends.
   `reverbImpulse` lives here too and the piano borrows it.
 - The settings: `src/lib/utils/pianoPreferences.ts` for the piano (kept in
@@ -165,6 +165,11 @@ into the cutoff and the mode opens one of them:
   expression pedal or foot controller's position (CC 1, 11 or 4). While
   one sends, the other two sources ramp to zero and the pedal has the
   filter; disconnecting MIDI hands it back.
+
+On the drum bus the same stage runs in Sweep only, its LFO timed in bars
+of the beat rather than in Hz (one cycle per beat up to one per four
+bars), so the sweep lands on the downbeat; its resonance is capped at
+10 dB, since a sharp peak passing a kick's fundamental is a bump.
 
 Resonance is the filter's Q, and for a Web Audio low-pass Q is in
 decibels: the height of the peak at the cutoff, 0 to 15 dB here. The wet

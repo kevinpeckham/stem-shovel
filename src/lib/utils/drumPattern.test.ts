@@ -23,7 +23,7 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
 const PINNED_LINKS: {
 	link: string;
 	project: () => DrumProject;
-	version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+	version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
@@ -227,6 +227,10 @@ const PINNED_LINKS: {
 				delayAnalog: false,
 				fuzzDrive: 0,
 				fuzzTone: 0.5,
+				wahBars: 1,
+				wahRange: 0.7,
+				wahResonance: 0.5,
+				wahMix: 0,
 			},
 			kit: "electronic",
 			timeline: [],
@@ -291,6 +295,32 @@ const PINNED_LINKS: {
 			return p;
 		},
 	},
+	{
+		link: "CE4UOFQAZAJmM3lBkEMBaZAALAQEBADQZA9QAQABAE8ZAofERERAGyZA8yAAAAEJGZBRaAAAAALGZC0oAAAAANQZAo8AAAAARQZAo8AAAAABgLTIABQAAAAAaDIHqAAAAA4njIFDwAAAAA2TIHmQAAAABIzIKLQAAAABYzIWlAAAAABqDIFHgAAAACKDIFHgAAAAAQACACA",
+		version: 8,
+		// The same beat with a wah sweeping over two bars.
+		project: () => {
+			const p = startingDrumProject();
+			p.bpm = 118;
+			p.swing = 0.1;
+			p.fx = {
+				...p.fx,
+				delayAnalog: true,
+				fuzzDrive: 0.25,
+				fuzzTone: 0.7,
+				wahBars: 2,
+				wahRange: 0.6,
+				wahResonance: 0.8,
+				wahMix: 0.5,
+			};
+			const fill = emptyDrumPattern(p.patterns[0]!);
+			fill.rows[1]!.cells[14] = 3;
+			fill.rows[1]!.cells[15] = 2;
+			p.patterns.push(fill);
+			p.timeline = [0, 0, 0, 1, 0, 0, 0, 1];
+			return p;
+		},
+	},
 ];
 
 describe("encodeDrumProject / decodeDrumProject", () => {
@@ -338,6 +368,10 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 			delayAnalog: false,
 			fuzzDrive: 0,
 			fuzzTone: 0.5,
+			wahBars: 1,
+			wahRange: 0.7,
+			wahResonance: 0.5,
+			wahMix: 0,
 		};
 		p.patterns[0]!.rows[1]!.delaySend = 0.45;
 		p.patterns[0]!.rows[1]!.reverbSend = 1;
@@ -349,6 +383,10 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 			delayAnalog: false,
 			fuzzDrive: 0,
 			fuzzTone: 0.5,
+			wahBars: 1,
+			wahRange: 0.7,
+			wahResonance: 0.5,
+			wahMix: 0,
 		});
 	});
 	test("carries the timeline, and a link from before the timeline opens with none", () => {
@@ -370,7 +408,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 7) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 8) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });

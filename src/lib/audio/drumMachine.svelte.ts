@@ -396,11 +396,20 @@ class DrumMachineEngine {
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 	}
-	/** The effects: the delay's time, feedback, return and analog character, the reverb's size and return, the fuzz's drive and tone. */
+	/** The effects: the delay's time, feedback, return and analog character, the reverb's size and return, the fuzz's drive and tone, the wah's bars, range, resonance and mix. */
 	setFx(patch: Partial<DrumFx>) {
 		const fx = { ...this.project.fx, ...patch };
 		fx.delayFeedback = Math.min(0.9, Math.max(0, Math.round(fx.delayFeedback * 100) / 100));
-		for (const k of ["delayReturn", "reverbSize", "reverbReturn", "fuzzDrive", "fuzzTone"] as const)
+		for (const k of [
+			"delayReturn",
+			"reverbSize",
+			"reverbReturn",
+			"fuzzDrive",
+			"fuzzTone",
+			"wahRange",
+			"wahResonance",
+			"wahMix",
+		] as const)
 			fx[k] = Math.min(1, Math.max(0, Math.round(fx[k] * 100) / 100));
 		fx.delayAnalog = fx.delayAnalog === true;
 		this.project.fx = fx;

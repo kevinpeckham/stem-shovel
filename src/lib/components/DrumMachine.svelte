@@ -10,6 +10,7 @@
 		DRUM_KITS,
 		DRUM_METERS,
 		DRUM_DELAY_TIMES,
+		DRUM_WAH_BARS,
 		DRUM_SWING_GRIDS,
 		DRUM_VOICES,
 		MAX_DRUM_PATTERNS,
@@ -17,6 +18,7 @@
 		MAX_DRUM_ROWS,
 		drumStepsFor,
 		type DrumDelayTime,
+		type DrumWahBars,
 		type DrumSteps,
 		type DrumVoiceId,
 	} from "$lib/constants/drumMachine";
@@ -713,7 +715,7 @@
 		{#snippet fxItem()}
 			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
 				<div class="text-11px uppercase tracking-wider opacity-60 mb-3">Effects</div>
-				<div class="grid grid-cols-1 sm-grid-cols-2 gap-x-6 gap-y-3">
+				<div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 gap-x-6 gap-y-3">
 					<div class="grid gap-3 content-start">
 						<div class="block text-blue-100/80" title="Delay time, in the beat">
 							<span class="device-button-label">Delay</span>
@@ -839,11 +841,67 @@
 							/>
 						</label>
 					</div>
+					<div class="grid gap-3 content-start">
+						<div class="block text-blue-100/80" title="One sweep per this much of the beat">
+							<span class="device-button-label">Wah sweep</span>
+							<ComboBox
+								ariaLabel="Wah sweep"
+								buttonClasses="!px-2 !py-1 !text-13px"
+								options={DRUM_WAH_BARS.map((w) => ({ value: String(w.bars), label: w.label }))}
+								value={String(p.fx.wahBars)}
+								onchange={(v) => drumMachine.setFx({ wahBars: Number(v) as DrumWahBars })}
+							/>
+						</div>
+						<label class="block">
+							<span class="device-button-label">Wah level · {Math.round(p.fx.wahMix * 100)}%</span>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.wahMix * 100)}
+								oninput={(e) => drumMachine.setFx({ wahMix: Number(e.currentTarget.value) / 100 })}
+								aria-label="Wah level"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Wah range · {Math.round(p.fx.wahRange * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.wahRange * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ wahRange: Number(e.currentTarget.value) / 100 })}
+								aria-label="Wah range"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label"
+								>Wah resonance · {Math.round(p.fx.wahResonance * 100)}%</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.wahResonance * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ wahResonance: Number(e.currentTarget.value) / 100 })}
+								aria-label="Wah resonance"
+							/>
+						</label>
+					</div>
 				</div>
 				<button
 					class="device-button-xs px-3 justify-self-start mt-3"
 					type="button"
-					title="Master levels and the fuzz back to zero, the delay digital, every drum back to its usual sends"
+					title="Master levels, the fuzz and the wah back to zero, the delay digital, every drum back to its usual sends"
 					onclick={() => {
 						drumMachine.resetFx();
 						notify("Effects reset to their defaults");
@@ -1574,14 +1632,17 @@
 				<ContextMenu
 					ariaLabel="Effects"
 					position="top right"
-					title="Delay, reverb and fuzz: turn a level up to hear it"
+					title="Delay, reverb, fuzz and wah: turn a level up to hear it"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
-					buttonClasses={p.fx.delayReturn > 0 || p.fx.reverbReturn > 0 || p.fx.fuzzDrive > 0
+					buttonClasses={p.fx.delayReturn > 0 ||
+					p.fx.reverbReturn > 0 ||
+					p.fx.fuzzDrive > 0 ||
+					p.fx.wahMix > 0
 						? "text-accent"
 						: ""}
-					popoverClasses="min-w-72 sm-min-w-140 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					popoverClasses="min-w-72 sm-min-w-140 md-min-w-200 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
 				{#if midiSupported}
