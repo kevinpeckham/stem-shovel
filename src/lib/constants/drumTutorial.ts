@@ -3,7 +3,9 @@ import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS, type DrumVoiceId } from "./drumMac
 
 /**
  * The drum machine's walk-through (docs/drum-machine.md): a simple rock
- * beat from an empty kit, one thing per step. A step names the cells it
+ * beat from an empty kit, one thing per step, the effects along the way.
+ * Starting it loads TUTORIAL_PROJECT whole, so every effect level and
+ * send is back at its default (the test holds it to that). A step names the cells it
  * wants (voice, steps, velocity; `off` for cells that must be empty) and
  * a control to point at; `done` says whether the project has caught up.
  * The panel (`DrumTutorial.svelte`) highlights those cells and can do the
@@ -18,7 +20,7 @@ export interface TutorialCells {
 	/** Which pattern, by index; the first unless said. */
 	pattern?: number;
 }
-export type TutorialControl = "play" | "copy" | "humanize" | "keep";
+export type TutorialControl = "play" | "copy" | "humanize" | "reverb" | "delay" | "keep";
 export interface TutorialStep {
 	id: string;
 	title: string;
@@ -170,6 +172,20 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 		text: "A machine hits every cell in exactly the same place. Drag Humanize to about 15% and every hit lands a hair early or late, a little louder or softer, the way a person plays.",
 		control: "humanize",
 		done: (p) => p.humanize > 0,
+	},
+	{
+		id: "reverb",
+		title: "Put the kit in a room",
+		text: "Open the Effects menu at the foot of the device and raise Reverb level to about 30%. Every drum already sends a little to the reverb, the snare most and the kick least, so the kit moves into a room as the level comes up. The menu's Reset to defaults takes it all away again.",
+		control: "reverb",
+		done: (p) => p.fx.reverbReturn > 0,
+	},
+	{
+		id: "delay",
+		title: "An echo between the beats",
+		text: "In the same menu, raise Delay level to about 25%. The delay follows the tempo, a dotted eighth by default, so the snare's echo lands between the beats; the rim and the hats send more of themselves to it than the kick does. Try Analog for repeats that darken as they go.",
+		control: "delay",
+		done: (p) => p.fx.delayReturn > 0,
 	},
 	{
 		id: "crash",

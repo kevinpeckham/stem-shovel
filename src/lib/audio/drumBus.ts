@@ -30,7 +30,8 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	const fuzz = createFuzzStage(ctx, 0.8);
 	dry.connect(fuzz.input);
 	// A drum hit peaks near 0.8 and a kick's fundamental under a sharp peak is a bump: resonance to 10 dB (a full-resonance sweep on a hot sawtooth peaked at 0.97 with 12).
-	const wah = createWahStage(ctx, 0.8, 10);
+	// Gain compensation of 3.5 dB at full mix (Kevin: more wah read as less volume): the starting beat measured 3 dB quieter fully wet by RMS, more to the ear with the top gone; at 5 dB the acoustic kit peaked at 1.0 with full resonance, at 3.5 it has headroom.
+	const wah = createWahStage(ctx, 0.8, 10, 3.5);
 	fuzz.output.connect(wah.input);
 	wah.output.connect(master);
 

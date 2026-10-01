@@ -326,6 +326,14 @@ pattern in place of the open one or adds it, and keeps the project for
 style, its hint, the density and the two buttons. Not built: tempo or
 kit suggestions per style (the user's stay), and a seed in the link.
 
+Each style carries `fx` (2026-10-01, Kevin): the effects a generated beat
+arrives with over the defaults, modest master levels that suit the style
+(a room on rock, a dotted-eighth delay on house, more room and a dotted
+quarter on half-time). `placePattern` resets the effects to the defaults
+plus these when it replaces the open pattern, and applies only these
+when it adds one, so a generated beat is clean unless its style says
+otherwise.
+
 ## Text-to-Beat (prototype, built 2026-09-28)
 
 A beat from a description through a language model, Kevin's ask: an
@@ -359,6 +367,14 @@ pattern's shape and places the answer with `drumMachine.placePattern`
 conversation (each ask is fresh), the model's choice of meter or length,
 a seed or the description in the link. Open question for the prototype:
 which model plays best; the log has the answers per model.
+
+Effects (2026-10-01, Kevin): the reply may carry `fx` (reverb, delay,
+delayTime by its menu label, fuzz, wah, as percentages) when the
+description asks for a room, an echo, distortion or a sweep; the prompt
+says so and shows a second example. `parseTextToBeatReply` maps it to
+the project's levels (`replyFx`) and `placePattern` applies it the
+generator's way: a replacement starts from the defaults, so "a dry
+trap beat" is dry even after a dub-style one.
 
 ## Timeline (built 2026-09-28; its row hidden since v0.51.0 while Kevin refines the design)
 
@@ -459,6 +475,25 @@ full view's breakpoint classes are container queries, `sm-` → `@xl-`
 device root as the `@container`, so the drum machine lays itself out by
 the width it is given and can open in a popover or a panel. The compact
 view (the recorder's toolbar row) has no breakpoints of its own.
+
+## The tutorial's effects (2026-10-01)
+
+Two steps after Humanize, "Put the kit in a room" (reverb level, done at
+any level above zero) and "An echo between the beats" (delay level), with
+Do it for me setting 30 % and 25 % and the Effects button outlined while
+either is the step. Starting the tutorial loads `TUTORIAL_PROJECT` whole,
+so every effect level and every row's sends are at their defaults; the
+test holds the constant to that (Kevin: make sure the effects are reset
+at the start).
+
+### Wah gain compensation (2026-10-01)
+
+Kevin: more wah read as less volume. The drum bus's wah stage lifts the
+wet by 3.5 dB at full mix, scaled with the mix (`makeupDb` on
+`createWahStage`; the piano passes none): the starting beat measured
+3 dB quieter fully wet by RMS on both kits and more to the ear with the
+top gone; 5 dB put the acoustic kit's peak at 1.0 with full resonance,
+3.5 leaves headroom.
 
 ## MIDI input (built 2026-09-30)
 

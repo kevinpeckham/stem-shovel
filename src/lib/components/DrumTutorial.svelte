@@ -36,6 +36,12 @@
 			case "humanize":
 				drumMachine.setHumanize(0.15);
 				break;
+			case "reverb":
+				drumMachine.setFx({ reverbReturn: 0.3 });
+				break;
+			case "delay":
+				drumMachine.setFx({ delayReturn: 0.25 });
+				break;
 		}
 	}
 </script>

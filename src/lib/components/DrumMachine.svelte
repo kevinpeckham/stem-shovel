@@ -481,6 +481,7 @@
 			const index = drumMachine.placePattern(reply.pattern, beatAsNew ? "add" : "replace", {
 				bpm: reply.bpm,
 				swing: reply.swing,
+				fx: reply.fx,
 			});
 			beatNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
 			notify(
@@ -1644,12 +1645,12 @@
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm"
-					buttonClasses={p.fx.delayReturn > 0 ||
+					buttonClasses="{p.fx.delayReturn > 0 ||
 					p.fx.reverbReturn > 0 ||
 					p.fx.fuzzDrive > 0 ||
 					p.fx.wahMix > 0
-						? "text-accent"
-						: ""}
+						? 'text-accent'
+						: ''} {tutorial.control === 'reverb' || tutorial.control === 'delay' ? HINT : ''}"
 					popoverClasses="min-w-72 @xl-min-w-140 @2xl-min-w-200 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>

@@ -15,6 +15,9 @@ const hits = (p: DrumPattern) => p.rows.flatMap((r) => r.cells).filter(Boolean).
 describe("generateDrumPattern", () => {
 	test("the templates are well formed: sixteen characters for 4/4, twelve for 6/8, every character known", () => {
 		for (const style of DRUM_GENERATOR_STYLES) {
+			for (const [k, val] of Object.entries(style.fx ?? {}))
+				if (k !== "delayTime" && k !== "delayAnalog")
+					expect(val, `${style.id} ${k}`).toBeGreaterThanOrEqual(0);
 			for (const row of style.four) {
 				expect(row.hits, `${style.id} ${row.voice}`).toMatch(/^[Xxo0-9.]{16}$/);
 				if (row.ghosts) expect(row.ghosts, `${style.id} ${row.voice}`).toMatch(/^[0-9.]{16}$/);

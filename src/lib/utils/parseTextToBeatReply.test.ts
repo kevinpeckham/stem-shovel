@@ -30,6 +30,27 @@ describe("parseTextToBeatReply", () => {
 		);
 		expect(silent.pattern.rows.length).toBe(1);
 	});
+	test("effects come through as levels and the delay's steps; a dry beat has none", () => {
+		const r = parseTextToBeatReply(
+			'{"fx": {"reverb": 30, "delay": 35, "delayTime": "1/8 dotted", "fuzz": 0, "wah": null}, "rows": [{"voice": "kick", "cells": "x..............."}]}',
+			"4/4",
+			16,
+		);
+		expect(r.fx).toEqual({ reverbReturn: 0.3, delayReturn: 0.35, fuzzDrive: 0, delayTime: 3 });
+		const dry = parseTextToBeatReply(
+			'{"rows": [{"voice": "kick", "cells": "x..............."}]}',
+			"4/4",
+			16,
+		);
+		expect(dry.fx).toBeNull();
+		expect(
+			parseTextToBeatReply(
+				'{"fx": {}, "rows": [{"voice": "kick", "cells": "x..............."}]}',
+				"4/4",
+				16,
+			).fx,
+		).toBeNull();
+	});
 	test("tempo, swing and note are optional", () => {
 		const r = parseTextToBeatReply(
 			'{"rows": [{"voice": "kick", "cells": "x.......x..."}]}',

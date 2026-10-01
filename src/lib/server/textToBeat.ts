@@ -157,5 +157,6 @@ The pattern is ${grid}. Write one string per drum, exactly ${input.steps} charac
 Voices, by id: ${voices}. ${has}
 Make it musical for the description: a clear pulse, the snare or clap where the backbeat of the style goes, hats or ride carrying the subdivision, ghost notes and accents for feel, and nothing that a drummer would not play. Use 3 to 7 rows. Do not put every drum on every step.
 Also suggest "bpm" (an integer, 40 to 240) for the style, "swing" as a percentage (0 straight, 100 a full triplet feel; 10 to 30 for a little), and a "note": one short sentence on the beat.
-Reply with JSON only, no prose, no markdown, exactly like: {"bpm": 100, "swing": 0, "note": "A plain rock beat.", "rows": [${exampleRows}]}`;
+If the description asks for effects (a room or hall, echo or delay, distortion or fuzz, a filter sweep or wah) add "fx" with any of "reverb" (0 to 100), "delay" (0 to 100), "delayTime" (one of "1/8", "1/8 dotted", "1/4", "1/4 dotted", "1/2"), "fuzz" (0 to 100), "wah" (0 to 100); 20 to 40 is a tasteful amount, 60 and up is a lot. Leave "fx" out for a dry beat.
+Reply with JSON only, no prose, no markdown, exactly like: {"bpm": 100, "swing": 0, "note": "A plain rock beat.", "rows": [${exampleRows}]} or, with effects, {"bpm": 90, "swing": 20, "note": "Dub.", "fx": {"delay": 35, "delayTime": "1/8 dotted", "reverb": 30}, "rows": [${exampleRows}]}`;
 }

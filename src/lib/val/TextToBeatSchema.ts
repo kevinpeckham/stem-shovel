@@ -1,5 +1,10 @@
 import * as v from "valibot";
-import { DRUM_METER_IDS, DRUM_STEP_CHOICES, DRUM_VOICE_IDS } from "$lib/constants/drumMachine";
+import {
+	DRUM_DELAY_TIMES,
+	DRUM_METER_IDS,
+	DRUM_STEP_CHOICES,
+	DRUM_VOICE_IDS,
+} from "$lib/constants/drumMachine";
 
 /** What the drum machine asks for: a description, and the shape of the open pattern the answer must fit. */
 export const TextToBeatSchema = v.object({
@@ -17,6 +22,18 @@ export const TextToBeatReplySchema = v.object({
 	/** A percentage: models think of swing that way. */
 	swing: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
 	note: v.optional(v.nullable(v.pipe(v.string(), v.trim(), v.maxLength(200)))),
+	/** Effects the description asked for, as percentages, and the delay's time by its menu label; absent means a dry beat. */
+	fx: v.optional(
+		v.nullable(
+			v.object({
+				reverb: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+				delay: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+				delayTime: v.optional(v.nullable(v.picklist(DRUM_DELAY_TIMES.map((d) => d.label)))),
+				fuzz: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+				wah: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
+			}),
+		),
+	),
 	rows: v.pipe(
 		v.array(
 			v.object({

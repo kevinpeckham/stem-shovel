@@ -173,7 +173,8 @@ export interface WahStage {
  * sensitivity sets), an LFO sitting mid-travel, or a pedal (a
  * ConstantSourceNode). Resonance is the BiquadFilter's Q, which for a
  * low-pass is in decibels, 0 to `maxResonanceDb`; the wet is trimmed to
- * 0.7 to leave that peak room (measured on the piano within 1 dB of dry).
+ * 0.7 to leave that peak room (measured on the piano within 1 dB of dry),
+ * and `makeupDb` lifts it back where a caller finds the wet too quiet.
  * `peak` is what the signal peaks near (a voice 0.3, a drum hit 0.8): the
  * follower's gain is scaled so full sensitivity reaches the top.
  */
@@ -187,6 +188,8 @@ export function createWahStage(
 	ctx: BaseAudioContext,
 	peak: number,
 	maxResonanceDb: number,
+	/** Gain compensation at full mix, in dB, scaled with the mix: a low-pass over drums reads quieter as it closes (Kevin), so the drum bus lifts the wet. */
+	makeupDb = 0,
 ): WahStage {
 	const input = ctx.createGain();
 	const output = ctx.createGain();
@@ -245,7 +248,7 @@ export function createWahStage(
 		set(lfoGain.gain, sweep ? span / 2 : 0, tau);
 		set(pedalGain.gain, pedalDown ? span : 0, tau);
 		set(dry.gain, 1 - w.mix, tau);
-		set(wet.gain, w.mix * WAH_WET, tau);
+		set(wet.gain, w.mix * WAH_WET * 10 ** ((makeupDb * w.mix) / 20), tau);
 	};
 	return {
 		input,

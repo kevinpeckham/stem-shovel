@@ -506,18 +506,18 @@ class DrumMachineEngine {
 	generate(style: DrumGeneratorStyle, density: number, mode: "replace" | "add"): number {
 		const seed = Math.floor(Math.random() * 2 ** 32);
 		const pattern = generateDrumPattern(style, density, $state.snapshot(this.pattern), seed);
-		return this.placePattern(pattern, mode);
+		return this.placePattern(pattern, mode, { fx: style.fx });
 	}
 	/**
 	 * A pattern from elsewhere (the generator, Text-to-Beat) in place of the
-	 * open one or added after it, with a tempo and swing when they come with
-	 * it; the project as it was is kept for `undoPreset` until the next
+	 * open one or added after it, with a tempo, swing and effects when they
+	 * come with it; the project as it was is kept for `undoPreset` until the next
 	 * edit. Returns the pattern's index (the open one when there is no room).
 	 */
 	placePattern(
 		pattern: DrumPattern,
 		mode: "replace" | "add",
-		also: { bpm?: number | null; swing?: number | null } = {},
+		also: { bpm?: number | null; swing?: number | null; fx?: Partial<DrumFx> | null } = {},
 	): number {
 		const before = $state.snapshot(this.project);
 		if (mode === "replace") {
@@ -531,6 +531,9 @@ class DrumMachineEngine {
 			this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(also.bpm)));
 		if (also.swing !== null && also.swing !== undefined)
 			this.project.swing = Math.min(1, Math.max(0, Math.round(also.swing * 100) / 100));
+		// Effects: a replacement starts from the defaults plus what came with the pattern (a generated beat is clean unless it asks otherwise); an added pattern applies only what came with it.
+		if (mode === "replace") this.project.fx = { ...DEFAULT_DRUM_FX, ...also.fx };
+		else if (also.fx) this.project.fx = { ...this.project.fx, ...also.fx };
 		this.#resetSolo();
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
