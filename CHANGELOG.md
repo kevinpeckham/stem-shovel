@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.65.1] - 2026-10-01
+
 ### Fixed
 
 - **Account settings said sign-up was invitation-only** even with sign-up open (Kevin). The Invite codes section, and the admin's new-account codes page, now word themselves by the sign-up mode: with sign-up open, a code is what joins the newcomer to the account.
