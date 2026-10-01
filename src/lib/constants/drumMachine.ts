@@ -134,20 +134,20 @@ export const DEFAULT_DRUM_FX = {
 	wahResonance: 0.5,
 	wahMix: 0,
 };
-/** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks dry, rims into the delay. */
+/** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks a little (enough to answer the master level without muddying the low end), rims into the delay. Both sends run high (Kevin, 2026-10-01: a master at 100 % should be too much, not tasteful, so the useful range is the slider's middle). */
 export const DEFAULT_DRUM_SENDS: Record<DrumVoiceId, { delaySend: number; reverbSend: number }> = {
-	kick: { delaySend: 0, reverbSend: 0.05 },
-	snare: { delaySend: 0.15, reverbSend: 0.4 },
-	"hat-closed": { delaySend: 0.1, reverbSend: 0.15 },
-	"hat-open": { delaySend: 0.15, reverbSend: 0.25 },
-	clap: { delaySend: 0.2, reverbSend: 0.45 },
-	rim: { delaySend: 0.45, reverbSend: 0.2 },
-	"tom-low": { delaySend: 0.1, reverbSend: 0.3 },
-	"tom-mid": { delaySend: 0.1, reverbSend: 0.3 },
-	"tom-high": { delaySend: 0.1, reverbSend: 0.3 },
-	ride: { delaySend: 0.1, reverbSend: 0.3 },
-	crash: { delaySend: 0.1, reverbSend: 0.35 },
-	cowbell: { delaySend: 0.35, reverbSend: 0.15 },
+	kick: { delaySend: 0.15, reverbSend: 0.3 },
+	snare: { delaySend: 0.45, reverbSend: 0.8 },
+	"hat-closed": { delaySend: 0.3, reverbSend: 0.3 },
+	"hat-open": { delaySend: 0.4, reverbSend: 0.5 },
+	clap: { delaySend: 0.5, reverbSend: 0.9 },
+	rim: { delaySend: 0.8, reverbSend: 0.4 },
+	"tom-low": { delaySend: 0.3, reverbSend: 0.6 },
+	"tom-mid": { delaySend: 0.3, reverbSend: 0.6 },
+	"tom-high": { delaySend: 0.3, reverbSend: 0.6 },
+	ride: { delaySend: 0.3, reverbSend: 0.6 },
+	crash: { delaySend: 0.3, reverbSend: 0.7 },
+	cowbell: { delaySend: 0.7, reverbSend: 0.3 },
 };
 /** What a new project and a preset without its own setting start at: enough scatter not to sound like a machine (Kevin's call). */
 export const DEFAULT_HUMANIZE = 0.14;

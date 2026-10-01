@@ -402,7 +402,12 @@ Built as described here, with Kevin's changes: the master controls live
 in an Effects menu at the foot (no on / off switch: a beat is dry until a
 level comes up), and the defaults are inverted (returns at zero, sends
 per drum from `DEFAULT_DRUM_SENDS`) so the master levels are discovered
-first. The
+first. Both sends roughly doubled or tripled in v0.65.0 (reverb: kick
+30 %, snare 80 %, clap 90 %, toms 60 %; delay: snare 45 %, rim 80 %,
+cowbell 70 %, kick 15 %; Kevin: a master at 100 % with the defaults
+should be too much, not tasteful, so the useful range is the middle of
+the slider; at the old 5 % the kick barely answered the master at all);
+saved beats and old links keep the sends they carry. The
 row's panner feeds a dry gain into the master and two sends: a delay bus (a `DelayNode` with a feedback
 gain and a low-pass in the loop, its time in steps so it follows the
 tempo, dotted eighth by default, as Groovie's) and a reverb bus (a

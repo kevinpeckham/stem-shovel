@@ -20,6 +20,22 @@ import type { DrumProject } from "$lib/val/DrumPatternSchema";
  * default effects; none is re-encoded. A link at
  * the current version round-trips exactly.
  */
+/** The usual sends until v0.65.0 roughly doubled the reverb's: what the version 5 to 7 pinned links carry. */
+const SENDS_BEFORE_V65: Record<string, { delaySend: number; reverbSend: number }> = {
+	kick: { delaySend: 0, reverbSend: 0.05 },
+	snare: { delaySend: 0.15, reverbSend: 0.4 },
+	"hat-closed": { delaySend: 0.1, reverbSend: 0.15 },
+	"hat-open": { delaySend: 0.15, reverbSend: 0.25 },
+	clap: { delaySend: 0.2, reverbSend: 0.45 },
+	rim: { delaySend: 0.45, reverbSend: 0.2 },
+	"tom-low": { delaySend: 0.1, reverbSend: 0.3 },
+	"tom-mid": { delaySend: 0.1, reverbSend: 0.3 },
+	"tom-high": { delaySend: 0.1, reverbSend: 0.3 },
+	ride: { delaySend: 0.1, reverbSend: 0.3 },
+	crash: { delaySend: 0.1, reverbSend: 0.35 },
+	cowbell: { delaySend: 0.35, reverbSend: 0.15 },
+};
+
 const PINNED_LINKS: {
 	link: string;
 	project: () => DrumProject;
@@ -265,7 +281,7 @@ const PINNED_LINKS: {
 	{
 		link: "Bk4UOFQAZAAhgLTIABYCAgIAaDIHqACAAIAnjIFD4iIiIA2TIHmQAAAAhIzIKLQAAAABYzIWlAAAAABqDIFHgAAAACKDIFHgAAAAAMBaZAAKAAAAADQZA9QAAAAHE8ZAoeAAAAAGyZA8yAAAAAJGZBRaAAAAALGZC0oAAAAANQZAo8AAAAARQZAo8AAAAACAAQAQ",
 		version: 6,
-		// The starting beat with a fill as a second pattern and an eight-bar timeline: three of the groove, the fill, again.
+		// The starting beat with a fill as a second pattern and an eight-bar timeline: three of the groove, the fill, again; the sends of its day.
 		project: () => {
 			const p = startingDrumProject();
 			p.bpm = 118;
@@ -275,13 +291,15 @@ const PINNED_LINKS: {
 			fill.rows[1]!.cells[15] = 2;
 			p.patterns.push(fill);
 			p.timeline = [0, 0, 0, 1, 0, 0, 0, 1];
+			for (const pat of p.patterns)
+				for (const r of pat.rows) Object.assign(r, SENDS_BEFORE_V65[r.voice]);
 			return p;
 		},
 	},
 	{
 		link: "B04UOFQAZAJmMEMBaZAALAQEBADQZA9QAQABAE8ZAofERERAGyZA8yAAAAEJGZBRaAAAAALGZC0oAAAAANQZAo8AAAAARQZAo8AAAAABgLTIABQAAAAAaDIHqAAAAA4njIFDwAAAAA2TIHmQAAAABIzIKLQAAAABYzIWlAAAAABqDIFHgAAAACKDIFHgAAAAAQACACA",
 		version: 7,
-		// The same beat with the analog delay on and a fuzz.
+		// The same beat with the analog delay on and a fuzz, carrying the sends of its day (before the usual reverb sends rose in v0.65.0).
 		project: () => {
 			const p = startingDrumProject();
 			p.bpm = 118;
@@ -292,11 +310,13 @@ const PINNED_LINKS: {
 			fill.rows[1]!.cells[15] = 2;
 			p.patterns.push(fill);
 			p.timeline = [0, 0, 0, 1, 0, 0, 0, 1];
+			for (const pat of p.patterns)
+				for (const r of pat.rows) Object.assign(r, SENDS_BEFORE_V65[r.voice]);
 			return p;
 		},
 	},
 	{
-		link: "CE4UOFQAZAJmM3lBkEMBaZAALAQEBADQZA9QAQABAE8ZAofERERAGyZA8yAAAAEJGZBRaAAAAALGZC0oAAAAANQZAo8AAAAARQZAo8AAAAABgLTIABQAAAAAaDIHqAAAAA4njIFDwAAAAA2TIHmQAAAABIzIKLQAAAABYzIWlAAAAABqDIFHgAAAACKDIFHgAAAAAQACACA",
+		link: "CE4UOFQAZAJmM3lBkEMBaZA89AQEBADQZC2gAQABAE8ZB49ERERAGyZChkAAAAEJGZDK0AAAAALGZFBQAAAAANQZB54AAAAARQZB54AAAAABgLTIHngAAAAAaDIW0AAAAA4njIPHgAAAAA2TIUMgAAAABIzIZWgAAAABYzIoKAAAAABqDIPPAAAAACKDIPPAAAAAAQACACA",
 		version: 8,
 		// The same beat with a wah sweeping over two bars.
 		project: () => {
