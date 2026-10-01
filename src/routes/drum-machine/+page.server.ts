@@ -25,5 +25,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		song: member && songId ? await songForBeat(member.accountId, songId) : null,
 		// Text-to-Beat needs the AI Gateway (docs/drum-machine.md).
 		textToBeat: aiAvailable(),
+		// A system admin can make the beat here the home page's starting one (the ⋯ menu), as on the home page itself.
+		homeAdmin: locals.user?.isSystemAdmin === true,
 	};
 };

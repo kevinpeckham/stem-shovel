@@ -61,7 +61,7 @@
 		song?: BeatSong | null;
 		/** What a first visit opens with when nothing is remembered in the browser (the home page's demo beat, chosen by a system admin). */
 		starting?: DrumProject | null;
-		/** A system admin on the home page: the ⋯ menu can make the beat in the machine the home page's starting one. */
+		/** A system admin (on the home page or the drum machine page): the ⋯ menu can make the beat in the machine the home page's starting one. */
 		homeAdmin?: boolean;
 		/** Text-to-Beat is on (the AI Gateway is configured): a menu asks a model for a beat from a description. */
 		textToBeat?: boolean;
@@ -241,7 +241,7 @@
 						kind: "button" as const,
 						label: 'Use as the home page beat <span class="opacity-60 text-12px">admin</span>',
 						iconClass: "i-ph-house",
-						title: "What the drum machine here opens with for a first-time visitor",
+						title: "What the home page's drum machine opens with for a first-time visitor",
 						action: async () => {
 							try {
 								await setHomeBeat({ data: $state.snapshot(drumMachine.project) });

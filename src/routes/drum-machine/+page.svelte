@@ -57,6 +57,7 @@
 			beats={data.beats}
 			song={data.song}
 			textToBeat={data.textToBeat}
+			homeAdmin={data.homeAdmin}
 		/>
 		<DrumTutorial />
 	</div>
