@@ -339,6 +339,26 @@ piano instance serves both (the panel's place, size, drag and `fixed`
 come through `lg-` variants and CSS variables, nothing in JavaScript
 asks the window's width).
 
+**The metronome** gets the drums' treatment (Kevin: every tool and
+instrument launches the same way): from lg the toolbar's metronome
+button opens the full metronome in a panel (the icon swells on the
+downbeat and the button is lit while it runs), below lg the compact
+control stays; the engine is one, so the panel and the toolbar agree.
+
+**The tuner** moved from a native popover into the same panel (Kevin),
+opened by the toolbar's tuner button (and the phone tools menu), the
+microphone opening as the panel mounts (`tick()` first) and closing with
+it or as a take starts. `Tuner.svelte` had no viewport breakpoints to
+migrate; its layout was already its own width.
+
+**The notes** stay in their column, inside a docked, non-closable panel
+whose header carries the clear button and, from lg, a pop-out button:
+popped out, the panel floats like the others (dragged, resized,
+remembered) and the button docks it back; `floating` on
+`FloatingPanel` is what the pop-out flips, remembered per browser under
+`stemshovel.recorder.notes-floating`. One editor instance either way,
+so nothing is remounted and no draft is lost.
+
 **The space bar**: it is wanted by the drums (play / stop), the piano
 (the sustain pedal) and any focused button (activation). The page keeps
 a `spaceOwner`, the instrument touched last: the drum panel takes it as

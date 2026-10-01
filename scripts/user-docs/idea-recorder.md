@@ -12,7 +12,7 @@ An idea only exists once it has a take or some notes. One that ends up with neit
 
 ## Notes
 
-The panel beside the recorder is a markdown note board for the idea: lyrics, chords, a tuning, anything worth keeping with the takes. It saves as you type. The trash button clears it.
+The panel beside the recorder is a markdown note board for the idea: lyrics, chords, a tuning, anything worth keeping with the takes. It saves as you type. The trash button clears it. On a desktop, the button in the notes header pops them out into a panel you can drag and resize, and the same button puts them back.
 
 ## The list
 
@@ -28,11 +28,11 @@ From the recorder's ⋯ menu or a take's menu, **Add as demo…** puts the take 
 
 ## Tuner
 
-The ear icon in the header opens a chromatic tuner. It listens while the popover is open: the nearest note shows large, a needle reads how many cents sharp or flat (green within five), and the string of your tuning it is lights up. Pick the tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele), or **Chromatic** for any other instrument or tuning, which just names whatever it hears and set A4 if your band tunes to 442; both are remembered on the device. Pressing Record closes the tuner so the microphone is free for the take. The same tuner is at `/tuner` for anyone, signed in or not.
+The ear icon in the header opens a chromatic tuner. It listens while the popover is open: the nearest note shows large, a needle reads how many cents sharp or flat (green within five), and the string of your tuning it is lights up. Pick the tuning (guitar standard, drop D, half step down, DADGAD, open G, bass, five-string bass, ukulele), or **Chromatic** for any other instrument or tuning, which just names whatever it hears and set A4 if your band tunes to 442; both are remembered on the device. Pressing Record closes the tuner so the microphone is free for the take. The same tuner is at `/tuner` for anyone, signed in or not. On a desktop the tuner opens in a panel you can drag and resize; on a phone it sits under the recorder.
 
 ## Metronome
 
-The metronome icon in the toolbar starts a click; the tempo shows beside it, ready to change. It keeps going while you record, so wear headphones if you do not want the click on the take. The full metronome, with tap tempo and beats to the bar, is at **/metronome** (linked in the footer). On a phone the metronome sits in the toolbar's wrench menu with the tuner and the drums; while it runs, its stop button takes the wrench's place.
+The metronome icon in the toolbar starts a click; the tempo shows beside it, ready to change. It keeps going while you record, so wear headphones if you do not want the click on the take. The full metronome, with tap tempo and beats to the bar, is at **/metronome** (linked in the footer). On a phone the metronome sits in the toolbar's wrench menu with the tuner and the drums; while it runs, its stop button takes the wrench's place. On a desktop the metronome button opens the full metronome in a panel you can drag and resize; on a phone the small control in the toolbar stays.
 
 ## Drums
 

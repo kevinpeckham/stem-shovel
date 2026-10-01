@@ -29,7 +29,7 @@
 	import { formatDate } from "$lib/utils/formatDate";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { invalidateAll } from "$app/navigation";
-	import { onMount, untrack } from "svelte";
+	import { onMount, tick, untrack } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
 	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
 	import {
@@ -88,8 +88,28 @@
 	let phase = $state("idle");
 	/** Drop takes under SHORT_TAKE_SECONDS (a mis-tap); a per-browser setting, read on mount. */
 	let discardShort = $state(false);
-	/** The tuner in its popover; a take starting closes it, which frees the microphone. */
+	/** The tuner in its panel (floating from lg, docked under the recorder below); a take starting closes it, which frees the microphone. */
 	let tuner = $state<Tuner | null>(null);
+	let tunerOpen = $state(false);
+	async function toggleTuner(e?: Event) {
+		(e?.currentTarget as HTMLElement | null)?.blur();
+		tunerOpen = !tunerOpen;
+		if (tunerOpen) {
+			await tick(); // the panel mounts the tuner
+			void tuner?.start();
+		} else tuner?.stop();
+	}
+	/** The notes popped out of their column into a panel (from lg), or docked back; remembered per browser. */
+	let notesFloating = $state(false);
+	const NOTES_FLOATING_KEY = "stemshovel.recorder.notes-floating";
+	function setNotesFloating(on: boolean) {
+		notesFloating = on;
+		try {
+			localStorage.setItem(NOTES_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	// The piano: a keyboard under the recorder whose sound goes into the take with the microphone (or without it).
 	let pianoOpen = $state(false);
 	/** The piano goes into the take while it is out, unless switched off (its panel's header); remembered per browser. */
@@ -118,6 +138,12 @@
 	// panel too (docs/demo-recording.md, "The drum machine panel"). Its beat goes into the take unless switched off.
 	let drumsOpen = $state(false);
 	let drumsInTake = $state(true);
+	/** The full metronome in a panel from lg (the compact control below), as the drums. */
+	let metroOpen = $state(false);
+	function toggleMetronome(e?: Event) {
+		metroOpen = !metroOpen;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
 	/**
 	 * Who owns the space bar: the instrument touched last. The drum machine's panel takes it as it opens
 	 * (space plays and stops the beat), the piano as it opens (space is its sustain pedal), and a click
@@ -232,6 +258,7 @@
 		try {
 			drumsInTake = localStorage.getItem(DRUMS_IN_TAKE_KEY) !== "0";
 			pianoInTake = localStorage.getItem(PIANO_IN_TAKE_KEY) !== "0";
+			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
 		} catch {
 			// As above.
 		}
@@ -526,7 +553,31 @@
 			<!-- The tools: the metronome and the drums (a click or a beat while a take records) and the tuner. From sm up
 			     they sit in the toolbar; a phone has room for one button, a tools menu holding them all. -->
 			<div class="hidden sm-flex gap-2">
-				<Metronome compact />
+				<!-- The metronome: below lg the compact control; from lg one button that opens and closes the full metronome's panel (Kevin). -->
+				<div class="lg-hidden"><Metronome compact /></div>
+				<button
+					class="button button-sm shrink-0 hidden lg-inline-flex {metroOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: metronome.running
+							? 'text-accent'
+							: ''}"
+					type="button"
+					aria-pressed={metroOpen}
+					title={metroOpen
+						? "Close the metronome"
+						: metronome.running
+							? "The metronome is running; open it"
+							: "Open the metronome"}
+					aria-label={metroOpen ? "Close the metronome" : "Open the metronome"}
+					onclick={toggleMetronome}
+				>
+					<span
+						class="i-ph-metronome {metronome.running && metronome.beat === 0
+							? 'scale-125'
+							: ''} transition-transform"
+						aria-hidden="true"
+					></span>
+				</button>
 				<!-- The drums: below lg the compact control (play, stop, tempo) as on a phone; from lg one button that
 				     opens and closes the full drum machine's floating panel (Kevin). -->
 				<div class="lg-hidden"><DrumMachine compact /></div>
@@ -597,7 +648,7 @@
 								kind: "button",
 								label: "Tuner",
 								icon: tunerIcon,
-								popovertarget: "tuner",
+								action: () => toggleTuner(),
 							},
 							{ id: "metronome", kind: "snippet", snippet: metronomeItem },
 							{ id: "drums", kind: "snippet", snippet: drumsItem },
@@ -613,11 +664,14 @@
 				{/if}
 			</div>
 			<button
-				class="button button-sm shrink-0 hidden sm-flex"
+				class="button button-sm shrink-0 hidden sm-flex {tunerOpen
+					? 'bg-accent text-oxford border-accent opacity-100'
+					: ''}"
 				type="button"
-				popovertarget="tuner"
-				title="Tuner"
+				aria-pressed={tunerOpen}
+				title={tunerOpen ? "Close the tuner" : "Tuner"}
 				aria-label="Tuner"
+				onclick={toggleTuner}
 			>
 				<span aria-hidden="true">{@render tunerIcon()}</span>
 			</button>
@@ -672,7 +726,7 @@
 				}}
 				onstart={() => {
 					takeId = null;
-					document.getElementById("tuner")?.hidePopover();
+					if (tunerOpen) void toggleTuner();
 				}}
 				onqueued={(t) => {
 					takeId = t.localId;
@@ -710,6 +764,18 @@
 					</label>
 				</div>
 			{/if}
+
+			<!-- The tuner: listens while open, quiet again when closed or when a take starts. Its own panel from lg, docked here below. -->
+			<FloatingPanel
+				open={tunerOpen}
+				title="Instrument Tuner"
+				storageKey="stemshovel.recorder.tuner-panel"
+				width={640}
+				height={520}
+				onminimise={() => toggleTuner()}
+			>
+				<Tuner bind:this={tuner} />
+			</FloatingPanel>
 
 			<!-- The piano: in a floating panel from lg (dragged, resized, remembered), docked here under the recorder below
 			     it; one instance either way. Its sound is mixed into the next take (docs/piano.md), with or without the microphone. -->
@@ -765,38 +831,62 @@
 			{/if}
 		</section>
 
-		<!-- The idea's note board; a new idea's notes create it on the first save. -->
+		<!-- The idea's note board; a new idea's notes create it on the first save. Docked in its column, or popped out
+		     into a panel of its own from lg (Kevin), the same editor either way. -->
 		<section
 			class="h-full max-h-full overflow-y-scroll sm-h-auto sm-max-h-none sm-min-h-560px xl-col-start-2 xl-row-start-1 xl-row-span-2 max-w-full overflow-x-hidden sm-overflow-y-visible rounded-md"
 			aria-label="Notes"
 		>
-			<div class="justify-between w-full items-center mb-3 hidden sm-flex">
-				<div class="opacity-90"><span>Notes for:</span> "{ideaTitle}"</div>
-				<button
-					class="px-2 py-1 bg-blue-300/5 hover-bg-blue-300/10 opacity-80 rounded-md flex items-center disabled-opacity-80 border border-blue-300/5 hover-border-current"
-					type="button"
-					title="Clear the notes"
-					aria-label="Clear the notes"
-					onclick={() => {
-						if (confirm("Clear the notes?")) clearNotes?.();
-					}}
-				>
-					<span class="i-ph-trash" aria-hidden="true"></span>
-				</button>
-			</div>
-			<!-- Keyed on explicit switches only: creating the idea on the first save must not remount the editor. -->
-			{#key notesKey}
-				<IdeaNotesPanel
-					idea={{ id: ideaId, notes, title: ideaTitle }}
-					{ensureIdea}
-					onchange={(m) => (notes = m)}
-					onsaved={async ({ ideaDeleted }) => {
-						// Emptied notes on an idea without takes remove the idea; the list shows the first line of the notes.
-						if (ideaDeleted) ideaId = null;
-						await invalidateAll();
-					}}
-				/>
-			{/key}
+			<FloatingPanel
+				open={true}
+				floating={notesFloating}
+				closable={false}
+				title={`Notes for “${ideaTitle}”`}
+				storageKey="stemshovel.recorder.notes-panel"
+				width={560}
+				height={620}
+				onminimise={() => setNotesFloating(false)}
+			>
+				{#snippet controls()}
+					<button
+						class="button button-xs hidden lg-inline-flex"
+						type="button"
+						title={notesFloating
+							? "Put the notes back in their column"
+							: "Pop the notes out into a panel"}
+						aria-label={notesFloating ? "Dock the notes" : "Pop out the notes"}
+						onclick={() => setNotesFloating(!notesFloating)}
+					>
+						<span
+							class={notesFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+							aria-hidden="true"
+						></span>
+					</button>
+					<button
+						class="button button-xs"
+						type="button"
+						title="Clear the notes"
+						aria-label="Clear the notes"
+						onclick={() => {
+							if (confirm("Clear the notes?")) clearNotes?.();
+						}}
+					>
+						<span class="i-ph-trash" aria-hidden="true"></span>
+					</button>
+				{/snippet}
+				{#key notesKey}
+					<IdeaNotesPanel
+						idea={{ id: ideaId, notes, title: ideaTitle }}
+						{ensureIdea}
+						onchange={(m) => (notes = m)}
+						onsaved={async ({ ideaDeleted }) => {
+							// Emptied notes on an idea without takes remove the idea; the list shows the first line of the notes.
+							if (ideaDeleted) ideaId = null;
+							await invalidateAll();
+						}}
+					/>
+				{/key}
+			</FloatingPanel>
 		</section>
 
 		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
@@ -1003,61 +1093,6 @@
 				/>
 			{/key}
 		{/if}
-	</div>
-
-	<!-- The tuner: listens while open, quiet again when closed or when a take starts. -->
-	<div
-		id="tuner"
-		popover="auto"
-		onbeforetoggle={(e) => {
-			if (e.newState === "open") void tuner?.start();
-			else tuner?.stop();
-		}}
-		class="
-			fixed
-			h-screen
-			left-0
-			overflow-y-auto
-			pb-6
-			px-3
-			pt-5
-			rounded-md
-			text-blue-100
-			top-0
-			w-full
-			sm-[position-area:bottom_span-left]
-			sm-absolute
-			sm-h-auto
-			sm-max-h-fit
-			sm-mt-4
-			sm-max-h-[calc(100dvh-2rem)]
-			sm-w-[min(640px,100vw)]
-			sm-border
-			sm-border-white/5
-			bg-oxford
-			sm-px-8
-			sm-pt-5
-			sm-pb-12
-		 sm-shadow-2xl
-			sm-shadow-black/60
-			sm-[&::backdrop]-bg-black/60
-			sm-[&::backdrop]-backdrop-blur-none"
-	>
-		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="font-600">Instrument Tuner</h2>
-			<div class="flex items-center gap-3">
-				<!-- <a class="link-dim text-13px" href="/tuner">Full page</a> -->
-				<button
-					class="button-popover-close"
-					type="button"
-					popovertarget="tuner"
-					popovertargetaction="hide"
-				>
-					<span class="sr-only">Close</span>
-				</button>
-			</div>
-		</div>
-		<Tuner bind:this={tuner} />
 	</div>
 
 	<!-- Recorder settings: per-browser preferences (localStorage), the gear in the header. -->
@@ -1374,6 +1409,18 @@
 		</div>
 	</div>
 </main>
+
+<!-- The metronome's floating panel (desktop), as the drum machine's. -->
+<FloatingPanel
+	open={metroOpen}
+	title="Metronome"
+	storageKey="stemshovel.recorder.metronome-panel"
+	width={640}
+	height={520}
+	onminimise={() => toggleMetronome()}
+>
+	<Metronome />
+</FloatingPanel>
 
 <!-- The drum machine's floating panel (desktop): dragged by its header, resized by its corner, minimised to the toolbar. -->
 <FloatingPanel

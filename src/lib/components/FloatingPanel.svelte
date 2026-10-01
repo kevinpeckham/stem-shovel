@@ -23,10 +23,14 @@
 		/** The starting size; the minimum the handle allows is 480 × 320. */
 		width?: number;
 		height?: number;
-		/** Extra controls in the header, before the minimise button. */
+		/** Extra controls in the header, before the close button. */
 		controls?: Snippet;
 		children: Snippet;
 		onminimise: () => void;
+		/** Float from lg (the default), or stay docked in the flow at every width (the notes, until popped out). */
+		floating?: boolean;
+		/** Show the close button (off for a panel that is always there, like the notes). */
+		closable?: boolean;
 	}
 	let {
 		open,
@@ -37,6 +41,8 @@
 		controls,
 		children,
 		onminimise,
+		floating = true,
+		closable = true,
 	}: Props = $props();
 
 	let x = $state(24);
@@ -133,7 +139,9 @@
 
 {#if open}
 	<div
-		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden lg-fixed lg-z-40 lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]"
+		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {floating
+			? 'lg-fixed lg-z-40 lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
+			: ''}"
 		style:--fp-x="{x}px"
 		style:--fp-y="{y}px"
 		style:--fp-w="{w}px"
@@ -145,7 +153,9 @@
 		<!-- The drag handle is a pointer affordance; the toolbar button and Minimise cover the keyboard. -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<header
-			class="flex items-center gap-3 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none lg-cursor-move lg-touch-none"
+			class="flex items-center gap-3 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none {floating
+				? 'lg-cursor-move lg-touch-none'
+				: ''}"
 			{onpointerdown}
 			{onpointermove}
 			{onpointerup}
@@ -155,15 +165,17 @@
 			></span>
 			<span class="font-600 text-14px grow">{title}</span>
 			{@render controls?.()}
-			<button
-				class="button button-xs"
-				type="button"
-				title="Close"
-				aria-label="Close {title}"
-				onclick={onminimise}
-			>
-				<span class="i-ph-x" aria-hidden="true"></span>
-			</button>
+			{#if closable}
+				<button
+					class="button button-xs"
+					type="button"
+					title="Close"
+					aria-label="Close {title}"
+					onclick={onminimise}
+				>
+					<span class="i-ph-x" aria-hidden="true"></span>
+				</button>
+			{/if}
 		</header>
 		<div class="@container min-h-0 overflow-auto p-3">
 			{@render children()}
