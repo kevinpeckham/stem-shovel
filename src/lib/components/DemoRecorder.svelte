@@ -1,5 +1,6 @@
 <script lang="ts">
 	import RecorderWave from "$lib/components/RecorderWave.svelte";
+	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import { computePeaks } from "$lib/audio/peaks";
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
 	import { isIOS } from "$lib/utils/isIOS";
@@ -43,11 +44,18 @@
 		codec: string | null;
 		durationSeconds: number | null;
 	}
+	/** An instrument playing into the take: its capture stream, the name of its meter and the icon beside it. */
+	export interface InstrumentInput {
+		label: string;
+		icon: "piano" | "drums";
+		stream: MediaStream;
+	}
+
 	interface Props {
 		/** The idea's title, shown and edited in the panel (the page saves it). */
 		ideaTitle: string;
-		/** The instruments' sound (the piano's and the drum machine's capture streams) mixed into the take with the microphone; asked as a take starts (a gesture), so a beat started after Record still goes in. */
-		instruments?: () => MediaStream[];
+		/** The instruments' sound (the piano's and the drum machine's capture streams) mixed into the take with the microphone, each with its own meter; asked as a take starts (a gesture), so a beat started after Record still goes in. */
+		instruments?: () => InstrumentInput[];
 
 		/** A stopped take, with its audio: the page queues the upload. */
 		onqueued: (take: {
@@ -130,10 +138,12 @@
 		micMuted = muted;
 		for (const t of stream?.getAudioTracks() ?? []) t.enabled = !muted;
 	}
-	/** The instruments' level (the piano, the drums) on their own, beside the microphone's; null with none in the mix. */
-	let instLevel = $state<number | null>(null);
-	let instAnalyser: AnalyserNode | null = null;
-	let instBuf: Float32Array<ArrayBuffer> | null = null;
+	/** Each instrument's level (the piano, the drums) on its own meter above the microphone's (Kevin: one combined meter read as the piano's); empty with none in the mix. */
+	let instLevels = $state<{ label: string; icon: InstrumentInput["icon"]; level: number }[]>([]);
+	let instAnalysers: { analyser: AnalyserNode; buf: Float32Array<ArrayBuffer> }[] = [];
+	/** The microphone alone for its own meter while instruments are in the mix (the main analyser reads the mix for the waveform strip and the peak). */
+	let micAnalyser: AnalyserNode | null = null;
+	let micBuf: Float32Array<ArrayBuffer> | null = null;
 	let peak = $state(0);
 	let notice = $state<string | null>(null);
 	let inputLabel = $state<string | null>(null);
@@ -552,7 +562,9 @@
 	 * with instruments playing into the take (the piano, the drums), all of
 	 * them mixed in this context into a MediaStreamDestination; the
 	 * microphone's tracks are disabled while it is muted (silence in the
-	 * take and on its meter). The meter reads the mix.
+	 * take and on its meter). The main analyser reads the mix (the peak and
+	 * the waveform strip); the microphone's meter reads the microphone alone
+	 * once instruments have meters of their own.
 	 */
 	function startMeter(s: MediaStream): MediaStream {
 		ctx = new AudioContext();
@@ -563,19 +575,24 @@
 		const streams = instruments();
 		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
-			// The instruments' own meter, beside the microphone's (Kevin), reads their sum alone.
-			instAnalyser = ctx.createAnalyser();
-			instAnalyser.fftSize = 1024;
-			instBuf = new Float32Array(instAnalyser.fftSize);
-			instLevel = 0;
-			for (const stream of streams) {
-				const inst = ctx.createMediaStreamSource(stream);
+			// Each instrument gets its own meter above the microphone's (Kevin), an AnalyserNode on its source alone.
+			instLevels = streams.map(({ label, icon }) => ({ label, icon, level: 0 }));
+			instAnalysers = streams.map(({ stream }) => {
+				const inst = ctx!.createMediaStreamSource(stream);
+				const instAnalyser = ctx!.createAnalyser();
+				instAnalyser.fftSize = 1024;
 				inst.connect(mix);
-				inst.connect(analyser);
+				inst.connect(analyser!);
 				inst.connect(instAnalyser);
-			}
+				return { analyser: instAnalyser, buf: new Float32Array(instAnalyser.fftSize) };
+			});
 			source.connect(mix);
 			recorded = mix.stream;
+			// With instruments beside it, the microphone's meter reads the microphone alone (each row its own source).
+			micAnalyser = ctx.createAnalyser();
+			micAnalyser.fftSize = 1024;
+			micBuf = new Float32Array(micAnalyser.fftSize);
+			source.connect(micAnalyser);
 		}
 		source.connect(analyser); // not to the destination: no monitoring through the speaker
 		for (const t of s.getAudioTracks()) t.enabled = !micMuted;
@@ -608,22 +625,28 @@
 			sum += x * x;
 			if (Math.abs(x) > max) max = Math.abs(x);
 		}
-		level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
-		if (instAnalyser && instBuf) {
-			instAnalyser.getFloatTimeDomainData(instBuf);
+		if (micAnalyser && micBuf) {
+			micAnalyser.getFloatTimeDomainData(micBuf);
+			let m2 = 0;
+			for (const x of micBuf) m2 += x * x;
+			level = Math.min(1, Math.sqrt(m2 / micBuf.length) * 3);
+		} else level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
+		instAnalysers.forEach(({ analyser: a, buf }, i) => {
+			a.getFloatTimeDomainData(buf);
 			let s2 = 0;
-			for (const x of instBuf) s2 += x * x;
-			instLevel = Math.min(1, Math.sqrt(s2 / instBuf.length) * 3);
-		}
+			for (const x of buf) s2 += x * x;
+			instLevels[i].level = Math.min(1, Math.sqrt(s2 / buf.length) * 3);
+		});
 		return max;
 	}
 
 	function stopStream() {
 		cancelAnimationFrame(meterFrame);
 		analyser = null;
-		instAnalyser = null;
-		instBuf = null;
-		instLevel = null;
+		instAnalysers = [];
+		instLevels = [];
+		micAnalyser = null;
+		micBuf = null;
 		void ctx?.close();
 		ctx = null;
 		for (const t of stream?.getTracks() ?? []) t.stop();
@@ -853,28 +876,34 @@
 
 			<!-- input meter, playback controls, recording metadata  -->
 			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px @xl-min-h-80px">
-				<!-- the instruments' meter (the piano, the drums), while any play into the take -->
-				{#if instLevel !== null}
+				<!-- a meter per instrument (the piano, the drums), while any play into the take -->
+				{#each instLevels as inst, i (i)}
 					<div
-						class="mt-1 @xl-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+						class="{i === 0
+							? 'mt-1 @xl-mt-3'
+							: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 						role="meter"
-						aria-label="Instruments level"
+						aria-label="{inst.label} level"
 						aria-valuemin="0"
 						aria-valuemax="100"
-						aria-valuenow={Math.round(instLevel * 100)}
+						aria-valuenow={Math.round(inst.level * 100)}
 					>
-						<span class="i-ph-piano-keys flex" aria-hidden="true"></span>
+						{#if inst.icon === "drums"}
+							<span class="grid place-items-center w-1em" aria-hidden="true"><IconDrumKit /></span>
+						{:else}
+							<span class="i-ph-piano-keys flex" aria-hidden="true"></span>
+						{/if}
 						<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
 							<div
-								class="h-full rounded {instLevel > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
-								style:width="{instLevel * 100}%"
+								class="h-full rounded {inst.level > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
+								style:width="{inst.level * 100}%"
 							></div>
 						</div>
 					</div>
-				{/if}
+				{/each}
 				<!-- input meter -->
 				<div
-					class="{instLevel === null
+					class="{instLevels.length === 0
 						? 'mt-1 @xl-mt-3'
 						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"

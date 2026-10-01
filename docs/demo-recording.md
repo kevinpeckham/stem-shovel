@@ -398,10 +398,15 @@ one never swallows the key (the first symptom: space closed the panel
 because its toggle still had focus). Text fields keep the key, as the
 instruments' own handlers already check.
 
-**The instruments' meter**: while any instrument plays into the take, a
-second meter above the microphone's reads their sum alone (a second
-AnalyserNode on the instrument sources; Kevin), so a quiet piano or a
-loud beat shows beside the voice. The panel's body is a
+**The instruments' meters**: while instruments play into the take, each
+gets its own meter above the microphone's (an AnalyserNode on that
+source alone; `instruments()` returns `{ label, icon, stream }` per
+instrument, the piano-keys icon or the drum kit icon beside its bar), so
+a quiet piano and a loud beat each show beside the voice, and the
+microphone's row then reads the microphone alone (the main analyser still
+reads the mix for the peak and the waveform strip). The first
+version was one combined meter under a piano icon, which Kevin read as
+the piano's alone ("I don't see an input level indicator for the drums"). The panel's body is a
 `@container`, so the machine lays itself out by the panel's width (the
 piano's and drum machine's container-query work was for this). The
 panel's drum machine has the account's saved beats and Text-to-Beat.

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Idea Recorder: a meter per instrument.** The piano and the drums each get their own level meter above the microphone's while they play into the take, with their icons, in place of one combined meter under a piano icon (Kevin: "I don't see an input level indicator for the drums"), and the microphone's meter then reads the microphone alone rather than the whole mix. `DemoRecorder`'s `instruments` now returns `{ label, icon, stream }` per instrument.
+
 ## [0.71.0] - 2026-10-01
 
 ### Added

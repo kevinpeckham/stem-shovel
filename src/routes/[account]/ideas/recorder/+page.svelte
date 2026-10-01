@@ -10,6 +10,7 @@
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import type { InstrumentInput } from "$lib/components/DemoRecorder.svelte";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
@@ -188,10 +189,12 @@
 		}
 	}
 	/** What a take mixes in beside the microphone, asked at Record: the piano when it is out, the drums when they are in play (or their panel is open) and wanted. */
-	function instruments(): MediaStream[] {
-		const list: MediaStream[] = [];
-		if (pianoOpen && pianoInTake) list.push(piano.captureStream());
-		if (drumsInTake && (drumsOpen || drumMachine.running)) list.push(drumMachine.captureStream());
+	function instruments(): InstrumentInput[] {
+		const list: InstrumentInput[] = [];
+		if (pianoOpen && pianoInTake)
+			list.push({ label: "Piano", icon: "piano", stream: piano.captureStream() });
+		if (drumsInTake && (drumsOpen || drumMachine.running))
+			list.push({ label: "Drums", icon: "drums", stream: drumMachine.captureStream() });
 		return list;
 	}
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
