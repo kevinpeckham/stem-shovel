@@ -29,6 +29,7 @@ export interface DrumPreset {
 	humanize?: number;
 	/** The effects the beat arrives with, over the defaults (every preset names its own, Kevin's call: a preset resets the effects to what suits it). */
 	fx?: Partial<DrumFx>;
+	/** The kit the beat arrives on (every preset names one, Kevin's call; "room" is not chosen until its identity settles). */
 	kit?: DrumKitId;
 	meter?: DrumMeterId;
 	patterns: DrumPresetRow[][];
@@ -51,6 +52,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Rock",
 		bpm: 120,
 		fx: { reverbReturn: 0.2 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },
@@ -66,6 +68,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Rock",
 		bpm: 140,
 		fx: { reverbReturn: 0.2 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.X...x.x." },
@@ -81,6 +84,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Rock",
 		bpm: 90,
 		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.........x.....X.....x...x....." },
@@ -96,6 +100,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Rock",
 		bpm: 150,
 		fx: { reverbReturn: 0.15 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.......X......." },
@@ -111,6 +116,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Pop and funk",
 		bpm: 112,
 		fx: { reverbReturn: 0.3, delayReturn: 0.15, delayTime: 3 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.......x.x....." },
@@ -126,6 +132,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Pop and funk",
 		bpm: 118,
 		fx: { reverbReturn: 0.35, delayReturn: 0.1, delayTime: 2, delayAnalog: true },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...X...X...X..." },
@@ -142,6 +149,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		bpm: 104,
 		fx: { reverbReturn: 0.1 },
 		swing: 0.15,
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..x..x...x..x..X..x..x.x.x....." },
@@ -157,6 +165,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Pop and funk",
 		bpm: 122,
 		fx: { reverbReturn: 0.3, delayReturn: 0.1, delayTime: 2 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...X...X...X..." },
@@ -176,6 +185,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		fx: { reverbReturn: 0.15, delayReturn: 0.1, delayTime: 3, delayAnalog: true, fuzzDrive: 0.1 },
 		swing: 0.35,
 		humanize: 0.2,
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x...x.....X..x......x....." },
@@ -241,6 +251,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Hip-hop and electronic",
 		bpm: 174,
 		fx: { reverbReturn: 0.2, delayReturn: 0.15, delayTime: 4 },
+		kit: "electronic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.........x.....X.........x....." },
@@ -257,6 +268,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "World",
 		bpm: 76,
 		fx: { reverbReturn: 0.3, delayReturn: 0.35, delayTime: 3, delayAnalog: true },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "........X......." },
@@ -272,6 +284,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "World",
 		bpm: 130,
 		fx: { reverbReturn: 0.3 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..x..X.X..x..X." },
@@ -286,6 +299,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "World",
 		bpm: 100,
 		fx: { reverbReturn: 0.25 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..xX..xX..xX..x" },
@@ -303,6 +317,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		fx: { reverbReturn: 0.2, delayReturn: 0.1, delayTime: 2, delayAnalog: true },
 		swing: 1,
 		swingGrid: 8,
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.X.....x." },
@@ -320,6 +335,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		bpm: 132,
 		fx: { reverbReturn: 0.4 },
 		meter: "3/4",
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..........." },
@@ -336,6 +352,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		bpm: 70,
 		fx: { reverbReturn: 0.45, delayReturn: 0.15, delayTime: 6 },
 		meter: "6/8",
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.x..." },
@@ -352,6 +369,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		bpm: 96,
 		fx: { reverbReturn: 0.25 },
 		meter: "6/8",
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....X...x.X.....X..x.." },
@@ -368,6 +386,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Fills",
 		bpm: 120,
 		fx: { reverbReturn: 0.3 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },
@@ -390,6 +409,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		style: "Fills",
 		bpm: 120,
 		fx: { reverbReturn: 0.35 },
+		kit: "acoustic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },

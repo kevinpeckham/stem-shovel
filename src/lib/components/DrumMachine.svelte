@@ -483,6 +483,7 @@
 				swing: reply.swing,
 				humanize: reply.humanize,
 				fx: reply.fx,
+				kit: reply.kit,
 			});
 			beatNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
 			notify(

@@ -64,7 +64,14 @@ describe("parseTextToBeatReply", () => {
 			"3/4",
 			12,
 		);
-		expect([r.bpm, r.swing, r.humanize, r.note]).toEqual([null, null, null, ""]);
+		expect([r.bpm, r.swing, r.humanize, r.kit, r.note]).toEqual([null, null, null, null, ""]);
+		expect(
+			parseTextToBeatReply(
+				'{"kit": "electronic", "rows": [{"voice": "kick", "cells": "x..............."}]}',
+				"4/4",
+				16,
+			).kit,
+		).toBe("electronic");
 		expect(r.pattern.steps).toBe(12);
 	});
 	test("refuses a row of the wrong length, an unknown voice, a stray character, a wild tempo, and no JSON", () => {

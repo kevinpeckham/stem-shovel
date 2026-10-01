@@ -336,7 +336,13 @@ otherwise. Each style names its feel the same way (`swing`, `humanize`;
 funk and hip-hop swing, house barely humanizes), and a replacement
 resets swing to straight on the sixteenth grid and humanize to the
 usual amount before applying them (Kevin: presets, generated and
-AI-generated beats should all reset or apply feel and effects).
+AI-generated beats should all reset or apply feel and effects). Each
+style names its kit too (house and half-time electronic, the rest
+acoustic, the fill none), every preset names one (trap, house, techno
+and drum and bass electronic), and Text-to-Beat's reply may name one;
+`placePattern` switches the kit and readies its samples as a kit change
+does. Only "acoustic" and "electronic" are chosen: the Room kit waits
+on an identity Kevin is happy with.
 
 ## Text-to-Beat (prototype, built 2026-09-28)
 

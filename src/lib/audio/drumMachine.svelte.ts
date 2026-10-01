@@ -511,6 +511,7 @@ class DrumMachineEngine {
 			fx: style.fx,
 			swing: style.swing,
 			humanize: style.humanize,
+			kit: style.kit,
 		});
 	}
 	/**
@@ -527,6 +528,7 @@ class DrumMachineEngine {
 			swing?: number | null;
 			humanize?: number | null;
 			fx?: Partial<DrumFx> | null;
+			kit?: DrumKitId | null;
 		} = {},
 	): number {
 		const before = $state.snapshot(this.project);
@@ -553,6 +555,12 @@ class DrumMachineEngine {
 			if (swing !== null) this.project.swing = swing;
 			if (humanize !== null) this.project.humanize = humanize;
 			if (also.fx) this.project.fx = { ...this.project.fx, ...also.fx };
+		}
+		// The kit the pattern was written for, when it names one (a style's, the model's); the samples load as a kit change does.
+		if (also.kit && also.kit !== this.project.kit) {
+			this.project.kit = also.kit;
+			this.kitReady = false;
+			if (this.#ctx) void this.#readyKit();
 		}
 		this.#resetSolo();
 		this.#save();

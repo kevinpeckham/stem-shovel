@@ -9,6 +9,8 @@ export interface TextToBeatResult {
 	bpm: number | null;
 	swing: number | null;
 	humanize: number | null;
+	/** "acoustic" or "electronic" when the model chose; null leaves the kit in use. */
+	kit: "acoustic" | "electronic" | null;
 	note: string;
 	/** Effects the description asked for, over the defaults; null for a dry beat. */
 	fx: Partial<DrumFx> | null;
@@ -68,6 +70,7 @@ export function parseTextToBeatReply(
 			reply.humanize === null || reply.humanize === undefined
 				? null
 				: Math.round(reply.humanize) / 100,
+		kit: reply.kit ?? null,
 		note: reply.note ?? "",
 		fx: replyFx(reply.fx),
 	};

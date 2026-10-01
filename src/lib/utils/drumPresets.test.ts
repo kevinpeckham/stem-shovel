@@ -112,6 +112,7 @@ describe("preset effects", () => {
 	test("every preset names its effects, loading as a valid project with at least a room or an echo", () => {
 		for (const preset of DRUM_PRESETS) {
 			expect(preset.fx, preset.id).toBeDefined();
+			expect(["acoustic", "electronic"], preset.id).toContain(preset.kit);
 			const p = drumPresetProject(preset);
 			expect(v.safeParse(DrumProjectSchema, p).success, preset.id).toBe(true);
 			expect(p.fx.reverbReturn + p.fx.delayReturn, preset.id).toBeGreaterThan(0);

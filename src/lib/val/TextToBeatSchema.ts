@@ -22,6 +22,8 @@ export const TextToBeatReplySchema = v.object({
 	/** A percentage: models think of swing that way. */
 	swing: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
 	note: v.optional(v.nullable(v.pipe(v.string(), v.trim(), v.maxLength(200)))),
+	/** The kit the beat is written for; the model chooses between the two settled ones. */
+	kit: v.optional(v.nullable(v.picklist(["acoustic", "electronic"]))),
 	/** A percentage too: 0 machine-exact, 15 to 30 a human looseness. */
 	humanize: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(100)))),
 	/** Effects the description asked for, as percentages, and the delay's time by its menu label; absent means a dry beat. */

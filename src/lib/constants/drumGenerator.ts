@@ -1,5 +1,5 @@
 import type { DrumFx } from "../val/DrumPatternSchema";
-import type { DrumVoiceId } from "./drumMachine";
+import type { DrumKitId, DrumVoiceId } from "./drumMachine";
 
 /**
  * The pattern generator's styles (docs/drum-machine.md, "Pattern
@@ -27,6 +27,8 @@ export interface DrumGeneratorStyle {
 	/** The feel it arrives with: swing 0 to 1 (straight when absent) and humanize 0 to 1 (the usual amount when absent). */
 	swing?: number;
 	humanize?: number;
+	/** The kit the style is written for ("acoustic" or "electronic"; the fill names none and keeps the kit in use). */
+	kit?: DrumKitId;
 	four: DrumGeneratorRow[];
 	six: DrumGeneratorRow[];
 }
@@ -53,6 +55,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "kick on 1 and 3, snare on 2 and 4, hats on the eighths",
 		fx: { reverbReturn: 0.2 },
 		swing: 0,
+		kit: "acoustic",
 		humanize: 0.14,
 		four: [
 			{ voice: "kick", hits: "X..2..6.x.5...4." },
@@ -69,6 +72,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "a steady backbeat with a clap now and then",
 		fx: { reverbReturn: 0.25, delayReturn: 0.15 },
 		swing: 0,
+		kit: "acoustic",
 		humanize: 0.1,
 		four: [
 			{ voice: "kick", hits: "X...4...x..5...." },
@@ -85,6 +89,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "syncopated kicks, snare ghosts, sixteenth hats",
 		fx: { reverbReturn: 0.1 },
 		swing: 0.2,
+		kit: "acoustic",
 		humanize: 0.2,
 		four: [
 			{ voice: "kick", hits: "X..4..5.x.3..4.." },
@@ -100,6 +105,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "a lazy kick, the snare doubled by a clap",
 		fx: { reverbReturn: 0.15 },
 		swing: 0.25,
+		kit: "acoustic",
 		humanize: 0.18,
 		four: [
 			{ voice: "kick", hits: "X..3....x.4..3.." },
@@ -116,6 +122,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "four on the floor, open hats on the off-beats",
 		fx: { delayReturn: 0.2, delayTime: 3, reverbReturn: 0.15 },
 		swing: 0.1,
+		kit: "electronic",
 		humanize: 0.05,
 		four: [
 			{ voice: "kick", hits: "X...x...x...x..." },
@@ -132,6 +139,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "a broken kick under sixteenth hats, for the fast tempos",
 		fx: { reverbReturn: 0.3 },
 		swing: 0.15,
+		kit: "acoustic",
 		humanize: 0.15,
 		four: [
 			{ voice: "kick", hits: "X.....x...5....4" },
@@ -147,6 +155,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "a clave on the rim, a cowbell, toms in the gaps",
 		fx: { reverbReturn: 0.2 },
 		swing: 0,
+		kit: "acoustic",
 		humanize: 0.12,
 		four: [
 			{ voice: "kick", hits: "X..3..x...x..3.." },
@@ -164,6 +173,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "the snare on 3 alone, room to breathe",
 		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6 },
 		swing: 0.1,
+		kit: "electronic",
 		humanize: 0.2,
 		four: [
 			{ voice: "kick", hits: "X.....4...4.5..." },
