@@ -387,8 +387,13 @@
 
 			<h3 class="mt-8 text-15px font-700">Invite codes</h3>
 			<p class="mt-1 text-sm opacity-90">
-				Sign-up is invitation-only. A code lets anyone who has it create an account and join
-				{data.account.name}; hand it out in person, or send the link.
+				{#if data.signUpOpen}
+					Anyone can create a free account, and a code lets them join {data.account.name} as they do;
+					hand it out in person, or send the link.
+				{:else}
+					Sign-up is invitation-only. A code lets anyone who has it create an account and join
+					{data.account.name}; hand it out in person, or send the link.
+				{/if}
 			</p>
 			<form
 				class="mt-2 flex flex-wrap items-end gap-3"

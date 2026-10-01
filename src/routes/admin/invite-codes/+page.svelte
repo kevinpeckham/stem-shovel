@@ -28,9 +28,14 @@
 <section>
 	<h1 class="display">New-account invite codes</h1>
 	<p class="mt-1 text-sm opacity-90">
-		Sign-up is invitation-only. A code from here lets someone create an account and get a workspace
-		of their own, without joining anyone's. Codes that also join an account come from that account's
-		settings.
+		{#if data.signUpOpen}
+			Sign-up is open, so a newcomer needs no code to create an account; a code from here still
+			works, and is the way in if sign-up is closed again.
+		{:else}
+			Sign-up is invitation-only. A code from here lets someone create an account and get a
+			workspace of their own, without joining anyone's.
+		{/if}
+		Codes that also join an account come from that account's settings.
 	</p>
 	<form
 		class="mt-2 flex flex-wrap items-end gap-3"
