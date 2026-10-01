@@ -6,13 +6,13 @@ import {
 	listBeats,
 	listIdeas,
 	listPianoPresets,
+	parseIdeaInstruments,
 	recordingsWantingPlayback,
 	songLink,
 	sitePianoPresets,
 	songPicker,
 } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/jobs";
-import { IdeaInstrumentsDataSchema } from "$lib/val/IdeaSchema";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
 import * as v from "valibot";
@@ -29,16 +29,6 @@ export const config: Config = { maxDuration: 300 };
  * remembers where it was opened from. The user's own ideas come along with
  * their takes' metadata (a URL to play on demand, never the audio itself).
  */
-function parseInstruments(json: string | null) {
-	if (!json) return null;
-	try {
-		const r = v.safeParse(IdeaInstrumentsDataSchema, JSON.parse(json));
-		return r.success ? r.output : null;
-	} catch {
-		return null;
-	}
-}
-
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const { account } = await parent();
@@ -57,7 +47,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 			title: i.title,
 			notes: i.notes,
 			// The instruments as they were with the idea (JSON in the row); a row from before the column, or one that fails the schema, loads nothing.
-			instruments: parseInstruments(i.instruments),
+			instruments: parseIdeaInstruments(i.instruments),
 			createdAt: i.createdAt,
 			takes: i.takes.map((t) => ({
 				id: t.id,

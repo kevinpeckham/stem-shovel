@@ -369,20 +369,30 @@ instance either way, so a take in progress is untouched by the move.
 last widget on the page (Kevin: the screen fully malleable);
 `stemshovel.recorder.recordings-floating`.
 
-**The instruments travel with the idea**: the drum machine's whole project
-and the piano's sound and effects (its preset shape, `PianoPresetData`)
-are saved on the idea as they change, in the `idea.instruments` column as
-JSON (`IdeaInstrumentsDataSchema`, migration 0063), by an effect on the
-recorder page that watches the two engines and saves a second after the
-last change through `saveIdeaInstruments`; showing an idea (a take from
-the list) puts them back with `drumMachine.loadProject` and
-`piano.applyPreset`, an idea without any leaving the instruments as they
-are. The page compares canonical JSON (`stableStringify`, keys sorted, as
-valibot's output and an engine snapshot order their keys differently) so
-loading never triggers a save, and keeps what it saved this visit in a map
-so switching back to an idea loads the latest rather than the page's data
-from load time. Not saved: the drum volume and the piano's octave, volume
-and key helper (listening and playing choices, per browser).
+**The instruments travel with the idea, through its takes**: when a take
+is recorded, the drum machine's whole project and the piano's sound and
+effects (its preset shape, `PianoPresetData`) go with it (`instrumentsForTake`
+on the queued take, kept in IndexedDB with it), each unless its
+**Settings with the idea** switch is off (beside "in the take" in the
+panel headers; `stemshovel.recorder.drums-settings` / `piano-settings`,
+on by default), and are saved on the idea once the take lands
+(`onsaved` carries the idea the take went to, so a switch during the
+upload cannot misfile them), in the `idea.instruments` column as JSON
+(`IdeaInstrumentsDataSchema`, migration 0063) through
+`saveIdeaInstruments`; the server merges an instrument at a time, a null
+leaving what the idea had for that one. Showing an idea (a take from the
+list) puts them back with `drumMachine.loadProject` and
+`piano.applyPreset`; an idea without any (older than the feature, or
+recorded with the switches off) leaves the instruments as they are, so it
+inherits the current settings until a take is recorded there (Kevin's
+model: a take fixes the settings, an idea without takes of its own
+inherits). The page keeps what it saved this visit in a map so switching
+back to an idea loads the latest rather than the page's data from load
+time. The first version saved on every change and stamped an idea with
+the current settings as soon as it was shown, which made switching among
+older ideas look like nothing changed (each inherited the last tweak the
+moment it was opened). Not saved: the drum volume and the piano's octave,
+volume and key helper (listening and playing choices, per browser).
 
 **Every wanted instrument joins the take**: `instruments()` returns the
 piano and the drums whenever their "in the take" switch is on, their panels

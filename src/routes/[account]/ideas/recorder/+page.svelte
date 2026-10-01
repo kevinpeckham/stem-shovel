@@ -12,7 +12,6 @@
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import type { InstrumentInput } from "$lib/components/DemoRecorder.svelte";
 	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
-	import { stableStringify } from "$lib/utils/stableStringify";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
@@ -138,6 +137,17 @@
 	}
 	// The piano: a keyboard under the recorder whose sound goes into the take with the microphone (or without it).
 	let pianoOpen = $state(false);
+	/** The piano's sound and effects are saved with the idea when a take is recorded, unless switched off (its panel's header); remembered per browser. */
+	let pianoSettings = $state(true);
+	const PIANO_SETTINGS_KEY = "stemshovel.recorder.piano-settings";
+	function setPianoSettings(on: boolean) {
+		pianoSettings = on;
+		try {
+			localStorage.setItem(PIANO_SETTINGS_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	/** The piano goes into the take while it is out, unless switched off (its panel's header); remembered per browser. */
 	let pianoInTake = $state(true);
 	const PIANO_IN_TAKE_KEY = "stemshovel.recorder.piano-in-take";
@@ -164,6 +174,17 @@
 	// panel too (docs/demo-recording.md, "The drum machine panel"). Its beat goes into the take unless switched off.
 	let drumsOpen = $state(false);
 	let drumsInTake = $state(true);
+	/** The drum machine's project is saved with the idea when a take is recorded, unless switched off; remembered per browser. */
+	let drumsSettings = $state(true);
+	const DRUMS_SETTINGS_KEY = "stemshovel.recorder.drums-settings";
+	function setDrumsSettings(on: boolean) {
+		drumsSettings = on;
+		try {
+			localStorage.setItem(DRUMS_SETTINGS_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	/** The full metronome in a panel from lg (the compact control below), as the drums. */
 	let metroOpen = $state(false);
 	function toggleMetronome(e?: Event) {
@@ -207,46 +228,40 @@
 	}
 
 	/**
-	 * The instruments' settings travel with the idea (Kevin): the drum
-	 * machine's project and the piano's sound and effects are saved on the
-	 * idea as they change (a second after the last change) and put back into
-	 * the instruments when the idea is shown again. What was saved this visit
-	 * is kept here too, so switching back to an idea loads the latest, not
-	 * the page's data from load time.
+	 * The instruments' settings travel with the idea through its takes
+	 * (Kevin): when a take is recorded, the drum machine's project and the
+	 * piano's sound and effects as they stand go with it, each unless its
+	 * "settings with the idea" switch is off, and are saved on the idea once
+	 * the take lands (so the idea is the one the take went to, even after a
+	 * switch during the upload); showing an idea puts them back into the
+	 * instruments, an idea without any (older than the feature, or recorded
+	 * with the switches off) leaving the instruments as they are, so it
+	 * inherits the current settings until a take is recorded there. What was
+	 * saved this visit is kept here too, so switching back to an idea loads
+	 * the latest rather than the page's data from load time.
 	 */
 	const instrumentsById = new Map<string, IdeaInstruments>();
-	/** The settings the current idea holds, canonical JSON; the effect saves when the instruments differ. */
-	let savedInstruments: string | null = null;
-	let instrumentsTimer: ReturnType<typeof setTimeout> | null = null;
-	function currentInstruments(): IdeaInstruments {
+	/** The settings to go with a take recorded now: each instrument whose switch is on, else null (the idea keeps what it had for that one). */
+	function instrumentsForTake(): IdeaInstruments {
 		drumMachine.load();
 		piano.load();
-		return { drums: $state.snapshot(drumMachine.project), piano: piano.currentPreset() };
+		return {
+			drums: drumsSettings ? $state.snapshot(drumMachine.project) : null,
+			piano: pianoSettings ? piano.currentPreset() : null,
+		};
 	}
-	// An effect (the house rules' last resort, as FloatingPanel's): the instruments are engine state outside this component, and watching them is the job.
-	$effect(() => {
-		const id = ideaId;
-		const now = currentInstruments();
-		const key = stableStringify(now);
-		if (!id || key === savedInstruments) return;
-		if (instrumentsTimer) clearTimeout(instrumentsTimer);
-		instrumentsTimer = setTimeout(async () => {
-			instrumentsTimer = null;
-			try {
-				await saveIdeaInstruments({ id, ...now });
-				instrumentsById.set(id, now);
-				savedInstruments = key;
-			} catch (e) {
-				notify(`Instrument settings not saved: ${errorMessage(e)}`, { kind: "error" });
-			}
-		}, 1000);
-	});
+	/** A take landed: its settings onto its idea (the server keeps the idea's earlier settings for an instrument sent as null). */
+	async function saveTakeInstruments(id: string, instruments: IdeaInstruments) {
+		if (!instruments.drums && !instruments.piano) return;
+		try {
+			instrumentsById.set(id, await saveIdeaInstruments({ id, ...instruments }));
+		} catch (e) {
+			notify(`Instrument settings not saved: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	/** The instruments as the idea had them, into the engines; an idea without any leaves the instruments as they are. */
 	function loadInstruments(i: Idea) {
-		if (instrumentsTimer) clearTimeout(instrumentsTimer);
-		instrumentsTimer = null;
 		const saved = instrumentsById.get(i.id) ?? i.instruments ?? null;
-		savedInstruments = saved ? stableStringify(saved) : null;
 		if (!saved) return;
 		drumMachine.load();
 		piano.load();
@@ -311,6 +326,7 @@
 				if (ideaId) openIdeas.add(ideaId); // the new take shows in the list
 			}
 			notify(`Take ${saved.takeNumber} saved`);
+			if (saved.instruments) await saveTakeInstruments(saved.ideaId, saved.instruments);
 			await invalidateAll();
 			void followRendition(saved.id);
 		},
@@ -339,6 +355,8 @@
 		try {
 			drumsInTake = localStorage.getItem(DRUMS_IN_TAKE_KEY) !== "0";
 			pianoInTake = localStorage.getItem(PIANO_IN_TAKE_KEY) !== "0";
+			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
+			pianoSettings = localStorage.getItem(PIANO_SETTINGS_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
 			recorderFloating = localStorage.getItem(RECORDER_FLOATING_KEY) === "1";
 			recordingsFloating = localStorage.getItem(RECORDINGS_FLOATING_KEY) === "1";
@@ -365,8 +383,6 @@
 	function newIdea() {
 		if (recorderBusy || !recorder) return;
 		ideaId = null;
-		// The instruments stay as they are; they are saved on the new idea once it exists.
-		savedInstruments = null;
 		takeId = null;
 		notes = "";
 		ideaTitle = placeholder();
@@ -853,6 +869,8 @@
 							ideaTitle,
 							trimSilence: prefs.trimSilence,
 							createdAt: Date.now(),
+							// The instruments as the take was made, for the idea to keep (saved once the take lands).
+							instruments: instrumentsForTake(),
 						});
 					}}
 				/>
@@ -869,15 +887,29 @@
 							? "The drum machine goes into the take while it plays."
 							: "The drum machine plays along but stays out of the take."}
 					</span>
-					<label class="flex items-center gap-2">
-						<input
-							type="checkbox"
-							class="accent-maximumYellow"
-							checked={drumsInTake}
-							onchange={(e) => setDrumsInTake(e.currentTarget.checked)}
-						/>
-						Drums in the take
-					</label>
+					<span class="flex flex-wrap items-center gap-x-4 gap-y-2">
+						<label class="flex items-center gap-2">
+							<input
+								type="checkbox"
+								class="accent-maximumYellow"
+								checked={drumsInTake}
+								onchange={(e) => setDrumsInTake(e.currentTarget.checked)}
+							/>
+							Drums in the take
+						</label>
+						<label
+							class="flex items-center gap-2"
+							title="A take saves the beat and the drum machine's settings with the idea, and opening the idea brings them back"
+						>
+							<input
+								type="checkbox"
+								class="accent-maximumYellow"
+								checked={drumsSettings}
+								onchange={(e) => setDrumsSettings(e.currentTarget.checked)}
+							/>
+							Settings with the idea
+						</label>
+					</span>
 				</div>
 			{/if}
 
@@ -915,6 +947,18 @@
 							onchange={(e) => setPianoInTake(e.currentTarget.checked)}
 						/>
 						Piano in the take
+					</label>
+					<label
+						class="flex items-center gap-2 text-13px text-dim cursor-pointer"
+						title="A take saves the piano's sound and effects with the idea, and opening the idea brings them back"
+					>
+						<input
+							type="checkbox"
+							class="accent-maximumYellow"
+							checked={pianoSettings}
+							onchange={(e) => setPianoSettings(e.currentTarget.checked)}
+						/>
+						Settings with the idea
 					</label>
 				{/snippet}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1579,6 +1623,18 @@
 				onchange={(e) => setDrumsInTake(e.currentTarget.checked)}
 			/>
 			In the take
+		</label>
+		<label
+			class="flex items-center gap-2 text-13px text-dim cursor-pointer"
+			title="A take saves the beat and the drum machine's settings with the idea, and opening the idea brings them back"
+		>
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={drumsSettings}
+				onchange={(e) => setDrumsSettings(e.currentTarget.checked)}
+			/>
+			Settings with the idea
 		</label>
 	{/snippet}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

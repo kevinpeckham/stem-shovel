@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Idea Recorder: instrument settings are saved by takes, not by every change.** A recorded take carries the drum machine's project and the piano's sound and effects to its idea (saved once the take lands, on the idea it went to), each unless the new **Settings with the idea** switch beside "in the take" is off; the server merges an instrument at a time. An idea is no longer stamped with the current settings the moment it is shown, which had made switching among older ideas look like nothing changed (Kevin). `SavedTake` carries `ideaId` and the take's `instruments`; the unused `stableStringify` util is gone.
+
 ## [0.72.0] - 2026-10-01
 
 ### Added

@@ -1,4 +1,5 @@
 import { postJson, uploadRecordingFile, type RecordingReservation } from "$lib/upload";
+import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 import { errorMessage } from "$lib/utils/errorMessage";
 
 /**
@@ -25,6 +26,8 @@ export interface PendingTake {
 	/** Cut silence off the ends once saved (the Recorder setting at the time). */
 	trimSilence?: boolean;
 	createdAt: number;
+	/** The instruments' settings as the take was recorded (the drum machine's project, the piano's sound and effects), for the idea to keep; an instrument whose "settings with the idea" switch was off is null (docs/demo-recording.md). */
+	instruments?: IdeaInstruments;
 	blob: Blob;
 }
 export interface QueueItem extends PendingTake {
@@ -35,6 +38,9 @@ export interface QueueItem extends PendingTake {
 export interface SavedTake {
 	localId: string;
 	id: string;
+	/** The idea the take landed in (the one it was recorded for, or the one made for it on upload). */
+	ideaId: string;
+	instruments?: IdeaInstruments;
 	takeNumber: number;
 	title: string;
 	durationSeconds: number;
@@ -165,6 +171,8 @@ export class TakeQueue {
 					this.#onsaved({
 						localId: item.localId,
 						id: recordingId,
+						ideaId,
+						instruments: item.instruments,
 						takeNumber,
 						title: item.name,
 						durationSeconds: item.durationSeconds,

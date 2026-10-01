@@ -1,4 +1,4 @@
-import type { IdeaInstruments } from "$lib/val/IdeaSchema";
+import { IdeaInstrumentsDataSchema, type IdeaInstruments } from "$lib/val/IdeaSchema";
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import { reorderById } from "$lib/utils/reorderById";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
@@ -3070,18 +3070,44 @@ export async function renameIdea(accountId: string, ideaId: string, title: strin
 	return !!row;
 }
 
-/** The idea's instrument settings (IdeaInstrumentsDataSchema), stored as JSON. */
+/**
+ * The idea's instrument settings (IdeaInstrumentsDataSchema), stored as
+ * JSON, an instrument at a time: a null leaves what the idea holds for
+ * that instrument (a take recorded with one instrument's switch off keeps
+ * the other's earlier settings). Returns what the idea now holds, or null
+ * when there is no such idea.
+ */
 export async function setIdeaInstruments(
 	accountId: string,
 	ideaId: string,
 	instruments: IdeaInstruments,
-) {
-	const [row] = await db
+): Promise<IdeaInstruments | null> {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { instruments: true },
+	});
+	if (!row) return null;
+	const had = parseIdeaInstruments(row.instruments);
+	const next: IdeaInstruments = {
+		drums: instruments.drums ?? had?.drums ?? null,
+		piano: instruments.piano ?? had?.piano ?? null,
+	};
+	await db
 		.update(idea)
-		.set({ instruments: JSON.stringify(instruments) })
-		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
-		.returning({ id: idea.id });
-	return !!row;
+		.set({ instruments: JSON.stringify(next) })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)));
+	return next;
+}
+
+/** The column's JSON as settings; a row from before the column, or one that fails the schema, holds nothing. */
+export function parseIdeaInstruments(json: string | null): IdeaInstruments | null {
+	if (!json) return null;
+	try {
+		const r = v.safeParse(IdeaInstrumentsDataSchema, JSON.parse(json));
+		return r.success ? r.output : null;
+	} catch {
+		return null;
+	}
 }
 
 export async function setIdeaNotes(accountId: string, ideaId: string, notes: string) {
