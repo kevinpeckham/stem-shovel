@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: the drum machine in a floating panel** (docs/demo-recording.md, "The drum machine panel"). On a desktop, a button beside the toolbar's drum control opens the full drum machine in a panel dragged by its header and resized by its corner, its place remembered; Minimise returns it to the toolbar. **The drums go into the take** while they play, as the piano does (the engine's capture stream joins the recorder's mix, asked at Record so a beat started later still lands), and **Drums in the take** switches them out so a beat can be a click track that stays out of the recording.
+
 ## [0.70.0] - 2026-10-01
 
 ### Added

@@ -9,6 +9,7 @@
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
@@ -97,6 +98,26 @@
 		if (pianoOpen) piano.warm();
 		else piano.allOff();
 	}
+	// The drum machine: the compact control in the toolbar always; on a desktop, the full machine in a floating
+	// panel too (docs/demo-recording.md, "The drum machine panel"). Its beat goes into the take unless switched off.
+	let drumsOpen = $state(false);
+	let drumsInTake = $state(true);
+	const DRUMS_IN_TAKE_KEY = "stemshovel.recorder.drums-in-take";
+	function setDrumsInTake(on: boolean) {
+		drumsInTake = on;
+		try {
+			localStorage.setItem(DRUMS_IN_TAKE_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	/** What a take mixes in beside the microphone, asked at Record: the piano when it is out, the drums when they are in play (or their panel is open) and wanted. */
+	function instruments(): MediaStream[] {
+		const list: MediaStream[] = [];
+		if (pianoOpen) list.push(piano.captureStream());
+		if (drumsInTake && (drumsOpen || drumMachine.running)) list.push(drumMachine.captureStream());
+		return list;
+	}
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
 	/** The microphones the browser lists once permission is granted. */
@@ -180,6 +201,11 @@
 	onMount(() => {
 		discardShort = loadDiscardShortTakes();
 		prefs = loadRecorderPreferences();
+		try {
+			drumsInTake = localStorage.getItem(DRUMS_IN_TAKE_KEY) !== "0";
+		} catch {
+			// As above.
+		}
 		void queue.restore();
 	});
 
@@ -473,6 +499,24 @@
 			<div class="hidden sm-flex gap-2">
 				<Metronome compact />
 				<DrumMachine compact />
+				<!-- The full drum machine in a floating panel, a desktop's room; the compact control is its minimised form. -->
+				<button
+					class="button button-sm shrink-0 hidden lg-inline-flex {drumsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={drumsOpen}
+					title={drumsOpen
+						? "Minimise the drum machine to the toolbar"
+						: "Open the drum machine in a panel"}
+					aria-label={drumsOpen ? "Minimise the drum machine" : "Open the drum machine"}
+					onclick={() => (drumsOpen = !drumsOpen)}
+				>
+					<span
+						class={drumsOpen ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+						aria-hidden="true"
+					></span>
+				</button>
 				<button
 					class="button button-sm shrink-0 {pianoOpen
 						? 'bg-accent text-oxford border-accent opacity-100'
@@ -587,7 +631,7 @@
 				quality={prefs.quality}
 				stereo={prefs.stereo}
 				inputId={prefs.inputId}
-				instrument={pianoOpen ? piano.captureStream() : null}
+				{instruments}
 				micInMix={pianoMic}
 				oninputs={(list) => (inputs = list)}
 				newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
@@ -613,6 +657,29 @@
 					});
 				}}
 			/>
+
+			{#if drumsOpen || drumMachine.running}
+				<!-- The drums: in the take unless switched off (the beat's sound through the recorder's mix, as the piano's). -->
+				<div
+					class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-13px text-dim"
+					aria-label="Drums in the take"
+				>
+					<span>
+						{drumsInTake
+							? "The drum machine goes into the take while it plays."
+							: "The drum machine plays along but stays out of the take."}
+					</span>
+					<label class="flex items-center gap-2">
+						<input
+							type="checkbox"
+							class="accent-maximumYellow"
+							checked={drumsInTake}
+							onchange={(e) => setDrumsInTake(e.currentTarget.checked)}
+						/>
+						Drums in the take
+					</label>
+				</div>
+			{/if}
 
 			{#if pianoOpen}
 				<!-- The piano under the recorder: its sound is mixed into the next take (docs/piano.md). -->
@@ -1267,3 +1334,29 @@
 		</div>
 	</div>
 </main>
+
+<!-- The drum machine's floating panel (desktop): dragged by its header, resized by its corner, minimised to the toolbar. -->
+<FloatingPanel
+	open={drumsOpen}
+	title="Drum machine"
+	storageKey="stemshovel.recorder.drum-panel"
+	onminimise={() => (drumsOpen = false)}
+>
+	{#snippet controls()}
+		<label class="flex items-center gap-2 text-13px text-dim cursor-pointer">
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={drumsInTake}
+				onchange={(e) => setDrumsInTake(e.currentTarget.checked)}
+			/>
+			In the take
+		</label>
+	{/snippet}
+	<DrumMachine
+		keyboard={false}
+		account={{ id: data.account.id, name: data.account.name, canEdit: true }}
+		beats={data.beats}
+		textToBeat={data.textToBeat}
+	/>
+</FloatingPanel>

@@ -46,8 +46,8 @@
 	interface Props {
 		/** The idea's title, shown and edited in the panel (the page saves it). */
 		ideaTitle: string;
-		/** An instrument's sound (the piano's capture stream) mixed into the take with the microphone; read as a take starts. */
-		instrument?: MediaStream | null;
+		/** The instruments' sound (the piano's and the drum machine's capture streams) mixed into the take with the microphone; asked as a take starts (a gesture), so a beat started after Record still goes in. */
+		instruments?: () => MediaStream[];
 		/** With an instrument in the mix, whether the microphone is too (off for a clean instrument take). */
 		micInMix?: boolean;
 		/** A stopped take, with its audio: the page queues the upload. */
@@ -113,7 +113,7 @@
 		stereo = false,
 		inputId = null,
 		oninputs,
-		instrument = null,
+		instruments = () => [],
 		micInMix = true,
 	}: Props = $props();
 	/** What the take is really being recorded as, from the track and the recorder. */
@@ -541,9 +541,10 @@
 
 	/**
 	 * The meter, and the stream the recorder takes: the microphone alone, or,
-	 * with an instrument playing into the take (the piano), the two mixed in
-	 * this context into a MediaStreamDestination, the microphone left out of
-	 * the mix when the page says so. The meter reads the mix.
+	 * with instruments playing into the take (the piano, the drums), all of
+	 * them mixed in this context into a MediaStreamDestination, the
+	 * microphone left out of the mix when the page says so. The meter reads
+	 * the mix.
 	 */
 	function startMeter(s: MediaStream): MediaStream {
 		ctx = new AudioContext();
@@ -551,15 +552,18 @@
 		analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
 		let recorded = s;
-		if (instrument) {
+		const streams = instruments();
+		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
-			const inst = ctx.createMediaStreamSource(instrument);
-			inst.connect(mix);
-			inst.connect(analyser);
+			for (const stream of streams) {
+				const inst = ctx.createMediaStreamSource(stream);
+				inst.connect(mix);
+				inst.connect(analyser);
+			}
 			if (micInMix) source.connect(mix);
 			recorded = mix.stream;
 		}
-		if (!instrument || micInMix) source.connect(analyser); // not to the destination: no monitoring through the speaker
+		if (!streams.length || micInMix) source.connect(analyser); // not to the destination: no monitoring through the speaker
 		meterBuf = new Float32Array(analyser.fftSize);
 		let hold = 0;
 		const loop = () => {

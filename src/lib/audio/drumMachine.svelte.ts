@@ -225,10 +225,9 @@ class DrumMachineEngine {
 		this.#frame = requestAnimationFrame(this.#follow);
 	};
 
-	/** The context and the bus, made on the first play or pad hit (a gesture, as browsers require), the bus brought up to date. */
-	async #graph(): Promise<{ ctx: AudioContext; bus: DrumBus }> {
+	/** The context and the bus, made once (the bus brought up to date each time); the async form below resumes the context too. */
+	#ensureGraph(): { ctx: AudioContext; bus: DrumBus } {
 		this.load();
-		playThroughSilentSwitch();
 		const ctx = (this.#ctx ??= new AudioContext());
 		const bus = (this.#bus ??= createDrumBus(
 			ctx,
@@ -237,8 +236,30 @@ class DrumMachineEngine {
 		));
 		bus.update($state.snapshot(this.project.fx), this.project.bpm);
 		bus.setVolume(this.volume);
+		return { ctx, bus };
+	}
+	/** The context and the bus, made on the first play or pad hit (a gesture, as browsers require), running. */
+	async #graph(): Promise<{ ctx: AudioContext; bus: DrumBus }> {
+		playThroughSilentSwitch();
+		const { ctx, bus } = this.#ensureGraph();
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		return { ctx, bus };
+	}
+
+	#capture: MediaStreamAudioDestinationNode | null = null;
+	/**
+	 * The drums' sound as a MediaStream (what the speaker gets, effects and
+	 * volume included), for the Idea Recorder to mix into a take
+	 * (docs/demo-recording.md). Opens the audio if it is not open yet, so call
+	 * it from a gesture (Record is one); the beat may start before or after.
+	 */
+	captureStream(): MediaStream {
+		const { ctx, bus } = this.#ensureGraph();
+		if (!this.#capture) {
+			this.#capture = ctx.createMediaStreamDestination();
+			bus.master.connect(this.#capture);
+		}
+		return this.#capture.stream;
 	}
 
 	async start() {

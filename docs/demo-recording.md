@@ -316,6 +316,31 @@ should still look like it captured something): bars scale to the loudest
 in view, a floor of 0.02 keeps silence flat, and a square-root curve
 lifts the quiet parts.
 
+## The drum machine panel (built 2026-10-01)
+
+Kevin's ask: on a desktop, the full drum machine in a floating panel
+over the recorder page, dragged by its header, resized by the browser's
+corner handle, its place and size remembered per browser
+(`FloatingPanel.svelte`, `stemshovel.recorder.drum-panel`); a button
+beside the toolbar's compact drum control (from lg) opens it, and
+Minimise in its header, or the same button, puts it away; the compact
+control stays as the minimised form, as before. The panel's body is a
+`@container`, so the machine lays itself out by the panel's width (the
+piano's and drum machine's container-query work was for this). The
+panel's drum machine has the account's saved beats and Text-to-Beat.
+
+**The drums in the take**: `drumMachine.captureStream()` (a
+MediaStreamAudioDestinationNode on the bus's master, as the piano's)
+joins the recorder's mix. `DemoRecorder`'s `instrument` prop became
+`instruments`, a function the recorder calls as a take starts (a
+gesture), so the piano's stream goes in when the piano is out and the
+drums' when they are in play or their panel is open, and a beat started
+after Record still lands in the take because the capture node is on the
+bus. "Drums in the take" (the panel's header, and a line under the
+recorder while the drums play or the panel is open; remembered per
+browser under `stemshovel.recorder.drums-in-take`) switches them out,
+so a beat can be a click track that stays out of the recording.
+
 ## Later, if wanted
 
 - **Count-in and click** from the song's tempo and meter (Web Audio

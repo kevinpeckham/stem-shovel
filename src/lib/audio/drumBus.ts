@@ -18,6 +18,8 @@ export interface DrumBus {
 	delay: AudioNode;
 	reverb: AudioNode;
 	update(fx: DrumFx, bpm: number): void;
+	/** The last node before the destination (the recorder's capture taps it). */
+	master: GainNode;
 	/** The master volume, 0 to 1 over the bus's own 0.9, ramped so a slider does not click; the offline render leaves it at 1 (a listening choice, not part of the beat). */
 	setVolume(v: number): void;
 }
@@ -89,7 +91,7 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	update(fx, bpm);
 	const setVolume = (v: number) =>
 		master.gain.setTargetAtTime(0.9 * Math.min(1, Math.max(0, v)), ctx.currentTime, 0.02);
-	return { dry, delay: delay.input, reverb: reverbIn, update, setVolume };
+	return { dry, delay: delay.input, reverb: reverbIn, update, setVolume, master };
 }
 
 /**

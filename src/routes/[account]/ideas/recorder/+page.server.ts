@@ -1,7 +1,9 @@
 import { publicBlobUrl } from "$lib/server/blob";
 import { requireEditor, requireSignedIn } from "$lib/server/access";
+import { aiAvailable } from "$lib/server/aiDetect";
 import {
 	deleteEmptyIdeas,
+	listBeats,
 	listIdeas,
 	recordingsWantingPlayback,
 	songLink,
@@ -54,6 +56,9 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 			})),
 		})),
 		projects: await songPicker(account.id),
+		// The drum machine's panel (docs/demo-recording.md): the account's saved beats and whether Text-to-Beat is on.
+		beats: await listBeats(account.id),
+		textToBeat: aiAvailable(),
 		fromSong: songId.success ? await songLink(account.id, songId.output) : null,
 	};
 };
