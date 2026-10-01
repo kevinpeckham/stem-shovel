@@ -498,6 +498,15 @@ preset resets the effects to its own (adding one as a pattern leaves the
 effects alone). The test holds every preset to a room or an echo, reverb
 at most 50 %, delay at most 40 %.
 
+## Master volume (2026-10-01)
+
+Kevin's ask: a Volume slider beside Humanize in the tempo row (and in
+the tempo menu below the small breakpoint), 0 to 100 %, over the bus's
+own 0.9 (`DrumBus.setVolume`, ramped over 20 ms). A listening choice
+remembered per browser (`stemshovel.drum-machine.volume`,
+`loadDrumVolume` / `saveDrumVolume`), not part of the beat: the link,
+saved beats and the WAV render leave it at full.
+
 ## The tutorial's effects (2026-10-01)
 
 Two steps after Humanize, "Put the kit in a room" (reverb level, done at

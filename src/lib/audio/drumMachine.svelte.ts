@@ -22,7 +22,9 @@ import type { DrumPreset } from "$lib/constants/drumPresets";
 import { decodeDrumProject } from "$lib/utils/decodeDrumProject";
 import {
 	loadDrumMachinePreferences,
+	loadDrumVolume,
 	saveDrumMachinePreferences,
+	saveDrumVolume,
 } from "$lib/utils/drumMachinePreferences";
 import { drumPresetProject } from "$lib/utils/drumPresetProject";
 import { drumSwingDelay } from "$lib/utils/drumSwingDelay";
@@ -84,6 +86,8 @@ class DrumMachineEngine {
 	/** The name of the preset or saved beat the project is, untouched; null once edited (the readout then says Custom). */
 	loadedName = $state<string | null>(null);
 
+	/** The master volume, 0 to 1, a listening choice remembered per browser; not in the beat, the link or the WAV. */
+	volume = $state(1);
 	/** Web MIDI in (docs/drum-machine.md, "MIDI input"): not asked yet, asked and refused or absent, or connected with the inputs' names. */
 	midiIn = $state<{ status: "idle" | "unsupported" | "denied" | "on"; inputs: string[] }>({
 		status: "idle",
@@ -120,6 +124,7 @@ class DrumMachineEngine {
 	load(warm = false, starting: DrumProject | null = null) {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
+		this.volume = loadDrumVolume();
 		const remembered = loadDrumMachinePreferences();
 		if (remembered) this.project = remembered;
 		else if (starting) this.project = starting;
@@ -230,6 +235,7 @@ class DrumMachineEngine {
 			this.project.bpm,
 		));
 		bus.update($state.snapshot(this.project.fx), this.project.bpm);
+		bus.setVolume(this.volume);
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		return { ctx, bus };
 	}
@@ -396,6 +402,13 @@ class DrumMachineEngine {
 		this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(v)));
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+	}
+	/** The master volume, 0 to 1 (docs/drum-machine.md, "Master volume"). */
+	setVolume(v: number) {
+		if (!Number.isFinite(v)) return;
+		this.volume = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		saveDrumVolume(this.volume);
+		this.#bus?.setVolume(this.volume);
 	}
 	/** The effects: the delay's time, feedback, return and analog character, the reverb's size and return, the fuzz's drive and tone, the wah's bars, range, resonance and mix. */
 	setFx(patch: Partial<DrumFx>) {

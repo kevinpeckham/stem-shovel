@@ -1054,6 +1054,21 @@
 				</div>
 			</div>
 		{/snippet}
+		{#snippet volumeItem()}
+			<label class="grid gap-1 px-3 py-2 text-13px">
+				<span>Volume · {Math.round(drumMachine.volume * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(drumMachine.volume * 100)}
+					oninput={(e) => drumMachine.setVolume(Number(e.currentTarget.value) / 100)}
+					aria-label="Volume"
+				/>
+			</label>
+		{/snippet}
 		{#snippet humanizeItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px {tutorial.control === 'humanize' ? HINT : ''}">
 				<span>Humanize · {Math.round(p.humanize * 100)}%</span>
@@ -1072,7 +1087,7 @@
 
 		<!-- tempo and range controls -->
 		<div
-			class="grid grid-cols-1 @xl-grid-cols-[auto_1fr] w-full @xl-items-center justify-start gap-4"
+			class="grid grid-cols-1 @2xl-grid-cols-[auto_1fr] w-full @2xl-items-center justify-start gap-4"
 		>
 			<!-- tempo -->
 			<div class="flex items-center gap-2">
@@ -1096,13 +1111,15 @@
 							{ id: "tempo", kind: "snippet", snippet: tempoItem },
 							{ id: "swing", kind: "snippet", snippet: swingItem },
 							{ id: "humanize", kind: "snippet", snippet: humanizeItem },
+							{ id: "volume", kind: "snippet", snippet: volumeItem },
 						]}
 					/>
 				</div>
 			</div>
 
 			<!-- range controls -->
-			<div class="hidden @xl-grid gap-3 @xl-grid-cols-3 @xl-gap-6 text-dark">
+			<!-- the sliders: two by two under Tap Tempo from the small breakpoint, a row of four beside it from the medium -->
+			<div class="hidden @xl-grid gap-3 @xl-grid-cols-2 @xl-gap-x-6 @2xl-grid-cols-4 text-dark">
 				<label class="block">
 					<span class="device-button-label">Tempo</span>
 					<input
@@ -1158,6 +1175,20 @@
 						value={Math.round(p.humanize * 100)}
 						oninput={(e) => drumMachine.setHumanize(Number(e.currentTarget.value) / 100)}
 						aria-label="Humanize"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Volume · {Math.round(drumMachine.volume * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(drumMachine.volume * 100)}
+						oninput={(e) => drumMachine.setVolume(Number(e.currentTarget.value) / 100)}
+						aria-label="Volume"
+						title="The drum machine's own volume, remembered in this browser; not part of the beat"
 					/>
 				</label>
 			</div>

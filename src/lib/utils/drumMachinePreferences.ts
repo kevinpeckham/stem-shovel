@@ -30,3 +30,23 @@ export function saveDrumMachinePreferences(p: DrumProject): void {
 		// Private mode or a full store: the project lasts for this page only.
 	}
 }
+
+/** The drum machine's master volume, a listening choice per browser, not part of the beat (docs/drum-machine.md, "Master volume"). */
+const VOLUME_KEY = "stemshovel.drum-machine.volume";
+export function loadDrumVolume(): number {
+	try {
+		const v = Number(localStorage.getItem(VOLUME_KEY));
+		return Number.isFinite(v) && localStorage.getItem(VOLUME_KEY) !== null
+			? Math.min(1, Math.max(0, v))
+			: 1;
+	} catch {
+		return 1;
+	}
+}
+export function saveDrumVolume(v: number): void {
+	try {
+		localStorage.setItem(VOLUME_KEY, String(v));
+	} catch {
+		// Private mode or a full store: the choice lasts for this page only.
+	}
+}

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Drum machine: a master volume** (docs/drum-machine.md, "Master volume"): a Volume slider beside Humanize (in the tempo menu on a phone), a listening choice remembered per browser and not part of the beat, the link or the WAV.
+
 ### Changed
 
 - **Drum machine: presets, generated beats and Text-to-Beat choose their kit** (Kevin): every preset names one (trap, house, techno and drum and bass on the electronic kit, the rest acoustic), each generator style names one (house and half-time electronic; the fill keeps the kit in use), and the model picks acoustic or electronic from the description. Only those two for now; the Room kit waits on an identity Kevin is happy with.
