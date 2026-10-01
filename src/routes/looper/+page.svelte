@@ -531,8 +531,20 @@
 							Tempo and length are set while the loop has layers. Clear it to change them.
 						</p>
 					{/if}
-					<label class="grid gap-1 text-13px">
-						Tempo · {looper.bpm} bpm
+					<div class="grid gap-1 text-13px">
+						<div class="flex items-center justify-between gap-2">
+							<span>Tempo · {looper.bpm} bpm</span>
+							<button
+								class="button button-xs"
+								type="button"
+								disabled={looper.locked}
+								title="Tap the tempo (Kevin: a tap tempo right in the looper)"
+								aria-label="Tap the tempo"
+								onclick={() => looper.tap()}
+							>
+								Tap
+							</button>
+						</div>
 						<input
 							class="w-full accent-maximumYellow"
 							type="range"
@@ -544,7 +556,7 @@
 							aria-label="Tempo in beats per minute"
 							oninput={(e) => looper.setBpm(Number(e.currentTarget.value))}
 						/>
-					</label>
+					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<label class="grid gap-1 text-13px">
 							Bars

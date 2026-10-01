@@ -206,7 +206,9 @@ the events on the idea.
 - `src/routes/looper/+page.svelte` and `+page.server.ts`: user-owned like
   the recorder; transport, position, source picker with meters, layers
   with waveforms, levels, mute, solo, delete, undo, clear; the loop's
-  settings; microphone monitor, latency slider and Calibrate; Save as take
+  settings with a Tap tempo button (Kevin: "a tap tempo control right in
+  the looper"; `looper.tap()` is the metronome's `tapTempo` over the last
+  eight taps, fixed while the loop has layers); microphone monitor, latency slider and Calibrate; Save as take
   through `TakeQueue` with the layers as sources and the loop's settings on
   the idea (`IdeaInstrumentsDataSchema.looper`, `LooperSettingsSchema`, no
   migration); the instrument panels as on the recorder page; a dev-only

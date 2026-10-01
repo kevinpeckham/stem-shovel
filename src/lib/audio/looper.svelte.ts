@@ -1,6 +1,7 @@
 import { audioSession } from "$lib/utils/audioSession";
 import { encodeWav24 } from "$lib/utils/encodeWav24";
 import { findLatency } from "$lib/utils/findLatency";
+import { tapTempo } from "$lib/utils/tapTempo";
 import { drumMachine } from "./drumMachine.svelte";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
@@ -256,6 +257,14 @@ class LooperEngine {
 	setBpm(v: number) {
 		if (this.locked) return;
 		this.bpm = Math.max(40, Math.min(240, Math.round(v)));
+	}
+	/** Tap the tempo (the metronome's way, the last eight taps); while the loop has layers the tempo is fixed. */
+	#taps: number[] = [];
+	tap() {
+		if (this.locked) return;
+		this.#taps = [...this.#taps, performance.now()].slice(-8);
+		const bpm = tapTempo(this.#taps);
+		if (bpm) this.setBpm(bpm);
 	}
 	setBars(n: LoopBars) {
 		if (this.locked) return;

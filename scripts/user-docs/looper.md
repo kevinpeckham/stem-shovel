@@ -4,7 +4,7 @@
 
 ## The loop
 
-Set the **tempo**, the **bars** (1, 2, 4 or 8) and the **beats per bar** (4 or 3) in the panel on the right before the first layer; once a layer exists they are fixed until you **Clear** the loop. **Count in a bar before the first pass** gives you a bar of clicks before recording starts; the **click** can sound on the count-in only, through the loop, or not at all.
+Set the **tempo** (the slider, or **Tap** it in beside it), the **bars** (1, 2, 4 or 8) and the **beats per bar** (4 or 3) in the panel on the right before the first layer; once a layer exists they are fixed until you **Clear** the loop. **Count in a bar before the first pass** gives you a bar of clicks before recording starts; the **click** can sound on the count-in only, through the loop, or not at all.
 
 **Play** runs the loop (an empty loop runs its transport so you can record the first layer against the click); **Stop** halts everything. The space bar plays and stops the loop unless the drum machine or the piano panel was the last thing you touched, in which case it works that instrument.
 
