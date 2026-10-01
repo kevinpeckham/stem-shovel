@@ -208,7 +208,14 @@ the events on the idea.
   with waveforms, levels, mute, solo, delete, undo, clear; the loop's
   settings with a Tap tempo button (Kevin: "a tap tempo control right in
   the looper"; `looper.tap()` is the metronome's `tapTempo` over the last
-  eight taps, fixed while the loop has layers); microphone monitor, latency slider and Calibrate; Save as take
+  eight taps, fixed while the loop has layers); the tempo synced both
+  ways with the drum machine and the metronome (Kevin): `looper.setBpm`
+  pushes through `syncTempo()`, and a page effect pulls the drum machine's
+  tempo (slider, tap, preset, generated beat) into an unlocked loop and
+  holds the drum machine to a locked loop's tempo; recording the drums
+  (re)starts the beat on bar 1 whatever it was doing, so a beat auditioned
+  from the panel joins in step (Kevin: "we need a sync to start the drum
+  machine on record or at the end of the count in"); microphone monitor, latency slider and Calibrate; Save as take
   through `TakeQueue` with the layers as sources and the loop's settings on
   the idea (`IdeaInstrumentsDataSchema.looper`, `LooperSettingsSchema`, no
   migration); the instrument panels as on the recorder page; a dev-only

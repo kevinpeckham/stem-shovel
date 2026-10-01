@@ -4,13 +4,13 @@
 
 ## The loop
 
-Set the **tempo** (the slider, or **Tap** it in beside it), the **bars** (1, 2, 4 or 8) and the **beats per bar** (4 or 3) in the panel on the right before the first layer; once a layer exists they are fixed until you **Clear** the loop. **Count in a bar before the first pass** gives you a bar of clicks before recording starts; the **click** can sound on the count-in only, through the loop, or not at all.
+Set the **tempo** (the slider, or **Tap** it in beside it), the **bars** (1, 2, 4 or 8) and the **beats per bar** (4 or 3) in the panel on the right before the first layer; once a layer exists they are fixed until you **Clear** the loop. The tempo is shared with the drum machine and the metronome: change it on either, or load a drum preset or a generated beat with a tempo of its own, and the loop follows; once the loop has layers, the drum machine is held to the loop's tempo instead. **Count in a bar before the first pass** gives you a bar of clicks before recording starts; the **click** can sound on the count-in only, through the loop, or not at all.
 
 **Play** runs the loop (an empty loop runs its transport so you can record the first layer against the click); **Stop** halts everything. The space bar plays and stops the loop unless the drum machine or the piano panel was the last thing you touched, in which case it works that instrument.
 
 ## Recording a layer
 
-Choose the source under **Record from**: the **microphone** (it asks for permission the first time), the **piano** or the **drums**, each with its own level meter. Press **Record**: from the next bar 1 (after the count-in when the loop was stopped) every full pass of the loop becomes a layer, until you press **Finish layer**, which lets the pass under way complete; **Cancel** drops the pass under way. Recording the drums starts the drum machine's beat on bar 1 at the loop's tempo if it is not already playing; open the drum machine from the toolbar to choose the beat first. The piano records whatever you play on its panel, keys or MIDI. A loop holds up to 16 layers.
+Choose the source under **Record from**: the **microphone** (it asks for permission the first time), the **piano** or the **drums**, each with its own level meter. Press **Record**: from the next bar 1 (after the count-in when the loop was stopped) every full pass of the loop becomes a layer, until you press **Finish layer**, which lets the pass under way complete; **Cancel** drops the pass under way. Recording the drums starts the drum machine's beat on bar 1 (after the count-in when the loop was stopped) at the loop's tempo, restarting it in step if it was already playing; open the drum machine from the toolbar to choose the beat first. The piano records whatever you play on its panel, keys or MIDI. A loop holds up to 16 layers.
 
 Each layer has a level, a mute and a solo, a waveform with the playhead, and a delete button; **Undo** removes the last layer.
 

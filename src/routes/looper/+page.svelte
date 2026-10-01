@@ -67,6 +67,16 @@
 		looper.toggle();
 	}
 
+	// Tempo synced both ways (Kevin): the drum machine's tempo (its slider, tap, a preset or a generated beat) becomes the
+	// loop's while the loop has no layers; with layers the loop's tempo is fixed and the drum machine is held to it.
+	// An effect because the drum machine is engine state outside this component.
+	$effect(() => {
+		const theirs = drumMachine.project.bpm;
+		if (theirs === looper.bpm) return;
+		if (looper.locked) looper.syncTempo();
+		else looper.setBpm(theirs);
+	});
+
 	/** Arm a source; the microphone asks for permission on its first turn. */
 	async function arm(source: LoopSource) {
 		looper.setArmed(source);

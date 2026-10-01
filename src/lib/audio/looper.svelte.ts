@@ -253,10 +253,19 @@ class LooperEngine {
 			// Private mode: the figure lasts for this page.
 		}
 	}
-	/** Tempo and length: only while no layer exists (the page clears the loop first if the user insists). */
+	/** Tempo and length: only while no layer exists (the page clears the loop first if the user insists). The tempo goes to the drum machine and the metronome too (Kevin: synced both ways; the page brings theirs back here). */
 	setBpm(v: number) {
 		if (this.locked) return;
 		this.bpm = Math.max(40, Math.min(240, Math.round(v)));
+		this.syncTempo();
+	}
+	/** The drum machine and the metronome at the loop's tempo (also what holds them there while the loop has layers). */
+	syncTempo() {
+		if (drumMachine.project.bpm !== this.bpm) {
+			drumMachine.load();
+			drumMachine.setBpm(this.bpm);
+		}
+		if (metronome.bpm !== this.bpm) metronome.setBpm(this.bpm);
 	}
 	/** Tap the tempo (the metronome's way, the last eight taps); while the loop has layers the tempo is fixed. */
 	#taps: number[] = [];
@@ -364,8 +373,7 @@ class LooperEngine {
 	 * Record a layer from the armed source, from the next bar 1 (after the
 	 * count-in when the loop is not playing yet), pass after pass until
 	 * `finishRecording`; each full pass becomes a layer. The drum machine,
-	 * when it is the source and not already playing, starts at that bar 1
-	 * at the loop's tempo.
+	 * when it is the source, (re)starts on that bar 1 at the loop's tempo.
 	 */
 	async record(): Promise<void> {
 		if (this.phase === "recording") return;
@@ -386,8 +394,10 @@ class LooperEngine {
 		const from = this.#nextBoundary(0.08);
 		this.#recordingSource = source;
 		this.#openTap(source);
-		if (source === "drums" && !drumMachine.running) {
+		if (source === "drums") {
+			// The beat starts on bar 1 (after the count-in from a standstill), whatever it was doing: a beat auditioned from the panel is restarted in step with the loop (Kevin).
 			drumMachine.load();
+			if (drumMachine.running) drumMachine.stop();
 			drumMachine.setBpm(this.bpm);
 			void drumMachine.startAt(from);
 			this.#startedDrums = true;
