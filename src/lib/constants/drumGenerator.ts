@@ -29,6 +29,8 @@ export interface DrumGeneratorStyle {
 	humanize?: number;
 	/** The kit the style is written for ("acoustic" or "electronic"; the fill names none and keeps the kit in use). */
 	kit?: DrumKitId;
+	/** The tempo the style is written at; a replacement takes it (an added pattern keeps the tempo in use). The fill names none. */
+	bpm?: number;
 	four: DrumGeneratorRow[];
 	six: DrumGeneratorRow[];
 }
@@ -53,6 +55,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "rock",
 		name: "Rock",
 		hint: "kick on 1 and 3, snare on 2 and 4, hats on the eighths",
+		bpm: 120,
 		fx: { reverbReturn: 0.2 },
 		swing: 0,
 		kit: "acoustic",
@@ -70,6 +73,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "pop",
 		name: "Pop",
 		hint: "a steady backbeat with a clap now and then",
+		bpm: 112,
 		fx: { reverbReturn: 0.25, delayReturn: 0.15, toneAir: 0.15 },
 		swing: 0,
 		kit: "acoustic",
@@ -87,6 +91,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "funk",
 		name: "Funk",
 		hint: "syncopated kicks, snare ghosts, sixteenth hats",
+		bpm: 102,
 		fx: { reverbReturn: 0.1, toneAir: 0.1 },
 		swing: 0.2,
 		kit: "acoustic",
@@ -103,6 +108,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "hip-hop",
 		name: "Hip-hop",
 		hint: "a lazy kick, the snare doubled by a clap",
+		bpm: 90,
 		fx: { reverbReturn: 0.15, toneBottom: 0.4 },
 		swing: 0.25,
 		kit: "electronic",
@@ -120,6 +126,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "house",
 		name: "House",
 		hint: "four on the floor, open hats on the off-beats",
+		bpm: 124,
 		fx: { delayReturn: 0.2, delayTime: 3, reverbReturn: 0.15, toneBottom: 0.4 },
 		swing: 0.1,
 		kit: "electronic",
@@ -137,6 +144,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "breakbeat",
 		name: "Breakbeat",
 		hint: "a broken kick under sixteenth hats, for the fast tempos",
+		bpm: 138,
 		fx: { reverbReturn: 0.3, toneBottom: 0.2 },
 		swing: 0.15,
 		kit: "acoustic",
@@ -153,6 +161,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "latin",
 		name: "Latin",
 		hint: "a clave on the rim, a cowbell, toms in the gaps",
+		bpm: 100,
 		fx: { reverbReturn: 0.2 },
 		swing: 0,
 		kit: "acoustic",
@@ -171,6 +180,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		id: "half-time",
 		name: "Half-time",
 		hint: "the snare on 3 alone, room to breathe",
+		bpm: 140,
 		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6, toneBottom: 0.3 },
 		swing: 0.1,
 		kit: "electronic",

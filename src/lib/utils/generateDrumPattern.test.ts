@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
 import { DRUM_GENERATOR_STYLES } from "$lib/constants/drumGenerator";
-import { DRUM_METERS, MAX_DRUM_ROWS, drumStepsFor } from "$lib/constants/drumMachine";
+import {
+	DRUM_BPM_MAX,
+	DRUM_BPM_MIN,
+	DRUM_METERS,
+	MAX_DRUM_ROWS,
+	drumStepsFor,
+} from "$lib/constants/drumMachine";
 import { DrumPatternSchema, type DrumPattern } from "$lib/val/DrumPatternSchema";
 import { emptyDrumPattern } from "./emptyDrumPattern";
 import { generateDrumPattern } from "./generateDrumPattern";
@@ -15,6 +21,10 @@ const hits = (p: DrumPattern) => p.rows.flatMap((r) => r.cells).filter(Boolean).
 describe("generateDrumPattern", () => {
 	test("the templates are well formed: sixteen characters for 4/4, twelve for 6/8, every character known", () => {
 		for (const style of DRUM_GENERATOR_STYLES) {
+			if (style.bpm !== undefined) {
+				expect(style.bpm, style.id).toBeGreaterThanOrEqual(DRUM_BPM_MIN);
+				expect(style.bpm, style.id).toBeLessThanOrEqual(DRUM_BPM_MAX);
+			}
 			for (const [k, val] of Object.entries(style.fx ?? {}))
 				if (k !== "delayTime" && k !== "delayAnalog")
 					expect(val, `${style.id} ${k}`).toBeGreaterThanOrEqual(0);

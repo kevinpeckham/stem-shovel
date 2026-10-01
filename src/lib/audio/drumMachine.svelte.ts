@@ -527,7 +527,9 @@ class DrumMachineEngine {
 			fx: style.fx,
 			swing: style.swing,
 			humanize: style.humanize,
-			kit: style.kit,
+			// A replacement takes the style's kit and tempo; a pattern added after yours keeps yours (the kit and tempo are the beat's, not the pattern's).
+			kit: mode === "replace" ? style.kit : null,
+			bpm: mode === "replace" ? style.bpm : null,
 		});
 	}
 	/**

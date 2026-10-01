@@ -332,7 +332,10 @@ arrives with over the defaults, modest master levels that suit the style
 quarter on half-time). `placePattern` resets the effects to the defaults
 plus these when it replaces the open pattern, and applies only these
 when it adds one, so a generated beat is clean unless its style says
-otherwise. Each style names its feel the same way (`swing`, `humanize`;
+otherwise. Each style names its tempo (`bpm`, rock 120, hip-hop 90, house 124,
+breakbeat 138; a replacement takes it, an added pattern keeps the tempo
+in use; Kevin: a generated beat should bring its tempo) and its feel the
+same way (`swing`, `humanize`;
 funk and hip-hop swing, house barely humanizes), and a replacement
 resets swing to straight on the sixteenth grid and humanize to the
 usual amount before applying them (Kevin: presets, generated and
@@ -341,7 +344,8 @@ style names its kit too (hip-hop, house and half-time electronic, the
 rest acoustic, the fill none; Kevin: hip-hop on the electronic kit), every preset names one (trap, house, techno
 and drum and bass electronic), and Text-to-Beat's reply may name one;
 `placePattern` switches the kit and readies its samples as a kit change
-does. Only "acoustic" and "electronic" are chosen: the Room kit waits
+does; for the generator only a replacement takes the style's kit, since
+an added pattern joins a beat whose kit and tempo are already chosen. Only "acoustic" and "electronic" are chosen: the Room kit waits
 on an identity Kevin is happy with.
 
 ## Text-to-Beat (prototype, built 2026-09-28)
