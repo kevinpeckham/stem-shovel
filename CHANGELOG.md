@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.65.0] - 2026-10-01
+
 ### Added
 
 - **Piano: a metronome** (docs/piano.md, "Metronome"). The page's metronome behind a metronome-icon button in the More strip (lit while it runs) that opens a small menu: start or stop (the icon swells on the downbeat), a tempo field, Tap and the beat, with the tempo and the beat on the screen while it runs; in the compact layout a section of the device menu. The piano page only; the recorder keeps its toolbar metronome.
