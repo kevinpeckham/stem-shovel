@@ -1601,12 +1601,12 @@
 		</div>
 
 		<!-- Pattern & Transport -->
-		<div class="grid grid-cols-1 gap-y-5 @xl-flex justify-between">
+		<div class="grid grid-cols-1 gap-y-5 @4xl-flex justify-between">
 			<!-- grid controls -->
-			<div class="flex flex-wrap items-center gap-2 @xl-gap-x-2 @2xl-gap-x-3">
+			<div class="flex flex-wrap items-center gap-2 @4xl-gap-x-3">
 				<!-- add row -->
 				<button
-					class="device-button-xs px-3 @2xl-device-button-sm"
+					class="device-button-xs px-3 @4xl-device-button-sm"
 					type="button"
 					disabled={pattern.rows.length >= MAX_DRUM_ROWS}
 					onclick={() => drumMachine.addRow()}
@@ -1617,7 +1617,7 @@
 
 				<!-- clear -->
 				<button
-					class="device-button-xs px-3 @2xl-device-button-sm"
+					class="device-button-xs px-3 @4xl-device-button-sm"
 					type="button"
 					onclick={() => drumMachine.clear()}
 					title="Every cell off"
@@ -1627,7 +1627,7 @@
 
 				<!-- undo -->
 				<button
-					class="device-button-xs px-3 @2xl-device-button-sm disabled-opacity-40"
+					class="device-button-xs px-3 @4xl-device-button-sm disabled-opacity-40"
 					type="button"
 					disabled={!drumMachine.beforePreset}
 					onclick={() => drumMachine.undoPreset()}
@@ -1644,7 +1644,7 @@
 					title="Delay, reverb, fuzz and wah: turn a level up to hear it"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
-					buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm"
+					buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm"
 					buttonClasses="{p.fx.delayReturn > 0 ||
 					p.fx.reverbReturn > 0 ||
 					p.fx.fuzzDrive > 0 ||
@@ -1662,7 +1662,7 @@
 						title="Play the drums from a MIDI pad or keyboard"
 						iconClass="i-ph-usb"
 						label="MIDI"
-						buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm"
+						buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm"
 						buttonClasses={drumMachine.midiIn.status === "on" ? "text-accent" : ""}
 						popoverClasses="min-w-72"
 						items={[{ id: "midi", kind: "snippet", snippet: midiItem }]}
@@ -1672,7 +1672,7 @@
 					ariaLabel="More"
 					position="top left"
 					title="Save, share and download"
-					buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm "
+					buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm "
 					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 					items={moreItems}
 				/>
@@ -1680,7 +1680,7 @@
 
 			<!-- transport -->
 			<div
-				class="grid grid-cols-1 @xl-flex items-center gap-5 mt-5 @xl-mt-0 @xl-gap-2 @2xl-gap-3 mb-8 @xl-mb-0"
+				class="grid grid-cols-1 gap-5 @xl-flex @xl-flex-wrap @xl-items-center @xl-gap-2 @4xl-gap-3 mt-5 @4xl-mt-0 mb-8 @4xl-mb-0"
 			>
 				{#if textToBeat}
 					<!-- Text-to-Beat: a description to a model, a pattern back (docs/drum-machine.md) -->
@@ -1690,7 +1690,7 @@
 						title="Describe the beat you want"
 						iconClass="i-ph-sparkle"
 						label="Text-to-Beat"
-						buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm"
+						buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
 						popoverClasses="min-w-80"
 						items={[{ id: "text-to-beat", kind: "snippet", snippet: textToBeatItem }]}
 					/>
@@ -1702,7 +1702,7 @@
 					title="Generate a pattern from a style"
 					iconClass="i-ph-shuffle"
 					label="Generate"
-					buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm"
+					buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
 					popoverClasses="min-w-72"
 					items={[{ id: "generator", kind: "snippet", snippet: generatorItem }]}
 				/>
@@ -1718,14 +1718,14 @@
 						title="Preset beats"
 						iconClass="i-ph-music-notes"
 						label="Presets"
-						buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm "
+						buttonBaseClasses="device-button-lg @xl-device-button-sm px-3 whitespace-nowrap"
 						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={presetItems}
 					/>
 				</div>
 
 				<button
-					class="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm @4xl-device-button-lg {drumMachine.running
+					class="device-button-lg @xl-device-button-sm px-3 @4xl-device-button-lg {drumMachine.running
 						? 'text-accent'
 						: ''} {tutorial.control === 'play' ? HINT : ''}"
 					type="button"
