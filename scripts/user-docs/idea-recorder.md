@@ -4,7 +4,7 @@
 
 ## Ideas and takes
 
-An **idea** is a title, a note board and one or more numbered **takes**. Hitting **Record** starts a take; **Stop** saves it at once as the next number, so you can go again without waiting. The take stays loaded for playback until the next one starts. **New idea** (the header button, or the recorder's ⋯ menu) starts a fresh idea called "Untitled Idea N" with an empty note board; rename it in the title field at the top of the recorder.
+An **idea** is a title, a note board and one or more numbered **takes**. Hitting **Record** starts a take; **Stop** saves it at once as the next number, so you can go again without waiting. The take stays loaded for playback until the next one starts. **New idea** (the header button, or the recorder's ⋯ menu) starts a fresh idea called "Untitled Idea N" with an empty note board; rename it in the title field at the top of the recorder. The screen draws the sound as you record it, and once a take is in, its whole waveform with a playhead: click or drag on it to move around the take.
 
 A take can carry a name: type it in the field beside "Take N" before you record, while you record, or after. When an idea has more than one take, the "Take N" label opens a list of them for a quick jump.
 

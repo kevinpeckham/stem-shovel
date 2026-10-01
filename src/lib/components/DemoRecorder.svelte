@@ -1,4 +1,6 @@
 <script lang="ts">
+	import RecorderWave from "$lib/components/RecorderWave.svelte";
+	import { computePeaks } from "$lib/audio/peaks";
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
 	import { isIOS } from "$lib/utils/isIOS";
 	import { audioSession } from "$lib/utils/audioSession";
@@ -268,6 +270,7 @@
 			if (e.data.size > 0) chunks.push(e.data);
 		};
 		recorder.onstop = () => void finishTake();
+		waveHistory = [];
 		recorder.start(1000);
 		runStart = performance.now();
 		lastLoudAt = runStart;
@@ -388,6 +391,37 @@
 		if (wasPlaying) playbackPaused = false;
 	}
 	let playError = $state<string | null>(null);
+
+	// ---- the waveform (docs/demo-recording.md, "Waveform") ----
+	/** The input's level per animation frame while recording, for the scrolling strip. */
+	let waveHistory = $state<number[]>([]);
+	/** The loaded take's peaks, decoded once per take (`computePeaks`); null until then, or when the file cannot be decoded here. */
+	let wavePeaks = $state<Float32Array | null>(null);
+	let waveFor: string | null = null;
+	/** Decode the take for its waveform: the browser's own blob for a take just made, else the file at its URL (the rendition, which every browser decodes, when there is one). */
+	$effect(() => {
+		const url = takeUrl;
+		if (!url || !hasTake) {
+			wavePeaks = null;
+			waveFor = null;
+			return;
+		}
+		if (waveFor === url) return;
+		waveFor = url;
+		wavePeaks = null;
+		const source =
+			url.startsWith("blob:") && take
+				? take.arrayBuffer()
+				: fetch(url).then((r) => r.arrayBuffer());
+		void source
+			.then((bytes) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(bytes))
+			.then((buffer) => {
+				if (waveFor === url) wavePeaks = computePeaks(buffer, 2048);
+			})
+			.catch(() => {
+				// A file this browser cannot decode (or fetch): the screen keeps its centre line and the slider still seeks.
+			});
+	});
 
 	/** Show a take from the list: its file plays on demand; Record starts the next take. */
 	/**
@@ -534,6 +568,11 @@
 			if (max >= hold) hold = max;
 			else hold = Math.max(max, hold - 0.01);
 			peak = hold;
+			// The waveform strip: the frame's peak while recording (kept to the last 1200 frames, about 20 s at 60 fps; the strip shows what fits).
+			if (phase === "recording") {
+				waveHistory.push(max);
+				if (waveHistory.length > 1200) waveHistory.splice(0, waveHistory.length - 1200);
+			}
 			meterFrame = requestAnimationFrame(loop);
 		};
 		meterFrame = requestAnimationFrame(loop);
@@ -771,6 +810,17 @@
 					></span>
 				</div>
 			</div>
+
+			<!-- the waveform: the take growing while recording, the whole take with a playhead once there is one -->
+			<RecorderWave
+				peaks={hasTake ? wavePeaks : null}
+				history={waveHistory}
+				recording={phase === "recording"}
+				progress={hasTake && takeLength > 0 ? Math.min(1, playhead / takeLength) : 0}
+				onseek={(f) => {
+					if (hasTake) playhead = f * takeLength;
+				}}
+			/>
 
 			<!-- input meter, playback controls, recording metadata  -->
 			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px sm-min-h-80px">

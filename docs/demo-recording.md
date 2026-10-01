@@ -294,6 +294,24 @@ lossless option (capture PCM in an `AudioWorklet`, encode FLAC client-side)
 is possible later if recordings should become stems; it costs a worklet,
 an encoder and the WAV-sized uploads above.
 
+## Waveform (built 2026-10-01)
+
+Kevin's ask, the first of a queue: `RecorderWave.svelte` on the screen
+under the clock. While recording, a strip that scrolls as the take grows,
+one bar per animation frame of the input's sample peak (the meter loop
+already reads it; `waveHistory`, the last 1200 frames kept, two pixels a
+frame so the strip shows the last twenty seconds or so), newest at the
+right, drawn in red. With a take loaded, the whole take's peaks with a
+playhead: an `$effect` on `takeUrl` decodes the take once (the browser's
+own blob for a take just made, else a fetch of the file; the MP3
+rendition where there is one, which every browser decodes) through an
+`OfflineAudioContext` and `computePeaks` at 2048 bins, and the canvas
+draws one bar per pixel; the playhead is a separate element at
+`playhead / takeLength`. Click or drag seeks (pointer capture), arrow
+keys nudge. A file the browser cannot decode or fetch leaves the centre
+line and the slider below still seeks. Drawn in the canvas's own `color`
+as `Waveform.svelte` does, so the palette stays in uno.config.ts.
+
 ## Later, if wanted
 
 - **Count-in and click** from the song's tempo and meter (Web Audio

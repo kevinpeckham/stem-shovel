@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: a waveform on the screen** (docs/demo-recording.md, "Waveform"). While recording, a strip scrolls as the take grows, one bar per frame of the input's level; once a take is in, the whole take's waveform with a playhead, clicked or dragged to seek, arrow keys to nudge. The take is decoded once in the browser (its own recording, or the MP3 made for playback); a file the browser cannot decode keeps the centre line and the slider still seeks.
+
 ## [0.69.0] - 2026-10-01
 
 ### Changed
