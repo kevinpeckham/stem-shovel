@@ -105,7 +105,7 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		hint: "a lazy kick, the snare doubled by a clap",
 		fx: { reverbReturn: 0.15, toneBottom: 0.4 },
 		swing: 0.25,
-		kit: "acoustic",
+		kit: "electronic",
 		humanize: 0.18,
 		four: [
 			{ voice: "kick", hits: "X..3....x.4..3.." },

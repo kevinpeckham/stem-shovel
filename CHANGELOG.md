@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The generator's hip-hop style arrives on the electronic kit** (Kevin), as house and half-time do.
 - **"Use as the home page beat" on the drum machine page too** (system admins; Kevin asked where it was): the ⋯ menu item that makes the beat in the machine the home page's starting one was only on the home page's own demo.
 
 ## [0.68.0] - 2026-10-01
