@@ -8,6 +8,7 @@ export interface TextToBeatResult {
 	pattern: DrumPattern;
 	bpm: number | null;
 	swing: number | null;
+	humanize: number | null;
 	note: string;
 	/** Effects the description asked for, over the defaults; null for a dry beat. */
 	fx: Partial<DrumFx> | null;
@@ -63,6 +64,10 @@ export function parseTextToBeatReply(
 		pattern,
 		bpm: reply.bpm ?? null,
 		swing: reply.swing === null || reply.swing === undefined ? null : Math.round(reply.swing) / 100,
+		humanize:
+			reply.humanize === null || reply.humanize === undefined
+				? null
+				: Math.round(reply.humanize) / 100,
 		note: reply.note ?? "",
 		fx: replyFx(reply.fx),
 	};

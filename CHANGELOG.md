@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Drum machine: generated and AI-generated beats reset or apply swing and humanize** as presets do (Kevin). Each generator style names its feel (funk and hip-hop swing, house barely humanizes) and Text-to-Beat's reply may name a humanize amount beside its swing; a replacement resets swing to straight and humanize to the usual amount before applying what came with the pattern, and adding a pattern applies only what came with it.
+- **Drum machine: every preset arrives with its own effects** (Kevin): a room on the rock and pop beats, tempo-locked echoes on house, techno and trap, tape-style delay on motown, boom bap, the shuffle and the one drop, more room on the ballads and waltz, a little fuzz on boom bap. Loading a preset resets the effects to its own; adding one as a pattern leaves yours alone. A test holds every preset to a room or an echo within tasteful levels.
+
 ## [0.65.1] - 2026-10-01
 
 ### Fixed

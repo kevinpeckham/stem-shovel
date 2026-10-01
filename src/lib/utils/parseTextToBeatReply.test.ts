@@ -9,6 +9,13 @@ describe("parseTextToBeatReply", () => {
 		expect(r.bpm).toBe(92);
 		expect(r.swing).toBe(0.15);
 		expect(r.note).toBe("A boom bap.");
+		expect(
+			parseTextToBeatReply(
+				'{"humanize": 20, "rows": [{"voice": "kick", "cells": "x..............."}]}',
+				"4/4",
+				16,
+			).humanize,
+		).toBe(0.2);
 		expect(r.pattern.meter).toBe("4/4");
 		expect(r.pattern.steps).toBe(16);
 		expect(r.pattern.rows.map((row) => row.voice)).toEqual(["kick", "snare"]);
@@ -57,7 +64,7 @@ describe("parseTextToBeatReply", () => {
 			"3/4",
 			12,
 		);
-		expect([r.bpm, r.swing, r.note]).toEqual([null, null, ""]);
+		expect([r.bpm, r.swing, r.humanize, r.note]).toEqual([null, null, null, ""]);
 		expect(r.pattern.steps).toBe(12);
 	});
 	test("refuses a row of the wrong length, an unknown voice, a stray character, a wild tempo, and no JSON", () => {

@@ -332,7 +332,11 @@ arrives with over the defaults, modest master levels that suit the style
 quarter on half-time). `placePattern` resets the effects to the defaults
 plus these when it replaces the open pattern, and applies only these
 when it adds one, so a generated beat is clean unless its style says
-otherwise.
+otherwise. Each style names its feel the same way (`swing`, `humanize`;
+funk and hip-hop swing, house barely humanizes), and a replacement
+resets swing to straight on the sixteenth grid and humanize to the
+usual amount before applying them (Kevin: presets, generated and
+AI-generated beats should all reset or apply feel and effects).
 
 ## Text-to-Beat (prototype, built 2026-09-28)
 
@@ -374,7 +378,8 @@ description asks for a room, an echo, distortion or a sweep; the prompt
 says so and shows a second example. `parseTextToBeatReply` maps it to
 the project's levels (`replyFx`) and `placePattern` applies it the
 generator's way: a replacement starts from the defaults, so "a dry
-trap beat" is dry even after a dub-style one.
+trap beat" is dry even after a dub-style one. The reply may name
+"humanize" too (a percentage, as swing), applied the same way.
 
 ## Timeline (built 2026-09-28; its row hidden since v0.51.0 while Kevin refines the design)
 
@@ -475,6 +480,17 @@ full view's breakpoint classes are container queries, `sm-` → `@xl-`
 device root as the `@container`, so the drum machine lays itself out by
 the width it is given and can open in a popover or a panel. The compact
 view (the recorder's toolbar row) has no breakpoints of its own.
+
+## The presets' effects (2026-10-01)
+
+Every preset in `drumPresets.ts` names `fx` (Kevin: a preset should reset
+or apply the effects that suit it): modest master levels, a delay time
+in steps and, where tape suits, `delayAnalog`, a little `fuzzDrive` on
+boom bap; `drumPresetProject` already spread a preset's `fx` over the
+defaults and a replace-mode load swaps the whole project, so loading a
+preset resets the effects to its own (adding one as a pattern leaves the
+effects alone). The test holds every preset to a room or an echo, reverb
+at most 50 %, delay at most 40 %.
 
 ## The tutorial's effects (2026-10-01)
 

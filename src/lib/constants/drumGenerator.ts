@@ -24,6 +24,9 @@ export interface DrumGeneratorStyle {
 	hint: string;
 	/** The effects a generated beat of this style arrives with, over the defaults (the master levels start at zero; these raise what suits the style). */
 	fx?: Partial<DrumFx>;
+	/** The feel it arrives with: swing 0 to 1 (straight when absent) and humanize 0 to 1 (the usual amount when absent). */
+	swing?: number;
+	humanize?: number;
 	four: DrumGeneratorRow[];
 	six: DrumGeneratorRow[];
 }
@@ -49,6 +52,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Rock",
 		hint: "kick on 1 and 3, snare on 2 and 4, hats on the eighths",
 		fx: { reverbReturn: 0.2 },
+		swing: 0,
+		humanize: 0.14,
 		four: [
 			{ voice: "kick", hits: "X..2..6.x.5...4." },
 			{ voice: "snare", hits: "....X.......X...", ghosts: "..2....3...2..3." },
@@ -63,6 +68,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Pop",
 		hint: "a steady backbeat with a clap now and then",
 		fx: { reverbReturn: 0.25, delayReturn: 0.15 },
+		swing: 0,
+		humanize: 0.1,
 		four: [
 			{ voice: "kick", hits: "X...4...x..5...." },
 			{ voice: "snare", hits: "....X.......X...", ghosts: "..............2." },
@@ -77,6 +84,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Funk",
 		hint: "syncopated kicks, snare ghosts, sixteenth hats",
 		fx: { reverbReturn: 0.1 },
+		swing: 0.2,
+		humanize: 0.2,
 		four: [
 			{ voice: "kick", hits: "X..4..5.x.3..4.." },
 			{ voice: "snare", hits: "....X..2..3.X..3", ghosts: "..3..2....3...2." },
@@ -90,6 +99,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Hip-hop",
 		hint: "a lazy kick, the snare doubled by a clap",
 		fx: { reverbReturn: 0.15 },
+		swing: 0.25,
+		humanize: 0.18,
 		four: [
 			{ voice: "kick", hits: "X..3....x.4..3.." },
 			{ voice: "snare", hits: "....X.......X...", ghosts: "...........3...." },
@@ -104,6 +115,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "House",
 		hint: "four on the floor, open hats on the off-beats",
 		fx: { delayReturn: 0.2, delayTime: 3, reverbReturn: 0.15 },
+		swing: 0.1,
+		humanize: 0.05,
 		four: [
 			{ voice: "kick", hits: "X...x...x...x..." },
 			{ voice: "clap", hits: "....x.......x..." },
@@ -118,6 +131,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Breakbeat",
 		hint: "a broken kick under sixteenth hats, for the fast tempos",
 		fx: { reverbReturn: 0.3 },
+		swing: 0.15,
+		humanize: 0.15,
 		four: [
 			{ voice: "kick", hits: "X.....x...5....4" },
 			{ voice: "snare", hits: "....X.......X...", ghosts: ".......4..3....3" },
@@ -131,6 +146,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Latin",
 		hint: "a clave on the rim, a cowbell, toms in the gaps",
 		fx: { reverbReturn: 0.2 },
+		swing: 0,
+		humanize: 0.12,
 		four: [
 			{ voice: "kick", hits: "X..3..x...x..3.." },
 			{ voice: "rim", hits: "x..x..x...x.x..." },
@@ -146,6 +163,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Half-time",
 		hint: "the snare on 3 alone, room to breathe",
 		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6 },
+		swing: 0.1,
+		humanize: 0.2,
 		four: [
 			{ voice: "kick", hits: "X.....4...4.5..." },
 			{ voice: "snare", hits: "........X.......", ghosts: "....2.......3.2." },
@@ -159,6 +178,8 @@ export const DRUM_GENERATOR_STYLES: DrumGeneratorStyle[] = [
 		name: "Fill",
 		hint: "half a bar of beat, then the snare and toms build up to the top",
 		fx: { reverbReturn: 0.3 },
+		swing: 0,
+		humanize: 0.14,
 		four: [
 			{ voice: "kick", hits: "X.......x......." },
 			{ voice: "snare", hits: "....X...4.6.8xXX", ghosts: "........2.2....." },

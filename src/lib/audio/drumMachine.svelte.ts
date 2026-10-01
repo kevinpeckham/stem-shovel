@@ -1,6 +1,7 @@
 import {
 	DEFAULT_DRUM_FX,
 	DEFAULT_DRUM_SENDS,
+	DEFAULT_HUMANIZE,
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
 	DRUM_MIDI_IN_NOTES,
@@ -506,18 +507,27 @@ class DrumMachineEngine {
 	generate(style: DrumGeneratorStyle, density: number, mode: "replace" | "add"): number {
 		const seed = Math.floor(Math.random() * 2 ** 32);
 		const pattern = generateDrumPattern(style, density, $state.snapshot(this.pattern), seed);
-		return this.placePattern(pattern, mode, { fx: style.fx });
+		return this.placePattern(pattern, mode, {
+			fx: style.fx,
+			swing: style.swing,
+			humanize: style.humanize,
+		});
 	}
 	/**
 	 * A pattern from elsewhere (the generator, Text-to-Beat) in place of the
-	 * open one or added after it, with a tempo, swing and effects when they
-	 * come with it; the project as it was is kept for `undoPreset` until the next
+	 * open one or added after it, with a tempo, swing, humanize and effects
+	 * when they come with it; the project as it was is kept for `undoPreset` until the next
 	 * edit. Returns the pattern's index (the open one when there is no room).
 	 */
 	placePattern(
 		pattern: DrumPattern,
 		mode: "replace" | "add",
-		also: { bpm?: number | null; swing?: number | null; fx?: Partial<DrumFx> | null } = {},
+		also: {
+			bpm?: number | null;
+			swing?: number | null;
+			humanize?: number | null;
+			fx?: Partial<DrumFx> | null;
+		} = {},
 	): number {
 		const before = $state.snapshot(this.project);
 		if (mode === "replace") {
@@ -529,11 +539,21 @@ class DrumMachineEngine {
 		}
 		if (also.bpm)
 			this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(also.bpm)));
-		if (also.swing !== null && also.swing !== undefined)
-			this.project.swing = Math.min(1, Math.max(0, Math.round(also.swing * 100) / 100));
-		// Effects: a replacement starts from the defaults plus what came with the pattern (a generated beat is clean unless it asks otherwise); an added pattern applies only what came with it.
-		if (mode === "replace") this.project.fx = { ...DEFAULT_DRUM_FX, ...also.fx };
-		else if (also.fx) this.project.fx = { ...this.project.fx, ...also.fx };
+		// Feel and effects: a replacement starts from the defaults (straight, the usual humanize, clean) plus what came with the pattern; an added pattern applies only what came with it.
+		const unit = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		const swing = also.swing === null || also.swing === undefined ? null : unit(also.swing);
+		const humanize =
+			also.humanize === null || also.humanize === undefined ? null : unit(also.humanize);
+		if (mode === "replace") {
+			this.project.swing = swing ?? 0;
+			this.project.swingGrid = 16;
+			this.project.humanize = humanize ?? DEFAULT_HUMANIZE;
+			this.project.fx = { ...DEFAULT_DRUM_FX, ...also.fx };
+		} else {
+			if (swing !== null) this.project.swing = swing;
+			if (humanize !== null) this.project.humanize = humanize;
+			if (also.fx) this.project.fx = { ...this.project.fx, ...also.fx };
+		}
 		this.#resetSolo();
 		this.#save();
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);

@@ -27,7 +27,7 @@ export interface DrumPreset {
 	/** 16 unless said: a beat with nothing on the sixteenths swings its eighths. */
 	swingGrid?: DrumSwingGrid;
 	humanize?: number;
-	/** The effects, where a preset wants other than the defaults. */
+	/** The effects the beat arrives with, over the defaults (every preset names its own, Kevin's call: a preset resets the effects to what suits it). */
 	fx?: Partial<DrumFx>;
 	kit?: DrumKitId;
 	meter?: DrumMeterId;
@@ -50,6 +50,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Four on the floor",
 		style: "Rock",
 		bpm: 120,
+		fx: { reverbReturn: 0.2 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },
@@ -64,6 +65,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Driving eighths",
 		style: "Rock",
 		bpm: 140,
+		fx: { reverbReturn: 0.2 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x.X...x.x." },
@@ -78,6 +80,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Half-time",
 		style: "Rock",
 		bpm: 90,
+		fx: { reverbReturn: 0.4, delayReturn: 0.15, delayTime: 6 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.........x.....X.....x...x....." },
@@ -92,6 +95,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Train beat",
 		style: "Rock",
 		bpm: 150,
+		fx: { reverbReturn: 0.15 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.......X......." },
@@ -106,6 +110,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Pop backbeat",
 		style: "Pop and funk",
 		bpm: 112,
+		fx: { reverbReturn: 0.3, delayReturn: 0.15, delayTime: 3 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.......x.x....." },
@@ -120,6 +125,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Motown",
 		style: "Pop and funk",
 		bpm: 118,
+		fx: { reverbReturn: 0.35, delayReturn: 0.1, delayTime: 2, delayAnalog: true },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...X...X...X..." },
@@ -134,6 +140,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Funk",
 		style: "Pop and funk",
 		bpm: 104,
+		fx: { reverbReturn: 0.1 },
 		swing: 0.15,
 		patterns: [
 			[
@@ -149,6 +156,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Disco",
 		style: "Pop and funk",
 		bpm: 122,
+		fx: { reverbReturn: 0.3, delayReturn: 0.1, delayTime: 2 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...X...X...X..." },
@@ -165,6 +173,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Boom bap",
 		style: "Hip-hop and electronic",
 		bpm: 92,
+		fx: { reverbReturn: 0.15, delayReturn: 0.1, delayTime: 3, delayAnalog: true, fuzzDrive: 0.1 },
 		swing: 0.35,
 		humanize: 0.2,
 		patterns: [
@@ -181,6 +190,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Trap",
 		style: "Hip-hop and electronic",
 		bpm: 140,
+		fx: { reverbReturn: 0.2, delayReturn: 0.2, delayTime: 2 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -196,6 +206,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "House",
 		style: "Hip-hop and electronic",
 		bpm: 124,
+		fx: { reverbReturn: 0.15, delayReturn: 0.25, delayTime: 3 },
 		kit: "electronic",
 		patterns: [
 			[
@@ -212,6 +223,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Techno",
 		style: "Hip-hop and electronic",
 		bpm: 132,
+		fx: { reverbReturn: 0.1, delayReturn: 0.3, delayTime: 3, delayAnalog: true },
 		kit: "electronic",
 		patterns: [
 			[
@@ -228,6 +240,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Drum and bass",
 		style: "Hip-hop and electronic",
 		bpm: 174,
+		fx: { reverbReturn: 0.2, delayReturn: 0.15, delayTime: 4 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.........x.....X.........x....." },
@@ -243,6 +256,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Reggae one drop",
 		style: "World",
 		bpm: 76,
+		fx: { reverbReturn: 0.3, delayReturn: 0.35, delayTime: 3, delayAnalog: true },
 		patterns: [
 			[
 				{ voice: "kick", cells: "........X......." },
@@ -257,6 +271,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Bossa nova",
 		style: "World",
 		bpm: 130,
+		fx: { reverbReturn: 0.3 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..x..X.X..x..X." },
@@ -270,6 +285,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Samba",
 		style: "World",
 		bpm: 100,
+		fx: { reverbReturn: 0.25 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X..xX..xX..xX..x" },
@@ -284,6 +300,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Shuffle",
 		style: "World",
 		bpm: 108,
+		fx: { reverbReturn: 0.2, delayReturn: 0.1, delayTime: 2, delayAnalog: true },
 		swing: 1,
 		swingGrid: 8,
 		patterns: [
@@ -301,6 +318,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Waltz",
 		style: "Other meters",
 		bpm: 132,
+		fx: { reverbReturn: 0.4 },
 		meter: "3/4",
 		patterns: [
 			[
@@ -316,6 +334,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "6/8 ballad",
 		style: "Other meters",
 		bpm: 70,
+		fx: { reverbReturn: 0.45, delayReturn: 0.15, delayTime: 6 },
 		meter: "6/8",
 		patterns: [
 			[
@@ -331,6 +350,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "6/8 drive",
 		style: "Other meters",
 		bpm: 96,
+		fx: { reverbReturn: 0.25 },
 		meter: "6/8",
 		patterns: [
 			[
@@ -347,6 +367,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Tom fill",
 		style: "Fills",
 		bpm: 120,
+		fx: { reverbReturn: 0.3 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },
@@ -368,6 +389,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		name: "Snare roll into a crash",
 		style: "Fills",
 		bpm: 120,
+		fx: { reverbReturn: 0.35 },
 		patterns: [
 			[
 				{ voice: "kick", cells: "X...x...X...x..." },

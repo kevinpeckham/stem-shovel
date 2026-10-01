@@ -107,3 +107,16 @@ describe("effect defaults", () => {
 		expect(snare.reverbSend).toBe(DEFAULT_DRUM_SENDS.snare.reverbSend);
 	});
 });
+
+describe("preset effects", () => {
+	test("every preset names its effects, loading as a valid project with at least a room or an echo", () => {
+		for (const preset of DRUM_PRESETS) {
+			expect(preset.fx, preset.id).toBeDefined();
+			const p = drumPresetProject(preset);
+			expect(v.safeParse(DrumProjectSchema, p).success, preset.id).toBe(true);
+			expect(p.fx.reverbReturn + p.fx.delayReturn, preset.id).toBeGreaterThan(0);
+			expect(p.fx.reverbReturn, preset.id).toBeLessThanOrEqual(0.5);
+			expect(p.fx.delayReturn, preset.id).toBeLessThanOrEqual(0.4);
+		}
+	});
+});

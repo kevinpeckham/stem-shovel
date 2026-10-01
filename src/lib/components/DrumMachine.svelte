@@ -481,6 +481,7 @@
 			const index = drumMachine.placePattern(reply.pattern, beatAsNew ? "add" : "replace", {
 				bpm: reply.bpm,
 				swing: reply.swing,
+				humanize: reply.humanize,
 				fx: reply.fx,
 			});
 			beatNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
