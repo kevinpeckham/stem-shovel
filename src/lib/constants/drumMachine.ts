@@ -133,6 +133,10 @@ export const DEFAULT_DRUM_FX = {
 	wahRange: 0.7,
 	wahResonance: 0.5,
 	wahMix: 0,
+	/** Tone on the master: tilt -1 dark to 1 bright (0 flat), the exciter and the low-end enhancer 0 (off) to 1. */
+	toneTilt: 0,
+	toneAir: 0,
+	toneBottom: 0,
 };
 /** What each drum sends to the delay and the reverb until someone says otherwise: snares and claps wet, kicks a little (enough to answer the master level without muddying the low end), rims into the delay. Both sends run high (Kevin, 2026-10-01: a master at 100 % should be too much, not tasteful, so the useful range is the slider's middle). */
 export const DEFAULT_DRUM_SENDS: Record<DrumVoiceId, { delaySend: number; reverbSend: number }> = {
@@ -161,7 +165,7 @@ export const DRUM_HUMANIZE_MS = 12;
  * adds the effects (sends per row, delay and reverb settings). A reader
  * keeps a branch for every version there has been.
  */
-export const DRUM_PATTERN_VERSION = 8;
+export const DRUM_PATTERN_VERSION = 9;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
 /** A MIDI note in from a pad or keyboard, to the voice it plays: General MIDI's drums (DRUM_GM_NOTES and the usual neighbours: both kicks, both snares, the pedal hat, every tom, both crashes and rides). Notes off the map play the pattern's rows in order (drumMachine.hitNote). */
 export const DRUM_MIDI_IN_NOTES: Record<number, DrumVoiceId> = {

@@ -12,6 +12,7 @@ import {
 	DEFAULT_PIANO_FUZZ,
 	DEFAULT_PIANO_PHASER,
 	DEFAULT_PIANO_ROTARY,
+	DEFAULT_PIANO_TONE,
 	DEFAULT_PIANO_TREMOLO,
 	DEFAULT_PIANO_WAH,
 	loadPianoPreferences,
@@ -21,6 +22,7 @@ import {
 	type PianoFuzz,
 	type PianoPhaser,
 	type PianoRotary,
+	type PianoTone,
 	type PianoTremolo,
 	type PianoWah,
 } from "$lib/utils/pianoPreferences";
@@ -71,6 +73,8 @@ class PianoEngine {
 	wah = $state<PianoWah>({ ...DEFAULT_PIANO_WAH });
 	phaser = $state<PianoPhaser>({ ...DEFAULT_PIANO_PHASER });
 	rotary = $state<PianoRotary>({ ...DEFAULT_PIANO_ROTARY });
+	/** Tone: tilt (-1 to 1), air and bottom (0 off). */
+	tone = $state<PianoTone>({ ...DEFAULT_PIANO_TONE });
 	sustain = $state(false);
 	/** MIDI notes sounding now, for the keys to light. */
 	sounding = $state<number[]>([]);
@@ -132,6 +136,7 @@ class PianoEngine {
 		this.wah = { ...p.wah };
 		this.phaser = { ...p.phaser };
 		this.rotary = { ...p.rotary };
+		this.tone = { ...p.tone };
 		this.hires = p.hires;
 		this.key = p.key;
 		this.degrees = p.degrees;
@@ -228,6 +233,7 @@ class PianoEngine {
 			wah: { ...this.wah },
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
+			tone: { ...this.tone },
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
@@ -256,6 +262,7 @@ class PianoEngine {
 			wah: { ...this.wah },
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
+			tone: { ...this.tone },
 		};
 	}
 
@@ -542,6 +549,18 @@ class PianoEngine {
 		this.#fx?.update({ phaser: p });
 		this.#save();
 	}
+	/** Tone: tilt, air and bottom, any of them. */
+	setTone(patch: Partial<PianoTone>) {
+		const t = { ...this.tone, ...patch };
+		t.tilt = Number.isFinite(t.tilt)
+			? Math.min(1, Math.max(-1, Math.round(t.tilt * 100) / 100))
+			: 0;
+		t.air = clamp(t.air, 0, 1);
+		t.bottom = clamp(t.bottom, 0, 1);
+		this.tone = t;
+		this.#fx?.update({ tone: t });
+		this.#save();
+	}
 	/** The rotary speaker: off, slow or fast (the rotors glide between speeds). */
 	setRotary(speed: PianoRotary["speed"]) {
 		const r = { speed };
@@ -564,6 +583,7 @@ class PianoEngine {
 			fuzz: { ...this.fuzz },
 			wah: { ...this.wah },
 			rotary: { ...this.rotary },
+			tone: { ...this.tone },
 		};
 	}
 	/** A preset into the piano: the sound and every effect, through the setters so the chain ramps and the choices are remembered. */
@@ -578,6 +598,7 @@ class PianoEngine {
 		this.setFuzz(p.fuzz);
 		this.setWah(p.wah);
 		this.setRotary(p.rotary.speed);
+		this.setTone(p.tone);
 	}
 
 	/** Web MIDI (Chrome and Edge): every input plays the piano; note on and off, and the sustain pedal (CC 64). */

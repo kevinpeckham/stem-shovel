@@ -175,8 +175,9 @@ chords, transpose, a reverb; sounds he does not like).
 An Effects menu as the drum machine's (Kevin's ask), with the chain in
 `src/lib/audio/pianoFx.ts` (`createPianoFx(ctx, settings)`, plain Web
 Audio so an OfflineAudioContext renders it the same, which is how it is
-measured): voices → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus →
-master, with reverb and delay sends off the dry bus into the master.
+measured): voices → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus,
+with reverb and delay sends off the dry bus, all summed through the tone
+stage into the master.
 `piano.set*` calls `fx.update`, which merges a nested patch over what
 stands and ramps every level over 20 ms so a slider never clicks; the
 settings are remembered in the preferences (`delay`, `chorus`, `tremolo`,
@@ -253,8 +254,14 @@ same controls sit in the levels menu under an Effects heading.
   because the bands overlap at the crossover (measured within 1 dB of the
   dry at 300 Hz and 1.5 kHz; fast reaches 7 Hz within three seconds).
 
+- **Tone** (2026-10-01, Kevin): tilt (-1 dark to 1 bright), air (an
+  exciter) and bottom (a low-end enhancer after Aphex's Big Bottom), one
+  shared stage (`createToneStage`, docs/effects.md "Tone") on the master
+  after the reverb and delay returns, so it shapes everything. `tone` in
+  the preferences and the preset schema.
+
 Not built: a delay timed to a tempo (the piano has none; the recorder's
-metronome could lend one); a tone control is on the list.
+metronome could lend one).
 
 ## Presets (built 2026-10-01)
 

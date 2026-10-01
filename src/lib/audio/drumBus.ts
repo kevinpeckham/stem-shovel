@@ -1,5 +1,5 @@
 import type { DrumFx } from "$lib/val/DrumPatternSchema";
-import { createDelayStage, createFuzzStage, createWahStage } from "./fxStages";
+import { createDelayStage, createFuzzStage, createToneStage, createWahStage } from "./fxStages";
 
 /**
  * The drum machine's mixer bus (docs/drum-machine.md, "Reverb and delay"):
@@ -26,6 +26,11 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	const master = ctx.createGain();
 	master.gain.value = 0.9;
 	master.connect(ctx.destination);
+	// Everything sums into the tone stage (tilt, exciter, low-end enhancer; fxStages.ts) before the master.
+	const sum = ctx.createGain();
+	const tone = createToneStage(ctx);
+	sum.connect(tone.input);
+	tone.output.connect(master);
 
 	// Dry → fuzz → master; a drum hit peaks near 0.8.
 	const dry = ctx.createGain();
@@ -35,11 +40,11 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	// Gain compensation of 3.5 dB at full mix (Kevin: more wah read as less volume): the starting beat measured 3 dB quieter fully wet by RMS, more to the ear with the top gone; at 5 dB the acoustic kit peaked at 1.0 with full resonance, at 3.5 it has headroom.
 	const wah = createWahStage(ctx, 0.8, 10, 3.5);
 	fuzz.output.connect(wah.input);
-	wah.output.connect(master);
+	wah.output.connect(sum);
 
 	// Delay: input → delay stage → master.
 	const delay = createDelayStage(ctx, 4);
-	delay.output.connect(master);
+	delay.output.connect(sum);
 
 	// Reverb: input → convolver → return → master.
 	const reverbIn = ctx.createGain();
@@ -47,7 +52,7 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 	const reverbReturn = ctx.createGain();
 	reverbIn.connect(convolver);
 	convolver.connect(reverbReturn);
-	reverbReturn.connect(master);
+	reverbReturn.connect(sum);
 
 	let impulseSize = -1;
 	const update = (next: DrumFx, tempo: number) => {
@@ -62,6 +67,7 @@ export function createDrumBus(ctx: BaseAudioContext, fx: DrumFx, bpm: number): D
 			0,
 		);
 		fuzz.update(next.fuzzDrive, next.fuzzTone, 0);
+		tone.update({ tilt: next.toneTilt, air: next.toneAir, bottom: next.toneBottom }, 0);
 		// One sweep per `wahBars` bars of four beats (sixteen steps).
 		wah.update(
 			{

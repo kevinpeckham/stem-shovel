@@ -1,5 +1,5 @@
 import { reverbImpulse } from "./drumBus";
-import { createDelayStage, createFuzzStage, createWahStage } from "./fxStages";
+import { createDelayStage, createFuzzStage, createToneStage, createWahStage } from "./fxStages";
 
 /**
  * The piano's effect chain (docs/piano.md, "Effects"), built once per
@@ -73,6 +73,14 @@ export interface PianoWahSettings {
 	/** Wet level, 0 (off) to 1 (all through the filter). */
 	mix: number;
 }
+export interface PianoToneSettings {
+	/** -1 dark to 1 bright, 0 flat. */
+	tilt: number;
+	/** The exciter, 0 (off) to 1. */
+	air: number;
+	/** The low-end enhancer, 0 (off) to 1. */
+	bottom: number;
+}
 export interface PianoRotarySettings {
 	speed: "off" | "slow" | "fast";
 }
@@ -87,6 +95,7 @@ export interface PianoFxSettings {
 	wah: PianoWahSettings;
 	phaser: PianoPhaserSettings;
 	rotary: PianoRotarySettings;
+	tone: PianoToneSettings;
 }
 
 export interface PianoFx {
@@ -127,9 +136,15 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const s: PianoFxSettings = structuredClone(initial);
 	const ramp = (param: AudioParam, value: number, tau = RAMP) =>
 		param.setTargetAtTime(value, ctx.currentTime, tau);
+	// The sum of dry, reverb and delay goes through the tone stage (fxStages.ts) into the master.
 	const master = ctx.createGain();
 	master.gain.value = s.volume;
 	master.connect(ctx.destination);
+	const sum = ctx.createGain();
+	const tone = createToneStage(ctx);
+	sum.connect(tone.input);
+	tone.output.connect(master);
+	tone.update(s.tone, 0);
 	const input = ctx.createGain();
 
 	// Fuzz (fxStages.ts): a voice peaks near 0.3.
@@ -288,7 +303,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	// The dry bus, and the two sends.
 	const dry = ctx.createGain();
 	rotaryOut.connect(dry);
-	dry.connect(master);
+	dry.connect(sum);
 
 	const convolver = ctx.createConvolver();
 	convolver.buffer = reverbImpulse(ctx, s.reverbSize);
@@ -296,11 +311,11 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	wet.gain.value = s.reverb * 0.5;
 	dry.connect(convolver);
 	convolver.connect(wet);
-	wet.connect(master);
+	wet.connect(sum);
 
 	const delay = createDelayStage(ctx, 1);
 	dry.connect(delay.input);
-	delay.output.connect(master);
+	delay.output.connect(sum);
 	delay.update(s.delay, 0);
 
 	const apply: { [K in keyof PianoFxSettings]: (v: PianoFxSettings[K]) => void } = {
@@ -325,6 +340,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 		wah: (w) => wah.update(w, RAMP),
 		phaser: (p) => applyPhaser(p, RAMP),
 		rotary: (r) => applyRotary(r, RAMP),
+		tone: (t) => tone.update(t, RAMP),
 	};
 
 	return {

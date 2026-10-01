@@ -20,6 +20,7 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - Qwen
+  - Aphex
   - Biquad
   - Goertzel
   - Kimi

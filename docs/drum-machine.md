@@ -498,6 +498,17 @@ preset resets the effects to its own (adding one as a pattern leaves the
 effects alone). The test holds every preset to a room or an echo, reverb
 at most 50 %, delay at most 40 %.
 
+## Tone (2026-10-01)
+
+The piano's tone stage (`createToneStage`, docs/effects.md "Tone") on the
+drum bus after every return and before the master: tilt (`toneTilt`,
+-1 to 1), air (`toneAir`, the exciter) and bottom (`toneBottom`, the
+low-end enhancer), a Tone column in the Effects menu (four columns from
+the large breakpoint). In the schema with defaults of flat and off, so
+older beats open as they were; share links are version 9 (tilt in 8 bits
+from -1, air and bottom in 7 each); Reset to defaults covers them; the
+WAV carries them.
+
 ## Master volume (2026-10-01)
 
 Kevin's ask: a Volume slider beside Humanize in the tempo row (and in

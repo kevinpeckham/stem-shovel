@@ -39,7 +39,7 @@ const SENDS_BEFORE_V65: Record<string, { delaySend: number; reverbSend: number }
 const PINNED_LINKS: {
 	link: string;
 	project: () => DrumProject;
-	version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+	version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 }[] = [
 	{
 		link: "ATwAkBaQEBAQA0ABAAEATxERERAGyAAAABCRgAAAAAsYAAAAANQAAAAAEUAAAAAA",
@@ -247,6 +247,9 @@ const PINNED_LINKS: {
 				wahRange: 0.7,
 				wahResonance: 0.5,
 				wahMix: 0,
+				toneTilt: 0,
+				toneAir: 0,
+				toneBottom: 0,
 			},
 			kit: "electronic",
 			timeline: [],
@@ -332,6 +335,38 @@ const PINNED_LINKS: {
 				wahRange: 0.6,
 				wahResonance: 0.8,
 				wahMix: 0.5,
+				toneTilt: 0,
+				toneAir: 0,
+				toneBottom: 0,
+			};
+			const fill = emptyDrumPattern(p.patterns[0]!);
+			fill.rows[1]!.cells[14] = 3;
+			fill.rows[1]!.cells[15] = 2;
+			p.patterns.push(fill);
+			p.timeline = [0, 0, 0, 1, 0, 0, 0, 1];
+			return p;
+		},
+	},
+	{
+		link: "CU4UOFQAZAJmM3lBkgsowQwFpkDz0BAQEANBkLaABAAEATxkHj0REREAbJkKGQAAAAQkZkMrQAAAAAsZkUFAAAAAA1BkHngAAAABFBkHngAAAAAGAtMgeeAAAAABoMhbQAAAADieMg8eAAAAADZMhQyAAAAAEjMhlaAAAAAFjMigoAAAAAGoMg88AAAAAIoMg88AAAAABAAIAIA",
+		version: 9,
+		// The same beat with a tone: tilted dark, air and bottom up.
+		project: () => {
+			const p = startingDrumProject();
+			p.bpm = 118;
+			p.swing = 0.1;
+			p.fx = {
+				...p.fx,
+				delayAnalog: true,
+				fuzzDrive: 0.25,
+				fuzzTone: 0.7,
+				wahBars: 2,
+				wahRange: 0.6,
+				wahResonance: 0.8,
+				wahMix: 0.5,
+				toneTilt: -0.35,
+				toneAir: 0.5,
+				toneBottom: 0.7,
 			};
 			const fill = emptyDrumPattern(p.patterns[0]!);
 			fill.rows[1]!.cells[14] = 3;
@@ -392,6 +427,9 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 			wahRange: 0.7,
 			wahResonance: 0.5,
 			wahMix: 0,
+			toneTilt: 0,
+			toneAir: 0,
+			toneBottom: 0,
 		};
 		p.patterns[0]!.rows[1]!.delaySend = 0.45;
 		p.patterns[0]!.rows[1]!.reverbSend = 1;
@@ -407,6 +445,9 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 			wahRange: 0.7,
 			wahResonance: 0.5,
 			wahMix: 0,
+			toneTilt: 0,
+			toneAir: 0,
+			toneBottom: 0,
 		});
 	});
 	test("carries the timeline, and a link from before the timeline opens with none", () => {
@@ -428,7 +469,7 @@ describe("encodeDrumProject / decodeDrumProject", () => {
 		for (const { link, project, version } of PINNED_LINKS) {
 			const p = project();
 			expect(decodeDrumProject(link)).toEqual(p);
-			if (version === 8) expect(encodeDrumProject(p)).toBe(link);
+			if (version === 9) expect(encodeDrumProject(p)).toBe(link);
 		}
 	});
 });

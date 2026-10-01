@@ -423,8 +423,11 @@ class DrumMachineEngine {
 			"wahRange",
 			"wahResonance",
 			"wahMix",
+			"toneAir",
+			"toneBottom",
 		] as const)
 			fx[k] = Math.min(1, Math.max(0, Math.round(fx[k] * 100) / 100));
+		fx.toneTilt = Math.min(1, Math.max(-1, Math.round(fx.toneTilt * 100) / 100));
 		fx.delayAnalog = fx.delayAnalog === true;
 		this.project.fx = fx;
 		this.#save();

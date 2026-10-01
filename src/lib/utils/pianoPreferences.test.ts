@@ -29,6 +29,7 @@ describe("parsePianoPreferences", () => {
 			wah: { mode: "touch", sensitivity: 0.5, rate: 1, range: 0.7, resonance: 0.5, mix: 0 },
 			phaser: { mode: "phaser", rate: 0.5, depth: 0.7, mix: 0 },
 			rotary: { speed: "off" },
+			tone: { tilt: 0, air: 0, bottom: 0 },
 		});
 		// The effects clamp to their ranges; an unknown tremolo shape and a non-boolean analog flag fall back.
 		expect(
@@ -40,6 +41,7 @@ describe("parsePianoPreferences", () => {
 				wah: { mode: "pedal", sensitivity: 2, rate: 9, mix: 0.4 },
 				phaser: { mode: "wah", rate: 0, depth: 0.4, mix: 1.5 },
 				rotary: { speed: "warp" },
+				tone: { tilt: -3, air: 0.4, bottom: 9 },
 			}),
 		).toMatchObject({
 			delay: { time: 1, feedback: 0.9, level: 0.5, analog: false },
@@ -49,6 +51,7 @@ describe("parsePianoPreferences", () => {
 			wah: { mode: "touch", sensitivity: 1, rate: 5, range: 0.7, resonance: 0.5, mix: 0.4 },
 			phaser: { mode: "phaser", rate: 0.1, depth: 0.4, mix: 1 },
 			rotary: { speed: "off" },
+			tone: { tilt: -1, air: 0.4, bottom: 1 },
 		});
 		expect(parsePianoPreferences({ rotary: { speed: "fast" } }).rotary).toEqual({ speed: "fast" });
 		expect(parsePianoPreferences({ phaser: { mode: "flanger" } }).phaser.mode).toBe("flanger");

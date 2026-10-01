@@ -1,6 +1,7 @@
 /**
  * Effect stages the piano's chain (pianoFx.ts) and the drum bus
- * (drumBus.ts) share: a fuzz, a delay with an analog character, and a wah. Plain
+ * (drumBus.ts) share: a fuzz, a delay with an analog character, a wah, and
+ * a tone stage (a tilt, an exciter and a low-end enhancer). Plain
  * Web Audio on a BaseAudioContext, so the offline renders carry them.
  * Levels move by `setTargetAtTime` with the time constant the caller
  * gives: 20 ms from a slider so nothing clicks, 0 to land at once.
@@ -261,6 +262,125 @@ export function createWahStage(
 				if (last) apply(last, 0.02);
 			}
 			if (down) set(pedal.offset, Math.min(1, Math.max(0, position)), 0.02);
+		},
+	};
+}
+
+export interface ToneStageSettings {
+	/** -1 dark to 1 bright, 0 flat: a low shelf and a high shelf moving opposite ways, up to 6 dB each. */
+	tilt: number;
+	/** The exciter, 0 (off) to 1: harmonics made above 3 kHz, mixed back in. */
+	air: number;
+	/** The low-end enhancer, 0 (off) to 1: the band under 100 Hz compressed and mixed back in. */
+	bottom: number;
+}
+export interface ToneStage {
+	input: AudioNode;
+	output: AudioNode;
+	update(settings: ToneStageSettings, tau: number): void;
+}
+
+/**
+ * Tone (Kevin's ask, 2026-10-01), on the master of both instruments:
+ *
+ * - **Tilt**: a low shelf at 250 Hz and a high shelf at 2.5 kHz, their
+ *   gains opposite (±6 dB at the ends), in series on the signal: one slider
+ *   from dark to bright, flat in the middle.
+ * - **Air**, an exciter after Aphex's Aural Exciter: the signal above 2 kHz
+ *   into a hot gain and a tanh WaveShaper (4× oversampled), which makes new
+ *   harmonics above what was there, then a 4 kHz high-pass so only the new
+ *   content comes back, mixed in at up to a quarter. Brightens by adding
+ *   what a shelf cannot: harmonics above the sound's own top. (It needs
+ *   something in the band to work from: a sound low-passed at 2 kHz gains
+ *   nothing, measured; one with a top end gains a sparkle.)
+ * - **Bottom**, after the intent of the same unit's Big Bottom. Aphex does it
+ *   with a phase shift and a compressor on the low band; a Web Audio
+ *   compressor has a few milliseconds of lookahead, and mixing the delayed
+ *   band back cancelled as much as it added (measured), so this is the
+ *   harmonic way instead: the band under 120 Hz into a hot gain and a tanh
+ *   shaper, which makes its second and third harmonics, kept between 110 Hz
+ *   and 400 Hz by a band-pass pair and mixed back in. The fundamental is
+ *   untouched; the harmonics make the bass read bigger, on small speakers
+ *   most of all, at nearly the same peak.
+ */
+const TILT_DB = 6;
+const AIR_WET = 0.25;
+const BOTTOM_WET = 0.5;
+const EXCITER_CURVE = curve((x) => Math.tanh(x));
+
+export function createToneStage(ctx: BaseAudioContext): ToneStage {
+	const input = ctx.createGain();
+	const output = ctx.createGain();
+	// Tilt, in series.
+	const low = ctx.createBiquadFilter();
+	low.type = "lowshelf";
+	low.frequency.value = 250;
+	const high = ctx.createBiquadFilter();
+	high.type = "highshelf";
+	high.frequency.value = 2500;
+	input.connect(low);
+	low.connect(high);
+	high.connect(output);
+	// Air.
+	const airHp = ctx.createBiquadFilter();
+	airHp.type = "highpass";
+	airHp.frequency.value = 2000;
+	airHp.Q.value = 0.7;
+	const airPre = ctx.createGain();
+	airPre.gain.value = 6;
+	const airShaper = ctx.createWaveShaper();
+	airShaper.curve = EXCITER_CURVE;
+	airShaper.oversample = "4x";
+	const airPost = ctx.createBiquadFilter();
+	airPost.type = "highpass";
+	airPost.frequency.value = 4000;
+	airPost.Q.value = 0.7;
+	const airGain = ctx.createGain();
+	airGain.gain.value = 0;
+	high.connect(airHp);
+	airHp.connect(airPre);
+	airPre.connect(airShaper);
+	airShaper.connect(airPost);
+	airPost.connect(airGain);
+	airGain.connect(output);
+	// Bottom.
+	const bottomLp = ctx.createBiquadFilter();
+	bottomLp.type = "lowpass";
+	bottomLp.frequency.value = 120;
+	bottomLp.Q.value = 0.7;
+	const bottomPre = ctx.createGain();
+	bottomPre.gain.value = 4;
+	const bottomShaper = ctx.createWaveShaper();
+	bottomShaper.curve = EXCITER_CURVE;
+	bottomShaper.oversample = "2x";
+	const bottomHp = ctx.createBiquadFilter();
+	bottomHp.type = "highpass";
+	bottomHp.frequency.value = 110;
+	bottomHp.Q.value = 0.7;
+	const bottomTop = ctx.createBiquadFilter();
+	bottomTop.type = "lowpass";
+	bottomTop.frequency.value = 400;
+	bottomTop.Q.value = 0.7;
+	const bottomGain = ctx.createGain();
+	bottomGain.gain.value = 0;
+	high.connect(bottomLp);
+	bottomLp.connect(bottomPre);
+	bottomPre.connect(bottomShaper);
+	bottomShaper.connect(bottomHp);
+	bottomHp.connect(bottomTop);
+	bottomTop.connect(bottomGain);
+	bottomGain.connect(output);
+	const set = (param: AudioParam, value: number, tau: number) =>
+		tau ? param.setTargetAtTime(value, ctx.currentTime, tau) : (param.value = value);
+	return {
+		input,
+		output,
+		update(t, tau) {
+			const tilt = Math.min(1, Math.max(-1, t.tilt));
+			set(low.gain, -tilt * TILT_DB, tau);
+			set(high.gain, tilt * TILT_DB, tau);
+			set(airGain.gain, Math.min(1, Math.max(0, t.air)) * AIR_WET, tau);
+			set(bottomGain.gain, Math.min(1, Math.max(0, t.bottom)) * BOTTOM_WET, tau);
 		},
 	};
 }

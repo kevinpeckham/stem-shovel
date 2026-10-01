@@ -176,7 +176,10 @@
 			piano.fuzz.drive > 0 ||
 			piano.wah.mix > 0 ||
 			piano.phaser.mix > 0 ||
-			piano.rotary.speed !== "off",
+			piano.rotary.speed !== "off" ||
+			piano.tone.tilt !== 0 ||
+			piano.tone.air > 0 ||
+			piano.tone.bottom > 0,
 	);
 
 	// The key helper: the scale's pitch classes for the marks on the keys, and the chord the held notes make.
@@ -1344,6 +1347,54 @@
 						onclick={() => piano.setRotary("fast")}>Fast</button
 					>
 				</div>
+			</div>
+			<div class="grid grid-cols-1 gap-y-3 content-start">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Tone</div>
+				<label class="block">
+					<span class="device-button-label"
+						>Tilt · {piano.tone.tilt === 0
+							? "flat"
+							: piano.tone.tilt < 0
+								? `${Math.round(-piano.tone.tilt * 100)}% dark`
+								: `${Math.round(piano.tone.tilt * 100)}% bright`}</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="-100"
+						max="100"
+						step="1"
+						value={Math.round(piano.tone.tilt * 100)}
+						oninput={(e) => piano.setTone({ tilt: Number(e.currentTarget.value) / 100 })}
+						aria-label="Tone tilt"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Air · {Math.round(piano.tone.air * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.tone.air * 100)}
+						oninput={(e) => piano.setTone({ air: Number(e.currentTarget.value) / 100 })}
+						aria-label="Tone air"
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Bottom · {Math.round(piano.tone.bottom * 100)}%</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={Math.round(piano.tone.bottom * 100)}
+						oninput={(e) => piano.setTone({ bottom: Number(e.currentTarget.value) / 100 })}
+						aria-label="Tone bottom"
+					/>
+				</label>
 			</div>
 		</div>
 	{/snippet}

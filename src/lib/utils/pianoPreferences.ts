@@ -86,6 +86,15 @@ export const DEFAULT_PIANO_WAH: PianoWah = {
 	resonance: 0.5,
 	mix: 0,
 };
+export interface PianoTone {
+	/** -1 dark to 1 bright, 0 flat. */
+	tilt: number;
+	/** The exciter, 0 (off) to 1. */
+	air: number;
+	/** The low-end enhancer, 0 (off) to 1. */
+	bottom: number;
+}
+export const DEFAULT_PIANO_TONE: PianoTone = { tilt: 0, air: 0, bottom: 0 };
 const PIANO_ROTARY_SPEEDS = ["off", "slow", "fast"] as const;
 export type PianoRotarySpeed = (typeof PIANO_ROTARY_SPEEDS)[number];
 export interface PianoRotary {
@@ -109,6 +118,7 @@ export interface PianoPreferences {
 	wah: PianoWah;
 	phaser: PianoPhaser;
 	rotary: PianoRotary;
+	tone: PianoTone;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
@@ -131,6 +141,7 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	wah: { ...DEFAULT_PIANO_WAH },
 	phaser: { ...DEFAULT_PIANO_PHASER },
 	rotary: { ...DEFAULT_PIANO_ROTARY },
+	tone: { ...DEFAULT_PIANO_TONE },
 	hires: false,
 	key: null,
 	degrees: false,
@@ -173,6 +184,7 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		wah: parseWah(p.wah),
 		phaser: parsePhaser(p.phaser),
 		rotary: parseRotary(p.rotary),
+		tone: parseTone(p.tone),
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
@@ -270,5 +282,14 @@ function parseWah(json: unknown): PianoWah {
 		range: unit(w.range, DEFAULT_PIANO_WAH.range),
 		resonance: unit(w.resonance, DEFAULT_PIANO_WAH.resonance),
 		mix: unit(w.mix, DEFAULT_PIANO_WAH.mix),
+	};
+}
+
+function parseTone(json: unknown): PianoTone {
+	const t = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		tilt: within(t.tilt, -1, 1, DEFAULT_PIANO_TONE.tilt),
+		air: unit(t.air, DEFAULT_PIANO_TONE.air),
+		bottom: unit(t.bottom, DEFAULT_PIANO_TONE.bottom),
 	};
 }

@@ -1,8 +1,9 @@
 # How the effects are engineered
 
 The piano and the drum machine carry a rack of effects: reverb, delay
-(digital or analog), fuzz, wah, chorus, phaser or flanger, tremolo and a
-rotary speaker. This is how they are built and why they sound the way they do.
+(digital or analog), fuzz, wah, chorus, phaser or flanger, tremolo, a
+rotary speaker and a tone stage (tilt, an exciter and a low-end
+enhancer). This is how they are built and why they sound the way they do.
 The short version: there is no audio library, no worklet, no WebAssembly
 and no sample file. Every effect is a small graph of the browser's own Web
 Audio nodes, and the numbers that shape it were chosen by rendering test
@@ -11,7 +12,7 @@ tones through the same code offline and measuring the result.
 ## Where the code is
 
 - `src/lib/audio/fxStages.ts` — the stages both instruments share: the
-  fuzz, the delay with its analog character, and the wah.
+  fuzz, the delay with its analog character, the wah, and the tone stage.
 - `src/lib/audio/pianoFx.ts` — the piano's chain (`createPianoFx`): voices
   → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus, with
   reverb and delay sends off the dry bus into the master.
@@ -37,7 +38,7 @@ thread. The effects use nine of them:
 - **BiquadFilterNode** — a second-order filter: low-pass for the delay's
   damping, the fuzz's tone and the wah (resonant, its cutoff moving),
   high-pass and low-pass as the rotary's crossover, all-pass for the
-  phaser.
+  phaser, shelves for the tilt.
 - **ConvolverNode** — convolves its input with a buffer. Given a room's
   impulse response it is a reverb.
 - **ConstantSourceNode** — a steady value as a signal, which a MIDI pedal's
@@ -235,6 +236,40 @@ stop while the dry crossfades back. The wet is trimmed to 0.8 because the
 two bands overlap at the crossover; measured within 1 dB of the dry at
 300 Hz and 1.5 kHz, and the horn reaches 7 Hz within three seconds of
 choosing Fast.
+
+### Tone: tilt, air and bottom
+
+One stage on the master of both instruments, after everything else
+including the reverb and delay returns (`createToneStage`), three
+sliders:
+
+- **Tilt** is a low shelf at 250 Hz and a high shelf at 2.5 kHz with
+  their gains moving opposite ways, up to 6 dB each, in series on the
+  signal. One slider from dark to bright, flat in the middle, with no
+  wrong settings.
+- **Air** is an exciter after Aphex's Aural Exciter. The signal above
+  2 kHz goes into a hot gain and a tanh WaveShaper (four times
+  oversampled, as the fuzz is), which makes new harmonics above what was
+  there; a 4 kHz high-pass keeps only that new content, and it is mixed
+  back in at up to a quarter. The difference from a shelf is the point:
+  a shelf can only raise what a sound already has; the exciter
+  manufactures harmonics above the sound's own top. It needs something
+  in the band to work from, though: measured, a sound low-passed at
+  2 kHz gains nothing, and one with a top end gains 9 dB between 6 and
+  12 kHz at full Air with the overall level up by less than half a
+  decibel.
+- **Bottom** is after the intent of the same unit's Big Bottom. Aphex
+  does it with a phase shift and a compressor on the low band, which
+  raises the band's average level without its peaks. A Web Audio
+  compressor carries a few milliseconds of lookahead, and mixing the
+  delayed band back cancelled as much as it added (measured, so that
+  version went). This is the harmonic way instead: the band under 120 Hz
+  into a hot gain and a tanh shaper, which makes its second and third
+  harmonics, kept between 110 and 400 Hz by a band-pass pair and mixed
+  back in at up to half. The fundamental passes untouched; the harmonics
+  make the bass read bigger, on small speakers most of all. Measured on
+  a pulsing 55 Hz sawtooth, full Bottom adds about 4 dB between 110 and
+  330 Hz with the peak sample unchanged.
 
 ## Why nothing clicks
 

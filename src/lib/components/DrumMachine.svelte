@@ -718,7 +718,9 @@
 		{#snippet fxItem()}
 			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
 				<div class="text-11px uppercase tracking-wider opacity-60 mb-3">Effects</div>
-				<div class="grid grid-cols-1 @xl-grid-cols-2 @2xl-grid-cols-3 gap-x-6 gap-y-3">
+				<div
+					class="grid grid-cols-1 @xl-grid-cols-2 @2xl-grid-cols-3 @4xl-grid-cols-4 gap-x-6 gap-y-3"
+				>
 					<div class="grid gap-3 content-start">
 						<div class="block text-blue-100/80" title="Delay time, in the beat">
 							<span class="device-button-label">Delay</span>
@@ -900,11 +902,61 @@
 							/>
 						</label>
 					</div>
+					<div class="grid gap-3 content-start">
+						<div class="text-11px uppercase tracking-wider opacity-60">Tone</div>
+						<label class="block">
+							<span class="device-button-label"
+								>Tilt · {p.fx.toneTilt === 0
+									? "flat"
+									: p.fx.toneTilt < 0
+										? `${Math.round(-p.fx.toneTilt * 100)}% dark`
+										: `${Math.round(p.fx.toneTilt * 100)}% bright`}</span
+							>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="-100"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.toneTilt * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ toneTilt: Number(e.currentTarget.value) / 100 })}
+								aria-label="Tone tilt"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Air · {Math.round(p.fx.toneAir * 100)}%</span>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.toneAir * 100)}
+								oninput={(e) => drumMachine.setFx({ toneAir: Number(e.currentTarget.value) / 100 })}
+								aria-label="Tone air"
+							/>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Bottom · {Math.round(p.fx.toneBottom * 100)}%</span>
+							<input
+								class="w-full accent-maximumYellow"
+								type="range"
+								min="0"
+								max="100"
+								step="1"
+								value={Math.round(p.fx.toneBottom * 100)}
+								oninput={(e) =>
+									drumMachine.setFx({ toneBottom: Number(e.currentTarget.value) / 100 })}
+								aria-label="Tone bottom"
+							/>
+						</label>
+					</div>
 				</div>
 				<button
 					class="device-button-xs px-3 justify-self-start mt-3"
 					type="button"
-					title="Master levels, the fuzz and the wah back to zero, the delay digital, every drum back to its usual sends"
+					title="Master levels, the fuzz, the wah and the tone back to zero, the delay digital, every drum back to its usual sends"
 					onclick={() => {
 						drumMachine.resetFx();
 						notify("Effects reset to their defaults");
@@ -1674,17 +1726,20 @@
 				<ContextMenu
 					ariaLabel="Effects"
 					position="top right"
-					title="Delay, reverb, fuzz and wah: turn a level up to hear it"
+					title="Delay, reverb, fuzz, wah and tone: turn a level up to hear it"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
 					buttonBaseClasses="device-button-xs px-3 @4xl-device-button-sm"
 					buttonClasses="{p.fx.delayReturn > 0 ||
 					p.fx.reverbReturn > 0 ||
 					p.fx.fuzzDrive > 0 ||
-					p.fx.wahMix > 0
+					p.fx.wahMix > 0 ||
+					p.fx.toneTilt !== 0 ||
+					p.fx.toneAir > 0 ||
+					p.fx.toneBottom > 0
 						? 'text-accent'
 						: ''} {tutorial.control === 'reverb' || tutorial.control === 'delay' ? HINT : ''}"
-					popoverClasses="min-w-72 @xl-min-w-140 @2xl-min-w-200 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					popoverClasses="min-w-72 @xl-min-w-140 @2xl-min-w-200 @4xl-min-w-260 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
 				{#if midiSupported}

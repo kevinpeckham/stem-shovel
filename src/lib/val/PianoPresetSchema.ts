@@ -69,6 +69,14 @@ export const PianoPresetDataSchema = v.object({
 			mix: 0,
 		}),
 	),
+	tone: v.optional(
+		v.object({
+			tilt: v.optional(v.pipe(v.number(), v.minValue(-1), v.maxValue(1)), 0),
+			air: unit(0),
+			bottom: unit(0),
+		}),
+		() => ({ tilt: 0, air: 0, bottom: 0 }),
+	),
 	rotary: v.optional(
 		v.object({ speed: v.optional(v.picklist(["off", "slow", "fast"]), "off") }),
 		() => ({ speed: "off" as const }),

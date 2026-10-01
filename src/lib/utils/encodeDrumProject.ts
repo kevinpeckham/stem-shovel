@@ -14,12 +14,14 @@ import { BitWriter } from "./bitWriter";
 
 /**
  * A project as the string a share link carries (docs/drum-machine.md):
- * bits, base64url. Version 8 is a version byte, then the tempo above the
+ * bits, base64url. Version 9 is a version byte, then the tempo above the
  * minimum (8 bits), swing and humanize in hundredths (7 each), the swing
  * grid (1), the effects (delay time choice 3, feedback, delay return,
  * reverb size and reverb return in hundredths, 7 each, the analog delay
  * flag 1, the fuzz's drive and tone in hundredths, 7 each, the wah's bars
- * choice 3 and its range, resonance and mix in hundredths, 7 each), the kit
+ * choice 3 and its range, resonance and mix in hundredths, 7 each, the
+ * tone's tilt in hundredths from -1 (8) and its air and bottom in
+ * hundredths, 7 each), the kit
  * (2), the pattern count less one (3), and for each pattern its meter (2),
  * steps choice (3) and row count (4), and for each row its voice (4), level in
  * hundredths (7), pan in hundredths from -1 (8), mute (1), delay and reverb
@@ -47,6 +49,9 @@ export function encodeDrumProject(p: DrumProject): string {
 	w.write(Math.round(p.fx.wahRange * 100), 7);
 	w.write(Math.round(p.fx.wahResonance * 100), 7);
 	w.write(Math.round(p.fx.wahMix * 100), 7);
+	w.write(Math.round((p.fx.toneTilt + 1) * 100), 8);
+	w.write(Math.round(p.fx.toneAir * 100), 7);
+	w.write(Math.round(p.fx.toneBottom * 100), 7);
 	w.write(DRUM_KIT_IDS.indexOf(p.kit), 2);
 	w.write(p.patterns.length - 1, 3);
 	for (const pattern of p.patterns) {
