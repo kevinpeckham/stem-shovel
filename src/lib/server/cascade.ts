@@ -27,6 +27,7 @@ const {
 	demo,
 	idea,
 	beat,
+	pianoPreset,
 	invitation,
 	inviteCode,
 	notification,
@@ -124,6 +125,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await deleteSongRows(songs.map((s) => s.id));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
 	await db.delete(beat).where(eq(beat.accountId, accountId));
+	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await db.delete(comment).where(eq(comment.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
@@ -159,6 +161,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
 	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));
+	await db.update(pianoPreset).set({ createdBy: null }).where(eq(pianoPreset.createdBy, userId));
 	await db.update(invitation).set({ invitedBy: null }).where(eq(invitation.invitedBy, userId));
 	await db.update(inviteCode).set({ createdBy: null }).where(eq(inviteCode.createdBy, userId));
 	await db.update(project).set({ createdBy: null }).where(eq(project.createdBy, userId));

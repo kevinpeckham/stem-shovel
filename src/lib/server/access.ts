@@ -119,8 +119,19 @@ export function viewerOf(
 	};
 }
 
-const { project, song, stem, demo, recording, idea, beat, songCredit, artist, artistMember } =
-	schema;
+const {
+	project,
+	song,
+	stem,
+	demo,
+	recording,
+	idea,
+	beat,
+	pianoPreset,
+	songCredit,
+	artist,
+	artistMember,
+} = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
 export async function accountOfProject(projectId: string) {
@@ -184,6 +195,14 @@ export async function accountOfDemo(demoId: string) {
 export async function accountOfBeat(beatId: string) {
 	const row = await db.query.beat.findFirst({
 		where: eq(beat.id, beatId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfPianoPreset(presetId: string) {
+	const row = await db.query.pianoPreset.findFirst({
+		where: eq(pianoPreset.id, presetId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

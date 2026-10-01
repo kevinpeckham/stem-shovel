@@ -13,6 +13,7 @@ import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { beat } from "./beat";
+import { pianoPreset } from "./pianoPreset";
 import { idea } from "./idea";
 import { recording } from "./recording";
 import { invitation } from "./invitation";
@@ -45,6 +46,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	ideas: many(idea),
 	artists: many(artist),
 	beats: many(beat),
+	pianoPresets: many(pianoPreset),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -226,4 +228,9 @@ export const beatRelations = relations(beat, ({ one }) => ({
 	account: one(account, { fields: [beat.accountId], references: [account.id] }),
 	creator: one(user, { fields: [beat.createdBy], references: [user.id] }),
 	song: one(song, { fields: [beat.songId], references: [song.id] }),
+}));
+
+export const pianoPresetRelations = relations(pianoPreset, ({ one }) => ({
+	account: one(account, { fields: [pianoPreset.accountId], references: [account.id] }),
+	creator: one(user, { fields: [pianoPreset.createdBy], references: [user.id] }),
 }));

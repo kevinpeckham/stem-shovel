@@ -22,6 +22,7 @@ import {
 	type PianoRotary,
 	type PianoTremolo,
 } from "$lib/utils/pianoPreferences";
+import type { PianoPresetData } from "$lib/val/PianoPresetSchema";
 import { createPianoFx, type PianoFx } from "./pianoFx";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
@@ -528,6 +529,34 @@ class PianoEngine {
 		this.rotary = r;
 		this.#fx?.update({ rotary: r });
 		this.#save();
+	}
+
+	// ---- presets (docs/piano.md, "Presets") ----
+	/** The sound and every effect as they stand: what a preset keeps (volume, octave, key and labels are not part of it). */
+	currentPreset(): PianoPresetData {
+		return {
+			instrument: this.instrument,
+			reverb: this.reverb,
+			reverbSize: this.reverbSize,
+			delay: { ...this.delay },
+			chorus: { ...this.chorus },
+			phaser: { ...this.phaser },
+			tremolo: { ...this.tremolo },
+			fuzz: { ...this.fuzz },
+			rotary: { ...this.rotary },
+		};
+	}
+	/** A preset into the piano: the sound and every effect, through the setters so the chain ramps and the choices are remembered. */
+	applyPreset(p: PianoPresetData) {
+		this.setInstrument(p.instrument);
+		this.setReverb(p.reverb);
+		this.setReverbSize(p.reverbSize);
+		this.setDelay(p.delay);
+		this.setChorus(p.chorus);
+		this.setPhaser(p.phaser);
+		this.setTremolo(p.tremolo);
+		this.setFuzz(p.fuzz);
+		this.setRotary(p.rotary.speed);
 	}
 
 	/** Web MIDI (Chrome and Edge): every input plays the piano; note on and off, and the sustain pedal (CC 64). */

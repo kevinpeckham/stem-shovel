@@ -310,7 +310,7 @@
 					if (s > 0) piano.prefetch();
 				})}
 			>
-				<Piano keyboard={spaceTarget === "piano"} />
+				<Piano keyboard={spaceTarget === "piano"} sitePresets={data.pianoPresets} />
 			</div>
 		</section>
 

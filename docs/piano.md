@@ -237,6 +237,61 @@ same controls sit in the levels menu under an Effects heading.
 Not built: a delay timed to a tempo (the piano has none; the recorder's
 metronome could lend one); a tone control is on the list.
 
+## Presets (built 2026-10-01)
+
+Named presets of the sound and every effect (Kevin's ask), nothing about
+the room or the song: volume, octave, the key helper, the letters and
+hi-res stay as they are when one loads. `PianoPresetDataSchema`
+(`src/lib/val/PianoPresetSchema.ts`) has every field optional with the
+engine's default, so a preset from before an effect existed still
+parses; `piano.currentPreset()` and `piano.applyPreset()` are the two
+ends, the latter through the setters so the chain ramps and the
+preferences follow.
+
+Three layers, resolved per slot by `resolvePianoSlots`:
+
+1. **The site's defaults**: five presets a system admin saves from the
+   piano itself ("Save as site default" in the save popover), one app
+   setting (`pianoPresets`, `setSitePianoPreset` / `clearSitePianoPreset`
+   in admin.remote.ts). The home page demo and every signed-out visitor
+   see them.
+2. **The browser's own**: a signed-out player's slot saves go to
+   localStorage (`stemshovel.piano.presets`, `pianoSlotOverrides.ts`),
+   per slot over the site's; the save popover says so.
+3. **The account's**: a signed-in member's presets in the `piano_preset`
+   table (migration 0062), unlimited to `MAX_PIANO_PRESETS` (100), each
+   with an optional slot; the data layer keeps at most one of an
+   account's presets per slot (`freePianoSlot`). The slotted ones fill
+   the buttons (the site's default still shows in a slot the account has
+   not taken), the rest live in the manage popover with a search box
+   from six presets up. Account-scoped like beats, with the creator
+   recorded; editors save, rename, re-slot and delete, viewers load.
+   `pianoPresets.remote.ts`; the page's load is `/piano/+page.server.ts`
+   with the drum machine's "current account" rule.
+
+The buttons: five under a Presets label from lg, each lit while the
+sound matches its preset (`pianoPresetKey`: the schema's field order,
+numbers to three places); an empty slot is dimmed and a click on it
+opens the save popover. ⌘-click (Ctrl on Windows) or a 550 ms hold opens
+the save popover for that slot (a `pointerdown` timer; the click after a
+hold is swallowed, and the context menu on a touch hold is prevented);
+the sixth button is the manage menu (`bind:openState` opens it from the
+slots). Below lg the slots and the manage button sit in the levels menu.
+The screen names the preset the sound sits on, or the last one loaded
+with "· edited" once a slider moves off it.
+
+**Share links**: `/piano#preset=<base64url JSON of {name, data}>`
+(`encodePianoPreset` / `decodePianoPreset`, a few hundred characters,
+checked by the schema on the way in); the piano applies it at mount,
+names it on the screen and says so in a notification, keeping nothing
+until the visitor saves. The drum machine's hash links carry no `preset=`
+prefix, so the two do not collide. "Copy link" in the popover shares the
+sound as it stands, or any slot or saved preset by its link icon.
+
+Not built: presets in the Idea Recorder's piano (the component shows the
+buttons only when a page gives it `sitePresets`); import of a link
+straight into the library (save after loading does it).
+
 ## Phase 3 (later)
 
 - 88 keys with a scrolling view; a transpose control; MIDI out; a

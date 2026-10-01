@@ -174,6 +174,9 @@ check and the tests without any secret.
   pedal and a rack of effects. `src/lib/audio/pianoFx.ts` and
   `src/lib/audio/fxStages.ts` hold the effects, shared in part with the
   drum bus; docs/effects.md is how they are engineered.
+  `src/lib/remote/pianoPresets.remote.ts` and the `piano_preset` table keep
+  named presets in an account, with the site's five defaults in an app
+  setting and a browser's own in localStorage; `/piano#preset=…` shares one.
 - `src/lib/components/Tuner.svelte`, `src/lib/audio/pitch.ts` — a chromatic
   tuner (McLeod pitch detection in the browser) in the Idea Recorder's
   header, on the public /tuner page and on the front page.

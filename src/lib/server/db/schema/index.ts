@@ -13,6 +13,7 @@ export * from "./bugReportVote";
 export * from "./comment";
 export * from "./demo";
 export * from "./beat";
+export * from "./pianoPreset";
 export * from "./idea";
 export * from "./invitation";
 export * from "./inviteCode";

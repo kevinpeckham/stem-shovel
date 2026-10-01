@@ -25,6 +25,8 @@ export const DEFAULT_PIANO_OCTAVE = 3;
 
 /** Voices sounding at once; the oldest is let go beyond it. */
 export const PIANO_MAX_VOICES = 24;
+/** Saved presets an account keeps at most (docs/piano.md, "Presets"); they are a few hundred bytes each. */
+export const MAX_PIANO_PRESETS = 100;
 
 /**
  * The computer keyboard as two rows of piano keys, by physical key (KeyboardEvent.code,

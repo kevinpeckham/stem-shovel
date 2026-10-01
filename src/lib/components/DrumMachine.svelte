@@ -1581,7 +1581,7 @@
 					buttonClasses={p.fx.delayReturn > 0 || p.fx.reverbReturn > 0 || p.fx.fuzzDrive > 0
 						? "text-accent"
 						: ""}
-					popoverClasses="min-w-72 sm-min-w-140 !max-h-80vh overflow-y-auto"
+					popoverClasses="min-w-72 sm-min-w-140 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
 				{#if midiSupported}

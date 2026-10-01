@@ -9,6 +9,7 @@ import {
 	removeWaitlist,
 	setAccountFounder,
 	setAppSetting,
+	setSitePianoPreset as setSitePreset,
 	deleteAppSetting,
 	setUserFounder,
 	waitlistById,
@@ -24,6 +25,7 @@ import { AccountAdminSchema, AccountStorageLimitSchema } from "$lib/val/AccountA
 import { SignUpModeFormSchema } from "$lib/val/SignUpModeSchema";
 import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
 import { HomeBeatSchema } from "$lib/val/HomeBeatSchema";
+import { SitePianoPresetSchema, SitePianoPresetSlotSchema } from "$lib/val/PianoPresetSchema";
 import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
 import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
 import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "$lib/server/email";
@@ -134,6 +136,20 @@ export const setHomeBeat = command(HomeBeatSchema, async ({ data }) => {
 	requireSystemAdmin(locals);
 	await setAppSetting("homeBeat", JSON.stringify(data));
 	return { saved: true };
+});
+
+/** The piano's demo presets, one slot at a time: whatever is in the piano when a system admin saves it there as the site's default (docs/piano.md, "Presets"). */
+export const setSitePianoPreset = command(SitePianoPresetSchema, async ({ slot, name, data }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setSitePreset(slot, { name, data });
+	return { saved: true };
+});
+export const clearSitePianoPreset = command(SitePianoPresetSlotSchema, async ({ slot }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setSitePreset(slot, null);
+	return { cleared: true };
 });
 
 /** Back to the built-in starting beat (from /admin/home). */

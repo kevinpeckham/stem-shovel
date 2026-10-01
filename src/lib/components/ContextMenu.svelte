@@ -79,10 +79,15 @@
 	let actuallyOpen = $state(false);
 	let stopFallback: (() => void) | null = null;
 
-	// Parent -> popover: bind:openState opens or closes it; a matching state does nothing.
+	// Parent -> popover: bind:openState opens or closes it; a matching state does nothing. Opening goes
+	// through the trigger's click so the button is the popover's invoker: that is what gives
+	// `position-area` its anchor (showPopover() alone would put the menu at the viewport's corner).
 	$effect(() => {
 		if (!popoverEl) return;
-		if (openState === "open" && !actuallyOpen) popoverEl.showPopover();
+		if (openState === "open" && !actuallyOpen) {
+			if (buttonEl) buttonEl.click();
+			else popoverEl.showPopover();
+		}
 		if (openState === "closed" && actuallyOpen) popoverEl.hidePopover();
 	});
 	$effect(() => () => stopFallback?.());

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Piano: presets** (docs/piano.md, "Presets"). Five numbered buttons under a Presets label hold named presets of the sound and every effect; the screen names the one the sound sits on, "edited" once a slider moves. Click loads; ⌘-click, Ctrl-click or a hold opens a save popover for that slot; a bookmark button opens the full list with search, rename, slot assignment, delete and share links. Three layers: the site's defaults, which a system admin saves from the piano ("Save as site default"; one app setting), a signed-out player's own slots in the browser, and a signed-in member's presets in the account (`piano_preset`, migration 0062; up to 100; at most one per slot; editors save, viewers load). A link, `/piano#preset=…`, opens the piano with a preset for anyone, nothing kept until they save. The home page demo shows the site's presets.
+
+### Fixed
+
+- **Menus opened by code lost their place.** A ContextMenu opened through `bind:openState` called `showPopover()` directly, which gives CSS anchor positioning no anchor, so the menu landed in the viewport's corner; it now opens through its own trigger. The piano's and drum machine's effects menus and the presets menu are capped to the space beside their button (`max-h: calc(100% - 0.5rem)` in the anchor's grid area) and scroll, instead of running past the bottom of a short window.
+
 ## [0.61.0] - 2026-09-30
 
 ### Added

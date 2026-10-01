@@ -27,7 +27,14 @@
 			controller.
 		</p>
 	</header>
-	<Piano warm samplesBase={data.samplesBase} />
+	<Piano
+		warm
+		samplesBase={data.samplesBase}
+		sitePresets={data.sitePresets}
+		account={data.account}
+		presets={data.presets}
+		presetAdmin={data.presetAdmin}
+	/>
 	<section
 		class="mt-8 max-w-article [&>_p]-(mt-2 text-15px opacity-90) [&>h3]-(font-600 text-1.05em mt-4 leading-tight)"
 	>

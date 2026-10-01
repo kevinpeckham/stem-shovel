@@ -17,6 +17,25 @@
 	import { nameChord } from "$lib/utils/chordName";
 	import { degreeOf, scalePitchClasses } from "$lib/utils/scaleDegrees";
 	import { PIANO_TIER_BYTES } from "$lib/audio/pianoSamples";
+	import { notify } from "$lib/state/notifications.svelte";
+	import { errorMessage } from "$lib/utils/errorMessage";
+	import { decodePianoPreset } from "$lib/utils/decodePianoPreset";
+	import { encodePianoPreset } from "$lib/utils/encodePianoPreset";
+	import { pianoPresetKey } from "$lib/utils/pianoPresetKey";
+	import { resolvePianoSlots, type PianoSlot } from "$lib/utils/resolvePianoSlots";
+	import { loadPianoSlotOverrides, savePianoSlotOverrides } from "$lib/utils/pianoSlotOverrides";
+	import {
+		deletePianoPreset,
+		renamePianoPreset,
+		savePianoPreset,
+		setPianoPresetSlot,
+	} from "$lib/remote/pianoPresets.remote";
+	import { clearSitePianoPreset, setSitePianoPreset } from "$lib/remote/admin.remote";
+	import {
+		PIANO_PRESET_SLOTS,
+		type NamedPianoPreset,
+		type PianoPresetData,
+	} from "$lib/val/PianoPresetSchema";
 	import { onDestroy, onMount } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 
@@ -35,8 +54,30 @@
 		warm?: boolean;
 		/** Where the standard and hi-res sample tiers live (the page's load); without it the demo tier is all there is. */
 		samplesBase?: string | null;
+		/** The site's five demo presets (a system admin's), a null per empty slot (docs/piano.md, "Presets"); without them the preset buttons do not show. */
+		sitePresets?: (NamedPianoPreset | null)[] | null;
+		/** A signed-in member's account: presets save to it and load from it. */
+		account?: { id: string; name: string; canEdit: boolean } | null;
+		/** The account's saved presets, slotted ones first. */
+		presets?: SavedPreset[];
+		/** A system admin: a preset can be saved as the site's default for its slot. */
+		presetAdmin?: boolean;
 	}
-	let { keyboard = true, warm = false, samplesBase = null }: Props = $props();
+	interface SavedPreset {
+		id: string;
+		name: string;
+		slot: number | null;
+		data: PianoPresetData;
+	}
+	let {
+		keyboard = true,
+		warm = false,
+		samplesBase = null,
+		sitePresets = null,
+		account = null,
+		presets = [],
+		presetAdmin = false,
+	}: Props = $props();
 
 	let hiresCached = $state(false);
 	onMount(() => {
@@ -224,6 +265,222 @@
 		piano.allOff();
 	}
 	const midiSupported = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
+
+	// ---- presets (docs/piano.md, "Presets") ----
+	// Seeded from the page's load, then kept here as saves and deletes happen.
+	// svelte-ignore state_referenced_locally
+	let site = $state<(NamedPianoPreset | null)[]>(sitePresets ?? []);
+	// svelte-ignore state_referenced_locally
+	let saved = $state<SavedPreset[]>(presets);
+	let overrides = $state<Record<number, NamedPianoPreset>>({});
+	/** The last preset loaded (a slot, the library or a link): the screen names it, "edited" once the sound drifts from it. */
+	let loaded = $state<NamedPianoPreset | null>(null);
+	let slots = $derived(resolvePianoSlots(site, overrides, account ? saved : null));
+	let currentKey = $derived(pianoPresetKey(piano.currentPreset()));
+	let activeSlot = $derived(slots.findIndex((p) => p && pianoPresetKey(p.data) === currentKey));
+	/** What the screen says: the slot the sound sits on, else the loaded preset, edited or not. */
+	let presetLine = $derived.by(() => {
+		const slot = activeSlot >= 0 ? slots[activeSlot] : null;
+		if (slot) return { name: slot.name, edited: false };
+		if (loaded) return { name: loaded.name, edited: pianoPresetKey(loaded.data) !== currentKey };
+		return null;
+	});
+	const SLOT_NUMBERS = Array.from({ length: PIANO_PRESET_SLOTS }, (_, i) => i + 1);
+	onMount(() => {
+		overrides = loadPianoSlotOverrides();
+		// A share link: the preset in the hash plays at once, named on the screen, kept by saving it.
+		const hash = window.location.hash;
+		if (hash.startsWith("#preset=")) {
+			const preset = decodePianoPreset(hash.slice("#preset=".length));
+			if (preset) {
+				piano.load();
+				loadPreset(preset);
+				notify(`Preset “${preset.name}” loaded from the link; save it to keep it`);
+			} else notify("That preset link could not be read", { kind: "error" });
+		}
+	});
+	function loadPreset(preset: NamedPianoPreset) {
+		piano.applyPreset(preset.data);
+		loaded = { name: preset.name, data: preset.data };
+	}
+	function loadSlot(n: number) {
+		const p = slots[n - 1];
+		if (p) loadPreset(p);
+		else openSave(n);
+	}
+	// Saving: a popover with the name and the slot, opened by ⌘-click (Ctrl on Windows) or a hold on a slot button, or from the manage menu.
+	let saveOpen = $state<"open" | "closed">("closed");
+	let saveOpenPhone = $state<"open" | "closed">("closed");
+	let saveSlot = $state<number | null>(null);
+	let saveName = $state("");
+	let saving = $state(false);
+	let search = $state("");
+	/** The manage button itself opens the popover with no slot chosen and the current name (a pointer on the trigger, not the synthetic click openSave makes). */
+	function freshSaveForm(e: PointerEvent) {
+		const t = e.target as HTMLElement;
+		if (t.closest("button[popovertarget]") && !t.closest("[popover]")) {
+			saveSlot = null;
+			saveName = presetLine?.name ?? "";
+		}
+	}
+	function openSave(n: number | null) {
+		saveSlot = n;
+		const held = n ? slots[n - 1] : null;
+		saveName = held?.source === "account" ? held.name : (presetLine?.name ?? "");
+		if (window.matchMedia("(min-width: 1024px)").matches) saveOpen = "open";
+		else saveOpenPhone = "open";
+	}
+	// A hold marks the press; the click that follows the release opens the save popover (opening it
+	// mid-press would hand the release to light dismiss, which would close it again).
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+	let holdFired = false;
+	function holdStart() {
+		holdFired = false;
+		holdTimer = setTimeout(() => (holdFired = true), 550);
+	}
+	function holdEnd() {
+		if (holdTimer) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+	function slotClick(e: MouseEvent, n: number) {
+		const held = holdFired;
+		holdFired = false;
+		if (held || e.metaKey || e.ctrlKey) openSave(n);
+		else loadSlot(n);
+	}
+	let filtered = $derived(
+		search.trim()
+			? saved.filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase()))
+			: saved,
+	);
+	/** Save what the piano holds now: to the account (replacing the account's own preset on the slot, else a new one), or into this browser's slot. */
+	async function savePreset() {
+		const name = saveName.trim() || "Untitled preset";
+		const data = piano.currentPreset();
+		if (account?.canEdit) {
+			const held = saveSlot ? slots[saveSlot - 1] : null;
+			const id = held?.source === "account" ? held.id : undefined;
+			saving = true;
+			try {
+				const row = await savePianoPreset({
+					accountId: account.id,
+					id,
+					name,
+					slot: saveSlot,
+					data,
+				});
+				saved = [
+					{ id: row.id, name: row.name, slot: row.slot, data },
+					...saved
+						.filter((p) => p.id !== row.id)
+						.map((p) => (p.slot && p.slot === row.slot ? { ...p, slot: null } : p)),
+				];
+				loaded = { name: row.name, data };
+				notify(saveSlot ? `“${row.name}” saved to preset ${saveSlot}` : `“${row.name}” saved`);
+			} catch (e) {
+				notify(`Could not save the preset: ${errorMessage(e)}`, { kind: "error" });
+			} finally {
+				saving = false;
+			}
+		} else if (saveSlot) {
+			overrides = { ...overrides, [saveSlot]: { name, data } };
+			savePianoSlotOverrides(overrides);
+			loaded = { name, data };
+			notify(`“${name}” saved to preset ${saveSlot} in this browser`);
+		}
+		saveOpen = "closed";
+		saveOpenPhone = "closed";
+	}
+	/** A system admin: the sound as the site's default for the slot, what every visitor's button holds until they save their own. */
+	async function saveSitePreset() {
+		if (!saveSlot) return;
+		const name = saveName.trim() || "Untitled preset";
+		const data = piano.currentPreset();
+		saving = true;
+		try {
+			await setSitePianoPreset({ slot: saveSlot, name, data });
+			site = site.map((p, i) => (i === saveSlot! - 1 ? { name, data } : p));
+			while (site.length < PIANO_PRESET_SLOTS) site.push(null);
+			loaded = { name, data };
+			notify(`“${name}” is now the site's preset ${saveSlot}`);
+		} catch (e) {
+			notify(`Could not save the site preset: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			saving = false;
+		}
+		saveOpen = "closed";
+		saveOpenPhone = "closed";
+	}
+	async function clearSitePreset(n: number) {
+		if (!window.confirm(`Clear the site's preset ${n}?`)) return;
+		try {
+			await clearSitePianoPreset({ slot: n });
+			site = site.map((p, i) => (i === n - 1 ? null : p));
+			notify(`Site preset ${n} cleared`);
+		} catch (e) {
+			notify(`Could not clear it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	function clearBrowserSlot(n: number) {
+		const { [n]: _gone, ...rest } = overrides;
+		overrides = rest;
+		savePianoSlotOverrides(overrides);
+		notify(`Preset ${n} is back to the site's`);
+	}
+	async function renameSaved(p: SavedPreset) {
+		const name = window.prompt("Rename the preset", p.name)?.trim();
+		if (!name || name === p.name) return;
+		try {
+			const row = await renamePianoPreset({ id: p.id, name });
+			saved = saved.map((x) => (x.id === row.id ? { ...x, name: row.name } : x));
+			if (loaded && pianoPresetKey(loaded.data) === pianoPresetKey(p.data))
+				loaded = { ...loaded, name: row.name };
+		} catch (e) {
+			notify(`Could not rename the preset: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function deleteSaved(p: SavedPreset) {
+		if (!window.confirm(`Delete “${p.name}”?`)) return;
+		try {
+			await deletePianoPreset({ id: p.id });
+			saved = saved.filter((x) => x.id !== p.id);
+			notify(`“${p.name}” deleted`);
+		} catch (e) {
+			notify(`Could not delete the preset: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function placeSaved(p: SavedPreset, slot: number | null) {
+		try {
+			const row = await setPianoPresetSlot({ id: p.id, slot });
+			saved = saved.map((x) =>
+				x.id === row.id
+					? { ...x, slot: row.slot }
+					: x.slot && x.slot === row.slot
+						? { ...x, slot: null }
+						: x,
+			);
+		} catch (e) {
+			notify(`Could not move the preset: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** A link that opens the piano with a preset: a saved one, or the sound as it stands. */
+	async function copyLink(preset?: NamedPianoPreset) {
+		const p = preset ?? {
+			name: presetLine?.name ?? instrumentLabel(piano.instrument),
+			data: piano.currentPreset(),
+		};
+		const url = `${window.location.origin}/piano#preset=${encodePianoPreset(p)}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			notify(`Link to “${p.name}” copied`);
+		} catch {
+			window.prompt("Copy this link", url);
+		}
+	}
+	const SLOT_OPTIONS = [
+		{ value: "", label: "–" },
+		...SLOT_NUMBERS.map((n) => ({ value: String(n), label: String(n) })),
+	];
 </script>
 
 <svelte:window {onkeydown} {onkeyup} {onblur} />
@@ -256,6 +513,15 @@
 	>
 		<div>
 			<div class="text-24px sm-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
+			{#if presetLine}
+				<div
+					class="mt-1 text-13px sm-text-14px opacity-85 flex items-center gap-1.5"
+					data-testid="preset-line"
+				>
+					<span class="i-ph-bookmark-simple text-12px" aria-hidden="true"></span>
+					<span>{presetLine.name}{presetLine.edited ? " · edited" : ""}</span>
+				</div>
+			{/if}
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
 				<span>{noteLabel(piano.base)} to {noteLabel(top)}</span>
 				<span>· {piano.sustain ? "sustain" : "no sustain"}</span>
@@ -297,7 +563,7 @@
 				grid-cols-[auto_1fr_auto_auto]
 				place-content-start
 				md-grid-cols-[auto_auto_auto_auto_1fr]
-				lg-grid-cols-[auto_auto_auto_auto_auto_auto_1fr]
+				lg-grid-cols-[auto_auto_auto_auto_auto_auto_auto_1fr]
 				md-gap-3"
 		>
 			<!-- power -->
@@ -393,13 +659,39 @@
 					position="bottom right"
 					buttonBaseClasses="device-button-xs px-3"
 					buttonClasses={fxOn ? "text-accent" : ""}
-					popoverClasses="min-w-72 lg-min-w-160 !max-h-85vh overflow-y-auto"
+					popoverClasses="min-w-72 lg-min-w-160 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
 						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
 						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
 					]}
 				/>
 			</div>
+
+			<!-- presets: five slot buttons and the manage menu (docs/piano.md, "Presets") -->
+			{#if sitePresets}
+				<div class="hidden lg-block">
+					<div class="device-button-group-label text-dark">Presets</div>
+					<div class="flex gap-1 items-center">
+						{@render slotButtons("device-button-xs w-8")}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div onpointerdowncapture={freshSaveForm}>
+							<ContextMenu
+								ariaLabel="Manage presets"
+								title="Save, name, share and manage presets"
+								iconClass="i-ph-bookmarks-simple"
+								position="bottom right"
+								buttonBaseClasses="device-button-xs px-2"
+								popoverClasses="min-w-80 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								bind:openState={saveOpen}
+								items={[
+									{ id: "presets-heading", kind: "heading", label: "Presets" },
+									{ id: "presets-body", kind: "snippet", snippet: presetsMenuBlock },
+								]}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<!-- controls block -->
 			<div
@@ -471,6 +763,18 @@
 					buttonBaseClasses="device-button-sm px-2 w-10 lg-hidden lg-w-8"
 					popoverClasses="min-w-64 min-h-560px overflow-y-scroll pb-8"
 					items={[
+						{
+							id: "menu-presets-heading",
+							kind: "heading",
+							label: "Presets",
+							condition: !!sitePresets,
+						},
+						{
+							id: "menu-presets",
+							kind: "snippet",
+							condition: !!sitePresets,
+							snippet: presetsPhoneMenuBlock,
+						},
 						{ id: "menu-volume-heading", kind: "heading", label: "volume" },
 						{ id: "menu-volume-slider", kind: "snippet", snippet: volumeSliderMenuBlock },
 						{ id: "menu-fx-heading", kind: "heading", label: "Effects" },
@@ -944,6 +1248,270 @@
 					>
 				</div>
 			</div>
+		</div>
+	{/snippet}
+
+	{#snippet slotButtons(classes: string)}
+		{#each SLOT_NUMBERS as n (n)}
+			{@const p = slots[n - 1]}
+			<button
+				class="{classes} {activeSlot === n - 1 ? 'text-accent' : ''} {p ? '' : 'opacity-50'}"
+				type="button"
+				aria-pressed={activeSlot === n - 1}
+				aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
+				title={p
+					? `${p.name} (⌘-click or hold to save here)`
+					: `Empty preset ${n}: click to save the sound here`}
+				onclick={(e) => slotClick(e, n)}
+				onpointerdown={holdStart}
+				onpointerup={holdEnd}
+				onpointerleave={holdEnd}
+				onpointercancel={holdEnd}
+				oncontextmenu={(e) => e.preventDefault()}>{n}</button
+			>
+		{/each}
+	{/snippet}
+
+	{#snippet presetsPhoneMenuBlock()}
+		<div class="px-3 pt-3 grid grid-cols-1 gap-3 w-full text-blue-100/90">
+			<div class="flex gap-1">
+				{@render slotButtons("device-button-sm flex-1 bg-slate-800 border")}
+			</div>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div onpointerdowncapture={freshSaveForm}>
+				<ContextMenu
+					ariaLabel="Manage presets"
+					title="Save, name, share and manage presets"
+					iconClass="i-ph-bookmarks-simple"
+					label="Manage presets"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm bg-slate-800 border px-3"
+					popoverClasses="min-w-72 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					bind:openState={saveOpenPhone}
+					items={[
+						{ id: "presets-heading-phone", kind: "heading", label: "Presets" },
+						{ id: "presets-body-phone", kind: "snippet", snippet: presetsMenuBlock },
+					]}
+				/>
+			</div>
+		</div>
+	{/snippet}
+
+	{#snippet presetsMenuBlock()}
+		<div
+			class="px-3 pt-2 grid grid-cols-1 gap-3 text-13px text-blue-100/90 [&_span.device-button-label]-(block mb-1)"
+		>
+			<!-- save -->
+			<form
+				class="grid gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void savePreset();
+				}}
+			>
+				<label class="block">
+					<span class="device-button-label">Name</span>
+					<input
+						class="w-full rounded-md bg-slate-900 border border-current/20 px-2 py-1.5 text-14px"
+						type="text"
+						maxlength="120"
+						placeholder="Warm hall, Chapel organ…"
+						bind:value={saveName}
+						aria-label="Preset name"
+					/>
+				</label>
+				<div>
+					<span class="device-button-label">Slot</span>
+					<div class="flex gap-1" role="group" aria-label="Save to slot">
+						{#each SLOT_NUMBERS as n (n)}
+							<button
+								class="device-button-xs w-8 border {saveSlot === n ? 'text-accent' : ''}"
+								type="button"
+								aria-pressed={saveSlot === n}
+								onclick={() => (saveSlot = saveSlot === n ? null : n)}>{n}</button
+							>
+						{/each}
+					</div>
+				</div>
+				<div class="flex flex-wrap gap-2 items-center">
+					<button
+						class="device-button-xs px-3 border"
+						type="submit"
+						disabled={saving || (!account?.canEdit && !saveSlot)}
+						title={account?.canEdit
+							? "Keep the sound as a preset in the account"
+							: "Keep the sound on this slot in this browser"}
+						>{account?.canEdit ? "Save" : "Save in this browser"}</button
+					>
+					{#if presetAdmin}
+						<button
+							class="device-button-xs px-3 border"
+							type="button"
+							disabled={saving || !saveSlot}
+							title="What every visitor's button holds until they save their own"
+							onclick={() => void saveSitePreset()}>Save as site default</button
+						>
+					{/if}
+					<button
+						class="device-button-xs px-3 border"
+						type="button"
+						title="A link that opens the piano with this sound"
+						onclick={() => void copyLink()}
+					>
+						<span class="i-ph-link" aria-hidden="true"></span>
+						Copy link
+					</button>
+				</div>
+				{#if !account}
+					<div class="text-12px opacity-70">
+						{account === null && saveSlot === null
+							? "Choose a slot: signed out, presets live on the five buttons in this browser. Sign in to keep more and share them with your band."
+							: "Signed out, a preset lives in this browser only. Sign in to keep more and share them with your band."}
+					</div>
+				{:else if !account.canEdit}
+					<div class="text-12px opacity-70">
+						Viewers can load the account's presets, not save them.
+					</div>
+				{/if}
+			</form>
+
+			<!-- the slots as they stand -->
+			<div>
+				<span class="device-button-label">On the buttons</span>
+				<ul class="m-0 p-0 list-none grid gap-1">
+					{#each SLOT_NUMBERS as n (n)}
+						{@const p = slots[n - 1]}
+						<li class="flex items-center gap-2">
+							<span class="w-5 text-center opacity-70">{n}</span>
+							{#if p}
+								<button
+									class="flex-1 min-w-0 text-left truncate hover-text-accent {activeSlot === n - 1
+										? 'text-accent'
+										: ''}"
+									type="button"
+									title="Load this preset"
+									onclick={() => loadPreset(p)}>{p.name}</button
+								>
+								<span class="text-11px opacity-50"
+									>{p.source === "site"
+										? "site"
+										: p.source === "browser"
+											? "this browser"
+											: ""}</span
+								>
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+									type="button"
+									title="Copy a link to this preset"
+									aria-label="Copy a link to {p.name}"
+									onclick={() => void copyLink(p)}
+								>
+									<span class="i-ph-link" aria-hidden="true"></span>
+								</button>
+								{#if p.source === "browser"}
+									<button
+										class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+										type="button"
+										title="Back to the site's preset"
+										aria-label="Clear preset {n} in this browser"
+										onclick={() => clearBrowserSlot(n)}
+									>
+										<span class="i-ph-x" aria-hidden="true"></span>
+									</button>
+								{:else if p.source === "site" && presetAdmin}
+									<button
+										class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+										type="button"
+										title="Clear the site's preset"
+										aria-label="Clear site preset {n}"
+										onclick={() => void clearSitePreset(n)}
+									>
+										<span class="i-ph-x" aria-hidden="true"></span>
+									</button>
+								{/if}
+							{:else}
+								<span class="flex-1 opacity-50">empty</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</div>
+
+			<!-- the account's library -->
+			{#if account}
+				<div>
+					<span class="device-button-label">Saved in {account.name} · {saved.length}</span>
+					{#if saved.length > 5}
+						<input
+							class="w-full rounded-md bg-slate-900 border border-current/20 px-2 py-1 text-13px mb-2"
+							type="search"
+							placeholder="Search presets"
+							bind:value={search}
+							aria-label="Search presets"
+						/>
+					{/if}
+					<ul class="m-0 p-0 list-none grid gap-1 max-h-60 overflow-y-auto">
+						{#each filtered as p (p.id)}
+							<li class="flex items-center gap-2">
+								<button
+									class="flex-1 min-w-0 text-left truncate hover-text-accent {pianoPresetKey(
+										p.data,
+									) === currentKey
+										? 'text-accent'
+										: ''}"
+									type="button"
+									title="Load this preset"
+									onclick={() => loadPreset(p)}>{p.name}</button
+								>
+								{#if account.canEdit}
+									<div class="w-14 shrink-0" title="The button this preset sits on">
+										<ComboBox
+											ariaLabel="Slot for {p.name}"
+											buttonClasses="!px-2 !py-0.5 !text-12px w-full"
+											options={SLOT_OPTIONS}
+											value={p.slot ? String(p.slot) : ""}
+											onchange={(v) => void placeSaved(p, v ? Number(v) : null)}
+										/>
+									</div>
+								{:else if p.slot}
+									<span class="text-11px opacity-50">slot {p.slot}</span>
+								{/if}
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+									type="button"
+									title="Copy a link to this preset"
+									aria-label="Copy a link to {p.name}"
+									onclick={() => void copyLink(p)}
+								>
+									<span class="i-ph-link" aria-hidden="true"></span>
+								</button>
+								{#if account.canEdit}
+									<button
+										class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+										type="button"
+										title="Rename"
+										aria-label="Rename {p.name}"
+										onclick={() => void renameSaved(p)}
+									>
+										<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+									</button>
+									<button
+										class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+										type="button"
+										title="Delete"
+										aria-label="Delete {p.name}"
+										onclick={() => void deleteSaved(p)}
+									>
+										<span class="i-ph-trash" aria-hidden="true"></span>
+									</button>
+								{/if}
+							</li>
+						{:else}
+							<li class="opacity-60">{search ? "No preset matches" : "No presets saved yet"}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		</div>
 	{/snippet}
 
