@@ -432,8 +432,8 @@
 	let group = $derived(DRUM_METERS.find((m) => m.id === pattern.meter)?.group ?? 4);
 	let lineClasses = $derived(
 		(DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16) === 16
-			? "grid-cols-8 sm-grid-cols-16"
-			: "grid-cols-6 sm-grid-cols-12",
+			? "grid-cols-8 @xl-grid-cols-16"
+			: "grid-cols-6 @xl-grid-cols-12",
 	);
 	let stepsLabel = (n: number) => {
 		const bar = DRUM_METERS.find((m) => m.id === pattern.meter)?.barSteps ?? 16;
@@ -591,7 +591,7 @@
 	</div>
 {:else}
 	<div
-		class="device-chrome grid grid-cols-1 sm-grid-cols-1 gap-4 pb-14 px-3 py-4 sm-px-5 sm-pt-5 w-full max-w-full overflow-hidden relative"
+		class="@container device-chrome grid grid-cols-1 @xl-grid-cols-1 gap-4 pb-14 px-3 py-4 @xl-px-5 @xl-pt-5 w-full max-w-full overflow-hidden relative"
 		aria-label="Drum machine"
 	>
 		<!-- branding -->
@@ -602,9 +602,9 @@
 		</div>
 
 		<!-- the readout -->
-		<div class="grid grid-cols-1 sm-device-window-bevel-md max-w-full w-full overflow-hidden">
+		<div class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden">
 			<div
-				class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full md-flex md-flex-wrap md-items-baseline md-justify-between md-gap-x-4 md-gap-y-1 text-blue-100 font-mono tabular-nums overflow-hidden"
+				class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full @2xl-flex @2xl-flex-wrap @2xl-items-baseline @2xl-justify-between @2xl-gap-x-4 @2xl-gap-y-1 text-blue-100 font-mono tabular-nums overflow-hidden"
 			>
 				<!-- BPM Readout -->
 				<div class="flex items-baseline gap-2">
@@ -619,15 +619,15 @@
 					>
 					<span>· pattern {drumMachine.current + 1} of {p.patterns.length}</span>
 
-					<span class="block sm-inline">
-						<span><span class="hidden sm-inline">·</span> {pattern.steps} steps</span>
+					<span class="block @xl-inline">
+						<span><span class="hidden @xl-inline">·</span> {pattern.steps} steps</span>
 						<span>· {kitLabel(p.kit)}</span>
 					</span>
 				</div>
 
 				<!-- status -->
 				<div
-					class="text-12px opacity-70 mt-1 rounded border border-current/40 px-2 py-1 max-w-fit lg-min-w-164px lg-max-w-none lg-text-center"
+					class="text-12px opacity-70 mt-1 rounded border border-current/40 px-2 py-1 max-w-fit @4xl-min-w-164px @4xl-max-w-none @4xl-text-center"
 					aria-live="polite"
 				>
 					{#if drumMachine.running && !drumMachine.kitReady}
@@ -650,7 +650,7 @@
 
 		<!-- a phone: Play / Stop under the display too, a thumb away from the top of the grid (the foot has the other) -->
 		<button
-			class="sm-hidden device-button-sm md-device-button-lg w-full text-15px {drumMachine.running
+			class="@xl-hidden device-button-sm @2xl-device-button-lg w-full text-15px {drumMachine.running
 				? 'text-accent'
 				: ''}"
 			type="button"
@@ -715,7 +715,7 @@
 		{#snippet fxItem()}
 			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
 				<div class="text-11px uppercase tracking-wider opacity-60 mb-3">Effects</div>
-				<div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 gap-x-6 gap-y-3">
+				<div class="grid grid-cols-1 @xl-grid-cols-2 @2xl-grid-cols-3 gap-x-6 gap-y-3">
 					<div class="grid gap-3 content-start">
 						<div class="block text-blue-100/80" title="Delay time, in the beat">
 							<span class="device-button-label">Delay</span>
@@ -1069,20 +1069,20 @@
 
 		<!-- tempo and range controls -->
 		<div
-			class="grid grid-cols-1 sm-grid-cols-[auto_1fr] w-full sm-items-center justify-start gap-4"
+			class="grid grid-cols-1 @xl-grid-cols-[auto_1fr] w-full @xl-items-center justify-start gap-4"
 		>
 			<!-- tempo -->
 			<div class="flex items-center gap-2">
 				<button
 					aria-label="Tempo"
-					class="device-button-lg text-center text-14px sm-text-left sm-device-button-xs md-device-button-sm lg-device-button-lg px-3 md-min-w-30"
+					class="device-button-lg text-center text-14px @xl-text-left @xl-device-button-xs @2xl-device-button-sm @4xl-device-button-lg px-3 @2xl-min-w-30"
 					type="button"
 					onclick={() => drumMachine.tap()}
 					title="Tap the tempo"
 				>
 					Tap Tempo
 				</button>
-				<div class="sm-hidden {tutorial.control === 'humanize' ? HINT : ''}">
+				<div class="@xl-hidden {tutorial.control === 'humanize' ? HINT : ''}">
 					<ContextMenu
 						ariaLabel="Tempo, swing and humanize"
 						title="Tempo, swing and humanize"
@@ -1099,7 +1099,7 @@
 			</div>
 
 			<!-- range controls -->
-			<div class="hidden sm-grid gap-3 sm-grid-cols-3 sm-gap-6 text-dark">
+			<div class="hidden @xl-grid gap-3 @xl-grid-cols-3 @xl-gap-6 text-dark">
 				<label class="block">
 					<span class="device-button-label">Tempo</span>
 					<input
@@ -1162,10 +1162,10 @@
 
 		<!-- kit, steps, meter and patterns -->
 		<div
-			class="gap-x-4 gap-y-2 md-pt-4 lg-pt-8 sm-grid sm-grid-cols-[auto_auto_auto_1fr] sm-gap-x-3 md-gap-x-4 mb-4"
+			class="gap-x-4 gap-y-2 @2xl-pt-4 @4xl-pt-8 @xl-grid @xl-grid-cols-[auto_auto_auto_1fr] @xl-gap-x-3 @2xl-gap-x-4 mb-4"
 		>
 			<!-- kit selector -->
-			<div class="sm-grid grid-cols-1" title="Kit">
+			<div class="@xl-grid grid-cols-1" title="Kit">
 				<div class="device-button-group-label">Kit</div>
 				<ComboBox
 					ariaLabel="Kit"
@@ -1179,12 +1179,16 @@
 
 			<!-- steps -->
 			<!-- put steps in context menu in mobile -->
-			<div class="hidden sm-block">
+			<div class="hidden @xl-block">
 				<div class="device-button-group-label">Steps</div>
-				<div class="flex items-center gap-2 sm-gap-x-1 md-gap-x-2" role="group" aria-label="Steps">
+				<div
+					class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
+					role="group"
+					aria-label="Steps"
+				>
 					{#each drumStepsFor(pattern.meter) as n (n)}
 						<button
-							class="device-button-xs md-device-button-sm {pattern.steps === n
+							class="device-button-xs @2xl-device-button-sm {pattern.steps === n
 								? 'text-accent'
 								: ''}"
 							type="button"
@@ -1200,12 +1204,16 @@
 
 			<!-- meters -->
 			<!-- put meters in context menu in mobile -->
-			<div class="hidden sm-block">
+			<div class="hidden @xl-block">
 				<div class="device-button-group-label">Meters</div>
-				<div class="flex items-center gap-2 sm-gap-x-1 md-gap-x-2" role="group" aria-label="Meter">
+				<div
+					class="flex items-center gap-2 @xl-gap-x-1 @2xl-gap-x-2"
+					role="group"
+					aria-label="Meter"
+				>
 					{#each DRUM_METERS as m (m.id)}
 						<button
-							class="device-button-xs md-device-button-sm {pattern.meter === m.id
+							class="device-button-xs @2xl-device-button-sm {pattern.meter === m.id
 								? 'text-accent'
 								: ''}"
 							type="button"
@@ -1220,11 +1228,11 @@
 			</div>
 
 			<!-- Patterns -->
-			<div class="w-full sm-w-auto gap-5 mt-5 sm-mt-0 sm-ml-auto">
+			<div class="w-full @xl-w-auto gap-5 mt-5 @xl-mt-0 @xl-ml-auto">
 				<div class="device-button-group-label">Patterns</div>
 				<!-- the patterns: tabs, one open for editing; while playing, a chosen one waits for the end of the cycle -->
 				<div
-					class="ml-auto flex flex-wrap items-center gap-2 sm-ml-0 sm-gap-1 md-gap-2"
+					class="ml-auto flex flex-wrap items-center gap-2 @xl-ml-0 @xl-gap-1 @2xl-gap-2"
 					role="group"
 					aria-label="Patterns"
 				>
@@ -1233,7 +1241,7 @@
 						{@const sounding = drumMachine.playing === i}
 						{@const next = drumMachine.queued === i}
 						<button
-							class="device-button-sm sm-device-button-xs md-device-button-sm relative {open
+							class="device-button-sm @xl-device-button-xs @2xl-device-button-sm relative {open
 								? 'text-accent'
 								: ''} {next ? 'ring-1 ring-accent' : ''}"
 							type="button"
@@ -1256,7 +1264,7 @@
 						</button>
 					{/each}
 					<button
-						class="device-button-sm sm-device-button-xs md-device-button-sm"
+						class="device-button-sm @xl-device-button-xs @2xl-device-button-sm"
 						type="button"
 						disabled={p.patterns.length >= MAX_DRUM_PATTERNS}
 						title="A new, empty pattern with these rows"
@@ -1266,7 +1274,7 @@
 						<span class="i-ph-plus" aria-hidden="true"></span>
 					</button>
 					<button
-						class="device-button-sm sm-device-button-xs md-device-button-sm {tutorial.control ===
+						class="device-button-sm @xl-device-button-xs @2xl-device-button-sm {tutorial.control ===
 						'copy'
 							? HINT
 							: ''}"
@@ -1279,7 +1287,7 @@
 						<span class="i-ph-copy" aria-hidden="true"></span>
 					</button>
 					<button
-						class="device-button-sm sm-device-button-xs md-device-button-sm"
+						class="device-button-sm @xl-device-button-xs @2xl-device-button-sm"
 						type="button"
 						disabled={p.patterns.length <= 1}
 						title="Delete this pattern"
@@ -1391,13 +1399,13 @@
 						grid-cols-1
 						items-center
 						w-full
-						sm-grid-cols-[auto_1fr]
-						sm-gap-x-4"
+						@xl-grid-cols-[auto_1fr]
+						@xl-gap-x-4"
 					aria-label={voiceLabel(row.voice)}
 				>
 					<!-- voice & controls -->
 					<div
-						class="gap-2 grid grid-cols-[1fr_auto] items-center sm-grid sm-grid-cols-[100px_auto] sm-gap-1 sm-gap-x-2 md-gap-y-3 md-gap-x-4 md-grid-cols-[120px_auto] lg-grid-cols-[120px_auto_auto]"
+						class="gap-2 grid grid-cols-[1fr_auto] items-center @xl-grid @xl-grid-cols-[100px_auto] @xl-gap-1 @xl-gap-x-2 @2xl-gap-y-3 @2xl-gap-x-4 @2xl-grid-cols-[120px_auto] @4xl-grid-cols-[120px_auto_auto]"
 					>
 						<!-- voice -->
 						<ComboBox
@@ -1410,9 +1418,9 @@
 						/>
 
 						<!-- mute, solo, clear  -->
-						<div class="w-full flex items-center gap-2 sm-gap-x-1 md-gap-2">
+						<div class="w-full flex items-center gap-2 @xl-gap-x-1 @2xl-gap-2">
 							<button
-								class="device-button-xs md-device-button-sm {row.mute ? 'text-accent' : ''}"
+								class="device-button-xs @2xl-device-button-sm {row.mute ? 'text-accent' : ''}"
 								type="button"
 								aria-pressed={row.mute}
 								aria-label="Mute {voiceLabel(row.voice)}"
@@ -1420,7 +1428,7 @@
 								onclick={() => drumMachine.toggleMute(r)}>M</button
 							>
 							<button
-								class="device-button-xs md-device-button-sm {drumMachine.solo[r]
+								class="device-button-xs @2xl-device-button-sm {drumMachine.solo[r]
 									? 'text-accent'
 									: ''}"
 								type="button"
@@ -1430,7 +1438,7 @@
 								onclick={() => drumMachine.toggleSolo(r)}>S</button
 							>
 							<button
-								class="device-button-xs md-device-button-sm"
+								class="device-button-xs @2xl-device-button-sm"
 								type="button"
 								aria-label="Remove {voiceLabel(row.voice)}"
 								title="Remove the row"
@@ -1442,7 +1450,7 @@
 							<!-- below lg the row's level and pan live in a menu (the sliders show from lg up) -->
 							{#snippet rowMix()}
 								<div class="grid gap-3 px-3 py-2 w-56">
-									<label class="grid gap-1 text-13px lg-hidden">
+									<label class="grid gap-1 text-13px @4xl-hidden">
 										<span>Level · {Math.round(row.level * 100)}%</span>
 										<input
 											class="w-full accent-maximumYellow"
@@ -1455,7 +1463,7 @@
 											aria-label="Level of {voiceLabel(row.voice)}"
 										/>
 									</label>
-									<label class="grid gap-1 text-13px lg-hidden">
+									<label class="grid gap-1 text-13px @4xl-hidden">
 										<span
 											>Pan · {row.pan === 0
 												? "centre"
@@ -1510,14 +1518,14 @@
 									ariaLabel="Mix of {voiceLabel(row.voice)}"
 									title="Level, pan and effect sends"
 									iconClass="i-ph-sliders-horizontal"
-									buttonBaseClasses="device-button-xs md-device-button-sm"
+									buttonBaseClasses="device-button-xs @2xl-device-button-sm"
 									items={[{ id: "mix", kind: "snippet", snippet: rowMix }]}
 								/>
 							</div>
 						</div>
 
 						<!-- volume & pan  > md -->
-						<div class="hidden lg-grid grid-cols-2 gap-3 sm-w-112px">
+						<div class="hidden @4xl-grid grid-cols-2 gap-3 @xl-w-112px">
 							<!-- volume -->
 							<div class="h-38.5px flex items-center relative w-full overflow-visible">
 								<input
@@ -1536,7 +1544,7 @@
 							<!--pan -->
 							<div class="h-38.5px flex items-center relative w-full overflow-visible">
 								<input
-									class="hidden sm-block w-full accent-blue-300"
+									class="hidden @xl-block w-full accent-blue-300"
 									type="range"
 									min="-1"
 									max="1"
@@ -1552,12 +1560,12 @@
 					</div>
 
 					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover colour is for the empty ones. -->
-					<div class="grid {lineClasses} gap-1 md-gap-6px lg-gap-2 touch-pan-y">
+					<div class="grid {lineClasses} gap-1 @2xl-gap-6px @4xl-gap-2 touch-pan-y">
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}
 							{@const offBeat = Math.floor(s / group) % 2 === 1}
 							<button
-								class="device-button-xs !min-w-auto md-device-button-sm transition-colors duration-75 {cell ===
+								class="device-button-xs !min-w-auto @2xl-device-button-sm transition-colors duration-75 {cell ===
 								3
 									? 'bg-accent border-white hover-!bg-accent/85'
 									: cell === 2
@@ -1592,12 +1600,12 @@
 		</div>
 
 		<!-- Pattern & Transport -->
-		<div class="grid grid-cols-1 gap-y-5 sm-flex justify-between">
+		<div class="grid grid-cols-1 gap-y-5 @xl-flex justify-between">
 			<!-- grid controls -->
-			<div class="flex flex-wrap items-center gap-2 sm-gap-x-2 md-gap-x-3">
+			<div class="flex flex-wrap items-center gap-2 @xl-gap-x-2 @2xl-gap-x-3">
 				<!-- add row -->
 				<button
-					class="device-button-xs px-3 md-device-button-sm"
+					class="device-button-xs px-3 @2xl-device-button-sm"
 					type="button"
 					disabled={pattern.rows.length >= MAX_DRUM_ROWS}
 					onclick={() => drumMachine.addRow()}
@@ -1608,7 +1616,7 @@
 
 				<!-- clear -->
 				<button
-					class="device-button-xs px-3 md-device-button-sm"
+					class="device-button-xs px-3 @2xl-device-button-sm"
 					type="button"
 					onclick={() => drumMachine.clear()}
 					title="Every cell off"
@@ -1618,7 +1626,7 @@
 
 				<!-- undo -->
 				<button
-					class="device-button-xs px-3 md-device-button-sm disabled-opacity-40"
+					class="device-button-xs px-3 @2xl-device-button-sm disabled-opacity-40"
 					type="button"
 					disabled={!drumMachine.beforePreset}
 					onclick={() => drumMachine.undoPreset()}
@@ -1635,14 +1643,14 @@
 					title="Delay, reverb, fuzz and wah: turn a level up to hear it"
 					iconClass="i-ph-sliders-horizontal"
 					label="Effects"
-					buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+					buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm"
 					buttonClasses={p.fx.delayReturn > 0 ||
 					p.fx.reverbReturn > 0 ||
 					p.fx.fuzzDrive > 0 ||
 					p.fx.wahMix > 0
 						? "text-accent"
 						: ""}
-					popoverClasses="min-w-72 sm-min-w-140 md-min-w-200 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					popoverClasses="min-w-72 @xl-min-w-140 @2xl-min-w-200 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "fx", kind: "snippet", snippet: fxItem }]}
 				/>
 				{#if midiSupported}
@@ -1653,7 +1661,7 @@
 						title="Play the drums from a MIDI pad or keyboard"
 						iconClass="i-ph-usb"
 						label="MIDI"
-						buttonBaseClasses="device-button-xs px-3 md-device-button-sm"
+						buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm"
 						buttonClasses={drumMachine.midiIn.status === "on" ? "text-accent" : ""}
 						popoverClasses="min-w-72"
 						items={[{ id: "midi", kind: "snippet", snippet: midiItem }]}
@@ -1663,7 +1671,7 @@
 					ariaLabel="More"
 					position="top left"
 					title="Save, share and download"
-					buttonBaseClasses="device-button-xs px-3 md-device-button-sm "
+					buttonBaseClasses="device-button-xs px-3 @2xl-device-button-sm "
 					popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 					items={moreItems}
 				/>
@@ -1671,7 +1679,7 @@
 
 			<!-- transport -->
 			<div
-				class="grid grid-cols-1 sm-flex items-center gap-5 mt-5 sm-mt-0 sm-gap-2 md-gap-3 mb-8 sm-mb-0"
+				class="grid grid-cols-1 @xl-flex items-center gap-5 mt-5 @xl-mt-0 @xl-gap-2 @2xl-gap-3 mb-8 @xl-mb-0"
 			>
 				{#if textToBeat}
 					<!-- Text-to-Beat: a description to a model, a pattern back (docs/drum-machine.md) -->
@@ -1681,7 +1689,7 @@
 						title="Describe the beat you want"
 						iconClass="i-ph-sparkle"
 						label="Text-to-Beat"
-						buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm"
+						buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm"
 						popoverClasses="min-w-80"
 						items={[{ id: "text-to-beat", kind: "snippet", snippet: textToBeatItem }]}
 					/>
@@ -1693,7 +1701,7 @@
 					title="Generate a pattern from a style"
 					iconClass="i-ph-shuffle"
 					label="Generate"
-					buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm"
+					buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm"
 					popoverClasses="min-w-72"
 					items={[{ id: "generator", kind: "snippet", snippet: generatorItem }]}
 				/>
@@ -1709,14 +1717,14 @@
 						title="Preset beats"
 						iconClass="i-ph-music-notes"
 						label="Presets"
-						buttonBaseClasses="device-button-lg sm-device-button-xs px-3 md-device-button-sm "
+						buttonBaseClasses="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm "
 						popoverClasses="max-h-[min(70vh,100%)] overflow-y-auto min-w-64"
 						items={presetItems}
 					/>
 				</div>
 
 				<button
-					class="device-button-lg sm-device-button-xs px-3 md-device-button-sm lg-device-button-lg {drumMachine.running
+					class="device-button-lg @xl-device-button-xs px-3 @2xl-device-button-sm @4xl-device-button-lg {drumMachine.running
 						? 'text-accent'
 						: ''} {tutorial.control === 'play' ? HINT : ''}"
 					type="button"

@@ -451,6 +451,15 @@ older beats and links open with it off; share links are version 8 (the
 bars choice in 3 bits, the three levels in 7 each); Reset to defaults
 covers it; the WAV carries it.
 
+## Layout by container (2026-10-01)
+
+As the piano's (docs/piano.md, "Layout by container, not viewport"): the
+full view's breakpoint classes are container queries, `sm-` → `@xl-`
+(576 px), `md-` → `@2xl-` (672 px), `lg-` → `@4xl-` (896 px), with the
+device root as the `@container`, so the drum machine lays itself out by
+the width it is given and can open in a popover or a panel. The compact
+view (the recorder's toolbar row) has no breakpoints of its own.
+
 ## MIDI input (built 2026-09-30)
 
 Finger drumming (the "own samples, MIDI input" line above): a MIDI menu
