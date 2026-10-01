@@ -1,114 +1,222 @@
 # Looper
 
-Scoped 2026-10-01 at Kevin's request: "a standalone tool much like the
+Planned 2026-10-01 at Kevin's request: "a standalone tool much like the
 idea recorder, where you can input microphone, as well as piano and
 drums. I think it would be analog in the first phase and we can look at
 midi as an upgrade later, or even combination analog / midi. A lot of the
 foundation of what we would need is already built especially after the
-multitrack ability." Nothing here is built yet.
+multitrack ability." Nothing here is built yet; this is the plan.
 
 ## What it is
 
 A loop station at `/looper`, the user's own page like the Idea Recorder:
-a loop of a fixed length (bars at a tempo) that plays round and round
-while layers are recorded onto it, one pass at a time, from the microphone,
-the piano or the drum machine. Each layer is audio (phase 1); a layer can
-be muted, soloed, trimmed in level or thrown away; the whole loop can be
-saved as an idea's take (the mix) with the layers as its sources, so it
-goes to a song as stems through what multitrack takes already built.
+a loop of a fixed length (bars at a tempo) plays round and round while
+layers are recorded onto it one pass at a time, from the microphone, the
+piano or the drum machine. Phase 1 layers are audio; a layer can be
+muted, soloed, levelled or thrown away; the loop can be saved as an
+idea's take (the mix) with the layers as its sources, so it reaches a song
+as stems through what multitrack takes already built. Phase 2 adds MIDI
+layers for the piano and the drums.
 
 ## What exists already (docs/demo-recording.md)
 
 - **Sources as streams.** `piano.captureStream()` and
   `drumMachine.captureStream()` give each instrument's output as a
-  MediaStream; the recorder's `instruments()` pattern gathers them at a
-  gesture. The microphone comes from `getUserMedia` with the voice
-  processors off, the input chosen in the recorder settings.
-- **Per-source recording.** Multitrack takes start a MediaRecorder per
-  source in one tick and keep the files aligned within milliseconds; the
-  upload queue carries sources with a take; `recording_stem` rows hold
-  them; `copyRecordingStemsToSong` turns them into a song's stems.
-- **Tempo and transport.** The metronome engine (`metronome.svelte.ts`)
-  and the drum machine's scheduler run a Web Audio clock with look-ahead
-  scheduling; the drum machine's `placePattern`, swing and humanize are
-  already tempo-locked; `claimPlayback` keeps one transport at a time.
-- **Panels.** `FloatingPanel` hosts the piano, the drums, the metronome
-  and the tuner on the recorder page; the looper page can reuse them and
-  the `spaceOwner` arrangement for the space bar.
-- **Meters, waveform, mic mute.** `RecorderWave`, the per-instrument
-  meters and the mute button.
+  MediaStream; the recorder's `instruments()` gathers them at a gesture;
+  the microphone comes from `getUserMedia` with the voice processors off.
+- **Per-source recording and saving.** Multitrack takes record a file per
+  source, the queue uploads them with the take, `recording_stem` rows hold
+  them, `copyRecordingStemsToSong` makes them a song's stems.
+- **Clocks.** The metronome and the drum machine schedule on a Web Audio
+  clock through `startLookahead` (`src/lib/audio/lookahead.ts`); the drum
+  machine keeps `#nextTime`/`#nextStep` and swing/humanize per step.
+- **Panels, meters, the space bar.** `FloatingPanel` hosts the drums, the
+  piano and the metronome on the recorder page; `spaceOwner` settles the
+  space bar; `RecorderWave` draws a take; the per-instrument meters and
+  the microphone mute exist.
+- **Formats.** WAV is an accepted take and stem format
+  (`DEMO_FORMATS` spreads `STEM_FORMATS`), so a layer encoded as PCM WAV in
+  the browser needs no codec.
 
-## Design, phase 1 (audio)
+## Architecture
 
-**The loop.** Length in bars (1, 2, 4, 8) at a tempo; the metronome
-counts in (one bar) and clicks on the first pass, optionally after. The
-loop is an AudioBuffer per layer of exactly `bars × beats × 60 / bpm`
-seconds at the context's rate, played by `AudioBufferSourceNode`s with
-`loop = true`, all started at the same context time so they stay locked;
-the drum machine, when used as a layer source, is simply recorded like
-anything else (its own clock is independent, so start it from the looper's
-count-in and let the recorded audio carry it; a later phase can sync it).
+### One audio context
 
-**Recording a layer.** Not MediaRecorder (its chunks arrive late and the
-format is compressed or container-wrapped): a `ScriptProcessor`-free path
-through an `AudioWorkletNode` that copies the source's samples into a ring
-buffer from the moment the loop's bar 1 passes until a full loop has gone
-by, then the layer is a buffer trimmed to the loop length exactly, so the
-seam is sample-accurate. Latency: the microphone's input latency
-(`baseLatency` + `outputLatency`, typically 10–40 ms) is compensated by
-shifting the recorded buffer left by that much (a setting to nudge it,
-measured once with a click through the speakers and the microphone, the
-way loop pedals calibrate). The instruments' streams come from the same
-machine's audio graph, so their latency is the graph's, near zero.
-Overdub by default (a layer adds to the loop), or replace the last layer;
-undo the last layer; "punch in" for a bar range later.
+Each engine opens its own `AudioContext` today (`piano.#graph`,
+`drumMachine.#ensureGraph`, `metronome`), and the recorder mixes their
+MediaStreams in a context of its own. A looper must overdub against
+playback with sample accuracy, and a MediaStream hop between contexts
+adds a buffer of latency that differs by browser. So the looper **hosts**
+the instruments: a `hostContext(ctx)` option on the piano and the drum
+machine (and the metronome) that builds their graph in a given context
+instead of making one (`createDrumBus(ctx, …)` already takes a context;
+the piano's `createPianoFx(ctx, …)` too). The looper's engine owns the
+context; the instruments' masters connect to the looper's record tap and
+to the destination as now. The microphone is the one source that comes
+from outside (a `MediaStreamSource` of the `getUserMedia` stream), and
+the one that needs latency compensation.
 
-**Sources.** The microphone (with the mute), the piano (keys or MIDI in),
-the drums (the panel, or the compact control); the per-instrument meters
-show them. Each layer remembers its source and gets its label.
+### The engine: `src/lib/audio/looper.svelte.ts`
 
-**Layers panel.** A row per layer: label, waveform (the `RecorderWave`
-take strip at the loop length), level, mute, solo, delete; the loop's
-transport (play/stop, record, tempo, bars, count-in, click on/off); the
-output through a master with the recorder's tone/effects left out in
-phase 1.
+State (runes, as the other engines): `bpm`, `beatsPerBar` (4 or 3),
+`bars` (1, 2, 4, 8), `countIn` (0 or 1 bar), `click` (count-in only, or
+always), `phase` (`idle | counting | playing | recording`), `position`
+(the loop's bar and beat for the display), `layers`, `armed` source,
+`inputLatencyMs`, `volume`. The loop's length in samples is
+`round(bars × beatsPerBar × 60 / bpm × sampleRate)`; the tempo and bars
+lock once the first layer exists (a change clears the loop, with a
+confirm; a later phase can time-stretch).
 
-**Saving.** "Save as take" renders the mix of the layers (offline, one
-loop length or N repeats) as the idea's take and the layers as its
-sources, through the existing queue and `recording_stem`, so **Add N
-stems to song…** works unchanged; the loop's settings (bars, tempo,
-layers' levels) go on the idea as instruments do. A `looper` JSON on the
-idea could later re-open the loop for more layers (phase 1.5: keep the
-layer audio in the take's sources and rebuild the loop from them).
+**Playback.** Each layer is an `AudioBuffer` of exactly the loop length;
+each has an `AudioBufferSourceNode` with `loop = true` through a
+`GainNode` (level, mute, solo) into a master. All sources start at one
+`loopStart` context time; the loop's phase at any moment is
+`(ctx.currentTime − loopStart) mod loopSeconds`. Adding a layer starts its
+source at `loopStart + k × loopSeconds` for the next cycle boundary, or
+at once with an `offset` of the current phase, so it joins without
+waiting. Stopping stops every source; play starts them together again.
 
-**Page.** `/looper`, user-owned like the recorder, with the panels; a
-home page demo later. Container queries throughout (Kevin's rule).
+**Recording a layer: a worklet.** `static/worklets/loop-capture.js`, an
+`AudioWorkletProcessor` loaded with `ctx.audioWorklet.addModule` (a plain
+JS file served statically, which the adapter packs as an asset). It takes
+the armed source's signal (stereo), and on a `start` message with the
+context frame of the loop's next bar 1 it copies samples into a
+`Float32Array` of the loop length from that frame, wrapping while
+recording continues (overdub adds to what is there; the processor keeps
+one buffer per pass and posts it back on `stop` as a transferable), so the
+seam is sample-accurate and the layer is the loop length by construction.
+Recording stops at the end of the pass in which Stop was pressed (or
+Record again), never mid-bar, unless the user chooses "cut now".
+`currentFrame` in the processor and `ctx.currentTime × sampleRate` on the
+main thread are the same clock, so the start frame needs no estimate.
 
-## Phase 2 (MIDI, optional)
+**Microphone latency.** A sung layer arrives late by the input and output
+latency of the device (`ctx.baseLatency + ctx.outputLatency` is a guide,
+10–60 ms in practice, more with Bluetooth). The engine shifts a microphone
+layer left by `inputLatencyMs` (the samples before bar 1 that the worklet
+captured anyway, so the shift costs nothing). The setting starts from the
+context's reported latency and can be measured once: **Calibrate** plays
+three clicks through the speakers and records the microphone, finds the
+clicks by cross-correlation (`src/lib/utils/findLatency.ts`, pure, tested
+with a synthetic impulse) and stores the result per browser
+(`stemshovel.looper.latency-ms`), with a nudge slider for headphones vs
+speakers. Instrument layers need none: they are rendered in the same
+context.
 
-A piano or drum layer recorded as MIDI events (note on/off with velocity
-at loop time) instead of audio: quantisable, editable, re-voiced with
-another sound, and lighter. The piano's `noteOn/noteOff` and the drum
-machine's `#record` (grid recording from MIDI in) already produce the
-events; the looper would keep them per layer and replay through the
-engines at loop time, mixing with audio layers. A layer could be both
-(audio for what was heard, MIDI for what was played), which Kevin
-mentioned as a "combination analog / midi".
+**Monitoring.** The microphone is heard through the master only when
+"Monitor mic" is on (off by default; a laptop's speakers would feed back).
+The instruments are heard as always.
 
-## Risks and open questions
+**Count-in and click.** The metronome engine, hosted in the same context,
+clicks the count-in bar before the first pass and, if the click is on,
+through the loop; once a drum layer exists most users switch it off.
 
-- **Seam accuracy.** Audio layers must be exactly the loop length; a
-  worklet with the context clock gives that, MediaRecorder does not.
-- **Microphone latency** needs the one-time calibration; without it, a
-  sung layer lands tens of milliseconds late and sounds behind.
-- **iOS**: a worklet and several sources are fine, but the first touch
-  must warm everything (the piano's wake dance applies); memory for long
-  loops is modest (8 bars at 120 bpm stereo ≈ 3 MB per layer).
-- **Drum machine sync**: phase 1 records its audio; a later phase could
-  drive it from the looper's clock so pattern changes stay in time.
-- **Storage**: a saved loop is a take with sources, counted as any take.
+**Transport claims.** `claimPlayback(looper)` so the song player, the drum
+machine on another page and the looper never play together; inside the
+looper the drum machine is a source, started by the looper (below).
 
-## Estimate
+**The drum machine as a source.** Phase 1: the drum machine plays its
+pattern on its own clock, hosted in the looper's context, and the looper
+records its audio like any source; to keep bar 1 aligned the looper starts
+it with `drumMachine.startAt(time)` (a small addition: `start()` with a
+given `#nextTime` instead of `currentTime + 0.05`) at the loop's next bar
+1, and sets its tempo to the loop's. The drum machine's own swing and
+humanize apply; the recorded layer is what was heard. Phase 2 can replace
+this with a MIDI layer.
 
-Phase 1 (audio looper with the three sources, layers panel, save as take
-with sources): about three days of work. MIDI layers: two more.
+**Rendering and saving.** "Save as take" renders the loop offline
+(`OfflineAudioContext`, the layers mixed with their levels, one pass or N
+repeats, the user's choice), encodes it as 24-bit PCM WAV
+(`src/lib/utils/encodeWav.ts`, pure, tested), and each layer the same way
+as the take's sources with their labels ("Microphone", "Piano", "Drums",
+numbered when a source repeats), then enqueues through `TakeQueue` with
+`stems`, exactly as a multitrack take: an idea is made (or the current
+one used), the take uploads, the sources follow, **Add N stems to song…**
+works unchanged. The loop's settings (tempo, bars, layer levels and
+sources) go on the idea's `instruments` JSON as `looper`
+(`IdeaInstrumentsDataSchema` gains an optional `looper` object; no
+migration, the column is JSON), so the recorder shows them and a later
+phase can reopen a loop from its sources.
+
+### The page: `src/routes/looper/+page.svelte` and `+page.server.ts`
+
+User-owned like the recorder (`requireSignedIn`, current account for the
+idea and the beats, `redirect("/accounts")` without one); the layout by
+container queries (Kevin's rule), root `@container`:
+
+- **Transport strip** (top): Play/Stop, Record (arms the chosen source;
+  pressing it while recording ends the layer at the pass's end), the
+  source picker (Microphone · Piano · Drums, with the mute and a level
+  meter each as the recorder has), tempo (slider and tap), bars, count-in,
+  click, Undo last layer, Clear loop, Save as take, and the loop position
+  (bar.beat and a ring that fills each pass).
+- **Layers panel**: a row per layer with its label, its waveform
+  (`RecorderWave`'s take strip at the loop length, with the playhead), a
+  level slider, mute, solo, delete; drag order later.
+- **Instruments**: the drum machine and the piano in `FloatingPanel`s from
+  lg, docked under the transport below, the piano with its presets, the
+  space bar by `spaceOwner`; the metronome's panel for the click settings.
+- **Phone**: the transport full width, the layers under it, the
+  instruments docked, as the recorder does.
+- A **Learn more** doc-link button and a user doc `scripts/user-docs/looper.md`;
+  a home page demo later, not in phase 1.
+
+### Not in phase 1
+
+Time-stretching after a tempo change, punch-in on a bar range, per-layer
+effects (the instruments' own effects are in their sound), reopening a
+saved loop for more layers (phase 1.5 from the take's sources), sharing
+loops, MIDI layers (phase 2).
+
+## Phase 2: MIDI layers
+
+A piano or drum layer kept as events (note on/off with velocity at loop
+frame; drum hits by voice) instead of audio, replayed through the hosted
+engines each pass: quantisable to the grid, editable, re-voiced with
+another sound or kit, and a few kilobytes. The piano's `noteOn/noteOff`
+and the drum machine's `hitNote`/`#record` already produce the events;
+the looper intercepts them while recording a MIDI layer and schedules
+them with the look-ahead loop on playback. A layer can be both at once
+(audio of what was heard, MIDI of what was played), which Kevin called a
+combination; saving renders MIDI layers to audio for the take and keeps
+the events on the idea.
+
+## Steps
+
+1. **Hosted contexts** (half a day): `hostContext` on the piano, the drum
+   machine and the metronome; `drumMachine.startAt(time)`; the engines
+   unchanged on their own pages. Unit test: the graph builds in an
+   `OfflineAudioContext` and renders.
+2. **Engine and worklet** (a day): `looper.svelte.ts`, the capture
+   worklet, layers playback, overdub, undo, levels; `findLatency` and
+   `encodeWav` with tests. Offline verification: record a known tone as a
+   layer and measure the seam (no click at the wrap) and the alignment
+   between two layers (cross-correlation under one sample).
+3. **Page** (a day): transport, layers panel, source picker with meters,
+   calibration dialog, the instrument panels, container-query layout,
+   phone pass; Playwright with the fake microphone at desktop and phone
+   widths.
+4. **Saving** (half a day): offline render, WAV encode, enqueue with
+   sources, the `looper` settings on the idea; verify a saved loop lists in
+   the recorder with its sources and goes to a song as stems.
+5. **Docs, nav, release** (half a day): Tools menu and footer entries,
+   `docs/looper.md` updated to what shipped, user doc, smoke rows, the
+   home page tools tab later.
+
+About three and a half days for phase 1; MIDI layers two more.
+
+## Risks
+
+- **Worklet on iOS Safari**: supported since 14.5; the module must load
+  from a gesture and the context warmed as the piano does. A fallback
+  (ScriptProcessor) is not worth building; the page says what it needs.
+- **Latency calibration** is the make-or-break for sung layers; the
+  measured value plus a nudge is how pedals do it, and the instruments
+  avoid the problem entirely by being hosted.
+- **Hosting changes the engines.** The option must leave the piano and
+  drum machine pages and the recorder's multitrack path exactly as they
+  are; the recorder keeps mixing MediaStreams (its latency does not
+  matter there).
+- **Memory**: a stereo layer at 48 kHz is 384 KB per second; eight bars
+  at 120 bpm is 16 s, 6 MB per layer, a dozen layers under 100 MB; a
+  phone is fine up to that, and the layer count can be capped at 16.
