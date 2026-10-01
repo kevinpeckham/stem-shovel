@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.69.0] - 2026-10-01
+
 ### Changed
 
 - **Each drum sits where it usually does** (Kevin): hats and ride a little right, the floor tom and crash left, kick, snare and clap centred, from the audience's side. Preset rows that name no pan, generated rows, Text-to-Beat rows (unless the model pans one itself; the prompt offers it) and rows added by hand or by a MIDI pad take it. The starting beat and the tutorial kit stay centred.
