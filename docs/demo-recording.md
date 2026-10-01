@@ -310,7 +310,11 @@ draws one bar per pixel; the playhead is a separate element at
 `playhead / takeLength`. Click or drag seeks (pointer capture), arrow
 keys nudge. A file the browser cannot decode or fetch leaves the centre
 line and the slider below still seeks. Drawn in the canvas's own `color`
-as `Waveform.svelte` does, so the palette stays in uno.config.ts.
+as `Waveform.svelte` does, so the palette stays in uno.config.ts. Both
+views are normalised as a phone's voice memos are (Kevin: a quiet take
+should still look like it captured something): bars scale to the loudest
+in view, a floor of 0.02 keeps silence flat, and a square-root curve
+lifts the quiet parts.
 
 ## Later, if wanted
 
