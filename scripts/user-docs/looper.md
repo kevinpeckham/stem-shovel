@@ -16,7 +16,7 @@ Each layer has a level, a mute and a solo, a waveform with the playhead, and a d
 
 ## The microphone's latency
 
-A sung or played layer reaches the computer a little late (the microphone's and the speakers' round trip, usually 10 to 60 ms, more over Bluetooth), which would make it sit behind the beat. The looper shifts microphone layers earlier by the **Latency** setting. Press **Calibrate** with the speakers on: three clicks play and the microphone measures how late they arrive; the result is remembered in this browser, and the slider nudges it. Instruments need no compensation. **Hear the microphone through the speakers** is off by default, since a laptop's speakers would feed back into its microphone; use headphones if you turn it on.
+A sung or played layer reaches the computer a little late (the microphone's and the speakers' round trip, usually 10 to 60 ms, more over Bluetooth), which would make it sit behind the beat. The looper shifts microphone layers earlier by the **Latency** setting. Press **Calibrate** with the speakers on: three clicks play and the microphone measures how late they arrive; the result is remembered in this browser, and the slider nudges it. The drum machine's beat runs on the loop's own clock and needs none. The piano is different: what you play by hand is timed against the loop as you hear it, which your audio output delays a little (the **Output** section shows how much your device reports; Bluetooth adds a lot), so piano layers are shifted earlier by that amount unless you untick **Shift piano layers by the output latency**. **Hear the microphone through the speakers** is off by default, since a laptop's speakers would feed back into its microphone; use headphones if you turn it on.
 
 ## Saving
 

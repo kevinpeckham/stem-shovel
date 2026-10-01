@@ -91,6 +91,19 @@ Record again), never mid-bar, unless the user chooses "cut now".
 `currentFrame` in the processor and `ctx.currentTime × sampleRate` on the
 main thread are the same clock, so the start frame needs no estimate.
 
+**Output latency and the piano.** The software path from a key press to
+the note in the graph measured 0.6 ms (event to `noteOn`) plus 0.4 ms
+(`noteOn` to sound in the capture), so what a player feels between the
+key and the sound is the audio device's output latency, which the browser
+reports (`baseLatency` + `outputLatency`: 10–30 ms on a built-in output,
+150 ms and more over Bluetooth; Kevin noticed it on the electric piano
+and "from the beginning on all voices"). The settings show the reported
+figure. A piano layer played by hand is timed against the loop as heard,
+that much late, so piano layers are shifted earlier by it ("Shift piano
+layers by the output latency", on by default; `compensatePiano`); the
+drum machine's beat runs on the clock and needs none; the microphone's
+shift is the measured round trip, which includes it.
+
 **Microphone latency.** A sung layer arrives late by the input and output
 latency of the device (`ctx.baseLatency + ctx.outputLatency` is a guide,
 10–60 ms in practice, more with Bluetooth). The engine shifts a microphone
@@ -197,10 +210,16 @@ the events on the idea.
   `renderMix`; `wavOf`; `settings()`; `clock()`, `probeClock()`,
   `probeCapture()` and the drum machine's `startedAt` as diagnostics.
 - `static/worklets/loop-capture.js`: `arm` {length, lead, startFrame,
-  passes}, a pass posted per loop length with the lead-in kept (the tail
-  of the previous pass copied before the transfer), `finish`, `cut`,
-  `ping`. A lead-in that began before the arm arrived is padded with
-  silence so index `lead` is still bar 1.
+  passes}; one buffer per pass covering a lead-in before its bar 1, the
+  pass and a tail of `lead` frames past its end (consecutive passes
+  overlap, so up to two buffers fill at once), posted once the tail is in;
+  `finish` lets the pass under way complete (pressed before bar 1 the
+  first pass is still taken), `cut` posts it as it stands, `ping` answers
+  the frame. A lead-in that began before the arm arrived stays silent, so
+  index `lead` is still bar 1. The tail is what a latency shift needs: a
+  late source is moved earlier by reading the layer from index `lead` +
+  shift, into the tail (the first version read from `lead` − shift, into
+  the lead-in, which moved the layer later; the measurement caught it).
 - `src/lib/utils/encodeWav24.ts` (the existing `encodeWav` is the
   recorder's 16-bit download) and `findLatency.ts`, with tests.
 - `src/routes/looper/+page.svelte` and `+page.server.ts`: user-owned like
@@ -241,9 +260,12 @@ bar 1. Also found and fixed on the way: hosting reset the drum kit's
 ready flag, so the first drums layer would decode the kit after bar 1
 (`readyKit()` runs before the bar is chosen); and a start whose moment
 has passed now joins on the next step of the grid instead of starting
-late. The end-to-end flow (two drums passes and a microphone pass as
-three layers, saved as a take with three sources listed in the recorder)
-also passed. Not yet verified on a real device: the microphone
+late. The end-to-end flow (drums passes and a microphone pass as layers,
+saved as a take with the sources listed in the recorder) also passed.
+With the pass buffers carrying a tail, a piano layer recorded with the
+reported 40 ms output latency lands 41.6 ms earlier than the raw note
+(the compensation, in the right direction), and the drums stay on the
+grid at the exact loop length. Not yet verified on a real device: the microphone
 calibration (headless Chromium has no speaker-to-microphone path) and
 Safari's worklet.
 

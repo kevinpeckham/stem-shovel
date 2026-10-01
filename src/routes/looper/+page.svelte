@@ -648,6 +648,24 @@
 						{looper.calibrating ? "Listening…" : "Calibrate"}
 					</button>
 				</div>
+				<div class="grid gap-3 border-t border-current/10 pt-4">
+					<div class="text-12px uppercase tracking-wider opacity-60">Output</div>
+					<p class="text-12px opacity-70">
+						Your audio output reports {looper.ready ? `${looper.outputLatencyMs} ms` : "its"} latency:
+						the time from a note entering the mix to hearing it (Bluetooth adds a lot). A piano layer
+						played by hand is timed against the loop as you hear it, so it is shifted earlier by this
+						much.
+					</p>
+					<label class="flex items-center gap-2 text-13px">
+						<input
+							type="checkbox"
+							class="accent-maximumYellow"
+							checked={looper.compensatePiano}
+							onchange={(e) => (looper.compensatePiano = e.currentTarget.checked)}
+						/>
+						Shift piano layers by the output latency
+					</label>
+				</div>
 				<a class="button button-sm justify-self-start" href="/docs/looper"
 					>Learn more about the looper in the user docs</a
 				>

@@ -72,6 +72,18 @@ class LooperEngine {
 	latencyMs = $state(0);
 	latencyMeasured = $state(false);
 	calibrating = $state(false);
+	/**
+	 * The audio device's output latency as the browser reports it (base plus
+	 * output latency, 10–30 ms on a built-in output, 150 ms and more over
+	 * Bluetooth). A layer played by hand on the piano is timed against the
+	 * loop as heard, that much late, so piano layers are shifted earlier by
+	 * it; the drum machine's beat runs on the clock and needs none. The
+	 * software path from a key press to the note in the graph measured
+	 * under a millisecond (docs/looper.md, "Verified").
+	 */
+	outputLatencyMs = $state(0);
+	/** Shift piano layers earlier by the output latency (off: as played into the graph). */
+	compensatePiano = $state(true);
 	volume = $state(1);
 	/** Where the loop is, for the display: 1-based bar and beat, and the fraction of the loop gone by; counting in, `bar` is 0. */
 	position = $state({ bar: 0, beat: 0, fraction: 0 });
@@ -164,13 +176,11 @@ class LooperEngine {
 		} catch {
 			// Private mode: measure again next time.
 		}
-		if (!this.latencyMeasured) {
-			this.latencyMs = Math.round(
-				(ctx.baseLatency +
-					((ctx as AudioContext & { outputLatency?: number }).outputLatency ?? 0)) *
-					1000,
-			);
-		}
+		this.outputLatencyMs = Math.round(
+			(ctx.baseLatency + ((ctx as AudioContext & { outputLatency?: number }).outputLatency ?? 0)) *
+				1000,
+		);
+		if (!this.latencyMeasured) this.latencyMs = this.outputLatencyMs;
 		this.ready = true;
 	}
 	#tapSource(source: LoopSource, node: AudioNode) {
@@ -440,12 +450,16 @@ class LooperEngine {
 		const ctx = this.#ctx!;
 		const frames = this.#loopFrames();
 		const source = this.#recordingSource;
-		// A late microphone is shifted earlier by the measured latency, out of the lead-in; the instruments are on this clock and need none.
-		const shift =
+		// A late microphone is shifted earlier by the measured round trip, out of the lead-in; a piano played by hand against the loop as heard, by the output latency; the drum machine's beat runs on the clock and needs none.
+		const shiftMs =
 			source === "mic"
-				? Math.min(m.lead!, Math.round((this.latencyMs / 1000) * ctx.sampleRate))
-				: 0;
-		const offset = m.lead! - shift;
+				? this.latencyMs
+				: source === "piano" && this.compensatePiano
+					? this.outputLatencyMs
+					: 0;
+		// Earlier means later in the pass buffer: bar 1 is at index `lead`, and the pass holds a tail of `lead` frames past its end for this.
+		const shift = Math.min(m.lead!, Math.round((shiftMs / 1000) * ctx.sampleRate));
+		const offset = m.lead! + shift;
 		const buffer = ctx.createBuffer(2, frames, ctx.sampleRate);
 		for (let c = 0; c < 2; c++)
 			buffer.getChannelData(c).set(m.channels[c].subarray(offset, offset + frames));
