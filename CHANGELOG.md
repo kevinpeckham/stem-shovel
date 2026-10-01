@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-10-01
+
 ### Added
 
 - **Drum machine: a wah** (docs/drum-machine.md, "Wah"). The piano's wah stage on the drum bus after the fuzz, now shared in `src/lib/audio/fxStages.ts`: a filter sweep timed to the beat (one cycle per beat, two beats, one, two or four bars) with range, resonance (capped at 10 dB on drums) and level, in a third column of the Effects menu. Part of the beat: saved, in the link (format version 8; older links open with it off) and in the WAV; Reset to defaults covers it.
