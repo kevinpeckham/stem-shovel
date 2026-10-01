@@ -2,6 +2,8 @@
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
+	import { metronome } from "$lib/audio/metronome.svelte";
+	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
 	import { noteLabel } from "$lib/audio/pitch";
 	import {
 		BLACK_KEYS,
@@ -62,6 +64,8 @@
 		presets?: SavedPreset[];
 		/** A system admin: a preset can be saved as the site's default for its slot. */
 		presetAdmin?: boolean;
+		/** The page's metronome in the controls row (the piano page; the recorder has its own in the toolbar, the home page none). */
+		metronome?: boolean;
 	}
 	interface SavedPreset {
 		id: string;
@@ -77,12 +81,14 @@
 		account = null,
 		presets = [],
 		presetAdmin = false,
+		metronome: withMetronome = false,
 	}: Props = $props();
 
 	let hiresCached = $state(false);
 	onMount(() => {
 		piano.samplesBase = samplesBase;
 		piano.load(warm);
+		if (withMetronome) metronome.load();
 		void piano.hiresCached().then((c) => (hiresCached = c));
 	});
 	const mb = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
@@ -544,6 +550,9 @@
 				{#if piano.midi.status === "on"}
 					<span>· MIDI: {piano.midi.inputs.join(", ") || "no inputs"}</span>
 				{/if}
+				{#if withMetronome && metronome.running}
+					<span class="tabular-nums">· {metronome.bpm} bpm · beat {metronome.beat + 1}</span>
+				{/if}
 			</div>
 		</div>
 		<div
@@ -564,7 +573,7 @@
 				grid-cols-[auto_1fr_auto_auto]
 				place-content-start
 				md-grid-cols-[auto_auto_auto_auto_1fr]
-				lg-grid-cols-[auto_auto_auto_auto_auto_auto_auto_1fr]
+				lg-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]
 				md-gap-3"
 		>
 			<!-- power -->
@@ -668,6 +677,14 @@
 				/>
 			</div>
 
+			<!-- metronome (docs/piano.md, "Metronome"): the page's, in the piano's clothes -->
+			{#if withMetronome}
+				<div class="hidden lg-block">
+					<div class="device-button-group-label text-dark">Tempo</div>
+					{@render metronomeControls("device-button-xs")}
+				</div>
+			{/if}
+
 			<!-- presets: five slot buttons and the manage menu (docs/piano.md, "Presets") -->
 			{#if sitePresets}
 				<div class="hidden lg-block">
@@ -764,6 +781,18 @@
 					buttonBaseClasses="device-button-sm px-2 w-10 lg-hidden lg-w-8"
 					popoverClasses="min-w-64 min-h-560px overflow-y-scroll pb-8"
 					items={[
+						{
+							id: "menu-metronome-heading",
+							kind: "heading",
+							label: "Metronome",
+							condition: withMetronome,
+						},
+						{
+							id: "menu-metronome",
+							kind: "snippet",
+							condition: withMetronome,
+							snippet: metronomePhoneMenuBlock,
+						},
 						{
 							id: "menu-presets-heading",
 							kind: "heading",
@@ -1340,6 +1369,51 @@
 					>
 				</div>
 			</div>
+		</div>
+	{/snippet}
+
+	{#snippet metronomeControls(classes: string)}
+		<div class="flex items-stretch gap-1" aria-label="Metronome">
+			<button
+				class="{classes} {metronome.running ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={metronome.running}
+				title={metronome.running ? "Stop the metronome" : "Start the metronome"}
+				aria-label={metronome.running ? "Stop the metronome" : "Start the metronome"}
+				onclick={() => metronome.toggle()}
+			>
+				<span
+					class="i-ph-metronome {metronome.running && metronome.beat === 0
+						? 'scale-125'
+						: ''} transition-transform"
+					aria-hidden="true"
+				></span>
+			</button>
+			<input
+				class="{classes} w-14 !px-1 text-center tabular-nums bg-slate-900"
+				type="number"
+				min={BPM_MIN}
+				max={BPM_MAX}
+				step="1"
+				value={metronome.bpm}
+				onchange={(e) => metronome.setBpm(Number(e.currentTarget.value))}
+				aria-label="Tempo in beats per minute"
+				title="Tempo, in beats per minute"
+			/>
+			<button
+				class="{classes} px-2"
+				type="button"
+				onclick={() => metronome.tap()}
+				title="Tap the tempo"
+			>
+				Tap
+			</button>
+		</div>
+	{/snippet}
+
+	{#snippet metronomePhoneMenuBlock()}
+		<div class="px-3 pt-3 grid grid-cols-1 gap-3 w-full text-blue-100/90">
+			{@render metronomeControls("device-button-sm bg-slate-800 border")}
 		</div>
 	{/snippet}
 

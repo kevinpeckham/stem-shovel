@@ -311,6 +311,21 @@ Not built: presets in the Idea Recorder's piano (the component shows the
 buttons only when a page gives it `sitePresets`); import of a link
 straight into the library (save after loading does it).
 
+## Metronome (built 2026-10-01)
+
+Kevin's "modest step towards a looper": the page's metronome
+(`src/lib/audio/metronome.svelte.ts`, the one engine per page, remembered
+tempo, the lookahead scheduler shared with the drum machine) in the
+piano's controls row from lg under a Tempo label, in the piano's clothes
+rather than the toolbar component's: a device button with the metronome
+icon (the icon swells on the downbeat), a tempo field and a Tap button
+(`metronomeControls` snippet); below lg the same row in the levels menu
+under a Metronome heading. While it runs the screen says the tempo and
+the beat. The piano page passes `metronome`; the recorder page keeps its
+toolbar metronome and the home page has none. Starting it stops the
+stem player or the drum machine, as any transport (onlyOnePlays). What a
+looper would take from here: the bar length and the downbeat.
+
 ## Phase 3 (later)
 
 - 88 keys with a scrolling view; a transpose control; MIDI out; a
