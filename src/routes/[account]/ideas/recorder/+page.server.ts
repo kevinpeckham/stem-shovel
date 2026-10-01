@@ -5,11 +5,14 @@ import {
 	deleteEmptyIdeas,
 	listBeats,
 	listIdeas,
+	listPianoPresets,
 	recordingsWantingPlayback,
 	songLink,
+	sitePianoPresets,
 	songPicker,
 } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/jobs";
+import { IdeaInstrumentsDataSchema } from "$lib/val/IdeaSchema";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
 import * as v from "valibot";
@@ -26,6 +29,16 @@ export const config: Config = { maxDuration: 300 };
  * remembers where it was opened from. The user's own ideas come along with
  * their takes' metadata (a URL to play on demand, never the audio itself).
  */
+function parseInstruments(json: string | null) {
+	if (!json) return null;
+	try {
+		const r = v.safeParse(IdeaInstrumentsDataSchema, JSON.parse(json));
+		return r.success ? r.output : null;
+	} catch {
+		return null;
+	}
+}
+
 export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	const user = requireSignedIn(locals, url);
 	const { account } = await parent();
@@ -43,6 +56,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 			id: i.id,
 			title: i.title,
 			notes: i.notes,
+			// The instruments as they were with the idea (JSON in the row); a row from before the column, or one that fails the schema, loads nothing.
+			instruments: parseInstruments(i.instruments),
 			createdAt: i.createdAt,
 			takes: i.takes.map((t) => ({
 				id: t.id,
@@ -59,6 +74,10 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		// The drum machine's panel (docs/demo-recording.md): the account's saved beats and whether Text-to-Beat is on.
 		beats: await listBeats(account.id),
 		textToBeat: aiAvailable(),
+		// The piano's panel: the site's demo presets and the account's own, as the piano page has them (Kevin: the preset buttons were missing from the panel).
+		sitePresets: await sitePianoPresets(),
+		pianoPresets: await listPianoPresets(account.id),
+		presetAdmin: locals.user?.isSystemAdmin === true,
 		fromSong: songId.success ? await songLink(account.id, songId.output) : null,
 	};
 };

@@ -1,3 +1,4 @@
+import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import { reorderById } from "$lib/utils/reorderById";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
@@ -3064,6 +3065,20 @@ export async function renameIdea(accountId: string, ideaId: string, title: strin
 	const [row] = await db
 		.update(idea)
 		.set({ title })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
+		.returning({ id: idea.id });
+	return !!row;
+}
+
+/** The idea's instrument settings (IdeaInstrumentsDataSchema), stored as JSON. */
+export async function setIdeaInstruments(
+	accountId: string,
+	ideaId: string,
+	instruments: IdeaInstruments,
+) {
+	const [row] = await db
+		.update(idea)
+		.set({ instruments: JSON.stringify(instruments) })
 		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
 		.returning({ id: idea.id });
 	return !!row;

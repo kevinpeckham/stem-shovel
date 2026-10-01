@@ -5,11 +5,17 @@ import {
 	deleteIdea as remove,
 	deleteIdeaIfEmpty,
 	renameIdea as rename,
+	setIdeaInstruments,
 	setIdeaNotes,
 	userOwnsIdea,
 } from "$lib/server/data";
 import { renderMarkdown } from "$lib/server/markdown";
-import { IdeaCreateSchema, IdeaNotesSchema, IdeaRenameSchema } from "$lib/val/IdeaSchema";
+import {
+	IdeaCreateSchema,
+	IdeaInstrumentsSchema,
+	IdeaNotesSchema,
+	IdeaRenameSchema,
+} from "$lib/val/IdeaSchema";
 import { IdSchema } from "$lib/val/SongSchema";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
 import { error } from "@sveltejs/kit";
@@ -51,6 +57,13 @@ export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) =
 	if (!(await setIdeaNotes(accountId, id, markdown))) error(404, "Idea not found");
 	const ideaDeleted = !markdown.trim() && (await deleteIdeaIfEmpty(accountId, id));
 	return { saved: true, ideaDeleted };
+});
+
+/** The drum machine's project and the piano's settings as they stand with the idea (the recorder saves them as they change, debounced). */
+export const saveIdeaInstruments = command(IdeaInstrumentsSchema, async ({ id, drums, piano }) => {
+	const accountId = await ownIdea(id);
+	if (!(await setIdeaInstruments(accountId, id, { drums, piano }))) error(404, "Idea not found");
+	return { saved: true };
 });
 
 /** Removes the idea if it has neither takes nor notes (after a discarded upload). */

@@ -1,0 +1,1 @@
+ALTER TABLE `idea` ADD `instruments` text;

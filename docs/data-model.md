@@ -140,7 +140,10 @@ erDiagram
   date), edited from song settings; `songwriter` is unused since credits
   and waits to be dropped with `recording.notes`.
 - **idea** — an idea from the Idea Recorder (docs/demo-recording.md): a
-  title, a markdown note board and who made it. Ideas are the user's own
+  title, a markdown note board, who made it, and `instruments`: the drum
+  machine's project and the piano's sound and effects as JSON
+  (`IdeaInstrumentsDataSchema`), saved as they change and loaded back with
+  the idea; null until either was used with it. Ideas are the user's own
   within the account (other members do not see them until a take is added
   to a song).
 - **recording** — one take of an idea: an audio file at

@@ -8,8 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: the instruments travel with the idea** (docs/demo-recording.md, "The instruments travel with the idea"). The drum machine's project and the piano's sound and effects are saved on the idea as they change (`idea.instruments`, JSON, migration 0063; `saveIdeaInstruments`, debounced a second) and put back into the instruments when one of the idea's takes is shown; an idea without any leaves the instruments as they are. The piano's panel gets the site's and the account's presets, so its preset buttons show there (Kevin: they were missing from the panel at every size).
+
 ### Changed
 
+- **Idea Recorder: the drums and the piano join the take whenever their "in the take" switch is on**, their panels open or not, so an instrument started after Record still lands; an idle instrument contributes silence at no cost to the recording.
 - **Idea Recorder: a meter per instrument.** The piano and the drums each get their own level meter above the microphone's while they play into the take, with their icons, in place of one combined meter under a piano icon (Kevin: "I don't see an input level indicator for the drums"), and the microphone's meter then reads the microphone alone rather than the whole mix. `DemoRecorder`'s `instruments` now returns `{ label, icon, stream }` per instrument.
 
 ## [0.71.0] - 2026-10-01

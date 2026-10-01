@@ -11,6 +11,8 @@
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import type { InstrumentInput } from "$lib/components/DemoRecorder.svelte";
+	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
+	import { stableStringify } from "$lib/utils/stableStringify";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
@@ -22,6 +24,7 @@
 		deleteIdeaNow,
 		dropIdeaIfEmpty,
 		renameIdea,
+		saveIdeaInstruments,
 		saveIdeaNotes,
 	} from "$lib/remote/ideas.remote";
 	import { deleteTake, setTakeName } from "$lib/remote/recordings.remote";
@@ -188,14 +191,67 @@
 			// Private mode: the choice lasts for this page only.
 		}
 	}
-	/** What a take mixes in beside the microphone, asked at Record: the piano when it is out, the drums when they are in play (or their panel is open) and wanted. */
+	/**
+	 * What a take mixes in beside the microphone, asked at Record: the piano
+	 * and the drums whenever they are wanted in the take, their panels open or
+	 * not, so an instrument started after Record still lands (Kevin). An
+	 * instrument that is not playing contributes silence (digital zero): no
+	 * cost to the recording, only its idle audio graph.
+	 */
 	function instruments(): InstrumentInput[] {
 		const list: InstrumentInput[] = [];
-		if (pianoOpen && pianoInTake)
-			list.push({ label: "Piano", icon: "piano", stream: piano.captureStream() });
-		if (drumsInTake && (drumsOpen || drumMachine.running))
+		if (pianoInTake) list.push({ label: "Piano", icon: "piano", stream: piano.captureStream() });
+		if (drumsInTake)
 			list.push({ label: "Drums", icon: "drums", stream: drumMachine.captureStream() });
 		return list;
+	}
+
+	/**
+	 * The instruments' settings travel with the idea (Kevin): the drum
+	 * machine's project and the piano's sound and effects are saved on the
+	 * idea as they change (a second after the last change) and put back into
+	 * the instruments when the idea is shown again. What was saved this visit
+	 * is kept here too, so switching back to an idea loads the latest, not
+	 * the page's data from load time.
+	 */
+	const instrumentsById = new Map<string, IdeaInstruments>();
+	/** The settings the current idea holds, canonical JSON; the effect saves when the instruments differ. */
+	let savedInstruments: string | null = null;
+	let instrumentsTimer: ReturnType<typeof setTimeout> | null = null;
+	function currentInstruments(): IdeaInstruments {
+		drumMachine.load();
+		piano.load();
+		return { drums: $state.snapshot(drumMachine.project), piano: piano.currentPreset() };
+	}
+	// An effect (the house rules' last resort, as FloatingPanel's): the instruments are engine state outside this component, and watching them is the job.
+	$effect(() => {
+		const id = ideaId;
+		const now = currentInstruments();
+		const key = stableStringify(now);
+		if (!id || key === savedInstruments) return;
+		if (instrumentsTimer) clearTimeout(instrumentsTimer);
+		instrumentsTimer = setTimeout(async () => {
+			instrumentsTimer = null;
+			try {
+				await saveIdeaInstruments({ id, ...now });
+				instrumentsById.set(id, now);
+				savedInstruments = key;
+			} catch (e) {
+				notify(`Instrument settings not saved: ${errorMessage(e)}`, { kind: "error" });
+			}
+		}, 1000);
+	});
+	/** The instruments as the idea had them, into the engines; an idea without any leaves the instruments as they are. */
+	function loadInstruments(i: Idea) {
+		if (instrumentsTimer) clearTimeout(instrumentsTimer);
+		instrumentsTimer = null;
+		const saved = instrumentsById.get(i.id) ?? i.instruments ?? null;
+		savedInstruments = saved ? stableStringify(saved) : null;
+		if (!saved) return;
+		drumMachine.load();
+		piano.load();
+		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", i.title);
+		if (saved.piano) piano.applyPreset(saved.piano);
 	}
 	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
@@ -309,6 +365,8 @@
 	function newIdea() {
 		if (recorderBusy || !recorder) return;
 		ideaId = null;
+		// The instruments stay as they are; they are saved on the new idea once it exists.
+		savedInstruments = null;
 		takeId = null;
 		notes = "";
 		ideaTitle = placeholder();
@@ -354,6 +412,7 @@
 			id: `pending:${us[0].localId}`,
 			title,
 			notes: "",
+			instruments: null,
 			createdAt: new Date(us[0].createdAt),
 			pending: true,
 			takes: us.map((u, k) => row(u, k + 1)),
@@ -369,6 +428,7 @@
 		if (switching) {
 			notes = i.notes;
 			notesKey++;
+			loadInstruments(i);
 		}
 		if (t) {
 			takeId = t.id;
@@ -859,7 +919,15 @@
 				{/snippet}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div onpointerdowncapture={() => (spaceOwner = "piano")}>
-					<Piano warm samplesBase={data.pianoSamplesBase} keyboard={spaceOwner === "piano"} />
+					<Piano
+						warm
+						samplesBase={data.pianoSamplesBase}
+						keyboard={spaceOwner === "piano"}
+						sitePresets={data.sitePresets}
+						account={{ id: data.account.id, name: data.account.name, canEdit: true }}
+						presets={data.pianoPresets}
+						presetAdmin={data.presetAdmin}
+					/>
 				</div>
 			</FloatingPanel>
 

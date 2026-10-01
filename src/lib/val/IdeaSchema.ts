@@ -1,6 +1,8 @@
 import * as v from "valibot";
+import { DrumProjectSchema } from "./DrumPatternSchema";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
+import { PianoPresetDataSchema } from "./PianoPresetSchema";
 
 /** Argument of the createIdea command: the idea's title (the recorder prefills "Untitled - <date> - <time>"). */
 export const IdeaCreateSchema = v.object({ title: NameSchema });
@@ -14,6 +16,18 @@ export const IdeaNotesSchema = v.object({
 	markdown: v.pipe(v.string(), v.maxLength(50_000, "Keep the notes under 50,000 characters.")),
 });
 
+/** What the idea keeps of its instruments (the `idea.instruments` column, JSON): the drum machine's whole project and the piano's sound and effects (its preset shape), either null until that instrument was used with the idea. */
+export const IdeaInstrumentsDataSchema = v.object({
+	drums: v.nullable(DrumProjectSchema),
+	piano: v.nullable(PianoPresetDataSchema),
+});
+
+/** Argument of the saveIdeaInstruments command. */
+export const IdeaInstrumentsSchema = v.object({
+	id: NanoIdSchema,
+	...IdeaInstrumentsDataSchema.entries,
+});
+
 /** Argument of the setTakeName command: a take's optional name ("" clears it, "Take N" shows). */
 export const TakeNameSchema = v.object({
 	id: NanoIdSchema,
@@ -24,3 +38,4 @@ export type IdeaCreate = v.InferOutput<typeof IdeaCreateSchema>;
 export type IdeaRename = v.InferOutput<typeof IdeaRenameSchema>;
 export type IdeaNotes = v.InferOutput<typeof IdeaNotesSchema>;
 export type TakeName = v.InferOutput<typeof TakeNameSchema>;
+export type IdeaInstruments = v.InferOutput<typeof IdeaInstrumentsDataSchema>;

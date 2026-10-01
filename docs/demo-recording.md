@@ -369,6 +369,33 @@ instance either way, so a take in progress is untouched by the move.
 last widget on the page (Kevin: the screen fully malleable);
 `stemshovel.recorder.recordings-floating`.
 
+**The instruments travel with the idea**: the drum machine's whole project
+and the piano's sound and effects (its preset shape, `PianoPresetData`)
+are saved on the idea as they change, in the `idea.instruments` column as
+JSON (`IdeaInstrumentsDataSchema`, migration 0063), by an effect on the
+recorder page that watches the two engines and saves a second after the
+last change through `saveIdeaInstruments`; showing an idea (a take from
+the list) puts them back with `drumMachine.loadProject` and
+`piano.applyPreset`, an idea without any leaving the instruments as they
+are. The page compares canonical JSON (`stableStringify`, keys sorted, as
+valibot's output and an engine snapshot order their keys differently) so
+loading never triggers a save, and keeps what it saved this visit in a map
+so switching back to an idea loads the latest rather than the page's data
+from load time. Not saved: the drum volume and the piano's octave, volume
+and key helper (listening and playing choices, per browser).
+
+**Every wanted instrument joins the take**: `instruments()` returns the
+piano and the drums whenever their "in the take" switch is on, their panels
+open or not, so an instrument started after Record still lands (the first
+version asked for an open panel or a running beat, which left a drum
+machine opened mid-take out of it). An instrument that is not playing
+contributes digital silence through its capture stream, at no cost to the
+recording; what it costs is its idle audio graph (an AudioContext and the
+effect chain each, opened by `captureStream()` from the Record gesture).
+The piano's panel is given the site's and the account's presets as the
+piano page is (`sitePresets`, `presets`, `presetAdmin` from the page
+load), so the preset buttons show there too.
+
 **Docking restores the size**: the browser's `resize` handle writes the
 size into the element's inline style, which would hold once the panel was
 docked back into its column (Kevin: it should go back to its original
