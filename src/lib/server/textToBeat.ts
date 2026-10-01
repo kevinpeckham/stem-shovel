@@ -153,7 +153,7 @@ function systemPrompt(input: TextToBeatInput): string {
 		? `The pattern already has these rows, prefer them: ${input.voices.join(", ")}.`
 		: "";
 	return `You are a drummer and producer with great taste writing a drum pattern for a step sequencer.
-The pattern is ${grid}. Write one string per drum, exactly ${input.steps} characters long, one character per step: "." rest, "x" hit, "X" accent, "o" ghost note (quiet).
+The pattern is ${grid}. Write one string per drum, exactly ${input.steps} characters long, one character per step: "." rest, "x" hit, "X" accent, "o" ghost note (quiet). A row may add "pan" (-100 left to 100 right) when a drum should sit off centre; left out, each drum takes its usual place.
 Voices, by id: ${voices}. ${has}
 Make it musical for the description: a clear pulse, the snare or clap where the backbeat of the style goes, hats or ride carrying the subdivision, ghost notes and accents for feel, and nothing that a drummer would not play. Use 3 to 7 rows. Do not put every drum on every step.
 Also suggest "bpm" (an integer, 40 to 240) for the style, "swing" as a percentage (0 straight, 100 a full triplet feel; 10 to 30 for a little), "humanize" as a percentage (0 machine-exact, 15 to 30 a human looseness; a drum machine style wants 0 to 5), a "kit", "acoustic" (real drums: rock, funk, jazz, latin, hip-hop breaks) or "electronic" (a drum machine: house, techno, trap, electro), and a "note": one short sentence on the beat.

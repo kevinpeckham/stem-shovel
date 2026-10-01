@@ -10,7 +10,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **The generator's hip-hop style arrives on the electronic kit** (Kevin), as house and half-time do, and **every style brings its tempo** (rock 120, hip-hop 90, house 124, breakbeat 138): a generated replacement takes it, a pattern added after yours keeps yours.
+- **Each drum sits where it usually does** (Kevin): hats and ride a little right, the floor tom and crash left, kick, snare and clap centred, from the audience's side. Preset rows that name no pan, generated rows, Text-to-Beat rows (unless the model pans one itself; the prompt offers it) and rows added by hand or by a MIDI pad take it. The starting beat and the tutorial kit stay centred.
+- **The generator's hip-hop style and the boom bap preset arrive on the electronic kit** (Kevin: it just sounds better), as house and half-time do, and **every style brings its tempo** (rock 120, hip-hop 90, house 124, breakbeat 138): a generated replacement takes it, a pattern added after yours keeps yours.
 - **"Use as the home page beat" on the drum machine page too** (system admins; Kevin asked where it was): the ⋯ menu item that makes the beat in the machine the home page's starting one was only on the home page's own demo.
 
 ## [0.68.0] - 2026-10-01

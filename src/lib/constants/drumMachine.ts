@@ -74,6 +74,27 @@ export const DRUM_USUAL_LEVEL: Partial<Record<DrumVoiceId, number>> = {
 	crash: 0.6,
 	cowbell: 0.5,
 };
+/**
+ * Where each drum usually sits in the stereo picture, -1 left to 1 right,
+ * from the audience's side (hats and ride to the right, the floor tom
+ * and crash to the left; kick, snare and clap in the middle). Presets,
+ * generated and AI-generated beats and new rows take it unless a row
+ * says otherwise (Kevin, 2026-10-01).
+ */
+export const DEFAULT_DRUM_PANS: Record<DrumVoiceId, number> = {
+	kick: 0,
+	snare: 0,
+	"hat-closed": 0.3,
+	"hat-open": 0.3,
+	clap: 0.1,
+	rim: -0.15,
+	"tom-low": -0.4,
+	"tom-mid": -0.1,
+	"tom-high": 0.3,
+	ride: 0.4,
+	crash: -0.35,
+	cowbell: 0.25,
+};
 export const DRUM_VELOCITY_NORMAL = 2;
 /** Patterns to a project: the tabs above the grid. */
 export const MAX_DRUM_PATTERNS = 8;

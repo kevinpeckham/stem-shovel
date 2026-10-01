@@ -341,8 +341,8 @@ resets swing to straight on the sixteenth grid and humanize to the
 usual amount before applying them (Kevin: presets, generated and
 AI-generated beats should all reset or apply feel and effects). Each
 style names its kit too (hip-hop, house and half-time electronic, the
-rest acoustic, the fill none; Kevin: hip-hop on the electronic kit), every preset names one (trap, house, techno
-and drum and bass electronic), and Text-to-Beat's reply may name one;
+rest acoustic, the fill none; Kevin: hip-hop on the electronic kit), every preset names one (boom bap, trap, house,
+techno and drum and bass electronic), and Text-to-Beat's reply may name one;
 `placePattern` switches the kit and readies its samples as a kit change
 does; for the generator only a replacement takes the style's kit, since
 an added pattern joins a beat whose kit and tempo are already chosen. Only "acoustic" and "electronic" are chosen: the Room kit waits
@@ -490,6 +490,18 @@ full view's breakpoint classes are container queries, `sm-` → `@xl-`
 device root as the `@container`, so the drum machine lays itself out by
 the width it is given and can open in a popover or a panel. The compact
 view (the recorder's toolbar row) has no breakpoints of its own.
+
+## Where each drum sits (2026-10-01)
+
+`DEFAULT_DRUM_PANS` (Kevin: presets, generated and AI-generated beats
+should apply pan as appropriate): the usual place of each drum from the
+audience's side, hats and ride a little right, the floor tom and crash
+left, kick, snare and clap centred. Preset rows that name no pan take
+it (`drumPresetProject`), generated rows take it (`newRow`), Text-to-Beat
+rows take it unless the model says `pan` for a row (a percentage, the
+prompt offers it), and a row added by hand or by a MIDI pad takes it.
+The starting beat and the tutorial's kit stay centred (their rows name
+pan 0, and the pinned share links hold them).
 
 ## The presets' effects (2026-10-01)
 

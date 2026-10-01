@@ -1,4 +1,4 @@
-import { DRUM_STEP_CHOICES, type DrumSteps } from "$lib/constants/drumMachine";
+import { DRUM_STEP_CHOICES, type DrumSteps, DEFAULT_DRUM_PANS } from "$lib/constants/drumMachine";
 import type { DrumPreset } from "$lib/constants/drumPresets";
 import {
 	DEFAULT_DRUM_FX,
@@ -35,7 +35,7 @@ export function drumPresetProject(preset: DrumPreset): DrumProject {
 				return {
 					voice: row.voice,
 					level: row.level ?? DRUM_USUAL_LEVEL[row.voice] ?? 0.8,
-					pan: row.pan ?? 0,
+					pan: row.pan ?? DEFAULT_DRUM_PANS[row.voice],
 					mute: false,
 					delaySend: row.delaySend ?? DEFAULT_DRUM_SENDS[row.voice].delaySend,
 					reverbSend: row.reverbSend ?? DEFAULT_DRUM_SENDS[row.voice].reverbSend,

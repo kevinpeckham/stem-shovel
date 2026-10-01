@@ -1,4 +1,5 @@
 import {
+	DEFAULT_DRUM_PANS,
 	DEFAULT_DRUM_SENDS,
 	DRUM_USUAL_LEVEL,
 	MAX_DRUM_ROWS,
@@ -78,7 +79,7 @@ function newRow(voice: DrumVoiceId, cells: number[]): DrumRow {
 	return {
 		voice,
 		level: DRUM_USUAL_LEVEL[voice] ?? 0.8,
-		pan: 0,
+		pan: DEFAULT_DRUM_PANS[voice],
 		mute: false,
 		...DEFAULT_DRUM_SENDS[voice],
 		cells,

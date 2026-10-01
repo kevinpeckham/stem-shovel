@@ -36,7 +36,7 @@ The recordings in the Acoustic and Room kits come from [Groovie](https://github.
 
 ## Presets
 
-**Presets** holds a couple of dozen beats by style: rock, pop and funk, hip-hop and electronic, world, a waltz and two in 6/8, and fills. Choosing one replaces your project with the preset, tempo and kit included; **Undo** beside it brings your beat back until you make another change. Hold shift while choosing to add the preset's patterns to your project instead, keeping your tempo, feel and kit, which is how a fill joins a groove. Each preset arrives with effects that suit it, a touch of room on a rock beat, a dub-style echo on the one drop, so loading one resets the effects and the kit to its own, the hip-hop and dance beats bringing a little Bottom; the Effects menu and the Kit picker change them from there.
+**Presets** holds a couple of dozen beats by style: rock, pop and funk, hip-hop and electronic, world, a waltz and two in 6/8, and fills. Choosing one replaces your project with the preset, tempo and kit included; **Undo** beside it brings your beat back until you make another change. Hold shift while choosing to add the preset's patterns to your project instead, keeping your tempo, feel and kit, which is how a fill joins a groove. Each preset arrives with effects that suit it, a touch of room on a rock beat, a dub-style echo on the one drop, so loading one resets the effects and the kit to its own, the hip-hop and dance beats bringing a little Bottom, and each drum sits where it usually does in the stereo picture, hats a little right, the floor tom left; the Effects menu and the Kit picker change them from there.
 
 ## Generate
 

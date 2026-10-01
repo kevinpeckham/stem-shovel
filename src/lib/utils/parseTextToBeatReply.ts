@@ -56,7 +56,13 @@ export function parseTextToBeatReply(
 		style: "",
 		bpm: reply.bpm ?? 100,
 		meter,
-		patterns: [reply.rows],
+		patterns: [
+			reply.rows.map((row) => ({
+				voice: row.voice,
+				cells: row.cells,
+				...(row.pan === null || row.pan === undefined ? {} : { pan: Math.round(row.pan) / 100 }),
+			})),
+		],
 	});
 	// Models pad the answer with rows that never sound: leave those out (unless nothing sounds at all).
 	const pattern = project.patterns[0]!;

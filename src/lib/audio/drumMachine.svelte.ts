@@ -1,5 +1,6 @@
 import {
 	DEFAULT_DRUM_FX,
+	DEFAULT_DRUM_PANS,
 	DEFAULT_DRUM_SENDS,
 	DEFAULT_HUMANIZE,
 	DRUM_BPM_MAX,
@@ -650,7 +651,7 @@ class DrumMachineEngine {
 		this.pattern.rows.push({
 			voice,
 			level: 0.8,
-			pan: 0,
+			pan: DEFAULT_DRUM_PANS[voice],
 			mute: false,
 			...DEFAULT_DRUM_SENDS[voice],
 			cells: Array.from({ length: this.pattern.steps }, () => 0),
@@ -682,7 +683,7 @@ class DrumMachineEngine {
 		const row = this.pattern.rows.find((r) => r.voice === voice) ?? {
 			voice,
 			level: 0.8,
-			pan: 0,
+			pan: DEFAULT_DRUM_PANS[voice],
 			...DEFAULT_DRUM_SENDS[voice],
 		};
 		playDrumHit(ctx, drumKit(this.project.kit), bus, row, velocity, ctx.currentTime, this.#play);
@@ -712,7 +713,7 @@ class DrumMachineEngine {
 			pattern.rows.push({
 				voice,
 				level: 0.8,
-				pan: 0,
+				pan: DEFAULT_DRUM_PANS[voice],
 				mute: false,
 				...DEFAULT_DRUM_SENDS[voice],
 				cells: Array.from({ length: pattern.steps }, () => 0),

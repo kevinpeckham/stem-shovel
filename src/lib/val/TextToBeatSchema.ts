@@ -47,6 +47,8 @@ export const TextToBeatReplySchema = v.object({
 			v.object({
 				voice: v.picklist(DRUM_VOICE_IDS),
 				cells: v.pipe(v.string(), v.regex(/^[.oxX]+$/, "cells must be . o x X only")),
+				/** -100 left to 100 right; absent, the drum's usual place. */
+				pan: v.optional(v.nullable(v.pipe(v.number(), v.minValue(-100), v.maxValue(100)))),
 			}),
 		),
 		v.minLength(1),

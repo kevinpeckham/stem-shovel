@@ -192,7 +192,7 @@ export const DRUM_PRESETS: DrumPreset[] = [
 		},
 		swing: 0.35,
 		humanize: 0.2,
-		kit: "acoustic",
+		kit: "electronic",
 		patterns: [
 			[
 				{ voice: "kick", cells: "X.....x...x.....X..x......x....." },

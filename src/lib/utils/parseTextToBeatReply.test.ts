@@ -22,6 +22,14 @@ describe("parseTextToBeatReply", () => {
 		expect(r.pattern.rows[0]!.cells).toEqual([3, 0, 0, 2, 0, 0, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0]);
 		expect(r.pattern.rows[1]!.cells[15]).toBe(1);
 		expect(r.pattern.rows[0]!.level).toBe(0.9);
+		// Each drum takes its usual place unless the row says; a row's pan is a percentage.
+		expect(r.pattern.rows[0]!.pan).toBe(0);
+		const panned = parseTextToBeatReply(
+			'{"rows": [{"voice": "hat-closed", "cells": "x..............."}, {"voice": "rim", "cells": "x...............", "pan": -60}]}',
+			"4/4",
+			16,
+		);
+		expect(panned.pattern.rows.map((row) => row.pan)).toEqual([0.3, -0.6]);
 	});
 	test("rows that never sound are left out, unless nothing sounds", () => {
 		const r = parseTextToBeatReply(
