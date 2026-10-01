@@ -105,6 +105,8 @@ const ROUTES = [
 	["api/warm (server)", "/api/warm", [200], [200]],
 	["api/jobs (server)", "/api/jobs", [405], [405]],
 	["api/recordings/[id]/ready (server)", "/api/recordings/x/ready", [405], [405]],
+	["api/recordings/[id]/stems (server)", "/api/recordings/x/stems", [405], [405]],
+	["api/recording-stems/[id]/ready (server)", "/api/recording-stems/x/ready", [405], [405]],
 	["api/stems (server)", "/api/stems", [405], [405]],
 	["api/stems/[id]/ready (server)", "/api/stems/x/ready", [405], [405]],
 	["api/stems/[id]/replace (server)", "/api/stems/x/replace", [405], [405]],
