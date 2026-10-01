@@ -38,7 +38,7 @@
 		type NamedPianoPreset,
 		type PianoPresetData,
 	} from "$lib/val/PianoPresetSchema";
-	import { onDestroy, onMount } from "svelte";
+	import { onDestroy, onMount, type Snippet } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 
 	/**
@@ -317,6 +317,8 @@
 	}
 	// Saving: a popover with the name and the slot, opened by ⌘-click (Ctrl on Windows) or a hold on a slot button, or from the manage menu.
 	let saveOpen = $state<"open" | "closed">("closed");
+	/** The wide layout's presets group (shown from @4xl), so a save knows which menu to open. */
+	let wideControls: HTMLElement | null = $state(null);
 	let saveOpenPhone = $state<"open" | "closed">("closed");
 	let saveSlot = $state<number | null>(null);
 	let saveName = $state("");
@@ -334,7 +336,8 @@
 		saveSlot = n;
 		const held = n ? slots[n - 1] : null;
 		saveName = held?.source === "account" ? held.name : (presetLine?.name ?? "");
-		if (window.matchMedia("(min-width: 1024px)").matches) saveOpen = "open";
+		// Whichever manage button the container's width shows (a container query, not the window's).
+		if (wideControls && getComputedStyle(wideControls).display !== "none") saveOpen = "open";
 		else saveOpenPhone = "open";
 	}
 	// A hold marks the press; the click that follows the release opens the save popover (opening it
@@ -494,18 +497,19 @@
 
 <div
 	class="
+		@container
 		device-chrome
 		gap-3
 		grid
 		pb-12
 		px-3
 		py-4
-		sm-gap-x-4
-		sm-gap-y-4
-		sm-pr-5
-		sm-pl-10
-		md-px-5
-		sm-pt-5
+		@xl-gap-x-4
+		@xl-gap-y-4
+		@xl-pr-5
+		@xl-pl-10
+		@2xl-px-5
+		@xl-pt-5
 
 		w-full
 		max-w-full
@@ -519,10 +523,10 @@
 			: '[&>*]-(opacity-25)'}"
 	>
 		<div>
-			<div class="text-24px sm-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
+			<div class="text-24px @xl-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
 			{#if presetLine}
 				<div
-					class="mt-1 text-13px sm-text-14px opacity-85 flex items-center gap-1.5"
+					class="mt-1 text-13px @xl-text-14px opacity-85 flex items-center gap-1.5"
 					data-testid="preset-line"
 				>
 					<span class="i-ph-bookmark-simple text-12px" aria-hidden="true"></span>
@@ -563,7 +567,7 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 gap-x-3 gap-y-4 sm-flex">
+	<div class="grid grid-cols-1 gap-x-3 gap-y-4 @xl-flex">
 		<!-- the controls -->
 		<div
 			class="
@@ -572,16 +576,18 @@
 				grid
 				grid-cols-[auto_1fr_auto_auto]
 				place-content-start
-				md-grid-cols-[auto_auto_auto_auto_1fr]
-				lg-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]
-				md-gap-3"
+				@2xl-grid-cols-[auto_auto_auto_auto_1fr]
+				@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_1fr]
+				@2xl-gap-3"
 		>
 			<!-- power -->
 			<div class="">
-				<div class="hidden lg-block device-button-group-label text-dark lg-max-w-fit">Power</div>
+				<div class="hidden @4xl-block device-button-group-label text-dark @4xl-max-w-fit">
+					Power
+				</div>
 				<!-- on / off -->
 				<button
-					class="device-button-sm lg-device-button-xs px-3 text-15px lg-text-14px {piano.on
+					class="device-button-sm @4xl-device-button-xs px-3 text-15px @4xl-text-14px {piano.on
 						? 'text-accent'
 						: ''}"
 					type="button"
@@ -594,18 +600,18 @@
 						class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
 						aria-hidden="true"
 					></span>
-					<span class="hidden sm-inline-block lg-hidden">{piano.on ? "On" : "Off"}</span>
+					<span class="hidden @xl-inline-block @4xl-hidden">{piano.on ? "On" : "Off"}</span>
 				</button>
 			</div>
 
 			<!-- instrument voice -->
-			<div class="min-w-28 flex-none md-text-14px">
-				<div class="device-button-group-label text-dark hidden lg-block">Sound</div>
+			<div class="min-w-28 flex-none @2xl-text-14px">
+				<div class="device-button-group-label text-dark hidden @4xl-block">Sound</div>
 				<ComboBox
 					ariaLabel="Sound"
 					clearDefaultButtonClasses={true}
 					popoverClasses="text-15px"
-					buttonClasses="device-button-sm lg-device-button-xs px-3 text-15px lg-text-14px w-full"
+					buttonClasses="device-button-sm @4xl-device-button-xs px-3 text-15px @4xl-text-14px w-full"
 					options={INSTRUMENT_OPTIONS}
 					value={piano.instrument}
 					onchange={(v) => piano.setInstrument(v as PianoInstrumentId)}
@@ -614,10 +620,10 @@
 
 			<!-- octave selector -->
 			<div class="text-14px">
-				<div class="device-button-group-label text-dark hidden lg-block">Octave</div>
-				<div class="flex items-center gap-1 md-gap-2 lg-gap-1" role="group" aria-label="Octave">
+				<div class="device-button-group-label text-dark hidden @4xl-block">Octave</div>
+				<div class="flex items-center gap-1 @2xl-gap-2 @4xl-gap-1" role="group" aria-label="Octave">
 					<button
-						class="min-w-10 device-button-sm lg-device-button-xs lg-min-w-8 px-2 sm-px-3"
+						class="min-w-10 device-button-sm @4xl-device-button-xs @4xl-min-w-8 px-2 @xl-px-3"
 						type="button"
 						disabled={piano.octave <= PIANO_OCTAVE_MIN}
 						aria-label="Octave down"
@@ -636,13 +642,13 @@
 							tabular-nums
 							text-14px
 							text-center
-							lg-h-28px
-							lg-min-w-9
-							lg-text-14px
+							@4xl-h-28px
+							@4xl-min-w-9
+							@4xl-text-14px
 							{piano.on ? 'text-blue-100/90' : 'text-blue-100/20'} font-500">C{piano.octave}</span
 					>
 					<button
-						class="min-w-10 device-button-sm px-2 sm-px-3 lg-min-w-8 lg-device-button-xs"
+						class="min-w-10 device-button-sm px-2 @xl-px-3 @4xl-min-w-8 @4xl-device-button-xs"
 						type="button"
 						disabled={piano.octave >= PIANO_OCTAVE_MAX}
 						aria-label="Octave up"
@@ -653,12 +659,12 @@
 			</div>
 
 			<!-- key selector -->
-			<!-- <div class="hidden lg-block [&_.device-button-group-label]-text-dark">
+			<!-- <div class="hidden @4xl-block [&_.device-button-group-label]-text-dark">
 				{@render keyControls(false)}
 			</div> -->
 
 			<!-- effects button -->
-			<div class="hidden lg-block">
+			<div class="hidden @4xl-block">
 				<div class="device-button-group-label text-dark">Effects</div>
 				<!-- Reverb and delay in a menu, as the drum machine's; the button lights while either is up. -->
 				<ContextMenu
@@ -669,7 +675,7 @@
 					position="bottom right"
 					buttonBaseClasses="device-button-xs px-3"
 					buttonClasses={fxOn ? "text-accent" : ""}
-					popoverClasses="min-w-72 lg-min-w-160 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					popoverClasses="min-w-72 @4xl-min-w-160 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
 						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
 						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
@@ -677,17 +683,9 @@
 				/>
 			</div>
 
-			<!-- metronome (docs/piano.md, "Metronome"): the page's, in the piano's clothes -->
-			{#if withMetronome}
-				<div class="hidden lg-block">
-					<div class="device-button-group-label text-dark">Tempo</div>
-					{@render metronomeControls("device-button-xs")}
-				</div>
-			{/if}
-
 			<!-- presets: five slot buttons and the manage menu (docs/piano.md, "Presets") -->
 			{#if sitePresets}
-				<div class="hidden lg-block">
+				<div class="hidden @4xl-block" bind:this={wideControls}>
 					<div class="device-button-group-label text-dark">Presets</div>
 					<div class="flex gap-1 items-center">
 						{@render slotButtons("device-button-xs w-8")}
@@ -712,62 +710,82 @@
 			{/if}
 
 			<!-- controls block -->
-			<div
-				class="hidden lg-grid grid-cols-[32px_32px_32px_32px_32px] lg-gap-x-1 items-end place-content-start"
-			>
+			<div class="hidden @4xl-block place-content-start">
 				<!-- label -->
-				<div class="device-button-group-label text-dark col-span-full">More</div>
-
-				<!-- sustain pedal -->
-				<div class="hidden lg-block lg-32px">
-					<div class="device-button-group-label text-dark sr-only">Pedal</div>
-					<button
-						class="device-button-xs {piano.sustain ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={piano.sustain}
-						title="Sustain: notes ring on after you let go (hold the space bar)"
-						onclick={() => piano.setSustain(!piano.sustain)}
-					>
-						<span class="i-ph-waves" aria-hidden="true"></span>
-						<span class="sr-only">Sustain</span>
-					</button>
-				</div>
-
-				<!-- midi -->
-				{#if midiSupported}
-					<div class="hidden lg-block lg-32px">
-						<div class="device-button-group-label text-dark lg-sr-only">MIDI</div>
-						{@render midiButton("device-button-xs")}
+				<div class="device-button-group-label text-dark">More</div>
+				<div class="flex gap-1 items-end">
+					<!-- sustain pedal -->
+					<div class="hidden @4xl-block @4xl-w-32px">
+						<div class="device-button-group-label text-dark sr-only">Pedal</div>
+						<button
+							class="device-button-xs {piano.sustain ? 'text-accent' : ''}"
+							type="button"
+							aria-pressed={piano.sustain}
+							title="Sustain: notes ring on after you let go (hold the space bar)"
+							onclick={() => piano.setSustain(!piano.sustain)}
+						>
+							<span class="i-ph-waves" aria-hidden="true"></span>
+							<span class="sr-only">Sustain</span>
+						</button>
 					</div>
-				{/if}
 
-				<!-- hi-res -->
-				{#if samplesBase}
-					<div class="hidden lg-block">
-						<div class="device-button-group-label text-dark sr-only">Samples</div>
-						{@render hiresButton("device-button-xs px-1 lg-w-8")}
+					<!-- midi -->
+					{#if midiSupported}
+						<div class="hidden @4xl-block @4xl-w-32px">
+							<div class="device-button-group-label text-dark @4xl-sr-only">MIDI</div>
+							{@render midiButton("device-button-xs")}
+						</div>
+					{/if}
+
+					<!-- hi-res -->
+					{#if samplesBase}
+						<div class="hidden @4xl-block">
+							<div class="device-button-group-label text-dark sr-only">Samples</div>
+							{@render hiresButton("device-button-xs px-1 @4xl-w-8")}
+						</div>
+					{/if}
+
+					<div class="hidden @4xl-block">
+						{@render keyControls(false)}
 					</div>
-				{/if}
 
-				<div class="hidden lg-block">
-					{@render keyControls(false)}
-				</div>
-
-				<!-- Toggle computer key letter labels on piano keys -->
-				<div class="hidden lg-block">
-					<div class="device-button-group-label text-dark sr-only">Keys</div>
-					<button
-						class="device-button-xs {piano.labels ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={piano.labels}
-						aria-label="Keyboard letters on the keys"
-						title={piano.labels
-							? "Hide the computer-key letters on the keys"
-							: "Show the computer-key letters on the keys"}
-						onclick={() => piano.setLabels(!piano.labels)}
-					>
-						<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
-					</button>
+					<!-- Toggle computer key letter labels on piano keys -->
+					<div class="hidden @4xl-block">
+						<div class="device-button-group-label text-dark sr-only">Keys</div>
+						<button
+							class="device-button-xs {piano.labels ? 'text-accent' : ''}"
+							type="button"
+							aria-pressed={piano.labels}
+							aria-label="Keyboard letters on the keys"
+							title={piano.labels
+								? "Hide the computer-key letters on the keys"
+								: "Show the computer-key letters on the keys"}
+							onclick={() => piano.setLabels(!piano.labels)}
+						>
+							<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
+						</button>
+					</div>
+					<!-- metronome (docs/piano.md, "Metronome"): the page's, in a menu -->
+					{#if withMetronome}
+						<div class="hidden @4xl-block @4xl-w-32px">
+							<div class="device-button-group-label text-dark sr-only">Metronome</div>
+							<ContextMenu
+								ariaLabel="Metronome"
+								title={metronome.running
+									? `Metronome running at ${metronome.bpm} bpm`
+									: "Metronome: tempo, tap and start"}
+								iconClass="i-ph-metronome"
+								position="bottom left"
+								buttonBaseClasses="device-button-xs"
+								buttonClasses={metronome.running ? "text-accent" : ""}
+								popoverClasses="min-w-64"
+								items={[
+									{ id: "metronome-heading", kind: "heading", label: "Metronome" },
+									{ id: "metronome-body", kind: "snippet", snippet: metronomeMenuBlock },
+								]}
+							/>
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -778,51 +796,9 @@
 					title="Volume, reverb and MIDI"
 					iconClass="i-ph-sliders-horizontal"
 					position="bottom left"
-					buttonBaseClasses="device-button-sm px-2 w-10 lg-hidden lg-w-8"
-					popoverClasses="min-w-64 min-h-560px overflow-y-scroll pb-8"
-					items={[
-						{
-							id: "menu-metronome-heading",
-							kind: "heading",
-							label: "Metronome",
-							condition: withMetronome,
-						},
-						{
-							id: "menu-metronome",
-							kind: "snippet",
-							condition: withMetronome,
-							snippet: metronomePhoneMenuBlock,
-						},
-						{
-							id: "menu-presets-heading",
-							kind: "heading",
-							label: "Presets",
-							condition: !!sitePresets,
-						},
-						{
-							id: "menu-presets",
-							kind: "snippet",
-							condition: !!sitePresets,
-							snippet: presetsPhoneMenuBlock,
-						},
-						{ id: "menu-volume-heading", kind: "heading", label: "volume" },
-						{ id: "menu-volume-slider", kind: "snippet", snippet: volumeSliderMenuBlock },
-						{ id: "menu-fx-heading", kind: "heading", label: "Effects" },
-						{ id: "menu-effects-sliders", kind: "snippet", snippet: fxSlidersMenuBlock },
-						{ id: "other-heading", kind: "heading", label: "More" },
-						{
-							id: "menu-hi-res-button",
-							kind: "snippet",
-							condition: samplesBase !== null,
-							snippet: hiresButtonMenuBlock,
-						},
-						{
-							id: "menu-midi-button",
-							kind: "snippet",
-							condition: midiSupported,
-							snippet: midiButtonMenuBlock,
-						},
-					]}
+					buttonBaseClasses="device-button-sm px-2 w-10 @4xl-hidden @4xl-w-8"
+					popoverClasses="min-w-72 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[{ id: "menu-sections", kind: "snippet", snippet: compactMenuBlock }]}
 				/>
 			</div>
 
@@ -831,24 +807,24 @@
 				class="
 					hidden
 					w-36
-					md-block
-					md-ml-auto
-					lg-grid
-					lg-grid-cols-1
-					lg-grid-rows-[auto_28px]
-					lg-h-57.25px
-					lg-max-w-280px
-					lg-w-auto"
+					@2xl-block
+					@2xl-ml-auto
+					@4xl-grid
+					@4xl-grid-cols-1
+					@4xl-grid-rows-[auto_28px]
+					@4xl-h-57.25px
+					@4xl-max-w-280px
+					@4xl-w-auto"
 			>
 				<span
 					class="
-					lg-device-button-group-label
+					@4xl-device-button-group-label
 					hidden
 					text-dark
 					text-14px
 					text-blue-100/90
 					w-full
-					md-block">Volume</span
+					@2xl-block">Volume</span
 				>
 				<div class="flex items-center h-28px">
 					<!-- {Math.round(piano.volume * 100)}% -->
@@ -862,7 +838,7 @@
 	<div
 		class="relative w-full select-none touch-none rounded-md overflow-hidden {vertical
 			? 'h-[78vh] min-h-560px'
-			: 'h-160px sm-h-200px'}"
+			: 'h-160px @xl-h-200px'}"
 		role="group"
 		aria-label="Keys"
 		bind:this={board}
@@ -950,7 +926,7 @@
 				class={hiresState === "loading" ? "i-ph-circle-notch animate-spin" : "i-ph-sparkle"}
 				aria-hidden="true"
 			></span>
-			<span class="lg-sr-only"
+			<span class="@4xl-sr-only"
 				>{hiresState === "on"
 					? "Hi-res"
 					: hiresState === "loading"
@@ -970,7 +946,7 @@
 
 	{#snippet fxSlidersMenuBlock()}
 		<div
-			class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-3 gap-x-6 gap-y-4 mb-4"
+			class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 @xl-grid-cols-2 @4xl-grid-cols-3 gap-x-6 gap-y-4 mb-4"
 		>
 			<div class="grid grid-cols-1 gap-y-3 content-start">
 				<div class="device-button-group-label !text-blue-100/90 !mb-0">Reverb</div>
@@ -1411,10 +1387,49 @@
 		</div>
 	{/snippet}
 
-	{#snippet metronomePhoneMenuBlock()}
+	{#snippet metronomeMenuBlock()}
 		<div class="px-3 pt-3 grid grid-cols-1 gap-3 w-full text-blue-100/90">
 			{@render metronomeControls("device-button-sm bg-slate-800 border")}
+			{#if metronome.running}
+				<div class="text-12px opacity-70 tabular-nums">
+					beat {metronome.beat + 1} of {metronome.beatsPerBar}
+				</div>
+			{/if}
 		</div>
+	{/snippet}
+
+	{#snippet section(title: string, body: Snippet, open = false)}
+		<details
+			class="group border-t border-current/10 first-of-type-border-t-0"
+			name="piano-compact-menu"
+			{open}
+		>
+			<summary
+				class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none text-11px uppercase tracking-wider text-accent list-none [&::-webkit-details-marker]-hidden"
+			>
+				<span>{title}</span>
+				<span
+					class="i-ph-caret-down text-14px opacity-70 transition-transform group-open-rotate-180"
+					aria-hidden="true"
+				></span>
+			</summary>
+			<div class="pb-3">{@render body()}</div>
+		</details>
+	{/snippet}
+
+	{#snippet compactMenuBlock()}
+		<div class="grid grid-cols-1 -mt-3">
+			{#if withMetronome}{@render section("Metronome", metronomeMenuBlock)}{/if}
+			{#if sitePresets}{@render section("Presets", presetsPhoneMenuBlock)}{/if}
+			{@render section("Volume", volumeSliderMenuBlock, true)}
+			{@render section("Effects", fxSlidersMenuBlock)}
+			{#if samplesBase !== null || midiSupported}{@render section("More", moreMenuBlock)}{/if}
+		</div>
+	{/snippet}
+
+	{#snippet moreMenuBlock()}
+		{#if samplesBase !== null}{@render hiresButtonMenuBlock()}{/if}
+		{#if midiSupported}{@render midiButtonMenuBlock()}{/if}
 	{/snippet}
 
 	{#snippet slotButtons(classes: string)}
@@ -1705,7 +1720,7 @@
 
 	{#snippet keyControls(compact: boolean)}
 		<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
-			<div class={compact ? "" : "w-20"}>
+			<div class={compact ? "" : "w-8"}>
 				<div class="device-button-group-label sr-only">Key</div>
 				{#snippet keySelectorMenuBlock()}
 					<div
@@ -1716,7 +1731,7 @@
 							<ComboBox
 								ariaLabel="Key"
 								clearDefaultButtonClasses={true}
-								buttonClasses="w-full lg-device-button-xs !lg-slate-400 lg-hover-bg-slate-900 border"
+								buttonClasses="w-full @4xl-device-button-xs !@4xl-text-slate-400 @4xl-hover-bg-slate-900 border"
 								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 								options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
 								value={piano.key ? String(piano.key.root) : "none"}
@@ -1729,7 +1744,7 @@
 								<ComboBox
 									ariaLabel="Scale"
 									clearDefaultButtonClasses={true}
-									buttonClasses="w-full lg-device-button-xs lg-hover-bg-slate-900 border"
+									buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
 									popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 									options={MODE_OPTIONS}
 									value={piano.key.mode}
@@ -1739,7 +1754,7 @@
 							<div>
 								<span class="block mb-2">Show Numbers</span>
 								<button
-									class="w-full lg-device-button-xs px-3 lg-hover-bg-slate-900 border {piano.degrees
+									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border {piano.degrees
 										? 'text-accent'
 										: ''}"
 									type="button"
@@ -1752,7 +1767,7 @@
 							<div class={compact ? "" : "w-full"}>
 								<span class="block mb-2">Toggle Guides</span>
 								<button
-									class="w-full lg-device-button-xs px-3 lg-hover-bg-slate-900 border"
+									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
 									onclick={() => {
 										piano.setDegrees(false);
 										piano.setKey(null);
@@ -1791,7 +1806,7 @@
 				onclick={() => piano.disconnectMidi()}
 			>
 				<span class="i-ph-usb" aria-hidden="true"></span>
-				<span class="lg-sr-only">{piano.midi.inputs.length ? "Connected" : "No controller"}</span>
+				<span class="@4xl-sr-only">{piano.midi.inputs.length ? "Connected" : "No controller"}</span>
 			</button>
 		{:else}
 			<button
@@ -1801,7 +1816,7 @@
 				onclick={() => void piano.connectMidi()}
 			>
 				<span class="i-ph-usb" aria-hidden="true"></span>
-				<span class="lg-sr-only">{piano.midi.status === "denied" ? "MIDI refused" : "MIDI"}</span>
+				<span class="@4xl-sr-only">{piano.midi.status === "denied" ? "MIDI refused" : "MIDI"}</span>
 			</button>
 		{/if}
 	{/snippet}

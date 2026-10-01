@@ -315,16 +315,44 @@ straight into the library (save after loading does it).
 
 Kevin's "modest step towards a looper": the page's metronome
 (`src/lib/audio/metronome.svelte.ts`, the one engine per page, remembered
-tempo, the lookahead scheduler shared with the drum machine) in the
-piano's controls row from lg under a Tempo label, in the piano's clothes
-rather than the toolbar component's: a device button with the metronome
-icon (the icon swells on the downbeat), a tempo field and a Tap button
-(`metronomeControls` snippet); below lg the same row in the levels menu
-under a Metronome heading. While it runs the screen says the tempo and
-the beat. The piano page passes `metronome`; the recorder page keeps its
-toolbar metronome and the home page has none. Starting it stops the
-stem player or the drum machine, as any transport (onlyOnePlays). What a
-looper would take from here: the bar length and the downbeat.
+tempo, the lookahead scheduler shared with the drum machine) behind a
+metronome-icon button in the More strip (lit while it runs) that opens a
+small menu: a start/stop button whose icon swells on the downbeat, a
+tempo field, Tap, and the beat while it runs (`metronomeControls` and
+`metronomeMenuBlock` snippets); in the compact layout the same controls
+are a Metronome section of the device menu. While it runs the screen says
+the tempo and the beat. The piano page passes `metronome`; the recorder
+page keeps its toolbar metronome and the home page has none. Starting it
+stops the stem player or the drum machine, as any transport
+(onlyOnePlays). What a looper would take from here: the bar length and
+the downbeat.
+
+## Layout by container, not viewport (2026-10-01)
+
+Kevin's call, so the piano can sit in a popover or a narrow panel and lay
+itself out by the room it has: the component's breakpoint classes are
+container queries (UnoCSS wind4's `@<size>-` variants, Tailwind's
+container sizes; the root `div` is the `@container`). The mapping from
+the old viewport breakpoints, chosen so the piano page looks as it did:
+`sm-` → `@xl-` (36 rem, 576 px), `md-` → `@2xl-` (42 rem, 672 px), `lg-` →
+`@4xl-` (56 rem, 896 px). So the wide layout (group labels, the icon strip,
+the preset buttons, the Effects button) appears once the device itself is
+896 px wide: the piano page from a 1024 px window, the home page's section
+likewise, and a popover or a side panel only when it is that wide. The
+save popover asks which manage button the container shows
+(`getComputedStyle(wideControls).display`) rather than `matchMedia`. Two
+things stay in JavaScript because they decide geometry, not style: the
+number of octaves on the keyboard and the vertical keys below 640 px of
+measured width (`measure`, a ResizeObserver on the keys). Shortcuts the
+drum machine shares (`device-button-group-label`'s text sizes) still use
+viewport breakpoints. Two of Kevin's classes that were never valid
+(`lg-32px`, `!lg-slate-400`) became `@4xl-w-32px` and
+`!@4xl-text-slate-400`.
+
+The compact device menu (below `@4xl`) is an exclusive accordion of
+`<details name="piano-compact-menu">` sections, Metronome, Presets,
+Volume (open by default), Effects and More, so one panel shows at a time
+and the menu stays short; native, no state.
 
 ## Phase 3 (later)
 

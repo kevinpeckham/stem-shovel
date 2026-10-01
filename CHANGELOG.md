@@ -10,7 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Piano: a metronome** (docs/piano.md, "Metronome"). The page's metronome in the piano's controls row under a Tempo label: a device button that starts and stops it (the icon swells on the downbeat), a tempo field and Tap, with the tempo and the beat on the screen while it runs; on a phone the same row in the sliders menu. The piano page only; the recorder keeps its toolbar metronome.
+- **Piano: a metronome** (docs/piano.md, "Metronome"). The page's metronome behind a metronome-icon button in the More strip (lit while it runs) that opens a small menu: start or stop (the icon swells on the downbeat), a tempo field, Tap and the beat, with the tempo and the beat on the screen while it runs; in the compact layout a section of the device menu. The piano page only; the recorder keeps its toolbar metronome.
+
+### Changed
+
+- **Piano: layout by container, not viewport** (docs/piano.md, "Layout by container"). Every breakpoint class in the piano is a container query (`@xl-`, `@2xl-`, `@4xl-` for the old `sm-`, `md-`, `lg-`; the root is the `@container`), so the piano lays itself out by the width it is given and can sit in a popover or a panel; the save popover asks which manage button the container shows instead of `matchMedia`. Two of Kevin's classes that were never valid became `@4xl-w-32px` and `!@4xl-text-slate-400`.
+- **Piano: the compact device menu in sections.** Below the wide layout the menu is an accordion of Metronome, Presets, Volume (open to start), Effects and More, one open at a time, so it stays short.
 
 ## [0.64.0] - 2026-10-01
 
