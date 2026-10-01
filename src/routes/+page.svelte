@@ -268,7 +268,12 @@
 				Experiment with beat ideas, in an intuitive interface. Save, download &amp; share. Or use as
 				a backing track while recording an idea or demo.
 			</p>
-			<div class="marketing-demo-cta">Try the working demo below.</div>
+			<div class="flex flex-wrap items-center gap-x-5">
+				<div class="marketing-demo-cta">Try the working demo below.</div>
+				<a class="link inline-flex items-center gap-1.5 text-14px" href="/drum-machine"
+					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
+				>
+			</div>
 			<!-- Space plays and stops only while this is the demo in view (see spaceTarget): elsewhere the page needs space for scrolling. -->
 			<!-- The kit's samples are fetched as the demo scrolls into view, not at load: a visitor who never gets here downloads nothing. -->
 			<div

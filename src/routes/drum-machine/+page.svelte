@@ -78,6 +78,15 @@
 			<li>Use the space bar to start and stop the drum machine.</li>
 			<li>If you are signed into your account you can save and share beats.</li>
 		</ul>
-		<p></p>
+		<div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+			<span class="text-15px opacity-90"
+				>Learn more about using the drum machine in the user docs.</span
+			>
+			<a class="button button-sm" href="/docs/drum-machine">
+				<span class="i-ph-book-open" aria-hidden="true"></span>
+				Drum machine docs
+				<span class="i-ph-arrow-right" aria-hidden="true"></span>
+			</a>
+		</div>
 	</section>
 </main>

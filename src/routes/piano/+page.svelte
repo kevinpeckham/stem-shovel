@@ -82,5 +82,14 @@
 			></span> lets it play the piano, including its velocity and sustain pedal. Unfortunately Web MIDI
 			is currently supported only on Chrome, Edge and other Chromium browsers.
 		</p>
+
+		<div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+			<span class="text-15px opacity-90">Learn more about using the piano in the user docs.</span>
+			<a class="button button-sm" href="/docs/piano">
+				<span class="i-ph-book-open" aria-hidden="true"></span>
+				Piano docs
+				<span class="i-ph-arrow-right" aria-hidden="true"></span>
+			</a>
+		</div>
 	</section>
 </main>
