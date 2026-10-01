@@ -1725,7 +1725,7 @@
 				</div>
 
 				<button
-					class="device-button-lg @xl-device-button-sm px-3 @4xl-device-button-lg {drumMachine.running
+					class="device-button-lg @xl-device-button-sm @xl-ml-auto px-3 @4xl-device-button-lg @4xl-ml-0 {drumMachine.running
 						? 'text-accent'
 						: ''} {tutorial.control === 'play' ? HINT : ''}"
 					type="button"
