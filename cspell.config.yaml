@@ -21,6 +21,7 @@ ignoreRegExpList:
 words:
   - Qwen
   - Aphex
+  - Linkwitz
   - Biquad
   - Goertzel
   - Kimi

@@ -293,20 +293,28 @@ export interface ToneStage {
  *   what a shelf cannot: harmonics above the sound's own top. (It needs
  *   something in the band to work from: a sound low-passed at 2 kHz gains
  *   nothing, measured; one with a top end gains a sparkle.)
- * - **Bottom**, after the intent of the same unit's Big Bottom. Aphex does it
- *   with a phase shift and a compressor on the low band; a Web Audio
- *   compressor has a few milliseconds of lookahead, and mixing the delayed
- *   band back cancelled as much as it added (measured), so this is the
- *   harmonic way instead: the band under 120 Hz into a hot gain and a tanh
- *   shaper, which makes its second and third harmonics, kept between 110 Hz
- *   and 400 Hz by a band-pass pair and mixed back in. The fundamental is
- *   untouched; the harmonics make the bass read bigger, on small speakers
- *   most of all, at nearly the same peak.
+ * - **Bottom**, after the intent of the same unit's Big Bottom: bass that
+ *   feels bigger. Aphex does it with a phase shift and a compressor on the
+ *   low band; a Web Audio compressor has a few milliseconds of lookahead,
+ *   and mixing the delayed band back cancelled as much as it added
+ *   (measured). A harmonic enhancer read as brightness and grit (Kevin); a
+ *   parallel sub band lost most of itself to the filters' phase lag; a
+ *   Linkwitz-Riley crossover summed flat but its phase rotation put a
+ *   sawtooth's peaks up 5 dB before any boost (all measured). So it is a
+ *   subtractive split: the output is the signal, minus its low band (a
+ *   100 Hz low-pass), plus that band boosted by up to 6 dB through a gentle
+ *   tanh that folds its peaks. At zero the band is added back as it was and
+ *   the output is the signal bit for bit; above zero only the band's
+ *   increase is added, in phase with it, so the fundamental gains weight
+ *   and the peaks grow by the boost and no more.
  */
 const TILT_DB = 6;
 const AIR_WET = 0.25;
-const BOTTOM_WET = 0.5;
+/** The low band's boost at full Bottom, as a gain: 2.5 is +8 dB on the band, about +5 dB at the fundamental once the band's phase lag is summed in. */
+const BOTTOM_BOOST = 2.5;
 const EXCITER_CURVE = curve((x) => Math.tanh(x));
+/** The low band's shaper: tanh scaled to unity at small signals, so the boost is a boost and only the loudest peaks fold. */
+const SUB_CURVE = curve((x) => Math.tanh(x * 0.8) / 0.8);
 
 export function createToneStage(ctx: BaseAudioContext): ToneStage {
 	const input = ctx.createGain();
@@ -320,7 +328,6 @@ export function createToneStage(ctx: BaseAudioContext): ToneStage {
 	high.frequency.value = 2500;
 	input.connect(low);
 	low.connect(high);
-	high.connect(output);
 	// Air.
 	const airHp = ctx.createBiquadFilter();
 	airHp.type = "highpass";
@@ -343,33 +350,33 @@ export function createToneStage(ctx: BaseAudioContext): ToneStage {
 	airShaper.connect(airPost);
 	airPost.connect(airGain);
 	airGain.connect(output);
-	// Bottom.
-	const bottomLp = ctx.createBiquadFilter();
-	bottomLp.type = "lowpass";
-	bottomLp.frequency.value = 120;
-	bottomLp.Q.value = 0.7;
-	const bottomPre = ctx.createGain();
-	bottomPre.gain.value = 4;
+	// Bottom: output = signal − low band + processed low band (the band as it was at zero, boosted and warmed above).
+	high.connect(output);
+	const band = ctx.createBiquadFilter();
+	band.type = "lowpass";
+	band.frequency.value = 100;
+	band.Q.value = -6.02; // Q 0.5 (a low-pass's Q is in dB)
+	high.connect(band);
+	const lowNeg = ctx.createGain();
+	lowNeg.gain.value = -1;
+	band.connect(lowNeg);
+	lowNeg.connect(output);
+	const bottomBoost = ctx.createGain();
+	bottomBoost.gain.value = 1;
+	band.connect(bottomBoost);
+	const lowPlain = ctx.createGain();
+	lowPlain.gain.value = 1;
+	bottomBoost.connect(lowPlain);
+	lowPlain.connect(output);
 	const bottomShaper = ctx.createWaveShaper();
-	bottomShaper.curve = EXCITER_CURVE;
-	bottomShaper.oversample = "2x";
-	const bottomHp = ctx.createBiquadFilter();
-	bottomHp.type = "highpass";
-	bottomHp.frequency.value = 110;
-	bottomHp.Q.value = 0.7;
-	const bottomTop = ctx.createBiquadFilter();
-	bottomTop.type = "lowpass";
-	bottomTop.frequency.value = 400;
-	bottomTop.Q.value = 0.7;
-	const bottomGain = ctx.createGain();
-	bottomGain.gain.value = 0;
-	high.connect(bottomLp);
-	bottomLp.connect(bottomPre);
-	bottomPre.connect(bottomShaper);
-	bottomShaper.connect(bottomHp);
-	bottomHp.connect(bottomTop);
-	bottomTop.connect(bottomGain);
-	bottomGain.connect(output);
+	bottomShaper.curve = SUB_CURVE;
+	// No oversampling: it carries a resampling delay that put the band out of phase with the signal it is added to (measured, 11 dB of cancellation at 55 Hz), and a band under 100 Hz has nothing to alias.
+	bottomShaper.oversample = "none";
+	const lowWarm = ctx.createGain();
+	lowWarm.gain.value = 0;
+	bottomBoost.connect(bottomShaper);
+	bottomShaper.connect(lowWarm);
+	lowWarm.connect(output);
 	const set = (param: AudioParam, value: number, tau: number) =>
 		tau ? param.setTargetAtTime(value, ctx.currentTime, tau) : (param.value = value);
 	return {
@@ -380,7 +387,10 @@ export function createToneStage(ctx: BaseAudioContext): ToneStage {
 			set(low.gain, -tilt * TILT_DB, tau);
 			set(high.gain, tilt * TILT_DB, tau);
 			set(airGain.gain, Math.min(1, Math.max(0, t.air)) * AIR_WET, tau);
-			set(bottomGain.gain, Math.min(1, Math.max(0, t.bottom)) * BOTTOM_WET, tau);
+			const bottom = Math.min(1, Math.max(0, t.bottom));
+			set(bottomBoost.gain, 1 + bottom * (BOTTOM_BOOST - 1), tau);
+			set(lowPlain.gain, bottom > 0 ? 0 : 1, tau);
+			set(lowWarm.gain, bottom > 0 ? 1 : 0, tau);
 		},
 	};
 }

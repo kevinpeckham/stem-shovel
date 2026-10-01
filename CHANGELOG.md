@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Piano and drum machine: a Tone section** (docs/effects.md, "Tone"). One shared stage on the master of both: Tilt (a low shelf and a high shelf moving opposite ways, dark to bright), Air (an exciter after the Aural Exciter: harmonics made above 3 kHz and mixed back, sparkle a dull sound never had) and Bottom (after the intent of the same unit's Big Bottom: harmonics of the band under 120 Hz made and mixed back, bass that reads bigger at the same peak; the unit's compressor trick cancelled itself through a Web Audio compressor's lookahead, measured). In the piano's preferences and presets (`tone`) and the beat's effects (`toneTilt`, `toneAir`, `toneBottom`; share links at format version 9, older links open flat).
+- **Piano and drum machine: a Tone section** (docs/effects.md, "Tone"). One shared stage on the master of both: Tilt (a low shelf and a high shelf moving opposite ways, dark to bright), Air (an exciter after the Aural Exciter: harmonics made above 3 kHz and mixed back, sparkle a dull sound never had) and Bottom (after the intent of the same unit's Big Bottom: the band under 100 Hz boosted and gently warmed in place, bass that feels bigger with the mids untouched; the fundamental up 5.3 dB at full, measured, after four designs that cancelled themselves or read as grit). In the piano's preferences and presets (`tone`) and the beat's effects (`toneTilt`, `toneAir`, `toneBottom`; share links at format version 9, older links open flat).
 
 ## [0.67.0] - 2026-10-01
 

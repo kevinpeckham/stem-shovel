@@ -258,18 +258,26 @@ sliders:
   2 kHz gains nothing, and one with a top end gains 9 dB between 6 and
   12 kHz at full Air with the overall level up by less than half a
   decibel.
-- **Bottom** is after the intent of the same unit's Big Bottom. Aphex
-  does it with a phase shift and a compressor on the low band, which
-  raises the band's average level without its peaks. A Web Audio
-  compressor carries a few milliseconds of lookahead, and mixing the
-  delayed band back cancelled as much as it added (measured, so that
-  version went). This is the harmonic way instead: the band under 120 Hz
-  into a hot gain and a tanh shaper, which makes its second and third
-  harmonics, kept between 110 and 400 Hz by a band-pass pair and mixed
-  back in at up to half. The fundamental passes untouched; the harmonics
-  make the bass read bigger, on small speakers most of all. Measured on
-  a pulsing 55 Hz sawtooth, full Bottom adds about 4 dB between 110 and
-  330 Hz with the peak sample unchanged.
+- **Bottom** is after the intent of the same unit's Big Bottom: bass that
+  feels bigger. Four designs were measured before this one. Aphex's own
+  trick, a compressor on the low band mixed back, cancelled itself
+  because a Web Audio compressor carries a few milliseconds of lookahead
+  and the delayed band came back out of phase. A harmonic enhancer, the
+  band's second and third harmonics mixed back, read as brightness and
+  grit rather than weight (Kevin's ear). A parallel sub band mixed back
+  lost most of itself to the filters' phase lag at half and gained at
+  full only through saturation. A Linkwitz-Riley crossover summed flat
+  but its phase rotation put a sawtooth's peaks up 5 dB before any
+  boost. The one that works is a subtractive split: the output is the
+  signal, minus its band under 100 Hz, plus that band boosted by up to
+  8 dB through a gentle tanh that folds only the loudest peaks, with no
+  oversampling on the shaper (its resampling delay was another phase
+  cancellation, 11 dB at 55 Hz, measured). At zero the band is added back
+  exactly as it was and the output is the signal bit for bit; above zero
+  only the band's increase is added, in phase with it. Measured on a
+  pulsing 55 Hz sawtooth: the fundamental up 2.8 dB at half and
+  5.3 dB at full, everything from 110 Hz up unchanged within a
+  tenth of a decibel, and the peak sample up 3.2 dB.
 
 ## Why nothing clicks
 
