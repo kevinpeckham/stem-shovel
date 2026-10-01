@@ -1,11 +1,12 @@
 # Looper
 
-Planned 2026-10-01 at Kevin's request: "a standalone tool much like the
-idea recorder, where you can input microphone, as well as piano and
-drums. I think it would be analog in the first phase and we can look at
-midi as an upgrade later, or even combination analog / midi. A lot of the
-foundation of what we would need is already built especially after the
-multitrack ability." Nothing here is built yet; this is the plan.
+Planned and built (phase 1) 2026-10-01 at Kevin's request: "a standalone
+tool much like the idea recorder, where you can input microphone, as well
+as piano and drums. I think it would be analog in the first phase and we
+can look at midi as an upgrade later, or even combination analog / midi.
+A lot of the foundation of what we would need is already built especially
+after the multitrack ability." Phase 1 lives on the `looper` branch until
+Kevin merges it; phase 2 (MIDI layers) is not built.
 
 ## What it is
 
@@ -180,6 +181,62 @@ them with the look-ahead loop on playback. A layer can be both at once
 (audio of what was heard, MIDI of what was played), which Kevin called a
 combination; saving renders MIDI layers to audio for the take and keeps
 the events on the idea.
+
+## What shipped (phase 1, on the `looper` branch)
+
+- `src/lib/audio/looper.svelte.ts`, the engine as designed: `open()` hosts
+  the piano, the drum machine and the metronome in its context
+  (`hostContext` on each; `output()` builds and hands back the master to
+  tap; `startAt` on the drum machine and the metronome; hosted, they do
+  not claim playback, and the piano's power switch only mutes), loads the
+  worklet, taps each source through a gain (only the armed one open) with
+  an analyser for its meter; `requestMic` with the voice processors off
+  and a monitor gain; `play`/`stop`/`record`/`finishRecording`/
+  `cancelRecording`; layers as looped `AudioBufferSourceNode`s started on
+  one clock; undo, remove, clear, level, mute, solo; `calibrate`;
+  `renderMix`; `wavOf`; `settings()`; `clock()`, `probeClock()`,
+  `probeCapture()` and the drum machine's `startedAt` as diagnostics.
+- `static/worklets/loop-capture.js`: `arm` {length, lead, startFrame,
+  passes}, a pass posted per loop length with the lead-in kept (the tail
+  of the previous pass copied before the transfer), `finish`, `cut`,
+  `ping`. A lead-in that began before the arm arrived is padded with
+  silence so index `lead` is still bar 1.
+- `src/lib/utils/encodeWav24.ts` (the existing `encodeWav` is the
+  recorder's 16-bit download) and `findLatency.ts`, with tests.
+- `src/routes/looper/+page.svelte` and `+page.server.ts`: user-owned like
+  the recorder; transport, position, source picker with meters, layers
+  with waveforms, levels, mute, solo, delete, undo, clear; the loop's
+  settings; microphone monitor, latency slider and Calibrate; Save as take
+  through `TakeQueue` with the layers as sources and the loop's settings on
+  the idea (`IdeaInstrumentsDataSchema.looper`, `LooperSettingsSchema`, no
+  migration); the instrument panels as on the recorder page; a dev-only
+  `window.__looper` for measurements. Tools menu, footer, smoke row and
+  the user doc `scripts/user-docs/looper.md` (seeded on dev and staging;
+  production needs `bun run db:seed-docs`).
+
+**Verified** on dev with headless Chromium (`.screenshots/looper*.mjs`):
+a drums layer is exactly the loop length (88,200 frames for 1 bar at 120
+bpm, 44.1 kHz); the drum machine's first step is scheduled on bar 1 to
+the sample; an impulse scheduled 0.5 s into a capture lands at 0.0 ms,
+so scheduling and capture share the clock; a synth note played at a
+known clock time lands at its expected position to the millisecond; the
+drum hits sit on the sixteenth grid within the humanize scatter (±2 ms,
+with a few larger readings from the onset detector on soft hits). The
+first measurements were off by a constant that changed with the start
+lead (+46, +24, −50, 0 ms for 0.1, 0.2, 0.25, 0.5 s): the capture's
+0.3 s lead-in started before bar 1, and with the loop starting only 0.1 s
+ahead that start was already in the past, so the worklet began late and
+every index was off by the elapsed time. The fix is the padding above,
+plus a cold start without a count-in waiting `LEAD_SECONDS` + 0.05 before
+bar 1. Also found and fixed on the way: hosting reset the drum kit's
+ready flag, so the first drums layer would decode the kit after bar 1
+(`readyKit()` runs before the bar is chosen); and a start whose moment
+has passed now joins on the next step of the grid instead of starting
+late. The end-to-end flow (two drums passes and a microphone pass as
+three layers, saved as a take with three sources listed in the recorder)
+also passed. Not yet verified on a real device: the microphone
+calibration (headless Chromium has no speaker-to-microphone path) and
+Safari's worklet.
 
 ## Steps
 

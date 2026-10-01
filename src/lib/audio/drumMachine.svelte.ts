@@ -226,6 +226,33 @@ class DrumMachineEngine {
 	};
 
 	/** The context and the bus, made once (the bus brought up to date each time); the async form below resumes the context too. */
+	/**
+	 * Builds the machine's graph in the host's context instead of one of its
+	 * own (the looper, docs/looper.md), so the host can tap `output()` and
+	 * start the beat on its own clock with `startAt`. Call before the first
+	 * play; the bus is made on the next `#ensureGraph`.
+	 */
+	hostContext(ctx: AudioContext) {
+		if (this.#ctx === ctx) return;
+		this.#hosted = true;
+		this.#ctx = ctx;
+		this.#bus = null;
+		this.#capture = null;
+		this.kitReady = false;
+	}
+	/** The last node before the destination, for a host to tap (built now if it is not yet; call from a gesture). */
+	output(): AudioNode {
+		return this.#ensureGraph().bus.master;
+	}
+	/** Hosted, the machine is one of the host's sources: the host holds the playback claim, not the machine. */
+	#hosted = false;
+	/** The context time the last start put its first step at (a host's measurement, docs/looper.md). */
+	startedAt = 0;
+	/** The kit decoded for this context ahead of a start that must land on time (the looper's bar 1, docs/looper.md). */
+	async readyKit(): Promise<void> {
+		this.#ensureGraph();
+		if (!this.kitReady) await this.#readyKit();
+	}
 	#ensureGraph(): { ctx: AudioContext; bus: DrumBus } {
 		this.load();
 		const ctx = (this.#ctx ??= new AudioContext());
@@ -263,16 +290,36 @@ class DrumMachineEngine {
 	}
 
 	async start() {
+		return this.startAt(null);
+	}
+	/**
+	 * Play from a moment on the context's clock (a host's bar 1, docs/looper.md),
+	 * or from now with `null`; a time already past starts at once. Readies
+	 * the kit first, so call it with the time far enough ahead (a count-in).
+	 */
+	async startAt(at: number | null) {
 		if (this.running) return;
-		claimPlayback(this);
+		if (!this.#hosted) claimPlayback(this);
 		const { ctx } = await this.#graph();
 		this.running = true;
 		this.playing = this.current;
 		this.queued = null;
 		if (!this.kitReady) await this.#readyKit();
 		if (!this.running) return; // stopped while the kit loaded
-		this.#nextTime = ctx.currentTime + 0.05;
-		this.#nextStep = 0;
+		// A moment already past (a slow start on a busy device): join on the next step of the grid from `at`, the first steps missed rather than everything late (docs/looper.md, "Verified").
+		if (at === null) {
+			this.#nextTime = ctx.currentTime + 0.05;
+			this.#nextStep = 0;
+		} else if (at >= ctx.currentTime + 0.01) {
+			this.#nextTime = at;
+			this.#nextStep = 0;
+		} else {
+			const stepSeconds = 60 / this.project.bpm / 4;
+			const skip = Math.ceil((ctx.currentTime + 0.01 - at) / stepSeconds);
+			this.#nextTime = at + skip * stepSeconds;
+			this.#nextStep = skip;
+		}
+		this.startedAt = this.#nextTime;
 		this.#nextBar = 0;
 		this.queuedBar = null;
 		this.#queuedSteps = [];

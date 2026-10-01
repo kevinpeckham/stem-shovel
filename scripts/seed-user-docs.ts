@@ -23,6 +23,7 @@ const ORDER = [
 	"idea-recorder",
 	"drum-machine",
 	"piano",
+	"looper",
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",

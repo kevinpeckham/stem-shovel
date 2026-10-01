@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Looper** at `/looper` (docs/looper.md, phase 1): a loop of 1 to 8 bars at a tempo plays round and round while layers are recorded onto it one pass at a time from the microphone, the piano or the drum machine; layers have level, mute, solo and delete, with undo and clear; a count-in and a click; microphone latency compensation with a Calibrate measurement; **Save as take** renders the layers' mix and files it in the Idea Recorder as a take with each layer as a source, ready to go to a song as stems. One AudioContext hosts the instruments (`hostContext`, `output`, `startAt` on the engines), capture is an AudioWorklet (`static/worklets/loop-capture.js`) that copies exactly one loop length per pass from the loop's bar 1, layers are 24-bit WAV (`encodeWav24`), and `findLatency` measures the clicks. Tools menu, footer, smoke row and user doc.
+
+### Added
+
 - **Idea Recorder: multitrack takes** (docs/demo-recording.md, "Multitrack takes"). With an instrument in the take, the recorder offers **Stereo** (the default on every visit) or **Multitrack**: beside the mix, the microphone and each instrument are recorded to a file of their own (a MediaRecorder per source started in the same tick as the mix's, the same format), uploaded after the take as its sources (`recording_stem` table, migration 0064; `POST /api/recordings/[id]/stems` to reserve, `/api/recording-stems/[id]/ready`; kept in IndexedDB with the take, so a retry after a failed source does not save the take twice). The take lists with its source count, and **Add N stems to song…** in its menu (and the recorder's ⋯ menu) copies the sources onto a song in any account the user edits as stems with their labels (`addRecordingStemsToSong`, `copyRecordingStemsToSong`), the song's playback renditions following in the jobs function. Sources count against the account's storage and go with the take when it or its idea is deleted.
 
 ### Changed

@@ -60,12 +60,15 @@ export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) =
 });
 
 /** The drum machine's project and the piano's settings as a take was recorded (the recorder sends them once the take is saved); a null leaves that instrument's earlier settings. Returns what the idea now holds. */
-export const saveIdeaInstruments = command(IdeaInstrumentsSchema, async ({ id, drums, piano }) => {
-	const accountId = await ownIdea(id);
-	const now = await setIdeaInstruments(accountId, id, { drums, piano });
-	if (!now) error(404, "Idea not found");
-	return now;
-});
+export const saveIdeaInstruments = command(
+	IdeaInstrumentsSchema,
+	async ({ id, drums, piano, looper }) => {
+		const accountId = await ownIdea(id);
+		const now = await setIdeaInstruments(accountId, id, { drums, piano, looper });
+		if (!now) error(404, "Idea not found");
+		return now;
+	},
+);
 
 /** Removes the idea if it has neither takes nor notes (after a discarded upload). */
 export const dropIdeaIfEmpty = command(IdSchema, async ({ id }) => {

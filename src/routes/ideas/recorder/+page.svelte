@@ -250,6 +250,8 @@
 		return {
 			drums: drumsSettings ? $state.snapshot(drumMachine.project) : null,
 			piano: pianoSettings ? piano.currentPreset() : null,
+			// A loop is saved from the looper page, never from here.
+			looper: null,
 		};
 	}
 	/** A take landed: its settings onto its idea (the server keeps the idea's earlier settings for an instrument sent as null). */

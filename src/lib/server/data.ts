@@ -3117,6 +3117,7 @@ export async function setIdeaInstruments(
 	const next: IdeaInstruments = {
 		drums: instruments.drums ?? had?.drums ?? null,
 		piano: instruments.piano ?? had?.piano ?? null,
+		looper: instruments.looper ?? had?.looper ?? null,
 	};
 	await db
 		.update(idea)

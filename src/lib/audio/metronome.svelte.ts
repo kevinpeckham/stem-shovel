@@ -68,13 +68,25 @@ class MetronomeEngine {
 		this.#visualTimers = this.#visualTimers.slice(-16);
 	};
 
+	/** Clicks in the host's context (the looper, docs/looper.md) instead of one of its own; `startAt` lines the clicks up with the host's bars. */
+	hostContext(ctx: AudioContext) {
+		this.#ctx = ctx;
+		this.#hosted = true;
+	}
+	/** Hosted, the metronome is the host's click: the host holds the playback claim. */
+	#hosted = false;
 	async start() {
+		return this.startAt(null);
+	}
+	/** Start with the first beat at a moment on the context's clock, or now with `null`. */
+	async startAt(at: number | null) {
 		if (this.running) return;
-		claimPlayback(this);
+		if (!this.#hosted) claimPlayback(this);
 		this.load();
 		this.#ctx ??= new AudioContext();
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
-		this.#nextTime = this.#ctx.currentTime + 0.05;
+		this.#nextTime =
+			at === null ? this.#ctx.currentTime + 0.05 : Math.max(at, this.#ctx.currentTime + 0.01);
 		this.#nextBeat = 0;
 		this.#stopLoop = startLookahead(this.#ctx, this.#schedule);
 		this.running = true;

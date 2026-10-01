@@ -63,7 +63,9 @@
 	const TOOL_PAGES = ["/tuner", "/metronome"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
-	let onToolPage = $derived(TOOL_PAGES.some(active) || active("/ideas/recorder"));
+	let onToolPage = $derived(
+		TOOL_PAGES.some(active) || active("/ideas/recorder") || active("/looper"),
+	);
 </script>
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
@@ -198,6 +200,18 @@
 						>
 							<span class="i-ph-microphone w-1em" aria-hidden="true"></span>Idea Recorder
 						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/looper',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/looper"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
+						</a>
 					{/if}
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
@@ -319,6 +333,17 @@
 							>
 								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"
 								></span>Idea Recorder
+							</a>
+							<a
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/looper')
+									? 'text-accent'
+									: ''}"
+								role="menuitem"
+								href="/looper"
+								onclick={() => (openMenu = null)}
+							>
+								<span class="i-ph-repeat mr-2 inline-block align-[-2px]" aria-hidden="true"
+								></span>Looper
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(

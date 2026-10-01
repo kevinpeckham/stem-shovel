@@ -249,6 +249,27 @@ class PianoEngine {
 		this.#fx = createPianoFx(ctx, this.#fxSettings());
 		return ctx;
 	}
+	/** The context belongs to a host (the looper, docs/looper.md): never suspended or closed by the piano. */
+	#hosted = false;
+	/**
+	 * Builds the piano's graph in the host's context instead of one of its
+	 * own, so the host can tap `output()` sample-accurately (the looper,
+	 * docs/looper.md). Call before the first note; a context the piano
+	 * already made is dropped. The power switch then only mutes.
+	 */
+	hostContext(ctx: AudioContext) {
+		if (this.#ctx === ctx) return;
+		this.#dropContext();
+		this.#ctx = ctx;
+		this.#hosted = true;
+		this.#fx = createPianoFx(ctx, this.#fxSettings());
+		this.on = ctx.state === "running";
+	}
+	/** The last node before the destination, for a host to tap (built now if it is not yet; call from a gesture). */
+	output(): AudioNode {
+		this.#graph();
+		return this.#fx!.master;
+	}
 
 	#fxSettings() {
 		return {
@@ -354,11 +375,13 @@ class PianoEngine {
 	/** Forget the audio graph; the next touch builds a new one. */
 	#dropContext() {
 		const ctx = this.#ctx;
+		const hosted = this.#hosted;
 		this.#ctx = null;
 		this.#fx = null;
+		this.#hosted = false;
 		this.#voices.clear();
 		this.#order = [];
-		if (ctx) {
+		if (ctx && !hosted) {
 			ctx.onstatechange = null;
 			void ctx.close().catch(() => {});
 		}
@@ -377,7 +400,7 @@ class PianoEngine {
 		this.allOff();
 		this.on = false;
 		this.starting = false;
-		await this.#ctx?.suspend().catch(() => {});
+		if (!this.#hosted) await this.#ctx?.suspend().catch(() => {});
 	}
 
 	noteOn(midi: number, velocity = 0.8) {
