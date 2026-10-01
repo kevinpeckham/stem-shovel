@@ -1,6 +1,6 @@
 # The Idea Recorder
 
-**Idea Recorder** in the header (or the account menu on a phone) opens a page for catching ideas before they are songs: a riff, a melody, a verse hummed into the phone. It records straight from the microphone, keeps every take, and turns a take into a song's demo when it is time.
+**Idea Recorder** in the header (or the account menu on a phone) opens a page for catching ideas before they are songs: a riff, a melody, a verse hummed into the phone. It records straight from the microphone, keeps every take, and turns a take into a song's demo when it is time. Your ideas are your own: they list together whichever account you recorded them in, only you see them, and a take can go to a song in any account you belong to. New takes count against the storage of the account you are currently working in.
 
 ## Ideas and takes
 

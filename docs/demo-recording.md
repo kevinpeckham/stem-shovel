@@ -11,7 +11,7 @@ The model settled on after a day of use: an **idea** is a title, one
 markdown note board and one or more **takes** (audio recordings, numbered
 within the idea, each with an optional name). Ideas are the user's own
 within the account; other members do not see them until a take is added to
-a song (a share feature may come later). On `/[account]/ideas/recorder`:
+a song (a share feature may come later). On `/ideas/recorder` (the user's own page since 2026-10-01; it was `/[account]/ideas/recorder`, which redirects):
 
 - **Record → Stop** completes a take and hands it to a background upload
   queue (`src/lib/audio/takeQueue.svelte.ts`): Record is available again
@@ -152,6 +152,31 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   functions: `ideas.remote.ts` (create, rename, notes, delete, render) and
   `recordings.remote.ts` (take name, delete, add to a song, new song).
 
+## Ownership: the user's own (2026-10-01)
+
+Ideas are the user's, not the account's: the page is `/ideas/recorder`
+(the old `/[account]/ideas/recorder` and `/[account]/ideas` redirect, with
+`?song=`), it lists every idea the user recorded whichever account it was
+recorded in, and the ownership checks everywhere (`ownIdea` and `ownTake`
+in the remote modules, the take reservation, the ready route and the upload
+token) go by `idea.created_by`, not membership, so a user who leaves an
+account keeps their ideas. The rows keep `account_id`: a new idea is filed
+under the **current account** (the one neutral pages treat as the user's,
+`src/lib/server/currentAccount.ts`; a user who edits no account is sent to
+`/accounts`), and that is the account whose storage the takes count
+against and whose Blob store holds them (`accounts/<id>/recordings/…`, the
+pathnames unchanged). A take can go to a song in any account the user
+edits: `addRecordingToSong` and `newSongFromRecording` check editorship of
+the song's or project's account, `copyRecordingToSong` files the demo under
+the song's account (the file copied from the take's store to the song's),
+and the page's song picker spans the user's accounts, labelling projects
+with the account's name when there is more than one. The drum machine's
+saved beats and the piano's presets in the panels are the current
+account's. Kevin's ask: "move the route for the idea recorder out of the
+project and change the ownership model so users own ideas and they are
+independent of projects"; the account stays only as the billing home of
+the files, which kept the data model and the stores as they were.
+
 ## What shipped (Phase 1)
 
 - **Scratch recordings, not demos.** A take goes into the account's library
@@ -162,7 +187,7 @@ a song (a share feature may come later). On `/[account]/ideas/recorder`:
   (`copyRecordingToSong`), so the recording stays in the library and the
   demo lives and dies with the song. "New song from it" creates the song in
   a project and adds the recording as its first demo.
-- **Pages** (as of Phase 1; the library page is gone since "Ideas and takes" above). `/[account]/ideas/recorder` is the idea recorder ("Idea Recorder" in the app) (members only;
+- **Pages** (as of Phase 1; the library page is gone since "Ideas and takes" above). `/ideas/recorder` (was `/[account]/ideas/recorder`) is the idea recorder ("Idea Recorder" in the app) (members only;
   `?song=<id>` remembers the song it was opened from and offers "Add to
   that song" first); `/[account]/ideas/recordings` is the library (play, rename,
   download, add to a song, delete). Both are in the account menu; the song

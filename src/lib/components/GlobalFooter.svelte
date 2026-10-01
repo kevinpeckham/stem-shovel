@@ -13,8 +13,8 @@
 	let own = $derived(memberships.filter((m) => !m.actingAs));
 	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
 	let member = $derived(memberships.find((m) => m.slug === accountSlug));
-	/** A member's recorder; a visitor gets the working demo on the front page. */
-	let recorderHref = $derived(member ? `/${member.slug}/ideas/recorder` : "/#idea-recorder");
+	/** A member's recorder (the user's own page, outside the account's URLs); a visitor gets the working demo on the front page. */
+	let recorderHref = $derived(member ? "/ideas/recorder" : "/#idea-recorder");
 
 	/** Which build is running: package.json's version and, when known, the commit. */
 	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;

@@ -63,9 +63,7 @@
 	const TOOL_PAGES = ["/tuner", "/metronome"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
-	let onToolPage = $derived(
-		TOOL_PAGES.some(active) || (member ? active(`/${member.slug}/ideas/recorder`) : false),
-	);
+	let onToolPage = $derived(TOOL_PAGES.some(active) || active("/ideas/recorder"));
 </script>
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
@@ -190,12 +188,12 @@
 					{#if member}
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								`/${member.slug}/ideas/recorder`,
+								'/ideas/recorder',
 							)
 								? 'text-accent'
 								: ''}"
 							role="menuitem"
-							href="/{member.slug}/ideas/recorder"
+							href="/ideas/recorder"
 							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-microphone w-1em" aria-hidden="true"></span>Idea Recorder
@@ -311,12 +309,12 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-									`/${member.slug}/ideas/recorder`,
+									'/ideas/recorder',
 								)
 									? 'text-accent'
 									: ''}"
 								role="menuitem"
-								href="/{member.slug}/ideas/recorder"
+								href="/ideas/recorder"
 								onclick={() => (openMenu = null)}
 							>
 								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"

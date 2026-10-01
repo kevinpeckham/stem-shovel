@@ -1,4 +1,4 @@
-import { accountOfIdea, memberOf, requireUser } from "$lib/server/access";
+import { accountOfIdea, requireUser } from "$lib/server/access";
 import { createRecording, recordingStore, storageRoom, userOwnsIdea } from "$lib/server/data";
 import { formatBytes } from "$lib/utils/formatBytes";
 import { background } from "$lib/server/background";
@@ -37,7 +37,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 	const user = requireUser(locals);
-	const { accountId } = await memberOf(locals, accountOfIdea, ideaId);
+	// The idea is the user's own (whichever account holds its files); its account's storage is what the take counts against.
+	const accountId = await accountOfIdea(ideaId);
+	if (!accountId || !(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Idea not found");
 	const room = await storageRoom(accountId, sizeBytes);
 	if (!room.ok) {
 		error(
@@ -47,7 +49,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	// The reservation may have crossed a warning line; the account's admins hear after the response.
 	background(() => checkStorage(accountId));
-	if (!(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Idea not found");
 	const row = await createRecording(accountId, user.id, ideaId, {
 		title: (title ?? "").trim().slice(0, 120),
 		filename,

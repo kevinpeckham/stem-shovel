@@ -142,10 +142,12 @@ erDiagram
 - **idea** — an idea from the Idea Recorder (docs/demo-recording.md): a
   title, a markdown note board, who made it, and `instruments`: the drum
   machine's project and the piano's sound and effects as JSON
-  (`IdeaInstrumentsDataSchema`), saved as they change and loaded back with
+  (`IdeaInstrumentsDataSchema`), saved by takes and loaded back with
   the idea; null until either was used with it. Ideas are the user's own
-  within the account (other members do not see them until a take is added
-  to a song).
+  (`created_by`; listed at `/ideas/recorder` across accounts, visible to no
+  one else until a take is added to a song); `account_id` is the account
+  whose storage the files count against, the current account when the idea
+  was made.
 - **recording** — one take of an idea: an audio file at
   `accounts/<id>/recordings/<recordingId>.<ext>` (the private store when
   configured), numbered within the idea (`take_number`), with an optional

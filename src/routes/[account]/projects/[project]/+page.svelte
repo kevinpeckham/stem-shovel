@@ -499,7 +499,7 @@
 			{#if data.canEdit}
 				<a
 					class="button"
-					href="/{data.account.slug}/ideas/recorder"
+					href="/ideas/recorder"
 					title="Idea recorder: record a riff, a melody or a demo, then make a song of it"
 				>
 					<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>

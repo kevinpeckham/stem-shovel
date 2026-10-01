@@ -3034,10 +3034,10 @@ export async function userOwnsRecording(accountId: string, userId: string, recor
 	return !!row?.ideaId && (await userOwnsIdea(accountId, userId, row.ideaId));
 }
 
-/** The user's ideas in the account, newest first, each with its ready takes in order and URLs the browser may fetch. */
-export async function listIdeas(accountId: string, userId: string) {
+/** The user's ideas, whichever account they were recorded in (ideas are the user's own), newest first, each with its ready takes in order and URLs the browser may fetch. */
+export async function listUserIdeas(userId: string) {
 	const rows = await db.query.idea.findMany({
-		where: and(eq(idea.accountId, accountId), eq(idea.createdBy, userId)),
+		where: eq(idea.createdBy, userId),
 		orderBy: [desc(idea.createdAt)],
 		with: {
 			takes: {
@@ -3139,14 +3139,13 @@ export async function deleteIdeaIfEmpty(accountId: string, ideaId: string) {
  * `olderThanMs` (a fresh one may still have its first take uploading).
  * Runs when the recorder page loads.
  */
-export async function deleteEmptyIdeas(accountId: string, userId: string, olderThanMs: number) {
+export async function deleteEmptyIdeas(userId: string, olderThanMs: number) {
 	const cutoff = new Date(Date.now() - olderThanMs);
 	const rows = await db
 		.select({ id: idea.id })
 		.from(idea)
 		.where(
 			and(
-				eq(idea.accountId, accountId),
 				eq(idea.createdBy, userId),
 				lt(idea.createdAt, cutoff),
 				sql`trim(${idea.notes}) = ''`,
@@ -3155,8 +3154,20 @@ export async function deleteEmptyIdeas(accountId: string, userId: string, olderT
 				),
 			),
 		);
-	for (const r of rows) await deleteIdea(accountId, r.id);
+	for (const r of rows) {
+		const accountId = await accountOfIdeaRow(r.id);
+		if (accountId) await deleteIdea(accountId, r.id);
+	}
 	return rows.length;
+}
+
+/** The account an idea's files are filed under. */
+async function accountOfIdeaRow(ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: eq(idea.id, ideaId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
 }
 
 /** Removes the idea and every take, files included. */
@@ -3211,6 +3222,14 @@ export async function createRecording(
 		})
 		.returning();
 	return row;
+}
+
+/** The recording a pathname was reserved for, for the upload handler's ownership check (ideas are the user's own). */
+export async function recordingOfPathname(pathname: string) {
+	return db.query.recording.findFirst({
+		where: eq(recording.pathname, pathname),
+		columns: { id: true, accountId: true },
+	});
 }
 
 export function findUploadingRecording(accountId: string, pathname: string) {
@@ -3275,24 +3294,26 @@ export async function deleteRecording(accountId: string, recordingId: string) {
  * recording stays in the library and the demo lives and dies with the song.
  */
 export async function copyRecordingToSong(
-	accountId: string,
+	recordingAccountId: string,
 	userId: string,
 	recordingId: string,
 	songId: string,
 ) {
 	const rec = await db.query.recording.findFirst({
 		where: and(
-			eq(recording.accountId, accountId),
+			eq(recording.accountId, recordingAccountId),
 			eq(recording.id, recordingId),
 			eq(recording.status, "ready"),
 		),
 	});
 	if (!rec) return null;
+	// The song may belong to another of the user's accounts (ideas are the user's own): the demo is filed under the song's.
 	const s = await db.query.song.findFirst({
-		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { id: true },
+		where: eq(song.id, songId),
+		columns: { id: true, accountId: true },
 	});
 	if (!s) return null;
+	const accountId = s.accountId;
 	const [{ n }] = await db
 		.select({ n: sql<number>`count(*)` })
 		.from(demo)
@@ -3346,27 +3367,28 @@ export async function copyRecordingToSong(
  * document when the song had none. Empty idea notes change nothing.
  */
 export async function mergeIdeaNotesIntoSong(
-	accountId: string,
+	recordingAccountId: string,
 	userId: string,
 	songId: string,
 	recordingId: string,
 ) {
 	const take = await db.query.recording.findFirst({
-		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
+		where: and(eq(recording.accountId, recordingAccountId), eq(recording.id, recordingId)),
 		with: { idea: { columns: { title: true, notes: true } } },
 	});
 	const notes = take?.idea?.notes.trim() ?? "";
 	if (!take?.idea || !notes) return false;
+	// The song may be in another of the user's accounts.
 	const s = await db.query.song.findFirst({
-		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { notesMarkdown: true },
+		where: eq(song.id, songId),
+		columns: { accountId: true, notesMarkdown: true },
 	});
 	if (!s) return false;
 	const label = `${take.idea.title} · Take ${take.takeNumber}${take.title ? ` · ${take.title}` : ""}`;
 	const merged = s.notesMarkdown.trim()
 		? `${s.notesMarkdown.replace(/\s+$/, "")}\n\n## ${label}\n\n${notes}\n`
 		: `${notes}\n`;
-	const result = await saveSongDoc(accountId, userId, songId, "notes", merged);
+	const result = await saveSongDoc(s.accountId, userId, songId, "notes", merged);
 	return result.ok;
 }
 

@@ -10,6 +10,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The Idea Recorder is the user's own page at `/ideas/recorder`** (docs/demo-recording.md). Ideas belong to the user, whichever account they were recorded in, and list together; the old `/[account]/ideas/recorder` and `/[account]/ideas` redirect, `?song=` kept. New takes are filed under the current account (the one neutral pages treat as the user's), where their storage counts, and a take can go to a song in any account the user edits (the song picker labels projects with the account's name when there is more than one). Ownership checks (`ownIdea`, `ownTake`, the take reservation, ready and upload-token routes) go by the user who recorded, not membership. `listUserIdeas`, `deleteEmptyIdeas(userId)`; `copyRecordingToSong` and `mergeIdeaNotesIntoSong` file the demo and the notes under the song's account.
+
 - **Idea Recorder: instrument settings are saved by takes, not by every change.** A recorded take carries the drum machine's project and the piano's sound and effects to its idea (saved once the take lands, on the idea it went to), each unless the new **Settings with the idea** switch beside "in the take" is off; the server merges an instrument at a time. An idea is no longer stamped with the current settings the moment it is shown, which had made switching among older ideas look like nothing changed (Kevin). `SavedTake` carries `ideaId` and the take's `instruments`; the unused `stableStringify` util is gone.
 
 ## [0.72.0] - 2026-10-01

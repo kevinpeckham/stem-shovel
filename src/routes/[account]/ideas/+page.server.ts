@@ -1,7 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-/** The ideas section is the recorder (its list is the library). */
-export const load: PageServerLoad = ({ params }) => {
-	redirect(303, `/${params.account}/ideas/recorder`);
+/** The ideas section is the recorder, which now lives outside the account's URL space (ideas are the user's own). */
+export const load: PageServerLoad = () => {
+	redirect(303, "/ideas/recorder");
 };

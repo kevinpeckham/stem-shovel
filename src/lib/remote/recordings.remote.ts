@@ -3,7 +3,7 @@ import {
 	accountOfProject,
 	accountOfRecording,
 	accountOfSong,
-	memberOf,
+	requireEditor,
 	requireUser,
 } from "$lib/server/access";
 import {
@@ -25,13 +25,14 @@ import { error } from "@sveltejs/kit";
 
 /** Takes of an idea (docs/demo-recording.md): name, delete, and add to a song as a demo. Each is the caller's own. */
 
-/** The caller's own take (its idea is theirs) in an account they belong to, else 404. */
+/** The caller's own take (its idea is theirs), else 404: ideas are the user's own, whichever account holds their files. */
 async function ownTake(id: string) {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
-	const { accountId } = await memberOf(locals, accountOfRecording, id);
-	if (!(await userOwnsRecording(accountId, user.id, id))) error(404, "Recording not found");
-	return { accountId, user };
+	const accountId = await accountOfRecording(id);
+	if (!accountId || !(await userOwnsRecording(accountId, user.id, id)))
+		error(404, "Recording not found");
+	return { accountId, user, locals };
 }
 
 /** A take's own name (may be empty: it then shows as "Take N"). */
@@ -51,19 +52,20 @@ export const deleteTake = command(IdSchema, async ({ id }) => {
 	return { deleted: true, ideaDeleted };
 });
 
-/** Copies the recording into the song as a demo; answers with the song's page. */
+/** Copies the recording into the song as a demo (a song in any account the user edits); answers with the song's page. */
 export const addRecordingToSong = command(
 	RecordingToSongSchema,
 	async ({ id, songId, mergeNotes }) => {
-		const { accountId, user } = await ownTake(id);
+		const { accountId, user, locals } = await ownTake(id);
 		const songAccount = await accountOfSong(songId);
-		if (songAccount !== accountId) error(404, "Song not found");
+		if (!songAccount) error(404, "Song not found");
+		requireEditor(locals, songAccount);
 		const result = await copyRecordingToSong(accountId, user.id, id, songId);
 		if (!result) error(404, "Recording or song not found");
 		if (result === "full")
 			error(409, `A song can have at most ${MAX_DEMOS_PER_SONG} demo recordings`);
 		if (mergeNotes) await mergeIdeaNotesIntoSong(accountId, user.id, songId, id);
-		const slugs = await songSlugs(accountId, songId);
+		const slugs = await songSlugs(songAccount, songId);
 		if (!slugs) error(404, "Song not found");
 		return { href: `/${slugs.account}/projects/${slugs.project}/${slugs.song}` };
 	},
@@ -73,12 +75,13 @@ export const addRecordingToSong = command(
 export const newSongFromRecording = command(
 	RecordingToNewSongSchema,
 	async ({ id, projectId, title, mergeNotes }) => {
-		const { accountId, user } = await ownTake(id);
+		const { accountId, user, locals } = await ownTake(id);
 		const projectAccount = await accountOfProject(projectId);
-		if (projectAccount !== accountId) error(404, "Project not found");
-		const slugs = await projectSlugs(accountId, projectId);
+		if (!projectAccount) error(404, "Project not found");
+		requireEditor(locals, projectAccount);
+		const slugs = await projectSlugs(projectAccount, projectId);
 		if (!slugs) error(404, "Project not found");
-		const song = await createSong(accountId, user.id, projectId, title);
+		const song = await createSong(projectAccount, user.id, projectId, title);
 		const result = await copyRecordingToSong(accountId, user.id, id, song.id);
 		if (!result || result === "full") error(404, "Recording not found");
 		if (mergeNotes) await mergeIdeaNotesIntoSong(accountId, user.id, song.id, id);

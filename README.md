@@ -52,7 +52,7 @@ is the song page (player, stem rows with a per-stem menu, download row,
 panelled settings popover (details, sections, tempo/key/meter, demo
 recordings, options: privacy, finished and no-AI flags, delete), the chart / lyrics / notes / comments
 panel with in-place editing and the AI chart draft); `…/[song]/chart`,
-`/lyrics` and `/notes` are the full-page editors; `/[account]/ideas/recorder`
+`/lyrics` and `/notes` are the full-page editors; `/ideas/recorder`
 is the Idea Recorder (docs/demo-recording.md): the user's own ideas, each a
 title, a markdown note board and numbered takes recorded from the
 microphone (Record → Stop saves at once through a background upload queue;

@@ -1,5 +1,5 @@
 import { command, form, getRequestEvent, query } from "$app/server";
-import { accountOfIdea, memberOf, requireEditor, requireUser } from "$lib/server/access";
+import { accountOfIdea, requireEditor, requireUser } from "$lib/server/access";
 import {
 	createIdea as create,
 	deleteIdea as remove,
@@ -35,12 +35,12 @@ export const createIdea = command(
 	},
 );
 
-/** The caller's own idea in an account they belong to, else 404. */
+/** The caller's own idea, else 404: ideas are the user's own, whichever account holds their files (docs/demo-recording.md). */
 async function ownIdea(id: string) {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
-	const { accountId } = await memberOf(locals, accountOfIdea, id);
-	if (!(await userOwnsIdea(accountId, user.id, id))) error(404, "Idea not found");
+	const accountId = await accountOfIdea(id);
+	if (!accountId || !(await userOwnsIdea(accountId, user.id, id))) error(404, "Idea not found");
 	return accountId;
 }
 

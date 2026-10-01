@@ -1,6 +1,6 @@
-import { accountOfRecording, memberOf } from "$lib/server/access";
+import { accountOfRecording, requireUser } from "$lib/server/access";
 import { isOurBlobUrl } from "$lib/server/blob";
-import { markRecordingReady, reservedPathname } from "$lib/server/data";
+import { markRecordingReady, reservedPathname, userOwnsRecording } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/jobs";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
@@ -18,7 +18,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		typeof body.durationSeconds === "number" && Number.isFinite(body.durationSeconds)
 			? Math.max(0, body.durationSeconds)
 			: null;
-	const { accountId } = await memberOf(locals, accountOfRecording, params.id);
+	// The take is the user's own (ideas are theirs, whichever account holds the files).
+	const user = requireUser(locals);
+	const accountId = await accountOfRecording(params.id);
+	if (!accountId || !(await userOwnsRecording(accountId, user.id, params.id)))
+		error(404, "Recording not found");
 	const pathname = await reservedPathname(accountId, "recording", params.id);
 	if (!pathname || !isOurBlobUrl(body.url, pathname)) {
 		error(400, "That is not the uploaded file's URL");

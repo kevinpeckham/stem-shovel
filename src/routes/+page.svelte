@@ -185,7 +185,7 @@
 					<div class=" mt-8">
 						<IdeaRecorderDemo
 							signedIn={!!data.user}
-							recorderHref={data.currentSlug ? `/${data.currentSlug}/ideas/recorder` : null}
+							recorderHref={data.currentSlug ? "/ideas/recorder" : null}
 						/>
 					</div>
 				</section>

@@ -1204,7 +1204,7 @@
 					</button>
 					<a
 						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+						href="/ideas/recorder?song={data.song.id}"
 						title="Idea recorder: record a riff, a melody or a demo for this song"
 						aria-label="Idea recorder"
 					>
@@ -2145,7 +2145,7 @@
 						</label>
 						<a
 							class="button button-sm inline-flex items-center gap-2"
-							href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+							href="/ideas/recorder?song={data.song.id}"
 							title="Idea recorder: record a riff, a melody or a demo for this song"
 						>
 							<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
@@ -2622,7 +2622,7 @@
 					<a
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						role="menuitem"
-						href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+						href="/ideas/recorder?song={data.song.id}"
 						title="Idea recorder: record a riff, a melody or a demo for this song"
 					>
 						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
@@ -2715,7 +2715,7 @@
 		{#if data.canEdit}
 			<a
 				class="button button-sm"
-				href="/{data.account.slug}/ideas/recorder?song={data.song.id}"
+				href="/ideas/recorder?song={data.song.id}"
 				title="Idea recorder: record a riff, a melody or a demo for this song"
 			>
 				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>

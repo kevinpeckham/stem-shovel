@@ -1,4 +1,4 @@
-import { accountOfUploadPathname, memberOf } from "$lib/server/access";
+import { accountOfUploadPathname, memberOf, requireUser } from "$lib/server/access";
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
@@ -8,13 +8,15 @@ import {
 	recordRecordingUrl,
 	recordStemMidiUrl,
 	recordStemUrl,
+	recordingOfPathname,
+	userOwnsRecording,
 } from "$lib/server/data";
 import { blobAuth, isRecordingPathname, recordingAccess, songIdOfPathname } from "$lib/server/blob";
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
-import { json } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";
 
@@ -27,6 +29,15 @@ import type { RequestHandler } from "./$types";
  */
 const isDemo = (pathname: string) => pathname.includes("/demos/");
 const isMidi = (pathname: string) => pathname.includes("/midi/");
+
+/** The account of a take's reserved pathname when the caller recorded it (ideas are the user's own), else 404. */
+async function ownRecordingAccount(locals: App.Locals, pathname: string) {
+	const user = requireUser(locals);
+	const rec = await recordingOfPathname(pathname);
+	if (!rec || !(await userOwnsRecording(rec.accountId, user.id, rec.id)))
+		error(404, "Recording not found");
+	return rec.accountId;
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json()) as HandleUploadBody;
@@ -46,7 +57,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			request,
 			...blobAuth(access),
 			onBeforeGenerateToken: async (pathname) => {
-				const { accountId } = await memberOf(locals, accountOfUploadPathname, pathname);
+				// A take is the user's own, whichever account holds its files; everything else needs membership of the song's account.
+				const accountId = isRecordingPathname(pathname)
+					? await ownRecordingAccount(locals, pathname)
+					: (await memberOf(locals, accountOfUploadPathname, pathname)).accountId;
 				// Stems and demo recordings share this route; the reservation decides which.
 				const row = isMidi(pathname)
 					? await findStemByMidiPathname(accountId, pathname)
