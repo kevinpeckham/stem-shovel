@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-10-01
+
 ### Added
 
 - **Idea Recorder: the instruments travel with the idea** (docs/demo-recording.md, "The instruments travel with the idea"). The drum machine's project and the piano's sound and effects are saved on the idea as they change (`idea.instruments`, JSON, migration 0063; `saveIdeaInstruments`, debounced a second) and put back into the instruments when one of the idea's takes is shown; an idea without any leaves the instruments as they are. The piano's panel gets the site's and the account's presets, so its preset buttons show there (Kevin: they were missing from the panel at every size).
