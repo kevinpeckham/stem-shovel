@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Looper: Save, Save as new loop, Export** (docs/looper.md, "Save and Export"). Save stores the loop with every layer under an idea of the new kind "loop" (migration 0065 adds `idea.kind`), with no dialog, and saves again in place after that; Export lists it in the Idea Recorder as an idea. The recorder hides loops unless **Show loops** is on, marking them with a loop icon.
+- **Looper: Save, Save as new loop, Export** (docs/looper.md, "Save and Export"). Save stores the loop with every layer under an idea of the new kind "loop" (migration 0065 adds `idea.kind`), with no dialog (the loop's name is a field above the screen, a placeholder until typed, as the recorder's idea title), and saves again in place after that; Export lists it in the Idea Recorder as an idea. The recorder hides loops unless **Show loops** is on, marking them with a loop icon.
 - **Looper: notes on a loop**, the recorder's note board under the device, saved with the loop and back on load.
 - **Looper and notes pop out** into draggable, resizable panels on a desktop, as on the recorder page.
 - **Page copy on the drum machine, piano, tuner and metronome pages**: their titles, intros and tips are now copy docs edited in the app (`drum-machine-page`, `piano-page`, `tuner-page`, `metronome-page`, seeded by `bun run db:seed-docs`).

@@ -443,6 +443,25 @@
 				class="device-chrome @container grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
 				aria-label="Looper"
 			>
+				<!-- the loop's name, as the recorder's idea title: a placeholder until it is typed, editable here, used by Save (Kevin) -->
+				<label class="block device-window-bevel-md">
+					<span class="sr-only">Loop name</span>
+					<input
+						class="device-field w-full"
+						type="text"
+						maxlength="120"
+						autocomplete="off"
+						data-1p-ignore
+						data-lpignore="true"
+						data-bwignore
+						placeholder={defaultTitle()}
+						value={looper.title}
+						onchange={(e) => looper.setTitle(e.currentTarget.value)}
+						onkeydown={(e) => {
+							if (e.key === "Enter") e.currentTarget.blur();
+						}}
+					/>
+				</label>
 				<!-- the screen -->
 				<div
 					class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 py-3"
@@ -466,14 +485,14 @@
 							>
 							<span>· {looper.layers.length} {looper.layers.length === 1 ? "layer" : "layers"}</span
 							>
-							{#if looper.title}
-								<span class="truncate max-w-60"
-									>· {looper.title}{looper.savedId
-										? looper.dirty
-											? " (changed)"
-											: ""
-										: " (unsaved)"}</span
+							{#if looper.savedId}
+								<span
+									>· {looper.dirty ? "changed since the save" : "saved"}{looper.inRecorder
+										? " · in the Idea Recorder"
+										: ""}</span
 								>
+							{:else if looper.layers.length > 0}
+								<span>· unsaved</span>
 							{/if}
 							{#if looper.phase === "recording"}
 								<span class="text-red-300" role="status"
@@ -1072,16 +1091,6 @@
 						>{/if}
 				</div>
 			{:else}
-				<label class="block">
-					<span class="device-button-label">Loop name</span>
-					<input
-						class="device-field w-full"
-						type="text"
-						placeholder={defaultTitle()}
-						value={looper.title}
-						onchange={(e) => looper.setTitle(e.currentTarget.value)}
-					/>
-				</label>
 				<label class="block">
 					<span class="device-button-label">Passes in the saved mix</span>
 					<select class="device-field w-full" bind:value={repeats}>

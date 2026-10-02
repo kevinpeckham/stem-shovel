@@ -271,7 +271,11 @@ on the first note when the loop was never saved; Load brings the notes
 back with the sources. **Panels.** The looper device and the notes panel
 each sit in a `FloatingPanel` with the recorder's pop-out button, floating
 from lg, docked below, remembered per browser. **Input Source** is the
-source group's label. Verified on dev: Save with no dialog made a "loop"
+source group's label. The loop's name is a field above the screen as the
+recorder's idea title (Kevin: a placeholder name shown on the device and
+editable there), the placeholder being "Loop · date · tempo", which Save
+adopts when nothing was typed; the screen says "saved", "changed since the
+save" or "unsaved". Verified on dev: Save with no dialog made a "loop"
 idea hidden from the recorder until Show loops (with the icon), the
 identity survived a reload, Export put it in the list, Load lists it, and
 the notes panel appeared on the loop.
