@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-10-02
+
 ### Changed
 
 - **The looper works signed out** (docs/looper.md, "Signed out, and kept in the browser"): the page needs no account; the loop is kept in the browser (IndexedDB) for everyone, written after every change and restored when the looper opens, with "back from last time" on the screen; saving a take still needs an account, which the Save menu says with a sign-in link. The Tools menu and the footer list the looper for everyone.
