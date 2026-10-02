@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.82.0] - 2026-10-02
+
 ### Added
 
 - **Idea Recorder: a Tracks panel for multitrack takes** (docs/demo-recording.md, "Tracks panel"). A take with stems in the player gets the song player under the recorder: each stem with its waveform, mute, solo and fader, a transport and a master. It pops out and docks like the notes.
