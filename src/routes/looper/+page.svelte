@@ -290,7 +290,9 @@
 						{#if looper.phase === "recording"}
 							<span class="text-red-300" role="status"
 								>· ● recording {LOOP_SOURCE_LABELS[looper.armed]} · pass {looper.passes + 1} · layer lands
-								in {Math.ceil(looper.secondsToPassEnd + LEAD_SECONDS)} s</span
+								in {Math.ceil(looper.secondsToPassEnd + LEAD_SECONDS)} s{looper.finishing
+									? " · the last"
+									: ""}</span
 							>
 						{/if}
 						{#if looper.micError}
@@ -322,36 +324,27 @@
 								: 'device-button-stop'}"
 							type="button"
 							aria-pressed={looper.phase !== "idle"}
+							title={looper.phase === "idle"
+								? "Play the loop"
+								: "Stop the loop (a pass still recording is dropped)"}
 							onclick={() => looper.toggle()}
 						>
 							{looper.phase === "idle" ? "Play" : "Stop"}
 						</button>
-						{#if looper.phase === "recording"}
-							<button
-								class="device-button-lg text-accent"
-								type="button"
-								title="Finish at the end of this pass"
-								onclick={() => looper.finishRecording()}
-							>
-								<span class="i-ph-check" aria-hidden="true"></span> Finish layer
-							</button>
-							<button
-								class="device-button-sm px-3"
-								type="button"
-								title="Drop the pass under way"
-								onclick={() => looper.cancelRecording()}>Cancel</button
-							>
-						{:else}
-							<button
-								class="device-button-lg device-button-record"
-								type="button"
-								disabled={looper.layers.length >= MAX_LOOP_LAYERS}
-								title="Record a layer from the chosen source, from the next bar 1 (after the count-in when stopped); every full pass becomes a layer until Finish"
-								onclick={() => void looper.record()}
-							>
-								Record
-							</button>
-						{/if}
+						<button
+							class="device-button-lg device-button-record {looper.phase === 'recording'
+								? 'text-accent bg-slate-900 ring-1 ring-red-500/60'
+								: ''}"
+							type="button"
+							aria-pressed={looper.phase === "recording"}
+							disabled={looper.layers.length >= MAX_LOOP_LAYERS || looper.finishing}
+							title={looper.phase === "recording"
+								? "Recording: press again to make this pass the last layer (Stop drops a pass under way)"
+								: "Record a layer from the chosen source, from the next bar 1 (after the count-in when stopped); every full pass becomes a layer until you press Record again"}
+							onclick={() => void looper.toggleRecord()}
+						>
+							Record
+						</button>
 						<button
 							class="device-button-sm px-3"
 							type="button"

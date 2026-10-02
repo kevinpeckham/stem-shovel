@@ -499,18 +499,28 @@ class LooperEngine {
 			startFrame: Math.round(from * ctx.sampleRate),
 			passes: Infinity,
 		});
+		this.finishing = false;
 		this.phase = "recording";
 	}
 	/** Let the pass under way complete, then stop capturing. */
 	finishRecording() {
-		if (this.phase !== "recording") return;
+		if (this.phase !== "recording" || this.finishing) return;
+		this.finishing = true;
 		this.#worklet!.port.postMessage({ type: "finish" });
+	}
+	/** Record pressed again while recording: the pass under way completes and no other starts (the screen says so). */
+	finishing = $state(false);
+	/** Record: start a layer, or while recording let the pass under way be the last (a loop pedal's second press). */
+	async toggleRecord(): Promise<void> {
+		if (this.phase === "recording") this.finishRecording();
+		else await this.record();
 	}
 	/** Drop the pass under way at once. */
 	#cutRecording() {
 		this.#passHandler = null;
 		this.#worklet?.port.postMessage({ type: "cut" });
 		this.#recordingSource = null;
+		this.finishing = false;
 		if (this.phase === "recording") this.phase = "playing";
 	}
 	cancelRecording() {
@@ -520,6 +530,7 @@ class LooperEngine {
 		if (m.type === "done") {
 			this.#recordingSource = null;
 			this.#passHandler = null;
+			this.finishing = false;
 			if (this.phase === "recording") this.phase = "playing";
 			return;
 		}

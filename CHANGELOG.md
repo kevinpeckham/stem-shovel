@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Looper: Record is one lit button.** It starts a layer and, pressed again while recording, makes the pass under way the last; the screen says so. Stop halts the loop and drops a pass still recording. The separate Finish layer and Cancel buttons are gone (Kevin: a relabelled button that seemed to do nothing).
+
 ## [0.76.0] - 2026-10-02
 
 ### Changed

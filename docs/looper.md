@@ -208,6 +208,14 @@ the drum machine page's. The piano was in the sitemap but in none of the
 other three, which would have had search engines fetch a page whose
 response said noindex; it is in all four now.
 
+**Record as a toggle (2026-10-02).** The first version swapped the Record
+button for "Finish layer" and "Cancel" while recording, which Kevin read
+as a button that did nothing (its effect only arrives at the pass's end).
+Record is now one lit button (`aria-pressed`, a red ring) that starts a
+layer, and pressed again lets the pass under way be the last
+(`toggleRecord`, `finishing` on the screen as "· the last"); Stop halts the
+loop and drops a pass still recording, as its title says.
+
 ## Phase 2: MIDI layers
 
 A piano or drum layer kept as events (note on/off with velocity at loop
