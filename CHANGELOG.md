@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Looper: skinned as a device** like the drum machine and the piano (docs/looper.md): the chassis, a screen with the loop's position, status and progress, labelled button groups, and the settings in three menus on the device, Loop (tempo with Tap, bars, beats, count-in, click), Mic (monitor, latency and Calibrate, the output latency and the piano shift) and Save (title, passes, Save as take); the layout by container queries.
+
 ## [0.74.0] - 2026-10-02
 
 ### Added
