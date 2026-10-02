@@ -948,6 +948,21 @@
 							</select>
 						</label>
 					</div>
+					<label class="block">
+						<span class="device-button-label"
+							>Gain · {looper.inputGainsDb[src] > 0 ? "+" : ""}{looper.inputGainsDb[src]} dB</span
+						>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="-12"
+							max="24"
+							step="1"
+							value={looper.inputGainsDb[src]}
+							aria-label="{LOOP_SOURCE_LABELS[src]} gain in decibels"
+							oninput={(e) => looper.setInputGainDb(src, Number(e.currentTarget.value))}
+						/>
+					</label>
 					<p class="text-12px opacity-70">
 						{#if looper.labels[src]}Open: {looper.labels[src]}.{:else if src === "line"}A second
 							input, for an instrument on an audio interface; an input on one channel of a stereo
@@ -992,6 +1007,21 @@
 				</div>
 				<label class="block">
 					<span class="device-button-label"
+						>Gain · {looper.inputGainsDb.computer > 0 ? "+" : ""}{looper.inputGainsDb.computer} dB</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="-12"
+						max="24"
+						step="1"
+						value={looper.inputGainsDb.computer}
+						aria-label="Computer gain in decibels"
+						oninput={(e) => looper.setInputGainDb("computer", Number(e.currentTarget.value))}
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label"
 						>Computer audio latency · {looper.computerLatencyMs} ms</span
 					>
 					<input
@@ -1015,6 +1045,15 @@
 						onchange={(e) => looper.setMonitorMic(e.currentTarget.checked)}
 					/>
 					Hear the microphone and the line in through the speakers
+				</label>
+				<label class="flex items-center gap-2 text-13px text-blue-100/90">
+					<input
+						type="checkbox"
+						class="accent-maximumYellow"
+						checked={looper.normalize}
+						onchange={(e) => looper.setNormalize(e.currentTarget.checked)}
+					/>
+					Normalize recorded layers from the inputs to −1 dBFS
 				</label>
 				<label class="block">
 					<span class="device-button-label"

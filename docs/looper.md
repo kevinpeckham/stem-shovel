@@ -309,6 +309,17 @@ in-flight promise. Also: the device menus open to the right, since the
 Settings group sits at the device's left edge and a menu spanning left had
 no room (it pinned to the viewport's edge), with a `max-w-lg` cap.
 
+**Gain and normalize** (Kevin: "the input level seems low, is there an
+auto adjustment we can make or add a control?"). The browser's own
+automatic gain is off with the other voice processors (they ruin an
+instrument), so each outside source has a GainNode after its channel
+wiring (`#withGain`, `inputGainsDb` −12 to +24 dB, remembered per
+browser, moved live by `setInputGainDb`), so the meter and the layer carry
+it; and `normalize` (off by default) scales a captured pass from an
+outside source so its peak sits at −1 dBFS, never a near-silent one and
+never down. Verified on dev: a layer recorded at −12 dB peaks at 0.251 of
+one at 0 dB, and a normalized quiet layer peaks at 0.891.
+
 ## Importing a take (2026-10-02)
 
 Kevin: "Can idea recording takes be imported as layers into the looper?"

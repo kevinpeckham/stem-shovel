@@ -120,6 +120,10 @@ class LooperEngine {
 	});
 	/** Audio from another program (getDisplayMedia) arrives late by the capture's own path, which nothing here can measure: a slider. */
 	computerLatencyMs = $state(0);
+	/** Each outside source's gain in dB (an interface's line input sits well under a microphone's level; Kevin), −12 to +24, remembered per browser; applied live, so the meter and the layer carry it. */
+	inputGainsDb = $state<Record<InputSource | "computer", number>>({ mic: 0, line: 0, computer: 0 });
+	/** Scale each recorded pass from an outside source so its peak sits at −1 dBFS (never a near-silent one); off by default. */
+	normalize = $state(false);
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
 	/** How far ahead of the main thread's clock a start is scheduled: enough for the scheduling to land in the render thread's future. */
@@ -137,6 +141,7 @@ class LooperEngine {
 	/** The node each outside source comes in through, replaced when its device changes. */
 	#inputNodes: Partial<Record<LoopSource, AudioNode>> = {};
 	#monitors: Partial<Record<InputSource, GainNode>> = {};
+	#inputGainNodes: Partial<Record<InputSource | "computer", GainNode>> = {};
 	#playing: { layerId: string; src: AudioBufferSourceNode; gain: GainNode }[] = [];
 	/** Bar 1 of the first pass on the context's clock. */
 	#loopStart = 0;
@@ -222,6 +227,11 @@ class LooperEngine {
 			}
 			const computer = Number(localStorage.getItem("stemshovel.looper.computer-latency-ms"));
 			if (Number.isFinite(computer) && computer >= 0) this.computerLatencyMs = computer;
+			for (const src of ["mic", "line", "computer"] as const) {
+				const db = Number(localStorage.getItem(`stemshovel.looper.${src}-gain-db`));
+				if (Number.isFinite(db) && db >= -12 && db <= 24) this.inputGainsDb[src] = db;
+			}
+			this.normalize = localStorage.getItem("stemshovel.looper.normalize") === "1";
 		} catch {
 			// Private mode: the defaults.
 		}
@@ -550,7 +560,10 @@ class LooperEngine {
 		}
 		this.#streams[source] = stream;
 		this.labels[source] = stream.getAudioTracks()[0]?.label || null;
-		const node = this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes[source]);
+		const node = this.#withGain(
+			source,
+			this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes[source]),
+		);
 		this.#tapSource(source, node);
 		this.#monitors[source]?.disconnect();
 		const monitor = ctx.createGain();
@@ -603,7 +616,10 @@ class LooperEngine {
 		};
 		this.#tapSource(
 			"computer",
-			this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes.computer),
+			this.#withGain(
+				"computer",
+				this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes.computer),
+			),
 		);
 		return true;
 	}
@@ -637,7 +653,10 @@ class LooperEngine {
 		}
 		const stream = this.#streams[source];
 		if (!stream || !this.#ctx) return;
-		const node = this.#withChannels(this.#ctx.createMediaStreamSource(stream), mode);
+		const node = this.#withGain(
+			source,
+			this.#withChannels(this.#ctx.createMediaStreamSource(stream), mode),
+		);
 		this.#tapSource(source, node);
 		if (source !== "computer") {
 			this.#monitors[source]?.disconnect();
@@ -652,6 +671,37 @@ class LooperEngine {
 		this.computerLatencyMs = Math.max(0, Math.min(500, Math.round(ms)));
 		try {
 			localStorage.setItem("stemshovel.looper.computer-latency-ms", String(this.computerLatencyMs));
+		} catch {
+			// Private mode.
+		}
+	}
+	/** The source's gain stage, kept so the slider moves it live. */
+	#withGain(source: InputSource | "computer", node: AudioNode): AudioNode {
+		const ctx = this.#ctx!;
+		const g = ctx.createGain();
+		g.gain.value = 10 ** (this.inputGainsDb[source] / 20);
+		node.connect(g);
+		this.#inputGainNodes[source] = g;
+		return g;
+	}
+	setInputGainDb(source: InputSource | "computer", db: number) {
+		const v = Math.max(-12, Math.min(24, Math.round(db)));
+		this.inputGainsDb[source] = v;
+		this.#inputGainNodes[source]?.gain.setTargetAtTime(
+			10 ** (v / 20),
+			this.#ctx?.currentTime ?? 0,
+			0.02,
+		);
+		try {
+			localStorage.setItem(`stemshovel.looper.${source}-gain-db`, String(v));
+		} catch {
+			// Private mode.
+		}
+	}
+	setNormalize(on: boolean) {
+		this.normalize = on;
+		try {
+			localStorage.setItem("stemshovel.looper.normalize", on ? "1" : "0");
 		} catch {
 			// Private mode.
 		}
@@ -932,6 +982,22 @@ class LooperEngine {
 		const buffer = ctx.createBuffer(2, frames, ctx.sampleRate);
 		for (let c = 0; c < 2; c++)
 			buffer.getChannelData(c).set(m.channels[c].subarray(offset, offset + frames));
+		// Normalize: a quiet pass from an outside source up to −1 dBFS (not a near-silent one, and never down).
+		if (this.normalize && (source === "mic" || source === "line" || source === "computer")) {
+			let peak = 0;
+			for (let c = 0; c < 2; c++) {
+				const x = buffer.getChannelData(c);
+				for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+			}
+			const target = 0.891; // −1 dBFS
+			if (peak > 0.01 && peak < target) {
+				const k = target / peak;
+				for (let c = 0; c < 2; c++) {
+					const x = buffer.getChannelData(c);
+					for (let i = 0; i < x.length; i++) x[i] *= k;
+				}
+			}
+		}
 		const same = this.layers.filter((l) => l.source === source).length;
 		const layer: LoopLayer = {
 			id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
