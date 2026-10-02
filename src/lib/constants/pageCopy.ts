@@ -6,4 +6,8 @@
  */
 export const PAGE_COPY: Record<string, string> = {
 	"looper-page": "/looper",
+	"drum-machine-page": "/drum-machine",
+	"piano-page": "/piano",
+	"tuner-page": "/tuner",
+	"metronome-page": "/metronome",
 };

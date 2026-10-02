@@ -1,7 +1,9 @@
 import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import { listBeats, songForBeat } from "$lib/server/data";
+import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
+import copyFallback from "../../../scripts/user-docs/drum-machine-page.md?raw";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -27,5 +29,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		textToBeat: aiAvailable(),
 		// A system admin can make the beat here the home page's starting one (the ⋯ menu), as on the home page itself.
 		homeAdmin: locals.user?.isSystemAdmin === true,
+		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
+		copy: await pageCopy("drum-machine-page", copyFallback, locals),
 	};
 };

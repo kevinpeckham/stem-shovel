@@ -38,7 +38,13 @@ const ORDER = [
 ];
 
 /** Pages whose words live in a "copy" doc (docs/page-copy.md): seeded like the docs, listed nowhere, edited at /docs/<slug>/edit. */
-const COPY_PAGES = ["looper-page"];
+const COPY_PAGES = [
+	"looper-page",
+	"drum-machine-page",
+	"piano-page",
+	"tuner-page",
+	"metronome-page",
+];
 
 const db = drizzle({
 	connection: {

@@ -1,7 +1,9 @@
 import { publicBlobUrl } from "$lib/server/blob";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import { listPianoPresets, sitePianoPresets } from "$lib/server/data";
+import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
+import copyFallback from "../../../scripts/user-docs/piano-page.md?raw";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -23,5 +25,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 			: null,
 		presets: member ? await listPianoPresets(member.accountId) : [],
 		presetAdmin: locals.user?.isSystemAdmin === true,
+		// The page's words (title, intro, "How to Play" under the piano) from its copy doc, edited in the app (docs/page-copy.md).
+		copy: await pageCopy("piano-page", copyFallback, locals),
 	};
 };
