@@ -1,4 +1,5 @@
 import { audioSession } from "$lib/utils/audioSession";
+import { inputSources, type InputSource } from "./inputs.svelte";
 import { encodeWav24 } from "$lib/utils/encodeWav24";
 import { findLatency } from "$lib/utils/findLatency";
 import { tapTempo } from "$lib/utils/tapTempo";
@@ -35,18 +36,7 @@ export const LOOP_SOURCE_LABELS: Record<LoopSource, string> = {
 	drums: "Drums",
 };
 /** The sources that come in through an audio input device (docs/looper.md, "Inputs"): the microphone and a second input, an instrument on an interface say. */
-export type InputSource = "mic" | "line";
-/** A stereo input as it is, or one channel of it on both sides (an instrument on channel 1 of a stereo interface). */
-export type ChannelMode = "stereo" | "left" | "right";
-const DEVICE_KEYS: Record<InputSource, string> = {
-	mic: "stemshovel.looper.mic-device",
-	line: "stemshovel.looper.line-device",
-};
-const CHANNEL_KEYS: Record<InputSource | "computer", string> = {
-	mic: "stemshovel.looper.mic-channels",
-	line: "stemshovel.looper.line-channels",
-	computer: "stemshovel.looper.computer-channels",
-};
+export type { ChannelMode, InputSource } from "./inputs.svelte";
 export const LOOP_BARS = [1, 2, 4, 8] as const;
 export type LoopBars = (typeof LOOP_BARS)[number];
 export const MAX_LOOP_LAYERS = 16;
@@ -83,7 +73,6 @@ class LooperEngine {
 	/** The source Record captures. */
 	armed = $state<LoopSource>("mic");
 	/** Hear the microphone through the speakers (off: feedback on a laptop). */
-	monitorMic = $state(false);
 	/** The microphone's lateness, compensated on its layers; the context's own figure until measured. */
 	latencyMs = $state(0);
 	latencyMeasured = $state(false);
@@ -105,25 +94,6 @@ class LooperEngine {
 	position = $state({ bar: 0, beat: 0, fraction: 0 });
 	/** Each source's level for its meter, 0 to 1. */
 	levels = $state<Record<LoopSource, number>>({ mic: 0, line: 0, computer: 0, piano: 0, drums: 0 });
-	/** Each outside source's device label once it is open, and its last error. */
-	labels = $state<Partial<Record<LoopSource, string | null>>>({});
-	errors = $state<Partial<Record<LoopSource, string | null>>>({});
-	/** The audio input devices the browser lists (labels once permission is granted). */
-	inputs = $state<{ id: string; label: string }[]>([]);
-	/** The device chosen for each input source (null: the default), remembered per browser. */
-	deviceIds = $state<Record<InputSource, string | null>>({ mic: null, line: null });
-	/** How each outside source's channels are taken, remembered per browser. */
-	channelModes = $state<Record<InputSource | "computer", ChannelMode>>({
-		mic: "stereo",
-		line: "stereo",
-		computer: "stereo",
-	});
-	/** Audio from another program (getDisplayMedia) arrives late by the capture's own path, which nothing here can measure: a slider. */
-	computerLatencyMs = $state(0);
-	/** Each outside source's gain in dB (an interface's line input sits well under a microphone's level; Kevin), −12 to +24, remembered per browser; applied live, so the meter and the layer carry it. */
-	inputGainsDb = $state<Record<InputSource | "computer", number>>({ mic: 0, line: 0, computer: 0 });
-	/** Scale each recorded pass from an outside source so its peak sits at −1 dBFS (never a near-silent one); off by default. */
-	normalize = $state(false);
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
 	/** How far ahead of the main thread's clock a start is scheduled: enough for the scheduling to land in the render thread's future. */
@@ -137,11 +107,8 @@ class LooperEngine {
 	#sourceGains: Partial<Record<LoopSource, GainNode>> = {};
 	#analysers: Partial<Record<LoopSource, AnalyserNode>> = {};
 	#analyserBuf: Float32Array<ArrayBuffer> | null = null;
-	#streams: Partial<Record<"mic" | "line" | "computer", MediaStream>> = {};
 	/** The node each outside source comes in through, replaced when its device changes. */
 	#inputNodes: Partial<Record<LoopSource, AudioNode>> = {};
-	#monitors: Partial<Record<InputSource, GainNode>> = {};
-	#inputGainNodes: Partial<Record<InputSource | "computer", GainNode>> = {};
 	#playing: { layerId: string; src: AudioBufferSourceNode; gain: GainNode }[] = [];
 	/** Bar 1 of the first pass on the context's clock. */
 	#loopStart = 0;
@@ -172,6 +139,7 @@ class LooperEngine {
 		if (this.#opening) return this.#opening;
 		if (this.#ctx) {
 			if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
+			if (inputSources.context !== this.#ctx) this.#attachInputs();
 			return;
 		}
 		this.#opening = this.#openNow().finally(() => {
@@ -220,24 +188,7 @@ class LooperEngine {
 		this.#analyserBuf = new Float32Array(1024);
 		cancelAnimationFrame(this.#meterFrame);
 		this.#meter();
-		try {
-			for (const src of ["mic", "line"] as const) {
-				this.deviceIds[src] = localStorage.getItem(DEVICE_KEYS[src]);
-			}
-			for (const src of ["mic", "line", "computer"] as const) {
-				const mode = localStorage.getItem(CHANNEL_KEYS[src]);
-				if (mode === "stereo" || mode === "left" || mode === "right") this.channelModes[src] = mode;
-			}
-			const computer = Number(localStorage.getItem("stemshovel.looper.computer-latency-ms"));
-			if (Number.isFinite(computer) && computer >= 0) this.computerLatencyMs = computer;
-			for (const src of ["mic", "line", "computer"] as const) {
-				const db = Number(localStorage.getItem(`stemshovel.looper.${src}-gain-db`));
-				if (Number.isFinite(db) && db >= -12 && db <= 24) this.inputGainsDb[src] = db;
-			}
-			this.normalize = localStorage.getItem("stemshovel.looper.normalize") === "1";
-		} catch {
-			// Private mode: the defaults.
-		}
+		this.#attachInputs();
 		try {
 			const stored = Number(localStorage.getItem(LATENCY_KEY));
 			if (Number.isFinite(stored) && stored > 0) {
@@ -526,206 +477,40 @@ class LooperEngine {
 	async requestMic(): Promise<boolean> {
 		return this.requestInput("mic");
 	}
-	/**
-	 * An input device for the microphone or the line-in source (docs/looper.md,
-	 * "Inputs"): the chosen device or the default, with the voice processors
-	 * off, as a stereo source or one channel of it on both sides; from a
-	 * gesture. Opening one again (another device) replaces the earlier one.
-	 */
+	/** The shared sources (inputs.svelte.ts) wired into this context: each open one is tapped here, and a change of device or channels re-taps it. */
+	#attachInputs() {
+		inputSources.attach(this.#ctx!, {
+			monitorOut: this.#master!,
+			onsource: (source, node) => {
+				if (node) this.#tapSource(source, node);
+				else this.#untap(source);
+			},
+		});
+	}
+	#untap(source: LoopSource) {
+		this.#sourceGains[source]?.disconnect();
+		this.#analysers[source]?.disconnect();
+		this.#inputNodes[source]?.disconnect();
+		delete this.#sourceGains[source];
+		delete this.#analysers[source];
+		delete this.#inputNodes[source];
+		this.levels[source] = 0;
+	}
+	/** The microphone or the line in (inputs.svelte.ts), opened into this looper; from a gesture. */
 	async requestInput(source: InputSource, deviceId?: string | null): Promise<boolean> {
 		await this.open();
-		const ctx = this.#ctx!;
-		if (deviceId !== undefined) this.setDevice(source, deviceId);
-		const id = this.deviceIds[source];
-		for (const t of this.#streams[source]?.getTracks() ?? []) t.stop();
-		this.errors[source] = null;
-		let stream: MediaStream;
-		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				audio: {
-					echoCancellation: false,
-					noiseSuppression: false,
-					autoGainControl: false,
-					sampleRate: { ideal: ctx.sampleRate },
-					channelCount: { ideal: 2 },
-					...(id ? { deviceId: { exact: id } } : {}),
-				},
-			});
-		} catch (e) {
-			const name = (e as { name?: string }).name;
-			this.errors[source] =
-				name === "NotAllowedError"
-					? "Microphone access was refused. Allow it for this site in your browser settings, then try again."
-					: name === "NotFoundError" || name === "OverconstrainedError"
-						? "That input was not found. Choose another in the Inputs menu."
-						: String(e);
-			return false;
-		}
-		this.#streams[source] = stream;
-		this.labels[source] = stream.getAudioTracks()[0]?.label || null;
-		const node = this.#withGain(
-			source,
-			this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes[source]),
-		);
-		this.#tapSource(source, node);
-		this.#monitors[source]?.disconnect();
-		const monitor = ctx.createGain();
-		monitor.gain.value = this.monitorMic ? 1 : 0;
-		node.connect(monitor);
-		monitor.connect(this.#master!);
-		this.#monitors[source] = monitor;
-		void this.listInputs();
-		return true;
+		return inputSources.requestInput(source, deviceId);
 	}
-	/**
-	 * Audio from another program on the computer, through the browser's share
-	 * picker (`getDisplayMedia` with audio: a tab, a window or the whole
-	 * screen with "share audio" ticked; the video is dropped at once). What a
-	 * browser offers differs: Chrome shares a tab's audio everywhere and the
-	 * system's on Windows; on a Mac the system's audio needs a loopback device
-	 * chosen as the line-in instead; Safari shares no audio.
-	 */
+	/** Audio from another program through the browser's share picker (inputs.svelte.ts); from a gesture. */
 	async requestComputer(): Promise<boolean> {
 		await this.open();
-		const ctx = this.#ctx!;
-		this.errors.computer = null;
-		if (!navigator.mediaDevices?.getDisplayMedia) {
-			this.errors.computer =
-				'This browser cannot capture the computer\'s audio. Chrome or Edge can (tick "Share audio" in the picker); on a Mac, choose a loopback device as the line-in instead.';
-			return false;
-		}
-		for (const t of this.#streams.computer?.getTracks() ?? []) t.stop();
-		let shared: MediaStream;
-		try {
-			shared = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-		} catch (e) {
-			const name = (e as { name?: string }).name;
-			this.errors.computer = name === "NotAllowedError" ? "Nothing was shared." : String(e);
-			return false;
-		}
-		for (const t of shared.getVideoTracks()) t.stop();
-		const audio = shared.getAudioTracks();
-		if (audio.length === 0) {
-			this.errors.computer =
-				'No audio was shared: pick a tab, window or screen and tick "Share audio" in the picker.';
-			return false;
-		}
-		const stream = new MediaStream(audio);
-		this.#streams.computer = stream;
-		this.labels.computer = audio[0]?.label || "Shared audio";
-		audio[0].onended = () => {
-			delete this.#streams.computer;
-			this.labels.computer = null;
-		};
-		this.#tapSource(
-			"computer",
-			this.#withGain(
-				"computer",
-				this.#withChannels(ctx.createMediaStreamSource(stream), this.channelModes.computer),
-			),
-		);
-		return true;
-	}
-	/** The audio input devices, for the Inputs menu (labels once a microphone was allowed). */
-	async listInputs(): Promise<void> {
-		try {
-			const all = await navigator.mediaDevices.enumerateDevices();
-			this.inputs = all
-				.filter((d) => d.kind === "audioinput")
-				.map((d, i) => ({ id: d.deviceId, label: d.label || `Input ${i + 1}` }));
-		} catch {
-			this.inputs = [];
-		}
-	}
-	setDevice(source: InputSource, deviceId: string | null) {
-		this.deviceIds[source] = deviceId;
-		try {
-			if (deviceId) localStorage.setItem(DEVICE_KEYS[source], deviceId);
-			else localStorage.removeItem(DEVICE_KEYS[source]);
-		} catch {
-			// Private mode.
-		}
-	}
-	/** The channel mode of an outside source; an open source is re-wired at once. */
-	setChannelMode(source: InputSource | "computer", mode: ChannelMode) {
-		this.channelModes[source] = mode;
-		try {
-			localStorage.setItem(CHANNEL_KEYS[source], mode);
-		} catch {
-			// Private mode.
-		}
-		const stream = this.#streams[source];
-		if (!stream || !this.#ctx) return;
-		const node = this.#withGain(
-			source,
-			this.#withChannels(this.#ctx.createMediaStreamSource(stream), mode),
-		);
-		this.#tapSource(source, node);
-		if (source !== "computer") {
-			this.#monitors[source]?.disconnect();
-			const monitor = this.#ctx.createGain();
-			monitor.gain.value = this.monitorMic ? 1 : 0;
-			node.connect(monitor);
-			monitor.connect(this.#master!);
-			this.#monitors[source] = monitor;
-		}
-	}
-	setComputerLatencyMs(ms: number) {
-		this.computerLatencyMs = Math.max(0, Math.min(500, Math.round(ms)));
-		try {
-			localStorage.setItem("stemshovel.looper.computer-latency-ms", String(this.computerLatencyMs));
-		} catch {
-			// Private mode.
-		}
-	}
-	/** The source's gain stage, kept so the slider moves it live. */
-	#withGain(source: InputSource | "computer", node: AudioNode): AudioNode {
-		const ctx = this.#ctx!;
-		const g = ctx.createGain();
-		g.gain.value = 10 ** (this.inputGainsDb[source] / 20);
-		node.connect(g);
-		this.#inputGainNodes[source] = g;
-		return g;
-	}
-	setInputGainDb(source: InputSource | "computer", db: number) {
-		const v = Math.max(-12, Math.min(24, Math.round(db)));
-		this.inputGainsDb[source] = v;
-		this.#inputGainNodes[source]?.gain.setTargetAtTime(
-			10 ** (v / 20),
-			this.#ctx?.currentTime ?? 0,
-			0.02,
-		);
-		try {
-			localStorage.setItem(`stemshovel.looper.${source}-gain-db`, String(v));
-		} catch {
-			// Private mode.
-		}
-	}
-	setNormalize(on: boolean) {
-		this.normalize = on;
-		try {
-			localStorage.setItem("stemshovel.looper.normalize", on ? "1" : "0");
-		} catch {
-			// Private mode.
-		}
-	}
-	/** A stereo source as it is, or one of its channels on both sides. */
-	#withChannels(node: AudioNode, mode: ChannelMode): AudioNode {
-		if (mode === "stereo") return node;
-		const ctx = this.#ctx!;
-		const splitter = ctx.createChannelSplitter(2);
-		const merger = ctx.createChannelMerger(2);
-		node.connect(splitter);
-		const ch = mode === "left" ? 0 : 1;
-		splitter.connect(merger, ch, 0);
-		splitter.connect(merger, ch, 1);
-		return merger;
+		return inputSources.requestComputer();
 	}
 	get hasMic() {
-		return !!this.#streams.mic;
+		return inputSources.has("mic");
 	}
 	hasSource(source: LoopSource) {
-		return source === "piano" || source === "drums" || !!this.#streams[source];
+		return source === "piano" || source === "drums" || inputSources.has(source);
 	}
 
 	setArmed(source: LoopSource) {
@@ -736,11 +521,6 @@ class LooperEngine {
 		const t = this.#ctx?.currentTime ?? 0;
 		for (const s of LOOP_SOURCES)
 			this.#sourceGains[s]?.gain.setTargetAtTime(s === source ? 1 : 0, t, 0.005);
-	}
-	setMonitorMic(on: boolean) {
-		this.monitorMic = on;
-		for (const m of Object.values(this.#monitors))
-			m?.gain.setTargetAtTime(on ? 1 : 0, this.#ctx?.currentTime ?? 0, 0.01);
 	}
 	setVolume(v: number) {
 		this.volume = Math.max(0, Math.min(1, v));
@@ -895,11 +675,15 @@ class LooperEngine {
 		}
 		if (
 			(this.armed === "mic" || this.armed === "line") &&
-			!this.#streams[this.armed] &&
+			!inputSources.has(this.armed) &&
 			!(await this.requestInput(this.armed))
 		)
 			return;
-		if (this.armed === "computer" && !this.#streams.computer && !(await this.requestComputer()))
+		if (
+			this.armed === "computer" &&
+			!inputSources.has("computer") &&
+			!(await this.requestComputer())
+		)
 			return;
 		const source = this.armed;
 		// The drums must be ready to start on the bar: the kit decoded before the bar is chosen.
@@ -975,7 +759,7 @@ class LooperEngine {
 			source === "mic" || source === "line"
 				? this.latencyMs
 				: source === "computer"
-					? this.computerLatencyMs
+					? inputSources.computerLatencyMs
 					: source === "piano" && this.compensatePiano
 						? this.outputLatencyMs
 						: 0;
@@ -986,7 +770,10 @@ class LooperEngine {
 		for (let c = 0; c < 2; c++)
 			buffer.getChannelData(c).set(m.channels[c].subarray(offset, offset + frames));
 		// Normalize: a quiet pass from an outside source up to −1 dBFS (not a near-silent one, and never down).
-		if (this.normalize && (source === "mic" || source === "line" || source === "computer")) {
+		if (
+			inputSources.normalize &&
+			(source === "mic" || source === "line" || source === "computer")
+		) {
 			let peak = 0;
 			for (let c = 0; c < 2; c++) {
 				const x = buffer.getChannelData(c);
@@ -1069,7 +856,7 @@ class LooperEngine {
 	/** Three clicks through the speakers, the microphone recorded, the delay measured (docs/looper.md). */
 	async calibrate(): Promise<number | null> {
 		if (this.phase !== "idle") return null;
-		if (!this.#streams.mic && !(await this.requestMic())) return null;
+		if (!inputSources.has("mic") && !(await this.requestMic())) return null;
 		const ctx = this.#ctx!;
 		this.calibrating = true;
 		this.#openTap("mic");

@@ -10,6 +10,7 @@
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
+	import { inputSources, type ChannelMode, type InputSource } from "$lib/audio/inputs.svelte";
 	import {
 		LOOP_BARS,
 		LOOP_SOURCES,
@@ -17,8 +18,6 @@
 		LOOP_SOURCE_LABELS,
 		MAX_LOOP_LAYERS,
 		looper,
-		type ChannelMode,
-		type InputSource,
 		type LoopBars,
 		type LoopSource,
 	} from "$lib/audio/looper.svelte";
@@ -48,7 +47,12 @@
 	let { data } = $props();
 	// The dev server only: the engine on the window, so a Playwright script can measure a layer's timing (docs/looper.md, "Verified").
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __looper: looper, __piano: piano, __drums: drumMachine });
+		Object.assign(window, {
+			__looper: looper,
+			__inputs: inputSources,
+			__piano: piano,
+			__drums: drumMachine,
+		});
 
 	// The looper itself and its notes pop out into panels from lg, as the recorder's device and notes do (Kevin); remembered per browser.
 	let looperFloating = $state(false);
@@ -123,11 +127,20 @@
 	});
 
 	/** Arm a source; the microphone asks for permission on its first turn, and an instrument's panel opens if it is not out (Kevin). */
+	/** The armed source's last error, for the screen (the instruments have none). */
+	const armedError = $derived(
+		looper.armed === "piano" || looper.armed === "drums" ? null : inputSources.errors[looper.armed],
+	);
+	/** A source button's title: the open device's label for an outside source, else its name. */
+	function sourceLabel(source: LoopSource) {
+		const open = source === "piano" || source === "drums" ? null : inputSources.labels[source];
+		return open ?? LOOP_SOURCE_LABELS[source];
+	}
 	async function arm(source: LoopSource) {
 		looper.setArmed(source);
-		if (source === "mic" && !looper.hasMic) await looper.requestMic();
-		if (source === "line" && !looper.hasSource("line")) await looper.requestInput("line");
-		if (source === "computer" && !looper.hasSource("computer")) await looper.requestComputer();
+		if (source === "mic" && !inputSources.has("mic")) await looper.requestMic();
+		if (source === "line" && !inputSources.has("line")) await looper.requestInput("line");
+		if (source === "computer" && !inputSources.has("computer")) await looper.requestComputer();
 		if (source === "piano" && !pianoOpen) togglePiano();
 		if (source === "drums" && !drumsOpen) toggleDrums();
 	}
@@ -508,8 +521,8 @@
 										: ""}</span
 								>
 							{/if}
-							{#if looper.errors[looper.armed]}
-								<span class="text-red-300">· {looper.errors[looper.armed]}</span>
+							{#if armedError}
+								<span class="text-red-300">· {armedError}</span>
 							{/if}
 							{#if looper.restored > 0 && looper.phase === "idle" && looper.layers.length === looper.restored}
 								<span>· back from last time</span>
@@ -543,7 +556,7 @@
 										type="button"
 										aria-pressed={looper.armed === source}
 										disabled={looper.phase === "recording"}
-										title={looper.labels[source] ?? LOOP_SOURCE_LABELS[source]}
+										title={sourceLabel(source)}
 										onclick={() => void arm(source)}
 									>
 										<span class="flex items-center justify-center gap-2 leading-none">
@@ -580,7 +593,7 @@
 											position="bottom right"
 											buttonBaseClasses="device-button-sm px-2 rounded-l-none min-w-0 text-11px"
 											buttonClasses={looper.armed === source ||
-											(source === "mic" && looper.monitorMic)
+											(source === "mic" && inputSources.monitor)
 												? "text-accent"
 												: ""}
 											popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
@@ -609,8 +622,9 @@
 								{#if source === "mic" || source === "line" || source === "computer"}
 									<label
 										class="block px-0.5"
-										title="Input gain: {looper.inputGainsDb[source] > 0 ? '+' : ''}{looper
-											.inputGainsDb[source]} dB"
+										title="Input gain: {inputSources.inputGainsDb[source] > 0
+											? '+'
+											: ''}{inputSources.inputGainsDb[source]} dB"
 									>
 										<span class="sr-only">{LOOP_SOURCE_LABELS[source]} gain</span>
 										<input
@@ -619,16 +633,16 @@
 											min="-12"
 											max="24"
 											step="1"
-											value={looper.inputGainsDb[source]}
+											value={inputSources.inputGainsDb[source]}
 											aria-label="{LOOP_SOURCE_LABELS[source]} gain in decibels"
-											oninput={(e) => looper.setInputGainDb(source, Number(e.currentTarget.value))}
+											oninput={(e) =>
+												inputSources.setInputGainDb(source, Number(e.currentTarget.value))}
 										/>
 										<span
 											class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
 											aria-hidden="true"
-											>Gain {looper.inputGainsDb[source] > 0 ? "+" : ""}{looper.inputGainsDb[
-												source
-											]} dB</span
+											>Gain {inputSources.inputGainsDb[source] > 0 ? "+" : ""}{inputSources
+												.inputGainsDb[source]} dB</span
 										>
 									</label>
 								{:else}
@@ -1001,12 +1015,12 @@
 					<select
 						class="device-field w-full"
 						aria-label="{LOOP_SOURCE_LABELS[src]} device"
-						value={looper.deviceIds[src] ?? ""}
-						onfocus={() => void looper.listInputs()}
+						value={inputSources.deviceIds[src] ?? ""}
+						onfocus={() => void inputSources.listInputs()}
 						onchange={(e) => void looper.requestInput(src, e.currentTarget.value || null)}
 					>
 						<option value="">Default input</option>
-						{#each looper.inputs as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
+						{#each inputSources.inputs as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
 					</select>
 				</label>
 				<label class="block">
@@ -1014,8 +1028,8 @@
 					<select
 						class="device-field"
 						aria-label="{LOOP_SOURCE_LABELS[src]} channels"
-						value={looper.channelModes[src]}
-						onchange={(e) => looper.setChannelMode(src, e.currentTarget.value as ChannelMode)}
+						value={inputSources.channelModes[src]}
+						onchange={(e) => inputSources.setChannelMode(src, e.currentTarget.value as ChannelMode)}
 					>
 						<option value="stereo">Stereo</option>
 						<option value="left">Left only</option>
@@ -1024,11 +1038,12 @@
 				</label>
 			</div>
 			<p class="text-12px opacity-70">
-				{#if looper.labels[src]}Open: {looper.labels[src]}.{:else if src === "line"}A second input,
-					for an instrument on an audio interface; an input on one channel of a stereo interface
-					wants Left only or Right only.{:else}Not open yet; it asks for permission on its first
-					turn.{/if}
-				{#if looper.errors[src]}<span class="text-red-300">{looper.errors[src]}</span>{/if}
+				{#if inputSources.labels[src]}Open: {inputSources.labels[src]}.{:else if src === "line"}A
+					second input, for an instrument on an audio interface; an input on one channel of a stereo
+					interface wants Left only or Right only.{:else}Not open yet; it asks for permission on its
+					first turn.{/if}
+				{#if inputSources.errors[src]}<span class="text-red-300">{inputSources.errors[src]}</span
+					>{/if}
 			</p>
 		</div>
 	{/snippet}
@@ -1038,8 +1053,8 @@
 			<input
 				type="checkbox"
 				class="accent-maximumYellow"
-				checked={looper.monitorMic}
-				onchange={(e) => looper.setMonitorMic(e.currentTarget.checked)}
+				checked={inputSources.monitor}
+				onchange={(e) => inputSources.setMonitor(e.currentTarget.checked)}
 			/>
 			Hear the microphone and the line in through the speakers
 		</label>
@@ -1050,8 +1065,8 @@
 			<input
 				type="checkbox"
 				class="accent-maximumYellow"
-				checked={looper.normalize}
-				onchange={(e) => looper.setNormalize(e.currentTarget.checked)}
+				checked={inputSources.normalize}
+				onchange={(e) => inputSources.setNormalize(e.currentTarget.checked)}
 			/>
 			Normalize recorded layers from the inputs to −1 dBFS
 		</label>
@@ -1128,8 +1143,10 @@
 					the screen and tick "Share audio". Chrome and Edge share a tab's audio anywhere and the
 					whole computer's on Windows; on a Mac, route the other program through a loopback device
 					and choose it as the line in. Safari cannot share audio.
-					{#if looper.labels.computer}<span>Sharing: {looper.labels.computer}.</span>{/if}
-					{#if looper.errors.computer}<span class="text-red-300">{looper.errors.computer}</span
+					{#if inputSources.labels.computer}<span>Sharing: {inputSources.labels.computer}.</span
+						>{/if}
+					{#if inputSources.errors.computer}<span class="text-red-300"
+							>{inputSources.errors.computer}</span
 						>{/if}
 				</p>
 				<div class="grid grid-cols-[auto_1fr] gap-2 items-end">
@@ -1137,16 +1154,18 @@
 						class="device-button-xs px-3"
 						type="button"
 						onclick={() => void looper.requestComputer()}
-						>{looper.labels.computer ? "Share something else" : "Choose what to share"}</button
+						>{inputSources.labels.computer
+							? "Share something else"
+							: "Choose what to share"}</button
 					>
 					<label class="block">
 						<span class="device-button-label">Channels</span>
 						<select
 							class="device-field w-full"
 							aria-label="Computer channels"
-							value={looper.channelModes.computer}
+							value={inputSources.channelModes.computer}
 							onchange={(e) =>
-								looper.setChannelMode("computer", e.currentTarget.value as ChannelMode)}
+								inputSources.setChannelMode("computer", e.currentTarget.value as ChannelMode)}
 						>
 							<option value="stereo">Stereo</option>
 							<option value="left">Left only</option>
@@ -1156,7 +1175,7 @@
 				</div>
 				<label class="block">
 					<span class="device-button-label"
-						>Computer audio latency · {looper.computerLatencyMs} ms</span
+						>Computer audio latency · {inputSources.computerLatencyMs} ms</span
 					>
 					<input
 						class="w-full accent-maximumYellow"
@@ -1164,9 +1183,9 @@
 						min="0"
 						max="300"
 						step="1"
-						value={looper.computerLatencyMs}
+						value={inputSources.computerLatencyMs}
 						aria-label="Computer audio latency in milliseconds"
-						oninput={(e) => looper.setComputerLatencyMs(Number(e.currentTarget.value))}
+						oninput={(e) => inputSources.setComputerLatencyMs(Number(e.currentTarget.value))}
 					/>
 				</label>
 				<p class="text-12px opacity-70">
