@@ -74,6 +74,13 @@
 			down, the space bar is the sustain pedal, and <kbd>ESC</kbd> stops everything.
 		</p>
 
+		<h3>A Note on Latency</h3>
+		<p>
+			Bluetooth headphones and speakers add a lot of delay between a key and its sound, often a
+			tenth of a second or more. For the best playing experience use your device's built-in speakers
+			or wired headphones.
+		</p>
+
 		<h3>MIDI</h3>
 		<p>
 			With a MIDI keyboard plugged in, the MIDI button <span
