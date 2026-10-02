@@ -287,7 +287,8 @@ program" and "an instrument plugged into the computer, an additional bus
 besides microphone or at least selecting a different bus". Five sources
 now: `mic`, `line`, `computer`, `piano`, `drums`. The microphone and the
 **line in** are both `getUserMedia` inputs (`requestInput(source,
-deviceId)`), each with its own device chosen in the **Inputs** menu from
+deviceId)`), each with its own device chosen in its own menu (the small button beside
+each source button; the Inputs menu it replaced held them all) from
 `enumerateDevices` (labels once a microphone was allowed, listed again on
 focus), remembered per browser, and a **channel mode**: stereo, or one
 channel on both sides through a splitter and merger (`#withChannels`), for
