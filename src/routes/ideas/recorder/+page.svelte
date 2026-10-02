@@ -10,7 +10,8 @@
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import type { InstrumentInput } from "$lib/components/DemoRecorder.svelte";
+	import { RECORDER_SOURCES, type RecorderSource } from "$lib/components/DemoRecorder.svelte";
+	import { inputSources } from "$lib/audio/inputs.svelte";
 	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
@@ -76,6 +77,9 @@
 	});
 
 	let recorder = $state<DemoRecorder | null>(null);
+	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
+	if (import.meta.env.DEV && typeof window !== "undefined")
+		Object.assign(window, { __inputs: inputSources, __piano: piano, __drums: drumMachine });
 	/** The idea in the recorder and the notes panel; null = a new idea not yet saved. */
 	let ideaId = $state<string | null>(null);
 	let idea = $derived(data.ideas.find((i) => i.id === ideaId) ?? null);
@@ -163,17 +167,37 @@
 	}
 	/** Multitrack takes (docs/demo-recording.md, "Multitrack takes"): the mix plus a file per source; offered with an instrument in the take, stereo by default on every visit (Kevin). */
 	let multitrack = $state(false);
-	/** The piano goes into the take while it is out, unless switched off (its panel's header); remembered per browser. */
-	let pianoInTake = $state(true);
-	const PIANO_IN_TAKE_KEY = "stemshovel.recorder.piano-in-take";
-	function setPianoInTake(on: boolean) {
-		pianoInTake = on;
+	/**
+	 * Which sources go into the take (docs/demo-recording.md, "Input sources"):
+	 * the recorder's source buttons switch them, as do the instrument panels'
+	 * "In the take" switches; remembered per browser, the microphone on by
+	 * default. Switching an instrument in opens its panel; closing the panel
+	 * switches it out.
+	 */
+	let sourcesOn = $state<Record<RecorderSource, boolean>>({
+		mic: true,
+		line: false,
+		computer: false,
+		piano: false,
+		drums: false,
+	});
+	const SOURCES_KEY = "stemshovel.recorder.sources";
+	function setSource(source: RecorderSource, on: boolean) {
+		sourcesOn[source] = on;
 		try {
-			localStorage.setItem(PIANO_IN_TAKE_KEY, on ? "1" : "0");
+			localStorage.setItem(SOURCES_KEY, JSON.stringify($state.snapshot(sourcesOn)));
 		} catch {
 			// Private mode: the choice lasts for this page only.
 		}
+		if (source === "piano" && on && !pianoOpen) togglePiano();
+		if (source === "drums" && on && !drumsOpen) toggleDrums();
 	}
+	const pianoInTake = $derived(sourcesOn.piano);
+	const drumsInTake = $derived(sourcesOn.drums);
+	const setPianoInTake = (on: boolean) => setSource("piano", on);
+	const setDrumsInTake = (on: boolean) => setSource("drums", on);
+	/** How many sources are in the take: two or more and the take can be multitrack. */
+	const sourcesInTake = $derived(RECORDER_SOURCES.filter((s) => sourcesOn[s]).length);
 	function togglePiano(e?: Event) {
 		pianoOpen = !pianoOpen;
 		if (pianoOpen) {
@@ -182,13 +206,13 @@
 		} else {
 			piano.allOff();
 			if (spaceOwner === "piano") spaceOwner = drumsOpen ? "drums" : null;
+			if (sourcesOn.piano) setSource("piano", false);
 		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
 	// The drum machine: the compact control in the toolbar always; on a desktop, the full machine in a floating
 	// panel too (docs/demo-recording.md, "The drum machine panel"). Its beat goes into the take unless switched off.
 	let drumsOpen = $state(false);
-	let drumsInTake = $state(true);
 	/** The drum machine's project is saved with the idea when a take is recorded, unless switched off; remembered per browser. */
 	let drumsSettings = $state(true);
 	const DRUMS_SETTINGS_KEY = "stemshovel.recorder.drums-settings";
@@ -215,31 +239,24 @@
 	function toggleDrums(e?: Event) {
 		drumsOpen = !drumsOpen;
 		if (drumsOpen) spaceOwner = "drums";
-		else if (spaceOwner === "drums") spaceOwner = pianoOpen ? "piano" : null;
+		else {
+			if (spaceOwner === "drums") spaceOwner = pianoOpen ? "piano" : null;
+			if (sourcesOn.drums) setSource("drums", false);
+		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
-	const DRUMS_IN_TAKE_KEY = "stemshovel.recorder.drums-in-take";
-	function setDrumsInTake(on: boolean) {
-		drumsInTake = on;
-		try {
-			localStorage.setItem(DRUMS_IN_TAKE_KEY, on ? "1" : "0");
-		} catch {
-			// Private mode: the choice lasts for this page only.
-		}
-	}
 	/**
-	 * What a take mixes in beside the microphone, asked at Record: the piano
-	 * and the drums whenever they are wanted in the take, their panels open or
-	 * not, so an instrument started after Record still lands (Kevin). An
-	 * instrument that is not playing contributes silence (digital zero): no
-	 * cost to the recording, only its idle audio graph.
+	 * The instruments' capture streams for the recorder, asked as a take starts
+	 * (a gesture) and as an instrument's meter is tapped: the piano's and the
+	 * drum machine's whenever they are in the take, their panels open or not,
+	 * so a beat started after Record still lands. An instrument that is not
+	 * playing contributes silence: no cost to the recording, only its idle graph.
 	 */
-	function instruments(): InstrumentInput[] {
-		const list: InstrumentInput[] = [];
-		if (pianoInTake) list.push({ label: "Piano", icon: "piano", stream: piano.captureStream() });
-		if (drumsInTake)
-			list.push({ label: "Drums", icon: "drums", stream: drumMachine.captureStream() });
-		return list;
+	function instrumentStreams(): Partial<Record<"piano" | "drums", MediaStream>> {
+		return {
+			...(sourcesOn.piano ? { piano: piano.captureStream() } : {}),
+			...(sourcesOn.drums ? { drums: drumMachine.captureStream() } : {}),
+		};
 	}
 
 	/**
@@ -285,29 +302,11 @@
 		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", i.title);
 		if (saved.piano) piano.applyPreset(saved.piano);
 	}
-	/** Quality, stereo and the microphone: per browser too (src/lib/utils/recorderPreferences.ts). */
+	/** Quality and silence trimming: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
 	/** The microphones the browser lists once permission is granted. */
-	let inputs = $state<{ id: string; label: string }[]>([]);
-	let findingInputs = $state(false);
 	function savePrefs() {
 		saveRecorderPreferences({ ...prefs });
-	}
-	/** Ask for the microphone once (permission), then list the inputs with their labels. */
-	async function findInputs() {
-		findingInputs = true;
-		try {
-			const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-			for (const t of s.getTracks()) t.stop();
-			const list = await navigator.mediaDevices.enumerateDevices();
-			inputs = list
-				.filter((d) => d.kind === "audioinput")
-				.map((d, i) => ({ id: d.deviceId, label: d.label || `Microphone ${i + 1}` }));
-		} catch (e) {
-			notify(`Could not list microphones: ${errorMessage(e)}`, { kind: "error" });
-		} finally {
-			findingInputs = false;
-		}
 	}
 	let recorderBusy = $derived(
 		phase === "recording" || phase === "requesting" || phase === "saving",
@@ -370,8 +369,16 @@
 		discardShort = loadDiscardShortTakes();
 		prefs = loadRecorderPreferences();
 		try {
-			drumsInTake = localStorage.getItem(DRUMS_IN_TAKE_KEY) !== "0";
-			pianoInTake = localStorage.getItem(PIANO_IN_TAKE_KEY) !== "0";
+			const saved = JSON.parse(localStorage.getItem(SOURCES_KEY) ?? "null") as unknown;
+			if (saved && typeof saved === "object") {
+				for (const src of RECORDER_SOURCES) {
+					const v = (saved as Record<string, unknown>)[src];
+					if (typeof v === "boolean") sourcesOn[src] = v;
+				}
+			}
+			// An instrument comes back into the take only with its panel: the panels start closed.
+			sourcesOn.piano = false;
+			sourcesOn.drums = false;
 			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
 			pianoSettings = localStorage.getItem(PIANO_SETTINGS_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
@@ -863,15 +870,14 @@
 					onnewsong={(t) => idea && songDialog(idea, t, "new")}
 					onaddstems={(t) => idea && songDialog(idea, t, "stems")}
 					bind:multitrack
-					multitrackAvailable={drumsInTake || pianoInTake}
+					multitrackAvailable={sourcesInTake >= 2}
 					ondeleteidea={() => idea && removeIdea(idea)}
 					onnewidea={newIdea}
 					minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
 					quality={prefs.quality}
-					stereo={prefs.stereo}
-					inputId={prefs.inputId}
-					{instruments}
-					oninputs={(list) => (inputs = list)}
+					{sourcesOn}
+					ontoggle={setSource}
+					{instrumentStreams}
 					newIdeaDisabled={!ideaId && !takeId && phase === "idle"}
 					takes={idea?.takes ?? []}
 					onpick={(id) => {
@@ -1421,52 +1427,6 @@
 					</span>
 				</label>
 			</fieldset>
-			<label class="flex items-start gap-3">
-				<input
-					class="mt-1 accent-maximumYellow"
-					type="checkbox"
-					bind:checked={prefs.stereo}
-					onchange={savePrefs}
-				/>
-				<span>
-					Stereo input
-					<span class="block text-13px opacity-70"
-						>For an audio interface with two channels; a phone microphone is mono anyway. Doubles
-						the file.</span
-					>
-				</span>
-			</label>
-			<div class="grid gap-1.5">
-				<label class="block" for="recorder-input">Microphone</label>
-				<div class="flex items-center gap-2">
-					<select
-						id="recorder-input"
-						class="field text-sm"
-						bind:value={prefs.inputId}
-						onchange={savePrefs}
-					>
-						<option value={null}>Default microphone</option>
-						{#each inputs as i (i.id)}
-							<option value={i.id}>{i.label}</option>
-						{/each}
-						{#if prefs.inputId && !inputs.some((i) => i.id === prefs.inputId)}
-							<option value={prefs.inputId}>Chosen earlier (not listed yet)</option>
-						{/if}
-					</select>
-					<button
-						class="button button-xs shrink-0"
-						type="button"
-						disabled={findingInputs}
-						onclick={findInputs}
-					>
-						{findingInputs ? "Looking…" : inputs.length ? "Refresh" : "Find microphones"}
-					</button>
-				</div>
-				<span class="text-13px opacity-70"
-					>An interface plugged into a phone or a computer shows up here once the browser has
-					microphone permission.</span
-				>
-			</div>
 			<label class="flex items-start gap-3">
 				<input
 					class="mt-1 accent-maximumYellow"

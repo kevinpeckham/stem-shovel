@@ -53,10 +53,10 @@
 			{onclick}
 		>
 			<span class="flex items-center justify-center gap-2 leading-none">
-				{#if icon}
-					<span class="grid place-items-center w-1em" aria-hidden="true">{@render icon()}</span>
-				{:else if iconClass}
+				{#if iconClass}
 					<span class={iconClass} aria-hidden="true"></span>
+				{:else if icon}
+					<span class="grid place-items-center w-1em" aria-hidden="true">{@render icon()}</span>
 				{/if}
 				{label}
 			</span>

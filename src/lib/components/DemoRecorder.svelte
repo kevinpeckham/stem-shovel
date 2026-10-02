@@ -1,3 +1,21 @@
+<script module lang="ts">
+	import { OUTSIDE_SOURCE_LABELS, type OutsideSource } from "$lib/audio/inputs.svelte";
+
+	/**
+	 * What a take can record (docs/demo-recording.md, "Input sources"): the
+	 * three outside sources of src/lib/audio/inputs.svelte.ts and the two
+	 * instruments. Any mix of them is in a take at once; a source's button
+	 * on the device switches it in or out.
+	 */
+	export type RecorderSource = OutsideSource | "piano" | "drums";
+	export const RECORDER_SOURCES: RecorderSource[] = ["mic", "line", "computer", "piano", "drums"];
+	export const RECORDER_SOURCE_LABELS: Record<RecorderSource, string> = {
+		...OUTSIDE_SOURCE_LABELS,
+		piano: "Piano",
+		drums: "Drums",
+	};
+</script>
+
 <script lang="ts">
 	import RecorderWave from "$lib/components/RecorderWave.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
@@ -19,6 +37,12 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { encodeWav } from "$lib/utils/encodeWav";
+	import { encodeWav24 } from "$lib/utils/encodeWav24";
+	import { inputSources } from "$lib/audio/inputs.svelte";
+	import { piano } from "$lib/audio/piano.svelte";
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
+	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
+	import SourceButton from "$lib/components/SourceButton.svelte";
 	import { recordingMimeType } from "$lib/utils/recordingMimeType";
 	import { onDestroy } from "svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
@@ -46,18 +70,28 @@
 		/** A multitrack take's sources (docs/demo-recording.md, "Multitrack takes"); absent or empty on a stereo take. */
 		stems?: { id: string; label: string }[];
 	}
-	/** An instrument playing into the take: its capture stream, the name of its meter and the icon beside it. */
-	export interface InstrumentInput {
-		label: string;
-		icon: "piano" | "drums";
-		stream: MediaStream;
-	}
+	const SOURCE_ICONS: Record<OutsideSource | "piano", string> = {
+		mic: "i-ph-microphone",
+		line: "i-ph-plugs",
+		computer: "i-ph-desktop",
+		piano: "i-ph-piano-keys",
+	};
+	const isOutside = (s: RecorderSource): s is OutsideSource =>
+		s === "mic" || s === "line" || s === "computer";
 
 	interface Props {
 		/** The idea's title, shown and edited in the panel (the page saves it). */
 		ideaTitle: string;
-		/** The instruments' sound (the piano's and the drum machine's capture streams) mixed into the take with the microphone, each with its own meter; asked as a take starts (a gesture), so a beat started after Record still goes in. */
-		instruments?: () => InstrumentInput[];
+		/**
+		 * Which sources are in the take, the page's state (remembered per browser), with
+		 * `ontoggle` for a button press; null is the plain recorder (the home page's demo):
+		 * the microphone alone, asked for at Record. The instruments' capture streams come
+		 * from `instrumentStreams` as a take starts (a gesture), so a beat started after
+		 * Record still goes in.
+		 */
+		sourcesOn?: Record<RecorderSource, boolean> | null;
+		ontoggle?: (source: RecorderSource, on: boolean) => void;
+		instrumentStreams?: () => Partial<Record<"piano" | "drums", MediaStream>>;
 
 		/** A stopped take, with its audio: the page queues the upload. */
 		onqueued: (take: {
@@ -102,12 +136,6 @@
 		minTakeSeconds?: number;
 		/** Lossless where the browser can, or compressed (src/lib/utils/recorderPreferences.ts). */
 		quality?: RecordingQuality;
-		/** Ask the input for two channels (an interface); a phone microphone gives one anyway. */
-		stereo?: boolean;
-		/** A microphone's deviceId, or null for the default. */
-		inputId?: string | null;
-		/** The microphones the browser lists once permission is granted (labels need it). */
-		oninputs?: (inputs: { id: string; label: string }[]) => void;
 	}
 	let {
 		ideaTitle = $bindable(),
@@ -129,11 +157,13 @@
 		onphase,
 		minTakeSeconds = 0,
 		quality = "lossless",
-		stereo = false,
-		inputId = null,
-		oninputs,
-		instruments = () => [],
+		sourcesOn = null,
+		ontoggle,
+		instrumentStreams = () => ({}),
 	}: Props = $props();
+	/** The sources mode (the Idea Recorder) against the plain microphone recorder (the home page's demo). */
+	const withSources = $derived(sourcesOn !== null);
+	const anySourceOn = $derived(!!sourcesOn && RECORDER_SOURCES.some((s) => sourcesOn[s]));
 	/** What the take is really being recorded as, from the track and the recorder. */
 	let formatLine = $state<string | null>(null);
 	const onIOS = isIOS();
@@ -144,18 +174,110 @@
 	let phase = $state<Phase>("idle");
 	let elapsed = $state(0);
 	let level = $state(0);
-	/** The microphone muted (the button beside its meter): its tracks disabled, so a take records the instruments alone; on by default, and back on with every page (Kevin). */
-	let micMuted = $state(false);
-	function setMicMuted(muted: boolean) {
-		micMuted = muted;
-		for (const t of stream?.getAudioTracks() ?? []) t.enabled = !muted;
+	/**
+	 * Each instrument's level for its source button, from an analyser on its
+	 * capture stream in this page's context while it is in the take (so the
+	 * meter runs before Record, as the outside sources' do in inputs.svelte.ts).
+	 */
+	let instLevels = $state<Record<"piano" | "drums", number>>({ piano: 0, drums: 0 });
+	let instTaps: Partial<
+		Record<
+			"piano" | "drums",
+			{ node: AudioNode; analyser: AnalyserNode; buf: Float32Array<ArrayBuffer> }
+		>
+	> = {};
+	let instFrame = 0;
+	/** The page's one AudioContext in sources mode, made on the first gesture and kept: the sources' nodes live in it (inputs.svelte.ts attaches here) and every take mixes in it. */
+	function ensureContext(): AudioContext {
+		if (!ctx) {
+			ctx = new AudioContext();
+			inputSources.attach(ctx, { monitorOut: ctx.destination, onsource: () => {} });
+		} else if (inputSources.context !== ctx) {
+			inputSources.attach(ctx, { monitorOut: ctx.destination, onsource: () => {} });
+		}
+		if (ctx.state !== "running") void ctx.resume().catch(() => {});
+		return ctx;
 	}
-	/** Each instrument's level (the piano, the drums) on its own meter above the microphone's (Kevin: one combined meter read as the piano's); empty with none in the mix. */
-	let instLevels = $state<{ label: string; icon: InstrumentInput["icon"]; level: number }[]>([]);
-	let instAnalysers: { analyser: AnalyserNode; buf: Float32Array<ArrayBuffer> }[] = [];
-	/** The microphone alone for its own meter while instruments are in the mix (the main analyser reads the mix for the waveform strip and the peak). */
-	let micAnalyser: AnalyserNode | null = null;
-	let micBuf: Float32Array<ArrayBuffer> | null = null;
+	/** An instrument's meter follows its button: tapped while in the take, dropped when out. */
+	function tapInstrument(inst: "piano" | "drums", on: boolean) {
+		const had = instTaps[inst];
+		if (on && !had) {
+			const stream = instrumentStreams()[inst];
+			if (!stream) return;
+			const c = ensureContext();
+			const node = c.createMediaStreamSource(stream);
+			const analyser = c.createAnalyser();
+			analyser.fftSize = 1024;
+			node.connect(analyser);
+			instTaps[inst] = { node, analyser, buf: new Float32Array(analyser.fftSize) };
+			if (!instFrame) instMeter();
+		} else if (!on && had) {
+			had.node.disconnect();
+			had.analyser.disconnect();
+			delete instTaps[inst];
+			instLevels[inst] = 0;
+		}
+	}
+	function instMeter() {
+		const keys = Object.keys(instTaps) as ("piano" | "drums")[];
+		if (keys.length === 0) {
+			instFrame = 0;
+			return;
+		}
+		for (const k of keys) {
+			const t = instTaps[k]!;
+			t.analyser.getFloatTimeDomainData(t.buf);
+			let s2 = 0;
+			for (const x of t.buf) s2 += x * x;
+			instLevels[k] = Math.min(1, Math.sqrt(s2 / t.buf.length) * 3);
+		}
+		instFrame = requestAnimationFrame(instMeter);
+	}
+	// The instruments' meters follow the page's switches (a button here, or a panel header's), not only this component's own clicks.
+	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the tap must follow state set by the page as well as by this component
+	$effect(() => {
+		if (!sourcesOn) return;
+		tapInstrument("piano", sourcesOn.piano);
+		tapInstrument("drums", sourcesOn.drums);
+	});
+	/**
+	 * The inputs switched in but not yet open (the microphone is in by default,
+	 * and a browser opens one only from a gesture): the first pointer-down on
+	 * the device opens them, so their meters run before Record, as the looper
+	 * does on its page. The computer needs its share picker: it waits for its button.
+	 */
+	let openingPending = false;
+	async function openPending() {
+		if (!sourcesOn || openingPending || !supported) return;
+		const pending = (["mic", "line"] as const).filter((x) => sourcesOn[x] && !inputSources.has(x));
+		if (pending.length === 0) return;
+		openingPending = true;
+		try {
+			ensureContext();
+			for (const src of pending) await inputSources.requestInput(src);
+		} finally {
+			openingPending = false;
+		}
+	}
+	/** A source button: in or out of the take; an outside source opens as it goes in (a gesture) and closes as it goes out. */
+	async function toggleSource(source: RecorderSource) {
+		if (!sourcesOn || phase === "recording" || phase === "requesting") return;
+		const on = !sourcesOn[source];
+		if (isOutside(source)) {
+			ensureContext();
+			if (on) {
+				const ok =
+					source === "computer"
+						? await inputSources.requestComputer()
+						: await inputSources.requestInput(source);
+				if (!ok) {
+					notice = inputSources.errors[source] ?? null;
+					return;
+				}
+			} else inputSources.stop(source);
+		}
+		ontoggle?.(source, on);
+	}
 	let peak = $state(0);
 	let notice = $state<string | null>(null);
 	let inputLabel = $state<string | null>(null);
@@ -183,13 +305,18 @@
 	let chunks: Blob[] = [];
 	let format = $state<RecordingFormat | null>(null);
 	/** The sources of a multitrack take, set as the meter starts; each gets a MediaRecorder of its own started with the mix's. */
-	let sources: { label: string; stream: MediaStream }[] = [];
+	let sources: { label: string; source: RecorderSource | null; stream: MediaStream }[] = [];
 	let sourceRecorders: {
 		label: string;
+		source: RecorderSource | null;
 		recorder: MediaRecorder;
 		chunks: Blob[];
 		done: Promise<void>;
 	}[] = [];
+	/** The take's own nodes in the kept context (sources mode), dropped at its end. */
+	let takeNodes: AudioNode[] = [];
+	/** Whether every source in the take is an outside one (then normalize may touch the mix too). */
+	let allOutside = false;
 	let ctx: AudioContext | null = null;
 	let analyser: AnalyserNode | null = null;
 	let meterFrame = 0;
@@ -248,6 +375,38 @@
 		// plays through the iOS silent switch); WebKit refuses to capture under it.
 		const session = audioSession();
 		if (session) session.type = "play-and-record";
+		if (sourcesOn) {
+			const on = RECORDER_SOURCES.filter((x) => sourcesOn[x]);
+			if (on.length === 0) {
+				setPhase("idle");
+				notice =
+					"Switch on a source first: the microphone, the line in, the computer, the piano or the drums.";
+				return;
+			}
+			// An outside source switched on but not open (permission pending, a share ended) opens now.
+			for (const src of on) {
+				if (!isOutside(src) || inputSources.has(src)) continue;
+				const ok =
+					src === "computer"
+						? await inputSources.requestComputer()
+						: await inputSources.requestInput(src);
+				if (!ok) {
+					setPhase("idle");
+					notice = inputSources.errors[src] ?? `${RECORDER_SOURCE_LABELS[src]} is not available.`;
+					return;
+				}
+			}
+			const recorded = startMix(on);
+			formatLine = [format.codec + (format.lossless ? " lossless" : ""), "stereo"].join(" · ");
+			inputLabel = on
+				.map(
+					(src) =>
+						(isOutside(src) ? inputSources.labels[src] : null) ?? RECORDER_SOURCE_LABELS[src],
+				)
+				.join(", ");
+			beginTake(recorded);
+			return;
+		}
 		try {
 			// The three voice processors are on by default and ruin an instrument.
 			stream = await navigator.mediaDevices.getUserMedia({
@@ -256,8 +415,7 @@
 					noiseSuppression: false,
 					autoGainControl: false,
 					sampleRate: { ideal: 48000 },
-					channelCount: { ideal: stereo ? 2 : 1 },
-					...(inputId ? { deviceId: { exact: inputId } } : {}),
+					channelCount: { ideal: 1 },
 				},
 			});
 		} catch (e) {
@@ -282,22 +440,14 @@
 		]
 			.filter(Boolean)
 			.join(" · ");
-		// With permission granted the microphones have labels: let the settings offer them.
-		if (oninputs) {
-			void navigator.mediaDevices
-				.enumerateDevices()
-				.then((list) =>
-					oninputs(
-						list
-							.filter((d) => d.kind === "audioinput")
-							.map((d, i) => ({ id: d.deviceId, label: d.label || `Microphone ${i + 1}` })),
-					),
-				)
-				.catch(() => {});
-		}
 		// A phone call or an unplugged interface ends the track: keep what we have.
 		if (track) track.onended = () => onTrackEnded();
 		const recorded = startMeter(stream);
+		beginTake(recorded);
+	}
+	/** The recorders on the mix and, for a multitrack take, on each source, started in one tick so the files line up. */
+	function beginTake(recorded: MediaStream) {
+		if (!format) return;
 		chunks = [];
 		recorder = new MediaRecorder(recorded, {
 			mimeType: format.mimeType,
@@ -324,7 +474,7 @@
 				r.onerror = () => resolve();
 			});
 			r.start(1000);
-			return { label: src.label, recorder: r, chunks: parts, done };
+			return { label: src.label, source: src.source, recorder: r, chunks: parts, done };
 		});
 		recorder.start(1000);
 		runStart = performance.now();
@@ -380,22 +530,76 @@
 		}
 	}
 
+	/**
+	 * Normalize (inputs.svelte.ts): a file from the outside sources scaled so
+	 * its peak sits at −1 dBFS, written as 24-bit WAV (the scaling needs the
+	 * samples anyway); a near-silent or already-hot one, or one the browser
+	 * cannot decode, is left as recorded.
+	 */
+	async function normalized(
+		blob: Blob,
+	): Promise<{ blob: Blob; mimeType: string; ext: string; codec: string } | null> {
+		try {
+			const bytes = await blob.arrayBuffer();
+			const decoder = new AudioContext();
+			const audio = await decoder.decodeAudioData(bytes).finally(() => void decoder.close());
+			const channels = Array.from({ length: audio.numberOfChannels }, (_, i) =>
+				audio.getChannelData(i),
+			);
+			let peak = 0;
+			for (const ch of channels) for (const x of ch) if (Math.abs(x) > peak) peak = Math.abs(x);
+			const target = 0.891; // −1 dBFS
+			if (peak < 0.01 || peak >= target) return null;
+			const k = target / peak;
+			for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
+			return {
+				blob: new Blob([encodeWav24(channels, audio.sampleRate)], { type: "audio/wav" }),
+				mimeType: "audio/wav",
+				ext: "wav",
+				codec: "pcm",
+			};
+		} catch {
+			return null;
+		}
+	}
+
 	async function finishTake() {
 		// The sources' last chunks land on their own stop events; gather them before the streams close.
 		await Promise.all(sourceRecorders.map((x) => x.done));
-		const stems = sourceRecorders
-			.map((x) => ({
-				label: x.label,
-				blob: new Blob(x.chunks, { type: format?.mimeType ?? "application/octet-stream" }),
-				mimeType: format?.mimeType ?? "application/octet-stream",
-				ext: format?.ext ?? "webm",
-				codec: (format?.codec ?? "opus").toLowerCase(),
-			}))
-			.filter((x) => x.blob.size > 0);
+		const normalize = withSources && inputSources.normalize;
+		const stems = (
+			await Promise.all(
+				sourceRecorders.map(async (x) => {
+					const raw = {
+						label: x.label,
+						blob: new Blob(x.chunks, { type: format?.mimeType ?? "application/octet-stream" }),
+						mimeType: format?.mimeType ?? "application/octet-stream",
+						ext: format?.ext ?? "webm",
+						codec: (format?.codec ?? "opus").toLowerCase(),
+					};
+					if (!normalize || !x.source || !isOutside(x.source) || raw.blob.size === 0) return raw;
+					const n = await normalized(raw.blob);
+					return n ? { ...raw, ...n } : raw;
+				}),
+			)
+		).filter((x) => x.blob.size > 0);
 		sourceRecorders = [];
 		sources = [];
 		stopStream();
-		const blob = new Blob(chunks, { type: format?.mimeType ?? "application/octet-stream" });
+		let blob = new Blob(chunks, { type: format?.mimeType ?? "application/octet-stream" });
+		let mixFormat = {
+			mimeType: format?.mimeType ?? "application/octet-stream",
+			ext: format?.ext ?? "webm",
+			codec: (format?.codec ?? "opus").toLowerCase(),
+		};
+		// The mix is normalized only when nothing but outside sources is in it (an instrument's level is its own).
+		if (normalize && allOutside && blob.size > 0) {
+			const n = await normalized(blob);
+			if (n) {
+				blob = n.blob;
+				mixFormat = { mimeType: n.mimeType, ext: n.ext, codec: n.codec };
+			}
+		}
 		chunks = [];
 		if (blob.size === 0 || elapsed < 0.5) {
 			notice = "Nothing was recorded.";
@@ -420,7 +624,7 @@
 			title: takeName.trim().slice(0, 120),
 			url: takeUrl,
 			playbackUrl: null,
-			codec: (format?.codec ?? "opus").toLowerCase(),
+			codec: mixFormat.codec,
 			durationSeconds: elapsed,
 		};
 		playbackPaused = true;
@@ -428,9 +632,9 @@
 		onqueued({
 			localId,
 			blob,
-			mimeType: format?.mimeType ?? "application/octet-stream",
-			ext: format?.ext ?? "webm",
-			codec: (format?.codec ?? "opus").toLowerCase(),
+			mimeType: mixFormat.mimeType,
+			ext: mixFormat.ext,
+			codec: mixFormat.codec,
 			name: loaded.title,
 			durationSeconds: elapsed,
 			...(stems.length ? { stems } : {}),
@@ -624,38 +828,74 @@
 		analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
 		let recorded = s;
-		const streams = instruments();
+		const streams = Object.entries(instrumentStreams()).map(([key, stream]) => ({
+			label: key === "piano" ? "Piano" : "Drums",
+			icon: key as "piano" | "drums",
+			stream: stream!,
+		}));
 		// Multitrack: every source on its own recorder beside the mix (docs/demo-recording.md, "Multitrack takes").
 		sources =
 			multitrack && streams.length
 				? [
-						{ label: "Microphone", stream: s },
-						...streams.map(({ label, stream }) => ({ label, stream })),
+						{ label: "Microphone", source: "mic" as const, stream: s },
+						...streams.map(({ label, stream }) => ({ label, source: null, stream })),
 					]
 				: [];
 		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
-			// Each instrument gets its own meter above the microphone's (Kevin), an AnalyserNode on its source alone.
-			instLevels = streams.map(({ label, icon }) => ({ label, icon, level: 0 }));
-			instAnalysers = streams.map(({ stream }) => {
-				const inst = ctx!.createMediaStreamSource(stream);
-				const instAnalyser = ctx!.createAnalyser();
-				instAnalyser.fftSize = 1024;
+			for (const { stream } of streams) {
+				const inst = ctx.createMediaStreamSource(stream);
 				inst.connect(mix);
-				inst.connect(analyser!);
-				inst.connect(instAnalyser);
-				return { analyser: instAnalyser, buf: new Float32Array(instAnalyser.fftSize) };
-			});
+				inst.connect(analyser);
+			}
 			source.connect(mix);
 			recorded = mix.stream;
-			// With instruments beside it, the microphone's meter reads the microphone alone (each row its own source).
-			micAnalyser = ctx.createAnalyser();
-			micAnalyser.fftSize = 1024;
-			micBuf = new Float32Array(micAnalyser.fftSize);
-			source.connect(micAnalyser);
 		}
 		source.connect(analyser); // not to the destination: no monitoring through the speaker
-		for (const t of s.getAudioTracks()) t.enabled = !micMuted;
+		beginMeterLoop();
+		return recorded;
+	}
+	/**
+	 * Sources mode: the chosen sources mixed in the kept context into a
+	 * MediaStreamDestination for the recorder (and the waveform's analyser);
+	 * for a multitrack take, each outside source also feeds a destination of
+	 * its own after its gain, and each instrument records its capture stream.
+	 */
+	function startMix(on: RecorderSource[]): MediaStream {
+		const c = ensureContext();
+		analyser = c.createAnalyser();
+		analyser.fftSize = 1024;
+		const mix = c.createMediaStreamDestination();
+		takeNodes = [analyser, mix];
+		sources = [];
+		const streams = instrumentStreams();
+		allOutside = on.every(isOutside);
+		for (const src of on) {
+			let node: AudioNode | null = null;
+			if (isOutside(src)) node = inputSources.output(src);
+			else if (streams[src]) {
+				node = c.createMediaStreamSource(streams[src]);
+				takeNodes.push(node);
+			}
+			if (!node) continue;
+			node.connect(mix);
+			node.connect(analyser);
+			if (multitrack && on.length >= 2) {
+				let stream: MediaStream;
+				if (isOutside(src)) {
+					const dest = c.createMediaStreamDestination();
+					node.connect(dest);
+					takeNodes.push(dest);
+					stream = dest.stream;
+				} else stream = streams[src]!;
+				sources.push({ label: RECORDER_SOURCE_LABELS[src], source: src, stream });
+			}
+		}
+		beginMeterLoop();
+		return mix.stream;
+	}
+	function beginMeterLoop() {
+		if (!analyser) return;
 		meterBuf = new Float32Array(analyser.fftSize);
 		let hold = 0;
 		const loop = () => {
@@ -672,7 +912,6 @@
 			meterFrame = requestAnimationFrame(loop);
 		};
 		meterFrame = requestAnimationFrame(loop);
-		return recorded;
 	}
 	let meterBuf: Float32Array<ArrayBuffer> | null = null;
 	/** Reads the input once: sets `level` (RMS × 3, capped at 1) and returns the sample peak. */
@@ -685,30 +924,21 @@
 			sum += x * x;
 			if (Math.abs(x) > max) max = Math.abs(x);
 		}
-		if (micAnalyser && micBuf) {
-			micAnalyser.getFloatTimeDomainData(micBuf);
-			let m2 = 0;
-			for (const x of micBuf) m2 += x * x;
-			level = Math.min(1, Math.sqrt(m2 / micBuf.length) * 3);
-		} else level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
-		instAnalysers.forEach(({ analyser: a, buf }, i) => {
-			a.getFloatTimeDomainData(buf);
-			let s2 = 0;
-			for (const x of buf) s2 += x * x;
-			instLevels[i].level = Math.min(1, Math.sqrt(s2 / buf.length) * 3);
-		});
+		level = Math.min(1, Math.sqrt(sum / meterBuf.length) * 3);
 		return max;
 	}
 
 	function stopStream() {
 		cancelAnimationFrame(meterFrame);
+		analyser?.disconnect();
 		analyser = null;
-		instAnalysers = [];
-		instLevels = [];
-		micAnalyser = null;
-		micBuf = null;
-		void ctx?.close();
-		ctx = null;
+		for (const n of takeNodes) n.disconnect();
+		takeNodes = [];
+		if (!withSources) {
+			// The plain recorder's context lives for the take alone.
+			void ctx?.close();
+			ctx = null;
+		}
 		for (const t of stream?.getTracks() ?? []) t.stop();
 		stream = null;
 		recorder = null;
@@ -739,6 +969,12 @@
 		}
 		if (stream) stopStream();
 		discardTake();
+		if (instFrame) cancelAnimationFrame(instFrame);
+		if (ctx) {
+			inputSources.detach(ctx);
+			void ctx.close();
+			ctx = null;
+		}
 	});
 </script>
 
@@ -772,7 +1008,9 @@
 	></audio>
 {/if}
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+	onpointerdown={() => void openPending()}
 	class="
 		@container
 		rounded
@@ -961,62 +1199,23 @@
 						>
 					</div>
 				{/if}
-				<!-- a meter per instrument (the piano, the drums), while any play into the take -->
-				{#each instLevels as inst, i (i)}
-					<div
-						class="{i === 0 && !multitrackAvailable
-							? 'mt-1 @xl-mt-3'
-							: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
-						role="meter"
-						aria-label="{inst.label} level"
-						aria-valuemin="0"
-						aria-valuemax="100"
-						aria-valuenow={Math.round(inst.level * 100)}
-					>
-						{#if inst.icon === "drums"}
-							<span class="grid place-items-center w-1em" aria-hidden="true"><IconDrumKit /></span>
-						{:else}
-							<span class="i-ph-piano-keys flex" aria-hidden="true"></span>
-						{/if}
-						<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
-							<div
-								class="h-full rounded {inst.level > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
-								style:width="{inst.level * 100}%"
-							></div>
-						</div>
-					</div>
-				{/each}
-				<!-- input meter -->
+				<!-- the mix's meter (every source in the take; each source has its own on its button below), or the plain recorder's microphone -->
 				<div
-					class="{instLevels.length === 0 && !multitrackAvailable
+					class="{!multitrackAvailable
 						? 'mt-1 @xl-mt-3'
 						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"
-					aria-label="Input level"
+					aria-label={withSources ? "Mix level" : "Input level"}
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={Math.round(level * 100)}
 				>
-					<button
-						class="flex items-center justify-center -m-1 p-1 rounded hover-bg-blue-300/10 {micMuted
-							? 'text-red-400'
-							: ''}"
-						type="button"
-						aria-pressed={micMuted}
-						title={micMuted
-							? "Unmute the microphone"
-							: "Mute the microphone (the take records the instruments alone)"}
-						aria-label={micMuted ? "Unmute the microphone" : "Mute the microphone"}
-						onclick={() => setMicMuted(!micMuted)}
-					>
-						<span class={micMuted ? "i-ph-microphone-slash" : "i-ph-microphone"} aria-hidden="true"
-						></span>
-					</button>
-					<div
-						class="relative h-3 overflow-hidden rounded bg-blue-300/10 {micMuted
-							? 'opacity-40'
-							: ''}"
-					>
+					<span
+						class="{withSources ? 'i-ph-waveform' : 'i-ph-microphone'} flex"
+						aria-hidden="true"
+						title={withSources ? "The mix of every source in the take" : "The microphone"}
+					></span>
+					<div class="relative h-3 overflow-hidden rounded bg-blue-300/10">
 						<div
 							class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-accent'}"
 							style:width="{level * 100}%"
@@ -1067,6 +1266,89 @@
 		</div>
 	</div>
 
+	{#if sourcesOn}
+		<!-- Input sources (docs/demo-recording.md, "Input sources"): each a toggle into the take with its meter, its settings menu joined to its right, and its gain (an outside source) or the instrument's own volume under it, as on the looper. -->
+		<div class="mt-3 mb-3">
+			<div class="device-button-group-label text-dark">Input Source</div>
+			<div class="flex flex-wrap gap-2" role="group" aria-label="Sources in the take">
+				{#each RECORDER_SOURCES as source (source)}
+					<SourceButton
+						label={RECORDER_SOURCE_LABELS[source]}
+						iconClass={source === "drums" ? null : SOURCE_ICONS[source]}
+						pressed={sourcesOn[source]}
+						disabled={busy}
+						title={sourcesOn[source]
+							? `${(isOutside(source) ? inputSources.labels[source] : null) ?? RECORDER_SOURCE_LABELS[source]}: in the take (press to leave it out)`
+							: `${RECORDER_SOURCE_LABELS[source]}: out of the take (press to record it)`}
+						level={isOutside(source) ? inputSources.levels[source] : instLevels[source]}
+						onclick={() => void toggleSource(source)}
+						menu={source === "mic"
+							? micMenu
+							: source === "line"
+								? lineMenu
+								: source === "computer"
+									? computerMenu
+									: undefined}
+					>
+						{#snippet icon()}
+							{#if source === "drums"}<IconDrumKit />{/if}
+						{/snippet}
+						{#snippet below()}
+							{#if isOutside(source)}
+								<label
+									class="block px-0.5"
+									title="Input gain: {inputSources.inputGainsDb[source] > 0 ? '+' : ''}{inputSources
+										.inputGainsDb[source]} dB"
+								>
+									<span class="sr-only">{RECORDER_SOURCE_LABELS[source]} gain</span>
+									<input
+										class="w-full accent-maximumYellow h-3"
+										type="range"
+										min="-12"
+										max="24"
+										step="1"
+										value={inputSources.inputGainsDb[source]}
+										aria-label="{RECORDER_SOURCE_LABELS[source]} gain in decibels"
+										oninput={(e) =>
+											inputSources.setInputGainDb(source, Number(e.currentTarget.value))}
+									/>
+									<span
+										class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+										aria-hidden="true"
+										>Gain {inputSources.inputGainsDb[source] > 0 ? "+" : ""}{inputSources
+											.inputGainsDb[source]} dB</span
+									>
+								</label>
+							{:else}
+								{@const inst = source === "piano" ? piano : drumMachine}
+								<label
+									class="block px-0.5"
+									title="{RECORDER_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"
+								>
+									<span class="sr-only">{RECORDER_SOURCE_LABELS[source]} volume</span>
+									<input
+										class="w-full accent-maximumYellow h-3"
+										type="range"
+										min="0"
+										max="100"
+										step="1"
+										value={Math.round(inst.volume * 100)}
+										aria-label="{RECORDER_SOURCE_LABELS[source]} volume in percent"
+										oninput={(e) => inst.setVolume(Number(e.currentTarget.value) / 100)}
+									/>
+									<span
+										class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+										aria-hidden="true">Volume {Math.round(inst.volume * 100)}%</span
+									>
+								</label>
+							{/if}
+						{/snippet}
+					</SourceButton>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- the controls: Record (or Stop), Play, the take menu -->
 	<div class="flex items-center flex-wrap gap-3">
 		<!-- Always in place, disabled until there is a take, so the panel keeps its shape. -->
@@ -1115,11 +1397,14 @@
 					? 'device-button-stop'
 					: 'device-button-record'}"
 				onclick={phase === "recording" ? stop : start}
+				disabled={withSources && !anySourceOn && phase !== "recording"}
 				title={phase === "recording"
 					? "Stop Recording"
-					: loaded
-						? "Record the next take"
-						: "Record a take"}
+					: withSources && !anySourceOn
+						? "Switch on a source first"
+						: loaded
+							? "Record the next take"
+							: "Record a take"}
 				type="button"
 			>
 				{phase === "recording" ? "Stop" : "Record"}
@@ -1336,3 +1621,13 @@
 		This browser cannot record audio. Try Safari, Chrome or Firefox.
 	</p>
 {/if}
+
+{#snippet micMenu()}
+	<InputSourceSettings source="mic" />
+{/snippet}
+{#snippet lineMenu()}
+	<InputSourceSettings source="line" />
+{/snippet}
+{#snippet computerMenu()}
+	<InputSourceSettings source="computer" />
+{/snippet}

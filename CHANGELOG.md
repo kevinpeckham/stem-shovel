@@ -8,6 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: input sources as on the looper** (docs/demo-recording.md, "Input sources"). An Input Source row under the screen with Microphone, Line in, Computer, Piano and Drums, each a toggle into the take with its meter, a settings menu joined to its button (device and channels, the share picker, latency, monitor, normalize) and its gain slider or, for the instruments, their own master volume. Any mix of sources is in a take; the microphone is no longer required, and multitrack is offered with two or more sources in. Meters run before Record. Normalize writes a file from the inputs as 24-bit WAV scaled to −1 dBFS.
+
+### Changed
+
+- **The microphone, line in and computer are shared between the looper and the recorder** (`src/lib/audio/inputs.svelte.ts`, `SourceButton.svelte`, `InputSourceSettings.svelte`): one device, channel and gain setting each, remembered per browser as `stemshovel.inputs.*` (the looper's earlier keys are read as a fallback), and an input opened on one page is open on the other. The recorder's settings menu loses its Stereo input switch and Microphone picker, which live in each source's menu now.
+
+### Technical
+
+- The dev server logs server errors to its console (`handleError`); before, they went to Sentry only.
+
 ## [0.80.0] - 2026-10-02
 
 ### Added

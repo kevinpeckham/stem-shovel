@@ -77,6 +77,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 /** An unexpected error (never a 404 or an `error()`): to Sentry with the route, then SvelteKit's default page. */
 export const handleError: HandleServerError = ({ error, event, status, message }) => {
+	// The dev server's log is where a developer looks first (Sentry is for the deployed stages).
+	if (import.meta.env.DEV && status !== 404) console.error(error);
 	if (status !== 404) {
 		Sentry.captureException(error, {
 			tags: { route: event.route.id ?? "unknown", method: event.request.method },

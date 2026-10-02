@@ -550,6 +550,47 @@ menu show them, and adding them to a song shows the three stems with
 waveforms (the microphone's test tone, the silent piano, the beat); the
 rows go with the idea.
 
+## Input sources (built 2026-10-02)
+
+The recorder caught up with the looper's inputs. The microphone, a line in
+and the computer's audio come from the shared `src/lib/audio/inputs.svelte.ts`
+(one module for both pages: device and channel choice, a gain stage, meters,
+monitor and normalize switches, settings remembered per browser under
+`stemshovel.inputs.*`; the streams outlive a page, the nodes belong to
+whichever page's AudioContext is attached). On the device an **Input Source**
+row under the screen holds five `SourceButton`s (shared with the looper):
+Microphone, Line in, Computer, Piano, Drums, each a toggle into the take with
+its meter in the button, a settings menu joined to its right
+(`InputSourceSettings.svelte`; the drums have none) and, under it, the gain
+slider (−12 to +24 dB) or the instrument's own master volume, the same state
+the panel's slider moves. The page keeps `sourcesOn` (remembered as
+`stemshovel.recorder.sources`; the microphone in by default, the instruments
+only while their panel is open), the panels' "In the take" switches move the
+same state, and switching an instrument in opens its panel.
+
+The recorder keeps one AudioContext for the page (made on the first gesture
+and attached to the inputs module) instead of one per take, so meters run
+before Record: the inputs' in the module, the instruments' on an analyser
+over their capture stream. A pointer-down on the device opens an input that
+is switched in but not yet open (the microphone on a fresh visit), the way
+the looper opens on its page; the computer waits for its own button and
+the share picker. A take mixes every source that is in into one
+`MediaStreamDestination` for the recorder; a multitrack take, offered whenever
+two or more sources are in, also records each outside source through a
+destination of its own after its gain, and each instrument's capture stream.
+The microphone is no longer required: a take can be the piano alone, the
+computer alone, or any mix, and Record is disabled with nothing in.
+
+Normalize, when on, scales a file from the outside sources so its peak sits
+at −1 dBFS and writes it as 24-bit WAV (the scaling needs the samples); the
+mix is normalized only when nothing but outside sources is in it. The plain
+recorder on the home page (`sourcesOn` null) keeps the old microphone-only
+path, one context per take.
+
+Not done yet: trimming the measured input latency off the front of
+microphone and line-in stems, so a multitrack take lines up with a drums
+stem on a song.
+
 ## Later, if wanted
 
 - **Count-in and click** from the song's tempo and meter (Web Audio

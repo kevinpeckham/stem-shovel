@@ -20,7 +20,7 @@ export type InputSource = "mic" | "line";
 export type OutsideSource = InputSource | "computer";
 /** A stereo input as it is, or one channel of it on both sides (an instrument on channel 1 of a stereo interface). */
 export type ChannelMode = "stereo" | "left" | "right";
-export const OUTSIDE_SOURCES: OutsideSource[] = ["mic", "line", "computer"];
+const OUTSIDE_SOURCES: OutsideSource[] = ["mic", "line", "computer"];
 export const OUTSIDE_SOURCE_LABELS: Record<OutsideSource, string> = {
 	mic: "Microphone",
 	line: "Line in",
@@ -45,7 +45,7 @@ function writeSetting(name: string, value: string | null) {
 	}
 }
 
-export class InputSources {
+class InputSources {
 	/** Each source's level for its meter, 0 to 1, every frame while a context is attached. */
 	levels = $state<Record<OutsideSource, number>>({ mic: 0, line: 0, computer: 0 });
 	/** Each source's device label once it is open, and its last error. */
