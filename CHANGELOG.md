@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-10-02
+
 ### Added
 
 - **Old addresses keep working.** Renaming a project, a song or an account so that its URL changes records the old address (`slug_alias`, migration 0066; docs/data-model.md), and a visit to it redirects permanently to the current page, query string included, so links already shared do not break. A rename reverted leaves no circle: the live slug always wins and its alias is removed. An account's old slugs stay reserved for it.
