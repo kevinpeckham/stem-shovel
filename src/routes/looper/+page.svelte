@@ -578,43 +578,72 @@
 						<div class="device-button-group-label text-dark">Input Source</div>
 						<div class="flex flex-wrap gap-2" role="group" aria-label="Source">
 							{#each LOOP_SOURCES as source (source)}
-								<button
-									class="device-button-sm px-3 grid gap-1 content-center min-w-120px {looper.armed ===
-									source
-										? 'text-accent'
-										: ''}"
-									type="button"
-									aria-pressed={looper.armed === source}
-									disabled={looper.phase === "recording"}
-									title={looper.labels[source] ?? LOOP_SOURCE_LABELS[source]}
-									onclick={() => void arm(source)}
-								>
-									<span class="flex items-center justify-center gap-2 leading-none">
-										{#if source === "drums"}
-											<span class="grid place-items-center w-1em" aria-hidden="true"
-												><IconDrumKit /></span
-											>
-										{:else}
-											<span class={sourceIcon[source]} aria-hidden="true"></span>
-										{/if}
-										{LOOP_SOURCE_LABELS[source]}
-									</span>
-									<span
-										class="block h-1 w-full rounded bg-blue-100/10 overflow-hidden"
-										role="meter"
-										aria-label="{LOOP_SOURCE_LABELS[source]} level"
-										aria-valuemin="0"
-										aria-valuemax="100"
-										aria-valuenow={Math.round(looper.levels[source] * 100)}
+								<div class="grid gap-1 content-start">
+									<button
+										class="device-button-sm px-3 grid gap-1 content-center min-w-120px {looper.armed ===
+										source
+											? 'text-accent'
+											: ''}"
+										type="button"
+										aria-pressed={looper.armed === source}
+										disabled={looper.phase === "recording"}
+										title={looper.labels[source] ?? LOOP_SOURCE_LABELS[source]}
+										onclick={() => void arm(source)}
 									>
+										<span class="flex items-center justify-center gap-2 leading-none">
+											{#if source === "drums"}
+												<span class="grid place-items-center w-1em" aria-hidden="true"
+													><IconDrumKit /></span
+												>
+											{:else}
+												<span class={sourceIcon[source]} aria-hidden="true"></span>
+											{/if}
+											{LOOP_SOURCE_LABELS[source]}
+										</span>
 										<span
-											class="block h-full rounded {looper.levels[source] > 0.85
-												? 'bg-red-500'
-												: 'bg-blue-300'}"
-											style:width="{looper.levels[source] * 100}%"
-										></span>
-									</span>
-								</button>
+											class="block h-1 w-full rounded bg-blue-100/10 overflow-hidden"
+											role="meter"
+											aria-label="{LOOP_SOURCE_LABELS[source]} level"
+											aria-valuemin="0"
+											aria-valuemax="100"
+											aria-valuenow={Math.round(looper.levels[source] * 100)}
+										>
+											<span
+												class="block h-full rounded {looper.levels[source] > 0.85
+													? 'bg-red-500'
+													: 'bg-blue-300'}"
+												style:width="{looper.levels[source] * 100}%"
+											></span>
+										</span>
+									</button>
+									{#if source === "mic" || source === "line" || source === "computer"}
+										<label
+											class="block px-0.5"
+											title="Input gain: {looper.inputGainsDb[source] > 0 ? '+' : ''}{looper
+												.inputGainsDb[source]} dB"
+										>
+											<span class="sr-only">{LOOP_SOURCE_LABELS[source]} gain</span>
+											<input
+												class="w-full accent-maximumYellow h-3"
+												type="range"
+												min="-12"
+												max="24"
+												step="1"
+												value={looper.inputGainsDb[source]}
+												aria-label="{LOOP_SOURCE_LABELS[source]} gain in decibels"
+												oninput={(e) =>
+													looper.setInputGainDb(source, Number(e.currentTarget.value))}
+											/>
+											<span
+												class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+												aria-hidden="true"
+												>Gain {looper.inputGainsDb[source] > 0 ? "+" : ""}{looper.inputGainsDb[
+													source
+												]} dB</span
+											>
+										</label>
+									{/if}
+								</div>
 							{/each}
 						</div>
 					</div>
@@ -948,21 +977,6 @@
 							</select>
 						</label>
 					</div>
-					<label class="block">
-						<span class="device-button-label"
-							>Gain · {looper.inputGainsDb[src] > 0 ? "+" : ""}{looper.inputGainsDb[src]} dB</span
-						>
-						<input
-							class="w-full accent-maximumYellow"
-							type="range"
-							min="-12"
-							max="24"
-							step="1"
-							value={looper.inputGainsDb[src]}
-							aria-label="{LOOP_SOURCE_LABELS[src]} gain in decibels"
-							oninput={(e) => looper.setInputGainDb(src, Number(e.currentTarget.value))}
-						/>
-					</label>
 					<p class="text-12px opacity-70">
 						{#if looper.labels[src]}Open: {looper.labels[src]}.{:else if src === "line"}A second
 							input, for an instrument on an audio interface; an input on one channel of a stereo
@@ -1005,21 +1019,6 @@
 						</select>
 					</label>
 				</div>
-				<label class="block">
-					<span class="device-button-label"
-						>Gain · {looper.inputGainsDb.computer > 0 ? "+" : ""}{looper.inputGainsDb.computer} dB</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="-12"
-						max="24"
-						step="1"
-						value={looper.inputGainsDb.computer}
-						aria-label="Computer gain in decibels"
-						oninput={(e) => looper.setInputGainDb("computer", Number(e.currentTarget.value))}
-					/>
-				</label>
 				<label class="block">
 					<span class="device-button-label"
 						>Computer audio latency · {looper.computerLatencyMs} ms</span

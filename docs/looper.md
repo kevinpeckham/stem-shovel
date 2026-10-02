@@ -314,8 +314,10 @@ auto adjustment we can make or add a control?"). The browser's own
 automatic gain is off with the other voice processors (they ruin an
 instrument), so each outside source has a GainNode after its channel
 wiring (`#withGain`, `inputGainsDb` −12 to +24 dB, remembered per
-browser, moved live by `setInputGainDb`), so the meter and the layer carry
-it; and `normalize` (off by default) scales a captured pass from an
+browser, moved live by `setInputGainDb`) with its slider right under the
+source's button in the Input Source group (Kevin: "integrate the input
+level control into the input source button or as a separate control
+immediately below each button"), so the meter and the layer carry it; and `normalize` (off by default) scales a captured pass from an
 outside source so its peak sits at −1 dBFS, never a near-silent one and
 never down. Verified on dev: a layer recorded at −12 dB peaks at 0.251 of
 one at 0 dB, and a normalized quiet layer peaks at 0.891.
