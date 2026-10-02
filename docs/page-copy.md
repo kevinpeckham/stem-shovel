@@ -58,5 +58,7 @@ html={data.copy.bodyHtml} docsHref="/docs/<doc>" docsLabel="…" />` in
    `data.copy.title`.
 5. `bun run db:seed-docs` on each stage (production: Kevin's machine).
 
-Candidates: the drum machine, piano, tuner, metronome and Idea Recorder
-pages, whose titles, intros and tips are hard-coded today.
+Rolled out to the drum machine, piano, tuner, metronome and (2026-10-02)
+Idea Recorder pages, so every tool and instrument page's words are editable.
+The recorder's tips show from sm only: on a phone the page is an app-height
+screen of its own, and the user docs are a button away.

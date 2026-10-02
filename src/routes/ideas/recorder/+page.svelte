@@ -5,7 +5,8 @@
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
+	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
@@ -656,34 +657,22 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle("Idea Recorder")}</title>
+	<title>{pageTitle(data.copy.title || "Idea Recorder")}</title>
 </svelte:head>
 
 <main
 	class="max-h-[calc(100svh-72px)] h-[calc(100svh-72px)] grid grid-rows-[auto_1fr] sm-block sm-max-h-none sm-h-auto px-3 sm-!page-x-padding pt-3 sm-pt-8 max-w-full overflow-hidden pb-16"
 >
-	<header class="flex justify-between items-start w-full mb-1 sm-mb-3">
-		<div class="md-max-w-article">
-			<h1 class="sm-heading-2 flex items-center gap-2">
-				Idea Recorder
-				<InfoTip
-					label="About the Idea Recorder"
-					text="An idea consists of one or more audio recording takes and optionally some written notes.
-					Hitting record starts a new take. Starting a new idea clears the note board and starts over
-					at take one."
-				/>
-			</h1>
-			<p class="opacity-90 md-text-balance mb-3">
-				<span class="sr-only md-not-sr-only md-inline"
-					>Record your demos, riffs, or quick ideas here.</span
-				>
-
-				{#if data.fromSong}
+	<!-- The page's words from its copy doc (docs/page-copy.md), with the toolbar at the right. -->
+	<PageCopyHeader copy={data.copy} class="mb-1 sm-mb-3">
+		{#snippet after()}
+			{#if data.fromSong}
+				<p class="opacity-90 mb-3">
 					Opened from <a class="link-dim" href={data.fromSong.href}>{data.fromSong.title}</a>.
-				{/if}
-			</p>
-		</div>
-		<div class="flex gap-2">
+				</p>
+			{/if}
+		{/snippet}
+		{#snippet controls()}
 			<button
 				class="button button-sm sm-bg-accent sm-text-oxford shrink-0"
 				type="button"
@@ -841,8 +830,8 @@
 			>
 				<span class="i-ph-gear" aria-hidden="true"></span>
 			</button>
-		</div>
-	</header>
+		{/snippet}
+	</PageCopyHeader>
 
 	<!--
 		Like the song page: the recorder where the player is, the notes where the
@@ -1692,6 +1681,14 @@
 				</ul>
 			{/if}
 		</div>
+	</div>
+	<div class="hidden sm-block">
+		<PageCopySection
+			html={data.copy.bodyHtml}
+			docsHref="/docs/idea-recorder"
+			docsLabel="Idea Recorder docs"
+			docsLead="Learn more about using the Idea Recorder in the user docs."
+		/>
 	</div>
 </main>
 

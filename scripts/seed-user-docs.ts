@@ -44,6 +44,7 @@ const COPY_PAGES = [
 	"piano-page",
 	"tuner-page",
 	"metronome-page",
+	"idea-recorder-page",
 ];
 
 const db = drizzle({

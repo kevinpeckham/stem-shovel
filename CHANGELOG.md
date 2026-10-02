@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder page copy** (docs/page-copy.md). The page's title, intro and a "How to use" section with Quick Tips under the recorder come from a copy doc a system admin edits in the app, as on the looper and the other tool pages; the tips show from sm up.
+
 ## [0.82.0] - 2026-10-02
 
 ### Added

@@ -14,6 +14,8 @@ import {
 	songPicker,
 } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/jobs";
+import { pageCopy } from "$lib/server/pageCopy";
+import copyFallback from "../../../../scripts/user-docs/idea-recorder-page.md?raw";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -94,6 +96,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		sitePresets: await sitePianoPresets(),
 		pianoPresets: await listPianoPresets(member.accountId),
 		presetAdmin: locals.user?.isSystemAdmin === true,
+		// The page's words (title, intro, the tips under the recorder) from its copy doc, edited in the app (docs/page-copy.md).
+		copy: await pageCopy("idea-recorder-page", copyFallback, locals),
 		fromSong:
 			songId.success && fromSongAccount && editing.some((m) => m.accountId === fromSongAccount)
 				? await songLink(fromSongAccount, songId.output)

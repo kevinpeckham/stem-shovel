@@ -10,4 +10,5 @@ export const PAGE_COPY: Record<string, string> = {
 	"piano-page": "/piano",
 	"tuner-page": "/tuner",
 	"metronome-page": "/metronome",
+	"idea-recorder-page": "/ideas/recorder",
 };
