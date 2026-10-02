@@ -10,6 +10,7 @@
 	import {
 		LOOP_BARS,
 		LOOP_SOURCES,
+		LEAD_SECONDS,
 		LOOP_SOURCE_LABELS,
 		MAX_LOOP_LAYERS,
 		looper,
@@ -278,7 +279,8 @@
 						>
 						{#if looper.phase === "recording"}
 							<span class="text-red-400" role="status"
-								>● Recording {LOOP_SOURCE_LABELS[looper.armed]} · pass {looper.passes + 1}</span
+								>● Recording {LOOP_SOURCE_LABELS[looper.armed]} · pass {looper.passes + 1} · the layer
+								lands in {Math.ceil(looper.secondsToPassEnd + LEAD_SECONDS)} s</span
 							>
 						{/if}
 					</div>

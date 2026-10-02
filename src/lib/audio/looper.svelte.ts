@@ -35,7 +35,7 @@ export const LOOP_BARS = [1, 2, 4, 8] as const;
 export type LoopBars = (typeof LOOP_BARS)[number];
 export const MAX_LOOP_LAYERS = 16;
 /** Samples kept before bar 1 on every pass, so a late microphone can be shifted up to this much earlier. */
-const LEAD_SECONDS = 0.3;
+export const LEAD_SECONDS = 0.3;
 const LATENCY_KEY = "stemshovel.looper.latency-ms";
 
 export interface LoopLayer {
@@ -152,13 +152,19 @@ class LooperEngine {
 		this.#master = master;
 		const tapIn = ctx.createGain();
 		this.#tapIn = tapIn;
+		// One (silent) output into the destination through a muted gain: a node nothing pulls is not rendered in every browser (Safari), and the capture must run.
 		const worklet = new AudioWorkletNode(ctx, "loop-capture", {
 			numberOfInputs: 1,
-			numberOfOutputs: 0,
+			numberOfOutputs: 1,
+			outputChannelCount: [1],
 			channelCount: 2,
 			channelCountMode: "explicit",
 		});
 		tapIn.connect(worklet);
+		const sink = ctx.createGain();
+		sink.gain.value = 0;
+		worklet.connect(sink);
+		sink.connect(ctx.destination);
 		this.#worklet = worklet;
 		worklet.port.onmessage = (e) => this.#passHandler?.(e);
 		// The instruments' outputs reach the speakers as always and the capture through a gain per source (only the armed one open).
@@ -337,6 +343,13 @@ class LooperEngine {
 			const layer = this.layers.find((l) => l.id === p.layerId);
 			if (layer) p.gain.gain.setTargetAtTime(this.#effectiveGain(layer), t, 0.01);
 		}
+	}
+	/** Seconds until the pass under way completes (and, recording, its layer lands), for the display. */
+	get secondsToPassEnd() {
+		if (this.phase === "idle" || !this.#ctx) return 0;
+		const t = this.#ctx.currentTime - this.#loopStart;
+		if (t < 0) return -t + this.loopSeconds;
+		return this.loopSeconds - (t % this.loopSeconds);
 	}
 	/** The loop's phase now: seconds into the current pass. */
 	#phaseNow() {
