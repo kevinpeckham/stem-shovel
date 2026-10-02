@@ -1641,7 +1641,7 @@
 {/if}
 
 {#snippet micMenu()}
-	<InputSourceSettings source="mic" />
+	<InputSourceSettings source="mic" calibrateDisabled={busy} />
 {/snippet}
 {#snippet lineMenu()}
 	<InputSourceSettings source="line" />

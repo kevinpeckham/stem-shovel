@@ -16,6 +16,8 @@
  * looper's earlier `stemshovel.looper.*` keys are read once as a fallback).
  */
 
+import { findLatency } from "$lib/utils/findLatency";
+
 export type InputSource = "mic" | "line";
 export type OutsideSource = InputSource | "computer";
 /** A stereo input as it is, or one channel of it on both sides (an instrument on channel 1 of a stereo interface). */
@@ -86,6 +88,8 @@ class InputSources {
 	 */
 	latencyMs = $state(0);
 	latencyMeasured = $state(false);
+	/** Calibrate is under way (three clicks, about two and a half seconds). */
+	calibrating = $state(false);
 
 	#ctx: AudioContext | null = null;
 	#monitorOut: AudioNode | null = null;
@@ -98,6 +102,8 @@ class InputSources {
 	#buf: Float32Array<ArrayBuffer> | null = null;
 	#frame = 0;
 	#loaded = false;
+	/** The capture worklet (static/worklets/loop-capture.js) loaded into a context, once per context; Calibrate records through it. */
+	#captureModule = new WeakMap<AudioContext, Promise<void>>();
 
 	/** The remembered settings, once. */
 	#load() {
@@ -130,9 +136,12 @@ class InputSources {
 		opts: {
 			monitorOut: AudioNode;
 			onsource: (source: OutsideSource, node: AudioNode | null) => void;
+			/** The page already loaded the capture worklet into this context (the looper), so Calibrate need not. */
+			captureModuleLoaded?: boolean;
 		},
 	) {
 		this.#load();
+		if (opts.captureModuleLoaded) this.#captureModule.set(ctx, Promise.resolve());
 		if (this.#ctx !== ctx) {
 			this.#ctx = ctx;
 			this.#gains = {};
@@ -308,6 +317,87 @@ class InputSources {
 	setComputerLatencyMs(ms: number) {
 		this.computerLatencyMs = Math.max(0, Math.min(500, Math.round(ms)));
 		writeSetting("computer-latency-ms", String(this.computerLatencyMs));
+	}
+	/**
+	 * Three clicks through the speakers, the microphone recorded through the
+	 * capture worklet in the attached context, the delay measured
+	 * (findLatency.ts) and kept as the input latency. Null when the clicks
+	 * were not heard (headphones on, the speakers off), nothing attached, or
+	 * the microphone refused; the page tells the user. From a gesture.
+	 */
+	async calibrate(): Promise<number | null> {
+		const ctx = this.#ctx;
+		if (!ctx || this.calibrating) return null;
+		if (!this.has("mic") && !(await this.requestInput("mic"))) return null;
+		const node = this.#nodes.mic;
+		if (!node) return null;
+		this.calibrating = true;
+		let worklet: AudioWorkletNode | null = null;
+		let sink: GainNode | null = null;
+		try {
+			let loading = this.#captureModule.get(ctx);
+			if (!loading) {
+				loading = ctx.audioWorklet.addModule("/worklets/loop-capture.js");
+				this.#captureModule.set(ctx, loading);
+			}
+			await loading;
+			if (ctx.state !== "running") await ctx.resume().catch(() => {});
+			worklet = new AudioWorkletNode(ctx, "loop-capture", {
+				numberOfInputs: 1,
+				numberOfOutputs: 1,
+				outputChannelCount: [1],
+				channelCount: 2,
+				channelCountMode: "explicit",
+			});
+			// A silent output into the destination, so the capture is rendered in every browser (Safari).
+			sink = ctx.createGain();
+			sink.gain.value = 0;
+			node.connect(worklet);
+			worklet.connect(sink);
+			sink.connect(ctx.destination);
+			const t0 = ctx.currentTime + 0.2;
+			const clicks = [0.4, 1.1, 1.8];
+			for (const c of clicks) {
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.frequency.value = 1000;
+				gain.gain.setValueAtTime(0.0001, t0 + c);
+				gain.gain.exponentialRampToValueAtTime(0.9, t0 + c + 0.002);
+				gain.gain.exponentialRampToValueAtTime(0.0001, t0 + c + 0.03);
+				osc.connect(gain).connect(ctx.destination);
+				osc.start(t0 + c);
+				osc.stop(t0 + c + 0.05);
+			}
+			const length = Math.round(2.4 * ctx.sampleRate);
+			const capture = worklet;
+			const recorded = await new Promise<Float32Array | null>((resolve) => {
+				const timer = setTimeout(() => resolve(null), 6000);
+				capture.port.onmessage = (e: MessageEvent) => {
+					const m = e.data as { type: string; channels?: Float32Array[] };
+					if (m.type === "pass" && m.channels) {
+						clearTimeout(timer);
+						resolve(m.channels[0]);
+					}
+				};
+				capture.port.postMessage({
+					type: "arm",
+					length,
+					lead: 0,
+					startFrame: Math.round(t0 * ctx.sampleRate),
+					passes: 1,
+				});
+			});
+			const ms = recorded ? findLatency(recorded, ctx.sampleRate, clicks) : null;
+			if (ms !== null) this.setLatencyMs(ms);
+			return ms;
+		} catch {
+			return null;
+		} finally {
+			if (worklet) node.disconnect(worklet);
+			worklet?.disconnect();
+			sink?.disconnect();
+			this.calibrating = false;
+		}
 	}
 	setLatencyMs(ms: number) {
 		this.latencyMs = Math.max(0, Math.min(500, Math.round(ms)));

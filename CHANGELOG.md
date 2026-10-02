@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Calibrate on the Idea Recorder.** The microphone's menu has the looper's Calibrate button: three clicks through the speakers measure the input latency, now kept with the shared inputs (`inputSources.calibrate()`), so a multitrack take's stems line up without a trip to the looper.
+
 ### Changed
 
 - **Notification links are permanent.** The inbox and digest emails now store an id-based address (`/go/song/<id>`, `/go/project/<id>`, `/go/account/<id>/settings`) that redirects to the page's current URL, so a rename, or a slug reused by a new item, never changes where an old notification leads (docs/notifications.md). Links stored before keep working through the slug redirects.

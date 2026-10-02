@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import { notify } from "$lib/state/notifications.svelte";
 	import {
 		inputSources,
 		OUTSIDE_SOURCE_LABELS,
@@ -17,11 +18,23 @@
 	 */
 	interface Props {
 		source: OutsideSource;
+		/** The page is busy (a loop running, a take recording): Calibrate waits. */
+		calibrateDisabled?: boolean;
 		/** The monitor switch (hear the input through the speakers), on by default for the two inputs; a page with no speaker path hides it. */
 		monitorSwitch?: boolean;
 		children?: Snippet;
 	}
-	let { source, monitorSwitch = true, children }: Props = $props();
+	let { source, monitorSwitch = true, calibrateDisabled = false, children }: Props = $props();
+	/** Three clicks and a measurement (inputs.svelte.ts); the result, or what to try, as a notification. */
+	async function calibrate() {
+		const ms = await inputSources.calibrate();
+		notify(
+			ms === null
+				? "The clicks were not heard. Turn the speakers up (or take the headphones off) and try again."
+				: `Microphone latency measured: ${Math.round(ms)} ms`,
+			{ kind: ms === null ? "error" : "success" },
+		);
+	}
 	const label = $derived(OUTSIDE_SOURCE_LABELS[source]);
 </script>
 
@@ -145,9 +158,19 @@
 			<p class="text-12px opacity-70">
 				A sound sung or played into the microphone or the line in arrives late by the input's round
 				trip: the looper shifts such layers earlier by this much, and a multitrack take trims it off
-				the front of their files. Calibrate on the looper plays three clicks through the speakers
-				and measures them with the microphone.
+				the front of their files. Calibrate plays three clicks through the speakers and measures
+				them with the microphone.
 			</p>
+			{#if source === "mic"}
+				<button
+					class="device-button-xs px-3 justify-self-start"
+					type="button"
+					disabled={inputSources.calibrating || calibrateDisabled}
+					onclick={calibrate}
+				>
+					{inputSources.calibrating ? "Listening…" : "Calibrate"}
+				</button>
+			{/if}
 		</div>
 	{/if}
 	<div class="border-t border-current/10 pt-3 grid gap-3">

@@ -146,15 +146,6 @@
 		if (source === "piano" && !pianoOpen) togglePiano();
 		if (source === "drums" && !drumsOpen) toggleDrums();
 	}
-	async function calibrate() {
-		const ms = await looper.calibrate();
-		notify(
-			ms === null
-				? "The clicks were not heard. Turn the speakers up (or take the headphones off) and try again."
-				: `Microphone latency measured: ${ms} ms`,
-			{ kind: ms === null ? "error" : "success" },
-		);
-	}
 	function clearLoop() {
 		if (looper.layers.length && !confirm("Clear every layer of this loop?")) return;
 		looper.clear();
@@ -957,28 +948,15 @@
 		</div>
 	{/snippet}
 
-	<!-- Each outside source's menu (InputSourceSettings.svelte) with the looper's own latency block under the two inputs. -->
+	<!-- Each outside source's menu (InputSourceSettings.svelte; Calibrate is on the microphone's). -->
 	{#snippet micMenu()}
-		<InputSourceSettings source="mic">{@render latencyBlock()}</InputSourceSettings>
+		<InputSourceSettings source="mic" calibrateDisabled={looper.phase !== "idle"} />
 	{/snippet}
 	{#snippet lineMenu()}
-		<InputSourceSettings source="line">{@render latencyBlock()}</InputSourceSettings>
+		<InputSourceSettings source="line" />
 	{/snippet}
 	{#snippet computerMenu()}
 		<InputSourceSettings source="computer" />
-	{/snippet}
-
-	{#snippet latencyBlock()}
-		<div class="grid gap-3">
-			<button
-				class="device-button-xs px-3 justify-self-start"
-				type="button"
-				disabled={looper.calibrating || looper.phase !== "idle"}
-				onclick={calibrate}
-			>
-				{looper.calibrating ? "Listening…" : "Calibrate"}
-			</button>
-		</div>
 	{/snippet}
 
 	{#snippet pianoMenu()}

@@ -1,7 +1,6 @@
 import { audioSession } from "$lib/utils/audioSession";
 import { inputSources, outputLatencyMs, type InputSource } from "./inputs.svelte";
 import { encodeWav24 } from "$lib/utils/encodeWav24";
-import { findLatency } from "$lib/utils/findLatency";
 import { tapTempo } from "$lib/utils/tapTempo";
 import { drumMachine } from "./drumMachine.svelte";
 import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
@@ -73,7 +72,6 @@ class LooperEngine {
 	armed = $state<LoopSource>("mic");
 	/** Hear the microphone through the speakers (off: feedback on a laptop). */
 	/** The microphone's lateness, compensated on its layers; the context's own figure until measured. */
-	calibrating = $state(false);
 	/**
 	 * The audio device's output latency as the browser reports it (base plus
 	 * output latency, 10–30 ms on a built-in output, 150 ms and more over
@@ -465,6 +463,7 @@ class LooperEngine {
 	#attachInputs() {
 		inputSources.attach(this.#ctx!, {
 			monitorOut: this.#master!,
+			captureModuleLoaded: true,
 			onsource: (source, node) => {
 				if (node) this.#tapSource(source, node);
 				else this.#untap(source);
@@ -826,52 +825,6 @@ class LooperEngine {
 	rename(id: string, label: string) {
 		const l = this.layers.find((x) => x.id === id);
 		if (l) l.label = label.trim().slice(0, 60) || l.label;
-	}
-
-	/** Three clicks through the speakers, the microphone recorded, the delay measured (docs/looper.md). */
-	async calibrate(): Promise<number | null> {
-		if (this.phase !== "idle") return null;
-		if (!inputSources.has("mic") && !(await this.requestMic())) return null;
-		const ctx = this.#ctx!;
-		this.calibrating = true;
-		this.#openTap("mic");
-		const t0 = ctx.currentTime + 0.2;
-		const clicks = [0.4, 1.1, 1.8];
-		for (const c of clicks) {
-			const osc = ctx.createOscillator();
-			const gain = ctx.createGain();
-			osc.frequency.value = 1000;
-			gain.gain.setValueAtTime(0.0001, t0 + c);
-			gain.gain.exponentialRampToValueAtTime(0.9, t0 + c + 0.002);
-			gain.gain.exponentialRampToValueAtTime(0.0001, t0 + c + 0.03);
-			osc.connect(gain).connect(ctx.destination);
-			osc.start(t0 + c);
-			osc.stop(t0 + c + 0.05);
-		}
-		const length = Math.round(2.4 * ctx.sampleRate);
-		const recorded = await new Promise<Float32Array | null>((resolve) => {
-			const timer = setTimeout(() => resolve(null), 6000);
-			this.#passHandler = (e) => {
-				const m = e.data as { type: string; channels?: Float32Array[] };
-				if (m.type === "pass" && m.channels) {
-					clearTimeout(timer);
-					resolve(m.channels[0]);
-				}
-			};
-			this.#worklet!.port.postMessage({
-				type: "arm",
-				length,
-				lead: 0,
-				startFrame: Math.round(t0 * ctx.sampleRate),
-				passes: 1,
-			});
-		});
-		this.#passHandler = null;
-		this.#openTap(this.armed);
-		this.calibrating = false;
-		const ms = recorded ? findLatency(recorded, ctx.sampleRate, clicks) : null;
-		if (ms !== null) inputSources.setLatencyMs(ms);
-		return ms;
 	}
 
 	#follow = () => {

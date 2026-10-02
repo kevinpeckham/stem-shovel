@@ -589,9 +589,12 @@ recorder on the home page (`sourcesOn` null) keeps the old microphone-only
 path, one context per take.
 
 **Latency trim (built 2026-10-02).** The input latency (the microphone's
-or line in's round trip, measured by the looper's Calibrate or the
-browser's own figure until then) lives in the inputs module now, with a
-slider in each input's menu on both pages. A multitrack take trims it off
+or line in's round trip, measured by Calibrate or the browser's own figure
+until then) lives in the inputs module now, with a slider in each input's
+menu on both pages and Calibrate on the microphone's (`inputSources.calibrate()`,
+since 2026-10-02 in the module: three clicks through the speakers, the
+microphone recorded through the capture worklet loaded into the page's
+context, `findLatency`), so the recorder needs no trip to the looper. A multitrack take trims it off
 the front of each microphone and line-in stem, and the computer's capture
 latency off the computer's, so the stems line up with the instruments'
 (which the recorder captures with no path to speak of); the mix is left as
