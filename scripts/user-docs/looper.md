@@ -1,6 +1,6 @@
 # Looper
 
-**Looper** in the Tools menu (and the footer) is a loop station: a loop of one to eight bars at a tempo plays round and round while you record layers onto it one pass at a time, from the microphone, the piano or the drum machine. Lay down a beat, add a bass line on the piano, sing over it, and save the whole thing to the Idea Recorder as a take with each layer as its own stem.
+**Looper** in the Tools menu (and the footer) is a loop station that anyone can use, signed in or not: a loop of one to eight bars at a tempo plays round and round while you record layers onto it one pass at a time, from the microphone, the piano or the drum machine. Lay down a beat, add a bass line on the piano, sing over it, and save the whole thing to the Idea Recorder as a take with each layer as its own stem.
 
 ## The loop
 
@@ -20,4 +20,4 @@ A sung or played layer reaches the computer a little late (the microphone's and 
 
 ## Saving
 
-**Save as take**, in the **Save** menu with the idea's title, how many passes the take should run and whether the take is **Multitrack** (the layers as its sources, the default) or **Stereo** (the mix alone), renders the layers' mix (one, two or four passes long, your choice) and saves it to the Idea Recorder as a new idea's take, with each layer as one of the take's sources, named for what it was. In the recorder, the take's menu then offers **Add N stems to song…** to put the layers on a song as separate stems, and **Add as demo…** adds the mix. The loop's tempo, length and layer settings are kept with the idea. New ideas are filed under the account you are currently working in.
+Your loop stays in this browser as you work, so a reload or a visit days later brings it back ("back from last time" on the screen); to keep it for good, save it as a take, which needs an account. **Save as take**, in the **Save** menu with the idea's title, how many passes the take should run and whether the take is **Multitrack** (the layers as its sources, the default) or **Stereo** (the mix alone), renders the layers' mix (one, two or four passes long, your choice) and saves it to the Idea Recorder as a new idea's take, with each layer as one of the take's sources, named for what it was. In the recorder, the take's menu then offers **Add N stems to song…** to put the layers on a song as separate stems, and **Add as demo…** adds the mix. The loop's tempo, length and layer settings are kept with the idea. New ideas are filed under the account you are currently working in.

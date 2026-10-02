@@ -36,7 +36,7 @@
 			]
 		},
 		{
-			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|pricing$|built-with$).+)",
+			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|piano$|looper$|pricing$|built-with$).+)",
 			"headers": [
 				{
 					"key": "X-Robots-Tag",

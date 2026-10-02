@@ -182,6 +182,32 @@ effects (the instruments' own effects are in their sound), reopening a
 saved loop for more layers (phase 1.5 from the take's sources), sharing
 loops, MIDI layers (phase 2).
 
+## Signed out, and kept in the browser (2026-10-02)
+
+Kevin: "non-logged in users should be able to use it, though their loops
+would only be saved to localStorage and not permanently." The page no
+longer requires sign-in: `+page.server.ts` returns `account: null` for a
+visitor (or a member of no editing account), the panels take a null
+account as the drum machine page's do, and the Save menu shows a sign-in
+prompt in place of the form (saving a take needs an account and its
+storage). The loop itself is kept in the browser for everyone, signed in
+or not, in IndexedDB rather than localStorage (a layer is a few megabytes
+of samples; localStorage holds about five): `src/lib/audio/loopStore.ts`,
+its own database beside the recorder's pending takes, one record with the
+tempo, bars, beats and the layers' channels as Float32Arrays. The engine
+writes it 400 ms after any change to the layers or the settings and reads
+it back in `open()` (the first gesture), so a reload, a sign-in or a visit
+days later shows the loop with "back from last time" on the screen. The
+Tools menu and the footer list the looper for everyone.
+
+## Indexable (2026-10-02)
+
+The looper is on the sitemap, in `isIndexablePath`, in robots.txt and in
+vercel.json's X-Robots-Tag rule, with a title and a meta description like
+the drum machine page's. The piano was in the sitemap but in none of the
+other three, which would have had search engines fetch a page whose
+response said noindex; it is in all four now.
+
 ## Phase 2: MIDI layers
 
 A piano or drum layer kept as events (note on/off with velocity at loop

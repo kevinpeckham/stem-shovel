@@ -144,6 +144,7 @@
 	const queue = new TakeQueue({
 		ideaFor: async (item) => {
 			if (item.ideaId) return item.ideaId;
+			if (!data.account) throw new Error("Sign in to save loops");
 			const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
 			return created.id;
 		},
@@ -157,7 +158,7 @@
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed"));
 	async function saveLoop() {
-		if (!looper.layers.length || saving) return;
+		if (!looper.layers.length || saving || !data.account) return;
 		saving = true;
 		try {
 			const mix = await looper.renderMix(repeats);
@@ -204,7 +205,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Looper"} · Stem Shovel</title>
+	<title>{data.copy.title || "Looper"} | Free Online Loop Station</title>
+	<meta
+		name="description"
+		content="A free looper in the browser: lay a loop down a layer at a time from the microphone, the piano or the drum machine, with a count-in, a click and latency compensation, then save it as a take with each layer as a stem."
+	/>
 </svelte:head>
 
 <svelte:window {onkeydown} />
@@ -290,6 +295,9 @@
 						{/if}
 						{#if looper.micError}
 							<span class="text-red-300">· {looper.micError}</span>
+						{/if}
+						{#if looper.restored > 0 && looper.phase === "idle" && looper.layers.length === looper.restored}
+							<span>· back from last time</span>
 						{/if}
 					</div>
 					<div class="mt-3 h-1.5 rounded bg-blue-100/10 overflow-hidden" aria-hidden="true">
@@ -705,74 +713,89 @@
 		<div
 			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
 		>
-			<label class="block">
-				<span class="device-button-label">Idea title</span>
-				<input
-					class="device-field w-full"
-					type="text"
-					placeholder="Loop · today · {looper.bpm} bpm"
-					bind:value={loopTitle}
-				/>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Passes in the take</span>
-				<select class="device-field w-full" bind:value={repeats}>
-					<option value={1}>1</option>
-					<option value={2}>2</option>
-					<option value={4}>4</option>
-				</select>
-			</label>
-			<div class="grid gap-1">
-				<span class="device-button-label">Take</span>
-				<div class="flex gap-2" role="group" aria-label="Take format">
-					<button
-						class="device-button-xs px-3 {saveStems ? 'text-accent' : ''}"
-						type="button"
-						aria-pressed={saveStems}
-						title="The mix plus each layer as its own source, so the take can go to a song as stems"
-						onclick={() => (saveStems = true)}>Multitrack</button
-					>
-					<button
-						class="device-button-xs px-3 {saveStems ? '' : 'text-accent'}"
-						type="button"
-						aria-pressed={!saveStems}
-						title="The mix alone"
-						onclick={() => (saveStems = false)}>Stereo</button
-					>
+			{#if !data.account}
+				<p class="text-13px text-blue-100/90">
+					Your loop stays in this browser as you work. To keep it for good, save it to the Idea
+					Recorder as a take with each layer as a stem: that needs an account.
+				</p>
+				<div class="flex flex-wrap gap-2">
+					<a class="device-button-sm px-3 text-accent" href="/sign-in?next=%2Flooper">Sign in</a>
+					{#if !data.signedIn}<a class="device-button-sm px-3" href="/sign-up">Create an account</a
+						>{/if}
 				</div>
-			</div>
-			<p class="text-12px opacity-70">
-				{saveStems
-					? "The layers' mix becomes a take in the Idea Recorder, each layer one of its sources, ready to go to a song as stems."
-					: "The layers' mix becomes a take in the Idea Recorder, as one stereo file."}
-			</p>
-			<button
-				class="device-button-sm px-3 justify-self-start {looper.layers.length ? 'text-accent' : ''}"
-				type="button"
-				disabled={looper.layers.length === 0 || saving}
-				onclick={saveLoop}
-			>
-				<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-				{saving ? "Rendering…" : "Save as take"}
-			</button>
-			{#if uploading.length > 0}
-				<span class="text-13px opacity-80" role="status">
-					{uploading[0].status === "uploading"
-						? `Saving… ${Math.round(uploading[0].progress)}%`
-						: "Waiting…"}
-				</span>
-			{/if}
-			{#if queue.items.some((u) => u.status === "failed")}
-				<span class="text-13px text-red-400" role="status"
-					>A save failed: {queue.items.find((u) => u.status === "failed")?.error}</span
-				>
+			{:else}
+				<label class="block">
+					<span class="device-button-label">Idea title</span>
+					<input
+						class="device-field w-full"
+						type="text"
+						placeholder="Loop · today · {looper.bpm} bpm"
+						bind:value={loopTitle}
+					/>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Passes in the take</span>
+					<select class="device-field w-full" bind:value={repeats}>
+						<option value={1}>1</option>
+						<option value={2}>2</option>
+						<option value={4}>4</option>
+					</select>
+				</label>
+				<div class="grid gap-1">
+					<span class="device-button-label">Take</span>
+					<div class="flex gap-2" role="group" aria-label="Take format">
+						<button
+							class="device-button-xs px-3 {saveStems ? 'text-accent' : ''}"
+							type="button"
+							aria-pressed={saveStems}
+							title="The mix plus each layer as its own source, so the take can go to a song as stems"
+							onclick={() => (saveStems = true)}>Multitrack</button
+						>
+						<button
+							class="device-button-xs px-3 {saveStems ? '' : 'text-accent'}"
+							type="button"
+							aria-pressed={!saveStems}
+							title="The mix alone"
+							onclick={() => (saveStems = false)}>Stereo</button
+						>
+					</div>
+				</div>
+				<p class="text-12px opacity-70">
+					{saveStems
+						? "The layers' mix becomes a take in the Idea Recorder, each layer one of its sources, ready to go to a song as stems."
+						: "The layers' mix becomes a take in the Idea Recorder, as one stereo file."}
+				</p>
 				<button
-					class="device-button-xs px-3 justify-self-start"
+					class="device-button-sm px-3 justify-self-start {looper.layers.length
+						? 'text-accent'
+						: ''}"
 					type="button"
-					onclick={() =>
-						queue.items.filter((u) => u.status === "failed").forEach((u) => queue.retry(u.localId))}
-					>Retry</button
+					disabled={looper.layers.length === 0 || saving}
+					onclick={saveLoop}
 				>
+					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+					{saving ? "Rendering…" : "Save as take"}
+				</button>
+				{#if uploading.length > 0}
+					<span class="text-13px opacity-80" role="status">
+						{uploading[0].status === "uploading"
+							? `Saving… ${Math.round(uploading[0].progress)}%`
+							: "Waiting…"}
+					</span>
+				{/if}
+				{#if queue.items.some((u) => u.status === "failed")}
+					<span class="text-13px text-red-400" role="status"
+						>A save failed: {queue.items.find((u) => u.status === "failed")?.error}</span
+					>
+					<button
+						class="device-button-xs px-3 justify-self-start"
+						type="button"
+						onclick={() =>
+							queue.items
+								.filter((u) => u.status === "failed")
+								.forEach((u) => queue.retry(u.localId))}>Retry</button
+					>
+				{/if}
 			{/if}
 		</div>
 	{/snippet}
@@ -788,7 +811,7 @@
 		<div onpointerdowncapture={() => (spaceOwner = "drums")}>
 			<DrumMachine
 				keyboard={spaceOwner === "drums"}
-				account={{ id: data.account.id, name: data.account.name, canEdit: true }}
+				account={data.account}
 				beats={data.beats}
 				textToBeat={data.textToBeat}
 			/>
@@ -808,7 +831,7 @@
 				samplesBase={data.pianoSamplesBase}
 				keyboard={spaceOwner === "piano"}
 				sitePresets={data.sitePresets}
-				account={{ id: data.account.id, name: data.account.name, canEdit: true }}
+				account={data.account}
 				presets={data.pianoPresets}
 				presetAdmin={data.presetAdmin}
 			/>

@@ -45,7 +45,7 @@ const ROUTES = [
 	["[account]/ideas", "/{account}/ideas", [303], [303]],
 	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
 	["ideas/recorder", "/ideas/recorder", [303], [200]],
-	["looper", "/looper", [303], [200]],
+	["looper", "/looper", [200], [200]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],

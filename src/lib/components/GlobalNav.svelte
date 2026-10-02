@@ -200,19 +200,20 @@
 						>
 							<span class="i-ph-microphone w-1em" aria-hidden="true"></span>Idea Recorder
 						</a>
-						<a
-							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								'/looper',
-							)
-								? 'text-accent'
-								: ''}"
-							role="menuitem"
-							href="/looper"
-							onclick={() => (openMenu = null)}
-						>
-							<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
-						</a>
 					{/if}
+					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/looper',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/looper"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
+					</a>
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 							'/tuner',

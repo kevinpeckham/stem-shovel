@@ -12,6 +12,8 @@ describe("isIndexablePath", () => {
 			"/tuner",
 			"/metronome",
 			"/drum-machine",
+			"/piano",
+			"/looper",
 			"/pricing",
 			"/built-with",
 			"/blog",

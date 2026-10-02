@@ -3,6 +3,7 @@ import { encodeWav24 } from "$lib/utils/encodeWav24";
 import { findLatency } from "$lib/utils/findLatency";
 import { tapTempo } from "$lib/utils/tapTempo";
 import { drumMachine } from "./drumMachine.svelte";
+import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
@@ -188,7 +189,67 @@ class LooperEngine {
 		);
 		if (!this.latencyMeasured) this.latencyMs = this.outputLatencyMs;
 		this.ready = true;
+		await this.#restore();
 	}
+	/**
+	 * The loop kept in the browser (loopStore.ts): written a moment after a
+	 * layer or a setting changes, read back when the looper opens, so a
+	 * reload or a sign-in keeps the loop; a visitor without an account has
+	 * this and nothing else. The stored audio is the layers' own samples.
+	 */
+	#persistTimer: ReturnType<typeof setTimeout> | null = null;
+	#persist() {
+		if (this.#persistTimer) clearTimeout(this.#persistTimer);
+		this.#persistTimer = setTimeout(() => {
+			this.#persistTimer = null;
+			const loop: StoredLoop = {
+				bpm: this.bpm,
+				beatsPerBar: this.beatsPerBar,
+				bars: this.bars,
+				savedAt: Date.now(),
+				layers: this.layers.map((l) => ({
+					id: l.id,
+					label: l.label,
+					source: l.source,
+					gain: l.gain,
+					muted: l.muted,
+					solo: l.solo,
+					sampleRate: l.buffer.sampleRate,
+					channels: [l.buffer.getChannelData(0).slice(), l.buffer.getChannelData(1).slice()],
+				})),
+			};
+			void saveStoredLoop(loop);
+		}, 400);
+	}
+	async #restore() {
+		if (this.layers.length > 0) return;
+		const stored = await loadStoredLoop();
+		const ctx = this.#ctx;
+		if (!stored || !ctx || this.layers.length > 0 || this.phase !== "idle") return;
+		this.bpm = stored.bpm;
+		this.beatsPerBar = stored.beatsPerBar;
+		this.bars = stored.bars;
+		this.syncTempo();
+		for (const l of stored.layers) {
+			if (l.channels.length < 2 || !l.channels[0].length) continue;
+			const buffer = ctx.createBuffer(2, l.channels[0].length, l.sampleRate);
+			buffer.getChannelData(0).set(l.channels[0]);
+			buffer.getChannelData(1).set(l.channels[1]);
+			this.layers.push({
+				id: l.id,
+				label: l.label,
+				source: l.source,
+				buffer,
+				gain: l.gain,
+				muted: l.muted,
+				solo: l.solo,
+				peaks: computePeaks(buffer, 512),
+			});
+		}
+		this.restored = this.layers.length;
+	}
+	/** How many layers came back from the browser's store on opening, for a notice. */
+	restored = $state(0);
 	#tapSource(source: LoopSource, node: AudioNode) {
 		const ctx = this.#ctx!;
 		const gain = ctx.createGain();
@@ -274,6 +335,7 @@ class LooperEngine {
 		if (this.locked) return;
 		this.bpm = Math.max(40, Math.min(240, Math.round(v)));
 		this.syncTempo();
+		this.#persist();
 	}
 	/** The drum machine and the metronome at the loop's tempo (also what holds them there while the loop has layers). */
 	syncTempo() {
@@ -294,10 +356,12 @@ class LooperEngine {
 	setBars(n: LoopBars) {
 		if (this.locked) return;
 		this.bars = n;
+		this.#persist();
 	}
 	setBeatsPerBar(n: 3 | 4) {
 		if (this.locked) return;
 		this.beatsPerBar = n;
+		this.#persist();
 	}
 
 	/** Play the loop (and count in first when asked); an empty loop runs its transport so the first layer can be recorded against the click. */
@@ -489,6 +553,7 @@ class LooperEngine {
 		};
 		this.layers.push(layer);
 		this.passes++;
+		this.#persist();
 		// The pass ended on a bar 1 a moment ago: the layer joins from where the loop is now.
 		this.#startLayer(layer, ctx.currentTime, this.#phaseNow());
 		if (this.layers.length >= MAX_LOOP_LAYERS) this.finishRecording();
@@ -509,6 +574,7 @@ class LooperEngine {
 		}
 		this.#playing = this.#playing.filter((x) => x.layerId !== id);
 		this.#applyGains();
+		this.#persist();
 	}
 	clear() {
 		while (this.layers.length > 0) this.remove(this.layers[this.layers.length - 1].id);
@@ -518,18 +584,21 @@ class LooperEngine {
 		if (!l) return;
 		l.gain = Math.max(0, Math.min(1, gain));
 		this.#applyGains();
+		this.#persist();
 	}
 	toggleMute(id: string) {
 		const l = this.layers.find((x) => x.id === id);
 		if (!l) return;
 		l.muted = !l.muted;
 		this.#applyGains();
+		this.#persist();
 	}
 	toggleSolo(id: string) {
 		const l = this.layers.find((x) => x.id === id);
 		if (!l) return;
 		l.solo = !l.solo;
 		this.#applyGains();
+		this.#persist();
 	}
 	rename(id: string, label: string) {
 		const l = this.layers.find((x) => x.id === id);
