@@ -5,17 +5,23 @@ import { aiAvailable } from "$lib/server/aiDetect";
 import { scheduleNotes } from "$lib/server/jobs";
 import { songView } from "$lib/server/songView";
 import { canCommentProject, canEditProject, canViewSong } from "$lib/server/viewAccess";
-import { error } from "@sveltejs/kit";
+import { renamedProjectPath } from "$lib/server/slugAlias";
+import { error, redirect } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { PageServerLoad } from "./$types";
 
 /** Missing renditions render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const { account, who, shareGrants } = await parent();
 	const song = await getSong(account.id, params.project, params.song);
-	if (!song) error(404, `No song "${params.song}" in "${params.project}"`);
+	if (!song) {
+		// An address the project or the song used to have redirects to the current one (src/lib/server/slugAlias.ts).
+		const to = await renamedProjectPath(url, account.id, params.project, params.song);
+		if (to) redirect(308, to);
+		error(404, `No song "${params.song}" in "${params.project}"`);
+	}
 	if (!canViewSong(song, who, shareGrants)) {
 		error(403, "This song is private. Sign in as a member, or open the link you were given.");
 	}

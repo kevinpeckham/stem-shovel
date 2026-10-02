@@ -47,6 +47,12 @@ import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
+import {
+	aliasedAccountSlugs,
+	aliasTarget,
+	claimSlug,
+	recordSlugChange,
+} from "$lib/server/slugAlias";
 import { SlugSchema } from "$lib/val/SlugSchema";
 import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import { NOTES_STALE_MS } from "$lib/constants/notesStale";
@@ -145,12 +151,27 @@ export async function updateAccount(
 	if (clash && clash.id !== accountId) {
 		return { ok: false, field: "slug", error: `Another account already uses "${slug}".` };
 	}
+	// An address another account had stays reserved for it (links to it may still be followed).
+	const reservedBy = await aliasTarget("account", "", slug);
+	if (reservedBy && reservedBy !== accountId) {
+		return {
+			ok: false,
+			field: "slug",
+			error: `"${slug}" belonged to another account and is reserved.`,
+		};
+	}
+	const before = await db.query.account.findFirst({
+		where: eq(account.id, accountId),
+		columns: { slug: true },
+	});
 	const [row] = await db
 		.update(account)
 		.set({ name, slug })
 		.where(eq(account.id, accountId))
 		.returning();
 	if (!row) return { ok: false, field: "name", error: "Account not found." };
+	// The old address redirects here from now on (src/lib/server/slugAlias.ts).
+	if (before) await recordSlugChange("account", "", accountId, before.slug, slug);
 	return { ok: true, account: row };
 }
 
@@ -299,6 +320,7 @@ export async function createProject(accountId: string, userId: string, name: str
 		.insert(project)
 		.values({ accountId, name: name.trim(), slug: uniqueSlug(base, taken), createdBy: userId })
 		.returning();
+	await claimSlug("project", accountId, row.slug); // a live slug outranks an old address
 	return row;
 }
 
@@ -328,12 +350,18 @@ export async function updateProject(
 	if (clash && clash.id !== projectId) {
 		return { ok: false, field: "slug", error: `Another project already uses /projects/${slug}.` };
 	}
+	const before = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { slug: true },
+	});
 	const [row] = await db
 		.update(project)
 		.set({ name, slug, type: input.type })
 		.where(and(eq(project.accountId, accountId), eq(project.id, projectId)))
 		.returning();
 	if (!row) return { ok: false, field: "name", error: "Project not found." };
+	// The old address redirects here from now on (src/lib/server/slugAlias.ts).
+	if (before) await recordSlugChange("project", accountId, projectId, before.slug, slug);
 	return { ok: true, project: row };
 }
 
@@ -425,6 +453,7 @@ export async function createSong(
 			sortOrder: (last?.last ?? -1) + 1,
 		})
 		.returning();
+	await claimSlug("song", projectId, row.slug); // a live slug outranks an old address
 	// The account's default artist performs every new song until someone says otherwise.
 	const acct = await db.query.account.findFirst({
 		where: eq(account.id, accountId),
@@ -471,7 +500,7 @@ export async function updateSong(
 	const slug = parsed.output;
 	const existing = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { id: true, projectId: true },
+		columns: { id: true, projectId: true, slug: true },
 	});
 	if (!existing) return { ok: false, field: "title", error: "Song not found." };
 	const clash = await db.query.song.findFirst({
@@ -499,6 +528,8 @@ export async function updateSong(
 		})
 		.where(eq(song.id, songId))
 		.returning();
+	// The old address redirects here from now on (src/lib/server/slugAlias.ts).
+	await recordSlugChange("song", existing.projectId, songId, existing.slug, slug);
 	return { ok: true, song: row };
 }
 
@@ -2395,6 +2426,34 @@ export async function openShareLinks(codes: string[]): Promise<ShareGrant[]> {
 		.map((r) => ({ code: r.code, projectId: r.projectId, songId: r.songId }));
 }
 
+/** The current page of the song or project a code was made for (`/s/<code>`), or null when no such code. */
+export async function shareLinkTarget(code: string): Promise<string | null> {
+	const link = await db.query.shareLink.findFirst({
+		where: eq(shareLink.code, code),
+		columns: { songId: true, projectId: true },
+	});
+	if (!link) return null;
+	if (link.songId) {
+		const s = await db.query.song.findFirst({
+			where: eq(song.id, link.songId),
+			columns: { slug: true },
+			with: {
+				project: { columns: { slug: true }, with: { account: { columns: { slug: true } } } },
+			},
+		});
+		return s ? `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}` : null;
+	}
+	if (link.projectId) {
+		const p = await db.query.project.findFirst({
+			where: eq(project.id, link.projectId),
+			columns: { slug: true },
+			with: { account: { columns: { slug: true } } },
+		});
+		return p ? `/${p.account.slug}/projects/${p.slug}` : null;
+	}
+	return null;
+}
+
 /** A visitor arrived with the code: count the use. */
 export async function useShareLink(code: string) {
 	await db
@@ -2458,8 +2517,10 @@ export async function deleteAccount(id: string) {
 export async function createOwnedAccount(userId: string, name: string) {
 	const base = slugify(name) || "account";
 	const taken = new Set((await db.select({ slug: account.slug }).from(account)).map((r) => r.slug));
+	// Addresses accounts used to have stay reserved for them.
+	const reserved = new Set(await aliasedAccountSlugs());
 	let slug = base;
-	for (let n = 2; taken.has(slug); n++) slug = `${base.slice(0, 60)}-${n}`;
+	for (let n = 2; taken.has(slug) || reserved.has(slug); n++) slug = `${base.slice(0, 60)}-${n}`;
 	// The first FOUNDER_SEATS accounts ever created are founders (docs/billing.md).
 	const isFounder = taken.size < FOUNDER_SEATS;
 	const [row] = await db.insert(account).values({ name, slug, isFounder }).returning();

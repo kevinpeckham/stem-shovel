@@ -2,7 +2,8 @@ import { canEdit, isMember, publicAccountBySlug, viewerOf } from "$lib/server/ac
 import { openShareLinks, projectRolesOf, useShareLink } from "$lib/server/data";
 import { rememberAccount } from "$lib/server/currentAccount";
 import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "$lib/server/viewAccess";
-import { error } from "@sveltejs/kit";
+import { renamedAccountPath } from "$lib/server/slugAlias";
+import { error, redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
 /**
@@ -17,7 +18,12 @@ import type { LayoutServerLoad } from "./$types";
 export const load: LayoutServerLoad = async ({ params, locals, url, cookies }) => {
 	// The account and the visitor's share codes are independent lookups: together.
 	const [account, grants] = await Promise.all([
-		publicAccountBySlug(params.account),
+		publicAccountBySlug(params.account).catch(async (e: unknown) => {
+			// Not live: an address the account used to have redirects to the current one (src/lib/server/slugAlias.ts).
+			const to = await renamedAccountPath(url, params.account);
+			if (to) redirect(308, to);
+			throw e;
+		}),
 		openShareLinks(shareCodesFrom(url, cookies)),
 	]);
 	if (account.status !== "active") {

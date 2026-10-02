@@ -298,7 +298,6 @@
 		if (view === "stems") demoPanel?.pause();
 		else playerEngine?.pause();
 	}
-	let slugTouched = $state(false);
 
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
 	const DOC_KINDS = ["chart", "lyrics", "notes"] as const;
@@ -1345,9 +1344,6 @@
 									<input
 										class="mt-1 field"
 										{...fields.title.as("text", data.song.title)}
-										oninput={(e) => {
-											if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-										}}
 										required
 									/>
 									{#each fields.title.issues() ?? [] as issue (issue.message)}
@@ -1363,20 +1359,21 @@
 										<input
 											class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
 											{...fields.slug.as("text", data.song.slug)}
-											oninput={() => (slugTouched = true)}
 											required
 										/>
 									</span>
 									{#each fields.slug.issues() ?? [] as issue (issue.message)}
 										<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 									{/each}
+									<span class="mt-1 block text-xs opacity-80"
+										>Change it and the old address keeps working as a redirect.</span
+									>
 									{#if slug !== slugify(title)}
 										<button
 											class="mt-1 text-xs link-dim"
 											type="button"
 											onclick={() => {
 												fields.slug.set(slugify(title));
-												slugTouched = false;
 											}}>Use title</button
 										>
 									{/if}
@@ -2853,7 +2850,6 @@
 			<ShareLinks
 				target={{ songId: data.song.id }}
 				links={data.shareLinks}
-				path="/{data.account.slug}/projects/{data.song.project.slug}/{data.song.slug}"
 				isPrivate={data.song.isPrivate || data.song.project.isPrivate}
 			/>
 		</div>

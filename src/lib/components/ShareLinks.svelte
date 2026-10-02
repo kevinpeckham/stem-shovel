@@ -10,7 +10,7 @@
 	/**
 	 * Viewing links for one song or one project: the list any member sees in
 	 * the share or settings popover, with a form to make one and a revoke
-	 * per row. A link is the page's own URL plus `?share=<code>`.
+	 * per row. A link is `/s/<code>`, which redirects to the page's current URL with `?share=<code>`.
 	 */
 	interface Link {
 		id: string;
@@ -24,13 +24,12 @@
 	interface Props {
 		target: { songId: string } | { projectId: string };
 		links: Link[];
-		/** Path of the page the link opens, e.g. /mmkk/projects/badverbs/peaceful-dreams. */
-		path: string;
 		isPrivate: boolean;
 	}
-	let { target, links, path, isPrivate }: Props = $props();
+	let { target, links, isPrivate }: Props = $props();
 
-	const linkFor = (code: string) => `${page.url.origin}${path}?share=${code}`;
+	// The link is the code's own address (src/routes/s/[code]), which finds the page wherever a rename moves it.
+	const linkFor = (code: string) => `${page.url.origin}/s/${code}`;
 	async function copy(text: string) {
 		try {
 			await navigator.clipboard.writeText(text);

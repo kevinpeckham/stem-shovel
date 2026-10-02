@@ -341,6 +341,24 @@ Index: `(song_id, kind, version_number)`.
 | created_by | text FK → user (set null) |                                     |
 | created_at | timestamp_ms              |                                     |
 
+### slug_alias
+
+An address an account, a project or a song used to have. Renaming one so
+that its slug changes writes the old slug here (`kind`, `scope_id` = the
+account for a project, the project for a song, "" for an account; `slug`;
+`target_id`), and the `[account]`, `[project]` and `[song]` loaders fall
+back to it when a slug is not live, answering a 308 to the current address
+with the query string kept (`src/lib/server/slugAlias.ts`,
+`src/lib/utils/renamedPathname.ts`). The live slug always wins: creating
+or renaming onto a slug deletes its alias, which is what stops a rename
+and its reversal from redirecting in a circle, and `renamedPathname`
+answers null (a 404, not a redirect) should an alias ever name the slug
+its target has. An account's old slugs stay reserved: no new account can
+take one and another account cannot rename onto it. Share links have their
+own address, `/s/<code>`, that redirects to the page the code belongs to,
+so they survive renames too. Unique `(kind, scope_id, slug)`, index on
+`target_id`; the cascade removes a deleted thing's aliases.
+
 ### beat
 
 A saved drum-machine beat (docs/drum-machine.md, Phase 3): the project as

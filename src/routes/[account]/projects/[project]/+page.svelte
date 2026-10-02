@@ -61,7 +61,6 @@
 			.join(" · "),
 	);
 	// Keep the slug following the name until the slug is edited by hand.
-	let slugTouched = $state(false);
 
 	// A song marked finished (song settings) is filed first. Otherwise it is
 	// "in progress" once it has a stem that finished uploading; until then it
@@ -238,7 +237,6 @@
 				// Open on what is saved, not on what was last typed.
 				if (e.newState === "open") {
 					clearForm(updateProject);
-					slugTouched = false;
 				}
 			}}
 			bind:this={settingsPanel}
@@ -277,14 +275,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<label class="block">
 						<span class="text-sm text-dim">Name</span>
-						<input
-							class="mt-1 field"
-							{...fields.name.as("text", data.project.name)}
-							oninput={(e) => {
-								if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-							}}
-							required
-						/>
+						<input class="mt-1 field" {...fields.name.as("text", data.project.name)} required />
 						{#each fields.name.issues() ?? [] as issue (issue.message)}
 							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
@@ -296,20 +287,21 @@
 							<input
 								class="block w-full bg-transparent py-2 pr-3 font-mono text-sm"
 								{...fields.slug.as("text", data.project.slug)}
-								oninput={() => (slugTouched = true)}
 								required
 							/>
 						</span>
 						{#each fields.slug.issues() ?? [] as issue (issue.message)}
 							<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 						{/each}
+						<span class="mt-1 block text-xs text-dim"
+							>Change it and the old address keeps working as a redirect.</span
+						>
 						{#if slug !== slugify(name)}
 							<button
 								class="mt-1 text-xs link-dim"
 								type="button"
 								onclick={() => {
 									fields.slug.set(slugify(name));
-									slugTouched = false;
 								}}>Use name</button
 							>
 						{/if}
@@ -360,7 +352,6 @@
 				<ShareLinks
 					target={{ projectId: data.project.id }}
 					links={data.shareLinks}
-					path="/{data.account.slug}/projects/{data.project.slug}"
 					isPrivate={data.project.isPrivate}
 				/>
 			</div>

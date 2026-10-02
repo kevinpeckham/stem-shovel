@@ -15,16 +15,22 @@ import {
 import { mixKeyOf } from "$lib/server/mix";
 import { scheduleMix } from "$lib/server/jobs";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { error } from "@sveltejs/kit";
+import { renamedProjectPath } from "$lib/server/slugAlias";
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 /** Missing mixes render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const { account, who, shareGrants } = await parent();
 	const project = await getProject(account.id, params.project);
-	if (!project) error(404, `No project "${params.project}"`);
+	if (!project) {
+		// An address the project used to have redirects to the current one (src/lib/server/slugAlias.ts).
+		const to = await renamedProjectPath(url, account.id, params.project);
+		if (to) redirect(308, to);
+		error(404, `No project "${params.project}"`);
+	}
 	if (!canViewProject(project, who, shareGrants)) {
 		error(403, "This project is private. Sign in as a member, or open the link you were given.");
 	}

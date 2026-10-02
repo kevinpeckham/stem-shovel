@@ -22,7 +22,6 @@
 	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { clearForm } from "$lib/utils/clearForm";
-	import { slugify } from "$lib/utils/slugify";
 
 	let { data } = $props();
 
@@ -30,7 +29,6 @@
 	let name = $derived(fields.name.value() ?? data.account.name);
 	let slug = $derived(fields.slug.value() ?? data.account.slug);
 	let dirty = $derived(name.trim() !== data.account.name || slug.trim() !== data.account.slug);
-	let slugTouched = $state(false);
 	let limit = $derived(data.usage.storageLimitBytes);
 	/** null = unlimited seats. */
 	let seatsLeft = $derived(
@@ -93,14 +91,7 @@
 			<input {...fields.id.as("hidden", data.account.id)} />
 			<label class="block">
 				<span class="text-15px text-dim">Name</span>
-				<input
-					class="mt-1 field"
-					{...fields.name.as("text", data.account.name)}
-					oninput={(e) => {
-						if (!slugTouched) fields.slug.set(slugify(e.currentTarget.value));
-					}}
-					required
-				/>
+				<input class="mt-1 field" {...fields.name.as("text", data.account.name)} required />
 				{#each fields.name.issues() ?? [] as issue (issue.message)}
 					<p class="mt-1 text-sm text-red-400">{issue.message}</p>
 				{/each}
@@ -110,11 +101,11 @@
 				<input
 					class="mt-1 field font-mono text-sm"
 					{...fields.slug.as("text", data.account.slug)}
-					oninput={() => (slugTouched = true)}
 					required
 				/>
 				<span class="mt-1 block text-13px text-dim">
-					Identifies the account; not part of any URL yet.
+					The account's address: every page of it lives under /{data.account.slug}/. Change it and
+					the old address keeps redirecting here, reserved for this account.
 				</span>
 				{#each fields.slug.issues() ?? [] as issue (issue.message)}
 					<p class="mt-1 text-sm text-red-400">{issue.message}</p>

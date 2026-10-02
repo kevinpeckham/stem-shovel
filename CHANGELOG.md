@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Old addresses keep working.** Renaming a project, a song or an account so that its URL changes records the old address (`slug_alias`, migration 0066; docs/data-model.md), and a visit to it redirects permanently to the current page, query string included, so links already shared do not break. A rename reverted leaves no circle: the live slug always wins and its alias is removed. An account's old slugs stay reserved for it.
+- **Share links at their own address.** A share link is now `/s/<code>`, which finds the song or project the code was made for and opens its current page with the code attached; the share popover and the share email use it. Links copied before carry on through the redirect above.
+
+### Changed
+
+- **The URL field no longer follows the name** as you rename an existing project, song or account; "Use name" fills it on request, with a note that the old address keeps redirecting. The account settings page now says what the slug is for.
+
 ## [0.79.0] - 2026-10-02
 
 ### Added

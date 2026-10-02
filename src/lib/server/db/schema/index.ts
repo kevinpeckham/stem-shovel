@@ -27,6 +27,7 @@ export * from "./recordingStem";
 export * from "./relations";
 export * from "./session";
 export * from "./shareLink";
+export * from "./slugAlias";
 export * from "./song";
 export * from "./songCredit";
 export * from "./songDocVersion";

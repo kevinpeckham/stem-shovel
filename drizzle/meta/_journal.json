@@ -463,6 +463,13 @@
       "when": 1790944613468,
       "tag": "0065_idea_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "6",
+      "when": 1790959777991,
+      "tag": "0066_slug_alias",
+      "breakpoints": true
     }
   ]
 }

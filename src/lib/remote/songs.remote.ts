@@ -232,7 +232,7 @@ export const shareSong = command(ShareSongSchema, async ({ songId, to, message }
 		: null;
 	await sendShareEmail({
 		to,
-		url: link ? `${pageUrl}?share=${link.code}` : pageUrl,
+		url: link ? `${url.origin}/s/${link.code}` : pageUrl,
 		songTitle: song.title,
 		projectName: song.project.name,
 		senderName: user.name || user.email,

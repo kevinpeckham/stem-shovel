@@ -1,4 +1,5 @@
 import { db, schema } from "$lib/server/db";
+import { deleteAliasesOf } from "$lib/server/slugAlias";
 import { eq, inArray } from "drizzle-orm";
 
 /**
@@ -61,6 +62,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(stem).where(inArray(stem.songId, songIds));
 	await db.update(aiRequest).set({ songId: null }).where(inArray(aiRequest.songId, songIds));
 	await db.update(beat).set({ songId: null }).where(inArray(beat.songId, songIds));
+	await deleteAliasesOf(songIds);
 	await db.delete(song).where(inArray(song.id, songIds));
 }
 
@@ -75,6 +77,7 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 	await db.delete(shareLink).where(inArray(shareLink.projectId, projectIds));
 	await db.delete(projectMember).where(inArray(projectMember.projectId, projectIds));
 	await db.delete(invitation).where(inArray(invitation.projectId, projectIds));
+	await deleteAliasesOf(projectIds);
 	await db.delete(project).where(inArray(project.id, projectIds));
 }
 
@@ -152,6 +155,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 		.update(supportRequest)
 		.set({ accountId: null })
 		.where(eq(supportRequest.accountId, accountId));
+	await deleteAliasesOf([accountId]);
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
