@@ -7,6 +7,8 @@
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import Piano from "$lib/components/Piano.svelte";
+	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
+	import SourceButton from "$lib/components/SourceButton.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
@@ -545,131 +547,80 @@
 					<div class="device-button-group-label text-dark">Input Source</div>
 					<div class="flex flex-wrap gap-2" role="group" aria-label="Source">
 						{#each LOOP_SOURCES as source (source)}
-							<div class="grid gap-1 content-start">
-								<!-- The source button and, beside it, its own settings menu (device, channels, latency…), squared where they meet so the pair reads as one button; the drums need none. -->
-								<div class="flex gap-px">
-									<button
-										class="device-button-sm px-3 grid gap-1 content-center min-w-120px flex-1 {looper.armed ===
-										source
-											? 'text-accent'
-											: ''} {source === 'drums' ? '' : 'rounded-r-none'}"
-										type="button"
-										aria-pressed={looper.armed === source}
-										disabled={looper.phase === "recording"}
-										title={sourceLabel(source)}
-										onclick={() => void arm(source)}
-									>
-										<span class="flex items-center justify-center gap-2 leading-none">
-											{#if source === "drums"}
-												<span class="grid place-items-center w-1em" aria-hidden="true"
-													><IconDrumKit /></span
-												>
-											{:else}
-												<span class={sourceIcon[source]} aria-hidden="true"></span>
-											{/if}
-											{LOOP_SOURCE_LABELS[source]}
-										</span>
-										<span
-											class="block h-1 w-full rounded bg-blue-100/10 overflow-hidden"
-											role="meter"
-											aria-label="{LOOP_SOURCE_LABELS[source]} level"
-											aria-valuemin="0"
-											aria-valuemax="100"
-											aria-valuenow={Math.round(looper.levels[source] * 100)}
+							<SourceButton
+								label={LOOP_SOURCE_LABELS[source]}
+								iconClass={source === "drums" ? null : sourceIcon[source]}
+								pressed={looper.armed === source}
+								disabled={looper.phase === "recording"}
+								title={sourceLabel(source)}
+								level={looper.levels[source]}
+								onclick={() => void arm(source)}
+								menu={source === "mic"
+									? micMenu
+									: source === "line"
+										? lineMenu
+										: source === "computer"
+											? computerMenu
+											: source === "piano"
+												? pianoMenu
+												: undefined}
+							>
+								{#snippet icon()}
+									{#if source === "drums"}<IconDrumKit />{/if}
+								{/snippet}
+								{#snippet below()}
+									{#if source === "mic" || source === "line" || source === "computer"}
+										<label
+											class="block px-0.5"
+											title="Input gain: {inputSources.inputGainsDb[source] > 0
+												? '+'
+												: ''}{inputSources.inputGainsDb[source]} dB"
 										>
+											<span class="sr-only">{LOOP_SOURCE_LABELS[source]} gain</span>
+											<input
+												class="w-full accent-maximumYellow h-3"
+												type="range"
+												min="-12"
+												max="24"
+												step="1"
+												value={inputSources.inputGainsDb[source]}
+												aria-label="{LOOP_SOURCE_LABELS[source]} gain in decibels"
+												oninput={(e) =>
+													inputSources.setInputGainDb(source, Number(e.currentTarget.value))}
+											/>
 											<span
-												class="block h-full rounded {looper.levels[source] > 0.85
-													? 'bg-red-500'
-													: 'bg-blue-300'}"
-												style:width="{looper.levels[source] * 100}%"
-											></span>
-										</span>
-									</button>
-									{#if source !== "drums"}
-										<ContextMenu
-											ariaLabel="{LOOP_SOURCE_LABELS[source]} settings"
-											title="{LOOP_SOURCE_LABELS[source]} settings"
-											iconClass="i-ph-caret-down-bold"
-											position="bottom right"
-											buttonBaseClasses="device-button-sm px-2 rounded-l-none min-w-0 text-11px"
-											buttonClasses={looper.armed === source ||
-											(source === "mic" && inputSources.monitor)
-												? "text-accent"
-												: ""}
-											popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-											items={[
-												{
-													id: `${source}-heading`,
-													kind: "heading",
-													label: LOOP_SOURCE_LABELS[source],
-												},
-												{
-													id: `${source}-block`,
-													kind: "snippet",
-													snippet:
-														source === "mic"
-															? micMenu
-															: source === "line"
-																? lineMenu
-																: source === "computer"
-																	? computerMenu
-																	: pianoMenu,
-												},
-											]}
-										/>
+												class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+												aria-hidden="true"
+												>Gain {inputSources.inputGainsDb[source] > 0 ? "+" : ""}{inputSources
+													.inputGainsDb[source]} dB</span
+											>
+										</label>
+									{:else}
+										{@const inst = source === "piano" ? piano : drumMachine}
+										<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
+										<label
+											class="block px-0.5"
+											title="{LOOP_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"
+										>
+											<span class="sr-only">{LOOP_SOURCE_LABELS[source]} volume</span>
+											<input
+												class="w-full accent-maximumYellow h-3"
+												type="range"
+												min="0"
+												max="100"
+												step="1"
+												value={Math.round(inst.volume * 100)}
+												aria-label="{LOOP_SOURCE_LABELS[source]} volume in percent"
+												oninput={(e) => inst.setVolume(Number(e.currentTarget.value) / 100)}
+											/>
+											<span
+												class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+												aria-hidden="true">Volume {Math.round(inst.volume * 100)}%</span
+											>
+										</label>
 									{/if}
-								</div>
-								{#if source === "mic" || source === "line" || source === "computer"}
-									<label
-										class="block px-0.5"
-										title="Input gain: {inputSources.inputGainsDb[source] > 0
-											? '+'
-											: ''}{inputSources.inputGainsDb[source]} dB"
-									>
-										<span class="sr-only">{LOOP_SOURCE_LABELS[source]} gain</span>
-										<input
-											class="w-full accent-maximumYellow h-3"
-											type="range"
-											min="-12"
-											max="24"
-											step="1"
-											value={inputSources.inputGainsDb[source]}
-											aria-label="{LOOP_SOURCE_LABELS[source]} gain in decibels"
-											oninput={(e) =>
-												inputSources.setInputGainDb(source, Number(e.currentTarget.value))}
-										/>
-										<span
-											class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
-											aria-hidden="true"
-											>Gain {inputSources.inputGainsDb[source] > 0 ? "+" : ""}{inputSources
-												.inputGainsDb[source]} dB</span
-										>
-									</label>
-								{:else}
-									{@const inst = source === "piano" ? piano : drumMachine}
-									<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
-									<label
-										class="block px-0.5"
-										title="{LOOP_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"
-									>
-										<span class="sr-only">{LOOP_SOURCE_LABELS[source]} volume</span>
-										<input
-											class="w-full accent-maximumYellow h-3"
-											type="range"
-											min="0"
-											max="100"
-											step="1"
-											value={Math.round(inst.volume * 100)}
-											aria-label="{LOOP_SOURCE_LABELS[source]} volume in percent"
-											oninput={(e) => inst.setVolume(Number(e.currentTarget.value) / 100)}
-										/>
-										<span
-											class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
-											aria-hidden="true">Volume {Math.round(inst.volume * 100)}%</span
-										>
-									</label>
-								{/if}
-							</div>
+								{/snippet}
+							</SourceButton>
 						{/each}
 					</div>
 				</div>
@@ -1006,70 +957,15 @@
 		</div>
 	{/snippet}
 
-	<!-- Each source's menu (the small button beside its source button): the microphone and the line in share the monitor, normalize and latency blocks. -->
-	{#snippet inputDeviceBlock(src: InputSource)}
-		<div class="grid gap-2">
-			<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
-				<label class="block">
-					<span class="device-button-label">Device</span>
-					<select
-						class="device-field w-full"
-						aria-label="{LOOP_SOURCE_LABELS[src]} device"
-						value={inputSources.deviceIds[src] ?? ""}
-						onfocus={() => void inputSources.listInputs()}
-						onchange={(e) => void looper.requestInput(src, e.currentTarget.value || null)}
-					>
-						<option value="">Default input</option>
-						{#each inputSources.inputs as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
-					</select>
-				</label>
-				<label class="block">
-					<span class="device-button-label">Channels</span>
-					<select
-						class="device-field"
-						aria-label="{LOOP_SOURCE_LABELS[src]} channels"
-						value={inputSources.channelModes[src]}
-						onchange={(e) => inputSources.setChannelMode(src, e.currentTarget.value as ChannelMode)}
-					>
-						<option value="stereo">Stereo</option>
-						<option value="left">Left only</option>
-						<option value="right">Right only</option>
-					</select>
-				</label>
-			</div>
-			<p class="text-12px opacity-70">
-				{#if inputSources.labels[src]}Open: {inputSources.labels[src]}.{:else if src === "line"}A
-					second input, for an instrument on an audio interface; an input on one channel of a stereo
-					interface wants Left only or Right only.{:else}Not open yet; it asks for permission on its
-					first turn.{/if}
-				{#if inputSources.errors[src]}<span class="text-red-300">{inputSources.errors[src]}</span
-					>{/if}
-			</p>
-		</div>
+	<!-- Each outside source's menu (InputSourceSettings.svelte) with the looper's own latency block under the two inputs. -->
+	{#snippet micMenu()}
+		<InputSourceSettings source="mic">{@render latencyBlock()}</InputSourceSettings>
 	{/snippet}
-
-	{#snippet monitorSwitch()}
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={inputSources.monitor}
-				onchange={(e) => inputSources.setMonitor(e.currentTarget.checked)}
-			/>
-			Hear the microphone and the line in through the speakers
-		</label>
+	{#snippet lineMenu()}
+		<InputSourceSettings source="line">{@render latencyBlock()}</InputSourceSettings>
 	{/snippet}
-
-	{#snippet normalizeSwitch()}
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={inputSources.normalize}
-				onchange={(e) => inputSources.setNormalize(e.currentTarget.checked)}
-			/>
-			Normalize recorded layers from the inputs to −1 dBFS
-		</label>
+	{#snippet computerMenu()}
+		<InputSourceSettings source="computer" />
 	{/snippet}
 
 	{#snippet latencyBlock()}
@@ -1104,98 +1000,6 @@
 			>
 				{looper.calibrating ? "Listening…" : "Calibrate"}
 			</button>
-		</div>
-	{/snippet}
-
-	{#snippet micMenu()}
-		<div
-			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
-		>
-			{@render inputDeviceBlock("mic")}
-			<div class="border-t border-current/10 pt-3 grid gap-3">
-				{@render monitorSwitch()}
-				{@render normalizeSwitch()}
-			</div>
-			{@render latencyBlock()}
-		</div>
-	{/snippet}
-
-	{#snippet lineMenu()}
-		<div
-			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
-		>
-			{@render inputDeviceBlock("line")}
-			<div class="border-t border-current/10 pt-3 grid gap-3">
-				{@render monitorSwitch()}
-				{@render normalizeSwitch()}
-			</div>
-			{@render latencyBlock()}
-		</div>
-	{/snippet}
-
-	{#snippet computerMenu()}
-		<div
-			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
-		>
-			<div class="grid gap-2">
-				<p class="text-12px opacity-70">
-					Audio from another program, through the browser's share picker: pick a tab, a window or
-					the screen and tick "Share audio". Chrome and Edge share a tab's audio anywhere and the
-					whole computer's on Windows; on a Mac, route the other program through a loopback device
-					and choose it as the line in. Safari cannot share audio.
-					{#if inputSources.labels.computer}<span>Sharing: {inputSources.labels.computer}.</span
-						>{/if}
-					{#if inputSources.errors.computer}<span class="text-red-300"
-							>{inputSources.errors.computer}</span
-						>{/if}
-				</p>
-				<div class="grid grid-cols-[auto_1fr] gap-2 items-end">
-					<button
-						class="device-button-xs px-3"
-						type="button"
-						onclick={() => void looper.requestComputer()}
-						>{inputSources.labels.computer
-							? "Share something else"
-							: "Choose what to share"}</button
-					>
-					<label class="block">
-						<span class="device-button-label">Channels</span>
-						<select
-							class="device-field w-full"
-							aria-label="Computer channels"
-							value={inputSources.channelModes.computer}
-							onchange={(e) =>
-								inputSources.setChannelMode("computer", e.currentTarget.value as ChannelMode)}
-						>
-							<option value="stereo">Stereo</option>
-							<option value="left">Left only</option>
-							<option value="right">Right only</option>
-						</select>
-					</label>
-				</div>
-				<label class="block">
-					<span class="device-button-label"
-						>Computer audio latency · {inputSources.computerLatencyMs} ms</span
-					>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="300"
-						step="1"
-						value={inputSources.computerLatencyMs}
-						aria-label="Computer audio latency in milliseconds"
-						oninput={(e) => inputSources.setComputerLatencyMs(Number(e.currentTarget.value))}
-					/>
-				</label>
-				<p class="text-12px opacity-70">
-					Audio shared this way arrives late by the capture's own path, which nothing here can
-					measure: nudge the slider until a shared layer sits on the beat.
-				</p>
-			</div>
-			<div class="border-t border-current/10 pt-3 grid gap-3">
-				{@render normalizeSwitch()}
-			</div>
 		</div>
 	{/snippet}
 
