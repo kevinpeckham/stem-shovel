@@ -58,6 +58,7 @@ import type { AccountStatus } from "$lib/val/AccountStatusSchema";
 import type { ShareGrant } from "$lib/server/viewAccess";
 import type { Note } from "$lib/audio/chords";
 import {
+	like,
 	and,
 	asc,
 	count,
@@ -3124,6 +3125,66 @@ export async function setIdeaInstruments(
 		.set({ instruments: JSON.stringify(next) })
 		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)));
 	return next;
+}
+
+/**
+ * The user's loops (docs/looper.md, "Export and Load"): the takes whose
+ * idea came from the looper (its `instruments.looper` is set), newest
+ * first, with how many sources they carry; each export makes an idea of
+ * its own, so a loop is one take.
+ */
+export async function listUserLoops(userId: string) {
+	const rows = await db.query.idea.findMany({
+		where: and(eq(idea.createdBy, userId), like(idea.instruments, '%"looper":{%')),
+		orderBy: [desc(idea.createdAt)],
+		with: {
+			takes: {
+				where: eq(recording.status, "ready"),
+				orderBy: [asc(recording.takeNumber)],
+				columns: { id: true, createdAt: true },
+				with: { stems: { where: eq(recordingStem.status, "ready"), columns: { id: true } } },
+			},
+		},
+	});
+	return rows.flatMap((i) => {
+		const settings = parseIdeaInstruments(i.instruments)?.looper;
+		const take = i.takes[0];
+		if (!settings || !take) return [];
+		return [
+			{
+				id: take.id,
+				title: i.title,
+				createdAt: take.createdAt,
+				layers: take.stems.length,
+				bpm: settings.bpm,
+				bars: settings.bars,
+			},
+		];
+	});
+}
+
+/** A loop's sources with URLs the browser may fetch, and the loop's settings, for the looper to load (the caller checked ownership). */
+export async function loopSources(accountId: string, recordingId: string) {
+	const rec = await db.query.recording.findFirst({
+		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
+		columns: { id: true },
+		with: {
+			idea: { columns: { instruments: true } },
+			stems: { where: eq(recordingStem.status, "ready"), orderBy: [asc(recordingStem.sortOrder)] },
+		},
+	});
+	if (!rec) return null;
+	const settings = parseIdeaInstruments(rec.idea?.instruments ?? null)?.looper ?? null;
+	return {
+		settings,
+		sources: await Promise.all(
+			rec.stems.map(async (s) => ({
+				label: s.label,
+				sortOrder: s.sortOrder,
+				url: (await presentUrl(s.url)) ?? s.url,
+			})),
+		),
+	};
 }
 
 /** The column's JSON as settings; a row from before the column, or one that fails the schema, holds nothing. */

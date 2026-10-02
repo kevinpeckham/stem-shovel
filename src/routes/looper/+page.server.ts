@@ -2,7 +2,7 @@ import { publicBlobUrl } from "$lib/server/blob";
 import { isEditor } from "$lib/server/access";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listBeats, listPianoPresets, sitePianoPresets } from "$lib/server/data";
+import { listBeats, listPianoPresets, listUserLoops, sitePianoPresets } from "$lib/server/data";
 import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import copyFallback from "../../../scripts/user-docs/looper-page.md?raw";
@@ -21,6 +21,8 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	const member = locals.user ? pickAccount(editing, cookies.get(CURRENT_ACCOUNT_COOKIE)) : null;
 	return {
 		signedIn: !!locals.user,
+		// The user's exported loops, to load back (docs/looper.md, "Export and Load").
+		loops: locals.user ? await listUserLoops(locals.user.id) : [],
 		account: member
 			? { id: member.accountId, name: member.name, slug: member.slug, canEdit: true }
 			: null,

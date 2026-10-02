@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Looper: Load.** A Load menu lists the loops you exported to the Idea Recorder and brings one back into the looper from its sources, with its tempo, bars and layer levels (`listUserLoops`, the `loopSources` query, `looper.loadFrom`); the Save menu is now **Export** (docs/looper.md, "Export and Load").
+
 ### Changed
 
 - **Looper: Record is one lit button.** It starts a layer and, pressed again while recording, makes the pass under way the last; the screen says so. Stop halts the loop and drops a pass still recording. The separate Finish layer and Cancel buttons are gone (Kevin: a relabelled button that seemed to do nothing).

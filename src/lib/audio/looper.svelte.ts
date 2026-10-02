@@ -250,6 +250,70 @@ class LooperEngine {
 	}
 	/** How many layers came back from the browser's store on opening, for a notice. */
 	restored = $state(0);
+	/** A loop being fetched and decoded from its exported sources. */
+	loading = $state(false);
+	/**
+	 * A loop exported to the Idea Recorder, back from its take's sources
+	 * (docs/looper.md, "Export and Load"): the current layers go, the tempo
+	 * and length follow the settings, each source is fetched and decoded in
+	 * this context and becomes a layer with its label and, by position, its
+	 * level and mute from the settings. Returns how many layers landed.
+	 */
+	async loadFrom(
+		sources: { label: string; url: string; sortOrder: number }[],
+		settings: {
+			bpm: number;
+			beatsPerBar: 3 | 4;
+			bars: LoopBars;
+			layers: { label: string; source: LoopSource; gain: number; muted: boolean }[];
+		} | null,
+	): Promise<number> {
+		await this.open();
+		const ctx = this.#ctx!;
+		this.stop();
+		this.loading = true;
+		try {
+			this.clear();
+			if (settings) {
+				this.bpm = settings.bpm;
+				this.beatsPerBar = settings.beatsPerBar;
+				this.bars = settings.bars;
+				this.syncTempo();
+			}
+			const ordered = [...sources].sort((a, b) => a.sortOrder - b.sortOrder);
+			for (const [k, src] of ordered.entries()) {
+				const res = await fetch(src.url);
+				if (!res.ok) throw new Error(`Could not fetch ${src.label} (${res.status})`);
+				const decoded = await ctx.decodeAudioData(await res.arrayBuffer());
+				const buffer = ctx.createBuffer(2, decoded.length, decoded.sampleRate);
+				buffer.getChannelData(0).set(decoded.getChannelData(0));
+				buffer.getChannelData(1).set(decoded.getChannelData(decoded.numberOfChannels > 1 ? 1 : 0));
+				const meta = settings?.layers[k];
+				const source: LoopSource =
+					meta?.source ??
+					(src.label.startsWith("Piano")
+						? "piano"
+						: src.label.startsWith("Drums")
+							? "drums"
+							: "mic");
+				this.layers.push({
+					id: `${Date.now().toString(36)}${k}`,
+					label: src.label,
+					source,
+					buffer,
+					gain: meta?.gain ?? 1,
+					muted: meta?.muted ?? false,
+					solo: false,
+					peaks: computePeaks(buffer, 512),
+				});
+			}
+			this.restored = 0;
+			this.#persist();
+			return this.layers.length;
+		} finally {
+			this.loading = false;
+		}
+	}
 	#tapSource(source: LoopSource, node: AudioNode) {
 		const ctx = this.#ctx!;
 		const gain = ctx.createGain();

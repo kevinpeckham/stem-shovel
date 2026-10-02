@@ -216,6 +216,29 @@ layer, and pressed again lets the pass under way be the last
 (`toggleRecord`, `finishing` on the screen as "· the last"); Stop halts the
 loop and drops a pass still recording, as its title says.
 
+## Export and Load (2026-10-02)
+
+Kevin: "besides saving loops as multitrack recordings to the idea
+recorder (perhaps better labelled as 'export'), we should be able to save
+and load loops in the looper itself." The Save menu is **Export** (an
+export icon; "Export as take"), and a **Load** menu lists the loops the
+user exported, newest first, with their layer count, length and tempo:
+`listUserLoops(userId)` finds the user's ideas whose `instruments` JSON
+holds a `looper` block (a LIKE on the column; each export makes an idea
+of its own, so a loop is its first take) with the take's ready sources.
+Loading calls the `loopSources` query (`src/lib/remote/looper.remote.ts`,
+the caller's own take) for the sources' presented URLs and the loop's
+settings, and `looper.loadFrom()` stops the loop, clears the layers (the
+page asks first when there are any), sets the tempo, bars and beats,
+fetches and decodes each source in the looper's context and makes it a
+layer with its label and, by position, its level and mute from the
+settings; the result goes to the browser's store too. So a member's
+permanent loop library is the Idea Recorder itself (the takes with
+sources, which also go to songs as stems), with no new table; a visitor
+has the one loop the browser keeps. Verified on dev: a one-bar drums loop
+at 132 bpm exported, the loop cleared and retuned to 80 bpm, then loaded
+back with its layer, tempo and bars (80,182 frames, one bar at 132 bpm).
+
 ## Phase 2: MIDI layers
 
 A piano or drum layer kept as events (note on/off with velocity at loop

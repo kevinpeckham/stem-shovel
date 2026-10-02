@@ -22,6 +22,8 @@
 	} from "$lib/audio/looper.svelte";
 	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
 	import { createIdea, saveIdeaInstruments } from "$lib/remote/ideas.remote";
+	import { loopSources } from "$lib/remote/looper.remote";
+	import { invalidateAll } from "$app/navigation";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { Attachment } from "svelte/attachments";
@@ -150,10 +152,12 @@
 		},
 		onsaved: async (saved) => {
 			notify(
-				`Loop saved to the Idea Recorder as a take with ${saved.instruments?.looper?.layers.length ?? 0} sources`,
+				`Loop exported to the Idea Recorder as a take with ${saved.instruments?.looper?.layers.length ?? 0} sources`,
 			);
 			if (saved.instruments)
 				await saveIdeaInstruments({ id: saved.ideaId, ...saved.instruments }).catch(() => {});
+			// The Load menu lists it now.
+			await invalidateAll();
 		},
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed"));
@@ -190,11 +194,28 @@
 						}
 					: {}),
 			});
-			notify("Saving the loop as a take…");
+			notify("Exporting the loop as a take…");
 		} catch (e) {
-			notify(`Could not save the loop: ${errorMessage(e)}`, { kind: "error" });
+			notify(`Could not export the loop: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
 			saving = false;
+		}
+	}
+	/** A loop exported earlier, back into the looper from its sources (docs/looper.md, "Export and Load"). */
+	async function loadLoop(loop: { id: string; title: string; layers: number }) {
+		if (
+			looper.layers.length &&
+			!confirm(
+				`Load “${loop.title}”? The ${looper.layers.length} ${looper.layers.length === 1 ? "layer" : "layers"} here will be replaced (export them first to keep them).`,
+			)
+		)
+			return;
+		try {
+			const { sources, settings } = await loopSources({ id: loop.id });
+			const n = await looper.loadFrom(sources, settings);
+			notify(`“${loop.title}” loaded: ${n} ${n === 1 ? "layer" : "layers"}`);
+		} catch (e) {
+			notify(`Could not load the loop: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
 	const sourceIcon: Record<LoopSource, string> = {
@@ -441,16 +462,30 @@
 							]}
 						/>
 						<ContextMenu
-							ariaLabel="Save the loop"
-							title="Save the loop to the Idea Recorder as a take with its layers as sources"
-							iconClass="i-ph-floppy-disk"
-							label="Save"
+							ariaLabel="Load a loop"
+							title="Load a loop you exported before"
+							iconClass="i-ph-folder-open"
+							label="Load"
+							position="bottom left"
+							buttonBaseClasses="device-button-sm px-3"
+							buttonClasses={looper.loading ? "text-accent" : ""}
+							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+							items={[
+								{ id: "load-heading", kind: "heading", label: "Load a loop" },
+								{ id: "load-block", kind: "snippet", snippet: loadMenuBlock },
+							]}
+						/>
+						<ContextMenu
+							ariaLabel="Export the loop"
+							title="Export the loop to the Idea Recorder as a take with its layers as sources"
+							iconClass="i-ph-export"
+							label="Export"
 							position="bottom left"
 							buttonBaseClasses="device-button-sm px-3"
 							buttonClasses={uploading.length > 0 ? "text-accent" : ""}
 							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 							items={[
-								{ id: "save-heading", kind: "heading", label: "Save as take" },
+								{ id: "save-heading", kind: "heading", label: "Export as take" },
 								{ id: "save-block", kind: "snippet", snippet: saveMenuBlock },
 							]}
 						/>
@@ -702,6 +737,47 @@
 		</div>
 	{/snippet}
 
+	{#snippet loadMenuBlock()}
+		<div class="px-3 pt-3 pb-4 grid gap-3">
+			{#if !data.signedIn}
+				<p class="text-13px text-blue-100/90">
+					Loops you export to the Idea Recorder load back from here. Sign in to see yours.
+				</p>
+				<a
+					class="device-button-sm px-3 text-accent justify-self-start"
+					href="/sign-in?next=%2Flooper">Sign in</a
+				>
+			{:else if data.loops.length === 0}
+				<p class="text-13px text-blue-100/90">
+					No loops yet. Export this loop and it will be listed here.
+				</p>
+			{:else}
+				<ul class="grid gap-1" aria-label="Exported loops">
+					{#each data.loops as loop (loop.id)}
+						<li>
+							<button
+								class="w-full text-left rounded px-2 py-1.5 hover:bg-white/10 grid gap-0.5 disabled:opacity-50"
+								type="button"
+								disabled={looper.loading}
+								onclick={() => void loadLoop(loop)}
+							>
+								<span class="text-14px text-blue-100 truncate">{loop.title}</span>
+								<span class="text-12px opacity-70"
+									>{loop.layers}
+									{loop.layers === 1 ? "layer" : "layers"} · {loop.bars}
+									{loop.bars === 1 ? "bar" : "bars"} · {loop.bpm} bpm · {new Date(
+										loop.createdAt,
+									).toLocaleDateString()}</span
+								>
+							</button>
+						</li>
+					{/each}
+				</ul>
+				{#if looper.loading}<p class="text-12px opacity-70" role="status">Loading…</p>{/if}
+			{/if}
+		</div>
+	{/snippet}
+
 	{#snippet saveMenuBlock()}
 		<div
 			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
@@ -767,7 +843,7 @@
 					onclick={saveLoop}
 				>
 					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-					{saving ? "Rendering…" : "Save as take"}
+					{saving ? "Rendering…" : "Export as take"}
 				</button>
 				{#if uploading.length > 0}
 					<span class="text-13px opacity-80" role="status">
