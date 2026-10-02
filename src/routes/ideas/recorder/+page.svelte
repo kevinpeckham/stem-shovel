@@ -146,6 +146,17 @@
 	/** The notes popped out of their column into a panel (from lg), or docked back; remembered per browser. */
 	let notesFloating = $state(false);
 	const NOTES_FLOATING_KEY = "stemshovel.recorder.notes-floating";
+	/** The Tracks panel (a multitrack take's stems) pops out like the notes; remembered per browser. */
+	let tracksFloating = $state(false);
+	const TRACKS_FLOATING_KEY = "stemshovel.recorder.tracks-floating";
+	function setTracksFloating(on: boolean) {
+		tracksFloating = on;
+		try {
+			localStorage.setItem(TRACKS_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	function setNotesFloating(on: boolean) {
 		notesFloating = on;
 		try {
@@ -167,7 +178,7 @@
 			// Private mode: the choice lasts for this page only.
 		}
 	}
-	/** Multitrack takes (docs/demo-recording.md, "Multitrack takes"): the mix plus a file per source; offered with an instrument in the take, stereo by default on every visit (Kevin). */
+	/** Multitrack takes (docs/demo-recording.md, "Multitrack takes"): the mix plus a file per source; offered, and on by default, with two or more sources in the take (syncMultitrack). */
 	let multitrack = $state(false);
 	/**
 	 * Which sources go into the take (docs/demo-recording.md, "Input sources"):
@@ -185,7 +196,9 @@
 	});
 	const SOURCES_KEY = "stemshovel.recorder.sources";
 	function setSource(source: RecorderSource, on: boolean) {
+		const before = sourcesInTake;
 		sourcesOn[source] = on;
+		syncMultitrack(before);
 		try {
 			localStorage.setItem(SOURCES_KEY, JSON.stringify($state.snapshot(sourcesOn)));
 		} catch {
@@ -200,6 +213,16 @@
 	const setDrumsInTake = (on: boolean) => setSource("drums", on);
 	/** How many sources are in the take: two or more and the take can be multitrack. */
 	const sourcesInTake = $derived(RECORDER_SOURCES.filter((s) => sourcesOn[s]).length);
+	/**
+	 * Multitrack is the default with two or more sources in (Kevin): crossing
+	 * that line switches it on, dropping below switches it off; between, a
+	 * Stereo choice stands. The page's load does the same after restoring the sources.
+	 */
+	function syncMultitrack(before: number) {
+		const now = sourcesInTake;
+		if (before < 2 && now >= 2) multitrack = true;
+		else if (now < 2) multitrack = false;
+	}
 	function togglePiano(e?: Event) {
 		pianoOpen = !pianoOpen;
 		if (pianoOpen) {
@@ -381,9 +404,11 @@
 			// An instrument comes back into the take only with its panel: the panels start closed.
 			sourcesOn.piano = false;
 			sourcesOn.drums = false;
+			syncMultitrack(0);
 			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
 			pianoSettings = localStorage.getItem(PIANO_SETTINGS_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
+			tracksFloating = localStorage.getItem(TRACKS_FLOATING_KEY) === "1";
 			recorderFloating = localStorage.getItem(RECORDER_FLOATING_KEY) === "1";
 			recordingsFloating = localStorage.getItem(RECORDINGS_FLOATING_KEY) === "1";
 			showLoops = localStorage.getItem(SHOW_LOOPS_KEY) === "1";
@@ -911,13 +936,30 @@
 				<!-- The tracks of a multitrack take (docs/demo-recording.md, "Multitrack takes"): the song player over its stems, each with its waveform, mute, solo and fader, under the recorder. -->
 				<FloatingPanel
 					open={true}
-					floating={false}
+					floating={tracksFloating}
 					closable={false}
 					title="Tracks · Take {loadedTake.takeNumber}"
 					storageKey="stemshovel.recorder.tracks-panel"
 					width={640}
-					onminimise={() => {}}
+					height={420}
+					onminimise={() => setTracksFloating(false)}
 				>
+					{#snippet controls()}
+						<button
+							class="button button-xs hidden lg-inline-flex"
+							type="button"
+							title={tracksFloating
+								? "Put the tracks back under the recorder"
+								: "Pop the tracks out into a panel"}
+							aria-label={tracksFloating ? "Dock the tracks" : "Pop out the tracks"}
+							onclick={() => setTracksFloating(!tracksFloating)}
+						>
+							<span
+								class={tracksFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+								aria-hidden="true"
+							></span>
+						</button>
+					{/snippet}
 					{#key loadedTake.id}
 						{#await loopSources({ id: loadedTake.id })}
 							<p class="p-4 text-13px opacity-70">Loading the tracks…</p>

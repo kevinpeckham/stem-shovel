@@ -575,8 +575,9 @@ over their capture stream. A pointer-down on the device opens an input that
 is switched in but not yet open (the microphone on a fresh visit), the way
 the looper opens on its page; the computer waits for its own button and
 the share picker. A take mixes every source that is in into one
-`MediaStreamDestination` for the recorder; a multitrack take, offered whenever
-two or more sources are in, also records each outside source through a
+`MediaStreamDestination` for the recorder; a multitrack take, offered and on
+by default whenever two or more sources are in (Stereo stays chosen until the
+count crosses two again), also records each outside source through a
 destination of its own after its gain, and each instrument's capture stream.
 The microphone is no longer required: a take can be the piano alone, the
 computer alone, or any mix, and Record is disabled with nothing in.
@@ -604,8 +605,9 @@ player gets a **Tracks** panel under the device: the song player
 mute, solo and fader, its own transport and master. The stems' URLs come
 from the `loopSources` query (a presented URL per stem, the same one the
 looper's Load menu uses), fetched when the loaded take changes; the
-recorder's own Play still plays the mix. The panel is docked and not
-closable: it exists only while such a take is loaded.
+recorder's own Play still plays the mix. The panel pops out like the notes
+(`stemshovel.recorder.tracks-floating`) and is not closable: it exists only
+while such a take is loaded.
 
 ## Later, if wanted
 
