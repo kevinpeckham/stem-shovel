@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-10-02
+
 ### Added
 
 - **Page copy edited in the app** (docs/page-copy.md): a page's title, intro and the tips under its device are a user doc of kind "copy", edited by a system admin at `/docs/<slug>/edit` as the releases page is, rendered by `PageCopyHeader` and `PageCopySection` with `pageCopy()` and `splitPageCopy`; the looper page is the first (`looper-page`, seeded by `bun run db:seed-docs`), with a "How to use the Looper" box and quick tips under the device.
