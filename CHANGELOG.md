@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-10-02
+
 ### Added
 
 - **Looper: Line in and Computer sources** (docs/looper.md, "Inputs"). A second input for an instrument on an audio interface, with a device picker for it and for the microphone and a channel mode (stereo, or one channel on both sides); audio from another program through the browser's share picker (Chrome and Edge; a tab anywhere, the whole computer on Windows; on a Mac a loopback device as the line in), with its own latency slider. Each outside source has a gain slider under its button (−12 to +24 dB) and recorded input layers can be normalized to −1 dBFS; the piano and the drums have their own master volume under theirs, the same one their panels move. Each source but the drums has its own settings menu on a small button joined to its right (device, channels, monitor, normalize, latency; the share picker for the computer; the output-latency shift for the piano) in place of the Mic/Inputs menu, and the rows under the screen run sources, settings, transport.
