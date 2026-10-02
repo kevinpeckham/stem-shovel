@@ -123,6 +123,33 @@
 			</p>
 		</div>
 	{/if}
+	{#if source !== "computer"}
+		<div class="border-t border-current/10 pt-3 grid gap-3">
+			<label class="block">
+				<span class="device-button-label"
+					>Input latency · {inputSources.latencyMs} ms{inputSources.latencyMeasured
+						? ""
+						: " (the browser's guess)"}</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="300"
+					step="1"
+					value={inputSources.latencyMs}
+					aria-label="Input latency in milliseconds"
+					oninput={(e) => inputSources.setLatencyMs(Number(e.currentTarget.value))}
+				/>
+			</label>
+			<p class="text-12px opacity-70">
+				A sound sung or played into the microphone or the line in arrives late by the input's round
+				trip: the looper shifts such layers earlier by this much, and a multitrack take trims it off
+				the front of their files. Calibrate on the looper plays three clicks through the speakers
+				and measures them with the microphone.
+			</p>
+		</div>
+	{/if}
 	<div class="border-t border-current/10 pt-3 grid gap-3">
 		{#if source !== "computer" && monitorSwitch}
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">

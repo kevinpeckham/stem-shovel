@@ -531,27 +531,38 @@
 	}
 
 	/**
-	 * Normalize (inputs.svelte.ts): a file from the outside sources scaled so
-	 * its peak sits at −1 dBFS, written as 24-bit WAV (the scaling needs the
-	 * samples anyway); a near-silent or already-hot one, or one the browser
-	 * cannot decode, is left as recorded.
+	 * A file from an outside source, processed once decoded (inputs.svelte.ts):
+	 * `trimMs` cut off its front (the input's measured latency, so a stem lines
+	 * up with the instruments' in a multitrack take) and, with normalize on,
+	 * scaled so its peak sits at −1 dBFS (never a near-silent or already-hot
+	 * one), written as 24-bit WAV. Null when nothing applies or the browser
+	 * cannot decode it: the file goes as recorded.
 	 */
-	async function normalized(
+	async function processed(
 		blob: Blob,
+		opts: { trimMs: number; normalize: boolean },
 	): Promise<{ blob: Blob; mimeType: string; ext: string; codec: string } | null> {
+		if (opts.trimMs <= 0 && !opts.normalize) return null;
 		try {
 			const bytes = await blob.arrayBuffer();
 			const decoder = new AudioContext();
 			const audio = await decoder.decodeAudioData(bytes).finally(() => void decoder.close());
+			const skip = Math.min(audio.length, Math.round((opts.trimMs / 1000) * audio.sampleRate));
 			const channels = Array.from({ length: audio.numberOfChannels }, (_, i) =>
-				audio.getChannelData(i),
+				audio.getChannelData(i).slice(skip),
 			);
-			let peak = 0;
-			for (const ch of channels) for (const x of ch) if (Math.abs(x) > peak) peak = Math.abs(x);
-			const target = 0.891; // −1 dBFS
-			if (peak < 0.01 || peak >= target) return null;
-			const k = target / peak;
-			for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
+			let scaled = false;
+			if (opts.normalize) {
+				let peak = 0;
+				for (const ch of channels) for (const x of ch) if (Math.abs(x) > peak) peak = Math.abs(x);
+				const target = 0.891; // −1 dBFS
+				if (peak >= 0.01 && peak < target) {
+					const k = target / peak;
+					for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
+					scaled = true;
+				}
+			}
+			if (skip === 0 && !scaled) return null;
 			return {
 				blob: new Blob([encodeWav24(channels, audio.sampleRate)], { type: "audio/wav" }),
 				mimeType: "audio/wav",
@@ -567,6 +578,13 @@
 		// The sources' last chunks land on their own stop events; gather them before the streams close.
 		await Promise.all(sourceRecorders.map((x) => x.done));
 		const normalize = withSources && inputSources.normalize;
+		// What each outside source's stem is late by: the measured input round trip, or the computer capture's slider.
+		const trimOf = (src: RecorderSource | null) =>
+			src === "mic" || src === "line"
+				? inputSources.latencyMs
+				: src === "computer"
+					? inputSources.computerLatencyMs
+					: 0;
 		const stems = (
 			await Promise.all(
 				sourceRecorders.map(async (x) => {
@@ -577,8 +595,8 @@
 						ext: format?.ext ?? "webm",
 						codec: (format?.codec ?? "opus").toLowerCase(),
 					};
-					if (!normalize || !x.source || !isOutside(x.source) || raw.blob.size === 0) return raw;
-					const n = await normalized(raw.blob);
+					if (!withSources || !x.source || !isOutside(x.source) || raw.blob.size === 0) return raw;
+					const n = await processed(raw.blob, { trimMs: trimOf(x.source), normalize });
 					return n ? { ...raw, ...n } : raw;
 				}),
 			)
@@ -594,7 +612,7 @@
 		};
 		// The mix is normalized only when nothing but outside sources is in it (an instrument's level is its own).
 		if (normalize && allOutside && blob.size > 0) {
-			const n = await normalized(blob);
+			const n = await processed(blob, { trimMs: 0, normalize: true });
 			if (n) {
 				blob = n.blob;
 				mixFormat = { mimeType: n.mimeType, ext: n.ext, codec: n.codec };

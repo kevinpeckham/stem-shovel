@@ -1,5 +1,5 @@
 import { audioSession } from "$lib/utils/audioSession";
-import { inputSources, type InputSource } from "./inputs.svelte";
+import { inputSources, outputLatencyMs, type InputSource } from "./inputs.svelte";
 import { encodeWav24 } from "$lib/utils/encodeWav24";
 import { findLatency } from "$lib/utils/findLatency";
 import { tapTempo } from "$lib/utils/tapTempo";
@@ -42,7 +42,6 @@ export type LoopBars = (typeof LOOP_BARS)[number];
 export const MAX_LOOP_LAYERS = 16;
 /** Samples kept before bar 1 on every pass, so a late microphone can be shifted up to this much earlier. */
 export const LEAD_SECONDS = 0.3;
-const LATENCY_KEY = "stemshovel.looper.latency-ms";
 
 export interface LoopLayer {
 	id: string;
@@ -74,8 +73,6 @@ class LooperEngine {
 	armed = $state<LoopSource>("mic");
 	/** Hear the microphone through the speakers (off: feedback on a laptop). */
 	/** The microphone's lateness, compensated on its layers; the context's own figure until measured. */
-	latencyMs = $state(0);
-	latencyMeasured = $state(false);
 	calibrating = $state(false);
 	/**
 	 * The audio device's output latency as the browser reports it (base plus
@@ -189,20 +186,7 @@ class LooperEngine {
 		cancelAnimationFrame(this.#meterFrame);
 		this.#meter();
 		this.#attachInputs();
-		try {
-			const stored = Number(localStorage.getItem(LATENCY_KEY));
-			if (Number.isFinite(stored) && stored > 0) {
-				this.latencyMs = stored;
-				this.latencyMeasured = true;
-			}
-		} catch {
-			// Private mode: measure again next time.
-		}
-		this.outputLatencyMs = Math.round(
-			(ctx.baseLatency + ((ctx as AudioContext & { outputLatency?: number }).outputLatency ?? 0)) *
-				1000,
-		);
-		if (!this.latencyMeasured) this.latencyMs = this.outputLatencyMs;
+		this.outputLatencyMs = outputLatencyMs(ctx);
 		this.ready = true;
 		await this.#restore();
 	}
@@ -526,15 +510,6 @@ class LooperEngine {
 		this.volume = Math.max(0, Math.min(1, v));
 		this.#master?.gain.setTargetAtTime(this.volume, this.#ctx?.currentTime ?? 0, 0.02);
 	}
-	setLatencyMs(ms: number) {
-		this.latencyMs = Math.max(0, Math.min(500, Math.round(ms)));
-		this.latencyMeasured = true;
-		try {
-			localStorage.setItem(LATENCY_KEY, String(this.latencyMs));
-		} catch {
-			// Private mode: the figure lasts for this page.
-		}
-	}
 	/** Tempo and length: only while no layer exists (the page clears the loop first if the user insists). The tempo goes to the drum machine and the metronome too (Kevin: synced both ways; the page brings theirs back here). */
 	setBpm(v: number) {
 		if (this.locked) return;
@@ -757,7 +732,7 @@ class LooperEngine {
 		// A late microphone is shifted earlier by the measured round trip, out of the lead-in; a piano played by hand against the loop as heard, by the output latency; the drum machine's beat runs on the clock and needs none.
 		const shiftMs =
 			source === "mic" || source === "line"
-				? this.latencyMs
+				? inputSources.latencyMs
 				: source === "computer"
 					? inputSources.computerLatencyMs
 					: source === "piano" && this.compensatePiano
@@ -895,7 +870,7 @@ class LooperEngine {
 		this.#openTap(this.armed);
 		this.calibrating = false;
 		const ms = recorded ? findLatency(recorded, ctx.sampleRate, clicks) : null;
-		if (ms !== null) this.setLatencyMs(ms);
+		if (ms !== null) inputSources.setLatencyMs(ms);
 		return ms;
 	}
 

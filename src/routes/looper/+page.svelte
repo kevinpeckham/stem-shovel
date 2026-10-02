@@ -969,29 +969,7 @@
 	{/snippet}
 
 	{#snippet latencyBlock()}
-		<div class="border-t border-current/10 pt-3 grid gap-3">
-			<label class="block">
-				<span class="device-button-label"
-					>Input latency · {looper.latencyMs} ms{looper.latencyMeasured
-						? ""
-						: " (the browser's guess)"}</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="300"
-					step="1"
-					value={looper.latencyMs}
-					aria-label="Input latency in milliseconds"
-					oninput={(e) => looper.setLatencyMs(Number(e.currentTarget.value))}
-				/>
-			</label>
-			<p class="text-12px opacity-70">
-				A layer sung or played into the microphone or the line in arrives late by the input's round
-				trip; both are shifted earlier by this much. Calibrate plays three clicks through the
-				speakers and measures them with the microphone.
-			</p>
+		<div class="grid gap-3">
 			<button
 				class="device-button-xs px-3 justify-self-start"
 				type="button"

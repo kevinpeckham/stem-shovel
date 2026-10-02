@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Idea Recorder: a Tracks panel for multitrack takes** (docs/demo-recording.md, "Tracks panel"). A take with stems in the player gets the song player under the recorder: each stem with its waveform, mute, solo and fader, a transport and a master.
+- **Multitrack stems line up.** The input latency (measured by the looper's Calibrate, or the browser's figure) is trimmed off the front of microphone and line-in stems, and the computer capture's latency off the computer's, as a multitrack take is saved, so they sit with the piano's and the drums'. The latency slider now lives in each input's menu on both pages; the looper keeps Calibrate.
+
 ## [0.81.0] - 2026-10-02
 
 ### Added

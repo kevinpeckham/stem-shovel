@@ -45,6 +45,14 @@ function writeSetting(name: string, value: string | null) {
 	}
 }
 
+/** What the context reports for its output path (base plus output latency), in whole milliseconds. */
+export function outputLatencyMs(ctx: AudioContext): number {
+	return Math.round(
+		(ctx.baseLatency + ((ctx as AudioContext & { outputLatency?: number }).outputLatency ?? 0)) *
+			1000,
+	);
+}
+
 class InputSources {
 	/** Each source's level for its meter, 0 to 1, every frame while a context is attached. */
 	levels = $state<Record<OutsideSource, number>>({ mic: 0, line: 0, computer: 0 });
@@ -68,6 +76,16 @@ class InputSources {
 	normalize = $state(false);
 	/** Hear the microphone and the line in through the speakers; off by default (a laptop's speakers feed its microphone). */
 	monitor = $state(false);
+	/**
+	 * How late a sound reaches the computer through the microphone or the line
+	 * in (the round trip, usually 10 to 60 ms, more over Bluetooth): the
+	 * looper shifts such layers earlier by it, and a multitrack take trims it
+	 * off the front of their stems. Measured by the looper's Calibrate (three
+	 * clicks) and remembered; until then the browser's own figure for its
+	 * output path, the best guess available.
+	 */
+	latencyMs = $state(0);
+	latencyMeasured = $state(false);
 
 	#ctx: AudioContext | null = null;
 	#monitorOut: AudioNode | null = null;
@@ -95,6 +113,11 @@ class InputSources {
 		const computer = Number(readSetting("computer-latency-ms"));
 		if (Number.isFinite(computer) && computer >= 0) this.computerLatencyMs = computer;
 		this.normalize = readSetting("normalize") === "1";
+		const latency = Number(readSetting("latency-ms"));
+		if (Number.isFinite(latency) && latency > 0) {
+			this.latencyMs = latency;
+			this.latencyMeasured = true;
+		}
 	}
 
 	/**
@@ -120,6 +143,7 @@ class InputSources {
 		}
 		this.#monitorOut = opts.monitorOut;
 		this.#onsource = opts.onsource;
+		if (!this.latencyMeasured) this.latencyMs = outputLatencyMs(ctx);
 		for (const src of OUTSIDE_SOURCES) if (this.#streams[src]) this.#wire(src);
 		cancelAnimationFrame(this.#frame);
 		this.#meter();
@@ -284,6 +308,11 @@ class InputSources {
 	setComputerLatencyMs(ms: number) {
 		this.computerLatencyMs = Math.max(0, Math.min(500, Math.round(ms)));
 		writeSetting("computer-latency-ms", String(this.computerLatencyMs));
+	}
+	setLatencyMs(ms: number) {
+		this.latencyMs = Math.max(0, Math.min(500, Math.round(ms)));
+		this.latencyMeasured = true;
+		writeSetting("latency-ms", String(this.latencyMs));
 	}
 	setNormalize(on: boolean) {
 		this.normalize = on;

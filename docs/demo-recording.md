@@ -587,9 +587,25 @@ mix is normalized only when nothing but outside sources is in it. The plain
 recorder on the home page (`sourcesOn` null) keeps the old microphone-only
 path, one context per take.
 
-Not done yet: trimming the measured input latency off the front of
-microphone and line-in stems, so a multitrack take lines up with a drums
-stem on a song.
+**Latency trim (built 2026-10-02).** The input latency (the microphone's
+or line in's round trip, measured by the looper's Calibrate or the
+browser's own figure until then) lives in the inputs module now, with a
+slider in each input's menu on both pages. A multitrack take trims it off
+the front of each microphone and line-in stem, and the computer's capture
+latency off the computer's, so the stems line up with the instruments'
+(which the recorder captures with no path to speak of); the mix is left as
+heard. Trim and normalize share one decode (`processed()` in
+DemoRecorder.svelte) and write 24-bit WAV; a stem that needs neither goes
+as recorded.
+
+**Tracks panel (built 2026-10-02).** A take with stems in the recorder's
+player gets a **Tracks** panel under the device: the song player
+(`StemPlayer.svelte`, `StemEngine`) over the stems, each with its waveform,
+mute, solo and fader, its own transport and master. The stems' URLs come
+from the `loopSources` query (a presented URL per stem, the same one the
+looper's Load menu uses), fetched when the loaded take changes; the
+recorder's own Play still plays the mix. The panel is docked and not
+closable: it exists only while such a take is loaded.
 
 ## Later, if wanted
 

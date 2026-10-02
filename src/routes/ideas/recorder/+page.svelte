@@ -12,6 +12,8 @@
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import { RECORDER_SOURCES, type RecorderSource } from "$lib/components/DemoRecorder.svelte";
 	import { inputSources } from "$lib/audio/inputs.svelte";
+	import StemPlayer from "$lib/components/StemPlayer.svelte";
+	import { loopSources } from "$lib/remote/looper.remote";
 	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
@@ -904,6 +906,42 @@
 					}}
 				/>
 			</FloatingPanel>
+
+			{#if loadedTake && loadedTake.stems.length > 0}
+				<!-- The tracks of a multitrack take (docs/demo-recording.md, "Multitrack takes"): the song player over its stems, each with its waveform, mute, solo and fader, under the recorder. -->
+				<FloatingPanel
+					open={true}
+					floating={false}
+					closable={false}
+					title="Tracks · Take {loadedTake.takeNumber}"
+					storageKey="stemshovel.recorder.tracks-panel"
+					width={640}
+					onminimise={() => {}}
+				>
+					{#key loadedTake.id}
+						{#await loopSources({ id: loadedTake.id })}
+							<p class="p-4 text-13px opacity-70">Loading the tracks…</p>
+						{:then found}
+							<div class="p-3">
+								<StemPlayer
+									manifest={{
+										title: loadedTake.title || `Take ${loadedTake.takeNumber}`,
+										stems: found.sources.map((src, i) => ({
+											id: `${loadedTake.id}-${i}`,
+											label: src.label,
+											url: src.url,
+										})),
+									}}
+									showStatus={false}
+									keyboard={false}
+								/>
+							</div>
+						{:catch e}
+							<p class="p-4 text-13px text-red-300">{errorMessage(e)}</p>
+						{/await}
+					{/key}
+				</FloatingPanel>
+			{/if}
 
 			{#if drumsOpen || drumMachine.running}
 				<!-- The drums: in the take unless switched off (the beat's sound through the recorder's mix, as the piano's). -->
