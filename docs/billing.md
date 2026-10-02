@@ -5,9 +5,10 @@ subscription cost, ever), and the first twenty accounts are **founders**
 (never charged, unlimited data, every feature). Paid tiers do not exist yet.
 
 **Enforced since v0.30.0** (`src/lib/constants/plans.ts` `PLAN_LIMITS`,
-`src/lib/utils/accountLimits.ts`): a free account holds 10 GB of user files
+`src/lib/utils/accountLimits.ts`): a free account holds 20 GB of user files
 (stems, demos and takes, counting reservations still uploading; renditions
-and mixes are not counted) and 5 members of any role. `storageRoom` refuses
+and mixes are not counted) and 6 members of any role (10 GB and 5 until
+2026-10-02; Kevin raised them). `storageRoom` refuses
 the reservation in `/api/stems`, `/api/demos` and `/api/recordings` with a
 409 the upload UI shows; `memberHeadroom` refuses a new invitation, an
 invitation's acceptance, an invite code's redemption and the sign-up hook. A
@@ -115,12 +116,12 @@ or Scaler) regardless of account count.
 
 At $0.023 / GB-month a limit costs at most:
 
-| Tier          | Cap    | Cost if full  | Suggested price | Margin at cap                                    |
-| ------------- | ------ | ------------- | --------------- | ------------------------------------------------ |
-| Free for life | 10 GB  | $0.23 / month | $0              | covers the average active account's two projects |
-| Data 50       | 50 GB  | $1.15 / month | $5 / month      | ~75 %                                            |
-| Data 200      | 200 GB | $4.60 / month | $15 / month     | ~70 %                                            |
-| Data 1000     | 1 TB   | $23 / month   | $49 / month     | ~50 %                                            |
+| Tier          | Cap    | Cost if full  | Suggested price | Margin at cap                                     |
+| ------------- | ------ | ------------- | --------------- | ------------------------------------------------- |
+| Free for life | 20 GB  | $0.46 / month | $0              | covers the average active account's four projects |
+| Data 50       | 50 GB  | $1.15 / month | $5 / month      | ~75 %                                             |
+| Data 200      | 200 GB | $4.60 / month | $15 / month     | ~70 %                                             |
+| Data 1000     | 1 TB   | $23 / month   | $49 / month     | ~50 %                                             |
 
 Most paying accounts will sit well under their cap, so real margins are
 higher. Founders have no cap (`storage_limit_bytes` null).

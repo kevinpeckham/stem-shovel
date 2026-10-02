@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The free plan holds 20 GB and 6 members** (was 10 GB and 5): `PLAN_LIMITS`, the pricing page, the home page's FAQ, the plan terms and the accounts user doc (docs/billing.md).
+
 ## [0.83.0] - 2026-10-02
 
 ### Added

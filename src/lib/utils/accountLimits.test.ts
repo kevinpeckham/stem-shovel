@@ -6,14 +6,14 @@ const GB = 1024 ** 3;
 describe("accountLimits", () => {
 	test("a free account gets the plan's limits", () => {
 		expect(accountLimits({ plan: "free", isFounder: false, storageLimitBytes: null })).toEqual({
-			storageBytes: 10 * GB,
-			members: 5,
+			storageBytes: 20 * GB,
+			members: 6,
 		});
 	});
 	test("an admin override replaces the plan's storage limit only", () => {
 		expect(accountLimits({ plan: "free", isFounder: false, storageLimitBytes: 30 * GB })).toEqual({
 			storageBytes: 30 * GB,
-			members: 5,
+			members: 6,
 		});
 	});
 	test("a founder account has no limits, override or not", () => {

@@ -5,7 +5,7 @@ These are the terms of the plans Stem Shovel offers. You accept the terms of the
 ## Free plan
 
 - **No charge, ever.** The Free plan has no subscription cost and no trial period, and creating an account asks for no payment or card details.
-- **What it holds.** Unlimited projects, songs and ideas; **10 GB** of stored files (stems, demo recordings and Idea Recorder takes; the playback versions we make from them are not counted); **up to 5 members** of any role; unlimited viewers through shared links.
+- **What it holds.** Unlimited projects, songs and ideas; **20 GB** of stored files (stems, demo recordings and Idea Recorder takes; the playback versions we make from them are not counted); **up to 6 members** of any role; unlimited viewers through shared links.
 - **When a limit is reached.** An upload that would pass the storage limit is refused with a message until files are removed; invitations pause while every seat is taken. Nothing you have uploaded is removed for you.
 - **Support** is by email through the Help page, answered as we are able.
 - **Changes to the plan.** We may add to what the Free plan includes at any time. We will not reduce its storage or member limits for an existing account without at least 90 days' notice by email.

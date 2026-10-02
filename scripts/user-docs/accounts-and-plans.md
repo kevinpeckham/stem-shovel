@@ -4,7 +4,7 @@ Every Stem Shovel account today is a **free account, for life**. There is no bas
 
 ## Free for life
 
-An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account has is an upper limit on stored data and on members: stems are large files, and storing them is the one cost that grows with every upload. A free account holds **10 GB** of files (stems, demos and Idea Recorder takes; the playback versions we make from them do not count) and **up to 5 members** of any role; viewers you share with are not members and are unlimited.
+An account with the **Free for life** badge (in its settings and on Your accounts) pays nothing for the service itself, ever. What a free account has is an upper limit on stored data and on members: stems are large files, and storing them is the one cost that grows with every upload. A free account holds **20 GB** of files (stems, demos and Idea Recorder takes; the playback versions we make from them do not count) and **up to 6 members** of any role; viewers you share with are not members and are unlimited.
 
 The account's **Settings** page shows how much of each is used. When the storage is full, an upload is refused with a message until files are removed; nothing already uploaded is ever removed for you. When every seat is taken, invitations and invite codes stop working until a member is removed.
 

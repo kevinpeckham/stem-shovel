@@ -12,5 +12,5 @@ export const PLAN_LABELS: Record<AccountPlan, string> = { free: "Free" };
  * on its row (`account.storage_limit_bytes`). src/lib/utils/accountLimits.ts.
  */
 export const PLAN_LIMITS: Record<AccountPlan, { storageBytes: number; members: number }> = {
-	free: { storageBytes: 10 * 1024 ** 3, members: 5 },
+	free: { storageBytes: 20 * 1024 ** 3, members: 6 },
 };

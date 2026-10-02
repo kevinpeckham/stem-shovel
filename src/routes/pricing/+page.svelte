@@ -11,8 +11,8 @@
 		{ label: "Projects", free: "Unlimited", pro: "Unlimited" },
 		{ label: "Songs", free: "Unlimited", pro: "Unlimited" },
 		{ label: "Ideas", free: "Unlimited", pro: "Unlimited" },
-		{ label: "Storage", free: "10 GB", pro: "30 GB included *" },
-		{ label: "Users", free: "Up to 5", pro: "Up to 10" },
+		{ label: "Storage", free: "20 GB", pro: "30 GB included *" },
+		{ label: "Users", free: "Up to 6", pro: "Up to 10" },
 		{ label: "Viewers", free: "Unlimited", pro: "Unlimited" },
 		{ label: "Support", free: "Basic", pro: "Priority" },
 	] as const;
@@ -33,7 +33,7 @@
 	<title>{pageTitle("Pricing")}</title>
 	<meta
 		name="description"
-		content="Stem Shovel is free forever for bands of up to five with 10 GB of storage, no credit card required. A Professional plan with more storage and more users is launching soon at $10 a month."
+		content="Stem Shovel is free forever for bands of up to six with 20 GB of storage, no credit card required. A Professional plan with more storage and more users is launching soon at $10 a month."
 	/>
 </svelte:head>
 

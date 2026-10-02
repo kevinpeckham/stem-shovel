@@ -53,7 +53,7 @@
 		},
 		{
 			question: "How much does it cost?",
-			answer: `Our basic tier is a free account. That offers full access to all available features with free data storage up to 10GB. Free accounts require no payment or credit card info to sign up and remain free for life. During the beta period only free accounts are available. Beyond that, we will continue to support and focus on free accounts for independent bands, musicians, producers and educators, and will introduce paid plans for those who need more storage or more advanced features.`,
+			answer: `Our basic tier is a free account. That offers full access to all available features with free data storage up to 20 GB and up to six members. Free accounts require no payment or credit card info to sign up and remain free for life. During the beta period only free accounts are available. Beyond that, we will continue to support and focus on free accounts for independent bands, musicians, producers and educators, and will introduce paid plans for those who need more storage or more advanced features.`,
 		},
 		{
 			question: "Is this a desktop app?",
