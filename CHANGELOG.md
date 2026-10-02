@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-10-02
+
 ### Added
 
 - **One Recordings panel with search** on the Idea Recorder (docs/demo-recording.md). The search field sits at the top of the Recordings panel and narrows the list in place; the panel docks, pops out, or minimises to the toolbar's Ideas button, which brings it back as it was. On a phone the same list opens as a full-screen sheet from that button. The separate search sheet is gone.
@@ -15,6 +17,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Drum machine styling pass** (Kevin): the readout is unselectable and the layout tightened.
 - **Notification links are permanent.** The inbox and digest emails now store an id-based address (`/go/song/<id>`, `/go/project/<id>`, `/go/account/<id>/settings`) that redirects to the page's current URL, so a rename, or a slug reused by a new item, never changes where an old notification leads (docs/notifications.md). Links stored before keep working through the slug redirects.
 
 ## [0.84.0] - 2026-10-02
