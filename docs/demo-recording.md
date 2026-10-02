@@ -612,6 +612,21 @@ recorder's own Play still plays the mix. The panel pops out like the notes
 (`stemshovel.recorder.tracks-floating`) and is not closable: it exists only
 while such a take is loaded.
 
+## One Recordings panel with search (built 2026-10-02)
+
+Kevin: the Recordings panel and the toolbar's search sheet were the same
+list twice. Now there is one list, `recordingsList` (a top-level snippet
+in the page) with the search field at its top, narrowing `ideasShown` by
+title, notes, take label or number (`shownFiltered`, `matchedTakes`; an
+idea whose take matched opens on it). From sm it sits in the Recordings
+`FloatingPanel` in one of three modes, `recordingsMode` (remembered as
+`stemshovel.recorder.recordings-mode`): docked in its column (the
+default), floating (the arrows button), or minimised (the panel's close
+button), and the toolbar's Ideas button minimises it or brings it back
+the way it was. Below sm the toolbar button opens the same list in the
+full-screen `#idea-search` sheet, which a chosen take closes. The old
+search-only sheet and its `filtered` list are gone.
+
 ## Later, if wanted
 
 - **Count-in and click** from the song's tempo and meter (Web Audio

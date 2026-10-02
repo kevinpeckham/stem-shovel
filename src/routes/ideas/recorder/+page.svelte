@@ -134,15 +134,29 @@
 	/** The ideas the list and the search show: ideas, and loops when asked for. */
 	let listedIdeas = $derived(data.ideas.filter((i) => i.kind !== "loop" || showLoops));
 	/** The recordings list popped out into a panel (from lg), or docked back; remembered per browser. */
-	let recordingsFloating = $state(false);
-	const RECORDINGS_FLOATING_KEY = "stemshovel.recorder.recordings-floating";
-	function setRecordingsFloating(on: boolean) {
-		recordingsFloating = on;
+	/**
+	 * The Recordings panel (the ideas and takes, with the search field at its
+	 * top): docked in its column, popped out into a floating panel, or
+	 * minimised to the toolbar's Ideas button, which brings it back the way it
+	 * was (Kevin: one panel with search, expandable to a popover or minimised
+	 * to an icon; docked by default). Remembered per browser. On a phone the
+	 * same list opens as a full-screen sheet from that button instead.
+	 */
+	type RecordingsMode = "docked" | "floating" | "minimised";
+	let recordingsMode = $state<RecordingsMode>("docked");
+	let recordingsRestore: Exclude<RecordingsMode, "minimised"> = "docked";
+	const RECORDINGS_MODE_KEY = "stemshovel.recorder.recordings-mode";
+	function setRecordingsMode(mode: RecordingsMode) {
+		if (mode === "minimised" && recordingsMode !== "minimised") recordingsRestore = recordingsMode;
+		recordingsMode = mode;
 		try {
-			localStorage.setItem(RECORDINGS_FLOATING_KEY, on ? "1" : "0");
+			localStorage.setItem(RECORDINGS_MODE_KEY, mode);
 		} catch {
 			// Private mode: the choice lasts for this page only.
 		}
+	}
+	function toggleRecordings() {
+		setRecordingsMode(recordingsMode === "minimised" ? recordingsRestore : "minimised");
 	}
 	/** The notes popped out of their column into a panel (from lg), or docked back; remembered per browser. */
 	let notesFloating = $state(false);
@@ -411,7 +425,8 @@
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
 			tracksFloating = localStorage.getItem(TRACKS_FLOATING_KEY) === "1";
 			recorderFloating = localStorage.getItem(RECORDER_FLOATING_KEY) === "1";
-			recordingsFloating = localStorage.getItem(RECORDINGS_FLOATING_KEY) === "1";
+			const mode = localStorage.getItem(RECORDINGS_MODE_KEY);
+			if (mode === "docked" || mode === "floating" || mode === "minimised") recordingsMode = mode;
 			showLoops = localStorage.getItem(SHOW_LOOPS_KEY) === "1";
 		} catch {
 			// As above.
@@ -509,6 +524,12 @@
 			recorder.reset();
 		}
 		searchOpen = false;
+		// On a phone the list is a sheet: a choice closes it.
+		try {
+			document.getElementById("idea-search")?.hidePopover();
+		} catch {
+			// Not open.
+		}
 	}
 
 	async function titleChanged(title: string) {
@@ -627,28 +648,34 @@
 	let searchOpen = $state(false);
 	let searchText = $state("");
 	/**
-	 * Every idea by default, narrowed by the query: an idea stays when its
-	 * title or notes match or any take's label or number does; the takes that
-	 * matched are flagged so the row opens on them.
+	 * The rows, narrowed by the search field: an idea stays when its title or
+	 * notes match or any take's label or number does; the takes that matched
+	 * are noted so their idea opens on them.
 	 */
-	let filtered = $derived.by(() => {
-		const q = searchText.trim().toLowerCase();
-		const out: { idea: Idea; byTake: boolean; matching: Set<string> }[] = [];
-		for (const i of listedIdeas) {
-			const inIdea = !q || i.title.toLowerCase().includes(q) || i.notes.toLowerCase().includes(q);
-			const matching = new Set(
-				q
-					? i.takes
-							.filter(
-								(t) => t.title.toLowerCase().includes(q) || `take ${t.takeNumber}`.includes(q),
-							)
-							.map((t) => t.id)
-					: [],
-			);
-			if (inIdea || matching.size > 0) out.push({ idea: i, byTake: !inIdea, matching });
+	const query = $derived(searchText.trim().toLowerCase());
+	let matchedTakes = $derived.by(() => {
+		const out = new Map<string, Set<string>>();
+		if (!query) return out;
+		for (const i of ideasShown) {
+			const hits = i.takes
+				.filter(
+					(t) => t.title.toLowerCase().includes(query) || `take ${t.takeNumber}`.includes(query),
+				)
+				.map((t) => t.id);
+			if (hits.length) out.set(i.id, new Set(hits));
 		}
 		return out;
 	});
+	let shownFiltered = $derived(
+		query
+			? ideasShown.filter(
+					(i) =>
+						i.title.toLowerCase().includes(query) ||
+						i.notes.toLowerCase().includes(query) ||
+						matchedTakes.has(i.id),
+				)
+			: ideasShown,
+	);
 
 	const fmtWhen = (d: Date) =>
 		`${formatDate(d)} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;
@@ -684,14 +711,28 @@
 				<span class="i-ph-plus" aria-hidden="true"></span>
 				<span class="hidden sm-inline">New Idea</span>
 			</button>
-			<!-- The search sheet anchors here whatever opened it (the ⋯ menu's item is hidden once the menu closes). -->
+			<!-- The ideas and takes: on a phone a full-screen sheet from this button (the ⋯ menu's item too); from sm the Recordings panel, which this button minimises and brings back. -->
 			<button
-				class="button button-sm shrink-0"
+				class="button button-sm shrink-0 sm-hidden"
 				style:anchor-name="--idea-search"
 				type="button"
 				popovertarget="idea-search"
-				title="Search ideas and takes"
-				aria-label="Search ideas and takes"
+				title="Ideas and takes"
+				aria-label="Ideas and takes"
+			>
+				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
+			</button>
+			<button
+				class="button button-sm shrink-0 hidden sm-inline-flex {recordingsMode === 'minimised'
+					? ''
+					: 'bg-accent text-oxford border-accent opacity-100'}"
+				type="button"
+				aria-pressed={recordingsMode !== "minimised"}
+				title={recordingsMode === "minimised" ? "Show the recordings" : "Minimise the recordings"}
+				aria-label={recordingsMode === "minimised"
+					? "Show the recordings"
+					: "Minimise the recordings"}
+				onclick={toggleRecordings}
 			>
 				<span class="i-ph-magnifying-glass" aria-hidden="true"></span>
 				<span class="hidden sm-inline-block">Ideas</span>
@@ -1155,21 +1196,20 @@
 			</FloatingPanel>
 		</section>
 
-		<!-- Ideas, newest first, each opening to its takes; the current one is open. -->
+		<!-- Ideas, newest first, each opening to its takes; the current one is open. The panel docks here, floats, or is minimised to the toolbar (recordingsMode). -->
 		<section
 			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2 xl-max-h-640px"
 			aria-label="Ideas"
 		>
-			<!-- The list in a docked panel with a pop-out from lg, as the recorder and the notes: the whole screen can be arranged (Kevin). -->
 			<FloatingPanel
-				open={true}
-				floating={recordingsFloating}
-				closable={false}
+				open={recordingsMode !== "minimised"}
+				floating={recordingsMode === "floating"}
+				closable={true}
 				title="Recordings"
 				storageKey="stemshovel.recorder.recordings-panel"
 				width={560}
 				height={600}
-				onminimise={() => setRecordingsFloating(false)}
+				onminimise={() => setRecordingsMode("minimised")}
 			>
 				{#snippet controls()}
 					<label
@@ -1187,189 +1227,23 @@
 					<button
 						class="button button-xs hidden lg-inline-flex"
 						type="button"
-						title={recordingsFloating
+						title={recordingsMode === "floating"
 							? "Put the recordings back in their column"
 							: "Pop the recordings out into a panel"}
-						aria-label={recordingsFloating ? "Dock the recordings" : "Pop out the recordings"}
-						onclick={() => setRecordingsFloating(!recordingsFloating)}
+						aria-label={recordingsMode === "floating"
+							? "Dock the recordings"
+							: "Pop out the recordings"}
+						onclick={() => setRecordingsMode(recordingsMode === "floating" ? "docked" : "floating")}
 					>
 						<span
-							class={recordingsFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+							class={recordingsMode === "floating"
+								? "i-ph-arrows-in-simple"
+								: "i-ph-arrows-out-simple"}
 							aria-hidden="true"
 						></span>
 					</button>
 				{/snippet}
-				<div class="grid grid-cols-1 content-start gap-2">
-					{#if ideasShown.length === 0}
-						<p
-							class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
-						>
-							Nothing recorded yet. Your ideas and their takes will list here.
-						</p>
-					{:else}
-						<ul
-							class="
-							max-h-[60vh]
-							min-h-64
-							overflow-y-auto
-							rounded
-							bg-slate-400
-							bg-gradient-to-br
-							from-slate-500/10
-							via-slate-500/60
-							to-slate-500/80
-							divide-y
-							divide-dark/30
-						  shadow-xl
-							shadow-oxford-800
-								{recorderBusy ? 'opacity-60' : ''}"
-						>
-							{#each ideasShown as i (i.id)}
-								<li>
-									<!--
-									An accordion and nothing more: the row only folds and unfolds; a take
-									loads. The set is the one source of truth (the native toggle is
-									cancelled): a toggle event lands after a re-render from an autosave
-									and the two would otherwise fight over the state.
-								-->
-									<details open={openIdeas.has(i.id)}>
-										<summary
-											class="
-											cursor-pointer
-											font-sans
-											grid
-											grid-cols-[auto_1fr_auto_auto]
-											items-center
-											gap-x-3
-											opacity-95
-											px-4
-											py-2.5
-											list-none
-											shadow
-											text-oxford
-											hover-opacity-100
-											[&::-webkit-details-marker]:hidden {i.id === ideaId || (i.pending && !ideaId)
-												? 'bg-blue-300/10'
-												: ''}"
-											onclick={(e) => {
-												e.preventDefault();
-												if (openIdeas.has(i.id)) openIdeas.delete(i.id);
-												else openIdeas.add(i.id);
-											}}
-										>
-											<span
-												class="i-ph-caret-right-bold inline-block text-1em opacity-90 {openIdeas.has(
-													i.id,
-												)
-													? 'rotate-90'
-													: ''}"
-												aria-hidden="true"
-											></span>
-											<span class="block truncate font-600 w-full font-sans w-full"
-												>{#if i.kind === "loop"}<span
-														class="i-ph-repeat inline-block align-[-2px] mr-1.5 opacity-80"
-														title="A loop saved from the looper"
-														aria-label="Loop"
-													></span>{/if}{i.title}</span
-											>
-											<span
-												class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
-												>{i.takes.length}
-												{i.takes.length === 1 ? "take" : "takes"} | {formatDate(i.createdAt)}</span
-											>
-										</summary>
-										{#if i.takes.length > 0}
-											<ul
-												class="divide-y divide-dark/10 bg-blue-100/40 border-t border-t-dark/30 text-oxford"
-											>
-												{#each i.takes as t (t.id)}
-													<li
-														class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 shadow-inner {t.id ===
-														takeId
-															? 'bg-blue-300/15'
-															: ''}"
-													>
-														<button
-															class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
-															type="button"
-															aria-current={t.id === takeId ? "true" : undefined}
-															disabled={recorderBusy || !!t.pending}
-															onclick={() => show(i, t)}
-														>
-															<span class="inline-grid w-full grid-cols-1">
-																<span class="truncate"
-																	>{takeLabel(t)}{#if t.stems.length > 0}<span
-																			class="ml-2 text-11px opacity-70"
-																			title={t.stems.map((s) => s.label).join(", ")}
-																			>· {t.stems.length} stems</span
-																		>{/if}</span
-																>
-																<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
-															</span>
-															<span
-																class="text-sm tabular-nums opacity-80 inline-flex h-full items-center gap-1"
-															>
-																{#if t.pending}
-																	<span class="i-ph-cloud-arrow-up animate-pulse" aria-hidden="true"
-																	></span>
-																	{t.pending.status === "uploading"
-																		? `Saving… ${Math.round(t.pending.progress)}%`
-																		: "Waiting…"}
-																{:else}
-																	{t.durationSeconds !== null
-																		? formatTime(t.durationSeconds, 0)
-																		: "–:––"}
-																{/if}
-															</span>
-														</button>
-														{#if !t.pending}
-															<ContextMenu
-																buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
-																popoverClasses="text-blue-100"
-																title="Take Menu"
-																ariaLabel="Menu for {takeLabel(t)}"
-																items={[
-																	{
-																		action: () => songDialog(i, t, "add"),
-																		kind: "button",
-																		iconClass: "i-ph-plus",
-																		label: "Add as demo...",
-																	},
-																	{
-																		action: () => songDialog(i, t, "stems"),
-																		kind: "button",
-																		iconClass: "i-ph-stack",
-																		label: `Add ${t.stems.length} stems to song...`,
-																		condition: t.stems.length > 0,
-																	},
-																	{
-																		action: () => songDialog(i, t, "new"),
-																		kind: "button",
-																		iconClass: "i-ph-music-notes-plus",
-																		label: "Create new song...",
-																	},
-																	{
-																		kind: "divider",
-																	},
-																	{
-																		action: () => removeTake(t),
-																		kind: "button",
-																		iconClass: "i-ph-trash",
-																		label: "Delete Take",
-																	},
-																]}
-															/>
-														{/if}
-													</li>
-												{/each}
-											</ul>
-										{/if}
-									</details>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</div>
+				{@render recordingsList()}
 			</FloatingPanel>
 		</section>
 
@@ -1529,7 +1403,7 @@
 		</div>
 	</div>
 
-	<!-- Search: ideas by title or notes, takes by name or number. -->
+	<!-- The phone's sheet of ideas and takes (from sm the Recordings panel holds the list). -->
 	<div
 		id="idea-search"
 		popover="auto"
@@ -1569,118 +1443,19 @@
 		sm-h-[min(85dvh,52rem)]"
 		style:position-anchor="--idea-search"
 	>
-		<!-- Full screen on a phone, a tall sheet on a desktop: the search box stays put, the list scrolls. -->
-		<div class="shrink-0">
-			<div class="flex items-center justify-between">
-				<h2 class="font-600">Search Ideas</h2>
-				<button
-					class="button-popover-close ml-auto"
-					type="button"
-					popovertarget="idea-search"
-					popovertargetaction="hide"
-				>
-					<span class="sr-only">Close</span>
-				</button>
-			</div>
-			<label class="flex mt-4">
-				<span class="sr-only">Search ideas</span>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					class="field"
-					type="search"
-					placeholder="Filter by title, notes, take label or number…"
-					autocomplete="off"
-					data-1p-ignore
-					data-lpignore="true"
-					data-bwignore
-					bind:value={searchText}
-					autofocus={searchOpen}
-				/>
-			</label>
+		<!-- Full screen on a phone: the same list as the Recordings panel, the sheet closing on a chosen take. -->
+		<div class="flex items-center justify-between mb-4">
+			<h2 class="font-600">Recordings</h2>
+			<button
+				class="button-popover-close ml-auto"
+				type="button"
+				popovertarget="idea-search"
+				popovertargetaction="hide"
+			>
+				<span class="sr-only">Close</span>
+			</button>
 		</div>
-		<div class="min-h-0 grow overflow-y-auto mt-4">
-			{#if filtered.length === 0}
-				<p class="py-6 text-center text-sm opacity-80">
-					{data.ideas.length === 0 ? "Nothing recorded yet." : "Nothing matches."}
-				</p>
-			{:else}
-				<p class="mb-2 text-12px uppercase tracking-wider opacity-60">
-					{filtered.length} of {data.ideas.length}
-					{data.ideas.length === 1 ? "idea" : "ideas"}
-				</p>
-				<ul class="divide-y divide-white/10 rounded border border-white/15 bg-blue-300/5">
-					{#each filtered as f (f.idea.id)}
-						<li>
-							<!-- A plain accordion, opened on the takes a query matched; a take loads and closes the sheet. -->
-							<details open={f.matching.size > 0}>
-								<summary
-									class="grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-x-3 px-3 py-2.5 list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden {f
-										.idea.id === ideaId
-										? 'bg-blue-300/10'
-										: ''}"
-								>
-									<span
-										class="i-ph-caret-right inline-block text-12px opacity-70"
-										aria-hidden="true"
-									></span>
-									<span class="min-w-0">
-										<span class="block truncate font-500">{f.idea.title}</span>
-										<span class="block truncate text-12px opacity-70">
-											{fmtWhen(f.idea.createdAt)}{#if f.idea.notes.trim()}
-												· {f.idea.notes.trim().split("\n")[0].slice(0, 60)}{/if}
-										</span>
-									</span>
-									<span class="text-sm tabular-nums opacity-80">
-										{f.idea.takes.length}
-										{f.idea.takes.length === 1 ? "take" : "takes"}
-									</span>
-								</summary>
-								<div class="border-t border-white/10 bg-black/10">
-									{#if f.idea.takes.length === 0}
-										<button
-											class="block w-full px-3 py-2 pl-9 text-left text-sm hover:bg-white/5"
-											type="button"
-											popovertarget="idea-search"
-											popovertargetaction="hide"
-											onclick={() => show(f.idea, null)}
-										>
-											Open the idea (notes only, no takes yet)
-										</button>
-									{:else}
-										<ul class="divide-y divide-white/5">
-											{#each f.idea.takes as t (t.id)}
-												<li>
-													<button
-														class="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 py-2 pl-9 pr-3 text-left hover:bg-white/5 {f.matching.has(
-															t.id,
-														)
-															? 'bg-accent/10'
-															: ''}"
-														type="button"
-														aria-current={t.id === takeId ? "true" : undefined}
-														popovertarget="idea-search"
-														popovertargetaction="hide"
-														onclick={() => show(f.idea, t)}
-													>
-														<span class="truncate text-sm">{takeLabel(t)}</span>
-														<span class="text-sm tabular-nums opacity-80"
-															>{t.durationSeconds !== null
-																? formatTime(t.durationSeconds, 0)
-																: "–:––"}</span
-														>
-														<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
-													</button>
-												</li>
-											{/each}
-										</ul>
-									{/if}
-								</div>
-							</details>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
+		{@render recordingsList()}
 	</div>
 	<div class="hidden sm-block">
 		<PageCopySection
@@ -1691,6 +1466,197 @@
 		/>
 	</div>
 </main>
+
+<!-- The ideas and takes with the search field at the top: in the Recordings panel from sm, in the phone's sheet below it. -->
+{#snippet recordingsList()}
+	<div class="grid grid-cols-1 content-start gap-2">
+		<label class="flex">
+			<span class="sr-only">Search ideas and takes</span>
+			<input
+				class="field text-sm"
+				type="search"
+				placeholder="Filter by title, notes, take label or number…"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				bind:value={searchText}
+			/>
+		</label>
+		{#if query}
+			<p class="text-12px uppercase tracking-wider opacity-60">
+				{shownFiltered.length} of {ideasShown.length}
+				{ideasShown.length === 1 ? "idea" : "ideas"}
+			</p>
+		{/if}
+		{#if shownFiltered.length === 0}
+			<p
+				class="rounded border border-dashed border-white/15 px-4 py-4 text-center text-sm opacity-90"
+			>
+				{query
+					? "Nothing matches."
+					: "Nothing recorded yet. Your ideas and their takes will list here."}
+			</p>
+		{:else}
+			<ul
+				class="
+					max-h-[60vh]
+					min-h-64
+					overflow-y-auto
+					rounded
+					bg-slate-400
+					bg-gradient-to-br
+					from-slate-500/10
+					via-slate-500/60
+					to-slate-500/80
+					divide-y
+					divide-dark/30
+				  shadow-xl
+					shadow-oxford-800
+						{recorderBusy ? 'opacity-60' : ''}"
+			>
+				{#each shownFiltered as i (i.id)}
+					<li>
+						<!--
+							An accordion and nothing more: the row only folds and unfolds; a take
+							loads. The set is the one source of truth (the native toggle is
+							cancelled): a toggle event lands after a re-render from an autosave
+							and the two would otherwise fight over the state.
+						-->
+						<details open={openIdeas.has(i.id) || matchedTakes.has(i.id)}>
+							<summary
+								class="
+									cursor-pointer
+									font-sans
+									grid
+									grid-cols-[auto_1fr_auto_auto]
+									items-center
+									gap-x-3
+									opacity-95
+									px-4
+									py-2.5
+									list-none
+									shadow
+									text-oxford
+									hover-opacity-100
+									[&::-webkit-details-marker]:hidden {i.id === ideaId || (i.pending && !ideaId)
+									? 'bg-blue-300/10'
+									: ''}"
+								onclick={(e) => {
+									e.preventDefault();
+									if (openIdeas.has(i.id)) openIdeas.delete(i.id);
+									else openIdeas.add(i.id);
+								}}
+							>
+								<span
+									class="i-ph-caret-right-bold inline-block text-1em opacity-90 {openIdeas.has(i.id)
+										? 'rotate-90'
+										: ''}"
+									aria-hidden="true"
+								></span>
+								<span class="block truncate font-600 w-full font-sans w-full"
+									>{#if i.kind === "loop"}<span
+											class="i-ph-repeat inline-block align-[-2px] mr-1.5 opacity-80"
+											title="A loop saved from the looper"
+											aria-label="Loop"
+										></span>{/if}{i.title}</span
+								>
+								<span class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
+									>{i.takes.length}
+									{i.takes.length === 1 ? "take" : "takes"} | {formatDate(i.createdAt)}</span
+								>
+							</summary>
+							{#if i.takes.length > 0}
+								<ul
+									class="divide-y divide-dark/10 bg-blue-100/40 border-t border-t-dark/30 text-oxford"
+								>
+									{#each i.takes as t (t.id)}
+										<li
+											class="grid grid-cols-[1fr_auto] items-center gap-2 pr-2 shadow-inner {t.id ===
+											takeId
+												? 'bg-blue-300/15'
+												: ''}"
+										>
+											<button
+												class="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 py-2 pl-12 pr-2 text-left hover:bg-white/5 disabled:cursor-default"
+												type="button"
+												aria-current={t.id === takeId ? "true" : undefined}
+												disabled={recorderBusy || !!t.pending}
+												onclick={() => show(i, t)}
+											>
+												<span class="inline-grid w-full grid-cols-1">
+													<span class="truncate"
+														>{takeLabel(t)}{#if t.stems.length > 0}<span
+																class="ml-2 text-11px opacity-70"
+																title={t.stems.map((s) => s.label).join(", ")}
+																>· {t.stems.length} stems</span
+															>{/if}</span
+													>
+													<span class="text-12px opacity-70">{fmtWhen(t.createdAt)}</span>
+												</span>
+												<span
+													class="text-sm tabular-nums opacity-80 inline-flex h-full items-center gap-1"
+												>
+													{#if t.pending}
+														<span class="i-ph-cloud-arrow-up animate-pulse" aria-hidden="true"
+														></span>
+														{t.pending.status === "uploading"
+															? `Saving… ${Math.round(t.pending.progress)}%`
+															: "Waiting…"}
+													{:else}
+														{t.durationSeconds !== null ? formatTime(t.durationSeconds, 0) : "–:––"}
+													{/if}
+												</span>
+											</button>
+											{#if !t.pending}
+												<ContextMenu
+													buttonClasses="text-oxford bg-slate-800/5 hover-bg-slate-800/20"
+													popoverClasses="text-blue-100"
+													title="Take Menu"
+													ariaLabel="Menu for {takeLabel(t)}"
+													items={[
+														{
+															action: () => songDialog(i, t, "add"),
+															kind: "button",
+															iconClass: "i-ph-plus",
+															label: "Add as demo...",
+														},
+														{
+															action: () => songDialog(i, t, "stems"),
+															kind: "button",
+															iconClass: "i-ph-stack",
+															label: `Add ${t.stems.length} stems to song...`,
+															condition: t.stems.length > 0,
+														},
+														{
+															action: () => songDialog(i, t, "new"),
+															kind: "button",
+															iconClass: "i-ph-music-notes-plus",
+															label: "Create new song...",
+														},
+														{
+															kind: "divider",
+														},
+														{
+															action: () => removeTake(t),
+															kind: "button",
+															iconClass: "i-ph-trash",
+															label: "Delete Take",
+														},
+													]}
+												/>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</details>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
+{/snippet}
 
 <!-- The metronome's floating panel (desktop), as the drum machine's. -->
 <FloatingPanel

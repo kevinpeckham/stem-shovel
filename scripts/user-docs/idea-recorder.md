@@ -16,7 +16,7 @@ The panel beside the recorder is a markdown note board for the idea: lyrics, cho
 
 ## The list
 
-Under the recorder, your ideas are listed newest first. Loops saved in the Looper are kept out of the list unless you tick **Show loops** in the list's header; they carry a loop icon, and a loop exported from the Looper is listed like any idea. Click an idea's name to fold or unfold its takes; click a take to load it into the player. Each take has a ⋯ menu (add as a demo, create a song, delete) and each idea has one too (delete the idea and all its takes). **Search** opens a sheet listing every idea (full screen on a phone); typing filters them by title, notes, take name or number, and an idea unfolds to its takes. On a phone the main list gives way to a picker above the recorder.
+Under the recorder, the **Recordings** panel lists your ideas newest first, with a search field at its top: type to narrow them by title, notes, take name or number, and an idea whose take matched opens on it. Loops saved in the Looper are kept out of the list unless you tick **Show loops** in the panel's header; they carry a loop icon, and a loop exported from the Looper is listed like any idea. Click an idea's name to fold or unfold its takes; click a take to load it into the player. Each take has a ⋯ menu (add as a demo, create a song, delete) and each idea has one too (delete the idea and all its takes). On a desktop the panel pops out into a window of its own with the arrows button, and its close button minimises it to the **Ideas** button in the toolbar, which brings it back as it was. On a phone the same list opens as a full-screen sheet from that button.
 
 Ideas are yours: other members of the account see them only once a take becomes a demo on a song.
 

@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **One Recordings panel with search** on the Idea Recorder (docs/demo-recording.md). The search field sits at the top of the Recordings panel and narrows the list in place; the panel docks, pops out, or minimises to the toolbar's Ideas button, which brings it back as it was. On a phone the same list opens as a full-screen sheet from that button. The separate search sheet is gone.
 - **Calibrate on the Idea Recorder.** The microphone's menu has the looper's Calibrate button: three clicks through the speakers measure the input latency, now kept with the shared inputs (`inputSources.calibrate()`), so a multitrack take's stems line up without a trip to the looper.
 
 ### Changed
