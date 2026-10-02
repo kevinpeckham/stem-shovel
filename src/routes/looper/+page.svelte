@@ -642,6 +642,29 @@
 												]} dB</span
 											>
 										</label>
+									{:else}
+										{@const inst = source === "piano" ? piano : drumMachine}
+										<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
+										<label
+											class="block px-0.5"
+											title="{LOOP_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"
+										>
+											<span class="sr-only">{LOOP_SOURCE_LABELS[source]} volume</span>
+											<input
+												class="w-full accent-maximumYellow h-3"
+												type="range"
+												min="0"
+												max="100"
+												step="1"
+												value={Math.round(inst.volume * 100)}
+												aria-label="{LOOP_SOURCE_LABELS[source]} volume in percent"
+												oninput={(e) => inst.setVolume(Number(e.currentTarget.value) / 100)}
+											/>
+											<span
+												class="block text-11px leading-none text-dark/80 text-center -mt-0.5"
+												aria-hidden="true">Volume {Math.round(inst.volume * 100)}%</span
+											>
+										</label>
 									{/if}
 								</div>
 							{/each}
