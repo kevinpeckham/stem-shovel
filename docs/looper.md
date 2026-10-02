@@ -228,12 +228,15 @@ the events on the idea.
   position, status and progress, labelled `device-button-*` groups,
   container-query rows with the root a `@container`), the settings in
   three menus on the device (`ContextMenu` with snippet blocks, the
-  piano's effects-menu idiom): **Loop** (tempo and Tap, bars, beats,
-  count-in, click), **Mic** (monitor, microphone latency and Calibrate,
+  piano's effects-menu idiom): **Timing** (a metronome icon; tempo and
+  Tap, bars, beats, count-in, click), **Mic** (monitor, microphone latency and Calibrate,
   the reported output latency and the piano shift) and **Save** (title,
   passes, Save as take, upload status); transport, source picker with
   meters, layers as device rows with waveforms, levels, mute, solo,
-  delete, undo, clear; the loop's settings with a Tap tempo button (Kevin: "a tap tempo control right in
+  delete, undo, clear; the "SS Loop 001" badge; the page's title, intro
+  and the tips under the device from its copy doc (docs/page-copy.md);
+  choosing Piano or Drums as the source opens that instrument's panel;
+  the Save menu's Stereo or Multitrack choice (multitrack by default); the loop's settings with a Tap tempo button (Kevin: "a tap tempo control right in
   the looper"; `looper.tap()` is the metronome's `tapTempo` over the last
   eight taps, fixed while the loop has layers); the tempo synced both
   ways with the drum machine and the metronome (Kevin): `looper.setBpm`

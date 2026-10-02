@@ -37,6 +37,9 @@ const ORDER = [
 	"releases",
 ];
 
+/** Pages whose words live in a "copy" doc (docs/page-copy.md): seeded like the docs, listed nowhere, edited at /docs/<slug>/edit. */
+const COPY_PAGES = ["looper-page"];
+
 const db = drizzle({
 	connection: {
 		url: libsqlUrl(process.env.TURSO_DATABASE_URL!),
@@ -51,7 +54,7 @@ async function hash(markdown: string) {
 }
 
 let added = 0;
-for (const [index, slug] of ORDER.entries()) {
+for (const [index, slug] of [...ORDER, ...COPY_PAGES].entries()) {
 	const existing = await db.query.userDoc.findFirst({ where: eq(schema.userDoc.slug, slug) });
 	if (existing) continue;
 	const markdown = (await readFile(new URL(`./user-docs/${slug}.md`, import.meta.url), "utf8"))
@@ -62,7 +65,15 @@ for (const [index, slug] of ORDER.entries()) {
 	const contentHash = await hash(markdown);
 	const [doc] = await db
 		.insert(schema.userDoc)
-		.values({ slug, title, sortOrder: (index + 1) * 10, markdown, contentHash, version: 1 })
+		.values({
+			slug,
+			kind: COPY_PAGES.includes(slug) ? "copy" : "doc",
+			title,
+			sortOrder: (index + 1) * 10,
+			markdown,
+			contentHash,
+			version: 1,
+		})
 		.returning();
 	await db
 		.insert(schema.userDocVersion)

@@ -3,6 +3,8 @@
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
+	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import Piano from "$lib/components/Piano.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
@@ -79,10 +81,12 @@
 		else looper.setBpm(theirs);
 	});
 
-	/** Arm a source; the microphone asks for permission on its first turn. */
+	/** Arm a source; the microphone asks for permission on its first turn, and an instrument's panel opens if it is not out (Kevin). */
 	async function arm(source: LoopSource) {
 		looper.setArmed(source);
 		if (source === "mic" && !looper.hasMic) await looper.requestMic();
+		if (source === "piano" && !pianoOpen) togglePiano();
+		if (source === "drums" && !drumsOpen) toggleDrums();
 	}
 	async function calibrate() {
 		const ms = await looper.calibrate();
@@ -134,6 +138,8 @@
 	 */
 	let saving = $state(false);
 	let repeats = $state(1);
+	/** The layers go with the take as its sources (a multitrack take) by default; stereo saves the mix alone (Kevin). */
+	let saveStems = $state(true);
 	let loopTitle = $state("");
 	const queue = new TakeQueue({
 		ideaFor: async (item) => {
@@ -171,13 +177,17 @@
 				createdAt: Date.now(),
 				blob: looper.wavOf(mix),
 				instruments: { drums: null, piano: null, looper: looper.settings() },
-				stems: looper.layers.map((l) => ({
-					label: l.label,
-					blob: looper.wavOf(l.buffer),
-					mimeType: "audio/wav",
-					ext: "wav",
-					codec: "pcm",
-				})),
+				...(saveStems
+					? {
+							stems: looper.layers.map((l) => ({
+								label: l.label,
+								blob: looper.wavOf(l.buffer),
+								mimeType: "audio/wav",
+								ext: "wav",
+								codec: "pcm",
+							})),
+						}
+					: {}),
 			});
 			notify("Saving the loop as a take…");
 		} catch (e) {
@@ -194,23 +204,16 @@
 </script>
 
 <svelte:head>
-	<title>Looper · Stem Shovel</title>
+	<title>{data.copy.title || "Looper"} · Stem Shovel</title>
 </svelte:head>
 
 <svelte:window {onkeydown} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="@container" onpointerdowncapture={() => void looper.open()}>
-	<main class="page">
-		<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
-			<div>
-				<h1 class="display mb-1">Looper</h1>
-				<p class="opacity-90">
-					Lay a loop down a layer at a time from the microphone, the piano or the drums, then save
-					it to the Idea Recorder as a take with each layer as a stem.
-				</p>
-			</div>
-			<div class="flex gap-2">
+	<main class="page-x-padding main-y-padding max-w-full w-full">
+		<PageCopyHeader copy={data.copy}>
+			{#snippet controls()}
 				<button
 					class="button button-sm shrink-0 {metroOpen
 						? 'bg-accent text-oxford border-accent opacity-100'
@@ -251,8 +254,8 @@
 				>
 					<span class="i-ph-piano-keys" aria-hidden="true"></span>
 				</button>
-			</div>
-		</div>
+			{/snippet}
+		</PageCopyHeader>
 
 		<!-- The device (docs/looper.md): the chassis, screen and button groups of the other instruments; the settings live in menus on the device. -->
 		<section
@@ -409,16 +412,16 @@
 					<div class="device-button-group-label text-dark">Settings</div>
 					<div class="flex flex-wrap gap-2">
 						<ContextMenu
-							ariaLabel="Loop settings"
+							ariaLabel="Timing settings"
 							title="Tempo, bars, count-in and click"
 							iconClass="i-ph-metronome"
-							label="Loop"
+							label="Timing"
 							position="bottom left"
 							buttonBaseClasses="device-button-sm px-3"
 							buttonClasses={looper.locked ? "text-accent" : ""}
 							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 							items={[
-								{ id: "loop-heading", kind: "heading", label: "Loop" },
+								{ id: "loop-heading", kind: "heading", label: "Timing" },
 								{ id: "loop-block", kind: "snippet", snippet: loopMenuBlock },
 							]}
 						/>
@@ -536,10 +539,21 @@
 					</ul>
 				{/if}
 			</div>
+
+			<!-- branding, as the other devices wear it -->
+			<div
+				class="absolute bottom-3 right-5 text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+			>
+				SS Loop 001
+			</div>
 		</section>
 
-		<a class="button mt-6" href="/docs/looper">Learn more about using the looper in the user docs</a
-		>
+		<PageCopySection
+			html={data.copy.bodyHtml}
+			docsHref="/docs/looper"
+			docsLabel="Looper docs"
+			docsLead="Learn more about using the looper in the user docs."
+		/>
 	</main>
 
 	<!-- The settings, as blocks in the device's menus (the piano's effects menu idiom). -->
@@ -708,9 +722,29 @@
 					<option value={4}>4</option>
 				</select>
 			</label>
+			<div class="grid gap-1">
+				<span class="device-button-label">Take</span>
+				<div class="flex gap-2" role="group" aria-label="Take format">
+					<button
+						class="device-button-xs px-3 {saveStems ? 'text-accent' : ''}"
+						type="button"
+						aria-pressed={saveStems}
+						title="The mix plus each layer as its own source, so the take can go to a song as stems"
+						onclick={() => (saveStems = true)}>Multitrack</button
+					>
+					<button
+						class="device-button-xs px-3 {saveStems ? '' : 'text-accent'}"
+						type="button"
+						aria-pressed={!saveStems}
+						title="The mix alone"
+						onclick={() => (saveStems = false)}>Stereo</button
+					>
+				</div>
+			</div>
 			<p class="text-12px opacity-70">
-				The layers' mix becomes a take in the Idea Recorder, each layer one of its sources, ready to
-				go to a song as stems.
+				{saveStems
+					? "The layers' mix becomes a take in the Idea Recorder, each layer one of its sources, ready to go to a song as stems."
+					: "The layers' mix becomes a take in the Idea Recorder, as one stereo file."}
 			</p>
 			<button
 				class="device-button-sm px-3 justify-self-start {looper.layers.length ? 'text-accent' : ''}"

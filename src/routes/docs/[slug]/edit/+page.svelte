@@ -52,7 +52,7 @@
 		docKey={data.doc.id}
 		label={data.doc.title}
 		hint=""
-		backHref="/docs/{data.doc.slug}"
+		backHref={data.backHref}
 		backLabel="Exit edit mode"
 		view="markdown"
 		{version}

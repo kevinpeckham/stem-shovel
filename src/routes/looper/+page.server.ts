@@ -3,7 +3,9 @@ import { isEditor, requireSignedIn } from "$lib/server/access";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import { listBeats, listPianoPresets, sitePianoPresets } from "$lib/server/data";
+import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
+import copyFallback from "../../../scripts/user-docs/looper-page.md?raw";
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
@@ -21,6 +23,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	if (!member) redirect(303, "/accounts");
 	return {
 		account: { id: member.accountId, name: member.name, slug: member.slug, canEdit: true },
+		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
+		copy: await pageCopy("looper-page", copyFallback, locals),
 		pianoSamplesBase: publicBlobUrl("piano/v1"),
 		beats: await listBeats(member.accountId),
 		textToBeat: aiAvailable(),

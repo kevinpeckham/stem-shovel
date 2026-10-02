@@ -1,3 +1,4 @@
+import { PAGE_COPY } from "$lib/constants/pageCopy";
 import { getUserDoc, listUserDocs } from "$lib/server/data";
 import { renderMarkdown } from "$lib/server/markdown";
 import { excerpt } from "$lib/utils/excerpt";
@@ -9,6 +10,8 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (params.slug === RELEASES_DOC_SLUG) redirect(307, "/releases"); // its own page
 	const doc = await getUserDoc(params.slug);
+	// A page's copy doc is read on its page, not here.
+	if (doc?.kind === "copy" && PAGE_COPY[params.slug]) redirect(307, PAGE_COPY[params.slug]);
 	if (!doc || doc.kind !== "doc") error(404, `No page "${params.slug}"`);
 	return {
 		doc: {

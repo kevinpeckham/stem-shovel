@@ -8,9 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Page copy edited in the app** (docs/page-copy.md): a page's title, intro and the tips under its device are a user doc of kind "copy", edited by a system admin at `/docs/<slug>/edit` as the releases page is, rendered by `PageCopyHeader` and `PageCopySection` with `pageCopy()` and `splitPageCopy`; the looper page is the first (`looper-page`, seeded by `bun run db:seed-docs`), with a "How to use the Looper" box and quick tips under the device.
+- **Looper: Stereo or Multitrack take** in the Save menu, multitrack (the layers as the take's sources) by default.
+
 ### Changed
 
-- **Looper: skinned as a device** like the drum machine and the piano (docs/looper.md): the chassis, a screen with the loop's position, status and progress, labelled button groups, and the settings in three menus on the device, Loop (tempo with Tap, bars, beats, count-in, click), Mic (monitor, latency and Calibrate, the output latency and the piano shift) and Save (title, passes, Save as take); the layout by container queries.
+- **Looper: skinned as a device** like the drum machine and the piano (docs/looper.md): the chassis, a screen with the loop's position, status and progress, labelled button groups, and the "SS Loop 001" badge, the page header as the other instrument pages', and the settings in three menus on the device, Timing (tempo with Tap, bars, beats, count-in, click), Mic (monitor, latency and Calibrate, the output latency and the piano shift) and Save (title, passes, Save as take); the layout by container queries. Choosing Piano or Drums as the source opens that instrument's panel.
 
 ## [0.74.0] - 2026-10-02
 
