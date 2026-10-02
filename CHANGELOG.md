@@ -10,6 +10,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Looper: Save, Save as new loop, Export** (docs/looper.md, "Save and Export"). Save stores the loop with every layer under an idea of the new kind "loop" (migration 0065 adds `idea.kind`), with no dialog, and saves again in place after that; Export lists it in the Idea Recorder as an idea. The recorder hides loops unless **Show loops** is on, marking them with a loop icon.
+- **Looper: notes on a loop**, the recorder's note board under the device, saved with the loop and back on load.
+- **Looper and notes pop out** into draggable, resizable panels on a desktop, as on the recorder page.
+- **Page copy on the drum machine, piano, tuner and metronome pages**: their titles, intros and tips are now copy docs edited in the app (`drum-machine-page`, `piano-page`, `tuner-page`, `metronome-page`, seeded by `bun run db:seed-docs`).
+
+### Changed
+
+- **Looper: "Input Source"** names the source group. The Stereo or Multitrack choice is gone: a saved loop always keeps its layers.
+
+### Fixed
+
+- **The piano page's header** was clipped away at every width; it is visible from the small breakpoint and screen-reader-only on phones.
+
+### Added
+
 - **Looper: import a take.** The Load menu lists recent Idea Recorder takes; one comes in as layers (a multitrack take one per source, a stereo take as one), with the loop's length taken from the take on an empty loop or the take fitted to the loop otherwise, and a start offset (docs/looper.md, "Importing a take"). `loopSources` hands back the take's own file beside its sources; `looper.importTake`.
 
 ## [0.77.0] - 2026-10-02

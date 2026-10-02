@@ -1,4 +1,8 @@
-import { IdeaInstrumentsDataSchema, type IdeaInstruments } from "$lib/val/IdeaSchema";
+import {
+	IdeaInstrumentsDataSchema,
+	type IdeaInstruments,
+	type IdeaKind,
+} from "$lib/val/IdeaSchema";
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
 import { reorderById } from "$lib/utils/reorderById";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
@@ -3025,12 +3029,27 @@ export async function failDemoPlayback(demoId: string) {
 
 /** Step 1 of a recording upload: the row, its pathname and the store it goes to. */
 /** A new idea: a title and an empty note board; takes come later. */
-export async function createIdea(accountId: string, userId: string, title: string) {
+export async function createIdea(
+	accountId: string,
+	userId: string,
+	title: string,
+	kind: IdeaKind = "idea",
+) {
 	const [row] = await db
 		.insert(idea)
-		.values({ accountId, createdBy: userId, title: title.trim() || "Untitled" })
+		.values({ accountId, createdBy: userId, title: title.trim() || "Untitled", kind })
 		.returning();
 	return row;
+}
+
+/** A loop exported into the recorder's list (kind "idea"), or hidden again (docs/looper.md, "Save and Export"). */
+export async function setIdeaKind(accountId: string, ideaId: string, kind: IdeaKind) {
+	const [row] = await db
+		.update(idea)
+		.set({ kind })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)))
+		.returning({ id: idea.id });
+	return !!row;
 }
 
 /**
@@ -3153,6 +3172,8 @@ export async function listUserLoops(userId: string) {
 		return [
 			{
 				id: take.id,
+				ideaId: i.id,
+				kind: i.kind,
 				title: i.title,
 				createdAt: take.createdAt,
 				layers: take.stems.length,
@@ -3169,7 +3190,7 @@ export async function loopSources(accountId: string, recordingId: string) {
 		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
 		columns: { id: true, url: true, durationSeconds: true, title: true, takeNumber: true },
 		with: {
-			idea: { columns: { instruments: true } },
+			idea: { columns: { id: true, kind: true, title: true, notes: true, instruments: true } },
 			stems: { where: eq(recordingStem.status, "ready"), orderBy: [asc(recordingStem.sortOrder)] },
 		},
 	});
@@ -3177,6 +3198,9 @@ export async function loopSources(accountId: string, recordingId: string) {
 	const settings = parseIdeaInstruments(rec.idea?.instruments ?? null)?.looper ?? null;
 	return {
 		settings,
+		idea: rec.idea
+			? { id: rec.idea.id, kind: rec.idea.kind, title: rec.idea.title, notes: rec.idea.notes }
+			: null,
 		// The take as recorded (the lossless source, which the browser decodes itself), for an import as one layer.
 		mix: {
 			url: (await presentUrl(rec.url)) ?? rec.url,

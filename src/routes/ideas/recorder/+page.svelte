@@ -113,6 +113,19 @@
 			// Private mode: the choice lasts for this page only.
 		}
 	}
+	/** Loops saved from the looper are kind "loop" and hidden from the list unless asked for (docs/looper.md, "Save and Export"); remembered per browser. */
+	let showLoops = $state(false);
+	const SHOW_LOOPS_KEY = "stemshovel.recorder.show-loops";
+	function setShowLoops(on: boolean) {
+		showLoops = on;
+		try {
+			localStorage.setItem(SHOW_LOOPS_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	/** The ideas the list and the search show: ideas, and loops when asked for. */
+	let listedIdeas = $derived(data.ideas.filter((i) => i.kind !== "loop" || showLoops));
 	/** The recordings list popped out into a panel (from lg), or docked back; remembered per browser. */
 	let recordingsFloating = $state(false);
 	const RECORDINGS_FLOATING_KEY = "stemshovel.recorder.recordings-floating";
@@ -364,6 +377,7 @@
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
 			recorderFloating = localStorage.getItem(RECORDER_FLOATING_KEY) === "1";
 			recordingsFloating = localStorage.getItem(RECORDINGS_FLOATING_KEY) === "1";
+			showLoops = localStorage.getItem(SHOW_LOOPS_KEY) === "1";
 		} catch {
 			// As above.
 		}
@@ -422,7 +436,7 @@
 			pending: { status: u.status === "uploading" ? "uploading" : "waiting", progress: u.progress },
 		});
 		const known = new Set(data.ideas.map((i) => i.id));
-		const ideas: ShownIdea[] = data.ideas.map((i) => {
+		const ideas: ShownIdea[] = listedIdeas.map((i) => {
 			const mine = pending.filter((u) => u.ideaId === i.id);
 			return { ...i, takes: [...i.takes, ...mine.map((u, k) => row(u, i.takes.length + k + 1))] };
 		});
@@ -433,6 +447,7 @@
 			id: `pending:${us[0].localId}`,
 			title,
 			notes: "",
+			kind: "idea" as const,
 			instruments: null,
 			createdAt: new Date(us[0].createdAt),
 			pending: true,
@@ -584,7 +599,7 @@
 	let filtered = $derived.by(() => {
 		const q = searchText.trim().toLowerCase();
 		const out: { idea: Idea; byTake: boolean; matching: Set<string> }[] = [];
-		for (const i of data.ideas) {
+		for (const i of listedIdeas) {
 			const inIdea = !q || i.title.toLowerCase().includes(q) || i.notes.toLowerCase().includes(q);
 			const matching = new Set(
 				q
@@ -1082,6 +1097,18 @@
 				onminimise={() => setRecordingsFloating(false)}
 			>
 				{#snippet controls()}
+					<label
+						class="flex items-center gap-2 text-13px text-dim cursor-pointer"
+						title="Loops saved from the looper are kept out of the list unless shown"
+					>
+						<input
+							type="checkbox"
+							class="accent-maximumYellow"
+							checked={showLoops}
+							onchange={(e) => setShowLoops(e.currentTarget.checked)}
+						/>
+						Show loops
+					</label>
 					<button
 						class="button button-xs hidden lg-inline-flex"
 						type="button"
@@ -1163,7 +1190,13 @@
 													: ''}"
 												aria-hidden="true"
 											></span>
-											<span class="block truncate font-600 w-full font-sans w-full">{i.title}</span>
+											<span class="block truncate font-600 w-full font-sans w-full"
+												>{#if i.kind === "loop"}<span
+														class="i-ph-repeat inline-block align-[-2px] mr-1.5 opacity-80"
+														title="A loop saved from the looper"
+														aria-label="Loop"
+													></span>{/if}{i.title}</span
+											>
 											<span
 												class="text-14px tabular-nums opacity-90 h-full inline-flex items-center"
 												>{i.takes.length}

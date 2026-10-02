@@ -67,6 +67,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		ideas: ideas.map((i) => ({
 			id: i.id,
 			title: i.title,
+			// Loops saved from the looper are listed only when asked for (docs/looper.md, "Save and Export").
+			kind: i.kind,
 			notes: i.notes,
 			// The instruments as they were with the idea (JSON in the row); a row from before the column, or one that fails the schema, loads nothing.
 			instruments: parseIdeaInstruments(i.instruments),

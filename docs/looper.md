@@ -239,6 +239,43 @@ has the one loop the browser keeps. Verified on dev: a one-bar drums loop
 at 132 bpm exported, the loop cleared and retuned to 80 bpm, then loaded
 back with its layer, tempo and bars (80,182 frames, one bar at 132 bpm).
 
+## Save and Export, notes, panels (2026-10-02)
+
+Kevin: exporting a loop to save it would not make sense to users; a Save
+button should just save, loops must be told apart from ideas recorded in
+the recorder, and Export should be the explicit step that puts a loop in
+the ideas list. One datapoint does both: **`idea.kind`** ("idea" |
+"loop", migration 0065, default "idea"; `IDEA_KINDS` in IdeaSchema).
+**Save** stores the loop as a take with its layers as sources under an
+idea of kind "loop", made by the page's queue (`createIdea` takes `kind`),
+with no dialog: the Loop name field or "Loop · date · tempo" names it.
+After the first save the loop has an identity (`savedId`,
+`savedRecordingId`, `title`, `inRecorder`, `dirty` on the engine, kept in
+the browser's store with the layers), and a later Save updates it in
+place: the idea is renamed if the name changed, the new take uploads
+under the same idea, and the previous take is deleted once the new one is
+in (`replacing`; the order matters, an idea without takes and notes is
+swept). **Save as new loop** detaches first. **Export to the Idea
+Recorder** sets the idea's kind to "idea" (`setIdeaKind`), saving first
+when the loop is unsaved or changed; the looper's Load menu lists loops of
+either kind, since it looks for the looper settings on the idea, and the
+Idea Recorder lists kind "idea" by default with a **Show loops** switch
+(remembered per browser) that reveals loops with a loop icon. The Stereo
+or Multitrack choice of the first version is gone: a saved loop needs its
+layers to load again, so the layers always go with it.
+
+**Notes.** A saved loop is an idea, so its notes are the idea's notes: the
+recorder's `IdeaNotesPanel` sits under the device unchanged ("Notes for
+…"), with `ensureIdea` making the loop's idea (kind "loop", no take yet)
+on the first note when the loop was never saved; Load brings the notes
+back with the sources. **Panels.** The looper device and the notes panel
+each sit in a `FloatingPanel` with the recorder's pop-out button, floating
+from lg, docked below, remembered per browser. **Input Source** is the
+source group's label. Verified on dev: Save with no dialog made a "loop"
+idea hidden from the recorder until Show loops (with the icon), the
+identity survived a reload, Export put it in the list, Load lists it, and
+the notes panel appeared on the loop.
+
 ## Importing a take (2026-10-02)
 
 Kevin: "Can idea recording takes be imported as layers into the looper?"

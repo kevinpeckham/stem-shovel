@@ -24,6 +24,14 @@ export interface StoredLoop {
 	bars: 1 | 2 | 4 | 8;
 	layers: StoredLayer[];
 	savedAt: number;
+	/** The saved loop this is (docs/looper.md, "Save and Export"): its idea and take on the server, its title, whether it is in the recorder's list, and whether the layers changed since. */
+	saved?: {
+		ideaId: string | null;
+		recordingId: string | null;
+		title: string;
+		inRecorder: boolean;
+		dirty: boolean;
+	};
 }
 
 const DB_NAME = "stem-shovel-looper";

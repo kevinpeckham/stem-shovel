@@ -198,7 +198,9 @@ class LooperEngine {
 	 * this and nothing else. The stored audio is the layers' own samples.
 	 */
 	#persistTimer: ReturnType<typeof setTimeout> | null = null;
-	#persist() {
+	/** `changed`: the layers or the settings differ from the saved loop (false for a save, a load or a title edit). */
+	#persist(changed = true) {
+		if (changed && this.layers.length > 0) this.dirty = true;
 		if (this.#persistTimer) clearTimeout(this.#persistTimer);
 		this.#persistTimer = setTimeout(() => {
 			this.#persistTimer = null;
@@ -207,6 +209,13 @@ class LooperEngine {
 				beatsPerBar: this.beatsPerBar,
 				bars: this.bars,
 				savedAt: Date.now(),
+				saved: {
+					ideaId: this.savedId,
+					recordingId: this.savedRecordingId,
+					title: this.title,
+					inRecorder: this.inRecorder,
+					dirty: this.dirty,
+				},
 				layers: this.layers.map((l) => ({
 					id: l.id,
 					label: l.label,
@@ -247,9 +256,49 @@ class LooperEngine {
 			});
 		}
 		this.restored = this.layers.length;
+		if (stored.saved) {
+			this.savedId = stored.saved.ideaId;
+			this.savedRecordingId = stored.saved.recordingId;
+			this.title = stored.saved.title;
+			this.inRecorder = stored.saved.inRecorder;
+			this.dirty = stored.saved.dirty;
+		}
 	}
 	/** How many layers came back from the browser's store on opening, for a notice. */
 	restored = $state(0);
+	/**
+	 * The saved loop this is (docs/looper.md, "Save and Export"): its idea
+	 * and take on the server once saved, its title, whether it has been
+	 * exported into the recorder's list, and whether the layers or the
+	 * settings changed since the save. Kept in the browser's store with the
+	 * loop, so a reload knows which loop it is.
+	 */
+	savedId = $state<string | null>(null);
+	savedRecordingId = $state<string | null>(null);
+	title = $state("");
+	inRecorder = $state(false);
+	dirty = $state(false);
+	/** The page's record of a save or a load: what the loop now is on the server. */
+	markSaved(meta: { ideaId: string; recordingId: string; title: string; inRecorder: boolean }) {
+		this.savedId = meta.ideaId;
+		this.savedRecordingId = meta.recordingId;
+		this.title = meta.title;
+		this.inRecorder = meta.inRecorder;
+		this.dirty = false;
+		this.#persist(false);
+	}
+	/** A new loop from here on: the next save makes its own idea. */
+	detach() {
+		this.savedId = null;
+		this.savedRecordingId = null;
+		this.inRecorder = false;
+		this.dirty = this.layers.length > 0;
+		this.#persist(false);
+	}
+	setTitle(title: string) {
+		this.title = title.trim().slice(0, 120);
+		this.#persist(false);
+	}
 	/**
 	 * A take from the Idea Recorder as layers (docs/looper.md, "Importing a
 	 * take"): its sources one layer each when it is a multitrack take, else
@@ -342,6 +391,7 @@ class LooperEngine {
 			bars: LoopBars;
 			layers: { label: string; source: LoopSource; gain: number; muted: boolean }[];
 		} | null,
+		meta: { ideaId: string; recordingId: string; title: string; inRecorder: boolean } | null = null,
 	): Promise<number> {
 		await this.open();
 		const ctx = this.#ctx!;
@@ -383,7 +433,8 @@ class LooperEngine {
 				});
 			}
 			this.restored = 0;
-			this.#persist();
+			if (meta) this.markSaved(meta);
+			else this.#persist();
 			return this.layers.length;
 		} finally {
 			this.loading = false;

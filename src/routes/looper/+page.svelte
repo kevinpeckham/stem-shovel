@@ -21,12 +21,20 @@
 		type LoopSource,
 	} from "$lib/audio/looper.svelte";
 	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
-	import { createIdea, saveIdeaInstruments } from "$lib/remote/ideas.remote";
+	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
+	import {
+		createIdea,
+		renameIdea,
+		saveIdeaInstruments,
+		setIdeaKind,
+	} from "$lib/remote/ideas.remote";
+	import { deleteTake } from "$lib/remote/recordings.remote";
 	import { loopSources } from "$lib/remote/looper.remote";
 	import { invalidateAll } from "$app/navigation";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { Attachment } from "svelte/attachments";
+	import { onMount } from "svelte";
 
 	/**
 	 * The looper (docs/looper.md): a loop of bars at a tempo plays round and
@@ -40,6 +48,35 @@
 	if (import.meta.env.DEV && typeof window !== "undefined")
 		Object.assign(window, { __looper: looper, __piano: piano, __drums: drumMachine });
 
+	// The looper itself and its notes pop out into panels from lg, as the recorder's device and notes do (Kevin); remembered per browser.
+	let looperFloating = $state(false);
+	let notesFloating = $state(false);
+	const LOOPER_FLOATING_KEY = "stemshovel.looper.device-floating";
+	const NOTES_FLOATING_KEY = "stemshovel.looper.notes-floating";
+	function setLooperFloating(on: boolean) {
+		looperFloating = on;
+		try {
+			localStorage.setItem(LOOPER_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	function setNotesFloating(on: boolean) {
+		notesFloating = on;
+		try {
+			localStorage.setItem(NOTES_FLOATING_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	onMount(() => {
+		try {
+			looperFloating = localStorage.getItem(LOOPER_FLOATING_KEY) === "1";
+			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
+		} catch {
+			// As above.
+		}
+	});
 	// The panels, as on the recorder page: floating from lg, docked below; the space bar follows the instrument touched last, else the looper's transport.
 	let drumsOpen = $state(false);
 	let pianoOpen = $state(false);
@@ -147,31 +184,61 @@
 		ideaFor: async (item) => {
 			if (item.ideaId) return item.ideaId;
 			if (!data.account) throw new Error("Sign in to save loops");
-			const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
+			const created = await createIdea({
+				accountId: data.account.id,
+				title: item.ideaTitle,
+				kind: "loop",
+			});
 			return created.id;
 		},
 		onsaved: async (saved) => {
-			notify(
-				`Loop exported to the Idea Recorder as a take with ${saved.instruments?.looper?.layers.length ?? 0} sources`,
-			);
 			if (saved.instruments)
 				await saveIdeaInstruments({ id: saved.ideaId, ...saved.instruments }).catch(() => {});
-			// The Load menu lists it now.
+			// The loop's previous take goes once the new one is in (the idea must never be empty, or it would be swept).
+			const previous = replacing;
+			replacing = null;
+			if (previous && previous !== saved.id) await deleteTake({ id: previous }).catch(() => {});
+			looper.markSaved({
+				ideaId: saved.ideaId,
+				recordingId: saved.id,
+				title: saved.instruments?.looper ? looper.title : looper.title,
+				inRecorder: looper.inRecorder,
+			});
+			notify(`Loop saved: “${looper.title}”`);
 			await invalidateAll();
+			if (exportAfterSave) {
+				exportAfterSave = false;
+				await exportLoop();
+			}
 		},
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed"));
-	async function saveLoop() {
+	/** The take id to remove once the new one is saved (an update in place). */
+	let replacing = $state<string | null>(null);
+	let exportAfterSave = false;
+	const defaultTitle = () =>
+		`Loop · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${looper.bpm} bpm`;
+	/**
+	 * Save: the loop as a take with its layers as sources under its own idea
+	 * of kind "loop" (docs/looper.md, "Save and Export"), the first time a new
+	 * idea, after that the same idea with the previous take replaced; `asNew`
+	 * forks it. No dialog: the title field or a default names it.
+	 */
+	async function saveLoop(asNew = false) {
 		if (!looper.layers.length || saving || !data.account) return;
 		saving = true;
 		try {
+			if (asNew) looper.detach();
+			if (!looper.title.trim()) looper.setTitle(defaultTitle());
+			const title = looper.title;
 			const mix = await looper.renderMix(repeats);
-			const title =
-				loopTitle.trim() ||
-				`Loop · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${looper.bpm} bpm`;
+			if (looper.savedId) {
+				await renameIdea({ id: looper.savedId, title }).catch(() => {});
+				replacing = looper.savedRecordingId;
+			}
 			queue.enqueue({
 				localId: `local:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-				ideaId: null,
+				ideaId: looper.savedId,
 				ideaTitle: title,
 				name: "",
 				durationSeconds: mix.duration,
@@ -182,24 +249,58 @@
 				createdAt: Date.now(),
 				blob: looper.wavOf(mix),
 				instruments: { drums: null, piano: null, looper: looper.settings() },
-				...(saveStems
-					? {
-							stems: looper.layers.map((l) => ({
-								label: l.label,
-								blob: looper.wavOf(l.buffer),
-								mimeType: "audio/wav",
-								ext: "wav",
-								codec: "pcm",
-							})),
-						}
-					: {}),
+				stems: looper.layers.map((l) => ({
+					label: l.label,
+					blob: looper.wavOf(l.buffer),
+					mimeType: "audio/wav",
+					ext: "wav",
+					codec: "pcm",
+				})),
 			});
-			notify("Exporting the loop as a take…");
+			notify("Saving the loop…");
 		} catch (e) {
-			notify(`Could not export the loop: ${errorMessage(e)}`, { kind: "error" });
+			notify(`Could not save the loop: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
 			saving = false;
 		}
+	}
+	/** Export: the saved loop into the Idea Recorder's list (its idea becomes kind "idea"); an unsaved or changed loop is saved first. */
+	async function exportLoop() {
+		if (!data.account) return;
+		if (!looper.savedId || looper.dirty) {
+			exportAfterSave = true;
+			await saveLoop();
+			return;
+		}
+		try {
+			await setIdeaKind({ id: looper.savedId, kind: "idea" });
+			looper.inRecorder = true;
+			looper.markSaved({
+				ideaId: looper.savedId,
+				recordingId: looper.savedRecordingId ?? "",
+				title: looper.title,
+				inRecorder: true,
+			});
+			notify(`“${looper.title}” is now in the Idea Recorder`);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not export the loop: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** The loop's notes: an idea's notes, the recorder's panel unchanged (Kevin); the idea is made on the first note when the loop was never saved. */
+	let notes = $state("");
+	let notesKey = $state(0);
+	async function ensureLoopIdea(): Promise<string> {
+		if (looper.savedId) return looper.savedId;
+		if (!data.account) throw new Error("Sign in to keep notes");
+		if (!looper.title.trim()) looper.setTitle(defaultTitle());
+		const created = await createIdea({
+			accountId: data.account.id,
+			title: looper.title,
+			kind: "loop",
+		});
+		looper.savedId = created.id;
+		return created.id;
 	}
 	/** A loop exported earlier, back into the looper from its sources (docs/looper.md, "Export and Load"). */
 	async function loadLoop(loop: { id: string; title: string; layers: number }) {
@@ -211,8 +312,21 @@
 		)
 			return;
 		try {
-			const { sources, settings } = await loopSources({ id: loop.id });
-			const n = await looper.loadFrom(sources, settings);
+			const { sources, settings, idea } = await loopSources({ id: loop.id });
+			const n = await looper.loadFrom(
+				sources,
+				settings,
+				idea
+					? {
+							ideaId: idea.id,
+							recordingId: loop.id,
+							title: idea.title,
+							inRecorder: idea.kind === "idea",
+						}
+					: null,
+			);
+			notes = idea?.notes ?? "";
+			notesKey++;
 			notify(`“${loop.title}” loaded: ${n} ${n === 1 ? "layer" : "layers"}`);
 		} catch (e) {
 			notify(`Could not load the loop: ${errorMessage(e)}`, { kind: "error" });
@@ -298,306 +412,393 @@
 			{/snippet}
 		</PageCopyHeader>
 
-		<!-- The device (docs/looper.md): the chassis, screen and button groups of the other instruments; the settings live in menus on the device. -->
-		<section
-			class="device-chrome @container grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
-			aria-label="Looper"
+		<!-- The device (docs/looper.md): the chassis, screen and button groups of the other instruments; the settings live in menus on the device. In a docked panel with a pop-out from lg, as the recorder. -->
+		<FloatingPanel
+			open={true}
+			floating={looperFloating}
+			closable={false}
+			title="Looper"
+			storageKey="stemshovel.looper.device-panel"
+			width={900}
+			height={640}
+			onminimise={() => setLooperFloating(false)}
 		>
-			<!-- the screen -->
-			<div class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 py-3">
-				<div class="min-w-0 grow">
-					<div class="text-24px @xl-text-32px leading-none tabular-nums" aria-live="polite">
-						{#if looper.phase === "idle"}
-							Stopped
-						{:else if looper.position.bar === 0}
-							Count-in · {looper.position.beat}
-						{:else}
-							Bar {looper.position.bar} · {looper.position.beat}
-						{/if}
-					</div>
-					<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2 tabular-nums">
-						<span
-							>{looper.bars}
-							{looper.bars === 1 ? "bar" : "bars"} · {looper.beatsPerBar}/4 · {looper.bpm} bpm · {looper.loopSeconds.toFixed(
-								1,
-							)} s</span
-						>
-						<span>· {looper.layers.length} {looper.layers.length === 1 ? "layer" : "layers"}</span>
-						{#if looper.phase === "recording"}
-							<span class="text-red-300" role="status"
-								>· ● recording {LOOP_SOURCE_LABELS[looper.armed]} · pass {looper.passes + 1} · layer lands
-								in {Math.ceil(looper.secondsToPassEnd + LEAD_SECONDS)} s{looper.finishing
-									? " · the last"
-									: ""}</span
-							>
-						{/if}
-						{#if looper.micError}
-							<span class="text-red-300">· {looper.micError}</span>
-						{/if}
-						{#if looper.restored > 0 && looper.phase === "idle" && looper.layers.length === looper.restored}
-							<span>· back from last time</span>
-						{/if}
-					</div>
-					<div class="mt-3 h-1.5 rounded bg-blue-100/10 overflow-hidden" aria-hidden="true">
-						<div class="h-full bg-accent" style:width="{looper.position.fraction * 100}%"></div>
-					</div>
-				</div>
-				<div
-					class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
+			{#snippet controls()}
+				<button
+					class="button button-xs hidden lg-inline-flex"
+					type="button"
+					title={looperFloating
+						? "Put the looper back in the page"
+						: "Pop the looper out into a panel"}
+					aria-label={looperFloating ? "Dock the looper" : "Pop out the looper"}
+					onclick={() => setLooperFloating(!looperFloating)}
 				>
-					{LOOP_SOURCE_LABELS[looper.armed]}
-				</div>
-			</div>
-
-			<!-- the controls: transport, the source, the menus, the volume -->
-			<div class="flex flex-wrap items-end gap-x-5 gap-y-4">
-				<div>
-					<div class="device-button-group-label text-dark">Transport</div>
-					<div class="flex flex-wrap gap-2">
-						<button
-							class="device-button-lg {looper.phase === 'idle'
-								? 'device-button-play'
-								: 'device-button-stop'}"
-							type="button"
-							aria-pressed={looper.phase !== "idle"}
-							title={looper.phase === "idle"
-								? "Play the loop"
-								: "Stop the loop (a pass still recording is dropped)"}
-							onclick={() => looper.toggle()}
-						>
-							{looper.phase === "idle" ? "Play" : "Stop"}
-						</button>
-						<button
-							class="device-button-lg device-button-record {looper.phase === 'recording'
-								? 'text-accent bg-slate-900 ring-1 ring-red-500/60'
-								: ''}"
-							type="button"
-							aria-pressed={looper.phase === "recording"}
-							disabled={looper.layers.length >= MAX_LOOP_LAYERS || looper.finishing}
-							title={looper.phase === "recording"
-								? "Recording: press again to make this pass the last layer (Stop drops a pass under way)"
-								: "Record a layer from the chosen source, from the next bar 1 (after the count-in when stopped); every full pass becomes a layer until you press Record again"}
-							onclick={() => void looper.toggleRecord()}
-						>
-							Record
-						</button>
-						<button
-							class="device-button-sm px-3"
-							type="button"
-							disabled={looper.layers.length === 0}
-							title="Remove the last layer"
-							onclick={() => looper.undo()}>Undo</button
-						>
-						<button
-							class="device-button-sm px-3"
-							type="button"
-							disabled={looper.layers.length === 0}
-							title="Remove every layer"
-							onclick={clearLoop}>Clear</button
-						>
+					<span
+						class={looperFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+						aria-hidden="true"
+					></span>
+				</button>
+			{/snippet}
+			<section
+				class="device-chrome @container grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
+				aria-label="Looper"
+			>
+				<!-- the screen -->
+				<div
+					class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 py-3"
+				>
+					<div class="min-w-0 grow">
+						<div class="text-24px @xl-text-32px leading-none tabular-nums" aria-live="polite">
+							{#if looper.phase === "idle"}
+								Stopped
+							{:else if looper.position.bar === 0}
+								Count-in · {looper.position.beat}
+							{:else}
+								Bar {looper.position.bar} · {looper.position.beat}
+							{/if}
+						</div>
+						<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2 tabular-nums">
+							<span
+								>{looper.bars}
+								{looper.bars === 1 ? "bar" : "bars"} · {looper.beatsPerBar}/4 · {looper.bpm} bpm · {looper.loopSeconds.toFixed(
+									1,
+								)} s</span
+							>
+							<span>· {looper.layers.length} {looper.layers.length === 1 ? "layer" : "layers"}</span
+							>
+							{#if looper.title}
+								<span class="truncate max-w-60"
+									>· {looper.title}{looper.savedId
+										? looper.dirty
+											? " (changed)"
+											: ""
+										: " (unsaved)"}</span
+								>
+							{/if}
+							{#if looper.phase === "recording"}
+								<span class="text-red-300" role="status"
+									>· ● recording {LOOP_SOURCE_LABELS[looper.armed]} · pass {looper.passes + 1} · layer
+									lands in {Math.ceil(looper.secondsToPassEnd + LEAD_SECONDS)} s{looper.finishing
+										? " · the last"
+										: ""}</span
+								>
+							{/if}
+							{#if looper.micError}
+								<span class="text-red-300">· {looper.micError}</span>
+							{/if}
+							{#if looper.restored > 0 && looper.phase === "idle" && looper.layers.length === looper.restored}
+								<span>· back from last time</span>
+							{/if}
+						</div>
+						<div class="mt-3 h-1.5 rounded bg-blue-100/10 overflow-hidden" aria-hidden="true">
+							<div class="h-full bg-accent" style:width="{looper.position.fraction * 100}%"></div>
+						</div>
+					</div>
+					<div
+						class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
+					>
+						{LOOP_SOURCE_LABELS[looper.armed]}
 					</div>
 				</div>
 
-				<div>
-					<div class="device-button-group-label text-dark">Record from</div>
-					<div class="flex flex-wrap gap-2" role="group" aria-label="Source">
-						{#each LOOP_SOURCES as source (source)}
+				<!-- the controls: transport, the source, the menus, the volume -->
+				<div class="flex flex-wrap items-end gap-x-5 gap-y-4">
+					<div>
+						<div class="device-button-group-label text-dark">Transport</div>
+						<div class="flex flex-wrap gap-2">
 							<button
-								class="device-button-sm px-3 grid gap-1 content-center min-w-120px {looper.armed ===
-								source
-									? 'text-accent'
+								class="device-button-lg {looper.phase === 'idle'
+									? 'device-button-play'
+									: 'device-button-stop'}"
+								type="button"
+								aria-pressed={looper.phase !== "idle"}
+								title={looper.phase === "idle"
+									? "Play the loop"
+									: "Stop the loop (a pass still recording is dropped)"}
+								onclick={() => looper.toggle()}
+							>
+								{looper.phase === "idle" ? "Play" : "Stop"}
+							</button>
+							<button
+								class="device-button-lg device-button-record {looper.phase === 'recording'
+									? 'text-accent bg-slate-900 ring-1 ring-red-500/60'
 									: ''}"
 								type="button"
-								aria-pressed={looper.armed === source}
-								disabled={looper.phase === "recording"}
-								title={source === "mic" && looper.micLabel
-									? looper.micLabel
-									: LOOP_SOURCE_LABELS[source]}
-								onclick={() => void arm(source)}
+								aria-pressed={looper.phase === "recording"}
+								disabled={looper.layers.length >= MAX_LOOP_LAYERS || looper.finishing}
+								title={looper.phase === "recording"
+									? "Recording: press again to make this pass the last layer (Stop drops a pass under way)"
+									: "Record a layer from the chosen source, from the next bar 1 (after the count-in when stopped); every full pass becomes a layer until you press Record again"}
+								onclick={() => void looper.toggleRecord()}
 							>
-								<span class="flex items-center justify-center gap-2 leading-none">
-									{#if source === "drums"}
-										<span class="grid place-items-center w-1em" aria-hidden="true"
-											><IconDrumKit /></span
-										>
-									{:else}
-										<span class={sourceIcon[source]} aria-hidden="true"></span>
-									{/if}
-									{LOOP_SOURCE_LABELS[source]}
-								</span>
-								<span
-									class="block h-1 w-full rounded bg-blue-100/10 overflow-hidden"
-									role="meter"
-									aria-label="{LOOP_SOURCE_LABELS[source]} level"
-									aria-valuemin="0"
-									aria-valuemax="100"
-									aria-valuenow={Math.round(looper.levels[source] * 100)}
-								>
-									<span
-										class="block h-full rounded {looper.levels[source] > 0.85
-											? 'bg-red-500'
-											: 'bg-blue-300'}"
-										style:width="{looper.levels[source] * 100}%"
-									></span>
-								</span>
+								Record
 							</button>
-						{/each}
-					</div>
-				</div>
-
-				<div>
-					<div class="device-button-group-label text-dark">Settings</div>
-					<div class="flex flex-wrap gap-2">
-						<ContextMenu
-							ariaLabel="Timing settings"
-							title="Tempo, bars, count-in and click"
-							iconClass="i-ph-metronome"
-							label="Timing"
-							position="bottom left"
-							buttonBaseClasses="device-button-sm px-3"
-							buttonClasses={looper.locked ? "text-accent" : ""}
-							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-							items={[
-								{ id: "loop-heading", kind: "heading", label: "Timing" },
-								{ id: "loop-block", kind: "snippet", snippet: loopMenuBlock },
-							]}
-						/>
-						<ContextMenu
-							ariaLabel="Microphone and output settings"
-							title="Monitoring and latency"
-							iconClass="i-ph-microphone"
-							label="Mic"
-							position="bottom left"
-							buttonBaseClasses="device-button-sm px-3"
-							buttonClasses={looper.monitorMic ? "text-accent" : ""}
-							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-							items={[
-								{ id: "mic-heading", kind: "heading", label: "Microphone and output" },
-								{ id: "mic-block", kind: "snippet", snippet: micMenuBlock },
-							]}
-						/>
-						<ContextMenu
-							ariaLabel="Load a loop"
-							title="Load a loop you exported before"
-							iconClass="i-ph-folder-open"
-							label="Load"
-							position="bottom left"
-							buttonBaseClasses="device-button-sm px-3"
-							buttonClasses={looper.loading ? "text-accent" : ""}
-							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-							items={[
-								{ id: "load-heading", kind: "heading", label: "Load a loop" },
-								{ id: "load-block", kind: "snippet", snippet: loadMenuBlock },
-							]}
-						/>
-						<ContextMenu
-							ariaLabel="Export the loop"
-							title="Export the loop to the Idea Recorder as a take with its layers as sources"
-							iconClass="i-ph-export"
-							label="Export"
-							position="bottom left"
-							buttonBaseClasses="device-button-sm px-3"
-							buttonClasses={uploading.length > 0 ? "text-accent" : ""}
-							popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-							items={[
-								{ id: "save-heading", kind: "heading", label: "Export as take" },
-								{ id: "save-block", kind: "snippet", snippet: saveMenuBlock },
-							]}
-						/>
-					</div>
-				</div>
-
-				<div class="@xl-ml-auto min-w-120px grow @xl-grow-0 @xl-w-40">
-					<div class="device-button-group-label text-dark">Volume</div>
-					<input
-						class="w-full accent-maximumYellow"
-						type="range"
-						min="0"
-						max="100"
-						value={Math.round(looper.volume * 100)}
-						aria-label="Loop volume"
-						oninput={(e) => looper.setVolume(Number(e.currentTarget.value) / 100)}
-					/>
-				</div>
-			</div>
-
-			<!-- the layers -->
-			<div>
-				<div class="device-button-group-label text-dark">
-					Layers · {looper.layers.length} of {MAX_LOOP_LAYERS}
-				</div>
-				{#if looper.layers.length === 0}
-					<p class="device-screen text-center text-13px opacity-90 !text-wrap">
-						No layers yet. Choose a source, press Record, and play a pass of the loop.
-					</p>
-				{:else}
-					<ul class="grid gap-1.5" aria-label="Layers">
-						{#each looper.layers as layer (layer.id)}
-							<li
-								class="device-screen !px-2 !py-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 {layer.muted
-									? 'opacity-60'
-									: ''}"
+							<button
+								class="device-button-sm px-3"
+								type="button"
+								disabled={looper.layers.length === 0}
+								title="Remove the last layer"
+								onclick={() => looper.undo()}>Undo</button
 							>
-								<span class="grid gap-1 w-32 @xl-w-40">
-									<span class="text-13px truncate" title={layer.label}>{layer.label}</span>
-									<span class="flex items-center gap-1">
-										<button
-											class="device-button-xs px-2 {layer.muted ? 'text-accent' : ''}"
-											type="button"
-											aria-pressed={layer.muted}
-											aria-label="Mute {layer.label}"
-											onclick={() => looper.toggleMute(layer.id)}>M</button
-										>
-										<button
-											class="device-button-xs px-2 {layer.solo ? 'text-accent' : ''}"
-											type="button"
-											aria-pressed={layer.solo}
-											aria-label="Solo {layer.label}"
-											onclick={() => looper.toggleSolo(layer.id)}>S</button
-										>
-										<input
-											class="w-14 @xl-w-20 accent-maximumYellow"
-											type="range"
-											min="0"
-											max="100"
-											value={Math.round(layer.gain * 100)}
-											aria-label="{layer.label} level"
-											oninput={(e) => looper.setGain(layer.id, Number(e.currentTarget.value) / 100)}
-										/>
-									</span>
-								</span>
-								<span class="relative block h-10 rounded bg-oxford-950/60 overflow-hidden">
-									<canvas class="block w-full h-full" {@attach wave(layer.peaks)}></canvas>
-									{#if looper.phase !== "idle" && looper.position.bar > 0}
-										<span
-											class="absolute top-0 bottom-0 w-px bg-accent"
-											style:left="{looper.position.fraction * 100}%"
-											aria-hidden="true"
-										></span>
-									{/if}
-								</span>
-								<button
-									class="device-button-xs px-2"
-									type="button"
-									aria-label="Delete {layer.label}"
-									title="Delete this layer"
-									onclick={() => looper.remove(layer.id)}
-								>
-									<span class="i-ph-trash" aria-hidden="true"></span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
+							<button
+								class="device-button-sm px-3"
+								type="button"
+								disabled={looper.layers.length === 0}
+								title="Remove every layer"
+								onclick={clearLoop}>Clear</button
+							>
+						</div>
+					</div>
 
-			<!-- branding, as the other devices wear it -->
-			<div
-				class="absolute bottom-3 right-5 text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
-			>
-				SS Loop 001
-			</div>
-		</section>
+					<div>
+						<div class="device-button-group-label text-dark">Input Source</div>
+						<div class="flex flex-wrap gap-2" role="group" aria-label="Source">
+							{#each LOOP_SOURCES as source (source)}
+								<button
+									class="device-button-sm px-3 grid gap-1 content-center min-w-120px {looper.armed ===
+									source
+										? 'text-accent'
+										: ''}"
+									type="button"
+									aria-pressed={looper.armed === source}
+									disabled={looper.phase === "recording"}
+									title={source === "mic" && looper.micLabel
+										? looper.micLabel
+										: LOOP_SOURCE_LABELS[source]}
+									onclick={() => void arm(source)}
+								>
+									<span class="flex items-center justify-center gap-2 leading-none">
+										{#if source === "drums"}
+											<span class="grid place-items-center w-1em" aria-hidden="true"
+												><IconDrumKit /></span
+											>
+										{:else}
+											<span class={sourceIcon[source]} aria-hidden="true"></span>
+										{/if}
+										{LOOP_SOURCE_LABELS[source]}
+									</span>
+									<span
+										class="block h-1 w-full rounded bg-blue-100/10 overflow-hidden"
+										role="meter"
+										aria-label="{LOOP_SOURCE_LABELS[source]} level"
+										aria-valuemin="0"
+										aria-valuemax="100"
+										aria-valuenow={Math.round(looper.levels[source] * 100)}
+									>
+										<span
+											class="block h-full rounded {looper.levels[source] > 0.85
+												? 'bg-red-500'
+												: 'bg-blue-300'}"
+											style:width="{looper.levels[source] * 100}%"
+										></span>
+									</span>
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div>
+						<div class="device-button-group-label text-dark">Settings</div>
+						<div class="flex flex-wrap gap-2">
+							<ContextMenu
+								ariaLabel="Timing settings"
+								title="Tempo, bars, count-in and click"
+								iconClass="i-ph-metronome"
+								label="Timing"
+								position="bottom left"
+								buttonBaseClasses="device-button-sm px-3"
+								buttonClasses={looper.locked ? "text-accent" : ""}
+								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								items={[
+									{ id: "loop-heading", kind: "heading", label: "Timing" },
+									{ id: "loop-block", kind: "snippet", snippet: loopMenuBlock },
+								]}
+							/>
+							<ContextMenu
+								ariaLabel="Microphone and output settings"
+								title="Monitoring and latency"
+								iconClass="i-ph-microphone"
+								label="Mic"
+								position="bottom left"
+								buttonBaseClasses="device-button-sm px-3"
+								buttonClasses={looper.monitorMic ? "text-accent" : ""}
+								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								items={[
+									{ id: "mic-heading", kind: "heading", label: "Microphone and output" },
+									{ id: "mic-block", kind: "snippet", snippet: micMenuBlock },
+								]}
+							/>
+							<ContextMenu
+								ariaLabel="Load a loop"
+								title="Load a loop you exported before"
+								iconClass="i-ph-folder-open"
+								label="Load"
+								position="bottom left"
+								buttonBaseClasses="device-button-sm px-3"
+								buttonClasses={looper.loading ? "text-accent" : ""}
+								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								items={[
+									{ id: "load-heading", kind: "heading", label: "Load a loop" },
+									{ id: "load-block", kind: "snippet", snippet: loadMenuBlock },
+								]}
+							/>
+							<ContextMenu
+								ariaLabel="Save the loop"
+								title="Save the loop; export it to the Idea Recorder"
+								iconClass="i-ph-floppy-disk"
+								label="Save"
+								position="bottom left"
+								buttonBaseClasses="device-button-sm px-3"
+								buttonClasses={uploading.length > 0 ||
+								(looper.layers.length > 0 && (looper.dirty || !looper.savedId))
+									? "text-accent"
+									: ""}
+								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								items={[
+									{ id: "save-heading", kind: "heading", label: "Save" },
+									{ id: "save-block", kind: "snippet", snippet: saveMenuBlock },
+								]}
+							/>
+						</div>
+					</div>
+
+					<div class="@xl-ml-auto min-w-120px grow @xl-grow-0 @xl-w-40">
+						<div class="device-button-group-label text-dark">Volume</div>
+						<input
+							class="w-full accent-maximumYellow"
+							type="range"
+							min="0"
+							max="100"
+							value={Math.round(looper.volume * 100)}
+							aria-label="Loop volume"
+							oninput={(e) => looper.setVolume(Number(e.currentTarget.value) / 100)}
+						/>
+					</div>
+				</div>
+
+				<!-- the layers -->
+				<div>
+					<div class="device-button-group-label text-dark">
+						Layers · {looper.layers.length} of {MAX_LOOP_LAYERS}
+					</div>
+					{#if looper.layers.length === 0}
+						<p class="device-screen text-center text-13px opacity-90 !text-wrap">
+							No layers yet. Choose a source, press Record, and play a pass of the loop.
+						</p>
+					{:else}
+						<ul class="grid gap-1.5" aria-label="Layers">
+							{#each looper.layers as layer (layer.id)}
+								<li
+									class="device-screen !px-2 !py-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 {layer.muted
+										? 'opacity-60'
+										: ''}"
+								>
+									<span class="grid gap-1 w-32 @xl-w-40">
+										<span class="text-13px truncate" title={layer.label}>{layer.label}</span>
+										<span class="flex items-center gap-1">
+											<button
+												class="device-button-xs px-2 {layer.muted ? 'text-accent' : ''}"
+												type="button"
+												aria-pressed={layer.muted}
+												aria-label="Mute {layer.label}"
+												onclick={() => looper.toggleMute(layer.id)}>M</button
+											>
+											<button
+												class="device-button-xs px-2 {layer.solo ? 'text-accent' : ''}"
+												type="button"
+												aria-pressed={layer.solo}
+												aria-label="Solo {layer.label}"
+												onclick={() => looper.toggleSolo(layer.id)}>S</button
+											>
+											<input
+												class="w-14 @xl-w-20 accent-maximumYellow"
+												type="range"
+												min="0"
+												max="100"
+												value={Math.round(layer.gain * 100)}
+												aria-label="{layer.label} level"
+												oninput={(e) =>
+													looper.setGain(layer.id, Number(e.currentTarget.value) / 100)}
+											/>
+										</span>
+									</span>
+									<span class="relative block h-10 rounded bg-oxford-950/60 overflow-hidden">
+										<canvas class="block w-full h-full" {@attach wave(layer.peaks)}></canvas>
+										{#if looper.phase !== "idle" && looper.position.bar > 0}
+											<span
+												class="absolute top-0 bottom-0 w-px bg-accent"
+												style:left="{looper.position.fraction * 100}%"
+												aria-hidden="true"
+											></span>
+										{/if}
+									</span>
+									<button
+										class="device-button-xs px-2"
+										type="button"
+										aria-label="Delete {layer.label}"
+										title="Delete this layer"
+										onclick={() => looper.remove(layer.id)}
+									>
+										<span class="i-ph-trash" aria-hidden="true"></span>
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+
+				<!-- branding, as the other devices wear it -->
+				<div
+					class="absolute bottom-3 right-5 text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
+				>
+					SS Loop 001
+				</div>
+			</section>
+		</FloatingPanel>
+
+		{#if data.account}
+			<!-- The loop's notes: the recorder's panel on the loop's idea (made on the first note when the loop was never saved). -->
+			<section class="mt-6" aria-label="Loop notes">
+				<FloatingPanel
+					open={true}
+					floating={notesFloating}
+					closable={false}
+					title={`Notes for “${looper.title || "this loop"}”`}
+					storageKey="stemshovel.looper.notes-panel"
+					width={560}
+					height={620}
+					onminimise={() => setNotesFloating(false)}
+				>
+					{#snippet controls()}
+						<button
+							class="button button-xs hidden lg-inline-flex"
+							type="button"
+							title={notesFloating
+								? "Put the notes back in the page"
+								: "Pop the notes out into a panel"}
+							aria-label={notesFloating ? "Dock the notes" : "Pop out the notes"}
+							onclick={() => setNotesFloating(!notesFloating)}
+						>
+							<span
+								class={notesFloating ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+								aria-hidden="true"
+							></span>
+						</button>
+					{/snippet}
+					{#key `${looper.savedId ?? "new"}/${notesKey}`}
+						<IdeaNotesPanel
+							idea={{ id: looper.savedId, notes, title: looper.title || "this loop" }}
+							ensureIdea={ensureLoopIdea}
+							onchange={(m) => (notes = m)}
+							onsaved={async ({ ideaDeleted }) => {
+								if (ideaDeleted) looper.detach();
+								await invalidateAll();
+							}}
+						/>
+					{/key}
+				</FloatingPanel>
+			</section>
+		{/if}
 
 		<PageCopySection
 			html={data.copy.bodyHtml}
@@ -862,8 +1063,8 @@
 		>
 			{#if !data.account}
 				<p class="text-13px text-blue-100/90">
-					Your loop stays in this browser as you work. To keep it for good, save it to the Idea
-					Recorder as a take with each layer as a stem: that needs an account.
+					Your loop stays in this browser as you work. To keep it for good, save it: that needs an
+					account.
 				</p>
 				<div class="flex flex-wrap gap-2">
 					<a class="device-button-sm px-3 text-accent" href="/sign-in?next=%2Flooper">Sign in</a>
@@ -872,57 +1073,66 @@
 				</div>
 			{:else}
 				<label class="block">
-					<span class="device-button-label">Idea title</span>
+					<span class="device-button-label">Loop name</span>
 					<input
 						class="device-field w-full"
 						type="text"
-						placeholder="Loop · today · {looper.bpm} bpm"
-						bind:value={loopTitle}
+						placeholder={defaultTitle()}
+						value={looper.title}
+						onchange={(e) => looper.setTitle(e.currentTarget.value)}
 					/>
 				</label>
 				<label class="block">
-					<span class="device-button-label">Passes in the take</span>
+					<span class="device-button-label">Passes in the saved mix</span>
 					<select class="device-field w-full" bind:value={repeats}>
 						<option value={1}>1</option>
 						<option value={2}>2</option>
 						<option value={4}>4</option>
 					</select>
 				</label>
-				<div class="grid gap-1">
-					<span class="device-button-label">Take</span>
-					<div class="flex gap-2" role="group" aria-label="Take format">
-						<button
-							class="device-button-xs px-3 {saveStems ? 'text-accent' : ''}"
-							type="button"
-							aria-pressed={saveStems}
-							title="The mix plus each layer as its own source, so the take can go to a song as stems"
-							onclick={() => (saveStems = true)}>Multitrack</button
-						>
-						<button
-							class="device-button-xs px-3 {saveStems ? '' : 'text-accent'}"
-							type="button"
-							aria-pressed={!saveStems}
-							title="The mix alone"
-							onclick={() => (saveStems = false)}>Stereo</button
-						>
-					</div>
-				</div>
 				<p class="text-12px opacity-70">
-					{saveStems
-						? "The layers' mix becomes a take in the Idea Recorder, each layer one of its sources, ready to go to a song as stems."
-						: "The layers' mix becomes a take in the Idea Recorder, as one stereo file."}
+					{#if looper.savedId}
+						Saved as “{looper.title}”{looper.dirty ? ", changed since" : ""}{looper.inRecorder
+							? " · in the Idea Recorder"
+							: " · in the looper only"}.
+					{:else}
+						Not saved yet. A saved loop is listed in the Load menu, with each layer kept; export it
+						to see it in the Idea Recorder too.
+					{/if}
 				</p>
-				<button
-					class="device-button-sm px-3 justify-self-start {looper.layers.length
-						? 'text-accent'
-						: ''}"
-					type="button"
-					disabled={looper.layers.length === 0 || saving}
-					onclick={saveLoop}
-				>
-					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
-					{saving ? "Rendering…" : "Export as take"}
-				</button>
+				<div class="flex flex-wrap gap-2">
+					<button
+						class="device-button-sm px-3 {looper.layers.length && (looper.dirty || !looper.savedId)
+							? 'text-accent'
+							: ''}"
+						type="button"
+						disabled={looper.layers.length === 0 || saving}
+						title={looper.savedId ? "Save this loop again, in place" : "Save this loop"}
+						onclick={() => void saveLoop()}
+					>
+						<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+						{saving ? "Rendering…" : "Save"}
+					</button>
+					{#if looper.savedId}
+						<button
+							class="device-button-sm px-3"
+							type="button"
+							disabled={looper.layers.length === 0 || saving}
+							title="Save as a separate loop, leaving the saved one as it is"
+							onclick={() => void saveLoop(true)}>Save as new loop</button
+						>
+					{/if}
+					<button
+						class="device-button-sm px-3"
+						type="button"
+						disabled={looper.layers.length === 0 || saving || looper.inRecorder}
+						title="List this loop in the Idea Recorder as an idea, where its layers can go to a song as stems"
+						onclick={() => void exportLoop()}
+					>
+						<span class="i-ph-export" aria-hidden="true"></span>
+						{looper.inRecorder ? "In the Idea Recorder" : "Export to the Idea Recorder"}
+					</button>
+				</div>
 				{#if uploading.length > 0}
 					<span class="text-13px opacity-80" role="status">
 						{uploading[0].status === "uploading"

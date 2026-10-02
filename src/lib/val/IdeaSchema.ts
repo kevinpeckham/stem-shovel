@@ -4,8 +4,19 @@ import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { PianoPresetDataSchema } from "./PianoPresetSchema";
 
-/** Argument of the createIdea command: the idea's title (the recorder prefills "Untitled - <date> - <time>"). */
-export const IdeaCreateSchema = v.object({ title: NameSchema });
+/** "idea": recorded in the Idea Recorder; "loop": saved from the looper, hidden from the recorder's list until exported (docs/looper.md, "Save and Export"). */
+export const IDEA_KINDS = ["idea", "loop"] as const;
+export const IdeaKindSchema = v.picklist(IDEA_KINDS);
+export type IdeaKind = v.InferOutput<typeof IdeaKindSchema>;
+
+/** Argument of the createIdea command: the idea's title (the recorder prefills "Untitled - <date> - <time>") and its kind (the looper makes loops). */
+export const IdeaCreateSchema = v.object({
+	title: NameSchema,
+	kind: v.optional(IdeaKindSchema, "idea"),
+});
+
+/** Argument of the setIdeaKind command: a loop exported into the recorder's list (or back). */
+export const IdeaKindChangeSchema = v.object({ id: NanoIdSchema, kind: IdeaKindSchema });
 
 /** Argument of the renameIdea command. */
 export const IdeaRenameSchema = v.object({ id: NanoIdSchema, title: NameSchema });

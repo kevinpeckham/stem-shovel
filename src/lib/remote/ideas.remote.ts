@@ -6,6 +6,7 @@ import {
 	deleteIdeaIfEmpty,
 	renameIdea as rename,
 	setIdeaInstruments,
+	setIdeaKind as changeKind,
 	setIdeaNotes,
 	userOwnsIdea,
 } from "$lib/server/data";
@@ -13,6 +14,7 @@ import { renderMarkdown } from "$lib/server/markdown";
 import {
 	IdeaCreateSchema,
 	IdeaInstrumentsSchema,
+	IdeaKindChangeSchema,
 	IdeaNotesSchema,
 	IdeaRenameSchema,
 } from "$lib/val/IdeaSchema";
@@ -26,11 +28,11 @@ import * as v from "valibot";
 /** A new idea in the account (members); the recorder calls it on New idea or the first take. */
 export const createIdea = command(
 	v.object({ accountId: NanoIdSchema, ...IdeaCreateSchema.entries }),
-	async ({ accountId, title }) => {
+	async ({ accountId, title, kind }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		requireEditor(locals, accountId);
-		const row = await create(accountId, user.id, title);
+		const row = await create(accountId, user.id, title, kind);
 		return { id: row.id, title: row.title };
 	},
 );
@@ -57,6 +59,13 @@ export const saveIdeaNotes = command(IdeaNotesSchema, async ({ id, markdown }) =
 	if (!(await setIdeaNotes(accountId, id, markdown))) error(404, "Idea not found");
 	const ideaDeleted = !markdown.trim() && (await deleteIdeaIfEmpty(accountId, id));
 	return { saved: true, ideaDeleted };
+});
+
+/** A loop exported into the recorder's list, or hidden again (docs/looper.md, "Save and Export"). */
+export const setIdeaKind = command(IdeaKindChangeSchema, async ({ id, kind }) => {
+	const accountId = await ownIdea(id);
+	if (!(await changeKind(accountId, id, kind))) error(404, "Idea not found");
+	return { kind };
 });
 
 /** The drum machine's project and the piano's settings as a take was recorded (the recorder sends them once the take is saved); a null leaves that instrument's earlier settings. Returns what the idea now holds. */
