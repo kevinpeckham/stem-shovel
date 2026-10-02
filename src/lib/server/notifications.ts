@@ -1,4 +1,5 @@
 import { accountLimitsOf, accountStorageBytes, memberHeadroom } from "$lib/server/data";
+import { permalink } from "$lib/utils/permalink";
 import { db, schema } from "$lib/server/db";
 import { sendDigestEmail, sendNotificationEmail } from "$lib/server/email";
 import { formatBytes } from "$lib/utils/formatBytes";
@@ -204,10 +205,8 @@ async function songContext(accountId: string, songId: string) {
 		},
 	});
 	if (!s) return null;
-	return {
-		...s,
-		href: `/${s.account.slug}/projects/${s.project.slug}/${s.slug}`,
-	};
+	// A permanent address (src/lib/utils/permalink.ts): a rename never strands the stored link.
+	return { ...s, href: permalink("song", s.id) };
 }
 async function nameOf(userId: string) {
 	const u = await db.query.user.findFirst({
@@ -302,7 +301,7 @@ export async function notifyInvitationAccepted(
 	accepted: {
 		invitedBy: string | null;
 		account: { id: string; name: string; slug: string };
-		project: { name: string; slug: string } | null;
+		project: { id: string; name: string; slug: string } | null;
 	},
 	accepterId: string,
 ) {
@@ -317,8 +316,8 @@ export async function notifyInvitationAccepted(
 		title: `${who} accepted your invitation`,
 		body: `${who} joined ${where}.`,
 		href: accepted.project
-			? `/${accepted.account.slug}/projects/${accepted.project.slug}`
-			: `/${accepted.account.slug}/settings`,
+			? permalink("project", accepted.project.id)
+			: permalink("account", accepted.account.id, "settings"),
 	});
 }
 
@@ -362,7 +361,7 @@ export async function checkStorage(accountId: string) {
 			(threshold === 100
 				? "Uploads are refused until files are removed."
 				: "Uploads stop at the limit; remove files you no longer need, or ask about more storage."),
-		href: `/${acct.slug}/settings`,
+		href: permalink("account", accountId, "settings"),
 		subjectId: String(threshold),
 	});
 }
@@ -382,7 +381,7 @@ export async function checkSeats(accountId: string) {
 		accountId,
 		title: `Every seat on ${acct.name} is taken`,
 		body: `${room.members} of ${room.limit} seats are in use. Invitations pause until a member leaves, or ask about more seats.`,
-		href: `/${acct.slug}/settings`,
+		href: permalink("account", accountId, "settings"),
 		subjectId: "full",
 	});
 }

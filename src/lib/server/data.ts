@@ -47,6 +47,7 @@ import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
+import type { PermalinkKind } from "$lib/utils/permalink";
 import {
 	aliasedAccountSlugs,
 	aliasTarget,
@@ -2424,6 +2425,33 @@ export async function openShareLinks(codes: string[]): Promise<ShareGrant[]> {
 	return rows
 		.filter((r) => shareLinkState(r) === "open")
 		.map((r) => ({ code: r.code, projectId: r.projectId, songId: r.songId }));
+}
+
+/** The current page of a song, a project or an account by id (`/go/<kind>/<id>`, src/lib/utils/permalink.ts), or null. */
+export async function permalinkTarget(kind: PermalinkKind, id: string): Promise<string | null> {
+	if (kind === "song") {
+		const s = await db.query.song.findFirst({
+			where: eq(song.id, id),
+			columns: { slug: true },
+			with: {
+				project: { columns: { slug: true }, with: { account: { columns: { slug: true } } } },
+			},
+		});
+		return s ? `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}` : null;
+	}
+	if (kind === "project") {
+		const p = await db.query.project.findFirst({
+			where: eq(project.id, id),
+			columns: { slug: true },
+			with: { account: { columns: { slug: true } } },
+		});
+		return p ? `/${p.account.slug}/projects/${p.slug}` : null;
+	}
+	const a = await db.query.account.findFirst({
+		where: eq(account.id, id),
+		columns: { slug: true },
+	});
+	return a ? `/${a.slug}` : null;
 }
 
 /** The current page of the song or project a code was made for (`/s/<code>`), or null when no such code. */

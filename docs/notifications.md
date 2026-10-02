@@ -54,7 +54,11 @@ settings. It does nothing yet; a provider goes there and nowhere else.
 
 ## Data
 
-`notification` (one row per recipient: kind, priority, title, body, href,
+`notification` (one row per recipient: kind, priority, title, body, href
+(since 2026-10-02 a permanent `/go/<kind>/<id>` address from
+`src/lib/utils/permalink.ts`, redirected to the current page by
+`src/routes/go/[kind]/[id]/[...rest]`, so a rename never strands a stored
+link; rows from before carry slug paths, which the slug aliases redirect),
 `subject_id` + `count` for folding, `read_at`, `emailed_at`) and
 `notification_preference` (the opt-ins, the digest mode, `digest_sent_at`,
 the SMS hook), migration 0060; both go with the user, and an account's
