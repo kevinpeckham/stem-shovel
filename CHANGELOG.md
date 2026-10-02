@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Looper: Line in and Computer sources** (docs/looper.md, "Inputs"). A second input for an instrument on an audio interface, with a device picker for it and for the microphone and a channel mode (stereo, or one channel on both sides); audio from another program through the browser's share picker (Chrome and Edge; a tab anywhere, the whole computer on Windows; on a Mac a loopback device as the line in), with its own latency slider. The Mic menu is now Inputs.
+
+### Fixed
+
+- **Looper: opening the audio twice** (a pointer-down and the click after it) could leave the second caller without the capture node; the device menus open to the right so they fit.
+
 ## [0.78.0] - 2026-10-02
 
 ### Added

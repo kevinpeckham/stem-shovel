@@ -36,7 +36,7 @@ export const LooperSettingsSchema = v.object({
 		v.array(
 			v.object({
 				label: v.pipe(v.string(), v.maxLength(60)),
-				source: v.picklist(["mic", "piano", "drums"]),
+				source: v.picklist(["mic", "line", "computer", "piano", "drums"]),
 				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 				muted: v.boolean(),
 			}),

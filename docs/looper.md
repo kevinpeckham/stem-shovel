@@ -280,6 +280,35 @@ idea hidden from the recorder until Show loops (with the icon), the
 identity survived a reload, Export put it in the list, Load lists it, and
 the notes panel appeared on the loop.
 
+## Inputs: line in and the computer (2026-10-02)
+
+Kevin: record "content played elsewhere on the computer e.g. another
+program" and "an instrument plugged into the computer, an additional bus
+besides microphone or at least selecting a different bus". Five sources
+now: `mic`, `line`, `computer`, `piano`, `drums`. The microphone and the
+**line in** are both `getUserMedia` inputs (`requestInput(source,
+deviceId)`), each with its own device chosen in the **Inputs** menu from
+`enumerateDevices` (labels once a microphone was allowed, listed again on
+focus), remembered per browser, and a **channel mode**: stereo, or one
+channel on both sides through a splitter and merger (`#withChannels`), for
+an instrument on channel 1 of a stereo interface; opening a source again
+replaces its tap and monitor (`#tapSource` disconnects the earlier nodes).
+The **computer** source is `getDisplayMedia({ video, audio })` with the
+video track dropped at once: Chrome and Edge share a tab's audio anywhere
+and the system's on Windows; on a Mac the system's audio needs a loopback
+device chosen as the line in; Safari shares no audio; the menu says so,
+and "No audio was shared" when the picker's box was left unticked. Its
+latency cannot be measured here (the audio never went through our output),
+so a slider (`computerLatencyMs`) shifts those layers; the microphone and
+the line in use the measured round trip, the piano the reported output
+latency, the drums nothing. The monitor switch covers both inputs. Found
+on the way: `open()` could be entered twice (the page opens the audio on
+any pointer-down, and a button's click a moment later), and the second
+caller returned before the capture node existed; `open()` now shares one
+in-flight promise. Also: the device menus open to the right, since the
+Settings group sits at the device's left edge and a menu spanning left had
+no room (it pinned to the viewport's edge), with a `max-w-lg` cap.
+
 ## Importing a take (2026-10-02)
 
 Kevin: "Can idea recording takes be imported as layers into the looper?"

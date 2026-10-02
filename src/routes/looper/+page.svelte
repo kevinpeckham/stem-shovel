@@ -17,6 +17,7 @@
 		LOOP_SOURCE_LABELS,
 		MAX_LOOP_LAYERS,
 		looper,
+		type ChannelMode,
 		type LoopBars,
 		type LoopSource,
 	} from "$lib/audio/looper.svelte";
@@ -124,6 +125,8 @@
 	async function arm(source: LoopSource) {
 		looper.setArmed(source);
 		if (source === "mic" && !looper.hasMic) await looper.requestMic();
+		if (source === "line" && !looper.hasSource("line")) await looper.requestInput("line");
+		if (source === "computer" && !looper.hasSource("computer")) await looper.requestComputer();
 		if (source === "piano" && !pianoOpen) togglePiano();
 		if (source === "drums" && !drumsOpen) toggleDrums();
 	}
@@ -349,6 +352,8 @@
 	}
 	const sourceIcon: Record<LoopSource, string> = {
 		mic: "i-ph-microphone",
+		line: "i-ph-plugs",
+		computer: "i-ph-desktop",
 		piano: "i-ph-piano-keys",
 		drums: "",
 	};
@@ -440,7 +445,7 @@
 				</button>
 			{/snippet}
 			<section
-				class="device-chrome @container grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
+				class="device-chrome grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
 				aria-label="Looper"
 			>
 				<!-- the loop's name, as the recorder's idea title: a placeholder until it is typed, editable here, used by Save (Kevin) -->
@@ -502,8 +507,8 @@
 										: ""}</span
 								>
 							{/if}
-							{#if looper.micError}
-								<span class="text-red-300">· {looper.micError}</span>
+							{#if looper.errors[looper.armed]}
+								<span class="text-red-300">· {looper.errors[looper.armed]}</span>
 							{/if}
 							{#if looper.restored > 0 && looper.phase === "idle" && looper.layers.length === looper.restored}
 								<span>· back from last time</span>
@@ -581,9 +586,7 @@
 									type="button"
 									aria-pressed={looper.armed === source}
 									disabled={looper.phase === "recording"}
-									title={source === "mic" && looper.micLabel
-										? looper.micLabel
-										: LOOP_SOURCE_LABELS[source]}
+									title={looper.labels[source] ?? LOOP_SOURCE_LABELS[source]}
 									onclick={() => void arm(source)}
 								>
 									<span class="flex items-center justify-center gap-2 leading-none">
@@ -624,26 +627,26 @@
 								title="Tempo, bars, count-in and click"
 								iconClass="i-ph-metronome"
 								label="Timing"
-								position="bottom left"
+								position="bottom right"
 								buttonBaseClasses="device-button-sm px-3"
 								buttonClasses={looper.locked ? "text-accent" : ""}
-								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 								items={[
 									{ id: "loop-heading", kind: "heading", label: "Timing" },
 									{ id: "loop-block", kind: "snippet", snippet: loopMenuBlock },
 								]}
 							/>
 							<ContextMenu
-								ariaLabel="Microphone and output settings"
-								title="Monitoring and latency"
-								iconClass="i-ph-microphone"
-								label="Mic"
-								position="bottom left"
+								ariaLabel="Input settings"
+								title="Input devices, monitoring and latency"
+								iconClass="i-ph-plugs"
+								label="Inputs"
+								position="bottom right"
 								buttonBaseClasses="device-button-sm px-3"
 								buttonClasses={looper.monitorMic ? "text-accent" : ""}
-								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 								items={[
-									{ id: "mic-heading", kind: "heading", label: "Microphone and output" },
+									{ id: "mic-heading", kind: "heading", label: "Inputs and latency" },
 									{ id: "mic-block", kind: "snippet", snippet: micMenuBlock },
 								]}
 							/>
@@ -652,10 +655,10 @@
 								title="Load a loop you exported before"
 								iconClass="i-ph-folder-open"
 								label="Load"
-								position="bottom left"
+								position="bottom right"
 								buttonBaseClasses="device-button-sm px-3"
 								buttonClasses={looper.loading ? "text-accent" : ""}
-								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 								items={[
 									{ id: "load-heading", kind: "heading", label: "Load a loop" },
 									{ id: "load-block", kind: "snippet", snippet: loadMenuBlock },
@@ -666,13 +669,13 @@
 								title="Save the loop; export it to the Idea Recorder"
 								iconClass="i-ph-floppy-disk"
 								label="Save"
-								position="bottom left"
+								position="bottom right"
 								buttonBaseClasses="device-button-sm px-3"
 								buttonClasses={uploading.length > 0 ||
 								(looper.layers.length > 0 && (looper.dirty || !looper.savedId))
 									? "text-accent"
 									: ""}
-								popoverClasses="min-w-72 @xl-min-w-96 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 								items={[
 									{ id: "save-heading", kind: "heading", label: "Save" },
 									{ id: "save-block", kind: "snippet", snippet: saveMenuBlock },
@@ -912,47 +915,138 @@
 		<div
 			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
 		>
-			{#if looper.micLabel}
-				<p class="text-12px opacity-70">Input: {looper.micLabel}</p>
-			{/if}
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={looper.monitorMic}
-					onchange={(e) => looper.setMonitorMic(e.currentTarget.checked)}
-				/>
-				Hear the microphone through the speakers
-			</label>
-			<label class="block">
-				<span class="device-button-label"
-					>Microphone latency · {looper.latencyMs} ms{looper.latencyMeasured
-						? ""
-						: " (the browser's guess)"}</span
+			{#each ["mic", "line"] as const as src (src)}
+				<div class="grid gap-2">
+					<div class="device-button-group-label !text-blue-100/90 !mb-0">
+						{LOOP_SOURCE_LABELS[src]}
+					</div>
+					<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+						<label class="block">
+							<span class="device-button-label">Device</span>
+							<select
+								class="device-field w-full"
+								aria-label="{LOOP_SOURCE_LABELS[src]} device"
+								value={looper.deviceIds[src] ?? ""}
+								onfocus={() => void looper.listInputs()}
+								onchange={(e) => void looper.requestInput(src, e.currentTarget.value || null)}
+							>
+								<option value="">Default input</option>
+								{#each looper.inputs as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
+							</select>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Channels</span>
+							<select
+								class="device-field"
+								aria-label="{LOOP_SOURCE_LABELS[src]} channels"
+								value={looper.channelModes[src]}
+								onchange={(e) => looper.setChannelMode(src, e.currentTarget.value as ChannelMode)}
+							>
+								<option value="stereo">Stereo</option>
+								<option value="left">Left only</option>
+								<option value="right">Right only</option>
+							</select>
+						</label>
+					</div>
+					<p class="text-12px opacity-70">
+						{#if looper.labels[src]}Open: {looper.labels[src]}.{:else if src === "line"}A second
+							input, for an instrument on an audio interface; an input on one channel of a stereo
+							interface wants Left only or Right only.{:else}Not open yet; it asks for permission on
+							its first turn.{/if}
+						{#if looper.errors[src]}<span class="text-red-300">{looper.errors[src]}</span>{/if}
+					</p>
+				</div>
+			{/each}
+			<div class="grid gap-2">
+				<div class="device-button-group-label !text-blue-100/90 !mb-0">Computer</div>
+				<p class="text-12px opacity-70">
+					Audio from another program, through the browser's share picker: pick a tab, a window or
+					the screen and tick "Share audio". Chrome and Edge share a tab's audio anywhere and the
+					whole computer's on Windows; on a Mac, route the other program through a loopback device
+					and choose it as the line in. Safari cannot share audio.
+					{#if looper.labels.computer}<span>Sharing: {looper.labels.computer}.</span>{/if}
+					{#if looper.errors.computer}<span class="text-red-300">{looper.errors.computer}</span
+						>{/if}
+				</p>
+				<div class="grid grid-cols-[auto_1fr] gap-2 items-end">
+					<button
+						class="device-button-xs px-3"
+						type="button"
+						onclick={() => void looper.requestComputer()}
+						>{looper.labels.computer ? "Share something else" : "Choose what to share"}</button
+					>
+					<label class="block">
+						<span class="device-button-label">Channels</span>
+						<select
+							class="device-field w-full"
+							aria-label="Computer channels"
+							value={looper.channelModes.computer}
+							onchange={(e) =>
+								looper.setChannelMode("computer", e.currentTarget.value as ChannelMode)}
+						>
+							<option value="stereo">Stereo</option>
+							<option value="left">Left only</option>
+							<option value="right">Right only</option>
+						</select>
+					</label>
+				</div>
+				<label class="block">
+					<span class="device-button-label"
+						>Computer audio latency · {looper.computerLatencyMs} ms</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="300"
+						step="1"
+						value={looper.computerLatencyMs}
+						aria-label="Computer audio latency in milliseconds"
+						oninput={(e) => looper.setComputerLatencyMs(Number(e.currentTarget.value))}
+					/>
+				</label>
+			</div>
+			<div class="border-t border-current/10 pt-3 grid gap-3">
+				<label class="flex items-center gap-2 text-13px text-blue-100/90">
+					<input
+						type="checkbox"
+						class="accent-maximumYellow"
+						checked={looper.monitorMic}
+						onchange={(e) => looper.setMonitorMic(e.currentTarget.checked)}
+					/>
+					Hear the microphone and the line in through the speakers
+				</label>
+				<label class="block">
+					<span class="device-button-label"
+						>Input latency · {looper.latencyMs} ms{looper.latencyMeasured
+							? ""
+							: " (the browser's guess)"}</span
+					>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="0"
+						max="300"
+						step="1"
+						value={looper.latencyMs}
+						aria-label="Microphone latency in milliseconds"
+						oninput={(e) => looper.setLatencyMs(Number(e.currentTarget.value))}
+					/>
+				</label>
+				<p class="text-12px opacity-70">
+					A layer sung or played into the microphone or the line in arrives late by the input's
+					round trip; it is shifted earlier by this much. Calibrate plays three clicks through the
+					speakers and measures them with the microphone.
+				</p>
+				<button
+					class="device-button-xs px-3 justify-self-start"
+					type="button"
+					disabled={looper.calibrating || looper.phase !== "idle"}
+					onclick={calibrate}
 				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="300"
-					step="1"
-					value={looper.latencyMs}
-					aria-label="Microphone latency in milliseconds"
-					oninput={(e) => looper.setLatencyMs(Number(e.currentTarget.value))}
-				/>
-			</label>
-			<p class="text-12px opacity-70">
-				A sung or played layer arrives late by the microphone's round trip; it is shifted earlier by
-				this much. Calibrate plays three clicks through the speakers and measures them.
-			</p>
-			<button
-				class="device-button-xs px-3 justify-self-start"
-				type="button"
-				disabled={looper.calibrating || looper.phase !== "idle"}
-				onclick={calibrate}
-			>
-				{looper.calibrating ? "Listening…" : "Calibrate"}
-			</button>
+					{looper.calibrating ? "Listening…" : "Calibrate"}
+				</button>
+			</div>
 			<div class="border-t border-current/10 pt-3 grid gap-3">
 				<p class="text-12px opacity-70">
 					Your audio output reports {looper.ready ? `${looper.outputLatencyMs} ms` : "its"} latency (Bluetooth
