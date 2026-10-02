@@ -605,18 +605,20 @@
 		</div>
 
 		<!-- the readout -->
-		<div class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden">
+		<div
+			class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden select-none pointer-events-none"
+		>
 			<div
 				class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full @2xl-flex @2xl-flex-wrap @2xl-items-baseline @2xl-justify-between @2xl-gap-x-4 @2xl-gap-y-1 text-blue-100 font-mono tabular-nums overflow-hidden"
 			>
 				<!-- BPM Readout -->
-				<div class="flex items-baseline gap-2">
+				<div class="flex items-baseline gap-2 user-select-none">
 					<span class="text-40px leading-none">{p.bpm}</span>
 					<span class="text-13px opacity-70">bpm</span>
 				</div>
 
 				<!-- What the project is: the preset or saved beat it still matches, the open beat as edited, or Custom. -->
-				<div class=" text-12px opacity-70 flex flex-wrap gap-x-2 gap-y-2">
+				<div class=" text-12px opacity-70 flex flex-wrap gap-x-2 gap-y-2 select-none">
 					<span
 						>{drumMachine.loadedName ?? (openBeat ? `${openBeat.name} · edited` : "Custom")}</span
 					>
@@ -669,7 +671,7 @@
 		<!-- a phone's tempo, swing and humanize, in a menu beside Tap Tempo (the sliders show from sm up) -->
 		{#snippet tempoItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px">
-				<span>Tempo · {p.bpm} bpm</span>
+				<span class="select-none">Tempo · {p.bpm} bpm</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
@@ -684,7 +686,7 @@
 		{/snippet}
 		{#snippet swingItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px">
-				<span class="flex items-center"
+				<span class="flex items-center select-none"
 					>Swing · {Math.round(p.swing * 100)}%<span
 						class="ml-2 inline-flex gap-1 align-middle"
 						role="group"
@@ -716,14 +718,19 @@
 			</label>
 		{/snippet}
 		{#snippet fxItem()}
-			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-current opacity-80)">
-				<div class="text-11px uppercase tracking-wider opacity-60 mb-3">Effects</div>
+			<div class="px-3 py-2 text-13px [&_.device-button-label]-(text-blue-100 opacity-90)">
+				<div class="text-14px mb-3 text-blue-100 text-serif font-600">Effects</div>
 				<div
 					class="grid grid-cols-1 @xl-grid-cols-2 @2xl-grid-cols-3 @4xl-grid-cols-4 gap-x-6 gap-y-3"
 				>
 					<div class="grid gap-3 content-start">
-						<div class="block text-blue-100/80" title="Delay time, in the beat">
-							<span class="device-button-label">Delay</span>
+						<div
+							class="text-11px uppercase tracking-wider opacity-60 select-none w-full border-b pb-1 mb-1 border-current-opacity/60"
+						>
+							Delay
+						</div>
+						<div class="block" title="Delay time, in the beat">
+							<span class="block device-button-label mb-1 select-none">Delay Timing</span>
 							<ComboBox
 								ariaLabel="Delay time"
 								buttonClasses="!px-2 !py-1 !text-13px"
@@ -734,7 +741,7 @@
 						</div>
 						<label class="block">
 							<span class="device-button-label"
-								>Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
+								>Delay Feedback · {Math.round(p.fx.delayFeedback * 100)}%</span
 							>
 							<input
 								class="w-full accent-maximumYellow"
@@ -764,24 +771,33 @@
 								aria-label="Delay level"
 							/>
 						</label>
-						<div class="flex gap-2" role="group" aria-label="Delay character">
+						<div class="flex gap-0" role="group" aria-label="Delay character">
 							<button
-								class="flex-1 device-button-xs border {p.fx.delayAnalog ? '' : 'text-accent'}"
+								class="flex-1 device-button-xs text-12px border rounded-r-none {p.fx.delayAnalog
+									? 'opacity-90 hover-opacity-90'
+									: 'text-oxford bg-accent border-accent opacity-100 hover-bg-accent/90'}"
 								type="button"
 								aria-pressed={!p.fx.delayAnalog}
 								title="Clean repeats"
-								onclick={() => drumMachine.setFx({ delayAnalog: false })}>Digital</button
+								onclick={() => drumMachine.setFx({ delayAnalog: false })}>Digital Delay</button
 							>
 							<button
-								class="flex-1 device-button-xs border {p.fx.delayAnalog ? 'text-accent' : ''}"
+								class="flex-1 device-button-xs text-12px border rounded-l-none {p.fx.delayAnalog
+									? 'text-oxford bg-accent border-accent opacity-100 hover-bg-accent/90'
+									: 'opacity-90 hover-opacity-90'}"
 								type="button"
 								aria-pressed={p.fx.delayAnalog}
 								title="Tape-like repeats: each one darker and softer, with a slow wobble"
-								onclick={() => drumMachine.setFx({ delayAnalog: true })}>Analog</button
+								onclick={() => drumMachine.setFx({ delayAnalog: true })}>Analog Delay</button
 							>
 						</div>
 					</div>
 					<div class="grid gap-3 content-start">
+						<div
+							class="text-11px uppercase tracking-wider opacity-60 select-none w-full border-b pb-1 mb-1 border-current-opacity/60"
+						>
+							Reverb & Fuzz
+						</div>
 						<label class="block">
 							<span class="device-button-label"
 								>Reverb size · {Math.round(p.fx.reverbSize * 100)}%</span
@@ -847,8 +863,13 @@
 						</label>
 					</div>
 					<div class="grid gap-3 content-start">
+						<div
+							class="text-11px uppercase tracking-wider opacity-60 select-none w-full border-b pb-1 mb-1 border-current-opacity/60"
+						>
+							Wah
+						</div>
 						<div class="block text-blue-100/80" title="One sweep per this much of the beat">
-							<span class="device-button-label">Wah sweep</span>
+							<span class="device-button-label block mb-1">Wah sweep</span>
 							<ComboBox
 								ariaLabel="Wah sweep"
 								buttonClasses="!px-2 !py-1 !text-13px"
@@ -903,7 +924,11 @@
 						</label>
 					</div>
 					<div class="grid gap-3 content-start">
-						<div class="text-11px uppercase tracking-wider opacity-60">Tone</div>
+						<div
+							class="text-11px uppercase tracking-wider opacity-60 select-none w-full border-b pb-1 mb-1 border-current-opacity/60"
+						>
+							Tone
+						</div>
 						<label class="block">
 							<span class="device-button-label"
 								>Tilt · {p.fx.toneTilt === 0
@@ -953,15 +978,17 @@
 						</label>
 					</div>
 				</div>
-				<button
-					class="device-button-xs px-3 justify-self-start mt-3"
-					type="button"
-					title="Master levels, the fuzz, the wah and the tone back to zero, the delay digital, every drum back to its usual sends"
-					onclick={() => {
-						drumMachine.resetFx();
-						notify("Effects reset to their defaults");
-					}}>Reset to defaults</button
-				>
+				<div class="col-span-full flex w-full justify-end pr-4">
+					<button
+						class="border rounded-md border-current px-3 justify-self-end col-span-full ml-auto mt-3 text-0.9em py-2"
+						type="button"
+						title="Master levels, the fuzz, the wah and the tone back to zero, the delay digital, every drum back to its usual sends"
+						onclick={() => {
+							drumMachine.resetFx();
+							notify("Effects reset to their defaults");
+						}}>Reset to Defaults</button
+					>
+				</div>
 			</div>
 		{/snippet}
 		{#snippet midiItem()}

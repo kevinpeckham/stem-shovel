@@ -312,12 +312,12 @@ export default defineConfig({
 		[
 			"device-button-label",
 			`
-
 			font-500
 			leading-tight
 			mb-1
 			min-w-fit
 			opacity-80
+			select-none
 			text-16px
 			text-dark
 			sm-text-12px
