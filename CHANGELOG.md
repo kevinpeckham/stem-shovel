@@ -15,6 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Looper: opening the audio twice** (a pointer-down and the click after it) could leave the second caller without the capture node; the device menus open to the right so they fit.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **Looper: the Computer source never opened the share picker**: the Permissions-Policy header had `display-capture=()`; it is now `(self)` (securityHeaders.ts and vercel.json).
 
 ## [0.78.0] - 2026-10-02
@@ -33,6 +34,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The piano page's header** was clipped away at every width; it is visible from the small breakpoint and screen-reader-only on phones.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Added
 
@@ -143,6 +145,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Account settings said sign-up was invitation-only** even with sign-up open (Kevin). The Invite codes section, and the admin's new-account codes page, now word themselves by the sign-up mode: with sign-up open, a code is what joins the newcomer to the account.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.65.0] - 2026-10-01
 
@@ -183,6 +186,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Menus opened by code lost their place.** A ContextMenu opened through `bind:openState` called `showPopover()` directly, which gives CSS anchor positioning no anchor, so the menu landed in the viewport's corner; it now opens through its own trigger. The piano's and drum machine's effects menus and the presets menu are capped to the space beside their button (`max-h: calc(100% - 0.5rem)` in the anchor's grid area) and scroll, instead of running past the bottom of a short window.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.61.0] - 2026-09-30
 
@@ -207,6 +211,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Web MIDI was blocked by our own Permissions-Policy header** (`midi=()`), so Connect MIDI failed on the deployed site while it worked on the dev server (a user report); the header constant and vercel.json now allow `midi=(self)`, and vercel.json's copy matches the constant again (it had fallen behind on `microphone` and `screen-wake-lock`).
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **Piano: the tremolo's Chop shape crunched** on a sustained note: the square LFO stepped the level instantly. It now passes an 80 Hz low-pass so each edge takes about 5 ms, still a chop, without the click.
 
 ## [0.59.0] - 2026-09-30
@@ -232,6 +237,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Piano key labels line up.** The octave name on the C keys pushed their letters up; every white key now has two fixed rows, the name above and the letter below.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.56.1] - 2026-09-30
 
@@ -250,6 +256,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The piano's Hi-res button hid behind another sound.** It only showed while the Grand Piano was chosen, so a browser remembering the Organ had no button. It shows whatever the sound now, and pressing it with another sound chosen switches to the Grand Piano and starts the download. And the tiers decode through an offline context until the piano is on, so a remembered Hi-res choice no longer waits at 0% for the switch.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.55.0] - 2026-09-30
 
@@ -265,6 +272,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Piano on iOS: notes came late, together.** The AudioContext opened on the first note and the note was scheduled at its time before it had resumed, so on iOS (which starts contexts suspended and resumes them slowly) every note pressed in that moment sat at time zero and sounded a second or two later, all at once. The piano now warms the context on the first touch or key (`piano.warm`) and, when the context is not yet running, starts a note only once it is (skipping it if the key was let go meanwhile); the context asks for interactive latency. And a **power switch** (Kevin's ask, as the tuner has): full width under the screen on a phone, in the controls row on a desktop; On warms the audio ahead of the first note so it is not late either, Off silences and suspends it; the screen says "off" or "starting…" and dims until then (as the tuner's). The wake is watched by polling the context's state rather than the promise from `resume()`, which on iOS never settled and left the switch on "Starting…"; a silent buffer plays as the old iOS unlock, and the switch gives up after three seconds. On a phone the keys carry no computer-key letters.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.54.0] - 2026-09-29
 
@@ -293,6 +301,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **/releases showed nothing newer than v0.48.0.** `parseChangelog` only knew `## [x.y.z] - date` headings, and the last three sections were written as `## x.y.z — date`; it now takes both spellings (and a hyphen or an em dash), with a test.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.51.0] - 2026-09-28
 
@@ -364,6 +373,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **⌘-click on the Comments row starts a comment.** The row under the stems took only plain clicks (a seek); ⌘-click, Ctrl-click and right-click there now open the same menu as on a stem's waveform (Seek here, Comment here), headed "Mix" and the time. Reported by Kevin: users tried it first and it felt broken. `CommentTimeline` takes `oncontext`; the hint and the comments doc say the row counts.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.43.0] - 2026-09-27
 
@@ -439,6 +449,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **A new take lists the moment Stop is pressed.** The Recordings list shows the take under its idea straight away, marked Saving… with its progress and without a menu until the upload lands, instead of appearing only once saved; a take for a brand-new idea sits under a pending group with that title until the idea exists. The Uploads box now shows failed uploads only (Retry, Discard).
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Changed
 
@@ -464,6 +475,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **A super admin could not accept an invitation.** The invitation page took their acting-owner access to every account for membership and said they already belonged, leaving the invitation pending; it now counts real memberships only.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Technical
 
@@ -486,6 +498,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Notes stopped saving after being emptied.** Emptying a note board on an idea without takes removes the idea; the page now learns that from the save and drops the idea's id, so the next notes create a fresh idea instead of failing against a deleted one. An emptied board autosaves like any other edit.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **"Your Ideas" shows the first line of the notes as soon as they save**, not after the next take or reload.
 - CSS changes hot-reload in dev again: the web-fonts preset is always present and uses the no-fetch provider under Vitest and CI instead of being spliced out.
 
@@ -494,6 +507,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Download Source of a Chrome lossless take gave an unplayable file.** Chrome records raw PCM in WebM, which almost nothing opens; the download now decodes it in the browser and saves a 16-bit WAV (the menu says "WAV lossless"). A saved take is FLAC once the jobs function has converted it, and downloads as such.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **On the VM's dev server the background jobs never ran** (the self-call used the proxy's origin), so Chrome takes there stayed raw PCM with no MP3; the dev server now calls itself on localhost.
 - The recorder's volume buttons and readout are for larger screens only (phones keep volume on the hardware buttons).
 - The recorder's status light pulses again while recording, waiting for the microphone or playing.
@@ -509,6 +523,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Download MP3 downloaded the source file.** It downloads the MP3 (and is disabled until the rendition exists); the source keeps the container it was recorded in.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **Deleting a take shows the previous take** once the list has refreshed, instead of an empty player; deleting the idea in the player gives the title a fresh "Untitled Idea N" that counts without the deleted one.
 - The recorder's status reads Saving and Microphone… in those states again.
 
@@ -539,6 +554,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The tuner's On button shows it is starting.** On a phone the microphone permission and the audio context can take a moment; the button now spins and reads "Starting…" until the tuner is live, and a suspended audio context (iOS) is resumed so it never reads as on but silent.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.32.0] - 2026-09-22
 
@@ -555,6 +571,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The Releases page went blank after an edit in the app.** The editor saves each version heading with its brackets escaped (`## \[0.31.0\]`), which the page's parser did not recognise, so every in-app edit emptied the page until the next script refresh restored it. The parser accepts both spellings (`parseChangelog`).
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.31.0] - 2026-09-22
 
@@ -587,6 +604,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Passkey sign-in was blocked by our own Permissions-Policy header** (`publickey-credentials-get=()`); it now allows the page itself, in the header constant and vercel.json.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Technical
 
@@ -608,6 +626,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The tuner page was marked noindex in production**: vercel.json's `X-Robots-Tag` rule for static files was never widened for `/tuner` (nor now `/pricing`); it is.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Technical
 
@@ -622,6 +641,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **A deploy no longer leaves open tabs unstyled.** The client polls for a new build once a minute and, after one, the next navigation is a full page load, so it never fetches the previous build's retired stylesheet or chunks (which showed as an empty-looking dark page).
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Changed
 
@@ -637,6 +657,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Deletes remove their children.** Turso does not enforce foreign keys, so the schema's cascades never ran: deleting a song, project, idea, artist, account, user, report or doc left the rows under it behind (files were already removed). Every delete now goes through `src/lib/server/cascade.ts`, and `bun run db:sweep-orphans [--apply]` reports and removes what earlier deletes left.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Added
 
@@ -686,6 +707,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **CI**: the `songWantsNotes` test loaded the database through `data.ts` and failed without varlock; the function is a util now. The secrets workflow needs `gitleaks/gitleaks-action@*` on the repository's allowed-actions list.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.21.0] - 2026-09-19
 
@@ -727,6 +749,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Switching takes in the Idea Recorder puts the transport back to zero**: the clock reads 0:00 and playback starts from the top, instead of carrying the previous take's position over.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **Listening back at full quality.** The player prefers a take's original whenever the browser can decode it, and the MP3 rendition otherwise: the device that recorded a take hears it lossless, a Mac plays an iPhone's ALAC, everything plays FLAC, and a browser that cannot play the original (Chrome facing ALAC) gets the MP3. The take's codec is stored at reservation for that check (migration 0042). A take just made plays the browser's own recording at once and the page picks up its rendition within a minute; a media error on the original falls back to the rendition. After capture the audio session returns to its default category, so playback routes as it did before.
 - **"AudioSession category is not compatible with audio capture"** on an iPhone when the recorder was opened after playing a song in the same tab: the stem player had set the page's audio session to playback (for the silent switch) and WebKit refuses to capture under it. The recorder now sets "play-and-record" before asking for the microphone, and the player sets playback again on every play.
 
@@ -745,6 +768,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The stem player is heard on an iPhone with the ring/silent switch on.** iOS mutes Web Audio under the switch but not media playback; before it plays, the engine now asks for the media rules (the AudioSession API on Safari 17+, a silent looping audio element on older iOS), the same way music apps play through the switch. The recorder, demos and playlist already used media elements and were unaffected.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.17.3] - 2026-09-19
 
@@ -778,6 +802,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Notes transcription on Vercel.** The chart draft's notes were never transcribed in production: the transcription stack (tfjs, Basic Pitch) was not packed into the function, so every song page's background job failed with "Cannot find package '@tensorflow/tfjs'". The jobs function carries it now.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ### Added
 
@@ -798,6 +823,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Landing on "/undefined" after the two-factor code.** The verify page reloaded its data before navigating; the reload redirected (the user was now signed in) and swapped the page data out, so the target read as undefined. Both the verify page and the sign-in page now capture the target first and navigate with a single reload.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **Sign-in on preview deployments** (staging): Better Auth's base URL was pinned to the production origin for every non-dev build, and its handler ignores requests from another origin, so every `/api/auth/*` call on a `*.vercel.app` preview answered the app's 404 page. Previews now infer the URL from the request like dev does.
 
 ### Technical
@@ -827,6 +853,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Time signature detection votes per stem.** The detector used to sum every stem's onset envelope and compare the three- and four-beat autocorrelation of the sum, so a flat kick diluted the bar pulse and one riff with a three-note feel could tip a 4/4 song to 3/4 (as it did for a user's project). Each stem now leans 3/4 or 4/4 on its own and the leans are combined, weighted by how sure each stem is; the confidence shown reflects the strength of the agreement.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **"Use these" after Ask AI to check** now saves the tempo, key and time signature at once with a notification; before, it only filled the rows in the settings popover and waited for a Save changes click further down, which read as nothing happening.
 
 ### Changed
@@ -919,6 +946,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **The AI draft card crashed the song page** when the draft named two sections alike (two verses): the lists were keyed by section name.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 - **A failed chord detection or AI draft** now shows a notification with the reason; a remote function's `error()` was displayed as its JSON body (`errorMessage` util), and AI failures arrive as a 502 with their message instead of production's "Internal Error".
 
 ### Technical
@@ -1000,6 +1028,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - Spacing of the AI check's note after its confidence.
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
 
 ## [0.8.0] - 2026-09-16
 
@@ -1051,6 +1080,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Popover forms no longer show the previous entry**: a remote form keeps
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
   what was last typed or submitted for the life of the page, so "Add a
   song" opened on the last title and settings popovers on the last edit.
   Popovers now open on saved values (or empty), the invite and invite-code
@@ -1229,6 +1259,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Typing a position in bars on a song without a tempo and time
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
   signature** now says so and points at the settings section to fill in,
   instead of the generic "not a position" message.
 
@@ -1288,6 +1319,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Stem row menus close** on Escape, on a click outside them, and when
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
   another row's menu opens.
 
 ## [0.2.1] - 2026-09-13
@@ -1295,6 +1327,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **"Custom Mix (MP3)" said nothing was audible** even with stems soloed or
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
   unmuted: the download row is rendered outside the player since the layout
   pass and no longer had the engine. The player now hands its engine to the
   page.
@@ -1337,6 +1370,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Uploads of `.m4a` files from a Mac or iPhone** were refused: the browser
+- **Looper: the level meters now run from the moment the audio opens**, so a chosen input shows its level before Record is pressed (they ran only while the loop played or counted in).
   labels them `audio/x-m4a` and the upload token only allowed `audio/mp4`.
   The content type now comes from the extension for stems and demos alike.
 - **Switching tracks while playing** (project playlist, demo player) left the

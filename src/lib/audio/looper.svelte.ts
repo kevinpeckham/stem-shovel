@@ -146,6 +146,7 @@ class LooperEngine {
 	/** Bar 1 of the first pass on the context's clock. */
 	#loopStart = 0;
 	#frame = 0;
+	#meterFrame = 0;
 	#recordingSource: LoopSource | null = null;
 	#startedDrums = false;
 	#metronomeStopTimer: ReturnType<typeof setTimeout> | null = null;
@@ -217,6 +218,8 @@ class LooperEngine {
 		// The kit for this context, ahead of the first drums layer (its start must land on bar 1, not after a decode).
 		void drumMachine.readyKit();
 		this.#analyserBuf = new Float32Array(1024);
+		cancelAnimationFrame(this.#meterFrame);
+		this.#meter();
 		try {
 			for (const src of ["mic", "line"] as const) {
 				this.deviceIds[src] = localStorage.getItem(DEVICE_KEYS[src]);
@@ -1128,20 +1131,35 @@ class LooperEngine {
 				fraction,
 			};
 		}
-		const buf = this.#analyserBuf;
-		if (buf) {
-			const next = { ...this.levels };
-			for (const s of LOOP_SOURCES) {
-				const a = this.#analysers[s];
-				if (!a) continue;
-				a.getFloatTimeDomainData(buf);
-				let sum = 0;
-				for (const x of buf) sum += x * x;
-				next[s] = Math.min(1, Math.sqrt(sum / buf.length) * 3);
-			}
-			this.levels = next;
-		}
 		this.#frame = requestAnimationFrame(this.#follow);
+	};
+
+	/**
+	 * The level meters, every frame from the moment the audio opens (not only
+	 * while the loop runs): a source's level shows as soon as it is chosen,
+	 * so an input can be checked before Record (Kevin: no level until Record
+	 * was pressed). Each source's analyser reads its own node, ahead of the
+	 * armed gain, so every opened source meters.
+	 */
+	#meter = () => {
+		const buf = this.#analyserBuf;
+		if (!this.#ctx || !buf) return;
+		const next = { ...this.levels };
+		let changed = false;
+		for (const s of LOOP_SOURCES) {
+			const a = this.#analysers[s];
+			if (!a) continue;
+			a.getFloatTimeDomainData(buf);
+			let sum = 0;
+			for (const x of buf) sum += x * x;
+			const level = Math.min(1, Math.sqrt(sum / buf.length) * 3);
+			if (level !== next[s]) {
+				next[s] = level;
+				changed = true;
+			}
+		}
+		if (changed) this.levels = next;
+		this.#meterFrame = requestAnimationFrame(this.#meter);
 	};
 
 	/** The layers' mix, `repeats` passes long, rendered offline with their levels (mute and solo applied). */
