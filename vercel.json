@@ -31,7 +31,7 @@
 				},
 				{
 					"key": "Permissions-Policy",
-					"value": "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), midi=(self), payment=(), publickey-credentials-get=(self), screen-wake-lock=(self), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()"
+					"value": "accelerometer=(), camera=(), display-capture=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), midi=(self), payment=(), publickey-credentials-get=(self), screen-wake-lock=(self), serial=(), usb=(), xr-spatial-tracking=(), hid=(), idle-detection=()"
 				}
 			]
 		},

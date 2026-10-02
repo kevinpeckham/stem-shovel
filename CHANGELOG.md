@@ -15,6 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Fixed
 
 - **Looper: opening the audio twice** (a pointer-down and the click after it) could leave the second caller without the capture node; the device menus open to the right so they fit.
+- **Looper: the Computer source never opened the share picker**: the Permissions-Policy header had `display-capture=()`; it is now `(self)` (securityHeaders.ts and vercel.json).
 
 ## [0.78.0] - 2026-10-02
 

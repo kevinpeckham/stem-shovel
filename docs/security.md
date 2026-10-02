@@ -84,6 +84,7 @@ from a 31-symbol alphabet.
 `securityHeaders.ts` + `vercel.json`: nosniff, no framing, `Referrer-Policy`,
 `Cross-Origin-Opener-Policy: same-origin`, HSTS, a `Permissions-Policy` that
 switches off device APIs (passkeys keep `publickey-credentials-get=(self)`; the
+looper's Computer source needs `display-capture=(self)`; the
 default for `-create` is already self), and SvelteKit's CSP with a per-request script nonce
 (docs/environment.md). Search engines get the front page, the user docs
 (`/docs`, each page, not the editors), the blog (`/blog`, each published
