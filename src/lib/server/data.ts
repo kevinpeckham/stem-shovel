@@ -3163,11 +3163,11 @@ export async function listUserLoops(userId: string) {
 	});
 }
 
-/** A loop's sources with URLs the browser may fetch, and the loop's settings, for the looper to load (the caller checked ownership). */
+/** A take's own file and its sources with URLs the browser may fetch, and the loop's settings when the take came from the looper, for the looper to load or import (the caller checked ownership). */
 export async function loopSources(accountId: string, recordingId: string) {
 	const rec = await db.query.recording.findFirst({
 		where: and(eq(recording.accountId, accountId), eq(recording.id, recordingId)),
-		columns: { id: true },
+		columns: { id: true, url: true, durationSeconds: true, title: true, takeNumber: true },
 		with: {
 			idea: { columns: { instruments: true } },
 			stems: { where: eq(recordingStem.status, "ready"), orderBy: [asc(recordingStem.sortOrder)] },
@@ -3177,6 +3177,12 @@ export async function loopSources(accountId: string, recordingId: string) {
 	const settings = parseIdeaInstruments(rec.idea?.instruments ?? null)?.looper ?? null;
 	return {
 		settings,
+		// The take as recorded (the lossless source, which the browser decodes itself), for an import as one layer.
+		mix: {
+			url: (await presentUrl(rec.url)) ?? rec.url,
+			durationSeconds: rec.durationSeconds,
+			title: rec.title || `Take ${rec.takeNumber}`,
+		},
 		sources: await Promise.all(
 			rec.stems.map(async (s) => ({
 				label: s.label,

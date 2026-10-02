@@ -239,6 +239,28 @@ has the one loop the browser keeps. Verified on dev: a one-bar drums loop
 at 132 bpm exported, the loop cleared and retuned to 80 bpm, then loaded
 back with its layer, tempo and bars (80,182 frames, one bar at 132 bpm).
 
+## Importing a take (2026-10-02)
+
+Kevin: "Can idea recording takes be imported as layers into the looper?"
+The Load menu's **Import a take** section lists the user's latest forty
+takes (`recentTakes` in the page load, from `listUserIdeas`), each with
+its length and source count; `loopSources` now also hands back the take's
+own file (`mix`: the lossless source, which the browser decodes itself)
+beside its sources. `looper.importTake(mix, sources, { lengthFrom,
+startSeconds })` fetches and decodes a multitrack take's sources as one
+layer each, or the take itself as one layer; with **Loop length: from the
+take** (an empty loop) the bars become the take's length at the tempo
+rounded to the nearest allowed (1, 2, 4, 8), with **fit to the loop** (or
+whenever the loop has layers) the current length holds; each file is cut
+to the loop length from the chosen start offset in, padded with silence
+when shorter. A layer's source is read from its label (Piano, Drums, else
+the microphone). A take recorded freely will not sit on the beat unless
+it was played to the tempo; the start offset is for a take that begins
+before its downbeat. Verified on dev: a two-bar drums loop at 120 bpm
+exported as a take, then imported into an empty loop at 60 bpm became one
+bar of 4 s; imported again into that loop it fitted as a second 4 s
+layer.
+
 ## Phase 2: MIDI layers
 
 A piano or drum layer kept as events (note on/off with velocity at loop

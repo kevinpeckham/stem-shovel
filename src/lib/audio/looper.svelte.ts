@@ -250,6 +250,81 @@ class LooperEngine {
 	}
 	/** How many layers came back from the browser's store on opening, for a notice. */
 	restored = $state(0);
+	/**
+	 * A take from the Idea Recorder as layers (docs/looper.md, "Importing a
+	 * take"): its sources one layer each when it is a multitrack take, else
+	 * the take itself as one layer. With `lengthFrom` "take" (an empty loop)
+	 * the bars follow the take's length at the tempo, rounded to the nearest
+	 * allowed; with "loop" the current length holds. Each file is cut to the
+	 * loop length from `startSeconds` in, padded with silence when shorter.
+	 * Returns how many layers landed.
+	 */
+	async importTake(
+		mix: { url: string; title: string; durationSeconds: number | null },
+		sources: { label: string; url: string; sortOrder: number }[],
+		opts: { lengthFrom: "loop" | "take"; startSeconds: number },
+	): Promise<number> {
+		await this.open();
+		const ctx = this.#ctx!;
+		if (this.phase !== "idle") this.stop();
+		this.loading = true;
+		try {
+			const files =
+				sources.length > 0
+					? [...sources].sort((a, b) => a.sortOrder - b.sortOrder)
+					: [{ label: mix.title, url: mix.url, sortOrder: 0 }];
+			const decoded: { label: string; audio: AudioBuffer }[] = [];
+			for (const f of files) {
+				const res = await fetch(f.url);
+				if (!res.ok) throw new Error(`Could not fetch ${f.label} (${res.status})`);
+				decoded.push({ label: f.label, audio: await ctx.decodeAudioData(await res.arrayBuffer()) });
+			}
+			if (opts.lengthFrom === "take" && !this.locked) {
+				const seconds = Math.max(0, (decoded[0]?.audio.duration ?? 0) - opts.startSeconds);
+				const bars = seconds / this.barSeconds;
+				const nearest = [...LOOP_BARS].reduce((best, n) =>
+					Math.abs(n - bars) < Math.abs(best - bars) ? n : best,
+				);
+				this.bars = nearest;
+				this.#persist();
+			}
+			const start = Math.max(0, opts.startSeconds);
+			for (const [k, d] of decoded.entries()) {
+				const sr = d.audio.sampleRate;
+				const frames = Math.round(this.loopSeconds * sr);
+				const from = Math.round(start * sr);
+				const buffer = ctx.createBuffer(2, frames, sr);
+				for (let c = 0; c < 2; c++) {
+					const src = d.audio.getChannelData(Math.min(c, d.audio.numberOfChannels - 1));
+					const n = Math.max(0, Math.min(frames, src.length - from));
+					if (n > 0) buffer.getChannelData(c).set(src.subarray(from, from + n));
+				}
+				const label = d.label;
+				const source: LoopSource = label.startsWith("Piano")
+					? "piano"
+					: label.startsWith("Drums")
+						? "drums"
+						: "mic";
+				if (this.layers.length >= MAX_LOOP_LAYERS) break;
+				const layer: LoopLayer = {
+					id: `${Date.now().toString(36)}i${k}`,
+					label,
+					source,
+					buffer,
+					gain: 1,
+					muted: false,
+					solo: false,
+					peaks: computePeaks(buffer, 512),
+				};
+				this.layers.push(layer);
+			}
+			this.restored = 0;
+			this.#persist();
+			return decoded.length;
+		} finally {
+			this.loading = false;
+		}
+	}
 	/** A loop being fetched and decoded from its exported sources. */
 	loading = $state(false);
 	/**

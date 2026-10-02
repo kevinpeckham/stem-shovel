@@ -2,7 +2,13 @@ import { publicBlobUrl } from "$lib/server/blob";
 import { isEditor } from "$lib/server/access";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listBeats, listPianoPresets, listUserLoops, sitePianoPresets } from "$lib/server/data";
+import {
+	listBeats,
+	listPianoPresets,
+	listUserIdeas,
+	listUserLoops,
+	sitePianoPresets,
+} from "$lib/server/data";
 import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import copyFallback from "../../../scripts/user-docs/looper-page.md?raw";
@@ -23,6 +29,8 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		signedIn: !!locals.user,
 		// The user's exported loops, to load back (docs/looper.md, "Export and Load").
 		loops: locals.user ? await listUserLoops(locals.user.id) : [],
+		// The user's recent takes, to import as layers (docs/looper.md, "Importing a take").
+		takes: locals.user ? await recentTakes(locals.user.id) : [],
 		account: member
 			? { id: member.accountId, name: member.name, slug: member.slug, canEdit: true }
 			: null,
@@ -36,3 +44,20 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		presetAdmin: locals.user?.isSystemAdmin === true,
 	};
 };
+
+/** The user's latest forty takes, newest first, as the Load menu lists them for import: idea and take, length, and how many sources a multitrack take carries. */
+async function recentTakes(userId: string) {
+	const ideas = await listUserIdeas(userId);
+	return ideas
+		.flatMap((i) =>
+			i.takes.map((t) => ({
+				id: t.id,
+				title: `${i.title} · ${t.title || `Take ${t.takeNumber}`}`,
+				durationSeconds: t.durationSeconds,
+				sources: t.stems.length,
+				createdAt: t.createdAt,
+			})),
+		)
+		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+		.slice(0, 40);
+}

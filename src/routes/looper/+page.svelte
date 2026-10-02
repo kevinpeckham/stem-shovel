@@ -218,6 +218,21 @@
 			notify(`Could not load the loop: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
+	/** Importing a take (docs/looper.md): the loop's length from the take when the loop is empty, else the take fitted to the loop; a start offset for a take that begins before its downbeat. */
+	let importLengthFrom = $state<"loop" | "take">("take");
+	let importStart = $state(0);
+	async function importTake(take: { id: string; title: string }) {
+		try {
+			const { mix, sources } = await loopSources({ id: take.id });
+			const n = await looper.importTake(mix, sources, {
+				lengthFrom: looper.locked ? "loop" : importLengthFrom,
+				startSeconds: importStart,
+			});
+			notify(`${take.title} imported as ${n} ${n === 1 ? "layer" : "layers"}`);
+		} catch (e) {
+			notify(`Could not import the take: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	const sourceIcon: Record<LoopSource, string> = {
 		mic: "i-ph-microphone",
 		piano: "i-ph-piano-keys",
@@ -774,6 +789,69 @@
 					{/each}
 				</ul>
 				{#if looper.loading}<p class="text-12px opacity-70" role="status">Loading…</p>{/if}
+			{/if}
+			{#if data.signedIn && data.takes.length > 0}
+				<div
+					class="border-t border-current/10 pt-3 grid gap-3 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
+				>
+					<div class="text-11px uppercase tracking-wider text-accent">Import a take</div>
+					<p class="text-12px opacity-70">
+						A take from the Idea Recorder as layers: a multitrack take one per source, a stereo take
+						as one. It is cut to the loop's length from the start you choose.
+					</p>
+					<div class="grid grid-cols-2 gap-3">
+						<label class="block">
+							<span class="device-button-label">Loop length</span>
+							<select
+								class="device-field w-full"
+								aria-label="Loop length on import"
+								bind:value={importLengthFrom}
+								disabled={looper.locked}
+							>
+								<option value="take">From the take</option>
+								<option value="loop">Fit to the loop</option>
+							</select>
+						</label>
+						<label class="block">
+							<span class="device-button-label">Start at · s</span>
+							<input
+								class="device-field w-full"
+								type="number"
+								min="0"
+								step="0.01"
+								aria-label="Start offset in seconds"
+								bind:value={importStart}
+							/>
+						</label>
+					</div>
+					{#if looper.locked}<p class="text-12px opacity-70">
+							The loop has layers, so a take is fitted to its length.
+						</p>{/if}
+					<ul class="grid gap-1 max-h-60 overflow-y-auto" aria-label="Recent takes">
+						{#each data.takes as take (take.id)}
+							<li>
+								<button
+									class="w-full text-left rounded px-2 py-1.5 hover:bg-white/10 grid gap-0.5 disabled:opacity-50"
+									type="button"
+									disabled={looper.loading || looper.layers.length >= MAX_LOOP_LAYERS}
+									title="Import this take as {take.sources > 0
+										? `${take.sources} layers`
+										: 'a layer'}"
+									onclick={() => void importTake(take)}
+								>
+									<span class="text-14px text-blue-100 truncate">{take.title}</span>
+									<span class="text-12px opacity-70"
+										>{take.durationSeconds
+											? `${take.durationSeconds.toFixed(1)} s`
+											: "—"}{take.sources > 0 ? ` · ${take.sources} sources` : ""} · {new Date(
+											take.createdAt,
+										).toLocaleDateString()}</span
+									>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
 		</div>
 	{/snippet}

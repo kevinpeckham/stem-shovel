@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Looper: import a take.** The Load menu lists recent Idea Recorder takes; one comes in as layers (a multitrack take one per source, a stereo take as one), with the loop's length taken from the take on an empty loop or the take fitted to the loop otherwise, and a start offset (docs/looper.md, "Importing a take"). `loopSources` hands back the take's own file beside its sources; `looper.importTake`.
+
 ## [0.77.0] - 2026-10-02
 
 ### Added
