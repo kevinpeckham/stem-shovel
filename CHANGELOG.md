@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-10-02
+
 ### Added
 
 - **Looper: Load.** A Load menu lists the loops you exported to the Idea Recorder and brings one back into the looper from its sources, with its tempo, bars and layer levels (`listUserLoops`, the `loopSources` query, `looper.loadFrom`); the Save menu is now **Export** (docs/looper.md, "Export and Load").
