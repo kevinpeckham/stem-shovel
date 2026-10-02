@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-10-02
+
 ### Added
 
 - **Idea Recorder: input sources as on the looper** (docs/demo-recording.md, "Input sources"). An Input Source row under the screen with Microphone, Line in, Computer, Piano and Drums, each a toggle into the take with its meter, a settings menu joined to its button (device and channels, the share picker, latency, monitor, normalize) and its gain slider or, for the instruments, their own master volume. Any mix of sources is in a take; the microphone is no longer required, and multitrack is offered with two or more sources in. Meters run before Record. Normalize writes a file from the inputs as 24-bit WAV scaled to −1 dBFS.
