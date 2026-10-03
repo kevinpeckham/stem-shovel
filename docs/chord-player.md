@@ -158,12 +158,16 @@ the device's lower left.
 
 The Timing menu and the progression pad. `src/lib/audio/progression.svelte.ts`
 is the pad: it listens to the chord engine's presses and releases
-(`chordPlayer.listener`) and writes an entry per chord with its beats from
-how long it was held (`utils/chordRhythm.ts`: under a beat and a half is
-one, under three is two, else four, at the metronome's tempo) and a rest
-from a pause before it (half a beat to eight; a longer pause is thinking
-time). A chord pressed before the last lets go ends the last there, so
-legato playing leaves no rests. The entries are grouped by measure for the
+(`chordPlayer.listener`) and writes an entry per chord. Its beats are
+onset to onset (`utils/chordRhythm.ts`, `jotLengths`): first the held
+length when it lets go (under a beat and a half is one, under three two,
+else four, at the metronome's tempo), revised when the next chord starts
+to the time until then, so the time a mouse takes to reach the next wedge
+is never a rest (Kevin's first pass found rests between quick chords). A
+silence of two beats or more after the chord keeps the held length and
+writes a rest of two or four beats; over eight beats is thinking time. A
+chord pressed before the last lets go ends the last there. Jot is off by
+default: it is a mode, not a loss. The entries are grouped by measure for the
 screen (`measuresOf`; a straddling entry starts the next bar), kept under
 `stemshovel.chord-player.progression`, and edited by picking one (beats 1,
 2, 4; a rest in its place; remove), undo (fifty steps) and clear. Playback

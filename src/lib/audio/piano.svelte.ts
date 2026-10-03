@@ -11,6 +11,8 @@ import {
 	DEFAULT_PIANO_DELAY,
 	DEFAULT_PIANO_FUZZ,
 	DEFAULT_PIANO_PHASER,
+	DEFAULT_PIANO_REVERB,
+	DEFAULT_PIANO_REVERB_SIZE,
 	DEFAULT_PIANO_ROTARY,
 	DEFAULT_PIANO_TONE,
 	DEFAULT_PIANO_TREMOLO,
@@ -61,9 +63,9 @@ class PianoEngine {
 	/** The octave the on-screen keyboard's lowest C sits in. */
 	octave = $state(3);
 	volume = $state(0.8);
-	reverb = $state(0.25);
+	reverb = $state(DEFAULT_PIANO_REVERB);
 	/** The room's size, 0 a small room to 1 a hall (the impulse is synthesized again on change). */
-	reverbSize = $state(0.35);
+	reverbSize = $state(DEFAULT_PIANO_REVERB_SIZE);
 	/** The delay: time, feedback, level, analog character (docs/piano.md, "Effects"); level 0 is off. */
 	delay = $state<PianoDelay>({ ...DEFAULT_PIANO_DELAY });
 	/** The chorus (mix 0 is off), the tremolo (depth 0 is off), the fuzz (drive 0 is off), the phaser (mix 0 is off) and the rotary speaker. */
@@ -629,6 +631,23 @@ class PianoEngine {
 		this.setWah(p.wah);
 		this.setRotary(p.rotary.speed);
 		this.setTone(p.tone);
+	}
+
+	/** Every effect back to how the piano starts (the sound stays): the Effects menu's reset. */
+	resetEffects() {
+		this.applyPreset({
+			instrument: this.instrument,
+			reverb: DEFAULT_PIANO_REVERB,
+			reverbSize: DEFAULT_PIANO_REVERB_SIZE,
+			delay: { ...DEFAULT_PIANO_DELAY },
+			chorus: { ...DEFAULT_PIANO_CHORUS },
+			phaser: { ...DEFAULT_PIANO_PHASER },
+			tremolo: { ...DEFAULT_PIANO_TREMOLO },
+			fuzz: { ...DEFAULT_PIANO_FUZZ },
+			wah: { ...DEFAULT_PIANO_WAH },
+			rotary: { ...DEFAULT_PIANO_ROTARY },
+			tone: { ...DEFAULT_PIANO_TONE },
+		});
 	}
 
 	/** Web MIDI (Chrome and Edge): every input plays the piano; note on and off, and the sustain pedal (CC 64). */

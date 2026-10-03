@@ -5,7 +5,7 @@ import { piano } from "$lib/audio/piano.svelte";
 import { startLookahead } from "$lib/audio/lookahead";
 import {
 	beatsFromHold,
-	restBeatsFromGap,
+	jotLengths,
 	type ChordBeats,
 	type ProgressionEntry,
 } from "$lib/utils/chordRhythm";
@@ -14,9 +14,10 @@ import type { ProgressionData } from "$lib/val/ProgressionSchema";
 
 /**
  * The progression pad (docs/chord-player.md, "The progression pad"): the
- * chords played on the circle, jotted down as they go. A chord's length
- * comes from how long it was held, quantized to one, two or four beats at
- * the metronome's tempo, and a pause before it becomes a rest. The pad
+ * chords played on the circle, jotted down as they go. A chord lasts until
+ * the next one starts, quantized to one, two or four beats at the
+ * metronome's tempo (its held length until then), and a silence of two
+ * beats or more before the next becomes a rest (`jotLengths`). The pad
  * plays the progression back through the chord player, with a click of its
  * own in the piano's context, so the chords and the click share one clock;
  * the free-running metronome is the click to jot against. The pad is kept
@@ -52,8 +53,8 @@ function write(name: string, value: string) {
 
 class ProgressionPad {
 	entries = $state<ProgressionEntry[]>([]);
-	/** Chords played on the circle are written to the pad. */
-	jot = $state(true);
+	/** Chords played on the circle are written to the pad (off until asked: it throws nothing away, but it is a mode). */
+	jot = $state(false);
 	loop = $state(false);
 	/** A click under playback. */
 	click = $state(true);
@@ -67,7 +68,8 @@ class ProgressionPad {
 	name = $state("");
 	#loaded = false;
 	#holds = new Map<string, Hold>();
-	#lastRelease = 0;
+	/** The last chord jotted, revised when the next starts: it lasts until then. */
+	#last: { index: number; start: number; release: number } | null = null;
 	#undo: ProgressionEntry[][] = [];
 	#ctx: AudioContext | null = null;
 	#stopLoop: (() => void) | null = null;
@@ -82,7 +84,7 @@ class ProgressionPad {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
 		metronome.load();
-		this.jot = read("pad-jot") !== "0";
+		this.jot = read("pad-jot") === "1";
 		this.loop = read("pad-loop") === "1";
 		this.click = read("pad-click") !== "0";
 		try {
@@ -114,6 +116,7 @@ class ProgressionPad {
 	#set(entries: ProgressionEntry[]) {
 		this.#undo = [...this.#undo, this.entries].slice(-MAX_UNDO);
 		this.entries = entries;
+		this.#last = null;
 		if (this.selected >= entries.length) this.selected = -1;
 		if (this.playing) this.stop();
 		this.#persist();
@@ -135,12 +138,22 @@ class ProgressionPad {
 	#down(by: string, chord: { label: string; wedge: string; notes: number[] }) {
 		if (!this.jot || this.playing || by.startsWith("pad:")) return;
 		const now = performance.now();
-		// A chord pressed while another is still down ends the first there: legato, no rest between.
+		// A chord pressed while another is still down ends the first there: legato.
 		for (const held of this.#holds.keys()) this.#finish(held, now);
-		if (this.entries.length > 0 && this.#lastRelease > 0) {
-			const rest = restBeatsFromGap(now - this.#lastRelease, metronome.bpm);
-			if (rest !== 0) this.#append({ kind: "rest", beats: rest });
+		// The last chord lasted until now; a long silence after it is a rest.
+		const last = this.#last;
+		if (last && this.entries[last.index]?.kind === "chord") {
+			const beat = 60_000 / metronome.bpm;
+			const { chord: beats, rest } = jotLengths(
+				(last.release - last.start) / beat,
+				(now - last.start) / beat,
+			);
+			const entries = this.entries.map((e, i) => (i === last.index ? { ...e, beats } : e));
+			if (rest !== 0 && entries.length < MAX_ENTRIES) entries.push({ kind: "rest", beats: rest });
+			this.entries = entries;
+			this.#persist();
 		}
+		this.#last = null;
 		this.#holds.set(by, { start: now, label: chord.label, wedge: chord.wedge, notes: chord.notes });
 	}
 	#up(by: string) {
@@ -151,7 +164,6 @@ class ProgressionPad {
 		const hold = this.#holds.get(by);
 		if (!hold) return;
 		this.#holds.delete(by);
-		this.#lastRelease = at;
 		this.#append({
 			kind: "chord",
 			label: hold.label,
@@ -159,6 +171,7 @@ class ProgressionPad {
 			notes: hold.notes,
 			beats: beatsFromHold(at - hold.start, metronome.bpm),
 		});
+		this.#last = { index: this.entries.length - 1, start: hold.start, release: at };
 	}
 	#append(entry: ProgressionEntry) {
 		if (this.entries.length >= MAX_ENTRIES) return;
@@ -169,6 +182,7 @@ class ProgressionPad {
 	setJot(on: boolean) {
 		this.jot = on;
 		this.#holds.clear();
+		this.#last = null;
 		write("pad-jot", on ? "1" : "0");
 	}
 	setLoop(on: boolean) {

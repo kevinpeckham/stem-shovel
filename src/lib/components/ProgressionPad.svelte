@@ -215,8 +215,8 @@
 			{#if pad.entries.length === 0}
 				<span class="opacity-60 text-13px py-1"
 					>{pad.jot
-						? "Play chords on the circle to jot them here: hold one for its length, pause for a rest."
-						: "Jot is off: the pad keeps what it has."}</span
+						? "Play chords on the circle to jot them here: each lasts until the next, a long silence is a rest."
+						: "Switch Jot on and play chords on the circle to write them here."}</span
 				>
 			{:else}
 				{#each measures as bar, m (m)}

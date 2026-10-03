@@ -1,5 +1,11 @@
 <script lang="ts">
 	import { piano } from "$lib/audio/piano.svelte";
+	import { notify } from "$lib/state/notifications.svelte";
+
+	function reset() {
+		piano.resetEffects();
+		notify("Effects reset");
+	}
 
 	/**
 	 * The piano engine's effects as sliders and switches (docs/piano.md,
@@ -443,4 +449,15 @@
 			/>
 		</label>
 	</div>
+</div>
+<div class="px-3 pb-3 flex justify-end">
+	<button
+		class="device-button-sm px-3"
+		type="button"
+		title="Every effect back to its default; the sound stays"
+		onclick={reset}
+	>
+		<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span>
+		Reset all to defaults
+	</button>
 </div>

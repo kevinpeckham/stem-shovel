@@ -12,7 +12,7 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 ## Sound, presets and effects
 
-The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ and synths, the five preset buttons, the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary, and the volume. A preset loaded here is loaded on the piano too; to save or manage presets, press the bookmark button beside them to go to the piano page. A sound that drifts from its preset shows "edited" on the screen, as the piano's does.
+The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ and synths, the five preset buttons, the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary (and a Reset all to defaults button at its foot), and the volume. A preset loaded here is loaded on the piano too; to save or manage presets, press the bookmark button beside them to go to the piano page. A sound that drifts from its preset shows "edited" on the screen, as the piano's does.
 
 ## The Chords menu
 
@@ -24,7 +24,7 @@ The chord player plays the piano itself, so everything the piano has is here: th
 
 ## The progression pad
 
-Under the circle, the pad writes down what you play. With **Jot** on, every chord you press is added with its length in beats from how long you held it: a quick press is one beat, a longer hold two, a long one four, measured against the tempo in the Timing menu. A pause before a chord becomes a rest of one, two or four beats; a long pause (while you think) is not. Pressing the next chord before letting the last go runs them together with no rest. The pad shows the chords by bar, with a dot per beat, and counts the bars and beats.
+Under the circle, the pad writes down what you play. Switch **Jot** on and every chord you press is added, lasting until the next one starts: one, two or four beats, measured against the tempo in the Timing menu, so the time it takes to find the next wedge is not a silence. Let a chord go and leave two beats or more of silence before the next, and a rest of two or four beats is written; a long pause while you think is not. The last chord keeps the length you held it until the next one tells the pad how long it really lasted. The pad shows the chords by bar, with a dot per beat, and counts the bars and beats.
 
 Tap a chord on the pad to change it: one, two or four beats, a rest in its place, or Remove. **Undo** steps back through every change, **Clear** empties the pad (Undo brings it back). **Play** plays the progression through the chord player, lighting each chord on the circle and the pad as it sounds, with a click under it if the Timing menu says so; **Loop** plays it round and round; Play again, or Escape, stops. **MIDI** saves the progression as a `.mid` file for your DAW, at the pad's tempo and meter, as a piano. The pad keeps its chords in your browser between visits.
 

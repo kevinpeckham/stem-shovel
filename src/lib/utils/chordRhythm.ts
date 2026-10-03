@@ -12,21 +12,34 @@ function beatMs(bpm: number): number {
 }
 
 /** Under a beat and a half is a one-beat stab, under three a half-note hold, longer a whole bar of 4/4. */
-export function beatsFromHold(heldMs: number, bpm: number): ChordBeats {
-	const beats = heldMs / beatMs(bpm);
+/** Beats quantized to one, two or four: under a beat and a half is one, under three is two. */
+export function quantizeBeats(beats: number): ChordBeats {
 	if (beats < 1.5) return 1;
 	if (beats < 3) return 2;
 	return 4;
 }
 
-/** Under half a beat is articulation (no rest); up to eight beats a rest of 1, 2 or 4; longer is thinking time (nothing). */
-export function restBeatsFromGap(gapMs: number, bpm: number): ChordBeats | 0 {
-	const beats = gapMs / beatMs(bpm);
-	if (beats < 0.5) return 0;
-	if (beats < 1.5) return 1;
-	if (beats < 3) return 2;
-	if (beats <= 8) return 4;
-	return 0;
+/** A held chord's beats at the tempo, as first jotted (revised by `jotLengths` when the next chord starts). */
+export function beatsFromHold(heldMs: number, bpm: number): ChordBeats {
+	return quantizeBeats(heldMs / beatMs(bpm));
+}
+
+/**
+ * A chord's lengths once the next chord starts: it lasts until the next
+ * one (the time to find the next wedge is not a rest), unless the silence
+ * after it was two beats or more, when the chord keeps its held length and
+ * the silence is a rest of two or four beats; a silence over eight beats
+ * is thinking time, no rest.
+ */
+export function jotLengths(
+	heldBeats: number,
+	untilNextBeats: number,
+): { chord: ChordBeats; rest: ChordBeats | 0 } {
+	const silence = untilNextBeats - heldBeats;
+	if (silence < 2) return { chord: quantizeBeats(Math.max(heldBeats, untilNextBeats)), rest: 0 };
+	const chord = quantizeBeats(heldBeats);
+	if (silence > 8) return { chord, rest: 0 };
+	return { chord, rest: silence < 3 ? 2 : 4 };
 }
 
 export type ProgressionEntry =

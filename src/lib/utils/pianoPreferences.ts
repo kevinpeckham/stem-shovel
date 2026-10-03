@@ -17,6 +17,9 @@ export interface PianoDelay {
 	/** Analog character: a soft clip in the loop, darker repeats and a slow wobble of the time (docs/piano.md, "Effects"). */
 	analog: boolean;
 }
+/** The reverb's level and room size as the piano starts. */
+export const DEFAULT_PIANO_REVERB = 0.25;
+export const DEFAULT_PIANO_REVERB_SIZE = 0.35;
 export const DEFAULT_PIANO_DELAY: PianoDelay = {
 	time: 0.35,
 	feedback: 0.35,

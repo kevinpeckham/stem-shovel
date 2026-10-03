@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
 	beatsFromHold,
+	jotLengths,
 	measuresOf,
 	nextBeats,
-	restBeatsFromGap,
 	type ProgressionEntry,
 } from "./chordRhythm";
 
@@ -26,12 +26,19 @@ describe("chordRhythm", () => {
 		expect(beatsFromHold(1500, 120)).toBe(4);
 		expect(beatsFromHold(9000, 120)).toBe(4);
 	});
-	it("reads a gap as articulation, a rest, or thinking time", () => {
-		expect(restBeatsFromGap(200, 120)).toBe(0);
-		expect(restBeatsFromGap(600, 120)).toBe(1);
-		expect(restBeatsFromGap(1000, 120)).toBe(2);
-		expect(restBeatsFromGap(3000, 120)).toBe(4);
-		expect(restBeatsFromGap(4001, 120)).toBe(0);
+	it("stretches a chord to the next one when the silence between is short", () => {
+		// Quick mouse clicks: held a fifth of a beat, the next 0.8 beats later.
+		expect(jotLengths(0.2, 0.8)).toEqual({ chord: 1, rest: 0 });
+		// A short press, the next chord two beats later: the chord lasted two beats.
+		expect(jotLengths(0.3, 2)).toEqual({ chord: 2, rest: 0 });
+		// Legato: held past the next chord's start.
+		expect(jotLengths(1.2, 1)).toEqual({ chord: 1, rest: 0 });
+		expect(jotLengths(4.2, 4)).toEqual({ chord: 4, rest: 0 });
+	});
+	it("writes a rest for a silence of two beats or more, none for thinking time", () => {
+		expect(jotLengths(1, 3)).toEqual({ chord: 1, rest: 2 });
+		expect(jotLengths(2, 6)).toEqual({ chord: 2, rest: 4 });
+		expect(jotLengths(1, 20)).toEqual({ chord: 1, rest: 0 });
 	});
 	it("groups entries into measures, a straddling entry starting the next bar", () => {
 		const m = measuresOf([chord(2), chord(1), chord(2), rest(1), chord(4)], 4);
