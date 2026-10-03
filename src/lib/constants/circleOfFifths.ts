@@ -113,6 +113,48 @@ export const CHORD_KEY_LABELS: { major: string; minor: string }[] = [
 	{ major: "=", minor: "]" },
 ];
 
+/**
+ * The other keyboard map (Kevin): by degree. The number row plays the
+ * major chord on each degree of the key, 1 to 7 for I to VII and 8 to =
+ * for the five chromatic roots in rising order (♭II, ♭III, ♯IV, ♭VI,
+ * ♭VII); the row below plays the minor on the same root (Q is i, R is iv,
+ * U is vii). So I–IV–V is 1, 4, 5 and a ii–V–I is W, 5, 1. `position` is
+ * the root's distance from the key clockwise in fifths.
+ */
+const DEGREE_FIFTHS = [0, 2, 4, 11, 1, 3, 5, 7, 9, 6, 8, 10];
+const DEGREE_CODES = [
+	["Digit1", "KeyQ"],
+	["Digit2", "KeyW"],
+	["Digit3", "KeyE"],
+	["Digit4", "KeyR"],
+	["Digit5", "KeyT"],
+	["Digit6", "KeyY"],
+	["Digit7", "KeyU"],
+	["Digit8", "KeyI"],
+	["Digit9", "KeyO"],
+	["Digit0", "KeyP"],
+	["Minus", "BracketLeft"],
+	["Equal", "BracketRight"],
+];
+/** The inner ring holds relative minors: the minor on a root sits three fifths anticlockwise of that root's major (Cm under E♭). */
+const minorPosition = (fifths: number) => (fifths + 9) % 12;
+export const DEGREE_KEY_CODES: Record<string, { position: number; quality: "major" | "minor" }> =
+	Object.fromEntries(
+		DEGREE_CODES.flatMap(([major, minor], d) => [
+			[major, { position: DEGREE_FIFTHS[d], quality: "major" }],
+			[minor, { position: minorPosition(DEGREE_FIFTHS[d]), quality: "minor" }],
+		]),
+	);
+/** The degree map's labels by a wedge's distance from the key in fifths (the same shape as CHORD_KEY_LABELS): the major on that root, and the relative minor drawn there, whose root is three fifths on. */
+export const DEGREE_KEY_LABELS: { major: string; minor: string }[] = Array.from(
+	{ length: 12 },
+	(_, fifths) => ({
+		major: CHORD_KEY_LABELS[DEGREE_FIFTHS.indexOf(fifths)].major,
+		minor: CHORD_KEY_LABELS[DEGREE_FIFTHS.indexOf((fifths + 3) % 12)].minor,
+	}),
+);
+export type ChordKeyMap = "circle" | "degree";
+
 export const CHORD_VOICINGS = [
 	{ id: "standard", label: "Standard", hint: "the triad in root position" },
 	{ id: "spread", label: "Spread", hint: "the root an octave down, the fifth an octave up" },

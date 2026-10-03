@@ -207,7 +207,13 @@ it turns itself over): a bowl with I at the bottom for a thumb on a phone
 (Kevin). Defaults after Kevin's pass: the dim on, the signatures off, the
 key at the bottom (the arch a bowl). The keyboard map is relative to the
 key's drawn index (`keyIndex`), so 1 and Q are the key wherever it sits;
-the signatures run along the rim, rotated with their wedge. **Notes and panels** (Kevin, the same day): the page holds the device in
+the signatures run along the rim, rotated with their wedge. A second
+keyboard map, by degree (`DEGREE_KEY_CODES`, `chordPlayer.keyMap`,
+the Circle menu): the number row is I to VII then the five chromatic roots
+rising (♭II ♭III ♯IV ♭VI ♭VII), the row below the minors on the same
+roots, so 1 4 5 is I–IV–V; Kevin asked for 1 to 7 and left the rest open,
+and the chromatic five on 8 to = in rising order keeps every root on one
+column with its minor beneath it. **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,

@@ -15,7 +15,6 @@
 		slotPath,
 		type WedgeSlot,
 	} from "$lib/utils/circleGeometry";
-	import { CHORD_KEY_LABELS } from "$lib/constants/circleOfFifths";
 
 	/**
 	 * The circle of fifths as an SVG instrument (docs/chord-player.md): two
@@ -37,8 +36,9 @@
 		/** The circle; the arch (the key at the top); the arch upside down, a bowl with the key at the bottom for a thumb. */
 		layout?: "circle" | "arch" | "arch-down";
 		showSignatures: boolean;
-		/** The computer keyboard's keys on the wedges. */
+		/** The computer keyboard's keys on the wedges, labelled by distance from the key clockwise. */
 		showKeys?: boolean;
+		keyLabels?: { major: string; minor: string }[];
 		/** The key center's drawn index (0 at the top, 6 at the bottom), for the numerals and the highlight. */
 		keyIndex?: number;
 		/** Roman numerals on every wedge, relative to the key (I, V, II… outside; vi, iii, vii… inside). */
@@ -61,6 +61,7 @@
 		layout = "circle",
 		showSignatures,
 		showKeys = false,
+		keyLabels = [],
 		keyIndex = 0,
 		showNumerals = false,
 		highlightKey = false,
@@ -204,7 +205,7 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k.x}
-					y={k.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].major}</text
+					y={k.y}>{keyLabels[(i - keyIndex + 12) % 12]?.major ?? ""}</text
 				>
 			{/if}
 		{/each}
@@ -306,7 +307,7 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k1.x}
-					y={k1.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].major}</text
+					y={k1.y}>{keyLabels[(i - keyIndex + 12) % 12]?.major ?? ""}</text
 				>
 				<text
 					class="pointer-events-none fill-blue-400"
@@ -314,7 +315,7 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k2.x}
-					y={k2.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].minor}</text
+					y={k2.y}>{keyLabels[(i - keyIndex + 12) % 12]?.minor ?? ""}</text
 				>
 			{/if}
 			{#if showSignatures && p.signature && slot.kind === "arc" && slot.scale >= 1}

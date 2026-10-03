@@ -46,6 +46,8 @@ The tempo in beats per minute, by the slider, the steps, the number or **Tap** (
 
 Press the keyboard button on the device to show each wedge's key, with a strip of the other shortcuts under the circle. The number row plays the twelve major chords clockwise from your key, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always your key, wherever it sits.
 
+The Circle menu offers a second map, **by degree**: <kbd>1</kbd> to <kbd>7</kbd> play the major chord on each degree of the key (I to VII), so a I–IV–V is <kbd>1</kbd>, <kbd>4</kbd>, <kbd>5</kbd>; <kbd>8</kbd>, <kbd>9</kbd>, <kbd>0</kbd>, <kbd>-</kbd> and <kbd>=</kbd> play the five chromatic chords in rising order (♭II, ♭III, ♯IV, ♭VI, ♭VII); and the row below plays the minor on the same root, so <kbd>W</kbd> is ii, <kbd>E</kbd> iii and <kbd>Y</kbd> vi, and a ii–V–I is <kbd>W</kbd>, <kbd>5</kbd>, <kbd>1</kbd>. The keyboard button's labels follow whichever map is on.
+
 ## On a phone
 
 The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels and chord numerals, the presets, the volume and the Chords, Circle and Effects settings. The progression pad, the notes and the Timing menu are for wider screens. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.

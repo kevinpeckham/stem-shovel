@@ -1,8 +1,13 @@
 import { piano } from "$lib/audio/piano.svelte";
 import {
+	CHORD_KEY_CODES,
+	CHORD_KEY_LABELS,
 	CHROMATIC_NOTES,
 	CIRCLE_OF_FIFTHS,
+	DEGREE_KEY_CODES,
+	DEGREE_KEY_LABELS,
 	STRUMS,
+	type ChordKeyMap,
 	type ChordQuality,
 	type ChordVoicing,
 	type CirclePosition,
@@ -65,6 +70,8 @@ class ChordPlayerEngine {
 	showKeys = $state(false);
 	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
 	layout = $state<"circle" | "arch">("circle");
+	/** The computer keyboard: around the circle from the key, or by degree (1 to 7 are I to VII). */
+	keyMap = $state<ChordKeyMap>("circle");
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
@@ -101,6 +108,7 @@ class ChordPlayerEngine {
 		this.showSignatures = read("signatures") === "1";
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "arch") this.layout = "arch";
+		if (read("key-map") === "degree") this.keyMap = "degree";
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") !== "0";
 		piano.load();
@@ -240,6 +248,18 @@ class ChordPlayerEngine {
 	setShowSignatures(on: boolean) {
 		this.showSignatures = on;
 		write("signatures", on ? "1" : "0");
+	}
+	/** The active keyboard map: a key code to a drawn-index offset from the key and a quality. */
+	get keyCodes(): Record<string, { position: number; quality: "major" | "minor" }> {
+		return this.keyMap === "degree" ? DEGREE_KEY_CODES : CHORD_KEY_CODES;
+	}
+	/** The key labels by distance from the key clockwise, for the circle. */
+	get keyLabels(): { major: string; minor: string }[] {
+		return this.keyMap === "degree" ? DEGREE_KEY_LABELS : CHORD_KEY_LABELS;
+	}
+	setKeyMap(map: ChordKeyMap) {
+		this.keyMap = map;
+		write("key-map", map);
 	}
 	setLayout(layout: "circle" | "arch") {
 		this.layout = layout;

@@ -10,7 +10,7 @@ Switch Jot on and the pad under the circle writes down what you play: each chord
 
 ### Quick Tips
 
-- Play from the computer keyboard: the number row plays the majors around the circle from the top, the row below it the minors, and Shift adds the seventh. The keyboard button shows each wedge's key.
+- Play from the computer keyboard: the number row plays the majors round the circle from your key, the row below it the minors, and Shift adds the seventh; or switch the Circle menu to the map by degree, where 1, 4, 5 is I–IV–V. The keyboard button shows each wedge's key.
 - Notes mode turns the circle into twelve single notes, for a melody over a chord you remember.
 - The Chords menu chooses the voicing: spread or rich for a fuller sound, bass for a low root under the triad.
 - A strum, in the Chords menu, staggers the notes as a hand would; it suits the grand piano.

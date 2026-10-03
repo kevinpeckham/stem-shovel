@@ -10,12 +10,12 @@
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
-		CHORD_KEY_CODES,
 		CHORD_VOICINGS,
 		CIRCLE_OF_FIFTHS,
 		KEY_CENTERS,
 		SEVENTH_TYPES,
 		STRUMS,
+		type ChordKeyMap,
 		type ChordQuality,
 		type ChordVoicing,
 		type SeventhType,
@@ -149,7 +149,7 @@
 			chordPlayer.allOff();
 			return;
 		}
-		const key = CHORD_KEY_CODES[e.code];
+		const key = chordPlayer.keyCodes[e.code];
 		if (!key || e.repeat || downCodes.has(e.code)) return;
 		e.preventDefault();
 		downCodes.add(e.code);
@@ -408,6 +408,7 @@
 			layout={chordPlayer.drawnLayout}
 			showSignatures={chordPlayer.showSignatures}
 			showKeys={chordPlayer.showKeys}
+			keyLabels={chordPlayer.keyLabels}
 			keyIndex={chordPlayer.keyIndex}
 			showNumerals={chordPlayer.showNumerals}
 			highlightKey={chordPlayer.highlightKey}
@@ -426,8 +427,14 @@
 			<span><kbd>Space</kbd> sustain</span>
 			<span><kbd>Shift</kbd> seventh</span>
 			<span><kbd>Esc</kbd> all off</span>
-			<span><kbd>1</kbd>–<kbd>=</kbd> majors</span>
-			<span><kbd>Q</kbd>–<kbd>]</kbd> minors</span>
+			{#if chordPlayer.keyMap === "degree"}
+				<span><kbd>1</kbd>–<kbd>7</kbd> I–VII</span>
+				<span><kbd>8</kbd>–<kbd>=</kbd> ♭II ♭III ♯IV ♭VI ♭VII</span>
+				<span><kbd>Q</kbd>–<kbd>]</kbd> the minors</span>
+			{:else}
+				<span><kbd>1</kbd>–<kbd>=</kbd> majors round the circle</span>
+				<span><kbd>Q</kbd>–<kbd>]</kbd> minors</span>
+			{/if}
 		</div>
 	{/if}
 	<!-- The progression pad, from @xl: a phone keeps to the circle (Kevin). -->
@@ -675,6 +682,21 @@
 			<span class="block text-12px opacity-70 mt-1"
 				>The circle turns so this key's chord sits at the bottom (or the top), its neighbours the
 				chords that fit it best.</span
+			>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Computer keyboard</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.keyMap}
+				onchange={(e) => chordPlayer.setKeyMap(e.currentTarget.value as ChordKeyMap)}
+			>
+				<option value="circle">Round the circle · 1 is the key, then clockwise in fifths</option>
+				<option value="degree">By degree · 1 to 7 are I to VII, 8 to = the chromatic chords</option>
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>The number row plays the majors, the row below the minors on the same roots. By degree,
+				I–IV–V is 1, 4, 5.</span
 			>
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
