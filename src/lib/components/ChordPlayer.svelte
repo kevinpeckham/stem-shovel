@@ -41,7 +41,7 @@
 	/**
 	 * The Chord Player device (docs/chord-player.md): the circle of fifths
 	 * played through the piano engine, with the piano's Sound, Effects,
-	 * Presets and Volume beside its own Chords and Circle menus. Presets
+	 * Presets and Volume beside its own Chords and UI menus. Presets
 	 * here load; saving and managing them is the piano page's.
 	 */
 	interface SavedPreset {
@@ -418,7 +418,7 @@
 			>
 		</div>
 		<div class="hidden @xl-block">
-			<div class="device-button-group-label text-dark hidden @xl-block">View</div>
+			<div class="device-button-group-label text-dark hidden @xl-block">Guides</div>
 			{@render keysBlock()}
 		</div>
 		<div class="hidden @xl-block">
@@ -457,16 +457,16 @@
 					]}
 				/>
 				<ContextMenu
-					ariaLabel="Circle settings"
-					title="Where the key sits, the signatures, the dim outside the key"
-					iconClass="i-ph-circle-dashed"
-					label="Circle"
+					ariaLabel="UI settings"
+					title="The layout, where the key sits, the signatures, the dim outside the key, the keyboard map"
+					iconClass="i-ph-layout"
+					label="UI"
 					position="bottom right"
 					buttonBaseClasses="device-button-sm px-3"
 					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
-						{ id: "circle-heading", kind: "heading", label: "Circle" },
-						{ id: "circle-block", kind: "snippet", snippet: circleMenuBlock },
+						{ id: "ui-heading", kind: "heading", label: "UI" },
+						{ id: "ui-block", kind: "snippet", snippet: circleMenuBlock },
 					]}
 				/>
 				<ContextMenu
@@ -615,7 +615,7 @@
 			<span class="i-ph-keyboard" aria-hidden="true"></span>
 		</button>
 		<button
-			class="device-button-sm px-3 rounded-none font-serif tracking-wider {chordPlayer.showNumerals
+			class="device-button-sm px-3 rounded-l-none font-serif tracking-wider {chordPlayer.showNumerals
 				? 'text-accent'
 				: ''}"
 			type="button"
@@ -626,20 +626,6 @@
 			aria-label="Chord numerals"
 			onclick={() => chordPlayer.setShowNumerals(!chordPlayer.showNumerals)}>IV</button
 		>
-		<button
-			class="device-button-sm px-3 rounded-l-none {chordPlayer.layout === 'arch'
-				? 'text-accent'
-				: ''}"
-			type="button"
-			aria-pressed={chordPlayer.layout === "arch"}
-			title={chordPlayer.layout === "arch"
-				? "The whole circle"
-				: "The arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out"}
-			aria-label="Arch layout"
-			onclick={() => chordPlayer.setLayout(chordPlayer.layout === "arch" ? "circle" : "arch")}
-		>
-			<span class="i-ph-rainbow" aria-hidden="true"></span>
-		</button>
 	</div>
 {/snippet}
 
@@ -704,11 +690,11 @@
 {#snippet compactMenuBlock()}
 	<div class="grid grid-cols-1 -mt-3">
 		{@render section("Play", modeBlock, true)}
-		{@render section("View", keysBlock)}
+		{@render section("Guides", keysBlock)}
 		{@render section("Presets", presetsBlock)}
 		{@render section("Volume", volumeBlock, true)}
 		{@render section("Chords", chordsMenuBlock)}
-		{@render section("Circle", circleMenuBlock)}
+		{@render section("UI", circleMenuBlock)}
 		{@render section("Effects", effectsMenuBlock)}
 	</div>
 {/snippet}
@@ -834,6 +820,22 @@
 
 {#snippet circleMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<label class="block">
+			<span class="device-button-label">Layout</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.layout}
+				onchange={(e) => chordPlayer.setLayout(e.currentTarget.value as "circle" | "arch")}
+			>
+				<option value="circle">The circle · all twelve keys round</option>
+				<option value="arch"
+					>The arch · the key and its neighbours big, the far keys small, no tritone</option
+				>
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>The arch turns over into a bowl, for a thumb on a phone, when the key is at the bottom.</span
+			>
+		</label>
 		<label class="block">
 			<span class="device-button-label">Key center</span>
 			<select
