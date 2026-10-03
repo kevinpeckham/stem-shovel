@@ -14,7 +14,9 @@ import {
 	type SeventhType,
 	type Strum,
 } from "$lib/constants/circleOfFifths";
-import { chordMidi, chordName, noteMidi } from "$lib/utils/chordNotes";
+import { CHORD_STYLES, type ChordStyleId } from "$lib/constants/chordStyles";
+import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
+import { styledChord, styledChordName } from "$lib/utils/styledChord";
 
 /**
  * The chord player (docs/chord-player.md): the circle of fifths played
@@ -52,6 +54,8 @@ class ChordPlayerEngine {
 	/** Chords on the wedges, or single notes. */
 	mode = $state<"chords" | "notes">("chords");
 	voicing = $state<ChordVoicing>("standard");
+	/** What the wedges carry by degree: triads, or a blues, jazz or lush set of sevenths and extensions (docs/chord-player.md, "Styles"). */
+	style = $state<ChordStyleId>("plain");
 	seventhType = $state<SeventhType>("dominant");
 	/** The momentary seventh: the 7 pad or Shift, held. */
 	seventhHeld = $state(false);
@@ -94,6 +98,8 @@ class ChordPlayerEngine {
 		const voicing = read("voicing");
 		if (voicing && ["standard", "spread", "rich", "bass", "rootBass"].includes(voicing))
 			this.voicing = voicing as ChordVoicing;
+		const style = read("style");
+		if (style && CHORD_STYLES.some((s) => s.id === style)) this.style = style as ChordStyleId;
 		const seventh = read("seventh-type");
 		if (seventh === "dominant" || seventh === "major7") this.seventhType = seventh;
 		const strum = read("strum");
@@ -154,15 +160,23 @@ class ChordPlayerEngine {
 			const position = this.positions[drawnIndex];
 			const chord = position[quality];
 			wedge = chord.id;
-			const type = seventh || this.seventhHeld ? this.seventhType : null;
-			notes = chordMidi({
-				pitch: chord.pitch,
+			// The wedge's degree in fifths from the key; a minor's is its own root's (vi under I).
+			const offset = (drawnIndex - this.keyIndex + 12) % 12;
+			const fifths = quality === "minor" ? (offset + 3) % 12 : offset;
+			const recipe = styledChord(
+				this.style,
+				fifths,
 				quality,
-				seventh: type,
+				seventh || this.seventhHeld,
+				this.seventhType,
+			);
+			notes = voiceChord({
+				pitch: chord.pitch,
+				intervals: recipe.intervals,
 				voicing: this.voicing,
 				octave: this.octave,
 			});
-			name = chordName(chord.label, quality, type);
+			name = styledChordName(chord.label, quality, recipe);
 		}
 		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
 		// More notes, each a little softer, so a rich voicing sums to about a triad's level (the limiter after the effects catches the rest).
@@ -212,6 +226,10 @@ class ChordPlayerEngine {
 		this.allOff();
 		this.mode = mode;
 		write("mode", mode);
+	}
+	setStyle(style: ChordStyleId) {
+		this.style = style;
+		write("style", style);
 	}
 	setVoicing(voicing: ChordVoicing) {
 		this.voicing = voicing;

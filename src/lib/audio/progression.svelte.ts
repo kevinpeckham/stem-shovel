@@ -142,7 +142,12 @@ class ProgressionPad {
 	}
 	/** What Save would store: the tempo and meter as they stand, and the entries. */
 	get data(): ProgressionData {
-		return { bpm: metronome.bpm, beatsPerBar: metronome.beatsPerBar, entries: this.entries };
+		return {
+			bpm: metronome.bpm,
+			beatsPerBar: metronome.beatsPerBar,
+			entries: this.entries,
+			style: chordPlayer.style,
+		};
 	}
 
 	// ---- jotting ----
@@ -244,6 +249,7 @@ class ProgressionPad {
 		this.#set(data.entries.slice(0, MAX_ENTRIES));
 		metronome.setBpm(data.bpm);
 		metronome.setBeats(data.beatsPerBar);
+		if (data.style) chordPlayer.setStyle(data.style);
 		this.savedId = saved?.id ?? null;
 		this.name = saved?.name ?? "";
 		this.notes = saved?.notes ?? "";

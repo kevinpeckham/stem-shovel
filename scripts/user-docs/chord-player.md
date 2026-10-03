@@ -16,6 +16,7 @@ The chord player plays the piano itself, so everything the piano has is here: th
 
 ## The Chords menu
 
+- **Style**: what the wedges carry by their place in the key. **Plain** is the triads, with the 7 pad adding a seventh. **Blues** puts a dominant seventh on every chord (the 7 pad makes it a ninth). **Jazz** gives each degree its own: maj7 on I and IV, m7 on ii, iii and vi, a dominant 7 on V and the borrowed chords, m7♭5 on vii; the 7 pad adds the ninth, or the thirteenth on V. **Lush** stacks ninths, elevenths and thirteenths for gospel and neo-soul. The chord names on the readout say what you got, and a saved progression remembers its style.
 - **Voicing**: standard (the plain triad), spread (the root an octave down, the fifth an octave up), rich (two bass roots below and the root doubled above), bass (the triad over a low root) or root bass (a bass root under the first inversion).
 - **The seventh on a major chord**: a dominant seventh (C7) or a major seventh (Cmaj7).
 - **Strum**: the notes of a chord a few milliseconds apart, low to high, as a hand plays them; slow, medium or fast.

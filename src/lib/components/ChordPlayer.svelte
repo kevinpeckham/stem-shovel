@@ -21,6 +21,7 @@
 		type SeventhType,
 		type Strum,
 	} from "$lib/constants/circleOfFifths";
+	import { CHORD_STYLES, type ChordStyleId } from "$lib/constants/chordStyles";
 	import { PIANO_INSTRUMENTS, type PianoInstrumentId } from "$lib/constants/piano";
 	import { PIANO_PRESET_SLOTS } from "$lib/val/PianoPresetSchema";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
@@ -204,6 +205,9 @@
 				<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
 					<span>Key of {keyLabel}</span>
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
+					{#if chordPlayer.style !== "plain"}<span
+							>· {CHORD_STYLES.find((s) => s.id === chordPlayer.style)?.label.toLowerCase()}</span
+						>{/if}
 					<span
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
 					>
@@ -598,6 +602,21 @@
 
 {#snippet chordsMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<label class="block">
+			<span class="device-button-label">Style</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.style}
+				onchange={(e) => chordPlayer.setStyle(e.currentTarget.value as ChordStyleId)}
+			>
+				{#each CHORD_STYLES as s (s.id)}<option value={s.id}>{s.label} · {s.hint}</option>{/each}
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>What the wedges carry by their place in the key. Blues puts a dominant seventh on every
+				chord, jazz and lush the sevenths and extensions each degree takes; the 7 pad adds the next
+				extension. Plain is triads with the pad's seventh.</span
+			>
+		</label>
 		<label class="block">
 			<span class="device-button-label">Voicing</span>
 			<select

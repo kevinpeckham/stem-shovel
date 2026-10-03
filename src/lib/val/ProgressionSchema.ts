@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { CHORD_STYLES } from "../constants/chordStyles";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
@@ -31,6 +32,8 @@ export const ProgressionDataSchema = v.object({
 	bpm: v.pipe(v.number(), v.minValue(30), v.maxValue(300)),
 	beatsPerBar: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(6)),
 	entries: v.pipe(v.array(ProgressionEntrySchema), v.maxLength(400)),
+	/** The chord style it was jotted in, so a reopened progression keeps jotting in the same sound (the entries carry their notes regardless). */
+	style: v.optional(v.picklist(CHORD_STYLES.map((s) => s.id))),
 });
 export type ProgressionData = v.InferOutput<typeof ProgressionDataSchema>;
 

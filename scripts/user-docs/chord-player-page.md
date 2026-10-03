@@ -12,7 +12,7 @@ Switch Jot on and the pad under the circle writes down what you play: each chord
 
 - Play from the computer keyboard: the number row plays the majors round the circle from your key, the row below it the minors, and Shift adds the seventh; or switch the Circle menu to the map by degree, where 1, 4, 5 is I–IV–V. The keyboard button shows each wedge's key.
 - Notes mode turns the circle into twelve single notes, for a melody over a chord you remember.
-- The Chords menu chooses the voicing: spread or rich for a fuller sound, bass for a low root under the triad.
+- The Chords menu's Style puts the sevenths on the buttons: Blues for dominant sevenths everywhere, Jazz for maj7, m7 and m7♭5 by degree, Lush for ninths and thirteenths. Its Voicing spreads them: spread or rich for a fuller sound, bass for a low root.
 - A strum, in the Chords menu, staggers the notes as a hand would; it suits the grand piano.
 - Space is the sustain pedal and Escape stops everything, as on the piano.
 - The arch button draws the key and its neighbours big across the top and runs the far keys straight down from its ends, when the circle is more than you need; with the key at the bottom (the Circle menu) it turns over for a thumb on a phone.
