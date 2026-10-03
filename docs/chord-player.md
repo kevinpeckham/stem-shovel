@@ -183,9 +183,12 @@ shares. Saved progressions are the `progression` table (migration 0069;
 `remote/progressions.remote.ts` mirrors the beats: an account's library,
 every member reads, editors keep), loaded by the page with the piano
 presets and handled in `ProgressionPad.svelte`'s Saved menu. The Circle
-menu gained Roman numerals on the key's six diatonic chords and a dim on
-the rest (`CircleOfFifths.svelte`: IV I V outside, ii vi iii inside, from
-the key's drawn index). **Notes and panels** (Kevin, the same day): the page holds the device in
+menu gained a dim on the chords outside the key, and the device a numerals
+toggle (IV, beside the keyboard button) that writes every wedge's Roman
+numeral relative to the key (`CircleOfFifths.svelte`: a table of twelve by
+distance clockwise from the key's drawn index, per ring; the diatonic six
+in accent). With the key labels up, a strip under the circle names the
+other shortcuts. **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,

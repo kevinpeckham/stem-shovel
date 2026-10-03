@@ -63,7 +63,7 @@ class ChordPlayerEngine {
 	showKeys = $state(false);
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
-	/** Roman numerals on the diatonic wedges, and the rest dimmed, for the key center (the Circle menu). */
+	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
 	showNumerals = $state(false);
 	highlightKey = $state(false);
 	/** The progression pad listens to presses and releases to jot them (docs/chord-player.md, "The progression pad"). */

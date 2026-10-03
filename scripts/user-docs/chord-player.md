@@ -6,7 +6,7 @@
 
 The circle shows the twelve major chords on its outer ring, going round in fifths (C, G, D, A…), and each one's relative minor on the inner ring, with the key signature beside it. Press a wedge with the mouse or a finger and the chord sounds until you let go; press two wedges with two fingers and both sound. The chords next to any chord are the ones that fit it best, so a song in one key lives in a few neighbouring wedges.
 
-**Key** turns the circle so your song's key sits at the top; the Circle menu can put it at the bottom instead, hide the key signatures, write the Roman numerals (I, ii, iii, IV, V, vi) on the six chords of the key, and dim the chords outside it. **7** adds a seventh to every chord while you hold it (or hold Shift): a dominant or major seventh on a major chord, as the Chords menu says, and the minor seventh on a minor. A second finger on a sounding wedge adds the seventh to that chord alone.
+**Key** turns the circle so your song's key sits at the top; the Circle menu can put it at the bottom instead, hide the key signatures, and dim the chords outside the key. The **IV** button beside the keyboard button writes every chord's Roman numeral in the key on its wedge, the six chords of the key in yellow (I, ii, iii, IV, V, vi) and the rest, like ♭VII or ♯iv, in grey. **7** adds a seventh to every chord while you hold it (or hold Shift): a dominant or major seventh on a major chord, as the Chords menu says, and the minor seventh on a minor. A second finger on a sounding wedge adds the seventh to that chord alone.
 
 **Notes** turns the circle into twelve single notes, chromatic from the key at the top, for a melody; **Chords** turns it back.
 
@@ -44,11 +44,11 @@ The tempo in beats per minute, by the slider, the steps, the number or **Tap** (
 
 ## Playing on the computer keyboard
 
-Press the keyboard button on the device to show each wedge's key. The number row plays the twelve major chords clockwise from the top, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always the key at the top.
+Press the keyboard button on the device to show each wedge's key, with a strip of the other shortcuts under the circle. The number row plays the twelve major chords clockwise from the top, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always the key at the top.
 
 ## On a phone
 
-The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels, the presets, the volume and the Chords, Circle and Effects settings. The progression pad, the notes and the Timing menu are for wider screens. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.
+The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels and chord numerals, the presets, the volume and the Chords, Circle and Effects settings. The progression pad, the notes and the Timing menu are for wider screens. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.
 
 ## A note on latency
 

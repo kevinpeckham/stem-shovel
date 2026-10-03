@@ -413,6 +413,19 @@
 			onrelease={release}
 		/>
 	</div>
+	<!-- With the key labels up, the rest of the keyboard: a strip of shortcuts under the circle (Kevin). -->
+	{#if chordPlayer.showKeys && keyboard}
+		<div
+			class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+			aria-label="Keyboard shortcuts"
+		>
+			<span><kbd>Space</kbd> sustain</span>
+			<span><kbd>Shift</kbd> seventh</span>
+			<span><kbd>Esc</kbd> all off</span>
+			<span><kbd>1</kbd>–<kbd>=</kbd> majors</span>
+			<span><kbd>Q</kbd>–<kbd>]</kbd> minors</span>
+		</div>
+	{/if}
 	<!-- The progression pad, from @xl: a phone keeps to the circle (Kevin). -->
 	{#if pad}
 		<div class="hidden @xl-block">
@@ -460,18 +473,32 @@
 {/snippet}
 
 {#snippet keysBlock()}
-	<button
-		class="device-button-sm px-3 {chordPlayer.showKeys ? 'text-accent' : ''}"
-		type="button"
-		aria-pressed={chordPlayer.showKeys}
-		title={chordPlayer.showKeys
-			? "Hide the computer keyboard's keys"
-			: "Show the computer keyboard's keys on the circle"}
-		aria-label="Keyboard labels"
-		onclick={() => chordPlayer.setShowKeys(!chordPlayer.showKeys)}
-	>
-		<span class="i-ph-keyboard" aria-hidden="true"></span>
-	</button>
+	<div class="flex gap-px" role="group" aria-label="Labels">
+		<button
+			class="device-button-sm px-3 rounded-r-none {chordPlayer.showKeys ? 'text-accent' : ''}"
+			type="button"
+			aria-pressed={chordPlayer.showKeys}
+			title={chordPlayer.showKeys
+				? "Hide the computer keyboard's keys"
+				: "Show the computer keyboard's keys on the circle"}
+			aria-label="Keyboard labels"
+			onclick={() => chordPlayer.setShowKeys(!chordPlayer.showKeys)}
+		>
+			<span class="i-ph-keyboard" aria-hidden="true"></span>
+		</button>
+		<button
+			class="device-button-sm px-3 rounded-l-none font-serif tracking-wider {chordPlayer.showNumerals
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-pressed={chordPlayer.showNumerals}
+			title={chordPlayer.showNumerals
+				? "Hide the chord numerals"
+				: "Show each chord's Roman numeral in the key"}
+			aria-label="Chord numerals"
+			onclick={() => chordPlayer.setShowNumerals(!chordPlayer.showNumerals)}>IV</button
+		>
+	</div>
 {/snippet}
 
 {#snippet presetsBlock()}
@@ -649,15 +676,6 @@
 				onchange={(e) => chordPlayer.setShowSignatures(e.currentTarget.checked)}
 			/>
 			Show the key signatures
-		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={chordPlayer.showNumerals}
-				onchange={(e) => chordPlayer.setShowNumerals(e.currentTarget.checked)}
-			/>
-			Roman numerals on the key's chords (I ii iii IV V vi)
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
 			<input

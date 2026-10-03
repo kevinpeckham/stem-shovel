@@ -24,7 +24,7 @@
 		showKeys?: boolean;
 		/** The key center's drawn index (0 at the top, 6 at the bottom), for the numerals and the highlight. */
 		keyIndex?: number;
-		/** Roman numerals on the key's six diatonic chords (I ii iii IV V vi). */
+		/** Roman numerals on every wedge, relative to the key (I, V, II… outside; vi, iii, vii… inside). */
 		showNumerals?: boolean;
 		/** The chords outside the key dimmed. */
 		highlightKey?: boolean;
@@ -78,20 +78,17 @@
 		onrelease(e.pointerId);
 	}
 	const idOf = (p: CirclePosition, quality: ChordQuality) => p[quality].id;
-	/** The diatonic chords sit either side of the key: IV I V outside, ii vi iii inside. */
+	/** Every wedge's numeral by its distance clockwise from the key: the key's own and its two neighbours (IV I V outside, ii vi iii inside) are the diatonic six. */
 	const NUMERALS: Record<"major" | "minor", string[]> = {
-		major: ["IV", "I", "V"],
-		minor: ["ii", "vi", "iii"],
+		major: ["I", "V", "II", "VI", "III", "VII", "♯IV", "♭II", "♭VI", "♭III", "♭VII", "IV"],
+		minor: ["vi", "iii", "vii", "♯iv", "♯i", "♯v", "♯ii", "♭vii", "iv", "i", "v", "ii"],
 	};
-	function numeral(i: number, quality: "major" | "minor"): string | null {
-		const d = (i - keyIndex + 12) % 12;
-		const at = d === 11 ? 0 : d === 0 ? 1 : d === 1 ? 2 : -1;
-		return at < 0 ? null : NUMERALS[quality][at];
-	}
-	const dimmed = (i: number, quality: "major" | "minor") =>
-		highlightKey && numeral(i, quality) === null;
+	const numeral = (i: number, quality: "major" | "minor") =>
+		NUMERALS[quality][(i - keyIndex + 12) % 12];
+	const diatonic = (i: number) => [0, 1, 11].includes((i - keyIndex + 12) % 12);
+	const dimmed = (i: number) => highlightKey && !diatonic(i);
 	/** The numerals sit above the chord names, a little further out. */
-	const NUMERAL_DY = -15;
+	const NUMERAL_DY = -12;
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -144,7 +141,7 @@
 			<path
 				class="stroke-oxford-900 stroke-1 cursor-pointer transition-colors {lit
 					? 'fill-accent'
-					: dimmed(i, 'major')
+					: dimmed(i)
 						? 'fill-slate-900 hover-fill-slate-800'
 						: 'fill-slate-800 hover-fill-slate-700'}"
 				d={wedgePath(R_MAJOR_IN, R_OUTER, i)}
@@ -157,7 +154,7 @@
 			<path
 				class="stroke-oxford-900 stroke-1 cursor-pointer transition-colors {litMinor
 					? 'fill-accent'
-					: dimmed(i, 'minor')
+					: dimmed(i)
 						? 'fill-slate-800 hover-fill-slate-700'
 						: 'fill-slate-700 hover-fill-slate-600'}"
 				d={wedgePath(R_MINOR_IN, R_MAJOR_IN, i)}
@@ -174,7 +171,7 @@
 			<text
 				class="pointer-events-none text-22px {pressed.has(idOf(p, 'major'))
 					? 'fill-oxford'
-					: dimmed(i, 'major')
+					: dimmed(i)
 						? 'fill-current opacity-40'
 						: 'fill-current'}"
 				text-anchor="middle"
@@ -185,7 +182,7 @@
 			<text
 				class="pointer-events-none text-16px {pressed.has(idOf(p, 'minor'))
 					? 'fill-oxford'
-					: dimmed(i, 'minor')
+					: dimmed(i)
 						? 'fill-current opacity-40'
 						: 'fill-current opacity-90'}"
 				text-anchor="middle"
@@ -194,30 +191,29 @@
 				y={y2.toFixed(1)}>{p.minor.label}</text
 			>
 			{#if showNumerals}
-				{@const major = numeral(i, "major")}
-				{@const minor = numeral(i, "minor")}
-				{#if major}
-					<text
-						class="pointer-events-none text-10px tracking-wide {pressed.has(idOf(p, 'major'))
-							? 'fill-oxford'
-							: 'fill-accent opacity-90'}"
-						text-anchor="middle"
-						dominant-baseline="central"
-						x={x1.toFixed(1)}
-						y={(y1 + NUMERAL_DY).toFixed(1)}>{major}</text
-					>
-				{/if}
-				{#if minor}
-					<text
-						class="pointer-events-none text-9px tracking-wide {pressed.has(idOf(p, 'minor'))
-							? 'fill-oxford'
-							: 'fill-accent opacity-90'}"
-						text-anchor="middle"
-						dominant-baseline="central"
-						x={x2.toFixed(1)}
-						y={(y2 + NUMERAL_DY + 3).toFixed(1)}>{minor}</text
-					>
-				{/if}
+				{@const inKey = diatonic(i)}
+				<text
+					class="pointer-events-none text-10px tracking-wide {pressed.has(idOf(p, 'major'))
+						? 'fill-oxford'
+						: inKey
+							? 'fill-accent opacity-90'
+							: 'fill-current opacity-55'}"
+					text-anchor="middle"
+					dominant-baseline="central"
+					x={x1.toFixed(1)}
+					y={(y1 + NUMERAL_DY).toFixed(1)}>{numeral(i, "major")}</text
+				>
+				<text
+					class="pointer-events-none text-9px tracking-wide {pressed.has(idOf(p, 'minor'))
+						? 'fill-oxford'
+						: inKey
+							? 'fill-accent opacity-90'
+							: 'fill-current opacity-55'}"
+					text-anchor="middle"
+					dominant-baseline="central"
+					x={x2.toFixed(1)}
+					y={(y2 + NUMERAL_DY + 3).toFixed(1)}>{numeral(i, "minor")}</text
+				>
 			{/if}
 			{#if showKeys}
 				<text
