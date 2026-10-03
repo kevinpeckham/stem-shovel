@@ -11,7 +11,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **The arrow keys turn the chord player's key**: left a fifth down, right a fifth up, as the Key buttons do.
-- **The chord player's readout** names the chord at the centre of the hole on every layout (it sat higher or lower by layout) and shows its notes beneath, written out or on a small treble staff with ledger lines and accidentals, spelled in flats on the flat side of the circle and sharps on the sharp side; the UI menu chooses written, staff or off.
+- **The chord player's readout** names the chord at the centre of the hole on every layout (it sat higher or lower by layout) and shows its notes beneath, written out or on a small treble staff with ledger lines and accidentals, spelled in flats on the flat side of the circle and sharps on the sharp side; the UI menu chooses written, staff, both (the staff above the names) or off.
 
 ## [0.89.0] - 2026-10-03
 

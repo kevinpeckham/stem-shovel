@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, type Snippet } from "svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
+	import { chordPlayer, type NoteReadout } from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
@@ -922,11 +922,11 @@
 			<select
 				class="device-field w-full"
 				value={chordPlayer.noteReadout}
-				onchange={(e) =>
-					chordPlayer.setNoteReadout(e.currentTarget.value as "names" | "staff" | "off")}
+				onchange={(e) => chordPlayer.setNoteReadout(e.currentTarget.value as NoteReadout)}
 			>
 				<option value="names">Written · C E G B♭ under the chord name</option>
 				<option value="staff">On a staff · the notes on a treble staff</option>
+				<option value="both">Both · the staff, then the names written under it</option>
 				<option value="off">Off · the chord name alone</option>
 			</select>
 		</label>

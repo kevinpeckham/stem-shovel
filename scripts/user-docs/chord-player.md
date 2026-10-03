@@ -12,7 +12,7 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 ## The readout
 
-The middle of the circle names what is sounding and, beneath the name, its notes: written out (C E G B♭), on a small treble staff, or not at all, as the UI menu says. The notes are spelled in flats on the flat side of the circle and in sharps on the sharp side.
+The middle of the circle names what is sounding and, beneath the name, its notes: written out (C E G B♭), on a small treble staff, both (the staff above the names), or not at all, as the UI menu says. The notes are spelled in flats on the flat side of the circle and in sharps on the sharp side.
 
 ## Sound, presets and effects
 

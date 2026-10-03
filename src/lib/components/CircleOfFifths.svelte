@@ -56,7 +56,7 @@
 		centre: string;
 		/** The sounding notes under the name, spelled (docs/chord-player.md, "The readout"). */
 		readoutNotes?: SpelledNote[];
-		noteReadout?: "names" | "staff" | "off";
+		noteReadout?: "names" | "staff" | "both" | "off";
 		onpress: (index: number, quality: ChordQuality, pointerId: number) => void;
 		onrelease: (pointerId: number) => void;
 		/** The SVG's own classes (its size; a phone draws it wider than its box so the sides crop flat). */
@@ -109,11 +109,18 @@
 	);
 	/** The readout: the chord name at the hole's centre on every layout (Kevin), lifted a little when the notes show under it; the key mark on the rim at the key. */
 	const showNotes = $derived(noteReadout !== "off" && readoutNotes.length > 0);
-	const readoutY = $derived(box.cy - (showNotes ? 16 * box.scale : 0));
-	/** The staff under the name: five lines, a step (a line or a space) half a line apart, the bottom line E4; ledger lines where a note sits off the staff. */
+	const both = $derived(noteReadout === "both");
+	const readoutY = $derived(box.cy - (showNotes ? (both ? 26 : 16) * box.scale : 0));
+	/** The staff under the name (above the names when both show): five lines, a step (a line or a space) half a line apart, the bottom line E4; ledger lines where a note sits off the staff. */
 	const STAFF_LINE = 4.2;
-	const staffTop = $derived(box.cy + 4 * box.scale);
+	const staffTop = $derived(box.cy + (both ? -8 : 4) * box.scale);
 	const staffY = (step: number) => staffTop + (8 - step) * (STAFF_LINE / 2) * box.scale;
+	/** With both, the names sit under the staff and clear of its lowest ledger line (a bass root sits well below the staff, Kevin). */
+	const namesY = $derived.by(() => {
+		if (!both) return box.cy + 8 * box.scale;
+		const lowest = Math.max(staffY(-2), ...readoutNotes.map((n) => staffY(n.step)));
+		return Math.max(box.cy + 22 * box.scale, lowest + 9 * box.scale);
+	});
 	const ledgers = (step: number): number[] => {
 		const out: number[] = [];
 		for (let s = -2; s >= step; s -= 2) out.push(s);
@@ -395,16 +402,17 @@
 		x={box.cx}
 		y={readoutY}>{centre}</text
 	>
-	{#if showNotes && noteReadout === "names"}
+	{#if showNotes && (noteReadout === "names" || both)}
 		<text
 			class="pointer-events-none fill-current opacity-80"
 			font-size={px(11, { ...circleSlot, scale: box.scale })}
 			text-anchor="middle"
 			dominant-baseline="central"
 			x={box.cx}
-			y={(box.cy + 8 * box.scale).toFixed(1)}>{readoutNotes.map((n) => n.name).join(" ")}</text
+			y={namesY.toFixed(1)}>{readoutNotes.map((n) => n.name).join(" ")}</text
 		>
-	{:else if showNotes && noteReadout === "staff"}
+	{/if}
+	{#if showNotes && (noteReadout === "staff" || both)}
 		{@const w = 34 * box.scale}
 		{@const dx = Math.min(9 * box.scale, (2 * w) / (readoutNotes.length + 1))}
 		{@const x0 = box.cx - (dx * (readoutNotes.length - 1)) / 2}

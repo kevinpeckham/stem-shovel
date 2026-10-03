@@ -23,6 +23,9 @@ import {
 import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
+
+/** The notes under the chord name in the readout: written, on a staff, both (the staff above the names), or off. */
+export type NoteReadout = "names" | "staff" | "both" | "off";
 import { styledChord, styledChordName } from "$lib/utils/styledChord";
 
 /**
@@ -88,7 +91,7 @@ class ChordPlayerEngine {
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	/** The notes under the chord name in the readout: written, on a staff, or not at all (the UI menu). */
-	noteReadout = $state<"names" | "staff" | "off">("names");
+	noteReadout = $state<NoteReadout>("names");
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
 	showNumerals = $state(false);
 	/** On until switched off (Kevin). */
@@ -128,7 +131,8 @@ class ChordPlayerEngine {
 		if (read("layout") === "circle") this.layout = "circle";
 		if (read("key-map") === "degree") this.keyMap = "degree";
 		const readout = read("note-readout");
-		if (readout === "names" || readout === "staff" || readout === "off") this.noteReadout = readout;
+		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
+			this.noteReadout = readout;
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") !== "0";
 		piano.load();
@@ -334,7 +338,7 @@ class ChordPlayerEngine {
 	get keyLabels(): { major: string; minor: string }[] {
 		return this.keyMap === "degree" ? DEGREE_KEY_LABELS : CHORD_KEY_LABELS;
 	}
-	setNoteReadout(mode: "names" | "staff" | "off") {
+	setNoteReadout(mode: NoteReadout) {
 		this.noteReadout = mode;
 		write("note-readout", mode);
 	}
