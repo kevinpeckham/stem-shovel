@@ -5,7 +5,8 @@
  * clockwise from twelve o'clock, wedge 0 centred on twelve o'clock. The
  * arch layout (Kevin) keeps the same twelve indices but places them as
  * slots: seven on a bigger arch across the top (the key and three fifths
- * each way), two small ones in each top corner, and none for the tritone.
+ * each way), two small ones under each end of the arch, and none for the
+ * tritone.
  */
 export const CIRCLE_SIZE = 400;
 const CX = CIRCLE_SIZE / 2;
@@ -84,21 +85,22 @@ export const CIRCLE_SLOTS: (WedgeSlot | null)[] = Array.from({ length: 12 }, (_,
 
 /** The arch layout's box: wider than tall, the arch's centre near the bottom. */
 export const ARCH_WIDTH = 480;
-export const ARCH_HEIGHT = 352;
+export const ARCH_HEIGHT = 420;
 const ARCH_CX = ARCH_WIDTH / 2;
-/** The arch's centre, low enough that the corner fans clear its outer edge. */
-export const ARCH_CY = 262;
-/** The arch's outer radius against the circle's 190; the corner fans' 118, pivoted on the box's top corners. */
+export const ARCH_CY = 236;
+/** The fans pivot on the box's sides just under the arch's ends (which dip 15° below its centre line, to ARCH_CY + 60). */
+export const FAN_CY = ARCH_CY + 66;
+/** The arch's outer radius against the circle's 190; the fans' 118, pivoted on the box's sides under the arch (Kevin: below, not in the top corners, the same way round). */
 const ARCH_SCALE = 230 / 190;
 const FAN_SCALE = 0.62;
 const fan = (cx: number, start: number): WedgeSlot => ({
 	cx,
-	cy: 0,
+	cy: FAN_CY,
 	start,
 	end: start + 45,
 	scale: FAN_SCALE,
 });
-/** The arch: wedges 9 to 3 in their circle angles (a 210° arch dipping 15° below the horizontal at each end); 7 and 8 fan out of the top-left corner, 4 and 5 out of the top-right; 6 has no slot. */
+/** The arch: wedges 9 to 3 in their circle angles (a 210° arch dipping 15° below the horizontal at each end); 7 and 8 fan out from the left side under the arch's end, 4 and 5 from the right; 6 has no slot. */
 export const ARCH_SLOTS: (WedgeSlot | null)[] = Array.from({ length: 12 }, (_, i) => {
 	if (i <= 3 || i >= 9)
 		return { cx: ARCH_CX, cy: ARCH_CY, start: i * 30 - 15, end: i * 30 + 15, scale: ARCH_SCALE };

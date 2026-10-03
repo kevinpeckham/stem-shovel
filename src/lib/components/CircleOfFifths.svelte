@@ -23,7 +23,7 @@
 	 * wedge on the same chord until it lifts. Several pointers at once.
 	 * The arch layout (Kevin) draws the same wedges as slots: the key and
 	 * three fifths each way on a bigger arch across the top, the four far
-	 * keys small in the top corners, the tritone left out.
+	 * keys small under its ends, the tritone left out.
 	 */
 	interface Props {
 		positions: CirclePosition[];

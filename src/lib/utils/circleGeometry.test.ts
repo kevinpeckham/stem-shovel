@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
 	ARCH_CY,
 	ARCH_SLOTS,
+	FAN_CY,
 	CIRCLE_SLOTS,
 	polarToCartesian,
 	segmentPath,
@@ -47,25 +48,26 @@ describe("the arch layout", () => {
 		expect(slotPath(CIRCLE_SLOTS[0]!, 80, 180)).toBe(wedgePath(80, 180, 0));
 		expect(slotCenter(CIRCLE_SLOTS[3]!, 150)[0]).toBeCloseTo(350);
 	});
-	it("puts the key and three fifths each way on the arch, four in the corners, and drops the tritone", () => {
+	it("puts the key and three fifths each way on the arch, four under its ends, and drops the tritone", () => {
 		expect(ARCH_SLOTS[6]).toBeNull();
 		for (const i of [9, 10, 11, 0, 1, 2, 3]) expect(ARCH_SLOTS[i]!.cy).toBe(ARCH_CY);
 		expect(ARCH_SLOTS[7]!.cx).toBe(0);
 		expect(ARCH_SLOTS[8]!.cx).toBe(0);
 		expect(ARCH_SLOTS[4]!.cx).toBe(480);
 		expect(ARCH_SLOTS[5]!.cx).toBe(480);
-		// The corner fans point into the box: 7 along the top edge, 8 down the left edge.
+		// The fans point into the box: 7 along their top edge, 8 down the left side.
 		const [x7, y7] = slotCenter(ARCH_SLOTS[7]!, 150);
 		const [x8, y8] = slotCenter(ARCH_SLOTS[8]!, 150);
 		expect(x7).toBeGreaterThan(x8);
 		expect(y7).toBeLessThan(y8);
 		expect(x7).toBeGreaterThan(0);
-		expect(y8).toBeGreaterThan(0);
+		expect(y8).toBeGreaterThan(FAN_CY);
 	});
-	it("keeps the corner fans clear of the arch", () => {
-		// The fan's farthest point into the box, at 135°, lies above the arch's outer edge at that x.
-		const [x, y] = slotCenter(ARCH_SLOTS[7]!, 190);
-		const archTop = ARCH_CY - Math.sqrt(230 ** 2 - (240 - x) ** 2);
-		expect(y).toBeLessThan(archTop);
+	it("keeps the fans under the arch's ends", () => {
+		// The arch's ends dip 15° below its centre line; the fans start under that.
+		const archBottom = ARCH_CY + 230 * Math.sin((15 * Math.PI) / 180);
+		expect(FAN_CY).toBeGreaterThan(archBottom);
+		expect(ARCH_SLOTS[7]!.cy).toBe(FAN_CY);
+		expect(ARCH_SLOTS[5]!.cy).toBe(FAN_CY);
 	});
 });
