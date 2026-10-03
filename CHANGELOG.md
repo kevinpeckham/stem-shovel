@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-10-03
+
 ### Added
 
 - **The Chord Player's progression pad and Timing menu** (docs/chord-player.md, phase 2). With Jot on, the pad under the circle writes every chord played, lasting until the next starts (one, two or four beats at the metronome's tempo; a silence of two beats or more is a rest), grouped by bar; tap an entry to change its beats, make it a rest or remove it, with undo and clear. Play runs the progression through the chord player with the pad's own click on the piano's clock (loop or once), lighting each chord; MIDI exports a `.mid` on a format-0 writer (`utils/midiFile.ts`) the drum machine's export now shares. The pad persists per browser; a signed-in member saves progressions to the account by name (migration 0069 `progression`; `progressions.remote.ts` mirrors the beats: every member opens, editors keep, rename and delete). The Timing menu holds the metronome's tempo (slider, steps, number, Tap), beats to the bar, a free-running click to jot against and the playback click switch. Both are for wider screens; a phone keeps to the circle.
