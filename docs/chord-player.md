@@ -225,7 +225,16 @@ before, the extensions stay above), with `chordMidi` on top of it. The
 engine's `style` is persisted and saved in `ProgressionData.style`
 (optional, no migration), applied when a progression opens; the Chords
 menu's Style select sits above Voicing and the screen line names a style
-other than plain. **Notes and panels** (Kevin, the same day): the page holds the device in
+other than plain. Custom styles (Kevin, the same day): `chord_style`
+rows (migration 0071; `ChordStyleSchema.ts`: twelve degrees per ring,
+each a plain and a held recipe id; `chordStyles.remote.ts` after the
+progressions), loaded with the page into `chordPlayer.customStyles`; the
+engine's `style` is a built-in id or `custom:<id>`, `recipe()` reads the
+custom rings or falls back to `styledChord`, and `ProgressionData.style`
+is a free string now. `ChordStyleEditor.svelte` is the editor in the
+Chords menu (`builtinStyleData` writes a built-in out as a starting
+point); a progression naming a style the account no longer has keeps
+playing its notes and leaves the style alone. **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,

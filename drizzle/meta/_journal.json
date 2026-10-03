@@ -498,6 +498,13 @@
       "when": 1791042340742,
       "tag": "0070_progression_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1791054585706,
+      "tag": "0071_chord_styles",
+      "breakpoints": true
     }
   ]
 }

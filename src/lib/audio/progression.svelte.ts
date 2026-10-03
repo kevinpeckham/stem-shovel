@@ -249,7 +249,8 @@ class ProgressionPad {
 		this.#set(data.entries.slice(0, MAX_ENTRIES));
 		metronome.setBpm(data.bpm);
 		metronome.setBeats(data.beatsPerBar);
-		if (data.style) chordPlayer.setStyle(data.style);
+		if (data.style && (data.style === "plain" || chordPlayer.styleKnown(data.style)))
+			chordPlayer.setStyle(data.style);
 		this.savedId = saved?.id ?? null;
 		this.name = saved?.name ?? "";
 		this.notes = saved?.notes ?? "";

@@ -428,6 +428,22 @@ may be empty, not both. Migrations 0069, 0070.
 | notes                  | text, default ''               | a markdown note board (0070)       |
 | created_at, updated_at | timestamp_ms                   |                                    |
 
+### chord_style
+
+A custom chord style from the chord player (docs/chord-player.md,
+"Styles"): per degree and ring, the chord recipe a wedge carries and what
+the 7 pad raises it to, as JSON, in an account's library like a
+progression. Migration 0071.
+
+| column                 | type                          | notes                             |
+| ---------------------- | ----------------------------- | --------------------------------- |
+| id                     | text PK (nanoid)              |                                   |
+| account_id             | text FK → account (cascade)   | scope                             |
+| created_by             | text FK → user (set null)     |                                   |
+| name                   | text                          |                                   |
+| data                   | text (JSON, `ChordStyleData`) | validated by ChordStyleDataSchema |
+| created_at, updated_at | timestamp_ms                  |                                   |
+
 ## How the existing Blob code changes
 
 **Pathnames become ID-based.** Today: `stems/<song-slug>/<filename>`. With

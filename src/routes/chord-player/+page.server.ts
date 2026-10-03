@@ -1,6 +1,11 @@
 import { publicBlobUrl } from "$lib/server/blob";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listPianoPresets, listProgressions, sitePianoPresets } from "$lib/server/data";
+import {
+	listChordStyles,
+	listPianoPresets,
+	listProgressions,
+	sitePianoPresets,
+} from "$lib/server/data";
 import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import copyFallback from "../../../scripts/user-docs/chord-player-page.md?raw";
@@ -24,6 +29,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 			: null,
 		presets: member ? await listPianoPresets(member.accountId) : [],
 		progressions: member ? await listProgressions(member.accountId) : [],
+		chordStyles: member ? await listChordStyles(member.accountId) : [],
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("chord-player-page", copyFallback, locals),
 	};

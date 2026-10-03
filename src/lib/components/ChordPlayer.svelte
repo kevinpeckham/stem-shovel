@@ -21,7 +21,13 @@
 		type SeventhType,
 		type Strum,
 	} from "$lib/constants/circleOfFifths";
-	import { CHORD_STYLES, type ChordStyleId } from "$lib/constants/chordStyles";
+	import { CHORD_STYLES } from "$lib/constants/chordStyles";
+	import ChordStyleEditor from "$lib/components/ChordStyleEditor.svelte";
+	import { deleteChordStyle, saveChordStyle } from "$lib/remote/chordStyles.remote";
+	import { notify } from "$lib/state/notifications.svelte";
+	import { builtinStyleData } from "$lib/utils/builtinStyleData";
+	import { errorMessage } from "$lib/utils/errorMessage";
+	import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
 	import { PIANO_INSTRUMENTS, type PianoInstrumentId } from "$lib/constants/piano";
 	import { PIANO_PRESET_SLOTS } from "$lib/val/PianoPresetSchema";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
@@ -59,6 +65,8 @@
 		pad?: boolean;
 		/** The saved list as the pad keeps it, bound so the page's notes panel and the pad share one. */
 		savedProgressions?: SavedProgression[];
+		/** The account's custom chord styles. */
+		chordStyles?: SavedChordStyle[];
 	}
 	let {
 		keyboard = true,
@@ -70,6 +78,7 @@
 		progressions = [],
 		pad = true,
 		savedProgressions = $bindable(progressions),
+		chordStyles = [],
 	}: Props = $props();
 
 	// The engines, from the page's first render (they are shared singletons; `load` is idempotent).
@@ -78,6 +87,66 @@
 	chordPlayer.load();
 	// svelte-ignore state_referenced_locally
 	if (pad) progressionPad.load();
+	// svelte-ignore state_referenced_locally
+	chordPlayer.customStyles = chordStyles;
+
+	// ---- custom styles (docs/chord-player.md, "Styles") ----
+	let styleEditor = $state<{ id: string | null; name: string; data: ChordStyleData } | null>(null);
+	let styleSaving = $state(false);
+	const customStyleId = $derived(
+		chordPlayer.style.startsWith("custom:") ? chordPlayer.style.slice(7) : null,
+	);
+	const currentCustom = $derived(
+		customStyleId ? (chordPlayer.customStyles.find((s) => s.id === customStyleId) ?? null) : null,
+	);
+	function newStyle() {
+		const base = currentCustom
+			? structuredClone($state.snapshot(currentCustom.data))
+			: builtinStyleData(chordPlayer.builtinStyle, chordPlayer.seventhType);
+		const from =
+			currentCustom?.name ?? CHORD_STYLES.find((s) => s.id === chordPlayer.builtinStyle)?.label;
+		styleEditor = { id: null, name: `${from} (mine)`, data: base };
+	}
+	function editStyle() {
+		if (!currentCustom) return;
+		styleEditor = { id: currentCustom.id, name: currentCustom.name, data: currentCustom.data };
+	}
+	async function saveStyle(name: string, data: ChordStyleData) {
+		if (!account || !styleEditor) return;
+		styleSaving = true;
+		try {
+			const row = await saveChordStyle({
+				accountId: account.id,
+				id: styleEditor.id ?? undefined,
+				name,
+				data,
+			});
+			const entry = { id: row.id, name: row.name, data, updatedAt: new Date(row.updatedAt) };
+			chordPlayer.customStyles = [
+				entry,
+				...chordPlayer.customStyles.filter((s) => s.id !== row.id),
+			];
+			chordPlayer.setStyle(`custom:${row.id}`);
+			styleEditor = null;
+			notify(`${row.name} saved to ${account.name}`);
+		} catch (e) {
+			notify(`Could not save the style: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			styleSaving = false;
+		}
+	}
+	async function removeStyle() {
+		if (!currentCustom || !window.confirm(`Delete "${currentCustom.name}" from ${account?.name}?`))
+			return;
+		try {
+			await deleteChordStyle({ id: currentCustom.id });
+			chordPlayer.customStyles = chordPlayer.customStyles.filter((s) => s.id !== currentCustom.id);
+			chordPlayer.setStyle("plain");
+			notify(`${currentCustom.name} deleted`);
+		} catch (e) {
+			notify(`Could not delete the style: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	const BEATS_PER_BAR = [2, 3, 4, 5, 6];
 
 	const INSTRUMENT_OPTIONS = PIANO_INSTRUMENTS.map((i) => ({ value: i.id, label: i.label }));
@@ -205,9 +274,7 @@
 				<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2">
 					<span>Key of {keyLabel}</span>
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
-					{#if chordPlayer.style !== "plain"}<span
-							>· {CHORD_STYLES.find((s) => s.id === chordPlayer.style)?.label.toLowerCase()}</span
-						>{/if}
+					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
 					<span
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
 					>
@@ -607,9 +674,16 @@
 			<select
 				class="device-field w-full"
 				value={chordPlayer.style}
-				onchange={(e) => chordPlayer.setStyle(e.currentTarget.value as ChordStyleId)}
+				onchange={(e) => chordPlayer.setStyle(e.currentTarget.value)}
 			>
 				{#each CHORD_STYLES as s (s.id)}<option value={s.id}>{s.label} · {s.hint}</option>{/each}
+				{#if chordPlayer.customStyles.length}
+					<optgroup label="{account?.name ?? 'Your'} styles">
+						{#each chordPlayer.customStyles as s (s.id)}<option value="custom:{s.id}"
+								>{s.name}</option
+							>{/each}
+					</optgroup>
+				{/if}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
 				>What the wedges carry by their place in the key. Blues puts a dominant seventh on every
@@ -617,6 +691,31 @@
 				extension. Plain is triads with the pad's seventh.</span
 			>
 		</label>
+		{#if account?.canEdit}
+			{#if styleEditor}
+				<ChordStyleEditor
+					name={styleEditor.name}
+					data={styleEditor.data}
+					saving={styleSaving}
+					onsave={saveStyle}
+					oncancel={() => (styleEditor = null)}
+				/>
+			{:else}
+				<div class="flex flex-wrap gap-2 -mt-2">
+					<button
+						class="device-button-sm px-3"
+						type="button"
+						title="A style of your own, starting from the one in use: choose what each degree carries"
+						onclick={newStyle}>New style</button
+					>
+					{#if currentCustom}
+						<button class="device-button-sm px-3" type="button" onclick={editStyle}>Edit</button>
+						<button class="device-button-sm px-3" type="button" onclick={removeStyle}>Delete</button
+						>
+					{/if}
+				</div>
+			{/if}
+		{/if}
 		<label class="block">
 			<span class="device-button-label">Voicing</span>
 			<select

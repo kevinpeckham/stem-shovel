@@ -103,6 +103,7 @@
 			sitePresets={data.sitePresets}
 			account={data.account}
 			presets={data.presets}
+			chordStyles={data.chordStyles}
 			bind:savedProgressions={saved}
 		/>
 	</FloatingPanel>

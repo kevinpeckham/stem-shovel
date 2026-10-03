@@ -14,6 +14,7 @@ import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import { DrumProjectSchema, type DrumProject } from "$lib/val/DrumPatternSchema";
 import type { ProgressionData } from "$lib/val/ProgressionSchema";
+import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
 import {
 	NamedPianoPresetSchema,
 	PIANO_PRESET_SLOTS,
@@ -141,6 +142,7 @@ const {
 	beat,
 	pianoPreset,
 	progression,
+	chordStyle,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -4887,6 +4889,57 @@ export async function deleteProgression(accountId: string, id: string) {
 	await db
 		.delete(progression)
 		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)));
+}
+
+// ---- chord styles (docs/chord-player.md, "Styles") ----
+
+export async function listChordStyles(accountId: string) {
+	return db.query.chordStyle.findMany({
+		where: eq(chordStyle.accountId, accountId),
+		orderBy: [desc(chordStyle.updatedAt)],
+		columns: { id: true, name: true, data: true, createdBy: true, updatedAt: true },
+	});
+}
+
+export async function createChordStyle(
+	accountId: string,
+	userId: string,
+	name: string,
+	data: ChordStyleData,
+) {
+	const [row] = await db
+		.insert(chordStyle)
+		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled style", data })
+		.returning();
+	return row!;
+}
+
+export async function updateChordStyle(
+	accountId: string,
+	id: string,
+	patch: { name: string; data: ChordStyleData },
+) {
+	const [row] = await db
+		.update(chordStyle)
+		.set({ name: patch.name.trim() || "Untitled style", data: patch.data })
+		.where(and(eq(chordStyle.id, id), eq(chordStyle.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function renameChordStyle(accountId: string, id: string, name: string) {
+	const [row] = await db
+		.update(chordStyle)
+		.set({ name: name.trim() || "Untitled style" })
+		.where(and(eq(chordStyle.id, id), eq(chordStyle.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteChordStyle(accountId: string, id: string) {
+	await db
+		.delete(chordStyle)
+		.where(and(eq(chordStyle.id, id), eq(chordStyle.accountId, accountId)));
 }
 
 // ---- piano presets (docs/piano.md, "Presets") ----

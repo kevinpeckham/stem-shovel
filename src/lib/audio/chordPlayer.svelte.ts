@@ -14,7 +14,13 @@ import {
 	type SeventhType,
 	type Strum,
 } from "$lib/constants/circleOfFifths";
-import { CHORD_STYLES, type ChordStyleId } from "$lib/constants/chordStyles";
+import {
+	CHORD_RECIPES,
+	CHORD_STYLES,
+	type ChordRecipe,
+	type ChordStyleId,
+} from "$lib/constants/chordStyles";
+import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { styledChord, styledChordName } from "$lib/utils/styledChord";
 
@@ -54,8 +60,10 @@ class ChordPlayerEngine {
 	/** Chords on the wedges, or single notes. */
 	mode = $state<"chords" | "notes">("chords");
 	voicing = $state<ChordVoicing>("standard");
-	/** What the wedges carry by degree: triads, or a blues, jazz or lush set of sevenths and extensions (docs/chord-player.md, "Styles"). */
-	style = $state<ChordStyleId>("plain");
+	/** What the wedges carry by degree: triads, or a blues, jazz or lush set of sevenths and extensions, or a saved custom style as "custom:<id>" (docs/chord-player.md, "Styles"). */
+	style = $state<string>("plain");
+	/** The account's custom styles, from the page. */
+	customStyles = $state<SavedChordStyle[]>([]);
 	seventhType = $state<SeventhType>("dominant");
 	/** The momentary seventh: the 7 pad or Shift, held. */
 	seventhHeld = $state(false);
@@ -99,7 +107,8 @@ class ChordPlayerEngine {
 		if (voicing && ["standard", "spread", "rich", "bass", "rootBass"].includes(voicing))
 			this.voicing = voicing as ChordVoicing;
 		const style = read("style");
-		if (style && CHORD_STYLES.some((s) => s.id === style)) this.style = style as ChordStyleId;
+		if (style && (style.startsWith("custom:") || CHORD_STYLES.some((s) => s.id === style)))
+			this.style = style;
 		const seventh = read("seventh-type");
 		if (seventh === "dominant" || seventh === "major7") this.seventhType = seventh;
 		const strum = read("strum");
@@ -163,13 +172,7 @@ class ChordPlayerEngine {
 			// The wedge's degree in fifths from the key; a minor's is its own root's (vi under I).
 			const offset = (drawnIndex - this.keyIndex + 12) % 12;
 			const fifths = quality === "minor" ? (offset + 3) % 12 : offset;
-			const recipe = styledChord(
-				this.style,
-				fifths,
-				quality,
-				seventh || this.seventhHeld,
-				this.seventhType,
-			);
+			const recipe = this.recipe(fifths, quality, seventh || this.seventhHeld);
 			notes = voiceChord({
 				pitch: chord.pitch,
 				intervals: recipe.intervals,
@@ -227,7 +230,40 @@ class ChordPlayerEngine {
 		this.mode = mode;
 		write("mode", mode);
 	}
-	setStyle(style: ChordStyleId) {
+	/** The custom style in use, if the style names one the account has. */
+	get customStyle(): ChordStyleData | null {
+		if (!this.style.startsWith("custom:")) return null;
+		const id = this.style.slice(7);
+		return this.customStyles.find((s) => s.id === id)?.data ?? null;
+	}
+	/** The built-in style in use (plain when a custom style is named but missing). */
+	get builtinStyle(): ChordStyleId {
+		return CHORD_STYLES.some((s) => s.id === this.style) ? (this.style as ChordStyleId) : "plain";
+	}
+	/** The style's name for the screen; null for plain. */
+	get styleLabel(): string | null {
+		const custom = this.style.startsWith("custom:")
+			? this.customStyles.find((s) => s.id === this.style.slice(7))
+			: null;
+		if (custom) return custom.name;
+		const builtin = CHORD_STYLES.find((s) => s.id === this.builtinStyle);
+		return builtin && builtin.id !== "plain" ? builtin.label.toLowerCase() : null;
+	}
+	/** The recipe a wedge carries: from the custom style's rings, else the built-in's rule. */
+	recipe(fifths: number, quality: ChordQuality, held: boolean): ChordRecipe {
+		const custom = this.customStyle;
+		if (custom && quality !== "diminished") {
+			const degree = custom[quality][fifths];
+			return CHORD_RECIPES[held ? degree.held : degree.plain];
+		}
+		return styledChord(this.builtinStyle, fifths, quality, held, this.seventhType);
+	}
+	/** Whether a style id names a built-in or one of the account's custom styles. */
+	styleKnown(style: string): boolean {
+		if (CHORD_STYLES.some((s) => s.id === style)) return true;
+		return style.startsWith("custom:") && this.customStyles.some((s) => s.id === style.slice(7));
+	}
+	setStyle(style: string) {
 		this.style = style;
 		write("style", style);
 	}
