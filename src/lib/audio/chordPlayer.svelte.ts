@@ -91,7 +91,7 @@ class ChordPlayerEngine {
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	/** The notes under the chord name in the readout: written, on a staff, or not at all (the UI menu). */
-	noteReadout = $state<NoteReadout>("names");
+	noteReadout = $state<NoteReadout>("both");
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
 	showNumerals = $state(false);
 	/** On until switched off (Kevin). */

@@ -10,8 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Dropdown lists mark the chosen option in bold on a highlight** instead of a check mark, so the lists are narrower (every dropdown: Sound, Style, Voicing, Key, the kits and the rest).
 - **The arrow keys turn the chord player's key**: left a fifth down, right a fifth up, as the Key buttons do.
-- **The chord player's readout** names the chord at the centre of the hole on every layout (it sat higher or lower by layout) and shows its notes beneath, written out or on a small treble staff with ledger lines and accidentals, spelled in flats on the flat side of the circle and sharps on the sharp side; the UI menu chooses written, staff, both (the staff above the names) or off.
+- **The chord player's readout** names the chord at the centre of the hole on every layout (it sat higher or lower by layout) and shows its notes beneath, written out or on a small treble staff with ledger lines and accidentals, spelled in flats on the flat side of the circle and sharps on the sharp side; the UI menu chooses written, staff, both (the staff above the names, the default) or off.
 
 ## [0.89.0] - 2026-10-03
 

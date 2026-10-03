@@ -366,7 +366,7 @@
 			<ComboBox
 				ariaLabel="Style"
 				clearDefaultButtonClasses={true}
-				popoverClasses="text-13px"
+				popoverClasses="text-13px !w-max !min-w-full max-w-lg"
 				buttonClasses="device-button-sm px-3 w-full"
 				options={STYLE_OPTIONS}
 				value={chordPlayer.style}
@@ -378,7 +378,7 @@
 			<ComboBox
 				ariaLabel="Voicing"
 				clearDefaultButtonClasses={true}
-				popoverClasses="text-13px"
+				popoverClasses="text-13px !w-max !min-w-full max-w-lg"
 				buttonClasses="device-button-sm px-3 w-full"
 				options={VOICING_OPTIONS}
 				value={chordPlayer.voicing}

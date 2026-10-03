@@ -245,18 +245,15 @@
 				id={optionId(i)}
 				role="option"
 				aria-selected={option.value === value}
-				class="flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-left hover-bg-blue-300/10 {option.value ===
+				class="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left hover-bg-blue-300/10 {option.value ===
 				value
-					? 'bg-white/5'
+					? 'bg-white/10 font-600'
 					: ''}"
 				onmousedown={(e) => e.preventDefault()}
 				onmouseenter={() => (activeIndex = i)}
 				onclick={() => pick(option)}
 			>
-				<span
-					class="i-ph-check shrink-0 {option.value === value ? '' : 'invisible'}"
-					aria-hidden="true"
-				></span>
+				<!-- The chosen option is bold on a highlight (no check mark: it cost the width, Kevin). -->
 				<span class="min-w-0 grow truncate text-current/90">{option.label}</span>
 				{#if option.description}
 					<span class="shrink-0 tabular-nums opacity-60">{option.description}</span>
