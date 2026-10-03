@@ -1,4 +1,8 @@
-import { PIANO_PRESET_SLOTS, type NamedPianoPreset } from "$lib/val/PianoPresetSchema";
+import {
+	PIANO_PRESET_SLOTS,
+	type NamedPianoPreset,
+	type PresetInstrument,
+} from "$lib/val/PianoPresetSchema";
 
 /** What a slot button holds and where it came from (docs/piano.md, "Presets"). */
 export interface PianoSlot extends NamedPianoPreset {
@@ -16,12 +20,21 @@ export function resolvePianoSlots(
 	site: (NamedPianoPreset | null)[],
 	browser: Record<number, NamedPianoPreset>,
 	account:
-		| { id: string; name: string; slot: number | null; data: NamedPianoPreset["data"] }[]
+		| {
+				id: string;
+				name: string;
+				slot: number | null;
+				chordSlot?: number | null;
+				data: NamedPianoPreset["data"];
+		  }[]
 		| null,
+	instrument: PresetInstrument = "piano",
 ): (PianoSlot | null)[] {
 	return Array.from({ length: PIANO_PRESET_SLOTS }, (_, i) => {
 		const slot = i + 1;
-		const own = account?.find((p) => p.slot === slot);
+		const own = account?.find(
+			(p) => (instrument === "chords" ? (p.chordSlot ?? null) : p.slot) === slot,
+		);
 		if (own) return { id: own.id, name: own.name, data: own.data, source: "account" };
 		const mine = account ? null : browser[slot];
 		if (mine) return { ...mine, source: "browser" };

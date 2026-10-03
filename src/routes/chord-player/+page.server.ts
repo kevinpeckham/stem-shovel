@@ -23,11 +23,12 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		: null;
 	return {
 		samplesBase: publicBlobUrl("piano/v1"),
-		sitePresets: await sitePianoPresets(),
+		sitePresets: await sitePianoPresets("chords"),
 		account: member
 			? { id: member.accountId, name: member.name, canEdit: member.role !== "viewer" }
 			: null,
 		presets: member ? await listPianoPresets(member.accountId) : [],
+		presetAdmin: locals.user?.isSystemAdmin === true,
 		progressions: member ? await listProgressions(member.accountId) : [],
 		chordStyles: member ? await listChordStyles(member.accountId) : [],
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).

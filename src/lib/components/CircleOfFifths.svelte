@@ -38,6 +38,8 @@
 		/** The circle; the arch (the key at the top); the arch upside down, a bowl with the key at the bottom for a thumb. */
 		layout?: "circle" | "arch" | "arch-down";
 		showSignatures: boolean;
+		/** The wedges' names as the style makes them ("Cmaj7"); the positions' plain labels without. */
+		labels?: { major: string; minor: string }[];
 		/** The computer keyboard's keys on the wedges, labelled by distance from the key clockwise. */
 		showKeys?: boolean;
 		keyLabels?: { major: string; minor: string }[];
@@ -62,6 +64,7 @@
 		mode,
 		layout = "circle",
 		showSignatures,
+		labels = [],
 		showKeys = false,
 		keyLabels = [],
 		keyIndex = 0,
@@ -110,12 +113,16 @@
 		slots.flatMap((slot, i) => (slot ? [{ i, slot }] : [])) as { i: number; slot: WedgeSlot }[],
 	);
 	const circleSlot = CIRCLE_SLOTS[0]!;
-	/** A font size for a slot: the circle's, scaled, never under 7. */
-	const px = (size: number, slot: WedgeSlot) =>
+	/** A font size for a slot: the circle's, scaled, never under 7; a long name ("D♭maj7") shrinks to fit its wedge. */
+	const px = (size: number, slot: WedgeSlot, text = "") =>
 		Math.max(
 			7,
-			size * (slot.kind === "arc" ? (slot.labelScale ?? slot.scale) : slot.scale),
+			size *
+				(slot.kind === "arc" ? (slot.labelScale ?? slot.scale) : slot.scale) *
+				(text.length <= 3 ? 1 : 3.6 / text.length),
 		).toFixed(1);
+	const majorName = (i: number, p: CirclePosition) => labels[i]?.major ?? p.major.label;
+	const minorName = (i: number, p: CirclePosition) => labels[i]?.minor ?? p.minor.label;
 	/**
 	 * A label's place: a slot's centre at a radius, shifted down by `dy`
 	 * (scaled, but never under three quarters, since the small fonts stop
@@ -274,11 +281,11 @@
 					: dimmed(i)
 						? 'fill-current opacity-40'
 						: 'fill-current'}"
-				font-size={px(22, slot)}
+				font-size={px(22, slot, majorName(i, p))}
 				text-anchor="middle"
 				dominant-baseline="central"
 				x={c1.x}
-				y={c1.y}>{p.major.label}</text
+				y={c1.y}>{majorName(i, p)}</text
 			>
 			<text
 				class="pointer-events-none {pressed.has(idOf(p, 'minor'))
@@ -286,11 +293,11 @@
 					: dimmed(i)
 						? 'fill-current opacity-40'
 						: 'fill-current opacity-90'}"
-				font-size={px(16, slot)}
+				font-size={px(16, slot, minorName(i, p))}
 				text-anchor="middle"
 				dominant-baseline="central"
 				x={c2.x}
-				y={c2.y}>{p.minor.label}</text
+				y={c2.y}>{minorName(i, p)}</text
 			>
 			{#if showNumerals}
 				{@const n1 = at(slot, R_MAJOR_TEXT, NUMERAL_DY)}

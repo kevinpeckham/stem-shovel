@@ -103,6 +103,7 @@
 			sitePresets={data.sitePresets}
 			account={data.account}
 			presets={data.presets}
+			presetAdmin={data.presetAdmin}
 			chordStyles={data.chordStyles}
 			bind:savedProgressions={saved}
 		/>

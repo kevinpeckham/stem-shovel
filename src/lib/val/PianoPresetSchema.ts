@@ -93,6 +93,11 @@ export const PianoPresetSlotSchema = v.pipe(
 	v.maxValue(PIANO_PRESET_SLOTS),
 );
 
+/** The instruments with preset buttons on the shared library: the piano's slots, or the chord player's. */
+export const PRESET_INSTRUMENTS = ["piano", "chords"] as const;
+export type PresetInstrument = (typeof PRESET_INSTRUMENTS)[number];
+export const PresetInstrumentSchema = v.optional(v.picklist(PRESET_INSTRUMENTS), "piano");
+
 /** A named preset, as the site's defaults and a browser's overrides keep them. */
 export const NamedPianoPresetSchema = v.object({ name: NameSchema, data: PianoPresetDataSchema });
 export type NamedPianoPreset = v.InferOutput<typeof NamedPianoPresetSchema>;
@@ -103,18 +108,25 @@ export const PianoPresetSaveSchema = v.object({
 	id: v.optional(NanoIdSchema),
 	name: NameSchema,
 	slot: v.optional(v.nullable(PianoPresetSlotSchema)),
+	/** Whose button `slot` is: the piano's (the default) or the chord player's. */
+	instrument: PresetInstrumentSchema,
 	data: PianoPresetDataSchema,
 });
 export const PianoPresetRenameSchema = v.object({ id: NanoIdSchema, name: NameSchema });
 export const PianoPresetSetSlotSchema = v.object({
 	id: NanoIdSchema,
 	slot: v.nullable(PianoPresetSlotSchema),
+	instrument: PresetInstrumentSchema,
 });
 export const PianoPresetListSchema = v.object({ accountId: NanoIdSchema });
 /** Argument of the admin's setSitePianoPreset: the demo's preset for a slot. */
 export const SitePianoPresetSchema = v.object({
 	slot: PianoPresetSlotSchema,
+	instrument: PresetInstrumentSchema,
 	name: NameSchema,
 	data: PianoPresetDataSchema,
 });
-export const SitePianoPresetSlotSchema = v.object({ slot: PianoPresetSlotSchema });
+export const SitePianoPresetSlotSchema = v.object({
+	slot: PianoPresetSlotSchema,
+	instrument: PresetInstrumentSchema,
+});

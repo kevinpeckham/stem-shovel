@@ -139,18 +139,24 @@ export const setHomeBeat = command(HomeBeatSchema, async ({ data }) => {
 });
 
 /** The piano's demo presets, one slot at a time: whatever is in the piano when a system admin saves it there as the site's default (docs/piano.md, "Presets"). */
-export const setSitePianoPreset = command(SitePianoPresetSchema, async ({ slot, name, data }) => {
-	const { locals } = getRequestEvent();
-	requireSystemAdmin(locals);
-	await setSitePreset(slot, { name, data });
-	return { saved: true };
-});
-export const clearSitePianoPreset = command(SitePianoPresetSlotSchema, async ({ slot }) => {
-	const { locals } = getRequestEvent();
-	requireSystemAdmin(locals);
-	await setSitePreset(slot, null);
-	return { cleared: true };
-});
+export const setSitePianoPreset = command(
+	SitePianoPresetSchema,
+	async ({ slot, instrument, name, data }) => {
+		const { locals } = getRequestEvent();
+		requireSystemAdmin(locals);
+		await setSitePreset(slot, { name, data }, instrument);
+		return { saved: true };
+	},
+);
+export const clearSitePianoPreset = command(
+	SitePianoPresetSlotSchema,
+	async ({ slot, instrument }) => {
+		const { locals } = getRequestEvent();
+		requireSystemAdmin(locals);
+		await setSitePreset(slot, null, instrument);
+		return { cleared: true };
+	},
+);
 
 /** Back to the built-in starting beat (from /admin/home). */
 export const clearHomeBeat = form(v.object({}), async () => {

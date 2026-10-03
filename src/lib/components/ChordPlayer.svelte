@@ -8,6 +8,7 @@
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
+	import ChordPresets from "$lib/components/ChordPresets.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
 		CHORD_VOICINGS,
@@ -48,6 +49,7 @@
 		id: string;
 		name: string;
 		slot: number | null;
+		chordSlot?: number | null;
 		data: PianoPresetData;
 	}
 	interface Props {
@@ -59,6 +61,8 @@
 		sitePresets?: (NamedPianoPreset | null)[] | null;
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		presets?: SavedPreset[];
+		/** A system admin: the site's default buttons are theirs to set. */
+		presetAdmin?: boolean;
 		/** The account's saved progressions, for the pad. */
 		progressions?: SavedProgression[];
 		/** The progression pad under the circle (off where the circle alone is wanted, as on the home page). */
@@ -75,6 +79,7 @@
 		sitePresets = null,
 		account = null,
 		presets = [],
+		presetAdmin = false,
 		progressions = [],
 		pad = true,
 		savedProgressions = $bindable(progressions),
@@ -173,17 +178,16 @@
 			description: account ? `${account.name}'s style` : "a saved style",
 		})),
 	]);
-	const SLOT_NUMBERS = Array.from({ length: PIANO_PRESET_SLOTS }, (_, i) => i + 1);
 
 	// ---- presets: the piano's, loaded here (docs/piano.md, "Presets") ----
 	// svelte-ignore state_referenced_locally
-	const site = $state<(NamedPianoPreset | null)[]>(sitePresets ?? []);
+	let site = $state<(NamedPianoPreset | null)[]>(sitePresets ?? []);
 	// svelte-ignore state_referenced_locally
-	const saved = $state<SavedPreset[]>(presets);
+	let saved = $state<SavedPreset[]>(presets);
 	let overrides = $state<Record<number, NamedPianoPreset>>({});
-	if (typeof window !== "undefined") overrides = loadPianoSlotOverrides();
+	if (typeof window !== "undefined") overrides = loadPianoSlotOverrides("chords");
 	let loaded = $state<NamedPianoPreset | null>(null);
-	const slots = $derived(resolvePianoSlots(site, overrides, account ? saved : null));
+	const slots = $derived(resolvePianoSlots(site, overrides, account ? saved : null, "chords"));
 	const currentKey = $derived(pianoPresetKey(piano.currentPreset()));
 	const activeSlot = $derived(slots.findIndex((p) => p && pianoPresetKey(p.data) === currentKey));
 	const presetLine = $derived.by(() => {
@@ -216,6 +220,15 @@
 	}
 	function seventhUp() {
 		chordPlayer.seventhHeld = false;
+	}
+	/** The sustain pad: the pedal down while it is held, for a tablet with no space bar (Kevin). */
+	function sustainDown(e: PointerEvent) {
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		piano.setSustain(true);
+	}
+	function sustainUp() {
+		piano.setSustain(false);
 	}
 
 	// ---- the computer keyboard ----
@@ -405,19 +418,6 @@
 			</div>
 		</div>
 		<div class="hidden @xl-block">
-			<div class="device-button-group-label text-dark hidden @xl-block">Seventh</div>
-			<button
-				class="device-button-sm px-4 touch-none {chordPlayer.seventhHeld ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={chordPlayer.seventhHeld}
-				title="Hold for a seventh on every chord (or hold Shift)"
-				onpointerdown={seventhDown}
-				onpointerup={seventhUp}
-				onpointercancel={seventhUp}
-				oncontextmenu={(e) => e.preventDefault()}>7</button
-			>
-		</div>
-		<div class="hidden @xl-block">
 			<div class="device-button-group-label text-dark hidden @xl-block">Guides</div>
 			{@render keysBlock()}
 		</div>
@@ -508,15 +508,35 @@
 
 	<!-- the circle: on a phone it runs to the device's edges and a little past them, so the wedges at three and nine o'clock end in a straight edge and every button is as big as the width allows (Kevin); from @xl, whole, up to 560px -->
 	<div
-		class="-mx-3 overflow-hidden @xl-mx-auto @xl-overflow-visible w-[calc(100%+1.5rem)] @xl-w-full {chordPlayer.layout ===
+		class="relative -mx-3 overflow-hidden @xl-mx-auto @xl-overflow-visible w-[calc(100%+1.5rem)] @xl-w-full {chordPlayer.layout ===
 		'arch'
 			? '@xl-max-w-700px'
 			: '@xl-max-w-560px'} text-blue-100"
 	>
+		<!-- From @xl the 7 pad and the sustain pad are round pads in the box's empty corners (the arch's top corners; the bowl's bottom ones), under a hand either side (Kevin). -->
+		{@render cornerPad(
+			"left-0",
+			chordPlayer.seventhHeld,
+			"Seventh",
+			"Hold for a seventh on every chord (or hold Shift)",
+			seventhDown,
+			seventhUp,
+			seventh,
+		)}
+		{@render cornerPad(
+			"right-0",
+			piano.sustain,
+			"Sustain",
+			"Hold for the sustain pedal (or hold the space bar)",
+			sustainDown,
+			sustainUp,
+			sustain,
+		)}
 		<CircleOfFifths
 			class={chordPlayer.layout === "arch" ? "w-full" : "w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"}
 			positions={chordPlayer.positions}
 			notes={chordPlayer.notes}
+			labels={chordPlayer.wedgeLabels}
 			mode={chordPlayer.mode}
 			layout={chordPlayer.drawnLayout}
 			showSignatures={chordPlayer.showSignatures}
@@ -560,9 +580,24 @@
 			<ProgressionPad {account} bind:saved={savedProgressions} />
 		</div>
 	{/if}
-	<!-- A phone: the 7 pad at the lower left, under a thumb, held for a seventh. -->
+	<!-- A phone: the sustain pad and the 7 pad at the lower left, under a thumb, each held. -->
 	<button
-		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
+		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px touch-none {piano.sustain
+			? 'text-accent'
+			: ''}"
+		type="button"
+		aria-pressed={piano.sustain}
+		title="Hold for the sustain pedal"
+		aria-label="Sustain"
+		onpointerdown={sustainDown}
+		onpointerup={sustainUp}
+		onpointercancel={sustainUp}
+		oncontextmenu={(e) => e.preventDefault()}
+	>
+		<span class="i-ph-arrow-line-down" aria-hidden="true"></span>
+	</button>
+	<button
+		class="@xl-hidden absolute left-19 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
 			? 'text-accent'
 			: ''}"
 		type="button"
@@ -578,6 +613,42 @@
 		SS FIFTHS 001
 	</div>
 </div>
+
+{#snippet seventh()}
+	<span class="text-26px font-600 leading-none">7</span>
+	<span class="text-10px uppercase tracking-wider opacity-70">seventh</span>
+{/snippet}
+{#snippet sustain()}
+	<span class="i-ph-arrow-line-down text-24px" aria-hidden="true"></span>
+	<span class="text-10px uppercase tracking-wider opacity-70">sustain</span>
+{/snippet}
+{#snippet cornerPad(
+	side: string,
+	on: boolean,
+	label: string,
+	title: string,
+	down: (e: PointerEvent) => void,
+	up: () => void,
+	face: Snippet,
+)}
+	<button
+		class="hidden @xl-flex absolute {side} {chordPlayer.drawnLayout === 'arch-down'
+			? 'bottom-2'
+			: 'top-2'} z-10 w-22 h-22 rounded-full device-button-sm !min-w-0 flex-col items-center justify-center gap-0.5 touch-none {on
+			? 'text-accent'
+			: ''}"
+		type="button"
+		aria-pressed={on}
+		{title}
+		aria-label={label}
+		onpointerdown={down}
+		onpointerup={up}
+		onpointercancel={up}
+		oncontextmenu={(e) => e.preventDefault()}
+	>
+		{@render face()}
+	</button>
+{/snippet}
 
 {#snippet modeBlock()}
 	<div class="flex gap-px" role="group" aria-label="Mode">
@@ -630,30 +701,16 @@
 {/snippet}
 
 {#snippet presetsBlock()}
-	<div class="flex gap-1" role="group" aria-label="Presets">
-		{#each SLOT_NUMBERS as n (n)}
-			{@const p = slots[n - 1]}
-			<button
-				class="device-button-sm px-3 {activeSlot === n - 1 ? 'text-accent' : ''} {p
-					? ''
-					: 'opacity-50'}"
-				type="button"
-				aria-pressed={activeSlot === n - 1}
-				disabled={!p}
-				aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
-				title={p ? p.name : `Empty preset ${n}`}
-				onclick={() => p && loadPreset(p)}>{n}</button
-			>
-		{/each}
-		<a
-			class="device-button-sm px-2"
-			href="/piano"
-			title="Save and manage presets on the piano page"
-			aria-label="Manage presets on the piano page"
-		>
-			<span class="i-ph-bookmarks-simple" aria-hidden="true"></span>
-		</a>
-	</div>
+	<ChordPresets
+		{account}
+		{presetAdmin}
+		{slots}
+		{activeSlot}
+		bind:saved
+		bind:site
+		bind:overrides
+		onload={loadPreset}
+	/>
 {/snippet}
 
 {#snippet volumeBlock()}

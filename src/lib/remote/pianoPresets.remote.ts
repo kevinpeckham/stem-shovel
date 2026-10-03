@@ -38,19 +38,31 @@ export const listPianoPresets = query(PianoPresetListSchema, async ({ accountId 
 /** A new preset in the account, or the named one brought up to date; editors only; the account keeps at most MAX_PIANO_PRESETS. */
 export const savePianoPreset = command(
 	PianoPresetSaveSchema,
-	async ({ accountId, id, name, slot, data }) => {
+	async ({ accountId, id, name, slot, instrument, data }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		requireEditor(locals, accountId);
 		if (id) {
-			const row = await updatePianoPreset(accountId, id, { name, data, slot });
+			const row = await updatePianoPreset(accountId, id, { name, data, slot, instrument });
 			if (!row) error(404, "Preset not found");
-			return { id: row.id, name: row.name, slot: row.slot, updatedAt: row.updatedAt };
+			return {
+				id: row.id,
+				name: row.name,
+				slot: row.slot,
+				chordSlot: row.chordSlot,
+				updatedAt: row.updatedAt,
+			};
 		}
 		if ((await countPianoPresets(accountId)) >= MAX_PIANO_PRESETS)
 			error(400, `An account keeps up to ${MAX_PIANO_PRESETS} presets; delete one first`);
-		const row = await createPianoPreset(accountId, user.id, name, data, slot ?? null);
-		return { id: row.id, name: row.name, slot: row.slot, updatedAt: row.updatedAt };
+		const row = await createPianoPreset(accountId, user.id, name, data, slot ?? null, instrument);
+		return {
+			id: row.id,
+			name: row.name,
+			slot: row.slot,
+			chordSlot: row.chordSlot,
+			updatedAt: row.updatedAt,
+		};
 	},
 );
 
@@ -70,12 +82,15 @@ export const renamePianoPreset = command(PianoPresetRenameSchema, async ({ id, n
 });
 
 /** Put a preset on a slot button (taking the slot from any other), or take it off (null). */
-export const setPianoPresetSlot = command(PianoPresetSetSlotSchema, async ({ id, slot }) => {
-	const accountId = await editablePreset(id);
-	const row = await place(accountId, id, slot);
-	if (!row) error(404, "Preset not found");
-	return { id: row.id, slot: row.slot };
-});
+export const setPianoPresetSlot = command(
+	PianoPresetSetSlotSchema,
+	async ({ id, slot, instrument }) => {
+		const accountId = await editablePreset(id);
+		const row = await place(accountId, id, slot, instrument);
+		if (!row) error(404, "Preset not found");
+		return { id: row.id, slot: row.slot, chordSlot: row.chordSlot };
+	},
+);
 
 export const deletePianoPreset = command(IdSchema, async ({ id }) => {
 	const accountId = await editablePreset(id);

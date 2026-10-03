@@ -81,7 +81,7 @@ class ChordPlayerEngine {
 	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
 	showKeys = $state(false);
 	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
-	layout = $state<"circle" | "arch">("circle");
+	layout = $state<"circle" | "arch">("arch");
 	/** The computer keyboard: around the circle from the key, or by degree (1 to 7 are I to VII). */
 	keyMap = $state<ChordKeyMap>("circle");
 	/** What is sounding, by who holds it, for the screen. */
@@ -122,7 +122,7 @@ class ChordPlayerEngine {
 		this.keyAtTop = read("key-at-top") === "1";
 		this.showSignatures = read("signatures") === "1";
 		this.showKeys = read("keys") === "1";
-		if (read("layout") === "arch") this.layout = "arch";
+		if (read("layout") === "circle") this.layout = "circle";
 		if (read("key-map") === "degree") this.keyMap = "degree";
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") !== "0";
@@ -248,6 +248,24 @@ class ChordPlayerEngine {
 		if (custom) return custom.name;
 		const builtin = CHORD_STYLES.find((s) => s.id === this.builtinStyle);
 		return builtin && builtin.id !== "plain" ? builtin.label.toLowerCase() : null;
+	}
+	/** What each drawn wedge would play now, named: the style's chord on that degree, the 7 pad folded in (the circle's labels, Kevin). */
+	get wedgeLabels(): { major: string; minor: string }[] {
+		return this.positions.map((p, i) => {
+			const offset = (i - this.keyIndex + 12) % 12;
+			return {
+				major: styledChordName(
+					p.major.label,
+					"major",
+					this.recipe(offset, "major", this.seventhHeld),
+				),
+				minor: styledChordName(
+					p.minor.label,
+					"minor",
+					this.recipe((offset + 3) % 12, "minor", this.seventhHeld),
+				),
+			};
+		});
 	}
 	/** The recipe a wedge carries: from the custom style's rings, else the built-in's rule. */
 	recipe(fifths: number, quality: ChordQuality, held: boolean): ChordRecipe {

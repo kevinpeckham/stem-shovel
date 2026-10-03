@@ -6,10 +6,12 @@ import { id, timestamps } from "./columns";
 import { user } from "./user";
 
 /**
- * A saved piano preset (docs/piano.md, "Presets"): a name, the sound and
- * effects as JSON, in an account's library where every member sees it, and
- * a slot (1 to 5) when it sits on one of the piano's preset buttons; at
- * most one preset of an account per slot, kept by the data layer.
+ * A saved sound preset (docs/piano.md, "Presets"): a name, the sound and
+ * effects as JSON, in an account's library where every member sees it. The
+ * library is one for every instrument on the piano engine; each instrument
+ * has its own five buttons, so a preset carries a slot per instrument
+ * (`slot` the piano's, `chord_slot` the chord player's, migration 0072),
+ * at most one preset of an account per slot, kept by the data layer.
  */
 export const pianoPreset = table(
 	"piano_preset",
@@ -22,6 +24,7 @@ export const pianoPreset = table(
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
 		name: t.text("name").notNull(),
 		slot: t.integer("slot"),
+		chordSlot: t.integer("chord_slot"),
 		data: t.text("data", { mode: "json" }).$type<PianoPresetData>().notNull(),
 		...timestamps,
 	},

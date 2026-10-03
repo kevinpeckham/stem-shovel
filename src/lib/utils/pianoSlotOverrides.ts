@@ -1,12 +1,19 @@
 import * as v from "valibot";
-import { NamedPianoPresetSchema, type NamedPianoPreset } from "$lib/val/PianoPresetSchema";
+import {
+	NamedPianoPresetSchema,
+	type NamedPianoPreset,
+	type PresetInstrument,
+} from "$lib/val/PianoPresetSchema";
 
-/** A signed-out player's own slot presets, per browser (docs/piano.md, "Presets"): slot number to preset. */
-const KEY = "stemshovel.piano.presets";
+/** A signed-out player's own slot presets, per browser and per instrument (docs/piano.md, "Presets"): slot number to preset. */
+const keyOf = (instrument: PresetInstrument) =>
+	instrument === "chords" ? "stemshovel.chord-player.presets" : "stemshovel.piano.presets";
 
-export function loadPianoSlotOverrides(): Record<number, NamedPianoPreset> {
+export function loadPianoSlotOverrides(
+	instrument: PresetInstrument = "piano",
+): Record<number, NamedPianoPreset> {
 	try {
-		const raw = localStorage.getItem(KEY);
+		const raw = localStorage.getItem(keyOf(instrument));
 		if (!raw) return {};
 		const json = JSON.parse(raw) as Record<string, unknown>;
 		const out: Record<number, NamedPianoPreset> = {};
@@ -21,9 +28,12 @@ export function loadPianoSlotOverrides(): Record<number, NamedPianoPreset> {
 	}
 }
 
-export function savePianoSlotOverrides(overrides: Record<number, NamedPianoPreset>): void {
+export function savePianoSlotOverrides(
+	overrides: Record<number, NamedPianoPreset>,
+	instrument: PresetInstrument = "piano",
+): void {
 	try {
-		localStorage.setItem(KEY, JSON.stringify(overrides));
+		localStorage.setItem(keyOf(instrument), JSON.stringify(overrides));
 	} catch {
 		// Private mode or a full store: the choice lasts for this page only.
 	}

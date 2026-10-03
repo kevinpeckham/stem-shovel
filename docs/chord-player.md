@@ -207,7 +207,20 @@ it turns itself over): a bowl with I at the bottom for a thumb on a phone
 (Kevin). Defaults after Kevin's pass: the dim on, the signatures off, the
 key at the bottom (the arch a bowl). The keyboard map is relative to the
 key's drawn index (`keyIndex`), so 1 and Q are the key wherever it sits;
-the signatures run along the rim, rotated with their wedge. A second
+the signatures run along the rim, rotated with their wedge. **Presets** (Kevin, the same day): the chord player's five buttons are
+its own on the shared library: `piano_preset.chord_slot` (migration
+0072), the data layer's slot helpers and the save/set-slot/site remote
+functions take an `instrument` ("piano" by default, so the piano's calls
+are unchanged), `resolvePianoSlots` and the browser overrides too.
+`ChordPresets.svelte` is the rack: the buttons, and a manage menu that
+saves the sound playing onto a button, puts any library preset on one (a
+select per button), renames, clears, with the site's defaults for a
+system admin; the link to the piano page is gone. A sustain pad joins the
+7 pad; from @xl both are round pads in the box's free corners (the arch's
+top corners, the bowl's bottom ones), a hand each. The arch is the default
+layout, and the wedges' names come from `chordPlayer.wedgeLabels` (the
+style's chord per degree with the 7 pad folded in), long names shrinking
+to fit. A second
 keyboard map, by degree (`DEGREE_KEY_CODES`, `chordPlayer.keyMap`,
 the Circle menu): the number row is I to VII then the five chromatic roots
 rising (♭II ♭III ♯IV ♭VI ♭VII), the row below the minors on the same

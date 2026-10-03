@@ -410,6 +410,14 @@ seen by every member and kept by its editors. Optionally a song's.
 | data                   | text (JSON, `DrumProject`)  | validated by DrumProjectSchema |
 | created_at, updated_at | timestamp_ms                |                                |
 
+### piano_preset (the shared sound library)
+
+Since migration 0072 a preset carries a slot per instrument on the piano
+engine: `slot` is the piano's button, `chord_slot` the chord player's, each
+1 to 5 and at most one preset of an account per slot and instrument. The
+site's defaults are an app setting per instrument (`pianoPresets`,
+`chordPresets`), five named presets each.
+
 ### progression
 
 A saved chord progression from the chord player's pad (docs/chord-player.md,

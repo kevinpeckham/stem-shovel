@@ -1,0 +1,1 @@
+ALTER TABLE `piano_preset` ADD `chord_slot` integer;

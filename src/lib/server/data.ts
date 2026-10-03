@@ -20,6 +20,7 @@ import {
 	PIANO_PRESET_SLOTS,
 	type NamedPianoPreset,
 	type PianoPresetData,
+	type PresetInstrument,
 } from "$lib/val/PianoPresetSchema";
 import {
 	copyBlob,
@@ -4949,20 +4950,39 @@ export async function listPianoPresets(accountId: string) {
 	const rows = await db.query.pianoPreset.findMany({
 		where: eq(pianoPreset.accountId, accountId),
 		orderBy: [desc(pianoPreset.updatedAt)],
-		columns: { id: true, name: true, slot: true, data: true, createdBy: true, updatedAt: true },
+		columns: {
+			id: true,
+			name: true,
+			slot: true,
+			chordSlot: true,
+			data: true,
+			createdBy: true,
+			updatedAt: true,
+		},
 	});
 	return rows.sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
 }
 
-/** At most one preset of an account on a slot: the slot comes off whatever held it. */
-async function freePianoSlot(accountId: string, slot: number, except?: string) {
+/** The slot column an instrument's buttons use on the shared library (docs/piano.md, "Presets"). */
+const slotColumn = (instrument: PresetInstrument) =>
+	instrument === "chords" ? pianoPreset.chordSlot : pianoPreset.slot;
+const slotPatch = (instrument: PresetInstrument, slot: number | null) =>
+	instrument === "chords" ? { chordSlot: slot } : { slot };
+
+/** At most one preset of an account on an instrument's slot: the slot comes off whatever held it. */
+async function freePianoSlot(
+	accountId: string,
+	slot: number,
+	instrument: PresetInstrument,
+	except?: string,
+) {
 	await db
 		.update(pianoPreset)
-		.set({ slot: null })
+		.set(slotPatch(instrument, null))
 		.where(
 			and(
 				eq(pianoPreset.accountId, accountId),
-				eq(pianoPreset.slot, slot),
+				eq(slotColumn(instrument), slot),
 				...(except ? [ne(pianoPreset.id, except)] : []),
 			),
 		);
@@ -4974,11 +4994,18 @@ export async function createPianoPreset(
 	name: string,
 	data: PianoPresetData,
 	slot: number | null,
+	instrument: PresetInstrument = "piano",
 ) {
-	if (slot) await freePianoSlot(accountId, slot);
+	if (slot) await freePianoSlot(accountId, slot, instrument);
 	const [row] = await db
 		.insert(pianoPreset)
-		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled preset", data, slot })
+		.values({
+			accountId,
+			createdBy: userId,
+			name: name.trim() || "Untitled preset",
+			data,
+			...slotPatch(instrument, slot),
+		})
 		.returning();
 	return row!;
 }
@@ -4986,15 +5013,21 @@ export async function createPianoPreset(
 export async function updatePianoPreset(
 	accountId: string,
 	id: string,
-	patch: { name: string; data: PianoPresetData; slot?: number | null },
+	patch: {
+		name: string;
+		data: PianoPresetData;
+		slot?: number | null;
+		instrument?: PresetInstrument;
+	},
 ) {
-	if (patch.slot) await freePianoSlot(accountId, patch.slot, id);
+	const instrument = patch.instrument ?? "piano";
+	if (patch.slot) await freePianoSlot(accountId, patch.slot, instrument, id);
 	const [row] = await db
 		.update(pianoPreset)
 		.set({
 			name: patch.name.trim() || "Untitled preset",
 			data: patch.data,
-			...(patch.slot === undefined ? {} : { slot: patch.slot }),
+			...(patch.slot === undefined ? {} : slotPatch(instrument, patch.slot)),
 		})
 		.where(and(eq(pianoPreset.id, id), eq(pianoPreset.accountId, accountId)))
 		.returning();
@@ -5010,11 +5043,16 @@ export async function renamePianoPreset(accountId: string, id: string, name: str
 	return row ?? null;
 }
 
-export async function setPianoPresetSlot(accountId: string, id: string, slot: number | null) {
-	if (slot) await freePianoSlot(accountId, slot, id);
+export async function setPianoPresetSlot(
+	accountId: string,
+	id: string,
+	slot: number | null,
+	instrument: PresetInstrument = "piano",
+) {
+	if (slot) await freePianoSlot(accountId, slot, instrument, id);
 	const [row] = await db
 		.update(pianoPreset)
-		.set({ slot })
+		.set(slotPatch(instrument, slot))
 		.where(and(eq(pianoPreset.id, id), eq(pianoPreset.accountId, accountId)))
 		.returning();
 	return row ?? null;
@@ -5035,8 +5073,13 @@ export async function countPianoPresets(accountId: string) {
 }
 
 /** The site's five demo presets (`pianoPresets`, set from the piano by a system admin), a null for an empty slot. */
-export async function sitePianoPresets(): Promise<(NamedPianoPreset | null)[]> {
-	const raw = await getAppSetting("pianoPresets");
+/** The site's default presets for an instrument's five buttons, an app setting per instrument. */
+const siteSettingKey = (instrument: PresetInstrument) =>
+	instrument === "chords" ? "chordPresets" : "pianoPresets";
+export async function sitePianoPresets(
+	instrument: PresetInstrument = "piano",
+): Promise<(NamedPianoPreset | null)[]> {
+	const raw = await getAppSetting(siteSettingKey(instrument));
 	const slots: (NamedPianoPreset | null)[] = Array.from({ length: PIANO_PRESET_SLOTS }, () => null);
 	if (!raw) return slots;
 	try {
@@ -5051,8 +5094,12 @@ export async function sitePianoPresets(): Promise<(NamedPianoPreset | null)[]> {
 	return slots;
 }
 
-export async function setSitePianoPreset(slot: number, preset: NamedPianoPreset | null) {
-	const slots = await sitePianoPresets();
+export async function setSitePianoPreset(
+	slot: number,
+	preset: NamedPianoPreset | null,
+	instrument: PresetInstrument = "piano",
+) {
+	const slots = await sitePianoPresets(instrument);
 	slots[slot - 1] = preset;
-	await setAppSetting("pianoPresets", JSON.stringify(slots));
+	await setAppSetting(siteSettingKey(instrument), JSON.stringify(slots));
 }
