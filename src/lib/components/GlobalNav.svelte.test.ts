@@ -34,6 +34,7 @@ describe("GlobalNav", () => {
 		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
 			"Drum Machine",
 			"Piano",
+			"Chord Player",
 		]);
 		expect(screen.getByRole("menuitem", { name: /Drum Machine/ })).toHaveAttribute(
 			"href",

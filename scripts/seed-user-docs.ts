@@ -23,6 +23,7 @@ const ORDER = [
 	"idea-recorder",
 	"drum-machine",
 	"piano",
+	"chord-player",
 	"looper",
 	"comments",
 	"downloads-and-sharing",
@@ -45,6 +46,7 @@ const COPY_PAGES = [
 	"tuner-page",
 	"metronome-page",
 	"idea-recorder-page",
+	"chord-player-page",
 ];
 
 const db = drizzle({

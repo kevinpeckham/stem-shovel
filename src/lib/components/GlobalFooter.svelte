@@ -29,6 +29,7 @@
 		<span class="text-11px uppercase tracking-wider opacity-60">Instruments</span>
 		<a class="footer-link" href="/drum-machine">Drum Machine</a>
 		<a class="footer-link" href="/piano">Piano</a>
+		<a class="footer-link" href="/chord-player">Chord Player</a>
 	</nav>
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>

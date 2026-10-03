@@ -1,0 +1,31 @@
+# Chord Player
+
+**Chord Player** in the Instruments menu (or at /chord-player) is the piano's sounds on a circle of fifths. It needs no account: press a chord and hear it, hold it as long as you like, and see which chords sit well together. Beginning songwriters find it a quick way to try a progression before the words are written.
+
+## The circle
+
+The circle shows the twelve major chords on its outer ring, going round in fifths (C, G, D, A…), and each one's relative minor on the inner ring, with the key signature beside it. Press a wedge with the mouse or a finger and the chord sounds until you let go; press two wedges with two fingers and both sound. The chords next to any chord are the ones that fit it best, so a song in one key lives in a few neighbouring wedges.
+
+**Key** turns the circle so your song's key sits at the top; the Circle menu can put it at the bottom instead and hide the key signatures. **7** adds a seventh to every chord while you hold it (or hold Shift): a dominant or major seventh on a major chord, as the Chords menu says, and the minor seventh on a minor. A second finger on a sounding wedge adds the seventh to that chord alone.
+
+**Notes** turns the circle into twelve single notes, chromatic from the key at the top, for a melody; **Chords** turns it back.
+
+## Sound, presets and effects
+
+The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ and synths, the five preset buttons, the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary, and the volume. A preset loaded here is loaded on the piano too; to save or manage presets, press the bookmark button beside them to go to the piano page. A sound that drifts from its preset shows "edited" on the screen, as the piano's does.
+
+## The Chords menu
+
+- **Voicing**: standard (the plain triad), spread (the root an octave down, the fifth an octave up), rich (two bass roots below and the root doubled above), bass (the triad over a low root) or root bass (a bass root under the first inversion).
+- **The seventh on a major chord**: a dominant seventh (C7) or a major seventh (Cmaj7).
+- **Strum**: the notes of a chord a few milliseconds apart, low to high, as a hand plays them; slow, medium or fast.
+- **Velocity**: how hard every chord is pressed.
+- **Octave**: where the chord's root sits, and the notes of notes mode; 4 is middle C's.
+
+## Playing on the computer keyboard
+
+The number row plays the twelve major chords clockwise from the top, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always the key at the top.
+
+## A note on latency
+
+Bluetooth headphones and speakers add a lot of delay between a press and its sound. For the best experience use your device's built-in speakers or wired headphones.

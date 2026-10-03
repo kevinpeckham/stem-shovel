@@ -79,6 +79,11 @@
 					what: "The piano's Grand Piano: Alexander Holm's recordings of a Yamaha C5, CC BY 3.0, in the mp3 subset Tone.js publishes.",
 				},
 				{
+					name: "Fifths, the chord player",
+					url: "https://github.com/kevinpeckham/chord-player",
+					what: "The Chord Player's circle of fifths grew out of Kevin's earlier instrument, itself inspired by Quinn Raymond's Q-RAY chord player, with the circle's SVG after Eric Coleman and Håken Lid.",
+				},
+				{
 					name: "Basic Pitch",
 					url: "https://github.com/spotify/basic-pitch",
 					what: "Spotify's open-source model that turns a recorded idea into notes.",

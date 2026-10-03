@@ -61,7 +61,7 @@
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
 	const TOOL_PAGES = ["/tuner", "/metronome"];
-	const INSTRUMENT_PAGES = ["/drum-machine", "/piano"];
+	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) || active("/ideas/recorder") || active("/looper"),
@@ -155,6 +155,18 @@
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-piano-keys w-1em" aria-hidden="true"></span>Piano
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/chord-player',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/chord-player"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-circle-dashed w-1em" aria-hidden="true"></span>Chord Player
 					</a>
 				</div>
 			{/if}

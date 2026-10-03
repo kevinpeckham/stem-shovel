@@ -16,6 +16,7 @@ export function isIndexablePath(pathname: string): boolean {
 			"/metronome",
 			"/drum-machine",
 			"/piano",
+			"/chord-player",
 			"/looper",
 			"/pricing",
 			"/built-with",

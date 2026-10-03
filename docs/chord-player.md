@@ -116,6 +116,30 @@ of its own, as the piano's) and settings saved with an idea or a loop
 include the chord player's (`IdeaInstrumentsDataSchema.chords`). Toolbar
 buttons on the looper and the recorder open the panel.
 
+## What shipped: phase 1 (2026-10-03)
+
+The instrument and its page, as scoped: `src/lib/constants/circleOfFifths.ts`
+(the twelve positions with pitch classes, the key centers, the keyboard
+map, voicings, seventh types, strums), `src/lib/utils/circleGeometry.ts`
+and `chordNotes.ts` (tested), `src/lib/audio/chordPlayer.svelte.ts` (the
+state and the play through `piano`; settings under
+`stemshovel.chord-player.*`), `CircleOfFifths.svelte` (the SVG: pointer
+capture per finger, `data-index`/`data-quality` on the wedges, the centre
+readout, the key mark) and `ChordPlayer.svelte` (the device: screen, Power,
+Sound, Chords/Notes, Key, the 7 pad, the five preset buttons with a link to
+the piano page to manage them, the Chords, Circle and Effects menus,
+Volume). The piano's effects sliders moved into `PianoEffectsMenu.svelte`,
+rendered by both devices. The page `/chord-player` loads what the piano
+page loads; in the nav and footer, the sitemap, `isIndexablePath`, the
+robots route, vercel.json's noindex exception, the smoke rows, the seeds
+(`chord-player` user doc, `chord-player-page` copy) and the built-with
+credits. Decisions taken from the open list: the number row and the row
+below for the keyboard, no diminished ring, a progression's own table
+when phase 2 comes. Verified on dev with Playwright: C major held is
+60 64 67 on the piano, Shift adds the seventh, the key center turns the
+keyboard's mapping with the circle, notes mode plays a single note, the
+menus open, and the nav lists the instrument.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)
