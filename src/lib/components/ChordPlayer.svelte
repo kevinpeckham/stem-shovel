@@ -440,21 +440,34 @@
 		<div class="hidden @xl-block">
 			<div class="device-button-group-label text-dark hidden @xl-block">Settings</div>
 			<div class="flex flex-wrap gap-2">
-				<ContextMenu
-					ariaLabel="Timing"
-					title="Tempo, tap, beats to the bar and the click"
-					iconClass="i-ph-metronome"
-					label="{metronome.bpm} bpm"
-					position="bottom right"
-					buttonBaseClasses="device-button-sm px-3 tabular-nums {metronome.running
-						? 'text-accent'
-						: ''}"
-					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-					items={[
-						{ id: "timing-heading", kind: "heading", label: "Timing" },
-						{ id: "timing-block", kind: "snippet", snippet: timingMenuBlock },
-					]}
-				/>
+				<!-- A split button (Kevin): the tempo starts and stops the click; the caret beside it opens the Timing menu. -->
+				<div class="flex gap-px" role="group" aria-label="Timing">
+					<button
+						class="device-button-sm px-3 rounded-r-none tabular-nums {metronome.running
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={metronome.running}
+						title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
+						aria-label="Click at {metronome.bpm} bpm"
+						onclick={() => metronome.toggle()}
+					>
+						<span class="i-ph-metronome" aria-hidden="true"></span>
+						{metronome.bpm} bpm
+					</button>
+					<ContextMenu
+						ariaLabel="Timing"
+						title="Tempo, tap, beats to the bar and the click"
+						iconClass="i-ph-caret-down"
+						position="bottom right"
+						buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+						popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+						items={[
+							{ id: "timing-heading", kind: "heading", label: "Timing" },
+							{ id: "timing-block", kind: "snippet", snippet: timingMenuBlock },
+						]}
+					/>
+				</div>
 				<ContextMenu
 					ariaLabel="Chords settings"
 					title="Voicing, the seventh, strum, velocity and octave"

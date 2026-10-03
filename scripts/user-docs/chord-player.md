@@ -45,7 +45,7 @@ On a wide screen the device and the notes each pop out into a panel of their own
 
 ## The Timing menu
 
-The tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; **Click**, a metronome at that tempo to play along to while you jot; and whether the pad's own playback has a click under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
+The tempo button in the Settings row starts and stops the click; the small arrow beside it opens the Timing menu: the tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; **Click**, a metronome at that tempo to play along to while you jot; and whether the pad's own playback has a click under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
 
 ## Playing on the computer keyboard
 
