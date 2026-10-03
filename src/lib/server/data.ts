@@ -13,6 +13,7 @@ import type { ProjectType } from "$lib/val/ProjectTypeSchema";
 import { FOUNDER_SEATS } from "$lib/constants/plans";
 import type { StemManifest } from "$lib/audio/types";
 import { DrumProjectSchema, type DrumProject } from "$lib/val/DrumPatternSchema";
+import type { ProgressionData } from "$lib/val/ProgressionSchema";
 import {
 	NamedPianoPresetSchema,
 	PIANO_PRESET_SLOTS,
@@ -139,6 +140,7 @@ const {
 	idea,
 	beat,
 	pianoPreset,
+	progression,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -4801,6 +4803,58 @@ export async function renameBeat(accountId: string, id: string, name: string) {
 
 export async function deleteBeat(accountId: string, id: string) {
 	await db.delete(beat).where(and(eq(beat.id, id), eq(beat.accountId, accountId)));
+}
+
+// ---- chord progressions (docs/chord-player.md, "The progression pad") ----
+
+/** The account's saved progressions, newest first (a kilobyte or so each). */
+export async function listProgressions(accountId: string) {
+	return db.query.progression.findMany({
+		where: eq(progression.accountId, accountId),
+		orderBy: [desc(progression.updatedAt)],
+		columns: { id: true, name: true, data: true, createdBy: true, updatedAt: true },
+	});
+}
+
+export async function createProgression(
+	accountId: string,
+	userId: string,
+	name: string,
+	data: ProgressionData,
+) {
+	const [row] = await db
+		.insert(progression)
+		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled progression", data })
+		.returning();
+	return row!;
+}
+
+export async function updateProgression(
+	accountId: string,
+	id: string,
+	patch: { name: string; data: ProgressionData },
+) {
+	const [row] = await db
+		.update(progression)
+		.set({ name: patch.name.trim() || "Untitled progression", data: patch.data })
+		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function renameProgression(accountId: string, id: string, name: string) {
+	const [row] = await db
+		.update(progression)
+		.set({ name: name.trim() || "Untitled progression" })
+		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteProgression(accountId: string, id: string) {
+	await db
+		.delete(progression)
+		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)));
 }
 
 // ---- piano presets (docs/piano.md, "Presets") ----

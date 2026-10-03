@@ -3,13 +3,14 @@
 	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
+	import { progressionPad } from "$lib/audio/progression.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 
 	let { data } = $props();
 
 	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __chords: chordPlayer, __piano: piano });
+		Object.assign(window, { __chords: chordPlayer, __piano: piano, __pad: progressionPad });
 </script>
 
 <svelte:head>
@@ -31,6 +32,7 @@
 		sitePresets={data.sitePresets}
 		account={data.account}
 		presets={data.presets}
+		progressions={data.progressions}
 	/>
 	<PageCopySection
 		html={data.copy.bodyHtml}

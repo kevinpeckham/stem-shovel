@@ -13,6 +13,7 @@ import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { beat } from "./beat";
+import { progression } from "./progression";
 import { drumKit } from "./drumKit";
 import { drumSample } from "./drumSample";
 import { pianoPreset } from "./pianoPreset";
@@ -49,6 +50,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	ideas: many(idea),
 	artists: many(artist),
 	beats: many(beat),
+	progressions: many(progression),
 	drumKits: many(drumKit),
 	pianoPresets: many(pianoPreset),
 }));
@@ -242,6 +244,10 @@ export const drumSampleRelations = relations(drumSample, ({ one }) => ({
 	kit: one(drumKit, { fields: [drumSample.kitId], references: [drumKit.id] }),
 	account: one(account, { fields: [drumSample.accountId], references: [account.id] }),
 	uploader: one(user, { fields: [drumSample.uploadedBy], references: [user.id] }),
+}));
+export const progressionRelations = relations(progression, ({ one }) => ({
+	account: one(account, { fields: [progression.accountId], references: [account.id] }),
+	creator: one(user, { fields: [progression.createdBy], references: [user.id] }),
 }));
 export const beatRelations = relations(beat, ({ one }) => ({
 	account: one(account, { fields: [beat.accountId], references: [account.id] }),

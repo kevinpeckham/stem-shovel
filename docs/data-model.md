@@ -410,6 +410,22 @@ seen by every member and kept by its editors. Optionally a song's.
 | data                   | text (JSON, `DrumProject`)  | validated by DrumProjectSchema |
 | created_at, updated_at | timestamp_ms                |                                |
 
+### progression
+
+A saved chord progression from the chord player's pad (docs/chord-player.md,
+"The progression pad"): the tempo and meter it was jotted at and its
+entries (a chord's name, wedge, MIDI notes and beats, or a rest) as JSON,
+in an account's library like a beat. Migration 0069.
+
+| column                 | type                           | notes                              |
+| ---------------------- | ------------------------------ | ---------------------------------- |
+| id                     | text PK (nanoid)               |                                    |
+| account_id             | text FK → account (cascade)    | scope                              |
+| created_by             | text FK → user (set null)      |                                    |
+| name                   | text                           |                                    |
+| data                   | text (JSON, `ProgressionData`) | validated by ProgressionDataSchema |
+| created_at, updated_at | timestamp_ms                   |                                    |
+
 ## How the existing Blob code changes
 
 **Pathnames become ID-based.** Today: `stems/<song-slug>/<filename>`. With

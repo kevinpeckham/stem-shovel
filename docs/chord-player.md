@@ -154,6 +154,37 @@ wrench menu (the mode, keys, presets, volume and the three settings menus
 as collapsible sections), captions gone, the 7 pad a round thumb button at
 the device's lower left.
 
+## What shipped: phase 2 (2026-10-03)
+
+The Timing menu and the progression pad. `src/lib/audio/progression.svelte.ts`
+is the pad: it listens to the chord engine's presses and releases
+(`chordPlayer.listener`) and writes an entry per chord with its beats from
+how long it was held (`utils/chordRhythm.ts`: under a beat and a half is
+one, under three is two, else four, at the metronome's tempo) and a rest
+from a pause before it (half a beat to eight; a longer pause is thinking
+time). A chord pressed before the last lets go ends the last there, so
+legato playing leaves no rests. The entries are grouped by measure for the
+screen (`measuresOf`; a straddling entry starts the next bar), kept under
+`stemshovel.chord-player.progression`, and edited by picking one (beats 1,
+2, 4; a rest in its place; remove), undo (fifty steps) and clear. Playback
+runs on the piano's AudioContext with the lookahead scheduler: the chords
+go through `chordPlayer.sound()` at their times (released a sixteenth
+before the next, as in the MIDI) and a click of the pad's own is scheduled
+sample-accurately on the same clock, so the two cannot drift; the pad
+claims playback like every transport. The free-running metronome is the
+click to jot against (the Timing menu's Click button), and its tempo, tap
+and beats to the bar are the pad's. MIDI export is `utils/encodeChordMidi.ts`
+on `utils/midiFile.ts`, the format-0 writer the drum machine's export now
+shares. Saved progressions are the `progression` table (migration 0069;
+`remote/progressions.remote.ts` mirrors the beats: an account's library,
+every member reads, editors keep), loaded by the page with the piano
+presets and handled in `ProgressionPad.svelte`'s Saved menu. The Circle
+menu gained Roman numerals on the key's six diatonic chords and a dim on
+the rest (`CircleOfFifths.svelte`: IV I V outside, ii vi iii inside, from
+the key's drawn index). The pad and the Timing menu show from the `@xl` container
+breakpoint: a phone keeps to the circle (Kevin). The home page's demo,
+when it comes, passes `pad={false}`.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)
@@ -175,11 +206,13 @@ the device's lower left.
 
 ### Phase 2: tempo and the progression pad
 
+Shipped 2026-10-03 (see "What shipped: phase 2" above).
+
 - Timing menu (the metronome engine, tap tempo, time signature, click).
 - The progression pad with hold-quantized beats and rests, measures,
-  playback with click, undo/clear, MIDI export (`encodeDrumMidi.ts` has a
-  format-0 writer to generalize). Per-browser persistence; saved
-  progressions for signed-in users (`progression` table, migration).
+  playback with click, undo/clear, MIDI export on a shared format-0
+  writer. Per-browser persistence; saved progressions for signed-in users
+  (`progression` table, migration 0069).
 - Diatonic highlighting and Roman numerals.
 
 ### Phase 3: everywhere the piano is

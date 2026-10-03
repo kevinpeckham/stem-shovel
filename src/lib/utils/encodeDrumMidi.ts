@@ -1,5 +1,6 @@
 import { DRUM_GM_NOTES, type DrumSwingGrid } from "$lib/constants/drumMachine";
 import { drumSwingDelay } from "./drumSwingDelay";
+import { midiFile, type MidiEvent } from "./midiFile";
 import type { DrumPattern } from "$lib/val/DrumPatternSchema";
 
 /**
@@ -24,7 +25,7 @@ export function encodeDrumMidi(
 ): Blob {
 	const sequence = Array.isArray(bars) ? bars : [bars];
 	// Events as absolute ticks, sorted, then written with delta times.
-	const events: { tick: number; bytes: number[] }[] = [];
+	const events: MidiEvent[] = [];
 	const push = (tick: number, ...bytes: number[]) => events.push({ tick, bytes });
 	const usPerQuarter = Math.round(60_000_000 / bpm);
 	push(
@@ -59,36 +60,5 @@ export function encodeDrumMidi(
 		}
 		start += pattern.steps * STEP_TICKS;
 	}
-	push(start, 0xff, 0x2f, 0x00);
-	events.sort((a, b) => a.tick - b.tick);
-
-	const track: number[] = [];
-	let last = 0;
-	for (const e of events) {
-		track.push(...variableLength(e.tick - last), ...e.bytes);
-		last = e.tick;
-	}
-	const header = [
-		...ascii("MThd"),
-		...u32(6),
-		...u16(0),
-		...u16(1),
-		...u16(PPQ),
-		...ascii("MTrk"),
-		...u32(track.length),
-	];
-	return new Blob([Uint8Array.from([...header, ...track])], { type: "audio/midi" });
+	return midiFile(events, PPQ, start);
 }
-
-function variableLength(n: number): number[] {
-	const out = [n & 0x7f];
-	let rest = n >> 7;
-	while (rest > 0) {
-		out.unshift((rest & 0x7f) | 0x80);
-		rest >>= 7;
-	}
-	return out;
-}
-const ascii = (s: string) => s.split("").map((c) => c.charCodeAt(0));
-const u16 = (n: number) => [(n >> 8) & 0xff, n & 0xff];
-const u32 = (n: number) => [(n >>> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];

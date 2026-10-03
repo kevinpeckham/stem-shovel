@@ -129,6 +129,7 @@ const {
 	idea,
 	beat,
 	pianoPreset,
+	progression,
 	songCredit,
 	artist,
 	artistMember,
@@ -196,6 +197,14 @@ export async function accountOfDemo(demoId: string) {
 export async function accountOfBeat(beatId: string) {
 	const row = await db.query.beat.findFirst({
 		where: eq(beat.id, beatId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfProgression(progressionId: string) {
+	const row = await db.query.progression.findFirst({
+		where: eq(progression.id, progressionId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

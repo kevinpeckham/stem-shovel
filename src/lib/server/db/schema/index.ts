@@ -22,6 +22,7 @@ export * from "./inviteCode";
 export * from "./notification";
 export * from "./notificationPreference";
 export * from "./passkey";
+export * from "./progression";
 export * from "./project";
 export * from "./projectMember";
 export * from "./recording";

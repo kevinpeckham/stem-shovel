@@ -63,6 +63,14 @@ class ChordPlayerEngine {
 	showKeys = $state(false);
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
+	/** Roman numerals on the diatonic wedges, and the rest dimmed, for the key center (the Circle menu). */
+	showNumerals = $state(false);
+	highlightKey = $state(false);
+	/** The progression pad listens to presses and releases to jot them (docs/chord-player.md, "The progression pad"). */
+	listener: {
+		down(by: string, chord: { label: string; wedge: string; notes: number[] }): void;
+		up(by: string): void;
+	} | null = null;
 	#loaded = false;
 	#timers = new Map<string, ReturnType<typeof setTimeout>[]>();
 
@@ -87,6 +95,8 @@ class ChordPlayerEngine {
 		this.keyAtTop = read("key-at-top") !== "0";
 		this.showSignatures = read("signatures") !== "0";
 		this.showKeys = read("keys") === "1";
+		this.showNumerals = read("numerals") === "1";
+		this.highlightKey = read("highlight") === "1";
 		piano.load();
 	}
 
@@ -141,6 +151,7 @@ class ChordPlayerEngine {
 		});
 		this.#timers.set(by, timers);
 		this.sounding = [...this.sounding, { by, wedge, name, notes }];
+		this.listener?.down(by, { label: name, wedge, notes });
 	}
 	/** The chord held by `by` stops (its notes, unless another holder shares one). */
 	release(by: string) {
@@ -152,13 +163,26 @@ class ChordPlayerEngine {
 		const stillHeld = new Set(rest.flatMap((s) => s.notes));
 		for (const midi of held.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
 		this.sounding = rest;
+		this.listener?.up(by);
+	}
+	/** A jotted chord played back by the pad: its notes as they were, held until `release(by)`. */
+	sound(by: string, chord: { label: string; wedge: string; notes: number[] }) {
+		this.release(by);
+		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
+		for (const midi of chord.notes) piano.noteOn(midi, velocity);
+		this.sounding = [
+			...this.sounding,
+			{ by, wedge: chord.wedge, name: chord.label, notes: chord.notes },
+		];
 	}
 	/** Everything off: leaving the page, Escape, the window losing focus. */
 	allOff() {
 		for (const timers of this.#timers.values()) for (const t of timers) clearTimeout(t);
 		this.#timers.clear();
+		const held = this.sounding.map((s) => s.by);
 		this.sounding = [];
 		piano.allOff();
+		for (const by of held) this.listener?.up(by);
 	}
 
 	setMode(mode: "chords" | "notes") {
@@ -201,6 +225,18 @@ class ChordPlayerEngine {
 	setShowSignatures(on: boolean) {
 		this.showSignatures = on;
 		write("signatures", on ? "1" : "0");
+	}
+	setShowNumerals(on: boolean) {
+		this.showNumerals = on;
+		write("numerals", on ? "1" : "0");
+	}
+	setHighlightKey(on: boolean) {
+		this.highlightKey = on;
+		write("highlight", on ? "1" : "0");
+	}
+	/** The key center's drawn index: the top, or the bottom. */
+	get keyIndex(): number {
+		return this.keyAtTop ? 0 : 6;
 	}
 }
 

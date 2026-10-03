@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onDestroy, type Snippet } from "svelte";
 	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
+	import { metronome } from "$lib/audio/metronome.svelte";
+	import { progressionPad } from "$lib/audio/progression.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import CircleOfFifths from "$lib/components/CircleOfFifths.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
+	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
 		CHORD_KEY_CODES,
 		CHORD_VOICINGS,
@@ -25,6 +28,8 @@
 	import { pianoPresetKey } from "$lib/utils/pianoPresetKey";
 	import { resolvePianoSlots } from "$lib/utils/resolvePianoSlots";
 	import type { NamedPianoPreset, PianoPresetData } from "$lib/val/PianoPresetSchema";
+	import type { ProgressionData } from "$lib/val/ProgressionSchema";
+	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
 
 	/**
 	 * The Chord Player device (docs/chord-player.md): the circle of fifths
@@ -47,6 +52,10 @@
 		sitePresets?: (NamedPianoPreset | null)[] | null;
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		presets?: SavedPreset[];
+		/** The account's saved progressions, for the pad. */
+		progressions?: { id: string; name: string; data: ProgressionData; updatedAt: Date }[];
+		/** The progression pad under the circle (off where the circle alone is wanted, as on the home page). */
+		pad?: boolean;
 	}
 	let {
 		keyboard = true,
@@ -55,12 +64,17 @@
 		sitePresets = null,
 		account = null,
 		presets = [],
+		progressions = [],
+		pad = true,
 	}: Props = $props();
 
 	// The engines, from the page's first render (they are shared singletons; `load` is idempotent).
 	piano.samplesBase = samplesBase;
 	piano.load(warm);
 	chordPlayer.load();
+	// svelte-ignore state_referenced_locally
+	if (pad) progressionPad.load();
+	const BEATS_PER_BAR = [2, 3, 4, 5, 6];
 
 	const INSTRUMENT_OPTIONS = PIANO_INSTRUMENTS.map((i) => ({ value: i.id, label: i.label }));
 	const instrumentLabel = (id: string) => PIANO_INSTRUMENTS.find((i) => i.id === id)?.label ?? id;
@@ -155,7 +169,10 @@
 		chordPlayer.allOff();
 	}
 	onDestroy(() => {
-		if (typeof window !== "undefined") chordPlayer.allOff();
+		if (typeof window !== "undefined") {
+			progressionPad.stop();
+			chordPlayer.allOff();
+		}
 	});
 </script>
 
@@ -296,6 +313,21 @@
 			<div class="device-button-group-label text-dark hidden @xl-block">Settings</div>
 			<div class="flex flex-wrap gap-2">
 				<ContextMenu
+					ariaLabel="Timing"
+					title="Tempo, tap, beats to the bar and the click"
+					iconClass="i-ph-metronome"
+					label="{metronome.bpm} bpm"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm px-3 tabular-nums {metronome.running
+						? 'text-accent'
+						: ''}"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[
+						{ id: "timing-heading", kind: "heading", label: "Timing" },
+						{ id: "timing-block", kind: "snippet", snippet: timingMenuBlock },
+					]}
+				/>
+				<ContextMenu
 					ariaLabel="Chords settings"
 					title="Voicing, the seventh, strum, velocity and octave"
 					iconClass="i-ph-music-notes"
@@ -369,12 +401,21 @@
 			mode={chordPlayer.mode}
 			showSignatures={chordPlayer.showSignatures}
 			showKeys={chordPlayer.showKeys}
+			keyIndex={chordPlayer.keyIndex}
+			showNumerals={chordPlayer.showNumerals}
+			highlightKey={chordPlayer.highlightKey}
 			{pressed}
 			{centre}
 			onpress={press}
 			onrelease={release}
 		/>
 	</div>
+	<!-- The progression pad, from @xl: a phone keeps to the circle (Kevin). -->
+	{#if pad}
+		<div class="hidden @xl-block">
+			<ProgressionPad {account} {progressions} />
+		</div>
+	{/if}
 	<!-- A phone: the 7 pad at the lower left, under a thumb, held for a seventh. -->
 	<button
 		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
@@ -606,6 +647,110 @@
 			/>
 			Show the key signatures
 		</label>
+		<label class="flex items-center gap-2 text-13px text-blue-100/90">
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={chordPlayer.showNumerals}
+				onchange={(e) => chordPlayer.setShowNumerals(e.currentTarget.checked)}
+			/>
+			Roman numerals on the key's chords (I ii iii IV V vi)
+		</label>
+		<label class="flex items-center gap-2 text-13px text-blue-100/90">
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={chordPlayer.highlightKey}
+				onchange={(e) => chordPlayer.setHighlightKey(e.currentTarget.checked)}
+			/>
+			Dim the chords outside the key
+		</label>
+	</div>
+{/snippet}
+
+{#snippet timingMenuBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<div>
+			<span class="device-button-label">Tempo · {metronome.bpm} bpm</span>
+			<div class="flex items-center gap-1 mb-2">
+				{#each [-5, -1] as d (d)}
+					<button
+						class="device-button-sm px-2 !min-w-0 tabular-nums"
+						type="button"
+						aria-label="Tempo {d}"
+						onclick={() => metronome.setBpm(metronome.bpm + d)}>{d}</button
+					>
+				{/each}
+				<button
+					class="device-button-sm px-4"
+					type="button"
+					title="Tap the tempo"
+					onclick={() => metronome.tap()}>Tap</button
+				>
+				{#each [1, 5] as d (d)}
+					<button
+						class="device-button-sm px-2 !min-w-0 tabular-nums"
+						type="button"
+						aria-label="Tempo +{d}"
+						onclick={() => metronome.setBpm(metronome.bpm + d)}>+{d}</button
+					>
+				{/each}
+				<input
+					class="device-field w-18 ml-auto py-1 text-center text-13px tabular-nums"
+					type="number"
+					min={BPM_MIN}
+					max={BPM_MAX}
+					step="1"
+					value={metronome.bpm}
+					onchange={(e) => metronome.setBpm(Number(e.currentTarget.value))}
+					aria-label="Tempo in beats per minute"
+				/>
+			</div>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min={BPM_MIN}
+				max={BPM_MAX}
+				step="1"
+				value={metronome.bpm}
+				oninput={(e) => metronome.setBpm(Number(e.currentTarget.value))}
+				aria-label="Tempo"
+			/>
+			<span class="block text-12px opacity-70 mt-1"
+				>The pad measures a held chord against this tempo: about a beat, two or four.</span
+			>
+		</div>
+		<label class="block">
+			<span class="device-button-label">Beats to the bar</span>
+			<select
+				class="device-field w-full"
+				value={String(metronome.beatsPerBar)}
+				onchange={(e) => metronome.setBeats(Number(e.currentTarget.value))}
+			>
+				{#each BEATS_PER_BAR as n (n)}<option value={String(n)}>{n}</option>{/each}
+			</select>
+		</label>
+		<div class="grid gap-2">
+			<button
+				class="device-button-sm px-3 justify-self-start {metronome.running ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={metronome.running}
+				title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
+				onclick={() => metronome.toggle()}
+			>
+				<span class="i-ph-metronome" aria-hidden="true"></span>
+				{metronome.running ? "Click on" : "Click"}
+			</button>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={progressionPad.click}
+					onchange={(e) => progressionPad.setClick(e.currentTarget.checked)}
+				/>
+				A click under the pad's playback
+			</label>
+		</div>
 	</div>
 {/snippet}
 
