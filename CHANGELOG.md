@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An arpeggiator on the chord player** (docs/chord-player.md, "The arpeggiator"): Arp beside Chords and Notes makes a held wedge play its notes one at a time at the Timing tempo; the Chords menu sets the rate (quarters to sixteenths and triplets), the pattern (up, down, up and down, as played, random), the octaves, the gate and Latch. A new chord restarts the pattern on the press; the pad's playback goes through it too; styles and voicings decide the notes.
+- **An Electric Bass sound** on the piano engine (synthesized: a sine body with a triangle and a touch of saw, a low filter opening with the pluck, an octave down), for the chord player's Notes mode and the piano.
+- **The chord player demo on the home page**, after the piano demo, with the site's chord player presets, no pad; the computer keyboard plays whichever demo is in view.
+
 ## [0.92.0] - 2026-10-03
 
 ### Added

@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { onDestroy, type Snippet } from "svelte";
-	import { chordPlayer, type NoteReadout } from "$lib/audio/chordPlayer.svelte";
+	import {
+		ARP_PATTERNS,
+		ARP_RATES,
+		chordPlayer,
+		type ArpPattern,
+		type ArpRate,
+		type NoteReadout,
+	} from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
@@ -327,6 +334,7 @@
 					<span>Key of {keyLabel}</span>
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
 					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
+					{#if chordPlayer.arp}<span class="text-accent">· arp</span>{/if}
 					<span
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
 					>
@@ -700,12 +708,20 @@
 			onclick={() => chordPlayer.setMode("chords")}>Chords</button
 		>
 		<button
-			class="device-button-sm px-3 rounded-l-none {chordPlayer.mode === 'notes'
-				? 'text-accent'
-				: ''}"
+			class="device-button-sm px-3 rounded-none {chordPlayer.mode === 'notes' ? 'text-accent' : ''}"
 			type="button"
 			aria-pressed={chordPlayer.mode === "notes"}
 			onclick={() => chordPlayer.setMode("notes")}>Notes</button
+		>
+		<button
+			class="device-button-sm px-3 rounded-l-none {chordPlayer.arp ? 'text-accent' : ''}"
+			type="button"
+			aria-pressed={chordPlayer.arp}
+			title={chordPlayer.arp
+				? "Arpeggiator on: a held wedge plays its notes one at a time; click to play them together"
+				: "Arpeggiator: a held wedge plays its notes one at a time in time with the tempo (the Chords menu sets the pattern)"}
+			aria-label="Arpeggiator"
+			onclick={() => chordPlayer.setArp(!chordPlayer.arp)}>Arp</button
 		>
 	</div>
 {/snippet}
@@ -912,6 +928,79 @@
 				>The chord root's octave, and the notes' in notes mode; 4 is middle C's.</span
 			>
 		</label>
+		<div class="border-t border-current/10 pt-4 grid gap-4">
+			<div class="text-11px uppercase tracking-wider text-accent">Arpeggiator</div>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.arp}
+					onchange={(e) => chordPlayer.setArp(e.currentTarget.checked)}
+				/>
+				A held wedge plays its notes one at a time, at the Timing tempo
+			</label>
+			<label class="block">
+				<span class="device-button-label">Rate</span>
+				<select
+					class="device-field w-full"
+					value={chordPlayer.arpRate}
+					onchange={(e) => chordPlayer.setArpRate(e.currentTarget.value as ArpRate)}
+				>
+					{#each ARP_RATES as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
+				</select>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Pattern</span>
+				<select
+					class="device-field w-full"
+					value={chordPlayer.arpPattern}
+					onchange={(e) => chordPlayer.setArpPattern(e.currentTarget.value as ArpPattern)}
+				>
+					{#each ARP_PATTERNS as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
+				</select>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Octaves · {chordPlayer.arpOctaves}</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="1"
+					max="3"
+					step="1"
+					value={chordPlayer.arpOctaves}
+					aria-label="Arpeggiator octaves"
+					oninput={(e) => chordPlayer.setArpOctaves(Number(e.currentTarget.value))}
+				/>
+				<span class="block text-12px opacity-70 mt-1"
+					>The pattern climbs through this many octaves before it repeats.</span
+				>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Gate · {Math.round(chordPlayer.arpGate * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="10"
+					max="100"
+					step="5"
+					value={Math.round(chordPlayer.arpGate * 100)}
+					aria-label="Arpeggiator gate in percent"
+					oninput={(e) => chordPlayer.setArpGate(Number(e.currentTarget.value) / 100)}
+				/>
+				<span class="block text-12px opacity-70 mt-1"
+					>How much of each step the note sounds: short and clipped, or running into the next.</span
+				>
+			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.arpLatch}
+					onchange={(e) => chordPlayer.setArpLatch(e.currentTarget.checked)}
+				/>
+				Latch: the pattern keeps going after you let go, until the next chord or Esc
+			</label>
+		</div>
 	</div>
 {/snippet}
 

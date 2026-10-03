@@ -14,6 +14,11 @@ export const PIANO_INSTRUMENTS = [
 	},
 	{ id: "pad", label: "Pad", hint: "slow to swell, slow to fade" },
 	{ id: "pluck", label: "Pluck", hint: "a short, bright pick" },
+	{
+		id: "bass",
+		label: "Electric Bass",
+		hint: "a round fingered bass an octave down, for the chord player's notes",
+	},
 ] as const;
 export type PianoInstrumentId = (typeof PIANO_INSTRUMENTS)[number]["id"];
 export const PIANO_INSTRUMENT_IDS = PIANO_INSTRUMENTS.map((i) => i.id) as PianoInstrumentId[];

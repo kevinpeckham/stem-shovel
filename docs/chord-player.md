@@ -220,7 +220,17 @@ system admin; the link to the piano page is gone. A sustain pad joins the
 top corners, the bowl's bottom ones), a hand each. The arch is the default
 layout, and the wedges' names come from `chordPlayer.wedgeLabels` (the
 style's chord per degree with the 7 pad folded in), long names shrinking
-to fit. **The readout** (Kevin): the chord name at the hole's centre on every
+to fit. **The arpeggiator** (Kevin): in the engine (`arp*` state persisted under
+`stemshovel.chord-player.arp-*`). With `arp` on, `press()` and the pad's
+`sound()` put the chord's notes into `#arpHeld` instead of sounding them;
+a lookahead loop on the piano's context (`startLookahead`) schedules one
+note per step (the metronome's beat over `ARP_RATES.perBeat`), on at the
+step and off after `arpGate` of it, through `#arpSequence()` (held chords'
+notes ascending through `arpOctaves`, ordered by `arpPattern`). A new
+chord re-anchors the grid (`#arpRestart`), so chord changes land on the
+press; `release()` drops the chord and, with `arpLatch`, keeps the last one
+running; `allOff` stops it. The home demo passes `pad={false}`; the bass
+is a `synthVoice` patch with `transpose: -12`. **The readout** (Kevin): the chord name at the hole's centre on every
 layout, and under it the sounding notes from `chordPlayer.soundingSpelled`
 (`utils/noteSpelling.ts`: letter, accidental, octave and the treble-staff
 step, flats for positions 0 and 6 to 11, sharps for 1 to 5), written as

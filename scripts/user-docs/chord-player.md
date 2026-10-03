@@ -10,13 +10,17 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 **Notes** turns the circle into twelve single notes, chromatic from your key, for a melody; **Chords** turns it back.
 
+## The arpeggiator
+
+**Arp**, beside Chords and Notes, makes a held wedge play its notes one at a time in time with the Timing tempo instead of all at once. The Chords menu's Arpeggiator section sets the rate (quarter, eighth, triplet or sixteenth notes), the pattern (up, down, up and down, as played, random), how many octaves it climbs, the gate (how much of each step the note sounds) and Latch, which keeps the pattern going after you let go until the next chord or <kbd>ESC</kbd>. A new chord restarts the pattern as you press it, so chord changes land where you play them; the pad plays a progression back through it too. Styles and voicings decide which notes it cycles.
+
 ## The readout
 
 The middle of the circle names what is sounding and, beneath the name, its notes: on a small treble staff with the names written under it (as it starts), the names alone, the staff alone, or not at all, as the UI menu says. The notes are spelled in flats on the flat side of the circle and in sharps on the sharp side.
 
 ## Sound, presets and effects
 
-The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ and synths, the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary (and a Reset all to defaults button at its foot), and the volume. The five **preset** buttons are the chord player's own, drawing on the same library of saved sounds as the piano's: the bookmark button beside them saves the sound playing now to a button, with the chord player's own settings (chords or notes, the style, the voicing, the octave and the strum), which come back when the preset is pressed here (the piano ignores them), puts any saved preset on one, renames or clears it (signed in, the library is your account's, shared with every member; signed out, the buttons are this browser's). A sound that drifts from its preset shows "edited" on the screen, as the piano's does.
+The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ, synths and an electric bass (an octave down, made for Notes mode), the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary (and a Reset all to defaults button at its foot), and the volume. The five **preset** buttons are the chord player's own, drawing on the same library of saved sounds as the piano's: the bookmark button beside them saves the sound playing now to a button, with the chord player's own settings (chords or notes, the style, the voicing, the octave and the strum), which come back when the preset is pressed here (the piano ignores them), puts any saved preset on one, renames or clears it (signed in, the library is your account's, shared with every member; signed out, the buttons are this browser's). A sound that drifts from its preset shows "edited" on the screen, as the piano's does.
 
 ## The Chords menu
 

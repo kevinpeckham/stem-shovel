@@ -41,6 +41,8 @@ interface Patch {
 	sweepDecay?: number;
 	/** Vibrato depth in cents (organ) at 6 Hz. */
 	vibrato?: number;
+	/** Semitones the sound sits off the key played (a bass an octave down). */
+	transpose?: number;
 	level: number;
 }
 
@@ -110,6 +112,22 @@ const PATCHES: Record<Exclude<PianoInstrumentId, "grand">, Patch> = {
 		sweepDecay: 0.12,
 		level: 0.7,
 	},
+	// A fingered electric bass (Kevin: for the chord player's notes mode): a sine body with a triangle and a touch of saw for the string's growl, a low filter that opens with the pluck and settles, an octave down.
+	bass: {
+		partials: [
+			{ type: "sine", ratio: 1, gain: 1 },
+			{ type: "triangle", ratio: 1, gain: 0.45 },
+			{ type: "sawtooth", ratio: 1, gain: 0.18, fade: 0.5 },
+			{ type: "sine", ratio: 2, gain: 0.12, fade: 0.25 },
+		],
+		env: { attack: 0.004, decay: 0.9, sustain: 0.35, release: 0.12 },
+		cutoff: 220,
+		cutoffVelocity: 700,
+		sweep: 900,
+		sweepDecay: 0.18,
+		transpose: -12,
+		level: 0.9,
+	},
 };
 
 export function startVoice(
@@ -121,7 +139,7 @@ export function startVoice(
 	when: number,
 ): SynthVoice {
 	const patch = PATCHES[instrument];
-	const f = frequencyOfMidi(midi);
+	const f = frequencyOfMidi(midi + (patch.transpose ?? 0));
 	const v = Math.min(1, Math.max(0, velocity));
 	const peak = patch.level * (0.2 + 0.8 * v ** 1.5);
 

@@ -8,6 +8,7 @@
 	import Tuner from "$lib/components/Tuner.svelte";
 	import Metronome from "$lib/components/Metronome.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
@@ -31,8 +32,14 @@
 	let playerShare = $state(0);
 	let drumsShare = $state(0);
 	let pianoShare = $state(0);
+	let chordsShare = $state(0);
 	let spaceTarget = $derived.by(() => {
-		const shares = { player: playerShare, drums: drumsShare, piano: pianoShare };
+		const shares = {
+			player: playerShare,
+			drums: drumsShare,
+			piano: pianoShare,
+			chords: chordsShare,
+		};
 		const [best, share] = Object.entries(shares).sort((a, b) => b[1] - a[1])[0]!;
 		return share < 0.5 ? null : best;
 	});
@@ -317,6 +324,37 @@
 				})}
 			>
 				<Piano keyboard={spaceTarget === "piano"} sitePresets={data.pianoPresets} />
+			</div>
+		</section>
+
+		<!-- Chord Player Demo -->
+		<section class="mt-12">
+			<h3 class="marketing-section-heading">Chord Player Demo</h3>
+			<div class="marketing-topic-heading">Chord Player</div>
+			<p class="marketing-paragraph text-balance">
+				The piano's sounds on a circle of fifths: press a chord and hear it, find the chords that go
+				together side by side, and play a progression in a style, from plain triads to jazz, blues,
+				folk or bossa. The standalone version jots your progressions and keeps them.
+			</p>
+			<div class="flex flex-wrap items-center gap-x-5">
+				<div class="marketing-demo-cta">Try the working demo below.</div>
+				<a class="link inline-flex items-center gap-1.5 text-14px" href="/chord-player"
+					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
+				>
+			</div>
+			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget); the piano's samples come with the piano demo's prefetch, the engine is shared. -->
+			<div
+				class="mt-8"
+				{@attach visibleShare((s) => {
+					chordsShare = s;
+					if (s > 0) piano.prefetch();
+				})}
+			>
+				<ChordPlayer
+					keyboard={spaceTarget === "chords"}
+					sitePresets={data.chordPresets}
+					pad={false}
+				/>
 			</div>
 		</section>
 

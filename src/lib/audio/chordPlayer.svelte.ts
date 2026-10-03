@@ -1,3 +1,5 @@
+import { startLookahead } from "$lib/audio/lookahead";
+import { metronome } from "$lib/audio/metronome.svelte";
 import { piano } from "$lib/audio/piano.svelte";
 import {
 	CHORD_KEY_CODES,
@@ -24,6 +26,23 @@ import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema"
 import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
+
+/** The arpeggiator's step: notes per beat at the metronome's tempo. */
+export const ARP_RATES = [
+	{ id: "4", label: "Quarter notes", perBeat: 1 },
+	{ id: "8", label: "Eighth notes", perBeat: 2 },
+	{ id: "8t", label: "Eighth-note triplets", perBeat: 3 },
+	{ id: "16", label: "Sixteenth notes", perBeat: 4 },
+] as const;
+export type ArpRate = (typeof ARP_RATES)[number]["id"];
+export const ARP_PATTERNS = [
+	{ id: "up", label: "Up" },
+	{ id: "down", label: "Down" },
+	{ id: "updown", label: "Up and down" },
+	{ id: "played", label: "As played" },
+	{ id: "random", label: "Random" },
+] as const;
+export type ArpPattern = (typeof ARP_PATTERNS)[number]["id"];
 
 /** The notes under the chord name in the readout: written, on a staff, both (the staff above the names), or off. */
 export type NoteReadout = "names" | "staff" | "both" | "off";
@@ -105,6 +124,24 @@ class ChordPlayerEngine {
 	#loaded = false;
 	#timers = new Map<string, ReturnType<typeof setTimeout>[]>();
 
+	// ---- the arpeggiator (docs/chord-player.md, "The arpeggiator") ----
+	/** A held wedge plays its notes one at a time in time with the tempo. */
+	arp = $state(false);
+	arpRate = $state<ArpRate>("8");
+	arpPattern = $state<ArpPattern>("up");
+	arpOctaves = $state(1);
+	/** How much of each step the note sounds, 0.1 (staccato) to 1 (legato). */
+	arpGate = $state(0.6);
+	/** The pattern keeps running after the wedge is let go, until the next chord or Escape. */
+	arpLatch = $state(false);
+	#arpHeld = new Map<string, { notes: number[]; velocity: number }>();
+	#arpLatched: { notes: number[]; velocity: number } | null = null;
+	#arpStopLoop: (() => void) | null = null;
+	#arpTimers: ReturnType<typeof setTimeout>[] = [];
+	#arpNext = 0;
+	#arpIndex = 0;
+	#arpCtx: AudioContext | null = null;
+
 	load() {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
@@ -131,6 +168,17 @@ class ChordPlayerEngine {
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "circle") this.layout = "circle";
 		if (read("key-map") === "circle") this.keyMap = "circle";
+		this.arp = read("arp") === "1";
+		const rate = read("arp-rate");
+		if (rate && ARP_RATES.some((r) => r.id === rate)) this.arpRate = rate as ArpRate;
+		const pattern = read("arp-pattern");
+		if (pattern && ARP_PATTERNS.some((r) => r.id === pattern))
+			this.arpPattern = pattern as ArpPattern;
+		const octaves = Number(read("arp-octaves"));
+		if (Number.isInteger(octaves) && octaves >= 1 && octaves <= 3) this.arpOctaves = octaves;
+		const gate = Number(read("arp-gate"));
+		if (Number.isFinite(gate) && gate >= 0.1 && gate <= 1) this.arpGate = gate;
+		this.arpLatch = read("arp-latch") === "1";
 		const readout = read("note-readout");
 		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
 			this.noteReadout = readout;
@@ -194,12 +242,16 @@ class ChordPlayerEngine {
 		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
 		// More notes, each a little softer, so a rich voicing sums to about a triad's level (the limiter after the effects catches the rest).
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / notes.length));
-		const timers: ReturnType<typeof setTimeout>[] = [];
-		notes.forEach((midi, i) => {
-			if (gap === 0 || i === 0) piano.noteOn(midi, velocity);
-			else timers.push(setTimeout(() => piano.noteOn(midi, velocity), gap * i));
-		});
-		this.#timers.set(by, timers);
+		if (this.arp) {
+			this.#arpHold(by, notes, velocity);
+		} else {
+			const timers: ReturnType<typeof setTimeout>[] = [];
+			notes.forEach((midi, i) => {
+				if (gap === 0 || i === 0) piano.noteOn(midi, velocity);
+				else timers.push(setTimeout(() => piano.noteOn(midi, velocity), gap * i));
+			});
+			this.#timers.set(by, timers);
+		}
 		this.sounding = [...this.sounding, { by, wedge, name, notes }];
 		this.listener?.down(by, { label: name, wedge, notes });
 	}
@@ -210,8 +262,12 @@ class ChordPlayerEngine {
 		for (const t of this.#timers.get(by) ?? []) clearTimeout(t);
 		this.#timers.delete(by);
 		const rest = this.sounding.filter((s) => s.by !== by);
-		const stillHeld = new Set(rest.flatMap((s) => s.notes));
-		for (const midi of held.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
+		if (this.#arpHeld.has(by)) {
+			this.#arpRelease(by);
+		} else {
+			const stillHeld = new Set(rest.flatMap((s) => s.notes));
+			for (const midi of held.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
+		}
 		this.sounding = rest;
 		this.listener?.up(by);
 	}
@@ -219,16 +275,150 @@ class ChordPlayerEngine {
 	sound(by: string, chord: { label: string; wedge: string; notes: number[] }) {
 		this.release(by);
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
-		for (const midi of chord.notes) piano.noteOn(midi, velocity);
+		if (this.arp) this.#arpHold(by, chord.notes, velocity);
+		else for (const midi of chord.notes) piano.noteOn(midi, velocity);
 		this.sounding = [
 			...this.sounding,
 			{ by, wedge: chord.wedge, name: chord.label, notes: chord.notes },
 		];
 	}
+
+	/** A chord into the arpeggiator: the pattern restarts on its first note, so a chord change lands where it was pressed. */
+	#arpHold(by: string, notes: number[], velocity: number) {
+		this.#arpHeld.set(by, { notes, velocity });
+		this.#arpLatched = null;
+		this.#arpIndex = 0;
+		this.#arpRestart();
+	}
+	#arpRelease(by: string) {
+		const held = this.#arpHeld.get(by);
+		this.#arpHeld.delete(by);
+		if (this.#arpHeld.size === 0) {
+			if (this.arpLatch && held) this.#arpLatched = held;
+			else this.#arpStop();
+		}
+	}
+	/** The notes to cycle: every held chord's (or the latched one's), ascending, through the octaves, in the pattern's order. */
+	#arpSequence(): { midi: number; velocity: number }[] {
+		const sources = this.#arpHeld.size
+			? [...this.#arpHeld.values()]
+			: this.#arpLatched
+				? [this.#arpLatched]
+				: [];
+		const seen = new Set<number>();
+		const played: { midi: number; velocity: number }[] = [];
+		for (const s of sources)
+			for (const midi of [...s.notes].sort((a, b) => a - b))
+				for (let o = 0; o < this.arpOctaves; o++) {
+					const m = midi + 12 * o;
+					if (m > 127 || seen.has(m)) continue;
+					seen.add(m);
+					played.push({ midi: m, velocity: s.velocity });
+				}
+		const up = [...played].sort((a, b) => a.midi - b.midi);
+		switch (this.arpPattern) {
+			case "down":
+				return up.reverse();
+			case "updown":
+				return up.length > 2 ? [...up, ...up.slice(1, -1).reverse()] : up;
+			case "played":
+				return played;
+			default:
+				return up;
+		}
+	}
+	#arpStepSeconds(): number {
+		const beat = 60 / metronome.bpm;
+		return beat / (ARP_RATES.find((r) => r.id === this.arpRate)?.perBeat ?? 2);
+	}
+	#arpRestart() {
+		const ctx = piano.output().context as AudioContext;
+		this.#arpCtx = ctx;
+		for (const t of this.#arpTimers) clearTimeout(t);
+		this.#arpTimers = [];
+		piano.allOff();
+		this.#arpNext = ctx.currentTime + 0.01;
+		if (!this.#arpStopLoop) this.#arpStopLoop = startLookahead(ctx, this.#arpSchedule);
+	}
+	#arpStop() {
+		this.#arpStopLoop?.();
+		this.#arpStopLoop = null;
+		for (const t of this.#arpTimers) clearTimeout(t);
+		this.#arpTimers = [];
+		this.#arpHeld.clear();
+		this.#arpLatched = null;
+		piano.allOff();
+	}
+	#arpAt(time: number, fn: () => void) {
+		const ctx = this.#arpCtx;
+		if (!ctx) return;
+		this.#arpTimers.push(setTimeout(fn, Math.max(0, (time - ctx.currentTime) * 1000)));
+		if (this.#arpTimers.length > 96) this.#arpTimers = this.#arpTimers.slice(-64);
+	}
+	#arpSchedule = (until: number) => {
+		const seq = this.#arpSequence();
+		if (seq.length === 0) {
+			this.#arpStop();
+			return;
+		}
+		const step = this.#arpStepSeconds();
+		while (this.#arpNext < until) {
+			const i =
+				this.arpPattern === "random"
+					? Math.floor(Math.random() * seq.length)
+					: this.#arpIndex % seq.length;
+			const { midi, velocity } = seq[i];
+			const at = this.#arpNext;
+			this.#arpAt(at, () => piano.noteOn(midi, velocity));
+			this.#arpAt(at + Math.max(0.03, step * this.arpGate), () => piano.noteOff(midi));
+			this.#arpNext += step;
+			this.#arpIndex++;
+		}
+	};
+	setArp(on: boolean) {
+		this.arp = on;
+		write("arp", on ? "1" : "0");
+		if (!on) {
+			// Whatever is held keeps sounding as a chord.
+			const held = [...this.#arpHeld.values()];
+			this.#arpStop();
+			for (const h of held) for (const midi of h.notes) piano.noteOn(midi, h.velocity);
+		} else if (this.sounding.length) {
+			// Held chords switch over to the pattern.
+			for (const s of this.sounding) {
+				for (const midi of s.notes) piano.noteOff(midi);
+				this.#arpHeld.set(s.by, { notes: s.notes, velocity: this.velocity });
+			}
+			this.#arpIndex = 0;
+			this.#arpRestart();
+		}
+	}
+	setArpRate(rate: ArpRate) {
+		this.arpRate = rate;
+		write("arp-rate", rate);
+	}
+	setArpPattern(pattern: ArpPattern) {
+		this.arpPattern = pattern;
+		write("arp-pattern", pattern);
+	}
+	setArpOctaves(n: number) {
+		this.arpOctaves = Math.max(1, Math.min(3, Math.round(n)));
+		write("arp-octaves", String(this.arpOctaves));
+	}
+	setArpGate(g: number) {
+		this.arpGate = Math.max(0.1, Math.min(1, Math.round(g * 100) / 100));
+		write("arp-gate", String(this.arpGate));
+	}
+	setArpLatch(on: boolean) {
+		this.arpLatch = on;
+		write("arp-latch", on ? "1" : "0");
+		if (!on && this.#arpHeld.size === 0) this.#arpStop();
+	}
 	/** Everything off: leaving the page, Escape, the window losing focus. */
 	allOff() {
 		for (const timers of this.#timers.values()) for (const t of timers) clearTimeout(t);
 		this.#timers.clear();
+		if (this.#arpStopLoop || this.#arpLatched || this.#arpHeld.size) this.#arpStop();
 		const held = this.sounding.map((s) => s.by);
 		this.sounding = [];
 		piano.allOff();
