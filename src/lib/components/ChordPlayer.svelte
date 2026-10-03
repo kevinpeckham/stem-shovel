@@ -305,7 +305,7 @@
 			>
 		</div>
 		<div class="hidden @xl-block">
-			<div class="device-button-group-label text-dark hidden @xl-block">Keys</div>
+			<div class="device-button-group-label text-dark hidden @xl-block">View</div>
 			{@render keysBlock()}
 		</div>
 		<div class="hidden @xl-block">
@@ -395,13 +395,17 @@
 
 	<!-- the circle: on a phone it runs to the device's edges and a little past them, so the wedges at three and nine o'clock end in a straight edge and every button is as big as the width allows (Kevin); from @xl, whole, up to 560px -->
 	<div
-		class="-mx-3 overflow-hidden @xl-mx-auto @xl-overflow-visible w-[calc(100%+1.5rem)] @xl-w-full @xl-max-w-560px text-blue-100"
+		class="-mx-3 overflow-hidden @xl-mx-auto @xl-overflow-visible w-[calc(100%+1.5rem)] @xl-w-full {chordPlayer.layout ===
+		'arch'
+			? '@xl-max-w-700px'
+			: '@xl-max-w-560px'} text-blue-100"
 	>
 		<CircleOfFifths
-			class="w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"
+			class={chordPlayer.layout === "arch" ? "w-full" : "w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"}
 			positions={chordPlayer.positions}
 			notes={chordPlayer.notes}
 			mode={chordPlayer.mode}
+			layout={chordPlayer.layout}
 			showSignatures={chordPlayer.showSignatures}
 			showKeys={chordPlayer.showKeys}
 			keyIndex={chordPlayer.keyIndex}
@@ -487,7 +491,7 @@
 			<span class="i-ph-keyboard" aria-hidden="true"></span>
 		</button>
 		<button
-			class="device-button-sm px-3 rounded-l-none font-serif tracking-wider {chordPlayer.showNumerals
+			class="device-button-sm px-3 rounded-none font-serif tracking-wider {chordPlayer.showNumerals
 				? 'text-accent'
 				: ''}"
 			type="button"
@@ -498,6 +502,20 @@
 			aria-label="Chord numerals"
 			onclick={() => chordPlayer.setShowNumerals(!chordPlayer.showNumerals)}>IV</button
 		>
+		<button
+			class="device-button-sm px-3 rounded-l-none {chordPlayer.layout === 'arch'
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-pressed={chordPlayer.layout === "arch"}
+			title={chordPlayer.layout === "arch"
+				? "The whole circle"
+				: "The arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out"}
+			aria-label="Arch layout"
+			onclick={() => chordPlayer.setLayout(chordPlayer.layout === "arch" ? "circle" : "arch")}
+		>
+			<span class="i-ph-rainbow" aria-hidden="true"></span>
+		</button>
 	</div>
 {/snippet}
 
@@ -562,7 +580,7 @@
 {#snippet compactMenuBlock()}
 	<div class="grid grid-cols-1 -mt-3">
 		{@render section("Play", modeBlock, true)}
-		{@render section("Keys", keysBlock)}
+		{@render section("View", keysBlock)}
 		{@render section("Presets", presetsBlock)}
 		{@render section("Volume", volumeBlock, true)}
 		{@render section("Chords", chordsMenuBlock)}

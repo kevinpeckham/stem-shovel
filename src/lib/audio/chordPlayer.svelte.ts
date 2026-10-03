@@ -61,6 +61,8 @@ class ChordPlayerEngine {
 	showSignatures = $state(true);
 	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
 	showKeys = $state(false);
+	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
+	layout = $state<"circle" | "arch">("circle");
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
@@ -95,6 +97,7 @@ class ChordPlayerEngine {
 		this.keyAtTop = read("key-at-top") !== "0";
 		this.showSignatures = read("signatures") !== "0";
 		this.showKeys = read("keys") === "1";
+		if (read("layout") === "arch") this.layout = "arch";
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") === "1";
 		piano.load();
@@ -225,6 +228,10 @@ class ChordPlayerEngine {
 	setShowSignatures(on: boolean) {
 		this.showSignatures = on;
 		write("signatures", on ? "1" : "0");
+	}
+	setLayout(layout: "circle" | "arch") {
+		this.layout = layout;
+		write("layout", layout);
 	}
 	setShowNumerals(on: boolean) {
 		this.showNumerals = on;

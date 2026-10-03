@@ -188,7 +188,14 @@ toggle (IV, beside the keyboard button) that writes every wedge's Roman
 numeral relative to the key (`CircleOfFifths.svelte`: a table of twelve by
 distance clockwise from the key's drawn index, per ring; the diatonic six
 in accent). With the key labels up, a strip under the circle names the
-other shortcuts. **Notes and panels** (Kevin, the same day): the page holds the device in
+other shortcuts (and the key labels are the piano's blue). The arch
+layout (`chordPlayer.layout`, a View button): `circleGeometry.ts` now
+describes a wedge as a slot (centre, angles, scale), `CIRCLE_SLOTS` the
+circle and `ARCH_SLOTS` the arch, a 480 × 352 box with wedges 9 to 3 on
+a 230-radius arch centred near the bottom, 7 and 8 as 45° fans pivoted on
+the top-left corner and 4 and 5 on the top-right at 0.62 of the size, and
+no slot for 6; `CircleOfFifths.svelte` draws whichever set it is given, fonts
+scaled per slot, signatures only on full-size wedges. **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,
