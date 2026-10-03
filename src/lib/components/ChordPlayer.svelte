@@ -906,6 +906,18 @@
 			>
 		</label>
 		<label class="block">
+			<span class="device-button-label">Where the key sits</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.keyAtTop ? "top" : "bottom"}
+				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.value === "top")}
+			>
+				<option value="bottom">At the bottom · the I chord under your thumb, the arch a bowl</option
+				>
+				<option value="top">At the top · the I chord at twelve o'clock</option>
+			</select>
+		</label>
+		<label class="block">
 			<span class="device-button-label">Key center</span>
 			<select
 				class="device-field w-full"
@@ -939,22 +951,13 @@
 				value={chordPlayer.keyMap}
 				onchange={(e) => chordPlayer.setKeyMap(e.currentTarget.value as ChordKeyMap)}
 			>
-				<option value="circle">Round the circle · 1 is the key, then clockwise in fifths</option>
 				<option value="degree">By degree · 1 to 7 are I to VII, 8 to = the chromatic chords</option>
+				<option value="circle">Round the circle · 1 is the key, then clockwise in fifths</option>
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
 				>The number row plays the majors, the row below the minors on the same roots. By degree,
 				I–IV–V is 1, 4, 5.</span
 			>
-		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={chordPlayer.keyAtTop}
-				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.checked)}
-			/>
-			The key at the top (off: at the bottom, and the arch a bowl for a thumb)
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
 			<input

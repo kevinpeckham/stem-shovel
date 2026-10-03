@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **The keyboard plays by degree from the start** (1, 4, 5 is I–IV–V); the UI menu's "Where the key sits" is a plain choice, at the bottom (the default) or the top, where a checkbox under the keyboard setting used to be.
 - **Folk and Fifths styles** on the chord player: Folk is a guitar's open shapes (add9 on I and IV, sus4 on V, m7 minors; the 7 pad suspends, or augments I), Fifths is power chords on every wedge (the minor wedge its root's: A5). The new recipes (add9, sus2, sus4, 7sus4, augmented, m(add9), power chords) are in the custom style editor too.
 
 ## [0.90.0] - 2026-10-03

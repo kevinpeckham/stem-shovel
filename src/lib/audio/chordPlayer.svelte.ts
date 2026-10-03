@@ -87,7 +87,7 @@ class ChordPlayerEngine {
 	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
 	layout = $state<"circle" | "arch">("arch");
 	/** The computer keyboard: around the circle from the key, or by degree (1 to 7 are I to VII). */
-	keyMap = $state<ChordKeyMap>("circle");
+	keyMap = $state<ChordKeyMap>("degree");
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	/** The notes under the chord name in the readout: written, on a staff, or not at all (the UI menu). */
@@ -129,7 +129,7 @@ class ChordPlayerEngine {
 		this.showSignatures = read("signatures") === "1";
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "circle") this.layout = "circle";
-		if (read("key-map") === "degree") this.keyMap = "degree";
+		if (read("key-map") === "circle") this.keyMap = "circle";
 		const readout = read("note-readout");
 		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
 			this.noteReadout = readout;
