@@ -204,7 +204,10 @@ fonts stop at 7), signatures only on full-size wedges. `ARCH_DOWN_SLOTS`
 is the arch mirrored top to bottom, drawn when the key is not at the top
 (`chordPlayer.drawnLayout`; the arch never rotates the positions by six,
 it turns itself over): a bowl with I at the bottom for a thumb on a phone
-(Kevin). **Notes and panels** (Kevin, the same day): the page holds the device in
+(Kevin). Defaults after Kevin's pass: the dim on, the signatures off, the
+key at the bottom (the arch a bowl). The keyboard map is relative to the
+key's drawn index (`keyIndex`), so 1 and Q are the key wherever it sits;
+the signatures run along the rim, rotated with their wedge. **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,

@@ -57,7 +57,8 @@ class ChordPlayerEngine {
 	octave = $state(4);
 	/** The key at the top: a circle index (0 = C). */
 	keyCenter = $state(0);
-	keyAtTop = $state(true);
+	/** Off until switched on (Kevin): the key at the bottom, and the arch a bowl. */
+	keyAtTop = $state(false);
 	/** Off until switched on (Kevin). */
 	showSignatures = $state(false);
 	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
@@ -96,7 +97,7 @@ class ChordPlayerEngine {
 		if (Number.isInteger(octave) && octave >= 2 && octave <= 6) this.octave = octave;
 		const key = Number(read("key-center"));
 		if (Number.isInteger(key) && key >= 0 && key < 12) this.keyCenter = key;
-		this.keyAtTop = read("key-at-top") !== "0";
+		this.keyAtTop = read("key-at-top") === "1";
 		this.showSignatures = read("signatures") === "1";
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "arch") this.layout = "arch";

@@ -72,7 +72,8 @@
 	}: Props = $props();
 
 	// The circle's radii (a slot scales them to its size) and where the text sits on them.
-	const SIGNATURE_R = 186;
+	/** The signatures run along the rim, inside it by half their height. */
+	const SIGNATURE_R = 185;
 	const R_MAJOR_TEXT = 162;
 	const R_MINOR_TEXT = 101;
 	/** The key labels sit under the chord names, the numerals above with a little air (Kevin). */
@@ -203,7 +204,7 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k.x}
-					y={k.y}>{CHORD_KEY_LABELS[i].major}</text
+					y={k.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].major}</text
 				>
 			{/if}
 		{/each}
@@ -305,7 +306,7 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k1.x}
-					y={k1.y}>{CHORD_KEY_LABELS[i].major}</text
+					y={k1.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].major}</text
 				>
 				<text
 					class="pointer-events-none fill-blue-400"
@@ -313,16 +314,21 @@
 					text-anchor="middle"
 					dominant-baseline="central"
 					x={k2.x}
-					y={k2.y}>{CHORD_KEY_LABELS[i].minor}</text
+					y={k2.y}>{CHORD_KEY_LABELS[(i - keyIndex + 12) % 12].minor}</text
 				>
 			{/if}
 			{#if showSignatures && p.signature && slot.kind === "arc" && slot.scale >= 1}
 				{@const s = at(slot, SIGNATURE_R)}
+				{@const a = (slot.start + slot.end) / 2}
+				<!-- along the rim, turned with the wedge (and the right way up on the lower half), so a long one never runs past the edge -->
 				<text
 					class="pointer-events-none fill-current opacity-60"
 					font-size={px(9, slot)}
 					text-anchor="middle"
 					dominant-baseline="central"
+					transform="rotate({((a % 360) + 360) % 360 > 90 && ((a % 360) + 360) % 360 < 270
+						? a + 180
+						: a} {s.x} {s.y})"
 					x={s.x}
 					y={s.y}>{p.signature}</text
 				>

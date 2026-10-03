@@ -153,7 +153,7 @@
 		if (!key || e.repeat || downCodes.has(e.code)) return;
 		e.preventDefault();
 		downCodes.add(e.code);
-		chordPlayer.press(key.position, key.quality, `key:${e.code}`);
+		chordPlayer.press((key.position + chordPlayer.keyIndex) % 12, key.quality, `key:${e.code}`);
 	}
 	function onkeyup(e: KeyboardEvent) {
 		if (e.key === "Shift") {
@@ -345,7 +345,7 @@
 				/>
 				<ContextMenu
 					ariaLabel="Circle settings"
-					title="The key at the top, where it sits, the signatures"
+					title="Where the key sits, the signatures, the dim outside the key"
 					iconClass="i-ph-circle-dashed"
 					label="Circle"
 					position="bottom right"
@@ -673,7 +673,7 @@
 				{#each KEY_OPTIONS as k (k.value)}<option value={k.value}>{k.label}</option>{/each}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The circle turns so this key's chord sits at the top (or the bottom), its neighbours the
+				>The circle turns so this key's chord sits at the bottom (or the top), its neighbours the
 				chords that fit it best.</span
 			>
 		</label>
@@ -684,7 +684,7 @@
 				checked={chordPlayer.keyAtTop}
 				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.checked)}
 			/>
-			The key at the top (off: at the bottom; on the arch, the arch turns over for a thumb)
+			The key at the top (off: at the bottom, and the arch a bowl for a thumb)
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
 			<input
