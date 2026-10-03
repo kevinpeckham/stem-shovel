@@ -10,6 +10,10 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 **Notes** turns the circle into twelve single notes, chromatic from your key, for a melody; **Chords** turns it back.
 
+## The readout
+
+The middle of the circle names what is sounding and, beneath the name, its notes: written out (C E G B♭), on a small treble staff, or not at all, as the UI menu says. The notes are spelled in flats on the flat side of the circle and in sharps on the sharp side.
+
 ## Sound, presets and effects
 
 The chord player plays the piano itself, so everything the piano has is here: the **Sound** menu's grand piano, electric piano, organ and synths, the **Effects** menu with reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone and rotary (and a Reset all to defaults button at its foot), and the volume. The five **preset** buttons are the chord player's own, drawing on the same library of saved sounds as the piano's: the bookmark button beside them saves the sound playing now to a button, puts any saved preset on one, renames or clears it (signed in, the library is your account's, shared with every member; signed out, the buttons are this browser's). A sound that drifts from its preset shows "edited" on the screen, as the piano's does.

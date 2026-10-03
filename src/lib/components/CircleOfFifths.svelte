@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ChordQuality, CirclePosition } from "$lib/constants/circleOfFifths";
+	import type { SpelledNote } from "$lib/utils/noteSpelling";
 	import {
 		ARCH_CY,
 		ARCH_DOWN_SLOTS,
@@ -53,6 +54,9 @@
 		pressed: Set<string>;
 		/** The text in the centre (the chords sounding). */
 		centre: string;
+		/** The sounding notes under the name, spelled (docs/chord-player.md, "The readout"). */
+		readoutNotes?: SpelledNote[];
+		noteReadout?: "names" | "staff" | "off";
 		onpress: (index: number, quality: ChordQuality, pointerId: number) => void;
 		onrelease: (pointerId: number) => void;
 		/** The SVG's own classes (its size; a phone draws it wider than its box so the sides crop flat). */
@@ -72,6 +76,8 @@
 		highlightKey = false,
 		pressed,
 		centre,
+		readoutNotes = [],
+		noteReadout = "names",
 		onpress,
 		onrelease,
 		class: svgClass = "w-full",
@@ -101,10 +107,19 @@
 				}
 			: { w: CIRCLE_SIZE, h: CIRCLE_SIZE, cx: 200, cy: 200, scale: 1 },
 	);
-	/** The readout sits in the hole's visible half on an arch; the key mark on the rim at the key. */
-	const readoutY = $derived(
-		layout === "arch" ? box.cy - 24 : layout === "arch-down" ? box.cy + 24 : box.cy,
-	);
+	/** The readout: the chord name at the hole's centre on every layout (Kevin), lifted a little when the notes show under it; the key mark on the rim at the key. */
+	const showNotes = $derived(noteReadout !== "off" && readoutNotes.length > 0);
+	const readoutY = $derived(box.cy - (showNotes ? 16 * box.scale : 0));
+	/** The staff under the name: five lines, a step (a line or a space) half a line apart, the bottom line E4; ledger lines where a note sits off the staff. */
+	const STAFF_LINE = 4.2;
+	const staffTop = $derived(box.cy + 4 * box.scale);
+	const staffY = (step: number) => staffTop + (8 - step) * (STAFF_LINE / 2) * box.scale;
+	const ledgers = (step: number): number[] => {
+		const out: number[] = [];
+		for (let s = -2; s >= step; s -= 2) out.push(s);
+		for (let s = 10; s <= step; s += 2) out.push(s);
+		return out;
+	};
 	const markY = $derived(
 		layout === "arch-down" ? box.cy + R_OUTER * box.scale + 4 : box.cy - R_OUTER * box.scale - 4,
 	);
@@ -380,6 +395,52 @@
 		x={box.cx}
 		y={readoutY}>{centre}</text
 	>
+	{#if showNotes && noteReadout === "names"}
+		<text
+			class="pointer-events-none fill-current opacity-80"
+			font-size={px(11, { ...circleSlot, scale: box.scale })}
+			text-anchor="middle"
+			dominant-baseline="central"
+			x={box.cx}
+			y={(box.cy + 8 * box.scale).toFixed(1)}>{readoutNotes.map((n) => n.name).join(" ")}</text
+		>
+	{:else if showNotes && noteReadout === "staff"}
+		{@const w = 34 * box.scale}
+		{@const dx = Math.min(9 * box.scale, (2 * w) / (readoutNotes.length + 1))}
+		{@const x0 = box.cx - (dx * (readoutNotes.length - 1)) / 2}
+		<g class="pointer-events-none stroke-current opacity-80" stroke-width="0.6">
+			{#each [0, 2, 4, 6, 8] as step (step)}
+				<line x1={box.cx - w} x2={box.cx + w} y1={staffY(step)} y2={staffY(step)} />
+			{/each}
+			{#each readoutNotes as n, i (n.midi)}
+				{@const x = x0 + i * dx}
+				{#each ledgers(n.step) as s (s)}
+					<line x1={x - 4 * box.scale} x2={x + 4 * box.scale} y1={staffY(s)} y2={staffY(s)} />
+				{/each}
+			{/each}
+		</g>
+		{#each readoutNotes as n, i (n.midi)}
+			{@const x = x0 + i * dx}
+			<ellipse
+				class="pointer-events-none fill-accent"
+				cx={x.toFixed(1)}
+				cy={staffY(n.step).toFixed(1)}
+				rx={(2.9 * box.scale).toFixed(1)}
+				ry={(2 * box.scale).toFixed(1)}
+				transform="rotate(-20 {x.toFixed(1)} {staffY(n.step).toFixed(1)})"
+			/>
+			{#if n.accidental}
+				<text
+					class="pointer-events-none fill-accent"
+					font-size={px(7, { ...circleSlot, scale: box.scale })}
+					text-anchor="end"
+					dominant-baseline="central"
+					x={(x - 3.6 * box.scale).toFixed(1)}
+					y={staffY(n.step).toFixed(1)}>{n.accidental}</text
+				>
+			{/if}
+		{/each}
+	{/if}
 	<!-- the key center's mark on the rim at the key (twelve o'clock, or six on the bowl) -->
 	<circle cx={box.cx} cy={markY.toFixed(1)} r="2.5" class="fill-accent pointer-events-none" />
 </svg>

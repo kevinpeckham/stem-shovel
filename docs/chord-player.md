@@ -220,7 +220,12 @@ system admin; the link to the piano page is gone. A sustain pad joins the
 top corners, the bowl's bottom ones), a hand each. The arch is the default
 layout, and the wedges' names come from `chordPlayer.wedgeLabels` (the
 style's chord per degree with the 7 pad folded in), long names shrinking
-to fit. A second
+to fit. **The readout** (Kevin): the chord name at the hole's centre on every
+layout, and under it the sounding notes from `chordPlayer.soundingSpelled`
+(`utils/noteSpelling.ts`: letter, accidental, octave and the treble-staff
+step, flats for positions 0 and 6 to 11, sharps for 1 to 5), written as
+names or drawn as a small staff in `CircleOfFifths.svelte` (five lines,
+ledger lines, noteheads with accidentals), per `noteReadout`. A second
 keyboard map, by degree (`DEGREE_KEY_CODES`, `chordPlayer.keyMap`,
 the Circle menu): the number row is I to VII then the five chromatic roots
 rising (♭II ♭III ♯IV ♭VI ♭VII), the row below the minors on the same

@@ -547,6 +547,8 @@
 			highlightKey={chordPlayer.highlightKey}
 			{pressed}
 			{centre}
+			readoutNotes={chordPlayer.soundingSpelled}
+			noteReadout={chordPlayer.noteReadout}
 			onpress={press}
 			onrelease={release}
 		/>
@@ -906,6 +908,19 @@
 				>The circle turns so this key's chord sits at the bottom (or the top), its neighbours the
 				chords that fit it best.</span
 			>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Notes in the readout</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.noteReadout}
+				onchange={(e) =>
+					chordPlayer.setNoteReadout(e.currentTarget.value as "names" | "staff" | "off")}
+			>
+				<option value="names">Written · C E G B♭ under the chord name</option>
+				<option value="staff">On a staff · the notes on a treble staff</option>
+				<option value="off">Off · the chord name alone</option>
+			</select>
 		</label>
 		<label class="block">
 			<span class="device-button-label">Computer keyboard</span>

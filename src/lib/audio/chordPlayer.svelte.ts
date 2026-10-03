@@ -22,6 +22,7 @@ import {
 } from "$lib/constants/chordStyles";
 import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
+import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 import { styledChord, styledChordName } from "$lib/utils/styledChord";
 
 /**
@@ -86,6 +87,8 @@ class ChordPlayerEngine {
 	keyMap = $state<ChordKeyMap>("circle");
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
+	/** The notes under the chord name in the readout: written, on a staff, or not at all (the UI menu). */
+	noteReadout = $state<"names" | "staff" | "off">("names");
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
 	showNumerals = $state(false);
 	/** On until switched off (Kevin). */
@@ -124,6 +127,8 @@ class ChordPlayerEngine {
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "circle") this.layout = "circle";
 		if (read("key-map") === "degree") this.keyMap = "degree";
+		const readout = read("note-readout");
+		if (readout === "names" || readout === "staff" || readout === "off") this.noteReadout = readout;
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") !== "0";
 		piano.load();
@@ -328,6 +333,27 @@ class ChordPlayerEngine {
 	/** The key labels by distance from the key clockwise, for the circle. */
 	get keyLabels(): { major: string; minor: string }[] {
 		return this.keyMap === "degree" ? DEGREE_KEY_LABELS : CHORD_KEY_LABELS;
+	}
+	setNoteReadout(mode: "names" | "staff" | "off") {
+		this.noteReadout = mode;
+		write("note-readout", mode);
+	}
+	/**
+	 * The sounding notes spelled for the readout, ascending: in flats on the
+	 * flat side of the circle (positions 6 to 11, and C's own, so a C7 reads
+	 * B♭), in sharps on the sharp side (1 to 5); notes mode by the key.
+	 */
+	get soundingSpelled(): SpelledNote[] {
+		if (this.sounding.length === 0) return [];
+		const first = this.sounding[0].wedge;
+		let index = this.keyCenter;
+		if (!first.startsWith("note:"))
+			index = CIRCLE_OF_FIFTHS.findIndex((p) => p.major.id === first || p.minor.id === first);
+		const flats = index === 0 || index >= 6;
+		return spellChord(
+			this.sounding.flatMap((s) => s.notes),
+			flats,
+		);
 	}
 	setKeyMap(map: ChordKeyMap) {
 		this.keyMap = map;
