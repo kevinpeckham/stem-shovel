@@ -23,7 +23,9 @@
 	 * o'clock. In notes mode the rings become one ring of twelve notes. A
 	 * pointer down on a wedge presses it (`onpress`), up or cancel releases
 	 * it (`onrelease`); pointer capture keeps a finger that slides off the
-	 * wedge on the same chord until it lifts. Several pointers at once.
+	 * wedges on its chord until it lifts, and a glide onto another wedge
+	 * lets the first chord go and presses the new one (Kevin). Several
+	 * pointers at once.
 	 * The arch layout (Kevin) draws the same wedges as slots: the key and
 	 * three fifths each way on a bigger arch across the top, the four far
 	 * keys as rectangles continuing its ends straight down, the tritone
@@ -139,14 +141,33 @@
 			quality: (el.dataset.quality as ChordQuality) ?? "major",
 		};
 	}
+	/** The wedge each pointer is on, so a glide knows when it crosses into another. */
+	const under = new Map<number, string>();
 	function down(e: PointerEvent) {
 		const w = wedgeAt(e);
 		if (!w) return;
 		e.preventDefault();
 		(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+		under.set(e.pointerId, `${w.index}:${w.quality}`);
 		onpress(w.index, w.quality, e.pointerId);
 	}
+	/** A captured pointer's events all target the SVG, so the wedge under it is found by point. */
+	function move(e: PointerEvent) {
+		if (!under.has(e.pointerId)) return;
+		const svg = e.currentTarget as SVGSVGElement;
+		const el = document
+			.elementFromPoint(e.clientX, e.clientY)
+			?.closest<SVGPathElement>("[data-index]");
+		if (!el || !svg.contains(el)) return;
+		const index = Number(el.dataset.index);
+		const quality = (el.dataset.quality as ChordQuality) ?? "major";
+		const key = `${index}:${quality}`;
+		if (under.get(e.pointerId) === key) return;
+		under.set(e.pointerId, key);
+		onpress(index, quality, e.pointerId);
+	}
 	function up(e: PointerEvent) {
+		under.delete(e.pointerId);
 		onrelease(e.pointerId);
 	}
 	const idOf = (p: CirclePosition, quality: ChordQuality) => p[quality].id;
@@ -170,6 +191,7 @@
 	aria-label="Circle of fifths"
 	data-layout={layout}
 	onpointerdown={down}
+	onpointermove={move}
 	onpointerup={up}
 	onpointercancel={up}
 	oncontextmenu={(e) => e.preventDefault()}

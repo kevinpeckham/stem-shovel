@@ -157,6 +157,22 @@
 		description: v.hint,
 	}));
 	const KEY_OPTIONS = KEY_CENTERS.map((k, i) => ({ value: String(i), label: k.label }));
+	/** The styles' short hints for the device's dropdown (the Chords menu carries the full ones). */
+	const STYLE_SHORT: Record<string, string> = {
+		plain: "triads",
+		blues: "7ths everywhere",
+		jazz: "7ths by degree",
+		lush: "9ths and 13ths",
+	};
+	/** The built-in styles and the account's own, for the device's Style dropdown. */
+	const STYLE_OPTIONS = $derived([
+		...CHORD_STYLES.map((s) => ({ value: s.id, label: s.label, description: STYLE_SHORT[s.id] })),
+		...chordPlayer.customStyles.map((s) => ({
+			value: `custom:${s.id}`,
+			label: s.name,
+			description: account ? `${account.name}'s style` : "a saved style",
+		})),
+	]);
 	const SLOT_NUMBERS = Array.from({ length: PIANO_PRESET_SLOTS }, (_, i) => i + 1);
 
 	// ---- presets: the piano's, loaded here (docs/piano.md, "Presets") ----
@@ -315,6 +331,7 @@
 			<ComboBox
 				ariaLabel="Sound"
 				clearDefaultButtonClasses={true}
+				popoverClasses="text-13px"
 				buttonClasses="device-button-sm px-3 w-full"
 				options={INSTRUMENT_OPTIONS}
 				value={piano.instrument}
@@ -322,6 +339,30 @@
 					chordPlayer.allOff();
 					piano.setInstrument(v as PianoInstrumentId);
 				}}
+			/>
+		</div>
+		<div class="hidden @xl-block min-w-28">
+			<div class="device-button-group-label text-dark hidden @xl-block">Style</div>
+			<ComboBox
+				ariaLabel="Style"
+				clearDefaultButtonClasses={true}
+				popoverClasses="text-13px"
+				buttonClasses="device-button-sm px-3 w-full"
+				options={STYLE_OPTIONS}
+				value={chordPlayer.style}
+				onchange={(v) => chordPlayer.setStyle(v)}
+			/>
+		</div>
+		<div class="hidden @xl-block min-w-32">
+			<div class="device-button-group-label text-dark hidden @xl-block">Voicing</div>
+			<ComboBox
+				ariaLabel="Voicing"
+				clearDefaultButtonClasses={true}
+				popoverClasses="text-13px"
+				buttonClasses="device-button-sm px-3 w-full"
+				options={VOICING_OPTIONS}
+				value={chordPlayer.voicing}
+				onchange={(v) => chordPlayer.setVoicing(v as ChordVoicing)}
 			/>
 		</div>
 		<div class="hidden @xl-block">
@@ -332,6 +373,7 @@
 			<ComboBox
 				ariaLabel="Key center"
 				clearDefaultButtonClasses={true}
+				popoverClasses="text-13px"
 				buttonClasses="device-button-sm px-3"
 				options={KEY_OPTIONS}
 				value={String(chordPlayer.keyCenter)}
@@ -489,16 +531,20 @@
 			onrelease={release}
 		/>
 	</div>
-	<!-- With the key labels up, the rest of the keyboard: a strip of shortcuts under the circle (Kevin). -->
-	{#if chordPlayer.showKeys && keyboard}
+	<!-- The keyboard's shortcuts under the circle: Space, Shift and Esc always from @xl (Kevin), the rows with the key labels. -->
+	{#if keyboard}
 		<div
-			class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+			class="{chordPlayer.showKeys
+				? 'flex'
+				: 'hidden @xl-flex'} flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
 			aria-label="Keyboard shortcuts"
 		>
 			<span><kbd>Space</kbd> sustain</span>
 			<span><kbd>Shift</kbd> seventh</span>
 			<span><kbd>Esc</kbd> all off</span>
-			{#if chordPlayer.keyMap === "degree"}
+			{#if !chordPlayer.showKeys}
+				<!-- the rows come with the key labels -->
+			{:else if chordPlayer.keyMap === "degree"}
 				<span><kbd>1</kbd>–<kbd>7</kbd> I–VII</span>
 				<span><kbd>8</kbd>–<kbd>=</kbd> ♭II ♭III ♯IV ♭VI ♭VII</span>
 				<span><kbd>Q</kbd>–<kbd>]</kbd> the minors</span>
