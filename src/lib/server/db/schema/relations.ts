@@ -13,6 +13,8 @@ import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
 import { demo } from "./demo";
 import { beat } from "./beat";
+import { drumKit } from "./drumKit";
+import { drumSample } from "./drumSample";
 import { pianoPreset } from "./pianoPreset";
 import { idea } from "./idea";
 import { recording } from "./recording";
@@ -47,6 +49,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	ideas: many(idea),
 	artists: many(artist),
 	beats: many(beat),
+	drumKits: many(drumKit),
 	pianoPresets: many(pianoPreset),
 }));
 
@@ -230,6 +233,16 @@ export const waitlistSignupRelations = relations(waitlistSignup, ({ one }) => ({
 	}),
 }));
 
+export const drumKitRelations = relations(drumKit, ({ one, many }) => ({
+	account: one(account, { fields: [drumKit.accountId], references: [account.id] }),
+	creator: one(user, { fields: [drumKit.createdBy], references: [user.id] }),
+	samples: many(drumSample),
+}));
+export const drumSampleRelations = relations(drumSample, ({ one }) => ({
+	kit: one(drumKit, { fields: [drumSample.kitId], references: [drumKit.id] }),
+	account: one(account, { fields: [drumSample.accountId], references: [account.id] }),
+	uploader: one(user, { fields: [drumSample.uploadedBy], references: [user.id] }),
+}));
 export const beatRelations = relations(beat, ({ one }) => ({
 	account: one(account, { fields: [beat.accountId], references: [account.id] }),
 	creator: one(user, { fields: [beat.createdBy], references: [user.id] }),

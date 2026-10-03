@@ -52,7 +52,8 @@ export function encodeDrumProject(p: DrumProject): string {
 	w.write(Math.round((p.fx.toneTilt + 1) * 100), 8);
 	w.write(Math.round(p.fx.toneAir * 100), 7);
 	w.write(Math.round(p.fx.toneBottom * 100), 7);
-	w.write(DRUM_KIT_IDS.indexOf(p.kit), 2);
+	// A custom kit (docs/drum-machine.md, "Custom kits") has no code in a link: the acoustic kit stands in.
+	w.write(Math.max(0, (DRUM_KIT_IDS as readonly string[]).indexOf(p.kit)), 2);
 	w.write(p.patterns.length - 1, 3);
 	for (const pattern of p.patterns) {
 		w.write(DRUM_METER_IDS.indexOf(pattern.meter), 2);

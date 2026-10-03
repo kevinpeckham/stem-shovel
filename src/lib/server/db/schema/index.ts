@@ -12,6 +12,8 @@ export * from "./bugReport";
 export * from "./bugReportVote";
 export * from "./comment";
 export * from "./demo";
+export * from "./drumKit";
+export * from "./drumSample";
 export * from "./beat";
 export * from "./pianoPreset";
 export * from "./idea";

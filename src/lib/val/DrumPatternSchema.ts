@@ -5,7 +5,6 @@ import {
 	DEFAULT_DRUM_FX,
 	DEFAULT_DRUM_SENDS,
 	DRUM_DELAY_STEPS,
-	DRUM_KIT_IDS,
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
 	DRUM_STEP_CHOICES_V2,
@@ -93,7 +92,8 @@ export const DrumProjectSchema = v.object({
 	swingGrid: v.optional(v.picklist(DRUM_SWING_GRIDS), 16),
 	/** 0 exact to 1: every hit scattered a little in time and level, so the pattern stops repeating itself exactly. */
 	humanize: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
-	kit: v.picklist(DRUM_KIT_IDS),
+	/** A built-in kit id, or a custom kit's nanoid (docs/drum-machine.md, "Custom kits"); a kit the page lacks falls back to Acoustic as it loads. */
+	kit: v.pipe(v.string(), v.minLength(1), v.maxLength(40)),
 	/** Projects stored before the effects existed get the defaults (and their rows send nothing). */
 	fx: v.optional(DrumFxSchema, () => ({ ...DEFAULT_DRUM_FX })),
 	patterns: v.pipe(v.array(DrumPatternSchema), v.minLength(1), v.maxLength(MAX_DRUM_PATTERNS)),
@@ -114,7 +114,8 @@ export const DrumProjectV1Schema = v.object({
 	bpm: v.pipe(v.number(), v.integer(), v.minValue(DRUM_BPM_MIN), v.maxValue(DRUM_BPM_MAX)),
 	swing: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	steps: v.picklist(DRUM_STEP_CHOICES_V2),
-	kit: v.picklist(DRUM_KIT_IDS),
+	/** A built-in kit id, or a custom kit's nanoid (docs/drum-machine.md, "Custom kits"); a kit the page lacks falls back to Acoustic as it loads. */
+	kit: v.pipe(v.string(), v.minLength(1), v.maxLength(40)),
 	rows: v.pipe(
 		v.array(v.omit(DrumRowFieldsSchema, ["pan", "delaySend", "reverbSend"])),
 		v.minLength(1),

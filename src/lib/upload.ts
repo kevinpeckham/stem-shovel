@@ -190,6 +190,34 @@ export async function uploadMidiFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
+export interface DrumSampleReservation {
+	sampleId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/** A custom kit's sample (docs/drum-machine.md, "Custom kits"): reserve, send the bytes to Blob, report the URL. */
+export async function uploadDrumSampleFile(
+	file: File,
+	reserve: () => Promise<DrumSampleReservation>,
+	onProgress?: (percent: number) => void,
+): Promise<void> {
+	const { sampleId, pathname, access = "public" } = await reserve();
+	const contentType = demoContentType(file.name) ?? undefined;
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/drum-samples/${sampleId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+}
+
 export async function postJson<T>(path: string, payload: unknown): Promise<T> {
 	const res = await fetch(path, {
 		method: "POST",

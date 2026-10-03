@@ -4,6 +4,10 @@
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
+	import DrumKitManager, { type KitRow } from "$lib/components/DrumKitManager.svelte";
+	import type { DrumKitManifest } from "$lib/constants/drumKits";
+	import { hasDrumKit, registerDrumKits } from "$lib/audio/kits";
+	import { drumKitManifests, listDrumKits } from "$lib/remote/drumKits.remote";
 	import {
 		DRUM_BPM_MAX,
 		DRUM_BPM_MIN,
@@ -65,6 +69,8 @@
 		homeAdmin?: boolean;
 		/** Text-to-Beat is on (the AI Gateway is configured): a menu asks a model for a beat from a description. */
 		textToBeat?: boolean;
+		/** The custom kits this page may play (docs/drum-machine.md, "Custom kits"): the site's, then the account's. */
+		kits?: DrumKitManifest[];
 	}
 	interface SavedBeat {
 		id: string;
@@ -93,6 +99,7 @@
 		starting = null,
 		homeAdmin = false,
 		textToBeat = false,
+		kits = [],
 	}: Props = $props();
 
 	// The account's beats, kept here as they change; the one open, if any, is what Save brings up to date.
@@ -296,7 +303,42 @@
 	]);
 	const midiSupported = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
 	const VOICE_OPTIONS = DRUM_VOICES.map((v) => ({ value: v.id, label: v.label }));
-	const KIT_OPTIONS = DRUM_KITS.map((k) => ({ value: k.id, label: k.label }));
+	/** The custom kits as they stand: the page's to start with, refreshed after the manager changes them. */
+	let kitList = $state<DrumKitManifest[]>(kits);
+	registerDrumKits(kitList);
+	const KIT_OPTIONS = $derived([
+		...DRUM_KITS.map((k) => ({ value: k.id as string, label: k.label })),
+		...kitList.map((k) => ({
+			value: k.id,
+			label: k.name,
+			description: k.scope === "site" ? "site kit" : (account?.name ?? "yours"),
+		})),
+	]);
+	/** The manager's rows (every sample with its state), fetched as it opens. */
+	let managerKits = $state<KitRow[]>([]);
+	let managerOpen: "open" | "closed" = $state("closed");
+	async function loadManager() {
+		if (!account) return;
+		try {
+			managerKits = await listDrumKits({ accountId: account.id });
+		} catch (e) {
+			notify(`Could not list the kits: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** After the manager made, changed or removed a kit: its rows and the kits the machine may play. */
+	async function kitsChanged() {
+		if (!account) return;
+		// A remote query answers from its cache: ask for both again.
+		const rows = listDrumKits({ accountId: account.id });
+		const manifests = drumKitManifests({ accountId: account.id });
+		await Promise.all([rows.refresh(), manifests.refresh()]);
+		managerKits = await rows;
+		kitList = await manifests;
+		registerDrumKits(kitList);
+		// The kit in use was replaced or removed: the machine reloads it, or falls back.
+		if (!hasDrumKit(p.kit)) drumMachine.setKit("acoustic");
+		else drumMachine.reloadKit();
+	}
 	let showTempo = $derived(tempo === "always" || (tempo === "auto" && drumMachine.running));
 
 	// The full view is about the drums: fetch the sampled kit as it opens. A toolbar's toggle waits for the first play.
@@ -341,7 +383,8 @@
 	}
 
 	const voiceLabel = (id: DrumVoiceId) => DRUM_VOICES.find((v) => v.id === id)?.label ?? id;
-	const kitLabel = (id: string) => DRUM_KITS.find((k) => k.id === id)?.label ?? id;
+	const kitLabel = (id: string) =>
+		DRUM_KITS.find((k) => k.id === id)?.label ?? kitList.find((k) => k.id === id)?.name ?? id;
 
 	function togglePlay() {
 		if (!drumMachine.running) tutorial.played = true;
@@ -1280,14 +1323,35 @@
 			<!-- kit selector -->
 			<div class="@xl-grid grid-cols-1" title="Kit">
 				<div class="device-button-group-label">Kit</div>
-				<ComboBox
-					ariaLabel="Kit"
-					clearDefaultButtonClasses={true}
-					buttonClasses="device-button-drum-combo"
-					options={KIT_OPTIONS}
-					value={p.kit}
-					onchange={(k) => drumMachine.setKit(k)}
-				/>
+				<div class="flex items-center gap-1">
+					<ComboBox
+						ariaLabel="Kit"
+						clearDefaultButtonClasses={true}
+						buttonClasses="device-button-drum-combo"
+						options={KIT_OPTIONS}
+						value={p.kit}
+						onchange={(k) => drumMachine.setKit(k)}
+					/>
+					{#if account?.canEdit}
+						<!-- The account's own kits, made from uploaded one-shots (docs/drum-machine.md, "Custom kits"); the rows load as the menu opens. -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div onpointerdowncapture={() => void loadManager()}>
+							<ContextMenu
+								ariaLabel="Manage kits"
+								title="Your account's kits: make one from your own samples"
+								iconClass="i-ph-folder-simple-plus"
+								position="bottom right"
+								buttonBaseClasses="device-button-xs px-2 border"
+								popoverClasses="min-w-80 @xl-min-w-[28rem] max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+								bind:openState={managerOpen}
+								items={[
+									{ id: "kits-heading", kind: "heading", label: `Kits in ${account.name}` },
+									{ id: "kits-body", kind: "snippet", snippet: kitManagerBlock },
+								]}
+							/>
+						</div>
+					{/if}
+				</div>
 			</div>
 
 			<!-- steps -->
@@ -1856,3 +1920,11 @@
 		</div>
 	</div>
 {/if}
+
+{#snippet kitManagerBlock()}
+	<div class="px-3 pt-3 pb-4">
+		{#if account}
+			<DrumKitManager accountId={account.id} kits={managerKits} onchange={kitsChanged} />
+		{/if}
+	</div>
+{/snippet}

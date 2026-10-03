@@ -1,4 +1,4 @@
-import type { DrumKitId, DrumVoiceId } from "$lib/constants/drumMachine";
+import type { DrumVoiceId } from "$lib/constants/drumMachine";
 
 /** A sounding hit: stop it early (a closed hat choking an open one). */
 export interface DrumHit {
@@ -12,7 +12,8 @@ export interface DrumHit {
  * A `BaseAudioContext` so the WAV export can render offline.
  */
 export interface DrumKit {
-	readonly id: DrumKitId;
+	/** A built-in id or a custom kit's. */
+	readonly id: string;
 	/** Start fetching what the kit needs, ahead of the first play; safe to call again. */
 	warm(): void;
 	/** Fetch and decode what the kit needs; safe to call again. */

@@ -359,6 +359,40 @@ own address, `/s/<code>`, that redirects to the page the code belongs to,
 so they survive renames too. Unique `(kind, scope_id, slug)`, index on
 `target_id`; the cascade removes a deleted thing's aliases.
 
+### drum_kit
+
+A custom drum kit (docs/drum-machine.md, "Custom kits"): a name over a set
+of one-shot samples. An account's when `account_id` is set (its editors
+make and keep it, its members play it); the site's when null (a system
+admin's, played by everyone).
+
+| column                 | type                        | notes                 |
+| ---------------------- | --------------------------- | --------------------- |
+| id                     | text PK (nanoid)            |                       |
+| account_id             | text FK → account (cascade) | null = the site's kit |
+| created_by             | text FK → user (set null)   |                       |
+| name                   | text                        |                       |
+| created_at, updated_at | timestamp_ms                |                       |
+
+### drum_sample
+
+One voice's file in a custom kit, with a demo's reserve → upload → ready
+lifecycle; a replacement is a new row, and the old row and file go once
+it is ready. An account kit's samples count against the account's storage.
+
+| column                 | type                         | notes                                   |
+| ---------------------- | ---------------------------- | --------------------------------------- |
+| id                     | text PK (nanoid)             |                                         |
+| kit_id                 | text FK → drum_kit (cascade) |                                         |
+| account_id             | text FK → account (cascade)  | null for a site kit's sample            |
+| voice                  | text                         | a `DrumVoiceId` (kick, snare, …)        |
+| status                 | text                         | uploading, ready, failed                |
+| url, pathname          | text                         | `accounts/<id>/kits/…` or `site/kits/…` |
+| filename, content_type | text                         |                                         |
+| size_bytes             | integer                      |                                         |
+| uploaded_by            | text FK → user (set null)    |                                         |
+| created_at, updated_at | timestamp_ms                 |                                         |
+
 ### beat
 
 A saved drum-machine beat (docs/drum-machine.md, Phase 3): the project as

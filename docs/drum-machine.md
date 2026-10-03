@@ -578,6 +578,49 @@ normal or accent by velocity, adding a row for a voice the pattern
 lacks; off by default, since it writes into the beat. Not built: MIDI
 out, a clock, or velocity curves.
 
+## Custom kits (built 2026-10-03)
+
+Kevin: custom kits from uploaded samples for signed-in users, and an admin
+UI for the site's kits. Two tables (docs/data-model.md): `drum_kit` (a
+name; `account_id` null for a site kit, else the account's) and
+`drum_sample` (one voice's file, the demo's reserve → upload → ready
+lifecycle: `POST /api/drum-samples` reserves the row and answers the
+pathname, the browser uploads through `/api/upload` with a token the kit
+branch issues, `POST /api/drum-samples/<id>/ready` marks it ready and
+deletes the voice's older rows and files, so a replacement takes over
+without a silent gap). Pathnames: `accounts/<id>/kits/<kit>/<sample>.<ext>`
+in the private store when there is one (the URLs the pages hand out are
+presented), `site/kits/<kit>/<sample>.<ext>` in the public store. Limits:
+`MAX_DRUM_KITS_PER_ACCOUNT` (20) and `DRUM_SAMPLE_MAX_BYTES` (10 MB,
+constants/drumKits.ts); an account kit's files count against its storage
+(`accountStorageBytes`) and go with the account. Commands in
+`drumKits.remote.ts` (create, rename, delete a kit, delete a sample; the
+list and the manifests as queries); an editor of the account, or a system
+admin for a site kit.
+
+The engine: `project.kit` is any string now (a built-in id or a kit's
+nanoid; `DrumProjectSchema`), the kit registry (`src/lib/audio/kits/index.ts`)
+takes the page's manifests through `registerDrumKits` (a `DrumKitManifest`:
+the kit's id, name, scope and a URL per voice), `SampledKit` fetches a
+manifest's URLs instead of `static/kits/<id>`, a voice without a file
+stays silent, and `hasDrumKit` lets `#readyKit` fall back to Acoustic for
+a kit the page was not given (another account's, one since deleted). A
+share link has two bits for the kit, so a beat on a custom kit encodes as
+Acoustic. Every page that mounts the drum machine loads
+`listDrumKitManifests(accountId | null)` (the site's kits, then the
+account's) and passes `kits`; the component registers them and lists them
+in the Kit menu after the built-ins, with "site kit" or the account's name
+as the description.
+
+The manager, `DrumKitManager.svelte`: make a kit, rename or delete it, and
+per voice upload, replace, listen or remove, with the upload's progress.
+It sits in the drum machine's Kit row for an account's editors (the rows
+fetched as the menu opens, both queries refreshed after a change, since a
+remote query answers from its cache) and on `/admin/drum-kits` for the
+site's kits. The built-in Acoustic and Room kits stay in `static/kits`;
+replacing their samples would mean moving them into the database with a
+seed script that uploads the files, which is left for later.
+
 ## Decisions to make before Phase 1
 
 1. **The name and the path.** "Drum Machine" at `/drum-machine`, in the

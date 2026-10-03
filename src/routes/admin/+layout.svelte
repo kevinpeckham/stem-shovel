@@ -16,6 +16,7 @@
 		{ slug: "ai-requests", title: "AI requests" },
 		{ slug: "audit-log", title: "Audit log" },
 		{ slug: "home", title: "Home page" },
+		{ slug: "drum-kits", title: "Drum kits" },
 	] as const;
 	let current = $derived(page.url.pathname.split("/")[2] ?? "");
 </script>

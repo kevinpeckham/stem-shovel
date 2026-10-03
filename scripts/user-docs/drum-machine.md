@@ -30,7 +30,9 @@ With a MIDI pad or keyboard plugged in, the **MIDI** button beside Effects opens
 
 ## Kits
 
-**Acoustic** and **Room** are kits of real drum recordings, the Room kit with longer, roomier hits; **Electronic** is synthesized in the browser, with no files to load. The kit is a choice for the whole project.
+**Acoustic** and **Room** are kits of real drum recordings, the Room kit with longer, roomier hits; **Electronic** is synthesized in the browser, with no files to load. Any other kit in the menu was made from uploaded samples: the site's own, or your account's.
+
+**Your own kits.** Signed in as an editor, the small button beside the Kit menu opens your account's kits: make one, give it a name, then give each of its twelve drums a sound of your own, a WAV, FLAC, MP3, M4A or AIFF one-shot up to 10 MB. A drum without a file stays silent, a new file replaces the old, and the listen button plays a file as it is. Every member of the account can play your kits; their files count towards the account's storage. A beat saved with one of them keeps it; a share link cannot name a custom kit and opens with the Acoustic kit instead. The kit is a choice for the whole project.
 
 The recordings in the Acoustic and Room kits come from [Groovie](https://github.com/maximecb/groovie), Maxime Chevalier-Boisvert's open-source beat sequencer, which publishes its samples in the public domain (CC0). Thank you.
 

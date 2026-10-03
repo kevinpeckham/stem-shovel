@@ -46,6 +46,26 @@ export function midiPathname(accountId: string, songId: string, stemId: string, 
 }
 
 /** Blob pathname for a demo recording, under the song like its stems. */
+/**
+ * A custom kit's sample (docs/drum-machine.md, "Custom kits"): under the
+ * account, or under `site/kits/` for a site kit (the public store). The id
+ * is the sample row's, so a replacement is a new file and a new URL.
+ */
+export function drumSamplePathname(
+	accountId: string | null,
+	kitId: string,
+	sampleId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return accountId
+		? `accounts/${accountId}/kits/${kitId}/${sampleId}.${ext}`
+		: `site/kits/${kitId}/${sampleId}.${ext}`;
+}
+export const isDrumSamplePathname = (pathname: string) =>
+	/^(accounts\/[^/]+|site)\/kits\//.test(pathname);
+export const isSiteKitPathname = (pathname: string) => pathname.startsWith("site/kits/");
+
 export function demoPathname(accountId: string, songId: string, demoId: string, filename: string) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;

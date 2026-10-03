@@ -1,6 +1,6 @@
 import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listBeats, songForBeat } from "$lib/server/data";
+import { listBeats, listDrumKitManifests, songForBeat } from "$lib/server/data";
 import { pageCopy } from "$lib/server/pageCopy";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import copyFallback from "../../../scripts/user-docs/drum-machine-page.md?raw";
@@ -24,6 +24,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			? { id: member.accountId, name: member.name, canEdit: member.role !== "viewer" }
 			: null,
 		beats: member ? await listBeats(member.accountId) : [],
+		// The custom kits the machine may play: the site's, and the account's (docs/drum-machine.md, "Custom kits").
+		kits: await listDrumKitManifests(member?.accountId ?? null),
 		song: member && songId ? await songForBeat(member.accountId, songId) : null,
 		// Text-to-Beat needs the AI Gateway (docs/drum-machine.md).
 		textToBeat: aiAvailable(),

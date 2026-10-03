@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Custom drum kits** (docs/drum-machine.md, "Custom kits"; migration 0067 `drum_kit`, `drum_sample`). An account's editors make kits from their own one-shots in the drum machine's Kit row: a name, then a file per drum (uploaded like a demo, counted against the account's storage), replaced or removed one at a time, played by every member. System admins make the site's kits the same way at `/admin/drum-kits`, listed for everyone beside the built-in three. The kit id in a beat is any kit's now; a kit a page was not given falls back to Acoustic, and a share link, with two bits for the kit, encodes a custom kit as Acoustic.
 - **Piano: the site's five default presets managed in full** by a system admin (docs/piano.md, "Presets"): a Site defaults list in the manage popover with save-here, rename, move and clear per slot, whatever the admin's own buttons show.
 
 ## [0.85.0] - 2026-10-02

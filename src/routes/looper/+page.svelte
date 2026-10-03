@@ -1182,6 +1182,7 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div onpointerdowncapture={() => (spaceOwner = "drums")}>
 			<DrumMachine
+				kits={data.kits}
 				keyboard={spaceOwner === "drums"}
 				account={data.account}
 				beats={data.beats}

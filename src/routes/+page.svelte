@@ -284,6 +284,7 @@
 				})}
 			>
 				<DrumMachine
+					kits={data.kits}
 					keyboard={spaceTarget === "drums"}
 					starting={data.homeBeat}
 					homeAdmin={!!data.user?.isSystemAdmin}

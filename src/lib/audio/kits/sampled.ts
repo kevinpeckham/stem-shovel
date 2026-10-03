@@ -1,4 +1,4 @@
-import { DRUM_VOICE_IDS, type DrumKitId, type DrumVoiceId } from "$lib/constants/drumMachine";
+import { DRUM_VOICE_IDS, type DrumVoiceId } from "$lib/constants/drumMachine";
 import type { DrumHit, DrumKit } from "./types";
 
 /**
@@ -16,15 +16,21 @@ export class SampledKit implements DrumKit {
 	#buffers = new Map<DrumVoiceId, AudioBuffer>();
 	#decoding: Promise<void> | null = null;
 
-	constructor(readonly id: DrumKitId) {}
+	/** A built-in kit reads static/kits/<id>; a custom kit (docs/drum-machine.md, "Custom kits") the URLs its manifest names, a voice without one staying silent. */
+	constructor(
+		readonly id: string,
+		readonly urls: Partial<Record<DrumVoiceId, string>> | null = null,
+	) {}
 
 	warm(): void {
 		if (this.#files || typeof fetch === "undefined") return;
 		this.#files = new Map();
 		for (const voice of DRUM_VOICE_IDS) {
+			const url = this.urls ? this.urls[voice] : `/kits/${this.id}/${voice}.wav`;
+			if (!url) continue;
 			this.#files.set(
 				voice,
-				fetch(`/kits/${this.id}/${voice}.wav`).then((r) => {
+				fetch(url).then((r) => {
 					if (!r.ok) throw new Error(`${voice}: ${r.status}`);
 					return r.arrayBuffer();
 				}),

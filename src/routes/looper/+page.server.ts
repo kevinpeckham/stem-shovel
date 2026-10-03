@@ -4,6 +4,7 @@ import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import {
 	listBeats,
+	listDrumKitManifests,
 	listPianoPresets,
 	listUserIdeas,
 	listUserLoops,
@@ -38,6 +39,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		copy: await pageCopy("looper-page", copyFallback, locals),
 		pianoSamplesBase: publicBlobUrl("piano/v1"),
 		beats: member ? await listBeats(member.accountId) : [],
+		kits: await listDrumKitManifests(member?.accountId ?? null),
 		textToBeat: aiAvailable(),
 		sitePresets: await sitePianoPresets(),
 		pianoPresets: member ? await listPianoPresets(member.accountId) : [],

@@ -23,12 +23,13 @@ import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
+	drumSamplePathname,
 	midiPathname,
 	presentUrl,
 	recordingAccess,
 	recordingPathname,
-	stemPathname,
 	recordingStemPathname,
+	stemPathname,
 } from "$lib/server/blob";
 import {
 	deleteAccountRows,
@@ -47,6 +48,8 @@ import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
+import { MAX_DRUM_KITS_PER_ACCOUNT, type DrumKitManifest } from "$lib/constants/drumKits";
+import type { DrumVoiceId } from "$lib/constants/drumMachine";
 import type { PermalinkKind } from "$lib/utils/permalink";
 import {
 	aliasedAccountSlugs,
@@ -78,6 +81,7 @@ import {
 	inArray,
 	isNotNull,
 	isNull,
+	or,
 	lt,
 	ne,
 	notExists,
@@ -124,6 +128,8 @@ const {
 	auditLog,
 	recording,
 	recordingStem,
+	drumKit,
+	drumSample,
 	idea,
 	beat,
 	pianoPreset,
@@ -210,7 +216,18 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
 		.from(recordingStem)
 		.where(and(eq(recordingStem.accountId, accountId), ne(recordingStem.status, "failed")));
-	return (stems.bytes ?? 0) + (demos.bytes ?? 0) + (takes.bytes ?? 0) + (takeStems.bytes ?? 0);
+	// A custom kit's samples (docs/drum-machine.md, "Custom kits") are files of the account too.
+	const [samples] = await db
+		.select({ bytes: sql<number | null>`sum(${drumSample.sizeBytes})` })
+		.from(drumSample)
+		.where(and(eq(drumSample.accountId, accountId), ne(drumSample.status, "failed")));
+	return (
+		(stems.bytes ?? 0) +
+		(demos.bytes ?? 0) +
+		(takes.bytes ?? 0) +
+		(takeStems.bytes ?? 0) +
+		(samples.bytes ?? 0)
+	);
 }
 
 /** Before reserving an upload: does the file fit? The refusal carries what the page should say. */
@@ -2525,10 +2542,15 @@ export async function deleteAccount(id: string) {
 		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
 		.from(recording)
 		.where(eq(recording.accountId, id));
+	const samples = await db
+		.select({ url: drumSample.url })
+		.from(drumSample)
+		.where(eq(drumSample.accountId, id));
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
+		...samples.map((smp) => smp.url),
 		...mixes.map((m) => m.mixUrl ?? ""),
 		...pictures,
 	]);
@@ -4439,6 +4461,219 @@ export async function removeWaitlist(id: string) {
 // ---- beats (docs/drum-machine.md, Phase 3) ----
 
 /** The account's saved beats, newest first, each with its project and the song it belongs to, if any. */
+// ---- custom drum kits (docs/drum-machine.md, "Custom kits") ------------------------------
+
+/** The kit's account (null for a site kit), or null when there is no such kit. */
+export async function accountOfDrumKit(kitId: string) {
+	const row = await db.query.drumKit.findFirst({
+		where: eq(drumKit.id, kitId),
+		columns: { id: true, accountId: true },
+	});
+	return row ? { accountId: row.accountId } : null;
+}
+export async function accountOfDrumSamplePathname(pathname: string) {
+	const row = await db.query.drumSample.findFirst({
+		where: eq(drumSample.pathname, pathname),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+const kitScope = (accountId: string | null) =>
+	accountId ? eq(drumKit.accountId, accountId) : isNull(drumKit.accountId);
+
+/**
+ * The kits a page may play: the site's and then the account's, each
+ * voice's ready file with a URL the browser may fetch (presented for the
+ * private store). A voice without a ready file is left out: it is silent.
+ */
+export async function listDrumKitManifests(accountId: string | null): Promise<DrumKitManifest[]> {
+	const rows = await db.query.drumKit.findMany({
+		where: accountId
+			? or(isNull(drumKit.accountId), eq(drumKit.accountId, accountId))
+			: isNull(drumKit.accountId),
+		orderBy: [asc(drumKit.createdAt)],
+		with: {
+			samples: {
+				where: eq(drumSample.status, "ready"),
+				orderBy: [desc(drumSample.createdAt)],
+				columns: { voice: true, url: true },
+			},
+		},
+	});
+	const out: DrumKitManifest[] = [];
+	for (const k of rows) {
+		const samples: DrumKitManifest["samples"] = {};
+		for (const smp of k.samples) {
+			if (samples[smp.voice]) continue; // the newest ready file per voice
+			samples[smp.voice] = k.accountId ? ((await presentUrl(smp.url)) ?? smp.url) : smp.url;
+		}
+		out.push({ id: k.id, name: k.name, scope: k.accountId ? "account" : "site", samples });
+	}
+	// The site's first, then the account's.
+	return out.sort((a, b) => (a.scope === b.scope ? 0 : a.scope === "site" ? -1 : 1));
+}
+
+/** The kits for a manager: every sample row with its state, so an upload under way shows; `accountId` null lists the site's. */
+export async function listDrumKitsFor(accountId: string | null) {
+	const rows = await db.query.drumKit.findMany({
+		where: kitScope(accountId),
+		orderBy: [asc(drumKit.createdAt)],
+		with: {
+			samples: {
+				where: ne(drumSample.status, "failed"),
+				orderBy: [desc(drumSample.createdAt)],
+				columns: {
+					id: true,
+					voice: true,
+					status: true,
+					filename: true,
+					sizeBytes: true,
+					url: true,
+				},
+			},
+		},
+	});
+	return Promise.all(
+		rows.map(async (k) => ({
+			id: k.id,
+			name: k.name,
+			scope: (k.accountId ? "account" : "site") as "account" | "site",
+			samples: await Promise.all(
+				k.samples.map(async (smp) => ({
+					...smp,
+					url: smp.url && k.accountId ? ((await presentUrl(smp.url)) ?? smp.url) : smp.url,
+				})),
+			),
+		})),
+	);
+}
+
+export async function createDrumKit(accountId: string | null, userId: string, name: string) {
+	if (accountId) {
+		const [{ n }] = await db
+			.select({ n: sql<number>`count(*)` })
+			.from(drumKit)
+			.where(eq(drumKit.accountId, accountId));
+		if (n >= MAX_DRUM_KITS_PER_ACCOUNT) return "full" as const;
+	}
+	const [row] = await db
+		.insert(drumKit)
+		.values({ accountId, createdBy: userId, name: name.trim() })
+		.returning();
+	return row;
+}
+export async function renameDrumKit(accountId: string | null, id: string, name: string) {
+	const [row] = await db
+		.update(drumKit)
+		.set({ name: name.trim() })
+		.where(and(eq(drumKit.id, id), kitScope(accountId)))
+		.returning({ id: drumKit.id, name: drumKit.name });
+	return row ?? null;
+}
+/** The kit, its samples and their files. */
+export async function deleteDrumKit(accountId: string | null, id: string) {
+	const kit = await db.query.drumKit.findFirst({
+		where: and(eq(drumKit.id, id), kitScope(accountId)),
+		columns: { id: true },
+		with: { samples: { columns: { url: true } } },
+	});
+	if (!kit) return false;
+	await db.delete(drumSample).where(eq(drumSample.kitId, id));
+	await db.delete(drumKit).where(eq(drumKit.id, id));
+	await deleteBlobs(kit.samples.map((smp) => smp.url));
+	return true;
+}
+/** Step 1 of a sample upload: the row, reserved; the kit must be the scope's. */
+export async function createDrumSample(
+	accountId: string | null,
+	userId: string,
+	kitId: string,
+	voice: DrumVoiceId,
+	file: NewStemFile,
+) {
+	const kit = await db.query.drumKit.findFirst({
+		where: and(eq(drumKit.id, kitId), kitScope(accountId)),
+		columns: { id: true },
+	});
+	if (!kit) return null;
+	const id = nanoid();
+	const [row] = await db
+		.insert(drumSample)
+		.values({
+			id,
+			kitId,
+			accountId,
+			voice,
+			url: "",
+			pathname: drumSamplePathname(accountId, kitId, id, file.filename),
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+			uploadedBy: userId,
+		})
+		.returning();
+	return row;
+}
+export function findUploadingDrumSample(pathname: string) {
+	return db.query.drumSample.findFirst({
+		where: and(eq(drumSample.pathname, pathname), eq(drumSample.status, "uploading")),
+	});
+}
+export async function drumSampleOwner(id: string) {
+	const row = await db.query.drumSample.findFirst({
+		where: eq(drumSample.id, id),
+		columns: { kitId: true, accountId: true, pathname: true },
+	});
+	return row ?? null;
+}
+/** Step 3: the file is up; the voice's earlier files go, so a kit keeps one file per voice. */
+export async function markDrumSampleReady(id: string, url: string) {
+	const [row] = await db
+		.update(drumSample)
+		.set({ status: "ready", url })
+		.where(eq(drumSample.id, id))
+		.returning({ id: drumSample.id, kitId: drumSample.kitId, voice: drumSample.voice });
+	if (!row) return null;
+	const older = await db
+		.delete(drumSample)
+		.where(
+			and(
+				eq(drumSample.kitId, row.kitId),
+				eq(drumSample.voice, row.voice),
+				ne(drumSample.id, row.id),
+			),
+		)
+		.returning({ url: drumSample.url });
+	await deleteBlobs(older.map((o) => o.url));
+	return row;
+}
+/** Production backstop from Vercel's completion webhook. */
+export async function recordDrumSampleUrl(pathname: string, url: string) {
+	const row = await db.query.drumSample.findFirst({
+		where: and(eq(drumSample.pathname, pathname), eq(drumSample.status, "uploading")),
+		columns: { id: true },
+	});
+	if (row) await markDrumSampleReady(row.id, url);
+}
+export async function deleteDrumSample(id: string) {
+	const [row] = await db
+		.delete(drumSample)
+		.where(eq(drumSample.id, id))
+		.returning({ url: drumSample.url });
+	if (!row) return false;
+	await deleteBlobs([row.url]);
+	return true;
+}
+/** Every kit of the account with its files, for the account's deletion (src/lib/server/cascade.ts collects the rows; the files go here). */
+export async function deleteAccountDrumKits(accountId: string) {
+	const samples = await db
+		.delete(drumSample)
+		.where(eq(drumSample.accountId, accountId))
+		.returning({ url: drumSample.url });
+	await db.delete(drumKit).where(eq(drumKit.accountId, accountId));
+	await deleteBlobs(samples.map((smp) => smp.url));
+}
+
 export async function listBeats(accountId: string) {
 	return db.query.beat.findMany({
 		where: eq(beat.accountId, accountId),

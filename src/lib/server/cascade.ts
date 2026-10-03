@@ -26,6 +26,8 @@ const {
 	bugReportVote,
 	comment,
 	demo,
+	drumKit,
+	drumSample,
 	idea,
 	beat,
 	pianoPreset,
@@ -141,6 +143,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(recordingStem).where(eq(recordingStem.accountId, accountId));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
 	await db.delete(beat).where(eq(beat.accountId, accountId));
+	await db.delete(drumSample).where(eq(drumSample.accountId, accountId));
+	await db.delete(drumKit).where(eq(drumKit.accountId, accountId));
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await db.delete(comment).where(eq(comment.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
@@ -178,6 +182,8 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
 	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));
+	await db.update(drumKit).set({ createdBy: null }).where(eq(drumKit.createdBy, userId));
+	await db.update(drumSample).set({ uploadedBy: null }).where(eq(drumSample.uploadedBy, userId));
 	await db.update(pianoPreset).set({ createdBy: null }).where(eq(pianoPreset.createdBy, userId));
 	await db.update(invitation).set({ invitedBy: null }).where(eq(invitation.invitedBy, userId));
 	await db.update(inviteCode).set({ createdBy: null }).where(eq(inviteCode.createdBy, userId));

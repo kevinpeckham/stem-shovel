@@ -8,6 +8,9 @@
 	import { drumTutorial } from "$lib/state/drumTutorial.svelte";
 
 	let { data } = $props();
+	// Dev only: the engine on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
+	if (import.meta.env.DEV && typeof window !== "undefined")
+		Object.assign(window, { __drums: drumMachine });
 
 	/** The walk-through: an empty kit in place of the project (the machine's Undo brings the project back), then the panel. */
 	function startTutorial() {
@@ -45,6 +48,7 @@
 			</p>
 		{/if}
 		<DrumMachine
+			kits={data.kits}
 			account={data.account}
 			beats={data.beats}
 			song={data.song}

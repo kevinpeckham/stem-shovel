@@ -13,7 +13,6 @@ import {
 	MAX_DRUM_ROWS,
 	MAX_DRUM_TIMELINE,
 	drumStepsFor,
-	type DrumKitId,
 	type DrumMeterId,
 	type DrumSteps,
 	type DrumSwingGrid,
@@ -46,7 +45,7 @@ import {
 	renderDrumSongWav,
 	type DrumPlayState,
 } from "./drumRender";
-import { drumKit } from "./kits";
+import { drumKit, hasDrumKit } from "./kits";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
@@ -154,6 +153,8 @@ class DrumMachineEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		this.kitReady = false;
+		// A custom kit this page was not given (another account's, one since deleted): the acoustic kit stands in.
+		if (!hasDrumKit(this.project.kit)) this.project.kit = "acoustic";
 		const kit = drumKit(this.project.kit);
 		await kit.load(ctx);
 		if (kit.id === this.project.kit) this.kitReady = true;
@@ -615,7 +616,7 @@ class DrumMachineEngine {
 			swing?: number | null;
 			humanize?: number | null;
 			fx?: Partial<DrumFx> | null;
-			kit?: DrumKitId | null;
+			kit?: string | null;
 		} = {},
 	): number {
 		const before = $state.snapshot(this.project);
@@ -664,7 +665,7 @@ class DrumMachineEngine {
 		this.#afterSwap(kit);
 	}
 	/** After the project changed under a running machine: solo, the playing pattern and the kit follow. */
-	#afterSwap(previousKit: DrumKitId) {
+	#afterSwap(previousKit: string) {
 		this.#resetSolo();
 		this.songMode = this.project.timeline.length > 0;
 		this.#nextBar = 0;
@@ -677,7 +678,12 @@ class DrumMachineEngine {
 		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
 		if (this.#ctx && (this.project.kit !== previousKit || !this.kitReady)) void this.#readyKit();
 	}
-	setKit(kit: DrumKitId) {
+	/** The kit in use again (a sample was replaced: the registry made the kit afresh), without a change of kit. */
+	reloadKit() {
+		this.kitReady = false;
+		if (this.#ctx) void this.#readyKit();
+	}
+	setKit(kit: string) {
 		if (kit === this.project.kit) return;
 		this.project.kit = kit;
 		this.kitReady = false;

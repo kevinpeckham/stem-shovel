@@ -5,6 +5,7 @@ import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount"
 import {
 	deleteEmptyIdeas,
 	listBeats,
+	listDrumKitManifests,
 	listPianoPresets,
 	listUserIdeas,
 	parseIdeaInstruments,
@@ -91,6 +92,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		projects,
 		// The drum machine's panel (docs/demo-recording.md): the current account's saved beats and whether Text-to-Beat is on.
 		beats: await listBeats(member.accountId),
+		kits: await listDrumKitManifests(member.accountId),
 		textToBeat: aiAvailable(),
 		// The piano's panel: the site's demo presets and the current account's own, as the piano page has them.
 		sitePresets: await sitePianoPresets(),
