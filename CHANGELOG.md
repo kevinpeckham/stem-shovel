@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.89.0] - 2026-10-03
+
 ### Changed
 
 - **Chord numerals on every wedge**: the chord player's Roman numerals are a device button (IV, beside the keyboard button) and cover every chord relative to the key, the key's six in yellow and the rest (♭VII, ♯iv…) in grey, where the old option wrote only the six; the keyboard and numerals buttons sit in a Guides group.
