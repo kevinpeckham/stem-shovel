@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-10-03
+
 ### Added
 
 - **Custom drum kits** (docs/drum-machine.md, "Custom kits"; migration 0067 `drum_kit`, `drum_sample`). An account's editors make kits from their own one-shots in the drum machine's Kit row: a name, then a file per drum (uploaded like a demo, counted against the account's storage), replaced or removed one at a time, played by every member. System admins make the site's kits the same way at `/admin/drum-kits`, listed for everyone beside the built-in three, and replace any drum of the built-in Acoustic and Room kits with a file of their own (an override: every other drum stays the built-in file, so nothing loads slower). Every sample shows its filename, format, size, date and uploader with a listen button, and carries a source note for provenance (migration 0068); the built-in drums show their Groovie file and licence. The kit id in a beat is any kit's now; a kit a page was not given falls back to Acoustic, and a share link, with two bits for the kit, encodes a custom kit as Acoustic.
