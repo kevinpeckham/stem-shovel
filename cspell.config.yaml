@@ -19,6 +19,9 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
+  - Håken
+  - Voicings
+  - voicings
   - Qwen
   - Aphex
   - Linkwitz
