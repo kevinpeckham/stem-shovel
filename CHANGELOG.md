@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.93.0] - 2026-10-03
+
+### Fixed
+
+- **The chord player's text cannot be selected** (the whole device is select-none, the iOS callout off): holding the 7 or sustain pad on a phone was selecting the label instead of pressing (testers).
+
 ### Added
 
 - **An arpeggiator on the chord player** (docs/chord-player.md, "The arpeggiator"): Arp beside Chords and Notes makes a held wedge play its notes one at a time at the Timing tempo; the Chords menu sets the rate (quarters to sixteenths and triplets), the pattern (up, down, up and down, as played, random), the octaves, the gate and Latch. A new chord restarts the pattern on the press; the pad's playback goes through it too; styles and voicings decide the notes.

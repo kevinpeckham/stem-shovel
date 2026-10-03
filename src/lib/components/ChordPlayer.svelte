@@ -310,8 +310,9 @@
 
 <svelte:window {onkeydown} {onkeyup} {onblur} />
 
+<!-- select-none on the whole device: on a phone a held pad was selecting its text instead of pressing (Kevin's testers), and the callout likewise. -->
 <div
-	class="@container device-chrome grid gap-3 px-3 py-4 pb-20 @xl-pb-10 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
+	class="@container device-chrome grid gap-3 px-3 py-4 pb-20 @xl-pb-10 @xl-px-5 @xl-pt-5 w-full max-w-full relative select-none [-webkit-touch-callout:none]"
 	role="group"
 	aria-label="Chord Player"
 >
