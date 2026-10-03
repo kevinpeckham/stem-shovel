@@ -8,9 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.92.0] - 2026-10-03
+
 ### Added
 
 - **Chord player presets carry the chord player's settings**: chords or notes, the style, the voicing, the octave and the strum are saved with the sound and come back when the preset is pressed there; a preset from the piano has none and leaves them alone.
+
+### Changed
+
+- The home page's sign-up line adds "No ads, no trackers." (Kevin).
 
 ### Fixed
 

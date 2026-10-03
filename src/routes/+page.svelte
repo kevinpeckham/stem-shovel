@@ -120,7 +120,7 @@
 				{/each} -->
 			{:else if data.signUpOpen}
 				<a class="button-accent-solid button-sm" href="/sign-up">Sign Up For Free</a>
-				<span class="text-0.85em opacity-90">No credit card required.</span>
+				<span class="text-0.85em opacity-90">No credit card required. No ads, no trackers.</span>
 			{:else}
 				<!-- Invitation-only (the signUpMode app setting): the waitlist is the way in. -->
 				<a class="button-accent-solid button-sm" href="/waitlist">Join the Waitlist</a>
