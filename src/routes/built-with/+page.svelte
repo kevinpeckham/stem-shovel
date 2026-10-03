@@ -79,6 +79,11 @@
 					what: "The piano's Grand Piano: Alexander Holm's recordings of a Yamaha C5, CC BY 3.0, in the mp3 subset Tone.js publishes.",
 				},
 				{
+					name: "Finger Bass YR",
+					url: "https://github.com/freepats/electric-bass-YR",
+					what: "The piano's Electric Bass: Andrea Biasior's recordings of a Yamaha RBX for the FreePats project, CC0 public domain, twelve notes shifted by octaves.",
+				},
+				{
 					name: "Fifths, the chord player",
 					url: "https://github.com/kevinpeckham/chord-player",
 					what: "The Chord Player's circle of fifths grew out of Kevin's earlier instrument, itself inspired by Quinn Raymond's Q-RAY chord player, with the circle's SVG after Eric Coleman and Håken Lid.",

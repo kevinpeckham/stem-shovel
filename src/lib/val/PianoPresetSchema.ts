@@ -95,6 +95,17 @@ export const ChordPresetSettingsSchema = v.object({
 	voicing: v.picklist(CHORD_VOICINGS.map((c) => c.id)),
 	octave: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(6)),
 	strum: v.picklist(STRUMS.map((s) => s.id)),
+	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */
+	arp: v.optional(
+		v.object({
+			on: v.boolean(),
+			rate: v.picklist(["4", "8", "8t", "16"]),
+			pattern: v.picklist(["up", "down", "updown", "played", "random"]),
+			octaves: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3)),
+			gate: v.pipe(v.number(), v.minValue(0.1), v.maxValue(1)),
+			latch: v.boolean(),
+		}),
+	),
 });
 export type ChordPresetSettings = v.InferOutput<typeof ChordPresetSettingsSchema>;
 

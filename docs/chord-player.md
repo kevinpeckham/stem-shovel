@@ -229,8 +229,13 @@ step and off after `arpGate` of it, through `#arpSequence()` (held chords'
 notes ascending through `arpOctaves`, ordered by `arpPattern`). A new
 chord re-anchors the grid (`#arpRestart`), so chord changes land on the
 press; `release()` drops the chord and, with `arpLatch`, keeps the last one
-running; `allOff` stops it. The home demo passes `pad={false}`; the bass
-is a `synthVoice` patch with `transpose: -12`. **The readout** (Kevin): the chord name at the hole's centre on every
+running; `allOff` stops it. The home demo passes `pad={false}`. The Electric Bass is sampled
+(`audio/bassSamples.ts`: FreePats' twelve notes E1 to D#2 as mp3 in
+static/kits/bass from `scripts/bass-samples.ts`, the pitch class's sample
+shifted by octaves, an octave under the key; the `synthVoice` bass patch
+stands in until they decode). The arpeggiator is a split button at
+desktop (Arp, and its settings on the caret) and a wrench section on a
+phone; `ChordPresetSettings.arp` saves it with a preset. **The readout** (Kevin): the chord name at the hole's centre on every
 layout, and under it the sounding notes from `chordPlayer.soundingSpelled`
 (`utils/noteSpelling.ts`: letter, accidental, octave and the treble-staff
 step, flats for positions 0 and 6 to 11, sharps for 1 to 5), written as

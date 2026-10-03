@@ -42,6 +42,7 @@ import {
 	warmPianoSamples,
 	type PianoTier,
 } from "./pianoSamples";
+import { loadBassSamples, startBassVoice, warmBassSamples } from "./bassSamples";
 import { startVoice, type SynthVoice } from "./synthVoice";
 
 /**
@@ -203,6 +204,7 @@ class PianoEngine {
 	/** Fetch the Grand Piano's demo tier without opening the audio (no gesture needed): the home page calls it as the demo scrolls into view, so the first touch finds the samples in. */
 	prefetch() {
 		if (this.instrument === "grand") warmPianoSamples();
+		if (this.instrument === "bass") warmBassSamples();
 	}
 	#samples() {
 		if (pianoDemoReady()) {
@@ -440,11 +442,21 @@ class PianoEngine {
 		let voice =
 			this.instrument === "grand"
 				? startSampledVoice(ctx, this.#fx!.input, midi, velocity, now)
-				: startVoice(ctx, this.#fx!.input, this.instrument, midi, velocity, now);
-		// The Grand Piano before its samples are decoded: the Electric Piano stands in (the screen says loading).
+				: this.instrument === "bass"
+					? startBassVoice(ctx, this.#fx!.input, midi, velocity, now)
+					: startVoice(ctx, this.#fx!.input, this.instrument, midi, velocity, now);
+		// The Grand Piano before its samples are decoded: the Electric Piano stands in (the screen says loading); the bass's synthesized stand-in likewise.
 		if (!voice) {
-			this.#samples();
-			voice = startVoice(ctx, this.#fx!.input, "epiano", midi, velocity, now);
+			if (this.instrument === "bass") void loadBassSamples(ctx);
+			else this.#samples();
+			voice = startVoice(
+				ctx,
+				this.#fx!.input,
+				this.instrument === "bass" ? "bass" : "epiano",
+				midi,
+				velocity,
+				now,
+			);
 		}
 		this.#voices.set(midi, voice);
 		this.#order.push(midi);
@@ -477,6 +489,7 @@ class PianoEngine {
 		if (id === this.instrument) return;
 		this.allOff();
 		this.instrument = id;
+		if (id === "bass") void loadBassSamples(this.#decodeContext());
 		this.#save();
 		if (id === "grand") this.#samples();
 	}

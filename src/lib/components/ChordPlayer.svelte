@@ -413,6 +413,25 @@
 			<div class="device-button-group-label text-dark hidden @xl-block">Play</div>
 			{@render modeBlock()}
 		</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Arpeggio</div>
+			<!-- A split button (Kevin): Arp toggles the arpeggiator; the caret opens its settings. -->
+			<div class="flex gap-px" role="group" aria-label="Arpeggiator">
+				{@render arpButton("rounded-r-none")}
+				<ContextMenu
+					ariaLabel="Arpeggiator settings"
+					title="Rate, pattern, octaves, gate and latch"
+					iconClass="i-ph-caret-down"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[
+						{ id: "arp-heading", kind: "heading", label: "Arpeggiator" },
+						{ id: "arp-block", kind: "snippet", snippet: arpMenuBlock },
+					]}
+				/>
+			</div>
+		</div>
 		<div class="@xl-hidden">
 			<ComboBox
 				ariaLabel="Key center"
@@ -708,22 +727,30 @@
 			onclick={() => chordPlayer.setMode("chords")}>Chords</button
 		>
 		<button
-			class="device-button-sm px-3 rounded-none {chordPlayer.mode === 'notes' ? 'text-accent' : ''}"
+			class="device-button-sm px-3 rounded-l-none {chordPlayer.mode === 'notes'
+				? 'text-accent'
+				: ''}"
 			type="button"
 			aria-pressed={chordPlayer.mode === "notes"}
 			onclick={() => chordPlayer.setMode("notes")}>Notes</button
 		>
-		<button
-			class="device-button-sm px-3 rounded-l-none {chordPlayer.arp ? 'text-accent' : ''}"
-			type="button"
-			aria-pressed={chordPlayer.arp}
-			title={chordPlayer.arp
-				? "Arpeggiator on: a held wedge plays its notes one at a time; click to play them together"
-				: "Arpeggiator: a held wedge plays its notes one at a time in time with the tempo (the Chords menu sets the pattern)"}
-			aria-label="Arpeggiator"
-			onclick={() => chordPlayer.setArp(!chordPlayer.arp)}>Arp</button
-		>
 	</div>
+{/snippet}
+
+{#snippet arpButton(classes: string)}
+	<button
+		class="device-button-sm px-3 {classes} {chordPlayer.arp ? 'text-accent' : ''}"
+		type="button"
+		aria-pressed={chordPlayer.arp}
+		title={chordPlayer.arp
+			? "Arpeggiator on: a held wedge plays its notes one at a time; click to play them together"
+			: "Arpeggiator: a held wedge plays its notes one at a time in time with the tempo"}
+		aria-label="Arpeggiator"
+		onclick={() => chordPlayer.setArp(!chordPlayer.arp)}
+	>
+		<span class="i-ph-wave-sawtooth" aria-hidden="true"></span>
+		Arp
+	</button>
 {/snippet}
 
 {#snippet keysBlock()}
@@ -803,6 +830,7 @@
 {#snippet compactMenuBlock()}
 	<div class="grid grid-cols-1 -mt-3">
 		{@render section("Play", modeBlock, true)}
+		{@render section("Arpeggiator", arpSection)}
 		{@render section("Guides", keysBlock)}
 		{@render section("Presets", presetsBlock)}
 		{@render section("Volume", volumeBlock, true)}
@@ -928,17 +956,23 @@
 				>The chord root's octave, and the notes' in notes mode; 4 is middle C's.</span
 			>
 		</label>
-		<div class="border-t border-current/10 pt-4 grid gap-4">
-			<div class="text-11px uppercase tracking-wider text-accent">Arpeggiator</div>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.arp}
-					onchange={(e) => chordPlayer.setArp(e.currentTarget.checked)}
-				/>
-				A held wedge plays its notes one at a time, at the Timing tempo
-			</label>
+	</div>
+{/snippet}
+
+{#snippet arpSection()}
+	<div class="grid gap-3">
+		{@render arpButton("justify-self-start")}
+		{@render arpMenuBlock()}
+	</div>
+{/snippet}
+
+{#snippet arpMenuBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<p class="text-12px opacity-70 -mt-1">
+			A held wedge plays its notes one at a time, at the Timing tempo. Styles and voicings decide
+			which notes; a new chord restarts the pattern as you press it.
+		</p>
+		<div class="grid gap-4">
 			<label class="block">
 				<span class="device-button-label">Rate</span>
 				<select

@@ -537,6 +537,14 @@ class ChordPlayerEngine {
 			voicing: this.voicing,
 			octave: this.octave,
 			strum: this.strum,
+			arp: {
+				on: this.arp,
+				rate: this.arpRate,
+				pattern: this.arpPattern,
+				octaves: this.arpOctaves,
+				gate: this.arpGate,
+				latch: this.arpLatch,
+			},
 		};
 	}
 	/** A preset's chord settings into the player; a style the account no longer has falls back to plain. */
@@ -546,6 +554,14 @@ class ChordPlayerEngine {
 		this.setVoicing(s.voicing);
 		this.setOctave(s.octave);
 		this.setStrum(s.strum);
+		if (s.arp) {
+			this.setArpRate(s.arp.rate);
+			this.setArpPattern(s.arp.pattern);
+			this.setArpOctaves(s.arp.octaves);
+			this.setArpGate(s.arp.gate);
+			this.setArpLatch(s.arp.latch);
+			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
+		}
 	}
 	setNoteReadout(mode: NoteReadout) {
 		this.noteReadout = mode;

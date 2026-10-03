@@ -17,7 +17,7 @@ export const PIANO_INSTRUMENTS = [
 	{
 		id: "bass",
 		label: "Electric Bass",
-		hint: "a round fingered bass an octave down, for the chord player's notes",
+		hint: "a sampled fingered bass (FreePats' Yamaha RBX) an octave down, for the chord player's notes",
 	},
 ] as const;
 export type PianoInstrumentId = (typeof PIANO_INSTRUMENTS)[number]["id"];
