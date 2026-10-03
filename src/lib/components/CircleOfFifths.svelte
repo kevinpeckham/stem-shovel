@@ -2,11 +2,15 @@
 	import type { ChordQuality, CirclePosition } from "$lib/constants/circleOfFifths";
 	import {
 		ARCH_CY,
+		ARCH_DOWN_SLOTS,
 		ARCH_HEIGHT,
 		ARCH_SLOTS,
 		ARCH_WIDTH,
 		CIRCLE_SIZE,
 		CIRCLE_SLOTS,
+		R_MAJOR_IN,
+		R_MINOR_IN,
+		R_OUTER,
 		slotCenter,
 		slotPath,
 		type WedgeSlot,
@@ -23,13 +27,15 @@
 	 * wedge on the same chord until it lifts. Several pointers at once.
 	 * The arch layout (Kevin) draws the same wedges as slots: the key and
 	 * three fifths each way on a bigger arch across the top, the four far
-	 * keys small under its ends, the tritone left out.
+	 * keys as rectangles continuing its ends straight down, the tritone
+	 * left out.
 	 */
 	interface Props {
 		positions: CirclePosition[];
 		notes: { pitch: number; label: string }[];
 		mode: "chords" | "notes";
-		layout?: "circle" | "arch";
+		/** The circle; the arch (the key at the top); the arch upside down, a bowl with the key at the bottom for a thumb. */
+		layout?: "circle" | "arch" | "arch-down";
 		showSignatures: boolean;
 		/** The computer keyboard's keys on the wedges. */
 		showKeys?: boolean;
@@ -65,33 +71,61 @@
 		class: svgClass = "w-full",
 	}: Props = $props();
 
-	// The circle's radii; a slot scales them to its size.
-	const R_OUTER = 190;
-	const R_MAJOR_IN = 130;
-	const R_MINOR_IN = 72;
-	const SIGNATURE_R = 182;
+	// The circle's radii (a slot scales them to its size) and where the text sits on them.
+	const SIGNATURE_R = 186;
 	const R_MAJOR_TEXT = 162;
 	const R_MINOR_TEXT = 101;
-	/** The key labels sit under the chord names, the numerals above, a few units off. */
+	/** The key labels sit under the chord names, the numerals above with a little air (Kevin). */
 	const KEY_DY_MAJOR = 15;
 	const KEY_DY_MINOR = 12;
-	const NUMERAL_DY = -12;
+	const NUMERAL_DY = -16;
 
-	const slots = $derived(layout === "arch" ? ARCH_SLOTS : CIRCLE_SLOTS);
+	const slots = $derived(
+		layout === "arch" ? ARCH_SLOTS : layout === "arch-down" ? ARCH_DOWN_SLOTS : CIRCLE_SLOTS,
+	);
 	const box = $derived(
-		layout === "arch"
-			? { w: ARCH_WIDTH, h: ARCH_HEIGHT, cx: ARCH_WIDTH / 2, cy: ARCH_CY, scale: 230 / 190 }
+		layout === "arch" || layout === "arch-down"
+			? {
+					w: ARCH_WIDTH,
+					h: ARCH_HEIGHT,
+					cx: ARCH_WIDTH / 2,
+					cy: layout === "arch" ? ARCH_CY : ARCH_HEIGHT - ARCH_CY,
+					scale: 230 / 190,
+				}
 			: { w: CIRCLE_SIZE, h: CIRCLE_SIZE, cx: 200, cy: 200, scale: 1 },
+	);
+	/** The readout sits in the hole's visible half on an arch; the key mark on the rim at the key. */
+	const readoutY = $derived(
+		layout === "arch" ? box.cy - 24 : layout === "arch-down" ? box.cy + 24 : box.cy,
+	);
+	const markY = $derived(
+		layout === "arch-down" ? box.cy + R_OUTER * box.scale + 4 : box.cy - R_OUTER * box.scale - 4,
 	);
 	/** Each drawn index with its slot, for the loops (the tritone has none on the arch). */
 	const drawn = $derived(
 		slots.flatMap((slot, i) => (slot ? [{ i, slot }] : [])) as { i: number; slot: WedgeSlot }[],
 	);
+	const circleSlot = CIRCLE_SLOTS[0]!;
 	/** A font size for a slot: the circle's, scaled, never under 7. */
-	const px = (size: number, slot: WedgeSlot) => Math.max(7, size * slot.scale).toFixed(1);
+	const px = (size: number, slot: WedgeSlot) =>
+		Math.max(
+			7,
+			size * (slot.kind === "arc" ? (slot.labelScale ?? slot.scale) : slot.scale),
+		).toFixed(1);
+	/**
+	 * A label's place: a slot's centre at a radius, shifted down by `dy`
+	 * (scaled, but never under three quarters, since the small fonts stop
+	 * shrinking at 7). A cut end wedge (15°, `labelScale`) has no room for
+	 * the usual offsets: its labels sit 14 units off in the major ring and
+	 * 11 in the minor, just inside its edges.
+	 */
 	const at = (slot: WedgeSlot, radius: number, dy = 0) => {
 		const [x, y] = slotCenter(slot, radius);
-		return { x: x.toFixed(1), y: (y + dy * slot.scale).toFixed(1) };
+		const tight = slot.kind === "arc" && slot.labelScale !== undefined;
+		const off = tight
+			? Math.sign(dy) * (Math.abs(dy) >= 15 ? 14 : 11)
+			: dy * Math.max(slot.scale, 0.75);
+		return { x: x.toFixed(1), y: (y + off).toFixed(1) };
 	};
 
 	/** The wedge under a pointer: its index and quality, from the element's data. */
@@ -282,7 +316,7 @@
 					y={k2.y}>{CHORD_KEY_LABELS[i].minor}</text
 				>
 			{/if}
-			{#if showSignatures && p.signature && slot.scale >= 1}
+			{#if showSignatures && p.signature && slot.kind === "arc" && slot.scale >= 1}
 				{@const s = at(slot, SIGNATURE_R)}
 				<text
 					class="pointer-events-none fill-current opacity-60"
@@ -304,17 +338,12 @@
 	/>
 	<text
 		class="pointer-events-none fill-accent"
-		font-size={px(18, { ...CIRCLE_SLOTS[0]!, scale: box.scale })}
+		font-size={px(18, { ...circleSlot, scale: box.scale })}
 		text-anchor="middle"
 		dominant-baseline="central"
 		x={box.cx}
-		y={layout === "arch" ? box.cy - 24 : box.cy}>{centre}</text
+		y={readoutY}>{centre}</text
 	>
-	<!-- the key center's mark at twelve o'clock -->
-	<circle
-		cx={box.cx}
-		cy={(box.cy - R_OUTER * box.scale - 4).toFixed(1)}
-		r="2.5"
-		class="fill-accent pointer-events-none"
-	/>
+	<!-- the key center's mark on the rim at the key (twelve o'clock, or six on the bowl) -->
+	<circle cx={box.cx} cy={markY.toFixed(1)} r="2.5" class="fill-accent pointer-events-none" />
 </svg>

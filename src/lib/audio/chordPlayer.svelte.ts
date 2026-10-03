@@ -58,7 +58,8 @@ class ChordPlayerEngine {
 	/** The key at the top: a circle index (0 = C). */
 	keyCenter = $state(0);
 	keyAtTop = $state(true);
-	showSignatures = $state(true);
+	/** Off until switched on (Kevin). */
+	showSignatures = $state(false);
 	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
 	showKeys = $state(false);
 	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
@@ -67,7 +68,8 @@ class ChordPlayerEngine {
 	sounding = $state<SoundingChord[]>([]);
 	/** Roman numerals on every wedge relative to the key (the device's numerals toggle), and the chords outside the key dimmed (the Circle menu). */
 	showNumerals = $state(false);
-	highlightKey = $state(false);
+	/** On until switched off (Kevin). */
+	highlightKey = $state(true);
 	/** The progression pad listens to presses and releases to jot them (docs/chord-player.md, "The progression pad"). */
 	listener: {
 		down(by: string, chord: { label: string; wedge: string; notes: number[] }): void;
@@ -95,23 +97,32 @@ class ChordPlayerEngine {
 		const key = Number(read("key-center"));
 		if (Number.isInteger(key) && key >= 0 && key < 12) this.keyCenter = key;
 		this.keyAtTop = read("key-at-top") !== "0";
-		this.showSignatures = read("signatures") !== "0";
+		this.showSignatures = read("signatures") === "1";
 		this.showKeys = read("keys") === "1";
 		if (read("layout") === "arch") this.layout = "arch";
 		this.showNumerals = read("numerals") === "1";
-		this.highlightKey = read("highlight") === "1";
+		this.highlightKey = read("highlight") !== "0";
 		piano.load();
 	}
 
+	/** The key center's drawn index: the top, or the bottom of the circle (the arch puts the key at index 0 either way and turns itself over instead). */
+	get keyIndex(): number {
+		return this.keyAtTop || this.layout === "arch" ? 0 : 6;
+	}
+	/** The circle's layout for the drawing: the arch turns over, a bowl with the key at the bottom, when the key is not at the top. */
+	get drawnLayout(): "circle" | "arch" | "arch-down" {
+		if (this.layout !== "arch") return "circle";
+		return this.keyAtTop ? "arch" : "arch-down";
+	}
 	/** The positions as drawn: the key center's at the top (or the bottom), the rest clockwise in fifths. */
 	get positions(): CirclePosition[] {
-		const offset = this.keyAtTop ? this.keyCenter : (this.keyCenter + 6) % 12;
+		const offset = (this.keyCenter + this.keyIndex) % 12;
 		return CIRCLE_OF_FIFTHS.map((_, i) => CIRCLE_OF_FIFTHS[(i + offset) % 12]);
 	}
 	/** The notes of notes mode, chromatic clockwise from the key center's root. */
 	get notes(): { pitch: number; label: string }[] {
 		const root = CIRCLE_OF_FIFTHS[this.keyCenter].major.pitch;
-		const from = this.keyAtTop ? root : (root + 6) % 12;
+		const from = (root + this.keyIndex) % 12;
 		return CHROMATIC_NOTES.map((_, i) => {
 			const pitch = (from + i) % 12;
 			return { pitch, label: CHROMATIC_NOTES[pitch] };
@@ -240,10 +251,6 @@ class ChordPlayerEngine {
 	setHighlightKey(on: boolean) {
 		this.highlightKey = on;
 		write("highlight", on ? "1" : "0");
-	}
-	/** The key center's drawn index: the top, or the bottom. */
-	get keyIndex(): number {
-		return this.keyAtTop ? 0 : 6;
 	}
 }
 

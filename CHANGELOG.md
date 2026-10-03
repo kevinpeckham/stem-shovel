@@ -11,7 +11,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **Chord numerals on every wedge**: the chord player's Roman numerals are a device button (IV, beside the keyboard button) and cover every chord relative to the key, the key's six in yellow and the rest (♭VII, ♯iv…) in grey, where the Circle menu's option wrote only the six.
-- **An arch layout for the chord player**: a View button swaps the circle for an arch, the key and three fifths each way drawn big across the top, the four far keys small under its ends, the tritone left out, so the chords a song mostly uses get the room. Remembered per browser.
+- **An arch layout for the chord player**: a View button swaps the circle for an arch, the key and three fifths each way drawn big across the top, the four far keys as straight buttons continuing its two ends down the page, the tritone left out, so the chords a song mostly uses get the room. With the key at the bottom (the Circle menu) the arch turns over, a bowl with the key at the bottom for a thumb on a phone. Remembered per browser. The Circle menu's dim on the chords outside the key is on by default, and the key signatures are off by default.
 - **The keyboard key labels on the circle are the piano's blue**, not the accent.
 - **The keyboard shortcuts on the device**: with the key labels up, a strip under the circle names the rest (Space sustain, Shift seventh, Esc all off, the two rows).
 

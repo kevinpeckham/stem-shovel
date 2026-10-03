@@ -405,7 +405,7 @@
 			positions={chordPlayer.positions}
 			notes={chordPlayer.notes}
 			mode={chordPlayer.mode}
-			layout={chordPlayer.layout}
+			layout={chordPlayer.drawnLayout}
 			showSignatures={chordPlayer.showSignatures}
 			showKeys={chordPlayer.showKeys}
 			keyIndex={chordPlayer.keyIndex}
@@ -684,7 +684,7 @@
 				checked={chordPlayer.keyAtTop}
 				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.checked)}
 			/>
-			The key at the top (off: at the bottom)
+			The key at the top (off: at the bottom; on the arch, the arch turns over for a thumb)
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
 			<input

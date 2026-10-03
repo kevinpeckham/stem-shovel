@@ -191,11 +191,20 @@ in accent). With the key labels up, a strip under the circle names the
 other shortcuts (and the key labels are the piano's blue). The arch
 layout (`chordPlayer.layout`, a View button): `circleGeometry.ts` now
 describes a wedge as a slot (centre, angles, scale), `CIRCLE_SLOTS` the
-circle and `ARCH_SLOTS` the arch, a 480 × 420 box with wedges 9 to 3 on
-a 230-radius arch, 7 and 8 as 45° fans pivoted on the left side under the
-arch's end and 4 and 5 on the right at 0.62 of the size (Kevin: below the
-arch, not in the top corners, the same way round), and no slot for 6; `CircleOfFifths.svelte` draws whichever set it is given, fonts
-scaled per slot, signatures only on full-size wedges. **Notes and panels** (Kevin, the same day): the page holds the device in
+circle and `ARCH_SLOTS` the arch, a 480 × 320 box with wedges 9 to 3 on
+a 230-radius half circle, the two end wedges cut at the horizontal (15°
+each, labels at 0.8), and 8 and 7 (4 and 5) as leg slots: rectangles whose
+first edge is the end wedge's level face, stacked 32 units each straight
+down, the rings' depths kept and the labels at 0.6; no slot for 6. Kevin
+got there in steps: fans in the top corners, then under the arch, then
+rectangles aligned with the end faces, half as tall, then the ends cut
+flat. `CircleOfFifths.svelte` draws whichever set it is given, fonts
+scaled per slot (label offsets floored at three quarters, since the small
+fonts stop at 7), signatures only on full-size wedges. `ARCH_DOWN_SLOTS`
+is the arch mirrored top to bottom, drawn when the key is not at the top
+(`chordPlayer.drawnLayout`; the arch never rotates the positions by six,
+it turns itself over): a bowl with I at the bottom for a thumb on a phone
+(Kevin). **Notes and panels** (Kevin, the same day): the page holds the device in
 a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
 for a member a second panel with `ProgressionNotesPanel.svelte`, the
 recorder's editor over the pad's `notes` (kept per browser with the pad,
