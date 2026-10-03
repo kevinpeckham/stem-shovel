@@ -8,7 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-10-03
+
 ### Changed
+
+- **fifths.app and chordplayer.dev redirect to the chord player** (vercel.json, Kevin).
 
 - **Dropdown lists mark the chosen option in bold on a highlight** instead of a check mark, so the lists are narrower (every dropdown: Sound, Style, Voicing, Key, the kits and the rest).
 - **The arrow keys turn the chord player's key**: left a fifth down, right a fifth up, as the Key buttons do.

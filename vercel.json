@@ -5,6 +5,20 @@
 		{ "path": "/api/warm", "schedule": "*/5 * * * *" },
 		{ "path": "/api/notifications/digest", "schedule": "0 13 * * *" }
 	],
+	"redirects": [
+		{
+			"source": "/:path*",
+			"has": [{ "type": "host", "value": "fifths.app" }],
+			"destination": "https://www.stemshovel.com/chord-player",
+			"permanent": true
+		},
+		{
+			"source": "/:path*",
+			"has": [{ "type": "host", "value": "chordplayer.dev" }],
+			"destination": "https://www.stemshovel.com/chord-player",
+			"permanent": true
+		}
+	],
 	"headers": [
 		{
 			"source": "/(.*)",
