@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.91.0] - 2026-10-03
+
 ### Added
 
 - **The keyboard plays by degree from the start** (1, 4, 5 is I–IV–V); the UI menu's "Where the key sits" is a plain choice, at the bottom (the default) or the top, where a checkbox under the keyboard setting used to be.

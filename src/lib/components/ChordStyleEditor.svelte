@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CHORD_RECIPES, type ChordRecipeId } from "$lib/constants/chordStyles";
+	import { CHORD_RECIPES, type ChordRecipe, type ChordRecipeId } from "$lib/constants/chordStyles";
 	import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
 
 	/**
@@ -72,7 +72,7 @@
 		"dim7",
 	];
 	const recipeLabel = (id: ChordRecipeId, ring: "major" | "minor") => {
-		const recipe = CHORD_RECIPES[id];
+		const recipe: ChordRecipe = CHORD_RECIPES[id];
 		const suffix = recipe.suffix;
 		if (id === "major" || id === "minor") return "triad";
 		if (id === "dim") return "dim";
