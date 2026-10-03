@@ -277,10 +277,13 @@ preferences follow.
 Three layers, resolved per slot by `resolvePianoSlots`:
 
 1. **The site's defaults**: five presets a system admin saves from the
-   piano itself ("Save as site default" in the save popover), one app
-   setting (`pianoPresets`, `setSitePianoPreset` / `clearSitePianoPreset`
-   in admin.remote.ts). The home page demo and every signed-out visitor
-   see them.
+   piano itself ("Save as site default" in the save popover, or the
+   **Site defaults** list in the manage popover since 2026-10-03: all five
+   slots whatever the admin's own buttons show, each with save-here,
+   rename, move up or down and clear, every one a `setSitePianoPreset` or
+   `clearSitePianoPreset`), one app setting (`pianoPresets`, the commands in
+   admin.remote.ts). The home page demo and every signed-out visitor see
+   them.
 2. **The browser's own**: a signed-out player's slot saves go to
    localStorage (`stemshovel.piano.presets`, `pianoSlotOverrides.ts`),
    per slot over the site's; the save popover says so.

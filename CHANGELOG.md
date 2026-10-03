@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Piano: the site's five default presets managed in full** by a system admin (docs/piano.md, "Presets"): a Site defaults list in the manage popover with save-here, rename, move and clear per slot, whatever the admin's own buttons show.
+
 ## [0.85.0] - 2026-10-02
 
 ### Added

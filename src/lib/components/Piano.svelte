@@ -424,6 +424,62 @@
 		saveOpen = "closed";
 		saveOpenPhone = "closed";
 	}
+	/**
+	 * The site's five defaults, managed in full by a system admin from the
+	 * "Site defaults" list (Kevin): the current sound into any slot, a rename,
+	 * a move up or down (the two slots swap), a clear. Each is a `setSitePianoPreset`
+	 * (a rename keeps the slot's data; a move writes both slots), so nothing
+	 * new on the server. The list shows the site's slots themselves, behind
+	 * whatever the admin's own account or browser has put on the buttons.
+	 */
+	async function writeSite(n: number, preset: NamedPianoPreset | null) {
+		if (preset) await setSitePianoPreset({ slot: n, name: preset.name, data: preset.data });
+		else await clearSitePianoPreset({ slot: n });
+		site = site.map((p, i) => (i === n - 1 ? preset : p));
+		while (site.length < PIANO_PRESET_SLOTS) site.push(null);
+	}
+	async function siteSaveHere(n: number) {
+		const current = site[n - 1];
+		const name = window.prompt(
+			`Name for the site's preset ${n}`,
+			current?.name ?? loaded?.name ?? saveName.trim() ?? "",
+		);
+		if (name === null) return;
+		const data = piano.currentPreset();
+		try {
+			await writeSite(n, { name: name.trim() || "Untitled preset", data });
+			loaded = { name: name.trim() || "Untitled preset", data };
+			notify(`“${name.trim() || "Untitled preset"}” is now the site's preset ${n}`);
+		} catch (e) {
+			notify(`Could not save the site preset: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function siteRename(n: number) {
+		const current = site[n - 1];
+		if (!current) return;
+		const name = window.prompt(`Rename the site's preset ${n}`, current.name)?.trim();
+		if (!name || name === current.name) return;
+		try {
+			await writeSite(n, { name, data: current.data });
+			notify(`Site preset ${n} renamed to “${name}”`);
+		} catch (e) {
+			notify(`Could not rename it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function siteMove(n: number, dir: -1 | 1) {
+		const m = n + dir;
+		if (m < 1 || m > PIANO_PRESET_SLOTS) return;
+		const a = site[n - 1] ?? null;
+		const b = site[m - 1] ?? null;
+		if (!a && !b) return;
+		try {
+			await writeSite(m, a);
+			await writeSite(n, b);
+			notify(`Site presets ${n} and ${m} swapped`);
+		} catch (e) {
+			notify(`Could not move it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	async function clearSitePreset(n: number) {
 		if (!window.confirm(`Clear the site's preset ${n}?`)) return;
 		try {
@@ -1668,6 +1724,83 @@
 					{/each}
 				</ul>
 			</div>
+
+			<!-- a system admin: the site's five defaults in full, whatever the buttons show (presetAdmin) -->
+			{#if presetAdmin}
+				<div>
+					<span class="device-button-label">Site defaults</span>
+					<ul class="m-0 p-0 list-none grid gap-1" aria-label="Site presets">
+						{#each SLOT_NUMBERS as n (n)}
+							{@const p = site[n - 1] ?? null}
+							<li class="flex items-center gap-1">
+								<span class="w-5 text-center opacity-70">{n}</span>
+								{#if p}
+									<button
+										class="flex-1 min-w-0 text-left truncate hover-text-accent"
+										type="button"
+										title="Load the site's preset"
+										onclick={() => loadPreset(p)}>{p.name}</button
+									>
+								{:else}
+									<span class="flex-1 opacity-50">empty</span>
+								{/if}
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+									type="button"
+									title="Save the current sound as site preset {n}"
+									aria-label="Save the current sound as site preset {n}"
+									onclick={() => void siteSaveHere(n)}
+								>
+									<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+								</button>
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
+									type="button"
+									disabled={!p}
+									title="Rename site preset {n}"
+									aria-label="Rename site preset {n}"
+									onclick={() => void siteRename(n)}
+								>
+									<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+								</button>
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
+									type="button"
+									disabled={n === 1 || (!p && !site[n - 2])}
+									title="Move site preset {n} up"
+									aria-label="Move site preset {n} up"
+									onclick={() => void siteMove(n, -1)}
+								>
+									<span class="i-ph-arrow-up" aria-hidden="true"></span>
+								</button>
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
+									type="button"
+									disabled={n === PIANO_PRESET_SLOTS || (!p && !site[n])}
+									title="Move site preset {n} down"
+									aria-label="Move site preset {n} down"
+									onclick={() => void siteMove(n, 1)}
+								>
+									<span class="i-ph-arrow-down" aria-hidden="true"></span>
+								</button>
+								<button
+									class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
+									type="button"
+									disabled={!p}
+									title="Clear site preset {n}"
+									aria-label="Clear site preset {n}"
+									onclick={() => void clearSitePreset(n)}
+								>
+									<span class="i-ph-x" aria-hidden="true"></span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+					<p class="text-12px opacity-70 mt-1">
+						What every visitor's buttons hold until they save their own; the list above shows yours.
+					</p>
+				</div>
+			{/if}
 
 			<!-- the account's library -->
 			{#if account}
