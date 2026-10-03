@@ -248,6 +248,13 @@
 			chordPlayer.allOff();
 			return;
 		}
+		// The arrow keys turn the key a fifth either way, as the Key buttons do (Kevin).
+		if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
+			e.preventDefault();
+			if (!e.repeat)
+				chordPlayer.setKeyCenter(chordPlayer.keyCenter + (e.code === "ArrowRight" ? 1 : -1));
+			return;
+		}
 		const key = chordPlayer.keyCodes[e.code];
 		if (!key || e.repeat || downCodes.has(e.code)) return;
 		e.preventDefault();
@@ -564,6 +571,7 @@
 			<span><kbd>Space</kbd> sustain</span>
 			<span><kbd>Shift</kbd> seventh</span>
 			<span><kbd>Esc</kbd> all off</span>
+			<span><kbd>←</kbd><kbd>→</kbd> key</span>
 			{#if !chordPlayer.showKeys}
 				<!-- the rows come with the key labels -->
 			{:else if chordPlayer.keyMap === "degree"}
