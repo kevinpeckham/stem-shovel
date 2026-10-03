@@ -420,8 +420,15 @@ class PianoEngine {
 	}
 	#start(midi: number, velocity: number) {
 		const ctx = this.#ctx;
-		if (!ctx || this.#voices.has(midi)) return;
+		if (!ctx) return;
 		const now = ctx.currentTime;
+		// A restrike of a note the pedal holds: the old voice lets go as the new one starts.
+		const sustained = this.#voices.get(midi);
+		if (sustained) {
+			sustained.release(now);
+			this.#voices.delete(midi);
+			this.#order = this.#order.filter((n) => n !== midi);
+		}
 		// Room for one more: the oldest voice goes.
 		while (this.#order.length >= PIANO_MAX_VOICES) {
 			const oldest = this.#order.shift()!;

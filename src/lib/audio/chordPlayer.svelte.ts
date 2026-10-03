@@ -59,6 +59,8 @@ class ChordPlayerEngine {
 	keyCenter = $state(0);
 	keyAtTop = $state(true);
 	showSignatures = $state(true);
+	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
+	showKeys = $state(false);
 	/** What is sounding, by who holds it, for the screen. */
 	sounding = $state<SoundingChord[]>([]);
 	#loaded = false;
@@ -84,6 +86,7 @@ class ChordPlayerEngine {
 		if (Number.isInteger(key) && key >= 0 && key < 12) this.keyCenter = key;
 		this.keyAtTop = read("key-at-top") !== "0";
 		this.showSignatures = read("signatures") !== "0";
+		this.showKeys = read("keys") === "1";
 		piano.load();
 	}
 
@@ -129,10 +132,12 @@ class ChordPlayerEngine {
 			name = chordName(chord.label, quality, type);
 		}
 		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
+		// More notes, each a little softer, so a rich voicing sums to about a triad's level (the limiter after the effects catches the rest).
+		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / notes.length));
 		const timers: ReturnType<typeof setTimeout>[] = [];
 		notes.forEach((midi, i) => {
-			if (gap === 0 || i === 0) piano.noteOn(midi, this.velocity);
-			else timers.push(setTimeout(() => piano.noteOn(midi, this.velocity), gap * i));
+			if (gap === 0 || i === 0) piano.noteOn(midi, velocity);
+			else timers.push(setTimeout(() => piano.noteOn(midi, velocity), gap * i));
 		});
 		this.#timers.set(by, timers);
 		this.sounding = [...this.sounding, { by, wedge, name, notes }];
@@ -188,6 +193,10 @@ class ChordPlayerEngine {
 	setKeyAtTop(on: boolean) {
 		this.keyAtTop = on;
 		write("key-at-top", on ? "1" : "0");
+	}
+	setShowKeys(on: boolean) {
+		this.showKeys = on;
+		write("keys", on ? "1" : "0");
 	}
 	setShowSignatures(on: boolean) {
 		this.showSignatures = on;

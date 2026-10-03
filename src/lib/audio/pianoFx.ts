@@ -143,7 +143,16 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const sum = ctx.createGain();
 	const tone = createToneStage(ctx);
 	sum.connect(tone.input);
-	tone.output.connect(master);
+	// A limiter before the master (Kevin: chords clip easily): a fast compressor at a high ratio
+	// catches the peaks of a five-note voicing on the grand piano without touching a single note.
+	const limiter = ctx.createDynamicsCompressor();
+	limiter.threshold.value = -6;
+	limiter.knee.value = 3;
+	limiter.ratio.value = 20;
+	limiter.attack.value = 0.002;
+	limiter.release.value = 0.12;
+	tone.output.connect(limiter);
+	limiter.connect(master);
 	tone.update(s.tone, 0);
 	const input = ctx.createGain();
 

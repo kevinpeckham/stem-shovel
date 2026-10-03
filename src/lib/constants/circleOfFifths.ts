@@ -97,6 +97,22 @@ export const CHORD_KEY_CODES: Record<string, { position: number; quality: "major
 	BracketRight: { position: 11, quality: "minor" },
 };
 
+/** The key labels by position for the circle's key-label toggle: the number row for the majors, the row below for the minors. */
+export const CHORD_KEY_LABELS: { major: string; minor: string }[] = [
+	{ major: "1", minor: "Q" },
+	{ major: "2", minor: "W" },
+	{ major: "3", minor: "E" },
+	{ major: "4", minor: "R" },
+	{ major: "5", minor: "T" },
+	{ major: "6", minor: "Y" },
+	{ major: "7", minor: "U" },
+	{ major: "8", minor: "I" },
+	{ major: "9", minor: "O" },
+	{ major: "0", minor: "P" },
+	{ major: "-", minor: "[" },
+	{ major: "=", minor: "]" },
+];
+
 export const CHORD_VOICINGS = [
 	{ id: "standard", label: "Standard", hint: "the triad in root position" },
 	{ id: "spread", label: "Spread", hint: "the root an octave down, the fifth an octave up" },

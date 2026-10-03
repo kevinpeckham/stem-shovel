@@ -18,8 +18,8 @@ describe("HeldNotes", () => {
 		h.on(64);
 		expect(h.off(60)).toBe(false);
 		expect(h.sounding).toEqual([60, 64]);
-		// Pressing a held note again keeps the voice, no new one.
-		expect(h.on(60)).toBe(false);
+		// Pressing a note the pedal holds strikes it again: a new voice (the engine releases the old one).
+		expect(h.on(60)).toBe(true);
 		expect(h.off(60)).toBe(false);
 		expect(h.setSustain(false)).toEqual([60]);
 		expect(h.sounding).toEqual([64]);

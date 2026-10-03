@@ -3,7 +3,9 @@
  * (docs/piano.md): the bookkeeping behind a keyboard instrument, apart
  * from the audio so it can be tested. A note that is let go while the
  * pedal is down keeps sounding until the pedal comes up; a note pressed
- * again while held simply keeps going.
+ * again while the pedal holds it strikes again (a restrike, as a piano's
+ * hammer does; Kevin: chords must play again under sustain), while a note
+ * whose key is still down simply keeps going.
  */
 export class HeldNotes {
 	/** Notes with a key (or a MIDI note) down. */
@@ -12,12 +14,12 @@ export class HeldNotes {
 	readonly held = new Set<number>();
 	sustain = false;
 
-	/** Press: true when a new voice should start (false when the note is already sounding). */
+	/** Press: true when a voice should start (a fresh note, or a restrike of one the pedal holds); false while its key is still down. */
 	on(note: number): boolean {
-		const sounding = this.down.has(note) || this.held.has(note);
+		const down = this.down.has(note);
 		this.down.add(note);
 		this.held.delete(note);
-		return !sounding;
+		return !down;
 	}
 	/** Release: true when the voice should stop now; false when the pedal keeps it. */
 	off(note: number): boolean {

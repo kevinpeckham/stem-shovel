@@ -140,6 +140,20 @@ when phase 2 comes. Verified on dev with Playwright: C major held is
 keyboard's mapping with the circle, notes mode plays a single note, the
 menus open, and the nav lists the instrument.
 
+Kevin's first pass, the same day: a note the pedal holds **restrikes** on a
+new press (`HeldNotes.on` returns true for a pedal-held note and the
+engine's `#start` releases the old voice; the piano's keys too); a
+**keyboard labels** toggle draws each wedge's key under its chord name
+(`CHORD_KEY_LABELS`, `showKeys`); the device **badge** in dark text; a
+**limiter** at the end of the piano's chain (`DynamicsCompressorNode`,
+threshold −6 dB, ratio 20, 2 ms attack, in `pianoFx.ts` before the master,
+so the looper's and recorder's taps carry it) and a chord's velocity
+scaled by √(3 / notes) so a five-note voicing sums near a triad's level;
+and the **phone layout**: one row of Power, Sound, a Key dropdown and a
+wrench menu (the mode, keys, presets, volume and the three settings menus
+as collapsible sections), captions gone, the 7 pad a round thumb button at
+the device's lower left.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)

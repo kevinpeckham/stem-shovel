@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { ChordQuality, CirclePosition } from "$lib/constants/circleOfFifths";
 	import { CIRCLE_SIZE, wedgeCenter, wedgePath } from "$lib/utils/circleGeometry";
+	import { CHORD_KEY_LABELS } from "$lib/constants/circleOfFifths";
+	/** The key labels sit under the chord names: the same angle, a few units lower. */
+	const KEY_DY_MAJOR = 15;
+	const KEY_DY_MINOR = 12;
 
 	/**
 	 * The circle of fifths as an SVG instrument (docs/chord-player.md): two
@@ -16,15 +20,29 @@
 		notes: { pitch: number; label: string }[];
 		mode: "chords" | "notes";
 		showSignatures: boolean;
+		/** The computer keyboard's keys on the wedges. */
+		showKeys?: boolean;
 		/** The ids of the wedges that are sounding (lit). */
 		pressed: Set<string>;
 		/** The text in the centre (the chords sounding). */
 		centre: string;
 		onpress: (index: number, quality: ChordQuality, pointerId: number) => void;
 		onrelease: (pointerId: number) => void;
+		/** The SVG's own classes (its size; a phone draws it wider than its box so the sides crop flat). */
+		class?: string;
 	}
-	let { positions, notes, mode, showSignatures, pressed, centre, onpress, onrelease }: Props =
-		$props();
+	let {
+		positions,
+		notes,
+		mode,
+		showSignatures,
+		showKeys = false,
+		pressed,
+		centre,
+		onpress,
+		onrelease,
+		class: svgClass = "w-full",
+	}: Props = $props();
 
 	const R_OUTER = 190;
 	const R_MAJOR_IN = 130;
@@ -55,7 +73,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <svg
-	class="w-full h-auto aspect-square select-none touch-none"
+	class="{svgClass} h-auto aspect-square select-none touch-none"
 	viewBox="0 0 {CIRCLE_SIZE} {CIRCLE_SIZE}"
 	role="application"
 	aria-label="Circle of fifths"
@@ -86,6 +104,15 @@
 				x={x.toFixed(1)}
 				y={y.toFixed(1)}>{note.label}</text
 			>
+			{#if showKeys}
+				<text
+					class="pointer-events-none fill-accent opacity-80 text-10px"
+					text-anchor="middle"
+					dominant-baseline="central"
+					x={x.toFixed(1)}
+					y={(y + KEY_DY_MAJOR).toFixed(1)}>{CHORD_KEY_LABELS[i].major}</text
+				>
+			{/if}
 		{/each}
 	{:else}
 		{#each positions as p, i (p.index)}
@@ -135,6 +162,22 @@
 				x={x2.toFixed(1)}
 				y={y2.toFixed(1)}>{p.minor.label}</text
 			>
+			{#if showKeys}
+				<text
+					class="pointer-events-none fill-accent opacity-80 text-10px"
+					text-anchor="middle"
+					dominant-baseline="central"
+					x={x1.toFixed(1)}
+					y={(y1 + KEY_DY_MAJOR).toFixed(1)}>{CHORD_KEY_LABELS[i].major}</text
+				>
+				<text
+					class="pointer-events-none fill-accent opacity-80 text-9px"
+					text-anchor="middle"
+					dominant-baseline="central"
+					x={x2.toFixed(1)}
+					y={(y2 + KEY_DY_MINOR).toFixed(1)}>{CHORD_KEY_LABELS[i].minor}</text
+				>
+			{/if}
 			{#if showSignatures && p.signature}
 				{@const [xs, ys] = wedgeCenter(SIGNATURE_R, i)}
 				<text

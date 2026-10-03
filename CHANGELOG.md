@@ -10,7 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **The Chord Player** at `/chord-player` (docs/chord-player.md, phase 1): the piano's sounds, presets and effects played from a circle of fifths. Press and hold a wedge for a chord, the outer ring the majors and the inner their relative minors, the 7 pad or Shift for a seventh, Notes mode for single notes, the key center turning the circle; the Chords menu's voicings, strum, velocity and octave; the computer keyboard's number row and the row below. In the nav and footer, the sitemap, indexable, open to everyone, with its user doc and page copy. The piano's Effects menu is a shared component (`PianoEffectsMenu.svelte`).
+- **The Chord Player** at `/chord-player` (docs/chord-player.md, phase 1): the piano's sounds, presets and effects played from a circle of fifths. Press and hold a wedge for a chord, the outer ring the majors and the inner their relative minors, the 7 pad or Shift for a seventh, Notes mode for single notes, the key center turning the circle; the Chords menu's voicings, strum, velocity and octave; the computer keyboard's number row and the row below. In the nav and footer, the sitemap, indexable, open to everyone, with its user doc and page copy. The piano's Effects menu is a shared component (`PianoEffectsMenu.svelte`). On a phone the device is one row (Power, Sound, a Key dropdown, a wrench menu) with the 7 pad under a thumb at the lower left; a keyboard button shows each wedge's key.
+- **A limiter on the piano** (and so on the chord player): a fast compressor at the end of the chain catches the peaks of a thick chord, and a chord's notes play a little softer the more of them there are, so chords no longer clip.
+
+### Changed
+
+- **A note the sustain pedal holds plays again when pressed again**, on the piano and the chord player (it kept sounding and ignored the press).
 
 ## [0.86.0] - 2026-10-03
 

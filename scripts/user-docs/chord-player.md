@@ -24,7 +24,11 @@ The chord player plays the piano itself, so everything the piano has is here: th
 
 ## Playing on the computer keyboard
 
-The number row plays the twelve major chords clockwise from the top, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always the key at the top.
+Press the keyboard button on the device to show each wedge's key. The number row plays the twelve major chords clockwise from the top, <kbd>1</kbd> to <kbd>0</kbd> then <kbd>-</kbd> and <kbd>=</kbd>; the row below plays the minors, <kbd>Q</kbd> to <kbd>]</kbd>. <kbd>Shift</kbd> adds the seventh, the space bar is the sustain pedal and <kbd>ESC</kbd> stops everything. The keys follow the circle as you turn it, so <kbd>1</kbd> is always the key at the top.
+
+## On a phone
+
+The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels, the presets, the volume and the Chords, Circle and Effects settings. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.
 
 ## A note on latency
 

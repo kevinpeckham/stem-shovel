@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from "svelte";
+	import { onDestroy, type Snippet } from "svelte";
 	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import CircleOfFifths from "$lib/components/CircleOfFifths.svelte";
@@ -162,7 +162,7 @@
 <svelte:window {onkeydown} {onkeyup} {onblur} />
 
 <div
-	class="@container device-chrome grid gap-3 px-3 py-4 pb-10 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
+	class="@container device-chrome grid gap-3 px-3 py-4 pb-20 @xl-pb-10 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
 	role="group"
 	aria-label="Chord Player"
 >
@@ -205,10 +205,10 @@
 		</div>
 	</div>
 
-	<!-- the controls above the circle -->
-	<div class="flex flex-wrap items-end gap-x-4 gap-y-3">
+	<!-- the controls above the circle: one row of a few buttons on a phone (captions, the key's arrows, the 7 pad and the rest fold away), the full set from @xl -->
+	<div class="flex flex-nowrap @xl-flex-wrap items-end gap-2 @xl-gap-x-4 @xl-gap-y-3">
 		<div>
-			<div class="device-button-group-label text-dark">Power</div>
+			<div class="device-button-group-label text-dark hidden @xl-block">Power</div>
 			<button
 				class="device-button-sm px-3 {piano.on ? 'text-accent' : ''}"
 				type="button"
@@ -219,8 +219,8 @@
 				<span class="i-ph-power" aria-hidden="true"></span>
 			</button>
 		</div>
-		<div class="min-w-36">
-			<div class="device-button-group-label text-dark">Sound</div>
+		<div class="min-w-28 @xl-min-w-36">
+			<div class="device-button-group-label text-dark hidden @xl-block">Sound</div>
 			<ComboBox
 				ariaLabel="Sound"
 				clearDefaultButtonClasses={true}
@@ -233,29 +233,22 @@
 				}}
 			/>
 		</div>
-		<div>
-			<div class="device-button-group-label text-dark">Play</div>
-			<div class="flex gap-px" role="group" aria-label="Mode">
-				<button
-					class="device-button-sm px-3 rounded-r-none {chordPlayer.mode === 'chords'
-						? 'text-accent'
-						: ''}"
-					type="button"
-					aria-pressed={chordPlayer.mode === "chords"}
-					onclick={() => chordPlayer.setMode("chords")}>Chords</button
-				>
-				<button
-					class="device-button-sm px-3 rounded-l-none {chordPlayer.mode === 'notes'
-						? 'text-accent'
-						: ''}"
-					type="button"
-					aria-pressed={chordPlayer.mode === "notes"}
-					onclick={() => chordPlayer.setMode("notes")}>Notes</button
-				>
-			</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Play</div>
+			{@render modeBlock()}
 		</div>
-		<div>
-			<div class="device-button-group-label text-dark">Key</div>
+		<div class="@xl-hidden">
+			<ComboBox
+				ariaLabel="Key center"
+				clearDefaultButtonClasses={true}
+				buttonClasses="device-button-sm px-3"
+				options={KEY_OPTIONS}
+				value={String(chordPlayer.keyCenter)}
+				onchange={(v) => chordPlayer.setKeyCenter(Number(v))}
+			/>
+		</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Key</div>
 			<div class="flex gap-px" role="group" aria-label="Key center">
 				<button
 					class="device-button-sm px-2 rounded-r-none"
@@ -278,8 +271,8 @@
 				</button>
 			</div>
 		</div>
-		<div>
-			<div class="device-button-group-label text-dark">Seventh</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Seventh</div>
 			<button
 				class="device-button-sm px-4 touch-none {chordPlayer.seventhHeld ? 'text-accent' : ''}"
 				type="button"
@@ -291,35 +284,16 @@
 				oncontextmenu={(e) => e.preventDefault()}>7</button
 			>
 		</div>
-		<div>
-			<div class="device-button-group-label text-dark">Presets</div>
-			<div class="flex gap-1" role="group" aria-label="Presets">
-				{#each SLOT_NUMBERS as n (n)}
-					{@const p = slots[n - 1]}
-					<button
-						class="device-button-sm px-3 {activeSlot === n - 1 ? 'text-accent' : ''} {p
-							? ''
-							: 'opacity-50'}"
-						type="button"
-						aria-pressed={activeSlot === n - 1}
-						disabled={!p}
-						aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
-						title={p ? p.name : `Empty preset ${n}`}
-						onclick={() => p && loadPreset(p)}>{n}</button
-					>
-				{/each}
-				<a
-					class="device-button-sm px-2"
-					href="/piano"
-					title="Save and manage presets on the piano page"
-					aria-label="Manage presets on the piano page"
-				>
-					<span class="i-ph-bookmarks-simple" aria-hidden="true"></span>
-				</a>
-			</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Keys</div>
+			{@render keysBlock()}
 		</div>
-		<div>
-			<div class="device-button-group-label text-dark">Settings</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Presets</div>
+			{@render presetsBlock()}
+		</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Settings</div>
 			<div class="flex flex-wrap gap-2">
 				<ContextMenu
 					ariaLabel="Chords settings"
@@ -362,37 +336,169 @@
 				/>
 			</div>
 		</div>
-		<div class="@xl-ml-auto min-w-120px grow @xl-grow-0 @xl-w-40">
-			<div class="device-button-group-label text-dark">Volume</div>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				value={Math.round(piano.volume * 100)}
-				aria-label="Volume"
-				oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+		<div class="hidden @xl-block @xl-ml-auto @xl-w-40">
+			<div class="device-button-group-label text-dark hidden @xl-block">Volume</div>
+			{@render volumeBlock()}
+		</div>
+		<!-- A phone: the mode, the keys, the presets, the settings and the volume in one wrench menu, as the piano's. -->
+		<div class="@xl-hidden ml-auto">
+			<div class="device-button-group-label text-dark hidden @xl-block">More</div>
+			<ContextMenu
+				ariaLabel="Chord player menu"
+				title="Mode, keys, presets, settings and volume"
+				iconClass="i-ph-wrench"
+				position="bottom right"
+				buttonBaseClasses="device-button-sm px-3"
+				popoverClasses="min-w-80 max-w-[calc(100vw-1rem)] !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+				items={[
+					{ id: "compact-heading", kind: "heading", label: "Chord Player" },
+					{ id: "compact-body", kind: "snippet", snippet: compactMenuBlock },
+				]}
 			/>
 		</div>
 	</div>
 
-	<!-- the circle -->
-	<div class="mx-auto w-full max-w-560px text-blue-100">
+	<!-- the circle: on a phone it runs to the device's edges and a little past them, so the wedges at three and nine o'clock end in a straight edge and every button is as big as the width allows (Kevin); from @xl, whole, up to 560px -->
+	<div
+		class="-mx-3 overflow-hidden @xl-mx-auto @xl-overflow-visible w-[calc(100%+1.5rem)] @xl-w-full @xl-max-w-560px text-blue-100"
+	>
 		<CircleOfFifths
+			class="w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"
 			positions={chordPlayer.positions}
 			notes={chordPlayer.notes}
 			mode={chordPlayer.mode}
 			showSignatures={chordPlayer.showSignatures}
+			showKeys={chordPlayer.showKeys}
 			{pressed}
 			{centre}
 			onpress={press}
 			onrelease={release}
 		/>
 	</div>
-	<div class="absolute right-5 bottom-3 text-11px tracking-wider opacity-60 select-none">
+	<!-- A phone: the 7 pad at the lower left, under a thumb, held for a seventh. -->
+	<button
+		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
+			? 'text-accent'
+			: ''}"
+		type="button"
+		aria-pressed={chordPlayer.seventhHeld}
+		title="Hold for a seventh on every chord"
+		aria-label="Seventh"
+		onpointerdown={seventhDown}
+		onpointerup={seventhUp}
+		onpointercancel={seventhUp}
+		oncontextmenu={(e) => e.preventDefault()}>7</button
+	>
+	<div class="absolute right-5 bottom-3 text-11px tracking-wider text-dark font-600 select-none">
 		SS FIFTHS 001
 	</div>
 </div>
+
+{#snippet modeBlock()}
+	<div class="flex gap-px" role="group" aria-label="Mode">
+		<button
+			class="device-button-sm px-3 rounded-r-none {chordPlayer.mode === 'chords'
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-pressed={chordPlayer.mode === "chords"}
+			onclick={() => chordPlayer.setMode("chords")}>Chords</button
+		>
+		<button
+			class="device-button-sm px-3 rounded-l-none {chordPlayer.mode === 'notes'
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-pressed={chordPlayer.mode === "notes"}
+			onclick={() => chordPlayer.setMode("notes")}>Notes</button
+		>
+	</div>
+{/snippet}
+
+{#snippet keysBlock()}
+	<button
+		class="device-button-sm px-3 {chordPlayer.showKeys ? 'text-accent' : ''}"
+		type="button"
+		aria-pressed={chordPlayer.showKeys}
+		title={chordPlayer.showKeys
+			? "Hide the computer keyboard's keys"
+			: "Show the computer keyboard's keys on the circle"}
+		aria-label="Keyboard labels"
+		onclick={() => chordPlayer.setShowKeys(!chordPlayer.showKeys)}
+	>
+		<span class="i-ph-keyboard" aria-hidden="true"></span>
+	</button>
+{/snippet}
+
+{#snippet presetsBlock()}
+	<div class="flex gap-1" role="group" aria-label="Presets">
+		{#each SLOT_NUMBERS as n (n)}
+			{@const p = slots[n - 1]}
+			<button
+				class="device-button-sm px-3 {activeSlot === n - 1 ? 'text-accent' : ''} {p
+					? ''
+					: 'opacity-50'}"
+				type="button"
+				aria-pressed={activeSlot === n - 1}
+				disabled={!p}
+				aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
+				title={p ? p.name : `Empty preset ${n}`}
+				onclick={() => p && loadPreset(p)}>{n}</button
+			>
+		{/each}
+		<a
+			class="device-button-sm px-2"
+			href="/piano"
+			title="Save and manage presets on the piano page"
+			aria-label="Manage presets on the piano page"
+		>
+			<span class="i-ph-bookmarks-simple" aria-hidden="true"></span>
+		</a>
+	</div>
+{/snippet}
+
+{#snippet volumeBlock()}
+	<input
+		class="w-full accent-maximumYellow"
+		type="range"
+		min="0"
+		max="100"
+		value={Math.round(piano.volume * 100)}
+		aria-label="Volume"
+		oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+	/>
+{/snippet}
+
+{#snippet section(title: string, body: Snippet, open = false)}
+	<details
+		class="group border-t border-current/10 first-of-type-border-t-0"
+		name="chord-player-compact-menu"
+		{open}
+	>
+		<summary
+			class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none text-11px uppercase tracking-wider text-accent list-none [&::-webkit-details-marker]:hidden"
+		>
+			<span>{title}</span>
+			<span
+				class="i-ph-caret-down text-14px opacity-70 transition-transform group-open-rotate-180"
+				aria-hidden="true"
+			></span>
+		</summary>
+		<div class="pb-3 px-3">{@render body()}</div>
+	</details>
+{/snippet}
+
+{#snippet compactMenuBlock()}
+	<div class="grid grid-cols-1 -mt-3">
+		{@render section("Play", modeBlock, true)}
+		{@render section("Keys", keysBlock)}
+		{@render section("Presets", presetsBlock)}
+		{@render section("Volume", volumeBlock, true)}
+		{@render section("Chords", chordsMenuBlock)}
+		{@render section("Circle", circleMenuBlock)}
+		{@render section("Effects", effectsMenuBlock)}
+	</div>
+{/snippet}
 
 {#snippet chordsMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
