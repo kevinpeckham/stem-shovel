@@ -33,6 +33,8 @@
 		id: string;
 		name: string;
 		scope: "site" | "account";
+		/** A built-in kit (Acoustic, Room): its own files unless a drum was replaced; never renamed or deleted. */
+		builtin?: boolean;
 		samples: KitSample[];
 	}
 	interface Props {
@@ -186,26 +188,29 @@
 						{k.name}
 					</button>
 					<span class="text-12px opacity-60 tabular-nums"
-						>{voicesFilled(k)} of {DRUM_VOICES.length} drums</span
+						>{#if k.builtin}built in · {voicesFilled(k)} replaced{:else}{voicesFilled(k)} of {DRUM_VOICES.length}
+							drums{/if}</span
 					>
-					<button
-						class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
-						type="button"
-						title="Rename the kit"
-						aria-label="Rename {k.name}"
-						onclick={() => void rename(k)}
-					>
-						<span class="i-ph-pencil-simple" aria-hidden="true"></span>
-					</button>
-					<button
-						class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
-						type="button"
-						title="Delete the kit and its files"
-						aria-label="Delete {k.name}"
-						onclick={() => void remove(k)}
-					>
-						<span class="i-ph-trash" aria-hidden="true"></span>
-					</button>
+					{#if !k.builtin}
+						<button
+							class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+							type="button"
+							title="Rename the kit"
+							aria-label="Rename {k.name}"
+							onclick={() => void rename(k)}
+						>
+							<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+						</button>
+						<button
+							class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0"
+							type="button"
+							title="Delete the kit and its files"
+							aria-label="Delete {k.name}"
+							onclick={() => void remove(k)}
+						>
+							<span class="i-ph-trash" aria-hidden="true"></span>
+						</button>
+					{/if}
 				</div>
 				{#if openKit === k.id}
 					<ul class="m-0 p-0 list-none border-t border-current/10 divide-y divide-current/10">
@@ -219,6 +224,8 @@
 										Uploading… {Math.round(pct)}%
 									{:else if s}
 										{s.filename} · {formatBytes(s.sizeBytes)}
+									{:else if k.builtin}
+										the built-in file
 									{:else}
 										no file (silent)
 									{/if}
@@ -253,7 +260,9 @@
 										<button
 											class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px"
 											type="button"
-											title="Remove the file (the drum goes silent)"
+											title={k.builtin
+												? "Remove the replacement (back to the built-in file)"
+												: "Remove the file (the drum goes silent)"}
 											aria-label="Remove the {v.label} of {k.name}"
 											onclick={() => void removeSample(k, s)}
 										>

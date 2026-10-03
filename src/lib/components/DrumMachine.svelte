@@ -5,7 +5,7 @@
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import DrumKitManager, { type KitRow } from "$lib/components/DrumKitManager.svelte";
-	import type { DrumKitManifest } from "$lib/constants/drumKits";
+	import { isOverridableKit, type DrumKitManifest } from "$lib/constants/drumKits";
 	import { hasDrumKit, registerDrumKits } from "$lib/audio/kits";
 	import { drumKitManifests, listDrumKits } from "$lib/remote/drumKits.remote";
 	import {
@@ -308,11 +308,13 @@
 	registerDrumKits(kitList);
 	const KIT_OPTIONS = $derived([
 		...DRUM_KITS.map((k) => ({ value: k.id as string, label: k.label })),
-		...kitList.map((k) => ({
-			value: k.id,
-			label: k.name,
-			description: k.scope === "site" ? "site kit" : (account?.name ?? "yours"),
-		})),
+		...kitList
+			.filter((k) => !isOverridableKit(k.id))
+			.map((k) => ({
+				value: k.id,
+				label: k.name,
+				description: k.scope === "site" ? "site kit" : (account?.name ?? "yours"),
+			})),
 	]);
 	/** The manager's rows (every sample with its state), fetched as it opens. */
 	let managerKits = $state<KitRow[]>([]);

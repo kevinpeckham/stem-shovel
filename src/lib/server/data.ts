@@ -48,7 +48,13 @@ import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
-import { MAX_DRUM_KITS_PER_ACCOUNT, type DrumKitManifest } from "$lib/constants/drumKits";
+import {
+	isOverridableKit,
+	MAX_DRUM_KITS_PER_ACCOUNT,
+	OVERRIDABLE_KITS,
+	type DrumKitManifest,
+} from "$lib/constants/drumKits";
+import { DRUM_KITS } from "$lib/constants/drumMachine";
 import type { DrumVoiceId } from "$lib/constants/drumMachine";
 import type { PermalinkKind } from "$lib/utils/permalink";
 import {
@@ -4513,7 +4519,27 @@ export async function listDrumKitManifests(accountId: string | null): Promise<Dr
 	return out.sort((a, b) => (a.scope === b.scope ? 0 : a.scope === "site" ? -1 : 1));
 }
 
-/** The kits for a manager: every sample row with its state, so an upload under way shows; `accountId` null lists the site's. */
+/**
+ * A built-in kit's row (the id is the kit's own, "acoustic" or "room"),
+ * made the first time a system admin replaces one of its drums: its
+ * samples override the static files voice by voice (docs/drum-machine.md,
+ * "Custom kits"), and the kit itself is never renamed or deleted.
+ */
+export async function ensureBuiltinKitRow(id: string) {
+	if (!isOverridableKit(id)) return null;
+	const existing = await db.query.drumKit.findFirst({
+		where: eq(drumKit.id, id),
+		columns: { id: true },
+	});
+	if (existing) return existing;
+	const [row] = await db
+		.insert(drumKit)
+		.values({ id, accountId: null, name: DRUM_KITS.find((k) => k.id === id)?.label ?? id })
+		.returning({ id: drumKit.id });
+	return row;
+}
+
+/** The kits for a manager: every sample row with its state, so an upload under way shows; `accountId` null lists the site's, the two built-ins first (their rows, or empty ones until a drum is replaced). */
 export async function listDrumKitsFor(accountId: string | null) {
 	const rows = await db.query.drumKit.findMany({
 		where: kitScope(accountId),
@@ -4533,11 +4559,12 @@ export async function listDrumKitsFor(accountId: string | null) {
 			},
 		},
 	});
-	return Promise.all(
+	const listed = await Promise.all(
 		rows.map(async (k) => ({
 			id: k.id,
 			name: k.name,
 			scope: (k.accountId ? "account" : "site") as "account" | "site",
+			builtin: isOverridableKit(k.id),
 			samples: await Promise.all(
 				k.samples.map(async (smp) => ({
 					...smp,
@@ -4546,6 +4573,18 @@ export async function listDrumKitsFor(accountId: string | null) {
 			),
 		})),
 	);
+	if (accountId) return listed;
+	const builtins = OVERRIDABLE_KITS.map(
+		(id) =>
+			listed.find((k) => k.id === id) ?? {
+				id,
+				name: DRUM_KITS.find((k) => k.id === id)?.label ?? id,
+				scope: "site" as const,
+				builtin: true,
+				samples: [],
+			},
+	);
+	return [...builtins, ...listed.filter((k) => !isOverridableKit(k.id))];
 }
 
 export async function createDrumKit(accountId: string | null, userId: string, name: string) {
@@ -4563,6 +4602,7 @@ export async function createDrumKit(accountId: string | null, userId: string, na
 	return row;
 }
 export async function renameDrumKit(accountId: string | null, id: string, name: string) {
+	if (isOverridableKit(id)) return null;
 	const [row] = await db
 		.update(drumKit)
 		.set({ name: name.trim() })
@@ -4570,8 +4610,9 @@ export async function renameDrumKit(accountId: string | null, id: string, name: 
 		.returning({ id: drumKit.id, name: drumKit.name });
 	return row ?? null;
 }
-/** The kit, its samples and their files. */
+/** The kit, its samples and their files; a built-in's row stays (its drums are removed one by one, back to the static files). */
 export async function deleteDrumKit(accountId: string | null, id: string) {
+	if (isOverridableKit(id)) return false;
 	const kit = await db.query.drumKit.findFirst({
 		where: and(eq(drumKit.id, id), kitScope(accountId)),
 		columns: { id: true },

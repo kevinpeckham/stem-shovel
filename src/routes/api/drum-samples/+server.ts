@@ -1,10 +1,15 @@
 import { isEditor, memberOf, requireSystemAdmin, requireUser } from "$lib/server/access";
 import { background } from "$lib/server/background";
-import { accountOfDrumKit, createDrumSample, storageRoom } from "$lib/server/data";
+import {
+	accountOfDrumKit,
+	createDrumSample,
+	ensureBuiltinKitRow,
+	storageRoom,
+} from "$lib/server/data";
 import { checkStorage } from "$lib/server/notifications";
 import { recordingAccess } from "$lib/server/blob";
 import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
-import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
+import { DRUM_SAMPLE_MAX_BYTES, isOverridableKit } from "$lib/constants/drumKits";
 import { DRUM_VOICE_IDS, type DrumVoiceId } from "$lib/constants/drumMachine";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { formatBytes } from "$lib/utils/formatBytes";
@@ -34,6 +39,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(415, `"${filename}" is not a supported audio format (${DEMO_FORMAT_LIST})`);
 	if (sizeBytes > DRUM_SAMPLE_MAX_BYTES)
 		error(413, `A sample is at most ${formatBytes(DRUM_SAMPLE_MAX_BYTES)}`);
+	// A built-in kit's drum (docs/drum-machine.md, "Custom kits"): a system admin's replacement, the kit's row made on the first.
+	if (isOverridableKit(kitId)) {
+		requireSystemAdmin(locals);
+		await ensureBuiltinKitRow(kitId);
+	}
 	const kit = await accountOfDrumKit(kitId);
 	if (!kit) error(404, "Kit not found");
 	const user = requireUser(locals);

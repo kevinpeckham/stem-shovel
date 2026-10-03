@@ -16,17 +16,26 @@ export class SampledKit implements DrumKit {
 	#buffers = new Map<DrumVoiceId, AudioBuffer>();
 	#decoding: Promise<void> | null = null;
 
-	/** A built-in kit reads static/kits/<id>; a custom kit (docs/drum-machine.md, "Custom kits") the URLs its manifest names, a voice without one staying silent. */
+	/**
+	 * A built-in kit reads static/kits/<id>; a custom kit (docs/drum-machine.md,
+	 * "Custom kits") the URLs its manifest names, a voice without one staying
+	 * silent; a built-in with `urls` is one whose admin replaced some drums,
+	 * every other voice still its own file.
+	 */
 	constructor(
 		readonly id: string,
 		readonly urls: Partial<Record<DrumVoiceId, string>> | null = null,
+		readonly builtin = false,
 	) {}
 
 	warm(): void {
 		if (this.#files || typeof fetch === "undefined") return;
 		this.#files = new Map();
 		for (const voice of DRUM_VOICE_IDS) {
-			const url = this.urls ? this.urls[voice] : `/kits/${this.id}/${voice}.wav`;
+			const url =
+				this.urls && !this.builtin
+					? this.urls[voice]
+					: (this.urls?.[voice] ?? `/kits/${this.id}/${voice}.wav`);
 			if (!url) continue;
 			this.#files.set(
 				voice,

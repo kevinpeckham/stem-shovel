@@ -11,7 +11,13 @@ export const MAX_DRUM_KITS_PER_ACCOUNT = 20;
 /** A one-shot is short: 10 MB covers a 24-bit stereo WAV of 30 seconds. */
 export const DRUM_SAMPLE_MAX_BYTES = 10 * 1024 * 1024;
 
-/** A kit as the pages hand it to the drum machine: where each voice's file is (a voice with no file is silent). */
+/** The built-in kits whose samples a system admin may replace drum by drum (the electronic kit is synthesized, nothing to replace). */
+export const OVERRIDABLE_KITS = ["acoustic", "room"] as const;
+export type OverridableKit = (typeof OVERRIDABLE_KITS)[number];
+export const isOverridableKit = (id: string): id is OverridableKit =>
+	(OVERRIDABLE_KITS as readonly string[]).includes(id);
+
+/** A kit as the pages hand it to the drum machine: where each voice's file is (a voice with no file is silent; for a built-in kit, its own file). */
 export interface DrumKitManifest {
 	id: string;
 	name: string;

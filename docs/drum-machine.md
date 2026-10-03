@@ -617,9 +617,21 @@ per voice upload, replace, listen or remove, with the upload's progress.
 It sits in the drum machine's Kit row for an account's editors (the rows
 fetched as the menu opens, both queries refreshed after a change, since a
 remote query answers from its cache) and on `/admin/drum-kits` for the
-site's kits. The built-in Acoustic and Room kits stay in `static/kits`;
-replacing their samples would mean moving them into the database with a
-seed script that uploads the files, which is left for later.
+site's kits, where the built-in Acoustic and Room kits are listed first.
+
+**The built-ins' drums, replaced one at a time (the same day).** Kevin
+asked to replace built-in samples without a cost to loading. The files
+stay in `static/kits` (same origin, no extra connection, no Blob egress);
+an admin's replacement is an override: a `drum_kit` row with the kit's own
+id ("acoustic", "room"; `ensureBuiltinKitRow`, made on the first upload)
+whose samples win voice by voice, every other voice still its own file
+(`SampledKit`'s `builtin` flag; `OVERRIDABLE_KITS` in constants/drumKits.ts).
+Removing the override puts the built-in file back; the row is never
+renamed or deleted, and the drum machine lists the built-ins once. The
+registry remakes a kit whose manifest arrives after the engine warmed it
+as the page loaded. Verified: with the Acoustic snare replaced, a visitor
+fetched eleven drums from `/kits/acoustic/` and the snare from
+`site/kits/acoustic/`.
 
 ## Decisions to make before Phase 1
 

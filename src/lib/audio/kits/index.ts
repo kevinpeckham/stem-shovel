@@ -1,4 +1,4 @@
-import type { DrumKitManifest } from "$lib/constants/drumKits";
+import { isOverridableKit, type DrumKitManifest } from "$lib/constants/drumKits";
 import { SampledKit } from "./sampled";
 import { ElectronicKit } from "./electronic";
 import type { DrumKit } from "./types";
@@ -15,7 +15,11 @@ export function registerDrumKits(list: DrumKitManifest[]) {
 	for (const m of list) {
 		const before = manifests.get(m.id);
 		manifests.set(m.id, m);
-		if (before && JSON.stringify(before.samples) !== JSON.stringify(m.samples)) kits.delete(m.id);
+		// A kit made before its manifest arrived (the engine warmed a built-in as the page loaded), or one whose files changed, is made afresh.
+		const changed = before
+			? JSON.stringify(before.samples) !== JSON.stringify(m.samples)
+			: Object.keys(m.samples).length > 0;
+		if (changed) kits.delete(m.id);
 	}
 }
 /** Whether the id names a kit this page can play: a built-in, or a registered custom kit. */
@@ -31,9 +35,11 @@ export function drumKit(id: string): DrumKit {
 		kit =
 			id === "electronic"
 				? new ElectronicKit()
-				: manifest
-					? new SampledKit(id, manifest.samples)
-					: new SampledKit(id === "acoustic" || id === "room" ? id : "acoustic");
+				: isOverridableKit(id)
+					? new SampledKit(id, manifest?.samples ?? null, true)
+					: manifest
+						? new SampledKit(id, manifest.samples)
+						: new SampledKit("acoustic", null, true);
 		kits.set(id, kit);
 	}
 	return kit;
