@@ -29,6 +29,15 @@ describe("styledChord", () => {
 		expect(styledChord("lush", 4, "minor", false, "dominant").suffix).toBe("11");
 		expect(styledChord("lush", 1, "major", false, "dominant").suffix).toBe("13");
 	});
+	it("plays folk shapes and power chords", () => {
+		expect(styledChord("folk", 0, "major", false, "dominant").suffix).toBe("add9");
+		expect(styledChord("folk", 0, "major", true, "dominant").intervals).toEqual([0, 4, 8]);
+		expect(styledChord("folk", 1, "major", false, "dominant").intervals).toEqual([0, 5, 7]);
+		expect(styledChord("folk", 1, "major", true, "dominant").suffix).toBe("7sus4");
+		expect(styledChord("folk", 3, "minor", false, "dominant").suffix).toBe("7");
+		expect(styledChord("fifths", 2, "major", false, "dominant").intervals).toEqual([0, 7, 12]);
+		expect(styledChord("fifths", 3, "minor", false, "dominant").intervals).toEqual([0, 7, 12]);
+	});
 	it("names the chord from the root and the recipe", () => {
 		expect(styledChordName("C", "major", styledChord("jazz", 0, "major", false, "dominant"))).toBe(
 			"Cmaj7",
@@ -41,6 +50,15 @@ describe("styledChord", () => {
 		).toBe("Am");
 		expect(styledChordName("G", "major", styledChord("lush", 1, "major", false, "dominant"))).toBe(
 			"G13",
+		);
+		expect(
+			styledChordName("Am", "minor", styledChord("fifths", 3, "minor", false, "dominant")),
+		).toBe("A5");
+		expect(styledChordName("G", "major", styledChord("folk", 1, "major", false, "dominant"))).toBe(
+			"Gsus4",
+		);
+		expect(styledChordName("C", "major", styledChord("folk", 0, "major", true, "dominant"))).toBe(
+			"C+",
 		);
 	});
 });

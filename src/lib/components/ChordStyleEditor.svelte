@@ -43,6 +43,13 @@
 		"maj9",
 		"dom13",
 		"maj13",
+		"add9",
+		"sus2",
+		"sus4",
+		"dom7sus4",
+		"aug",
+		"power",
+		"powerWide",
 	];
 	const MINOR_RECIPES: ChordRecipeId[] = [
 		"minor",
@@ -51,12 +58,20 @@
 		"min9",
 		"min11",
 		"min13",
+		"minAdd9",
 		"dim",
+		"sus2",
+		"sus4",
+		"power",
+		"powerWide",
 	];
 	const recipeLabel = (id: ChordRecipeId, ring: "major" | "minor") => {
-		const suffix = CHORD_RECIPES[id].suffix;
+		const recipe = CHORD_RECIPES[id];
+		const suffix = recipe.suffix;
 		if (id === "major" || id === "minor") return "triad";
 		if (id === "dim") return "dim";
+		if (id === "powerWide") return "5 (wide)";
+		if (recipe.rootOnly) return suffix;
 		return ring === "minor" ? `m${suffix}` : suffix;
 	};
 </script>

@@ -168,6 +168,8 @@
 		blues: "7ths everywhere",
 		jazz: "7ths by degree",
 		lush: "9ths and 13ths",
+		folk: "open shapes",
+		fifths: "power chords",
 	};
 	/** The built-in styles and the account's own, for the device's Style dropdown. */
 	const STYLE_OPTIONS = $derived([

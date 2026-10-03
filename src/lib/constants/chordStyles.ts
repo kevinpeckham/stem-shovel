@@ -21,13 +21,20 @@ export const CHORD_STYLES = [
 		hint: "maj7 on I and IV, m7 on the minors, 7 on V and the borrowed chords, m7♭5 on vii",
 	},
 	{ id: "lush", label: "Lush", hint: "ninths, elevenths and thirteenths, for gospel and neo-soul" },
+	{
+		id: "folk",
+		label: "Folk",
+		hint: "add9 on I and IV, sus4 on V, m7 minors; the 7 pad suspends or augments, as a guitar's open shapes",
+	},
+	{ id: "fifths", label: "Fifths", hint: "power chords on every wedge, root, fifth and octave" },
 ] as const;
 export type ChordStyleId = (typeof CHORD_STYLES)[number]["id"];
 
-/** A chord's recipe in a style: semitones above the root (the triad first), and the name's suffix after the root (after the "m" for a minor). */
+/** A chord's recipe in a style: semitones above the root (the triad first), the name's suffix after the root (after the "m" for a minor), and `rootOnly` when the name drops a minor's "m" (a power chord on the minor wedge is A5, not Am5). */
 export interface ChordRecipe {
 	intervals: number[];
 	suffix: string;
+	rootOnly?: boolean;
 }
 export const CHORD_RECIPES = {
 	major: { intervals: [0, 4, 7], suffix: "" },
@@ -44,6 +51,14 @@ export const CHORD_RECIPES = {
 	dom13: { intervals: [0, 4, 7, 10, 14, 21], suffix: "13" },
 	maj13: { intervals: [0, 4, 7, 11, 14, 21], suffix: "maj13" },
 	min13: { intervals: [0, 3, 7, 10, 14, 21], suffix: "13" },
+	add9: { intervals: [0, 4, 7, 14], suffix: "add9" },
+	sus2: { intervals: [0, 2, 7], suffix: "sus2", rootOnly: true },
+	sus4: { intervals: [0, 5, 7], suffix: "sus4", rootOnly: true },
+	dom7sus4: { intervals: [0, 5, 7, 10], suffix: "7sus4", rootOnly: true },
+	aug: { intervals: [0, 4, 8], suffix: "+", rootOnly: true },
+	minAdd9: { intervals: [0, 3, 7, 14], suffix: "(add9)" },
+	power: { intervals: [0, 7, 12], suffix: "5", rootOnly: true },
+	powerWide: { intervals: [0, 7, 12, 19], suffix: "5", rootOnly: true },
 } as const satisfies Record<string, ChordRecipe>;
 export type ChordRecipeId = keyof typeof CHORD_RECIPES;
 

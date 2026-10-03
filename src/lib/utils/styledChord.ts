@@ -43,6 +43,16 @@ function recipes(
 			if (fifths === DEGREE.V) return ["dom7", "dom13"];
 			return ["dom7", "dom9"];
 		}
+		case "folk": {
+			// A guitar's open shapes: add9 on I and IV, a sus4 on V, the minors as m7; the pad suspends, or augments I on its way to vi.
+			if (minor) return ["min7", "minAdd9"];
+			if (fifths === DEGREE.I) return ["add9", "aug"];
+			if (fifths === DEGREE.IV) return ["add9", "sus2"];
+			if (fifths === DEGREE.V) return ["sus4", "dom7sus4"];
+			return ["major", "sus4"];
+		}
+		case "fifths":
+			return ["power", "powerWide"];
 		case "lush": {
 			if (minor) {
 				if (fifths === DEGREE.VII) return ["halfDim", "halfDim"];
@@ -59,8 +69,9 @@ function recipes(
 	}
 }
 
-/** The chord's name from the wedge's label (a minor's carries its "m": "Am") and the recipe: "C", "Cmaj7", "Am7", "Bm7♭5", "G13". */
+/** The chord's name from the wedge's label (a minor's carries its "m": "Am") and the recipe: "C", "Cmaj7", "Am7", "Bm7♭5", "G13"; a root-only recipe drops the "m" ("A5", "Dsus4"). */
 export function styledChordName(label: string, quality: ChordQuality, recipe: ChordRecipe) {
 	if (quality === "diminished") return `${label}${recipe.suffix || "°"}`;
-	return `${label}${recipe.suffix}`;
+	const root = recipe.rootOnly && quality === "minor" ? label.replace(/m$/, "") : label;
+	return `${root}${recipe.suffix}`;
 }
