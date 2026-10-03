@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { CHORD_VOICINGS, STRUMS } from "$lib/constants/circleOfFifths";
 import { PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
@@ -81,8 +82,21 @@ export const PianoPresetDataSchema = v.object({
 		v.object({ speed: v.optional(v.picklist(["off", "slow", "fast"]), "off") }),
 		() => ({ speed: "off" as const }),
 	),
+	/** The chord player's mode, style, voicing, octave and strum, when the preset was saved there. */
+	chords: v.optional(v.lazy(() => ChordPresetSettingsSchema)),
 });
 export type PianoPresetData = v.InferOutput<typeof PianoPresetDataSchema>;
+
+/** The chord player's own settings a preset saved there carries (docs/chord-player.md, "Presets"): absent on a preset saved from the piano. */
+export const ChordPresetSettingsSchema = v.object({
+	mode: v.picklist(["chords", "notes"]),
+	/** A built-in style id or "custom:<id>"; one the account no longer has falls back to plain. */
+	style: v.pipe(v.string(), v.maxLength(48)),
+	voicing: v.picklist(CHORD_VOICINGS.map((c) => c.id)),
+	octave: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(6)),
+	strum: v.picklist(STRUMS.map((s) => s.id)),
+});
+export type ChordPresetSettings = v.InferOutput<typeof ChordPresetSettingsSchema>;
 
 /** The slot buttons: 1 to 5. */
 export const PIANO_PRESET_SLOTS = 5;

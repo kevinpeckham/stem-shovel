@@ -21,6 +21,7 @@ import {
 	type ChordStyleId,
 } from "$lib/constants/chordStyles";
 import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
+import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 
@@ -337,6 +338,24 @@ class ChordPlayerEngine {
 	/** The key labels by distance from the key clockwise, for the circle. */
 	get keyLabels(): { major: string; minor: string }[] {
 		return this.keyMap === "degree" ? DEGREE_KEY_LABELS : CHORD_KEY_LABELS;
+	}
+	/** The settings a chord player preset carries beside the piano's sound (docs/chord-player.md, "Presets"). */
+	get presetSettings(): ChordPresetSettings {
+		return {
+			mode: this.mode,
+			style: this.style,
+			voicing: this.voicing,
+			octave: this.octave,
+			strum: this.strum,
+		};
+	}
+	/** A preset's chord settings into the player; a style the account no longer has falls back to plain. */
+	applyPresetSettings(s: ChordPresetSettings) {
+		this.setMode(s.mode);
+		this.setStyle(this.styleKnown(s.style) ? s.style : "plain");
+		this.setVoicing(s.voicing);
+		this.setOctave(s.octave);
+		this.setStrum(s.strum);
 	}
 	setNoteReadout(mode: NoteReadout) {
 		this.noteReadout = mode;

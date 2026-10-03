@@ -193,17 +193,28 @@
 	if (typeof window !== "undefined") overrides = loadPianoSlotOverrides("chords");
 	let loaded = $state<NamedPianoPreset | null>(null);
 	const slots = $derived(resolvePianoSlots(site, overrides, account ? saved : null, "chords"));
+	/** What a preset saved here holds: the piano's sound and effects, and the chord player's own settings. */
+	const currentPreset = (): PianoPresetData => ({
+		...piano.currentPreset(),
+		chords: $state.snapshot(chordPlayer.presetSettings),
+	});
 	const currentKey = $derived(pianoPresetKey(piano.currentPreset()));
-	const activeSlot = $derived(slots.findIndex((p) => p && pianoPresetKey(p.data) === currentKey));
+	const currentChordsKey = $derived(JSON.stringify(chordPlayer.presetSettings));
+	/** A preset matches the sound playing when its piano part does and, if it carries chord settings, those too. */
+	const matches = (data: PianoPresetData) =>
+		pianoPresetKey({ ...data, chords: undefined }) === currentKey &&
+		(!data.chords || JSON.stringify(data.chords) === currentChordsKey);
+	const activeSlot = $derived(slots.findIndex((p) => p && matches(p.data)));
 	const presetLine = $derived.by(() => {
 		const slot = activeSlot >= 0 ? slots[activeSlot] : null;
 		if (slot) return { name: slot.name, edited: false };
-		if (loaded) return { name: loaded.name, edited: pianoPresetKey(loaded.data) !== currentKey };
+		if (loaded) return { name: loaded.name, edited: !matches(loaded.data) };
 		return null;
 	});
 	function loadPreset(preset: NamedPianoPreset) {
 		chordPlayer.allOff();
 		piano.applyPreset(preset.data);
+		if (preset.data.chords) chordPlayer.applyPresetSettings(preset.data.chords);
 		loaded = { name: preset.name, data: preset.data };
 	}
 
@@ -737,6 +748,7 @@
 		bind:saved
 		bind:site
 		bind:overrides
+		current={currentPreset}
 		onload={loadPreset}
 	/>
 {/snippet}

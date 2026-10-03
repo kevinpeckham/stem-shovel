@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Chord player presets carry the chord player's settings**: chords or notes, the style, the voicing, the octave and the strum are saved with the sound and come back when the preset is pressed there; a preset from the piano has none and leaves them alone.
+
+### Fixed
+
+- **fifths.app and chordplayer.dev** (with or without www) send every path to the chord player from the app's own server hook, after the vercel.json rules proved not to apply on the deployment.
+
 ## [0.91.0] - 2026-10-03
 
 ### Added

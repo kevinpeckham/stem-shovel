@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { piano } from "$lib/audio/piano.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { clearSitePianoPreset, setSitePianoPreset } from "$lib/remote/admin.remote";
 	import {
@@ -42,6 +41,8 @@
 		saved: SavedPreset[];
 		site: (NamedPianoPreset | null)[];
 		overrides: Record<number, NamedPianoPreset>;
+		/** What to save: the sound playing with the chord player's own settings. */
+		current: () => PianoPresetData;
 		onload: (preset: NamedPianoPreset) => void;
 	}
 	let {
@@ -52,6 +53,7 @@
 		saved = $bindable(),
 		site = $bindable(),
 		overrides = $bindable(),
+		current,
 		onload,
 	}: Props = $props();
 	const SLOT_NUMBERS = Array.from({ length: PIANO_PRESET_SLOTS }, (_, i) => i + 1);
@@ -62,7 +64,7 @@
 		const held = slots[n - 1];
 		const name = window.prompt(`Name for preset ${n}`, held?.name ?? "")?.trim();
 		if (name === undefined) return;
-		const data = piano.currentPreset();
+		const data = current();
 		if (account?.canEdit) {
 			busy = true;
 			try {
@@ -158,11 +160,11 @@
 		while (site.length < PIANO_PRESET_SLOTS) site.push(null);
 	}
 	async function siteSaveHere(n: number) {
-		const current = site[n - 1];
-		const name = window.prompt(`Name for the site's preset ${n}`, current?.name ?? "");
+		const held = site[n - 1];
+		const name = window.prompt(`Name for the site's preset ${n}`, held?.name ?? "");
 		if (name === null) return;
 		try {
-			await writeSite(n, { name: name.trim() || "Untitled preset", data: piano.currentPreset() });
+			await writeSite(n, { name: name.trim() || "Untitled preset", data: current() });
 			notify(`“${name.trim() || "Untitled preset"}” is now the site's chord player preset ${n}`);
 		} catch (e) {
 			notify(`Could not save the site preset: ${errorMessage(e)}`, { kind: "error" });
