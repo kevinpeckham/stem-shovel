@@ -38,6 +38,17 @@ describe("styledChord", () => {
 		expect(styledChord("fifths", 2, "major", false, "dominant").intervals).toEqual([0, 7, 12]);
 		expect(styledChord("fifths", 3, "minor", false, "dominant").intervals).toEqual([0, 7, 12]);
 	});
+	it("plays honky-tonk sixths, ragtime chains and bossa colours", () => {
+		expect(styledChord("honkytonk", 0, "major", false, "dominant").suffix).toBe("6");
+		expect(styledChord("honkytonk", 0, "major", true, "dominant").suffix).toBe("6/9");
+		expect(styledChord("honkytonk", 3, "major", false, "dominant").suffix).toBe("7"); // VI7
+		expect(styledChord("ragtime", 2, "major", false, "dominant").suffix).toBe("7"); // II7
+		expect(styledChord("ragtime", 0, "major", false, "dominant").intervals).toEqual([0, 4, 7]);
+		expect(styledChord("ragtime", 3, "minor", true, "dominant").intervals).toEqual([0, 3, 6, 9]);
+		expect(styledChord("bossa", 0, "major", true, "dominant").intervals).toEqual([0, 4, 7, 9, 14]);
+		expect(styledChord("bossa", 1, "major", false, "dominant").suffix).toBe("9");
+		expect(styledChord("bossa", 1, "major", true, "dominant").intervals).toContain(13);
+	});
 	it("names the chord from the root and the recipe", () => {
 		expect(styledChordName("C", "major", styledChord("jazz", 0, "major", false, "dominant"))).toBe(
 			"Cmaj7",
@@ -59,6 +70,12 @@ describe("styledChord", () => {
 		);
 		expect(styledChordName("C", "major", styledChord("folk", 0, "major", true, "dominant"))).toBe(
 			"C+",
+		);
+		expect(
+			styledChordName("Am", "minor", styledChord("ragtime", 3, "minor", true, "dominant")),
+		).toBe("A°7");
+		expect(styledChordName("G", "major", styledChord("bossa", 1, "major", true, "dominant"))).toBe(
+			"G7♭9",
 		);
 	});
 });

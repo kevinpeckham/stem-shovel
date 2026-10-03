@@ -170,6 +170,9 @@
 		lush: "9ths and 13ths",
 		folk: "open shapes",
 		fifths: "power chords",
+		honkytonk: "sixths and sevenths",
+		ragtime: "dominant chains",
+		bossa: "soft jazz colours",
 	};
 	/** The built-in styles and the account's own, for the device's Style dropdown. */
 	const STYLE_OPTIONS = $derived([

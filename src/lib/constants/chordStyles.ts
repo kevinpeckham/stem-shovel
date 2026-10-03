@@ -27,6 +27,21 @@ export const CHORD_STYLES = [
 		hint: "add9 on I and IV, sus4 on V, m7 minors; the 7 pad suspends or augments, as a guitar's open shapes",
 	},
 	{ id: "fifths", label: "Fifths", hint: "power chords on every wedge, root, fifth and octave" },
+	{
+		id: "honkytonk",
+		label: "Honky-tonk",
+		hint: "sixths on I and IV, 7 on V and the secondary dominants, m7 minors; the 7 pad adds the ninth, or a 6/9",
+	},
+	{
+		id: "ragtime",
+		label: "Ragtime",
+		hint: "dominant sevenths chained round the circle, I and IV plain with a 6 under the pad, diminished sevenths on the minors' pad",
+	},
+	{
+		id: "bossa",
+		label: "Bossa",
+		hint: "maj7 on I and IV with a 6/9 under the pad, a 9 on V with a 7♭9 under it, m7 minors with m9",
+	},
 ] as const;
 export type ChordStyleId = (typeof CHORD_STYLES)[number]["id"];
 
@@ -59,6 +74,11 @@ export const CHORD_RECIPES = {
 	minAdd9: { intervals: [0, 3, 7, 14], suffix: "(add9)" },
 	power: { intervals: [0, 7, 12], suffix: "5", rootOnly: true },
 	powerWide: { intervals: [0, 7, 12, 19], suffix: "5", rootOnly: true },
+	six: { intervals: [0, 4, 7, 9], suffix: "6" },
+	sixNine: { intervals: [0, 4, 7, 9, 14], suffix: "6/9" },
+	minSix: { intervals: [0, 3, 7, 9], suffix: "6" },
+	dom7flat9: { intervals: [0, 4, 7, 10, 13], suffix: "7♭9" },
+	dim7: { intervals: [0, 3, 6, 9], suffix: "°7", rootOnly: true },
 } as const satisfies Record<string, ChordRecipe>;
 export type ChordRecipeId = keyof typeof CHORD_RECIPES;
 

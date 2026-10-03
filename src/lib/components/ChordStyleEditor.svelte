@@ -50,6 +50,10 @@
 		"aug",
 		"power",
 		"powerWide",
+		"six",
+		"sixNine",
+		"dom7flat9",
+		"dim7",
 	];
 	const MINOR_RECIPES: ChordRecipeId[] = [
 		"minor",
@@ -64,6 +68,8 @@
 		"sus4",
 		"power",
 		"powerWide",
+		"minSix",
+		"dim7",
 	];
 	const recipeLabel = (id: ChordRecipeId, ring: "major" | "minor") => {
 		const recipe = CHORD_RECIPES[id];

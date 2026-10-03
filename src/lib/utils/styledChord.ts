@@ -53,6 +53,25 @@ function recipes(
 		}
 		case "fifths":
 			return ["power", "powerWide"];
+		case "honkytonk": {
+			// Country's sweetness: sixths on the tonic and subdominant, sevenths on V and the secondary dominants, the pad adding the ninth or a 6/9.
+			if (minor) return ["min7", "min9"];
+			if (fifths === DEGREE.I || fifths === DEGREE.IV) return ["six", "sixNine"];
+			return ["dom7", "dom9"];
+		}
+		case "ragtime": {
+			// Stride's chains of dominants (VI7 II7 V7 I); I and IV plain with a 6 under the pad; a diminished seventh on any minor wedge's root under the pad.
+			if (minor) return ["min7", "dim7"];
+			if (fifths === DEGREE.I || fifths === DEGREE.IV) return ["major", "six"];
+			return ["dom7", "dom9"];
+		}
+		case "bossa": {
+			// The jazz palette tilted softer: maj7 with a 6/9 under the pad, a 9 on V with a 7♭9 under it, m7 and m9 on the minors, 7 on the borrowed chords.
+			if (minor) return fifths === DEGREE.VII ? ["halfDim", "halfDim"] : ["min7", "min9"];
+			if (fifths === DEGREE.I || fifths === DEGREE.IV) return ["maj7", "sixNine"];
+			if (fifths === DEGREE.V) return ["dom9", "dom7flat9"];
+			return ["dom7", "dom7flat9"];
+		}
 		case "lush": {
 			if (minor) {
 				if (fifths === DEGREE.VII) return ["halfDim", "halfDim"];
