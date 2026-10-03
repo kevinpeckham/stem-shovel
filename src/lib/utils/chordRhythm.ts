@@ -13,7 +13,7 @@ function beatMs(bpm: number): number {
 
 /** Under a beat and a half is a one-beat stab, under three a half-note hold, longer a whole bar of 4/4. */
 /** Beats quantized to one, two or four: under a beat and a half is one, under three is two. */
-export function quantizeBeats(beats: number): ChordBeats {
+function quantizeBeats(beats: number): ChordBeats {
 	if (beats < 1.5) return 1;
 	if (beats < 3) return 2;
 	return 4;

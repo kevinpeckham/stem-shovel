@@ -185,7 +185,18 @@ every member reads, editors keep), loaded by the page with the piano
 presets and handled in `ProgressionPad.svelte`'s Saved menu. The Circle
 menu gained Roman numerals on the key's six diatonic chords and a dim on
 the rest (`CircleOfFifths.svelte`: IV I V outside, ii vi iii inside, from
-the key's drawn index). The pad and the Timing menu show from the `@xl` container
+the key's drawn index). **Notes and panels** (Kevin, the same day): the page holds the device in
+a `FloatingPanel` with a pop-out from lg, as the looper's page does, and
+for a member a second panel with `ProgressionNotesPanel.svelte`, the
+recorder's editor over the pad's `notes` (kept per browser with the pad,
+saved with the row: `progression.notes`, migration 0070). The panel
+autosaves through `saveProgressionNotes` when the pad is a saved row, and
+a first note on an unsaved pad creates the row (`saveProgression` with the
+pad's data, named from the pad or "Untitled progression"), so notes stand
+alone; emptying the notes of a row without chords removes it
+(`deleteProgressionIfEmpty`), as an idea goes. The page's `saved` list is
+bound through `ChordPlayer` to the pad so both panels see one list. The
+pad and the Timing menu show from the `@xl` container
 breakpoint: a phone keeps to the circle (Kevin). The home page's demo,
 when it comes, passes `pad={false}`.
 

@@ -28,7 +28,15 @@ Under the circle, the pad writes down what you play. Switch **Jot** on and every
 
 Tap a chord on the pad to change it: one, two or four beats, a rest in its place, or Remove. **Undo** steps back through every change, **Clear** empties the pad (Undo brings it back). **Play** plays the progression through the chord player, lighting each chord on the circle and the pad as it sounds, with a click under it if the Timing menu says so; **Loop** plays it round and round; Play again, or Escape, stops. **MIDI** saves the progression as a `.mid` file for your DAW, at the pad's tempo and meter, as a piano. The pad keeps its chords in your browser between visits.
 
-Signed in, the **Saved** button keeps a progression in your account by name, for every member to open, and opens the ones saved before; an editor can save over one, save a copy as new, rename it or delete it. A saved progression brings its tempo and beats to the bar with it.
+Signed in, the **Saved** button keeps a progression in your account by name, for every member to open, and opens the ones saved before; an editor can save over one, save a copy as new, rename it or delete it, and **New** starts a fresh pad with the saved one left as it is. A saved progression brings its tempo, beats to the bar and notes with it.
+
+## Notes
+
+Signed in, a note board sits under the device, the Idea Recorder's: type and it saves as you go, and the notes are kept with the progression. Notes can stand alone: a note on a pad that was never saved makes a progression for it (untitled until you rename it in the Saved menu), and a progression can have chords and no notes. Empty the notes of a progression with no chords and it goes. The trash button clears the board.
+
+## Panels
+
+On a wide screen the device and the notes each pop out into a panel of their own with the arrows button in their header: drag it by the header, resize it by the corner, and the arrows put it back in the page. The device lays itself out by the panel's width.
 
 ## The Timing menu
 
@@ -40,7 +48,7 @@ Press the keyboard button on the device to show each wedge's key. The number row
 
 ## On a phone
 
-The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels, the presets, the volume and the Chords, Circle and Effects settings. The progression pad and the Timing menu are for wider screens. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.
+The device keeps one row: the power switch, the sound, the key and a wrench menu holding the chords-or-notes switch, the keyboard labels, the presets, the volume and the Chords, Circle and Effects settings. The progression pad, the notes and the Timing menu are for wider screens. The 7 pad sits at the lower left of the device, under a thumb: hold it for a seventh while the other hand plays.
 
 ## A note on latency
 

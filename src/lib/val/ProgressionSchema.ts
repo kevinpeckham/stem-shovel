@@ -9,6 +9,10 @@ import { NanoIdSchema } from "./NanoIdSchema";
  * beats) or a rest. Kept per browser as it is worked on and saved to an
  * account's library by name.
  */
+const NotesMarkdownSchema = v.pipe(
+	v.string(),
+	v.maxLength(50_000, "Keep the notes under 50,000 characters."),
+);
 const BeatsSchema = v.picklist([1, 2, 4]);
 const MidiNoteSchema = v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(127));
 
@@ -30,14 +34,27 @@ export const ProgressionDataSchema = v.object({
 });
 export type ProgressionData = v.InferOutput<typeof ProgressionDataSchema>;
 
+/** A saved progression as the chord player's page and pad hold it. */
+export interface SavedProgression {
+	id: string;
+	name: string;
+	data: ProgressionData;
+	notes: string;
+	updatedAt: Date;
+}
+
 /** Argument of saveProgression: a new one in the account, or the one named by `id` brought up to date. */
 export const ProgressionSaveSchema = v.object({
 	accountId: NanoIdSchema,
 	id: v.optional(NanoIdSchema),
 	name: NameSchema,
 	data: ProgressionDataSchema,
+	notes: v.optional(NotesMarkdownSchema, ""),
 });
 export type ProgressionSave = v.InferOutput<typeof ProgressionSaveSchema>;
+
+/** Argument of saveProgressionNotes: the progression's markdown note board. */
+export const ProgressionNotesSchema = v.object({ id: NanoIdSchema, markdown: NotesMarkdownSchema });
 
 export const ProgressionRenameSchema = v.object({ id: NanoIdSchema, name: NameSchema });
 export type ProgressionRename = v.InferOutput<typeof ProgressionRenameSchema>;

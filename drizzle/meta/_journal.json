@@ -491,6 +491,13 @@
       "when": 1791039856090,
       "tag": "0069_progressions",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "6",
+      "when": 1791042340742,
+      "tag": "0070_progression_notes",
+      "breakpoints": true
     }
   ]
 }

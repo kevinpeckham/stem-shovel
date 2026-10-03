@@ -10,7 +10,7 @@
 	import { notify } from "$lib/state/notifications.svelte";
 	import { measuresOf, type ChordBeats } from "$lib/utils/chordRhythm";
 	import { errorMessage } from "$lib/utils/errorMessage";
-	import type { ProgressionData } from "$lib/val/ProgressionSchema";
+	import type { SavedProgression } from "$lib/val/ProgressionSchema";
 
 	/**
 	 * The progression pad under the circle (docs/chord-player.md, "The
@@ -20,19 +20,12 @@
 	 * with a click; Export saves it as MIDI; a member keeps it in the
 	 * account by name.
 	 */
-	interface SavedProgression {
-		id: string;
-		name: string;
-		data: ProgressionData;
-		updatedAt: Date;
-	}
 	interface Props {
 		account?: { id: string; name: string; canEdit: boolean } | null;
-		progressions?: SavedProgression[];
+		/** The account's saved progressions (bound, so the page's notes panel and the pad share one list). */
+		saved?: SavedProgression[];
 	}
-	let { account = null, progressions = [] }: Props = $props();
-	// svelte-ignore state_referenced_locally
-	let saved = $state<SavedProgression[]>(progressions);
+	let { account = null, saved = $bindable([]) }: Props = $props();
 	let saving = $state(false);
 
 	const pad = progressionPad;
@@ -56,7 +49,7 @@
 	}
 
 	async function save(asNew = false) {
-		if (!account || pad.entries.length === 0) return;
+		if (!account || !pad.hasContent) return;
 		const id = asNew ? undefined : (openRow?.id ?? undefined);
 		let name = id ? openRow!.name : "";
 		if (!name) {
@@ -67,8 +60,9 @@
 		saving = true;
 		try {
 			const data = $state.snapshot(pad.data);
-			const row = await saveProgression({ accountId: account.id, id, name, data });
-			const entry = { id: row.id, name: row.name, data, updatedAt: new Date(row.updatedAt) };
+			const notes = pad.notes;
+			const row = await saveProgression({ accountId: account.id, id, name, data, notes });
+			const entry = { id: row.id, name: row.name, data, notes, updatedAt: new Date(row.updatedAt) };
 			saved = [entry, ...saved.filter((p) => p.id !== row.id)];
 			pad.saved({ id: row.id, name: row.name });
 			notify(id ? `${row.name} saved` : `${row.name} saved to ${account.name}`);
@@ -79,7 +73,7 @@
 		}
 	}
 	function open(p: SavedProgression) {
-		pad.open($state.snapshot(p.data), { id: p.id, name: p.name });
+		pad.open($state.snapshot(p.data), { id: p.id, name: p.name, notes: p.notes });
 		notify(`${p.name} loaded`);
 	}
 	async function rename(p: SavedProgression) {
@@ -304,17 +298,24 @@
 				<button
 					class="device-button-sm px-3"
 					type="button"
-					disabled={saving || pad.entries.length === 0}
+					disabled={saving || !pad.hasContent}
 					onclick={() => save(false)}>{openRow ? `Save ${openRow.name}` : "Save"}</button
 				>
 				{#if openRow}
 					<button
 						class="device-button-sm px-3"
 						type="button"
-						disabled={saving || pad.entries.length === 0}
+						disabled={saving || !pad.hasContent}
 						onclick={() => save(true)}>Save as new</button
 					>
 				{/if}
+				<button
+					class="device-button-sm px-3"
+					type="button"
+					title="A new pad: the chords and notes cleared, the saved one left as it is"
+					disabled={saving || (!pad.hasContent && !openRow)}
+					onclick={() => pad.newPad()}>New</button
+				>
 			</div>
 		{/if}
 		{#if saved.length === 0}
@@ -329,7 +330,10 @@
 								? 'text-accent'
 								: ''}"
 							type="button"
-							title="Open {p.name} ({p.data.bpm} bpm, {p.data.entries.length} entries)"
+							title="Open {p.name} ({p.data.bpm} bpm, {p.data.entries.length} {p.data.entries
+								.length === 1
+								? 'chord'
+								: 'chords'}{p.notes.trim() ? ', notes' : ''})"
 							onclick={() => open(p)}>{p.name}</button
 						>
 						{#if account?.canEdit}

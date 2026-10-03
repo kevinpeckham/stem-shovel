@@ -1,0 +1,1 @@
+ALTER TABLE `progression` ADD `notes` text DEFAULT '' NOT NULL;

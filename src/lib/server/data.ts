@@ -4812,7 +4812,7 @@ export async function listProgressions(accountId: string) {
 	return db.query.progression.findMany({
 		where: eq(progression.accountId, accountId),
 		orderBy: [desc(progression.updatedAt)],
-		columns: { id: true, name: true, data: true, createdBy: true, updatedAt: true },
+		columns: { id: true, name: true, data: true, notes: true, createdBy: true, updatedAt: true },
 	});
 }
 
@@ -4821,10 +4821,17 @@ export async function createProgression(
 	userId: string,
 	name: string,
 	data: ProgressionData,
+	notes = "",
 ) {
 	const [row] = await db
 		.insert(progression)
-		.values({ accountId, createdBy: userId, name: name.trim() || "Untitled progression", data })
+		.values({
+			accountId,
+			createdBy: userId,
+			name: name.trim() || "Untitled progression",
+			data,
+			notes,
+		})
 		.returning();
 	return row!;
 }
@@ -4832,14 +4839,39 @@ export async function createProgression(
 export async function updateProgression(
 	accountId: string,
 	id: string,
-	patch: { name: string; data: ProgressionData },
+	patch: { name: string; data: ProgressionData; notes?: string },
 ) {
 	const [row] = await db
 		.update(progression)
-		.set({ name: patch.name.trim() || "Untitled progression", data: patch.data })
+		.set({
+			name: patch.name.trim() || "Untitled progression",
+			data: patch.data,
+			...(patch.notes === undefined ? {} : { notes: patch.notes }),
+		})
 		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)))
 		.returning();
 	return row ?? null;
+}
+
+/** The note board of a progression; true when the row was the account's. */
+export async function setProgressionNotes(accountId: string, id: string, notes: string) {
+	const [row] = await db
+		.update(progression)
+		.set({ notes })
+		.where(and(eq(progression.id, id), eq(progression.accountId, accountId)))
+		.returning({ id: progression.id });
+	return !!row;
+}
+
+/** Removes a progression left with neither chords nor notes (the notes emptied on a pad never played); true when it went. */
+export async function deleteProgressionIfEmpty(accountId: string, id: string) {
+	const row = await db.query.progression.findFirst({
+		where: and(eq(progression.id, id), eq(progression.accountId, accountId)),
+		columns: { data: true, notes: true },
+	});
+	if (!row || row.data.entries.length > 0 || row.notes.trim()) return false;
+	await db.delete(progression).where(eq(progression.id, id));
+	return true;
 }
 
 export async function renameProgression(accountId: string, id: string, name: string) {

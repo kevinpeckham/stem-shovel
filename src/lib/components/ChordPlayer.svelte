@@ -28,7 +28,7 @@
 	import { pianoPresetKey } from "$lib/utils/pianoPresetKey";
 	import { resolvePianoSlots } from "$lib/utils/resolvePianoSlots";
 	import type { NamedPianoPreset, PianoPresetData } from "$lib/val/PianoPresetSchema";
-	import type { ProgressionData } from "$lib/val/ProgressionSchema";
+	import type { SavedProgression } from "$lib/val/ProgressionSchema";
 	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
 
 	/**
@@ -53,9 +53,11 @@
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		presets?: SavedPreset[];
 		/** The account's saved progressions, for the pad. */
-		progressions?: { id: string; name: string; data: ProgressionData; updatedAt: Date }[];
+		progressions?: SavedProgression[];
 		/** The progression pad under the circle (off where the circle alone is wanted, as on the home page). */
 		pad?: boolean;
+		/** The saved list as the pad keeps it, bound so the page's notes panel and the pad share one. */
+		savedProgressions?: SavedProgression[];
 	}
 	let {
 		keyboard = true,
@@ -66,6 +68,7 @@
 		presets = [],
 		progressions = [],
 		pad = true,
+		savedProgressions = $bindable(progressions),
 	}: Props = $props();
 
 	// The engines, from the page's first render (they are shared singletons; `load` is idempotent).
@@ -413,7 +416,7 @@
 	<!-- The progression pad, from @xl: a phone keeps to the circle (Kevin). -->
 	{#if pad}
 		<div class="hidden @xl-block">
-			<ProgressionPad {account} {progressions} />
+			<ProgressionPad {account} bind:saved={savedProgressions} />
 		</div>
 	{/if}
 	<!-- A phone: the 7 pad at the lower left, under a thumb, held for a seventh. -->

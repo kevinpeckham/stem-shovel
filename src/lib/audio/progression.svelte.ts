@@ -66,6 +66,10 @@ class ProgressionPad {
 	/** The saved row the pad came from, if any, for Save to update it. */
 	savedId = $state<string | null>(null);
 	name = $state("");
+	/** The note board kept with the pad (and saved with the progression); notes may stand alone. */
+	notes = $state("");
+	/** Bumped when the notes arrive from elsewhere (a saved progression opened), to re-seed the editor. */
+	notesKey = $state(0);
 	#loaded = false;
 	#holds = new Map<string, Hold>();
 	/** The last chord jotted, revised when the next starts: it lasts until then. */
@@ -94,10 +98,12 @@ class ProgressionPad {
 					entries?: ProgressionEntry[];
 					savedId?: string | null;
 					name?: string;
+					notes?: string;
 				};
 				if (Array.isArray(saved.entries)) this.entries = saved.entries.slice(0, MAX_ENTRIES);
 				this.savedId = saved.savedId ?? null;
 				this.name = saved.name ?? "";
+				this.notes = typeof saved.notes === "string" ? saved.notes : "";
 			}
 		} catch {
 			// A pad that does not parse starts empty.
@@ -110,7 +116,12 @@ class ProgressionPad {
 	#persist() {
 		write(
 			"progression",
-			JSON.stringify({ entries: this.entries, savedId: this.savedId, name: this.name }),
+			JSON.stringify({
+				entries: this.entries,
+				savedId: this.savedId,
+				name: this.name,
+				notes: this.notes,
+			}),
 		);
 	}
 	#set(entries: ProgressionEntry[]) {
@@ -228,15 +239,26 @@ class ProgressionPad {
 		this.name = "";
 		this.#persist();
 	}
-	/** A saved progression (or a fresh one) onto the pad: its tempo and meter too. */
-	open(data: ProgressionData, saved: { id: string; name: string } | null) {
+	/** A saved progression (or a fresh one) onto the pad: its tempo, meter and notes too. */
+	open(data: ProgressionData, saved: { id: string; name: string; notes: string } | null) {
 		this.#set(data.entries.slice(0, MAX_ENTRIES));
 		metronome.setBpm(data.bpm);
 		metronome.setBeats(data.beatsPerBar);
 		this.savedId = saved?.id ?? null;
 		this.name = saved?.name ?? "";
+		this.notes = saved?.notes ?? "";
+		this.notesKey++;
 		this.selected = -1;
 		this.#persist();
+	}
+	/** The notes as typed (the panel autosaves them to the row when there is one). */
+	setNotes(markdown: string) {
+		this.notes = markdown;
+		this.#persist();
+	}
+	/** Something to save: chords, or notes alone. */
+	get hasContent(): boolean {
+		return this.entries.length > 0 || this.notes.trim().length > 0;
 	}
 	/** After a save: the pad is the row now. */
 	saved(row: { id: string; name: string }) {
@@ -244,10 +266,20 @@ class ProgressionPad {
 		this.name = row.name;
 		this.#persist();
 	}
-	/** The saved row is gone: the pad keeps its chords, unattached. */
+	/** The saved row is gone: the pad keeps its chords and notes, unattached. */
 	detach(id: string) {
 		if (this.savedId !== id) return;
 		this.savedId = null;
+		this.#persist();
+	}
+	/** A new pad: the chords, the notes and the row let go (the row itself stays saved). */
+	newPad() {
+		this.#set([]);
+		this.selected = -1;
+		this.savedId = null;
+		this.name = "";
+		this.notes = "";
+		this.notesKey++;
 		this.#persist();
 	}
 
