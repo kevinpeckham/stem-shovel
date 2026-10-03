@@ -4553,9 +4553,13 @@ export async function listDrumKitsFor(accountId: string | null) {
 					voice: true,
 					status: true,
 					filename: true,
+					contentType: true,
 					sizeBytes: true,
 					url: true,
+					source: true,
+					createdAt: true,
 				},
+				with: { uploader: { columns: { name: true } } },
 			},
 		},
 	});
@@ -4566,8 +4570,9 @@ export async function listDrumKitsFor(accountId: string | null) {
 			scope: (k.accountId ? "account" : "site") as "account" | "site",
 			builtin: isOverridableKit(k.id),
 			samples: await Promise.all(
-				k.samples.map(async (smp) => ({
+				k.samples.map(async ({ uploader, ...smp }) => ({
 					...smp,
+					uploadedBy: uploader?.name ?? null,
 					url: smp.url && k.accountId ? ((await presentUrl(smp.url)) ?? smp.url) : smp.url,
 				})),
 			),
@@ -4695,6 +4700,15 @@ export async function recordDrumSampleUrl(pathname: string, url: string) {
 		columns: { id: true },
 	});
 	if (row) await markDrumSampleReady(row.id, url);
+}
+/** Where a sample came from, as the uploader or an admin wrote it (provenance). */
+export async function setDrumSampleSource(id: string, source: string) {
+	const [row] = await db
+		.update(drumSample)
+		.set({ source })
+		.where(eq(drumSample.id, id))
+		.returning({ id: drumSample.id, source: drumSample.source });
+	return row ?? null;
 }
 export async function deleteDrumSample(id: string) {
 	const [row] = await db

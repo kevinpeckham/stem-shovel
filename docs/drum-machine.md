@@ -633,6 +633,15 @@ as the page loaded. Verified: with the Acoustic snare replaced, a visitor
 fetched eleven drums from `/kits/acoustic/` and the snare from
 `site/kits/acoustic/`.
 
+**Provenance (the same day).** Each sample row shows its filename, format,
+size, date and uploader, and carries a free-text `source` (migration
+0068; `setDrumSampleSource`, 500 characters: a URL, a pack, a licence),
+edited from a pencil beside it, so where a file came from is on record.
+The built-in drums show their Groovie file and licence
+(`BUILTIN_SAMPLE_FILES`, `BUILTIN_SAMPLES_SOURCE` in constants/drumKits.ts),
+and every row, built-in or uploaded, has a listen button that plays the
+file once as it is.
+
 ## Decisions to make before Phase 1
 
 1. **The name and the path.** "Drum Machine" at `/drum-machine`, in the

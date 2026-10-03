@@ -477,6 +477,13 @@
       "when": 1790988326651,
       "tag": "0067_drum_kits",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "6",
+      "when": 1790991457354,
+      "tag": "0068_drum_sample_source",
+      "breakpoints": true
     }
   ]
 }

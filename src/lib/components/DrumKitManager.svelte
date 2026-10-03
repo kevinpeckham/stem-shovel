@@ -7,7 +7,14 @@
 		deleteDrumKit,
 		deleteDrumSample,
 		renameDrumKit,
+		setDrumSampleSource,
 	} from "$lib/remote/drumKits.remote";
+	import {
+		BUILTIN_SAMPLE_FILES,
+		BUILTIN_SAMPLES_SOURCE,
+		isOverridableKit,
+	} from "$lib/constants/drumKits";
+	import { formatDate } from "$lib/utils/formatDate";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { postJson, uploadDrumSampleFile } from "$lib/upload";
 	import { errorMessage } from "$lib/utils/errorMessage";
@@ -26,8 +33,13 @@
 		voice: DrumVoiceId;
 		status: string;
 		filename: string;
+		contentType: string;
 		sizeBytes: number;
 		url: string;
+		/** Where the file came from, as written by whoever uploaded it (provenance). */
+		source: string;
+		uploadedBy: string | null;
+		createdAt: Date;
 	}
 	export interface KitRow {
 		id: string;
@@ -131,6 +143,22 @@
 			notify(`Could not remove it: ${errorMessage(err)}`, { kind: "error" });
 		}
 	}
+	/** The file's format for the eye: the extension, or the type's subtype. */
+	const formatOf = (s: KitSample) =>
+		(s.filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? s.contentType.split("/")[1] ?? "").toUpperCase();
+	async function editSource(s: KitSample) {
+		const source = window.prompt(
+			"Where did this file come from? A URL, a pack's name, a licence…",
+			s.source,
+		);
+		if (source === null || source.trim() === s.source) return;
+		try {
+			await setDrumSampleSource({ id: s.id, source: source.trim() });
+			await onchange();
+		} catch (err) {
+			notify(`Could not save the source: ${errorMessage(err)}`, { kind: "error" });
+		}
+	}
 	/** A listen: the file as it is, once. */
 	function audition(url: string) {
 		const a = new Audio(url);
@@ -219,25 +247,48 @@
 							{@const pct = progress[key(k.id, v.id)]}
 							<li class="grid grid-cols-[6rem_1fr_auto] items-center gap-2 px-3 py-1.5">
 								<span class="opacity-90">{v.label}</span>
-								<span class="min-w-0 truncate text-12px opacity-70">
+								<span class="min-w-0 text-12px opacity-70 grid gap-0.5">
 									{#if pct !== undefined}
-										Uploading… {Math.round(pct)}%
+										<span>Uploading… {Math.round(pct)}%</span>
 									{:else if s}
-										{s.filename} · {formatBytes(s.sizeBytes)}
-									{:else if k.builtin}
-										the built-in file
+										<span class="truncate">{s.filename}</span>
+										<!-- the file's facts and its provenance (docs/drum-machine.md, "Custom kits") -->
+										<span class="truncate opacity-80"
+											>{formatOf(s)} · {formatBytes(s.sizeBytes)} · {formatDate(
+												s.createdAt,
+											)}{s.uploadedBy ? ` by ${s.uploadedBy}` : ""}</span
+										>
+										<span class="flex items-center gap-1 min-w-0">
+											<span class="truncate {s.source ? '' : 'opacity-60'}"
+												>Source: {s.source || "not noted"}</span
+											>
+											<button
+												class="opacity-70 hover-opacity-100 inline-grid place-items-center w-5 h-5 text-12px shrink-0"
+												type="button"
+												title="Note where the file came from"
+												aria-label="Edit the source of the {v.label} of {k.name}"
+												onclick={() => void editSource(s)}
+											>
+												<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+											</button>
+										</span>
+									{:else if k.builtin && isOverridableKit(k.id)}
+										<span>the built-in file</span>
+										<span class="truncate opacity-80"
+											>WAV · {BUILTIN_SAMPLE_FILES[k.id][v.id]}.wav · Source: {BUILTIN_SAMPLES_SOURCE}</span
+										>
 									{:else}
-										no file (silent)
+										<span>no file (silent)</span>
 									{/if}
 								</span>
 								<span class="flex items-center gap-1">
-									{#if s}
+									{#if s || k.builtin}
 										<button
 											class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px"
 											type="button"
 											title="Listen"
 											aria-label="Listen to the {v.label} of {k.name}"
-											onclick={() => audition(s.url)}
+											onclick={() => audition(s ? s.url : `/kits/${k.id}/${v.id}.wav`)}
 										>
 											<span class="i-ph-play" aria-hidden="true"></span>
 										</button>

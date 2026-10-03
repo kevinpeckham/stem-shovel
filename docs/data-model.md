@@ -380,18 +380,19 @@ One voice's file in a custom kit, with a demo's reserve → upload → ready
 lifecycle; a replacement is a new row, and the old row and file go once
 it is ready. An account kit's samples count against the account's storage.
 
-| column                 | type                         | notes                                   |
-| ---------------------- | ---------------------------- | --------------------------------------- |
-| id                     | text PK (nanoid)             |                                         |
-| kit_id                 | text FK → drum_kit (cascade) |                                         |
-| account_id             | text FK → account (cascade)  | null for a site kit's sample            |
-| voice                  | text                         | a `DrumVoiceId` (kick, snare, …)        |
-| status                 | text                         | uploading, ready, failed                |
-| url, pathname          | text                         | `accounts/<id>/kits/…` or `site/kits/…` |
-| filename, content_type | text                         |                                         |
-| size_bytes             | integer                      |                                         |
-| uploaded_by            | text FK → user (set null)    |                                         |
-| created_at, updated_at | timestamp_ms                 |                                         |
+| column                 | type                         | notes                                    |
+| ---------------------- | ---------------------------- | ---------------------------------------- |
+| id                     | text PK (nanoid)             |                                          |
+| kit_id                 | text FK → drum_kit (cascade) |                                          |
+| account_id             | text FK → account (cascade)  | null for a site kit's sample             |
+| voice                  | text                         | a `DrumVoiceId` (kick, snare, …)         |
+| status                 | text                         | uploading, ready, failed                 |
+| url, pathname          | text                         | `accounts/<id>/kits/…` or `site/kits/…`  |
+| filename, content_type | text                         |                                          |
+| size_bytes             | integer                      |                                          |
+| uploaded_by            | text FK → user (set null)    |                                          |
+| source                 | text                         | provenance, free text (a URL, a licence) |
+| created_at, updated_at | timestamp_ms                 |                                          |
 
 ### beat
 

@@ -9,11 +9,13 @@ import {
 	listDrumKitManifests,
 	listDrumKitsFor,
 	renameDrumKit as rename,
+	setDrumSampleSource as setSource,
 } from "$lib/server/data";
 import {
 	DrumKitCreateSchema,
 	DrumKitListSchema,
 	DrumKitRenameSchema,
+	DrumSampleSourceSchema,
 } from "$lib/val/DrumKitSchema";
 import { IdSchema } from "$lib/val/SongSchema";
 import { error } from "@sveltejs/kit";
@@ -77,6 +79,15 @@ export const deleteDrumKit = command(IdSchema, async ({ id }) => {
 	const accountId = await kitEditor(id);
 	await removeKit(accountId, id);
 	return { id };
+});
+
+export const setDrumSampleSource = command(DrumSampleSourceSchema, async ({ id, source }) => {
+	const owner = await drumSampleOwner(id);
+	if (!owner) error(404, "Sample not found");
+	await kitEditor(owner.kitId);
+	const row = await setSource(id, source);
+	if (!row) error(404, "Sample not found");
+	return row;
 });
 
 export const deleteDrumSample = command(IdSchema, async ({ id }) => {

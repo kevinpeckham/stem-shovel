@@ -1,0 +1,1 @@
+ALTER TABLE `drum_sample` ADD `source` text DEFAULT '' NOT NULL;

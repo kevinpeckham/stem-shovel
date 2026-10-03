@@ -16,6 +16,13 @@ export type DrumKitCreate = v.InferOutput<typeof DrumKitCreateSchema>;
 export const DrumKitRenameSchema = v.object({ id: NanoIdSchema, name: NameSchema });
 export type DrumKitRename = v.InferOutput<typeof DrumKitRenameSchema>;
 
+/** Argument of setDrumSampleSource: where a sample came from, free text (a URL, a pack, a licence), 500 characters at most; empty clears it. */
+export const DrumSampleSourceSchema = v.object({
+	id: NanoIdSchema,
+	source: v.pipe(v.string(), v.trim(), v.maxLength(500, "Keep it under 500 characters.")),
+});
+export type DrumSampleSource = v.InferOutput<typeof DrumSampleSourceSchema>;
+
 /** Argument of listDrumKits: the site's kits and, with an account, its own. */
 export const DrumKitListSchema = v.object({ accountId: v.optional(NanoIdSchema) });
 export type DrumKitList = v.InferOutput<typeof DrumKitListSchema>;

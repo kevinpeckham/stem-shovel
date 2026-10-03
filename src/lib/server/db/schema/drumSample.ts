@@ -34,6 +34,8 @@ export const drumSample = table(
 		contentType: t.text("content_type").notNull(),
 		sizeBytes: t.integer("size_bytes").notNull(),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
+		/** Where the file came from (a URL, a pack's name, a licence), for provenance; free text. */
+		source: t.text("source").notNull().default(""),
 		...timestamps,
 	},
 	(table) => [
