@@ -1194,6 +1194,24 @@
 					arpeggiator's tempo ratio).</span
 				>
 			</label>
+			<label class="block">
+				<span class="device-button-label"
+					>Swing · {Math.round(chordPlayer.autoStrumSwing * 100)}%</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="5"
+					value={Math.round(chordPlayer.autoStrumSwing * 100)}
+					aria-label="Auto-strum swing in percent"
+					oninput={(e) => chordPlayer.setAutoStrumSwing(Number(e.currentTarget.value) / 100)}
+				/>
+				<span class="block text-12px opacity-70 mt-1"
+					>Every second slot lands late, up to a triplet feel at full.</span
+				>
+			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
 					type="checkbox"

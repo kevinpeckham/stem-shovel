@@ -108,6 +108,7 @@ export const ChordPresetSettingsSchema = v.object({
 			pattern: v.picklist(AUTO_STRUM_PATTERNS.map((p) => p.id)),
 			speed: v.picklist(AUTO_STRUM_SPEEDS.map((s) => s.id)),
 			latch: v.boolean(),
+			swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 		}),
 	),
 	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */

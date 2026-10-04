@@ -175,6 +175,8 @@ class ChordPlayerEngine {
 	autoStrumSpeed = $state<AutoStrumSpeed>("8");
 	/** The pattern keeps going after the wedge is let go, until the next chord or Escape. */
 	autoStrumLatch = $state(false);
+	/** Swing, 0 (straight) to 1 (a triplet feel): the odd slots land late. */
+	autoStrumSwing = $state(0);
 	#autoHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
 	#autoLatched: { notes: number[]; velocity: number } | null = null;
 	#autoStopLoop: (() => void) | null = null;
@@ -259,6 +261,9 @@ class ChordPlayerEngine {
 			this.autoStrumPattern = autoPattern as AutoStrumPatternId;
 		if (read("auto-strum-speed") === "16") this.autoStrumSpeed = "16";
 		this.autoStrumLatch = read("auto-strum-latch") === "1";
+		const autoSwing = Number(read("auto-strum-swing"));
+		if (Number.isFinite(autoSwing) && autoSwing >= 0 && autoSwing <= 1)
+			this.autoStrumSwing = autoSwing;
 		const swing = Number(read("arp-swing"));
 		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.arpSwing = swing;
 		const readout = read("note-readout");
@@ -437,7 +442,8 @@ class ChordPlayerEngine {
 				return;
 			}
 			if (slot === "D" || slot === "U") {
-				const at = this.#autoOrigin + n * step;
+				const at =
+					this.#autoOrigin + n * step + arpSwingDelay(n, step, this.autoStrumSwing, perBeat);
 				const ctx = this.#autoCtx!;
 				this.#autoTimers.push(
 					setTimeout(
@@ -475,6 +481,10 @@ class ChordPlayerEngine {
 	setAutoStrumSpeed(speed: AutoStrumSpeed) {
 		this.autoStrumSpeed = speed;
 		write("auto-strum-speed", speed);
+	}
+	setAutoStrumSwing(v: number) {
+		this.autoStrumSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+		write("auto-strum-swing", String(this.autoStrumSwing));
 	}
 	setAutoStrumLatch(on: boolean) {
 		this.autoStrumLatch = on;
@@ -905,6 +915,7 @@ class ChordPlayerEngine {
 				pattern: this.autoStrumPattern,
 				speed: this.autoStrumSpeed,
 				latch: this.autoStrumLatch,
+				swing: this.autoStrumSwing,
 			},
 			arp: {
 				on: this.arp,
@@ -936,6 +947,7 @@ class ChordPlayerEngine {
 			this.setAutoStrumPattern(s.autoStrum.pattern);
 			this.setAutoStrumSpeed(s.autoStrum.speed);
 			this.setAutoStrumLatch(s.autoStrum.latch);
+			if (s.autoStrum.swing !== undefined) this.setAutoStrumSwing(s.autoStrum.swing);
 			if (s.autoStrum.on !== this.autoStrum) this.setAutoStrum(s.autoStrum.on);
 		}
 		if (s.arp) {
