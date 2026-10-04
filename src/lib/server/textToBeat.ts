@@ -29,7 +29,7 @@ const MAX_OUTPUT_TOKENS = 1500;
 
 const CELL_CHAR = [".", "o", "x", "X"];
 
-interface Message {
+export interface Message {
 	role: "system" | "user" | "assistant";
 	content: string;
 }
@@ -99,8 +99,8 @@ export async function textToBeat(
 	throw new Error(`The model's answer could not be read (${lastError})`);
 }
 
-/** One chat completion through the gateway, reasoning off, the text and the token counts back. */
-async function complete(key: string, model: string, messages: Message[]) {
+/** One chat completion through the gateway, reasoning off, the text and the token counts back (Text-to-Progression shares it). */
+export async function complete(key: string, model: string, messages: Message[]) {
 	const res = await fetch(GATEWAY, {
 		method: "POST",
 		headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },

@@ -30,6 +30,37 @@ the piano's engine.
 
 ## What already exists here
 
+- **Text-to-Progression** (2026-10-04, Kevin: as the drum machine's
+  Text-to-Beat): `src/lib/server/textToChords.ts` goes through the same
+  gateway call (`complete` in textToBeat.ts, exported; the same model,
+  reasoning off) with a prompt that explains Roman numerals in a key
+  (uppercase major, lowercase minor, the borrowed bII, bIII, #IV, bVI,
+  bVII), the pad's meter, the circle's key and style, and the styles on
+  offer with their hints; the reply (`TextToChordsReplySchema`) is chords
+  by degree with `seventh` and `beats`, plus a name, note, bpm, a key
+  or style when the description wants one, and a `setup`
+  (`TextToChordsSetupSchema`: sound, mode, voicing, strum with direction,
+  pattern and speed, the arpeggiator block, octave, sustain, effects as
+  percentages; anything a preset holds, Kevin) that `replySetup` turns
+  into a `DemoSetup`. `parseTextToChordsReply`
+  (tested) reads the numerals into `DemoChord`s (the demos' shape), so
+  the pad takes the answer through `loadDemo` with a setup of the chosen
+  style and key, learn mode then switched off; a reply that fails goes
+  back to the model once with the reason; calls are logged (kind
+  "text-to-chords"), 20 an hour per user or address
+  (`textToChords.remote.ts`). The Describe menu sits beside Demos on the
+  pad when the page's load says `aiAvailable()`.
+- **The click under playback is the metronome button** (2026-10-04, Kevin:
+  the pad clicked with the metronome off): `progressionPad.play` takes
+  `click` from `metronome.running` (the claim then silences the metronome,
+  the pad clicking on the chords' clock instead) and remembers it; while
+  the pad plays, the device's metronome button shows and toggles
+  `progressionPad.click`; `stop({ resume: true })` (the progression's end,
+  Play pressed again) starts the metronome again if its click was on, so
+  the button stays as it was; Stop, Escape and another transport's claim
+  stop without resuming. The Timing menu's own click checkbox is gone. A
+  single click on the Arp or Strum button switches it off latch and all,
+  and the padlock shows only while on (Kevin: it stayed).
 - **Strum mode and Stop** (2026-10-04, Kevin): the separate auto-strum is
   gone; the strum itself is the mode. With `strum !== "off"` a press goes
   through `#autoHold`, whose first slot is the press's strum, so a tap
@@ -42,9 +73,9 @@ the piano's engine.
   Presets keep the `autoStrum` key (pattern, speed, latch, swing; an old
   `on` is ignored) and demo setups say `strumPattern`/`strumSpeed`. Stop:
   `chordPlayer.autoPlaying` (a latched chord) or the pad playing lights a
-  round Stop button in the box's free left corner (bottom on the arch,
-  top on the bowl; on a phone beside the 7 pad while needed), disabled
-  otherwise; it and Escape run `stopAll` (sustain lock and pedal off, every
+  Stop segment on the Play group beside Chords and Notes (the corner
+  placement looked awkward, Kevin; on a phone a round one beside the 7
+  pad while needed), disabled otherwise; it and Escape run `stopAll` (sustain lock and pedal off, every
   chord and pattern off, the pad stopped).
 - **Share links** (2026-10-04, Kevin: as the drum machine's): the Share
   button beside UI (a Share section in the phone's wrench menu) copies

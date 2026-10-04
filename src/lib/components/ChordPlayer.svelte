@@ -85,6 +85,8 @@
 		progressions?: SavedProgression[];
 		/** The progression pad under the circle (off where the circle alone is wanted, as on the home page). */
 		pad?: boolean;
+		/** Text-to-Progression is on (the AI Gateway is configured): the pad's Describe menu asks a model for a progression. */
+		textToChords?: boolean;
 		/** The saved list as the pad keeps it, bound so the page's notes panel and the pad share one. */
 		savedProgressions?: SavedProgression[];
 		/** The account's custom chord styles. */
@@ -100,6 +102,7 @@
 		presetAdmin = false,
 		progressions = [],
 		pad = true,
+		textToChords = false,
 		savedProgressions = $bindable(progressions),
 		chordStyles = [],
 	}: Props = $props();
@@ -321,6 +324,15 @@
 		}
 		strumTapAt = now;
 		chordPlayer.toggleStrum();
+		if (chordPlayer.strum === "off" && chordPlayer.strumLatch) chordPlayer.setStrumLatch(false);
+	}
+	/** The metronome button is the click (Kevin): the free-running metronome, or, while the pad plays, the click under the progression. */
+	const clickOn = $derived(
+		pad && progressionPad.playing ? progressionPad.click : metronome.running,
+	);
+	function toggleClick() {
+		if (pad && progressionPad.playing) progressionPad.setClick(!progressionPad.click);
+		else metronome.toggle();
 	}
 	/** Something plays on its own (a latched arpeggio or strum, the pad): the Stop button lights (docs/chord-player.md, "Stop"). */
 	const autoPlaying = $derived(chordPlayer.autoPlaying || (pad && progressionPad.playing));
@@ -342,7 +354,10 @@
 			return;
 		}
 		arpTapAt = now;
-		chordPlayer.setArp(!chordPlayer.arp);
+		const on = !chordPlayer.arp;
+		chordPlayer.setArp(on);
+		// Off with one click is off, latch and all (Kevin: the padlock stayed).
+		if (!on && chordPlayer.arpLatch) chordPlayer.setArpLatch(false);
 	}
 	/** The sustain pad: the pedal down while it is held, for a tablet with no space bar (Kevin); a double tap locks it down until the next double tap (or Esc). */
 	let sustainLocked = $state(false);
@@ -643,14 +658,18 @@
 			<!-- A split button (Kevin): the tempo starts and stops the click; the caret beside it opens the Timing menu. -->
 			<div class="flex gap-px" role="group" aria-label="Timing">
 				<button
-					class="device-button-sm px-3 rounded-r-none tabular-nums {metronome.running
-						? 'text-accent'
-						: ''}"
+					class="device-button-sm px-3 rounded-r-none tabular-nums {clickOn ? 'text-accent' : ''}"
 					type="button"
-					aria-pressed={metronome.running}
-					title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
+					aria-pressed={clickOn}
+					title={progressionPad.playing
+						? clickOn
+							? "Silence the click under the progression"
+							: "A click under the progression"
+						: clickOn
+							? "Stop the click"
+							: "A click to play along to, at this tempo"}
 					aria-label="Click at {metronome.bpm} bpm"
-					onclick={() => metronome.toggle()}
+					onclick={toggleClick}
 				>
 					<span class="i-ph-metronome" aria-hidden="true"></span>
 					{metronome.bpm}
@@ -761,21 +780,6 @@
 		<!-- The octave, a small button above each pad at the device's edge (Kevin): down on the left, up on the right; the arrow keys do the same. -->
 		{@render octaveButton("left-0", -1)}
 		{@render octaveButton("right-0", 1)}
-		<!-- Stop (Kevin): in the box's free left corner, lit only while something plays on its own (a latched arpeggio or strum, the pad); Esc does the same. -->
-		<button
-			class="hidden @xl-flex absolute left-0 {chordPlayer.drawnLayout === 'arch-down'
-				? 'top-2'
-				: 'bottom-2'} z-10 w-12 h-12 rounded-full device-button-sm !min-w-0 !px-0 items-center justify-center text-18px disabled:opacity-35 {autoPlaying
-				? 'text-accent'
-				: ''}"
-			type="button"
-			aria-label="Stop"
-			title="Stop what plays on its own: a latched arpeggio or strum, the pad (or press Esc)"
-			disabled={!autoPlaying}
-			onclick={stopAll}
-		>
-			<span class="i-ph-stop-fill" aria-hidden="true"></span>
-		</button>
 		<CircleOfFifths
 			class={chordPlayer.layout === "arch" ? "w-full" : "w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"}
 			positions={chordPlayer.positions}
@@ -828,7 +832,7 @@
 	<!-- The progression pad, from @xl: a phone keeps to the circle (Kevin). -->
 	{#if pad}
 		<div class="hidden @xl-block">
-			<ProgressionPad {account} bind:saved={savedProgressions} />
+			<ProgressionPad {account} {textToChords} bind:saved={savedProgressions} />
 		</div>
 	{/if}
 	<!-- A phone: the sustain pad and the 7 pad at the lower left, under a thumb, each held. -->
@@ -964,13 +968,26 @@
 			onclick={() => chordPlayer.setMode("chords")}>Chords</button
 		>
 		<button
-			class="device-button-sm px-3 rounded-l-none {chordPlayer.mode === 'notes'
+			class="device-button-sm px-3 rounded-l-none @xl-rounded-none {chordPlayer.mode === 'notes'
 				? 'text-accent'
 				: ''}"
 			type="button"
 			aria-pressed={chordPlayer.mode === "notes"}
 			onclick={() => chordPlayer.setMode("notes")}>Notes</button
 		>
+		<!-- Stop (Kevin): in the Play group at desktop, lit only while something plays on its own (a latched arpeggio or strum, the pad); Esc does the same. A phone has its own beside the 7 pad. -->
+		<button
+			class="hidden @xl-inline-flex device-button-sm px-3 rounded-l-none !min-w-0 disabled:opacity-35 {autoPlaying
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-label="Stop"
+			title="Stop what plays on its own: a latched arpeggio or strum, the pad (or press Esc)"
+			disabled={!autoPlaying}
+			onclick={stopAll}
+		>
+			<span class="i-ph-stop-fill" aria-hidden="true"></span>
+		</button>
 	</div>
 {/snippet}
 
@@ -989,7 +1006,9 @@
 		onclick={arpClick}
 	>
 		<span
-			class={chordPlayer.arpLatch ? "i-ph-lock-simple-fill" : "i-ph-wave-sawtooth"}
+			class={chordPlayer.arp && chordPlayer.arpLatch
+				? "i-ph-lock-simple-fill"
+				: "i-ph-wave-sawtooth"}
 			aria-hidden="true"
 		></span>
 		Arp
@@ -1171,7 +1190,9 @@
 		onclick={strumClick}
 	>
 		<span
-			class={chordPlayer.strumLatch ? "i-ph-lock-simple-fill" : "i-ph-hand-waving"}
+			class={chordPlayer.strum !== "off" && chordPlayer.strumLatch
+				? "i-ph-lock-simple-fill"
+				: "i-ph-hand-waving"}
 			aria-hidden="true"
 		></span>
 		Strum
@@ -1667,15 +1688,6 @@
 				<span class="i-ph-metronome" aria-hidden="true"></span>
 				{metronome.running ? "Click on" : "Click"}
 			</button>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={progressionPad.click}
-					onchange={(e) => progressionPad.setClick(e.currentTarget.checked)}
-				/>
-				A click under the pad's playback
-			</label>
 		</div>
 	</div>
 {/snippet}

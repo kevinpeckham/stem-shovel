@@ -8,7 +8,9 @@
 		saveProgression,
 	} from "$lib/remote/progressions.remote";
 	import { notify } from "$lib/state/notifications.svelte";
-	import { DEMO_PROGRESSIONS } from "$lib/constants/demoProgressions";
+	import { DEMO_PROGRESSIONS, type DemoProgression } from "$lib/constants/demoProgressions";
+	import { textToChords as askForChords } from "$lib/remote/textToChords.remote";
+	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
 	import { measuresOf, type ChordBeats } from "$lib/utils/chordRhythm";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { SavedProgression } from "$lib/val/ProgressionSchema";
@@ -25,11 +27,55 @@
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		/** The account's saved progressions (bound, so the page's notes panel and the pad share one list). */
 		saved?: SavedProgression[];
+		/** Text-to-Progression is on (docs/chord-player.md): a Describe menu beside Demos asks a model for a progression. */
+		textToChords?: boolean;
 	}
-	let { account = null, saved = $bindable([]) }: Props = $props();
+	let { account = null, saved = $bindable([]), textToChords = false }: Props = $props();
 	let saving = $state(false);
 
 	const pad = progressionPad;
+
+	// Text-to-Progression (docs/chord-player.md): the description and the request in flight; the answer lands on the pad as a demo does, learn mode off, ready to Play.
+	let chordsPrompt = $state("");
+	let chordsAsking = $state(false);
+	let chordsNote = $state("");
+	let chordsError = $state("");
+	async function makeProgression() {
+		const prompt = chordsPrompt.trim();
+		if (!prompt || chordsAsking) return;
+		chordsAsking = true;
+		chordsError = "";
+		chordsNote = "";
+		try {
+			const reply = await askForChords({
+				prompt,
+				beatsPerBar: metronome.beatsPerBar === 3 ? 3 : 4,
+				key: chordPlayer.keyCenter,
+				style: chordPlayer.style,
+			});
+			const demo: DemoProgression = {
+				id: "text-to-chords",
+				name: reply.name,
+				hint: reply.note,
+				bpm: reply.bpm ?? metronome.bpm,
+				beatsPerBar: metronome.beatsPerBar,
+				chords: reply.chords,
+				setup: {
+					...reply.setup,
+					...(reply.style ? { style: reply.style } : {}),
+					...(reply.keyCenter === null ? {} : { keyCenter: reply.keyCenter }),
+				},
+			};
+			pad.loadDemo(demo);
+			pad.setLearn(false);
+			chordsNote = [reply.note, reply.bpm ? `${reply.bpm} bpm` : ""].filter(Boolean).join(" · ");
+			notify(`${reply.name} is on the pad: press Play, or Learn to play it yourself`);
+		} catch (e) {
+			chordsError = errorMessage(e);
+		} finally {
+			chordsAsking = false;
+		}
+	}
 	const measures = $derived(measuresOf(pad.entries, metronome.beatsPerBar));
 	/** The entry's index in the pad for each measure's entries, so a tap finds it. */
 	const indexed = $derived.by(() => {
@@ -187,6 +233,19 @@
 			<span class="i-ph-student" aria-hidden="true"></span>
 			<span class="hidden @xl-inline">Learn</span>
 		</button>
+		{#if textToChords}
+			<!-- Text-to-Progression: a description to a model, a progression back on the pad (docs/chord-player.md) -->
+			<ContextMenu
+				ariaLabel="Describe a progression"
+				title="Describe the progression you want; a model writes it onto the pad"
+				iconClass="i-ph-sparkle"
+				label="Describe"
+				position="bottom left"
+				buttonBaseClasses="device-button-sm px-3"
+				popoverClasses="min-w-80 max-w-md"
+				items={[{ id: "describe", kind: "snippet", snippet: describeBlock }]}
+			/>
+		{/if}
 		<ContextMenu
 			ariaLabel="Demo progressions"
 			title="Progressions to learn and to hear, in the key the circle is turned to"
@@ -320,6 +379,56 @@
 		</div>
 	{/if}
 </div>
+
+{#snippet describeBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-3 text-13px">
+		<div class="text-11px uppercase tracking-wider opacity-60">Text-to-Progression</div>
+		<label class="block">
+			<span class="block mb-1 text-blue-100/90">Describe the progression you want</span>
+			<textarea
+				class="device-field w-full min-h-20 resize-y text-13px"
+				rows="3"
+				placeholder="e.g. a wistful indie verse in a minor key, a twelve-bar blues with a quick change, or a jazz turnaround with a tritone sub"
+				maxlength="300"
+				disabled={chordsAsking}
+				bind:value={chordsPrompt}
+				onkeydown={(e) => {
+					if (e.key === "Enter" && !e.shiftKey) {
+						e.preventDefault();
+						void makeProgression();
+					}
+				}}
+				aria-label="Describe the progression you want"></textarea>
+		</label>
+		<p class="text-12px opacity-70 -mt-1">
+			It lands on the pad in your key and meter, and the model sets the player up for it when the
+			description calls for it: the sound, style, voicing, strum, arpeggiator, key, tempo, octave,
+			sustain and effects. Undo brings the last progression back.
+		</p>
+		<div class="flex flex-wrap items-center gap-3">
+			<button
+				class="device-button-xs px-3"
+				type="button"
+				disabled={chordsAsking || !chordsPrompt.trim()}
+				aria-busy={chordsAsking}
+				onclick={() => void makeProgression()}
+			>
+				{#if chordsAsking}
+					<span class="i-ph-circle-notch animate-spin" aria-hidden="true"></span>
+					Asking the model…
+				{:else}
+					<span class="i-ph-sparkle" aria-hidden="true"></span>
+					Make the progression
+				{/if}
+			</button>
+		</div>
+		{#if chordsError}
+			<p class="text-12px text-red-300" role="alert">{chordsError}</p>
+		{:else if chordsNote}
+			<p class="text-12px text-green-300" aria-live="polite">{chordsNote}</p>
+		{/if}
+	</div>
+{/snippet}
 
 {#snippet demosBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-2 text-13px">

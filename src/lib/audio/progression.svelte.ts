@@ -57,7 +57,7 @@ class ProgressionPad {
 	/** Chords played on the circle are written to the pad (off until asked: it throws nothing away, but it is a mode). */
 	jot = $state(false);
 	loop = $state(false);
-	/** A click under playback. */
+	/** A click under playback: the metronome button's state as playback starts, toggled by the same button while it plays. */
 	click = $state(true);
 	playing = $state(false);
 	/** The entry sounding, for the pad; -1 when stopped. */
@@ -86,6 +86,8 @@ class ProgressionPad {
 	#nextTime = 0;
 	#clickTime = 0;
 	#clickBeat = 0;
+	/** The metronome was running when playback started: it comes back when the progression ends. */
+	#resumeClick = false;
 	#endTimer: ReturnType<typeof setTimeout> | null = null;
 
 	load() {
@@ -193,6 +195,7 @@ class ProgressionPad {
 	/** A demo's settings into the chord player and the piano; whatever the demo leaves out stays as it is. */
 	#applySetup(s: DemoSetup) {
 		if (s.keyCenter !== undefined) chordPlayer.setKeyCenter(s.keyCenter);
+		if (s.mode) chordPlayer.setMode(s.mode);
 		if (s.instrument) chordPiano.setInstrument(s.instrument);
 		if (s.style && chordPlayer.styleKnown(s.style)) chordPlayer.setStyle(s.style);
 		if (s.voicing) chordPlayer.setVoicing(s.voicing);
@@ -371,7 +374,11 @@ class ProgressionPad {
 	// ---- playback ----
 	async play() {
 		if (this.playing || this.entries.length === 0) return;
+		// The click under playback is the metronome button's state (Kevin): a running metronome hands over to the pad's click on the chords' clock and comes back when the progression ends; a silent one stays silent.
+		const wasRunning = metronome.running;
 		claimPlayback(this);
+		this.click = wasRunning;
+		this.#resumeClick = wasRunning;
 		chordPlayer.allOff();
 		chordPiano.warm();
 		const ctx = chordPiano.output().context as AudioContext;
@@ -385,7 +392,8 @@ class ProgressionPad {
 		this.playing = true;
 		this.#stopLoop = startLookahead(ctx, this.#schedule);
 	}
-	stop() {
+	/** Playback off; `resume` (the progression's end, Play pressed again) brings the metronome back if its click was on, so the button stays as it was. */
+	stop(opts: { resume?: boolean } = {}) {
 		releasePlayback(this);
 		this.#stopLoop?.();
 		this.#stopLoop = null;
@@ -396,9 +404,11 @@ class ProgressionPad {
 		for (let i = 0; i < this.entries.length; i++) chordPlayer.release(`pad:${i}`);
 		this.playing = false;
 		this.playingIndex = -1;
+		if (opts.resume && this.#resumeClick && this.click) void metronome.start();
+		this.#resumeClick = false;
 	}
 	toggle() {
-		if (this.playing) this.stop();
+		if (this.playing) this.stop({ resume: true });
 		else void this.play();
 	}
 	#at(time: number, fn: () => void) {
@@ -436,7 +446,7 @@ class ProgressionPad {
 					if (!this.#endTimer) {
 						const ctx = this.#ctx!;
 						this.#endTimer = setTimeout(
-							() => this.stop(),
+							() => this.stop({ resume: true }),
 							Math.max(0, (this.#nextTime - ctx.currentTime) * 1000),
 						);
 						this.#stopLoop?.();

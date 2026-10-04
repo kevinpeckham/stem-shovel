@@ -27,6 +27,7 @@ export interface DemoChord {
  * 4 = E, 11 = F).
  */
 export interface DemoSetup {
+	mode?: "chords" | "notes";
 	instrument?: PianoInstrumentId;
 	style?: string;
 	voicing?: ChordVoicing;

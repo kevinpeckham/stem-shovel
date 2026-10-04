@@ -17,7 +17,12 @@
 
 	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __chords: chordPlayer, __piano: chordPiano, __pad: progressionPad });
+		Object.assign(window, {
+			__chords: chordPlayer,
+			__piano: chordPiano,
+			__pad: progressionPad,
+			__metronome: metronome,
+		});
 
 	/** The saved progressions as the page holds them: the pad's Saved menu and the notes panel share the list. */
 	// svelte-ignore state_referenced_locally
@@ -119,6 +124,7 @@
 			presets={data.presets}
 			presetAdmin={data.presetAdmin}
 			chordStyles={data.chordStyles}
+			textToChords={data.textToChords}
 			bind:savedProgressions={saved}
 		/>
 	</FloatingPanel>

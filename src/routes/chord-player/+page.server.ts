@@ -1,3 +1,4 @@
+import { aiAvailable } from "$lib/server/aiDetect";
 import { publicBlobUrl } from "$lib/server/blob";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
 import {
@@ -31,6 +32,8 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		presetAdmin: locals.user?.isSystemAdmin === true,
 		progressions: member ? await listProgressions(member.accountId) : [],
 		chordStyles: member ? await listChordStyles(member.accountId) : [],
+		/** Text-to-Progression (docs/chord-player.md): on while the AI Gateway is configured. */
+		textToChords: aiAvailable(),
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("chord-player-page", copyFallback, locals),
 	};
