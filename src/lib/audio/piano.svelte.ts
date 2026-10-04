@@ -75,7 +75,9 @@ function clamp(v: number, min: number, max: number, steps = 100): number {
 /** The instruments with a few samples of their own (not the Grand Piano's tiers). */
 const isSampled = (id: string): id is SampledInstrumentId => id === "bass" || id === "guitar";
 
-class PianoEngine {
+export class PianoEngine {
+	/** Where this engine's sound, effects and choices are remembered: the piano's key, or the chord player's own (docs/chord-player.md, "Its own engine"). */
+	constructor(readonly prefsKey = "stemshovel.piano") {}
 	instrument = $state<PianoInstrumentId>("epiano");
 	/** The octave the on-screen keyboard's lowest C sits in. */
 	octave = $state(3);
@@ -145,7 +147,7 @@ class PianoEngine {
 	load(warm = false) {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
-		const p = loadPianoPreferences();
+		const p = loadPianoPreferences(this.prefsKey);
 		this.instrument = p.instrument;
 		this.octave = p.octave;
 		this.volume = p.volume;
@@ -248,27 +250,30 @@ class PianoEngine {
 		);
 	}
 	#save() {
-		savePianoPreferences({
-			instrument: this.instrument,
-			octave: this.octave,
-			volume: this.volume,
-			reverb: this.reverb,
-			reverbSize: this.reverbSize,
-			delay: { ...this.delay },
-			chorus: { ...this.chorus },
-			tremolo: { ...this.tremolo },
-			fuzz: { ...this.fuzz },
-			wah: { ...this.wah },
-			phaser: { ...this.phaser },
-			rotary: { ...this.rotary },
-			tone: { ...this.tone },
-			compressor: { ...this.compressor },
-			bounce: { ...this.bounce },
-			hires: this.hires,
-			key: this.key,
-			degrees: this.degrees,
-			labels: this.labels,
-		});
+		savePianoPreferences(
+			{
+				instrument: this.instrument,
+				octave: this.octave,
+				volume: this.volume,
+				reverb: this.reverb,
+				reverbSize: this.reverbSize,
+				delay: { ...this.delay },
+				chorus: { ...this.chorus },
+				tremolo: { ...this.tremolo },
+				fuzz: { ...this.fuzz },
+				wah: { ...this.wah },
+				phaser: { ...this.phaser },
+				rotary: { ...this.rotary },
+				tone: { ...this.tone },
+				compressor: { ...this.compressor },
+				bounce: { ...this.bounce },
+				hires: this.hires,
+				key: this.key,
+				degrees: this.degrees,
+				labels: this.labels,
+			},
+			this.prefsKey,
+		);
 	}
 
 	#graph(): AudioContext {
@@ -769,3 +774,11 @@ class PianoEngine {
 }
 
 export const piano = new PianoEngine();
+/**
+ * The chord player's own engine (Kevin, 2026-10-04): the same class, its
+ * own sound, effects and memory, so the chord player and the piano on one
+ * page (the home demos, the recorder, the looper) no longer change each
+ * other's sound. Samples are cached per module, so the second instance
+ * decodes nothing twice.
+ */
+export const chordPiano = new PianoEngine("stemshovel.chord-piano");

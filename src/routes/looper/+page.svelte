@@ -13,7 +13,7 @@
 	import SourceButton from "$lib/components/SourceButton.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import { chordPiano, piano } from "$lib/audio/piano.svelte";
 	import { inputSources, type ChannelMode, type InputSource } from "$lib/audio/inputs.svelte";
 	import {
 		LOOP_BARS,
@@ -55,6 +55,7 @@
 			__looper: looper,
 			__inputs: inputSources,
 			__piano: piano,
+			__chordPiano: chordPiano,
 			__drums: drumMachine,
 			__chords: chordPlayer,
 			__metronome: metronome,
@@ -631,7 +632,8 @@
 											>
 										</label>
 									{:else}
-										{@const inst = source === "drums" ? drumMachine : piano}
+										{@const inst =
+											source === "drums" ? drumMachine : source === "chords" ? chordPiano : piano}
 										<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
 										<label
 											class="block px-0.5"

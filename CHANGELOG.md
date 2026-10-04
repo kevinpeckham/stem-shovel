@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chord player has a piano engine of its own** (Kevin: the home page's piano demo changed the chord demo's sound): `chordPiano`, a second `PianoEngine` instance with its own preferences key, drives the chord player, the pad, the device and its Effects menu (`PianoEffectsMenu` takes an `engine` prop); the looper hosts and taps it as its own source and the recorder captures it under `chords`, so the piano and the chords can both be in a take. Sounds and effects set on the chord player before this start from the defaults once.
+
 ## [0.97.0] - 2026-10-04
 
 ### Added

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import { chordPiano } from "$lib/audio/piano.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
 	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
@@ -14,7 +14,7 @@
 
 	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __chords: chordPlayer, __piano: piano, __pad: progressionPad });
+		Object.assign(window, { __chords: chordPlayer, __piano: chordPiano, __pad: progressionPad });
 
 	/** The saved progressions as the page holds them: the pad's Saved menu and the notes panel share the list. */
 	// svelte-ignore state_referenced_locally

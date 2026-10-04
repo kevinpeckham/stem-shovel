@@ -19,7 +19,7 @@
 	} from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import { chordPiano } from "$lib/audio/piano.svelte";
 	import CircleOfFifths from "$lib/components/CircleOfFifths.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -104,8 +104,8 @@
 	}: Props = $props();
 
 	// The engines, from the page's first render (they are shared singletons; `load` is idempotent).
-	piano.samplesBase = samplesBase;
-	piano.load(warm);
+	chordPiano.samplesBase = samplesBase;
+	chordPiano.load(warm);
 	chordPlayer.load();
 	// svelte-ignore state_referenced_locally
 	if (pad) progressionPad.load();
@@ -215,10 +215,10 @@
 	const slots = $derived(resolvePianoSlots(site, overrides, account ? saved : null, "chords"));
 	/** What a preset saved here holds: the piano's sound and effects, and the chord player's own settings. */
 	const currentPreset = (): PianoPresetData => ({
-		...piano.currentPreset(),
+		...chordPiano.currentPreset(),
 		chords: $state.snapshot(chordPlayer.presetSettings),
 	});
-	const currentKey = $derived(pianoPresetKey(piano.currentPreset()));
+	const currentKey = $derived(pianoPresetKey(chordPiano.currentPreset()));
 	const currentChords = $derived(chordPlayer.presetSettings);
 	/** A preset matches the sound playing when its piano part does and, if it carries chord settings, those too, field by field (a preset saved before a setting existed has nothing to say about it). */
 	/** A preset matches when every chord setting it carries is the current one: settings added since it was saved (its arpeggiator's swing, say) do not count against it. */
@@ -241,7 +241,7 @@
 	});
 	function loadPreset(preset: NamedPianoPreset) {
 		chordPlayer.allOff();
-		piano.applyPreset(preset.data);
+		chordPiano.applyPreset(preset.data);
 		if (preset.data.chords) chordPlayer.applyPresetSettings(preset.data.chords);
 		loaded = { name: preset.name, data: preset.data };
 	}
@@ -324,10 +324,10 @@
 			sustainLocked = !sustainLocked;
 			sustainTapAt = 0;
 		} else sustainTapAt = now;
-		piano.setSustain(true);
+		chordPiano.setSustain(true);
 	}
 	function sustainUp() {
-		if (!sustainLocked) piano.setSustain(false);
+		if (!sustainLocked) chordPiano.setSustain(false);
 	}
 	function sustainUnlock() {
 		sustainLocked = false;
@@ -344,12 +344,12 @@
 		}
 		if (e.code === "Space") {
 			e.preventDefault();
-			piano.setSustain(true);
+			chordPiano.setSustain(true);
 			return;
 		}
 		if (e.code === "Escape") {
 			sustainUnlock();
-			piano.setSustain(false);
+			chordPiano.setSustain(false);
 			chordPlayer.allOff();
 			return;
 		}
@@ -377,7 +377,7 @@
 			return;
 		}
 		if (e.code === "Space") {
-			if (!sustainLocked) piano.setSustain(false);
+			if (!sustainLocked) chordPiano.setSustain(false);
 			return;
 		}
 		if (downCodes.delete(e.code)) chordPlayer.release(`key:${e.code}`);
@@ -386,7 +386,7 @@
 		downCodes.clear();
 		chordPlayer.seventhHeld = false;
 		sustainUnlock();
-		piano.setSustain(false);
+		chordPiano.setSustain(false);
 		chordPlayer.allOff();
 	}
 	onDestroy(() => {
@@ -408,12 +408,14 @@
 	<!-- the screen -->
 	<div class="device-window-bevel-md">
 		<div
-			class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3 transition-opacity {piano.on
+			class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3 transition-opacity {chordPiano.on
 				? ''
 				: '[&>*]-(opacity-25)'}"
 		>
 			<div>
-				<div class="text-24px @xl-text-32px leading-none">{instrumentLabel(piano.instrument)}</div>
+				<div class="text-24px @xl-text-32px leading-none">
+					{instrumentLabel(chordPiano.instrument)}
+				</div>
 				{#if presetLine}
 					<div class="mt-1 text-13px @xl-text-14px opacity-85 flex items-center gap-1.5">
 						<span class="i-ph-bookmark-simple text-12px" aria-hidden="true"></span>
@@ -437,12 +439,12 @@
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
 					>
 					{#if chordPlayer.seventhHeld}<span class="text-accent">· 7</span>{/if}
-					{#if piano.instrument === "grand" && piano.samples === "loading"}
+					{#if chordPiano.instrument === "grand" && chordPiano.samples === "loading"}
 						<span>· loading the piano…</span>
-					{:else if piano.instrument === "grand" && piano.samples === "failed"}
+					{:else if chordPiano.instrument === "grand" && chordPiano.samples === "failed"}
 						<span class="text-red-300">· the piano's samples did not load</span>
 					{/if}
-					{#if !piano.on}<span>· {piano.starting ? "starting…" : "off"}</span>{/if}
+					{#if !chordPiano.on}<span>· {chordPiano.starting ? "starting…" : "off"}</span>{/if}
 				</div>
 			</div>
 			<div
@@ -459,11 +461,11 @@
 		<div>
 			<div class="device-button-group-label text-dark hidden @xl-block">Power</div>
 			<button
-				class="device-button-sm px-3 {piano.on ? 'text-accent' : ''}"
+				class="device-button-sm px-3 {chordPiano.on ? 'text-accent' : ''}"
 				type="button"
-				aria-pressed={piano.on}
-				title={piano.on ? "Switch the sound off" : "Switch the sound on"}
-				onclick={() => void piano.setOn(!piano.on)}
+				aria-pressed={chordPiano.on}
+				title={chordPiano.on ? "Switch the sound off" : "Switch the sound on"}
+				onclick={() => void chordPiano.setOn(!chordPiano.on)}
 			>
 				<span class="i-ph-power" aria-hidden="true"></span>
 			</button>
@@ -476,10 +478,10 @@
 				popoverClasses="text-13px"
 				buttonClasses="device-button-sm px-3 w-full"
 				options={INSTRUMENT_OPTIONS}
-				value={piano.instrument}
+				value={chordPiano.instrument}
 				onchange={(v) => {
 					chordPlayer.allOff();
-					piano.setInstrument(v as PianoInstrumentId);
+					chordPiano.setInstrument(v as PianoInstrumentId);
 				}}
 			/>
 		</div>
@@ -719,7 +721,7 @@
 		)}
 		{@render cornerPad(
 			"right-0",
-			piano.sustain,
+			chordPiano.sustain,
 			"Sustain",
 			"Hold for the sustain pedal (or hold the space bar); double-tap to lock it down",
 			sustainDown,
@@ -786,11 +788,11 @@
 	{/if}
 	<!-- A phone: the sustain pad and the 7 pad at the lower left, under a thumb, each held. -->
 	<button
-		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px touch-none {piano.sustain
+		class="@xl-hidden absolute left-3 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px touch-none {chordPiano.sustain
 			? 'text-accent'
 			: ''}"
 		type="button"
-		aria-pressed={piano.sustain}
+		aria-pressed={chordPiano.sustain}
 		title="Hold for the sustain pedal; double-tap to lock it down"
 		aria-label="Sustain"
 		onpointerdown={sustainDown}
@@ -1002,9 +1004,9 @@
 		type="range"
 		min="0"
 		max="100"
-		value={Math.round(piano.volume * 100)}
+		value={Math.round(chordPiano.volume * 100)}
 		aria-label="Volume"
-		oninput={(e) => piano.setVolume(Number(e.currentTarget.value) / 100)}
+		oninput={(e) => chordPiano.setVolume(Number(e.currentTarget.value) / 100)}
 	/>
 {/snippet}
 
@@ -1611,5 +1613,5 @@
 {/snippet}
 
 {#snippet effectsMenuBlock()}
-	<PianoEffectsMenu />
+	<PianoEffectsMenu engine={chordPiano} />
 {/snippet}

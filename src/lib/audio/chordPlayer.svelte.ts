@@ -1,6 +1,6 @@
 import { startLookahead } from "$lib/audio/lookahead";
 import { metronome } from "$lib/audio/metronome.svelte";
-import { piano } from "$lib/audio/piano.svelte";
+import { chordPiano } from "$lib/audio/piano.svelte";
 import {
 	CHORD_KEY_CODES,
 	CHORD_KEY_LABELS,
@@ -271,7 +271,7 @@ class ChordPlayerEngine {
 			this.noteReadout = readout;
 		this.showNumerals = read("numerals") === "1";
 		this.highlightKey = read("highlight") !== "0";
-		piano.load();
+		chordPiano.load();
 	}
 
 	/** The key center's drawn index: the top, or the bottom of the circle (the arch puts the key at index 0 either way and turns itself over instead). */
@@ -301,7 +301,7 @@ class ChordPlayerEngine {
 	/** A wedge pressed: the chord (or note) sounds until `release(by)`. */
 	press(drawnIndex: number, quality: ChordQuality, by: string, seventh = false, inversion = 0) {
 		this.release(by);
-		piano.warm();
+		chordPiano.warm();
 		let notes: number[];
 		let name: string;
 		let wedge: string;
@@ -380,15 +380,15 @@ class ChordPlayerEngine {
 		};
 		const timers: ReturnType<typeof setTimeout>[] = [];
 		order.forEach((midi, i) => {
-			if (gap === 0 || i === 0) piano.noteOn(midi, level(midi));
-			else timers.push(setTimeout(() => piano.noteOn(midi, level(midi)), gap * i));
+			if (gap === 0 || i === 0) chordPiano.noteOn(midi, level(midi));
+			else timers.push(setTimeout(() => chordPiano.noteOn(midi, level(midi)), gap * i));
 		});
 		return timers;
 	}
 
 	/** A chord into the auto-strum: the pattern starts again from its first slot on the press (so the chord sounds at once), the loop on the piano's clock. */
 	#autoHold(by: string, notes: number[], velocity: number) {
-		const ctx = piano.output().context as AudioContext;
+		const ctx = chordPiano.output().context as AudioContext;
 		this.#autoCtx = ctx;
 		this.#autoHeld.set(by, { notes, velocity });
 		this.#autoLatched = null;
@@ -404,7 +404,7 @@ class ChordPlayerEngine {
 		const held = this.#autoHeld.get(by);
 		this.#autoHeld.delete(by);
 		const stillHeld = new Set([...this.#autoHeld.values()].flatMap((h) => h.notes));
-		for (const midi of chord.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
+		for (const midi of chord.notes) if (!stillHeld.has(midi)) chordPiano.noteOff(midi);
 		if (this.#autoHeld.size === 0) {
 			if (this.autoStrumLatch && held) {
 				this.#autoLatched = held;
@@ -417,7 +417,7 @@ class ChordPlayerEngine {
 		this.#autoStopLoop = null;
 		for (const t of this.#autoTimers) clearTimeout(t);
 		this.#autoTimers = [];
-		if (this.#autoLatched) for (const midi of this.#autoLatched.notes) piano.noteOff(midi);
+		if (this.#autoLatched) for (const midi of this.#autoLatched.notes) chordPiano.noteOff(midi);
 		this.#autoHeld.clear();
 		this.#autoLatched = null;
 		this.latchedChord = null;
@@ -449,7 +449,7 @@ class ChordPlayerEngine {
 					setTimeout(
 						() => {
 							for (const s of sources) {
-								for (const midi of s.notes) piano.noteOff(midi);
+								for (const midi of s.notes) chordPiano.noteOff(midi);
 								this.#autoTimers.push(...this.#strum(s.notes, s.velocity, slot === "U", gap));
 							}
 						},
@@ -512,7 +512,7 @@ class ChordPlayerEngine {
 			this.#autoRelease(by, held);
 		} else {
 			const stillHeld = new Set(rest.flatMap((s) => s.notes));
-			for (const midi of held.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
+			for (const midi of held.notes) if (!stillHeld.has(midi)) chordPiano.noteOff(midi);
 		}
 		this.sounding = rest;
 		this.listener?.up(by);
@@ -523,7 +523,7 @@ class ChordPlayerEngine {
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
 		if (this.arp) this.#arpHold(by, chord.notes, velocity);
 		else if (this.autoStrum) this.#autoHold(by, chord.notes, velocity);
-		else for (const midi of chord.notes) piano.noteOn(midi, velocity);
+		else for (const midi of chord.notes) chordPiano.noteOn(midi, velocity);
 		this.sounding = [
 			...this.sounding,
 			{ by, wedge: chord.wedge, name: chord.label, notes: chord.notes },
@@ -629,10 +629,10 @@ class ChordPlayerEngine {
 		return beat / (ARP_RATES.find((r) => r.id === this.arpRate)?.perBeat ?? 2);
 	}
 	#arpRestart() {
-		const ctx = piano.output().context as AudioContext;
+		const ctx = chordPiano.output().context as AudioContext;
 		this.#arpCtx = ctx;
 		this.#arpClearQueue();
-		piano.allOff();
+		chordPiano.allOff();
 		this.#arpOrigin = ctx.currentTime + 0.01;
 		this.#arpIndex = 0;
 		this.#arpBase = 0;
@@ -655,7 +655,7 @@ class ChordPlayerEngine {
 		this.latchedChord = null;
 		this.arpNote = null;
 		this.#arpPending = null;
-		piano.allOff();
+		chordPiano.allOff();
 	}
 	#arpAt(time: number, fn: () => void): ReturnType<typeof setTimeout> {
 		const ctx = this.#arpCtx!;
@@ -695,10 +695,10 @@ class ChordPlayerEngine {
 				step: n,
 				timers: [
 					this.#arpAt(at, () => {
-						piano.noteOn(midi, velocity);
+						chordPiano.noteOn(midi, velocity);
 						this.arpNote = midi;
 					}),
-					this.#arpAt(at + Math.max(0.03, step * this.arpGate), () => piano.noteOff(midi)),
+					this.#arpAt(at + Math.max(0.03, step * this.arpGate), () => chordPiano.noteOff(midi)),
 				],
 			});
 			if (this.#arpQueued.length > 64) this.#arpQueued = this.#arpQueued.slice(-48);
@@ -712,13 +712,13 @@ class ChordPlayerEngine {
 			// Whatever is held keeps sounding as a chord.
 			const held = [...this.#arpHeld.values()];
 			this.#arpStop();
-			for (const h of held) for (const midi of h.notes) piano.noteOn(midi, h.velocity);
+			for (const h of held) for (const midi of h.notes) chordPiano.noteOn(midi, h.velocity);
 		} else if (this.sounding.length) {
 			// Held chords switch over to the pattern (out of the auto-strum if they were in it).
 			this.#autoHeld.clear();
 			this.#autoStop();
 			for (const s of this.sounding) {
-				for (const midi of s.notes) piano.noteOff(midi);
+				for (const midi of s.notes) chordPiano.noteOff(midi);
 				this.#arpHeld.set(s.by, { notes: s.notes, velocity: this.velocity });
 			}
 			this.#arpIndex = 0;
@@ -774,7 +774,7 @@ class ChordPlayerEngine {
 		if (this.#autoStopLoop || this.#autoLatched || this.#autoHeld.size) this.#autoStop();
 		const held = this.sounding.map((s) => s.by);
 		this.sounding = [];
-		piano.allOff();
+		chordPiano.allOff();
 		for (const by of held) this.listener?.up(by);
 	}
 

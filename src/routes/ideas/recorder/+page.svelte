@@ -17,7 +17,7 @@
 	import { loopSources } from "$lib/remote/looper.remote";
 	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
 	import Piano from "$lib/components/Piano.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import { chordPiano, piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
@@ -221,9 +221,6 @@
 	function setSource(source: RecorderSource, on: boolean) {
 		const before = sourcesInTake;
 		sourcesOn[source] = on;
-		// The chord player and the piano are one engine, one sound: only one of them is in the take.
-		if (on && source === "chords" && sourcesOn.piano) sourcesOn.piano = false;
-		if (on && source === "piano" && sourcesOn.chords) sourcesOn.chords = false;
 		syncMultitrack(before);
 		try {
 			localStorage.setItem(SOURCES_KEY, JSON.stringify($state.snapshot(sourcesOn)));
@@ -264,12 +261,12 @@
 		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
-	/** The chord player (docs/chord-player.md, phase 3): the piano engine on the circle, its own panel and source. */
+	/** The chord player (docs/chord-player.md, phase 3): its own piano engine on the circle, its own panel and source. */
 	let chordsOpen = $state(false);
 	function toggleChords(e?: Event) {
 		chordsOpen = !chordsOpen;
 		if (chordsOpen) {
-			piano.warm();
+			chordPiano.warm();
 			spaceOwner = "chords";
 		} else {
 			chordPlayer.allOff();
@@ -323,8 +320,8 @@
 	function instrumentStreams(): Partial<Record<"piano" | "drums" | "chords", MediaStream>> {
 		return {
 			...(sourcesOn.piano ? { piano: piano.captureStream() } : {}),
-			// The chord player is the piano engine: the same capture under its own name.
-			...(sourcesOn.chords ? { chords: piano.captureStream() } : {}),
+			// The chord player's own engine (docs/chord-player.md, "Its own engine"): its own capture.
+			...(sourcesOn.chords ? { chords: chordPiano.captureStream() } : {}),
 			...(sourcesOn.drums ? { drums: drumMachine.captureStream() } : {}),
 		};
 	}
@@ -352,9 +349,8 @@
 			piano: pianoSettings ? piano.currentPreset() : null,
 			// A loop is saved from the looper page, never from here.
 			looper: null,
-			// The chord player's settings go with a take it was in (the piano's switch covers the engine they share).
-			chords:
-				pianoSettings && sourcesOn.chords ? $state.snapshot(chordPlayer.presetSettings) : null,
+			// The chord player's settings go with a take it was in.
+			chords: sourcesOn.chords ? $state.snapshot(chordPlayer.presetSettings) : null,
 		};
 	}
 	/** A take landed: its settings onto its idea (the server keeps the idea's earlier settings for an instrument sent as null). */
@@ -1180,7 +1176,7 @@
 				{#snippet controls()}
 					<label
 						class="flex items-center gap-2 text-13px text-dim cursor-pointer"
-						title="The chord player's sound goes into the take while it is out (it takes the piano's place: they are one sound)"
+						title="The chord player's sound goes into the take while it is out"
 					>
 						<input
 							type="checkbox"

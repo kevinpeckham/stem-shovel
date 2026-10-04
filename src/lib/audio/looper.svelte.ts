@@ -7,7 +7,7 @@ import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
-import { piano } from "./piano.svelte";
+import { chordPiano, piano } from "./piano.svelte";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 
 /**
@@ -158,6 +158,7 @@ class LooperEngine {
 		this.#ctx = ctx;
 		// Hosted before anything awaits, so an instrument played in the meantime builds its graph here and not in a context of its own.
 		piano.hostContext(ctx);
+		chordPiano.hostContext(ctx);
 		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/loop-capture.js");
@@ -185,8 +186,8 @@ class LooperEngine {
 		worklet.port.onmessage = (e) => this.#passHandler?.(e);
 		// The instruments' outputs reach the speakers as always and the capture through a gain per source (only the armed one open).
 		this.#tapSource("piano", piano.output());
-		// The chord player plays the piano engine (docs/chord-player.md): the same output, its own gain, so arming either captures the one sound.
-		this.#tapSource("chords", piano.output());
+		// The chord player has its own engine (docs/chord-player.md, "Its own engine"): its own output and gain, so a piano layer and a chords layer are separate sounds.
+		this.#tapSource("chords", chordPiano.output());
 		this.#tapSource("drums", drumMachine.output());
 		// The kit for this context, ahead of the first drums layer (its start must land on bar 1, not after a decode).
 		void drumMachine.readyKit();

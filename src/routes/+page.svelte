@@ -10,7 +10,7 @@
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
 	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import Piano from "$lib/components/Piano.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import { chordPiano, piano } from "$lib/audio/piano.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { visibleShare } from "$lib/utils/visibleShare";
 
@@ -342,12 +342,12 @@
 					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
 				>
 			</div>
-			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget); the piano's samples come with the piano demo's prefetch, the engine is shared. -->
+			<!-- The computer keyboard plays only while this is the demo in view (see spaceTarget). The chord player has its own engine, so its sound is its own; the samples are cached per module, so the piano demo's prefetch serves it too. -->
 			<div
 				class="mt-8"
 				{@attach visibleShare((s) => {
 					chordsShare = s;
-					if (s > 0) piano.prefetch();
+					if (s > 0) chordPiano.prefetch();
 				})}
 			>
 				<ChordPlayer

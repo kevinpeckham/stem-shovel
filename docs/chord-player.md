@@ -30,6 +30,16 @@ the piano's engine.
 
 ## What already exists here
 
+- **Its own engine** (2026-10-04, Kevin: the home page's piano demo changed
+  the chord demo's sound): `chordPiano`, a second `PianoEngine` with its own
+  preferences key (`stemshovel.chord-piano`), is what the chord player, the
+  pad, the device and its Effects menu (`<PianoEffectsMenu engine>`) drive;
+  the looper hosts and taps it separately (a piano layer and a chords layer
+  are separate sounds), the recorder captures it under `chords` and no
+  longer makes piano and chords exclusive in a take. Samples are cached per
+  module, so the second instance decodes nothing twice. An idea's `chords`
+  still hold the chord settings only; the chord player's sound is not yet
+  saved with a take.
 - **The piano engine** (`src/lib/audio/piano.svelte.ts`, docs/piano.md):
   `noteOn(midi, velocity)` / `noteOff(midi)`, six sounds (Grand Piano in
   three sample tiers, Electric Piano, Organ, Synth Lead, Pad, Pluck), the

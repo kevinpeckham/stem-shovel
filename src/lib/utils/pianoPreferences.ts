@@ -195,9 +195,9 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 const unit = (v: unknown, fallback: number) =>
 	typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
 
-export function loadPianoPreferences(): PianoPreferences {
+export function loadPianoPreferences(key = KEY): PianoPreferences {
 	try {
-		const raw = localStorage.getItem(KEY);
+		const raw = localStorage.getItem(key);
 		if (!raw) return { ...DEFAULT_PIANO_PREFERENCES };
 		return parsePianoPreferences(JSON.parse(raw));
 	} catch {
@@ -238,9 +238,9 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 	};
 }
 
-export function savePianoPreferences(p: PianoPreferences): void {
+export function savePianoPreferences(p: PianoPreferences, key = KEY): void {
 	try {
-		localStorage.setItem(KEY, JSON.stringify(p));
+		localStorage.setItem(key, JSON.stringify(p));
 	} catch {
 		// Private mode or a full store: the choices last for this page only.
 	}

@@ -1,7 +1,7 @@
 import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
 import { metronome } from "$lib/audio/metronome.svelte";
 import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
-import { piano } from "$lib/audio/piano.svelte";
+import { chordPiano } from "$lib/audio/piano.svelte";
 import { startLookahead } from "$lib/audio/lookahead";
 import {
 	beatsFromHold,
@@ -193,7 +193,7 @@ class ProgressionPad {
 	/** A demo's settings into the chord player and the piano; whatever the demo leaves out stays as it is. */
 	#applySetup(s: DemoSetup) {
 		if (s.keyCenter !== undefined) chordPlayer.setKeyCenter(s.keyCenter);
-		if (s.instrument) piano.setInstrument(s.instrument);
+		if (s.instrument) chordPiano.setInstrument(s.instrument);
 		if (s.style && chordPlayer.styleKnown(s.style)) chordPlayer.setStyle(s.style);
 		if (s.voicing) chordPlayer.setVoicing(s.voicing);
 		if (s.strum) chordPlayer.setStrum(s.strum);
@@ -215,12 +215,12 @@ class ProgressionPad {
 			if (s.autoStrum.latch !== undefined) chordPlayer.setAutoStrumLatch(s.autoStrum.latch);
 			if (s.autoStrum.on !== chordPlayer.autoStrum) chordPlayer.setAutoStrum(s.autoStrum.on);
 		} else if (s.arp?.on && chordPlayer.autoStrum) chordPlayer.setAutoStrum(false);
-		if (s.sustain !== undefined) piano.setSustain(s.sustain);
+		if (s.sustain !== undefined) chordPiano.setSustain(s.sustain);
 		if (s.effects) {
-			if (s.effects.reverb !== undefined) piano.setReverb(s.effects.reverb);
-			if (s.effects.reverbSize !== undefined) piano.setReverbSize(s.effects.reverbSize);
-			if (s.effects.delayLevel !== undefined) piano.setDelay({ level: s.effects.delayLevel });
-			if (s.effects.chorusMix !== undefined) piano.setChorus({ mix: s.effects.chorusMix });
+			if (s.effects.reverb !== undefined) chordPiano.setReverb(s.effects.reverb);
+			if (s.effects.reverbSize !== undefined) chordPiano.setReverbSize(s.effects.reverbSize);
+			if (s.effects.delayLevel !== undefined) chordPiano.setDelay({ level: s.effects.delayLevel });
+			if (s.effects.chorusMix !== undefined) chordPiano.setChorus({ mix: s.effects.chorusMix });
 		}
 	}
 
@@ -377,8 +377,8 @@ class ProgressionPad {
 		if (this.playing || this.entries.length === 0) return;
 		claimPlayback(this);
 		chordPlayer.allOff();
-		piano.warm();
-		const ctx = piano.output().context as AudioContext;
+		chordPiano.warm();
+		const ctx = chordPiano.output().context as AudioContext;
 		this.#ctx = ctx;
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		this.#holds.clear();
