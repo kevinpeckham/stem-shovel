@@ -296,6 +296,24 @@ with a toolbar button, `spaceOwner` "chords" for the keyboard, and saves
 `ChordPresetSettings` as `IdeaInstrumentsData.chords` (a take with chords
 in it, a loop with a chords layer), applied when an idea loads.
 
+## What shipped: learn mode, demos, inversions, strum (2026-10-04)
+
+`constants/demoProgressions.ts` writes the demos by degree (fifths from
+the key and a ring, beats, a seventh flag); `progressionPad.loadDemo`
+turns one into entries in the current key through `chordPlayer.drawnIndexOf`
+and `chordAt` (the chord-mode half of `press`, now a method the pad can
+call), opens it on the pad and switches learn mode on. Learn mode lives
+in the pad: `learnIndex` and `learnTarget` (rests skipped), the listener's
+`down` advancing the cursor on the right wedge and jotting nothing while
+learning; `CircleOfFifths` outlines the `target` wedge and the readout
+says "Next: …" while nothing sounds. Inversions: `voiceChord` takes an
+`inversion` (the lowest triad notes up an octave before the voicing lays
+them out), `CircleOfFifths` turns a short vertical drag within the pressed
+wedge (18 px a step, two steps) into `oninvert`, and `chordPlayer.invert`
+re-presses the wedge at that inversion without a strum, the name gaining
+the bass note after a slash. The strum has a direction (down, up,
+alternate) and an accent (top or bottom note louder) in `#strike`.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)

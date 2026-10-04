@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Learn mode and demo progressions on the chord player**: Demos puts a progression on the pad in the current key (the pop four, the doo-wop turnaround, ii–V–I, the twelve-bar blues, Pachelbel's Canon, the Andalusian cadence, Amazing Grace, When the Saints, Greensleeves, House of the Rising Sun and more, written by degree in `constants/demoProgressions.ts`); Learn outlines the next chord on the circle and names it in the readout, waiting for it to be played before moving on, on any progression on the pad; Play hears it.
+- **Chord inversions by dragging**: drag a little way up within a held wedge for the first and second inversion (C/E, C/G), back down for root position; the readout names the bass note.
+- **Preset buttons on a phone**: the five presets as small round buttons at the device's lower right, above the badge.
+- **A Minor style**: the key's relative minor as home, with a dominant seventh on its V (the III wedge's major) and a half-diminished ii.
+- **Strum direction and accent** in the Chords menu: down, up or alternating strums; the top or bottom note a touch louder.
+
 ## [0.94.0] - 2026-10-04
 
 ### Added

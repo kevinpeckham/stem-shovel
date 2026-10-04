@@ -52,6 +52,8 @@
 		highlightKey?: boolean;
 		/** The ids of the wedges that are sounding (lit). */
 		pressed: Set<string>;
+		/** The wedge learn mode is waiting for (outlined), by id (docs/chord-player.md, "Learn mode"). */
+		target?: string | null;
 		/** The text in the centre (the chords sounding). */
 		centre: string;
 		/** The sounding notes under the name, spelled (docs/chord-player.md, "The readout"). */
@@ -59,6 +61,8 @@
 		noteReadout?: "names" | "staff" | "both" | "off";
 		onpress: (index: number, quality: ChordQuality, pointerId: number) => void;
 		onrelease: (pointerId: number) => void;
+		/** A drag up or down within the pressed wedge, in steps: the chord's inversion (0, 1, 2). */
+		oninvert?: (index: number, quality: ChordQuality, pointerId: number, inversion: number) => void;
 		/** The SVG's own classes (its size; a phone draws it wider than its box so the sides crop flat). */
 		class?: string;
 	}
@@ -75,11 +79,13 @@
 		showNumerals = false,
 		highlightKey = false,
 		pressed,
+		target = null,
 		centre,
 		readoutNotes = [],
 		noteReadout = "names",
 		onpress,
 		onrelease,
+		oninvert,
 		class: svgClass = "w-full",
 	}: Props = $props();
 
@@ -170,14 +176,18 @@
 			quality: (el.dataset.quality as ChordQuality) ?? "major",
 		};
 	}
-	/** The wedge each pointer is on, so a glide knows when it crosses into another. */
+	/** The wedge each pointer is on, so a glide knows when it crosses into another; where it went down and the inversion it has dragged to. */
 	const under = new Map<number, string>();
+	const downAt = new Map<number, { y: number; inversion: number }>();
+	/** Pixels of vertical drag per inversion step: short, so both steps fit inside a wedge before the drag reaches the ring above. */
+	const INVERSION_STEP = 18;
 	function down(e: PointerEvent) {
 		const w = wedgeAt(e);
 		if (!w) return;
 		e.preventDefault();
 		(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
 		under.set(e.pointerId, `${w.index}:${w.quality}`);
+		downAt.set(e.pointerId, { y: e.clientY, inversion: 0 });
 		onpress(w.index, w.quality, e.pointerId);
 	}
 	/** A captured pointer's events all target the SVG, so the wedge under it is found by point. */
@@ -191,12 +201,27 @@
 		const index = Number(el.dataset.index);
 		const quality = (el.dataset.quality as ChordQuality) ?? "major";
 		const key = `${index}:${quality}`;
-		if (under.get(e.pointerId) === key) return;
+		if (under.get(e.pointerId) === key) {
+			// Still on the wedge: a drag up turns the chord over (first, then second inversion), down turns it back.
+			const start = downAt.get(e.pointerId);
+			if (!start || !oninvert || mode === "notes") return;
+			const inversion = Math.max(
+				0,
+				Math.min(2, Math.round((start.y - e.clientY) / INVERSION_STEP)),
+			);
+			if (inversion !== start.inversion) {
+				start.inversion = inversion;
+				oninvert(index, quality, e.pointerId, inversion);
+			}
+			return;
+		}
 		under.set(e.pointerId, key);
+		downAt.set(e.pointerId, { y: e.clientY, inversion: 0 });
 		onpress(index, quality, e.pointerId);
 	}
 	function up(e: PointerEvent) {
 		under.delete(e.pointerId);
+		downAt.delete(e.pointerId);
 		onrelease(e.pointerId);
 	}
 	const idOf = (p: CirclePosition, quality: ChordQuality) => p[quality].id;
@@ -266,7 +291,9 @@
 			{@const lit = pressed.has(idOf(p, "major"))}
 			{@const litMinor = pressed.has(idOf(p, "minor"))}
 			<path
-				class="stroke-oxford-900 stroke-1 cursor-pointer transition-colors {lit
+				class="cursor-pointer transition-colors {target === idOf(p, 'major')
+					? 'stroke-accent stroke-3'
+					: 'stroke-oxford-900 stroke-1'} {lit
 					? 'fill-accent'
 					: dimmed(i)
 						? 'fill-slate-900 hover-fill-slate-800'
@@ -279,7 +306,9 @@
 				aria-pressed={lit}
 			/>
 			<path
-				class="stroke-oxford-900 stroke-1 cursor-pointer transition-colors {litMinor
+				class="cursor-pointer transition-colors {target === idOf(p, 'minor')
+					? 'stroke-accent stroke-3'
+					: 'stroke-oxford-900 stroke-1'} {litMinor
 					? 'fill-accent'
 					: dimmed(i)
 						? 'fill-slate-800 hover-fill-slate-700'

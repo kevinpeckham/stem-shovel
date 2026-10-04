@@ -38,6 +38,11 @@ export const CHORD_STYLES = [
 		hint: "dominant sevenths chained round the circle, I and IV plain with a 6 under the pad, diminished sevenths on the minors' pad",
 	},
 	{
+		id: "minor",
+		label: "Minor",
+		hint: "the key's relative minor as home: a dominant seventh on its V (the III wedge's major), a half-diminished ii, plain triads elsewhere",
+	},
+	{
 		id: "bossa",
 		label: "Bossa",
 		hint: "maj7 on I and IV with a 6/9 under the pad, a 9 on V with a 7♭9 under it, m7 minors with m9",

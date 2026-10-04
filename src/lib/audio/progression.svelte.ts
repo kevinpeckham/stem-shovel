@@ -11,6 +11,7 @@ import {
 } from "$lib/utils/chordRhythm";
 import { encodeChordMidi } from "$lib/utils/encodeChordMidi";
 import type { ProgressionData } from "$lib/val/ProgressionSchema";
+import type { DemoProgression } from "$lib/constants/demoProgressions";
 
 /**
  * The progression pad (docs/chord-player.md, "The progression pad"): the
@@ -63,6 +64,9 @@ class ProgressionPad {
 	playingIndex = $state(-1);
 	/** The entry picked on the pad for editing; -1 for none. */
 	selected = $state(-1);
+	/** Learn mode (docs/chord-player.md, "Learn mode"): the pad waits for each chord in turn, the circle outlining it; pressing it moves on. */
+	learn = $state(false);
+	learnIndex = $state(0);
 	/** The saved row the pad came from, if any, for Save to update it. */
 	savedId = $state<string | null>(null);
 	name = $state("");
@@ -128,6 +132,7 @@ class ProgressionPad {
 		this.#undo = [...this.#undo, this.entries].slice(-MAX_UNDO);
 		this.entries = entries;
 		this.#last = null;
+		this.learnIndex = 0;
 		if (this.selected >= entries.length) this.selected = -1;
 		if (this.playing) this.stop();
 		this.#persist();
@@ -150,9 +155,51 @@ class ProgressionPad {
 		};
 	}
 
+	/** The chord learn mode waits for: the entry at the cursor (rests are skipped), or null. */
+	get learnTarget(): { index: number; wedge: string; label: string } | null {
+		if (!this.learn || this.entries.length === 0) return null;
+		for (let k = 0; k < this.entries.length; k++) {
+			const i = (this.learnIndex + k) % this.entries.length;
+			const e = this.entries[i];
+			if (e.kind === "chord") return { index: i, wedge: e.wedge, label: e.label };
+		}
+		return null;
+	}
+	setLearn(on: boolean) {
+		this.learn = on;
+		this.learnIndex = 0;
+		if (on && this.playing) this.stop();
+	}
+	/** A demo progression (constants/demoProgressions.ts) onto the pad in the key the circle is turned to, named, unsaved; learn mode on. */
+	loadDemo(demo: DemoProgression) {
+		const entries: ProgressionEntry[] = demo.chords.map((c) => {
+			const drawn = chordPlayer.drawnIndexOf(c.fifths, c.quality);
+			const chord = chordPlayer.chordAt(drawn, c.quality, c.seventh ?? false);
+			return {
+				kind: "chord",
+				label: chord.label,
+				wedge: chord.wedge,
+				notes: chord.notes,
+				beats: c.beats,
+			};
+		});
+		this.open({ bpm: demo.bpm, beatsPerBar: demo.beatsPerBar, entries }, null);
+		this.name = demo.name;
+		this.#persist();
+		this.setLearn(true);
+	}
+
 	// ---- jotting ----
 	#down(by: string, chord: { label: string; wedge: string; notes: number[] }) {
-		if (!this.jot || this.playing || by.startsWith("pad:")) return;
+		if (by.startsWith("pad:")) return;
+		// Learn mode: the right wedge moves the cursor on (nothing is jotted while learning).
+		if (this.learn) {
+			const target = this.learnTarget;
+			if (target && target.wedge === chord.wedge)
+				this.learnIndex = (target.index + 1) % this.entries.length;
+			return;
+		}
+		if (!this.jot || this.playing) return;
 		const now = performance.now();
 		// A chord pressed while another is still down ends the first there: legato.
 		for (const held of this.#holds.keys()) this.#finish(held, now);

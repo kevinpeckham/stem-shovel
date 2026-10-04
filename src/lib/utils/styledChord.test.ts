@@ -49,6 +49,13 @@ describe("styledChord", () => {
 		expect(styledChord("bossa", 1, "major", false, "dominant").suffix).toBe("9");
 		expect(styledChord("bossa", 1, "major", true, "dominant").intervals).toContain(13);
 	});
+	it("treats the relative minor as home in the Minor style", () => {
+		expect(styledChord("minor", 3, "minor", false, "dominant").intervals).toEqual([0, 3, 7]); // i
+		expect(styledChord("minor", 4, "major", false, "dominant").suffix).toBe("7"); // V of the minor (E7 in A minor)
+		expect(styledChord("minor", 5, "minor", false, "dominant").suffix).toBe("7♭5"); // ii°
+		expect(styledChord("minor", 11, "major", false, "dominant").intervals).toEqual([0, 4, 7]); // VI
+		expect(styledChord("minor", 2, "minor", true, "dominant").suffix).toBe("7"); // iv7 under the pad
+	});
 	it("names the chord from the root and the recipe", () => {
 		expect(styledChordName("C", "major", styledChord("jazz", 0, "major", false, "dominant"))).toBe(
 			"Cmaj7",

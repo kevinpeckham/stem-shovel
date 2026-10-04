@@ -8,6 +8,7 @@
 		saveProgression,
 	} from "$lib/remote/progressions.remote";
 	import { notify } from "$lib/state/notifications.svelte";
+	import { DEMO_PROGRESSIONS } from "$lib/constants/demoProgressions";
 	import { measuresOf, type ChordBeats } from "$lib/utils/chordRhythm";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { SavedProgression } from "$lib/val/ProgressionSchema";
@@ -172,6 +173,33 @@
 			<span class="i-ph-download-simple" aria-hidden="true"></span>
 			<span class="hidden @xl-inline">MIDI</span>
 		</button>
+		<button
+			class="device-button-sm px-3 {pad.learn ? 'text-accent' : ''}"
+			type="button"
+			aria-pressed={pad.learn}
+			aria-label="Learn mode"
+			title={pad.learn
+				? "Learn mode on: the circle outlines the next chord and waits for it; click to stop"
+				: "Learn the progression: the circle outlines each chord in turn and waits for you to play it"}
+			disabled={pad.entries.length === 0}
+			onclick={() => pad.setLearn(!pad.learn)}
+		>
+			<span class="i-ph-student" aria-hidden="true"></span>
+			<span class="hidden @xl-inline">Learn</span>
+		</button>
+		<ContextMenu
+			ariaLabel="Demo progressions"
+			title="Progressions to learn and to hear, in the key the circle is turned to"
+			iconClass="i-ph-book-open-text"
+			label="Demos"
+			position="bottom left"
+			buttonBaseClasses="device-button-sm px-3"
+			popoverClasses="min-w-80 max-w-md !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+			items={[
+				{ id: "demos-heading", kind: "heading", label: "Demo progressions" },
+				{ id: "demos-block", kind: "snippet", snippet: demosBlock },
+			]}
+		/>
 		{#if account}
 			<ContextMenu
 				ariaLabel="Saved progressions"
@@ -221,9 +249,11 @@
 							class="rounded px-2 py-0.5 border transition-colors tabular-nums {pad.playingIndex ===
 							i
 								? 'bg-accent text-oxford border-accent'
-								: pad.selected === i
-									? 'border-accent text-accent'
-									: 'border-current/25 hover-border-current/60'} {entry.kind === 'rest'
+								: pad.learnTarget?.index === i
+									? 'border-accent text-accent ring-1 ring-accent'
+									: pad.selected === i
+										? 'border-accent text-accent'
+										: 'border-current/25 hover-border-current/60'} {entry.kind === 'rest'
 								? 'opacity-70'
 								: ''}"
 							type="button"
@@ -290,6 +320,35 @@
 		</div>
 	{/if}
 </div>
+
+{#snippet demosBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-2 text-13px">
+		<p class="text-12px opacity-70">
+			A progression onto the pad in your key, with learn mode on: the circle outlines each chord in
+			turn and waits for you to play it. Press Play to hear it instead. Switch the style first for
+			the chords it wants.
+		</p>
+		<ul class="grid gap-1" aria-label="Demo progressions">
+			{#each DEMO_PROGRESSIONS as demo (demo.id)}
+				<li>
+					<button
+						class="w-full text-left rounded px-2 py-1.5 hover-bg-white/10 grid gap-0.5"
+						type="button"
+						onclick={() => {
+							pad.loadDemo(demo);
+							notify(`${demo.name} on the pad: play the outlined chords`);
+						}}
+					>
+						<span class="font-600">{demo.name}</span>
+						<span class="text-12px opacity-70"
+							>{demo.hint} · {demo.bpm} bpm, {demo.beatsPerBar}/4</span
+						>
+					</button>
+				</li>
+			{/each}
+		</ul>
+	</div>
+{/snippet}
 
 {#snippet savedBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-3 text-13px">

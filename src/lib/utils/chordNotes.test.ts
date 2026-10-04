@@ -44,3 +44,23 @@ describe("chordNotes", () => {
 		expect(chordName("B°", "diminished", "dominant")).toBe("B°7");
 	});
 });
+
+import { voiceChord } from "./chordNotes";
+
+describe("inversions", () => {
+	it("turns the triad over, the lowest notes up an octave", () => {
+		const c = (inversion: number) =>
+			voiceChord({ pitch: 0, intervals: [0, 4, 7], voicing: "standard", inversion });
+		expect(c(0)).toEqual([60, 64, 67]);
+		expect(c(1)).toEqual([64, 67, 72]);
+		expect(c(2)).toEqual([67, 72, 76]);
+	});
+	it("keeps the extensions above and voices the turned triad", () => {
+		expect(
+			voiceChord({ pitch: 0, intervals: [0, 4, 7, 10], voicing: "standard", inversion: 1 }),
+		).toEqual([64, 67, 70, 72]);
+		expect(voiceChord({ pitch: 0, intervals: [0, 4, 7], voicing: "bass", inversion: 1 })).toEqual([
+			40, 64, 67, 72,
+		]);
+	});
+});

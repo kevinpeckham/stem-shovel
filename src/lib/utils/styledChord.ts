@@ -65,6 +65,17 @@ function recipes(
 			if (fifths === DEGREE.I || fifths === DEGREE.IV) return ["major", "six"];
 			return ["dom7", "dom9"];
 		}
+		case "minor": {
+			// Home is the relative minor (vi's wedge): i, iv and v plain minors with sevenths under the pad; ii° half-diminished;
+			// the harmonic minor's V is the major on III's root (E in A minor), a dominant seventh outright; VI and VII plain.
+			if (minor) {
+				if (fifths === DEGREE.VII) return ["halfDim", "dim7"];
+				return ["minor", "min7"];
+			}
+			if (fifths === DEGREE.III) return ["dom7", "dom7flat9"];
+			if (fifths === DEGREE.V) return ["major", "dom7"];
+			return ["major", "maj7"];
+		}
 		case "bossa": {
 			// The jazz palette tilted softer: maj7 with a 6/9 under the pad, a 9 on V with a 7♭9 under it, m7 and m9 on the minors, 7 on the borrowed chords.
 			if (minor) return fifths === DEGREE.VII ? ["halfDim", "halfDim"] : ["min7", "min9"];

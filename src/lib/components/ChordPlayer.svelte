@@ -6,7 +6,9 @@
 		chordPlayer,
 		type ArpPattern,
 		type ArpRate,
+		type ChordAccent,
 		type NoteReadout,
+		type StrumDirection,
 	} from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
@@ -177,6 +179,7 @@
 		lush: "9ths and 13ths",
 		folk: "open shapes",
 		fifths: "power chords",
+		minor: "the relative minor as home",
 		honkytonk: "sixths and sevenths",
 		ragtime: "dominant chains",
 		bossa: "soft jazz colours",
@@ -206,11 +209,14 @@
 		chords: $state.snapshot(chordPlayer.presetSettings),
 	});
 	const currentKey = $derived(pianoPresetKey(piano.currentPreset()));
-	const currentChordsKey = $derived(JSON.stringify(chordPlayer.presetSettings));
-	/** A preset matches the sound playing when its piano part does and, if it carries chord settings, those too. */
+	const currentChords = $derived(chordPlayer.presetSettings);
+	/** A preset matches the sound playing when its piano part does and, if it carries chord settings, those too, field by field (a preset saved before a setting existed has nothing to say about it). */
 	const matches = (data: PianoPresetData) =>
 		pianoPresetKey({ ...data, chords: undefined }) === currentKey &&
-		(!data.chords || JSON.stringify(data.chords) === currentChordsKey);
+		(!data.chords ||
+			(Object.entries(data.chords) as [keyof typeof currentChords, unknown][]).every(
+				([k, v]) => JSON.stringify(currentChords[k]) === JSON.stringify(v),
+			));
 	const activeSlot = $derived(slots.findIndex((p) => p && matches(p.data)));
 	const presetLine = $derived.by(() => {
 		const slot = activeSlot >= 0 ? slots[activeSlot] : null;
@@ -227,13 +233,21 @@
 
 	// ---- the wedges ----
 	const pressed = $derived(new Set(chordPlayer.sounding.map((s) => s.wedge)));
-	const centre = $derived(chordPlayer.sounding.map((s) => s.name).join(" + "));
+	/** Learn mode's next chord, outlined on the circle and named in the readout while nothing sounds. */
+	const learnTarget = $derived(pad ? progressionPad.learnTarget : null);
+	const centre = $derived(
+		chordPlayer.sounding.map((s) => s.name).join(" + ") ||
+			(learnTarget ? `Next: ${learnTarget.label}` : ""),
+	);
 	const keyLabel = $derived(CIRCLE_OF_FIFTHS[chordPlayer.keyCenter].major.label);
 	function press(index: number, quality: ChordQuality, pointerId: number) {
 		chordPlayer.press(index, quality, `pointer:${pointerId}`);
 	}
 	function release(pointerId: number) {
 		chordPlayer.release(`pointer:${pointerId}`);
+	}
+	function invert(index: number, quality: ChordQuality, pointerId: number, inversion: number) {
+		chordPlayer.invert(index, quality, `pointer:${pointerId}`, inversion);
 	}
 	/** The 7 pad: a seventh on every chord while it is held. */
 	function seventhDown(e: PointerEvent) {
@@ -610,11 +624,13 @@
 			showNumerals={chordPlayer.showNumerals}
 			highlightKey={chordPlayer.highlightKey}
 			{pressed}
+			target={learnTarget?.wedge ?? null}
 			{centre}
 			readoutNotes={chordPlayer.soundingSpelled}
 			noteReadout={chordPlayer.noteReadout}
 			onpress={press}
 			onrelease={release}
+			oninvert={invert}
 		/>
 	</div>
 	<!-- The keyboard's shortcuts under the circle: Space, Shift and Esc always from @xl (Kevin), the rows with the key labels. -->
@@ -676,6 +692,27 @@
 		onpointercancel={seventhUp}
 		oncontextmenu={(e) => e.preventDefault()}>7</button
 	>
+	<!-- A phone: the five presets as small round buttons above the brand (Kevin), the full rack being in the wrench menu. -->
+	<div
+		class="@xl-hidden absolute right-4 bottom-9 flex gap-1.5"
+		role="group"
+		aria-label="Presets (quick)"
+	>
+		{#each slots as p, i (i)}
+			<button
+				class="w-7 h-7 rounded-full device-button-sm !min-w-0 !px-0 text-11px tabular-nums {activeSlot ===
+				i
+					? 'text-accent'
+					: ''} {p ? '' : 'opacity-40'}"
+				type="button"
+				aria-pressed={activeSlot === i}
+				disabled={!p}
+				aria-label="Preset {i + 1}{p ? `: ${p.name}` : ' (empty)'}"
+				title={p ? p.name : `Empty preset ${i + 1}`}
+				onclick={() => p && loadPreset(p)}>{i + 1}</button
+			>
+		{/each}
+	</div>
 	<div class="absolute right-5 bottom-3 text-11px tracking-wider text-dark font-600 select-none">
 		SS FIFTHS 001
 	</div>
@@ -926,7 +963,35 @@
 				{#each STRUMS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The notes of a chord a few milliseconds apart, low to high, as a hand plays them.</span
+				>The notes of a chord a few milliseconds apart, as a hand plays them.</span
+			>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Strum direction</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.strumDirection}
+				onchange={(e) => chordPlayer.setStrumDirection(e.currentTarget.value as StrumDirection)}
+			>
+				<option value="down">Down · low to high</option>
+				<option value="up">Up · high to low</option>
+				<option value="alternate">Alternate · down, then up, press by press</option>
+			</select>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Accent</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.accent}
+				onchange={(e) => chordPlayer.setAccent(e.currentTarget.value as ChordAccent)}
+			>
+				<option value="none">Even · every note alike</option>
+				<option value="top">Top note · the melody note louder</option>
+				<option value="bottom">Bottom note · the bass louder</option>
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>Drag up within a wedge while you hold it to turn the chord over (C/E, then C/G); drag back
+				down to turn it back.</span
 			>
 		</label>
 		<label class="block">

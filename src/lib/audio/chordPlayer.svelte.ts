@@ -27,6 +27,9 @@ import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 
+export type StrumDirection = "down" | "up" | "alternate";
+export type ChordAccent = "none" | "top" | "bottom";
+
 /** The arpeggiator's step: notes per beat at the metronome's tempo. */
 export const ARP_RATES = [
 	{ id: "4", label: "Quarter notes", perBeat: 1 },
@@ -92,6 +95,13 @@ class ChordPlayerEngine {
 	/** The momentary seventh: the 7 pad or Shift, held. */
 	seventhHeld = $state(false);
 	strum = $state<Strum>("off");
+	/** The strum's direction: low to high as a downstroke, high to low, or alternating press by press. */
+	strumDirection = $state<StrumDirection>("down");
+	#strumFlip = false;
+	/** Which note of a chord is louder: none, the top (a melody), or the bottom (a bass). */
+	accent = $state<ChordAccent>("none");
+	/** The inversion a drag within a wedge set on a held chord, by holder (docs/chord-player.md, "Inversions"). */
+	#inversions = new Map<string, number>();
 	/** How hard a wedge is pressed, 0.2 to 1. */
 	velocity = $state(0.8);
 	/** The octave of notes mode's notes and of a chord's root (4: middle C's). */
@@ -157,6 +167,11 @@ class ChordPlayerEngine {
 		if (seventh === "dominant" || seventh === "major7") this.seventhType = seventh;
 		const strum = read("strum");
 		if (strum && STRUMS.some((s) => s.id === strum)) this.strum = strum as Strum;
+		const direction = read("strum-direction");
+		if (direction === "down" || direction === "up" || direction === "alternate")
+			this.strumDirection = direction;
+		const accent = read("accent");
+		if (accent === "none" || accent === "top" || accent === "bottom") this.accent = accent;
 		const velocity = Number(read("velocity"));
 		if (Number.isFinite(velocity) && velocity >= 0.2 && velocity <= 1) this.velocity = velocity;
 		const octave = Number(read("octave"));
@@ -212,7 +227,7 @@ class ChordPlayerEngine {
 	}
 
 	/** A wedge pressed: the chord (or note) sounds until `release(by)`. */
-	press(drawnIndex: number, quality: ChordQuality, by: string, seventh = false) {
+	press(drawnIndex: number, quality: ChordQuality, by: string, seventh = false, inversion = 0) {
 		this.release(by);
 		piano.warm();
 		let notes: number[];
@@ -224,36 +239,82 @@ class ChordPlayerEngine {
 			name = `${note.label}${this.octave}`;
 			wedge = `note:${drawnIndex}`;
 		} else {
-			const position = this.positions[drawnIndex];
-			const chord = position[quality];
-			wedge = chord.id;
-			// The wedge's degree in fifths from the key; a minor's is its own root's (vi under I).
-			const offset = (drawnIndex - this.keyIndex + 12) % 12;
-			const fifths = quality === "minor" ? (offset + 3) % 12 : offset;
-			const recipe = this.recipe(fifths, quality, seventh || this.seventhHeld);
-			notes = voiceChord({
-				pitch: chord.pitch,
-				intervals: recipe.intervals,
-				voicing: this.voicing,
-				octave: this.octave,
-			});
-			name = styledChordName(chord.label, quality, recipe);
+			({ wedge, notes, label: name } = this.chordAt(drawnIndex, quality, seventh, inversion));
 		}
-		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
+		if (inversion > 0) this.#inversions.set(by, inversion);
+		else this.#inversions.delete(by);
 		// More notes, each a little softer, so a rich voicing sums to about a triad's level (the limiter after the effects catches the rest).
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / notes.length));
 		if (this.arp) {
 			this.#arpHold(by, notes, velocity);
 		} else {
-			const timers: ReturnType<typeof setTimeout>[] = [];
-			notes.forEach((midi, i) => {
-				if (gap === 0 || i === 0) piano.noteOn(midi, velocity);
-				else timers.push(setTimeout(() => piano.noteOn(midi, velocity), gap * i));
-			});
-			this.#timers.set(by, timers);
+			this.#strike(by, notes, velocity);
 		}
 		this.sounding = [...this.sounding, { by, wedge, name, notes }];
 		this.listener?.down(by, { label: name, wedge, notes });
+	}
+	/** What a wedge would play: its id, its name in the style (with the bass note after a slash when turned over) and its notes. */
+	chordAt(
+		drawnIndex: number,
+		quality: ChordQuality,
+		seventh = false,
+		inversion = 0,
+	): { wedge: string; label: string; notes: number[] } {
+		const position = this.positions[drawnIndex];
+		const chord = position[quality];
+		// The wedge's degree in fifths from the key; a minor's is its own root's (vi under I).
+		const offset = (drawnIndex - this.keyIndex + 12) % 12;
+		const fifths = quality === "minor" ? (offset + 3) % 12 : offset;
+		const recipe = this.recipe(fifths, quality, seventh || this.seventhHeld);
+		const notes = voiceChord({
+			pitch: chord.pitch,
+			intervals: recipe.intervals,
+			voicing: this.voicing,
+			octave: this.octave,
+			inversion,
+		});
+		let label = styledChordName(chord.label, quality, recipe);
+		if (inversion > 0) label += `/${CHROMATIC_NOTES[notes[0] % 12]}`;
+		return { wedge: chord.id, label, notes };
+	}
+	/** The drawn index of a degree (fifths from the key) for a ring: a minor's wedge sits three fifths back from its root. */
+	drawnIndexOf(fifths: number, quality: ChordQuality): number {
+		const offset = quality === "minor" ? (fifths + 9) % 12 : fifths;
+		return (this.keyIndex + offset) % 12;
+	}
+	/** The notes down together, or strummed in the direction set (alternating turns each press), the accented note a touch louder and the rest a touch softer. */
+	#strike(by: string, notes: number[], velocity: number) {
+		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
+		let order = [...notes];
+		if (gap > 0) {
+			const up =
+				this.strumDirection === "up" || (this.strumDirection === "alternate" && this.#strumFlip);
+			if (this.strumDirection === "alternate") this.#strumFlip = !this.#strumFlip;
+			if (up) order = order.reverse();
+		}
+		const top = Math.max(...notes);
+		const bottom = Math.min(...notes);
+		const level = (midi: number) => {
+			if (this.accent === "top")
+				return midi === top ? Math.min(1, velocity * 1.25) : velocity * 0.8;
+			if (this.accent === "bottom")
+				return midi === bottom ? Math.min(1, velocity * 1.25) : velocity * 0.8;
+			return velocity;
+		};
+		const timers: ReturnType<typeof setTimeout>[] = [];
+		order.forEach((midi, i) => {
+			if (gap === 0 || i === 0) piano.noteOn(midi, level(midi));
+			else timers.push(setTimeout(() => piano.noteOn(midi, level(midi)), gap * i));
+		});
+		this.#timers.set(by, timers);
+	}
+	/** A drag within a held wedge turns the chord (docs/chord-player.md, "Inversions"): the same wedge pressed again at the new inversion, no strum. */
+	invert(drawnIndex: number, quality: ChordQuality, by: string, inversion: number) {
+		if ((this.#inversions.get(by) ?? 0) === inversion) return;
+		const strum = this.strum;
+		this.strum = "off";
+		this.press(drawnIndex, quality, by, false, inversion);
+		this.strum = strum;
 	}
 	/** The chord held by `by` stops (its notes, unless another holder shares one). */
 	release(by: string) {
@@ -496,6 +557,14 @@ class ChordPlayerEngine {
 	setStrum(strum: Strum) {
 		this.strum = strum;
 		write("strum", strum);
+	}
+	setStrumDirection(direction: StrumDirection) {
+		this.strumDirection = direction;
+		write("strum-direction", direction);
+	}
+	setAccent(accent: ChordAccent) {
+		this.accent = accent;
+		write("accent", accent);
 	}
 	setVelocity(v: number) {
 		this.velocity = Math.max(0.2, Math.min(1, Math.round(v * 100) / 100));

@@ -44,28 +44,35 @@ export function voiceChord({
 	intervals,
 	voicing,
 	octave = 4,
+	inversion = 0,
 }: {
 	pitch: number;
 	intervals: number[];
 	voicing: ChordVoicing;
 	octave?: number;
+	/** 0 root position; 1 the third at the bottom; 2 the fifth (the lowest triad notes go up an octave). */
+	inversion?: number;
 }): number[] {
 	const root = noteMidi(pitch, octave);
 	const [, third = 4, fifth = 7] = intervals;
 	const triad = [root, root + third, root + fifth];
+	for (let i = 0; i < Math.min(2, Math.max(0, inversion)); i++) triad[i] += 12;
+	triad.sort((a, b) => a - b);
 	let notes: number[];
+	// The voicings place the triad's three notes; an inversion has already turned them.
+	const [low, mid, high] = triad;
 	switch (voicing) {
 		case "spread":
-			notes = [root - 12, root + third, root + fifth + 12];
+			notes = [low - 12, mid, high + 12];
 			break;
 		case "rich":
-			notes = [root - 24, root - 12, root + third, root + fifth, root + 12];
+			notes = [low - 24, low - 12, mid, high, low + 12];
 			break;
 		case "bass":
-			notes = [root - 24, ...triad];
+			notes = [low - 24, ...triad];
 			break;
 		case "rootBass":
-			notes = [root - 12, root + third, root + fifth, root + 12];
+			notes = [low - 12, mid, high, low + 12];
 			break;
 		default:
 			notes = triad;
