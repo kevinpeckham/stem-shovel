@@ -235,8 +235,21 @@
 	const pressed = $derived(new Set(chordPlayer.sounding.map((s) => s.wedge)));
 	/** Learn mode's next chord, outlined on the circle and named in the readout while nothing sounds. */
 	const learnTarget = $derived(pad ? progressionPad.learnTarget : null);
+	/** A setting just changed from the device (the octave), shown in the readout for a moment (Kevin). */
+	let flash = $state<string | null>(null);
+	let flashTimer: ReturnType<typeof setTimeout> | null = null;
+	function showFlash(text: string) {
+		flash = text;
+		if (flashTimer) clearTimeout(flashTimer);
+		flashTimer = setTimeout(() => (flash = null), 2500);
+	}
+	function stepOctave(step: number) {
+		chordPlayer.setOctave(chordPlayer.octave + step);
+		showFlash(`Octave ${chordPlayer.octave}`);
+	}
 	const centre = $derived(
 		chordPlayer.sounding.map((s) => s.name).join(" + ") ||
+			flash ||
 			(learnTarget ? `Next: ${learnTarget.label}` : ""),
 	);
 	const keyLabel = $derived(CIRCLE_OF_FIFTHS[chordPlayer.keyCenter].major.label);
@@ -294,7 +307,7 @@
 		}
 		if (e.code === "ArrowUp" || e.code === "ArrowDown") {
 			e.preventDefault();
-			if (!e.repeat) chordPlayer.setOctave(chordPlayer.octave + (e.code === "ArrowUp" ? 1 : -1));
+			if (!e.repeat) stepOctave(e.code === "ArrowUp" ? 1 : -1);
 			return;
 		}
 		const key = chordPlayer.keyCodes[e.code];
@@ -354,6 +367,7 @@
 					<span>Key of {keyLabel}</span>
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
 					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
+					<span>· octave {chordPlayer.octave}</span>
 					{#if chordPlayer.arp}<span class="text-accent">· arp</span>{/if}
 					<span
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
@@ -766,7 +780,7 @@
 		aria-label={step > 0 ? "Octave up" : "Octave down"}
 		title="{step > 0 ? 'Octave up' : 'Octave down'} · now {chordPlayer.octave} (the arrow keys too)"
 		disabled={step > 0 ? chordPlayer.octave >= 6 : chordPlayer.octave <= 2}
-		onclick={() => chordPlayer.setOctave(chordPlayer.octave + step)}
+		onclick={() => stepOctave(step)}
 	>
 		<span class={step > 0 ? "i-ph-plus" : "i-ph-minus"} aria-hidden="true"></span>
 	</button>
