@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { CHORD_VOICINGS, SEVENTH_TYPES, STRUMS } from "$lib/constants/circleOfFifths";
 import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "$lib/constants/autoStrum";
-import { PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
+import { PIANO_BOUNCE_DIVISIONS, PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
@@ -82,6 +82,26 @@ export const PianoPresetDataSchema = v.object({
 	rotary: v.optional(
 		v.object({ speed: v.optional(v.picklist(["off", "slow", "fast"]), "off") }),
 		() => ({ speed: "off" as const }),
+	),
+	/** The compressor (amount 0 is off) and the stereo bounce (depth 0 is off), both since 2026-10-04. */
+	compressor: v.optional(
+		v.object({
+			amount: unit(0),
+			ratio: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(20)), 4),
+			attack: v.optional(v.pipe(v.number(), v.minValue(0.001), v.maxValue(0.1)), 0.01),
+			release: v.optional(v.pipe(v.number(), v.minValue(0.02), v.maxValue(1)), 0.2),
+			makeup: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(12)), 0),
+		}),
+		() => ({ amount: 0, ratio: 4, attack: 0.01, release: 0.2, makeup: 0 }),
+	),
+	bounce: v.optional(
+		v.object({
+			depth: unit(0),
+			division: v.optional(v.picklist(PIANO_BOUNCE_DIVISIONS.map((d) => d.id)), "beat"),
+			glide: unit(0.5),
+			centre: v.optional(v.boolean(), false),
+		}),
+		() => ({ depth: 0, division: "beat" as const, glide: 0.5, centre: false }),
 	),
 	/** The chord player's mode, style, voicing, octave and strum, when the preset was saved there. */
 	chords: v.optional(v.lazy(() => ChordPresetSettingsSchema)),

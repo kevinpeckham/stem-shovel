@@ -2,12 +2,15 @@ import {
 	PIANO_MAX_VOICES,
 	PIANO_OCTAVE_MAX,
 	PIANO_OCTAVE_MIN,
+	PIANO_BOUNCE_DIVISIONS,
 	type PianoInstrumentId,
 } from "$lib/constants/piano";
 import type { PianoKey } from "$lib/constants/scales";
 import { HeldNotes } from "$lib/utils/heldNotes";
 import {
+	DEFAULT_PIANO_BOUNCE,
 	DEFAULT_PIANO_CHORUS,
+	DEFAULT_PIANO_COMPRESSOR,
 	DEFAULT_PIANO_DELAY,
 	DEFAULT_PIANO_FUZZ,
 	DEFAULT_PIANO_PHASER,
@@ -18,8 +21,12 @@ import {
 	DEFAULT_PIANO_TREMOLO,
 	DEFAULT_PIANO_WAH,
 	loadPianoPreferences,
+	parseBounce,
+	parseCompressor,
 	savePianoPreferences,
+	type PianoBounce,
 	type PianoChorus,
+	type PianoCompressor,
 	type PianoDelay,
 	type PianoFuzz,
 	type PianoPhaser,
@@ -30,6 +37,7 @@ import {
 } from "$lib/utils/pianoPreferences";
 import type { PianoPresetData } from "$lib/val/PianoPresetSchema";
 import { createPianoFx, type PianoFx } from "./pianoFx";
+import { metronome } from "./metronome.svelte";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
 	flacSupported,
@@ -86,6 +94,9 @@ class PianoEngine {
 	rotary = $state<PianoRotary>({ ...DEFAULT_PIANO_ROTARY });
 	/** Tone: tilt (-1 to 1), air and bottom (0 off). */
 	tone = $state<PianoTone>({ ...DEFAULT_PIANO_TONE });
+	/** The compressor (amount 0 is off) and the stereo bounce (depth 0 is off), docs/piano.md "Effects". */
+	compressor = $state<PianoCompressor>({ ...DEFAULT_PIANO_COMPRESSOR });
+	bounce = $state<PianoBounce>({ ...DEFAULT_PIANO_BOUNCE });
 	sustain = $state(false);
 	/** MIDI notes sounding now, for the keys to light. */
 	sounding = $state<number[]>([]);
@@ -148,7 +159,12 @@ class PianoEngine {
 		this.phaser = { ...p.phaser };
 		this.rotary = { ...p.rotary };
 		this.tone = { ...p.tone };
+		this.compressor = { ...p.compressor };
+		this.bounce = { ...p.bounce };
 		this.hires = p.hires;
+		// The bounce keeps the session tempo (docs/audio-engine.md, "One tempo for the page").
+		metronome.load();
+		metronome.listen(() => this.#fx?.update({ bounce: this.#bounceSettings() }));
 		this.key = p.key;
 		this.degrees = p.degrees;
 		this.labels = p.labels;
@@ -246,6 +262,8 @@ class PianoEngine {
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
 			tone: { ...this.tone },
+			compressor: { ...this.compressor },
+			bounce: { ...this.bounce },
 			hires: this.hires,
 			key: this.key,
 			degrees: this.degrees,
@@ -296,7 +314,20 @@ class PianoEngine {
 			phaser: { ...this.phaser },
 			rotary: { ...this.rotary },
 			tone: { ...this.tone },
+			compressor: { ...this.compressor },
+			bounce: this.#bounceSettings(),
 		};
+	}
+	/** The bounce for the chain: its beats per side from the division at the metronome's meter, and the session tempo. */
+	#bounceSettings() {
+		const division = PIANO_BOUNCE_DIVISIONS.find((d) => d.id === this.bounce.division);
+		const beats =
+			division?.beats ?? metronome.beatsPerBar * (this.bounce.division === "twoBars" ? 2 : 1);
+		return { ...this.bounce, beats, bpm: metronome.bpm };
+	}
+	/** The meters: the compressor's gain reduction (dB) and the bounce's position; zeros before the audio is open. */
+	meters(): { reduction: number; pan: number; threshold: number; ratio: number } {
+		return this.#fx?.meters() ?? { reduction: 0, pan: 0, threshold: 0, ratio: 1 };
 	}
 
 	#capture: MediaStreamAudioDestinationNode | null = null;
@@ -389,6 +420,7 @@ class PianoEngine {
 		const ctx = this.#ctx;
 		const hosted = this.#hosted;
 		this.#ctx = null;
+		this.#fx?.dispose();
 		this.#fx = null;
 		this.#hosted = false;
 		this.#voices.clear();
@@ -608,6 +640,20 @@ class PianoEngine {
 		this.#fx?.update({ tone: t });
 		this.#save();
 	}
+	/** The compressor: amount (0 is off), ratio, attack, release and make-up, any of them. */
+	setCompressor(patch: Partial<PianoCompressor>) {
+		const c = parseCompressor({ ...this.compressor, ...patch });
+		this.compressor = c;
+		this.#fx?.update({ compressor: c });
+		this.#save();
+	}
+	/** The stereo bounce: depth (0 is off), how often it switches, the glide and the stop in the centre, any of them. */
+	setBounce(patch: Partial<PianoBounce>) {
+		const b = parseBounce({ ...this.bounce, ...patch });
+		this.bounce = b;
+		this.#fx?.update({ bounce: this.#bounceSettings() });
+		this.#save();
+	}
 	/** The rotary speaker: off, slow or fast (the rotors glide between speeds). */
 	setRotary(speed: PianoRotary["speed"]) {
 		const r = { speed };
@@ -631,6 +677,8 @@ class PianoEngine {
 			wah: { ...this.wah },
 			rotary: { ...this.rotary },
 			tone: { ...this.tone },
+			compressor: { ...this.compressor },
+			bounce: { ...this.bounce },
 		};
 	}
 	/** A preset into the piano: the sound and every effect, through the setters so the chain ramps and the choices are remembered. */
@@ -646,6 +694,8 @@ class PianoEngine {
 		this.setWah(p.wah);
 		this.setRotary(p.rotary.speed);
 		this.setTone(p.tone);
+		this.setCompressor(p.compressor);
+		this.setBounce(p.bounce);
 	}
 
 	/** Every effect back to how the piano starts (the sound stays): the Effects menu's reset. */
@@ -662,6 +712,8 @@ class PianoEngine {
 			wah: { ...DEFAULT_PIANO_WAH },
 			rotary: { ...DEFAULT_PIANO_ROTARY },
 			tone: { ...DEFAULT_PIANO_TONE },
+			compressor: { ...DEFAULT_PIANO_COMPRESSOR },
+			bounce: { ...DEFAULT_PIANO_BOUNCE },
 		});
 	}
 

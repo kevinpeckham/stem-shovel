@@ -4,6 +4,8 @@ import {
 	PIANO_INSTRUMENT_IDS,
 	PIANO_OCTAVE_MAX,
 	PIANO_OCTAVE_MIN,
+	PIANO_BOUNCE_DIVISIONS,
+	type PianoBounceDivision,
 	type PianoInstrumentId,
 } from "$lib/constants/piano";
 
@@ -104,6 +106,41 @@ export interface PianoRotary {
 	speed: PianoRotarySpeed;
 }
 export const DEFAULT_PIANO_ROTARY: PianoRotary = { speed: "off" };
+export interface PianoCompressor {
+	/** How much is squeezed, 0 (off) to 1: the threshold comes down from 0 to -40 dB. */
+	amount: number;
+	/** The ratio above the threshold, 1 to 20. */
+	ratio: number;
+	/** Attack in seconds, 0.001 to 0.1. */
+	attack: number;
+	/** Release in seconds, 0.02 to 1. */
+	release: number;
+	/** Make-up gain in dB, 0 to 12. */
+	makeup: number;
+}
+export const DEFAULT_PIANO_COMPRESSOR: PianoCompressor = {
+	amount: 0,
+	ratio: 4,
+	attack: 0.01,
+	release: 0.2,
+	makeup: 0,
+};
+export interface PianoBounce {
+	/** How far the sound swings, 0 (off) to 1 (hard left and right). */
+	depth: number;
+	/** How often it switches sides, in the session tempo (constants/piano.ts, PIANO_BOUNCE_DIVISIONS). */
+	division: PianoBounceDivision;
+	/** How much of each step is spent moving, 0 (a jump) to 1 (always on the way). */
+	glide: number;
+	/** Stops in the centre on the way across (left, centre, right, centre). */
+	centre: boolean;
+}
+export const DEFAULT_PIANO_BOUNCE: PianoBounce = {
+	depth: 0,
+	division: "beat",
+	glide: 0.5,
+	centre: false,
+};
 
 export interface PianoPreferences {
 	instrument: PianoInstrumentId;
@@ -122,6 +159,8 @@ export interface PianoPreferences {
 	phaser: PianoPhaser;
 	rotary: PianoRotary;
 	tone: PianoTone;
+	compressor: PianoCompressor;
+	bounce: PianoBounce;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
 	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
@@ -145,6 +184,8 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	phaser: { ...DEFAULT_PIANO_PHASER },
 	rotary: { ...DEFAULT_PIANO_ROTARY },
 	tone: { ...DEFAULT_PIANO_TONE },
+	compressor: { ...DEFAULT_PIANO_COMPRESSOR },
+	bounce: { ...DEFAULT_PIANO_BOUNCE },
 	hires: false,
 	key: null,
 	degrees: false,
@@ -188,6 +229,8 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		phaser: parsePhaser(p.phaser),
 		rotary: parseRotary(p.rotary),
 		tone: parseTone(p.tone),
+		compressor: parseCompressor(p.compressor),
+		bounce: parseBounce(p.bounce),
 		hires: p.hires === true,
 		key: parseKey(p.key),
 		degrees: p.degrees === true,
@@ -265,6 +308,27 @@ function parsePhaser(json: unknown): PianoPhaser {
 	};
 }
 
+export function parseCompressor(json: unknown): PianoCompressor {
+	const c = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		amount: unit(c.amount, DEFAULT_PIANO_COMPRESSOR.amount),
+		ratio: within(c.ratio, 1, 20, DEFAULT_PIANO_COMPRESSOR.ratio),
+		attack: within(c.attack, 0.001, 0.1, DEFAULT_PIANO_COMPRESSOR.attack),
+		release: within(c.release, 0.02, 1, DEFAULT_PIANO_COMPRESSOR.release),
+		makeup: within(c.makeup, 0, 12, DEFAULT_PIANO_COMPRESSOR.makeup),
+	};
+}
+export function parseBounce(json: unknown): PianoBounce {
+	const b = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+	return {
+		depth: unit(b.depth, DEFAULT_PIANO_BOUNCE.depth),
+		division: PIANO_BOUNCE_DIVISIONS.some((d) => d.id === b.division)
+			? (b.division as PianoBounceDivision)
+			: DEFAULT_PIANO_BOUNCE.division,
+		glide: unit(b.glide, DEFAULT_PIANO_BOUNCE.glide),
+		centre: b.centre === true,
+	};
+}
 function parseRotary(json: unknown): PianoRotary {
 	const r = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
 	return {

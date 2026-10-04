@@ -30,6 +30,8 @@ describe("parsePianoPreferences", () => {
 			phaser: { mode: "phaser", rate: 0.5, depth: 0.7, mix: 0 },
 			rotary: { speed: "off" },
 			tone: { tilt: 0, air: 0, bottom: 0 },
+			compressor: { amount: 0, ratio: 4, attack: 0.01, release: 0.2, makeup: 0 },
+			bounce: { depth: 0, division: "beat", glide: 0.5, centre: false },
 		});
 		// The effects clamp to their ranges; an unknown tremolo shape and a non-boolean analog flag fall back.
 		expect(

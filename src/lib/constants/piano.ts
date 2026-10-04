@@ -33,6 +33,16 @@ export const PIANO_OCTAVE_MIN = 1;
 export const PIANO_OCTAVE_MAX = 6;
 export const DEFAULT_PIANO_OCTAVE = 3;
 
+/** How often the stereo bounce (docs/piano.md, "Effects") switches sides, in beats of the session tempo; null = a bar at the metronome's meter. */
+export const PIANO_BOUNCE_DIVISIONS = [
+	{ id: "eighth", label: "Every eighth", beats: 0.5 },
+	{ id: "beat", label: "Every beat", beats: 1 },
+	{ id: "two", label: "Every two beats", beats: 2 },
+	{ id: "bar", label: "Every bar", beats: null },
+	{ id: "twoBars", label: "Every two bars", beats: null },
+] as const;
+export type PianoBounceDivision = (typeof PIANO_BOUNCE_DIVISIONS)[number]["id"];
+
 /** Voices sounding at once; the oldest is let go beyond it. */
 export const PIANO_MAX_VOICES = 24;
 /** Saved presets an account keeps at most (docs/piano.md, "Presets"); they are a few hundred bytes each. */

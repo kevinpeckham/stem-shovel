@@ -84,6 +84,28 @@ export interface PianoToneSettings {
 export interface PianoRotarySettings {
 	speed: "off" | "slow" | "fast";
 }
+export interface PianoCompressorSettings {
+	/** 0 (off) to 1: the threshold from 0 down to -40 dB. */
+	amount: number;
+	ratio: number;
+	/** Seconds. */
+	attack: number;
+	release: number;
+	/** Make-up gain in dB. */
+	makeup: number;
+}
+/** The stereo bounce: the sound swung left and right in time with the session tempo (docs/piano.md, "Effects"). */
+export interface PianoBounceSettings {
+	/** 0 (off) to 1 (hard left and right). */
+	depth: number;
+	/** How many beats each side lasts. */
+	beats: number;
+	/** How much of each step is spent on the way, 0 (a jump) to 1. */
+	glide: number;
+	/** Stops in the centre between the sides. */
+	centre: boolean;
+	bpm: number;
+}
 export interface PianoFxSettings {
 	volume: number;
 	reverb: number;
@@ -96,6 +118,8 @@ export interface PianoFxSettings {
 	phaser: PianoPhaserSettings;
 	rotary: PianoRotarySettings;
 	tone: PianoToneSettings;
+	compressor: PianoCompressorSettings;
+	bounce: PianoBounceSettings;
 }
 
 export interface PianoFx {
@@ -106,6 +130,10 @@ export interface PianoFx {
 	update(patch: Partial<PianoFxSettings>): void;
 	/** A MIDI expression or mod pedal's position, 0 to 1, drives the wah in place of touch or sweep; null hands it back. */
 	wahPedal(position: number | null): void;
+	/** For the meters: the compressor's gain reduction in dB (0 or below) and where the bounce has the sound (-1 left to 1 right). */
+	meters(): { reduction: number; pan: number; threshold: number; ratio: number };
+	/** Stops the bounce's scheduler; call when the context is dropped. */
+	dispose(): void;
 }
 
 const RAMP = 0.02;
@@ -156,9 +184,34 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	tone.update(s.tone, 0);
 	const input = ctx.createGain();
 
+	// Compressor, first in the chain (Kevin: the bass wants it): the voices' sum squeezed before the
+	// effects colour it, with make-up gain after; amount 0 puts the threshold at 0 dB, above anything a voice reaches.
+	// At amount 0 the sound goes round the node instead (a crossfade): Chrome's compressor still
+	// reduces a few dB with the threshold at 0 and the ratio at 1:1, so a bypass is the only true off.
+	const comp = ctx.createDynamicsCompressor();
+	comp.knee.value = 6;
+	const makeup = ctx.createGain();
+	const compDry = ctx.createGain();
+	const compOut = ctx.createGain();
+	const applyCompressor = (c: PianoCompressorSettings, tau: number) => {
+		const on = c.amount > 0;
+		ramp(comp.threshold, -40 * c.amount, tau);
+		ramp(comp.ratio, c.ratio, tau);
+		comp.attack.value = c.attack;
+		comp.release.value = c.release;
+		ramp(makeup.gain, on ? Math.pow(10, c.makeup / 20) : 0, tau);
+		ramp(compDry.gain, on ? 0 : 1, tau);
+	};
+	applyCompressor(s.compressor, 0);
+	input.connect(comp);
+	comp.connect(makeup);
+	makeup.connect(compOut);
+	input.connect(compDry);
+	compDry.connect(compOut);
+
 	// Fuzz (fxStages.ts): a voice peaks near 0.3.
 	const fuzz = createFuzzStage(ctx, 0.3);
-	input.connect(fuzz.input);
+	compOut.connect(fuzz.input);
 	const fuzzOut = fuzz.output;
 	fuzz.update(s.fuzz.drive, s.fuzz.tone, 0);
 
@@ -309,9 +362,65 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	};
 	applyRotary(s.rotary, 0);
 
+	// The stereo bounce: a panner after the rotary, before the sends (so the room hears the sound move),
+	// its pan written ahead on the clock in steps of the session tempo: left, right (and the centre
+	// between, when asked), each step a jump or a glide of up to the whole step. Live, a timer keeps
+	// a second scheduled; offline, the whole render is written at once.
+	const bounce = ctx.createStereoPanner();
+	rotaryOut.connect(bounce);
+	let bounceOrigin = ctx.currentTime;
+	let bounceUntil = ctx.currentTime;
+	let bounceTimer: ReturnType<typeof setInterval> | null = null;
+	/** The last target written, so each step glides from where the sound is (and a change of settings from wherever it was). */
+	let bounceLast = 0;
+	const bounceStep = () => (60 / Math.max(1, s.bounce.bpm)) * s.bounce.beats;
+	const bounceTargets = () => {
+		const d = s.bounce.depth;
+		return s.bounce.centre ? [-d, 0, d, 0] : [-d, d];
+	};
+	const scheduleBounce = (until: number) => {
+		const step = bounceStep();
+		const targets = bounceTargets();
+		let k = Math.max(0, Math.ceil((bounceUntil - bounceOrigin) / step - 1e-6));
+		while (bounceOrigin + k * step < until) {
+			const at = bounceOrigin + k * step;
+			const target = targets[k % targets.length]!;
+			const glide = Math.max(0.005, s.bounce.glide * step);
+			bounce.pan.setValueAtTime(bounceLast, at);
+			bounce.pan.linearRampToValueAtTime(target, at + glide);
+			bounceLast = target;
+			k += 1;
+		}
+		bounceUntil = Math.max(bounceUntil, until);
+	};
+	const live = typeof AudioContext !== "undefined" && ctx instanceof AudioContext;
+	const applyBounce = () => {
+		const now = ctx.currentTime;
+		bounce.pan.cancelScheduledValues(now);
+		if (s.bounce.depth <= 0) {
+			bounce.pan.setTargetAtTime(0, now, RAMP);
+			if (bounceTimer) clearInterval(bounceTimer);
+			bounceTimer = null;
+			return;
+		}
+		// The pattern keeps its phase through a change: the next step comes where it would have.
+		const step = bounceStep();
+		if (now - bounceOrigin > step * 64 || bounceUntil <= now) bounceOrigin = now;
+		bounceUntil = now;
+		bounceLast = bounce.pan.value;
+		bounce.pan.setValueAtTime(bounceLast, now);
+		if (live) {
+			scheduleBounce(now + 1);
+			if (!bounceTimer) bounceTimer = setInterval(() => scheduleBounce(ctx.currentTime + 1), 250);
+		} else {
+			scheduleBounce(now + (ctx as OfflineAudioContext).length / ctx.sampleRate + 1);
+		}
+	};
+	if (s.bounce.depth > 0) applyBounce();
+
 	// The dry bus, and the two sends.
 	const dry = ctx.createGain();
-	rotaryOut.connect(dry);
+	bounce.connect(dry);
 	dry.connect(sum);
 
 	const convolver = ctx.createConvolver();
@@ -350,12 +459,36 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 		phaser: (p) => applyPhaser(p, RAMP),
 		rotary: (r) => applyRotary(r, RAMP),
 		tone: (t) => tone.update(t, RAMP),
+		compressor: (c) => applyCompressor(c, RAMP),
+		bounce: (b) => {
+			const was = s.bounce;
+			s.bounce = b;
+			// A new tempo, division or depth reschedules; the same settings again leave the pattern running.
+			if (
+				b.bpm !== was.bpm ||
+				b.beats !== was.beats ||
+				b.depth !== was.depth ||
+				b.glide !== was.glide ||
+				b.centre !== was.centre
+			)
+				applyBounce();
+		},
 	};
 
 	return {
 		input,
 		master,
 		wahPedal: (position) => wah.pedal(position),
+		meters: () => ({
+			reduction: comp.reduction,
+			pan: bounce.pan.value,
+			threshold: comp.threshold.value,
+			ratio: comp.ratio.value,
+		}),
+		dispose: () => {
+			if (bounceTimer) clearInterval(bounceTimer);
+			bounceTimer = null;
+		},
 		update(patch) {
 			for (const key of Object.keys(patch) as (keyof PianoFxSettings)[]) {
 				const value = patch[key];

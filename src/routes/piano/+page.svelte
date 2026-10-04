@@ -2,8 +2,13 @@
 	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import Piano from "$lib/components/Piano.svelte";
+	import { metronome } from "$lib/audio/metronome.svelte";
+	import { piano } from "$lib/audio/piano.svelte";
 
 	let { data } = $props();
+	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
+	if (import.meta.env.DEV && typeof window !== "undefined")
+		Object.assign(window, { __piano: piano, __metronome: metronome });
 </script>
 
 <svelte:head>

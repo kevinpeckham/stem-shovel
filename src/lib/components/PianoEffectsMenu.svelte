@@ -1,11 +1,30 @@
 <script lang="ts">
 	import { piano } from "$lib/audio/piano.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
+	import { PIANO_BOUNCE_DIVISIONS, type PianoBounceDivision } from "$lib/constants/piano";
+	import type { Attachment } from "svelte/attachments";
 
 	function reset() {
 		piano.resetEffects();
 		notify("Effects reset");
 	}
+	/** The compressor's gain-reduction meter and the bounce's position, read each frame while the menu is open. */
+	const meter: Attachment<HTMLElement> = (el) => {
+		let frame = 0;
+		const tick = () => {
+			const m = piano.meters();
+			const bar = el.querySelector<HTMLElement>("[data-reduction]");
+			// The node keeps metering while bypassed; the bar reads zero then.
+			if (bar)
+				bar.style.width =
+					piano.compressor.amount > 0 ? `${Math.min(100, (-m.reduction / 24) * 100)}%` : "0%";
+			const dot = el.querySelector<HTMLElement>("[data-pan]");
+			if (dot) dot.style.left = `calc(${((m.pan + 1) / 2) * 100}% - 4px)`;
+			frame = requestAnimationFrame(tick);
+		};
+		frame = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(frame);
+	};
 
 	/**
 	 * The piano engine's effects as sliders and switches (docs/piano.md,
@@ -17,7 +36,159 @@
 
 <div
 	class="px-3 pt-3 [&_span]-(block mb-2 text-blue-100/90) grid grid-cols-1 @xl-grid-cols-2 @4xl-grid-cols-3 gap-x-6 gap-y-4 mb-4"
+	{@attach meter}
 >
+	<div class="grid grid-cols-1 gap-y-3 content-start">
+		<div class="device-button-group-label !text-blue-100/90 !mb-0">Compressor</div>
+		<label class="block">
+			<span class="device-button-label">Amount · {Math.round(piano.compressor.amount * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.compressor.amount * 100)}
+				oninput={(e) => piano.setCompressor({ amount: Number(e.currentTarget.value) / 100 })}
+				aria-label="Compressor amount"
+			/>
+		</label>
+		<div
+			class="h-1.5 rounded bg-white/10 overflow-hidden"
+			title="Gain reduction, 0 to 24 dB"
+			aria-hidden="true"
+		>
+			<div
+				class="h-full bg-maximumYellow transition-[width] duration-75"
+				data-reduction
+				style="width:0%"
+			></div>
+		</div>
+		<label class="block">
+			<span class="device-button-label">Ratio · {piano.compressor.ratio}:1</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="1"
+				max="20"
+				step="1"
+				value={piano.compressor.ratio}
+				oninput={(e) => piano.setCompressor({ ratio: Number(e.currentTarget.value) })}
+				aria-label="Compressor ratio"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label"
+				>Attack · {Math.round(piano.compressor.attack * 1000)} ms</span
+			>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="1"
+				max="100"
+				step="1"
+				value={Math.round(piano.compressor.attack * 1000)}
+				oninput={(e) => piano.setCompressor({ attack: Number(e.currentTarget.value) / 1000 })}
+				aria-label="Compressor attack"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label"
+				>Release · {Math.round(piano.compressor.release * 1000)} ms</span
+			>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="20"
+				max="1000"
+				step="10"
+				value={Math.round(piano.compressor.release * 1000)}
+				oninput={(e) => piano.setCompressor({ release: Number(e.currentTarget.value) / 1000 })}
+				aria-label="Compressor release"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Make-up · +{piano.compressor.makeup} dB</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="12"
+				step="1"
+				value={piano.compressor.makeup}
+				oninput={(e) => piano.setCompressor({ makeup: Number(e.currentTarget.value) })}
+				aria-label="Compressor make-up gain"
+			/>
+		</label>
+	</div>
+	<div class="grid grid-cols-1 gap-y-3 content-start">
+		<div class="device-button-group-label !text-blue-100/90 !mb-0">Bounce</div>
+		<label class="block">
+			<span class="device-button-label">Depth · {Math.round(piano.bounce.depth * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.bounce.depth * 100)}
+				oninput={(e) => piano.setBounce({ depth: Number(e.currentTarget.value) / 100 })}
+				aria-label="Bounce depth"
+			/>
+		</label>
+		<div
+			class="relative h-1.5 rounded bg-white/10"
+			title="Where the sound is, left to right"
+			aria-hidden="true"
+		>
+			<div
+				class="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-maximumYellow"
+				data-pan
+				style="left:calc(50% - 4px)"
+			></div>
+		</div>
+		<label class="block">
+			<span class="device-button-label">Switches</span>
+			<select
+				class="device-field w-full"
+				value={piano.bounce.division}
+				onchange={(e) =>
+					piano.setBounce({ division: e.currentTarget.value as PianoBounceDivision })}
+				aria-label="Bounce rate"
+			>
+				{#each PIANO_BOUNCE_DIVISIONS as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
+			</select>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Glide · {Math.round(piano.bounce.glide * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.bounce.glide * 100)}
+				oninput={(e) => piano.setBounce({ glide: Number(e.currentTarget.value) / 100 })}
+				aria-label="Bounce glide"
+			/>
+		</label>
+		<div class="flex gap-2" role="group" aria-label="Bounce path">
+			<button
+				class="flex-1 device-button-xs border {!piano.bounce.centre ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={!piano.bounce.centre}
+				title="Left to right and back"
+				onclick={() => piano.setBounce({ centre: false })}>L R</button
+			>
+			<button
+				class="flex-1 device-button-xs border {piano.bounce.centre ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={piano.bounce.centre}
+				title="Left, centre, right, centre: a stop in the middle on the way"
+				onclick={() => piano.setBounce({ centre: true })}>L C R</button
+			>
+		</div>
+	</div>
 	<div class="grid grid-cols-1 gap-y-3 content-start">
 		<div class="device-button-group-label !text-blue-100/90 !mb-0">Reverb</div>
 		<label class="block">

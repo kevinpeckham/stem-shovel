@@ -260,8 +260,39 @@ same controls sit in the levels menu under an Effects heading.
   after the reverb and delay returns, so it shapes everything. `tone` in
   the preferences and the preset schema.
 
-Not built: a delay timed to a tempo (the piano has none; the recorder's
-metronome could lend one).
+- **Compressor** (2026-10-04, Kevin: the bass wanted it): first in the
+  chain, before the fuzz, a `DynamicsCompressorNode` with a 6 dB knee and
+  a make-up gain after it. Amount (0 = off) takes the threshold from 0 to
+  -40 dB; at 0 the sound goes round the node on a dry path (a 20 ms
+  crossfade), because Chrome's compressor still took a few dB off with the
+  threshold at 0 and the ratio at 1:1, so a bypass is the only true off
+  (the meter reads zero then); ratio 1 to 20,
+  attack 1 to 100 ms, release 20 ms to 1 s, make-up 0 to +12 dB (only
+  applied while the amount is up). The menu shows the gain reduction
+  (`fx.meters().reduction`) as a bar, read each frame by an attachment
+  while the menu is open. Measured on a three-note synth chord at full
+  velocity, ratio 8: 0 dB at amount 0, 13 dB at half, 30 dB at full.
+- **Bounce** (the same day): a `StereoPannerNode` after the rotary and
+  before the sends, so the room hears the sound move, its pan written
+  ahead on the context's clock in steps of the session tempo
+  (`metronome.bpm`, the piano listening for changes; `PIANO_BOUNCE_DIVISIONS`
+  in constants/piano.ts: an eighth, a beat, two beats, a bar or two bars at
+  the metronome's meter). Depth (0 = off) is how far it swings; the path is
+  left and right, or via the centre (left, centre, right, centre); glide is
+  how much of each step is spent on the way (0 a jump, with a 5 ms ramp
+  against clicks; 1 always moving, so via-the-centre at full glide is a
+  triangle through the middle rather than a stop). Each step glides from
+  the last target written, and a change of settings from wherever the
+  sound is, keeping the pattern's phase. Live, a 250 ms timer keeps a
+  second scheduled; offline, the whole render is written at once. The
+  menu shows where the sound is as a dot (`fx.meters().pan`). Not synced
+  to the metronome's own click phase (a different context): the rate is
+  the tempo's, the phase starts when the bounce is turned on or its step
+  changes. Both in the preferences and the preset schema (`compressor`,
+  `bounce`), `resetEffects` clears both.
+
+Not built: a delay timed to a tempo (the bounce shows the way: the
+session tempo through `metronome.listen`).
 
 ## Presets (built 2026-10-01)
 
