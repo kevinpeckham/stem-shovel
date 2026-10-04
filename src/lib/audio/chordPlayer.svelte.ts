@@ -195,6 +195,9 @@ class ChordPlayerEngine {
 		held: Map<string, { notes: number[]; velocity: number }>;
 		step: number;
 		base: number;
+		/** The chord as the screen names it, and whether its wedge was let go before it took over (with Latch on it still takes over, and then stays as the latched chord). */
+		chord?: SoundingChord;
+		released?: boolean;
 	} | null = null;
 	/** The step the running pattern counts from: the grid's origin, or the change point the current chord joined at. */
 	#arpBase = 0;
@@ -495,7 +498,8 @@ class ChordPlayerEngine {
 		for (const t of this.#timers.get(by) ?? []) clearTimeout(t);
 		this.#timers.delete(by);
 		const rest = this.sounding.filter((s) => s.by !== by);
-		if (this.#arpHeld.has(by)) {
+		if (this.#arpHeld.has(by) || this.#arpPending?.held.has(by)) {
+			// A pending chord's release went unseen before (Kevin: the chord took over with no holder, and the screen stayed blank).
 			this.#arpRelease(by, held);
 		} else if (this.#autoHeld.has(by)) {
 			this.#autoRelease(by, held);
@@ -565,8 +569,13 @@ class ChordPlayerEngine {
 		this.#arpRestart();
 	}
 	#arpRelease(by: string, chord?: SoundingChord) {
-		// A chord let go before it took over: the change is off, the old chord runs on.
+		// A chord let go before it took over: with Latch on it still takes over at its step and stays, as a latched chord (Kevin: a quick tap near the bar line vanished); otherwise the change is off, the old chord runs on.
 		if (this.#arpPending?.held.has(by)) {
+			if (this.arpLatch) {
+				this.#arpPending.released = true;
+				this.#arpPending.chord = chord;
+				return;
+			}
 			this.#arpPending = null;
 			if (this.#arpHeld.size === 0 && !this.#arpLatched) this.#arpStop();
 			return;
@@ -660,11 +669,19 @@ class ChordPlayerEngine {
 		while (this.#arpOrigin + this.#arpIndex * step < until) {
 			// A pending chord takes over from its step on.
 			if (this.#arpPending && this.#arpIndex >= this.#arpPending.step) {
-				this.#arpHeld = this.#arpPending.held;
+				const pending = this.#arpPending;
+				this.#arpHeld = pending.held;
 				this.#arpLatched = null;
 				this.latchedChord = null;
-				this.#arpBase = this.#arpPending.base;
+				this.#arpBase = pending.base;
 				this.#arpPending = null;
+				if (pending.released) {
+					// Its wedge went up before now: it is the latched chord from here, and the screen names it.
+					const [first] = pending.held.values();
+					this.#arpHeld = new Map();
+					this.#arpLatched = first ?? null;
+					this.latchedChord = pending.chord ?? null;
+				}
 				seq = this.#arpSequence();
 			}
 			if (seq.length === 0) {

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A chord tapped near the bar line with the arpeggiator latched** now takes over at the change point and the readout names it (Kevin: it sometimes stayed blank). A chord let go before its change point was never reported to the arpeggiator, so it took over with no holder: with Latch on it is now the latched chord from its change point; with Latch off the change is cancelled and the old chord runs on, or the pattern stops when nothing is held.
+
 ## [0.99.0] - 2026-10-04
 
 ### Changed
