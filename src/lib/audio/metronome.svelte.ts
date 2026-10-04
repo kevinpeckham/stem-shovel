@@ -17,6 +17,8 @@ import { startLookahead } from "./lookahead";
 class MetronomeEngine {
 	bpm = $state(120);
 	beatsPerBar = $state(4);
+	/** The session swing (docs/audio-engine.md, "One tempo for the page"), 0 straight to 1 a triplet feel: the drums and the chord player follow it and set it; the click itself stays straight. */
+	swing = $state(0);
 	running = $state(false);
 	/** The beat sounding now, 0-based, for an indicator; -1 between runs. */
 	beat = $state(-1);
@@ -28,7 +30,7 @@ class MetronomeEngine {
 	#visualTimers: ReturnType<typeof setTimeout>[] = [];
 	#taps: number[] = [];
 	#loaded = false;
-	/** Who follows the tempo (the drum machine), told on every change (docs/audio-engine.md, "One tempo for the page"). */
+	/** Who follows the tempo and the swing (the drum machine, the chord player), told on every change of either (docs/audio-engine.md, "One tempo for the page"). */
 	#followers = new Set<() => void>();
 	listen(fn: () => void): () => void {
 		this.#followers.add(fn);
@@ -42,9 +44,18 @@ class MetronomeEngine {
 		const p = loadMetronomePreferences();
 		this.bpm = p.bpm;
 		this.beatsPerBar = p.beatsPerBar;
+		this.swing = p.swing;
 	}
 	#save() {
-		saveMetronomePreferences({ bpm: this.bpm, beatsPerBar: this.beatsPerBar });
+		saveMetronomePreferences({ bpm: this.bpm, beatsPerBar: this.beatsPerBar, swing: this.swing });
+	}
+	setSwing(v: number) {
+		if (!Number.isFinite(v)) return;
+		const swing = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		if (swing === this.swing) return;
+		this.swing = swing;
+		this.#save();
+		for (const fn of this.#followers) fn();
 	}
 
 	#click(at: number, accent: boolean) {

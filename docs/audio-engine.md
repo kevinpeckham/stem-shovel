@@ -255,6 +255,15 @@ chordPlayer.tempoRatio` (the Tempo select in its menu; presets and demo
 - The metronome and the drums still never play together (starting one
   stops the other); a drum machine not following takes the metronome's
   tempo then, as before.
+- **Swing too** (Kevin, 2026-10-04: recording in the looper or the
+  recorder wanted the drums and the chord player swinging together):
+  `metronome.swing` is the session swing (in the preferences; the click
+  itself stays straight), told to the same followers. The drum machine
+  following keeps `project.swing` at it, its slider sets it, and a beat
+  that arrives adopts its swing into the session with its tempo; the chord
+  player's one swing is simply the session's (set from its arpeggiator or
+  strum menu, kept by the metronome rather than its own key), so a preset
+  or demo with a swing moves the drums' too while they follow.
 
 ## iOS and the ring/silent switch
 

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **One swing for the page** (Kevin: recording in the looper or the recorder wanted the drums and the chord player swinging together): `metronome.swing` is the session swing beside the tempo, remembered with it; the drum machine following keeps its beat's swing at it and its slider sets it, a loaded beat adopts its swing into the session, and the chord player's swing is the session's, set from its arpeggiator or strum menu. The drums' follow switch reads "Follows the session tempo and swing".
+
 ## [0.98.1] - 2026-10-04
 
 ### Fixed

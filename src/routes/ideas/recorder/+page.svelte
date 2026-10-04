@@ -89,6 +89,7 @@
 			__piano: piano,
 			__drums: drumMachine,
 			__metronome: metronome,
+			__chords: chordPlayer,
 		});
 	/** The idea in the recorder and the notes panel; null = a new idea not yet saved. */
 	let ideaId = $state<string | null>(null);

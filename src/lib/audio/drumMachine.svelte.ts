@@ -147,6 +147,7 @@ class DrumMachineEngine {
 		metronome.listen(() => {
 			if (!this.followTempo) return;
 			this.project.bpm = this.bpm;
+			this.project.swing = metronome.swing;
 			this.#save();
 			this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 		});
@@ -515,7 +516,9 @@ class DrumMachineEngine {
 	}
 	/** A beat that arrived with its own tempo (the remembered project, a preset, a saved beat, a song's) sets the session's while following, so the rest of the page falls in with it. */
 	#adoptTempo() {
-		if (this.followTempo) metronome.setBpm(Math.round(this.project.bpm / this.tempoRatio));
+		if (!this.followTempo) return;
+		metronome.setBpm(Math.round(this.project.bpm / this.tempoRatio));
+		metronome.setSwing(this.project.swing);
 	}
 	/** The master volume, 0 to 1 (docs/drum-machine.md, "Master volume"). */
 	setVolume(v: number) {
@@ -567,9 +570,11 @@ class DrumMachineEngine {
 		const bpm = tapTempo(this.#taps);
 		if (bpm) this.setBpm(bpm);
 	}
+	/** The swing from the drums' own slider: the beat's, and, while following, the session's (the chord player's too). */
 	setSwing(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.project.swing = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		if (this.followTempo) metronome.setSwing(this.project.swing);
 		this.#save();
 	}
 	setSwingGrid(grid: DrumSwingGrid) {

@@ -1944,7 +1944,7 @@
 				checked={drumMachine.followTempo}
 				onchange={(e) => drumMachine.setFollowTempo(e.currentTarget.checked)}
 			/>
-			Follows the session tempo
+			Follows the session tempo and swing
 		</label>
 		{#if drumMachine.followTempo}
 			<select

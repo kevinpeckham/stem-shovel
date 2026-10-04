@@ -258,8 +258,10 @@ class ChordPlayerEngine {
 			this.strumPattern = strumPattern as AutoStrumPatternId;
 		if (read("auto-strum-speed") === "16") this.strumSpeed = "16";
 		this.strumLatch = read("auto-strum-latch") === "1";
-		const swing = Number(read("swing") ?? read("arp-swing"));
-		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.swing = swing;
+		// The swing is the session's (docs/audio-engine.md, "One tempo for the page"): the drums and the chord player share it on a page.
+		metronome.load();
+		this.swing = metronome.swing;
+		metronome.listen(() => (this.swing = metronome.swing));
 		const readout = read("note-readout");
 		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
 			this.noteReadout = readout;
@@ -734,7 +736,7 @@ class ChordPlayerEngine {
 	}
 	setSwing(v: number) {
 		this.swing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
-		write("swing", String(this.swing));
+		metronome.setSwing(this.swing);
 	}
 	setArpOnBeat(on: boolean) {
 		this.arpOnBeat = on;

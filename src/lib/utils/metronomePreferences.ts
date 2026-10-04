@@ -1,15 +1,17 @@
 import { BPM_MAX, BPM_MIN } from "./tapTempo";
 
-/** The metronome's choices, remembered per browser: tempo and beats to the bar. */
+/** The metronome's choices, remembered per browser: tempo, beats to the bar and the session swing (docs/audio-engine.md, "One tempo for the page"). */
 const KEY = "stemshovel.metronome";
 
 export interface MetronomePreferences {
 	bpm: number;
 	beatsPerBar: number;
+	/** 0 straight to 1 a triplet feel; the drums and the chord player follow it. */
+	swing: number;
 }
 
 export const BEATS_PER_BAR = [2, 3, 4, 6] as const;
-const DEFAULT_METRONOME_PREFERENCES: MetronomePreferences = { bpm: 120, beatsPerBar: 4 };
+const DEFAULT_METRONOME_PREFERENCES: MetronomePreferences = { bpm: 120, beatsPerBar: 4, swing: 0 };
 
 export function loadMetronomePreferences(): MetronomePreferences {
 	try {
@@ -23,7 +25,11 @@ export function loadMetronomePreferences(): MetronomePreferences {
 		const beatsPerBar = (BEATS_PER_BAR as readonly number[]).includes(p.beatsPerBar as number)
 			? (p.beatsPerBar as number)
 			: DEFAULT_METRONOME_PREFERENCES.beatsPerBar;
-		return { bpm, beatsPerBar };
+		const swing =
+			typeof p.swing === "number" && Number.isFinite(p.swing)
+				? Math.min(1, Math.max(0, Math.round(p.swing * 100) / 100))
+				: 0;
+		return { bpm, beatsPerBar, swing };
 	} catch {
 		return { ...DEFAULT_METRONOME_PREFERENCES };
 	}
