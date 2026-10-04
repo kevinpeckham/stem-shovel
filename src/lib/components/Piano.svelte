@@ -689,8 +689,8 @@
 				grid
 				grid-cols-[auto_1fr_auto_auto]
 				place-content-start
-				@2xl-grid-cols-[auto_auto_auto_auto_1fr]
-				@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_1fr]
+				@2xl-grid-cols-[auto_auto_auto_auto_auto_1fr]
+				@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]
 				@2xl-gap-3"
 		>
 			<!-- power -->
@@ -1176,6 +1176,39 @@
 		</button>
 	{/snippet}
 	{#snippet arpMenuBlock()}
+		<!-- The key (Kevin: where to set it for the chords a single key plays), the same choice as the Key button's, lighting the scale on the keys too. -->
+		<div class="px-3 pt-3 grid gap-3 text-blue-100/90 text-14px">
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<span class="block mb-2">Key</span>
+					<ComboBox
+						ariaLabel="Key"
+						clearDefaultButtonClasses={true}
+						buttonClasses="w-full border"
+						popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+						options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
+						value={piano.key ? String(piano.key.root) : "none"}
+						onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
+					/>
+				</div>
+				<div>
+					<span class="block mb-2">Scale</span>
+					<ComboBox
+						ariaLabel="Scale"
+						clearDefaultButtonClasses={true}
+						buttonClasses="w-full border"
+						popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+						options={MODE_OPTIONS}
+						value={piano.key?.mode ?? "major"}
+						onchange={(v) => setKeyMode(v as ScaleModeId)}
+					/>
+				</div>
+			</div>
+			<span class="block text-12px opacity-70 -mt-1"
+				>The key a single held key's chord comes from; it lights the scale on the keyboard too, as
+				the Key button does. None: the white keys are C major's.</span
+			>
+		</div>
 		<ArpeggiatorMenu
 			arp={piano.arpeggiator}
 			intro="Held keys play one at a time, at the session tempo: a chord built up a key at a time joins the pattern as it grows."

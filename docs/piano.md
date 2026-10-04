@@ -444,10 +444,13 @@ shared `ArpeggiatorMenu.svelte`), a section in the phone's menu, "arp"
 on the screen. **A single key plays as a chord** (Kevin's trick the
 chord player has no need of): the piano gives its arpeggiator an
 `expand` (`utils/chordFromKey.ts`, tested: the triad on that degree of the
-lit key, thirds stacked up the scale, a major triad outside it or with no
-key), and `guess` (on by default, `arp-guess` in the preferences, in
+lit key, thirds stacked up the scale, C major's chords with no key lit
+since every key came up major otherwise (Kevin), a major triad outside the
+scale), and `guess` (on by default, `arp-guess` in the preferences, in
 presets) makes one note held alone play as that chord in `#sequence`;
-two or more keys play as held.
+two or more keys play as held. The piano's `arpMenuBlock` puts the key
+and scale ComboBoxes (the Key button's) above the shared menu, since the
+chord a key plays depends on them (Kevin).
 
 ## The bass and the guitar (2026-10-03, 2026-10-04)
 

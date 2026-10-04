@@ -131,8 +131,8 @@
 			</label>
 			<span class="block text-12px opacity-70 -mt-2"
 				>One key held alone becomes the triad on its degree of the key lit on the keyboard (so the
-				second degree of C major is D minor), or a major triad with no key lit; two or more keys
-				play as held.</span
+				second degree of C major is D minor); with no key lit the white keys play C major's chords
+				and the black keys major triads. Two or more keys play as held.</span
 			>
 		{/if}
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">

@@ -9,8 +9,13 @@ describe("chordFromKey", () => {
 		expect(chordFromKey(71, c)).toEqual([71, 74, 77]);
 		expect(chordFromKey(67, c)).toEqual([67, 71, 74]);
 	});
-	it("gives a note outside the scale, or with no key, a major triad", () => {
+	it("gives a note outside the scale a major triad", () => {
 		expect(chordFromKey(61, { root: 0, mode: "major" })).toEqual([61, 65, 68]);
-		expect(chordFromKey(69, null)).toEqual([69, 73, 76]);
+		expect(chordFromKey(70, { root: 0, mode: "major" })).toEqual([70, 74, 77]);
+	});
+	it("treats the white keys as C major with no key lit, the black keys as major", () => {
+		expect(chordFromKey(69, null)).toEqual([69, 72, 76]);
+		expect(chordFromKey(71, null)).toEqual([71, 74, 77]);
+		expect(chordFromKey(66, null)).toEqual([66, 70, 73]);
 	});
 });
