@@ -30,6 +30,35 @@ the piano's engine.
 
 ## What already exists here
 
+- **Strum mode and Stop** (2026-10-04, Kevin): the separate auto-strum is
+  gone; the strum itself is the mode. With `strum !== "off"` a press goes
+  through `#autoHold`, whose first slot is the press's strum, so a tap
+  strums once and a hold runs `strumPattern` (`constants/autoStrum.ts`,
+  now with "once", the plain strum, whose scheduler stops after slot 0);
+  `strumDirection` turns the pattern's strokes over (up) or alternates
+  each time through; `strumLatch` (the Strum button's double click, a
+  padlock icon) keeps a pattern after release, as the arpeggiator's latch
+  does; `setStrum("off")` ends a running pattern, held chords ringing on.
+  Presets keep the `autoStrum` key (pattern, speed, latch, swing; an old
+  `on` is ignored) and demo setups say `strumPattern`/`strumSpeed`. Stop:
+  `chordPlayer.autoPlaying` (a latched chord) or the pad playing lights a
+  round Stop button in the box's free left corner (bottom on the arch,
+  top on the bowl; on a phone beside the 7 pad while needed), disabled
+  otherwise; it and Escape run `stopAll` (sustain lock and pedal off, every
+  chord and pattern off, the pad stopped).
+- **Share links** (2026-10-04, Kevin: as the drum machine's): the Share
+  button beside UI (a Share section in the phone's wrench menu) copies
+  `/chord-player#<payload>` and puts it in the address bar; the payload is
+  `ChordShareSchema` (val/ChordShareSchema.ts: the piano preset data, the
+  chord preset settings, the circle's look and key as `chordPlayer.uiSettings`,
+  the session tempo) as JSON with every default dropped, base64url
+  (`utils/encodeChordShare.ts`, `decodeChordShare.ts`, tested); decoding
+  parses it through the schema, which puts the defaults back and refuses
+  anything else. The page's `onMount` reads the hash and applies it over
+  what the browser remembered (`chordPiano.applyPreset`,
+  `chordPlayer.applyPresetSettings`, `applyUiSettings`, `metronome.setBpm`),
+  with a notification; a hash that is not a link says so. Progressions and
+  presets are not in a link.
 - **Its own engine** (2026-10-04, Kevin: the home page's piano demo changed
   the chord demo's sound): `chordPiano`, a second `PianoEngine` with its own
   preferences key (`stemshovel.chord-piano`), is what the chord player, the

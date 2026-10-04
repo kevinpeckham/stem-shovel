@@ -8,8 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Share links for the chord player** (Kevin: as the drum machine's): Share, beside UI at desktop and a section of the phone's wrench menu, copies `/chord-player#<payload>` carrying the sound and effects, the chord settings, the circle's look and key and the session tempo (`val/ChordShareSchema.ts`, `utils/encodeChordShare.ts` with the defaults dropped, `decodeChordShare.ts` parsing through the schema); the page applies a link over the remembered settings and says so.
+
 ### Changed
 
+- **Strum is the mode** (Kevin): the separate auto-strum switch is gone. With the strum on, a press strums the chord and holding the wedge strums it in the pattern at the session tempo (a new "Once" pattern keeps to the press); the direction turns the pattern's strokes over or alternates each time through; a double click on the Strum button latches the pattern (a padlock icon), as the Arp button's does; switching the strum off ends a running pattern. Presets keep the pattern, speed, latch and swing; demo setups name a pattern.
+- **A Stop button on the chord player**: a round button in the box's free left corner (beside the 7 pad on a phone), lit only while something plays on its own, a latched arpeggio or strum pattern or the pad, and greyed otherwise; it and Escape stop everything, the pad included.
 - **The chord player has a piano engine of its own** (Kevin: the home page's piano demo changed the chord demo's sound): `chordPiano`, a second `PianoEngine` instance with its own preferences key, drives the chord player, the pad, the device and its Effects menu (`PianoEffectsMenu` takes an `engine` prop); the looper hosts and taps it as its own source and the recorder captures it under `chords`, so the piano and the chords can both be in a take. Sounds and effects set on the chord player before this start from the defaults once.
 
 ## [0.97.0] - 2026-10-04

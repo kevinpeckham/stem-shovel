@@ -209,12 +209,8 @@ class ProgressionPad {
 			if (s.arp.ratio !== undefined) chordPlayer.setTempoRatio(s.arp.ratio);
 			if (s.arp.on !== chordPlayer.arp) chordPlayer.setArp(s.arp.on);
 		}
-		if (s.autoStrum) {
-			if (s.autoStrum.pattern) chordPlayer.setAutoStrumPattern(s.autoStrum.pattern);
-			if (s.autoStrum.speed) chordPlayer.setAutoStrumSpeed(s.autoStrum.speed);
-			if (s.autoStrum.latch !== undefined) chordPlayer.setAutoStrumLatch(s.autoStrum.latch);
-			if (s.autoStrum.on !== chordPlayer.autoStrum) chordPlayer.setAutoStrum(s.autoStrum.on);
-		} else if (s.arp?.on && chordPlayer.autoStrum) chordPlayer.setAutoStrum(false);
+		if (s.strumPattern) chordPlayer.setStrumPattern(s.strumPattern);
+		if (s.strumSpeed) chordPlayer.setStrumSpeed(s.strumSpeed);
 		if (s.sustain !== undefined) chordPiano.setSustain(s.sustain);
 		if (s.effects) {
 			if (s.effects.reverb !== undefined) chordPiano.setReverb(s.effects.reverb);

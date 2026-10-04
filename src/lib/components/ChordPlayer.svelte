@@ -42,6 +42,7 @@
 	import ChordStyleEditor from "$lib/components/ChordStyleEditor.svelte";
 	import { deleteChordStyle, saveChordStyle } from "$lib/remote/chordStyles.remote";
 	import { notify } from "$lib/state/notifications.svelte";
+	import { encodeChordShare } from "$lib/utils/encodeChordShare";
 	import { builtinStyleData } from "$lib/utils/builtinStyleData";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
@@ -287,18 +288,48 @@
 	function seventhUp() {
 		chordPlayer.seventhHeld = false;
 	}
-	/** The Strum button: a click toggles the strum; a double click (or tap) switches the auto-strum on or off (Kevin), the pattern that keeps strumming a held chord. */
+	/** A share link (docs/chord-player.md, "Share links"): the sound and effects, the chord settings, the circle's look and key and the tempo, in the page's hash; copied, and put in the address bar. */
+	function shareUrl(): string {
+		const payload = encodeChordShare({
+			v: 1,
+			piano: chordPiano.currentPreset(),
+			chords: $state.snapshot(chordPlayer.presetSettings),
+			ui: chordPlayer.uiSettings,
+			bpm: metronome.bpm,
+		});
+		return `${window.location.origin}/chord-player#${payload}`;
+	}
+	async function copyLink() {
+		const url = shareUrl();
+		if (window.location.pathname === "/chord-player") history.replaceState(null, "", url);
+		try {
+			await navigator.clipboard.writeText(url);
+			notify("Link copied");
+		} catch {
+			notify("Could not copy the link", { kind: "error" });
+		}
+	}
+	/** The Strum button: a click toggles the strum; a double click (or tap) latches the pattern, or unlatches it (Kevin), as the Arp button's does. */
 	let strumTapAt = 0;
 	function strumClick() {
 		const now = performance.now();
 		if (now - strumTapAt < 400) {
 			strumTapAt = 0;
-			chordPlayer.toggleStrum();
-			chordPlayer.setAutoStrum(!chordPlayer.autoStrum);
+			chordPlayer.setStrumLatch(!chordPlayer.strumLatch);
+			if (chordPlayer.strum === "off") chordPlayer.toggleStrum();
 			return;
 		}
 		strumTapAt = now;
 		chordPlayer.toggleStrum();
+	}
+	/** Something plays on its own (a latched arpeggio or strum, the pad): the Stop button lights (docs/chord-player.md, "Stop"). */
+	const autoPlaying = $derived(chordPlayer.autoPlaying || (pad && progressionPad.playing));
+	/** Everything off, as Escape: the sustain lock and pedal, every chord and pattern, the pad's playback. */
+	function stopAll() {
+		sustainUnlock();
+		chordPiano.setSustain(false);
+		chordPlayer.allOff();
+		if (pad) progressionPad.stop();
 	}
 	/** The Arp button: a click toggles the arpeggiator; a double click (or tap) latches it on, or unlatches it (Kevin), like the sustain pad. */
 	let arpTapAt = 0;
@@ -348,9 +379,7 @@
 			return;
 		}
 		if (e.code === "Escape") {
-			sustainUnlock();
-			chordPiano.setSustain(false);
-			chordPlayer.allOff();
+			stopAll();
 			return;
 		}
 		// The arrow keys turn the key a fifth either way, as the Key buttons do (Kevin).
@@ -427,8 +456,8 @@
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
 					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
 					<span>· octave {chordPlayer.octave}</span>
-					{#if chordPlayer.autoStrum && !chordPlayer.arp}<span class="text-accent"
-							>· auto-strum</span
+					{#if chordPlayer.strum !== "off" && !chordPlayer.arp}<span class="text-accent"
+							>· strum{chordPlayer.strumLatch ? " (latched)" : ""}</span
 						>{/if}
 					{#if chordPlayer.arp}<span class="text-accent"
 							>· arp{chordPlayer.tempoRatio === 1
@@ -672,6 +701,7 @@
 						{ id: "ui-block", kind: "snippet", snippet: circleMenuBlock },
 					]}
 				/>
+				{@render shareButton()}
 			</div>
 		</div>
 		<div class="hidden @xl-block @xl-ml-auto @xl-w-36">
@@ -731,6 +761,21 @@
 		<!-- The octave, a small button above each pad at the device's edge (Kevin): down on the left, up on the right; the arrow keys do the same. -->
 		{@render octaveButton("left-0", -1)}
 		{@render octaveButton("right-0", 1)}
+		<!-- Stop (Kevin): in the box's free left corner, lit only while something plays on its own (a latched arpeggio or strum, the pad); Esc does the same. -->
+		<button
+			class="hidden @xl-flex absolute left-0 {chordPlayer.drawnLayout === 'arch-down'
+				? 'top-2'
+				: 'bottom-2'} z-10 w-12 h-12 rounded-full device-button-sm !min-w-0 !px-0 items-center justify-center text-18px disabled:opacity-35 {autoPlaying
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-label="Stop"
+			title="Stop what plays on its own: a latched arpeggio or strum, the pad (or press Esc)"
+			disabled={!autoPlaying}
+			onclick={stopAll}
+		>
+			<span class="i-ph-stop-fill" aria-hidden="true"></span>
+		</button>
 		<CircleOfFifths
 			class={chordPlayer.layout === "arch" ? "w-full" : "w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"}
 			positions={chordPlayer.positions}
@@ -802,6 +847,17 @@
 	>
 		<span class={sustainLocked ? "i-ph-lock-simple-fill" : "i-ph-waves"} aria-hidden="true"></span>
 	</button>
+	{#if autoPlaying}
+		<button
+			class="@xl-hidden absolute left-35 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px text-accent touch-none"
+			type="button"
+			aria-label="Stop"
+			title="Stop what plays on its own"
+			onclick={stopAll}
+		>
+			<span class="i-ph-stop-fill" aria-hidden="true"></span>
+		</button>
+	{/if}
 	<button
 		class="@xl-hidden absolute left-19 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
 			? 'text-accent'
@@ -1041,6 +1097,7 @@
 		{@render section("Chords", chordsMenuBlock)}
 		{@render section("UI", circleMenuBlock)}
 		{@render section("Effects", effectsMenuBlock)}
+		{@render section("Share", shareBlock)}
 	</div>
 {/snippet}
 
@@ -1101,26 +1158,47 @@
 
 {#snippet strumButton(classes: string)}
 	<button
-		class="device-button-sm px-3 {classes} {chordPlayer.strum !== 'off' || chordPlayer.autoStrum
-			? 'text-accent'
-			: ''}"
+		class="device-button-sm px-3 {classes} {chordPlayer.strum !== 'off' ? 'text-accent' : ''}"
 		type="button"
 		aria-pressed={chordPlayer.strum !== "off"}
 		title={(chordPlayer.strum !== "off"
-			? "Strum on: the notes of a chord a few milliseconds apart; click to play them together"
-			: "Strum: the notes of a chord a few milliseconds apart, as a hand plays them") +
-			(chordPlayer.autoStrum
-				? "; auto-strum on (double-click to switch it off)"
-				: "; double-click for the auto-strum, a held chord strummed in a pattern at the tempo")}
+			? "Strum on: a press strums the chord, holding the wedge strums it in the pattern at the tempo; click to play the notes together"
+			: "Strum: a press strums the chord as a hand would, holding the wedge strums it in a pattern at the tempo") +
+			(chordPlayer.strumLatch
+				? "; latched (double-click to unlatch)"
+				: "; double-click to latch the pattern on")}
 		aria-label="Strum"
 		onclick={strumClick}
 	>
 		<span
-			class={chordPlayer.autoStrum ? "i-ph-lock-simple-fill" : "i-ph-hand-waving"}
+			class={chordPlayer.strumLatch ? "i-ph-lock-simple-fill" : "i-ph-hand-waving"}
 			aria-hidden="true"
 		></span>
 		Strum
 	</button>
+{/snippet}
+
+{#snippet shareButton()}
+	<button
+		class="device-button-sm px-3"
+		type="button"
+		title="Copy a link that opens the chord player with these settings: the sound and effects, the style, voicing, strum and arpeggiator, the circle's look and key, and the tempo"
+		aria-label="Share"
+		onclick={copyLink}
+	>
+		<span class="i-ph-share-network" aria-hidden="true"></span>
+		Share
+	</button>
+{/snippet}
+
+{#snippet shareBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-3">
+		{@render shareButton()}
+		<p class="text-12px opacity-70">
+			A link that opens the chord player set up as it is now: the sound and effects, the style,
+			voicing, strum and arpeggiator, the circle's look and key, and the tempo.
+		</p>
+	</div>
 {/snippet}
 
 {#snippet strumSection()}
@@ -1158,26 +1236,17 @@
 			</select>
 		</label>
 		<div class="grid gap-3 border-t border-white/10 pt-3">
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.autoStrum}
-					onchange={(e) => chordPlayer.setAutoStrum(e.currentTarget.checked)}
-				/>
-				Auto-strum: a held chord strummed in a pattern at the tempo
-			</label>
-			<span class="block text-12px opacity-70 -mt-2"
-				>Double-click or double-tap the Strum button to switch it on and off. The arpeggiator takes
-				over while it is on.</span
+			<span class="block text-12px opacity-70"
+				>With the strum on, a press strums the chord; holding the wedge strums it again and again in
+				this pattern at the tempo (Once keeps to the press). The arpeggiator takes over while it is
+				on.</span
 			>
 			<label class="block">
 				<span class="device-button-label">Pattern</span>
 				<select
 					class="device-field w-full"
-					value={chordPlayer.autoStrumPattern}
-					onchange={(e) =>
-						chordPlayer.setAutoStrumPattern(e.currentTarget.value as AutoStrumPatternId)}
+					value={chordPlayer.strumPattern}
+					onchange={(e) => chordPlayer.setStrumPattern(e.currentTarget.value as AutoStrumPatternId)}
 				>
 					{#each AUTO_STRUM_PATTERNS as p (p.id)}<option value={p.id}>{p.label}</option>{/each}
 				</select>
@@ -1186,8 +1255,8 @@
 				<span class="device-button-label">Speed</span>
 				<select
 					class="device-field w-full"
-					value={chordPlayer.autoStrumSpeed}
-					onchange={(e) => chordPlayer.setAutoStrumSpeed(e.currentTarget.value as AutoStrumSpeed)}
+					value={chordPlayer.strumSpeed}
+					onchange={(e) => chordPlayer.setStrumSpeed(e.currentTarget.value as AutoStrumSpeed)}
 				>
 					{#each AUTO_STRUM_SPEEDS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
 				</select>
@@ -1197,18 +1266,16 @@
 				>
 			</label>
 			<label class="block">
-				<span class="device-button-label"
-					>Swing · {Math.round(chordPlayer.autoStrumSwing * 100)}%</span
-				>
+				<span class="device-button-label">Swing · {Math.round(chordPlayer.strumSwing * 100)}%</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
 					min="0"
 					max="100"
 					step="5"
-					value={Math.round(chordPlayer.autoStrumSwing * 100)}
-					aria-label="Auto-strum swing in percent"
-					oninput={(e) => chordPlayer.setAutoStrumSwing(Number(e.currentTarget.value) / 100)}
+					value={Math.round(chordPlayer.strumSwing * 100)}
+					aria-label="Strum swing in percent"
+					oninput={(e) => chordPlayer.setStrumSwing(Number(e.currentTarget.value) / 100)}
 				/>
 				<span class="block text-12px opacity-70 mt-1"
 					>Every second slot lands late, up to a triplet feel at full.</span
@@ -1218,10 +1285,11 @@
 				<input
 					type="checkbox"
 					class="accent-maximumYellow"
-					checked={chordPlayer.autoStrumLatch}
-					onchange={(e) => chordPlayer.setAutoStrumLatch(e.currentTarget.checked)}
+					checked={chordPlayer.strumLatch}
+					onchange={(e) => chordPlayer.setStrumLatch(e.currentTarget.checked)}
 				/>
-				Latch: the strumming keeps going after you let go, until the next chord or Esc
+				Latch: the pattern keeps going after you let go, until the next chord or Esc (double-click the
+				Strum button)
 			</label>
 		</div>
 		<label class="block">

@@ -121,10 +121,10 @@ export const ChordPresetSettingsSchema = v.object({
 	accent: v.optional(v.picklist(["none", "top", "bottom"])),
 	seventhType: v.optional(v.picklist(SEVENTH_TYPES.map((s) => s.id))),
 	velocity: v.optional(v.pipe(v.number(), v.minValue(0.2), v.maxValue(1))),
-	/** The auto-strum, on or off, its pattern, speed and latch; absent on presets saved before it existed. */
+	/** The strum pattern while a wedge is held, its speed, latch and swing (`on` is from before the strum itself switched it: ignored); absent on presets saved before it existed. */
 	autoStrum: v.optional(
 		v.object({
-			on: v.boolean(),
+			on: v.optional(v.boolean()),
 			pattern: v.picklist(AUTO_STRUM_PATTERNS.map((p) => p.id)),
 			speed: v.picklist(AUTO_STRUM_SPEEDS.map((s) => s.id)),
 			latch: v.boolean(),

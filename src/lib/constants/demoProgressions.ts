@@ -42,12 +42,9 @@ export interface DemoSetup {
 		swing?: number;
 		ratio?: TempoRatio;
 	};
-	autoStrum?: {
-		on: boolean;
-		pattern?: AutoStrumPatternId;
-		speed?: AutoStrumSpeed;
-		latch?: boolean;
-	};
+	/** The pattern a held wedge strums in while the strum is on (constants/autoStrum.ts); "once" is the plain strum. */
+	strumPattern?: AutoStrumPatternId;
+	strumSpeed?: AutoStrumSpeed;
 	keyCenter?: number;
 	octave?: number;
 	sustain?: boolean;
@@ -117,6 +114,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			voicing: "standard",
 			strum: "medium",
 			strumDirection: "down",
+			strumPattern: "once",
 			arp: { on: false },
 			keyCenter: 0,
 			octave: 4,
@@ -137,6 +135,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			voicing: "rich",
 			strum: "slow",
 			strumDirection: "down",
+			strumPattern: "once",
 			arp: { on: false },
 			keyCenter: 11,
 			octave: 4,
@@ -195,6 +194,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			voicing: "standard",
 			strum: "fast",
 			strumDirection: "alternate",
+			strumPattern: "once",
 			arp: { on: false },
 			keyCenter: 0,
 			octave: 3,
@@ -250,7 +250,8 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			strum: "slow",
 			strumDirection: "down",
 			arp: { on: false },
-			autoStrum: { on: true, pattern: "waltz", speed: "8" },
+			strumPattern: "waltz",
+			strumSpeed: "8",
 			keyCenter: 1,
 			octave: 3,
 			sustain: false,
@@ -289,6 +290,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			voicing: "standard",
 			strum: "slow",
 			strumDirection: "down",
+			strumPattern: "once",
 			arp: { on: false },
 			keyCenter: 0,
 			octave: 3,
@@ -310,7 +312,8 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			strum: "medium",
 			strumDirection: "alternate",
 			arp: { on: false },
-			autoStrum: { on: true, pattern: "folk", speed: "8" },
+			strumPattern: "folk",
+			strumSpeed: "8",
 			keyCenter: 2,
 			octave: 3,
 			sustain: false,

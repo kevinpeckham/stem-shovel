@@ -1,11 +1,13 @@
 /**
- * The chord player's auto-strum (docs/chord-player.md, "Strum"): a held
- * chord strummed again and again in a pattern at the session tempo.
+ * The chord player's strum patterns (docs/chord-player.md, "Strum"): with
+ * the strum on, a press strums the chord and holding it strums again and
+ * again in a pattern at the session tempo ("Once" strums on the press alone).
  * Each pattern is a bar of slots, an eighth each at the Eighths speed (a
  * sixteenth at Sixteenths): D a down strum, U an up strum, - a rest; the
  * pattern repeats while the chord is held.
  */
 export const AUTO_STRUM_PATTERNS = [
+	{ id: "once", label: "Once, on the press", slots: "D" },
 	{ id: "downs", label: "Down on the beat", slots: "D-D-D-D-" },
 	{ id: "downup", label: "Down up", slots: "DUDUDUDU" },
 	{ id: "folk", label: "Folk · D DU UDU", slots: "D-DU-UDU" },

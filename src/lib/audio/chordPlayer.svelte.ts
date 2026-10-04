@@ -1,6 +1,7 @@
 import { startLookahead } from "$lib/audio/lookahead";
 import { metronome } from "$lib/audio/metronome.svelte";
 import { chordPiano } from "$lib/audio/piano.svelte";
+import type { ChordShareUi } from "$lib/val/ChordShareSchema";
 import {
 	CHORD_KEY_CODES,
 	CHORD_KEY_LABELS,
@@ -168,15 +169,14 @@ class ChordPlayerEngine {
 	/** The chord the arpeggiator or the auto-strum keeps playing after its wedge was let go (Latch), so the readout stays lit with it. */
 	latchedChord = $state<SoundingChord | null>(null);
 
-	// ---- the auto-strum (docs/chord-player.md, "Strum") ----
-	/** A held chord strummed again and again in a pattern at the session tempo (Kevin); the arpeggiator wins when both are on. */
-	autoStrum = $state(false);
-	autoStrumPattern = $state<AutoStrumPatternId>("folk");
-	autoStrumSpeed = $state<AutoStrumSpeed>("8");
-	/** The pattern keeps going after the wedge is let go, until the next chord or Escape. */
-	autoStrumLatch = $state(false);
+	// ---- the strum pattern (docs/chord-player.md, "Strum") ----
+	/** With the strum on, a press strums the chord and holding the wedge strums again and again in this pattern at the session tempo (Kevin: strum mode); "once" strums on the press alone. The arpeggiator wins when both are on. */
+	strumPattern = $state<AutoStrumPatternId>("folk");
+	strumSpeed = $state<AutoStrumSpeed>("8");
+	/** The pattern keeps going after the wedge is let go, until the next chord or Escape (a double click on the Strum button). */
+	strumLatch = $state(false);
 	/** Swing, 0 (straight) to 1 (a triplet feel): the odd slots land late. */
-	autoStrumSwing = $state(0);
+	strumSwing = $state(0);
 	#autoHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
 	#autoLatched: { notes: number[]; velocity: number } | null = null;
 	#autoStopLoop: (() => void) | null = null;
@@ -255,15 +255,14 @@ class ChordPlayerEngine {
 		this.arpOnBeat = read("arp-on-beat") !== "0";
 		if (read("arp-align-bars") === "2") this.arpAlignBars = 2;
 		this.tempoRatio = tempoRatioOf(Number(read("tempo-ratio"))) ?? 1;
-		this.autoStrum = read("auto-strum") === "1";
-		const autoPattern = read("auto-strum-pattern");
-		if (autoPattern && AUTO_STRUM_PATTERNS.some((p) => p.id === autoPattern))
-			this.autoStrumPattern = autoPattern as AutoStrumPatternId;
-		if (read("auto-strum-speed") === "16") this.autoStrumSpeed = "16";
-		this.autoStrumLatch = read("auto-strum-latch") === "1";
-		const autoSwing = Number(read("auto-strum-swing"));
-		if (Number.isFinite(autoSwing) && autoSwing >= 0 && autoSwing <= 1)
-			this.autoStrumSwing = autoSwing;
+		const strumPattern = read("auto-strum-pattern");
+		if (strumPattern && AUTO_STRUM_PATTERNS.some((p) => p.id === strumPattern))
+			this.strumPattern = strumPattern as AutoStrumPatternId;
+		if (read("auto-strum-speed") === "16") this.strumSpeed = "16";
+		this.strumLatch = read("auto-strum-latch") === "1";
+		const strumSwing = Number(read("auto-strum-swing"));
+		if (Number.isFinite(strumSwing) && strumSwing >= 0 && strumSwing <= 1)
+			this.strumSwing = strumSwing;
 		const swing = Number(read("arp-swing"));
 		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.arpSwing = swing;
 		const readout = read("note-readout");
@@ -319,7 +318,7 @@ class ChordPlayerEngine {
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / notes.length));
 		if (this.arp) {
 			this.#arpHold(by, notes, velocity);
-		} else if (this.autoStrum) {
+		} else if (this.strum !== "off") {
 			this.#autoHold(by, notes, velocity);
 		} else {
 			this.#strike(by, notes, velocity);
@@ -406,7 +405,7 @@ class ChordPlayerEngine {
 		const stillHeld = new Set([...this.#autoHeld.values()].flatMap((h) => h.notes));
 		for (const midi of chord.notes) if (!stillHeld.has(midi)) chordPiano.noteOff(midi);
 		if (this.#autoHeld.size === 0) {
-			if (this.autoStrumLatch && held) {
+			if (this.strumLatch && held && this.strumPattern !== "once") {
 				this.#autoLatched = held;
 				this.latchedChord = chord;
 			} else this.#autoStop();
@@ -423,14 +422,16 @@ class ChordPlayerEngine {
 		this.latchedChord = null;
 	}
 	#autoSchedule = (until: number) => {
-		const perBeat = AUTO_STRUM_SPEEDS.find((s) => s.id === this.autoStrumSpeed)?.perBeat ?? 2;
+		const perBeat = AUTO_STRUM_SPEEDS.find((s) => s.id === this.strumSpeed)?.perBeat ?? 2;
 		const step = 60 / (metronome.bpm * this.tempoRatio) / perBeat;
-		const slots =
-			AUTO_STRUM_PATTERNS.find((p) => p.id === this.autoStrumPattern)?.slots ?? "D-D-D-D-";
-		const gapId = this.strum === "off" ? this.#lastStrum : this.strum;
-		const gap = STRUMS.find((s) => s.id === gapId)?.ms ?? 25;
+		const pattern = AUTO_STRUM_PATTERNS.find((p) => p.id === this.strumPattern);
+		const slots = pattern?.slots ?? "D-D-D-D-";
+		const once = pattern?.id === "once";
+		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 25;
 		while (this.#autoOrigin + this.#autoIndex * step < until) {
 			const n = this.#autoIndex;
+			// Once: the press's strum alone; the chord then rings as a plain strum did.
+			if (once && n > 0) return;
 			const slot = slots[n % slots.length];
 			const sources = this.#autoHeld.size
 				? [...this.#autoHeld.values()]
@@ -442,15 +443,23 @@ class ChordPlayerEngine {
 				return;
 			}
 			if (slot === "D" || slot === "U") {
-				const at =
-					this.#autoOrigin + n * step + arpSwingDelay(n, step, this.autoStrumSwing, perBeat);
+				// The direction setting: down plays the pattern as written, up turns every stroke over, alternate turns it over every other time through (Once: press by press).
+				let flip = this.strumDirection === "up";
+				if (this.strumDirection === "alternate") {
+					if (once) {
+						flip = this.#strumFlip;
+						this.#strumFlip = !this.#strumFlip;
+					} else flip = Math.floor(n / slots.length) % 2 === 1;
+				}
+				const up = (slot === "U") !== flip;
+				const at = this.#autoOrigin + n * step + arpSwingDelay(n, step, this.strumSwing, perBeat);
 				const ctx = this.#autoCtx!;
 				this.#autoTimers.push(
 					setTimeout(
 						() => {
 							for (const s of sources) {
 								for (const midi of s.notes) chordPiano.noteOff(midi);
-								this.#autoTimers.push(...this.#strum(s.notes, s.velocity, slot === "U", gap));
+								this.#autoTimers.push(...this.#strum(s.notes, s.velocity, up, gap));
 							}
 						},
 						Math.max(0, (at - ctx.currentTime) * 1000),
@@ -461,33 +470,20 @@ class ChordPlayerEngine {
 			this.#autoIndex = n + 1;
 		}
 	};
-	setAutoStrum(on: boolean) {
-		this.autoStrum = on;
-		write("auto-strum", on ? "1" : "0");
-		if (!on) {
-			// What is held keeps sounding as it is; a latched chord stops.
-			this.#autoHeld.clear();
-			this.#autoStop();
-		} else if (!this.arp) {
-			// Held chords join the pattern.
-			for (const s of this.sounding)
-				this.#autoHold(s.by, s.notes, this.velocity * Math.min(1, Math.sqrt(3 / s.notes.length)));
-		}
-	}
-	setAutoStrumPattern(pattern: AutoStrumPatternId) {
-		this.autoStrumPattern = pattern;
+	setStrumPattern(pattern: AutoStrumPatternId) {
+		this.strumPattern = pattern;
 		write("auto-strum-pattern", pattern);
 	}
-	setAutoStrumSpeed(speed: AutoStrumSpeed) {
-		this.autoStrumSpeed = speed;
+	setStrumSpeed(speed: AutoStrumSpeed) {
+		this.strumSpeed = speed;
 		write("auto-strum-speed", speed);
 	}
-	setAutoStrumSwing(v: number) {
-		this.autoStrumSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
-		write("auto-strum-swing", String(this.autoStrumSwing));
+	setStrumSwing(v: number) {
+		this.strumSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+		write("auto-strum-swing", String(this.strumSwing));
 	}
-	setAutoStrumLatch(on: boolean) {
-		this.autoStrumLatch = on;
+	setStrumLatch(on: boolean) {
+		this.strumLatch = on;
 		write("auto-strum-latch", on ? "1" : "0");
 		if (!on && this.#autoHeld.size === 0) this.#autoStop();
 	}
@@ -522,7 +518,7 @@ class ChordPlayerEngine {
 		this.release(by);
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
 		if (this.arp) this.#arpHold(by, chord.notes, velocity);
-		else if (this.autoStrum) this.#autoHold(by, chord.notes, velocity);
+		else if (this.strum !== "off") this.#autoHold(by, chord.notes, velocity);
 		else for (const midi of chord.notes) chordPiano.noteOn(midi, velocity);
 		this.sounding = [
 			...this.sounding,
@@ -847,11 +843,21 @@ class ChordPlayerEngine {
 		write("seventh-type", type);
 	}
 	setStrum(strum: Strum) {
+		const was = this.strum;
 		this.strum = strum;
 		write("strum", strum);
 		if (strum !== "off") {
 			this.#lastStrum = strum;
 			write("strum-last", strum);
+		}
+		if (strum === "off" && was !== "off") {
+			// What is held keeps sounding as it is; a latched pattern stops.
+			this.#autoHeld.clear();
+			this.#autoStop();
+		} else if (strum !== "off" && was === "off" && !this.arp) {
+			// Held chords join the pattern.
+			for (const s of this.sounding)
+				this.#autoHold(s.by, s.notes, this.velocity * Math.min(1, Math.sqrt(3 / s.notes.length)));
 		}
 	}
 	/** The strum on at its last speed, or off. */
@@ -898,6 +904,35 @@ class ChordPlayerEngine {
 	get keyLabels(): { major: string; minor: string }[] {
 		return this.keyMap === "degree" ? DEGREE_KEY_LABELS : CHORD_KEY_LABELS;
 	}
+	/** Something plays on its own: a latched arpeggio or strum pattern (the device's Stop button, docs/chord-player.md, "Stop"). */
+	get autoPlaying(): boolean {
+		return this.latchedChord !== null;
+	}
+	/** The circle's look and key, as a share link carries them (docs/chord-player.md, "Share links"). */
+	get uiSettings(): ChordShareUi {
+		return {
+			keyCenter: this.keyCenter,
+			keyAtTop: this.keyAtTop,
+			layout: this.layout,
+			keyMap: this.keyMap,
+			showKeys: this.showKeys,
+			showSignatures: this.showSignatures,
+			showNumerals: this.showNumerals,
+			highlightKey: this.highlightKey,
+			noteReadout: this.noteReadout,
+		};
+	}
+	applyUiSettings(ui: ChordShareUi) {
+		this.setKeyCenter(ui.keyCenter);
+		this.setKeyAtTop(ui.keyAtTop);
+		this.setLayout(ui.layout);
+		this.setKeyMap(ui.keyMap);
+		this.setShowKeys(ui.showKeys);
+		this.setShowSignatures(ui.showSignatures);
+		this.setShowNumerals(ui.showNumerals);
+		this.setHighlightKey(ui.highlightKey);
+		this.setNoteReadout(ui.noteReadout);
+	}
 	/** The settings a chord player preset carries beside the piano's sound (docs/chord-player.md, "Presets"). */
 	get presetSettings(): ChordPresetSettings {
 		return {
@@ -911,11 +946,10 @@ class ChordPlayerEngine {
 			seventhType: this.seventhType,
 			velocity: this.velocity,
 			autoStrum: {
-				on: this.autoStrum,
-				pattern: this.autoStrumPattern,
-				speed: this.autoStrumSpeed,
-				latch: this.autoStrumLatch,
-				swing: this.autoStrumSwing,
+				pattern: this.strumPattern,
+				speed: this.strumSpeed,
+				latch: this.strumLatch,
+				swing: this.strumSwing,
 			},
 			arp: {
 				on: this.arp,
@@ -944,11 +978,10 @@ class ChordPlayerEngine {
 		if (s.seventhType) this.setSeventhType(s.seventhType);
 		if (s.velocity !== undefined) this.setVelocity(s.velocity);
 		if (s.autoStrum) {
-			this.setAutoStrumPattern(s.autoStrum.pattern);
-			this.setAutoStrumSpeed(s.autoStrum.speed);
-			this.setAutoStrumLatch(s.autoStrum.latch);
-			if (s.autoStrum.swing !== undefined) this.setAutoStrumSwing(s.autoStrum.swing);
-			if (s.autoStrum.on !== this.autoStrum) this.setAutoStrum(s.autoStrum.on);
+			this.setStrumPattern(s.autoStrum.pattern);
+			this.setStrumSpeed(s.autoStrum.speed);
+			this.setStrumLatch(s.autoStrum.latch);
+			if (s.autoStrum.swing !== undefined) this.setStrumSwing(s.autoStrum.swing);
 		}
 		if (s.arp) {
 			this.setArpRate(s.arp.rate);
