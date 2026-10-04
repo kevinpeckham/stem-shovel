@@ -234,7 +234,9 @@ looper agree on the home page, the recorder and the looper page alike.
 - **The drum machine** keeps `project.bpm` (saved with the beat) and
   exposes `bpm`, the tempo it plays at: the session's at `tempoRatio`
   while `followTempo` (on by default, both per browser in
-  `utils/drumMachinePreferences.ts`), else the beat's own. Its own controls
+  `utils/drumMachinePreferences.ts`; the controls sit on the caret of the
+  Tap Tempo split button at desktop and in the phone's tempo menu), else
+  the beat's own. Its own controls
   (`setBpm`, Tap) set the beat's tempo and, while following, the session's
   through the ratio; a beat that arrives with a tempo (a preset, a saved
   beat, a song's, undo, the home demo, a share link) adopts it into the

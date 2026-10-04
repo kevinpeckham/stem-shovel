@@ -1215,17 +1215,31 @@
 		<div
 			class="grid grid-cols-1 @2xl-grid-cols-[auto_1fr] w-full @2xl-items-center justify-start gap-4"
 		>
-			<!-- tempo -->
+			<!-- tempo: a split button (Kevin), Tap on the left and, on the caret, the session tempo and swing settings -->
 			<div class="flex items-center gap-2">
-				<button
-					aria-label="Tempo"
-					class="device-button-lg text-center text-14px @xl-text-left @xl-device-button-xs @2xl-device-button-sm @4xl-device-button-lg px-3 @2xl-min-w-30"
-					type="button"
-					onclick={() => drumMachine.tap()}
-					title="Tap the tempo"
-				>
-					Tap Tempo
-				</button>
+				<div class="flex gap-px" role="group" aria-label="Tempo">
+					<button
+						aria-label="Tempo"
+						class="device-button-lg text-center text-14px @xl-text-left @xl-device-button-xs @2xl-device-button-sm @4xl-device-button-lg px-3 @2xl-min-w-30 rounded-r-none"
+						type="button"
+						onclick={() => drumMachine.tap()}
+						title="Tap the tempo"
+					>
+						Tap Tempo
+					</button>
+					<ContextMenu
+						ariaLabel="Session tempo settings"
+						title="Follow the session tempo and swing, at a ratio, or come off it"
+						iconClass="i-ph-caret-down"
+						position="bottom left"
+						buttonBaseClasses="device-button-lg px-2 !min-w-0 rounded-l-none @xl-device-button-xs @2xl-device-button-sm @4xl-device-button-lg"
+						popoverClasses="min-w-72 max-w-sm"
+						items={[
+							{ id: "session-heading", kind: "heading", label: "Session tempo" },
+							{ id: "session-block", kind: "snippet", snippet: followTempoBlock },
+						]}
+					/>
+				</div>
 				<div class="@xl-hidden {tutorial.control === 'humanize' ? HINT : ''}">
 					<ContextMenu
 						ariaLabel="Tempo, swing and humanize"
@@ -1258,7 +1272,6 @@
 						oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
 						aria-label="Tempo in beats per minute"
 					/>
-					{@render followTempo()}
 				</label>
 				<label class="block">
 					<span class="device-button-label flex items-center"
@@ -1935,6 +1948,16 @@
 {/snippet}
 
 <!-- The session tempo (docs/audio-engine.md, "One tempo for the page"): the beat follows the metronome's tempo, at a ratio, unless told not to. -->
+{#snippet followTempoBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-3 text-13px">
+		<p class="text-12px opacity-70">
+			The metronome, the chord player and the looper on a page keep one tempo and one swing (docs:
+			one tempo for the page). The beat follows them unless told not to.
+		</p>
+		{@render followTempo()}
+	</div>
+{/snippet}
+
 {#snippet followTempo()}
 	<span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-12px mt-1">
 		<label class="flex items-center gap-1.5 select-none">
