@@ -155,95 +155,6 @@
 		</label>
 	</div>
 	<div class="grid grid-cols-1 gap-y-3 content-start">
-		<div class="device-button-group-label !text-blue-100/90 !mb-0">Wah</div>
-		<div class="flex gap-2" role="group" aria-label="Wah mode">
-			<button
-				class="flex-1 device-button-xs border {piano.wah.mode === 'touch' ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={piano.wah.mode === "touch"}
-				title="The filter opens with how hard you play"
-				onclick={() => piano.setWah({ mode: "touch" })}>Touch</button
-			>
-			<button
-				class="flex-1 device-button-xs border {piano.wah.mode === 'sweep' ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={piano.wah.mode === "sweep"}
-				title="The filter sweeps on its own"
-				onclick={() => piano.setWah({ mode: "sweep" })}>Sweep</button
-			>
-		</div>
-		<label class="block">
-			<span class="device-button-label">Mix · {Math.round(piano.wah.mix * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.wah.mix * 100)}
-				oninput={(e) => piano.setWah({ mix: Number(e.currentTarget.value) / 100 })}
-				aria-label="Wah mix"
-			/>
-		</label>
-		{#if piano.wah.mode === "touch"}
-			<label class="block">
-				<span class="device-button-label"
-					>Sensitivity · {Math.round(piano.wah.sensitivity * 100)}%</span
-				>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={Math.round(piano.wah.sensitivity * 100)}
-					oninput={(e) => piano.setWah({ sensitivity: Number(e.currentTarget.value) / 100 })}
-					aria-label="Wah sensitivity"
-				/>
-			</label>
-		{:else}
-			<label class="block">
-				<span class="device-button-label">Rate · {piano.wah.rate.toFixed(1)} Hz</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0.1"
-					max="5"
-					step="0.1"
-					value={piano.wah.rate}
-					oninput={(e) => piano.setWah({ rate: Number(e.currentTarget.value) })}
-					aria-label="Wah rate"
-				/>
-			</label>
-		{/if}
-		<label class="block">
-			<span class="device-button-label">Range · {Math.round(piano.wah.range * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.wah.range * 100)}
-				oninput={(e) => piano.setWah({ range: Number(e.currentTarget.value) / 100 })}
-				aria-label="Wah range"
-			/>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Resonance · {Math.round(piano.wah.resonance * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="0"
-				max="100"
-				step="1"
-				value={Math.round(piano.wah.resonance * 100)}
-				oninput={(e) => piano.setWah({ resonance: Number(e.currentTarget.value) / 100 })}
-				aria-label="Wah resonance"
-			/>
-		</label>
-	</div>
-	<div class="grid grid-cols-1 gap-y-3 content-start">
 		<div class="device-button-group-label !text-blue-100/90 !mb-0">Chorus</div>
 		<label class="block">
 			<span class="device-button-label">Mix · {Math.round(piano.chorus.mix * 100)}%</span>
@@ -391,6 +302,95 @@
 				value={Math.round(piano.phaser.depth * 100)}
 				oninput={(e) => piano.setPhaser({ depth: Number(e.currentTarget.value) / 100 })}
 				aria-label="{piano.phaser.mode === 'flanger' ? 'Flanger' : 'Phaser'} depth"
+			/>
+		</label>
+	</div>
+	<div class="grid grid-cols-1 gap-y-3 content-start">
+		<div class="device-button-group-label !text-blue-100/90 !mb-0">Wah</div>
+		<div class="flex gap-2" role="group" aria-label="Wah mode">
+			<button
+				class="flex-1 device-button-xs border {piano.wah.mode === 'touch' ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={piano.wah.mode === "touch"}
+				title="The filter opens with how hard you play"
+				onclick={() => piano.setWah({ mode: "touch" })}>Touch</button
+			>
+			<button
+				class="flex-1 device-button-xs border {piano.wah.mode === 'sweep' ? 'text-accent' : ''}"
+				type="button"
+				aria-pressed={piano.wah.mode === "sweep"}
+				title="The filter sweeps on its own"
+				onclick={() => piano.setWah({ mode: "sweep" })}>Sweep</button
+			>
+		</div>
+		<label class="block">
+			<span class="device-button-label">Mix · {Math.round(piano.wah.mix * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.wah.mix * 100)}
+				oninput={(e) => piano.setWah({ mix: Number(e.currentTarget.value) / 100 })}
+				aria-label="Wah mix"
+			/>
+		</label>
+		{#if piano.wah.mode === "touch"}
+			<label class="block">
+				<span class="device-button-label"
+					>Sensitivity · {Math.round(piano.wah.sensitivity * 100)}%</span
+				>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={Math.round(piano.wah.sensitivity * 100)}
+					oninput={(e) => piano.setWah({ sensitivity: Number(e.currentTarget.value) / 100 })}
+					aria-label="Wah sensitivity"
+				/>
+			</label>
+		{:else}
+			<label class="block">
+				<span class="device-button-label">Rate · {piano.wah.rate.toFixed(1)} Hz</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0.1"
+					max="5"
+					step="0.1"
+					value={piano.wah.rate}
+					oninput={(e) => piano.setWah({ rate: Number(e.currentTarget.value) })}
+					aria-label="Wah rate"
+				/>
+			</label>
+		{/if}
+		<label class="block">
+			<span class="device-button-label">Range · {Math.round(piano.wah.range * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.wah.range * 100)}
+				oninput={(e) => piano.setWah({ range: Number(e.currentTarget.value) / 100 })}
+				aria-label="Wah range"
+			/>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Resonance · {Math.round(piano.wah.resonance * 100)}%</span>
+			<input
+				class="w-full accent-maximumYellow"
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				value={Math.round(piano.wah.resonance * 100)}
+				oninput={(e) => piano.setWah({ resonance: Number(e.currentTarget.value) / 100 })}
+				aria-label="Wah resonance"
 			/>
 		</label>
 	</div>
