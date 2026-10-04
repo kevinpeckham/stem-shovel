@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.96.0] - 2026-10-04
+
 ### Added
 
 - **One tempo for the page** (docs/audio-engine.md, "One tempo for the page"): the metronome's tempo is the session's, and the drum machine, the chord player's arpeggiator, the progression pad and the looper follow it, so the recorder, the looper page and the home page keep one tempo across their instruments. The drums follow at a ratio (half-time, with the session, double-time) or come off it for a tempo of their own ("Follows the session tempo" under the tempo slider, per browser); a beat that arrives with a tempo (a preset, a saved beat, a generated one, the remembered project) sets the session's. The arpeggiator has a Tempo setting of its own (with the session, half-time, double-time; `constants/tempo.ts`), saved with presets and demo setups, and the screen shows ½× or 2×. The looper's page effect now follows the session tempo rather than the drums'.
