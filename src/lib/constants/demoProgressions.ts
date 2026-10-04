@@ -1,3 +1,6 @@
+import type { ChordVoicing, Strum } from "./circleOfFifths";
+import type { PianoInstrumentId } from "./piano";
+
 /**
  * Progressions to learn from and to hear played (docs/chord-player.md,
  * "Learn mode"): traditional and public-domain tunes and the stock
@@ -14,6 +17,33 @@ export interface DemoChord {
 	/** A seventh on this chord, as the 7 pad would give. */
 	seventh?: boolean;
 }
+/**
+ * How a demo wants the player set when it loads (Kevin): the sound, the
+ * style, the voicing, the strum, the arpeggiator, the key, the octave,
+ * the sustain pedal and a few effect levels; whatever it leaves out stays
+ * as the player has it. The key is a circle index (0 = C, 1 = G, 2 = D,
+ * 4 = E, 11 = F).
+ */
+export interface DemoSetup {
+	instrument?: PianoInstrumentId;
+	style?: string;
+	voicing?: ChordVoicing;
+	strum?: Strum;
+	strumDirection?: "down" | "up" | "alternate";
+	arp?: {
+		on: boolean;
+		rate?: "4" | "8" | "8t" | "16";
+		pattern?: "up" | "down" | "updown" | "played" | "random";
+		octaves?: number;
+		gate?: number;
+		latch?: boolean;
+		swing?: number;
+	};
+	keyCenter?: number;
+	octave?: number;
+	sustain?: boolean;
+	effects?: { reverb?: number; reverbSize?: number; delayLevel?: number; chorusMix?: number };
+}
 export interface DemoProgression {
 	id: string;
 	name: string;
@@ -21,6 +51,7 @@ export interface DemoProgression {
 	bpm: number;
 	beatsPerBar: number;
 	chords: DemoChord[];
+	setup?: DemoSetup;
 }
 const M = (fifths: number, beats: 1 | 2 | 4 = 4, seventh = false): DemoChord => ({
 	fifths,
@@ -52,6 +83,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 100,
 		beatsPerBar: 4,
 		chords: [M(I), M(V), m(VI), M(IV)],
+		setup: {
+			instrument: "grand",
+			style: "plain",
+			voicing: "spread",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 4,
+			sustain: true,
+			effects: { reverb: 0.4 },
+		},
 	},
 	{
 		id: "fifties",
@@ -60,6 +102,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 110,
 		beatsPerBar: 4,
 		chords: [M(I, 2), m(VI, 2), M(IV, 2), M(V, 2)],
+		setup: {
+			instrument: "epiano",
+			style: "honkytonk",
+			voicing: "standard",
+			strum: "medium",
+			strumDirection: "down",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 4,
+			sustain: false,
+			effects: { reverb: 0.45, chorusMix: 0.2 },
+		},
 	},
 	{
 		id: "two-five-one",
@@ -68,6 +122,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 120,
 		beatsPerBar: 4,
 		chords: [m(II, 4, true), M(V, 4, true), M(I, 4, true), M(I, 4, true)],
+		setup: {
+			instrument: "epiano",
+			style: "jazz",
+			voicing: "rich",
+			strum: "slow",
+			strumDirection: "down",
+			arp: { on: false },
+			keyCenter: 11,
+			octave: 4,
+			sustain: true,
+			effects: { reverb: 0.35 },
+		},
 	},
 	{
 		id: "blues",
@@ -76,6 +142,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 96,
 		beatsPerBar: 4,
 		chords: [M(I), M(I), M(I), M(I), M(IV), M(IV), M(I), M(I), M(V), M(IV), M(I), M(V)],
+		setup: {
+			instrument: "grand",
+			style: "blues",
+			voicing: "bass",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 4,
+			octave: 4,
+			sustain: false,
+			effects: { reverb: 0.25 },
+		},
 	},
 	{
 		id: "canon",
@@ -84,6 +161,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 72,
 		beatsPerBar: 4,
 		chords: [M(I, 2), M(V, 2), m(VI, 2), m(III, 2), M(IV, 2), M(I, 2), M(IV, 2), M(V, 2)],
+		setup: {
+			instrument: "grand",
+			style: "plain",
+			voicing: "spread",
+			strum: "off",
+			arp: { on: true, rate: "8", pattern: "up", octaves: 2, gate: 0.9, latch: false, swing: 0 },
+			keyCenter: 2,
+			octave: 4,
+			sustain: true,
+			effects: { reverb: 0.6, reverbSize: 0.7 },
+		},
 	},
 	{
 		id: "andalusian",
@@ -92,6 +180,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 90,
 		beatsPerBar: 4,
 		chords: [m(VI), M(V), M(IV), M(III)],
+		setup: {
+			instrument: "guitar",
+			style: "minor",
+			voicing: "standard",
+			strum: "fast",
+			strumDirection: "alternate",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.35 },
+		},
 	},
 	{
 		id: "rising-sun",
@@ -100,6 +200,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 76,
 		beatsPerBar: 3,
 		chords: [m(VI, 2), M(I, 1), M(II, 2), M(IV, 1), m(VI, 2), M(I, 1), M(III, 2), M(III, 1)],
+		setup: {
+			instrument: "guitar",
+			style: "minor",
+			voicing: "rootBass",
+			strum: "off",
+			arp: { on: true, rate: "8", pattern: "up", octaves: 1, gate: 0.95, latch: false, swing: 0 },
+			keyCenter: 0,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.4 },
+		},
 	},
 	{
 		id: "amazing-grace",
@@ -123,6 +234,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			M(I, 2),
 			M(I, 1),
 		],
+		setup: {
+			instrument: "guitar",
+			style: "folk",
+			voicing: "standard",
+			strum: "slow",
+			strumDirection: "down",
+			arp: { on: false },
+			keyCenter: 1,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.5 },
+		},
 	},
 	{
 		id: "saints",
@@ -131,6 +254,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 120,
 		beatsPerBar: 4,
 		chords: [M(I), M(I), M(I), M(V), M(V), M(I), M(I, 4, true), M(IV), M(IV), M(I), M(V), M(I)],
+		setup: {
+			instrument: "grand",
+			style: "ragtime",
+			voicing: "bass",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 11,
+			octave: 4,
+			sustain: false,
+			effects: { reverb: 0.2 },
+		},
 	},
 	{
 		id: "greensleeves",
@@ -139,6 +273,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 84,
 		beatsPerBar: 3,
 		chords: [m(VI), M(V), m(VI), M(III), m(VI), M(V), M(III), M(III)],
+		setup: {
+			instrument: "guitar",
+			style: "minor",
+			voicing: "standard",
+			strum: "slow",
+			strumDirection: "down",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.45 },
+		},
 	},
 	{
 		id: "mixolydian",
@@ -147,6 +293,18 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 110,
 		beatsPerBar: 4,
 		chords: [M(I), M(bVII), M(IV), M(I)],
+		setup: {
+			instrument: "guitar",
+			style: "folk",
+			voicing: "standard",
+			strum: "medium",
+			strumDirection: "alternate",
+			arp: { on: false },
+			keyCenter: 2,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.3 },
+		},
 	},
 	{
 		id: "minor-pop",
@@ -155,6 +313,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 100,
 		beatsPerBar: 4,
 		chords: [m(VI), M(IV), M(I), M(V)],
+		setup: {
+			instrument: "pad",
+			style: "plain",
+			voicing: "spread",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 4,
+			sustain: true,
+			effects: { reverb: 0.55, reverbSize: 0.6 },
+		},
 	},
 	{
 		id: "royal-road",
@@ -163,6 +332,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 120,
 		beatsPerBar: 4,
 		chords: [M(IV, 4, true), M(V, 4, true), m(III, 4, true), m(VI)],
+		setup: {
+			instrument: "epiano",
+			style: "jazz",
+			voicing: "rich",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 4,
+			sustain: true,
+			effects: { reverb: 0.4, chorusMix: 0.25 },
+		},
 	},
 	{
 		id: "borrowed",
@@ -171,6 +351,17 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 96,
 		beatsPerBar: 4,
 		chords: [M(I), M(bVI), M(bVII), M(I)],
+		setup: {
+			instrument: "synth",
+			style: "fifths",
+			voicing: "standard",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 3,
+			sustain: false,
+			effects: { reverb: 0.5, delayLevel: 0.2 },
+		},
 	},
 	{
 		id: "backdoor",
@@ -179,5 +370,16 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 		bpm: 104,
 		beatsPerBar: 4,
 		chords: [M(I), M(bIII), M(bVII), M(IV)],
+		setup: {
+			instrument: "organ",
+			style: "plain",
+			voicing: "rootBass",
+			strum: "off",
+			arp: { on: false },
+			keyCenter: 0,
+			octave: 4,
+			sustain: false,
+			effects: { reverb: 0.3 },
+		},
 	},
 ];

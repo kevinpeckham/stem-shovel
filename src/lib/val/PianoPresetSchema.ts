@@ -107,6 +107,8 @@ export const ChordPresetSettingsSchema = v.object({
 			/** The pattern restarting at every bar or two (presets from before carry neither). */
 			align: v.optional(v.boolean()),
 			alignBars: v.optional(v.picklist([1, 2])),
+			onBeat: v.optional(v.boolean()),
+			swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 		}),
 	),
 });

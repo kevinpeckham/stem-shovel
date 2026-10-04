@@ -59,6 +59,8 @@
 		/** The sounding notes under the name, spelled (docs/chord-player.md, "The readout"). */
 		readoutNotes?: SpelledNote[];
 		noteReadout?: "names" | "staff" | "both" | "off";
+		/** The note the arpeggiator is on (MIDI), lit in the readout; null when it is not running. */
+		activeMidi?: number | null;
 		onpress: (index: number, quality: ChordQuality, pointerId: number) => void;
 		onrelease: (pointerId: number) => void;
 		/** A drag up or down within the pressed wedge, in steps: the chord's inversion (0, 1, 2). */
@@ -83,6 +85,7 @@
 		centre,
 		readoutNotes = [],
 		noteReadout = "names",
+		activeMidi = null,
 		onpress,
 		onrelease,
 		oninvert,
@@ -116,6 +119,13 @@
 	/** The readout: the chord name at the hole's centre on every layout (Kevin), lifted a little when the notes show under it; the key mark on the rim at the key. */
 	const showNotes = $derived(noteReadout !== "off" && readoutNotes.length > 0);
 	const both = $derived(noteReadout === "both");
+	/** Which readout note the arpeggiator is on: the note itself, else the same pitch an octave away (the pattern climbing octaves). */
+	const activeIndex = $derived.by(() => {
+		if (activeMidi === null) return -1;
+		const exact = readoutNotes.findIndex((n) => n.midi === activeMidi);
+		if (exact >= 0) return exact;
+		return readoutNotes.findIndex((n) => n.midi % 12 === activeMidi % 12);
+	});
 	const readoutY = $derived(box.cy - (showNotes ? (both ? 26 : 16) * box.scale : 0));
 	/** The staff under the name (above the names when both show): five lines, a step (a line or a space) half a line apart, the bottom line E4; ledger lines where a note sits off the staff. */
 	const STAFF_LINE = 4.2;
@@ -438,7 +448,10 @@
 			text-anchor="middle"
 			dominant-baseline="central"
 			x={box.cx}
-			y={namesY.toFixed(1)}>{readoutNotes.map((n) => n.name).join(" ")}</text
+			y={namesY.toFixed(1)}
+			>{#each readoutNotes as n, i (n.midi)}{#if i > 0}{" "}{/if}<tspan
+					class={i === activeIndex ? "fill-accent font-bold" : ""}>{n.name}</tspan
+				>{/each}</text
 		>
 	{/if}
 	{#if showNotes && (noteReadout === "staff" || both)}
@@ -458,8 +471,18 @@
 		</g>
 		{#each readoutNotes as n, i (n.midi)}
 			{@const x = x0 + i * dx}
+			{#if i === activeIndex}
+				<circle
+					class="pointer-events-none fill-accent/35"
+					cx={x.toFixed(1)}
+					cy={staffY(n.step).toFixed(1)}
+					r={(5 * box.scale).toFixed(1)}
+				/>
+			{/if}
 			<ellipse
-				class="pointer-events-none fill-accent"
+				class={i === activeIndex
+					? "pointer-events-none fill-white"
+					: "pointer-events-none fill-accent"}
 				cx={x.toFixed(1)}
 				cy={staffY(n.step).toFixed(1)}
 				rx={(2.9 * box.scale).toFixed(1)}

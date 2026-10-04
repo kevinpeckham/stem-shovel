@@ -11,7 +11,7 @@ import {
 } from "$lib/utils/chordRhythm";
 import { encodeChordMidi } from "$lib/utils/encodeChordMidi";
 import type { ProgressionData } from "$lib/val/ProgressionSchema";
-import type { DemoProgression } from "$lib/constants/demoProgressions";
+import type { DemoProgression, DemoSetup } from "$lib/constants/demoProgressions";
 
 /**
  * The progression pad (docs/chord-player.md, "The progression pad"): the
@@ -170,8 +170,9 @@ class ProgressionPad {
 		this.learnIndex = 0;
 		if (on && this.playing) this.stop();
 	}
-	/** A demo progression (constants/demoProgressions.ts) onto the pad in the key the circle is turned to, named, unsaved; learn mode on. */
+	/** A demo progression (constants/demoProgressions.ts) onto the pad, the player set up as the demo asks first (its key, so the chords land in it), named, unsaved; learn mode on. */
 	loadDemo(demo: DemoProgression) {
+		if (demo.setup) this.#applySetup(demo.setup);
 		const entries: ProgressionEntry[] = demo.chords.map((c) => {
 			const drawn = chordPlayer.drawnIndexOf(c.fifths, c.quality);
 			const chord = chordPlayer.chordAt(drawn, c.quality, c.seventh ?? false);
@@ -187,6 +188,33 @@ class ProgressionPad {
 		this.name = demo.name;
 		this.#persist();
 		this.setLearn(true);
+	}
+
+	/** A demo's settings into the chord player and the piano; whatever the demo leaves out stays as it is. */
+	#applySetup(s: DemoSetup) {
+		if (s.keyCenter !== undefined) chordPlayer.setKeyCenter(s.keyCenter);
+		if (s.instrument) piano.setInstrument(s.instrument);
+		if (s.style && chordPlayer.styleKnown(s.style)) chordPlayer.setStyle(s.style);
+		if (s.voicing) chordPlayer.setVoicing(s.voicing);
+		if (s.strum) chordPlayer.setStrum(s.strum);
+		if (s.strumDirection) chordPlayer.setStrumDirection(s.strumDirection);
+		if (s.octave !== undefined) chordPlayer.setOctave(s.octave);
+		if (s.arp) {
+			if (s.arp.rate) chordPlayer.setArpRate(s.arp.rate);
+			if (s.arp.pattern) chordPlayer.setArpPattern(s.arp.pattern);
+			if (s.arp.octaves !== undefined) chordPlayer.setArpOctaves(s.arp.octaves);
+			if (s.arp.gate !== undefined) chordPlayer.setArpGate(s.arp.gate);
+			if (s.arp.latch !== undefined) chordPlayer.setArpLatch(s.arp.latch);
+			if (s.arp.swing !== undefined) chordPlayer.setArpSwing(s.arp.swing);
+			if (s.arp.on !== chordPlayer.arp) chordPlayer.setArp(s.arp.on);
+		}
+		if (s.sustain !== undefined) piano.setSustain(s.sustain);
+		if (s.effects) {
+			if (s.effects.reverb !== undefined) piano.setReverb(s.effects.reverb);
+			if (s.effects.reverbSize !== undefined) piano.setReverbSize(s.effects.reverbSize);
+			if (s.effects.delayLevel !== undefined) piano.setDelay({ level: s.effects.delayLevel });
+			if (s.effects.chorusMix !== undefined) piano.setChorus({ mix: s.effects.chorusMix });
+		}
 	}
 
 	// ---- jotting ----

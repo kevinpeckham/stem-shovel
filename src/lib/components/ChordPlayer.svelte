@@ -252,6 +252,7 @@
 	}
 	const centre = $derived(
 		chordPlayer.sounding.map((s) => s.name).join(" + ") ||
+			chordPlayer.arpLatchedChord?.name ||
 			flash ||
 			(learnTarget ? `Next: ${learnTarget.label}` : ""),
 	);
@@ -274,14 +275,38 @@
 	function seventhUp() {
 		chordPlayer.seventhHeld = false;
 	}
-	/** The sustain pad: the pedal down while it is held, for a tablet with no space bar (Kevin). */
+	/** The Arp button: a click toggles the arpeggiator; a double click (or tap) latches it on, or unlatches it (Kevin), like the sustain pad. */
+	let arpTapAt = 0;
+	function arpClick() {
+		const now = performance.now();
+		if (now - arpTapAt < 400) {
+			arpTapAt = 0;
+			chordPlayer.setArpLatch(!chordPlayer.arpLatch);
+			if (!chordPlayer.arp) chordPlayer.setArp(true);
+			return;
+		}
+		arpTapAt = now;
+		chordPlayer.setArp(!chordPlayer.arp);
+	}
+	/** The sustain pad: the pedal down while it is held, for a tablet with no space bar (Kevin); a double tap locks it down until the next double tap (or Esc). */
+	let sustainLocked = $state(false);
+	let sustainTapAt = 0;
 	function sustainDown(e: PointerEvent) {
 		e.preventDefault();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		const now = performance.now();
+		if (now - sustainTapAt < 400) {
+			sustainLocked = !sustainLocked;
+			sustainTapAt = 0;
+		} else sustainTapAt = now;
 		piano.setSustain(true);
 	}
 	function sustainUp() {
-		piano.setSustain(false);
+		if (!sustainLocked) piano.setSustain(false);
+	}
+	function sustainUnlock() {
+		sustainLocked = false;
+		sustainTapAt = 0;
 	}
 
 	// ---- the computer keyboard ----
@@ -298,6 +323,8 @@
 			return;
 		}
 		if (e.code === "Escape") {
+			sustainUnlock();
+			piano.setSustain(false);
 			chordPlayer.allOff();
 			return;
 		}
@@ -325,7 +352,7 @@
 			return;
 		}
 		if (e.code === "Space") {
-			piano.setSustain(false);
+			if (!sustainLocked) piano.setSustain(false);
 			return;
 		}
 		if (downCodes.delete(e.code)) chordPlayer.release(`key:${e.code}`);
@@ -333,6 +360,8 @@
 	function onblur() {
 		downCodes.clear();
 		chordPlayer.seventhHeld = false;
+		sustainUnlock();
+		piano.setSustain(false);
 		chordPlayer.allOff();
 	}
 	onDestroy(() => {
@@ -660,7 +689,7 @@
 			"right-0",
 			piano.sustain,
 			"Sustain",
-			"Hold for the sustain pedal (or hold the space bar)",
+			"Hold for the sustain pedal (or hold the space bar); double-tap to lock it down",
 			sustainDown,
 			sustainUp,
 			sustain,
@@ -686,6 +715,7 @@
 			{centre}
 			readoutNotes={chordPlayer.soundingSpelled}
 			noteReadout={chordPlayer.noteReadout}
+			activeMidi={chordPlayer.arp ? chordPlayer.arpNote : null}
 			onpress={press}
 			onrelease={release}
 			oninvert={invert}
@@ -729,14 +759,14 @@
 			: ''}"
 		type="button"
 		aria-pressed={piano.sustain}
-		title="Hold for the sustain pedal"
+		title="Hold for the sustain pedal; double-tap to lock it down"
 		aria-label="Sustain"
 		onpointerdown={sustainDown}
 		onpointerup={sustainUp}
 		onpointercancel={sustainUp}
 		oncontextmenu={(e) => e.preventDefault()}
 	>
-		<span class="i-ph-waves" aria-hidden="true"></span>
+		<span class={sustainLocked ? "i-ph-lock-simple-fill" : "i-ph-waves"} aria-hidden="true"></span>
 	</button>
 	<button
 		class="@xl-hidden absolute left-19 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
@@ -782,8 +812,13 @@
 	<span class="text-10px uppercase tracking-wider opacity-70">seventh</span>
 {/snippet}
 {#snippet sustain()}
-	<span class="i-ph-waves text-24px" aria-hidden="true"></span>
-	<span class="text-10px uppercase tracking-wider opacity-70">sustain</span>
+	<span
+		class="{sustainLocked ? 'i-ph-lock-simple-fill' : 'i-ph-waves'} text-24px"
+		aria-hidden="true"
+	></span>
+	<span class="text-10px uppercase tracking-wider opacity-70"
+		>{sustainLocked ? "locked" : "sustain"}</span
+	>
 {/snippet}
 {#snippet octaveButton(side: string, step: -1 | 1)}
 	<button
@@ -854,13 +889,19 @@
 		class="device-button-sm px-3 {classes} {chordPlayer.arp ? 'text-accent' : ''}"
 		type="button"
 		aria-pressed={chordPlayer.arp}
-		title={chordPlayer.arp
+		title={(chordPlayer.arp
 			? "Arpeggiator on: a held wedge plays its notes one at a time; click to play them together"
-			: "Arpeggiator: a held wedge plays its notes one at a time in time with the tempo"}
+			: "Arpeggiator: a held wedge plays its notes one at a time in time with the tempo") +
+			(chordPlayer.arpLatch
+				? "; latched (double-click to unlatch)"
+				: "; double-click to latch it on")}
 		aria-label="Arpeggiator"
-		onclick={() => chordPlayer.setArp(!chordPlayer.arp)}
+		onclick={arpClick}
 	>
-		<span class="i-ph-wave-sawtooth" aria-hidden="true"></span>
+		<span
+			class={chordPlayer.arpLatch ? "i-ph-lock-simple-fill" : "i-ph-wave-sawtooth"}
+			aria-hidden="true"
+		></span>
 		Arp
 	</button>
 {/snippet}
@@ -1202,6 +1243,23 @@
 					>How much of each step the note sounds: short and clipped, or running into the next.</span
 				>
 			</label>
+			<label class="block">
+				<span class="device-button-label">Swing · {Math.round(chordPlayer.arpSwing * 100)}%</span>
+				<input
+					class="w-full accent-maximumYellow"
+					type="range"
+					min="0"
+					max="100"
+					step="5"
+					value={Math.round(chordPlayer.arpSwing * 100)}
+					aria-label="Arpeggiator swing in percent"
+					oninput={(e) => chordPlayer.setArpSwing(Number(e.currentTarget.value) / 100)}
+				/>
+				<span class="block text-12px opacity-70 mt-1"
+					>Every second eighth or sixteenth lands late, up to a triplet feel at full. Quarter notes
+					and triplets stay straight.</span
+				>
+			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
 					type="checkbox"
@@ -1220,6 +1278,21 @@
 				/>
 				Patterns line up with bars
 			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.arpOnBeat}
+					onchange={(e) => chordPlayer.setArpOnBeat(e.currentTarget.checked)}
+				/>
+				Chord changes land on the beat
+			</label>
+			<span class="block text-12px opacity-70 -mt-2"
+				>A new chord joins the running grid at the next quarter (eighth in sixteenths), whether the
+				last chord is still held, latched or let go a moment ago: pressed just before, it waits for
+				it; pressed just after, it comes in on the next step in its place. Off, a new chord restarts
+				the pattern as you press it.</span
+			>
 			<label class="block">
 				<span class="device-button-label">Line up every</span>
 				<select
