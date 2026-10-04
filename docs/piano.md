@@ -369,3 +369,23 @@ and the menu stays short; native, no state.
 - 88 keys with a scrolling view; a transpose control; MIDI out; a
   keyboard-split of two sounds; an arpeggiator; latency work for
   Bluetooth MIDI and mobile.
+
+## The bass and the guitar (2026-10-03, 2026-10-04)
+
+Two small sampled instruments beside the Grand Piano's tiers, from
+FreePats' CC0 recordings: the Electric Bass (Finger Bass YR, twelve notes
+E1 to D#2, an octave under the key, for the chord player's notes mode)
+and the Acoustic Guitar (the Spanish classical guitar, forty-eight notes
+G1 to C6). `src/lib/audio/sampledInstruments.ts` is the one module for
+both: a spec per instrument (notes, transpose, release, level and cutoff
+curves), `warmSamples` fetching the mp3s from static/kits/<id> nearest
+middle C first, `loadSamples` decoding each as it lands, and
+`startSampledInstrumentVoice` playing the nearest sample by the smallest
+shift (an octave of the same pitch class counting as little, so the bass's
+one octave covers the keyboard). Nothing is fetched at page load: the
+engine asks for the files when the instrument is chosen (or the home demo
+scrolls into view with it chosen), and until a note's own sample is
+decoded the `synthVoice` stand-in patch for that instrument plays.
+`scripts/instrument-samples.ts <id>` builds the files (mp3 VBR q2, mono,
+a few seconds with a fade; about half a megabyte for the bass, one for the
+guitar), committed so every stage serves them with nothing to upload.

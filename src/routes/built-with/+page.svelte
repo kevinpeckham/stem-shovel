@@ -84,6 +84,11 @@
 					what: "The piano's Electric Bass: Andrea Biasior's recordings of a Yamaha RBX for the FreePats project, CC0 public domain, twelve notes shifted by octaves.",
 				},
 				{
+					name: "Spanish classical guitar",
+					url: "https://github.com/freepats/spanish-classical-guitar",
+					what: "The piano's Acoustic Guitar: Roberto's 2008 recordings of a Spanish classical guitar for the FreePats project, CC0 public domain, forty-eight notes.",
+				},
+				{
 					name: "Fifths, the chord player",
 					url: "https://github.com/kevinpeckham/chord-player",
 					what: "The Chord Player's circle of fifths grew out of Kevin's earlier instrument, itself inspired by Quinn Raymond's Q-RAY chord player, with the circle's SVG after Eric Coleman and Håken Lid.",

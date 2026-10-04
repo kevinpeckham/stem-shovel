@@ -128,6 +128,20 @@ const PATCHES: Record<Exclude<PianoInstrumentId, "grand">, Patch> = {
 		transpose: -12,
 		level: 0.9,
 	},
+	// The guitar's stand-in while its samples decode: a plucked string, bright and quick to fade.
+	guitar: {
+		partials: [
+			{ type: "triangle", ratio: 1, gain: 1 },
+			{ type: "sine", ratio: 2, gain: 0.35, fade: 0.4 },
+			{ type: "sawtooth", ratio: 1, gain: 0.12, fade: 0.2 },
+		],
+		env: { attack: 0.003, decay: 1.2, sustain: 0, release: 0.25 },
+		cutoff: 1200,
+		cutoffVelocity: 4000,
+		sweep: 3000,
+		sweepDecay: 0.1,
+		level: 0.7,
+	},
 };
 
 export function startVoice(

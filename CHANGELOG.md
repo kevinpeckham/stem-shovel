@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **An Acoustic Guitar sound** on the piano engine: FreePats' Spanish classical guitar (CC0), forty-eight notes from G1 to C6 as mp3 in static/kits/guitar (`bun run samples:guitar`). The bass and the guitar share one sampled-instrument module (`audio/sampledInstruments.ts`): nothing is fetched until the instrument is chosen, the files nearest middle C land first, each note plays from its own sample as soon as that one is decoded while a synthesized stand-in covers the rest, and a note plays the nearest sample by the smallest shift (octaves of the same pitch class preferred, so the bass's one octave covers the range).
 - **Learn mode and demo progressions on the chord player**: Demos puts a progression on the pad in the current key (the pop four, the doo-wop turnaround, ii–V–I, the twelve-bar blues, Pachelbel's Canon, the Andalusian cadence, Amazing Grace, When the Saints, Greensleeves, House of the Rising Sun and more, written by degree in `constants/demoProgressions.ts`); Learn outlines the next chord on the circle and names it in the readout, waiting for it to be played before moving on, on any progression on the pad; Play hears it.
 - **Chord inversions by dragging**: drag a little way up within a held wedge for the first and second inversion (C/E, C/G), back down for root position; the readout names the bass note.
 - **Preset buttons on a phone**: the five presets as small round buttons at the device's lower right, above the badge.
