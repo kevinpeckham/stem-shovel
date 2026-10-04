@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **An arpeggiator on the piano** (Kevin: the chord player's, backfilled): held keys play one at a time at the session tempo, a chord built up a key at a time joining the pattern as it grows, with the rate, pattern, octaves, gate, tempo ratio, session swing, latch, bar alignment and on-beat changes of the chord player's; an Arp split button beside the octave (double-click to latch), an Arpeggiator section in the phone's menu, "arp" on the screen, the settings in presets (`arp` in `PianoPresetDataSchema`); and a single key held alone plays as a chord, the triad on its degree of the lit key or a major triad (`utils/chordFromKey.ts`, on by default, "A single key plays as a chord" in the menu, in presets as `guess`). The arpeggiator is a class of its own now (`audio/arpeggiator.svelte.ts`, modes "replace" for chords and "add" for keys) with one menu (`ArpeggiatorMenu.svelte`) for both instruments; the chord player's behaviour is unchanged.
+
 ## [0.99.1] - 2026-10-04
 
 ### Fixed

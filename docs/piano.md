@@ -398,8 +398,44 @@ and the menu stays short; native, no state.
 ## Phase 3 (later)
 
 - 88 keys with a scrolling view; a transpose control; MIDI out; a
-  keyboard-split of two sounds; an arpeggiator; latency work for
-  Bluetooth MIDI and mobile.
+  keyboard-split of two sounds; latency work for Bluetooth MIDI and
+  mobile.
+
+## Arpeggiator (built 2026-10-04)
+
+Kevin's ask: the chord player's arpeggiator on the piano. The arpeggiator
+is now a class of its own, `src/lib/audio/arpeggiator.svelte.ts`
+(`Arpeggiator<T>`), the chord player's code lifted out whole: a fixed grid
+of the session tempo (metronome.bpm × tempoRatio, the session swing on
+the odd steps) scheduled on the voice's context with a lookahead, patterns
+lined up with bars, changes on the beat with the pending-chord and
+rejoin rules, latch, and the settings persisted through a `read`/`write`
+pair the owner supplies. Two modes: "replace" (the chord player: a hold is
+a chord that replaces the last) and "add" (the piano: a key held while
+others are down joins them at once, the sequence re-read every step, so a
+chord built up a key at a time grows under the pattern; with nothing
+down a key is a new chord, as the chord player's; under Latch the keys let
+go in turn latch as the whole chord they made). `PianoEngine` owns one
+(`piano.arpeggiator`, `ownArpeggiator` true for the piano only, never the
+chord player's engine): `noteOn` goes into it while it is on, `noteOff`
+out of it when it holds the key, so the on-screen keys, the computer
+keyboard and MIDI all arpeggiate; the sounding path is `#soundOn` /
+`#soundOff`, which the arpeggiator plays through, and the lit keys
+follow the pattern. `setArpeggiator(on)` hands held keys back as a chord
+(off) or takes the keys down into the pattern (on). Settings live under
+the engine's preferences key (`stemshovel.piano.arp-…`) and in presets as
+a top-level `arp` (`ArpSettingsSchema`, the same object the chord player
+keeps under `chords.arp`; the chord player's engine ignores it). The
+device: an Arpeggio group from the medium width, a split button (Arp,
+double-click to latch, a padlock while latched; the caret opens the
+shared `ArpeggiatorMenu.svelte`), a section in the phone's menu, "arp"
+on the screen. **A single key plays as a chord** (Kevin's trick the
+chord player has no need of): the piano gives its arpeggiator an
+`expand` (`utils/chordFromKey.ts`, tested: the triad on that degree of the
+lit key, thirds stacked up the scale, a major triad outside it or with no
+key), and `guess` (on by default, `arp-guess` in the preferences, in
+presets) makes one note held alone play as that chord in `#sequence`;
+two or more keys play as held.
 
 ## The bass and the guitar (2026-10-03, 2026-10-04)
 

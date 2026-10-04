@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
+	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
@@ -84,6 +85,22 @@
 		presetAdmin = false,
 		metronome: withMetronome = false,
 	}: Props = $props();
+
+	/** The Arp button: a click toggles the arpeggiator; a double click (or tap) latches it on, or unlatches it, as the chord player's does (docs/piano.md, "Arpeggiator"). */
+	let arpTapAt = 0;
+	function arpClick() {
+		const now = performance.now();
+		if (now - arpTapAt < 400) {
+			arpTapAt = 0;
+			piano.arpeggiator.setLatch(!piano.arpeggiator.latch);
+			if (!piano.arpeggiator.on) piano.setArpeggiator(true);
+			return;
+		}
+		arpTapAt = now;
+		const on = !piano.arpeggiator.on;
+		piano.setArpeggiator(on);
+		if (!on && piano.arpeggiator.latch) piano.arpeggiator.setLatch(false);
+	}
 
 	let hiresCached = $state(false);
 	onMount(() => {
@@ -611,6 +628,11 @@
 							· audio {piano.wake.state} at {piano.wake.seconds.toFixed(1)} s{/if}</span
 					>
 				{/if}
+				{#if piano.arpeggiator.on}
+					<span class="text-accent"
+						>· arp{piano.arpeggiator.latched !== null ? " (latched)" : ""}</span
+					>
+				{/if}
 				{#if piano.midi.status === "on"}
 					<span>· MIDI: {piano.midi.inputs.join(", ") || "no inputs"}</span>
 				{/if}
@@ -715,6 +737,26 @@
 						title="Octave up (arrow up)"
 						onclick={() => piano.setOctave(piano.octave + 1)}>+</button
 					>
+				</div>
+			</div>
+
+			<!-- arpeggiator (docs/piano.md, "Arpeggiator"): a split button, Arp on the left, its settings on the caret; a double click latches. From the medium width; a phone has a section in the menu. -->
+			<div class="hidden @2xl-block text-14px">
+				<div class="device-button-group-label text-dark hidden @4xl-block">Arpeggio</div>
+				<div class="flex gap-px" role="group" aria-label="Arpeggiator">
+					{@render arpButton("rounded-r-none")}
+					<ContextMenu
+						ariaLabel="Arpeggiator settings"
+						title="Rate, tempo, pattern, octaves, gate, swing, latch and bar alignment"
+						iconClass="i-ph-caret-down"
+						position="bottom left"
+						buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none @4xl-device-button-xs"
+						popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+						items={[
+							{ id: "arp-heading", kind: "heading", label: "Arpeggiator" },
+							{ id: "arp-block", kind: "snippet", snippet: arpMenuBlock },
+						]}
+					/>
 				</div>
 			</div>
 
@@ -1077,11 +1119,50 @@
 		</details>
 	{/snippet}
 
+	{#snippet arpButton(classes: string)}
+		<button
+			class="device-button-sm px-3 @4xl-device-button-xs {classes} {piano.arpeggiator.on
+				? 'text-accent'
+				: ''}"
+			type="button"
+			aria-pressed={piano.arpeggiator.on}
+			title={(piano.arpeggiator.on
+				? "Arpeggiator on: held keys play one at a time; click to play them together"
+				: "Arpeggiator: held keys play one at a time in time with the tempo") +
+				(piano.arpeggiator.latch
+					? "; latched (double-click to unlatch)"
+					: "; double-click to latch it on")}
+			aria-label="Arpeggiator"
+			onclick={arpClick}
+		>
+			<span
+				class={piano.arpeggiator.on && piano.arpeggiator.latch
+					? "i-ph-lock-simple-fill"
+					: "i-ph-wave-sawtooth"}
+				aria-hidden="true"
+			></span>
+			Arp
+		</button>
+	{/snippet}
+	{#snippet arpMenuBlock()}
+		<ArpeggiatorMenu
+			arp={piano.arpeggiator}
+			intro="Held keys play one at a time, at the session tempo: a chord built up a key at a time joins the pattern as it grows."
+		/>
+	{/snippet}
+	{#snippet arpSection()}
+		<div class="grid gap-3">
+			{@render arpButton("justify-self-start")}
+			{@render arpMenuBlock()}
+		</div>
+	{/snippet}
+
 	{#snippet compactMenuBlock()}
 		<div class="grid grid-cols-1 -mt-3">
 			{#if withMetronome}{@render section("Metronome", metronomeMenuBlock)}{/if}
 			{#if sitePresets}{@render section("Presets", presetsPhoneMenuBlock)}{/if}
 			{@render section("Volume", volumeSliderMenuBlock, true)}
+			{@render section("Arpeggiator", arpSection)}
 			{@render section("Effects", fxSlidersMenuBlock)}
 			{#if samplesBase !== null || midiSupported}{@render section("More", moreMenuBlock)}{/if}
 		</div>

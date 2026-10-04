@@ -38,6 +38,8 @@ import {
 import type { PianoPresetData } from "$lib/val/PianoPresetSchema";
 import { createPianoFx, type PianoFx } from "./pianoFx";
 import { metronome } from "./metronome.svelte";
+import { Arpeggiator } from "./arpeggiator.svelte";
+import { chordFromKey } from "$lib/utils/chordFromKey";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
 	flacSupported,
@@ -76,8 +78,39 @@ function clamp(v: number, min: number, max: number, steps = 100): number {
 const isSampled = (id: string): id is SampledInstrumentId => id === "bass" || id === "guitar";
 
 export class PianoEngine {
-	/** Where this engine's sound, effects and choices are remembered: the piano's key, or the chord player's own (docs/chord-player.md, "Its own engine"). */
-	constructor(readonly prefsKey = "stemshovel.piano") {}
+	/** Where this engine's sound, effects and choices are remembered: the piano's key, or the chord player's own (docs/chord-player.md, "Its own engine"). `ownArpeggiator`: the keys go through the engine's arpeggiator (the piano; the chord player runs its own on its engine). */
+	constructor(
+		readonly prefsKey = "stemshovel.piano",
+		readonly ownArpeggiator = false,
+	) {
+		this.arpeggiator = new Arpeggiator<number>({
+			voice: {
+				noteOn: (midi, velocity) => this.#soundOn(midi, velocity),
+				noteOff: (midi) => this.#soundOff(midi),
+				allOff: () => this.#soundAllOff(),
+				output: () => this.output(),
+			},
+			read: (name) => {
+				try {
+					return localStorage.getItem(`${prefsKey}.${name}`);
+				} catch {
+					return null;
+				}
+			},
+			write: (name, value) => {
+				try {
+					localStorage.setItem(`${prefsKey}.${name}`, value);
+				} catch {
+					// Private mode or a full store: the choice lasts for this page only.
+				}
+			},
+			mode: "add",
+			// A single key stands for a chord (Kevin): the triad on its degree of the lit key, or a major one.
+			expand: (midi) => chordFromKey(midi, this.key),
+		});
+	}
+	/** The arpeggiator on the keys (docs/piano.md, "Arpeggiator"): held keys play one at a time at the session tempo while `arpeggiator.on` and this engine owns one. */
+	readonly arpeggiator: Arpeggiator<number>;
 	instrument = $state<PianoInstrumentId>("epiano");
 	/** The octave the on-screen keyboard's lowest C sits in. */
 	octave = $state(3);
@@ -163,6 +196,7 @@ export class PianoEngine {
 		this.tone = { ...p.tone };
 		this.compressor = { ...p.compressor };
 		this.bounce = { ...p.bounce };
+		if (this.ownArpeggiator) this.arpeggiator.load();
 		this.hires = p.hires;
 		// The bounce keeps the session tempo (docs/audio-engine.md, "One tempo for the page").
 		metronome.load();
@@ -452,8 +486,40 @@ export class PianoEngine {
 		if (!this.#hosted) await this.#ctx?.suspend().catch(() => {});
 	}
 
+	/** A key down: into the arpeggiator while it is on (docs/piano.md, "Arpeggiator"), else the note itself. */
 	noteOn(midi: number, velocity = 0.8) {
 		if (midi < 0 || midi > 127) return;
+		if (this.ownArpeggiator && this.arpeggiator.on) {
+			this.warm();
+			this.arpeggiator.hold(`key:${midi}`, [midi], velocity, midi);
+			return;
+		}
+		this.#soundOn(midi, velocity);
+	}
+	/** A key up: out of the arpeggiator when it holds the key, else the note off (the pedal may hold it). */
+	noteOff(midi: number) {
+		if (this.ownArpeggiator && this.arpeggiator.holds(`key:${midi}`)) {
+			this.arpeggiator.release(`key:${midi}`, midi);
+			return;
+		}
+		this.#soundOff(midi);
+	}
+	/** The arpeggiator on or off: off, the keys still down ring as a chord; on, the keys down go into the pattern. */
+	setArpeggiator(on: boolean) {
+		this.arpeggiator.setOn(on);
+		if (!on) {
+			const held = this.arpeggiator.heldNotes();
+			this.arpeggiator.stop();
+			for (const h of held) for (const midi of h.notes) this.#soundOn(midi, h.velocity);
+		} else if (this.#held.down.size) {
+			const down = [...this.#held.down];
+			for (const midi of down) this.#soundOff(midi);
+			this.arpeggiator.restartWith(
+				down.map((midi) => ({ by: `key:${midi}`, notes: [midi], velocity: 0.8 })),
+			);
+		}
+	}
+	#soundOn(midi: number, velocity = 0.8) {
 		if (!this.#held.on(midi)) return;
 		const ctx = this.#graph();
 		if (ctx.state !== "running") {
@@ -501,7 +567,7 @@ export class PianoEngine {
 		this.#order.push(midi);
 		this.sounding = this.#held.sounding;
 	}
-	noteOff(midi: number) {
+	#soundOff(midi: number) {
 		if (this.#held.off(midi)) this.#stop(midi);
 		this.sounding = this.#held.sounding;
 	}
@@ -520,6 +586,10 @@ export class PianoEngine {
 	}
 	/** Everything off: a change of sound, or leaving the page. */
 	allOff() {
+		if (this.ownArpeggiator && this.arpeggiator.active) this.arpeggiator.stop();
+		this.#soundAllOff();
+	}
+	#soundAllOff() {
 		for (const midi of this.#held.clear()) this.#stop(midi);
 		this.sounding = [];
 	}
@@ -684,6 +754,7 @@ export class PianoEngine {
 			tone: { ...this.tone },
 			compressor: { ...this.compressor },
 			bounce: { ...this.bounce },
+			...(this.ownArpeggiator ? { arp: this.arpeggiator.settings() } : {}),
 		};
 	}
 	/** A preset into the piano: the sound and every effect, through the setters so the chain ramps and the choices are remembered. */
@@ -701,6 +772,10 @@ export class PianoEngine {
 		this.setTone(p.tone);
 		this.setCompressor(p.compressor);
 		this.setBounce(p.bounce);
+		if (this.ownArpeggiator && p.arp) {
+			this.arpeggiator.apply(p.arp);
+			if (p.arp.on !== this.arpeggiator.on) this.setArpeggiator(p.arp.on);
+		}
 	}
 
 	/** Every effect back to how the piano starts (the sound stays): the Effects menu's reset. */
@@ -773,7 +848,7 @@ export class PianoEngine {
 	}
 }
 
-export const piano = new PianoEngine();
+export const piano = new PianoEngine("stemshovel.piano", true);
 /**
  * The chord player's own engine (Kevin, 2026-10-04): the same class, its
  * own sound, effects and memory, so the chord player and the piano on one

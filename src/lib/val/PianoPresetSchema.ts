@@ -103,10 +103,31 @@ export const PianoPresetDataSchema = v.object({
 		}),
 		() => ({ depth: 0, division: "beat" as const, glide: 0.5, centre: false }),
 	),
+	/** The piano's own arpeggiator (docs/piano.md, "Arpeggiator"); absent on presets from before, and on the chord player's. */
+	arp: v.optional(v.lazy(() => ArpSettingsSchema)),
 	/** The chord player's mode, style, voicing, octave and strum, when the preset was saved there. */
 	chords: v.optional(v.lazy(() => ChordPresetSettingsSchema)),
 });
 export type PianoPresetData = v.InferOutput<typeof PianoPresetDataSchema>;
+
+/** An arpeggiator's settings (audio/arpeggiator.svelte.ts): the chord player's, under `chords`, and the piano's own at the top level. */
+export const ArpSettingsSchema = v.object({
+	on: v.boolean(),
+	rate: v.picklist(["4", "8", "8t", "16"]),
+	pattern: v.picklist(["up", "down", "updown", "played", "random"]),
+	octaves: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3)),
+	gate: v.pipe(v.number(), v.minValue(0.1), v.maxValue(1)),
+	latch: v.boolean(),
+	/** The pattern restarting at every bar or two (presets from before carry neither). */
+	align: v.optional(v.boolean()),
+	alignBars: v.optional(v.picklist([1, 2])),
+	onBeat: v.optional(v.boolean()),
+	swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
+	/** The arpeggiator's tempo as a ratio of the session's. */
+	ratio: v.optional(v.picklist([0.5, 1, 2])),
+	/** The piano's: a single key plays as a chord. */
+	guess: v.optional(v.boolean()),
+});
 
 /** The chord player's own settings a preset saved there carries (docs/chord-player.md, "Presets"): absent on a preset saved from the piano. */
 export const ChordPresetSettingsSchema = v.object({
@@ -132,23 +153,7 @@ export const ChordPresetSettingsSchema = v.object({
 		}),
 	),
 	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */
-	arp: v.optional(
-		v.object({
-			on: v.boolean(),
-			rate: v.picklist(["4", "8", "8t", "16"]),
-			pattern: v.picklist(["up", "down", "updown", "played", "random"]),
-			octaves: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3)),
-			gate: v.pipe(v.number(), v.minValue(0.1), v.maxValue(1)),
-			latch: v.boolean(),
-			/** The pattern restarting at every bar or two (presets from before carry neither). */
-			align: v.optional(v.boolean()),
-			alignBars: v.optional(v.picklist([1, 2])),
-			onBeat: v.optional(v.boolean()),
-			swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
-			/** The arpeggiator's tempo as a ratio of the session's. */
-			ratio: v.optional(v.picklist([0.5, 1, 2])),
-		}),
-	),
+	arp: v.optional(ArpSettingsSchema),
 });
 export type ChordPresetSettings = v.InferOutput<typeof ChordPresetSettingsSchema>;
 

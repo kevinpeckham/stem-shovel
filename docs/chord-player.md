@@ -50,6 +50,14 @@ the piano's engine.
   "text-to-chords"), 20 an hour per user or address
   (`textToChords.remote.ts`). The Describe menu sits beside Demos on the
   pad when the page's load says `aiAvailable()`.
+- **The arpeggiator is a class** (2026-10-04, for the piano, docs/piano.md
+  "Arpeggiator"): `audio/arpeggiator.svelte.ts`, the chord player's code
+  lifted out whole; `chordPlayer.arpeggiator` is its instance (mode
+  "replace", the chord as its tag, so `latchedChord` is the arpeggiator's
+  latched chord or the strum pattern's), and the `arp*` fields and
+  setters on the chord player are thin delegations, so the device,
+  presets, demos and share links are unchanged. The Arpeggiator menu is
+  `ArpeggiatorMenu.svelte`, shared with the piano.
 - **Bebop and Cool styles, jazz demos** (2026-10-04, Kevin, from
   jazzguitar.be's chord progressions): the Jazz style split into its halves
   in `styledChord`: Bebop (6 on I with 6/9 under the pad, maj7 on IV, 7♭9

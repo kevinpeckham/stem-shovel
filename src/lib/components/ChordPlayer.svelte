@@ -24,6 +24,7 @@
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
+	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
 	import ChordPresets from "$lib/components/ChordPresets.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
@@ -1384,148 +1385,12 @@
 {/snippet}
 
 {#snippet arpMenuBlock()}
-	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-		<p class="text-12px opacity-70 -mt-1">
-			A held wedge plays its notes one at a time, at the Timing tempo. Styles and voicings decide
-			which notes; a new chord restarts the pattern as you press it.
-		</p>
-		<div class="grid gap-4">
-			<label class="block">
-				<span class="device-button-label">Rate</span>
-				<select
-					class="device-field w-full"
-					value={chordPlayer.arpRate}
-					onchange={(e) => chordPlayer.setArpRate(e.currentTarget.value as ArpRate)}
-				>
-					{#each ARP_RATES as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
-				</select>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Tempo</span>
-				<select
-					class="device-field w-full"
-					value={String(chordPlayer.tempoRatio)}
-					onchange={(e) => chordPlayer.setTempoRatio(Number(e.currentTarget.value) as TempoRatio)}
-				>
-					{#each TEMPO_RATIOS as r (r.id)}<option value={String(r.id)}
-							>{r.label}{r.id === 1 ? ` (${metronome.bpm} bpm)` : ""}</option
-						>{/each}
-				</select>
-				<span class="block text-12px opacity-70 mt-1"
-					>The pattern runs at the session tempo (the metronome's, shared with the drums), or at
-					half or double it.</span
-				>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Pattern</span>
-				<select
-					class="device-field w-full"
-					value={chordPlayer.arpPattern}
-					onchange={(e) => chordPlayer.setArpPattern(e.currentTarget.value as ArpPattern)}
-				>
-					{#each ARP_PATTERNS as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
-				</select>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Octaves · {chordPlayer.arpOctaves}</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="1"
-					max="3"
-					step="1"
-					value={chordPlayer.arpOctaves}
-					aria-label="Arpeggiator octaves"
-					oninput={(e) => chordPlayer.setArpOctaves(Number(e.currentTarget.value))}
-				/>
-				<span class="block text-12px opacity-70 mt-1"
-					>The pattern climbs through this many octaves before it repeats.</span
-				>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Gate · {Math.round(chordPlayer.arpGate * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="10"
-					max="100"
-					step="5"
-					value={Math.round(chordPlayer.arpGate * 100)}
-					aria-label="Arpeggiator gate in percent"
-					oninput={(e) => chordPlayer.setArpGate(Number(e.currentTarget.value) / 100)}
-				/>
-				<span class="block text-12px opacity-70 mt-1"
-					>How much of each step the note sounds: short and clipped, or running into the next.</span
-				>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Swing · {Math.round(chordPlayer.swing * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="5"
-					value={Math.round(chordPlayer.swing * 100)}
-					aria-label="Swing in percent"
-					oninput={(e) => chordPlayer.setSwing(Number(e.currentTarget.value) / 100)}
-				/>
-				<span class="block text-12px opacity-70 mt-1"
-					>Every second eighth or sixteenth lands late, up to a triplet feel at full. Quarter notes
-					and triplets stay straight. One swing for the chord player: the strum pattern's too.</span
-				>
-			</label>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.arpLatch}
-					onchange={(e) => chordPlayer.setArpLatch(e.currentTarget.checked)}
-				/>
-				Latch: the pattern keeps going after you let go, until the next chord or Esc
-			</label>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.arpAlign}
-					onchange={(e) => chordPlayer.setArpAlign(e.currentTarget.checked)}
-				/>
-				Patterns line up with bars
-			</label>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.arpOnBeat}
-					onchange={(e) => chordPlayer.setArpOnBeat(e.currentTarget.checked)}
-				/>
-				Chord changes land on the beat
-			</label>
-			<span class="block text-12px opacity-70 -mt-2"
-				>A new chord joins the running grid at the next quarter (eighth in sixteenths), whether the
-				last chord is still held, latched or let go a moment ago: pressed just before, it waits for
-				it; pressed just after, it comes in on the next step in its place. Off, a new chord restarts
-				the pattern as you press it.</span
-			>
-			<label class="block">
-				<span class="device-button-label">Line up every</span>
-				<select
-					class="device-field w-full"
-					value={String(chordPlayer.arpAlignBars)}
-					disabled={!chordPlayer.arpAlign}
-					onchange={(e) => chordPlayer.setArpAlignBars(Number(e.currentTarget.value) as 1 | 2)}
-				>
-					<option value="1">1 bar</option>
-					<option value="2">2 bars</option>
-				</select>
-				<span class="block text-12px opacity-70 mt-1"
-					>The pattern starts again from its first note at every bar (or two), whatever was left of
-					it, so it lands the same way each time.</span
-				>
-			</label>
-		</div>
-	</div>
+	<ArpeggiatorMenu
+		arp={chordPlayer.arpeggiator}
+		intro="A held wedge plays its notes one at a time, at the session tempo. Styles and voicings decide which notes."
+		changesLabel="Chord changes land on the beat"
+		swingNote="One swing for the chord player: the strum pattern's and the drum machine's too."
+	/>
 {/snippet}
 
 {#snippet circleMenuBlock()}
