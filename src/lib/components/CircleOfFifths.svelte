@@ -276,7 +276,7 @@
 				aria-pressed={pressed.has(`note:${i}`)}
 			/>
 			<text
-				class="pointer-events-none fill-current"
+				class="pointer-events-none {pressed.has(`note:${i}`) ? 'fill-oxford' : 'fill-current'}"
 				font-size={px(22, slot)}
 				text-anchor="middle"
 				dominant-baseline="central"

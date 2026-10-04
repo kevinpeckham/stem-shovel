@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A pressed note's name darkens** on the chord player in Notes mode, as a pressed chord's does (Kevin: it stayed light on the lit wedge).
+
 ## [0.98.0] - 2026-10-04
 
 ### Added
