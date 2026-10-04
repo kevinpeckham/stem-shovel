@@ -84,7 +84,12 @@
 	let recorder = $state<DemoRecorder | null>(null);
 	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __inputs: inputSources, __piano: piano, __drums: drumMachine });
+		Object.assign(window, {
+			__inputs: inputSources,
+			__piano: piano,
+			__drums: drumMachine,
+			__metronome: metronome,
+		});
 	/** The idea in the recorder and the notes panel; null = a new idea not yet saved. */
 	let ideaId = $state<string | null>(null);
 	let idea = $derived(data.ideas.find((i) => i.id === ideaId) ?? null);

@@ -1,5 +1,6 @@
 import type { ChordVoicing, Strum } from "./circleOfFifths";
 import type { PianoInstrumentId } from "./piano";
+import type { TempoRatio } from "./tempo";
 
 /**
  * Progressions to learn from and to hear played (docs/chord-player.md,
@@ -38,6 +39,7 @@ export interface DemoSetup {
 		gate?: number;
 		latch?: boolean;
 		swing?: number;
+		ratio?: TempoRatio;
 	};
 	keyCenter?: number;
 	octave?: number;

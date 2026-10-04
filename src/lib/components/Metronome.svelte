@@ -27,7 +27,7 @@
 	/** The metronome and the drums never play together: starting one stops the other and takes its tempo. */
 	function toggleRun() {
 		if (!metronome.running && drumMachine.running) {
-			metronome.setBpm(drumMachine.project.bpm);
+			if (!drumMachine.followTempo) metronome.setBpm(drumMachine.bpm);
 			drumMachine.stop();
 		}
 		metronome.toggle();

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
 	import { onDestroy, type Snippet } from "svelte";
 	import {
 		ARP_PATTERNS,
@@ -214,12 +215,17 @@
 	const currentKey = $derived(pianoPresetKey(piano.currentPreset()));
 	const currentChords = $derived(chordPlayer.presetSettings);
 	/** A preset matches the sound playing when its piano part does and, if it carries chord settings, those too, field by field (a preset saved before a setting existed has nothing to say about it). */
+	/** A preset matches when every chord setting it carries is the current one: settings added since it was saved (its arpeggiator's swing, say) do not count against it. */
+	const carried = (saved: unknown, current: unknown): boolean => {
+		if (saved && typeof saved === "object" && current && typeof current === "object")
+			return Object.entries(saved).every(([k, v]) =>
+				carried(v, (current as Record<string, unknown>)[k]),
+			);
+		return JSON.stringify(saved) === JSON.stringify(current);
+	};
 	const matches = (data: PianoPresetData) =>
 		pianoPresetKey({ ...data, chords: undefined }) === currentKey &&
-		(!data.chords ||
-			(Object.entries(data.chords) as [keyof typeof currentChords, unknown][]).every(
-				([k, v]) => JSON.stringify(currentChords[k]) === JSON.stringify(v),
-			));
+		(!data.chords || carried(data.chords, currentChords));
 	const activeSlot = $derived(slots.findIndex((p) => p && matches(p.data)));
 	const presetLine = $derived.by(() => {
 		const slot = activeSlot >= 0 ? slots[activeSlot] : null;
@@ -400,7 +406,11 @@
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
 					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
 					<span>· octave {chordPlayer.octave}</span>
-					{#if chordPlayer.arp}<span class="text-accent">· arp</span>{/if}
+					{#if chordPlayer.arp}<span class="text-accent"
+							>· arp{chordPlayer.tempoRatio === 1
+								? ""
+								: ` ${TEMPO_RATIOS.find((r) => r.id === chordPlayer.tempoRatio)?.short}`}</span
+						>{/if}
 					<span
 						>· {CHORD_VOICINGS.find((v) => v.id === chordPlayer.voicing)?.label.toLowerCase()}</span
 					>
@@ -1200,6 +1210,22 @@
 				>
 					{#each ARP_RATES as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
 				</select>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Tempo</span>
+				<select
+					class="device-field w-full"
+					value={String(chordPlayer.tempoRatio)}
+					onchange={(e) => chordPlayer.setTempoRatio(Number(e.currentTarget.value) as TempoRatio)}
+				>
+					{#each TEMPO_RATIOS as r (r.id)}<option value={String(r.id)}
+							>{r.label}{r.id === 1 ? ` (${metronome.bpm} bpm)` : ""}</option
+						>{/each}
+				</select>
+				<span class="block text-12px opacity-70 mt-1"
+					>The pattern runs at the session tempo (the metronome's, shared with the drums), or at
+					half or double it.</span
+				>
 			</label>
 			<label class="block">
 				<span class="device-button-label">Pattern</span>

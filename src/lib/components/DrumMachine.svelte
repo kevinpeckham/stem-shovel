@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import ComboBox from "$lib/components/ComboBox.svelte";
@@ -391,7 +392,7 @@
 	function togglePlay() {
 		if (!drumMachine.running) tutorial.played = true;
 		if (!drumMachine.running && metronome.running) {
-			drumMachine.setBpm(metronome.bpm);
+			if (!drumMachine.followTempo) drumMachine.setBpm(metronome.bpm);
 			metronome.stop();
 		}
 		drumMachine.toggle();
@@ -606,7 +607,7 @@
 					min={DRUM_BPM_MIN}
 					max={DRUM_BPM_MAX}
 					step="1"
-					value={p.bpm}
+					value={drumMachine.bpm}
 					onchange={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
 					aria-label="Drums tempo in beats per minute"
 				/>
@@ -658,7 +659,7 @@
 			>
 				<!-- BPM Readout -->
 				<div class="flex items-baseline gap-2 user-select-none">
-					<span class="text-40px leading-none">{p.bpm}</span>
+					<span class="text-40px leading-none">{drumMachine.bpm}</span>
 					<span class="text-13px opacity-70">bpm</span>
 				</div>
 
@@ -716,17 +717,18 @@
 		<!-- a phone's tempo, swing and humanize, in a menu beside Tap Tempo (the sliders show from sm up) -->
 		{#snippet tempoItem()}
 			<label class="grid gap-1 px-3 py-2 text-13px">
-				<span class="select-none">Tempo · {p.bpm} bpm</span>
+				<span class="select-none">Tempo · {drumMachine.bpm} bpm</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
 					min={DRUM_BPM_MIN}
 					max={DRUM_BPM_MAX}
 					step="1"
-					value={p.bpm}
+					value={drumMachine.bpm}
 					oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
 					aria-label="Tempo in beats per minute"
 				/>
+				{@render followTempo()}
 			</label>
 		{/snippet}
 		{#snippet swingItem()}
@@ -1252,10 +1254,11 @@
 						min={DRUM_BPM_MIN}
 						max={DRUM_BPM_MAX}
 						step="1"
-						value={p.bpm}
+						value={drumMachine.bpm}
 						oninput={(e) => drumMachine.setBpm(Number(e.currentTarget.value))}
 						aria-label="Tempo in beats per minute"
 					/>
+					{@render followTempo()}
 				</label>
 				<label class="block">
 					<span class="device-button-label flex items-center"
@@ -1929,4 +1932,29 @@
 			<DrumKitManager accountId={account.id} kits={managerKits} onchange={kitsChanged} />
 		{/if}
 	</div>
+{/snippet}
+
+<!-- The session tempo (docs/audio-engine.md, "One tempo for the page"): the beat follows the metronome's tempo, at a ratio, unless told not to. -->
+{#snippet followTempo()}
+	<span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-12px mt-1">
+		<label class="flex items-center gap-1.5 select-none">
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={drumMachine.followTempo}
+				onchange={(e) => drumMachine.setFollowTempo(e.currentTarget.checked)}
+			/>
+			Follows the session tempo
+		</label>
+		{#if drumMachine.followTempo}
+			<select
+				class="field py-0.5 text-12px"
+				value={String(drumMachine.tempoRatio)}
+				aria-label="Tempo ratio to the session"
+				onchange={(e) => drumMachine.setTempoRatio(Number(e.currentTarget.value) as TempoRatio)}
+			>
+				{#each TEMPO_RATIOS as r (r.id)}<option value={String(r.id)}>{r.label}</option>{/each}
+			</select>
+		{/if}
+	</span>
 {/snippet}

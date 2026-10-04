@@ -525,20 +525,20 @@ class LooperEngine {
 		this.volume = Math.max(0, Math.min(1, v));
 		this.#master?.gain.setTargetAtTime(this.volume, this.#ctx?.currentTime ?? 0, 0.02);
 	}
-	/** Tempo and length: only while no layer exists (the page clears the loop first if the user insists). The tempo goes to the drum machine and the metronome too (Kevin: synced both ways; the page brings theirs back here). */
+	/** Tempo and length: only while no layer exists (the page clears the loop first if the user insists). The tempo is the session's (the metronome's), which the drums and the chord player follow; the page brings a change there back here. */
 	setBpm(v: number) {
 		if (this.locked) return;
 		this.bpm = Math.max(40, Math.min(240, Math.round(v)));
 		this.syncTempo();
 		this.#persist();
 	}
-	/** The drum machine and the metronome at the loop's tempo (also what holds them there while the loop has layers). */
+	/** The session tempo at the loop's (also what holds it there while the loop has layers); a drum machine not following is set too. */
 	syncTempo() {
-		if (drumMachine.project.bpm !== this.bpm) {
+		if (metronome.bpm !== this.bpm) metronome.setBpm(this.bpm);
+		if (!drumMachine.followTempo && drumMachine.project.bpm !== this.bpm) {
 			drumMachine.load();
 			drumMachine.setBpm(this.bpm);
 		}
-		if (metronome.bpm !== this.bpm) metronome.setBpm(this.bpm);
 	}
 	/** Tap the tempo (the metronome's way, the last eight taps); while the loop has layers the tempo is fixed. */
 	#taps: number[] = [];
@@ -691,7 +691,7 @@ class LooperEngine {
 			// The beat starts on bar 1 (after the count-in from a standstill), whatever it was doing: a beat auditioned from the panel is restarted in step with the loop (Kevin).
 			drumMachine.load();
 			if (drumMachine.running) drumMachine.stop();
-			drumMachine.setBpm(this.bpm);
+			if (!drumMachine.followTempo) drumMachine.setBpm(this.bpm);
 			void drumMachine.startAt(from);
 			this.#startedDrums = true;
 		}

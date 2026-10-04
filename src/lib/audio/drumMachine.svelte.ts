@@ -22,12 +22,16 @@ import type { DrumPreset } from "$lib/constants/drumPresets";
 import { decodeDrumProject } from "$lib/utils/decodeDrumProject";
 import {
 	loadDrumMachinePreferences,
+	loadDrumTempoFollow,
 	loadDrumVolume,
 	saveDrumMachinePreferences,
+	saveDrumTempoFollow,
 	saveDrumVolume,
 } from "$lib/utils/drumMachinePreferences";
 import { drumPresetProject } from "$lib/utils/drumPresetProject";
 import { drumSwingDelay } from "$lib/utils/drumSwingDelay";
+import { metronome } from "./metronome.svelte";
+import type { TempoRatio } from "$lib/constants/tempo";
 import { emptyDrumPattern } from "$lib/utils/emptyDrumPattern";
 import { encodeDrumMidi } from "$lib/utils/encodeDrumMidi";
 import { generateDrumPattern } from "$lib/utils/generateDrumPattern";
@@ -100,6 +104,9 @@ class DrumMachineEngine {
 	#access: MIDIAccess | null = null;
 	#ctx: AudioContext | null = null;
 	#bus: DrumBus | null = null;
+	/** The beat follows the session tempo (docs/audio-engine.md, "One tempo for the page"), at a ratio of it; on by default. */
+	followTempo = $state(true);
+	tempoRatio = $state<TempoRatio>(1);
 	#stopLoop: (() => void) | null = null;
 	#frame: number | null = null;
 	#nextTime = 0;
@@ -125,12 +132,24 @@ class DrumMachineEngine {
 		if (this.#loaded || typeof window === "undefined") return;
 		this.#loaded = true;
 		this.volume = loadDrumVolume();
+		const tempo = loadDrumTempoFollow();
+		this.followTempo = tempo.follow;
+		this.tempoRatio = tempo.ratio;
+		metronome.load();
 		const remembered = loadDrumMachinePreferences();
 		if (remembered) this.project = remembered;
 		else if (starting) this.project = starting;
 		const hash = window.location.hash.slice(1);
 		const shared = hash ? decodeDrumProject(hash) : null;
 		if (shared) this.project = shared;
+		// A beat the page brought (the home demo, a share link) sets the session; the remembered project does not: the session's own memory is the newer one, and the beat is kept in step with it below.
+		if (starting || shared) this.#adoptTempo();
+		metronome.listen(() => {
+			if (!this.followTempo) return;
+			this.project.bpm = this.bpm;
+			this.#save();
+			this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
+		});
 		this.current = 0;
 		this.songMode = this.project.timeline.length > 0;
 		this.#resetSolo();
@@ -188,7 +207,7 @@ class DrumMachineEngine {
 			const pattern = this.project.patterns[index]!;
 			const steps = pattern.steps;
 			const s = this.#nextStep % steps;
-			const stepSeconds = 60 / this.project.bpm / 4;
+			const stepSeconds = 60 / this.bpm / 4;
 			// The step's straight time, plus swing's delay on the odd sixteenths.
 			const at =
 				this.#nextTime + drumSwingDelay(s, stepSeconds, this.project.swing, this.project.swingGrid);
@@ -257,12 +276,8 @@ class DrumMachineEngine {
 	#ensureGraph(): { ctx: AudioContext; bus: DrumBus } {
 		this.load();
 		const ctx = (this.#ctx ??= new AudioContext());
-		const bus = (this.#bus ??= createDrumBus(
-			ctx,
-			$state.snapshot(this.project.fx),
-			this.project.bpm,
-		));
-		bus.update($state.snapshot(this.project.fx), this.project.bpm);
+		const bus = (this.#bus ??= createDrumBus(ctx, $state.snapshot(this.project.fx), this.bpm));
+		bus.update($state.snapshot(this.project.fx), this.bpm);
 		bus.setVolume(this.volume);
 		return { ctx, bus };
 	}
@@ -315,7 +330,7 @@ class DrumMachineEngine {
 			this.#nextTime = at;
 			this.#nextStep = 0;
 		} else {
-			const stepSeconds = 60 / this.project.bpm / 4;
+			const stepSeconds = 60 / this.bpm / 4;
 			const skip = Math.ceil((ctx.currentTime + 0.01 - at) / stepSeconds);
 			this.#nextTime = at + skip * stepSeconds;
 			this.#nextStep = skip;
@@ -467,11 +482,40 @@ class DrumMachineEngine {
 		cells[step] = Math.min(DRUM_VELOCITY_MAX, Math.max(0, Math.round(velocity)));
 		this.#save();
 	}
+	/** The tempo the beat plays at: the session's (the metronome's) at the ratio while following, else the beat's own. */
+	get bpm(): number {
+		if (!this.followTempo) return this.project.bpm;
+		return Math.min(
+			DRUM_BPM_MAX,
+			Math.max(DRUM_BPM_MIN, Math.round(metronome.bpm * this.tempoRatio)),
+		);
+	}
+	/** The tempo from the drums' own controls (the slider, the field, Tap): the beat's, and, while following, the session's through the ratio. */
 	setBpm(v: number) {
 		if (!Number.isFinite(v)) return;
 		this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(v)));
+		if (this.followTempo) metronome.setBpm(Math.round(this.project.bpm / this.tempoRatio));
 		this.#save();
-		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
+	}
+	/** Following on: the beat falls in with the session tempo; off: the beat keeps the tempo it was playing at as its own. */
+	setFollowTempo(on: boolean) {
+		if (on === this.followTempo) return;
+		if (!on) this.project.bpm = this.bpm;
+		this.followTempo = on;
+		if (on) this.project.bpm = this.bpm;
+		saveDrumTempoFollow({ follow: this.followTempo, ratio: this.tempoRatio });
+		this.#save();
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
+	}
+	setTempoRatio(ratio: TempoRatio) {
+		this.tempoRatio = ratio;
+		saveDrumTempoFollow({ follow: this.followTempo, ratio: this.tempoRatio });
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
+	}
+	/** A beat that arrived with its own tempo (the remembered project, a preset, a saved beat, a song's) sets the session's while following, so the rest of the page falls in with it. */
+	#adoptTempo() {
+		if (this.followTempo) metronome.setBpm(Math.round(this.project.bpm / this.tempoRatio));
 	}
 	/** The master volume, 0 to 1 (docs/drum-machine.md, "Master volume"). */
 	setVolume(v: number) {
@@ -501,7 +545,7 @@ class DrumMachineEngine {
 		fx.delayAnalog = fx.delayAnalog === true;
 		this.project.fx = fx;
 		this.#save();
-		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 	}
 	/** The effects back to their defaults: master levels at zero, every row in every pattern sending its voice's usual amount. */
 	resetFx() {
@@ -509,7 +553,7 @@ class DrumMachineEngine {
 		for (const p of this.project.patterns)
 			for (const r of p.rows) Object.assign(r, DEFAULT_DRUM_SENDS[r.voice]);
 		this.#save();
-		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 	}
 	setSend(row: number, which: "delaySend" | "reverbSend", v: number) {
 		const r = this.pattern.rows[row];
@@ -574,6 +618,7 @@ class DrumMachineEngine {
 		if (mode === "replace") {
 			this.project = loaded;
 			this.current = 0;
+			this.#adoptTempo();
 		} else {
 			const room = MAX_DRUM_PATTERNS - this.project.patterns.length;
 			if (room <= 0) return;
@@ -627,8 +672,10 @@ class DrumMachineEngine {
 			this.project.patterns.push(pattern);
 			this.select(this.project.patterns.length - 1);
 		}
-		if (also.bpm)
+		if (also.bpm) {
 			this.project.bpm = Math.min(DRUM_BPM_MAX, Math.max(DRUM_BPM_MIN, Math.round(also.bpm)));
+			this.#adoptTempo();
+		}
 		// Feel and effects: a replacement starts from the defaults (straight, the usual humanize, clean) plus what came with the pattern; an added pattern applies only what came with it.
 		const unit = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
 		const swing = also.swing === null || also.swing === undefined ? null : unit(also.swing);
@@ -652,7 +699,7 @@ class DrumMachineEngine {
 		}
 		this.#resetSolo();
 		this.#save();
-		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 		this.beforePreset = before;
 		return this.current;
 	}
@@ -661,6 +708,7 @@ class DrumMachineEngine {
 		if (!before) return;
 		const kit = this.project.kit;
 		this.project = before;
+		this.#adoptTempo();
 		this.current = Math.min(this.current, before.patterns.length - 1);
 		this.#afterSwap(kit);
 	}
@@ -675,7 +723,7 @@ class DrumMachineEngine {
 			this.playing = Math.min(this.current, this.project.patterns.length - 1);
 		}
 		this.#save();
-		this.#bus?.update($state.snapshot(this.project.fx), this.project.bpm);
+		this.#bus?.update($state.snapshot(this.project.fx), this.bpm);
 		if (this.#ctx && (this.project.kit !== previousKit || !this.kitReady)) void this.#readyKit();
 	}
 	/** The kit in use again (a sample was replaced: the registry made the kit afresh), without a change of kit. */
@@ -778,7 +826,7 @@ class DrumMachineEngine {
 		if (!ctx) return;
 		const pattern = this.project.patterns[Math.min(this.playing, this.project.patterns.length - 1)];
 		if (!pattern) return;
-		const stepSeconds = 60 / this.project.bpm / 4;
+		const stepSeconds = 60 / this.bpm / 4;
 		const fromNext = Math.round((this.#nextTime - ctx.currentTime) / stepSeconds);
 		const step = (((this.#nextStep - fromNext) % pattern.steps) + pattern.steps) % pattern.steps;
 		let index = pattern.rows.findIndex((r) => r.voice === voice);
@@ -855,7 +903,7 @@ class DrumMachineEngine {
 	midi(): Blob {
 		return encodeDrumMidi(
 			this.playsSong ? $state.snapshot(this.bars) : $state.snapshot(this.pattern),
-			this.project.bpm,
+			this.bpm,
 			this.project.swing,
 			this.project.swingGrid,
 		);
@@ -863,8 +911,8 @@ class DrumMachineEngine {
 	/** "beat-2-100bpm", or "song-8-bars-100bpm": for the file names. */
 	fileStem(): string {
 		return this.playsSong
-			? `song-${this.project.timeline.length}-bars-${this.project.bpm}bpm`
-			: `beat-${this.current + 1}-${this.project.bpm}bpm`;
+			? `song-${this.project.timeline.length}-bars-${this.bpm}bpm`
+			: `beat-${this.current + 1}-${this.bpm}bpm`;
 	}
 }
 

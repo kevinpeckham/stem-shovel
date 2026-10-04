@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { CHORD_VOICINGS, STRUMS } from "$lib/constants/circleOfFifths";
+import { CHORD_VOICINGS, SEVENTH_TYPES, STRUMS } from "$lib/constants/circleOfFifths";
 import { PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
@@ -95,6 +95,11 @@ export const ChordPresetSettingsSchema = v.object({
 	voicing: v.picklist(CHORD_VOICINGS.map((c) => c.id)),
 	octave: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(6)),
 	strum: v.picklist(STRUMS.map((s) => s.id)),
+	/** The strum's direction and accent, the seventh's kind and the Touch (velocity); absent on presets saved before they were kept (Kevin's review). */
+	strumDirection: v.optional(v.picklist(["down", "up", "alternate"])),
+	accent: v.optional(v.picklist(["none", "top", "bottom"])),
+	seventhType: v.optional(v.picklist(SEVENTH_TYPES.map((s) => s.id))),
+	velocity: v.optional(v.pipe(v.number(), v.minValue(0.2), v.maxValue(1))),
 	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */
 	arp: v.optional(
 		v.object({
@@ -109,6 +114,8 @@ export const ChordPresetSettingsSchema = v.object({
 			alignBars: v.optional(v.picklist([1, 2])),
 			onBeat: v.optional(v.boolean()),
 			swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
+			/** The arpeggiator's tempo as a ratio of the session's. */
+			ratio: v.optional(v.picklist([0.5, 1, 2])),
 		}),
 	),
 });

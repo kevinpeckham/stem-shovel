@@ -206,6 +206,7 @@ class ProgressionPad {
 			if (s.arp.gate !== undefined) chordPlayer.setArpGate(s.arp.gate);
 			if (s.arp.latch !== undefined) chordPlayer.setArpLatch(s.arp.latch);
 			if (s.arp.swing !== undefined) chordPlayer.setArpSwing(s.arp.swing);
+			if (s.arp.ratio !== undefined) chordPlayer.setTempoRatio(s.arp.ratio);
 			if (s.arp.on !== chordPlayer.arp) chordPlayer.setArp(s.arp.on);
 		}
 		if (s.sustain !== undefined) piano.setSustain(s.sustain);

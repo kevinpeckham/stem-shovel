@@ -28,6 +28,12 @@ class MetronomeEngine {
 	#visualTimers: ReturnType<typeof setTimeout>[] = [];
 	#taps: number[] = [];
 	#loaded = false;
+	/** Who follows the tempo (the drum machine), told on every change (docs/audio-engine.md, "One tempo for the page"). */
+	#followers = new Set<() => void>();
+	listen(fn: () => void): () => void {
+		this.#followers.add(fn);
+		return () => this.#followers.delete(fn);
+	}
 
 	/** Reads the remembered settings once, in the browser. */
 	load() {
@@ -107,8 +113,11 @@ class MetronomeEngine {
 
 	setBpm(v: number) {
 		if (!Number.isFinite(v)) return;
-		this.bpm = Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(v)));
+		const bpm = Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(v)));
+		if (bpm === this.bpm) return;
+		this.bpm = bpm;
 		this.#save();
+		for (const fn of this.#followers) fn();
 	}
 	setBeats(n: number) {
 		this.beatsPerBar = n;

@@ -5,6 +5,7 @@ import {
 	type DrumProject,
 } from "$lib/val/DrumPatternSchema";
 import { upgradeDrumProject } from "./upgradeDrumProject";
+import { tempoRatioOf, type TempoRatio } from "$lib/constants/tempo";
 
 /** The project the drum machine last had, remembered per browser; a version 1 one is upgraded on read. */
 const KEY = "stemshovel.drum-machine";
@@ -28,6 +29,26 @@ export function saveDrumMachinePreferences(p: DrumProject): void {
 		localStorage.setItem(KEY, JSON.stringify(p));
 	} catch {
 		// Private mode or a full store: the project lasts for this page only.
+	}
+}
+
+/** Whether the drums follow the session tempo and at what ratio (docs/audio-engine.md, "One tempo for the page"), a choice per browser. */
+const TEMPO_KEY = "stemshovel.drum-machine.tempo";
+export function loadDrumTempoFollow(): { follow: boolean; ratio: TempoRatio } {
+	try {
+		const raw = localStorage.getItem(TEMPO_KEY);
+		const json: unknown = raw ? JSON.parse(raw) : null;
+		const o = json && typeof json === "object" ? (json as Record<string, unknown>) : {};
+		return { follow: o.follow !== false, ratio: tempoRatioOf(o.ratio) ?? 1 };
+	} catch {
+		return { follow: true, ratio: 1 };
+	}
+}
+export function saveDrumTempoFollow(v: { follow: boolean; ratio: TempoRatio }): void {
+	try {
+		localStorage.setItem(TEMPO_KEY, JSON.stringify(v));
+	} catch {
+		// Private mode or a full store: the choice lasts for this page only.
 	}
 }
 

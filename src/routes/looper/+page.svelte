@@ -57,6 +57,7 @@
 			__piano: piano,
 			__drums: drumMachine,
 			__chords: chordPlayer,
+			__metronome: metronome,
 		});
 
 	// The looper itself and its notes pop out into panels from lg, as the recorder's device and notes do (Kevin); remembered per browser.
@@ -134,11 +135,11 @@
 		looper.toggle();
 	}
 
-	// Tempo synced both ways (Kevin): the drum machine's tempo (its slider, tap, a preset or a generated beat) becomes the
-	// loop's while the loop has no layers; with layers the loop's tempo is fixed and the drum machine is held to it.
-	// An effect because the drum machine is engine state outside this component.
+	// Tempo synced both ways (Kevin): the session tempo (the metronome's, which the drums and the chord player follow and
+	// set from their own controls) becomes the loop's while the loop has no layers; with layers the loop's tempo is fixed
+	// and the session is held to it. An effect because the engines are state outside this component.
 	$effect(() => {
-		const theirs = drumMachine.project.bpm;
+		const theirs = metronome.bpm;
 		if (theirs === looper.bpm) return;
 		if (looper.locked) looper.syncTempo();
 		else looper.setBpm(theirs);

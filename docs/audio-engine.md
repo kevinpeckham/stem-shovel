@@ -222,6 +222,40 @@ fields are `$state`, so components read `engine.position` directly.
 - The waveform canvas uses `{@attach}`; the attachment gets the 2D context
   once and a nested `$effect` redraws.
 
+## One tempo for the page
+
+The metronome engine's `bpm` (`lib/audio/metronome.svelte.ts`, remembered
+per browser) is the session tempo (Kevin, 2026-10-04): every instrument
+on a page follows it unless told not to, each at a ratio of it
+(`constants/tempo.ts`, `TEMPO_RATIOS` ½, 1, 2), so the drums, the chord
+player's arpeggiator, the progression pad, the piano's click and the
+looper agree on the home page, the recorder and the looper page alike.
+
+- **The drum machine** keeps `project.bpm` (saved with the beat) and
+  exposes `bpm`, the tempo it plays at: the session's at `tempoRatio`
+  while `followTempo` (on by default, both per browser in
+  `utils/drumMachinePreferences.ts`), else the beat's own. Its own controls
+  (`setBpm`, Tap) set the beat's tempo and, while following, the session's
+  through the ratio; a beat that arrives with a tempo (a preset, a saved
+  beat, a song's, undo, the home demo, a share link) adopts it into the
+  session (`#adoptTempo`); the remembered project does not, the session's
+  own memory being the newer one. The drum machine listens to the
+  metronome (`metronome.listen`) and, while following, keeps `project.bpm`
+  at the tempo it plays at (so a saved or shared beat carries the tempo
+  you heard) and refreshes the bus, so the tempo-synced delay follows.
+  Switching following off keeps the tempo the beat was playing at as its
+  own.
+- **The chord player's arpeggiator** steps at `metronome.bpm ×
+chordPlayer.tempoRatio` (the Tempo select in its menu; presets and demo
+  setups carry the ratio); the pad plays at the session tempo.
+- **The looper** owns the bars: while unlocked its tempo follows the
+  session and its own controls set the session; with layers the page's
+  effect holds the session to the loop (`syncTempo`), and a drum machine
+  that is not following is set too.
+- The metronome and the drums still never play together (starting one
+  stops the other); a drum machine not following takes the metronome's
+  tempo then, as before.
+
 ## iOS and the ring/silent switch
 
 iOS silences the Web Audio API under the ring/silent switch but lets media

@@ -27,6 +27,7 @@ import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { arpStepIndex } from "$lib/utils/arpStep";
 import { arpSwingDelay } from "$lib/utils/arpSwingDelay";
+import { tempoRatioOf, type TempoRatio } from "$lib/constants/tempo";
 import { arpChangeSteps, arpSwitchStep } from "$lib/utils/arpSwitch";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 
@@ -152,6 +153,8 @@ class ChordPlayerEngine {
 	/** The pattern restarts at every bar (or two), dropping what was left, so it lands the same way each bar whatever the chord's note count (Kevin); on by default. */
 	arpAlign = $state(true);
 	arpAlignBars = $state<1 | 2>(1);
+	/** The arpeggiator's tempo as a ratio of the session's (docs/audio-engine.md, "One tempo for the page"): half-time, with it, double-time. */
+	tempoRatio = $state<TempoRatio>(1);
 	/** Swing, 0 (straight) to 1 (a triplet feel): the odd steps land late, in eighths and sixteenths. */
 	arpSwing = $state(0);
 	/** The note the pattern is on, for the readout to light; null when it is not running. */
@@ -228,6 +231,7 @@ class ChordPlayerEngine {
 		this.arpAlign = read("arp-align") !== "0";
 		this.arpOnBeat = read("arp-on-beat") !== "0";
 		if (read("arp-align-bars") === "2") this.arpAlignBars = 2;
+		this.tempoRatio = tempoRatioOf(Number(read("tempo-ratio"))) ?? 1;
 		const swing = Number(read("arp-swing"));
 		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.arpSwing = swing;
 		const readout = read("note-readout");
@@ -475,7 +479,7 @@ class ChordPlayerEngine {
 		}
 	}
 	#arpStepSeconds(): number {
-		const beat = 60 / metronome.bpm;
+		const beat = 60 / (metronome.bpm * this.tempoRatio);
 		return beat / (ARP_RATES.find((r) => r.id === this.arpRate)?.perBeat ?? 2);
 	}
 	#arpRestart() {
@@ -588,6 +592,10 @@ class ChordPlayerEngine {
 	setArpGate(g: number) {
 		this.arpGate = Math.max(0.1, Math.min(1, Math.round(g * 100) / 100));
 		write("arp-gate", String(this.arpGate));
+	}
+	setTempoRatio(ratio: TempoRatio) {
+		this.tempoRatio = ratio;
+		write("tempo-ratio", String(ratio));
 	}
 	setArpSwing(v: number) {
 		this.arpSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
@@ -749,6 +757,10 @@ class ChordPlayerEngine {
 			voicing: this.voicing,
 			octave: this.octave,
 			strum: this.strum,
+			strumDirection: this.strumDirection,
+			accent: this.accent,
+			seventhType: this.seventhType,
+			velocity: this.velocity,
 			arp: {
 				on: this.arp,
 				rate: this.arpRate,
@@ -760,6 +772,7 @@ class ChordPlayerEngine {
 				alignBars: this.arpAlignBars,
 				onBeat: this.arpOnBeat,
 				swing: this.arpSwing,
+				ratio: this.tempoRatio,
 			},
 		};
 	}
@@ -770,6 +783,10 @@ class ChordPlayerEngine {
 		this.setVoicing(s.voicing);
 		this.setOctave(s.octave);
 		this.setStrum(s.strum);
+		if (s.strumDirection) this.setStrumDirection(s.strumDirection);
+		if (s.accent) this.setAccent(s.accent);
+		if (s.seventhType) this.setSeventhType(s.seventhType);
+		if (s.velocity !== undefined) this.setVelocity(s.velocity);
 		if (s.arp) {
 			this.setArpRate(s.arp.rate);
 			this.setArpPattern(s.arp.pattern);
@@ -780,6 +797,7 @@ class ChordPlayerEngine {
 			if (s.arp.alignBars !== undefined) this.setArpAlignBars(s.arp.alignBars);
 			if (s.arp.onBeat !== undefined) this.setArpOnBeat(s.arp.onBeat);
 			if (s.arp.swing !== undefined) this.setArpSwing(s.arp.swing);
+			if (s.arp.ratio !== undefined) this.setTempoRatio(s.arp.ratio);
 			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
 		}
 	}
