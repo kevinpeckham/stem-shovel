@@ -948,7 +948,7 @@
 				value={chordPlayer.style}
 				onchange={(e) => chordPlayer.setStyle(e.currentTarget.value)}
 			>
-				{#each CHORD_STYLES as s (s.id)}<option value={s.id}>{s.label} · {s.hint}</option>{/each}
+				{#each CHORD_STYLES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
 				{#if chordPlayer.customStyles.length}
 					<optgroup label="{account?.name ?? 'Your'} styles">
 						{#each chordPlayer.customStyles as s (s.id)}<option value="custom:{s.id}"
@@ -958,9 +958,7 @@
 				{/if}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>What the wedges carry by their place in the key. Blues puts a dominant seventh on every
-				chord, jazz and lush the sevenths and extensions each degree takes; the 7 pad adds the next
-				extension. Plain is triads with the pad's seventh.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		{#if account?.canEdit}
@@ -995,10 +993,11 @@
 				value={chordPlayer.voicing}
 				onchange={(e) => chordPlayer.setVoicing(e.currentTarget.value as ChordVoicing)}
 			>
-				{#each VOICING_OPTIONS as v (v.value)}<option value={v.value}
-						>{v.label} · {v.description}</option
-					>{/each}
+				{#each VOICING_OPTIONS as v (v.value)}<option value={v.value}>{v.label}</option>{/each}
 			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
+			>
 		</label>
 		<label class="block">
 			<span class="device-button-label">The seventh on a major chord</span>
@@ -1021,13 +1020,12 @@
 				value={chordPlayer.accent}
 				onchange={(e) => chordPlayer.setAccent(e.currentTarget.value as ChordAccent)}
 			>
-				<option value="none">Even · every note alike</option>
-				<option value="top">Top note · the melody note louder</option>
-				<option value="bottom">Bottom note · the bass louder</option>
+				<option value="none">Even</option>
+				<option value="top">Top note</option>
+				<option value="bottom">Bottom note</option>
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>Drag up within a wedge while you hold it to turn the chord over (C/E, then C/G); drag back
-				down to turn it back.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		<label class="block">
@@ -1096,8 +1094,7 @@
 				{#each STRUMS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The notes of a chord a few milliseconds apart, as a hand plays them; Off plays them
-				together.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		<label class="block">
@@ -1107,9 +1104,9 @@
 				value={chordPlayer.strumDirection}
 				onchange={(e) => chordPlayer.setStrumDirection(e.currentTarget.value as StrumDirection)}
 			>
-				<option value="down">Down · low to high</option>
-				<option value="up">Up · high to low</option>
-				<option value="alternate">Alternate · down, then up, press by press</option>
+				<option value="down">Down</option>
+				<option value="up">Up</option>
+				<option value="alternate">Alternate</option>
 			</select>
 		</label>
 	</div>
