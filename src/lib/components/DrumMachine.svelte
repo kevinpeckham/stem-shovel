@@ -1231,7 +1231,7 @@
 						ariaLabel="Session tempo settings"
 						title="Follow the session tempo and swing, at a ratio, or come off it"
 						iconClass="i-ph-caret-down"
-						position="bottom left"
+						position="bottom right"
 						buttonBaseClasses="device-button-lg px-2 !min-w-0 rounded-l-none @xl-device-button-xs @2xl-device-button-sm @4xl-device-button-lg"
 						popoverClasses="min-w-72 max-w-sm"
 						items={[
@@ -1951,8 +1951,8 @@
 {#snippet followTempoBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-3 text-13px">
 		<p class="text-12px opacity-70">
-			The metronome, the chord player and the looper on a page keep one tempo and one swing (docs:
-			one tempo for the page). The beat follows them unless told not to.
+			The metronome, the chord player and the looper on a page keep one tempo and one swing. The
+			beat follows them unless told not to.
 		</p>
 		{@render followTempo()}
 	</div>
