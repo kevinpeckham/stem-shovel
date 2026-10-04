@@ -14,6 +14,10 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 **Arp**, beside Chords and Notes, makes a held wedge play its notes one at a time in time with the Timing tempo instead of all at once. The Chords menu's Arpeggiator section sets the rate (quarter, eighth, triplet or sixteenth notes), the pattern (up, down, up and down, as played, random), how many octaves it climbs, the gate (how much of each step the note sounds) and Latch, which keeps the pattern going after you let go until the next chord or <kbd>ESC</kbd>. A new chord restarts the pattern as you press it, so chord changes land where you play them; the pad plays a progression back through it too. Styles and voicings decide which notes it cycles.
 
+## On the looper and the Idea Recorder
+
+The chord player is a source on the looper and the Idea Recorder, beside the piano: a **Chords** source button and a chord player button in the toolbar open it in a panel of its own, where it plays into a layer or a take with everything it has here but the progression pad. It is the same instrument as the piano, so the two take turns as a source, and its settings travel with the idea or the loop.
+
 ## The readout
 
 The middle of the circle names what is sounding and, beneath the name, its notes: on a small treble staff with the names written under it (as it starts), the names alone, the staff alone, or not at all, as the UI menu says. The notes are spelled in flats on the flat side of the circle and in sharps on the sharp side.

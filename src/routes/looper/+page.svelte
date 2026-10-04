@@ -1,7 +1,9 @@
 <script lang="ts">
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
 	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
@@ -54,6 +56,7 @@
 			__inputs: inputSources,
 			__piano: piano,
 			__drums: drumMachine,
+			__chords: chordPlayer,
 		});
 
 	// The looper itself and its notes pop out into panels from lg, as the recorder's device and notes do (Kevin); remembered per browser.
@@ -89,17 +92,30 @@
 	let drumsOpen = $state(false);
 	let pianoOpen = $state(false);
 	let metroOpen = $state(false);
-	let spaceOwner = $state<"drums" | "piano" | null>(null);
+	let chordsOpen = $state(false);
+	let spaceOwner = $state<"drums" | "piano" | "chords" | null>(null);
 	function toggleDrums(e?: Event) {
 		drumsOpen = !drumsOpen;
 		if (drumsOpen) spaceOwner = "drums";
-		else if (spaceOwner === "drums") spaceOwner = pianoOpen ? "piano" : null;
+		else if (spaceOwner === "drums")
+			spaceOwner = pianoOpen ? "piano" : chordsOpen ? "chords" : null;
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
 	function togglePiano(e?: Event) {
 		pianoOpen = !pianoOpen;
 		if (pianoOpen) spaceOwner = "piano";
-		else if (spaceOwner === "piano") spaceOwner = drumsOpen ? "drums" : null;
+		else if (spaceOwner === "piano")
+			spaceOwner = chordsOpen ? "chords" : drumsOpen ? "drums" : null;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	/** The chord player (docs/chord-player.md, phase 3): the piano engine on the circle, its own panel and source. */
+	function toggleChords(e?: Event) {
+		chordsOpen = !chordsOpen;
+		if (chordsOpen) spaceOwner = "chords";
+		else {
+			chordPlayer.allOff();
+			if (spaceOwner === "chords") spaceOwner = pianoOpen ? "piano" : drumsOpen ? "drums" : null;
+		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
 	function toggleMetronome(e?: Event) {
@@ -131,11 +147,16 @@
 	/** Arm a source; the microphone asks for permission on its first turn, and an instrument's panel opens if it is not out (Kevin). */
 	/** The armed source's last error, for the screen (the instruments have none). */
 	const armedError = $derived(
-		looper.armed === "piano" || looper.armed === "drums" ? null : inputSources.errors[looper.armed],
+		looper.armed === "piano" || looper.armed === "chords" || looper.armed === "drums"
+			? null
+			: inputSources.errors[looper.armed],
 	);
 	/** A source button's title: the open device's label for an outside source, else its name. */
 	function sourceLabel(source: LoopSource) {
-		const open = source === "piano" || source === "drums" ? null : inputSources.labels[source];
+		const open =
+			source === "piano" || source === "chords" || source === "drums"
+				? null
+				: inputSources.labels[source];
 		return open ?? LOOP_SOURCE_LABELS[source];
 	}
 	async function arm(source: LoopSource) {
@@ -144,6 +165,7 @@
 		if (source === "line" && !inputSources.has("line")) await looper.requestInput("line");
 		if (source === "computer" && !inputSources.has("computer")) await looper.requestComputer();
 		if (source === "piano" && !pianoOpen) togglePiano();
+		if (source === "chords" && !chordsOpen) toggleChords();
 		if (source === "drums" && !drumsOpen) toggleDrums();
 	}
 	function clearLoop() {
@@ -258,7 +280,15 @@
 				trimSilence: false,
 				createdAt: Date.now(),
 				blob: looper.wavOf(mix),
-				instruments: { drums: null, piano: null, looper: looper.settings() },
+				instruments: {
+					drums: null,
+					piano: null,
+					looper: looper.settings(),
+					// The chord player's settings, as it stands, when a chords layer is in the loop.
+					chords: looper.layers.some((l) => l.source === "chords")
+						? $state.snapshot(chordPlayer.presetSettings)
+						: null,
+				},
 				stems: looper.layers.map((l) => ({
 					label: l.label,
 					blob: looper.wavOf(l.buffer),
@@ -362,6 +392,7 @@
 		line: "i-ph-plugs",
 		computer: "i-ph-desktop",
 		piano: "i-ph-piano-keys",
+		chords: "i-ph-circle-dashed",
 		drums: "",
 	};
 </script>
@@ -420,6 +451,18 @@
 					onclick={togglePiano}
 				>
 					<span class="i-ph-piano-keys" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {chordsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={chordsOpen}
+					aria-label={chordsOpen ? "Put the chord player away" : "Chord player"}
+					title={chordsOpen ? "Put the chord player away" : "Open the chord player"}
+					onclick={toggleChords}
+				>
+					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
 				</button>
 			{/snippet}
 		</PageCopyHeader>
@@ -552,7 +595,7 @@
 										? lineMenu
 										: source === "computer"
 											? computerMenu
-											: source === "piano"
+											: source === "piano" || source === "chords"
 												? pianoMenu
 												: undefined}
 							>
@@ -587,7 +630,7 @@
 											>
 										</label>
 									{:else}
-										{@const inst = source === "piano" ? piano : drumMachine}
+										{@const inst = source === "drums" ? drumMachine : piano}
 										<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
 										<label
 											class="block px-0.5"
@@ -963,8 +1006,8 @@
 		<div class="px-3 pt-3 pb-4 grid gap-3">
 			<p class="text-12px opacity-70">
 				Your audio output reports {looper.ready ? `${looper.outputLatencyMs} ms` : "its"} latency (Bluetooth
-				adds a lot). A piano layer played by hand is timed against the loop as you hear it, so it is shifted
-				earlier by this much.
+				adds a lot). A piano or chords layer played by hand is timed against the loop as you hear it,
+				so it is shifted earlier by this much.
 			</p>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
@@ -973,7 +1016,7 @@
 					checked={looper.compensatePiano}
 					onchange={(e) => (looper.compensatePiano = e.currentTarget.checked)}
 				/>
-				Shift piano layers by the output latency
+				Shift piano and chords layers by the output latency
 			</label>
 		</div>
 	{/snippet}
@@ -1207,6 +1250,28 @@
 				account={data.account}
 				presets={data.pianoPresets}
 				presetAdmin={data.presetAdmin}
+			/>
+		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={chordsOpen}
+		title="Chord player"
+		storageKey="stemshovel.looper.chords-panel"
+		width={760}
+		height={720}
+		onminimise={() => toggleChords()}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div onpointerdowncapture={() => (spaceOwner = "chords")}>
+			<ChordPlayer
+				samplesBase={data.pianoSamplesBase}
+				keyboard={spaceOwner === "chords"}
+				sitePresets={data.chordPresets}
+				account={data.account}
+				presets={data.pianoPresets}
+				presetAdmin={data.presetAdmin}
+				chordStyles={data.chordStyles}
+				pad={false}
 			/>
 		</div>
 	</FloatingPanel>

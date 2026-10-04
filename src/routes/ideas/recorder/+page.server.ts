@@ -6,6 +6,7 @@ import {
 	deleteEmptyIdeas,
 	listBeats,
 	listDrumKitManifests,
+	listChordStyles,
 	listPianoPresets,
 	listUserIdeas,
 	parseIdeaInstruments,
@@ -96,7 +97,9 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		textToBeat: aiAvailable(),
 		// The piano's panel: the site's demo presets and the current account's own, as the piano page has them.
 		sitePresets: await sitePianoPresets(),
+		chordPresets: await sitePianoPresets("chords"),
 		pianoPresets: await listPianoPresets(member.accountId),
+		chordStyles: await listChordStyles(member.accountId),
 		presetAdmin: locals.user?.isSystemAdmin === true,
 		// The page's words (title, intro, the tips under the recorder) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("idea-recorder-page", copyFallback, locals),

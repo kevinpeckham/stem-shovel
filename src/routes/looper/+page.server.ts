@@ -5,6 +5,7 @@ import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount"
 import {
 	listBeats,
 	listDrumKitManifests,
+	listChordStyles,
 	listPianoPresets,
 	listUserIdeas,
 	listUserLoops,
@@ -42,7 +43,9 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		kits: await listDrumKitManifests(member?.accountId ?? null),
 		textToBeat: aiAvailable(),
 		sitePresets: await sitePianoPresets(),
+		chordPresets: await sitePianoPresets("chords"),
 		pianoPresets: member ? await listPianoPresets(member.accountId) : [],
+		chordStyles: member ? await listChordStyles(member.accountId) : [],
 		presetAdmin: locals.user?.isSystemAdmin === true,
 	};
 };

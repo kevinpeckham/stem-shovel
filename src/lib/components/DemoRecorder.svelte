@@ -7,11 +7,19 @@
 	 * instruments. Any mix of them is in a take at once; a source's button
 	 * on the device switches it in or out.
 	 */
-	export type RecorderSource = OutsideSource | "piano" | "drums";
-	export const RECORDER_SOURCES: RecorderSource[] = ["mic", "line", "computer", "piano", "drums"];
+	export type RecorderSource = OutsideSource | "piano" | "chords" | "drums";
+	export const RECORDER_SOURCES: RecorderSource[] = [
+		"mic",
+		"line",
+		"computer",
+		"piano",
+		"chords",
+		"drums",
+	];
 	export const RECORDER_SOURCE_LABELS: Record<RecorderSource, string> = {
 		...OUTSIDE_SOURCE_LABELS,
 		piano: "Piano",
+		chords: "Chords",
 		drums: "Drums",
 	};
 </script>
@@ -70,11 +78,12 @@
 		/** A multitrack take's sources (docs/demo-recording.md, "Multitrack takes"); absent or empty on a stereo take. */
 		stems?: { id: string; label: string }[];
 	}
-	const SOURCE_ICONS: Record<OutsideSource | "piano", string> = {
+	const SOURCE_ICONS: Record<OutsideSource | "piano" | "chords", string> = {
 		mic: "i-ph-microphone",
 		line: "i-ph-plugs",
 		computer: "i-ph-desktop",
 		piano: "i-ph-piano-keys",
+		chords: "i-ph-circle-dashed",
 	};
 	const isOutside = (s: RecorderSource): s is OutsideSource =>
 		s === "mic" || s === "line" || s === "computer";
@@ -91,7 +100,7 @@
 		 */
 		sourcesOn?: Record<RecorderSource, boolean> | null;
 		ontoggle?: (source: RecorderSource, on: boolean) => void;
-		instrumentStreams?: () => Partial<Record<"piano" | "drums", MediaStream>>;
+		instrumentStreams?: () => Partial<Record<"piano" | "drums" | "chords", MediaStream>>;
 
 		/** A stopped take, with its audio: the page queues the upload. */
 		onqueued: (take: {
@@ -179,10 +188,14 @@
 	 * capture stream in this page's context while it is in the take (so the
 	 * meter runs before Record, as the outside sources' do in inputs.svelte.ts).
 	 */
-	let instLevels = $state<Record<"piano" | "drums", number>>({ piano: 0, drums: 0 });
+	let instLevels = $state<Record<"piano" | "drums" | "chords", number>>({
+		piano: 0,
+		drums: 0,
+		chords: 0,
+	});
 	let instTaps: Partial<
 		Record<
-			"piano" | "drums",
+			"piano" | "drums" | "chords",
 			{ node: AudioNode; analyser: AnalyserNode; buf: Float32Array<ArrayBuffer> }
 		>
 	> = {};
@@ -199,7 +212,7 @@
 		return ctx;
 	}
 	/** An instrument's meter follows its button: tapped while in the take, dropped when out. */
-	function tapInstrument(inst: "piano" | "drums", on: boolean) {
+	function tapInstrument(inst: "piano" | "drums" | "chords", on: boolean) {
 		const had = instTaps[inst];
 		if (on && !had) {
 			const stream = instrumentStreams()[inst];
@@ -219,7 +232,7 @@
 		}
 	}
 	function instMeter() {
-		const keys = Object.keys(instTaps) as ("piano" | "drums")[];
+		const keys = Object.keys(instTaps) as ("piano" | "drums" | "chords")[];
 		if (keys.length === 0) {
 			instFrame = 0;
 			return;
@@ -238,6 +251,7 @@
 	$effect(() => {
 		if (!sourcesOn) return;
 		tapInstrument("piano", sourcesOn.piano);
+		tapInstrument("chords", sourcesOn.chords);
 		tapInstrument("drums", sourcesOn.drums);
 	});
 	/**
@@ -847,8 +861,8 @@
 		analyser.fftSize = 1024;
 		let recorded = s;
 		const streams = Object.entries(instrumentStreams()).map(([key, stream]) => ({
-			label: key === "piano" ? "Piano" : "Drums",
-			icon: key as "piano" | "drums",
+			label: RECORDER_SOURCE_LABELS[key as RecorderSource],
+			icon: key as "piano" | "drums" | "chords",
 			stream: stream!,
 		}));
 		// Multitrack: every source on its own recorder beside the mix (docs/demo-recording.md, "Multitrack takes").
@@ -1338,7 +1352,7 @@
 									>
 								</label>
 							{:else}
-								{@const inst = source === "piano" ? piano : drumMachine}
+								{@const inst = source === "drums" ? drumMachine : piano}
 								<label
 									class="block px-0.5"
 									title="{RECORDER_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"

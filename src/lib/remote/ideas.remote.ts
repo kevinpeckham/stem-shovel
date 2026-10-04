@@ -71,9 +71,9 @@ export const setIdeaKind = command(IdeaKindChangeSchema, async ({ id, kind }) =>
 /** The drum machine's project and the piano's settings as a take was recorded (the recorder sends them once the take is saved); a null leaves that instrument's earlier settings. Returns what the idea now holds. */
 export const saveIdeaInstruments = command(
 	IdeaInstrumentsSchema,
-	async ({ id, drums, piano, looper }) => {
+	async ({ id, drums, piano, looper, chords }) => {
 		const accountId = await ownIdea(id);
-		const now = await setIdeaInstruments(accountId, id, { drums, piano, looper });
+		const now = await setIdeaInstruments(accountId, id, { drums, piano, looper, chords });
 		if (!now) error(404, "Idea not found");
 		return now;
 	},

@@ -19,6 +19,8 @@
 	import Piano from "$lib/components/Piano.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
+	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
+	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import TuningForkIcon from "$lib/components/TuningForkIcon.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
@@ -207,12 +209,16 @@
 		line: false,
 		computer: false,
 		piano: false,
+		chords: false,
 		drums: false,
 	});
 	const SOURCES_KEY = "stemshovel.recorder.sources";
 	function setSource(source: RecorderSource, on: boolean) {
 		const before = sourcesInTake;
 		sourcesOn[source] = on;
+		// The chord player and the piano are one engine, one sound: only one of them is in the take.
+		if (on && source === "chords" && sourcesOn.piano) sourcesOn.piano = false;
+		if (on && source === "piano" && sourcesOn.chords) sourcesOn.chords = false;
 		syncMultitrack(before);
 		try {
 			localStorage.setItem(SOURCES_KEY, JSON.stringify($state.snapshot(sourcesOn)));
@@ -220,9 +226,12 @@
 			// Private mode: the choice lasts for this page only.
 		}
 		if (source === "piano" && on && !pianoOpen) togglePiano();
+		if (source === "chords" && on && !chordsOpen) toggleChords();
 		if (source === "drums" && on && !drumsOpen) toggleDrums();
 	}
 	const pianoInTake = $derived(sourcesOn.piano);
+	const chordsInTake = $derived(sourcesOn.chords);
+	const setChordsInTake = (on: boolean) => setSource("chords", on);
 	const drumsInTake = $derived(sourcesOn.drums);
 	const setPianoInTake = (on: boolean) => setSource("piano", on);
 	const setDrumsInTake = (on: boolean) => setSource("drums", on);
@@ -245,8 +254,22 @@
 			spaceOwner = "piano";
 		} else {
 			piano.allOff();
-			if (spaceOwner === "piano") spaceOwner = drumsOpen ? "drums" : null;
+			if (spaceOwner === "piano") spaceOwner = chordsOpen ? "chords" : drumsOpen ? "drums" : null;
 			if (sourcesOn.piano) setSource("piano", false);
+		}
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	/** The chord player (docs/chord-player.md, phase 3): the piano engine on the circle, its own panel and source. */
+	let chordsOpen = $state(false);
+	function toggleChords(e?: Event) {
+		chordsOpen = !chordsOpen;
+		if (chordsOpen) {
+			piano.warm();
+			spaceOwner = "chords";
+		} else {
+			chordPlayer.allOff();
+			if (spaceOwner === "chords") spaceOwner = pianoOpen ? "piano" : drumsOpen ? "drums" : null;
+			if (sourcesOn.chords) setSource("chords", false);
 		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
@@ -275,12 +298,12 @@
 	 * (space plays and stops the beat), the piano as it opens (space is its sustain pedal), and a click
 	 * in either hands it over; buttons blur after a click so a focused one never swallows the key.
 	 */
-	let spaceOwner = $state<"drums" | "piano" | null>(null);
+	let spaceOwner = $state<"drums" | "piano" | "chords" | null>(null);
 	function toggleDrums(e?: Event) {
 		drumsOpen = !drumsOpen;
 		if (drumsOpen) spaceOwner = "drums";
 		else {
-			if (spaceOwner === "drums") spaceOwner = pianoOpen ? "piano" : null;
+			if (spaceOwner === "drums") spaceOwner = pianoOpen ? "piano" : chordsOpen ? "chords" : null;
 			if (sourcesOn.drums) setSource("drums", false);
 		}
 		(e?.currentTarget as HTMLElement | null)?.blur();
@@ -292,9 +315,11 @@
 	 * so a beat started after Record still lands. An instrument that is not
 	 * playing contributes silence: no cost to the recording, only its idle graph.
 	 */
-	function instrumentStreams(): Partial<Record<"piano" | "drums", MediaStream>> {
+	function instrumentStreams(): Partial<Record<"piano" | "drums" | "chords", MediaStream>> {
 		return {
 			...(sourcesOn.piano ? { piano: piano.captureStream() } : {}),
+			// The chord player is the piano engine: the same capture under its own name.
+			...(sourcesOn.chords ? { chords: piano.captureStream() } : {}),
 			...(sourcesOn.drums ? { drums: drumMachine.captureStream() } : {}),
 		};
 	}
@@ -322,11 +347,14 @@
 			piano: pianoSettings ? piano.currentPreset() : null,
 			// A loop is saved from the looper page, never from here.
 			looper: null,
+			// The chord player's settings go with a take it was in (the piano's switch covers the engine they share).
+			chords:
+				pianoSettings && sourcesOn.chords ? $state.snapshot(chordPlayer.presetSettings) : null,
 		};
 	}
 	/** A take landed: its settings onto its idea (the server keeps the idea's earlier settings for an instrument sent as null). */
 	async function saveTakeInstruments(id: string, instruments: IdeaInstruments) {
-		if (!instruments.drums && !instruments.piano) return;
+		if (!instruments.drums && !instruments.piano && !instruments.chords) return;
 		try {
 			instrumentsById.set(id, await saveIdeaInstruments({ id, ...instruments }));
 		} catch (e) {
@@ -341,6 +369,7 @@
 		piano.load();
 		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", i.title);
 		if (saved.piano) piano.applyPreset(saved.piano);
+		if (saved.chords) chordPlayer.applyPresetSettings(saved.chords);
 	}
 	/** Quality and silence trimming: per browser too (src/lib/utils/recorderPreferences.ts). */
 	let prefs = $state<RecorderPreferences>({ ...DEFAULT_RECORDER_PREFERENCES });
@@ -418,6 +447,7 @@
 			}
 			// An instrument comes back into the take only with its panel: the panels start closed.
 			sourcesOn.piano = false;
+			sourcesOn.chords = false;
 			sourcesOn.drums = false;
 			syncMultitrack(0);
 			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
@@ -798,6 +828,18 @@
 				>
 					<span class="i-ph-piano-keys" aria-hidden="true"></span>
 				</button>
+				<button
+					class="button button-sm shrink-0 {chordsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={chordsOpen}
+					title={chordsOpen ? "Put the chord player away" : "Play chords into the take"}
+					aria-label={chordsOpen ? "Put the chord player away" : "Chord player"}
+					onclick={toggleChords}
+				>
+					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
+				</button>
 			</div>
 			{#snippet tunerIcon()}
 				<TuningForkIcon />
@@ -845,6 +887,13 @@
 								label: pianoOpen ? "Put the piano away" : "Piano",
 								iconClass: "i-ph-piano-keys",
 								action: togglePiano,
+							},
+							{
+								id: "tools-chords",
+								kind: "button",
+								label: chordsOpen ? "Put the chord player away" : "Chord player",
+								iconClass: "i-ph-circle-dashed",
+								action: toggleChords,
 							},
 						]}
 					/>
@@ -1110,6 +1159,44 @@
 						account={{ id: data.account.id, name: data.account.name, canEdit: true }}
 						presets={data.pianoPresets}
 						presetAdmin={data.presetAdmin}
+					/>
+				</div>
+			</FloatingPanel>
+
+			<!-- The chord player: the piano engine on the circle of fifths (docs/chord-player.md), its own panel and its own source; one of it and the piano is in the take at a time. -->
+			<FloatingPanel
+				open={chordsOpen}
+				title="Chord player"
+				storageKey="stemshovel.recorder.chords-panel"
+				width={760}
+				height={720}
+				onminimise={() => toggleChords()}
+			>
+				{#snippet controls()}
+					<label
+						class="flex items-center gap-2 text-13px text-dim cursor-pointer"
+						title="The chord player's sound goes into the take while it is out (it takes the piano's place: they are one sound)"
+					>
+						<input
+							type="checkbox"
+							class="accent-maximumYellow"
+							checked={chordsInTake}
+							onchange={(e) => setChordsInTake(e.currentTarget.checked)}
+						/>
+						Chords in the take
+					</label>
+				{/snippet}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div onpointerdowncapture={() => (spaceOwner = "chords")}>
+					<ChordPlayer
+						samplesBase={data.pianoSamplesBase}
+						keyboard={spaceOwner === "chords"}
+						sitePresets={data.chordPresets}
+						account={{ id: data.account.id, name: data.account.name, canEdit: true }}
+						presets={data.pianoPresets}
+						presetAdmin={data.presetAdmin}
+						chordStyles={data.chordStyles}
+						pad={false}
 					/>
 				</div>
 			</FloatingPanel>

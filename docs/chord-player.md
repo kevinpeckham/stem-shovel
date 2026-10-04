@@ -282,6 +282,20 @@ pad and the Timing menu show from the `@xl` container
 breakpoint: a phone keeps to the circle (Kevin). The home page's demo,
 when it comes, passes `pad={false}`.
 
+## What shipped: phase 3 (2026-10-04)
+
+"Chords" is a `LoopSource` and a `RecorderSource` beside the piano. The
+looper taps `piano.output()` a second time under its own gain
+(`#tapSource("chords", …)`), so arming either captures the one engine;
+layer labels start "Chords", `hasSource` and the latency shift treat it as
+the piano. The recorder's `instrumentStreams` returns the piano's capture
+stream under `chords` too, and the page keeps the two mutually exclusive
+in the take. Each page has a `ChordPlayer` in a `FloatingPanel` (`pad`
+off, the site's chord presets, the account's presets and custom styles)
+with a toolbar button, `spaceOwner` "chords" for the keyboard, and saves
+`ChordPresetSettings` as `IdeaInstrumentsData.chords` (a take with chords
+in it, a loop with a chords layer), applied when an idea loads.
+
 ## Phases
 
 ### Phase 1: the instrument and its page (first release)
@@ -303,7 +317,7 @@ when it comes, passes `pad={false}`.
 
 ### Phase 2: tempo and the progression pad
 
-Shipped 2026-10-03 (see "What shipped: phase 2" above).
+Shipped 2026-10-03 (see "What shipped: phase 2" above); phase 3 shipped 2026-10-04.
 
 - Timing menu (the metronome engine, tap tempo, time signature, click).
 - The progression pad with hold-quantized beats and rests, measures,

@@ -25,13 +25,14 @@ import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
  * as a take with sources (docs/demo-recording.md, "Multitrack takes").
  */
 
-export type LoopSource = "mic" | "line" | "computer" | "piano" | "drums";
-export const LOOP_SOURCES: LoopSource[] = ["mic", "line", "computer", "piano", "drums"];
+export type LoopSource = "mic" | "line" | "computer" | "piano" | "chords" | "drums";
+export const LOOP_SOURCES: LoopSource[] = ["mic", "line", "computer", "piano", "chords", "drums"];
 export const LOOP_SOURCE_LABELS: Record<LoopSource, string> = {
 	mic: "Microphone",
 	line: "Line in",
 	computer: "Computer",
 	piano: "Piano",
+	chords: "Chords",
 	drums: "Drums",
 };
 /** The sources that come in through an audio input device (docs/looper.md, "Inputs"): the microphone and a second input, an instrument on an interface say. */
@@ -88,7 +89,14 @@ class LooperEngine {
 	/** Where the loop is, for the display: 1-based bar and beat, and the fraction of the loop gone by; counting in, `bar` is 0. */
 	position = $state({ bar: 0, beat: 0, fraction: 0 });
 	/** Each source's level for its meter, 0 to 1. */
-	levels = $state<Record<LoopSource, number>>({ mic: 0, line: 0, computer: 0, piano: 0, drums: 0 });
+	levels = $state<Record<LoopSource, number>>({
+		mic: 0,
+		line: 0,
+		computer: 0,
+		piano: 0,
+		chords: 0,
+		drums: 0,
+	});
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
 	/** How far ahead of the main thread's clock a start is scheduled: enough for the scheduling to land in the render thread's future. */
@@ -177,6 +185,8 @@ class LooperEngine {
 		worklet.port.onmessage = (e) => this.#passHandler?.(e);
 		// The instruments' outputs reach the speakers as always and the capture through a gain per source (only the armed one open).
 		this.#tapSource("piano", piano.output());
+		// The chord player plays the piano engine (docs/chord-player.md): the same output, its own gain, so arming either captures the one sound.
+		this.#tapSource("chords", piano.output());
 		this.#tapSource("drums", drumMachine.output());
 		// The kit for this context, ahead of the first drums layer (its start must land on bar 1, not after a decode).
 		void drumMachine.readyKit();
@@ -348,9 +358,11 @@ class LooperEngine {
 				const label = d.label;
 				const source: LoopSource = label.startsWith("Piano")
 					? "piano"
-					: label.startsWith("Drums")
-						? "drums"
-						: "mic";
+					: label.startsWith("Chords")
+						? "chords"
+						: label.startsWith("Drums")
+							? "drums"
+							: "mic";
 				if (this.layers.length >= MAX_LOOP_LAYERS) break;
 				const layer: LoopLayer = {
 					id: `${Date.now().toString(36)}i${k}`,
@@ -415,9 +427,11 @@ class LooperEngine {
 					meta?.source ??
 					(src.label.startsWith("Piano")
 						? "piano"
-						: src.label.startsWith("Drums")
-							? "drums"
-							: "mic");
+						: src.label.startsWith("Chords")
+							? "chords"
+							: src.label.startsWith("Drums")
+								? "drums"
+								: "mic");
 				this.layers.push({
 					id: `${Date.now().toString(36)}${k}`,
 					label: src.label,
@@ -493,7 +507,9 @@ class LooperEngine {
 		return inputSources.has("mic");
 	}
 	hasSource(source: LoopSource) {
-		return source === "piano" || source === "drums" || inputSources.has(source);
+		return (
+			source === "piano" || source === "chords" || source === "drums" || inputSources.has(source)
+		);
 	}
 
 	setArmed(source: LoopSource) {
@@ -734,7 +750,7 @@ class LooperEngine {
 				? inputSources.latencyMs
 				: source === "computer"
 					? inputSources.computerLatencyMs
-					: source === "piano" && this.compensatePiano
+					: (source === "piano" || source === "chords") && this.compensatePiano
 						? this.outputLatencyMs
 						: 0;
 		// Earlier means later in the pass buffer: bar 1 is at index `lead`, and the pass holds a tail of `lead` frames past its end for this.

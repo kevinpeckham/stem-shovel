@@ -2,7 +2,7 @@ import * as v from "valibot";
 import { DrumProjectSchema } from "./DrumPatternSchema";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
-import { PianoPresetDataSchema } from "./PianoPresetSchema";
+import { PianoPresetDataSchema, ChordPresetSettingsSchema } from "./PianoPresetSchema";
 
 /** "idea": recorded in the Idea Recorder; "loop": saved from the looper, hidden from the recorder's list until exported (docs/looper.md, "Save and Export"). */
 export const IDEA_KINDS = ["idea", "loop"] as const;
@@ -36,7 +36,7 @@ export const LooperSettingsSchema = v.object({
 		v.array(
 			v.object({
 				label: v.pipe(v.string(), v.maxLength(60)),
-				source: v.picklist(["mic", "line", "computer", "piano", "drums"]),
+				source: v.picklist(["mic", "line", "computer", "piano", "chords", "drums"]),
 				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 				muted: v.boolean(),
 			}),
@@ -52,6 +52,8 @@ export const IdeaInstrumentsDataSchema = v.object({
 	piano: v.nullable(PianoPresetDataSchema),
 	/** A loop saved from the looper (docs/looper.md): its tempo, length and layers; null on takes from the recorder. */
 	looper: v.optional(v.nullable(LooperSettingsSchema), null),
+	/** The chord player's own settings (docs/chord-player.md) when it was in the take or the loop; null until then. */
+	chords: v.optional(v.nullable(ChordPresetSettingsSchema), null),
 });
 
 /** Argument of the saveIdeaInstruments command. */

@@ -60,6 +60,10 @@ On a desktop, the drums button opens the full drum machine in a panel you can dr
 
 The piano icon beside the drums (on a phone, **Piano** in the wrench menu) opens the piano under the recorder: the same instrument as **/piano**, with its sounds, its computer-keyboard mapping and MIDI. Unlike the click, its sound goes **into the take** while its button under the screen is on, mixed with whatever else is in, so you can sing over a chord progression or sketch a melody straight into an idea. Switch the microphone out for a clean piano take with nothing from the room. The Grand Piano's fuller samples load in the background as they do on the piano page. On a desktop the piano opens in a panel of its own, dragged by its header and resized by its corner, with "Piano in the take" in the header; on a phone it sits under the recorder as before.
 
+## Chords
+
+The **chord player** button in the toolbar opens the chord player in its own panel (the piano's sounds on a circle of fifths, with its own styles, presets and settings; see the Chord Player docs). **Chords in the take** records it, as the piano's switch does; the two are one instrument, so switching one in switches the other out. Its settings go with the take when the piano's "Settings with the idea" switch is on, and come back with the idea.
+
 ## Settings and limits
 
 The gear in the header opens **Recorder settings**, remembered on the device:

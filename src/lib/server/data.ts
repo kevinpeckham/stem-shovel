@@ -3260,6 +3260,7 @@ export async function setIdeaInstruments(
 		drums: instruments.drums ?? had?.drums ?? null,
 		piano: instruments.piano ?? had?.piano ?? null,
 		looper: instruments.looper ?? had?.looper ?? null,
+		chords: instruments.chords ?? had?.chords ?? null,
 	};
 	await db
 		.update(idea)
