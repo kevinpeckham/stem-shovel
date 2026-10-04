@@ -561,7 +561,7 @@
 					onclick={() => metronome.toggle()}
 				>
 					<span class="i-ph-metronome" aria-hidden="true"></span>
-					{metronome.bpm} bpm
+					{metronome.bpm}
 				</button>
 				<ContextMenu
 					ariaLabel="Timing"
@@ -1210,6 +1210,31 @@
 					onchange={(e) => chordPlayer.setArpLatch(e.currentTarget.checked)}
 				/>
 				Latch: the pattern keeps going after you let go, until the next chord or Esc
+			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.arpAlign}
+					onchange={(e) => chordPlayer.setArpAlign(e.currentTarget.checked)}
+				/>
+				Patterns line up with bars
+			</label>
+			<label class="block">
+				<span class="device-button-label">Line up every</span>
+				<select
+					class="device-field w-full"
+					value={String(chordPlayer.arpAlignBars)}
+					disabled={!chordPlayer.arpAlign}
+					onchange={(e) => chordPlayer.setArpAlignBars(Number(e.currentTarget.value) as 1 | 2)}
+				>
+					<option value="1">1 bar</option>
+					<option value="2">2 bars</option>
+				</select>
+				<span class="block text-12px opacity-70 mt-1"
+					>The pattern starts again from its first note at every bar (or two), whatever was left of
+					it, so it lands the same way each time.</span
+				>
 			</label>
 		</div>
 	</div>

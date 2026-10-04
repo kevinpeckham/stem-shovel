@@ -25,6 +25,7 @@ import {
 import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
 import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
 import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
+import { arpStepIndex } from "$lib/utils/arpStep";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 
 export type StrumDirection = "down" | "up" | "alternate";
@@ -146,6 +147,9 @@ class ChordPlayerEngine {
 	arpGate = $state(0.6);
 	/** The pattern keeps running after the wedge is let go, until the next chord or Escape. */
 	arpLatch = $state(false);
+	/** The pattern restarts at every bar (or two), dropping what was left, so it lands the same way each bar whatever the chord's note count (Kevin); on by default. */
+	arpAlign = $state(true);
+	arpAlignBars = $state<1 | 2>(1);
 	#arpHeld = new Map<string, { notes: number[]; velocity: number }>();
 	#arpLatched: { notes: number[]; velocity: number } | null = null;
 	#arpStopLoop: (() => void) | null = null;
@@ -198,6 +202,8 @@ class ChordPlayerEngine {
 		const gate = Number(read("arp-gate"));
 		if (Number.isFinite(gate) && gate >= 0.1 && gate <= 1) this.arpGate = gate;
 		this.arpLatch = read("arp-latch") === "1";
+		this.arpAlign = read("arp-align") !== "0";
+		if (read("arp-align-bars") === "2") this.arpAlignBars = 2;
 		const readout = read("note-readout");
 		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
 			this.noteReadout = readout;
@@ -427,11 +433,15 @@ class ChordPlayerEngine {
 			return;
 		}
 		const step = this.#arpStepSeconds();
+		const perBeat = ARP_RATES.find((r) => r.id === this.arpRate)?.perBeat ?? 2;
+		const stepsPerCycle = this.arpAlign
+			? metronome.beatsPerBar * perBeat * this.arpAlignBars
+			: null;
 		while (this.#arpNext < until) {
 			const i =
 				this.arpPattern === "random"
 					? Math.floor(Math.random() * seq.length)
-					: this.#arpIndex % seq.length;
+					: arpStepIndex(this.#arpIndex, seq.length, stepsPerCycle);
 			const { midi, velocity } = seq[i];
 			const at = this.#arpNext;
 			this.#arpAt(at, () => piano.noteOn(midi, velocity));
@@ -473,6 +483,14 @@ class ChordPlayerEngine {
 	setArpGate(g: number) {
 		this.arpGate = Math.max(0.1, Math.min(1, Math.round(g * 100) / 100));
 		write("arp-gate", String(this.arpGate));
+	}
+	setArpAlign(on: boolean) {
+		this.arpAlign = on;
+		write("arp-align", on ? "1" : "0");
+	}
+	setArpAlignBars(bars: 1 | 2) {
+		this.arpAlignBars = bars;
+		write("arp-align-bars", String(bars));
 	}
 	setArpLatch(on: boolean) {
 		this.arpLatch = on;
@@ -625,6 +643,8 @@ class ChordPlayerEngine {
 				octaves: this.arpOctaves,
 				gate: this.arpGate,
 				latch: this.arpLatch,
+				align: this.arpAlign,
+				alignBars: this.arpAlignBars,
 			},
 		};
 	}
@@ -641,6 +661,8 @@ class ChordPlayerEngine {
 			this.setArpOctaves(s.arp.octaves);
 			this.setArpGate(s.arp.gate);
 			this.setArpLatch(s.arp.latch);
+			if (s.arp.align !== undefined) this.setArpAlign(s.arp.align);
+			if (s.arp.alignBars !== undefined) this.setArpAlignBars(s.arp.alignBars);
 			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
 		}
 	}

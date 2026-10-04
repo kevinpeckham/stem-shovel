@@ -12,7 +12,7 @@ The circle shows the twelve major chords on its outer ring, going round in fifth
 
 ## The arpeggiator
 
-**Arp**, beside Chords and Notes, makes a held wedge play its notes one at a time in time with the Timing tempo instead of all at once. The Chords menu's Arpeggiator section sets the rate (quarter, eighth, triplet or sixteenth notes), the pattern (up, down, up and down, as played, random), how many octaves it climbs, the gate (how much of each step the note sounds) and Latch, which keeps the pattern going after you let go until the next chord or <kbd>ESC</kbd>. A new chord restarts the pattern as you press it, so chord changes land where you play them; the pad plays a progression back through it too. Styles and voicings decide which notes it cycles.
+**Arp**, beside Chords and Notes, makes a held wedge play its notes one at a time in time with the Timing tempo instead of all at once. The Chords menu's Arpeggiator section sets the rate (quarter, eighth, triplet or sixteenth notes), the pattern (up, down, up and down, as played, random), how many octaves it climbs, the gate (how much of each step the note sounds) and Latch, which keeps the pattern going after you let go until the next chord or <kbd>ESC</kbd>. Patterns line up with bars (on to begin with): the pattern starts again from its first note at every bar, or every two, dropping whatever was left of it, so however many notes a chord and voicing give it, it lands the same way each bar. A new chord restarts the pattern as you press it, so chord changes land where you play them; the pad plays a progression back through it too. Styles and voicings decide which notes it cycles.
 
 ## On the looper and the Idea Recorder
 
@@ -61,7 +61,7 @@ On a wide screen the device and the notes each pop out into a panel of their own
 
 ## The Timing menu
 
-The Metronome button starts and stops the click; the small arrow beside it opens the Timing menu: the tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; **Click**, a metronome at that tempo to play along to while you jot; and whether the pad's own playback has a click under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
+The Metronome button (the tempo alone, bpm implied) starts and stops the click; the small arrow beside it opens the Timing menu: the tempo in beats per minute, by the slider, the steps, the number or **Tap** (tap the button in time and it takes your tempo); the beats to the bar, two to six, which is how the pad groups its bars; **Click**, a metronome at that tempo to play along to while you jot; and whether the pad's own playback has a click under it. The tempo and meter are the metronome's, the same ones the Metronome page and the looper show.
 
 ## Playing on the computer keyboard
 

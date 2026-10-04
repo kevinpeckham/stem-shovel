@@ -104,6 +104,9 @@ export const ChordPresetSettingsSchema = v.object({
 			octaves: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(3)),
 			gate: v.pipe(v.number(), v.minValue(0.1), v.maxValue(1)),
 			latch: v.boolean(),
+			/** The pattern restarting at every bar or two (presets from before carry neither). */
+			align: v.optional(v.boolean()),
+			alignBars: v.optional(v.picklist([1, 2])),
 		}),
 	),
 });
