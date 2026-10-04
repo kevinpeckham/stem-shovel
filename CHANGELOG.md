@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.98.0] - 2026-10-04
+
 ### Added
 
 - **Text-to-Progression on the chord player** (Kevin: as Text-to-Beat): a Describe menu beside Demos asks a language model for a progression from a description; it lands on the pad in the key and meter, with the model's tempo and, when the description calls for it, the player set up by the model (sound, style, voicing, mode, strum and pattern, arpeggiator, key, octave, sustain, effects: anything a preset holds) (`server/textToChords.ts` through Text-to-Beat's gateway call, `val/TextToChordsSchema.ts`, `utils/parseTextToChordsReply.ts` tested, `remote/textToChords.remote.ts` at 20 an hour; logged as "text-to-chords").
