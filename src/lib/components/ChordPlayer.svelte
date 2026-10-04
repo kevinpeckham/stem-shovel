@@ -1224,13 +1224,11 @@
 				value={chordPlayer.layout}
 				onchange={(e) => chordPlayer.setLayout(e.currentTarget.value as "circle" | "arch")}
 			>
-				<option value="circle">The circle · all twelve keys round</option>
-				<option value="arch"
-					>The arch · the key and its neighbours big, the far keys small, no tritone</option
-				>
+				<option value="circle">Circle</option>
+				<option value="arch">Arch</option>
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The arch turns over into a bowl, for a thumb on a phone, when the key is at the bottom.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		<label class="block">
@@ -1240,9 +1238,8 @@
 				value={chordPlayer.keyAtTop ? "top" : "bottom"}
 				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.value === "top")}
 			>
-				<option value="bottom">At the bottom · the I chord under your thumb, the arch a bowl</option
-				>
-				<option value="top">At the top · the I chord at twelve o'clock</option>
+				<option value="bottom">At the bottom</option>
+				<option value="top">At the top</option>
 			</select>
 		</label>
 		<label class="block">
@@ -1255,8 +1252,7 @@
 				{#each KEY_OPTIONS as k (k.value)}<option value={k.value}>{k.label}</option>{/each}
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The circle turns so this key's chord sits at the bottom (or the top), its neighbours the
-				chords that fit it best.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		<label class="block">
@@ -1266,10 +1262,10 @@
 				value={chordPlayer.noteReadout}
 				onchange={(e) => chordPlayer.setNoteReadout(e.currentTarget.value as NoteReadout)}
 			>
-				<option value="names">Written · C E G B♭ under the chord name</option>
-				<option value="staff">On a staff · the notes on a treble staff</option>
-				<option value="both">Both · the staff, then the names written under it</option>
-				<option value="off">Off · the chord name alone</option>
+				<option value="names">Written</option>
+				<option value="staff">On a staff</option>
+				<option value="both">Both</option>
+				<option value="off">Off</option>
 			</select>
 		</label>
 		<label class="block">
@@ -1279,12 +1275,11 @@
 				value={chordPlayer.keyMap}
 				onchange={(e) => chordPlayer.setKeyMap(e.currentTarget.value as ChordKeyMap)}
 			>
-				<option value="degree">By degree · 1 to 7 are I to VII, 8 to = the chromatic chords</option>
-				<option value="circle">Round the circle · 1 is the key, then clockwise in fifths</option>
+				<option value="degree">By degree</option>
+				<option value="circle">Round the circle</option>
 			</select>
 			<span class="block text-12px opacity-70 mt-1"
-				>The number row plays the majors, the row below the minors on the same roots. By degree,
-				I–IV–V is 1, 4, 5.</span
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
 		<label class="flex items-center gap-2 text-13px text-blue-100/90">
