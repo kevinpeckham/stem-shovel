@@ -34,7 +34,7 @@ The chord player plays the piano itself, so everything the piano has is here: th
 - **Strum** is its own split button on the device: press it to switch the strum on or off (the notes of a chord a few milliseconds apart, as a hand plays them), and open the arrow beside it for the speed (slow, medium or fast) and the **direction**: down (low to high), up, or alternating press by press. On a phone it is a section of the wrench menu.
 - **Accent**: every note alike, or the top note a touch louder (a melody on top) or the bottom (a bass under the chord).
 - **Inversions**: while you hold a wedge, drag a little way up to turn the chord over (C becomes C/E, then C/G), and back down to turn it back; the readout and the pad name it with the bass note after the slash.
-- **Velocity**: how hard every chord is pressed.
+- **Touch** (a slider on the device beside Volume, with a section in a phone's wrench menu): how hard the keys are pressed, shown as the dynamic marking from pp to ff; the sound opens up and gets louder as you press harder.
 - **Octave**: where the chord's root sits, and the notes of notes mode; 4 is middle C's.
 
 ## The progression pad

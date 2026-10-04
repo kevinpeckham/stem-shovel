@@ -47,6 +47,7 @@
 	import type { NamedPianoPreset, PianoPresetData } from "$lib/val/PianoPresetSchema";
 	import type { SavedProgression } from "$lib/val/ProgressionSchema";
 	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
+	import { dynamicMark } from "$lib/utils/dynamicMark";
 
 	/**
 	 * The Chord Player device (docs/chord-player.md): the circle of fifths
@@ -171,6 +172,8 @@
 		description: v.hint,
 	}));
 	const KEY_OPTIONS = KEY_CENTERS.map((k, i) => ({ value: String(i), label: k.label }));
+	/** The touch as a dynamic marking, for musicians who read pp to ff rather than a velocity (Kevin). */
+	const touchMark = $derived(dynamicMark(chordPlayer.velocity));
 	/** The styles' short hints for the device's dropdown (the Chords menu carries the full ones). */
 	const STYLE_SHORT: Record<string, string> = {
 		plain: "triads",
@@ -603,7 +606,13 @@
 				/>
 			</div>
 		</div>
-		<div class="hidden @xl-block @xl-ml-auto @xl-w-40">
+		<div class="hidden @xl-block @xl-ml-auto @xl-w-36">
+			<div class="device-button-group-label text-dark hidden @xl-block">
+				Touch · <span class="italic font-serif normal-case tracking-normal">{touchMark}</span>
+			</div>
+			{@render touchBlock()}
+		</div>
+		<div class="hidden @xl-block @xl-w-40">
 			<div class="device-button-group-label text-dark hidden @xl-block">Volume</div>
 			{@render volumeBlock()}
 		</div>
@@ -894,6 +903,21 @@
 	/>
 {/snippet}
 
+{#snippet touchBlock()}
+	<input
+		class="w-full accent-maximumYellow"
+		type="range"
+		min="20"
+		max="100"
+		value={Math.round(chordPlayer.velocity * 100)}
+		aria-label="Touch: how hard the chords are played, in percent"
+		title="Touch · {touchMark} ({Math.round(
+			chordPlayer.velocity * 100,
+		)}%): how hard the keys are pressed, from pianissimo to fortissimo; the sound opens up and gets louder as you press harder"
+		oninput={(e) => chordPlayer.setVelocity(Number(e.currentTarget.value) / 100)}
+	/>
+{/snippet}
+
 {#snippet volumeBlock()}
 	<input
 		class="w-full accent-maximumYellow"
@@ -933,6 +957,7 @@
 		{@render section("Guides", keysBlock)}
 		{@render section("Presets", presetsBlock)}
 		{@render section("Volume", volumeBlock, true)}
+		{@render section(`Touch · ${touchMark}`, touchBlock)}
 		{@render section("Chords", chordsMenuBlock)}
 		{@render section("UI", circleMenuBlock)}
 		{@render section("Effects", effectsMenuBlock)}
@@ -1027,18 +1052,6 @@
 			<span class="block text-12px opacity-70 mt-1"
 				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Velocity · {Math.round(chordPlayer.velocity * 100)}%</span>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min="20"
-				max="100"
-				value={Math.round(chordPlayer.velocity * 100)}
-				aria-label="Velocity in percent"
-				oninput={(e) => chordPlayer.setVelocity(Number(e.currentTarget.value) / 100)}
-			/>
 		</label>
 		<label class="block">
 			<span class="device-button-label">Octave · {chordPlayer.octave}</span>
