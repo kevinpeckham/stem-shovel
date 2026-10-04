@@ -9,6 +9,9 @@
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import ProgressionNotesPanel from "$lib/components/ProgressionNotesPanel.svelte";
 	import type { SavedProgression } from "$lib/val/ProgressionSchema";
+	import { decodeChordShare } from "$lib/utils/decodeChordShare";
+	import { metronome } from "$lib/audio/metronome.svelte";
+	import { notify } from "$lib/state/notifications.svelte";
 
 	let { data } = $props();
 
@@ -47,6 +50,17 @@
 		} catch {
 			// As above.
 		}
+		// A share link (docs/chord-player.md, "Share links"): its settings over the remembered ones, as the drum machine's.
+		const hash = window.location.hash.slice(1);
+		const shared = hash ? decodeChordShare(hash) : null;
+		if (shared) {
+			chordPiano.load();
+			chordPiano.applyPreset(shared.piano);
+			chordPlayer.applyPresetSettings(shared.chords);
+			chordPlayer.applyUiSettings(shared.ui);
+			if (shared.bpm) metronome.setBpm(shared.bpm);
+			notify("Set up from the link");
+		} else if (hash) notify("That link did not hold chord player settings", { kind: "error" });
 	});
 	function clearNotes() {
 		progressionPad.setNotes("");
