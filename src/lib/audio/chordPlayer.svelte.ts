@@ -162,8 +162,8 @@ class ChordPlayerEngine {
 	arpAlignBars = $state<1 | 2>(1);
 	/** The arpeggiator's tempo as a ratio of the session's (docs/audio-engine.md, "One tempo for the page"): half-time, with it, double-time. */
 	tempoRatio = $state<TempoRatio>(1);
-	/** Swing, 0 (straight) to 1 (a triplet feel): the odd steps land late, in eighths and sixteenths. */
-	arpSwing = $state(0);
+	/** One swing for the chord player (Kevin), 0 (straight) to 1 (a triplet feel): the arpeggiator's odd steps and the strum pattern's odd slots land late, in eighths and sixteenths; set from either menu. */
+	swing = $state(0);
 	/** The note the pattern is on, for the readout to light; null when it is not running. */
 	arpNote = $state<number | null>(null);
 	/** The chord the arpeggiator or the auto-strum keeps playing after its wedge was let go (Latch), so the readout stays lit with it. */
@@ -175,8 +175,6 @@ class ChordPlayerEngine {
 	strumSpeed = $state<AutoStrumSpeed>("8");
 	/** The pattern keeps going after the wedge is let go, until the next chord or Escape (a double click on the Strum button). */
 	strumLatch = $state(false);
-	/** Swing, 0 (straight) to 1 (a triplet feel): the odd slots land late. */
-	strumSwing = $state(0);
 	#autoHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
 	#autoLatched: { notes: number[]; velocity: number } | null = null;
 	#autoStopLoop: (() => void) | null = null;
@@ -260,11 +258,8 @@ class ChordPlayerEngine {
 			this.strumPattern = strumPattern as AutoStrumPatternId;
 		if (read("auto-strum-speed") === "16") this.strumSpeed = "16";
 		this.strumLatch = read("auto-strum-latch") === "1";
-		const strumSwing = Number(read("auto-strum-swing"));
-		if (Number.isFinite(strumSwing) && strumSwing >= 0 && strumSwing <= 1)
-			this.strumSwing = strumSwing;
-		const swing = Number(read("arp-swing"));
-		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.arpSwing = swing;
+		const swing = Number(read("swing") ?? read("arp-swing"));
+		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.swing = swing;
 		const readout = read("note-readout");
 		if (readout === "names" || readout === "staff" || readout === "both" || readout === "off")
 			this.noteReadout = readout;
@@ -452,7 +447,7 @@ class ChordPlayerEngine {
 					} else flip = Math.floor(n / slots.length) % 2 === 1;
 				}
 				const up = (slot === "U") !== flip;
-				const at = this.#autoOrigin + n * step + arpSwingDelay(n, step, this.strumSwing, perBeat);
+				const at = this.#autoOrigin + n * step + arpSwingDelay(n, step, this.swing, perBeat);
 				const ctx = this.#autoCtx!;
 				this.#autoTimers.push(
 					setTimeout(
@@ -477,10 +472,6 @@ class ChordPlayerEngine {
 	setStrumSpeed(speed: AutoStrumSpeed) {
 		this.strumSpeed = speed;
 		write("auto-strum-speed", speed);
-	}
-	setStrumSwing(v: number) {
-		this.strumSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
-		write("auto-strum-swing", String(this.strumSwing));
 	}
 	setStrumLatch(on: boolean) {
 		this.strumLatch = on;
@@ -686,7 +677,7 @@ class ChordPlayerEngine {
 					? Math.floor(Math.random() * seq.length)
 					: arpStepIndex(n - Math.max(this.#arpBase, barLine), seq.length, null);
 			const { midi, velocity } = seq[i];
-			const at = this.#arpOrigin + n * step + arpSwingDelay(n, step, this.arpSwing, perBeat);
+			const at = this.#arpOrigin + n * step + arpSwingDelay(n, step, this.swing, perBeat);
 			this.#arpQueued.push({
 				step: n,
 				timers: [
@@ -741,9 +732,9 @@ class ChordPlayerEngine {
 		this.tempoRatio = ratio;
 		write("tempo-ratio", String(ratio));
 	}
-	setArpSwing(v: number) {
-		this.arpSwing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
-		write("arp-swing", String(this.arpSwing));
+	setSwing(v: number) {
+		this.swing = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+		write("swing", String(this.swing));
 	}
 	setArpOnBeat(on: boolean) {
 		this.arpOnBeat = on;
@@ -949,7 +940,7 @@ class ChordPlayerEngine {
 				pattern: this.strumPattern,
 				speed: this.strumSpeed,
 				latch: this.strumLatch,
-				swing: this.strumSwing,
+				swing: this.swing,
 			},
 			arp: {
 				on: this.arp,
@@ -961,7 +952,7 @@ class ChordPlayerEngine {
 				align: this.arpAlign,
 				alignBars: this.arpAlignBars,
 				onBeat: this.arpOnBeat,
-				swing: this.arpSwing,
+				swing: this.swing,
 				ratio: this.tempoRatio,
 			},
 		};
@@ -981,7 +972,7 @@ class ChordPlayerEngine {
 			this.setStrumPattern(s.autoStrum.pattern);
 			this.setStrumSpeed(s.autoStrum.speed);
 			this.setStrumLatch(s.autoStrum.latch);
-			if (s.autoStrum.swing !== undefined) this.setStrumSwing(s.autoStrum.swing);
+			if (s.autoStrum.swing !== undefined) this.setSwing(s.autoStrum.swing);
 		}
 		if (s.arp) {
 			this.setArpRate(s.arp.rate);
@@ -992,7 +983,7 @@ class ChordPlayerEngine {
 			if (s.arp.align !== undefined) this.setArpAlign(s.arp.align);
 			if (s.arp.alignBars !== undefined) this.setArpAlignBars(s.arp.alignBars);
 			if (s.arp.onBeat !== undefined) this.setArpOnBeat(s.arp.onBeat);
-			if (s.arp.swing !== undefined) this.setArpSwing(s.arp.swing);
+			if (s.arp.swing !== undefined) this.setSwing(s.arp.swing);
 			if (s.arp.ratio !== undefined) this.setTempoRatio(s.arp.ratio);
 			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
 		}

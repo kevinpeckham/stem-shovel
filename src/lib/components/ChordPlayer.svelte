@@ -1287,19 +1287,20 @@
 				>
 			</label>
 			<label class="block">
-				<span class="device-button-label">Swing · {Math.round(chordPlayer.strumSwing * 100)}%</span>
+				<span class="device-button-label">Swing · {Math.round(chordPlayer.swing * 100)}%</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
 					min="0"
 					max="100"
 					step="5"
-					value={Math.round(chordPlayer.strumSwing * 100)}
-					aria-label="Strum swing in percent"
-					oninput={(e) => chordPlayer.setStrumSwing(Number(e.currentTarget.value) / 100)}
+					value={Math.round(chordPlayer.swing * 100)}
+					aria-label="Swing in percent"
+					oninput={(e) => chordPlayer.setSwing(Number(e.currentTarget.value) / 100)}
 				/>
 				<span class="block text-12px opacity-70 mt-1"
-					>Every second slot lands late, up to a triplet feel at full.</span
+					>Every second slot lands late, up to a triplet feel at full. One swing for the chord
+					player: the arpeggiator's too.</span
 				>
 			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
@@ -1458,20 +1459,20 @@
 				>
 			</label>
 			<label class="block">
-				<span class="device-button-label">Swing · {Math.round(chordPlayer.arpSwing * 100)}%</span>
+				<span class="device-button-label">Swing · {Math.round(chordPlayer.swing * 100)}%</span>
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
 					min="0"
 					max="100"
 					step="5"
-					value={Math.round(chordPlayer.arpSwing * 100)}
-					aria-label="Arpeggiator swing in percent"
-					oninput={(e) => chordPlayer.setArpSwing(Number(e.currentTarget.value) / 100)}
+					value={Math.round(chordPlayer.swing * 100)}
+					aria-label="Swing in percent"
+					oninput={(e) => chordPlayer.setSwing(Number(e.currentTarget.value) / 100)}
 				/>
 				<span class="block text-12px opacity-70 mt-1"
 					>Every second eighth or sixteenth lands late, up to a triplet feel at full. Quarter notes
-					and triplets stay straight.</span
+					and triplets stay straight. One swing for the chord player: the strum pattern's too.</span
 				>
 			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
