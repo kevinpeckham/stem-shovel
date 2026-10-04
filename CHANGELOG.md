@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.94.0] - 2026-10-04
+
 ### Added
 
 - **The chord player on the looper and the Idea Recorder** (docs/chord-player.md, phase 3): a "Chords" source beside the piano and a chord player button in each toolbar, opening it in a floating panel of its own (no pad); it is the piano engine, so its capture is the piano's under its own name, a chords layer is shifted like a piano layer, and on the recorder one of the two is in the take at a time. Its settings (`IdeaInstrumentsData.chords`) go with a take or an exported loop and come back with the idea.
