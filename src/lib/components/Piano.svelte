@@ -2,6 +2,8 @@
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
 	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
+	import StaffReadout from "$lib/components/StaffReadout.svelte";
+	import { spellChord } from "$lib/utils/noteSpelling";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { piano } from "$lib/audio/piano.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
@@ -205,9 +207,30 @@
 	const MODE_OPTIONS = SCALE_MODES.map((m) => ({ value: m.id, label: m.label }));
 	let inKey = $derived(piano.key ? scalePitchClasses(piano.key) : null);
 	let chord = $derived(nameChord(piano.sounding, piano.key));
+	/** The sounding notes on the screen's staff (docs/piano.md, "The staff"), spelled in flats in a flat key (F, B♭, E♭, A♭, D♭, G♭), else sharps. */
+	const FLAT_ROOTS = new Set([1, 3, 5, 6, 8, 10]);
+	let staffNotes = $derived(
+		spellChord(piano.sounding, piano.key ? FLAT_ROOTS.has(piano.key.root) : false),
+	);
 	/** What the readout says: the chord (with its numeral in the key), or the notes, or silence. */
+	/** The chord name spelled as the staff is: in flats in a flat key (the namer writes sharps). */
+	const SHARP_TO_FLAT: Record<string, string> = {
+		"C♯": "D♭",
+		"D♯": "E♭",
+		"F♯": "G♭",
+		"G♯": "A♭",
+		"A♯": "B♭",
+	};
+	const spelled = (name: string) =>
+		piano.key && FLAT_ROOTS.has(piano.key.root)
+			? name.replace(/[CDFGA]♯/g, (m) => SHARP_TO_FLAT[m] ?? m)
+			: name;
 	let readout = $derived(
-		!chord ? "silent" : chord.numeral ? `${chord.name} · ${chord.numeral}` : chord.name,
+		!chord
+			? "silent"
+			: chord.numeral
+				? `${spelled(chord.name)} · ${chord.numeral}`
+				: spelled(chord.name),
 	);
 	function setKeyRoot(root: number) {
 		piano.setKey({ root, mode: piano.key?.mode ?? "major" });
@@ -641,11 +664,19 @@
 				{/if}
 			</div>
 		</div>
-		<div
-			class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
-			aria-live="polite"
-		>
-			{readout}
+		<div class="flex items-center gap-4">
+			<!-- The notes on a staff (Kevin): what is sounding, as the chord player's readout shows it; from the medium width. -->
+			<StaffReadout
+				class="hidden @xl-block shrink-0"
+				notes={staffNotes}
+				activeMidi={piano.arpeggiator.on ? piano.arpeggiator.note : null}
+			/>
+			<div
+				class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
+				aria-live="polite"
+			>
+				{readout}
+			</div>
 		</div>
 	</div>
 

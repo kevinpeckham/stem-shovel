@@ -401,6 +401,18 @@ and the menu stays short; native, no state.
   keyboard-split of two sounds; latency work for Bluetooth MIDI and
   mobile.
 
+## The staff (built 2026-10-04)
+
+Kevin's ask, after the chord player's readout: the screen shows what is
+sounding on a small treble staff beside the chord name, from the medium
+width. `StaffReadout.svelte` is the chord player's drawing lifted into a
+component (five lines from E4, a step half a line, ledger lines, the
+accidental before the head, the view G2 to B6 with a note past either
+end at the edge, an arpeggiator's note lit white with a halo), fed by
+`spellChord(piano.sounding, flats)` where a flat key (F, B♭, E♭, A♭, D♭,
+G♭) spells in flats and anything else in sharps. The chord player's
+circle keeps its own embedded drawing (its geometry is the hole's).
+
 ## Arpeggiator (built 2026-10-04)
 
 Kevin's ask: the chord player's arpeggiator on the piano. The arpeggiator
