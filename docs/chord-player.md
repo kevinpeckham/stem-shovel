@@ -50,6 +50,19 @@ the piano's engine.
   "text-to-chords"), 20 an hour per user or address
   (`textToChords.remote.ts`). The Describe menu sits beside Demos on the
   pad when the page's load says `aiAvailable()`.
+- **Bebop and Cool styles, jazz demos** (2026-10-04, Kevin, from
+  jazzguitar.be's chord progressions): the Jazz style split into its halves
+  in `styledChord`: Bebop (6 on I with 6/9 under the pad, maj7 on IV, 7♭9
+  on V and every other major with the 13 under, m7/m9 minors, vii m7♭5
+  with °7 under) and Cool (6/9 on I and IV with maj9 under, unaltered 9
+  on V and the dominants with 13 under, m9/m11 minors, vii m7♭5), tested.
+  Seven demos in `constants/demoProgressions.ts`: the I–vi–ii–V and
+  iii–vi–ii–V turnarounds, the minor ii–V–i (m7♭5 on VII's minor, the V
+  as III's major), a jazz blues in F (Blues style, VI7 and the ii–V in
+  bar 9), rhythm changes' A section, the backdoor ii–V (iv, ♭VII) and
+  descending ii–Vs. Coltrane changes are left out: a demo is written by
+  degree and a style gives each degree one quality, while a three-key
+  cycle needs maj7 and 7 on the same degree.
 - **The click under playback is the metronome button** (2026-10-04, Kevin:
   the pad clicked with the metronome off): `progressionPad.play` takes
   `click` from `metronome.running` (the claim then silences the metronome,

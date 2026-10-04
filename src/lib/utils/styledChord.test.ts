@@ -56,6 +56,21 @@ describe("styledChord", () => {
 		expect(styledChord("minor", 11, "major", false, "dominant").intervals).toEqual([0, 4, 7]); // VI
 		expect(styledChord("minor", 2, "minor", true, "dominant").suffix).toBe("7"); // iv7 under the pad
 	});
+	it("splits jazz into bebop and cool", () => {
+		expect(styledChord("bebop", 0, "major", false, "dominant").suffix).toBe("6");
+		expect(styledChord("bebop", 0, "major", true, "dominant").suffix).toBe("6/9");
+		expect(styledChord("bebop", 1, "major", false, "dominant").suffix).toBe("7♭9");
+		expect(styledChord("bebop", 1, "major", true, "dominant").suffix).toBe("13");
+		expect(styledChord("bebop", 3, "major", false, "dominant").suffix).toBe("7♭9");
+		expect(styledChord("bebop", 11, "major", false, "dominant").suffix).toBe("maj7");
+		expect(styledChord("bebop", 5, "minor", true, "dominant").suffix).toBe("°7");
+		expect(styledChord("cool", 0, "major", false, "dominant").suffix).toBe("6/9");
+		expect(styledChord("cool", 1, "major", false, "dominant").suffix).toBe("9");
+		expect(styledChord("cool", 1, "major", true, "dominant").suffix).toBe("13");
+		expect(styledChord("cool", 2, "minor", false, "dominant").suffix).toBe("9");
+		expect(styledChord("cool", 2, "minor", true, "dominant").suffix).toBe("11");
+		expect(styledChord("cool", 5, "minor", false, "dominant").intervals).toEqual([0, 3, 6, 10]);
+	});
 	it("names the chord from the root and the recipe", () => {
 		expect(styledChordName("C", "major", styledChord("jazz", 0, "major", false, "dominant"))).toBe(
 			"Cmaj7",

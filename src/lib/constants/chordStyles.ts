@@ -47,6 +47,16 @@ export const CHORD_STYLES = [
 		label: "Bossa",
 		hint: "maj7 on I and IV with a 6/9 under the pad, a 9 on V with a 7♭9 under it, m7 minors with m9",
 	},
+	{
+		id: "bebop",
+		label: "Bebop",
+		hint: "the hot half of jazz: a 6 on I, 7♭9 on V and the secondary dominants, m7♭5 on vii; the 7 pad adds the 6/9, the 13 and the ninths",
+	},
+	{
+		id: "cool",
+		label: "Cool",
+		hint: "the cool half: 6/9 on I and IV, unaltered ninths on V and the dominants, m9 on the minors; the pad takes each a step higher",
+	},
 ] as const;
 export type ChordStyleId = (typeof CHORD_STYLES)[number]["id"];
 

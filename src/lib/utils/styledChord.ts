@@ -83,6 +83,25 @@ function recipes(
 			if (fifths === DEGREE.V) return ["dom9", "dom7flat9"];
 			return ["dom7", "dom7flat9"];
 		}
+		case "bebop": {
+			// The hot half of jazz: a sixth on the tonic (6/9 under the pad), maj7 on IV, every dominant altered (7♭9, the 13 under the pad), ii as m7 with the 9 under, vii half-diminished with a diminished seventh under.
+			if (minor) {
+				if (fifths === DEGREE.VII) return ["halfDim", "dim7"];
+				return ["min7", "min9"];
+			}
+			if (fifths === DEGREE.I) return ["six", "sixNine"];
+			if (fifths === DEGREE.IV) return ["maj7", "maj9"];
+			return ["dom7flat9", "dom13"];
+		}
+		case "cool": {
+			// The cool half: 6/9 on I and IV (maj9 under the pad), unaltered ninths on V and the other dominants (the 13 under), m9 on the minors (m11 under), vii half-diminished.
+			if (minor) {
+				if (fifths === DEGREE.VII) return ["halfDim", "halfDim"];
+				return ["min9", "min11"];
+			}
+			if (fifths === DEGREE.I || fifths === DEGREE.IV) return ["sixNine", "maj9"];
+			return ["dom9", "dom13"];
+		}
 		case "lush": {
 			if (minor) {
 				if (fifths === DEGREE.VII) return ["halfDim", "halfDim"];
