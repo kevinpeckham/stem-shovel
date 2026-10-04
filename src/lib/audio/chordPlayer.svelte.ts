@@ -28,6 +28,12 @@ import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
 import { arpStepIndex } from "$lib/utils/arpStep";
 import { arpSwingDelay } from "$lib/utils/arpSwingDelay";
 import { tempoRatioOf, type TempoRatio } from "$lib/constants/tempo";
+import {
+	AUTO_STRUM_PATTERNS,
+	AUTO_STRUM_SPEEDS,
+	type AutoStrumPatternId,
+	type AutoStrumSpeed,
+} from "$lib/constants/autoStrum";
 import { arpChangeSteps, arpSwitchStep } from "$lib/utils/arpSwitch";
 import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
 
@@ -159,8 +165,23 @@ class ChordPlayerEngine {
 	arpSwing = $state(0);
 	/** The note the pattern is on, for the readout to light; null when it is not running. */
 	arpNote = $state<number | null>(null);
-	/** The chord the pattern keeps playing after its wedge was let go (Latch), so the readout stays lit with it. */
-	arpLatchedChord = $state<SoundingChord | null>(null);
+	/** The chord the arpeggiator or the auto-strum keeps playing after its wedge was let go (Latch), so the readout stays lit with it. */
+	latchedChord = $state<SoundingChord | null>(null);
+
+	// ---- the auto-strum (docs/chord-player.md, "Strum") ----
+	/** A held chord strummed again and again in a pattern at the session tempo (Kevin); the arpeggiator wins when both are on. */
+	autoStrum = $state(false);
+	autoStrumPattern = $state<AutoStrumPatternId>("folk");
+	autoStrumSpeed = $state<AutoStrumSpeed>("8");
+	/** The pattern keeps going after the wedge is let go, until the next chord or Escape. */
+	autoStrumLatch = $state(false);
+	#autoHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
+	#autoLatched: { notes: number[]; velocity: number } | null = null;
+	#autoStopLoop: (() => void) | null = null;
+	#autoCtx: AudioContext | null = null;
+	#autoOrigin = 0;
+	#autoIndex = 0;
+	#autoTimers: ReturnType<typeof setTimeout>[] = [];
 	#arpHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
 	#arpLatched: { notes: number[]; velocity: number } | null = null;
 	#arpStopLoop: (() => void) | null = null;
@@ -232,6 +253,12 @@ class ChordPlayerEngine {
 		this.arpOnBeat = read("arp-on-beat") !== "0";
 		if (read("arp-align-bars") === "2") this.arpAlignBars = 2;
 		this.tempoRatio = tempoRatioOf(Number(read("tempo-ratio"))) ?? 1;
+		this.autoStrum = read("auto-strum") === "1";
+		const autoPattern = read("auto-strum-pattern");
+		if (autoPattern && AUTO_STRUM_PATTERNS.some((p) => p.id === autoPattern))
+			this.autoStrumPattern = autoPattern as AutoStrumPatternId;
+		if (read("auto-strum-speed") === "16") this.autoStrumSpeed = "16";
+		this.autoStrumLatch = read("auto-strum-latch") === "1";
 		const swing = Number(read("arp-swing"));
 		if (Number.isFinite(swing) && swing >= 0 && swing <= 1) this.arpSwing = swing;
 		const readout = read("note-readout");
@@ -287,6 +314,8 @@ class ChordPlayerEngine {
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / notes.length));
 		if (this.arp) {
 			this.#arpHold(by, notes, velocity);
+		} else if (this.autoStrum) {
+			this.#autoHold(by, notes, velocity);
 		} else {
 			this.#strike(by, notes, velocity);
 		}
@@ -325,13 +354,16 @@ class ChordPlayerEngine {
 	/** The notes down together, or strummed in the direction set (alternating turns each press), the accented note a touch louder and the rest a touch softer. */
 	#strike(by: string, notes: number[], velocity: number) {
 		const gap = STRUMS.find((s) => s.id === this.strum)?.ms ?? 0;
-		let order = [...notes];
+		let up = false;
 		if (gap > 0) {
-			const up =
-				this.strumDirection === "up" || (this.strumDirection === "alternate" && this.#strumFlip);
+			up = this.strumDirection === "up" || (this.strumDirection === "alternate" && this.#strumFlip);
 			if (this.strumDirection === "alternate") this.#strumFlip = !this.#strumFlip;
-			if (up) order = order.reverse();
 		}
+		this.#timers.set(by, this.#strum(notes, velocity, up, gap));
+	}
+	/** The notes down together (no gap), or one after another `gap` ms apart, low to high or the other way up; the accented note a touch louder and the rest a touch softer. */
+	#strum(notes: number[], velocity: number, up: boolean, gap: number) {
+		const order = up ? [...notes].reverse() : [...notes];
 		const top = Math.max(...notes);
 		const bottom = Math.min(...notes);
 		const level = (midi: number) => {
@@ -346,7 +378,108 @@ class ChordPlayerEngine {
 			if (gap === 0 || i === 0) piano.noteOn(midi, level(midi));
 			else timers.push(setTimeout(() => piano.noteOn(midi, level(midi)), gap * i));
 		});
-		this.#timers.set(by, timers);
+		return timers;
+	}
+
+	/** A chord into the auto-strum: the pattern starts again from its first slot on the press (so the chord sounds at once), the loop on the piano's clock. */
+	#autoHold(by: string, notes: number[], velocity: number) {
+		const ctx = piano.output().context as AudioContext;
+		this.#autoCtx = ctx;
+		this.#autoHeld.set(by, { notes, velocity });
+		this.#autoLatched = null;
+		this.latchedChord = null;
+		for (const t of this.#autoTimers) clearTimeout(t);
+		this.#autoTimers = [];
+		this.#autoOrigin = ctx.currentTime + 0.01;
+		this.#autoIndex = 0;
+		if (!this.#autoStopLoop) this.#autoStopLoop = startLookahead(ctx, this.#autoSchedule);
+	}
+	/** A chord let go: its notes stop (the pedal may hold them); the last one latches or ends the pattern. */
+	#autoRelease(by: string, chord: SoundingChord) {
+		const held = this.#autoHeld.get(by);
+		this.#autoHeld.delete(by);
+		const stillHeld = new Set([...this.#autoHeld.values()].flatMap((h) => h.notes));
+		for (const midi of chord.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
+		if (this.#autoHeld.size === 0) {
+			if (this.autoStrumLatch && held) {
+				this.#autoLatched = held;
+				this.latchedChord = chord;
+			} else this.#autoStop();
+		}
+	}
+	#autoStop() {
+		this.#autoStopLoop?.();
+		this.#autoStopLoop = null;
+		for (const t of this.#autoTimers) clearTimeout(t);
+		this.#autoTimers = [];
+		if (this.#autoLatched) for (const midi of this.#autoLatched.notes) piano.noteOff(midi);
+		this.#autoHeld.clear();
+		this.#autoLatched = null;
+		this.latchedChord = null;
+	}
+	#autoSchedule = (until: number) => {
+		const perBeat = AUTO_STRUM_SPEEDS.find((s) => s.id === this.autoStrumSpeed)?.perBeat ?? 2;
+		const step = 60 / (metronome.bpm * this.tempoRatio) / perBeat;
+		const slots =
+			AUTO_STRUM_PATTERNS.find((p) => p.id === this.autoStrumPattern)?.slots ?? "D-D-D-D-";
+		const gapId = this.strum === "off" ? this.#lastStrum : this.strum;
+		const gap = STRUMS.find((s) => s.id === gapId)?.ms ?? 25;
+		while (this.#autoOrigin + this.#autoIndex * step < until) {
+			const n = this.#autoIndex;
+			const slot = slots[n % slots.length];
+			const sources = this.#autoHeld.size
+				? [...this.#autoHeld.values()]
+				: this.#autoLatched
+					? [this.#autoLatched]
+					: [];
+			if (sources.length === 0) {
+				this.#autoStop();
+				return;
+			}
+			if (slot === "D" || slot === "U") {
+				const at = this.#autoOrigin + n * step;
+				const ctx = this.#autoCtx!;
+				this.#autoTimers.push(
+					setTimeout(
+						() => {
+							for (const s of sources) {
+								for (const midi of s.notes) piano.noteOff(midi);
+								this.#autoTimers.push(...this.#strum(s.notes, s.velocity, slot === "U", gap));
+							}
+						},
+						Math.max(0, (at - ctx.currentTime) * 1000),
+					),
+				);
+				if (this.#autoTimers.length > 200) this.#autoTimers = this.#autoTimers.slice(-120);
+			}
+			this.#autoIndex = n + 1;
+		}
+	};
+	setAutoStrum(on: boolean) {
+		this.autoStrum = on;
+		write("auto-strum", on ? "1" : "0");
+		if (!on) {
+			// What is held keeps sounding as it is; a latched chord stops.
+			this.#autoHeld.clear();
+			this.#autoStop();
+		} else if (!this.arp) {
+			// Held chords join the pattern.
+			for (const s of this.sounding)
+				this.#autoHold(s.by, s.notes, this.velocity * Math.min(1, Math.sqrt(3 / s.notes.length)));
+		}
+	}
+	setAutoStrumPattern(pattern: AutoStrumPatternId) {
+		this.autoStrumPattern = pattern;
+		write("auto-strum-pattern", pattern);
+	}
+	setAutoStrumSpeed(speed: AutoStrumSpeed) {
+		this.autoStrumSpeed = speed;
+		write("auto-strum-speed", speed);
+	}
+	setAutoStrumLatch(on: boolean) {
+		this.autoStrumLatch = on;
+		write("auto-strum-latch", on ? "1" : "0");
+		if (!on && this.#autoHeld.size === 0) this.#autoStop();
 	}
 	/** A drag within a held wedge turns the chord (docs/chord-player.md, "Inversions"): the same wedge pressed again at the new inversion, no strum. */
 	invert(drawnIndex: number, quality: ChordQuality, by: string, inversion: number) {
@@ -365,6 +498,8 @@ class ChordPlayerEngine {
 		const rest = this.sounding.filter((s) => s.by !== by);
 		if (this.#arpHeld.has(by)) {
 			this.#arpRelease(by, held);
+		} else if (this.#autoHeld.has(by)) {
+			this.#autoRelease(by, held);
 		} else {
 			const stillHeld = new Set(rest.flatMap((s) => s.notes));
 			for (const midi of held.notes) if (!stillHeld.has(midi)) piano.noteOff(midi);
@@ -377,6 +512,7 @@ class ChordPlayerEngine {
 		this.release(by);
 		const velocity = this.velocity * Math.min(1, Math.sqrt(3 / chord.notes.length));
 		if (this.arp) this.#arpHold(by, chord.notes, velocity);
+		else if (this.autoStrum) this.#autoHold(by, chord.notes, velocity);
 		else for (const midi of chord.notes) piano.noteOn(midi, velocity);
 		this.sounding = [
 			...this.sounding,
@@ -424,7 +560,7 @@ class ChordPlayerEngine {
 		}
 		this.#arpHeld.set(by, { notes, velocity });
 		this.#arpLatched = null;
-		this.arpLatchedChord = null;
+		this.latchedChord = null;
 		this.#arpPending = null;
 		this.#arpIndex = 0;
 		this.#arpRestart();
@@ -441,11 +577,11 @@ class ChordPlayerEngine {
 		if (this.#arpHeld.size === 0) {
 			if (this.arpLatch && held) {
 				this.#arpLatched = held;
-				this.arpLatchedChord = chord ?? null;
+				this.latchedChord = chord ?? null;
 			} else if (this.#arpPending) {
 				// Let go with the next chord already pressed (legato): the old one runs on until the new one takes over at its step.
 				this.#arpLatched = held ?? null;
-				this.arpLatchedChord = chord ?? null;
+				this.latchedChord = chord ?? null;
 			} else this.#arpStop();
 		}
 	}
@@ -506,7 +642,7 @@ class ChordPlayerEngine {
 		this.#arpClearQueue();
 		this.#arpHeld.clear();
 		this.#arpLatched = null;
-		this.arpLatchedChord = null;
+		this.latchedChord = null;
 		this.arpNote = null;
 		this.#arpPending = null;
 		piano.allOff();
@@ -527,7 +663,7 @@ class ChordPlayerEngine {
 			if (this.#arpPending && this.#arpIndex >= this.#arpPending.step) {
 				this.#arpHeld = this.#arpPending.held;
 				this.#arpLatched = null;
-				this.arpLatchedChord = null;
+				this.latchedChord = null;
 				this.#arpBase = this.#arpPending.base;
 				this.#arpPending = null;
 				seq = this.#arpSequence();
@@ -568,7 +704,9 @@ class ChordPlayerEngine {
 			this.#arpStop();
 			for (const h of held) for (const midi of h.notes) piano.noteOn(midi, h.velocity);
 		} else if (this.sounding.length) {
-			// Held chords switch over to the pattern.
+			// Held chords switch over to the pattern (out of the auto-strum if they were in it).
+			this.#autoHeld.clear();
+			this.#autoStop();
 			for (const s of this.sounding) {
 				for (const midi of s.notes) piano.noteOff(midi);
 				this.#arpHeld.set(s.by, { notes: s.notes, velocity: this.velocity });
@@ -623,6 +761,7 @@ class ChordPlayerEngine {
 		for (const timers of this.#timers.values()) for (const t of timers) clearTimeout(t);
 		this.#timers.clear();
 		if (this.#arpStopLoop || this.#arpLatched || this.#arpHeld.size) this.#arpStop();
+		if (this.#autoStopLoop || this.#autoLatched || this.#autoHeld.size) this.#autoStop();
 		const held = this.sounding.map((s) => s.by);
 		this.sounding = [];
 		piano.allOff();
@@ -761,6 +900,12 @@ class ChordPlayerEngine {
 			accent: this.accent,
 			seventhType: this.seventhType,
 			velocity: this.velocity,
+			autoStrum: {
+				on: this.autoStrum,
+				pattern: this.autoStrumPattern,
+				speed: this.autoStrumSpeed,
+				latch: this.autoStrumLatch,
+			},
 			arp: {
 				on: this.arp,
 				rate: this.arpRate,
@@ -787,6 +932,12 @@ class ChordPlayerEngine {
 		if (s.accent) this.setAccent(s.accent);
 		if (s.seventhType) this.setSeventhType(s.seventhType);
 		if (s.velocity !== undefined) this.setVelocity(s.velocity);
+		if (s.autoStrum) {
+			this.setAutoStrumPattern(s.autoStrum.pattern);
+			this.setAutoStrumSpeed(s.autoStrum.speed);
+			this.setAutoStrumLatch(s.autoStrum.latch);
+			if (s.autoStrum.on !== this.autoStrum) this.setAutoStrum(s.autoStrum.on);
+		}
 		if (s.arp) {
 			this.setArpRate(s.arp.rate);
 			this.setArpPattern(s.arp.pattern);
@@ -813,8 +964,8 @@ class ChordPlayerEngine {
 	get soundingSpelled(): SpelledNote[] {
 		const sounding = this.sounding.length
 			? this.sounding
-			: this.arpLatchedChord
-				? [this.arpLatchedChord]
+			: this.latchedChord
+				? [this.latchedChord]
 				: [];
 		if (sounding.length === 0) return [];
 		const first = sounding[0].wedge;

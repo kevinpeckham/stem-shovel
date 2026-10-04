@@ -1,4 +1,10 @@
 <script lang="ts">
+	import {
+		AUTO_STRUM_PATTERNS,
+		AUTO_STRUM_SPEEDS,
+		type AutoStrumPatternId,
+		type AutoStrumSpeed,
+	} from "$lib/constants/autoStrum";
 	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
 	import { onDestroy, type Snippet } from "svelte";
 	import {
@@ -258,7 +264,7 @@
 	}
 	const centre = $derived(
 		chordPlayer.sounding.map((s) => s.name).join(" + ") ||
-			chordPlayer.arpLatchedChord?.name ||
+			chordPlayer.latchedChord?.name ||
 			flash ||
 			(learnTarget ? `Next: ${learnTarget.label}` : ""),
 	);
@@ -280,6 +286,19 @@
 	}
 	function seventhUp() {
 		chordPlayer.seventhHeld = false;
+	}
+	/** The Strum button: a click toggles the strum; a double click (or tap) switches the auto-strum on or off (Kevin), the pattern that keeps strumming a held chord. */
+	let strumTapAt = 0;
+	function strumClick() {
+		const now = performance.now();
+		if (now - strumTapAt < 400) {
+			strumTapAt = 0;
+			chordPlayer.toggleStrum();
+			chordPlayer.setAutoStrum(!chordPlayer.autoStrum);
+			return;
+		}
+		strumTapAt = now;
+		chordPlayer.toggleStrum();
 	}
 	/** The Arp button: a click toggles the arpeggiator; a double click (or tap) latches it on, or unlatches it (Kevin), like the sustain pad. */
 	let arpTapAt = 0;
@@ -406,6 +425,9 @@
 					<span>· {chordPlayer.mode === "notes" ? "notes" : "chords"}</span>
 					{#if chordPlayer.styleLabel}<span>· {chordPlayer.styleLabel}</span>{/if}
 					<span>· octave {chordPlayer.octave}</span>
+					{#if chordPlayer.autoStrum && !chordPlayer.arp}<span class="text-accent"
+							>· auto-strum</span
+						>{/if}
 					{#if chordPlayer.arp}<span class="text-accent"
 							>· arp{chordPlayer.tempoRatio === 1
 								? ""
@@ -1077,16 +1099,24 @@
 
 {#snippet strumButton(classes: string)}
 	<button
-		class="device-button-sm px-3 {classes} {chordPlayer.strum !== 'off' ? 'text-accent' : ''}"
+		class="device-button-sm px-3 {classes} {chordPlayer.strum !== 'off' || chordPlayer.autoStrum
+			? 'text-accent'
+			: ''}"
 		type="button"
 		aria-pressed={chordPlayer.strum !== "off"}
-		title={chordPlayer.strum !== "off"
+		title={(chordPlayer.strum !== "off"
 			? "Strum on: the notes of a chord a few milliseconds apart; click to play them together"
-			: "Strum: the notes of a chord a few milliseconds apart, as a hand plays them"}
+			: "Strum: the notes of a chord a few milliseconds apart, as a hand plays them") +
+			(chordPlayer.autoStrum
+				? "; auto-strum on (double-click to switch it off)"
+				: "; double-click for the auto-strum, a held chord strummed in a pattern at the tempo")}
 		aria-label="Strum"
-		onclick={() => chordPlayer.toggleStrum()}
+		onclick={strumClick}
 	>
-		<span class="i-ph-hand-waving" aria-hidden="true"></span>
+		<span
+			class={chordPlayer.autoStrum ? "i-ph-lock-simple-fill" : "i-ph-hand-waving"}
+			aria-hidden="true"
+		></span>
 		Strum
 	</button>
 {/snippet}
@@ -1125,6 +1155,55 @@
 				<option value="alternate">Alternate</option>
 			</select>
 		</label>
+		<div class="grid gap-3 border-t border-white/10 pt-3">
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.autoStrum}
+					onchange={(e) => chordPlayer.setAutoStrum(e.currentTarget.checked)}
+				/>
+				Auto-strum: a held chord strummed in a pattern at the tempo
+			</label>
+			<span class="block text-12px opacity-70 -mt-2"
+				>Double-click or double-tap the Strum button to switch it on and off. The arpeggiator takes
+				over while it is on.</span
+			>
+			<label class="block">
+				<span class="device-button-label">Pattern</span>
+				<select
+					class="device-field w-full"
+					value={chordPlayer.autoStrumPattern}
+					onchange={(e) =>
+						chordPlayer.setAutoStrumPattern(e.currentTarget.value as AutoStrumPatternId)}
+				>
+					{#each AUTO_STRUM_PATTERNS as p (p.id)}<option value={p.id}>{p.label}</option>{/each}
+				</select>
+			</label>
+			<label class="block">
+				<span class="device-button-label">Speed</span>
+				<select
+					class="device-field w-full"
+					value={chordPlayer.autoStrumSpeed}
+					onchange={(e) => chordPlayer.setAutoStrumSpeed(e.currentTarget.value as AutoStrumSpeed)}
+				>
+					{#each AUTO_STRUM_SPEEDS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
+				</select>
+				<span class="block text-12px opacity-70 mt-1"
+					>Each slot of the pattern is an eighth, or a sixteenth, at the session tempo (and the
+					arpeggiator's tempo ratio).</span
+				>
+			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={chordPlayer.autoStrumLatch}
+					onchange={(e) => chordPlayer.setAutoStrumLatch(e.currentTarget.checked)}
+				/>
+				Latch: the strumming keeps going after you let go, until the next chord or Esc
+			</label>
+		</div>
 		<label class="block">
 			<span class="device-button-label">Accent</span>
 			<select

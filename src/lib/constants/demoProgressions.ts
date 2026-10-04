@@ -1,6 +1,7 @@
 import type { ChordVoicing, Strum } from "./circleOfFifths";
 import type { PianoInstrumentId } from "./piano";
 import type { TempoRatio } from "./tempo";
+import type { AutoStrumPatternId, AutoStrumSpeed } from "./autoStrum";
 
 /**
  * Progressions to learn from and to hear played (docs/chord-player.md,
@@ -40,6 +41,12 @@ export interface DemoSetup {
 		latch?: boolean;
 		swing?: number;
 		ratio?: TempoRatio;
+	};
+	autoStrum?: {
+		on: boolean;
+		pattern?: AutoStrumPatternId;
+		speed?: AutoStrumSpeed;
+		latch?: boolean;
 	};
 	keyCenter?: number;
 	octave?: number;
@@ -243,6 +250,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			strum: "slow",
 			strumDirection: "down",
 			arp: { on: false },
+			autoStrum: { on: true, pattern: "waltz", speed: "8" },
 			keyCenter: 1,
 			octave: 3,
 			sustain: false,
@@ -302,6 +310,7 @@ export const DEMO_PROGRESSIONS: DemoProgression[] = [
 			strum: "medium",
 			strumDirection: "alternate",
 			arp: { on: false },
+			autoStrum: { on: true, pattern: "folk", speed: "8" },
 			keyCenter: 2,
 			octave: 3,
 			sustain: false,

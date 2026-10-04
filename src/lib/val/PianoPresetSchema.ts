@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import { CHORD_VOICINGS, SEVENTH_TYPES, STRUMS } from "$lib/constants/circleOfFifths";
+import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "$lib/constants/autoStrum";
 import { PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
@@ -100,6 +101,15 @@ export const ChordPresetSettingsSchema = v.object({
 	accent: v.optional(v.picklist(["none", "top", "bottom"])),
 	seventhType: v.optional(v.picklist(SEVENTH_TYPES.map((s) => s.id))),
 	velocity: v.optional(v.pipe(v.number(), v.minValue(0.2), v.maxValue(1))),
+	/** The auto-strum, on or off, its pattern, speed and latch; absent on presets saved before it existed. */
+	autoStrum: v.optional(
+		v.object({
+			on: v.boolean(),
+			pattern: v.picklist(AUTO_STRUM_PATTERNS.map((p) => p.id)),
+			speed: v.picklist(AUTO_STRUM_SPEEDS.map((s) => s.id)),
+			latch: v.boolean(),
+		}),
+	),
 	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */
 	arp: v.optional(
 		v.object({
