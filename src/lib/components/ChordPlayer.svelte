@@ -422,17 +422,32 @@
 				}}
 			/>
 		</div>
-		<div class="hidden @xl-block min-w-28">
+		<div class="hidden @xl-block min-w-36">
 			<div class="device-button-group-label text-dark hidden @xl-block">Style</div>
-			<ComboBox
-				ariaLabel="Style"
-				clearDefaultButtonClasses={true}
-				popoverClasses="text-13px !w-max !min-w-full max-w-lg"
-				buttonClasses="device-button-sm px-3 w-full"
-				options={STYLE_OPTIONS}
-				value={chordPlayer.style}
-				onchange={(v) => chordPlayer.setStyle(v)}
-			/>
+			<!-- A split button (Kevin): the style, and on the caret the seventh's kind and your own styles. -->
+			<div class="flex gap-px" role="group" aria-label="Style">
+				<ComboBox
+					ariaLabel="Style"
+					clearDefaultButtonClasses={true}
+					popoverClasses="text-13px !w-max !min-w-full max-w-lg"
+					buttonClasses="device-button-sm px-3 w-full rounded-r-none"
+					options={STYLE_OPTIONS}
+					value={chordPlayer.style}
+					onchange={(v) => chordPlayer.setStyle(v)}
+				/>
+				<ContextMenu
+					ariaLabel="Style settings"
+					title="The seventh on a major chord, and styles of your own"
+					iconClass="i-ph-caret-down"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[
+						{ id: "style-heading", kind: "heading", label: "Style" },
+						{ id: "style-block", kind: "snippet", snippet: styleMenuBlock },
+					]}
+				/>
+			</div>
 		</div>
 		<div class="hidden @xl-block min-w-32">
 			<div class="device-button-group-label text-dark hidden @xl-block">Voicing</div>
@@ -563,21 +578,24 @@
 			</div>
 		</div>
 		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Effects</div>
+			<ContextMenu
+				ariaLabel="Effects"
+				title="The piano's effects: reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone, rotary"
+				iconClass="i-ph-sliders-horizontal"
+				label="Effects"
+				position="bottom right"
+				buttonBaseClasses="device-button-sm px-3"
+				popoverClasses="min-w-80 @xl-min-w-[40rem] max-w-4xl !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+				items={[
+					{ id: "fx-heading", kind: "heading", label: "Effects" },
+					{ id: "fx-block", kind: "snippet", snippet: effectsMenuBlock },
+				]}
+			/>
+		</div>
+		<div class="hidden @xl-block">
 			<div class="device-button-group-label text-dark hidden @xl-block">Settings</div>
 			<div class="flex flex-wrap gap-2">
-				<ContextMenu
-					ariaLabel="Chords settings"
-					title="Voicing, the seventh, accent, velocity and octave"
-					iconClass="i-ph-music-notes"
-					label="Chords"
-					position="bottom right"
-					buttonBaseClasses="device-button-sm px-3"
-					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-					items={[
-						{ id: "chords-heading", kind: "heading", label: "Chords" },
-						{ id: "chords-block", kind: "snippet", snippet: chordsMenuBlock },
-					]}
-				/>
 				<ContextMenu
 					ariaLabel="UI settings"
 					title="The layout, where the key sits, the signatures, the dim outside the key, the keyboard map"
@@ -589,19 +607,6 @@
 					items={[
 						{ id: "ui-heading", kind: "heading", label: "UI" },
 						{ id: "ui-block", kind: "snippet", snippet: circleMenuBlock },
-					]}
-				/>
-				<ContextMenu
-					ariaLabel="Effects"
-					title="The piano's effects: reverb, delay, chorus, tremolo, fuzz, wah, phaser, tone, rotary"
-					iconClass="i-ph-sliders-horizontal"
-					label="Effects"
-					position="bottom right"
-					buttonBaseClasses="device-button-sm px-3"
-					popoverClasses="min-w-80 @xl-min-w-[40rem] max-w-4xl !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-					items={[
-						{ id: "fx-heading", kind: "heading", label: "Effects" },
-						{ id: "fx-block", kind: "snippet", snippet: effectsMenuBlock },
 					]}
 				/>
 			</div>
@@ -986,31 +991,6 @@
 				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
-		{#if account?.canEdit}
-			{#if styleEditor}
-				<ChordStyleEditor
-					name={styleEditor.name}
-					data={styleEditor.data}
-					saving={styleSaving}
-					onsave={saveStyle}
-					oncancel={() => (styleEditor = null)}
-				/>
-			{:else}
-				<div class="flex flex-wrap gap-2 -mt-2">
-					<button
-						class="device-button-sm px-3"
-						type="button"
-						title="A style of your own, starting from the one in use: choose what each degree carries"
-						onclick={newStyle}>New style</button
-					>
-					{#if currentCustom}
-						<button class="device-button-sm px-3" type="button" onclick={editStyle}>Edit</button>
-						<button class="device-button-sm px-3" type="button" onclick={removeStyle}>Delete</button
-						>
-					{/if}
-				</div>
-			{/if}
-		{/if}
 		<label class="block">
 			<span class="device-button-label">Voicing</span>
 			<select
@@ -1024,35 +1004,7 @@
 				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
 			>
 		</label>
-		<label class="block">
-			<span class="device-button-label">The seventh on a major chord</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.seventhType}
-				onchange={(e) => chordPlayer.setSeventhType(e.currentTarget.value as SeventhType)}
-			>
-				{#each SEVENTH_TYPES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				>A minor chord always takes the minor seventh. Hold the 7 pad or Shift for a seventh; a
-				second finger on a sounding wedge adds it too.</span
-			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Accent</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.accent}
-				onchange={(e) => chordPlayer.setAccent(e.currentTarget.value as ChordAccent)}
-			>
-				<option value="none">Even</option>
-				<option value="top">Top note</option>
-				<option value="bottom">Bottom note</option>
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
+		{@render styleMenuBlock()}
 		<label class="block">
 			<span class="device-button-label">Octave · {chordPlayer.octave}</span>
 			<input
@@ -1122,6 +1074,65 @@
 				<option value="alternate">Alternate</option>
 			</select>
 		</label>
+		<label class="block">
+			<span class="device-button-label">Accent</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.accent}
+				onchange={(e) => chordPlayer.setAccent(e.currentTarget.value as ChordAccent)}
+			>
+				<option value="none">Even</option>
+				<option value="top">Top note</option>
+				<option value="bottom">Bottom note</option>
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
+			>
+		</label>
+	</div>
+{/snippet}
+
+{#snippet styleMenuBlock()}
+	<div class="grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<label class="block">
+			<span class="device-button-label">The seventh on a major chord</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.seventhType}
+				onchange={(e) => chordPlayer.setSeventhType(e.currentTarget.value as SeventhType)}
+			>
+				{#each SEVENTH_TYPES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>A minor chord always takes the minor seventh. Hold the 7 pad or Shift for a seventh; a
+				second finger on a sounding wedge adds it too.</span
+			>
+		</label>
+		{#if account?.canEdit}
+			{#if styleEditor}
+				<ChordStyleEditor
+					name={styleEditor.name}
+					data={styleEditor.data}
+					saving={styleSaving}
+					onsave={saveStyle}
+					oncancel={() => (styleEditor = null)}
+				/>
+			{:else}
+				<div class="flex flex-wrap gap-2 -mt-2">
+					<button
+						class="device-button-sm px-3"
+						type="button"
+						title="A style of your own, starting from the one in use: choose what each degree carries"
+						onclick={newStyle}>New style</button
+					>
+					{#if currentCustom}
+						<button class="device-button-sm px-3" type="button" onclick={editStyle}>Edit</button>
+						<button class="device-button-sm px-3" type="button" onclick={removeStyle}>Delete</button
+						>
+					{/if}
+				</div>
+			{/if}
+		{/if}
 	</div>
 {/snippet}
 
