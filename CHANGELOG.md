@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chord player's metronome button stands on its own**, labelled Metronome, out of the Settings group; the strum is a split button beside the arpeggiator's, on or off on the left and its speed and direction on the caret (a Strum section in the phone's wrench menu), the Chords menu keeping the accent; small octave up and down buttons sit above the sustain and 7 pads at the device's edges, and the up and down arrow keys change the octave; the sustain pads use the piano's sustain icon.
+
 ### Added
 
 - **An Acoustic Guitar sound** on the piano engine: FreePats' Spanish classical guitar (CC0), forty-eight notes from G1 to C6 as mp3 in static/kits/guitar (`bun run samples:guitar`). The bass and the guitar share one sampled-instrument module (`audio/sampledInstruments.ts`): nothing is fetched until the instrument is chosen, the files nearest middle C land first, each note plays from its own sample as soon as that one is decoded while a synthesized stand-in covers the rest, and a note plays the nearest sample by the smallest shift (octaves of the same pitch class preferred, so the bass's one octave covers the range).

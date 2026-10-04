@@ -95,6 +95,8 @@ class ChordPlayerEngine {
 	/** The momentary seventh: the 7 pad or Shift, held. */
 	seventhHeld = $state(false);
 	strum = $state<Strum>("off");
+	/** The speed the strum comes back at when switched on (the Strum split button). */
+	#lastStrum: Exclude<Strum, "off"> = "medium";
 	/** The strum's direction: low to high as a downstroke, high to low, or alternating press by press. */
 	strumDirection = $state<StrumDirection>("down");
 	#strumFlip = false;
@@ -167,6 +169,8 @@ class ChordPlayerEngine {
 		if (seventh === "dominant" || seventh === "major7") this.seventhType = seventh;
 		const strum = read("strum");
 		if (strum && STRUMS.some((s) => s.id === strum)) this.strum = strum as Strum;
+		const last = read("strum-last");
+		if (last === "slow" || last === "medium" || last === "fast") this.#lastStrum = last;
 		const direction = read("strum-direction");
 		if (direction === "down" || direction === "up" || direction === "alternate")
 			this.strumDirection = direction;
@@ -557,6 +561,14 @@ class ChordPlayerEngine {
 	setStrum(strum: Strum) {
 		this.strum = strum;
 		write("strum", strum);
+		if (strum !== "off") {
+			this.#lastStrum = strum;
+			write("strum-last", strum);
+		}
+	}
+	/** The strum on at its last speed, or off. */
+	toggleStrum() {
+		this.setStrum(this.strum === "off" ? this.#lastStrum : "off");
 	}
 	setStrumDirection(direction: StrumDirection) {
 		this.strumDirection = direction;

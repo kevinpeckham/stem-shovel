@@ -292,6 +292,11 @@
 				chordPlayer.setKeyCenter(chordPlayer.keyCenter + (e.code === "ArrowRight" ? 1 : -1));
 			return;
 		}
+		if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+			e.preventDefault();
+			if (!e.repeat) chordPlayer.setOctave(chordPlayer.octave + (e.code === "ArrowUp" ? 1 : -1));
+			return;
+		}
 		const key = chordPlayer.keyCodes[e.code];
 		if (!key || e.repeat || downCodes.has(e.code)) return;
 		e.preventDefault();
@@ -447,6 +452,25 @@
 				/>
 			</div>
 		</div>
+		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Strum</div>
+			<!-- A split button (Kevin): Strum switches the strum on at its last speed or off; the caret opens its speed and direction. -->
+			<div class="flex gap-px" role="group" aria-label="Strum">
+				{@render strumButton("rounded-r-none")}
+				<ContextMenu
+					ariaLabel="Strum settings"
+					title="Speed and direction"
+					iconClass="i-ph-caret-down"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[
+						{ id: "strum-heading", kind: "heading", label: "Strum" },
+						{ id: "strum-block", kind: "snippet", snippet: strumMenuBlock },
+					]}
+				/>
+			</div>
+		</div>
 		<div class="@xl-hidden">
 			<ComboBox
 				ariaLabel="Key center"
@@ -491,39 +515,42 @@
 			{@render presetsBlock()}
 		</div>
 		<div class="hidden @xl-block">
+			<div class="device-button-group-label text-dark hidden @xl-block">Metronome</div>
+			<!-- A split button (Kevin): the tempo starts and stops the click; the caret beside it opens the Timing menu. -->
+			<div class="flex gap-px" role="group" aria-label="Timing">
+				<button
+					class="device-button-sm px-3 rounded-r-none tabular-nums {metronome.running
+						? 'text-accent'
+						: ''}"
+					type="button"
+					aria-pressed={metronome.running}
+					title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
+					aria-label="Click at {metronome.bpm} bpm"
+					onclick={() => metronome.toggle()}
+				>
+					<span class="i-ph-metronome" aria-hidden="true"></span>
+					{metronome.bpm} bpm
+				</button>
+				<ContextMenu
+					ariaLabel="Timing"
+					title="Tempo, tap, beats to the bar and the click"
+					iconClass="i-ph-caret-down"
+					position="bottom right"
+					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[
+						{ id: "timing-heading", kind: "heading", label: "Timing" },
+						{ id: "timing-block", kind: "snippet", snippet: timingMenuBlock },
+					]}
+				/>
+			</div>
+		</div>
+		<div class="hidden @xl-block">
 			<div class="device-button-group-label text-dark hidden @xl-block">Settings</div>
 			<div class="flex flex-wrap gap-2">
-				<!-- A split button (Kevin): the tempo starts and stops the click; the caret beside it opens the Timing menu. -->
-				<div class="flex gap-px" role="group" aria-label="Timing">
-					<button
-						class="device-button-sm px-3 rounded-r-none tabular-nums {metronome.running
-							? 'text-accent'
-							: ''}"
-						type="button"
-						aria-pressed={metronome.running}
-						title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
-						aria-label="Click at {metronome.bpm} bpm"
-						onclick={() => metronome.toggle()}
-					>
-						<span class="i-ph-metronome" aria-hidden="true"></span>
-						{metronome.bpm} bpm
-					</button>
-					<ContextMenu
-						ariaLabel="Timing"
-						title="Tempo, tap, beats to the bar and the click"
-						iconClass="i-ph-caret-down"
-						position="bottom right"
-						buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
-						popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-						items={[
-							{ id: "timing-heading", kind: "heading", label: "Timing" },
-							{ id: "timing-block", kind: "snippet", snippet: timingMenuBlock },
-						]}
-					/>
-				</div>
 				<ContextMenu
 					ariaLabel="Chords settings"
-					title="Voicing, the seventh, strum, velocity and octave"
+					title="Voicing, the seventh, accent, velocity and octave"
 					iconClass="i-ph-music-notes"
 					label="Chords"
 					position="bottom right"
@@ -610,6 +637,9 @@
 			sustainUp,
 			sustain,
 		)}
+		<!-- The octave, a small button above each pad at the device's edge (Kevin): down on the left, up on the right; the arrow keys do the same. -->
+		{@render octaveButton("left-0", -1)}
+		{@render octaveButton("right-0", 1)}
 		<CircleOfFifths
 			class={chordPlayer.layout === "arch" ? "w-full" : "w-[114%] -ml-[7%] @xl-w-full @xl-ml-0"}
 			positions={chordPlayer.positions}
@@ -645,6 +675,7 @@
 			<span><kbd>Shift</kbd> seventh</span>
 			<span><kbd>Esc</kbd> all off</span>
 			<span><kbd>←</kbd><kbd>→</kbd> key</span>
+			<span><kbd>↑</kbd><kbd>↓</kbd> octave</span>
 			{#if !chordPlayer.showKeys}
 				<!-- the rows come with the key labels -->
 			{:else if chordPlayer.keyMap === "degree"}
@@ -677,7 +708,7 @@
 		onpointercancel={sustainUp}
 		oncontextmenu={(e) => e.preventDefault()}
 	>
-		<span class="i-ph-arrow-line-down" aria-hidden="true"></span>
+		<span class="i-ph-waves" aria-hidden="true"></span>
 	</button>
 	<button
 		class="@xl-hidden absolute left-19 bottom-3 w-14 h-14 rounded-full device-button-sm !min-w-0 text-18px font-600 touch-none {chordPlayer.seventhHeld
@@ -723,9 +754,24 @@
 	<span class="text-10px uppercase tracking-wider opacity-70">seventh</span>
 {/snippet}
 {#snippet sustain()}
-	<span class="i-ph-arrow-line-down text-24px" aria-hidden="true"></span>
+	<span class="i-ph-waves text-24px" aria-hidden="true"></span>
 	<span class="text-10px uppercase tracking-wider opacity-70">sustain</span>
 {/snippet}
+{#snippet octaveButton(side: string, step: -1 | 1)}
+	<button
+		class="hidden @xl-flex absolute {side} {chordPlayer.drawnLayout === 'arch-down'
+			? 'bottom-26'
+			: 'top-26'} z-10 w-9 h-9 rounded-full device-button-sm !min-w-0 !px-0 items-center justify-center text-14px"
+		type="button"
+		aria-label={step > 0 ? "Octave up" : "Octave down"}
+		title="{step > 0 ? 'Octave up' : 'Octave down'} · now {chordPlayer.octave} (the arrow keys too)"
+		disabled={step > 0 ? chordPlayer.octave >= 6 : chordPlayer.octave <= 2}
+		onclick={() => chordPlayer.setOctave(chordPlayer.octave + step)}
+	>
+		<span class={step > 0 ? "i-ph-plus" : "i-ph-minus"} aria-hidden="true"></span>
+	</button>
+{/snippet}
+
 {#snippet cornerPad(
 	side: string,
 	on: boolean,
@@ -869,6 +915,7 @@
 	<div class="grid grid-cols-1 -mt-3">
 		{@render section("Play", modeBlock, true)}
 		{@render section("Arpeggiator", arpSection)}
+		{@render section("Strum", strumSection)}
 		{@render section("Guides", keysBlock)}
 		{@render section("Presets", presetsBlock)}
 		{@render section("Volume", volumeBlock, true)}
@@ -954,31 +1001,6 @@
 			>
 		</label>
 		<label class="block">
-			<span class="device-button-label">Strum</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.strum}
-				onchange={(e) => chordPlayer.setStrum(e.currentTarget.value as Strum)}
-			>
-				{#each STRUMS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				>The notes of a chord a few milliseconds apart, as a hand plays them.</span
-			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Strum direction</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.strumDirection}
-				onchange={(e) => chordPlayer.setStrumDirection(e.currentTarget.value as StrumDirection)}
-			>
-				<option value="down">Down · low to high</option>
-				<option value="up">Up · high to low</option>
-				<option value="alternate">Alternate · down, then up, press by press</option>
-			</select>
-		</label>
-		<label class="block">
 			<span class="device-button-label">Accent</span>
 			<select
 				class="device-field w-full"
@@ -1021,6 +1043,60 @@
 			<span class="block text-12px opacity-70 mt-1"
 				>The chord root's octave, and the notes' in notes mode; 4 is middle C's.</span
 			>
+		</label>
+	</div>
+{/snippet}
+
+{#snippet strumButton(classes: string)}
+	<button
+		class="device-button-sm px-3 {classes} {chordPlayer.strum !== 'off' ? 'text-accent' : ''}"
+		type="button"
+		aria-pressed={chordPlayer.strum !== "off"}
+		title={chordPlayer.strum !== "off"
+			? "Strum on: the notes of a chord a few milliseconds apart; click to play them together"
+			: "Strum: the notes of a chord a few milliseconds apart, as a hand plays them"}
+		aria-label="Strum"
+		onclick={() => chordPlayer.toggleStrum()}
+	>
+		<span class="i-ph-hand-waving" aria-hidden="true"></span>
+		Strum
+	</button>
+{/snippet}
+
+{#snippet strumSection()}
+	<div class="grid gap-3">
+		{@render strumButton("justify-self-start")}
+		{@render strumMenuBlock()}
+	</div>
+{/snippet}
+
+{#snippet strumMenuBlock()}
+	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
+		<label class="block">
+			<span class="device-button-label">Speed</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.strum}
+				onchange={(e) => chordPlayer.setStrum(e.currentTarget.value as Strum)}
+			>
+				{#each STRUMS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
+			</select>
+			<span class="block text-12px opacity-70 mt-1"
+				>The notes of a chord a few milliseconds apart, as a hand plays them; Off plays them
+				together.</span
+			>
+		</label>
+		<label class="block">
+			<span class="device-button-label">Direction</span>
+			<select
+				class="device-field w-full"
+				value={chordPlayer.strumDirection}
+				onchange={(e) => chordPlayer.setStrumDirection(e.currentTarget.value as StrumDirection)}
+			>
+				<option value="down">Down · low to high</option>
+				<option value="up">Up · high to low</option>
+				<option value="alternate">Alternate · down, then up, press by press</option>
+			</select>
 		</label>
 	</div>
 {/snippet}
