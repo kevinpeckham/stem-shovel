@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.100.0] - 2026-10-05
+
 ### Changed
 
 - **The piano's guides are switches, and the key is C major by default** (Kevin): choosing a key no longer marks the keyboard by itself; Dots (new) and 1–7 in the Key menu each switch their guide on, disabled until a key is set, and Turn Off All Guides clears both. The Scale choice stays in view, None is gone (the key is C major to begin with and a stored none reads as C), and the Arpeggiator menu's key choice says the same.
