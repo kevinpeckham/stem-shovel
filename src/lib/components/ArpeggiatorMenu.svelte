@@ -8,70 +8,106 @@
 	} from "$lib/audio/arpeggiator.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
+	import InfoTip from "$lib/components/InfoTip.svelte";
+	import ComboBox from "$lib/components/ComboBox.svelte";
 
 	/**
 	 * An arpeggiator's settings (audio/arpeggiator.svelte.ts), the one menu
 	 * for the chord player's and the piano's: rate, tempo ratio, pattern,
 	 * octaves, gate, the session swing, latch, bar alignment and changes on
-	 * the beat. `intro` says what the owner arpeggiates; `changesLabel`
+	 * the beat, the explanations in InfoTips (Kevin's pass). `changesLabel`
 	 * names the on-beat switch in the owner's words.
 	 */
 	interface Props {
 		arp: Arpeggiator<unknown>;
-		intro: string;
 		changesLabel?: string;
 		/** What the swing is shared with, for the slider's note. */
 		swingNote?: string;
 	}
 	let {
 		arp,
-		intro,
 		changesLabel = "Changes land on the beat",
 		swingNote = "One swing for the session: the drum machine's too.",
 	}: Props = $props();
 </script>
 
-<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-	<p class="text-12px opacity-70 -mt-1">{intro}</p>
+<div class="px-3 pb-4 pt-2 grid gap-4 text-light">
 	<div class="grid gap-4">
+		<!-- Rate -->
 		<label class="block">
-			<span class="device-button-label">Rate</span>
-			<select
-				class="device-field w-full"
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Rate</span>
+				<InfoTip text="Quarter, eighth, triplet or sixteenth notes at the tempo." />
+			</div>
+			<ComboBox
+				ariaLabel="Arpeggiator rate"
 				value={arp.rate}
-				onchange={(e) => arp.setRate(e.currentTarget.value as ArpRate)}
-			>
-				{#each ARP_RATES as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
-			</select>
+				onchange={(v) => arp.setRate(v as ArpRate)}
+				options={ARP_RATES.map((r) => ({ value: r.id, label: r.label }))}
+			/>
 		</label>
+
+		<!-- Tempo -->
 		<label class="block">
-			<span class="device-button-label">Tempo</span>
-			<select
-				class="device-field w-full"
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Tempo</span>
+				<InfoTip
+					text="The pattern runs at the session tempo (the metronome's, shared with the drums), or at half or double it."
+				/>
+			</div>
+			<ComboBox
+				ariaLabel="Arpeggiator tempo"
 				value={String(arp.tempoRatio)}
-				onchange={(e) => arp.setTempoRatio(Number(e.currentTarget.value) as TempoRatio)}
-			>
-				{#each TEMPO_RATIOS as r (r.id)}<option value={String(r.id)}
-						>{r.label}{r.id === 1 ? ` (${metronome.bpm} bpm)` : ""}</option
-					>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				>The pattern runs at the session tempo (the metronome's, shared with the drums), or at half
-				or double it.</span
-			>
+				onchange={(v) => arp.setTempoRatio(Number(v) as TempoRatio)}
+				options={TEMPO_RATIOS.map((r) => ({
+					value: String(r.id),
+					label: r.id === 1 ? `${r.label} · ${metronome.bpm} bpm` : r.label,
+				}))}
+			/>
 		</label>
+
+		<!-- Pattern -->
 		<label class="block">
-			<span class="device-button-label">Pattern</span>
-			<select
-				class="device-field w-full"
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Pattern</span>
+				<InfoTip text="Up, down, up and down, as played, or at random through the held notes." />
+			</div>
+			<ComboBox
+				ariaLabel="Arpeggiator pattern"
 				value={arp.pattern}
-				onchange={(e) => arp.setPattern(e.currentTarget.value as ArpPattern)}
-			>
-				{#each ARP_PATTERNS as r (r.id)}<option value={r.id}>{r.label}</option>{/each}
-			</select>
+				onchange={(v) => arp.setPattern(v as ArpPattern)}
+				options={ARP_PATTERNS.map((r) => ({ value: r.id, label: r.label }))}
+			/>
 		</label>
+
+		<!-- Alignment -->
 		<label class="block">
-			<span class="device-button-label">Octaves · {arp.octaves}</span>
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Alignment</span>
+				<InfoTip
+					text="With patterns lined up with bars, the pattern starts again from its first note at every bar (or two), whatever was left of it, so it lands the same way each time."
+				/>
+			</div>
+			<ComboBox
+				ariaLabel="Line the pattern up every"
+				disabled={!arp.align}
+				value={String(arp.alignBars)}
+				onchange={(v) => arp.setAlignBars(Number(v) as 1 | 2)}
+				options={[
+					{ value: "1", label: "1 bar" },
+					{ value: "2", label: "2 bars" },
+				]}
+			/>
+		</label>
+
+		<hr class="border-current/30 mt-2" />
+
+		<!-- Octaves -->
+		<label class="block">
+			<div class="flex justify-between items-center">
+				<span class="block mb-2">Octaves · {arp.octaves} </span>
+				<InfoTip text="The pattern climbs through this many octaves before it repeats." />
+			</div>
 			<input
 				class="w-full accent-maximumYellow"
 				type="range"
@@ -82,12 +118,16 @@
 				aria-label="Arpeggiator octaves"
 				oninput={(e) => arp.setOctaves(Number(e.currentTarget.value))}
 			/>
-			<span class="block text-12px opacity-70 mt-1"
-				>The pattern climbs through this many octaves before it repeats.</span
-			>
 		</label>
+
+		<!-- Gate -->
 		<label class="block">
-			<span class="device-button-label">Gate · {Math.round(arp.gate * 100)}%</span>
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Gate · {Math.round(arp.gate * 100)}% </span>
+				<InfoTip
+					text="How much of each step the note sounds: short and clipped, or running into the next."
+				/>
+			</div>
 			<input
 				class="w-full accent-maximumYellow"
 				type="range"
@@ -98,12 +138,17 @@
 				aria-label="Arpeggiator gate in percent"
 				oninput={(e) => arp.setGate(Number(e.currentTarget.value) / 100)}
 			/>
-			<span class="block text-12px opacity-70 mt-1"
-				>How much of each step the note sounds: short and clipped, or running into the next.</span
-			>
 		</label>
+
+		<!-- Swing -->
 		<label class="block">
-			<span class="device-button-label">Swing · {Math.round(metronome.swing * 100)}%</span>
+			<div class="flex items-center justify-between">
+				<span class="block mb-2">Swing · {Math.round(metronome.swing * 100)}%</span>
+				<InfoTip
+					text="Every second eighth or sixteenth lands late, up to a triplet feel at full. Quarter notes
+				and triplets stay straight. {swingNote}"
+				/>
+			</div>
 			<input
 				class="w-full accent-maximumYellow"
 				type="range"
@@ -114,37 +159,44 @@
 				aria-label="Swing in percent"
 				oninput={(e) => metronome.setSwing(Number(e.currentTarget.value) / 100)}
 			/>
-			<span class="block text-12px opacity-70 mt-1"
-				>Every second eighth or sixteenth lands late, up to a triplet feel at full. Quarter notes
-				and triplets stay straight. {swingNote}</span
-			>
 		</label>
+
+		<hr class="border-current/30 mt-2" />
+
+		<!-- Key Plays Chord -->
 		{#if arp.canGuess}
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+			<label class="flex items-center gap-2">
 				<input
 					type="checkbox"
-					class="accent-maximumYellow"
+					class="accent-maximumYellow inline-block"
 					checked={arp.guess}
 					onchange={(e) => arp.setGuess(e.currentTarget.checked)}
 				/>
-				A single key plays as a chord
-			</label>
-			<span class="block text-12px opacity-70 -mt-2"
-				>One key held alone becomes the triad on its degree of the key lit on the keyboard (so the
+
+				<span>A single key plays as a chord</span>
+
+				<InfoTip
+					text="One key held alone becomes the triad on its degree of the key lit on the keyboard (so the
 				second degree of C major is D minor); with no key lit the white keys play C major's chords
-				and the black keys major triads. Two or more keys play as held.</span
-			>
+				and the black keys major triads. Two or more keys play as held."
+				/>
+			</label>
 		{/if}
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
+
+		<!-- latch -->
+		<label class="flex items-center gap-2">
 			<input
 				type="checkbox"
-				class="accent-maximumYellow"
+				class="accent-maximumYellow inline-block"
 				checked={arp.latch}
 				onchange={(e) => arp.setLatch(e.currentTarget.checked)}
 			/>
-			Latch: the pattern keeps going after you let go, until the next chord or Esc
+			<span>Latch</span>
+			<InfoTip text="the pattern keeps going after you let go, until the next chord or Esc" />
 		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
+
+		<!-- pattern lines up with bars -->
+		<label class="flex items-center gap-2">
 			<input
 				type="checkbox"
 				class="accent-maximumYellow"
@@ -153,36 +205,22 @@
 			/>
 			Patterns line up with bars
 		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
+
+		<!-- changes land on beat -->
+		<label class="flex items-center gap-2">
 			<input
 				type="checkbox"
-				class="accent-maximumYellow"
+				class="accent-maximumYellow inline-block"
 				checked={arp.onBeat}
 				onchange={(e) => arp.setOnBeat(e.currentTarget.checked)}
 			/>
-			{changesLabel}
-		</label>
-		<span class="block text-12px opacity-70 -mt-2"
-			>A new chord joins the running grid at the next quarter (eighth in sixteenths), whether the
-			last is still held, latched or let go a moment ago: pressed just before, it waits for it;
-			pressed just after, it comes in on the next step in its place. Off, a new chord restarts the
-			pattern as you press it.</span
-		>
-		<label class="block">
-			<span class="device-button-label">Line up every</span>
-			<select
-				class="device-field w-full"
-				value={String(arp.alignBars)}
-				disabled={!arp.align}
-				onchange={(e) => arp.setAlignBars(Number(e.currentTarget.value) as 1 | 2)}
-			>
-				<option value="1">1 bar</option>
-				<option value="2">2 bars</option>
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				>The pattern starts again from its first note at every bar (or two), whatever was left of
-				it, so it lands the same way each time.</span
-			>
+			<span>{changesLabel}</span>
+			<InfoTip
+				text="A new chord joins the running grid at the next quarter (eighth in sixteenths), whether the
+				last is still held, latched or let go a moment ago: pressed just before, it waits for it;
+				pressed just after, it comes in on the next step in its place. Off, a new chord restarts the
+				pattern as you press it."
+			/>
 		</label>
 	</div>
 </div>

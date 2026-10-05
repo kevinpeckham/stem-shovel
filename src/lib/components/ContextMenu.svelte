@@ -44,6 +44,7 @@
 		iconClass?: string;
 		/** Text after the trigger's icon (a labelled button rather than a ⋯). */
 		label?: string | null;
+		labelClasses?: string | null;
 		items?: ContextMenuItem[] | null;
 		openState?: "open" | "closed";
 		popoverClasses?: string | null;
@@ -58,6 +59,7 @@
 		disabled = false,
 		iconClass = "i-ph-dots-three-vertical-bold",
 		label = null,
+		labelClasses = "",
 		items = [],
 		popoverClasses = "",
 		position = "bottom left",
@@ -148,7 +150,7 @@
 		class="{buttonBaseClasses} {buttonClasses}"
 	>
 		<span class={iconClass} aria-hidden="true"></span>
-		{#if label}<span>{label}</span>{/if}
+		{#if label}<span class={labelClasses}>{label}</span>{/if}
 	</button>
 
 	<!-- popover -->

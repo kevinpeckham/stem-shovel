@@ -401,6 +401,27 @@ and the menu stays short; native, no state.
   keyboard-split of two sounds; latency work for Bluetooth MIDI and
   mobile.
 
+## Kevin's layout pass (2026-10-05)
+
+Kevin reworked the device row and the Arpeggiator menu by hand, then
+asked for a review. What stands: the Arpeggiator menu's selects are
+ComboBoxes with an InfoTip beside each label in place of the running
+explanations (the review wired them back through the setters, since
+`bind:value` on a ComboBox skipped persistence and left the tempo ratio
+and bar alignment showing stale values; the alignment select is disabled
+again while patterns are not lined up); the Effects group shows from the
+medium width with its label from the widest and a lightning icon; the
+presets sit on the face at every width (the phone's Presets menu section
+is gone); the MIDI, Hi-res ("High Fidelity") and Key controls are off
+the face at every width and live in the settings menu (a Scale Guides
+section, and the More section for MIDI and High Fidelity), which now
+shows at desktop too with a Settings label; the volume slider is on the
+face from the widest and in the menu below it; a `labelClasses` prop on
+ContextMenu hides a trigger's label below a width; `light` joins the uno
+theme. The review restored the power switch at every width (iOS wakes
+the audio from it) with its label from the widest, and fixed a `gap-23`,
+a stray `//@4xl-hidden`, a missing space before the High Fidelity size.
+
 ## Guides by switch, a key always (2026-10-05)
 
 Kevin: a key being set should not by itself mark the keys. `piano.dots`

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The piano's device row and Arpeggiator menu, Kevin's pass**: the Arpeggiator menu explains each setting in an InfoTip beside its label and chooses with ComboBoxes; the Effects group shows from the medium width (a lightning icon, its label from the widest); the presets sit on the face at every width; MIDI, High Fidelity (Hi-res renamed) and the Scale Guides live in the settings menu, which shows at desktop too; the power switch stays at every width. Fixes from the review: the menu's choices persist again and show the current tempo ratio and bar alignment, and the alignment select is disabled while patterns are not lined up.
+
 ## [0.100.0] - 2026-10-05
 
 ### Changed

@@ -1387,7 +1387,6 @@
 {#snippet arpMenuBlock()}
 	<ArpeggiatorMenu
 		arp={chordPlayer.arpeggiator}
-		intro="A held wedge plays its notes one at a time, at the session tempo. Styles and voicings decide which notes."
 		changesLabel="Chord changes land on the beat"
 		swingNote="One swing for the chord player: the strum pattern's and the drum machine's too."
 	/>

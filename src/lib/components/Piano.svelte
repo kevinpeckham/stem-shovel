@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
+	import InfoTip from "$lib/components/InfoTip.svelte";
 	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
 	import StaffReadout from "$lib/components/StaffReadout.svelte";
 	import { spellChord } from "$lib/utils/noteSpelling";
@@ -680,21 +681,22 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 gap-x-3 gap-y-4 @xl-flex">
+	<div class="grid grid-cols-1 gap-x-3 gap-y-4 max-w-full overflow-x-hidden @xl-flex">
 		<!-- the controls -->
 		<div
 			class="
-				gap-2
-			 	w-full
-				grid
-				grid-cols-[auto_1fr_auto_auto]
-				place-content-start
-				@2xl-grid-cols-[auto_auto_auto_auto_auto_1fr]
-				@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]
-				@2xl-gap-3"
+		  grid-cols-[auto_1fr_auto_auto]
+			gap-2
+		 	w-full
+			grid
+			place-content-start
+			@2xl-gap-3
+			@2xl-grid-cols-[auto_auto_auto_auto_auto_1fr]
+			@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]"
 		>
 			<!-- power -->
-			<div class="">
+			<!-- The switch shows at every width (iOS wakes the audio from it, docs/piano.md); the label from the widest. -->
+			<div>
 				<div class="hidden @4xl-block device-button-group-label text-dark @4xl-max-w-fit">
 					Power
 				</div>
@@ -752,6 +754,7 @@
 							justify-center
 							min-w-10
 							rounded-md
+							select-none
 							tabular-nums
 							text-14px
 							text-center
@@ -772,7 +775,7 @@
 			</div>
 
 			<!-- arpeggiator (docs/piano.md, "Arpeggiator"): a split button, Arp on the left, its settings on the caret; a double click latches. From the medium width; a phone has a section in the menu. -->
-			<div class="hidden @2xl-block text-14px">
+			<div class="hidden @2xl-block">
 				<div class="device-button-group-label text-dark hidden @4xl-block">Arpeggio</div>
 				<div class="flex gap-px" role="group" aria-label="Arpeggiator">
 					{@render arpButton("rounded-r-none")}
@@ -782,7 +785,7 @@
 						iconClass="i-ph-caret-down"
 						position="bottom left"
 						buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none @4xl-device-button-xs"
-						popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+						popoverClasses="min-w-72 @xl-min-w-96 max-w-screen !h-540px !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 						items={[
 							{ id: "arp-heading", kind: "heading", label: "Arpeggiator" },
 							{ id: "arp-block", kind: "snippet", snippet: arpMenuBlock },
@@ -793,20 +796,21 @@
 
 			<!-- key selector -->
 			<!-- <div class="hidden @4xl-block [&_.device-button-group-label]-text-dark">
-				{@render keyControls(false)}
+				{@render keyControls()}
 			</div> -->
 
 			<!-- effects button -->
-			<div class="hidden @4xl-block">
-				<div class="device-button-group-label text-dark">Effects</div>
+			<div class="hidden @2xl-block">
+				<div class="device-button-group-label text-dark hidden @4xl-block">Effects</div>
 				<!-- Reverb and delay in a menu, as the drum machine's; the button lights while either is up. -->
 				<ContextMenu
 					ariaLabel="Effects"
 					title="Reverb and delay"
-					iconClass="i-ph-sliders-horizontal"
+					iconClass="i-ph-lightning-bold"
 					label="Effects"
+					labelClasses="hidden @5xl-inline"
 					position="bottom right"
-					buttonBaseClasses="device-button-xs px-3"
+					buttonBaseClasses="device-button-xs px-3 h-10 @4xl-h-7"
 					buttonClasses={fxOn ? "text-accent" : ""}
 					popoverClasses="min-w-72 @4xl-min-w-160 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
@@ -818,10 +822,13 @@
 
 			<!-- presets: five slot buttons and the manage menu (docs/piano.md, "Presets") -->
 			{#if sitePresets}
-				<div class="hidden @4xl-block" bind:this={wideControls}>
-					<div class="device-button-group-label text-dark">Presets</div>
-					<div class="flex gap-1 items-center">
-						{@render slotButtons("device-button-xs w-8")}
+				<div
+					class="order-5 col-span-full @xl-order-none @xl-col-span-1 @2xl-order-none @4xl-block"
+					bind:this={wideControls}
+				>
+					<div class="hidden @4xl-block device-button-group-label text-dark">Presets</div>
+					<div class="flex gap-2 @sm-gap-2 @xl-gap-1 items-center">
+						{@render slotButtons("device-button-xs w-8 h-10 @xl-h-10 @4xl-h-7")}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div onpointerdowncapture={freshSaveForm}>
 							<ContextMenu
@@ -829,7 +836,7 @@
 								title="Save, name, share and manage presets"
 								iconClass="i-ph-bookmarks-simple"
 								position="bottom right"
-								buttonBaseClasses="device-button-xs px-2"
+								buttonBaseClasses="device-button-xs w-8 h-10 px-2 @xl-h-10 @xl-w-8 @2xl-w-8 @4xl-h-7"
 								popoverClasses="min-w-80 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 								bind:openState={saveOpen}
 								items={[
@@ -863,23 +870,27 @@
 					</div>
 
 					<!-- midi -->
+					<!-- no longer showing this button on device face at any size -->
 					{#if midiSupported}
-						<div class="hidden @4xl-block @4xl-w-32px">
+						<div class="hidden @4xl-w-32px">
 							<div class="device-button-group-label text-dark @4xl-sr-only">MIDI</div>
 							{@render midiButton("device-button-xs")}
 						</div>
 					{/if}
 
 					<!-- hi-res -->
+					<!-- no longer showing this button on device face at any size -->
 					{#if samplesBase}
-						<div class="hidden @4xl-block">
+						<div class="hidden">
 							<div class="device-button-group-label text-dark sr-only">Samples</div>
 							{@render hiresButton("device-button-xs px-1 @4xl-w-8")}
 						</div>
 					{/if}
 
-					<div class="hidden @4xl-block">
-						{@render keyControls(false)}
+					<!-- scales guides -->
+					<!-- no longer showing this button on device face at any size -->
+					<div class="hidden">
+						{@render keyControls()}
 					</div>
 
 					<!-- Toggle computer key letter labels on piano keys -->
@@ -898,6 +909,7 @@
 							<span class="i-ph-keyboard text-14px" aria-hidden="true"></span>
 						</button>
 					</div>
+
 					<!-- metronome (docs/piano.md, "Metronome"): the page's, in a menu -->
 					{#if withMetronome}
 						<div class="hidden @4xl-block @4xl-w-32px">
@@ -922,15 +934,16 @@
 				</div>
 			</div>
 
-			<!-- context menu -->
-			<div>
+			<!-- Settings menu -->
+			<div class="@2xl-ml-auto">
+				<div class="device-button-group-label text-dark hidden @4xl-block">Settings</div>
 				<ContextMenu
 					ariaLabel="Levels and MIDI"
 					title="Volume, reverb and MIDI"
 					iconClass="i-ph-sliders-horizontal"
 					position="bottom left"
-					buttonBaseClasses="device-button-sm px-2 w-10 @4xl-hidden @4xl-w-8"
-					popoverClasses="min-w-72 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					buttonBaseClasses="device-button-sm px-2 w-10 @4xl-w-8 @4xl-h-7"
+					popoverClasses="max-w-screen min-w-72 w-420px @4xl-w-600px !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "menu-sections", kind: "snippet", snippet: compactMenuBlock }]}
 				/>
 			</div>
@@ -940,24 +953,17 @@
 				class="
 					hidden
 					w-36
-					@2xl-block
-					@2xl-ml-auto
 					@4xl-grid
 					@4xl-grid-cols-1
 					@4xl-grid-rows-[auto_28px]
 					@4xl-h-57.25px
 					@4xl-max-w-280px
+					@4xl-ml-auto
 					@4xl-w-auto"
 			>
 				<span
 					class="
-					@4xl-device-button-group-label
-					hidden
-					text-dark
-					text-14px
-					text-blue-100/90
-					w-full
-					@2xl-block">Volume</span
+					@4xl-device-button-group-label">Volume</span
 				>
 				<div class="flex items-center h-28px">
 					<!-- {Math.round(piano.volume * 100)}% -->
@@ -1056,17 +1062,17 @@
 			onclick={() => piano.enableHires()}
 		>
 			<span
-				class={hiresState === "loading" ? "i-ph-circle-notch animate-spin" : "i-ph-sparkle"}
+				class={hiresState === "loading" ? "i-ph-circle-notch animate-spin" : "i-ph-file-audio-fill"}
 				aria-hidden="true"
 			></span>
-			<span class="@4xl-sr-only"
+			<span class=""
 				>{hiresState === "on"
-					? "Hi-res"
+					? "High Fidelity"
 					: hiresState === "loading"
-						? `Hi-res ${percent(piano.loadingTiers.hires)}`
+						? `High Fidelity ${percent(piano.loadingTiers.hires)}`
 						: hiresCached
-							? "Hi-res"
-							: `Hi-res · ${mb(hiresBytes)}`}
+							? "High Fidelity"
+							: `High Fidelity · ${mb(hiresBytes)}`}
 			</span>
 		</button>
 	{/snippet}
@@ -1169,22 +1175,22 @@
 			<span
 				class={piano.arpeggiator.on && piano.arpeggiator.latch
 					? "i-ph-lock-simple-fill"
-					: "i-ph-wave-sawtooth"}
+					: "i-ph-wave-sawtooth-bold"}
 				aria-hidden="true"
 			></span>
-			Arp
+			<span class="hidden @5xl-inline">Arp</span>
 		</button>
 	{/snippet}
 	{#snippet arpMenuBlock()}
 		<!-- The key (Kevin: where to set it for the chords a single key plays), the same choice as the Key button's, lighting the scale on the keys too. -->
-		<div class="px-3 pt-3 grid gap-3 text-blue-100/90 text-14px">
+		<div class="px-3 pt-3 grid gap-3 text-blue-100/90">
 			<div class="grid grid-cols-2 gap-3">
 				<div>
-					<span class="block mb-2">Key</span>
+					<span class="block mb-2">Key <InfoTip text="The song's key" /> </span>
 					<ComboBox
 						ariaLabel="Key"
 						clearDefaultButtonClasses={true}
-						buttonClasses="w-full border"
+						buttonClasses="w-full device-button-xs border"
 						popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 						options={ROOT_OPTIONS}
 						value={String(piano.key?.root ?? 0)}
@@ -1192,11 +1198,13 @@
 					/>
 				</div>
 				<div>
-					<span class="block mb-2">Scale</span>
+					<span class="block mb-2"
+						>Scale <InfoTip text="The scale for the arpeggiations to follow." /></span
+					>
 					<ComboBox
 						ariaLabel="Scale"
 						clearDefaultButtonClasses={true}
-						buttonClasses="w-full border"
+						buttonClasses="w-full device-button-xs border"
 						popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 						options={MODE_OPTIONS}
 						value={piano.key?.mode ?? "major"}
@@ -1204,15 +1212,9 @@
 					/>
 				</div>
 			</div>
-			<span class="block text-12px opacity-70 -mt-1"
-				>The key a single held key's chord comes from, the Key button's (C major to begin with); the
-				dots and numbers on the keys are that menu's own switches.</span
-			>
 		</div>
-		<ArpeggiatorMenu
-			arp={piano.arpeggiator}
-			intro="Held keys play one at a time, at the session tempo: a chord built up a key at a time joins the pattern as it grows."
-		/>
+		<hr class="border-current/30 mt-4" />
+		<ArpeggiatorMenu arp={piano.arpeggiator} />
 	{/snippet}
 	{#snippet arpSection()}
 		<div class="grid gap-3">
@@ -1223,11 +1225,16 @@
 
 	{#snippet compactMenuBlock()}
 		<div class="grid grid-cols-1 -mt-3">
-			{#if withMetronome}{@render section("Metronome", metronomeMenuBlock)}{/if}
-			{#if sitePresets}{@render section("Presets", presetsPhoneMenuBlock)}{/if}
-			{@render section("Volume", volumeSliderMenuBlock, true)}
-			{@render section("Arpeggiator", arpSection)}
-			{@render section("Effects", fxSlidersMenuBlock)}
+			<div class="contents @4xl-hidden">
+				{#if withMetronome}{@render section("Metronome", metronomeMenuBlock)}{/if}
+			</div>
+
+			<div class="contents @4xl-hidden">
+				{@render section("Volume", volumeSliderMenuBlock, true)}
+			</div>
+			<div class="contents @2xl-hidden">{@render section("Arpeggiator", arpMenuBlock)}</div>
+			<div class="contents @2xl-hidden">{@render section("Effects", fxSlidersMenuBlock)}</div>
+			{@render section("Scale Guides", keyControls)}
 			{#if samplesBase !== null || midiSupported}{@render section("More", moreMenuBlock)}{/if}
 		</div>
 	{/snippet}
@@ -1600,95 +1607,78 @@
 		</div>
 	{/snippet}
 
-	{#snippet keyControls(compact: boolean)}
-		<div class={compact ? "grid gap-2" : "flex items-end gap-2"}>
-			<div class={compact ? "" : "w-8"}>
-				<div class="device-button-group-label sr-only">Key</div>
-				{#snippet keySelectorMenuBlock()}
-					<div
-						class="grid grid-cols-1 gap-y-3 px-3 min-w-200px pt-3 pb-8 text-blue-100/90 text-14px"
-					>
-						<div>
-							<span class="block mb-2">Select a Key</span>
-							<ComboBox
-								ariaLabel="Key"
-								clearDefaultButtonClasses={true}
-								buttonClasses="w-full @4xl-device-button-xs !@4xl-text-slate-400 @4xl-hover-bg-slate-900 border"
-								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
-								options={ROOT_OPTIONS}
-								value={String(piano.key?.root ?? 0)}
-								onchange={(v) => setKeyRoot(Number(v))}
-							/>
-						</div>
-						<div class={compact ? "" : "w-full"}>
-							<span class="block mb-2">Scale</span>
-							<ComboBox
-								ariaLabel="Scale"
-								clearDefaultButtonClasses={true}
-								buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
-								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
-								options={MODE_OPTIONS}
-								value={piano.key?.mode ?? "major"}
-								onchange={(v) => setKeyMode(v as ScaleModeId)}
-							/>
-						</div>
-						<!-- The guides (Kevin): the key alone shows nothing; dots and numbers are each their own switch, off until a key is set. -->
-						<div class="grid grid-cols-2 gap-2">
-							<div>
-								<span class="block mb-2">Show Dots</span>
-								<button
-									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
-										? 'text-accent'
-										: ''}"
-									type="button"
-									aria-pressed={piano.dots}
-									disabled={!piano.key}
-									title="Mark the keys in the key, the root stronger"
-									onclick={() => piano.setDots(!piano.dots)}>Dots</button
-								>
-							</div>
-							<div>
-								<span class="block mb-2">Show Numbers</span>
-								<button
-									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
-										? 'text-accent'
-										: ''}"
-									type="button"
-									aria-pressed={piano.degrees}
-									disabled={!piano.key}
-									title="Number the keys by their degree in the key"
-									onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
-								>
-							</div>
-						</div>
-						<hr class="border-current/10" />
-						<div class={compact ? "" : "w-full"}>
-							<span class="block mb-2">Toggle Guides</span>
-							<button
-								class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
-								type="button"
-								onclick={() => {
-									piano.setDegrees(false);
-									piano.setDots(false);
-								}}
-							>
-								Turn Off All Guides
-							</button>
-						</div>
-					</div>
-				{/snippet}
-				<ContextMenu
-					ariaLabel="Key Selector"
-					title="Select Key and Scale to show Guides"
-					position="bottom left"
-					buttonClasses="device-button-xs bg-slate-800 !flex text-13px w-8 !p-0"
-					iconClass="i-ph-scales-fill"
-					label=""
-					items={[
-						{ kind: "heading", label: "Show Scales" },
-						{ id: "key-menu-block", kind: "snippet", snippet: keySelectorMenuBlock },
-					]}
+	{#snippet keyControls()}
+		<div
+			class="grid grid-cols-1 gap-y-3 px-3 min-w-200px pt-3 pb-8 text-blue-100/90 text-14px w-full"
+		>
+			<!-- select a key -->
+			<div>
+				<span class="block mb-2">Select a Key</span>
+				<ComboBox
+					ariaLabel="Key"
+					clearDefaultButtonClasses={true}
+					buttonClasses="w-full @4xl-device-button-xs !@4xl-text-slate-400 @4xl-hover-bg-slate-900 border"
+					popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+					options={ROOT_OPTIONS}
+					value={String(piano.key?.root ?? 0)}
+					onchange={(v) => setKeyRoot(Number(v))}
 				/>
+			</div>
+			<!-- select scale -->
+			<div class="w-full">
+				<span class="block mb-2">Scale</span>
+				<ComboBox
+					ariaLabel="Scale"
+					clearDefaultButtonClasses={true}
+					buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
+					popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+					options={MODE_OPTIONS}
+					value={piano.key?.mode ?? "major"}
+					onchange={(v) => setKeyMode(v as ScaleModeId)}
+				/>
+			</div>
+			<!-- toggle guides on and off -->
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<span class="block mb-2">Show Dots</span>
+					<button
+						class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.dots}
+						disabled={!piano.key}
+						title="Mark the keys in the key, the root stronger"
+						onclick={() => piano.setDots(!piano.dots)}>Dots</button
+					>
+				</div>
+				<div>
+					<span class="block mb-2">Show Numbers</span>
+					<button
+						class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
+							? 'text-accent'
+							: ''}"
+						type="button"
+						aria-pressed={piano.degrees}
+						disabled={!piano.key}
+						title="Number the keys by their degree in the key"
+						onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
+					>
+				</div>
+			</div>
+			<hr class="border-current/10" />
+			<div class="w-full">
+				<span class="block mb-2">Toggle Guides</span>
+				<button
+					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
+					type="button"
+					onclick={() => {
+						piano.setDegrees(false);
+						piano.setDots(false);
+					}}
+				>
+					Turn Off All Guides
+				</button>
 			</div>
 		</div>
 	{/snippet}
@@ -1704,7 +1694,7 @@
 				onclick={() => piano.disconnectMidi()}
 			>
 				<span class="i-ph-usb" aria-hidden="true"></span>
-				<span class="@4xl-sr-only">{piano.midi.inputs.length ? "Connected" : "No controller"}</span>
+				<span class="">{piano.midi.inputs.length ? "Connected" : "No Controller"}</span>
 			</button>
 		{:else}
 			<button

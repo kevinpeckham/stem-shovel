@@ -46,6 +46,7 @@ export default defineConfig({
 	theme: {
 		colors: {
 			accent: "#ebf92f",
+			light: "oklch(93.2% 0.032 255.585)",
 			oxford: {
 				50: "oklch(0.95 0.048 259.91)",
 				100: "oklch(0.9 0.048 259.91)",
@@ -203,6 +204,7 @@ export default defineConfig({
 			px-1
 			py-2
 			bg-slate-800
+			select-none
 			text-center
 			text-shadow
 			text-current
@@ -223,6 +225,7 @@ export default defineConfig({
 			px-1
 			py-2
 			bg-slate-800
+			select-none
 			text-center
 			text-shadow
 			text-current
@@ -242,6 +245,7 @@ export default defineConfig({
 			px-2
 			py-1
 			rounded-md
+			select-none
 			truncate
 			text-14px
 			text-blue-100/80
@@ -267,6 +271,7 @@ export default defineConfig({
 			px-3
 			py-2
 			bg-slate-800
+			select-none
 			text-shadow
 			text-current
 			text-15px
@@ -288,6 +293,7 @@ export default defineConfig({
 			text-shadow
 			text-current
 			text-18px
+			select-none
 			shadow
 			min-w-100px
 			hover-bg-slate-900`,
@@ -303,6 +309,7 @@ export default defineConfig({
 			min-w-fit
 			opacity-80
 			pb-1
+			select-none
 			text-16px
 			text-dark
 			sm-text-12px
