@@ -8,6 +8,8 @@ import {
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
+	findUploadingPdf,
+	recordPdfUrl,
 	findUploadingRecording,
 	findUploadingRecordingStem,
 	findUploadingStem,
@@ -24,6 +26,7 @@ import {
 import {
 	blobAuth,
 	isDrumSamplePathname,
+	isPdfPathname,
 	isRecordingPathname,
 	isSiteKitPathname,
 	recordingAccess,
@@ -32,6 +35,7 @@ import {
 import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
+import { PDF_MAX_BYTES } from "$lib/constants/pdfFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 import { error, json } from "@sveltejs/kit";
@@ -102,6 +106,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const accountId = isRecordingPathname(pathname)
 					? await ownRecordingAccount(locals, pathname)
 					: (await memberOf(locals, accountOfUploadPathname, pathname)).accountId;
+				// A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): one type, its own ceiling.
+				if (isPdfPathname(pathname)) {
+					const pdf = await findUploadingPdf(accountId, pathname);
+					if (!pdf) throw new Error(`No reservation for "${pathname}"`);
+					return {
+						allowedContentTypes: ["application/pdf"],
+						maximumSizeInBytes: PDF_MAX_BYTES,
+						addRandomSuffix: false,
+						allowOverwrite: true,
+						tokenPayload: JSON.stringify({ id: pdf.id }),
+					};
+				}
 				// Stems and demo recordings share this route; the reservation decides which.
 				const row = isMidi(pathname)
 					? await findStemByMidiPathname(accountId, pathname)
@@ -132,6 +148,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (isDrumSamplePathname(blob.pathname)) await recordDrumSampleUrl(blob.pathname, blob.url);
 				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
+				else if (isPdfPathname(blob.pathname)) await recordPdfUrl(blob.pathname, blob.url);
 				else if (isRecordingPathname(blob.pathname))
 					await recordRecordingUrl(blob.pathname, blob.url);
 				else await recordStemUrl(blob.pathname, blob.url);

@@ -313,6 +313,29 @@ Indexes: `(account_id)`, `(project_id)`, unique `(project_id, slug)`.
 
 Indexes: `(song_id, sort_order)`, `(account_id)`.
 
+### song_pdf
+
+A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): one file in
+Blob with a first-page thumbnail the browser rendered and a permanent link.
+
+| column                 | type                        | notes                                          |
+| ---------------------- | --------------------------- | ---------------------------------------------- |
+| id                     | text PK                     |                                                |
+| account_id             | text FK → account (cascade) |                                                |
+| song_id                | text FK → song (cascade)    |                                                |
+| title                  | text not null default ''    | the filename minus its extension to begin with |
+| description            | text not null default ''    |                                                |
+| status                 | text                        | uploading / ready / failed                     |
+| url, pathname          | text                        | `accounts/<a>/songs/<s>/pdfs/<id>.pdf`         |
+| filename               | text                        |                                                |
+| size_bytes             | integer                     | counts toward the account's storage            |
+| page_count             | integer null                | as pdf.js read it in the browser               |
+| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file      |
+| thumbnail_pathname     | text null                   |                                                |
+| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`  |
+| uploaded_by            | text FK → user (set null)   |                                                |
+| created_at, updated_at | timestamp_ms                |                                                |
+
 ### song_doc_version
 
 | column         | type                      | notes                      |

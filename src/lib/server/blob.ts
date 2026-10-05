@@ -71,6 +71,22 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
+/** Blob pathname for a PDF attached to a song (docs/uploads-and-blob.md, "PDFs"). */
+export function pdfPathname(accountId: string, songId: string, pdfId: string) {
+	return `accounts/${accountId}/songs/${songId}/pdfs/${pdfId}.pdf`;
+}
+/** The PDF's first-page thumbnail, stamped so a re-render is a new URL (the 30-day cache). */
+export function pdfThumbnailPathname(
+	accountId: string,
+	songId: string,
+	pdfId: string,
+	ext: string,
+) {
+	const stamp = Date.now().toString(36);
+	return `accounts/${accountId}/songs/${songId}/pdfs/${pdfId}.thumb-${stamp}.${ext}`;
+}
+export const isPdfPathname = (pathname: string) => /[/]pdfs[/][^/]+[.]pdf$/.test(pathname);
+
 /** Blob pathname for a scratch recording: under the account, not a song (docs/demo-recording.md). */
 export function recordingPathname(accountId: string, recordingId: string, filename: string) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();

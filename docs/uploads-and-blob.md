@@ -76,6 +76,26 @@ in three steps driven by `src/lib/upload.ts`:
   each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
   The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
   a plain `<audio>` element streaming from Blob).
+- **PDFs attached to a song** (`song_pdf`, 2026-10-05, Kevin: charts and
+  notation for the band). The demo's lifecycle: `POST /api/pdfs` reserves
+  the row (a `.pdf` name, a size under `PDF_MAX_BYTES`, the song's cap,
+  the account's storage room) at `accounts/<a>/songs/<s>/pdfs/<id>.pdf`;
+  the browser uploads with `application/pdf` as the only allowed type
+  (`/api/upload`'s PDF branch) while it renders the first page with
+  pdf.js (`utils/pdfThumbnail.ts`, pdfjs-dist and its worker imported on
+  first use, a 400 px WebP); `POST /api/pdfs/[id]/ready` (multipart: the
+  URL, the page count, the image) reads the file's first bytes from the
+  store and insists on `%PDF-` (`utils/fileSignatures.ts`; Replicator's
+  magic-byte check, without its headless browser), removing row and file
+  otherwise, checks the image's bytes the same way (WebP or PNG, under
+  400 KB) and stores it at `<id>.thumb-<stamp>.webp` in the song's store,
+  then marks the row ready. Each row carries a `share_code` (nanoid 16)
+  behind `/f/<code>`, which 302s to the file where it is now, presigned
+  for a private song, so the link is permanent across renames and
+  privacy moves (`relocate.ts` moves PDFs and thumbnails with the rest).
+  Title and description are edited through `pdfs.remote.ts`; removal and
+  the song and project cascades delete file and thumbnail; sizes count
+  toward the account's storage.
 - **MIDI files per stem** (`…/midi/<stemId>-<stamp>.mid`, columns
   `stem.midi_*`): "Upload MIDI" in the row menu reserves the pathname on
   the stem (`/api/stems/[id]/midi`), the browser uploads through the same

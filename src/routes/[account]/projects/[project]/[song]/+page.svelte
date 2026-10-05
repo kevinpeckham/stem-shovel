@@ -22,6 +22,7 @@
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
+	import SongPdfPanel from "$lib/components/SongPdfPanel.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemReplacer from "$lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
@@ -178,6 +179,8 @@
 	let demoJobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let demoNotice = $state<string | null>(null);
 	let demoBusy = $state(false);
+	/** The PDFs panel at the foot of the page; the Uploads menu opens its picker. */
+	let pdfPanel = $state<SongPdfPanel | null>(null);
 	async function uploadDemos(input: HTMLInputElement) {
 		const picked = Array.from(input.files ?? []);
 		input.value = "";
@@ -2547,6 +2550,16 @@
 		</div>
 		<!-- </div> -->
 	</section>
+
+	<!-- 4. PDFs attached to the song (docs/uploads-and-blob.md, "PDFs"): charts, lead sheets, notation, to download and to link to. -->
+	<div class="col-span-full">
+		<SongPdfPanel
+			bind:this={pdfPanel}
+			songId={data.song.id}
+			pdfs={data.song.pdfs}
+			canEdit={data.canEdit}
+		/>
+	</div>
 </main>
 
 {#snippet actionButtons(engine?: StemEngine)}
@@ -2558,7 +2571,7 @@
 			<details class="relative" bind:this={uploadsMenuEl}>
 				<summary
 					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
-					title="Add or replace stems, upload demo recordings"
+					title="Add or replace stems, upload demo recordings and PDFs"
 				>
 					<span class="i-ph-upload-simple" aria-hidden="true"></span>
 					Uploads
@@ -2616,6 +2629,16 @@
 							onchange={(e) => uploadDemos(e.currentTarget)}
 						/>
 					</label>
+					<button
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						title="Charts, lead sheets, notation: one or more PDFs"
+						onclick={() => pdfPanel?.pick()}
+					>
+						<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
+						Upload PDFs
+					</button>
 					<a
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						role="menuitem"

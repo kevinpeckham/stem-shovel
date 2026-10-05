@@ -43,6 +43,12 @@ const fake = vi.hoisted(() => {
 			midiUrl: col("midiUrl"),
 		},
 		demo: { name: "demo", songId: col("songId"), url: col("url"), playbackUrl: col("playbackUrl") },
+		songPdf: {
+			name: "song_pdf",
+			songId: col("songId"),
+			url: col("url"),
+			thumbnailUrl: col("thumbnailUrl"),
+		},
 	};
 	return { state, db, schema, deleteBlobs: vi.fn(async () => {}) };
 });
@@ -77,10 +83,21 @@ describe("deleteProject", () => {
 			song: [{ id: "s1", mixUrl: "mix1" }],
 			stem: [{ url: "st1", playbackUrl: "pl1", midiUrl: null }],
 			demo: [{ url: "d1", playbackUrl: null }],
+			song_pdf: [{ url: "pdf1", thumbnailUrl: "th1" }],
 		};
 		expect(await deleteProject("a1", "p1")).toBe("deleted");
-		// …the mix and the song's picture (none here) come last.
-		expect(fake.deleteBlobs).toHaveBeenCalledWith(["st1", "pl1", "", "d1", "", "mix1", ""]);
+		// …then the PDFs with their thumbnails, the mix and the song's picture (none here) come last.
+		expect(fake.deleteBlobs).toHaveBeenCalledWith([
+			"st1",
+			"pl1",
+			"",
+			"d1",
+			"",
+			"pdf1",
+			"th1",
+			"mix1",
+			"",
+		]);
 		// The rows go through the cascade module (the database runs no cascades of its own).
 		expect(cascade.deleteProjectRows).toHaveBeenCalledWith(["p1"]);
 	});

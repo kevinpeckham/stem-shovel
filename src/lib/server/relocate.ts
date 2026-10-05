@@ -3,7 +3,7 @@ import { moveBlob, songIdOfPathname } from "$lib/server/blob";
 import { accessOfUrl, type BlobAccess } from "$lib/utils/blobAccess";
 import { and, eq } from "drizzle-orm";
 
-const { song, stem, demo } = schema;
+const { song, stem, demo, songPdf } = schema;
 
 /** The store a song's files belong in: private when it or its project is. */
 function accessOfSong(s: { isPrivate: boolean; project: { isPrivate: boolean } }): BlobAccess {
@@ -26,7 +26,7 @@ export async function accessOfPathname(pathname: string): Promise<BlobAccess> {
 }
 
 /**
- * Moves every file of a song (stems, renditions, MIDI, demos, the mix) into
+ * Moves every file of a song (stems, renditions, MIDI, demos, PDFs and their thumbnails, the mix) into
  * the store its privacy calls for, one file at a time, updating each row as
  * its file lands. Safe to run again: files already in place are skipped.
  * Runs in the background after a privacy change (src/lib/remote/share.remote.ts).
@@ -61,6 +61,17 @@ export async function relocateSongFiles(songId: string): Promise<number> {
 				.update(demo)
 				.set({ url: url ?? "", playbackUrl })
 				.where(eq(demo.id, d.id));
+		}
+	}
+	const pdfs = await db.query.songPdf.findMany({ where: eq(songPdf.songId, songId) });
+	for (const p of pdfs) {
+		const url = p.url ? await move(p.url) : p.url;
+		const thumbnailUrl = await move(p.thumbnailUrl);
+		if (url !== p.url || thumbnailUrl !== p.thumbnailUrl) {
+			await db
+				.update(songPdf)
+				.set({ url: url ?? "", thumbnailUrl })
+				.where(eq(songPdf.id, p.id));
 		}
 	}
 	const s = await db.query.song.findFirst({

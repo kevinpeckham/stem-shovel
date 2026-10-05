@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **PDFs attached to songs** (Kevin's request: charts and notation for the band): a PDFs section on the song page where editors upload one or more PDFs (up to 25 MB each, 20 a song), each with an optional title and description, its first page as a thumbnail, pages and size, a download and a permanent link (`/f/<code>`) that follows the file through renames and privacy moves. The upload is the demo's lifecycle (`/api/pdfs` reserves, the browser sends the bytes to Blob, `/api/pdfs/[id]/ready` reports): the browser renders the first page with pdf.js (`utils/pdfThumbnail.ts`, loaded on first use) and the server reads the file's first bytes from the store before calling it a PDF (`utils/fileSignatures.ts`, tested), checks the thumbnail's bytes the same way and stores it beside the file. A `song_pdf` table (migration 0073) with cascade, relocation and storage accounting; `remote/pdfs.remote.ts` edits and removes.
+
 ### Changed
 
 - **The piano's device row and Arpeggiator menu, Kevin's pass**: the Arpeggiator menu explains each setting in an InfoTip beside its label and chooses with ComboBoxes; the Effects group shows from the medium width (a lightning icon, its label from the widest); the presets sit on the face at every width; MIDI, High Fidelity (Hi-res renamed) and the Scale Guides live in the settings menu, which shows at desktop too; the power switch stays at every width. Fixes from the review: the menu's choices persist again and show the current tempo ratio and bar alignment, and the alignment select is disabled while patterns are not lined up.

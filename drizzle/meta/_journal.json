@@ -512,6 +512,13 @@
       "when": 1791055966928,
       "tag": "0072_chord_preset_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1791237119739,
+      "tag": "0073_song_pdf",
+      "breakpoints": true
     }
   ]
 }

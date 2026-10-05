@@ -26,6 +26,7 @@ import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
+	pdfPathname,
 	drumSamplePathname,
 	midiPathname,
 	presentUrl,
@@ -48,6 +49,7 @@ import { db, schema } from "$lib/server/db";
 import { barGrid } from "$lib/audio/measures";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
+import { MAX_PDFS_PER_SONG } from "$lib/constants/pdfFormats";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
@@ -144,6 +146,7 @@ const {
 	pianoPreset,
 	progression,
 	chordStyle,
+	songPdf,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -232,12 +235,18 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${drumSample.sizeBytes})` })
 		.from(drumSample)
 		.where(and(eq(drumSample.accountId, accountId), ne(drumSample.status, "failed")));
+	// PDFs attached to songs (docs/uploads-and-blob.md, "PDFs") count too; their thumbnails are derived.
+	const [pdfs] = await db
+		.select({ bytes: sql<number | null>`sum(${songPdf.sizeBytes})` })
+		.from(songPdf)
+		.where(and(eq(songPdf.accountId, accountId), ne(songPdf.status, "failed")));
 	return (
 		(stems.bytes ?? 0) +
 		(demos.bytes ?? 0) +
 		(takes.bytes ?? 0) +
 		(takeStems.bytes ?? 0) +
-		(samples.bytes ?? 0)
+		(samples.bytes ?? 0) +
+		(pdfs.bytes ?? 0)
 	);
 }
 
@@ -573,6 +582,7 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 		with: {
 			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
+			pdfs: { orderBy: [asc(songPdf.createdAt)] },
 			credits: {
 				orderBy: [asc(songCredit.sortOrder), asc(songCredit.createdAt)],
 				with: { artist: { columns: { id: true, name: true } } },
@@ -887,10 +897,18 @@ export async function presentSongFiles<
 		mixUrl: string | null;
 		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
 		demos: { url: string; playbackUrl: string | null }[];
+		pdfs: { url: string; thumbnailUrl: string | null }[];
 	},
 >(s: S): Promise<S> {
 	return {
 		...s,
+		pdfs: await Promise.all(
+			s.pdfs.map(async (p) => ({
+				...p,
+				url: (await presentUrl(p.url)) ?? p.url,
+				thumbnailUrl: await presentUrl(p.thumbnailUrl),
+			})),
+		),
 		mixUrl: await presentUrl(s.mixUrl),
 		stems: await Promise.all(
 			s.stems.map(async (st) => ({
@@ -923,9 +941,14 @@ export async function deleteSong(accountId: string, songId: string) {
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.songId, songId)));
+	const pdfs = await db
+		.select({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl })
+		.from(songPdf)
+		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.songId, songId)));
 	await deleteBlobs([
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
 	const owned = await db.query.song.findFirst({
@@ -2711,9 +2734,16 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem",
+	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem" | "pdf",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "pdf") {
+		const r = await db.query.songPdf.findFirst({
+			where: and(eq(songPdf.accountId, accountId), eq(songPdf.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "recording-stem") {
 		const r = await db.query.recordingStem.findFirst({
 			where: and(eq(recordingStem.accountId, accountId), eq(recordingStem.id, id)),
@@ -3051,6 +3081,121 @@ export async function createDemo(
 		})
 		.returning();
 	return row;
+}
+
+// ---- PDFs attached to songs (docs/uploads-and-blob.md, "PDFs") ----------
+
+/** Step 1 of a PDF upload: the row in `uploading` state with its pathname and share code; null for a song the account lacks, "full" at the cap. */
+export async function createPdf(
+	accountId: string,
+	userId: string,
+	songId: string,
+	file: { filename: string; sizeBytes: number },
+) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(songPdf)
+		.where(eq(songPdf.songId, songId));
+	if (n >= MAX_PDFS_PER_SONG) return "full" as const;
+	const id = nanoid();
+	const [row] = await db
+		.insert(songPdf)
+		.values({
+			id,
+			accountId,
+			songId,
+			title: labelFromFilename(file.filename),
+			url: "",
+			pathname: pdfPathname(accountId, songId, id),
+			filename: file.filename,
+			sizeBytes: file.sizeBytes,
+			shareCode: nanoid(16),
+			uploadedBy: userId,
+		})
+		.returning();
+	return row;
+}
+
+export function findUploadingPdf(accountId: string, pathname: string) {
+	return db.query.songPdf.findFirst({
+		where: and(
+			eq(songPdf.accountId, accountId),
+			eq(songPdf.pathname, pathname),
+			eq(songPdf.status, "uploading"),
+		),
+	});
+}
+
+/** Vercel's completion webhook (production only): the URL lands even if the browser's own report never does; the bytes are checked when it does. */
+export async function recordPdfUrl(pathname: string, url: string) {
+	await db
+		.update(songPdf)
+		.set({ url })
+		.where(and(eq(songPdf.pathname, pathname), eq(songPdf.status, "uploading")));
+}
+
+/** Step 3: the file checked, the thumbnail stored, the row ready. */
+export async function markPdfReady(
+	accountId: string,
+	pdfId: string,
+	data: {
+		url: string;
+		pageCount: number | null;
+		thumbnailUrl: string | null;
+		thumbnailPathname: string | null;
+	},
+) {
+	const [row] = await db
+		.update(songPdf)
+		.set({ ...data, status: "ready" })
+		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.id, pdfId)))
+		.returning();
+	return row ?? null;
+}
+
+/** The upload was not a PDF (or never finished): the row goes, and whatever landed. */
+export async function failPdf(accountId: string, pdfId: string) {
+	const [row] = await db
+		.delete(songPdf)
+		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.id, pdfId)))
+		.returning({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl });
+	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+}
+
+export async function updatePdf(
+	accountId: string,
+	pdfId: string,
+	fields: { title: string; description: string },
+) {
+	const [row] = await db
+		.update(songPdf)
+		.set(fields)
+		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.id, pdfId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deletePdf(accountId: string, pdfId: string) {
+	const [row] = await db
+		.delete(songPdf)
+		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.id, pdfId)))
+		.returning({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl });
+	if (!row) return false;
+	await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+	return true;
+}
+
+/** The file a permanent link names (`/f/<code>`), ready ones only. */
+export function pdfByShareCode(code: string) {
+	return db.query.songPdf.findFirst({
+		where: and(eq(songPdf.shareCode, code), eq(songPdf.status, "ready")),
+		columns: { url: true, filename: true, title: true },
+	});
 }
 
 export function findUploadingDemo(accountId: string, pathname: string) {

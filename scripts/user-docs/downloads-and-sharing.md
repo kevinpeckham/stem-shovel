@@ -11,6 +11,10 @@ The row under the player offers:
 
 Single stems, and a stem's MIDI file, download from the ⋯ menu on the stem's row.
 
+## PDFs
+
+The **PDFs** section lower on the song page holds charts, lead sheets, notation, anything in a PDF: each shows its first page, a title and description, its pages and size, with **Download** and **Copy link**. The link (`/f/…`) is permanent: it keeps working after the song or project is renamed or made private, so it can go in a band's shared notes. Editors upload one or more PDFs at a time with **Upload PDFs** (in the section, or in the Uploads menu), up to 25 MB each and 20 a song, and can edit the words or remove a file from its tile.
+
 Files are named after the project, the song and the song's version, for example `badverbs-peaceful-dreams-v0.0.4-mix.mp3`, so a mix on someone's desktop still says where it came from.
 
 ## Sharing

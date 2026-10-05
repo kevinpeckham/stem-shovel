@@ -58,6 +58,16 @@ What protects what, and where each rule lives. The first security pass ran on
 - ffmpeg runs through `execFile` with argument arrays, never a shell; inputs
   are our own Blob files in a temp directory.
 
+- **PDFs** attached to songs are accepted by extension and size at the
+  reservation, by content type at the upload token, and by their first
+  bytes when the browser reports the upload done (`utils/fileSignatures.ts`):
+  a file that does not start `%PDF-` is deleted with its row. The
+  first-page thumbnail the browser sends is checked by its bytes too (WebP
+  or PNG) and capped at 400 KB. The permanent link `/f/<code>` is a
+  16-character nanoid; it redirects to a presigned URL for a private song's
+  file, so the code is the secret and the file is never served through our
+  function.
+
 ## Sessions and cookies
 
 Better Auth (docs/auth.md): httpOnly, secure, lax cookies; the session cookie

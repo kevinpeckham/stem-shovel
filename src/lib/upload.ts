@@ -2,6 +2,7 @@ import { collapseDualMono } from "$lib/audio/mono";
 import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { stemContentType } from "$lib/utils/stemContentType";
+import { pdfThumbnail } from "$lib/utils/pdfThumbnail";
 import { upload } from "@vercel/blob/client";
 
 export interface Reservation {
@@ -58,6 +59,45 @@ export async function uploadStemFile(
 		}),
 	});
 	if (!ready.ok) throw new Error(await errorText(ready));
+}
+
+export interface PdfReservation {
+	pdfId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/**
+ * A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): reserve,
+ * send the bytes to Blob, render the first page here in the browser
+ * (utils/pdfThumbnail.ts), and report the URL, the page count and the
+ * image; the server checks the file's bytes before it is ready.
+ */
+export async function uploadPdfFile(
+	file: File,
+	reserve: () => Promise<PdfReservation>,
+	onProgress?: (percent: number) => void,
+): Promise<{ shareCode: string }> {
+	const { pdfId, pathname, access = "public" } = await reserve();
+	const [blob, thumb] = await Promise.all([
+		upload(pathname, file, {
+			access,
+			handleUploadUrl: "/api/upload",
+			contentType: "application/pdf",
+			multipart: true,
+			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+		}),
+		pdfThumbnail(file),
+	]);
+	const form = new FormData();
+	form.set("url", blob.url);
+	if (thumb) {
+		form.set("pageCount", String(thumb.pageCount));
+		form.set("thumbnail", thumb.image, "page-1.webp");
+	}
+	const ready = await fetch(`/api/pdfs/${pdfId}/ready`, { method: "POST", body: form });
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return (await ready.json()) as { shareCode: string };
 }
 
 export interface DemoReservation {

@@ -4,7 +4,7 @@ import { db, schema } from "$lib/server/db";
 import type { ArchiveStatus } from "$lib/val/ArchiveStatusSchema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
-const { project, song, stem, demo } = schema;
+const { project, song, stem, demo, songPdf } = schema;
 
 /**
  * Archiving and deleting projects (src/lib/remote/projects.remote.ts). Any
@@ -61,9 +61,16 @@ export async function deleteProject(
 				.from(demo)
 				.where(inArray(demo.songId, songIds))
 		: [];
+	const pdfs = songIds.length
+		? await db
+				.select({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl })
+				.from(songPdf)
+				.where(inArray(songPdf.songId, songIds))
+		: [];
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
 		...songs.map((s) => s.mixUrl ?? ""),
 		target.imageUrl ?? "",
 	]);

@@ -53,9 +53,10 @@ const {
 	user,
 	userDoc,
 	userDocVersion,
+	songPdf,
 } = schema;
 
-/** Songs and everything hanging off them: stems, demos, comments, links, doc versions, credits; AI requests lose their song. */
+/** Songs and everything hanging off them: stems, demos, PDFs, comments, links, doc versions, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
@@ -63,6 +64,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(comment).where(inArray(comment.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
+	await db.delete(songPdf).where(inArray(songPdf.songId, songIds));
 	await db.delete(stem).where(inArray(stem.songId, songIds));
 	await db.update(aiRequest).set({ songId: null }).where(inArray(aiRequest.songId, songIds));
 	await db.update(beat).set({ songId: null }).where(inArray(beat.songId, songIds));

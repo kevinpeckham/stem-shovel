@@ -134,6 +134,7 @@ const {
 	songCredit,
 	artist,
 	artistMember,
+	songPdf,
 } = schema;
 
 /** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
@@ -182,6 +183,14 @@ export async function accountOfStem(stemId: string) {
 async function accountOfStemPathname(pathname: string) {
 	const row = await db.query.stem.findFirst({
 		where: eq(stem.pathname, pathname),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfPdf(pdfId: string) {
+	const row = await db.query.songPdf.findFirst({
+		where: eq(songPdf.id, pdfId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
@@ -269,7 +278,13 @@ export async function accountOfUploadPathname(pathname: string) {
 		where: eq(demo.pathname, pathname),
 		columns: { accountId: true },
 	});
-	return row?.accountId ?? null;
+	if (row) return row.accountId;
+	// A PDF attached to a song (docs/uploads-and-blob.md, "PDFs").
+	const pdf = await db.query.songPdf.findFirst({
+		where: eq(songPdf.pathname, pathname),
+		columns: { accountId: true },
+	});
+	return pdf?.accountId ?? null;
 }
 
 /** The project an entity belongs to, for the lookups that have one (access.ts memberOf checks restriction with it). */
