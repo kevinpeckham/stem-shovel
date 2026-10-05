@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The piano's guides are switches, and the key is C major by default** (Kevin): choosing a key no longer marks the keyboard by itself; Dots (new) and 1–7 in the Key menu each switch their guide on, disabled until a key is set, and Turn Off All Guides clears both. The Scale choice stays in view, None is gone (the key is C major to begin with and a stored none reads as C), and the Arpeggiator menu's key choice says the same.
+
 ### Added
 
 - **A staff on the piano's screen** (Kevin): the notes sounding, on a small treble staff beside the chord name from the medium width, spelled in flats in a flat key and sharps otherwise, the arpeggiator's note lit (`StaffReadout.svelte`, the chord player's drawing as a component).

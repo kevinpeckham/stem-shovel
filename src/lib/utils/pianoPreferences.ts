@@ -163,8 +163,9 @@ export interface PianoPreferences {
 	bounce: PianoBounce;
 	/** The Hi-res samples were chosen once: load them (from the browser's cache after the first time) without asking again. */
 	hires: boolean;
-	/** The key lit on the keyboard, and whether its keys show their scale degree in place of the letters. */
+	/** The key (C major to begin with, never unset from the device), the dots on its keys and the numbers in place of the letters (Kevin: the key alone shows no guides). */
 	key: PianoKey | null;
+	dots: boolean;
 	degrees: boolean;
 	/** The computer-key letters printed on the keys (a small toggle beside the octave); on unless switched off. */
 	labels: boolean;
@@ -187,7 +188,8 @@ export const DEFAULT_PIANO_PREFERENCES: PianoPreferences = {
 	compressor: { ...DEFAULT_PIANO_COMPRESSOR },
 	bounce: { ...DEFAULT_PIANO_BOUNCE },
 	hires: false,
-	key: null,
+	key: { root: 0, mode: "major" },
+	dots: false,
 	degrees: false,
 	labels: true,
 };
@@ -232,7 +234,8 @@ export function parsePianoPreferences(json: unknown): PianoPreferences {
 		compressor: parseCompressor(p.compressor),
 		bounce: parseBounce(p.bounce),
 		hires: p.hires === true,
-		key: parseKey(p.key),
+		key: parseKey(p.key) ?? { root: 0, mode: "major" },
+		dots: p.dots === true,
 		degrees: p.degrees === true,
 		labels: p.labels !== false,
 	};

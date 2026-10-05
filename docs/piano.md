@@ -401,6 +401,17 @@ and the menu stays short; native, no state.
   keyboard-split of two sounds; latency work for Bluetooth MIDI and
   mobile.
 
+## Guides by switch, a key always (2026-10-05)
+
+Kevin: a key being set should not by itself mark the keys. `piano.dots`
+(in the preferences, off by default) shows the scale's dots and darkens
+the keys outside it, `piano.degrees` the numbers, each a button in the
+Key menu disabled until a key is set, and Turn Off All Guides clears
+both; the Scale choice no longer hides without a key. The key is C major
+by default (`DEFAULT_PIANO_PREFERENCES.key`, a stored null read as C), the
+None choice is gone from the Key menu and the Arpeggiator menu's copy, so
+the chord a single key plays and the readout's numeral always have a key.
+
 ## The staff (built 2026-10-04)
 
 Kevin's ask, after the chord player's readout: the screen shows what is

@@ -159,6 +159,8 @@ export class PianoEngine {
 	/** The key lit on the keyboard (docs/piano.md, "Key and chords"), and whether its keys are numbered by degree; remembered. */
 	key = $state<PianoKey | null>(null);
 	degrees = $state(false);
+	/** The dots on the key's scale (the key alone shows nothing, Kevin). */
+	dots = $state(false);
 	/** The computer-key letters on the keys; a small toggle hides them. */
 	labels = $state(true);
 	/** Whether this browser decodes FLAC (null until the probe answers): hi-res comes as mp3 where it does not. */
@@ -203,6 +205,7 @@ export class PianoEngine {
 		metronome.listen(() => this.#fx?.update({ bounce: this.#bounceSettings() }));
 		this.key = p.key;
 		this.degrees = p.degrees;
+		this.dots = p.dots;
 		this.labels = p.labels;
 		void flacSupported().then((ok) => (this.flac = ok));
 		// The piano page: the standard tier follows the demo, and hi-res too if it was chosen before.
@@ -303,6 +306,7 @@ export class PianoEngine {
 				bounce: { ...this.bounce },
 				hires: this.hires,
 				key: this.key,
+				dots: this.dots,
 				degrees: this.degrees,
 				labels: this.labels,
 			},
@@ -619,6 +623,10 @@ export class PianoEngine {
 	}
 	setDegrees(on: boolean) {
 		this.degrees = on;
+		this.#save();
+	}
+	setDots(on: boolean) {
+		this.dots = on;
 		this.#save();
 	}
 	setVolume(v: number) {

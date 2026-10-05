@@ -984,7 +984,7 @@
 		{#each keys as key (key.midi)}
 			{@const on = sounding.has(key.midi)}
 			{@const pc = key.midi % 12}
-			{@const outKey = !!inKey && !inKey.has(pc)}
+			{@const outKey = piano.dots && !!inKey && !inKey.has(pc)}
 			{@const isRoot = !!piano.key && piano.key.root === pc}
 			{@const degree = piano.key && piano.degrees ? degreeOf(pc, piano.key) : null}
 			<button
@@ -1002,8 +1002,8 @@
 				aria-pressed={on}
 				tabindex="-1"
 			>
-				<!-- In a key: a mark on the scale's keys, stronger on the root. -->
-				{#if inKey && !outKey}
+				<!-- Show Dots: a mark on the scale's keys, stronger on the root. -->
+				{#if piano.dots && inKey && !outKey}
 					<span
 						class="{vertical ? 'mr-auto ml-3' : 'mb-1'} block h-1.5 w-1.5 rounded-full {isRoot
 							? 'bg-purple-500'
@@ -1186,9 +1186,9 @@
 						clearDefaultButtonClasses={true}
 						buttonClasses="w-full border"
 						popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
-						options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
-						value={piano.key ? String(piano.key.root) : "none"}
-						onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
+						options={ROOT_OPTIONS}
+						value={String(piano.key?.root ?? 0)}
+						onchange={(v) => setKeyRoot(Number(v))}
 					/>
 				</div>
 				<div>
@@ -1205,8 +1205,8 @@
 				</div>
 			</div>
 			<span class="block text-12px opacity-70 -mt-1"
-				>The key a single held key's chord comes from; it lights the scale on the keyboard too, as
-				the Key button does. None: the white keys are C major's.</span
+				>The key a single held key's chord comes from, the Key button's (C major to begin with); the
+				dots and numbers on the keys are that menu's own switches.</span
 			>
 		</div>
 		<ArpeggiatorMenu
@@ -1615,50 +1615,66 @@
 								clearDefaultButtonClasses={true}
 								buttonClasses="w-full @4xl-device-button-xs !@4xl-text-slate-400 @4xl-hover-bg-slate-900 border"
 								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
-								options={[{ value: "none", label: "None" }, ...ROOT_OPTIONS]}
-								value={piano.key ? String(piano.key.root) : "none"}
-								onchange={(v) => (v === "none" ? piano.setKey(null) : setKeyRoot(Number(v)))}
+								options={ROOT_OPTIONS}
+								value={String(piano.key?.root ?? 0)}
+								onchange={(v) => setKeyRoot(Number(v))}
 							/>
 						</div>
-						{#if piano.key}
-							<div class={compact ? "" : "w-full"}>
-								<span class="block mb-2">Scale</span>
-								<ComboBox
-									ariaLabel="Scale"
-									clearDefaultButtonClasses={true}
-									buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
-									popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
-									options={MODE_OPTIONS}
-									value={piano.key.mode}
-									onchange={(v) => setKeyMode(v as ScaleModeId)}
-								/>
+						<div class={compact ? "" : "w-full"}>
+							<span class="block mb-2">Scale</span>
+							<ComboBox
+								ariaLabel="Scale"
+								clearDefaultButtonClasses={true}
+								buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
+								popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
+								options={MODE_OPTIONS}
+								value={piano.key?.mode ?? "major"}
+								onchange={(v) => setKeyMode(v as ScaleModeId)}
+							/>
+						</div>
+						<!-- The guides (Kevin): the key alone shows nothing; dots and numbers are each their own switch, off until a key is set. -->
+						<div class="grid grid-cols-2 gap-2">
+							<div>
+								<span class="block mb-2">Show Dots</span>
+								<button
+									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
+										? 'text-accent'
+										: ''}"
+									type="button"
+									aria-pressed={piano.dots}
+									disabled={!piano.key}
+									title="Mark the keys in the key, the root stronger"
+									onclick={() => piano.setDots(!piano.dots)}>Dots</button
+								>
 							</div>
 							<div>
 								<span class="block mb-2">Show Numbers</span>
 								<button
-									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border {piano.degrees
+									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
 										? 'text-accent'
 										: ''}"
 									type="button"
 									aria-pressed={piano.degrees}
+									disabled={!piano.key}
 									title="Number the keys by their degree in the key"
 									onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
 								>
 							</div>
-							<hr class="border-current/10" />
-							<div class={compact ? "" : "w-full"}>
-								<span class="block mb-2">Toggle Guides</span>
-								<button
-									class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
-									onclick={() => {
-										piano.setDegrees(false);
-										piano.setKey(null);
-									}}
-								>
-									Turn Off All Guides
-								</button>
-							</div>
-						{/if}
+						</div>
+						<hr class="border-current/10" />
+						<div class={compact ? "" : "w-full"}>
+							<span class="block mb-2">Toggle Guides</span>
+							<button
+								class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
+								type="button"
+								onclick={() => {
+									piano.setDegrees(false);
+									piano.setDots(false);
+								}}
+							>
+								Turn Off All Guides
+							</button>
+						</div>
 					</div>
 				{/snippet}
 				<ContextMenu
