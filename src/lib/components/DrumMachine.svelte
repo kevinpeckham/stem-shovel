@@ -701,6 +701,20 @@
 			SS Drumbo 001
 		</div>
 
+		<!-- the keyboard's shortcuts at the foot, from @xl (Kevin) -->
+		{#if keyboard}
+			<div
+				aria-label="Keyboard shortcuts"
+				class="absolute bottom-6 right-5 hidden @xl-flex flex-wrap justify-end gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+			>
+				<span><kbd>Space</kbd> play</span>
+				<span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> eight steps</span>
+				<span><kbd>1</kbd>–<kbd>8</kbd> toggle</span>
+				<span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>8</kbd> velocity</span>
+				<span><kbd>Esc</kbd> hide</span>
+			</div>
+		{/if}
+
 		<!-- the readout -->
 		<div
 			class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden select-none pointer-events-none"
@@ -1816,7 +1830,9 @@
 								s >= cursor.start &&
 								s < cursor.start + WINDOW}
 							<button
-								class="device-button-xs !min-w-auto @2xl-device-button-sm transition-colors duration-75 text-10px font-600 text-blue-200 {sel
+								class="device-button-xs !min-w-auto @2xl-device-button-sm transition-colors duration-75 text-10px font-600 {cell
+									? 'text-oxford'
+									: 'text-blue-200'} {sel
 									? 'outline outline-2 outline-blue-400 outline-offset-1 z-1'
 									: ''} {cell === 3
 									? 'bg-accent border-white hover-!bg-accent/85'
