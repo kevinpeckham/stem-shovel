@@ -634,6 +634,7 @@
 						ariaLabel="Song actions"
 						buttonBaseClasses="device-button-sm px-3"
 						position="bottom right"
+						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto whitespace-nowrap [&_li>button]-(whitespace-nowrap)"
 						items={[
 							{
 								id: "rev",
@@ -843,6 +844,7 @@
 						iconClass="i-ph-metronome"
 						buttonBaseClasses="device-button-sm px-3"
 						position="bottom left"
+						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
 						items={[{ id: "timing", kind: "snippet", snippet: timingBlock }]}
 					/>
 					<label class="device-button-sm px-3 flex items-center gap-2 cursor-pointer">
@@ -1154,7 +1156,12 @@
 		<div class="px-3 py-2 grid gap-2 text-13px">
 			<label class="block">
 				<span class="block mb-1 opacity-80">Send to a song</span>
-				<select class="field w-full" bind:value={targetSongId} aria-label="Song">
+				<select
+					class="field w-full"
+					value={targetSong?.id ?? ""}
+					aria-label="Song"
+					onchange={(e) => (targetSongId = e.currentTarget.value)}
+				>
 					{#each data.projects as p (p.id)}
 						{#if p.songs.length}
 							<optgroup label={p.name}>
@@ -1164,9 +1171,9 @@
 					{/each}
 				</select>
 			</label>
-			<div class="flex flex-wrap gap-2">
+			<div class="grid gap-2">
 				<button
-					class="button button-xs"
+					class="button button-xs justify-start"
 					type="button"
 					disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
 					onclick={() => void addAsDemo()}
@@ -1174,7 +1181,7 @@
 					<span class="i-ph-waveform" aria-hidden="true"></span> Add mix as demo
 				</button>
 				<button
-					class="button button-xs"
+					class="button button-xs justify-start"
 					type="button"
 					disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
 					onclick={() => void addAsStems()}
