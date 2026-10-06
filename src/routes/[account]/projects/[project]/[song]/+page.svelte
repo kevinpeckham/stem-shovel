@@ -311,6 +311,10 @@
 	const PANELS = [...DOC_KINDS, "comments", "pdfs"] as const;
 	type Panel = (typeof PANELS)[number];
 	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", pdfs: "PDFs" } as const;
+	/** The PDFs tab carries its count, as the player's Stems and Demos tabs do (Kevin). */
+	let pdfCount = $derived(data.song.pdfs.filter((p) => p.status === "ready").length);
+	const tabLabel = (kind: Panel) =>
+		kind === "pdfs" ? `${PANEL_LABELS.pdfs} (${pdfCount})` : PANEL_LABELS[kind];
 	/** Switch the right-hand panel, closing an open editor first. */
 	async function showPanel(kind: Panel) {
 		if (kind === panel) return;
@@ -2406,11 +2410,11 @@
 					ariaLabel="Document"
 					buttonBaseClasses="button button-xs sm:hidden"
 					iconClass="i-ph-caret-down"
-					label={PANEL_LABELS[panel]}
+					label={tabLabel(panel)}
 					position="bottom left"
 					items={PANELS.map((kind) => ({
 						id: kind,
-						label: PANEL_LABELS[kind],
+						label: tabLabel(kind),
 						iconClass: panel === kind ? "i-ph-check" : "i-ph-check invisible",
 						action: () => showPanel(kind),
 					}))}
@@ -2433,7 +2437,7 @@
 								: index === PANELS.length - 1
 									? 'rounded-l-none'
 									: 'rounded-none border-r-none'}"
-							onclick={() => showPanel(kind)}>{PANEL_LABELS[kind]}</button
+							onclick={() => showPanel(kind)}>{tabLabel(kind)}</button
 						>
 					{/each}
 				</div>

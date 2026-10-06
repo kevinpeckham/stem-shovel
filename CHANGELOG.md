@@ -11,6 +11,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **The Demos playlist is the song ideas' by default** (Kevin: as the Song Ideas section; a song with stems leaves it): an All demos switch on the tab brings every song's back, remembered per browser (`stemshovel.project.all-demos`); `idea` on the demo tracks.
+- **The PDFs tab counts its files** (Kevin): "PDFs (2)", as the player's Stems and Demos tabs do.
 
 ## [0.105.0] - 2026-10-06
 
