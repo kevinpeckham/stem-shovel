@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.108.1] - 2026-10-06
+
 ### Fixed
 
 - **Song page tips read light** (Kevin: the strip under the comments row was too dim).
