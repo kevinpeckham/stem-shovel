@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { formatTime } from "$lib/utils/formatTime";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import { tick } from "svelte";
+	import { onMount, tick } from "svelte";
 
 	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. A demo track is the same shape, its id the demo's. */
 	export interface PlaylistSong {
 		id: string;
 		title: string;
 		mixUrl: string | null;
+		/** A demo track of a song with no stems yet (a song idea): the demos playlist's default scope (Kevin). */
+		idea?: boolean;
 	}
 	export type PlaylistMode = "mixes" | "demos";
 
@@ -26,14 +28,35 @@
 	let chosen = $state<PlaylistMode | null>(null);
 	let mode = $derived(chosen ?? (songs.some((s) => s.mixUrl) ? "mixes" : "demos"));
 	let mixCount = $derived(songs.filter((s) => s.mixUrl).length);
-	let demoCount = $derived(demos.filter((d) => d.mixUrl).length);
+	// The demos of the song ideas, as the page's Song Ideas section, unless every song's are wanted; remembered per browser.
+	let allDemos = $state(false);
+	const ALL_DEMOS_KEY = "stemshovel.project.all-demos";
+	function setAllDemos(on: boolean) {
+		allDemos = on;
+		current = null;
+		paused = true;
+		try {
+			localStorage.setItem(ALL_DEMOS_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	onMount(() => {
+		try {
+			allDemos = localStorage.getItem(ALL_DEMOS_KEY) === "1";
+		} catch {
+			// As above.
+		}
+	});
+	let demoList = $derived(demos.filter((d) => allDemos || d.idea));
+	let demoCount = $derived(demoList.filter((d) => d.mixUrl).length);
 	function setMode(next: PlaylistMode) {
 		if (next === mode) return;
 		chosen = next;
 		current = null;
 		paused = true;
 	}
-	let playable = $derived((mode === "demos" ? demos : songs).filter((s) => s.mixUrl));
+	let playable = $derived((mode === "demos" ? demoList : songs).filter((s) => s.mixUrl));
 	let track = $derived(playable.find((s) => s.id === current) ?? null);
 	let index = $derived(track ? playable.indexOf(track) : -1);
 	let audio = $state<HTMLAudioElement | null>(null);
@@ -132,6 +155,20 @@
 			>
 		{/each}
 	</div>
+	{#if mode === "demos"}
+		<label
+			class="flex items-center gap-2 text-sm text-dim cursor-pointer"
+			title="Every song's demos, or only those of songs without stems (the Song Ideas below)"
+		>
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				checked={allDemos}
+				onchange={(e) => setAllDemos(e.currentTarget.checked)}
+			/>
+			All demos
+		</label>
+	{/if}
 	<div class="flex items-center gap-2">
 		<button
 			type="button"
@@ -187,7 +224,11 @@
 						: "songs"} ready to play
 			</p>
 		{:else if mode === "demos"}
-			<p class="text-dim">Demos appear here once a song has a recording.</p>
+			<p class="text-dim">
+				{allDemos || demos.length === 0
+					? "Demos appear here once a song has a recording."
+					: "No song idea has a demo yet; All demos plays every song's."}
+			</p>
 		{:else}
 			<p class="text-dim">Mixes appear here once a song has stems.</p>
 		{/if}

@@ -44,13 +44,28 @@ describe("ProjectPlayer", () => {
 			props: {
 				songs: [{ id: "a", title: "One", mixUrl: null }],
 				demos: [
-					{ id: "d1", title: "One · Demo", mixUrl: "https://blob/d1.m4a" },
-					{ id: "d2", title: "One · Take 2", mixUrl: "https://blob/d2.m4a" },
+					{ id: "d1", title: "One · Demo", mixUrl: "https://blob/d1.m4a", idea: true },
+					{ id: "d2", title: "One · Take 2", mixUrl: "https://blob/d2.m4a", idea: true },
 				],
 			},
 		});
 		expect(screen.getByRole("tab", { name: "Demos (2)" })).toHaveAttribute("aria-selected", "true");
 		expect(screen.getByText("2 demos ready to play")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Play" })).toBeEnabled();
+	});
+	test("the demos are the song ideas' unless All demos is on", async () => {
+		render(ProjectPlayer, {
+			props: {
+				songs: [{ id: "a", title: "One", mixUrl: null }],
+				demos: [
+					{ id: "d1", title: "Idea · Demo", mixUrl: "https://blob/d1.m4a", idea: true },
+					{ id: "d2", title: "One · Rough", mixUrl: "https://blob/d2.m4a", idea: false },
+				],
+			},
+		});
+		expect(screen.getByRole("tab", { name: "Demos (1)" })).toHaveAttribute("aria-selected", "true");
+		await fireEvent.click(screen.getByRole("checkbox", { name: "All demos" }));
+		expect(screen.getByRole("tab", { name: "Demos (2)" })).toBeInTheDocument();
+		expect(screen.getByText("2 demos ready to play")).toBeInTheDocument();
 	});
 });

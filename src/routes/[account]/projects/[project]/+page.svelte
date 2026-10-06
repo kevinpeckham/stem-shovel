@@ -137,12 +137,17 @@
 	}
 	/** The playlist: finished songs, then the ones in progress, as listed. */
 	let playable = $derived([...finished, ...inProgress]);
-	/** The demos playlist: every song's ready recordings in the songs' order, ideas included, each named by its song. */
+	/** The demos playlist: every song's ready recordings in the songs' order, each named by its song; the ideas' are the default scope (Kevin: as the Song Ideas section). */
 	let demoTracks = $derived(
 		[...finished, ...inProgress, ...ideas].flatMap((song) =>
 			song.demos
 				.filter((d) => d.status === "ready" && d.playUrl)
-				.map((d) => ({ id: d.id, title: `${song.title} · ${d.label}`, mixUrl: d.playUrl })),
+				.map((d) => ({
+					id: d.id,
+					title: `${song.title} · ${d.label}`,
+					mixUrl: d.playUrl,
+					idea: readyStems(song) === 0,
+				})),
 		),
 	);
 
