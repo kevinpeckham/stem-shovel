@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.109.3] - 2026-10-06
+
+### Fixed
+
+- **The Attachments tab stands as tall as the other Docs tabs** (Kevin): the icon-only tab was shorter; every tab has the same minimum height now.
+
 ## [0.109.2] - 2026-10-06
 
 ### Fixed
