@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.109.1] - 2026-10-06
+
 ### Changed
 
 - **The chord player starts from the first preset** (Kevin): on a first visit, with nothing of the chord player saved in this browser, preset 1 loads (`hasSavedChordSettings`); a browser with settings keeps them.
