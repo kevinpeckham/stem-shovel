@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.105.0] - 2026-10-06
+
 ### Added
 
 - **A Demos tab on the project playlist** (Kevin): the player plays the songs' demo recordings (ideas included, in the songs' order, each named by its song and label; the AAC rendition where it is ready) as well as the stem mixes, on two tabs with counts; it opens on the mixes when any song has one and on the demos otherwise, and a song row's play button brings the mixes tab back. `getProject` carries the demos' playback columns and the load presigns them.
