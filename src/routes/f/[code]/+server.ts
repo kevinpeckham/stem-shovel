@@ -1,5 +1,5 @@
 import { presentUrl, readBlob } from "$lib/server/blob";
-import { notationByShareCode, pdfByShareCode } from "$lib/server/data";
+import { fileByShareCode as attachmentByShareCode, notationByShareCode } from "$lib/server/data";
 import { NOTATION_CONTENT_TYPE_OF } from "$lib/constants/notationFormats";
 import { attachmentDisposition } from "$lib/utils/attachmentDisposition";
 import { error, redirect } from "@sveltejs/kit";
@@ -13,13 +13,14 @@ interface Served {
 }
 
 /**
- * A file's permanent link (docs/uploads-and-blob.md, "PDFs" and "Notation
- * files"): `/f/<code>` finds the file by its share code (a PDF's first,
- * then a notation file's) and sends the visitor to where it is now, in
+ * A file's permanent link (docs/uploads-and-blob.md, "Attachments" and
+ * "Notation files"): `/f/<code>` finds the file by its share code (an
+ * attachment's first, then a notation file's) and sends the visitor to where it is now, in
  * either store (a presigned URL, good for twelve hours, for a private
  * song's), so the link outlives renames and privacy moves. With
  * `?download=1` it streams the file instead, as an attachment under its
- * own name (the store's own download switch would name it by its id).
+ * own name (the store's own download switch would name it by its id),
+ * with the content type its name says (an attachment's table stores none).
  * `?download=pdf` streams the file as a PDF: the PDF itself, or the one
  * the jobs function engraved from a notation file, named after it; a
  * notation file whose PDF is not ready is a 404. The code is the secret;
@@ -55,10 +56,10 @@ async function stream(file: Served): Promise<Response> {
 
 /** Whichever ready file carries the code, with the type to serve it as, and the PDF of it when there is one. */
 async function fileByShareCode(code: string): Promise<(Served & { pdf: Served | null }) | null> {
-	const pdf = await pdfByShareCode(code);
-	if (pdf) {
-		const served = { url: pdf.url, filename: pdf.filename, contentType: "application/pdf" };
-		return { ...served, pdf: served };
+	const file = await attachmentByShareCode(code);
+	if (file) {
+		const served = { url: file.url, filename: file.filename, contentType: file.contentType };
+		return { ...served, pdf: file.kind === "pdf" ? served : null };
 	}
 	const notation = await notationByShareCode(code);
 	if (notation) {

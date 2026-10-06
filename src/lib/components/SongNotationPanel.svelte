@@ -9,10 +9,10 @@
 		NOTATION_MAX_BYTES,
 		notationFormatOf,
 	} from "$lib/constants/notationFormats";
-	import { MAX_PDFS_PER_SONG, PDF_MAX_BYTES } from "$lib/constants/pdfFormats";
+	import { FILE_MAX_BYTES, MAX_FILES_PER_SONG } from "$lib/constants/fileFormats";
 	import { deleteNotation, updateNotation } from "$lib/remote/notation.remote";
-	import { deletePdf, updatePdf } from "$lib/remote/pdfs.remote";
-	import type { PanelPdf } from "$lib/components/SongPdfPanel.svelte";
+	import { deleteFile, updateFile } from "$lib/remote/files.remote";
+	import type { PanelFile } from "$lib/components/SongFilesPanel.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatBytes } from "$lib/utils/formatBytes";
@@ -21,10 +21,10 @@
 	import { sanitizeSvg } from "$lib/utils/sanitizeSvg";
 	import {
 		postJson,
+		uploadFile,
 		uploadNotationFile,
-		uploadPdfFile,
+		type FileReservation,
 		type NotationReservation,
-		type PdfReservation,
 	} from "$lib/upload";
 	import type { Attachment } from "svelte/attachments";
 
@@ -56,14 +56,14 @@
 		pdfStatus: "pending" | "ready" | "failed" | null;
 	}
 	/** A tile: a MusicXML file, or a PDF marked as notation. */
-	type Tile = { kind: "xml"; row: PanelNotation } | { kind: "pdf"; row: PanelPdf };
+	type Tile = { kind: "xml"; row: PanelNotation } | { kind: "pdf"; row: PanelFile };
 	interface Props {
 		songId: string;
 		/** The song's title, for the email's subject. */
 		songTitle: string;
 		notation: PanelNotation[];
 		/** The song's PDFs marked as notation. */
-		pdfs?: PanelPdf[];
+		pdfs?: PanelFile[];
 		canEdit: boolean;
 	}
 	let { songId, songTitle, notation, pdfs = [], canEdit }: Props = $props();
@@ -76,6 +76,10 @@
 			.filter((p) => p.status === "ready" && p.url)
 			.map((row) => ({ kind: "pdf" as const, row })),
 	]);
+	/** Files handed over by the Attachments tab (MusicXML dropped there). */
+	export async function upload(files: File[]) {
+		await uploadFiles(files);
+	}
 	const isPdfName = (name: string) => /\.pdf$/i.test(name);
 	let jobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let busy = $state(false);
@@ -90,6 +94,9 @@
 	async function uploadPicked(input: HTMLInputElement) {
 		const files = [...(input.files ?? [])];
 		input.value = "";
+		await uploadFiles(files);
+	}
+	async function uploadFiles(files: File[]) {
 		if (files.length === 0) return;
 		const room = Math.max(0, MAX_NOTATION_PER_SONG - notation.length);
 		const xmlFiles = files.filter((f) => !isPdfName(f.name));
@@ -101,23 +108,23 @@
 		const picked = files.filter((f) => isPdfName(f.name) || xmlFiles.indexOf(f) < room);
 		busy = true;
 		jobs = picked.map((f) => ({ name: f.name, percent: 0 }));
-		let pdfRoom = Math.max(0, MAX_PDFS_PER_SONG - pdfs.length);
+		let pdfRoom = Math.max(0, MAX_FILES_PER_SONG - pdfs.length);
 		for (const [i, file] of picked.entries()) {
 			if (isPdfName(file.name)) {
 				// A PDF of a score: the PDFs' flow, flagged as notation, so it shows on both views.
-				if (file.size > PDF_MAX_BYTES) {
-					jobs[i].error = `Over ${formatBytes(PDF_MAX_BYTES)}`;
+				if (file.size > FILE_MAX_BYTES.pdf) {
+					jobs[i].error = `Over ${formatBytes(FILE_MAX_BYTES.pdf)}`;
 					continue;
 				}
 				if (pdfRoom <= 0) {
-					jobs[i].error = `A song can have at most ${MAX_PDFS_PER_SONG} PDFs`;
+					jobs[i].error = `A song can have at most ${MAX_FILES_PER_SONG} attachments`;
 					continue;
 				}
 				try {
-					await uploadPdfFile(
+					await uploadFile(
 						file,
 						() =>
-							postJson<PdfReservation>("/api/pdfs", {
+							postJson<FileReservation>("/api/files", {
 								songId,
 								filename: file.name,
 								sizeBytes: file.size,
@@ -175,7 +182,7 @@
 		try {
 			const words = { id: t.row.id, title: draftTitle, description: draftDescription };
 			if (t.kind === "xml") await updateNotation(words);
-			else await updatePdf(words);
+			else await updateFile(words);
 			editing = null;
 			await invalidateAll();
 		} catch (e) {
@@ -188,7 +195,7 @@
 		if (!confirm(`Remove "${nameOf(t)}" from this song? The file is deleted.`)) return;
 		try {
 			if (t.kind === "xml") await deleteNotation({ id: t.row.id });
-			else await deletePdf({ id: t.row.id });
+			else await deleteFile({ id: t.row.id });
 			notify(`${nameOf(t)} removed`);
 			if (viewing?.row.id === t.row.id) viewing = null;
 			await invalidateAll();
@@ -197,9 +204,9 @@
 		}
 	}
 	/** A PDF unmarked as notation leaves this view (it stays on the PDFs tab). */
-	async function unmark(p: PanelPdf) {
+	async function unmark(p: PanelFile) {
 		try {
-			await updatePdf({ id: p.id, title: p.title, description: p.description, isNotation: false });
+			await updateFile({ id: p.id, title: p.title, description: p.description, isNotation: false });
 			notify(`${p.title || p.filename} is a plain PDF again`);
 			await invalidateAll();
 		} catch (e) {
@@ -227,7 +234,13 @@
 	}
 	const nameOf = (t: Tile) => t.row.title || t.row.filename;
 	const kindLabel = (t: Tile) =>
-		t.kind === "pdf" ? "PDF" : t.row.format === "mxl" ? "MXL" : "MusicXML";
+		t.kind === "pdf"
+			? t.row.kind === "image"
+				? "Image"
+				: "PDF"
+			: t.row.format === "mxl"
+				? "MXL"
+				: "MusicXML";
 
 	// ---- the viewer: the score engraved for the panel's width ----
 	let viewing = $state<Tile | null>(null);
@@ -328,7 +341,14 @@
 						aria-label="Open {nameOf(t)}"
 						onclick={() => open(t)}
 					>
-						{#if n.thumbnailUrl}
+						{#if t.kind === "pdf" && t.row.kind === "image"}
+							<img
+								class="w-full h-full object-cover object-top"
+								src={n.url}
+								alt={nameOf(t)}
+								loading="lazy"
+							/>
+						{:else if n.thumbnailUrl}
 							<img
 								class="w-full h-full object-cover object-top"
 								src={n.thumbnailUrl}
@@ -522,7 +542,13 @@
 			{/if}
 		{/snippet}
 		<div class="min-h-full bg-white text-black rounded" {@attach measured} aria-live="polite">
-			{#if viewing?.kind === "pdf"}
+			{#if viewing?.kind === "pdf" && viewing.row.kind === "image"}
+				<img
+					class="max-w-full h-auto rounded bg-white"
+					src={viewing.row.url}
+					alt={nameOf(viewing)}
+				/>
+			{:else if viewing?.kind === "pdf"}
 				<iframe
 					class="w-full h-full min-h-480px rounded bg-white"
 					src={viewing.row.url}
@@ -547,7 +573,7 @@
 				class="button button-sm cursor-pointer {full ? 'opacity-50 pointer-events-none' : ''}"
 				title="MusicXML (.mxl or .musicxml, up to {formatBytes(
 					NOTATION_MAX_BYTES,
-				)} each) or a PDF of the score (up to {formatBytes(PDF_MAX_BYTES)})"
+				)} each) or a PDF of the score (up to {formatBytes(FILE_MAX_BYTES.pdf)})"
 			>
 				<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
 				{busy ? "Uploading…" : "Upload Notation"}

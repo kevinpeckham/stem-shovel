@@ -69,3 +69,54 @@ export function startsLikeMusicXml(bytes: Uint8Array): boolean {
 		trimmed.startsWith("<?xml") || trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<score-");
 	return prologue && (text.includes("score-partwise") || text.includes("score-timewise"));
 }
+
+/** Whether the ASCII `text` sits at byte offset `at`. */
+function ascii(bytes: Uint8Array, at: number, text: string): boolean {
+	if (bytes.length < at + text.length) return false;
+	for (let i = 0; i < text.length; i++) if (bytes[at + i] !== text.charCodeAt(i)) return false;
+	return true;
+}
+
+/** PNG, JPEG, WebP (`RIFF….WEBP`) or GIF by its first bytes. */
+export function startsLikeImage(bytes: Uint8Array): boolean {
+	if (imageTypeOfBytes(bytes)) return true;
+	if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+	return ascii(bytes, 0, "GIF87a") || ascii(bytes, 0, "GIF89a");
+}
+
+/**
+ * An audio file by its first bytes: MP3 (an `ID3` tag or an MPEG audio
+ * frame sync), WAV (`RIFF….WAVE`), M4A/MP4 (`ftyp` at offset 4), raw AAC
+ * (an ADTS frame sync), OGG (`OggS`), FLAC (`fLaC`), AIFF (`FORM….AIFF`
+ * or `AIFC`).
+ */
+export function startsLikeAudio(bytes: Uint8Array): boolean {
+	if (ascii(bytes, 0, "ID3")) return true;
+	if (bytes.length >= 2 && bytes[0] === 0xff) {
+		const b = bytes[1]!;
+		// MPEG-1/2 layer III (0xFB/0xFA/0xF3/0xF2), layer II (0xFD/0xFC), MPEG-2.5 (0xE3/0xE2) and ADTS AAC (0xF1/0xF9).
+		if ([0xfb, 0xfa, 0xf3, 0xf2, 0xfd, 0xfc, 0xe3, 0xe2, 0xf1, 0xf9].includes(b)) return true;
+	}
+	if (ascii(bytes, 0, "RIFF") && ascii(bytes, 8, "WAVE")) return true;
+	if (ascii(bytes, 4, "ftyp")) return true;
+	if (ascii(bytes, 0, "OggS") || ascii(bytes, 0, "fLaC")) return true;
+	return ascii(bytes, 0, "FORM") && (ascii(bytes, 8, "AIFF") || ascii(bytes, 8, "AIFC"));
+}
+
+/** A Standard MIDI File: the `MThd` header chunk. */
+export function startsLikeMidi(bytes: Uint8Array): boolean {
+	return ascii(bytes, 0, "MThd");
+}
+
+/** Text: the first 4 KB decode as UTF-8 without a NUL byte (a BOM is fine; an empty file is not text). */
+export function looksLikeText(bytes: Uint8Array): boolean {
+	const head = bytes.subarray(0, 4096);
+	if (head.length === 0 || head.includes(0)) return false;
+	try {
+		// Streaming, so a multi-byte sequence cut at the 4 KB edge waits rather than fails; a bad byte inside still throws.
+		new TextDecoder("utf-8", { fatal: true }).decode(head, { stream: true });
+		return true;
+	} catch {
+		return false;
+	}
+}

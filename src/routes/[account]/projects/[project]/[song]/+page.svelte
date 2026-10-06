@@ -22,7 +22,7 @@
 	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
-	import SongPdfPanel from "$lib/components/SongPdfPanel.svelte";
+	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "$lib/components/SongNotationPanel.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -184,8 +184,8 @@
 	let demoBusy = $state(false);
 	/** The Chart tab's notation mode; the Uploads menu and the panel's ⋯ menu open its picker. */
 	let notationPanel = $state<SongNotationPanel | null>(null);
-	/** The Docs panel's PDFs tab; the Uploads menu and the panel's ⋯ menu open its picker. */
-	let pdfPanel = $state<SongPdfPanel | null>(null);
+	/** The Docs panel's Attachments tab; the Uploads menu and the panel's ⋯ menu open its picker. */
+	let filesPanel = $state<SongFilesPanel | null>(null);
 	async function uploadDemos(input: HTMLInputElement) {
 		const picked = Array.from(input.files ?? []);
 		input.value = "";
@@ -311,21 +311,24 @@
 	// Lyrics first, the panel's default tab (Kevin, 2026-10-06).
 	const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	// The Docs panel also shows the comments and the PDFs; neither is a document.
-	const PANELS = [...DOC_KINDS, "comments", "pdfs"] as const;
+	// The Docs panel also shows the comments and the attachments; neither is a document.
+	const PANELS = [...DOC_KINDS, "comments", "files"] as const;
 	type Panel = (typeof PANELS)[number];
-	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", pdfs: "PDFs" } as const;
-	/** The tabs carry their counts, as the player's Stems and Demos tabs do (Kevin): the PDFs, the comments, and the Chart's uploads (notation files and PDFs marked as notation), or 1 for chart text with no uploads. */
-	let pdfCount = $derived(data.song.pdfs.filter((p) => p.status === "ready").length);
-	let notationPdfs = $derived(data.song.pdfs.filter((p) => p.status === "ready" && p.isNotation));
+	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", files: "Attachments" } as const;
+	/** The tabs carry their counts, as the player's Stems and Demos tabs do (Kevin): the attachments (the scores among them), the comments, and the Chart's uploads (notation files and attachments marked as notation), or 1 for chart text with no uploads. */
+	let fileCount = $derived(
+		data.song.files.filter((p) => p.status === "ready").length +
+			data.song.notation.filter((n) => n.status === "ready").length,
+	);
+	let notationPdfs = $derived(data.song.files.filter((p) => p.status === "ready" && p.isNotation));
 	let notationCount = $derived(
 		data.song.notation.filter((n) => n.status === "ready").length + notationPdfs.length,
 	);
 	let chartCount = $derived(notationCount || (data.docs.chart ? 1 : 0));
 	const tabLabel = (kind: Panel) => {
 		const count =
-			kind === "pdfs"
-				? pdfCount
+			kind === "files"
+				? fileCount
 				: kind === "comments"
 					? data.comments.length
 					: kind === "chart"
@@ -341,7 +344,7 @@
 		panel = kind;
 	}
 	let panel = $state<Panel>("lyrics");
-	let showing = $derived(panel === "comments" || panel === "pdfs" ? null : panel);
+	let showing = $derived(panel === "comments" || panel === "files" ? null : panel);
 
 	/**
 	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
@@ -391,12 +394,12 @@
 	function togglePlayer() {
 		setPlayerMode(playerMode === "minimised" ? playerRestore : "minimised");
 	}
-	/** The PDFs tab's picker, from the Uploads menu: the panel back if minimised, the tab shown, then the picker. */
-	async function pickPdfs() {
+	/** The Attachments tab's picker, from the Uploads menu: the panel back if minimised, the tab shown, then the picker. */
+	async function pickFiles() {
 		if (docsMode === "minimised") await setDocsMode(docsRestore);
-		await showPanel("pdfs");
+		await showPanel("files");
 		await tick();
-		pdfPanel?.pick();
+		filesPanel?.pick();
 	}
 	/**
 	 * The Chart tab shows the chart's text, or the song's notation files
@@ -559,15 +562,15 @@
 						},
 					]
 				: nothing;
-		if (panel === "pdfs")
+		if (panel === "files")
 			return data.canEdit
 				? [
 						{
-							id: "upload-pdfs",
-							label: "Upload PDFs",
-							iconClass: "i-ph-file-pdf",
-							title: "Charts, lead sheets, notation: one or more PDFs",
-							action: () => pdfPanel?.pick(),
+							id: "upload-files",
+							label: "Upload Attachments",
+							iconClass: "i-ph-paperclip",
+							title: "PDFs, images, audio, text, MIDI: one or more files",
+							action: () => filesPanel?.pick(),
 						},
 					]
 				: nothing;
@@ -2579,13 +2582,13 @@
 						>
 							<span class="i-ph-plus"></span>
 						</button>
-					{:else if panel === "pdfs"}
+					{:else if panel === "files"}
 						<button
 							class="button button-xs flex items-center"
 							type="button"
-							title="Upload PDFs: charts, lead sheets, notation"
-							aria-label="Upload PDFs"
-							onclick={() => pdfPanel?.pick()}
+							title="Upload attachments: PDFs, images, audio, text, MIDI"
+							aria-label="Upload attachments"
+							onclick={() => filesPanel?.pick()}
 						>
 							<span class="i-ph-plus"></span>
 						</button>
@@ -2803,14 +2806,21 @@
 					pdfs={notationPdfs}
 					canEdit={data.canEdit}
 				/>
-			{:else if panel === "pdfs"}
-				<!-- The PDFs (docs/uploads-and-blob.md, "PDFs"): charts, lead sheets, notation, to download and to link to. -->
-				<SongPdfPanel
-					bind:this={pdfPanel}
+			{:else if panel === "files"}
+				<!-- The attachments (docs/uploads-and-blob.md, "Attachments"): every file of the song, the scores among them. -->
+				<SongFilesPanel
+					bind:this={filesPanel}
 					songId={data.song.id}
 					songTitle={data.song.title}
-					pdfs={data.song.pdfs}
+					files={data.song.files}
+					scores={data.song.notation}
 					canEdit={data.canEdit}
+					onnotation={async (files) => {
+						await showPanel("chart");
+						await setChartMode("notation");
+						await tick();
+						await notationPanel?.upload(files);
+					}}
 				/>
 			{:else if notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
@@ -2926,11 +2936,11 @@
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						type="button"
 						role="menuitem"
-						title="Charts, lead sheets, notation: one or more PDFs"
-						onclick={() => void pickPdfs()}
+						title="PDFs, images, audio scraps, text, MIDI: one or more files"
+						onclick={() => void pickFiles()}
 					>
-						<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
-						Upload PDFs
+						<span class="i-ph-paperclip mr-2" aria-hidden="true"></span>
+						Upload Attachments
 					</button>
 					<button
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"

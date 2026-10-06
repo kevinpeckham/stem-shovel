@@ -71,21 +71,19 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
-/** Blob pathname for a PDF attached to a song (docs/uploads-and-blob.md, "PDFs"). */
-export function pdfPathname(accountId: string, songId: string, pdfId: string) {
-	return `accounts/${accountId}/songs/${songId}/pdfs/${pdfId}.pdf`;
+/** Blob pathname for a file attached to a song (docs/uploads-and-blob.md, "Attachments"): the extension as uploaded, lower-cased. */
+export function filePathname(accountId: string, songId: string, fileId: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/songs/${songId}/files/${fileId}.${ext}`;
 }
-/** The PDF's first-page thumbnail, stamped so a re-render is a new URL (the 30-day cache). */
-export function pdfThumbnailPathname(
-	accountId: string,
-	songId: string,
-	pdfId: string,
-	ext: string,
-) {
+/** The attachment's thumbnail beside it (a PDF's first page), stamped so a re-render is a new URL (the 30-day cache); from the file's own pathname, so a row from the `/pdfs/` days keeps its folder. */
+export function fileThumbnailPathname(pathname: string, ext: string) {
 	const stamp = Date.now().toString(36);
-	return `accounts/${accountId}/songs/${songId}/pdfs/${pdfId}.thumb-${stamp}.${ext}`;
+	return `${pathname.replace(/\.[a-z0-9]+$/i, "")}.thumb-${stamp}.${ext}`;
 }
-export const isPdfPathname = (pathname: string) => /[/]pdfs[/][^/]+[.]pdf$/.test(pathname);
+/** An attachment's own pathname (not its thumbnail): `/files/` since 2026-10-06, `/pdfs/` for the rows uploaded before. */
+export const isFilePathname = (pathname: string) =>
+	/[/](files|pdfs)[/][^/.]+[.][a-z0-9]+$/.test(pathname);
 
 /** Blob pathname for a notation file attached to a song (docs/uploads-and-blob.md, "Notation files"): the extension as uploaded, lower-cased. */
 export function notationPathname(

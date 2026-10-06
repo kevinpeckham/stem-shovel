@@ -3,6 +3,7 @@ import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { stemContentType } from "$lib/utils/stemContentType";
 import { pdfThumbnail } from "$lib/utils/pdfThumbnail";
+import { FILE_CONTENT_TYPE_OF, type FileKind } from "$lib/constants/fileFormats";
 import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "$lib/constants/notationFormats";
 import { upload } from "@vercel/blob/client";
 
@@ -62,33 +63,37 @@ export async function uploadStemFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
-export interface PdfReservation {
-	pdfId: string;
+/** What `POST /api/files` answers: the row's id, where to upload, which store, and the kind the server decided. */
+export interface FileReservation {
+	fileId: string;
 	pathname: string;
 	access?: "public" | "private";
+	kind?: FileKind;
 }
 
 /**
- * A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): reserve,
- * send the bytes to Blob, render the first page here in the browser
- * (utils/pdfThumbnail.ts), and report the URL, the page count and the
- * image; the server checks the file's bytes before it is ready.
+ * A file attached to a song (docs/uploads-and-blob.md, "Attachments"):
+ * reserve, send the bytes to Blob under the content type its name says
+ * (the reservation allows the usual labels; the server checks the bytes by
+ * kind before the row is ready), and for a PDF render the first page here
+ * in the browser (utils/pdfThumbnail.ts) to report with the URL and the
+ * page count.
  */
-export async function uploadPdfFile(
+export async function uploadFile(
 	file: File,
-	reserve: () => Promise<PdfReservation>,
+	reserve: () => Promise<FileReservation>,
 	onProgress?: (percent: number) => void,
-): Promise<{ shareCode: string }> {
-	const { pdfId, pathname, access = "public" } = await reserve();
+): Promise<{ shareCode: string; kind: FileKind }> {
+	const { fileId, pathname, access = "public", kind } = await reserve();
 	const [blob, thumb] = await Promise.all([
 		upload(pathname, file, {
 			access,
 			handleUploadUrl: "/api/upload",
-			contentType: "application/pdf",
+			contentType: FILE_CONTENT_TYPE_OF(file.name),
 			multipart: true,
 			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
 		}),
-		pdfThumbnail(file),
+		kind === "pdf" ? pdfThumbnail(file).catch(() => null) : Promise.resolve(null),
 	]);
 	const form = new FormData();
 	form.set("url", blob.url);
@@ -96,9 +101,9 @@ export async function uploadPdfFile(
 		form.set("pageCount", String(thumb.pageCount));
 		form.set("thumbnail", thumb.image, "page-1.webp");
 	}
-	const ready = await fetch(`/api/pdfs/${pdfId}/ready`, { method: "POST", body: form });
+	const ready = await fetch(`/api/files/${fileId}/ready`, { method: "POST", body: form });
 	if (!ready.ok) throw new Error(await errorText(ready));
-	return (await ready.json()) as { shareCode: string };
+	return (await ready.json()) as { shareCode: string; kind: FileKind };
 }
 
 export interface NotationReservation {

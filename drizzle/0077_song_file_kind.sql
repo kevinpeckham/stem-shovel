@@ -1,0 +1,1 @@
+ALTER TABLE `song_pdf` ADD `kind` text DEFAULT 'pdf' NOT NULL;

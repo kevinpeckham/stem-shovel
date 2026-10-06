@@ -321,29 +321,33 @@ Indexes: `(account_id)`, `(project_id)`, unique `(project_id, slug)`.
 
 Indexes: `(song_id, sort_order)`, `(account_id)`.
 
-### song_pdf
+### song_pdf (`songFile`, `song.files`)
 
-A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): one file in
-Blob with a first-page thumbnail the browser rendered and a permanent link.
+A file attached to a song (docs/uploads-and-blob.md, "Attachments"): a PDF,
+an image, an audio file, a text file, a MIDI file or anything else, one
+file in Blob with a thumbnail the browser rendered (a PDF's first page) and
+a permanent link. The table keeps the name it had when it held PDFs alone
+(until 2026-10-06); the schema file is `songFile.ts`.
 
-| column                 | type                        | notes                                                |
-| ---------------------- | --------------------------- | ---------------------------------------------------- |
-| id                     | text PK                     |                                                      |
-| account_id             | text FK → account (cascade) |                                                      |
-| song_id                | text FK → song (cascade)    |                                                      |
-| title                  | text not null default ''    | the filename minus its extension to begin with       |
-| description            | text not null default ''    |                                                      |
-| status                 | text                        | uploading / ready / failed                           |
-| url, pathname          | text                        | `accounts/<a>/songs/<s>/pdfs/<id>.pdf`               |
-| filename               | text                        |                                                      |
-| size_bytes             | integer                     | counts toward the account's storage                  |
-| page_count             | integer null                | as pdf.js read it in the browser                     |
-| is_notation            | boolean not null default 0  | a score: listed on the Chart tab's notation view too |
-| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file            |
-| thumbnail_pathname     | text null                   |                                                      |
-| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`        |
-| uploaded_by            | text FK → user (set null)   |                                                      |
-| created_at, updated_at | timestamp_ms                |                                                      |
+| column                 | type                        | notes                                                                          |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| id                     | text PK                     |                                                                                |
+| account_id             | text FK → account (cascade) |                                                                                |
+| song_id                | text FK → song (cascade)    |                                                                                |
+| kind                   | text not null default 'pdf' | pdf / image / audio / text / midi / other, by extension (`fileKindOf`)         |
+| title                  | text not null default ''    | the filename minus its extension to begin with                                 |
+| description            | text not null default ''    |                                                                                |
+| status                 | text                        | uploading / ready / failed                                                     |
+| url, pathname          | text                        | `accounts/<a>/songs/<s>/files/<id>.<ext>` (`/pdfs/<id>.pdf` before 2026-10-06) |
+| filename               | text                        |                                                                                |
+| size_bytes             | integer                     | counts toward the account's storage                                            |
+| page_count             | integer null                | a PDF's, as pdf.js read it in the browser                                      |
+| is_notation            | boolean not null default 0  | a score (PDF or image): listed on the Chart tab's notation view too            |
+| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file                                      |
+| thumbnail_pathname     | text null                   |                                                                                |
+| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`                                  |
+| uploaded_by            | text FK → user (set null)   |                                                                                |
+| created_at, updated_at | timestamp_ms                |                                                                                |
 
 ### song_notation
 

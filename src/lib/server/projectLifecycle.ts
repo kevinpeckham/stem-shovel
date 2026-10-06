@@ -4,7 +4,7 @@ import { db, schema } from "$lib/server/db";
 import type { ArchiveStatus } from "$lib/val/ArchiveStatusSchema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
-const { project, song, stem, demo, songPdf, songNotation } = schema;
+const { project, song, stem, demo, songFile, songNotation } = schema;
 
 /**
  * Archiving and deleting projects (src/lib/remote/projects.remote.ts). Any
@@ -12,7 +12,7 @@ const { project, song, stem, demo, songPdf, songNotation } = schema;
  * list for an "Archived" section and keeps its songs and files. Only an
  * owner or admin deletes, and only an archived project (archiving first is
  * the safety catch): that removes every song and every Blob file behind
- * them (stems, renditions, MIDI, demos, PDFs, notation files with their rendered PDFs, mixes), across both stores, then
+ * them (stems, renditions, MIDI, demos, attachments, notation files with their rendered PDFs, mixes), across both stores, then
  * the rows, children first (src/lib/server/cascade.ts: the database does
  * not run the schema's cascades).
  */
@@ -61,11 +61,11 @@ export async function deleteProject(
 				.from(demo)
 				.where(inArray(demo.songId, songIds))
 		: [];
-	const pdfs = songIds.length
+	const files = songIds.length
 		? await db
-				.select({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl })
-				.from(songPdf)
-				.where(inArray(songPdf.songId, songIds))
+				.select({ url: songFile.url, thumbnailUrl: songFile.thumbnailUrl })
+				.from(songFile)
+				.where(inArray(songFile.songId, songIds))
 		: [];
 	const notation = songIds.length
 		? await db
@@ -80,7 +80,7 @@ export async function deleteProject(
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
-		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
+		...files.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]),
 		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? "", n.pdfUrl ?? ""]),
 		...songs.map((s) => s.mixUrl ?? ""),
 		target.imageUrl ?? "",

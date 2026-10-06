@@ -1,5 +1,7 @@
 import { getSong, getUserNote, listArtists, listShareLinks } from "$lib/server/data";
 import { songWantsNotes } from "$lib/utils/songWantsNotes";
+import { linkMentions } from "$lib/utils/linkMentions";
+import { mentionTargets } from "$lib/utils/mentionTargets";
 import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
 import { scheduleNotes } from "$lib/server/jobs";
@@ -38,8 +40,16 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		canEdit ? listArtists(account.id) : [],
 		locals.user ? getUserNote(song.id, locals.user.id) : null,
 	]);
+	// `@Chart` in a document links to the attachment, notation file or demo of that name (docs/uploads-and-blob.md, "Mentions").
+	const targets = mentionTargets(song);
+	const docs = {
+		chart: linkMentions(view.docs.chart, targets),
+		lyrics: linkMentions(view.docs.lyrics, targets),
+		notes: linkMentions(view.docs.notes, targets),
+	};
 	return {
 		...view,
+		docs,
 		canEdit,
 		canComment: canCommentProject(song.project, who),
 		shareLinks,
@@ -48,6 +58,6 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		aiAvailable: canEdit && !noAi && aiAvailable(),
 		noAi,
 		/** The signed-in person's private note on this song ("mynotes"); null signed out or before the first save. */
-		myNote,
+		myNote: myNote && { ...myNote, html: linkMentions(myNote.html, targets) },
 	};
 };

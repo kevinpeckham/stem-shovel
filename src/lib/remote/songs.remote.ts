@@ -30,6 +30,7 @@ import {
 	reorderStems as reorder,
 	saveSongDoc,
 	saveUserNote,
+	songMentionSources,
 	setSongVersion as setVersion,
 	songForMix,
 	chartExamples,
@@ -57,6 +58,8 @@ import {
 } from "$lib/val/SongSchema";
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
+import { linkMentions } from "$lib/utils/linkMentions";
+import { mentionTargets } from "$lib/utils/mentionTargets";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
 import { MY_NOTES_KIND } from "$lib/val/SongDocKindSchema";
 import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
@@ -102,7 +105,9 @@ export const updateSong = form(
  * that has content is refused once (`needsConfirm`) so a second submit with
  * `confirmEmpty` is required. The kind "mynotes" is the caller's private note
  * on the song (song_user_note): anyone signed in who may view the song keeps
- * one, editor or not, and the save answers with its rendered `html` too.
+ * one, editor or not. Every kind answers with its rendered `html`, mentions
+ * linked (docs/uploads-and-blob.md, "Mentions"), so the page shows the
+ * saved text without a reload.
  */
 export const saveDoc = form(
 	SongDocSaveSchema,
@@ -116,7 +121,11 @@ export const saveDoc = form(
 				if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
 				invalid(issue.markdown(result.error));
 			}
-			return { version: result.version, changed: result.changed, html: result.html ?? "" };
+			return {
+				version: result.version,
+				changed: result.changed,
+				html: await withMentions(accountId, songId, result.html ?? ""),
+			};
 		}
 		const { accountId } = await memberOf(locals, accountOfSong, songId);
 		const result = await saveSongDoc(
@@ -131,9 +140,19 @@ export const saveDoc = form(
 			if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
 			invalid(issue.markdown(result.error));
 		}
-		return { version: result.version, changed: result.changed };
+		return {
+			version: result.version,
+			changed: result.changed,
+			html: await withMentions(accountId, songId, renderMarkdown(markdown)),
+		};
 	},
 );
+
+/** `@name` in a document's rendered HTML linked to the song's attachments, notation files and demos. */
+async function withMentions(accountId: string, songId: string, html: string) {
+	if (!html.includes("@")) return html;
+	return linkMentions(html, mentionTargets(await songMentionSources(accountId, songId)));
+}
 
 /** New song in a project; lands on its page. */
 export const createSong = form(SongCreateSchema, async ({ projectId, title }) => {

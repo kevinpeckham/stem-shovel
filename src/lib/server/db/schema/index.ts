@@ -35,7 +35,7 @@ export * from "./slugAlias";
 export * from "./song";
 export * from "./songCredit";
 export * from "./songDocVersion";
-export * from "./songPdf";
+export * from "./songFile";
 export * from "./songNotation";
 export * from "./songUserNote";
 export * from "./stem";

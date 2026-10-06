@@ -49,3 +49,58 @@ describe("fileSignatures", () => {
 		expect(startsLikeMusicXml(new Uint8Array(0))).toBe(false);
 	});
 });
+
+import { looksLikeText, startsLikeAudio, startsLikeImage, startsLikeMidi } from "./fileSignatures";
+
+describe("fileSignatures by attachment kind", () => {
+	it("knows PNG, JPEG, WebP and GIF as images", () => {
+		expect(startsLikeImage(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(
+			true,
+		);
+		expect(startsLikeImage(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0]))).toBe(true);
+		expect(
+			startsLikeImage(Uint8Array.from([...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WEBPVP8 ")])),
+		).toBe(true);
+		expect(startsLikeImage(ascii("GIF89a"))).toBe(true);
+		expect(startsLikeImage(ascii("%PDF-1.4"))).toBe(false);
+		expect(startsLikeImage(Uint8Array.from([...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WAVE")]))).toBe(
+			false,
+		);
+	});
+	it("knows the audio containers by their headers", () => {
+		expect(startsLikeAudio(ascii("ID3\x04"))).toBe(true);
+		expect(startsLikeAudio(Uint8Array.from([0xff, 0xfb, 0x90, 0x00]))).toBe(true);
+		expect(startsLikeAudio(Uint8Array.from([0xff, 0xf1, 0x50, 0x80]))).toBe(true);
+		expect(startsLikeAudio(Uint8Array.from([...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WAVE")]))).toBe(
+			true,
+		);
+		expect(startsLikeAudio(Uint8Array.from([0, 0, 0, 0x20, ...ascii("ftypM4A ")]))).toBe(true);
+		expect(startsLikeAudio(ascii("OggS"))).toBe(true);
+		expect(startsLikeAudio(ascii("fLaC"))).toBe(true);
+		expect(startsLikeAudio(Uint8Array.from([...ascii("FORM"), 0, 0, 0, 0, ...ascii("AIFF")]))).toBe(
+			true,
+		);
+		expect(startsLikeAudio(Uint8Array.from([...ascii("FORM"), 0, 0, 0, 0, ...ascii("AIFC")]))).toBe(
+			true,
+		);
+		expect(startsLikeAudio(Uint8Array.from([...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WEBP")]))).toBe(
+			false,
+		);
+		expect(startsLikeAudio(ascii("MThd"))).toBe(false);
+		expect(startsLikeAudio(Uint8Array.from([0xff]))).toBe(false);
+	});
+	it("knows a MIDI file by its header chunk", () => {
+		expect(startsLikeMidi(ascii("MThd\x00\x00\x00\x06"))).toBe(true);
+		expect(startsLikeMidi(ascii("MTrk"))).toBe(false);
+	});
+	it("calls valid UTF-8 without a NUL byte text", () => {
+		expect(looksLikeText(new TextEncoder().encode("# Notes\nchorus at 1:20 — été"))).toBe(true);
+		expect(looksLikeText(Uint8Array.from([0xef, 0xbb, 0xbf, ...ascii("bom")]))).toBe(true);
+		expect(looksLikeText(ascii("a\x00b"))).toBe(false);
+		expect(looksLikeText(Uint8Array.from([0xc3, 0x28]))).toBe(false);
+		expect(looksLikeText(new Uint8Array(0))).toBe(false);
+		// A multi-byte character cut at the 4 KB edge is not a fault of the text.
+		const long = new TextEncoder().encode("x".repeat(4095) + "é");
+		expect(looksLikeText(long)).toBe(true);
+	});
+});

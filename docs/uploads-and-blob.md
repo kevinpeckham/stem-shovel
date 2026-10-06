@@ -76,30 +76,50 @@ in three steps driven by `src/lib/upload.ts`:
   each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
   The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
   a plain `<audio>` element streaming from Blob).
-- **PDFs attached to a song** (`song_pdf`, 2026-10-05, Kevin: charts and
-  notation for the band). The demo's lifecycle: `POST /api/pdfs` reserves
-  the row (a `.pdf` name, a size under `PDF_MAX_BYTES`, the song's cap,
-  the account's storage room) at `accounts/<a>/songs/<s>/pdfs/<id>.pdf`;
-  the browser uploads with `application/pdf` as the only allowed type
-  (`/api/upload`'s PDF branch) while it renders the first page with
-  pdf.js (`utils/pdfThumbnail.ts`, pdfjs-dist and its worker imported on
-  first use, a 400 px WebP); `POST /api/pdfs/[id]/ready` (multipart: the
-  URL, the page count, the image) reads the file's first bytes from the
-  store and insists on `%PDF-` (`utils/fileSignatures.ts`; Replicator's
-  magic-byte check, without its headless browser), removing row and file
-  otherwise, checks the image's bytes the same way (WebP or PNG, under
-  400 KB) and stores it at `<id>.thumb-<stamp>.webp` in the song's store,
-  then marks the row ready. Each row carries a `share_code` (nanoid 16)
-  behind `/f/<code>`, which 302s to the file where it is now, presigned
-  for a private song, so the link is permanent across renames and
-  privacy moves (`relocate.ts` moves PDFs and thumbnails with the rest);
-  `/f/<code>?download=1` streams it instead (`readBlob`) as an attachment
-  under its original name (`utils/attachmentDisposition.ts`), since the
-  store's own `?download=1` names the file by its id and a cross-origin
-  `download` attribute is ignored. On the song page (2026-10-06, Kevin)
-  the PDFs are the Docs panel's fifth tab (`SongPdfPanel.svelte`): small
-  tiles with a ⋯ menu and a Share menu (copy link, `mailto:`), Upload at
-  the foot and in the panel's ⋯ menu; a tile opens the file in a
+- **Attachments: files attached to a song** (table `song_pdf`, 2026-10-05
+  as PDFs for Kevin's charts and notation, generalised on 2026-10-06 to
+  files of several kinds; the table keeps its first name, since a rename
+  would have meant a drizzle prompt and a data copy for nothing, and the
+  code calls it `songFile`, `song.files`). Each row has a `kind`
+  (`constants/fileFormats.ts`: `pdf`, `image` for png/jpg/jpeg/webp/gif,
+  `audio` for mp3/wav/m4a/aac/ogg/flac/aiff/aif, `text` for txt/md/markdown,
+  `midi` for mid/midi, `other` for the rest), decided by the filename's
+  extension (`fileKindOf`; rows from before the change are PDFs by the
+  column's default), which sets the ceiling (`FILE_MAX_BYTES`: PDF 25 MB,
+  image 15 MB, audio 60 MB, text and MIDI 2 MB, other 25 MB; forty files a
+  song, `MAX_FILES_PER_SONG`). The demo's lifecycle: `POST /api/files`
+  (`{ songId, filename, sizeBytes, notation? }`) reserves the row (the
+  kind's ceiling, the song's cap, the account's storage room) at
+  `accounts/<a>/songs/<s>/files/<id>.<ext>` (`filePathname`; the rows
+  from before live under `/pdfs/`, and `isFilePathname` knows both) and
+  answers `{ fileId, pathname, access, kind }`; the browser uploads under
+  the type its name says (`FILE_CONTENT_TYPE_OF`; `/api/upload`'s
+  attachment branch allows the usual labels for these kinds plus
+  `application/octet-stream`, `FILE_CONTENT_TYPES`, and caps by the
+  reserved row's kind), rendering a PDF's first page meanwhile with pdf.js
+  (`utils/pdfThumbnail.ts`, pdfjs-dist and its worker imported on first
+  use, a 400 px WebP); `POST /api/files/[id]/ready` (multipart: the URL,
+  an optional page count, an optional image) reads the file's first bytes
+  from the store and checks them against the kind
+  (`utils/fileSignatures.ts`: `%PDF-`; PNG, JPEG, WebP or GIF; an MP3,
+  WAV, M4A, AAC, OGG, FLAC or AIFF header; `MThd`; UTF-8 without a NUL
+  byte for text; nothing beyond its size for `other`), removing row and
+  file otherwise (a 415), checks the image's bytes the same way (WebP or
+  PNG, under 400 KB) and stores it at `<id>.thumb-<stamp>.webp` beside
+  the file, then marks the row ready; an image with no thumbnail is fine,
+  the page shows the image itself. Each row carries a `share_code`
+  (nanoid 16) behind `/f/<code>`, which 302s to the file where it is now,
+  presigned for a private song, so the link is permanent across renames
+  and privacy moves (`relocate.ts` moves attachments and thumbnails with
+  the rest); `/f/<code>?download=1` streams it instead (`readBlob`) as an
+  attachment under its original name and the type its name says
+  (`utils/attachmentDisposition.ts`), since the store's own `?download=1`
+  names the file by its id and a cross-origin `download` attribute is
+  ignored; `?download=pdf` is the same stream for a PDF and a 404 for
+  the other kinds. On the song page (2026-10-06, Kevin) the attachments
+  are the Docs panel's fifth tab (`SongFilesPanel.svelte`): small tiles
+  with a ⋯ menu and a Share menu (copy link, `mailto:`), Upload at the
+  foot and in the panel's ⋯ menu; a tile opens the file in a
   `FloatingPanel` viewer (an iframe of the store's URL, so the CSP's
   `frame-src` allows both stores; Download first in its header). The Docs
   panel is a `FloatingPanel` too: docked, floating from lg, or minimised
@@ -113,16 +133,40 @@ in three steps driven by `src/lib/upload.ts`:
   playback survive, and the button lights while it plays; the Docs panel
   spans both columns while the player is away. Lyrics is the Docs
   panel's first and default tab (Kevin).
-  Title and description are edited through `pdfs.remote.ts`, and so is
-  `is_notation` (2026-10-06): a PDF that is a score, flagged at the
-  reservation (`notation: true` in `POST /api/pdfs`'s body) or later
-  (`isNotation` in `updatePdf`), which the Chart tab's notation view
-  lists beside the notation files; the PDFs tab keeps it too. Removal and
-  the song and project cascades delete file and thumbnail; sizes count
-  toward the account's storage.
+  Title and description are edited through `files.remote.ts`
+  (`updateFile`), and so is `is_notation` (2026-10-06): a PDF or an image
+  that is a score, flagged at the reservation (`notation: true` in
+  `POST /api/files`'s body; ignored for the other kinds) or later
+  (`isNotation` in `updateFile`), which the Chart tab's notation view
+  lists beside the notation files; the Attachments tab keeps it too.
+  **Use as demo** (`useAsDemo({ id })`, audio kind only): a new `demo`
+  row of the song, labelled from the filename, the file copied in Blob
+  to the demo's pathname in the song's store (`createDemoFromFile`, the
+  shape of adding a recording to a song), ready at once with its MP3
+  rendition scheduled (`scheduleDemoPlayback`) and the project told, as
+  after a demo upload; the attachment stays; the demos cap applies.
+  Removal (`deleteFile`) and the song and project cascades delete file
+  and thumbnail; sizes count toward the account's storage.
+- **Mentions** (2026-10-06): in a song's documents (chart, lyrics, notes,
+  and a person's private note), `@` followed by the title of an
+  attachment or a notation file, or the label of a demo, is a link when
+  the document is shown: `<a class="mention" href="/f/<code>">@Title</a>`
+  (a demo links to `#demo-<id>` on the page). `utils/linkMentions.ts`
+  runs over the rendered, sanitised HTML in the song page's load
+  (`+page.server.ts`) and in `saveDoc`'s answer (so a freshly saved
+  document links without a reload), with the targets from
+  `utils/mentionTargets.ts` (ready files and notation by title or
+  filename, demos by label). It touches text only (never a tag, an
+  attribute or the inside of an existing `<a>`), matches labels
+  literally and case-insensitively, longest first, only where the label
+  ends at the end of the text, whitespace or punctuation, and only where
+  the `@` is not glued to a word (an e-mail address stays as it is); the
+  anchor is the only HTML it adds, its href and text escaped. The
+  markdown is untouched: a rename of the file changes what the mention
+  points at next time the page loads.
 - **Notation files attached to a song** (`song_notation`, 2026-10-06,
   Kevin: MusicXML scores for the band, compressed `.mxl` or plain
-  `.musicxml`/`.xml`). The PDF's lifecycle with its own names:
+  `.musicxml`/`.xml`). The attachment's lifecycle with its own names:
   `POST /api/notation` reserves the row (a name `notationFormatOf` knows,
   a size under `NOTATION_MAX_BYTES` (10 MB), the song's cap of
   `MAX_NOTATION_PER_SONG`, the account's storage room) at
@@ -138,16 +182,16 @@ in three steps driven by `src/lib/upload.ts`:
   `score-timewise` (`startsLikeZip`, `startsLikeMusicXml` in
   `utils/fileSignatures.ts`) — a sniff of the bytes, never an XML parse on
   the server — removing row and file otherwise, then checks and stores the
-  thumbnail at `<id>.thumb-<stamp>.webp` beside the file as a PDF's. The
+  thumbnail at `<id>.thumb-<stamp>.webp` beside the file as an attachment's. The
   browser does all the rendering: Verovio in a worker draws the score on
   the song page and renders the thumbnail at upload (`uploadNotationFile`
   in `src/lib/upload.ts` takes the thumbnail from an optional callback).
-  The same `share_code` behind `/f/<code>`, which looks a PDF up first and
+  The same `share_code` behind `/f/<code>`, which looks an attachment up first and
   a notation file second; `?download=1` streams it under its original name
   as `application/vnd.recordare.musicxml` (`.mxl`) or
   `application/vnd.recordare.musicxml+xml`. Title and description through
   `notation.remote.ts`; `relocate.ts`, the song and project cascades and
-  the storage sum treat the rows exactly as PDFs.
+  the storage sum treat the rows exactly as attachments.
   **The score as a PDF** (2026-10-06): once the row is ready, the ready
   route sets `pdf_status` to `pending` and posts a `notation-pdf` job
   (`scheduleNotationPdf` in `jobs.ts`; the payload is

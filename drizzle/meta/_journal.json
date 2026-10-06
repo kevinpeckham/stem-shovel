@@ -540,6 +540,13 @@
       "when": 1791289137798,
       "tag": "0076_song_user_note",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "6",
+      "when": 1791291775284,
+      "tag": "0077_song_file_kind",
+      "breakpoints": true
     }
   ]
 }

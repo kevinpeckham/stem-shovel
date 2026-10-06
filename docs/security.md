@@ -58,15 +58,26 @@ What protects what, and where each rule lives. The first security pass ran on
 - ffmpeg runs through `execFile` with argument arrays, never a shell; inputs
   are our own Blob files in a temp directory.
 
-- **PDFs** attached to songs are accepted by extension and size at the
-  reservation, by content type at the upload token, and by their first
-  bytes when the browser reports the upload done (`utils/fileSignatures.ts`):
-  a file that does not start `%PDF-` is deleted with its row. The
-  first-page thumbnail the browser sends is checked by its bytes too (WebP
-  or PNG) and capped at 400 KB. The permanent link `/f/<code>` is a
+- **Attachments** (files attached to songs: PDFs, images, audio, text,
+  MIDI, anything else) get a kind from their extension at the reservation,
+  which sets the size ceiling; the upload token allows the content types
+  browsers use for these kinds (the label is a claim, nothing is decided
+  by it); and when the browser reports the upload done the server reads the
+  stored file's first bytes and checks them against the kind
+  (`utils/fileSignatures.ts`): `%PDF-` for a PDF, a PNG, JPEG, WebP or GIF
+  header for an image, an MP3, WAV, M4A/AAC, OGG, FLAC or AIFF header for
+  audio, `MThd` for MIDI, and for text the first 4 KB decoding as UTF-8
+  without a NUL byte; the `other` kind is checked by size alone, since it
+  is never rendered, only downloaded. A file that fails is deleted with
+  its row. The thumbnail the browser sends is checked by its bytes too
+  (WebP or PNG) and capped at 400 KB. The permanent link `/f/<code>` is a
   16-character nanoid; it redirects to a presigned URL for a private song's
   file, so the code is the secret and the file is never served through our
-  function.
+  function; `?download=1` streams it as an attachment under the content
+  type its name says, never as HTML. **Mentions** (`@Title` in a document
+  linking to a file) are added after sanitising, on text nodes only, and
+  the anchor is the only HTML they introduce, its href and text escaped
+  (`utils/linkMentions.ts`).
 - **Notation files** (MusicXML) attached to songs follow the same three
   gates: extension and size (10 MB) at the reservation, content type at the
   upload token (the MusicXML types plus XML, zip and octet-stream, as
@@ -77,7 +88,7 @@ What protects what, and where each rule lives. The first security pass ran on
   parse: the server never parses untrusted XML (no entity expansion, no
   DTD fetches); Verovio renders the file in a worker in the browser. A file
   that fails the sniff is deleted with its row; the thumbnail is checked
-  and capped as a PDF's, and the permanent link works the same way. The
+  and capped as an attachment's, and the permanent link works the same way. The
   PDF the jobs function engraves from the file (Verovio in Node, the same
   engine the browser runs; `src/lib/server/notationPdf.ts`) is written
   beside the file in the same store and served through `/f/<code>?download=pdf`

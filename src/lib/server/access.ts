@@ -141,7 +141,7 @@ const {
 	songCredit,
 	artist,
 	artistMember,
-	songPdf,
+	songFile,
 	songNotation,
 } = schema;
 
@@ -218,9 +218,10 @@ async function accountOfStemPathname(pathname: string) {
 	return row?.accountId ?? null;
 }
 
-export async function accountOfPdf(pdfId: string) {
-	const row = await db.query.songPdf.findFirst({
-		where: eq(songPdf.id, pdfId),
+/** A file attached to a song (docs/uploads-and-blob.md, "Attachments"). */
+export async function accountOfFile(fileId: string) {
+	const row = await db.query.songFile.findFirst({
+		where: eq(songFile.id, fileId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
@@ -317,12 +318,12 @@ export async function accountOfUploadPathname(pathname: string) {
 		columns: { accountId: true },
 	});
 	if (row) return row.accountId;
-	// A PDF attached to a song (docs/uploads-and-blob.md, "PDFs").
-	const pdf = await db.query.songPdf.findFirst({
-		where: eq(songPdf.pathname, pathname),
+	// A file attached to a song (docs/uploads-and-blob.md, "Attachments").
+	const file = await db.query.songFile.findFirst({
+		where: eq(songFile.pathname, pathname),
 		columns: { accountId: true },
 	});
-	if (pdf) return pdf.accountId;
+	if (file) return file.accountId;
 	// A notation file attached to a song (docs/uploads-and-blob.md, "Notation files").
 	const notation = await db.query.songNotation.findFirst({
 		where: eq(songNotation.pathname, pathname),

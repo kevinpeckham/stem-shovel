@@ -8,8 +8,8 @@ import {
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
-	findUploadingPdf,
-	recordPdfUrl,
+	findUploadingFile,
+	recordFileUrl,
 	findUploadingNotation,
 	recordNotationUrl,
 	findUploadingRecording,
@@ -28,7 +28,7 @@ import {
 import {
 	blobAuth,
 	isDrumSamplePathname,
-	isPdfPathname,
+	isFilePathname,
 	isNotationPathname,
 	isRecordingPathname,
 	isSiteKitPathname,
@@ -38,7 +38,7 @@ import {
 import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
-import { PDF_MAX_BYTES } from "$lib/constants/pdfFormats";
+import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "$lib/constants/fileFormats";
 import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "$lib/constants/notationFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
@@ -110,16 +110,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const accountId = isRecordingPathname(pathname)
 					? await ownRecordingAccount(locals, pathname)
 					: (await memberOf(locals, accountOfUploadPathname, pathname)).accountId;
-				// A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): one type, its own ceiling.
-				if (isPdfPathname(pathname)) {
-					const pdf = await findUploadingPdf(accountId, pathname);
-					if (!pdf) throw new Error(`No reservation for "${pathname}"`);
+				// A file attached to a song (docs/uploads-and-blob.md, "Attachments"): the types browsers label these files with, the ceiling of the reserved row's kind; the bytes are checked at ready.
+				if (isFilePathname(pathname)) {
+					const file = await findUploadingFile(accountId, pathname);
+					if (!file) throw new Error(`No reservation for "${pathname}"`);
 					return {
-						allowedContentTypes: ["application/pdf"],
-						maximumSizeInBytes: PDF_MAX_BYTES,
+						allowedContentTypes: FILE_CONTENT_TYPES,
+						maximumSizeInBytes: FILE_MAX_BYTES[file.kind],
 						addRandomSuffix: false,
 						allowOverwrite: true,
-						tokenPayload: JSON.stringify({ id: pdf.id }),
+						tokenPayload: JSON.stringify({ id: file.id }),
 					};
 				}
 				// A notation file (docs/uploads-and-blob.md, "Notation files"): the types browsers call MusicXML, its own ceiling; the bytes are checked at ready.
@@ -164,7 +164,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (isDrumSamplePathname(blob.pathname)) await recordDrumSampleUrl(blob.pathname, blob.url);
 				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
-				else if (isPdfPathname(blob.pathname)) await recordPdfUrl(blob.pathname, blob.url);
+				else if (isFilePathname(blob.pathname)) await recordFileUrl(blob.pathname, blob.url);
 				else if (isNotationPathname(blob.pathname))
 					await recordNotationUrl(blob.pathname, blob.url);
 				else if (isRecordingPathname(blob.pathname))
