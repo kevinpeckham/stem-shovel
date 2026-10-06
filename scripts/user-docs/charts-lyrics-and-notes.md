@@ -9,7 +9,7 @@ The editor has two views of the same document:
 - **Rendered** is what you see on the song page. Select text for bold, italic and links; the ⋮ beside a block changes it to a heading, a list, a quote or a code block.
 - **Markdown** is the plain text behind it. Headings start with `#`, lists with `-`, and a fenced code block (three backticks) keeps spacing exactly as typed, which is the way to lay out a chord grid.
 
-Switching views never loses anything. **Undo** and **Redo** work across both, and so do the usual shortcuts.
+While you edit on the song page, the Rich Text / Markdown switch sits at the top right of the Docs panel. Switching views never loses anything. **Undo** and **Redo** work across both, and so do the usual shortcuts.
 
 ## Saving
 

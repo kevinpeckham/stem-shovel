@@ -465,7 +465,7 @@
 		{ id: "rendered", name: "Rich Text" },
 		{ id: "markdown", name: "Markdown" },
 	] as const;
-	/** The Docs panel's ⋯ menu: monospace and the editor's pane for a document, the chart's AI draft, the PDFs' upload; a placeholder when empty, so the toolbar never shifts. */
+	/** The Docs panel's ⋯ menu: monospace for a document, the chart's AI draft, the PDFs' upload; a placeholder when empty, so the toolbar never shifts. (The editor's pane is the toggle on the panel.) */
 	type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
 	let docsMenuItems = $derived.by((): MenuItems => {
 		const nothing: MenuItems = [
@@ -493,18 +493,6 @@
 				action: () => toggleDocMono(doc),
 			},
 		];
-		if (docEditing) {
-			items.push({ id: "views", kind: "divider" });
-			for (const v of DOC_VIEWS)
-				items.push({
-					id: `view-${v.id}`,
-					label: v.name,
-					iconClass: docView === v.id ? "i-ph-check" : "i-ph-check invisible",
-					action: () => {
-						docView = v.id;
-					},
-				});
-		}
 		if (panel === "chart" && data.aiAvailable) {
 			items.push({ id: "ai", kind: "divider" });
 			if (draftBusy || chordBusy) {
@@ -2638,6 +2626,33 @@
 					canEdit={data.canEdit}
 				/>
 			{:else}
+				{#if docEditing}
+					<!-- The editor's pane, a toggle stuck to the panel's top right while editing (Kevin). -->
+					<div
+						class="sticky top-0 z-10 flex items-start justify-end h-0 overflow-visible pointer-events-none"
+					>
+						<div
+							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
+							role="radiogroup"
+							aria-label="Editor view"
+						>
+							{#each DOC_VIEWS as v, index (v.id)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={docView === v.id}
+									class="{docView === v.id
+										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+									0
+										? 'rounded-r-none border-r-none'
+										: 'rounded-l-none'}"
+									onclick={() => (docView = v.id)}>{v.name}</button
+								>
+							{/each}
+						</div>
+					</div>
+				{/if}
 				{#key doc}
 					<SongDocPanel
 						bind:this={docPanel}

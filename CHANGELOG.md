@@ -12,6 +12,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The song page's player in a panel of its own** (Kevin): the stems or demos, with their tabs and the decode status in the header, dock in their column, pop out into a draggable, resizable panel from lg, or minimise to a Player button beside Docs in the action row, which brings it back as it was (remembered per browser, `stemshovel.song.player-mode`). A minimised player stays mounted (`keep` on `FloatingPanel`), so decoded stems and playback survive and the button lights while it plays; the Docs panel takes both columns while the player is away.
 - **Lyrics is the Docs panel's first and default tab** (Kevin), before Chart and Notes.
+- **Rich Text or Markdown as a toggle on the panel** (Kevin): while a document is edited, a two-way switch sticks to the Docs panel's top right in place of the ⋯ menu's two items.
 
 ## [0.105.1] - 2026-10-06
 
