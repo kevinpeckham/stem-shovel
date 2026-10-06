@@ -38,6 +38,8 @@
 		closable?: boolean;
 		/** Extra classes on the panel's root (`h-full` for a docked panel that fills its column). */
 		extraClass?: string;
+		/** Keep the panel mounted while closed, hidden rather than gone (the stem player: its decoded audio and playback survive a minimise). */
+		keep?: boolean;
 	}
 	let {
 		open,
@@ -51,6 +53,7 @@
 		floating = true,
 		closable = true,
 		extraClass = "",
+		keep = false,
 	}: Props = $props();
 
 	let x = $state(24);
@@ -159,9 +162,11 @@
 	};
 </script>
 
-{#if open}
+{#if open || keep}
 	<div
-		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {extraClass} {floating
+		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {extraClass} {open
+			? ''
+			: '!hidden'} {floating
 			? 'lg-fixed lg-z-[var(--fp-z)] lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
 			: ''}"
 		style:--fp-x="{x}px"

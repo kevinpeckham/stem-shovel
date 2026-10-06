@@ -106,7 +106,13 @@ in three steps driven by `src/lib/upload.ts`:
   to the action row's Docs button (`docsMode`, `stemshovel.song.docs-mode`),
   its tabs and ⋯ menu (a `ContextMenu`, so nothing is clipped by the
   panel's overflow) in the header; the player spans both columns while
-  the panel is away.
+  the panel is away. The player (stems or demos, their tabs in the
+  header) is a `FloatingPanel` the same way (`playerMode`,
+  `stemshovel.song.player-mode`, the Player button beside Docs), with
+  `keep` so a minimised player stays mounted, hidden: decoded stems and
+  playback survive, and the button lights while it plays; the Docs panel
+  spans both columns while the player is away. Lyrics is the Docs
+  panel's first and default tab (Kevin).
   Title and description are edited through `pdfs.remote.ts`; removal and
   the song and project cascades delete file and thumbnail; sizes count
   toward the account's storage.

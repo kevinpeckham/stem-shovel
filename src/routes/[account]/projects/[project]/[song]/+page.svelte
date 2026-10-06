@@ -305,7 +305,8 @@
 	}
 
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
-	const DOC_KINDS = ["chart", "lyrics", "notes"] as const;
+	// Lyrics first, the panel's default tab (Kevin, 2026-10-06).
+	const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
 	// The Docs panel also shows the comments and the PDFs; neither is a document.
 	const PANELS = [...DOC_KINDS, "comments", "pdfs"] as const;
@@ -322,7 +323,7 @@
 		docEditing = false;
 		panel = kind;
 	}
-	let panel = $state<Panel>("chart");
+	let panel = $state<Panel>("lyrics");
 	let showing = $derived(panel === "comments" || panel === "pdfs" ? null : panel);
 
 	/**
@@ -351,6 +352,27 @@
 	}
 	function toggleDocs() {
 		void setDocsMode(docsMode === "minimised" ? docsRestore : "minimised");
+	}
+	/**
+	 * The player (the stems or the demos, with their tabs) the same way (Kevin):
+	 * docked, floating from lg, or minimised to the action row's Player button,
+	 * the panel kept mounted so decoded stems and playback survive; the button
+	 * lights while it plays minimised. Remembered per browser.
+	 */
+	let playerMode = $state<DocsMode>("docked");
+	let playerRestore: Exclude<DocsMode, "minimised"> = "docked";
+	const PLAYER_MODE_KEY = "stemshovel.song.player-mode";
+	function setPlayerMode(mode: DocsMode) {
+		if (mode === "minimised" && playerMode !== "minimised") playerRestore = playerMode;
+		playerMode = mode;
+		try {
+			localStorage.setItem(PLAYER_MODE_KEY, mode);
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	function togglePlayer() {
+		setPlayerMode(playerMode === "minimised" ? playerRestore : "minimised");
 	}
 	/** The PDFs tab's picker, from the Uploads menu: the panel back if minimised, the tab shown, then the picker. */
 	async function pickPdfs() {
@@ -411,7 +433,7 @@
 			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
 		}
 	}
-	let doc = $derived(showing ?? "chart");
+	let doc = $derived(showing ?? "lyrics");
 	// In-panel editing (SongDocPanel): whether the shown document is open for editing.
 	// The panel autosaves; closing goes through its close(), which flushes first.
 	let docEditing = $state(false);
@@ -423,6 +445,8 @@
 		try {
 			const mode = localStorage.getItem(DOCS_MODE_KEY);
 			if (mode === "docked" || mode === "floating" || mode === "minimised") docsMode = mode;
+			const pm = localStorage.getItem(PLAYER_MODE_KEY);
+			if (pm === "docked" || pm === "floating" || pm === "minimised") playerMode = pm;
 		} catch {
 			// Private mode: docked.
 		}
@@ -529,7 +553,7 @@
 		notes: data.song.notesVersion,
 	});
 	// Start on the first document with content.
-	panel = untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "chart");
+	panel = untrack(() => DOC_KINDS.find((k) => data.docs[k]) ?? "lyrics");
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 	let uploadJobs = $state<UploadJob[]>([]);
@@ -2145,134 +2169,162 @@
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
 	<section
-		class="grid grid-cols-1 place-content-start min-h-560px {docsMode === 'docked'
-			? ''
+		class="grid grid-cols-1 place-content-start gap-y-5 {docsMode === 'docked' &&
+		playerMode === 'docked'
+			? 'min-h-560px'
 			: 'xl:col-span-2'}"
 		aria-label="Player"
 	>
 		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
-		     The tabs always show (the Demos view holds Record Demo for a song without demos), level with the documents' tool bar at xl. -->
-		<div class="mb-3 flex items-center gap-3">
-			<div
-				class="flex items-center overflow-hidden rounded border border-white/15"
-				role="tablist"
-				aria-label="Player view"
-			>
-				{#each PLAYER_VIEWS as view, index (view)}
-					<button
-						type="button"
-						role="tab"
-						aria-selected={playerView === view}
-						class="{playerView === view
-							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
-							? 'rounded-r-none border-r-none'
-							: 'rounded-l-none'}"
-						onclick={() => showView(view)}
-						>{view === "stems"
-							? `Stems (${data.manifest.stems.length})`
-							: `Demos (${readyDemos.length})`}</button
-					>
-				{/each}
-			</div>
-			{#if playerView === "stems" && playerEngine}
-				<!-- The player's status, as plain text at the row's end (the player's own box is hidden). -->
-				<span class="ml-auto text-13px opacity-70" aria-live="polite">
-					{#if playerEngine.status === "loading"}
-						Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
-					{:else if playerEngine.status === "ready"}
-						{data.manifest.stems.length}
-						{data.manifest.stems.length === 1 ? "stem" : "stems"}, {formatBytes(
-							playerEngine.decodedBytes,
-						)} decoded <span class="i-ph-check text-green-300 align-[-2px]"></span>
-					{/if}
-				</span>
-			{/if}
-		</div>
-		{#if playerView === "demos"}
-			<div class="mb-5">
-				<DemoPanel
-					bind:this={demoPanel}
-					demos={readyDemos}
-					minHeight={Math.max(560, stemBoxHeight)}
-				/>
-			</div>
-		{:else if data.manifest.stems.length > 0}
-			<div class="mb-5" bind:clientHeight={stemBoxHeight}>
-				<StemPlayer
-					manifest={data.manifest}
-					showStatus={false}
-					{stemMenu}
-					{stemBadge}
-					{midiViews}
-					sections={data.song.sections}
-					changes={data.song.changes}
-					startAt={data.song.startAt}
-					endAt={data.song.endAt}
-					fps={data.song.frameRate}
-					onengine={(e) => (playerEngine = e)}
-					onstemcontext={onStemContext}
-					{afterRows}
-					songId={data.song.id}
-					onreorder={data.canEdit ? saveStemOrder : undefined}
-					bind:this={player}
+		     The tabs always show (the Demos view holds Record Demo for a song without demos), in the panel's header.
+		     The panel docks here, floats from lg, or is minimised to the action row's Player button (playerMode), kept mounted. -->
+		<FloatingPanel
+			open={playerMode !== "minimised"}
+			floating={playerMode === "floating"}
+			keep={true}
+			title="Player"
+			storageKey="stemshovel.song.player-panel"
+			width={900}
+			height={760}
+			onminimise={() => setPlayerMode("minimised")}
+		>
+			{#snippet controls()}
+				<div
+					class="flex items-center overflow-hidden rounded border border-white/15"
+					role="tablist"
+					aria-label="Player view"
 				>
-					{#snippet errorHint()}
-						A stem's file is missing from the Blob store. Remove it from its menu and upload it
-						again.
-					{/snippet}
-				</StemPlayer>
-			</div>
-		{:else}
-			<!-- The player's box, empty: the page keeps its shape before the first stem arrives. -->
-			<div
-				class="mb-5 grid min-h-560px place-content-center rounded-md border border-current/40 bg-blue/5 px-4 py-3 text-center"
-			>
-				<p class="text-sm text-dim">No stems yet.</p>
-				{#if data.canEdit}
-					<p class="mt-1 text-sm opacity-80">
-						Upload stems, start with a demo recording of the idea, or record one now.
-					</p>
-					<div class="mt-4 flex flex-wrap items-center justify-center gap-3">
-						<StemUploader
-							songId={data.song.id}
-							stemCount={data.song.stems.length}
-							bind:jobs={uploadJobs}
-							bind:notice={uploadNotice}
-							onuploaded={() => (versionOffer = true)}
-							onanalysis={applyDetection}
-							label="Upload stems"
-							class="inline-flex items-center gap-2"
-						/>
-						<label
-							class="button button-sm inline-flex cursor-pointer items-center gap-2 {demoBusy
-								? 'pointer-events-none opacity-50'
-								: ''}"
-							title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+					{#each PLAYER_VIEWS as view, index (view)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={playerView === view}
+							class="{playerView === view
+								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+							0
+								? 'rounded-r-none border-r-none'
+								: 'rounded-l-none'}"
+							onclick={() => showView(view)}
+							>{view === "stems"
+								? `Stems (${data.manifest.stems.length})`
+								: `Demos (${readyDemos.length})`}</button
 						>
-							<span class="i-ph-microphone" aria-hidden="true"></span>
-							{demoBusy ? "Uploading…" : "Upload a demo"}
-							<input
-								class="sr-only"
-								type="file"
-								accept={DEMO_ACCEPT}
-								multiple
-								disabled={demoBusy}
-								onchange={(e) => uploadDemos(e.currentTarget)}
-							/>
-						</label>
-						<a
-							class="button button-sm inline-flex items-center gap-2"
-							href="/ideas/recorder?song={data.song.id}"
-							title="Idea recorder: record a riff, a melody or a demo for this song"
-						>
-							<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
-							Record a demo
-						</a>
-					</div>
+					{/each}
+				</div>
+				{#if playerView === "stems" && playerEngine}
+					<!-- The player's status, as plain text in the header (the player's own box is hidden). -->
+					<span class="hidden sm:inline text-13px opacity-70" aria-live="polite">
+						{#if playerEngine.status === "loading"}
+							Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
+						{:else if playerEngine.status === "ready"}
+							{data.manifest.stems.length}
+							{data.manifest.stems.length === 1 ? "stem" : "stems"}, {formatBytes(
+								playerEngine.decodedBytes,
+							)} decoded <span class="i-ph-check text-green-300 align-[-2px]"></span>
+						{/if}
+					</span>
 				{/if}
-			</div>
-		{/if}
+				<button
+					class="button button-xs hidden lg-inline-flex"
+					type="button"
+					title={playerMode === "floating"
+						? "Put the player back in its column"
+						: "Pop the player out into a panel"}
+					aria-label={playerMode === "floating" ? "Dock the player" : "Pop out the player"}
+					onclick={() => setPlayerMode(playerMode === "floating" ? "docked" : "floating")}
+				>
+					<span
+						class={playerMode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+						aria-hidden="true"
+					></span>
+				</button>
+			{/snippet}
+			{#if playerView === "demos"}
+				<div>
+					<DemoPanel
+						bind:this={demoPanel}
+						demos={readyDemos}
+						minHeight={Math.max(560, stemBoxHeight)}
+					/>
+				</div>
+			{:else if data.manifest.stems.length > 0}
+				<div bind:clientHeight={stemBoxHeight}>
+					<StemPlayer
+						manifest={data.manifest}
+						showStatus={false}
+						{stemMenu}
+						{stemBadge}
+						{midiViews}
+						sections={data.song.sections}
+						changes={data.song.changes}
+						startAt={data.song.startAt}
+						endAt={data.song.endAt}
+						fps={data.song.frameRate}
+						onengine={(e) => (playerEngine = e)}
+						onstemcontext={onStemContext}
+						{afterRows}
+						songId={data.song.id}
+						onreorder={data.canEdit ? saveStemOrder : undefined}
+						bind:this={player}
+					>
+						{#snippet errorHint()}
+							A stem's file is missing from the Blob store. Remove it from its menu and upload it
+							again.
+						{/snippet}
+					</StemPlayer>
+				</div>
+			{:else}
+				<!-- The player's box, empty: the page keeps its shape before the first stem arrives. -->
+				<div
+					class="grid min-h-560px place-content-center rounded-md border border-current/40 bg-blue/5 px-4 py-3 text-center"
+				>
+					<p class="text-sm text-dim">No stems yet.</p>
+					{#if data.canEdit}
+						<p class="mt-1 text-sm opacity-80">
+							Upload stems, start with a demo recording of the idea, or record one now.
+						</p>
+						<div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+							<StemUploader
+								songId={data.song.id}
+								stemCount={data.song.stems.length}
+								bind:jobs={uploadJobs}
+								bind:notice={uploadNotice}
+								onuploaded={() => (versionOffer = true)}
+								onanalysis={applyDetection}
+								label="Upload stems"
+								class="inline-flex items-center gap-2"
+							/>
+							<label
+								class="button button-sm inline-flex cursor-pointer items-center gap-2 {demoBusy
+									? 'pointer-events-none opacity-50'
+									: ''}"
+								title="Phone memos, rough takes, the original idea ({DEMO_FORMAT_LIST})"
+							>
+								<span class="i-ph-microphone" aria-hidden="true"></span>
+								{demoBusy ? "Uploading…" : "Upload a demo"}
+								<input
+									class="sr-only"
+									type="file"
+									accept={DEMO_ACCEPT}
+									multiple
+									disabled={demoBusy}
+									onchange={(e) => uploadDemos(e.currentTarget)}
+								/>
+							</label>
+							<a
+								class="button button-sm inline-flex items-center gap-2"
+								href="/ideas/recorder?song={data.song.id}"
+								title="Idea recorder: record a riff, a melody or a demo for this song"
+							>
+								<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
+								Record a demo
+							</a>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</FloatingPanel>
 
 		{@render actionButtons?.(playerEngine ?? undefined)}
 
@@ -2388,7 +2440,7 @@
 	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimised to the action row's Docs button (docsMode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
 	<section
 		class="{docsMode === 'docked'
-			? 'h-full min-h-560px'
+			? `h-full min-h-560px ${playerMode === 'docked' ? '' : 'xl:col-span-2'}`
 			: docsMode === 'floating'
 				? 'xl:col-span-2 xl:h-0 xl:min-h-0'
 				: 'hidden'} max-w-full"
@@ -2818,9 +2870,28 @@
 		{#if demoNotice}
 			<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
 		{/if}
-		<!-- The Docs panel: minimised to this button and back the way it was (Kevin, as the recorder's Ideas button). -->
+		<!-- The Player and Docs panels: minimised to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimised. -->
 		<button
-			class="button button-sm ml-auto {docsMode === 'minimised'
+			class="button button-sm ml-auto {playerMode === 'minimised'
+				? engine?.playing
+					? 'text-accent'
+					: ''
+				: 'bg-accent text-oxford border-accent opacity-100'}"
+			type="button"
+			aria-pressed={playerMode !== "minimised"}
+			title={playerMode === "minimised"
+				? engine?.playing
+					? "The player is playing; show it"
+					: "Show the player"
+				: "Minimise the player"}
+			aria-label={playerMode === "minimised" ? "Show the player" : "Minimise the player"}
+			onclick={togglePlayer}
+		>
+			<span class="i-ph-waveform" aria-hidden="true"></span>
+			Player
+		</button>
+		<button
+			class="button button-sm {docsMode === 'minimised'
 				? ''
 				: 'bg-accent text-oxford border-accent opacity-100'}"
 			type="button"
