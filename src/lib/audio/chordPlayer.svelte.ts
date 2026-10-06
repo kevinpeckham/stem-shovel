@@ -70,6 +70,16 @@ function read(name: string): string | null {
 		return null;
 	}
 }
+/** Whether this browser has any chord player setting saved: a first visit has none, and loads the first preset (Kevin). */
+export function hasSavedChordSettings(): boolean {
+	try {
+		for (let i = 0; i < localStorage.length; i++)
+			if (localStorage.key(i)?.startsWith(KEY)) return true;
+	} catch {
+		// Private mode: nothing saved, nothing to find.
+	}
+	return false;
+}
 function write(name: string, value: string) {
 	try {
 		localStorage.setItem(KEY + name, value);

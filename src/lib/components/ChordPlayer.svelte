@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
-	import { onDestroy, type Snippet } from "svelte";
+	import { onDestroy, onMount, type Snippet } from "svelte";
 	import {
 		ARP_PATTERNS,
 		ARP_RATES,
 		chordPlayer,
+		hasSavedChordSettings,
 		type ArpPattern,
 		type ArpRate,
 	} from "$lib/audio/chordPlayer.svelte";
@@ -242,6 +243,11 @@
 		if (preset.data.chords) chordPlayer.applyPresetSettings(preset.data.chords);
 		loaded = { name: preset.name, data: preset.data };
 	}
+	// A first visit, nothing of the chord player saved in this browser: the first preset is the starting point (Kevin).
+	onMount(() => {
+		const first = slots[0];
+		if (first && !hasSavedChordSettings()) loadPreset(first);
+	});
 
 	// ---- the wedges ----
 	const pressed = $derived(new Set(chordPlayer.sounding.map((s) => s.wedge)));

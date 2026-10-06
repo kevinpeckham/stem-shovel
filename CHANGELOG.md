@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The chord player starts from the first preset** (Kevin): on a first visit, with nothing of the chord player saved in this browser, preset 1 loads (`hasSavedChordSettings`); a browser with settings keeps them.
+
 ### Fixed
 
 - **A preset without a sustain lock setting unlocks the pedal** (Kevin): presets saved before the lock was kept applied over a locked pedal and left it locked; now absent means not locked.
