@@ -307,7 +307,8 @@ are unchanged), `resolvePianoSlots` and the browser overrides too.
 saves the sound playing onto a button, puts any library preset on one (a
 select per button), renames, clears, with the site's defaults for a
 system admin; the link to the piano page is gone. A sustain pad joins the
-7 pad; from @xl both are round pads in the box's free corners (the arch's
+7 pad (held, the pedal; a double tap on it or on the space bar locks the
+pedal down, `sustainLocked`, until the next double tap or Escape); from @xl both are round pads in the box's free corners (the arch's
 top corners, the bowl's bottom ones), a hand each. The arch is the default
 layout, and the wedges' names come from `chordPlayer.wedgeLabels` (the
 style's chord per degree with the 7 pad folded in), long names shrinking

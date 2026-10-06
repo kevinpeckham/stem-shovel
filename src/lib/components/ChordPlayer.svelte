@@ -360,18 +360,21 @@
 		// Off with one click is off, latch and all (Kevin: the padlock stayed).
 		if (!on && chordPlayer.arpLatch) chordPlayer.setArpLatch(false);
 	}
-	/** The sustain pad: the pedal down while it is held, for a tablet with no space bar (Kevin); a double tap locks it down until the next double tap (or Esc). */
+	/** The sustain pad, for a tablet with no space bar, and the space bar (Kevin): the pedal down while either is held; a double tap on either locks it down until the next double tap (or Esc). */
 	let sustainLocked = $state(false);
 	let sustainTapAt = 0;
-	function sustainDown(e: PointerEvent) {
-		e.preventDefault();
-		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	function sustainPress() {
 		const now = performance.now();
 		if (now - sustainTapAt < 400) {
 			sustainLocked = !sustainLocked;
 			sustainTapAt = 0;
 		} else sustainTapAt = now;
 		chordPiano.setSustain(true);
+	}
+	function sustainDown(e: PointerEvent) {
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		sustainPress();
 	}
 	function sustainUp() {
 		if (!sustainLocked) chordPiano.setSustain(false);
@@ -391,7 +394,7 @@
 		}
 		if (e.code === "Space") {
 			e.preventDefault();
-			chordPiano.setSustain(true);
+			if (!e.repeat) sustainPress();
 			return;
 		}
 		if (e.code === "Escape") {
@@ -813,7 +816,7 @@
 				: 'hidden @xl-flex'} flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
 			aria-label="Keyboard shortcuts"
 		>
-			<span><kbd>Space</kbd> sustain</span>
+			<span><kbd>Space</kbd> sustain, twice to lock</span>
 			<span><kbd>Shift</kbd> seventh</span>
 			<span><kbd>Esc</kbd> all off</span>
 			<span><kbd>←</kbd><kbd>→</kbd> key</span>
