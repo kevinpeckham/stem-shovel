@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Attachments' links are short by default** (Kevin): Copy link on an attachment or score tile, and in the viewer's header, copies the permanent link in its short form (shvl.me), the permanent link itself when no code can be had; emails and mentions keep the permanent link.
+- **Share on the piano's face** (Kevin): a Share button in the More row from the wide width, and a Share section of the settings menu on a phone, copying the short link to the sound as it stands; the presets' manage menu keeps its links to saved presets.
+
 ## [0.109.1] - 2026-10-06
 
 ### Changed

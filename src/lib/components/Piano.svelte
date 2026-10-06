@@ -921,6 +921,20 @@
 						</button>
 					</div>
 
+					<!-- share (Kevin): a short link that opens the piano with this sound, as the chord player's Share -->
+					<div class="hidden @4xl-block @4xl-w-32px">
+						<div class="device-button-group-label text-dark sr-only">Share</div>
+						<button
+							class="device-button-xs"
+							type="button"
+							aria-label="Share"
+							title="Copy a link that opens the piano with this sound: the instrument, its effects and settings"
+							onclick={() => void copyLink()}
+						>
+							<span class="i-ph-share-network text-14px" aria-hidden="true"></span>
+						</button>
+					</div>
+
 					<!-- metronome (docs/piano.md, "Metronome"): the page's, in a menu -->
 					{#if withMetronome}
 						<div class="hidden @4xl-block @4xl-w-32px">
@@ -1090,6 +1104,21 @@
 		</button>
 	{/snippet}
 
+	{#snippet shareMenuBlock()}
+		<div class="px-3 pt-3 pb-1 grid gap-3 text-light">
+			<button
+				class="device-button-sm bg-slate-800 border justify-self-start"
+				type="button"
+				onclick={() => void copyLink()}
+			>
+				<span class="i-ph-share-network" aria-hidden="true"></span>
+				Copy link
+			</button>
+			<p class="text-12px opacity-70">
+				A short link that opens the piano with this sound: the instrument, its effects and settings.
+			</p>
+		</div>
+	{/snippet}
 	{#snippet hiresButtonMenuBlock()}
 		<div class="px-3 pt-3 grid grid-cols-2 w-full text-blue-100/90">
 			{@render hiresButton("device-button-sm bg-slate-800 border")}
@@ -1249,6 +1278,7 @@
 			<div class="contents">{@render section("Fidelity", hiresButtonMenuBlock)}</div>
 			<div class="contents">{@render section("Midi", midiButtonMenuBlock)}</div>
 			<div class="contents">{@render section("Scale Guides", scaleGuidesMenuBlock)}</div>
+			<div class="contents">{@render section("Share", shareMenuBlock)}</div>
 		</div>
 	{/snippet}
 

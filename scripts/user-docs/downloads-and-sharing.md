@@ -39,4 +39,4 @@ A song's **Downloads** menu has **Song Documentation (PDF)**: its lyrics, chart 
 
 ## Short links
 
-The links the instruments copy, a chord player set-up, a drum machine beat, a piano preset, are short ones on **shvl.me** that open the full address, so they paste cleanly into a message. Anyone can make one, signed in or not; links made signed out expire after ninety days, links made signed in do not. Song and project share links already have their own short form.
+The links the instruments copy, a chord player set-up, a drum machine beat, a piano preset, are short ones on **shvl.me** that open the full address, so they paste cleanly into a message. Anyone can make one, signed in or not; links made signed out expire after ninety days, links made signed in do not. Copy link on an attachment or a score copies its permanent link in the short form too; the permanent link stays behind it, so the short one keeps working through renames. Song and project share links already have their own short form.

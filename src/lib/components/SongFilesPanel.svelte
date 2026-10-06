@@ -17,6 +17,7 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import { postJson, uploadFile, type FileReservation } from "$lib/upload";
+	import { shortenShareLink } from "$lib/utils/shortenShareLink";
 
 	/**
 	 * The files attached to a song (docs/uploads-and-blob.md, "Attachments"),
@@ -241,6 +242,10 @@
 	/** The permanent link's download switch: the file streamed as an attachment under its own name (`/f/[code]`). */
 	const downloadUrl = (code: string) => `/f/${code}?download=1`;
 	const linkOf = (code: string) => `${page.url.origin}/f/${code}`;
+	/** Copy link: the permanent link in its short form by default (Kevin), the permanent one itself when no code can be had. */
+	async function copyShort(code: string) {
+		await copy(await shortenShareLink(linkOf(code), "other"), "Link copied");
+	}
 	async function copy(text: string, said: string) {
 		try {
 			await navigator.clipboard.writeText(text);
@@ -578,7 +583,7 @@
 										label: "Copy link",
 										iconClass: "i-ph-link",
 										title: "A permanent link to this file",
-										action: () => copy(linkOf(f.shareCode), "Link copied"),
+										action: () => copyShort(f.shareCode),
 									},
 									{
 										id: "mention",
@@ -638,7 +643,7 @@
 					type="button"
 					title="Copy a permanent link to this file"
 					aria-label="Copy a link to {nameOf(viewing)}"
-					onclick={() => viewing && copy(linkOf(viewing.shareCode), "Link copied")}
+					onclick={() => viewing && copyShort(viewing.shareCode)}
 				>
 					<span class="i-ph-link" aria-hidden="true"></span>
 				</button>

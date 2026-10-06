@@ -33,3 +33,5 @@ The presets are one library for every instrument on the piano engine: a sound sa
 Plug a MIDI keyboard or pad in and press **Enable MIDI Control** in the MIDI section of the settings menu: the browser asks once, and from then on the controller plays the piano, with its velocity and its sustain pedal. This works in Chrome and Edge; other browsers do not offer MIDI to web pages yet.
 
 The Grand Piano is the [Salamander Grand Piano](https://github.com/sfzinstruments/SalamanderGrandPiano), Alexander Holm's recordings of a Yamaha C5, shared under the Creative Commons Attribution 3.0 license, in the subset published by Tone.js. Thank you.
+
+**Share**, in the More row (a Share section of the settings menu on a phone), copies a short link on shvl.me that opens the piano with this sound: the instrument, its effects and settings. The presets' manage menu copies a link to any saved preset too.

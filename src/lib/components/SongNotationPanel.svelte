@@ -20,6 +20,7 @@
 	import { notationThumbnail } from "$lib/utils/notationThumbnail";
 	import { renderNotation } from "$lib/utils/renderNotation";
 	import { sanitizeSvg } from "$lib/utils/sanitizeSvg";
+	import { shortenShareLink } from "$lib/utils/shortenShareLink";
 	import {
 		postJson,
 		uploadFile,
@@ -219,7 +220,8 @@
 		`/f/${t.row.shareCode}?download=${pdf && t.kind === "xml" ? "pdf" : "1"}`;
 	const linkOf = (t: Tile) => `${page.url.origin}/f/${t.row.shareCode}`;
 	async function copyLink(t: Tile) {
-		const url = linkOf(t);
+		// The permanent link in its short form by default (Kevin); the permanent one when no code can be had.
+		const url = await shortenShareLink(linkOf(t), "other");
 		try {
 			await navigator.clipboard.writeText(url);
 			notify("Link copied");
