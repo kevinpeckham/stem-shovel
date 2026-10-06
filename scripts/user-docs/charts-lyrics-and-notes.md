@@ -35,3 +35,7 @@ From Dorico: File › Export › MusicXML, one flow per file, exporting layouts 
 ## Your own notes
 
 Signed in, the Notes tab has a **Project / Mine** switch at its top right. Project is the note everyone on the project reads and editors write. Mine is your own notepad for the song: a practice list, a reminder, a part you are working out. Nobody else sees it, it is edited and saved the same way, and anyone who can open the song can keep one.
+
+## Earlier versions
+
+Every save that changes a chart, the lyrics, the notes or your own note keeps the text it replaced, ten versions at most. **History** in the panel's ⋯ menu lists them with who saved them and when; View shows one, and Restore makes it the current text again (the text it replaces is kept too). An edited comment's **edited** badge opens its earlier versions the same way, for its author or an admin to restore.

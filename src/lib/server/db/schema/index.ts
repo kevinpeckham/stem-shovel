@@ -11,6 +11,7 @@ export * from "./authAccount";
 export * from "./bugReport";
 export * from "./bugReportVote";
 export * from "./comment";
+export * from "./commentVersion";
 export * from "./demo";
 export * from "./drumKit";
 export * from "./drumSample";

@@ -55,7 +55,7 @@ export const updateComment = form(
 		if (own.userId !== user.id) error(403, "Only the author can edit a comment");
 		const at = await resolvePosition(own.songId, position);
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
-		await update(id, { title, body, at });
+		await update(id, { title, body, at }, user.id);
 		return { id };
 	},
 );

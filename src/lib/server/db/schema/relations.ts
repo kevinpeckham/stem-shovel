@@ -11,6 +11,7 @@ import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
 import { bugReportVote } from "./bugReportVote";
 import { comment } from "./comment";
+import { commentVersion } from "./commentVersion";
 import { demo } from "./demo";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
@@ -171,9 +172,15 @@ export const songCreditRelations = relations(songCredit, ({ one }) => ({
 	artist: one(artist, { fields: [songCredit.artistId], references: [artist.id] }),
 }));
 
-export const commentRelations = relations(comment, ({ one }) => ({
+export const commentRelations = relations(comment, ({ one, many }) => ({
 	song: one(song, { fields: [comment.songId], references: [song.id] }),
 	author: one(user, { fields: [comment.userId], references: [user.id] }),
+	versions: many(commentVersion),
+}));
+
+export const commentVersionRelations = relations(commentVersion, ({ one }) => ({
+	comment: one(comment, { fields: [commentVersion.commentId], references: [comment.id] }),
+	editor: one(user, { fields: [commentVersion.editedBy], references: [user.id] }),
 }));
 
 export const ideaRelations = relations(idea, ({ one, many }) => ({
@@ -244,6 +251,8 @@ export const userDocVersionRelations = relations(userDocVersion, ({ one }) => ({
 export const songDocVersionRelations = relations(songDocVersion, ({ one }) => ({
 	song: one(song, { fields: [songDocVersion.songId], references: [song.id] }),
 	author: one(user, { fields: [songDocVersion.createdBy], references: [user.id] }),
+	/** The owner of a "mynotes" revision; the shared documents have none. */
+	owner: one(user, { fields: [songDocVersion.userId], references: [user.id] }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

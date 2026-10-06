@@ -24,8 +24,11 @@
 		demos: PanelDemo[];
 		/** At least this tall (the stem player's box, so the page keeps its shape across the toggle). */
 		minHeight?: number;
+		/** An editor may remove a demo from its row's menu (Kevin: there was no way on a song with stems). */
+		canEdit?: boolean;
+		onremove?: (demo: PanelDemo) => Promise<void> | void;
 	}
-	let { demos, minHeight = 0 }: Props = $props();
+	let { demos, minHeight = 0, canEdit = false, onremove }: Props = $props();
 
 	let current = $state<string | null>(null);
 	let paused = $state(true);
@@ -234,6 +237,20 @@
 									? "original"
 									: "file"}
 							</button>
+							{#if canEdit && onremove}
+								<button
+									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
+									type="button"
+									role="menuitem"
+									title="Remove this demo from the song; the file is deleted"
+									onclick={() => {
+										if (current === d.id) pause();
+										void onremove(d);
+									}}
+								>
+									<span class="i-ph-trash" aria-hidden="true"></span>Remove demo
+								</button>
+							{/if}
 						</div>
 					</details>
 				</li>

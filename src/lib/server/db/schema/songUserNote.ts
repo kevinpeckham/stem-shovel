@@ -10,7 +10,8 @@ import { user } from "./user";
  * song page): markdown and its sanitised rendering, one row per user and
  * song. Only its author ever reads it (data.getUserNote takes the user id);
  * it is never listed, exported or shared. Saved like the shared documents
- * (data.saveUserNote): the version counts saves, but there is no history.
+ * (data.saveUserNote): the version counts saves, and each change also goes
+ * to song_doc_version as a "mynotes" revision carrying the owner's user id.
  */
 export const songUserNote = table(
 	"song_user_note",

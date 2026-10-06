@@ -72,6 +72,7 @@
 			return;
 		}
 		if (mode === "demos" && songs.some((s) => s.id === id)) chosen = "mixes";
+		else if (mode === "mixes" && demos.some((d) => d.id === id)) chosen = "demos";
 		// Swapping `src` fires a pause event that flips the bound state, so start
 		// the new track explicitly once the element has it.
 		current = id;

@@ -174,11 +174,17 @@ erDiagram
   one song without an account. Cheap to add now, so it is in the first
   migration.
 
-- **song_doc_version** — history of the song's two markdown documents, the
-  chart (chords, arrangement) and the lyrics, told apart by `kind`. The
-  current text lives on `song.chart_markdown` / `song.lyrics_markdown`; a
-  save writes a version row only when the SHA-256 changes, and the newest ten
-  per document are kept. Text is stored in the row, not Blob: a few KB.
+- **song_doc_version** — history of the song's markdown documents: the
+  shared chart (chords, arrangement), lyrics and notes, told apart by
+  `kind`, and each person's private note (`kind` `mynotes` with the owner's
+  `user_id`; the shared kinds leave it null). The current text lives on
+  `song.chart_markdown` / `lyrics_markdown` / `notes_markdown` and on
+  `song_user_note`; a save writes a version row only when the SHA-256
+  changes, and the newest ten per document — per `(song, kind)`, or per
+  `(song, user)` for a private note — are kept. Text is stored in the row,
+  not Blob: a few KB. Read back and restored through `history.remote.ts`
+  (`docHistory`, `restoreDocVersion`), which renders the markdown at read
+  time; a private note's revisions answer only to their owner.
 
 - **song_user_note** — one person's private notepad on a song, the
   `mynotes` document on the song page: `markdown`, its sanitised `html`
@@ -186,7 +192,17 @@ erDiagram
   counts the saves that changed the text, one row per `(song_id, user_id)`.
   Anyone signed in who may view the song keeps one (`data.getUserNote` /
   `saveUserNote` take the user id); nobody else reads it, and it is never
-  listed, exported or shared. No history, unlike the shared documents.
+  listed, exported or shared. Its history is in `song_doc_version` like
+  the shared documents', scoped to the owner.
+
+- **comment_version** — the text a comment had before an edit replaced it:
+  `title`, `body` and the position `at`, written by `data.updateComment`
+  before it overwrites them (`created_at` is when that text was replaced,
+  `edited_by` who replaced it). The newest ten per comment are kept;
+  deleting the comment removes them. Read back and restored through
+  `history.remote.ts` (`commentHistory`, `restoreCommentVersion`): a
+  restore goes through `updateComment`, so the text it replaces becomes a
+  revision in turn.
 
 Not in the first cut, easy to add later: `mix` (saved fader/mute/solo state
 per song), stem versions (replicator's `audio_version` pattern), comments.
@@ -380,19 +396,37 @@ plus the format.
 
 ### song_doc_version
 
-| column         | type                      | notes                      |
-| -------------- | ------------------------- | -------------------------- |
-| id             | text PK                   |                            |
-| song_id        | text FK → song (cascade)  |                            |
-| kind           | text not null             | `chart` \| `lyrics`        |
-| version_number | integer not null          | 1, 2, 3… per song and kind |
-| markdown       | text not null             | full text of that revision |
-| content_hash   | text not null             |                            |
-| created_by     | text FK → user (set null) |                            |
-| created_at     | timestamp_ms              |                            |
-| updated_at     | timestamp_ms              |                            |
+| column         | type                      | notes                                                        |
+| -------------- | ------------------------- | ------------------------------------------------------------ |
+| id             | text PK                   |                                                              |
+| song_id        | text FK → song (cascade)  |                                                              |
+| kind           | text not null             | `chart` \| `lyrics` \| `notes` \| `mynotes`                  |
+| user_id        | text FK → user (set null) | the owner of a `mynotes` revision; null for the shared kinds |
+| version_number | integer not null          | 1, 2, 3… per song and kind (per song and user for `mynotes`) |
+| markdown       | text not null             | full text of that revision                                   |
+| content_hash   | text not null             |                                                              |
+| created_by     | text FK → user (set null) |                                                              |
+| created_at     | timestamp_ms              |                                                              |
+| updated_at     | timestamp_ms              |                                                              |
 
-Index: `(song_id, kind, version_number)`.
+Indexes: `(song_id, kind, version_number)`, `user_id`. Deleting the song
+removes the rows; deleting a user removes their `mynotes` revisions and
+clears `created_by` on the rest (`cascade.ts`).
+
+### comment_version
+
+| column                 | type                        | notes                                    |
+| ---------------------- | --------------------------- | ---------------------------------------- |
+| id                     | text PK                     |                                          |
+| comment_id             | text FK → comment (cascade) |                                          |
+| title                  | text not null               | the comment's title before the edit      |
+| body                   | text not null               | its text before the edit                 |
+| at                     | real null                   | its position (seconds) before the edit   |
+| edited_by              | text FK → user (set null)   | who replaced this text                   |
+| created_at, updated_at | timestamp_ms                | `created_at`: when the text was replaced |
+
+Indexes: `(comment_id, created_at)`, `edited_by`. The newest ten per comment
+are kept (`data.updateComment`); the comment's deletion removes them.
 
 ### song_user_note
 

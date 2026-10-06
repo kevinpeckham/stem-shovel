@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Version history for the song's texts** (Kevin): History in the Docs panel's ⋯ menu lists the ten most recent versions of the chart text, the lyrics, the notes or your own note (now kept for private notes too, `song_doc_version.user_id`), each viewable and restorable (a restore is a new save, so the text it replaces is kept); an edited comment's "edited" badge opens its earlier titles and bodies (`comment_version`, written by `updateComment`), restorable by its author or an admin (`history.remote.ts`, `DocHistoryPanel.svelte`, migration 0078).
+- **Remove a demo from its row** (Kevin: there was no way on a song with stems): the demo's menu in the player's Demos view has Remove demo for editors (`removeDemoById`).
+- **The player's tips** (Kevin: the comment gesture was not obvious): under the comments row, the space bar, Home, clicking a waveform to jump, and ⌘-click, Ctrl-click or right-click to leave a comment, in the instruments' strip style.
+- **Project page tiles** (Kevin): a song idea's tile has a play button for its demo (the playlist switches to the demos), every tile shows an arrow saying it opens the song, and the meta line counts charts (the chart text plus the scores and chart files attached) and notes (the project's plus your own); idea tiles run full width.
+
+### Changed
+
+- **The Attachments tab is a paperclip** (Kevin): the icon with its count in place of the word, the word in the tooltip and for screen readers.
+
 ## [0.107.0] - 2026-10-06
 
 ### Added

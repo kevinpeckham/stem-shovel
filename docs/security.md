@@ -194,6 +194,20 @@ signing in and being able to view the song by the song page's own rules
 viewers, or a share code the visitor carries), not the editor role the
 shared documents need; it answers 401 signed out and 404 otherwise.
 
+**Version history** (`history.remote.ts`, docs/data-model.md
+`song_doc_version` and `comment_version`) follows the same lines. Reading
+the revisions of a shared document (chart, lyrics, notes) or of a comment
+takes `songViewerOf`: anyone signed in who may view the song, viewers
+included, since a revision names who saved it. The revisions of a private
+note are read with the caller's user id and never returned for anyone
+else, like the note. Restoring takes the permission of saving what it
+restores: `memberOf` (an editor) for a shared document, `songViewerOf` for
+one's own private note, and for a comment its author or an owner / admin
+of the account, the rule deleting one uses. A restore is a save (`saveSongDoc`
+/ `saveUserNote` / `updateComment`), so the text it replaces becomes a
+revision and nothing is lost; a revision is looked up with its document's
+ids, so one from another song, kind, person or comment is "not found".
+
 ## Rate limits
 
 `rateLimited(key, max, window)` counts in Upstash Redis when a stage has it

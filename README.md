@@ -258,8 +258,11 @@ check and the tests without any secret.
   blog uses) and a Rendered / Markdown toggle; the source pane is a textarea
   bound to the same editor state, so undo, discard and save cover both. Saved
   through the `saveDoc` remote form: `data.saveSongDoc` hash-gates a
-  `song_doc_version` row (kind = chart | lyrics | notes) and keeps the last 10;
-  blanking a document with content needs a second save. The song page shows
+  `song_doc_version` row (kind = chart | lyrics | notes; a private note's
+  `mynotes` revisions sit there too, with the owner's user id) and keeps the
+  last 10, which `history.remote.ts` lists and restores (comments keep
+  theirs in `comment_version`); blanking a document with content needs a
+  second save. The song page shows
   one document at a time behind a Chart / Lyrics / Notes toggle; `server/markdown.ts` renders
   with barkdown's renderer (what the editor seeds from) and
   `server/sanitize.ts`, an allowlist pass over parse5 (ESM; see "Server

@@ -151,16 +151,27 @@
 		),
 	);
 
-	/** What an idea holds so far, for its tile. */
-	function gathered(song: (typeof data.project.songs)[number]): string {
+	/** What a song holds beside its stems, for its tile (Kevin: the charts and the notes counted). */
+	function gathered(song: (typeof data.project.songs)[number], withLyrics = true): string {
 		const parts: string[] = [];
-		if (song.lyricsMarkdown.trim()) parts.push("lyrics");
-		if (song.chartMarkdown.trim()) parts.push("chart");
-		if (song.notesMarkdown.trim()) parts.push("notes");
+		if (withLyrics && song.lyricsMarkdown.trim()) parts.push("lyrics");
+		const charts = chartCount(song);
+		if (charts > 0) parts.push(`${charts} ${charts === 1 ? "chart" : "charts"}`);
+		const notes = noteCount(song);
+		if (notes > 0) parts.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
 		const demos = song.demos.filter((d) => d.status === "ready").length;
 		if (demos > 0) parts.push(`${demos} ${demos === 1 ? "demo" : "demos"}`);
-		return parts.length ? parts.join(" · ") : "nothing yet";
+		return parts.length ? parts.join(" · ") : withLyrics ? "nothing yet" : "";
 	}
+	/** The chart text counts one, and every score and chart file attached counts one. */
+	const chartCount = (song: (typeof data.project.songs)[number]) =>
+		(song.chartMarkdown.trim() ? 1 : 0) + song.chartFiles;
+	/** The project's notes count one, and the viewer's own private note on the song one. */
+	const noteCount = (song: (typeof data.project.songs)[number]) =>
+		(song.notesMarkdown.trim() ? 1 : 0) + (song.hasMyNote ? 1 : 0);
+	/** An idea's first demo, for its tile's play button. */
+	const firstDemo = (song: (typeof data.project.songs)[number]) =>
+		song.demos.find((d) => d.status === "ready" && d.playUrl) ?? null;
 </script>
 
 <svelte:head>
@@ -463,15 +474,36 @@
 			</div>
 			<ul class="grid grid-cols-1 gap-3 {dragging ? 'select-none' : ''}" data-song-group="ideas">
 				{#each ideas as song (song.id)}
+					{@const demo = firstDemo(song)}
 					<li
-						class="flex items-stretch gap-3 {dragging?.id === song.id ? 'opacity-50' : ''}"
+						class="flex items-stretch gap-3 w-full {dragging?.id === song.id ? 'opacity-50' : ''}"
 						data-song-row={song.id}
 					>
 						{#if data.canEdit}{@render grip(song)}{/if}
-						<a
-							class="app-list-tile"
-							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
+						<!-- An idea plays its demo, as a song plays its mix (Kevin). -->
+						<button
+							type="button"
+							class="shrink-0 grid w-12 h-auto place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
+							aria-label={demo && playing === demo.id && !paused
+								? `Pause the demo of ${song.title}`
+								: `Play the demo of ${song.title}`}
+							title={demo ? "Play the demo" : "No demo yet"}
+							disabled={!demo}
+							onclick={() => demo && player?.play(demo.id)}
 						>
+							<span
+								class={demo && playing === demo.id && !paused
+									? "i-ph-pause-fill"
+									: "i-ph-play-fill"}
+								aria-hidden="true"
+							></span>
+						</button>
+						<a
+							class="app-list-tile w-full relative pr-10"
+							href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
+							title="Open the song"
+						>
+							{@render opens()}
 							<!-- title -->
 							<div class="app-tile-heading">
 								{#if song.isPrivate}
@@ -594,6 +626,12 @@
 	</button>
 {/snippet}
 
+{#snippet opens()}
+	<!-- The tile opens the song page (Kevin: say so). -->
+	<span class="i-ph-arrow-up-right absolute top-3 right-3 text-16px opacity-50" aria-hidden="true"
+	></span>
+{/snippet}
+
 {#snippet songRow(song: Song)}
 	{@const ready = readyStems(song)}
 	<li
@@ -618,9 +656,11 @@
 		</button>
 
 		<a
-			class="app-list-tile w-full"
+			class="app-list-tile w-full relative pr-10"
 			href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}"
+			title="Open the song"
 		>
+			{@render opens()}
 			<div>
 				<div class="app-tile-heading">
 					{#if song.isPrivate && !data.project.isPrivate}
@@ -636,7 +676,7 @@
 				v{song.version} · {ready}
 				{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
 						song.durationSeconds,
-					)}{/if}
+					)}{/if}{#if gathered(song, false)}{" · "}{gathered(song, false)}{/if}
 			</div>
 		</a>
 	</li>

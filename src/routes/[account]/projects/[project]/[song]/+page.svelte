@@ -24,6 +24,8 @@
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
 	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "$lib/components/SongNotationPanel.svelte";
+	import DocHistoryPanel from "$lib/components/DocHistoryPanel.svelte";
+	import type { SongDocSaveKind } from "$lib/val/SongDocKindSchema";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
@@ -75,6 +77,7 @@
 	} from "$lib/upload";
 	import {
 		deleteDemo,
+		removeDemoById,
 		deleteSong,
 		deleteStem,
 		removeStemMidi,
@@ -294,6 +297,17 @@
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
 	let demoPanel = $state<DemoPanel | null>(null);
+	/** A demo removed from its row's menu (Kevin): the file goes with it. */
+	async function removeDemo(d: { id: string; label: string }) {
+		if (!confirm(`Remove the demo "${d.label}"? The file is deleted.`)) return;
+		try {
+			await removeDemoById({ id: d.id });
+			notify(`${d.label} removed`);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
 	let stemBoxHeight = $state(0);
 	let chosenView = $state<"stems" | "demos" | null>(null);
@@ -431,6 +445,21 @@
 	 * Mine toggle; remembered per browser. Signed out there is only the
 	 * project's.
 	 */
+	/** The history panel's subject: a document (the project's or the user's own note) or a comment (docs/data-model.md). */
+	let history = $state<
+		| { kind: "doc"; songId: string; doc: SongDocSaveKind; label: string }
+		| { kind: "comment"; commentId: string; label: string }
+		| null
+	>(null);
+	let historyRestorable = $derived.by(() => {
+		if (history?.kind === "doc") return history.doc === "mynotes" || data.canEdit;
+		if (history?.kind === "comment") {
+			const id = history.commentId;
+			const c = data.comments.find((x) => x.id === id);
+			return !!c && (canEditComment(c) || canDeleteComment(c));
+		}
+		return false;
+	});
 	let notesChoice = $state(false);
 	/** Signed in, a note of one's own exists to show, empty until the first save. */
 	let canHaveNote = $derived(!!data.user);
@@ -581,6 +610,20 @@
 				iconClass: docMono[doc] ? "i-ph-check" : "i-ph-check invisible",
 				title: "Fixed-width text, so chord grids line up",
 				action: () => toggleDocMono(doc),
+			},
+			{
+				id: "history",
+				label: "History",
+				iconClass: "i-ph-clock-counter-clockwise",
+				title: "Earlier versions of this text, to view or restore",
+				action: () => {
+					history = {
+						kind: "doc",
+						songId: data.song.id,
+						doc: notesMine ? "mynotes" : doc,
+						label: notesMine ? "your notes" : `the ${doc}`,
+					};
+				},
 			},
 		];
 		if (panel === "chart" && data.aiAvailable) {
@@ -2324,6 +2367,8 @@
 						bind:this={demoPanel}
 						demos={readyDemos}
 						minHeight={Math.max(560, stemBoxHeight)}
+						canEdit={data.canEdit}
+						onremove={removeDemo}
 					/>
 				</div>
 			{:else if data.manifest.stems.length > 0}
@@ -2544,7 +2589,10 @@
 					position="bottom left"
 					items={PANELS.map((kind) => ({
 						id: kind,
-						label: tabLabel(kind),
+						label:
+							kind === "files"
+								? `<span class="i-ph-paperclip align-[-2px]"></span> ${tabLabel(kind)}`
+								: tabLabel(kind),
 						iconClass: panel === kind ? "i-ph-check" : "i-ph-check invisible",
 						action: () => showPanel(kind),
 					}))}
@@ -2567,7 +2615,12 @@
 								: index === PANELS.length - 1
 									? 'rounded-l-none'
 									: 'rounded-none border-r-none'}"
-							onclick={() => showPanel(kind)}>{tabLabel(kind)}</button
+							onclick={() => showPanel(kind)}
+							title={kind === "files" ? "Attachments" : undefined}
+							aria-label={kind === "files" ? tabLabel(kind) : undefined}
+							>{#if kind === "files"}<span class="i-ph-paperclip align-[-2px]" aria-hidden="true"
+								></span>{#if fileCount}
+									({fileCount}){/if}{:else}{tabLabel(kind)}{/if}</button
 						>
 					{/each}
 				</div>
@@ -2751,9 +2804,13 @@
 										<h3 class="font-600">{c.title}</h3>
 										<span class="text-12px opacity-70">
 											{c.authorName} · {formatDate(c.createdAt)}
-											{#if c.editedAt}<span
-													class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-													title="Edited {formatDate(c.editedAt)}">edited</span
+											{#if c.editedAt}<button
+													type="button"
+													class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider hover:border-current/70"
+													title="Edited {formatDate(c.editedAt)}: see the earlier versions"
+													onclick={() =>
+														(history = { kind: "comment", commentId: c.id, label: `“${c.title}”` })}
+													>edited</button
 												>{/if}
 										</span>
 									</div>
@@ -2862,6 +2919,12 @@
 				{/key}
 			{/if}
 		</FloatingPanel>
+		<DocHistoryPanel
+			target={history}
+			canRestore={historyRestorable}
+			onclose={() => (history = null)}
+			onrestored={() => invalidateAll()}
+		/>
 	</section>
 </main>
 
@@ -3516,6 +3579,23 @@
 			canComment={data.canComment}
 			oncontext={(seconds, x, y) => onStemContext(null, seconds, x, y)}
 		/>
+	{/if}
+	<!-- The player's tips under the rows, as the instruments wear them (Kevin: the comment gesture is not obvious). -->
+	{#if playerEngine}
+		<div
+			aria-label="Player tips"
+			class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+		>
+			<span><kbd>Space</kbd> play / pause</span>
+			<span><kbd>Home</kbd> to the start</span>
+			<span>click a waveform to jump there</span>
+			{#if data.canComment}
+				<span
+					><kbd>⌘</kbd>-click, <kbd>Ctrl</kbd>-click or right-click a waveform to leave a comment
+					there</span
+				>
+			{/if}
+		</div>
 	{/if}
 {/snippet}
 

@@ -30,7 +30,6 @@ import {
 	reorderStems as reorder,
 	saveSongDoc,
 	saveUserNote,
-	songMentionSources,
 	setSongVersion as setVersion,
 	songForMix,
 	chartExamples,
@@ -58,8 +57,7 @@ import {
 } from "$lib/val/SongSchema";
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
-import { linkMentions } from "$lib/utils/linkMentions";
-import { mentionTargets } from "$lib/utils/mentionTargets";
+import { withSongMentions } from "$lib/server/songMentions";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
 import { MY_NOTES_KIND } from "$lib/val/SongDocKindSchema";
 import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
@@ -124,7 +122,7 @@ export const saveDoc = form(
 			return {
 				version: result.version,
 				changed: result.changed,
-				html: await withMentions(accountId, songId, result.html ?? ""),
+				html: await withSongMentions(accountId, songId, result.html ?? ""),
 			};
 		}
 		const { accountId } = await memberOf(locals, accountOfSong, songId);
@@ -143,16 +141,10 @@ export const saveDoc = form(
 		return {
 			version: result.version,
 			changed: result.changed,
-			html: await withMentions(accountId, songId, renderMarkdown(markdown)),
+			html: await withSongMentions(accountId, songId, renderMarkdown(markdown)),
 		};
 	},
 );
-
-/** `@name` in a document's rendered HTML linked to the song's attachments, notation files and demos. */
-async function withMentions(accountId: string, songId: string, html: string) {
-	if (!html.includes("@")) return html;
-	return linkMentions(html, mentionTargets(await songMentionSources(accountId, songId)));
-}
 
 /** New song in a project; lands on its page. */
 export const createSong = form(SongCreateSchema, async ({ projectId, title }) => {
@@ -201,6 +193,14 @@ export const deleteStem = form(IdSchema, async ({ id }) => {
 
 /** Deletes a demo recording and its blob. Used with `.for(demo.id)` in song settings. */
 export const deleteDemo = form(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfDemo, id);
+	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");
+	return { deleted: true };
+});
+
+/** Removes a demo from its row's menu in the player's Demos view (Kevin): a command, so the panel can call it. */
+export const removeDemoById = command(IdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfDemo, id);
 	if (!(await removeDemo(accountId, id))) error(404, "Demo not found");

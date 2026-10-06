@@ -1,6 +1,6 @@
 import { db, schema } from "$lib/server/db";
 import { deleteAliasesOf } from "$lib/server/slugAlias";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, type SQL } from "drizzle-orm";
 
 /**
  * The deletes the database does not do for us. The schema declares
@@ -25,6 +25,7 @@ const {
 	bugReport,
 	bugReportVote,
 	comment,
+	commentVersion,
 	demo,
 	drumKit,
 	drumSample,
@@ -58,13 +59,26 @@ const {
 	songUserNote,
 } = schema;
 
-/** Songs and everything hanging off them: stems, demos, attachments, notation files, comments, links, doc versions, private notes, credits; AI requests lose their song. */
+/** The revisions of every comment matching `where` (comment_version hangs off the comment, not the song). */
+async function deleteCommentRows(where: SQL): Promise<void> {
+	const comments = await db.select({ id: comment.id }).from(comment).where(where);
+	if (comments.length > 0)
+		await db.delete(commentVersion).where(
+			inArray(
+				commentVersion.commentId,
+				comments.map((c) => c.id),
+			),
+		);
+	await db.delete(comment).where(where);
+}
+
+/** Songs and everything hanging off them: stems, demos, attachments, notation files, comments and their revisions, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
 	await db.delete(songDocVersion).where(inArray(songDocVersion.songId, songIds));
 	await db.delete(songUserNote).where(inArray(songUserNote.songId, songIds));
-	await db.delete(comment).where(inArray(comment.songId, songIds));
+	await deleteCommentRows(inArray(comment.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
@@ -156,7 +170,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(drumSample).where(eq(drumSample.accountId, accountId));
 	await db.delete(drumKit).where(eq(drumKit.accountId, accountId));
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
-	await db.delete(comment).where(eq(comment.accountId, accountId));
+	await deleteCommentRows(eq(comment.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
@@ -173,7 +187,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
-/** A user: memberships, sign-in records, sessions, two-factor, votes, comments and private song notes go; what else they made stays without an author. */
+/** A user: memberships, sign-in records, sessions, two-factor, votes, comments (with their revisions), private song notes and their revisions go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
 	await db.delete(projectMember).where(eq(projectMember.userId, userId));
@@ -188,8 +202,14 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(aiRequest).set({ userId: null }).where(eq(aiRequest.userId, userId));
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));
 	await db.update(bugReport).set({ userId: null }).where(eq(bugReport.userId, userId));
-	await db.delete(comment).where(eq(comment.userId, userId));
+	await deleteCommentRows(eq(comment.userId, userId));
+	await db
+		.update(commentVersion)
+		.set({ editedBy: null })
+		.where(eq(commentVersion.editedBy, userId));
 	await db.delete(songUserNote).where(eq(songUserNote.userId, userId));
+	// Their private notes' revisions go with the notes; the shared documents' keep the text and lose the author.
+	await db.delete(songDocVersion).where(eq(songDocVersion.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
 	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));

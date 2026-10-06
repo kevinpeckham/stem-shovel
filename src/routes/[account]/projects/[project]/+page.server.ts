@@ -4,6 +4,7 @@ import {
 	listProjectPeople,
 	listShareLinks,
 	songsWantingMix,
+	userNoteSongIds,
 } from "$lib/server/data";
 import { presentUrl } from "$lib/server/blob";
 import {
@@ -22,7 +23,7 @@ import type { PageServerLoad } from "./$types";
 /** Missing mixes render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
 
-export const load: PageServerLoad = async ({ params, parent, url }) => {
+export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
 	const project = await getProject(account.id, params.project);
 	if (!project) {
@@ -48,10 +49,21 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 	scheduleMix(songsWantingMix(songs, mixKeyOf));
 	// The playlist plays each song's mix, or its demos (the AAC rendition where it is ready, the
 	// upload otherwise); a private song's need presigned URLs.
+	// The tiles count each song's charts (scores and files marked as notation) and the viewer's own private notes.
+	const myNotes = locals.user
+		? await userNoteSongIds(
+				locals.user.id,
+				songs.map((s) => s.id),
+			)
+		: new Set<string>();
 	const [presented, shareLinks, people, accountMembers] = await Promise.all([
 		Promise.all(
 			songs.map(async (s) => ({
 				...s,
+				chartFiles:
+					s.notation.filter((n) => n.status === "ready").length +
+					s.files.filter((f) => f.status === "ready" && f.isNotation).length,
+				hasMyNote: myNotes.has(s.id),
 				mixUrl: await presentUrl(s.mixUrl),
 				demos: await Promise.all(
 					s.demos.map(async (d) => ({

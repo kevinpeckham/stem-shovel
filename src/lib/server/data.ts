@@ -82,7 +82,7 @@ import {
 import { SlugSchema } from "$lib/val/SlugSchema";
 import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
 import { NOTES_STALE_MS } from "$lib/constants/notesStale";
-import type { SongDocKind } from "$lib/val/SongDocKindSchema";
+import { MY_NOTES_KIND, type SongDocKind, type SongDocSaveKind } from "$lib/val/SongDocKindSchema";
 import type { SongChange } from "$lib/val/SongChangeSchema";
 import type { SongSection } from "$lib/val/SongSectionSchema";
 import type { MemberRole } from "$lib/val/MemberRoleSchema";
@@ -138,6 +138,7 @@ const {
 	invitation,
 	inviteCode,
 	comment,
+	commentVersion,
 	bugReport,
 	bugReportVote,
 	artist,
@@ -480,6 +481,9 @@ export function getProject(accountId: string, slug: string) {
 						},
 						orderBy: [asc(demo.createdAt)],
 					},
+					// The project page's tiles count a song's charts: its scores and the files marked as notation.
+					files: { columns: { id: true, status: true, isNotation: true, kind: true } },
+					notation: { columns: { id: true, status: true } },
 					credits: {
 						columns: { role: true },
 						with: { artist: { columns: { id: true, name: true } } },
@@ -1370,17 +1374,88 @@ export async function commentOwnership(id: string) {
 	});
 }
 
-/** Edits a comment (the caller has checked it is theirs); stamps editedAt. */
-export async function updateComment(id: string, input: CommentInput) {
+/** The ten most recent replaced texts of a comment are kept (comment_version). */
+const COMMENT_VERSIONS_TO_KEEP = 10;
+
+/**
+ * Edits a comment (the caller has checked they may); stamps editedAt. The
+ * text it replaces goes to comment_version first, with `editedBy` the
+ * person replacing it, so the edit can be undone (history.remote.ts); an
+ * edit that changes nothing writes no revision. The newest
+ * COMMENT_VERSIONS_TO_KEEP revisions are kept.
+ */
+export async function updateComment(id: string, input: CommentInput, editedBy?: string) {
+	const current = await db.query.comment.findFirst({
+		where: eq(comment.id, id),
+		columns: { id: true, title: true, body: true, at: true },
+	});
+	if (!current) return null;
+	const changed =
+		current.title !== input.title || current.body !== input.body || current.at !== input.at;
+	if (changed) {
+		await db.insert(commentVersion).values({
+			commentId: id,
+			title: current.title,
+			body: current.body,
+			at: current.at,
+			editedBy: editedBy ?? null,
+		});
+	}
 	const [row] = await db
 		.update(comment)
 		.set({ title: input.title, body: input.body, at: input.at, editedAt: new Date() })
 		.where(eq(comment.id, id))
 		.returning({ id: comment.id });
+	if (changed) {
+		const stale = await db
+			.select({ id: commentVersion.id })
+			.from(commentVersion)
+			.where(eq(commentVersion.commentId, id))
+			.orderBy(desc(commentVersion.createdAt), desc(commentVersion.id))
+			.limit(1000)
+			.offset(COMMENT_VERSIONS_TO_KEEP);
+		if (stale.length > 0) {
+			await db.delete(commentVersion).where(
+				inArray(
+					commentVersion.id,
+					stale.map((r) => r.id),
+				),
+			);
+		}
+	}
 	return row ?? null;
 }
 
+/** A comment's revisions, newest first, with who replaced each text (history.remote.ts). */
+export async function listCommentVersions(commentId: string) {
+	const rows = await db.query.commentVersion.findMany({
+		where: eq(commentVersion.commentId, commentId),
+		orderBy: [desc(commentVersion.createdAt), desc(commentVersion.id)],
+		limit: COMMENT_VERSIONS_TO_KEEP,
+		with: { editor: { columns: { name: true } } },
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		body: r.body,
+		at: r.at,
+		createdAt: r.createdAt.getTime(),
+		editedBy: r.editor ? { name: r.editor.name } : null,
+	}));
+}
+
+/** One revision of a comment, by both ids so a revision of another comment is "not found". */
+export async function commentVersionById(commentId: string, versionId: string) {
+	const row = await db.query.commentVersion.findFirst({
+		where: and(eq(commentVersion.commentId, commentId), eq(commentVersion.id, versionId)),
+		columns: { id: true, title: true, body: true, at: true },
+	});
+	return row ?? null;
+}
+
+/** Removes a comment and its revisions (Turso runs no cascades). */
 export async function deleteComment(id: string) {
+	await db.delete(commentVersion).where(eq(commentVersion.commentId, id));
 	const [row] = await db.delete(comment).where(eq(comment.id, id)).returning({ id: comment.id });
 	return !!row;
 }
@@ -4626,9 +4701,10 @@ export async function saveSongDoc(
 	if (contentHash === currentHash) return { ok: true, version: currentVersion, changed: false };
 
 	const versionNumber = currentVersion + 1;
-	await db.insert(songDocVersion).values({
+	await writeDocVersion({
 		songId,
 		kind,
+		userId: null,
 		versionNumber,
 		markdown: next,
 		contentHash,
@@ -4638,12 +4714,38 @@ export async function saveSongDoc(
 		.update(song)
 		.set({ [cols.markdown]: next, [cols.hash]: contentHash, [cols.version]: versionNumber })
 		.where(eq(song.id, songId));
+	return { ok: true, version: versionNumber, changed: true };
+}
 
-	// Prune, keeping the newest N of this document. Best-effort.
+/** Which document a song_doc_version row belongs to: a shared kind, or one person's private note. */
+function docVersionScope(songId: string, kind: SongDocSaveKind, userId: string | null) {
+	return and(
+		eq(songDocVersion.songId, songId),
+		eq(songDocVersion.kind, kind),
+		userId === null ? isNull(songDocVersion.userId) : eq(songDocVersion.userId, userId),
+	);
+}
+
+/**
+ * Writes one revision of a song document (shared, or a private note with its
+ * owner's `userId`) and prunes that document to the newest
+ * DOC_VERSIONS_TO_KEEP. Best-effort: the current text is already safe on its
+ * own row.
+ */
+async function writeDocVersion(row: {
+	songId: string;
+	kind: SongDocSaveKind;
+	userId: string | null;
+	versionNumber: number;
+	markdown: string;
+	contentHash: string;
+	createdBy: string;
+}) {
+	await db.insert(songDocVersion).values(row);
 	const stale = await db
 		.select({ id: songDocVersion.id })
 		.from(songDocVersion)
-		.where(and(eq(songDocVersion.songId, songId), eq(songDocVersion.kind, kind)))
+		.where(docVersionScope(row.songId, row.kind, row.userId))
 		.orderBy(desc(songDocVersion.versionNumber))
 		.limit(1000) // SQLite requires LIMIT alongside OFFSET
 		.offset(DOC_VERSIONS_TO_KEEP);
@@ -4655,7 +4757,46 @@ export async function saveSongDoc(
 			),
 		);
 	}
-	return { ok: true, version: versionNumber, changed: true };
+}
+
+/**
+ * A document's revisions, newest first, at most DOC_VERSIONS_TO_KEEP, with
+ * who saved each (history.remote.ts). For "mynotes" the caller passes the
+ * owner's id and gets only that person's rows; for a shared kind `userId`
+ * is null. The markdown comes back raw: the reader renders it.
+ */
+export async function listDocVersions(
+	songId: string,
+	kind: SongDocSaveKind,
+	userId: string | null,
+) {
+	const rows = await db.query.songDocVersion.findMany({
+		where: docVersionScope(songId, kind, userId),
+		orderBy: [desc(songDocVersion.versionNumber)],
+		limit: DOC_VERSIONS_TO_KEEP,
+		with: { author: { columns: { name: true } } },
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		versionNumber: r.versionNumber,
+		markdown: r.markdown,
+		createdAt: r.createdAt.getTime(),
+		createdBy: r.author ? { name: r.author.name } : null,
+	}));
+}
+
+/** One revision by id, within the same scope as listDocVersions, so another document's row is "not found". */
+export async function docVersionById(
+	songId: string,
+	kind: SongDocSaveKind,
+	userId: string | null,
+	versionId: string,
+) {
+	const row = await db.query.songDocVersion.findFirst({
+		where: and(docVersionScope(songId, kind, userId), eq(songDocVersion.id, versionId)),
+		columns: { id: true, versionNumber: true, markdown: true },
+	});
+	return row ?? null;
 }
 
 // ---- private song notes: one per user and song ---------------------------
@@ -4675,6 +4816,16 @@ export async function songViewRow(songId: string) {
  * first save. Takes the user id as well as the song: another person's note
  * is never returned, and nothing lists them.
  */
+/** Which of these songs the user keeps a private note on (the project page's tiles count it; nothing of the note itself leaves). */
+export async function userNoteSongIds(userId: string, songIds: string[]): Promise<Set<string>> {
+	if (songIds.length === 0) return new Set();
+	const rows = await db
+		.select({ songId: songUserNote.songId })
+		.from(songUserNote)
+		.where(and(eq(songUserNote.userId, userId), inArray(songUserNote.songId, songIds)));
+	return new Set(rows.map((r) => r.songId));
+}
+
 export async function getUserNote(
 	songId: string,
 	userId: string,
@@ -4689,9 +4840,11 @@ export async function getUserNote(
 /**
  * Saves the caller's private note on a song, creating the row on the first
  * save. Same rules as saveSongDoc: the wipe guard, a no-op save (same text)
- * stays on the current version, a change bumps it; the sanitised HTML is
- * stored beside the markdown. With `expectedVersion`, a save over a newer
- * version (another tab of the same person) is refused.
+ * stays on the current version, a change bumps it and writes a revision
+ * (song_doc_version, kind "mynotes", the owner's user id; the newest ten per
+ * person and song are kept); the sanitised HTML is stored beside the
+ * markdown. With `expectedVersion`, a save over a newer version (another tab
+ * of the same person) is refused.
  */
 export async function saveUserNote(
 	songId: string,
@@ -4745,6 +4898,16 @@ export async function saveUserNote(
 			target: [songUserNote.songId, songUserNote.userId],
 			set: { markdown: next, html, version },
 		});
+	// The same history the shared documents keep, scoped to this person (history.remote.ts).
+	await writeDocVersion({
+		songId,
+		kind: MY_NOTES_KIND,
+		userId,
+		versionNumber: version,
+		markdown: next,
+		contentHash: await hashMarkdown(next),
+		createdBy: userId,
+	});
 	return { ok: true, version, changed: true, html };
 }
 
