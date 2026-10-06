@@ -776,7 +776,8 @@ class ChordPlayerEngine {
 			this.arpeggiator.apply(s.arp);
 			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
 		}
-		if (s.sustainLock !== undefined) this.setSustainLock(s.sustainLock);
+		// A preset saved before the lock was kept, or without it, means not locked (Kevin).
+		this.setSustainLock(s.sustainLock ?? false);
 	}
 	setNoteReadout(mode: NoteReadout) {
 		this.noteReadout = mode;

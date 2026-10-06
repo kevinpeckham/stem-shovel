@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A preset without a sustain lock setting unlocks the pedal** (Kevin): presets saved before the lock was kept applied over a locked pedal and left it locked; now absent means not locked.
+
 ## [0.109.0] - 2026-10-06
 
 ### Changed
