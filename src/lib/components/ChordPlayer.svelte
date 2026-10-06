@@ -352,12 +352,13 @@
 		if (!on && chordPlayer.arpLatch) chordPlayer.setArpLatch(false);
 	}
 	/** The sustain pad, for a tablet with no space bar, and the space bar (Kevin): the pedal down while either is held; a double tap on either locks it down until the next double tap (or Esc). */
-	let sustainLocked = $state(false);
+	// The lock itself lives in the engine, so a preset keeps it (Kevin).
+	let sustainLocked = $derived(chordPlayer.sustainLock);
 	let sustainTapAt = 0;
 	function sustainPress() {
 		const now = performance.now();
 		if (now - sustainTapAt < 400) {
-			sustainLocked = !sustainLocked;
+			chordPlayer.setSustainLock(!chordPlayer.sustainLock);
 			sustainTapAt = 0;
 		} else sustainTapAt = now;
 		chordPiano.setSustain(true);
@@ -371,7 +372,7 @@
 		if (!sustainLocked) chordPiano.setSustain(false);
 	}
 	function sustainUnlock() {
-		sustainLocked = false;
+		chordPlayer.setSustainLock(false);
 		sustainTapAt = 0;
 	}
 

@@ -154,6 +154,8 @@ export const ChordPresetSettingsSchema = v.object({
 	),
 	/** The arpeggiator, on or off, and its pattern; absent on presets saved before it existed. */
 	arp: v.optional(ArpSettingsSchema),
+	/** The sustain pedal locked down; absent on presets saved before it was kept (Kevin). */
+	sustainLock: v.optional(v.boolean()),
 });
 export type ChordPresetSettings = v.InferOutput<typeof ChordPresetSettingsSchema>;
 

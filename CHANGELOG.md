@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Chord player presets keep the sustain lock** (Kevin): the lock moved into the engine (`sustainLock`, `setSustainLock`) and into the preset's chord settings beside the strum latch and the arpeggiator's latch, which were already kept; applying a preset puts the pedal down or lifts it.
+
 ## [0.108.1] - 2026-10-06
 
 ### Fixed

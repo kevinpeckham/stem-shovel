@@ -193,6 +193,13 @@ class ChordPlayerEngine {
 	strumSpeed = $state<AutoStrumSpeed>("8");
 	/** The pattern keeps going after the wedge is let go, until the next chord or Escape (a double click on the Strum button). */
 	strumLatch = $state(false);
+	/** The sustain pedal locked down (a double tap on the pad or the space bar); a preset keeps it (Kevin). */
+	sustainLock = $state(false);
+	setSustainLock(on: boolean) {
+		if (this.sustainLock === on) return;
+		this.sustainLock = on;
+		chordPiano.setSustain(on);
+	}
 	#autoHeld: Map<string, { notes: number[]; velocity: number }> = new Map();
 	#autoLatched: { notes: number[]; velocity: number } | null = null;
 	#autoStopLoop: (() => void) | null = null;
@@ -745,6 +752,7 @@ class ChordPlayerEngine {
 				swing: this.swing,
 			},
 			arp: this.arpeggiator.settings(),
+			sustainLock: this.sustainLock,
 		};
 	}
 	/** A preset's chord settings into the player; a style the account no longer has falls back to plain. */
@@ -768,6 +776,7 @@ class ChordPlayerEngine {
 			this.arpeggiator.apply(s.arp);
 			if (s.arp.on !== this.arp) this.setArp(s.arp.on);
 		}
+		if (s.sustainLock !== undefined) this.setSustainLock(s.sustainLock);
 	}
 	setNoteReadout(mode: NoteReadout) {
 		this.noteReadout = mode;
