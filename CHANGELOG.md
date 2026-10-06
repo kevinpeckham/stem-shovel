@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.108.0] - 2026-10-06
+
 ### Added
 
 - **Version history for the song's texts** (Kevin): History in the Docs panel's ⋯ menu lists the ten most recent versions of the chart text, the lyrics, the notes or your own note (now kept for private notes too, `song_doc_version.user_id`), each viewable and restorable (a restore is a new save, so the text it replaces is kept); an edited comment's "edited" badge opens its earlier titles and bodies (`comment_version`, written by `updateComment`), restorable by its author or an admin (`history.remote.ts`, `DocHistoryPanel.svelte`, migration 0078).
