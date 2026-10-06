@@ -1,10 +1,4 @@
 <script lang="ts">
-	import {
-		AUTO_STRUM_PATTERNS,
-		AUTO_STRUM_SPEEDS,
-		type AutoStrumPatternId,
-		type AutoStrumSpeed,
-	} from "$lib/constants/autoStrum";
 	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
 	import { onDestroy, type Snippet } from "svelte";
 	import {
@@ -13,9 +7,7 @@
 		chordPlayer,
 		type ArpPattern,
 		type ArpRate,
-		type ChordAccent,
 		type NoteReadout,
-		type StrumDirection,
 	} from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
@@ -25,6 +17,7 @@
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
 	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
+	import StrumMenu from "$lib/components/StrumMenu.svelte";
 	import ChordPresets from "$lib/components/ChordPresets.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
@@ -32,12 +25,10 @@
 		CIRCLE_OF_FIFTHS,
 		KEY_CENTERS,
 		SEVENTH_TYPES,
-		STRUMS,
 		type ChordKeyMap,
 		type ChordQuality,
 		type ChordVoicing,
 		type SeventhType,
-		type Strum,
 	} from "$lib/constants/circleOfFifths";
 	import { CHORD_STYLES } from "$lib/constants/chordStyles";
 	import ChordStyleEditor from "$lib/components/ChordStyleEditor.svelte";
@@ -602,7 +593,7 @@
 				{@render strumButton("rounded-r-none")}
 				<ContextMenu
 					ariaLabel="Strum settings"
-					title="Speed and direction"
+					title="Speed, direction, pattern, accent and latch"
 					iconClass="i-ph-caret-down"
 					position="bottom right"
 					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
@@ -1234,106 +1225,7 @@
 {/snippet}
 
 {#snippet strumMenuBlock()}
-	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-		<label class="block">
-			<span class="device-button-label">Speed</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.strum}
-				onchange={(e) => chordPlayer.setStrum(e.currentTarget.value as Strum)}
-			>
-				{#each STRUMS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Direction</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.strumDirection}
-				onchange={(e) => chordPlayer.setStrumDirection(e.currentTarget.value as StrumDirection)}
-			>
-				<option value="down">Down</option>
-				<option value="up">Up</option>
-				<option value="alternate">Alternate</option>
-			</select>
-		</label>
-		<div class="grid gap-3 border-t border-white/10 pt-3">
-			<span class="block text-12px opacity-70"
-				>With the strum on, a press strums the chord; holding the wedge strums it again and again in
-				this pattern at the tempo (Once keeps to the press). The arpeggiator takes over while it is
-				on.</span
-			>
-			<label class="block">
-				<span class="device-button-label">Pattern</span>
-				<select
-					class="device-field w-full"
-					value={chordPlayer.strumPattern}
-					onchange={(e) => chordPlayer.setStrumPattern(e.currentTarget.value as AutoStrumPatternId)}
-				>
-					{#each AUTO_STRUM_PATTERNS as p (p.id)}<option value={p.id}>{p.label}</option>{/each}
-				</select>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Speed</span>
-				<select
-					class="device-field w-full"
-					value={chordPlayer.strumSpeed}
-					onchange={(e) => chordPlayer.setStrumSpeed(e.currentTarget.value as AutoStrumSpeed)}
-				>
-					{#each AUTO_STRUM_SPEEDS as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-				</select>
-				<span class="block text-12px opacity-70 mt-1"
-					>Each slot of the pattern is an eighth, or a sixteenth, at the session tempo (and the
-					arpeggiator's tempo ratio).</span
-				>
-			</label>
-			<label class="block">
-				<span class="device-button-label">Swing · {Math.round(chordPlayer.swing * 100)}%</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="0"
-					max="100"
-					step="5"
-					value={Math.round(chordPlayer.swing * 100)}
-					aria-label="Swing in percent"
-					oninput={(e) => chordPlayer.setSwing(Number(e.currentTarget.value) / 100)}
-				/>
-				<span class="block text-12px opacity-70 mt-1"
-					>Every second slot lands late, up to a triplet feel at full. One swing for the chord
-					player: the arpeggiator's too.</span
-				>
-			</label>
-			<label class="flex items-center gap-2 text-13px text-blue-100/90">
-				<input
-					type="checkbox"
-					class="accent-maximumYellow"
-					checked={chordPlayer.strumLatch}
-					onchange={(e) => chordPlayer.setStrumLatch(e.currentTarget.checked)}
-				/>
-				Latch: the pattern keeps going after you let go, until the next chord or Esc (double-click the
-				Strum button)
-			</label>
-		</div>
-		<label class="block">
-			<span class="device-button-label">Accent</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.accent}
-				onchange={(e) => chordPlayer.setAccent(e.currentTarget.value as ChordAccent)}
-			>
-				<option value="none">Even</option>
-				<option value="top">Top note</option>
-				<option value="bottom">Bottom note</option>
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
-	</div>
+	<StrumMenu />
 {/snippet}
 
 {#snippet styleMenuBlock()}
