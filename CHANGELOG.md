@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.102.0] - 2026-10-06
+
 ### Changed
 
 - **The chord player's space bar locks the sustain with a double tap** (Kevin): a second press within 400 ms locks the pedal down, as a double tap on the sustain pad has, and the next double tap or Escape lifts it; the shortcut strip says so. The pad and the key share one `sustainPress`.
