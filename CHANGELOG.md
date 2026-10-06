@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.109.2] - 2026-10-06
+
 ### Fixed
 
 - **Documentation downloads say what they are doing** (Kevin: a slow zip looked like nothing was happening, then an error page): Download All Charts, Download All Song Documentation and Song Documentation (PDF) now fetch the file with a "Preparing…" notification, hand it to the browser when it arrives, and show a failure as a notification with the server's reason (`utils/downloadBuilt.ts`).
