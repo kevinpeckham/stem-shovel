@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Steps from the computer keyboard on the drum machine** (Kevin): an arrow key shows a window of eight steps on the first row, outlined in blue with the key's digit in each cell; the arrows move it a row up or down or eight steps along (a shorter window at the end of a 12- or 24-step pattern), 1 to 8 switch its steps, Shift with a digit steps a cell's velocity, Esc puts it away, and a click on a cell brings the window to it. Only the instrument that owns the keyboard on a shared page (the looper, the home page) answers.
+
 ## [0.103.0] - 2026-10-06
 
 ### Changed

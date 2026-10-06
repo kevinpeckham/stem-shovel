@@ -411,6 +411,7 @@
 	}
 	function press(e: PointerEvent, row: number, step: number, velocity: number) {
 		if (e.button !== 0) return;
+		if (cursor) cursor = { row, start: Math.floor(step / WINDOW) * WINDOW };
 		if (e.shiftKey && velocity) {
 			drumMachine.cycleVelocity(row, step);
 			return;
@@ -431,17 +432,67 @@
 		pressTimer = null;
 	}
 
+	// Keyboard editing (Kevin): a window of eight steps on one row, outlined in blue with a digit in
+	// each cell. The first arrow press shows it on the first row; the arrows move it a row up or down
+	// or eight steps along (a partial window at the end of a 12- or 24-step pattern); 1 to 8 toggle
+	// its steps, Shift with a digit steps a sounding cell's velocity, Esc puts it away, and a press on
+	// a cell moves it there.
+	const WINDOW = 8;
+	let cursor = $state<{ row: number; start: number } | null>(null);
+	function moveCursor(dRow: number, dStep: number) {
+		const rows = pattern.rows.length;
+		if (!rows) return;
+		if (!cursor) {
+			cursor = { row: 0, start: 0 };
+			return;
+		}
+		const row = Math.min(rows - 1, Math.max(0, cursor.row + dRow));
+		const steps = pattern.rows[row].cells.length;
+		const last = Math.floor((steps - 1) / WINDOW) * WINDOW;
+		const start = Math.min(last, Math.max(0, cursor.start + dStep * WINDOW));
+		cursor = { row, start };
+	}
+	function keyStep(e: KeyboardEvent) {
+		const m = /^Digit([1-8])$/.exec(e.code);
+		if (!m || !cursor || e.repeat) return false;
+		const step = cursor.start + Number(m[1]) - 1;
+		const cells = pattern.rows[cursor.row]?.cells;
+		if (!cells || step >= cells.length) return false;
+		if (e.shiftKey) drumMachine.cycleVelocity(cursor.row, step);
+		else drumMachine.setCell(cursor.row, step, !cells[step]);
+		return true;
+	}
 	function onkeydown(e: KeyboardEvent) {
 		const t = e.target as HTMLElement | null;
 		if (
 			compact ||
 			!keyboard ||
-			e.key !== " " ||
+			e.metaKey ||
+			e.ctrlKey ||
+			e.altKey ||
 			t?.closest("input, select, textarea, [contenteditable]")
 		)
 			return;
-		e.preventDefault();
-		togglePlay();
+		if (e.key === " ") {
+			e.preventDefault();
+			togglePlay();
+			return;
+		}
+		if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+			e.preventDefault();
+			moveCursor(e.key === "ArrowUp" ? -1 : 1, 0);
+			return;
+		}
+		if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+			e.preventDefault();
+			moveCursor(0, e.key === "ArrowLeft" ? -1 : 1);
+			return;
+		}
+		if (e.key === "Escape" && cursor) {
+			cursor = null;
+			return;
+		}
+		if (keyStep(e)) e.preventDefault();
 	}
 
 	async function copyLink() {
@@ -1759,9 +1810,15 @@
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}
 							{@const offBeat = Math.floor(s / group) % 2 === 1}
+							{@const sel =
+								cursor !== null &&
+								cursor.row === r &&
+								s >= cursor.start &&
+								s < cursor.start + WINDOW}
 							<button
-								class="device-button-xs !min-w-auto @2xl-device-button-sm transition-colors duration-75 {cell ===
-								3
+								class="device-button-xs !min-w-auto @2xl-device-button-sm transition-colors duration-75 text-10px font-600 text-blue-200 {sel
+									? 'outline outline-2 outline-blue-400 outline-offset-1 z-1'
+									: ''} {cell === 3
 									? 'bg-accent border-white hover-!bg-accent/85'
 									: cell === 2
 										? 'bg-accent border-accent hover-!bg-accent/85'
@@ -1786,8 +1843,8 @@
 								oncontextmenu={(e) => {
 									e.preventDefault();
 									drumMachine.cycleVelocity(r, s);
-								}}
-							></button>
+								}}>{sel ? s - cursor!.start + 1 : ""}</button
+							>
 						{/each}
 					</div>
 				</div>
