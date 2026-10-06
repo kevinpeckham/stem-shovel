@@ -10,6 +10,8 @@ import {
 	findUploadingDemo,
 	findUploadingPdf,
 	recordPdfUrl,
+	findUploadingNotation,
+	recordNotationUrl,
 	findUploadingRecording,
 	findUploadingRecordingStem,
 	findUploadingStem,
@@ -27,6 +29,7 @@ import {
 	blobAuth,
 	isDrumSamplePathname,
 	isPdfPathname,
+	isNotationPathname,
 	isRecordingPathname,
 	isSiteKitPathname,
 	recordingAccess,
@@ -36,6 +39,7 @@ import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
 import { accessOfSongId } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { PDF_MAX_BYTES } from "$lib/constants/pdfFormats";
+import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "$lib/constants/notationFormats";
 import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 import { error, json } from "@sveltejs/kit";
@@ -118,6 +122,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						tokenPayload: JSON.stringify({ id: pdf.id }),
 					};
 				}
+				// A notation file (docs/uploads-and-blob.md, "Notation files"): the types browsers call MusicXML, its own ceiling; the bytes are checked at ready.
+				if (isNotationPathname(pathname)) {
+					const notation = await findUploadingNotation(accountId, pathname);
+					if (!notation) throw new Error(`No reservation for "${pathname}"`);
+					return {
+						allowedContentTypes: NOTATION_CONTENT_TYPES,
+						maximumSizeInBytes: NOTATION_MAX_BYTES,
+						addRandomSuffix: false,
+						allowOverwrite: true,
+						tokenPayload: JSON.stringify({ id: notation.id }),
+					};
+				}
 				// Stems and demo recordings share this route; the reservation decides which.
 				const row = isMidi(pathname)
 					? await findStemByMidiPathname(accountId, pathname)
@@ -149,6 +165,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
 				else if (isPdfPathname(blob.pathname)) await recordPdfUrl(blob.pathname, blob.url);
+				else if (isNotationPathname(blob.pathname))
+					await recordNotationUrl(blob.pathname, blob.url);
 				else if (isRecordingPathname(blob.pathname))
 					await recordRecordingUrl(blob.pathname, blob.url);
 				else await recordStemUrl(blob.pathname, blob.url);

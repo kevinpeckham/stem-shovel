@@ -20,6 +20,8 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - bebop
+  - Verovio
+  - Dorico
   - arpeggiated
   - Mixolydian
   - Greensleeves

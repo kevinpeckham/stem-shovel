@@ -69,7 +69,8 @@
 		"qrcode": "1.5.4",
 		"resend": "^6.28.0",
 		"valibot": "^1.5.0",
-		"varlock": "^1.18.0"
+		"varlock": "^1.18.0",
+		"verovio": "^6.3.0"
 	},
 	"devDependencies": {
 		"@iconify-json/ph": "^1.2.2",

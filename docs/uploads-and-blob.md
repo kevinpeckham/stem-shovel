@@ -116,6 +116,34 @@ in three steps driven by `src/lib/upload.ts`:
   Title and description are edited through `pdfs.remote.ts`; removal and
   the song and project cascades delete file and thumbnail; sizes count
   toward the account's storage.
+- **Notation files attached to a song** (`song_notation`, 2026-10-06,
+  Kevin: MusicXML scores for the band, compressed `.mxl` or plain
+  `.musicxml`/`.xml`). The PDF's lifecycle with its own names:
+  `POST /api/notation` reserves the row (a name `notationFormatOf` knows,
+  a size under `NOTATION_MAX_BYTES` (10 MB), the song's cap of
+  `MAX_NOTATION_PER_SONG`, the account's storage room) at
+  `accounts/<a>/songs/<s>/notation/<id>.<ext>` with the extension as
+  uploaded, lower-cased, and a `format` column (`mxl` | `musicxml`) the
+  extension decided; the browser uploads through `/api/upload`'s notation
+  branch, which allows the MusicXML types and the generic ones browsers
+  label such files with (`NOTATION_CONTENT_TYPES`: XML, zip, octet-stream),
+  since the bytes are what count. `POST /api/notation/[id]/ready`
+  (multipart: the URL, an optional page count and first-page image) reads
+  the first 4 KB from the store and insists on a zip header (`PK\x03\x04`)
+  for `.mxl` or, for the rest, an XML prologue naming `score-partwise` or
+  `score-timewise` (`startsLikeZip`, `startsLikeMusicXml` in
+  `utils/fileSignatures.ts`) — a sniff of the bytes, never an XML parse on
+  the server — removing row and file otherwise, then checks and stores the
+  thumbnail at `<id>.thumb-<stamp>.webp` beside the file as a PDF's. The
+  browser does all the rendering: Verovio in a worker draws the score on
+  the song page and renders the thumbnail at upload (`uploadNotationFile`
+  in `src/lib/upload.ts` takes the thumbnail from an optional callback).
+  The same `share_code` behind `/f/<code>`, which looks a PDF up first and
+  a notation file second; `?download=1` streams it under its original name
+  as `application/vnd.recordare.musicxml` (`.mxl`) or
+  `application/vnd.recordare.musicxml+xml`. Title and description through
+  `notation.remote.ts`; `relocate.ts`, the song and project cascades and
+  the storage sum treat the rows exactly as PDFs.
 - **MIDI files per stem** (`…/midi/<stemId>-<stamp>.mid`, columns
   `stem.midi_*`): "Upload MIDI" in the row menu reserves the pathname on
   the stem (`/api/stems/[id]/midi`), the browser uploads through the same

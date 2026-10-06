@@ -67,6 +67,17 @@ What protects what, and where each rule lives. The first security pass ran on
   16-character nanoid; it redirects to a presigned URL for a private song's
   file, so the code is the secret and the file is never served through our
   function.
+- **Notation files** (MusicXML) attached to songs follow the same three
+  gates: extension and size (10 MB) at the reservation, content type at the
+  upload token (the MusicXML types plus XML, zip and octet-stream, as
+  browsers label these files), and the first 4 KB of the stored file when
+  the browser reports it done: a zip header for `.mxl`, else an XML
+  prologue that names a `score-partwise` or `score-timewise`
+  (`startsLikeZip`, `startsLikeMusicXml`). That is a byte sniff, not a
+  parse: the server never parses untrusted XML (no entity expansion, no
+  DTD fetches); Verovio renders the file in a worker in the browser. A file
+  that fails the sniff is deleted with its row; the thumbnail is checked
+  and capped as a PDF's, and the permanent link works the same way.
 
 ## Sessions and cookies
 

@@ -104,6 +104,8 @@ const ROUTES = [
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
 	["api/pdfs (server)", "/api/pdfs", [405], [405]],
 	["api/pdfs/[id]/ready (server)", "/api/pdfs/x/ready", [405], [405]],
+	["api/notation (server)", "/api/notation", [405], [405]],
+	["api/notation/[id]/ready (server)", "/api/notation/x/ready", [405], [405]],
 	["f/[code] (server)", "/f/x", [404], [404]],
 	["api/drum-samples (server)", "/api/drum-samples", [405], [405]],
 	["api/drum-samples/[id]/ready (server)", "/api/drum-samples/x/ready", [405], [405]],

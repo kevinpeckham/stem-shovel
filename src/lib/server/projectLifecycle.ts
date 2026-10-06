@@ -4,7 +4,7 @@ import { db, schema } from "$lib/server/db";
 import type { ArchiveStatus } from "$lib/val/ArchiveStatusSchema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
-const { project, song, stem, demo, songPdf } = schema;
+const { project, song, stem, demo, songPdf, songNotation } = schema;
 
 /**
  * Archiving and deleting projects (src/lib/remote/projects.remote.ts). Any
@@ -12,7 +12,7 @@ const { project, song, stem, demo, songPdf } = schema;
  * list for an "Archived" section and keeps its songs and files. Only an
  * owner or admin deletes, and only an archived project (archiving first is
  * the safety catch): that removes every song and every Blob file behind
- * them (stems, renditions, MIDI, demos, mixes), across both stores, then
+ * them (stems, renditions, MIDI, demos, PDFs, notation files, mixes), across both stores, then
  * the rows, children first (src/lib/server/cascade.ts: the database does
  * not run the schema's cascades).
  */
@@ -67,10 +67,17 @@ export async function deleteProject(
 				.from(songPdf)
 				.where(inArray(songPdf.songId, songIds))
 		: [];
+	const notation = songIds.length
+		? await db
+				.select({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl })
+				.from(songNotation)
+				.where(inArray(songNotation.songId, songIds))
+		: [];
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
+		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? ""]),
 		...songs.map((s) => s.mixUrl ?? ""),
 		target.imageUrl ?? "",
 	]);

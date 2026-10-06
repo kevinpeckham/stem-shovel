@@ -3,6 +3,7 @@ import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
 import { demoContentType } from "$lib/utils/demoContentType";
 import { stemContentType } from "$lib/utils/stemContentType";
 import { pdfThumbnail } from "$lib/utils/pdfThumbnail";
+import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "$lib/constants/notationFormats";
 import { upload } from "@vercel/blob/client";
 
 export interface Reservation {
@@ -96,6 +97,49 @@ export async function uploadPdfFile(
 		form.set("thumbnail", thumb.image, "page-1.webp");
 	}
 	const ready = await fetch(`/api/pdfs/${pdfId}/ready`, { method: "POST", body: form });
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return (await ready.json()) as { shareCode: string };
+}
+
+export interface NotationReservation {
+	notationId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/**
+ * A notation file attached to a song (docs/uploads-and-blob.md, "Notation
+ * files"): reserve, send the bytes to Blob, and report the URL with, when
+ * the caller can render one, the page count and the first page as an
+ * image (Verovio in a worker renders it; the callback is optional and may
+ * answer null). The server checks the file's bytes before it is ready.
+ */
+export async function uploadNotationFile(
+	file: File,
+	reserve: () => Promise<NotationReservation>,
+	onProgress?: (percent: number) => void,
+	thumbnail?: () => Promise<{ blob: Blob; pageCount: number | null } | null>,
+): Promise<{ shareCode: string }> {
+	const { notationId, pathname, access = "public" } = await reserve();
+	const format = notationFormatOf(file.name) ?? "musicxml";
+	const [blob, thumb] = await Promise.all([
+		upload(pathname, file, {
+			access,
+			handleUploadUrl: "/api/upload",
+			// The reservation allows the MusicXML types and the generic ones browsers use; name it properly here.
+			contentType: NOTATION_CONTENT_TYPE_OF[format],
+			multipart: true,
+			onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+		}),
+		thumbnail ? thumbnail().catch(() => null) : Promise.resolve(null),
+	]);
+	const form = new FormData();
+	form.set("url", blob.url);
+	if (thumb) {
+		if (thumb.pageCount) form.set("pageCount", String(thumb.pageCount));
+		form.set("thumbnail", thumb.blob, "page-1.webp");
+	}
+	const ready = await fetch(`/api/notation/${notationId}/ready`, { method: "POST", body: form });
 	if (!ready.ok) throw new Error(await errorText(ready));
 	return (await ready.json()) as { shareCode: string };
 }

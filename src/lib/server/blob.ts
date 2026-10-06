@@ -87,6 +87,29 @@ export function pdfThumbnailPathname(
 }
 export const isPdfPathname = (pathname: string) => /[/]pdfs[/][^/]+[.]pdf$/.test(pathname);
 
+/** Blob pathname for a notation file attached to a song (docs/uploads-and-blob.md, "Notation files"): the extension as uploaded, lower-cased. */
+export function notationPathname(
+	accountId: string,
+	songId: string,
+	notationId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "xml").toLowerCase();
+	return `accounts/${accountId}/songs/${songId}/notation/${notationId}.${ext}`;
+}
+/** The notation file's first-page thumbnail, stamped so a re-render is a new URL (the 30-day cache). */
+export function notationThumbnailPathname(
+	accountId: string,
+	songId: string,
+	notationId: string,
+	ext: string,
+) {
+	const stamp = Date.now().toString(36);
+	return `accounts/${accountId}/songs/${songId}/notation/${notationId}.thumb-${stamp}.${ext}`;
+}
+export const isNotationPathname = (pathname: string) =>
+	/[/]notation[/][^/]+[.](mxl|musicxml|xml)$/.test(pathname);
+
 /** Blob pathname for a scratch recording: under the account, not a song (docs/demo-recording.md). */
 export function recordingPathname(accountId: string, recordingId: string, filename: string) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();

@@ -27,6 +27,7 @@ import {
 	deleteBlobs,
 	demoPathname,
 	pdfPathname,
+	notationPathname,
 	drumSamplePathname,
 	midiPathname,
 	presentUrl,
@@ -50,6 +51,11 @@ import { barGrid } from "$lib/audio/measures";
 import { hashMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_PDFS_PER_SONG } from "$lib/constants/pdfFormats";
+import {
+	MAX_NOTATION_PER_SONG,
+	NOTATION_CONTENT_TYPE_OF,
+	type NotationFormat,
+} from "$lib/constants/notationFormats";
 import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
 import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
 import { slugify } from "$lib/utils/slugify";
@@ -147,6 +153,7 @@ const {
 	progression,
 	chordStyle,
 	songPdf,
+	songNotation,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -240,13 +247,19 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${songPdf.sizeBytes})` })
 		.from(songPdf)
 		.where(and(eq(songPdf.accountId, accountId), ne(songPdf.status, "failed")));
+	// So do notation files (docs/uploads-and-blob.md, "Notation files").
+	const [notation] = await db
+		.select({ bytes: sql<number | null>`sum(${songNotation.sizeBytes})` })
+		.from(songNotation)
+		.where(and(eq(songNotation.accountId, accountId), ne(songNotation.status, "failed")));
 	return (
 		(stems.bytes ?? 0) +
 		(demos.bytes ?? 0) +
 		(takes.bytes ?? 0) +
 		(takeStems.bytes ?? 0) +
 		(samples.bytes ?? 0) +
-		(pdfs.bytes ?? 0)
+		(pdfs.bytes ?? 0) +
+		(notation.bytes ?? 0)
 	);
 }
 
@@ -593,6 +606,7 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
 			pdfs: { orderBy: [asc(songPdf.createdAt)] },
+			notation: { orderBy: [asc(songNotation.createdAt)] },
 			credits: {
 				orderBy: [asc(songCredit.sortOrder), asc(songCredit.createdAt)],
 				with: { artist: { columns: { id: true, name: true } } },
@@ -908,10 +922,18 @@ export async function presentSongFiles<
 		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
 		demos: { url: string; playbackUrl: string | null }[];
 		pdfs: { url: string; thumbnailUrl: string | null }[];
+		notation: { url: string; thumbnailUrl: string | null }[];
 	},
 >(s: S): Promise<S> {
 	return {
 		...s,
+		notation: await Promise.all(
+			s.notation.map(async (n) => ({
+				...n,
+				url: (await presentUrl(n.url)) ?? n.url,
+				thumbnailUrl: await presentUrl(n.thumbnailUrl),
+			})),
+		),
 		pdfs: await Promise.all(
 			s.pdfs.map(async (p) => ({
 				...p,
@@ -955,10 +977,15 @@ export async function deleteSong(accountId: string, songId: string) {
 		.select({ url: songPdf.url, thumbnailUrl: songPdf.thumbnailUrl })
 		.from(songPdf)
 		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.songId, songId)));
+	const notation = await db
+		.select({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl })
+		.from(songNotation)
+		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.songId, songId)));
 	await deleteBlobs([
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
+		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
 	const owned = await db.query.song.findFirst({
@@ -2744,9 +2771,16 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem" | "pdf",
+	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem" | "pdf" | "notation",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "notation") {
+		const r = await db.query.songNotation.findFirst({
+			where: and(eq(songNotation.accountId, accountId), eq(songNotation.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "pdf") {
 		const r = await db.query.songPdf.findFirst({
 			where: and(eq(songPdf.accountId, accountId), eq(songPdf.id, id)),
@@ -3205,6 +3239,123 @@ export function pdfByShareCode(code: string) {
 	return db.query.songPdf.findFirst({
 		where: and(eq(songPdf.shareCode, code), eq(songPdf.status, "ready")),
 		columns: { url: true, filename: true, title: true },
+	});
+}
+
+// ---- Notation files attached to songs (docs/uploads-and-blob.md, "Notation files") ----
+
+/** Step 1 of a notation upload: the row in `uploading` state with its pathname and share code; null for a song the account lacks, "full" at the cap. */
+export async function createNotation(
+	accountId: string,
+	userId: string,
+	songId: string,
+	file: { filename: string; sizeBytes: number; format: NotationFormat },
+) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(songNotation)
+		.where(eq(songNotation.songId, songId));
+	if (n >= MAX_NOTATION_PER_SONG) return "full" as const;
+	const id = nanoid();
+	const [row] = await db
+		.insert(songNotation)
+		.values({
+			id,
+			accountId,
+			songId,
+			title: labelFromFilename(file.filename),
+			format: file.format,
+			url: "",
+			pathname: notationPathname(accountId, songId, id, file.filename),
+			filename: file.filename,
+			contentType: NOTATION_CONTENT_TYPE_OF[file.format],
+			sizeBytes: file.sizeBytes,
+			shareCode: nanoid(16),
+			uploadedBy: userId,
+		})
+		.returning();
+	return row;
+}
+
+export function findUploadingNotation(accountId: string, pathname: string) {
+	return db.query.songNotation.findFirst({
+		where: and(
+			eq(songNotation.accountId, accountId),
+			eq(songNotation.pathname, pathname),
+			eq(songNotation.status, "uploading"),
+		),
+	});
+}
+
+/** Vercel's completion webhook (production only): the URL lands even if the browser's own report never does; the bytes are checked when it does. */
+export async function recordNotationUrl(pathname: string, url: string) {
+	await db
+		.update(songNotation)
+		.set({ url })
+		.where(and(eq(songNotation.pathname, pathname), eq(songNotation.status, "uploading")));
+}
+
+/** Step 3: the file checked, the thumbnail stored, the row ready. */
+export async function markNotationReady(
+	accountId: string,
+	notationId: string,
+	data: {
+		url: string;
+		pageCount: number | null;
+		thumbnailUrl: string | null;
+		thumbnailPathname: string | null;
+	},
+) {
+	const [row] = await db
+		.update(songNotation)
+		.set({ ...data, status: "ready" })
+		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
+		.returning();
+	return row ?? null;
+}
+
+/** The upload was not MusicXML (or never finished): the row goes, and whatever landed. */
+export async function failNotation(accountId: string, notationId: string) {
+	const [row] = await db
+		.delete(songNotation)
+		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
+		.returning({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl });
+	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+}
+
+export async function updateNotation(
+	accountId: string,
+	notationId: string,
+	fields: { title: string; description: string },
+) {
+	const [row] = await db
+		.update(songNotation)
+		.set(fields)
+		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteNotation(accountId: string, notationId: string) {
+	const [row] = await db
+		.delete(songNotation)
+		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
+		.returning({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl });
+	if (!row) return false;
+	await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+	return true;
+}
+
+/** The notation file a permanent link names (`/f/<code>`), ready ones only. */
+export function notationByShareCode(code: string) {
+	return db.query.songNotation.findFirst({
+		where: and(eq(songNotation.shareCode, code), eq(songNotation.status, "ready")),
+		columns: { url: true, filename: true, title: true, format: true, contentType: true },
 	});
 }
 

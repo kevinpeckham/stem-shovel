@@ -112,7 +112,8 @@ export default defineConfig({
 				directives: {
 					"default-src": ["self"],
 					// Vercel Web Analytics is same-origin in production; dev loads its debug script from Vercel.
-					"script-src": ["self", ...(production ? [] : [ANALYTICS_DEBUG_HOST])],
+					// 'wasm-unsafe-eval' lets the notation worker compile Verovio's WebAssembly (no JavaScript eval).
+					"script-src": ["self", "wasm-unsafe-eval", ...(production ? [] : [ANALYTICS_DEBUG_HOST])],
 					"style-src": ["self", "unsafe-inline"],
 					// Pictures of accounts, artists and songs live in the Blob stores too.
 					"img-src": ["self", "data:", "blob:", BLOB_STORE, BLOB_PRIVATE_STORE],

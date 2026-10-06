@@ -32,6 +32,7 @@ import { shareLink } from "./shareLink";
 import { song } from "./song";
 import { songDocVersion } from "./songDocVersion";
 import { songPdf } from "./songPdf";
+import { songNotation } from "./songNotation";
 import { userDoc } from "./userDoc";
 import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
@@ -132,12 +133,19 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	docVersions: many(songDocVersion),
 	credits: many(songCredit),
 	pdfs: many(songPdf),
+	notation: many(songNotation),
 }));
 
 export const songPdfRelations = relations(songPdf, ({ one }) => ({
 	account: one(account, { fields: [songPdf.accountId], references: [account.id] }),
 	song: one(song, { fields: [songPdf.songId], references: [song.id] }),
 	uploader: one(user, { fields: [songPdf.uploadedBy], references: [user.id] }),
+}));
+
+export const songNotationRelations = relations(songNotation, ({ one }) => ({
+	account: one(account, { fields: [songNotation.accountId], references: [account.id] }),
+	song: one(song, { fields: [songNotation.songId], references: [song.id] }),
+	uploader: one(user, { fields: [songNotation.uploadedBy], references: [user.id] }),
 }));
 
 export const artistRelations = relations(artist, ({ one, many }) => ({

@@ -25,3 +25,9 @@ Press **Save** or **⌘S** / **Ctrl+S**. Each save that changes the text makes a
 | D     | A     | Bm    | G     |
 | D     | A     | G     | G     |
 ```
+
+## Notation
+
+The Chart tab has two modes, **Text** and **Notation**. Text is the chart you write. Notation holds scores exported as **MusicXML** from Dorico, MuseScore, Sibelius, Finale or any notation program (a compressed `.mxl` or a plain `.musicxml`), one tile each with its first page, title, description and page count. Click the page and the score is engraved in a panel of its own, laid out for the panel's width, which you can drag by its header and resize by its corner; **Download** in the header gives you the file back. The tile's ⋯ menu has Open, Download and, for editors, Edit and Remove; its share button copies a permanent link or starts an email with it. Editors upload one or more files with **Upload Notation** (at the foot of the tab, in the panel's ⋯ menu, or in the Uploads menu), up to 10 MB each and 20 a song. The engraving engine downloads only on the song pages that use it, the first time a score opens.
+
+From Dorico: File › Export › MusicXML, one flow per file, exporting layouts as separate files if you want the parts as well as the score. Slash regions and some engraving details do not travel in MusicXML; a PDF on the PDFs tab shows the page exactly as Dorico printed it.

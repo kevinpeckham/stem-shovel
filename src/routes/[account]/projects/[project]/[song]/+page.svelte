@@ -23,6 +23,7 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
 	import SongPdfPanel from "$lib/components/SongPdfPanel.svelte";
+	import SongNotationPanel from "$lib/components/SongNotationPanel.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
@@ -181,6 +182,8 @@
 	let demoJobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let demoNotice = $state<string | null>(null);
 	let demoBusy = $state(false);
+	/** The Chart tab's notation mode; the Uploads menu and the panel's ⋯ menu open its picker. */
+	let notationPanel = $state<SongNotationPanel | null>(null);
 	/** The Docs panel's PDFs tab; the Uploads menu and the panel's ⋯ menu open its picker. */
 	let pdfPanel = $state<SongPdfPanel | null>(null);
 	async function uploadDemos(input: HTMLInputElement) {
@@ -381,6 +384,38 @@
 		await tick();
 		pdfPanel?.pick();
 	}
+	/**
+	 * The Chart tab shows the chart's text, or the song's notation files
+	 * (MusicXML engraved in the browser) on a Text / Notation toggle (Kevin);
+	 * remembered per browser, notation first when there is no chart text but
+	 * there is notation.
+	 */
+	type ChartMode = "text" | "notation";
+	let chartChoice = $state<ChartMode | null>(null);
+	let chartMode = $derived<ChartMode>(
+		chartChoice ?? (!data.docs.chart && data.song.notation.length > 0 ? "notation" : "text"),
+	);
+	const CHART_MODE_KEY = "stemshovel.song.chart-mode";
+	async function setChartMode(mode: ChartMode) {
+		if (mode === chartMode) return;
+		if (docEditing) await docPanel?.close();
+		docEditing = false;
+		chartChoice = mode;
+		try {
+			localStorage.setItem(CHART_MODE_KEY, mode);
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	let notationShown = $derived(panel === "chart" && chartMode === "notation");
+	/** The notation picker, from the Uploads menu: the panel back, the Chart tab in notation mode, then the picker. */
+	async function pickNotation() {
+		if (docsMode === "minimised") await setDocsMode(docsRestore);
+		await showPanel("chart");
+		await setChartMode("notation");
+		await tick();
+		notationPanel?.pick();
+	}
 
 	// Comments: who may do what, the located ones for the timeline, and the
 	// popover form (one popover, create or edit).
@@ -447,6 +482,8 @@
 			if (mode === "docked" || mode === "floating" || mode === "minimised") docsMode = mode;
 			const pm = localStorage.getItem(PLAYER_MODE_KEY);
 			if (pm === "docked" || pm === "floating" || pm === "minimised") playerMode = pm;
+			const cm = localStorage.getItem(CHART_MODE_KEY);
+			if (cm === "text" || cm === "notation") chartChoice = cm;
 		} catch {
 			// Private mode: docked.
 		}
@@ -472,6 +509,18 @@
 			{ id: "nothing", kind: "notice", notice: "Nothing to do here yet" },
 		];
 		if (panel === "comments") return nothing;
+		if (notationShown)
+			return data.canEdit
+				? [
+						{
+							id: "upload-notation",
+							label: "Upload Notation",
+							iconClass: "i-ph-music-notes-simple",
+							title: "MusicXML: one or more .mxl or .musicxml files",
+							action: () => notationPanel?.pick(),
+						},
+					]
+				: nothing;
 		if (panel === "pdfs")
 			return data.canEdit
 				? [
@@ -2502,6 +2551,16 @@
 						>
 							<span class="i-ph-plus"></span>
 						</button>
+					{:else if notationShown}
+						<button
+							class="button button-xs flex items-center"
+							type="button"
+							title="Upload notation: MusicXML files"
+							aria-label="Upload notation"
+							onclick={() => notationPanel?.pick()}
+						>
+							<span class="i-ph-plus"></span>
+						</button>
 					{:else}
 						<button
 							class="button button-xs flex items-center {docEditing
@@ -2553,6 +2612,57 @@
 					></span>
 				</button>
 			{/snippet}
+			{#if panel === "chart" || docEditing}
+				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, and Text / Notation on the Chart tab (Kevin). -->
+				<div
+					class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
+				>
+					{#if docEditing && !notationShown}
+						<div
+							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
+							role="radiogroup"
+							aria-label="Editor view"
+						>
+							{#each DOC_VIEWS as v, index (v.id)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={docView === v.id}
+									class="{docView === v.id
+										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+									0
+										? 'rounded-r-none border-r-none'
+										: 'rounded-l-none'}"
+									onclick={() => (docView = v.id)}>{v.name}</button
+								>
+							{/each}
+						</div>
+					{/if}
+					{#if panel === "chart"}
+						<div
+							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
+							role="radiogroup"
+							aria-label="Chart mode"
+						>
+							{#each [{ id: "text", label: "Text" }, { id: "notation", label: `Notation (${data.song.notation.filter((n) => n.status === "ready").length})` }] as m, index (m.id)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={chartMode === m.id}
+									class="{chartMode === m.id
+										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+									0
+										? 'rounded-r-none border-r-none'
+										: 'rounded-l-none'}"
+									onclick={() => void setChartMode(m.id as ChartMode)}>{m.label}</button
+								>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 			{#if panel === "comments"}
 				<div
 					class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-6 pb-8"
@@ -2616,6 +2726,15 @@
 						</ol>
 					{/if}
 				</div>
+			{:else if notationShown}
+				<!-- The notation files (docs/uploads-and-blob.md, "Notation"): MusicXML engraved in the browser. -->
+				<SongNotationPanel
+					bind:this={notationPanel}
+					songId={data.song.id}
+					songTitle={data.song.title}
+					notation={data.song.notation}
+					canEdit={data.canEdit}
+				/>
 			{:else if panel === "pdfs"}
 				<!-- The PDFs (docs/uploads-and-blob.md, "PDFs"): charts, lead sheets, notation, to download and to link to. -->
 				<SongPdfPanel
@@ -2626,33 +2745,6 @@
 					canEdit={data.canEdit}
 				/>
 			{:else}
-				{#if docEditing}
-					<!-- The editor's pane, a toggle stuck to the panel's top right while editing (Kevin). -->
-					<div
-						class="sticky top-0 z-10 flex items-start justify-end h-0 overflow-visible pointer-events-none"
-					>
-						<div
-							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
-							role="radiogroup"
-							aria-label="Editor view"
-						>
-							{#each DOC_VIEWS as v, index (v.id)}
-								<button
-									type="button"
-									role="radio"
-									aria-checked={docView === v.id}
-									class="{docView === v.id
-										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
-									0
-										? 'rounded-r-none border-r-none'
-										: 'rounded-l-none'}"
-									onclick={() => (docView = v.id)}>{v.name}</button
-								>
-							{/each}
-						</div>
-					</div>
-				{/if}
 				{#key doc}
 					<SongDocPanel
 						bind:this={docPanel}
@@ -2752,6 +2844,16 @@
 					>
 						<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
 						Upload PDFs
+					</button>
+					<button
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+						type="button"
+						role="menuitem"
+						title="MusicXML notation, as Dorico and the rest export it; engraved on the Chart tab"
+						onclick={() => void pickNotation()}
+					>
+						<span class="i-ph-music-notes-simple mr-2" aria-hidden="true"></span>
+						Upload Notation
 					</button>
 					<a
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"

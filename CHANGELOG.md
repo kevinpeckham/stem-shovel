@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Notation on the Chart tab** (Kevin: Dorico scores): the Chart tab has a Text / Notation toggle (remembered per browser, notation first when there is no chart text but there is notation); Notation holds MusicXML files (`.mxl` or `.musicxml`, 10 MB each, 20 a song) as tiles like the PDFs', with a ⋯ menu (Open, Download, Edit, Remove) and a Share menu, Upload Notation at the foot, in the panel's ⋯ menu and in the Uploads menu. A tile opens the score in a `FloatingPanel`, every page engraved by Verovio for the panel's width and re-engraved as it resizes; Verovio (7 MB) runs in a module worker (`workers/notation.worker.ts`, `utils/renderNotation.ts`) that starts only when a score is rendered, and its SVG is sanitised before it enters the page (`utils/sanitizeSvg.ts`, tested). The first page is drawn at upload time into a WebP thumbnail (`utils/notationThumbnail.ts`). A `song_notation` table (migration 0074) with the PDFs' lifecycle: `/api/notation` reserves, the browser uploads, `/api/notation/[id]/ready` sniffs the bytes (a zip for `.mxl`, MusicXML text otherwise; the server never parses XML), cascade, relocation, storage accounting, `/f/<code>` links and downloads under the original name; the CSP gains `wasm-unsafe-eval` for the engine.
+
 ## [0.106.0] - 2026-10-06
 
 ### Changed
