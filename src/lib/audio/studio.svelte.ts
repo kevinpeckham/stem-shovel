@@ -280,6 +280,19 @@ class StudioEngine {
 		this.#buffers.clear();
 		for (const id of this.#tracks.keys()) this.#dropTrackNodes(id);
 		this.arrangement = song.current ? structuredClone(song.current) : emptyArrangement();
+		// An empty song starts with one track armed to the microphone, so the page never opens bare and Record works at once (Kevin);
+		// not an edit: the song is made on the server only when something lands on it.
+		if (this.arrangement.tracks.length === 0)
+			this.arrangement.tracks.push({
+				id: localId(),
+				name: "Track 1",
+				gain: 1,
+				pan: 0,
+				muted: false,
+				solo: false,
+				armed: true,
+				input: { source: "mic", channel: "stereo" },
+			});
 		this.dirty = false;
 		this.takeCount = song.sources.reduce((n, s) => Math.max(n, s.takeNumber), 0);
 		const next: Record<string, StudioSource> = {};

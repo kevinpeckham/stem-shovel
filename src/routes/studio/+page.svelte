@@ -56,7 +56,8 @@
 	let title = $state("");
 	let notes = $state("");
 	let notesKey = $state(0);
-	let loadedKey = "";
+	/** The song the engine holds ("" for none); starts unset so the first open always loads. */
+	let loadedKey = "unloaded";
 	let selected = $state<string | null>(null);
 	let pxPerSecond = $state(40);
 
@@ -135,7 +136,6 @@
 			});
 			await invalidateAll();
 			openSong(data.songs.find((s) => s.id === created.id) ?? null);
-			if (!studio.arrangement.tracks.length) studio.addTrack({ source: "mic", channel: "stereo" });
 		} catch (e) {
 			notify(`Could not make a song: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -838,15 +838,36 @@
 						<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
 					</button>
 					<span class="w-2"></span>
-					<ContextMenu
-						ariaLabel="Timing"
-						label="Timing"
-						iconClass="i-ph-metronome"
-						buttonBaseClasses="device-button-sm px-3"
-						position="bottom left"
-						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
-						items={[{ id: "timing", kind: "snippet", snippet: timingBlock }]}
-					/>
+					<!-- A split button, as the chord player's: the tempo switches the click; the caret opens the Timing menu (Kevin). -->
+					<div class="flex gap-px" role="group" aria-label="Timing">
+						<button
+							class="device-button-sm px-3 rounded-r-none tabular-nums {studio.arrangement.click
+								? 'text-accent'
+								: ''}"
+							type="button"
+							aria-pressed={studio.arrangement.click}
+							title={studio.arrangement.click
+								? "Silence the click while the song plays"
+								: "A click while the song plays, at this tempo"}
+							aria-label="Click at {studio.arrangement.bpm} bpm"
+							onclick={() => studio.setClick(!studio.arrangement.click)}
+						>
+							<span class="i-ph-metronome" aria-hidden="true"></span>
+							{studio.arrangement.bpm}
+						</button>
+						<ContextMenu
+							ariaLabel="Timing"
+							title="Tempo, beats to the bar, count-in and the click"
+							iconClass="i-ph-caret-down"
+							position="bottom left"
+							buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
+							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+							items={[
+								{ id: "timing-heading", kind: "heading", label: "Timing" },
+								{ id: "timing", kind: "snippet", snippet: timingBlock },
+							]}
+						/>
+					</div>
 					<label class="device-button-sm px-3 flex items-center gap-2 cursor-pointer">
 						<input
 							type="checkbox"
@@ -855,15 +876,6 @@
 							onchange={(e) => studio.setCountIn(e.currentTarget.checked)}
 						/>
 						Count-in
-					</label>
-					<label class="device-button-sm px-3 flex items-center gap-2 cursor-pointer">
-						<input
-							type="checkbox"
-							class="accent-maximumYellow"
-							checked={studio.arrangement.click}
-							onchange={(e) => studio.setClick(e.currentTarget.checked)}
-						/>
-						Click
 					</label>
 					<label class="device-button-sm px-3 flex items-center gap-2 cursor-pointer">
 						<input
@@ -1111,19 +1123,28 @@
 		<div
 			class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
 		>
-			<label class="block">
-				<span class="device-button-label">Tempo · {studio.arrangement.bpm} bpm</span>
-				<input
-					class="w-full accent-maximumYellow"
-					type="range"
-					min="30"
-					max="300"
-					step="1"
-					value={studio.arrangement.bpm}
-					aria-label="Tempo in beats per minute"
-					onchange={(e) => studio.setBpm(Number(e.currentTarget.value))}
-				/>
-			</label>
+			<div class="flex items-end gap-3">
+				<label class="block grow">
+					<span class="device-button-label">Tempo · {studio.arrangement.bpm} bpm</span>
+					<input
+						class="w-full accent-maximumYellow"
+						type="range"
+						min="30"
+						max="300"
+						step="1"
+						value={studio.arrangement.bpm}
+						aria-label="Tempo in beats per minute"
+						onchange={(e) => studio.setBpm(Number(e.currentTarget.value))}
+					/>
+				</label>
+				<button
+					class="device-button-xs px-3 mb-1"
+					type="button"
+					aria-label="Tap the tempo"
+					title="Tap the tempo"
+					onclick={() => metronome.tap()}>Tap</button
+				>
+			</div>
 			<label class="block">
 				<span class="device-button-label">Beats per bar</span>
 				<select
@@ -1134,6 +1155,24 @@
 				>
 					{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
 				</select>
+			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={studio.arrangement.click}
+					onchange={(e) => studio.setClick(e.currentTarget.checked)}
+				/>
+				Click while the song plays
+			</label>
+			<label class="flex items-center gap-2 text-13px text-blue-100/90">
+				<input
+					type="checkbox"
+					class="accent-maximumYellow"
+					checked={studio.arrangement.countIn}
+					onchange={(e) => studio.setCountIn(e.currentTarget.checked)}
+				/>
+				Count in a bar before recording
 			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
