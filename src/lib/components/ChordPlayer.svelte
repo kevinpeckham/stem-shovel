@@ -7,7 +7,6 @@
 		chordPlayer,
 		type ArpPattern,
 		type ArpRate,
-		type NoteReadout,
 	} from "$lib/audio/chordPlayer.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
 	import { progressionPad } from "$lib/audio/progression.svelte";
@@ -18,6 +17,8 @@
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
 	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
 	import StrumMenu from "$lib/components/StrumMenu.svelte";
+	import TimingMenu from "$lib/components/TimingMenu.svelte";
+	import ChordUiMenu from "$lib/components/ChordUiMenu.svelte";
 	import ChordPresets from "$lib/components/ChordPresets.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
@@ -25,7 +26,6 @@
 		CIRCLE_OF_FIFTHS,
 		KEY_CENTERS,
 		SEVENTH_TYPES,
-		type ChordKeyMap,
 		type ChordQuality,
 		type ChordVoicing,
 		type SeventhType,
@@ -46,7 +46,6 @@
 	import { resolvePianoSlots } from "$lib/utils/resolvePianoSlots";
 	import type { NamedPianoPreset, PianoPresetData } from "$lib/val/PianoPresetSchema";
 	import type { SavedProgression } from "$lib/val/ProgressionSchema";
-	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
 	import { dynamicMark } from "$lib/utils/dynamicMark";
 
 	/**
@@ -165,7 +164,6 @@
 			notify(`Could not delete the style: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	const BEATS_PER_BAR = [2, 3, 4, 5, 6];
 
 	const INSTRUMENT_OPTIONS = PIANO_INSTRUMENTS.map((i) => ({ value: i.id, label: i.label }));
 	const instrumentLabel = (id: string) => PIANO_INSTRUMENTS.find((i) => i.id === id)?.label ?? id;
@@ -1288,168 +1286,11 @@
 {/snippet}
 
 {#snippet circleMenuBlock()}
-	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-		<label class="block">
-			<span class="device-button-label">Layout</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.layout}
-				onchange={(e) => chordPlayer.setLayout(e.currentTarget.value as "circle" | "arch")}
-			>
-				<option value="circle">Circle</option>
-				<option value="arch">Arch</option>
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Where the key sits</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.keyAtTop ? "top" : "bottom"}
-				onchange={(e) => chordPlayer.setKeyAtTop(e.currentTarget.value === "top")}
-			>
-				<option value="bottom">At the bottom</option>
-				<option value="top">At the top</option>
-			</select>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Key center</span>
-			<select
-				class="device-field w-full"
-				value={String(chordPlayer.keyCenter)}
-				onchange={(e) => chordPlayer.setKeyCenter(Number(e.currentTarget.value))}
-			>
-				{#each KEY_OPTIONS as k (k.value)}<option value={k.value}>{k.label}</option>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Notes in the readout</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.noteReadout}
-				onchange={(e) => chordPlayer.setNoteReadout(e.currentTarget.value as NoteReadout)}
-			>
-				<option value="names">Written</option>
-				<option value="staff">On a staff</option>
-				<option value="both">Both</option>
-				<option value="off">Off</option>
-			</select>
-		</label>
-		<label class="block">
-			<span class="device-button-label">Computer keyboard</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.keyMap}
-				onchange={(e) => chordPlayer.setKeyMap(e.currentTarget.value as ChordKeyMap)}
-			>
-				<option value="degree">By degree</option>
-				<option value="circle">Round the circle</option>
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				><a class="link" href="/docs/chord-player">Learn more</a> in the user docs.</span
-			>
-		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={chordPlayer.showSignatures}
-				onchange={(e) => chordPlayer.setShowSignatures(e.currentTarget.checked)}
-			/>
-			Show the key signatures
-		</label>
-		<label class="flex items-center gap-2 text-13px text-blue-100/90">
-			<input
-				type="checkbox"
-				class="accent-maximumYellow"
-				checked={chordPlayer.highlightKey}
-				onchange={(e) => chordPlayer.setHighlightKey(e.currentTarget.checked)}
-			/>
-			Dim the chords outside the key
-		</label>
-	</div>
+	<ChordUiMenu />
 {/snippet}
 
 {#snippet timingMenuBlock()}
-	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-		<div>
-			<span class="device-button-label">Tempo · {metronome.bpm} bpm</span>
-			<div class="flex items-center gap-1 mb-2">
-				{#each [-5, -1] as d (d)}
-					<button
-						class="device-button-sm px-2 !min-w-0 tabular-nums"
-						type="button"
-						aria-label="Tempo {d}"
-						onclick={() => metronome.setBpm(metronome.bpm + d)}>{d}</button
-					>
-				{/each}
-				<button
-					class="device-button-sm px-4"
-					type="button"
-					title="Tap the tempo"
-					onclick={() => metronome.tap()}>Tap</button
-				>
-				{#each [1, 5] as d (d)}
-					<button
-						class="device-button-sm px-2 !min-w-0 tabular-nums"
-						type="button"
-						aria-label="Tempo +{d}"
-						onclick={() => metronome.setBpm(metronome.bpm + d)}>+{d}</button
-					>
-				{/each}
-				<input
-					class="device-field w-18 ml-auto py-1 text-center text-13px tabular-nums"
-					type="number"
-					min={BPM_MIN}
-					max={BPM_MAX}
-					step="1"
-					value={metronome.bpm}
-					onchange={(e) => metronome.setBpm(Number(e.currentTarget.value))}
-					aria-label="Tempo in beats per minute"
-				/>
-			</div>
-			<input
-				class="w-full accent-maximumYellow"
-				type="range"
-				min={BPM_MIN}
-				max={BPM_MAX}
-				step="1"
-				value={metronome.bpm}
-				oninput={(e) => metronome.setBpm(Number(e.currentTarget.value))}
-				aria-label="Tempo"
-			/>
-			<span class="block text-12px opacity-70 mt-1"
-				>The pad measures a held chord against this tempo: about a beat, two or four.</span
-			>
-		</div>
-		<label class="block">
-			<span class="device-button-label">Beats to the bar</span>
-			<select
-				class="device-field w-full"
-				value={String(metronome.beatsPerBar)}
-				onchange={(e) => metronome.setBeats(Number(e.currentTarget.value))}
-			>
-				{#each BEATS_PER_BAR as n (n)}<option value={String(n)}>{n}</option>{/each}
-			</select>
-		</label>
-		<div class="grid gap-2">
-			<button
-				class="device-button-sm px-3 justify-self-start {metronome.running ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={metronome.running}
-				title={metronome.running ? "Stop the click" : "A click to play along to, at this tempo"}
-				onclick={() => metronome.toggle()}
-			>
-				<span class="i-ph-metronome" aria-hidden="true"></span>
-				{metronome.running ? "Click on" : "Click"}
-			</button>
-		</div>
-	</div>
+	<TimingMenu />
 {/snippet}
 
 {#snippet effectsMenuBlock()}

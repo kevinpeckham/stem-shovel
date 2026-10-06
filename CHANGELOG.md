@@ -12,6 +12,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The chord player's space bar locks the sustain with a double tap** (Kevin): a second press within 400 ms locks the pedal down, as a double tap on the sustain pad has, and the next double tap or Escape lifts it; the shortcut strip says so. The pad and the key share one `sustainPress`.
 - **The Strum menu in the Arpeggiator menu's shape** (Kevin): two columns of ComboBoxes with an InfoTip beside each label (Speed and Direction, Pattern and Rate, a divider, Accent and the session Swing, a divider, Latch), the explanations moved from paragraphs into the tips, the rate disabled with Once; `StrumMenu.svelte`, out of `ChordPlayer.svelte`.
+- **The Timing and UI menus in the same shape** (Kevin): Timing with the tempo slider, steps, Tap and number across the top, Beats to the Bar as a ComboBox (the beat counted beside it while the click runs) and Click as a switch; UI with Layout, Key Position, Key Center, Notes in the Readout and Computer Keyboard as ComboBoxes and Show Key Signatures and Dim Outside the Key as switches, each explained in an InfoTip (`TimingMenu.svelte`, `ChordUiMenu.svelte`).
 
 ## [0.101.0] - 2026-10-06
 
