@@ -1630,7 +1630,7 @@
 				<ComboBox
 					ariaLabel="Key"
 					clearDefaultButtonClasses={true}
-					buttonClasses="w-full @4xl-device-button-xs !@4xl-text-slate-400 @4xl-hover-bg-slate-900 border"
+					buttonClasses="w-full device-button-sm bg-slate-800 border"
 					popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 					options={ROOT_OPTIONS}
 					value={String(piano.key?.root ?? 0)}
@@ -1643,7 +1643,7 @@
 				<ComboBox
 					ariaLabel="Scale"
 					clearDefaultButtonClasses={true}
-					buttonClasses="w-full @4xl-device-button-xs @4xl-hover-bg-slate-900 border"
+					buttonClasses="w-full device-button-sm bg-slate-800 border"
 					popoverClasses="text-blue-100 [&_li]-bg-blue-100/10 min-w-auto"
 					options={MODE_OPTIONS}
 					value={piano.key?.mode ?? "major"}
@@ -1654,7 +1654,7 @@
 			<div>
 				<span class="block mb-2">Show Dots Guide</span>
 				<button
-					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
+					class="w-full device-button-sm bg-slate-800 border px-3 disabled:opacity-40 {piano.dots
 						? 'text-accent'
 						: ''}"
 					type="button"
@@ -1668,7 +1668,7 @@
 			<div>
 				<span class="block mb-2">Show Numbers Guide</span>
 				<button
-					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
+					class="w-full device-button-sm bg-slate-800 border px-3 disabled:opacity-40 {piano.degrees
 						? 'text-accent'
 						: ''}"
 					type="button"
@@ -1683,7 +1683,7 @@
 			<div class="w-full">
 				<span class="block mb-2">Toggle Guides</span>
 				<button
-					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border"
+					class="w-full device-button-sm bg-slate-800 border px-3"
 					type="button"
 					onclick={() => {
 						piano.setDegrees(false);
