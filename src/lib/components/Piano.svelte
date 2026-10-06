@@ -1114,7 +1114,7 @@
 				<span class="i-ph-share-network" aria-hidden="true"></span>
 				Copy link
 			</button>
-			<p class="text-12px opacity-70">
+			<p class="text-12px opacity-70 whitespace-normal">
 				A short link that opens the piano with this sound: the instrument, its effects and settings.
 			</p>
 		</div>
