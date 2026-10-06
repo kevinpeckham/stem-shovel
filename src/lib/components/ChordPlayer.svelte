@@ -692,7 +692,7 @@
 				label="Effects"
 				position="bottom right"
 				buttonBaseClasses="device-button-sm px-3"
-				popoverClasses="min-w-80 @xl-min-w-[40rem] max-w-4xl !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+				popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 				items={[
 					{ id: "fx-heading", kind: "heading", label: "Effects" },
 					{ id: "fx-block", kind: "snippet", snippet: effectsMenuBlock },

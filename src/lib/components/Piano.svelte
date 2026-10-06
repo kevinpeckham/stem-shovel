@@ -819,7 +819,7 @@
 					position="bottom right"
 					buttonBaseClasses="device-button-xs px-3 h-10 @4xl-h-7"
 					buttonClasses={fxOn ? "text-accent" : ""}
-					popoverClasses="min-w-72 @4xl-min-w-160 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
 						{ id: "effect-menu-heading", kind: "heading", label: "Effects" },
 						{ id: "piano-fx", kind: "snippet", snippet: fxSlidersMenuBlock },
