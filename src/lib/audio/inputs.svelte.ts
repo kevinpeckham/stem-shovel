@@ -193,25 +193,36 @@ class InputSources {
 		if (deviceId !== undefined) this.setDevice(source, deviceId);
 		const id = this.deviceIds[source];
 		this.errors[source] = null;
+		const constraints = (device: string | null): MediaStreamConstraints => ({
+			audio: {
+				echoCancellation: false,
+				noiseSuppression: false,
+				autoGainControl: false,
+				sampleRate: { ideal: this.#ctx?.sampleRate ?? 48000 },
+				channelCount: { ideal: 2 },
+				...(device ? { deviceId: { exact: device } } : {}),
+			},
+		});
+		const missing = (name?: string) => name === "NotFoundError" || name === "OverconstrainedError";
 		let stream: MediaStream;
 		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				audio: {
-					echoCancellation: false,
-					noiseSuppression: false,
-					autoGainControl: false,
-					sampleRate: { ideal: this.#ctx?.sampleRate ?? 48000 },
-					channelCount: { ideal: 2 },
-					...(id ? { deviceId: { exact: id } } : {}),
-				},
-			});
+			try {
+				stream = await navigator.mediaDevices.getUserMedia(constraints(id));
+			} catch (e) {
+				// A remembered device that is gone (an interface unplugged, a headset off) or whose id the browser has
+				// since rotated (Safari renews them between sessions): the default input instead, and the choice forgotten
+				// (Kevin met "not found" on the Studio with the MacBook's microphone plainly there).
+				if (!id || !missing((e as { name?: string }).name)) throw e;
+				this.setDevice(source, null);
+				stream = await navigator.mediaDevices.getUserMedia(constraints(null));
+			}
 		} catch (e) {
 			const name = (e as { name?: string }).name;
 			this.errors[source] =
 				name === "NotAllowedError"
 					? "Microphone access was refused. Allow it for this site in your browser settings, then try again."
-					: name === "NotFoundError" || name === "OverconstrainedError"
-						? "That input was not found. Choose another in its menu."
+					: missing(name)
+						? "No input was found. Plug one in or choose another in its menu."
 						: String(e);
 			return false;
 		}
