@@ -36,6 +36,8 @@
 		floating?: boolean;
 		/** Show the close button (off for a panel that is always there, like the notes). */
 		closable?: boolean;
+		/** Extra classes on the panel's root (`h-full` for a docked panel that fills its column). */
+		extraClass?: string;
 	}
 	let {
 		open,
@@ -48,6 +50,7 @@
 		onminimise,
 		floating = true,
 		closable = true,
+		extraClass = "",
 	}: Props = $props();
 
 	let x = $state(24);
@@ -158,7 +161,7 @@
 
 {#if open}
 	<div
-		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {floating
+		class="relative w-full grid grid-rows-[auto_1fr] rounded-lg border border-current/15 bg-oxford shadow-lg shadow-black/40 overflow-hidden {extraClass} {floating
 			? 'lg-fixed lg-z-[var(--fp-z)] lg-shadow-2xl lg-shadow-black/60 lg-resize lg-min-w-480px lg-min-h-320px lg-max-w-[calc(100vw-16px)] lg-max-h-[calc(100vh-16px)] lg-left-[var(--fp-x)] lg-top-[var(--fp-y)] lg-w-[var(--fp-w)] lg-h-[var(--fp-h)]'
 			: ''}"
 		style:--fp-x="{x}px"

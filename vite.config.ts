@@ -125,6 +125,8 @@ export default defineConfig({
 						"https://vercel.com/api/blob/",
 						SENTRY_INGEST,
 					],
+					// A song's PDFs open in the browser's own reader, framed from the stores (the Docs panel's viewer).
+					"frame-src": ["self", BLOB_STORE, BLOB_PRIVATE_STORE],
 					"worker-src": ["self", "blob:"],
 					"object-src": ["none"],
 					"base-uri": ["self"],

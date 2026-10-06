@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The song page's Docs panel, with the PDFs as its fifth tab** (Kevin): the chart, lyrics, notes, comments and PDFs panel is a `FloatingPanel` now, docked in its column, popped out into a draggable, resizable panel from lg, or minimised to a Docs button in the row under the player, which brings it back as it was (remembered per browser, `stemshovel.song.docs-mode`); its tabs, edit button and ⋯ menu moved into the panel's header (the ⋯ and the phone's picker are `ContextMenu`s). The PDFs tab has smaller tiles, each with a ⋯ menu (Open, Download, Open in a new tab, Edit, Remove) beside a Share menu (Copy link, Share via email), Upload PDFs at the foot and in the panel's ⋯ menu as well as the Uploads menu; the player takes both columns while the panel is away. The PDFs section at the foot of the page is gone.
+- **A PDF opens in its own panel** (Kevin): a tile's page opens the file in the browser's reader inside a `FloatingPanel`, dragged and resized, Download first in its header beside Open in a new tab and Copy link; the CSP's `frame-src` allows the stores. Downloads go through `/f/<code>?download=1`, which streams the file as an attachment under its original name (`utils/attachmentDisposition.ts`, tested), since the store named it by its id.
+
 ## [0.104.0] - 2026-10-06
 
 ### Added

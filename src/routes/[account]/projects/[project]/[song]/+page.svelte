@@ -23,6 +23,8 @@
 	import StemPlayer from "$lib/components/StemPlayer.svelte";
 	import DemoPanel from "$lib/components/DemoPanel.svelte";
 	import SongPdfPanel from "$lib/components/SongPdfPanel.svelte";
+	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
 	import StemReplacer from "$lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
@@ -91,7 +93,7 @@
 		removeSongCredit,
 	} from "$lib/remote/songs.remote";
 	import { invalidateAll } from "$app/navigation";
-	import { onMount, tick, untrack } from "svelte";
+	import { onMount, tick, untrack, type ComponentProps } from "svelte";
 
 	let { data } = $props();
 
@@ -179,7 +181,7 @@
 	let demoJobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let demoNotice = $state<string | null>(null);
 	let demoBusy = $state(false);
-	/** The PDFs panel at the foot of the page; the Uploads menu opens its picker. */
+	/** The Docs panel's PDFs tab; the Uploads menu and the panel's ⋯ menu open its picker. */
 	let pdfPanel = $state<SongPdfPanel | null>(null);
 	async function uploadDemos(input: HTMLInputElement) {
 		const picked = Array.from(input.files ?? []);
@@ -305,10 +307,10 @@
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
 	const DOC_KINDS = ["chart", "lyrics", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	// The documents panel also shows the comments; "comments" is a panel, not a document.
-	const PANELS = [...DOC_KINDS, "comments"] as const;
+	// The Docs panel also shows the comments and the PDFs; neither is a document.
+	const PANELS = [...DOC_KINDS, "comments", "pdfs"] as const;
 	type Panel = (typeof PANELS)[number];
-	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments" } as const;
+	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", pdfs: "PDFs" } as const;
 	/** Switch the right-hand panel, closing an open editor first. */
 	async function showPanel(kind: Panel) {
 		if (kind === panel) return;
@@ -317,7 +319,42 @@
 		panel = kind;
 	}
 	let panel = $state<Panel>("chart");
-	let showing = $derived(panel === "comments" ? null : panel);
+	let showing = $derived(panel === "comments" || panel === "pdfs" ? null : panel);
+
+	/**
+	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
+	 * column, popped out into a floating panel from lg, or minimised to the
+	 * action row's Docs button, which brings it back the way it was (Kevin,
+	 * as the Idea Recorder's panels). Remembered per browser.
+	 */
+	type DocsMode = "docked" | "floating" | "minimised";
+	let docsMode = $state<DocsMode>("docked");
+	let docsRestore: Exclude<DocsMode, "minimised"> = "docked";
+	const DOCS_MODE_KEY = "stemshovel.song.docs-mode";
+	async function setDocsMode(mode: DocsMode) {
+		if (mode === "minimised") {
+			if (docsMode !== "minimised") docsRestore = docsMode;
+			// The panel unmounts: an open editor flushes first.
+			if (docEditing) await docPanel?.close();
+			docEditing = false;
+		}
+		docsMode = mode;
+		try {
+			localStorage.setItem(DOCS_MODE_KEY, mode);
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
+	function toggleDocs() {
+		void setDocsMode(docsMode === "minimised" ? docsRestore : "minimised");
+	}
+	/** The PDFs tab's picker, from the Uploads menu: the panel back if minimised, the tab shown, then the picker. */
+	async function pickPdfs() {
+		if (docsMode === "minimised") await setDocsMode(docsRestore);
+		await showPanel("pdfs");
+		await tick();
+		pdfPanel?.pick();
+	}
 
 	// Comments: who may do what, the located ones for the timeline, and the
 	// popover form (one popover, create or edit).
@@ -366,7 +403,7 @@
 	}
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
-		for (const menu of [chartMenuEl, panelMenuEl, settingsNavEl, uploadsMenuEl, downloadsMenuEl]) {
+		for (const menu of [settingsNavEl, uploadsMenuEl, downloadsMenuEl]) {
 			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
 		}
 	}
@@ -375,14 +412,16 @@
 	// The panel autosaves; closing goes through its close(), which flushes first.
 	let docEditing = $state(false);
 	let docPanel = $state<SongDocPanel | null>(null);
-	/** The document panel's ⋯ menu (a <details>): closed on a choice or a click elsewhere. */
-	let chartMenuEl = $state<HTMLDetailsElement | null>(null);
-	/** The phone's document picker (a <details> that opens downward; a native select opens where iOS likes). */
-	let panelMenuEl = $state<HTMLDetailsElement | null>(null);
 	/** Monospace or regular text per document kind, this browser's choice (docMonoPreference). */
 	let docMono = $state({ ...DEFAULT_DOC_MONO });
 	onMount(() => {
 		docMono = loadDocMono();
+		try {
+			const mode = localStorage.getItem(DOCS_MODE_KEY);
+			if (mode === "docked" || mode === "floating" || mode === "minimised") docsMode = mode;
+		} catch {
+			// Private mode: docked.
+		}
 	});
 	function toggleDocMono(kind: keyof typeof docMono) {
 		docMono = { ...docMono, [kind]: !docMono[kind] };
@@ -398,6 +437,76 @@
 		{ id: "rendered", name: "Rich Text" },
 		{ id: "markdown", name: "Markdown" },
 	] as const;
+	/** The Docs panel's ⋯ menu: monospace and the editor's pane for a document, the chart's AI draft, the PDFs' upload; a placeholder when empty, so the toolbar never shifts. */
+	type MenuItems = NonNullable<ComponentProps<typeof ContextMenu>["items"]>;
+	let docsMenuItems = $derived.by((): MenuItems => {
+		const nothing: MenuItems = [
+			{ id: "nothing", kind: "notice", notice: "Nothing to do here yet" },
+		];
+		if (panel === "comments") return nothing;
+		if (panel === "pdfs")
+			return data.canEdit
+				? [
+						{
+							id: "upload-pdfs",
+							label: "Upload PDFs",
+							iconClass: "i-ph-file-pdf",
+							title: "Charts, lead sheets, notation: one or more PDFs",
+							action: () => pdfPanel?.pick(),
+						},
+					]
+				: nothing;
+		const items: MenuItems = [
+			{
+				id: "mono",
+				label: "Monospace",
+				iconClass: docMono[doc] ? "i-ph-check" : "i-ph-check invisible",
+				title: "Fixed-width text, so chord grids line up",
+				action: () => toggleDocMono(doc),
+			},
+		];
+		if (docEditing) {
+			items.push({ id: "views", kind: "divider" });
+			for (const v of DOC_VIEWS)
+				items.push({
+					id: `view-${v.id}`,
+					label: v.name,
+					iconClass: docView === v.id ? "i-ph-check" : "i-ph-check invisible",
+					action: () => {
+						docView = v.id;
+					},
+				});
+		}
+		if (panel === "chart" && data.aiAvailable) {
+			items.push({ id: "ai", kind: "divider" });
+			if (draftBusy || chordBusy) {
+				items.push({
+					id: "busy",
+					kind: "notice",
+					notice: draftBusy ? "Drafting…" : String(chordBusy),
+				});
+				items.push({
+					id: "cancel",
+					label: "Cancel",
+					iconClass: "i-ph-x",
+					action: () => cancelDraft(),
+				});
+			} else
+				items.push({
+					id: "draft",
+					label: "Draft chart with AI",
+					iconClass: "i-ph-sparkle",
+					disabled: !playerEngine || playerEngine.status !== "ready" || !posCtx.grid,
+					title: !posCtx.grid
+						? "Needs a tempo and a time signature first (song settings)"
+						: playerEngine?.status !== "ready"
+							? "Available once every stem has decoded"
+							: "Transcribe the stems and have the AI draft sections, progressions and a chart",
+					action: () => draftFromPanel(),
+				});
+		}
+		return items;
+	});
 	const DOC_HINTS = {
 		chart:
 			"Chords and arrangement. Select text for formatting; the ⋮ next to a block changes its type. Use a code block for chord grids so spacing is kept.",
@@ -2031,7 +2140,12 @@
 	{/if}
 
 	<!-- 2. player: transport + waveforms, with the stem actions -->
-	<section class="grid grid-cols-1 place-content-start min-h-560px" aria-label="Player">
+	<section
+		class="grid grid-cols-1 place-content-start min-h-560px {docsMode === 'docked'
+			? ''
+			: 'xl:col-span-2'}"
+		aria-label="Player"
+	>
 		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
 		     The tabs always show (the Demos view holds Record Demo for a song without demos), level with the documents' tool bar at xl. -->
 		<div class="mb-3 flex items-center gap-3">
@@ -2267,299 +2381,228 @@
 		{/if}
 	</section>
 
-	<!-- 3. chart, lyrics & notes -->
-	<!-- At xl the tool bar sits in a row above the panel, level with the player's Stems / Demos tabs; below that it overlays the panel's top-right corner. -->
+	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimised to the action row's Docs button (docsMode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
 	<section
-		class="grid gap-2 grid-cols-1 place-content-[start_stretch] h-full min-h-560px max-w-full overflow-hidden grid-rows-1fr xl:grid-rows-[auto_1fr] relative"
-		aria-label="Chart, lyrics, notes and comments"
+		class="{docsMode === 'docked'
+			? 'h-full min-h-560px'
+			: docsMode === 'floating'
+				? 'xl:col-span-2 xl:h-0 xl:min-h-0'
+				: 'hidden'} max-w-full"
+		aria-label="Chart, lyrics, notes, comments and PDFs"
 	>
-		<!-- <div class="h-full relative"> -->
-		{#if panel === "comments"}
-			<div
-				class="h-full min-h-full max-h-[70vh] overflow-y-auto bg-blue-300/5 border rounded-md border-current/40 px-6 pt-12 xl:pt-8 pb-8"
-			>
-				{#if data.comments.length === 0}
-					<p class="opacity-80">No comments yet.</p>
-				{:else}
-					<ol class="grid gap-4">
-						{#each data.comments as c (c.id)}
-							{@const remove = deleteComment.for(c.id)}
-							<li
-								class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
-								id="comment-{c.id}"
-							>
-								<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-									<h3 class="font-600">{c.title}</h3>
-									<span class="text-12px opacity-70">
-										{c.authorName} · {formatDate(c.createdAt)}
-										{#if c.editedAt}<span
-												class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
-												title="Edited {formatDate(c.editedAt)}">edited</span
-											>{/if}
-									</span>
-								</div>
-								{#if c.at !== null}
-									<button
-										type="button"
-										class="mt-1 text-12px link-dim"
-										onclick={() => playerEngine?.seek(c.at ?? 0)}
-										title="Go to this position"
-									>
-										<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
-									</button>
-								{/if}
-								<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
-								{#if canEditComment(c) || canDeleteComment(c)}
-									<div class="mt-2 flex gap-3 text-12px">
-										{#if canEditComment(c)}
-											<button type="button" class="link-dim" onclick={() => editComment(c)}
-												>Edit</button
-											>
-										{/if}
-										{#if canDeleteComment(c)}
-											<form
-												{...remove.enhance(async ({ submit }) => {
-													if (!confirm(`Delete the comment "${c.title}"?`)) return;
-													await submit();
-													notify("Comment deleted");
-												})}
-											>
-												<input {...remove.fields.id.as("hidden", c.id)} />
-												<button class="link-dim" disabled={!!remove.pending}>
-													{remove.pending ? "Deleting…" : "Delete"}
-												</button>
-											</form>
-										{/if}
-									</div>
-								{/if}
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</div>
-		{:else}
-			{#key doc}
-				<SongDocPanel
-					bind:this={docPanel}
-					songId={data.song.id}
-					kind={doc}
-					label={DOC_LABELS[doc]}
-					hint={DOC_HINTS[doc]}
-					markdown={DOC_TEXT[doc]}
-					html={data.docs[doc]}
-					version={DOC_VERSION[doc]}
-					canEdit={data.canEdit}
-					bind:editing={docEditing}
-					bind:saving={docSaving}
-					view={docView}
-					mono={docMono[doc]}
-					above={panel === "chart" ? draftInPanel : undefined}
-				/>
-			{/key}
-		{/if}
-		<!-- tool bar  -->
-		<div
-			class="absolute top-2 right-3 mb-2 flex items-stretch gap-4 xl:static xl:order-first xl:mb-1 xl:justify-end"
+		<FloatingPanel
+			open={docsMode !== "minimised"}
+			floating={docsMode === "floating"}
+			title="Docs"
+			storageKey="stemshovel.song.docs-panel"
+			width={640}
+			height={720}
+			extraClass="h-full"
+			onminimise={() => void setDocsMode("minimised")}
 		>
-			<!-- A dropdown on a phone (our own, so it opens downward with room for the caret), the segmented control from sm up. -->
-			<details class="relative sm:hidden" bind:this={panelMenuEl}>
-				<summary
-					class="button button-xs flex items-center gap-2 list-none [&::-webkit-details-marker]:hidden"
+			{#snippet controls()}
+				<!-- A dropdown on a phone, the segmented control from sm up. -->
+				<ContextMenu
+					ariaLabel="Document"
+					buttonBaseClasses="button button-xs sm:hidden"
+					iconClass="i-ph-caret-down"
+					label={PANEL_LABELS[panel]}
+					position="bottom left"
+					items={PANELS.map((kind) => ({
+						id: kind,
+						label: PANEL_LABELS[kind],
+						iconClass: panel === kind ? "i-ph-check" : "i-ph-check invisible",
+						action: () => showPanel(kind),
+					}))}
+				/>
+				<div
+					class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
+					role="tablist"
 					aria-label="Document"
 				>
-					{PANEL_LABELS[panel]}
-					<span class="i-ph-caret-down text-10px" aria-hidden="true"></span>
-				</summary>
-				<div
-					class="absolute top-full left-0 z-20 mt-1 min-w-40 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-					role="menu"
-				>
-					{#each PANELS as kind (kind)}
+					{#each PANELS as kind, index (kind)}
 						<button
-							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/10"
 							type="button"
-							role="menuitemradio"
-							aria-checked={panel === kind}
-							onclick={() => {
-								if (panelMenuEl) panelMenuEl.open = false;
-								void showPanel(kind);
-							}}
+							role="tab"
+							aria-selected={panel === kind}
+							class="{panel === kind
+								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+							0
+								? 'rounded-r-none border-r-none'
+								: index === PANELS.length - 1
+									? 'rounded-l-none'
+									: 'rounded-none border-r-none'}"
+							onclick={() => showPanel(kind)}>{PANEL_LABELS[kind]}</button
 						>
-							<span class="i-ph-check {panel === kind ? '' : 'invisible'}" aria-hidden="true"
-							></span>{PANEL_LABELS[kind]}
-						</button>
 					{/each}
 				</div>
-			</details>
-			<div
-				class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
-				role="tablist"
-				aria-label="Document"
-			>
-				{#each PANELS as kind, index (kind)}
-					<button
-						type="button"
-						role="tab"
-						aria-selected={panel === kind}
-						class="{panel === kind
-							? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-							: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
-							? 'rounded-r-none border-r-none'
-							: index === PANELS.length - 1
-								? 'rounded-l-none'
-								: 'rounded-none border-r-none'}"
-						onclick={() => showPanel(kind)}>{PANEL_LABELS[kind]}</button
-					>
-				{/each}
-			</div>
-			<div class="flex items-stretch gap-2 {data.canEdit ? '' : 'hidden'}">
-				{#if panel === "comments"}
-					<button
-						class="button button-xs flex items-center"
-						type="button"
-						title="Add a comment"
-						aria-label="Add a comment"
-						onclick={() => openComment()}
-					>
-						<span class="i-ph-plus"></span>
-					</button>
-				{:else}
-					<button
-						class="button button-xs flex items-center {docEditing
-							? 'bg-blue-300 text-oxford border-blue-300'
-							: ''}"
-						type="button"
-						title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
-						aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
-						aria-pressed={docEditing}
-						onclick={async () => {
-							if (docEditing) await docPanel?.close();
-							else docEditing = true;
-						}}
-					>
-						<span
-							class={docEditing
-								? docSaving
-									? "i-ph-circle-notch animate-spin"
-									: "i-ph-check"
-								: data.docs[doc]
-									? "i-ph-pencil"
-									: "i-ph-plus"}
-						></span>
-					</button>
-				{/if}
-				<!--
-				Panel menu: the editor's pane while editing, and the chart's AI draft.
-				Always present (with a placeholder when empty) so the toolbar never shifts.
-			-->
-				<details class="relative flex" bind:this={chartMenuEl}>
-					<summary
-						class="button button-xs flex items-center list-none [&::-webkit-details-marker]:hidden"
+				<div class="flex items-stretch gap-2 {data.canEdit ? '' : 'hidden'}">
+					{#if panel === "comments"}
+						<button
+							class="button button-xs flex items-center"
+							type="button"
+							title="Add a comment"
+							aria-label="Add a comment"
+							onclick={() => openComment()}
+						>
+							<span class="i-ph-plus"></span>
+						</button>
+					{:else if panel === "pdfs"}
+						<button
+							class="button button-xs flex items-center"
+							type="button"
+							title="Upload PDFs: charts, lead sheets, notation"
+							aria-label="Upload PDFs"
+							onclick={() => pdfPanel?.pick()}
+						>
+							<span class="i-ph-plus"></span>
+						</button>
+					{:else}
+						<button
+							class="button button-xs flex items-center {docEditing
+								? 'bg-blue-300 text-oxford border-blue-300'
+								: ''}"
+							type="button"
+							title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
+							aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
+							aria-pressed={docEditing}
+							onclick={async () => {
+								if (docEditing) await docPanel?.close();
+								else docEditing = true;
+							}}
+						>
+							<span
+								class={docEditing
+									? docSaving
+										? "i-ph-circle-notch animate-spin"
+										: "i-ph-check"
+									: data.docs[doc]
+										? "i-ph-pencil"
+										: "i-ph-plus"}
+							></span>
+						</button>
+					{/if}
+					<ContextMenu
+						ariaLabel="{PANEL_LABELS[panel]} menu"
 						title="More"
-						aria-label="{PANEL_LABELS[panel]} menu"
-					>
-						<span
-							class={draftBusy || chordBusy
-								? "i-ph-circle-notch animate-spin"
-								: "i-ph-dots-three-outline-vertical-fill"}
-							aria-hidden="true"
-						></span>
-					</summary>
-					<div
-						class="absolute top-full right-0 z-20 mt-1 min-w-56 rounded border border-white/15 bg-oxford p-1 text-sm shadow-lg"
-						role="menu"
-					>
-						{#if panel !== "comments"}
-							<button
-								class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-								type="button"
-								role="menuitemcheckbox"
-								aria-checked={docMono[doc]}
-								title="Fixed-width text, so chord grids line up"
-								onclick={() => {
-									toggleDocMono(doc);
-									if (chartMenuEl) chartMenuEl.open = false;
-								}}
-							>
-								<span class="i-ph-check {docMono[doc] ? '' : 'invisible'}" aria-hidden="true"
-								></span>Monospace
-							</button>
-							{#if docEditing || (panel === "chart" && data.aiAvailable)}
-								<hr class="my-1 border-white/15" />
-							{/if}
-						{:else}
-							<div class="px-2 py-1 text-xs text-dim">Nothing to do here yet</div>
-						{/if}
-						{#if docEditing}
-							{#each DOC_VIEWS as v (v.id)}
-								<button
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									type="button"
-									role="menuitemradio"
-									aria-checked={docView === v.id}
-									onclick={() => {
-										docView = v.id;
-										if (chartMenuEl) chartMenuEl.open = false;
-									}}
+						buttonBaseClasses="button button-xs"
+						iconClass={draftBusy || chordBusy
+							? "i-ph-circle-notch animate-spin"
+							: "i-ph-dots-three-outline-vertical-fill"}
+						position="bottom left"
+						items={docsMenuItems}
+					/>
+				</div>
+				<button
+					class="button button-xs hidden lg-inline-flex"
+					type="button"
+					title={docsMode === "floating"
+						? "Put the docs back in their column"
+						: "Pop the docs out into a panel"}
+					aria-label={docsMode === "floating" ? "Dock the docs" : "Pop out the docs"}
+					onclick={() => void setDocsMode(docsMode === "floating" ? "docked" : "floating")}
+				>
+					<span
+						class={docsMode === "floating" ? "i-ph-arrows-in-simple" : "i-ph-arrows-out-simple"}
+						aria-hidden="true"
+					></span>
+				</button>
+			{/snippet}
+			{#if panel === "comments"}
+				<div
+					class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-6 pb-8"
+				>
+					{#if data.comments.length === 0}
+						<p class="opacity-80">No comments yet.</p>
+					{:else}
+						<ol class="grid gap-4">
+							{#each data.comments as c (c.id)}
+								{@const remove = deleteComment.for(c.id)}
+								<li
+									class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
+									id="comment-{c.id}"
 								>
-									<span class="i-ph-check {docView === v.id ? '' : 'invisible'}" aria-hidden="true"
-									></span>{v.name}
-								</button>
+									<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+										<h3 class="font-600">{c.title}</h3>
+										<span class="text-12px opacity-70">
+											{c.authorName} · {formatDate(c.createdAt)}
+											{#if c.editedAt}<span
+													class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
+													title="Edited {formatDate(c.editedAt)}">edited</span
+												>{/if}
+										</span>
+									</div>
+									{#if c.at !== null}
+										<button
+											type="button"
+											class="mt-1 text-12px link-dim"
+											onclick={() => playerEngine?.seek(c.at ?? 0)}
+											title="Go to this position"
+										>
+											<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
+										</button>
+									{/if}
+									<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
+									{#if canEditComment(c) || canDeleteComment(c)}
+										<div class="mt-2 flex gap-3 text-12px">
+											{#if canEditComment(c)}
+												<button type="button" class="link-dim" onclick={() => editComment(c)}
+													>Edit</button
+												>
+											{/if}
+											{#if canDeleteComment(c)}
+												<form
+													{...remove.enhance(async ({ submit }) => {
+														if (!confirm(`Delete the comment "${c.title}"?`)) return;
+														await submit();
+														notify("Comment deleted");
+													})}
+												>
+													<input {...remove.fields.id.as("hidden", c.id)} />
+													<button class="link-dim" disabled={!!remove.pending}>
+														{remove.pending ? "Deleting…" : "Delete"}
+													</button>
+												</form>
+											{/if}
+										</div>
+									{/if}
+								</li>
 							{/each}
-							{#if panel === "chart" && data.aiAvailable}
-								<hr class="my-1 border-white/15" />
-							{/if}
-						{/if}
-						{#if panel === "chart" && data.aiAvailable}
-							{#if draftBusy || chordBusy}
-								<div class="px-2 py-1 text-xs text-dim">{draftBusy ? "Drafting…" : chordBusy}</div>
-								<button
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10"
-									type="button"
-									role="menuitem"
-									onclick={() => {
-										if (chartMenuEl) chartMenuEl.open = false;
-										cancelDraft();
-									}}
-								>
-									<span class="i-ph-x" aria-hidden="true"></span>Cancel
-								</button>
-							{:else}
-								<button
-									class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-white/10 disabled:opacity-40"
-									type="button"
-									role="menuitem"
-									disabled={!playerEngine || playerEngine.status !== "ready" || !posCtx.grid}
-									title={!posCtx.grid
-										? "Needs a tempo and a time signature first (song settings)"
-										: playerEngine?.status !== "ready"
-											? "Available once every stem has decoded"
-											: "Transcribe the stems and have the AI draft sections, progressions and a chart"}
-									onclick={() => {
-										if (chartMenuEl) chartMenuEl.open = false;
-										draftFromPanel();
-									}}
-								>
-									<span class="i-ph-sparkle" aria-hidden="true"></span>Draft chart with AI
-								</button>
-							{/if}
-						{/if}
-					</div>
-				</details>
-			</div>
-		</div>
-		<!-- </div> -->
+						</ol>
+					{/if}
+				</div>
+			{:else if panel === "pdfs"}
+				<!-- The PDFs (docs/uploads-and-blob.md, "PDFs"): charts, lead sheets, notation, to download and to link to. -->
+				<SongPdfPanel
+					bind:this={pdfPanel}
+					songId={data.song.id}
+					songTitle={data.song.title}
+					pdfs={data.song.pdfs}
+					canEdit={data.canEdit}
+				/>
+			{:else}
+				{#key doc}
+					<SongDocPanel
+						bind:this={docPanel}
+						songId={data.song.id}
+						kind={doc}
+						label={DOC_LABELS[doc]}
+						hint={DOC_HINTS[doc]}
+						markdown={DOC_TEXT[doc]}
+						html={data.docs[doc]}
+						version={DOC_VERSION[doc]}
+						canEdit={data.canEdit}
+						bind:editing={docEditing}
+						bind:saving={docSaving}
+						view={docView}
+						mono={docMono[doc]}
+						above={panel === "chart" ? draftInPanel : undefined}
+					/>
+				{/key}
+			{/if}
+		</FloatingPanel>
 	</section>
-
-	<!-- 4. PDFs attached to the song (docs/uploads-and-blob.md, "PDFs"): charts, lead sheets, notation, to download and to link to. -->
-	<div class="col-span-full">
-		<SongPdfPanel
-			bind:this={pdfPanel}
-			songId={data.song.id}
-			pdfs={data.song.pdfs}
-			canEdit={data.canEdit}
-		/>
-	</div>
 </main>
 
 {#snippet actionButtons(engine?: StemEngine)}
@@ -2634,7 +2677,7 @@
 						type="button"
 						role="menuitem"
 						title="Charts, lead sheets, notation: one or more PDFs"
-						onclick={() => pdfPanel?.pick()}
+						onclick={() => void pickPdfs()}
 					>
 						<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
 						Upload PDFs
@@ -2771,6 +2814,20 @@
 		{#if demoNotice}
 			<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
 		{/if}
+		<!-- The Docs panel: minimised to this button and back the way it was (Kevin, as the recorder's Ideas button). -->
+		<button
+			class="button button-sm ml-auto {docsMode === 'minimised'
+				? ''
+				: 'bg-accent text-oxford border-accent opacity-100'}"
+			type="button"
+			aria-pressed={docsMode !== "minimised"}
+			title={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
+			aria-label={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
+			onclick={toggleDocs}
+		>
+			<span class="i-ph-files" aria-hidden="true"></span>
+			Docs
+		</button>
 	</div>
 {/snippet}
 

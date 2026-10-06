@@ -92,7 +92,21 @@ in three steps driven by `src/lib/upload.ts`:
   then marks the row ready. Each row carries a `share_code` (nanoid 16)
   behind `/f/<code>`, which 302s to the file where it is now, presigned
   for a private song, so the link is permanent across renames and
-  privacy moves (`relocate.ts` moves PDFs and thumbnails with the rest).
+  privacy moves (`relocate.ts` moves PDFs and thumbnails with the rest);
+  `/f/<code>?download=1` streams it instead (`readBlob`) as an attachment
+  under its original name (`utils/attachmentDisposition.ts`), since the
+  store's own `?download=1` names the file by its id and a cross-origin
+  `download` attribute is ignored. On the song page (2026-10-06, Kevin)
+  the PDFs are the Docs panel's fifth tab (`SongPdfPanel.svelte`): small
+  tiles with a ⋯ menu and a Share menu (copy link, `mailto:`), Upload at
+  the foot and in the panel's ⋯ menu; a tile opens the file in a
+  `FloatingPanel` viewer (an iframe of the store's URL, so the CSP's
+  `frame-src` allows both stores; Download first in its header). The Docs
+  panel is a `FloatingPanel` too: docked, floating from lg, or minimised
+  to the action row's Docs button (`docsMode`, `stemshovel.song.docs-mode`),
+  its tabs and ⋯ menu (a `ContextMenu`, so nothing is clipped by the
+  panel's overflow) in the header; the player spans both columns while
+  the panel is away.
   Title and description are edited through `pdfs.remote.ts`; removal and
   the song and project cascades delete file and thumbnail; sizes count
   toward the account's storage.
