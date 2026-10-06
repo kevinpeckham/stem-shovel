@@ -872,15 +872,6 @@
 						<input
 							type="checkbox"
 							class="accent-maximumYellow"
-							checked={studio.arrangement.countIn}
-							onchange={(e) => studio.setCountIn(e.currentTarget.checked)}
-						/>
-						Count-in
-					</label>
-					<label class="device-button-sm px-3 flex items-center gap-2 cursor-pointer">
-						<input
-							type="checkbox"
-							class="accent-maximumYellow"
 							checked={studio.arrangement.gridOn}
 							onchange={(e) => studio.setGridOn(e.currentTarget.checked)}
 						/>

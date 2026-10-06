@@ -64,6 +64,8 @@ const RAMP = 0.015;
 /** The shortest fade at a clip's edges, so a cut never clicks. */
 const EDGE_FADE = 0.003;
 const LOAD_CONCURRENCY = 3;
+/** Frames per peak of a take's live waveform (about a hundredth of a second). */
+export const LIVE_PEAK_FRAMES = 512;
 const UNDO_DEPTH = 100;
 
 export const STUDIO_INPUT_LABELS: Record<OutsideSource, string> = {
@@ -159,6 +161,14 @@ class StudioEngine {
 	#opening: Promise<void> | null = null;
 	#stopAt = 0;
 	#transport = { stop: () => this.stop() };
+	/** Bumped as each take's live peaks grow, so a lane redraws its band (the peaks themselves stay out of the proxy). */
+	liveTick = $state(0);
+	/** One peak per LIVE_PEAK_FRAMES of the take under way on each armed track, from where recording began. */
+	#livePeaks = new Map<string, number[]>();
+	/** The take under way on a track, as peaks for its band; empty when none. */
+	livePeaksOf(trackId: string): number[] {
+		return this.#livePeaks.get(trackId) ?? [];
+	}
 	/** The page's hook for a finished take (upload it). */
 	ontake: ((take: StudioTake) => void) | null = null;
 
@@ -877,10 +887,33 @@ class StudioEngine {
 		const chunks: Float32Array[][] = [];
 		let finish!: () => void;
 		const done = new Promise<void>((resolve) => (finish = resolve));
+		// The live waveform: the chunk reduced to a peak per LIVE_PEAK_FRAMES, the lead-in skipped so the band starts where the clip will.
+		const lead = Math.round(LEAD_SECONDS * ctx.sampleRate);
+		const live: number[] = [];
+		this.#livePeaks.set(track.id, live);
+		let seen = 0;
+		let acc = 0;
+		let accFrames = 0;
 		node.port.onmessage = (e) => {
 			const m = e.data as { type: string; channels?: Float32Array[] };
-			if (m.type === "chunk" && m.channels) chunks.push(m.channels);
-			else if (m.type === "done") finish();
+			if (m.type === "chunk" && m.channels) {
+				chunks.push(m.channels);
+				const n = m.channels[0].length;
+				for (let i = 0; i < n; i++) {
+					if (seen + i < lead) continue;
+					for (const data of m.channels) {
+						const v = Math.abs(data[i]);
+						if (v > acc) acc = v;
+					}
+					if (++accFrames === LIVE_PEAK_FRAMES) {
+						live.push(acc);
+						acc = 0;
+						accFrames = 0;
+					}
+				}
+				seen += n;
+				this.liveTick++;
+			} else if (m.type === "done") finish();
 		};
 		this.#captures.push({ trackId: track.id, node, feed, chunks, channels, done, finish });
 	}
@@ -907,6 +940,8 @@ class StudioEngine {
 			const take = this.#takeFrom(cap, ctx, from, takeNumber);
 			if (take) this.ontake?.(take);
 		}
+		this.#livePeaks.clear();
+		this.liveTick++;
 		if (caps.length && this.arrangement.tracks.some((t) => t.armed)) this.dirty = true;
 	}
 	/** The chunks of one capture, less the lead-in and the input's latency, as a source and a clip. */

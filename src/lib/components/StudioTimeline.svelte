@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { STUDIO_FADER_MAX } from "$lib/constants/studio";
-	import { studio, STUDIO_INPUT_LABELS } from "$lib/audio/studio.svelte";
+	import { LIVE_PEAK_FRAMES, studio, STUDIO_INPUT_LABELS } from "$lib/audio/studio.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
 	import type { StudioClip, StudioInput, StudioTrack } from "$lib/val/StudioSchema";
@@ -299,6 +299,45 @@
 		};
 	}
 
+	/** The take under way: the engine's live peaks (one per LIVE_PEAK_FRAMES) bucketed to the band's pixels, redrawn as chunks land. */
+	function liveWave(trackId: string): Attachment<HTMLCanvasElement> {
+		return (canvas) => {
+			const draw = () => {
+				const peaks = engine.livePeaksOf(trackId);
+				const w = canvas.clientWidth;
+				const h = canvas.clientHeight;
+				if (!w || !h) return;
+				const dpr = devicePixelRatio || 1;
+				if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+					canvas.width = Math.round(w * dpr);
+					canvas.height = Math.round(h * dpr);
+				}
+				const g = canvas.getContext("2d");
+				if (!g) return;
+				g.setTransform(dpr, 0, 0, dpr, 0, 0);
+				g.clearRect(0, 0, w, h);
+				g.fillStyle = getComputedStyle(canvas).color;
+				const mid = h / 2;
+				const secondsPerPeak = LIVE_PEAK_FRAMES / engine.sampleRate;
+				const perPx = 1 / (pxPerSecond * secondsPerPeak); // peaks per pixel
+				const px = Math.min(w, Math.ceil(peaks.length / perPx));
+				for (let x = 0; x < px; x++) {
+					const a = Math.floor(x * perPx);
+					const b = Math.min(peaks.length, Math.max(a + 1, Math.floor((x + 1) * perPx)));
+					let p = 0;
+					for (let i = a; i < b; i++) if (peaks[i] > p) p = peaks[i];
+					const amp = Math.min(1, p) * (mid - 1);
+					g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));
+				}
+			};
+			$effect(() => {
+				void engine.liveTick;
+				void pxPerSecond;
+				draw();
+			});
+		};
+	}
+
 	function clipsOf(track: StudioTrack) {
 		return engine.arrangement.clips.filter((c) => c.trackId === track.id);
 	}
@@ -583,13 +622,18 @@
 						</span>
 					</div>
 				{/each}
-				<!-- a take on its way: the red band grows from where recording began -->
+				<!-- a take on its way: the red band grows from where recording began, its waveform drawn as the chunks arrive -->
 				{#if track.armed && (engine.phase === "recording" || engine.phase === "counting")}
 					<div
-						class="absolute top-1 bottom-1 rounded-md border border-red-500 bg-red-500/20 pointer-events-none"
+						class="absolute top-1 bottom-1 rounded-md border border-red-500 bg-red-500/20 pointer-events-none overflow-hidden"
 						style:left="{engine.recordFrom * pxPerSecond}px"
 						style:width="{Math.max(2, (engine.position - engine.recordFrom) * pxPerSecond)}px"
-					></div>
+					>
+						<canvas
+							class="absolute inset-0 h-full w-full text-red-200 opacity-90"
+							{@attach liveWave(track.id)}
+						></canvas>
+					</div>
 				{/if}
 			</div>
 		</div>
