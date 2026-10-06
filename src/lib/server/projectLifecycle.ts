@@ -12,7 +12,7 @@ const { project, song, stem, demo, songFile, songNotation } = schema;
  * list for an "Archived" section and keeps its songs and files. Only an
  * owner or admin deletes, and only an archived project (archiving first is
  * the safety catch): that removes every song and every Blob file behind
- * them (stems, renditions, MIDI, demos, attachments, notation files with their rendered PDFs, mixes), across both stores, then
+ * them (stems, renditions, MIDI, demos, attachments of the songs and of the project itself, notation files with their rendered PDFs, mixes), across both stores, then
  * the rows, children first (src/lib/server/cascade.ts: the database does
  * not run the schema's cascades).
  */
@@ -61,12 +61,11 @@ export async function deleteProject(
 				.from(demo)
 				.where(inArray(demo.songId, songIds))
 		: [];
-	const files = songIds.length
-		? await db
-				.select({ url: songFile.url, thumbnailUrl: songFile.thumbnailUrl })
-				.from(songFile)
-				.where(inArray(songFile.songId, songIds))
-		: [];
+	// Every attachment of the project: its songs' and its own (docs/uploads-and-blob.md, "Attachments").
+	const files = await db
+		.select({ url: songFile.url, thumbnailUrl: songFile.thumbnailUrl })
+		.from(songFile)
+		.where(eq(songFile.projectId, id));
 	const notation = songIds.length
 		? await db
 				.select({

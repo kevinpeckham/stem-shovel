@@ -3036,8 +3036,8 @@
 				</div>
 			</details>
 		{/if}
-		{#if ready.length > 0 || readyDemos.length > 0}
-			<!-- Downloads: the stems, the two mixes, the demo recordings. -->
+		{#if ready.length > 0 || readyDemos.length > 0 || data.docs.lyrics || data.docs.chart || data.docs.notes}
+			<!-- Downloads: the stems, the two mixes, the demo recordings, the documentation PDF. -->
 			<details class="relative" bind:this={downloadsMenuEl}>
 				<summary
 					class="button button-sm list-none [&::-webkit-details-marker]:hidden"
@@ -3092,6 +3092,17 @@
 							<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
 							{mixing === "custom" ? "Rendering…" : "Custom Mix (MP3)"}
 						</button>
+					{/if}
+					{#if data.docs.lyrics || data.docs.chart || data.docs.notes}
+						<a
+							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+							role="menuitem"
+							href="/api/songs/{data.song.id}/documentation.pdf"
+							title="The lyrics, chart and notes as one PDF"
+						>
+							<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
+							Song Documentation (PDF)
+						</a>
 					{/if}
 					{#if readyDemos.length > 0}
 						<button

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import { invalidateAll } from "$app/navigation";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
@@ -216,7 +217,7 @@
 	/** The permanent link's download switch: the file streamed as an attachment under its own name (`/f/[code]`); `pdf` for the PDF the server rendered. */
 	const downloadUrl = (t: Tile, pdf = false) =>
 		`/f/${t.row.shareCode}?download=${pdf && t.kind === "xml" ? "pdf" : "1"}`;
-	const linkOf = (t: Tile) => `${window.location.origin}/f/${t.row.shareCode}`;
+	const linkOf = (t: Tile) => `${page.url.origin}/f/${t.row.shareCode}`;
 	async function copyLink(t: Tile) {
 		const url = linkOf(t);
 		try {

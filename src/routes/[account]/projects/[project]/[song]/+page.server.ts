@@ -4,7 +4,7 @@ import { linkMentions } from "$lib/utils/linkMentions";
 import { mentionTargets } from "$lib/utils/mentionTargets";
 import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
-import { scheduleNotes } from "$lib/server/jobs";
+import { scheduleNotationPdf, scheduleNotes } from "$lib/server/jobs";
 import { songView } from "$lib/server/songView";
 import { canCommentProject, canEditProject, canViewSong } from "$lib/server/viewAccess";
 import { renamedProjectPath } from "$lib/server/slugAlias";
@@ -33,6 +33,10 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	// posts the job when they are missing, behind the stems or stuck (a resume, a recovery).
 	const noAi = song.noAi || song.project.noAi;
 	if (canEdit && songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
+	// A score uploaded before the PDFs existed (or whose render was lost): its PDF is rendered on the next visit.
+	for (const score of song.notation) {
+		if (score.status === "ready" && score.pdfStatus === null) scheduleNotationPdf(score.id);
+	}
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
 	const [view, shareLinks, artists, myNote] = await Promise.all([
 		songView(song),

@@ -33,10 +33,9 @@ import {
 	isRecordingPathname,
 	isSiteKitPathname,
 	recordingAccess,
-	songIdOfPathname,
 } from "$lib/server/blob";
 import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
-import { accessOfSongId } from "$lib/server/relocate";
+import { accessOfPathname } from "$lib/server/relocate";
 import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
 import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "$lib/constants/fileFormats";
 import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "$lib/constants/notationFormats";
@@ -68,12 +67,11 @@ async function ownRecordingAccount(locals: App.Locals, pathname: string) {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json()) as HandleUploadBody;
 	try {
-		// The store (and so the token) follows the song's privacy; the pathname names the song.
+		// The store (and so the token) follows the song's privacy, or the project's for a project-level attachment; the pathname names which.
 		const pathname =
 			body.type === "blob.generate-client-token"
 				? body.payload.pathname
 				: body.payload.blob.pathname;
-		const songId = songIdOfPathname(pathname);
 		// A scratch recording has no song: it goes to the private store when there is one; so does an account kit's sample, a site kit's to the public store.
 		const access = isDrumSamplePathname(pathname)
 			? isSiteKitPathname(pathname)
@@ -81,7 +79,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				: recordingAccess()
 			: isRecordingPathname(pathname)
 				? recordingAccess()
-				: (songId && (await accessOfSongId(songId))) || "public";
+				: await accessOfPathname(pathname);
 		const result = await handleUpload({
 			body,
 			request,

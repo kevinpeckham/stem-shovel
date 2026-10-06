@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import { invalidateAll } from "$app/navigation";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
@@ -11,7 +12,7 @@
 		type FileKind,
 	} from "$lib/constants/fileFormats";
 	import { notationFormatOf } from "$lib/constants/notationFormats";
-	import { deleteFile, updateFile, useAsDemo } from "$lib/remote/files.remote";
+	import { attachFile, deleteFile, updateFile, useAsDemo } from "$lib/remote/files.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatBytes } from "$lib/utils/formatBytes";
@@ -41,6 +42,9 @@
 		status: string;
 		/** A score: shown on the Chart tab's notation view as well. */
 		isNotation: boolean;
+		/** The song it belongs to, null for a project-level file (the project view says which). */
+		songId?: string | null;
+		song?: { id: string; title: string; slug: string } | null;
 	}
 	/** A MusicXML file (the Chart tab's), listed here as a score. */
 	export interface PanelScore {
@@ -50,18 +54,38 @@
 		sizeBytes: number;
 		shareCode: string;
 		status: string;
+		pdfStatus?: "pending" | "ready" | "failed" | null;
+		song?: { id: string; title: string; slug: string } | null;
 	}
 	interface Props {
-		songId: string;
-		/** The song's title, for the email's subject. */
+		/** The song the panel belongs to, or the project when it is the project's library (Kevin: "Attachments & Downloads"). */
+		songId?: string;
+		projectId?: string;
+		/** The song's (or project's) title, for the email's subject. */
 		songTitle: string;
 		files: PanelFile[];
 		scores?: PanelScore[];
 		canEdit: boolean;
-		/** A MusicXML file dropped here goes to the Chart tab's flow. */
+		/** The project's songs, for Attach (the project view). */
+		songs?: { id: string; title: string; slug: string }[];
+		/** Links a tile to its song (the project view). */
+		songHref?: (song: { slug: string }) => string;
+		/** A MusicXML file dropped here goes to the Chart tab's flow (the song view). */
 		onnotation?: (files: File[]) => Promise<void>;
 	}
-	let { songId, songTitle, files, scores = [], canEdit, onnotation }: Props = $props();
+	let {
+		songId,
+		projectId,
+		songTitle,
+		files,
+		scores = [],
+		canEdit,
+		songs = [],
+		songHref,
+		onnotation,
+	}: Props = $props();
+	/** The project view lists across songs: tiles name their song and can move. */
+	let projectView = $derived(!songId && !!projectId);
 
 	let ready = $derived(files.filter((f) => f.status === "ready" && f.url));
 	let readyScores = $derived(scores.filter((s) => s.status === "ready"));
@@ -90,8 +114,8 @@
 	let jobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let busy = $state(false);
 	let picker = $state<HTMLInputElement | null>(null);
-	let full = $derived(busy || files.length >= MAX_FILES_PER_SONG);
-	const ACCEPT = `${FILE_ACCEPT},.mxl,.musicxml`;
+	let full = $derived(busy || (!projectView && files.length >= MAX_FILES_PER_SONG));
+	const ACCEPT = projectView ? FILE_ACCEPT : `${FILE_ACCEPT},.mxl,.musicxml`;
 	/** The page's Uploads menu and the panel's ⋯ menu open the same picker. */
 	export function pick() {
 		picker?.click();
@@ -105,7 +129,7 @@
 		const xml = all.filter((f) => notationFormatOf(f.name) && !/\.xml$/i.test(f.name));
 		const picked = all.filter((f) => !xml.includes(f));
 		if (xml.length && onnotation) void onnotation(xml);
-		const room = Math.max(0, MAX_FILES_PER_SONG - files.length);
+		const room = projectView ? picked.length : Math.max(0, MAX_FILES_PER_SONG - files.length);
 		if (picked.length > room)
 			notify(
 				`A song can have at most ${MAX_FILES_PER_SONG} attachments; the first ${room} were taken`,
@@ -129,7 +153,7 @@
 					file,
 					() =>
 						postJson<FileReservation>("/api/files", {
-							songId,
+							...(projectView ? { projectId } : { songId }),
 							filename: file.name,
 							sizeBytes: file.size,
 						}),
@@ -187,6 +211,23 @@
 			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
+	/** A file moved to one of the project's songs, or back to the project itself (the project view). */
+	let attaching = $state<string | null>(null);
+	async function attach(f: PanelFile, to: string) {
+		attaching = null;
+		const target = to === "" ? null : to;
+		if ((f.songId ?? null) === target) return;
+		try {
+			await attachFile({ id: f.id, songId: target });
+			const song = target ? songs.find((x) => x.id === target) : null;
+			notify(
+				song ? `${nameOf(f)} is on “${song.title}” now` : `${nameOf(f)} belongs to the project now`,
+			);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not move it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	/** An audio attachment copied into the song's demos, so it plays in the player with the rest. */
 	async function makeDemo(f: PanelFile) {
 		try {
@@ -199,7 +240,7 @@
 	}
 	/** The permanent link's download switch: the file streamed as an attachment under its own name (`/f/[code]`). */
 	const downloadUrl = (code: string) => `/f/${code}?download=1`;
-	const linkOf = (code: string) => `${window.location.origin}/f/${code}`;
+	const linkOf = (code: string) => `${page.url.origin}/f/${code}`;
 	async function copy(text: string, said: string) {
 		try {
 			await navigator.clipboard.writeText(text);
@@ -267,7 +308,9 @@
 	{#if ready.length === 0 && readyScores.length === 0 && jobs.length === 0}
 		<p class="opacity-70 text-14px">
 			No attachments yet.{#if canEdit}
-				Upload a chart, a photo, a scrap of audio for the band to hear, a text file, a MIDI file.{/if}
+				Upload a chart, a photo, a scrap of audio for the band to hear, a text file, a MIDI file{projectView
+					? ", for the project or to attach to a song later"
+					: ""}.{/if}
 		</p>
 	{:else}
 		<ul
@@ -290,8 +333,13 @@
 							<h3 class="font-600 text-13px leading-tight truncate" title={nameOf(s)}>
 								{nameOf(s)}
 							</h3>
+							{#if projectView && s.song}
+								<a class="text-12px link-dim truncate" href={songHref?.(s.song) ?? "#"}
+									>{s.song.title}</a
+								>
+							{/if}
 							<p class="text-11px opacity-60 truncate">
-								{formatBytes(s.sizeBytes)} · score, on the Chart tab
+								{formatBytes(s.sizeBytes)} · score{projectView ? "" : ", on the Chart tab"}
 							</p>
 						</div>
 						<div class="flex items-center justify-between gap-1">
@@ -356,7 +404,26 @@
 							{/if}
 						</button>
 					{/if}
-					{#if editing === f.id}
+					{#if attaching === f.id}
+						<h3 class="font-600 text-13px leading-tight truncate" title={nameOf(f)}>{nameOf(f)}</h3>
+						<label class="grid gap-1 text-13px">
+							<span class="opacity-80">Attach to</span>
+							<select
+								class="field"
+								value={f.songId ?? ""}
+								onchange={(e) => attach(f, e.currentTarget.value)}
+								aria-label="Attach {nameOf(f)} to"
+							>
+								<option value="">The project (no song)</option>
+								{#each songs as sg (sg.id)}<option value={sg.id}>{sg.title}</option>{/each}
+							</select>
+							<button
+								class="button button-xs justify-self-start"
+								type="button"
+								onclick={() => (attaching = null)}>Cancel</button
+							>
+						</label>
+					{:else if editing === f.id}
 						<form
 							class="grid gap-2 text-13px"
 							onsubmit={(e) => {
@@ -395,6 +462,15 @@
 							<h3 class="font-600 text-13px leading-tight truncate" title={nameOf(f)}>
 								{nameOf(f)}
 							</h3>
+							{#if projectView}
+								{#if f.song}
+									<a class="text-12px link-dim truncate" href={songHref?.(f.song) ?? "#"}
+										>{f.song.title}</a
+									>
+								{:else}
+									<span class="text-12px opacity-60">the project</span>
+								{/if}
+							{/if}
 							{#if f.description}
 								<p class="text-12px opacity-85 line-clamp-2" title={f.description}>
 									{f.description}
@@ -456,7 +532,10 @@
 										label: "Notation",
 										iconClass: f.isNotation ? "i-ph-check" : "i-ph-check invisible",
 										title: "A score: shown on the Chart tab's notation view as well",
-										condition: canEdit && (f.kind === "pdf" || f.kind === "image"),
+										condition:
+											canEdit &&
+											(f.kind === "pdf" || f.kind === "image") &&
+											(!projectView || !!f.songId),
 										action: () => setNotation(f, !f.isNotation),
 									},
 									{
@@ -464,8 +543,18 @@
 										label: "Use as demo",
 										iconClass: "i-ph-microphone",
 										title: "A copy becomes a demo of the song, played in the player",
-										condition: canEdit && f.kind === "audio",
+										condition: canEdit && f.kind === "audio" && (!projectView || !!f.songId),
 										action: () => makeDemo(f),
+									},
+									{
+										id: "attach",
+										label: f.songId ? "Move to another song…" : "Attach to a song…",
+										iconClass: "i-ph-arrow-bend-up-right",
+										title: "Move this file to one of the project's songs, or back to the project",
+										condition: canEdit && projectView,
+										action: () => {
+											attaching = f.id;
+										},
 									},
 									{
 										id: "remove",

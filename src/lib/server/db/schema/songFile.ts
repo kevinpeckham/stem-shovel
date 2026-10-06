@@ -4,14 +4,18 @@ import type { FileKind } from "../../../constants/fileFormats";
 import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
+import { project } from "./project";
 import { song } from "./song";
 import { user } from "./user";
 
 /**
- * A file attached to a song (docs/uploads-and-blob.md, "Attachments"): a
- * chart or lead sheet as a PDF, a picture, a reference recording, a text
- * note, a MIDI file, anything to keep with the song and download from its
- * page. One file in Vercel Blob with an optional title and description, a
+ * A file attached to a project, and optionally to one of its songs
+ * (docs/uploads-and-blob.md, "Attachments"): a chart or lead sheet as a
+ * PDF, a picture, a reference recording, a text note, a MIDI file, anything
+ * to keep with the song and download from its page, or with the project
+ * alone (`songId` null: the project page's library, 2026-10-06). A file
+ * moves between the project level and its songs without its blob moving
+ * (`attachFile`; pathnames are ID-based). One file in Vercel Blob with an optional title and description, a
  * thumbnail the uploader's browser rendered (a PDF's first page), and a
  * share code that is its permanent address (`/f/<code>`), whichever store
  * the file is in. Same reserve → upload → ready lifecycle as a demo; the
@@ -30,10 +34,13 @@ export const songFile = table(
 			.text("account_id")
 			.notNull()
 			.references(() => account.id, { onDelete: "cascade" }),
-		songId: t
-			.text("song_id")
+		/** The project the file belongs to; a song-level file's song is in this project. Backfilled from the song for the rows before 2026-10-06. */
+		projectId: t
+			.text("project_id")
 			.notNull()
-			.references(() => song.id, { onDelete: "cascade" }),
+			.references(() => project.id, { onDelete: "cascade" }),
+		/** The song the file is attached to, or null for a project-level file. */
+		songId: t.text("song_id").references(() => song.id, { onDelete: "cascade" }),
 		/** What the file is, by its extension (constants/fileFormats.ts); rows from before 2026-10-06 are PDFs. */
 		kind: t.text("kind").$type<FileKind>().notNull().default("pdf"),
 		/** Defaults to the filename minus its extension; may be emptied. */
@@ -55,6 +62,7 @@ export const songFile = table(
 		...timestamps,
 	},
 	(table) => [
+		t.index("song_pdf_project_idx").on(table.projectId),
 		t.index("song_pdf_song_idx").on(table.songId),
 		t.index("song_pdf_account_idx").on(table.accountId),
 		t.index("song_pdf_uploaded_by_idx").on(table.uploadedBy),

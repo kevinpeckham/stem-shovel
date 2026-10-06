@@ -1,9 +1,9 @@
 import { db, schema } from "$lib/server/db";
-import { moveBlob, songIdOfPathname } from "$lib/server/blob";
+import { moveBlob, projectIdOfPathname, songIdOfPathname } from "$lib/server/blob";
 import { accessOfUrl, type BlobAccess } from "$lib/utils/blobAccess";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
-const { song, stem, demo, songFile, songNotation } = schema;
+const { project, song, stem, demo, songFile, songNotation } = schema;
 
 /** The store a song's files belong in: private when it or its project is. */
 function accessOfSong(s: { isPrivate: boolean; project: { isPrivate: boolean } }): BlobAccess {
@@ -19,10 +19,22 @@ export async function accessOfSongId(songId: string): Promise<BlobAccess | null>
 	return row ? accessOfSong(row) : null;
 }
 
-/** The store an upload at this pathname should go to (the song's privacy). */
+/** The store a project's own files belong in (a project-level attachment, its picture): private when the project is. */
+async function accessOfProjectId(projectId: string): Promise<BlobAccess | null> {
+	const row = await db.query.project.findFirst({
+		where: eq(project.id, projectId),
+		columns: { isPrivate: true },
+	});
+	return row ? (row.isPrivate ? "private" : "public") : null;
+}
+
+/** The store an upload at this pathname should go to: the song's privacy under `songs/<id>/`, the project's under `projects/<id>/`, public otherwise. */
 export async function accessOfPathname(pathname: string): Promise<BlobAccess> {
 	const songId = songIdOfPathname(pathname);
-	return (songId && (await accessOfSongId(songId))) || "public";
+	if (songId) return (await accessOfSongId(songId)) ?? "public";
+	const projectId = projectIdOfPathname(pathname);
+	if (projectId) return (await accessOfProjectId(projectId)) ?? "public";
+	return "public";
 }
 
 /**
@@ -97,7 +109,7 @@ export async function relocateSongFiles(songId: string): Promise<number> {
 	return moved;
 }
 
-/** Every song of a project, after the project's privacy changed. */
+/** Every song of a project and the project's own attachments (songId null), after the project's privacy changed. */
 export async function relocateProjectFiles(projectId: string): Promise<number> {
 	const songs = await db
 		.select({ id: song.id })
@@ -105,5 +117,25 @@ export async function relocateProjectFiles(projectId: string): Promise<number> {
 		.where(and(eq(song.projectId, projectId), eq(song.status, "active")));
 	let moved = 0;
 	for (const s of songs) moved += await relocateSongFiles(s.id);
+	const to = await accessOfProjectId(projectId);
+	if (!to) return moved;
+	const move = async (url: string | null) => {
+		if (!url || accessOfUrl(url) === to) return url;
+		moved += 1;
+		return moveBlob(url, to);
+	};
+	const files = await db.query.songFile.findMany({
+		where: and(eq(songFile.projectId, projectId), isNull(songFile.songId)),
+	});
+	for (const f of files) {
+		const url = f.url ? await move(f.url) : f.url;
+		const thumbnailUrl = await move(f.thumbnailUrl);
+		if (url !== f.url || thumbnailUrl !== f.thumbnailUrl) {
+			await db
+				.update(songFile)
+				.set({ url: url ?? "", thumbnailUrl })
+				.where(eq(songFile.id, f.id));
+		}
+	}
 	return moved;
 }

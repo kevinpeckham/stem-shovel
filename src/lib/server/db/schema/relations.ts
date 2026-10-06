@@ -107,6 +107,8 @@ export const projectRelations = relations(project, ({ one, many }) => ({
 	creator: one(user, { fields: [project.createdBy], references: [user.id] }),
 	songs: many(song),
 	people: many(projectMember),
+	/** Every file of the project, song-level and project-level (docs/uploads-and-blob.md, "Attachments"). */
+	files: many(songFile),
 }));
 
 export const notificationRelations = relations(notification, ({ one }) => ({
@@ -141,6 +143,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 
 export const songFileRelations = relations(songFile, ({ one }) => ({
 	account: one(account, { fields: [songFile.accountId], references: [account.id] }),
+	project: one(project, { fields: [songFile.projectId], references: [project.id] }),
 	song: one(song, { fields: [songFile.songId], references: [song.id] }),
 	uploader: one(user, { fields: [songFile.uploadedBy], references: [user.id] }),
 }));

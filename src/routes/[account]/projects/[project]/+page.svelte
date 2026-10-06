@@ -3,6 +3,7 @@
 	import AiToggle from "$lib/components/AiToggle.svelte";
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
+	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import ProjectPeople from "$lib/components/ProjectPeople.svelte";
@@ -169,6 +170,15 @@
 	/** The project's notes count one, and the viewer's own private note on the song one. */
 	const noteCount = (song: (typeof data.project.songs)[number]) =>
 		(song.notesMarkdown.trim() ? 1 : 0) + (song.hasMyNote ? 1 : 0);
+	/** The downloads offer what exists: charts (scores, chart files, chart text) and documentation (any text). */
+	let hasCharts = $derived(
+		data.scores.length > 0 ||
+			data.files.some((f) => f.isNotation) ||
+			songs.some((s) => s.chartMarkdown.trim()),
+	);
+	let hasDocumentation = $derived(
+		songs.some((s) => s.chartMarkdown.trim() || s.lyricsMarkdown.trim() || s.notesMarkdown.trim()),
+	);
 	/** An idea's first demo, for its tile's play button. */
 	const firstDemo = (song: (typeof data.project.songs)[number]) =>
 		song.demos.find((d) => d.status === "ready" && d.playUrl) ?? null;
@@ -530,6 +540,53 @@
 					</li>
 				{/each}
 			</ul>
+		</section>
+	{/if}
+
+	<!-- Attachments & Downloads (Kevin): every song's files and scores plus the project's own, and the documentation downloads. Shown when there is something, and to editors so the first file can be added. -->
+	{#if data.files.length > 0 || data.scores.length > 0 || data.canEdit}
+		<section class="mt-10">
+			<div class="mb-5">
+				<h2 class="marketing-section-heading">Attachments &amp; Downloads</h2>
+				<p class="opacity-90 text-15px">
+					Notation, audio scraps and other documents attached to the project or its songs, and the
+					project's documentation to take away. A song's lyrics, chart text and notes have no tile
+					here: open the song to read them, or take them all in the documentation download.
+				</p>
+			</div>
+			{#if hasCharts || hasDocumentation}
+				<div class="mb-5 flex flex-wrap items-center gap-3">
+					{#if hasCharts}
+						<a
+							class="button button-sm"
+							href="/api/projects/{data.project.id}/charts.zip"
+							title="Every song's scores (with their rendered PDFs and MusicXML), chart files and chart text, in one zip"
+						>
+							<span class="i-ph-file-zip" aria-hidden="true"></span>
+							Download All Charts
+						</a>
+					{/if}
+					{#if hasDocumentation}
+						<a
+							class="button button-sm"
+							href="/api/projects/{data.project.id}/documentation.zip"
+							title="A PDF per song with its lyrics, chart and notes, in one zip"
+						>
+							<span class="i-ph-file-zip" aria-hidden="true"></span>
+							Download All Song Documentation
+						</a>
+					{/if}
+				</div>
+			{/if}
+			<SongFilesPanel
+				projectId={data.project.id}
+				songTitle={data.project.name}
+				files={data.files}
+				scores={data.scores}
+				canEdit={data.canEdit}
+				songs={songs.map((s) => ({ id: s.id, title: s.title, slug: s.slug }))}
+				songHref={(song) => `/${data.account.slug}/projects/${data.project.slug}/${song.slug}`}
+			/>
 		</section>
 	{/if}
 

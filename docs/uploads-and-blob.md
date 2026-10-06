@@ -76,22 +76,30 @@ in three steps driven by `src/lib/upload.ts`:
   each stem lands; a few seconds of ffmpeg each, accepted for simplicity.
   The project page plays these mixes as a playlist (`ProjectPlayer.svelte`,
   a plain `<audio>` element streaming from Blob).
-- **Attachments: files attached to a song** (table `song_pdf`, 2026-10-05
-  as PDFs for Kevin's charts and notation, generalised on 2026-10-06 to
-  files of several kinds; the table keeps its first name, since a rename
-  would have meant a drizzle prompt and a data copy for nothing, and the
-  code calls it `songFile`, `song.files`). Each row has a `kind`
+- **Attachments: files attached to a project, and optionally to one of its
+  songs** (table `song_pdf`, 2026-10-05 as PDFs for Kevin's charts and
+  notation, generalised on 2026-10-06 to files of several kinds, and the
+  same day given a `project_id` with `song_id` made nullable, so a file can
+  belong to the project alone; the table keeps its first name, since a
+  rename would have meant a drizzle prompt and a data copy for nothing, and
+  the code calls it `songFile`, `song.files`, `project.files`). Each row has a `kind`
   (`constants/fileFormats.ts`: `pdf`, `image` for png/jpg/jpeg/webp/gif,
   `audio` for mp3/wav/m4a/aac/ogg/flac/aiff/aif, `text` for txt/md/markdown,
   `midi` for mid/midi, `other` for the rest), decided by the filename's
   extension (`fileKindOf`; rows from before the change are PDFs by the
   column's default), which sets the ceiling (`FILE_MAX_BYTES`: PDF 25 MB,
   image 15 MB, audio 60 MB, text and MIDI 2 MB, other 25 MB; forty files a
-  song, `MAX_FILES_PER_SONG`). The demo's lifecycle: `POST /api/files`
-  (`{ songId, filename, sizeBytes, notation? }`) reserves the row (the
-  kind's ceiling, the song's cap, the account's storage room) at
+  song, `MAX_FILES_PER_SONG`; two hundred of the project's own,
+  `MAX_FILES_PER_PROJECT`). The demo's lifecycle: `POST /api/files`
+  (`{ songId, filename, sizeBytes, notation? }` for a song's file, or
+  `{ projectId, filename, sizeBytes }` for a project-level one, `notation`
+  ignored there) reserves the row (the kind's ceiling, the song's or the
+  project's cap, the account's storage room) at
   `accounts/<a>/songs/<s>/files/<id>.<ext>` (`filePathname`; the rows
-  from before live under `/pdfs/`, and `isFilePathname` knows both) and
+  from before live under `/pdfs/`) or `accounts/<a>/projects/<p>/files/<id>.<ext>`
+  (`projectFilePathname`; `isFilePathname` knows all three, and
+  `accessOfPathname` picks the store by the song's privacy or, under
+  `projects/`, the project's) and
   answers `{ fileId, pathname, access, kind }`; the browser uploads under
   the type its name says (`FILE_CONTENT_TYPE_OF`; `/api/upload`'s
   attachment branch allows the usual labels for these kinds plus
@@ -111,7 +119,8 @@ in three steps driven by `src/lib/upload.ts`:
   (nanoid 16) behind `/f/<code>`, which 302s to the file where it is now,
   presigned for a private song, so the link is permanent across renames
   and privacy moves (`relocate.ts` moves attachments and thumbnails with
-  the rest); `/f/<code>?download=1` streams it instead (`readBlob`) as an
+  the rest, a project's own files when the project's privacy changes);
+  `/f/<code>?download=1` streams it instead (`readBlob`) as an
   attachment under its original name and the type its name says
   (`utils/attachmentDisposition.ts`), since the store's own `?download=1`
   names the file by its id and a cross-origin `download` attribute is
@@ -146,7 +155,48 @@ in three steps driven by `src/lib/upload.ts`:
   rendition scheduled (`scheduleDemoPlayback`) and the project told, as
   after a demo upload; the attachment stays; the demos cap applies.
   Removal (`deleteFile`) and the song and project cascades delete file
-  and thumbnail; sizes count toward the account's storage.
+  and thumbnail (a song's cascade takes its own files, a project's takes
+  every file of the project, its songs' and its own); sizes count toward
+  the account's storage.
+  **The project library** (2026-10-06, Kevin): the project page lists
+  every ready file of the project, song-level and project-level, newest
+  first (`listProjectFiles`, each with its `song: { id, title, slug }` or
+  null, the page's `files`), and every ready score of its songs with the
+  state of its rendered PDF (`listProjectScores`, the page's `scores`),
+  minus those of songs the viewer may not see. **Attach**
+  (`attachFile({ id, songId })` in `files.remote.ts`, `songId` null for
+  the project level) moves a file to a song of the same project or back
+  to the project level: only the row changes (the blob stays where it is;
+  pathnames are ID-based and the share code is the address), the target's
+  cap applies, and a file leaving a song stops being a score
+  (`is_notation` cleared). An editor of the account; on a restricted
+  project, one added to it. A project-level audio file cannot be a demo
+  (no song to be one of) until it is attached.
+- **Documentation downloads** (2026-10-06, Kevin;
+  `src/lib/server/documentation.ts`): a song's lyrics, chart and notes as
+  one PDF, `GET /api/songs/[id]/documentation.pdf` (a title page with the
+  song, project and version, then a page or more per section that has
+  text, headed "Lyrics", "Chart", "Notes"; an attachment named
+  `<song title>.pdf`); every song's PDF in one zip,
+  `GET /api/projects/[id]/documentation.zip` (`<project> documentation.zip`,
+  one `<song title>.pdf` per song with any text, duplicate titles
+  numbered); and the project's charts,
+  `GET /api/projects/[id]/charts.zip` (`<project> charts.zip`: a folder
+  per song holding each score's MusicXML file and, once the jobs function
+  engraved it, its PDF as `<title>.pdf`, each attachment marked as notation
+  under its own filename, and the chart text as `<song>-chart.txt` and
+  `<song>-chart.pdf`). The markdown is drawn by `utils/markdownToPdf.ts`
+  from marked's lexer tokens into an open pdfkit document with the
+  built-in fonts (Helvetica; Courier for code blocks and spans, so a chord
+  grid stays lined up; headings by depth, lists, quotes, rules, tables as
+  text), pages breaking as pdfkit sees fit; titles become filenames
+  through `utils/safeFilename.ts`; fflate's `zipSync` builds the zips
+  (stored for PDFs, images and `.mxl`, deflated for text). Everything is
+  built in the request (`maxDuration` 120, their own Vercel function: the
+  three routes share one, and pdfkit lives there and in the jobs
+  function, never in a page function) and nothing is stored. Who may
+  download is who may view the song or the project (docs/security.md,
+  "Downloads"); a song or project with nothing to put in is a 404.
 - **Mentions** (2026-10-06): in a song's documents (chart, lyrics, notes,
   and a person's private note), `@` followed by the title of an
   attachment or a notation file, or the label of a demo, is a link when

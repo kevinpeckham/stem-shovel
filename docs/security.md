@@ -77,7 +77,23 @@ What protects what, and where each rule lives. The first security pass ran on
   type its name says, never as HTML. **Mentions** (`@Title` in a document
   linking to a file) are added after sanitising, on text nodes only, and
   the anchor is the only HTML they introduce, its href and text escaped
-  (`utils/linkMentions.ts`).
+  (`utils/linkMentions.ts`). A project-level attachment (no song) goes to
+  the store the project's privacy calls for; attaching a file to a song or
+  back to the project (`attachFile`) needs an editor of the account and, on
+  a restricted project, one added to it, and only ever moves a file
+  between a project and its own songs.
+- **Downloads** (`GET /api/songs/[id]/documentation.pdf`,
+  `GET /api/projects/[id]/documentation.zip`, `GET /api/projects/[id]/charts.zip`;
+  docs/uploads-and-blob.md, "Documentation downloads") are open to whoever
+  may view the song or the project by the page's own rules
+  (`viewAccess.canViewSong`, `canViewProject`: everyone for a public one,
+  members and project viewers or a share code for a private one, those
+  added to a restricted one), a private song inside a public project left
+  out of the project's zips for those who may not see it; ids are nanoids
+  and an unknown one is a 404. They are built in the request from the
+  song's own text and our own blobs (`readBlob` refuses any other URL),
+  never from anything the request carries, and sent as attachments named
+  through `attachmentDisposition` so a title cannot break the header.
 - **Notation files** (MusicXML) attached to songs follow the same three
   gates: extension and size (10 MB) at the reservation, content type at the
   upload token (the MusicXML types plus XML, zip and octet-stream, as

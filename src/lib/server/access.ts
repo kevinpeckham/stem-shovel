@@ -218,7 +218,7 @@ async function accountOfStemPathname(pathname: string) {
 	return row?.accountId ?? null;
 }
 
-/** A file attached to a song (docs/uploads-and-blob.md, "Attachments"). */
+/** A file attached to a project or one of its songs (docs/uploads-and-blob.md, "Attachments"). */
 export async function accountOfFile(fileId: string) {
 	const row = await db.query.songFile.findFirst({
 		where: eq(songFile.id, fileId),
@@ -318,7 +318,7 @@ export async function accountOfUploadPathname(pathname: string) {
 		columns: { accountId: true },
 	});
 	if (row) return row.accountId;
-	// A file attached to a song (docs/uploads-and-blob.md, "Attachments").
+	// A file attached to a song or a project (docs/uploads-and-blob.md, "Attachments"): either folder, the row knows.
 	const file = await db.query.songFile.findFirst({
 		where: eq(songFile.pathname, pathname),
 		columns: { accountId: true },
@@ -375,6 +375,16 @@ const PROJECT_OF = new Map<
 			)?.song.projectId ?? null,
 	],
 	[
+		accountOfFile,
+		async (id) =>
+			(
+				await db.query.songFile.findFirst({
+					where: eq(songFile.id, id),
+					columns: { projectId: true },
+				})
+			)?.projectId ?? null,
+	],
+	[
 		accountOfUploadPathname,
 		async (pathname) => {
 			if (isRecordingPathname(pathname)) return null;
@@ -392,7 +402,18 @@ const PROJECT_OF = new Map<
 				where: eq(demo.pathname, pathname),
 				with: { song: { columns: { projectId: true } } },
 			});
-			return d?.song.projectId ?? null;
+			if (d) return d.song.projectId;
+			// An attachment carries its project itself; a notation file's is its song's.
+			const f = await db.query.songFile.findFirst({
+				where: eq(songFile.pathname, pathname),
+				columns: { projectId: true },
+			});
+			if (f) return f.projectId;
+			const n = await db.query.songNotation.findFirst({
+				where: eq(songNotation.pathname, pathname),
+				with: { song: { columns: { projectId: true } } },
+			});
+			return n?.song.projectId ?? null;
 		},
 	],
 ]);

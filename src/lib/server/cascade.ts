@@ -90,7 +90,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(song).where(inArray(song.id, songIds));
 }
 
-/** Projects with their songs and project-level viewing links. */
+/** Projects with their songs, their own attachments (song_pdf rows with no song) and project-level viewing links. */
 export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 	if (projectIds.length === 0) return;
 	const songs = await db
@@ -98,6 +98,7 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 		.from(song)
 		.where(inArray(song.projectId, projectIds));
 	await deleteSongRows(songs.map((s) => s.id));
+	await db.delete(songFile).where(inArray(songFile.projectId, projectIds));
 	await db.delete(shareLink).where(inArray(shareLink.projectId, projectIds));
 	await db.delete(projectMember).where(inArray(projectMember.projectId, projectIds));
 	await db.delete(invitation).where(inArray(invitation.projectId, projectIds));
@@ -171,6 +172,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(drumKit).where(eq(drumKit.accountId, accountId));
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await deleteCommentRows(eq(comment.accountId, accountId));
+	await db.delete(songFile).where(eq(songFile.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));

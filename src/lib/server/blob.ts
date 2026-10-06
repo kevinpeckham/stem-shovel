@@ -76,12 +76,22 @@ export function filePathname(accountId: string, songId: string, fileId: string, 
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
 	return `accounts/${accountId}/songs/${songId}/files/${fileId}.${ext}`;
 }
+/** Blob pathname for a file attached to a project itself, not a song (docs/uploads-and-blob.md, "Attachments"): the project page's library. */
+export function projectFilePathname(
+	accountId: string,
+	projectId: string,
+	fileId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/projects/${projectId}/files/${fileId}.${ext}`;
+}
 /** The attachment's thumbnail beside it (a PDF's first page), stamped so a re-render is a new URL (the 30-day cache); from the file's own pathname, so a row from the `/pdfs/` days keeps its folder. */
 export function fileThumbnailPathname(pathname: string, ext: string) {
 	const stamp = Date.now().toString(36);
 	return `${pathname.replace(/\.[a-z0-9]+$/i, "")}.thumb-${stamp}.${ext}`;
 }
-/** An attachment's own pathname (not its thumbnail): `/files/` since 2026-10-06, `/pdfs/` for the rows uploaded before. */
+/** An attachment's own pathname (not its thumbnail): `/files/` since 2026-10-06 under a song or a project, `/pdfs/` for the rows uploaded before. */
 export const isFilePathname = (pathname: string) =>
 	/[/](files|pdfs)[/][^/.]+[.][a-z0-9]+$/.test(pathname);
 
@@ -193,6 +203,11 @@ export function isOurBlobUrl(url: string, pathname?: string): boolean {
 /** The song id inside any upload pathname (`accounts/<a>/songs/<s>/…`), or null. */
 export function songIdOfPathname(pathname: string): string | null {
 	return pathname.match(/^accounts\/[^/]+\/songs\/([^/]+)\//)?.[1] ?? null;
+}
+
+/** The project id inside a project-level pathname (`accounts/<a>/projects/<p>/…`: a project's files and its picture), or null. */
+export function projectIdOfPathname(pathname: string): string | null {
+	return pathname.match(/^accounts\/[^/]+\/projects\/([^/]+)\//)?.[1] ?? null;
 }
 
 /**

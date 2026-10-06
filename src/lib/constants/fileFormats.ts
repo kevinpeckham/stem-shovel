@@ -66,6 +66,8 @@ export const FILE_MAX_BYTES: Record<FileKind, number> = {
 	other: 25 * 1024 * 1024,
 };
 export const MAX_FILES_PER_SONG = 40;
+/** Files attached to a project itself rather than one of its songs (the project page's library). */
+export const MAX_FILES_PER_PROJECT = 200;
 
 /** What the file picker offers: the known extensions and their types. */
 export const FILE_ACCEPT = [

@@ -100,6 +100,15 @@ const ROUTES = [
 		[200, 302, 303, 307, 308],
 		[200, 302, 303, 307, 308],
 	],
+	// Documentation downloads build in the request; a nonsense id is a 404 either way.
+	["api/songs/[id]/documentation.pdf (server)", "/api/songs/x/documentation.pdf", [404], [404]],
+	[
+		"api/projects/[id]/documentation.zip (server)",
+		"/api/projects/x/documentation.zip",
+		[404],
+		[404],
+	],
+	["api/projects/[id]/charts.zip (server)", "/api/projects/x/charts.zip", [404], [404]],
 	["api/demos (server)", "/api/demos", [405], [405]],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
 	["api/files (server)", "/api/files", [405], [405]],

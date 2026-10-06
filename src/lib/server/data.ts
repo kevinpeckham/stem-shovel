@@ -27,6 +27,7 @@ import {
 	deleteBlobs,
 	demoPathname,
 	filePathname,
+	projectFilePathname,
 	notationPathname,
 	drumSamplePathname,
 	midiPathname,
@@ -52,6 +53,7 @@ import { hashMarkdown, renderMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import {
 	FILE_CONTENT_TYPE_OF,
+	MAX_FILES_PER_PROJECT,
 	MAX_FILES_PER_SONG,
 	type FileKind,
 } from "$lib/constants/fileFormats";
@@ -440,6 +442,15 @@ export async function invitationProject(id: string) {
 		columns: { projectId: true },
 	});
 	return row?.projectId ? { projectId: row.projectId } : null;
+}
+
+/** The project a song is in, scoped to the account (an attachment reserved by song takes its project from here). */
+export async function projectOfSong(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { projectId: true },
+	});
+	return row ? { projectId: row.projectId } : null;
 }
 
 /** Account + project + song slugs of a song by id, scoped to the account. */
@@ -3212,44 +3223,249 @@ export async function createDemo(
 	return row;
 }
 
-// ---- Files attached to songs (docs/uploads-and-blob.md, "Attachments") ----
+// ---- Files attached to projects and songs (docs/uploads-and-blob.md, "Attachments") ----
 
-/** Step 1 of an attachment upload: the row in `uploading` state with its kind, pathname and share code; null for a song the account lacks, "full" at the cap. */
-export async function createFile(
-	accountId: string,
-	userId: string,
-	songId: string,
-	file: { filename: string; sizeBytes: number; kind: FileKind; isNotation?: boolean },
-) {
-	const s = await db.query.song.findFirst({
-		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
-		columns: { id: true },
-	});
-	if (!s) return null;
+/** Whether a song, or the project itself (its own files, not its songs'), has room for one more file under its cap. */
+async function fileRoom(projectId: string, songId: string | null): Promise<boolean> {
 	const [{ n }] = await db
 		.select({ n: sql<number>`count(*)` })
 		.from(songFile)
-		.where(eq(songFile.songId, songId));
-	if (n >= MAX_FILES_PER_SONG) return "full" as const;
+		.where(
+			songId
+				? eq(songFile.songId, songId)
+				: and(eq(songFile.projectId, projectId), isNull(songFile.songId)),
+		);
+	return n < (songId ? MAX_FILES_PER_SONG : MAX_FILES_PER_PROJECT);
+}
+
+/**
+ * Step 1 of an attachment upload: the row in `uploading` state with its
+ * kind, pathname and share code. A song-level file (`songId` set) lives
+ * under the song's folder and counts against the song's cap; a
+ * project-level one (`songId` null) under the project's folder and against
+ * the project's, and is never a score. Null for a project or song the
+ * account lacks (or a song outside the project), "full" at the cap.
+ */
+export async function createFile(input: {
+	accountId: string;
+	userId: string;
+	projectId: string;
+	songId: string | null;
+	filename: string;
+	sizeBytes: number;
+	kind: FileKind;
+	isNotation?: boolean;
+}) {
+	const { accountId, userId, projectId, songId } = input;
+	const p = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { id: true },
+	});
+	if (!p) return null;
+	if (songId && !(await songInProject(accountId, projectId, songId))) return null;
+	if (!(await fileRoom(projectId, songId))) return "full" as const;
 	const id = nanoid();
 	const [row] = await db
 		.insert(songFile)
 		.values({
 			id,
 			accountId,
+			projectId,
 			songId,
-			kind: file.kind,
-			title: labelFromFilename(file.filename),
-			isNotation: file.isNotation ?? false,
+			kind: input.kind,
+			title: labelFromFilename(input.filename),
+			isNotation: songId ? (input.isNotation ?? false) : false,
 			url: "",
-			pathname: filePathname(accountId, songId, id, file.filename),
-			filename: file.filename,
-			sizeBytes: file.sizeBytes,
+			pathname: songId
+				? filePathname(accountId, songId, id, input.filename)
+				: projectFilePathname(accountId, projectId, id, input.filename),
+			filename: input.filename,
+			sizeBytes: input.sizeBytes,
 			shareCode: nanoid(16),
 			uploadedBy: userId,
 		})
 		.returning();
 	return row;
+}
+
+async function songInProject(accountId: string, projectId: string, songId: string) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.projectId, projectId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	return !!s;
+}
+
+/**
+ * Moves a file to a song of its project, or back to the project level
+ * (`songId` null). The blob stays where it is: pathnames are ID-based and
+ * the share code is the permanent address. A file leaving a song is no
+ * longer a score (`isNotation` cleared). Null for a file the account lacks
+ * or a song outside the file's project, "full" when the target has no room.
+ */
+export async function attachFile(accountId: string, fileId: string, songId: string | null) {
+	const f = await db.query.songFile.findFirst({
+		where: and(eq(songFile.accountId, accountId), eq(songFile.id, fileId)),
+	});
+	if (!f) return null;
+	if (f.songId === songId) return f;
+	if (songId && !(await songInProject(accountId, f.projectId, songId))) return null;
+	if (!(await fileRoom(f.projectId, songId))) return "full" as const;
+	const [row] = await db
+		.update(songFile)
+		.set({ songId, isNotation: f.songId ? false : f.isNotation })
+		.where(and(eq(songFile.accountId, accountId), eq(songFile.id, fileId)))
+		.returning();
+	return row ?? null;
+}
+
+/** A file's URLs as a page may send them (presigned for a private store), like `presentSongFiles`. */
+async function presentFile<F extends { url: string; thumbnailUrl: string | null }>(
+	f: F,
+): Promise<F> {
+	return {
+		...f,
+		url: (await presentUrl(f.url)) ?? f.url,
+		thumbnailUrl: await presentUrl(f.thumbnailUrl),
+	};
+}
+
+/**
+ * The project page's library (docs/uploads-and-blob.md, "Attachments"):
+ * every ready file of the project, song-level and project-level, newest
+ * first, each with the song it is attached to (null at the project level)
+ * and URLs the browser may fetch.
+ */
+export async function listProjectFiles(accountId: string, projectId: string) {
+	const rows = await db.query.songFile.findMany({
+		where: and(
+			eq(songFile.accountId, accountId),
+			eq(songFile.projectId, projectId),
+			eq(songFile.status, "ready"),
+		),
+		orderBy: [desc(songFile.createdAt)],
+		with: { song: { columns: { id: true, title: true, slug: true } } },
+	});
+	return Promise.all(rows.map((r) => presentFile({ ...r, song: r.song ?? null })));
+}
+
+/**
+ * The project's scores (docs/uploads-and-blob.md, "Notation files"): every
+ * ready notation file of the project's active songs, newest first, with
+ * its song and the state of its rendered PDF, URLs presented (the PDF's
+ * only once it is ready).
+ */
+export async function listProjectScores(accountId: string, projectId: string) {
+	const songs = await db
+		.select({ id: song.id })
+		.from(song)
+		.where(
+			and(eq(song.accountId, accountId), eq(song.projectId, projectId), eq(song.status, "active")),
+		);
+	if (songs.length === 0) return [];
+	const rows = await db.query.songNotation.findMany({
+		where: and(
+			eq(songNotation.accountId, accountId),
+			inArray(
+				songNotation.songId,
+				songs.map((s) => s.id),
+			),
+			eq(songNotation.status, "ready"),
+		),
+		orderBy: [desc(songNotation.createdAt)],
+		with: { song: { columns: { id: true, title: true, slug: true } } },
+	});
+	return Promise.all(
+		rows.map(async (n) => ({
+			...(await presentFile(n)),
+			pdfUrl: n.pdfStatus === "ready" ? await presentUrl(n.pdfUrl) : null,
+		})),
+	);
+}
+
+/**
+ * What the documentation PDF needs of a song (src/lib/server/documentation.ts),
+ * unscoped by id like `songForMix`: the route checks the view rules on it.
+ */
+export async function songForDocumentation(songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.id, songId), eq(song.status, "active")),
+		columns: {
+			id: true,
+			accountId: true,
+			projectId: true,
+			isPrivate: true,
+			title: true,
+			version: true,
+			lyricsMarkdown: true,
+			chartMarkdown: true,
+			notesMarkdown: true,
+		},
+		with: {
+			project: { columns: { name: true, isPrivate: true, isRestricted: true } },
+			// Its notation, merged after the text (documentation.ts, `notationPartsOf`).
+			notation: {
+				where: eq(songNotation.status, "ready"),
+				orderBy: [asc(songNotation.createdAt)],
+				columns: { id: true, pdfUrl: true, pdfStatus: true },
+			},
+			files: {
+				where: and(eq(songFile.status, "ready"), eq(songFile.isNotation, true)),
+				orderBy: [asc(songFile.createdAt)],
+				columns: { id: true, url: true, kind: true, filename: true },
+			},
+		},
+	});
+	return row ?? null;
+}
+
+/**
+ * What the project downloads need (src/lib/server/documentation.ts): the
+ * project with its active songs in page order, each with its documents,
+ * its ready scores and the files marked as notation. Scoped to the account.
+ */
+export async function projectForDocumentation(accountId: string, projectId: string) {
+	const row = await db.query.project.findFirst({
+		where: and(eq(project.accountId, accountId), eq(project.id, projectId)),
+		columns: { id: true, name: true, slug: true, isPrivate: true, isRestricted: true },
+		with: {
+			songs: {
+				where: eq(song.status, "active"),
+				orderBy: [asc(song.sortOrder), asc(song.title)],
+				columns: {
+					id: true,
+					projectId: true,
+					isPrivate: true,
+					title: true,
+					slug: true,
+					version: true,
+					lyricsMarkdown: true,
+					chartMarkdown: true,
+					notesMarkdown: true,
+				},
+				with: {
+					notation: {
+						where: eq(songNotation.status, "ready"),
+						orderBy: [asc(songNotation.createdAt)],
+						columns: {
+							id: true,
+							title: true,
+							filename: true,
+							url: true,
+							pdfUrl: true,
+							pdfStatus: true,
+						},
+					},
+					files: {
+						where: and(eq(songFile.status, "ready"), eq(songFile.isNotation, true)),
+						orderBy: [asc(songFile.createdAt)],
+						columns: { id: true, title: true, filename: true, url: true, kind: true },
+					},
+				},
+			},
+		},
+	});
+	return row ?? null;
 }
 
 /** The reserved row's pathname and kind, for the ready route to check the stored bytes against. */
@@ -3357,7 +3573,8 @@ export async function createDemoFromFile(accountId: string, userId: string, file
 			eq(songFile.kind, "audio"),
 		),
 	});
-	if (!f) return null;
+	// A project-level file has no song to be a demo of.
+	if (!f?.songId) return null;
 	const [{ n }] = await db
 		.select({ n: sql<number>`count(*)` })
 		.from(demo)
@@ -4800,6 +5017,15 @@ export async function docVersionById(
 }
 
 // ---- private song notes: one per user and song ---------------------------
+
+/** What the view rules need of a project by id (viewAccess.canViewProject) and its name, unscoped; null when there is none. */
+export async function projectViewRow(projectId: string) {
+	const row = await db.query.project.findFirst({
+		where: and(eq(project.id, projectId), eq(project.status, "active")),
+		columns: { id: true, accountId: true, name: true, isPrivate: true, isRestricted: true },
+	});
+	return row ?? null;
+}
 
 /** What the view rules need of a song by id (viewAccess.canViewSong), unscoped; null when there is none. */
 export async function songViewRow(songId: string) {

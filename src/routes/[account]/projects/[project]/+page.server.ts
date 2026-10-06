@@ -1,7 +1,9 @@
 import {
 	getProject,
 	listAccountMembers,
+	listProjectFiles,
 	listProjectPeople,
+	listProjectScores,
 	listShareLinks,
 	songsWantingMix,
 	userNoteSongIds,
@@ -56,7 +58,9 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 				songs.map((s) => s.id),
 			)
 		: new Set<string>();
-	const [presented, shareLinks, people, accountMembers] = await Promise.all([
+	// The project's library: every ready attachment (the songs' and the project's own) and every score, minus those of songs the viewer may not see.
+	const visible = new Set(songs.map((s) => s.id));
+	const [presented, shareLinks, people, accountMembers, files, scores] = await Promise.all([
 		Promise.all(
 			songs.map(async (s) => ({
 				...s,
@@ -81,9 +85,15 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		canEdit ? listShareLinks({ projectId: project.id }) : [],
 		canEdit ? listProjectPeople(account.id, project.id) : { people: [], invitations: [] },
 		canEdit ? listAccountMembers(account.id) : [],
+		listProjectFiles(account.id, project.id),
+		listProjectScores(account.id, project.id),
 	]);
 	return {
 		project: { ...project, songs: presented, imageUrl: await presentUrl(project.imageUrl) },
+		/** Attachments of the project and its songs, newest first, each with its song or null at the project level (docs/uploads-and-blob.md, "Attachments"). */
+		files: files.filter((f) => !f.song || visible.has(f.song.id)),
+		/** Notation files of the project's songs with their rendered PDFs (docs/uploads-and-blob.md, "Notation files"). */
+		scores: scores.filter((n) => visible.has(n.song.id)),
 		shareLinks,
 		canEdit,
 		canComment: canCommentProject(project, who),

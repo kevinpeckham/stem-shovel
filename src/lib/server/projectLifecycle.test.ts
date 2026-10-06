@@ -45,6 +45,7 @@ const fake = vi.hoisted(() => {
 		demo: { name: "demo", songId: col("songId"), url: col("url"), playbackUrl: col("playbackUrl") },
 		songFile: {
 			name: "song_pdf",
+			projectId: col("projectId"),
 			songId: col("songId"),
 			url: col("url"),
 			thumbnailUrl: col("thumbnailUrl"),

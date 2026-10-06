@@ -15,6 +15,13 @@ export const SongFileUpdateSchema = v.object({
 export type SongFileUpdate = v.InferOutput<typeof SongFileUpdateSchema>;
 
 export const SongFileDeleteSchema = v.object({ id: NanoIdSchema });
+
+/** A file moved to a song of its project, or to the project level with `songId` null (docs/uploads-and-blob.md, "Attachments"). */
+export const SongFileAttachSchema = v.object({
+	id: NanoIdSchema,
+	songId: v.nullable(NanoIdSchema),
+});
+export type SongFileAttach = v.InferOutput<typeof SongFileAttachSchema>;
 export type SongFileDelete = v.InferOutput<typeof SongFileDeleteSchema>;
 
 /** An audio attachment copied into the song's demos (docs/uploads-and-blob.md, "Attachments"). */
