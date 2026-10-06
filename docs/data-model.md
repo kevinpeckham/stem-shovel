@@ -19,6 +19,7 @@ erDiagram
     song ||--o{ stem : "made of"
     song ||--o{ demo : "remembered by"
     song ||--o{ share_link : "shared via"
+    user ||--o{ short_link : "minted"
     user ||--o{ stem : "uploaded"
 ```
 
@@ -98,6 +99,12 @@ erDiagram
   (exactly one of `song_id` / `project_id`): note, creator, optional
   `expires_at` and `max_uses`, `uses`, `revoked_at`. Projects and songs carry
   `is_private`.
+- **short_link** — an 8-character code for a page on the app with its query
+  and hash (`target`, always a path starting with `/`), `kind` (which
+  instrument or page), the minter and their account when known, `expires_at`
+  (null for a signed-in user's, 90 days for an anonymous one), `hits` and
+  `last_hit_at`. Resolved at `/x/<code>` and on the short domain
+  (docs/security.md "Short links").
 - **audit_log** — a super admin's request inside an account they do not
   belong to: user, account, `METHOD path`. Users carry `is_super_admin`.
 - **ai_request** — one call to a model through the AI Gateway: kind, model,
@@ -459,6 +466,28 @@ Deleting the song or the user removes the rows (`cascade.ts`).
 | revoked_at | timestamp_ms null         |                                     |
 | created_by | text FK → user (set null) |                                     |
 | created_at | timestamp_ms              |                                     |
+
+### short_link
+
+| column      | type                         | notes                                                                      |
+| ----------- | ---------------------------- | -------------------------------------------------------------------------- |
+| id          | text PK                      |                                                                            |
+| code        | text not null unique         | 8 from `SHORT_LINK_ALPHABET` (no 0/O/1/l/I); `/x/<code>`, `shvl.me/<code>` |
+| target      | text not null                | path + query + hash on the app, ≤ 4000, starts with a single `/`           |
+| kind        | text not null                | `chord-player`, `drum-machine`, `piano`, `song`, `project`, `other`        |
+| created_by  | text FK → user (set null)    | null = minted signed out                                                   |
+| account_id  | text FK → account (set null) | a song's or project's account when the minter belongs to it                |
+| expires_at  | timestamp_ms null            | null = never (signed in); 90 days for an anonymous link, then purged       |
+| hits        | integer not null default 0   | arrivals, counted after the redirect                                       |
+| last_hit_at | timestamp_ms null            |                                                                            |
+| created_at  | timestamp_ms                 |                                                                            |
+| updated_at  | timestamp_ms                 | also moves with each hit                                                   |
+
+Indexes on `created_by`, `account_id` and `expires_at` (the purge). The
+cascade clears `created_by` when a user goes and `account_id` when an
+account goes; the row and its code stay. `src/lib/server/shortLinks.ts`
+mints, resolves and purges; `src/lib/remote/shortLinks.remote.ts` is the
+command the share buttons call.
 
 ### slug_alias
 

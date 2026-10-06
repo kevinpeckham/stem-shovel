@@ -36,3 +36,7 @@ Listening needs no account. Editing, commenting and uploading do. Owners and adm
 ## Documentation downloads
 
 A song's **Downloads** menu has **Song Documentation (PDF)**: its lyrics, chart and notes as one PDF, with its notation after them: every score and every PDF or image marked as notation. The project page's Attachments & Downloads section has **Download All Charts** (every score with its PDF and MusicXML, every chart file, and each text chart as text and PDF, in one zip) and **Download All Song Documentation** (a PDF per song, zipped).
+
+## Short links
+
+The links the instruments copy, a chord player set-up, a drum machine beat, a piano preset, are short ones on **shvl.me** that open the full address, so they paste cleanly into a message. Anyone can make one, signed in or not; links made signed out expire after ninety days, links made signed in do not. Song and project share links already have their own short form.

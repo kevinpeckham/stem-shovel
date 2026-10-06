@@ -45,6 +45,7 @@ const {
 	recordingStem,
 	session,
 	shareLink,
+	shortLink,
 	song,
 	songCredit,
 	songDocVersion,
@@ -176,6 +177,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
+	await db.update(shortLink).set({ accountId: null }).where(eq(shortLink.accountId, accountId));
 	await db.delete(invitation).where(eq(invitation.accountId, accountId));
 	await db.delete(notification).where(eq(notification.accountId, accountId));
 	await db.delete(inviteCode).where(eq(inviteCode.accountId, accountId));
@@ -225,6 +227,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(project).set({ createdBy: null }).where(eq(project.createdBy, userId));
 	await db.update(recording).set({ recordedBy: null }).where(eq(recording.recordedBy, userId));
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
+	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));
 	await db
 		.update(songDocVersion)

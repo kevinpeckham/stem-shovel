@@ -6,6 +6,9 @@ import { withActingMemberships } from "$lib/utils/actingMemberships";
 import { indexableStage, ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
 import { isIndexablePath } from "$lib/utils/isIndexablePath";
 import { vanityHostTarget } from "$lib/utils/vanityHostTarget";
+import { shortLinkHostRoute } from "$lib/utils/shortLinkHostRoute";
+import { resolveShortLink } from "$lib/server/shortLinks";
+import { SITE_ORIGIN } from "$lib/server/siteOrigin";
 import { ENV } from "varlock/env";
 import { resolvePreviewAuth } from "$lib/server/previewAuth";
 import type { Handle, HandleServerError, HandleValidationError } from "@sveltejs/kit";
@@ -24,6 +27,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// The chord player's own domains go straight to it (docs/chord-player.md).
 	const vanity = vanityHostTarget(event.url.host);
 	if (vanity) return new Response(null, { status: 308, headers: { location: vanity } });
+	// The short domain (docs/environment.md "Short links"): `/<code>` goes to
+	// the page the code stands for on the site itself, query and hash along;
+	// anything else there, a dead or expired code included, goes to the front page.
+	const short = shortLinkHostRoute(event.url, ENV.SHORT_LINK_ORIGIN, SITE_ORIGIN);
+	if (short) {
+		const link = short.code ? await resolveShortLink(short.code) : null;
+		return new Response(null, {
+			status: 302,
+			headers: { location: `${SITE_ORIGIN}${link?.target ?? "/"}`, "cache-control": "no-store" },
+		});
+	}
 	let user = await resolvePreviewAuth(event);
 	if (!user) {
 		const session = await auth.api.getSession({ headers: event.request.headers });

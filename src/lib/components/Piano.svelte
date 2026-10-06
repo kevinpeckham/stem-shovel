@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { shortenShareLink } from "$lib/utils/shortenShareLink";
 	import ComboBox from "$lib/components/ComboBox.svelte";
 	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
 	import InfoTip from "$lib/components/InfoTip.svelte";
@@ -582,7 +583,10 @@
 			name: presetLine?.name ?? instrumentLabel(piano.instrument),
 			data: piano.currentPreset(),
 		};
-		const url = `${window.location.origin}/piano#preset=${encodePianoPreset(p)}`;
+		const url = await shortenShareLink(
+			`${window.location.origin}/piano#preset=${encodePianoPreset(p)}`,
+			"piano",
+		);
 		try {
 			await navigator.clipboard.writeText(url);
 			notify(`Link to “${p.name}” copied`);

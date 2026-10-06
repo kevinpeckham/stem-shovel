@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Short share links** (Kevin: the instruments' links were long): Copy link on the chord player, the drum machine and the piano mints a code (`short_link` table, migration 0080; `mintShortLink` command, rate-limited, anonymous links expiring after ninety days) and copies `https://shvl.me/<code>` in production (`SHORT_LINK_ORIGIN`), `/x/<code>` on the app's own origin elsewhere; the short host resolves in `hooks.server.ts` with a 302 that keeps the `#` settings, and the long link is copied when no code can be had (`utils/shortenShareLink.ts`). Kevin attaches shvl.me to the Vercel project and sets the env.
 - **Chord player presets keep the sustain lock** (Kevin): the lock moved into the engine (`sustainLock`, `setSustainLock`) and into the preset's chord settings beside the strum latch and the arpeggiator's latch, which were already kept; applying a preset puts the pedal down or lifts it.
 
 ## [0.108.1] - 2026-10-06

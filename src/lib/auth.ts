@@ -16,6 +16,7 @@ import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email
 import { background } from "$lib/server/background";
 import { checkSeats, notifyInvitationAccepted } from "$lib/server/notifications";
 import { checkSignUp } from "$lib/server/signUpGate";
+import { SITE_ORIGIN } from "$lib/server/siteOrigin";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
@@ -40,12 +41,11 @@ import { ENV } from "varlock/env";
  * preview deployment has its own names (staging.stemshovel.dev, *.vercel.app),
  * so both leave it unset and each request infers itself; only production
  * pins it, to the domain Vercel says is production (so a forged Host header
- * can never reach the links in the emails we send). The literal is the
+ * can never reach the links in the emails we send). `SITE_ORIGIN`
+ * (src/lib/server/siteOrigin.ts) is that domain, with the literal as the
  * fallback for a build outside Vercel.
  */
-const PRODUCTION_URL = ENV.VERCEL_PROJECT_PRODUCTION_URL
-	? `https://${ENV.VERCEL_PROJECT_PRODUCTION_URL}`
-	: "https://www.stemshovel.com";
+const PRODUCTION_URL = SITE_ORIGIN;
 const baseURL = dev || ENV.VERCEL_ENV === "preview" ? undefined : PRODUCTION_URL;
 
 /**

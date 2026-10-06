@@ -58,6 +58,8 @@ emailed link keeps working; the old origins stay in Better Auth's
 `trustedOrigins`. Cookies are per host, so the switch signs everyone out
 once (and resets two-factor's trusted-device flag). Mail comes from
 `no-reply@mail.stemshovel.com` (`RESEND_MAIL_DOMAIN`, verified in Resend).
+The short-link domain `shvl.me` is attached to the same project and handled
+by the server hook ("Short links" below).
 A change to any 1Password value needs a production redeploy (`vercel
 redeploy`) and a dev-server restart: the build bakes the resolved
 environment in.
@@ -189,6 +191,41 @@ library. Today it holds the rate-limit counters (`rateLimit.ts`,
 any other state that must be shared or must survive an instance, such as
 the Blob read delegation cache. Both variables are optional: without them
 the app runs with per-instance memory.
+
+## Short links
+
+`SHORT_LINK_ORIGIN` (optional, not sensitive) is the origin short links are
+handed out on: `https://shvl.me` in production, once the domain is attached;
+unset on dev and staging, where a minted link reads `/x/<code>` on the app's
+own origin, which resolves the same codes on every stage. With it set,
+`src/hooks.server.ts` answers any request whose host is that origin's
+(with or without `www.`): `/<code>` is a 302 to the page the code stands for
+on production's own origin (`SITE_ORIGIN`, `src/lib/server/siteOrigin.ts`,
+from `VERCEL_PROJECT_PRODUCTION_URL`), everything else a 302 to its front
+page. It belongs with the other non-secret values in the production
+1Password environment, or as a plain Vercel env var in the Production
+scope; a change needs a redeploy like any other.
+
+Attaching the domain (once, from Kevin's machine, with the project linked):
+
+1. `vercel domains add shvl.me` adds it to the project (the team's
+   dashboard, Project → Settings → Domains, does the same). Vercel then
+   names the DNS it wants: with the registrar, an `A` record for the apex
+   to Vercel's address (`76.76.21.21`) and a `CNAME` for `www` to
+   `cname.vercel-dns.com`, or move the nameservers to Vercel's and let it
+   manage both. Leave the domain's "redirect" setting off: the hook does
+   the redirecting so the code can be resolved first.
+2. `vercel domains inspect shvl.me` until the records verify and the
+   certificate is issued.
+3. Set `SHORT_LINK_ORIGIN=https://shvl.me` in production and redeploy
+   (`vercel redeploy`). Until then production hands out `/x/<code>` links,
+   which keep working after the switch.
+4. Check it: `curl -sI https://shvl.me/<a code>` answers 302 to
+   `https://www.stemshovel.com/...`; `curl -sI https://shvl.me/anything`
+   answers 302 to the front page. `bun run smoke:urls` covers `/x/<code>`.
+
+The domain never serves the app itself: a request there does not reach the
+session, the pages or the API.
 
 ## Sentry
 

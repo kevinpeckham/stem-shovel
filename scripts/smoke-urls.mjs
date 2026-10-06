@@ -116,6 +116,8 @@ const ROUTES = [
 	["api/notation (server)", "/api/notation", [405], [405]],
 	["api/notation/[id]/ready (server)", "/api/notation/x/ready", [405], [405]],
 	["f/[code] (server)", "/f/x", [404], [404]],
+	// A short link nobody made is a 404 (an unknown code, and a code outside the alphabet).
+	["x/[code] (server)", "/x/AbCd2345", [404], [404]],
 	["api/drum-samples (server)", "/api/drum-samples", [405], [405]],
 	["api/drum-samples/[id]/ready (server)", "/api/drum-samples/x/ready", [405], [405]],
 	["api/recordings (server)", "/api/recordings", [405], [405]],

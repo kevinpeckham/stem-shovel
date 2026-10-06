@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { shortenShareLink } from "$lib/utils/shortenShareLink";
 	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
 	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
@@ -498,9 +499,10 @@
 	async function copyLink() {
 		const url = drumMachine.shareUrl();
 		history.replaceState(null, "", url);
+		const short = await shortenShareLink(url, "drum-machine");
 		try {
-			await navigator.clipboard.writeText(url);
-			notify("Link copied");
+			await navigator.clipboard.writeText(short);
+			notify(short === url ? "Link copied" : "Short link copied");
 		} catch {
 			notify("Could not copy the link", { kind: "error" });
 		}

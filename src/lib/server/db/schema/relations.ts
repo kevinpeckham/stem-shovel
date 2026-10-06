@@ -30,6 +30,7 @@ import { notification } from "./notification";
 import { notificationPreference } from "./notificationPreference";
 import { session } from "./session";
 import { shareLink } from "./shareLink";
+import { shortLink } from "./shortLink";
 import { song } from "./song";
 import { songDocVersion } from "./songDocVersion";
 import { songFile } from "./songFile";
@@ -220,6 +221,11 @@ export const shareLinkRelations = relations(shareLink, ({ one }) => ({
 	project: one(project, { fields: [shareLink.projectId], references: [project.id] }),
 	song: one(song, { fields: [shareLink.songId], references: [song.id] }),
 	creator: one(user, { fields: [shareLink.createdBy], references: [user.id] }),
+}));
+
+export const shortLinkRelations = relations(shortLink, ({ one }) => ({
+	account: one(account, { fields: [shortLink.accountId], references: [account.id] }),
+	creator: one(user, { fields: [shortLink.createdBy], references: [user.id] }),
 }));
 
 export const userRelations = relations(user, ({ many }) => ({

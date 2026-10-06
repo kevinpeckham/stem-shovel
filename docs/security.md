@@ -54,7 +54,8 @@ What protects what, and where each rule lives. The first security pass ran on
   URL. Uploads themselves are tokenised per reservation by `/api/upload`
   with content-type and size limits.
 - `?next=` after sign-in must be a same-site path (`safeNext`; protocol-
-  relative URLs refused).
+  relative URLs refused). A short link's target likewise (`isSafeShortTarget`,
+  "Short links" below): a redirect we serve never leaves the site.
 - ffmpeg runs through `execFile` with argument arrays, never a shell; inputs
   are our own Blob files in a temp directory.
 
@@ -128,9 +129,43 @@ feature-requests page itself is public and read-only, kept out of search
 engines; a request shows there once a system admin approves it, and a
 profanity check at creation flags words for the admin and the notification
 email), markdown previews for the front page's demo 60/min per address, invitations 30/h, invite codes 30/h,
-viewing links 60/h, share emails 5/min and 30/h. Better Auth's own limiter
-covers sign-in and password endpoints in production. Codes are 12 characters
-from a 31-symbol alphabet.
+viewing links 60/h, share emails 5/min and 30/h, short links 30 per ten
+minutes per address signed out and 120 per user signed in. Better Auth's own
+limiter covers sign-in and password endpoints in production. Viewing and
+invite codes are 12 characters from a 31-symbol alphabet; short-link codes
+are 8 from a 57-symbol one (no 0/O/1/l/I).
+
+## Short links
+
+A short link (`short_link`, `src/lib/server/shortLinks.ts`) is an
+8-character code for a page on the app with its query and hash, so the
+instruments' long share links (the chord player's settings ride after `#`)
+fit in a message. The rules:
+
+- **Anyone mints one**, signed in or not, through the `mintShortLink`
+  command, because the instruments work signed out. The limiter above
+  bounds it per address and per user, and an identical target by the same
+  user (or the same anonymous target within a day) answers the code that
+  exists rather than a new row.
+- **No open redirect.** The schema (`ShortLinkMintSchema`) accepts only a
+  path: one leading slash, so `//host` and any scheme are refused; no
+  backslash (browsers read `/\host` as `//host`); no control characters, so
+  nothing can split the Location header; at most 4000 characters. The client
+  strips the origin with `shortLinkTarget`, which answers null for any other
+  origin. Resolving prepends the site's own origin, so a code can only ever
+  send a visitor to this site.
+- **Expiry.** A signed-in user's link never expires; an anonymous one lives
+  90 days and the daily cron (`/api/notifications/digest`) deletes what has
+  expired. An expired or unknown code is a 404 at `/x/<code>` and a
+  redirect to the front page on the short domain.
+- **Resolving** is public and uncached (`cache-control: no-store`):
+  `/x/<code>` on the app, and `/<code>` on the short domain
+  (`SHORT_LINK_ORIGIN`; docs/environment.md "Short links"), which
+  `src/hooks.server.ts` answers before any session work with a 302 to
+  production's own origin; every other path on that domain goes to the front
+  page. The hook ignores a short domain that names the site itself, so a
+  misconfiguration cannot swallow every page. Hits are counted after the
+  response and never fail the redirect.
 
 ## Headers
 

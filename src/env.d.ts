@@ -182,13 +182,26 @@ export type CoercedEnvSchema = {
    */
   KV_REST_API_TOKEN?: string;
   
+  /**
+   * **SHORT_LINK_ORIGIN**  
+   * Short links (docs/environment.md "Short links"): the origin the short  
+   * domain is served from, `https://shvl.me` in production once the domain is  
+   * attached to the Vercel project. A request on that host for `/<code>` is  
+   * redirected to the page the code stands for on the production site  
+   * (src/hooks.server.ts), and minted links read `<origin>/<code>`. Leave it  
+   * unset on dev and staging: there links read `/x/<code>` on the app's own  
+   * origin, which resolves the same codes everywhere.  
+   * ![icon](data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%23808080%22%20d%3D%22M24%2021V9h-2v14h8v-2zm-4-6v-4c0-1.103-.897-2-2-2h-6v14h2v-6h1.48l2.335%206h2.145l-2.333-6H18c1.103%200%202-.897%202-2m-6-4h4v4h-4zM8%2023H4c-1.103%200-2-.897-2-2V9h2v12h4V9h2v12c0%201.103-.897%202-2%202%22%2F%3E%3C%2Fsvg%3E)   
+   */
+  SHORT_LINK_ORIGIN?: string;
+  
 };
 
-type _CoercedEnvSchema_7733d90f = CoercedEnvSchema;
+type _CoercedEnvSchema_90c6100c = CoercedEnvSchema;
 
 declare module 'varlock/env' {
-  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_7733d90f> {}
-  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_7733d90f, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL'>> {}
+  export interface TypedEnvSchema extends Readonly<_CoercedEnvSchema_90c6100c> {}
+  export interface PublicTypedEnvSchema extends Readonly<Pick<_CoercedEnvSchema_90c6100c, 'VERCEL_ENV' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_GIT_COMMIT_SHA' | 'APP_ENV' | 'BLOB_STORE_ID' | 'BLOB_PRIVATE_WEBHOOK_PUBLIC_KEY' | 'BLOB_PRIVATE_STORE_ID' | 'BLOB_WEBHOOK_PUBLIC_KEY' | 'TURSO_DATABASE_URL' | 'TEXT_TO_BEAT_MODEL' | 'RESEND_MAIL_DOMAIN' | 'KV_REST_API_URL' | 'SHORT_LINK_ORIGIN'>> {}
 }
 
 
@@ -198,17 +211,17 @@ export type EnvSchemaAsStrings = {
       : (NonNullable<CoercedEnvSchema[Property]> extends boolean ? ('true' | 'false') : string)
 };
 
-type _EnvSchemaAsStrings_7733d90f = EnvSchemaAsStrings;
+type _EnvSchemaAsStrings_90c6100c = EnvSchemaAsStrings;
 declare global {
 
   // add types for global import.meta.env
-  interface ImportMetaEnv extends _EnvSchemaAsStrings_7733d90f {}
+  interface ImportMetaEnv extends _EnvSchemaAsStrings_90c6100c {}
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
 
   // add types for global process.env
   namespace NodeJS {
-    interface ProcessEnv extends _EnvSchemaAsStrings_7733d90f {}
+    interface ProcessEnv extends _EnvSchemaAsStrings_90c6100c {}
   }
 }

@@ -37,6 +37,7 @@
 	import { deleteChordStyle, saveChordStyle } from "$lib/remote/chordStyles.remote";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { encodeChordShare } from "$lib/utils/encodeChordShare";
+	import { shortenShareLink } from "$lib/utils/shortenShareLink";
 	import { builtinStyleData } from "$lib/utils/builtinStyleData";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
@@ -297,9 +298,11 @@
 	async function copyLink() {
 		const url = shareUrl();
 		if (window.location.pathname === "/chord-player") history.replaceState(null, "", url);
+		// The short form when the server grants one; the long link otherwise.
+		const short = await shortenShareLink(url, "chord-player");
 		try {
-			await navigator.clipboard.writeText(url);
-			notify("Link copied");
+			await navigator.clipboard.writeText(short);
+			notify(short === url ? "Link copied" : "Short link copied");
 		} catch {
 			notify("Could not copy the link", { kind: "error" });
 		}
