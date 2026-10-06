@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Documentation downloads say what they are doing** (Kevin: a slow zip looked like nothing was happening, then an error page): Download All Charts, Download All Song Documentation and Song Documentation (PDF) now fetch the file with a "Preparing…" notification, hand it to the browser when it arrives, and show a failure as a notification with the server's reason (`utils/downloadBuilt.ts`).
+
 ### Added
 
 - **Attachments' links are short by default** (Kevin): Copy link on an attachment or score tile, and in the viewer's header, copies the permanent link in its short form (shvl.me), the permanent link itself when no code can be had; emails and mentions keep the permanent link.

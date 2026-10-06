@@ -25,6 +25,7 @@
 	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "$lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "$lib/components/DocHistoryPanel.svelte";
+	import { downloadBuilt } from "$lib/utils/downloadBuilt";
 	import type { SongDocSaveKind } from "$lib/val/SongDocKindSchema";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -3094,15 +3095,21 @@
 						</button>
 					{/if}
 					{#if data.docs.lyrics || data.docs.chart || data.docs.notes}
-						<a
+						<button
 							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+							type="button"
 							role="menuitem"
-							href="/api/songs/{data.song.id}/documentation.pdf"
-							title="The lyrics, chart and notes as one PDF"
+							title="The lyrics, chart and notes as one PDF, with the notation after them"
+							onclick={() =>
+								downloadBuilt(
+									`/api/songs/${data.song.id}/documentation.pdf`,
+									"the documentation PDF",
+									`${data.song.title}.pdf`,
+								)}
 						>
 							<span class="i-ph-file-pdf mr-2" aria-hidden="true"></span>
 							Song Documentation (PDF)
-						</a>
+						</button>
 					{/if}
 					{#if readyDemos.length > 0}
 						<button

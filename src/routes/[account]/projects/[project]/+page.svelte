@@ -4,6 +4,7 @@
 	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
 	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
 	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
+	import { downloadBuilt } from "$lib/utils/downloadBuilt";
 	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
 	import ShareLinks from "$lib/components/ShareLinks.svelte";
 	import ProjectPeople from "$lib/components/ProjectPeople.svelte";
@@ -560,24 +561,36 @@
 			{#if hasCharts || hasDocumentation}
 				<div class="flex flex-wrap items-center gap-3">
 					{#if hasCharts}
-						<a
+						<button
 							class="button button-sm"
-							href="/api/projects/{data.project.id}/charts.zip"
+							type="button"
 							title="Every song's scores (with their rendered PDFs and MusicXML), chart files and chart text, in one zip"
+							onclick={() =>
+								downloadBuilt(
+									`/api/projects/${data.project.id}/charts.zip`,
+									"the charts zip",
+									`${data.project.name} charts.zip`,
+								)}
 						>
 							<span class="i-ph-file-zip" aria-hidden="true"></span>
 							Download All Charts
-						</a>
+						</button>
 					{/if}
 					{#if hasDocumentation}
-						<a
+						<button
 							class="button button-sm"
-							href="/api/projects/{data.project.id}/documentation.zip"
+							type="button"
 							title="A PDF per song with its lyrics, chart and notes, in one zip"
+							onclick={() =>
+								downloadBuilt(
+									`/api/projects/${data.project.id}/documentation.zip`,
+									"the documentation zip",
+									`${data.project.name} documentation.zip`,
+								)}
 						>
 							<span class="i-ph-file-zip" aria-hidden="true"></span>
 							Download All Song Documentation
-						</a>
+						</button>
 					{/if}
 				</div>
 			{/if}
