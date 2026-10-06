@@ -19,6 +19,8 @@
 	import StrumMenu from "$lib/components/StrumMenu.svelte";
 	import TimingMenu from "$lib/components/TimingMenu.svelte";
 	import ChordUiMenu from "$lib/components/ChordUiMenu.svelte";
+	import ChordPaletteMenu from "$lib/components/ChordPaletteMenu.svelte";
+	import InfoTip from "$lib/components/InfoTip.svelte";
 	import ChordPresets from "$lib/components/ChordPresets.svelte";
 	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
 	import {
@@ -147,7 +149,7 @@
 			styleEditor = null;
 			notify(`${row.name} saved to ${account.name}`);
 		} catch (e) {
-			notify(`Could not save the style: ${errorMessage(e)}`, { kind: "error" });
+			notify(`Could not save the palette: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
 			styleSaving = false;
 		}
@@ -161,7 +163,7 @@
 			chordPlayer.setStyle("plain");
 			notify(`${currentCustom.name} deleted`);
 		} catch (e) {
-			notify(`Could not delete the style: ${errorMessage(e)}`, { kind: "error" });
+			notify(`Could not delete the palette: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
 
@@ -188,13 +190,13 @@
 		ragtime: "dominant chains",
 		bossa: "soft jazz colours",
 	};
-	/** The built-in styles and the account's own, for the device's Style dropdown. */
+	/** The built-in styles and the account's own, for the device's Chord Palette dropdown. */
 	const STYLE_OPTIONS = $derived([
 		...CHORD_STYLES.map((s) => ({ value: s.id, label: s.label, description: STYLE_SHORT[s.id] })),
 		...chordPlayer.customStyles.map((s) => ({
 			value: `custom:${s.id}`,
 			label: s.name,
-			description: account ? `${account.name}'s style` : "a saved style",
+			description: account ? `${account.name}'s palette` : "a saved palette",
 		})),
 	]);
 
@@ -523,11 +525,11 @@
 			/>
 		</div>
 		<div class="hidden @xl-block min-w-36">
-			<div class="device-button-group-label text-dark hidden @xl-block">Style</div>
-			<!-- A split button (Kevin): the style, and on the caret the seventh's kind and your own styles. -->
-			<div class="flex gap-px" role="group" aria-label="Style">
+			<div class="device-button-group-label text-dark hidden @xl-block">Chord Palette</div>
+			<!-- A split button (Kevin): the palette (a chord style, `style` in the engine), and on the caret the seventh's kind and your own palettes. -->
+			<div class="flex gap-px" role="group" aria-label="Chord palette">
 				<ComboBox
-					ariaLabel="Style"
+					ariaLabel="Chord palette"
 					clearDefaultButtonClasses={true}
 					popoverClasses="text-13px !w-max !min-w-full max-w-lg"
 					buttonClasses="device-button-sm px-3 w-full rounded-r-none"
@@ -536,14 +538,14 @@
 					onchange={(v) => chordPlayer.setStyle(v)}
 				/>
 				<ContextMenu
-					ariaLabel="Style settings"
-					title="The seventh on a major chord, and styles of your own"
+					ariaLabel="Chord palette settings"
+					title="The seventh on a major chord, and palettes of your own"
 					iconClass="i-ph-caret-down"
 					position="bottom right"
 					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
 					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
-						{ id: "style-heading", kind: "heading", label: "Style" },
+						{ id: "style-heading", kind: "heading", label: "Chord Palette" },
 						{ id: "style-block", kind: "snippet", snippet: styleMenuBlock },
 					]}
 				/>
@@ -1116,7 +1118,7 @@
 {#snippet chordsMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
 		<label class="block">
-			<span class="device-button-label">Style</span>
+			<span class="device-button-label">Chord Palette</span>
 			<select
 				class="device-field w-full"
 				value={chordPlayer.style}
@@ -1124,7 +1126,7 @@
 			>
 				{#each CHORD_STYLES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
 				{#if chordPlayer.customStyles.length}
-					<optgroup label="{account?.name ?? 'Your'} styles">
+					<optgroup label="{account?.name ?? 'Your'} palettes">
 						{#each chordPlayer.customStyles as s (s.id)}<option value="custom:{s.id}"
 								>{s.name}</option
 							>{/each}
@@ -1227,47 +1229,39 @@
 {/snippet}
 
 {#snippet styleMenuBlock()}
-	<div class="grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
-		<label class="block">
-			<span class="device-button-label">The seventh on a major chord</span>
-			<select
-				class="device-field w-full"
-				value={chordPlayer.seventhType}
-				onchange={(e) => chordPlayer.setSeventhType(e.currentTarget.value as SeventhType)}
+	{#if account?.canEdit}
+		<ChordPaletteMenu editor={paletteEditor} />
+	{:else}
+		<ChordPaletteMenu />
+	{/if}
+{/snippet}
+
+{#snippet paletteEditor()}
+	{#if styleEditor}
+		<ChordStyleEditor
+			name={styleEditor.name}
+			data={styleEditor.data}
+			saving={styleSaving}
+			onsave={saveStyle}
+			oncancel={() => (styleEditor = null)}
+		/>
+	{:else}
+		<div class="flex flex-wrap items-center gap-2">
+			<button
+				class="device-button-sm px-3"
+				type="button"
+				title="A palette of your own, starting from the one in use: choose what each degree carries"
+				onclick={newStyle}>New palette</button
 			>
-				{#each SEVENTH_TYPES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
-			</select>
-			<span class="block text-12px opacity-70 mt-1"
-				>A minor chord always takes the minor seventh. Hold the 7 pad or Shift for a seventh; a
-				second finger on a sounding wedge adds it too.</span
-			>
-		</label>
-		{#if account?.canEdit}
-			{#if styleEditor}
-				<ChordStyleEditor
-					name={styleEditor.name}
-					data={styleEditor.data}
-					saving={styleSaving}
-					onsave={saveStyle}
-					oncancel={() => (styleEditor = null)}
-				/>
-			{:else}
-				<div class="flex flex-wrap gap-2 -mt-2">
-					<button
-						class="device-button-sm px-3"
-						type="button"
-						title="A style of your own, starting from the one in use: choose what each degree carries"
-						onclick={newStyle}>New style</button
-					>
-					{#if currentCustom}
-						<button class="device-button-sm px-3" type="button" onclick={editStyle}>Edit</button>
-						<button class="device-button-sm px-3" type="button" onclick={removeStyle}>Delete</button
-						>
-					{/if}
-				</div>
+			{#if currentCustom}
+				<button class="device-button-sm px-3" type="button" onclick={editStyle}>Edit</button>
+				<button class="device-button-sm px-3" type="button" onclick={removeStyle}>Delete</button>
 			{/if}
-		{/if}
-	</div>
+			<InfoTip
+				text="A row per degree: what a major wedge and a minor wedge carry and what the 7 pad raises each to, saved to the account by name for every member to play."
+			/>
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet arpSection()}

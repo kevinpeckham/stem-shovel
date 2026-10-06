@@ -84,7 +84,7 @@
 
 <div class="grid gap-3 text-13px">
 	<label class="block">
-		<span class="device-button-label block mb-1 text-blue-100/90">Style name</span>
+		<span class="device-button-label block mb-1 text-blue-100/90">Palette name</span>
 		<input class="device-field w-full" type="text" maxlength="60" bind:value={name} />
 	</label>
 	<div class="overflow-x-auto">
@@ -147,7 +147,7 @@
 			class="device-button-sm px-3"
 			type="button"
 			disabled={saving || !name.trim()}
-			onclick={() => onsave(name.trim(), $state.snapshot(data))}>Save style</button
+			onclick={() => onsave(name.trim(), $state.snapshot(data))}>Save palette</button
 		>
 		<button class="device-button-sm px-3" type="button" disabled={saving} onclick={oncancel}
 			>Cancel</button

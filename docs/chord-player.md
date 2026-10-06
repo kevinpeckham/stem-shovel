@@ -340,7 +340,10 @@ roots, so 1 4 5 is I–IV–V; Kevin asked for 1 to 7 and left the rest open,
 and the chromatic five on 8 to = in rising order keeps every root on one
 column with its minor beneath it.
 
-**Styles** (Kevin, the same day): `constants/chordStyles.ts` lists the
+**Styles** (Kevin, the same day; on the device a style is a **Chord Palette**, the
+label of the dropdown, its caret menu, `ChordPaletteMenu.svelte`, and the
+editor's buttons since 2026-10-06, the engine, schemas and share links keeping
+`style`): `constants/chordStyles.ts` lists the
 styles and the recipes (intervals above the root and a name suffix);
 `utils/styledChord.ts` picks a recipe by style, degree (fifths from the
 key; a minor's degree is its own root's, three fifths on from the wedge)
