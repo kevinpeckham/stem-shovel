@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Song page tips read light** (Kevin: the strip under the comments row was too dim).
+
+### Changed
+
+- **Project page polish** (Kevin): the intro under every section heading is prose-width, Song Ideas says to click a song's name to open it, and a divider with room above and below separates the download buttons from the attachment tiles.
+
 ## [0.108.0] - 2026-10-06
 
 ### Added

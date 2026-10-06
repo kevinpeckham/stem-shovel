@@ -413,7 +413,9 @@
 	<section class="mt-10">
 		<div class="mb-5">
 			<h2 class="app-section-heading">Playlist</h2>
-			<p class="opacity-90">Listen to your current stem mixes, or to the songs' demo recordings.</p>
+			<p class="opacity-90 max-w-prose">
+				Listen to your current stem mixes, or to the songs' demo recordings.
+			</p>
 		</div>
 		<ProjectPlayer
 			bind:this={player}
@@ -429,7 +431,7 @@
 		<section class="mt-10">
 			<div class="mb-5">
 				<h2 class="marketing-section-heading">Finished Songs</h2>
-				<p class="opacity-90 text-15px">Done, and marked so in their settings.</p>
+				<p class="opacity-90 text-15px max-w-prose">Done, and marked so in their settings.</p>
 			</div>
 			<ul class="grid grid-cols-1 gap-3 mb-10" data-song-group="finished">
 				{#each finished as song (song.id)}
@@ -444,7 +446,7 @@
 		<section class="mt-10">
 			<div class="mb-5">
 				<h2 class="app-section-heading">Songs</h2>
-				<p class="app-section-subheading text-balance">No songs yet.</p>
+				<p class="app-section-subheading text-balance max-w-prose">No songs yet.</p>
 			</div>
 			{#if data.canEdit}
 				<button class="button" type="button" popovertarget="add-song"
@@ -461,7 +463,7 @@
 		<section class="mt-10">
 			<div class="mb-5">
 				<h2 class="app-section-heading">Songs in Progress</h2>
-				<p class="app-section-subheading text-balance">
+				<p class="app-section-subheading text-balance max-w-prose">
 					Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
 				</p>
 			</div>
@@ -478,8 +480,9 @@
 		<section class="mt-10">
 			<div class="mb-5">
 				<h2 class="app-section-heading">Song Ideas</h2>
-				<p class="app-section-subheading text-balance">
+				<p class="app-section-subheading text-balance max-w-prose">
 					Songs without stems yet: a place to gather lyrics, a chart, notes and demo recordings.
+					Click a song's name below to open it and add to it.
 				</p>
 			</div>
 			<ul class="grid grid-cols-1 gap-3 {dragging ? 'select-none' : ''}" data-song-group="ideas">
@@ -548,14 +551,14 @@
 		<section class="mt-10">
 			<div class="mb-5">
 				<h2 class="marketing-section-heading">Attachments &amp; Downloads</h2>
-				<p class="opacity-90 text-15px">
+				<p class="opacity-90 text-15px max-w-prose">
 					Notation, audio scraps and other documents attached to the project or its songs, and the
 					project's documentation to take away. A song's lyrics, chart text and notes have no tile
 					here: open the song to read them, or take them all in the documentation download.
 				</p>
 			</div>
 			{#if hasCharts || hasDocumentation}
-				<div class="mb-5 flex flex-wrap items-center gap-3">
+				<div class="flex flex-wrap items-center gap-3">
 					{#if hasCharts}
 						<a
 							class="button button-sm"
@@ -578,6 +581,7 @@
 					{/if}
 				</div>
 			{/if}
+			<hr class="my-8 border-current/20" />
 			<SongFilesPanel
 				projectId={data.project.id}
 				songTitle={data.project.name}

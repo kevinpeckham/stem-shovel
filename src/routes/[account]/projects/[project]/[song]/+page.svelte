@@ -3595,7 +3595,7 @@
 	{#if playerEngine}
 		<div
 			aria-label="Player tips"
-			class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+			class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-light [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
 		>
 			<span><kbd>Space</kbd> play / pause</span>
 			<span><kbd>Home</kbd> to the start</span>
