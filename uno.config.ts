@@ -100,6 +100,9 @@ export default defineConfig({
 			// dim: "#cbd5e1", // secondary text (slate-300)
 			line: "rgba(255, 255, 255, 0.12)", // hairline borders,
 		},
+		container: {
+			"8xl": "96rem",
+		},
 	},
 	// Everything src/app.html uses: it is outside the Svelte pipeline, so the
 	// classes are also safelisted (filesystem scanning alone is not enough in

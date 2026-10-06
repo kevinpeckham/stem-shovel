@@ -46,6 +46,8 @@
 	import { onDestroy, onMount, type Snippet } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 
+	import CQMeasuring from "$lib/components/CQMeasuring.svelte";
+
 	/**
 	 * The piano (docs/piano.md): a keyboard of two or three octaves played by
 	 * pointer (several fingers at once, a slide across the keys), by the
@@ -602,21 +604,26 @@
 		device-chrome
 		gap-3
 		grid
+		max-w-full
+		overflow-x-hidden
 		pb-12
-		px-3
-		py-4
+		px-2
+		py-3
+		relative
+		w-full
+		@sm-px-3
+		@sm-py-4
 		@xl-gap-x-4
 		@xl-gap-y-4
 		@xl-pr-5
 		@xl-pl-10
 		@2xl-px-5
-		@xl-pt-5
-
-		w-full
-		max-w-full
-		relative"
+		@xl-pt-5"
 	aria-label="Piano"
 >
+	<!-- container queries guides for dev -->
+	<CQMeasuring />
+
 	<!-- the screen -->
 	<div
 		class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3 transition-opacity {piano.on
@@ -673,7 +680,7 @@
 				activeMidi={piano.arpeggiator.on ? piano.arpeggiator.note : null}
 			/>
 			<div
-				class="text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
+				class="hidden @md-block text-12px opacity-70 rounded border border-current/40 px-2 py-1 min-w-24 text-center"
 				aria-live="polite"
 			>
 				{readout}
@@ -690,19 +697,19 @@
 		 	w-full
 			grid
 			place-content-start
-			@2xl-gap-3
-			@2xl-grid-cols-[auto_auto_auto_auto_auto_1fr]
+			@xl-grid-cols-[auto_1fr_auto_auto_auto]
+
+			@2xl-grid-cols-[auto_1fr_auto_auto_auto_auto_auto]
+			@3xl-gap-3
 			@4xl-grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_1fr]"
 		>
 			<!-- power -->
 			<!-- The switch shows at every width (iOS wakes the audio from it, docs/piano.md); the label from the widest. -->
 			<div>
-				<div class="hidden @4xl-block device-button-group-label text-dark @4xl-max-w-fit">
-					Power
-				</div>
+				<div class="hidden @4xl-block device-button-group-label text-dark @4xl-max-w-8">On</div>
 				<!-- on / off -->
 				<button
-					class="device-button-sm @4xl-device-button-xs px-3 text-15px @4xl-text-14px {piano.on
+					class="w-8 device-button-sm @4xl-device-button-xs text-15px @4xl-text-14px {piano.on
 						? 'text-accent'
 						: ''}"
 					type="button"
@@ -715,7 +722,7 @@
 						class={piano.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
 						aria-hidden="true"
 					></span>
-					<span class="hidden @xl-inline-block @4xl-hidden">{piano.on ? "On" : "Off"}</span>
+					<!-- <span class="hidden @2xl-inline-block @4xl-hidden">{piano.on ? "On" : "Off"}</span> -->
 				</button>
 			</div>
 
@@ -738,7 +745,7 @@
 				<div class="device-button-group-label text-dark hidden @4xl-block">Octave</div>
 				<div class="flex items-center gap-1 @2xl-gap-2 @4xl-gap-1" role="group" aria-label="Octave">
 					<button
-						class="min-w-10 device-button-sm @4xl-device-button-xs @4xl-min-w-8 px-2 @xl-px-3"
+						class="min-w-8 device-button-sm @4xl-device-button-xs @4xl-min-w-8 px-2 @xl-px-3"
 						type="button"
 						disabled={piano.octave <= PIANO_OCTAVE_MIN}
 						aria-label="Octave down"
@@ -764,7 +771,7 @@
 							{piano.on ? 'text-blue-100/90' : 'text-blue-100/20'} font-500">C{piano.octave}</span
 					>
 					<button
-						class="min-w-10 device-button-sm px-2 @xl-px-3 @4xl-min-w-8 @4xl-device-button-xs"
+						class="min-w-8 device-button-sm px-2 @xl-px-3 @4xl-min-w-8 @4xl-device-button-xs"
 						type="button"
 						disabled={piano.octave >= PIANO_OCTAVE_MAX}
 						aria-label="Octave up"
@@ -796,7 +803,7 @@
 
 			<!-- key selector -->
 			<!-- <div class="hidden @4xl-block [&_.device-button-group-label]-text-dark">
-				{@render keyControls()}
+				{@render scaleGuidesMenuBlock()}
 			</div> -->
 
 			<!-- effects button -->
@@ -890,7 +897,7 @@
 					<!-- scales guides -->
 					<!-- no longer showing this button on device face at any size -->
 					<div class="hidden">
-						{@render keyControls()}
+						{@render scaleGuidesMenuBlock()}
 					</div>
 
 					<!-- Toggle computer key letter labels on piano keys -->
@@ -935,14 +942,16 @@
 			</div>
 
 			<!-- Settings menu -->
-			<div class="@2xl-ml-auto">
-				<div class="device-button-group-label text-dark hidden @4xl-block">Settings</div>
+			<div class="@2xl-ml-auto @4xl-max-w-8 truncate">
+				<div class="device-button-group-label text-dark hidden @4xl-block w-full truncate flex">
+					<span>&nbsp;</span>
+				</div>
 				<ContextMenu
 					ariaLabel="Levels and MIDI"
 					title="Volume, reverb and MIDI"
 					iconClass="i-ph-sliders-horizontal"
 					position="bottom left"
-					buttonBaseClasses="device-button-sm px-2 w-10 @4xl-w-8 @4xl-h-7"
+					buttonBaseClasses="device-button-sm px-2 min-w-8 w-8 @4xl-w-8 @4xl-h-7"
 					popoverClasses="max-w-screen min-w-72 w-420px @4xl-w-600px !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "menu-sections", kind: "snippet", snippet: compactMenuBlock }]}
 				/>
@@ -1067,18 +1076,18 @@
 			></span>
 			<span class=""
 				>{hiresState === "on"
-					? "High Fidelity"
+					? "High Fidelity Enabled"
 					: hiresState === "loading"
 						? `High Fidelity ${percent(piano.loadingTiers.hires)}`
 						: hiresCached
 							? "High Fidelity"
-							: `High Fidelity · ${mb(hiresBytes)}`}
+							: `Download High Fidelity Samples · ${mb(hiresBytes)}`}
 			</span>
 		</button>
 	{/snippet}
 
 	{#snippet hiresButtonMenuBlock()}
-		<div class="px-3 pt-3 grid grid-cols-1 w-full text-blue-100/90">
+		<div class="px-3 pt-3 grid grid-cols-2 w-full text-blue-100/90">
 			{@render hiresButton("device-button-sm bg-slate-800 border")}
 		</div>
 	{/snippet}
@@ -1144,7 +1153,7 @@
 			{open}
 		>
 			<summary
-				class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none text-11px uppercase tracking-wider text-accent list-none [&::-webkit-details-marker]-hidden"
+				class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none text-11px uppercase tracking-wider text-light list-none [&::-webkit-details-marker]-hidden"
 			>
 				<span>{title}</span>
 				<span
@@ -1152,7 +1161,7 @@
 					aria-hidden="true"
 				></span>
 			</summary>
-			<div class="pb-3">{@render body()}</div>
+			<div class="pb-3 bg-black/40 px-3 text-0.9em">{@render body()}</div>
 		</details>
 	{/snippet}
 
@@ -1228,20 +1237,15 @@
 			<div class="contents @4xl-hidden">
 				{#if withMetronome}{@render section("Metronome", metronomeMenuBlock)}{/if}
 			</div>
-
 			<div class="contents @4xl-hidden">
 				{@render section("Volume", volumeSliderMenuBlock, true)}
 			</div>
 			<div class="contents @2xl-hidden">{@render section("Arpeggiator", arpMenuBlock)}</div>
 			<div class="contents @2xl-hidden">{@render section("Effects", fxSlidersMenuBlock)}</div>
-			{@render section("Scale Guides", keyControls)}
-			{#if samplesBase !== null || midiSupported}{@render section("More", moreMenuBlock)}{/if}
+			<div class="contents">{@render section("Fidelity", hiresButtonMenuBlock)}</div>
+			<div class="contents">{@render section("Midi", midiButtonMenuBlock)}</div>
+			<div class="contents">{@render section("Scale Guides", scaleGuidesMenuBlock)}</div>
 		</div>
-	{/snippet}
-
-	{#snippet moreMenuBlock()}
-		{#if samplesBase !== null}{@render hiresButtonMenuBlock()}{/if}
-		{#if midiSupported}{@render midiButtonMenuBlock()}{/if}
 	{/snippet}
 
 	{#snippet slotButtons(classes: string)}
@@ -1263,31 +1267,6 @@
 				oncontextmenu={(e) => e.preventDefault()}>{n}</button
 			>
 		{/each}
-	{/snippet}
-
-	{#snippet presetsPhoneMenuBlock()}
-		<div class="px-3 pt-3 grid grid-cols-1 gap-3 w-full text-blue-100/90">
-			<div class="flex gap-1">
-				{@render slotButtons("device-button-sm flex-1 bg-slate-800 border")}
-			</div>
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div onpointerdowncapture={freshSaveForm}>
-				<ContextMenu
-					ariaLabel="Manage presets"
-					title="Save, name, share and manage presets"
-					iconClass="i-ph-bookmarks-simple"
-					label="Manage presets"
-					position="bottom right"
-					buttonBaseClasses="device-button-sm bg-slate-800 border px-3"
-					popoverClasses="min-w-72 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-					bind:openState={saveOpenPhone}
-					items={[
-						{ id: "presets-heading-phone", kind: "heading", label: "Presets" },
-						{ id: "presets-body-phone", kind: "snippet", snippet: presetsMenuBlock },
-					]}
-				/>
-			</div>
-		</div>
 	{/snippet}
 
 	{#snippet presetsMenuBlock()}
@@ -1607,13 +1586,13 @@
 		</div>
 	{/snippet}
 
-	{#snippet keyControls()}
+	{#snippet scaleGuidesMenuBlock()}
 		<div
-			class="grid grid-cols-1 gap-y-3 px-3 min-w-200px pt-3 pb-8 text-blue-100/90 text-14px w-full"
+			class="grid grid-cols-2 gap-y-3 gap-x-3 px-3 min-w-200px pt-3 pb-8 text-blue-100/90 text-14px w-full"
 		>
 			<!-- select a key -->
 			<div>
-				<span class="block mb-2">Select a Key</span>
+				<span class="block mb-2">Key</span>
 				<ComboBox
 					ariaLabel="Key"
 					clearDefaultButtonClasses={true}
@@ -1637,36 +1616,36 @@
 					onchange={(v) => setKeyMode(v as ScaleModeId)}
 				/>
 			</div>
-			<!-- toggle guides on and off -->
-			<div class="grid grid-cols-2 gap-3">
-				<div>
-					<span class="block mb-2">Show Dots</span>
-					<button
-						class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
-							? 'text-accent'
-							: ''}"
-						type="button"
-						aria-pressed={piano.dots}
-						disabled={!piano.key}
-						title="Mark the keys in the key, the root stronger"
-						onclick={() => piano.setDots(!piano.dots)}>Dots</button
-					>
-				</div>
-				<div>
-					<span class="block mb-2">Show Numbers</span>
-					<button
-						class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
-							? 'text-accent'
-							: ''}"
-						type="button"
-						aria-pressed={piano.degrees}
-						disabled={!piano.key}
-						title="Number the keys by their degree in the key"
-						onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
-					>
-				</div>
+			<!-- toggle dots -->
+			<div>
+				<span class="block mb-2">Show Dots Guide</span>
+				<button
+					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.dots
+						? 'text-accent'
+						: ''}"
+					type="button"
+					aria-pressed={piano.dots}
+					disabled={!piano.key}
+					title="Mark the keys in the key, the root stronger"
+					onclick={() => piano.setDots(!piano.dots)}>Dots</button
+				>
 			</div>
-			<hr class="border-current/10" />
+			<!-- toggle numbers -->
+			<div>
+				<span class="block mb-2">Show Numbers Guide</span>
+				<button
+					class="w-full @4xl-device-button-xs px-3 @4xl-hover-bg-slate-900 border disabled:opacity-40 {piano.degrees
+						? 'text-accent'
+						: ''}"
+					type="button"
+					aria-pressed={piano.degrees}
+					disabled={!piano.key}
+					title="Number the keys by their degree in the key"
+					onclick={() => piano.setDegrees(!piano.degrees)}>1–7</button
+				>
+			</div>
+
+			<hr class="border-current/10 col-span-full" />
 			<div class="w-full">
 				<span class="block mb-2">Toggle Guides</span>
 				<button
@@ -1704,16 +1683,28 @@
 				onclick={() => void piano.connectMidi()}
 			>
 				<span class="i-ph-usb" aria-hidden="true"></span>
-				<span class="@4xl-sr-only">{piano.midi.status === "denied" ? "MIDI refused" : "MIDI"}</span>
+				<span class=""
+					>{piano.midi.status === "denied" ? "MIDI refused" : "Enable MIDI Control"}</span
+				>
 			</button>
 		{/if}
 	{/snippet}
 
 	{#snippet midiButtonMenuBlock()}
-		<div class="px-3 pt-3 grid grid-cols-1 w-full text-blue-100/90">
+		<div class="px-3 pt-3 grid grid-cols-2 w-full text-blue-100/90">
 			{@render midiButton("device-button-sm bg-slate-800 border")}
 		</div>
 	{/snippet}
+
+	<!-- user tips -->
+	<div
+		aria-label="Keyboard shortcuts"
+		class="absolute bottom-3 left-5 hidden @xl-flex flex-wrap justify-center gap-x-4 gap-y-1 text-12px text-dark [&_kbd]-(inline-block rounded border border-current/40 px-1.5 py-px font-mono text-11px leading-tight)"
+	>
+		<span><kbd>Space</kbd> sustain</span>
+		<span><kbd>Esc</kbd> all off</span>
+		<span><kbd>↑</kbd><kbd>↓</kbd> octave</span>
+	</div>
 
 	<!-- branding, as the other devices wear it -->
 	<div

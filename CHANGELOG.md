@@ -15,6 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **The piano's device row and Arpeggiator menu, Kevin's pass**: the Arpeggiator menu explains each setting in an InfoTip beside its label and chooses with ComboBoxes; the Effects group shows from the medium width (a lightning icon, its label from the widest); the presets sit on the face at every width; MIDI, High Fidelity (Hi-res renamed) and the Scale Guides live in the settings menu, which shows at desktop too; the power switch stays at every width. Fixes from the review: the menu's choices persist again and show the current tempo ratio and bar alignment, and the alignment select is disabled while patterns are not lined up.
+- **The piano's layout pass, Kevin's second**: the controls row lays out by container width up to a nine-column desktop row, the power switch and the settings button shrink to their icons at the widest, the settings menu's sections (Metronome and Volume on narrow faces, Arpeggiator and Effects below the wide, Fidelity, MIDI, Scale Guides) are two-column blocks with a divider, the Arpeggiator menu's labels read Key Plays Chord, Align with Bars and Changes on Beat, the MIDI button reads Enable MIDI Control, and a keyboard-shortcuts strip (Space, Esc, the octave arrows) sits at the foot of the device from the wide width. A dev-only `CQMeasuring.svelte` overlay shows the container breakpoint in play, and the container theme gains an 8xl step.
 
 ## [0.100.0] - 2026-10-05
 
