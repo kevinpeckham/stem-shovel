@@ -2,6 +2,7 @@ import {
 	accountOfUploadPathname,
 	isEditor,
 	memberOf,
+	requireOwnIdea,
 	requireSystemAdmin,
 	requireUser,
 } from "$lib/server/access";
@@ -23,6 +24,8 @@ import {
 	recordStemMidiUrl,
 	recordStemUrl,
 	recordingOfPathname,
+	recordStudioSourceUrl,
+	studioSourceOfPathname,
 	userOwnsRecording,
 } from "$lib/server/data";
 import {
@@ -32,6 +35,7 @@ import {
 	isNotationPathname,
 	isRecordingPathname,
 	isSiteKitPathname,
+	isStudioPathname,
 	recordingAccess,
 } from "$lib/server/blob";
 import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
@@ -55,6 +59,20 @@ import type { RequestHandler } from "./$types";
 const isDemo = (pathname: string) => pathname.includes("/demos/");
 const isMidi = (pathname: string) => pathname.includes("/midi/");
 
+/** The token for a Studio source (docs/multitrack-recorder.md): the song is the user's own idea; the reservation carries the type it was made for, the ceiling is a take's. */
+async function studioUploadToken(locals: App.Locals, pathname: string) {
+	const row = await studioSourceOfPathname(pathname);
+	if (!row || row.status !== "uploading") throw new Error(`No reservation for "${pathname}"`);
+	await requireOwnIdea(locals, row.ideaId);
+	return {
+		allowedContentTypes: [row.contentType],
+		maximumSizeInBytes: MAX_TAKE_BYTES,
+		addRandomSuffix: false,
+		allowOverwrite: true,
+		tokenPayload: JSON.stringify({ id: row.id }),
+	};
+}
+
 /** The account of a take's reserved pathname when the caller recorded it (ideas are the user's own), else 404. */
 async function ownRecordingAccount(locals: App.Locals, pathname: string) {
 	const user = requireUser(locals);
@@ -72,12 +90,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			body.type === "blob.generate-client-token"
 				? body.payload.pathname
 				: body.payload.blob.pathname;
-		// A scratch recording has no song: it goes to the private store when there is one; so does an account kit's sample, a site kit's to the public store.
+		// A scratch recording has no song: it goes to the private store when there is one; so does a Studio source and an account kit's sample, a site kit's to the public store.
 		const access = isDrumSamplePathname(pathname)
 			? isSiteKitPathname(pathname)
 				? "public"
 				: recordingAccess()
-			: isRecordingPathname(pathname)
+			: isRecordingPathname(pathname) || isStudioPathname(pathname)
 				? recordingAccess()
 				: await accessOfPathname(pathname);
 		const result = await handleUpload({
@@ -104,6 +122,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						tokenPayload: JSON.stringify({ id: row.id }),
 					};
 				}
+				if (isStudioPathname(pathname)) return studioUploadToken(locals, pathname);
 				// A take is the user's own, whichever account holds its files; everything else needs membership of the song's account.
 				const accountId = isRecordingPathname(pathname)
 					? await ownRecordingAccount(locals, pathname)
@@ -167,6 +186,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					await recordNotationUrl(blob.pathname, blob.url);
 				else if (isRecordingPathname(blob.pathname))
 					await recordRecordingUrl(blob.pathname, blob.url);
+				else if (isStudioPathname(blob.pathname))
+					await recordStudioSourceUrl(blob.pathname, blob.url);
 				else await recordStemUrl(blob.pathname, blob.url);
 			},
 		});

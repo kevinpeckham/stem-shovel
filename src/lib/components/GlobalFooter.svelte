@@ -35,6 +35,7 @@
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
 		<a class="footer-link" href={recorderHref}>Idea Recorder</a>
 		<a class="footer-link" href="/looper">Looper</a>
+		{#if member}<a class="footer-link" href="/studio">Studio</a>{/if}
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
 	</nav>

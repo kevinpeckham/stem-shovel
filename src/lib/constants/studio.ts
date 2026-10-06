@@ -1,0 +1,23 @@
+import { MAX_TAKE_SECONDS } from "./takeLimits";
+
+/**
+ * Ceilings on a Studio song (docs/multitrack-recorder.md): decoded audio is
+ * what binds (a mono minute at 48 kHz is 11.5 MB of float samples), so the
+ * caps keep a song inside what a laptop's tab holds, and the arrangement
+ * JSON stays small enough to snapshot on every edit.
+ */
+
+/** Tracks a song may hold. */
+export const MAX_STUDIO_TRACKS = 16;
+/** Clips across every track. */
+export const MAX_STUDIO_CLIPS = 400;
+/** Audio files (takes and imports) a song may keep. */
+export const MAX_STUDIO_SOURCES = 64;
+/** A recording stops at this length, as a take does. */
+export const MAX_STUDIO_SECONDS = MAX_TAKE_SECONDS;
+/** Autosaved revisions kept per song; named ones are kept for good. */
+export const STUDIO_AUTOSAVES_KEPT = 10;
+/** A track's fader, as the stem player's. */
+export const STUDIO_FADER_MAX = 1.25;
+/** Decoded audio past which the device warns (bytes). */
+export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;

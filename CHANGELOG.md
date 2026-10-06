@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The Studio, a multitrack recorder** at `/studio` (docs/multitrack-recorder.md, phase 1a): tracks of clips on a timeline, recorded from the microphone, a line in or the computer while the rest of the song plays, with a count-in, a click, a bar grid, per-track fader, pan, mute, solo and meter, a loop region, undo and redo, and clips that drag along and across tracks. Takes are captured losslessly by an AudioWorklet from the frame the transport starts on and shifted earlier by the input's measured latency; they upload in the background as 24-bit WAV. A song is an idea of kind "song" with a note board; its arrangement autosaves and can be kept under a name as a revision and restored from the Songs panel. The song's menu bounces the mix to a WAV, adds it to a song as a demo, or adds each track to a song as a stem.
+
+### Technical
+
+- **Tables `studio_source` and `studio_revision`** under an idea, `idea.kind` gains "song" (migration 0081), routes `POST /api/studio/sources` and `/api/studio/sources/[id]/ready`, remote functions in `studio.remote.ts`, the `track-capture` worklet, `StudioEngine` (`src/lib/audio/studio.svelte.ts`), `StudioQueue`, `StudioTimeline.svelte`.
+
 ## [0.109.3] - 2026-10-06
 
 ### Fixed

@@ -41,6 +41,8 @@ export * from "./songFile";
 export * from "./songNotation";
 export * from "./songUserNote";
 export * from "./stem";
+export * from "./studioRevision";
+export * from "./studioSource";
 export * from "./supportRequest";
 export * from "./twoFactor";
 export * from "./user";

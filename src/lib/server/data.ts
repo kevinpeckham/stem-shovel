@@ -36,6 +36,7 @@ import {
 	recordingPathname,
 	recordingStemPathname,
 	stemPathname,
+	studioSourcePathname,
 } from "$lib/server/blob";
 import {
 	deleteAccountRows,
@@ -58,6 +59,16 @@ import {
 	type FileKind,
 } from "$lib/constants/fileFormats";
 import { demoContentType } from "$lib/utils/demoContentType";
+import { arrangementHash } from "$lib/utils/arrangementHash";
+import { staleAutosaves } from "$lib/utils/staleAutosaves";
+import { MAX_STUDIO_SOURCES, STUDIO_AUTOSAVES_KEPT } from "$lib/constants/studio";
+import type {
+	StudioArrangement,
+	StudioRevisionView,
+	StudioSongView,
+	StudioSourceReserve,
+	StudioSourceView,
+} from "$lib/val/StudioSchema";
 import {
 	MAX_NOTATION_PER_SONG,
 	NOTATION_CONTENT_TYPE_OF,
@@ -117,6 +128,7 @@ import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
 import type { UserDocKind } from "$lib/val/UserDocKindSchema";
 import type { SignUpMode } from "$lib/val/SignUpModeSchema";
 import { accountLimits, storageFits } from "$lib/utils/accountLimits";
+import type { BlobAccess } from "$lib/utils/blobAccess";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 
@@ -163,6 +175,8 @@ const {
 	chordStyle,
 	songFile,
 	songNotation,
+	studioSource,
+	studioRevision,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -246,6 +260,11 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
 		.from(recordingStem)
 		.where(and(eq(recordingStem.accountId, accountId), ne(recordingStem.status, "failed")));
+	// A Studio song's sources (docs/multitrack-recorder.md) count like takes.
+	const [studioSources] = await db
+		.select({ bytes: sql<number | null>`sum(${studioSource.sizeBytes})` })
+		.from(studioSource)
+		.where(and(eq(studioSource.accountId, accountId), ne(studioSource.status, "failed")));
 	// A custom kit's samples (docs/drum-machine.md, "Custom kits") are files of the account too.
 	const [samples] = await db
 		.select({ bytes: sql<number | null>`sum(${drumSample.sizeBytes})` })
@@ -266,6 +285,7 @@ export async function accountStorageBytes(accountId: string) {
 		(demos.bytes ?? 0) +
 		(takes.bytes ?? 0) +
 		(takeStems.bytes ?? 0) +
+		(studioSources.bytes ?? 0) +
 		(samples.bytes ?? 0) +
 		(files.bytes ?? 0) +
 		(notation.bytes ?? 0)
@@ -328,6 +348,10 @@ export async function accountUsage(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
 		.from(recordingStem)
 		.where(and(eq(recordingStem.accountId, accountId), eq(recordingStem.status, "ready")));
+	const [studioSources] = await db
+		.select({ bytes: sql<number | null>`sum(${studioSource.sizeBytes})` })
+		.from(studioSource)
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.status, "ready")));
 	const [demos] = await db
 		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${demo.sizeBytes})` })
 		.from(demo)
@@ -343,9 +367,11 @@ export async function accountUsage(accountId: string) {
 		stems: stems.n,
 		recordings: recordings.n,
 		demos: demos.n,
-		/** Stems, demos and takes that are ready; renditions and mixes are not counted. */
+		/** Stems, demos, takes and Studio sources that are ready; renditions and mixes are not counted. */
 		bytes:
-			(stems.bytes ?? 0) + ((recordings.bytes ?? 0) + (takeStems.bytes ?? 0)) + (demos.bytes ?? 0),
+			(stems.bytes ?? 0) +
+			((recordings.bytes ?? 0) + (takeStems.bytes ?? 0) + (studioSources.bytes ?? 0)) +
+			(demos.bytes ?? 0),
 		/** null = unlimited (a founder account). */
 		storageLimitBytes: limits.storageBytes,
 		memberLimit: limits.members,
@@ -4092,15 +4118,27 @@ export async function setIdeaNotes(accountId: string, ideaId: string, notes: str
 /**
  * Removes the idea when it has neither takes nor notes (nothing worth
  * keeping): after its last take goes, after its notes are cleared, after a
- * failed upload is discarded. True when it went.
+ * failed upload is discarded. A Studio song (docs/multitrack-recorder.md)
+ * also keeps itself alive with a source or a revision. True when it went.
  */
 export async function deleteIdeaIfEmpty(accountId: string, ideaId: string) {
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
 		columns: { notes: true },
-		with: { takes: { columns: { id: true }, limit: 1 } },
+		with: {
+			takes: { columns: { id: true }, limit: 1 },
+			sources: { columns: { id: true }, limit: 1 },
+			revisions: { columns: { id: true }, limit: 1 },
+		},
 	});
-	if (!row || row.notes.trim() || row.takes.length > 0) return false;
+	if (
+		!row ||
+		row.notes.trim() ||
+		row.takes.length > 0 ||
+		row.sources.length > 0 ||
+		row.revisions.length > 0
+	)
+		return false;
 	return deleteIdea(accountId, ideaId);
 }
 
@@ -4122,6 +4160,19 @@ export async function deleteEmptyIdeas(userId: string, olderThanMs: number) {
 				notExists(
 					db.select({ id: recording.id }).from(recording).where(eq(recording.ideaId, idea.id)),
 				),
+				// A Studio song with a source or a saved arrangement is not empty either.
+				notExists(
+					db
+						.select({ id: studioSource.id })
+						.from(studioSource)
+						.where(eq(studioSource.ideaId, idea.id)),
+				),
+				notExists(
+					db
+						.select({ id: studioRevision.id })
+						.from(studioRevision)
+						.where(eq(studioRevision.ideaId, idea.id)),
+				),
 			),
 		);
 	for (const r of rows) {
@@ -4140,12 +4191,16 @@ async function accountOfIdeaRow(ideaId: string) {
 	return row?.accountId ?? null;
 }
 
-/** Removes the idea and every take, files included. */
+/** Removes the idea and every take (and a Studio song's sources), files included. */
 export async function deleteIdea(accountId: string, ideaId: string) {
 	const takes = await db
 		.select({ url: recording.url, playbackUrl: recording.playbackUrl })
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), eq(recording.ideaId, ideaId)));
+	const studioFiles = await db
+		.select({ url: studioSource.url })
+		.from(studioSource)
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.ideaId, ideaId)));
 	const sources = await db
 		.select({ url: recordingStem.url })
 		.from(recordingStem)
@@ -4160,6 +4215,7 @@ export async function deleteIdea(accountId: string, ideaId: string) {
 	await deleteBlobs([
 		...takes.flatMap((t) => [t.url, t.playbackUrl ?? ""]),
 		...sources.map((x) => x.url),
+		...studioFiles.map((x) => x.url),
 	]);
 	return true;
 }
@@ -4604,6 +4660,415 @@ export async function failRecordingPlayback(recordingId: string) {
 
 /** The store a recording's own upload goes to (the upload handler's token). */
 export const recordingStore = recordingAccess;
+
+// ---- studio (docs/multitrack-recorder.md) ---------------------------------
+
+/** A source row as the page holds it, with a URL the browser may fetch. */
+async function studioSourceView(s: typeof studioSource.$inferSelect): Promise<StudioSourceView> {
+	return {
+		id: s.id,
+		kind: s.kind,
+		takeNumber: s.takeNumber,
+		trackLabel: s.trackLabel,
+		url: (await presentUrl(s.url)) ?? s.url,
+		filename: s.filename,
+		codec: s.codec,
+		sampleRate: s.sampleRate,
+		channels: s.channels,
+		durationSeconds: s.durationSeconds,
+		sizeBytes: s.sizeBytes,
+		peaks: s.peaks ?? [],
+		createdAt: s.createdAt,
+	};
+}
+
+function studioRevisionView(r: {
+	id: string;
+	number: number;
+	name: string | null;
+	createdAt: Date;
+}): StudioRevisionView {
+	return { id: r.id, number: r.number, name: r.name, createdAt: r.createdAt };
+}
+
+/** The relations a song view is built from: ready sources in take order, every revision newest first (without their data). */
+const studioSongWith = () => ({
+	sources: {
+		where: eq(studioSource.status, "ready"),
+		orderBy: [asc(studioSource.takeNumber), asc(studioSource.createdAt)],
+	},
+	revisions: {
+		orderBy: [desc(studioRevision.number)],
+		columns: { id: true, number: true, name: true, createdAt: true } as const,
+	},
+});
+
+type StudioSongRow = {
+	id: string;
+	title: string;
+	notes: string;
+	createdAt: Date;
+	sources: (typeof studioSource.$inferSelect)[];
+	revisions: { id: string; number: number; name: string | null; createdAt: Date }[];
+};
+
+/**
+ * Song views from idea rows: the newest revision's data (named or not) is
+ * the current arrangement, fetched in one query for every song, since a
+ * song's older revisions can hold megabytes the page never reads.
+ */
+async function studioSongViews(rows: StudioSongRow[]): Promise<StudioSongView[]> {
+	const newestIds = rows.flatMap((i) => (i.revisions[0] ? [i.revisions[0].id] : []));
+	const current = new Map<string, StudioArrangement>();
+	if (newestIds.length > 0) {
+		const found = await db
+			.select({ id: studioRevision.id, data: studioRevision.data })
+			.from(studioRevision)
+			.where(inArray(studioRevision.id, newestIds));
+		for (const r of found) current.set(r.id, r.data);
+	}
+	return Promise.all(
+		rows.map(async (i) => ({
+			id: i.id,
+			title: i.title,
+			notes: i.notes,
+			createdAt: i.createdAt,
+			current: (i.revisions[0] && current.get(i.revisions[0].id)) ?? null,
+			revisions: i.revisions.map(studioRevisionView),
+			sources: await Promise.all(i.sources.map(studioSourceView)),
+		})),
+	);
+}
+
+/** The user's Studio songs (ideas of kind "song", theirs whichever account holds the files), newest first. */
+export async function listStudioSongs(userId: string): Promise<StudioSongView[]> {
+	const rows = await db.query.idea.findMany({
+		where: and(eq(idea.createdBy, userId), eq(idea.kind, "song")),
+		orderBy: [desc(idea.createdAt)],
+		columns: { id: true, title: true, notes: true, createdAt: true },
+		with: studioSongWith(),
+	});
+	return studioSongViews(rows);
+}
+
+/** One Studio song in the account, or null (the caller checked ownership). */
+export async function studioSongView(
+	accountId: string,
+	ideaId: string,
+): Promise<StudioSongView | null> {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")),
+		columns: { id: true, title: true, notes: true, createdAt: true },
+		with: studioSongWith(),
+	});
+	if (!row) return null;
+	const [view] = await studioSongViews([row]);
+	return view;
+}
+
+/**
+ * Step 1 of saving a Studio source: the row under its song, the pathname to
+ * upload to and the store it goes to. The browser may mint the id itself
+ * (its clips already name the source before the upload); "exists" when a
+ * row carries that id, "full" when the song already holds
+ * MAX_STUDIO_SOURCES (counting ones still uploading), "unsupported" for a
+ * file type no demo would take either, null without the idea.
+ */
+export async function createStudioSource(
+	accountId: string,
+	userId: string,
+	reserve: StudioSourceReserve,
+): Promise<
+	| { sourceId: string; pathname: string; access: BlobAccess }
+	| "full"
+	| "exists"
+	| "unsupported"
+	| null
+> {
+	const owner = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, reserve.ideaId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const contentType = demoContentType(reserve.filename);
+	if (!contentType) return "unsupported";
+	if (reserve.id) {
+		const taken = await db.query.studioSource.findFirst({
+			where: eq(studioSource.id, reserve.id),
+			columns: { id: true },
+		});
+		if (taken) return "exists";
+	}
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(studioSource)
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.ideaId, reserve.ideaId)));
+	if (Number(n) >= MAX_STUDIO_SOURCES) return "full";
+	const id = reserve.id ?? nanoid();
+	const pathname = studioSourcePathname(accountId, reserve.ideaId, id, reserve.filename);
+	await db.insert(studioSource).values({
+		id,
+		accountId,
+		ideaId: reserve.ideaId,
+		recordedBy: userId,
+		kind: reserve.kind,
+		takeNumber: reserve.takeNumber,
+		trackLabel: reserve.trackLabel,
+		url: "",
+		pathname,
+		filename: reserve.filename,
+		contentType,
+		sizeBytes: reserve.sizeBytes,
+		codec: reserve.codec,
+		sampleRate: reserve.sampleRate,
+		channels: reserve.channels,
+		durationSeconds: reserve.durationSeconds,
+	});
+	return { sourceId: id, pathname, access: recordingAccess() };
+}
+
+/** The source reserved under a pathname, for the upload handler's ownership check and token (ideas are the user's own). */
+export async function studioSourceOfPathname(pathname: string) {
+	const row = await db.query.studioSource.findFirst({
+		where: eq(studioSource.pathname, pathname),
+		columns: {
+			id: true,
+			accountId: true,
+			ideaId: true,
+			status: true,
+			contentType: true,
+			sizeBytes: true,
+		},
+	});
+	return row ?? null;
+}
+
+/** A source by id: its account, its song and the pathname reserved for it, for the ready route's and the commands' ownership checks. */
+export async function studioSourceOwner(id: string) {
+	const row = await db.query.studioSource.findFirst({
+		where: eq(studioSource.id, id),
+		columns: { accountId: true, ideaId: true, pathname: true },
+	});
+	return row ?? null;
+}
+
+/** Step 3: the browser reports the blob URL, the peaks it computed and the length it decoded; the reserved size stands. Idempotent, since Vercel's completion webhook may have marked the row ready first. */
+export async function markStudioSourceReady(
+	accountId: string,
+	id: string,
+	ready: { url: string; peaks: number[]; durationSeconds?: number },
+) {
+	const [row] = await db
+		.update(studioSource)
+		.set({
+			status: "ready",
+			url: ready.url,
+			peaks: ready.peaks,
+			...(ready.durationSeconds === undefined ? {} : { durationSeconds: ready.durationSeconds }),
+		})
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.id, id)))
+		.returning({ id: studioSource.id });
+	return row ?? null;
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordStudioSourceUrl(pathname: string, url: string) {
+	await db
+		.update(studioSource)
+		.set({ url, status: "ready" })
+		.where(and(eq(studioSource.pathname, pathname), eq(studioSource.status, "uploading")));
+}
+
+/** Removes a source and its file ("Clean up unused sources"); clips that still name it are the browser's to drop. True when it went. */
+export async function deleteStudioSource(accountId: string, id: string) {
+	const [row] = await db
+		.delete(studioSource)
+		.where(and(eq(studioSource.accountId, accountId), eq(studioSource.id, id)))
+		.returning({ url: studioSource.url });
+	if (!row) return false;
+	await deleteBlobs([row.url]);
+	return true;
+}
+
+/** The song's newest revision by number, with its hash, or null before any save. */
+async function newestStudioRevision(accountId: string, ideaId: string) {
+	return (
+		(await db.query.studioRevision.findFirst({
+			where: and(eq(studioRevision.accountId, accountId), eq(studioRevision.ideaId, ideaId)),
+			orderBy: [desc(studioRevision.number)],
+			columns: { id: true, number: true, name: true, hash: true, createdAt: true },
+		})) ?? null
+	);
+}
+
+/**
+ * Writes the arrangement as the next revision, named or not, and bumps the
+ * idea so the song lists as recently worked on.
+ */
+async function insertStudioRevision(
+	accountId: string,
+	userId: string,
+	ideaId: string,
+	name: string | null,
+	data: StudioArrangement,
+	hash: string,
+) {
+	const newest = await newestStudioRevision(accountId, ideaId);
+	const [row] = await db
+		.insert(studioRevision)
+		.values({
+			accountId,
+			ideaId,
+			savedBy: userId,
+			name,
+			number: (newest?.number ?? 0) + 1,
+			data,
+			hash,
+		})
+		.returning({
+			id: studioRevision.id,
+			number: studioRevision.number,
+			name: studioRevision.name,
+			createdAt: studioRevision.createdAt,
+		});
+	await db
+		.update(idea)
+		.set({ updatedAt: new Date() })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId)));
+	return row;
+}
+
+/**
+ * An autosave: nothing is written when the newest revision (named or not)
+ * already holds this arrangement; otherwise an unnamed revision is added
+ * and the unnamed ones beyond STUDIO_AUTOSAVES_KEPT go (named ones stay).
+ * Null when the idea is not the account's.
+ */
+export async function saveStudioAutosave(
+	accountId: string,
+	userId: string,
+	ideaId: string,
+	data: StudioArrangement,
+): Promise<{ id: string; number: number; unchanged: boolean } | null> {
+	const owner = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const hash = arrangementHash(data);
+	const newest = await newestStudioRevision(accountId, ideaId);
+	if (newest && newest.hash === hash)
+		return { id: newest.id, number: newest.number, unchanged: true };
+	const row = await insertStudioRevision(accountId, userId, ideaId, null, data, hash);
+	const all = await db
+		.select({ id: studioRevision.id, number: studioRevision.number, name: studioRevision.name })
+		.from(studioRevision)
+		.where(and(eq(studioRevision.accountId, accountId), eq(studioRevision.ideaId, ideaId)));
+	const stale = staleAutosaves(all, STUDIO_AUTOSAVES_KEPT);
+	if (stale.length > 0) await db.delete(studioRevision).where(inArray(studioRevision.id, stale));
+	return { id: row.id, number: row.number, unchanged: false };
+}
+
+/** A named revision of the current state, kept for good. Null when the idea is not the account's. */
+export async function saveStudioRevision(
+	accountId: string,
+	userId: string,
+	ideaId: string,
+	name: string,
+	data: StudioArrangement,
+): Promise<StudioRevisionView | null> {
+	const owner = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { id: true },
+	});
+	if (!owner) return null;
+	const row = await insertStudioRevision(
+		accountId,
+		userId,
+		ideaId,
+		name,
+		data,
+		arrangementHash(data),
+	);
+	return studioRevisionView(row);
+}
+
+/** A revision by id: its account and its song, for the commands' ownership checks. */
+export async function studioRevisionOwner(id: string) {
+	const row = await db.query.studioRevision.findFirst({
+		where: eq(studioRevision.id, id),
+		columns: { accountId: true, ideaId: true },
+	});
+	return row ?? null;
+}
+
+export async function renameStudioRevision(accountId: string, id: string, name: string) {
+	const [row] = await db
+		.update(studioRevision)
+		.set({ name })
+		.where(and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, id)))
+		.returning({ id: studioRevision.id });
+	return !!row;
+}
+
+/**
+ * Removes a named revision. The newest revision of a song is refused
+ * whatever its name: it is the current arrangement, and deleting it would
+ * make an older state current without anyone restoring it. Autosaves are
+ * pruned by the next autosave, not deleted by hand. True when it went.
+ */
+export async function deleteStudioRevision(accountId: string, id: string) {
+	const row = await db.query.studioRevision.findFirst({
+		where: and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, id)),
+		columns: { id: true, ideaId: true, name: true },
+	});
+	if (!row || row.name === null) return false;
+	const newest = await newestStudioRevision(accountId, row.ideaId);
+	if (newest?.id === row.id) return false;
+	await db
+		.delete(studioRevision)
+		.where(and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, id)));
+	return true;
+}
+
+/** A revision's arrangement, or null (a revision preview, when the page wants one; the restore reads the row itself). */
+// fallow-ignore-next-line unused-export -- part of the Studio's data contract (docs/multitrack-recorder.md); no caller yet
+export async function studioRevisionData(
+	accountId: string,
+	id: string,
+): Promise<StudioArrangement | null> {
+	const row = await db.query.studioRevision.findFirst({
+		where: and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, id)),
+		columns: { data: true },
+	});
+	return row?.data ?? null;
+}
+
+/**
+ * Restores a revision: its data is written forward as a new autosave (so
+ * history is never rewritten) and handed back for the browser to load.
+ * When that revision is already the newest, nothing is written and the
+ * newest revision comes back as it is.
+ */
+export async function restoreStudioRevision(
+	accountId: string,
+	userId: string,
+	id: string,
+): Promise<{ data: StudioArrangement; revision: StudioRevisionView } | null> {
+	const row = await db.query.studioRevision.findFirst({
+		where: and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, id)),
+		columns: { ideaId: true, data: true },
+	});
+	if (!row) return null;
+	const saved = await saveStudioAutosave(accountId, userId, row.ideaId, row.data);
+	if (!saved) return null;
+	const revision = await db.query.studioRevision.findFirst({
+		where: and(eq(studioRevision.accountId, accountId), eq(studioRevision.id, saved.id)),
+		columns: { id: true, number: true, name: true, createdAt: true },
+	});
+	if (!revision) return null;
+	return { data: row.data, revision: studioRevisionView(revision) };
+}
 
 /** Active projects with their active songs, for the "add this recording to a song" picker. */
 export async function songPicker(accountId: string) {

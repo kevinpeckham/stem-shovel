@@ -1,0 +1,79 @@
+import { describe, expect, test } from "vite-plus/test";
+import * as v from "valibot";
+import { MAX_STUDIO_TRACKS } from "../constants/studio";
+import { StudioArrangementSchema, StudioSourceReserveSchema } from "./StudioSchema";
+
+const sourceId = "V1StGXR8_Z5jdHi6B-myT";
+const track = (id: string) => ({
+	id,
+	name: "Guitar",
+	gain: 1,
+	pan: 0,
+	muted: false,
+	solo: false,
+	armed: false,
+	input: { source: "mic", channel: "left" },
+});
+const clip = (duration: number) => ({
+	id: "c1",
+	trackId: "t1",
+	sourceId,
+	start: 4,
+	offset: 0.5,
+	duration,
+	gain: 1,
+	fadeIn: 0.01,
+	fadeOut: 0.01,
+	name: "Take 1",
+});
+const arrangement = (tracks: unknown[], clips: unknown[]) => ({
+	version: 1,
+	bpm: 120,
+	beatsPerBar: 4,
+	gridOn: true,
+	countIn: true,
+	click: false,
+	loop: null,
+	master: 0.8,
+	tracks,
+	clips,
+});
+
+describe("StudioArrangementSchema", () => {
+	test("a valid arrangement passes with its values intact", () => {
+		const parsed = v.parse(StudioArrangementSchema, arrangement([track("t1")], [clip(8)]));
+		expect(parsed.tracks[0].input).toEqual({ source: "mic", channel: "left" });
+		expect(parsed.clips[0]).toMatchObject({ start: 4, offset: 0.5, duration: 8 });
+	});
+	test("more tracks than the cap fail", () => {
+		const tracks = Array.from({ length: MAX_STUDIO_TRACKS + 1 }, (_, i) => track(`t${i}`));
+		expect(v.safeParse(StudioArrangementSchema, arrangement(tracks, [])).success).toBe(false);
+		expect(v.safeParse(StudioArrangementSchema, arrangement(tracks.slice(1), [])).success).toBe(
+			true,
+		);
+	});
+	test("a clip with no length fails", () => {
+		expect(
+			v.safeParse(StudioArrangementSchema, arrangement([track("t1")], [clip(0)])).success,
+		).toBe(false);
+	});
+});
+
+describe("StudioSourceReserveSchema", () => {
+	test("a recorded take, and a source with a bad channel count", () => {
+		const reserve = {
+			ideaId: sourceId,
+			kind: "take",
+			trackLabel: " Guitar ",
+			takeNumber: 3,
+			filename: "take-3.wav",
+			sizeBytes: 1024,
+			codec: "pcm",
+			sampleRate: 48000,
+			channels: 1,
+			durationSeconds: 12.5,
+		};
+		expect(v.parse(StudioSourceReserveSchema, reserve).trackLabel).toBe("Guitar");
+		expect(v.safeParse(StudioSourceReserveSchema, { ...reserve, channels: 3 }).success).toBe(false);
+	});
+});

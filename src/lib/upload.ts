@@ -254,6 +254,36 @@ export async function uploadRecordingStemFile(
 	return { stemId };
 }
 
+export interface StudioSourceReservation {
+	sourceId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/** A Studio source (docs/multitrack-recorder.md): reserve under the song, send the WAV to Blob, report the URL with the peaks the lane draws. */
+export async function uploadStudioSourceFile(
+	file: File,
+	reserve: () => Promise<StudioSourceReservation>,
+	ready: { peaks: number[]; durationSeconds: number },
+	onProgress?: (percent: number) => void,
+): Promise<{ sourceId: string }> {
+	const { sourceId, pathname, access = "public" } = await reserve();
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType: demoContentType(file.name) ?? "audio/wav",
+		multipart: true,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const res = await fetch(`/api/studio/sources/${sourceId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url, ...ready }),
+	});
+	if (!res.ok) throw new Error(await errorText(res));
+	return { sourceId };
+}
+
 /** A stem's MIDI file: reserve on the stem, send the bytes to Blob, report the URL. */
 export async function uploadMidiFile(
 	stemId: string,

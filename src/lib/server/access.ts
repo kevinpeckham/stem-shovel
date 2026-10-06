@@ -9,6 +9,7 @@ import {
 	projectRoleOf,
 	projectRolesOf,
 	songViewRow,
+	userOwnsIdea,
 } from "$lib/server/data";
 import { canViewSong, isAccountAdmin, shareCodesFrom, type Viewer } from "$lib/server/viewAccess";
 import { error, redirect } from "@sveltejs/kit";
@@ -281,6 +282,19 @@ export async function accountOfIdea(ideaId: string) {
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;
+}
+
+/**
+ * The signed-in user's own idea (docs/demo-recording.md, "Ownership"): ideas
+ * and Studio songs belong to the user who made them, whichever account
+ * holds their files, so the gate is creatorship, not membership. 401
+ * signed out, 404 otherwise. Returns the idea's account and the user.
+ */
+export async function requireOwnIdea(locals: App.Locals, ideaId: string) {
+	const user = requireUser(locals);
+	const accountId = await accountOfIdea(ideaId);
+	if (!accountId || !(await userOwnsIdea(accountId, user.id, ideaId))) error(404, "Not found");
+	return { accountId, userId: user.id };
 }
 
 export async function accountOfRecording(recordingId: string) {

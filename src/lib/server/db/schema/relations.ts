@@ -39,6 +39,8 @@ import { songUserNote } from "./songUserNote";
 import { userDoc } from "./userDoc";
 import { userDocVersion } from "./userDocVersion";
 import { stem } from "./stem";
+import { studioRevision } from "./studioRevision";
+import { studioSource } from "./studioSource";
 import { twoFactor } from "./twoFactor";
 import { passkey } from "./passkey";
 import { user } from "./user";
@@ -191,6 +193,21 @@ export const ideaRelations = relations(idea, ({ one, many }) => ({
 	account: one(account, { fields: [idea.accountId], references: [account.id] }),
 	creator: one(user, { fields: [idea.createdBy], references: [user.id] }),
 	takes: many(recording),
+	/** A Studio song's files and arrangement snapshots (docs/multitrack-recorder.md). */
+	sources: many(studioSource),
+	revisions: many(studioRevision),
+}));
+
+export const studioSourceRelations = relations(studioSource, ({ one }) => ({
+	account: one(account, { fields: [studioSource.accountId], references: [account.id] }),
+	idea: one(idea, { fields: [studioSource.ideaId], references: [idea.id] }),
+	recorder: one(user, { fields: [studioSource.recordedBy], references: [user.id] }),
+}));
+
+export const studioRevisionRelations = relations(studioRevision, ({ one }) => ({
+	account: one(account, { fields: [studioRevision.accountId], references: [account.id] }),
+	idea: one(idea, { fields: [studioRevision.ideaId], references: [idea.id] }),
+	saver: one(user, { fields: [studioRevision.savedBy], references: [user.id] }),
 }));
 
 export const recordingRelations = relations(recording, ({ one, many }) => ({

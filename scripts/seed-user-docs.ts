@@ -25,6 +25,7 @@ const ORDER = [
 	"piano",
 	"chord-player",
 	"looper",
+	"studio",
 	"comments",
 	"downloads-and-sharing",
 	"accounts-and-members",
@@ -41,6 +42,7 @@ const ORDER = [
 /** Pages whose words live in a "copy" doc (docs/page-copy.md): seeded like the docs, listed nowhere, edited at /docs/<slug>/edit. */
 const COPY_PAGES = [
 	"looper-page",
+	"studio-page",
 	"drum-machine-page",
 	"piano-page",
 	"tuner-page",

@@ -4,8 +4,8 @@ import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { PianoPresetDataSchema, ChordPresetSettingsSchema } from "./PianoPresetSchema";
 
-/** "idea": recorded in the Idea Recorder; "loop": saved from the looper, hidden from the recorder's list until exported (docs/looper.md, "Save and Export"). */
-export const IDEA_KINDS = ["idea", "loop"] as const;
+/** "idea": recorded in the Idea Recorder; "loop": saved from the looper, hidden from the recorder's list until exported (docs/looper.md, "Save and Export"); "song": a Studio song (docs/multitrack-recorder.md), listed in the Studio only. */
+export const IDEA_KINDS = ["idea", "loop", "song"] as const;
 export const IdeaKindSchema = v.picklist(IDEA_KINDS);
 export type IdeaKind = v.InferOutput<typeof IdeaKindSchema>;
 

@@ -146,6 +146,20 @@ export function recordingStemPathname(
 /** True for a recording's pathname (the upload handler and access checks route on it). */
 export const isRecordingPathname = (pathname: string) => pathname.includes("/recordings/");
 
+/** Blob pathname for a Studio source (docs/multitrack-recorder.md, "Data model"): under its song (an idea), in the recordings store like a take. */
+export function studioSourcePathname(
+	accountId: string,
+	ideaId: string,
+	sourceId: string,
+	filename: string,
+) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/studio/${ideaId}/${sourceId}.${ext}`;
+}
+
+/** True for a Studio source's pathname (the upload handler routes on it; the files live in the recordings store). */
+export const isStudioPathname = (pathname: string) => pathname.includes("/studio/");
+
 /**
  * Scratch recordings are members-only, so they go to the private store when
  * one is configured; without it they live in the public store like everything

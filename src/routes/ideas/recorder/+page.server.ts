@@ -13,10 +13,10 @@ import {
 	recordingsWantingPlayback,
 	songLink,
 	sitePianoPresets,
-	songPicker,
 } from "$lib/server/data";
 import { scheduleRecordingPlayback } from "$lib/server/jobs";
 import { pageCopy } from "$lib/server/pageCopy";
+import { songTargets } from "$lib/server/songTargets";
 import copyFallback from "../../../../scripts/user-docs/idea-recorder-page.md?raw";
 import { realMemberships } from "$lib/utils/actingMemberships";
 import { NanoIdSchema } from "$lib/val/NanoIdSchema";
@@ -53,16 +53,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	const ideas = await listUserIdeas(user.id);
 	scheduleRecordingPlayback(recordingsWantingPlayback(ideas.flatMap((i) => i.takes)));
 	// Song targets across every account the user edits; the account's name labels the project when there is more than one.
-	const projects = (
-		await Promise.all(
-			editing.map(async (m) =>
-				(await songPicker(m.accountId)).map((p) => ({
-					...p,
-					name: editing.length > 1 ? `${m.name} · ${p.name}` : p.name,
-				})),
-			),
-		)
-	).flat();
+	const projects = await songTargets(editing);
 	const fromSongAccount = songId.success ? await accountOfSong(songId.output) : null;
 	return {
 		account: { id: member.accountId, name: member.name, slug: member.slug, canEdit: true },

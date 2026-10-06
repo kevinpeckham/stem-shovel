@@ -50,6 +50,8 @@ const {
 	songCredit,
 	songDocVersion,
 	stem,
+	studioRevision,
+	studioSource,
 	supportRequest,
 	twoFactor,
 	user,
@@ -107,9 +109,11 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 	await db.delete(project).where(inArray(project.id, projectIds));
 }
 
-/** Ideas with their takes. */
+/** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
 export async function deleteIdeaRows(ideaIds: string[]): Promise<void> {
 	if (ideaIds.length === 0) return;
+	await db.delete(studioRevision).where(inArray(studioRevision.ideaId, ideaIds));
+	await db.delete(studioSource).where(inArray(studioSource.ideaId, ideaIds));
 	const takes = await db
 		.select({ id: recording.id })
 		.from(recording)
@@ -166,6 +170,8 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await deleteSongRows(songs.map((s) => s.id));
 	await db.delete(recordingStem).where(eq(recordingStem.accountId, accountId));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
+	await db.delete(studioRevision).where(eq(studioRevision.accountId, accountId));
+	await db.delete(studioSource).where(eq(studioSource.accountId, accountId));
 	await db.delete(beat).where(eq(beat.accountId, accountId));
 	await db.delete(progression).where(eq(progression.accountId, accountId));
 	await db.delete(chordStyle).where(eq(chordStyle.accountId, accountId));
@@ -226,6 +232,11 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(inviteCode).set({ createdBy: null }).where(eq(inviteCode.createdBy, userId));
 	await db.update(project).set({ createdBy: null }).where(eq(project.createdBy, userId));
 	await db.update(recording).set({ recordedBy: null }).where(eq(recording.recordedBy, userId));
+	await db
+		.update(studioSource)
+		.set({ recordedBy: null })
+		.where(eq(studioSource.recordedBy, userId));
+	await db.update(studioRevision).set({ savedBy: null }).where(eq(studioRevision.savedBy, userId));
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));

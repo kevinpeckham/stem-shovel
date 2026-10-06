@@ -140,7 +140,9 @@
 		}
 	}
 	/** The ideas the list and the search show: ideas, and loops when asked for. */
-	let listedIdeas = $derived(data.ideas.filter((i) => i.kind !== "loop" || showLoops));
+	let listedIdeas = $derived(
+		data.ideas.filter((i) => i.kind !== "song" && (i.kind !== "loop" || showLoops)),
+	);
 	/** The recordings list popped out into a panel (from lg), or docked back; remembered per browser. */
 	/**
 	 * The Recordings panel (the ideas and takes, with the search field at its
