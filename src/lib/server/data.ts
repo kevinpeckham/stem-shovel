@@ -450,7 +450,17 @@ export function getProject(accountId: string, slug: string) {
 							gain: true,
 						},
 					},
-					demos: { columns: { id: true, status: true } },
+					demos: {
+						columns: {
+							id: true,
+							status: true,
+							label: true,
+							url: true,
+							playbackStatus: true,
+							playbackUrl: true,
+						},
+						orderBy: [asc(demo.createdAt)],
+					},
 					credits: {
 						columns: { role: true },
 						with: { artist: { columns: { id: true, name: true } } },

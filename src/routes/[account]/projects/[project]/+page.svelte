@@ -137,6 +137,14 @@
 	}
 	/** The playlist: finished songs, then the ones in progress, as listed. */
 	let playable = $derived([...finished, ...inProgress]);
+	/** The demos playlist: every song's ready recordings in the songs' order, ideas included, each named by its song. */
+	let demoTracks = $derived(
+		[...finished, ...inProgress, ...ideas].flatMap((song) =>
+			song.demos
+				.filter((d) => d.status === "ready" && d.playUrl)
+				.map((d) => ({ id: d.id, title: `${song.title} · ${d.label}`, mixUrl: d.playUrl })),
+		),
+	);
 
 	/** What an idea holds so far, for its tile. */
 	function gathered(song: (typeof data.project.songs)[number]): string {
@@ -379,9 +387,15 @@
 	<section class="mt-10">
 		<div class="mb-5">
 			<h2 class="app-section-heading">Playlist</h2>
-			<p class="opacity-90">Listen to a playlist of your current stem mixes.</p>
+			<p class="opacity-90">Listen to your current stem mixes, or to the songs' demo recordings.</p>
 		</div>
-		<ProjectPlayer bind:this={player} songs={playable} bind:current={playing} bind:paused />
+		<ProjectPlayer
+			bind:this={player}
+			songs={playable}
+			demos={demoTracks}
+			bind:current={playing}
+			bind:paused
+		/>
 	</section>
 
 	<!-- finished songs -->

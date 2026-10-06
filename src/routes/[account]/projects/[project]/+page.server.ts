@@ -46,9 +46,26 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 	);
 	// Backstop: songs whose cached mix predates their current stems.
 	scheduleMix(songsWantingMix(songs, mixKeyOf));
-	// The playlist plays each song's mix; a private song's needs a presigned URL.
+	// The playlist plays each song's mix, or its demos (the AAC rendition where it is ready, the
+	// upload otherwise); a private song's need presigned URLs.
 	const [presented, shareLinks, people, accountMembers] = await Promise.all([
-		Promise.all(songs.map(async (s) => ({ ...s, mixUrl: await presentUrl(s.mixUrl) }))),
+		Promise.all(
+			songs.map(async (s) => ({
+				...s,
+				mixUrl: await presentUrl(s.mixUrl),
+				demos: await Promise.all(
+					s.demos.map(async (d) => ({
+						...d,
+						playUrl:
+							d.status === "ready"
+								? await presentUrl(
+										d.playbackStatus === "ready" && d.playbackUrl ? d.playbackUrl : d.url,
+									)
+								: null,
+					})),
+				),
+			})),
+		),
 		canEdit ? listShareLinks({ projectId: project.id }) : [],
 		canEdit ? listProjectPeople(account.id, project.id) : { people: [], invitations: [] },
 		canEdit ? listAccountMembers(account.id) : [],

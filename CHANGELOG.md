@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Demos tab on the project playlist** (Kevin): the player plays the songs' demo recordings (ideas included, in the songs' order, each named by its song and label; the AAC rendition where it is ready) as well as the stem mixes, on two tabs with counts; it opens on the mixes when any song has one and on the demos otherwise, and a song row's play button brings the mixes tab back. `getProject` carries the demos' playback columns and the load presigns them.
+
 ### Changed
 
 - **The song page's Docs panel, with the PDFs as its fifth tab** (Kevin): the chart, lyrics, notes, comments and PDFs panel is a `FloatingPanel` now, docked in its column, popped out into a draggable, resizable panel from lg, or minimised to a Docs button in the row under the player, which brings it back as it was (remembered per browser, `stemshovel.song.docs-mode`); its tabs, edit button and ⋯ menu moved into the panel's header (the ⋯ and the phone's picker are `ContextMenu`s). The PDFs tab has smaller tiles, each with a ⋯ menu (Open, Download, Open in a new tab, Edit, Remove) beside a Share menu (Copy link, Share via email), Upload PDFs at the foot and in the panel's ⋯ menu as well as the Uploads menu; the player takes both columns while the panel is away. The PDFs section at the foot of the page is gone.

@@ -3,23 +3,37 @@
 	import { isTextEntry } from "$lib/utils/isTextEntry";
 	import { tick } from "svelte";
 
-	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. */
+	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. A demo track is the same shape, its id the demo's. */
 	export interface PlaylistSong {
 		id: string;
 		title: string;
 		mixUrl: string | null;
 	}
+	export type PlaylistMode = "mixes" | "demos";
 
 	interface Props {
 		songs: PlaylistSong[];
+		/** The songs' demo recordings as tracks, in the songs' order (Kevin: a second playlist on its own tab). */
+		demos?: PlaylistSong[];
 		/** The song whose row button was pressed; the player exposes its own state back through `current`. */
 		current?: string | null;
 		paused?: boolean;
 	}
 
-	let { songs, current = $bindable(null), paused = $bindable(true) }: Props = $props();
+	let { songs, demos = [], current = $bindable(null), paused = $bindable(true) }: Props = $props();
 
-	let playable = $derived(songs.filter((s) => s.mixUrl));
+	// The tab: the mixes when any song has one, else the demos (Kevin); a choice sticks for the page.
+	let chosen = $state<PlaylistMode | null>(null);
+	let mode = $derived(chosen ?? (songs.some((s) => s.mixUrl) ? "mixes" : "demos"));
+	let mixCount = $derived(songs.filter((s) => s.mixUrl).length);
+	let demoCount = $derived(demos.filter((d) => d.mixUrl).length);
+	function setMode(next: PlaylistMode) {
+		if (next === mode) return;
+		chosen = next;
+		current = null;
+		paused = true;
+	}
+	let playable = $derived((mode === "demos" ? demos : songs).filter((s) => s.mixUrl));
 	let track = $derived(playable.find((s) => s.id === current) ?? null);
 	let index = $derived(track ? playable.indexOf(track) : -1);
 	let audio = $state<HTMLAudioElement | null>(null);
@@ -28,12 +42,13 @@
 	/** The playlist's own volume (0..1), kept across tracks. */
 	let volume = $state(1);
 
-	/** Play a song (from its row or the playlist); the same song toggles. */
+	/** Play a song (from its row or the playlist); the same song toggles. A row's song is a mix: that tab comes first. */
 	export async function play(id: string) {
 		if (current === id) {
 			paused = !paused;
 			return;
 		}
+		if (mode === "demos" && songs.some((s) => s.id === id)) chosen = "mixes";
 		// Swapping `src` fires a pause event that flips the bound state, so start
 		// the new track explicitly once the element has it.
 		current = id;
@@ -97,6 +112,26 @@
 <div
 	class="bg-blue-300/5 border border-current/40 rounded-md px-4 py-3 flex flex-wrap items-center gap-4"
 >
+	<!-- The two playlists: the songs' mixes, or their demo recordings. -->
+	<div
+		class="flex overflow-hidden rounded border border-white/15 items-center w-full sm:w-auto"
+		role="tablist"
+		aria-label="Playlist"
+	>
+		{#each [{ id: "mixes", label: `Mixes (${mixCount})` }, { id: "demos", label: `Demos (${demoCount})` }] as tab, index (tab.id)}
+			<button
+				type="button"
+				role="tab"
+				aria-selected={mode === tab.id}
+				class="{mode === tab.id
+					? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+					: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index === 0
+					? 'rounded-r-none border-r-none'
+					: 'rounded-l-none'}"
+				onclick={() => setMode(tab.id as PlaylistMode)}>{tab.label}</button
+			>
+		{/each}
+	</div>
 	<div class="flex items-center gap-2">
 		<button
 			type="button"
@@ -111,7 +146,13 @@
 			type="button"
 			class="grid h-12 w-12 place-items-center rounded-lg bg-accent text-oxford transition-all hover:shadow-lg hover:shadow-maximumYellow/30 active:scale-95 disabled:opacity-40"
 			aria-label={paused ? "Play" : "Pause"}
-			title={playable.length ? "Play the project's songs in order" : "No mixes rendered yet"}
+			title={playable.length
+				? mode === "demos"
+					? "Play the songs' demos in order"
+					: "Play the project's songs in order"
+				: mode === "demos"
+					? "No demo recordings yet"
+					: "No mixes rendered yet"}
 			disabled={playable.length === 0}
 			onclick={playAll}
 		>
@@ -137,8 +178,16 @@
 		{:else if playable.length}
 			<p class="text-dim">
 				{playable.length}
-				{playable.length === 1 ? "song" : "songs"} ready to play
+				{mode === "demos"
+					? playable.length === 1
+						? "demo"
+						: "demos"
+					: playable.length === 1
+						? "song"
+						: "songs"} ready to play
 			</p>
+		{:else if mode === "demos"}
+			<p class="text-dim">Demos appear here once a song has a recording.</p>
 		{:else}
 			<p class="text-dim">Mixes appear here once a song has stems.</p>
 		{/if}
