@@ -1,4 +1,4 @@
-import { getSong, listArtists, listShareLinks } from "$lib/server/data";
+import { getSong, getUserNote, listArtists, listShareLinks } from "$lib/server/data";
 import { songWantsNotes } from "$lib/utils/songWantsNotes";
 import { mixKeyOf } from "$lib/server/mix";
 import { aiAvailable } from "$lib/server/aiDetect";
@@ -13,7 +13,7 @@ import type { PageServerLoad } from "./$types";
 /** Missing renditions render after the response, inside this function's lifetime. */
 export const config: Config = { maxDuration: 300 };
 
-export const load: PageServerLoad = async ({ params, parent, url }) => {
+export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	const { account, who, shareGrants } = await parent();
 	const song = await getSong(account.id, params.project, params.song);
 	if (!song) {
@@ -32,10 +32,11 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 	const noAi = song.noAi || song.project.noAi;
 	if (canEdit && songWantsNotes(song, mixKeyOf)) scheduleNotes([song.id]);
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
-	const [view, shareLinks, artists] = await Promise.all([
+	const [view, shareLinks, artists, myNote] = await Promise.all([
 		songView(song),
 		canEdit ? listShareLinks({ songId: song.id }) : [],
 		canEdit ? listArtists(account.id) : [],
+		locals.user ? getUserNote(song.id, locals.user.id) : null,
 	]);
 	return {
 		...view,
@@ -46,5 +47,7 @@ export const load: PageServerLoad = async ({ params, parent, url }) => {
 		artists,
 		aiAvailable: canEdit && !noAi && aiAvailable(),
 		noAi,
+		/** The signed-in person's private note on this song ("mynotes"); null signed out or before the first save. */
+		myNote,
 	};
 };

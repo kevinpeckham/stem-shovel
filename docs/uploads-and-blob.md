@@ -113,7 +113,11 @@ in three steps driven by `src/lib/upload.ts`:
   playback survive, and the button lights while it plays; the Docs panel
   spans both columns while the player is away. Lyrics is the Docs
   panel's first and default tab (Kevin).
-  Title and description are edited through `pdfs.remote.ts`; removal and
+  Title and description are edited through `pdfs.remote.ts`, and so is
+  `is_notation` (2026-10-06): a PDF that is a score, flagged at the
+  reservation (`notation: true` in `POST /api/pdfs`'s body) or later
+  (`isNotation` in `updatePdf`), which the Chart tab's notation view
+  lists beside the notation files; the PDFs tab keeps it too. Removal and
   the song and project cascades delete file and thumbnail; sizes count
   toward the account's storage.
 - **Notation files attached to a song** (`song_notation`, 2026-10-06,
@@ -144,6 +148,28 @@ in three steps driven by `src/lib/upload.ts`:
   `application/vnd.recordare.musicxml+xml`. Title and description through
   `notation.remote.ts`; `relocate.ts`, the song and project cascades and
   the storage sum treat the rows exactly as PDFs.
+  **The score as a PDF** (2026-10-06): once the row is ready, the ready
+  route sets `pdf_status` to `pending` and posts a `notation-pdf` job
+  (`scheduleNotationPdf` in `jobs.ts`; the payload is
+  `{ kind: "notation-pdf", ids: [<notationId>] }`), and the jobs function
+  runs `renderNotationPdf` (`src/lib/server/notationPdf.ts`): the same
+  Verovio engine as the browser's, in Node, lays the file out for A4 at
+  full engraving scale (`utils/engraveNotationPages.ts`, fixed pages;
+  `engraveNotation.ts` is the screen's one tall page) and
+  `utils/svgPagesToPdf.ts` writes every page's SVG into one A4 PDF with
+  pdfkit and svg-to-pdfkit, text in pdfkit's built-in Times and Helvetica
+  (no font files ship with the function; the music glyphs are paths). The
+  PDF lands at `<id>.pdf` beside the file, in the store the song's privacy
+  calls for (`notationPdfPathname`; unstamped, since the file never
+  changes under its id), and the row gets `pdf_url`, `pdf_pathname` and
+  `pdf_status` `ready`, or `failed` with the error logged. Only the jobs
+  function imports `notationPdf.ts`: the 7 MB engine stays out of the
+  page functions. `/f/<code>?download=pdf` streams the PDF as an
+  attachment named after the file (`<name>.pdf`), a 404 until it is
+  ready; for a `song_pdf` code the same switch streams the PDF itself.
+  `relocate.ts`, removal and the cascades move or delete the PDF with the
+  file and thumbnail; like the thumbnails, a derived file, it is not
+  counted toward the account's storage.
 - **MIDI files per stem** (`…/midi/<stemId>-<stamp>.mid`, columns
   `stem.midi_*`): "Upload MIDI" in the row menu reserves the pathname on
   the stem (`/api/stems/[id]/midi`), the browser uploads through the same

@@ -2,7 +2,7 @@ import * as v from "valibot";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
-import { SongDocKindSchema } from "./SongDocKindSchema";
+import { SongDocSaveKindSchema } from "./SongDocKindSchema";
 
 /** "major.minor.patch", each a plain number. */
 export const SongVersionSchema = v.pipe(
@@ -48,10 +48,10 @@ export const SongSettingsSchema = v.object({
 
 export type SongSettings = v.InferOutput<typeof SongSettingsSchema>;
 
-/** Form boundary for saving a song document (chart or lyrics). */
+/** Form boundary for saving a song document (chart, lyrics or notes) or the caller's private note ("mynotes"). */
 export const SongDocSaveSchema = v.object({
 	songId: NanoIdSchema,
-	kind: SongDocKindSchema,
+	kind: SongDocSaveKindSchema,
 	markdown: v.pipe(v.string(), v.maxLength(200_000)),
 	/** "true" on the second submit of an intentionally empty document (hidden inputs carry strings). */
 	confirmEmpty: v.optional(v.picklist(["true", "false"]), "false"),

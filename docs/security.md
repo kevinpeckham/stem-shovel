@@ -42,7 +42,7 @@ What protects what, and where each rule lives. The first security pass ran on
 
 - Every mutation's data passes a valibot schema (`src/lib/val/`); ids are
   nanoids, slugs are checked, lengths are bounded.
-- Rendered markdown (charts, lyrics, notes, user docs) goes through
+- Rendered markdown (charts, lyrics, notes, private notes, user docs) goes through
   `renderMarkdown` → `sanitize.ts`: an element and attribute allowlist,
   `http(s)`/`mailto`/`tel`/relative URLs only, ids only on footnotes (DOM
   clobbering). Every `{@html}` in the app renders that output or a constant.
@@ -77,7 +77,12 @@ What protects what, and where each rule lives. The first security pass ran on
   parse: the server never parses untrusted XML (no entity expansion, no
   DTD fetches); Verovio renders the file in a worker in the browser. A file
   that fails the sniff is deleted with its row; the thumbnail is checked
-  and capped as a PDF's, and the permanent link works the same way.
+  and capped as a PDF's, and the permanent link works the same way. The
+  PDF the jobs function engraves from the file (Verovio in Node, the same
+  engine the browser runs; `src/lib/server/notationPdf.ts`) is written
+  beside the file in the same store and served through `/f/<code>?download=pdf`
+  under the same code; Verovio reads the file in WebAssembly, and a file
+  it cannot read marks the render failed, nothing more.
 
 ## Sessions and cookies
 
@@ -168,6 +173,15 @@ viewer still has: the account's private work is theirs to see, and
 comments are the one mutation open to them (`memberOf(…, { viewers: true })`).
 Owner-only and admin-only actions check the role themselves in
 `accounts.remote.ts`.
+
+A person's **private note on a song** (`song_user_note`, the `mynotes`
+kind of `saveDoc`) is theirs alone: it is read and written with their user
+id (`getUserNote`, `saveUserNote`), never returned for anyone else, never
+listed, and left out of exports and share links. Keeping one needs only
+signing in and being able to view the song by the song page's own rules
+(`songViewerOf` in `access.ts` runs `canViewSong`: members and project
+viewers, or a share code the visitor carries), not the editor role the
+shared documents need; it answers 401 signed out and 404 otherwise.
 
 ## Rate limits
 

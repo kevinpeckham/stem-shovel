@@ -184,7 +184,7 @@
 		<!-- The drag handle is a pointer affordance; the toolbar button and Minimise cover the keyboard. -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<header
-			class="flex items-center gap-3 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none {floating
+			class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none {floating
 				? 'lg-cursor-move lg-touch-none'
 				: ''}"
 			{onpointerdown}

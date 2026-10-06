@@ -6,7 +6,7 @@ import { ENV } from "varlock/env";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Background work (renditions, mixes, notes) runs in the app's own jobs
+ * Background work (renditions, mixes, notes, notation PDFs) runs in the app's own jobs
  * function, `POST /api/jobs`, not in the function that served the page: the
  * page functions then never load ffmpeg or the transcription stack, which
  * keeps their cold starts short and their bundles small (docs/environment.md
@@ -64,3 +64,6 @@ export const scheduleDemoPlayback = (demoIds: string[]) => scheduleJob("demo-pla
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export const scheduleRecordingPlayback = (recordingIds: string[]) =>
 	scheduleJob("recording-playback", recordingIds);
+/** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */
+export const scheduleNotationPdf = (notationId: string) =>
+	scheduleJob("notation-pdf", [notationId]);

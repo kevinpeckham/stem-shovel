@@ -48,7 +48,7 @@ import {
 import { accessOfSongId } from "$lib/server/relocate";
 import { db, schema } from "$lib/server/db";
 import { barGrid } from "$lib/audio/measures";
-import { hashMarkdown } from "$lib/server/markdown";
+import { hashMarkdown, renderMarkdown } from "$lib/server/markdown";
 import { labelFromFilename } from "$lib/utils/labelFromFilename";
 import { MAX_PDFS_PER_SONG } from "$lib/constants/pdfFormats";
 import {
@@ -128,6 +128,7 @@ const {
 	song,
 	stem,
 	songDocVersion,
+	songUserNote,
 	demo,
 	invitation,
 	inviteCode,
@@ -978,14 +979,18 @@ export async function deleteSong(accountId: string, songId: string) {
 		.from(songPdf)
 		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.songId, songId)));
 	const notation = await db
-		.select({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl })
+		.select({
+			url: songNotation.url,
+			thumbnailUrl: songNotation.thumbnailUrl,
+			pdfUrl: songNotation.pdfUrl,
+		})
 		.from(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.songId, songId)));
 	await deleteBlobs([
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
 		...pdfs.flatMap((p) => [p.url, p.thumbnailUrl ?? ""]),
-		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? ""]),
+		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? "", n.pdfUrl ?? ""]),
 		s?.mixUrl ?? "",
 	]);
 	const owned = await db.query.song.findFirst({
@@ -3134,7 +3139,7 @@ export async function createPdf(
 	accountId: string,
 	userId: string,
 	songId: string,
-	file: { filename: string; sizeBytes: number },
+	file: { filename: string; sizeBytes: number; isNotation?: boolean },
 ) {
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
@@ -3154,6 +3159,7 @@ export async function createPdf(
 			accountId,
 			songId,
 			title: labelFromFilename(file.filename),
+			isNotation: file.isNotation ?? false,
 			url: "",
 			pathname: pdfPathname(accountId, songId, id),
 			filename: file.filename,
@@ -3211,14 +3217,16 @@ export async function failPdf(accountId: string, pdfId: string) {
 	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
 }
 
+/** Title and description; `isNotation` only when the caller sets it. */
 export async function updatePdf(
 	accountId: string,
 	pdfId: string,
-	fields: { title: string; description: string },
+	fields: { title: string; description: string; isNotation?: boolean },
 ) {
+	const { isNotation, ...words } = fields;
 	const [row] = await db
 		.update(songPdf)
-		.set(fields)
+		.set(isNotation === undefined ? words : { ...words, isNotation })
 		.where(and(eq(songPdf.accountId, accountId), eq(songPdf.id, pdfId)))
 		.returning();
 	return row ?? null;
@@ -3300,7 +3308,7 @@ export async function recordNotationUrl(pathname: string, url: string) {
 		.where(and(eq(songNotation.pathname, pathname), eq(songNotation.status, "uploading")));
 }
 
-/** Step 3: the file checked, the thumbnail stored, the row ready. */
+/** Step 3: the file checked, the thumbnail stored, the row ready; the PDF is owed (`pdfStatus` pending), the caller schedules it. */
 export async function markNotationReady(
 	accountId: string,
 	notationId: string,
@@ -3313,7 +3321,7 @@ export async function markNotationReady(
 ) {
 	const [row] = await db
 		.update(songNotation)
-		.set({ ...data, status: "ready" })
+		.set({ ...data, status: "ready", pdfStatus: "pending" })
 		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
 		.returning();
 	return row ?? null;
@@ -3324,8 +3332,12 @@ export async function failNotation(accountId: string, notationId: string) {
 	const [row] = await db
 		.delete(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
-		.returning({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl });
-	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+		.returning({
+			url: songNotation.url,
+			thumbnailUrl: songNotation.thumbnailUrl,
+			pdfUrl: songNotation.pdfUrl,
+		});
+	if (row) await deleteBlobs([row.url, row.thumbnailUrl ?? "", row.pdfUrl ?? ""]);
 }
 
 export async function updateNotation(
@@ -3341,22 +3353,61 @@ export async function updateNotation(
 	return row ?? null;
 }
 
+/** The file, its thumbnail and its rendered PDF gone from the store and the song. */
 export async function deleteNotation(accountId: string, notationId: string) {
 	const [row] = await db
 		.delete(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), eq(songNotation.id, notationId)))
-		.returning({ url: songNotation.url, thumbnailUrl: songNotation.thumbnailUrl });
+		.returning({
+			url: songNotation.url,
+			thumbnailUrl: songNotation.thumbnailUrl,
+			pdfUrl: songNotation.pdfUrl,
+		});
 	if (!row) return false;
-	await deleteBlobs([row.url, row.thumbnailUrl ?? ""]);
+	await deleteBlobs([row.url, row.thumbnailUrl ?? "", row.pdfUrl ?? ""]);
 	return true;
 }
 
-/** The notation file a permanent link names (`/f/<code>`), ready ones only. */
+/** The notation file a permanent link names (`/f/<code>`), ready ones only, with its PDF when that is ready too. */
 export function notationByShareCode(code: string) {
 	return db.query.songNotation.findFirst({
 		where: and(eq(songNotation.shareCode, code), eq(songNotation.status, "ready")),
-		columns: { url: true, filename: true, title: true, format: true, contentType: true },
+		columns: {
+			url: true,
+			filename: true,
+			title: true,
+			format: true,
+			contentType: true,
+			pdfUrl: true,
+			pdfStatus: true,
+		},
 	});
+}
+
+/** What the jobs function needs to engrave a notation file's PDF (src/lib/server/notationPdf.ts); by id alone, as a job has no account. */
+export function notationForPdf(notationId: string) {
+	return db.query.songNotation.findFirst({
+		where: eq(songNotation.id, notationId),
+		columns: {
+			id: true,
+			accountId: true,
+			songId: true,
+			status: true,
+			url: true,
+			pathname: true,
+			filename: true,
+			pdfUrl: true,
+			pdfStatus: true,
+		},
+	});
+}
+
+/** The rendered PDF's place on the row: where it landed and that it is ready, or that the render failed. */
+export async function setNotationPdf(
+	notationId: string,
+	data: { pdfUrl: string; pdfPathname: string; pdfStatus: "ready" } | { pdfStatus: "failed" },
+) {
+	await db.update(songNotation).set(data).where(eq(songNotation.id, notationId));
 }
 
 export function findUploadingDemo(accountId: string, pathname: string) {
@@ -4525,6 +4576,96 @@ export async function saveSongDoc(
 		);
 	}
 	return { ok: true, version: versionNumber, changed: true };
+}
+
+// ---- private song notes: one per user and song ---------------------------
+
+/** What the view rules need of a song by id (viewAccess.canViewSong), unscoped; null when there is none. */
+export async function songViewRow(songId: string) {
+	const row = await db.query.song.findFirst({
+		where: eq(song.id, songId),
+		columns: { id: true, accountId: true, projectId: true, isPrivate: true },
+		with: { project: { columns: { isPrivate: true, isRestricted: true } } },
+	});
+	return row ?? null;
+}
+
+/**
+ * The caller's own private note on a song ("mynotes"), or null before the
+ * first save. Takes the user id as well as the song: another person's note
+ * is never returned, and nothing lists them.
+ */
+export async function getUserNote(
+	songId: string,
+	userId: string,
+): Promise<{ markdown: string; html: string; version: number } | null> {
+	const row = await db.query.songUserNote.findFirst({
+		where: and(eq(songUserNote.songId, songId), eq(songUserNote.userId, userId)),
+		columns: { markdown: true, html: true, version: true },
+	});
+	return row ?? null;
+}
+
+/**
+ * Saves the caller's private note on a song, creating the row on the first
+ * save. Same rules as saveSongDoc: the wipe guard, a no-op save (same text)
+ * stays on the current version, a change bumps it; the sanitised HTML is
+ * stored beside the markdown. With `expectedVersion`, a save over a newer
+ * version (another tab of the same person) is refused.
+ */
+export async function saveUserNote(
+	songId: string,
+	userId: string,
+	accountId: string,
+	markdown: string,
+	expectedVersion?: number,
+	opts: { confirmEmpty?: boolean } = {},
+): Promise<SaveDocResult & { html?: string }> {
+	const owned = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!owned) return { ok: false, error: "Song not found." };
+	const existing = await db.query.songUserNote.findFirst({
+		where: and(eq(songUserNote.songId, songId), eq(songUserNote.userId, userId)),
+	});
+	const currentText = existing?.markdown ?? "";
+	const currentVersion = existing?.version ?? 0;
+	if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+		return {
+			ok: false,
+			error:
+				"Your note changed elsewhere (another tab, perhaps). Reload to see the latest and save again.",
+		};
+	}
+
+	const next = markdown.replace(/\r\n/g, "\n");
+	if (
+		next.trim() === "" &&
+		currentText.trim().length > DOC_WIPE_GUARD_CHARS &&
+		!opts.confirmEmpty
+	) {
+		return {
+			ok: false,
+			needsConfirm: true,
+			error: "This would empty your notes while they have content. Save again to confirm.",
+		};
+	}
+	if (next === currentText) {
+		return { ok: true, version: currentVersion, changed: false, html: existing?.html ?? "" };
+	}
+
+	const html = renderMarkdown(next);
+	const version = currentVersion + 1;
+	// One row per song and user (unique index): the first save inserts, the rest update it.
+	await db
+		.insert(songUserNote)
+		.values({ accountId, songId, userId, markdown: next, html, version })
+		.onConflictDoUpdate({
+			target: [songUserNote.songId, songUserNote.userId],
+			set: { markdown: next, html, version },
+		});
+	return { ok: true, version, changed: true, html };
 }
 
 // ---- app settings and the home page demo ----------------------------------

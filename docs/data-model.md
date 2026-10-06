@@ -180,6 +180,14 @@ erDiagram
   save writes a version row only when the SHA-256 changes, and the newest ten
   per document are kept. Text is stored in the row, not Blob: a few KB.
 
+- **song_user_note** — one person's private notepad on a song, the
+  `mynotes` document on the song page: `markdown`, its sanitised `html`
+  (rendered on save, so a page load renders nothing) and a `version` that
+  counts the saves that changed the text, one row per `(song_id, user_id)`.
+  Anyone signed in who may view the song keeps one (`data.getUserNote` /
+  `saveUserNote` take the user id); nobody else reads it, and it is never
+  listed, exported or shared. No history, unlike the shared documents.
+
 Not in the first cut, easy to add later: `mix` (saved fader/mute/solo state
 per song), stem versions (replicator's `audio_version` pattern), comments.
 
@@ -318,23 +326,24 @@ Indexes: `(song_id, sort_order)`, `(account_id)`.
 A PDF attached to a song (docs/uploads-and-blob.md, "PDFs"): one file in
 Blob with a first-page thumbnail the browser rendered and a permanent link.
 
-| column                 | type                        | notes                                          |
-| ---------------------- | --------------------------- | ---------------------------------------------- |
-| id                     | text PK                     |                                                |
-| account_id             | text FK → account (cascade) |                                                |
-| song_id                | text FK → song (cascade)    |                                                |
-| title                  | text not null default ''    | the filename minus its extension to begin with |
-| description            | text not null default ''    |                                                |
-| status                 | text                        | uploading / ready / failed                     |
-| url, pathname          | text                        | `accounts/<a>/songs/<s>/pdfs/<id>.pdf`         |
-| filename               | text                        |                                                |
-| size_bytes             | integer                     | counts toward the account's storage            |
-| page_count             | integer null                | as pdf.js read it in the browser               |
-| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file      |
-| thumbnail_pathname     | text null                   |                                                |
-| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`  |
-| uploaded_by            | text FK → user (set null)   |                                                |
-| created_at, updated_at | timestamp_ms                |                                                |
+| column                 | type                        | notes                                                |
+| ---------------------- | --------------------------- | ---------------------------------------------------- |
+| id                     | text PK                     |                                                      |
+| account_id             | text FK → account (cascade) |                                                      |
+| song_id                | text FK → song (cascade)    |                                                      |
+| title                  | text not null default ''    | the filename minus its extension to begin with       |
+| description            | text not null default ''    |                                                      |
+| status                 | text                        | uploading / ready / failed                           |
+| url, pathname          | text                        | `accounts/<a>/songs/<s>/pdfs/<id>.pdf`               |
+| filename               | text                        |                                                      |
+| size_bytes             | integer                     | counts toward the account's storage                  |
+| page_count             | integer null                | as pdf.js read it in the browser                     |
+| is_notation            | boolean not null default 0  | a score: listed on the Chart tab's notation view too |
+| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file            |
+| thumbnail_pathname     | text null                   |                                                      |
+| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`        |
+| uploaded_by            | text FK → user (set null)   |                                                      |
+| created_at, updated_at | timestamp_ms                |                                                      |
 
 ### song_notation
 
@@ -343,25 +352,27 @@ files"): MusicXML, compressed or not, in Blob, with a first-page thumbnail
 Verovio rendered in the browser and a permanent link. `song_pdf`'s shape
 plus the format.
 
-| column                 | type                        | notes                                                    |
-| ---------------------- | --------------------------- | -------------------------------------------------------- |
-| id                     | text PK                     |                                                          |
-| account_id             | text FK → account (cascade) |                                                          |
-| song_id                | text FK → song (cascade)    |                                                          |
-| title                  | text not null default ''    | the filename minus its extension to begin with           |
-| description            | text not null default ''    |                                                          |
-| format                 | text not null               | `mxl` (compressed) \| `musicxml` (`.musicxml` or `.xml`) |
-| status                 | text                        | uploading / ready / failed                               |
-| url, pathname          | text                        | `accounts/<a>/songs/<s>/notation/<id>.<ext>`             |
-| filename               | text                        |                                                          |
-| content_type           | text not null               | the MusicXML type the format calls for                   |
-| size_bytes             | integer                     | counts toward the account's storage                      |
-| page_count             | integer null                | as Verovio laid it out in the browser                    |
-| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file                |
-| thumbnail_pathname     | text null                   |                                                          |
-| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`            |
-| uploaded_by            | text FK → user (set null)   |                                                          |
-| created_at, updated_at | timestamp_ms                |                                                          |
+| column                 | type                        | notes                                                                        |
+| ---------------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| id                     | text PK                     |                                                                              |
+| account_id             | text FK → account (cascade) |                                                                              |
+| song_id                | text FK → song (cascade)    |                                                                              |
+| title                  | text not null default ''    | the filename minus its extension to begin with                               |
+| description            | text not null default ''    |                                                                              |
+| format                 | text not null               | `mxl` (compressed) \| `musicxml` (`.musicxml` or `.xml`)                     |
+| status                 | text                        | uploading / ready / failed                                                   |
+| url, pathname          | text                        | `accounts/<a>/songs/<s>/notation/<id>.<ext>`                                 |
+| filename               | text                        |                                                                              |
+| content_type           | text not null               | the MusicXML type the format calls for                                       |
+| size_bytes             | integer                     | counts toward the account's storage                                          |
+| page_count             | integer null                | as Verovio laid it out in the browser                                        |
+| thumbnail_url          | text null                   | `<id>.thumb-<stamp>.webp` beside the file                                    |
+| thumbnail_pathname     | text null                   |                                                                              |
+| pdf_url, pdf_pathname  | text null                   | the score engraved as a PDF by the jobs function, `<id>.pdf` beside the file |
+| pdf_status             | text null                   | null until ready; pending / ready / failed                                   |
+| share_code             | text not null unique        | nanoid(16); the permanent link is `/f/<code>`                                |
+| uploaded_by            | text FK → user (set null)   |                                                                              |
+| created_at, updated_at | timestamp_ms                |                                                                              |
 
 ### song_doc_version
 
@@ -378,6 +389,22 @@ plus the format.
 | updated_at     | timestamp_ms              |                            |
 
 Index: `(song_id, kind, version_number)`.
+
+### song_user_note
+
+| column                 | type                      | notes                                      |
+| ---------------------- | ------------------------- | ------------------------------------------ |
+| id                     | text PK                   |                                            |
+| account_id             | text FK → account         | denormalized from the song                 |
+| song_id                | text FK → song (cascade)  |                                            |
+| user_id                | text FK → user (cascade)  | the note's only reader                     |
+| markdown               | text not null, default "" | the person's private note                  |
+| html                   | text not null, default "" | `renderMarkdown(markdown)`, stored on save |
+| version                | integer not null, 0       | counts saves that changed the text         |
+| created_at, updated_at | timestamp_ms              |                                            |
+
+Unique `(song_id, user_id)`; indexes on `account_id`, `song_id`, `user_id`.
+Deleting the song or the user removes the rows (`cascade.ts`).
 
 ### share_link
 

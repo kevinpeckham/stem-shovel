@@ -173,7 +173,10 @@ fields are `$state`, so components read `engine.position` directly.
   a chart, lyrics or notes document (its sanitised HTML) and, when
   `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
   remote form, so the document is edited without leaving the song; a save
-  re-renders through `invalidateAll()`. In the panel the editor runs in
+  re-renders through `invalidateAll()`. The form's fourth kind, `mynotes`,
+  is the signed-in person's private note on the song (`song_user_note`,
+  loaded as the page's `myNote`): any viewer of the song keeps one, and the
+  save answers with the rendered `html` as well as the version. In the panel the editor runs in
   its `mode="embedded"`: autosave (a save 1.5 s after the last change, ⌘S
   at once; no Save button or version, except the Save that confirms an
   emptied document), no title, the hint as the ⓘ tooltip, no shading, the

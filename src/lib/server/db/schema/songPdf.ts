@@ -13,7 +13,8 @@ import { user } from "./user";
  * thumbnail the uploader's browser rendered, and a share code that is its
  * permanent address (`/f/<code>`), whichever store the file is in. Same
  * reserve → upload → ready lifecycle as a demo; the server checks the
- * file's first bytes before calling it ready.
+ * file's first bytes before calling it ready. `isNotation` marks a PDF
+ * that is a score, which the Chart tab lists beside the notation files.
  */
 export const songPdf = table(
 	"song_pdf",
@@ -36,6 +37,8 @@ export const songPdf = table(
 		filename: t.text("filename").notNull(),
 		sizeBytes: t.integer("size_bytes").notNull(),
 		pageCount: t.integer("page_count"),
+		/** A score (notation as a PDF): shown on the Chart tab's notation view as well as the PDFs tab. */
+		isNotation: t.integer("is_notation", { mode: "boolean" }).notNull().default(false),
 		thumbnailUrl: t.text("thumbnail_url"),
 		thumbnailPathname: t.text("thumbnail_pathname"),
 		/** The permanent link's secret: `/f/<code>` (nanoid, 16). */

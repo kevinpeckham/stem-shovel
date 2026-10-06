@@ -17,6 +17,7 @@ import {
 	memberOf,
 	requireUser,
 	isEditor,
+	songViewerOf,
 } from "$lib/server/access";
 import {
 	createSong as create,
@@ -28,6 +29,7 @@ import {
 	renameStem as rename,
 	reorderStems as reorder,
 	saveSongDoc,
+	saveUserNote,
 	setSongVersion as setVersion,
 	songForMix,
 	chartExamples,
@@ -56,6 +58,7 @@ import {
 import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
 import { renderMarkdown } from "$lib/server/markdown";
 import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
+import { MY_NOTES_KIND } from "$lib/val/SongDocKindSchema";
 import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
 import { SongCreditAddSchema } from "$lib/val/ArtistSchema";
 import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
@@ -97,16 +100,33 @@ export const updateSong = form(
  * Save a song document (chart, lyrics or notes) from the editor. Returns the new
  * version number; a no-op save reports `changed: false`. Blanking a document
  * that has content is refused once (`needsConfirm`) so a second submit with
- * `confirmEmpty` is required.
+ * `confirmEmpty` is required. The kind "mynotes" is the caller's private note
+ * on the song (song_user_note): anyone signed in who may view the song keeps
+ * one, editor or not, and the save answers with its rendered `html` too.
  */
 export const saveDoc = form(
 	SongDocSaveSchema,
 	async ({ songId, kind, markdown, confirmEmpty }, issue) => {
 		const { locals } = getRequestEvent();
+		const opts = { confirmEmpty: confirmEmpty === "true" };
+		if (kind === MY_NOTES_KIND) {
+			const { accountId, userId } = await songViewerOf(locals, songId);
+			const result = await saveUserNote(songId, userId, accountId, markdown, undefined, opts);
+			if (!result.ok) {
+				if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
+				invalid(issue.markdown(result.error));
+			}
+			return { version: result.version, changed: result.changed, html: result.html ?? "" };
+		}
 		const { accountId } = await memberOf(locals, accountOfSong, songId);
-		const result = await saveSongDoc(accountId, requireUser(locals).id, songId, kind, markdown, {
-			confirmEmpty: confirmEmpty === "true",
-		});
+		const result = await saveSongDoc(
+			accountId,
+			requireUser(locals).id,
+			songId,
+			kind,
+			markdown,
+			opts,
+		);
 		if (!result.ok) {
 			if (result.needsConfirm) return { needsConfirm: true as const, error: result.error };
 			invalid(issue.markdown(result.error));

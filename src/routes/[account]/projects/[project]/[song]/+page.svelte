@@ -315,10 +315,24 @@
 	const PANELS = [...DOC_KINDS, "comments", "pdfs"] as const;
 	type Panel = (typeof PANELS)[number];
 	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", pdfs: "PDFs" } as const;
-	/** The PDFs tab carries its count, as the player's Stems and Demos tabs do (Kevin). */
+	/** The tabs carry their counts, as the player's Stems and Demos tabs do (Kevin): the PDFs, the comments, and the Chart's uploads (notation files and PDFs marked as notation), or 1 for chart text with no uploads. */
 	let pdfCount = $derived(data.song.pdfs.filter((p) => p.status === "ready").length);
-	const tabLabel = (kind: Panel) =>
-		kind === "pdfs" ? `${PANEL_LABELS.pdfs} (${pdfCount})` : PANEL_LABELS[kind];
+	let notationPdfs = $derived(data.song.pdfs.filter((p) => p.status === "ready" && p.isNotation));
+	let notationCount = $derived(
+		data.song.notation.filter((n) => n.status === "ready").length + notationPdfs.length,
+	);
+	let chartCount = $derived(notationCount || (data.docs.chart ? 1 : 0));
+	const tabLabel = (kind: Panel) => {
+		const count =
+			kind === "pdfs"
+				? pdfCount
+				: kind === "comments"
+					? data.comments.length
+					: kind === "chart"
+						? chartCount
+						: 0;
+		return count ? `${PANEL_LABELS[kind]} (${count})` : PANEL_LABELS[kind];
+	};
 	/** Switch the right-hand panel, closing an open editor first. */
 	async function showPanel(kind: Panel) {
 		if (kind === panel) return;
@@ -393,7 +407,7 @@
 	type ChartMode = "text" | "notation";
 	let chartChoice = $state<ChartMode | null>(null);
 	let chartMode = $derived<ChartMode>(
-		chartChoice ?? (!data.docs.chart && data.song.notation.length > 0 ? "notation" : "text"),
+		chartChoice ?? (!data.docs.chart && notationCount > 0 ? "notation" : "text"),
 	);
 	const CHART_MODE_KEY = "stemshovel.song.chart-mode";
 	async function setChartMode(mode: ChartMode) {
@@ -408,6 +422,29 @@
 		}
 	}
 	let notationShown = $derived(panel === "chart" && chartMode === "notation");
+	/**
+	 * The Notes tab shows the project's notes, or the signed-in user's own
+	 * private note on the song (Kevin: a notepad of one's own), on a Project /
+	 * Mine toggle; remembered per browser. Signed out there is only the
+	 * project's.
+	 */
+	let notesChoice = $state(false);
+	/** Signed in, a note of one's own exists to show, empty until the first save. */
+	let canHaveNote = $derived(!!data.user);
+	let myNote = $derived(data.myNote ?? { markdown: "", html: "", version: 0 });
+	let notesMine = $derived(panel === "notes" && notesChoice && canHaveNote);
+	const NOTES_MINE_KEY = "stemshovel.song.notes-mine";
+	async function setNotesMine(on: boolean) {
+		if (on === notesChoice) return;
+		if (docEditing) await docPanel?.close();
+		docEditing = false;
+		notesChoice = on;
+		try {
+			localStorage.setItem(NOTES_MINE_KEY, on ? "1" : "0");
+		} catch {
+			// Private mode: the choice lasts for this page only.
+		}
+	}
 	/** The notation picker, from the Uploads menu: the panel back, the Chart tab in notation mode, then the picker. */
 	async function pickNotation() {
 		if (docsMode === "minimised") await setDocsMode(docsRestore);
@@ -484,6 +521,7 @@
 			if (pm === "docked" || pm === "floating" || pm === "minimised") playerMode = pm;
 			const cm = localStorage.getItem(CHART_MODE_KEY);
 			if (cm === "text" || cm === "notation") chartChoice = cm;
+			notesChoice = localStorage.getItem(NOTES_MINE_KEY) === "1";
 		} catch {
 			// Private mode: docked.
 		}
@@ -516,7 +554,7 @@
 							id: "upload-notation",
 							label: "Upload Notation",
 							iconClass: "i-ph-music-notes-simple",
-							title: "MusicXML: one or more .mxl or .musicxml files",
+							title: "MusicXML or PDF: one or more files",
 							action: () => notationPanel?.pick(),
 						},
 					]
@@ -2509,7 +2547,7 @@
 					}))}
 				/>
 				<div
-					class="hidden overflow-hidden rounded border border-white/15 items-center sm:flex"
+					class="hidden shrink-0 overflow-hidden rounded border border-white/15 items-center sm:flex"
 					role="tablist"
 					aria-label="Document"
 				>
@@ -2530,7 +2568,7 @@
 						>
 					{/each}
 				</div>
-				<div class="flex items-stretch gap-2 {data.canEdit ? '' : 'hidden'}">
+				<div class="flex items-stretch gap-2 {data.canEdit || notesMine ? '' : 'hidden'}">
 					{#if panel === "comments"}
 						<button
 							class="button button-xs flex items-center"
@@ -2567,8 +2605,12 @@
 								? 'bg-blue-300 text-oxford border-blue-300'
 								: ''}"
 							type="button"
-							title={docEditing ? `Done editing the ${doc}` : `Edit the ${doc} here`}
-							aria-label={docEditing ? `Done editing the ${doc}` : `Edit the ${doc}`}
+							title={docEditing
+								? `Done editing ${notesMine ? "your notes" : `the ${doc}`}`
+								: `Edit ${notesMine ? "your notes" : `the ${doc}`} here`}
+							aria-label={docEditing
+								? `Done editing ${notesMine ? "your notes" : `the ${doc}`}`
+								: `Edit ${notesMine ? "your notes" : `the ${doc}`}`}
 							aria-pressed={docEditing}
 							onclick={async () => {
 								if (docEditing) await docPanel?.close();
@@ -2580,7 +2622,7 @@
 									? docSaving
 										? "i-ph-circle-notch animate-spin"
 										: "i-ph-check"
-									: data.docs[doc]
+									: (notesMine ? myNote.html : data.docs[doc])
 										? "i-ph-pencil"
 										: "i-ph-plus"}
 							></span>
@@ -2612,8 +2654,8 @@
 					></span>
 				</button>
 			{/snippet}
-			{#if panel === "chart" || docEditing}
-				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, and Text / Notation on the Chart tab (Kevin). -->
+			{#if panel === "chart" || (panel === "notes" && canHaveNote) || docEditing}
+				<!-- Stuck to the panel's top right: the editor's pane while a document is edited, Text / Notation on the Chart tab, Project / Mine on the Notes tab (Kevin). -->
 				<div
 					class="sticky top-0 z-10 flex items-start justify-end gap-2 h-0 overflow-visible pointer-events-none"
 				>
@@ -2639,13 +2681,38 @@
 							{/each}
 						</div>
 					{/if}
+					{#if panel === "notes" && canHaveNote}
+						<div
+							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
+							role="radiogroup"
+							aria-label="Whose notes"
+						>
+							{#each [{ id: false, label: "Project" }, { id: true, label: "Mine" }] as m, index (m.label)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={notesChoice === m.id}
+									title={m.id
+										? "A private note of your own on this song"
+										: "The notes everyone on the project sees"}
+									class="{notesChoice === m.id
+										? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
+										: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+									0
+										? 'rounded-r-none border-r-none'
+										: 'rounded-l-none'}"
+									onclick={() => void setNotesMine(m.id)}>{m.label}</button
+								>
+							{/each}
+						</div>
+					{/if}
 					{#if panel === "chart"}
 						<div
 							class="pointer-events-auto flex overflow-hidden rounded border border-white/15 bg-oxford/95 shadow-md shadow-black/40"
 							role="radiogroup"
 							aria-label="Chart mode"
 						>
-							{#each [{ id: "text", label: "Text" }, { id: "notation", label: `Notation (${data.song.notation.filter((n) => n.status === "ready").length})` }] as m, index (m.id)}
+							{#each [{ id: "text", label: "Text" }, { id: "notation", label: `Notation (${notationCount})` }] as m, index (m.id)}
 								<button
 									type="button"
 									role="radio"
@@ -2733,6 +2800,7 @@
 					songId={data.song.id}
 					songTitle={data.song.title}
 					notation={data.song.notation}
+					pdfs={notationPdfs}
 					canEdit={data.canEdit}
 				/>
 			{:else if panel === "pdfs"}
@@ -2744,6 +2812,25 @@
 					pdfs={data.song.pdfs}
 					canEdit={data.canEdit}
 				/>
+			{:else if notesMine}
+				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
+				{#key `mynotes:${myNote.version}`}
+					<SongDocPanel
+						bind:this={docPanel}
+						songId={data.song.id}
+						kind="mynotes"
+						label="My notes"
+						hint="Your own notepad for this song. Nobody else sees it."
+						markdown={myNote.markdown}
+						html={myNote.html}
+						version={myNote.version}
+						canEdit={true}
+						bind:editing={docEditing}
+						bind:saving={docSaving}
+						view={docView}
+						mono={docMono.notes}
+					/>
+				{/key}
 			{:else}
 				{#key doc}
 					<SongDocPanel

@@ -9,25 +9,36 @@
 		NOTATION_MAX_BYTES,
 		notationFormatOf,
 	} from "$lib/constants/notationFormats";
+	import { MAX_PDFS_PER_SONG, PDF_MAX_BYTES } from "$lib/constants/pdfFormats";
 	import { deleteNotation, updateNotation } from "$lib/remote/notation.remote";
+	import { deletePdf, updatePdf } from "$lib/remote/pdfs.remote";
+	import type { PanelPdf } from "$lib/components/SongPdfPanel.svelte";
 	import { notify } from "$lib/state/notifications.svelte";
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatBytes } from "$lib/utils/formatBytes";
 	import { notationThumbnail } from "$lib/utils/notationThumbnail";
 	import { renderNotation } from "$lib/utils/renderNotation";
 	import { sanitizeSvg } from "$lib/utils/sanitizeSvg";
-	import { postJson, uploadNotationFile, type NotationReservation } from "$lib/upload";
+	import {
+		postJson,
+		uploadNotationFile,
+		uploadPdfFile,
+		type NotationReservation,
+		type PdfReservation,
+	} from "$lib/upload";
 	import type { Attachment } from "svelte/attachments";
 
 	/**
 	 * The notation files attached to a song (docs/uploads-and-blob.md,
 	 * "Notation"), the Chart tab's notation mode (Kevin): MusicXML, as
-	 * Dorico and the rest export it, compressed or not. Tiles as the PDFs',
-	 * with the first page Verovio drew at upload time, a ⋯ menu (open,
-	 * download, edit, remove) and a Share menu; a tile's page opens the
-	 * score in a panel, every page engraved for the panel's width by Verovio
-	 * in a worker (the engine loads only then). The page owns the list and
-	 * reloads it after a change.
+	 * Dorico and the rest export it, compressed or not, and the song's PDFs
+	 * marked as notation (uploaded here, or flagged on the PDFs tab). Tiles
+	 * as the PDFs', with the first page Verovio drew at upload time, a ⋯
+	 * menu (open, download, the rendered PDF, edit, remove) and a Share
+	 * menu; a tile's page opens the score in a panel, every page engraved
+	 * for the panel's width by Verovio in a worker (the engine loads only
+	 * then), a PDF in the browser's reader. The page owns the lists and
+	 * reloads them after a change.
 	 */
 	export interface PanelNotation {
 		id: string;
@@ -41,21 +52,36 @@
 		thumbnailUrl: string | null;
 		shareCode: string;
 		status: string;
+		/** The PDF the server rendered from it (docs/uploads-and-blob.md, "Notation"). */
+		pdfStatus: "pending" | "ready" | "failed" | null;
 	}
+	/** A tile: a MusicXML file, or a PDF marked as notation. */
+	type Tile = { kind: "xml"; row: PanelNotation } | { kind: "pdf"; row: PanelPdf };
 	interface Props {
 		songId: string;
 		/** The song's title, for the email's subject. */
 		songTitle: string;
 		notation: PanelNotation[];
+		/** The song's PDFs marked as notation. */
+		pdfs?: PanelPdf[];
 		canEdit: boolean;
 	}
-	let { songId, songTitle, notation, canEdit }: Props = $props();
+	let { songId, songTitle, notation, pdfs = [], canEdit }: Props = $props();
 
-	let ready = $derived(notation.filter((n) => n.status === "ready" && n.url));
+	let ready = $derived<Tile[]>([
+		...notation
+			.filter((n) => n.status === "ready" && n.url)
+			.map((row) => ({ kind: "xml" as const, row })),
+		...pdfs
+			.filter((p) => p.status === "ready" && p.url)
+			.map((row) => ({ kind: "pdf" as const, row })),
+	]);
+	const isPdfName = (name: string) => /\.pdf$/i.test(name);
 	let jobs = $state<{ name: string; percent: number; error?: string }[]>([]);
 	let busy = $state(false);
 	let picker = $state<HTMLInputElement | null>(null);
 	let full = $derived(busy || notation.length >= MAX_NOTATION_PER_SONG);
+	const ACCEPT = `${NOTATION_ACCEPT},.pdf,application/pdf`;
 	/** The page's Uploads menu and the panel's ⋯ menu open the same picker. */
 	export function pick() {
 		picker?.click();
@@ -66,15 +92,45 @@
 		input.value = "";
 		if (files.length === 0) return;
 		const room = Math.max(0, MAX_NOTATION_PER_SONG - notation.length);
-		const picked = files.slice(0, room);
-		if (picked.length < files.length)
+		const xmlFiles = files.filter((f) => !isPdfName(f.name));
+		if (xmlFiles.length > room)
 			notify(
 				`A song can have at most ${MAX_NOTATION_PER_SONG} notation files; the first ${room} were taken`,
 				{ kind: "error" },
 			);
+		const picked = files.filter((f) => isPdfName(f.name) || xmlFiles.indexOf(f) < room);
 		busy = true;
 		jobs = picked.map((f) => ({ name: f.name, percent: 0 }));
+		let pdfRoom = Math.max(0, MAX_PDFS_PER_SONG - pdfs.length);
 		for (const [i, file] of picked.entries()) {
+			if (isPdfName(file.name)) {
+				// A PDF of a score: the PDFs' flow, flagged as notation, so it shows on both views.
+				if (file.size > PDF_MAX_BYTES) {
+					jobs[i].error = `Over ${formatBytes(PDF_MAX_BYTES)}`;
+					continue;
+				}
+				if (pdfRoom <= 0) {
+					jobs[i].error = `A song can have at most ${MAX_PDFS_PER_SONG} PDFs`;
+					continue;
+				}
+				try {
+					await uploadPdfFile(
+						file,
+						() =>
+							postJson<PdfReservation>("/api/pdfs", {
+								songId,
+								filename: file.name,
+								sizeBytes: file.size,
+								notation: true,
+							}),
+						(percent) => (jobs[i].percent = percent),
+					);
+					pdfRoom--;
+				} catch (e) {
+					jobs[i].error = errorMessage(e);
+				}
+				continue;
+			}
 			if (!notationFormatOf(file.name)) {
 				jobs[i].error = `Not MusicXML (${NOTATION_EXTENSIONS.map((e) => `.${e}`).join(", ")})`;
 				continue;
@@ -109,15 +165,17 @@
 	let draftTitle = $state("");
 	let draftDescription = $state("");
 	let saving = $state(false);
-	function startEdit(n: PanelNotation) {
-		editing = n.id;
-		draftTitle = n.title;
-		draftDescription = n.description;
+	function startEdit(t: Tile) {
+		editing = t.row.id;
+		draftTitle = t.row.title;
+		draftDescription = t.row.description;
 	}
-	async function saveEdit(id: string) {
+	async function saveEdit(t: Tile) {
 		saving = true;
 		try {
-			await updateNotation({ id, title: draftTitle, description: draftDescription });
+			const words = { id: t.row.id, title: draftTitle, description: draftDescription };
+			if (t.kind === "xml") await updateNotation(words);
+			else await updatePdf(words);
 			editing = null;
 			await invalidateAll();
 		} catch (e) {
@@ -126,22 +184,34 @@
 			saving = false;
 		}
 	}
-	async function remove(n: PanelNotation) {
-		if (!confirm(`Remove "${nameOf(n)}" from this song? The file is deleted.`)) return;
+	async function remove(t: Tile) {
+		if (!confirm(`Remove "${nameOf(t)}" from this song? The file is deleted.`)) return;
 		try {
-			await deleteNotation({ id: n.id });
-			notify(`${nameOf(n)} removed`);
-			if (viewing?.id === n.id) viewing = null;
+			if (t.kind === "xml") await deleteNotation({ id: t.row.id });
+			else await deletePdf({ id: t.row.id });
+			notify(`${nameOf(t)} removed`);
+			if (viewing?.row.id === t.row.id) viewing = null;
 			await invalidateAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	/** The permanent link's download switch: the file streamed as an attachment under its own name (`/f/[code]`). */
-	const downloadUrl = (n: PanelNotation) => `/f/${n.shareCode}?download=1`;
-	const linkOf = (n: PanelNotation) => `${window.location.origin}/f/${n.shareCode}`;
-	async function copyLink(n: PanelNotation) {
-		const url = linkOf(n);
+	/** A PDF unmarked as notation leaves this view (it stays on the PDFs tab). */
+	async function unmark(p: PanelPdf) {
+		try {
+			await updatePdf({ id: p.id, title: p.title, description: p.description, isNotation: false });
+			notify(`${p.title || p.filename} is a plain PDF again`);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** The permanent link's download switch: the file streamed as an attachment under its own name (`/f/[code]`); `pdf` for the PDF the server rendered. */
+	const downloadUrl = (t: Tile, pdf = false) =>
+		`/f/${t.row.shareCode}?download=${pdf && t.kind === "xml" ? "pdf" : "1"}`;
+	const linkOf = (t: Tile) => `${window.location.origin}/f/${t.row.shareCode}`;
+	async function copyLink(t: Tile) {
+		const url = linkOf(t);
 		try {
 			await navigator.clipboard.writeText(url);
 			notify("Link copied");
@@ -149,16 +219,18 @@
 			notify(url);
 		}
 	}
-	function mailLink(n: PanelNotation) {
-		const name = nameOf(n);
+	function mailLink(t: Tile) {
+		const name = nameOf(t);
 		const subject = `${songTitle}: ${name}`;
-		const body = `${name}\n${linkOf(n)}`;
+		const body = `${name}\n${linkOf(t)}`;
 		return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 	}
-	const nameOf = (n: PanelNotation) => n.title || n.filename;
+	const nameOf = (t: Tile) => t.row.title || t.row.filename;
+	const kindLabel = (t: Tile) =>
+		t.kind === "pdf" ? "PDF" : t.row.format === "mxl" ? "MXL" : "MusicXML";
 
 	// ---- the viewer: the score engraved for the panel's width ----
-	let viewing = $state<PanelNotation | null>(null);
+	let viewing = $state<Tile | null>(null);
 	let pages = $state<string[]>([]);
 	let rendering = $state(false);
 	let renderError = $state<string | null>(null);
@@ -166,24 +238,24 @@
 	let bytes: { id: string; data: ArrayBuffer } | null = null;
 	let renderTimer: ReturnType<typeof setTimeout> | null = null;
 	let renderRun = 0;
-	async function fileBytes(n: PanelNotation): Promise<ArrayBuffer> {
-		if (bytes?.id === n.id) return bytes.data;
+	async function fileBytes(t: Tile): Promise<ArrayBuffer> {
+		if (bytes?.id === t.row.id) return bytes.data;
 		// Through the permanent link, same origin, so a private song's file comes too.
-		const res = await fetch(downloadUrl(n));
+		const res = await fetch(downloadUrl(t));
 		if (!res.ok) throw new Error(`The file did not load (${res.status})`);
 		const data = await res.arrayBuffer();
-		bytes = { id: n.id, data };
+		bytes = { id: t.row.id, data };
 		return data;
 	}
 	async function render() {
-		const n = viewing;
-		if (!n || width < 100) return;
+		const t = viewing;
+		if (!t || t.kind !== "xml" || width < 100) return;
 		const run = ++renderRun;
 		rendering = true;
 		renderError = null;
 		try {
-			const data = await fileBytes(n);
-			const out = await renderNotation(data, n.filename, { width, scale: 40 });
+			const data = await fileBytes(t);
+			const out = await renderNotation(data, t.row.filename, { width, scale: 40 });
 			if (run !== renderRun) return;
 			pages = out.svgs.map(sanitizeSvg);
 		} catch (e) {
@@ -194,9 +266,9 @@
 			if (run === renderRun) rendering = false;
 		}
 	}
-	function open(n: PanelNotation) {
-		if (viewing?.id !== n.id) pages = [];
-		viewing = n;
+	function open(t: Tile) {
+		if (viewing?.row.id !== t.row.id) pages = [];
+		viewing = t;
 		void render();
 	}
 	/** The score follows the panel's width: measured here, re-engraved as it settles. */
@@ -236,35 +308,39 @@
 		<p class="opacity-70 text-14px">
 			No notation yet.{#if canEdit}
 				Upload MusicXML (.mxl or .musicxml, as Dorico, MuseScore and Sibelius export it) and the
-				score is engraved here.{/if}
+				score is engraved here, or a PDF of the score.{/if}
 		</p>
 	{:else}
 		<ul
 			class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
 			aria-label="Notation list"
 		>
-			{#each ready as n (n.id)}
+			{#each ready as t (t.row.id)}
+				{@const n = t.row}
 				<li
 					class="rounded-md border border-white/15 bg-black/20 p-2 grid gap-2 content-start"
-					aria-label={nameOf(n)}
+					aria-label={nameOf(t)}
 				>
 					<button
 						class="block aspect-[1/1.3] w-full overflow-hidden rounded bg-white/90 cursor-pointer"
 						type="button"
 						title="Open the score in a panel"
-						aria-label="Open {nameOf(n)}"
-						onclick={() => open(n)}
+						aria-label="Open {nameOf(t)}"
+						onclick={() => open(t)}
 					>
 						{#if n.thumbnailUrl}
 							<img
 								class="w-full h-full object-cover object-top"
 								src={n.thumbnailUrl}
-								alt="First page of {nameOf(n)}"
+								alt="First page of {nameOf(t)}"
 								loading="lazy"
 							/>
 						{:else}
 							<span class="flex h-full w-full items-center justify-center text-oxford">
-								<span class="i-ph-music-notes-simple text-40px" aria-hidden="true"></span>
+								<span
+									class="{t.kind === 'pdf' ? 'i-ph-file-pdf' : 'i-ph-music-notes-simple'} text-40px"
+									aria-hidden="true"
+								></span>
 							</span>
 						{/if}
 					</button>
@@ -273,7 +349,7 @@
 							class="grid gap-2 text-13px"
 							onsubmit={(e) => {
 								e.preventDefault();
-								void saveEdit(n.id);
+								void saveEdit(t);
 							}}
 						>
 							<input
@@ -304,8 +380,8 @@
 						</form>
 					{:else}
 						<div class="grid gap-0.5 min-w-0">
-							<h3 class="font-600 text-13px leading-tight truncate" title={nameOf(n)}>
-								{nameOf(n)}
+							<h3 class="font-600 text-13px leading-tight truncate" title={nameOf(t)}>
+								{nameOf(t)}
 							</h3>
 							{#if n.description}
 								<p class="text-12px opacity-85 line-clamp-2" title={n.description}>
@@ -313,12 +389,12 @@
 								</p>
 							{/if}
 							<p class="text-11px opacity-60 truncate" title={n.filename}>
-								{[formatBytes(n.sizeBytes), n.format === "mxl" ? "MXL" : "MusicXML"].join(" · ")}
+								{[formatBytes(n.sizeBytes), kindLabel(t)].join(" · ")}
 							</p>
 						</div>
 						<div class="flex items-center justify-between gap-1">
 							<ContextMenu
-								ariaLabel="Actions for {nameOf(n)}"
+								ariaLabel="Actions for {nameOf(t)}"
 								title="Open, download, edit, remove"
 								buttonBaseClasses="button button-xs"
 								position="bottom right"
@@ -328,15 +404,24 @@
 										label: "Open",
 										iconClass: "i-ph-arrows-out-simple",
 										title: "Open the score in a panel",
-										action: () => open(n),
+										action: () => open(t),
 									},
 									{
 										id: "download",
-										label: "Download",
+										label: t.kind === "pdf" ? "Download" : "Download MusicXML",
 										iconClass: "i-ph-download-simple",
-										title: "Download the MusicXML file",
+										title: t.kind === "pdf" ? "Download the PDF" : "Download the MusicXML file",
 										kind: "link",
-										href: downloadUrl(n),
+										href: downloadUrl(t),
+									},
+									{
+										id: "download-pdf",
+										label: "Download as PDF",
+										iconClass: "i-ph-file-pdf",
+										title: "The score as a PDF, rendered when it was uploaded",
+										condition: t.kind === "xml" && t.row.pdfStatus === "ready",
+										kind: "link",
+										href: downloadUrl(t, true),
 									},
 									{
 										id: "edit",
@@ -344,7 +429,15 @@
 										iconClass: "i-ph-pencil-simple",
 										title: "Change the title and description",
 										condition: canEdit,
-										action: () => startEdit(n),
+										action: () => startEdit(t),
+									},
+									{
+										id: "unmark",
+										label: "Not notation",
+										iconClass: "i-ph-file",
+										title: "A plain PDF: off this view, still on the PDFs tab",
+										condition: canEdit && t.kind === "pdf",
+										action: () => (t.kind === "pdf" ? unmark(t.row) : undefined),
 									},
 									{
 										id: "remove",
@@ -352,12 +445,12 @@
 										iconClass: "i-ph-trash",
 										title: "Remove this file from the song",
 										condition: canEdit,
-										action: () => remove(n),
+										action: () => remove(t),
 									},
 								]}
 							/>
 							<ContextMenu
-								ariaLabel="Share {nameOf(n)}"
+								ariaLabel="Share {nameOf(t)}"
 								title="Copy the permanent link, or share it by email"
 								iconClass="i-ph-share-network"
 								buttonBaseClasses="button button-xs"
@@ -368,7 +461,7 @@
 										label: "Copy link",
 										iconClass: "i-ph-link",
 										title: "A permanent link to this file",
-										action: () => copyLink(n),
+										action: () => copyLink(t),
 									},
 									{
 										id: "mail",
@@ -376,7 +469,7 @@
 										iconClass: "i-ph-envelope-simple",
 										title: "A new email with the link, in your mail app",
 										kind: "link",
-										href: mailLink(n),
+										href: mailLink(t),
 									},
 								]}
 							/>
@@ -386,7 +479,7 @@
 			{/each}
 		</ul>
 	{/if}
-	<!-- The viewer: every page engraved for the panel's width, in a panel dragged and resized from lg, docked here below. -->
+	<!-- The viewer: a score's pages engraved for the panel's width, or a PDF in the browser's reader, in a panel dragged and resized from lg, docked here below. -->
 	<FloatingPanel
 		open={viewing !== null}
 		title={viewing ? nameOf(viewing) : ""}
@@ -400,12 +493,23 @@
 				<a
 					class="button button-xs"
 					href={downloadUrl(viewing)}
-					title="Download the MusicXML file"
+					title={viewing.kind === "pdf" ? "Download the PDF" : "Download the MusicXML file"}
 					aria-label="Download {nameOf(viewing)}"
 				>
 					<span class="i-ph-download-simple" aria-hidden="true"></span>
 					Download
 				</a>
+				{#if viewing.kind === "xml" && viewing.row.pdfStatus === "ready"}
+					<a
+						class="button button-xs"
+						href={downloadUrl(viewing, true)}
+						title="The score as a PDF, rendered when it was uploaded"
+						aria-label="Download {nameOf(viewing)} as PDF"
+					>
+						<span class="i-ph-file-pdf" aria-hidden="true"></span>
+						PDF
+					</a>
+				{/if}
 				<button
 					class="button button-xs"
 					type="button"
@@ -418,7 +522,13 @@
 			{/if}
 		{/snippet}
 		<div class="min-h-full bg-white text-black rounded" {@attach measured} aria-live="polite">
-			{#if renderError}
+			{#if viewing?.kind === "pdf"}
+				<iframe
+					class="w-full h-full min-h-480px rounded bg-white"
+					src={viewing.row.url}
+					title={nameOf(viewing)}
+				></iframe>
+			{:else if renderError}
 				<p class="p-4 text-14px text-red-700">Could not engrave this file: {renderError}</p>
 			{:else if pages.length === 0}
 				<p class="p-4 text-14px opacity-60">{rendering ? "Engraving…" : "Loading…"}</p>
@@ -435,16 +545,16 @@
 		<div class="flex justify-end mt-auto pt-2">
 			<label
 				class="button button-sm cursor-pointer {full ? 'opacity-50 pointer-events-none' : ''}"
-				title="MusicXML: one or more .mxl or .musicxml files, up to {formatBytes(
+				title="MusicXML (.mxl or .musicxml, up to {formatBytes(
 					NOTATION_MAX_BYTES,
-				)} each"
+				)} each) or a PDF of the score (up to {formatBytes(PDF_MAX_BYTES)})"
 			>
 				<span class="i-ph-music-notes-simple" aria-hidden="true"></span>
 				{busy ? "Uploading…" : "Upload Notation"}
 				<input
 					class="sr-only"
 					type="file"
-					accept={NOTATION_ACCEPT}
+					accept={ACCEPT}
 					multiple
 					bind:this={picker}
 					disabled={full}

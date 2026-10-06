@@ -119,12 +119,13 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   and never reused: Blob serves a 30-day cache header. Each stem also gets an
   AAC playback rendition (`…play-<stamp>.m4a`, `src/lib/server/transcode.ts`,
   `ffmpeg-static`); the player streams it, downloads use the source.
-- **Background work goes through the jobs function.** Renditions, mixes and
-  notes transcription run in `POST /api/jobs` (its own Vercel function);
-  page loads, remote functions and API routes only call the `schedule*`
-  helpers in `src/lib/server/jobs.ts`. Never import `transcode.ts`,
-  `mix.ts` (beyond `mixKeyOf`) or `notes.ts` from page code: they carry
-  ffmpeg and tfjs, and a page function's cold start is what users feel
+- **Background work goes through the jobs function.** Renditions, mixes,
+  notes transcription and notation PDFs run in `POST /api/jobs` (its own
+  Vercel function); page loads, remote functions and API routes only call
+  the `schedule*` helpers in `src/lib/server/jobs.ts`. Never import
+  `transcode.ts`, `mix.ts` (beyond `mixKeyOf`), `notes.ts` or
+  `notationPdf.ts` from page code: they carry ffmpeg, tfjs and Verovio,
+  and a page function's cold start is what users feel
   (docs/environment.md "Cold starts and the jobs function"). Decide on the
   row you already hold before scheduling (`songsWantingMix`,
   `songWantsNotes`), so a visit with nothing to do posts nothing.

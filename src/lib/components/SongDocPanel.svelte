@@ -1,7 +1,7 @@
 <script lang="ts">
 	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
 	import { saveDoc } from "$lib/remote/songs.remote";
-	import type { SongDocKind } from "$lib/val/SongDocKindSchema";
+	import type { SongDocSaveKind } from "$lib/val/SongDocKindSchema";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { invalidateAll } from "$app/navigation";
 	import type { Snippet } from "svelte";
@@ -18,7 +18,7 @@
 	 */
 	interface Props {
 		songId: string;
-		kind: SongDocKind;
+		kind: SongDocSaveKind;
 		label: string;
 		hint: string;
 		/** The document's markdown (for the editor). */
@@ -234,7 +234,7 @@
 	>
 		{@render above?.()}
 		<p>
-			No {kind} yet.{#if canEdit}
+			No {kind === "mynotes" ? "notes of your own" : kind} yet.{#if canEdit}
 				<button class="ml-1 link-dim" type="button" onclick={() => (editing = true)}
 					>Write it.</button
 				>

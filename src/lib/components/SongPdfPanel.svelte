@@ -31,6 +31,8 @@
 		thumbnailUrl: string | null;
 		shareCode: string;
 		status: string;
+		/** A score: shown on the Chart tab's notation view as well (Kevin). */
+		isNotation: boolean;
 	}
 	interface Props {
 		songId: string;
@@ -40,6 +42,16 @@
 		canEdit: boolean;
 	}
 	let { songId, songTitle, pdfs, canEdit }: Props = $props();
+	/** A PDF marked as notation (or not): it joins or leaves the Chart tab's notation view. */
+	async function setNotation(p: PanelPdf, on: boolean) {
+		try {
+			await updatePdf({ id: p.id, title: p.title, description: p.description, isNotation: on });
+			notify(on ? `${nameOf(p)} shows as notation` : `${nameOf(p)} is a plain PDF again`);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 
 	let ready = $derived(pdfs.filter((p) => p.status === "ready" && p.url));
 	let jobs = $state<{ name: string; percent: number; error?: string }[]>([]);
@@ -238,7 +250,9 @@
 								</p>
 							{/if}
 							<p class="text-11px opacity-60 truncate" title={p.filename}>
-								{[pagesLabel(p.pageCount), formatBytes(p.sizeBytes)].filter(Boolean).join(" · ")}
+								{[pagesLabel(p.pageCount), formatBytes(p.sizeBytes), p.isNotation ? "notation" : ""]
+									.filter(Boolean)
+									.join(" · ")}
 							</p>
 						</div>
 						<div class="flex items-center justify-between gap-1">
@@ -280,6 +294,14 @@
 										title: "Change the title and description",
 										condition: canEdit,
 										action: () => startEdit(p),
+									},
+									{
+										id: "notation",
+										label: "Notation",
+										iconClass: p.isNotation ? "i-ph-check" : "i-ph-check invisible",
+										title: "A score: shown on the Chart tab's notation view as well",
+										condition: canEdit,
+										action: () => setNotation(p, !p.isNotation),
 									},
 									{
 										id: "remove",

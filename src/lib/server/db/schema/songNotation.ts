@@ -14,7 +14,8 @@ import { user } from "./user";
  * thumbnail the uploader's browser rendered, and a share code that is its
  * permanent address (`/f/<code>`), whichever store the file is in. Same
  * reserve → upload → ready lifecycle; the server checks the file's first
- * bytes before calling it ready and never parses the XML itself.
+ * bytes before calling it ready and never parses the XML itself. Once
+ * ready, the jobs function engraves it to a PDF (src/lib/server/notationPdf.ts).
  */
 export const songNotation = table(
 	"song_notation",
@@ -42,6 +43,11 @@ export const songNotation = table(
 		pageCount: t.integer("page_count"),
 		thumbnailUrl: t.text("thumbnail_url"),
 		thumbnailPathname: t.text("thumbnail_pathname"),
+		/** The score as a PDF, engraved by the jobs function once the file is ready (`<id>.pdf` beside it); `/f/<code>?download=pdf` serves it. */
+		pdfUrl: t.text("pdf_url"),
+		pdfPathname: t.text("pdf_pathname"),
+		/** Null until the file is ready; `pending` while the PDF renders, then `ready` or `failed`. */
+		pdfStatus: t.text("pdf_status").$type<"pending" | "ready" | "failed">(),
 		/** The permanent link's secret: `/f/<code>` (nanoid, 16). */
 		shareCode: t.text("share_code").notNull().unique(),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),

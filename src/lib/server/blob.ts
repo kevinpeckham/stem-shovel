@@ -109,6 +109,14 @@ export function notationThumbnailPathname(
 }
 export const isNotationPathname = (pathname: string) =>
 	/[/]notation[/][^/]+[.](mxl|musicxml|xml)$/.test(pathname);
+/**
+ * The notation file engraved as a PDF, beside it (src/lib/server/notationPdf.ts).
+ * Unstamped: the file never changes under its id, so a re-render writes the
+ * same pages; and the name is not one `/api/upload` would reserve.
+ */
+export function notationPdfPathname(accountId: string, songId: string, notationId: string) {
+	return `accounts/${accountId}/songs/${songId}/notation/${notationId}.pdf`;
+}
 
 /** Blob pathname for a scratch recording: under the account, not a song (docs/demo-recording.md). */
 export function recordingPathname(accountId: string, recordingId: string, filename: string) {

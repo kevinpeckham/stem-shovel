@@ -5,6 +5,13 @@ import { attachmentDisposition } from "$lib/utils/attachmentDisposition";
 import { error, redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
+/** A file in a store and the name and type to send it as. */
+interface Served {
+	url: string;
+	filename: string;
+	contentType: string;
+}
+
 /**
  * A file's permanent link (docs/uploads-and-blob.md, "PDFs" and "Notation
  * files"): `/f/<code>` finds the file by its share code (a PDF's first,
@@ -12,41 +19,61 @@ import type { RequestHandler } from "./$types";
  * either store (a presigned URL, good for twelve hours, for a private
  * song's), so the link outlives renames and privacy moves. With
  * `?download=1` it streams the file instead, as an attachment under its
- * own name (the store's own download switch would name it by its id). The
- * code is the secret; a code nobody made is a 404.
+ * own name (the store's own download switch would name it by its id).
+ * `?download=pdf` streams the file as a PDF: the PDF itself, or the one
+ * the jobs function engraved from a notation file, named after it; a
+ * notation file whose PDF is not ready is a 404. The code is the secret;
+ * a code nobody made is a 404.
  */
 export const GET: RequestHandler = async ({ params, url }) => {
 	const file = await fileByShareCode(params.code);
 	if (!file) error(404, "This link is not one Stem Shovel made.");
-	if (url.searchParams.get("download")) {
-		const res = await readBlob(file.url);
-		if (!res.ok || !res.body) error(404, "The file is gone.");
-		const headers = new Headers({
-			"content-type": file.contentType,
-			"content-disposition": attachmentDisposition(file.filename),
-			"cache-control": "private, no-store",
-		});
-		const length = res.headers.get("content-length");
-		if (length) headers.set("content-length", length);
-		return new Response(res.body, { status: 200, headers });
+	const download = url.searchParams.get("download");
+	if (download === "pdf") {
+		if (!file.pdf) error(404, "There is no PDF of this file yet.");
+		return stream(file.pdf);
 	}
+	if (download) return stream(file);
 	const presented = await presentUrl(file.url);
 	if (!presented) error(404, "The file is gone.");
 	redirect(302, presented);
 };
 
-/** Whichever ready file carries the code, with the type to serve it as. */
-async function fileByShareCode(
-	code: string,
-): Promise<{ url: string; filename: string; contentType: string } | null> {
+/** The file as an attachment, straight from the store. */
+async function stream(file: Served): Promise<Response> {
+	const res = await readBlob(file.url);
+	if (!res.ok || !res.body) error(404, "The file is gone.");
+	const headers = new Headers({
+		"content-type": file.contentType,
+		"content-disposition": attachmentDisposition(file.filename),
+		"cache-control": "private, no-store",
+	});
+	const length = res.headers.get("content-length");
+	if (length) headers.set("content-length", length);
+	return new Response(res.body, { status: 200, headers });
+}
+
+/** Whichever ready file carries the code, with the type to serve it as, and the PDF of it when there is one. */
+async function fileByShareCode(code: string): Promise<(Served & { pdf: Served | null }) | null> {
 	const pdf = await pdfByShareCode(code);
-	if (pdf) return { url: pdf.url, filename: pdf.filename, contentType: "application/pdf" };
+	if (pdf) {
+		const served = { url: pdf.url, filename: pdf.filename, contentType: "application/pdf" };
+		return { ...served, pdf: served };
+	}
 	const notation = await notationByShareCode(code);
 	if (notation) {
 		return {
 			url: notation.url,
 			filename: notation.filename,
 			contentType: NOTATION_CONTENT_TYPE_OF[notation.format],
+			pdf:
+				notation.pdfStatus === "ready" && notation.pdfUrl
+					? {
+							url: notation.pdfUrl,
+							filename: `${notation.filename.replace(/\.[a-z0-9]+$/i, "")}.pdf`,
+							contentType: "application/pdf",
+						}
+					: null,
 		};
 	}
 	return null;

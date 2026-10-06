@@ -37,6 +37,7 @@ export * from "./songCredit";
 export * from "./songDocVersion";
 export * from "./songPdf";
 export * from "./songNotation";
+export * from "./songUserNote";
 export * from "./stem";
 export * from "./supportRequest";
 export * from "./twoFactor";

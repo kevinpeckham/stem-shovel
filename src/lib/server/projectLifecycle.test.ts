@@ -54,6 +54,7 @@ const fake = vi.hoisted(() => {
 			songId: col("songId"),
 			url: col("url"),
 			thumbnailUrl: col("thumbnailUrl"),
+			pdfUrl: col("pdfUrl"),
 		},
 	};
 	return { state, db, schema, deleteBlobs: vi.fn(async () => {}) };
@@ -90,10 +91,10 @@ describe("deleteProject", () => {
 			stem: [{ url: "st1", playbackUrl: "pl1", midiUrl: null }],
 			demo: [{ url: "d1", playbackUrl: null }],
 			song_pdf: [{ url: "pdf1", thumbnailUrl: "th1" }],
-			song_notation: [{ url: "mxl1", thumbnailUrl: null }],
+			song_notation: [{ url: "mxl1", thumbnailUrl: null, pdfUrl: "nPdf1" }],
 		};
 		expect(await deleteProject("a1", "p1")).toBe("deleted");
-		// …then the PDFs and notation files with their thumbnails, the mix and the song's picture (none here) come last.
+		// …then the PDFs and notation files with their thumbnails and rendered PDFs, the mix and the song's picture (none here) come last.
 		expect(fake.deleteBlobs).toHaveBeenCalledWith([
 			"st1",
 			"pl1",
@@ -104,6 +105,7 @@ describe("deleteProject", () => {
 			"th1",
 			"mxl1",
 			"",
+			"nPdf1",
 			"mix1",
 			"",
 		]);

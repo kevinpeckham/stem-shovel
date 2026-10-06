@@ -1,6 +1,7 @@
 import { accountOfNotation, memberOf } from "$lib/server/access";
 import { isOurBlobUrl, notationThumbnailPathname, putBlob, readBlob } from "$lib/server/blob";
 import { failNotation, markNotationReady, reservedPathname } from "$lib/server/data";
+import { scheduleNotationPdf } from "$lib/server/jobs";
 import { accessOfPathname } from "$lib/server/relocate";
 import { NOTATION_THUMBNAIL_MAX_BYTES, notationFormatOf } from "$lib/constants/notationFormats";
 import { imageTypeOfBytes, startsLikeMusicXml, startsLikeZip } from "$lib/utils/fileSignatures";
@@ -19,7 +20,8 @@ const HEAD_BYTES = 4096;
  * signature for `.mxl`, an XML prologue naming a score for the rest; it
  * never parses the XML. Anything else is removed, row and file. The
  * thumbnail is checked by its bytes too, then stored beside the file in
- * the same store.
+ * the same store. The row ready, the jobs function is asked for the PDF
+ * (src/lib/server/notationPdf.ts).
  */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const form = await request.formData();
@@ -78,6 +80,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		thumbnailPathname,
 	});
 	if (!row) error(404, "Notation file not found");
+	scheduleNotationPdf(row.id);
 	return json({ ok: true, shareCode: row.shareCode });
 };
 

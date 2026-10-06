@@ -8,6 +8,7 @@ export const JOB_KINDS = [
 	"stem-playback",
 	"demo-playback",
 	"recording-playback",
+	"notation-pdf",
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

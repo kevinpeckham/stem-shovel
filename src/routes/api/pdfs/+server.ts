@@ -10,7 +10,13 @@ import type { RequestHandler } from "./$types";
 
 /** Step 1 of a PDF upload (docs/uploads-and-blob.md, "PDFs"): reserve the row and return the pathname to upload to. */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const body = (await request.json()) as { songId?: string; filename?: string; sizeBytes?: number };
+	const body = (await request.json()) as {
+		songId?: string;
+		filename?: string;
+		sizeBytes?: number;
+		/** The PDF is a score: listed on the Chart tab's notation view as well. */
+		notation?: boolean;
+	};
 	const { songId, filename, sizeBytes } = body;
 	if (!songId || !filename || typeof sizeBytes !== "number") {
 		error(400, "songId, filename and sizeBytes are required");
@@ -28,7 +34,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 	background(() => checkStorage(accountId));
-	const row = await createPdf(accountId, requireUser(locals).id, songId, { filename, sizeBytes });
+	const row = await createPdf(accountId, requireUser(locals).id, songId, {
+		filename,
+		sizeBytes,
+		isNotation: body.notation === true,
+	});
 	if (!row) error(404, "Song not found");
 	if (row === "full") error(409, `A song can have at most ${MAX_PDFS_PER_SONG} PDFs`);
 	return json({

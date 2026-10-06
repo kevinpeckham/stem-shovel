@@ -88,8 +88,10 @@ cost 5–6 s (measured 2026-09-19 against idle deployments), and with one or
 two people using the app most sessions began with one. Three things keep it
 down now:
 
-- **Background work runs in its own function.** Renditions, mixes and notes
-  transcription used to run inside the page function after the response,
+- **Background work runs in its own function.** Renditions, mixes, notes
+  transcription and, since 2026-10-06, notation PDFs (`JobSchema`'s kinds:
+  `mix`, `notes`, `stem-playback`, `demo-playback`, `recording-playback`,
+  `notation-pdf`). The first three used to run inside the page function after the response,
   which put ffmpeg (77 MB) and the transcription stack in every route's
   bundle. `src/lib/server/jobs.ts` now posts each job to `POST /api/jobs`
   (`src/routes/api/jobs/+server.ts`, `config.split = true`, 300 s), which
@@ -102,7 +104,8 @@ down now:
   because `notes.ts` names them in a literal `import()`
   (`traceTranscriptionDeps`); before that, notes were never transcribed on
   Vercel ("Cannot find package '@tensorflow/tfjs'" in every song page's
-  background). The Basic Pitch model itself is bundled into the module as
+  background). Verovio (7 MB, `src/lib/server/notationPdf.ts`) and pdfkit
+  live there for the same reason. The Basic Pitch model itself is bundled into the module as
   JSON (`src/lib/server/basic-pitch/`, ~1 MB, the same files as
   `static/basic-pitch`) and written to the job's temp dir for the child
   process: fetching it from the site is answered with a 429 by the

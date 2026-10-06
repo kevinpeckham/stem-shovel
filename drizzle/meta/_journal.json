@@ -526,6 +526,20 @@
       "when": 1791285313600,
       "tag": "0074_song_notation",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1791288273644,
+      "tag": "0075_notation_pdfs",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1791289137798,
+      "tag": "0076_song_user_note",
+      "breakpoints": true
     }
   ]
 }

@@ -2,8 +2,15 @@ import { getRequestEvent } from "$app/server";
 import { background } from "$lib/server/background";
 import { isRecordingPathname } from "$lib/server/blob";
 import { db, schema } from "$lib/server/db";
-import { logAudit, projectRestricted, projectRoleOf } from "$lib/server/data";
-import { isAccountAdmin, type Viewer } from "$lib/server/viewAccess";
+import {
+	logAudit,
+	openShareLinks,
+	projectRestricted,
+	projectRoleOf,
+	projectRolesOf,
+	songViewRow,
+} from "$lib/server/data";
+import { canViewSong, isAccountAdmin, shareCodesFrom, type Viewer } from "$lib/server/viewAccess";
 import { error, redirect } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 
@@ -137,6 +144,28 @@ const {
 	songPdf,
 	songNotation,
 } = schema;
+
+/**
+ * A signed-in person who may view a song, by the song page's own rules
+ * (viewAccess.canViewSong: the account's members and the project's viewers,
+ * or a share code the visitor carries): the gate for what is theirs alone
+ * on a song, like their private note. 401 signed out, 404 otherwise, like
+ * memberOf. Returns the song's account id.
+ */
+export async function songViewerOf(locals: App.Locals, songId: string) {
+	const user = requireUser(locals);
+	const row = await songViewRow(songId);
+	if (!row) error(404, "Not found");
+	const { url, cookies } = getRequestEvent();
+	const [roles, grants] = await Promise.all([
+		projectRolesOf(row.accountId, user.id),
+		openShareLinks(shareCodesFrom(url, cookies)),
+	]);
+	if (!canViewSong(row, viewerOf(locals, row.accountId, roles), grants)) error(404, "Not found");
+	const m = locals.memberships.find((m) => m.accountId === row.accountId);
+	if (m?.actingAs) auditActing(user.id, row.accountId);
+	return { accountId: row.accountId, userId: user.id };
+}
 
 /** Account of an entity by id (unscoped lookup); pair with requireEditor via memberOf. */
 export async function accountOfProject(projectId: string) {

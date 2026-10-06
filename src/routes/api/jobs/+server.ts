@@ -2,6 +2,7 @@ import { background } from "$lib/server/background";
 import { isJobsToken } from "$lib/server/jobs";
 import { ensureOriginalMix } from "$lib/server/mix";
 import { ensureSongNotes, traceTranscriptionDeps } from "$lib/server/notes";
+import { renderNotationPdf } from "$lib/server/notationPdf";
 import { renderDemos, renderRecordings, renderStems } from "$lib/server/transcode";
 import { JobSchema } from "$lib/val/JobSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -11,9 +12,10 @@ import type { RequestHandler } from "./$types";
 
 /**
  * The app's background jobs function (src/lib/server/jobs.ts): its own
- * Vercel function (`split`), the only one that carries ffmpeg and the
- * transcription stack, with the long budget the work needs. Answers 202 as
- * soon as the job is accepted and runs it inside `waitUntil`.
+ * Vercel function (`split`), the only one that carries ffmpeg, the
+ * transcription stack and the notation engraver, with the long budget the
+ * work needs. Answers 202 as soon as the job is accepted and runs it inside
+ * `waitUntil`.
  */
 export const config: Config = { split: true, maxDuration: 300 };
 
@@ -40,6 +42,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "recording-playback":
 				await renderRecordings(ids);
+				break;
+			case "notation-pdf":
+				for (const id of ids) await renderNotationPdf(id);
 				break;
 		}
 	});

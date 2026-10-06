@@ -26,7 +26,7 @@ export async function accessOfPathname(pathname: string): Promise<BlobAccess> {
 }
 
 /**
- * Moves every file of a song (stems, renditions, MIDI, demos, PDFs and notation files with their thumbnails, the mix) into
+ * Moves every file of a song (stems, renditions, MIDI, demos, PDFs and notation files with their thumbnails and rendered PDFs, the mix) into
  * the store its privacy calls for, one file at a time, updating each row as
  * its file lands. Safe to run again: files already in place are skipped.
  * Runs in the background after a privacy change (src/lib/remote/share.remote.ts).
@@ -78,10 +78,11 @@ export async function relocateSongFiles(songId: string): Promise<number> {
 	for (const n of notation) {
 		const url = n.url ? await move(n.url) : n.url;
 		const thumbnailUrl = await move(n.thumbnailUrl);
-		if (url !== n.url || thumbnailUrl !== n.thumbnailUrl) {
+		const pdfUrl = await move(n.pdfUrl);
+		if (url !== n.url || thumbnailUrl !== n.thumbnailUrl || pdfUrl !== n.pdfUrl) {
 			await db
 				.update(songNotation)
-				.set({ url: url ?? "", thumbnailUrl })
+				.set({ url: url ?? "", thumbnailUrl, pdfUrl })
 				.where(eq(songNotation.id, n.id));
 		}
 	}

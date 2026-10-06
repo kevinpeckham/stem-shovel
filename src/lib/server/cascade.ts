@@ -55,13 +55,15 @@ const {
 	userDocVersion,
 	songPdf,
 	songNotation,
+	songUserNote,
 } = schema;
 
-/** Songs and everything hanging off them: stems, demos, PDFs, notation files, comments, links, doc versions, credits; AI requests lose their song. */
+/** Songs and everything hanging off them: stems, demos, PDFs, notation files, comments, links, doc versions, private notes, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
 	await db.delete(songDocVersion).where(inArray(songDocVersion.songId, songIds));
+	await db.delete(songUserNote).where(inArray(songUserNote.songId, songIds));
 	await db.delete(comment).where(inArray(comment.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
@@ -171,7 +173,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
-/** A user: memberships, sign-in records, sessions, two-factor, votes and comments go; what else they made stays without an author. */
+/** A user: memberships, sign-in records, sessions, two-factor, votes, comments and private song notes go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
 	await db.delete(projectMember).where(eq(projectMember.userId, userId));
@@ -187,6 +189,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));
 	await db.update(bugReport).set({ userId: null }).where(eq(bugReport.userId, userId));
 	await db.delete(comment).where(eq(comment.userId, userId));
+	await db.delete(songUserNote).where(eq(songUserNote.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
 	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));
