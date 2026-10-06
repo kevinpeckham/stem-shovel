@@ -2610,7 +2610,7 @@
 							aria-selected={panel === kind}
 							class="{panel === kind
 								? 'button button-xs bg-blue-300 text-oxford border-blue-300 hover-bg-blue-200 hover-border-blue-200'
-								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
+								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} inline-flex items-center min-h-7 {index ===
 							0
 								? 'rounded-r-none border-r-none'
 								: index === PANELS.length - 1
@@ -2619,7 +2619,7 @@
 							onclick={() => showPanel(kind)}
 							title={kind === "files" ? "Attachments" : undefined}
 							aria-label={kind === "files" ? tabLabel(kind) : undefined}
-							>{#if kind === "files"}<span class="i-ph-paperclip align-[-2px]" aria-hidden="true"
+							>{#if kind === "files"}<span class="i-ph-paperclip text-14px" aria-hidden="true"
 								></span>{#if fileCount}
 									({fileCount}){/if}{:else}{tabLabel(kind)}{/if}</button
 						>
