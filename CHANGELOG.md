@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.103.0] - 2026-10-06
+
 ### Changed
 
 - **The Effects menu is an accordion** (Kevin: it had grown unwieldy): a drawer per effect, Reverb to Compressor, Bounce beside Rotary (Kevin), one open at a time, the header lit and reading its level (off, a percentage, the rotary's speed, the tone flat or shaped), the controls in two columns inside; the popover is the other menus' width on the piano and the chord player.
