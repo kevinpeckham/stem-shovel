@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Viewer-role memberships behave the same everywhere**: the beat, chord-style, piano-preset, progression and drum-kit libraries are listed for every member as their notes say (a viewer-role member was refused), while creating a project and revoking a share link need an editor like every other change (a viewer-role member could do both). Found by the new authorization tests; the account viewer role is retired, so no live account changes.
+- **Deleting a user clears the uploader of their attachments and notation files**, as the other uploads already were (the cascade test now derives every user reference from the schema).
+
 ### Technical
 
 - **Authorization tests for every remote function** (32 `*.remote.test.ts`, 690 cases): signed out, an outsider, a member of the wrong role, the owner, and the creator-ownership rules for ideas, takes and Studio songs, against the real `access.ts` checks with the data layer mocked (`tests/helpers/fakeRequestEvent.ts`, `fakeServerModules.ts`). A fake drizzle `db` (`tests/helpers/fakeDb.ts`) that evaluates real `where` clauses and logs every write, with tests for `access.ts` (23), `cascade.ts` (16, every foreign key derived from the schema) and the Studio functions in `data.ts` (18).

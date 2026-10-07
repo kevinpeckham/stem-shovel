@@ -43,10 +43,12 @@ describe("listBeats", () => {
 		);
 		expect(data.listBeats).not.toHaveBeenCalled();
 	});
-	it("a member sees the library (memberOf without viewers: a viewer-role member would not)", async () => {
+	it("every member sees the library, a viewer-role member too", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(beats.listBeats, { accountId: ACCOUNT })).resolves.toEqual([]);
 		expect(data.listBeats).toHaveBeenCalledWith(ACCOUNT);
+		asViewerOf(ACCOUNT);
+		await expect(call(beats.listBeats, { accountId: ACCOUNT })).resolves.toEqual([]);
 	});
 });
 

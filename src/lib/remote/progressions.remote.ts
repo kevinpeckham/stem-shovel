@@ -30,7 +30,7 @@ import { error } from "@sveltejs/kit";
 export const listProgressions = query(ProgressionListSchema, async ({ accountId }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
-	await memberOf(locals, async () => accountId, accountId);
+	await memberOf(locals, async () => accountId, accountId, { viewers: true });
 	return list(accountId);
 });
 

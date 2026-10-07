@@ -223,7 +223,12 @@ describe("createProject", () => {
 		await expect(call(projects.createProject, input)).rejects.toMatchObject(httpError(404));
 		expect(data.createProject).not.toHaveBeenCalled();
 	});
-	it("a member creates it in their account and lands on it", async () => {
+	it("404 for a viewer-role member", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(call(projects.createProject, input)).rejects.toMatchObject(httpError(404));
+		expect(data.createProject).not.toHaveBeenCalled();
+	});
+	it("an editor creates it in their account and lands on it", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(projects.createProject, input)).rejects.toMatchObject(
 			redirected(`/${SLUG}/projects/demos`),

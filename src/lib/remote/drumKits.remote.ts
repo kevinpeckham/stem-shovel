@@ -31,7 +31,7 @@ import { error } from "@sveltejs/kit";
 export const listDrumKits = query(DrumKitListSchema, async ({ accountId }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
-	if (accountId) await memberOf(locals, async () => accountId, accountId);
+	if (accountId) await memberOf(locals, async () => accountId, accountId, { viewers: true });
 	return listDrumKitsFor(accountId ?? null);
 });
 
@@ -39,7 +39,7 @@ export const listDrumKits = query(DrumKitListSchema, async ({ accountId }) => {
 export const drumKitManifests = query(DrumKitListSchema, async ({ accountId }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
-	if (accountId) await memberOf(locals, async () => accountId, accountId);
+	if (accountId) await memberOf(locals, async () => accountId, accountId, { viewers: true });
 	return listDrumKitManifests(accountId ?? null);
 });
 

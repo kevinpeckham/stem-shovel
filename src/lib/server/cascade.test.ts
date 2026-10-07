@@ -350,10 +350,9 @@ describe("deleteUserRows", () => {
 		// Private-note revisions go; shared-document revisions keep the text and lose the author.
 		expect(fake.rows("songDocVersion")).toEqual([{ id: "dv2", userId: null, createdBy: null }]);
 	});
-	test("every cascade foreign key to user is deleted and every set-null one is nulled, except the two attachments' uploaders", async () => {
+	test("every cascade foreign key to user is deleted and every set-null one is nulled", async () => {
 		await deleteUserRows("u1");
-		// cascade.ts does not clear the uploader of attachments (song_pdf) and notation files yet;
-		// harmless while foreign keys are off, but listed so a fix removes them from here.
-		expect(missingFor(schema.user)).toEqual(["song_pdf.uploadedBy", "song_notation.uploadedBy"]);
+		// Derived from the schema: a new column referencing user that the cascade forgets lands here.
+		expect(missingFor(schema.user)).toEqual([]);
 	});
 });

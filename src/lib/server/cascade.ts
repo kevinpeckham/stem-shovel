@@ -221,6 +221,11 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	// Their private notes' revisions go with the notes; the shared documents' keep the text and lose the author.
 	await db.delete(songDocVersion).where(eq(songDocVersion.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
+	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
+	await db
+		.update(songNotation)
+		.set({ uploadedBy: null })
+		.where(eq(songNotation.uploadedBy, userId));
 	await db.update(idea).set({ createdBy: null }).where(eq(idea.createdBy, userId));
 	await db.update(beat).set({ createdBy: null }).where(eq(beat.createdBy, userId));
 	await db.update(progression).set({ createdBy: null }).where(eq(progression.createdBy, userId));

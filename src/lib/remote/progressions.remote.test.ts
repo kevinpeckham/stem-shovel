@@ -45,10 +45,12 @@ describe("listProgressions", () => {
 		);
 		expect(data.listProgressions).not.toHaveBeenCalled();
 	});
-	it("a member sees the library (memberOf without viewers: a viewer-role member would not)", async () => {
+	it("every member sees the library, a viewer-role member too", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(progressions.listProgressions, { accountId: ACCOUNT })).resolves.toEqual([]);
 		expect(data.listProgressions).toHaveBeenCalledWith(ACCOUNT);
+		asViewerOf(ACCOUNT);
+		await expect(call(progressions.listProgressions, { accountId: ACCOUNT })).resolves.toEqual([]);
 	});
 });
 

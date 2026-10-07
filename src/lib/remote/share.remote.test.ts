@@ -115,7 +115,12 @@ describe("revokeShareLink", () => {
 		await expect(call(share.revokeShareLink, { id: LINK })).rejects.toMatchObject(httpError(404));
 		expect(data.revokeShareLink).not.toHaveBeenCalled();
 	});
-	it("a member revokes within their own accounts only", async () => {
+	it("404 for a viewer-role member, nothing searched", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(call(share.revokeShareLink, { id: LINK })).rejects.toMatchObject(httpError(404));
+		expect(data.revokeShareLink).not.toHaveBeenCalled();
+	});
+	it("an editor revokes within their own accounts only", async () => {
 		asEditorOf(ACCOUNT);
 		data.revokeShareLink.mockResolvedValue(true);
 		await expect(call(share.revokeShareLink, { id: LINK })).resolves.toEqual({ revoked: true });

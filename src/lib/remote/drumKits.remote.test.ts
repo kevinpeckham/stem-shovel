@@ -52,10 +52,12 @@ describe("listDrumKits and drumKitManifests", () => {
 				await expect(call(c.fn, { accountId: ACCOUNT })).rejects.toMatchObject(httpError(404));
 				expect(data[c.dataFn]).not.toHaveBeenCalled();
 			});
-			it("a member sees the account's kits (memberOf without viewers: a viewer-role member would not)", async () => {
+			it("every member sees the account's kits, a viewer-role member too", async () => {
 				asEditorOf(ACCOUNT);
 				await expect(call(c.fn, { accountId: ACCOUNT })).resolves.toEqual([]);
 				expect(data[c.dataFn]).toHaveBeenCalledWith(ACCOUNT);
+				asViewerOf(ACCOUNT);
+				await expect(call(c.fn, { accountId: ACCOUNT })).resolves.toEqual([]);
 			});
 			it("anyone signed in sees the site's kits", async () => {
 				asUser();

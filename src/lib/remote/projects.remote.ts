@@ -3,7 +3,7 @@ import {
 	accountOfProject,
 	isEditor,
 	memberOf,
-	requireMember,
+	requireEditor,
 	requireUser,
 } from "$lib/server/access";
 import {
@@ -51,10 +51,10 @@ export const updateProject = form(
 	},
 );
 
-/** New project in the given account; lands on its page. */
+/** New project in the given account (editors, as every other change); lands on its page. */
 export const createProject = form(ProjectCreateSchema, async ({ accountId, name }) => {
 	const { locals } = getRequestEvent();
-	const m = requireMember(locals, accountId);
+	const m = requireEditor(locals, accountId);
 	const row = await create(accountId, requireUser(locals).id, name);
 	redirect(303, `/${m.slug}/projects/${row.slug}`);
 });

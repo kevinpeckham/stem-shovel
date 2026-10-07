@@ -26,7 +26,7 @@ import { error } from "@sveltejs/kit";
 export const listChordStyles = query(ChordStyleListSchema, async ({ accountId }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
-	await memberOf(locals, async () => accountId, accountId);
+	await memberOf(locals, async () => accountId, accountId, { viewers: true });
 	return list(accountId);
 });
 

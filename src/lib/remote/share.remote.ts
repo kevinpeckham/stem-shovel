@@ -3,6 +3,7 @@ import {
 	accountOfProject,
 	accountOfSong,
 	memberOf,
+	isEditor,
 	requireMember,
 	requireUser,
 } from "$lib/server/access";
@@ -63,7 +64,9 @@ export const createShareLink = form(
 export const revokeShareLink = form(ShareLinkIdSchema, async ({ id }) => {
 	const { locals } = getRequestEvent();
 	requireUser(locals);
+	// The link's account is not in the payload: each account the caller edits is tried (a viewer-role membership is skipped, as making one needs an editor).
 	for (const m of locals.memberships) {
+		if (!isEditor(m.role)) continue;
 		requireMember(locals, m.accountId);
 		if (await revoke(m.accountId, id)) return { revoked: true };
 	}
