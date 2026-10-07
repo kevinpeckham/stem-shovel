@@ -149,22 +149,36 @@
 		pointerId: number;
 		startX: number;
 		startY: number;
-		/** The preview offset, in seconds and in rows. */
+		/** Moving the clip, or trimming one of its edges (a press within a few pixels of it). */
+		mode: "move" | "left" | "right";
+		/** The preview: the offset in seconds (a move), or the edge's new time (a trim), and the rows down. */
 		dt: number;
+		edge: number;
 		rows: number;
 		moved: boolean;
 	}
+	const EDGE_PX = 7;
 	let drag = $state<Drag | null>(null);
 	function onclipdown(e: PointerEvent, clip: StudioClip) {
 		if (e.button !== 0) return;
 		selected = clip.id;
-		(e.currentTarget as HTMLElement).focus({ preventScroll: true });
+		const el = e.currentTarget as HTMLElement;
+		el.focus({ preventScroll: true });
+		const rect = el.getBoundingClientRect();
+		const mode =
+			rect.width > EDGE_PX * 3 && e.clientX - rect.left <= EDGE_PX
+				? "left"
+				: rect.width > EDGE_PX * 3 && rect.right - e.clientX <= EDGE_PX
+					? "right"
+					: "move";
 		drag = {
 			clip,
 			pointerId: e.pointerId,
 			startX: e.clientX,
 			startY: e.clientY,
+			mode,
 			dt: 0,
+			edge: mode === "right" ? clip.start + clip.duration : clip.start,
 			rows: 0,
 			moved: false,
 		};
@@ -178,6 +192,13 @@
 		const dy = e.clientY - drag.startY;
 		if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
 		drag.moved = true;
+		if (drag.mode !== "move") {
+			const at =
+				(drag.mode === "left" ? drag.clip.start : drag.clip.start + drag.clip.duration) +
+				dx / pxPerSecond;
+			drag.edge = e.shiftKey ? Math.max(0, at) : engine.snap(at);
+			return;
+		}
 		const raw = drag.clip.start + dx / pxPerSecond;
 		const start = e.shiftKey ? Math.max(0, raw) : engine.snap(raw);
 		drag.dt = start - drag.clip.start;
@@ -190,6 +211,14 @@
 		const d = drag;
 		drag = null;
 		if (!d.moved) return;
+		if (d.mode === "left") {
+			engine.trimClip(d.clip.id, { start: d.edge });
+			return;
+		}
+		if (d.mode === "right") {
+			engine.trimClip(d.clip.id, { end: d.edge });
+			return;
+		}
 		const tracks = engine.arrangement.tracks;
 		const index = tracks.findIndex((t) => t.id === d.clip.trackId);
 		const target = tracks[index + d.rows]?.id ?? d.clip.trackId;
@@ -580,6 +609,13 @@
 				{#each clipsOf(track) as clip (clip.id)}
 					{@const dragging = drag?.clip.id === clip.id}
 					{@const source = engine.sources[clip.sourceId]}
+					{@const shown =
+						dragging && drag!.mode === "left" && drag!.moved
+							? { start: drag!.edge, duration: clip.start + clip.duration - drag!.edge }
+							: dragging && drag!.mode === "right" && drag!.moved
+								? { start: clip.start, duration: drag!.edge - clip.start }
+								: { start: clip.start, duration: clip.duration }}
+					{@const takes = 1 + (clip.alternates?.length ?? 0)}
 					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 					<div
 						class="absolute top-1 bottom-1 rounded-md border overflow-hidden cursor-grab outline-none touch-none {selected ===
@@ -588,9 +624,9 @@
 							: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
 							? 'cursor-grabbing opacity-80 z-10'
 							: ''} {dim ? 'opacity-50' : ''}"
-						style:left="{clip.start * pxPerSecond}px"
-						style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
-						style:transform={dragging
+						style:left="{shown.start * pxPerSecond}px"
+						style:width="{Math.max(6, shown.duration * pxPerSecond)}px"
+						style:transform={dragging && drag!.mode === "move"
 							? `translate(${drag!.dt * pxPerSecond}px, ${drag!.rows * LANE_H}px)`
 							: undefined}
 						data-clip={clip.id}
@@ -611,10 +647,26 @@
 								: 'opacity-30'}"
 							{@attach clipWave(clip)}
 						></canvas>
+						<!-- the fades, drawn as wedges over the ends -->
+						{#if clip.fadeIn > 0}
+							<div
+								class="absolute inset-y-0 left-0 pointer-events-none bg-[linear-gradient(to_bottom_right,rgba(0,0,0,0.55)_50%,transparent_50%)]"
+								style:width="{clip.fadeIn * pxPerSecond}px"
+							></div>
+						{/if}
+						{#if clip.fadeOut > 0}
+							<div
+								class="absolute inset-y-0 right-0 pointer-events-none bg-[linear-gradient(to_bottom_left,rgba(0,0,0,0.55)_50%,transparent_50%)]"
+								style:width="{clip.fadeOut * pxPerSecond}px"
+							></div>
+						{/if}
+						<!-- the trim handles -->
+						<div class="absolute inset-y-0 left-0 w-7px cursor-ew-resize"></div>
+						<div class="absolute inset-y-0 right-0 w-7px cursor-ew-resize"></div>
 						<span
 							class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
 						>
-							{clip.name}{source?.pending
+							{clip.name}{takes > 1 ? ` · ${takes} takes` : ""}{source?.pending
 								? " · saving…"
 								: source?.status === "failed"
 									? " · not loaded"

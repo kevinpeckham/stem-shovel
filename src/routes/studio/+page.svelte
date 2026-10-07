@@ -12,6 +12,8 @@
 	import { studio, type StudioTake } from "$lib/audio/studio.svelte";
 	import { StudioQueue } from "$lib/audio/studioQueue.svelte";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "$lib/constants/studio";
+	import { DEMO_ACCEPT } from "$lib/constants/demoFormats";
+	import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 	import { createIdea, deleteIdeaNow, renameIdea } from "$lib/remote/ideas.remote";
 	import {
 		autosaveArrangement,
@@ -282,7 +284,8 @@
 		queue.enqueue({
 			sourceId: take.sourceId,
 			ideaId: id,
-			kind: "take",
+			kind: take.kind,
+			filename: take.filename,
 			trackLabel: take.trackLabel,
 			takeNumber: take.takeNumber,
 			durationSeconds: take.durationSeconds,
@@ -292,7 +295,14 @@
 			createdAt: Date.now(),
 			blob: take.blob,
 		});
+		// A take is a big change: saved at once, not after the debounce (a reload right after would lose it).
+		void autosaveNow();
 	};
+	/** Leaving with an edit still unsaved (the debounce pending, a save failed): the browser asks first. */
+	function onbeforeunload(e: BeforeUnloadEvent) {
+		if (!studio.dirty && !saving) return;
+		e.preventDefault();
+	}
 	/** Record: the song exists first (its takes need a home), the armed inputs are open, then the engine runs. */
 	async function record() {
 		if (studio.running) {
@@ -318,6 +328,67 @@
 			const err = inputSources.errors[input.source];
 			notify(err ?? `Could not open the ${input.source}`, { kind: "error" });
 		}
+	}
+	/** Audio files onto the selected clip's track (else the first, else a new one) at the playhead, one after another; each uploads as a source. */
+	let importing = $state(false);
+	async function importFiles(files: File[]) {
+		if (!files.length) return;
+		importing = true;
+		try {
+			await ensureSong();
+			let track: StudioTrack | null =
+				studio.arrangement.tracks.find(
+					(t) => t.id === studio.arrangement.clips.find((c) => c.id === selected)?.trackId,
+				) ??
+				studio.arrangement.tracks[0] ??
+				studio.addTrack(null, "Imports");
+			let at = studio.position;
+			for (const file of files) {
+				if (!track) break;
+				if (file.size > MAX_TAKE_BYTES) {
+					notify(`${file.name} is over the ${Math.round(MAX_TAKE_BYTES / 1048576)} MB limit`, {
+						kind: "error",
+					});
+					continue;
+				}
+				let buffer: AudioBuffer;
+				try {
+					buffer = await studio.decodeFile(await file.arrayBuffer());
+				} catch {
+					notify(`${file.name} could not be decoded`, { kind: "error" });
+					continue;
+				}
+				const take = studio.importBuffer(track, buffer, { blob: file, filename: file.name }, at);
+				if (!take) {
+					if (studio.notice) notify(studio.notice, { kind: "error" });
+					studio.notice = null;
+					break;
+				}
+				studio.ontake?.(take);
+				selected = studio.arrangement.clips[studio.arrangement.clips.length - 1]?.id ?? null;
+				at = studio.snap(at + buffer.duration);
+				track = studio.arrangement.tracks.find((t) => t.id === track!.id) ?? null;
+			}
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		} finally {
+			importing = false;
+		}
+	}
+	let selectedClip = $derived(studio.arrangement.clips.find((c) => c.id === selected) ?? null);
+	function splitSelected() {
+		if (!selectedClip) return;
+		const right = studio.splitClip(selectedClip.id, studio.position);
+		if (right) selected = right.id;
+		else if (studio.notice) {
+			notify(studio.notice, { kind: "error" });
+			studio.notice = null;
+		}
+	}
+	function duplicateSelected() {
+		if (!selectedClip) return;
+		const copy = studio.duplicateClip(selectedClip.id);
+		if (copy) selected = copy.id;
 	}
 	function addTrack() {
 		const t = studio.addTrack({ source: "mic", channel: "stereo" });
@@ -471,7 +542,17 @@
 			else studio.undo();
 			return;
 		}
+		if (mod && e.key.toLowerCase() === "d" && selectedClip) {
+			e.preventDefault();
+			duplicateSelected();
+			return;
+		}
 		if (mod) return;
+		if ((e.key === "s" || e.key === "S") && selectedClip) {
+			e.preventDefault();
+			splitSelected();
+			return;
+		}
 		if (e.code === "Space") {
 			if ((e.target as HTMLElement | null)?.closest("button, a, select")) return;
 			e.preventDefault();
@@ -513,7 +594,7 @@
 	/>
 </svelte:head>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} {onbeforeunload} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="@container" onpointerdowncapture={() => void studio.open()}>
@@ -818,6 +899,17 @@
 					>
 						<span class="i-ph-repeat" aria-hidden="true"></span>
 					</button>
+					<button
+						class="device-button-sm px-3 min-w-32px {studio.arrangement.punch ? 'text-accent' : ''}"
+						type="button"
+						title="Punch: a take keeps only what falls in the loop region"
+						aria-label="Punch"
+						aria-pressed={studio.arrangement.punch ?? false}
+						disabled={!studio.arrangement.loop}
+						onclick={() => studio.setPunch(!studio.arrangement.punch)}
+					>
+						<span class="i-ph-selection" aria-hidden="true"></span>
+					</button>
 					<span class="w-2"></span>
 					<button
 						class="device-button-sm px-3"
@@ -905,22 +997,149 @@
 					<button class="device-button-sm px-3" type="button" onclick={addTrack}>
 						<span class="i-ph-plus" aria-hidden="true"></span> Add track
 					</button>
-					{#if selected}
-						<button
-							class="device-button-sm px-3"
-							type="button"
-							onclick={() => {
-								if (selected) studio.deleteClip(selected);
-								selected = null;
+					<label class="device-button-sm px-3 cursor-pointer {importing ? 'opacity-60' : ''}">
+						<span class="i-ph-file-audio" aria-hidden="true"></span>
+						{importing ? "Importing…" : "Import audio…"}
+						<input
+							type="file"
+							class="sr-only"
+							accept={DEMO_ACCEPT}
+							multiple
+							disabled={importing}
+							onchange={(e) => {
+								// Copied first: clearing the input empties its live FileList.
+								const files = Array.from(e.currentTarget.files ?? []);
+								e.currentTarget.value = "";
+								void importFiles(files);
 							}}
-						>
-							<span class="i-ph-trash" aria-hidden="true"></span> Remove clip
-						</button>
-					{/if}
+						/>
+					</label>
 					<span class="text-12px text-dark/80 ml-auto hidden @2xl-inline">
-						Space play · R record · Home start · L loop · drag a clip to move it · ⌘-wheel zooms
+						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⌘-wheel zooms
 					</span>
 				</div>
+				{#if selectedClip}
+					{@const clip = selectedClip}
+					<!-- The selected clip's own controls (docs/multitrack-recorder.md, phase 1b). -->
+					<div
+						class="device-screen flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-12px"
+						role="group"
+						aria-label="Clip"
+					>
+						<input
+							class="device-field min-w-0 w-48 text-13px"
+							type="text"
+							maxlength="60"
+							value={clip.name}
+							aria-label="Clip name"
+							onchange={(e) => studio.renameClip(clip.id, e.currentTarget.value)}
+							onkeydown={(e) => {
+								if (e.key === "Enter") e.currentTarget.blur();
+							}}
+						/>
+						<label class="flex items-center gap-2">
+							Gain
+							<input
+								type="range"
+								class="w-24 accent-blue-300"
+								min="0"
+								max="2"
+								step="0.01"
+								value={clip.gain}
+								aria-label="Clip gain"
+								onchange={(e) => studio.setClipGain(clip.id, e.currentTarget.valueAsNumber)}
+								ondblclick={() => studio.setClipGain(clip.id, 1)}
+							/>
+							<span class="tabular-nums w-10"
+								>{Math.round(20 * Math.log10(clip.gain || 0.001))} dB</span
+							>
+						</label>
+						<label class="flex items-center gap-2">
+							Fade in
+							<input
+								type="number"
+								class="device-field w-16 text-12px py-0"
+								min="0"
+								max={Math.floor((clip.duration / 2) * 100) / 100}
+								step="0.05"
+								value={clip.fadeIn}
+								aria-label="Fade in, seconds"
+								onchange={(e) =>
+									studio.setClipFades(clip.id, { fadeIn: e.currentTarget.valueAsNumber || 0 })}
+							/>
+							s
+						</label>
+						<label class="flex items-center gap-2">
+							Fade out
+							<input
+								type="number"
+								class="device-field w-16 text-12px py-0"
+								min="0"
+								max={Math.floor((clip.duration / 2) * 100) / 100}
+								step="0.05"
+								value={clip.fadeOut}
+								aria-label="Fade out, seconds"
+								onchange={(e) =>
+									studio.setClipFades(clip.id, { fadeOut: e.currentTarget.valueAsNumber || 0 })}
+							/>
+							s
+						</label>
+						<span class="flex items-center gap-1">
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								title="Split at the playhead (S)"
+								disabled={studio.position <= clip.start ||
+									studio.position >= clip.start + clip.duration}
+								onclick={splitSelected}
+							>
+								<span class="i-ph-scissors" aria-hidden="true"></span> Split
+							</button>
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								title="Duplicate after itself (⌘D)"
+								onclick={duplicateSelected}
+							>
+								<span class="i-ph-copy" aria-hidden="true"></span> Duplicate
+							</button>
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								title="Remove (Delete)"
+								onclick={() => {
+									studio.deleteClip(clip.id);
+									selected = null;
+								}}
+							>
+								<span class="i-ph-trash" aria-hidden="true"></span> Remove
+							</button>
+						</span>
+						{#if clip.alternates?.length}
+							<span class="flex items-center gap-1 ml-auto">
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The previous take"
+									aria-label="Previous take"
+									onclick={() => studio.cycleTake(clip.id, -1)}
+								>
+									<span class="i-ph-caret-left" aria-hidden="true"></span>
+								</button>
+								<span class="tabular-nums">{studio.takesOf(clip.id)} takes</span>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The next take"
+									aria-label="Next take"
+									onclick={() => studio.cycleTake(clip.id, 1)}
+								>
+									<span class="i-ph-caret-right" aria-hidden="true"></span>
+								</button>
+							</span>
+						{/if}
+					</div>
+				{/if}
 			</section>
 		</FloatingPanel>
 

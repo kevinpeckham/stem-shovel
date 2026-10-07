@@ -1,6 +1,6 @@
 # Multitrack recorder (design draft)
 
-Status: **design only, nothing built** (2026-10-06). Kevin's ask: "a simple
+Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) built 2026-10-07. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
 stem player, and a lot of the engineering of the idea recorder. It should
 start fairly simple as a stand-alone tool … 'songs' instead of 'ideas' …

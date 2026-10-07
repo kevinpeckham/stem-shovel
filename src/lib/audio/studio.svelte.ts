@@ -50,8 +50,11 @@ export interface StudioTake {
 	trackId: string;
 	trackLabel: string;
 	takeNumber: number;
+	kind: "take" | "import";
 	buffer: AudioBuffer;
 	blob: Blob;
+	/** The file's name for the upload ("Guitar.wav"; an import keeps its own). */
+	filename: string;
 	durationSeconds: number;
 }
 
@@ -608,6 +611,218 @@ class StudioEngine {
 		this.#commit();
 		c.name = name.trim().slice(0, 60);
 	}
+	#clip(id: string) {
+		return this.arrangement.clips.find((x) => x.id === id) ?? null;
+	}
+	/** How long a clip's source runs, for the bounds of a trim. */
+	#sourceSeconds(c: StudioClip) {
+		return this.sources[c.sourceId]?.durationSeconds ?? c.offset + c.duration;
+	}
+	/**
+	 * Trim: a new left edge moves `start` and `offset` together (no earlier
+	 * than the source's own start), a new right edge sets the duration (no
+	 * later than the source's end). A clip keeps at least 10 ms.
+	 */
+	trimClip(clipId: string, edges: { start?: number; end?: number }) {
+		const c = this.#clip(clipId);
+		if (!c) return;
+		const srcEnd = this.#sourceSeconds(c);
+		const end0 = c.start + c.duration;
+		let start = c.start;
+		let offset = c.offset;
+		let end = end0;
+		if (edges.start !== undefined) {
+			start = Math.max(c.start - c.offset, Math.min(end0 - 0.01, edges.start));
+			offset = c.offset + (start - c.start);
+		}
+		if (edges.end !== undefined) {
+			end = Math.max(start + 0.01, Math.min(start + (srcEnd - offset), edges.end));
+		}
+		if (start === c.start && offset === c.offset && end === end0) return;
+		this.#commit();
+		c.start = round4(start);
+		c.offset = round4(Math.max(0, offset));
+		c.duration = round4(end - start);
+		c.fadeIn = Math.min(c.fadeIn, c.duration / 2);
+		c.fadeOut = Math.min(c.fadeOut, c.duration / 2);
+		this.#reschedule();
+	}
+	/** Split at a time inside the clip: the clip keeps what is before, a new one takes the rest (the fade-out goes with it). Returns the new clip. */
+	splitClip(clipId: string, at: number): StudioClip | null {
+		const c = this.#clip(clipId);
+		if (!c || at <= c.start + 0.01 || at >= c.start + c.duration - 0.01) return null;
+		if (this.arrangement.clips.length >= MAX_STUDIO_CLIPS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
+			return null;
+		}
+		this.#commit();
+		const cut = round4(at - c.start);
+		const right: StudioClip = {
+			...structuredClone($state.snapshot(c)),
+			id: localId(),
+			start: round4(at),
+			offset: round4(c.offset + cut),
+			duration: round4(c.duration - cut),
+			fadeIn: 0,
+		};
+		c.duration = cut;
+		c.fadeOut = 0;
+		const i = this.arrangement.clips.findIndex((x) => x.id === clipId);
+		this.arrangement.clips.splice(i + 1, 0, right);
+		this.#reschedule();
+		return right;
+	}
+	setClipGain(clipId: string, gain: number) {
+		const c = this.#clip(clipId);
+		if (!c) return;
+		const g = Math.max(0, Math.min(2, gain));
+		if (g === c.gain) return;
+		this.#commit();
+		c.gain = g;
+		this.#reschedule();
+	}
+	setClipFades(clipId: string, fades: { fadeIn?: number; fadeOut?: number }) {
+		const c = this.#clip(clipId);
+		if (!c) return;
+		const half = c.duration / 2;
+		const fadeIn =
+			fades.fadeIn === undefined ? c.fadeIn : Math.max(0, Math.min(half, fades.fadeIn));
+		const fadeOut =
+			fades.fadeOut === undefined ? c.fadeOut : Math.max(0, Math.min(half, fades.fadeOut));
+		if (fadeIn === c.fadeIn && fadeOut === c.fadeOut) return;
+		this.#commit();
+		c.fadeIn = round4(fadeIn);
+		c.fadeOut = round4(fadeOut);
+		this.#reschedule();
+	}
+	/** A copy of the clip right after it (snapped to the grid when on). Returns the copy. */
+	duplicateClip(clipId: string): StudioClip | null {
+		const c = this.#clip(clipId);
+		if (!c) return null;
+		if (this.arrangement.clips.length >= MAX_STUDIO_CLIPS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
+			return null;
+		}
+		this.#commit();
+		const copy: StudioClip = {
+			...structuredClone($state.snapshot(c)),
+			id: localId(),
+			start: round4(this.snap(c.start + c.duration)),
+		};
+		this.arrangement.clips.push(copy);
+		this.#reschedule();
+		return copy;
+	}
+	/** Take lanes: the clip swaps to the next (or previous) of its takes; the one it leaves joins the alternates. */
+	cycleTake(clipId: string, step: 1 | -1) {
+		const c = this.#clip(clipId);
+		if (!c || !c.alternates?.length) return;
+		this.#commit();
+		const ring = [c.sourceId, ...c.alternates];
+		const next = step === 1 ? ring[1] : ring[ring.length - 1];
+		c.alternates = ring.filter((id) => id !== next);
+		c.sourceId = next;
+		const srcEnd = this.#sourceSeconds(c);
+		if (c.offset >= srcEnd) c.offset = 0;
+		c.duration = round4(Math.min(c.duration, srcEnd - c.offset));
+		this.#reschedule();
+	}
+	/** How many takes a clip holds (the chosen one included). */
+	takesOf(clipId: string) {
+		const c = this.#clip(clipId);
+		return c ? 1 + (c.alternates?.length ?? 0) : 0;
+	}
+	setPunch(on: boolean) {
+		this.arrangement.punch = on;
+		this.dirty = true;
+	}
+	/**
+	 * A clip for a new take on a track: clips of the track the take covers
+	 * end to end are replaced, their sources kept as the new clip's
+	 * alternate takes (a part recorded again, a loop pass over the last one).
+	 */
+	#landClip(track: StudioTrack, sourceId: string, start: number, duration: number, name: string) {
+		const end = start + duration;
+		const covered = this.arrangement.clips.filter(
+			(x) =>
+				x.trackId === track.id && x.start >= start - 0.005 && x.start + x.duration <= end + 0.005,
+		);
+		const alternates = covered.flatMap((x) => [x.sourceId, ...(x.alternates ?? [])]).slice(0, 32);
+		if (covered.length) {
+			const gone = new Set(covered.map((x) => x.id));
+			for (const id of gone) this.#stopClip(id);
+			this.arrangement.clips = this.arrangement.clips.filter((x) => !gone.has(x.id));
+		}
+		this.arrangement.clips.push({
+			id: localId(),
+			trackId: track.id,
+			sourceId,
+			start: round4(start),
+			offset: 0,
+			duration: round4(duration),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name,
+			...(alternates.length ? { alternates } : {}),
+		});
+	}
+	/** A decoded audio file onto a track at `start` (the page uploads the file as the source). */
+	importBuffer(
+		track: StudioTrack,
+		buffer: AudioBuffer,
+		file: { blob: Blob; filename: string },
+		start: number,
+	): StudioTake | null {
+		if (this.arrangement.clips.length >= MAX_STUDIO_CLIPS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
+			return null;
+		}
+		const sourceId = nanoid();
+		const label = file.filename.replace(/\.[a-z0-9]+$/i, "").slice(0, 60) || "Import";
+		this.#buffers.set(sourceId, buffer);
+		this.sources[sourceId] = {
+			id: sourceId,
+			label,
+			durationSeconds: buffer.duration,
+			sampleRate: buffer.sampleRate,
+			channels: buffer.numberOfChannels,
+			peaks: computePeaks(buffer, 1024),
+			status: "ready",
+			pending: true,
+		};
+		this.#recount();
+		this.#commit();
+		this.arrangement.clips.push({
+			id: localId(),
+			trackId: track.id,
+			sourceId,
+			start: round4(start),
+			offset: 0,
+			duration: round4(buffer.duration),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: label,
+		});
+		this.#reschedule();
+		return {
+			sourceId,
+			trackId: track.id,
+			trackLabel: label,
+			takeNumber: 0,
+			kind: "import",
+			buffer,
+			blob: file.blob,
+			filename: file.filename,
+			durationSeconds: buffer.duration,
+		};
+	}
+	/** The file decoded in the engine's context (its rate), for an import. */
+	async decodeFile(bytes: ArrayBuffer): Promise<AudioBuffer> {
+		await this.open();
+		return this.#decode(bytes);
+	}
 
 	// ── Gains ──────────────────────────────────────────────────────────────
 	#effectiveGain(track: StudioTrack) {
@@ -937,15 +1152,19 @@ class StudioEngine {
 			} catch {
 				// Already gone.
 			}
-			const take = this.#takeFrom(cap, ctx, from, takeNumber);
-			if (take) this.ontake?.(take);
+			for (const take of this.#takesFrom(cap, ctx, from, takeNumber)) this.ontake?.(take);
 		}
 		this.#livePeaks.clear();
 		this.liveTick++;
 		if (caps.length && this.arrangement.tracks.some((t) => t.armed)) this.dirty = true;
 	}
-	/** The chunks of one capture, less the lead-in and the input's latency, as a source and a clip. */
-	#takeFrom(cap: Capture, ctx: AudioContext, from: number, takeNumber: number): StudioTake | null {
+	/**
+	 * The chunks of one capture, less the lead-in and the input's latency,
+	 * as sources and clips: one take from where recording began; cut to the
+	 * loop region when Punch is on; or, looping, one take per full pass of
+	 * the region, the last pass the clip and the others its alternates.
+	 */
+	#takesFrom(cap: Capture, ctx: AudioContext, from: number, takeNumber: number): StudioTake[] {
 		const track = this.#track(cap.trackId);
 		const total = cap.chunks.reduce((n, c) => n + (c[0]?.length ?? 0), 0);
 		const lead = Math.round(LEAD_SECONDS * ctx.sampleRate);
@@ -955,10 +1174,10 @@ class StudioEngine {
 		const shift = Math.min(lead, Math.round((shiftMs / 1000) * ctx.sampleRate));
 		const skip = lead + shift;
 		const frames = total - skip;
-		if (frames < ctx.sampleRate * 0.25 || !track) return null;
-		const buffer = ctx.createBuffer(cap.channels, frames, ctx.sampleRate);
+		if (frames < ctx.sampleRate * 0.25 || !track) return [];
+		const whole = ctx.createBuffer(cap.channels, frames, ctx.sampleRate);
 		for (let c = 0; c < cap.channels; c++) {
-			const out = buffer.getChannelData(c);
+			const out = whole.getChannelData(c);
 			let at = 0;
 			for (const chunk of cap.chunks) {
 				const data = chunk[c] ?? chunk[0];
@@ -970,53 +1189,78 @@ class StudioEngine {
 				at = end;
 			}
 		}
-		if (inputSources.normalize) normalizeBuffer(buffer);
-		const sourceId = nanoid();
+		if (inputSources.normalize) normalizeBuffer(whole);
 		const label = track.name;
-		const peaks = computePeaks(buffer, 1024);
-		this.#buffers.set(sourceId, buffer);
-		this.sources[sourceId] = {
-			id: sourceId,
-			label,
-			durationSeconds: buffer.duration,
-			sampleRate: buffer.sampleRate,
-			channels: buffer.numberOfChannels,
-			peaks,
-			status: "ready",
-			pending: true,
-		};
-		this.#recount();
+		const loop = this.arrangement.loop;
+		// The pieces to land: [buffer seconds from, to) at a timeline start.
+		const pieces: { from: number; to: number; start: number }[] = [];
+		if (loop?.on && from < loop.end) {
+			const L = loop.end - loop.start;
+			const firstEnd = loop.end - from;
+			if (from <= loop.start + 0.005 && firstEnd <= whole.duration + 0.005)
+				pieces.push({
+					from: loop.start - from,
+					to: Math.min(firstEnd, whole.duration),
+					start: loop.start,
+				});
+			for (let b = firstEnd; b + L <= whole.duration + 0.005; b += L)
+				pieces.push({ from: b, to: Math.min(b + L, whole.duration), start: loop.start });
+			// No full pass: the take as it is, from where it began.
+			if (pieces.length === 0) pieces.push({ from: 0, to: whole.duration, start: from });
+		} else if (this.arrangement.punch && loop && from < loop.end) {
+			const start = Math.max(from, loop.start);
+			const to = Math.min(loop.end, from + whole.duration);
+			if (to - start < 0.05) return [];
+			pieces.push({ from: start - from, to: to - from, start });
+		} else {
+			pieces.push({ from: 0, to: whole.duration, start: from });
+		}
+		const takes: StudioTake[] = [];
 		this.#commit();
-		this.arrangement.clips.push({
-			id: localId(),
-			trackId: track.id,
-			sourceId,
-			start: Math.round(from * 10000) / 10000,
-			offset: 0,
-			duration: buffer.duration,
-			gain: 1,
-			fadeIn: 0,
-			fadeOut: 0,
-			name: `${label} · Take ${takeNumber}`,
-		});
-		const blob = new Blob(
-			[
-				encodeWav24(
-					Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)),
-					buffer.sampleRate,
+		pieces.forEach((piece, k) => {
+			const buffer =
+				pieces.length === 1 && piece.from === 0 && piece.to === whole.duration
+					? whole
+					: sliceBuffer(ctx, whole, piece.from, piece.to);
+			const sourceId = nanoid();
+			this.#buffers.set(sourceId, buffer);
+			this.sources[sourceId] = {
+				id: sourceId,
+				label,
+				durationSeconds: buffer.duration,
+				sampleRate: buffer.sampleRate,
+				channels: buffer.numberOfChannels,
+				peaks: computePeaks(buffer, 1024),
+				status: "ready",
+				pending: true,
+			};
+			const name =
+				pieces.length > 1
+					? `${label} · Take ${takeNumber}.${k + 1}`
+					: `${label} · Take ${takeNumber}`;
+			this.#landClip(track, sourceId, piece.start, buffer.duration, name);
+			takes.push({
+				sourceId,
+				trackId: track.id,
+				trackLabel: label,
+				takeNumber,
+				kind: "take",
+				buffer,
+				blob: new Blob(
+					[
+						encodeWav24(
+							Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)),
+							buffer.sampleRate,
+						),
+					],
+					{ type: "audio/wav" },
 				),
-			],
-			{ type: "audio/wav" },
-		);
-		return {
-			sourceId,
-			trackId: track.id,
-			trackLabel: label,
-			takeNumber,
-			buffer,
-			blob,
-			durationSeconds: buffer.duration,
-		};
+				filename: `${label.toLowerCase() || "take"}.wav`,
+				durationSeconds: buffer.duration,
+			});
+		});
+		this.#recount();
+		return takes;
 	}
 
 	// ── Meters ─────────────────────────────────────────────────────────────
@@ -1116,6 +1360,17 @@ class StudioEngine {
 	}
 }
 
+const round4 = (x: number) => Math.round(x * 10000) / 10000;
+/** Seconds [from, to) of a buffer as a buffer of its own. */
+function sliceBuffer(ctx: BaseAudioContext, buffer: AudioBuffer, from: number, to: number) {
+	const sr = buffer.sampleRate;
+	const a = Math.max(0, Math.round(from * sr));
+	const b = Math.min(buffer.length, Math.round(to * sr));
+	const out = ctx.createBuffer(buffer.numberOfChannels, Math.max(1, b - a), sr);
+	for (let c = 0; c < buffer.numberOfChannels; c++)
+		out.getChannelData(c).set(buffer.getChannelData(c).subarray(a, b));
+	return out;
+}
 function rms(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
 	analyser.getFloatTimeDomainData(buf);
 	let sum = 0;

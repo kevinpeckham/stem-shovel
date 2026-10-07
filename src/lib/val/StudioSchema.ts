@@ -61,6 +61,8 @@ export const StudioClipSchema = v.object({
 	fadeIn: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
 	fadeOut: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
+	/** Other takes recorded for this spot (take lanes): sources the clip can swap to; the one in `sourceId` is the chosen take. */
+	alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
 });
 export type StudioClip = v.InferOutput<typeof StudioClipSchema>;
 
@@ -80,6 +82,8 @@ export const StudioArrangementSchema = v.object({
 	countIn: v.boolean(),
 	click: v.boolean(),
 	loop: v.nullable(StudioLoopSchema),
+	/** Punch: a take is cut to the loop region (recording runs through, the clip keeps the region alone). */
+	punch: v.optional(v.boolean()),
 	master: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	tracks: v.pipe(v.array(StudioTrackSchema), v.maxLength(MAX_STUDIO_TRACKS)),
 	clips: v.pipe(v.array(StudioClipSchema), v.maxLength(MAX_STUDIO_CLIPS)),

@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Studio editing (phase 1b)**: trim a clip by dragging either end (non-destructive), split at the playhead (S), duplicate (⌘D), a bar under the timeline with the selected clip's name, gain and fades (drawn as wedges), **Import audio…** onto a track at the playhead, **Punch** (a take keeps only the loop region), and take lanes: a take that covers an older clip end to end keeps it as an alternate, loop recording makes a take of every full pass, and arrows step through them. A take saves the arrangement at once, and leaving with an unsaved edit asks first.
+
 ## [0.110.1] - 2026-10-07
 
 ### Fixed

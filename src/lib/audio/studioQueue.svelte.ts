@@ -22,6 +22,8 @@ export interface PendingSource {
 	channels: 1 | 2;
 	peaks: number[];
 	createdAt: number;
+	/** The file's name as reserved ("guitar.wav"; an import keeps its own name and type). */
+	filename: string;
 	blob: Blob;
 }
 interface SourceQueueItem extends PendingSource {
@@ -112,8 +114,8 @@ export class StudioQueue {
 				item.status = "uploading";
 				item.progress = 0;
 				try {
-					const file = new File([item.blob], `${item.trackLabel.toLowerCase() || "take"}.wav`, {
-						type: "audio/wav",
+					const file = new File([item.blob], item.filename, {
+						type: item.blob.type || "audio/wav",
 					});
 					await uploadStudioSourceFile(
 						file,
@@ -126,7 +128,7 @@ export class StudioQueue {
 								takeNumber: item.takeNumber,
 								filename: file.name,
 								sizeBytes: file.size,
-								codec: "pcm",
+								codec: item.kind === "take" ? "pcm" : null,
 								sampleRate: item.sampleRate,
 								channels: item.channels,
 								durationSeconds: item.durationSeconds,
