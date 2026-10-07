@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.111.1] - 2026-10-07
+
 ### Fixed
 
 - **A session that ended reads as one.** A save or an action after the sign-in expired answered "Not found"; every member-gated action now answers 401 and the page says "Your session has ended. Sign in again to keep working." (`requireMember` refuses the signed-out first; `errorMessage` names the 401).
