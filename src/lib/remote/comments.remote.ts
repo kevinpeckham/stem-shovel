@@ -52,6 +52,8 @@ export const updateComment = form(
 		const user = requireUser(locals);
 		const own = await commentOwnership(id);
 		if (!own) error(404, "Comment not found");
+		// Still allowed to see the song (a viewer who left the project is not), then the author.
+		await memberOf(locals, accountOfSong, own.songId, { viewers: true });
 		if (own.userId !== user.id) error(403, "Only the author can edit a comment");
 		const at = await resolvePosition(own.songId, position);
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
@@ -65,6 +67,7 @@ export const deleteComment = form(IdSchema, async ({ id }) => {
 	const user = requireUser(locals);
 	const own = await commentOwnership(id);
 	if (!own) error(404, "Comment not found");
+	await memberOf(locals, accountOfSong, own.songId, { viewers: true });
 	const membership = locals.memberships.find((m) => m.accountId === own.accountId);
 	const admin = membership?.role === "owner" || membership?.role === "admin";
 	if (own.userId !== user.id && !admin)

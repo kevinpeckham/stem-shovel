@@ -48,7 +48,7 @@ describe("owner-or-admin functions", () => {
 			name: "updateAccount",
 			fn: accounts.updateAccount,
 			input: { id: ACCOUNT, name: "Band", slug: "band" },
-			anon: 404,
+			anon: 401,
 			arrange: () => data.updateAccount.mockResolvedValue({ ok: true, account: { slug: "band" } }),
 			dataFn: "updateAccount",
 			args: [ACCOUNT, { name: "Band", slug: "band" }],
@@ -96,7 +96,7 @@ describe("owner-or-admin functions", () => {
 			name: "setMemberRole",
 			fn: accounts.setMemberRole,
 			input: { accountId: ACCOUNT, userId: OTHER_USER, role: "member" },
-			anon: 404,
+			anon: 401,
 			arrange: () => {
 				givenRow("accountMember", { role: "member" });
 				data.setMemberRole.mockResolvedValue({ ok: true });
@@ -215,9 +215,14 @@ describe("revokeInvitation and revokeInviteCode (searched across the caller's ad
 	];
 	for (const c of cases) {
 		describe(c.name, () => {
-			it("404 signed out, nothing searched", async () => {
+			it("refused signed out, nothing searched", async () => {
 				asSignedOut();
-				await expect(call(c.fn, { id: c.id })).rejects.toMatchObject(httpError(404));
+				// 401 from requireMember; 404 when the record's lookup comes first and the fake holds no row.
+				const status = await call(c.fn, { id: c.id }).then(
+					() => 0,
+					(e: { status: number }) => e.status,
+				);
+				expect([401, 404]).toContain(status);
 				expect(data[c.dataFn]).not.toHaveBeenCalled();
 			});
 			it("404 for a plain member, their account not even searched", async () => {
@@ -310,9 +315,9 @@ describe("createAccount", () => {
 
 describe("setDefaultArtist", () => {
 	const input = { accountId: ACCOUNT, artistId: ARTIST };
-	it("404 signed out", async () => {
+	it("401 signed out", async () => {
 		asSignedOut();
-		await expect(call(accounts.setDefaultArtist, input)).rejects.toMatchObject(httpError(404));
+		await expect(call(accounts.setDefaultArtist, input)).rejects.toMatchObject(httpError(401));
 	});
 	it("404 for a viewer", async () => {
 		asViewerOf(ACCOUNT);

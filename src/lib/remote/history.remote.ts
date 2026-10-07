@@ -126,6 +126,8 @@ export const restoreCommentVersion = command(
 		const user = requireUser(locals);
 		const own = await commentOwnership(commentId);
 		if (!own) error(404, "Comment not found");
+		// Still allowed to see the song, then the author or an admin.
+		await memberOf(locals, accountOfSong, own.songId, { viewers: true });
 		const membership = locals.memberships.find((m) => m.accountId === own.accountId);
 		if (own.userId !== user.id && !isAccountAdmin(membership?.role ?? null))
 			error(403, "Only the author or an admin can restore a comment");

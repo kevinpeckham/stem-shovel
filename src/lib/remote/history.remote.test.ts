@@ -194,9 +194,10 @@ describe("restoreCommentVersion", () => {
 		await expect(call(history.restoreCommentVersion, input)).rejects.toMatchObject(httpError(403));
 		expect(data.updateComment).not.toHaveBeenCalled();
 	});
-	it("403 for an admin of a different account", async () => {
+	it("404 for an admin of a different account, who may not see the song", async () => {
 		asAdminOf(OTHER_ACCOUNT);
-		await expect(call(history.restoreCommentVersion, input)).rejects.toMatchObject(httpError(403));
+		await expect(call(history.restoreCommentVersion, input)).rejects.toMatchObject(httpError(404));
+		expect(data.updateComment).not.toHaveBeenCalled();
 	});
 	it("the author restores it through updateComment", async () => {
 		asMemberOf(ACCOUNT, "member", { userId: OTHER_USER });

@@ -150,12 +150,12 @@ describe("require* on locals", () => {
 		const sup = { ...locals(null), user: { ...user, isSuperAdmin: true } };
 		expect(access.requireSuperAdmin(sup)).toBe(sup.user);
 	});
-	test("requireMember: any role passes, an outsider or a stranger is a 404", async () => {
+	test("requireMember: any role passes, an outsider is a 404, signed out a 401", async () => {
 		for (const role of ["owner", "admin", "member", "viewer"])
 			expect(access.requireMember(locals(role), "a1")).toEqual(membership(role));
 		expect(await statusOf(() => access.requireMember(locals(null), "a1"))).toBe(404);
 		expect(await statusOf(() => access.requireMember(locals("owner"), "a2"))).toBe(404);
-		expect(await statusOf(() => access.requireMember(signedOut, "a1"))).toBe(404);
+		expect(await statusOf(() => access.requireMember(signedOut, "a1"))).toBe(401);
 	});
 	test("requireEditor: viewers get the 404 a non-member gets", async () => {
 		for (const role of ["owner", "admin", "member"])
@@ -257,8 +257,8 @@ describe("accountOf* lookups", () => {
 		expect(await access.accountOfCredit("nope")).toBeNull();
 		expect(await access.accountOfArtistMember("am1")).toBe("a1");
 		expect(await access.accountOfArtistMember("nope")).toBeNull();
-		// The schema says every member has an artist; without one the lookup throws rather than guessing.
-		await expect(access.accountOfArtistMember("am9")).rejects.toThrow();
+		// A member whose artist row is gone (foreign keys are off) is "not found", not a 500.
+		expect(await access.accountOfArtistMember("am9")).toBeNull();
 	});
 });
 

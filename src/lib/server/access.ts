@@ -46,7 +46,9 @@ export function requireSuperAdmin(locals: App.Locals) {
 	return locals.user;
 }
 
+/** A member of the account, else 404; signed out, 401 (the client tells the person their session ended rather than "not found"). */
 export function requireMember(locals: App.Locals, accountId: string) {
+	if (!locals.user) error(401, "Sign in first");
 	const m = locals.memberships.find((m) => m.accountId === accountId);
 	if (!m) error(404, "Not found");
 	if (m.actingAs && locals.user) auditActing(locals.user.id, accountId);
@@ -195,14 +197,14 @@ export async function accountOfArtistMember(memberId: string) {
 		where: eq(artistMember.id, memberId),
 		with: { artist: { columns: { accountId: true } } },
 	});
-	return row?.artist.accountId ?? null;
+	return row?.artist?.accountId ?? null;
 }
 export async function accountOfCredit(creditId: string) {
 	const row = await db.query.songCredit.findFirst({
 		where: eq(songCredit.id, creditId),
 		with: { song: { columns: { accountId: true } } },
 	});
-	return row?.song.accountId ?? null;
+	return row?.song?.accountId ?? null;
 }
 export async function accountOfStem(stemId: string) {
 	const row = await db.query.stem.findFirst({

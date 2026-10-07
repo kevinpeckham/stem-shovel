@@ -214,9 +214,9 @@ describe("functions gated by the project's account", () => {
 describe("createProject", () => {
 	const input = { accountId: ACCOUNT, name: "Demos" };
 	beforeEach(() => data.createProject.mockResolvedValue({ id: PROJECT, slug: "demos" }));
-	it("404 signed out", async () => {
+	it("401 signed out", async () => {
 		asSignedOut();
-		await expect(call(projects.createProject, input)).rejects.toMatchObject(httpError(404));
+		await expect(call(projects.createProject, input)).rejects.toMatchObject(httpError(401));
 	});
 	it("404 for a member of another account", async () => {
 		asOutsider();

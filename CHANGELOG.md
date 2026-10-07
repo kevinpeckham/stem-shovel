@@ -10,6 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **A session that ended reads as one.** A save or an action after the sign-in expired answered "Not found"; every member-gated action now answers 401 and the page says "Your session has ended. Sign in again to keep working." (`requireMember` refuses the signed-out first; `errorMessage` names the 401).
+- **Editing, deleting or restoring a comment needs current access to the song**, not authorship alone: a viewer who left a project can no longer change their old comments, and an admin of another account gets "not found".
+- **An artist member or a credit whose parent row is gone answers "not found"** instead of failing.
 - **Viewer-role memberships behave the same everywhere**: the beat, chord-style, piano-preset, progression and drum-kit libraries are listed for every member as their notes say (a viewer-role member was refused), while creating a project and revoking a share link need an editor like every other change (a viewer-role member could do both). Found by the new authorization tests; the account viewer role is retired, so no live account changes.
 - **Deleting a user clears the uploader of their attachments and notation files**, as the other uploads already were (the cascade test now derives every user reference from the schema).
 

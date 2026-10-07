@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { errorMessage } from "./errorMessage";
+import { errorMessage, SESSION_ENDED } from "./errorMessage";
 
 describe("errorMessage", () => {
 	it("reads an Error", () => {
@@ -11,6 +11,9 @@ describe("errorMessage", () => {
 	});
 	it("accepts strings and objects with a message", () => {
 		expect(errorMessage("plain")).toBe("plain");
+	});
+	it("reads a 401 as the session having ended", () => {
+		expect(errorMessage({ status: 401, body: { message: "Sign in first" } })).toBe(SESSION_ENDED);
 		expect(errorMessage({ message: "shaped" })).toBe("shaped");
 	});
 	it("falls back for anything else", () => {
