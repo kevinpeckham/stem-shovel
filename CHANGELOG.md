@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **The rest of the coverage plan**: frozen golden links for every drum-machine share-link version (v1–v9, each made by that version's own encoder) and piano presets, round trips of the bit packer and the MIDI writers, `peaks.ts`, nine more valibot schemas, component tests for FloatingPanel, ContextMenu, StemRow, StemPlayer and Waveform (`tests/helpers/fakePopover.ts`), `hooks.server.ts`, and the reserve/ready API routes, the upload token route, the jobs endpoint and the mix route (`tests/helpers/fakeApiEvent.ts`; route tests are named `server.test.ts` since SvelteKit reserves the `+` prefix). 273 cases; the suite stands at 1,620.
+
 ## [0.111.1] - 2026-10-07
 
 ### Fixed
