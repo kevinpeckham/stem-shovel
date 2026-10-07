@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Open bug reports, support requests and feature requests list first**, then complete, then closed, as their pages say; the status column alone sorted "closed" ahead of "open" (`utils/byStatus.ts`).
+- **A song whose project row is gone** answers its own privacy when its files' store is asked for, instead of failing.
+- **Storage room for an account that does not exist is refused**, not granted.
+- **A project-viewer invitation checks the project belongs to the account** (a viewer takes no seat, so the seat cap stays out of it); the command answers 404 otherwise.
+
 ### Technical
 
 - **`bun run test:coverage`** (`@vitest/coverage-v8`, text summary plus HTML and JSON reports in the gitignored `coverage/`), and **tests for the rest of `data.ts`**: accounts, projects, songs, stems, comments, ideas and recordings, files and notation, docs and notes, admin and support, libraries, mixes and renditions, views (300 cases over twelve files, through `tests/helpers/fakeDataLayer.ts`; the fake db learned raw `sql` predicates, aggregates, joins, `like`, `exists` subqueries and conflict-aware inserts). The suite stands at 1,923.

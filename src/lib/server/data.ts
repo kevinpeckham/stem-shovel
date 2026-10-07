@@ -4,6 +4,7 @@ import {
 	type IdeaKind,
 } from "$lib/val/IdeaSchema";
 import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
+import { byStatus } from "$lib/utils/byStatus";
 import { reorderById } from "$lib/utils/reorderById";
 import type { CreditRole } from "$lib/val/CreditRoleSchema";
 import { flagProfanity } from "$lib/utils/profanity";
@@ -295,7 +296,9 @@ export async function accountStorageBytes(accountId: string) {
 /** Before reserving an upload: does the file fit? The refusal carries what the page should say. */
 export async function storageRoom(accountId: string, incomingBytes: number) {
 	const limits = await accountLimitsOf(accountId);
-	if (!limits || limits.storageBytes === null) return { ok: true as const };
+	// No such account: nothing may be filed under it (the callers checked membership, so this is a backstop).
+	if (!limits) return { ok: false as const, used: 0, limit: 0 };
+	if (limits.storageBytes === null) return { ok: true as const };
 	const used = await accountStorageBytes(accountId);
 	if (storageFits(used, incomingBytes, limits.storageBytes)) return { ok: true as const };
 	return { ok: false as const, used, limit: limits.storageBytes };
@@ -1641,15 +1644,37 @@ export async function setProjectRestricted(
  * `projectId`) to view one project from outside the account, which takes
  * no seat. The token is the link.
  */
+type InvitationRow = typeof invitation.$inferSelect;
+/** Into the account: the row, "member" for someone already in, "full" at the seat cap. */
+export async function createInvitation(
+	accountId: string,
+	invitedBy: string,
+	email: string,
+	role: MemberRole,
+): Promise<InvitationRow | "member" | "full">;
+/** To view a project: the row as a viewer, "member" for someone already on it, null when the project is not the account's (a viewer takes no seat). */
+export async function createInvitation(
+	accountId: string,
+	invitedBy: string,
+	email: string,
+	role: MemberRole | "viewer",
+	projectId: string,
+): Promise<InvitationRow | "member" | "full" | null>;
 export async function createInvitation(
 	accountId: string,
 	invitedBy: string,
 	email: string,
 	role: MemberRole | "viewer",
 	projectId: string | null = null,
-) {
+): Promise<InvitationRow | "member" | "full" | null> {
 	const address = email.trim().toLowerCase();
 	if (projectId) {
+		// The project must be this account's; a viewer takes no seat, so the seat cap is not consulted.
+		const proj = await db.query.project.findFirst({
+			where: and(eq(project.id, projectId), eq(project.accountId, accountId)),
+			columns: { id: true },
+		});
+		if (!proj) return null;
 		const people = await db.query.projectMember.findMany({
 			where: eq(projectMember.projectId, projectId),
 			with: { user: { columns: { email: true } } },
@@ -2153,7 +2178,9 @@ export async function listBugReports() {
 			votes: { columns: { value: true } },
 		},
 	});
-	return rows.map(({ votes, ...r }) => ({ ...r, score: votes.reduce((n, v) => n + v.value, 0) }));
+	return rows
+		.map(({ votes, ...r }) => ({ ...r, score: votes.reduce((n, v) => n + v.value, 0) }))
+		.sort(byStatus);
 }
 
 /** Records, changes or withdraws (`none`) a user's thumbs on a request; null when the request is unknown. */
@@ -2228,14 +2255,15 @@ export async function createSupportRequest(input: {
 	return row;
 }
 
-export function listSupportRequests() {
-	return db.query.supportRequest.findMany({
+export async function listSupportRequests() {
+	const rows = await db.query.supportRequest.findMany({
 		orderBy: [asc(supportRequest.status), desc(supportRequest.createdAt)],
 		with: {
 			sender: { columns: { name: true } },
 			account: { columns: { name: true, slug: true } },
 		},
 	});
+	return rows.sort(byStatus);
 }
 
 export async function setSupportRequestStatus(id: string, status: SupportStatus) {
@@ -2348,10 +2376,11 @@ export async function listFeatureRequestsPublic(userId: string | null, everythin
 				votes: tally(votes, mine),
 			};
 		})
-		.sort((a, b) =>
-			a.status !== b.status
-				? 0
-				: b.votes.score - a.votes.score || b.createdAt.getTime() - a.createdAt.getTime(),
+		.sort(
+			(a, b) =>
+				byStatus(a, b) ||
+				b.votes.score - a.votes.score ||
+				b.createdAt.getTime() - a.createdAt.getTime(),
 		);
 }
 

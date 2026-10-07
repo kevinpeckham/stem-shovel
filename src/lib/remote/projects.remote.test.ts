@@ -197,6 +197,14 @@ describe("functions gated by the project's account", () => {
 			});
 		});
 	}
+	it("inviteProjectViewer answers 404 when the project is not the account's", async () => {
+		asEditorOf(ACCOUNT);
+		data.createInvitation.mockResolvedValue(null);
+		await expect(
+			call(projects.inviteProjectViewer, { projectId: PROJECT, email: "viewer@example.com" }),
+		).rejects.toMatchObject(httpError(404));
+		expect(email.sendInvitationEmail).not.toHaveBeenCalled();
+	});
 	it("inviteProjectViewer emails the link to the address invited", async () => {
 		asEditorOf(ACCOUNT);
 		data.createInvitation.mockResolvedValue({

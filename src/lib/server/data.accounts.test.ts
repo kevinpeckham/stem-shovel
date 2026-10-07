@@ -134,8 +134,8 @@ describe("storageRoom", () => {
 		expect(await storageRoom("a1", 400)).toEqual({ ok: true });
 		expect(await storageRoom("a1", 401)).toEqual({ ok: false, used: 600, limit: 1_000 });
 	});
-	test("an unknown account is not refused here", async () => {
-		expect(await storageRoom("nope", 5)).toEqual({ ok: true });
+	test("an unknown account has no room", async () => {
+		expect(await storageRoom("nope", 5)).toEqual({ ok: false, used: 0, limit: 0 });
 	});
 });
 
@@ -477,10 +477,11 @@ describe("createInvitation", () => {
 		expect(await createInvitation("a1", "u1", "new@example.com", "member")).toBe("full");
 		expect(callsTo("insert", "invitation")).toEqual([]);
 	});
-	test("to view a project: always role viewer, no seat check, 'member' when already on the project", async () => {
+	test("to view a project: always role viewer, no seat check (a viewer takes none), 'member' when already on the project, null for another account's project", async () => {
 		expect(await createInvitation("a1", "u1", "bob@example.com", "admin", "p1")).toBe("member");
 		const row = await createInvitation("a1", "u1", "ann@example.com", "admin", "p1");
 		expect(row).toMatchObject({ projectId: "p1", role: "viewer", email: "ann@example.com" });
+		expect(await createInvitation("a2", "u1", "ann@example.com", "admin", "p1")).toBeNull();
 	});
 });
 

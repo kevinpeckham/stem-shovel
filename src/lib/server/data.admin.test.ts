@@ -436,11 +436,11 @@ describe("bug reports and feature requests", () => {
 			],
 			bugReportVote: [vote("old", "u1", 1), vote("old", "u2", 1), vote("new", "u1", -1)],
 		});
-		// The status column sorts as text: "closed" and "complete" come before "open".
+		// Open ones first (the status column alone would sort "closed" before "open"), newest first within a status.
 		expect((await listBugReports()).map((r) => [r.id, r.score, r.reporter])).toEqual([
-			["done", 0, null],
 			["new", -1, { name: "Ann", email: "ann@example.com" }],
 			["old", 2, { name: "Ann", email: "ann@example.com" }],
+			["done", 0, null],
 		]);
 	});
 	test("voteOnBugReport keeps one vote per person: a change updates it, none withdraws it", async () => {

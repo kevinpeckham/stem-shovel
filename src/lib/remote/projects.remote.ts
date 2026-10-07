@@ -111,6 +111,7 @@ export const inviteProjectViewer = form(
 		const slugs = await projectSlugs(m.accountId, projectId);
 		if (!slugs) error(404, "Project not found");
 		const row = await createInvitation(m.accountId, user.id, email, "viewer", projectId);
+		if (row === null) error(404, "Project not found");
 		if (row === "member") invalid(issue.email("They are on this project already."));
 		if (row === "full") error(409, "No seats left"); // not reached: a viewer takes none
 		await sendInvitationEmail({

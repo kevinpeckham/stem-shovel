@@ -6,8 +6,12 @@ import { and, eq, isNull } from "drizzle-orm";
 const { project, song, stem, demo, songFile, songNotation } = schema;
 
 /** The store a song's files belong in: private when it or its project is. */
-function accessOfSong(s: { isPrivate: boolean; project: { isPrivate: boolean } }): BlobAccess {
-	return s.isPrivate || s.project.isPrivate ? "private" : "public";
+function accessOfSong(s: {
+	isPrivate: boolean;
+	project: { isPrivate: boolean } | null;
+}): BlobAccess {
+	// Foreign keys are off, so a song could outlive its project row; alone it is as private as it says.
+	return s.isPrivate || s.project?.isPrivate ? "private" : "public";
 }
 
 export async function accessOfSongId(songId: string): Promise<BlobAccess | null> {
