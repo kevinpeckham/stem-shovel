@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.110.1] - 2026-10-07
+
+### Fixed
+
+- **A tool page's intro renders its markdown** (Kevin: a link typed into the Studio's copy doc showed as markdown): the intro line goes through the same sanitized renderer as the tips under the device, inline; the phone tooltip and the page title keep a plain-text copy with links reduced to their words (`utils/stripMarkdownInline.ts`).
+
 ## [0.110.0] - 2026-10-06
 
 ### Added
