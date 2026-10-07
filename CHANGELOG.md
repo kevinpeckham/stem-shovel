@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **`bun run test:coverage`** (`@vitest/coverage-v8`, text summary plus HTML and JSON reports in the gitignored `coverage/`), and **tests for the rest of `data.ts`**: accounts, projects, songs, stems, comments, ideas and recordings, files and notation, docs and notes, admin and support, libraries, mixes and renditions, views (300 cases over twelve files, through `tests/helpers/fakeDataLayer.ts`; the fake db learned raw `sql` predicates, aggregates, joins, `like`, `exists` subqueries and upserts). The suite stands at 1,923.
+
 ## [0.111.2] - 2026-10-07
 
 ### Fixed
