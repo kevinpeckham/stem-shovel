@@ -1,6 +1,6 @@
 # Multitrack recorder (design draft)
 
-Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2a (the instruments as inputs, the drum machine as a backing) built 2026-10-07; per-track effects (2b) and MIDI (3) remain. Design written 2026-10-06. Kevin's ask: "a simple
+Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; MIDI (3) remains. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
 stem player, and a lot of the engineering of the idea recorder. It should
 start fairly simple as a stand-alone tool … 'songs' instead of 'ideas' …

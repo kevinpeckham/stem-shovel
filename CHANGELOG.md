@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Studio phase 2b: effects on every track.** The sliders button in a track's header opens a compressor (amount, ratio, make-up), the tone stage (tilt, air, bottom) and a reverb send (level, size), the piano chain's own pieces on one chain per track (`src/lib/audio/trackChain.ts`) that the offline bounce builds too, so a mix, a demo and the stems sent to a song carry them. Saved on the track in the arrangement; a restored revision brings them back.
 - **Studio phase 2a: the instruments as track inputs.** A track's input can be the piano, the chord player or the drum machine, hosted in the Studio's own audio context as the looper hosts them: what is played on the panel lands on the take sample-accurately, a piano or chord part is shifted earlier by the output latency (a Timing-menu switch), and a track armed to the drum machine makes the beat play along from the transport's start at the song's tempo. The instruments' settings (the beat, the piano's preset, the chord player's settings) are saved with the song when such a take lands and come back when it opens. The three panels sit in the toolbar as on the looper page.
 
 ### Technical

@@ -44,6 +44,29 @@ export const StudioInputSchema = v.object({
 });
 export type StudioInput = v.InferOutput<typeof StudioInputSchema>;
 
+/** A track's effects (docs/multitrack-recorder.md, phase 2b): the piano chain's compressor, tone and reverb, each off at its zero. */
+export const StudioTrackFxSchema = v.object({
+	compressor: v.object({
+		/** 0 (off, the signal goes round the node) to 1: the threshold from 0 down to -40 dB. */
+		amount: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+		ratio: v.pipe(v.number(), v.minValue(1), v.maxValue(20)),
+		attack: v.pipe(v.number(), v.minValue(0.001), v.maxValue(1)),
+		release: v.pipe(v.number(), v.minValue(0.01), v.maxValue(2)),
+		/** Make-up gain in dB. */
+		makeup: v.pipe(v.number(), v.minValue(0), v.maxValue(24)),
+	}),
+	tone: v.object({
+		tilt: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
+		air: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+		bottom: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	}),
+	reverb: v.object({
+		level: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+		size: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	}),
+});
+export type StudioTrackFx = v.InferOutput<typeof StudioTrackFxSchema>;
+
 export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
@@ -55,6 +78,8 @@ export const StudioTrackSchema = v.object({
 	solo: v.boolean(),
 	armed: v.boolean(),
 	input: v.nullable(StudioInputSchema),
+	/** The track's effects; absent means every effect off. */
+	fx: v.optional(StudioTrackFxSchema),
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
 

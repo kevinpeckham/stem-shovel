@@ -9,7 +9,8 @@
 	import { formatTime } from "$lib/utils/formatTime";
 	import { rulerTicks } from "$lib/utils/rulerTicks";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import type { StudioClip, StudioInput, StudioTrack } from "$lib/val/StudioSchema";
+	import { defaultTrackFx, trackFxActive } from "$lib/audio/trackChain";
+	import type { StudioClip, StudioInput, StudioTrack, StudioTrackFx } from "$lib/val/StudioSchema";
 	import type { Attachment } from "svelte/attachments";
 	import ContextMenu from "./ContextMenu.svelte";
 
@@ -381,6 +382,19 @@
 	function silenced(t: StudioTrack) {
 		return t.muted || (engine.anySolo && !t.solo);
 	}
+	/** The track's effects as they stand (every effect off when it has none), and a setter for one field. */
+	function fxOf(t: StudioTrack): StudioTrackFx {
+		return t.fx ?? defaultTrackFx();
+	}
+	function setFx<K extends keyof StudioTrackFx>(
+		t: StudioTrack,
+		group: K,
+		patch: Partial<StudioTrackFx[K]>,
+	) {
+		const fx = structuredClone($state.snapshot(fxOf(t)));
+		Object.assign(fx[group], patch);
+		engine.setTrackFx(t.id, fx);
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
@@ -442,6 +456,136 @@
 	{#each engine.arrangement.tracks as track, index (track.id)}
 		{@const level = engine.levels[track.id] ?? 0}
 		{@const dim = silenced(track)}
+		{#snippet fxMenu()}
+			{@const fx = fxOf(track)}
+			<div
+				class="px-3 pt-2 pb-4 grid gap-4 text-13px [&_span.device-button-label]-(block mb-1 text-blue-100/90) [&_input[type=range]]-(w-full accent-maximumYellow)"
+			>
+				<div class="grid gap-2">
+					<span class="device-button-label">Compressor</span>
+					<label class="block">
+						<span class="text-11px opacity-70"
+							>Amount · {Math.round(fx.compressor.amount * 100)}%</span
+						>
+						<input
+							type="range"
+							min="0"
+							max="1"
+							step="0.01"
+							value={fx.compressor.amount}
+							aria-label="{track.name} compressor amount"
+							oninput={(e) => setFx(track, "compressor", { amount: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+					<label class="block">
+						<span class="text-11px opacity-70">Ratio · {fx.compressor.ratio}:1</span>
+						<input
+							type="range"
+							min="1"
+							max="20"
+							step="1"
+							value={fx.compressor.ratio}
+							aria-label="{track.name} compressor ratio"
+							oninput={(e) => setFx(track, "compressor", { ratio: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+					<label class="block">
+						<span class="text-11px opacity-70">Make-up · {fx.compressor.makeup} dB</span>
+						<input
+							type="range"
+							min="0"
+							max="24"
+							step="1"
+							value={fx.compressor.makeup}
+							aria-label="{track.name} compressor make-up gain"
+							oninput={(e) => setFx(track, "compressor", { makeup: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+				</div>
+				<div class="grid gap-2">
+					<span class="device-button-label">Tone</span>
+					<label class="block">
+						<span class="text-11px opacity-70"
+							>Tilt · {fx.tone.tilt < 0 ? "dark" : fx.tone.tilt > 0 ? "bright" : "flat"}</span
+						>
+						<input
+							type="range"
+							min="-1"
+							max="1"
+							step="0.05"
+							value={fx.tone.tilt}
+							aria-label="{track.name} tone tilt"
+							oninput={(e) => setFx(track, "tone", { tilt: e.currentTarget.valueAsNumber })}
+							ondblclick={() => setFx(track, "tone", { tilt: 0 })}
+						/>
+					</label>
+					<label class="block">
+						<span class="text-11px opacity-70">Air · {Math.round(fx.tone.air * 100)}%</span>
+						<input
+							type="range"
+							min="0"
+							max="1"
+							step="0.05"
+							value={fx.tone.air}
+							aria-label="{track.name} tone air"
+							oninput={(e) => setFx(track, "tone", { air: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+					<label class="block">
+						<span class="text-11px opacity-70">Bottom · {Math.round(fx.tone.bottom * 100)}%</span>
+						<input
+							type="range"
+							min="0"
+							max="1"
+							step="0.05"
+							value={fx.tone.bottom}
+							aria-label="{track.name} tone bottom"
+							oninput={(e) => setFx(track, "tone", { bottom: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+				</div>
+				<div class="grid gap-2">
+					<span class="device-button-label">Reverb</span>
+					<label class="block">
+						<span class="text-11px opacity-70">Level · {Math.round(fx.reverb.level * 100)}%</span>
+						<input
+							type="range"
+							min="0"
+							max="1"
+							step="0.01"
+							value={fx.reverb.level}
+							aria-label="{track.name} reverb level"
+							oninput={(e) => setFx(track, "reverb", { level: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+					<label class="block">
+						<span class="text-11px opacity-70"
+							>Size · {fx.reverb.size < 0.34
+								? "a room"
+								: fx.reverb.size < 0.67
+									? "a hall"
+									: "a cathedral"}</span
+						>
+						<input
+							type="range"
+							min="0"
+							max="1"
+							step="0.05"
+							value={fx.reverb.size}
+							aria-label="{track.name} reverb size"
+							onchange={(e) => setFx(track, "reverb", { size: e.currentTarget.valueAsNumber })}
+						/>
+					</label>
+				</div>
+				<button
+					class="button button-xs justify-self-start"
+					type="button"
+					onclick={() => engine.setTrackFx(track.id, defaultTrackFx())}
+				>
+					<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span> Reset effects
+				</button>
+			</div>
+		{/snippet}
 		<div class="flex" style:width="{HEADER_W + laneWidth}px" style:height="{LANE_H}px">
 			<!-- the header -->
 			<div
@@ -499,6 +643,20 @@
 						aria-label="Solo {track.name}"
 						onclick={() => engine.toggleSolo(track.id)}>S</button
 					>
+					<ContextMenu
+						ariaLabel="{track.name} effects"
+						title="Compressor, tone and reverb for this track"
+						iconClass="i-ph-sliders-horizontal"
+						buttonBaseClasses="button button-xs px-1 shrink-0 {trackFxActive(track.fx)
+							? 'text-accent opacity-100'
+							: 'opacity-70 hover-opacity-100'}"
+						position="bottom left"
+						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+						items={[
+							{ id: "fx-heading", kind: "heading", label: `${track.name} effects` },
+							{ id: "fx", kind: "snippet", snippet: fxMenu },
+						]}
+					/>
 					<ContextMenu
 						ariaLabel="{track.name} actions"
 						buttonBaseClasses="button button-xs opacity-70 hover-opacity-100 px-1 shrink-0"

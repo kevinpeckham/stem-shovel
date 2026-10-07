@@ -35,6 +35,22 @@ test.describe.serial("Studio instruments", () => {
 		expect(take.channels).toBe(2);
 		// The beat was in the take: the loudest bin is well above silence.
 		expect(take.peak).toBeGreaterThan(0.05);
+		// Phase 2b: the track's effects set from the menu are saved on the track and the bounce builds the same chain.
+		await page.getByRole("button", { name: "Track 1 effects" }).click();
+		await page.getByLabel("Track 1 reverb level").fill("0.6");
+		await page.getByLabel("Track 1 tone tilt").fill("0.5");
+		await page.keyboard.press("Escape");
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].fx)).toMatchObject({
+			reverb: { level: 0.6 },
+			tone: { tilt: 0.5 },
+		});
+		const rendered = await hooked(page, ([w]) =>
+			w.__studio
+				.render()
+				.then((b: AudioBuffer) => ({ seconds: b.duration, channels: b.numberOfChannels })),
+		);
+		expect(rendered.channels).toBe(2);
+		expect(rendered.seconds).toBeGreaterThan(2.5);
 		await until(page, ([w]) => !Object.values(w.__studio.sources).some((s: any) => s.pending), {
 			ms: 30_000,
 		});

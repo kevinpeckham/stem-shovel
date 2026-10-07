@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
 import { MAX_STUDIO_TRACKS } from "../constants/studio";
-import { StudioArrangementSchema, StudioSourceReserveSchema } from "./StudioSchema";
+import {
+	StudioArrangementSchema,
+	StudioSourceReserveSchema,
+	StudioTrackFxSchema,
+} from "./StudioSchema";
 
 const sourceId = "V1StGXR8_Z5jdHi6B-myT";
 const track = (id: string) => ({
@@ -75,5 +79,23 @@ describe("StudioSourceReserveSchema", () => {
 		};
 		expect(v.parse(StudioSourceReserveSchema, reserve).trackLabel).toBe("Guitar");
 		expect(v.safeParse(StudioSourceReserveSchema, { ...reserve, channels: 3 }).success).toBe(false);
+	});
+});
+
+describe("StudioTrackFxSchema", () => {
+	test("accepts every effect at its zero and refuses a ratio under 1:1 or a reverb past full", () => {
+		const off = {
+			compressor: { amount: 0, ratio: 4, attack: 0.01, release: 0.25, makeup: 0 },
+			tone: { tilt: 0, air: 0, bottom: 0 },
+			reverb: { level: 0, size: 0.5 },
+		};
+		expect(v.parse(StudioTrackFxSchema, off)).toEqual(off);
+		expect(
+			v.safeParse(StudioTrackFxSchema, { ...off, compressor: { ...off.compressor, ratio: 0.5 } })
+				.success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioTrackFxSchema, { ...off, reverb: { level: 1.5, size: 0.5 } }).success,
+		).toBe(false);
 	});
 });

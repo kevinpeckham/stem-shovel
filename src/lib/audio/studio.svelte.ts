@@ -16,6 +16,7 @@ import type {
 	StudioInputSource,
 	StudioSourceView,
 	StudioTrack,
+	StudioTrackFx,
 } from "$lib/val/StudioSchema";
 import { nanoid } from "nanoid";
 import { drumMachine } from "./drumMachine.svelte";
@@ -26,6 +27,7 @@ import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
+import { createTrackChain, defaultTrackFx, type TrackChain } from "./trackChain";
 
 /**
  * The Studio's engine (docs/multitrack-recorder.md): tracks of clips cut
@@ -117,6 +119,7 @@ function localId(): string {
 
 interface TrackNodes {
 	gain: GainNode;
+	chain: TrackChain;
 	panner: StereoPannerNode;
 	analyser: AnalyserNode;
 }
@@ -285,16 +288,19 @@ class StudioEngine {
 		if (!ctx || !this.#master) return null;
 		let nodes = this.#tracks.get(trackId);
 		if (nodes) return nodes;
+		const track = this.arrangement.tracks.find((t) => t.id === trackId);
 		const gain = ctx.createGain();
+		// The fader, the effects (trackChain.ts), the pan, the meter, the master.
+		const chain = createTrackChain(ctx, track?.fx ?? defaultTrackFx());
 		const panner = ctx.createStereoPanner();
 		const analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
-		gain.connect(panner);
+		gain.connect(chain.input);
+		chain.output.connect(panner);
 		panner.connect(analyser);
 		panner.connect(this.#master);
-		nodes = { gain, panner, analyser };
+		nodes = { gain, chain, panner, analyser };
 		this.#tracks.set(trackId, nodes);
-		const track = this.arrangement.tracks.find((t) => t.id === trackId);
 		if (track) {
 			gain.gain.value = this.#effectiveGain(track);
 			panner.pan.value = track.pan;
@@ -305,6 +311,8 @@ class StudioEngine {
 		const nodes = this.#tracks.get(trackId);
 		if (!nodes) return;
 		nodes.gain.disconnect();
+		nodes.chain.input.disconnect();
+		nodes.chain.output.disconnect();
 		nodes.panner.disconnect();
 		nodes.analyser.disconnect();
 		this.#tracks.delete(trackId);
@@ -445,6 +453,7 @@ class StudioEngine {
 			if (!a.tracks.some((t) => t.id === id)) this.#dropTrackNodes(id);
 		for (const t of a.tracks) this.#ensureTrackNodes(t.id);
 		this.#applyGains(true);
+		for (const t of a.tracks) this.#tracks.get(t.id)?.chain.update(t.fx ?? defaultTrackFx(), 0);
 	}
 	/** A revision restored from the server replaces the arrangement outright (its own undo step). */
 	replaceArrangement(a: StudioArrangement) {
@@ -515,6 +524,14 @@ class StudioEngine {
 		this.dirty = true;
 		const nodes = this.#tracks.get(trackId);
 		if (nodes && this.#ctx) nodes.panner.pan.setTargetAtTime(t.pan, this.#ctx.currentTime, RAMP);
+	}
+	/** A track's effects, live (a slider moves them; no undo step, as the fader). */
+	setTrackFx(trackId: string, fx: StudioTrackFx) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		t.fx = structuredClone(fx);
+		this.dirty = true;
+		this.#tracks.get(trackId)?.chain.update(t.fx, 0.02);
 	}
 	toggleMute(trackId: string) {
 		const t = this.#track(trackId);
@@ -1298,9 +1315,12 @@ class StudioEngine {
 			if (g <= 0) continue;
 			const gain = off.createGain();
 			gain.gain.value = g;
+			const chain = createTrackChain(off, t.fx ?? defaultTrackFx());
 			const panner = off.createStereoPanner();
 			panner.pan.value = t.pan;
-			gain.connect(panner).connect(master);
+			gain.connect(chain.input);
+			chain.output.connect(panner);
+			panner.connect(master);
 			nodes.set(t.id, gain);
 		}
 		for (const clip of this.arrangement.clips) {
