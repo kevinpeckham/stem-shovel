@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.111.3] - 2026-10-07
+
 ### Fixed
 
 - **Open bug reports, support requests and feature requests list first**, then complete, then closed, as their pages say; the status column alone sorted "closed" ahead of "open" (`utils/byStatus.ts`).
