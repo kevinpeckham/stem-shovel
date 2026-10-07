@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **Authorization tests for every remote function** (32 `*.remote.test.ts`, 690 cases): signed out, an outsider, a member of the wrong role, the owner, and the creator-ownership rules for ideas, takes and Studio songs, against the real `access.ts` checks with the data layer mocked (`tests/helpers/fakeRequestEvent.ts`, `fakeServerModules.ts`). A fake drizzle `db` (`tests/helpers/fakeDb.ts`) that evaluates real `where` clauses and logs every write, with tests for `access.ts` (23), `cascade.ts` (16, every foreign key derived from the schema) and the Studio functions in `data.ts` (18).
 - **Tests for the Studio's arithmetic and the HTML sanitizer.** The engine's trim, split, snap, take-lane and loop/punch piece rules, the ruler's ticks, the live-waveform peak reduction and the buffer slice and normalize helpers moved into `src/lib/utils/` as pure functions with tests (43 cases); `src/lib/server/sanitize.test.ts` documents the allowlist with 53 cases (dropped elements, event handlers, obfuscated `javascript:` URLs, GFM output surviving, idempotence).
 
 ## [0.111.0] - 2026-10-07
