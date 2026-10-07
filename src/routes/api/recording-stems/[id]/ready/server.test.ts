@@ -10,7 +10,7 @@ import {
 import { blob, data, resetRemoteMocks } from "../../../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../../../tests/helpers/fakeApiEvent";
 
-/** Step 3 of saving a multitrack take's source: owned through the take; only the reserved file's URL counts. */
+/** Step 3 of saving a take's source: owned through the take; only the reserved file's URL counts. */
 const { POST } = await import("./+server");
 
 const RECORDING = fakeId("rec-one");

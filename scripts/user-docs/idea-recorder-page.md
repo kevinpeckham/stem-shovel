@@ -4,7 +4,7 @@ Record your demos, riffs, or quick ideas here. An idea is one or more takes and,
 
 ## How to use the Idea Recorder
 
-Press Record and play or sing; press Stop and the take is saved to the idea and listed under Recordings, numbered in order. Switch sources in and out under the screen: the microphone, a line in, the computer's audio, the piano and the drums, in any mix. With two or more in, the take is multitrack: the mix as usual plus a file for each source, and a Tracks panel appears under the recorder to hear them on their own. Name the idea in the field above the screen, keep notes beside it, and send a take to a song as a demo or as stems when it is ready.
+Press Record and play or sing; press Stop and the take is saved to the idea and listed under Recordings, numbered in order. Switch sources in and out under the screen: the microphone, a line in, the computer's audio, the piano and the drums, in any mix; whatever is in, a take is one stereo file, like a handheld memo recorder. To record parts separately, on tracks of their own, use the [Studio](/studio). Name the idea in the field above the screen, keep notes beside it, and send a take to a song as a demo or as stems when it is ready.
 
 ### Quick Tips
 

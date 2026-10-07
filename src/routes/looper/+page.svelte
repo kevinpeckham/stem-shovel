@@ -206,12 +206,12 @@
 	/**
 	 * Saving: the layers' mix rendered offline and each layer as 24-bit WAV,
 	 * queued as a take with sources for a new idea in the current account
-	 * (docs/demo-recording.md, "Multitrack takes"); the loop's settings go on
+	 * (docs/demo-recording.md, "Takes with sources"); the loop's settings go on
 	 * the idea. The recorder's queue would pick up a take left mid-upload.
 	 */
 	let saving = $state(false);
 	let repeats = $state(1);
-	/** The layers go with the take as its sources (a multitrack take) by default; stereo saves the mix alone (Kevin). */
+	/** The layers go with the take as its sources by default; stereo saves the mix alone (Kevin). */
 	let saveStems = $state(true);
 	let loopTitle = $state("");
 	const queue = new TakeQueue({
@@ -1068,8 +1068,8 @@
 				>
 					<div class="text-11px uppercase tracking-wider text-accent">Import a take</div>
 					<p class="text-12px opacity-70">
-						A take from the Idea Recorder as layers: a multitrack take one per source, a stereo take
-						as one. It is cut to the loop's length from the start you choose.
+						A take from the Idea Recorder as layers: a saved loop one per source, a recorded take as
+						one. It is cut to the loop's length from the start you choose.
 					</p>
 					<div class="grid grid-cols-2 gap-3">
 						<label class="block">

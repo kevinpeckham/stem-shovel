@@ -81,8 +81,8 @@ class InputSources {
 	/**
 	 * How late a sound reaches the computer through the microphone or the line
 	 * in (the round trip, usually 10 to 60 ms, more over Bluetooth): the
-	 * looper shifts such layers earlier by it, and a multitrack take trims it
-	 * off the front of their stems. Measured by the looper's Calibrate (three
+	 * looper shifts such layers earlier by it, as the Studio does a take
+	 * (studio.svelte.ts). Measured by the looper's Calibrate (three
 	 * clicks) and remembered; until then the browser's own figure for its
 	 * output path, the best guess available.
 	 */

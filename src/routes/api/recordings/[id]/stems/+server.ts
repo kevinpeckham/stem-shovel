@@ -17,7 +17,7 @@ import { validSizeBytes } from "$lib/utils/validSizeBytes";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-/** Step 1 of saving one source of a multitrack take (docs/demo-recording.md, "Multitrack takes"): reserve the row under the take and return the pathname to upload to. */
+/** Step 1 of saving one source of a take (docs/demo-recording.md, "Takes with sources"): reserve the row under the take and return the pathname to upload to. */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const body = (await request.json()) as {
 		label?: string;

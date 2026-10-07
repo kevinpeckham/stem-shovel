@@ -157,9 +157,9 @@ erDiagram
   one else until a take is added to a song); `account_id` is the account
   whose storage the files count against, the current account when the idea
   was made.
-- **recording_stem** — one source of a multitrack take (docs/demo-recording.md,
-  "Multitrack takes"): the microphone, the piano or the drums recorded on
-  their own beside the take's mix, at
+- **recording_stem** — one source of a take (docs/demo-recording.md,
+  "Takes with sources"): a layer of a loop saved from the looper, kept
+  beside the take's mix (the Idea Recorder made these too until 2026-10-07), at
   `accounts/<id>/recordings/<recordingId>/<stemId>.<ext>` in the take's
   store, with a label, sort order, codec and timed duration; added to a
   song they become `stem` rows. Removed with the take.

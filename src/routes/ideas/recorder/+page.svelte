@@ -171,7 +171,7 @@
 	/** The notes popped out of their column into a panel (from lg), or docked back; remembered per browser. */
 	let notesFloating = $state(false);
 	const NOTES_FLOATING_KEY = "stemshovel.recorder.notes-floating";
-	/** The Tracks panel (a multitrack take's stems) pops out like the notes; remembered per browser. */
+	/** The Tracks panel (the sources of a take saved from the looper) pops out like the notes; remembered per browser. */
 	let tracksFloating = $state(false);
 	const TRACKS_FLOATING_KEY = "stemshovel.recorder.tracks-floating";
 	function setTracksFloating(on: boolean) {
@@ -203,8 +203,6 @@
 			// Private mode: the choice lasts for this page only.
 		}
 	}
-	/** Multitrack takes (docs/demo-recording.md, "Multitrack takes"): the mix plus a file per source; offered, and on by default, with two or more sources in the take (syncMultitrack). */
-	let multitrack = $state(false);
 	/**
 	 * Which sources go into the take (docs/demo-recording.md, "Input sources"):
 	 * the recorder's source buttons switch them, as do the instrument panels'
@@ -222,9 +220,7 @@
 	});
 	const SOURCES_KEY = "stemshovel.recorder.sources";
 	function setSource(source: RecorderSource, on: boolean) {
-		const before = sourcesInTake;
 		sourcesOn[source] = on;
-		syncMultitrack(before);
 		try {
 			localStorage.setItem(SOURCES_KEY, JSON.stringify($state.snapshot(sourcesOn)));
 		} catch {
@@ -240,18 +236,6 @@
 	const drumsInTake = $derived(sourcesOn.drums);
 	const setPianoInTake = (on: boolean) => setSource("piano", on);
 	const setDrumsInTake = (on: boolean) => setSource("drums", on);
-	/** How many sources are in the take: two or more and the take can be multitrack. */
-	const sourcesInTake = $derived(RECORDER_SOURCES.filter((s) => sourcesOn[s]).length);
-	/**
-	 * Multitrack is the default with two or more sources in (Kevin): crossing
-	 * that line switches it on, dropping below switches it off; between, a
-	 * Stereo choice stands. The page's load does the same after restoring the sources.
-	 */
-	function syncMultitrack(before: number) {
-		const now = sourcesInTake;
-		if (before < 2 && now >= 2) multitrack = true;
-		else if (now < 2) multitrack = false;
-	}
 	function togglePiano(e?: Event) {
 		pianoOpen = !pianoOpen;
 		if (pianoOpen) {
@@ -453,7 +437,6 @@
 			sourcesOn.piano = false;
 			sourcesOn.chords = false;
 			sourcesOn.drums = false;
-			syncMultitrack(0);
 			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
 			pianoSettings = localStorage.getItem(PIANO_SETTINGS_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
@@ -979,8 +962,6 @@
 					onaddtosong={(t) => idea && songDialog(idea, t, "add")}
 					onnewsong={(t) => idea && songDialog(idea, t, "new")}
 					onaddstems={(t) => idea && songDialog(idea, t, "stems")}
-					bind:multitrack
-					multitrackAvailable={sourcesInTake >= 2}
 					ondeleteidea={() => idea && removeIdea(idea)}
 					onnewidea={newIdea}
 					minTakeSeconds={discardShort ? SHORT_TAKE_SECONDS : 0}
@@ -1016,7 +997,7 @@
 			</FloatingPanel>
 
 			{#if loadedTake && loadedTake.stems.length > 0}
-				<!-- The tracks of a multitrack take (docs/demo-recording.md, "Multitrack takes"): the song player over its stems, each with its waveform, mute, solo and fader, under the recorder. -->
+				<!-- The sources of a take saved from the looper (docs/demo-recording.md, "Takes with sources"): the song player over its layers, each with its waveform, mute, solo and fader, under the recorder. -->
 				<FloatingPanel
 					open={true}
 					floating={tracksFloating}

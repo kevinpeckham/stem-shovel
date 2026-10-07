@@ -132,7 +132,7 @@ export function recordingPathname(accountId: string, recordingId: string, filena
 	return `accounts/${accountId}/recordings/${recordingId}.${ext}`;
 }
 
-/** Blob pathname for one source of a multitrack take, under its take (docs/demo-recording.md, "Multitrack takes"); a recording pathname to the handlers. */
+/** Blob pathname for one source of a take, under its take (docs/demo-recording.md, "Takes with sources"); a recording pathname to the handlers. */
 export function recordingStemPathname(
 	accountId: string,
 	recordingId: string,

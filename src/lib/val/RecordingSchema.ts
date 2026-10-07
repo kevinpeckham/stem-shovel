@@ -9,7 +9,7 @@ export const RecordingToSongSchema = v.object({
 	mergeNotes: v.optional(v.boolean(), true),
 });
 
-/** Argument of the addRecordingStemsToSong command: the take's sources (its multitrack stems) onto the song as stems. */
+/** Argument of the addRecordingStemsToSong command: the take's sources (a loop's layers) onto the song as stems. */
 export const RecordingStemsToSongSchema = v.object({ id: NanoIdSchema, songId: NanoIdSchema });
 
 /** Argument of the newSongFromRecording command: a new song in the project, with the take as its first demo. */

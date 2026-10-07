@@ -1,6 +1,6 @@
 # Studio
 
-**Studio** in the Tools menu (and the footer) is a multitrack recorder: tracks of clips on a timeline, recorded from the microphone, a line in or the computer while the rest of the song plays. It is the Idea Recorder's bigger sibling: where an idea is one take at a time, a Studio song is built up part by part, moved about, and kept in revisions. Your songs are your own, whichever account you are working in, and a finished one goes to a song in a project as a demo or as stems.
+**Studio** in the Tools menu (and the footer) is a multitrack recorder: tracks of clips on a timeline, recorded from the microphone, a line in or the computer while the rest of the song plays. It is the Idea Recorder's bigger sibling: the recorder is the handheld memo recorder, one stereo take at a time however many sources are in; the Studio is the four-track, where a song is built up part by part on tracks of its own, moved about, and kept in revisions. Your songs are your own, whichever account you are working in, and a finished one goes to a song in a project as a demo or as stems.
 
 ## Tracks and inputs
 

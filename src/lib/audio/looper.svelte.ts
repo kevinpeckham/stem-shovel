@@ -22,7 +22,7 @@ import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
  * becomes a layer, an AudioBuffer looped by its own source node, all
  * started on one clock so they stay locked. Saving renders the layers'
  * mix offline and hands the mix and the layers to the recorder's queue
- * as a take with sources (docs/demo-recording.md, "Multitrack takes").
+ * as a take with sources (docs/demo-recording.md, "Takes with sources").
  */
 
 export type LoopSource = "mic" | "line" | "computer" | "piano" | "chords" | "drums";
@@ -309,8 +309,8 @@ class LooperEngine {
 	}
 	/**
 	 * A take from the Idea Recorder as layers (docs/looper.md, "Importing a
-	 * take"): its sources one layer each when it is a multitrack take, else
-	 * the take itself as one layer. With `lengthFrom` "take" (an empty loop)
+	 * take"): its sources one layer each when it has them, else the take
+	 * itself as one layer. With `lengthFrom` "take" (an empty loop)
 	 * the bars follow the take's length at the tempo, rounded to the nearest
 	 * allowed; with "loop" the current length holds. Each file is cut to the
 	 * loop length from `startSeconds` in, padded with silence when shorter.

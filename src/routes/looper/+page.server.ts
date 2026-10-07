@@ -50,7 +50,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	};
 };
 
-/** The user's latest forty takes, newest first, as the Load menu lists them for import: idea and take, length, and how many sources a multitrack take carries. */
+/** The user's latest forty takes, newest first, as the Load menu lists them for import: idea and take, length, and how many sources a take carries (a loop saved from the looper). */
 async function recentTakes(userId: string) {
 	const ideas = await listUserIdeas(userId);
 	return ideas

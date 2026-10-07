@@ -157,9 +157,9 @@
 			</label>
 			<p class="text-12px opacity-70">
 				A sound sung or played into the microphone or the line in arrives late by the input's round
-				trip: the looper shifts such layers earlier by this much, and a multitrack take trims it off
-				the front of their files. Calibrate plays three clicks through the speakers and measures
-				them with the microphone.
+				trip: the looper shifts such layers earlier by this much, and the Studio does the same with
+				a take. Calibrate plays three clicks through the speakers and measures them with the
+				microphone.
 			</p>
 			{#if source === "mic"}
 				<button

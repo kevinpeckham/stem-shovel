@@ -15,7 +15,7 @@
 	 * box is unticked. Either way the browser lands on the song.
 	 */
 	interface Props {
-		/** "stems": a multitrack take's sources onto the song as stems (docs/demo-recording.md, "Multitrack takes"). */
+		/** "stems": the take's sources (a loop saved from the looper) onto the song as stems (docs/demo-recording.md, "Takes with sources"). */
 		mode: "add" | "new" | "stems";
 		/** The take, with a label for messages ("<idea> · Take 2 · slow"). */
 		take: { id: string; label: string; ideaTitle: string };

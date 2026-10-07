@@ -10,7 +10,7 @@ import { MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-/** Step 3 of saving a multitrack take's source (docs/demo-recording.md, "Multitrack takes"): the browser reports the blob URL and the length it timed. Owned through its take (ideas are the user's own). */
+/** Step 3 of saving a take's source (docs/demo-recording.md, "Takes with sources"): the browser reports the blob URL and the length it timed. Owned through its take (ideas are the user's own). */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const body = (await request.json()) as { url?: string; durationSeconds?: number };
 	if (typeof body.url !== "string" || !body.url.startsWith("https://"))

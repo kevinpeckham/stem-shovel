@@ -78,7 +78,7 @@ export const addRecordingToSong = command(
 	},
 );
 
-/** A multitrack take's sources onto a song as stems (docs/demo-recording.md, "Multitrack takes"); answers with the song's page. */
+/** A take's sources onto a song as stems (docs/demo-recording.md, "Takes with sources"); answers with the song's page. */
 export const addRecordingStemsToSong = command(
 	RecordingStemsToSongSchema,
 	async ({ id, songId }) => {

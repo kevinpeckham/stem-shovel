@@ -217,7 +217,7 @@ describe("onBeforeGenerateToken: takes (the recorder's own)", () => {
 			httpError(404),
 		);
 	});
-	it("a multitrack take's source falls back to the recording-stem reservation", async () => {
+	it("a take's source falls back to the recording-stem reservation", async () => {
 		data.findUploadingRecording.mockResolvedValue(null);
 		data.findUploadingRecordingStem.mockResolvedValue({ id: RSTEM, contentType: "audio/webm" });
 		await expect(tokenFor(paths.recordingStem)).resolves.toMatchObject({

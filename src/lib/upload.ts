@@ -215,7 +215,7 @@ export async function uploadRecordingFile(
 	return { recordingId, takeNumber };
 }
 
-/** One source of a multitrack take (docs/demo-recording.md, "Multitrack takes"): reserve under the take, send the bytes to Blob, report the URL. */
+/** One source of a take (docs/demo-recording.md, "Takes with sources"): reserve under the take, send the bytes to Blob, report the URL. */
 export async function uploadRecordingStemFile(
 	recordingId: string,
 	file: File,

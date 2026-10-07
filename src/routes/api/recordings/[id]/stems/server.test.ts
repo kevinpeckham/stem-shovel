@@ -15,7 +15,7 @@ import {
 import { callRoute, jsonPost } from "../../../../../../tests/helpers/fakeApiEvent";
 import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 
-/** Step 1 of saving one source of a multitrack take: owned through the take, counted against its account. */
+/** Step 1 of saving one source of a take: owned through the take, counted against its account. */
 const { POST } = await import("./+server");
 
 const RECORDING = fakeId("rec-one");

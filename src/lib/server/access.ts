@@ -317,7 +317,7 @@ export async function accountOfUploadPathname(pathname: string) {
 			columns: { accountId: true },
 		});
 		if (rec) return rec.accountId;
-		// A multitrack take's source (docs/demo-recording.md, "Multitrack takes").
+		// a take's source (docs/demo-recording.md, "Takes with sources").
 		const st = await db.query.recordingStem.findFirst({
 			where: eq(recordingStem.pathname, pathname),
 			columns: { accountId: true },

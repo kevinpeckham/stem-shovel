@@ -485,7 +485,24 @@ recorder while the drums play or the panel is open; remembered per
 browser under `stemshovel.recorder.drums-in-take`) switches them out,
 so a beat can be a click track that stays out of the recording.
 
-## Multitrack takes (built 2026-10-01)
+## Takes with sources (multitrack takes built 2026-10-01, recording them removed 2026-10-07)
+
+**Removed from the recorder (2026-10-07).** Testing found people confused
+about where the Idea Recorder ends and the Studio begins, so the recorder
+no longer records a take as separate files: Kevin: "the idea recorder is
+always simple one-pass stereo recordings. Quick and easy for capturing a
+spontaneous idea. Multi-track recordings will require Studio. The analog
+equivalent scenario would be having two devices on your workstation: a
+small handheld memo voice recorder and a full 4 track or 8 track
+recorder." Any mix of sources still goes into a take, as one stereo file;
+the Stereo/Multitrack buttons, the per-source `MediaRecorder`s and the
+latency trim of each source's file are gone from `DemoRecorder`, and the
+page no longer keeps a `multitrack` flag. What stays is everything below
+the recording step: `recording_stem` rows, their upload, the Tracks panel
+and **Add N stems to song…**, because a loop saved from the looper arrives
+as a take with its layers as sources (docs/looper.md, "Save and Export"),
+and takes made before the change keep theirs. The rest of this section is
+the history of the feature as built.
 
 Kevin: "a toggle … for stereo recording vs multitrack in the idea recorder.
 It only becomes available if an instrument is enabled and by default it
@@ -575,10 +592,9 @@ over their capture stream. A pointer-down on the device opens an input that
 is switched in but not yet open (the microphone on a fresh visit), the way
 the looper opens on its page; the computer waits for its own button and
 the share picker. A take mixes every source that is in into one
-`MediaStreamDestination` for the recorder; a multitrack take, offered and on
-by default whenever two or more sources are in (Stereo stays chosen until the
-count crosses two again), also records each outside source through a
-destination of its own after its gain, and each instrument's capture stream.
+`MediaStreamDestination` for the recorder, one stereo file whatever is in
+(a multitrack take, each source through a destination of its own, was
+offered here from 2026-10-01 to 2026-10-07; see "Takes with sources").
 The microphone is no longer required: a take can be the piano alone, the
 computer alone, or any mix, and Record is disabled with nothing in.
 
@@ -594,10 +610,11 @@ until then) lives in the inputs module now, with a slider in each input's
 menu on both pages and Calibrate on the microphone's (`inputSources.calibrate()`,
 since 2026-10-02 in the module: three clicks through the speakers, the
 microphone recorded through the capture worklet loaded into the page's
-context, `findLatency`), so the recorder needs no trip to the looper. A multitrack take trims it off
-the front of each microphone and line-in stem, and the computer's capture
-latency off the computer's, so the stems line up with the instruments'
-(which the recorder captures with no path to speak of); the mix is left as
+context, `findLatency`), so the recorder needs no trip to the looper. Until
+2026-10-07 a multitrack take trimmed it off the front of each microphone and
+line-in stem, and the computer's capture latency off the computer's, so the
+stems lined up with the instruments'; now the Studio applies the same figures
+to a take (docs/multitrack-recorder.md, "Latency"), and the recorder's mix is left as
 heard. Trim and normalize share one decode (`processed()` in
 DemoRecorder.svelte) and write 24-bit WAV; a stem that needs neither goes
 as recorded.

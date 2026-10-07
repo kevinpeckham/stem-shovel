@@ -256,7 +256,7 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${recording.sizeBytes})` })
 		.from(recording)
 		.where(and(eq(recording.accountId, accountId), ne(recording.status, "failed")));
-	// A multitrack take's sources (docs/demo-recording.md, "Multitrack takes") are files of the account too.
+	// A take's sources (docs/demo-recording.md, "Takes with sources") are files of the account too.
 	const [takeStems] = await db
 		.select({ bytes: sql<number | null>`sum(${recordingStem.sizeBytes})` })
 		.from(recordingStem)
@@ -4294,7 +4294,7 @@ export async function recordingOfPathname(pathname: string) {
 		columns: { id: true, accountId: true },
 	});
 	if (rec) return rec;
-	// A multitrack take's source: the take it belongs to.
+	// a take's source: the take it belongs to.
 	const st = await db.query.recordingStem.findFirst({
 		where: eq(recordingStem.pathname, pathname),
 		columns: { recordingId: true, accountId: true },
@@ -4302,7 +4302,7 @@ export async function recordingOfPathname(pathname: string) {
 	return st ? { id: st.recordingId, accountId: st.accountId } : null;
 }
 
-/** A multitrack take's source reserved under this pathname, for the upload token. */
+/** a take's source reserved under this pathname, for the upload token. */
 export function findUploadingRecordingStem(accountId: string, pathname: string) {
 	return db.query.recordingStem.findFirst({
 		where: and(
@@ -4313,7 +4313,7 @@ export function findUploadingRecordingStem(accountId: string, pathname: string) 
 	});
 }
 
-/** Step 1 of saving a multitrack take's source: the row under its take and the pathname to upload to. */
+/** Step 1 of saving a take's source: the row under its take and the pathname to upload to. */
 export async function createRecordingStem(
 	accountId: string,
 	recordingId: string,
@@ -4359,7 +4359,7 @@ export async function markRecordingStemReady(
 	return row ?? null;
 }
 
-/** A multitrack take's source by id: its account and its take, for the ready route's ownership check. */
+/** a take's source by id: its account and its take, for the ready route's ownership check. */
 export async function recordingStemById(stemId: string) {
 	const row = await db.query.recordingStem.findFirst({
 		where: eq(recordingStem.id, stemId),
@@ -4370,7 +4370,7 @@ export async function recordingStemById(stemId: string) {
 
 /**
  * The take's sources onto a song as stems (docs/demo-recording.md,
- * "Multitrack takes"): each file copied under the song, in the song's
+ * "Takes with sources"): each file copied under the song, in the song's
  * store, a `stem` row per source with the source's label, ready at once
  * (the player computes peaks it lacks; the jobs function makes the
  * playback renditions). Null without the take or the song; "full" when the

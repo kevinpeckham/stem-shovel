@@ -75,7 +75,7 @@
 		/** alac, pcm, flac, opus, aac; null on takes from before it was recorded. */
 		codec: string | null;
 		durationSeconds: number | null;
-		/** A multitrack take's sources (docs/demo-recording.md, "Multitrack takes"); absent or empty on a stereo take. */
+		/** The take's sources, when it has them: a loop saved from the looper carries its layers (docs/demo-recording.md, "Takes with sources"); absent or empty on a recorded take. */
 		stems?: { id: string; label: string }[];
 	}
 	const SOURCE_ICONS: Record<OutsideSource | "piano" | "chords", string> = {
@@ -111,8 +111,6 @@
 			codec: string;
 			name: string;
 			durationSeconds: number;
-			/** A multitrack take's sources, in order (the microphone first); absent on a stereo take. */
-			stems?: { label: string; blob: Blob; mimeType: string; ext: string; codec: string }[];
 		}) => void;
 		/** The idea's title was edited (blur or Enter). */
 		ontitlechange: (title: string) => void;
@@ -123,11 +121,8 @@
 		/** The loaded take into a song (the page opens its popover). */
 		onaddtosong?: (take: Take) => void;
 		onnewsong?: (take: Take) => void;
-		/** A multitrack take's sources onto a song as stems. */
+		/** A take's sources (a loop saved from the looper) onto a song as stems. */
 		onaddstems?: (take: Take) => void;
-		/** Record the sources (microphone, each instrument) as files of their own beside the mix; the page offers it only with an instrument in the take, off by default each visit. */
-		multitrack?: boolean;
-		multitrackAvailable?: boolean;
 		/** Delete the whole idea (from the ⋯ menu). */
 		ondeleteidea?: () => void;
 		/** Start a new idea (from the ⋯ menu); `newIdeaDisabled` when there is nothing to leave. */
@@ -155,8 +150,6 @@
 		onaddtosong,
 		onnewsong,
 		onaddstems,
-		multitrack = $bindable(false),
-		multitrackAvailable = false,
 		ondeleteidea,
 		onnewidea,
 		newIdeaDisabled = false,
@@ -318,15 +311,6 @@
 	let recorder: MediaRecorder | null = null;
 	let chunks: Blob[] = [];
 	let format = $state<RecordingFormat | null>(null);
-	/** The sources of a multitrack take, set as the meter starts; each gets a MediaRecorder of its own started with the mix's. */
-	let sources: { label: string; source: RecorderSource | null; stream: MediaStream }[] = [];
-	let sourceRecorders: {
-		label: string;
-		source: RecorderSource | null;
-		recorder: MediaRecorder;
-		chunks: Blob[];
-		done: Promise<void>;
-	}[] = [];
 	/** The take's own nodes in the kept context (sources mode), dropped at its end. */
 	let takeNodes: AudioNode[] = [];
 	/** Whether every source in the take is an outside one (then normalize may touch the mix too). */
@@ -459,7 +443,7 @@
 		const recorded = startMeter(stream);
 		beginTake(recorded);
 	}
-	/** The recorders on the mix and, for a multitrack take, on each source, started in one tick so the files line up. */
+	/** The recorder on the mix: one stereo file, whatever is in the take (docs/demo-recording.md, "One stereo take"). */
 	function beginTake(recorded: MediaStream) {
 		if (!format) return;
 		chunks = [];
@@ -473,23 +457,6 @@
 		};
 		recorder.onstop = () => void finishTake();
 		waveHistory = [];
-		// The sources' recorders start in the same tick as the mix's, so the files line up within a few milliseconds.
-		sourceRecorders = sources.map((src) => {
-			const r = new MediaRecorder(src.stream, {
-				mimeType: format!.mimeType,
-				...(format!.lossless ? {} : { audioBitsPerSecond: RECORDING_BITS_PER_SECOND }),
-			});
-			const parts: Blob[] = [];
-			r.ondataavailable = (e) => {
-				if (e.data.size > 0) parts.push(e.data);
-			};
-			const done = new Promise<void>((resolve) => {
-				r.onstop = () => resolve();
-				r.onerror = () => resolve();
-			});
-			r.start(1000);
-			return { label: src.label, source: src.source, recorder: r, chunks: parts, done };
-		});
 		recorder.start(1000);
 		runStart = performance.now();
 		lastLoudAt = runStart;
@@ -533,7 +500,6 @@
 		elapsed = (performance.now() - runStart) / 1000;
 		if (tick) clearInterval(tick);
 		tick = null;
-		for (const x of sourceRecorders) if (x.recorder.state !== "inactive") x.recorder.stop();
 		recorder.stop(); // finishTake() runs from onstop once the last chunk is in
 	}
 
@@ -545,38 +511,27 @@
 	}
 
 	/**
-	 * A file from an outside source, processed once decoded (inputs.svelte.ts):
-	 * `trimMs` cut off its front (the input's measured latency, so a stem lines
-	 * up with the instruments' in a multitrack take) and, with normalize on,
-	 * scaled so its peak sits at −1 dBFS (never a near-silent or already-hot
-	 * one), written as 24-bit WAV. Null when nothing applies or the browser
-	 * cannot decode it: the file goes as recorded.
+	 * The take normalized once decoded (inputs.svelte.ts, "Normalize"): scaled
+	 * so its peak sits at −1 dBFS (never a near-silent or already-hot one),
+	 * written as 24-bit WAV. Null when nothing applies or the browser cannot
+	 * decode it: the file goes as recorded.
 	 */
-	async function processed(
+	async function normalized(
 		blob: Blob,
-		opts: { trimMs: number; normalize: boolean },
 	): Promise<{ blob: Blob; mimeType: string; ext: string; codec: string } | null> {
-		if (opts.trimMs <= 0 && !opts.normalize) return null;
 		try {
 			const bytes = await blob.arrayBuffer();
 			const decoder = new AudioContext();
 			const audio = await decoder.decodeAudioData(bytes).finally(() => void decoder.close());
-			const skip = Math.min(audio.length, Math.round((opts.trimMs / 1000) * audio.sampleRate));
 			const channels = Array.from({ length: audio.numberOfChannels }, (_, i) =>
-				audio.getChannelData(i).slice(skip),
+				audio.getChannelData(i),
 			);
-			let scaled = false;
-			if (opts.normalize) {
-				let peak = 0;
-				for (const ch of channels) for (const x of ch) if (Math.abs(x) > peak) peak = Math.abs(x);
-				const target = 0.891; // −1 dBFS
-				if (peak >= 0.01 && peak < target) {
-					const k = target / peak;
-					for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
-					scaled = true;
-				}
-			}
-			if (skip === 0 && !scaled) return null;
+			let peak = 0;
+			for (const ch of channels) for (const x of ch) if (Math.abs(x) > peak) peak = Math.abs(x);
+			const target = 0.891; // −1 dBFS
+			if (peak < 0.01 || peak >= target) return null;
+			const k = target / peak;
+			for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
 			return {
 				blob: new Blob([encodeWav24(channels, audio.sampleRate)], { type: "audio/wav" }),
 				mimeType: "audio/wav",
@@ -589,34 +544,7 @@
 	}
 
 	async function finishTake() {
-		// The sources' last chunks land on their own stop events; gather them before the streams close.
-		await Promise.all(sourceRecorders.map((x) => x.done));
 		const normalize = withSources && inputSources.normalize;
-		// What each outside source's stem is late by: the measured input round trip, or the computer capture's slider.
-		const trimOf = (src: RecorderSource | null) =>
-			src === "mic" || src === "line"
-				? inputSources.latencyMs
-				: src === "computer"
-					? inputSources.computerLatencyMs
-					: 0;
-		const stems = (
-			await Promise.all(
-				sourceRecorders.map(async (x) => {
-					const raw = {
-						label: x.label,
-						blob: new Blob(x.chunks, { type: format?.mimeType ?? "application/octet-stream" }),
-						mimeType: format?.mimeType ?? "application/octet-stream",
-						ext: format?.ext ?? "webm",
-						codec: (format?.codec ?? "opus").toLowerCase(),
-					};
-					if (!withSources || !x.source || !isOutside(x.source) || raw.blob.size === 0) return raw;
-					const n = await processed(raw.blob, { trimMs: trimOf(x.source), normalize });
-					return n ? { ...raw, ...n } : raw;
-				}),
-			)
-		).filter((x) => x.blob.size > 0);
-		sourceRecorders = [];
-		sources = [];
 		stopStream();
 		let blob = new Blob(chunks, { type: format?.mimeType ?? "application/octet-stream" });
 		let mixFormat = {
@@ -626,7 +554,7 @@
 		};
 		// The mix is normalized only when nothing but outside sources is in it (an instrument's level is its own).
 		if (normalize && allOutside && blob.size > 0) {
-			const n = await processed(blob, { trimMs: 0, normalize: true });
+			const n = await normalized(blob);
 			if (n) {
 				blob = n.blob;
 				mixFormat = { mimeType: n.mimeType, ext: n.ext, codec: n.codec };
@@ -669,7 +597,6 @@
 			codec: mixFormat.codec,
 			name: loaded.title,
 			durationSeconds: elapsed,
-			...(stems.length ? { stems } : {}),
 		});
 	}
 
@@ -860,22 +787,10 @@
 		analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
 		let recorded = s;
-		const streams = Object.entries(instrumentStreams()).map(([key, stream]) => ({
-			label: RECORDER_SOURCE_LABELS[key as RecorderSource],
-			icon: key as "piano" | "drums" | "chords",
-			stream: stream!,
-		}));
-		// Multitrack: every source on its own recorder beside the mix (docs/demo-recording.md, "Multitrack takes").
-		sources =
-			multitrack && streams.length
-				? [
-						{ label: "Microphone", source: "mic" as const, stream: s },
-						...streams.map(({ label, stream }) => ({ label, source: null, stream })),
-					]
-				: [];
+		const streams = Object.values(instrumentStreams()).filter((x): x is MediaStream => !!x);
 		if (streams.length) {
 			const mix = ctx.createMediaStreamDestination();
-			for (const { stream } of streams) {
+			for (const stream of streams) {
 				const inst = ctx.createMediaStreamSource(stream);
 				inst.connect(mix);
 				inst.connect(analyser);
@@ -889,9 +804,9 @@
 	}
 	/**
 	 * Sources mode: the chosen sources mixed in the kept context into a
-	 * MediaStreamDestination for the recorder (and the waveform's analyser);
-	 * for a multitrack take, each outside source also feeds a destination of
-	 * its own after its gain, and each instrument records its capture stream.
+	 * MediaStreamDestination for the recorder (and the waveform's analyser):
+	 * one stereo file however many sources are in. Separate files per source
+	 * are the Studio's job (docs/multitrack-recorder.md).
 	 */
 	function startMix(on: RecorderSource[]): MediaStream {
 		const c = ensureContext();
@@ -899,7 +814,6 @@
 		analyser.fftSize = 1024;
 		const mix = c.createMediaStreamDestination();
 		takeNodes = [analyser, mix];
-		sources = [];
 		const streams = instrumentStreams();
 		allOutside = on.every(isOutside);
 		for (const src of on) {
@@ -912,16 +826,6 @@
 			if (!node) continue;
 			node.connect(mix);
 			node.connect(analyser);
-			if (multitrack && on.length >= 2) {
-				let stream: MediaStream;
-				if (isOutside(src)) {
-					const dest = c.createMediaStreamDestination();
-					node.connect(dest);
-					takeNodes.push(dest);
-					stream = dest.stream;
-				} else stream = streams[src]!;
-				sources.push({ label: RECORDER_SOURCE_LABELS[src], source: src, stream });
-			}
 		}
 		beginMeterLoop();
 		return mix.stream;
@@ -1206,36 +1110,9 @@
 
 			<!-- input meter, playback controls, recording metadata  -->
 			<div class="rounded grid grid-cols-1 gap-3 place-content-start max-w-300px @xl-min-h-80px">
-				<!-- stereo mix or multitrack (a file per source beside the mix), offered with an instrument in the take; locked while recording -->
-				{#if multitrackAvailable}
-					<div
-						class="mt-1 @xl-mt-3 flex items-center gap-2 text-12px"
-						role="group"
-						aria-label="Take format"
-					>
-						<button
-							class="device-button-sm {multitrack ? '' : 'text-accent'}"
-							type="button"
-							aria-pressed={!multitrack}
-							disabled={phase === "recording"}
-							title="One stereo file with everything mixed together"
-							onclick={() => (multitrack = false)}>Stereo</button
-						>
-						<button
-							class="device-button-sm {multitrack ? 'text-accent' : ''}"
-							type="button"
-							aria-pressed={multitrack}
-							disabled={phase === "recording"}
-							title="The mix plus a file of its own for the microphone and each instrument, so the take can go to a song as stems"
-							onclick={() => (multitrack = true)}>Multitrack</button
-						>
-					</div>
-				{/if}
 				<!-- the mix's meter (every source in the take; each source has its own on its button below), or the plain recorder's microphone -->
 				<div
-					class="{!multitrackAvailable
-						? 'mt-1 @xl-mt-3'
-						: ''} w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
+					class="mt-1 @xl-mt-3 w-full relative z-10 grid grid-cols-[auto_1fr] gap-2"
 					role="meter"
 					aria-label={withSources ? "Mix level" : "Input level"}
 					aria-valuemin="0"
@@ -1571,7 +1448,7 @@
 							id: "add-stems",
 							label: "Add Stems to Song",
 							iconClass: "i-ph-stack",
-							title: "The take's sources (microphone, piano, drums) onto a song as separate stems",
+							title: "The take's sources (a loop's layers) onto a song as separate stems",
 							disabled: !(
 								onaddstems &&
 								phase === "saved" &&

@@ -15,7 +15,7 @@ import { errorMessage } from "$lib/utils/errorMessage";
  * IndexedDB first, so a refresh, a crash or a phone switching apps loses
  * nothing: the page resumes the uploads when it comes back.
  */
-/** One source of a multitrack take, recorded on its own beside the mix (docs/demo-recording.md, "Multitrack takes"). */
+/** One source of a take with sources: a loop's layer saved beside the mix (docs/demo-recording.md, "Takes with sources"). */
 export interface PendingStem {
 	label: string;
 	blob: Blob;
@@ -41,7 +41,7 @@ export interface PendingTake {
 	createdAt: number;
 	/** The instruments' settings as the take was recorded (the drum machine's project, the piano's sound and effects), for the idea to keep; an instrument whose "settings with the idea" switch was off is null (docs/demo-recording.md). */
 	instruments?: IdeaInstruments;
-	/** A multitrack take's sources, uploaded after the mix; absent on a stereo take. */
+	/** The take's sources, uploaded after the mix; absent on a plain take. */
 	stems?: PendingStem[];
 	/** Set once the mix is saved, so a retry after a source failed does not save the take twice. */
 	savedId?: string;
@@ -169,7 +169,7 @@ export class TakeQueue {
 						void persist(item);
 					}
 					const ideaId = item.ideaId;
-					// The mix first (the take itself), then a multitrack take's sources one by one; progress spans them all.
+					// The mix first (the take itself), then the take's sources one by one; progress spans them all.
 					const stems = item.stems ?? [];
 					const parts = 1 + stems.length;
 					let recordingId = item.savedId;

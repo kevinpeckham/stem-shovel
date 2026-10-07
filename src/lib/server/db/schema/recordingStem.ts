@@ -6,9 +6,10 @@ import { id, timestamps } from "./columns";
 import { recording } from "./recording";
 
 /**
- * One source of a multitrack take (docs/demo-recording.md, "Multitrack
- * takes"): the microphone, the piano or the drums recorded on their own
- * beside the take's mix, so the take can go to a song as stems. Same
+ * One source of a take (docs/demo-recording.md, "Takes with sources"): a
+ * layer of a loop saved from the looper, kept beside the take's mix so the
+ * take can go to a song as stems (until 2026-10-07 the Idea Recorder also
+ * made these, as a multitrack take; that is the Studio's job now). Same
  * reserve → upload → ready lifecycle as the take, under the take's account
  * and store; no playback rendition of its own (a stem made from it gets one).
  */
