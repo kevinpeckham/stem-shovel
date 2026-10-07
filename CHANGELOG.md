@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.113.0] - 2026-10-07
+
 ### Changed
 
 - **The Idea Recorder records one stereo take** (Kevin, after testing found the recorder and the Studio hard to tell apart): any mix of sources still goes into a take, as one file, like a handheld memo recorder; recording the microphone and each instrument as separate files is the Studio's job now. The Stereo/Multitrack buttons above the meter are gone, and with them the per-source recorders and the latency trim of each source's file (`DemoRecorder`). A loop saved from the looper still arrives as a take with its layers as sources, so the Tracks panel and **Add N stems to song…** stay for those takes and for takes made before this change.
