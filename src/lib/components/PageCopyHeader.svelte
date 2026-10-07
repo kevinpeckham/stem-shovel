@@ -11,7 +11,7 @@
 	 * page's panel buttons, say).
 	 */
 	interface Props {
-		copy: Pick<PageCopy, "title" | "intro" | "canEdit" | "editHref">;
+		copy: Pick<PageCopy, "title" | "intro" | "introHtml" | "canEdit" | "editHref">;
 		controls?: Snippet;
 		/** A line under the intro that is the page's own (the recorder's "Opened from" link). */
 		after?: Snippet;
@@ -36,7 +36,10 @@
 			{/if}
 		</div>
 		{#if copy.intro}
-			<p class="app-page-subheading hidden sm-block text-balance">{copy.intro}</p>
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- markdown rendered and sanitized server-side from the copy doc (a system admin's text) -->
+			<p class="app-page-subheading hidden sm-block text-balance [&_a]-(link)">
+				{@html copy.introHtml}
+			</p>
 		{/if}
 		{@render after?.()}
 	</div>
