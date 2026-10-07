@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.112.0] - 2026-10-07
+
 ### Added
 
 - **Studio phase 2b: effects on every track.** The sliders button in a track's header opens a compressor (amount, ratio, make-up), the tone stage (tilt, air, bottom) and a reverb send (level, size), the piano chain's own pieces on one chain per track (`src/lib/audio/trackChain.ts`) that the offline bounce builds too, so a mix, a demo and the stems sent to a song carry them. Saved on the track in the arrangement; a restored revision brings them back.
