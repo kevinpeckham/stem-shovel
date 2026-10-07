@@ -23,7 +23,10 @@ make the doc from, so a stage without the doc still has its words.
 The doc lives in `scripts/user-docs/<slug>.md` like the user docs, with
 the slug listed in `COPY_PAGES` in `scripts/seed-user-docs.ts` (seeded
 with kind "copy"; `bun run db:update-docs <slug>` refreshes it from the
-file as for any doc). `PAGE_COPY` (`src/lib/constants/pageCopy.ts`) maps
+file as for any doc, unless it was edited in the app since the script
+last wrote it: an edit on the live site is kept, and the file's new text
+is merged by hand or forced with `--force`; `--list` and `--restore`
+bring an earlier version back). `PAGE_COPY` (`src/lib/constants/pageCopy.ts`) maps
 the slug to its page: the docs view route redirects a copy doc there (it
 has no page of its own), the editor's "Exit edit mode" goes there, and
 `listUserDocs` lists only kind "doc", so copy docs never appear in the

@@ -162,7 +162,9 @@ check and the tests without any secret.
   by `bun run db:system-admin`.
 - `scripts/user-docs/*.md`, `scripts/seed-user-docs.ts` — the starting user
   docs; `bun run db:seed-docs` adds the missing ones and
-  `bun run db:update-docs <slug...>` refreshes named pages from the sources.
+  `bun run db:update-docs <slug...>` refreshes named pages from the sources,
+  skipping any edited in the app since (`--force` overwrites; `--list` and
+  `--restore <slug> <version>` work with a page's versions).
 - `src/routes/docs/`, `src/lib/remote/userDocs.remote.ts` — user documentation:
   public pages, edited by system admins with `MarkdownDocEditor.svelte`, the
   editor the song-document pages use too.

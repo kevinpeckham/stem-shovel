@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A docs refresh no longer overwrites a page edited in the app** (Kevin: the Studio page's copy kept reverting): `bun run db:update-docs` skips a page whose newest version was written in the app, says so, and takes `--force` to overwrite; `--list <slug>` shows a page's versions and `--restore <slug> <n>` brings one back as the page.
+
 ## [0.112.0] - 2026-10-07
 
 ### Added
