@@ -153,6 +153,15 @@ export default defineConfig({
 	// @testing-library/svelte. Naming: `*.test.ts` and `*.svelte.test.ts`,
 	// co-located with what they test (helpers in tests/ for the mocks).
 	test: {
+		// `bun run test:coverage`: V8 coverage over the app's own code (not the tests, the helpers, the
+		// generated types or the static worklets), summarised in the terminal and browsable in coverage/.
+		coverage: {
+			provider: "v8",
+			include: ["src/**/*.{ts,svelte}"],
+			exclude: ["src/**/*.test.ts", "src/**/*.d.ts", "src/app.d.ts", "src/lib/types/**"],
+			reporter: ["text-summary", "html", "json-summary"],
+			reportsDirectory: "coverage",
+		},
 		projects: [
 			{
 				extends: true,

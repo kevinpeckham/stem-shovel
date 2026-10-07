@@ -6,6 +6,19 @@ the tests and the spell check; `.github/workflows/fallow.yml` runs
 and the house rules in `fallow-rules.json`) and uploads the findings to
 GitHub's code-scanning tab. Both run without secrets.
 
+## Coverage
+
+`bun run test:coverage` runs both projects with V8 coverage
+(`@vitest/coverage-v8`, pinned to the Vitest that Vite+ bundles) over
+`src/**/*.{ts,svelte}`, leaving out the tests, the helpers and the
+generated types: a text summary in the terminal, `coverage/index.html` to
+browse file by file, and `coverage/coverage-summary.json` for a script.
+The folder is gitignored. Instrumentation slows the FFT-heavy analysis
+tests, which carry a longer timeout for it. Lines in a `.svelte` file are
+counted for the component tests only, so the engines and pages behind the
+Web Audio and the browser show low figures: those are the Playwright
+scripts' territory (docs/agent-screenshots.md).
+
 ## Smoke test of every URL
 
 `bun run smoke:urls` (`scripts/smoke-urls.mjs`, through varlock for the

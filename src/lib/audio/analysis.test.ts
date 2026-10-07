@@ -44,7 +44,8 @@ describe("fft", () => {
 	});
 });
 
-describe("tempo and meter", () => {
+// The FFT passes take a few seconds each under coverage instrumentation (`bun run test:coverage`).
+describe("tempo and meter", { timeout: 30_000 }, () => {
 	test("a 120 bpm click track in four", () => {
 		const d = analyse(extractFeatures(clickTrack(120, 4)));
 		expect(Math.abs(d.tempo.bpm - 120)).toBeLessThan(1.5);

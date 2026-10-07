@@ -42,6 +42,7 @@ vercel link          # once; also pulls OP_TOKEN + OP_ENV_ID into .env.local
 bun run stems        # generates 4 synthetic WAV stems + manifest into static/stems/
 bun run dev          # open http://localhost:5173/
 bun run test         # Vitest, unit + component projects
+bun run test:coverage # the same with V8 coverage: a summary in the terminal, the report in coverage/
 ```
 
 URLs carry the account: `/[account]/projects` lists and creates projects;

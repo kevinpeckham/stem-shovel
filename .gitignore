@@ -34,3 +34,6 @@ static/stems/*.wav
 # Sentry Config File
 .env.sentry-build-plugin
 .samples/
+
+# Vitest coverage reports (bun run test:coverage)
+coverage/
