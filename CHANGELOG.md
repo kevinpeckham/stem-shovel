@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.111.2] - 2026-10-07
+
 ### Fixed
 
 - **An upload can be no larger than its reservation claimed.** The reserve routes for stems, demos, takes and take sources now require the claimed size to be a whole number of bytes from one up (zero, negatives and NaN were accepted), and the upload token is capped at that claim rather than the kind's ceiling, so the storage quota the claim was checked against holds. The ready routes bound what the browser reports: a length up to a day, one to eight channels, a source's order within a song's stems.
