@@ -6,6 +6,7 @@ import {
 	STUDIO_FADER_MAX,
 } from "../constants/studio";
 import { MAX_TAKE_BYTES } from "../constants/takeLimits";
+import type { IdeaInstruments } from "./IdeaSchema";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 
@@ -20,7 +21,15 @@ import { NanoIdSchema } from "./NanoIdSchema";
 const LocalIdSchema = v.pipe(v.string(), v.nonEmpty(), v.maxLength(32));
 const SecondsSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS * 4));
 
-export const STUDIO_INPUT_SOURCES = ["mic", "line", "computer"] as const;
+/** The shared inputs, and the instruments hosted in the Studio's context (phase 2): the piano, the chord player and the drum machine. */
+export const STUDIO_INPUT_SOURCES = [
+	"mic",
+	"line",
+	"computer",
+	"piano",
+	"chords",
+	"drums",
+] as const;
 export const StudioInputSourceSchema = v.picklist(STUDIO_INPUT_SOURCES);
 export type StudioInputSource = v.InferOutput<typeof StudioInputSourceSchema>;
 
@@ -168,6 +177,8 @@ export interface StudioSongView {
 	title: string;
 	notes: string;
 	createdAt: Date;
+	/** The instruments' settings as they were with the song (the idea's `instruments` JSON); null until an instrument track recorded. */
+	instruments: IdeaInstruments | null;
 	/** The newest revision's arrangement, named or not; null for a song never saved. */
 	current: StudioArrangement | null;
 	revisions: StudioRevisionView[];

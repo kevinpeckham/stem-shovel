@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Studio phase 2a: the instruments as track inputs.** A track's input can be the piano, the chord player or the drum machine, hosted in the Studio's own audio context as the looper hosts them: what is played on the panel lands on the take sample-accurately, a piano or chord part is shifted earlier by the output latency (a Timing-menu switch), and a track armed to the drum machine makes the beat play along from the transport's start at the song's tempo. The instruments' settings (the beat, the piano's preset, the chord player's settings) are saved with the song when such a take lands and come back when it opens. The three panels sit in the toolbar as on the looper page.
+
 ### Technical
 
 - **Browser tests** (`bunx varlock run -- bun run test:e2e`, `playwright.config.ts`, `tests/e2e/`): Playwright in Chromium against the running dev server as the Screenshot Bot with a fake microphone, reaching the engines through the dev build's `window.__*` hooks. Ten specs: the Studio end to end (a take as a clip and its upload; import, trims, a split, fades, gain, a duplicate and a reload; loop-recording takes, punch and a revision's restore; cleanup through the app), the Idea Recorder (a take recorded, uploaded, the ideas deleted), the looper (a microphone layer the length of the loop), the stem player (decode, play, mute, solo) and the drum machine, metronome and piano transports. The only tests that run the Web Audio engines and the pages; not part of CI.

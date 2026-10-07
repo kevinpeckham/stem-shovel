@@ -14,8 +14,9 @@ export interface BotPage {
 }
 
 export const test = base.extend<BotPage>({
-	// Playwright's fixture signature wants the first parameter even when nothing is used from it.
-	errors: async (_fixtures, use) => {
+	// Playwright insists on the destructuring pattern here, used or not.
+	// oxlint-disable-next-line no-empty-pattern
+	errors: async ({}, use) => {
 		await use([]);
 	},
 	page: async ({ page, context, baseURL, errors }, use) => {

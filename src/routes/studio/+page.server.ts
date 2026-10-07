@@ -1,6 +1,15 @@
+import { publicBlobUrl } from "$lib/server/blob";
 import { isEditor, requireSignedIn } from "$lib/server/access";
+import { aiAvailable } from "$lib/server/aiDetect";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listStudioSongs } from "$lib/server/data";
+import {
+	listBeats,
+	listChordStyles,
+	listDrumKitManifests,
+	listPianoPresets,
+	listStudioSongs,
+	sitePianoPresets,
+} from "$lib/server/data";
 import { pageCopy } from "$lib/server/pageCopy";
 import { songTargets } from "$lib/server/songTargets";
 import { realMemberships } from "$lib/utils/actingMemberships";
@@ -29,10 +38,20 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	// Recording needs an account to hold the files (storage is the account's): a user without one is sent to make or join one.
 	if (!member) redirect(303, "/accounts");
 	return {
-		account: { id: member.accountId, slug: member.slug, name: member.name },
+		account: { id: member.accountId, slug: member.slug, name: member.name, canEdit: true },
 		songs: await listStudioSongs(user.id),
 		projects: await songTargets(editing),
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("studio-page", copyFallback, locals),
+		// The instruments in the panels (docs/multitrack-recorder.md, phase 2), as the looper page has them: the account's beats, kits and presets.
+		pianoSamplesBase: publicBlobUrl("piano/v1"),
+		beats: await listBeats(member.accountId),
+		kits: await listDrumKitManifests(member.accountId),
+		textToBeat: aiAvailable(),
+		sitePresets: await sitePianoPresets(),
+		chordPresets: await sitePianoPresets("chords"),
+		pianoPresets: await listPianoPresets(member.accountId),
+		chordStyles: await listChordStyles(member.accountId),
+		presetAdmin: locals.user?.isSystemAdmin === true,
 	};
 };

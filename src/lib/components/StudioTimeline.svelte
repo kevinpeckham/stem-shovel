@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { STUDIO_FADER_MAX } from "$lib/constants/studio";
-	import { LIVE_PEAK_FRAMES, studio, STUDIO_INPUT_LABELS } from "$lib/audio/studio.svelte";
+	import {
+		LIVE_PEAK_FRAMES,
+		studio,
+		STUDIO_INPUT_LABELS,
+		STUDIO_INSTRUMENTS,
+	} from "$lib/audio/studio.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { rulerTicks } from "$lib/utils/rulerTicks";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
@@ -364,13 +369,15 @@
 		engine.setInput(t.id, { source, channel });
 		if (t.armed) onarm?.(t);
 	}
-	const INPUT_OPTIONS: { value: string; label: string }[] = (
-		["mic", "line", "computer"] as const
-	).flatMap((s) => [
-		{ value: `${s}:stereo`, label: `${STUDIO_INPUT_LABELS[s]} · stereo` },
-		{ value: `${s}:left`, label: `${STUDIO_INPUT_LABELS[s]} · left` },
-		{ value: `${s}:right`, label: `${STUDIO_INPUT_LABELS[s]} · right` },
-	]);
+	const INPUT_OPTIONS: { value: string; label: string }[] = [
+		...(["mic", "line", "computer"] as const).flatMap((s) => [
+			{ value: `${s}:stereo`, label: `${STUDIO_INPUT_LABELS[s]} · stereo` },
+			{ value: `${s}:left`, label: `${STUDIO_INPUT_LABELS[s]} · left` },
+			{ value: `${s}:right`, label: `${STUDIO_INPUT_LABELS[s]} · right` },
+		]),
+		// The hosted instruments, stereo as they sound (docs/multitrack-recorder.md, phase 2).
+		...STUDIO_INSTRUMENTS.map((s) => ({ value: `${s}:stereo`, label: STUDIO_INPUT_LABELS[s] })),
+	];
 	function silenced(t: StudioTrack) {
 		return t.muted || (engine.anySolo && !t.solo);
 	}

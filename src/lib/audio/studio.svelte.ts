@@ -13,11 +13,14 @@ import type {
 	StudioArrangement,
 	StudioClip,
 	StudioInput,
+	StudioInputSource,
 	StudioSourceView,
 	StudioTrack,
 } from "$lib/val/StudioSchema";
 import { nanoid } from "nanoid";
-import { inputSources, outputLatencyMs, type OutsideSource } from "./inputs.svelte";
+import { drumMachine } from "./drumMachine.svelte";
+import { inputSources, outputLatencyMs } from "./inputs.svelte";
+import { chordPiano, piano } from "./piano.svelte";
 import { startLookahead } from "./lookahead";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
@@ -79,11 +82,19 @@ const LOAD_CONCURRENCY = 3;
 export const LIVE_PEAK_FRAMES = 512;
 const UNDO_DEPTH = 100;
 
-export const STUDIO_INPUT_LABELS: Record<OutsideSource, string> = {
+export const STUDIO_INPUT_LABELS: Record<StudioInputSource, string> = {
 	mic: "Microphone",
 	line: "Line in",
 	computer: "Computer",
+	piano: "Piano",
+	chords: "Chord player",
+	drums: "Drum machine",
 };
+/** The instruments the Studio hosts in its own context (phase 2), played from their panels and recorded sample-accurately. */
+export const STUDIO_INSTRUMENTS = ["piano", "chords", "drums"] as const;
+export type StudioInstrument = (typeof STUDIO_INSTRUMENTS)[number];
+export const isInstrument = (s: StudioInputSource): s is StudioInstrument =>
+	s === "piano" || s === "chords" || s === "drums";
 
 function emptyArrangement(): StudioArrangement {
 	return {
@@ -153,6 +164,10 @@ class StudioEngine {
 	outputLatencyMs = $state(0);
 	/** Hear the armed tracks' existing clips while recording over them (off: punch over them in silence). */
 	playArmed = $state(true);
+	/** Shift piano and chord takes earlier by the output latency: a part played by hand against what is heard lands that much late (docs/looper.md). */
+	compensateInstruments = $state(true);
+	/** The drum machine was started by this transport (an armed drums track), so stopping stops it. */
+	#startedDrums = false;
 
 	#ctx: AudioContext | null = null;
 	#master: GainNode | null = null;
@@ -231,6 +246,10 @@ class StudioEngine {
 		if (session) session.type = "play-and-record";
 		const ctx = new AudioContext({ latencyHint: "interactive" });
 		this.#ctx = ctx;
+		// The instruments build their graphs here (docs/looper.md, "One audio context"), so their sound reaches a capture sample-accurately.
+		piano.hostContext(ctx);
+		chordPiano.hostContext(ctx);
+		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/track-capture.js");
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
@@ -841,6 +860,14 @@ class StudioEngine {
 		this.#stopAt = from;
 		this.#passes = [];
 		this.#startPass(from, when);
+		// A drums track armed: the drum machine plays along from the start, at the song's tempo, in step (its beat is recorded when recording).
+		if (this.armedTracks.some((t) => t.input?.source === "drums")) {
+			drumMachine.load();
+			if (drumMachine.running) drumMachine.stop();
+			if (!drumMachine.followTempo) drumMachine.setBpm(this.arrangement.bpm);
+			void drumMachine.startAt(when);
+			this.#startedDrums = true;
+		}
 		if (this.arrangement.click || opts.countIn) {
 			metronome.setBpm(this.arrangement.bpm);
 			metronome.setBeats(this.arrangement.beatsPerBar);
@@ -993,6 +1020,10 @@ class StudioEngine {
 		if (this.#metronomeStopTimer) clearTimeout(this.#metronomeStopTimer);
 		this.#metronomeStopTimer = null;
 		metronome.stop();
+		if (this.#startedDrums) {
+			drumMachine.stop();
+			this.#startedDrums = false;
+		}
 		cancelAnimationFrame(this.#frame);
 		this.phase = "idle";
 		releasePlayback(this.#transport);
@@ -1031,11 +1062,15 @@ class StudioEngine {
 		if (this.running) return false;
 		await this.open();
 		const ctx = this.#ctx!;
-		const armed = this.armedTracks.filter((t) => t.input && inputSources.has(t.input.source));
+		const armed = this.armedTracks.filter(
+			(t) => t.input && (isInstrument(t.input.source) || inputSources.has(t.input.source)),
+		);
 		if (armed.length === 0) {
 			this.notice = "Arm a track with an open input to record.";
 			return false;
 		}
+		// The drums must be ready to start on the bar: the kit decoded before the start is chosen.
+		if (armed.some((t) => t.input?.source === "drums")) await drumMachine.readyKit();
 		const session = audioSession();
 		if (session) session.type = "play-and-record";
 		const from = this.position;
@@ -1055,9 +1090,16 @@ class StudioEngine {
 		this.#applyGains();
 		return true;
 	}
+	/** An input's node in this context: an instrument's master, or the shared input's gain stage. */
+	#inputNode(source: StudioInputSource): AudioNode | null {
+		if (source === "piano") return piano.output();
+		if (source === "chords") return chordPiano.output();
+		if (source === "drums") return drumMachine.output();
+		return inputSources.output(source);
+	}
 	#arm(track: StudioTrack, ctx: AudioContext) {
 		const input = track.input!;
-		const source = inputSources.output(input.source);
+		const source = this.#inputNode(input.source);
 		if (!source) return;
 		const channels = input.channel === "stereo" ? 2 : 1;
 		const node = new AudioWorkletNode(ctx, "track-capture", {
@@ -1115,7 +1157,7 @@ class StudioEngine {
 				cap.node.port.onmessage = null;
 				cap.node.disconnect();
 				for (const n of cap.feed) n.disconnect();
-				inputSources.output(this.#track(cap.trackId)?.input?.source ?? "mic")?.disconnect(cap.node);
+				this.#inputNode(this.#track(cap.trackId)?.input?.source ?? "mic")?.disconnect(cap.node);
 			} catch {
 				// Already gone.
 			}
@@ -1136,8 +1178,17 @@ class StudioEngine {
 		const total = cap.chunks.reduce((n, c) => n + (c[0]?.length ?? 0), 0);
 		const lead = Math.round(LEAD_SECONDS * ctx.sampleRate);
 		const input = track?.input;
+		// A microphone or line in by its measured round trip; the computer by its capture delay; a piano or chords part played by hand against what is heard by the output latency; the drums' beat runs on the clock and needs none.
 		const shiftMs =
-			input?.source === "computer" ? inputSources.computerLatencyMs : inputSources.latencyMs;
+			input?.source === "computer"
+				? inputSources.computerLatencyMs
+				: input?.source === "piano" || input?.source === "chords"
+					? this.compensateInstruments
+						? this.outputLatencyMs
+						: 0
+					: input?.source === "drums"
+						? 0
+						: inputSources.latencyMs;
 		const shift = Math.min(lead, Math.round((shiftMs / 1000) * ctx.sampleRate));
 		const skip = lead + shift;
 		const frames = total - skip;
@@ -1293,11 +1344,16 @@ class StudioEngine {
 			master: this.#master?.gain.value ?? null,
 		};
 	}
-	/** Open the microphone or the line in for a track's input (from a gesture). */
-	async requestInput(source: OutsideSource): Promise<boolean> {
+	/** Open the microphone or the line in for a track's input (from a gesture); an instrument is always open once hosted. */
+	async requestInput(source: StudioInputSource): Promise<boolean> {
 		await this.open();
+		if (isInstrument(source)) return true;
 		if (source === "computer") return inputSources.requestComputer();
 		return inputSources.requestInput(source);
+	}
+	/** Whether a track's input can be recorded now. */
+	inputOpen(source: StudioInputSource): boolean {
+		return isInstrument(source) || inputSources.has(source);
 	}
 	dispose() {
 		this.stop();

@@ -4737,6 +4737,7 @@ type StudioSongRow = {
 	title: string;
 	notes: string;
 	createdAt: Date;
+	instruments: string | null;
 	sources: (typeof studioSource.$inferSelect)[];
 	revisions: { id: string; number: number; name: string | null; createdAt: Date }[];
 };
@@ -4762,6 +4763,7 @@ async function studioSongViews(rows: StudioSongRow[]): Promise<StudioSongView[]>
 			title: i.title,
 			notes: i.notes,
 			createdAt: i.createdAt,
+			instruments: parseIdeaInstruments(i.instruments),
 			current: (i.revisions[0] && current.get(i.revisions[0].id)) ?? null,
 			revisions: i.revisions.map(studioRevisionView),
 			sources: await Promise.all(i.sources.map(studioSourceView)),
@@ -4774,7 +4776,7 @@ export async function listStudioSongs(userId: string): Promise<StudioSongView[]>
 	const rows = await db.query.idea.findMany({
 		where: and(eq(idea.createdBy, userId), eq(idea.kind, "song")),
 		orderBy: [desc(idea.createdAt)],
-		columns: { id: true, title: true, notes: true, createdAt: true },
+		columns: { id: true, title: true, notes: true, createdAt: true, instruments: true },
 		with: studioSongWith(),
 	});
 	return studioSongViews(rows);
@@ -4787,7 +4789,7 @@ export async function studioSongView(
 ): Promise<StudioSongView | null> {
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")),
-		columns: { id: true, title: true, notes: true, createdAt: true },
+		columns: { id: true, title: true, notes: true, createdAt: true, instruments: true },
 		with: studioSongWith(),
 	});
 	if (!row) return null;

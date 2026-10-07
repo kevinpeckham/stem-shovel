@@ -1,5 +1,9 @@
 <script lang="ts">
+	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
 	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import DrumMachine from "$lib/components/DrumMachine.svelte";
+	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
+	import Piano from "$lib/components/Piano.svelte";
 	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
 	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
 	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
@@ -7,14 +11,22 @@
 	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "$lib/components/PageCopySection.svelte";
 	import StudioTimeline from "$lib/components/StudioTimeline.svelte";
+	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
+	import { drumMachine } from "$lib/audio/drumMachine.svelte";
 	import { inputSources } from "$lib/audio/inputs.svelte";
 	import { metronome } from "$lib/audio/metronome.svelte";
-	import { studio, type StudioTake } from "$lib/audio/studio.svelte";
+	import { chordPiano, piano } from "$lib/audio/piano.svelte";
+	import { isInstrument, studio, type StudioTake } from "$lib/audio/studio.svelte";
 	import { StudioQueue } from "$lib/audio/studioQueue.svelte";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "$lib/constants/studio";
 	import { DEMO_ACCEPT } from "$lib/constants/demoFormats";
 	import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
-	import { createIdea, deleteIdeaNow, renameIdea } from "$lib/remote/ideas.remote";
+	import {
+		createIdea,
+		deleteIdeaNow,
+		renameIdea,
+		saveIdeaInstruments,
+	} from "$lib/remote/ideas.remote";
 	import {
 		autosaveArrangement,
 		deleteStudioRevision,
@@ -35,7 +47,8 @@
 	import { errorMessage } from "$lib/utils/errorMessage";
 	import { formatTime } from "$lib/utils/formatTime";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import type { StudioSongView, StudioTrack } from "$lib/val/StudioSchema";
+	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
+	import type { StudioInputSource, StudioSongView, StudioTrack } from "$lib/val/StudioSchema";
 	import { invalidateAll } from "$app/navigation";
 	import { onMount, untrack } from "svelte";
 
@@ -49,7 +62,15 @@
 	 */
 	let { data } = $props();
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __studio: studio, __inputs: inputSources, __metronome: metronome });
+		Object.assign(window, {
+			__studio: studio,
+			__inputs: inputSources,
+			__metronome: metronome,
+			__piano: piano,
+			__chordPiano: chordPiano,
+			__chords: chordPlayer,
+			__drums: drumMachine,
+		});
 
 	// ── The song open on the device ────────────────────────────────────────
 	const LAST_KEY = "stemshovel.studio.last-song";
@@ -70,6 +91,7 @@
 		notes = s?.notes ?? "";
 		notesKey++;
 		selected = null;
+		loadInstruments(s?.instruments ?? null);
 		try {
 			if (s) localStorage.setItem(LAST_KEY, s.id);
 			else localStorage.removeItem(LAST_KEY);
@@ -278,9 +300,55 @@
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed").length);
 	let failed = $derived(queue.items.filter((u) => u.status === "failed"));
+	/**
+	 * The instruments as the song had them, into the engines (the recorder's
+	 * way, docs/demo-recording.md): a song without any leaves them alone.
+	 */
+	function loadInstruments(saved: IdeaInstruments | null) {
+		if (!saved) return;
+		drumMachine.load();
+		piano.load();
+		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", title || "Studio");
+		if (saved.piano) piano.applyPreset(saved.piano);
+		if (saved.chords) chordPlayer.applyPresetSettings(saved.chords);
+	}
+	/** A take from an instrument track landed: that instrument's settings onto the song (the server keeps the others). */
+	let instrumentsToSave: { drums: boolean; piano: boolean; chords: boolean } | null = null;
+	function noteInstrumentTake(source: StudioInputSource | null) {
+		if (!source || !isInstrument(source)) return;
+		const pending = instrumentsToSave ?? { drums: false, piano: false, chords: false };
+		pending[source] = true;
+		if (!instrumentsToSave) {
+			instrumentsToSave = pending;
+			// Every take of the pass lands in one tick; one save for them all.
+			queueMicrotask(() => void saveInstruments());
+		} else instrumentsToSave = pending;
+	}
+	async function saveInstruments() {
+		const which = instrumentsToSave;
+		instrumentsToSave = null;
+		const id = songId;
+		if (!which || !id) return;
+		drumMachine.load();
+		piano.load();
+		try {
+			await saveIdeaInstruments({
+				id,
+				drums: which.drums ? $state.snapshot(drumMachine.project) : null,
+				piano: which.piano ? piano.currentPreset() : null,
+				chords: which.chords ? $state.snapshot(chordPlayer.presetSettings) : null,
+				looper: null,
+			});
+		} catch (e) {
+			notify(`Instrument settings not saved: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	studio.ontake = (take: StudioTake) => {
 		const id = songId;
 		if (!id) return;
+		noteInstrumentTake(
+			studio.arrangement.tracks.find((t) => t.id === take.trackId)?.input?.source ?? null,
+		);
 		queue.enqueue({
 			sourceId: take.sourceId,
 			ideaId: id,
@@ -322,7 +390,15 @@
 	/** A track armed: its input opens (the microphone asks on its first turn). */
 	async function armInput(track: StudioTrack) {
 		const input = track.input;
-		if (!input || inputSources.has(input.source)) return;
+		if (!input) return;
+		// An instrument's panel comes out (it plays into the song from there); an outside input opens.
+		if (isInstrument(input.source)) {
+			if (input.source === "piano" && !pianoOpen) togglePiano();
+			if (input.source === "chords" && !chordsOpen) toggleChords();
+			if (input.source === "drums" && !drumsOpen) toggleDrums();
+			return;
+		}
+		if (inputSources.has(input.source)) return;
 		const ok = await studio.requestInput(input.source);
 		if (!ok) {
 			const err = inputSources.errors[input.source];
@@ -506,6 +582,34 @@
 	let notesMode = $state<PanelMode>("docked");
 	let inputsOpen = $state(false);
 	let metroOpen = $state(false);
+	// The instruments' panels (docs/multitrack-recorder.md, phase 2): floating from lg, docked below; the space bar goes to the instrument touched last, else the transport.
+	let drumsOpen = $state(false);
+	let pianoOpen = $state(false);
+	let chordsOpen = $state(false);
+	let spaceOwner = $state<"drums" | "piano" | "chords" | null>(null);
+	function toggleDrums(e?: Event) {
+		drumsOpen = !drumsOpen;
+		if (drumsOpen) spaceOwner = "drums";
+		else if (spaceOwner === "drums")
+			spaceOwner = pianoOpen ? "piano" : chordsOpen ? "chords" : null;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	function togglePiano(e?: Event) {
+		pianoOpen = !pianoOpen;
+		if (pianoOpen) spaceOwner = "piano";
+		else if (spaceOwner === "piano")
+			spaceOwner = chordsOpen ? "chords" : drumsOpen ? "drums" : null;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	function toggleChords(e?: Event) {
+		chordsOpen = !chordsOpen;
+		if (chordsOpen) spaceOwner = "chords";
+		else {
+			chordPlayer.allOff();
+			if (spaceOwner === "chords") spaceOwner = pianoOpen ? "piano" : drumsOpen ? "drums" : null;
+		}
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
 	let deviceFloating = $state(false);
 	onMount(() => {
 		try {
@@ -554,6 +658,8 @@
 			return;
 		}
 		if (e.code === "Space") {
+			// An instrument panel touched last has the space bar (the piano's sustain, the drums' play).
+			if (spaceOwner !== null) return;
 			if ((e.target as HTMLElement | null)?.closest("button, a, select")) return;
 			e.preventDefault();
 			if (!e.repeat) studio.toggle();
@@ -649,6 +755,44 @@
 					onclick={() => (metroOpen = !metroOpen)}
 				>
 					<span class="i-ph-metronome" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {drumsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: drumMachine.running
+							? 'text-accent'
+							: ''}"
+					type="button"
+					aria-pressed={drumsOpen}
+					aria-label={drumsOpen ? "Close the drum machine" : "Open the drum machine"}
+					title={drumsOpen ? "Close the drum machine" : "Open the drum machine"}
+					onclick={toggleDrums}
+				>
+					<span class="grid place-items-center" aria-hidden="true"><IconDrumKit /></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {pianoOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={pianoOpen}
+					aria-label={pianoOpen ? "Put the piano away" : "Piano"}
+					title={pianoOpen ? "Put the piano away" : "Open the piano"}
+					onclick={togglePiano}
+				>
+					<span class="i-ph-piano-keys" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {chordsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={chordsOpen}
+					aria-label={chordsOpen ? "Put the chord player away" : "Chord player"}
+					title={chordsOpen ? "Put the chord player away" : "Open the chord player"}
+					onclick={toggleChords}
+				>
+					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
 				</button>
 			{/snippet}
 		</PageCopyHeader>
@@ -1492,5 +1636,65 @@
 		onminimise={() => (metroOpen = false)}
 	>
 		<Metronome />
+	</FloatingPanel>
+	<!-- The instruments' panels, as on the looper page: hosted in the Studio's context, they play into an armed track. -->
+	<FloatingPanel
+		open={drumsOpen}
+		title="Drum machine"
+		storageKey="stemshovel.studio.drum-panel"
+		onminimise={() => toggleDrums()}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div onpointerdowncapture={() => (spaceOwner = "drums")}>
+			<DrumMachine
+				kits={data.kits}
+				keyboard={spaceOwner === "drums"}
+				account={data.account}
+				beats={data.beats}
+				textToBeat={data.textToBeat}
+			/>
+		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={pianoOpen}
+		title="Piano"
+		storageKey="stemshovel.studio.piano-panel"
+		width={980}
+		onminimise={() => togglePiano()}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div onpointerdowncapture={() => (spaceOwner = "piano")}>
+			<Piano
+				warm
+				samplesBase={data.pianoSamplesBase}
+				keyboard={spaceOwner === "piano"}
+				sitePresets={data.sitePresets}
+				account={data.account}
+				presets={data.pianoPresets}
+				presetAdmin={data.presetAdmin}
+			/>
+		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={chordsOpen}
+		title="Chord player"
+		storageKey="stemshovel.studio.chords-panel"
+		width={760}
+		height={720}
+		onminimise={() => toggleChords()}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div onpointerdowncapture={() => (spaceOwner = "chords")}>
+			<ChordPlayer
+				samplesBase={data.pianoSamplesBase}
+				keyboard={spaceOwner === "chords"}
+				sitePresets={data.chordPresets}
+				account={data.account}
+				presets={data.pianoPresets}
+				presetAdmin={data.presetAdmin}
+				chordStyles={data.chordStyles}
+				pad={false}
+			/>
+		</div>
 	</FloatingPanel>
 </div>
