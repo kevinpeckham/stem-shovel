@@ -6,6 +6,23 @@ the tests and the spell check; `.github/workflows/fallow.yml` runs
 and the house rules in `fallow-rules.json`) and uploads the findings to
 GitHub's code-scanning tab. Both run without secrets.
 
+## Browser tests
+
+`bunx varlock run -- bun run test:e2e` runs the Playwright specs in
+`tests/e2e/` (`playwright.config.ts`) against the running dev server
+(`E2E_BASE` for another) in Chromium, signed in as the Screenshot Bot
+through `PREVIEW_AUTH_TOKEN` (the suite skips without it) with
+`--use-fake-device-for-media-stream`, so the recorder, the looper and the
+Studio record the fake microphone's beeps. The specs reach the engines
+through the dev build's `window.__studio`, `__looper`, `__drums`,
+`__piano`, `__metronome` and `__inputs` hooks, drive the device buttons by
+their labels, and delete what they made through the app (the Studio's songs,
+the recorder's idea). They are the only tests that run the Web Audio
+engines and the pages, so coverage of `src/lib/audio` and `src/routes` lives
+here, not in Vitest. One worker, as the specs share the bot's account; traces
+of failures land in `.screenshots/e2e/`. Not part of CI, which has neither
+a dev server nor the token.
+
 ## Coverage
 
 `bun run test:coverage` runs both projects with V8 coverage

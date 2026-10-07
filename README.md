@@ -43,6 +43,7 @@ bun run stems        # generates 4 synthetic WAV stems + manifest into static/st
 bun run dev          # open http://localhost:5173/
 bun run test         # Vitest, unit + component projects
 bun run test:coverage # the same with V8 coverage: a summary in the terminal, the report in coverage/
+bun run test:e2e     # Playwright against the dev server (through varlock for the bot's token)
 ```
 
 URLs carry the account: `/[account]/projects` lists and creates projects;

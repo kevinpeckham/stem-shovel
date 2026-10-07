@@ -10,6 +10,7 @@ working agreement.
 bun run dev          # the VM runs this as a systemd unit on :5173 — do not start a second one
 bun run test         # Vitest: unit (Node) + component (jsdom) projects — docs/testing.md
 bun run test:coverage # the same with V8 coverage (text summary; the HTML report in coverage/, gitignored)
+bunx varlock run -- bun run test:e2e   # Playwright against the dev server as the bot, fake microphone (tests/e2e; docs/testing.md "Browser tests")
 bun run check        # svelte-check
 bun run lint         # vp check: format check + Oxlint + tsgolint
 bun run format       # Oxfmt (formats .svelte templates too)

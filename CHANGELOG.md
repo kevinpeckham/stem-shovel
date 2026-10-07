@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Browser tests** (`bunx varlock run -- bun run test:e2e`, `playwright.config.ts`, `tests/e2e/`): Playwright in Chromium against the running dev server as the Screenshot Bot with a fake microphone, reaching the engines through the dev build's `window.__*` hooks. Ten specs: the Studio end to end (a take as a clip and its upload; import, trims, a split, fades, gain, a duplicate and a reload; loop-recording takes, punch and a revision's restore; cleanup through the app), the Idea Recorder (a take recorded, uploaded, the ideas deleted), the looper (a microphone layer the length of the loop), the stem player (decode, play, mute, solo) and the drum machine, metronome and piano transports. The only tests that run the Web Audio engines and the pages; not part of CI.
+
 ## [0.111.3] - 2026-10-07
 
 ### Fixed
