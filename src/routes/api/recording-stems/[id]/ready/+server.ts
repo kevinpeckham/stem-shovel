@@ -6,6 +6,7 @@ import {
 	reservedPathname,
 	userOwnsRecording,
 } from "$lib/server/data";
+import { MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -18,6 +19,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		typeof body.durationSeconds === "number" && Number.isFinite(body.durationSeconds)
 			? Math.max(0, body.durationSeconds)
 			: null;
+	if (duration !== null && duration > MAX_AUDIO_SECONDS)
+		error(400, "durationSeconds is over a day");
 	const user = requireUser(locals);
 	const source = await recordingStemById(params.id);
 	if (!source || !(await userOwnsRecording(source.accountId, user.id, source.recordingId)))

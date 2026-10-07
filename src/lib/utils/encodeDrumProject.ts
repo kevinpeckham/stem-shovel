@@ -26,7 +26,7 @@ import { BitWriter } from "./bitWriter";
  * steps choice (3) and row count (4), and for each row its voice (4), level in
  * hundredths (7), pan in hundredths from -1 (8), mute (1), delay and reverb
  * sends in hundredths (7 each) and a velocity per step (2 each); then the
- * timeline's bar count (7) and a pattern index per bar (3 each). One 16-step pattern of eight rows is 78 characters;
+ * timeline's bar count (7) and a pattern index per bar (3 each). One 16-step pattern of eight rows is 112 characters;
  * eight patterns of 32 steps with nine rows, about a thousand. The version byte is what lets a
  * later format add a field while these links keep opening.
  */

@@ -144,12 +144,16 @@ describe("POST /api/upload", () => {
 describe("onBeforeGenerateToken: stems, demos and MIDI (membership of the song's account)", () => {
 	beforeEach(() => {
 		givenRow("stem", { accountId: ACCOUNT, song: { projectId: PROJECT } });
-		data.findUploadingStem.mockResolvedValue({ id: STEM, contentType: "audio/wav" });
+		data.findUploadingStem.mockResolvedValue({
+			id: STEM,
+			contentType: "audio/wav",
+			sizeBytes: 777,
+		});
 	});
-	it("an editor gets a token for the reserved stem: its type, the stem ceiling, the row in the payload", async () => {
+	it("an editor gets a token for the reserved stem: its type, the claimed size as the ceiling, the row in the payload", async () => {
 		await expect(tokenFor(paths.stem)).resolves.toEqual({
 			allowedContentTypes: ["audio/wav"],
-			maximumSizeInBytes: STEM_MAX_BYTES,
+			maximumSizeInBytes: 777,
 			addRandomSuffix: false,
 			allowOverwrite: true,
 			tokenPayload: JSON.stringify({ id: STEM }),
@@ -231,14 +235,15 @@ describe("onBeforeGenerateToken: Studio sources (the song's maker)", () => {
 			ideaId: IDEA,
 			status: "uploading",
 			contentType: "audio/wav",
+			sizeBytes: 1234,
 		});
 		givenRow("idea", { accountId: ACCOUNT });
 		data.userOwnsIdea.mockResolvedValue(true);
 	});
-	it("the maker gets a take-sized token for the reserved type", async () => {
+	it("the maker gets a token for the reserved type, capped at the size the reservation claimed", async () => {
 		await expect(tokenFor(paths.studio)).resolves.toEqual({
 			allowedContentTypes: ["audio/wav"],
-			maximumSizeInBytes: MAX_TAKE_BYTES,
+			maximumSizeInBytes: 1234,
 			addRandomSuffix: false,
 			allowOverwrite: true,
 			tokenPayload: JSON.stringify({ id: SOURCE }),

@@ -79,30 +79,27 @@
 	}
 	/** The remembered place, clamped so the header is always on screen. */
 	function place() {
+		let saved: { x: number; y: number; w: number; h: number } | null = null;
 		try {
-			const saved = JSON.parse(localStorage.getItem(storageKey) ?? "null") as {
-				x: number;
-				y: number;
-				w: number;
-				h: number;
-			} | null;
-			if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) {
-				w = Math.max(480, Math.min(window.innerWidth - 16, saved.w));
-				h = Math.max(320, Math.min(window.innerHeight - 16, saved.h));
-				x = saved.x;
-				y = saved.y;
-			} else {
-				w = Math.min(width, window.innerWidth - 48);
-				h = Math.min(height, window.innerHeight - 120);
-				x = Math.max(8, window.innerWidth - w - 24);
-				y = 96;
-			}
+			saved = JSON.parse(localStorage.getItem(storageKey) ?? "null");
 		} catch {
-			// As above.
+			// A corrupt entry, or no storage: placed as if nothing were remembered.
+		}
+		if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) {
+			w = Math.max(480, Math.min(window.innerWidth - 16, saved.w));
+			h = Math.max(320, Math.min(window.innerHeight - 16, saved.h));
+			x = saved.x;
+			y = saved.y;
+		} else {
+			w = Math.min(width, window.innerWidth - 48);
+			h = Math.min(height, window.innerHeight - 120);
+			x = Math.max(8, window.innerWidth - w - 24);
+			y = 96;
 		}
 		x = Math.max(8, Math.min(window.innerWidth - 120, x));
 		y = Math.max(8, Math.min(window.innerHeight - 48, y));
 	}
+	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the place is read from storage and clamped to the viewport the moment the panel opens, which the `open` prop drives from the page
 	$effect(() => {
 		if (open && !placed) {
 			placed = true;

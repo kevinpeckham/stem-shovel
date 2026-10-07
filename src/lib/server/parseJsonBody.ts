@@ -6,7 +6,12 @@ export async function parseJsonBody<S extends v.GenericSchema>(
 	request: Request,
 	schema: S,
 ): Promise<v.InferOutput<S>> {
-	const parsed = v.safeParse(schema, await request.json().catch(() => null));
+	return parseBody(await request.json().catch(() => null), schema);
+}
+
+/** A body already read (a route that looks at a field before validating), through the schema the same way. */
+export function parseBody<S extends v.GenericSchema>(body: unknown, schema: S): v.InferOutput<S> {
+	const parsed = v.safeParse(schema, body);
 	if (!parsed.success) error(400, parsed.issues[0]?.message ?? "Bad request");
 	return parsed.output;
 }

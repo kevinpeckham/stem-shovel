@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **An upload can be no larger than its reservation claimed.** The reserve routes for stems, demos, takes and take sources now require the claimed size to be a whole number of bytes from one up (zero, negatives and NaN were accepted), and the upload token is capped at that claim rather than the kind's ceiling, so the storage quota the claim was checked against holds. The ready routes bound what the browser reports: a length up to a day, one to eight channels, a source's order within a song's stems.
+- **Every member-gated function and route answers 401 to a signed-out caller**, the stem and demo routes included; the upload token route passes a refusal's own status through instead of 400, and the Studio reserve answers 413 for an oversize file as the other reserve routes do.
+- **Reordering stems with the arrow keys keeps the grip focused**, so a second press moves the row again; **a floating panel whose remembered place is corrupt opens where a panel with none does**.
+
+### Technical
+
+- `FADER_MAX` lives in `src/lib/constants/fader.ts` (the engine re-exports it; the default-mix schema and the Studio's fader read it); `src/lib/constants/audioBounds.ts`; `utils/validSizeBytes.ts`; `parseBody` beside `parseJsonBody`.
+
 ### Technical
 
 - **The rest of the coverage plan**: frozen golden links for every drum-machine share-link version (v1–v9, each made by that version's own encoder) and piano presets, round trips of the bit packer and the MIDI writers, `peaks.ts`, nine more valibot schemas, component tests for FloatingPanel, ContextMenu, StemRow, StemPlayer and Waveform (`tests/helpers/fakePopover.ts`), `hooks.server.ts`, and the reserve/ready API routes, the upload token route, the jobs endpoint and the mix route (`tests/helpers/fakeApiEvent.ts`; route tests are named `server.test.ts` since SvelteKit reserves the `+` prefix). 273 cases; the suite stands at 1,620.

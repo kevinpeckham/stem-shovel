@@ -97,7 +97,7 @@ describe("restoreDocVersion", () => {
 	it("401 signed out, for either kind", async () => {
 		asSignedOut();
 		await expect(call(history.restoreDocVersion, mine)).rejects.toMatchObject(httpError(401));
-		await expect(call(history.restoreDocVersion, shared)).rejects.toMatchObject(httpError(404));
+		await expect(call(history.restoreDocVersion, shared)).rejects.toMatchObject(httpError(401));
 	});
 	it("404 for a stranger, for either kind", async () => {
 		asOutsider();

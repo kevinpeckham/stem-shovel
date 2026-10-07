@@ -1,6 +1,5 @@
 import {
 	accountOfUploadPathname,
-	isEditor,
 	memberOf,
 	requireOwnIdea,
 	requireSystemAdmin,
@@ -66,7 +65,8 @@ async function studioUploadToken(locals: App.Locals, pathname: string) {
 	await requireOwnIdea(locals, row.ideaId);
 	return {
 		allowedContentTypes: [row.contentType],
-		maximumSizeInBytes: MAX_TAKE_BYTES,
+		// The size the reservation claimed (and the quota was checked against) is the most the token allows.
+		maximumSizeInBytes: Math.min(row.sizeBytes, MAX_TAKE_BYTES),
 		addRandomSuffix: false,
 		allowOverwrite: true,
 		tokenPayload: JSON.stringify({ id: row.id }),
@@ -109,8 +109,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					else {
 						const accountId = await accountOfDrumSamplePathname(pathname);
 						if (!accountId) throw new Error(`No reservation for "${pathname}"`);
-						const m = await memberOf(locals, async () => accountId, accountId);
-						if (!isEditor(m.role)) throw new Error("Not an editor");
+						await memberOf(locals, async () => accountId, accountId);
 					}
 					const row = await findUploadingDrumSample(pathname);
 					if (!row) throw new Error(`No reservation for "${pathname}"`);
@@ -161,14 +160,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 								(await findUploadingRecordingStem(accountId, pathname)))
 							: await findUploadingStem(accountId, pathname);
 				if (!row) throw new Error(`No reservation for "${pathname}"`);
+				// The ceiling: a MIDI file's own; otherwise the size the reservation claimed (what the quota was checked against), never past the kind's cap.
+				const cap = isRecordingPathname(pathname) ? MAX_TAKE_BYTES : STEM_MAX_BYTES;
 				return {
 					// decided from the extension at reserve time; MIDI is always audio/midi
 					allowedContentTypes: ["contentType" in row ? row.contentType : "audio/midi"],
 					maximumSizeInBytes: isMidi(pathname)
 						? MIDI_MAX_BYTES
-						: isRecordingPathname(pathname)
-							? MAX_TAKE_BYTES
-							: STEM_MAX_BYTES,
+						: Math.min("sizeBytes" in row ? row.sizeBytes : cap, cap),
 					addRandomSuffix: false,
 					allowOverwrite: true, // a retry of the same reservation replaces the partial blob
 					tokenPayload: JSON.stringify({ id: row.id }),
@@ -193,7 +192,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 		return json(result);
 	} catch (err) {
-		// 400 so Vercel's completion webhook retries are not triggered for our own errors.
+		// A refusal from the checks (401 signed out, 404 not yours) keeps its status, so the browser can tell them apart;
+		// anything else is 400, so Vercel's completion webhook retries are not triggered for our own errors.
+		const status = (err as { status?: unknown }).status;
+		const body = (err as { body?: { message?: string } }).body;
+		if (typeof status === "number" && status >= 400 && status < 500)
+			return json({ error: body?.message ?? (err as Error).message }, { status });
 		return json({ error: (err as Error).message }, { status: 400 });
 	}
 };

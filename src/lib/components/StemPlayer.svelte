@@ -11,6 +11,7 @@
 	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "$lib/audio/measures";
 	import { readoutMode } from "$lib/audio/readout.svelte";
+	import { tick } from "svelte";
 	import { type SongChange } from "$lib/val/SongChangeSchema";
 	import { timelineKinds } from "$lib/utils/timelineKinds";
 	import type { SongSection } from "$lib/val/SongSectionSchema";
@@ -177,10 +178,13 @@
 	function gripKey(e: KeyboardEvent, id: string) {
 		if (!onreorder || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
 		e.preventDefault();
+		const grip = e.currentTarget as HTMLElement;
 		const from = order().indexOf(id);
 		orderAtStart = order();
 		moveTo(id, from + (e.key === "ArrowUp" ? -1 : 1));
 		commit();
+		// The keyed row moves in the DOM, which blurs the grip; it gets focus back so the next press moves again.
+		void tick().then(() => grip.focus({ preventScroll: true }));
 	}
 </script>
 

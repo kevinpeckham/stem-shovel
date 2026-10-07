@@ -37,11 +37,9 @@ const targets = [
 describe("removeImage", () => {
 	for (const t of targets) {
 		describe(`a ${t.kind} picture`, () => {
-			it("401 signed out (404 for a song, whose lookup comes first and finds nothing here)", async () => {
+			it("401 signed out", async () => {
 				asSignedOut();
-				await expect(call(images.removeImage, t)).rejects.toMatchObject(
-					httpError(t.kind === "account" ? 401 : 404),
-				);
+				await expect(call(images.removeImage, t)).rejects.toMatchObject(httpError(401));
 			});
 			it("404 for an outsider and for a viewer", async () => {
 				asOutsider();

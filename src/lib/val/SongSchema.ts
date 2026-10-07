@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { FADER_MAX } from "../constants/fader";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 import { SlugSchema } from "./SlugSchema";
@@ -65,14 +66,14 @@ export const SongCreateSchema = v.object({ projectId: NanoIdSchema, title: NameS
 /** Form boundary for deleting a song, a stem or a demo by id. */
 export const IdSchema = v.object({ id: NanoIdSchema });
 
-/** The default mix a member saves: a fader per stem, 0..1.25 like the player's. */
+/** The default mix a member saves: a fader per stem, 0..FADER_MAX like the player's. */
 export const DefaultMixSchema = v.object({
 	id: NanoIdSchema,
 	gains: v.pipe(
 		v.array(
 			v.object({
 				id: NanoIdSchema,
-				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(1.25)),
+				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(FADER_MAX)),
 			}),
 		),
 		v.minLength(1),

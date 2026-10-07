@@ -71,9 +71,9 @@ for (const c of cases) {
 		return call(c.fn, c.input);
 	};
 	describe(c.name, () => {
-		it("404 signed out", async () => {
+		it("401 signed out", async () => {
 			asSignedOut();
-			await expect(run()).rejects.toMatchObject(httpError(404));
+			await expect(run()).rejects.toMatchObject(httpError(401));
 			expect(data[c.dataFn]).not.toHaveBeenCalled();
 		});
 		it("404 for a member of another account", async () => {

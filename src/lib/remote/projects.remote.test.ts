@@ -158,9 +158,9 @@ describe("functions gated by the project's account", () => {
 			return call(c.fn, c.input);
 		};
 		describe(c.name, () => {
-			it(`${c.anon ?? 404} signed out`, async () => {
+			it(`${c.anon ?? 401} signed out`, async () => {
 				asSignedOut();
-				await expect(run()).rejects.toMatchObject(httpError(c.anon ?? 404));
+				await expect(run()).rejects.toMatchObject(httpError(c.anon ?? 401));
 				expect(target()).not.toHaveBeenCalled();
 			});
 			it("404 for a member of another account", async () => {
@@ -240,9 +240,9 @@ describe("createProject", () => {
 describe("deleteProject", () => {
 	const input = { id: PROJECT };
 	beforeEach(() => lifecycle.deleteProject.mockResolvedValue("deleted"));
-	it("404 signed out", async () => {
+	it("401 signed out", async () => {
 		asSignedOut();
-		await expect(call(projects.deleteProject, input)).rejects.toMatchObject(httpError(404));
+		await expect(call(projects.deleteProject, input)).rejects.toMatchObject(httpError(401));
 	});
 	it("404 for a member of another account", async () => {
 		asOutsider();

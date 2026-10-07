@@ -6,6 +6,7 @@ import { checkStorage } from "$lib/server/notifications";
 import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
 import { stemContentType } from "$lib/utils/stemContentType";
 import { accessOfPathname } from "$lib/server/relocate";
+import { validSizeBytes } from "$lib/utils/validSizeBytes";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -19,7 +20,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const contentType = stemContentType(filename);
 	if (!contentType)
 		error(415, `"${filename}" is not a supported stem format (${STEM_FORMAT_LIST})`);
-	if (sizeBytes > STEM_MAX_BYTES) error(413, "File is over the per-stem limit");
+	if (!validSizeBytes(sizeBytes, STEM_MAX_BYTES)) {
+		if (typeof sizeBytes === "number" && sizeBytes > STEM_MAX_BYTES)
+			error(413, "File is over the per-stem limit");
+		error(400, "sizeBytes must be the file's size in whole bytes");
+	}
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
 	const room = await storageRoom(accountId, sizeBytes);

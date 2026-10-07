@@ -2,9 +2,10 @@ import { requireOwnIdea } from "$lib/server/access";
 import { background } from "$lib/server/background";
 import { createStudioSource, storageRoom } from "$lib/server/data";
 import { checkStorage } from "$lib/server/notifications";
-import { parseJsonBody } from "$lib/server/parseJsonBody";
+import { parseBody } from "$lib/server/parseJsonBody";
 import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
 import { MAX_STUDIO_SOURCES } from "$lib/constants/studio";
+import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
 import { formatBytes } from "$lib/utils/formatBytes";
 import { StudioSourceReserveSchema } from "$lib/val/StudioSchema";
 import type { Config } from "@sveltejs/adapter-vercel";
@@ -22,7 +23,11 @@ const REFUSED: Record<"full" | "exists" | "unsupported", [number, string]> = {
 
 /** Step 1 of saving a Studio source (docs/multitrack-recorder.md, "Data model"): reserve the row under its song and return the pathname to upload to. */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const reserve = await parseJsonBody(request, StudioSourceReserveSchema);
+	const body = (await request.json().catch(() => null)) as { sizeBytes?: unknown } | null;
+	// Over the ceiling is 413 as on the other reserve routes; everything else the schema says.
+	if (typeof body?.sizeBytes === "number" && body.sizeBytes > MAX_TAKE_BYTES)
+		error(413, `A recording is at most ${Math.round(MAX_TAKE_BYTES / 1024 / 1024)} MB`);
+	const reserve = parseBody(body, StudioSourceReserveSchema);
 	// The song is the user's own idea (whichever account holds its files); its account's storage is what the source counts against.
 	const { accountId, userId } = await requireOwnIdea(locals, reserve.ideaId);
 	const room = await storageRoom(accountId, reserve.sizeBytes);

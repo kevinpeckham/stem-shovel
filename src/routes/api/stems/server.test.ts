@@ -41,13 +41,18 @@ beforeEach(() => {
 });
 
 describe("POST /api/stems", () => {
-	it("404 (not 401) signed out: membership is what is checked", async () => {
+	it("401 signed out", async () => {
 		await expect(callRoute(POST, asSignedOut(), jsonPost("/", body))).rejects.toMatchObject(
-			httpError(404),
+			httpError(401),
 		);
 	});
 	it("400 without songId, filename or a numeric sizeBytes", async () => {
 		await expect(post({ filename: "a.wav", sizeBytes: 1 })).rejects.toMatchObject(httpError(400));
+	});
+	it("400 for a claimed size that is not whole bytes from one up (the quota and the token rest on it)", async () => {
+		for (const sizeBytes of [0, -5, 1.5, NaN])
+			await expect(post({ ...body, sizeBytes })).rejects.toMatchObject(httpError(400));
+		expect(data.createStem).not.toHaveBeenCalled();
 	});
 	it("415 for an extension that is not a stem format", async () => {
 		await expect(post({ ...body, filename: "bass.ogg" })).rejects.toMatchObject(httpError(415));

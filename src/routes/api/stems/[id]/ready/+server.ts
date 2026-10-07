@@ -4,6 +4,7 @@ import { notifyStems } from "$lib/server/notifications";
 import { isOurBlobUrl } from "$lib/server/blob";
 import { markStemReady, reservedPathname } from "$lib/server/data";
 import { schedulePlayback } from "$lib/server/jobs";
+import { MAX_AUDIO_CHANNELS, MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
 import { error, json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";
@@ -24,12 +25,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		typeof url !== "string" ||
 		!url.startsWith("https://") ||
 		typeof durationSeconds !== "number" ||
+		!Number.isFinite(durationSeconds) ||
+		durationSeconds < 0 ||
+		durationSeconds > MAX_AUDIO_SECONDS ||
 		typeof channels !== "number" ||
+		!Number.isInteger(channels) ||
+		channels < 1 ||
+		channels > MAX_AUDIO_CHANNELS ||
 		!Array.isArray(peaks) ||
 		peaks.length > 4096 ||
 		!peaks.every((p) => typeof p === "number" && p >= 0 && p <= 1)
 	) {
-		error(400, "url, durationSeconds, channels and peaks (0..1) are required");
+		error(
+			400,
+			"url, durationSeconds (up to a day), channels (1 to 8) and peaks (0..1) are required",
+		);
 	}
 	const { accountId } = await memberOf(locals, accountOfStem, params.id);
 	// Only the file this reservation was for, in one of our stores.

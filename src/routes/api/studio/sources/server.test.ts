@@ -59,9 +59,9 @@ describe("POST /api/studio/sources", () => {
 	it("400 on malformed JSON", async () => {
 		await expect(post("{not json")).rejects.toMatchObject(httpError(400));
 	});
-	it("400 (the schema's ceiling, not 413) over the take byte limit", async () => {
+	it("413 over the take byte limit, as the other reserve routes answer", async () => {
 		await expect(post({ ...reserve, sizeBytes: MAX_TAKE_BYTES + 1 })).rejects.toMatchObject(
-			httpError(400),
+			httpError(413),
 		);
 	});
 	it("404 for an idea the caller did not make", async () => {

@@ -446,6 +446,7 @@ export async function memberOf(
 	id: string,
 	{ viewers = false }: { viewers?: boolean } = {},
 ) {
+	if (!locals.user) error(401, "Sign in first");
 	const accountId = await lookup(id);
 	if (!accountId) error(404, "Not found");
 	const m = locals.memberships.find((m) => m.accountId === accountId);

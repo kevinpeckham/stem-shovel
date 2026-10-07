@@ -103,13 +103,11 @@ describe("FloatingPanel", () => {
 		});
 	});
 
-	test("a corrupt remembered place keeps the initial place and the prop size", () => {
-		// JSON.parse throws, and the catch skips the default placement too (unlike a missing
-		// entry, which goes to the top right): the panel keeps its initial x/y with the prop size.
+	test("a corrupt remembered place is treated like a missing one: the top right at the prop size", () => {
 		localStorage.setItem("fp-test", "{not json");
 		render(FloatingPanel, { props: { ...base, open: true } });
 		expect(placeOf(screen.getByRole("dialog"))).toEqual({
-			x: "24px",
+			x: "496px",
 			y: "96px",
 			w: "760px",
 			h: "600px",

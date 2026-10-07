@@ -41,8 +41,8 @@ beforeEach(() => {
 });
 
 describe("POST /api/demos", () => {
-	it("404 signed out, for an outsider and for a viewer", async () => {
-		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(404));
+	it("401 signed out, for an outsider and for a viewer", async () => {
+		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(post(body, asOutsider())).rejects.toMatchObject(httpError(404));
 		await expect(post(body, asViewerOf(ACCOUNT))).rejects.toMatchObject(httpError(404));
 		expect(data.createDemo).not.toHaveBeenCalled();

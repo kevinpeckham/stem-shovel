@@ -340,9 +340,9 @@ describe("editor-gated functions", () => {
 			else await expect(run()).resolves.toEqual(c.outcome);
 		};
 		describe(c.name, () => {
-			it(`${c.anon ?? 404} signed out`, async () => {
+			it(`${c.anon ?? 401} signed out`, async () => {
 				asSignedOut();
-				await expect(run()).rejects.toMatchObject(httpError(c.anon ?? 404));
+				await expect(run()).rejects.toMatchObject(httpError(c.anon ?? 401));
 				expect(data[c.dataFn]).not.toHaveBeenCalled();
 			});
 			it("404 for a member of another account", async () => {

@@ -1,3 +1,4 @@
+import { tick } from "svelte";
 import { fakeAudioBuffer } from "../../../tests/helpers/fakeAudioBuffer";
 import type { StemEngine } from "$lib/audio/engine.svelte";
 import type { StemManifest } from "$lib/audio/types";
@@ -93,15 +94,15 @@ describe("StemPlayer", () => {
 		await user.keyboard("{ArrowDown}");
 		expect(onreorder).toHaveBeenLastCalledWith(["bass", "drums", "vox"]);
 		expect(rowNames()).toEqual(["Bass", "Drums", "Vox"]);
-		// Moving the row in the keyed each re-inserts its element, which drops focus to the body
-		// (jsdom and browsers alike); the grip itself survives, so it is focused again for each press.
+		// Moving the row in the keyed each re-inserts its element, which would drop focus to the body;
+		// the grip takes it back after the tick, so the next press moves the row again.
+		await tick();
 		expect(grip.isConnected).toBe(true);
-		expect(document.activeElement).toBe(document.body);
-		grip.focus();
+		expect(document.activeElement).toBe(grip);
 		await user.keyboard("{ArrowDown}");
 		expect(onreorder).toHaveBeenLastCalledWith(["bass", "vox", "drums"]);
+		await tick();
 		// Already last: nothing moves, nothing reported.
-		grip.focus();
 		await user.keyboard("{ArrowDown}");
 		expect(onreorder).toHaveBeenCalledTimes(2);
 		screen.getByRole("button", { name: "Move Bass" }).focus();

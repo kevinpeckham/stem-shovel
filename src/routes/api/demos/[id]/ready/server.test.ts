@@ -40,8 +40,8 @@ beforeEach(() => {
 });
 
 describe("POST /api/demos/[id]/ready", () => {
-	it("404 signed out and for a viewer", async () => {
-		await expect(post({ url }, asSignedOut())).rejects.toMatchObject(httpError(404));
+	it("401 signed out and for a viewer", async () => {
+		await expect(post({ url }, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(post({ url }, asViewerOf(ACCOUNT))).rejects.toMatchObject(httpError(404));
 	});
 	it("400 without an https URL", async () => {

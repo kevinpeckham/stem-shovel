@@ -1,3 +1,4 @@
+import { FADER_MAX } from "./fader";
 import { MAX_TAKE_SECONDS } from "./takeLimits";
 
 /**
@@ -18,6 +19,6 @@ export const MAX_STUDIO_SECONDS = MAX_TAKE_SECONDS;
 /** Autosaved revisions kept per song; named ones are kept for good. */
 export const STUDIO_AUTOSAVES_KEPT = 10;
 /** A track's fader, as the stem player's. */
-export const STUDIO_FADER_MAX = 1.25;
+export const STUDIO_FADER_MAX = FADER_MAX;
 /** Decoded audio past which the device warns (bytes). */
 export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;

@@ -6,7 +6,8 @@ import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
-export const FADER_MAX = 1.25;
+import { FADER_MAX } from "$lib/constants/fader";
+export { FADER_MAX };
 /** Time constant for gain changes (seconds). ~15 ms avoids zipper noise without feeling laggy. */
 const RAMP = 0.015;
 /** Lead time before a scheduled start so every source.start() call lands before the deadline. */

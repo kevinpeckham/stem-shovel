@@ -46,9 +46,9 @@ describe("privacy", () => {
 	];
 	for (const c of cases) {
 		describe(c.name, () => {
-			it("404 signed out", async () => {
+			it("401 signed out", async () => {
 				asSignedOut();
-				await expect(call(c.fn, c.input)).rejects.toMatchObject(httpError(404));
+				await expect(call(c.fn, c.input)).rejects.toMatchObject(httpError(401));
 			});
 			it("404 for an outsider and for a viewer", async () => {
 				asOutsider();

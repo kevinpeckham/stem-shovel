@@ -413,7 +413,7 @@ describe("memberOf", () => {
 			await statusOf(() =>
 				access.memberOf(signedOut, access.accountOfSong, "s1", { viewers: true }),
 			),
-		).toBe(404);
+		).toBe(401);
 	});
 });
 
