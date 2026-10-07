@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Tests for the Studio's arithmetic and the HTML sanitizer.** The engine's trim, split, snap, take-lane and loop/punch piece rules, the ruler's ticks, the live-waveform peak reduction and the buffer slice and normalize helpers moved into `src/lib/utils/` as pure functions with tests (43 cases); `src/lib/server/sanitize.test.ts` documents the allowlist with 53 cases (dropped elements, event handlers, obfuscated `javascript:` URLs, GFM output surviving, idempotence).
+
 ## [0.111.0] - 2026-10-07
 
 ### Added

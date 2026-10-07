@@ -2,6 +2,7 @@
 	import { STUDIO_FADER_MAX } from "$lib/constants/studio";
 	import { LIVE_PEAK_FRAMES, studio, STUDIO_INPUT_LABELS } from "$lib/audio/studio.svelte";
 	import { formatTime } from "$lib/utils/formatTime";
+	import { rulerTicks } from "$lib/utils/rulerTicks";
 	import { isTextEntry } from "$lib/utils/isTextEntry";
 	import type { StudioClip, StudioInput, StudioTrack } from "$lib/val/StudioSchema";
 	import type { Attachment } from "svelte/attachments";
@@ -40,36 +41,17 @@
 	let playheadX = $derived(engine.position * pxPerSecond);
 
 	// ── The ruler ──────────────────────────────────────────────────────────
-	interface Tick {
-		x: number;
-		label: string | null;
-		major: boolean;
-	}
-	let ticks = $derived.by((): Tick[] => {
-		const out: Tick[] = [];
-		const a = engine.arrangement;
-		if (a.gridOn) {
-			const bar = engine.barSeconds;
-			const beat = engine.beatSeconds;
-			const beatPx = beat * pxPerSecond;
-			const barPx = bar * pxPerSecond;
-			// Bars labelled every n bars so labels stay 48 px apart; beats when there is room.
-			const every = Math.max(1, Math.ceil(48 / barPx));
-			const bars = Math.ceil(laneSeconds / bar);
-			for (let b = 0; b < bars; b++) {
-				out.push({ x: b * barPx, label: b % every === 0 ? String(b + 1) : null, major: true });
-				if (beatPx >= 14)
-					for (let k = 1; k < a.beatsPerBar; k++)
-						out.push({ x: b * barPx + k * beatPx, label: null, major: false });
-			}
-		} else {
-			const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
-			const step = steps.find((s) => s * pxPerSecond >= 70) ?? 600;
-			for (let t = 0; t < laneSeconds; t += step)
-				out.push({ x: t * pxPerSecond, label: formatTime(t, step < 1 ? 1 : 0), major: true });
-		}
-		return out;
-	});
+	let ticks = $derived(
+		rulerTicks({
+			seconds: laneSeconds,
+			pxPerSecond,
+			grid: {
+				on: engine.arrangement.gridOn,
+				bpm: engine.arrangement.bpm,
+				beatsPerBar: engine.arrangement.beatsPerBar,
+			},
+		}),
+	);
 
 	// ── Seeking and scrubbing on the ruler or an empty lane ────────────────
 	function secondsAtClientX(clientX: number) {

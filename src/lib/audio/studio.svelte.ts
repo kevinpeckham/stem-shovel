@@ -1,5 +1,13 @@
 import { audioSession } from "$lib/utils/audioSession";
+import { appendChunkPeaks, chunkPeaksState } from "$lib/utils/chunkPeaks";
+import { coveredClips } from "$lib/utils/coveredClips";
 import { encodeWav24 } from "$lib/utils/encodeWav24";
+import { normalizeBuffer } from "$lib/utils/normalizeBuffer";
+import { sliceBuffer } from "$lib/utils/sliceBuffer";
+import { snapToGrid } from "$lib/utils/snapToGrid";
+import { splitClipAt } from "$lib/utils/splitClipAt";
+import { takePieces } from "$lib/utils/takePieces";
+import { trimmedClip } from "$lib/utils/trimmedClip";
 import { MAX_STUDIO_CLIPS, MAX_STUDIO_TRACKS, STUDIO_FADER_MAX } from "$lib/constants/studio";
 import type {
 	StudioArrangement,
@@ -573,9 +581,7 @@ class StudioEngine {
 
 	/** A time on the grid (the nearest beat) when the grid is on; the time itself otherwise. */
 	snap(seconds: number): number {
-		if (!this.arrangement.gridOn) return Math.max(0, seconds);
-		const beat = this.beatSeconds;
-		return Math.max(0, Math.round(seconds / beat) * beat);
+		return snapToGrid(seconds, { on: this.arrangement.gridOn, bpm: this.arrangement.bpm });
 	}
 
 	addClip(clip: Omit<StudioClip, "id">): StudioClip | null {
@@ -626,47 +632,25 @@ class StudioEngine {
 	trimClip(clipId: string, edges: { start?: number; end?: number }) {
 		const c = this.#clip(clipId);
 		if (!c) return;
-		const srcEnd = this.#sourceSeconds(c);
-		const end0 = c.start + c.duration;
-		let start = c.start;
-		let offset = c.offset;
-		let end = end0;
-		if (edges.start !== undefined) {
-			start = Math.max(c.start - c.offset, Math.min(end0 - 0.01, edges.start));
-			offset = c.offset + (start - c.start);
-		}
-		if (edges.end !== undefined) {
-			end = Math.max(start + 0.01, Math.min(start + (srcEnd - offset), edges.end));
-		}
-		if (start === c.start && offset === c.offset && end === end0) return;
+		const next = trimmedClip(c, edges, this.#sourceSeconds(c));
+		if (!next) return;
 		this.#commit();
-		c.start = round4(start);
-		c.offset = round4(Math.max(0, offset));
-		c.duration = round4(end - start);
-		c.fadeIn = Math.min(c.fadeIn, c.duration / 2);
-		c.fadeOut = Math.min(c.fadeOut, c.duration / 2);
+		Object.assign(c, next);
 		this.#reschedule();
 	}
 	/** Split at a time inside the clip: the clip keeps what is before, a new one takes the rest (the fade-out goes with it). Returns the new clip. */
 	splitClip(clipId: string, at: number): StudioClip | null {
 		const c = this.#clip(clipId);
-		if (!c || at <= c.start + 0.01 || at >= c.start + c.duration - 0.01) return null;
+		if (!c) return null;
+		const parts = splitClipAt(structuredClone($state.snapshot(c)), at);
+		if (!parts) return null;
 		if (this.arrangement.clips.length >= MAX_STUDIO_CLIPS) {
 			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
 			return null;
 		}
 		this.#commit();
-		const cut = round4(at - c.start);
-		const right: StudioClip = {
-			...structuredClone($state.snapshot(c)),
-			id: localId(),
-			start: round4(at),
-			offset: round4(c.offset + cut),
-			duration: round4(c.duration - cut),
-			fadeIn: 0,
-		};
-		c.duration = cut;
-		c.fadeOut = 0;
+		Object.assign(c, parts.left);
+		const right: StudioClip = { ...parts.right, id: localId() };
 		const i = this.arrangement.clips.findIndex((x) => x.id === clipId);
 		this.arrangement.clips.splice(i + 1, 0, right);
 		this.#reschedule();
@@ -742,12 +726,11 @@ class StudioEngine {
 	 * alternate takes (a part recorded again, a loop pass over the last one).
 	 */
 	#landClip(track: StudioTrack, sourceId: string, start: number, duration: number, name: string) {
-		const end = start + duration;
-		const covered = this.arrangement.clips.filter(
-			(x) =>
-				x.trackId === track.id && x.start >= start - 0.005 && x.start + x.duration <= end + 0.005,
-		);
-		const alternates = covered.flatMap((x) => [x.sourceId, ...(x.alternates ?? [])]).slice(0, 32);
+		const { covered, alternates } = coveredClips(this.arrangement.clips, {
+			trackId: track.id,
+			start,
+			duration,
+		});
 		if (covered.length) {
 			const gone = new Set(covered.map((x) => x.id));
 			for (const id of gone) this.#stopClip(id);
@@ -1104,29 +1087,13 @@ class StudioEngine {
 		const done = new Promise<void>((resolve) => (finish = resolve));
 		// The live waveform: the chunk reduced to a peak per LIVE_PEAK_FRAMES, the lead-in skipped so the band starts where the clip will.
 		const lead = Math.round(LEAD_SECONDS * ctx.sampleRate);
-		const live: number[] = [];
-		this.#livePeaks.set(track.id, live);
-		let seen = 0;
-		let acc = 0;
-		let accFrames = 0;
+		const live = chunkPeaksState();
+		this.#livePeaks.set(track.id, live.peaks);
 		node.port.onmessage = (e) => {
 			const m = e.data as { type: string; channels?: Float32Array[] };
 			if (m.type === "chunk" && m.channels) {
 				chunks.push(m.channels);
-				const n = m.channels[0].length;
-				for (let i = 0; i < n; i++) {
-					if (seen + i < lead) continue;
-					for (const data of m.channels) {
-						const v = Math.abs(data[i]);
-						if (v > acc) acc = v;
-					}
-					if (++accFrames === LIVE_PEAK_FRAMES) {
-						live.push(acc);
-						acc = 0;
-						accFrames = 0;
-					}
-				}
-				seen += n;
+				appendChunkPeaks(live, m.channels, { binFrames: LIVE_PEAK_FRAMES, skipFrames: lead });
 				this.liveTick++;
 			} else if (m.type === "done") finish();
 		};
@@ -1191,30 +1158,13 @@ class StudioEngine {
 		}
 		if (inputSources.normalize) normalizeBuffer(whole);
 		const label = track.name;
-		const loop = this.arrangement.loop;
-		// The pieces to land: [buffer seconds from, to) at a timeline start.
-		const pieces: { from: number; to: number; start: number }[] = [];
-		if (loop?.on && from < loop.end) {
-			const L = loop.end - loop.start;
-			const firstEnd = loop.end - from;
-			if (from <= loop.start + 0.005 && firstEnd <= whole.duration + 0.005)
-				pieces.push({
-					from: loop.start - from,
-					to: Math.min(firstEnd, whole.duration),
-					start: loop.start,
-				});
-			for (let b = firstEnd; b + L <= whole.duration + 0.005; b += L)
-				pieces.push({ from: b, to: Math.min(b + L, whole.duration), start: loop.start });
-			// No full pass: the take as it is, from where it began.
-			if (pieces.length === 0) pieces.push({ from: 0, to: whole.duration, start: from });
-		} else if (this.arrangement.punch && loop && from < loop.end) {
-			const start = Math.max(from, loop.start);
-			const to = Math.min(loop.end, from + whole.duration);
-			if (to - start < 0.05) return [];
-			pieces.push({ from: start - from, to: to - from, start });
-		} else {
-			pieces.push({ from: 0, to: whole.duration, start: from });
-		}
+		const pieces = takePieces({
+			from,
+			duration: whole.duration,
+			loop: this.arrangement.loop,
+			punch: this.arrangement.punch ?? false,
+		});
+		if (pieces.length === 0) return [];
 		const takes: StudioTake[] = [];
 		this.#commit();
 		pieces.forEach((piece, k) => {
@@ -1361,37 +1311,10 @@ class StudioEngine {
 }
 
 const round4 = (x: number) => Math.round(x * 10000) / 10000;
-/** Seconds [from, to) of a buffer as a buffer of its own. */
-function sliceBuffer(ctx: BaseAudioContext, buffer: AudioBuffer, from: number, to: number) {
-	const sr = buffer.sampleRate;
-	const a = Math.max(0, Math.round(from * sr));
-	const b = Math.min(buffer.length, Math.round(to * sr));
-	const out = ctx.createBuffer(buffer.numberOfChannels, Math.max(1, b - a), sr);
-	for (let c = 0; c < buffer.numberOfChannels; c++)
-		out.getChannelData(c).set(buffer.getChannelData(c).subarray(a, b));
-	return out;
-}
 function rms(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
 	analyser.getFloatTimeDomainData(buf);
 	let sum = 0;
 	for (const x of buf) sum += x * x;
 	return Math.min(1, Math.sqrt(sum / buf.length) * 3);
 }
-/** A quiet take up to −1 dBFS (not a near-silent one, never down), as the looper and the recorder do. */
-function normalizeBuffer(buffer: AudioBuffer) {
-	let peak = 0;
-	for (let c = 0; c < buffer.numberOfChannels; c++) {
-		const x = buffer.getChannelData(c);
-		for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
-	}
-	const target = 0.891;
-	if (peak > 0.01 && peak < target) {
-		const k = target / peak;
-		for (let c = 0; c < buffer.numberOfChannels; c++) {
-			const x = buffer.getChannelData(c);
-			for (let i = 0; i < x.length; i++) x[i] *= k;
-		}
-	}
-}
-
 export const studio = new StudioEngine();
