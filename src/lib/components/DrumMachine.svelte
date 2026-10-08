@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { shortenShareLink } from "$lib/utils/shortenShareLink";
-	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import DrumKitManager, { type KitRow } from "$lib/components/DrumKitManager.svelte";
-	import { isOverridableKit, type DrumKitManifest } from "$lib/constants/drumKits";
-	import { hasDrumKit, registerDrumKits } from "$lib/audio/kits";
-	import { drumKitManifests, listDrumKits } from "$lib/remote/drumKits.remote";
+	import { shortenShareLink } from "#lib/utils/shortenShareLink.js";
+	import { TEMPO_RATIOS, type TempoRatio } from "#lib/constants/tempo.js";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import DrumKitManager, { type KitRow } from "#lib/components/DrumKitManager.svelte";
+	import { isOverridableKit, type DrumKitManifest } from "#lib/constants/drumKits.js";
+	import { hasDrumKit, registerDrumKits } from "#lib/audio/kits/index.js";
+	import { drumKitManifests, listDrumKits } from "#lib/remote/drumKits.remote.js";
 	import {
 		DRUM_BPM_MAX,
 		DRUM_BPM_MIN,
@@ -27,19 +27,19 @@
 		type DrumWahBars,
 		type DrumSteps,
 		type DrumVoiceId,
-	} from "$lib/constants/drumMachine";
-	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
-	import { DRUM_GENERATOR_STYLES } from "$lib/constants/drumGenerator";
-	import { deleteBeat, renameBeat, saveBeat } from "$lib/remote/beats.remote";
-	import { setHomeBeat } from "$lib/remote/admin.remote";
-	import { textToBeat as askForBeat } from "$lib/remote/textToBeat.remote";
-	import type { DrumProject } from "$lib/val/DrumPatternSchema";
-	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { postJson, uploadDemoFile, type DemoReservation } from "$lib/upload";
-	import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
-	import { startingDrumProject } from "$lib/utils/startingDrumProject";
+	} from "#lib/constants/drumMachine.js";
+	import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "#lib/constants/drumPresets.js";
+	import { DRUM_GENERATOR_STYLES } from "#lib/constants/drumGenerator.js";
+	import { deleteBeat, renameBeat, saveBeat } from "#lib/remote/beats.remote.js";
+	import { setHomeBeat } from "#lib/remote/admin.remote.js";
+	import { textToBeat as askForBeat } from "#lib/remote/textToBeat.remote.js";
+	import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
+	import { drumTutorial as tutorial } from "#lib/state/drumTutorial.svelte.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { postJson, uploadDemoFile, type DemoReservation } from "#lib/upload.js";
+	import { resizeDrumPattern } from "#lib/utils/resizeDrumPattern.js";
+	import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 	import { onMount } from "svelte";
 
 	/**

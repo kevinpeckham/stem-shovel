@@ -1,8 +1,8 @@
-import { canEdit, isMember, publicAccountBySlug, viewerOf } from "$lib/server/access";
-import { openShareLinks, projectRolesOf, useShareLink } from "$lib/server/data";
-import { rememberAccount } from "$lib/server/currentAccount";
-import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "$lib/server/viewAccess";
-import { renamedAccountPath } from "$lib/server/slugAlias";
+import { canEdit, isMember, publicAccountBySlug, viewerOf } from "#lib/server/access.js";
+import { openShareLinks, projectRolesOf, useShareLink } from "#lib/server/data.js";
+import { rememberAccount } from "#lib/server/currentAccount.js";
+import { rememberShareCodes, SHARE_COOKIE, shareCodesFrom } from "#lib/server/viewAccess.js";
+import { renamedAccountPath } from "#lib/server/slugAlias.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 

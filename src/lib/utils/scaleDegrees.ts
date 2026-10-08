@@ -1,4 +1,4 @@
-import { SCALE_MODES, type PianoKey } from "$lib/constants/scales";
+import { SCALE_MODES, type PianoKey } from "#lib/constants/scales.js";
 
 /**
  * A key's notes on the keyboard: which pitch classes are in the scale, and

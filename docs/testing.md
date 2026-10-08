@@ -81,7 +81,7 @@ bunx vp test run src/lib/audio/measures.test.ts   # one file
   ffmpeg, so their tests `vi.mock` those (`src/lib/server/mix.test.ts`,
   `previewAuth.test.ts`); inputs a mock factory needs go through
   `vi.hoisted`, since factories are hoisted above imports. CI runs the
-  tests with `SKIP_VARLOCK=1` and no 1Password, where `$lib/server/db`
+  tests with `SKIP_VARLOCK=1` and no 1Password, where `#lib/server/db/index.js`
   throws the moment it loads, so a test of a pure function must not import
   it through a server module (`data.ts` reaches the database): put the
   function in `src/lib/utils/` and test it there, or mock the module.

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { notifications } from "$lib/state/notifications.svelte";
+	import { notifications } from "#lib/state/notifications.svelte.js";
 
 	/**
 	 * The notification stack: fixed to the bottom-right corner so it never

@@ -1,4 +1,4 @@
-import { shareLinkTarget } from "$lib/server/data";
+import { shareLinkTarget } from "#lib/server/data.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

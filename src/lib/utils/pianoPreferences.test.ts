@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { PIANO_KEY_CODES, PIANO_KEY_LABELS } from "$lib/constants/piano";
+import { PIANO_KEY_CODES, PIANO_KEY_LABELS } from "#lib/constants/piano.js";
 import { DEFAULT_PIANO_PREFERENCES, parsePianoPreferences } from "./pianoPreferences";
 
 describe("parsePianoPreferences", () => {

@@ -52,11 +52,11 @@ Two components render it:
 2. Add the slug to `COPY_PAGES` in `scripts/seed-user-docs.ts` and to
    `PAGE_COPY` with the page's path.
 3. In the page's `+page.server.ts`: `import fallback from
-"../../../scripts/user-docs/<page>-page.md?raw"` and return
+   "../../../scripts/user-docs/<page>-page.md?raw"` and return
    `copy: await pageCopy("<page>-page", fallback, locals)`.
 4. In the page: `<PageCopyHeader copy={data.copy}>` (with the page's own
    buttons in `controls`) in place of the header, `<PageCopySection
-html={data.copy.bodyHtml} docsHref="/docs/<doc>" docsLabel="…" />` in
+   html={data.copy.bodyHtml} docsHref="/docs/<doc>" docsLabel="…" />` in
    place of the hard-coded tips, and the title in `<svelte:head>` from
    `data.copy.title`.
 5. `bun run db:seed-docs` on each stage (production: Kevin's machine).

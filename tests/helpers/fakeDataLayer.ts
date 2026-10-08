@@ -2,7 +2,7 @@ import { vi } from "vite-plus/test";
 
 /**
  * The wiring a test of `src/lib/server/data.ts` needs, registered by
- * importing this module before `await import("$lib/server/data")`
+ * importing this module before `await import("#lib/server/data")`
  * (docs/testing.md): the database is `fakeDb` (rows per table, a `calls`
  * log), Blob is a double whose pathname helpers are the pure parts written
  * out, and the cascade (`src/lib/server/cascade.ts`) is a set of `vi.fn()`
@@ -68,12 +68,12 @@ const h = await vi.hoisted(async () => {
 		},
 	};
 });
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: h.fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/blob", () => h.blob);
-vi.mock("$lib/server/cascade", () => h.cascade);
+vi.mock("#lib/server/blob.js", () => h.blob);
+vi.mock("#lib/server/cascade.js", () => h.cascade);
 
 export const fake = h.fake;
 export const blob = h.blob;

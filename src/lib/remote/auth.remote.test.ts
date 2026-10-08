@@ -11,7 +11,7 @@ import { resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
 
 /** signOut ends the session behind the request's own cookies and lands on the front page, whatever Better Auth says. */
 const remote = await import("./auth.remote");
-const { auth } = await import("$lib/auth");
+const { auth } = await import("#lib/auth.js");
 
 beforeEach(resetRemoteMocks);
 

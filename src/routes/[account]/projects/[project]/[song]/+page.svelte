@@ -1,72 +1,77 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { analyse, combineFeatures, extractFeatures, type Detection } from "$lib/audio/analysis";
-	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "$lib/utils/docMonoPreference";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import {
+		analyse,
+		combineFeatures,
+		extractFeatures,
+		type Detection,
+	} from "#lib/audio/analysis.js";
+	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
 	import {
 		chordChart,
 		chordsPerBar,
 		describeBars,
 		type ChordSegment,
 		type Note,
-	} from "$lib/audio/chords";
-	import type { ChartDraftAnswer } from "$lib/val/ChartDraftSchema";
-	import type { AiAnswer } from "$lib/server/aiDetect";
-	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
-	import AiToggle from "$lib/components/AiToggle.svelte";
-	import FinishedToggle from "$lib/components/FinishedToggle.svelte";
-	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
-	import ShareLinks from "$lib/components/ShareLinks.svelte";
-	import MidiBadge from "$lib/components/MidiBadge.svelte";
-	import { createComment, deleteComment, updateComment } from "$lib/remote/comments.remote";
-	import StemPlayer from "$lib/components/StemPlayer.svelte";
-	import DemoPanel from "$lib/components/DemoPanel.svelte";
-	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
-	import SongNotationPanel from "$lib/components/SongNotationPanel.svelte";
-	import DocHistoryPanel from "$lib/components/DocHistoryPanel.svelte";
-	import { downloadBuilt } from "$lib/utils/downloadBuilt";
-	import type { SongDocSaveKind } from "$lib/val/SongDocKindSchema";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import { type MidiSummary, parseMidi } from "$lib/audio/midi";
-	import StemReplacer from "$lib/components/StemReplacer.svelte";
-	import StemUploader, { type UploadJob } from "$lib/components/StemUploader.svelte";
-	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "$lib/audio/measures";
-	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "$lib/audio/downloads";
-	import { bumpVersion } from "$lib/utils/bumpVersion";
-	import { midiContentType } from "$lib/utils/midiContentType";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { parseBarsText } from "$lib/utils/parseBarsText";
-	import { readoutMode } from "$lib/audio/readout.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { FRAME_RATES } from "$lib/constants/frameRates";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { artistLine } from "$lib/utils/artistLine";
-	import { CREDIT_ROLE_LABELS } from "$lib/constants/creditRoles";
-	import { CREDIT_ROLES, type CreditRole } from "$lib/val/CreditRoleSchema";
-	import { formatMonth } from "$lib/utils/formatMonth";
-	import { POSITION_MODE_LABELS } from "$lib/constants/positionModes";
-	import { toRoman } from "$lib/utils/toRoman";
-	import type { SongSection } from "$lib/val/SongSectionSchema";
-	import { type SongChange } from "$lib/val/SongChangeSchema";
+	} from "#lib/audio/chords.js";
+	import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
+	import type { AiAnswer } from "#lib/server/aiDetect.js";
+	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
+	import AiToggle from "#lib/components/AiToggle.svelte";
+	import FinishedToggle from "#lib/components/FinishedToggle.svelte";
+	import PrivacyToggle from "#lib/components/PrivacyToggle.svelte";
+	import ShareLinks from "#lib/components/ShareLinks.svelte";
+	import MidiBadge from "#lib/components/MidiBadge.svelte";
+	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
+	import StemPlayer from "#lib/components/StemPlayer.svelte";
+	import DemoPanel from "#lib/components/DemoPanel.svelte";
+	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
+	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
+	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
+	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
+	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
+	import StemReplacer from "#lib/components/StemReplacer.svelte";
+	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
+	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "#lib/audio/measures.js";
+	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "#lib/audio/downloads.js";
+	import { bumpVersion } from "#lib/utils/bumpVersion.js";
+	import { midiContentType } from "#lib/utils/midiContentType.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { parseBarsText } from "#lib/utils/parseBarsText.js";
+	import { readoutMode } from "#lib/audio/readout.svelte.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { FRAME_RATES } from "#lib/constants/frameRates.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { artistLine } from "#lib/utils/artistLine.js";
+	import { CREDIT_ROLE_LABELS } from "#lib/constants/creditRoles.js";
+	import { CREDIT_ROLES, type CreditRole } from "#lib/val/CreditRoleSchema.js";
+	import { formatMonth } from "#lib/utils/formatMonth.js";
+	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
+	import { toRoman } from "#lib/utils/toRoman.js";
+	import type { SongSection } from "#lib/val/SongSectionSchema.js";
+	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import {
 		SONG_CHANGE_KINDS,
 		SONG_CHANGE_LABELS,
 		type SongChangeKind,
-	} from "$lib/constants/songChanges";
-	import { formatSongChange } from "$lib/utils/formatSongChange";
-	import { songChangeValueError } from "$lib/utils/songChangeValueError";
-	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import type { StemState } from "$lib/audio/types";
+	} from "#lib/constants/songChanges.js";
+	import { formatSongChange } from "#lib/utils/formatSongChange.js";
+	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
+	import type { StemEngine } from "#lib/audio/engine.svelte.js";
+	import type { StemState } from "#lib/audio/types.js";
 
-	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-	import { demoContentType } from "$lib/utils/demoContentType";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { slugify } from "$lib/utils/slugify";
-	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
-	import { STEM_ACCEPT, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+	import { DEMO_ACCEPT, DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+	import { demoContentType } from "#lib/utils/demoContentType.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { slugify } from "#lib/utils/slugify.js";
+	import { MIDI_ACCEPT, MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
+	import { STEM_ACCEPT, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 	import {
 		type DemoReservation,
 		postJson,
@@ -75,7 +80,7 @@
 		uploadDemoFile,
 		uploadMidiFile,
 		uploadStemFile,
-	} from "$lib/upload";
+	} from "#lib/upload.js";
 	import {
 		deleteDemo,
 		removeDemoById,
@@ -96,8 +101,8 @@
 		saveDefaultMix,
 		addSongCredit,
 		removeSongCredit,
-	} from "$lib/remote/songs.remote";
-	import { invalidateAll } from "$app/navigation";
+	} from "#lib/remote/songs.remote.js";
+	import { refreshAll } from "$app/navigation";
 	import { onMount, tick, untrack, type ComponentProps } from "svelte";
 
 	let { data } = $props();
@@ -161,7 +166,7 @@
 		try {
 			const next = bumpVersion(data.song.version, level);
 			await setSongVersion({ id: data.song.id, version: next });
-			await invalidateAll();
+			await refreshAll();
 			notify(`Version bumped to v${next}`);
 		} finally {
 			versionBusy = false;
@@ -228,7 +233,7 @@
 				demoJobs[i].error = errorMessage(e);
 			}
 		}
-		await invalidateAll();
+		await refreshAll();
 		demoBusy = false;
 		if (demoJobs.every((j) => !j.error)) demoJobs = [];
 	}
@@ -273,7 +278,7 @@
 		try {
 			await addSongCredit({ songId: data.song.id, role, name });
 			creditDraft[role] = "";
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -285,7 +290,7 @@
 		creditBusy = true;
 		try {
 			await removeSongCredit({ id });
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {
@@ -304,7 +309,7 @@
 		try {
 			await removeDemoById({ id: d.id });
 			notify(`${d.label} removed`);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -706,7 +711,7 @@
 				},
 			);
 			delete replacing[stemId];
-			await invalidateAll();
+			await refreshAll();
 			versionOffer = true;
 		} catch (err) {
 			replacing[stemId] = { ...replacing[stemId], stage: "error", error: (err as Error).message };
@@ -722,7 +727,7 @@
 		const label = prompt("Stem name", current)?.trim();
 		if (!label || label === current) return;
 		await renameStem({ id: stemId, label });
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	// The database row behind a player stem (filename, size, url).
@@ -756,7 +761,7 @@
 		sectionsSaving = true;
 		try {
 			await saveSections({ id: data.song.id, sections: next });
-			await invalidateAll();
+			await refreshAll();
 			resetSectionRows();
 			notify("Sections saved");
 		} catch (e) {
@@ -832,7 +837,7 @@
 					id: data.song.id,
 					changes: [...data.song.changes, ...values.map((r) => ({ ...r, start: 0 }))],
 				});
-				await invalidateAll();
+				await refreshAll();
 				resetChangeRows();
 				scanResult = { detection, summary: describe(values), current: "", applied: true };
 				notify("Tempo, key and time signature set from the stems");
@@ -891,7 +896,7 @@
 					stored && stored.doneSeconds > 0
 						? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
 						: "Listening…";
-				const { transcribeNotes } = await import("$lib/audio/transcribe");
+				const { transcribeNotes } = await import("#lib/audio/transcribe.js");
 				const buffers = playerEngine.buffers();
 				const features = buffers.map((b) => extractFeatures(b, 30));
 				const top = Math.max(...features.map((f) => f.tonal), 1e-9);
@@ -978,7 +983,7 @@
 					start: secondsAtBar(grid, s.bar),
 				})),
 			});
-			await invalidateAll();
+			await refreshAll();
 			resetSectionRows();
 			notify("Sections saved from the draft");
 		} catch (e) {
@@ -991,7 +996,7 @@
 		if (hasChart && !confirm("Replace the song's chart with the drafted one?")) return;
 		try {
 			await saveChartDraft({ id: data.song.id, markdown: draft.chart, replace: hasChart });
-			await invalidateAll();
+			await refreshAll();
 			notify("Chart saved from the draft");
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
@@ -1007,7 +1012,7 @@
 				id: data.song.id,
 				changes: [...kept, ...values.map((r) => ({ ...r, start: 0 }))],
 			});
-			await invalidateAll();
+			await refreshAll();
 			resetChangeRows();
 			notify("Tempo, key and time signature replaced from the stems");
 			scanResult = { ...scanResult, applied: true };
@@ -1136,7 +1141,7 @@
 		changesSaving = true;
 		try {
 			await saveChanges({ id: data.song.id, changes: parsed });
-			await invalidateAll();
+			await refreshAll();
 			resetChangeRows();
 			notify("Tempo, key and time signature saved");
 		} catch (e) {
@@ -1211,7 +1216,7 @@
 				file,
 				(percent) => (midiJobs = { ...midiJobs, [stemId]: { percent } }),
 			);
-			await invalidateAll();
+			await refreshAll();
 			// Reassign rather than delete: a removed key does not notify the row.
 			midiJobs = Object.fromEntries(Object.entries(midiJobs).filter(([id]) => id !== stemId));
 		} catch (e) {
@@ -1275,7 +1280,7 @@
 		];
 		try {
 			await saveChanges({ id: data.song.id, changes });
-			await invalidateAll();
+			await refreshAll();
 			resetChangeRows();
 			notify(
 				`Detected ${summary} — set as the song's tempo, key and time signature. Change them in settings.`,
@@ -1297,7 +1302,7 @@
 	async function saveStemOrder(ids: string[]) {
 		try {
 			await reorderStems({ songId: data.song.id, ids });
-			await invalidateAll();
+			await refreshAll();
 			notify("Stem order saved");
 		} catch (e) {
 			notify(`Could not save the stem order: ${errorMessage(e)}`, { kind: "error" });
@@ -1334,7 +1339,7 @@
 				})),
 			});
 			player?.forgetLocalMix();
-			await invalidateAll();
+			await refreshAll();
 			notify("Saved as the default mix; the original mixdown is re-rendering");
 		} catch (e) {
 			notify(`Could not save the mix: ${errorMessage(e)}`, { kind: "error" });
@@ -1814,7 +1819,10 @@
 									>
 									<select
 										class="mt-1 field text-sm"
-										{...fields.frameRate.as("select", String(data.song.frameRate))}
+										{...fields.frameRate.as(
+											"select",
+											String(data.song.frameRate) as `${(typeof FRAME_RATES)[number]}`,
+										)}
 									>
 										{#each FRAME_RATES as rate (rate)}
 											<option value={String(rate)}>{rate} fps</option>
@@ -2924,7 +2932,7 @@
 			target={history}
 			canRestore={historyRestorable}
 			onclose={() => (history = null)}
-			onrestored={() => invalidateAll()}
+			onrestored={() => refreshAll()}
 		/>
 	</section>
 </main>

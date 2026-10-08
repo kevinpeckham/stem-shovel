@@ -17,9 +17,9 @@ import {
 	type DrumSteps,
 	type DrumSwingGrid,
 	type DrumVoiceId,
-} from "$lib/constants/drumMachine";
-import type { DrumPreset } from "$lib/constants/drumPresets";
-import { decodeDrumProject } from "$lib/utils/decodeDrumProject";
+} from "#lib/constants/drumMachine.js";
+import type { DrumPreset } from "#lib/constants/drumPresets.js";
+import { decodeDrumProject } from "#lib/utils/decodeDrumProject.js";
 import {
 	loadDrumMachinePreferences,
 	loadDrumTempoFollow,
@@ -27,20 +27,20 @@ import {
 	saveDrumMachinePreferences,
 	saveDrumTempoFollow,
 	saveDrumVolume,
-} from "$lib/utils/drumMachinePreferences";
-import { drumPresetProject } from "$lib/utils/drumPresetProject";
-import { drumSwingDelay } from "$lib/utils/drumSwingDelay";
+} from "#lib/utils/drumMachinePreferences.js";
+import { drumPresetProject } from "#lib/utils/drumPresetProject.js";
+import { drumSwingDelay } from "#lib/utils/drumSwingDelay.js";
 import { metronome } from "./metronome.svelte";
-import type { TempoRatio } from "$lib/constants/tempo";
-import { emptyDrumPattern } from "$lib/utils/emptyDrumPattern";
-import { encodeDrumMidi } from "$lib/utils/encodeDrumMidi";
-import { generateDrumPattern } from "$lib/utils/generateDrumPattern";
-import type { DrumGeneratorStyle } from "$lib/constants/drumGenerator";
-import { encodeDrumProject } from "$lib/utils/encodeDrumProject";
-import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
-import { tapTempo } from "$lib/utils/tapTempo";
-import type { DrumFx, DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+import type { TempoRatio } from "#lib/constants/tempo.js";
+import { emptyDrumPattern } from "#lib/utils/emptyDrumPattern.js";
+import { encodeDrumMidi } from "#lib/utils/encodeDrumMidi.js";
+import { generateDrumPattern } from "#lib/utils/generateDrumPattern.js";
+import type { DrumGeneratorStyle } from "#lib/constants/drumGenerator.js";
+import { encodeDrumProject } from "#lib/utils/encodeDrumProject.js";
+import { resizeDrumPattern } from "#lib/utils/resizeDrumPattern.js";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
+import { tapTempo } from "#lib/utils/tapTempo.js";
+import type { DrumFx, DrumPattern, DrumProject } from "#lib/val/DrumPatternSchema.js";
 import { createDrumBus, type DrumBus } from "./drumBus";
 import {
 	playDrumHit,
@@ -52,7 +52,7 @@ import {
 import { drumKit, hasDrumKit } from "./kits";
 import { startLookahead } from "./lookahead";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
-import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
+import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
 
 /**
  * The one drum machine on the page (docs/drum-machine.md): a project of

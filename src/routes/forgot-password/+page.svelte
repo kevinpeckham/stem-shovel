@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { authClient } from "$lib/auth-client";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { authClient } from "#lib/auth-client.js";
 
 	let email = $state("");
 	let error = $state("");

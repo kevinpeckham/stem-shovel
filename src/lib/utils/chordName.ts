@@ -1,4 +1,4 @@
-import { PITCH_CLASS_NAMES, SCALE_MODES, type PianoKey } from "$lib/constants/scales";
+import { PITCH_CLASS_NAMES, SCALE_MODES, type PianoKey } from "#lib/constants/scales.js";
 
 /**
  * What a handful of held notes is (docs/piano.md, "Key and chords"): a

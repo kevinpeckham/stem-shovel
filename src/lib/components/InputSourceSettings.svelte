@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { notify } from "#lib/state/notifications.svelte.js";
 	import {
 		inputSources,
 		OUTSIDE_SOURCE_LABELS,
 		type ChannelMode,
 		type OutsideSource,
-	} from "$lib/audio/inputs.svelte";
+	} from "#lib/audio/inputs.svelte.js";
 
 	/**
 	 * The settings of one outside source (src/lib/audio/inputs.svelte.ts),

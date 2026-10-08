@@ -1,4 +1,4 @@
-import { SCALE_MODE_IDS, type PianoKey } from "$lib/constants/scales";
+import { SCALE_MODE_IDS, type PianoKey } from "#lib/constants/scales.js";
 import {
 	DEFAULT_PIANO_OCTAVE,
 	PIANO_INSTRUMENT_IDS,
@@ -7,7 +7,7 @@ import {
 	PIANO_BOUNCE_DIVISIONS,
 	type PianoBounceDivision,
 	type PianoInstrumentId,
-} from "$lib/constants/piano";
+} from "#lib/constants/piano.js";
 
 /** The piano's choices, remembered per browser: the sound, the octave the keys start at, the levels. */
 const KEY = "stemshovel.piano";

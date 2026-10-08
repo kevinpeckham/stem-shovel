@@ -1,5 +1,5 @@
-import { listBlogPosts } from "$lib/server/data";
-import { excerpt } from "$lib/utils/excerpt";
+import { listBlogPosts } from "#lib/server/data.js";
+import { excerpt } from "#lib/utils/excerpt.js";
 import type { PageServerLoad } from "./$types";
 
 /** The blog index: public; system admins also see the drafts and the writing controls. */

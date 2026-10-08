@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { safeNext } from "$lib/utils/safeNext";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { safeNext } from "#lib/utils/safeNext.js";
 	import { goto } from "$app/navigation";
-	import { authClient } from "$lib/auth-client";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import { authClient } from "#lib/auth-client.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { onMount } from "svelte";
 
 	let { data } = $props();
@@ -31,7 +31,7 @@
 				if (!autoFill) error = result.error.message ?? "Passkey sign-in failed";
 				return;
 			}
-			if (result?.data) await goto(next, { invalidateAll: true });
+			if (result?.data) await goto(next, { refreshAll: true });
 		} catch (e) {
 			// The browser's own cancel (NotAllowedError) is not an error worth showing.
 			if (!autoFill && (e as { name?: string }).name !== "NotAllowedError") error = errorMessage(e);
@@ -69,7 +69,7 @@
 					: (result.error.message ?? "Sign-in failed");
 			return;
 		}
-		await goto(next, { invalidateAll: true });
+		await goto(next, { refreshAll: true });
 	}
 </script>
 

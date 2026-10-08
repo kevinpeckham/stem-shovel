@@ -1,4 +1,4 @@
-import { listFeatureRequestsPublic } from "$lib/server/data";
+import { listFeatureRequestsPublic } from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 /**

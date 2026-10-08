@@ -1,5 +1,5 @@
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { realMemberships } from "$lib/utils/actingMemberships";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import type { PageServerLoad } from "./$types";
 
 /** Landing page for verification links; the session (if any) is already in locals. */

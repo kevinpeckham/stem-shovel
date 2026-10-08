@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 
 	/**
 	 * One input source on a device (the looper, the Idea Recorder): a button

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { parseMidi } from "$lib/audio/midi";
+import { parseMidi } from "#lib/audio/midi.js";
 import { decodeDrumProject } from "./decodeDrumProject";
 import { drumStepTime } from "./drumStepTime";
 import { emptyDrumPattern } from "./emptyDrumPattern";
@@ -8,8 +8,8 @@ import { encodeDrumProject } from "./encodeDrumProject";
 import { resizeDrumPattern } from "./resizeDrumPattern";
 import { startingDrumProject } from "./startingDrumProject";
 import { upgradeDrumProject } from "./upgradeDrumProject";
-import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "$lib/constants/drumMachine";
-import type { DrumProject } from "$lib/val/DrumPatternSchema";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "#lib/constants/drumMachine.js";
+import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
 
 /**
  * Links that have been shared are pinned here and this list only grows: a

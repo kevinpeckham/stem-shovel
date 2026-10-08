@@ -1,16 +1,16 @@
 <script lang="ts">
-	import CommentTimeline from "$lib/components/CommentTimeline.svelte";
-	import StemPlayer from "$lib/components/StemPlayer.svelte";
-	import type { DemoComment } from "$lib/constants/demoComments";
-	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import type { StemState } from "$lib/audio/types";
-	import type { SongView } from "$lib/server/songView";
-	import { saveAs } from "$lib/upload";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { parseTime } from "$lib/utils/parseTime";
-	import { notify } from "$lib/state/notifications.svelte";
+	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
+	import StemPlayer from "#lib/components/StemPlayer.svelte";
+	import type { DemoComment } from "#lib/constants/demoComments.js";
+	import type { StemEngine } from "#lib/audio/engine.svelte.js";
+	import type { StemState } from "#lib/audio/types.js";
+	import type { SongView } from "#lib/server/songView.js";
+	import { saveAs } from "#lib/upload.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { parseTime } from "#lib/utils/parseTime.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/**
 	 * The song page's player and download row for a visitor, as the home

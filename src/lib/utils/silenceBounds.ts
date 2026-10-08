@@ -2,7 +2,7 @@ import {
 	TRIM_LEAD_PAD_SECONDS,
 	TRIM_MIN_CUT_SECONDS,
 	TRIM_TAIL_PAD_SECONDS,
-} from "$lib/constants/trimSilence";
+} from "#lib/constants/trimSilence.js";
 
 export interface SilenceBounds {
 	/** Where the kept audio starts and ends, in seconds of the original. */

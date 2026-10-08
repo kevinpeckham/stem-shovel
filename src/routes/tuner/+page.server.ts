@@ -1,4 +1,4 @@
-import { pageCopy } from "$lib/server/pageCopy";
+import { pageCopy } from "#lib/server/pageCopy.js";
 import copyFallback from "../../../scripts/user-docs/tuner-page.md?raw";
 import type { PageServerLoad } from "./$types";
 

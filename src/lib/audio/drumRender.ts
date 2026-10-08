@@ -1,7 +1,7 @@
-import { DRUM_HUMANIZE_MS } from "$lib/constants/drumMachine";
-import { drumStepTime } from "$lib/utils/drumStepTime";
-import { encodeWav } from "$lib/utils/encodeWav";
-import type { DrumPattern, DrumProject, DrumRow } from "$lib/val/DrumPatternSchema";
+import { DRUM_HUMANIZE_MS } from "#lib/constants/drumMachine.js";
+import { drumStepTime } from "#lib/utils/drumStepTime.js";
+import { encodeWav } from "#lib/utils/encodeWav.js";
+import type { DrumPattern, DrumProject, DrumRow } from "#lib/val/DrumPatternSchema.js";
 import { createDrumBus, type DrumBus } from "./drumBus";
 import { drumKit } from "./kits";
 import type { DrumHit, DrumKit } from "./kits/types";

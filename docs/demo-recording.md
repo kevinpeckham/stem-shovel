@@ -207,7 +207,7 @@ the files, which kept the data model and the stores as they were.
   the song documents' embedded editor. On the recorder page the panel is
   open before any take (two columns like the song page: recorder left,
   notes right); the draft travels with the reservation (`POST
-/api/recordings` takes `notes`) and autosaves to the server once the
+  /api/recordings` takes `notes`) and autosaves to the server once the
   recording exists (`RecordingNotes.svelte`, `saveRecordingNotes`). Each
   library row has the same editor in a collapsible section.
 - **Headers.** Permissions-Policy allows `microphone=(self)` and

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
-	import { authClient } from "$lib/auth-client";
+	import { authClient } from "#lib/auth-client.js";
 
 	let token = $derived(page.url.searchParams.get("token") ?? "");
 	let expired = $derived(page.url.searchParams.get("error") === "INVALID_TOKEN");

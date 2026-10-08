@@ -1,5 +1,5 @@
-import { requireMember, requireSignedIn } from "$lib/server/access";
-import { accountDefaultArtist, listArtistsWithCounts } from "$lib/server/data";
+import { requireMember, requireSignedIn } from "#lib/server/access.js";
+import { accountDefaultArtist, listArtistsWithCounts } from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 /** The account's artist directory: members only (it carries people's emails). */

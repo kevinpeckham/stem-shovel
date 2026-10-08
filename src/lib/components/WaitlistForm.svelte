@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { join } from "$lib/remote/waitlist.remote";
-	import { clearForm } from "$lib/utils/clearForm";
+	import { join } from "#lib/remote/waitlist.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
 
 	/**
 	 * The beta waitlist sign-up: an address, an optional name, and the

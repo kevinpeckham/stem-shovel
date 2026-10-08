@@ -1,4 +1,4 @@
-import type { StudioTrackFx } from "$lib/val/StudioSchema";
+import type { StudioTrackFx } from "#lib/val/StudioSchema.js";
 import { reverbImpulse } from "./drumBus";
 import { createToneStage } from "./fxStages";
 

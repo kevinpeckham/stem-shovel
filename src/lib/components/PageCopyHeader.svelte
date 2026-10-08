@@ -1,6 +1,6 @@
 <script lang="ts">
-	import InfoTip from "$lib/components/InfoTip.svelte";
-	import type { PageCopy } from "$lib/server/pageCopy";
+	import InfoTip from "#lib/components/InfoTip.svelte";
+	import type { PageCopy } from "#lib/server/pageCopy.js";
 	import type { Snippet } from "svelte";
 
 	/**

@@ -13,7 +13,7 @@ import {
 	resetRemoteMocks,
 } from "../../../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../../../tests/helpers/fakeApiEvent";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 
 /** Step 1 of saving one source of a take: owned through the take, counted against its account. */
 const { POST } = await import("./+server");

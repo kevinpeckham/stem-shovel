@@ -2,7 +2,7 @@ import * as v from "valibot";
 
 /**
  * URL segment for projects and songs: lowercase letters and digits joined by
- * single hyphens, up to 64 chars. `slugify()` in $lib/slug produces these;
+ * single hyphens, up to 64 chars. `slugify()` in #lib/slug produces these;
  * this is the check for hand-edited ones at the form boundary.
  */
 export const SlugSchema = v.pipe(

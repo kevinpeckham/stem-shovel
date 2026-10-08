@@ -1,6 +1,6 @@
 import { command, form, getRequestEvent } from "$app/server";
 import * as v from "valibot";
-import { requireSuperAdmin, requireSystemAdmin } from "$lib/server/access";
+import { requireSuperAdmin, requireSystemAdmin } from "#lib/server/access.js";
 import {
 	createInviteCode,
 	deleteAccount,
@@ -19,18 +19,18 @@ import {
 	setUserActive,
 	setAccountStorageLimit,
 	setSignUpMode,
-} from "$lib/server/data";
-import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "$lib/val/InviteCodeSchema";
-import { AccountAdminSchema, AccountStorageLimitSchema } from "$lib/val/AccountAdminSchema";
-import { SignUpModeFormSchema } from "$lib/val/SignUpModeSchema";
-import { FeaturedSongSchema } from "$lib/val/FeaturedSongSchema";
-import { HomeBeatSchema } from "$lib/val/HomeBeatSchema";
-import { SitePianoPresetSchema, SitePianoPresetSlotSchema } from "$lib/val/PianoPresetSchema";
-import { WaitlistAdminSchema } from "$lib/val/WaitlistSchema";
-import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
-import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "$lib/server/email";
-import { background } from "$lib/server/background";
-import { UserAdminSchema } from "$lib/val/UserAdminSchema";
+} from "#lib/server/data.js";
+import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "#lib/val/InviteCodeSchema.js";
+import { AccountAdminSchema, AccountStorageLimitSchema } from "#lib/val/AccountAdminSchema.js";
+import { SignUpModeFormSchema } from "#lib/val/SignUpModeSchema.js";
+import { FeaturedSongSchema } from "#lib/val/FeaturedSongSchema.js";
+import { HomeBeatSchema } from "#lib/val/HomeBeatSchema.js";
+import { SitePianoPresetSchema, SitePianoPresetSlotSchema } from "#lib/val/PianoPresetSchema.js";
+import { WaitlistAdminSchema } from "#lib/val/WaitlistSchema.js";
+import { waitlistManageUrl } from "#lib/utils/waitlistManageUrl.js";
+import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "#lib/server/email.js";
+import { background } from "#lib/server/background.js";
+import { UserAdminSchema } from "#lib/val/UserAdminSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

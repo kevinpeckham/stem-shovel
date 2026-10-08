@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import { describe, expect, test } from "vite-plus/test";
-import { DrumProjectSchema, type DrumProject } from "$lib/val/DrumPatternSchema";
+import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
 import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "./drumMachine";
 import { TUTORIAL_PROJECT, TUTORIAL_STEPS, cellsSatisfied } from "./drumTutorial";
 

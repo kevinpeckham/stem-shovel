@@ -2,18 +2,18 @@ import { describe, expect, test, vi } from "vite-plus/test";
 
 // mix.ts reaches the database, Blob and ffmpeg through these modules; the
 // pure request parsing is what this file tests, so they are stubbed.
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.js", () => ({
 	songForMix: vi.fn(),
 	setSongMix: vi.fn(),
 	claimSongMix: vi.fn(),
 	releaseSongMix: vi.fn(),
 }));
-vi.mock("$lib/server/blob", () => ({
+vi.mock("#lib/server/blob.js", () => ({
 	deleteBlobs: vi.fn(),
 	mixPathname: vi.fn(),
 	putBlob: vi.fn(),
 }));
-vi.mock("$lib/server/background", () => ({ background: vi.fn() }));
+vi.mock("#lib/server/background.js", () => ({ background: vi.fn() }));
 vi.mock("ffmpeg-static", () => ({ default: "/usr/bin/ffmpeg" }));
 
 const { isOriginal, mixKeyOf, parseMixRequest } = await import("./mix");

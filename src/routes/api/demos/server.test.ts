@@ -17,8 +17,8 @@ import {
 	type Mocks,
 } from "../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 
 /** Step 1 of a demo upload: an editor of the song's account reserves the row; the formats are the broad demo list. */
 const { POST } = await import("./+server");
@@ -30,7 +30,7 @@ const body = { songId: SONG, filename: "memo.ogg", sizeBytes: 5_000 };
 const row = { id: DEMO, pathname: `accounts/${ACCOUNT}/songs/${SONG}/demos/${DEMO}.ogg` };
 const post = (b: unknown = body, locals = asEditorOf(ACCOUNT)) =>
 	callRoute(POST, locals, jsonPost("/api/demos", b));
-const relocate = (await import("$lib/server/relocate")) as unknown as Mocks;
+const relocate = (await import("#lib/server/relocate.js")) as unknown as Mocks;
 
 beforeEach(() => {
 	resetRemoteMocks();

@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import SongDocsDemo from "$lib/components/SongDocsDemo.svelte";
-	import SongPlayerDemo from "$lib/components/SongPlayerDemo.svelte";
-	import IdeaRecorderDemo from "$lib/components/IdeaRecorderDemo.svelte";
-	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
-	import { exampleComments } from "$lib/constants/demoComments";
-	import Tuner from "$lib/components/Tuner.svelte";
-	import Metronome from "$lib/components/Metronome.svelte";
-	import DrumMachine from "$lib/components/DrumMachine.svelte";
-	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
-	import Piano from "$lib/components/Piano.svelte";
-	import { chordPiano, piano } from "$lib/audio/piano.svelte";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { visibleShare } from "$lib/utils/visibleShare";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import SongDocsDemo from "#lib/components/SongDocsDemo.svelte";
+	import SongPlayerDemo from "#lib/components/SongPlayerDemo.svelte";
+	import IdeaRecorderDemo from "#lib/components/IdeaRecorderDemo.svelte";
+	import WaitlistForm from "#lib/components/WaitlistForm.svelte";
+	import { exampleComments } from "#lib/constants/demoComments.js";
+	import Tuner from "#lib/components/Tuner.svelte";
+	import Metronome from "#lib/components/Metronome.svelte";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
+	import Piano from "#lib/components/Piano.svelte";
+	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { visibleShare } from "#lib/utils/visibleShare.js";
 
 	let { data } = $props();
 	// The demos' comments: examples plus whatever the visitor adds, kept in this page only.

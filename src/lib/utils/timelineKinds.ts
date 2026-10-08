@@ -1,5 +1,5 @@
-import { SONG_CHANGE_KINDS, type SongChangeKind } from "$lib/constants/songChanges";
-import type { SongChange } from "$lib/val/SongChangeSchema";
+import { SONG_CHANGE_KINDS, type SongChangeKind } from "#lib/constants/songChanges.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 
 /**
  * The kinds worth a timeline lane: a kind with a single change at 0:00 is

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import ReportList from "$lib/components/ReportList.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import ReportList from "#lib/components/ReportList.svelte";
 
 	let { data } = $props();
 </script>

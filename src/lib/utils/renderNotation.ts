@@ -1,4 +1,4 @@
-import type { NotationRenderReply, NotationRenderRequest } from "$lib/workers/notation.worker";
+import type { NotationRenderReply, NotationRenderRequest } from "#lib/workers/notation.worker.js";
 
 /**
  * MusicXML (or a compressed `.mxl`) as SVG pages, rendered by Verovio in a

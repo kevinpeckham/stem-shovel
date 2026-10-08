@@ -4,8 +4,8 @@ import {
 	type ChordRecipe,
 	type ChordRecipeId,
 	type ChordStyleId,
-} from "$lib/constants/chordStyles";
-import type { ChordQuality, SeventhType } from "$lib/constants/circleOfFifths";
+} from "#lib/constants/chordStyles.js";
+import type { ChordQuality, SeventhType } from "#lib/constants/circleOfFifths.js";
 
 /**
  * What a wedge plays in a style (docs/chord-player.md, "Styles"): the

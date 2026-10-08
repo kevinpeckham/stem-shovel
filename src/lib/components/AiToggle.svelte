@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { setProjectAi, setSongAi } from "$lib/remote/ai.remote";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { setProjectAi, setSongAi } from "#lib/remote/ai.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/** Any member switches AI off for a project or a song, or back on. */
 	interface Props {

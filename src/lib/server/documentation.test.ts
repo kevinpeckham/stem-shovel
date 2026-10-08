@@ -40,10 +40,10 @@ const fake = vi.hoisted(() => {
 	};
 	return { blobs, song, state };
 });
-vi.mock("$lib/server/data", () => ({
+vi.mock("#lib/server/data.js", () => ({
 	projectForDocumentation: vi.fn(async () => fake.state.project),
 }));
-vi.mock("$lib/server/blob", () => ({
+vi.mock("#lib/server/blob.js", () => ({
 	readBlob: vi.fn(async (url: string) => {
 		const body = fake.blobs[url];
 		return body ? new Response(body) : new Response(null, { status: 404 });

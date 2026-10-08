@@ -1,8 +1,8 @@
-import { publicBlobUrl } from "$lib/server/blob";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listPianoPresets, sitePianoPresets } from "$lib/server/data";
-import { pageCopy } from "$lib/server/pageCopy";
-import { realMemberships } from "$lib/utils/actingMemberships";
+import { publicBlobUrl } from "#lib/server/blob.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
+import { listPianoPresets, sitePianoPresets } from "#lib/server/data.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/piano-page.md?raw";
 import type { PageServerLoad } from "./$types";
 

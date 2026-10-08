@@ -1,10 +1,10 @@
-import { background } from "$lib/server/background";
-import { isJobsToken } from "$lib/server/jobs";
-import { ensureOriginalMix } from "$lib/server/mix";
-import { ensureSongNotes, traceTranscriptionDeps } from "$lib/server/notes";
-import { renderNotationPdf } from "$lib/server/notationPdf";
-import { renderDemos, renderRecordings, renderStems } from "$lib/server/transcode";
-import { JobSchema } from "$lib/val/JobSchema";
+import { background } from "#lib/server/background.js";
+import { isJobsToken } from "#lib/server/jobs.js";
+import { ensureOriginalMix } from "#lib/server/mix.js";
+import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
+import { renderNotationPdf } from "#lib/server/notationPdf.js";
+import { renderDemos, renderRecordings, renderStems } from "#lib/server/transcode.js";
+import { JobSchema } from "#lib/val/JobSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
 import * as v from "valibot";

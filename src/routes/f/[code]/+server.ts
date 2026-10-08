@@ -1,7 +1,7 @@
-import { presentUrl, readBlob } from "$lib/server/blob";
-import { fileByShareCode as attachmentByShareCode, notationByShareCode } from "$lib/server/data";
-import { NOTATION_CONTENT_TYPE_OF } from "$lib/constants/notationFormats";
-import { attachmentDisposition } from "$lib/utils/attachmentDisposition";
+import { presentUrl, readBlob } from "#lib/server/blob.js";
+import { fileByShareCode as attachmentByShareCode, notationByShareCode } from "#lib/server/data.js";
+import { NOTATION_CONTENT_TYPE_OF } from "#lib/constants/notationFormats.js";
+import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

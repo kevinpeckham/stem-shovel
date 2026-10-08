@@ -1,4 +1,4 @@
-import { DEFAULT_TUNING_ID } from "$lib/constants/tunings";
+import { DEFAULT_TUNING_ID } from "#lib/constants/tunings.js";
 
 /** The tuner's choices, remembered per browser: which tuning, and the reference pitch of A4. */
 const KEY = "stemshovel.tuner";

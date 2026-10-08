@@ -10,11 +10,11 @@ const { fake, blob } = await vi.hoisted(async () => ({
 		recordingAccess: vi.fn(() => "private" as const),
 	},
 }));
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/blob", () => blob);
+vi.mock("#lib/server/blob.js", () => blob);
 
 const {
 	accountDefaultArtist,

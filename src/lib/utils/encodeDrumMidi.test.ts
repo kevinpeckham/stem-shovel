@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseMidi } from "$lib/audio/midi";
-import type { DrumPattern } from "$lib/val/DrumPatternSchema";
+import { parseMidi } from "#lib/audio/midi.js";
+import type { DrumPattern } from "#lib/val/DrumPatternSchema.js";
 import { encodeDrumMidi } from "./encodeDrumMidi";
 
 const row = (voice: DrumPattern["rows"][number]["voice"], level: number, cells: number[]) => ({

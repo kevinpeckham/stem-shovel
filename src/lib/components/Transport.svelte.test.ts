@@ -1,6 +1,6 @@
 import { fakeEngine } from "../../../tests/helpers/fakeEngine";
-import { barGrid } from "$lib/audio/measures";
-import { readout } from "$lib/audio/readout.svelte";
+import { barGrid } from "#lib/audio/measures.js";
+import { readout } from "#lib/audio/readout.svelte.js";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";

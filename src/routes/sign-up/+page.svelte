@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { authClient } from "$lib/auth-client";
-	import { PLAN_LIMITS } from "$lib/constants/plans";
-	import { formatBytes } from "$lib/utils/formatBytes";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { authClient } from "#lib/auth-client.js";
+	import { PLAN_LIMITS } from "#lib/constants/plans.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 
 	let { data } = $props();
 

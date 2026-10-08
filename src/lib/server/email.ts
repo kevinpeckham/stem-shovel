@@ -1,4 +1,4 @@
-import { renderEmail } from "$lib/utils/renderEmail";
+import { renderEmail } from "#lib/utils/renderEmail.js";
 import { Resend } from "resend";
 import { ENV } from "varlock/env";
 

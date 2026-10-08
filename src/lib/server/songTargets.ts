@@ -1,4 +1,4 @@
-import { songPicker } from "$lib/server/data";
+import { songPicker } from "#lib/server/data.js";
 
 /**
  * Song targets across every account the user edits, for the "add this to

@@ -1,8 +1,8 @@
-import { PAGE_COPY } from "$lib/constants/pageCopy";
-import { getUserDoc, listUserDocs } from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { excerpt } from "$lib/utils/excerpt";
-import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
+import { PAGE_COPY } from "#lib/constants/pageCopy.js";
+import { getUserDoc, listUserDocs } from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { excerpt } from "#lib/utils/excerpt.js";
+import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

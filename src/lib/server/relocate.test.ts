@@ -6,11 +6,11 @@ import { describe, expect, test, vi } from "vite-plus/test";
  * the song itself says rather than failing.
  */
 const fake = await vi.hoisted(async () => (await import("../../../tests/helpers/fakeDb")).fakeDb());
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/blob", () => ({
+vi.mock("#lib/server/blob.js", () => ({
 	moveBlob: vi.fn(),
 	projectIdOfPathname: vi.fn(),
 	songIdOfPathname: vi.fn(),

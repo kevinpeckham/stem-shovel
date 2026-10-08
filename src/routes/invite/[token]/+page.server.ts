@@ -1,5 +1,5 @@
-import { invitationByToken, projectRoleOf } from "$lib/server/data";
-import { realMemberships } from "$lib/utils/actingMemberships";
+import { invitationByToken, projectRoleOf } from "#lib/server/data.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import type { PageServerLoad } from "./$types";
 
 /**

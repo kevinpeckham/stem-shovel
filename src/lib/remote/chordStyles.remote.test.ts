@@ -12,7 +12,7 @@ import {
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
 import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
-import { CHORD_RECIPES } from "$lib/constants/chordStyles";
+import { CHORD_RECIPES } from "#lib/constants/chordStyles.js";
 
 /** Authorization of custom chord styles: every member sees the library, its editors keep it. */
 const styles = await import("./chordStyles.remote");

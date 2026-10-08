@@ -1,13 +1,17 @@
 import { form, getRequestEvent } from "$app/server";
-import { requireSystemAdmin } from "$lib/server/access";
+import { requireSystemAdmin } from "#lib/server/access.js";
 import {
 	createUserDoc as create,
 	deleteUserDoc as drop,
 	saveUserDoc as save,
 	updateUserDocMeta,
-} from "$lib/server/data";
-import { IdSchema } from "$lib/val/SongSchema";
-import { UserDocCreateSchema, UserDocMetaSchema, UserDocSaveSchema } from "$lib/val/UserDocSchema";
+} from "#lib/server/data.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
+import {
+	UserDocCreateSchema,
+	UserDocMetaSchema,
+	UserDocSaveSchema,
+} from "#lib/val/UserDocSchema.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /** Where a page or post lives: the docs or the blog. */

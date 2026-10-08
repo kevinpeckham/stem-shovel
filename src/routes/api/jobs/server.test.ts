@@ -21,19 +21,19 @@ const h = vi.hoisted(() => ({
 	renderRecordings: vi.fn(),
 }));
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
-vi.mock("$app/environment", () => ({ dev: false, building: false, browser: false, version: "0" }));
-vi.mock("$lib/server/background", () => ({
+vi.mock("$app/env", () => ({ dev: false, building: false, browser: false, version: "0" }));
+vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {
 		h.pending.push(work());
 	},
 }));
-vi.mock("$lib/server/mix", () => ({ ensureOriginalMix: h.ensureOriginalMix }));
-vi.mock("$lib/server/notes", () => ({
+vi.mock("#lib/server/mix.js", () => ({ ensureOriginalMix: h.ensureOriginalMix }));
+vi.mock("#lib/server/notes.js", () => ({
 	ensureSongNotes: h.ensureSongNotes,
 	traceTranscriptionDeps: h.traceTranscriptionDeps,
 }));
-vi.mock("$lib/server/notationPdf", () => ({ renderNotationPdf: h.renderNotationPdf }));
-vi.mock("$lib/server/transcode", () => ({
+vi.mock("#lib/server/notationPdf.js", () => ({ renderNotationPdf: h.renderNotationPdf }));
+vi.mock("#lib/server/transcode.js", () => ({
 	renderStems: h.renderStems,
 	renderDemos: h.renderDemos,
 	renderRecordings: h.renderRecordings,

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { formatDate } from "$lib/utils/formatDate";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
 
 	let { data } = $props();
 

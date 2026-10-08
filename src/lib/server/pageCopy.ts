@@ -1,7 +1,7 @@
-import { getUserDoc } from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { splitPageCopy } from "$lib/utils/splitPageCopy";
-import { stripMarkdownInline } from "$lib/utils/stripMarkdownInline";
+import { getUserDoc } from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { splitPageCopy } from "#lib/utils/splitPageCopy.js";
+import { stripMarkdownInline } from "#lib/utils/stripMarkdownInline.js";
 
 export interface PageCopy {
 	title: string;

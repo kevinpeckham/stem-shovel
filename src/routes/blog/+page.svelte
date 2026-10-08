@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { createUserDoc } from "$lib/remote/userDocs.remote";
-	import { clearForm } from "$lib/utils/clearForm";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { createUserDoc } from "#lib/remote/userDocs.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
 
 	let { data } = $props();
 	let addPanel = $state<HTMLDivElement | null>(null);

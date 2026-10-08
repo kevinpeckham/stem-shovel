@@ -1,7 +1,7 @@
 import * as v from "valibot";
-import { DRUM_DELAY_TIMES, type DrumMeterId, type DrumSteps } from "$lib/constants/drumMachine";
-import { TextToBeatReplySchema, type TextToBeatReply } from "$lib/val/TextToBeatSchema";
-import type { DrumFx, DrumPattern } from "$lib/val/DrumPatternSchema";
+import { DRUM_DELAY_TIMES, type DrumMeterId, type DrumSteps } from "#lib/constants/drumMachine.js";
+import { TextToBeatReplySchema, type TextToBeatReply } from "#lib/val/TextToBeatSchema.js";
+import type { DrumFx, DrumPattern } from "#lib/val/DrumPatternSchema.js";
 import { drumPresetProject } from "./drumPresetProject";
 
 export interface TextToBeatResult {

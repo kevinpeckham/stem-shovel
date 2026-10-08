@@ -1,4 +1,4 @@
-import type { DrumPattern } from "$lib/val/DrumPatternSchema";
+import type { DrumPattern } from "#lib/val/DrumPatternSchema.js";
 
 /**
  * A new pattern in the shape of another: the same rows, levels and pans

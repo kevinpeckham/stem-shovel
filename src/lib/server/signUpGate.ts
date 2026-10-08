@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { InviteCodeSchema } from "$lib/val/InviteCodeSchema";
+import { InviteCodeSchema } from "#lib/val/InviteCodeSchema.js";
 
 /**
  * Who may sign up. With sign-up open (the `signUpMode` app setting) anyone

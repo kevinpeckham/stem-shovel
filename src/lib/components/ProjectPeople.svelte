@@ -5,10 +5,10 @@
 		removeProjectPerson,
 		revokeProjectInvitation,
 		setProjectRestricted,
-	} from "$lib/remote/projects.remote";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
+	} from "#lib/remote/projects.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/**
 	 * Who is on a project besides the account's owners and admins (docs/auth.md):

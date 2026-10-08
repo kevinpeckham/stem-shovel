@@ -1,7 +1,7 @@
-import type { ChordRecipeId, ChordStyleId } from "$lib/constants/chordStyles";
-import { CHORD_RECIPES } from "$lib/constants/chordStyles";
-import type { SeventhType } from "$lib/constants/circleOfFifths";
-import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
+import type { ChordRecipeId, ChordStyleId } from "#lib/constants/chordStyles.js";
+import { CHORD_RECIPES } from "#lib/constants/chordStyles.js";
+import type { SeventhType } from "#lib/constants/circleOfFifths.js";
+import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 import { styledChord } from "./styledChord";
 
 /** A built-in style written out as custom style data, to start a custom style from (docs/chord-player.md, "Styles"). */

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import PlanBadge from "$lib/components/PlanBadge.svelte";
-	import { createAccount, leaveAccount } from "$lib/remote/accounts.remote";
-	import { clearForm } from "$lib/utils/clearForm";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import PlanBadge from "#lib/components/PlanBadge.svelte";
+	import { createAccount, leaveAccount } from "#lib/remote/accounts.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
 	import { page } from "$app/state";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	let newPanel = $state<HTMLDivElement | null>(null);

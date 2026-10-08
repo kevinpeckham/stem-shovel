@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { formatDate } from "$lib/utils/formatDate";
-	import ReportForm from "$lib/components/ReportForm.svelte";
-	import { voteOnBug } from "$lib/remote/bugs.remote";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import ReportForm from "#lib/components/ReportForm.svelte";
+	import { voteOnBug } from "#lib/remote/bugs.remote.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	const LABEL = { open: "Open", complete: "Complete", closed: "Closed" } as const;

@@ -1,6 +1,7 @@
+import type { Handle, HandleServerError } from "@sveltejs/kit/hooks";
+import type { RequestEvent } from "@sveltejs/kit";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import type { Handle, HandleServerError, RequestEvent } from "@sveltejs/kit";
-import { ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
+import { ROBOTS_NOINDEX, SECURITY_HEADERS } from "#lib/constants/securityHeaders.js";
 
 /**
  * The server hook: who `locals.user` becomes (a Better Auth session, the
@@ -20,9 +21,9 @@ const h = vi.hoisted(() => ({
 	captureException: vi.fn(),
 }));
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
-vi.mock("$app/environment", () => ({ dev: false, building: false, browser: false, version: "0" }));
-vi.mock("$lib/auth", () => ({ auth: { api: { getSession: h.getSession } } }));
-vi.mock("$lib/server/db", () => ({
+vi.mock("$app/env", () => ({ dev: false, building: false, browser: false, version: "0" }));
+vi.mock("#lib/auth.js", () => ({ auth: { api: { getSession: h.getSession } } }));
+vi.mock("#lib/server/db/index.js", () => ({
 	db: {
 		query: {
 			user: { findFirst: h.userFindFirst },
@@ -37,7 +38,7 @@ vi.mock("$lib/server/db", () => ({
 		account: { status: "status" },
 	},
 }));
-vi.mock("$lib/server/shortLinks", () => ({ resolveShortLink: h.resolveShortLink }));
+vi.mock("#lib/server/shortLinks.js", () => ({ resolveShortLink: h.resolveShortLink }));
 vi.mock("@sentry/node", () => ({ captureException: h.captureException }));
 // Better Auth's handler answers its own /api/auth routes; for everything else it is `resolve`.
 vi.mock("better-auth/svelte-kit", () => ({
@@ -296,23 +297,34 @@ describe("the chord player's vanity domains", () => {
 });
 
 describe("handleError", () => {
-	const call = (status: number, error: unknown = new Error("boom")) =>
+	const call = (input: Record<string, unknown>) =>
 		handleError({
-			error,
 			event: fakeEvent(`${SITE}/band`, {}),
-			status,
-			message: "Internal Error",
+			...input,
 		} as unknown as Parameters<HandleServerError>[0]);
-	it("reports an unexpected error to Sentry with the route and method", async () => {
+	it("reports an unknown error to Sentry with the route and method", async () => {
 		const boom = new Error("boom");
-		await call(500, boom);
+		await call({ kind: "unknown", error: boom });
 		expect(h.captureException).toHaveBeenCalledWith(boom, {
 			tags: { route: "/[account]", method: "GET" },
-			extra: { path: "/band", status: 500, message: "Internal Error" },
+			extra: { path: "/band", status: 500 },
 		});
 	});
-	it("never reports a 404", async () => {
-		await call(404);
+	it("never reports the framework's 404 or an app error", async () => {
+		await call({ kind: "framework", error: { status: 404, message: "Not Found" } });
+		await call({ kind: "app", error: { status: 403, message: "Members only" } });
 		expect(h.captureException).not.toHaveBeenCalled();
+	});
+	it("answers a validation error plainly and logs the count, never the values", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const out = await call({
+			kind: "validation",
+			error: { status: 400, message: "Bad Request" },
+			issues: [{ message: "Invalid email", path: ["email"] }, { message: "Required" }],
+		});
+		expect(out).toEqual({ message: "That request was not valid." });
+		expect(warn).toHaveBeenCalledWith("[validation] GET /band: 2 issues from 203.0.113.7");
+		expect(h.captureException).not.toHaveBeenCalled();
+		warn.mockRestore();
 	});
 });

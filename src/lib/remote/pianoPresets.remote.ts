@@ -5,7 +5,7 @@ import {
 	memberOf,
 	requireEditor,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	countPianoPresets,
 	createPianoPreset,
@@ -14,15 +14,15 @@ import {
 	renamePianoPreset as rename,
 	setPianoPresetSlot as place,
 	updatePianoPreset,
-} from "$lib/server/data";
-import { MAX_PIANO_PRESETS } from "$lib/constants/piano";
+} from "#lib/server/data.js";
+import { MAX_PIANO_PRESETS } from "#lib/constants/piano.js";
 import {
 	PianoPresetListSchema,
 	PianoPresetRenameSchema,
 	PianoPresetSaveSchema,
 	PianoPresetSetSlotSchema,
-} from "$lib/val/PianoPresetSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/val/PianoPresetSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** Saved piano presets (docs/piano.md, "Presets"): an account's library, seen by every member, kept by its editors. */

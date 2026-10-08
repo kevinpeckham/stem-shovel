@@ -1,5 +1,5 @@
 <script module lang="ts">
-	import { OUTSIDE_SOURCE_LABELS, type OutsideSource } from "$lib/audio/inputs.svelte";
+	import { OUTSIDE_SOURCE_LABELS, type OutsideSource } from "#lib/audio/inputs.svelte.js";
 
 	/**
 	 * What a take can record (docs/demo-recording.md, "Input sources"): the
@@ -25,36 +25,36 @@
 </script>
 
 <script lang="ts">
-	import RecorderWave from "$lib/components/RecorderWave.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import { computePeaks } from "$lib/audio/peaks";
-	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "$lib/constants/takeLimits";
-	import { isIOS } from "$lib/utils/isIOS";
-	import { audioSession } from "$lib/utils/audioSession";
-	import { playbackMime } from "$lib/utils/playbackMime";
-	import type { RecordingFormat, RecordingQuality } from "$lib/utils/recordingMimeType";
+	import RecorderWave from "#lib/components/RecorderWave.svelte";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import { computePeaks } from "#lib/audio/peaks.js";
+	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "#lib/constants/takeLimits.js";
+	import { isIOS } from "#lib/utils/isIOS.js";
+	import { audioSession } from "#lib/utils/audioSession.js";
+	import { playbackMime } from "#lib/utils/playbackMime.js";
+	import type { RecordingFormat, RecordingQuality } from "#lib/utils/recordingMimeType.js";
 	import {
 		takeStopNotice,
 		takeStopReason,
 		takeWarningDue,
 		takeWarningNotice,
 		type TakeStopReason,
-	} from "$lib/utils/takeStopReason";
-	import { saveAs } from "$lib/upload";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { encodeWav } from "$lib/utils/encodeWav";
-	import { encodeWav24 } from "$lib/utils/encodeWav24";
-	import { inputSources } from "$lib/audio/inputs.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
-	import SourceButton from "$lib/components/SourceButton.svelte";
-	import { recordingMimeType } from "$lib/utils/recordingMimeType";
+	} from "#lib/utils/takeStopReason.js";
+	import { saveAs } from "#lib/upload.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { encodeWav } from "#lib/utils/encodeWav.js";
+	import { encodeWav24 } from "#lib/utils/encodeWav24.js";
+	import { inputSources } from "#lib/audio/inputs.svelte.js";
+	import { piano } from "#lib/audio/piano.svelte.js";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
+	import SourceButton from "#lib/components/SourceButton.svelte";
+	import { recordingMimeType } from "#lib/utils/recordingMimeType.js";
 	import { onDestroy } from "svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 
 	/**
 	 * The Idea Recorder's take recorder (docs/demo-recording.md). Record

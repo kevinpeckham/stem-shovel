@@ -1,7 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
-import { db, schema } from "$lib/server/db";
+import { db, schema } from "#lib/server/db/index.js";
 import { and, eq } from "drizzle-orm";
-import { requireEditor, requireMember, requireUser } from "$lib/server/access";
+import { requireEditor, requireMember, requireUser } from "#lib/server/access.js";
 import {
 	acceptInvitation as accept,
 	createInviteCode as newInviteCode,
@@ -13,24 +13,28 @@ import {
 	setMemberRole as changeRole,
 	setAccountDefaultArtist,
 	updateAccount as update,
-} from "$lib/server/data";
-import { sendInvitationEmail } from "$lib/server/email";
-import { background } from "$lib/server/background";
-import { checkSeats, notifyInvitationAccepted } from "$lib/server/notifications";
+} from "#lib/server/data.js";
+import { sendInvitationEmail } from "#lib/server/email.js";
+import { background } from "#lib/server/background.js";
+import { checkSeats, notifyInvitationAccepted } from "#lib/server/notifications.js";
 import {
 	AccountCreateSchema,
 	AccountDefaultArtistSchema,
 	AccountSettingsSchema,
-} from "$lib/val/AccountSchema";
-import { InvitationIdSchema, InvitationTokenSchema, InviteSchema } from "$lib/val/InvitationSchema";
-import { InviteCodeCreateSchema, InviteCodeIdSchema } from "$lib/val/InviteCodeSchema";
+} from "#lib/val/AccountSchema.js";
+import {
+	InvitationIdSchema,
+	InvitationTokenSchema,
+	InviteSchema,
+} from "#lib/val/InvitationSchema.js";
+import { InviteCodeCreateSchema, InviteCodeIdSchema } from "#lib/val/InviteCodeSchema.js";
 import {
 	LeaveAccountSchema,
 	MemberRoleChangeSchema,
 	MembershipSchema,
-} from "$lib/val/MembershipSchema";
-import { CURRENT_ACCOUNT_COOKIE, rememberAccount } from "$lib/server/currentAccount";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
+} from "#lib/val/MembershipSchema.js";
+import { CURRENT_ACCOUNT_COOKIE, rememberAccount } from "#lib/server/currentAccount.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**

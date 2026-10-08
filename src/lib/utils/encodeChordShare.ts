@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { ChordShareSchema, type ChordShare } from "$lib/val/ChordShareSchema";
+import { ChordShareSchema, type ChordShare } from "#lib/val/ChordShareSchema.js";
 
 /**
  * A chord player's settings as the string a share link carries

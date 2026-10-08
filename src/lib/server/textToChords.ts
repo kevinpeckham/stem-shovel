@@ -1,11 +1,14 @@
 import { ENV } from "varlock/env";
-import { AUTO_STRUM_PATTERNS } from "$lib/constants/autoStrum";
-import { CHORD_STYLES } from "$lib/constants/chordStyles";
-import { CHORD_VOICINGS, STRUMS } from "$lib/constants/circleOfFifths";
-import { PIANO_INSTRUMENTS } from "$lib/constants/piano";
-import { logAiRequest } from "$lib/server/data";
-import { parseTextToChordsReply, type TextToChordsResult } from "$lib/utils/parseTextToChordsReply";
-import { KEY_NAMES, type TextToChordsInput } from "$lib/val/TextToChordsSchema";
+import { AUTO_STRUM_PATTERNS } from "#lib/constants/autoStrum.js";
+import { CHORD_STYLES } from "#lib/constants/chordStyles.js";
+import { CHORD_VOICINGS, STRUMS } from "#lib/constants/circleOfFifths.js";
+import { PIANO_INSTRUMENTS } from "#lib/constants/piano.js";
+import { logAiRequest } from "#lib/server/data.js";
+import {
+	parseTextToChordsReply,
+	type TextToChordsResult,
+} from "#lib/utils/parseTextToChordsReply.js";
+import { KEY_NAMES, type TextToChordsInput } from "#lib/val/TextToChordsSchema.js";
 import { complete, textToBeatModel, type Message } from "./textToBeat";
 
 /**

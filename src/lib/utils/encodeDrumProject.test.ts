@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { DRUM_PATTERN_VERSION } from "$lib/constants/drumMachine";
-import type { DrumProject } from "$lib/val/DrumPatternSchema";
+import { DRUM_PATTERN_VERSION } from "#lib/constants/drumMachine.js";
+import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
 import { decodeDrumProject } from "./decodeDrumProject";
 import { encodeDrumProject } from "./encodeDrumProject";
 import { startingDrumProject } from "./startingDrumProject";

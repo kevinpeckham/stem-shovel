@@ -1,4 +1,4 @@
-import { indexableStage } from "$lib/constants/securityHeaders";
+import { indexableStage } from "#lib/constants/securityHeaders.js";
 import type { RequestHandler } from "./$types";
 import { ENV } from "varlock/env";
 

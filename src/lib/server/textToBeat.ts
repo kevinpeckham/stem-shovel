@@ -1,10 +1,10 @@
 import { ENV } from "varlock/env";
-import { DRUM_VOICES } from "$lib/constants/drumMachine";
-import { logAiRequest } from "$lib/server/data";
-import { parseTextToBeatReply, type TextToBeatResult } from "$lib/utils/parseTextToBeatReply";
-import { resizeDrumPattern } from "$lib/utils/resizeDrumPattern";
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
-import type { TextToBeatInput } from "$lib/val/TextToBeatSchema";
+import { DRUM_VOICES } from "#lib/constants/drumMachine.js";
+import { logAiRequest } from "#lib/server/data.js";
+import { parseTextToBeatReply, type TextToBeatResult } from "#lib/utils/parseTextToBeatReply.js";
+import { resizeDrumPattern } from "#lib/utils/resizeDrumPattern.js";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
+import type { TextToBeatInput } from "#lib/val/TextToBeatSchema.js";
 
 /**
  * Text-to-Beat (docs/drum-machine.md): a beat described in words becomes

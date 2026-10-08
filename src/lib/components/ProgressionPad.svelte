@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { progressionPad } from "$lib/audio/progression.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { progressionPad } from "#lib/audio/progression.svelte.js";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import {
 		deleteProgression,
 		renameProgression,
 		saveProgression,
-	} from "$lib/remote/progressions.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { DEMO_PROGRESSIONS, type DemoProgression } from "$lib/constants/demoProgressions";
-	import { textToChords as askForChords } from "$lib/remote/textToChords.remote";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { measuresOf, type ChordBeats } from "$lib/utils/chordRhythm";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import type { SavedProgression } from "$lib/val/ProgressionSchema";
+	} from "#lib/remote/progressions.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { DEMO_PROGRESSIONS, type DemoProgression } from "#lib/constants/demoProgressions.js";
+	import { textToChords as askForChords } from "#lib/remote/textToChords.remote.js";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import { measuresOf, type ChordBeats } from "#lib/utils/chordRhythm.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import type { SavedProgression } from "#lib/val/ProgressionSchema.js";
 
 	/**
 	 * The progression pad under the circle (docs/chord-player.md, "The

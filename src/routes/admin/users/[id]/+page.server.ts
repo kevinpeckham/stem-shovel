@@ -1,4 +1,4 @@
-import { userDetail } from "$lib/server/data";
+import { userDetail } from "#lib/server/data.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

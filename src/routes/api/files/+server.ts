@@ -1,16 +1,16 @@
-import { accountOfProject, accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createFile, projectOfSong, storageRoom } from "$lib/server/data";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { background } from "$lib/server/background";
-import { checkStorage } from "$lib/server/notifications";
+import { accountOfProject, accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
+import { createFile, projectOfSong, storageRoom } from "#lib/server/data.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { background } from "#lib/server/background.js";
+import { checkStorage } from "#lib/server/notifications.js";
 import {
 	FILE_KIND_LABELS,
 	FILE_MAX_BYTES,
 	MAX_FILES_PER_PROJECT,
 	MAX_FILES_PER_SONG,
 	fileKindOf,
-} from "$lib/constants/fileFormats";
-import { accessOfPathname } from "$lib/server/relocate";
+} from "#lib/constants/fileFormats.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

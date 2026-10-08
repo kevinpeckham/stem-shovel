@@ -5,9 +5,9 @@ import {
 	manifestFor,
 	presentSongFiles,
 	stemsWantingPlayback,
-} from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { scheduleDemoPlayback, schedulePlayback } from "$lib/server/jobs";
+} from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { scheduleDemoPlayback, schedulePlayback } from "#lib/server/jobs.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 

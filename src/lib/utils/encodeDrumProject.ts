@@ -8,8 +8,8 @@ import {
 	DRUM_SWING_GRIDS,
 	DRUM_VOICE_IDS,
 	DRUM_WAH_BAR_CHOICES,
-} from "$lib/constants/drumMachine";
-import type { DrumProject } from "$lib/val/DrumPatternSchema";
+} from "#lib/constants/drumMachine.js";
+import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
 import { BitWriter } from "./bitWriter";
 
 /**

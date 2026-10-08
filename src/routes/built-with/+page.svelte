@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
 
 	/**
 	 * What Stem Shovel is made of, for the curious and for anyone who wants

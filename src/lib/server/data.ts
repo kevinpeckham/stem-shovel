@@ -2,27 +2,27 @@ import {
 	IdeaInstrumentsDataSchema,
 	type IdeaInstruments,
 	type IdeaKind,
-} from "$lib/val/IdeaSchema";
-import type { ReportKind, ReportVote } from "$lib/val/BugReportSchema";
-import { byStatus } from "$lib/utils/byStatus";
-import { reorderById } from "$lib/utils/reorderById";
-import type { CreditRole } from "$lib/val/CreditRoleSchema";
-import { flagProfanity } from "$lib/utils/profanity";
-import type { ArtistKind } from "$lib/val/ArtistKindSchema";
-import type { ImageKind } from "$lib/val/ImageSchema";
-import type { ProjectType } from "$lib/val/ProjectTypeSchema";
-import { FOUNDER_SEATS } from "$lib/constants/plans";
-import type { StemManifest } from "$lib/audio/types";
-import { DrumProjectSchema, type DrumProject } from "$lib/val/DrumPatternSchema";
-import type { ProgressionData } from "$lib/val/ProgressionSchema";
-import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
+} from "#lib/val/IdeaSchema.js";
+import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
+import { byStatus } from "#lib/utils/byStatus.js";
+import { reorderById } from "#lib/utils/reorderById.js";
+import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
+import { flagProfanity } from "#lib/utils/profanity.js";
+import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
+import type { ImageKind } from "#lib/val/ImageSchema.js";
+import type { ProjectType } from "#lib/val/ProjectTypeSchema.js";
+import { FOUNDER_SEATS } from "#lib/constants/plans.js";
+import type { StemManifest } from "#lib/audio/types.js";
+import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
+import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
+import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 import {
 	NamedPianoPresetSchema,
 	PIANO_PRESET_SLOTS,
 	type NamedPianoPreset,
 	type PianoPresetData,
 	type PresetInstrument,
-} from "$lib/val/PianoPresetSchema";
+} from "#lib/val/PianoPresetSchema.js";
 import {
 	copyBlob,
 	deleteBlobs,
@@ -38,7 +38,7 @@ import {
 	recordingStemPathname,
 	stemPathname,
 	studioSourcePathname,
-} from "$lib/server/blob";
+} from "#lib/server/blob.js";
 import {
 	deleteAccountRows,
 	deleteArtistRows,
@@ -47,66 +47,70 @@ import {
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
-} from "$lib/server/cascade";
-import { accessOfSongId } from "$lib/server/relocate";
-import { db, schema } from "$lib/server/db";
-import { barGrid } from "$lib/audio/measures";
-import { hashMarkdown, renderMarkdown } from "$lib/server/markdown";
-import { labelFromFilename } from "$lib/utils/labelFromFilename";
+} from "#lib/server/cascade.js";
+import { accessOfSongId } from "#lib/server/relocate.js";
+import { db, schema } from "#lib/server/db/index.js";
+import { barGrid } from "#lib/audio/measures.js";
+import { hashMarkdown, renderMarkdown } from "#lib/server/markdown.js";
+import { labelFromFilename } from "#lib/utils/labelFromFilename.js";
 import {
 	FILE_CONTENT_TYPE_OF,
 	MAX_FILES_PER_PROJECT,
 	MAX_FILES_PER_SONG,
 	type FileKind,
-} from "$lib/constants/fileFormats";
-import { demoContentType } from "$lib/utils/demoContentType";
-import { arrangementHash } from "$lib/utils/arrangementHash";
-import { staleAutosaves } from "$lib/utils/staleAutosaves";
-import { MAX_STUDIO_SOURCES, STUDIO_AUTOSAVES_KEPT } from "$lib/constants/studio";
+} from "#lib/constants/fileFormats.js";
+import { demoContentType } from "#lib/utils/demoContentType.js";
+import { arrangementHash } from "#lib/utils/arrangementHash.js";
+import { staleAutosaves } from "#lib/utils/staleAutosaves.js";
+import { MAX_STUDIO_SOURCES, STUDIO_AUTOSAVES_KEPT } from "#lib/constants/studio.js";
 import type {
 	StudioArrangement,
 	StudioRevisionView,
 	StudioSongView,
 	StudioSourceReserve,
 	StudioSourceView,
-} from "$lib/val/StudioSchema";
+} from "#lib/val/StudioSchema.js";
 import {
 	MAX_NOTATION_PER_SONG,
 	NOTATION_CONTENT_TYPE_OF,
 	type NotationFormat,
-} from "$lib/constants/notationFormats";
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
-import { slugify } from "$lib/utils/slugify";
+} from "#lib/constants/notationFormats.js";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
+import { slugify } from "#lib/utils/slugify.js";
 import {
 	isOverridableKit,
 	MAX_DRUM_KITS_PER_ACCOUNT,
 	OVERRIDABLE_KITS,
 	type DrumKitManifest,
-} from "$lib/constants/drumKits";
-import { DRUM_KITS } from "$lib/constants/drumMachine";
-import type { DrumVoiceId } from "$lib/constants/drumMachine";
-import type { PermalinkKind } from "$lib/utils/permalink";
+} from "#lib/constants/drumKits.js";
+import { DRUM_KITS } from "#lib/constants/drumMachine.js";
+import type { DrumVoiceId } from "#lib/constants/drumMachine.js";
+import type { PermalinkKind } from "#lib/utils/permalink.js";
 import {
 	aliasedAccountSlugs,
 	aliasTarget,
 	claimSlug,
 	recordSlugChange,
-} from "$lib/server/slugAlias";
-import { SlugSchema } from "$lib/val/SlugSchema";
-import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
-import { NOTES_STALE_MS } from "$lib/constants/notesStale";
-import { MY_NOTES_KIND, type SongDocKind, type SongDocSaveKind } from "$lib/val/SongDocKindSchema";
-import type { SongChange } from "$lib/val/SongChangeSchema";
-import type { SongSection } from "$lib/val/SongSectionSchema";
-import type { MemberRole } from "$lib/val/MemberRoleSchema";
-import type { ProjectRole } from "$lib/val/ProjectRoleSchema";
-import { INVITATION_TTL_MS, type InviteRole } from "$lib/val/InvitationSchema";
-import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
-import type { BugStatus } from "$lib/val/BugReportSchema";
-import type { AccountStatus } from "$lib/val/AccountStatusSchema";
-import type { ShareGrant } from "$lib/server/viewAccess";
-import type { Note } from "$lib/audio/chords";
+} from "#lib/server/slugAlias.js";
+import { SlugSchema } from "#lib/val/SlugSchema.js";
+import type { PlaybackStatus } from "#lib/val/PlaybackStatusSchema.js";
+import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
+import {
+	MY_NOTES_KIND,
+	type SongDocKind,
+	type SongDocSaveKind,
+} from "#lib/val/SongDocKindSchema.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
+import type { SongSection } from "#lib/val/SongSectionSchema.js";
+import type { MemberRole } from "#lib/val/MemberRoleSchema.js";
+import type { ProjectRole } from "#lib/val/ProjectRoleSchema.js";
+import { INVITATION_TTL_MS, type InviteRole } from "#lib/val/InvitationSchema.js";
+import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "#lib/val/InviteCodeSchema.js";
+import type { BugStatus } from "#lib/val/BugReportSchema.js";
+import type { AccountStatus } from "#lib/val/AccountStatusSchema.js";
+import type { ShareGrant } from "#lib/server/viewAccess.js";
+import type { Note } from "#lib/audio/chords.js";
 import {
 	like,
 	and,
@@ -123,13 +127,13 @@ import {
 	notExists,
 	sql,
 } from "drizzle-orm";
-import type { SupportStatus } from "$lib/val/SupportRequestSchema";
-import type { ReportPriority } from "$lib/val/BugReportSchema";
-import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
-import type { UserDocKind } from "$lib/val/UserDocKindSchema";
-import type { SignUpMode } from "$lib/val/SignUpModeSchema";
-import { accountLimits, storageFits } from "$lib/utils/accountLimits";
-import type { BlobAccess } from "$lib/utils/blobAccess";
+import type { SupportStatus } from "#lib/val/SupportRequestSchema.js";
+import type { ReportPriority } from "#lib/val/BugReportSchema.js";
+import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
+import type { UserDocKind } from "#lib/val/UserDocKindSchema.js";
+import type { SignUpMode } from "#lib/val/SignUpModeSchema.js";
+import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
+import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { customAlphabet, nanoid } from "nanoid";
 import * as v from "valibot";
 

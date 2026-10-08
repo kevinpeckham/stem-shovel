@@ -2,7 +2,7 @@ import {
 	MAX_TAKE_SECONDS,
 	SILENCE_STOP_SECONDS,
 	TAKE_WARNING_SECONDS,
-} from "$lib/constants/takeLimits";
+} from "#lib/constants/takeLimits.js";
 
 export type TakeStopReason = "limit" | "silence" | "silent";
 

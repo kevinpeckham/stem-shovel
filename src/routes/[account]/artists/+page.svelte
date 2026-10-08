@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { ARTIST_KIND_LABELS } from "$lib/constants/artistKinds";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { ARTIST_KIND_LABELS } from "#lib/constants/artistKinds.js";
 
 	let { data } = $props();
 </script>

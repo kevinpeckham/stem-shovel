@@ -1,22 +1,22 @@
 import { command, getRequestEvent } from "$app/server";
-import { accountOfFile, memberOf, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
+import { accountOfFile, memberOf, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
 import {
 	attachFile as moveFile,
 	createDemoFromFile,
 	deleteFile as removeFile,
 	updateFile as saveFile,
-} from "$lib/server/data";
-import { scheduleDemoPlayback } from "$lib/server/jobs";
-import { notifyDemo } from "$lib/server/notifications";
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { MAX_FILES_PER_PROJECT, MAX_FILES_PER_SONG } from "$lib/constants/fileFormats";
+} from "#lib/server/data.js";
+import { scheduleDemoPlayback } from "#lib/server/jobs.js";
+import { notifyDemo } from "#lib/server/notifications.js";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_FILES_PER_PROJECT, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 import {
 	SongFileAttachSchema,
 	SongFileDeleteSchema,
 	SongFileUpdateSchema,
 	SongFileUseAsDemoSchema,
-} from "$lib/val/SongFileSchema";
+} from "#lib/val/SongFileSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** An attachment's title and description, and whether it is a score when `isNotation` is sent (docs/uploads-and-blob.md, "Attachments"); an editor of the account. */

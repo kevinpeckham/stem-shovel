@@ -1,6 +1,6 @@
-import { background } from "$lib/server/background";
-import type { JobKind } from "$lib/val/JobSchema";
-import { dev } from "$app/environment";
+import { background } from "#lib/server/background.js";
+import type { JobKind } from "#lib/val/JobSchema.js";
+import { dev } from "$app/env";
 import { getRequestEvent } from "$app/server";
 import { ENV } from "varlock/env";
 import { createHmac, timingSafeEqual } from "node:crypto";

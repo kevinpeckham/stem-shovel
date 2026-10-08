@@ -5,20 +5,20 @@ import {
 	memberOf,
 	requireEditor,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	createChordStyle,
 	deleteChordStyle as remove,
 	listChordStyles as list,
 	renameChordStyle as rename,
 	updateChordStyle,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	ChordStyleListSchema,
 	ChordStyleRenameSchema,
 	ChordStyleSaveSchema,
-} from "$lib/val/ChordStyleSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/val/ChordStyleSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** Custom chord styles (docs/chord-player.md, "Styles"): an account's library, seen by every member, kept by its editors, as the progressions. */

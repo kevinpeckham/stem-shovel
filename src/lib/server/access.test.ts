@@ -22,15 +22,15 @@ const { fake, data, event, ran } = await vi.hoisted(async () => ({
 	},
 	ran: [] as Promise<void>[],
 }));
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/data", () => data);
-vi.mock("$lib/server/blob", () => ({
+vi.mock("#lib/server/data.js", () => data);
+vi.mock("#lib/server/blob.js", () => ({
 	isRecordingPathname: (pathname: string) => pathname.includes("/recordings/"),
 }));
-vi.mock("$lib/server/background", () => ({
+vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {
 		ran.push(work());
 	},

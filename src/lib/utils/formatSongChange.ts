@@ -1,4 +1,4 @@
-import type { SongChange } from "$lib/val/SongChangeSchema";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 
 /** How a change reads on the timeline: "120 bpm", "F#m", "6/8". */
 export function formatSongChange(c: SongChange): string {

@@ -4,9 +4,9 @@ import {
 	DRUM_USUAL_LEVEL,
 	MAX_DRUM_ROWS,
 	type DrumVoiceId,
-} from "$lib/constants/drumMachine";
-import type { DrumGeneratorRow, DrumGeneratorStyle } from "$lib/constants/drumGenerator";
-import type { DrumPattern, DrumRow } from "$lib/val/DrumPatternSchema";
+} from "#lib/constants/drumMachine.js";
+import type { DrumGeneratorRow, DrumGeneratorStyle } from "#lib/constants/drumGenerator.js";
+import type { DrumPattern, DrumRow } from "#lib/val/DrumPatternSchema.js";
 import { seededRandom } from "./seededRandom";
 
 /**

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import ImageUploader from "$lib/components/ImageUploader.svelte";
-	import PlanBadge from "$lib/components/PlanBadge.svelte";
-	import { formatBytes } from "$lib/utils/formatBytes";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import ImageUploader from "#lib/components/ImageUploader.svelte";
+	import PlanBadge from "#lib/components/PlanBadge.svelte";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import {
 		createInviteCode,
 		inviteMember,
@@ -13,15 +13,15 @@
 		setMemberRole,
 		updateAccount,
 		setDefaultArtist,
-	} from "$lib/remote/accounts.remote";
-	import { MEMBER_ROLES } from "$lib/val/MemberRoleSchema";
-	import { INVITE_ROLES } from "$lib/val/InvitationSchema";
-	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
-	import { formatInviteCode } from "$lib/utils/formatInviteCode";
+	} from "#lib/remote/accounts.remote.js";
+	import { MEMBER_ROLES } from "#lib/val/MemberRoleSchema.js";
+	import { INVITE_ROLES } from "#lib/val/InvitationSchema.js";
+	import { INVITE_CODE_EXPIRY_DAYS } from "#lib/val/InviteCodeSchema.js";
+	import { formatInviteCode } from "#lib/utils/formatInviteCode.js";
 	import { page } from "$app/state";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { clearForm } from "$lib/utils/clearForm";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
 
 	let { data } = $props();
 

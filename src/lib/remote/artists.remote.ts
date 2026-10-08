@@ -5,7 +5,7 @@ import {
 	memberOf,
 	requireMember,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	addArtistMember as addMember,
 	artistById,
@@ -14,16 +14,16 @@ import {
 	deleteArtist as removeArtist,
 	removeArtistMember as removeMember,
 	updateArtist as update,
-} from "$lib/server/data";
-import { sendInvitationEmail } from "$lib/server/email";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/server/data.js";
+import { sendInvitationEmail } from "#lib/server/email.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import {
 	ArtistInviteSchema,
 	ArtistMemberAddSchema,
 	ArtistMemberInviteSchema,
 	ArtistUpdateSchema,
-} from "$lib/val/ArtistSchema";
+} from "#lib/val/ArtistSchema.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**

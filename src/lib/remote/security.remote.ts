@@ -1,7 +1,7 @@
 import { command, getRequestEvent } from "$app/server";
-import { requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
-import { sendPasskeyChangedEmail, sendTwoFactorChangedEmail } from "$lib/server/email";
+import { requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
+import { sendPasskeyChangedEmail, sendTwoFactorChangedEmail } from "#lib/server/email.js";
 import * as v from "valibot";
 
 /**

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { createProject } from "$lib/remote/projects.remote";
-	import { clearForm } from "$lib/utils/clearForm";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { createProject } from "#lib/remote/projects.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
 
 	let { data } = $props();
 

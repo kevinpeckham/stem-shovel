@@ -18,7 +18,7 @@ import {
 	type Mocks,
 } from "../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
-import { MAX_STEMS_PER_SONG, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
+import { MAX_STEMS_PER_SONG, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 
 /** Step 1 of a stem upload: an editor of the song's account reserves the row. */
 const { POST } = await import("./+server");
@@ -30,7 +30,7 @@ const body = { songId: SONG, filename: "Bass.WAV", sizeBytes: 1_000_000 };
 const row = { id: STEM, pathname: `accounts/${ACCOUNT}/songs/${SONG}/${STEM}.wav` };
 const post = (b: unknown = body) => callRoute(POST, asEditorOf(ACCOUNT), jsonPost("/api/stems", b));
 /** The relocate module is auto-mocked by fakeServerModules; `accessOfPathname` answers the store a reservation goes to. */
-const relocate = (await import("$lib/server/relocate")) as unknown as Mocks;
+const relocate = (await import("#lib/server/relocate.js")) as unknown as Mocks;
 
 beforeEach(() => {
 	resetRemoteMocks();

@@ -1,20 +1,20 @@
 <script lang="ts">
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import { clearSitePianoPreset, setSitePianoPreset } from "$lib/remote/admin.remote";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import { clearSitePianoPreset, setSitePianoPreset } from "#lib/remote/admin.remote.js";
 	import {
 		renamePianoPreset,
 		savePianoPreset,
 		setPianoPresetSlot,
-	} from "$lib/remote/pianoPresets.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { savePianoSlotOverrides } from "$lib/utils/pianoSlotOverrides";
-	import type { PianoSlot } from "$lib/utils/resolvePianoSlots";
+	} from "#lib/remote/pianoPresets.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { savePianoSlotOverrides } from "#lib/utils/pianoSlotOverrides.js";
+	import type { PianoSlot } from "#lib/utils/resolvePianoSlots.js";
 	import {
 		PIANO_PRESET_SLOTS,
 		type NamedPianoPreset,
 		type PianoPresetData,
-	} from "$lib/val/PianoPresetSchema";
+	} from "#lib/val/PianoPresetSchema.js";
 
 	/**
 	 * The chord player's five preset buttons and their manage menu

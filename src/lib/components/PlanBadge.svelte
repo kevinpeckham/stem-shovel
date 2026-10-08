@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PLAN_LABELS } from "$lib/constants/plans";
-	import type { AccountPlan } from "$lib/val/AccountPlanSchema";
+	import { PLAN_LABELS } from "#lib/constants/plans.js";
+	import type { AccountPlan } from "#lib/val/AccountPlanSchema.js";
 
 	/**
 	 * An account's tier at a glance: Founder (never charged, unlimited data,

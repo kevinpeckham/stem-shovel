@@ -1,6 +1,6 @@
 import { getRequestEvent, query } from "$app/server";
-import { renderMarkdown } from "$lib/server/markdown";
-import { MINUTE, rateLimited } from "$lib/server/rateLimit";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { MINUTE, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 

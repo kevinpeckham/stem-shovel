@@ -4,7 +4,7 @@ import {
 	DRUM_METER_IDS,
 	DRUM_STEP_CHOICES,
 	DRUM_VOICE_IDS,
-} from "$lib/constants/drumMachine";
+} from "#lib/constants/drumMachine.js";
 
 /** What the drum machine asks for: a description, and the shape of the open pattern the answer must fit. */
 export const TextToBeatSchema = v.object({

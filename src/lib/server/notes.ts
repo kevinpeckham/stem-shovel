@@ -1,16 +1,16 @@
-import { extractFeatures } from "$lib/audio/analysis";
+import { extractFeatures } from "#lib/audio/analysis.js";
 import modelSpec from "./basic-pitch/model.json";
 import modelWeights from "./basic-pitch/weights.json";
-import type { Note } from "$lib/audio/chords";
-import { readBlob } from "$lib/server/blob";
+import type { Note } from "#lib/audio/chords.js";
+import { readBlob } from "#lib/server/blob.js";
 import {
 	appendSongNotes,
 	claimSongNotes,
 	finishSongNotes,
 	releaseSongNotes,
 	songForNotes,
-} from "$lib/server/data";
-import { mixKeyOf } from "$lib/server/mix";
+} from "#lib/server/data.js";
+import { mixKeyOf } from "#lib/server/mix.js";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";

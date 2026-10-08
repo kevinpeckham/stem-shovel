@@ -6,17 +6,21 @@ import {
 	isEditor,
 	requireMember,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	createShareLink as create,
 	revokeShareLink as revoke,
 	setProjectPrivacy,
 	setSongPrivacy,
-} from "$lib/server/data";
-import { PrivacySchema, ShareLinkCreateSchema, ShareLinkIdSchema } from "$lib/val/ShareLinkSchema";
-import { background } from "$lib/server/background";
-import { relocateProjectFiles, relocateSongFiles } from "$lib/server/relocate";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
+} from "#lib/server/data.js";
+import {
+	PrivacySchema,
+	ShareLinkCreateSchema,
+	ShareLinkIdSchema,
+} from "#lib/val/ShareLinkSchema.js";
+import { background } from "#lib/server/background.js";
+import { relocateProjectFiles, relocateSongFiles } from "#lib/server/relocate.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
 
 /** Any member makes a project private (members and share links only) or public again. */

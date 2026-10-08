@@ -1,4 +1,4 @@
-import { TUTORIAL_STEPS, type TutorialControl } from "$lib/constants/drumTutorial";
+import { TUTORIAL_STEPS, type TutorialControl } from "#lib/constants/drumTutorial.js";
 
 /**
  * Where the drum machine's walk-through stands: on or off, which step,

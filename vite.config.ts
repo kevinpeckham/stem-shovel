@@ -1,4 +1,4 @@
-import { sentrySvelteKit } from "@sentry/sveltekit";
+import { sentrySvelteKit } from "@sentry/sveltekit/vite";
 import adapter from "@sveltejs/adapter-vercel";
 import { sveltekit } from "@sveltejs/kit/vite";
 import UnoCSS from "unocss/vite";
@@ -99,9 +99,9 @@ export default defineConfig({
 				// `await` in components, required by remote functions
 				experimental: { async: true },
 			},
-			// Server mutations/queries are remote functions (*.remote.ts), not form actions
-			// Server mutations/queries are remote functions; instrumentation.server.ts (Sentry) runs before the app.
-			experimental: { remoteFunctions: true, instrumentation: { server: true } },
+			// Server mutations/queries are remote functions (*.remote.ts), not form actions;
+			// src/instrumentation.server.ts (Sentry) runs before the app on its own since SvelteKit 3.
+			experimental: { remoteFunctions: true },
 			// Content Security Policy (docs/environment.md). SvelteKit adds a nonce
 			// for its own inline script; inline styles stay allowed because
 			// `style:` attributes and transitions need them. Audio and uploads

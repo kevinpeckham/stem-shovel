@@ -1,9 +1,9 @@
 <script lang="ts">
-	import MidiRoll from "$lib/components/MidiRoll.svelte";
-	import type { MidiSummary } from "$lib/audio/midi";
-	import { FADER_MAX, type StemEngine } from "$lib/audio/engine.svelte";
-	import type { StemState } from "$lib/audio/types";
-	import { formatTime } from "$lib/utils/formatTime";
+	import MidiRoll from "#lib/components/MidiRoll.svelte";
+	import type { MidiSummary } from "#lib/audio/midi.js";
+	import { FADER_MAX, type StemEngine } from "#lib/audio/engine.svelte.js";
+	import type { StemState } from "#lib/audio/types.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
 	import type { Snippet } from "svelte";
 	import Waveform from "./Waveform.svelte";
 

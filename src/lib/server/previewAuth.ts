@@ -1,4 +1,4 @@
-import { db, schema } from "$lib/server/db";
+import { db, schema } from "#lib/server/db/index.js";
 import { eq } from "drizzle-orm";
 import { timingSafeEqual } from "node:crypto";
 import { ENV } from "varlock/env";

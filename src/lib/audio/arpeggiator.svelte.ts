@@ -1,7 +1,7 @@
-import { tempoRatioOf, type TempoRatio } from "$lib/constants/tempo";
-import { arpStepIndex } from "$lib/utils/arpStep";
-import { arpChangeSteps, arpSwitchStep } from "$lib/utils/arpSwitch";
-import { arpSwingDelay } from "$lib/utils/arpSwingDelay";
+import { tempoRatioOf, type TempoRatio } from "#lib/constants/tempo.js";
+import { arpStepIndex } from "#lib/utils/arpStep.js";
+import { arpChangeSteps, arpSwitchStep } from "#lib/utils/arpSwitch.js";
+import { arpSwingDelay } from "#lib/utils/arpSwingDelay.js";
 import { startLookahead } from "./lookahead";
 import { metronome } from "./metronome.svelte";
 

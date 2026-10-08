@@ -1,10 +1,10 @@
-import { collapseDualMono } from "$lib/audio/mono";
-import { computePeaks, PEAK_BINS } from "$lib/audio/peaks";
-import { demoContentType } from "$lib/utils/demoContentType";
-import { stemContentType } from "$lib/utils/stemContentType";
-import { pdfThumbnail } from "$lib/utils/pdfThumbnail";
-import { FILE_CONTENT_TYPE_OF, type FileKind } from "$lib/constants/fileFormats";
-import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "$lib/constants/notationFormats";
+import { collapseDualMono } from "#lib/audio/mono.js";
+import { computePeaks, PEAK_BINS } from "#lib/audio/peaks.js";
+import { demoContentType } from "#lib/utils/demoContentType.js";
+import { stemContentType } from "#lib/utils/stemContentType.js";
+import { pdfThumbnail } from "#lib/utils/pdfThumbnail.js";
+import { FILE_CONTENT_TYPE_OF, type FileKind } from "#lib/constants/fileFormats.js";
+import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "#lib/constants/notationFormats.js";
 import { upload } from "@vercel/blob/client";
 
 export interface Reservation {

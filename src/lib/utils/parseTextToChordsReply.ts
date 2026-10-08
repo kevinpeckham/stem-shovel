@@ -1,12 +1,12 @@
 import * as v from "valibot";
-import type { ChordStyleId } from "$lib/constants/chordStyles";
-import type { DemoChord, DemoSetup } from "$lib/constants/demoProgressions";
+import type { ChordStyleId } from "#lib/constants/chordStyles.js";
+import type { DemoChord, DemoSetup } from "#lib/constants/demoProgressions.js";
 import {
 	CHORD_DEGREE_NUMERALS,
 	KEY_NAMES,
 	TextToChordsReplySchema,
 	type TextToChordsReply,
-} from "$lib/val/TextToChordsSchema";
+} from "#lib/val/TextToChordsSchema.js";
 
 export interface TextToChordsResult {
 	name: string;

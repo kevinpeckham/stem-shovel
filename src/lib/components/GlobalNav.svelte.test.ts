@@ -9,7 +9,7 @@ const pageState = vi.hoisted(() => ({
 	data: {} as Record<string, unknown>,
 }));
 vi.mock("$app/state", () => ({ page: pageState }));
-vi.mock("$lib/remote/auth.remote", () => ({ signOut: fakeRemoteForm() }));
+vi.mock("#lib/remote/auth.remote.js", () => ({ signOut: fakeRemoteForm() }));
 
 const { default: GlobalNav } = await import("./GlobalNav.svelte");
 

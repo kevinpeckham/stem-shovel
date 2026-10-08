@@ -1,6 +1,6 @@
-import { songMentionSources } from "$lib/server/data";
-import { linkMentions } from "$lib/utils/linkMentions";
-import { mentionTargets } from "$lib/utils/mentionTargets";
+import { songMentionSources } from "#lib/server/data.js";
+import { linkMentions } from "#lib/utils/linkMentions.js";
+import { mentionTargets } from "#lib/utils/mentionTargets.js";
 
 /**
  * `@name` in a song document's rendered HTML linked to the song's

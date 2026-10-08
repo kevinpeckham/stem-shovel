@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SpelledNote } from "$lib/utils/noteSpelling";
+	import type { SpelledNote } from "#lib/utils/noteSpelling.js";
 
 	/**
 	 * The notes sounding, on a small treble staff (docs/piano.md, "The

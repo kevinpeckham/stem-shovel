@@ -1,5 +1,5 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { accountOfBeat, memberOf, requireEditor, requireUser } from "$lib/server/access";
+import { accountOfBeat, memberOf, requireEditor, requireUser } from "#lib/server/access.js";
 import {
 	createBeat,
 	deleteBeat as remove,
@@ -7,10 +7,10 @@ import {
 	renameBeat as rename,
 	songForBeat,
 	updateBeat,
-} from "$lib/server/data";
-import { BeatListSchema, BeatRenameSchema, BeatSaveSchema } from "$lib/val/BeatSchema";
-import { IdSchema } from "$lib/val/SongSchema";
-import { isEditor } from "$lib/server/access";
+} from "#lib/server/data.js";
+import { BeatListSchema, BeatRenameSchema, BeatSaveSchema } from "#lib/val/BeatSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
+import { isEditor } from "#lib/server/access.js";
 import { error } from "@sveltejs/kit";
 
 /** Saved beats from the drum machine (docs/drum-machine.md, Phase 3): an account's library, seen by every member, kept by its editors. */

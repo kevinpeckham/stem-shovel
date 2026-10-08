@@ -1,6 +1,6 @@
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { MAX_FILES_PER_PROJECT, MAX_FILES_PER_SONG } from "$lib/constants/fileFormats";
-import { MAX_NOTATION_PER_SONG } from "$lib/constants/notationFormats";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_FILES_PER_PROJECT, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
+import { MAX_NOTATION_PER_SONG } from "#lib/constants/notationFormats.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { blob, callsTo, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 

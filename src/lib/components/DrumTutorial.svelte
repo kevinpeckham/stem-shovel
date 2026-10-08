@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { TUTORIAL_STEPS } from "$lib/constants/drumTutorial";
-	import { drumTutorial as tutorial } from "$lib/state/drumTutorial.svelte";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { TUTORIAL_STEPS } from "#lib/constants/drumTutorial.js";
+	import { drumTutorial as tutorial } from "#lib/state/drumTutorial.svelte.js";
 
 	/**
 	 * The walk-through panel under the drum machine: the step's title and

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import PlanBadge from "$lib/components/PlanBadge.svelte";
-	import { manageAccount, setStorageLimit } from "$lib/remote/admin.remote";
-	import { accountLimits } from "$lib/utils/accountLimits";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import PlanBadge from "#lib/components/PlanBadge.svelte";
+	import { manageAccount, setStorageLimit } from "#lib/remote/admin.remote.js";
+	import { accountLimits } from "#lib/utils/accountLimits.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 </script>

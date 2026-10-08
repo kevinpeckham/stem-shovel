@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { formatTime } from "$lib/utils/formatTime";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { onMount, tick } from "svelte";
 
 	/** A song as the project page lists it; `mixUrl` is the cached original MP3, null until rendered. A demo track is the same shape, its id the demo's. */

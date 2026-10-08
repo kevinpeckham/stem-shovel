@@ -1,6 +1,10 @@
 <script lang="ts">
-	import { CHORD_RECIPES, type ChordRecipe, type ChordRecipeId } from "$lib/constants/chordStyles";
-	import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
+	import {
+		CHORD_RECIPES,
+		type ChordRecipe,
+		type ChordRecipeId,
+	} from "#lib/constants/chordStyles.js";
+	import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
 
 	/**
 	 * The custom style editor (docs/chord-player.md, "Styles"): a row per

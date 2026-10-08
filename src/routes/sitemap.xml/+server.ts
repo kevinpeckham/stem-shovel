@@ -1,5 +1,5 @@
-import { indexableStage } from "$lib/constants/securityHeaders";
-import { listBlogPosts, listUserDocs } from "$lib/server/data";
+import { indexableStage } from "#lib/constants/securityHeaders.js";
+import { listBlogPosts, listUserDocs } from "#lib/server/data.js";
 import type { RequestHandler } from "./$types";
 import { ENV } from "varlock/env";
 

@@ -1,7 +1,7 @@
-import { publicBlobUrl } from "$lib/server/blob";
-import { isEditor, requireSignedIn } from "$lib/server/access";
-import { aiAvailable } from "$lib/server/aiDetect";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
+import { publicBlobUrl } from "#lib/server/blob.js";
+import { isEditor, requireSignedIn } from "#lib/server/access.js";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import {
 	listBeats,
 	listChordStyles,
@@ -9,10 +9,10 @@ import {
 	listPianoPresets,
 	listStudioSongs,
 	sitePianoPresets,
-} from "$lib/server/data";
-import { pageCopy } from "$lib/server/pageCopy";
-import { songTargets } from "$lib/server/songTargets";
-import { realMemberships } from "$lib/utils/actingMemberships";
+} from "#lib/server/data.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import { songTargets } from "#lib/server/songTargets.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import { redirect } from "@sveltejs/kit";
 import copyFallback from "../../../scripts/user-docs/studio-page.md?raw";
 import type { PageServerLoad } from "./$types";

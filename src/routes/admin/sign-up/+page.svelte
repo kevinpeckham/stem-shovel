@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { setSignUpModeForm } from "$lib/remote/admin.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { invalidateAll } from "$app/navigation";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { setSignUpModeForm } from "#lib/remote/admin.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { refreshAll } from "$app/navigation";
 
 	let { data } = $props();
 	let chosen = $derived(data.mode);
@@ -25,7 +25,7 @@
 		{...setSignUpModeForm.enhance(async ({ submit }) => {
 			await submit();
 			if (setSignUpModeForm.result?.mode) {
-				await invalidateAll();
+				await refreshAll();
 				notify(
 					setSignUpModeForm.result.mode === "open"
 						? "Sign-up is open to everyone"
@@ -40,9 +40,7 @@
 					<label class="flex cursor-pointer items-start gap-3 px-5 py-3 hover:bg-white/5">
 						<input
 							class="mt-1"
-							type="radio"
-							name="mode"
-							{value}
+							{...setSignUpModeForm.fields.mode.as("radio", value)}
 							checked={value === chosen}
 							onchange={() => (chosen = value as typeof chosen)}
 						/>

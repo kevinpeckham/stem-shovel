@@ -1,7 +1,7 @@
 import { tick } from "svelte";
 import { fakeAudioBuffer } from "../../../tests/helpers/fakeAudioBuffer";
-import type { StemEngine } from "$lib/audio/engine.svelte";
-import type { StemManifest } from "$lib/audio/types";
+import type { StemEngine } from "#lib/audio/engine.svelte.js";
+import type { StemManifest } from "#lib/audio/types.js";
 import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";

@@ -3,8 +3,8 @@ import {
 	DEFAULT_DRUM_SENDS,
 	DEFAULT_HUMANIZE,
 	DRUM_VELOCITY_NORMAL,
-} from "$lib/constants/drumMachine";
-import type { DrumProject, DrumRow } from "$lib/val/DrumPatternSchema";
+} from "#lib/constants/drumMachine.js";
+import type { DrumProject, DrumRow } from "#lib/val/DrumPatternSchema.js";
 
 /** A row from a list of the steps it plays on. */
 function row(voice: DrumRow["voice"], steps: number, on: number[], level = 0.8): DrumRow {

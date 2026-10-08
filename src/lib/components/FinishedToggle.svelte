@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { setSongFinished } from "$lib/remote/songs.remote";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { setSongFinished } from "#lib/remote/songs.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/** Any member marks a song finished, which files it under "Finished Songs" on the project page, or back in progress. */
 	interface Props {

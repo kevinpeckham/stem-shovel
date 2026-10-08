@@ -7,18 +7,18 @@ import {
 	listShareLinks,
 	songsWantingMix,
 	userNoteSongIds,
-} from "$lib/server/data";
-import { presentUrl } from "$lib/server/blob";
+} from "#lib/server/data.js";
+import { presentUrl } from "#lib/server/blob.js";
 import {
 	canCommentProject,
 	canEditProject,
 	canViewProject,
 	canViewSong,
-} from "$lib/server/viewAccess";
-import { mixKeyOf } from "$lib/server/mix";
-import { scheduleMix } from "$lib/server/jobs";
+} from "#lib/server/viewAccess.js";
+import { mixKeyOf } from "#lib/server/mix.js";
+import { scheduleMix } from "#lib/server/jobs.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { renamedProjectPath } from "$lib/server/slugAlias";
+import { renamedProjectPath } from "#lib/server/slugAlias.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

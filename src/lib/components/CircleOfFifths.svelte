@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ChordQuality, CirclePosition } from "$lib/constants/circleOfFifths";
-	import type { SpelledNote } from "$lib/utils/noteSpelling";
+	import type { ChordQuality, CirclePosition } from "#lib/constants/circleOfFifths.js";
+	import type { SpelledNote } from "#lib/utils/noteSpelling.js";
 	import {
 		ARCH_CY,
 		ARCH_DOWN_SLOTS,
@@ -15,7 +15,7 @@
 		slotCenter,
 		slotPath,
 		type WedgeSlot,
-	} from "$lib/utils/circleGeometry";
+	} from "#lib/utils/circleGeometry.js";
 
 	/**
 	 * The circle of fifths as an SVG instrument (docs/chord-player.md): two

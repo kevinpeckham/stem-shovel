@@ -1,12 +1,12 @@
-import { accountOfFile, memberOf } from "$lib/server/access";
-import { fileThumbnailPathname, isOurBlobUrl, putBlob, readBlob } from "$lib/server/blob";
-import { failFile, findFileById, markFileReady } from "$lib/server/data";
-import { accessOfPathname } from "$lib/server/relocate";
+import { accountOfFile, memberOf } from "#lib/server/access.js";
+import { fileThumbnailPathname, isOurBlobUrl, putBlob, readBlob } from "#lib/server/blob.js";
+import { failFile, findFileById, markFileReady } from "#lib/server/data.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
 import {
 	FILE_KIND_LABELS,
 	PDF_THUMBNAIL_MAX_BYTES,
 	type FileKind,
-} from "$lib/constants/fileFormats";
+} from "#lib/constants/fileFormats.js";
 import {
 	imageTypeOfBytes,
 	isPdfBytes,
@@ -14,7 +14,7 @@ import {
 	startsLikeAudio,
 	startsLikeImage,
 	startsLikeMidi,
-} from "$lib/utils/fileSignatures";
+} from "#lib/utils/fileSignatures.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

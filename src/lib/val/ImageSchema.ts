@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import { NanoIdSchema } from "./NanoIdSchema";
-import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "$lib/constants/images";
+import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "#lib/constants/images.js";
 
 /** What can carry an image. */
 export const IMAGE_KINDS = ["account", "artist", "project"] as const;

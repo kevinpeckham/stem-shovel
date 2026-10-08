@@ -2,7 +2,7 @@ import {
 	MAX_TAKE_SECONDS,
 	SILENCE_STOP_SECONDS,
 	TAKE_WARNING_SECONDS,
-} from "$lib/constants/takeLimits";
+} from "#lib/constants/takeLimits.js";
 import { describe, expect, test } from "vite-plus/test";
 import { takeStopNotice, takeStopReason, takeWarningDue } from "./takeStopReason";
 

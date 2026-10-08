@@ -1,4 +1,4 @@
-import type { ArtistKind } from "$lib/val/ArtistKindSchema";
+import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
 
 export const ARTIST_KIND_LABELS: Record<
 	ArtistKind,

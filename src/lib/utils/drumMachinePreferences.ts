@@ -3,9 +3,9 @@ import {
 	DrumProjectSchema,
 	DrumProjectV1Schema,
 	type DrumProject,
-} from "$lib/val/DrumPatternSchema";
+} from "#lib/val/DrumPatternSchema.js";
 import { upgradeDrumProject } from "./upgradeDrumProject";
-import { tempoRatioOf, type TempoRatio } from "$lib/constants/tempo";
+import { tempoRatioOf, type TempoRatio } from "#lib/constants/tempo.js";
 
 /** The project the drum machine last had, remembered per browser; a version 1 one is upgraded on read. */
 const KEY = "stemshovel.drum-machine";

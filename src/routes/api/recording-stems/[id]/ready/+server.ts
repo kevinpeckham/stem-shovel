@@ -1,12 +1,12 @@
-import { requireUser } from "$lib/server/access";
-import { isOurBlobUrl } from "$lib/server/blob";
+import { requireUser } from "#lib/server/access.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
 import {
 	markRecordingStemReady,
 	recordingStemById,
 	reservedPathname,
 	userOwnsRecording,
-} from "$lib/server/data";
-import { MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
+} from "#lib/server/data.js";
+import { MAX_AUDIO_SECONDS } from "#lib/constants/audioBounds.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

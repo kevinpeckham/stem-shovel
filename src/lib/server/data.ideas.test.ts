@@ -1,13 +1,13 @@
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
-import { hashMarkdown } from "$lib/server/markdown";
-import type { IdeaInstruments, LooperSettings } from "$lib/val/IdeaSchema";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
+import { hashMarkdown } from "#lib/server/markdown.js";
+import type { IdeaInstruments, LooperSettings } from "#lib/val/IdeaSchema.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { blob, callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 // The cascade runs for real here: an idea's delete should leave no rows behind.
 const realCascade =
-	await vi.importActual<typeof import("$lib/server/cascade")>("$lib/server/cascade");
+	await vi.importActual<typeof import("#lib/server/cascade.js")>("#lib/server/cascade.js");
 cascade.deleteIdeaRows.mockImplementation(realCascade.deleteIdeaRows);
 
 const {

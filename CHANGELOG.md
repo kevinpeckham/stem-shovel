@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **SvelteKit 3** (`@sveltejs/kit` 3.0.1, `adapter-vercel` 7, `vite-plugin-svelte` 7.3) on **Vite 8** through Vite+ 1.1 (Vitest 5, Oxlint 1.87, Oxfmt 0.72), with Sentry 11. The migration (`sv migrate sveltekit-3`, then by hand): `$lib` is `#lib` with file extensions (`package.json` `imports`); `$app/environment` is `$app/env`; `invalidateAll` is `refreshAll`; the song-doc matcher lives in `src/params.ts` (`defineParams`); `handleError` receives every error sorted by `kind` and takes over `handleValidationError`; `tsconfig.json` extends `$app/tsconfig`; hook types come from `@sveltejs/kit/hooks`; the admin radios use `field.as("radio")`; Sentry's Vite plugin is imported from `@sentry/sveltekit/vite`, its server init drops `registerEsmLoaderHooks` for `dataCollection`, and `experimental.instrumentation` is gone (the file alone is the switch). Vercel Analytics and Speed Insights are injected from their generic entries (`src/lib/observability.ts`) because their `/sveltekit` entries still import the removed `$app/stores`; the root layout reports the route after each navigation. `json()`/`text()` are deprecated in favour of `Response.json()` and stay for now.
+
 ## [0.113.0] - 2026-10-07
 
 ### Changed
@@ -1604,7 +1608,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   them, and every system admin gets an email with the report. New
   `bug_report` table (migration 0025).
 - **System admin and new-account invite codes**: `bun run db:system-admin
-<email>` makes a user the operator; `/admin` (a 404 for anyone else)
+  <email>` makes a user the operator; `/admin` (a 404 for anyone else)
   lists every account with members, songs and storage, every user, and
   issues invite codes that open sign-up without joining an account, so a
   newcomer gets a workspace of their own. Migration 0024 (`user.is_system_admin`,

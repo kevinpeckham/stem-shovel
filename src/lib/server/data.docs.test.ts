@@ -1,13 +1,13 @@
-import { NOTES_STALE_MS } from "$lib/constants/notesStale";
-import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
-import type { Note } from "$lib/audio/chords";
-import { hashMarkdown, renderMarkdown } from "$lib/server/markdown";
+import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
+import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
+import type { Note } from "#lib/audio/chords.js";
+import { hashMarkdown, renderMarkdown } from "#lib/server/markdown.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 // The cascade runs for real here: a page's delete should take its versions.
 const realCascade =
-	await vi.importActual<typeof import("$lib/server/cascade")>("$lib/server/cascade");
+	await vi.importActual<typeof import("#lib/server/cascade.js")>("#lib/server/cascade.js");
 cascade.deleteUserDocRows.mockImplementation(realCascade.deleteUserDocRows);
 
 const {

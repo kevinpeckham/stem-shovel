@@ -4,7 +4,7 @@ import {
 	requireOwnIdea,
 	requireSystemAdmin,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
@@ -26,7 +26,7 @@ import {
 	recordStudioSourceUrl,
 	studioSourceOfPathname,
 	userOwnsRecording,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	blobAuth,
 	isDrumSamplePathname,
@@ -36,14 +36,14 @@ import {
 	isSiteKitPathname,
 	isStudioPathname,
 	recordingAccess,
-} from "$lib/server/blob";
-import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
-import { accessOfPathname } from "$lib/server/relocate";
-import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
-import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "$lib/constants/fileFormats";
-import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "$lib/constants/notationFormats";
-import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+} from "#lib/server/blob.js";
+import { DRUM_SAMPLE_MAX_BYTES } from "#lib/constants/drumKits.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
+import { MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
+import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "#lib/constants/fileFormats.js";
+import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "#lib/constants/notationFormats.js";
+import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 import { error, json } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";

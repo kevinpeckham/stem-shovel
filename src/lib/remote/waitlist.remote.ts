@@ -1,10 +1,10 @@
 import { form, getRequestEvent } from "$app/server";
-import { background } from "$lib/server/background";
-import { joinWaitlist, setWaitlistPrefs } from "$lib/server/data";
-import { sendWaitlistConfirmEmail } from "$lib/server/email";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { waitlistManageUrl } from "$lib/utils/waitlistManageUrl";
-import { WaitlistJoinSchema, WaitlistPrefsSchema } from "$lib/val/WaitlistSchema";
+import { background } from "#lib/server/background.js";
+import { joinWaitlist, setWaitlistPrefs } from "#lib/server/data.js";
+import { sendWaitlistConfirmEmail } from "#lib/server/email.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { waitlistManageUrl } from "#lib/utils/waitlistManageUrl.js";
+import { WaitlistJoinSchema, WaitlistPrefsSchema } from "#lib/val/WaitlistSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

@@ -4,6 +4,10 @@
 	"private": true,
 	"license": "Apache-2.0",
 	"type": "module",
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
+	},
 	"scripts": {
 		"dev": "vp dev",
 		"build": "vp build",
@@ -50,8 +54,8 @@
 		"@kevinpeckham/barkdown": "0.1.1",
 		"@kevinpeckham/woof-editor": "0.2.1",
 		"@libsql/client": "0.18.0",
-		"@sentry/node": "10.75.0",
-		"@sentry/sveltekit": "^10",
+		"@sentry/node": "11.5.0",
+		"@sentry/sveltekit": "^11.5.0",
 		"@spotify/basic-pitch": "^1.0.1",
 		"@varlock/1password-plugin": "^2.0.4",
 		"@vercel/analytics": "^2.0.1",
@@ -81,9 +85,9 @@
 	"devDependencies": {
 		"@iconify-json/ph": "^1.2.2",
 		"@playwright/test": "1.63.0",
-		"@sveltejs/adapter-vercel": "^6.3.4",
-		"@sveltejs/kit": "^2.63.0",
-		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@sveltejs/adapter-vercel": "^7.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@testing-library/jest-dom": "^7.0.1",
 		"@testing-library/svelte": "^5.4.2",
 		"@testing-library/user-event": "^14.6.7",
@@ -94,22 +98,22 @@
 		"@unocss/preset-wind4": "^66.10.2",
 		"@unocss/reset": "^66.10.2",
 		"@varlock/vite-integration": "1.5.1",
-		"@vitest/coverage-v8": "4.1.11",
+		"@vitest/coverage-v8": "5.0.3",
 		"cspell": "^10.3.3",
 		"devalue": "^5.9.2",
 		"drizzle-kit": "0.31.10",
 		"fallow": "3.25.0",
 		"jsdom": "^30.0.1",
 		"playwright": "^1.63.0",
-		"svelte": "^5.56.1",
-		"svelte-check": "^4.6.0",
+		"svelte": "^5.57.1",
+		"svelte-check": "^4.7.5",
 		"typescript": "^6.0.3",
 		"unocss": "^66.10.2",
-		"vite": "npm:@voidzero-dev/vite-plus-core@0.3.1",
-		"vite-plus": "0.3.1"
+		"vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+		"vite-plus": "1.1.0"
 	},
 	"overrides": {
-		"vite": "npm:@voidzero-dev/vite-plus-core@0.3.1"
+		"vite": "npm:@voidzero-dev/vite-plus-core@1.1.0"
 	},
 	"packageManager": "bun@1.4.2",
 	"trustedDependencies": [

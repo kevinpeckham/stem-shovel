@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { deleteUserDoc, updateUserDoc } from "$lib/remote/userDocs.remote";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { deleteUserDoc, updateUserDoc } from "#lib/remote/userDocs.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	let settingsPanel = $state<HTMLDivElement | null>(null);

@@ -1,15 +1,15 @@
 <script lang="ts">
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import {
 		commentHistory,
 		docHistory,
 		restoreCommentVersion,
 		restoreDocVersion,
-	} from "$lib/remote/history.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatDate } from "$lib/utils/formatDate";
-	import type { SongDocSaveKind } from "$lib/val/SongDocKindSchema";
+	} from "#lib/remote/history.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 
 	/**
 	 * The history of a song document or a comment (docs/data-model.md,

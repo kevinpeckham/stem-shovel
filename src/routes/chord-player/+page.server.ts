@@ -1,14 +1,14 @@
-import { aiAvailable } from "$lib/server/aiDetect";
-import { publicBlobUrl } from "$lib/server/blob";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { publicBlobUrl } from "#lib/server/blob.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import {
 	listChordStyles,
 	listPianoPresets,
 	listProgressions,
 	sitePianoPresets,
-} from "$lib/server/data";
-import { pageCopy } from "$lib/server/pageCopy";
-import { realMemberships } from "$lib/utils/actingMemberships";
+} from "#lib/server/data.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/chord-player-page.md?raw";
 import type { PageServerLoad } from "./$types";
 

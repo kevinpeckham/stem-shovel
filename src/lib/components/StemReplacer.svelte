@@ -5,20 +5,20 @@
 		extractFeatures,
 		type Detection,
 		type Features,
-	} from "$lib/audio/analysis";
-	import { invalidateAll } from "$app/navigation";
-	import { removeStems } from "$lib/remote/songs.remote";
-	import type { UploadJob } from "$lib/components/StemUploader.svelte";
-	import { formatBytes } from "$lib/utils/formatBytes";
+	} from "#lib/audio/analysis.js";
+	import { refreshAll } from "$app/navigation";
+	import { removeStems } from "#lib/remote/songs.remote.js";
+	import type { UploadJob } from "#lib/components/StemUploader.svelte";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import {
 		MAX_STEMS_PER_SONG,
 		STEM_ACCEPT,
 		STEM_FORMAT_LIST,
 		STEM_MAX_BYTES,
-	} from "$lib/constants/stemFormats";
-	import { stemContentType } from "$lib/utils/stemContentType";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { postJson, type Reservation, uploadStemFile } from "$lib/upload";
+	} from "#lib/constants/stemFormats.js";
+	import { stemContentType } from "#lib/utils/stemContentType.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { postJson, type Reservation, uploadStemFile } from "#lib/upload.js";
 
 	/**
 	 * "Replace Stems": pick the new set of files for a song. Each file is
@@ -151,7 +151,7 @@
 		const combined = combineFeatures(features);
 		if (combined && onanalysis) onanalysis(analyse(combined));
 		if (failed === 0) jobs = [];
-		await invalidateAll();
+		await refreshAll();
 		if (failed < plan.length) onuploaded?.();
 	}
 </script>

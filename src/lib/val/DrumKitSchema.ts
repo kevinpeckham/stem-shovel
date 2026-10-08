@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { DRUM_VOICE_IDS } from "$lib/constants/drumMachine";
+import { DRUM_VOICE_IDS } from "#lib/constants/drumMachine.js";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 

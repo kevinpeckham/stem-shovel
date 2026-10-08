@@ -1,12 +1,16 @@
-import { DRUM_STEP_CHOICES, type DrumSteps, DEFAULT_DRUM_PANS } from "$lib/constants/drumMachine";
-import type { DrumPreset } from "$lib/constants/drumPresets";
+import {
+	DRUM_STEP_CHOICES,
+	type DrumSteps,
+	DEFAULT_DRUM_PANS,
+} from "#lib/constants/drumMachine.js";
+import type { DrumPreset } from "#lib/constants/drumPresets.js";
 import {
 	DEFAULT_DRUM_FX,
 	DEFAULT_DRUM_SENDS,
 	DEFAULT_HUMANIZE,
 	DRUM_USUAL_LEVEL,
-} from "$lib/constants/drumMachine";
-import type { DrumPattern, DrumProject } from "$lib/val/DrumPatternSchema";
+} from "#lib/constants/drumMachine.js";
+import type { DrumPattern, DrumProject } from "#lib/val/DrumPatternSchema.js";
 
 const CELL: Record<string, number> = { ".": 0, o: 1, x: 2, X: 3 };
 

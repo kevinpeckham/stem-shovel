@@ -1,4 +1,4 @@
-import { SUBFRAMES } from "$lib/constants/frameRates";
+import { SUBFRAMES } from "#lib/constants/frameRates.js";
 
 /** "mm:ss:ff.sub" (or with hours) → seconds; null if not timecode. */
 export function parseTimecode(text: string, fps: number): number | null {

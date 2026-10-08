@@ -3,7 +3,7 @@ import { asSignedOut } from "../../../../tests/helpers/fakeRequestEvent";
 import { callRoute } from "../../../../tests/helpers/fakeApiEvent";
 
 const run = vi.hoisted(() => vi.fn());
-vi.mock("$lib/server/db", () => ({ db: { run } }));
+vi.mock("#lib/server/db/index.js", () => ({ db: { run } }));
 
 const { GET } = await import("./+server");
 

@@ -1,8 +1,8 @@
 import { form, getRequestEvent } from "$app/server";
-import { accountOfArtist, accountOfProject, memberOf, requireEditor } from "$lib/server/access";
-import { deleteBlobs, imagePathname, putBlob } from "$lib/server/blob";
-import { projectIsPrivate, setImage as store } from "$lib/server/data";
-import { ImageRemoveSchema, ImageSetSchema, type ImageKind } from "$lib/val/ImageSchema";
+import { accountOfArtist, accountOfProject, memberOf, requireEditor } from "#lib/server/access.js";
+import { deleteBlobs, imagePathname, putBlob } from "#lib/server/blob.js";
+import { projectIsPrivate, setImage as store } from "#lib/server/data.js";
+import { ImageRemoveSchema, ImageSetSchema, type ImageKind } from "#lib/val/ImageSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

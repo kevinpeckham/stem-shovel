@@ -1,11 +1,11 @@
-import { requireMember, requireSignedIn } from "$lib/server/access";
+import { requireMember, requireSignedIn } from "#lib/server/access.js";
 import {
 	accountDefaultArtist,
 	accountUsage,
 	listArtists,
 	listInviteCodes,
 	pendingInvitations,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ parent, locals, url }) => {

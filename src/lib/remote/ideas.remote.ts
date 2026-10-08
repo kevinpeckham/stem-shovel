@@ -1,5 +1,5 @@
 import { command, form, getRequestEvent, query } from "$app/server";
-import { accountOfIdea, requireEditor, requireUser } from "$lib/server/access";
+import { accountOfIdea, requireEditor, requireUser } from "#lib/server/access.js";
 import {
 	createIdea as create,
 	deleteIdea as remove,
@@ -9,17 +9,17 @@ import {
 	setIdeaKind as changeKind,
 	setIdeaNotes,
 	userOwnsIdea,
-} from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
+} from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
 import {
 	IdeaCreateSchema,
 	IdeaInstrumentsSchema,
 	IdeaKindChangeSchema,
 	IdeaNotesSchema,
 	IdeaRenameSchema,
-} from "$lib/val/IdeaSchema";
-import { IdSchema } from "$lib/val/SongSchema";
-import { NanoIdSchema } from "$lib/val/NanoIdSchema";
+} from "#lib/val/IdeaSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
+import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 

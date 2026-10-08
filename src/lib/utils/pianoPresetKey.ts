@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { PianoPresetDataSchema, type PianoPresetData } from "$lib/val/PianoPresetSchema";
+import { PianoPresetDataSchema, type PianoPresetData } from "#lib/val/PianoPresetSchema.js";
 
 /**
  * A preset's settings as one comparable string, so the piano can tell which

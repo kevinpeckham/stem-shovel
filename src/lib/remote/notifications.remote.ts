@@ -1,7 +1,7 @@
 import { command, form, getRequestEvent } from "$app/server";
-import { requireUser } from "$lib/server/access";
-import { markAllRead, markRead, savePrefs } from "$lib/server/notifications";
-import { NotificationIdSchema, NotificationPreferenceSchema } from "$lib/val/NotificationSchema";
+import { requireUser } from "#lib/server/access.js";
+import { markAllRead, markRead, savePrefs } from "#lib/server/notifications.js";
+import { NotificationIdSchema, NotificationPreferenceSchema } from "#lib/val/NotificationSchema.js";
 import * as v from "valibot";
 
 /** The inbox and its settings (docs/notifications.md); everything is the caller's own. */

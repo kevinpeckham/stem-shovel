@@ -1,6 +1,6 @@
-import { isEditor, memberOf, requireSystemAdmin, requireUser } from "$lib/server/access";
-import { isOurBlobUrl } from "$lib/server/blob";
-import { drumSampleOwner, markDrumSampleReady } from "$lib/server/data";
+import { isEditor, memberOf, requireSystemAdmin, requireUser } from "#lib/server/access.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
+import { drumSampleOwner, markDrumSampleReady } from "#lib/server/data.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

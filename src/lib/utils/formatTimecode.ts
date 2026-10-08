@@ -1,4 +1,4 @@
-import { SUBFRAMES } from "$lib/constants/frameRates";
+import { SUBFRAMES } from "#lib/constants/frameRates.js";
 
 /**
  * Logic's timecode: [hh:]mm:ss:ff.sub — frames at the song's frame rate and

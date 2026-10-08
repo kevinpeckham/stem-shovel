@@ -11,7 +11,7 @@ import { aiDetect, rateLimited, resetRemoteMocks } from "../../../tests/helpers/
 
 /** Text-to-Progression is open to visitors while the gateway is configured, limited per user or address. */
 const remote = await import("./textToChords.remote");
-const { textToChords } = await import("$lib/server/textToChords");
+const { textToChords } = await import("#lib/server/textToChords.js");
 
 const input = { prompt: "a wistful ballad", beatsPerBar: 4, key: 0, style: "" };
 

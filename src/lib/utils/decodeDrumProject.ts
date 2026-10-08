@@ -10,12 +10,12 @@ import {
 	DRUM_SWING_GRIDS,
 	DRUM_VOICE_IDS,
 	DRUM_WAH_BAR_CHOICES,
-} from "$lib/constants/drumMachine";
+} from "#lib/constants/drumMachine.js";
 import {
 	DrumProjectSchema,
 	DrumProjectV1Schema,
 	type DrumProject,
-} from "$lib/val/DrumPatternSchema";
+} from "#lib/val/DrumPatternSchema.js";
 import { BitReader } from "./bitReader";
 import { upgradeDrumProject } from "./upgradeDrumProject";
 

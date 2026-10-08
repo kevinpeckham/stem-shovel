@@ -1,4 +1,4 @@
-import type { DrumVoiceId } from "$lib/constants/drumMachine";
+import type { DrumVoiceId } from "#lib/constants/drumMachine.js";
 
 /** A sounding hit: stop it early (a closed hat choking an open one). */
 export interface DrumHit {

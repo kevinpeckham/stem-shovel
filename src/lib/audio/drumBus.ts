@@ -1,4 +1,4 @@
-import type { DrumFx } from "$lib/val/DrumPatternSchema";
+import type { DrumFx } from "#lib/val/DrumPatternSchema.js";
 import { createDelayStage, createFuzzStage, createToneStage, createWahStage } from "./fxStages";
 
 /**

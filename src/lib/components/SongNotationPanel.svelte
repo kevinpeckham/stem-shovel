@@ -1,33 +1,33 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import { invalidateAll } from "$app/navigation";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import { refreshAll } from "$app/navigation";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import {
 		MAX_NOTATION_PER_SONG,
 		NOTATION_ACCEPT,
 		NOTATION_EXTENSIONS,
 		NOTATION_MAX_BYTES,
 		notationFormatOf,
-	} from "$lib/constants/notationFormats";
-	import { FILE_MAX_BYTES, MAX_FILES_PER_SONG } from "$lib/constants/fileFormats";
-	import { deleteNotation, updateNotation } from "$lib/remote/notation.remote";
-	import { deleteFile, updateFile } from "$lib/remote/files.remote";
-	import type { PanelFile } from "$lib/components/SongFilesPanel.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { notationThumbnail } from "$lib/utils/notationThumbnail";
-	import { renderNotation } from "$lib/utils/renderNotation";
-	import { sanitizeSvg } from "$lib/utils/sanitizeSvg";
-	import { shortenShareLink } from "$lib/utils/shortenShareLink";
+	} from "#lib/constants/notationFormats.js";
+	import { FILE_MAX_BYTES, MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
+	import { deleteNotation, updateNotation } from "#lib/remote/notation.remote.js";
+	import { deleteFile, updateFile } from "#lib/remote/files.remote.js";
+	import type { PanelFile } from "#lib/components/SongFilesPanel.svelte";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { notationThumbnail } from "#lib/utils/notationThumbnail.js";
+	import { renderNotation } from "#lib/utils/renderNotation.js";
+	import { sanitizeSvg } from "#lib/utils/sanitizeSvg.js";
+	import { shortenShareLink } from "#lib/utils/shortenShareLink.js";
 	import {
 		postJson,
 		uploadFile,
 		uploadNotationFile,
 		type FileReservation,
 		type NotationReservation,
-	} from "$lib/upload";
+	} from "#lib/upload.js";
 	import type { Attachment } from "svelte/attachments";
 
 	/**
@@ -164,7 +164,7 @@
 				jobs[i].error = errorMessage(e);
 			}
 		}
-		await invalidateAll();
+		await refreshAll();
 		busy = false;
 		if (jobs.every((j) => !j.error)) jobs = [];
 	}
@@ -186,7 +186,7 @@
 			if (t.kind === "xml") await updateNotation(words);
 			else await updateFile(words);
 			editing = null;
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not save: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
@@ -200,7 +200,7 @@
 			else await deleteFile({ id: t.row.id });
 			notify(`${nameOf(t)} removed`);
 			if (viewing?.row.id === t.row.id) viewing = null;
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -210,7 +210,7 @@
 		try {
 			await updateFile({ id: p.id, title: p.title, description: p.description, isNotation: false });
 			notify(`${p.title || p.filename} is a plain PDF again`);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
 		}

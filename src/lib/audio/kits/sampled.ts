@@ -1,4 +1,4 @@
-import { DRUM_VOICE_IDS, type DrumVoiceId } from "$lib/constants/drumMachine";
+import { DRUM_VOICE_IDS, type DrumVoiceId } from "#lib/constants/drumMachine.js";
 import type { DrumHit, DrumKit } from "./types";
 
 /**

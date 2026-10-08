@@ -1,5 +1,5 @@
-import type { DrumSteps } from "$lib/constants/drumMachine";
-import type { DrumPattern } from "$lib/val/DrumPatternSchema";
+import type { DrumSteps } from "#lib/constants/drumMachine.js";
+import type { DrumPattern } from "#lib/val/DrumPatternSchema.js";
 
 /**
  * The same pattern with another number of steps: cells that still fit are

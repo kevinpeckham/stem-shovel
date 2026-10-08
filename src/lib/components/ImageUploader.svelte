@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { removeImage, setImage } from "$lib/remote/images.remote";
-	import { resizeImage } from "$lib/utils/resizeImage";
-	import { IMAGE_ACCEPT } from "$lib/constants/images";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import type { ImageKind } from "$lib/val/ImageSchema";
+	import { removeImage, setImage } from "#lib/remote/images.remote.js";
+	import { resizeImage } from "#lib/utils/resizeImage.js";
+	import { IMAGE_ACCEPT } from "#lib/constants/images.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import type { ImageKind } from "#lib/val/ImageSchema.js";
 
 	/**
 	 * The picture of an account, an artist or a song: the current one (or a

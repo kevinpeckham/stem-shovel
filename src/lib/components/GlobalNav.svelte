@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { signOut } from "$lib/remote/auth.remote";
+	import { signOut } from "#lib/remote/auth.remote.js";
 	import { page } from "$app/state";
-	import { default as wordmark } from "$lib/assets/stem-shovel-wordmark.svg";
+	import { default as wordmark } from "#lib/assets/stem-shovel-wordmark.svg";
 	import TuningForkIcon from "./TuningForkIcon.svelte";
 	import IconDrumKit from "./IconDrumKit.svelte";
 

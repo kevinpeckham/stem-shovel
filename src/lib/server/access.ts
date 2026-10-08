@@ -1,7 +1,7 @@
 import { getRequestEvent } from "$app/server";
-import { background } from "$lib/server/background";
-import { isRecordingPathname } from "$lib/server/blob";
-import { db, schema } from "$lib/server/db";
+import { background } from "#lib/server/background.js";
+import { isRecordingPathname } from "#lib/server/blob.js";
+import { db, schema } from "#lib/server/db/index.js";
 import {
 	logAudit,
 	openShareLinks,
@@ -10,8 +10,13 @@ import {
 	projectRolesOf,
 	songViewRow,
 	userOwnsIdea,
-} from "$lib/server/data";
-import { canViewSong, isAccountAdmin, shareCodesFrom, type Viewer } from "$lib/server/viewAccess";
+} from "#lib/server/data.js";
+import {
+	canViewSong,
+	isAccountAdmin,
+	shareCodesFrom,
+	type Viewer,
+} from "#lib/server/viewAccess.js";
 import { error, redirect } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 

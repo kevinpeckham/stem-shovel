@@ -1,6 +1,6 @@
 import { form, getRequestEvent } from "$app/server";
-import { requireSystemAdmin, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
+import { requireSystemAdmin, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
 import {
 	createBugReport,
 	deleteBugReport as removeReport,
@@ -10,12 +10,12 @@ import {
 	setBugReportStatus,
 	systemAdminEmails,
 	voteOnBugReport,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	sendBugReportEmail,
 	sendFeatureShippedEmail,
 	sendReportResponseEmail,
-} from "$lib/server/email";
+} from "#lib/server/email.js";
 import {
 	BugReportCreateSchema,
 	BugReportPrioritySchema,
@@ -23,9 +23,9 @@ import {
 	BugReportStatusSchema,
 	BugReportApprovalSchema,
 	BugReportVoteSchema,
-} from "$lib/val/BugReportSchema";
-import { IdSchema } from "$lib/val/SongSchema";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
+} from "#lib/val/BugReportSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
 
 /** Any signed-in user sends a bug report or a feature request (`kind`); the page and browser come from the form's hidden fields. */

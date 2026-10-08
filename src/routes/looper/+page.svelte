@@ -1,20 +1,20 @@
 <script lang="ts">
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import DrumMachine from "$lib/components/DrumMachine.svelte";
-	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import Metronome from "$lib/components/Metronome.svelte";
-	import Piano from "$lib/components/Piano.svelte";
-	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
-	import SourceButton from "$lib/components/SourceButton.svelte";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { chordPiano, piano } from "$lib/audio/piano.svelte";
-	import { inputSources, type ChannelMode, type InputSource } from "$lib/audio/inputs.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import Metronome from "#lib/components/Metronome.svelte";
+	import Piano from "#lib/components/Piano.svelte";
+	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
+	import SourceButton from "#lib/components/SourceButton.svelte";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
+	import { inputSources, type ChannelMode, type InputSource } from "#lib/audio/inputs.svelte.js";
 	import {
 		LOOP_BARS,
 		LOOP_SOURCES,
@@ -24,20 +24,20 @@
 		looper,
 		type LoopBars,
 		type LoopSource,
-	} from "$lib/audio/looper.svelte";
-	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
-	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
+	} from "#lib/audio/looper.svelte.js";
+	import { TakeQueue } from "#lib/audio/takeQueue.svelte.js";
+	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
 	import {
 		createIdea,
 		renameIdea,
 		saveIdeaInstruments,
 		setIdeaKind,
-	} from "$lib/remote/ideas.remote";
-	import { deleteTake } from "$lib/remote/recordings.remote";
-	import { loopSources } from "$lib/remote/looper.remote";
-	import { invalidateAll } from "$app/navigation";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	} from "#lib/remote/ideas.remote.js";
+	import { deleteTake } from "#lib/remote/recordings.remote.js";
+	import { loopSources } from "#lib/remote/looper.remote.js";
+	import { refreshAll } from "$app/navigation";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { Attachment } from "svelte/attachments";
 	import { onMount } from "svelte";
 
@@ -239,7 +239,7 @@
 				inRecorder: looper.inRecorder,
 			});
 			notify(`Loop saved: “${looper.title}”`);
-			await invalidateAll();
+			await refreshAll();
 			if (exportAfterSave) {
 				exportAfterSave = false;
 				await exportLoop();
@@ -324,7 +324,7 @@
 				inRecorder: true,
 			});
 			notify(`“${looper.title}” is now in the Idea Recorder`);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not export the loop: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -897,7 +897,7 @@
 							onchange={(m) => (notes = m)}
 							onsaved={async ({ ideaDeleted }) => {
 								if (ideaDeleted) looper.detach();
-								await invalidateAll();
+								await refreshAll();
 							}}
 						/>
 					{/key}

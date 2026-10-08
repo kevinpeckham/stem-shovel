@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import ImageUploader from "$lib/components/ImageUploader.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { CREDIT_ROLE_LABELS } from "$lib/constants/creditRoles";
-	import { ARTIST_KIND_LABELS } from "$lib/constants/artistKinds";
-	import { ARTIST_KINDS } from "$lib/val/ArtistKindSchema";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import ImageUploader from "#lib/components/ImageUploader.svelte";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { CREDIT_ROLE_LABELS } from "#lib/constants/creditRoles.js";
+	import { ARTIST_KIND_LABELS } from "#lib/constants/artistKinds.js";
+	import { ARTIST_KINDS } from "#lib/val/ArtistKindSchema.js";
 	import {
 		addArtistMember,
 		deleteArtist,
@@ -13,7 +13,7 @@
 		inviteArtistMember,
 		removeArtistMember,
 		updateArtist,
-	} from "$lib/remote/artists.remote";
+	} from "#lib/remote/artists.remote.js";
 
 	let { data } = $props();
 	const fields = updateArtist.fields;

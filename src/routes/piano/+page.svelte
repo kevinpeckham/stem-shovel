@@ -1,9 +1,9 @@
 <script lang="ts">
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import Piano from "$lib/components/Piano.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import Piano from "#lib/components/Piano.svelte";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { piano } from "#lib/audio/piano.svelte.js";
 
 	let { data } = $props();
 	// Dev only: the engines on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).

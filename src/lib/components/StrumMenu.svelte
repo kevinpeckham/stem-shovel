@@ -3,17 +3,17 @@
 		chordPlayer,
 		type ChordAccent,
 		type StrumDirection,
-	} from "$lib/audio/chordPlayer.svelte";
+	} from "#lib/audio/chordPlayer.svelte.js";
 	import {
 		AUTO_STRUM_PATTERNS,
 		AUTO_STRUM_SPEEDS,
 		type AutoStrumPatternId,
 		type AutoStrumSpeed,
-	} from "$lib/constants/autoStrum";
-	import { STRUMS, type Strum } from "$lib/constants/circleOfFifths";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
+	} from "#lib/constants/autoStrum.js";
+	import { STRUMS, type Strum } from "#lib/constants/circleOfFifths.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 
 	/**
 	 * The chord player's strum settings (docs/chord-player.md, "Strum"), the

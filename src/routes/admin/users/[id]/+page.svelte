@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatTime } from "$lib/utils/formatTime";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
 
 	let { data } = $props();
 	const u = $derived(data.user);

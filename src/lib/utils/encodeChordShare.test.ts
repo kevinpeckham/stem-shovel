@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { decodeChordShare } from "./decodeChordShare";
 import { encodeChordShare } from "./encodeChordShare";
-import type { ChordShare } from "$lib/val/ChordShareSchema";
+import type { ChordShare } from "#lib/val/ChordShareSchema.js";
 
 const chords: ChordShare["chords"] = {
 	mode: "chords",

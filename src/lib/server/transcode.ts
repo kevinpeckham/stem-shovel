@@ -9,13 +9,13 @@ import {
 	finishPlayback,
 	finishRecordingPlayback,
 	replaceRecordingSource,
-} from "$lib/server/data";
-import { accessOfUrl } from "$lib/utils/blobAccess";
-import { silenceBounds, type SilenceBounds } from "$lib/utils/silenceBounds";
-import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "$lib/constants/trimSilence";
-import { deleteBlobs, playbackPathname, putBlob, readBlob } from "$lib/server/blob";
-import { ensureOriginalMix } from "$lib/server/mix";
-import { ensureSongNotes } from "$lib/server/notes";
+} from "#lib/server/data.js";
+import { accessOfUrl } from "#lib/utils/blobAccess.js";
+import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
+import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
+import { deleteBlobs, playbackPathname, putBlob, readBlob } from "#lib/server/blob.js";
+import { ensureOriginalMix } from "#lib/server/mix.js";
+import { ensureSongNotes } from "#lib/server/notes.js";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";

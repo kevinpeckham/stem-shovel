@@ -1,6 +1,6 @@
-import { requireSystemAdmin } from "$lib/server/access";
-import { PAGE_COPY } from "$lib/constants/pageCopy";
-import { getUserDoc } from "$lib/server/data";
+import { requireSystemAdmin } from "#lib/server/access.js";
+import { PAGE_COPY } from "#lib/constants/pageCopy.js";
+import { getUserDoc } from "#lib/server/data.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

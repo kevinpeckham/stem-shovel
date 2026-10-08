@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { manageWaitlist } from "$lib/remote/admin.remote";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatInviteCode } from "$lib/utils/formatInviteCode";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { manageWaitlist } from "#lib/remote/admin.remote.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatInviteCode } from "#lib/utils/formatInviteCode.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	let counts = $derived({

@@ -1,5 +1,5 @@
-import { rateLimitedInMemory } from "$lib/server/rateLimit";
-import { redisConfigured, redisPipeline } from "$lib/server/redis";
+import { rateLimitedInMemory } from "#lib/server/rateLimit.js";
+import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
 
 /**
  * Better Auth's rate-limit storage on Redis (src/lib/server/redis.ts), so

@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
-import { DRUM_GENERATOR_STYLES } from "$lib/constants/drumGenerator";
+import { DRUM_GENERATOR_STYLES } from "#lib/constants/drumGenerator.js";
 import {
 	DRUM_BPM_MAX,
 	DRUM_BPM_MIN,
 	DRUM_METERS,
 	MAX_DRUM_ROWS,
 	drumStepsFor,
-} from "$lib/constants/drumMachine";
-import { DrumPatternSchema, type DrumPattern } from "$lib/val/DrumPatternSchema";
+} from "#lib/constants/drumMachine.js";
+import { DrumPatternSchema, type DrumPattern } from "#lib/val/DrumPatternSchema.js";
 import { emptyDrumPattern } from "./emptyDrumPattern";
 import { generateDrumPattern } from "./generateDrumPattern";
 import { resizeDrumPattern } from "./resizeDrumPattern";

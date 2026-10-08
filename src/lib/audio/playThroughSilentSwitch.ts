@@ -1,5 +1,5 @@
-import { audioSession } from "$lib/utils/audioSession";
-import { isIOS } from "$lib/utils/isIOS";
+import { audioSession } from "#lib/utils/audioSession.js";
+import { isIOS } from "#lib/utils/isIOS.js";
 
 /**
  * iOS silences the Web Audio API under the ring/silent switch but lets media

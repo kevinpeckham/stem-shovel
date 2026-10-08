@@ -173,7 +173,7 @@ fields are `$state`, so components read `engine.position` directly.
   a chart, lyrics or notes document (its sanitised HTML) and, when
   `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
   remote form, so the document is edited without leaving the song; a save
-  re-renders through `invalidateAll()`. The form's fourth kind, `mynotes`,
+  re-renders through `refreshAll()`. The form's fourth kind, `mynotes`,
   is the signed-in person's private note on the song (`song_user_note`,
   loaded as the page's `myNote`): any viewer of the song keeps one, and the
   save answers with the rendered `html` as well as the version. In the panel the editor runs in
@@ -213,7 +213,7 @@ fields are `$state`, so components read `engine.position` directly.
   loaded by stem id + url: a refreshed load with the same stems relabels in
   place, a removal drops one stem, anything else is a full load.
 - **Keyboard.** Space is the transport from anywhere except text entry
-  (`$lib/keys.ts` decides what counts as text entry; the project playlist
+  (`#lib/keys.ts` decides what counts as text entry; the project playlist
   player uses the same rule; buttons activate with Enter); Home returns to the start; M / S toggle
   mute / solo for the focused row; arrows seek on a focused waveform.
 - **Peaks**: `lib/audio/peaks.ts` reduces a buffer to 1024 max-abs bins; the
@@ -251,7 +251,7 @@ looper agree on the home page, the recorder and the looper page alike.
   Switching following off keeps the tempo the beat was playing at as its
   own.
 - **The chord player's arpeggiator** steps at `metronome.bpm ×
-chordPlayer.tempoRatio` (the Tempo select in its menu; presets and demo
+  chordPlayer.tempoRatio` (the Tempo select in its menu; presets and demo
   setups carry the ratio); the pad plays at the session tempo.
 - **The looper** owns the bars: while unlocked its tempo follows the
   session and its own controls set the session; with layers the page's

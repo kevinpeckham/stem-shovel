@@ -67,7 +67,7 @@ environment in.
 - Framework preset SvelteKit, Node 24, `main` deploys to production.
 - Vercel's bundled Bun lags and cannot read the v2 lock file Bun 1.4 writes,
   so `vercel.json` sets `installCommand` to `npx bun@<version> install
---frozen-lockfile`; keep that version in step with `packageManager`.
+  --frozen-lockfile`; keep that version in step with `packageManager`.
 - **Server dependencies must be ESM.** Vercel's Node 24 function launcher
   (`/opt/rust/nodejs.js`) has refused CommonJS `require()` of an ES module at
   cold start with `ERR_REQUIRE_ESM`, taking every route down while local Node
@@ -229,15 +229,15 @@ session, the pages or the API.
 
 ## Sentry
 
-`@sentry/sveltekit` 10 in the browser (set up with Sentry's wizard, then
+`@sentry/sveltekit` 11 in the browser (set up with Sentry's wizard, then
 trimmed): `src/hooks.client.ts` initialises the browser SDK. On the server
 it is **`@sentry/node`** (same version, a direct dependency): the server
-`Sentry.init` lives in `src/instrumentation.server.ts`, which SvelteKit
-loads before the app because `experimental.instrumentation.server` is on in
-`vite.config.ts` (adapter-vercel supports it), with
-`registerEsmLoaderHooks: false` and `tracesSampleRate: 0` (errors only), and
-`src/hooks.server.ts` exports a `handleError` that captures every unexpected
-error (never a 404) with the route as a tag. Why not the SvelteKit server
+`Sentry.init` lives in `src/instrumentation.server.ts`, which SvelteKit 3
+loads before the app on its own (the file's existence is the switch), with
+`tracesSampleRate: 0` (errors only) and every `dataCollection` category off,
+and `src/hooks.server.ts` exports a `handleError` that captures every
+_unknown_ error (SvelteKit 3 passes app errors, its own 404s and validation
+errors through the same hook, sorted by `kind`) with the route as a tag. Why not the SvelteKit server
 entry: it re-exports the Vite plugin, and the loader hook slows every import
 (see "Cold starts and the jobs function"). The DSN is a public value and is
 written inline in both files; the project is `lightning-jar / stem-shovel`.

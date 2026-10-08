@@ -1,4 +1,4 @@
-import type { ChordQuality, ChordVoicing, SeventhType } from "$lib/constants/circleOfFifths";
+import type { ChordQuality, ChordVoicing, SeventhType } from "#lib/constants/circleOfFifths.js";
 
 /**
  * A chord as MIDI notes for the piano engine (docs/chord-player.md): the

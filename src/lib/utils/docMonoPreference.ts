@@ -1,4 +1,4 @@
-import type { SongDocKind } from "$lib/val/SongDocKindSchema";
+import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
 
 /**
  * Whether the reader wants a document kind in monospace (chord grids line up)

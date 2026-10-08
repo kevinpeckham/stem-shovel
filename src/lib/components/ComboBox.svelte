@@ -4,7 +4,7 @@
 	 * opens a listbox popover. Keyboard support: arrows, Home, End, Enter,
 	 * Space, Escape. ARIA combobox + listbox pattern.
 	 */
-	import { placePopover } from "$lib/utils/anchorFallback";
+	import { placePopover } from "#lib/utils/anchorFallback.js";
 
 	interface ComboBoxOption {
 		value: T;

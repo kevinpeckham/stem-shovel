@@ -1,4 +1,4 @@
-import { accessOfUrl, type BlobAccess, blobPathname } from "$lib/utils/blobAccess";
+import { accessOfUrl, type BlobAccess, blobPathname } from "#lib/utils/blobAccess.js";
 import { del, get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { ENV } from "varlock/env";
 

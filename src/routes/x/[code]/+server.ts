@@ -1,4 +1,4 @@
-import { resolveShortLink } from "$lib/server/shortLinks";
+import { resolveShortLink } from "#lib/server/shortLinks.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

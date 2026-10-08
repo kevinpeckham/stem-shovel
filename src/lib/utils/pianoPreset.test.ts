@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
-import { PianoPresetDataSchema } from "$lib/val/PianoPresetSchema";
+import { PianoPresetDataSchema } from "#lib/val/PianoPresetSchema.js";
 import { decodePianoPreset } from "./decodePianoPreset";
 import { encodePianoPreset } from "./encodePianoPreset";
 import { pianoPresetKey } from "./pianoPresetKey";

@@ -1,7 +1,7 @@
-import { audioSession } from "$lib/utils/audioSession";
+import { audioSession } from "#lib/utils/audioSession.js";
 import { inputSources, outputLatencyMs, type InputSource } from "./inputs.svelte";
-import { encodeWav24 } from "$lib/utils/encodeWav24";
-import { tapTempo } from "$lib/utils/tapTempo";
+import { encodeWav24 } from "#lib/utils/encodeWav24.js";
+import { tapTempo } from "#lib/utils/tapTempo.js";
 import { drumMachine } from "./drumMachine.svelte";
 import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
 import { metronome } from "./metronome.svelte";

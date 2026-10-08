@@ -1,12 +1,12 @@
 <script lang="ts">
-	import SongDocPanel from "$lib/components/SongDocPanel.svelte";
-	import type { DemoComment } from "$lib/constants/demoComments";
-	import type { SongView } from "$lib/server/songView";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { renderPreview } from "$lib/remote/markdown.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
+	import type { DemoComment } from "#lib/constants/demoComments.js";
+	import type { SongView } from "#lib/server/songView.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { renderPreview } from "#lib/remote/markdown.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 
 	/**
 	 * The song page's documents panel for a visitor, as the home page's

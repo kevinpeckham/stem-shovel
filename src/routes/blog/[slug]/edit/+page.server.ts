@@ -1,5 +1,5 @@
-import { requireSystemAdmin } from "$lib/server/access";
-import { getUserDoc } from "$lib/server/data";
+import { requireSystemAdmin } from "#lib/server/access.js";
+import { getUserDoc } from "#lib/server/data.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

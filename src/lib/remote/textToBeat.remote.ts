@@ -1,8 +1,8 @@
 import { command, getRequestEvent } from "$app/server";
-import { aiAvailable } from "$lib/server/aiDetect";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { textToBeat as ask } from "$lib/server/textToBeat";
-import { TextToBeatSchema } from "$lib/val/TextToBeatSchema";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { textToBeat as ask } from "#lib/server/textToBeat.js";
+import { TextToBeatSchema } from "#lib/val/TextToBeatSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** A beat from a description (docs/drum-machine.md, "Text-to-Beat"); anyone at the drum machine, a few an hour each, while the gateway is configured. */

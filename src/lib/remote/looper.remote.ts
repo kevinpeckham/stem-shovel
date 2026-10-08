@@ -1,7 +1,7 @@
 import { getRequestEvent, query } from "$app/server";
-import { accountOfRecording, requireUser } from "$lib/server/access";
-import { loopSources as sources, userOwnsRecording } from "$lib/server/data";
-import { IdSchema } from "$lib/val/SongSchema";
+import { accountOfRecording, requireUser } from "#lib/server/access.js";
+import { loopSources as sources, userOwnsRecording } from "#lib/server/data.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** The looper (docs/looper.md, "Export and Load"): a loop exported to the Idea Recorder loads back from its take's sources. */

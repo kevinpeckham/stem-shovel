@@ -1,4 +1,4 @@
-import { listUserDocs } from "$lib/server/data";
+import { listUserDocs } from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 /** The documentation index: public; system admins get the editing controls. */

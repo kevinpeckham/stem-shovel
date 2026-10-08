@@ -7,7 +7,7 @@ const fake = vi.hoisted(() => ({
 	returning: vi.fn(),
 	ran: [] as Promise<void>[],
 }));
-vi.mock("$lib/server/db", () => ({
+vi.mock("#lib/server/db/index.js", () => ({
 	db: {
 		query: { shortLink: { findFirst: fake.findFirst } },
 		insert: () => ({ values: fake.values }),
@@ -15,7 +15,7 @@ vi.mock("$lib/server/db", () => ({
 		delete: () => ({ where: () => ({ returning: fake.returning }) }),
 	},
 }));
-vi.mock("$lib/server/background", () => ({
+vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {
 		fake.ran.push(work());
 	},

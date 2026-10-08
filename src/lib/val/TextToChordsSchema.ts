@@ -1,8 +1,8 @@
 import * as v from "valibot";
-import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "$lib/constants/autoStrum";
-import { CHORD_STYLES } from "$lib/constants/chordStyles";
-import { CHORD_VOICINGS, STRUMS } from "$lib/constants/circleOfFifths";
-import { PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
+import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "#lib/constants/autoStrum.js";
+import { CHORD_STYLES } from "#lib/constants/chordStyles.js";
+import { CHORD_VOICINGS, STRUMS } from "#lib/constants/circleOfFifths.js";
+import { PIANO_INSTRUMENT_IDS } from "#lib/constants/piano.js";
 
 /** What the chord player asks for: a description, the meter the pad is in, the key the circle is turned to and the style on, for the model's context. */
 export const TextToChordsSchema = v.object({

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { SEVENTH_TYPES, type SeventhType } from "$lib/constants/circleOfFifths";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import { SEVENTH_TYPES, type SeventhType } from "#lib/constants/circleOfFifths.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 
 	/**
 	 * The chord player's Chord Palette menu (docs/chord-player.md, "Styles":

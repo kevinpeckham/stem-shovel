@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as v from "valibot";
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 import {
 	IdeaCreateSchema,
 	IdeaInstrumentsDataSchema,

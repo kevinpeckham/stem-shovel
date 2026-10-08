@@ -1,4 +1,4 @@
-import { requireSystemAdmin } from "$lib/server/access";
+import { requireSystemAdmin } from "#lib/server/access.js";
 import type { LayoutServerLoad } from "./$types";
 
 /** The operator's area: every page under /admin is a 404 for anyone else, so it is not advertised. */

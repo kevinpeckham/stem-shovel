@@ -5,10 +5,10 @@
 		respondToBug,
 		setBugPriority,
 		setBugStatus,
-	} from "$lib/remote/bugs.remote";
-	import { REPORT_PRIORITIES } from "$lib/val/BugReportSchema";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
+	} from "#lib/remote/bugs.remote.js";
+	import { REPORT_PRIORITIES } from "#lib/val/BugReportSchema.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/**
 	 * Bug reports or feature requests on /admin: mark complete, close, reopen,

@@ -1,4 +1,4 @@
-import { isOverridableKit, type DrumKitManifest } from "$lib/constants/drumKits";
+import { isOverridableKit, type DrumKitManifest } from "#lib/constants/drumKits.js";
 import { SampledKit } from "./sampled";
 import { ElectronicKit } from "./electronic";
 import type { DrumKit } from "./types";

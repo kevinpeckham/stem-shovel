@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import WaitlistForm from "$lib/components/WaitlistForm.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import WaitlistForm from "#lib/components/WaitlistForm.svelte";
 
 	let { data } = $props();
 </script>

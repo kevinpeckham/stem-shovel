@@ -1,4 +1,4 @@
-import { safeNext } from "$lib/utils/safeNext";
+import { safeNext } from "#lib/utils/safeNext.js";
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

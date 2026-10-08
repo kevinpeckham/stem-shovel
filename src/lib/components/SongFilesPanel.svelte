@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import { invalidateAll } from "$app/navigation";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
+	import { refreshAll } from "$app/navigation";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import {
 		FILE_ACCEPT,
 		FILE_KIND_LABELS,
@@ -10,14 +10,14 @@
 		MAX_FILES_PER_SONG,
 		fileKindOf,
 		type FileKind,
-	} from "$lib/constants/fileFormats";
-	import { notationFormatOf } from "$lib/constants/notationFormats";
-	import { attachFile, deleteFile, updateFile, useAsDemo } from "$lib/remote/files.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { postJson, uploadFile, type FileReservation } from "$lib/upload";
-	import { shortenShareLink } from "$lib/utils/shortenShareLink";
+	} from "#lib/constants/fileFormats.js";
+	import { notationFormatOf } from "#lib/constants/notationFormats.js";
+	import { attachFile, deleteFile, updateFile, useAsDemo } from "#lib/remote/files.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { postJson, uploadFile, type FileReservation } from "#lib/upload.js";
+	import { shortenShareLink } from "#lib/utils/shortenShareLink.js";
 
 	/**
 	 * The files attached to a song (docs/uploads-and-blob.md, "Attachments"),
@@ -164,7 +164,7 @@
 				jobs[i].error = errorMessage(e);
 			}
 		}
-		await invalidateAll();
+		await refreshAll();
 		busy = false;
 		if (jobs.every((j) => !j.error)) jobs = [];
 	}
@@ -184,7 +184,7 @@
 		try {
 			await updateFile({ id, title: draftTitle, description: draftDescription });
 			editing = null;
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not save: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
@@ -197,7 +197,7 @@
 			await deleteFile({ id: f.id });
 			notify(`${nameOf(f)} removed`);
 			if (viewing?.id === f.id) viewing = null;
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -207,7 +207,7 @@
 		try {
 			await updateFile({ id: f.id, title: f.title, description: f.description, isNotation: on });
 			notify(on ? `${nameOf(f)} shows as notation` : `${nameOf(f)} is a plain file again`);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not change it: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -224,7 +224,7 @@
 			notify(
 				song ? `${nameOf(f)} is on “${song.title}” now` : `${nameOf(f)} belongs to the project now`,
 			);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not move it: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -234,7 +234,7 @@
 		try {
 			await useAsDemo({ id: f.id });
 			notify(`${nameOf(f)} is a demo now: find it on the player's Demos tab`);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Could not make a demo of it: ${errorMessage(e)}`, { kind: "error" });
 		}

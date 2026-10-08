@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { layerMix, layerVelocity } from "./pianoLayers";
-import { pianoTierFiles } from "$lib/audio/pianoSamples";
+import { pianoTierFiles } from "#lib/audio/pianoSamples.js";
 
 describe("layerMix", () => {
 	test("one layer plays alone at any velocity", () => {

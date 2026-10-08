@@ -1,6 +1,6 @@
-import { getUserDoc } from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { excerpt } from "$lib/utils/excerpt";
+import { getUserDoc } from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { excerpt } from "#lib/utils/excerpt.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

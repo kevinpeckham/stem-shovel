@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { reportBug } from "$lib/remote/bugs.remote";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { reportBug } from "#lib/remote/bugs.remote.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 	import { page } from "$app/state";
 
 	/**

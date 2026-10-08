@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import DrumMachine from "$lib/components/DrumMachine.svelte";
-	import DrumTutorial from "$lib/components/DrumTutorial.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import { TUTORIAL_PROJECT } from "$lib/constants/drumTutorial";
-	import { drumTutorial } from "$lib/state/drumTutorial.svelte";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
+	import DrumTutorial from "#lib/components/DrumTutorial.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import { TUTORIAL_PROJECT } from "#lib/constants/drumTutorial.js";
+	import { drumTutorial } from "#lib/state/drumTutorial.svelte.js";
 
 	let { data } = $props();
 	// Dev only: the engine on window for the browser scripts in .screenshots/ (docs/agent-screenshots.md).

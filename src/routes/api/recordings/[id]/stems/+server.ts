@@ -1,19 +1,19 @@
-import { accountOfRecording, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
+import { accountOfRecording, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
 import {
 	createRecordingStem,
 	recordingStore,
 	storageRoom,
 	userOwnsRecording,
-} from "$lib/server/data";
-import { checkStorage } from "$lib/server/notifications";
-import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
-import { RECORDING_CODECS, type RecordingCodec } from "$lib/constants/recordingCodecs";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
-import { demoContentType } from "$lib/utils/demoContentType";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
-import { validSizeBytes } from "$lib/utils/validSizeBytes";
+} from "#lib/server/data.js";
+import { checkStorage } from "#lib/server/notifications.js";
+import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
+import { RECORDING_CODECS, type RecordingCodec } from "#lib/constants/recordingCodecs.js";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
+import { demoContentType } from "#lib/utils/demoContentType.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

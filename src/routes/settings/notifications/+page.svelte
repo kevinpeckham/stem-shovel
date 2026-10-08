@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { saveNotificationPreferences } from "$lib/remote/notifications.remote";
-	import { DIGEST_MODES } from "$lib/val/NotificationSchema";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { invalidateAll } from "$app/navigation";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { saveNotificationPreferences } from "#lib/remote/notifications.remote.js";
+	import { DIGEST_MODES } from "#lib/val/NotificationSchema.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { refreshAll } from "$app/navigation";
 
 	let { data } = $props();
 	const fields = saveNotificationPreferences.fields;
@@ -41,7 +41,7 @@
 			await submit();
 			if (saveNotificationPreferences.result?.saved) {
 				notify("Notification settings saved");
-				await invalidateAll();
+				await refreshAll();
 			}
 		})}
 	>

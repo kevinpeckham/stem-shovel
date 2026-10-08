@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
-	import { saveUserDoc } from "$lib/remote/userDocs.remote";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
+	import { saveUserDoc } from "#lib/remote/userDocs.remote.js";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 	import { untrack } from "svelte";
 

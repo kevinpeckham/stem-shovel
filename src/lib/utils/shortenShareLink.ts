@@ -1,5 +1,5 @@
-import { mintShortLink } from "$lib/remote/shortLinks.remote";
-import { shortLinkTarget } from "$lib/utils/shortLinkTarget";
+import { mintShortLink } from "#lib/remote/shortLinks.remote.js";
+import { shortLinkTarget } from "#lib/utils/shortLinkTarget.js";
 
 /**
  * A share link made short (docs/security.md, "Short links"; Kevin: the

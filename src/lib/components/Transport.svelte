@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import { type BarGrid, formatPosition } from "$lib/audio/measures";
-	import { cycleReadoutMode, readoutMode } from "$lib/audio/readout.svelte";
-	import { POSITION_MODE_LABELS, type PositionMode } from "$lib/constants/positionModes";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import { type SongChange } from "$lib/val/SongChangeSchema";
+	import type { StemEngine } from "#lib/audio/engine.svelte.js";
+	import { type BarGrid, formatPosition } from "#lib/audio/measures.js";
+	import { cycleReadoutMode, readoutMode } from "#lib/audio/readout.svelte.js";
+	import { POSITION_MODE_LABELS, type PositionMode } from "#lib/constants/positionModes.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
+	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 
 	interface Props {
 		engine: StemEngine;
@@ -28,7 +28,7 @@
 		keyboard = true,
 	}: Props = $props();
 
-	// The readout format is shared with tooltips and the settings rows ($lib/audio/readout).
+	// The readout format is shared with tooltips and the settings rows (#lib/audio/readout).
 	let ctx = $derived({ fps, grid });
 	let mode = $derived(readoutMode(!!grid));
 	let now = $derived(formatPosition(mode, engine.position, ctx));
@@ -48,7 +48,7 @@
 	let tempo = $derived(inForce("tempo") ? `${inForce("tempo")?.value} bpm` : "");
 	let meter = $derived(inForce("meter")?.value ?? "");
 
-	// Space toggles, Home rewinds, from anywhere except text entry (see $lib/keys).
+	// Space toggles, Home rewinds, from anywhere except text entry (see #lib/keys).
 	// A focused button therefore does NOT activate on Space (Enter still does, and
 	// M / S remain the row shortcuts); preventing the keydown default is what
 	// stops the browser from firing the button's click on keyup.

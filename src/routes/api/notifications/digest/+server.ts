@@ -1,5 +1,5 @@
-import { sendDigests } from "$lib/server/notifications";
-import { purgeExpiredShortLinks } from "$lib/server/shortLinks";
+import { sendDigests } from "#lib/server/notifications.js";
+import { purgeExpiredShortLinks } from "#lib/server/shortLinks.js";
 import { json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";

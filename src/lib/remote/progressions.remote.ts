@@ -5,7 +5,7 @@ import {
 	memberOf,
 	requireEditor,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	createProgression,
 	deleteProgression as remove,
@@ -14,14 +14,14 @@ import {
 	renameProgression as rename,
 	setProgressionNotes,
 	updateProgression,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	ProgressionListSchema,
 	ProgressionNotesSchema,
 	ProgressionRenameSchema,
 	ProgressionSaveSchema,
-} from "$lib/val/ProgressionSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/val/ProgressionSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** Saved progressions from the chord player's pad (docs/chord-player.md, "The progression pad"): an account's library, seen by every member, kept by its editors. */

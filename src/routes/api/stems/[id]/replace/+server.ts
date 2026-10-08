@@ -1,8 +1,8 @@
-import { accountOfStem, memberOf } from "$lib/server/access";
-import { reserveStemReplacement } from "$lib/server/data";
-import { STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
-import { stemContentType } from "$lib/utils/stemContentType";
-import { accessOfPathname } from "$lib/server/relocate";
+import { accountOfStem, memberOf } from "#lib/server/access.js";
+import { reserveStemReplacement } from "#lib/server/data.js";
+import { STEM_FORMAT_LIST, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { stemContentType } from "#lib/utils/stemContentType.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

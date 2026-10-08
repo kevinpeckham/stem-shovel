@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import { barGrid, formatBarSpan, formatPosition } from "$lib/audio/measures";
-	import { readoutMode } from "$lib/audio/readout.svelte";
-	import { type SongChange } from "$lib/val/SongChangeSchema";
-	import { formatSongChange } from "$lib/utils/formatSongChange";
-	import { timelineKinds } from "$lib/utils/timelineKinds";
-	import type { SongSection } from "$lib/val/SongSectionSchema";
+	import type { StemEngine } from "#lib/audio/engine.svelte.js";
+	import { barGrid, formatBarSpan, formatPosition } from "#lib/audio/measures.js";
+	import { readoutMode } from "#lib/audio/readout.svelte.js";
+	import { type SongChange } from "#lib/val/SongChangeSchema.js";
+	import { formatSongChange } from "#lib/utils/formatSongChange.js";
+	import { timelineKinds } from "#lib/utils/timelineKinds.js";
+	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 
 	interface Props {
 		engine: StemEngine;

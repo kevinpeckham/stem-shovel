@@ -1,17 +1,17 @@
-import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-import { metronome } from "$lib/audio/metronome.svelte";
-import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
-import { chordPiano } from "$lib/audio/piano.svelte";
-import { startLookahead } from "$lib/audio/lookahead";
+import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+import { metronome } from "#lib/audio/metronome.svelte.js";
+import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
+import { chordPiano } from "#lib/audio/piano.svelte.js";
+import { startLookahead } from "#lib/audio/lookahead.js";
 import {
 	beatsFromHold,
 	jotLengths,
 	type ChordBeats,
 	type ProgressionEntry,
-} from "$lib/utils/chordRhythm";
-import { encodeChordMidi } from "$lib/utils/encodeChordMidi";
-import type { ProgressionData } from "$lib/val/ProgressionSchema";
-import type { DemoProgression, DemoSetup } from "$lib/constants/demoProgressions";
+} from "#lib/utils/chordRhythm.js";
+import { encodeChordMidi } from "#lib/utils/encodeChordMidi.js";
+import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
+import type { DemoProgression, DemoSetup } from "#lib/constants/demoProgressions.js";
 
 /**
  * The progression pad (docs/chord-player.md, "The progression pad"): the

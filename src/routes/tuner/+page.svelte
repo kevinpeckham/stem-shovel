@@ -1,7 +1,7 @@
 <script lang="ts">
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import Tuner from "$lib/components/Tuner.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import Tuner from "#lib/components/Tuner.svelte";
 
 	let { data } = $props();
 </script>

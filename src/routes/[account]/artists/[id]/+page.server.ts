@@ -1,5 +1,5 @@
-import { requireMember, requireSignedIn } from "$lib/server/access";
-import { getArtist, memberEmails } from "$lib/server/data";
+import { requireMember, requireSignedIn } from "#lib/server/access.js";
+import { getArtist, memberEmails } from "#lib/server/data.js";
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

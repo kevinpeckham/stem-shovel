@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import AiToggle from "$lib/components/AiToggle.svelte";
-	import PrivacyToggle from "$lib/components/PrivacyToggle.svelte";
-	import ProjectLifecycle from "$lib/components/ProjectLifecycle.svelte";
-	import SongFilesPanel from "$lib/components/SongFilesPanel.svelte";
-	import { downloadBuilt } from "$lib/utils/downloadBuilt";
-	import ProjectPlayer from "$lib/components/ProjectPlayer.svelte";
-	import ShareLinks from "$lib/components/ShareLinks.svelte";
-	import ProjectPeople from "$lib/components/ProjectPeople.svelte";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { slugify } from "$lib/utils/slugify";
-	import { reorderSongs, updateProject } from "$lib/remote/projects.remote";
-	import { dropIndexAt } from "$lib/utils/dropIndexAt";
-	import { moveId } from "$lib/utils/moveId";
-	import { reorderById } from "$lib/utils/reorderById";
-	import { reorderWithinGroup } from "$lib/utils/reorderWithinGroup";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { invalidateAll } from "$app/navigation";
-	import ImageUploader from "$lib/components/ImageUploader.svelte";
-	import { artistLine } from "$lib/utils/artistLine";
-	import { PROJECT_TYPES } from "$lib/val/ProjectTypeSchema";
-	import { PROJECT_TYPE_LABELS, VARIOUS_ARTISTS_FROM } from "$lib/constants/projectTypes";
-	import { createSong } from "$lib/remote/songs.remote";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import AiToggle from "#lib/components/AiToggle.svelte";
+	import PrivacyToggle from "#lib/components/PrivacyToggle.svelte";
+	import ProjectLifecycle from "#lib/components/ProjectLifecycle.svelte";
+	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
+	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
+	import ProjectPlayer from "#lib/components/ProjectPlayer.svelte";
+	import ShareLinks from "#lib/components/ShareLinks.svelte";
+	import ProjectPeople from "#lib/components/ProjectPeople.svelte";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { slugify } from "#lib/utils/slugify.js";
+	import { reorderSongs, updateProject } from "#lib/remote/projects.remote.js";
+	import { dropIndexAt } from "#lib/utils/dropIndexAt.js";
+	import { moveId } from "#lib/utils/moveId.js";
+	import { reorderById } from "#lib/utils/reorderById.js";
+	import { reorderWithinGroup } from "#lib/utils/reorderWithinGroup.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { refreshAll } from "$app/navigation";
+	import ImageUploader from "#lib/components/ImageUploader.svelte";
+	import { artistLine } from "#lib/utils/artistLine.js";
+	import { PROJECT_TYPES } from "#lib/val/ProjectTypeSchema.js";
+	import { PROJECT_TYPE_LABELS, VARIOUS_ARTISTS_FROM } from "#lib/constants/projectTypes.js";
+	import { createSong } from "#lib/remote/songs.remote.js";
 
 	let { data } = $props();
 
@@ -97,7 +97,7 @@
 		if (!ids.some((id, i) => id !== orderAtStart[i])) return;
 		try {
 			await reorderSongs({ projectId: data.project.id, ids });
-			await invalidateAll();
+			await refreshAll();
 			notify("Song order saved");
 		} catch (e) {
 			notify(`Could not save the song order: ${errorMessage(e)}`, { kind: "error" });

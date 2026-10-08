@@ -5,7 +5,7 @@ import {
 	memberOf,
 	requireEditor,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	addProjectMember as addPerson,
 	createInvitation,
@@ -16,20 +16,20 @@ import {
 	revokeInvitation as revoke,
 	setProjectRestricted as setRestricted,
 	updateProject as update,
-} from "$lib/server/data";
-import { sendInvitationEmail } from "$lib/server/email";
-import { invitationProject } from "$lib/server/data";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { InvitationIdSchema, ProjectInviteSchema } from "$lib/val/InvitationSchema";
-import { deleteProject as removeProject, setProjectStatus } from "$lib/server/projectLifecycle";
+} from "#lib/server/data.js";
+import { sendInvitationEmail } from "#lib/server/email.js";
+import { invitationProject } from "#lib/server/data.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { InvitationIdSchema, ProjectInviteSchema } from "#lib/val/InvitationSchema.js";
+import { deleteProject as removeProject, setProjectStatus } from "#lib/server/projectLifecycle.js";
 import {
 	ProjectCreateSchema,
 	ProjectPersonSchema,
 	ProjectRestrictSchema,
 	ProjectSettingsSchema,
-} from "$lib/val/ProjectSchema";
-import { IdSchema } from "$lib/val/SongSchema";
-import { SongOrderSchema } from "$lib/val/SongOrderSchema";
+} from "#lib/val/ProjectSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
+import { SongOrderSchema } from "#lib/val/SongOrderSchema.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**

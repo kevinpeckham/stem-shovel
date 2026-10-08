@@ -1,9 +1,9 @@
-import { readBlob } from "$lib/server/blob";
-import { projectForDocumentation } from "$lib/server/data";
-import { markdownToPdfPages } from "$lib/utils/markdownToPdf";
-import { safeFilename } from "$lib/utils/safeFilename";
+import { readBlob } from "#lib/server/blob.js";
+import { projectForDocumentation } from "#lib/server/data.js";
+import { markdownToPdfPages } from "#lib/utils/markdownToPdf.js";
+import { safeFilename } from "#lib/utils/safeFilename.js";
 import { zipSync, type Zippable } from "fflate";
-import { appendToPdf, type PdfAppendix } from "$lib/utils/appendToPdf";
+import { appendToPdf, type PdfAppendix } from "#lib/utils/appendToPdf.js";
 import PDFDocument from "pdfkit";
 
 /**

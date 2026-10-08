@@ -1,13 +1,13 @@
-import { background } from "$lib/server/background";
-import { db } from "$lib/server/db";
-import { shortLink } from "$lib/server/db/schema";
+import { background } from "#lib/server/background.js";
+import { db } from "#lib/server/db/index.js";
+import { shortLink } from "#lib/server/db/schema/index.js";
 import {
 	SHORT_LINK_ALPHABET,
 	SHORT_LINK_ANONYMOUS_DAYS,
 	SHORT_LINK_CODE_LENGTH,
 	ShortLinkCodeSchema,
 	type ShortLinkKind,
-} from "$lib/val/ShortLinkSchema";
+} from "#lib/val/ShortLinkSchema.js";
 import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import * as v from "valibot";

@@ -1,5 +1,5 @@
-import { db, schema } from "$lib/server/db";
-import { deleteAliasesOf } from "$lib/server/slugAlias";
+import { db, schema } from "#lib/server/db/index.js";
+import { deleteAliasesOf } from "#lib/server/slugAlias.js";
 import { eq, inArray, type SQL } from "drizzle-orm";
 
 /**

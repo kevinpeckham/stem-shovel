@@ -1,5 +1,5 @@
-import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "$lib/constants/drumMachine";
-import type { DrumProject, DrumProjectV1 } from "$lib/val/DrumPatternSchema";
+import { DEFAULT_DRUM_FX, DEFAULT_DRUM_SENDS } from "#lib/constants/drumMachine.js";
+import type { DrumProject, DrumProjectV1 } from "#lib/val/DrumPatternSchema.js";
 
 /** A version 1 project (one pattern, the tempo inside it) as a version 2 project. */
 export function upgradeDrumProject(p: DrumProjectV1): DrumProject {

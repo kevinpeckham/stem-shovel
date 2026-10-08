@@ -60,10 +60,10 @@ const fake = vi.hoisted(() => {
 	};
 	return { state, db, schema, deleteBlobs: vi.fn(async () => {}) };
 });
-vi.mock("$lib/server/db", () => ({ db: fake.db, schema: fake.schema }));
-vi.mock("$lib/server/blob", () => ({ deleteBlobs: fake.deleteBlobs }));
+vi.mock("#lib/server/db/index.js", () => ({ db: fake.db, schema: fake.schema }));
+vi.mock("#lib/server/blob.js", () => ({ deleteBlobs: fake.deleteBlobs }));
 const cascade = vi.hoisted(() => ({ deleteProjectRows: vi.fn(async () => {}) }));
-vi.mock("$lib/server/cascade", () => cascade);
+vi.mock("#lib/server/cascade.js", () => cascade);
 vi.mock("drizzle-orm", () => ({
 	and: (...a: unknown[]) => a,
 	eq: (a: unknown, b: unknown) => [a, b],

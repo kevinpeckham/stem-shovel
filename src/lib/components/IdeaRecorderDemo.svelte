@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DemoRecorder, { type Take } from "$lib/components/DemoRecorder.svelte";
+	import DemoRecorder, { type Take } from "#lib/components/DemoRecorder.svelte";
 	import { onDestroy } from "svelte";
 
 	/**

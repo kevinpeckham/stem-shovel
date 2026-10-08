@@ -3,9 +3,9 @@
 		addRecordingStemsToSong,
 		addRecordingToSong,
 		newSongFromRecording,
-	} from "$lib/remote/recordings.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	} from "#lib/remote/recordings.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { goto } from "$app/navigation";
 
 	/**

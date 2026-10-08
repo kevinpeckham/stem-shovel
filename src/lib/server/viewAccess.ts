@@ -1,5 +1,5 @@
 import type { Cookies } from "@sveltejs/kit";
-import type { ProjectRole } from "$lib/val/ProjectRoleSchema";
+import type { ProjectRole } from "#lib/val/ProjectRoleSchema.js";
 
 /**
  * Who may view, edit or comment on a project or song. The decision is pure

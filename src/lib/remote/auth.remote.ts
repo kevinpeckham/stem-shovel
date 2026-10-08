@@ -1,5 +1,5 @@
 import { form, getRequestEvent } from "$app/server";
-import { auth } from "$lib/auth";
+import { auth } from "#lib/auth.js";
 import { redirect } from "@sveltejs/kit";
 
 /**

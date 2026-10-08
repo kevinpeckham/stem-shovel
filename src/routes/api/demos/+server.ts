@@ -1,13 +1,13 @@
-import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createDemo, storageRoom } from "$lib/server/data";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { background } from "$lib/server/background";
-import { checkStorage } from "$lib/server/notifications";
-import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { demoContentType } from "$lib/utils/demoContentType";
-import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
-import { accessOfPathname } from "$lib/server/relocate";
-import { validSizeBytes } from "$lib/utils/validSizeBytes";
+import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
+import { createDemo, storageRoom } from "#lib/server/data.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { background } from "#lib/server/background.js";
+import { checkStorage } from "#lib/server/notifications.js";
+import { DEMO_FORMAT_LIST, MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { demoContentType } from "#lib/utils/demoContentType.js";
+import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

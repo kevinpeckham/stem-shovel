@@ -1,5 +1,5 @@
-import { barGrid } from "$lib/audio/measures";
-import type { SongChange } from "$lib/val/SongChangeSchema";
+import { barGrid } from "#lib/audio/measures.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { blob, callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 

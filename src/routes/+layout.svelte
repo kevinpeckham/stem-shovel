@@ -1,20 +1,25 @@
 <script lang="ts">
-	import { beforeNavigate } from "$app/navigation";
+	import { afterNavigate, beforeNavigate } from "$app/navigation";
 	import { updated } from "$app/state";
+	import { trackRoute } from "#lib/observability.js";
 	import "uno.css";
-	import GlobalFooter from "$lib/components/GlobalFooter.svelte";
-	import GlobalNav from "$lib/components/GlobalNav.svelte";
-	import Notifications from "$lib/components/Notifications.svelte";
-	import { ROBOTS_NOINDEX } from "$lib/constants/securityHeaders";
-	import { isIndexablePath } from "$lib/utils/isIndexablePath";
+	import GlobalFooter from "#lib/components/GlobalFooter.svelte";
+	import GlobalNav from "#lib/components/GlobalNav.svelte";
+	import Notifications from "#lib/components/Notifications.svelte";
+	import { ROBOTS_NOINDEX } from "#lib/constants/securityHeaders.js";
+	import { isIndexablePath } from "#lib/utils/isIndexablePath.js";
 	import { page } from "$app/state";
 
 	let { children, data } = $props();
 
+	// Analytics and Speed Insights learn the route here (+layout.ts injects them once).
+	afterNavigate(() => trackRoute(page.route.id, page.url.pathname));
+
 	// After a deploy the previous build's assets are gone: once a new version is
 	// seen (kit.version.pollInterval), the next navigation loads the page afresh
 	// instead of fetching chunks and stylesheets that no longer exist.
-	beforeNavigate(({ willUnload, to }) => {
+	beforeNavigate(({ willUnload, to, shallow, type }) => {
+		if (shallow && type === "goto") return;
 		if (updated.current && !willUnload && to?.url) location.href = to.url.href;
 	});
 </script>

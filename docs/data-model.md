@@ -612,7 +612,7 @@ are throwaways; delete them rather than migrating.
 
 1. Client creates the song (`POST /songs/new` form action) → `song` row.
 2. For each file the client calls `upload()` with `clientPayload =
-{ songId, filename, label }`. In `onBeforeGenerateToken` the server checks
+   { songId, filename, label }`. In `onBeforeGenerateToken` the server checks
    membership, inserts a `stem` row with `status: "uploading"`, and returns
    the pathname built from the new stem id (`tokenPayload = { stemId }`).
 3. When `upload()` resolves, the client decodes the file (the engine already

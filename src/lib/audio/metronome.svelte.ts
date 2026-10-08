@@ -1,9 +1,9 @@
 import {
 	loadMetronomePreferences,
 	saveMetronomePreferences,
-} from "$lib/utils/metronomePreferences";
-import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
-import { BPM_MAX, BPM_MIN, tapTempo } from "$lib/utils/tapTempo";
+} from "#lib/utils/metronomePreferences.js";
+import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
+import { BPM_MAX, BPM_MIN, tapTempo } from "#lib/utils/tapTempo.js";
 import { startLookahead } from "./lookahead";
 
 /**

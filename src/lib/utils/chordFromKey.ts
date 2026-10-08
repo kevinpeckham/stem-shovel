@@ -1,4 +1,4 @@
-import { SCALE_MODES, type PianoKey } from "$lib/constants/scales";
+import { SCALE_MODES, type PianoKey } from "#lib/constants/scales.js";
 
 /**
  * The chord a single key stands for (docs/piano.md, "Arpeggiator"): the

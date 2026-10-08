@@ -1,5 +1,5 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { isEditor, memberOf, requireSystemAdmin, requireUser } from "$lib/server/access";
+import { isEditor, memberOf, requireSystemAdmin, requireUser } from "#lib/server/access.js";
 import {
 	accountOfDrumKit,
 	createDrumKit as create,
@@ -10,14 +10,14 @@ import {
 	listDrumKitsFor,
 	renameDrumKit as rename,
 	setDrumSampleSource as setSource,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	DrumKitCreateSchema,
 	DrumKitListSchema,
 	DrumKitRenameSchema,
 	DrumSampleSourceSchema,
-} from "$lib/val/DrumKitSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/val/DrumKitSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

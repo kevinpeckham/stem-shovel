@@ -1,10 +1,13 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { markAllNotificationsRead, markNotificationRead } from "$lib/remote/notifications.remote";
-	import { goto, invalidateAll } from "$app/navigation";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import {
+		markAllNotificationsRead,
+		markNotificationRead,
+	} from "#lib/remote/notifications.remote.js";
+	import { goto, refreshAll } from "$app/navigation";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 
 	let { data } = $props();
 	let unread = $derived(data.items.filter((i) => !i.readAt).length);
@@ -29,13 +32,13 @@
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
-		await goto(item.href || "/inbox", { invalidateAll: true });
+		await goto(item.href || "/inbox", { refreshAll: true });
 	}
 	async function readAll() {
 		busy = true;
 		try {
 			await markAllNotificationsRead({});
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		} finally {

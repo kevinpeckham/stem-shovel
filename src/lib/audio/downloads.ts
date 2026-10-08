@@ -1,5 +1,5 @@
-import { saveAs } from "$lib/upload";
-import type { StemEngine } from "$lib/audio/engine.svelte";
+import { saveAs } from "#lib/upload.js";
+import type { StemEngine } from "#lib/audio/engine.svelte.js";
 
 /** The song page's and the home demo's downloads: the mixes and the zip of stems. */
 export type MixMode = "original" | "custom";

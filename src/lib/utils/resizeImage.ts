@@ -1,4 +1,4 @@
-import { IMAGE_MAX_SIDE } from "$lib/constants/images";
+import { IMAGE_MAX_SIDE } from "#lib/constants/images.js";
 
 /**
  * Shrinks a picked image in the browser to at most `maxSide` on its longer

@@ -1,8 +1,8 @@
-import { notationPdfPathname, putBlob, readBlob } from "$lib/server/blob";
-import { notationForPdf, setNotationPdf } from "$lib/server/data";
-import { accessOfPathname } from "$lib/server/relocate";
-import { engraveNotationPages } from "$lib/utils/engraveNotationPages";
-import { svgPagesToPdf } from "$lib/utils/svgPagesToPdf";
+import { notationPdfPathname, putBlob, readBlob } from "#lib/server/blob.js";
+import { notationForPdf, setNotationPdf } from "#lib/server/data.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
+import { engraveNotationPages } from "#lib/utils/engraveNotationPages.js";
+import { svgPagesToPdf } from "#lib/utils/svgPagesToPdf.js";
 import createVerovioModule from "verovio/wasm";
 import { LOG_OFF, VerovioToolkit, enableLog } from "verovio/esm";
 

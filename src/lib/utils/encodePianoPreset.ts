@@ -1,4 +1,4 @@
-import type { NamedPianoPreset } from "$lib/val/PianoPresetSchema";
+import type { NamedPianoPreset } from "#lib/val/PianoPresetSchema.js";
 
 /**
  * A preset as the string a share link carries (`/piano#preset=…`): the

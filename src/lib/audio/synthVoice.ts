@@ -1,4 +1,4 @@
-import type { PianoInstrumentId } from "$lib/constants/piano";
+import type { PianoInstrumentId } from "#lib/constants/piano.js";
 import { frequencyOfMidi } from "./pitch";
 
 /**

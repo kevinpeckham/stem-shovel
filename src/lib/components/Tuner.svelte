@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { detectPitch, frequencyOfMidi, noteFromFrequency, noteLabel } from "$lib/audio/pitch";
-	import { TUNINGS, TUNINGS_OPTIONS } from "$lib/constants/tunings";
-	import { audioSession } from "$lib/utils/audioSession";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { loadTunerPreferences, saveTunerPreferences } from "$lib/utils/tunerPreferences";
+	import { detectPitch, frequencyOfMidi, noteFromFrequency, noteLabel } from "#lib/audio/pitch.js";
+	import { TUNINGS, TUNINGS_OPTIONS } from "#lib/constants/tunings.js";
+	import { audioSession } from "#lib/utils/audioSession.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { loadTunerPreferences, saveTunerPreferences } from "#lib/utils/tunerPreferences.js";
 	import { onDestroy, onMount } from "svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 
 	/**
 	 * A chromatic tuner: listens to the microphone, reads the pitch twenty

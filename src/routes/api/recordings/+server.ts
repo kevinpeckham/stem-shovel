@@ -1,13 +1,13 @@
-import { accountOfIdea, requireUser } from "$lib/server/access";
-import { createRecording, recordingStore, storageRoom, userOwnsIdea } from "$lib/server/data";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { background } from "$lib/server/background";
-import { checkStorage } from "$lib/server/notifications";
-import { DEMO_FORMAT_LIST } from "$lib/constants/demoFormats";
-import { demoContentType } from "$lib/utils/demoContentType";
-import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "$lib/constants/takeLimits";
-import { RECORDING_CODECS, type RecordingCodec } from "$lib/constants/recordingCodecs";
-import { validSizeBytes } from "$lib/utils/validSizeBytes";
+import { accountOfIdea, requireUser } from "#lib/server/access.js";
+import { createRecording, recordingStore, storageRoom, userOwnsIdea } from "#lib/server/data.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { background } from "#lib/server/background.js";
+import { checkStorage } from "#lib/server/notifications.js";
+import { DEMO_FORMAT_LIST } from "#lib/constants/demoFormats.js";
+import { demoContentType } from "#lib/utils/demoContentType.js";
+import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "#lib/constants/takeLimits.js";
+import { RECORDING_CODECS, type RecordingCodec } from "#lib/constants/recordingCodecs.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

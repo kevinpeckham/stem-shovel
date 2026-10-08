@@ -1,8 +1,12 @@
-import { viewerOf } from "$lib/server/access";
-import { openShareLinks, projectRoleOf, songForDocumentation } from "$lib/server/data";
-import { hasDocumentation, notationPartsOf, songDocumentationPdf } from "$lib/server/documentation";
-import { canViewSong, shareCodesFrom } from "$lib/server/viewAccess";
-import { attachmentDisposition } from "$lib/utils/attachmentDisposition";
+import { viewerOf } from "#lib/server/access.js";
+import { openShareLinks, projectRoleOf, songForDocumentation } from "#lib/server/data.js";
+import {
+	hasDocumentation,
+	notationPartsOf,
+	songDocumentationPdf,
+} from "#lib/server/documentation.js";
+import { canViewSong, shareCodesFrom } from "#lib/server/viewAccess.js";
+import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

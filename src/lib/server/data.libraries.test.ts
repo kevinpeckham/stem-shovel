@@ -1,8 +1,8 @@
-import { MAX_DRUM_KITS_PER_ACCOUNT } from "$lib/constants/drumKits";
-import type { ChordStyleData } from "$lib/val/ChordStyleSchema";
-import type { DrumProject } from "$lib/val/DrumPatternSchema";
-import { NamedPianoPresetSchema, type PianoPresetData } from "$lib/val/PianoPresetSchema";
-import type { ProgressionData } from "$lib/val/ProgressionSchema";
+import { MAX_DRUM_KITS_PER_ACCOUNT } from "#lib/constants/drumKits.js";
+import type { ChordStyleData } from "#lib/val/ChordStyleSchema.js";
+import type { DrumProject } from "#lib/val/DrumPatternSchema.js";
+import { NamedPianoPresetSchema, type PianoPresetData } from "#lib/val/PianoPresetSchema.js";
+import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
 import * as v from "valibot";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -23,11 +23,11 @@ const { fake, blob } = await vi.hoisted(async () => ({
 			`${accountId ? `accounts/${accountId}` : "site"}/kits/${kitId}/${sampleId}.${(filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase()}`,
 	},
 }));
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/blob", () => blob);
+vi.mock("#lib/server/blob.js", () => blob);
 
 const {
 	accountOfDrumKit,

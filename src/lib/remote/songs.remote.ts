@@ -1,13 +1,13 @@
 import { command, form, getRequestEvent, query } from "$app/server";
-import { background } from "$lib/server/background";
-import { notifySong } from "$lib/server/notifications";
-import { barAt, barGrid } from "$lib/audio/measures";
-import { SongChangesSaveSchema } from "$lib/val/SongChangeSchema";
-import { SongSectionsSaveSchema } from "$lib/val/SongSectionSchema";
-import { ShareSongSchema } from "$lib/val/ShareSongSchema";
-import { StemOrderSchema } from "$lib/val/StemOrderSchema";
-import { sendShareEmail } from "$lib/server/email";
-import { scheduleMix } from "$lib/server/jobs";
+import { background } from "#lib/server/background.js";
+import { notifySong } from "#lib/server/notifications.js";
+import { barAt, barGrid } from "#lib/audio/measures.js";
+import { SongChangesSaveSchema } from "#lib/val/SongChangeSchema.js";
+import { SongSectionsSaveSchema } from "#lib/val/SongSectionSchema.js";
+import { ShareSongSchema } from "#lib/val/ShareSongSchema.js";
+import { StemOrderSchema } from "#lib/val/StemOrderSchema.js";
+import { sendShareEmail } from "#lib/server/email.js";
+import { scheduleMix } from "#lib/server/jobs.js";
 import {
 	accountOfProject,
 	accountOfCredit,
@@ -18,7 +18,7 @@ import {
 	requireUser,
 	isEditor,
 	songViewerOf,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	createSong as create,
 	deleteSong as removeSong,
@@ -44,7 +44,7 @@ import {
 	createShareLink,
 	addSongCredit as addCredit,
 	removeSongCredit as removeCredit,
-} from "$lib/server/data";
+} from "#lib/server/data.js";
 import {
 	IdSchema,
 	SongCreateSchema,
@@ -54,15 +54,15 @@ import {
 	StemRenameSchema,
 	StemIdsSchema,
 	DefaultMixSchema,
-} from "$lib/val/SongSchema";
-import { aiAvailable, askAiAboutMix, draftChartWithAi } from "$lib/server/aiDetect";
-import { renderMarkdown } from "$lib/server/markdown";
-import { withSongMentions } from "$lib/server/songMentions";
-import { ChartDraftSchema, ChartSaveSchema } from "$lib/val/ChartDraftSchema";
-import { MY_NOTES_KIND } from "$lib/val/SongDocKindSchema";
-import { SongFinishedSchema } from "$lib/val/SongFinishedSchema";
-import { SongCreditAddSchema } from "$lib/val/ArtistSchema";
-import { HOUR, MINUTE, rateLimited } from "$lib/server/rateLimit";
+} from "#lib/val/SongSchema.js";
+import { aiAvailable, askAiAboutMix, draftChartWithAi } from "#lib/server/aiDetect.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { withSongMentions } from "#lib/server/songMentions.js";
+import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
+import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
+import { SongFinishedSchema } from "#lib/val/SongFinishedSchema.js";
+import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
+import { HOUR, MINUTE, rateLimited } from "#lib/server/rateLimit.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 /**

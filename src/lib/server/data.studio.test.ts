@@ -1,6 +1,6 @@
-import { MAX_STUDIO_SOURCES, STUDIO_AUTOSAVES_KEPT } from "$lib/constants/studio";
-import { arrangementHash } from "$lib/utils/arrangementHash";
-import type { StudioArrangement, StudioSourceReserve } from "$lib/val/StudioSchema";
+import { MAX_STUDIO_SOURCES, STUDIO_AUTOSAVES_KEPT } from "#lib/constants/studio.js";
+import { arrangementHash } from "#lib/utils/arrangementHash.js";
+import type { StudioArrangement, StudioSourceReserve } from "#lib/val/StudioSchema.js";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 // data.ts reaches the database and Blob; both are stubbed. Blob's helpers
@@ -15,11 +15,11 @@ const { fake, blob } = await vi.hoisted(async () => ({
 			`accounts/${accountId}/studio/${ideaId}/${sourceId}.${(filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase()}`,
 	},
 }));
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
-vi.mock("$lib/server/blob", () => blob);
+vi.mock("#lib/server/blob.js", () => blob);
 
 const {
 	createStudioSource,

@@ -1,5 +1,5 @@
-import { NOTES_STALE_MS } from "$lib/constants/notesStale";
-import type { PlaybackStatus } from "$lib/val/PlaybackStatusSchema";
+import { NOTES_STALE_MS } from "#lib/constants/notesStale.js";
+import type { PlaybackStatus } from "#lib/val/PlaybackStatusSchema.js";
 
 /**
  * Whether a song's notes (src/lib/server/notes.ts) are missing, behind its

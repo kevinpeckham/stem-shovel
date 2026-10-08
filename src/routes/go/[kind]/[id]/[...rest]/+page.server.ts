@@ -1,5 +1,5 @@
-import { permalinkTarget } from "$lib/server/data";
-import { PERMALINK_KINDS, type PermalinkKind } from "$lib/utils/permalink";
+import { permalinkTarget } from "#lib/server/data.js";
+import { PERMALINK_KINDS, type PermalinkKind } from "#lib/utils/permalink.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

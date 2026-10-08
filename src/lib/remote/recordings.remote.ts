@@ -5,7 +5,7 @@ import {
 	accountOfSong,
 	requireEditor,
 	requireUser,
-} from "$lib/server/access";
+} from "#lib/server/access.js";
 import {
 	copyRecordingStemsToSong,
 	copyRecordingToSong,
@@ -17,17 +17,17 @@ import {
 	renameRecording as rename,
 	songSlugs,
 	userOwnsRecording,
-} from "$lib/server/data";
-import { MAX_DEMOS_PER_SONG } from "$lib/constants/demoFormats";
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
-import { schedulePlayback } from "$lib/server/jobs";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/server/data.js";
+import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
+import { schedulePlayback } from "#lib/server/jobs.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import {
 	RecordingStemsToSongSchema,
 	RecordingToNewSongSchema,
 	RecordingToSongSchema,
-} from "$lib/val/RecordingSchema";
-import { TakeNameSchema } from "$lib/val/IdeaSchema";
+} from "#lib/val/RecordingSchema.js";
+import { TakeNameSchema } from "#lib/val/IdeaSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** Takes of an idea (docs/demo-recording.md): name, delete, and add to a song as a demo. Each is the caller's own. */

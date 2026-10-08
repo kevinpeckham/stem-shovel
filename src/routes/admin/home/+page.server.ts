@@ -1,4 +1,9 @@
-import { DEFAULT_FEATURED_SONG, getAppSetting, homeBeat, listPublicSongs } from "$lib/server/data";
+import {
+	DEFAULT_FEATURED_SONG,
+	getAppSetting,
+	homeBeat,
+	listPublicSongs,
+} from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async () => {

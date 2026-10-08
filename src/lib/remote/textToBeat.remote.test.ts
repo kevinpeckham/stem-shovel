@@ -8,11 +8,11 @@ import {
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
 import { aiDetect, rateLimited, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
-import { DRUM_METER_IDS } from "$lib/constants/drumMachine";
+import { DRUM_METER_IDS } from "#lib/constants/drumMachine.js";
 
 /** Text-to-Beat is open to visitors while the gateway is configured, limited per user or address. */
 const remote = await import("./textToBeat.remote");
-const { textToBeat } = await import("$lib/server/textToBeat");
+const { textToBeat } = await import("#lib/server/textToBeat.js");
 
 const input = { prompt: "a slow funk groove", meter: DRUM_METER_IDS[0], steps: 16 };
 

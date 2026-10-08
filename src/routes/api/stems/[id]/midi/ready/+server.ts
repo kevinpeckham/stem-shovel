@@ -1,6 +1,6 @@
-import { accountOfStem, memberOf } from "$lib/server/access";
-import { isOurBlobUrl } from "$lib/server/blob";
-import { markStemMidiReady, reservedPathname } from "$lib/server/data";
+import { accountOfStem, memberOf } from "#lib/server/access.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
+import { markStemMidiReady, reservedPathname } from "#lib/server/data.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

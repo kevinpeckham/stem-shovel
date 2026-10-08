@@ -13,7 +13,7 @@ import {
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
 import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
-import { PianoPresetDataSchema } from "$lib/val/PianoPresetSchema";
+import { PianoPresetDataSchema } from "#lib/val/PianoPresetSchema.js";
 
 /** Authorization of piano presets: every member sees the library, its editors keep it. */
 const presets = await import("./pianoPresets.remote");

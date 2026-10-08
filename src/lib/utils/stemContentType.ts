@@ -1,4 +1,4 @@
-import { STEM_FORMATS } from "$lib/constants/stemFormats";
+import { STEM_FORMATS } from "#lib/constants/stemFormats.js";
 
 /** Content type for a filename, or null if the extension is not a stem format. */
 export function stemContentType(filename: string): string | null {

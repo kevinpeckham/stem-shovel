@@ -1,24 +1,24 @@
 <script lang="ts">
-	import { DEMO_ACCEPT } from "$lib/constants/demoFormats";
-	import { DRUM_SAMPLE_MAX_BYTES, MAX_DRUM_KITS_PER_ACCOUNT } from "$lib/constants/drumKits";
-	import { DRUM_VOICES, type DrumVoiceId } from "$lib/constants/drumMachine";
+	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
+	import { DRUM_SAMPLE_MAX_BYTES, MAX_DRUM_KITS_PER_ACCOUNT } from "#lib/constants/drumKits.js";
+	import { DRUM_VOICES, type DrumVoiceId } from "#lib/constants/drumMachine.js";
 	import {
 		createDrumKit,
 		deleteDrumKit,
 		deleteDrumSample,
 		renameDrumKit,
 		setDrumSampleSource,
-	} from "$lib/remote/drumKits.remote";
+	} from "#lib/remote/drumKits.remote.js";
 	import {
 		BUILTIN_SAMPLE_FILES,
 		BUILTIN_SAMPLES_SOURCE,
 		isOverridableKit,
-	} from "$lib/constants/drumKits";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { postJson, uploadDrumSampleFile } from "$lib/upload";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatBytes } from "$lib/utils/formatBytes";
+	} from "#lib/constants/drumKits.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { postJson, uploadDrumSampleFile } from "#lib/upload.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 
 	/**
 	 * Custom drum kits, made and kept here (docs/drum-machine.md, "Custom

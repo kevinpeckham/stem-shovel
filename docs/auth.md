@@ -12,7 +12,7 @@ public by URL; editing needs a signed-in member.
   VM's names and Vercel previews.
 - **Client**: `src/lib/auth-client.ts` — `createAuthClient()` from
   `better-auth/svelte`, no baseURL (defaults to the page origin). Pages call
-  `authClient.signIn.email` / `signUp.email` and then `invalidateAll()`.
+  `authClient.signIn.email` / `signUp.email` and then `refreshAll()`.
 - **Hook**: `src/hooks.server.ts` resolves the session into `locals.user`
   (null when signed out) and `locals.memberships`, then hands the request to
   `svelteKitHandler` so `/api/auth/*` is served.

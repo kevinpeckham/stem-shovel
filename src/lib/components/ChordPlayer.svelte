@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
+	import { TEMPO_RATIOS, type TempoRatio } from "#lib/constants/tempo.js";
 	import { onDestroy, onMount, type Snippet } from "svelte";
 	import {
 		ARP_PATTERNS,
@@ -8,22 +8,22 @@
 		hasSavedChordSettings,
 		type ArpPattern,
 		type ArpRate,
-	} from "$lib/audio/chordPlayer.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { progressionPad } from "$lib/audio/progression.svelte";
-	import { chordPiano } from "$lib/audio/piano.svelte";
-	import CircleOfFifths from "$lib/components/CircleOfFifths.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
-	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
-	import StrumMenu from "$lib/components/StrumMenu.svelte";
-	import TimingMenu from "$lib/components/TimingMenu.svelte";
-	import ChordUiMenu from "$lib/components/ChordUiMenu.svelte";
-	import ChordPaletteMenu from "$lib/components/ChordPaletteMenu.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
-	import ChordPresets from "$lib/components/ChordPresets.svelte";
-	import ProgressionPad from "$lib/components/ProgressionPad.svelte";
+	} from "#lib/audio/chordPlayer.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { progressionPad } from "#lib/audio/progression.svelte.js";
+	import { chordPiano } from "#lib/audio/piano.svelte.js";
+	import CircleOfFifths from "#lib/components/CircleOfFifths.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import PianoEffectsMenu from "#lib/components/PianoEffectsMenu.svelte";
+	import ArpeggiatorMenu from "#lib/components/ArpeggiatorMenu.svelte";
+	import StrumMenu from "#lib/components/StrumMenu.svelte";
+	import TimingMenu from "#lib/components/TimingMenu.svelte";
+	import ChordUiMenu from "#lib/components/ChordUiMenu.svelte";
+	import ChordPaletteMenu from "#lib/components/ChordPaletteMenu.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
+	import ChordPresets from "#lib/components/ChordPresets.svelte";
+	import ProgressionPad from "#lib/components/ProgressionPad.svelte";
 	import {
 		CHORD_VOICINGS,
 		CIRCLE_OF_FIFTHS,
@@ -32,25 +32,25 @@
 		type ChordQuality,
 		type ChordVoicing,
 		type SeventhType,
-	} from "$lib/constants/circleOfFifths";
-	import { CHORD_STYLES } from "$lib/constants/chordStyles";
-	import ChordStyleEditor from "$lib/components/ChordStyleEditor.svelte";
-	import { deleteChordStyle, saveChordStyle } from "$lib/remote/chordStyles.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { encodeChordShare } from "$lib/utils/encodeChordShare";
-	import { shortenShareLink } from "$lib/utils/shortenShareLink";
-	import { builtinStyleData } from "$lib/utils/builtinStyleData";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
-	import { PIANO_INSTRUMENTS, type PianoInstrumentId } from "$lib/constants/piano";
-	import { PIANO_PRESET_SLOTS } from "$lib/val/PianoPresetSchema";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import { loadPianoSlotOverrides } from "$lib/utils/pianoSlotOverrides";
-	import { pianoPresetKey } from "$lib/utils/pianoPresetKey";
-	import { resolvePianoSlots } from "$lib/utils/resolvePianoSlots";
-	import type { NamedPianoPreset, PianoPresetData } from "$lib/val/PianoPresetSchema";
-	import type { SavedProgression } from "$lib/val/ProgressionSchema";
-	import { dynamicMark } from "$lib/utils/dynamicMark";
+	} from "#lib/constants/circleOfFifths.js";
+	import { CHORD_STYLES } from "#lib/constants/chordStyles.js";
+	import ChordStyleEditor from "#lib/components/ChordStyleEditor.svelte";
+	import { deleteChordStyle, saveChordStyle } from "#lib/remote/chordStyles.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { encodeChordShare } from "#lib/utils/encodeChordShare.js";
+	import { shortenShareLink } from "#lib/utils/shortenShareLink.js";
+	import { builtinStyleData } from "#lib/utils/builtinStyleData.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import type { ChordStyleData, SavedChordStyle } from "#lib/val/ChordStyleSchema.js";
+	import { PIANO_INSTRUMENTS, type PianoInstrumentId } from "#lib/constants/piano.js";
+	import { PIANO_PRESET_SLOTS } from "#lib/val/PianoPresetSchema.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
+	import { loadPianoSlotOverrides } from "#lib/utils/pianoSlotOverrides.js";
+	import { pianoPresetKey } from "#lib/utils/pianoPresetKey.js";
+	import { resolvePianoSlots } from "#lib/utils/resolvePianoSlots.js";
+	import type { NamedPianoPreset, PianoPresetData } from "#lib/val/PianoPresetSchema.js";
+	import type { SavedProgression } from "#lib/val/ProgressionSchema.js";
+	import { dynamicMark } from "#lib/utils/dynamicMark.js";
 
 	/**
 	 * The Chord Player device (docs/chord-player.md): the circle of fifths

@@ -1,5 +1,5 @@
-import { requireUser } from "$lib/server/access";
-import { listPasskeys } from "$lib/server/data";
+import { requireUser } from "#lib/server/access.js";
+import { listPasskeys } from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 /** The signed-in user's own security settings (two-factor, passkeys). */

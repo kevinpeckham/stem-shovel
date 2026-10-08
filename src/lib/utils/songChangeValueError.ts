@@ -1,4 +1,4 @@
-import { type SongChangeKind, TIME_SIGNATURE_RE } from "$lib/constants/songChanges";
+import { type SongChangeKind, TIME_SIGNATURE_RE } from "#lib/constants/songChanges.js";
 
 /** Per-kind check of the value text; null when it is fine, else the message. */
 export function songChangeValueError(kind: SongChangeKind, value: string): string | null {

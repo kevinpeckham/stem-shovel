@@ -1,8 +1,8 @@
-import { accountOfSong, viewerOf } from "$lib/server/access";
-import { openShareLinks, projectRoleOf, songForMix } from "$lib/server/data";
-import { canViewSong, shareCodesFrom } from "$lib/server/viewAccess";
-import { isOriginal, originalMix, parseMixRequest, renderMix } from "$lib/server/mix";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
+import { accountOfSong, viewerOf } from "#lib/server/access.js";
+import { openShareLinks, projectRoleOf, songForMix } from "#lib/server/data.js";
+import { canViewSong, shareCodesFrom } from "#lib/server/viewAccess.js";
+import { isOriginal, originalMix, parseMixRequest, renderMix } from "#lib/server/mix.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
 import { error } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";

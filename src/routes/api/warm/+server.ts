@@ -1,4 +1,4 @@
-import { db } from "$lib/server/db";
+import { db } from "#lib/server/db/index.js";
 import { sql } from "drizzle-orm";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

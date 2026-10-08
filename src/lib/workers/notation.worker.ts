@@ -1,6 +1,6 @@
 import wasmModuleUrl from "verovio/wasm?url";
 import { LOG_OFF, VerovioToolkit, enableLog } from "verovio/esm";
-import { engraveNotation } from "$lib/utils/engraveNotation";
+import { engraveNotation } from "#lib/utils/engraveNotation.js";
 
 /**
  * Verovio in a worker (docs/uploads-and-blob.md, "Notation"): the 7 MB

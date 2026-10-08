@@ -1,7 +1,7 @@
 import * as v from "valibot";
-import { CHORD_VOICINGS, SEVENTH_TYPES, STRUMS } from "$lib/constants/circleOfFifths";
-import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "$lib/constants/autoStrum";
-import { PIANO_BOUNCE_DIVISIONS, PIANO_INSTRUMENT_IDS } from "$lib/constants/piano";
+import { CHORD_VOICINGS, SEVENTH_TYPES, STRUMS } from "#lib/constants/circleOfFifths.js";
+import { AUTO_STRUM_PATTERNS, AUTO_STRUM_SPEEDS } from "#lib/constants/autoStrum.js";
+import { PIANO_BOUNCE_DIVISIONS, PIANO_INSTRUMENT_IDS } from "#lib/constants/piano.js";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
 

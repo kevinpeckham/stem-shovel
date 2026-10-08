@@ -1,4 +1,4 @@
-import { listDrumKitsFor } from "$lib/server/data";
+import { listDrumKitsFor } from "#lib/server/data.js";
 import type { PageServerLoad } from "./$types";
 
 /** The site's drum kits (docs/drum-machine.md, "Custom kits"): the layout already gates the area to system admins. */

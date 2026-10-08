@@ -1,7 +1,7 @@
-import { startLookahead } from "$lib/audio/lookahead";
-import { metronome } from "$lib/audio/metronome.svelte";
-import { chordPiano } from "$lib/audio/piano.svelte";
-import type { ChordShareUi } from "$lib/val/ChordShareSchema";
+import { startLookahead } from "#lib/audio/lookahead.js";
+import { metronome } from "#lib/audio/metronome.svelte.js";
+import { chordPiano } from "#lib/audio/piano.svelte.js";
+import type { ChordShareUi } from "#lib/val/ChordShareSchema.js";
 import {
 	CHORD_KEY_CODES,
 	CHORD_KEY_LABELS,
@@ -16,26 +16,26 @@ import {
 	type CirclePosition,
 	type SeventhType,
 	type Strum,
-} from "$lib/constants/circleOfFifths";
+} from "#lib/constants/circleOfFifths.js";
 import {
 	CHORD_RECIPES,
 	CHORD_STYLES,
 	type ChordRecipe,
 	type ChordStyleId,
-} from "$lib/constants/chordStyles";
-import type { ChordStyleData, SavedChordStyle } from "$lib/val/ChordStyleSchema";
-import type { ChordPresetSettings } from "$lib/val/PianoPresetSchema";
-import { noteMidi, voiceChord } from "$lib/utils/chordNotes";
-import { arpSwingDelay } from "$lib/utils/arpSwingDelay";
+} from "#lib/constants/chordStyles.js";
+import type { ChordStyleData, SavedChordStyle } from "#lib/val/ChordStyleSchema.js";
+import type { ChordPresetSettings } from "#lib/val/PianoPresetSchema.js";
+import { noteMidi, voiceChord } from "#lib/utils/chordNotes.js";
+import { arpSwingDelay } from "#lib/utils/arpSwingDelay.js";
 import { Arpeggiator, type ArpPattern, type ArpRate } from "./arpeggiator.svelte";
-import type { TempoRatio } from "$lib/constants/tempo";
+import type { TempoRatio } from "#lib/constants/tempo.js";
 import {
 	AUTO_STRUM_PATTERNS,
 	AUTO_STRUM_SPEEDS,
 	type AutoStrumPatternId,
 	type AutoStrumSpeed,
-} from "$lib/constants/autoStrum";
-import { spellChord, type SpelledNote } from "$lib/utils/noteSpelling";
+} from "#lib/constants/autoStrum.js";
+import { spellChord, type SpelledNote } from "#lib/utils/noteSpelling.js";
 
 export type StrumDirection = "down" | "up" | "alternate";
 export type ChordAccent = "none" | "top" | "bottom";
@@ -44,7 +44,7 @@ export { ARP_PATTERNS, ARP_RATES, type ArpPattern, type ArpRate } from "./arpegg
 
 /** The notes under the chord name in the readout: written, on a staff, both (the staff above the names), or off. */
 export type NoteReadout = "names" | "staff" | "both" | "off";
-import { styledChord, styledChordName } from "$lib/utils/styledChord";
+import { styledChord, styledChordName } from "#lib/utils/styledChord.js";
 
 /**
  * The chord player (docs/chord-player.md): the circle of fifths played

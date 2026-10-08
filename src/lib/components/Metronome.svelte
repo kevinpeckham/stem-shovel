@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { BEATS_PER_BAR } from "$lib/utils/metronomePreferences";
-	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { BEATS_PER_BAR } from "#lib/utils/metronomePreferences.js";
+	import { BPM_MAX, BPM_MIN } from "#lib/utils/tapTempo.js";
 	import { onMount } from "svelte";
 
 	/**

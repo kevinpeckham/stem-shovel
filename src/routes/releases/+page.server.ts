@@ -1,7 +1,7 @@
-import { RELEASES_DOC_SLUG } from "$lib/constants/releasesDoc";
-import { getUserDoc } from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { parseChangelog } from "$lib/utils/parseChangelog";
+import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
+import { getUserDoc } from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { parseChangelog } from "#lib/utils/parseChangelog.js";
 import type { PageServerLoad } from "./$types";
 
 /**

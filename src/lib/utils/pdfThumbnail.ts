@@ -1,4 +1,4 @@
-import { PDF_THUMBNAIL_WIDTH } from "$lib/constants/fileFormats";
+import { PDF_THUMBNAIL_WIDTH } from "#lib/constants/fileFormats.js";
 
 /**
  * The first page of a PDF as a small image, rendered in the browser with

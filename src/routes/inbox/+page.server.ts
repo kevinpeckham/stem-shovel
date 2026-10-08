@@ -1,5 +1,5 @@
-import { requireSignedIn } from "$lib/server/access";
-import { listInbox } from "$lib/server/notifications";
+import { requireSignedIn } from "#lib/server/access.js";
+import { listInbox } from "#lib/server/notifications.js";
 import type { PageServerLoad } from "./$types";
 
 /** The signed-in person's inbox, newest first. */

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { StemEngine } from "$lib/audio/engine.svelte";
-	import { combinePeaks } from "$lib/audio/peaks";
-	import Waveform from "$lib/components/Waveform.svelte";
+	import type { StemEngine } from "#lib/audio/engine.svelte.js";
+	import { combinePeaks } from "#lib/audio/peaks.js";
+	import Waveform from "#lib/components/Waveform.svelte";
 	import type { Snippet } from "svelte";
 
 	/**

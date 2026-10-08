@@ -1,5 +1,5 @@
-import { SONG_CHANGE_KINDS } from "$lib/constants/songChanges";
-import { songChangeValueError } from "$lib/utils/songChangeValueError";
+import { SONG_CHANGE_KINDS } from "#lib/constants/songChanges.js";
+import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 import * as v from "valibot";
 
 export const SongChangeKindSchema = v.picklist(SONG_CHANGE_KINDS);

@@ -16,7 +16,7 @@
  * looper's earlier `stemshovel.looper.*` keys are read once as a fallback).
  */
 
-import { findLatency } from "$lib/utils/findLatency";
+import { findLatency } from "#lib/utils/findLatency.js";
 
 export type InputSource = "mic" | "line";
 export type OutsideSource = InputSource | "computer";

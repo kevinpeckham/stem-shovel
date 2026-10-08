@@ -1,8 +1,8 @@
 import { command, getRequestEvent } from "$app/server";
-import { aiAvailable } from "$lib/server/aiDetect";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { textToChords as ask } from "$lib/server/textToChords";
-import { TextToChordsSchema } from "$lib/val/TextToChordsSchema";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { textToChords as ask } from "#lib/server/textToChords.js";
+import { TextToChordsSchema } from "#lib/val/TextToChordsSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** A progression from a description (docs/chord-player.md, "Text-to-Progression"); anyone at the chord player, a few an hour each, while the gateway is configured. */

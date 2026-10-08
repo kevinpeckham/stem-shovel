@@ -3,7 +3,7 @@ import {
 	NamedPianoPresetSchema,
 	type NamedPianoPreset,
 	type PresetInstrument,
-} from "$lib/val/PianoPresetSchema";
+} from "#lib/val/PianoPresetSchema.js";
 
 /** A signed-out player's own slot presets, per browser and per instrument (docs/piano.md, "Presets"): slot number to preset. */
 const keyOf = (instrument: PresetInstrument) =>

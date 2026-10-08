@@ -1,7 +1,11 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { startSupport, submitSupport, submitSupportSignedIn } from "$lib/remote/support.remote";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import {
+		startSupport,
+		submitSupport,
+		submitSupportSignedIn,
+	} from "#lib/remote/support.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 

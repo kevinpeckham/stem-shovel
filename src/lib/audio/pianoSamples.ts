@@ -1,4 +1,4 @@
-import { layerMix } from "$lib/utils/pianoLayers";
+import { layerMix } from "#lib/utils/pianoLayers.js";
 import { frequencyOfMidi } from "./pitch";
 
 /**

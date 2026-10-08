@@ -1,7 +1,7 @@
-import { requireEditor, requireSignedIn } from "$lib/server/access";
-import { docText, docVersion, getSong } from "$lib/server/data";
-import type { SongDocKind } from "$lib/val/SongDocKindSchema";
-import { renamedProjectPath } from "$lib/server/slugAlias";
+import { requireEditor, requireSignedIn } from "#lib/server/access.js";
+import { docText, docVersion, getSong } from "#lib/server/data.js";
+import type { SongDocKind } from "#lib/val/SongDocKindSchema.js";
+import { renamedProjectPath } from "#lib/server/slugAlias.js";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 

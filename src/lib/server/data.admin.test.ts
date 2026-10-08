@@ -1,10 +1,10 @@
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 
 // The cascade runs for real here: a user's delete should anonymise and remove their rows.
 const realCascade =
-	await vi.importActual<typeof import("$lib/server/cascade")>("$lib/server/cascade");
+	await vi.importActual<typeof import("#lib/server/cascade.js")>("#lib/server/cascade.js");
 cascade.deleteUserRows.mockImplementation(realCascade.deleteUserRows);
 cascade.deleteAccountRows.mockImplementation(realCascade.deleteAccountRows);
 cascade.deleteBugReportRows.mockImplementation(realCascade.deleteBugReportRows);

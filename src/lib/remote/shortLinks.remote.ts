@@ -1,8 +1,8 @@
 import { command, getRequestEvent } from "$app/server";
-import { MINUTE, rateLimited } from "$lib/server/rateLimit";
-import { mintShortLink as mint } from "$lib/server/shortLinks";
-import { shortLinkUrl } from "$lib/utils/shortLinkUrl";
-import { ShortLinkMintSchema } from "$lib/val/ShortLinkSchema";
+import { MINUTE, rateLimited } from "#lib/server/rateLimit.js";
+import { mintShortLink as mint } from "#lib/server/shortLinks.js";
+import { shortLinkUrl } from "#lib/utils/shortLinkUrl.js";
+import { ShortLinkMintSchema } from "#lib/val/ShortLinkSchema.js";
 import { error } from "@sveltejs/kit";
 import { ENV } from "varlock/env";
 

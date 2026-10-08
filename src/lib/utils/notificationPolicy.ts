@@ -2,7 +2,7 @@ import type {
 	DigestMode,
 	NotificationKind,
 	NotificationPriority,
-} from "$lib/val/NotificationSchema";
+} from "#lib/val/NotificationSchema.js";
 
 /**
  * Who hears what by email (docs/notifications.md), kept pure so the

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { DEFAULT_DRUM_FX } from "$lib/constants/drumMachine";
+import { DEFAULT_DRUM_FX } from "#lib/constants/drumMachine.js";
 import { upgradeDrumProject } from "./upgradeDrumProject";
 
 describe("upgradeDrumProject", () => {

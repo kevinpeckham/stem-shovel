@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { clearHomeBeat, setFeaturedSong } from "$lib/remote/admin.remote";
-	import { DRUM_KITS } from "$lib/constants/drumMachine";
-	import { invalidateAll } from "$app/navigation";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { clearHomeBeat, setFeaturedSong } from "#lib/remote/admin.remote.js";
+	import { DRUM_KITS } from "#lib/constants/drumMachine.js";
+	import { refreshAll } from "$app/navigation";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	let chosen = $derived(data.featuredId);
@@ -38,9 +38,7 @@
 					<li>
 						<label class="flex cursor-pointer items-center gap-3 px-5 py-3 hover:bg-white/5">
 							<input
-								type="radio"
-								name="songId"
-								value={s.id}
+								{...setFeaturedSong.fields.songId.as("radio", s.id)}
 								checked={s.id === chosen}
 								onchange={() => (chosen = s.id)}
 							/>
@@ -87,7 +85,7 @@
 				await submit();
 				if (clearHomeBeat.result?.cleared) {
 					notify("Back to the built-in beat");
-					await invalidateAll();
+					await refreshAll();
 				}
 			})}
 		>

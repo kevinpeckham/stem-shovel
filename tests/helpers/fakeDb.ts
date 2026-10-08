@@ -1,4 +1,4 @@
-import * as schema from "$lib/server/db/schema";
+import * as schema from "#lib/server/db/schema/index.js";
 import {
 	Column,
 	Many,
@@ -18,7 +18,7 @@ import {
 
 /**
  * A stand-in for the `db` export of `src/lib/server/db` in server tests
- * (`vi.mock("$lib/server/db", () => ({ db: fake, schema }))`). Rows live in
+ * (`vi.mock("#lib/server/db/index.js", () => ({ db: fake, schema }))`). Rows live in
  * memory per table, keyed by the schema's export name (`idea`,
  * `studioRevision`…), and every operation is logged in `calls` for the test
  * to assert on. It is a test double, not an ORM: it evaluates the `where`

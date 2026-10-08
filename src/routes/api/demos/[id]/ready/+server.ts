@@ -1,9 +1,9 @@
-import { accountOfDemo, memberOf, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
-import { notifyDemo } from "$lib/server/notifications";
-import { isOurBlobUrl } from "$lib/server/blob";
-import { markDemoReady, reservedPathname } from "$lib/server/data";
-import { scheduleDemoPlayback } from "$lib/server/jobs";
+import { accountOfDemo, memberOf, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
+import { notifyDemo } from "#lib/server/notifications.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
+import { markDemoReady, reservedPathname } from "#lib/server/data.js";
+import { scheduleDemoPlayback } from "#lib/server/jobs.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

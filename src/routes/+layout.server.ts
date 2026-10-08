@@ -1,9 +1,9 @@
-import { indexableStage } from "$lib/constants/securityHeaders";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
+import { indexableStage } from "#lib/constants/securityHeaders.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import { ENV } from "varlock/env";
-import { realMemberships } from "$lib/utils/actingMemberships";
-import { signUpMode } from "$lib/server/data";
-import { unreadCount } from "$lib/server/notifications";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
+import { signUpMode } from "#lib/server/data.js";
+import { unreadCount } from "#lib/server/notifications.js";
 import type { LayoutServerLoad } from "./$types";
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => ({

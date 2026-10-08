@@ -5,17 +5,17 @@
 		extractFeatures,
 		type Detection,
 		type Features,
-	} from "$lib/audio/analysis";
-	import { invalidateAll } from "$app/navigation";
-	import { formatBytes } from "$lib/utils/formatBytes";
+	} from "#lib/audio/analysis.js";
+	import { refreshAll } from "$app/navigation";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import {
 		MAX_STEMS_PER_SONG,
 		STEM_ACCEPT,
 		STEM_FORMAT_LIST,
 		STEM_MAX_BYTES,
-	} from "$lib/constants/stemFormats";
-	import { stemContentType } from "$lib/utils/stemContentType";
-	import { postJson, type Reservation, uploadStemFile } from "$lib/upload";
+	} from "#lib/constants/stemFormats.js";
+	import { stemContentType } from "#lib/utils/stemContentType.js";
+	import { postJson, type Reservation, uploadStemFile } from "#lib/upload.js";
 
 	export interface UploadJob {
 		file: File;
@@ -47,7 +47,7 @@
 	/**
 	 * "Add New Stems": one button that opens the file picker and starts
 	 * uploading on pick — reserve the row, send the bytes browser → Blob,
-	 * decode locally and report peaks (see $lib/upload). Sequential keeps the
+	 * decode locally and report peaks (see #lib/upload). Sequential keeps the
 	 * progress readable and avoids saturating the uplink.
 	 */
 	let {
@@ -124,7 +124,7 @@
 		const combined = combineFeatures(features);
 		if (combined && onanalysis) onanalysis(analyse(combined));
 		if (failed === 0) jobs = [];
-		await invalidateAll();
+		await refreshAll();
 		if (failed < jobs.length || jobs.length === 0) onuploaded?.();
 	}
 </script>

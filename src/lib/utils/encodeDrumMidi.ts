@@ -1,7 +1,7 @@
-import { DRUM_GM_NOTES, type DrumSwingGrid } from "$lib/constants/drumMachine";
+import { DRUM_GM_NOTES, type DrumSwingGrid } from "#lib/constants/drumMachine.js";
 import { drumSwingDelay } from "./drumSwingDelay";
 import { midiFile, type MidiEvent } from "./midiFile";
-import type { DrumPattern } from "$lib/val/DrumPatternSchema";
+import type { DrumPattern } from "#lib/val/DrumPatternSchema.js";
 
 /**
  * A pattern, or a song of them bar after bar, as a Standard MIDI File

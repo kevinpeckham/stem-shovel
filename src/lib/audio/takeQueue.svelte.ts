@@ -3,9 +3,9 @@ import {
 	uploadRecordingFile,
 	uploadRecordingStemFile,
 	type RecordingReservation,
-} from "$lib/upload";
-import type { IdeaInstruments } from "$lib/val/IdeaSchema";
-import { errorMessage } from "$lib/utils/errorMessage";
+} from "#lib/upload.js";
+import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
+import { errorMessage } from "#lib/utils/errorMessage.js";
 
 /**
  * Takes are saved in the background so Record is available the moment Stop

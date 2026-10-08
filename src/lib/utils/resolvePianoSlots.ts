@@ -2,7 +2,7 @@ import {
 	PIANO_PRESET_SLOTS,
 	type NamedPianoPreset,
 	type PresetInstrument,
-} from "$lib/val/PianoPresetSchema";
+} from "#lib/val/PianoPresetSchema.js";
 
 /** What a slot button holds and where it came from (docs/piano.md, "Presets"). */
 export interface PianoSlot extends NamedPianoPreset {

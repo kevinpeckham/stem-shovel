@@ -1,4 +1,4 @@
-import type { ProjectType } from "$lib/val/ProjectTypeSchema";
+import type { ProjectType } from "#lib/val/ProjectTypeSchema.js";
 
 export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
 	album: "Album",

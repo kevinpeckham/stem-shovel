@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { MidiNote } from "$lib/audio/midi";
+	import type { MidiNote } from "#lib/audio/midi.js";
 	import type { Attachment } from "svelte/attachments";
 
 	/**

@@ -1,4 +1,4 @@
-import type { StemEngine } from "$lib/audio/engine.svelte";
+import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { vi } from "vite-plus/test";
 
 /**

@@ -1,5 +1,5 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { accountOfSong, memberOf, requireUser, songViewerOf } from "$lib/server/access";
+import { accountOfSong, memberOf, requireUser, songViewerOf } from "#lib/server/access.js";
 import {
 	commentOwnership,
 	commentVersionById,
@@ -9,17 +9,17 @@ import {
 	saveSongDoc,
 	saveUserNote,
 	updateComment,
-} from "$lib/server/data";
-import { renderMarkdown } from "$lib/server/markdown";
-import { withSongMentions } from "$lib/server/songMentions";
-import { isAccountAdmin } from "$lib/server/viewAccess";
+} from "#lib/server/data.js";
+import { renderMarkdown } from "#lib/server/markdown.js";
+import { withSongMentions } from "#lib/server/songMentions.js";
+import { isAccountAdmin } from "#lib/server/viewAccess.js";
 import {
 	CommentHistorySchema,
 	CommentVersionRestoreSchema,
 	DocHistorySchema,
 	DocVersionRestoreSchema,
-} from "$lib/val/HistorySchema";
-import { MY_NOTES_KIND } from "$lib/val/SongDocKindSchema";
+} from "#lib/val/HistorySchema.js";
+import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

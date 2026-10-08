@@ -30,7 +30,7 @@ const h = vi.hoisted(() => ({
 	originalMix: vi.fn(),
 	renderMix: vi.fn(),
 }));
-vi.mock("$lib/server/mix", () => h);
+vi.mock("#lib/server/mix.js", () => h);
 
 const { GET } = await import("./+server");
 

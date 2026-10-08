@@ -1,5 +1,5 @@
-import { postJson, uploadStudioSourceFile, type StudioSourceReservation } from "$lib/upload";
-import { errorMessage } from "$lib/utils/errorMessage";
+import { postJson, uploadStudioSourceFile, type StudioSourceReservation } from "#lib/upload.js";
+import { errorMessage } from "#lib/utils/errorMessage.js";
 
 /**
  * The Studio's upload queue (docs/multitrack-recorder.md): a finished take

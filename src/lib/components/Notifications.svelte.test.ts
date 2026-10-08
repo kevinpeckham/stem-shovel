@@ -1,4 +1,4 @@
-import { notifications } from "$lib/state/notifications.svelte";
+import { notifications } from "#lib/state/notifications.svelte.js";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test } from "vite-plus/test";

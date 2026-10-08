@@ -1,7 +1,7 @@
-import { accessOfUrl } from "$lib/utils/blobAccess";
-import { deleteBlobs, mixPathname, putBlob, readBlob } from "$lib/server/blob";
-import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "$lib/server/data";
-import { FADER_MAX } from "$lib/audio/engine.svelte";
+import { accessOfUrl } from "#lib/utils/blobAccess.js";
+import { deleteBlobs, mixPathname, putBlob, readBlob } from "#lib/server/blob.js";
+import { claimSongMix, releaseSongMix, setSongMix, songForMix } from "#lib/server/data.js";
+import { FADER_MAX } from "#lib/audio/engine.svelte.js";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";

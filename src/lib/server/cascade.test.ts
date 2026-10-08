@@ -8,12 +8,12 @@ import { matches, type Row } from "../../../tests/helpers/fakeDb";
 // update; the tests check the set and the order against the schema's own
 // foreign keys, so a child table added without joining the cascade fails here.
 const fake = await vi.hoisted(async () => (await import("../../../tests/helpers/fakeDb")).fakeDb());
-vi.mock("$lib/server/db", async () => ({
+vi.mock("#lib/server/db/index.js", async () => ({
 	db: fake,
-	schema: await import("$lib/server/db/schema"),
+	schema: await import("#lib/server/db/schema/index.js"),
 }));
 
-const schema = await import("$lib/server/db/schema");
+const schema = await import("#lib/server/db/schema/index.js");
 const {
 	deleteAccountRows,
 	deleteArtistRows,

@@ -1,9 +1,9 @@
-import { accountOfRecording, requireUser } from "$lib/server/access";
-import { isOurBlobUrl } from "$lib/server/blob";
-import { markRecordingReady, reservedPathname, userOwnsRecording } from "$lib/server/data";
-import { scheduleRecordingPlayback } from "$lib/server/jobs";
+import { accountOfRecording, requireUser } from "#lib/server/access.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
+import { markRecordingReady, reservedPathname, userOwnsRecording } from "#lib/server/data.js";
+import { scheduleRecordingPlayback } from "#lib/server/jobs.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
+import { MAX_AUDIO_SECONDS } from "#lib/constants/audioBounds.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

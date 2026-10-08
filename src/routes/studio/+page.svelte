@@ -1,32 +1,32 @@
 <script lang="ts">
-	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import DrumMachine from "$lib/components/DrumMachine.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import Piano from "$lib/components/Piano.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
-	import InputSourceSettings from "$lib/components/InputSourceSettings.svelte";
-	import Metronome from "$lib/components/Metronome.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import StudioTimeline from "$lib/components/StudioTimeline.svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import { inputSources } from "$lib/audio/inputs.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { chordPiano, piano } from "$lib/audio/piano.svelte";
-	import { isInstrument, studio, type StudioTake } from "$lib/audio/studio.svelte";
-	import { StudioQueue } from "$lib/audio/studioQueue.svelte";
-	import { STUDIO_MEMORY_WARNING_BYTES } from "$lib/constants/studio";
-	import { DEMO_ACCEPT } from "$lib/constants/demoFormats";
-	import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import Piano from "#lib/components/Piano.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
+	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
+	import Metronome from "#lib/components/Metronome.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { inputSources } from "#lib/audio/inputs.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
+	import { isInstrument, studio, type StudioTake } from "#lib/audio/studio.svelte.js";
+	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
+	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
+	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
+	import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 	import {
 		createIdea,
 		deleteIdeaNow,
 		renameIdea,
 		saveIdeaInstruments,
-	} from "$lib/remote/ideas.remote";
+	} from "#lib/remote/ideas.remote.js";
 	import {
 		autosaveArrangement,
 		deleteStudioRevision,
@@ -34,8 +34,8 @@
 		renameStudioRevision,
 		restoreStudioRevision,
 		saveStudioRevision,
-	} from "$lib/remote/studio.remote";
-	import { notify } from "$lib/state/notifications.svelte";
+	} from "#lib/remote/studio.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 	import {
 		postJson,
 		saveAs,
@@ -43,13 +43,13 @@
 		uploadStemFile,
 		type DemoReservation,
 		type Reservation,
-	} from "$lib/upload";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
-	import type { StudioInputSource, StudioSongView, StudioTrack } from "$lib/val/StudioSchema";
-	import { invalidateAll } from "$app/navigation";
+	} from "#lib/upload.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
+	import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
+	import type { StudioInputSource, StudioSongView, StudioTrack } from "#lib/val/StudioSchema.js";
+	import { refreshAll } from "$app/navigation";
 	import { onMount, untrack } from "svelte";
 
 	/**
@@ -146,7 +146,7 @@
 		} catch {
 			// As above.
 		}
-		await invalidateAll();
+		await refreshAll();
 		return created.id;
 	}
 	async function newSong() {
@@ -158,7 +158,7 @@
 				title: defaultTitle(),
 				kind: "song",
 			});
-			await invalidateAll();
+			await refreshAll();
 			openSong(data.songs.find((s) => s.id === created.id) ?? null);
 		} catch (e) {
 			notify(`Could not make a song: ${errorMessage(e)}`, { kind: "error" });
@@ -174,7 +174,7 @@
 		try {
 			const id = await ensureSong();
 			await renameIdea({ id, title: next });
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Title not saved: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -193,7 +193,7 @@
 				loadedKey = "";
 			}
 			await deleteIdeaNow({ id: s.id });
-			await invalidateAll();
+			await refreshAll();
 			if (s.id === songId) openSong(data.songs[0] ?? null);
 			notify(`“${s.title}” deleted`);
 		} catch (e) {
@@ -245,7 +245,7 @@
 			});
 			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
 			studio.dirty = false;
-			await invalidateAll();
+			await refreshAll();
 			notify(`Revision “${name.trim()}” saved`);
 		} catch (e) {
 			notify(`Revision not saved: ${errorMessage(e)}`, { kind: "error" });
@@ -265,7 +265,7 @@
 			studio.replaceArrangement(arrangement);
 			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
 			studio.dirty = false;
-			await invalidateAll();
+			await refreshAll();
 			notify(`Restored “${label}”`);
 		} catch (e) {
 			notify(`Could not restore: ${errorMessage(e)}`, { kind: "error" });
@@ -276,7 +276,7 @@
 		if (!name?.trim()) return;
 		try {
 			await renameStudioRevision({ id: rev.id, name: name.trim() });
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
@@ -285,7 +285,7 @@
 		if (!confirm(`Delete the revision “${rev.name}”?`)) return;
 		try {
 			await deleteStudioRevision({ id: rev.id });
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
@@ -295,7 +295,7 @@
 	const queue = new StudioQueue({
 		onsaved: (sourceId) => {
 			studio.markSourceSaved(sourceId);
-			void invalidateAll();
+			void refreshAll();
 		},
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed").length);
@@ -573,7 +573,7 @@
 				notify(errorMessage(e), { kind: "error" });
 			}
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	// ── Panels and keys ────────────────────────────────────────────────────
@@ -1457,7 +1457,7 @@
 									loadedKey = "";
 									songId = null;
 								}
-								await invalidateAll();
+								await refreshAll();
 							}}
 						/>
 					{/key}

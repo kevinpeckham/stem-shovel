@@ -25,7 +25,7 @@ digests. Sign-up is open by default (an operator can switch it back to
 invitations and the waitlist), with a plan step; the free plan carries
 storage and seat limits.
 
-Stack: SvelteKit 2 + Svelte 5 (runes, remote functions), TypeScript, UnoCSS
+Stack: SvelteKit 3 + Svelte 5 (runes, remote functions), TypeScript, UnoCSS
 (wind4, lightningjar.com's config), Vite+ (Vite, Oxlint, Oxfmt in one `vp`
 CLI), `@sveltejs/adapter-vercel`, Vercel Blob for audio (a public and a
 private store), Turso + Drizzle for data, Better Auth (email + password,
@@ -294,7 +294,7 @@ check and the tests without any secret.
   (`slugify`, `formatTime`, `parseTimecode`, `toRoman`, `isTextEntry`,
   `timelineKinds`, …); `src/lib/constants/` holds the shared constants
   (stem and demo formats and limits, frame rates, position modes, song
-  change kinds). Imported as `$lib/utils/<name>` and `$lib/constants/<name>`.
+  change kinds). Imported as `#lib/utils/<name>.js` and `#lib/constants/<name>.js`.
 - `src/lib/components/ProjectPlayer.svelte` — the project page's playlist
   (a plain `<audio>` streaming each song's cached mix); `src/lib/keys.ts`
   is the shared "is this text entry" rule behind the Space shortcut.

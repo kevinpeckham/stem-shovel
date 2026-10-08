@@ -1,7 +1,7 @@
-import { authRateLimitStorage } from "$lib/server/authRateLimit";
-import { dev } from "$app/environment";
+import { authRateLimitStorage } from "#lib/server/authRateLimit.js";
+import { dev } from "$app/env";
 import { getRequestEvent } from "$app/server";
-import { db, schema } from "$lib/server/db";
+import { db, schema } from "#lib/server/db/index.js";
 import {
 	acceptInvitation,
 	createOwnedAccount,
@@ -11,12 +11,12 @@ import {
 	recordPlanTermsAccepted,
 	signUpMode,
 	redeemInviteCode,
-} from "$lib/server/data";
-import { sendPasswordResetEmail, sendVerificationEmail } from "$lib/server/email";
-import { background } from "$lib/server/background";
-import { checkSeats, notifyInvitationAccepted } from "$lib/server/notifications";
-import { checkSignUp } from "$lib/server/signUpGate";
-import { SITE_ORIGIN } from "$lib/server/siteOrigin";
+} from "#lib/server/data.js";
+import { sendPasswordResetEmail, sendVerificationEmail } from "#lib/server/email.js";
+import { background } from "#lib/server/background.js";
+import { checkSeats, notifyInvitationAccepted } from "#lib/server/notifications.js";
+import { checkSignUp } from "#lib/server/signUpGate.js";
+import { SITE_ORIGIN } from "#lib/server/siteOrigin.js";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
@@ -72,6 +72,7 @@ const trustedOrigins = [
 	...(dev
 		? ["https://stem-shovel.wr.lj.dev", "https://wandering-rodeo.tail59777f.ts.net:8444"]
 		: []),
+
 	// Preview deployments: staging's domain and Vercel's own names
 	...(ENV.VERCEL_ENV === "preview"
 		? ["https://staging.stemshovel.dev", "https://*.vercel.app"]
@@ -165,14 +166,17 @@ export const auth = betterAuth({
 						pass.via === "invitation"
 							? await invitationByToken(pass.token)
 							: await inviteCodeByCode(pass.code);
+
 					const joining =
 						"invitation" in found
 							? found.invitation?.projectId
 								? null
 								: (found.invitation?.accountId ?? null)
 							: "code" in found
-								? (found.code?.accountId ?? null) // null for a system code: nothing to join
-								: null;
+								? (found.code?.accountId ?? null)
+								: // null for a system code: nothing to join
+									null;
+
 					if (joining && (await memberHeadroom(joining)).full) {
 						throw new APIError("BAD_REQUEST", {
 							message: "That account has no seats left. Ask its owner to make room first.",
@@ -187,6 +191,7 @@ export const auth = betterAuth({
 						string,
 						unknown
 					>;
+
 					const pass = ctx
 						? await checkSignUp(
 								{

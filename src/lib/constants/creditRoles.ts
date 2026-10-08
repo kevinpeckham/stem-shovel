@@ -1,4 +1,4 @@
-import type { CreditRole } from "$lib/val/CreditRoleSchema";
+import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 
 /** What each credit role is called in the interface, one and many. */
 export const CREDIT_ROLE_LABELS: Record<CreditRole, { one: string; many: string; verb: string }> = {

@@ -1,4 +1,4 @@
-import type { SongChange } from "$lib/val/SongChangeSchema";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import { describe, expect, test } from "vite-plus/test";
 import { formatSongChange } from "./formatSongChange";
 import { songChangeValueError } from "./songChangeValueError";

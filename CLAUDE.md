@@ -40,7 +40,7 @@ through `bunx varlock run -- <cmd>`.
 
 ## Stack
 
-SvelteKit 2 + Svelte 5 runes (`experimental.async` on), Vite+ (`vp`),
+SvelteKit 3 + Svelte 5 runes (`experimental.async` on), Vite+ (`vp`, Vite 8),
 UnoCSS (wind4, lj-website's config), Turso via Drizzle, Vercel Blob,
 varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
 
@@ -80,19 +80,19 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   safelisted.
 - **Helpers live in `src/lib/utils/`, one function per file** named after
   the function (replicator's `$utils` layout), and shared constants in
-  `src/lib/constants/`. `$lib/val/` holds valibot schemas and their types
+  `src/lib/constants/`. `#lib/val/` holds valibot schemas and their types
   only — a helper that a schema needs (like `songChangeValueError`) is a
   util the schema imports, never the other way round (Fallow flags cycles).
 - **A remote form remembers its last values** for the life of the page
   (module state), so a popover that holds one calls `clearForm(form)` from
-  `$lib/utils/clearForm` in `onbeforetoggle` when it opens (inputs fall back
+  `#lib/utils/clearForm` in `onbeforetoggle` when it opens (inputs fall back
   to their `.as(type, value)` defaults), and a form that stays on the page
   calls it plus `element.reset()` after a successful submit.
 - **Transient feedback is a notification**, never a line of page content:
-  `notify("Song settings saved")` from `$lib/state/notifications.svelte`
+  `notify("Song settings saved")` from `#lib/state/notifications.svelte.js`
   (success evaporates in 4 s, errors stay until dismissed); the stack is
   rendered once in the root layout, fixed to a corner. Show a caught error with
-  `errorMessage(e)` from `$lib/utils/errorMessage`: a remote function's
+  `errorMessage(e)` from `#lib/utils/errorMessage`: a remote function's
   `error(status, message)` reaches the client as an `HttpError` that is not an
   `Error` (`String(e)` is its JSON body).
 - **House rules are machine-checked** (`fallow-rules.json`, wired in
@@ -108,7 +108,7 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   import the runner from `vite-plus/test`, and mock the database, Blob and
   ffmpeg in server tests (docs/testing.md). Run `bun run test` before a
   push that touches logic, and `SKIP_VARLOCK=1 bun run test` when a test is
-  new: CI has no 1Password, and a test that loads `$lib/server/db` (through
+  new: CI has no 1Password, and a test that loads `#lib/server/db/index.js` (through
   `data.ts`, say) fails there. Pure functions from server modules go in
   `src/lib/utils/` with their tests.
 - **Server dependencies must be ESM.** Vercel's Node 24 launcher has refused

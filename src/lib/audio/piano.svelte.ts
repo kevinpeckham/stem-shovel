@@ -4,9 +4,9 @@ import {
 	PIANO_OCTAVE_MIN,
 	PIANO_BOUNCE_DIVISIONS,
 	type PianoInstrumentId,
-} from "$lib/constants/piano";
-import type { PianoKey } from "$lib/constants/scales";
-import { HeldNotes } from "$lib/utils/heldNotes";
+} from "#lib/constants/piano.js";
+import type { PianoKey } from "#lib/constants/scales.js";
+import { HeldNotes } from "#lib/utils/heldNotes.js";
 import {
 	DEFAULT_PIANO_BOUNCE,
 	DEFAULT_PIANO_CHORUS,
@@ -34,12 +34,12 @@ import {
 	type PianoTone,
 	type PianoTremolo,
 	type PianoWah,
-} from "$lib/utils/pianoPreferences";
-import type { PianoPresetData } from "$lib/val/PianoPresetSchema";
+} from "#lib/utils/pianoPreferences.js";
+import type { PianoPresetData } from "#lib/val/PianoPresetSchema.js";
 import { createPianoFx, type PianoFx } from "./pianoFx";
 import { metronome } from "./metronome.svelte";
 import { Arpeggiator } from "./arpeggiator.svelte";
-import { chordFromKey } from "$lib/utils/chordFromKey";
+import { chordFromKey } from "#lib/utils/chordFromKey.js";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import {
 	flacSupported,

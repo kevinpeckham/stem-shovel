@@ -1,7 +1,7 @@
-import { listProjects } from "$lib/server/data";
-import { presentUrl } from "$lib/server/blob";
-import { listArchivedProjects } from "$lib/server/projectLifecycle";
-import { canViewProject } from "$lib/server/viewAccess";
+import { listProjects } from "#lib/server/data.js";
+import { presentUrl } from "#lib/server/blob.js";
+import { listArchivedProjects } from "#lib/server/projectLifecycle.js";
+import { canViewProject } from "#lib/server/viewAccess.js";
 import type { PageServerLoad } from "./$types";
 
 /** Private projects are listed only for members and for visitors holding a link to them; archived ones only for members. */

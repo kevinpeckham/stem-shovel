@@ -1,4 +1,4 @@
-import type { AccountPlan } from "$lib/val/AccountPlanSchema";
+import type { AccountPlan } from "#lib/val/AccountPlanSchema.js";
 
 /** The first accounts ever created are founders: never charged, unlimited data, every feature. */
 export const FOUNDER_SEATS = 20;

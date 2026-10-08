@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { goto } from "$app/navigation";
-	import { authClient } from "$lib/auth-client";
+	import { authClient } from "#lib/auth-client.js";
 
 	let { data } = $props();
 	let code = $state("");
@@ -29,7 +29,7 @@
 				error = result.error.message ?? "That code did not work";
 				return;
 			}
-			await goto(next, { invalidateAll: true });
+			await goto(next, { refreshAll: true });
 		} catch (e) {
 			error = errorMessage(e);
 		} finally {

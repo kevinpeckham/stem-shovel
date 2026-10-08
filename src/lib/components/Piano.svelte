@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { shortenShareLink } from "$lib/utils/shortenShareLink";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import PianoEffectsMenu from "$lib/components/PianoEffectsMenu.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
-	import ArpeggiatorMenu from "$lib/components/ArpeggiatorMenu.svelte";
-	import StaffReadout from "$lib/components/StaffReadout.svelte";
-	import { spellChord } from "$lib/utils/noteSpelling";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import { piano } from "$lib/audio/piano.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
-	import { noteLabel } from "$lib/audio/pitch";
+	import { shortenShareLink } from "#lib/utils/shortenShareLink.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import PianoEffectsMenu from "#lib/components/PianoEffectsMenu.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
+	import ArpeggiatorMenu from "#lib/components/ArpeggiatorMenu.svelte";
+	import StaffReadout from "#lib/components/StaffReadout.svelte";
+	import { spellChord } from "#lib/utils/noteSpelling.js";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import { piano } from "#lib/audio/piano.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { BPM_MAX, BPM_MIN } from "#lib/utils/tapTempo.js";
+	import { noteLabel } from "#lib/audio/pitch.js";
 	import {
 		BLACK_KEYS,
 		PIANO_INSTRUMENTS,
@@ -19,35 +19,35 @@
 		PIANO_OCTAVE_MAX,
 		PIANO_OCTAVE_MIN,
 		type PianoInstrumentId,
-	} from "$lib/constants/piano";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import { PITCH_CLASS_NAMES, SCALE_MODES, type ScaleModeId } from "$lib/constants/scales";
-	import { nameChord } from "$lib/utils/chordName";
-	import { degreeOf, scalePitchClasses } from "$lib/utils/scaleDegrees";
-	import { PIANO_TIER_BYTES } from "$lib/audio/pianoSamples";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { decodePianoPreset } from "$lib/utils/decodePianoPreset";
-	import { encodePianoPreset } from "$lib/utils/encodePianoPreset";
-	import { pianoPresetKey } from "$lib/utils/pianoPresetKey";
-	import { resolvePianoSlots, type PianoSlot } from "$lib/utils/resolvePianoSlots";
-	import { loadPianoSlotOverrides, savePianoSlotOverrides } from "$lib/utils/pianoSlotOverrides";
+	} from "#lib/constants/piano.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
+	import { PITCH_CLASS_NAMES, SCALE_MODES, type ScaleModeId } from "#lib/constants/scales.js";
+	import { nameChord } from "#lib/utils/chordName.js";
+	import { degreeOf, scalePitchClasses } from "#lib/utils/scaleDegrees.js";
+	import { PIANO_TIER_BYTES } from "#lib/audio/pianoSamples.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { decodePianoPreset } from "#lib/utils/decodePianoPreset.js";
+	import { encodePianoPreset } from "#lib/utils/encodePianoPreset.js";
+	import { pianoPresetKey } from "#lib/utils/pianoPresetKey.js";
+	import { resolvePianoSlots, type PianoSlot } from "#lib/utils/resolvePianoSlots.js";
+	import { loadPianoSlotOverrides, savePianoSlotOverrides } from "#lib/utils/pianoSlotOverrides.js";
 	import {
 		deletePianoPreset,
 		renamePianoPreset,
 		savePianoPreset,
 		setPianoPresetSlot,
-	} from "$lib/remote/pianoPresets.remote";
-	import { clearSitePianoPreset, setSitePianoPreset } from "$lib/remote/admin.remote";
+	} from "#lib/remote/pianoPresets.remote.js";
+	import { clearSitePianoPreset, setSitePianoPreset } from "#lib/remote/admin.remote.js";
 	import {
 		PIANO_PRESET_SLOTS,
 		type NamedPianoPreset,
 		type PianoPresetData,
-	} from "$lib/val/PianoPresetSchema";
+	} from "#lib/val/PianoPresetSchema.js";
 	import { onDestroy, onMount, type Snippet } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 
-	import CQMeasuring from "$lib/components/CQMeasuring.svelte";
+	import CQMeasuring from "#lib/components/CQMeasuring.svelte";
 
 	/**
 	 * The piano (docs/piano.md): a keyboard of two or three octaves played by

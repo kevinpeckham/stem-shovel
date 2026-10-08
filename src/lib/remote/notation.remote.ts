@@ -1,7 +1,10 @@
 import { command, getRequestEvent } from "$app/server";
-import { accountOfNotation, memberOf } from "$lib/server/access";
-import { deleteNotation as removeNotation, updateNotation as saveNotation } from "$lib/server/data";
-import { NotationDeleteSchema, NotationUpdateSchema } from "$lib/val/SongNotationSchema";
+import { accountOfNotation, memberOf } from "#lib/server/access.js";
+import {
+	deleteNotation as removeNotation,
+	updateNotation as saveNotation,
+} from "#lib/server/data.js";
+import { NotationDeleteSchema, NotationUpdateSchema } from "#lib/val/SongNotationSchema.js";
 import { error } from "@sveltejs/kit";
 
 /** A notation file's title and description (docs/uploads-and-blob.md, "Notation files"); an editor of the account. */

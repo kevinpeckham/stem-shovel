@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { manageUser } from "$lib/remote/admin.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { formatDate } from "$lib/utils/formatDate";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { manageUser } from "#lib/remote/admin.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
 
 	let { data } = $props();
 </script>

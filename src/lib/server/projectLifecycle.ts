@@ -1,7 +1,7 @@
-import { deleteBlobs } from "$lib/server/blob";
-import { deleteProjectRows } from "$lib/server/cascade";
-import { db, schema } from "$lib/server/db";
-import type { ArchiveStatus } from "$lib/val/ArchiveStatusSchema";
+import { deleteBlobs } from "#lib/server/blob.js";
+import { deleteProjectRows } from "#lib/server/cascade.js";
+import { db, schema } from "#lib/server/db/index.js";
+import type { ArchiveStatus } from "#lib/val/ArchiveStatusSchema.js";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 const { project, song, stem, demo, songFile, songNotation } = schema;

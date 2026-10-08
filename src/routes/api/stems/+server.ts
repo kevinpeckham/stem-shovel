@@ -1,12 +1,16 @@
-import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createStem, storageRoom } from "$lib/server/data";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { background } from "$lib/server/background";
-import { checkStorage } from "$lib/server/notifications";
-import { MAX_STEMS_PER_SONG, STEM_FORMAT_LIST, STEM_MAX_BYTES } from "$lib/constants/stemFormats";
-import { stemContentType } from "$lib/utils/stemContentType";
-import { accessOfPathname } from "$lib/server/relocate";
-import { validSizeBytes } from "$lib/utils/validSizeBytes";
+import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
+import { createStem, storageRoom } from "#lib/server/data.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { background } from "#lib/server/background.js";
+import { checkStorage } from "#lib/server/notifications.js";
+import {
+	MAX_STEMS_PER_SONG,
+	STEM_FORMAT_LIST,
+	STEM_MAX_BYTES,
+} from "#lib/constants/stemFormats.js";
+import { stemContentType } from "#lib/utils/stemContentType.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

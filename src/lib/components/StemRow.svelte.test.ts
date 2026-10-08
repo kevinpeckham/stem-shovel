@@ -1,5 +1,5 @@
 import { fakeEngine } from "../../../tests/helpers/fakeEngine";
-import type { StemState } from "$lib/audio/types";
+import type { StemState } from "#lib/audio/types.js";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, test, vi } from "vite-plus/test";

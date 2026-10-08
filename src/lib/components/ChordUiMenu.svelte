@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { chordPlayer, type NoteReadout } from "$lib/audio/chordPlayer.svelte";
-	import { KEY_CENTERS, type ChordKeyMap } from "$lib/constants/circleOfFifths";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
+	import { chordPlayer, type NoteReadout } from "#lib/audio/chordPlayer.svelte.js";
+	import { KEY_CENTERS, type ChordKeyMap } from "#lib/constants/circleOfFifths.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 
 	/**
 	 * The chord player's UI menu (docs/chord-player.md), the Arpeggiator

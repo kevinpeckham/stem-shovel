@@ -1,6 +1,6 @@
-import { db, schema } from "$lib/server/db";
-import { moveBlob, projectIdOfPathname, songIdOfPathname } from "$lib/server/blob";
-import { accessOfUrl, type BlobAccess } from "$lib/utils/blobAccess";
+import { db, schema } from "#lib/server/db/index.js";
+import { moveBlob, projectIdOfPathname, songIdOfPathname } from "#lib/server/blob.js";
+import { accessOfUrl, type BlobAccess } from "#lib/utils/blobAccess.js";
 import { and, eq, isNull } from "drizzle-orm";
 
 const { project, song, stem, demo, songFile, songNotation } = schema;

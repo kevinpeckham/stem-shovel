@@ -1,10 +1,10 @@
-import { accountOfStem, memberOf, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
-import { notifyStems } from "$lib/server/notifications";
-import { isOurBlobUrl } from "$lib/server/blob";
-import { markStemReady, reservedPathname } from "$lib/server/data";
-import { schedulePlayback } from "$lib/server/jobs";
-import { MAX_AUDIO_CHANNELS, MAX_AUDIO_SECONDS } from "$lib/constants/audioBounds";
+import { accountOfStem, memberOf, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
+import { notifyStems } from "#lib/server/notifications.js";
+import { isOurBlobUrl } from "#lib/server/blob.js";
+import { markStemReady, reservedPathname } from "#lib/server/data.js";
+import { schedulePlayback } from "#lib/server/jobs.js";
+import { MAX_AUDIO_CHANNELS, MAX_AUDIO_SECONDS } from "#lib/constants/audioBounds.js";
 import { error, json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";

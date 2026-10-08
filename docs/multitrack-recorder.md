@@ -307,7 +307,7 @@ playback from local files for long sessions.
 Browser DAWs and the Web Audio literature agree on the shape above:
 
 - **Scheduling.** One `AudioBufferSourceNode` per clip, `start(when,
-offset, duration)` from one transport anchor; loops rescheduled ahead of
+  offset, duration)` from one transport anchor; loops rescheduled ahead of
   the boundary with a look-ahead timer (web.dev "A tale of two clocks");
   gain ramps at every clip edge. openDAW (AGPL, 2025–26) runs its whole
   engine in an AudioWorklet with an immutable state graph; that is the
@@ -333,7 +333,7 @@ offset, duration)` from one transport anchor; loops rescheduled ahead of
   the local copy is a cache. IndexedDB (the pattern here) is adequate for
   phase 1.
 - **Editing model.** `{trackId, sourceId, start, offset, duration, gain,
-fadeIn, fadeOut}` is the standard non-destructive clip; immutable
+  fadeIn, fadeOut}` is the standard non-destructive clip; immutable
   snapshots are simpler than a command log at this size and are what
   revisions are anyway.
 - **Libraries.** waveform-playlist (MIT) is the one permissively licensed

@@ -1,4 +1,4 @@
-import { sanitizeHtml } from "$lib/server/sanitize";
+import { sanitizeHtml } from "#lib/server/sanitize.js";
 import { toDom } from "@kevinpeckham/barkdown";
 
 /**

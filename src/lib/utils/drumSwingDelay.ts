@@ -1,4 +1,4 @@
-import type { DrumSwingGrid } from "$lib/constants/drumMachine";
+import type { DrumSwingGrid } from "#lib/constants/drumMachine.js";
 
 /**
  * How late swing pushes a step, in seconds. On the 16 grid every second

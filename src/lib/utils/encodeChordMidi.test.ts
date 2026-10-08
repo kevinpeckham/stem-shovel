@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseMidi } from "$lib/audio/midi";
+import { parseMidi } from "#lib/audio/midi.js";
 import type { ProgressionEntry } from "./chordRhythm";
 import { encodeChordMidi } from "./encodeChordMidi";
 

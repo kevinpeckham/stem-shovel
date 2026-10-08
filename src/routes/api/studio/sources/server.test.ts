@@ -10,8 +10,8 @@ import {
 } from "../../../../../tests/helpers/fakeRequestEvent";
 import { data, givenRow, resetRemoteMocks } from "../../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../../tests/helpers/fakeApiEvent";
-import { MAX_STUDIO_SOURCES } from "$lib/constants/studio";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+import { MAX_STUDIO_SOURCES } from "#lib/constants/studio.js";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 
 /** Step 1 of saving a Studio source: the song must be the caller's own idea, the account must have room. */
 const { POST } = await import("./+server");

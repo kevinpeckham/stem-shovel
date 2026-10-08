@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { acceptInvitation } from "$lib/remote/accounts.remote";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { acceptInvitation } from "#lib/remote/accounts.remote.js";
 
 	let { data } = $props();
 	let next = $derived(`/invite/${data.token}`);

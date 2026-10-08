@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { createSystemInviteCode, revokeSystemInviteCode } from "$lib/remote/admin.remote";
-	import { INVITE_CODE_EXPIRY_DAYS } from "$lib/val/InviteCodeSchema";
-	import { clearForm } from "$lib/utils/clearForm";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatInviteCode } from "$lib/utils/formatInviteCode";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { createSystemInviteCode, revokeSystemInviteCode } from "#lib/remote/admin.remote.js";
+	import { INVITE_CODE_EXPIRY_DAYS } from "#lib/val/InviteCodeSchema.js";
+	import { clearForm } from "#lib/utils/clearForm.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatInviteCode } from "#lib/utils/formatInviteCode.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 	import { page } from "$app/state";
 
 	let { data } = $props();

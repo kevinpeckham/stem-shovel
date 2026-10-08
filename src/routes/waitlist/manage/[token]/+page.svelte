@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import { prefs } from "$lib/remote/waitlist.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { invalidateAll } from "$app/navigation";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { prefs } from "#lib/remote/waitlist.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { refreshAll } from "$app/navigation";
 
 	let { data } = $props();
 </script>
@@ -48,7 +48,7 @@
 									? "Project updates on"
 									: "Project updates off",
 						);
-						await invalidateAll();
+						await refreshAll();
 					}
 				})}
 			>

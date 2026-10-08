@@ -79,27 +79,27 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock("varlock/env", () => ({ ENV: h.env, initVarlockEnv: () => {} }));
-vi.mock("$app/environment", () => ({ dev: false, building: false, browser: false, version: "0" }));
-vi.mock("$lib/server/db", () => ({ db: h.db, schema: h.schema }));
-vi.mock("$lib/server/data", () => h.data);
-vi.mock("$lib/server/email", () => h.email);
-vi.mock("$lib/server/jobs", () => h.jobs);
-vi.mock("$lib/server/notifications", () => h.notifications);
-vi.mock("$lib/server/projectLifecycle", () => h.lifecycle);
-vi.mock("$lib/server/relocate", () => h.relocate);
-vi.mock("$lib/server/shortLinks", () => h.shortLinks);
-vi.mock("$lib/server/blob", () => h.blob);
-vi.mock("$lib/server/aiDetect", () => h.aiDetect);
-vi.mock("$lib/server/rateLimit", () => h.rateLimit);
-vi.mock("$lib/server/background", () => ({ background: h.background }));
-vi.mock("$lib/server/markdown", () => ({ renderMarkdown: (md: string) => `<p>${md}</p>` }));
-vi.mock("$lib/server/songMentions", () => ({
+vi.mock("$app/env", () => ({ dev: false, building: false, browser: false, version: "0" }));
+vi.mock("#lib/server/db/index.js", () => ({ db: h.db, schema: h.schema }));
+vi.mock("#lib/server/data.js", () => h.data);
+vi.mock("#lib/server/email.js", () => h.email);
+vi.mock("#lib/server/jobs.js", () => h.jobs);
+vi.mock("#lib/server/notifications.js", () => h.notifications);
+vi.mock("#lib/server/projectLifecycle.js", () => h.lifecycle);
+vi.mock("#lib/server/relocate.js", () => h.relocate);
+vi.mock("#lib/server/shortLinks.js", () => h.shortLinks);
+vi.mock("#lib/server/blob.js", () => h.blob);
+vi.mock("#lib/server/aiDetect.js", () => h.aiDetect);
+vi.mock("#lib/server/rateLimit.js", () => h.rateLimit);
+vi.mock("#lib/server/background.js", () => ({ background: h.background }));
+vi.mock("#lib/server/markdown.js", () => ({ renderMarkdown: (md: string) => `<p>${md}</p>` }));
+vi.mock("#lib/server/songMentions.js", () => ({
 	withSongMentions: vi.fn(async (_account: string, _song: string, html: string) => html),
 }));
-vi.mock("$lib/auth", () => ({ auth: h.auth }));
-vi.mock("$lib/server/supportChallenge", () => h.supportChallenge);
-vi.mock("$lib/server/textToBeat", () => h.textToBeat);
-vi.mock("$lib/server/textToChords", () => h.textToChords);
+vi.mock("#lib/auth.js", () => ({ auth: h.auth }));
+vi.mock("#lib/server/supportChallenge.js", () => h.supportChallenge);
+vi.mock("#lib/server/textToBeat.js", () => h.textToBeat);
+vi.mock("#lib/server/textToChords.js", () => h.textToChords);
 
 const fakeDb = h.db;
 export const data = h.data;

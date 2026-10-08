@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import QrCode from "$lib/components/QrCode.svelte";
-	import { notifyPasskeyChanged, notifyTwoFactorChanged } from "$lib/remote/security.remote";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { invalidateAll } from "$app/navigation";
-	import { authClient } from "$lib/auth-client";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import QrCode from "#lib/components/QrCode.svelte";
+	import { notifyPasskeyChanged, notifyTwoFactorChanged } from "#lib/remote/security.remote.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { refreshAll } from "$app/navigation";
+	import { authClient } from "#lib/auth-client.js";
 	import { onMount } from "svelte";
 
 	/**
@@ -69,7 +69,7 @@
 			if (result.error) return result;
 			code = "";
 			step = "codes";
-			await invalidateAll();
+			await refreshAll();
 			notify("Two-factor authentication is on");
 			void notifyTwoFactorChanged({ enabled: true }).catch(() => {});
 		});
@@ -79,7 +79,7 @@
 			const result = await authClient.twoFactor.disable({ password });
 			if (result.error) return result;
 			reset();
-			await invalidateAll();
+			await refreshAll();
 			notify("Two-factor authentication is off");
 			void notifyTwoFactorChanged({ enabled: false }).catch(() => {});
 		});
@@ -115,7 +115,7 @@
 			}
 			addingPasskey = false;
 			passkeyName = "";
-			await invalidateAll();
+			await refreshAll();
 			notify("Passkey added");
 			void notifyPasskeyChanged({ added: true, name }).catch(() => {});
 		} catch (e) {
@@ -136,7 +136,7 @@
 				passkeyError = result.error.message ?? "The passkey could not be removed";
 				return;
 			}
-			await invalidateAll();
+			await refreshAll();
 			notify("Passkey removed");
 			void notifyPasskeyChanged({ added: false, name: name ?? "" }).catch(() => {});
 		} catch (e) {

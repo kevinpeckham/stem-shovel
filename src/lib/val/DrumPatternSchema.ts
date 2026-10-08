@@ -15,7 +15,7 @@ import {
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_TIMELINE,
 	MAX_DRUM_ROWS,
-} from "$lib/constants/drumMachine";
+} from "#lib/constants/drumMachine.js";
 
 /**
  * A drum project (docs/drum-machine.md): what the page keeps in

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { saveAs } from "$lib/upload";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { saveAs } from "#lib/upload.js";
 	import { tick } from "svelte";
 
 	/**

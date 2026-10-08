@@ -12,7 +12,7 @@ import {
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
 import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 
 /** Authorization of saved beats: every member sees the library, its editors keep it. */
 const beats = await import("./beats.remote");

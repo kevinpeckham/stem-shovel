@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
-	import DemoRecorder, { type Take } from "$lib/components/DemoRecorder.svelte";
-	import RecordingActions from "$lib/components/RecordingActions.svelte";
-	import IdeaNotesPanel from "$lib/components/IdeaNotesPanel.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import ContextMenu from "$lib/components/ContextMenu.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import Tuner from "$lib/components/Tuner.svelte";
-	import Metronome from "$lib/components/Metronome.svelte";
-	import DrumMachine from "$lib/components/DrumMachine.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import { RECORDER_SOURCES, type RecorderSource } from "$lib/components/DemoRecorder.svelte";
-	import { inputSources } from "$lib/audio/inputs.svelte";
-	import StemPlayer from "$lib/components/StemPlayer.svelte";
-	import { loopSources } from "$lib/remote/looper.remote";
-	import type { IdeaInstruments } from "$lib/val/IdeaSchema";
-	import Piano from "$lib/components/Piano.svelte";
-	import { chordPiano, piano } from "$lib/audio/piano.svelte";
-	import IconDrumKit from "$lib/components/IconDrumKit.svelte";
-	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { drumMachine } from "$lib/audio/drumMachine.svelte";
-	import TuningForkIcon from "$lib/components/TuningForkIcon.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import DemoRecorder, { type Take } from "#lib/components/DemoRecorder.svelte";
+	import RecordingActions from "#lib/components/RecordingActions.svelte";
+	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import Tuner from "#lib/components/Tuner.svelte";
+	import Metronome from "#lib/components/Metronome.svelte";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import { RECORDER_SOURCES, type RecorderSource } from "#lib/components/DemoRecorder.svelte";
+	import { inputSources } from "#lib/audio/inputs.svelte.js";
+	import StemPlayer from "#lib/components/StemPlayer.svelte";
+	import { loopSources } from "#lib/remote/looper.remote.js";
+	import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
+	import Piano from "#lib/components/Piano.svelte";
+	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import TuningForkIcon from "#lib/components/TuningForkIcon.svelte";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import {
 		createIdea,
 		deleteIdeaNow,
@@ -31,27 +31,27 @@
 		renameIdea,
 		saveIdeaInstruments,
 		saveIdeaNotes,
-	} from "$lib/remote/ideas.remote";
-	import { deleteTake, setTakeName } from "$lib/remote/recordings.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
-	import { formatDate } from "$lib/utils/formatDate";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { invalidateAll } from "$app/navigation";
+	} from "#lib/remote/ideas.remote.js";
+	import { deleteTake, setTakeName } from "#lib/remote/recordings.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { refreshAll } from "$app/navigation";
 	import { onMount, tick, untrack } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
-	import { TakeQueue } from "$lib/audio/takeQueue.svelte";
+	import { TakeQueue } from "#lib/audio/takeQueue.svelte.js";
 	import {
 		loadDiscardShortTakes,
 		saveDiscardShortTakes,
 		SHORT_TAKE_SECONDS,
-	} from "$lib/utils/discardShortTakes";
+	} from "#lib/utils/discardShortTakes.js";
 	import {
 		DEFAULT_RECORDER_PREFERENCES,
 		loadRecorderPreferences,
 		saveRecorderPreferences,
 		type RecorderPreferences,
-	} from "$lib/utils/recorderPreferences";
+	} from "#lib/utils/recorderPreferences.js";
 
 	let { data } = $props();
 	type Idea = (typeof data.ideas)[number];
@@ -384,7 +384,7 @@
 				if (item.ideaId) return item.ideaId;
 				if (item.ideaTitle !== ideaTitle || ideaId) {
 					const created = await createIdea({ accountId: data.account.id, title: item.ideaTitle });
-					await invalidateAll();
+					await refreshAll();
 					return created.id;
 				}
 				return ensureIdea();
@@ -400,7 +400,7 @@
 			}
 			notify(`Take ${saved.takeNumber} saved`);
 			if (saved.instruments) await saveTakeInstruments(saved.ideaId, saved.instruments);
-			await invalidateAll();
+			await refreshAll();
 			void followRendition(saved.id);
 		},
 	});
@@ -413,7 +413,7 @@
 	async function followRendition(takeId: string) {
 		for (let i = 0; i < 12; i++) {
 			await new Promise((r) => setTimeout(r, 5000));
-			await invalidateAll();
+			await refreshAll();
 			const take = data.ideas.flatMap((i) => i.takes).find((t) => t.id === takeId);
 			if (!take) return;
 			if (take.playbackUrl) {
@@ -460,7 +460,7 @@
 		});
 		ideaId = created.id;
 		ideaTitle = created.title;
-		await invalidateAll();
+		await refreshAll();
 		return created.id;
 	}
 
@@ -557,7 +557,7 @@
 		if (!ideaId) return; // used when the idea is created
 		try {
 			await renameIdea({ id: ideaId, title });
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Title not saved: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -565,7 +565,7 @@
 	async function takeNamed(t: { id: string; title: string }) {
 		try {
 			await setTakeName(t);
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(`Take name not saved: ${errorMessage(e)}`, { kind: "error" });
 		}
@@ -577,7 +577,7 @@
 			try {
 				const r = await saveIdeaNotes({ id: ideaId, markdown: "" });
 				if (r.ideaDeleted) ideaId = null; // nothing left in it; the title stays for the next take
-				await invalidateAll();
+				await refreshAll();
 			} catch (e) {
 				notify(errorMessage(e), { kind: "error" });
 			}
@@ -591,7 +591,7 @@
 		try {
 			const r = await dropIdeaIfEmpty({ id });
 			if (r.ideaDeleted && id === ideaId) ideaId = null;
-			await invalidateAll();
+			await refreshAll();
 		} catch (e) {
 			notify(errorMessage(e), { kind: "error" });
 		}
@@ -612,7 +612,7 @@
 			recorder?.reset();
 			// The last take of an idea without notes takes the idea with it.
 			if (r.ideaDeleted && idea?.takes.some((x) => x.id === t.id)) ideaId = null;
-			await invalidateAll();
+			await refreshAll();
 			const still = before && idea?.takes.find((x) => x.id === before.id);
 			if (idea && still) show(idea, still);
 		} catch (e) {
@@ -653,7 +653,7 @@
 				notesKey++;
 				recorder?.reset();
 			}
-			await invalidateAll();
+			await refreshAll();
 			// After the refresh, so the placeholder counts without the deleted idea.
 			if (emptied) ideaTitle = placeholder();
 		} catch (e) {
@@ -1261,7 +1261,7 @@
 						onsaved={async ({ ideaDeleted }) => {
 							// Emptied notes on an idea without takes remove the idea; the list shows the first line of the notes.
 							if (ideaDeleted) ideaId = null;
-							await invalidateAll();
+							await refreshAll();
 						}}
 					/>
 				{/key}

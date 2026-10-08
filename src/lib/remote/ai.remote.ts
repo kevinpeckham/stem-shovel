@@ -1,7 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
-import { accountOfProject, accountOfSong, memberOf } from "$lib/server/access";
-import { setProjectNoAi, setSongNoAi } from "$lib/server/data";
-import { AiPolicySchema } from "$lib/val/AiPolicySchema";
+import { accountOfProject, accountOfSong, memberOf } from "#lib/server/access.js";
+import { setProjectNoAi, setSongNoAi } from "#lib/server/data.js";
+import { AiPolicySchema } from "#lib/val/AiPolicySchema.js";
 import { error } from "@sveltejs/kit";
 
 /**

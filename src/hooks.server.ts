@@ -1,17 +1,21 @@
+import type { Handle, HandleServerError } from "@sveltejs/kit/hooks";
 import * as Sentry from "@sentry/node";
-import { building } from "$app/environment";
-import { auth } from "$lib/auth";
-import { db, schema } from "$lib/server/db";
-import { withActingMemberships } from "$lib/utils/actingMemberships";
-import { indexableStage, ROBOTS_NOINDEX, SECURITY_HEADERS } from "$lib/constants/securityHeaders";
-import { isIndexablePath } from "$lib/utils/isIndexablePath";
-import { vanityHostTarget } from "$lib/utils/vanityHostTarget";
-import { shortLinkHostRoute } from "$lib/utils/shortLinkHostRoute";
-import { resolveShortLink } from "$lib/server/shortLinks";
-import { SITE_ORIGIN } from "$lib/server/siteOrigin";
+import { building } from "$app/env";
+import { auth } from "#lib/auth.js";
+import { db, schema } from "#lib/server/db/index.js";
+import { withActingMemberships } from "#lib/utils/actingMemberships.js";
+import {
+	indexableStage,
+	ROBOTS_NOINDEX,
+	SECURITY_HEADERS,
+} from "#lib/constants/securityHeaders.js";
+import { isIndexablePath } from "#lib/utils/isIndexablePath.js";
+import { vanityHostTarget } from "#lib/utils/vanityHostTarget.js";
+import { shortLinkHostRoute } from "#lib/utils/shortLinkHostRoute.js";
+import { resolveShortLink } from "#lib/server/shortLinks.js";
+import { SITE_ORIGIN } from "#lib/server/siteOrigin.js";
 import { ENV } from "varlock/env";
-import { resolvePreviewAuth } from "$lib/server/previewAuth";
-import type { Handle, HandleServerError, HandleValidationError } from "@sveltejs/kit";
+import { resolvePreviewAuth } from "#lib/server/previewAuth.js";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 import { eq } from "drizzle-orm";
 
@@ -59,10 +63,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		? (
 				await db.query.accountMember.findMany({
 					where: eq(schema.accountMember.userId, user.id),
-					with: { account: { columns: { slug: true, name: true, status: true } } },
+					with: {
+						account: { columns: { slug: true, name: true, status: true } },
+					},
 				})
-			)
-				// A suspended account counts as no membership: its pages, mutations and uploads all close.
+			) // A suspended account counts as no membership: its pages, mutations and uploads all close.
 				.filter((m) => m.account.status === "active")
 				.map((m) => ({
 					accountId: m.accountId,
@@ -93,26 +98,28 @@ export const handle: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-/** An unexpected error (never a 404 or an `error()`): to Sentry with the route, then SvelteKit's default page. */
-export const handleError: HandleServerError = ({ error, event, status, message }) => {
-	// The dev server's log is where a developer looks first (Sentry is for the deployed stages).
-	if (import.meta.env.DEV && status !== 404) console.error(error);
-	if (status !== 404) {
-		Sentry.captureException(error, {
-			tags: { route: event.route.id ?? "unknown", method: event.request.method },
-			extra: { path: event.url.pathname, status, message },
-		});
-	}
-};
-
 /**
- * A remote function's payload failed its valibot schema. The forms never send
- * such payloads (they validate the same schema first), so this is a hand-made
- * request; log where and how much, never the values, and answer plainly.
+ * Every error reaches here since SvelteKit 3, sorted by `kind`. An unknown
+ * one (thrown by our code or what it calls) goes to Sentry with the route,
+ * then SvelteKit's default page; an app error (`error(...)`) and the
+ * framework's own (a 404) are expected and pass through unchanged. A
+ * validation error is a remote function's payload failing its valibot
+ * schema: the forms never send such payloads (they validate the same schema
+ * first), so this is a hand-made request; log where and how much, never the
+ * values, and answer plainly.
  */
-export const handleValidationError: HandleValidationError = ({ event, issues }) => {
-	console.warn(
-		`[validation] ${event.request.method} ${event.url.pathname}: ${issues.length} issue${issues.length === 1 ? "" : "s"} from ${event.getClientAddress()}`,
-	);
-	return { message: "That request was not valid." };
+export const handleError: HandleServerError = ({ kind, error, issues, event }) => {
+	if (kind === "validation") {
+		console.warn(
+			`[validation] ${event.request.method} ${event.url.pathname}: ${issues.length} issue${issues.length === 1 ? "" : "s"} from ${event.getClientAddress()}`,
+		);
+		return { message: "That request was not valid." };
+	}
+	if (kind !== "unknown") return;
+	// The dev server's log is where a developer looks first (Sentry is for the deployed stages).
+	if (import.meta.env.DEV) console.error(error);
+	Sentry.captureException(error, {
+		tags: { route: event.route.id ?? "unknown", method: event.request.method },
+		extra: { path: event.url.pathname, status: 500 },
+	});
 };

@@ -1,10 +1,10 @@
-import { accountOfNotation, memberOf } from "$lib/server/access";
-import { isOurBlobUrl, notationThumbnailPathname, putBlob, readBlob } from "$lib/server/blob";
-import { failNotation, markNotationReady, reservedPathname } from "$lib/server/data";
-import { scheduleNotationPdf } from "$lib/server/jobs";
-import { accessOfPathname } from "$lib/server/relocate";
-import { NOTATION_THUMBNAIL_MAX_BYTES, notationFormatOf } from "$lib/constants/notationFormats";
-import { imageTypeOfBytes, startsLikeMusicXml, startsLikeZip } from "$lib/utils/fileSignatures";
+import { accountOfNotation, memberOf } from "#lib/server/access.js";
+import { isOurBlobUrl, notationThumbnailPathname, putBlob, readBlob } from "#lib/server/blob.js";
+import { failNotation, markNotationReady, reservedPathname } from "#lib/server/data.js";
+import { scheduleNotationPdf } from "#lib/server/jobs.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
+import { NOTATION_THUMBNAIL_MAX_BYTES, notationFormatOf } from "#lib/constants/notationFormats.js";
+import { imageTypeOfBytes, startsLikeMusicXml, startsLikeZip } from "#lib/utils/fileSignatures.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

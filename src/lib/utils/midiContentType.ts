@@ -1,4 +1,4 @@
-import { MIDI_FORMATS } from "$lib/constants/midiFormats";
+import { MIDI_FORMATS } from "#lib/constants/midiFormats.js";
 
 /** "audio/midi" for a .mid / .midi filename, null otherwise. */
 export function midiContentType(filename: string): string | null {

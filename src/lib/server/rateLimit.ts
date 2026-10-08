@@ -1,4 +1,4 @@
-import { redisConfigured, redisPipeline } from "$lib/server/redis";
+import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
 
 /**
  * N events per key per window for endpoints that cost money, send mail or

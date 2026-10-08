@@ -187,20 +187,20 @@ description from their first paragraph.
 ## Error reports
 
 Sentry (`@sentry/sveltekit`; `src/hooks.client.ts` for the browser,
-`src/instrumentation.server.ts` for the server, loaded before the app by
-SvelteKit's `experimental.instrumentation.server`) receives unhandled errors
-with the stack, route and browser, plus a 20 % sample of traces. No user
-identity and no request bodies are sent (`dataCollection` off,
-`sendDefaultPii: false`); Replay samples 10 % of sessions and every session
+`src/instrumentation.server.ts` for the server, which SvelteKit 3 loads
+before the app) receives unhandled errors with the stack, route and browser,
+plus a 20 % sample of traces. No user identity and no request bodies are
+sent (every `dataCollection` category off); Replay samples 10 % of sessions and every session
 with an error, with text and inputs masked. Development reports too, under its own environment tag. The CSP allows the ingest host in `connect-src`. Source maps go
 up from Vercel builds only, with `SENTRY_AUTH_TOKEN`.
 
 ## Analytics
 
-Vercel Web Analytics and Speed Insights (`@vercel/analytics/sveltekit` and
-`@vercel/speed-insights/sveltekit`, each called once in
-`src/routes/+layout.ts`) count page views by route and collect Core Web
-Vitals per route. It is cookieless and
+Vercel Web Analytics and Speed Insights (the packages' generic entries,
+injected once by `src/lib/observability.ts` from `src/routes/+layout.ts`,
+with the route reported after each navigation by the root layout; their
+`/sveltekit` entries still read SvelteKit 2's `$app/stores`) count page
+views by route and collect Core Web Vitals per route. It is cookieless and
 keeps no identifier; its script and beacons are same-origin under
 `/_vercel/insights/` and `/_vercel/speed-insights/`, so the CSP allows them
 as `self` (dev alone allows Vercel's debug script host). Both share a

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { NanoIdSchema } from "./NanoIdSchema";
 
 /** The reorderStems command: a song's stems in the order the rows should take, top first. */

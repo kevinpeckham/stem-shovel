@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
-	import InfoTip from "$lib/components/InfoTip.svelte";
-	import { BPM_MAX, BPM_MIN } from "$lib/utils/tapTempo";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import ComboBox from "#lib/components/ComboBox.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
+	import { BPM_MAX, BPM_MIN } from "#lib/utils/tapTempo.js";
 
 	/**
 	 * The chord player's Timing menu (docs/chord-player.md, "The Timing

@@ -1,14 +1,14 @@
-import { audioSession } from "$lib/utils/audioSession";
-import { appendChunkPeaks, chunkPeaksState } from "$lib/utils/chunkPeaks";
-import { coveredClips } from "$lib/utils/coveredClips";
-import { encodeWav24 } from "$lib/utils/encodeWav24";
-import { normalizeBuffer } from "$lib/utils/normalizeBuffer";
-import { sliceBuffer } from "$lib/utils/sliceBuffer";
-import { snapToGrid } from "$lib/utils/snapToGrid";
-import { splitClipAt } from "$lib/utils/splitClipAt";
-import { takePieces } from "$lib/utils/takePieces";
-import { trimmedClip } from "$lib/utils/trimmedClip";
-import { MAX_STUDIO_CLIPS, MAX_STUDIO_TRACKS, STUDIO_FADER_MAX } from "$lib/constants/studio";
+import { audioSession } from "#lib/utils/audioSession.js";
+import { appendChunkPeaks, chunkPeaksState } from "#lib/utils/chunkPeaks.js";
+import { coveredClips } from "#lib/utils/coveredClips.js";
+import { encodeWav24 } from "#lib/utils/encodeWav24.js";
+import { normalizeBuffer } from "#lib/utils/normalizeBuffer.js";
+import { sliceBuffer } from "#lib/utils/sliceBuffer.js";
+import { snapToGrid } from "#lib/utils/snapToGrid.js";
+import { splitClipAt } from "#lib/utils/splitClipAt.js";
+import { takePieces } from "#lib/utils/takePieces.js";
+import { trimmedClip } from "#lib/utils/trimmedClip.js";
+import { MAX_STUDIO_CLIPS, MAX_STUDIO_TRACKS, STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type {
 	StudioArrangement,
 	StudioClip,
@@ -17,7 +17,7 @@ import type {
 	StudioSourceView,
 	StudioTrack,
 	StudioTrackFx,
-} from "$lib/val/StudioSchema";
+} from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { drumMachine } from "./drumMachine.svelte";
 import { inputSources, outputLatencyMs } from "./inputs.svelte";

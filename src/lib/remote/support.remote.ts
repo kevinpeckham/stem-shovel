@@ -1,25 +1,25 @@
 import { form, getRequestEvent } from "$app/server";
-import { requireSystemAdmin } from "$lib/server/access";
-import { background } from "$lib/server/background";
+import { requireSystemAdmin } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
 import {
 	createSupportRequest,
 	deleteSupportRequest as removeRequest,
 	setSupportRequestStatus,
 	systemAdminEmails,
 	userAccountsByEmail,
-} from "$lib/server/data";
-import { sendSupportRequestEmail } from "$lib/server/email";
-import { HOUR, rateLimited } from "$lib/server/rateLimit";
-import { openChallenge, sealChallenge } from "$lib/server/supportChallenge";
-import { fakeAccountNames } from "$lib/utils/fakeAccountNames";
-import { obscureName } from "$lib/utils/obscureName";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/server/data.js";
+import { sendSupportRequestEmail } from "#lib/server/email.js";
+import { HOUR, rateLimited } from "#lib/server/rateLimit.js";
+import { openChallenge, sealChallenge } from "#lib/server/supportChallenge.js";
+import { fakeAccountNames } from "#lib/utils/fakeAccountNames.js";
+import { obscureName } from "#lib/utils/obscureName.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import {
 	SupportRequestStatusSchema,
 	SupportSignedInSchema,
 	SupportStartSchema,
 	SupportSubmitSchema,
-} from "$lib/val/SupportRequestSchema";
+} from "#lib/val/SupportRequestSchema.js";
 import { error, invalid } from "@sveltejs/kit";
 
 /**

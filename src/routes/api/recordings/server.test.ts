@@ -10,7 +10,7 @@ import {
 } from "../../../../tests/helpers/fakeRequestEvent";
 import { data, givenRow, resetRemoteMocks } from "../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 
 /** Step 1 of saving a take: the idea must be the caller's own, the account must have room. */
 const { POST } = await import("./+server");

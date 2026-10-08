@@ -1,17 +1,17 @@
 import { form, getRequestEvent } from "$app/server";
-import { parsePosition } from "$lib/audio/measures";
-import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { background } from "$lib/server/background";
-import { notifyComment } from "$lib/server/notifications";
+import { parsePosition } from "#lib/audio/measures.js";
+import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
+import { background } from "#lib/server/background.js";
+import { notifyComment } from "#lib/server/notifications.js";
 import {
 	commentOwnership,
 	createComment as create,
 	deleteComment as remove,
 	songGrid,
 	updateComment as update,
-} from "$lib/server/data";
-import { CommentCreateSchema, CommentUpdateSchema } from "$lib/val/CommentSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/server/data.js";
+import { CommentCreateSchema, CommentUpdateSchema } from "#lib/val/CommentSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import { error, invalid } from "@sveltejs/kit";
 
 /**

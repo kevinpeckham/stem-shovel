@@ -1,5 +1,5 @@
-import { confirmWaitlist } from "$lib/server/data";
-import { WaitlistTokenSchema } from "$lib/val/WaitlistSchema";
+import { confirmWaitlist } from "#lib/server/data.js";
+import { WaitlistTokenSchema } from "#lib/val/WaitlistSchema.js";
 import * as v from "valibot";
 import type { PageServerLoad } from "./$types";
 

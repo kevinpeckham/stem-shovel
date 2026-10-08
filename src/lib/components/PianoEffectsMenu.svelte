@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { piano, type PianoEngine } from "$lib/audio/piano.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { PIANO_BOUNCE_DIVISIONS, type PianoBounceDivision } from "$lib/constants/piano";
+	import { piano, type PianoEngine } from "#lib/audio/piano.svelte.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { PIANO_BOUNCE_DIVISIONS, type PianoBounceDivision } from "#lib/constants/piano.js";
 	import type { Attachment } from "svelte/attachments";
 
 	/** Which engine the menu drives: the piano's, or the chord player's own (docs/chord-player.md, "Its own engine"). */

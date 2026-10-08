@@ -1,4 +1,4 @@
-import type { DrumSwingGrid } from "$lib/constants/drumMachine";
+import type { DrumSwingGrid } from "#lib/constants/drumMachine.js";
 import { drumSwingDelay } from "./drumSwingDelay";
 
 /**

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Metronome from "$lib/components/Metronome.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
+	import Metronome from "#lib/components/Metronome.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
 
 	let { data } = $props();
 </script>

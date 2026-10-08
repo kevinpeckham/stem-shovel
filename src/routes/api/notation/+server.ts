@@ -1,14 +1,14 @@
-import { accountOfSong, memberOf, requireUser } from "$lib/server/access";
-import { createNotation, storageRoom } from "$lib/server/data";
-import { formatBytes } from "$lib/utils/formatBytes";
-import { background } from "$lib/server/background";
-import { checkStorage } from "$lib/server/notifications";
+import { accountOfSong, memberOf, requireUser } from "#lib/server/access.js";
+import { createNotation, storageRoom } from "#lib/server/data.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
+import { background } from "#lib/server/background.js";
+import { checkStorage } from "#lib/server/notifications.js";
 import {
 	MAX_NOTATION_PER_SONG,
 	NOTATION_MAX_BYTES,
 	notationFormatOf,
-} from "$lib/constants/notationFormats";
-import { accessOfPathname } from "$lib/server/relocate";
+} from "#lib/constants/notationFormats.js";
+import { accessOfPathname } from "#lib/server/relocate.js";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

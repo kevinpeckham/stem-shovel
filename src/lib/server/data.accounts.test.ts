@@ -1,6 +1,6 @@
-import { FOUNDER_SEATS, PLAN_LIMITS } from "$lib/constants/plans";
-import { INVITATION_TTL_MS } from "$lib/val/InvitationSchema";
-import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
+import { FOUNDER_SEATS, PLAN_LIMITS } from "#lib/constants/plans.js";
+import { INVITATION_TTL_MS } from "#lib/val/InvitationSchema.js";
+import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "#lib/val/InviteCodeSchema.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { blob, callsTo, cascade, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 

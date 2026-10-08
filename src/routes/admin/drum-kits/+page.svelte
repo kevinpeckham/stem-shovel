@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { invalidateAll } from "$app/navigation";
-	import DrumKitManager from "$lib/components/DrumKitManager.svelte";
-	import { pageTitle } from "$lib/utils/pageTitle";
+	import { refreshAll } from "$app/navigation";
+	import DrumKitManager from "#lib/components/DrumKitManager.svelte";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
 
 	let { data } = $props();
 </script>
@@ -19,5 +19,5 @@
 	synthesized and has nothing to replace.
 </p>
 <div class="mt-6 max-w-2xl">
-	<DrumKitManager accountId={null} kits={data.kits} onchange={() => invalidateAll()} />
+	<DrumKitManager accountId={null} kits={data.kits} onchange={() => refreshAll()} />
 </div>

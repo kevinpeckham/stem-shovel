@@ -1,4 +1,4 @@
-import { MAX_STEMS_PER_SONG } from "$lib/constants/stemFormats";
+import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { blob, callsTo, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 

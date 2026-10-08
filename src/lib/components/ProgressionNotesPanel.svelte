@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { progressionPad } from "$lib/audio/progression.svelte";
-	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
-	import { saveProgression, saveProgressionNotes } from "$lib/remote/progressions.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import { progressionPad } from "#lib/audio/progression.svelte.js";
+	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
+	import { saveProgression, saveProgressionNotes } from "#lib/remote/progressions.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 
 	/**

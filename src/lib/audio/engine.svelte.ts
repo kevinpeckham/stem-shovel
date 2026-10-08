@@ -1,12 +1,12 @@
-import { playThroughSilentSwitch } from "$lib/audio/playThroughSilentSwitch";
-import { reorderById } from "$lib/utils/reorderById";
-import { claimPlayback, releasePlayback } from "$lib/audio/onlyOnePlays";
+import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
+import { reorderById } from "#lib/utils/reorderById.js";
+import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
-import { FADER_MAX } from "$lib/constants/fader";
+import { FADER_MAX } from "#lib/constants/fader.js";
 export { FADER_MAX };
 /** Time constant for gain changes (seconds). ~15 ms avoids zipper noise without feeling laggy. */
 const RAMP = 0.015;

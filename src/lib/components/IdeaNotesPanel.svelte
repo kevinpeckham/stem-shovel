@@ -1,8 +1,8 @@
 <script lang="ts">
-	import MarkdownDocEditor from "$lib/components/MarkdownDocEditor.svelte";
-	import { saveIdeaNotes } from "$lib/remote/ideas.remote";
-	import { notify } from "$lib/state/notifications.svelte";
-	import { errorMessage } from "$lib/utils/errorMessage";
+	import MarkdownDocEditor from "#lib/components/MarkdownDocEditor.svelte";
+	import { saveIdeaNotes } from "#lib/remote/ideas.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { MarkdownEditorState } from "@kevinpeckham/woof-editor";
 
 	/**

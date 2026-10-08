@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pageTitle } from "$lib/utils/pageTitle";
+	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { page } from "$app/state";
 
 	let { data } = $props();

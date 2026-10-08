@@ -1,7 +1,7 @@
-import { publicBlobUrl } from "$lib/server/blob";
-import { accountOfSong, isEditor, requireSignedIn } from "$lib/server/access";
-import { aiAvailable } from "$lib/server/aiDetect";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
+import { publicBlobUrl } from "#lib/server/blob.js";
+import { accountOfSong, isEditor, requireSignedIn } from "#lib/server/access.js";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import {
 	deleteEmptyIdeas,
 	listBeats,
@@ -13,13 +13,13 @@ import {
 	recordingsWantingPlayback,
 	songLink,
 	sitePianoPresets,
-} from "$lib/server/data";
-import { scheduleRecordingPlayback } from "$lib/server/jobs";
-import { pageCopy } from "$lib/server/pageCopy";
-import { songTargets } from "$lib/server/songTargets";
+} from "#lib/server/data.js";
+import { scheduleRecordingPlayback } from "#lib/server/jobs.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import { songTargets } from "#lib/server/songTargets.js";
 import copyFallback from "../../../../scripts/user-docs/idea-recorder-page.md?raw";
-import { realMemberships } from "$lib/utils/actingMemberships";
-import { NanoIdSchema } from "$lib/val/NanoIdSchema";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
+import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { redirect } from "@sveltejs/kit";
 import * as v from "valibot";

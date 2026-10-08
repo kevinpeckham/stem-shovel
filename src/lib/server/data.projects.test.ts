@@ -1,4 +1,4 @@
-import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "$lib/val/InviteCodeSchema";
+import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH } from "#lib/val/InviteCodeSchema.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { callsTo, fake, reset } from "../../../tests/helpers/fakeDataLayer";
 

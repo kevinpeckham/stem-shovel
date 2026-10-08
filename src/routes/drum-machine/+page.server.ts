@@ -1,8 +1,8 @@
-import { aiAvailable } from "$lib/server/aiDetect";
-import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "$lib/server/currentAccount";
-import { listBeats, listDrumKitManifests, songForBeat } from "$lib/server/data";
-import { pageCopy } from "$lib/server/pageCopy";
-import { realMemberships } from "$lib/utils/actingMemberships";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
+import { listBeats, listDrumKitManifests, songForBeat } from "#lib/server/data.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/drum-machine-page.md?raw";
 import type { PageServerLoad } from "./$types";
 

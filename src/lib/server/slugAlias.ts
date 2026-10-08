@@ -1,5 +1,5 @@
-import { db, schema } from "$lib/server/db";
-import { renamedPathname } from "$lib/utils/renamedPathname";
+import { db, schema } from "#lib/server/db/index.js";
+import { renamedPathname } from "#lib/utils/renamedPathname.js";
 import { and, eq, inArray } from "drizzle-orm";
 
 /**

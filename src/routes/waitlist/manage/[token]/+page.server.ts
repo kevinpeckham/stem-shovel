@@ -1,5 +1,5 @@
-import { waitlistByManageToken } from "$lib/server/data";
-import { WaitlistTokenSchema } from "$lib/val/WaitlistSchema";
+import { waitlistByManageToken } from "#lib/server/data.js";
+import { WaitlistTokenSchema } from "#lib/val/WaitlistSchema.js";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 import type { PageServerLoad } from "./$types";

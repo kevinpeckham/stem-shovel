@@ -1,5 +1,5 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { requireEditor, requireOwnIdea, requireUser } from "$lib/server/access";
+import { requireEditor, requireOwnIdea, requireUser } from "#lib/server/access.js";
 import {
 	createIdea,
 	deleteStudioRevision as removeRevision,
@@ -11,15 +11,15 @@ import {
 	studioRevisionOwner,
 	studioSongView,
 	studioSourceOwner,
-} from "$lib/server/data";
-import { NameSchema } from "$lib/val/NameSchema";
-import { NanoIdSchema } from "$lib/val/NanoIdSchema";
-import { IdSchema } from "$lib/val/SongSchema";
+} from "#lib/server/data.js";
+import { NameSchema } from "#lib/val/NameSchema.js";
+import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
+import { IdSchema } from "#lib/val/SongSchema.js";
 import {
 	StudioAutosaveSchema,
 	StudioRevisionRenameSchema,
 	StudioRevisionSaveSchema,
-} from "$lib/val/StudioSchema";
+} from "#lib/val/StudioSchema.js";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 

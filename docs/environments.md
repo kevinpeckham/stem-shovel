@@ -80,10 +80,10 @@ the code, scripts and docs are Claude's. In order:
    id (Production keeps today's). Redeploy staging.
 5. **The VM**: `.env.local` gets the dev id; a `.env.preview.local`
    (gitignored) with the staging id lets `APP_ENV=preview bunx varlock run
--- <cmd>` address staging from the VM (migrations, the bot enrolment,
+   -- <cmd>` address staging from the VM (migrations, the bot enrolment,
    smoke tests). Restart the dev server.
 6. **Seed the new databases** with real data: `bun run db:reset-stage --
---wipe --restore prod-2026-09-18 --admin <the operator email>`
+   --wipe --restore prod-2026-09-18 --admin <the operator email>`
    (`APP_ENV=preview` for staging) migrates, restores the snapshot of the
    MMKK and sirrobert accounts (rows with their production ids, every file
    uploaded to the stage's own stores at the same pathnames, members with
@@ -138,7 +138,7 @@ alone.
    nothing in 1Password yet.
 2. **Rehearse** from a machine with the production token:
    `APP_ENV=production TARGET_DATABASE_URL=… TARGET_AUTH_TOKEN=…
-bun run db:copy-database -- --verify` copies every table (schema,
+   bun run db:copy-database -- --verify` copies every table (schema,
    indexes, rows, `__drizzle_migrations`) from the live database and
    checks row counts. Point a preview at the copy if a rehearsal under the
    real build is wanted (a temporary 1Password environment with the new

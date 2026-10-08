@@ -1,5 +1,5 @@
-import { readBlob } from "$lib/server/blob";
-import { logAiRequest } from "$lib/server/data";
+import { readBlob } from "#lib/server/blob.js";
+import { logAiRequest } from "#lib/server/data.js";
 import { createGateway } from "@ai-sdk/gateway";
 import { generateText } from "ai";
 import {
@@ -7,7 +7,7 @@ import {
 	type ChartDraftAnswer,
 	ChartDraftAnswerSchema,
 	type ChordSegmentInput,
-} from "$lib/val/ChartDraftSchema";
+} from "#lib/val/ChartDraftSchema.js";
 import * as v from "valibot";
 import { ENV } from "varlock/env";
 

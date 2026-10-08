@@ -1,16 +1,16 @@
-import { accountLimitsOf, accountStorageBytes, memberHeadroom } from "$lib/server/data";
-import { permalink } from "$lib/utils/permalink";
-import { db, schema } from "$lib/server/db";
-import { sendDigestEmail, sendNotificationEmail } from "$lib/server/email";
-import { formatBytes } from "$lib/utils/formatBytes";
+import { accountLimitsOf, accountStorageBytes, memberHeadroom } from "#lib/server/data.js";
+import { permalink } from "#lib/utils/permalink.js";
+import { db, schema } from "#lib/server/db/index.js";
+import { sendDigestEmail, sendNotificationEmail } from "#lib/server/email.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
 import {
 	DEFAULT_PREFS,
 	digestDue,
 	emailDelivery,
 	KIND_PRIORITY,
 	type NotificationPrefs,
-} from "$lib/utils/notificationPolicy";
-import type { NotificationKind } from "$lib/val/NotificationSchema";
+} from "#lib/utils/notificationPolicy.js";
+import type { NotificationKind } from "#lib/val/NotificationSchema.js";
 import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 
 /**

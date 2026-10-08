@@ -1,4 +1,4 @@
-import { notifications, notify } from "$lib/state/notifications.svelte";
+import { notifications, notify } from "#lib/state/notifications.svelte.js";
 
 /**
  * A download the server builds on request (a documentation PDF, a charts

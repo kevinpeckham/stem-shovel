@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { placePopover } from "$lib/utils/anchorFallback";
+	import { placePopover } from "#lib/utils/anchorFallback.js";
 
 	/**
 	 * A ⋯ button opening a small menu of actions, links or custom snippets in

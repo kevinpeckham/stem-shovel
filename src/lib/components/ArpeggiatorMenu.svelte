@@ -5,11 +5,11 @@
 		type Arpeggiator,
 		type ArpPattern,
 		type ArpRate,
-	} from "$lib/audio/arpeggiator.svelte";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { TEMPO_RATIOS, type TempoRatio } from "$lib/constants/tempo";
-	import InfoTip from "$lib/components/InfoTip.svelte";
-	import ComboBox from "$lib/components/ComboBox.svelte";
+	} from "#lib/audio/arpeggiator.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { TEMPO_RATIOS, type TempoRatio } from "#lib/constants/tempo.js";
+	import InfoTip from "#lib/components/InfoTip.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
 
 	/**
 	 * An arpeggiator's settings (audio/arpeggiator.svelte.ts), the one menu

@@ -17,12 +17,12 @@ import {
 	resetRemoteMocks,
 } from "../../../../tests/helpers/fakeServerModules";
 import { callRoute, jsonPost } from "../../../../tests/helpers/fakeApiEvent";
-import { DRUM_SAMPLE_MAX_BYTES } from "$lib/constants/drumKits";
-import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "$lib/constants/fileFormats";
-import { MIDI_MAX_BYTES } from "$lib/constants/midiFormats";
-import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "$lib/constants/notationFormats";
-import { STEM_MAX_BYTES } from "$lib/constants/stemFormats";
-import { MAX_TAKE_BYTES } from "$lib/constants/takeLimits";
+import { DRUM_SAMPLE_MAX_BYTES } from "#lib/constants/drumKits.js";
+import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "#lib/constants/fileFormats.js";
+import { MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
+import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "#lib/constants/notationFormats.js";
+import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 
 /**
  * Step 2 of an upload: the token route. `handleUpload` is replaced by a spy
@@ -42,7 +42,7 @@ const h = vi.hoisted(() => ({ handleUpload: vi.fn() }));
 vi.mock("@vercel/blob/client", () => ({ handleUpload: h.handleUpload }));
 
 const { POST } = await import("./+server");
-const realBlob = await vi.importActual<typeof import("$lib/server/blob")>("$lib/server/blob");
+const realBlob = await vi.importActual<typeof import("#lib/server/blob.js")>("#lib/server/blob.js");
 
 const SONG = fakeId("song-one");
 const PROJECT = fakeId("proj-one");

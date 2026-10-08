@@ -7,8 +7,8 @@ import {
 	MAX_DRUM_PATTERNS,
 	MAX_DRUM_ROWS,
 	MAX_DRUM_TIMELINE,
-} from "$lib/constants/drumMachine";
-import { startingDrumProject } from "$lib/utils/startingDrumProject";
+} from "#lib/constants/drumMachine.js";
+import { startingDrumProject } from "#lib/utils/startingDrumProject.js";
 import {
 	DrumFxSchema,
 	DrumPatternSchema,

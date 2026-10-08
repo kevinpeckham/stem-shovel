@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { NamedPianoPresetSchema, type NamedPianoPreset } from "$lib/val/PianoPresetSchema";
+import { NamedPianoPresetSchema, type NamedPianoPreset } from "#lib/val/PianoPresetSchema.js";
 
 /** The preset a share link carries, or null for anything that is not one (encodePianoPreset is the other half). */
 export function decodePianoPreset(encoded: string): NamedPianoPreset | null {

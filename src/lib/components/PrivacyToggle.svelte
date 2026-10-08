@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { setProjectPrivate, setSongPrivate } from "$lib/remote/share.remote";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { setProjectPrivate, setSongPrivate } from "#lib/remote/share.remote.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	/** Any member flips a project or song between public and private. */
 	interface Props {

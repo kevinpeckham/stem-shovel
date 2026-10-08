@@ -1,16 +1,21 @@
 <script lang="ts">
-	import { STUDIO_FADER_MAX } from "$lib/constants/studio";
+	import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 	import {
 		LIVE_PEAK_FRAMES,
 		studio,
 		STUDIO_INPUT_LABELS,
 		STUDIO_INSTRUMENTS,
-	} from "$lib/audio/studio.svelte";
-	import { formatTime } from "$lib/utils/formatTime";
-	import { rulerTicks } from "$lib/utils/rulerTicks";
-	import { isTextEntry } from "$lib/utils/isTextEntry";
-	import { defaultTrackFx, trackFxActive } from "$lib/audio/trackChain";
-	import type { StudioClip, StudioInput, StudioTrack, StudioTrackFx } from "$lib/val/StudioSchema";
+	} from "#lib/audio/studio.svelte.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { rulerTicks } from "#lib/utils/rulerTicks.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
+	import { defaultTrackFx, trackFxActive } from "#lib/audio/trackChain.js";
+	import type {
+		StudioClip,
+		StudioInput,
+		StudioTrack,
+		StudioTrackFx,
+	} from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
 	import ContextMenu from "./ContextMenu.svelte";
 

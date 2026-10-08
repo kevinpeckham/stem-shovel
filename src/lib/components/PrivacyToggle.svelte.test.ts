@@ -2,7 +2,7 @@ import { fakeRemoteForm } from "../../../tests/helpers/fakeRemoteForm";
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, test, vi } from "vite-plus/test";
 
-vi.mock("$lib/remote/share.remote", () => ({
+vi.mock("#lib/remote/share.remote.js", () => ({
 	setProjectPrivate: fakeRemoteForm(),
 	setSongPrivate: fakeRemoteForm(),
 }));

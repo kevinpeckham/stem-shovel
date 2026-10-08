@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { archiveProject, deleteProject, restoreProject } from "$lib/remote/projects.remote";
+	import { archiveProject, deleteProject, restoreProject } from "#lib/remote/projects.remote.js";
 
 	/**
 	 * The bottom of project settings. An active project offers Archive (any

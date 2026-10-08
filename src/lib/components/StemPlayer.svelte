@@ -1,20 +1,25 @@
 <script lang="ts">
-	import { applyLocalMix, loadLocalMix, saveLocalMix, snapshotLocalMix } from "$lib/audio/localMix";
-	import { dropIndexAt } from "$lib/utils/dropIndexAt";
-	import { moveId } from "$lib/utils/moveId";
-	import { StemEngine } from "$lib/audio/engine.svelte";
-	import type { StemManifest, StemState } from "$lib/audio/types";
-	import StemRow from "$lib/components/StemRow.svelte";
-	import Transport from "$lib/components/Transport.svelte";
-	import { formatBytes } from "$lib/utils/formatBytes";
-	import type { MidiSummary } from "$lib/audio/midi";
-	import SectionTimeline from "$lib/components/SectionTimeline.svelte";
-	import { barGrid, formatPosition } from "$lib/audio/measures";
-	import { readoutMode } from "$lib/audio/readout.svelte";
+	import {
+		applyLocalMix,
+		loadLocalMix,
+		saveLocalMix,
+		snapshotLocalMix,
+	} from "#lib/audio/localMix.js";
+	import { dropIndexAt } from "#lib/utils/dropIndexAt.js";
+	import { moveId } from "#lib/utils/moveId.js";
+	import { StemEngine } from "#lib/audio/engine.svelte.js";
+	import type { StemManifest, StemState } from "#lib/audio/types.js";
+	import StemRow from "#lib/components/StemRow.svelte";
+	import Transport from "#lib/components/Transport.svelte";
+	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import type { MidiSummary } from "#lib/audio/midi.js";
+	import SectionTimeline from "#lib/components/SectionTimeline.svelte";
+	import { barGrid, formatPosition } from "#lib/audio/measures.js";
+	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { tick } from "svelte";
-	import { type SongChange } from "$lib/val/SongChangeSchema";
-	import { timelineKinds } from "$lib/utils/timelineKinds";
-	import type { SongSection } from "$lib/val/SongSectionSchema";
+	import { type SongChange } from "#lib/val/SongChangeSchema.js";
+	import { timelineKinds } from "#lib/utils/timelineKinds.js";
+	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 	import { untrack, type Snippet } from "svelte";
 
 	interface Props {

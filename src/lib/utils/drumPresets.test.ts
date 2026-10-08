@@ -5,10 +5,10 @@ import {
 	DRUM_METERS,
 	drumStepsFor,
 	DEFAULT_DRUM_SENDS,
-} from "$lib/constants/drumMachine";
+} from "#lib/constants/drumMachine.js";
 import { startingDrumProject } from "./startingDrumProject";
-import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "$lib/constants/drumPresets";
-import { DrumProjectSchema } from "$lib/val/DrumPatternSchema";
+import { DRUM_PRESET_STYLES, DRUM_PRESETS } from "#lib/constants/drumPresets.js";
+import { DrumProjectSchema } from "#lib/val/DrumPatternSchema.js";
 import { decodeDrumProject } from "./decodeDrumProject";
 import { drumPresetProject } from "./drumPresetProject";
 import { encodeDrumProject } from "./encodeDrumProject";

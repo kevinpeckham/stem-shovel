@@ -1,4 +1,4 @@
-import { DEMO_FORMATS } from "$lib/constants/demoFormats";
+import { DEMO_FORMATS } from "#lib/constants/demoFormats.js";
 
 export function demoContentType(filename: string): string | null {
 	const ext = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();

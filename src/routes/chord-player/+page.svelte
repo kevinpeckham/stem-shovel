@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { chordPlayer } from "$lib/audio/chordPlayer.svelte";
-	import { chordPiano } from "$lib/audio/piano.svelte";
-	import { progressionPad } from "$lib/audio/progression.svelte";
-	import ChordPlayer from "$lib/components/ChordPlayer.svelte";
-	import FloatingPanel from "$lib/components/FloatingPanel.svelte";
-	import PageCopyHeader from "$lib/components/PageCopyHeader.svelte";
-	import PageCopySection from "$lib/components/PageCopySection.svelte";
-	import ProgressionNotesPanel from "$lib/components/ProgressionNotesPanel.svelte";
-	import type { SavedProgression } from "$lib/val/ProgressionSchema";
-	import { decodeChordShare } from "$lib/utils/decodeChordShare";
-	import { metronome } from "$lib/audio/metronome.svelte";
-	import { notify } from "$lib/state/notifications.svelte";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import { chordPiano } from "#lib/audio/piano.svelte.js";
+	import { progressionPad } from "#lib/audio/progression.svelte.js";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
+	import PageCopySection from "#lib/components/PageCopySection.svelte";
+	import ProgressionNotesPanel from "#lib/components/ProgressionNotesPanel.svelte";
+	import type { SavedProgression } from "#lib/val/ProgressionSchema.js";
+	import { decodeChordShare } from "#lib/utils/decodeChordShare.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ReportForm from "$lib/components/ReportForm.svelte";
+	import ReportForm from "#lib/components/ReportForm.svelte";
 	import { page } from "$app/state";
 
 	interface Props {

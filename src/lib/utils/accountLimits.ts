@@ -1,5 +1,5 @@
-import { PLAN_LIMITS } from "$lib/constants/plans";
-import type { AccountPlan } from "$lib/val/AccountPlanSchema";
+import { PLAN_LIMITS } from "#lib/constants/plans.js";
+import type { AccountPlan } from "#lib/val/AccountPlanSchema.js";
 
 export interface AccountLimits {
 	/** Bytes of stored files the account may hold; null = unlimited. */

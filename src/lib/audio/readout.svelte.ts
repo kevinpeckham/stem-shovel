@@ -1,5 +1,5 @@
-import { browser } from "$app/environment";
-import { POSITION_MODES, type PositionMode } from "$lib/constants/positionModes";
+import { browser } from "$app/env";
+import { POSITION_MODES, type PositionMode } from "#lib/constants/positionModes.js";
 
 /**
  * The position format in use — on the transport, in tooltips and in the

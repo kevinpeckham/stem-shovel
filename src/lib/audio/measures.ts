@@ -1,9 +1,9 @@
-import { formatTimecode } from "$lib/utils/formatTimecode";
-import { parseBarsText } from "$lib/utils/parseBarsText";
-import { parseTime } from "$lib/utils/parseTime";
-import { parseTimecode } from "$lib/utils/parseTimecode";
-import type { PositionMode } from "$lib/constants/positionModes";
-import type { SongChange } from "$lib/val/SongChangeSchema";
+import { formatTimecode } from "#lib/utils/formatTimecode.js";
+import { parseBarsText } from "#lib/utils/parseBarsText.js";
+import { parseTime } from "#lib/utils/parseTime.js";
+import { parseTimecode } from "#lib/utils/parseTimecode.js";
+import type { PositionMode } from "#lib/constants/positionModes.js";
+import type { SongChange } from "#lib/val/SongChangeSchema.js";
 
 /**
  * Bars and beats from seconds. Tempo is beats per minute where a beat is the
