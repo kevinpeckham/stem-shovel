@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A take's resumed upload no longer saves the mix twice.** The Idea Recorder's queue remembers how far a take with sources got (the mix saved, N sources up) so a retry after a reload carries on from there, but it wrote that progress to IndexedDB through a reactive proxy, which the browser cannot clone, so the write failed quietly and a reload started the take over (`takeQueue.svelte.ts`: `$state.snapshot` before `put`). Found by the queue's new tests.
+- **Markdown sanitizer hardening**: a protocol-relative `//host` link (and the `/\host` and `\\host` forms browsers read the same way) is dropped instead of passing as a local path; an `<input>` that is not a task-list checkbox is dropped whole instead of surviving as a disabled box; `name` on a link is dropped (a document named property, the same DOM-clobbering handle the id rule guards against); the footnotes keep their `aria-describedby` and `aria-label`, which screen readers need.
+
+### Technical
+
+- **Test coverage, the leftovers** (`bun run test`: 2,173 tests in 240 files; lines 31.7% → 34.9%): every API route now has a `server.test.ts` (thirteen were untested: MIDI reserve/ready, stem replace, drum samples, song files, notation, the digest, the charts and documentation zips and the documentation PDF), `transcode.ts` (ffmpeg's argv for the AAC, MP3, FLAC and silence-trim renditions, with ffmpeg and the file system doubled), `notifications.ts` (100% of its lines over the fakeDb double), `upload.ts` (every browser upload helper against Blob's client and `fetch` doubles), and the two IndexedDB upload queues (`fake-indexeddb`, a new dev dependency).
+
 ## [0.113.1] - 2026-10-08
 
 ### Technical

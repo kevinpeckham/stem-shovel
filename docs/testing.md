@@ -70,6 +70,10 @@ bun run test:watch
 bunx vp test run src/lib/audio/measures.test.ts   # one file
 ```
 
+- **IndexedDB** (the two upload queues) runs under the `components`
+  project on `fake-indexeddb`: `import "fake-indexeddb/auto"` at the top
+  and a fresh `IDBFactory` per test; the queue's rows are read back
+  straight from the fake store to prove what was persisted and when.
 - **Co-locate** a test with what it tests: `formatTime.test.ts` beside
   `formatTime.ts`, `Transport.svelte.test.ts` beside `Transport.svelte`.
   `tests/` holds shared helpers only (`tests/helpers/fakeEngine.ts`,

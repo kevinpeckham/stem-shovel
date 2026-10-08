@@ -87,9 +87,13 @@ const GLOBAL_ATTRS = new Set([
 	"data-footnote-ref",
 	"data-footnotes",
 	"data-footnote-backref",
+	// marked-footnote's accessibility: the reference's description and the back link's label.
+	"aria-label",
+	"aria-describedby",
 ]);
 const ATTRS: Record<string, Set<string>> = {
-	a: new Set(["href", "name"]),
+	// No `name`: a named anchor is a document named property, a DOM-clobbering handle the id rule guards against.
+	a: new Set(["href"]),
 	img: new Set(["src", "alt", "width", "height"]),
 	input: new Set(["type", "checked", "disabled"]),
 	td: new Set(["align"]),
@@ -102,13 +106,18 @@ const ID_PATTERN = /^footnote-[\w-]+$/;
 
 function safeUrl(value: string): boolean {
 	const v = value.trim();
-	if (v === "" || v.startsWith("#") || v.startsWith("/") || v.startsWith("./")) return true;
+	if (v === "" || v.startsWith("#")) return true;
+	// A protocol-relative "//host" (browsers read "/\\host" and "\\\\host" the same way)
+	// goes to another origin while reading as a local path: not a link markdown
+	// should carry silently. A relative path has no backslash at all.
+	if (/^[/\\][/\\]/.test(v)) return false;
+	if (v.startsWith("/") || v.startsWith("./")) return !v.includes("\\");
 	// A scheme must be one of these. The regex needs a clean scheme token, so
 	// obfuscations (control characters, whitespace inside "javascript") do not
 	// match a scheme; those fall through and are rejected if they hold any
 	// character that cannot appear in a plain relative path.
 	const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(v)?.[1]?.toLowerCase();
-	if (!scheme) return !/[\s\p{Cc}:]/u.test(v);
+	if (!scheme) return !/[\s\p{Cc}:\\]/u.test(v);
 	return scheme === "http" || scheme === "https" || scheme === "mailto" || scheme === "tel";
 }
 
@@ -135,12 +144,20 @@ function clean(parent: T.ParentNode): void {
 			}
 			continue;
 		}
+		// The only input markdown makes is a task-list box; any other kind is dropped whole.
+		if (
+			tag === "input" &&
+			!node.attrs.some(
+				(a) => a.name.toLowerCase() === "type" && a.value.toLowerCase() === "checkbox",
+			)
+		)
+			continue;
 		const allowed = ATTRS[tag];
 		node.attrs = node.attrs.filter((a) => {
 			const name = a.name.toLowerCase();
 			if (name === "id") return ID_PATTERN.test(a.value);
 			if (URL_ATTRS.has(name)) return (allowed?.has(name) ?? false) && safeUrl(a.value);
-			if (tag === "input" && name === "type") return a.value === "checkbox";
+			if (tag === "input" && name === "type") return a.value.toLowerCase() === "checkbox";
 			return GLOBAL_ATTRS.has(name) || (allowed?.has(name) ?? false);
 		});
 		// Task-list boxes are display only.

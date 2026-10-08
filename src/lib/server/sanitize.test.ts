@@ -52,7 +52,7 @@ describe("sanitizeHtml: elements dropped with their content", () => {
 			"<img><p>p</p>",
 		);
 	});
-	it("keeps input, but only as a disabled display-only box", () => {
+	it("keeps a checkbox input only, as a disabled display-only box", () => {
 		// `input` is on the allowlist for GFM task lists. A checkbox keeps its
 		// type and checked state and is forced disabled...
 		expect(sanitizeHtml('<input type="checkbox" checked>')).toBe(
@@ -61,11 +61,11 @@ describe("sanitizeHtml: elements dropped with their content", () => {
 		expect(sanitizeHtml('<input type="checkbox" checked disabled>')).toBe(
 			'<input type="checkbox" checked="" disabled="">',
 		);
-		// ...while any other type loses its `type` (and `name`) but the element
-		// itself survives as a disabled, typeless input. Surprising: a text box
-		// that was not part of a task list still renders, disabled and empty.
-		expect(sanitizeHtml('<input type="text" name="q">')).toBe('<input disabled="">');
-		expect(sanitizeHtml('<input type="radio">')).toBe('<input disabled="">');
+		expect(sanitizeHtml('<input type="CheckBox">')).toBe('<input type="CheckBox" disabled="">');
+		// ...while any other kind, or no kind, is dropped whole: a text box was never part of a task list.
+		expect(sanitizeHtml('a<input type="text" name="q">b')).toBe("ab");
+		expect(sanitizeHtml('<input type="radio">')).toBe("");
+		expect(sanitizeHtml("<input>")).toBe("");
 		expect(sanitizeHtml('<input type="checkbox" form="f" formaction="javascript:x">')).toBe(
 			'<input type="checkbox" disabled="">',
 		);
@@ -143,11 +143,18 @@ describe("sanitizeHtml: URL attributes", () => {
 			'<a href="javascript%3Aalert(1)">t</a>',
 		);
 	});
-	it("keeps a protocol-relative //host href", () => {
-		// Concern: "//evil.com/x" has no scheme and no forbidden character, so it
-		// passes as a relative path, yet a browser resolves it to another
-		// origin. Not script execution, but an off-site link that reads as local.
-		expect(sanitizeHtml('<a href="//evil.com/x">p</a>')).toBe('<a href="//evil.com/x">p</a>');
+	it("drops a protocol-relative //host href and the backslash forms browsers read the same way", () => {
+		// "//evil.com/x" has no scheme and no forbidden character, yet a browser
+		// resolves it to another origin while it reads as a local path. Browsers
+		// also turn "/\\host" and "\\\\host" into "//host".
+		expect(sanitizeHtml('<a href="//evil.com/x">p</a>')).toBe("<a>p</a>");
+		expect(sanitizeHtml('<a href="/\\evil.com/x">p</a>')).toBe("<a>p</a>");
+		expect(sanitizeHtml('<a href="\\\\evil.com/x">p</a>')).toBe("<a>p</a>");
+		expect(sanitizeHtml('<a href=" //evil.com">p</a>')).toBe("<a>p</a>");
+		expect(sanitizeHtml('<img src="//evil.com/x.png">')).toBe("<img>");
+	});
+	it("drops a relative href holding a backslash, which browsers read as a slash", () => {
+		expect(sanitizeHtml('<a href="/x\\..\\y">p</a><a href="x\\y">p</a>')).toBe("<a>p</a><a>p</a>");
 	});
 	it("drops src on an element whose allowlist has no src, and href where there is no href", () => {
 		expect(sanitizeHtml('<img srcdoc="x" src="https://x">')).toBe('<img src="https://x">');
@@ -180,10 +187,11 @@ describe("sanitizeHtml: allowed links", () => {
 			sanitizeHtml('<a href="/x">r</a><a href="./x">r</a><a href="#f">r</a><a href="x/y">r</a>'),
 		).toBe('<a href="/x">r</a><a href="./x">r</a><a href="#f">r</a><a href="x/y">r</a>');
 	});
-	it("keeps name on a", () => {
-		// Note: `name` on an anchor is a document named property (document.x),
-		// so this is a small DOM-clobbering surface the id rule does not cover.
-		expect(sanitizeHtml('<a name="x">n</a>')).toBe('<a name="x">n</a>');
+	it("drops name on a", () => {
+		// `name` on an anchor is a document named property (document.x): the same
+		// DOM-clobbering handle the id rule guards against. Markdown never emits it.
+		expect(sanitizeHtml('<a name="x">n</a>')).toBe("<a>n</a>");
+		expect(sanitizeHtml('<a name="footnote-1" href="#f">n</a>')).toBe('<a href="#f">n</a>');
 	});
 });
 
@@ -259,20 +267,25 @@ describe("sanitizeHtml: unknown elements and attributes", () => {
 		);
 		expect(sanitizeHtml('<ol start="3"><li>a</li></ol>')).toBe('<ol start="3"><li>a</li></ol>');
 	});
-	it("keeps the footnote data attributes and drops aria-* attributes", () => {
-		// marked-footnote also emits aria-describedby and aria-label; they are
-		// not on the global allowlist, so the rendered footnotes lose them.
+	it("keeps the footnote data attributes, aria-label and aria-describedby, and drops other aria-*", () => {
+		// marked-footnote emits aria-describedby on the reference and aria-label
+		// on the back link, which screen readers need; the rest of aria-* stays out.
 		expect(
 			sanitizeHtml(
 				'<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref aria-describedby="footnote-label">1</a></sup>',
 			),
-		).toBe('<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref="">1</a></sup>');
+		).toBe(
+			'<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup>',
+		);
 		expect(
 			sanitizeHtml(
-				'<section class="footnotes" data-footnotes><ol><li id="footnote-1"><p>n <a href="#footnote-ref-1" data-footnote-backref aria-label="Back">back</a></p></li></ol></section>',
+				'<section class="footnotes" data-footnotes><h2 id="footnote-label" class="sr-only">Footnotes</h2><ol><li id="footnote-1"><p>n <a href="#footnote-ref-1" data-footnote-backref aria-label="Back">back</a></p></li></ol></section>',
 			),
 		).toBe(
-			'<section class="footnotes" data-footnotes=""><ol><li id="footnote-1"><p>n <a href="#footnote-ref-1" data-footnote-backref="">back</a></p></li></ol></section>',
+			'<section class="footnotes" data-footnotes=""><h2 id="footnote-label" class="sr-only">Footnotes</h2><ol><li id="footnote-1"><p>n <a href="#footnote-ref-1" data-footnote-backref="" aria-label="Back">back</a></p></li></ol></section>',
+		);
+		expect(sanitizeHtml('<p aria-hidden="true" aria-live="polite" role="alert">x</p>')).toBe(
+			"<p>x</p>",
 		);
 	});
 });
@@ -350,11 +363,11 @@ describe("renderMarkdown round trip", () => {
 		expect(html).toContain('<td align="right">b</td>');
 		expect(html).toContain('<pre><code class="language-js">const x = 1 &lt; 2;\n</code></pre>');
 		expect(html).toContain(
-			'<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref="">1</a></sup>',
+			'<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup>',
 		);
 		expect(html).toContain('<section class="footnotes" data-footnotes="">');
 		expect(html).toContain('<li id="footnote-1">');
-		expect(html).toContain('<a href="#footnote-ref-1" data-footnote-backref="">');
+		expect(html).toMatch(/<a href="#footnote-ref-1" data-footnote-backref="" aria-label="[^"]+">/);
 		expect(html).toContain("<p>a &lt; b &amp; c</p>");
 		expect(html).not.toContain("<script");
 		expect(html).not.toContain("alert(1)");

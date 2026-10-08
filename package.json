@@ -102,6 +102,7 @@
 		"cspell": "^10.3.3",
 		"devalue": "^5.9.2",
 		"drizzle-kit": "0.31.10",
+		"fake-indexeddb": "^6.2.5",
 		"fallow": "3.25.0",
 		"jsdom": "^30.0.1",
 		"playwright": "^1.63.0",

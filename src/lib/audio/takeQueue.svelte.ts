@@ -94,7 +94,9 @@ async function withStore<T>(
 		tx.oncomplete = () => db.close();
 	});
 }
-const persist = (t: PendingTake) => withStore("readwrite", (s) => s.put(t)).catch(() => undefined);
+/** `$state.snapshot` first: IndexedDB clones the row, and a reactive proxy cannot be cloned (the write fails quietly). */
+const persist = (t: PendingTake) =>
+	withStore("readwrite", (s) => s.put($state.snapshot(t))).catch(() => undefined);
 const forget = (localId: string) =>
 	withStore("readwrite", (s) => s.delete(localId)).catch(() => undefined);
 const stored = () =>
