@@ -38,7 +38,7 @@ export default defineConfig({
 				// display: "Bahiana",
 				mono: "Noto Mono",
 				serif: "Noto Serif:400,600,700",
-				sans: "Noto Sans:400,600,700",
+				sans: "Noto Sans:400",
 				// sans: { name: "Atkinson Hyperlegible", weights: ["400", "700"] },
 			},
 		}),
@@ -46,6 +46,12 @@ export default defineConfig({
 	theme: {
 		colors: {
 			accent: "#ebf92f",
+			"accent-1": "#ebf92f",
+			"accent-2": "var(--colors-blue-300)",
+			"device-button-face": "var(--colors-slate-800)",
+			"device-button-face-lighter": "var(--colors-slate-700)",
+			"device-button-face-darker": "var(--colors-slate-900)",
+			"on-accent": "oklch(0.115 0.048 259.91)", // foreground color when bg is accent
 			light: "oklch(93.2% 0.032 255.585)",
 			oxford: {
 				50: "oklch(0.95 0.048 259.91)",
@@ -400,6 +406,94 @@ export default defineConfig({
 			before-content-['_']
 			before-i-ph-arrows-clockwise-fill
 			before-bg-blue-100/70`,
+		],
+		[
+			"device-fader-button-sm",
+			`
+			bg-device-button-face
+			border
+			border-current/10
+			flex
+			flex-none
+			font-600
+			h-20px
+			items-center
+			justify-center
+			rounded
+			text-11px
+			text-current/90
+			w-20px
+			hover-bg-device-button-face-lighter
+			hover-text-current
+			aria-pressed-bg-accent-2
+			aria-pressed-text-on-accent
+			aria-pressed-hover-bg-accent-2/90
+			aria-pressed-border-accent-2
+			`,
+		],
+		[
+			"device-fader-menu-button-sm",
+			`
+			bg-device-button-face
+			border
+			border-current/10
+			flex
+			flex-none
+			font-600
+			h-20px
+			items-center
+			justify-center
+			rounded
+			text-11px
+			text-current/90
+			w-20px
+			hover-bg-device-button-face-lighter
+			hover-text-current
+			data-[active=true]-text-accent-2
+			data-[open=open]-bg-accent-2
+			data-[open=open]-text-on-accent
+			data-[open=open]-hover-bg-accent-2/90
+			data-[open=open]-border-accent-2
+			`,
+		],
+		[
+			"device-fader-menu-button-subtle",
+			`
+			bg-light/5
+			border
+			border-current/1
+			flex
+			flex-none
+			font-600
+			h-20px
+			items-center
+			justify-center
+			rounded
+			text-11px
+			text-current/90
+			w-20px
+			hover-bg-device-button-face-lighter
+			hover-text-current
+			data-[active=true]-text-accent-2
+			data-[open=open]-bg-accent-2
+			data-[open=open]-text-on-accent
+			data-[open=open]-hover-bg-accent-2/90
+			data-[open=open]-border-accent-2
+			`,
+		],
+		[
+			"device-fader-button-record-sm",
+			`
+			device-fader-button-sm
+			text-red-500/90
+			hover-text-red-500
+			border-light/10
+			aria-pressed-bg-red-500
+			aria-pressed-text-light
+			aria-pressed-hover-bg-red-600
+			aria-pressed-hover-text-light
+			aria-pressed-border-red-500
+			`,
 		],
 		["footer-link", "underline underline-offset-4 opacity-80 hover-opacity-100 hover-text-accent"],
 		["infobox-sm", "text-14px grid px-4 py-3 border-current/30 border rounded-md bg-blue-300/10"],

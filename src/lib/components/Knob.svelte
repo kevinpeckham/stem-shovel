@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * A device knob in place of an `<input type="range">`: a 270° arc with
-	 * the value's share filled (from the left end, or from the centre for a
+	 * the value's share filled (from the left end, or from the center for a
 	 * bipolar control like pan), a pointer on the cap, and the value's text
 	 * never, always, or in a small popover while it is being adjusted.
 	 * Drag up or right to raise it (200 px of travel is the whole range;
@@ -15,9 +15,9 @@
 		min?: number;
 		max?: number;
 		step?: number;
-		/** The value a double-click returns to (the centre of a pan, say). */
+		/** The value a double-click returns to (the center of a pan, say). */
 		resetTo?: number;
-		/** The arc fills from the centre rather than the left end. */
+		/** The arc fills from the center rather than the left end. */
 		bipolar?: boolean;
 		/** The knob's diameter in pixels. */
 		size?: number;
@@ -63,7 +63,7 @@
 	let range = $derived(Math.max(1e-9, max - min));
 	let fraction = $derived(Math.max(0, Math.min(1, (value - min) / range)));
 	let angle = $derived(START + fraction * SWEEP);
-	/** Where the filled arc begins: the left end, or the centre for a bipolar control. */
+	/** Where the filled arc begins: the left end, or the center for a bipolar control. */
 	let fillFrom = $derived(bipolar ? START + ((0 - min) / range) * SWEEP : START);
 
 	function point(deg: number, r = R) {
@@ -190,10 +190,22 @@
 		{ondblclick}
 	>
 		<svg viewBox="0 0 40 40" width={size} height={size} aria-hidden="true" class="block">
-			<circle cx={C} cy={C} r="11" class="fill-oxford-800 stroke-white/15" stroke-width="1" />
-			<path d={track} fill="none" class="stroke-white/15" stroke-width="3" stroke-linecap="round" />
+			<circle
+				cx={C}
+				cy={C}
+				r="11"
+				class="fill-device-button-face stroke-light/10"
+				stroke-width="1"
+			/>
+			<path d={track} fill="none" class="stroke-light/10" stroke-width="3" stroke-linecap="round" />
 			{#if fill}
-				<path d={fill} fill="none" class="stroke-accent" stroke-width="3" stroke-linecap="round" />
+				<path
+					d={fill}
+					fill="none"
+					class="stroke-accent-2"
+					stroke-width="3"
+					stroke-linecap="round"
+				/>
 			{/if}
 			<line
 				x1={pointerStart.x}
@@ -208,7 +220,7 @@
 	</div>
 	{#if valueShown}
 		<span
-			class="pointer-events-none whitespace-nowrap rounded border border-white/15 bg-oxford-900 px-1 text-10px leading-4 tabular-nums text-blue-100 {showValue ===
+			class="pointer-events-none whitespace-nowrap rounded border border-white/15 bg-dark px-1 text-10px leading-4 tabular-nums text-light {showValue ===
 			'adjusting'
 				? 'absolute -top-5 left-1/2 -translate-x-1/2 z-20 shadow'
 				: 'mt-0.5'}"

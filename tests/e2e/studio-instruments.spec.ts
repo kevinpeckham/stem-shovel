@@ -37,7 +37,7 @@ test.describe.serial("Studio instruments", () => {
 		// The beat was in the take: the loudest bin is well above silence.
 		expect(take.peak).toBeGreaterThan(0.05);
 		// Phase 2b: the track's effects set from the menu are saved on the track and the bounce builds the same chain.
-		await page.getByRole("button", { name: "Track 1 effects" }).click();
+		await page.getByRole("button", { name: "Track 1 Playback Effects" }).click();
 		await page.getByLabel("Track 1 reverb level").fill("0.6");
 		await page.getByLabel("Track 1 tone tilt").fill("0.5");
 		await page.keyboard.press("Escape");

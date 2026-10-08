@@ -86,9 +86,9 @@ vi.mock("#lib/audio/studio.svelte.js", () => ({
 }));
 const { default: StudioTimeline } = await import("./StudioTimeline.svelte");
 
-/** 40 px a second: the header is 184 px wide and the scroller's rect sits at x = 0 in jsdom, so a second is at 184 + 40 t. */
+/** 40 px a second: the header is 200 px wide and the scroller's rect sits at x = 0 in jsdom, so a second is at 200 + 40 t. */
 const PX = 40;
-const HEADER_W = 184;
+const HEADER_W = 200;
 const LANE_H = 108;
 const xAt = (seconds: number) => HEADER_W + seconds * PX;
 
@@ -195,7 +195,7 @@ beforeEach(() => {
 const timeline = () => screen.getByRole("application", { name: "Timeline" });
 const clipEl = (id: string) => document.querySelector(`[data-clip="${id}"]`) as HTMLElement;
 const ruler = () => document.querySelector(".cursor-text") as HTMLElement;
-const playhead = () => document.querySelector(".z-15") as HTMLElement;
+const playhead = () => document.querySelector("[data-playhead]") as HTMLElement;
 /** A pointer event with a button, an id and a place; the rest of the geometry is jsdom's zeros. */
 const at = (clientX: number, clientY = 0, more: PointerEventInit = {}) => ({
 	button: 0,
@@ -418,17 +418,20 @@ describe("StudioTimeline", () => {
 	test("the effects menu opens the track's compressor, tone and reverb, and a slider sends the whole fx to the engine", async () => {
 		const user = userEvent.setup();
 		render(StudioTimeline);
-		const button = screen.getByRole("button", { name: "Track 1 effects" });
+		const button = screen.getByRole("button", { name: "Track 1 Playback Effects" });
 		expect(button).toHaveAttribute("title", "Compressor, tone and reverb for this track");
 		expect(button).not.toHaveClass("text-accent");
 		// A track with effects on shows it on its button.
-		expect(screen.getByRole("button", { name: "Guitar effects" })).toHaveClass("text-accent");
+		expect(screen.getByRole("button", { name: "Guitar Playback Effects" })).toHaveAttribute(
+			"data-active",
+			"true",
+		);
 		await user.click(button);
 		const level = screen.getByRole("slider", { name: "Track 1 reverb level" });
 		expect(level).toBeVisible();
 		// Every track's menu is in the DOM (closed ones display:none): the readouts are read within the open one.
 		const menu = within(level.closest("[popover]") as HTMLElement);
-		expect(menu.getByText("Track 1 effects")).toHaveClass("uppercase");
+		expect(menu.getByText("Track 1 Playback Effects")).toHaveClass("uppercase");
 		expect(menu.getByText("Level · 0%")).toBeInTheDocument();
 		expect(menu.getByText("Tilt · flat")).toBeInTheDocument();
 		expect(menu.getByText("Size · a hall")).toBeInTheDocument();
@@ -469,7 +472,7 @@ describe("StudioTimeline", () => {
 	test("a track's effects show their values; a slider patches one field and Reset clears them all", async () => {
 		const user = userEvent.setup();
 		render(StudioTimeline);
-		await user.click(screen.getByRole("button", { name: "Guitar effects" }));
+		await user.click(screen.getByRole("button", { name: "Guitar Playback Effects" }));
 		const level = screen.getByRole("slider", { name: "Guitar reverb level" });
 		expect(level).toHaveValue("0.6");
 		const menu = within(level.closest("[popover]") as HTMLElement);

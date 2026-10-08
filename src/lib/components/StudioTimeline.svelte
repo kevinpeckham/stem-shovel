@@ -54,7 +54,7 @@
 		onopen,
 	}: Props = $props();
 
-	const HEADER_W = 184;
+	const HEADER_W = 200;
 	const LANE_H = 108;
 	const engine = studio;
 	let scroller = $state<HTMLDivElement | null>(null);
@@ -736,12 +736,15 @@
 		<div class="flex" style:width="{HEADER_W + laneWidth}px" style:height="{LANE_H}px">
 			<!-- the header -->
 			<div
-				class="sticky left-0 z-10 shrink-0 grid content-between gap-1 overflow-hidden border-r border-b border-white/10 bg-oxford-900 px-2 py-1.5 {track.armed
-					? 'shadow-[inset_3px_0_0_0_theme(colors.red.500)]'
-					: ''}"
+				class="sticky left-0 z-10 shrink-0 grid content-between gap-1 overflow-hidden border-r border-b border-white/10 border-l-2 bg-oxford-900 px-2 py-1.5 {track.armed
+					? 'border-l-red-500'
+					: 'border-l-transparent'}"
 				style:width="{HEADER_W}px"
 			>
-				<div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 min-w-0">
+				<div
+					class="grid grid-cols-[minmax(0,1fr)_26px] items-center gap-1.5 min-w-0 w-full place-content-center place-items-center"
+				>
+					<!-- track name -->
 					<input
 						class="min-w-0 w-full bg-transparent text-13px font-500 text-blue-300 outline-none rounded px-1 hover-bg-white/5 focus-bg-white/10 {dim
 							? 'opacity-60'
@@ -755,9 +758,11 @@
 							if (e.key === "Enter") e.currentTarget.blur();
 						}}
 					/>
+					<!-- context menu -->
 					<ContextMenu
 						ariaLabel="{track.name} actions"
-						buttonBaseClasses="button button-xs opacity-70 hover-opacity-100 px-1 shrink-0"
+						clearButtonBaseClasses={true}
+						buttonClasses="device-fader-menu-button-subtle"
 						position="bottom right"
 						items={[
 							{
@@ -806,8 +811,10 @@
 						]}
 					/>
 				</div>
-				<!-- The input row: the picker, then the effects button (a MIDI track's badge in its place) (Kevin). -->
-				<div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 min-w-0">
+				<!-- The input row: the picker alone; the effects button sits with the transport buttons below (Kevin). -->
+				<div
+					class="grid grid-cols-1 place-content-center place-items-center gap-1.5 min-w-0 w-full"
+				>
 					<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
 					<ComboBox
 						ariaLabel="{track.name} input"
@@ -819,41 +826,14 @@
 						buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
 						popoverClasses="text-11px"
 					/>
-					{#if isMidi(track)}
-						<span
-							class="h-6 w-6 shrink-0 rounded border border-blue-300/30 flex items-center justify-center text-blue-200"
-							role="img"
-							aria-label="MIDI track"
-							title="A MIDI track: notes, played through its instrument (its panel has the sound and effects)"
-						>
-							<span class="i-ph-piano-keys text-13px" aria-hidden="true"></span>
-						</span>
-					{:else}
-						<ContextMenu
-							ariaLabel="{track.name} effects"
-							title="Compressor, tone and reverb for this track"
-							iconClass="i-ph-sliders-horizontal"
-							buttonBaseClasses="button button-xs px-1 shrink-0 {trackFxActive(track.fx)
-								? 'text-accent opacity-100'
-								: 'opacity-70 hover-opacity-100'}"
-							position="bottom left"
-							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
-							items={[
-								{ id: "fx-heading", kind: "heading", label: `${track.name} effects` },
-								{ id: "fx", kind: "snippet", snippet: fxMenu },
-							]}
-						/>
-					{/if}
 				</div>
-				<!-- Arm, mute and solo lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
+				<!-- Arm, mute, solo and the effects button lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
 				<div
-					class="grid grid-cols-[auto_auto_auto_minmax(0,1fr)_auto] items-center gap-1.5 min-w-0"
+					class="grid grid-cols-[auto_auto_auto_auto_minmax(0,1fr)_26px] place-content-center place-items-center gap-1 min-w-0"
 				>
 					<button
 						type="button"
-						class="h-6 w-6 shrink-0 rounded border text-11px font-600 transition-colors {track.armed
-							? 'bg-red-600 border-red-600 text-white'
-							: 'border-white/25 hover-border-red-400 text-red-300'}"
+						class="device-fader-button-record-sm"
 						aria-pressed={track.armed}
 						aria-label="Arm {track.name} for recording"
 						title="Arm for recording"
@@ -868,22 +848,43 @@
 					</button>
 					<button
 						type="button"
-						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-500 transition-colors hover-border-white/60 {track.muted
-							? 'bg-blue-300 text-oxford border-blue-300'
-							: ''}"
+						class="device-fader-button-sm"
 						aria-pressed={track.muted}
 						aria-label="Mute {track.name}"
 						onclick={() => engine.toggleMute(track.id)}>M</button
 					>
 					<button
 						type="button"
-						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-600 transition-colors hover-border-white/60 {track.solo
-							? 'bg-accent text-oxford border-accent'
-							: ''}"
+						class="device-fader-button-sm"
 						aria-pressed={track.solo}
 						aria-label="Solo {track.name}"
 						onclick={() => engine.toggleSolo(track.id)}>S</button
 					>
+					{#if isMidi(track)}
+						<span
+							class="device-fader-button-sm"
+							role="img"
+							aria-label="MIDI track"
+							title="A MIDI track: notes, played through its instrument (its panel has the sound and effects)"
+						>
+							<span class="i-ph-piano-keys text-13px" aria-hidden="true"></span>
+						</span>
+					{:else}
+						<ContextMenu
+							ariaLabel="{track.name} Playback Effects"
+							dataActive={trackFxActive(track.fx)}
+							title="Compressor, tone and reverb for this track"
+							iconClass="i-ph-sliders-horizontal"
+							clearButtonBaseClasses={true}
+							buttonClasses="device-fader-menu-button-sm"
+							position="bottom left"
+							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+							items={[
+								{ id: "fx-heading", kind: "heading", label: `${track.name} Playback Effects` },
+								{ id: "fx", kind: "snippet", snippet: fxMenu },
+							]}
+						/>
+					{/if}
 					<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity. -->
 					<Slider
 						value={track.gain}
@@ -1050,9 +1051,10 @@
 		</div>
 	{/if}
 
-	<!-- the playhead over every lane -->
+	<!-- The playhead over every lane: below the sticky headers (z-10) and the ruler, so it hides behind them as the lanes scroll. -->
 	<div
-		class="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-accent z-15"
+		class="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-accent z-5"
+		data-playhead
 		style:left="{HEADER_W + playheadX}px"
 	></div>
 </div>

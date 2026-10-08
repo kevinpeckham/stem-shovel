@@ -39,6 +39,8 @@
 		buttonBaseClasses?: string | null;
 		/** Added to the trigger's classes. */
 		buttonClasses?: string | null;
+		clearButtonBaseClasses?: boolean;
+		dataActive?: boolean;
 		disabled?: boolean;
 		/** The trigger's icon; the ⋯ by default. */
 		iconClass?: string;
@@ -56,6 +58,8 @@
 		ariaLabel = "More actions",
 		buttonBaseClasses = "bg-dark cursor-pointer disabled-text-current/10 px-3 py-2 grid place-items-center border border-current/10 leading-none rounded-md disabled-opacity-60",
 		buttonClasses = "",
+		clearButtonBaseClasses = false,
+		dataActive = false,
 		disabled = false,
 		iconClass = "i-ph-dots-three-vertical-bold",
 		label = null,
@@ -142,12 +146,14 @@
 	<!-- button -->
 	<button
 		bind:this={buttonEl}
+		data-active={dataActive}
+		data-open={openState}
 		type="button"
 		aria-label={ariaLabel}
 		{disabled}
 		popovertarget={popoverId}
 		{title}
-		class="{buttonBaseClasses} {buttonClasses}"
+		class="{clearButtonBaseClasses ? '' : buttonBaseClasses}  {buttonClasses}"
 	>
 		<span class={iconClass} aria-hidden="true"></span>
 		{#if label}<span class={labelClasses}>{label}</span>{/if}
