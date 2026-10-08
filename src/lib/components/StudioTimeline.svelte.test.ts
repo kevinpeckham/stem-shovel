@@ -82,6 +82,7 @@ vi.mock("#lib/audio/studio.svelte.js", () => ({
 		drums: "Drum machine",
 	},
 	STUDIO_INSTRUMENTS: ["piano", "chords", "drums"],
+	isInstrument: (s: string) => ["piano", "chords", "drums"].includes(s),
 }));
 const { default: StudioTimeline } = await import("./StudioTimeline.svelte");
 

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Studio phase 3a: MIDI tracks** (docs/multitrack-recorder.md). **Add MIDI track** makes a track of notes whose input is the instrument that plays and records it (the piano, the chord player or the drum machine). Arm it and record: every note the panel, the computer keyboard, a Web MIDI device or the drum pads play lands in a clip drawn as a small piano roll, shifted earlier by the output latency as instrument takes are, cut per loop pass or to the punch region like audio. Playback schedules the notes through the hosted engines from the look-ahead (`piano.scheduleNote`, `drumMachine.scheduleHit`), with the track's fader scaling velocity and mute and solo skipping the notes. MIDI clips move, trim, split, duplicate and take lanes as audio clips do; the selected clip's bar offers Quantize (beat, half, quarter), Transpose (±1, ±12), a velocity slider and **Export MIDI** (a Standard MIDI File at the song's tempo); Import takes `.mid` files onto a MIDI track. **Render to audio track** in a MIDI track's menu plays its notes through the instrument into a new audio track in real time and mutes the MIDI track; Download mix, Add as demo and Add tracks as stems do this first for any MIDI track with notes, since an offline render cannot run the instruments. Notes are seconds like every clip (`StudioNoteSchema`: `{t, d, p, v}`, at most 2,000 a clip); the arrangement's version stays 1.
+
+### Fixed
+
+- **Download mix in the Studio works.** It fetched its own object URL first, which the page's Content Security Policy refuses for `blob:` addresses, so the download failed with "Failed to fetch" since phase 1a. The mix (and a MIDI export) now goes straight to a download (`utils/downloadBlob.ts`).
+
 ### Changed
 
 - **The digest email carries only what you have not read.** An item already read in the inbox stays out of the daily or weekly digest (and is left unstamped, so it never goes out later either).

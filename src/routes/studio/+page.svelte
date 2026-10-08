@@ -20,6 +20,7 @@
 	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
+	import { parseMidi } from "#lib/audio/midi.js";
 	import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 	import {
 		createIdea,
@@ -38,17 +39,22 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import {
 		postJson,
-		saveAs,
 		uploadDemoFile,
 		uploadStemFile,
 		type DemoReservation,
 		type Reservation,
 	} from "#lib/upload.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { downloadBlob } from "#lib/utils/downloadBlob.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
-	import type { StudioInputSource, StudioSongView, StudioTrack } from "#lib/val/StudioSchema.js";
+	import type {
+		StudioClip,
+		StudioInputSource,
+		StudioSongView,
+		StudioTrack,
+	} from "#lib/val/StudioSchema.js";
 	import { refreshAll } from "$app/navigation";
 	import { onMount, untrack } from "svelte";
 
@@ -420,6 +426,29 @@
 				studio.addTrack(null, "Imports");
 			let at = studio.position;
 			for (const file of files) {
+				if (/\.midi?$/i.test(file.name)) {
+					// A MIDI file: one clip of its notes on a MIDI track (docs/multitrack-recorder.md, phase 3).
+					const midiTrack = midiTrackFor();
+					if (!midiTrack) break;
+					try {
+						const clip = studio.importMidi(
+							midiTrack,
+							parseMidi(await file.arrayBuffer()),
+							at,
+							file.name,
+						);
+						if (!clip) {
+							if (studio.notice) notify(studio.notice, { kind: "error" });
+							studio.notice = null;
+							continue;
+						}
+						selected = clip.id;
+						at = studio.snap(at + clip.duration);
+					} catch {
+						notify(`${file.name} could not be read as MIDI`, { kind: "error" });
+					}
+					continue;
+				}
 				if (!track) break;
 				if (file.size > MAX_TAKE_BYTES) {
 					notify(`${file.name} is over the ${Math.round(MAX_TAKE_BYTES / 1048576)} MB limit`, {
@@ -466,12 +495,43 @@
 		const copy = studio.duplicateClip(selectedClip.id);
 		if (copy) selected = copy.id;
 	}
-	function addTrack() {
-		const t = studio.addTrack({ source: "mic", channel: "stereo" });
+	function addTrack(kind: "audio" | "midi" = "audio") {
+		const t =
+			kind === "midi"
+				? studio.addTrack({ source: "piano", channel: "stereo" }, undefined, "midi")
+				: studio.addTrack({ source: "mic", channel: "stereo" });
 		if (!t && studio.notice) {
 			notify(studio.notice, { kind: "error" });
 			studio.notice = null;
 		}
+	}
+	/** The MIDI track a file or a take goes to: the selected clip's, else the first, else a new one. */
+	function midiTrackFor(): StudioTrack | null {
+		const selectedTrack = studio.arrangement.tracks.find(
+			(t) => t.id === studio.arrangement.clips.find((c) => c.id === selected)?.trackId,
+		);
+		return (
+			(selectedTrack?.kind === "midi" ? selectedTrack : null) ??
+			studio.arrangement.tracks.find((t) => t.kind === "midi") ??
+			studio.addTrack({ source: "piano", channel: "stereo" }, undefined, "midi")
+		);
+	}
+	/** The selected MIDI clip as a .mid file, downloaded. */
+	function exportMidi(clip: StudioClip) {
+		const blob = studio.midiBlobOf(clip.id);
+		if (blob) downloadBlob(blob, `${clip.name || "clip"}.mid`);
+	}
+	/** A MIDI track rendered to an audio track (the track's menu), so it can bounce and go to a song. */
+	async function renderMidiTrack(track: StudioTrack) {
+		notify(`Rendering ${track.name} to audio, in real time…`);
+		const made = await studio.renderMidiTrack(track.id);
+		if (made) notify(`${track.name} rendered to “${made.name}”; the MIDI track is muted`);
+		else notify(`${track.name} has no notes to render`, { kind: "error" });
+	}
+	/** Every MIDI track with notes rendered to audio first, so a bounce hears it (an offline render cannot run the instruments). */
+	async function renderMidiTracks() {
+		const pending = studio.midiTracksWithClips.filter((t) => !t.muted);
+		for (const t of pending) await renderMidiTrack(t);
 	}
 
 	// ── Bounces: a WAV, a demo, stems ──────────────────────────────────────
@@ -479,10 +539,9 @@
 	async function downloadMix() {
 		bouncing = true;
 		try {
+			await renderMidiTracks();
 			const mix = await studio.render();
-			const url = URL.createObjectURL(studio.wavOf(mix));
-			await saveAs(url, `${title || "song"}.wav`);
-			URL.revokeObjectURL(url);
+			downloadBlob(studio.wavOf(mix), `${title || "song"}.wav`);
 		} catch (e) {
 			notify(`Could not bounce: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
@@ -500,6 +559,7 @@
 		if (!targetSong) return;
 		bouncing = true;
 		try {
+			await renderMidiTracks();
 			const mix = await studio.render();
 			const file = new File([studio.wavOf(mix)], `${title || "song"} (studio).wav`, {
 				type: "audio/wav",
@@ -524,9 +584,12 @@
 		bouncing = true;
 		const ctx = new AudioContext();
 		try {
+			await renderMidiTracks();
 			const target = targetSong;
 			let n = 0;
 			for (const track of studio.arrangement.tracks) {
+				// A MIDI track's notes went into its rendered audio track just above.
+				if (track.kind === "midi") continue;
 				if (!studio.arrangement.clips.some((c) => c.trackId === track.id)) continue;
 				const buffer = await studio.render(track.id);
 				const file = new File([studio.wavOf(buffer)], `${track.name || "Track"}.wav`, {
@@ -1136,18 +1199,31 @@
 				</div>
 
 				<!-- the timeline -->
-				<StudioTimeline bind:selected bind:pxPerSecond onarm={(t) => void armInput(t)} />
+				<StudioTimeline
+					bind:selected
+					bind:pxPerSecond
+					onarm={(t) => void armInput(t)}
+					onrender={(t) => void renderMidiTrack(t)}
+				/>
 				<div class="flex flex-wrap items-center gap-2">
-					<button class="device-button-sm px-3" type="button" onclick={addTrack}>
+					<button class="device-button-sm px-3" type="button" onclick={() => addTrack()}>
 						<span class="i-ph-plus" aria-hidden="true"></span> Add track
+					</button>
+					<button
+						class="device-button-sm px-3"
+						type="button"
+						title="A track of notes, played and recorded through the piano, the chord player or the drum machine"
+						onclick={() => addTrack("midi")}
+					>
+						<span class="i-ph-piano-keys" aria-hidden="true"></span> Add MIDI track
 					</button>
 					<label class="device-button-sm px-3 cursor-pointer {importing ? 'opacity-60' : ''}">
 						<span class="i-ph-file-audio" aria-hidden="true"></span>
-						{importing ? "Importing…" : "Import audio…"}
+						{importing ? "Importing…" : "Import audio or MIDI…"}
 						<input
 							type="file"
 							class="sr-only"
-							accept={DEMO_ACCEPT}
+							accept="{DEMO_ACCEPT},.mid,.midi"
 							multiple
 							disabled={importing}
 							onchange={(e) => {
@@ -1182,52 +1258,118 @@
 							}}
 						/>
 						<label class="flex items-center gap-2">
-							Gain
+							{clip.notes ? "Velocity" : "Gain"}
 							<input
 								type="range"
 								class="w-24 accent-blue-300"
 								min="0"
-								max="2"
+								max={clip.notes ? 1 : 2}
 								step="0.01"
 								value={clip.gain}
-								aria-label="Clip gain"
+								aria-label={clip.notes ? "Clip velocity" : "Clip gain"}
 								onchange={(e) => studio.setClipGain(clip.id, e.currentTarget.valueAsNumber)}
 								ondblclick={() => studio.setClipGain(clip.id, 1)}
 							/>
 							<span class="tabular-nums w-10"
-								>{Math.round(20 * Math.log10(clip.gain || 0.001))} dB</span
+								>{clip.notes
+									? `${Math.round(clip.gain * 100)}%`
+									: `${Math.round(20 * Math.log10(clip.gain || 0.001))} dB`}</span
 							>
 						</label>
-						<label class="flex items-center gap-2">
-							Fade in
-							<input
-								type="number"
-								class="device-field w-16 text-12px py-0"
-								min="0"
-								max={Math.floor((clip.duration / 2) * 100) / 100}
-								step="0.05"
-								value={clip.fadeIn}
-								aria-label="Fade in, seconds"
-								onchange={(e) =>
-									studio.setClipFades(clip.id, { fadeIn: e.currentTarget.valueAsNumber || 0 })}
-							/>
-							s
-						</label>
-						<label class="flex items-center gap-2">
-							Fade out
-							<input
-								type="number"
-								class="device-field w-16 text-12px py-0"
-								min="0"
-								max={Math.floor((clip.duration / 2) * 100) / 100}
-								step="0.05"
-								value={clip.fadeOut}
-								aria-label="Fade out, seconds"
-								onchange={(e) =>
-									studio.setClipFades(clip.id, { fadeOut: e.currentTarget.valueAsNumber || 0 })}
-							/>
-							s
-						</label>
+						{#if clip.notes}
+							<!-- A MIDI clip (docs/multitrack-recorder.md, phase 3): its notes onto the grid, up or down, or out as a file. -->
+							<span class="flex items-center gap-1" role="group" aria-label="Quantize">
+								Quantize
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Every note's start to the nearest beat"
+									onclick={() => studio.quantizeClip(clip.id, 1)}>Beat</button
+								>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="To the nearest half beat"
+									onclick={() => studio.quantizeClip(clip.id, 2)}>½</button
+								>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="To the nearest quarter beat (a sixteenth in 4/4)"
+									onclick={() => studio.quantizeClip(clip.id, 4)}>¼</button
+								>
+							</span>
+							<span class="flex items-center gap-1" role="group" aria-label="Transpose">
+								Transpose
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Down an octave"
+									aria-label="Down an octave"
+									onclick={() => studio.transposeClip(clip.id, -12)}>−12</button
+								>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Down a semitone"
+									aria-label="Down a semitone"
+									onclick={() => studio.transposeClip(clip.id, -1)}>−1</button
+								>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Up a semitone"
+									aria-label="Up a semitone"
+									onclick={() => studio.transposeClip(clip.id, 1)}>+1</button
+								>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Up an octave"
+									aria-label="Up an octave"
+									onclick={() => studio.transposeClip(clip.id, 12)}>+12</button
+								>
+							</span>
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								title="Download the clip's notes as a MIDI file at the song's tempo"
+								onclick={() => exportMidi(clip)}
+							>
+								<span class="i-ph-download-simple" aria-hidden="true"></span> Export MIDI
+							</button>
+						{:else}
+							<label class="flex items-center gap-2">
+								Fade in
+								<input
+									type="number"
+									class="device-field w-16 text-12px py-0"
+									min="0"
+									max={Math.floor((clip.duration / 2) * 100) / 100}
+									step="0.05"
+									value={clip.fadeIn}
+									aria-label="Fade in, seconds"
+									onchange={(e) =>
+										studio.setClipFades(clip.id, { fadeIn: e.currentTarget.valueAsNumber || 0 })}
+								/>
+								s
+							</label>
+							<label class="flex items-center gap-2">
+								Fade out
+								<input
+									type="number"
+									class="device-field w-16 text-12px py-0"
+									min="0"
+									max={Math.floor((clip.duration / 2) * 100) / 100}
+									step="0.05"
+									value={clip.fadeOut}
+									aria-label="Fade out, seconds"
+									onchange={(e) =>
+										studio.setClipFades(clip.id, { fadeOut: e.currentTarget.valueAsNumber || 0 })}
+								/>
+								s
+							</label>
+						{/if}
 						<span class="flex items-center gap-1">
 							<button
 								class="device-button-xs px-2"

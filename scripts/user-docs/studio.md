@@ -32,6 +32,14 @@ Drag either end of a clip to **trim** it: the left edge moves where the clip beg
 
 Record over a part again and the new take takes its place, with the earlier one kept behind it: a clip that covers an older clip end to end keeps that clip's recording as an alternate take, and the bar under the timeline shows **n takes** with arrows to step through them. With **Loop** on, recording runs round the region and every full pass is a take of its own, the last one on top; stop when you have the one you like and step back to compare. **Punch** (the dotted square beside Loop) keeps only what falls inside the loop region: put the playhead a bar or two before the region, press Record, play through, and the clip holds just the region.
 
+## MIDI tracks
+
+**Add MIDI track** puts a track of notes on the timeline instead of audio. Its input is the instrument that plays it and records into it: the **piano**, the **chord player** or the **drum machine**. Arm it and press Record, then play the instrument's panel, your computer keyboard, a MIDI keyboard plugged in (Chrome, Edge and Firefox hear one; Safari does not) or the drum pads: every note lands in a clip drawn as a small piano roll, and plays back through the same instrument, so its sound and effects are the instrument panel's. A MIDI track has a level fader (it scales the notes' velocity), mute and solo; it has no pan or effects of its own, since one piano plays every piano track.
+
+MIDI clips move, trim, split and duplicate like audio clips, and loop passes and punch make takes of them in the same way. Select one and the bar under the timeline offers **Quantize** (every note's start to the nearest beat, half or quarter beat at the song's tempo), **Transpose** (a semitone or an octave either way), a **Velocity** slider for the whole clip, and **Export MIDI**, which downloads the clip as a MIDI file at the song's tempo. **Import audio or MIDI…** takes a `.mid` file onto a MIDI track as one clip.
+
+A bounce needs sound, so a MIDI track is **rendered to audio** first: **Render to audio track** in the track's menu plays its notes through the instrument into a new audio track in real time (the song plays as it does) and mutes the MIDI track; Download mix, Add as demo and Add tracks as stems do this themselves for any MIDI track with notes before they render, and say so. Edit the notes afterwards and render again; the earlier audio track can go.
+
 ## Songs and revisions
 
 The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Songs** panel lists every song with its saved revisions and recent autosaves, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.

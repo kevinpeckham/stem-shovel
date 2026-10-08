@@ -16,6 +16,8 @@ export const MAX_STUDIO_CLIPS = 400;
 export const MAX_STUDIO_SOURCES = 64;
 /** A recording stops at this length, as a take does. */
 export const MAX_STUDIO_SECONDS = MAX_TAKE_SECONDS;
+/** Notes a MIDI clip may hold (phase 3): a dense piano part runs to a few hundred a minute. */
+export const MAX_STUDIO_NOTES_PER_CLIP = 2000;
 /** Autosaved revisions kept per song; named ones are kept for good. */
 export const STUDIO_AUTOSAVES_KEPT = 10;
 /** A track's fader, as the stem player's. */

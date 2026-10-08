@@ -59,6 +59,7 @@ import {
 	type SampledInstrumentId,
 } from "./sampledInstruments";
 import { startVoice, type SynthVoice } from "./synthVoice";
+import type { NoteEvent } from "#lib/utils/pairNoteEvents.js";
 
 /**
  * The one piano on the page (docs/piano.md): notes come in from the
@@ -173,6 +174,68 @@ export class PianoEngine {
 	/** The effect chain (pianoFx.ts): voices play into `fx.input`; `fx.master` is what the speaker gets. */
 	#fx: PianoFx | null = null;
 	#voices = new Map<number, SynthVoice>();
+	/** Voices a host scheduled ahead of time (a Studio MIDI clip), apart from the keys' voices. */
+	#scheduled = new Set<SynthVoice>();
+	/** Who hears every note the keys start and stop (the Studio, recording a MIDI track). */
+	#noteListeners = new Set<(e: NoteEvent) => void>();
+	/** Hear each note on and off as the piano sounds it (the keys, the computer keyboard, a MIDI device, the chord player), stamped with the context's clock. Returns the way to stop listening. */
+	onNote(listener: (e: NoteEvent) => void): () => void {
+		this.#noteListeners.add(listener);
+		return () => this.#noteListeners.delete(listener);
+	}
+	#emit(on: boolean, pitch: number, velocity: number) {
+		if (this.#noteListeners.size === 0 || !this.#ctx) return;
+		const e: NoteEvent = { on, pitch, velocity, time: this.#ctx.currentTime };
+		for (const l of this.#noteListeners) l(e);
+	}
+	/**
+	 * A note at a moment on the context's clock, released `duration` later
+	 * (docs/multitrack-recorder.md, phase 3: a MIDI clip playing). The voice
+	 * sounds through the same chain as the keys but outside their voice
+	 * table, so a part playing never fights the hands. Returns the way to
+	 * cut it short.
+	 */
+	scheduleNote(midi: number, velocity: number, at: number, duration: number): () => void {
+		const ctx = this.#graph();
+		if (midi < 0 || midi > 127 || ctx.state !== "running") return () => {};
+		const voice = this.#voiceAt(midi, Math.max(0.01, Math.min(1, velocity)), at);
+		if (!voice) return () => {};
+		this.#scheduled.add(voice);
+		voice.release(at + Math.max(0.01, duration));
+		const forget = setTimeout(
+			() => this.#scheduled.delete(voice),
+			Math.max(0, at + duration - ctx.currentTime) * 1000 + 1500,
+		);
+		return () => {
+			clearTimeout(forget);
+			if (!this.#scheduled.delete(voice)) return;
+			voice.release(ctx.currentTime);
+		};
+	}
+	/** Every scheduled note cut now (a stop or a seek). */
+	cancelScheduled() {
+		const ctx = this.#ctx;
+		for (const v of this.#scheduled) if (ctx) v.release(ctx.currentTime);
+		this.#scheduled.clear();
+	}
+	/** A voice for the current instrument started at `when`: the Grand's samples, a small sampled instrument, or a synth (the Electric Piano standing in while samples load). */
+	#voiceAt(midi: number, velocity: number, when: number): SynthVoice | null {
+		const ctx = this.#ctx;
+		if (!ctx || !this.#fx) return null;
+		const sampled = isSampled(this.instrument) ? this.instrument : null;
+		let voice =
+			this.instrument === "grand"
+				? startSampledVoice(ctx, this.#fx.input, midi, velocity, when)
+				: sampled
+					? startSampledInstrumentVoice(ctx, this.#fx.input, sampled, midi, velocity, when)
+					: startVoice(ctx, this.#fx.input, this.instrument, midi, velocity, when);
+		if (!voice) {
+			if (sampled) void loadSamples(sampled, ctx);
+			else this.#samples();
+			voice = startVoice(ctx, this.#fx.input, sampled ?? "epiano", midi, velocity, when);
+		}
+		return voice;
+	}
 	#order: number[] = [];
 	#held = new HeldNotes();
 	#loaded = false;
@@ -570,6 +633,7 @@ export class PianoEngine {
 		this.#voices.set(midi, voice);
 		this.#order.push(midi);
 		this.sounding = this.#held.sounding;
+		this.#emit(true, midi, velocity);
 	}
 	#soundOff(midi: number) {
 		if (this.#held.off(midi)) this.#stop(midi);
@@ -581,6 +645,7 @@ export class PianoEngine {
 		if (ctx && voice) voice.release(ctx.currentTime);
 		this.#voices.delete(midi);
 		this.#order = this.#order.filter((n) => n !== midi);
+		if (voice) this.#emit(false, midi, 0);
 	}
 	setSustain(on: boolean) {
 		if (this.sustain === on) return;

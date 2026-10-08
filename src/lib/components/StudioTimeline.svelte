@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 	import {
+		isInstrument,
 		LIVE_PEAK_FRAMES,
 		studio,
 		STUDIO_INPUT_LABELS,
@@ -13,6 +14,7 @@
 	import type {
 		StudioClip,
 		StudioInput,
+		StudioNote,
 		StudioTrack,
 		StudioTrackFx,
 	} from "#lib/val/StudioSchema.js";
@@ -36,8 +38,15 @@
 		pxPerSecond?: number;
 		/** Ask for the input of a track (the page opens the microphone from the gesture). */
 		onarm?: (track: StudioTrack) => void;
+		/** Render a MIDI track to an audio track (the track's menu; the page says what happened). */
+		onrender?: (track: StudioTrack) => void;
 	}
-	let { selected = $bindable(null), pxPerSecond = $bindable(40), onarm }: Props = $props();
+	let {
+		selected = $bindable(null),
+		pxPerSecond = $bindable(40),
+		onarm,
+		onrender,
+	}: Props = $props();
 
 	const HEADER_W = 184;
 	const LANE_H = 108;
@@ -256,7 +265,7 @@
 			const draw = () => {
 				const w = canvas.clientWidth;
 				const h = canvas.clientHeight;
-				if (!w || !h) return;
+				if (!w || !h || !clip.sourceId) return;
 				const buffer = engine.bufferOf(clip.sourceId);
 				const source = engine.sources[clip.sourceId];
 				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${w}:${h}:${buffer ? "b" : "p"}`;
@@ -313,7 +322,7 @@
 			ro.observe(canvas);
 			// A source that decodes after the clip mounted redraws it.
 			$effect(() => {
-				void engine.sources[clip.sourceId]?.status;
+				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
 				draw();
 			});
@@ -321,6 +330,74 @@
 		};
 	}
 
+	/** A MIDI clip as a small piano roll: the notes the clip shows (from its offset, its length), a row per semitone of their range. */
+	function noteRoll(clip: StudioClip): Attachment<HTMLCanvasElement> {
+		return (canvas) => {
+			let key = "";
+			const draw = () => {
+				const w = canvas.clientWidth;
+				const h = canvas.clientHeight;
+				const notes = clip.notes ?? [];
+				if (!w || !h) return;
+				const next = `${clip.id}:${clip.offset}:${clip.duration}:${w}:${h}:${notes.length}:${notes.map((n) => n.t + n.p).join(",").length}`;
+				if (next === key) return;
+				key = next;
+				const dpr = devicePixelRatio || 1;
+				canvas.width = Math.round(w * dpr);
+				canvas.height = Math.round(h * dpr);
+				const g = canvas.getContext("2d");
+				if (!g) return;
+				g.scale(dpr, dpr);
+				g.clearRect(0, 0, w, h);
+				drawRoll(
+					g,
+					notes.filter((n) => n.t + n.d > clip.offset && n.t < clip.offset + clip.duration),
+					{ w, h, origin: clip.offset, seconds: clip.duration },
+					getComputedStyle(canvas).color,
+				);
+			};
+			draw();
+			const ro = new ResizeObserver(draw);
+			ro.observe(canvas);
+			$effect(() => {
+				void clip.notes?.length;
+				void pxPerSecond;
+				draw();
+			});
+			return () => ro.disconnect();
+		};
+	}
+	/** The MIDI take under way: the notes played so far, redrawn as each lands. */
+	function liveNotes(trackId: string): Attachment<HTMLCanvasElement> {
+		return (canvas) => {
+			const draw = () => {
+				const notes = engine.liveNotesOf(trackId);
+				const w = canvas.clientWidth;
+				const h = canvas.clientHeight;
+				if (!w || !h) return;
+				const dpr = devicePixelRatio || 1;
+				if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+					canvas.width = Math.round(w * dpr);
+					canvas.height = Math.round(h * dpr);
+				}
+				const g = canvas.getContext("2d");
+				if (!g) return;
+				g.setTransform(dpr, 0, 0, dpr, 0, 0);
+				g.clearRect(0, 0, w, h);
+				drawRoll(
+					g,
+					notes,
+					{ w, h, origin: 0, seconds: w / pxPerSecond },
+					getComputedStyle(canvas).color,
+				);
+			};
+			$effect(() => {
+				void engine.liveTick;
+				void pxPerSecond;
+				draw();
+			});
+		};
+	}
 	/** The take under way: the engine's live peaks (one per LIVE_PEAK_FRAMES) bucketed to the band's pixels, redrawn as chunks land. */
 	function liveWave(trackId: string): Attachment<HTMLCanvasElement> {
 		return (canvas) => {
@@ -384,6 +461,53 @@
 		// The hosted instruments, stereo as they sound (docs/multitrack-recorder.md, phase 2).
 		...STUDIO_INSTRUMENTS.map((s) => ({ value: `${s}:stereo`, label: STUDIO_INPUT_LABELS[s] })),
 	];
+	/** A MIDI track's input is the instrument that plays and records it (phase 3). */
+	const MIDI_INPUT_OPTIONS = INPUT_OPTIONS.filter((o) =>
+		isInstrument(o.value.split(":")[0] as never),
+	);
+	const isMidi = (t: StudioTrack) => t.kind === "midi";
+	/** The pitch range a clip's roll spans: its notes', at least an octave, a semitone of room each side. */
+	function pitchSpan(notes: StudioNote[]): { lo: number; hi: number } {
+		let lo = 127;
+		let hi = 0;
+		for (const n of notes) {
+			if (n.p < lo) lo = n.p;
+			if (n.p > hi) hi = n.p;
+		}
+		if (lo > hi) return { lo: 48, hi: 72 };
+		const mid = (lo + hi) / 2;
+		if (hi - lo < 12) {
+			lo = Math.floor(mid - 6);
+			hi = Math.ceil(mid + 6);
+		}
+		return { lo: Math.max(0, lo - 1), hi: Math.min(127, hi + 1) };
+	}
+	/** Notes as rectangles: time along x from `origin` at `pxPerSecond`, pitch down y over the span's rows; velocity lightens them. */
+	function drawRoll(
+		g: CanvasRenderingContext2D,
+		notes: StudioNote[],
+		box: { w: number; h: number; origin: number; seconds: number },
+		colour: string,
+	) {
+		const { lo, hi } = pitchSpan(notes);
+		const rows = hi - lo + 1;
+		const rowH = box.h / rows;
+		for (const n of notes) {
+			const x = (n.t - box.origin) * pxPerSecond;
+			const w = Math.max(2, n.d * pxPerSecond);
+			if (x + w < 0 || x > box.w) continue;
+			const y = (hi - n.p) * rowH;
+			g.globalAlpha = 0.45 + 0.55 * n.v;
+			g.fillStyle = colour;
+			g.fillRect(
+				Math.max(0, x),
+				y + 0.5,
+				Math.min(w, box.w - Math.max(0, x)),
+				Math.max(1, rowH - 1),
+			);
+		}
+		g.globalAlpha = 1;
+	}
 	function silenced(t: StudioTrack) {
 		return t.muted || (engine.anySolo && !t.solo);
 	}
@@ -648,20 +772,31 @@
 						aria-label="Solo {track.name}"
 						onclick={() => engine.toggleSolo(track.id)}>S</button
 					>
-					<ContextMenu
-						ariaLabel="{track.name} effects"
-						title="Compressor, tone and reverb for this track"
-						iconClass="i-ph-sliders-horizontal"
-						buttonBaseClasses="button button-xs px-1 shrink-0 {trackFxActive(track.fx)
-							? 'text-accent opacity-100'
-							: 'opacity-70 hover-opacity-100'}"
-						position="bottom left"
-						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
-						items={[
-							{ id: "fx-heading", kind: "heading", label: `${track.name} effects` },
-							{ id: "fx", kind: "snippet", snippet: fxMenu },
-						]}
-					/>
+					{#if isMidi(track)}
+						<span
+							class="h-6 w-6 shrink-0 rounded border border-blue-300/30 flex items-center justify-center text-blue-200"
+							role="img"
+							aria-label="MIDI track"
+							title="A MIDI track: notes, played through its instrument (its panel has the sound and effects)"
+						>
+							<span class="i-ph-piano-keys text-13px" aria-hidden="true"></span>
+						</span>
+					{:else}
+						<ContextMenu
+							ariaLabel="{track.name} effects"
+							title="Compressor, tone and reverb for this track"
+							iconClass="i-ph-sliders-horizontal"
+							buttonBaseClasses="button button-xs px-1 shrink-0 {trackFxActive(track.fx)
+								? 'text-accent opacity-100'
+								: 'opacity-70 hover-opacity-100'}"
+							position="bottom left"
+							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+							items={[
+								{ id: "fx-heading", kind: "heading", label: `${track.name} effects` },
+								{ id: "fx", kind: "snippet", snippet: fxMenu },
+							]}
+						/>
+					{/if}
 					<ContextMenu
 						ariaLabel="{track.name} actions"
 						buttonBaseClasses="button button-xs opacity-70 hover-opacity-100 px-1 shrink-0"
@@ -684,6 +819,17 @@
 								action: () => engine.moveTrack(track.id, index + 1),
 							},
 							{ id: "d", kind: "divider" },
+							{
+								id: "render",
+								kind: "button",
+								label: "Render to audio track",
+								iconClass: "i-ph-waveform",
+								title:
+									"Play the notes through the instrument into a new audio track (in real time), so the song can bounce",
+								condition: isMidi(track),
+								disabled: engine.running || !clipsOf(track).some((c) => c.notes?.length),
+								action: () => onrender?.(track),
+							},
 							{
 								id: "remove",
 								kind: "button",
@@ -709,8 +855,13 @@
 					disabled={engine.recording}
 					onchange={(e) => pickInput(track, e.currentTarget.value)}
 				>
-					<option value="">No input</option>
-					{#each INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+					{#if isMidi(track)}
+						{#each MIDI_INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option
+							>{/each}
+					{:else}
+						<option value="">No input</option>
+						{#each INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+					{/if}
 				</select>
 				<div class="flex items-center gap-1.5 min-w-0">
 					<input
@@ -721,21 +872,23 @@
 						step="0.01"
 						value={track.gain}
 						aria-label="{track.name} level"
-						title="Level"
+						title={isMidi(track) ? "Level (scales the notes' velocity)" : "Level"}
 						oninput={(e) => engine.setGain(track.id, e.currentTarget.valueAsNumber)}
 					/>
-					<input
-						type="range"
-						class="w-12 shrink-0 accent-blue-100 h-4"
-						min="-1"
-						max="1"
-						step="0.05"
-						value={track.pan}
-						aria-label="{track.name} pan"
-						title="Pan (double-click for centre)"
-						oninput={(e) => engine.setPan(track.id, e.currentTarget.valueAsNumber)}
-						ondblclick={() => engine.setPan(track.id, 0)}
-					/>
+					{#if !isMidi(track)}
+						<input
+							type="range"
+							class="w-12 shrink-0 accent-blue-100 h-4"
+							min="-1"
+							max="1"
+							step="0.05"
+							value={track.pan}
+							aria-label="{track.name} pan"
+							title="Pan (double-click for centre)"
+							oninput={(e) => engine.setPan(track.id, e.currentTarget.valueAsNumber)}
+							ondblclick={() => engine.setPan(track.id, 0)}
+						/>
+					{/if}
 				</div>
 				<div class="h-1 w-full rounded bg-blue-100/10 overflow-hidden" aria-hidden="true">
 					<div
@@ -760,7 +913,7 @@
 				{/if}
 				{#each clipsOf(track) as clip (clip.id)}
 					{@const dragging = drag?.clip.id === clip.id}
-					{@const source = engine.sources[clip.sourceId]}
+					{@const source = clip.sourceId ? engine.sources[clip.sourceId] : undefined}
 					{@const shown =
 						dragging && drag!.mode === "left" && drag!.moved
 							? { start: drag!.edge, duration: clip.start + clip.duration - drag!.edge }
@@ -784,7 +937,9 @@
 						data-clip={clip.id}
 						role="button"
 						tabindex="0"
-						aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}"
+						aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
+							? ` (${clip.notes.length} ${clip.notes.length === 1 ? 'note' : 'notes'})`
+							: ''}"
 						title="{clip.name} · {formatTime(clip.start)} – {formatTime(
 							clip.start + clip.duration,
 						)}"
@@ -793,12 +948,19 @@
 						onpointerup={onclipup}
 						onpointercancel={onclipup}
 					>
-						<canvas
-							class="absolute inset-0 h-full w-full text-blue-200 {source?.status === 'ready'
-								? 'opacity-90'
-								: 'opacity-30'}"
-							{@attach clipWave(clip)}
-						></canvas>
+						{#if clip.notes}
+							<canvas
+								class="absolute inset-0 h-full w-full text-blue-200 opacity-90"
+								{@attach noteRoll(clip)}
+							></canvas>
+						{:else}
+							<canvas
+								class="absolute inset-0 h-full w-full text-blue-200 {source?.status === 'ready'
+									? 'opacity-90'
+									: 'opacity-30'}"
+								{@attach clipWave(clip)}
+							></canvas>
+						{/if}
 						<!-- the fades, drawn as wedges over the ends -->
 						{#if clip.fadeIn > 0}
 							<div
@@ -833,10 +995,17 @@
 						style:left="{engine.recordFrom * pxPerSecond}px"
 						style:width="{Math.max(2, (engine.position - engine.recordFrom) * pxPerSecond)}px"
 					>
-						<canvas
-							class="absolute inset-0 h-full w-full text-red-200 opacity-90"
-							{@attach liveWave(track.id)}
-						></canvas>
+						{#if isMidi(track)}
+							<canvas
+								class="absolute inset-0 h-full w-full text-red-200 opacity-90"
+								{@attach liveNotes(track.id)}
+							></canvas>
+						{:else}
+							<canvas
+								class="absolute inset-0 h-full w-full text-red-200 opacity-90"
+								{@attach liveWave(track.id)}
+							></canvas>
+						{/if}
 					</div>
 				{/if}
 			</div>

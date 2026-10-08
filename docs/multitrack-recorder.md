@@ -1,6 +1,6 @@
 # Multitrack recorder (design draft)
 
-Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; MIDI (3) remains. Design written 2026-10-06. Kevin's ask: "a simple
+Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; phase 3a (MIDI tracks: record, play, edit, import, export, render to audio) built 2026-10-08; 3b (a piano-roll editor) remains. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
 stem player, and a lot of the engineering of the idea recorder. It should
 start fairly simple as a stand-alone tool … 'songs' instead of 'ideas' …
@@ -291,11 +291,65 @@ drum machine hosted in the context as track inputs (the looper's
 per-track Tone, compressor and reverb from the existing `fxStages`; the
 drum machine's pattern timeline as a backing track.
 
-**Phase 3: MIDI.** MIDI tracks whose clips hold note events (ticks at a
-PPQ against the tempo map), a piano roll in the lane, scheduled to the
-hosted piano and drums through the same look-ahead loop; Web MIDI input
-where the browser has it (Chrome, Edge, Firefox; Safari still has none in
-2026), the computer keyboard and the on-screen instruments elsewhere.
+**Phase 3: MIDI.** MIDI tracks whose clips hold note events, a piano
+roll in the lane, scheduled to the hosted piano and drums through the same
+look-ahead loop; Web MIDI input where the browser has it (Chrome, Edge,
+Firefox; Safari still has none in 2026), the computer keyboard and the
+on-screen instruments elsewhere.
+
+_3a as built (2026-10-08)._ A track has a `kind` (`audio`, the default,
+or `midi`); a MIDI track's `input` names the instrument that plays and
+records it (piano, chords, drums), and a MIDI clip carries `notes`
+(`{t, d, p, v}`: seconds from the clip's content origin, seconds long,
+pitch, velocity 0..1) instead of a `sourceId` (`StudioNoteSchema`; a clip
+has one or the other). Decisions, and why:
+
+- **Seconds, not beats.** The doc above said ticks at a PPQ; the song has
+  one tempo and no tempo map, every clip tool (trim, split, move, takes,
+  punch, loop passes) works in seconds, and a MIDI clip placed beside an
+  audio clip must stay beside it when the tempo changes. So notes are
+  seconds like everything else, Quantize uses the tempo of the moment, and
+  the drum machine as a backing (a live instrument, not a clip) is the one
+  thing that follows the tempo. Tempo-following MIDI is a later option.
+- **Recording** taps the instrument engines: `piano.onNote` and
+  `chordPiano.onNote` report every note the keys, the computer keyboard,
+  the chord player's buttons or a Web MIDI device start and stop, on the
+  context's clock; `drumMachine.onHit` reports pad and MIDI hits as their
+  General MIDI notes (`DRUM_GM_NOTES`). The engine pairs them
+  (`utils/pairNoteEvents.ts`: from the pass's start, less the output
+  latency when "shift instrument takes" is on, as audio instrument takes
+  are shifted), cuts them per loop pass or to the punch region
+  (`utils/sliceNotes.ts` over `takePieces`) and lands a clip per piece
+  through the same `coveredClips` rule as audio (no alternates for MIDI).
+  An empty pass lands nothing. A pass with audio and MIDI tracks armed
+  shares one take number.
+- **Playback** schedules through the hosted engines: `piano.scheduleNote`
+  and `chordPiano.scheduleNote` start a voice at a context time and
+  release it `d` later (outside the keys' voice table, so a part playing
+  never fights the hands); `drumMachine.scheduleHit` plays a voice at a
+  time through the pattern's row settings. Notes are queued by the
+  look-ahead (`#queueUntil`) a few seconds ahead rather than all at once,
+  and cancelled on stop, seek or an edit. A track's fader scales velocity
+  (there is one piano, so a MIDI track has no audio path of its own: no
+  pan, no effects; the instrument's panel has those), mute and solo skip
+  the notes, and a clip's gain handle scales velocity too.
+- **The lane** draws a MIDI clip as a small piano roll (the clip's pitch
+  range, a row per semitone) and, while recording, the notes so far.
+  Quantize (to the beat, a half or a quarter of it) and Transpose sit on
+  the selected clip's row; Export MIDI downloads the clip as a Standard
+  MIDI File at the song's tempo (`utils/midiNotesFile.ts`); Import takes
+  `.mid` files onto a MIDI track (`audio/midi.ts` parses them).
+- **Bouncing.** An offline render cannot run the sampled instruments, so
+  a MIDI track is **rendered to audio** first: `renderMidiTrack` adds an
+  audio track with the same instrument as its input, arms it alone, solos
+  the MIDI track, and records from the start to the song's end in real
+  time with the latency shift and the count-in off, then mutes the MIDI
+  track. Download mix, Add as demo and Add tracks as stems do this
+  themselves for any MIDI track with clips before they render, saying so.
+- **Not in 3a:** a piano-roll editor (moving and drawing single notes),
+  tempo-following clips, MIDI from a file into the arrangement's tempo,
+  velocity curves, CC data. The arrangement's `version` stays 1: every
+  addition is optional.
 
 **Later.** The Idea Recorder as the Studio's quick-capture mode (one
 song, one track, Record): the merge Kevin anticipates. Comping,

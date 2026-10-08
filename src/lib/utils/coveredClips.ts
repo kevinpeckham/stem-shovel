@@ -3,7 +3,8 @@
  * that a new take covers end to end are replaced by it, their sources
  * kept as the new clip's alternate takes. Returns those clips and the
  * alternates the new clip inherits (the covered clips' own sources first,
- * then their alternates, at most `cap`).
+ * then their alternates, at most `cap`). A MIDI clip (notes, no source)
+ * is covered like any other and leaves no alternate.
  */
 export function coveredClips<
 	C extends {
@@ -11,7 +12,7 @@ export function coveredClips<
 		trackId: string;
 		start: number;
 		duration: number;
-		sourceId: string;
+		sourceId?: string;
 		alternates?: string[];
 	},
 >(
@@ -30,7 +31,7 @@ export function coveredClips<
 	const seen = new Set<string>();
 	const alternates: string[] = [];
 	for (const id of covered.flatMap((c) => [c.sourceId, ...(c.alternates ?? [])])) {
-		if (seen.has(id)) continue;
+		if (id === undefined || seen.has(id)) continue;
 		seen.add(id);
 		alternates.push(id);
 	}

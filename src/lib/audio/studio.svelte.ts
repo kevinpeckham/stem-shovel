@@ -8,15 +8,23 @@ import { snapToGrid } from "#lib/utils/snapToGrid.js";
 import { splitClipAt } from "#lib/utils/splitClipAt.js";
 import { takePieces } from "#lib/utils/takePieces.js";
 import { trimmedClip } from "#lib/utils/trimmedClip.js";
+import { pairNoteEvents, type NoteEvent } from "#lib/utils/pairNoteEvents.js";
+import { sliceNotes } from "#lib/utils/sliceNotes.js";
+import { quantizeNotes } from "#lib/utils/quantizeNotes.js";
+import { notesFromMidiSummary, notesToMidiBlob } from "#lib/utils/midiNotesFile.js";
+import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
+import type { MidiSummary } from "./midi";
 import { MAX_STUDIO_CLIPS, MAX_STUDIO_TRACKS, STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type {
 	StudioArrangement,
 	StudioClip,
 	StudioInput,
 	StudioInputSource,
+	StudioNote,
 	StudioSourceView,
 	StudioTrack,
 	StudioTrackFx,
+	StudioTrackKind,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { drumMachine } from "./drumMachine.svelte";
@@ -128,6 +136,22 @@ interface Playing {
 	src: AudioBufferSourceNode;
 	gain: GainNode;
 }
+/** A MIDI track recording (phase 3): the instrument's note events as they come, until Stop pairs them into a clip. */
+interface MidiCapture {
+	trackId: string;
+	source: StudioInstrument;
+	events: NoteEvent[];
+	/** Stops listening. */
+	off: () => void;
+}
+/** A note of a MIDI clip waiting for its moment: fired by the look-ahead once `at` is within reach. */
+interface QueuedNote {
+	at: number;
+	clipId: string;
+	fired: boolean;
+	/** Schedules the note; answers the way to cut it short, or null when it was skipped (a muted track). */
+	fire: () => (() => void) | null;
+}
 interface Capture {
 	trackId: string;
 	node: AudioWorkletNode;
@@ -200,6 +224,24 @@ class StudioEngine {
 	}
 	/** The page's hook for a finished take (upload it). */
 	ontake: ((take: StudioTake) => void) | null = null;
+
+	// ── MIDI (phase 3) ─────────────────────────────────────────────────────
+	#midiCaptures: MidiCapture[] = [];
+	/** Notes of the pass under way, in time order; `#midiNext` is the first not yet fired. */
+	#midiQueue: QueuedNote[] = [];
+	#midiNext = 0;
+	/** Notes sounding or scheduled, each with the way to cut it short. */
+	#midiVoices: { clipId: string; ends: number; cancel: () => void }[] = [];
+	/** A MIDI track being rendered to audio: the drum machine is not started as a backing for the capture track. */
+	#freezing = false;
+	/** The notes a MIDI track has recorded so far in the pass under way, for its lane. */
+	liveNotesOf(trackId: string): StudioNote[] {
+		const cap = this.#midiCaptures.find((c) => c.trackId === trackId);
+		const ctx = this.#ctx;
+		const when = this.#passes[0]?.when;
+		if (!cap || !ctx || when === undefined || cap.events.length === 0) return [];
+		return pairNoteEvents(cap.events, { from: when, shift: 0, end: ctx.currentTime });
+	}
 
 	get sampleRate() {
 		return this.#ctx?.sampleRate ?? 48000;
@@ -461,22 +503,32 @@ class StudioEngine {
 		this.#restoreArrangement(structuredClone(a));
 	}
 
-	addTrack(input: StudioInput | null = null, name?: string): StudioTrack | null {
+	/** A track: audio by default, or a MIDI track (phase 3) whose input is the instrument that plays and records it (the piano when none is given). */
+	addTrack(
+		input: StudioInput | null = null,
+		name?: string,
+		kind: StudioTrackKind = "audio",
+	): StudioTrack | null {
 		if (this.arrangement.tracks.length >= MAX_STUDIO_TRACKS) {
 			this.notice = `A song holds at most ${MAX_STUDIO_TRACKS} tracks.`;
 			return null;
 		}
 		this.#commit();
 		const n = this.arrangement.tracks.length + 1;
+		const midi = kind === "midi";
 		const track: StudioTrack = {
 			id: localId(),
-			name: name ?? `Track ${n}`,
+			...(midi ? { kind } : {}),
+			name: name ?? (midi ? `MIDI ${n}` : `Track ${n}`),
 			gain: 1,
 			pan: 0,
 			muted: false,
 			solo: false,
 			armed: false,
-			input,
+			input:
+				midi && (!input || !isInstrument(input.source))
+					? { source: "piano", channel: "stereo" }
+					: input,
 		};
 		this.arrangement.tracks.push(track);
 		this.#ensureTrackNodes(track.id);
@@ -658,7 +710,13 @@ class StudioEngine {
 	}
 	/** How long a clip's source runs, for the bounds of a trim. */
 	#sourceSeconds(c: StudioClip) {
-		return this.sources[c.sourceId]?.durationSeconds ?? c.offset + c.duration;
+		if (c.notes) {
+			// A MIDI clip's content runs to its last note, or as far as it is shown.
+			let end = 0;
+			for (const n of c.notes) end = Math.max(end, n.t + n.d);
+			return Math.max(end, c.offset + c.duration);
+		}
+		return (c.sourceId && this.sources[c.sourceId]?.durationSeconds) || c.offset + c.duration;
 	}
 	/**
 	 * Trim: a new left edge moves `start` and `offset` together (no earlier
@@ -736,7 +794,7 @@ class StudioEngine {
 	/** Take lanes: the clip swaps to the next (or previous) of its takes; the one it leaves joins the alternates. */
 	cycleTake(clipId: string, step: 1 | -1) {
 		const c = this.#clip(clipId);
-		if (!c || !c.alternates?.length) return;
+		if (!c || !c.sourceId || !c.alternates?.length) return;
 		this.#commit();
 		const ring = [c.sourceId, ...c.alternates];
 		const next = step === 1 ? ring[1] : ring[ring.length - 1];
@@ -755,6 +813,180 @@ class StudioEngine {
 	setPunch(on: boolean) {
 		this.arrangement.punch = on;
 		this.dirty = true;
+	}
+
+	// ── MIDI clips (phase 3) ───────────────────────────────────────────────
+	/** The notes' starts onto the grid: every `division` of a beat (1 = the beat, 2 = half, 4 = a quarter) at the song's tempo. */
+	quantizeClip(clipId: string, division: 1 | 2 | 4 = 1) {
+		const c = this.#clip(clipId);
+		if (!c?.notes?.length) return;
+		this.#commit();
+		c.notes = quantizeNotes(c.notes, {
+			origin: 0,
+			step: this.beatSeconds / division,
+			contentOrigin: c.start - c.offset,
+		});
+		this.#reschedule();
+	}
+	/** Every note up or down by `semitones`, within the MIDI range. */
+	transposeClip(clipId: string, semitones: number) {
+		const c = this.#clip(clipId);
+		if (!c?.notes?.length || !semitones) return;
+		this.#commit();
+		c.notes = c.notes.map((n) => ({ ...n, p: Math.max(0, Math.min(127, n.p + semitones)) }));
+		this.#reschedule();
+	}
+	/** A parsed MIDI file onto a MIDI track at `start`, as one clip the length of its notes. */
+	importMidi(
+		track: StudioTrack,
+		summary: MidiSummary,
+		start: number,
+		name: string,
+	): StudioClip | null {
+		const notes = notesFromMidiSummary(summary);
+		if (notes.length === 0) {
+			this.notice = `${name} holds no notes.`;
+			return null;
+		}
+		let end = 0;
+		for (const n of notes) end = Math.max(end, n.t + n.d);
+		return this.addClip({
+			trackId: track.id,
+			notes,
+			start: round4(start),
+			offset: 0,
+			duration: round4(Math.max(0.01, end)),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: name.replace(/\.[a-z0-9]+$/i, "").slice(0, 60) || "MIDI",
+		});
+	}
+	/** A MIDI clip's notes (what the clip shows of them) as a Standard MIDI File at the song's tempo. */
+	midiBlobOf(clipId: string): Blob | null {
+		const c = this.#clip(clipId);
+		if (!c?.notes) return null;
+		const track = this.#track(c.trackId);
+		return notesToMidiBlob(sliceNotes(c.notes, c.offset, c.offset + c.duration), {
+			bpm: this.arrangement.bpm,
+			beatsPerBar: this.arrangement.beatsPerBar,
+			drums: track?.input?.source === "drums",
+		});
+	}
+	/** The MIDI tracks that hold notes: what a bounce renders to audio first. */
+	get midiTracksWithClips(): StudioTrack[] {
+		return this.arrangement.tracks.filter(
+			(t) => t.kind === "midi" && this.arrangement.clips.some((c) => c.trackId === t.id && c.notes),
+		);
+	}
+	/** A MIDI clip for a take on a track: clips the take covers end to end are replaced (no alternate takes for notes). */
+	#landMidiClip(
+		track: StudioTrack,
+		notes: StudioNote[],
+		start: number,
+		duration: number,
+		name: string,
+	) {
+		const { covered } = coveredClips(this.arrangement.clips, {
+			trackId: track.id,
+			start,
+			duration,
+		});
+		if (covered.length) {
+			const gone = new Set(covered.map((x) => x.id));
+			for (const id of gone) this.#stopClip(id);
+			this.arrangement.clips = this.arrangement.clips.filter((x) => !gone.has(x.id));
+		}
+		this.arrangement.clips.push({
+			id: localId(),
+			trackId: track.id,
+			notes,
+			start: round4(start),
+			offset: 0,
+			duration: round4(duration),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name,
+		});
+	}
+	/**
+	 * A MIDI track rendered to audio (docs/multitrack-recorder.md, phase 3):
+	 * an audio track with the same instrument as its input is added and
+	 * armed alone, the MIDI track soloed, and the song recorded from the
+	 * start to the track's last note in real time (no count-in, no latency
+	 * shift: the part is played by the clock, not by hand); the MIDI track
+	 * is then muted. Answers the audio track, or null when there was
+	 * nothing to render or the transport was busy.
+	 */
+	async renderMidiTrack(trackId: string): Promise<StudioTrack | null> {
+		const track = this.#track(trackId);
+		if (!track || track.kind !== "midi" || !track.input || this.running) return null;
+		const clips = this.arrangement.clips.filter((c) => c.trackId === trackId && c.notes?.length);
+		if (clips.length === 0) return null;
+		let end = 0;
+		for (const c of clips) end = Math.max(end, c.start + c.duration);
+		const audio = this.addTrack(
+			{ source: track.input.source, channel: "stereo" },
+			`${track.name} (audio)`,
+		);
+		if (!audio) return null;
+		const a = this.arrangement;
+		const before = {
+			states: a.tracks.map((t) => ({ id: t.id, armed: t.armed, solo: t.solo })),
+			countIn: a.countIn,
+			loop: a.loop ? { ...a.loop } : null,
+			punch: a.punch,
+			compensate: this.compensateInstruments,
+			position: this.position,
+		};
+		for (const t of a.tracks) {
+			t.armed = t.id === audio.id;
+			t.solo = t.id === trackId || t.id === audio.id;
+		}
+		a.countIn = false;
+		if (a.loop) a.loop.on = false;
+		a.punch = false;
+		this.compensateInstruments = false;
+		this.#freezing = true;
+		this.position = 0;
+		try {
+			if (!(await this.record())) return null;
+			await new Promise<void>((resolve) => {
+				const check = () => {
+					if (!this.running) return resolve();
+					if (this.position >= end + 0.5) {
+						this.stop(0);
+						return resolve();
+					}
+					setTimeout(check, 50);
+				};
+				check();
+			});
+			// The take lands once the capture worklet has handed over its last chunk.
+			const landed = () => a.clips.some((c) => c.trackId === audio.id);
+			for (let i = 0; i < 60 && !landed(); i++) await new Promise((r) => setTimeout(r, 50));
+			if (!landed()) return null;
+			const midi = this.#track(trackId);
+			if (midi) midi.muted = true;
+			return this.#track(audio.id);
+		} finally {
+			for (const st of before.states) {
+				const t = this.#track(st.id);
+				if (t) {
+					t.armed = st.armed;
+					t.solo = st.solo;
+				}
+			}
+			a.countIn = before.countIn;
+			a.loop = before.loop;
+			a.punch = before.punch;
+			this.compensateInstruments = before.compensate;
+			this.#freezing = false;
+			this.position = before.position;
+			this.dirty = true;
+			this.#applyGains(true);
+		}
 	}
 	/**
 	 * A clip for a new take on a track: clips of the track the take covers
@@ -870,6 +1102,19 @@ class StudioEngine {
 		await this.open();
 		const ctx = this.#ctx!;
 		claimPlayback(this.#transport);
+		// The instruments MIDI clips play through must be awake before their first note is due.
+		const midiSources = new Set(
+			this.midiTracksWithClips.map((t) => t.input!.source as StudioInstrument),
+		);
+		if (midiSources.has("drums")) await drumMachine.readyKit();
+		if (midiSources.has("piano")) {
+			piano.load();
+			piano.warm();
+		}
+		if (midiSources.has("chords")) {
+			chordPiano.load();
+			chordPiano.warm();
+		}
 		const from = opts.from ?? this.position;
 		const ahead = opts.ahead ?? START_AHEAD;
 		const countIn = opts.countIn ? this.barSeconds : 0;
@@ -877,8 +1122,11 @@ class StudioEngine {
 		this.#stopAt = from;
 		this.#passes = [];
 		this.#startPass(from, when);
-		// A drums track armed: the drum machine plays along from the start, at the song's tempo, in step (its beat is recorded when recording).
-		if (this.armedTracks.some((t) => t.input?.source === "drums")) {
+		// A drums track armed: the drum machine plays along from the start, at the song's tempo, in step (its beat is recorded when recording). Not for a MIDI drums track (its notes play the drums), nor while a MIDI track renders to audio.
+		if (
+			!this.#freezing &&
+			this.armedTracks.some((t) => t.kind !== "midi" && t.input?.source === "drums")
+		) {
 			drumMachine.load();
 			if (drumMachine.running) drumMachine.stop();
 			if (!drumMachine.followTempo) drumMachine.setBpm(this.arrangement.bpm);
@@ -909,9 +1157,72 @@ class StudioEngine {
 		const to = loop?.on && from < loop.end ? loop.end : null;
 		this.#passes.push({ from, when, to });
 		for (const clip of this.arrangement.clips) this.#startClip(clip, from, when, to);
+		this.#queueMidi(from, when, to);
+	}
+	/** Every note of every MIDI clip that falls in [from, to), queued for the look-ahead from `when`; the first moments fire now. */
+	#queueMidi(from: number, when: number, to: number | null) {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		const queue: QueuedNote[] = [];
+		for (const clip of this.arrangement.clips) {
+			if (!clip.notes?.length) continue;
+			const track = this.#track(clip.trackId);
+			const source = track?.input?.source;
+			if (!track || track.kind !== "midi" || !source || !isInstrument(source)) continue;
+			const clipEnd = clip.start + clip.duration;
+			const ends = to === null ? clipEnd : Math.min(clipEnd, to);
+			const origin = clip.start - clip.offset;
+			for (const n of clip.notes) {
+				const tt = origin + n.t;
+				if (tt < clip.start || tt < from || tt >= ends) continue;
+				const duration = Math.min(n.d, ends - tt);
+				const at = when + (tt - from);
+				queue.push({
+					at,
+					clipId: clip.id,
+					fired: false,
+					fire: () => {
+						const t = this.#track(track.id);
+						const gain = t ? this.#effectiveGain(t) : 0;
+						if (gain <= 0) return null;
+						const velocity = Math.min(1, n.v * clip.gain * Math.min(1, gain));
+						if (source === "drums") {
+							const voice = DRUM_MIDI_IN_NOTES[n.p];
+							return voice ? drumMachine.scheduleHit(voice, velocity, at) : null;
+						}
+						return (source === "piano" ? piano : chordPiano).scheduleNote(
+							n.p,
+							velocity,
+							at,
+							duration,
+						);
+					},
+				});
+			}
+		}
+		queue.sort((a, b) => a.at - b.at);
+		this.#midiQueue = queue;
+		this.#midiNext = 0;
+		this.#flushMidi(ctx.currentTime + 0.1);
+	}
+	/** Fires the queued notes due before `until`, and forgets the voices that have ended. */
+	#flushMidi(until: number) {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		const q = this.#midiQueue;
+		while (this.#midiNext < q.length && q[this.#midiNext].at < until) {
+			const e = q[this.#midiNext++];
+			if (e.fired) continue;
+			e.fired = true;
+			const cancel = e.fire();
+			if (cancel) this.#midiVoices.push({ clipId: e.clipId, ends: e.at + 30, cancel });
+		}
+		if (this.#midiVoices.length > 64)
+			this.#midiVoices = this.#midiVoices.filter((v) => v.ends > ctx.currentTime);
 	}
 	#startClip(clip: StudioClip, from: number, when: number, to: number | null) {
 		const ctx = this.#ctx;
+		if (!clip.sourceId) return; // a MIDI clip: its notes are queued by #queueMidi
 		const buffer = this.#buffers.get(clip.sourceId);
 		const nodes = this.#tracks.get(clip.trackId);
 		if (!ctx || !buffer || !nodes) return;
@@ -946,6 +1257,7 @@ class StudioEngine {
 	}
 	/** The look-ahead: when a loop pass ends within reach, the next pass is already queued. */
 	#queueUntil = (until: number) => {
+		this.#flushMidi(until);
 		const loop = this.arrangement.loop;
 		const last = this.#passes[this.#passes.length - 1];
 		if (!loop?.on || !last || last.to === null) return;
@@ -976,7 +1288,7 @@ class StudioEngine {
 				return;
 			}
 			if (this.phase === "counting" && this.#ctx && this.#passes[0]?.when <= this.#ctx.currentTime)
-				this.phase = this.#captures.length ? "recording" : "playing";
+				this.phase = this.#captures.length || this.#midiCaptures.length ? "recording" : "playing";
 			this.#frame = requestAnimationFrame(tick);
 		};
 		this.#frame = requestAnimationFrame(tick);
@@ -993,6 +1305,12 @@ class StudioEngine {
 		}
 		this.#playing = [];
 		this.#passes = [];
+		for (const v of this.#midiVoices) v.cancel();
+		this.#midiVoices = [];
+		this.#midiQueue = [];
+		this.#midiNext = 0;
+		piano.cancelScheduled();
+		chordPiano.cancelScheduled();
 	}
 	#stopClip(clipId: string) {
 		for (const p of this.#playing.filter((x) => x.clipId === clipId)) {
@@ -1005,6 +1323,11 @@ class StudioEngine {
 			p.gain.disconnect();
 		}
 		this.#playing = this.#playing.filter((x) => x.clipId !== clipId);
+		for (const v of this.#midiVoices.filter((x) => x.clipId === clipId)) v.cancel();
+		this.#midiVoices = this.#midiVoices.filter((x) => x.clipId !== clipId);
+		this.#midiQueue = this.#midiQueue.filter((e) => e.clipId !== clipId);
+		const next = this.#midiQueue.findIndex((e) => !e.fired);
+		this.#midiNext = next < 0 ? this.#midiQueue.length : next;
 	}
 	#stopClipsOf(trackId: string) {
 		for (const c of this.arrangement.clips) if (c.trackId === trackId) this.#stopClip(c.id);
@@ -1030,7 +1353,9 @@ class StudioEngine {
 		this.position = at ?? this.#stopAt;
 	}
 	#halt() {
-		if (this.#captures.length) void this.#finishCaptures();
+		const hadAudio = this.#captures.length > 0;
+		if (hadAudio) void this.#finishCaptures();
+		if (this.#midiCaptures.length) this.#finishMidiCaptures(hadAudio);
 		this.#stopSources();
 		this.#stopLookahead?.();
 		this.#stopLookahead = null;
@@ -1088,6 +1413,15 @@ class StudioEngine {
 		}
 		// The drums must be ready to start on the bar: the kit decoded before the start is chosen.
 		if (armed.some((t) => t.input?.source === "drums")) await drumMachine.readyKit();
+		const midiArmed = armed.filter((t) => t.kind === "midi");
+		if (midiArmed.some((t) => t.input?.source === "piano")) {
+			piano.load();
+			piano.warm();
+		}
+		if (midiArmed.some((t) => t.input?.source === "chords")) {
+			chordPiano.load();
+			chordPiano.warm();
+		}
 		const session = audioSession();
 		if (session) session.type = "play-and-record";
 		const from = this.position;
@@ -1096,7 +1430,11 @@ class StudioEngine {
 		const ahead = countIn ? START_AHEAD : LEAD_SECONDS + 0.05;
 		this.recordFrom = from;
 		this.#captures = [];
-		for (const track of armed) this.#arm(track, ctx);
+		this.#midiCaptures = [];
+		for (const track of armed) {
+			if (track.kind === "midi") this.#armMidi(track);
+			else this.#arm(track, ctx);
+		}
 		await this.play({ from, countIn, ahead });
 		const when = this.#passes[0]?.when ?? ctx.currentTime + ahead;
 		const startFrame = Math.round(when * ctx.sampleRate);
@@ -1157,6 +1495,75 @@ class StudioEngine {
 			} else if (m.type === "done") finish();
 		};
 		this.#captures.push({ trackId: track.id, node, feed, chunks, channels, done, finish });
+	}
+	/** A MIDI track armed: the instrument's notes are collected as they come (the keys, the computer keyboard, a MIDI device, the pads), each stamped by the context's clock. */
+	#armMidi(track: StudioTrack) {
+		const source = track.input?.source;
+		if (!source || !isInstrument(source)) return;
+		const events: NoteEvent[] = [];
+		const push = (e: NoteEvent) => {
+			events.push(e);
+			this.liveTick++;
+		};
+		const off =
+			source === "drums"
+				? drumMachine.onHit((h) => {
+						// A hit has no length of its own: a tenth of a second, the pad's blink.
+						const pitch = DRUM_GM_NOTES[h.voice];
+						push({ on: true, pitch, velocity: h.velocity, time: h.time });
+						push({ on: false, pitch, velocity: 0, time: h.time + 0.1 });
+					})
+				: (source === "piano" ? piano : chordPiano).onNote(push);
+		this.#midiCaptures.push({ trackId: track.id, source, events, off });
+	}
+	/**
+	 * The notes of each MIDI capture as clips: paired from the pass's start
+	 * (less the output latency when instrument takes are shifted: the part
+	 * was played by hand against what was heard), then cut per loop pass or
+	 * to the punch region as audio takes are, one clip per piece. A pass
+	 * with no notes lands nothing.
+	 */
+	#finishMidiCaptures(withAudio: boolean) {
+		const caps = this.#midiCaptures;
+		this.#midiCaptures = [];
+		const ctx = this.#ctx;
+		const when = this.#passes[0]?.when;
+		for (const cap of caps) cap.off();
+		if (!ctx || when === undefined) return;
+		const end = ctx.currentTime;
+		const from = this.recordFrom;
+		// A pass with audio takes too shares their number (the audio path counts it once its chunks are in).
+		const takeNumber = withAudio ? this.takeCount + 1 : ++this.takeCount;
+		// Shifted earlier by the output latency, as an audio instrument take is, and no further than one could be.
+		const shift = this.compensateInstruments
+			? Math.min(LEAD_SECONDS, this.outputLatencyMs / 1000)
+			: 0;
+		let landed = false;
+		for (const cap of caps) {
+			const track = this.#track(cap.trackId);
+			if (!track || cap.events.length === 0) continue;
+			const notes = pairNoteEvents(cap.events, { from: when, shift, end });
+			const pieces = takePieces({
+				from,
+				duration: Math.max(0.01, end - when - shift),
+				loop: this.arrangement.loop,
+				punch: this.arrangement.punch ?? false,
+			});
+			const label = track.name;
+			pieces.forEach((piece, k) => {
+				const part = sliceNotes(notes, piece.from, piece.to);
+				if (part.length === 0) return;
+				if (!landed) this.#commit();
+				landed = true;
+				const name =
+					pieces.length > 1
+						? `${label} · Take ${takeNumber}.${k + 1}`
+						: `${label} · Take ${takeNumber}`;
+				this.#landMidiClip(track, part, piece.start, piece.to - piece.from, name);
+			});
+		}
+		this.liveTick++;
+		if (landed) this.dirty = true;
 	}
 	async #finishCaptures() {
 		const caps = this.#captures;
@@ -1324,6 +1731,8 @@ class StudioEngine {
 			nodes.set(t.id, gain);
 		}
 		for (const clip of this.arrangement.clips) {
+			// A MIDI clip has no audio of its own: the page renders its track to audio first (renderMidiTrack).
+			if (!clip.sourceId) continue;
 			const buffer = this.#buffers.get(clip.sourceId);
 			const into = nodes.get(clip.trackId);
 			if (!buffer || !into) continue;
@@ -1362,6 +1771,9 @@ class StudioEngine {
 			passes: this.#passes.length,
 			buffers: Array.from(this.#buffers.keys()),
 			master: this.#master?.gain.value ?? null,
+			midiQueued: this.#midiQueue.length - this.#midiNext,
+			midiVoices: this.#midiVoices.length,
+			midiCaptures: this.#midiCaptures.length,
 		};
 	}
 	/** Open the microphone or the line in for a track's input (from a gesture); an instrument is always open once hosted. */

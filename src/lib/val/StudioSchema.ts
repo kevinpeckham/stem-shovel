@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import {
 	MAX_STUDIO_CLIPS,
+	MAX_STUDIO_NOTES_PER_CLIP,
 	MAX_STUDIO_SECONDS,
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
@@ -67,8 +68,14 @@ export const StudioTrackFxSchema = v.object({
 });
 export type StudioTrackFx = v.InferOutput<typeof StudioTrackFxSchema>;
 
+/** An audio track records and plays files; a MIDI track (phase 3) records and plays notes through the instrument its input names. Absent means audio. */
+export const STUDIO_TRACK_KINDS = ["audio", "midi"] as const;
+export const StudioTrackKindSchema = v.picklist(STUDIO_TRACK_KINDS);
+export type StudioTrackKind = v.InferOutput<typeof StudioTrackKindSchema>;
+
 export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
+	kind: v.optional(StudioTrackKindSchema),
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
 	/** A theme colour name the lane draws in (`studio-lane-<colour>` shortcuts); the default when missing. */
 	colour: v.optional(v.pipe(v.string(), v.maxLength(24))),
@@ -83,21 +90,48 @@ export const StudioTrackSchema = v.object({
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
 
-/** A clip: `duration` seconds of its source from `offset`, placed at `start` on the timeline. */
-export const StudioClipSchema = v.object({
-	id: LocalIdSchema,
-	trackId: LocalIdSchema,
-	sourceId: NanoIdSchema,
-	start: SecondsSchema,
-	offset: SecondsSchema,
-	duration: v.pipe(v.number(), v.minValue(0.001), v.maxValue(MAX_STUDIO_SECONDS)),
-	gain: v.pipe(v.number(), v.minValue(0), v.maxValue(2)),
-	fadeIn: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
-	fadeOut: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
-	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
-	/** Other takes recorded for this spot (take lanes): sources the clip can swap to; the one in `sourceId` is the chosen take. */
-	alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
+/**
+ * One note of a MIDI clip (docs/multitrack-recorder.md, phase 3): `t`
+ * seconds from the clip's content origin (where `offset` 0 is), `d` seconds
+ * long, pitch 0..127 (60 is middle C; a drum voice's General MIDI note on a
+ * drums track), velocity 0..1. Seconds, not beats: a MIDI clip sits on the
+ * timeline as an audio clip does and keeps its place when the tempo changes.
+ */
+export const StudioNoteSchema = v.object({
+	t: SecondsSchema,
+	d: v.pipe(v.number(), v.minValue(0.001), v.maxValue(MAX_STUDIO_SECONDS)),
+	p: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(127)),
+	v: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 });
+export type StudioNote = v.InferOutput<typeof StudioNoteSchema>;
+
+/**
+ * A clip: `duration` seconds of its source from `offset`, placed at `start`
+ * on the timeline. An audio clip names its source; a MIDI clip carries its
+ * notes instead (one or the other, never both nor neither).
+ */
+export const StudioClipSchema = v.pipe(
+	v.object({
+		id: LocalIdSchema,
+		trackId: LocalIdSchema,
+		sourceId: v.optional(NanoIdSchema),
+		/** A MIDI clip's notes; the clip is a MIDI clip when present. */
+		notes: v.optional(v.pipe(v.array(StudioNoteSchema), v.maxLength(MAX_STUDIO_NOTES_PER_CLIP))),
+		start: SecondsSchema,
+		offset: SecondsSchema,
+		duration: v.pipe(v.number(), v.minValue(0.001), v.maxValue(MAX_STUDIO_SECONDS)),
+		gain: v.pipe(v.number(), v.minValue(0), v.maxValue(2)),
+		fadeIn: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
+		fadeOut: v.pipe(v.number(), v.minValue(0), v.maxValue(60)),
+		name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
+		/** Other takes recorded for this spot (take lanes): sources the clip can swap to; the one in `sourceId` is the chosen take. */
+		alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
+	}),
+	v.check(
+		(c) => (c.sourceId !== undefined) !== (c.notes !== undefined),
+		"A clip has a source or notes, not both",
+	),
+);
 export type StudioClip = v.InferOutput<typeof StudioClipSchema>;
 
 export const StudioLoopSchema = v.object({

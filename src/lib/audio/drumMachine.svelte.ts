@@ -807,14 +807,54 @@ class DrumMachineEngine {
 	async hit(voice: DrumVoiceId, velocity = 1) {
 		const { ctx, bus } = await this.#graph();
 		if (!this.kitReady) await this.#readyKit();
-		const row = this.pattern.rows.find((r) => r.voice === voice) ?? {
-			voice,
-			level: 0.8,
-			pan: DEFAULT_DRUM_PANS[voice],
-			...DEFAULT_DRUM_SENDS[voice],
-		};
-		playDrumHit(ctx, drumKit(this.project.kit), bus, row, velocity, ctx.currentTime, this.#play);
+		playDrumHit(
+			ctx,
+			drumKit(this.project.kit),
+			bus,
+			this.#rowFor(voice),
+			velocity,
+			ctx.currentTime,
+			this.#play,
+		);
+		for (const l of this.#hitListeners) l({ voice, velocity, time: ctx.currentTime });
 		if (this.midiRecord && this.running) this.#record(voice, velocity);
+	}
+	/** The open pattern's row for a voice (its level, pan and sends), or a plain row. */
+	#rowFor(voice: DrumVoiceId) {
+		return (
+			this.pattern.rows.find((r) => r.voice === voice) ?? {
+				voice,
+				level: 0.8,
+				pan: DEFAULT_DRUM_PANS[voice],
+				...DEFAULT_DRUM_SENDS[voice],
+			}
+		);
+	}
+	/** Who hears every pad and MIDI hit (the Studio, recording a MIDI drums track). */
+	#hitListeners = new Set<(e: { voice: DrumVoiceId; velocity: number; time: number }) => void>();
+	onHit(listener: (e: { voice: DrumVoiceId; velocity: number; time: number }) => void): () => void {
+		this.#hitListeners.add(listener);
+		return () => this.#hitListeners.delete(listener);
+	}
+	/**
+	 * One hit of a voice at a moment on the context's clock (docs/multitrack-
+	 * recorder.md, phase 3: a MIDI drums clip playing), through the open
+	 * pattern's row for it. The kit must be decoded already (`readyKit`);
+	 * null when it is not. Returns the way to cut the hit short.
+	 */
+	scheduleHit(voice: DrumVoiceId, velocity: number, when: number): (() => void) | null {
+		const { ctx, bus } = this.#ensureGraph();
+		if (!this.kitReady) return null;
+		const hit = playDrumHit(
+			ctx,
+			drumKit(this.project.kit),
+			bus,
+			this.#rowFor(voice),
+			Math.max(0.01, Math.min(1, velocity)),
+			when,
+			this.#play,
+		);
+		return () => hit?.stop(ctx.currentTime);
 	}
 	/** A MIDI note in: General MIDI's drum notes play their voices; any other note plays the pattern's rows in order. */
 	hitNote(note: number, velocity = 1) {

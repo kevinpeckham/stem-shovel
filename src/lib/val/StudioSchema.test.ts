@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
-import { MAX_STUDIO_TRACKS } from "../constants/studio";
+import { MAX_STUDIO_NOTES_PER_CLIP, MAX_STUDIO_TRACKS } from "../constants/studio";
 import {
 	StudioArrangementSchema,
 	StudioSourceReserveSchema,
@@ -59,6 +59,72 @@ describe("StudioArrangementSchema", () => {
 	test("a clip with no length fails", () => {
 		expect(
 			v.safeParse(StudioArrangementSchema, arrangement([track("t1")], [clip(0)])).success,
+		).toBe(false);
+	});
+});
+
+describe("StudioArrangementSchema: MIDI tracks and clips (phase 3)", () => {
+	const midiTrack = { ...track("m1"), kind: "midi", input: { source: "piano", channel: "stereo" } };
+	const midiClip = (notes: unknown[]) => ({
+		...clip(2),
+		id: "m-clip",
+		trackId: "m1",
+		sourceId: undefined,
+		notes,
+	});
+	test("a MIDI track and a clip of notes pass, with the track's kind kept", () => {
+		const parsed = v.parse(
+			StudioArrangementSchema,
+			arrangement([midiTrack], [midiClip([{ t: 0, d: 0.5, p: 60, v: 0.8 }])]),
+		);
+		expect(parsed.tracks[0].kind).toBe("midi");
+		expect(parsed.clips[0].notes).toEqual([{ t: 0, d: 0.5, p: 60, v: 0.8 }]);
+		expect(parsed.clips[0].sourceId).toBeUndefined();
+	});
+	test("a clip with both a source and notes, or neither, fails", () => {
+		expect(
+			v.safeParse(
+				StudioArrangementSchema,
+				arrangement([midiTrack], [{ ...midiClip([]), sourceId }]),
+			).success,
+		).toBe(false);
+		expect(
+			v.safeParse(
+				StudioArrangementSchema,
+				arrangement([track("t1")], [{ ...clip(2), sourceId: undefined }]),
+			).success,
+		).toBe(false);
+	});
+	test("a note's pitch, velocity and length are bounded, and a clip holds at most the cap", () => {
+		const bad = [
+			{ t: 0, d: 0.5, p: 128, v: 0.5 },
+			{ t: 0, d: 0.5, p: 60.5, v: 0.5 },
+			{ t: 0, d: 0.5, p: 60, v: 1.5 },
+			{ t: 0, d: 0, p: 60, v: 0.5 },
+			{ t: -1, d: 0.5, p: 60, v: 0.5 },
+		];
+		for (const note of bad)
+			expect(
+				v.safeParse(StudioArrangementSchema, arrangement([midiTrack], [midiClip([note])])).success,
+			).toBe(false);
+		const many = Array.from({ length: MAX_STUDIO_NOTES_PER_CLIP + 1 }, (_, i) => ({
+			t: i * 0.01,
+			d: 0.01,
+			p: 60,
+			v: 0.5,
+		}));
+		expect(
+			v.safeParse(StudioArrangementSchema, arrangement([midiTrack], [midiClip(many)])).success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, arrangement([midiTrack], [midiClip(many.slice(1))]))
+				.success,
+		).toBe(true);
+	});
+	test("a track kind outside audio and midi fails", () => {
+		expect(
+			v.safeParse(StudioArrangementSchema, arrangement([{ ...track("t1"), kind: "video" }], []))
+				.success,
 		).toBe(false);
 	});
 });
