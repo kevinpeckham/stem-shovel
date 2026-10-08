@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **Trimming a clip in the Studio no longer squeezes its waveform** (Kevin: it looked like the content was being sped up). The drawing keeps the clip's own width and place while an edge is dragged, so the trim masks it, and it is redrawn once the trim lands.
+
 ### Added
 
 - **Studio phase 3b: the piano-roll editor** (docs/multitrack-recorder.md). **Edit notes** on a selected MIDI clip, or a double-click on the clip, opens its notes in a floating panel: rows of pitches (a drums track's are the kit's voices) against the song's beats, a keyboard column that sounds each row. A click on empty grid adds a note a grid step long (beat, half or quarter; Shift ignores the grid), a note drags in time and pitch with a live preview, its right edge drags its length, Shift-click extends the selection, the arrow keys nudge (Shift an octave), the Velocity slider sets the selection's, Delete removes; every gesture is one undo step (`PianoRoll.svelte`, `utils/pianoRoll.ts`, `studio.setClipNotes`, `studio.auditionNote`).

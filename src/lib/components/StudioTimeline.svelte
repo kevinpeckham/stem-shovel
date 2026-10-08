@@ -952,16 +952,21 @@
 						onpointercancel={onclipup}
 						ondblclick={() => clip.notes && onopen?.(clip)}
 					>
+						<!-- The drawing keeps the clip's own width and place while an edge is dragged, so the trim masks it (the clip's overflow is hidden) rather than squeezing it; it is redrawn once the trim lands. -->
 						{#if clip.notes}
 							<canvas
-								class="absolute inset-0 h-full w-full text-blue-200 opacity-90"
+								class="absolute top-0 bottom-0 h-full text-blue-200 opacity-90"
+								style:left="{(clip.start - shown.start) * pxPerSecond}px"
+								style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
 								{@attach noteRoll(clip)}
 							></canvas>
 						{:else}
 							<canvas
-								class="absolute inset-0 h-full w-full text-blue-200 {source?.status === 'ready'
+								class="absolute top-0 bottom-0 h-full text-blue-200 {source?.status === 'ready'
 									? 'opacity-90'
 									: 'opacity-30'}"
+								style:left="{(clip.start - shown.start) * pxPerSecond}px"
+								style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
 								{@attach clipWave(clip)}
 							></canvas>
 						{/if}
