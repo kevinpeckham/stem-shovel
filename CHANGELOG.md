@@ -15,6 +15,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The Studio's track headers**: the arm, mute and solo buttons lead the fader's row (a five-column grid: the three buttons, the fader taking the room that is left, the pan knob), so the name row keeps the whole name.
 - **The Studio's Songs panel is the Recordings panel** (Kevin: "Songs" read as the project songs). Same list, same menus; the toolbar button and the panel's title say Recordings.
 
 ## [0.116.0] - 2026-10-08

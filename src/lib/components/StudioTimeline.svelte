@@ -752,41 +752,6 @@
 							if (e.key === "Enter") e.currentTarget.blur();
 						}}
 					/>
-					<button
-						type="button"
-						class="h-6 w-6 shrink-0 rounded border text-11px font-600 transition-colors {track.armed
-							? 'bg-red-600 border-red-600 text-white'
-							: 'border-white/25 hover-border-red-400 text-red-300'}"
-						aria-pressed={track.armed}
-						aria-label="Arm {track.name} for recording"
-						title="Arm for recording"
-						disabled={engine.recording}
-						onclick={() => {
-							engine.toggleArm(track.id);
-							const t = engine.arrangement.tracks.find((x) => x.id === track.id);
-							if (t?.armed) onarm?.(t);
-						}}
-					>
-						●
-					</button>
-					<button
-						type="button"
-						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-500 transition-colors hover-border-white/60 {track.muted
-							? 'bg-blue-300 text-oxford border-blue-300'
-							: ''}"
-						aria-pressed={track.muted}
-						aria-label="Mute {track.name}"
-						onclick={() => engine.toggleMute(track.id)}>M</button
-					>
-					<button
-						type="button"
-						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-600 transition-colors hover-border-white/60 {track.solo
-							? 'bg-accent text-oxford border-accent'
-							: ''}"
-						aria-pressed={track.solo}
-						aria-label="Solo {track.name}"
-						onclick={() => engine.toggleSolo(track.id)}>S</button
-					>
 					{#if isMidi(track)}
 						<span
 							class="h-6 w-6 shrink-0 rounded border border-blue-300/30 flex items-center justify-center text-blue-200"
@@ -878,7 +843,43 @@
 						{#each INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
 					{/if}
 				</select>
-				<div class="flex items-center gap-1.5 min-w-0">
+				<!-- Arm, mute and solo lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
+				<div class="grid grid-cols-[auto_auto_auto_1fr_auto] items-center gap-1.5 min-w-0">
+					<button
+						type="button"
+						class="h-6 w-6 shrink-0 rounded border text-11px font-600 transition-colors {track.armed
+							? 'bg-red-600 border-red-600 text-white'
+							: 'border-white/25 hover-border-red-400 text-red-300'}"
+						aria-pressed={track.armed}
+						aria-label="Arm {track.name} for recording"
+						title="Arm for recording"
+						disabled={engine.recording}
+						onclick={() => {
+							engine.toggleArm(track.id);
+							const t = engine.arrangement.tracks.find((x) => x.id === track.id);
+							if (t?.armed) onarm?.(t);
+						}}
+					>
+						●
+					</button>
+					<button
+						type="button"
+						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-500 transition-colors hover-border-white/60 {track.muted
+							? 'bg-blue-300 text-oxford border-blue-300'
+							: ''}"
+						aria-pressed={track.muted}
+						aria-label="Mute {track.name}"
+						onclick={() => engine.toggleMute(track.id)}>M</button
+					>
+					<button
+						type="button"
+						class="h-6 w-6 shrink-0 rounded border border-white/25 text-11px font-600 transition-colors hover-border-white/60 {track.solo
+							? 'bg-accent text-oxford border-accent'
+							: ''}"
+						aria-pressed={track.solo}
+						aria-label="Solo {track.name}"
+						onclick={() => engine.toggleSolo(track.id)}>S</button
+					>
 					<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity. -->
 					<Slider
 						value={track.gain}
@@ -893,7 +894,7 @@
 							: "Level (double-click for unity)"}
 						format={levelText(track)}
 						oninput={(v) => engine.setGain(track.id, v)}
-						class="min-w-0 grow"
+						class="min-w-0"
 					/>
 					{#if !isMidi(track)}
 						<!-- The pan as a knob (Knob.svelte): the value shows in a popover while it turns. -->
