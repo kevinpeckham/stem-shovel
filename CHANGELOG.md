@@ -16,7 +16,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 ### Changed
 
 - **The Studio's input picker is the app's ComboBox** rather than the browser's select, at the same size and type; the list opens as a popover.
-- **The Studio's track headers**, row by row: the name alone; the input picker with the effects button (a MIDI track's badge in its place) and the menu at its end; then arm, mute and solo leading the fader, with the pan knob at the end (a five-column grid). The whole name fits now.
+- **The Studio's track headers**, row by row: the name with the menu at the right edge; the input picker with the effects button (a MIDI track's badge in its place); then arm, mute and solo leading the fader, with the pan knob at the end (a five-column grid). The whole name fits now.
 - **The Studio's Songs panel is the Recordings panel** (Kevin: "Songs" read as the project songs). Same list, same menus; the toolbar button and the panel's title say Recordings.
 
 ## [0.116.0] - 2026-10-08
