@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.117.0] - 2026-10-08
+
 ### Added
 
 - **A device knob** (`src/lib/components/Knob.svelte`) in place of an `<input type="range">`: a 270° arc filled to the value (from the centre for a bipolar control), a pointer on the cap, and the value's text never, always, or in a small popover while it turns. Drag up or right (Shift for fine), roll the wheel, or use the arrows, Home, End and Page keys; a double-click returns to a reset value. A slider to assistive technology. First used for the **pan on the Studio's tracks**, 26 px tall, the value ("L 50", "C", "R 50") popping up while it is adjusted.
