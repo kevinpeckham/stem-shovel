@@ -559,7 +559,7 @@
 	<!-- The ruler: sticky at the top; the corner sticks at the left as the headers do. -->
 	<div class="sticky top-0 z-20 flex h-7 bg-oxford-900" style:width="{HEADER_W + laneWidth}px">
 		<div
-			class="sticky left-0 z-30 shrink-0 border-r border-b border-white/10 bg-oxford-900 px-2 text-11px opacity-70 leading-7 truncate"
+			class="sticky left-0 z-30 shrink-0 border-r border-b border-white/10 bg-oxford-900 px-2 text-11px text-light/70 leading-7 truncate"
 			style:width="{HEADER_W}px"
 		>
 			{engine.arrangement.gridOn
