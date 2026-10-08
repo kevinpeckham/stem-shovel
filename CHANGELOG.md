@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.116.0] - 2026-10-08
+
 ### Fixed
 
 - **Trimming a clip in the Studio no longer squeezes its waveform** (Kevin: it looked like the content was being sped up). The drawing keeps the clip's own width and place while an edge is dragged, so the trim masks it, and it is redrawn once the trim lands.
