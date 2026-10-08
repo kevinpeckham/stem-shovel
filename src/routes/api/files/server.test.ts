@@ -65,6 +65,12 @@ beforeEach(() => {
 });
 
 describe("POST /api/files", () => {
+	it("400 for a body that is not JSON, and for a size that is not a whole number of bytes", async () => {
+		await expect(post("{not json")).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 1.5 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 0 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: -3 })).rejects.toMatchObject(httpError(400));
+	});
 	it("401 signed out, 404 for an outsider and for a viewer", async () => {
 		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(post(body, asOutsider())).rejects.toMatchObject(httpError(404));

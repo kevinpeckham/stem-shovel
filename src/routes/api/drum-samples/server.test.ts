@@ -49,6 +49,12 @@ beforeEach(() => {
 });
 
 describe("POST /api/drum-samples", () => {
+	it("400 for a body that is not JSON, and for a size that is not a whole number of bytes", async () => {
+		await expect(post("{not json")).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 1.5 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 0 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: -3 })).rejects.toMatchObject(httpError(400));
+	});
 	it("401 signed out, 404 for an outsider and for a viewer of an account kit", async () => {
 		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(post(body, asOutsider())).rejects.toMatchObject(httpError(404));
@@ -149,8 +155,8 @@ describe("POST /api/drum-samples", () => {
 			data.accountOfDrumKit.mockResolvedValue({ accountId: null });
 			data.createDrumSample.mockResolvedValue(siteRow);
 		});
-		it("404 for everyone but a system admin, before the kit row is touched (signed out too)", async () => {
-			await expect(post(builtin, asSignedOut())).rejects.toMatchObject(httpError(404));
+		it("404 for everyone but a system admin, before the kit row is touched; 401 signed out", async () => {
+			await expect(post(builtin, asSignedOut())).rejects.toMatchObject(httpError(401));
 			await expect(post(builtin, asEditorOf(ACCOUNT))).rejects.toMatchObject(httpError(404));
 			await expect(post(builtin, asAdminOf(ACCOUNT))).rejects.toMatchObject(httpError(404));
 			expect(data.ensureBuiltinKitRow).not.toHaveBeenCalled();

@@ -45,10 +45,11 @@ describe("POST /api/drum-samples/[id]/ready", () => {
 		await expect(post({ url: "http://x" })).rejects.toMatchObject(httpError(400));
 		expect(data.drumSampleOwner).not.toHaveBeenCalled();
 	});
-	it("404 for an unknown sample (looked up before the sign-in check)", async () => {
+	it("404 for an unknown sample; signed out is 401 before any lookup, so an id answers a stranger nothing", async () => {
 		data.drumSampleOwner.mockResolvedValue(null);
 		await expect(post()).rejects.toMatchObject(httpError(404));
-		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(404));
+		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(401));
+		expect(data.drumSampleOwner).toHaveBeenCalledTimes(1);
 	});
 	it("400 when the URL is another file", async () => {
 		blob.isOurBlobUrl.mockReturnValue(false);

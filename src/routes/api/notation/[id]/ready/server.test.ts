@@ -89,6 +89,18 @@ describe("POST /api/notation/[id]/ready", () => {
 		await expect(formPost({ url: "http://example.com/x" })).rejects.toMatchObject(httpError(400));
 		expect(data.reservedPathname).not.toHaveBeenCalled();
 	});
+	it("a restricted project admits a member only when added to it, as reserving the file did", async () => {
+		const PROJECT = fakeId("proj-one");
+		givenRow("songNotation", { accountId: ACCOUNT, song: { projectId: PROJECT } });
+		data.projectRestricted.mockResolvedValue(true);
+		data.projectRoleOf.mockResolvedValue(null);
+		await expect(formPost()).rejects.toMatchObject(httpError(404));
+		expect(data.projectRestricted).toHaveBeenCalledWith(PROJECT);
+		expect(blob.readBlob).not.toHaveBeenCalled();
+		data.projectRoleOf.mockResolvedValue("member");
+		const res = await formPost();
+		expect(res.status).toBe(200);
+	});
 	it("401 signed out, 404 for an outsider and for a viewer", async () => {
 		await expect(formPost(undefined, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(formPost(undefined, asOutsider())).rejects.toMatchObject(httpError(404));

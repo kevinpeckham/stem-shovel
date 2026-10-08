@@ -11,8 +11,10 @@ import {
 	httpError,
 } from "../../../../../../tests/helpers/fakeRequestEvent";
 import {
+	background,
 	data,
 	givenRow,
+	notifications,
 	resetRemoteMocks,
 	type Mocks,
 } from "../../../../../../tests/helpers/fakeServerModules";
@@ -36,10 +38,17 @@ beforeEach(() => {
 	resetRemoteMocks();
 	givenRow("stem", { accountId: ACCOUNT, song: { projectId: PROJECT } });
 	data.reserveStemReplacement.mockResolvedValue(row);
+	data.storageRoom.mockResolvedValue({ ok: true });
 	relocate.accessOfPathname.mockResolvedValue("public");
 });
 
 describe("POST /api/stems/[id]/replace", () => {
+	it("400 for a body that is not JSON, and for a size that is not a whole number of bytes", async () => {
+		await expect(post("{not json")).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 1.5 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: 0 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sizeBytes: -3 })).rejects.toMatchObject(httpError(400));
+	});
 	it("401 signed out, 404 for an outsider and for a viewer", async () => {
 		await expect(post(body, asSignedOut())).rejects.toMatchObject(httpError(401));
 		await expect(post(body, asOutsider())).rejects.toMatchObject(httpError(404));
@@ -76,8 +85,16 @@ describe("POST /api/stems/[id]/replace", () => {
 			sizeBytes: 2_000_000,
 		});
 		expect(relocate.accessOfPathname).toHaveBeenCalledWith(row.pathname);
-		// Unlike POST /api/stems, a replacement is not counted against the account's storage first.
-		expect(data.storageRoom).not.toHaveBeenCalled();
+		// Like POST /api/stems, the new file is counted against the account's storage first, and the warning check follows.
+		expect(data.storageRoom).toHaveBeenCalledWith(ACCOUNT, 2_000_000);
+		expect(background).toHaveBeenCalledTimes(1);
+		await (background.mock.calls[0][0] as () => Promise<void>)();
+		expect(notifications.checkStorage).toHaveBeenCalledWith(ACCOUNT);
+	});
+	it("409 when the account's storage is full, before anything is reserved", async () => {
+		data.storageRoom.mockResolvedValue({ ok: false, used: 20_000_000_000, limit: 20_000_000_000 });
+		await expect(post()).rejects.toMatchObject(httpError(409));
+		expect(data.reserveStemReplacement).not.toHaveBeenCalled();
 	});
 	it("an admin passes without the project lookup", async () => {
 		const res = await post(body, asAdminOf(ACCOUNT));

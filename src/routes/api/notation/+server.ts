@@ -9,21 +9,31 @@ import {
 	notationFormatOf,
 } from "#lib/constants/notationFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Step 1 of a notation upload (docs/uploads-and-blob.md, "Notation files"): reserve the row and return the pathname to upload to. */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const body = (await request.json()) as { songId?: string; filename?: string; sizeBytes?: number };
+	const body = (await request.json().catch(() => ({}))) as {
+		songId?: string;
+		filename?: string;
+		sizeBytes?: number;
+	};
 	const { songId, filename, sizeBytes } = body;
 	if (!songId || !filename || typeof sizeBytes !== "number") {
 		error(400, "songId, filename and sizeBytes are required");
 	}
 	const format = notationFormatOf(filename);
 	if (!format) error(415, `"${filename}" is not a MusicXML file (.mxl, .musicxml or .xml)`);
-	if (sizeBytes <= 0) error(400, "The file is empty");
-	if (sizeBytes > NOTATION_MAX_BYTES)
-		error(413, `A notation file can be up to ${formatBytes(NOTATION_MAX_BYTES)}`);
+	if (!validSizeBytes(sizeBytes, NOTATION_MAX_BYTES)) {
+		if (sizeBytes > NOTATION_MAX_BYTES)
+			error(413, `A notation file can be up to ${formatBytes(NOTATION_MAX_BYTES)}`);
+		error(
+			400,
+			sizeBytes <= 0 ? "The file is empty" : "sizeBytes must be the file's size in whole bytes",
+		);
+	}
 
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
 	const room = await storageRoom(accountId, sizeBytes);

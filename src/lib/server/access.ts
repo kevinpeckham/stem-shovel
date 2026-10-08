@@ -396,6 +396,16 @@ const PROJECT_OF = new Map<
 			)?.song.projectId ?? null,
 	],
 	[
+		accountOfNotation,
+		async (id) =>
+			(
+				await db.query.songNotation.findFirst({
+					where: eq(songNotation.id, id),
+					with: { song: { columns: { projectId: true } } },
+				})
+			)?.song?.projectId ?? null,
+	],
+	[
 		accountOfFile,
 		async (id) =>
 			(

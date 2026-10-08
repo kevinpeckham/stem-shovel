@@ -6,12 +6,12 @@ import type { RequestHandler } from "./$types";
 
 /** Step 3 of a drum sample upload: the browser reports the blob URL; the voice's older file goes. */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-	const body = (await request.json()) as { url?: string };
+	requireUser(locals); // before any lookup: an unknown id answers a stranger nothing
+	const body = (await request.json().catch(() => ({}))) as { url?: string };
 	if (typeof body.url !== "string" || !body.url.startsWith("https://"))
 		error(400, "url is required");
 	const owner = await drumSampleOwner(params.id);
 	if (!owner) error(404, "Sample not found");
-	requireUser(locals);
 	if (owner.accountId) {
 		const m = await memberOf(locals, async () => owner.accountId, owner.accountId);
 		if (!isEditor(m.role)) error(404, "Sample not found");

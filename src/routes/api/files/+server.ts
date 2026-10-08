@@ -11,6 +11,7 @@ import {
 	fileKindOf,
 } from "#lib/constants/fileFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
+import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -24,7 +25,7 @@ import type { RequestHandler } from "./$types";
  * at the project level.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const body = (await request.json()) as {
+	const body = (await request.json().catch(() => ({}))) as {
 		songId?: string;
 		projectId?: string;
 		filename?: string;
@@ -37,10 +38,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(400, "songId or projectId, filename and sizeBytes are required");
 	}
 	const kind = fileKindOf(filename);
-	if (sizeBytes <= 0) error(400, "The file is empty");
-	if (sizeBytes > FILE_MAX_BYTES[kind]) {
-		const what = kind === "other" ? "file" : `${FILE_KIND_LABELS[kind]} file`;
-		error(413, `A ${what} can be up to ${formatBytes(FILE_MAX_BYTES[kind])}`);
+	if (!validSizeBytes(sizeBytes, FILE_MAX_BYTES[kind])) {
+		if (sizeBytes > FILE_MAX_BYTES[kind]) {
+			const what = kind === "other" ? "file" : `${FILE_KIND_LABELS[kind]} file`;
+			error(413, `A ${what} can be up to ${formatBytes(FILE_MAX_BYTES[kind])}`);
+		}
+		error(
+			400,
+			sizeBytes <= 0 ? "The file is empty" : "sizeBytes must be the file's size in whole bytes",
+		);
 	}
 
 	const { accountId } = songId

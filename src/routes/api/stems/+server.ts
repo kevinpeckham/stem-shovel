@@ -16,7 +16,11 @@ import type { RequestHandler } from "./$types";
 
 /** Step 1 of an upload: reserve the row and return the pathname to upload to. */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const body = (await request.json()) as { songId?: string; filename?: string; sizeBytes?: number };
+	const body = (await request.json().catch(() => ({}))) as {
+		songId?: string;
+		filename?: string;
+		sizeBytes?: number;
+	};
 	const { songId, filename, sizeBytes } = body;
 	if (!songId || !filename || typeof sizeBytes !== "number") {
 		error(400, "songId, filename and sizeBytes are required");
