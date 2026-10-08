@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.114.0] - 2026-10-08
+
 ### Fixed
 
 - **Upload reserve routes check the same things everywhere** (found while testing them): the MIDI, stem-replacement, drum-sample, notation and attachment reserves now refuse a size that is not a whole number of bytes (a fractional or non-positive `sizeBytes` passed to the data layer before) and answer 400 to a body that is not JSON instead of a 500; a stem replacement counts against the account's storage like a new stem and can answer 409; the drum-sample routes check sign-in before looking a kit or sample up, so an unknown id tells a stranger nothing; and marking a notation file ready applies the restricted-project rule, as reserving it already did (`access.ts`).
