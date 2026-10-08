@@ -1515,7 +1515,7 @@
 							id: "new-idea",
 							label: "Start New Idea",
 							iconClass: "i-ph-plus",
-							disabled: false,
+							disabled: newIdeaDisabled,
 							action: () => onnewidea?.(),
 						},
 					]}
