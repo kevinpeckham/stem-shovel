@@ -755,6 +755,20 @@
 							if (e.key === "Enter") e.currentTarget.blur();
 						}}
 					/>
+				</div>
+				<!-- The input row: the picker, then the effects (a MIDI track's badge in its place) and the menu (Kevin). -->
+				<div class="grid grid-cols-[1fr_auto_auto] items-center gap-1 min-w-0">
+					<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
+					<ComboBox
+						ariaLabel="{track.name} input"
+						options={isMidi(track) ? MIDI_INPUT_OPTIONS : AUDIO_INPUT_OPTIONS}
+						value={inputValue(track)}
+						disabled={engine.recording}
+						onchange={(v) => pickInput(track, v)}
+						clearDefaultButtonClasses
+						buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
+						popoverClasses="text-11px"
+					/>
 					{#if isMidi(track)}
 						<span
 							class="h-6 w-6 shrink-0 rounded border border-blue-300/30 flex items-center justify-center text-blue-200"
@@ -831,17 +845,6 @@
 						]}
 					/>
 				</div>
-				<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
-				<ComboBox
-					ariaLabel="{track.name} input"
-					options={isMidi(track) ? MIDI_INPUT_OPTIONS : AUDIO_INPUT_OPTIONS}
-					value={inputValue(track)}
-					disabled={engine.recording}
-					onchange={(v) => pickInput(track, v)}
-					clearDefaultButtonClasses
-					buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
-					popoverClasses="text-11px"
-				/>
 				<!-- Arm, mute and solo lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
 				<div class="grid grid-cols-[auto_auto_auto_1fr_auto] items-center gap-1.5 min-w-0">
 					<button
