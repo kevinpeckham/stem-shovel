@@ -4,7 +4,7 @@ import { markStudioSourceReady, studioSourceOwner } from "#lib/server/data.js";
 import { parseJsonBody } from "#lib/server/parseJsonBody.js";
 import { StudioSourceReadySchema } from "#lib/val/StudioSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 export const config: Config = { maxDuration: 60 };
@@ -17,5 +17,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const { accountId } = await requireOwnIdea(locals, source.ideaId);
 	if (!isOurBlobUrl(ready.url, source.pathname)) error(400, "That is not the uploaded file's URL");
 	await markStudioSourceReady(accountId, params.id, ready);
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

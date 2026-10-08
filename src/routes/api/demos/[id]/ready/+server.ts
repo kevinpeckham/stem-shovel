@@ -5,7 +5,7 @@ import { isOurBlobUrl } from "#lib/server/blob.js";
 import { markDemoReady, reservedPathname } from "#lib/server/data.js";
 import { scheduleDemoPlayback } from "#lib/server/jobs.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** The MP3 renders after the response, inside this function's lifetime. */
@@ -26,5 +26,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	scheduleDemoPlayback([params.id]);
 	const uploader = requireUser(locals).id;
 	background(() => notifyDemo(accountId, params.id, uploader));
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

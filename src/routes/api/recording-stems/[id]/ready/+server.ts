@@ -7,7 +7,7 @@ import {
 	userOwnsRecording,
 } from "#lib/server/data.js";
 import { MAX_AUDIO_SECONDS } from "#lib/constants/audioBounds.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Step 3 of saving a take's source (docs/demo-recording.md, "Takes with sources"): the browser reports the blob URL and the length it timed. Owned through its take (ideas are the user's own). */
@@ -31,5 +31,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 	const row = await markRecordingStemReady(source.accountId, params.id, body.url, duration);
 	if (!row) error(404, "Recording not found");
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

@@ -8,7 +8,7 @@ import { demoContentType } from "#lib/utils/demoContentType.js";
 import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS } from "#lib/constants/takeLimits.js";
 import { RECORDING_CODECS, type RecordingCodec } from "#lib/constants/recordingCodecs.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Step 1 of saving a take: reserve the row under its idea (numbered next) and return the pathname to upload to. */
@@ -61,7 +61,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		trimSilence: body.trimSilence === true,
 	});
 	if (!row) error(404, "Idea not found");
-	return json({
+	return Response.json({
 		recordingId: row.id,
 		takeNumber: row.takeNumber,
 		pathname: row.pathname,

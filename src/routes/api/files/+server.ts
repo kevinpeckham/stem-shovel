@@ -11,7 +11,7 @@ import {
 	fileKindOf,
 } from "#lib/constants/fileFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -75,7 +75,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				: `A project can have at most ${MAX_FILES_PER_PROJECT} files of its own`,
 		);
 	}
-	return json({
+	return Response.json({
 		fileId: row.id,
 		pathname: row.pathname,
 		access: await accessOfPathname(row.pathname),

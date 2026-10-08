@@ -3,7 +3,7 @@ import { reserveStemReplacement } from "#lib/server/data.js";
 import { STEM_FORMAT_LIST, STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { stemContentType } from "#lib/utils/stemContentType.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Like POST /api/stems, but for an existing stem: reserves a new pathname for its next file. */
@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		sizeBytes,
 	});
 	if (!row) error(404, "Stem not found");
-	return json({
+	return Response.json({
 		stemId: row.id,
 		pathname: row.pathname,
 		access: await accessOfPathname(row.pathname),

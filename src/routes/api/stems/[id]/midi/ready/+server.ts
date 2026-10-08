@@ -1,7 +1,7 @@
 import { accountOfStem, memberOf } from "#lib/server/access.js";
 import { isOurBlobUrl } from "#lib/server/blob.js";
 import { markStemMidiReady, reservedPathname } from "#lib/server/data.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Step 3 of a MIDI upload: the browser reports the blob URL. */
@@ -16,5 +16,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 	const row = await markStemMidiReady(accountId, params.id, body.url);
 	if (!row) error(404, "Stem not found");
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

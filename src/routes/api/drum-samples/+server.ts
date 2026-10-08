@@ -13,7 +13,7 @@ import { DRUM_SAMPLE_MAX_BYTES, isOverridableKit } from "#lib/constants/drumKits
 import { DRUM_VOICE_IDS, type DrumVoiceId } from "#lib/constants/drumMachine.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -65,7 +65,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		sizeBytes,
 	});
 	if (!row) error(404, "Kit not found");
-	return json({
+	return Response.json({
 		sampleId: row.id,
 		pathname: row.pathname,
 		access: kit.accountId ? recordingAccess() : "public",

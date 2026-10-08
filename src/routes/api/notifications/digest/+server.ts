@@ -1,6 +1,5 @@
 import { sendDigests } from "#lib/server/notifications.js";
 import { purgeExpiredShortLinks } from "#lib/server/shortLinks.js";
-import { json } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";
 
@@ -23,5 +22,5 @@ export const GET: RequestHandler = async () => {
 	} catch (e) {
 		console.error("[short-links] purge failed:", e);
 	}
-	return json({ ok: true, sent, purged }, { headers: { "cache-control": "no-store" } });
+	return Response.json({ ok: true, sent, purged }, { headers: { "cache-control": "no-store" } });
 };

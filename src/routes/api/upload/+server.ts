@@ -44,7 +44,7 @@ import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "#lib/constants/fileFormats.j
 import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "#lib/constants/notationFormats.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { RequestHandler } from "./$types";
 
@@ -190,14 +190,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				else await recordStemUrl(blob.pathname, blob.url);
 			},
 		});
-		return json(result);
+		return Response.json(result);
 	} catch (err) {
 		// A refusal from the checks (401 signed out, 404 not yours) keeps its status, so the browser can tell them apart;
 		// anything else is 400, so Vercel's completion webhook retries are not triggered for our own errors.
 		const status = (err as { status?: unknown }).status;
 		const body = (err as { body?: { message?: string } }).body;
 		if (typeof status === "number" && status >= 400 && status < 500)
-			return json({ error: body?.message ?? (err as Error).message }, { status });
-		return json({ error: (err as Error).message }, { status: 400 });
+			return Response.json({ error: body?.message ?? (err as Error).message }, { status });
+		return Response.json({ error: (err as Error).message }, { status: 400 });
 	}
 };

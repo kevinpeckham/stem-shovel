@@ -8,7 +8,7 @@ import { demoContentType } from "#lib/utils/demoContentType.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
 import { validSizeBytes } from "#lib/utils/validSizeBytes.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** Step 1 of a demo upload: reserve the row and return the pathname to upload to. */
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 	if (!row) error(404, "Song not found");
 	if (row === "full") error(409, `A song can have at most ${MAX_DEMOS_PER_SONG} demo recordings`);
-	return json({
+	return Response.json({
 		demoId: row.id,
 		pathname: row.pathname,
 		access: await accessOfPathname(row.pathname),

@@ -9,7 +9,7 @@ import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
 import { StudioSourceReserveSchema } from "#lib/val/StudioSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 export const config: Config = { maxDuration: 60 };
@@ -42,5 +42,5 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const made = await createStudioSource(accountId, userId, reserve);
 	if (made === null) error(404, "Song not found");
 	if (typeof made === "string") error(...REFUSED[made]);
-	return json(made);
+	return Response.json(made);
 };

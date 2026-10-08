@@ -5,7 +5,7 @@ import { isOurBlobUrl } from "#lib/server/blob.js";
 import { markStemReady, reservedPathname } from "#lib/server/data.js";
 import { schedulePlayback } from "#lib/server/jobs.js";
 import { MAX_AUDIO_CHANNELS, MAX_AUDIO_SECONDS } from "#lib/constants/audioBounds.js";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { Config } from "@sveltejs/adapter-vercel";
 import type { RequestHandler } from "./$types";
 
@@ -55,5 +55,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	schedulePlayback([params.id]);
 	const uploader = requireUser(locals).id;
 	background(() => notifyStems(accountId, row.songId, uploader));
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

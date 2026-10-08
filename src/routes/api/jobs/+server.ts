@@ -6,7 +6,7 @@ import { renderNotationPdf } from "#lib/server/notationPdf.js";
 import { renderDemos, renderRecordings, renderStems } from "#lib/server/transcode.js";
 import { JobSchema } from "#lib/val/JobSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 import type { RequestHandler } from "./$types";
 
@@ -48,5 +48,5 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 		}
 	});
-	return json({ accepted: kind, count: ids.length }, { status: 202 });
+	return Response.json({ accepted: kind, count: ids.length }, { status: 202 });
 };

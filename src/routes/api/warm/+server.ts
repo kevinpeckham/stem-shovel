@@ -1,6 +1,5 @@
 import { db } from "#lib/server/db/index.js";
 import { sql } from "drizzle-orm";
-import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -12,5 +11,5 @@ import type { RequestHandler } from "./$types";
  */
 export const GET: RequestHandler = async () => {
 	await db.run(sql`select 1`);
-	return json({ ok: true }, { headers: { "cache-control": "no-store" } });
+	return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
 };
