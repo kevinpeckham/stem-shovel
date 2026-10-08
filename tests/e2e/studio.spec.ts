@@ -131,13 +131,13 @@ test.describe.serial("Studio", () => {
 		page.once("dialog", (d) => d.accept("Keeper"));
 		await page.getByRole("button", { name: "Song actions" }).click();
 		await page.getByRole("button", { name: "Save revision…" }).click();
-		await expect(page.locator("section[aria-label=Songs]").getByText("Keeper")).toBeVisible();
+		await expect(page.locator("section[aria-label=Recordings]").getByText("Keeper")).toBeVisible();
 		const kept = await hooked(page, ([w]) => w.__studio.arrangement.clips.length);
 		await hooked(page, ([w]) => w.__studio.deleteClip(w.__studio.arrangement.clips[0].id));
 		expect(await hooked(page, ([w]) => w.__studio.arrangement.clips.length)).toBe(kept - 1);
 		page.once("dialog", (d) => d.accept());
 		await page
-			.locator("section[aria-label=Songs] li li", { hasText: "Keeper" })
+			.locator("section[aria-label=Recordings] li li", { hasText: "Keeper" })
 			.getByRole("button", { name: "Restore" })
 			.click();
 		await until(page, ([w, n]) => w.__studio.arrangement.clips.length === n, { arg: kept });
@@ -149,7 +149,7 @@ test.describe.serial("Studio", () => {
 			ms: 60_000,
 		});
 		await deleteStudioSongs(page);
-		expect(await page.locator("section[aria-label=Songs] li > details").count()).toBe(0);
+		expect(await page.locator("section[aria-label=Recordings] li > details").count()).toBe(0);
 		expect(errors).toEqual([]);
 	});
 });

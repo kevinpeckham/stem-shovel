@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A device knob** (`src/lib/components/Knob.svelte`) in place of an `<input type="range">`: a 270° arc filled to the value (from the centre for a bipolar control), a pointer on the cap, and the value's text never, always, or in a small popover while it turns. Drag up or right (Shift for fine), roll the wheel, or use the arrows, Home, End and Page keys; a double-click returns to a reset value. A slider to assistive technology. First used for the **pan on the Studio's tracks**, 26 px tall, the value ("L 50", "C", "R 50") popping up while it is adjusted.
+- **A device slider** (`src/lib/components/Slider.svelte`), the knob's sibling for a fader: a track filled in light blue to the value (from the centre when bipolar), a round thumb, horizontal or vertical, the value's text in the same popover over the thumb while it moves; a press anywhere on the track jumps there and drags from there (Shift for fine), the wheel and the keys as the knob's, a double-click to a reset value. First used for the **level fader on the Studio's tracks** (decibels, or a share of velocity on a MIDI track; a double-click returns to unity). Both snap through `utils/snapToStep.ts`.
+
+### Changed
+
+- **The Studio's Songs panel is the Recordings panel** (Kevin: "Songs" read as the project songs). Same list, same menus; the toolbar button and the panel's title say Recordings.
+
 ## [0.116.0] - 2026-10-08
 
 ### Fixed

@@ -258,7 +258,7 @@ tools. The device chassis (`device-chrome`, `device-screen`, the
   armed to the microphone with "Press Record" copy.
 
 Panels (all `FloatingPanel`, docked below `lg`, keys under
-`stemshovel.studio.*`): **Songs** (the Recordings panel's shape: search,
+`stemshovel.studio.*`): **Recordings** (named "Songs" until 2026-10-08, when Kevin found it read as the project songs; the Idea Recorder's Recordings panel's shape: search,
 one `<details>` per song listing its revisions with "Restore" and
 "Rename", a ⋯ menu with Bounce, Add as demo, Add tracks to song, Delete),
 **Notes** (`IdeaNotesPanel`), **Inputs** (`InputSourceSettings` per source
@@ -276,7 +276,7 @@ editing is a desktop's. Layout by container queries only.
 **Phase 1a: record and arrange.** The engine (play, record, mute, solo,
 fader, pan, meters, count-in, click, latency shift, loop region), tracks
 with inputs, clips placed as recorded, the ruler and lanes, autosave and
-named revisions, the Songs and Notes panels, the upload queue and FLAC
+named revisions, the Recordings (then "Songs") and Notes panels, the upload queue and FLAC
 job, bounce to WAV, "Add as demo" and "Add tracks to song as stems".
 Clips can be moved and deleted; no trim or split yet.
 

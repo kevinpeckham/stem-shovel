@@ -376,14 +376,17 @@ describe("StudioTimeline", () => {
 
 	test("the fader and the pan reach the engine as they move; a double-click centres the pan", async () => {
 		render(StudioTimeline);
+		// The fader and the pan are a Slider and a Knob: sliders to assistive technology, moved by the keys here.
 		const level = screen.getByRole("slider", { name: "Guitar level" });
 		const pan = screen.getByRole("slider", { name: "Guitar pan" });
-		expect(level).toHaveValue("0.8");
-		expect(pan).toHaveValue("-0.5");
-		await fireEvent.input(level, { target: { value: "0.5" } });
-		expect(fake.setGain).toHaveBeenCalledWith("t2", 0.5);
-		await fireEvent.input(pan, { target: { value: "0.25" } });
-		expect(fake.setPan).toHaveBeenCalledWith("t2", 0.25);
+		expect(level).toHaveAttribute("aria-valuenow", "0.8");
+		expect(level).toHaveAttribute("aria-valuetext", "-2 dB");
+		expect(pan).toHaveAttribute("aria-valuenow", "-0.5");
+		expect(pan).toHaveAttribute("aria-valuetext", "L 50");
+		await fireEvent.keyDown(level, { key: "ArrowDown" });
+		expect(fake.setGain).toHaveBeenCalledWith("t2", 0.79);
+		await fireEvent.keyDown(pan, { key: "ArrowRight" });
+		expect(fake.setPan).toHaveBeenCalledWith("t2", -0.45);
 		await fireEvent.dblClick(pan);
 		expect(fake.setPan).toHaveBeenLastCalledWith("t2", 0);
 	});

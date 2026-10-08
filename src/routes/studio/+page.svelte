@@ -787,11 +787,11 @@
 						: ''}"
 					type="button"
 					aria-pressed={songsMode !== "minimised"}
-					title="Songs"
+					title="Recordings: your Studio songs and their revisions"
 					onclick={() => setMode("songs", songsMode === "minimised" ? "docked" : "minimised")}
 				>
 					<span class="i-ph-list-bullets" aria-hidden="true"></span>
-					Songs
+					Recordings
 				</button>
 				<button
 					class="button button-sm shrink-0 {notesMode !== 'minimised'
@@ -1452,11 +1452,12 @@
 
 		<!-- The songs and the notes, side by side from xl; each docks, floats or minimises. -->
 		<div class="mt-6 grid grid-cols-1 xl-grid-cols-2 gap-6 items-start">
-			<section aria-label="Songs" class={songsMode === "minimised" ? "hidden" : ""}>
+			<!-- The Recordings panel (Kevin: "Songs" read as the project songs): the user's Studio songs and their revisions. -->
+			<section aria-label="Recordings" class={songsMode === "minimised" ? "hidden" : ""}>
 				<FloatingPanel
 					open={songsMode !== "minimised"}
 					floating={songsMode === "floating"}
-					title="Songs"
+					title="Recordings"
 					storageKey="stemshovel.studio.songs-panel"
 					width={520}
 					height={560}
@@ -1466,7 +1467,7 @@
 						<button
 							class="button button-xs hidden lg-inline-flex"
 							type="button"
-							title={songsMode === "floating" ? "Dock the songs" : "Pop out the songs"}
+							title={songsMode === "floating" ? "Dock the recordings" : "Pop out the recordings"}
 							onclick={() => setMode("songs", songsMode === "floating" ? "docked" : "floating")}
 						>
 							<span

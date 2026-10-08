@@ -81,7 +81,7 @@ export async function until<A = undefined>(
 /** Deletes every Studio song the bot has, through the app, so a spec leaves nothing behind. */
 export async function deleteStudioSongs(page: Page): Promise<void> {
 	for (let i = 0; i < 10; i++) {
-		if (!(await page.locator("section[aria-label=Songs] li > details").count())) return;
+		if (!(await page.locator("section[aria-label=Recordings] li > details").count())) return;
 		await page.getByRole("button", { name: "Song actions" }).click();
 		const del = page.getByRole("button", { name: "Delete song" });
 		if (!(await del.count())) {

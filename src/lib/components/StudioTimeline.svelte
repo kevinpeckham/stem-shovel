@@ -20,6 +20,8 @@
 	} from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
 	import ContextMenu from "./ContextMenu.svelte";
+	import Knob from "./Knob.svelte";
+	import Slider from "./Slider.svelte";
 
 	/**
 	 * The Studio's timeline (docs/multitrack-recorder.md, "The page"): a
@@ -469,6 +471,16 @@
 		isInstrument(o.value.split(":")[0] as never),
 	);
 	const isMidi = (t: StudioTrack) => t.kind === "midi";
+	/** A fader's level as its slider says it: decibels for audio, a share for a MIDI track's velocity. */
+	const levelText = (t: StudioTrack) => (v: number) =>
+		isMidi(t)
+			? `${Math.round(v * 100)}%`
+			: v <= 0.001
+				? "−∞ dB"
+				: `${Math.round(20 * Math.log10(v))} dB`;
+	/** A pan as the knob says it: L 50, C, R 50. */
+	const panText = (v: number) =>
+		v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`;
 	/** The pitch range a clip's roll spans: its notes', at least an octave, a semitone of room each side. */
 	function pitchSpan(notes: StudioNote[]): { lo: number; hi: number } {
 		let lo = 127;
@@ -867,29 +879,36 @@
 					{/if}
 				</select>
 				<div class="flex items-center gap-1.5 min-w-0">
-					<input
-						type="range"
-						class="min-w-0 w-0 grow accent-blue-300 h-4"
-						min="0"
-						max={STUDIO_FADER_MAX}
-						step="0.01"
+					<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity. -->
+					<Slider
 						value={track.gain}
-						aria-label="{track.name} level"
-						title={isMidi(track) ? "Level (scales the notes' velocity)" : "Level"}
-						oninput={(e) => engine.setGain(track.id, e.currentTarget.valueAsNumber)}
+						min={0}
+						max={STUDIO_FADER_MAX}
+						step={0.01}
+						resetTo={1}
+						thickness={5}
+						label="{track.name} level"
+						title={isMidi(track)
+							? "Level (scales the notes' velocity)"
+							: "Level (double-click for unity)"}
+						format={levelText(track)}
+						oninput={(v) => engine.setGain(track.id, v)}
+						class="min-w-0 grow"
 					/>
 					{#if !isMidi(track)}
-						<input
-							type="range"
-							class="w-12 shrink-0 accent-blue-100 h-4"
-							min="-1"
-							max="1"
-							step="0.05"
+						<!-- The pan as a knob (Knob.svelte): the value shows in a popover while it turns. -->
+						<Knob
 							value={track.pan}
-							aria-label="{track.name} pan"
+							min={-1}
+							max={1}
+							step={0.05}
+							resetTo={0}
+							bipolar
+							size={26}
+							label="{track.name} pan"
 							title="Pan (double-click for centre)"
-							oninput={(e) => engine.setPan(track.id, e.currentTarget.valueAsNumber)}
-							ondblclick={() => engine.setPan(track.id, 0)}
+							format={panText}
+							oninput={(v) => engine.setPan(track.id, v)}
 						/>
 					{/if}
 				</div>

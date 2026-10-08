@@ -15,5 +15,5 @@ Add a track, arm it (the red dot), choose its input and press Record: after a ba
 - Add MIDI track records notes instead of sound: play the piano, chord player or drum machine (or a MIDI keyboard) and the notes land as a clip you can edit in the piano roll (double-click it), quantize, transpose and export; Render to audio track in its menu turns it into sound for a bounce.
 - The sliders button in a track's header opens its compressor, tone and reverb, saved with the song and baked into every bounce.
 - Space plays and stops, R records, Home goes to the start, L loops the region on the ruler (drag its ends).
-- The song saves itself as you work; Save revision in the song's menu keeps a named snapshot you can restore from the Songs panel.
+- The song saves itself as you work; Save revision in the song's menu keeps a named snapshot you can restore from the Recordings panel.
 - The song's menu bounces the mix to a WAV, adds it to a song as a demo, or adds each track to a song as a stem.
