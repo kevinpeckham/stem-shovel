@@ -42,26 +42,36 @@
 				},
 				{ name: "Phosphor Icons", url: "https://phosphoricons.com", what: "The icon set." },
 				{
-					name: "Atkinson Hyperlegible and Noto",
-					url: "https://fonts.google.com",
-					what: "The typefaces, chosen to read well at small sizes.",
+					name: "Noto Sans, Serif and Mono",
+					url: "https://fonts.bunny.net",
+					what: "The typefaces, chosen to read well at small sizes, served by Bunny Fonts (no tracking).",
 				},
 			],
 		},
 		{
 			title: "Sound",
 			blurb:
-				"Playback, recording and listening happen in the browser; conversion happens on the server.",
+				"Playback, recording, the instruments and the Studio happen in the browser; conversion happens on the server.",
 			items: [
 				{
 					name: "Web Audio API",
 					url: "https://developer.mozilla.org/docs/Web/API/Web_Audio_API",
-					what: "Plays every stem in sync from one clock, with the faders, mute and solo.",
+					what: "Plays every stem in sync from one clock, with the faders, mute and solo; the piano, drum machine, chord player, looper and the Studio's tracks and effects are built on it too.",
 				},
 				{
 					name: "MediaRecorder",
 					url: "https://developer.mozilla.org/docs/Web/API/MediaRecorder",
 					what: "Records ideas and demos straight from the microphone.",
+				},
+				{
+					name: "AudioWorklet",
+					url: "https://developer.mozilla.org/docs/Web/API/AudioWorklet",
+					what: "Captures the looper's loops and the Studio's takes sample by sample, lossless and lined up with the measured latency.",
+				},
+				{
+					name: "Web MIDI API",
+					url: "https://developer.mozilla.org/docs/Web/API/Web_MIDI_API",
+					what: "Lets a MIDI keyboard or pad play the piano, the chord player and the drum machine, and record into the Studio's MIDI tracks.",
 				},
 				{
 					name: "FFmpeg",
@@ -100,9 +110,14 @@
 				},
 				{ name: "TensorFlow.js", url: "https://www.tensorflow.org/js", what: "Runs that model." },
 				{
-					name: "Our own analysis",
+					name: "Verovio",
+					url: "https://www.verovio.org",
+					what: "Engraves transcribed notes as sheet music for the notation PDF.",
+				},
+				{
+					name: "Our own code",
 					url: "https://github.com/kevinpeckham/stem-shovel",
-					what: "Tempo, key and time signature from the stems, and the tuner's pitch detection, written for Stem Shovel.",
+					what: "Tempo, key and time signature from the stems, the tuner's pitch detection, the synth voices and the electronic drum kit, the effects, and the MIDI files the Studio reads and writes, all written for Stem Shovel.",
 				},
 			],
 		},
@@ -127,6 +142,16 @@
 					what: "Rate limits and short-lived state.",
 				},
 				{
+					name: "IndexedDB",
+					url: "https://developer.mozilla.org/docs/Web/API/IndexedDB_API",
+					what: "Keeps the looper's loop and the Idea Recorder's and the Studio's takes in your browser while they wait to upload, so a dropped connection loses nothing.",
+				},
+				{
+					name: "fflate",
+					url: "https://github.com/101arrowz/fflate",
+					what: "Zips the stems for a download, in the browser.",
+				},
+				{
 					name: "Valibot",
 					url: "https://valibot.dev",
 					what: "Checks every form and request before it touches the database.",
@@ -146,6 +171,11 @@
 					name: "Resend",
 					url: "https://resend.com",
 					what: "Sends the invitations, verification and notification email.",
+				},
+				{
+					name: "node-qrcode",
+					url: "https://github.com/soldair/node-qrcode",
+					what: "Draws the code an authenticator app scans when two-factor sign-in is set up.",
 				},
 			],
 		},
@@ -168,22 +198,32 @@
 					url: "https://github.com/cure53/DOMPurify",
 					what: "Cleans anything rendered from user text.",
 				},
+				{
+					name: "PDFKit and pdf-lib",
+					url: "https://pdfkit.org",
+					what: "Make the PDFs: charts, notes and sheet music.",
+				},
+				{
+					name: "PDF.js",
+					url: "https://mozilla.github.io/pdf.js",
+					what: "Draws the first page of an attached PDF as its thumbnail.",
+				},
 			],
 		},
 		{
 			title: "Optional AI",
 			blurb:
-				"Off unless an account turns it on; used only for a second opinion, never for your recordings without asking.",
+				"The song analysis asks a model only when an account turns that on; the beat and chord generators ask one when you ask them. Never your recordings without asking.",
 			items: [
 				{
-					name: "Vercel AI Gateway",
+					name: "Vercel AI Gateway and the AI SDK",
 					url: "https://vercel.com/ai-gateway",
 					what: "One door to the models, so no key of ours sits with any one provider.",
 				},
 				{
-					name: "Gemini and Claude",
+					name: "Gemini, Claude and Kimi",
 					url: "https://vercel.com/ai-gateway",
-					what: "One listens to a close-call time signature; one reads transcribed notes.",
+					what: "Gemini listens to a close-call time signature, Claude reads transcribed notes, and Kimi turns a line of text into a beat or a chord progression.",
 				},
 			],
 		},
@@ -194,7 +234,7 @@
 				{
 					name: "Vercel",
 					url: "https://vercel.com",
-					what: "Hosts the app and its background jobs.",
+					what: "Hosts the app, its background jobs and the daily digest.",
 				},
 				{
 					name: "1Password and varlock",
@@ -210,7 +250,7 @@
 				{
 					name: "GitHub Actions, Vitest and Playwright",
 					url: "https://github.com/kevinpeckham/stem-shovel/actions",
-					what: "Tests, type checks, lint, secret scanning and a code review on every change.",
+					what: "Tests, type checks, lint, spelling, dead-code and house-rule checks, secret scanning and a code review on every change.",
 				},
 			],
 		},
@@ -221,7 +261,7 @@
 	<title>{pageTitle("Built with")}</title>
 	<meta
 		name="description"
-		content="What Stem Shovel is made of: SvelteKit and Svelte 5, the Web Audio API, FFmpeg, Turso and Drizzle, Vercel Blob, Better Auth, Resend and Vercel, all open source where it can be."
+		content="What Stem Shovel is made of: SvelteKit and Svelte 5, the Web Audio and Web MIDI APIs, FFmpeg, Verovio, Turso and Drizzle, Vercel Blob, Better Auth, Resend and Vercel, all open source where it can be."
 	/>
 </svelte:head>
 

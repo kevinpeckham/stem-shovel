@@ -17,6 +17,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The Studio's input picker is the app's ComboBox** rather than the browser's select, at the same size and type; the list opens as a popover.
 - **The Studio's track headers**, row by row: the name with the menu at the right edge; the input picker; then arm, mute, solo and the effects button (a MIDI track's badge in its place) leading the fader, with the pan knob at the end. The header is 200 px wide, the whole name fits, and the buttons are device buttons (`device-fader-button-sm` and friends in `uno.config.ts`, with `accent-2`, `on-accent` and `device-button-face` colours), an armed track showing a red left edge (Kevin's pass). `ContextMenu` takes `clearButtonBaseClasses` and `dataActive` and sets `data-open`/`data-active` on its button for the shortcuts to style.
+- **The Built With page catches up with the stack**: the typefaces are Noto Sans, Serif and Mono from Bunny Fonts; AudioWorklet, the Web MIDI API, Verovio, IndexedDB, fflate, the QR code library, PDFKit, pdf-lib and PDF.js join the list; the AI section says which model does what (Gemini, Claude and Kimi) and that the beat and chord generators run on request; the checks line names the spelling, dead-code and house-rule checks.
 - **The Studio's Songs panel is the Recordings panel** (Kevin: "Songs" read as the project songs). Same list, same menus; the toolbar button and the panel's title say Recordings.
 
 ### Fixed
