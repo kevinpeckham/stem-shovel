@@ -737,7 +737,7 @@ describe("the inbox", () => {
 
 describe("sendDigests", () => {
 	const now = at(NOW);
-	test("a due daily and a due weekly digest each send one email, stamp the items and the person", async () => {
+	test("a due daily and a due weekly digest each send one email with the unread items, stamping them and the person; an item read in the app stays out", async () => {
 		reset(
 			base({
 				notificationPreference: [
@@ -760,10 +760,7 @@ describe("sendDigests", () => {
 			to: "bob@example.com",
 			name: "Bob",
 			period: "daily",
-			items: [
-				{ id: "n2", title: "tn2", body: "bn2", href: "/go/song/s1" },
-				{ id: "n1", title: "tn1", body: "bn1", href: "/go/song/s1" },
-			],
+			items: [{ id: "n2", title: "tn2", body: "bn2", href: "/go/song/s1" }],
 		});
 		expect(mail.sendDigestEmail).toHaveBeenNthCalledWith(2, {
 			to: "cy@example.com",
@@ -772,7 +769,7 @@ describe("sendDigests", () => {
 			items: [{ id: "n3", title: "tn3", body: "bn3", href: "/go/song/s1" }],
 		});
 		expect(fake.rows("notification").map((r) => [r.id, r.emailedAt])).toEqual([
-			["n1", now],
+			["n1", null],
 			["n2", now],
 			["n3", now],
 			["n4", null],

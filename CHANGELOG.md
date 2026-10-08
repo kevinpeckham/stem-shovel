@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The digest email carries only what you have not read.** An item already read in the inbox stays out of the daily or weekly digest (and is left unstamped, so it never goes out later either).
+
 ## [0.114.0] - 2026-10-08
 
 ### Fixed

@@ -435,7 +435,7 @@ export async function markAllRead(userId: string) {
 
 /**
  * Sends each person's daily or weekly summary when it is due: the opt-in
- * items not yet emailed. Called by the cron (vercel.json) once a day;
+ * items not yet emailed nor read in the app. Called by the cron (vercel.json) once a day;
  * harmless to call more often, since due-ness gates it.
  */
 export async function sendDigests(now = new Date()) {
@@ -456,6 +456,8 @@ export async function sendDigests(now = new Date()) {
 			where: and(
 				eq(notification.userId, r.userId),
 				isNull(notification.emailedAt),
+				// Read in the app already: nothing to tell (Kevin, 2026-10-08).
+				isNull(notification.readAt),
 				inArray(notification.kind, kinds),
 			),
 			orderBy: [desc(notification.updatedAt)],
