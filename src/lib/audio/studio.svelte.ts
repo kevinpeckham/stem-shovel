@@ -14,7 +14,12 @@ import { quantizeNotes } from "#lib/utils/quantizeNotes.js";
 import { notesFromMidiSummary, notesToMidiBlob } from "#lib/utils/midiNotesFile.js";
 import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
 import type { MidiSummary } from "./midi";
-import { MAX_STUDIO_CLIPS, MAX_STUDIO_TRACKS, STUDIO_FADER_MAX } from "#lib/constants/studio.js";
+import {
+	MAX_STUDIO_CLIPS,
+	MAX_STUDIO_NOTES_PER_CLIP,
+	MAX_STUDIO_TRACKS,
+	STUDIO_FADER_MAX,
+} from "#lib/constants/studio.js";
 import type {
 	StudioArrangement,
 	StudioClip,
@@ -827,6 +832,32 @@ class StudioEngine {
 			contentOrigin: c.start - c.offset,
 		});
 		this.#reschedule();
+	}
+	/** A MIDI clip's notes replaced outright (the piano-roll editor's edits), sorted and capped, as one undo step. */
+	setClipNotes(clipId: string, notes: StudioNote[]) {
+		const c = this.#clip(clipId);
+		if (!c?.notes) return;
+		this.#commit();
+		c.notes = notes
+			.slice(0, MAX_STUDIO_NOTES_PER_CLIP)
+			.map((n) => ({ ...n }))
+			.sort((a, b) => a.t - b.t || a.p - b.p);
+		this.#reschedule();
+	}
+	/** One note sounded now through a MIDI track's instrument (the roll's click and the keyboard column). */
+	auditionNote(trackId: string, pitch: number, velocity = 0.8, duration = 0.3) {
+		const t = this.#track(trackId);
+		const source = t?.input?.source;
+		const ctx = this.#ctx;
+		if (!source || !isInstrument(source) || !ctx) return;
+		if (source === "drums") {
+			const voice = DRUM_MIDI_IN_NOTES[pitch];
+			if (voice) void drumMachine.hit(voice, velocity);
+			return;
+		}
+		const engine = source === "piano" ? piano : chordPiano;
+		engine.warm();
+		engine.scheduleNote(pitch, velocity, ctx.currentTime + 0.01, duration);
 	}
 	/** Every note up or down by `semitones`, within the MIDI range. */
 	transposeClip(clipId: string, semitones: number) {

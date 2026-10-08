@@ -21,6 +21,7 @@
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
 	import { parseMidi } from "#lib/audio/midi.js";
+	import PianoRoll from "#lib/components/PianoRoll.svelte";
 	import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 	import {
 		createIdea,
@@ -515,6 +516,16 @@
 			studio.arrangement.tracks.find((t) => t.kind === "midi") ??
 			studio.addTrack({ source: "piano", channel: "stereo" }, undefined, "midi")
 		);
+	}
+	/** The piano-roll editor (docs/multitrack-recorder.md, phase 3b): the MIDI clip whose notes it shows, or null when closed. */
+	let rollClipId = $state<string | null>(null);
+	let rollClip = $derived(
+		rollClipId ? (studio.arrangement.clips.find((c) => c.id === rollClipId) ?? null) : null,
+	);
+	function openRoll(clip: StudioClip) {
+		if (!clip.notes) return;
+		selected = clip.id;
+		rollClipId = clip.id;
 	}
 	/** The selected MIDI clip as a .mid file, downloaded. */
 	function exportMidi(clip: StudioClip) {
@@ -1204,6 +1215,7 @@
 					bind:pxPerSecond
 					onarm={(t) => void armInput(t)}
 					onrender={(t) => void renderMidiTrack(t)}
+					onopen={openRoll}
 				/>
 				<div class="flex flex-wrap items-center gap-2">
 					<button class="device-button-sm px-3" type="button" onclick={() => addTrack()}>
@@ -1330,6 +1342,15 @@
 									onclick={() => studio.transposeClip(clip.id, 12)}>+12</button
 								>
 							</span>
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								title="Open the notes in the piano-roll editor (or double-click the clip)"
+								aria-pressed={rollClipId === clip.id}
+								onclick={() => (rollClipId === clip.id ? (rollClipId = null) : openRoll(clip))}
+							>
+								<span class="i-ph-piano-keys" aria-hidden="true"></span> Edit notes
+							</button>
 							<button
 								class="device-button-xs px-2"
 								type="button"
@@ -1726,6 +1747,22 @@
 			</div>
 		</div>
 	{/snippet}
+
+	<!-- The piano-roll editor: a MIDI clip's notes, floating from lg, docked below (docs/multitrack-recorder.md, phase 3b). -->
+	<FloatingPanel
+		open={rollClip !== null}
+		title="Notes · {rollClip?.name ?? ''}"
+		storageKey="stemshovel.studio.roll-panel"
+		width={820}
+		height={460}
+		onminimise={() => (rollClipId = null)}
+	>
+		{#if rollClip}
+			{#key rollClip.id}
+				<PianoRoll clipId={rollClip.id} />
+			{/key}
+		{/if}
+	</FloatingPanel>
 
 	<FloatingPanel
 		open={inputsOpen}

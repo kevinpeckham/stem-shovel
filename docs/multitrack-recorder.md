@@ -1,6 +1,6 @@
 # Multitrack recorder (design draft)
 
-Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; phase 3a (MIDI tracks: record, play, edit, import, export, render to audio) built 2026-10-08; 3b (a piano-roll editor) remains. Design written 2026-10-06. Kevin's ask: "a simple
+Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; phase 3a (MIDI tracks: record, play, edit, import, export, render to audio) and 3b (the piano-roll editor) built 2026-10-08. The plan's phases are complete; "Later" holds what is left. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
 stem player, and a lot of the engineering of the idea recorder. It should
 start fairly simple as a stand-alone tool … 'songs' instead of 'ideas' …
@@ -346,10 +346,28 @@ has one or the other). Decisions, and why:
   time with the latency shift and the count-in off, then mutes the MIDI
   track. Download mix, Add as demo and Add tracks as stems do this
   themselves for any MIDI track with clips before they render, saying so.
-- **Not in 3a:** a piano-roll editor (moving and drawing single notes),
-  tempo-following clips, MIDI from a file into the arrangement's tempo,
-  velocity curves, CC data. The arrangement's `version` stays 1: every
-  addition is optional.
+- **Not in 3a:** tempo-following clips, MIDI from a file into the
+  arrangement's tempo, velocity curves, CC data. The arrangement's
+  `version` stays 1: every addition is optional.
+
+_3b as built (2026-10-08): the piano-roll editor._ `PianoRoll.svelte`, in
+a floating panel the page opens from **Edit notes** on the selected MIDI
+clip's row or a double-click on the clip (`onopen`). One clip's notes on
+a grid of pitch rows (`utils/pianoRoll.ts`: whole octaves spanning the
+notes, at least two around middle C; a drums track's rows are the kit's
+voices on their General MIDI notes) against time at its own zoom, beat
+and bar lines as a repeating background, the clip's window dimmed
+outside `offset..offset+duration`, the playhead when the transport runs,
+and a keyboard column that sounds its row (`studio.auditionNote`, which
+also sounds a note picked up). A click on empty grid adds a note a grid
+step long (the Grid select: a beat, a half, a quarter; Shift ignores the
+grid), a note drags in time and pitch with a live preview, its right edge
+drags its length, Shift-click extends the selection, the arrow keys nudge
+(pitch by a semitone, Shift an octave; time by a step), Delete removes,
+the Velocity slider sets the selection's. Every finished gesture is one
+`studio.setClipNotes` (sorted, capped, one undo step); the selection
+follows its notes through the sort by value. `editNotes` and
+`snapRollTime` are the pure arithmetic, tested on their own.
 
 **Later.** The Idea Recorder as the Studio's quick-capture mode (one
 song, one track, Record): the merge Kevin anticipates. Comping,

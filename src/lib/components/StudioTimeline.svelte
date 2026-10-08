@@ -40,12 +40,15 @@
 		onarm?: (track: StudioTrack) => void;
 		/** Render a MIDI track to an audio track (the track's menu; the page says what happened). */
 		onrender?: (track: StudioTrack) => void;
+		/** Open a MIDI clip's notes in the piano-roll editor (a double-click on the clip). */
+		onopen?: (clip: StudioClip) => void;
 	}
 	let {
 		selected = $bindable(null),
 		pxPerSecond = $bindable(40),
 		onarm,
 		onrender,
+		onopen,
 	}: Props = $props();
 
 	const HEADER_W = 184;
@@ -947,6 +950,7 @@
 						onpointermove={onclipmove}
 						onpointerup={onclipup}
 						onpointercancel={onclipup}
+						ondblclick={() => clip.notes && onopen?.(clip)}
 					>
 						{#if clip.notes}
 							<canvas
