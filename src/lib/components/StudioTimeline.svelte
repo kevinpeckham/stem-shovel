@@ -19,6 +19,7 @@
 		StudioTrackFx,
 	} from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
+	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
 	import Knob from "./Knob.svelte";
 	import Slider from "./Slider.svelte";
@@ -470,6 +471,8 @@
 	const MIDI_INPUT_OPTIONS = INPUT_OPTIONS.filter((o) =>
 		isInstrument(o.value.split(":")[0] as never),
 	);
+	/** An audio track may also have no input at all. */
+	const AUDIO_INPUT_OPTIONS = [{ value: "", label: "No input" }, ...INPUT_OPTIONS];
 	const isMidi = (t: StudioTrack) => t.kind === "midi";
 	/** A fader's level as its slider says it: decibels for audio, a share for a MIDI track's velocity. */
 	const levelText = (t: StudioTrack) => (v: number) =>
@@ -828,21 +831,17 @@
 						]}
 					/>
 				</div>
-				<select
-					class="w-full min-w-0 bg-oxford-800 rounded text-11px px-1 h-6 border border-white/15 truncate"
-					aria-label="{track.name} input"
+				<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
+				<ComboBox
+					ariaLabel="{track.name} input"
+					options={isMidi(track) ? MIDI_INPUT_OPTIONS : AUDIO_INPUT_OPTIONS}
 					value={inputValue(track)}
 					disabled={engine.recording}
-					onchange={(e) => pickInput(track, e.currentTarget.value)}
-				>
-					{#if isMidi(track)}
-						{#each MIDI_INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option
-							>{/each}
-					{:else}
-						<option value="">No input</option>
-						{#each INPUT_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
-					{/if}
-				</select>
+					onchange={(v) => pickInput(track, v)}
+					clearDefaultButtonClasses
+					buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
+					popoverClasses="text-11px"
+				/>
 				<!-- Arm, mute and solo lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
 				<div class="grid grid-cols-[auto_auto_auto_1fr_auto] items-center gap-1.5 min-w-0">
 					<button

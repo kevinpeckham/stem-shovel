@@ -15,7 +15,8 @@ test.describe.serial("Studio instruments", () => {
 		await page.getByRole("button", { name: "New song" }).click();
 		await expect(page.getByLabel("Song title")).not.toHaveValue("");
 		// The seeded track's input becomes the drum machine; its panel opens.
-		await page.getByLabel(/Track 1 input/).selectOption("drums:stereo");
+		await page.getByRole("combobox", { name: /Track 1 input/ }).click();
+		await page.getByRole("option", { name: "Drum machine" }).click();
 		await expect(page.getByRole("dialog", { name: "Drum machine" })).toBeVisible();
 		await hooked(page, ([w]) => w.__studio.setCountIn(false));
 		await page.mouse.click(700, 300); // the transport's own area: the space bar and the hooks are the test's
@@ -66,7 +67,8 @@ test.describe.serial("Studio instruments", () => {
 		await page.getByRole("button", { name: "Add track" }).click();
 		await page.getByRole("button", { name: /Arm Track 1/ }).click(); // disarm the drums
 		await page.getByRole("button", { name: /Arm Track 2/ }).click();
-		await page.getByLabel(/Track 2 input/).selectOption("piano:stereo");
+		await page.getByRole("combobox", { name: /Track 2 input/ }).click();
+		await page.getByRole("option", { name: "Piano", exact: true }).click();
 		await expect(page.getByRole("dialog", { name: "Piano" })).toBeVisible();
 		await hooked(page, ([w]) => {
 			w.__studio.setCountIn(false);

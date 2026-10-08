@@ -171,6 +171,9 @@ function fixture(): StudioArrangement {
 
 beforeAll(() => {
 	installFakePopover();
+	// jsdom cannot scroll an option into view.
+	if (!("scrollIntoView" in Element.prototype))
+		Object.assign(Element.prototype, { scrollIntoView() {} });
 	vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => null);
 	// jsdom has PointerEvent but no pointer capture.
 	Object.assign(Element.prototype, { setPointerCapture() {}, releasePointerCapture() {} });
@@ -321,44 +324,56 @@ describe("StudioTimeline", () => {
 		expect(names()[1]).not.toHaveClass("opacity-60");
 	});
 
-	test("the input select lists the outside sources by channel and the instruments, shows the track's input and sets it", async () => {
+	test("the input picker lists the outside sources by channel and the instruments, shows the track's input and sets it", async () => {
+		const user = userEvent.setup();
 		const onarm = vi.fn();
 		render(StudioTimeline, { props: { onarm } });
-		const select = screen.getByRole("combobox", { name: "Track 1 input" }) as HTMLSelectElement;
-		expect(select.value).toBe("mic:stereo");
-		const values = [...select.options].map((o) => o.value);
-		expect(values).toEqual([
-			"",
-			"mic:stereo",
-			"mic:left",
-			"mic:right",
-			"line:stereo",
-			"line:left",
-			"line:right",
-			"computer:stereo",
-			"computer:left",
-			"computer:right",
-			"piano:stereo",
-			"chords:stereo",
-			"drums:stereo",
-		]);
-		const option = (name: string) => within(select).getByRole("option", { name });
-		expect(option("Microphone · left")).toHaveValue("mic:left");
-		expect(option("Piano")).toHaveValue("piano:stereo");
-		expect(option("No input")).toHaveValue("");
+		const picker = screen.getByRole("combobox", { name: "Track 1 input" });
+		expect(picker).toHaveTextContent("Microphone · stereo");
+		expect(screen.getByRole("combobox", { name: "Guitar input" })).toHaveTextContent("No input");
+		await user.click(picker);
+		const list = screen.getByRole("listbox", { name: "Track 1 input" });
 		expect(
-			(screen.getByRole("combobox", { name: "Guitar input" }) as HTMLSelectElement).value,
-		).toBe("");
+			within(list)
+				.getAllByRole("option")
+				.map((o) => o.textContent?.trim()),
+		).toEqual([
+			"No input",
+			"Microphone · stereo",
+			"Microphone · left",
+			"Microphone · right",
+			"Line in · stereo",
+			"Line in · left",
+			"Line in · right",
+			"Computer · stereo",
+			"Computer · left",
+			"Computer · right",
+			"Piano",
+			"Chord player",
+			"Drum machine",
+		]);
+		expect(within(list).getByRole("option", { name: "Microphone · stereo" })).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
 		// An armed track picking an input asks the page to open it.
-		await fireEvent.change(select, { target: { value: "piano:stereo" } });
+		await user.click(within(list).getByRole("option", { name: "Piano" }));
 		expect(fake.setInput).toHaveBeenCalledWith("t1", { source: "piano", channel: "stereo" });
 		expect(onarm).toHaveBeenCalledWith(expect.objectContaining({ id: "t1" }));
-		await fireEvent.change(select, { target: { value: "" } });
+		await user.click(picker);
+		await user.click(
+			within(screen.getByRole("listbox", { name: "Track 1 input" })).getByRole("option", {
+				name: "No input",
+			}),
+		);
 		expect(fake.setInput).toHaveBeenLastCalledWith("t1", null);
 		// An unarmed track does not.
-		await fireEvent.change(screen.getByRole("combobox", { name: "Guitar input" }), {
-			target: { value: "line:left" },
-		});
+		await user.click(screen.getByRole("combobox", { name: "Guitar input" }));
+		await user.click(
+			within(screen.getByRole("listbox", { name: "Guitar input" })).getByRole("option", {
+				name: "Line in · left",
+			}),
+		);
 		expect(fake.setInput).toHaveBeenLastCalledWith("t2", { source: "line", channel: "left" });
 		expect(onarm).toHaveBeenCalledTimes(1);
 	});
