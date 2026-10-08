@@ -44,7 +44,7 @@ The digest: `sendDigests` runs from `GET /api/notifications/digest`, a
 Vercel cron once a day (vercel.json, 13:00 UTC). It is safe to call at any
 time by anyone: a person's digest goes only when `digestDue` says a day
 (with an hour's slack) or a week has passed since `digest_sent_at`, and
-only the not-yet-emailed opt-in items go in it.
+only the opt-in items not yet emailed, and not yet read in the app, go in it.
 
 ## Text messages
 
