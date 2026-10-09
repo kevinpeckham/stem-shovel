@@ -37,6 +37,12 @@ const ROUTES = [
 	["[account]/projects/[project]", "/{account}/projects/{project}", [200], [200]],
 	["[account]/projects/[project]/[song]", "/{account}/projects/{project}/{song}", [200], [200]],
 	[
+		"[account]/projects/[project]/[song]/mixes/[mix]",
+		"/{account}/projects/{project}/{song}/mixes/nope",
+		[404],
+		[404],
+	],
+	[
 		"[account]/projects/[project]/[song]/[doc=songDoc]",
 		"/{account}/projects/{project}/{song}/chart",
 		[303],
