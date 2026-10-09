@@ -6,6 +6,8 @@ A **mix** is a bounce of the song, usually from the mixing engineer or producer,
 
 The player on the song page switches between **Stems**, **Demos** and **Mixes**. The Mixes view opens on the newest mix, with every earlier one listed under it; click one to switch.
 
+On the project page, a song with mixes plays its newest one from its tile and in the playlist, in place of the stems mixed down (the mixing stage comes after the stems); the player says "Mix v4" so you know what you hear, and the tile counts the mixes.
+
 ## Listening
 
 The chosen mix has a play button, the time, a volume slider and its waveform. Click the waveform to jump there. The **Comments** row under it marks every comment left at a spot in the mix; click a marker to read it.

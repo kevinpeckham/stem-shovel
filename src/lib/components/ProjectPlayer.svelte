@@ -10,6 +10,8 @@
 		mixUrl: string | null;
 		/** A demo track of a song with no stems yet (a song idea): the demos playlist's default scope (Kevin). */
 		idea?: boolean;
+		/** What the track is, beside its title ("Mix v4", "Stems mix"), so the listener knows what they hear (docs/mixes.md). */
+		source?: string;
 	}
 	export type PlaylistMode = "mixes" | "demos";
 
@@ -209,7 +211,12 @@
 	</div>
 	<div class="min-w-0 grow">
 		{#if track}
-			<p class="truncate font-500">{track.title}</p>
+			<p class="truncate font-500">
+				{track.title}{#if track.source}
+					<span class="ml-2 rounded border border-current/30 px-1 text-11px font-400 align-middle"
+						>{track.source}</span
+					>{/if}
+			</p>
 			<p class="text-sm text-dim tabular-nums">
 				{formatTime(currentTime)} / {formatTime(duration)} · {index + 1} of {playable.length}
 			</p>

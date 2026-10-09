@@ -543,6 +543,19 @@ export function getProject(accountId: string, slug: string) {
 						},
 						orderBy: [asc(demo.createdAt)],
 					},
+					// The newest ready mix (docs/mixes.md) is what the tile and the playlist play; the count goes on the tile.
+					mixes: {
+						columns: {
+							id: true,
+							version: true,
+							label: true,
+							status: true,
+							url: true,
+							playbackStatus: true,
+							playbackUrl: true,
+						},
+						orderBy: [desc(songMix.version)],
+					},
 					// The project page's tiles count a song's charts: its scores and the files marked as notation.
 					files: { columns: { id: true, status: true, isNotation: true, kind: true } },
 					notation: { columns: { id: true, status: true } },

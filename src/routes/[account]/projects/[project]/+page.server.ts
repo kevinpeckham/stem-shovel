@@ -49,8 +49,8 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	);
 	// Backstop: songs whose cached mix predates their current stems.
 	scheduleMix(songsWantingMix(songs, mixKeyOf));
-	// The playlist plays each song's mix, or its demos (the AAC rendition where it is ready, the
-	// upload otherwise); a private song's need presigned URLs.
+	// The playlist plays each song's newest mix (docs/mixes.md), else the stems' bounce, or its demos
+	// (the rendition where it is ready, the upload otherwise); a private song's need presigned URLs.
 	// The tiles count each song's charts (scores and files marked as notation) and the viewer's own private notes.
 	const myNotes = locals.user
 		? await userNoteSongIds(
@@ -69,6 +69,16 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 					s.files.filter((f) => f.status === "ready" && f.isNotation).length,
 				hasMyNote: myNotes.has(s.id),
 				mixUrl: await presentUrl(s.mixUrl),
+				// The mixes (docs/mixes.md): the newest ready one plays in place of the stems' bounce (Kevin: the latest content by default).
+				mixCount: s.mixes.filter((m) => m.status === "ready").length,
+				latestMix: await (async () => {
+					const m = s.mixes.find((x) => x.status === "ready" && x.url);
+					if (!m) return null;
+					const playUrl = await presentUrl(
+						m.playbackStatus === "ready" && m.playbackUrl ? m.playbackUrl : m.url,
+					);
+					return playUrl ? { id: m.id, version: m.version, label: m.label, playUrl } : null;
+				})(),
 				demos: await Promise.all(
 					s.demos.map(async (d) => ({
 						...d,

@@ -137,8 +137,20 @@
 		moveWithin(song, from + (e.key === "ArrowUp" ? -1 : 1));
 		void commit();
 	}
-	/** The playlist: finished songs, then the ones in progress, as listed. */
-	let playable = $derived([...finished, ...inProgress]);
+	/** What a song plays here (docs/mixes.md): its newest mix when it has one, else the stems' bounce; and what to call it. */
+	const playOf = (song: (typeof data.project.songs)[number]) =>
+		song.latestMix
+			? { url: song.latestMix.playUrl, source: `Mix v${song.latestMix.version}` }
+			: song.mixUrl
+				? { url: song.mixUrl, source: "Stems mix" }
+				: null;
+	/** The playlist: finished songs, then the ones in progress, as listed, each with its newest mix or its stems' bounce. */
+	let playable = $derived(
+		[...finished, ...inProgress].map((song) => {
+			const play = playOf(song);
+			return { id: song.id, title: song.title, mixUrl: play?.url ?? null, source: play?.source };
+		}),
+	);
 	/** The demos playlist: every song's ready recordings in the songs' order, each named by its song; the ideas' are the default scope (Kevin: as the Song Ideas section). */
 	let demoTracks = $derived(
 		[...finished, ...inProgress, ...ideas].flatMap((song) =>
@@ -163,6 +175,7 @@
 		if (notes > 0) parts.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
 		const demos = song.demos.filter((d) => d.status === "ready").length;
 		if (demos > 0) parts.push(`${demos} ${demos === 1 ? "demo" : "demos"}`);
+		if (song.mixCount > 0) parts.push(`${song.mixCount} ${song.mixCount === 1 ? "mix" : "mixes"}`);
 		return parts.length ? parts.join(" · ") : withLyrics ? "nothing yet" : "";
 	}
 	/** The chart text counts one, and every score and chart file attached counts one. */
@@ -415,7 +428,8 @@
 		<div class="mb-5">
 			<h2 class="app-section-heading">Playlist</h2>
 			<p class="opacity-90 max-w-prose">
-				Listen to your current stem mixes, or to the songs' demo recordings.
+				Listen to each song's newest mix, or its stems mixed down where no mix has been uploaded
+				yet, or to the songs' demo recordings.
 			</p>
 		</div>
 		<ProjectPlayer
@@ -708,6 +722,7 @@
 
 {#snippet songRow(song: Song)}
 	{@const ready = readyStems(song)}
+	{@const play = playOf(song)}
 	<li
 		class="flex items-stretch gap-3 w-full {dragging ? 'select-none' : ''} {dragging?.id === song.id
 			? 'opacity-50'
@@ -719,8 +734,10 @@
 			type="button"
 			class="shrink-0 grid w-12 h-auto place-items-center rounded-md border border-white/15 bg-blue-300/5 hover-bg-white/10 hover-text-accent disabled:opacity-30"
 			aria-label={playing === song.id && !paused ? `Pause ${song.title}` : `Play ${song.title}`}
-			title={song.mixUrl ? "Play the mix" : "No mix yet"}
-			disabled={!song.mixUrl}
+			title={play
+				? `Play ${play.source === "Stems mix" ? "the stems mix" : play.source}`
+				: "No mix yet"}
+			disabled={!play}
 			onclick={() => player?.play(song.id)}
 		>
 			<span
