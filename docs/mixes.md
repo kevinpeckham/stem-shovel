@@ -73,6 +73,42 @@ engineer about the mix.
 - **A reference mix.** Marking one mix as the current one for the song's
   page and share emails.
 
+## Phase 2 plan: a page per mix, and the song's stage (2026-10-10)
+
+Kevin's framing of a song's life: (1) writing, ending in a demo on the
+song page; (2) arranging, with stems shared, parts added and practice
+mixes downloaded; (3) the studio recording, after which the stems are
+history and the engineer or producer issues mixes for the band's
+approval. The order is typical, not required. The song page as built was
+organised by media type (stems, demos, mixes as sibling tabs) rather than
+by phase, so in the mixing phase the review was squeezed into a box made
+for a stem player, with stale stems as the default view. Agreed:
+
+1. **A mix page as the review surface** (this pass).
+   `/<account>/projects/<project>/<song>/mixes/<id>`: the song's title
+   and a way back, the mix's version and name, the transport and
+   waveform with the Comments row, the notes, the comments with _Comment
+   here_, download, share, the other versions, and the song's chat
+   panel. Share emails, viewing links and notifications land here
+   (`permalink("song", id, "mixes/<mixId>")`; a share link made for a
+   mix redirects here). The song page keeps its Mixes view as a compact
+   list (version, name, who and when, comment count, Listen) with Upload
+   Mix; an upload from either page opens the new mix's page. Built on the
+   same `MixPanel`, so nothing about mixes moves off the song: they stay
+   its versions, with its chat, comments and links.
+2. **A stage on the song** (a later pass). Writing, arranging, mixing,
+   finished, set in song settings and defaulted from what the song holds
+   (a mix makes it mixing, a stem arranging, else writing); the existing
+   finished flag becomes the last stage. The stage decides the defaults:
+   what the player opens on, what the project tile plays and says, and a
+   notice on the stems view in the mixing stage ("the studio recording is
+   in Mixes; these stems are from arranging").
+3. **Closing the loop** (later): a comment on v3 marked addressed in v4,
+   and a new mix showing how many of the last mix's comments are open.
+
+Outside reviewers need a place as the project's own people to comment;
+a share link alone lets them listen and download.
+
 ## What it is
 
 The player's **Mixes** view: a list of the song's mixes, newest first,

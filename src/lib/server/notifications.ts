@@ -259,7 +259,7 @@ export async function notifyComment(
 			n === 1
 				? `${who} commented in ${s.project.name}.`
 				: `${n} new comments, the latest from ${who}, in ${s.project.name}.`,
-		href: mix ? `${s.href}?view=mixes&mix=${mix.id}` : s.href,
+		href: mix ? `${s.href}/mixes/${mix.id}` : s.href,
 		subjectId: mix ? `${songId}:mix:${mix.id}` : songId,
 		coalesce: true,
 	});
@@ -284,7 +284,7 @@ export async function notifyMix(accountId: string, mixId: string, uploaderId: st
 		title: `New mix of ${s.title}`,
 		body: (n) =>
 			`${who} uploaded ${n === 1 ? `mix v${m.version} "${m.label}"` : `${n} mixes`} in ${s.project.name}.`,
-		href: `${s.href}?view=mixes&mix=${mixId}`,
+		href: `${s.href}/mixes/${mixId}`,
 		subjectId: m.songId,
 		coalesce: true,
 	});

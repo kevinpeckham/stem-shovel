@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A page for every mix** (docs/mixes.md, "Phase 2"): `/<account>/projects/<project>/<song>/mixes/<id>` is where a mix is listened to and reviewed, with the song's title and a way back, the version and name, the player and waveform with the Comments row, the notes, the comments with Comment here (positions as time), download, share, the other versions and the song's chat panel. Share emails, viewing links and notifications open it (a mix link is the song's permalink plus `/mixes/<id>`; an older `?view=mixes&mix=` link redirects). The song page's Mixes view is a list of the mixes, newest first with their comment counts, each linking to its page, with Upload Mix; an upload from either page opens the new mix's page. The stems are out of the way during the mixing phase.
+
 ## [0.118.0] - 2026-10-10
 
 ### Changed

@@ -2934,7 +2934,7 @@ export async function permalinkTarget(kind: PermalinkKind, id: string): Promise<
 }
 
 /** The current page of the song or project a code was made for (`/s/<code>`), or null when no such code. */
-/** The page a share link opens: the song's or the project's current address; a link made for a mix (docs/mixes.md) carries `?view=mixes&mix=<id>`. */
+/** The page a share link opens: the song's or the project's current address, or a mix's page (docs/mixes.md). */
 export async function shareLinkTarget(code: string): Promise<string | null> {
 	const link = await db.query.shareLink.findFirst({
 		where: eq(shareLink.code, code),
@@ -2951,7 +2951,7 @@ export async function shareLinkTarget(code: string): Promise<string | null> {
 		});
 		if (!s) return null;
 		const path = `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}`;
-		return link.mixId ? `${path}?view=mixes&mix=${link.mixId}` : path;
+		return link.mixId ? `${path}/mixes/${link.mixId}` : path;
 	}
 	if (link.projectId) {
 		const p = await db.query.project.findFirst({

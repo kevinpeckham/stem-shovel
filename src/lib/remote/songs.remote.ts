@@ -263,7 +263,7 @@ export const shareSong = command(ShareSongSchema, async ({ songId, mixId, to, me
 	const { url } = getRequestEvent();
 	// A private song's address alone would be a wall for the recipient: the
 	// email carries a viewing link made for them (visible in the share popover).
-	const pageUrl = `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}${mix ? `?view=mixes&mix=${mix.id}` : ""}`;
+	const pageUrl = `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}${mix ? `/mixes/${mix.id}` : ""}`;
 	const needsLink = song.isPrivate || song.project.isPrivate;
 	const link = needsLink
 		? await createShareLink(

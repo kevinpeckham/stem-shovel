@@ -73,6 +73,8 @@
 		/** The comment card for the timeline's bubbles (the page's, with its forms). */
 		card: Snippet<[string]>;
 		onfiles?: (files: File[]) => void;
+		/** A mix chosen in the list or the picker; a page per mix goes to it (docs/mixes.md). */
+		onchoose?: (id: string) => void;
 		/** The name typed in place: save it. */
 		onrename?: (mix: PanelMix, label: string) => Promise<void> | void;
 		onnotes?: (mix: PanelMix, notes: string) => Promise<void> | void;
@@ -96,6 +98,7 @@
 		jobs = [],
 		card,
 		onfiles,
+		onchoose,
 		onrename,
 		onnotes,
 		onremove,
@@ -148,6 +151,7 @@
 		audio?.pause();
 		position = 0;
 		selectedId = id;
+		onchoose?.(id);
 	}
 
 	// ---- the waveform's peaks: from the upload, else decoded from the file here ----

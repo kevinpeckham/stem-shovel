@@ -26,11 +26,10 @@
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
-	import { removeMix, renameMix, setMixNotes } from "#lib/remote/mixes.remote.js";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
-	import MixPanel, { type MixComment, type PanelMix } from "#lib/components/MixPanel.svelte";
+	import MixList from "#lib/components/MixList.svelte";
 	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
@@ -109,7 +108,7 @@
 		addSongCredit,
 		removeSongCredit,
 	} from "#lib/remote/songs.remote.js";
-	import { afterNavigate, refreshAll, replaceState } from "$app/navigation";
+	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onMount, tick, untrack, type ComponentProps } from "svelte";
 
@@ -309,8 +308,15 @@
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
 	// The mixes view (docs/mixes.md): the song's mixes, the chosen one from ?mix= (a notification's or a share's link).
 	let readyMixes = $derived(data.song.mixes.filter((m) => m.status === "ready" && m.url));
-	let mixPanel = $state<MixPanel | null>(null);
-	let selectedMixId = $state<string | null>(null);
+	let mixList = $state<MixList | null>(null);
+	const mixPath = (id: string) =>
+		`/${data.account.slug}/projects/${data.song.project.slug}/${data.song.slug}/mixes/${id}`;
+	let mixCommentCounts = $derived(
+		data.mixComments.reduce(
+			(m, c) => m.set(c.mixId, (m.get(c.mixId) ?? 0) + 1),
+			new Map<string, number>(),
+		),
+	);
 	let mixJobs = $state<{ name: string; percent: number; error?: string; decoding?: boolean }[]>([]);
 	let mixBusy = $state(false);
 	let mixCtx: AudioContext | null = null;
@@ -367,66 +373,31 @@
 				mixJobs[i].error = errorMessage(e);
 			}
 		}
-		await refreshAll();
-		if (last) {
-			selectedMixId = last;
-			notify(picked.length === 1 ? "Mix uploaded" : `${picked.length} mixes uploaded`);
-		}
 		mixBusy = false;
 		if (mixJobs.every((j) => !j.error)) mixJobs = [];
+		if (last) {
+			notify(picked.length === 1 ? "Mix uploaded" : `${picked.length} mixes uploaded`);
+			// The new mix's own page (docs/mixes.md, "Phase 2").
+			await goto(mixPath(last));
+		} else await refreshAll();
 	}
 	/** The Uploads menu's Upload Mix: the player on the mixes, then the picker. */
 	async function pickMix() {
 		if (playerMode === "minimised") togglePlayer();
 		showView("mixes");
 		await tick();
-		mixPanel?.pick();
+		mixList?.pick();
 	}
-	async function removeMixRow(m: PanelMix) {
-		if (!confirm(`Remove mix v${m.version} "${m.label}"? Its comments and file are deleted.`))
-			return;
-		try {
-			await removeMix({ id: m.id });
-			notify(`Mix v${m.version} removed`);
-			await refreshAll();
-		} catch (e) {
-			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-	async function renameMixRow(m: PanelMix, label: string) {
-		try {
-			await renameMix({ id: m.id, label });
-			await refreshAll();
-		} catch (e) {
-			notify(`Could not rename it: ${errorMessage(e)}`, { kind: "error" });
-		}
-	}
-	async function saveMixNotes(m: PanelMix, notes: string) {
-		try {
-			await setMixNotes({ id: m.id, notes });
-			notify("Notes saved");
-			await refreshAll();
-		} catch (e) {
-			notify(`Could not save the notes: ${errorMessage(e)}`, { kind: "error" });
-			throw e;
-		}
-	}
-	/** The share popover aimed at a mix (docs/mixes.md): the email and its link land on it. */
-	let shareMix = $state<PanelMix | null>(null);
-	function shareMixByEmail(m: PanelMix) {
-		shareMix = m;
-		sharePanel?.showPopover();
-	}
-	const mixVersion = (id: string | null) => data.song.mixes.find((m) => m.id === id)?.version;
-	/** A position on a mix is time, never bars: an upload has no known tempo, meter or offset (Kevin). */
-	const mixPos = (seconds: number) => formatTime(seconds, 2);
-	/** A link to a mix (?view=mixes&mix=<id>, kept through the permalink and share redirects): the player opens on it; the query goes, the share code stays. */
+	/** An older link (?view=mixes&mix=<id>): the mix's own page now, else the Mixes view. */
 	function openMixFromUrl() {
 		const url = new URL(page.url.href);
 		if (url.searchParams.get("view") !== "mixes") return;
 		const id = url.searchParams.get("mix");
+		if (id && data.song.mixes.some((m) => m.id === id)) {
+			void goto(mixPath(id), { replaceState: true });
+			return;
+		}
 		chosenView = "mixes";
-		if (id && data.song.mixes.some((m) => m.id === id)) selectedMixId = id;
 		url.searchParams.delete("view");
 		url.searchParams.delete("mix");
 		replaceState(url, {});
@@ -467,7 +438,6 @@
 		chosenView = view;
 		if (view !== "stems") playerEngine?.pause();
 		if (view !== "demos") demoPanel?.pause();
-		if (view !== "mixes") mixPanel?.pause();
 	}
 
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
@@ -667,16 +637,15 @@
 			.sort((a, b) => a.at - b.at),
 	);
 	let commentPanel = $state<HTMLDivElement | null>(null);
-	let commentDraft = $state<{
-		id: string | null;
-		mixId: string | null;
-		title: string;
-		body: string;
-		at: string;
-	}>({ id: null, mixId: null, title: "", body: "", at: "" });
+	let commentDraft = $state<{ id: string | null; title: string; body: string; at: string }>({
+		id: null,
+		title: "",
+		body: "",
+		at: "",
+	});
 	let commentError = $state<string | null>(null);
 	function openComment(draft: Partial<typeof commentDraft> = {}) {
-		commentDraft = { id: null, mixId: null, title: "", body: "", at: "", ...draft };
+		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
 		commentError = null;
 		// The form fields keep what was last typed; push the draft into them explicitly.
 		const f = commentDraft.id ? updateComment.fields : createComment.fields;
@@ -685,22 +654,14 @@
 		f.position.set(commentDraft.at);
 		commentPanel?.showPopover();
 	}
-	function editComment(c: (typeof data.comments)[number] | MixComment) {
-		openComment({
-			id: c.id,
-			mixId: "mixId" in c ? c.mixId : null,
-			title: c.title,
-			body: c.body,
-			at: c.at === null ? "" : editPos(c.at),
-		});
+	function editComment(c: (typeof data.comments)[number]) {
+		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : editPos(c.at) });
 	}
 
 	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
 	/** The ⌘-click menu: from a stem's waveform or piano roll, or (stem null) from the Comments row's mix waveform. */
 	let stemMenuAt = $state<{
 		stem: StemState | null;
-		/** From a mix's waveform (docs/mixes.md): the comment is the mix's, and Seek here seeks the mix. */
-		mixId?: string;
 		seconds: number;
 		x: number;
 		y: number;
@@ -1399,13 +1360,11 @@
 		try {
 			const { sent } = await shareSong({
 				songId: data.song.id,
-				mixId: shareMix?.id ?? "",
 				to: shareTo,
 				message: shareMessage,
 			});
 			shareTo = "";
 			shareMessage = "";
-			shareMix = null;
 			notify(`Sent to ${sent}`);
 			sharePanel?.hidePopover();
 		} catch (err) {
@@ -1667,7 +1626,6 @@
 						popovertarget="song-share"
 						title="Share this song by email"
 						aria-label="Share this song by email"
-						onclick={() => (shareMix = null)}
 					>
 						<span class="block i-ph-paper-plane-tilt"></span>
 					</button>
@@ -2580,30 +2538,17 @@
 					/>
 				</div>
 			{:else if playerView === "mixes"}
-				<!-- The mixes (docs/mixes.md): the song's bounces for feedback, with their own comments. -->
+				<!-- The mixes (docs/mixes.md): a list; each opens on its own page to listen, comment and download. -->
 				<div>
-					<MixPanel
-						bind:this={mixPanel}
-						bind:selectedId={selectedMixId}
+					<MixList
+						bind:this={mixList}
 						mixes={readyMixes}
-						comments={data.mixComments}
+						commentCounts={mixCommentCounts}
+						hrefOf={mixPath}
 						minHeight={Math.max(560, stemBoxHeight)}
 						canEdit={data.canEdit}
-						canComment={data.canComment}
-						me={data.user ? { id: data.user.id } : null}
-						{isAdmin}
 						jobs={mixJobs}
-						card={commentCard}
 						onfiles={(files) => void uploadMixes(files)}
-						onrename={renameMixRow}
-						onnotes={saveMixNotes}
-						onremove={(m) => void removeMixRow(m)}
-						onshare={shareMixByEmail}
-						oncomment={(m, seconds) =>
-							openComment({ mixId: m.id, at: seconds === null ? "" : mixPos(seconds) })}
-						oneditcomment={(c) => editComment(c)}
-						oncontext={(m, seconds, x, y) =>
-							(stemMenuAt = { stem: null, mixId: m.id, seconds, x, y })}
 					/>
 				</div>
 			{:else if data.manifest.stems.length > 0}
@@ -3535,15 +3480,10 @@
 		id="song-share"
 		popover="auto"
 		bind:this={sharePanel}
-		ontoggle={(e) => {
-			if (e.newState === "closed") shareMix = null;
-		}}
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">
-				Share {#if shareMix}mix v{shareMix.version}{:else}by email{/if}
-			</h2>
+			<h2 class="heading-2 mb-0">Share by email</h2>
 			<button
 				class="button button-xs"
 				type="button"
@@ -3554,11 +3494,7 @@
 			</button>
 		</div>
 		<p class="mb-3 text-sm text-dim">
-			{#if shareMix}
-				Sends a link that opens this song on mix v{shareMix.version}{#if data.song.isPrivate || data.song.project.isPrivate},
-					as a viewing link made for the recipient (it appears below and can be revoked){/if}. Links
-				made below while this is open land on the mix too.
-			{:else if data.song.isPrivate || data.song.project.isPrivate}
+			{#if data.song.isPrivate || data.song.project.isPrivate}
 				Sends a viewing link to this song, made for the recipient (it appears below and can be
 				revoked). With it they can listen, read the chart and download the mixes.
 			{:else}
@@ -3566,23 +3502,6 @@
 				mixes.
 			{/if}
 		</p>
-		{#if shareMix && !(data.song.isPrivate || data.song.project.isPrivate)}
-			<!-- A public song: the mix's own address is enough to pass around. -->
-			<div class="mb-3 flex flex-wrap items-center gap-3 text-sm">
-				<code class="min-w-0 truncate font-mono text-12px opacity-80"
-					>{page.url.origin}{page.url.pathname}?view=mixes&mix={shareMix.id}</code
-				>
-				<button
-					type="button"
-					class="link-dim text-12px"
-					onclick={() =>
-						navigator.clipboard
-							.writeText(`${page.url.origin}${page.url.pathname}?view=mixes&mix=${shareMix?.id}`)
-							.then(() => notify("Link copied"))
-							.catch(() => notify("Could not copy the link", { kind: "error" }))}>Copy link</button
-				>
-			</div>
-		{/if}
 		<form class="grid gap-3" onsubmit={sendShare}>
 			<label class="block">
 				<span class="text-sm text-dim">To</span>
@@ -3599,7 +3518,7 @@
 		</form>
 		<div class="mt-6 border-t border-white/15 pt-4">
 			<ShareLinks
-				target={{ songId: data.song.id, mixId: shareMix?.id }}
+				target={{ songId: data.song.id }}
 				links={data.shareLinks}
 				isPrivate={data.song.isPrivate || data.song.project.isPrivate}
 			/>
@@ -3616,10 +3535,7 @@
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">
-				{commentDraft.id ? "Edit comment" : "Add a comment"}{#if commentDraft.mixId}
-					on mix v{mixVersion(commentDraft.mixId)}{/if}
-			</h2>
+			<h2 class="heading-2 mb-0">{commentDraft.id ? "Edit comment" : "Add a comment"}</h2>
 			<button
 				class="button button-xs"
 				type="button"
@@ -3671,21 +3587,15 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={commentDraft.mixId ? "1:23.4" : POSITION_PLACEHOLDER[mode]}
+							placeholder={POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
 						<button
 							class="button button-xs shrink-0"
 							type="button"
-							disabled={commentDraft.mixId
-								? !mixPanel
-								: !playerEngine || playerEngine.status !== "ready"}
-							onclick={() =>
-								remoteForm.fields.position.set(
-									commentDraft.mixId
-										? mixPos(mixPanel?.currentPosition() ?? 0)
-										: editPos(playerEngine?.position ?? 0),
-								)}>Playhead</button
+							disabled={!playerEngine || playerEngine.status !== "ready"}
+							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+							>Playhead</button
 						>
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
@@ -3712,7 +3622,6 @@
 				})}
 			>
 				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
-				<input {...remoteForm.fields.mixId.as("hidden", commentDraft.mixId ?? "")} />
 				<label class="block">
 					<span class="text-sm opacity-80">Title</span>
 					<input
@@ -3741,21 +3650,15 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={commentDraft.mixId ? "1:23.4" : POSITION_PLACEHOLDER[mode]}
+							placeholder={POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
 						<button
 							class="button button-xs shrink-0"
 							type="button"
-							disabled={commentDraft.mixId
-								? !mixPanel
-								: !playerEngine || playerEngine.status !== "ready"}
-							onclick={() =>
-								remoteForm.fields.position.set(
-									commentDraft.mixId
-										? mixPos(mixPanel?.currentPosition() ?? 0)
-										: editPos(playerEngine?.position ?? 0),
-								)}>Playhead</button
+							disabled={!playerEngine || playerEngine.status !== "ready"}
+							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+							>Playhead</button
 						>
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
@@ -3788,23 +3691,21 @@
 			type="button"
 			role="menuitem"
 			onclick={() => {
-				if (stemMenuAt?.mixId) mixPanel?.seekTo(stemMenuAt.seconds);
-				else playerEngine?.seek(stemMenuAt?.seconds ?? 0);
+				playerEngine?.seek(stemMenuAt?.seconds ?? 0);
 				stemMenuAt = null;
 			}}
 		>
 			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
 		</button>
-		{#if data.canEdit || (stemMenuAt.mixId && data.canComment)}
+		{#if data.canEdit}
 			<button
 				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 				type="button"
 				role="menuitem"
 				onclick={() => {
-					const mixId = stemMenuAt?.mixId ?? null;
-					const at = mixId ? mixPos(stemMenuAt?.seconds ?? 0) : editPos(stemMenuAt?.seconds ?? 0);
+					const at = editPos(stemMenuAt?.seconds ?? 0);
 					stemMenuAt = null;
-					openComment({ at, mixId });
+					openComment({ at });
 				}}
 			>
 				<span class="i-ph-chat-circle-dots mr-2" aria-hidden="true"></span>Comment here
@@ -3814,7 +3715,7 @@
 {/if}
 
 {#snippet commentCard(id: string)}
-	{@const c = data.comments.find((x) => x.id === id) ?? data.mixComments.find((x) => x.id === id)}
+	{@const c = data.comments.find((x) => x.id === id)}
 	{#if c}
 		{@const remove = deleteComment.for(`timeline:${c.id}`)}
 		<div class="flex items-baseline justify-between gap-3">
@@ -3831,11 +3732,7 @@
 		<p class="mt-2 whitespace-pre-line">{c.body}</p>
 		<div class="mt-3 flex gap-3 text-12px">
 			{#if c.at !== null}
-				<button
-					type="button"
-					class="link-dim"
-					onclick={() =>
-						"mixId" in c ? mixPanel?.seekTo(c.at ?? 0) : playerEngine?.seek(c.at ?? 0)}
+				<button type="button" class="link-dim" onclick={() => playerEngine?.seek(c.at ?? 0)}
 					>Go to</button
 				>
 			{/if}
