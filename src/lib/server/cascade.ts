@@ -60,12 +60,13 @@ const {
 	userDoc,
 	userDocVersion,
 	songFile,
+	songMix,
 	songNotation,
 	songUserNote,
 } = schema;
 
 /** The revisions of every comment matching `where` (comment_version hangs off the comment, not the song). */
-async function deleteCommentRows(where: SQL): Promise<void> {
+export async function deleteCommentRows(where: SQL): Promise<void> {
 	const comments = await db.select({ id: comment.id }).from(comment).where(where);
 	if (comments.length > 0)
 		await db.delete(commentVersion).where(
@@ -86,6 +87,7 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await deleteCommentRows(inArray(comment.songId, songIds));
 	await db.delete(chatMessage).where(inArray(chatMessage.songId, songIds));
 	await db.delete(chatRead).where(inArray(chatRead.songId, songIds));
+	await db.delete(songMix).where(inArray(songMix.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
@@ -184,6 +186,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await deleteCommentRows(eq(comment.accountId, accountId));
 	await db.delete(chatMessage).where(eq(chatMessage.accountId, accountId));
+	await db.delete(songMix).where(eq(songMix.accountId, accountId));
 	await db.delete(songFile).where(eq(songFile.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
@@ -228,6 +231,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	// Their private notes' revisions go with the notes; the shared documents' keep the text and lose the author.
 	await db.delete(songDocVersion).where(eq(songDocVersion.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
+	await db.update(songMix).set({ uploadedBy: null }).where(eq(songMix.uploadedBy, userId));
 	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
 	await db
 		.update(songNotation)

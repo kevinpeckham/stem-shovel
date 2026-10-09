@@ -180,6 +180,55 @@ export async function uploadDemoFile(
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
+export interface MixReservation {
+	mixId: string;
+	version: number;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/**
+ * A mix of the song (docs/mixes.md): reserve, send the bytes to Blob, decode
+ * the file for its length and waveform peaks (nulls when the browser cannot
+ * decode it: the panel draws from the MP3 then), report it all.
+ */
+export async function uploadMixFile(
+	file: File,
+	reserve: () => Promise<MixReservation>,
+	opts: { ctx: AudioContext; onProgress?: (percent: number) => void; onDecoding?: () => void },
+): Promise<{ mixId: string; version: number }> {
+	const { mixId, version, pathname, access = "public" } = await reserve();
+	const contentType = demoContentType(file.name) ?? undefined;
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
+	});
+	opts.onDecoding?.();
+	let decoded: { durationSeconds: number | null; peaks: number[] | null } = {
+		durationSeconds: null,
+		peaks: null,
+	};
+	try {
+		const buffer = await opts.ctx.decodeAudioData(await file.arrayBuffer());
+		decoded = {
+			durationSeconds: buffer.duration,
+			peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
+		};
+	} catch {
+		// An encoding the browser does not decode (ALAC in .m4a, say): the server's MP3 serves the waveform later.
+	}
+	const ready = await fetch(`/api/mixes/${mixId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url, ...decoded }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+	return { mixId, version };
+}
+
 export interface RecordingReservation {
 	recordingId: string;
 	takeNumber: number;

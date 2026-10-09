@@ -4,6 +4,7 @@ import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { project } from "./project";
 import { song } from "./song";
+import { songMix } from "./songMix";
 import { user } from "./user";
 
 /**
@@ -22,6 +23,8 @@ export const shareLink = table(
 			.references(() => account.id, { onDelete: "cascade" }),
 		projectId: t.text("project_id").references(() => project.id, { onDelete: "cascade" }),
 		songId: t.text("song_id").references(() => song.id, { onDelete: "cascade" }),
+		/** A link made for a mix (docs/mixes.md): the song page opens on it. */
+		mixId: t.text("mix_id").references(() => songMix.id, { onDelete: "set null" }),
 		code: t.text("code").notNull().unique(),
 		note: t.text("note").notNull().default(""),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),

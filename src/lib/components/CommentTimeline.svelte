@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { combinePeaks } from "#lib/audio/peaks.js";
 	import Waveform from "#lib/components/Waveform.svelte";
 	import type { Snippet } from "svelte";
@@ -20,8 +19,17 @@
 		at: number;
 	}
 
+	/** What the row needs of a player: the stem engine, or a mix's player (docs/mixes.md) with its one set of peaks and no stems. */
+	export interface TimelineSource {
+		duration: number;
+		position: number;
+		mixPeaks: number[];
+		stems: { peaks: number[]; duration: number }[];
+		seek: (seconds: number) => void;
+	}
+
 	interface Props {
-		engine: StemEngine;
+		engine: TimelineSource;
 		comments: LocatedComment[];
 		card: Snippet<[string]>;
 		/** A member: the row explains how to add a comment when it has none. */

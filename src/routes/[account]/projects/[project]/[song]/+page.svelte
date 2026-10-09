@@ -26,8 +26,11 @@
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
+	import { removeMix, renameMix, setMixNotes } from "#lib/remote/mixes.remote.js";
+	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
+	import MixPanel, { type MixComment, type PanelMix } from "#lib/components/MixPanel.svelte";
 	import SongFilesPanel from "#lib/components/SongFilesPanel.svelte";
 	import SongNotationPanel from "#lib/components/SongNotationPanel.svelte";
 	import DocHistoryPanel from "#lib/components/DocHistoryPanel.svelte";
@@ -81,6 +84,7 @@
 		saveAs,
 		uploadDemoFile,
 		uploadMidiFile,
+		uploadMixFile,
 		uploadStemFile,
 	} from "#lib/upload.js";
 	import {
@@ -302,6 +306,130 @@
 	}
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
+	// The mixes view (docs/mixes.md): the song's mixes, the chosen one from ?mix= (a notification's or a share's link).
+	let readyMixes = $derived(data.song.mixes.filter((m) => m.status === "ready" && m.url));
+	let mixPanel = $state<MixPanel | null>(null);
+	let selectedMixId = $state<string | null>(null);
+	let mixJobs = $state<{ name: string; percent: number; error?: string; decoding?: boolean }[]>([]);
+	let mixBusy = $state(false);
+	let mixCtx: AudioContext | null = null;
+	/** Mixes picked in the panel or the Uploads menu: checked, uploaded one at a time (decoded here for the waveform), then the page refreshes on the newest. */
+	async function uploadMixes(picked: File[]) {
+		if (picked.length === 0 || mixBusy) return;
+		const unsupported = picked.filter((f) => !demoContentType(f.name));
+		const tooBig = picked.filter((f) => f.size > STEM_MAX_BYTES);
+		const room = Math.max(0, MAX_MIXES_PER_SONG - data.song.mixes.length);
+		if (unsupported.length) {
+			notify(
+				`Not a supported format (${MIX_FORMAT_LIST}): ${unsupported.map((f) => f.name).join(", ")}`,
+				{ kind: "error" },
+			);
+			return;
+		}
+		if (tooBig.length) {
+			notify(
+				`Over the ${formatBytes(STEM_MAX_BYTES)} limit: ${tooBig.map((f) => f.name).join(", ")}`,
+				{ kind: "error" },
+			);
+			return;
+		}
+		if (picked.length > room) {
+			notify(
+				`Only ${room} more ${room === 1 ? "mix" : "mixes"} fit on this song (${MAX_MIXES_PER_SONG} max).`,
+				{ kind: "error" },
+			);
+			return;
+		}
+		mixBusy = true;
+		mixJobs = picked.map((f) => ({ name: f.name, percent: 0 }));
+		mixCtx ??= new AudioContext();
+		let last: string | null = null;
+		for (const [i, file] of picked.entries()) {
+			try {
+				const { mixId } = await uploadMixFile(
+					file,
+					() =>
+						postJson<{
+							mixId: string;
+							version: number;
+							pathname: string;
+							access?: "public" | "private";
+						}>("/api/mixes", { songId: data.song.id, filename: file.name, sizeBytes: file.size }),
+					{
+						ctx: mixCtx,
+						onProgress: (percent) => (mixJobs[i].percent = percent),
+						onDecoding: () => (mixJobs[i].decoding = true),
+					},
+				);
+				last = mixId;
+			} catch (e) {
+				mixJobs[i].error = errorMessage(e);
+			}
+		}
+		await refreshAll();
+		if (last) {
+			selectedMixId = last;
+			notify(picked.length === 1 ? "Mix uploaded" : `${picked.length} mixes uploaded`);
+		}
+		mixBusy = false;
+		if (mixJobs.every((j) => !j.error)) mixJobs = [];
+	}
+	/** The Uploads menu's Upload Mix: the player on the mixes, then the picker. */
+	async function pickMix() {
+		if (playerMode === "minimised") togglePlayer();
+		showView("mixes");
+		await tick();
+		mixPanel?.pick();
+	}
+	async function removeMixRow(m: PanelMix) {
+		if (!confirm(`Remove mix v${m.version} "${m.label}"? Its comments and file are deleted.`))
+			return;
+		try {
+			await removeMix({ id: m.id });
+			notify(`Mix v${m.version} removed`);
+			await refreshAll();
+		} catch (e) {
+			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function renameMixRow(m: PanelMix) {
+		const label = prompt("Name this mix", m.label)?.trim();
+		if (!label || label === m.label) return;
+		try {
+			await renameMix({ id: m.id, label });
+			await refreshAll();
+		} catch (e) {
+			notify(`Could not rename it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	async function saveMixNotes(m: PanelMix, notes: string) {
+		try {
+			await setMixNotes({ id: m.id, notes });
+			notify("Notes saved");
+			await refreshAll();
+		} catch (e) {
+			notify(`Could not save the notes: ${errorMessage(e)}`, { kind: "error" });
+			throw e;
+		}
+	}
+	/** The share popover aimed at a mix (docs/mixes.md): the email and its link land on it. */
+	let shareMix = $state<PanelMix | null>(null);
+	function shareMixByEmail(m: PanelMix) {
+		shareMix = m;
+		sharePanel?.showPopover();
+	}
+	const mixVersion = (id: string | null) => data.song.mixes.find((m) => m.id === id)?.version;
+	/** A link to a mix (?view=mixes&mix=<id>, kept through the permalink and share redirects): the player opens on it; the query goes, the share code stays. */
+	function openMixFromUrl() {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get("view") !== "mixes") return;
+		const id = url.searchParams.get("mix");
+		chosenView = "mixes";
+		if (id && data.song.mixes.some((m) => m.id === id)) selectedMixId = id;
+		url.searchParams.delete("view");
+		url.searchParams.delete("mix");
+		replaceState(url, {});
+	}
 	// The demos view: the player's box shows either the stems or the demos.
 	// Until the visitor picks, a song with stems opens on them and a song with
 	// demos only on those; the visitor's pick sticks for the visit.
@@ -319,15 +447,26 @@
 	}
 	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
 	let stemBoxHeight = $state(0);
-	let chosenView = $state<"stems" | "demos" | null>(null);
-	let playerView = $derived(
-		chosenView ?? (data.manifest.stems.length === 0 && readyDemos.length > 0 ? "demos" : "stems"),
+	type PlayerView = "stems" | "demos" | "mixes";
+	let chosenView = $state<PlayerView | null>(null);
+	// Until the visitor picks: the stems, else the mixes, else the demos.
+	let playerView = $derived<PlayerView>(
+		chosenView ??
+			(data.manifest.stems.length > 0
+				? "stems"
+				: readyMixes.length > 0
+					? "mixes"
+					: readyDemos.length > 0
+						? "demos"
+						: "stems"),
 	);
-	const PLAYER_VIEWS = ["stems", "demos"] as const;
-	function showView(view: "stems" | "demos") {
+	const PLAYER_VIEWS: PlayerView[] = ["stems", "demos", "mixes"];
+	/** One thing plays at a time: switching views pauses the others. */
+	function showView(view: PlayerView) {
 		chosenView = view;
-		if (view === "stems") demoPanel?.pause();
-		else playerEngine?.pause();
+		if (view !== "stems") playerEngine?.pause();
+		if (view !== "demos") demoPanel?.pause();
+		if (view !== "mixes") mixPanel?.pause();
 	}
 
 	// Chart / Lyrics / Notes toggle for the read view. Starts on the first with content.
@@ -360,6 +499,7 @@
 		chatMessages = data.chat?.messages ?? [];
 		chatReadAt = data.chat?.readAt ?? null;
 		openChatFromUrl();
+		openMixFromUrl();
 	});
 	let chatUnread = $derived(
 		data.chat ? unreadCount(chatMessages, chatReadAt, data.user?.id ?? null) : 0,
@@ -526,15 +666,16 @@
 			.sort((a, b) => a.at - b.at),
 	);
 	let commentPanel = $state<HTMLDivElement | null>(null);
-	let commentDraft = $state<{ id: string | null; title: string; body: string; at: string }>({
-		id: null,
-		title: "",
-		body: "",
-		at: "",
-	});
+	let commentDraft = $state<{
+		id: string | null;
+		mixId: string | null;
+		title: string;
+		body: string;
+		at: string;
+	}>({ id: null, mixId: null, title: "", body: "", at: "" });
 	let commentError = $state<string | null>(null);
 	function openComment(draft: Partial<typeof commentDraft> = {}) {
-		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
+		commentDraft = { id: null, mixId: null, title: "", body: "", at: "", ...draft };
 		commentError = null;
 		// The form fields keep what was last typed; push the draft into them explicitly.
 		const f = commentDraft.id ? updateComment.fields : createComment.fields;
@@ -543,14 +684,22 @@
 		f.position.set(commentDraft.at);
 		commentPanel?.showPopover();
 	}
-	function editComment(c: (typeof data.comments)[number]) {
-		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : editPos(c.at) });
+	function editComment(c: (typeof data.comments)[number] | MixComment) {
+		openComment({
+			id: c.id,
+			mixId: "mixId" in c ? c.mixId : null,
+			title: c.title,
+			body: c.body,
+			at: c.at === null ? "" : editPos(c.at),
+		});
 	}
 
 	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
 	/** The ⌘-click menu: from a stem's waveform or piano roll, or (stem null) from the Comments row's mix waveform. */
 	let stemMenuAt = $state<{
 		stem: StemState | null;
+		/** From a mix's waveform (docs/mixes.md): the comment is the mix's, and Seek here seeks the mix. */
+		mixId?: string;
 		seconds: number;
 		x: number;
 		y: number;
@@ -1249,11 +1398,13 @@
 		try {
 			const { sent } = await shareSong({
 				songId: data.song.id,
+				mixId: shareMix?.id ?? "",
 				to: shareTo,
 				message: shareMessage,
 			});
 			shareTo = "";
 			shareMessage = "";
+			shareMix = null;
 			notify(`Sent to ${sent}`);
 			sharePanel?.hidePopover();
 		} catch (err) {
@@ -2369,7 +2520,9 @@
 							onclick={() => showView(view)}
 							>{view === "stems"
 								? `Stems (${data.manifest.stems.length})`
-								: `Demos (${readyDemos.length})`}</button
+								: view === "demos"
+									? `Demos (${readyDemos.length})`
+									: `Mixes (${readyMixes.length})`}</button
 						>
 					{/each}
 				</div>
@@ -2409,6 +2562,34 @@
 						minHeight={Math.max(560, stemBoxHeight)}
 						canEdit={data.canEdit}
 						onremove={removeDemo}
+					/>
+				</div>
+			{:else if playerView === "mixes"}
+				<!-- The mixes (docs/mixes.md): the song's bounces for feedback, with their own comments. -->
+				<div>
+					<MixPanel
+						bind:this={mixPanel}
+						bind:selectedId={selectedMixId}
+						mixes={readyMixes}
+						comments={data.mixComments}
+						minHeight={Math.max(560, stemBoxHeight)}
+						canEdit={data.canEdit}
+						canComment={data.canComment}
+						me={data.user ? { id: data.user.id } : null}
+						{isAdmin}
+						jobs={mixJobs}
+						{showPos}
+						card={commentCard}
+						onfiles={(files) => void uploadMixes(files)}
+						onrename={(m) => void renameMixRow(m)}
+						onnotes={saveMixNotes}
+						onremove={(m) => void removeMixRow(m)}
+						onshare={shareMixByEmail}
+						oncomment={(m, seconds) =>
+							openComment({ mixId: m.id, at: seconds === null ? "" : editPos(seconds) })}
+						oneditcomment={(c) => editComment(c)}
+						oncontext={(m, seconds, x, y) =>
+							(stemMenuAt = { stem: null, mixId: m.id, seconds, x, y })}
 					/>
 				</div>
 			{:else if data.manifest.stems.length > 0}
@@ -3065,6 +3246,18 @@
 						/>
 					</label>
 					<button
+						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 {mixBusy
+							? 'opacity-50 pointer-events-none'
+							: ''}"
+						type="button"
+						role="menuitem"
+						title="A bounce for the band to hear and comment on ({MIX_FORMAT_LIST})"
+						onclick={() => void pickMix()}
+					>
+						<span class="i-ph-waveform mr-2" aria-hidden="true"></span>
+						{mixBusy ? "Uploading…" : "Upload Mix"}
+					</button>
+					<button
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						type="button"
 						role="menuitem"
@@ -3345,7 +3538,9 @@
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">Share by email</h2>
+			<h2 class="heading-2 mb-0">
+				Share {#if shareMix}mix v{shareMix.version}{:else}by email{/if}
+			</h2>
 			<button
 				class="button button-xs"
 				type="button"
@@ -3397,7 +3592,10 @@
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">{commentDraft.id ? "Edit comment" : "Add a comment"}</h2>
+			<h2 class="heading-2 mb-0">
+				{commentDraft.id ? "Edit comment" : "Add a comment"}{#if commentDraft.mixId}
+					on mix v{mixVersion(commentDraft.mixId)}{/if}
+			</h2>
 			<button
 				class="button button-xs"
 				type="button"
@@ -3484,6 +3682,7 @@
 				})}
 			>
 				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
+				<input {...remoteForm.fields.mixId.as("hidden", commentDraft.mixId ?? "")} />
 				<label class="block">
 					<span class="text-sm opacity-80">Title</span>
 					<input
@@ -3553,21 +3752,23 @@
 			type="button"
 			role="menuitem"
 			onclick={() => {
-				playerEngine?.seek(stemMenuAt?.seconds ?? 0);
+				if (stemMenuAt?.mixId) mixPanel?.seekTo(stemMenuAt.seconds);
+				else playerEngine?.seek(stemMenuAt?.seconds ?? 0);
 				stemMenuAt = null;
 			}}
 		>
 			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
 		</button>
-		{#if data.canEdit}
+		{#if data.canEdit || (stemMenuAt.mixId && data.canComment)}
 			<button
 				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 				type="button"
 				role="menuitem"
 				onclick={() => {
 					const at = editPos(stemMenuAt?.seconds ?? 0);
+					const mixId = stemMenuAt?.mixId ?? null;
 					stemMenuAt = null;
-					openComment({ at });
+					openComment({ at, mixId });
 				}}
 			>
 				<span class="i-ph-chat-circle-dots mr-2" aria-hidden="true"></span>Comment here
@@ -3577,7 +3778,7 @@
 {/if}
 
 {#snippet commentCard(id: string)}
-	{@const c = data.comments.find((x) => x.id === id)}
+	{@const c = data.comments.find((x) => x.id === id) ?? data.mixComments.find((x) => x.id === id)}
 	{#if c}
 		{@const remove = deleteComment.for(`timeline:${c.id}`)}
 		<div class="flex items-baseline justify-between gap-3">
@@ -3594,7 +3795,11 @@
 		<p class="mt-2 whitespace-pre-line">{c.body}</p>
 		<div class="mt-3 flex gap-3 text-12px">
 			{#if c.at !== null}
-				<button type="button" class="link-dim" onclick={() => playerEngine?.seek(c.at ?? 0)}
+				<button
+					type="button"
+					class="link-dim"
+					onclick={() =>
+						"mixId" in c ? mixPanel?.seekTo(c.at ?? 0) : playerEngine?.seek(c.at ?? 0)}
 					>Go to</button
 				>
 			{/if}

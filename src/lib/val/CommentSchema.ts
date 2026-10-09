@@ -21,6 +21,8 @@ const BodySchema = v.pipe(
 /** Form boundary for posting a comment on a song. */
 export const CommentCreateSchema = v.object({
 	songId: NanoIdSchema,
+	/** Feedback on a mix of the song (docs/mixes.md): the mix's id; empty for the song's own stream. */
+	mixId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 	title: TitleSchema,
 	body: BodySchema,
 	position: PositionSchema,

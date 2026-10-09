@@ -28,6 +28,7 @@ const {
 	project,
 	song,
 	demo,
+	songMix,
 	account,
 	user: userTable,
 } = schema;
@@ -238,21 +239,53 @@ export async function notifyChat(accountId: string, songId: string, authorId: st
 	});
 }
 
-export async function notifyComment(accountId: string, songId: string, authorId: string) {
+/** A comment on the song, or (with `mix`) feedback on one of its mixes (docs/mixes.md): the item names the mix and lands on it. */
+export async function notifyComment(
+	accountId: string,
+	songId: string,
+	authorId: string,
+	mix?: { id: string; version: number; label: string },
+) {
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(authorId);
 	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== authorId);
+	const on = mix ? `mix v${mix.version} of ${s.title}` : s.title;
 	await notifyUsers(audience, {
 		kind: "comment",
 		accountId,
-		title: `New comment on ${s.title}`,
+		title: `New comment on ${on}`,
 		body: (n) =>
 			n === 1
 				? `${who} commented in ${s.project.name}.`
 				: `${n} new comments, the latest from ${who}, in ${s.project.name}.`,
-		href: s.href,
-		subjectId: songId,
+		href: mix ? `${s.href}?view=mixes&mix=${mix.id}` : s.href,
+		subjectId: mix ? `${songId}:mix:${mix.id}` : songId,
+		coalesce: true,
+	});
+}
+
+/** A mix uploaded to a song (docs/mixes.md): everyone on the project but the uploader; the item lands on the mix. */
+export async function notifyMix(accountId: string, mixId: string, uploaderId: string) {
+	const m = await db.query.songMix.findFirst({
+		where: and(eq(songMix.accountId, accountId), eq(songMix.id, mixId)),
+		columns: { songId: true, label: true, version: true },
+	});
+	if (!m) return;
+	const s = await songContext(accountId, m.songId);
+	if (!s) return;
+	const who = await nameOf(uploaderId);
+	const audience = (await projectAudience(accountId, s.projectId)).filter(
+		(id) => id !== uploaderId,
+	);
+	await notifyUsers(audience, {
+		kind: "mix",
+		accountId,
+		title: `New mix of ${s.title}`,
+		body: (n) =>
+			`${who} uploaded ${n === 1 ? `mix v${m.version} "${m.label}"` : `${n} mixes`} in ${s.project.name}.`,
+		href: `${s.href}?view=mixes&mix=${mixId}`,
+		subjectId: m.songId,
 		coalesce: true,
 	});
 }

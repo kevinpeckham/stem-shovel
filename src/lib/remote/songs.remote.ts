@@ -31,6 +31,7 @@ import {
 	saveSongDoc,
 	saveUserNote,
 	setSongVersion as setVersion,
+	mixOwnership,
 	songForMix,
 	chartExamples,
 	getSongById,
@@ -243,7 +244,7 @@ export const removeStemMidi = form(IdSchema, async ({ id }) => {
 });
 
 /** Emails a song's link to someone (members only; a few per minute per user). */
-export const shareSong = command(ShareSongSchema, async ({ songId, to, message }) => {
+export const shareSong = command(ShareSongSchema, async ({ songId, mixId, to, message }) => {
 	const { locals } = getRequestEvent();
 	const user = requireUser(locals);
 	const { accountId } = await memberOf(locals, accountOfSong, songId);
@@ -256,22 +257,26 @@ export const shareSong = command(ShareSongSchema, async ({ songId, to, message }
 	const song = await songForMix(songId);
 	const slugs = await songSlugs(accountId, songId);
 	if (!song || !slugs) error(404, "Song not found");
+	// Aimed at a mix (docs/mixes.md): the mix must be this song's; the page opens on it.
+	const mix = mixId ? await mixOwnership(mixId) : null;
+	if (mixId && mix?.songId !== songId) error(404, "Mix not found");
 	const { url } = getRequestEvent();
 	// A private song's address alone would be a wall for the recipient: the
 	// email carries a viewing link made for them (visible in the share popover).
-	const pageUrl = `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}`;
+	const pageUrl = `${url.origin}/${slugs.account}/projects/${slugs.project}/${slugs.song}${mix ? `?view=mixes&mix=${mix.id}` : ""}`;
 	const needsLink = song.isPrivate || song.project.isPrivate;
 	const link = needsLink
 		? await createShareLink(
 				accountId,
 				user.id,
-				{ songId },
+				{ songId, mixId: mix?.id },
 				{ note: `emailed to ${to}`, maxUses: null, expiresDays: 0 },
 			)
 		: null;
 	await sendShareEmail({
 		to,
 		url: link ? `${url.origin}/s/${link.code}` : pageUrl,
+		mix: mix ? { version: mix.version, label: mix.label } : null,
 		songTitle: song.title,
 		projectName: song.project.name,
 		senderName: user.name || user.email,

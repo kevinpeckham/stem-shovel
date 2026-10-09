@@ -139,6 +139,7 @@ const {
 	song,
 	stem,
 	demo,
+	songMix,
 	recording,
 	recordingStem,
 	idea,
@@ -243,6 +244,15 @@ export async function accountOfNotation(notationId: string) {
 	return row?.accountId ?? null;
 }
 
+/** The account a mix belongs to (docs/mixes.md), for `memberOf`. */
+export async function accountOfMix(mixId: string) {
+	const row = await db.query.songMix.findFirst({
+		where: eq(songMix.id, mixId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
 export async function accountOfDemo(demoId: string) {
 	const row = await db.query.demo.findFirst({
 		where: eq(demo.id, demoId),
@@ -339,6 +349,11 @@ export async function accountOfUploadPathname(pathname: string) {
 		columns: { accountId: true },
 	});
 	if (row) return row.accountId;
+	const mix = await db.query.songMix.findFirst({
+		where: eq(songMix.pathname, pathname),
+		columns: { accountId: true },
+	});
+	if (mix) return mix.accountId;
 	// A file attached to a song or a project (docs/uploads-and-blob.md, "Attachments"): either folder, the row knows.
 	const file = await db.query.songFile.findFirst({
 		where: eq(songFile.pathname, pathname),

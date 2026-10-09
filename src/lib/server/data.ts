@@ -12,6 +12,7 @@ import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
 import type { ImageKind } from "#lib/val/ImageSchema.js";
 import type { ProjectType } from "#lib/val/ProjectTypeSchema.js";
 import { FOUNDER_SEATS } from "#lib/constants/plans.js";
+import { MAX_MIXES_PER_SONG } from "#lib/constants/mixFormats.js";
 import type { StemManifest } from "#lib/audio/types.js";
 import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
@@ -27,6 +28,7 @@ import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
+	songMixPathname,
 	filePathname,
 	projectFilePathname,
 	notationPathname,
@@ -44,6 +46,7 @@ import {
 	deleteArtistRows,
 	deleteBugReportRows,
 	deleteIdeaRows,
+	deleteCommentRows,
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
@@ -161,6 +164,7 @@ const {
 	chatRead,
 	comment,
 	commentVersion,
+	songMix,
 	bugReport,
 	bugReportVote,
 	artist,
@@ -259,6 +263,10 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${demo.sizeBytes})` })
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), ne(demo.status, "failed")));
+	const [songMixes] = await db
+		.select({ bytes: sql<number | null>`sum(${songMix.sizeBytes})` })
+		.from(songMix)
+		.where(and(eq(songMix.accountId, accountId), ne(songMix.status, "failed")));
 	const [takes] = await db
 		.select({ bytes: sql<number | null>`sum(${recording.sizeBytes})` })
 		.from(recording)
@@ -291,6 +299,7 @@ export async function accountStorageBytes(accountId: string) {
 	return (
 		(stems.bytes ?? 0) +
 		(demos.bytes ?? 0) +
+		(songMixes.bytes ?? 0) +
 		(takes.bytes ?? 0) +
 		(takeStems.bytes ?? 0) +
 		(studioSources.bytes ?? 0) +
@@ -366,6 +375,10 @@ export async function accountUsage(accountId: string) {
 		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${demo.sizeBytes})` })
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.status, "ready")));
+	const [songMixes] = await db
+		.select({ n: sql<number>`count(*)`, bytes: sql<number | null>`sum(${songMix.sizeBytes})` })
+		.from(songMix)
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.status, "ready")));
 	const row = await db.query.account.findFirst({
 		where: eq(account.id, accountId),
 		with: { members: { with: { user: { columns: { name: true, email: true } } } } },
@@ -377,11 +390,13 @@ export async function accountUsage(accountId: string) {
 		stems: stems.n,
 		recordings: recordings.n,
 		demos: demos.n,
-		/** Stems, demos, takes and Studio sources that are ready; renditions and mixes are not counted. */
+		mixes: songMixes.n,
+		/** Stems, demos, mixes (docs/mixes.md), takes and Studio sources that are ready; renditions and the stems' bounce are not counted. */
 		bytes:
 			(stems.bytes ?? 0) +
 			((recordings.bytes ?? 0) + (takeStems.bytes ?? 0) + (studioSources.bytes ?? 0)) +
-			(demos.bytes ?? 0),
+			(demos.bytes ?? 0) +
+			(songMixes.bytes ?? 0),
 		/** null = unlimited (a founder account). */
 		storageLimitBytes: limits.storageBytes,
 		memberLimit: limits.members,
@@ -662,6 +677,10 @@ export async function getSong(accountId: string, projectSlug: string, songSlug: 
 		with: {
 			stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] },
 			demos: { orderBy: [asc(demo.createdAt)] },
+			mixes: {
+				orderBy: [asc(songMix.version)],
+				with: { uploader: { columns: { name: true } } },
+			},
 			files: { orderBy: [asc(songFile.createdAt)] },
 			notation: { orderBy: [asc(songNotation.createdAt)] },
 			credits: {
@@ -978,6 +997,7 @@ export async function presentSongFiles<
 		mixUrl: string | null;
 		stems: { url: string; playbackUrl: string | null; midiUrl: string | null }[];
 		demos: { url: string; playbackUrl: string | null }[];
+		mixes: { url: string; playbackUrl: string | null }[];
 		files: { url: string; thumbnailUrl: string | null }[];
 		notation: { url: string; thumbnailUrl: string | null }[];
 	},
@@ -1014,6 +1034,13 @@ export async function presentSongFiles<
 				playbackUrl: await presentUrl(d.playbackUrl),
 			})),
 		),
+		mixes: await Promise.all(
+			s.mixes.map(async (m) => ({
+				...m,
+				url: (await presentUrl(m.url)) ?? m.url,
+				playbackUrl: await presentUrl(m.playbackUrl),
+			})),
+		),
 	};
 }
 
@@ -1030,6 +1057,10 @@ export async function deleteSong(accountId: string, songId: string) {
 		.select({ url: demo.url, playbackUrl: demo.playbackUrl })
 		.from(demo)
 		.where(and(eq(demo.accountId, accountId), eq(demo.songId, songId)));
+	const mixes = await db
+		.select({ url: songMix.url, playbackUrl: songMix.playbackUrl })
+		.from(songMix)
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.songId, songId)));
 	const files = await db
 		.select({ url: songFile.url, thumbnailUrl: songFile.thumbnailUrl })
 		.from(songFile)
@@ -1045,6 +1076,7 @@ export async function deleteSong(accountId: string, songId: string) {
 	await deleteBlobs([
 		...rows.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...mixes.flatMap((m) => [m.url, m.playbackUrl ?? ""]),
 		...files.flatMap((f) => [f.url, f.thumbnailUrl ?? ""]),
 		...notation.flatMap((n) => [n.url, n.thumbnailUrl ?? "", n.pdfUrl ?? ""]),
 		s?.mixUrl ?? "",
@@ -1374,17 +1406,40 @@ export interface CommentInput {
 	title: string;
 	body: string;
 	at: number | null;
+	/** Feedback on a mix (docs/mixes.md); empty or absent for the song's own stream. */
+	mixId?: string;
 }
 
 /** A song's comments, oldest first, with who wrote them. */
+/** The song's own comments (no mix), oldest first; a mix's are `listMixComments`. */
 export async function listComments(songId: string) {
 	const rows = await db.query.comment.findMany({
-		where: eq(comment.songId, songId),
+		where: and(eq(comment.songId, songId), isNull(comment.mixId)),
 		orderBy: [asc(comment.createdAt)],
 		with: { author: { columns: { id: true, name: true } } },
 	});
 	return rows.map((c) => ({
 		id: c.id,
+		userId: c.userId,
+		authorName: c.author.name,
+		title: c.title,
+		body: c.body,
+		at: c.at,
+		createdAt: c.createdAt,
+		editedAt: c.editedAt,
+	}));
+}
+
+/** Feedback on the song's mixes (docs/mixes.md): every comment with a mix, oldest first, the mix id on each. */
+export async function listMixComments(songId: string) {
+	const rows = await db.query.comment.findMany({
+		where: and(eq(comment.songId, songId), isNotNull(comment.mixId)),
+		orderBy: [asc(comment.createdAt)],
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return rows.map((c) => ({
+		id: c.id,
+		mixId: c.mixId as string,
 		userId: c.userId,
 		authorName: c.author.name,
 		title: c.title,
@@ -1408,7 +1463,15 @@ export async function createComment(
 	if (!s) return null;
 	const [row] = await db
 		.insert(comment)
-		.values({ accountId, songId, userId, title: input.title, body: input.body, at: input.at })
+		.values({
+			accountId,
+			songId,
+			userId,
+			mixId: input.mixId ?? null,
+			title: input.title,
+			body: input.body,
+			at: input.at,
+		})
 		.returning({ id: comment.id });
 	return row;
 }
@@ -1417,7 +1480,7 @@ export async function createComment(
 export async function commentOwnership(id: string) {
 	return db.query.comment.findFirst({
 		where: eq(comment.id, id),
-		columns: { id: true, accountId: true, userId: true, songId: true },
+		columns: { id: true, accountId: true, userId: true, songId: true, mixId: true },
 	});
 }
 
@@ -2738,7 +2801,7 @@ export async function setSongPrivacy(accountId: string, id: string, isPrivate: b
 export async function createShareLink(
 	accountId: string,
 	createdBy: string,
-	target: { songId?: string; projectId?: string },
+	target: { songId?: string; projectId?: string; mixId?: string },
 	opts: { note: string; maxUses: number | null; expiresDays: number },
 ) {
 	const [row] = await db
@@ -2747,6 +2810,7 @@ export async function createShareLink(
 			accountId,
 			songId: target.songId ?? null,
 			projectId: target.projectId ?? null,
+			mixId: target.mixId ?? null,
 			code: newCode(),
 			note: opts.note,
 			createdBy,
@@ -2825,10 +2889,11 @@ export async function permalinkTarget(kind: PermalinkKind, id: string): Promise<
 }
 
 /** The current page of the song or project a code was made for (`/s/<code>`), or null when no such code. */
+/** The page a share link opens: the song's or the project's current address; a link made for a mix (docs/mixes.md) carries `?view=mixes&mix=<id>`. */
 export async function shareLinkTarget(code: string): Promise<string | null> {
 	const link = await db.query.shareLink.findFirst({
 		where: eq(shareLink.code, code),
-		columns: { songId: true, projectId: true },
+		columns: { songId: true, projectId: true, mixId: true },
 	});
 	if (!link) return null;
 	if (link.songId) {
@@ -2839,7 +2904,9 @@ export async function shareLinkTarget(code: string): Promise<string | null> {
 				project: { columns: { slug: true }, with: { account: { columns: { slug: true } } } },
 			},
 		});
-		return s ? `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}` : null;
+		if (!s) return null;
+		const path = `/${s.project.account.slug}/projects/${s.project.slug}/${s.slug}`;
+		return link.mixId ? `${path}?view=mixes&mix=${link.mixId}` : path;
 	}
 	if (link.projectId) {
 		const p = await db.query.project.findFirst({
@@ -3053,9 +3120,16 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo" | "recording" | "recording-stem" | "file" | "notation",
+	kind: "stem" | "midi" | "demo" | "mix" | "recording" | "recording-stem" | "file" | "notation",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "mix") {
+		const r = await db.query.songMix.findFirst({
+			where: and(eq(songMix.accountId, accountId), eq(songMix.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "notation") {
 		const r = await db.query.songNotation.findFirst({
 			where: and(eq(songNotation.accountId, accountId), eq(songNotation.id, id)),
@@ -4060,6 +4134,173 @@ export async function finishDemoPlayback(
 
 export async function failDemoPlayback(demoId: string) {
 	await db.update(demo).set({ playbackStatus: "failed" }).where(eq(demo.id, demoId));
+}
+
+// ---- mixes (docs/mixes.md) ------------------------------------------------
+
+/** Step 1 of a mix upload: the row with the next version number, its pathname and the label from the filename; "full" at the ceiling. */
+export async function createMix(
+	accountId: string,
+	userId: string,
+	songId: string,
+	file: NewStemFile,
+) {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [{ n, top }] = await db
+		.select({ n: sql<number>`count(*)`, top: sql<number | null>`max(${songMix.version})` })
+		.from(songMix)
+		.where(eq(songMix.songId, songId));
+	if (n >= MAX_MIXES_PER_SONG) return "full" as const;
+	const id = nanoid();
+	const [row] = await db
+		.insert(songMix)
+		.values({
+			id,
+			accountId,
+			songId,
+			version: (top ?? 0) + 1,
+			label: labelFromFilename(file.filename),
+			url: "",
+			pathname: songMixPathname(accountId, songId, id, file.filename),
+			filename: file.filename,
+			contentType: file.contentType,
+			sizeBytes: file.sizeBytes,
+			uploadedBy: userId,
+		})
+		.returning();
+	return row;
+}
+
+export function findUploadingMix(accountId: string, pathname: string) {
+	return db.query.songMix.findFirst({
+		where: and(
+			eq(songMix.accountId, accountId),
+			eq(songMix.pathname, pathname),
+			eq(songMix.status, "uploading"),
+		),
+	});
+}
+
+/** Step 3: the browser reports the blob URL and what it decoded (null when it could not); the row becomes ready. */
+export async function markMixReady(
+	accountId: string,
+	mixId: string,
+	url: string,
+	decoded: { durationSeconds: number | null; peaks: number[] | null },
+) {
+	const [row] = await db
+		.update(songMix)
+		.set({ status: "ready", url, durationSeconds: decoded.durationSeconds, peaks: decoded.peaks })
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.id, mixId)))
+		.returning({ id: songMix.id, songId: songMix.songId, label: songMix.label });
+	return row ?? null;
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordMixUrl(pathname: string, url: string) {
+	await db
+		.update(songMix)
+		.set({ url, status: "ready" })
+		.where(and(eq(songMix.pathname, pathname), eq(songMix.status, "uploading")));
+}
+
+/** Who a mix belongs to, for the remote functions' checks. */
+export async function mixOwnership(id: string) {
+	return db.query.songMix.findFirst({
+		where: eq(songMix.id, id),
+		columns: { id: true, accountId: true, songId: true, version: true, label: true },
+	});
+}
+
+export async function renameMix(accountId: string, mixId: string, label: string) {
+	const [row] = await db
+		.update(songMix)
+		.set({ label })
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.id, mixId)))
+		.returning({ id: songMix.id, label: songMix.label });
+	return row ?? null;
+}
+
+/** The engineer's notes, markdown; the page renders them. */
+export async function setMixNotes(accountId: string, mixId: string, notes: string) {
+	const [row] = await db
+		.update(songMix)
+		.set({ notes })
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.id, mixId)))
+		.returning({ id: songMix.id, notes: songMix.notes });
+	return row ?? null;
+}
+
+/** The mix, its comments (with their revisions) and its blobs go. */
+export async function deleteMix(accountId: string, mixId: string) {
+	const [row] = await db
+		.delete(songMix)
+		.where(and(eq(songMix.accountId, accountId), eq(songMix.id, mixId)))
+		.returning({ url: songMix.url, playbackUrl: songMix.playbackUrl });
+	if (!row) return false;
+	await deleteCommentRows(eq(comment.mixId, mixId));
+	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
+	return true;
+}
+
+/** Which of a song's ready mixes still want an MP3 (the demos' rules). */
+export function mixesWantingPlayback(
+	mixes: {
+		id: string;
+		status: string;
+		url: string;
+		playbackStatus: PlaybackStatus | null;
+		playbackStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return stemsWantingPlayback(mixes, now);
+}
+
+export async function claimMixPlayback(mixId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(songMix)
+		.set({ playbackStatus: "pending", playbackStartedAt: now })
+		.where(
+			and(
+				eq(songMix.id, mixId),
+				eq(songMix.status, "ready"),
+				sql`(${songMix.playbackStatus} is null
+					or (${songMix.playbackStatus} = 'failed' and ${songMix.playbackStartedAt} < ${now.getTime() - PLAYBACK_RETRY_MS})
+					or (${songMix.playbackStatus} = 'pending' and ${songMix.playbackStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS}))`,
+			),
+		)
+		.returning({
+			id: songMix.id,
+			url: songMix.url,
+			pathname: songMix.pathname,
+			playbackUrl: songMix.playbackUrl,
+		});
+	return row ?? null;
+}
+
+export async function finishMixPlayback(
+	mixId: string,
+	r: { url: string; pathname: string; bytes: number },
+) {
+	await db
+		.update(songMix)
+		.set({
+			playbackStatus: "ready",
+			playbackUrl: r.url,
+			playbackPathname: r.pathname,
+			playbackBytes: r.bytes,
+		})
+		.where(eq(songMix.id, mixId));
+}
+
+export async function failMixPlayback(mixId: string) {
+	await db.update(songMix).set({ playbackStatus: "failed" }).where(eq(songMix.id, mixId));
 }
 
 // ---- scratch recordings (docs/demo-recording.md) ---------------------------

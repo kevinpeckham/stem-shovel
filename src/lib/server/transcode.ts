@@ -1,11 +1,14 @@
 import {
 	claimDemoPlayback,
+	claimMixPlayback,
 	claimPlayback,
 	claimRecordingPlayback,
 	failDemoPlayback,
+	failMixPlayback,
 	failPlayback,
 	failRecordingPlayback,
 	finishDemoPlayback,
+	finishMixPlayback,
 	finishPlayback,
 	finishRecordingPlayback,
 	replaceRecordingSource,
@@ -120,6 +123,11 @@ export async function renderDemos(demoIds: string[]): Promise<void> {
 	for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
 }
 
+/** Mixes (docs/mixes.md) get the same MP3. */
+export async function renderMixes(mixIds: string[]): Promise<void> {
+	for (const id of mixIds) await transcodeToMp3(id, MIX_TARGET);
+}
+
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export async function renderRecordings(recordingIds: string[]): Promise<void> {
 	for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
@@ -156,6 +164,11 @@ const DEMO_TARGET: Mp3Target = {
 	claim: claimDemoPlayback,
 	finish: finishDemoPlayback,
 	fail: failDemoPlayback,
+};
+const MIX_TARGET: Mp3Target = {
+	claim: claimMixPlayback,
+	finish: finishMixPlayback,
+	fail: failMixPlayback,
 };
 const RECORDING_TARGET: Mp3Target = {
 	claim: claimRecordingPlayback,

@@ -7,6 +7,7 @@ import {
 	commentOwnership,
 	createComment as create,
 	deleteComment as remove,
+	mixOwnership,
 	songGrid,
 	updateComment as update,
 } from "#lib/server/data.js";
@@ -31,16 +32,19 @@ async function resolvePosition(songId: string, text: string): Promise<number | n
 
 export const createComment = form(
 	CommentCreateSchema,
-	async ({ songId, title, body, position }, issue) => {
+	async ({ songId, mixId, title, body, position }, issue) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		// A viewer may comment: that is what the role is for.
 		const { accountId } = await memberOf(locals, accountOfSong, songId, { viewers: true });
+		// Feedback on a mix (docs/mixes.md): the mix must be this song's.
+		const mix = mixId ? await mixOwnership(mixId) : null;
+		if (mixId && mix?.songId !== songId) error(404, "Mix not found");
 		const at = await resolvePosition(songId, position);
 		if (at === "invalid") invalid(issue.position(POSITION_HELP));
-		const row = await create(accountId, songId, user.id, { title, body, at });
+		const row = await create(accountId, songId, user.id, { title, body, at, mixId: mixId || "" });
 		if (!row) error(404, "Song not found");
-		background(() => notifyComment(accountId, songId, user.id));
+		background(() => notifyComment(accountId, songId, user.id, mix ?? undefined));
 		return { id: row.id };
 	},
 );

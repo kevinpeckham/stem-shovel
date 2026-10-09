@@ -89,6 +89,16 @@ erDiagram
 - **chat_read** — when one person last looked at one song's chat
   (`user_id`, `song_id` primary key; `read_at`), for the tab's unread dot
   and the "New" line. Deleted with the song and the user.
+- **song_mix** — a mix of the song (docs/mixes.md): a bounce an engineer
+  sends the band for feedback, numbered within the song (`version`), with
+  a label, the engineer's `notes` (markdown), one audio file in Blob at
+  `accounts/<id>/songs/<id>/mixes/<mixId>.<ext>` with the demo's reserve →
+  upload → ready lifecycle and MP3 rendition, and `duration_seconds` and
+  `peaks` from the browser's decode at upload. Up to `MAX_MIXES_PER_SONG`.
+  Deleted with the song and the account (the blobs with the row);
+  `uploaded_by` is cleared with the user. A comment with `mix_id` is
+  feedback on that mix, kept out of the song's own stream; a share link
+  with `mix_id` opens the song on that mix.
 - **comment** — a member's comment on a song: title, plain text, an
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may

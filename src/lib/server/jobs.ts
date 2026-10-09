@@ -61,6 +61,8 @@ export const scheduleNotes = (songIds: string[]) => scheduleJob("notes", songIds
 export const schedulePlayback = (stemIds: string[]) => scheduleJob("stem-playback", stemIds);
 /** Demo recordings become MP3s. */
 export const scheduleDemoPlayback = (demoIds: string[]) => scheduleJob("demo-playback", demoIds);
+/** A mix's MP3 (docs/mixes.md). */
+export const scheduleMixPlayback = (mixIds: string[]) => scheduleJob("mix-playback", mixIds);
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export const scheduleRecordingPlayback = (recordingIds: string[]) =>
 	scheduleJob("recording-playback", recordingIds);

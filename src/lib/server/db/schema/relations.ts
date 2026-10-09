@@ -36,6 +36,7 @@ import { shortLink } from "./shortLink";
 import { song } from "./song";
 import { songDocVersion } from "./songDocVersion";
 import { songFile } from "./songFile";
+import { songMix } from "./songMix";
 import { songNotation } from "./songNotation";
 import { songUserNote } from "./songUserNote";
 import { userDoc } from "./userDoc";
@@ -138,6 +139,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	stems: many(stem),
 	demos: many(demo),
 	comments: many(comment),
+	mixes: many(songMix),
 	chatMessages: many(chatMessage),
 	shareLinks: many(shareLink),
 	docVersions: many(songDocVersion),
@@ -191,8 +193,15 @@ export const chatReadRelations = relations(chatRead, ({ one }) => ({
 	user: one(user, { fields: [chatRead.userId], references: [user.id] }),
 }));
 
+export const songMixRelations = relations(songMix, ({ one, many }) => ({
+	song: one(song, { fields: [songMix.songId], references: [song.id] }),
+	uploader: one(user, { fields: [songMix.uploadedBy], references: [user.id] }),
+	comments: many(comment),
+}));
+
 export const commentRelations = relations(comment, ({ one, many }) => ({
 	song: one(song, { fields: [comment.songId], references: [song.id] }),
+	mix: one(songMix, { fields: [comment.mixId], references: [songMix.id] }),
 	author: one(user, { fields: [comment.userId], references: [user.id] }),
 	versions: many(commentVersion),
 }));

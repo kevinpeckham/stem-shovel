@@ -53,7 +53,31 @@ describe("createComment", () => {
 			title: "Intro",
 			body: "Louder",
 			at: null,
+			mixId: "",
 		});
+	});
+	it("feedback on a mix (docs/mixes.md): the mix must be this song's, and the notice names it", async () => {
+		asViewerOf(ACCOUNT);
+		const MIX = fakeId("mix-one");
+		data.mixOwnership.mockResolvedValue({
+			id: MIX,
+			songId: fakeId("song-two"),
+			version: 2,
+			label: "x",
+		});
+		await expect(call(comments.createComment, { ...input, mixId: MIX })).rejects.toMatchObject(
+			httpError(404),
+		);
+		data.mixOwnership.mockResolvedValue({ id: MIX, songId: SONG, version: 2, label: "Rough" });
+		await expect(call(comments.createComment, { ...input, mixId: MIX })).resolves.toEqual({
+			id: COMMENT,
+		});
+		expect(data.createComment).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			SONG,
+			USER,
+			expect.objectContaining({ mixId: MIX }),
+		);
 	});
 	it("a project viewer from outside the account posts under the song's account", async () => {
 		asOutsider();

@@ -7,6 +7,7 @@ export const JOB_KINDS = [
 	"notes",
 	"stem-playback",
 	"demo-playback",
+	"mix-playback",
 	"recording-playback",
 	"notation-pdf",
 ] as const;

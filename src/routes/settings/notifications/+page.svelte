@@ -82,7 +82,7 @@
 						{...fields.emailDemos.as("checkbox")}
 						checked={data.prefs.emailDemos}
 					/>
-					<span>Someone adds a demo recording</span>
+					<span>Someone adds a demo recording or a mix</span>
 				</label>
 			</div>
 		</section>

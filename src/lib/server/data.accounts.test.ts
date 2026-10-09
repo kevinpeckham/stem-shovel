@@ -96,6 +96,7 @@ describe("accountStorageBytes", () => {
 				{ ...mine(1000), accountId: "a2" },
 			],
 			demo: [mine(10)],
+			songMix: [mine(20), mine(7, "failed")],
 			recording: [mine(100)],
 			recordingStem: [mine(1_000)],
 			studioSource: [mine(10_000)],
@@ -103,10 +104,11 @@ describe("accountStorageBytes", () => {
 			songFile: [mine(1_000_000)],
 			songNotation: [mine(10_000_000), mine(5, "failed")],
 		});
-		expect(await accountStorageBytes("a1")).toBe(11_111_113);
+		expect(await accountStorageBytes("a1")).toBe(11_111_133);
 		expect(fake.calls.filter((c) => c.op === "select").map((c) => c.table)).toEqual([
 			"stem",
 			"demo",
+			"song_mix",
 			"recording",
 			"recording_stem",
 			"studio_source",
@@ -188,6 +190,7 @@ describe("accountUsage", () => {
 			recordingStem: [ready(100)],
 			studioSource: [ready(1_000)],
 			demo: [ready(10_000), ready(10_000, "failed")],
+			songMix: [ready(100_000), ready(5, "uploading")],
 		});
 		expect(await accountUsage("a1")).toEqual({
 			projects: 2,
@@ -195,7 +198,8 @@ describe("accountUsage", () => {
 			stems: 2,
 			recordings: 1,
 			demos: 1,
-			bytes: 11_113,
+			mixes: 1,
+			bytes: 111_113,
 			storageLimitBytes: FREE.storageBytes,
 			memberLimit: FREE.members,
 			isFounder: false,
@@ -213,6 +217,7 @@ describe("accountUsage", () => {
 			stems: 0,
 			recordings: 0,
 			demos: 0,
+			mixes: 0,
 			bytes: 0,
 			storageLimitBytes: null,
 			memberLimit: null,

@@ -112,19 +112,29 @@ export async function sendShareEmail(opts: {
 	senderName: string;
 	senderEmail: string;
 	message: string;
+	/** A mix the share is aimed at (docs/mixes.md): the email says so and the link lands on it. */
+	mix?: { version: number; label: string } | null;
 }) {
+	const what = opts.mix
+		? `mix v${opts.mix.version} "${opts.mix.label}" of "${opts.songTitle}"`
+		: `"${opts.songTitle}"`;
 	const body = renderEmail({
 		greeting: "Hi,",
 		lines: [
-			`${opts.senderName} shared "${opts.songTitle}" (from ${opts.projectName}) with you on Stem Shovel.`,
+			`${opts.senderName} shared ${what} (from ${opts.projectName}) with you on Stem Shovel.`,
 			...(opts.message ? [opts.message] : []),
-			"Anyone with the link can listen to the stems, read the chart and lyrics, and download the mixes.",
+			opts.mix
+				? "Anyone with the link can listen to the mix and leave comments on it."
+				: "Anyone with the link can listen to the stems, read the chart and lyrics, and download the mixes.",
 		],
-		cta: { label: `Open ${opts.songTitle}`, url: opts.url },
+		cta: {
+			label: opts.mix ? `Listen to mix v${opts.mix.version}` : `Open ${opts.songTitle}`,
+			url: opts.url,
+		},
 	});
 	await sendEmail({
 		to: opts.to,
-		subject: `${opts.senderName} shared "${opts.songTitle}" with you`,
+		subject: `${opts.senderName} shared ${what} with you`,
 		from: from(`${headerSafe(opts.senderName)} via Stem Shovel`),
 		replyTo: opts.senderEmail,
 		...body,

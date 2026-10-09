@@ -188,6 +188,7 @@ describe("presentSongFiles", () => {
 				mixUrl: "https://b/mix.m4a",
 				stems: [{ url: "https://b/s.wav", playbackUrl: null, midiUrl: "https://b/s.mid" }],
 				demos: [{ url: "https://b/d.mp3", playbackUrl: "https://b/d.m4a" }],
+				mixes: [{ url: "https://b/m.wav", playbackUrl: null }],
 				files: [{ url: "https://b/f.pdf", thumbnailUrl: null }],
 				notation: [{ url: "https://b/n.xml", thumbnailUrl: "https://b/n.png" }],
 			}),
@@ -198,6 +199,7 @@ describe("presentSongFiles", () => {
 				{ url: "signed:https://b/s.wav", playbackUrl: null, midiUrl: "signed:https://b/s.mid" },
 			],
 			demos: [{ url: "signed:https://b/d.mp3", playbackUrl: "signed:https://b/d.m4a" }],
+			mixes: [{ url: "signed:https://b/m.wav", playbackUrl: null }],
 			files: [{ url: "signed:https://b/f.pdf", thumbnailUrl: null }],
 			notation: [{ url: "signed:https://b/n.xml", thumbnailUrl: "signed:https://b/n.png" }],
 		});
@@ -207,6 +209,7 @@ describe("presentSongFiles", () => {
 			mixUrl: null,
 			stems: [],
 			demos: [],
+			mixes: [],
 			files: [],
 			notation: [],
 		});

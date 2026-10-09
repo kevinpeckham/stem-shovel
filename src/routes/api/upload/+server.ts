@@ -8,6 +8,7 @@ import {
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
+	findUploadingMix,
 	findUploadingFile,
 	recordFileUrl,
 	findUploadingNotation,
@@ -19,6 +20,7 @@ import {
 	findUploadingDrumSample,
 	recordDrumSampleUrl,
 	recordDemoUrl,
+	recordMixUrl,
 	recordRecordingUrl,
 	recordStemMidiUrl,
 	recordStemUrl,
@@ -56,6 +58,8 @@ import type { RequestHandler } from "./$types";
  * Authorization is "whoever locals says you are" until real auth exists.
  */
 const isDemo = (pathname: string) => pathname.includes("/demos/");
+/** A mix of the song (docs/mixes.md): reserved by /api/mixes, a demo's rules. */
+const isMix = (pathname: string) => pathname.includes("/mixes/");
 const isMidi = (pathname: string) => pathname.includes("/midi/");
 
 /** The token for a Studio source (docs/multitrack-recorder.md): the song is the user's own idea; the reservation carries the type it was made for, the ceiling is a take's. */
@@ -155,10 +159,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					? await findStemByMidiPathname(accountId, pathname)
 					: isDemo(pathname)
 						? await findUploadingDemo(accountId, pathname)
-						: isRecordingPathname(pathname)
-							? ((await findUploadingRecording(accountId, pathname)) ??
-								(await findUploadingRecordingStem(accountId, pathname)))
-							: await findUploadingStem(accountId, pathname);
+						: isMix(pathname)
+							? await findUploadingMix(accountId, pathname)
+							: isRecordingPathname(pathname)
+								? ((await findUploadingRecording(accountId, pathname)) ??
+									(await findUploadingRecordingStem(accountId, pathname)))
+								: await findUploadingStem(accountId, pathname);
 				if (!row) throw new Error(`No reservation for "${pathname}"`);
 				// The ceiling: a MIDI file's own; otherwise the size the reservation claimed (what the quota was checked against), never past the kind's cap.
 				const cap = isRecordingPathname(pathname) ? MAX_TAKE_BYTES : STEM_MAX_BYTES;
@@ -180,6 +186,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (isDrumSamplePathname(blob.pathname)) await recordDrumSampleUrl(blob.pathname, blob.url);
 				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
+				else if (isMix(blob.pathname)) await recordMixUrl(blob.pathname, blob.url);
 				else if (isFilePathname(blob.pathname)) await recordFileUrl(blob.pathname, blob.url);
 				else if (isNotationPathname(blob.pathname))
 					await recordNotationUrl(blob.pathname, blob.url);

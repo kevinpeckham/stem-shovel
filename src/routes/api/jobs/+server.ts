@@ -3,7 +3,7 @@ import { isJobsToken } from "#lib/server/jobs.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
 import { renderNotationPdf } from "#lib/server/notationPdf.js";
-import { renderDemos, renderRecordings, renderStems } from "#lib/server/transcode.js";
+import { renderDemos, renderMixes, renderRecordings, renderStems } from "#lib/server/transcode.js";
 import { JobSchema } from "#lib/val/JobSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";
 import { error } from "@sveltejs/kit";
@@ -39,6 +39,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "demo-playback":
 				await renderDemos(ids);
+				break;
+			case "mix-playback":
+				await renderMixes(ids);
 				break;
 			case "recording-playback":
 				await renderRecordings(ids);

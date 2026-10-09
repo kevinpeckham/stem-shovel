@@ -20,6 +20,7 @@ tests), `src/lib/val/NotificationSchema.ts` (kinds, settings),
 | `stems`               | everyone on the project but the uploader                  | normal   |
 | `song`                | everyone on the project but the creator                   | normal   |
 | `demo`                | everyone on the project but the uploader                  | normal   |
+| `mix`                 | everyone on the project but the uploader (docs/mixes.md)  | normal   |
 
 "Everyone on the project" is `projectAudience`: the account's owners and
 admins, its members (unless the project is restricted and they were not

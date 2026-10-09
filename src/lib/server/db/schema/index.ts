@@ -40,6 +40,7 @@ export * from "./song";
 export * from "./songCredit";
 export * from "./songDocVersion";
 export * from "./songFile";
+export * from "./songMix";
 export * from "./songNotation";
 export * from "./songUserNote";
 export * from "./stem";

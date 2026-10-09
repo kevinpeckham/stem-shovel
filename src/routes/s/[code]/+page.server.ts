@@ -13,5 +13,6 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params }) => {
 	const path = await shareLinkTarget(params.code);
 	if (!path) error(404, "This link is not one Stem Shovel made.");
-	redirect(307, `${path}?share=${encodeURIComponent(params.code)}`);
+	// A link made for a mix already carries its query (docs/mixes.md).
+	redirect(307, `${path}${path.includes("?") ? "&" : "?"}share=${encodeURIComponent(params.code)}`);
 };

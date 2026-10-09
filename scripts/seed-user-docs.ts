@@ -28,6 +28,7 @@ const ORDER = [
 	"studio",
 	"comments",
 	"chat",
+	"mixes",
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",

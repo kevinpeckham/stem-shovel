@@ -2,12 +2,14 @@ import {
 	demosWantingPlayback,
 	getSong,
 	listComments,
+	listMixComments,
 	manifestFor,
+	mixesWantingPlayback,
 	presentSongFiles,
 	stemsWantingPlayback,
 } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
-import { scheduleDemoPlayback, schedulePlayback } from "#lib/server/jobs.js";
+import { scheduleDemoPlayback, scheduleMixPlayback, schedulePlayback } from "#lib/server/jobs.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 
@@ -20,16 +22,24 @@ export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 export async function songView(song: SongRow) {
 	schedulePlayback(stemsWantingPlayback(song.stems));
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
-	// Three independent lookups (file URLs, the manifest, the comments) run together.
-	const [presented, manifest, comments] = await Promise.all([
+	scheduleMixPlayback(mixesWantingPlayback(song.mixes));
+	// Four independent lookups (file URLs, the manifest, the comments, the mixes' comments) run together.
+	const [presented, manifest, comments, mixComments] = await Promise.all([
 		presentSongFiles(song),
 		manifestFor(song),
 		listComments(song.id),
+		listMixComments(song.id),
 	]);
 	return {
-		song: presented,
+		// The mixes (docs/mixes.md) carry their notes rendered, as the documents are.
+		song: {
+			...presented,
+			mixes: presented.mixes.map((m) => ({ ...m, notesHtml: renderMarkdown(m.notes) })),
+		},
 		manifest,
 		comments,
+		/** Feedback on the mixes, every mix's together; the page splits them by `mixId`. */
+		mixComments,
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),

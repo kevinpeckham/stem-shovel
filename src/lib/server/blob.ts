@@ -233,6 +233,17 @@ export function playbackPathname(sourcePathname: string) {
 	return `${base}.play-${Date.now().toString(36)}.m4a`;
 }
 
+/** Blob pathname for a mix of the song (docs/mixes.md), under the song like its demos; `/mixes/` names the kind to the upload route. */
+export function songMixPathname(
+	accountId: string,
+	songId: string,
+	mixId: string,
+	filename: string,
+) {
+	const ext = filename.split(".").pop()?.toLowerCase() || "bin";
+	return `accounts/${accountId}/songs/${songId}/mixes/${mixId}.${ext}`;
+}
+
 /** Pathname of a song's cached original mixdown; `key` identifies the stem files mixed, the stamp keeps every render a new blob. */
 /** Blob pathname for an account's, artist's or project's picture; stamped, since a new image must get a new URL. */
 export function imagePathname(
