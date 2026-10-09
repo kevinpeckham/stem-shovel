@@ -13,8 +13,10 @@ const id = "V1StGXR8_Z5jdHi6B-myT";
 describe("StageControl", () => {
 	test("read from the song: says so, and Save waits for a change", async () => {
 		render(StageControl, { props: { id, stage: null, effective: "mixing", canChange: true } });
-		expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent(/Stage: Mixing/);
-		expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent(/from what the song holds/);
+		// jest-dom's toHaveTextContent is typed string | number here: match the text itself.
+		const heading = screen.getByRole("heading", { level: 3 }).textContent ?? "";
+		expect(heading).toMatch(/Stage: Mixing/);
+		expect(heading).toMatch(/from what the song holds/);
 		const select = screen.getByRole("combobox", { name: "Stage" });
 		expect(select).toHaveValue("");
 		expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
