@@ -544,7 +544,14 @@
 				</button>
 			{/if}
 		{/snippet}
-		<div class="min-h-full bg-white text-black rounded" {@attach measured} aria-live="polite">
+		<!-- A PDF fills the panel's height (the reader scrolls inside); pages and images grow with their content. A min-height alone left the reader at its minimum over a white box (Kevin, 2026-10-09). -->
+		<div
+			class="{viewing?.kind === 'pdf' && viewing.row.kind !== 'image'
+				? 'h-full flex flex-col'
+				: 'min-h-full'} bg-white text-black rounded"
+			{@attach measured}
+			aria-live="polite"
+		>
 			{#if viewing?.kind === "pdf" && viewing.row.kind === "image"}
 				<img
 					class="max-w-full h-auto rounded bg-white"
@@ -553,7 +560,7 @@
 				/>
 			{:else if viewing?.kind === "pdf"}
 				<iframe
-					class="w-full h-full min-h-480px rounded bg-white"
+					class="w-full flex-1 min-h-480px rounded bg-white"
 					src={viewing.row.url}
 					title={nameOf(viewing)}
 				></iframe>

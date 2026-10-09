@@ -12,6 +12,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The attachments are a panel of their own** on the song page (Kevin), as the chat is: closed by default, opened by an **Attachments** button (with the file count) in the row under the player beside Player and Docs, floating from lg and a block under the docs below; its + uploads, and the Uploads menu's Upload Attachments opens it to pick. The Docs panel's tabs are the documents and the comments now.
 
+### Fixed
+
+- **A PDF opened from the Chart tab's notation view filled only the top of its panel**, the rest a white box: the reader sat at its minimum height inside a box that only had a minimum. The box now fills the panel for a PDF, and the reader fills the box.
+
 ### Added
 
 - **A chat on every song** (docs/chat.md): a panel of its own on the song page, opened by a chat button in the header beside Share (closed by default, so the docs stay readable beside it), for the people on the project (members and the project's own people, viewers included; a visitor never sees it). Plain-text messages, Enter to send, URLs as links and positions like `1:23` as seek buttons; a date line per day and same-author messages within five minutes under one header; a "New" line where the reader left off and a dot on the button while there is something unread (`chat_read`); the author edits and deletes their own, owners and admins delete anyone's; the panel polls every ten seconds while open and the page is visible (`chatSince`), and marks itself read as others' messages arrive. A message raises a `chat` notification for the project, folded per song, emailed under the comments opt-in; its link opens the song with the chat panel up (`?open=chat`, kept through the permalink's redirect). Tables `chat_message` and `chat_read` (migration 0082), `chat.remote.ts`, `SongChat.svelte`, `utils/chatTokens.ts` and `utils/groupChat.ts`; user doc `chat`.
