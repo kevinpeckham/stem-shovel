@@ -55,6 +55,14 @@ engineer about the mix.
 
 #- **The project page prefers the mix.** A song's tile and the playlist play its newest ready mix when it has one (the mixing stage comes after the stems' arranging and recording), else the stems' bounce; the player labels the track ("Mix v4", "Stems mix") and the tile counts the mixes (`getProject` carries each song's mixes; the load presents the newest as `latestMix`).
 
+- **Positions on a mix are time.** The comment popover prefills and shows
+  a mix comment's position as `m:ss.ss` (`formatTime`), never bars, and
+  the Playhead button reads the mix player's position: an upload's tempo,
+  meter and offset are unknown. The server still parses any position
+  format, so a typed bar position would resolve against the song's grid.
+- **The name is renamed in place** (`MixPanel` keeps the draft; Enter or
+  blur saves through `onrename(mix, label)`, Escape drops it).
+
 ## Not built yet, suggested next
 
 - **Resolving feedback.** A comment on a mix could be marked addressed

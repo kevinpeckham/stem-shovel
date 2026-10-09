@@ -21,8 +21,11 @@ test("uploads a mix and opens on it with its waveform", async ({ page, errors })
 	const before = await panel.locator("[aria-label='All mixes'] button").count();
 	await panel.locator("input[type=file]").setInputFiles(path.resolve("static/stems/keys.wav"));
 	// The newest mix opens: a version badge one higher than before, the uploader, the waveform.
-	await expect(panel.getByText(/^v\d+$/).first()).toBeVisible({ timeout: 60_000 });
-	await expect(panel.getByRole("slider", { name: "keys position" })).toBeVisible();
+	await expect(panel.locator("[aria-label='All mixes'] button[aria-pressed=true]")).toContainText(
+		/v\d+/,
+		{ timeout: 60_000 },
+	);
+	await expect(panel.getByRole("slider", { name: "Mix position" })).toBeVisible();
 	await expect(page.getByRole("tab", { name: /^Mixes \(\d+\)/ })).toBeVisible();
 	expect(before).toBeGreaterThanOrEqual(0);
 	expect(errors).toEqual([]);
@@ -34,9 +37,9 @@ test("the notes are written, a comment lands at a spot, and the mix is renamed",
 	await open(page, SONG);
 	await page.getByRole("tab", { name: /^Mixes/ }).click();
 	const panel = page.getByRole("region", { name: "Mix player", exact: true });
-	await panel.getByRole("button", { name: /Add notes|Edit notes/ }).click();
+	await panel.getByRole("button", { name: "Add or Edit Notes" }).click();
 	await panel.getByRole("textbox", { name: "Notes on this mix" }).fill(`${STAMP} vocal up 1 dB`);
-	await panel.getByRole("button", { name: "Save notes" }).click();
+	await panel.getByRole("button", { name: /Save/ }).click();
 	await expect(panel.getByText(`${STAMP} vocal up 1 dB`)).toBeVisible();
 	// A comment on the mix from its Comment button: the popover says which mix, the comment lists under it.
 	await panel.getByRole("button", { name: "Comment on this mix" }).click();
@@ -52,14 +55,14 @@ test("the notes are written, a comment lands at a spot, and the mix is renamed",
 	const docs = page.getByRole("dialog", { name: "Docs" });
 	await expect(docs.getByText("No comments yet.").or(docs.getByRole("list"))).toBeVisible();
 	await expect(docs.getByRole("heading", { name: `${STAMP} bass` })).toHaveCount(0);
-	// Rename from the mix's menu.
-	page.once("dialog", (d) => void d.accept(`${STAMP} final`));
-	await panel
-		.getByRole("button", { name: /actions$/ })
-		.first()
-		.click();
-	await page.getByRole("button", { name: "Rename" }).click();
+	// Rename in place: the pencil, the box, Enter.
+	await panel.getByRole("button", { name: "Rename Mix" }).click();
+	const name = panel.getByRole("textbox", { name: "Mix name" });
+	await name.fill(`${STAMP} final`);
+	await name.press("Enter");
 	await expect(panel.getByText(`${STAMP} final`).first()).toBeVisible();
+	// A mix comment's position is time (0:05), never bars.
+	await expect(list.getByRole("button", { name: /^0:0\d/ })).toHaveCount(0);
 });
 
 test("the mix is removed with its comment", async ({ page }) => {
@@ -67,11 +70,17 @@ test("the mix is removed with its comment", async ({ page }) => {
 	await page.getByRole("tab", { name: /^Mixes/ }).click();
 	const panel = page.getByRole("region", { name: "Mix player", exact: true });
 	await expect(panel.getByText(`${STAMP} final`).first()).toBeVisible();
-	page.once("dialog", (d) => void d.accept());
-	await panel
-		.getByRole("button", { name: /actions$/ })
-		.first()
-		.click();
-	await page.getByRole("button", { name: "Remove" }).click();
+	// This run's mix, then any "keys" mix an earlier failed run left, chosen from the list in turn.
+	for (let i = 0; i < 10; i++) {
+		page.once("dialog", (d) => void d.accept());
+		await panel.getByRole("button", { name: "Delete Mix" }).click();
+		await page.waitForTimeout(800);
+		const leftover = panel.locator("[aria-label='All mixes'] button", { hasText: /\bkeys\b/ });
+		if ((await leftover.count()) === 0) break;
+		await leftover.first().click();
+	}
 	await expect(panel.getByText(`${STAMP} final`)).toHaveCount(0);
+	await expect(
+		panel.locator("[aria-label='All mixes'] button", { hasText: /\bkeys\b/ }),
+	).toHaveCount(0);
 });

@@ -46,6 +46,7 @@
 	import { bumpVersion } from "#lib/utils/bumpVersion.js";
 	import { midiContentType } from "#lib/utils/midiContentType.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
 	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { parseBarsText } from "#lib/utils/parseBarsText.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
@@ -392,9 +393,7 @@
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
-	async function renameMixRow(m: PanelMix) {
-		const label = prompt("Name this mix", m.label)?.trim();
-		if (!label || label === m.label) return;
+	async function renameMixRow(m: PanelMix, label: string) {
 		try {
 			await renameMix({ id: m.id, label });
 			await refreshAll();
@@ -419,6 +418,8 @@
 		sharePanel?.showPopover();
 	}
 	const mixVersion = (id: string | null) => data.song.mixes.find((m) => m.id === id)?.version;
+	/** A position on a mix is time, never bars: an upload has no known tempo, meter or offset (Kevin). */
+	const mixPos = (seconds: number) => formatTime(seconds, 2);
 	/** A link to a mix (?view=mixes&mix=<id>, kept through the permalink and share redirects): the player opens on it; the query goes, the share code stays. */
 	function openMixFromUrl() {
 		const url = new URL(page.url.href);
@@ -2528,7 +2529,9 @@
 								: 'button button-xs opacity-80 hover-bg-blue-200 hover-border-blue-200'} {index ===
 							0
 								? 'rounded-r-none border-r-none'
-								: 'rounded-l-none'}"
+								: index === PLAYER_VIEWS.length - 1
+									? 'rounded-l-none'
+									: 'rounded-none border-r-none'}"
 							onclick={() => showView(view)}
 							>{view === "stems"
 								? `Stems (${data.manifest.stems.length})`
@@ -2590,15 +2593,14 @@
 						me={data.user ? { id: data.user.id } : null}
 						{isAdmin}
 						jobs={mixJobs}
-						{showPos}
 						card={commentCard}
 						onfiles={(files) => void uploadMixes(files)}
-						onrename={(m) => void renameMixRow(m)}
+						onrename={renameMixRow}
 						onnotes={saveMixNotes}
 						onremove={(m) => void removeMixRow(m)}
 						onshare={shareMixByEmail}
 						oncomment={(m, seconds) =>
-							openComment({ mixId: m.id, at: seconds === null ? "" : editPos(seconds) })}
+							openComment({ mixId: m.id, at: seconds === null ? "" : mixPos(seconds) })}
 						oneditcomment={(c) => editComment(c)}
 						oncontext={(m, seconds, x, y) =>
 							(stemMenuAt = { stem: null, mixId: m.id, seconds, x, y })}
@@ -3669,15 +3671,21 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={POSITION_PLACEHOLDER[mode]}
+							placeholder={commentDraft.mixId ? "1:23.4" : POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
 						<button
 							class="button button-xs shrink-0"
 							type="button"
-							disabled={!playerEngine || playerEngine.status !== "ready"}
-							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
-							>Playhead</button
+							disabled={commentDraft.mixId
+								? !mixPanel
+								: !playerEngine || playerEngine.status !== "ready"}
+							onclick={() =>
+								remoteForm.fields.position.set(
+									commentDraft.mixId
+										? mixPos(mixPanel?.currentPosition() ?? 0)
+										: editPos(playerEngine?.position ?? 0),
+								)}>Playhead</button
 						>
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
@@ -3733,15 +3741,21 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={POSITION_PLACEHOLDER[mode]}
+							placeholder={commentDraft.mixId ? "1:23.4" : POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
 						<button
 							class="button button-xs shrink-0"
 							type="button"
-							disabled={!playerEngine || playerEngine.status !== "ready"}
-							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
-							>Playhead</button
+							disabled={commentDraft.mixId
+								? !mixPanel
+								: !playerEngine || playerEngine.status !== "ready"}
+							onclick={() =>
+								remoteForm.fields.position.set(
+									commentDraft.mixId
+										? mixPos(mixPanel?.currentPosition() ?? 0)
+										: editPos(playerEngine?.position ?? 0),
+								)}>Playhead</button
 						>
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
@@ -3787,8 +3801,8 @@
 				type="button"
 				role="menuitem"
 				onclick={() => {
-					const at = editPos(stemMenuAt?.seconds ?? 0);
 					const mixId = stemMenuAt?.mixId ?? null;
+					const at = mixId ? mixPos(stemMenuAt?.seconds ?? 0) : editPos(stemMenuAt?.seconds ?? 0);
 					stemMenuAt = null;
 					openComment({ at, mixId });
 				}}

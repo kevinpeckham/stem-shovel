@@ -52,7 +52,6 @@ const base = (over: Record<string, unknown> = {}) => ({
 	canEdit: true,
 	canComment: true,
 	me: { id: "me" },
-	showPos: (s: number) => `${s}s`,
 	card: (() => {}) as never,
 	...over,
 });
@@ -80,46 +79,55 @@ describe("MixPanel", () => {
 		const list = screen.getByRole("region", { name: "Comments on this mix" });
 		expect(within(list).getByText("Bass late")).toBeInTheDocument();
 		expect(within(list).queryByText("Old note")).toBeNull();
-		expect(within(list).getByRole("button", { name: /30s/ })).toBeInTheDocument();
+		expect(within(list).getByRole("button", { name: /0:30/ })).toBeInTheDocument();
 		// Choosing the older mix swaps the list.
 		await fireEvent.click(screen.getByRole("button", { name: /Mix 1/ }));
 		expect(within(list).queryByText("Bass late")).toBeNull();
 		expect(screen.getByText("Old note")).toBeInTheDocument();
 	});
-	test("Comment asks the page for a comment on the mix; the menu offers download, share, rename and remove to an editor", async () => {
+	test("Comment asks the page for a comment on the mix; download offers the file (and the MP3 only when the file is not one); the name is renamed in place", async () => {
 		const oncomment = vi.fn();
 		const onrename = vi.fn();
+		const onshare = vi.fn();
 		const user = userEvent.setup();
-		render(MixPanel, { props: base({ oncomment, onrename }) });
+		render(MixPanel, { props: base({ oncomment, onrename, onshare }) });
 		await user.click(screen.getByRole("button", { name: "Comment on this mix" }));
 		expect(oncomment).toHaveBeenCalledWith(expect.objectContaining({ id: "m2" }), null);
-		await user.click(screen.getByRole("button", { name: "Mix 2 actions" }));
-		// The menu's items (the popover is in the DOM, open or not; jsdom knows no popover styling).
-		expect(screen.getByText(/Download WAV/)).toBeInTheDocument();
-		expect(screen.getByText("Share by email")).toBeInTheDocument();
-		await user.click(screen.getByText("Rename"));
-		expect(onrename).toHaveBeenCalledWith(expect.objectContaining({ id: "m2" }));
+		await user.click(screen.getByRole("button", { name: "Download" }));
+		expect(screen.getByText(/Download \.wav/)).toBeInTheDocument();
+		// No MP3 rendition yet (playbackUrl null): no second item.
+		expect(screen.queryByText("Download .mp3")).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Share mix" }));
+		expect(onshare).toHaveBeenCalledWith(expect.objectContaining({ id: "m2" }));
+		// Rename in place: the pencil opens a box with the name; Enter saves; Escape would drop it.
+		await user.click(screen.getByRole("button", { name: "Rename Mix" }));
+		const box = screen.getByRole("textbox", { name: "Mix name" });
+		expect(box).toHaveValue("Mix 2");
+		await fireEvent.input(box, { target: { value: "Final" } });
+		await fireEvent.keyDown(box, { key: "Enter" });
+		expect(onrename).toHaveBeenCalledWith(expect.objectContaining({ id: "m2" }), "Final");
 	});
 	test("the notes are edited in place and saved through the page", async () => {
 		const onnotes = vi.fn(async () => {});
 		render(MixPanel, { props: base({ onnotes }) });
-		await fireEvent.click(screen.getByRole("button", { name: "Edit notes" }));
+		await fireEvent.click(screen.getByRole("button", { name: "Add or Edit Notes" }));
 		const box = screen.getByRole("textbox", { name: "Notes on this mix" });
 		expect(box).toHaveValue("Vocal up");
 		await fireEvent.input(box, { target: { value: "Vocal up 1 dB" } });
-		await fireEvent.click(screen.getByRole("button", { name: "Save notes" }));
+		await fireEvent.click(screen.getByRole("button", { name: /Save/ }));
 		expect(onnotes).toHaveBeenCalledWith(expect.objectContaining({ id: "m2" }), "Vocal up 1 dB");
 	});
 	test("a listener who may not edit sees no upload, menu actions or notes editing; one who may not comment sees no Comment", () => {
 		render(MixPanel, { props: base({ canEdit: false, canComment: false, me: null }) });
-		expect(screen.queryByRole("button", { name: "Upload Mix" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "Edit notes" })).toBeNull();
+		expect(screen.queryByRole("button", { name: /Upload/ })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Add or Edit Notes" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Share mix" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Comment on this mix" })).toBeNull();
 		expect(screen.getByText("Vocal up")).toBeInTheDocument();
 	});
 	test("no mixes: an editor is invited to upload the first", () => {
 		render(MixPanel, { props: base({ mixes: [], comments: [] }) });
 		expect(screen.getByText(/Upload the first bounce/)).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "Upload Mix" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Upload New Mix" })).toBeInTheDocument();
 	});
 });
