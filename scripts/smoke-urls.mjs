@@ -112,6 +112,8 @@ const ROUTES = [
 	["api/projects/[id]/charts.zip (server)", "/api/projects/x/charts.zip", [404], [404]],
 	["api/demos (server)", "/api/demos", [405], [405]],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
+	["api/mixes (server)", "/api/mixes", [405], [405]],
+	["api/mixes/[id]/ready (server)", "/api/mixes/x/ready", [405], [405]],
 	["api/files (server)", "/api/files", [405], [405]],
 	["api/files/[id]/ready (server)", "/api/files/x/ready", [405], [405]],
 	["api/notation (server)", "/api/notation", [405], [405]],
