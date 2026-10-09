@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.119.0] - 2026-10-10
+
 ### Fixed
 
 - **A viewing link made from a mix's page opens the mix**: the share-link form remembered the song page's empty mix field and sent that, so the link landed on the song. The target is set at submit now.
