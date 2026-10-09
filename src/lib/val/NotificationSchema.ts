@@ -12,6 +12,7 @@ export const NOTIFICATION_KINDS = [
 	"seats-full",
 	"invitation-accepted",
 	"comment",
+	"chat",
 	"stems",
 	"song",
 	"demo",
