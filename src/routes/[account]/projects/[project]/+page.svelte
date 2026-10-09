@@ -65,19 +65,22 @@
 	// Keep the slug following the name until the slug is edited by hand.
 
 	// A song marked finished (song settings) is filed first. Otherwise it is
-	// "in progress" once it has a stem that finished uploading; until then it
-	// is an idea — a place for lyrics, a chart, notes and demos.
+	// "in progress" once it has a stem that finished uploading, or a mix
+	// (docs/mixes.md; Kevin: a mixing stage counts); until then it is an
+	// idea — a place for lyrics, a chart, notes and demos.
 	const readyStems = (song: (typeof data.project.songs)[number]) =>
 		song.stems.filter((s) => s.status === "ready").length;
+	const underway = (song: (typeof data.project.songs)[number]) =>
+		readyStems(song) > 0 || song.mixCount > 0;
 	// The songs in the order the page shows: the project's, or the one a member is dragging into shape until it is saved.
 	let songOrder = $state<string[] | null>(null);
 	let songs = $derived(songOrder ? reorderById(data.project.songs, songOrder) : data.project.songs);
 	let finished = $derived(songs.filter((s) => s.isFinished));
-	let inProgress = $derived(songs.filter((s) => !s.isFinished && readyStems(s) > 0));
-	let ideas = $derived(songs.filter((s) => !s.isFinished && readyStems(s) === 0));
+	let inProgress = $derived(songs.filter((s) => !s.isFinished && underway(s)));
+	let ideas = $derived(songs.filter((s) => !s.isFinished && !underway(s)));
 	type Song = (typeof data.project.songs)[number];
 	const groupOf = (song: Song) =>
-		song.isFinished ? "finished" : readyStems(song) > 0 ? "progress" : "ideas";
+		song.isFinished ? "finished" : underway(song) ? "progress" : "ideas";
 	const groupIds = (group: string) =>
 		(group === "finished" ? finished : group === "progress" ? inProgress : ideas).map((s) => s.id);
 
@@ -160,7 +163,7 @@
 					id: d.id,
 					title: `${song.title} · ${d.label}`,
 					mixUrl: d.playUrl,
-					idea: readyStems(song) === 0,
+					idea: !underway(song),
 				})),
 		),
 	);
@@ -767,8 +770,9 @@
 			</div>
 
 			<div class="app-tile-meta">
-				v{song.version} · {ready}
-				{ready === 1 ? "stem" : "stems"}{#if song.durationSeconds}, {formatTime(
+				v{song.version} · {ready === 0
+					? "no stems"
+					: `${ready} ${ready === 1 ? "stem" : "stems"}`}{#if song.durationSeconds}, {formatTime(
 						song.durationSeconds,
 					)}{/if}{#if gathered(song, false)}{" · "}{gathered(song, false)}{/if}
 			</div>
