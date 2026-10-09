@@ -300,7 +300,7 @@
 				<!-- Title Row -->
 				<div class="grid grid-cols-1 items-start pb-3">
 					<!-- Toolbar -->
-					<div class="flex justify-between">
+					<div class="flex flex-wrap gap-y-4 justify-between">
 						<div
 							class="flex gap-2 text-12px tracking-wide text-blue-300 uppercase tracking-wider opacity-90"
 						>
@@ -420,7 +420,7 @@
 					</div>
 
 					<!-- name, version, metadata -->
-					<div class="min-w-0 grow pt-1">
+					<div class="min-w-0 grow pt-3 sm-pt-1">
 						<div class="flex gap-3 items-baseline min-w-0">
 							{#if renaming}
 								<!-- svelte-ignore a11y_autofocus -->
@@ -472,7 +472,7 @@
 				</div>
 
 				<!-- transport row  -->
-				<div class="grid grid-cols-[auto_auto_1fr] mt-4 bg-white/0">
+				<div class="flex flex-wrap sm-grid grid-cols-[auto_auto_1fr] mt-4 bg-white/0">
 					<!-- play button -->
 					<button
 						type="button"
@@ -665,12 +665,12 @@
 			<h3 class="text-12px tracking-wide text-blue-300 uppercase tracking-wider opacity-90 mb-2">
 				All mixes
 			</h3>
-			<ul class="grid gap-1">
+			<ul class="grid gap-3 sm-gap-1">
 				{#each newestFirst as m (m.id)}
 					<li>
 						<button
 							type="button"
-							class="flex w-full items-baseline gap-3 rounded px-2 py-1 text-left text-sm {m.id ===
+							class="border border-current/40 sm-border-none flex flex-wrap w-full items-baseline gap-3 rounded px-2 py-1 text-left text-sm {m.id ===
 							mix?.id
 								? 'bg-blue-300/10'
 								: 'hover-bg-white/5'}"
@@ -683,7 +683,7 @@
 									? 'opacity-100 text-blue-100'
 									: 'opacity-90'}">{m.label}</span
 							>
-							<span class="text-12px opacity-60 tabular-nums"
+							<span class="text-12px opacity-60 tabular-nums w-full sm-w-auto"
 								>{comments.filter((c) => c.mixId === m.id).length || ""}
 								{#if m.uploader}{m.uploader.name} ·
 								{/if}{formatDate(m.createdAt)}</span
