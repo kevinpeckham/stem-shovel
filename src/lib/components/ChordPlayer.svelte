@@ -431,11 +431,11 @@
 		}
 		if (downCodes.delete(e.code)) chordPlayer.release(`key:${e.code}`);
 	}
+	/** Focus leaving the window (another tab, another app): the keys and the space bar will get no keyup, so let go of everything held. A latched sustain is a setting, not a held key, so it stays (Kevin: it was lost on a tab switch). */
 	function onblur() {
 		downCodes.clear();
 		chordPlayer.seventhHeld = false;
-		sustainUnlock();
-		chordPiano.setSustain(false);
+		if (!sustainLocked) chordPiano.setSustain(false);
 		chordPlayer.allOff();
 	}
 	onDestroy(() => {
