@@ -20,6 +20,7 @@ import {
 	songViewerOf,
 } from "#lib/server/access.js";
 import {
+	setSongStage as setStage,
 	createSong as create,
 	deleteSong as removeSong,
 	deleteStem as removeStem,
@@ -36,7 +37,6 @@ import {
 	chartExamples,
 	getSongById,
 	setDefaultMix,
-	setSongFinished as setSongFinished_,
 	songNotesFor,
 	songSlugs,
 	updateSong as update,
@@ -61,7 +61,7 @@ import { renderMarkdown } from "#lib/server/markdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
 import { MY_NOTES_KIND } from "#lib/val/SongDocKindSchema.js";
-import { SongFinishedSchema } from "#lib/val/SongFinishedSchema.js";
+import { SongStageSetSchema } from "#lib/val/SongStageSchema.js";
 import { SongCreditAddSchema } from "#lib/val/ArtistSchema.js";
 import { HOUR, MINUTE, rateLimited } from "#lib/server/rateLimit.js";
 import { error, invalid, redirect } from "@sveltejs/kit";
@@ -398,12 +398,12 @@ export const songNotes = query(IdSchema, async ({ id }) => {
 	return found;
 });
 
-/** Finished or back in progress (any member); the project page files finished songs apart. */
-export const setSongFinished = form(SongFinishedSchema, async ({ id, finished }) => {
+/** The song's stage (docs/mixes.md, "Phase 2"), any member; "" reads it from the song again. Finished follows it. */
+export const setSongStage = form(SongStageSetSchema, async ({ id, stage }) => {
 	const { locals } = getRequestEvent();
 	const m = await memberOf(locals, accountOfSong, id);
-	if (!(await setSongFinished_(m.accountId, id, finished === "true"))) error(404, "Song not found");
-	return { finished: finished === "true" };
+	if (!(await setStage(m.accountId, id, stage || null))) error(404, "Song not found");
+	return { stage: stage || null };
 });
 
 /** Saves the faders as the song's default mix for every listener (members); the original mixdown re-renders. */

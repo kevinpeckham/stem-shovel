@@ -21,7 +21,9 @@
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import AiToggle from "#lib/components/AiToggle.svelte";
-	import FinishedToggle from "#lib/components/FinishedToggle.svelte";
+	import StageControl from "#lib/components/StageControl.svelte";
+	import { STAGE_LABEL, STAGE_PHASE } from "#lib/constants/songStages.js";
+	import { songStage } from "#lib/utils/songStage.js";
 	import PrivacyToggle from "#lib/components/PrivacyToggle.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
@@ -421,17 +423,32 @@
 	let stemBoxHeight = $state(0);
 	type PlayerView = "stems" | "demos" | "mixes";
 	let chosenView = $state<PlayerView | null>(null);
-	// Until the visitor picks: the stems, else the mixes, else the demos.
-	let playerView = $derived<PlayerView>(
-		chosenView ??
-			(data.manifest.stems.length > 0
-				? "stems"
-				: readyMixes.length > 0
-					? "mixes"
-					: readyDemos.length > 0
-						? "demos"
-						: "stems"),
+	/** The song's stage (docs/mixes.md, "Phase 2"): set in settings, else read from what it holds. */
+	let stage = $derived(
+		songStage({
+			stage: data.song.stage,
+			isFinished: data.song.isFinished,
+			hasMix: readyMixes.length > 0,
+			hasStem: data.manifest.stems.length > 0,
+		}),
 	);
+	// Until the visitor picks, the stage decides: mixing and finished open on the mixes, writing on the demos, arranging on the stems; a view with nothing in it gives way.
+	let playerView = $derived.by<PlayerView>(() => {
+		if (chosenView) return chosenView;
+		const wanted: PlayerView[] =
+			stage === "mixing" || stage === "finished"
+				? ["mixes", "stems", "demos"]
+				: stage === "writing"
+					? ["demos", "stems", "mixes"]
+					: ["stems", "mixes", "demos"];
+		const has = (v: PlayerView) =>
+			v === "stems"
+				? data.manifest.stems.length > 0
+				: v === "mixes"
+					? readyMixes.length > 0
+					: readyDemos.length > 0;
+		return wanted.find(has) ?? "stems";
+	});
 	const PLAYER_VIEWS: PlayerView[] = ["stems", "demos", "mixes"];
 	/** One thing plays at a time: switching views pauses the others. */
 	function showView(view: PlayerView) {
@@ -1539,11 +1556,11 @@
 						<span
 							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
 							title="No AI touches this song">no AI</span
-						>{/if}{#if data.song.isFinished}
-						<span
-							class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
-							title="Marked as finished">finished</span
-						>{/if}
+						>{/if}<span
+						class="ml-2 inline-block rounded border border-white/20 px-1.5 py-0.5 align-middle text-10px uppercase tracking-wider opacity-70"
+						title={STAGE_PHASE[stage]}
+						data-song-stage={stage}>{STAGE_LABEL[stage]}</span
+					>
 				</h1>
 
 				<div class="flex flex-wrap gap-2 text-15px opacity-90">
@@ -2397,9 +2414,10 @@
 					{/if}
 					{#if settingsTab === "options"}
 						<div>
-							<FinishedToggle
+							<StageControl
 								id={data.song.id}
-								finished={data.song.isFinished}
+								stage={data.song.stage}
+								effective={stage}
 								canChange={data.canEdit}
 							/>
 						</div>
@@ -2553,6 +2571,16 @@
 				</div>
 			{:else if data.manifest.stems.length > 0}
 				<div bind:clientHeight={stemBoxHeight}>
+					{#if (stage === "mixing" || stage === "finished") && readyMixes.length > 0}
+						<!-- The stems are from an earlier stage (docs/mixes.md, "Phase 2"); the studio recording is in Mixes. -->
+						<p
+							class="mb-3 rounded border border-current/20 bg-blue-300/5 px-3 py-2 text-13px opacity-90"
+						>
+							These stems are from the arranging stage. The studio recording is in
+							<button type="button" class="link-dim" onclick={() => showView("mixes")}>Mixes</button
+							>.
+						</p>
+					{/if}
 					<StemPlayer
 						manifest={data.manifest}
 						showStatus={false}

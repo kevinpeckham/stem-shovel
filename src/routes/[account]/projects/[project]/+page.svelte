@@ -9,6 +9,8 @@
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import ProjectPeople from "#lib/components/ProjectPeople.svelte";
 	import { formatTime } from "#lib/utils/formatTime.js";
+	import { STAGE_LABEL } from "#lib/constants/songStages.js";
+	import { songStage } from "#lib/utils/songStage.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { slugify } from "#lib/utils/slugify.js";
@@ -70,17 +72,24 @@
 	// idea — a place for lyrics, a chart, notes and demos.
 	const readyStems = (song: (typeof data.project.songs)[number]) =>
 		song.stems.filter((s) => s.status === "ready").length;
-	const underway = (song: (typeof data.project.songs)[number]) =>
-		readyStems(song) > 0 || song.mixCount > 0;
+	/** The song's stage (docs/mixes.md, "Phase 2"): set in settings, else read from what it holds. */
+	const stageOf = (song: (typeof data.project.songs)[number]) =>
+		songStage({
+			stage: song.stage,
+			isFinished: song.isFinished,
+			hasMix: song.mixCount > 0,
+			hasStem: readyStems(song) > 0,
+		});
 	// The songs in the order the page shows: the project's, or the one a member is dragging into shape until it is saved.
 	let songOrder = $state<string[] | null>(null);
 	let songs = $derived(songOrder ? reorderById(data.project.songs, songOrder) : data.project.songs);
-	let finished = $derived(songs.filter((s) => s.isFinished));
-	let inProgress = $derived(songs.filter((s) => !s.isFinished && underway(s)));
-	let ideas = $derived(songs.filter((s) => !s.isFinished && !underway(s)));
+	// Filed by stage: finished apart, writing under Song Ideas, the rest in progress.
+	let finished = $derived(songs.filter((s) => stageOf(s) === "finished"));
+	let inProgress = $derived(songs.filter((s) => ["arranging", "mixing"].includes(stageOf(s))));
+	let ideas = $derived(songs.filter((s) => stageOf(s) === "writing"));
 	type Song = (typeof data.project.songs)[number];
 	const groupOf = (song: Song) =>
-		song.isFinished ? "finished" : underway(song) ? "progress" : "ideas";
+		stageOf(song) === "finished" ? "finished" : stageOf(song) === "writing" ? "ideas" : "progress";
 	const groupIds = (group: string) =>
 		(group === "finished" ? finished : group === "progress" ? inProgress : ideas).map((s) => s.id);
 
@@ -140,13 +149,15 @@
 		moveWithin(song, from + (e.key === "ArrowUp" ? -1 : 1));
 		void commit();
 	}
-	/** What a song plays here (docs/mixes.md): its newest mix when it has one, else the stems' bounce; and what to call it. */
-	const playOf = (song: (typeof data.project.songs)[number]) =>
-		song.latestMix
+	/** What a song plays here (docs/mixes.md): by its stage, the newest mix in mixing or finished, the stems' bounce in arranging, either as a fallback; and what to call it. */
+	const playOf = (song: (typeof data.project.songs)[number]) => {
+		const mix = song.latestMix
 			? { url: song.latestMix.playUrl, source: `Mix v${song.latestMix.version}` }
-			: song.mixUrl
-				? { url: song.mixUrl, source: "Stems mix" }
-				: null;
+			: null;
+		const bounce = song.mixUrl ? { url: song.mixUrl, source: "Stems mix" } : null;
+		const s = stageOf(song);
+		return s === "mixing" || s === "finished" ? (mix ?? bounce) : (bounce ?? mix);
+	};
 	/** The playlist: finished songs, then the ones in progress, as listed, each with its newest mix or its stems' bounce. */
 	let playable = $derived(
 		[...finished, ...inProgress].map((song) => {
@@ -163,7 +174,7 @@
 					id: d.id,
 					title: `${song.title} · ${d.label}`,
 					mixUrl: d.playUrl,
-					idea: !underway(song),
+					idea: stageOf(song) === "writing",
 				})),
 		),
 	);
@@ -770,7 +781,7 @@
 			</div>
 
 			<div class="app-tile-meta">
-				v{song.version} · {ready === 0
+				{STAGE_LABEL[stageOf(song)]} · v{song.version} · {ready === 0
 					? "no stems"
 					: `${ready} ${ready === 1 ? "stem" : "stems"}`}{#if song.durationSeconds}, {formatTime(
 						song.durationSeconds,

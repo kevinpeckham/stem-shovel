@@ -96,13 +96,23 @@ for a stem player, with stale stems as the default view. Agreed:
    Mix; an upload from either page opens the new mix's page. Built on the
    same `MixPanel`, so nothing about mixes moves off the song: they stay
    its versions, with its chat, comments and links.
-2. **A stage on the song** (a later pass). Writing, arranging, mixing,
-   finished, set in song settings and defaulted from what the song holds
-   (a mix makes it mixing, a stem arranging, else writing); the existing
-   finished flag becomes the last stage. The stage decides the defaults:
-   what the player opens on, what the project tile plays and says, and a
-   notice on the stems view in the mixing stage ("the studio recording is
-   in Mixes; these stems are from arranging").
+2. **A stage on the song** (built 2026-10-10 on the `song-stage` branch,
+   to be tried before it merges). `song.stage` (migration 0084) is set
+   in song settings (`StageControl`, in place of the finished toggle;
+   `setSongStage`, which sets `is_finished` with it) or left null to be
+   read from what the song holds (`utils/songStage.ts`: finished when
+   marked, mixing with a mix, arranging with a stem, writing until then).
+   The stage decides: the song page's default view (mixing and finished
+   open on the mixes, writing on the demos, arranging on the stems, a
+   view with nothing in it giving way), a badge by the title naming the
+   stage, a notice over the stems in mixing and finished ("these stems
+   are from the arranging stage; the studio recording is in Mixes"), the
+   project page's grouping (finished apart, writing under Song Ideas, the
+   rest in progress) and what a tile and the playlist play (the newest mix
+   in mixing and finished, the stems' bounce in arranging, either as a
+   fallback), with the stage word first on the tile. Kevin floated
+   per-view "Phase:" labels; the stage line on the song replaces them,
+   since the views are media and the stage is the song's.
 3. **Closing the loop** (later): a comment on v3 marked addressed in v4,
    and a new mix showing how many of the last mix's comments are open.
 

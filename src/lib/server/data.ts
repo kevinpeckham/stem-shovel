@@ -12,6 +12,7 @@ import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
 import type { ImageKind } from "#lib/val/ImageSchema.js";
 import type { ProjectType } from "#lib/val/ProjectTypeSchema.js";
 import { FOUNDER_SEATS } from "#lib/constants/plans.js";
+import type { SongStage } from "#lib/val/SongStageSchema.js";
 import { MAX_MIXES_PER_SONG } from "#lib/constants/mixFormats.js";
 import type { StemManifest } from "#lib/audio/types.js";
 import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
@@ -3289,10 +3290,11 @@ export async function setSongNoAi(accountId: string, id: string, noAi: boolean) 
 	return !!row;
 }
 
-export async function setSongFinished(accountId: string, id: string, isFinished: boolean) {
+/** The stage set in settings (docs/mixes.md, "Phase 2"), or null to read it from the song; finished follows it. */
+export async function setSongStage(accountId: string, id: string, stage: SongStage | null) {
 	const [row] = await db
 		.update(song)
-		.set({ isFinished })
+		.set({ stage, isFinished: stage === "finished" })
 		.where(and(eq(song.accountId, accountId), eq(song.id, id)))
 		.returning({ id: song.id });
 	return !!row;

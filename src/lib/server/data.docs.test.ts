@@ -28,7 +28,7 @@ const {
 	saveUserDoc,
 	saveUserNote,
 	setProjectNoAi,
-	setSongFinished,
+	setSongStage,
 	setSongNoAi,
 	songNotesFor,
 	updateUserDocMeta,
@@ -553,17 +553,19 @@ describe("transcribed notes", () => {
 });
 
 describe("flags and the AI log", () => {
-	test("setProjectNoAi, setSongNoAi and setSongFinished are scoped to the account", async () => {
+	test("setProjectNoAi, setSongNoAi and setSongStage are scoped to the account; the stage sets finished", async () => {
 		reset({ project: [{ id: "p1", accountId: "a1", noAi: false }], song: [song("sg1")] });
 		expect(await setProjectNoAi("a1", "p1", true)).toBe(true);
 		expect(await setProjectNoAi("a2", "p1", false)).toBe(false);
 		expect(row("project", "p1")?.noAi).toBe(true);
 		expect(await setSongNoAi("a1", "sg1", true)).toBe(true);
-		expect(await setSongFinished("a1", "sg1", true)).toBe(true);
-		expect(row("song", "sg1")).toMatchObject({ noAi: true, isFinished: true });
+		expect(await setSongStage("a1", "sg1", "finished")).toBe(true);
+		expect(row("song", "sg1")).toMatchObject({ noAi: true, isFinished: true, stage: "finished" });
 		expect(await setSongNoAi("a2", "sg1", false)).toBe(false);
-		expect(await setSongFinished("a2", "sg1", false)).toBe(false);
-		expect(row("song", "sg1")).toMatchObject({ noAi: true, isFinished: true });
+		expect(await setSongStage("a2", "sg1", null)).toBe(false);
+		expect(row("song", "sg1")).toMatchObject({ noAi: true, isFinished: true, stage: "finished" });
+		expect(await setSongStage("a1", "sg1", "mixing")).toBe(true);
+		expect(row("song", "sg1")).toMatchObject({ isFinished: false, stage: "mixing" });
 	});
 	test("logAiRequest writes the entry as given", async () => {
 		const entry: Parameters<typeof logAiRequest>[0] = {

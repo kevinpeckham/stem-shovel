@@ -38,9 +38,9 @@ Upload a phone recording or a rough bounce as a **demo** (most audio formats are
 
 Some artists' contracts rule out any AI touching their work. **Do not use AI** in the song's settings (or the project's, which covers all its songs) switches every AI feature off for it: no chart drafts, no AI checks, no transcription. Tempo and key detection, which is plain signal processing in your browser, still works.
 
-## Finished
+## Stage
 
-**Mark as finished** in the song's settings files the song under Finished Songs on the project page, above the ones in progress. Nothing else changes: it still plays, and everything stays editable. **Back to in progress** moves it back.
+A song is at one of four stages: **Writing** (the idea, its demos, lyrics and a chart), **Arranging** (stems to play along with and build on), **Mixing** (the engineer's mixes for the band's feedback) or **Finished**. Left to itself a song is Writing until a stem makes it Arranging and a mix makes it Mixing; set the stage by hand under Options when the song is somewhere else, or choose Finished when it is done, which files it under Finished Songs on the project page. Nothing else changes with the stage except what opens first: the song page opens on the mixes at Mixing and Finished, the demos at Writing and the stems at Arranging, and the project page plays the newest mix or the stems mixed down to match. Everything stays editable at every stage.
 
 ## Private
 

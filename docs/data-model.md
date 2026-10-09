@@ -99,6 +99,11 @@ erDiagram
   `uploaded_by` is cleared with the user. A comment with `mix_id` is
   feedback on that mix, kept out of the song's own stream; a share link
   with `mix_id` opens the song on that mix.
+- **song.stage** — the stage set in song settings (docs/mixes.md,
+  "Phase 2"): `writing`, `arranging`, `mixing` or `finished`, or null to
+  read it from what the song holds (`utils/songStage.ts`: finished when
+  marked, mixing with a mix, arranging with a stem, writing until then).
+  Setting it sets `is_finished` with it. Migration 0084.
 - **comment** — a member's comment on a song: title, plain text, an
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may
