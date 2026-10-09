@@ -1,4 +1,5 @@
 import {
+	chatSummaryOf,
 	getProject,
 	listAccountMembers,
 	listProjectFiles,
@@ -52,12 +53,22 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	// The playlist plays each song's newest mix (docs/mixes.md), else the stems' bounce, or its demos
 	// (the rendition where it is ready, the upload otherwise); a private song's need presigned URLs.
 	// The tiles count each song's charts (scores and files marked as notation) and the viewer's own private notes.
-	const myNotes = locals.user
-		? await userNoteSongIds(
-				locals.user.id,
-				songs.map((s) => s.id),
-			)
-		: new Set<string>();
+	const canComment = canCommentProject(project, who);
+	const [myNotes, chats] = await Promise.all([
+		locals.user
+			? userNoteSongIds(
+					locals.user.id,
+					songs.map((s) => s.id),
+				)
+			: new Set<string>(),
+		// The chats (docs/chat.md) at a glance, for someone who may write in them: a count on the tile and an unread badge.
+		canComment && locals.user
+			? chatSummaryOf(
+					songs.map((s) => s.id),
+					locals.user.id,
+				)
+			: new Map<string, { count: number; unread: number }>(),
+	]);
 	// The project's library: every ready attachment (the songs' and the project's own) and every score, minus those of songs the viewer may not see.
 	const visible = new Set(songs.map((s) => s.id));
 	const [presented, shareLinks, people, accountMembers, files, scores] = await Promise.all([
@@ -68,6 +79,7 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 					s.notation.filter((n) => n.status === "ready").length +
 					s.files.filter((f) => f.status === "ready" && f.isNotation).length,
 				hasMyNote: myNotes.has(s.id),
+				chat: chats.get(s.id) ?? null,
 				mixUrl: await presentUrl(s.mixUrl),
 				// The mixes (docs/mixes.md): the newest ready one plays in place of the stems' bounce (Kevin: the latest content by default).
 				mixCount: s.mixes.filter((m) => m.status === "ready").length,
@@ -106,7 +118,7 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		scores: scores.filter((n) => visible.has(n.song.id)),
 		shareLinks,
 		canEdit,
-		canComment: canCommentProject(project, who),
+		canComment,
 		/** Who was added to the project, its open viewer invitations, and the account's members (to add one). */
 		people: people.people,
 		invitations: people.invitations,

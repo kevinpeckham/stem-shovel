@@ -1697,6 +1697,38 @@ export async function songChat(songId: string, userId: string | null) {
 	return { messages, readAt };
 }
 
+/** A song's chat at a glance for the project page (docs/chat.md): how many messages, and how many by others the person has not seen. */
+export async function chatSummaryOf(
+	songIds: string[],
+	userId: string,
+): Promise<Map<string, { count: number; unread: number }>> {
+	const out = new Map<string, { count: number; unread: number }>();
+	if (songIds.length === 0) return out;
+	const [messages, reads] = await Promise.all([
+		db
+			.select({
+				songId: chatMessage.songId,
+				userId: chatMessage.userId,
+				createdAt: chatMessage.createdAt,
+			})
+			.from(chatMessage)
+			.where(inArray(chatMessage.songId, songIds)),
+		db
+			.select({ songId: chatRead.songId, readAt: chatRead.readAt })
+			.from(chatRead)
+			.where(and(eq(chatRead.userId, userId), inArray(chatRead.songId, songIds))),
+	]);
+	const readAt = new Map(reads.map((r) => [r.songId, r.readAt.getTime()]));
+	for (const m of messages) {
+		const s = out.get(m.songId) ?? { count: 0, unread: 0 };
+		s.count += 1;
+		const mark = readAt.get(m.songId);
+		if (m.userId !== userId && (mark === undefined || m.createdAt.getTime() > mark)) s.unread += 1;
+		out.set(m.songId, s);
+	}
+	return out;
+}
+
 /** Marks a song's chat read now for a person; returns the mark (ms). */
 export async function markChatRead(songId: string, userId: string): Promise<number> {
 	const readAt = new Date();

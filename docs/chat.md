@@ -95,6 +95,25 @@ address (Kevin: a notification lands with the chat open).
   (`FloatingPanel`, mounted only while open).
 - User doc `scripts/user-docs/chat.md`, listed after Comments.
 
+## The project page
+
+A song's tile counts its messages in the meta line, and a badge beside
+the tile shows how many messages by others the viewer has not seen; the
+badge links to the song with `?open=chat`, so the chat panel is up on
+arrival. `chatSummaryOf(songIds, userId)` gathers both in two queries
+for someone who may write in the chats; a visitor sees neither.
+
+### A project-level stream, considered and parked (2026-10-09)
+
+Kevin asked whether a project-level chat could show the talk across
+songs. The recommendation, agreed: not a chat of its own (a second kind
+of thread competing with the songs' is where people lose track of where
+a message went), but, if wanted later, a read-only Chat panel on the
+project page listing every song's recent messages in one time-ordered
+feed, each prefixed with its song's name and linking to that song's
+chat, with no composer, so a conversation lives in one place. Not built;
+the tile badges above are the first step and may be enough.
+
 ## Not built
 
 Mentions, reactions, attachments in messages, a project-wide chat, and

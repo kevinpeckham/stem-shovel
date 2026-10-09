@@ -176,6 +176,8 @@
 		const demos = song.demos.filter((d) => d.status === "ready").length;
 		if (demos > 0) parts.push(`${demos} ${demos === 1 ? "demo" : "demos"}`);
 		if (song.mixCount > 0) parts.push(`${song.mixCount} ${song.mixCount === 1 ? "mix" : "mixes"}`);
+		if (song.chat && song.chat.count > 0)
+			parts.push(`${song.chat.count} ${song.chat.count === 1 ? "message" : "messages"}`);
 		return parts.length ? parts.join(" · ") : withLyrics ? "nothing yet" : "";
 	}
 	/** The chart text counts one, and every score and chart file attached counts one. */
@@ -555,6 +557,7 @@
 								{gathered(song)}
 							</div>
 						</a>
+						{@render chatBadge(song)}
 					</li>
 				{/each}
 			</ul>
@@ -770,5 +773,23 @@
 					)}{/if}{#if gathered(song, false)}{" · "}{gathered(song, false)}{/if}
 			</div>
 		</a>
+		{@render chatBadge(song)}
 	</li>
+{/snippet}
+
+{#snippet chatBadge(song: Song)}
+	<!-- Unread chat (docs/chat.md): a badge that opens the song with its chat panel up. -->
+	{#if song.chat && song.chat.unread > 0}
+		<a
+			class="shrink-0 self-center flex items-center gap-1 rounded-full border border-accent/60 bg-accent/10 px-2 py-1 text-12px text-accent hover-bg-accent/20"
+			href="/{data.account.slug}/projects/{data.project.slug}/{song.slug}?open=chat"
+			title="{song.chat.unread} new {song.chat.unread === 1 ? 'message' : 'messages'} in the chat"
+			aria-label="{song.chat.unread} new {song.chat.unread === 1
+				? 'message'
+				: 'messages'} in the chat on {song.title}"
+			data-chat-badge
+		>
+			<span class="i-ph-chat-circle-text" aria-hidden="true"></span>{song.chat.unread}
+		</a>
+	{/if}
 {/snippet}

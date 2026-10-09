@@ -1670,14 +1670,6 @@
 					>
 						<span class="block i-ph-paper-plane-tilt"></span>
 					</button>
-					<a
-						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						href="/ideas/recorder?song={data.song.id}"
-						title="Idea recorder: record a riff, a melody or a demo for this song"
-						aria-label="Idea recorder"
-					>
-						<span class="block i-ph-microphone"></span>
-					</a>
 					<button
 						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
 						type="button"

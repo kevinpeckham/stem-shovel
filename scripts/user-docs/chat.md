@@ -13,6 +13,10 @@ Type in the box at the bottom and press **Enter** to send; **Shift+Enter** start
 - A web address becomes a link.
 - A position written as time, like **1:23** or **0:45.5**, becomes a button that jumps the player there.
 
+## On the project page
+
+Each song's tile counts its messages, and a badge beside the tile shows how many you have not read; click it and the song opens with its chat up.
+
 ## Reading
 
 Messages run oldest to newest, with a line where the day changes. A **New** line marks where you left off, and the chat button shows a dot while there are messages you have not seen. The chat refreshes itself every few seconds while the panel is open.
