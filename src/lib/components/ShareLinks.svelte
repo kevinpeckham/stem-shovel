@@ -19,10 +19,13 @@
 		uses: number;
 		maxUses: number | null;
 		expiresAt: Date | null;
+		/** Set on a link made for a mix (docs/mixes.md). */
+		mixId?: string | null;
 		state: "open" | "revoked" | "expired" | "used up";
 	}
 	interface Props {
-		target: { songId: string } | { projectId: string };
+		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; or a project. */
+		target: { songId: string; mixId?: string } | { projectId: string };
 		links: Link[];
 		isPrivate: boolean;
 	}
@@ -64,6 +67,7 @@
 	>
 		{#if "songId" in target}
 			<input {...createShareLink.fields.songId.as("hidden", target.songId)} />
+			<input {...createShareLink.fields.mixId.as("hidden", target.mixId ?? "")} />
 		{:else}
 			<input {...createShareLink.fields.projectId.as("hidden", target.projectId)} />
 		{/if}
@@ -119,6 +123,9 @@
 							{l.uses}{l.maxUses === null ? "" : ` of ${l.maxUses}`} used
 							{#if l.expiresAt}
 								· expires {formatDate(l.expiresAt)}
+							{/if}
+							{#if l.mixId}
+								· <span class="rounded border border-current/30 px-1 text-10px">mix</span>
 							{/if}
 							{#if l.note}
 								· {l.note}

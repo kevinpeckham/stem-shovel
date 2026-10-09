@@ -6,6 +6,8 @@ import { NanoIdSchema } from "./NanoIdSchema";
 export const ShareLinkCreateSchema = v.pipe(
 	v.object({
 		songId: v.optional(v.pipe(v.string(), v.trim()), ""),
+		/** A mix of the song (docs/mixes.md): the link opens the song on it. */
+		mixId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		projectId: v.optional(v.pipe(v.string(), v.trim()), ""),
 		note: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(80)), ""),
 		/** Empty = unlimited. */

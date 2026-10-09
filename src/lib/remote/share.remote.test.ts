@@ -86,6 +86,24 @@ describe("createShareLink", () => {
 		);
 		expect(data.createShareLink).not.toHaveBeenCalled();
 	});
+	it("a link for a mix (docs/mixes.md): the mix must be the song's, and the link records it", async () => {
+		asEditorOf(ACCOUNT);
+		const MIX = fakeId("mix-one");
+		data.mixOwnership.mockResolvedValue({ id: MIX, songId: fakeId("song-two") });
+		await expect(call(share.createShareLink, { songId: SONG, mixId: MIX })).rejects.toMatchObject(
+			httpError(404),
+		);
+		data.mixOwnership.mockResolvedValue({ id: MIX, songId: SONG });
+		await expect(call(share.createShareLink, { songId: SONG, mixId: MIX })).resolves.toEqual({
+			code: "abc",
+		});
+		expect(data.createShareLink).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			USER,
+			{ songId: SONG, mixId: MIX },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+	});
 	it("an editor makes one for a song, or a project, under the account and as themselves", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(share.createShareLink, { songId: SONG })).resolves.toEqual({ code: "abc" });

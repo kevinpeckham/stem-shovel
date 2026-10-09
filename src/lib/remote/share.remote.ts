@@ -8,6 +8,7 @@ import {
 	requireUser,
 } from "#lib/server/access.js";
 import {
+	mixOwnership,
 	createShareLink as create,
 	revokeShareLink as revoke,
 	setProjectPrivacy,
@@ -48,7 +49,7 @@ export const setSongPrivate = form(PrivacySchema, async ({ id, isPrivate }) => {
 /** Any member makes a viewing link for a song or a project of their account. */
 export const createShareLink = form(
 	ShareLinkCreateSchema,
-	async ({ songId, projectId, note, maxUses, expiresDays }) => {
+	async ({ songId, mixId, projectId, note, maxUses, expiresDays }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		if (await rateLimited(`sharelink:${user.id}`, 60, HOUR))
@@ -56,11 +57,19 @@ export const createShareLink = form(
 		const m = songId
 			? await memberOf(locals, accountOfSong, songId)
 			: await memberOf(locals, accountOfProject, projectId);
-		const row = await create(m.accountId, user.id, songId ? { songId } : { projectId }, {
-			note,
-			maxUses,
-			expiresDays,
-		});
+		// A link made for a mix (docs/mixes.md): the mix must be this song's.
+		if (mixId && (!songId || (await mixOwnership(mixId))?.songId !== songId))
+			error(404, "Mix not found");
+		const row = await create(
+			m.accountId,
+			user.id,
+			songId ? { songId, mixId: mixId || undefined } : { projectId },
+			{
+				note,
+				maxUses,
+				expiresDays,
+			},
+		);
 		return { code: row.code };
 	},
 );

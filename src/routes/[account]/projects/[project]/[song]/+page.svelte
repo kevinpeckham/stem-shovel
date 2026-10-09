@@ -1666,6 +1666,7 @@
 						popovertarget="song-share"
 						title="Share this song by email"
 						aria-label="Share this song by email"
+						onclick={() => (shareMix = null)}
 					>
 						<span class="block i-ph-paper-plane-tilt"></span>
 					</button>
@@ -3540,6 +3541,9 @@
 		id="song-share"
 		popover="auto"
 		bind:this={sharePanel}
+		ontoggle={(e) => {
+			if (e.newState === "closed") shareMix = null;
+		}}
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
@@ -3556,7 +3560,11 @@
 			</button>
 		</div>
 		<p class="mb-3 text-sm text-dim">
-			{#if data.song.isPrivate || data.song.project.isPrivate}
+			{#if shareMix}
+				Sends a link that opens this song on mix v{shareMix.version}{#if data.song.isPrivate || data.song.project.isPrivate},
+					as a viewing link made for the recipient (it appears below and can be revoked){/if}. Links
+				made below while this is open land on the mix too.
+			{:else if data.song.isPrivate || data.song.project.isPrivate}
 				Sends a viewing link to this song, made for the recipient (it appears below and can be
 				revoked). With it they can listen, read the chart and download the mixes.
 			{:else}
@@ -3564,6 +3572,23 @@
 				mixes.
 			{/if}
 		</p>
+		{#if shareMix && !(data.song.isPrivate || data.song.project.isPrivate)}
+			<!-- A public song: the mix's own address is enough to pass around. -->
+			<div class="mb-3 flex flex-wrap items-center gap-3 text-sm">
+				<code class="min-w-0 truncate font-mono text-12px opacity-80"
+					>{page.url.origin}{page.url.pathname}?view=mixes&mix={shareMix.id}</code
+				>
+				<button
+					type="button"
+					class="link-dim text-12px"
+					onclick={() =>
+						navigator.clipboard
+							.writeText(`${page.url.origin}${page.url.pathname}?view=mixes&mix=${shareMix?.id}`)
+							.then(() => notify("Link copied"))
+							.catch(() => notify("Could not copy the link", { kind: "error" }))}>Copy link</button
+				>
+			</div>
+		{/if}
 		<form class="grid gap-3" onsubmit={sendShare}>
 			<label class="block">
 				<span class="text-sm text-dim">To</span>
@@ -3580,7 +3605,7 @@
 		</form>
 		<div class="mt-6 border-t border-white/15 pt-4">
 			<ShareLinks
-				target={{ songId: data.song.id }}
+				target={{ songId: data.song.id, mixId: shareMix?.id }}
 				links={data.shareLinks}
 				isPrivate={data.song.isPrivate || data.song.project.isPrivate}
 			/>
