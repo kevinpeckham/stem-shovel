@@ -46,6 +46,8 @@ function bound(over: Record<string, unknown> = {}) {
 		read: () => value,
 	};
 }
+/** The props as plain values: `value` is bindable, and an accessor prop would be a binding the test's closure cannot re-render; a plain value lets the slider keep its own copy. */
+const plain = (b: ReturnType<typeof bound>) => ({ ...b.props, value: b.props.value });
 /** The track element told it spans 200 px from x=100 (or, vertical, 200 px tall from y=50). */
 function box(el: HTMLElement, vertical = false) {
 	el.getBoundingClientRect = () =>
@@ -118,7 +120,7 @@ describe("Slider", () => {
 	});
 	test("vertical: the top is the maximum", async () => {
 		const b = bound({ orientation: "vertical" });
-		render(Slider, { props: b.props });
+		render(Slider, { props: plain(b) });
 		const slider = screen.getByRole("slider", { name: "Guitar level" });
 		expect(slider).toHaveAttribute("aria-orientation", "vertical");
 		box(slider, true);
@@ -130,7 +132,7 @@ describe("Slider", () => {
 	});
 	test("the value's popover follows the thumb while adjusting and goes a moment later", async () => {
 		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-		render(Slider, { props: bound().props });
+		render(Slider, { props: plain(bound()) });
 		const slider = screen.getByRole("slider", { name: "Guitar level" });
 		await fireEvent.keyDown(slider, { key: "ArrowUp" });
 		expect(popover()).toHaveTextContent("0 dB");

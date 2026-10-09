@@ -8,6 +8,7 @@ describe("ShareLinkCreateSchema", () => {
 	test("one of song or project, with defaults", () => {
 		expect(v.parse(ShareLinkCreateSchema, { songId: id })).toEqual({
 			songId: id,
+			mixId: "",
 			projectId: "",
 			note: "",
 			maxUses: null,
