@@ -57,6 +57,10 @@
 	<form
 		class="mt-2 flex flex-wrap items-end gap-3"
 		{...createShareLink.enhance(async ({ submit, element }) => {
+			// The form remembers its last values for the life of the page (CLAUDE.md): the target is set at submit, not left to the hidden fields' defaults, so a link made on a mix's page records the mix.
+			createShareLink.fields.songId.set("songId" in target ? target.songId : "");
+			createShareLink.fields.mixId.set("songId" in target ? (target.mixId ?? "") : "");
+			createShareLink.fields.projectId.set("projectId" in target ? target.projectId : "");
 			await submit();
 			if (createShareLink.result?.code) {
 				notify("Viewing link created");
