@@ -21,7 +21,7 @@
 
 	/**
 	 * The files attached to a song (docs/uploads-and-blob.md, "Attachments"),
-	 * the Docs panel's Attachments tab (Kevin): PDFs, images, audio scraps for
+	 * the song page's Attachments panel (Kevin; its own floating panel since 2026-10-09, before that a tab of the Docs panel): PDFs, images, audio scraps for
 	 * discussion, text, MIDI, anything else, each a tile with a ⋯ menu (open,
 	 * download, edit, a Notation switch for a PDF or image, Use as demo for
 	 * audio, remove) and a Share menu (the permanent link, a mention for the

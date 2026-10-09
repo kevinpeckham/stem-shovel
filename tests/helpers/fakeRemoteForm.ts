@@ -15,7 +15,7 @@ export function fakeRemoteForm(result?: unknown) {
 		issues: () => undefined,
 	});
 	const fields = new Proxy(
-		{ allIssues: () => undefined },
+		{ allIssues: () => undefined, set: vi.fn() },
 		{
 			// Symbols arrive when Svelte stringifies a spread attribute; they are not fields.
 			get: (target, prop) =>

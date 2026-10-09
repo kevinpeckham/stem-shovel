@@ -147,7 +147,7 @@ in three steps driven by `src/lib/upload.ts`:
   that is a score, flagged at the reservation (`notation: true` in
   `POST /api/files`'s body; ignored for the other kinds) or later
   (`isNotation` in `updateFile`), which the Chart tab's notation view
-  lists beside the notation files; the Attachments tab keeps it too.
+  lists beside the notation files; the Attachments panel keeps it too.
   **Use as demo** (`useAsDemo({ id })`, audio kind only): a new `demo`
   row of the song, labelled from the filename, the file copied in Blob
   to the demo's pathname in the song's store (`createDemoFromFile`, the

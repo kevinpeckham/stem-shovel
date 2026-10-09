@@ -217,6 +217,27 @@ async function nameOf(userId: string) {
 }
 
 /** A comment on a song: everyone on the project but the author. */
+/** A message in a song's chat (docs/chat.md): everyone on the project but its author; a burst on one song folds into one item. */
+export async function notifyChat(accountId: string, songId: string, authorId: string) {
+	const s = await songContext(accountId, songId);
+	if (!s) return;
+	const who = await nameOf(authorId);
+	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== authorId);
+	await notifyUsers(audience, {
+		kind: "chat",
+		accountId,
+		title: `New message in the chat on ${s.title}`,
+		body: (n) =>
+			n === 1
+				? `${who} wrote in the chat in ${s.project.name}.`
+				: `${n} new messages, the latest from ${who}, in ${s.project.name}.`,
+		// The permalink's redirect keeps the query (a hash never reaches the server): the page opens the chat panel on it.
+		href: `${s.href}?open=chat`,
+		subjectId: songId,
+		coalesce: true,
+	});
+}
+
 export async function notifyComment(accountId: string, songId: string, authorId: string) {
 	const s = await songContext(accountId, songId);
 	if (!s) return;

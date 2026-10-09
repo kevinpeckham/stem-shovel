@@ -58,7 +58,7 @@
 						{...fields.emailComments.as("checkbox")}
 						checked={data.prefs.emailComments}
 					/>
-					<span>Someone comments on a song</span>
+					<span>Someone comments on a song, or writes in its chat</span>
 				</label>
 				<label class="flex items-start gap-3">
 					<input

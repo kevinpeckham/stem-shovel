@@ -27,6 +27,7 @@ const ORDER = [
 	"looper",
 	"studio",
 	"comments",
+	"chat",
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",

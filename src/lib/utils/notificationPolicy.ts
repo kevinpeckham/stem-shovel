@@ -29,6 +29,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 	"seats-full": "high",
 	"invitation-accepted": "normal",
 	comment: "normal",
+	chat: "normal",
 	stems: "normal",
 	song: "normal",
 	demo: "normal",
@@ -37,6 +38,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 /** The opt-in kinds and the setting that turns each on. */
 const OPT_IN: Partial<Record<NotificationKind, keyof NotificationPrefs>> = {
 	comment: "emailComments",
+	chat: "emailComments",
 	stems: "emailStems",
 	song: "emailSongs",
 	demo: "emailDemos",

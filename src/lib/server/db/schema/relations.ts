@@ -10,6 +10,8 @@ import { accountMember } from "./accountMember";
 import { authAccount } from "./authAccount";
 import { bugReport } from "./bugReport";
 import { bugReportVote } from "./bugReportVote";
+import { chatMessage } from "./chatMessage";
+import { chatRead } from "./chatRead";
 import { comment } from "./comment";
 import { commentVersion } from "./commentVersion";
 import { demo } from "./demo";
@@ -136,6 +138,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	stems: many(stem),
 	demos: many(demo),
 	comments: many(comment),
+	chatMessages: many(chatMessage),
 	shareLinks: many(shareLink),
 	docVersions: many(songDocVersion),
 	credits: many(songCredit),
@@ -176,6 +179,16 @@ export const artistMemberRelations = relations(artistMember, ({ one }) => ({
 export const songCreditRelations = relations(songCredit, ({ one }) => ({
 	song: one(song, { fields: [songCredit.songId], references: [song.id] }),
 	artist: one(artist, { fields: [songCredit.artistId], references: [artist.id] }),
+}));
+
+export const chatMessageRelations = relations(chatMessage, ({ one }) => ({
+	song: one(song, { fields: [chatMessage.songId], references: [song.id] }),
+	author: one(user, { fields: [chatMessage.userId], references: [user.id] }),
+}));
+
+export const chatReadRelations = relations(chatRead, ({ one }) => ({
+	song: one(song, { fields: [chatRead.songId], references: [song.id] }),
+	user: one(user, { fields: [chatRead.userId], references: [user.id] }),
 }));
 
 export const commentRelations = relations(comment, ({ one, many }) => ({

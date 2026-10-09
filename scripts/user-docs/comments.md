@@ -1,6 +1,6 @@
 # Comments
 
-Comments are how a band talks about a song in the place it lives. Any signed-in member of the account can comment on any song in it.
+Comments are notes about a song, often about a spot in it, in the place the song lives. Any signed-in member of the account can comment on any song in it. For talking rather than noting, every song also has a [chat](/docs/chat).
 
 ## Reading comments
 

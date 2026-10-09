@@ -575,6 +575,13 @@
       "when": 1791320536637,
       "tag": "0081_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1791509194142,
+      "tag": "0082_chat",
+      "breakpoints": true
     }
   ]
 }

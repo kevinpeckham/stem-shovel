@@ -1,4 +1,4 @@
-import { getSong, getUserNote, listArtists, listShareLinks } from "#lib/server/data.js";
+import { getSong, getUserNote, listArtists, listShareLinks, songChat } from "#lib/server/data.js";
 import { songWantsNotes } from "#lib/utils/songWantsNotes.js";
 import { linkMentions } from "#lib/utils/linkMentions.js";
 import { mentionTargets } from "#lib/utils/mentionTargets.js";
@@ -38,11 +38,15 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		if (score.status === "ready" && score.pdfStatus === null) scheduleNotationPdf(score.id);
 	}
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
-	const [view, shareLinks, artists, myNote] = await Promise.all([
+	const canComment = canCommentProject(song.project, who);
+	const userId = locals.user?.id ?? null;
+	const [view, shareLinks, artists, myNote, chat] = await Promise.all([
 		songView(song),
 		canEdit ? listShareLinks({ songId: song.id }) : [],
 		canEdit ? listArtists(account.id) : [],
-		locals.user ? getUserNote(song.id, locals.user.id) : null,
+		userId ? getUserNote(song.id, userId) : null,
+		// The chat (docs/chat.md) is the project's own: loaded for someone who may write in it, never for a visitor.
+		songChat(song.id, canComment ? userId : null),
 	]);
 	// `@Chart` in a document links to the attachment, notation file or demo of that name (docs/uploads-and-blob.md, "Mentions").
 	const targets = mentionTargets(song);
@@ -55,7 +59,9 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		...view,
 		docs,
 		canEdit,
-		canComment: canCommentProject(song.project, who),
+		canComment,
+		/** The song's chat and where this person last read it; null for anyone who may not write in it. */
+		chat,
 		shareLinks,
 		/** The account's artist directory, for the credits picker. */
 		artists,

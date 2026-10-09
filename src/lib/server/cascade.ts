@@ -24,6 +24,8 @@ const {
 	authAccount,
 	bugReport,
 	bugReportVote,
+	chatMessage,
+	chatRead,
 	comment,
 	commentVersion,
 	demo,
@@ -75,13 +77,15 @@ async function deleteCommentRows(where: SQL): Promise<void> {
 	await db.delete(comment).where(where);
 }
 
-/** Songs and everything hanging off them: stems, demos, attachments, notation files, comments and their revisions, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
+/** Songs and everything hanging off them: stems, demos, attachments, notation files, comments and their revisions, chat messages and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
 export async function deleteSongRows(songIds: string[]): Promise<void> {
 	if (songIds.length === 0) return;
 	await db.delete(songCredit).where(inArray(songCredit.songId, songIds));
 	await db.delete(songDocVersion).where(inArray(songDocVersion.songId, songIds));
 	await db.delete(songUserNote).where(inArray(songUserNote.songId, songIds));
 	await deleteCommentRows(inArray(comment.songId, songIds));
+	await db.delete(chatMessage).where(inArray(chatMessage.songId, songIds));
+	await db.delete(chatRead).where(inArray(chatRead.songId, songIds));
 	await db.delete(shareLink).where(inArray(shareLink.songId, songIds));
 	await db.delete(demo).where(inArray(demo.songId, songIds));
 	await db.delete(songFile).where(inArray(songFile.songId, songIds));
@@ -179,6 +183,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(drumKit).where(eq(drumKit.accountId, accountId));
 	await db.delete(pianoPreset).where(eq(pianoPreset.accountId, accountId));
 	await deleteCommentRows(eq(comment.accountId, accountId));
+	await db.delete(chatMessage).where(eq(chatMessage.accountId, accountId));
 	await db.delete(songFile).where(eq(songFile.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
@@ -197,7 +202,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(account).where(eq(account.id, accountId));
 }
 
-/** A user: memberships, sign-in records, sessions, two-factor, votes, comments (with their revisions), private song notes and their revisions go; what else they made stays without an author. */
+/** A user: memberships, sign-in records, sessions, two-factor, votes, comments (with their revisions), chat messages and read marks, private song notes and their revisions go; what else they made stays without an author. */
 export async function deleteUserRows(userId: string): Promise<void> {
 	await db.delete(accountMember).where(eq(accountMember.userId, userId));
 	await db.delete(projectMember).where(eq(projectMember.userId, userId));
@@ -213,6 +218,8 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await db.update(auditLog).set({ userId: null }).where(eq(auditLog.userId, userId));
 	await db.update(bugReport).set({ userId: null }).where(eq(bugReport.userId, userId));
 	await deleteCommentRows(eq(comment.userId, userId));
+	await db.delete(chatMessage).where(eq(chatMessage.userId, userId));
+	await db.delete(chatRead).where(eq(chatRead.userId, userId));
 	await db
 		.update(commentVersion)
 		.set({ editedBy: null })

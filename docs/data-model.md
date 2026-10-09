@@ -83,6 +83,12 @@ erDiagram
   and entry (25 by default, as in Logic).
 - **song.start_at / end_at** — seconds where bar 1 begins and where the song
   ends (null = 0 / the last stem), for the bars readout and the timeline.
+- **chat_message** — a message in a song's chat (docs/chat.md): plain
+  text by someone on the project, `edited_at` after an edit; no revision
+  history. Deleted with the song, the account and the author.
+- **chat_read** — when one person last looked at one song's chat
+  (`user_id`, `song_id` primary key; `read_at`), for the tab's unread dot
+  and the "New" line. Deleted with the song and the user.
 - **comment** — a member's comment on a song: title, plain text, an
   optional position (`at`, seconds) that puts it on the comment timeline
   under the stems, and `edited_at` once changed. Anyone in the account may

@@ -17,6 +17,7 @@
 	import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
 	import type { AiAnswer } from "#lib/server/aiDetect.js";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
+	import SongChat from "#lib/components/SongChat.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import SongDocPanel from "#lib/components/SongDocPanel.svelte";
 	import AiToggle from "#lib/components/AiToggle.svelte";
@@ -42,6 +43,7 @@
 	import { bumpVersion } from "#lib/utils/bumpVersion.js";
 	import { midiContentType } from "#lib/utils/midiContentType.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
+	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { parseBarsText } from "#lib/utils/parseBarsText.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -102,7 +104,8 @@
 		addSongCredit,
 		removeSongCredit,
 	} from "#lib/remote/songs.remote.js";
-	import { refreshAll } from "$app/navigation";
+	import { afterNavigate, refreshAll, replaceState } from "$app/navigation";
+	import { page } from "$app/state";
 	import { onMount, tick, untrack, type ComponentProps } from "svelte";
 
 	let { data } = $props();
@@ -331,11 +334,37 @@
 	// Lyrics first, the panel's default tab (Kevin, 2026-10-06).
 	const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	// The Docs panel also shows the comments and the attachments; neither is a document.
-	const PANELS = [...DOC_KINDS, "comments", "files"] as const;
+	// The Docs panel also shows the comments; the attachments are a panel of their own (Kevin), as the chat is.
+	const PANELS = [...DOC_KINDS, "comments"] as const;
 	type Panel = (typeof PANELS)[number];
-	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments", files: "Attachments" } as const;
-	/** The tabs carry their counts, as the player's Stems and Demos tabs do (Kevin): the attachments (the scores among them), the comments, and the Chart's uploads (notation files and attachments marked as notation), or 1 for chart text with no uploads. */
+	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments" } as const;
+	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
+	let filesOpen = $state(false);
+	// The chat (docs/chat.md) is its own panel, closed until the header's button opens it (Kevin: chat and read the docs at once).
+	// Its messages and read mark live here so closing and reopening keeps them; SongChat binds to them.
+	let chatOpen = $state(false);
+	// svelte-ignore state_referenced_locally
+	let chatMessages = $state(data.chat?.messages ?? []);
+	// svelte-ignore state_referenced_locally
+	let chatReadAt = $state<number | null>(data.chat?.readAt ?? null);
+	/** A chat notification's link ends in ?open=chat (docs/chat.md): the panel opens and the query goes, so a reload does not reopen it. */
+	function openChatFromUrl() {
+		if (!data.chat || page.url.searchParams.get("open") !== "chat") return;
+		chatOpen = true;
+		const url = new URL(page.url.href);
+		url.searchParams.delete("open");
+		replaceState(url, {});
+	}
+	// A navigation from one song to another reuses this page: the chat starts over from the new song's.
+	afterNavigate(() => {
+		chatMessages = data.chat?.messages ?? [];
+		chatReadAt = data.chat?.readAt ?? null;
+		openChatFromUrl();
+	});
+	let chatUnread = $derived(
+		data.chat ? unreadCount(chatMessages, chatReadAt, data.user?.id ?? null) : 0,
+	);
+	/** The tabs and the Attachments button carry their counts, as the player's Stems and Demos tabs do (Kevin): the attachments (the scores among them), the comments, and the Chart's uploads (notation files and attachments marked as notation), or 1 for chart text with no uploads. */
 	let fileCount = $derived(
 		data.song.files.filter((p) => p.status === "ready").length +
 			data.song.notation.filter((n) => n.status === "ready").length,
@@ -346,14 +375,7 @@
 	);
 	let chartCount = $derived(notationCount || (data.docs.chart ? 1 : 0));
 	const tabLabel = (kind: Panel) => {
-		const count =
-			kind === "files"
-				? fileCount
-				: kind === "comments"
-					? data.comments.length
-					: kind === "chart"
-						? chartCount
-						: 0;
+		const count = kind === "comments" ? data.comments.length : kind === "chart" ? chartCount : 0;
 		return count ? `${PANEL_LABELS[kind]} (${count})` : PANEL_LABELS[kind];
 	};
 	/** Switch the right-hand panel, closing an open editor first. */
@@ -364,7 +386,7 @@
 		panel = kind;
 	}
 	let panel = $state<Panel>("lyrics");
-	let showing = $derived(panel === "comments" || panel === "files" ? null : panel);
+	let showing = $derived(panel === "comments" ? null : panel);
 
 	/**
 	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
@@ -414,10 +436,9 @@
 	function togglePlayer() {
 		setPlayerMode(playerMode === "minimised" ? playerRestore : "minimised");
 	}
-	/** The Attachments tab's picker, from the Uploads menu: the panel back if minimised, the tab shown, then the picker. */
+	/** The Attachments panel's picker, from the Uploads menu: the panel opened, then the picker. */
 	async function pickFiles() {
-		if (docsMode === "minimised") await setDocsMode(docsRestore);
-		await showPanel("files");
+		filesOpen = true;
 		await tick();
 		filesPanel?.pick();
 	}
@@ -594,18 +615,6 @@
 							iconClass: "i-ph-music-notes-simple",
 							title: "MusicXML or PDF: one or more files",
 							action: () => notationPanel?.pick(),
-						},
-					]
-				: nothing;
-		if (panel === "files")
-			return data.canEdit
-				? [
-						{
-							id: "upload-files",
-							label: "Upload Attachments",
-							iconClass: "i-ph-paperclip",
-							title: "PDFs, images, audio, text, MIDI: one or more files",
-							action: () => filesPanel?.pick(),
 						},
 					]
 				: nothing;
@@ -1456,44 +1465,66 @@
 				</div>
 			</div>
 
-			<!-- share, idea recorder, info and settings -->
-			{#if data.canEdit}
+			<!-- chat, share, idea recorder, info and settings -->
+			{#if data.canEdit || data.chat}
 				<div class="flex gap-2">
-					<button
-						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						type="button"
-						popovertarget="song-share"
-						title="Share this song by email"
-						aria-label="Share this song by email"
-					>
-						<span class="block i-ph-paper-plane-tilt"></span>
-					</button>
-					<a
-						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						href="/ideas/recorder?song={data.song.id}"
-						title="Idea recorder: record a riff, a melody or a demo for this song"
-						aria-label="Idea recorder"
-					>
-						<span class="block i-ph-microphone"></span>
-					</a>
-					<button
-						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						type="button"
-						popovertarget="song-info"
-						title="About this song"
-						aria-label="About this song"
-					>
-						<span class="block i-ph-info"></span>
-					</button>
-					<button
-						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-						type="button"
-						popovertarget="song-settings"
-						title="Song settings"
-						aria-label="Song settings"
-					>
-						<span class="block i-ph-gear"></span>
-					</button>
+					{#if data.chat}
+						<!-- The chat panel's button (docs/chat.md): a dot while there is something unread. -->
+						<button
+							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent relative"
+							type="button"
+							title={chatUnread ? `Chat: ${chatUnread} new` : "Chat about this song"}
+							aria-label="Chat{chatUnread ? ` (${chatUnread} new)` : ''}"
+							aria-pressed={chatOpen}
+							onclick={() => (chatOpen = !chatOpen)}
+						>
+							<span class="block i-ph-chat-circle-text"></span>
+							{#if chatUnread}
+								<span
+									class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
+									aria-hidden="true"
+									data-chat-unread
+								></span>
+							{/if}
+						</button>
+					{/if}
+					{#if data.canEdit}
+						<button
+							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+							type="button"
+							popovertarget="song-share"
+							title="Share this song by email"
+							aria-label="Share this song by email"
+						>
+							<span class="block i-ph-paper-plane-tilt"></span>
+						</button>
+						<a
+							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+							href="/ideas/recorder?song={data.song.id}"
+							title="Idea recorder: record a riff, a melody or a demo for this song"
+							aria-label="Idea recorder"
+						>
+							<span class="block i-ph-microphone"></span>
+						</a>
+						<button
+							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+							type="button"
+							popovertarget="song-info"
+							title="About this song"
+							aria-label="About this song"
+						>
+							<span class="block i-ph-info"></span>
+						</button>
+						<button
+							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+							type="button"
+							popovertarget="song-settings"
+							title="Song settings"
+							aria-label="Song settings"
+						>
+							<span class="block i-ph-gear"></span>
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -2598,10 +2629,7 @@
 					position="bottom left"
 					items={PANELS.map((kind) => ({
 						id: kind,
-						label:
-							kind === "files"
-								? `<span class="i-ph-paperclip align-[-2px]"></span> ${tabLabel(kind)}`
-								: tabLabel(kind),
+						label: tabLabel(kind),
 						iconClass: panel === kind ? "i-ph-check" : "i-ph-check invisible",
 						action: () => showPanel(kind),
 					}))}
@@ -2624,12 +2652,7 @@
 								: index === PANELS.length - 1
 									? 'rounded-l-none'
 									: 'rounded-none border-r-none'}"
-							onclick={() => showPanel(kind)}
-							title={kind === "files" ? "Attachments" : undefined}
-							aria-label={kind === "files" ? tabLabel(kind) : undefined}
-							>{#if kind === "files"}<span class="i-ph-paperclip text-14px" aria-hidden="true"
-								></span>{#if fileCount}
-									({fileCount}){/if}{:else}{tabLabel(kind)}{/if}</button
+							onclick={() => showPanel(kind)}>{tabLabel(kind)}</button
 						>
 					{/each}
 				</div>
@@ -2641,16 +2664,6 @@
 							title="Add a comment"
 							aria-label="Add a comment"
 							onclick={() => openComment()}
-						>
-							<span class="i-ph-plus"></span>
-						</button>
-					{:else if panel === "files"}
-						<button
-							class="button button-xs flex items-center"
-							type="button"
-							title="Upload attachments: PDFs, images, audio, text, MIDI"
-							aria-label="Upload attachments"
-							onclick={() => filesPanel?.pick()}
 						>
 							<span class="i-ph-plus"></span>
 						</button>
@@ -2872,22 +2885,6 @@
 					pdfs={notationPdfs}
 					canEdit={data.canEdit}
 				/>
-			{:else if panel === "files"}
-				<!-- The attachments (docs/uploads-and-blob.md, "Attachments"): every file of the song, the scores among them. -->
-				<SongFilesPanel
-					bind:this={filesPanel}
-					songId={data.song.id}
-					songTitle={data.song.title}
-					files={data.song.files}
-					scores={data.song.notation}
-					canEdit={data.canEdit}
-					onnotation={async (files) => {
-						await showPanel("chart");
-						await setChartMode("notation");
-						await tick();
-						await notationPanel?.upload(files);
-					}}
-				/>
 			{:else if notesMine}
 				<!-- The user's private note: the same editor, saved as kind "mynotes" to the user's own row (docs/data-model.md). -->
 				{#key `mynotes:${myNote.version}`}
@@ -2935,6 +2932,69 @@
 			onrestored={() => refreshAll()}
 		/>
 	</section>
+	{#if data.chat}
+		<!-- The chat (docs/chat.md): its own panel, closed until the header's button opens it; floats from lg, a block under the docs below (`contents` keeps it out of the grid from lg). -->
+		<div class="{chatOpen ? '' : 'hidden'} max-w-full lg:contents">
+			<FloatingPanel
+				open={chatOpen}
+				title="Chat"
+				storageKey="stemshovel.song.chat-panel"
+				width={440}
+				height={600}
+				onminimise={() => (chatOpen = false)}
+			>
+				<SongChat
+					songId={data.song.id}
+					bind:messages={chatMessages}
+					bind:readAt={chatReadAt}
+					me={data.user ? { id: data.user.id, name: data.user.name } : null}
+					{isAdmin}
+					canWrite={data.canComment}
+					onseek={(s) => playerEngine?.seek(s)}
+				/>
+			</FloatingPanel>
+		</div>
+	{/if}
+	<!-- The attachments (docs/uploads-and-blob.md, "Attachments"): every file of the song, the scores among them, in a panel of their own, closed until the toolbar's button opens it (Kevin). -->
+	<div class="{filesOpen ? '' : 'hidden'} max-w-full lg:contents">
+		<FloatingPanel
+			open={filesOpen}
+			title="Attachments"
+			storageKey="stemshovel.song.files-panel"
+			width={600}
+			height={640}
+			onminimise={() => (filesOpen = false)}
+		>
+			{#snippet controls()}
+				{#if data.canEdit}
+					<button
+						class="button button-xs flex items-center"
+						type="button"
+						title="Upload attachments: PDFs, images, audio, text, MIDI"
+						aria-label="Upload attachments"
+						onclick={() => filesPanel?.pick()}
+					>
+						<span class="i-ph-plus"></span>
+					</button>
+				{/if}
+			{/snippet}
+			<SongFilesPanel
+				bind:this={filesPanel}
+				songId={data.song.id}
+				songTitle={data.song.title}
+				files={data.song.files}
+				scores={data.song.notation}
+				canEdit={data.canEdit}
+				onnotation={async (files) => {
+					if (docsMode === "minimised") await setDocsMode(docsRestore);
+					await showPanel("chart");
+					await setChartMode("notation");
+					await tick();
+					await notationPanel?.upload(files);
+				}}
+			/>
+		</FloatingPanel>
+	</div>
 </main>
 
 {#snippet actionButtons(engine?: StemEngine)}
@@ -3205,6 +3265,20 @@
 		>
 			<span class="i-ph-files" aria-hidden="true"></span>
 			Docs
+		</button>
+		<!-- The Attachments panel's button (Kevin): closed by default, lit while open, counting the files. -->
+		<button
+			class="button button-sm {filesOpen ? 'bg-accent text-oxford border-accent opacity-100' : ''}"
+			type="button"
+			aria-pressed={filesOpen}
+			title={filesOpen ? "Close the attachments" : "Show the attachments"}
+			aria-label="{filesOpen ? 'Close' : 'Show'} the attachments{fileCount
+				? ` (${fileCount})`
+				: ''}"
+			onclick={() => (filesOpen = !filesOpen)}
+		>
+			<span class="i-ph-paperclip" aria-hidden="true"></span>
+			{fileCount ? `Attachments (${fileCount})` : "Attachments"}
 		</button>
 	</div>
 {/snippet}

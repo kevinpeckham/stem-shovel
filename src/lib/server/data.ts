@@ -118,6 +118,7 @@ import {
 	count,
 	desc,
 	eq,
+	gt,
 	inArray,
 	isNotNull,
 	isNull,
@@ -156,6 +157,8 @@ const {
 	demo,
 	invitation,
 	inviteCode,
+	chatMessage,
+	chatRead,
 	comment,
 	commentVersion,
 	bugReport,
@@ -1502,6 +1505,130 @@ export async function deleteComment(id: string) {
 	await db.delete(commentVersion).where(eq(commentVersion.commentId, id));
 	const [row] = await db.delete(comment).where(eq(comment.id, id)).returning({ id: comment.id });
 	return !!row;
+}
+
+// ---- the song chat (docs/chat.md) ----
+
+/** A chat message as the page and the poll see it: times as milliseconds, the author's name beside their id. */
+export interface ChatMessageRow {
+	id: string;
+	userId: string;
+	authorName: string;
+	body: string;
+	createdAt: number;
+	updatedAt: number;
+	editedAt: number | null;
+}
+const chatRow = (m: {
+	id: string;
+	userId: string;
+	author: { name: string };
+	body: string;
+	createdAt: Date;
+	updatedAt: Date;
+	editedAt: Date | null;
+}): ChatMessageRow => ({
+	id: m.id,
+	userId: m.userId,
+	authorName: m.author.name,
+	body: m.body,
+	createdAt: m.createdAt.getTime(),
+	updatedAt: m.updatedAt.getTime(),
+	editedAt: m.editedAt?.getTime() ?? null,
+});
+
+/** A song's messages oldest first; with `after` (ms), only those made or changed since, for the poll. */
+export async function listChatMessages(songId: string, after = 0): Promise<ChatMessageRow[]> {
+	const rows = await db.query.chatMessage.findMany({
+		where:
+			after > 0
+				? and(eq(chatMessage.songId, songId), gt(chatMessage.updatedAt, new Date(after)))
+				: eq(chatMessage.songId, songId),
+		orderBy: [asc(chatMessage.createdAt), asc(chatMessage.id)],
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return rows.map(chatRow);
+}
+
+/** Sends a message; null when the song is not the account's. The row comes back whole so the page can show it at once. */
+export async function createChatMessage(
+	accountId: string,
+	songId: string,
+	userId: string,
+	body: string,
+): Promise<ChatMessageRow | null> {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [row] = await db
+		.insert(chatMessage)
+		.values({ accountId, songId, userId, body })
+		.returning({ id: chatMessage.id });
+	const made = await db.query.chatMessage.findFirst({
+		where: eq(chatMessage.id, row.id),
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return made ? chatRow(made) : null;
+}
+
+export async function chatMessageOwnership(id: string) {
+	return db.query.chatMessage.findFirst({
+		where: eq(chatMessage.id, id),
+		columns: { id: true, accountId: true, userId: true, songId: true },
+	});
+}
+
+/** New text for a message: marked edited; the poll picks it up through updated_at. */
+export async function updateChatMessage(id: string, body: string): Promise<ChatMessageRow | null> {
+	const now = new Date();
+	await db
+		.update(chatMessage)
+		.set({ body, editedAt: now, updatedAt: now })
+		.where(eq(chatMessage.id, id));
+	const row = await db.query.chatMessage.findFirst({
+		where: eq(chatMessage.id, id),
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return row ? chatRow(row) : null;
+}
+
+export async function deleteChatMessage(id: string) {
+	const [row] = await db
+		.delete(chatMessage)
+		.where(eq(chatMessage.id, id))
+		.returning({ id: chatMessage.id });
+	return !!row;
+}
+
+/** When a person last marked a song's chat read (ms), or null if never. */
+async function chatReadAt(songId: string, userId: string): Promise<number | null> {
+	const row = await db.query.chatRead.findFirst({
+		where: and(eq(chatRead.songId, songId), eq(chatRead.userId, userId)),
+		columns: { readAt: true },
+	});
+	return row?.readAt.getTime() ?? null;
+}
+
+/** The chat as the song page loads it for one person: null for no one (a visitor), else the messages and their read mark. */
+export async function songChat(songId: string, userId: string | null) {
+	if (!userId) return null;
+	const [messages, readAt] = await Promise.all([
+		listChatMessages(songId),
+		chatReadAt(songId, userId),
+	]);
+	return { messages, readAt };
+}
+
+/** Marks a song's chat read now for a person; returns the mark (ms). */
+export async function markChatRead(songId: string, userId: string): Promise<number> {
+	const readAt = new Date();
+	await db
+		.insert(chatRead)
+		.values({ songId, userId, readAt })
+		.onConflictDoUpdate({ target: [chatRead.userId, chatRead.songId], set: { readAt } });
+	return readAt.getTime();
 }
 
 // ---- project people ---------------------------------------------------------

@@ -16,6 +16,7 @@ tests), `src/lib/val/NotificationSchema.ts` (kinds, settings),
 | `seats-full`          | the account's owners and admins, when the last seat fills | high     |
 | `invitation-accepted` | whoever sent the invitation                               | normal   |
 | `comment`             | everyone on the song's project but the author             | normal   |
+| `chat`                | everyone on the song's project but the message's author   | normal   |
 | `stems`               | everyone on the project but the uploader                  | normal   |
 | `song`                | everyone on the project but the creator                   | normal   |
 | `demo`                | everyone on the project but the uploader                  | normal   |
@@ -23,13 +24,14 @@ tests), `src/lib/val/NotificationSchema.ts` (kinds, settings),
 "Everyone on the project" is `projectAudience`: the account's owners and
 admins, its members (unless the project is restricted and they were not
 added), and the project's own people, viewers included (docs/auth.md). The
-events fire after the response (`background`) from `createComment`, the
+events fire after the response (`background`) from `createComment`, `sendMessage` (the chat, docs/chat.md), the
 stem and demo `ready` routes, `createSong`, the two invitation
 acceptances (the remote form and the sign-up hook) and, for the warnings,
 after every upload reservation (`checkStorage`) and every join
 (`checkSeats`). A warning for a threshold is not repeated within a week
-(`warnedRecently`). Stems, demos and comments on one song within half an
-hour fold into one unread item with a `count` (`coalesce`).
+(`warnedRecently`). Stems, demos, comments and chat messages on one song within
+half an hour fold into one unread item with a `count` (`coalesce`); the chat
+follows the comments opt-in for email.
 
 ## Email
 
