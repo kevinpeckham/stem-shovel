@@ -1616,68 +1616,87 @@
 				</div>
 			</div>
 
-			<!-- chat, share, idea recorder, info and settings -->
-			{#if data.canEdit || data.chat}
-				<div class="flex gap-2">
-					{#if data.chat}
-						<!-- The chat panel's button (docs/chat.md): a dot while there is something unread. -->
-						<button
-							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent relative"
-							type="button"
-							title={chatUnread ? `Chat: ${chatUnread} new` : "Chat about this song"}
-							aria-label="Chat{chatUnread ? ` (${chatUnread} new)` : ''}"
-							aria-pressed={chatOpen}
-							onclick={() => (chatOpen = !chatOpen)}
+			<!-- chat, attachments, share, idea recorder, info and settings -->
+			<div class="flex gap-2">
+				{#if data.chat}
+					<!-- The chat panel's button (docs/chat.md): a dot while there is something unread. -->
+					<button
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent relative"
+						type="button"
+						title={chatUnread ? `Chat: ${chatUnread} new` : "Chat about this song"}
+						aria-label="Chat{chatUnread ? ` (${chatUnread} new)` : ''}"
+						aria-pressed={chatOpen}
+						onclick={() => (chatOpen = !chatOpen)}
+					>
+						<span class="block i-ph-chat-circle-text"></span>
+						{#if chatUnread}
+							<span
+								class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
+								aria-hidden="true"
+								data-chat-unread
+							></span>
+						{/if}
+					</button>
+				{/if}
+				<!-- The Attachments panel's button (Kevin): closed by default, lit while open, the file count on the badge. -->
+				<button
+					class="button button-sm relative {filesOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: 'bg-blue-300/5 border-current/40 hover-border-accent'}"
+					type="button"
+					aria-pressed={filesOpen}
+					title={filesOpen ? "Close the attachments" : "Show the attachments"}
+					aria-label="{filesOpen ? 'Close' : 'Show'} the attachments{fileCount
+						? ` (${fileCount})`
+						: ''}"
+					onclick={() => (filesOpen = !filesOpen)}
+				>
+					<span class="block i-ph-paperclip"></span>
+					{#if fileCount}
+						<span
+							class="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-oxford-800 px-1 text-center text-9px leading-4 text-light ring-1 ring-current/40"
+							aria-hidden="true">{fileCount}</span
 						>
-							<span class="block i-ph-chat-circle-text"></span>
-							{#if chatUnread}
-								<span
-									class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
-									aria-hidden="true"
-									data-chat-unread
-								></span>
-							{/if}
-						</button>
 					{/if}
-					{#if data.canEdit}
-						<button
-							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-							type="button"
-							popovertarget="song-share"
-							title="Share this song by email"
-							aria-label="Share this song by email"
-						>
-							<span class="block i-ph-paper-plane-tilt"></span>
-						</button>
-						<a
-							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-							href="/ideas/recorder?song={data.song.id}"
-							title="Idea recorder: record a riff, a melody or a demo for this song"
-							aria-label="Idea recorder"
-						>
-							<span class="block i-ph-microphone"></span>
-						</a>
-						<button
-							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-							type="button"
-							popovertarget="song-info"
-							title="About this song"
-							aria-label="About this song"
-						>
-							<span class="block i-ph-info"></span>
-						</button>
-						<button
-							class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
-							type="button"
-							popovertarget="song-settings"
-							title="Song settings"
-							aria-label="Song settings"
-						>
-							<span class="block i-ph-gear"></span>
-						</button>
-					{/if}
-				</div>
-			{/if}
+				</button>
+				{#if data.canEdit}
+					<button
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+						type="button"
+						popovertarget="song-share"
+						title="Share this song by email"
+						aria-label="Share this song by email"
+					>
+						<span class="block i-ph-paper-plane-tilt"></span>
+					</button>
+					<a
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+						href="/ideas/recorder?song={data.song.id}"
+						title="Idea recorder: record a riff, a melody or a demo for this song"
+						aria-label="Idea recorder"
+					>
+						<span class="block i-ph-microphone"></span>
+					</a>
+					<button
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+						type="button"
+						popovertarget="song-info"
+						title="About this song"
+						aria-label="About this song"
+					>
+						<span class="block i-ph-info"></span>
+					</button>
+					<button
+						class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+						type="button"
+						popovertarget="song-settings"
+						title="Song settings"
+						aria-label="Song settings"
+					>
+						<span class="block i-ph-gear"></span>
+					</button>
+				{/if}
+			</div>
 		</div>
 	</header>
 
@@ -3458,20 +3477,6 @@
 		>
 			<span class="i-ph-files" aria-hidden="true"></span>
 			Docs
-		</button>
-		<!-- The Attachments panel's button (Kevin): closed by default, lit while open, counting the files. -->
-		<button
-			class="button button-sm {filesOpen ? 'bg-accent text-oxford border-accent opacity-100' : ''}"
-			type="button"
-			aria-pressed={filesOpen}
-			title={filesOpen ? "Close the attachments" : "Show the attachments"}
-			aria-label="{filesOpen ? 'Close' : 'Show'} the attachments{fileCount
-				? ` (${fileCount})`
-				: ''}"
-			onclick={() => (filesOpen = !filesOpen)}
-		>
-			<span class="i-ph-paperclip" aria-hidden="true"></span>
-			{fileCount ? `Attachments (${fileCount})` : "Attachments"}
 		</button>
 	</div>
 {/snippet}

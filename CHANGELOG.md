@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **The attachments are a panel of their own** on the song page (Kevin), as the chat is: closed by default, opened by an **Attachments** button (with the file count) in the row under the player beside Player and Docs, floating from lg and a block under the docs below; its + uploads, and the Uploads menu's Upload Attachments opens it to pick. The Docs panel's tabs are the documents and the comments now.
+- **The attachments are a panel of their own** on the song page (Kevin), as the chat is: closed by default, opened by a paperclip button (its badge the file count) in the header beside the chat button, floating from lg and a block under the docs below; its + uploads, and the Uploads menu's Upload Attachments opens it to pick. The Docs panel's tabs are the documents and the comments now.
 
 ### Fixed
 
