@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.117.1] - 2026-10-09
+
 ### Fixed
 
 - **The Chord Player's sustain latch survives a tab switch.** Focus leaving the window released everything, the latch included, so a user coming back from another tab found the pedal up. The latch is a setting rather than a held key, so it stays now; the keys and a space bar held without the latch still let go.
