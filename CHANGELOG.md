@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.118.0] - 2026-10-10
+
 ### Changed
 
 - **The song page's header loses its Idea recorder button** (Kevin: the global nav has it); Record Demo in the row under the player still goes there.
