@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.120.0] - 2026-10-10
+
 ### Changed
 
 - **`bun run db:status`** names the last migration a database has applied and any pending, so production can be checked before a push to main (the v0.118.0 outage).
