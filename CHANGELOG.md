@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.121.0] - 2026-10-10
+
 ### Changed
 
 - **The chat and the comments read apart**: the chat's icon is the speech bubble with dots and the comments' the clapping hands (Kevin), on the header buttons, the Comments row, the timeline's markers, the Comment here menus and the inbox.

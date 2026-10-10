@@ -211,7 +211,7 @@ describe("notifyComment", () => {
 					priority: "normal",
 					title: "New comment on Intro",
 					body: "Ann commented in Album.",
-					href: "/go/song/s1",
+					href: "/go/song/s1?open=comments",
 					subjectId: "s1",
 					count: 1,
 					readAt: null,
@@ -300,7 +300,7 @@ describe("notifyComment", () => {
 			name: "Bob",
 			title: "New comment on Intro",
 			body: "Ann commented in Album.",
-			href: "/go/song/s1",
+			href: "/go/song/s1?open=comments",
 		});
 		expect(inboxOf("u2")[0].emailedAt).toEqual(at(NOW));
 		expect(inboxOf("u3")[0].emailedAt).toBeNull();
