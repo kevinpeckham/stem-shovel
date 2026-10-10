@@ -608,7 +608,7 @@
 			ariaLabel="Manage presets"
 			title="Save, name, share and manage presets"
 			iconClass="i-ph-bookmarks-simple"
-			position="bottom left"
+			position="bottom right"
 			buttonBaseClasses="device-button-xs w-8 px-2"
 			popoverClasses="min-w-80 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 			bind:openState={saveOpen}
