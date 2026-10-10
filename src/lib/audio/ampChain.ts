@@ -37,6 +37,8 @@ export interface AmpChain {
 	/** A wah pedal's position (0 to 1), or null to hand the filter back to touch or sweep. */
 	wahPedal(position: number | null): void;
 	meters(): { reduction: number };
+	/** The cabinet in the convolver now (ampStages.ts, createCabinetStage). */
+	cabinetLoaded(): string;
 }
 
 const PEAK = 0.5;
@@ -134,5 +136,6 @@ export function createAmpChain(
 		update,
 		wahPedal: (position) => wah.pedal(position),
 		meters: () => ({ reduction: comp.meters().reduction }),
+		cabinetLoaded: () => cabinet.loaded(),
 	};
 }

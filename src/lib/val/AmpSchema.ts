@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { AMP_CABINET_CAPTURE_IDS } from "#lib/constants/amp.js";
 
 /**
  * The Practice Amp's settings (docs/practice-amp.md): the instrument,
@@ -50,6 +51,8 @@ export const AmpHeadSchema = v.object({
 		}),
 		() => ({ rate: 4.5, depth: 0, shape: "sine" as const }),
 	),
+	/** The cabinet: the model's own synthesized one, or a captured cabinet (static/cabs) by id. */
+	cabinet: v.optional(v.picklist(["model", ...AMP_CABINET_CAPTURE_IDS]), "model"),
 	master: unit(0.7),
 });
 export type AmpHead = v.InferOutput<typeof AmpHeadSchema>;

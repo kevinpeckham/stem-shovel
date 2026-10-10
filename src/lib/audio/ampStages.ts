@@ -1,5 +1,11 @@
 import { AMP_MID_FREQUENCIES, type AmpHead } from "#lib/val/AmpSchema.js";
-import type { AmpCabinetId, AmpModel, AmpPreampCurve } from "#lib/constants/amp.js";
+import {
+	AMP_CABINET_CAPTURES,
+	type AmpCabinetId,
+	type AmpModel,
+	type AmpPreampCurve,
+} from "#lib/constants/amp.js";
+import { magnitudeAt } from "#lib/utils/biquad.js";
 import { cabinetImpulseSamples } from "#lib/utils/cabinetImpulse.js";
 import { springImpulseSamples } from "#lib/utils/springImpulse.js";
 
@@ -237,23 +243,96 @@ function cabinetImpulse(ctx: BaseAudioContext, id: AmpCabinetId): AudioBuffer {
 	return buffer;
 }
 
-/** The cabinet: a ConvolverNode over the model's synthesized impulse (utils/cabinetImpulse.ts), swapped when the model changes. */
-export function createCabinetStage(ctx: BaseAudioContext): AmpStage {
+/**
+ * A captured cabinet's impulse (static/cabs, CC0 from Jester Dyne
+ * Productions) fetched and decoded into a context, once per context and
+ * file, and scaled so the body of the instrument (250 to 800 Hz) passes
+ * at unity as the synthesized ones do, so a switch between cabinets is
+ * a change of colour and not of level. Null when it cannot be fetched
+ * (offline, a test without the files): the synthesized cabinet stays.
+ */
+const captures = new WeakMap<BaseAudioContext, Map<string, Promise<AudioBuffer | null>>>();
+export function loadCabinetCapture(
+	ctx: BaseAudioContext,
+	file: string,
+): Promise<AudioBuffer | null> {
+	let map = captures.get(ctx);
+	if (!map) captures.set(ctx, (map = new Map()));
+	let loading = map.get(file);
+	if (!loading) {
+		loading = (async () => {
+			try {
+				const res = await fetch(file);
+				if (!res.ok) return null;
+				const decoded = await ctx.decodeAudioData(await res.arrayBuffer());
+				const samples = decoded.getChannelData(0);
+				const probes = [250, 400, 600, 800];
+				const ref =
+					probes.reduce((sum, hz) => sum + magnitudeAt(samples, ctx.sampleRate, hz), 0) /
+					probes.length;
+				const scaled = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+				const out = scaled.getChannelData(0);
+				const k = ref > 0 ? 1 / ref : 1;
+				for (let i = 0; i < samples.length; i++) out[i] = samples[i]! * k;
+				return scaled;
+			} catch {
+				return null;
+			}
+		})();
+		map.set(file, loading);
+	}
+	return loading;
+}
+
+export interface CabinetStage extends AmpStage {
+	/** The cabinet in the convolver now: the model's id, or a capture's once it has loaded. */
+	loaded(): string;
+}
+
+/**
+ * The cabinet: a ConvolverNode over the model's synthesized impulse
+ * (utils/cabinetImpulse.ts), or a captured cabinet chosen on the head
+ * (`head.cabinet`), fetched as it is chosen; the model's stands in
+ * until a capture arrives, and the choice last made wins.
+ */
+export function createCabinetStage(ctx: BaseAudioContext): CabinetStage {
 	const input = ctx.createGain();
 	const output = ctx.createGain();
 	const convolver = ctx.createConvolver();
 	convolver.normalize = false;
 	input.connect(convolver);
 	convolver.connect(output);
-	let id: AmpCabinetId | null = null;
+	let wanted = "";
+	let loaded = "";
 	return {
 		input,
 		output,
-		update(model) {
-			if (model.cabinet !== id) {
-				id = model.cabinet;
-				convolver.buffer = cabinetImpulse(ctx, id);
+		loaded: () => loaded,
+		update(model, head) {
+			const capture =
+				head.cabinet === "model"
+					? null
+					: (AMP_CABINET_CAPTURES.find((c) => c.id === head.cabinet) ?? null);
+			const want = capture ? capture.id : model.cabinet;
+			if (want === wanted) return;
+			wanted = want;
+			if (!capture) {
+				convolver.buffer = cabinetImpulse(ctx, model.cabinet);
+				loaded = model.cabinet;
+				return;
 			}
+			// The model's own until the capture arrives.
+			if (loaded !== model.cabinet && !loaded.startsWith(capture.id)) {
+				convolver.buffer = cabinetImpulse(ctx, model.cabinet);
+				loaded = model.cabinet;
+			}
+			void loadCabinetCapture(ctx, capture.file).then((buffer) => {
+				if (wanted !== capture.id) return;
+				if (buffer) {
+					convolver.buffer = buffer;
+					loaded = capture.id;
+				}
+			});
 		},
 	};
 }

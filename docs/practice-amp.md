@@ -381,6 +381,29 @@ Kevin: "Tell me more about what you would build for the presets" and
   `data.amp.test.ts`, `ampPreset.test.ts`, and the amp's browser spec
   saves, loads and deletes one.
 
+## Captured cabinets (2026-10-10)
+
+Kevin asked about open-source cabinet packs; the usable ones are the
+two from Jester Dyne Productions (Bastian Karschewski), whose handbooks
+license them CC0 ("completely free to use in your private and
+commercial Projects"): the Emerald Pack (a Marshall 1960AX with
+Greenbacks, SM57 and e606, dry room) and the Brutal Pack (a modified
+4×12 with Vintage 30, Rockdriver Jr and DV-77 speakers, several
+microphones, a semi-live room with a slight tail). Eight of the
+twenty-one are in `static/cabs/` (its README lists which), trimmed to
+120 ms with a fade (the Brutal captures carry a room tail beyond that),
+48 kHz 16-bit mono, 11 KB each. `AMP_CABINET_CAPTURES` names them;
+`head.cabinet` is "model" (the synthesized cabinet) or a capture's id,
+so a preset carries the choice; a Cabinet menu beside the head shows
+where the instrument has captures (guitar only so far). The cabinet
+stage fetches a capture as it is chosen (`loadCabinetCapture`, once per
+context and file), scales it to unity over 250 to 800 Hz as the
+synthesized ones are, and plays the model's own until it arrives;
+`amp.cabinetLoaded()` says which is in the convolver (the browser test
+waits on it). Credited on the Built With page. Soundwoofer, which calls
+itself public domain, is the candidate for the bass heads once its terms
+can be read; the other free packs are free to download, not to ship.
+
 ## The punch list (2026-10-10, after the presets)
 
 Kevin picked six items from the list of what was left:

@@ -19,6 +19,8 @@ Choose **Guitar** or **Bass** and a head:
 - **Fridge** (bass): an all-tube bass head on an 8×10, with the five-position mid selector and the Ultra Lo and Ultra Hi switches.
 - **Solid State** (bass): a modern solid-state combo with a tweeter, clean and tight until it clips.
 
+A **Cabinet** menu beside the head (guitar heads) swaps the modelled cabinet for a captured one: impulse responses of a Marshall 4×12 with Greenbacks and a 4×12 with Vintage 30, Rockdriver and DV-77 speakers, through an SM57 or an e606, from Jester Dyne Productions. The choice is part of a preset.
+
 The knobs are an amp's: **Gain** (how hard the preamp is driven), **Bass**, **Mid** and **Treble**, **Presence**, **Power** (how hard the output stage is pushed: sag and a softer clip), **Reverb** and **Tremolo** on the heads that have them, and **Master**. Switching heads sets the knobs to that head's own starting point; the pedals stay as they were.
 
 ## The pedals

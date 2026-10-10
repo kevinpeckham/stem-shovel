@@ -32,6 +32,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
+- **Captured cabinets on the Practice Amp**: a Cabinet menu on the guitar
+  heads with eight impulse responses from Jester Dyne Productions'
+  Emerald and Brutal packs (CC0; `static/cabs/`, credited on Built With),
+  beside the modelled cabinet; the choice is saved in a preset.
 - **Practice Amp extras**: the drum machine in a panel on the amp page; a
   play-along transport in the song page's amp panel (Play, From the top,
   Count in: a bar of the metronome, then the stems); the noise gate with

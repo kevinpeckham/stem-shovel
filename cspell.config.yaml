@@ -19,6 +19,12 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
+  - Greenback
+  - Greenbacks
+  - Rockdriver
+  - Karschewski
+  - Jester
+  - Soundwoofer
   - Trem
   - Ampeg
   - biquads

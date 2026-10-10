@@ -8,7 +8,12 @@
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import Knob from "#lib/components/Knob.svelte";
-	import { AMP_INSTRUMENT_LABELS, AMP_MODELS_FOR } from "#lib/constants/amp.js";
+	import {
+		AMP_CABINET_CAPTURES,
+		AMP_INSTRUMENT_LABELS,
+		AMP_MODEL_CABINET_LABEL,
+		AMP_MODELS_FOR,
+	} from "#lib/constants/amp.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { latencyVerdict } from "#lib/utils/latencyVerdict.js";
 	import {
@@ -65,6 +70,14 @@
 	const headOptions = $derived(
 		AMP_MODELS_FOR[amp.instrument].map((m) => ({ value: m.id, label: m.name })),
 	);
+	/** The cabinet menu (docs/practice-amp.md, "The cabinet"): the model's own, then the captured cabinets for the instrument; the menu shows only where captures exist. */
+	const cabinetOptions = $derived([
+		{ value: "model", label: AMP_MODEL_CABINET_LABEL[model.cabinet] },
+		...AMP_CABINET_CAPTURES.filter((c) => c.instrument === amp.instrument).map((c) => ({
+			value: c.id,
+			label: c.name,
+		})),
+	]);
 	/** The round trip as measured (Calibrate), else the browser's own figure for its output path doubled as a guess. */
 	const verdict = $derived(
 		latencyVerdict(
@@ -329,6 +342,20 @@
 				onchange={(v) => amp.setModel(v as AmpModelId)}
 			/>
 		</div>
+		{#if cabinetOptions.length > 1}
+			<div class="min-w-44">
+				<div class="hidden @4xl-block device-button-group-label text-dark">Cabinet</div>
+				<ComboBox
+					ariaLabel="Cabinet"
+					clearDefaultButtonClasses={true}
+					popoverClasses="text-15px"
+					buttonClasses="device-button-sm px-3 text-15px w-full"
+					options={cabinetOptions}
+					value={head.cabinet}
+					onchange={(v) => amp.setHead({ cabinet: v as typeof head.cabinet })}
+				/>
+			</div>
+		{/if}
 		<div>
 			<div class="hidden @4xl-block device-button-group-label text-dark">Input</div>
 			<ContextMenu

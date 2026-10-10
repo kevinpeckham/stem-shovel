@@ -99,6 +99,11 @@
 					what: "The piano's Acoustic Guitar: Roberto's 2008 recordings of a Spanish classical guitar for the FreePats project, CC0 public domain, forty-eight notes.",
 				},
 				{
+					name: "Jester's Brutal and Emerald Packs",
+					url: "https://jester-dyne-productions.com",
+					what: "The Practice Amp's captured guitar cabinets: Bastian Karschewski's impulse responses of a Marshall 1960AX with Greenbacks and a 4×12 with Vintage 30, Rockdriver Jr and DV-77 speakers, CC0 public domain. The amp's own cabinets are synthesized.",
+				},
+				{
 					name: "Fifths, the chord player",
 					url: "https://github.com/kevinpeckham/chord-player",
 					what: "The Chord Player's circle of fifths grew out of Kevin's earlier instrument, itself inspired by Quinn Raymond's Q-RAY chord player, with the circle's SVG after Eric Coleman and Håken Lid.",

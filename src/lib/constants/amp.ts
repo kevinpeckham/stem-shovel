@@ -109,6 +109,66 @@ export const AMP_MODELS: Record<AmpModelId, AmpModel> = {
 		defaults: { gain: 0.3, reverb: 0, presence: 0.4, power: 0.15 },
 	},
 };
+/**
+ * Captured cabinets (static/cabs, docs/practice-amp.md, "The cabinet"):
+ * impulse responses of real cabinets from Jester Dyne Productions, CC0, a
+ * choice beside each model's own synthesized cabinet. Guitar only so far.
+ */
+export interface AmpCabinetCapture {
+	id: string;
+	name: string;
+	instrument: AmpInstrument;
+	file: string;
+}
+export const AMP_CABINET_CAPTURES: AmpCabinetCapture[] = [
+	{
+		id: "greenback-57",
+		name: "Greenback 4×12 · SM57",
+		instrument: "guitar",
+		file: "/cabs/greenback-57.wav",
+	},
+	{
+		id: "greenback-57-low",
+		name: "Greenback 4×12 · SM57 low",
+		instrument: "guitar",
+		file: "/cabs/greenback-57-low.wav",
+	},
+	{
+		id: "greenback-e606",
+		name: "Greenback 4×12 · e606",
+		instrument: "guitar",
+		file: "/cabs/greenback-e606.wav",
+	},
+	{ id: "v30-57", name: "Vintage 30 4×12 · SM57", instrument: "guitar", file: "/cabs/v30-57.wav" },
+	{
+		id: "v30-57-bright",
+		name: "Vintage 30 4×12 · SM57 bright",
+		instrument: "guitar",
+		file: "/cabs/v30-57-bright.wav",
+	},
+	{ id: "dv77-57", name: "DV-77 4×12 · SM57", instrument: "guitar", file: "/cabs/dv77-57.wav" },
+	{
+		id: "rockdriver-e606",
+		name: "Rockdriver Jr 4×12 · e606",
+		instrument: "guitar",
+		file: "/cabs/rockdriver-e606.wav",
+	},
+	{
+		id: "v30-dv77-blend",
+		name: "Vintage 30 + DV-77 · two SM57s",
+		instrument: "guitar",
+		file: "/cabs/v30-dv77-blend.wav",
+	},
+];
+export const AMP_CABINET_CAPTURE_IDS = AMP_CABINET_CAPTURES.map((c) => c.id);
+/** What each model's own cabinet is called in the Cabinet menu. */
+export const AMP_MODEL_CABINET_LABEL: Record<AmpCabinetId, string> = {
+	"open-2x12": "2×12 open-back (modelled)",
+	"open-1x12": "1×12 open-back (modelled)",
+	"fridge-8x10": "8×10 (modelled)",
+	"combo-4x10": "4×10 with tweeter (modelled)",
+};
+
 export const AMP_MODELS_FOR: Record<AmpInstrument, AmpModel[]> = {
 	guitar: [AMP_MODELS.clean, AMP_MODELS.tweed],
 	bass: [AMP_MODELS.fridge, AMP_MODELS.solid],

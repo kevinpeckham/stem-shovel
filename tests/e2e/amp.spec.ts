@@ -71,3 +71,18 @@ test("saves a preset to a slot and deletes it from the library", async ({ page, 
 	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toHaveCount(0);
 	expect(errors).toEqual([]);
 });
+
+/** A captured cabinet (docs/practice-amp.md, "Captured cabinets"): chosen on the head, it loads into the chain and the tone still renders. */
+test("a captured cabinet loads and renders", async ({ page, errors }) => {
+	await open(page, "/practice-amp", "__amp");
+	await hooked(page, ([w]) => w.__amp.setHead({ cabinet: "greenback-57" }));
+	// The live chain exists once the amp is on; the offline render loads the capture for itself.
+	await page.getByRole("button", { name: "Turn the amp on" }).click();
+	await until(page, ([w]) => w.__amp.cabinetLoaded() === "greenback-57");
+	const r = await hooked(page, ([w]) => w.__amp.render(0.5));
+	expect(r.rms).toBeGreaterThan(0.01);
+	await hooked(page, ([w]) => w.__amp.setHead({ cabinet: "model" }));
+	await until(page, ([w]) => w.__amp.cabinetLoaded() === "open-2x12");
+	await page.getByRole("button", { name: "Turn the amp off" }).click();
+	expect(errors).toEqual([]);
+});

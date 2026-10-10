@@ -340,6 +340,10 @@ class AmpEngine {
 	meters() {
 		return this.#chain?.meters() ?? { reduction: 0 };
 	}
+	/** The cabinet the chain plays through now: the model's own, or a capture's id once it has loaded. */
+	cabinetLoaded(): string {
+		return this.#chain?.cabinetLoaded() ?? "";
+	}
 
 	/** Which jack: the line in or the microphone input (inputs.svelte.ts); an open amp moves to it. */
 	async setSource(source: InputSource) {
