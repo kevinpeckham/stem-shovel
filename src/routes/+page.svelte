@@ -44,51 +44,17 @@
 		return share < 0.5 ? null : best;
 	});
 
-	const description =
-		"A collaboration tool for musicians, bands and producers: store and share demos, stems, lyrics and chord charts, with an emphasis on creativity, simplicity and affordability.";
-
-	const faqs = $derived([
-		{
-			question: "What is Stem Shovel?",
-			answer: `Stem Shovel is a web app for managing songwriting, arranging, and recording projects with an emphasis on creativity and collaboration. Built by musicians for musicians, this	web-app is intended to be an easy-to-use and affordable location for storing and sharing demos, stems, lyrics, chord charts and other songwriting assets. Without clutter, up-sells or feature bloat.`,
-		},
-		{
-			question: "How do I get started?",
-			answer: data.signUpOpen
-				? `<a class="link" href="/sign-up">Sign up for free</a>: choose the Free plan, enter your name, email and a password, and open the verification link we send. No invitation, no payment and no credit card are needed.`
-				: `Stem Shovel is in early beta and you will need an invite or invite code to join and use it. If you are eager to try it out, <a class="underline underline-offset-4 hover-text-accent" href="/waitlist">join the waitlist</a> and we will send you a code as seats open. You will not be required to provide any payment or credit card info to sign up.`,
-		},
-		{
-			question: "How much does it cost?",
-			answer: `Our basic tier is a free account. That offers full access to all available features with free data storage up to 20 GB and up to six members. Free accounts require no payment or credit card info to sign up and remain free for life. During the beta period only free accounts are available. Beyond that, we will continue to support and focus on free accounts for independent bands, musicians, producers and educators, and will introduce paid plans for those who need more storage or more advanced features.`,
-		},
-		{
-			question: "Is this a desktop app?",
-			answer: `Nope. It's a web app. Built with mostly open source technologies and hosted on a cloud platform. It works cross browser and cross platform and is accessible from any device with a web browser and internet connection. We have no plans to build a desktop app in the near future, a web app fits our needs, and is easy to support.`,
-		},
-		{
-			question: "Who is the dev team behind Stem Shovel?",
-			answer: `The first iteration of Stem Shovel was built by Kevin Peckham at Lightning Jar as part of our side-projects program, where team members are encouraged to spend time pursuing passion projects, research, and pay with new technologies. Lightning Jar is a small web studio founded in 2002, with the goal of helping organizations adjust to a world that is more digital every day.`,
-		},
-		{
-			question: "Is the free tier really free?",
-			answer: `Emphatically yes. We are not a startup, this is not our primary revenue stream, and we do not plan on taking on any investors. Which is to say all we need to do is cover our expenses, and those primarily have to do with servers, security, data storage, and support.`,
-		},
-		{
-			question: "Does this project have AI Features?",
-			answer: `Some of the product features like advanced chord detection are powered by AI. However we are sensitive to the fact that some artists do not want to use AI features and require that their original music never touch 3rd party LLM models. For that reason all LLM-powered features can be easily turned off with a single click either at the project or song level.`,
-		},
-		{
-			question: "Was this app vibe-coded?",
-			answer: `While we do use AI as part of our process to speed up development, this app	was not vibe-coded. Our team has been building websites and web apps for over 25 years and	we have a deep understanding of what it takes to build a high-quality product, with human-driven architecture and design decisions following an approach to app building that mirrors our own experience and expertise.`,
-		},
-		{
-			question: "Is the app open source?",
-			answer: `Yes. You can find our source code on Github at <a class="underline underline-offset-4 hover-text-accent"
-		href="https://github.com/kevinpeckham/stem-shovel">https://github.com/stem-shovel/stem-shovel</a>. You're welcome to clone the project and set up your own private version on your own servers. We don't have a team in place to handle 3rd party pull requests, so we don't accept them. However you can submit feature suggestions vial a link in the footer, though
-	you must be logged-in to do so.`,
-		},
-	]);
+	// The page's words are the "home-page" copy doc (docs/page-copy.md); a section the doc lacks is the seed file's.
+	const copy = $derived(data.copy);
+	const EMPTY = { heading: "", paragraphs: [], items: [] };
+	const section = (id: string) => copy.sections[id] ?? EMPTY;
+	const description = $derived(copy.intro);
+	// The FAQ's "How do I get started?" has an answer for open sign-up and one for invitations.
+	const faqs = $derived(
+		section("faq").items.filter(
+			(i) => i.id !== (data.signUpOpen ? "start-waitlist" : "start-open"),
+		),
+	);
 </script>
 
 <svelte:head>
@@ -113,13 +79,22 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
+{#snippet feature(id: string)}
+	{@const s = section(id)}
+	<h3 class="marketing-section-heading">{s.heading}</h3>
+	{#if s.items[0]}
+		<div class="marketing-topic-heading">{s.items[0].heading}</div>
+	{/if}
+	{#each [...s.paragraphs, ...s.items.flatMap((i) => i.paragraphs)] as html, i (i)}
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -- markdown rendered server-side from the copy doc (never user text) -->
+		<p class="marketing-paragraph text-balance">{@html html}</p>
+	{/each}
+{/snippet}
+
 <main class="home-page-x-padding pt-4 pb-16 min-h-full">
 	<div class="border-b border-b-current/10 pt-6 pb-2 mb-8">
 		<!-- <h1 class="heading-2 mb-2">Introducing Stem Shovel</h1> -->
-		<h1 class="block marketing-headline">
-			Stem Shovel is a web-based collaboration tool for musicians, bands and producers with emphasis
-			on creativity, simplicity, and affordability.
-		</h1>
+		<h1 class="block marketing-headline">{copy.title}</h1>
 		<div class="mt-8 flex flex-wrap gap-4 items-baseline">
 			{#if data.user}
 				<!-- {#each data.memberships as m (m.accountId)}
@@ -138,6 +113,12 @@
 						href="/sign-up">Sign Up</a
 					>
 				</div>
+			{/if}
+			{#if copy.canEdit}
+				<a class="button button-xs" href={copy.editHref} title="Edit this page's words">
+					<span class="i-ph-pencil-simple" aria-hidden="true"></span>
+					Edit
+				</a>
 			{/if}
 		</div>
 		<!-- {#if !data.user}
@@ -158,11 +139,7 @@
 
 				<!-- Song Demo: A live song, chosen on /admin/home: the player as visitors get it. -->
 				<section>
-					<h3 class="marketing-section-heading">Stem Player & Mix Comments</h3>
-					<h4 class="marketing-topic-heading">Share Stems, Leave Feedback</h4>
-					<p class="marketing-paragraph text-balance">
-						Mute, solo and download stems or leave comments on the timeline for your collaborators.
-					</p>
+					{@render feature("player")}
 					<div class="marketing-demo-cta">Try the working demo below.</div>
 					<!-- Full bleed on a phone (the page padding is px-4 there), a card from sm up. -->
 					<div
@@ -180,13 +157,7 @@
 
 				<!-- Idea Recorder Demo: The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
 				<section class="mt-12 scroll-mt-6" id="idea-recorder">
-					<h3 class="marketing-section-heading">Audio Recorder</h3>
-					<div class="marketing-topic-heading">High Fidelity Idea Recorder</div>
-					<p class="marketing-paragraph text-balance">
-						Record your song ideas and demos and save them with integrated notes specific to each
-						idea. Supports multiple takes. Record lossless audio and easily export MP3s or source
-						files.
-					</p>
+					{@render feature("recorder")}
 					<!-- The real recorder in its phone layout, nothing uploaded (IdeaRecorderDemo). -->
 					<div class="marketing-demo-cta">Try the working demo below.</div>
 					<div class=" mt-8">
@@ -209,12 +180,7 @@
 		<!-- Documents Demo  -->
 		<div class="grid grid-cols-1 gap-y-12 lg-grid-cols-2 gap-x-12">
 			<section class="mt-12">
-				<h3 class="marketing-section-heading">Song Notes, Charts and Comments</h3>
-				<div class="marketing-topic-heading">Charts, Lyrics, Notes and Comments</div>
-				<p class="marketing-paragraph text-balance">
-					Easily edit and share lyrics, notes, charts and more in a wiki-style editor. Keep
-					everything organized and easy to access for all members of the project.
-				</p>
+				{@render feature("docs")}
 				<div class="marketing-demo-cta">Try the working demo below.</div>
 				<div class="mt-8">
 					{#if data.demo}
@@ -231,13 +197,7 @@
 			</section>
 
 			<section class="mt-12">
-				<h3 class="marketing-section-heading">Tuner &amp; Metronome Demo</h3>
-				<div class="marketing-topic-heading">Songwriting Tools & Utilities</div>
-				<p class="marketing-paragraph text-balance">
-					The tools you need to be creative and productive as a songwriter all in one place. Like
-					this guitar tuner and metronome, both also available as pop-overs from the idea-recorder,
-					so you can tune up or keep time between takes or in the middle of a writing session.
-				</p>
+				{@render feature("tools")}
 				<div class="marketing-demo-cta">Try the working demo below.</div>
 				<!-- One demo at a time: the tabs swap the tuner for the metronome. The tuner's microphone opens only from its On / Off button: opening it on scroll asked for permission again and again as the page went up and down. -->
 				<div
@@ -269,12 +229,7 @@
 
 		<!-- Drum Machine Demo -->
 		<section class="mt-12">
-			<h3 class="marketing-section-heading">Drum Machine Demo</h3>
-			<div class="marketing-topic-heading">Drum Machine &amp; Sequencer</div>
-			<p class="marketing-paragraph text-balance">
-				Experiment with beat ideas, in an intuitive interface. Save, download &amp; share. Or use as
-				a backing track while recording an idea or demo.
-			</p>
+			{@render feature("drums")}
 			<div class="flex flex-wrap items-center gap-x-5">
 				<div class="marketing-demo-cta">Try the working demo below.</div>
 				<a class="link inline-flex items-center gap-1.5 text-14px" href="/drum-machine"
@@ -302,12 +257,7 @@
 
 		<!-- Piano Demo -->
 		<section class="mt-12">
-			<h3 class="marketing-section-heading">Piano Demo</h3>
-			<div class="marketing-topic-heading">Piano &amp; Synth</div>
-			<p class="marketing-paragraph text-balance">
-				Work out melodies, progressions, or chords on the fully playable in-browser piano and synth.
-				Playable on mobile or desktop with keyboard shortcuts and midi control options.
-			</p>
+			{@render feature("piano")}
 			<div class="flex flex-wrap items-center gap-x-5">
 				<div class="marketing-demo-cta">Try the working demo below.</div>
 				<a class="link inline-flex items-center gap-1.5 text-14px" href="/piano"
@@ -329,13 +279,7 @@
 
 		<!-- Chord Player Demo -->
 		<section class="mt-12">
-			<h3 class="marketing-section-heading">Chord Player Demo</h3>
-			<div class="marketing-topic-heading">Chord Player</div>
-			<p class="marketing-paragraph text-balance">
-				The piano's sounds on a circle of fifths: press a chord and hear it, find the chords that go
-				together side by side, and play a progression in a style, from plain triads to jazz, blues,
-				folk or bossa. The standalone version jots your progressions and keeps them.
-			</p>
+			{@render feature("chords")}
 			<div class="flex flex-wrap items-center gap-x-5">
 				<div class="marketing-demo-cta">Try the working demo below.</div>
 				<a class="link inline-flex items-center gap-1.5 text-14px" href="/chord-player"
@@ -360,7 +304,7 @@
 
 		<!-- faqs -->
 		<section class="mt-12">
-			<h2 class="marketing-section-heading">Frequently Asked Questions</h2>
+			<h2 class="marketing-section-heading">{section("faq").heading}</h2>
 			<div
 				class="
 					grid
@@ -370,13 +314,17 @@
 					[&>div]-(marketing-box)
 					[&_h3]-(marketing-faq-heading)
 					[&_p]-(marketing-faq-text)
+					[&_a]-(link)
 					lg-grid-cols-2
 					xl-grid-cols-3"
 			>
-				{#each faqs as faq}
+				{#each faqs as faq (faq.id)}
 					<div>
-						<h3>{faq.question}</h3>
-						<p>{@html faq.answer}</p>
+						<h3>{faq.heading}</h3>
+						{#each faq.paragraphs as html, i (i)}
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -- markdown rendered server-side from the copy doc (never user text) -->
+							<p>{@html html}</p>
+						{/each}
 					</div>
 				{/each}
 			</div>

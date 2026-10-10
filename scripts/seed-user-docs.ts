@@ -51,6 +51,7 @@ const COPY_PAGES = [
 	"metronome-page",
 	"idea-recorder-page",
 	"chord-player-page",
+	"home-page",
 ];
 
 const db = drizzle({

@@ -65,3 +65,38 @@ Rolled out to the drum machine, piano, tuner, metronome and (2026-10-02)
 Idea Recorder pages, so every tool and instrument page's words are editable.
 The recorder's tips show from sm only: on a phone the page is an app-height
 screen of its own, and the user docs are a button away.
+
+## The home page
+
+The home page (2026-10-10, Kevin: "can we make content on the home page
+editable by admins?") has more words than a title, an intro and a tips
+box: a headline, seven feature blocks interleaved with live demos, and
+the FAQ. Its copy doc is `home-page` (`scripts/user-docs/home-page.md`,
+edited at `/docs/home-page/edit`, reached from the page's Edit button
+beside the sign-up buttons, which only a system admin sees, or from
+/admin/home), and `splitHomeCopy` (`src/lib/utils/splitHomeCopy.ts`,
+tested) reads it instead of `splitPageCopy`:
+
+- the first `# ` heading is the headline (the page's `h1`);
+- the paragraph after it is the description in the page's meta tags (it is
+  not on the page);
+- each `## Heading {#id}` is a section, keyed by the `{#id}` at the end of
+  the heading (`player`, `recorder`, `docs`, `tools`, `drums`, `piano`,
+  `chords`, `faq`; a heading without one is keyed by its own words,
+  lower-cased and hyphenated); its `### ` headings are its items, with
+  the paragraphs after each;
+- a feature block renders the section's heading, its first item's
+  heading as the topic line, and all the paragraphs; the FAQ renders each
+  item as a question and its paragraphs. The "How do I get started?"
+  question has two items, `{#start-open}` and `{#start-waitlist}`, and
+  the page shows the one for the sign-up mode in force;
+- HTML comments are notes to the editor and never render (the seed file
+  opens with one explaining the shape).
+
+`homeCopy(fallback, locals)` (`src/lib/server/homeCopy.ts`) merges the
+doc over the seed file by section id, so a section the doc lacks (a
+heading deleted by mistake) keeps the seed's words rather than leaving a
+hole; the demos, the "Try the working demo below" lines, the standalone
+links and the sign-up buttons are the page's own. Paragraphs render as
+inline HTML (links, emphasis) through the same sanitizer as the other
+copy docs.

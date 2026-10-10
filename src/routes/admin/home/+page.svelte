@@ -21,7 +21,9 @@
 	<p class="mt-1 text-sm opacity-90">
 		The front page demos one song: its player with the downloads, and its chart, lyrics, notes and
 		comments. Any public song with stems can be featured; when none is chosen, or the chosen one
-		goes private, it falls back to <code>{data.defaultPath}</code>.
+		goes private, it falls back to <code>{data.defaultPath}</code>. The page's words (the headline,
+		each feature's text and the questions) are edited on the page itself: its Edit button, or
+		<a class="link" href="/docs/home-page/edit">edit them here</a>.
 	</p>
 	{#if data.songs.length === 0}
 		<p class="mt-4 text-dim">No public songs with stems yet.</p>

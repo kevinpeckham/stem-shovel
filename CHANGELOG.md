@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The home page's words are edited in the app.** The headline, the
+  description search engines show, each feature block's heading, topic
+  and text, and the FAQ are the "home-page" copy doc (docs/page-copy.md,
+  "The home page"): a system admin edits them from the page's Edit button
+  or `/docs/home-page/edit`, as on the tool pages. The demos, the "Try the
+  working demo below" lines and the standalone links stay in the page;
+  a section the doc lacks keeps the seed file's words. The admin's Home
+  page links to the editor. `scripts/user-docs/home-page.md`,
+  `splitHomeCopy` (tested), `homeCopy()`; `bun run db:seed-docs` adds the
+  doc on each stage.
+
 ## [0.121.0] - 2026-10-10
 
 ### Changed

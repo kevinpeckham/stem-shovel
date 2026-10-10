@@ -24,7 +24,7 @@ export interface PageCopy {
  * PageCopySection.
  */
 /** A paragraph's markdown as inline HTML: rendered and sanitized as the body is, the outer `<p>` taken off (Kevin: links in an intro showed as markdown). */
-function inlineHtml(markdown: string): string {
+export function inlineHtml(markdown: string): string {
 	const html = renderMarkdown(markdown).trim();
 	return html.replace(/^<p>/, "").replace(/<\/p>$/, "");
 }
