@@ -26,6 +26,7 @@ const ORDER = [
 	"chord-player",
 	"looper",
 	"studio",
+	"practice-amp",
 	"comments",
 	"chat",
 	"mixes",
@@ -51,6 +52,7 @@ const COPY_PAGES = [
 	"metronome-page",
 	"idea-recorder-page",
 	"chord-player-page",
+	"practice-amp-page",
 	"home-page",
 ];
 

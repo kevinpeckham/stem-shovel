@@ -1,5 +1,15 @@
 import { reverbImpulse } from "./drumBus";
-import { createDelayStage, createFuzzStage, createToneStage, createWahStage } from "./fxStages";
+import {
+	createChorusStage,
+	createCompressorStage,
+	createDelayStage,
+	createFuzzStage,
+	createPhaserStage,
+	createRotaryStage,
+	createToneStage,
+	createTremoloStage,
+	createWahStage,
+} from "./fxStages";
 
 /**
  * The piano's effect chain (docs/piano.md, "Effects"), built once per
@@ -137,29 +147,6 @@ export interface PianoFx {
 }
 
 const RAMP = 0.02;
-/** The rotary speaker's rotation rates in Hz, horn and drum, at each speed (a Leslie's: the drum lags the horn). */
-const ROTARY_HZ = { off: [0, 0], slow: [0.8, 0.7], fast: [6.7, 5.7] } as const;
-
-/** The phaser's four all-pass stages, their centre frequencies and how far the LFO moves each. */
-const PHASER_STAGES = [500, 800, 1300, 2100];
-const PHASER_SWEEP = 400;
-/** The flanger's delay: its centre, how far full depth sweeps it, and the feedback that sharpens the comb. */
-const FLANGER_CENTRE = 0.003;
-const FLANGER_SWEEP = 0.0025;
-const FLANGER_FEEDBACK = 0.5;
-
-/** An oscillator started now, into a gain: the LFO and the gain that scales it. */
-function lfo(ctx: BaseAudioContext, hz: number, amount: number, type: OscillatorType = "sine") {
-	const osc = ctx.createOscillator();
-	osc.type = type;
-	osc.frequency.value = hz;
-	const gain = ctx.createGain();
-	gain.gain.value = amount;
-	osc.connect(gain);
-	osc.start();
-	return { osc, gain };
-}
-
 export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): PianoFx {
 	const s: PianoFxSettings = structuredClone(initial);
 	const ramp = (param: AudioParam, value: number, tau = RAMP) =>
@@ -185,29 +172,11 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const input = ctx.createGain();
 
 	// Compressor, first in the chain (Kevin: the bass wants it): the voices' sum squeezed before the
-	// effects colour it, with make-up gain after; amount 0 puts the threshold at 0 dB, above anything a voice reaches.
-	// At amount 0 the sound goes round the node instead (a crossfade): Chrome's compressor still
-	// reduces a few dB with the threshold at 0 and the ratio at 1:1, so a bypass is the only true off.
-	const comp = ctx.createDynamicsCompressor();
-	comp.knee.value = 6;
-	const makeup = ctx.createGain();
-	const compDry = ctx.createGain();
-	const compOut = ctx.createGain();
-	const applyCompressor = (c: PianoCompressorSettings, tau: number) => {
-		const on = c.amount > 0;
-		ramp(comp.threshold, -40 * c.amount, tau);
-		ramp(comp.ratio, c.ratio, tau);
-		comp.attack.value = c.attack;
-		comp.release.value = c.release;
-		ramp(makeup.gain, on ? Math.pow(10, c.makeup / 20) : 0, tau);
-		ramp(compDry.gain, on ? 0 : 1, tau);
-	};
-	applyCompressor(s.compressor, 0);
-	input.connect(comp);
-	comp.connect(makeup);
-	makeup.connect(compOut);
-	input.connect(compDry);
-	compDry.connect(compOut);
+	// effects colour it (fxStages.ts: a true bypass at amount 0, make-up gain after).
+	const comp = createCompressorStage(ctx);
+	comp.update(s.compressor, 0);
+	input.connect(comp.input);
+	const compOut = comp.output;
 
 	// Fuzz (fxStages.ts): a voice peaks near 0.3.
 	const fuzz = createFuzzStage(ctx, 0.3);
@@ -221,146 +190,20 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const wahOut = wah.output;
 	wah.update(s.wah, 0);
 
-	// Chorus: dry through at full, the two swept delays at `mix`, panned apart.
-	const chorusOut = ctx.createGain();
-	wahOut.connect(chorusOut);
-	const chorusWet = ctx.createGain();
-	chorusWet.gain.value = s.chorus.mix;
-	const chorusLfo = lfo(ctx, s.chorus.rate, s.chorus.depth * 0.004); // up to ±4 ms
-	const chorusInv = ctx.createGain();
-	chorusInv.gain.value = -1;
-	chorusLfo.gain.connect(chorusInv);
-	for (const [base, pan, mod] of [
-		[0.022, -0.6, chorusLfo.gain],
-		[0.028, 0.6, chorusInv],
-	] as const) {
-		const d = ctx.createDelay(0.1);
-		d.delayTime.value = base;
-		mod.connect(d.delayTime);
-		const p = ctx.createStereoPanner();
-		p.pan.value = pan;
-		wahOut.connect(d);
-		d.connect(p);
-		p.connect(chorusWet);
-	}
-	chorusWet.connect(chorusOut);
-
-	// Phaser or flanger: `mix` crossfades from dry to half and half, where the notches are deepest
-	// (an all-pass keeps the level, so the sum stays near it); the mode picks which wet is open.
-	const phaserOut = ctx.createGain();
-	const phaserDry = ctx.createGain();
-	chorusOut.connect(phaserDry);
-	phaserDry.connect(phaserOut);
-	const phaserWet = ctx.createGain();
-	const phaserLfo = lfo(ctx, s.phaser.rate, 1);
-	// The phaser: four all-pass stages in series, swept together.
-	const phaserSweep = ctx.createGain();
-	phaserLfo.gain.connect(phaserSweep);
-	let stage: AudioNode = chorusOut;
-	for (const hz of PHASER_STAGES) {
-		const ap = ctx.createBiquadFilter();
-		ap.type = "allpass";
-		ap.frequency.value = hz;
-		ap.Q.value = 0.7;
-		phaserSweep.connect(ap.frequency);
-		stage.connect(ap);
-		stage = ap;
-	}
-	stage.connect(phaserWet);
-	phaserWet.connect(phaserOut);
-	// The flanger: a delay around 3 ms swept by the same LFO, with feedback, in the other wet.
-	const flangerWet = ctx.createGain();
-	const flangerDelay = ctx.createDelay(0.05);
-	flangerDelay.delayTime.value = FLANGER_CENTRE;
-	const flangerSweep = ctx.createGain();
-	phaserLfo.gain.connect(flangerSweep);
-	flangerSweep.connect(flangerDelay.delayTime);
-	const flangerFeedback = ctx.createGain();
-	flangerFeedback.gain.value = FLANGER_FEEDBACK;
-	chorusOut.connect(flangerDelay);
-	flangerDelay.connect(flangerFeedback);
-	flangerFeedback.connect(flangerDelay);
-	flangerDelay.connect(flangerWet);
-	flangerWet.connect(phaserOut);
-	const applyPhaser = (p: PianoPhaserSettings, tau: number) => {
-		const flanger = p.mode === "flanger";
-		ramp(phaserLfo.osc.frequency, p.rate, tau);
-		ramp(phaserSweep.gain, p.depth * PHASER_SWEEP, tau);
-		ramp(flangerSweep.gain, p.depth * FLANGER_SWEEP, tau);
-		ramp(phaserDry.gain, 1 - p.mix / 2, tau);
-		ramp(phaserWet.gain, flanger ? 0 : p.mix / 2, tau);
-		ramp(flangerWet.gain, flanger ? p.mix / 2 : 0, tau);
-	};
-	applyPhaser(s.phaser, 0);
-
-	// Tremolo: the gain sits at 1 - depth/2 and the LFO swings it by ±depth/2. The LFO passes a
-	// low-pass on its way so a square's edges take a few milliseconds: an instant step in the level
-	// is a click on a sustained note (Kevin heard a crunch on the Electric Piano).
-	const trem = ctx.createGain();
-	trem.gain.value = 1 - s.tremolo.depth / 2;
-	const tremLfo = lfo(ctx, s.tremolo.rate, s.tremolo.depth / 2, s.tremolo.shape);
-	const tremSmooth = ctx.createBiquadFilter();
-	tremSmooth.type = "lowpass";
-	tremSmooth.frequency.value = 80;
-	tremSmooth.Q.value = 0.5;
-	tremLfo.gain.connect(tremSmooth);
-	tremSmooth.connect(trem.gain);
-	phaserOut.connect(trem);
-
-	// Rotary: horn above 800 Hz and drum below, each spun by its own LFO (opposite ways) through a Doppler delay, a level swing and the pan.
-	const rotaryOut = ctx.createGain();
-	const rotaryDry = ctx.createGain();
-	trem.connect(rotaryDry);
-	rotaryDry.connect(rotaryOut);
-	const rotaryWet = ctx.createGain();
-	rotaryWet.connect(rotaryOut);
-	/** The two bands overlap at the crossover, so the wet is trimmed to sit at the dry's loudness (measured on a 300 Hz and a 1.5 kHz tone). */
-	const ROTARY_TRIM = 0.8;
-	const rotors = (
-		[
-			["highpass", 1, 0.0004, 0.3, 0.8],
-			["lowpass", -1, 0.00015, 0.2, 0.6],
-		] as const
-	).map(([type, dir, doppler, swing, width]) => {
-		const split = ctx.createBiquadFilter();
-		split.type = type;
-		split.frequency.value = 800;
-		split.Q.value = 0.5;
-		const spin = lfo(ctx, 0, 1);
-		const delay = ctx.createDelay(0.01);
-		delay.delayTime.value = 0.002;
-		const dop = ctx.createGain();
-		dop.gain.value = doppler * dir;
-		spin.gain.connect(dop);
-		dop.connect(delay.delayTime);
-		const level = ctx.createGain();
-		level.gain.value = 1 - swing / 2;
-		const lev = ctx.createGain();
-		lev.gain.value = swing / 2;
-		spin.gain.connect(lev);
-		lev.connect(level.gain);
-		const pan = ctx.createStereoPanner();
-		const panMod = ctx.createGain();
-		panMod.gain.value = width * dir;
-		spin.gain.connect(panMod);
-		panMod.connect(pan.pan);
-		trem.connect(split);
-		split.connect(delay);
-		delay.connect(level);
-		level.connect(pan);
-		pan.connect(rotaryWet);
-		return spin.osc;
-	});
-	const applyRotary = (r: PianoRotarySettings, tau: number) => {
-		const on = r.speed !== "off";
-		ramp(rotaryDry.gain, on ? 0 : 1, tau);
-		ramp(rotaryWet.gain, on ? ROTARY_TRIM : 0, tau);
-		// The rotors glide to the new speed, the horn in about a second, the heavier drum in two; off lets them coast down.
-		const [horn, drum] = ROTARY_HZ[r.speed];
-		ramp(rotors[0]!.frequency, horn, tau && 0.5);
-		ramp(rotors[1]!.frequency, drum, tau && 1);
-	};
-	applyRotary(s.rotary, 0);
+	// Chorus, phaser or flanger, tremolo and the rotary (fxStages.ts), in that order.
+	const chorus = createChorusStage(ctx);
+	wahOut.connect(chorus.input);
+	chorus.update(s.chorus, 0);
+	const phaser = createPhaserStage(ctx);
+	chorus.output.connect(phaser.input);
+	phaser.update(s.phaser, 0);
+	const trem = createTremoloStage(ctx);
+	phaser.output.connect(trem.input);
+	trem.update(s.tremolo, 0);
+	const rotary = createRotaryStage(ctx);
+	trem.output.connect(rotary.input);
+	rotary.update(s.rotary.speed, 0);
+	const rotaryOut = rotary.output;
 
 	// The stereo bounce: a panner after the rotary, before the sends (so the room hears the sound move),
 	// its pan written ahead on the clock in steps of the session tempo: left, right (and the centre
@@ -443,23 +286,14 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 			if (v !== s.reverbSize) convolver.buffer = reverbImpulse(ctx, v);
 		},
 		delay: (d) => delay.update(d, RAMP),
-		chorus: (c) => {
-			ramp(chorusLfo.osc.frequency, c.rate);
-			ramp(chorusLfo.gain.gain, c.depth * 0.004);
-			ramp(chorusWet.gain, c.mix);
-		},
-		tremolo: (t) => {
-			if (t.shape !== s.tremolo.shape) tremLfo.osc.type = t.shape;
-			ramp(tremLfo.osc.frequency, t.rate);
-			ramp(trem.gain, 1 - t.depth / 2);
-			ramp(tremLfo.gain.gain, t.depth / 2);
-		},
+		chorus: (c) => chorus.update(c, RAMP),
+		tremolo: (t) => trem.update(t, RAMP),
 		fuzz: (f) => fuzz.update(f.drive, f.tone, RAMP),
 		wah: (w) => wah.update(w, RAMP),
-		phaser: (p) => applyPhaser(p, RAMP),
-		rotary: (r) => applyRotary(r, RAMP),
+		phaser: (p) => phaser.update(p, RAMP),
+		rotary: (r) => rotary.update(r.speed, RAMP),
 		tone: (t) => tone.update(t, RAMP),
-		compressor: (c) => applyCompressor(c, RAMP),
+		compressor: (c) => comp.update(c, RAMP),
 		bounce: (b) => {
 			const was = s.bounce;
 			s.bounce = b;
@@ -479,12 +313,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 		input,
 		master,
 		wahPedal: (position) => wah.pedal(position),
-		meters: () => ({
-			reduction: comp.reduction,
-			pan: bounce.pan.value,
-			threshold: comp.threshold.value,
-			ratio: comp.ratio.value,
-		}),
+		meters: () => ({ ...comp.meters(), pan: bounce.pan.value }),
 		dispose: () => {
 			if (bounceTimer) clearInterval(bounceTimer);
 			bounceTimer = null;

@@ -85,10 +85,10 @@ that decide the shape. Nothing here is built yet.
 - **iOS Safari** (WebKit bugs 218012/230902; the Audio Session API shipped
   in iOS 17): opening the microphone puts Safari in play-and-record, which
   attenuates the speaker and can move output to the earpiece or away from
-  a headset; a wired headset with a microphone makes *its* microphone the
+  a headset; a wired headset with a microphone makes _its_ microphone the
   input. The app already sets `audioSession().type` explicitly. For a
   guitar the sane setups are an interface with its own headphone jack
-  (iRig-class: the phone's input *and* output are the interface) or the
+  (iRig-class: the phone's input _and_ output are the interface) or the
   interface in and the phone's speaker out, which will be quiet.
 
 ## The design

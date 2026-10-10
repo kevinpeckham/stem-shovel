@@ -45,7 +45,7 @@ describe("GlobalNav", () => {
 		expect(screen.getAllByRole("menu")).toHaveLength(1);
 		const names = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
 		// The looper works signed out, so a visitor's Tools menu lists it.
-		expect(names).toEqual(["Looper", "Tuner", "Metronome"]);
+		expect(names).toEqual(["Looper", "Practice Amp", "Tuner", "Metronome"]);
 		await user.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).toBeNull();
 		unmount();

@@ -29,8 +29,14 @@
 		 * person turns it off, it stays off.
 		 */
 		startOnHover?: boolean;
+		/**
+		 * Listen to a node in another context instead of opening the microphone
+		 * (the Practice Amp's input, docs/practice-amp.md): nothing is opened or
+		 * closed here, and On / Off only starts and stops the reading.
+		 */
+		source?: () => { ctx: AudioContext; node: AudioNode } | null;
 	}
-	let { autostart = false, onrunning, startOnHover = false }: Props = $props();
+	let { autostart = false, onrunning, startOnHover = false, source }: Props = $props();
 
 	const WINDOW = 4096;
 	const FRAME_MS = 50;
@@ -64,6 +70,8 @@
 	let inTune = $derived(!!note && Math.abs(needle) <= IN_TUNE_CENTS);
 
 	let stream: MediaStream | null = null;
+	/** The node listened to through `source`, to let go of on stop. */
+	let tapped: AudioNode | null = null;
 	let ctx: AudioContext | null = null;
 	let analyser: AnalyserNode | null = null;
 	let timer: ReturnType<typeof setInterval> | null = null;
@@ -72,6 +80,23 @@
 	export async function start() {
 		if (running || starting || typeof navigator === "undefined") return;
 		error = null;
+		if (source) {
+			const tap = source();
+			if (!tap) {
+				error = "Turn the amp on first.";
+				return;
+			}
+			ctx = tap.ctx;
+			analyser = ctx.createAnalyser();
+			analyser.fftSize = WINDOW;
+			analyser.smoothingTimeConstant = 0;
+			tap.node.connect(analyser);
+			tapped = tap.node;
+			running = true;
+			onrunning?.(true);
+			timer = setInterval(tick, FRAME_MS);
+			return;
+		}
 		if (!navigator.mediaDevices?.getUserMedia) {
 			error = "This browser cannot open the microphone.";
 			return;
@@ -123,11 +148,20 @@
 		timer = null;
 		stream?.getTracks().forEach((t) => t.stop());
 		stream = null;
-		void ctx?.close();
+		if (tapped && analyser) {
+			try {
+				tapped.disconnect(analyser);
+			} catch {
+				// Already gone with its context.
+			}
+			tapped = null;
+		} else {
+			void ctx?.close();
+			const session = audioSession();
+			if (session && session.type === "play-and-record") session.type = "auto";
+		}
 		ctx = null;
 		analyser = null;
-		const session = audioSession();
-		if (session && session.type === "play-and-record") session.type = "auto";
 		if (running) {
 			running = false;
 			onrunning?.(false);

@@ -60,7 +60,7 @@
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
-	const TOOL_PAGES = ["/tuner", "/metronome"];
+	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
@@ -239,6 +239,18 @@
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/practice-amp',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/practice-amp"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-speaker-high w-1em" aria-hidden="true"></span>Practice Amp
 					</a>
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(

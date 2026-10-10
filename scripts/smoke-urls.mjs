@@ -52,6 +52,7 @@ const ROUTES = [
 	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
 	["ideas/recorder", "/ideas/recorder", [303], [200]],
 	["looper", "/looper", [200], [200]],
+	["practice-amp", "/practice-amp", [200], [200]],
 	["studio", "/studio", [303], [200]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
