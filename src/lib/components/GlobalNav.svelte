@@ -350,43 +350,6 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-									'/ideas/recorder',
-								)
-									? 'text-accent'
-									: ''}"
-								role="menuitem"
-								href="/ideas/recorder"
-								onclick={() => (openMenu = null)}
-							>
-								<span class="i-ph-microphone mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Idea Recorder
-							</a>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/looper')
-									? 'text-accent'
-									: ''}"
-								role="menuitem"
-								href="/looper"
-								onclick={() => (openMenu = null)}
-							>
-								<span class="i-ph-repeat mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Looper
-							</a>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active('/studio')
-									? 'text-accent'
-									: ''}"
-								role="menuitem"
-								href="/studio"
-								onclick={() => (openMenu = null)}
-							>
-								<span
-									class="i-ph-sliders-horizontal mr-2 inline-block align-[-2px]"
-									aria-hidden="true"
-								></span>Studio
-							</a>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/settings`,
 								)
 									? 'text-accent'
