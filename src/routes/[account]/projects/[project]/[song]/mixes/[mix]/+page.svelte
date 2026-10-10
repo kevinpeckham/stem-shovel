@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconChat from "#lib/components/IconChat.svelte";
 	import { afterNavigate, goto, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
@@ -374,7 +375,7 @@
 					aria-pressed={chatOpen}
 					onclick={() => (chatOpen = !chatOpen)}
 				>
-					<span class="block i-ph-chat-circle-text"></span>
+					<IconChat class="block" />
 					{#if chatUnread}
 						<span
 							class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconChat from "#lib/components/IconChat.svelte";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import {
 		analyse,
@@ -1646,7 +1647,7 @@
 						aria-pressed={chatOpen}
 						onclick={() => (chatOpen = !chatOpen)}
 					>
-						<span class="block i-ph-chat-circle-text"></span>
+						<IconChat class="block" />
 						{#if chatUnread}
 							<span
 								class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
