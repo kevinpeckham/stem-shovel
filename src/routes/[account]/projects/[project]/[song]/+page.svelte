@@ -461,10 +461,12 @@
 	// Lyrics first, the panel's default tab (Kevin, 2026-10-06).
 	const DOC_KINDS = ["lyrics", "chart", "notes"] as const;
 	const DOC_LABELS = { chart: "Chart", lyrics: "Lyrics", notes: "Notes" } as const;
-	// The Docs panel also shows the comments; the attachments are a panel of their own (Kevin), as the chat is.
-	const PANELS = [...DOC_KINDS, "comments"] as const;
+	// The Docs panel holds the documents; the comments, the chat and the attachments are panels of their own (Kevin).
+	const PANELS = [...DOC_KINDS] as const;
 	type Panel = (typeof PANELS)[number];
-	const PANEL_LABELS = { ...DOC_LABELS, comments: "Comments" } as const;
+	const PANEL_LABELS = { ...DOC_LABELS } as const;
+	/** The Comments panel (docs/mixes.md, "Phase 2" sibling): closed until the Comments row's button opens it, or a comment notification's link (?open=comments). */
+	let commentsOpen = $state(false);
 	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
 	let filesOpen = $state(false);
 	// The chat (docs/chat.md) is its own panel, closed until the header's button opens it (Kevin: chat and read the docs at once).
@@ -483,10 +485,19 @@
 		replaceState(url, {});
 	}
 	// A navigation from one song to another reuses this page: the chat starts over from the new song's.
+	/** A comment notification's link ends in ?open=comments: the panel opens and the query goes. */
+	function openCommentsFromUrl() {
+		if (page.url.searchParams.get("open") !== "comments") return;
+		commentsOpen = true;
+		const url = new URL(page.url.href);
+		url.searchParams.delete("open");
+		replaceState(url, {});
+	}
 	afterNavigate(() => {
 		chatMessages = data.chat?.messages ?? [];
 		chatReadAt = data.chat?.readAt ?? null;
 		openChatFromUrl();
+		openCommentsFromUrl();
 		openMixFromUrl();
 	});
 	let chatUnread = $derived(
@@ -503,7 +514,7 @@
 	);
 	let chartCount = $derived(notationCount || (data.docs.chart ? 1 : 0));
 	const tabLabel = (kind: Panel) => {
-		const count = kind === "comments" ? data.comments.length : kind === "chart" ? chartCount : 0;
+		const count = kind === "chart" ? chartCount : 0;
 		return count ? `${PANEL_LABELS[kind]} (${count})` : PANEL_LABELS[kind];
 	};
 	/** Switch the right-hand panel, closing an open editor first. */
@@ -514,7 +525,7 @@
 		panel = kind;
 	}
 	let panel = $state<Panel>("lyrics");
-	let showing = $derived(panel === "comments" ? null : panel);
+	let showing = $derived(panel);
 
 	/**
 	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
@@ -733,7 +744,6 @@
 		const nothing: MenuItems = [
 			{ id: "nothing", kind: "notice", notice: "Nothing to do here yet" },
 		];
-		if (panel === "comments") return nothing;
 		if (notationShown)
 			return data.canEdit
 				? [
@@ -1615,6 +1625,25 @@
 						{/if}
 					</button>
 				{/if}
+				<!-- The Comments panel's button: the count on the badge; the Comments row under the stems opens it too. -->
+				<button
+					class="button button-sm relative {commentsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: 'bg-blue-300/5 border-current/40 hover-border-accent'}"
+					type="button"
+					aria-pressed={commentsOpen}
+					title={commentsOpen ? "Close the comments" : "Show the comments"}
+					aria-label="Comments{data.comments.length ? ` (${data.comments.length})` : ''}"
+					onclick={() => (commentsOpen = !commentsOpen)}
+				>
+					<span class="block i-ph-chat-circle-dots"></span>
+					{#if data.comments.length}
+						<span
+							class="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-oxford-800 px-1 text-center text-9px leading-4 text-light ring-1 ring-current/40"
+							aria-hidden="true">{data.comments.length}</span
+						>
+					{/if}
+				</button>
 				<!-- The Attachments panel's button (Kevin): closed by default, lit while open, the file count on the badge. -->
 				<button
 					class="button button-sm relative {filesOpen
@@ -2825,17 +2854,7 @@
 					{/each}
 				</div>
 				<div class="flex items-stretch gap-2 {data.canEdit || notesMine ? '' : 'hidden'}">
-					{#if panel === "comments"}
-						<button
-							class="button button-xs flex items-center"
-							type="button"
-							title="Add a comment"
-							aria-label="Add a comment"
-							onclick={() => openComment()}
-						>
-							<span class="i-ph-plus"></span>
-						</button>
-					{:else if notationShown}
+					{#if notationShown}
 						<button
 							class="button button-xs flex items-center"
 							type="button"
@@ -2976,74 +2995,7 @@
 					{/if}
 				</div>
 			{/if}
-			{#if panel === "comments"}
-				<div
-					class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-6 pb-8"
-				>
-					{#if data.comments.length === 0}
-						<p class="opacity-80">No comments yet.</p>
-					{:else}
-						<ol class="grid gap-4">
-							{#each data.comments as c (c.id)}
-								{@const remove = deleteComment.for(c.id)}
-								<li
-									class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
-									id="comment-{c.id}"
-								>
-									<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-										<h3 class="font-600">{c.title}</h3>
-										<span class="text-12px opacity-70">
-											{c.authorName} · {formatDate(c.createdAt)}
-											{#if c.editedAt}<button
-													type="button"
-													class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider hover:border-current/70"
-													title="Edited {formatDate(c.editedAt)}: see the earlier versions"
-													onclick={() =>
-														(history = { kind: "comment", commentId: c.id, label: `“${c.title}”` })}
-													>edited</button
-												>{/if}
-										</span>
-									</div>
-									{#if c.at !== null}
-										<button
-											type="button"
-											class="mt-1 text-12px link-dim"
-											onclick={() => playerEngine?.seek(c.at ?? 0)}
-											title="Go to this position"
-										>
-											<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
-										</button>
-									{/if}
-									<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
-									{#if canEditComment(c) || canDeleteComment(c)}
-										<div class="mt-2 flex gap-3 text-12px">
-											{#if canEditComment(c)}
-												<button type="button" class="link-dim" onclick={() => editComment(c)}
-													>Edit</button
-												>
-											{/if}
-											{#if canDeleteComment(c)}
-												<form
-													{...remove.enhance(async ({ submit }) => {
-														if (!confirm(`Delete the comment "${c.title}"?`)) return;
-														await submit();
-														notify("Comment deleted");
-													})}
-												>
-													<input {...remove.fields.id.as("hidden", c.id)} />
-													<button class="link-dim" disabled={!!remove.pending}>
-														{remove.pending ? "Deleting…" : "Delete"}
-													</button>
-												</form>
-											{/if}
-										</div>
-									{/if}
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</div>
-			{:else if notationShown}
+			{#if notationShown}
 				<!-- The notation files (docs/uploads-and-blob.md, "Notation"): MusicXML engraved in the browser. -->
 				<SongNotationPanel
 					bind:this={notationPanel}
@@ -3100,6 +3052,97 @@
 			onrestored={() => refreshAll()}
 		/>
 	</section>
+	<!-- The comments (docs/data-model.md "comment"): a panel of their own, opened from the Comments row's button under the stems; the list as the Docs tab had it. -->
+	<div class="{commentsOpen ? '' : 'hidden'} max-w-full lg:contents">
+		<FloatingPanel
+			open={commentsOpen}
+			title="Comments"
+			storageKey="stemshovel.song.comments-panel"
+			width={520}
+			height={640}
+			onminimise={() => (commentsOpen = false)}
+		>
+			{#snippet controls()}
+				{#if data.canComment}
+					<button
+						class="button button-xs flex items-center"
+						type="button"
+						title="Add a comment"
+						aria-label="Add a comment"
+						onclick={() => openComment()}
+					>
+						<span class="i-ph-plus"></span>
+					</button>
+				{/if}
+			{/snippet}
+			<div
+				class="h-full min-h-full bg-blue-300/5 border rounded-md border-current/40 px-6 pt-6 pb-8"
+			>
+				{#if data.comments.length === 0}
+					<p class="opacity-80">No comments yet.</p>
+				{:else}
+					<ol class="grid gap-4">
+						{#each data.comments as c (c.id)}
+							{@const remove = deleteComment.for(c.id)}
+							<li
+								class="rounded-md border border-white/10 bg-black/20 px-4 py-3"
+								id="comment-{c.id}"
+							>
+								<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+									<h3 class="font-600">{c.title}</h3>
+									<span class="text-12px opacity-70">
+										{c.authorName} · {formatDate(c.createdAt)}
+										{#if c.editedAt}<button
+												type="button"
+												class="ml-1 rounded border border-current/30 px-1 text-9px uppercase tracking-wider hover:border-current/70"
+												title="Edited {formatDate(c.editedAt)}: see the earlier versions"
+												onclick={() =>
+													(history = { kind: "comment", commentId: c.id, label: `“${c.title}”` })}
+												>edited</button
+											>{/if}
+									</span>
+								</div>
+								{#if c.at !== null}
+									<button
+										type="button"
+										class="mt-1 text-12px link-dim"
+										onclick={() => playerEngine?.seek(c.at ?? 0)}
+										title="Go to this position"
+									>
+										<span class="i-ph-map-pin mr-1" aria-hidden="true"></span>{showPos(c.at)}
+									</button>
+								{/if}
+								<p class="mt-2 whitespace-pre-line text-15px">{c.body}</p>
+								{#if canEditComment(c) || canDeleteComment(c)}
+									<div class="mt-2 flex gap-3 text-12px">
+										{#if canEditComment(c)}
+											<button type="button" class="link-dim" onclick={() => editComment(c)}
+												>Edit</button
+											>
+										{/if}
+										{#if canDeleteComment(c)}
+											<form
+												{...remove.enhance(async ({ submit }) => {
+													if (!confirm(`Delete the comment "${c.title}"?`)) return;
+													await submit();
+													notify("Comment deleted");
+												})}
+											>
+												<input {...remove.fields.id.as("hidden", c.id)} />
+												<button class="link-dim" disabled={!!remove.pending}>
+													{remove.pending ? "Deleting…" : "Delete"}
+												</button>
+											</form>
+										{/if}
+									</div>
+								{/if}
+							</li>
+						{/each}
+					</ol>
+				{/if}
+			</div>
+		</FloatingPanel>
+	</div>
 	{#if data.chat}
 		<!-- The chat (docs/chat.md): its own panel, closed until the header's button opens it; floats from lg, a block under the docs below (`contents` keeps it out of the grid from lg). -->
 		<div class="{chatOpen ? '' : 'hidden'} max-w-full lg:contents">
@@ -3644,7 +3687,7 @@
 					await submit();
 					if (!remoteForm.fields.allIssues()) {
 						notify("Comment posted");
-						panel = "comments";
+						commentsOpen = true;
 						commentPanel?.hidePopover();
 					}
 				})}
@@ -3843,6 +3886,8 @@
 			comments={locatedComments}
 			card={commentCard}
 			canComment={data.canComment}
+			count={data.comments.length}
+			onopen={() => (commentsOpen = !commentsOpen)}
 			oncontext={(seconds, x, y) => onStemContext(null, seconds, x, y)}
 		/>
 	{/if}

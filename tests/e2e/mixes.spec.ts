@@ -71,11 +71,15 @@ test("the notes are written, a comment lands at a spot, and the mix is renamed",
 	await expect(panel.getByText(`${STAMP} final`).first()).toBeVisible();
 });
 
-test("the song's own Comments tab does not show the mix's comment", async ({ page }) => {
+test("the song's own Comments panel does not show the mix's comment", async ({ page }) => {
 	await open(page, SONG);
-	await page.getByRole("tab", { name: /^Comments/ }).click();
-	const docs = page.getByRole("dialog", { name: "Docs" });
-	await expect(docs.getByRole("heading", { name: `${STAMP} bass` })).toHaveCount(0);
+	await page
+		.getByRole("button", { name: /^Comments/ })
+		.first()
+		.click();
+	const panel = page.getByRole("dialog", { name: "Comments" });
+	await expect(panel).toBeVisible();
+	await expect(panel.getByRole("heading", { name: `${STAMP} bass` })).toHaveCount(0);
 });
 
 test("the mix is removed with its comment, and so is anything an earlier run left", async ({

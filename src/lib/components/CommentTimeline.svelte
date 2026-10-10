@@ -40,6 +40,9 @@
 		showTip?: boolean;
 		/** The row's label; empty for none (a mix's waveform is its own row). */
 		heading?: string;
+		/** How many comments the song has; with `onopen`, the label is a button that opens the page's Comments panel. */
+		count?: number;
+		onopen?: () => void;
 	}
 
 	let {
@@ -51,6 +54,8 @@
 		oncontext,
 		heading = "Comments",
 		showTip = true,
+		count = 0,
+		onopen,
 	}: Props = $props();
 	const HOW_TO =
 		"⌘-click (Ctrl-click) or right-click this row or a waveform to leave a comment at that spot.";
@@ -83,7 +88,23 @@
 	aria-label="Comments on the timeline"
 >
 	{#if heading}
-		<div class="text-11px opacity-90" title={canComment ? HOW_TO : undefined}>Comments</div>
+		<div class="text-11px opacity-90" title={canComment ? HOW_TO : undefined}>
+			{#if onopen}
+				<!-- The page's Comments panel: the list, and Add a comment. -->
+				<button
+					type="button"
+					class="link-dim flex items-center gap-1"
+					title="Open the comments"
+					aria-label="Comments{count ? ` (${count})` : ''}"
+					onclick={onopen}
+				>
+					<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>{heading}{#if count}
+						({count}){/if}
+				</button>
+			{:else}
+				{heading}
+			{/if}
+		</div>
 	{/if}
 
 	<div class="relative col-span-3 sm-col-span-1" title={canComment ? HOW_TO : undefined}>

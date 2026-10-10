@@ -14,7 +14,7 @@ The chosen mix has a play button, the time, a volume slider and its waveform. Cl
 
 ## Commenting on a mix
 
-Comments on a mix stay with the mix: they do not appear in the song's Comments tab or on the stems' Comments row, and the song's own comments do not appear here.
+Comments on a mix stay with the mix: they do not appear in the song's Comments panel or on the stems' Comments row, and the song's own comments do not appear here.
 
 - **At a spot**: hold ⌘ (Mac) or Ctrl (Windows), or right-click, on the mix's waveform or its Comments row, and choose **Comment here**. The position is filled in.
 - **About the mix in general**: press **Comment** beside the transport.

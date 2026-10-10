@@ -4,14 +4,14 @@ Comments are notes about a song, often about a spot in it, in the place the song
 
 ## Reading comments
 
-The **Comments** tab in the panel beside the player lists them, oldest first, with who wrote each and when. A comment with a position shows it as a link that jumps the player there. Edited comments carry an **edited** badge.
+**Comments** at the start of the Comments row under the stems (with the count) opens the Comments panel, which lists them oldest first, with who wrote each and when. A comment with a position shows it as a link that jumps the player there. Edited comments carry an **edited** badge.
 
 Comments with a position also appear as icons on the **Comments** row under the stems, drawn over the waveform of the whole mix. Click an icon to read the comment right there; a line marks the spot.
 
 ## Leaving a comment
 
 - **At a spot in the song**: hold **⌘** (Mac) or **Ctrl** (Windows), or right-click, on the **Comments** row, any stem's waveform or a piano roll, and choose **Comment here**. The position is filled in.
-- **About the song in general**: open the Comments tab and press **+**. The position is optional and can be typed in timecode or bars.
+- **About the song in general**: open the Comments panel and press **+**. The position is optional and can be typed in timecode or bars.
 
 A comment has a short title and the text itself.
 

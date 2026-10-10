@@ -259,7 +259,8 @@ export async function notifyComment(
 			n === 1
 				? `${who} commented in ${s.project.name}.`
 				: `${n} new comments, the latest from ${who}, in ${s.project.name}.`,
-		href: mix ? `${s.href}/mixes/${mix.id}` : s.href,
+		// The permalink's redirect keeps the query: the song page opens its Comments panel on it.
+		href: mix ? `${s.href}/mixes/${mix.id}` : `${s.href}?open=comments`,
 		subjectId: mix ? `${songId}:mix:${mix.id}` : songId,
 		coalesce: true,
 	});

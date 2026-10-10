@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The comments are a panel of their own** on the song page (Kevin), opened from the Comments row under the stems (its label is a button with the count) or by a comment notification's link (`?open=comments`), with the list as the Docs tab had it and + to add one. The Docs panel keeps to Lyrics, Chart and Notes.
+
 ## [0.120.0] - 2026-10-10
 
 ### Changed
