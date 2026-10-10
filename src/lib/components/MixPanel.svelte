@@ -127,7 +127,6 @@
 	let length = $state(0);
 	let volume = $state(1);
 	let src = $derived(mix ? (mix.playbackUrl ?? mix.url) : "");
-	let tipState: "show" | "hide" = $state("show");
 
 	function seek(seconds: number) {
 		if (!audio) return;
@@ -264,24 +263,6 @@
 	aria-label="Mix player"
 	data-mix-panel
 >
-	<!-- Panel Tip Header -->
-	<div
-		class="border border-current/40 relative bg-dark/70 py-2 px-4 flex items-start gap-2 rounded-md overflow-x-hidden {tipState ===
-		'show'
-			? ''
-			: 'hidden'}"
-	>
-		<span class="inline-block max-w-800px text-balance opacity-90 text-0.8em text-blue-200"
-			><span class="font-600">Tip:</span> The mix panel is intended for uploading stereo bounces from
-			your DAW to share with your team for review.
-		</span>
-		<button type="button" aria-label="Hide the tip" onclick={() => (tipState = "hide")}>
-			<span
-				class="text-blue-200 absolute top-2 right-2 block i-ph-x-bold w-4 h-4 border border-current/40 rounded"
-			></span>
-		</button>
-	</div>
-
 	<!-- Active Mix -->
 	<section>
 		<div class="relative bg-dark/70 border border-current/40 shadow rounded-md px-4 pt-3 pb-5">
@@ -408,18 +389,6 @@
 									<span class="i-ph-trash inline-block"></span>
 								</button>
 							{/if}
-
-							<!-- info -->
-							<button
-								type="button"
-								aria-label="Show User Tips"
-								title="What this panel is for"
-								id="mix-info-button"
-								onclick={() => (tipState = "show")}
-								class="button button-xs bg-blue-300/5 border-current/40 hover-border-accent px-2"
-							>
-								<span class="i-ph-info inline-block"></span>
-							</button>
 						</div>
 					</div>
 

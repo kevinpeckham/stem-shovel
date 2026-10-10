@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The mix page loses its tip and the info button that brought it back** (Kevin).
 - **The account menu loses its Idea Recorder, Looper and Studio links** (Kevin): the Tools menu has them.
 
 ### Added
