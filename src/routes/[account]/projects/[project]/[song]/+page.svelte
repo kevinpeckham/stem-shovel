@@ -1646,7 +1646,7 @@
 						aria-pressed={chatOpen}
 						onclick={() => (chatOpen = !chatOpen)}
 					>
-						<span class="block i-ph-hands-clapping-bold"></span>
+						<span class="block i-ph-chat-circle-dots"></span>
 						{#if chatUnread}
 							<span
 								class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
@@ -1667,7 +1667,7 @@
 					aria-label="Comments{data.comments.length ? ` (${data.comments.length})` : ''}"
 					onclick={() => (commentsOpen = !commentsOpen)}
 				>
-					<span class="block i-ph-chat-circle-dots"></span>
+					<span class="block i-ph-hands-clapping-bold"></span>
 					{#if data.comments.length}
 						<span
 							class="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-oxford-800 px-1 text-center text-9px leading-4 text-light ring-1 ring-current/40"
