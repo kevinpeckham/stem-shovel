@@ -26,6 +26,7 @@ bun run check:swing  # renders drum patterns through the machine's own code and 
 bun run shot <path>  # full-page PNG of a dev-server page into .screenshots/ — then Read it
                      # signed in as the Screenshot Bot when PREVIEW_AUTH_TOKEN is set (docs/agent-screenshots.md)
 bun run db:generate / db:migrate / db:seed / db:studio   # drizzle-kit via varlock
+bun run db:status                       # the last migration applied and any pending (APP_ENV=preview for staging); check production before a push to main
 bun run db:preview-bot <account-slug>   # enrol the Screenshot Bot in an account
 bun run db:system-admin <email>         # make a user the operator (/admin)
 bun run db:super-admin <email>          # owner of every account, audited (docs/security.md)

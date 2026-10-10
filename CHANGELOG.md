@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **`bun run db:status`** names the last migration a database has applied and any pending, so production can be checked before a push to main (the v0.118.0 outage).
 - **The mix page loses its tip and the info button that brought it back** (Kevin).
 - **The account menu loses its Idea Recorder, Looper and Studio links** (Kevin): the Tools menu has them.
 

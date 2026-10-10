@@ -269,6 +269,7 @@ source of truth: `src/lib/server/db/schema/*.ts`, one per table, with every
 ```sh
 bun run db:generate   # write a migration from schema changes into drizzle/
 bun run db:migrate    # apply migrations to the Turso database
+bun run db:status     # the last migration applied and any pending, against drizzle/meta/_journal.json
 bun run db:seed       # idempotent: the one account + user the app runs as
 bun run db:studio     # drizzle-kit studio
 ```

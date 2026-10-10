@@ -28,6 +28,7 @@
 		"shot": "varlock run -- node scripts/screenshot.mjs",
 		"db:generate": "varlock run -- drizzle-kit generate",
 		"db:migrate": "varlock run -- drizzle-kit migrate",
+		"db:status": "varlock run -- bun scripts/migration-status.ts",
 		"db:studio": "varlock run -- drizzle-kit studio",
 		"db:seed": "varlock run -- bun scripts/seed.ts",
 		"db:set-password": "varlock run -- bun scripts/set-password.ts",
