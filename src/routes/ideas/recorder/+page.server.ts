@@ -13,6 +13,8 @@ import {
 	recordingsWantingPlayback,
 	songLink,
 	sitePianoPresets,
+	siteAmpPresets,
+	listAmpPresets,
 } from "#lib/server/data.js";
 import { scheduleRecordingPlayback } from "#lib/server/jobs.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
@@ -88,6 +90,9 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 		textToBeat: aiAvailable(),
 		// The piano's panel: the site's demo presets and the current account's own, as the piano page has them.
 		sitePresets: await sitePianoPresets(),
+		// The Practice Amp's presets (docs/practice-amp.md, "Presets"), for its panel.
+		ampSitePresets: { guitar: await siteAmpPresets("guitar"), bass: await siteAmpPresets("bass") },
+		ampPresets: await listAmpPresets(member.accountId),
 		chordPresets: await sitePianoPresets("chords"),
 		pianoPresets: await listPianoPresets(member.accountId),
 		chordStyles: await listChordStyles(member.accountId),

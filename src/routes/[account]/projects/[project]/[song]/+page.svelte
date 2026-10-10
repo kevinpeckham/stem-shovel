@@ -3267,7 +3267,12 @@
 			onminimise={() => (ampOpen = false)}
 		>
 			<div class="p-2">
-				<PracticeAmp />
+				<PracticeAmp
+					sitePresets={data.ampSitePresets}
+					account={data.ampAccount}
+					presets={data.ampPresets}
+					presetAdmin={data.presetAdmin}
+				/>
 			</div>
 		</FloatingPanel>
 	</div>

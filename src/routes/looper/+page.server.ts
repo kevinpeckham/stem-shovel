@@ -10,6 +10,8 @@ import {
 	listUserIdeas,
 	listUserLoops,
 	sitePianoPresets,
+	siteAmpPresets,
+	listAmpPresets,
 } from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
@@ -43,6 +45,9 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		kits: await listDrumKitManifests(member?.accountId ?? null),
 		textToBeat: aiAvailable(),
 		sitePresets: await sitePianoPresets(),
+		// The Practice Amp's presets (docs/practice-amp.md, "Presets"), for its panel.
+		ampSitePresets: { guitar: await siteAmpPresets("guitar"), bass: await siteAmpPresets("bass") },
+		ampPresets: member ? await listAmpPresets(member.accountId) : [],
 		chordPresets: await sitePianoPresets("chords"),
 		pianoPresets: member ? await listPianoPresets(member.accountId) : [],
 		chordStyles: member ? await listChordStyles(member.accountId) : [],

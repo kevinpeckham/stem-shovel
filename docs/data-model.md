@@ -587,6 +587,26 @@ engine: `slot` is the piano's button, `chord_slot` the chord player's, each
 site's defaults are an app setting per instrument (`pianoPresets`,
 `chordPresets`), five named presets each.
 
+### amp_preset (the Practice Amp's library)
+
+A saved amp rig (docs/practice-amp.md, "Presets"), migration 0085: in an
+account's library like a piano preset, with the `instrument` it is for
+(guitar or bass) and an optional `slot`, 1 to 6, at most one of an
+account's presets per instrument and slot. `data` is the rig as JSON
+(`AmpPresetDataSchema`). The site's defaults are the app settings
+`ampPresets:guitar` and `ampPresets:bass`, six named presets each.
+
+| column                 | type                         | notes                               |
+| ---------------------- | ---------------------------- | ----------------------------------- |
+| id                     | text PK (nanoid)             |                                     |
+| account_id             | text FK → account            | indexed                             |
+| created_by             | text FK → user, nullable     | indexed; null once the user is gone |
+| name                   | text                         |                                     |
+| instrument             | text                         | guitar or bass                      |
+| slot                   | integer, nullable            | 1–6                                 |
+| data                   | text (JSON, `AmpPresetData`) | validated by AmpPresetDataSchema    |
+| created_at, updated_at | timestamp_ms                 |                                     |
+
 ### progression
 
 A saved chord progression from the chord player's pad (docs/chord-player.md,

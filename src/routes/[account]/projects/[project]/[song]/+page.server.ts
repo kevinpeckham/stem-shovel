@@ -1,4 +1,12 @@
-import { getSong, getUserNote, listArtists, listShareLinks, songChat } from "#lib/server/data.js";
+import {
+	getSong,
+	getUserNote,
+	listAmpPresets,
+	listArtists,
+	listShareLinks,
+	siteAmpPresets,
+	songChat,
+} from "#lib/server/data.js";
 import { songWantsNotes } from "#lib/utils/songWantsNotes.js";
 import { linkMentions } from "#lib/utils/linkMentions.js";
 import { mentionTargets } from "#lib/utils/mentionTargets.js";
@@ -55,11 +63,21 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		lyrics: linkMentions(view.docs.lyrics, targets),
 		notes: linkMentions(view.docs.notes, targets),
 	};
+	// The Practice Amp's presets (docs/practice-amp.md, "Presets") for the play-along panel: the site's, and the account's for an editor.
+	const [ampGuitar, ampBass, ampPresets] = await Promise.all([
+		siteAmpPresets("guitar"),
+		siteAmpPresets("bass"),
+		canEdit ? listAmpPresets(account.id) : [],
+	]);
 	return {
 		...view,
 		docs,
 		canEdit,
 		canComment,
+		ampSitePresets: { guitar: ampGuitar, bass: ampBass },
+		ampPresets,
+		ampAccount: canEdit ? { id: account.id, name: account.name, canEdit: true } : null,
+		presetAdmin: locals.user?.isSystemAdmin === true,
 		/** The song's chat and where this person last read it; null for anyone who may not write in it. */
 		chat,
 		shareLinks,

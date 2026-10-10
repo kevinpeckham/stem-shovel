@@ -1774,7 +1774,14 @@
 	onminimise={() => toggleAmp()}
 >
 	<div class="p-2">
-		<PracticeAmp metronomeOpen={metroOpen} onmetronome={toggleMetronome} />
+		<PracticeAmp
+			sitePresets={data.ampSitePresets}
+			account={data.account}
+			presets={data.ampPresets}
+			presetAdmin={data.presetAdmin}
+			metronomeOpen={metroOpen}
+			onmetronome={toggleMetronome}
+		/>
 	</div>
 </FloatingPanel>
 

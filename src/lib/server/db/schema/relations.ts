@@ -21,6 +21,7 @@ import { progression } from "./progression";
 import { drumKit } from "./drumKit";
 import { drumSample } from "./drumSample";
 import { pianoPreset } from "./pianoPreset";
+import { ampPreset } from "./ampPreset";
 import { idea } from "./idea";
 import { recording } from "./recording";
 import { recordingStem } from "./recordingStem";
@@ -65,6 +66,7 @@ export const accountRelations = relations(account, ({ many }) => ({
 	chordStyles: many(chordStyle),
 	drumKits: many(drumKit),
 	pianoPresets: many(pianoPreset),
+	ampPresets: many(ampPreset),
 }));
 
 export const inviteCodeRelations = relations(inviteCode, ({ one }) => ({
@@ -345,4 +347,9 @@ export const beatRelations = relations(beat, ({ one }) => ({
 export const pianoPresetRelations = relations(pianoPreset, ({ one }) => ({
 	account: one(account, { fields: [pianoPreset.accountId], references: [account.id] }),
 	creator: one(user, { fields: [pianoPreset.createdBy], references: [user.id] }),
+}));
+
+export const ampPresetRelations = relations(ampPreset, ({ one }) => ({
+	account: one(account, { fields: [ampPreset.accountId], references: [account.id] }),
+	creator: one(user, { fields: [ampPreset.createdBy], references: [user.id] }),
 }));

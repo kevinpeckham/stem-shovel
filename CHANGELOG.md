@@ -24,9 +24,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   and the Idea Recorder, an input in the Studio, and a panel on the song
   page to play along. User doc `/docs/practice-amp`; page copy
   `practice-amp-page`; `bun run db:seed-docs` adds both.
+- **Amp presets** (docs/practice-amp.md, "Presets"): six slot buttons
+  per instrument on the amp, lit on the one the rig matches; the site's
+  defaults (a system admin saves them from the amp), a signed-out
+  browser's own slots, and a signed-in member's account library with a
+  manage menu (save, rename, re-slot, delete, search); share links
+  `/practice-amp#preset=…`. The amp's panel on the looper, the recorder,
+  the Studio and the song page has the same buttons.
 
 ### Technical
 
+- **Migration 0085**: the `amp_preset` table (account, creator, name,
+  instrument, slot, data). Site amp presets are the app settings
+  `ampPresets:guitar` and `ampPresets:bass`. `SHORT_LINK_KINDS` gains
+  "practice-amp".
 - The chorus, phaser, tremolo, rotary and compressor stages moved from
   `pianoFx.ts` into `fxStages.ts` (the piano, the Studio track chain and
   the amp share them); the fuzz is one shape of `createClipStage`, the

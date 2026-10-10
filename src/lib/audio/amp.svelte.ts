@@ -11,14 +11,16 @@ import {
 	defaultRig,
 } from "#lib/utils/ampPreferences.js";
 import { looksBluetooth } from "#lib/utils/latencyVerdict.js";
-import type {
-	AmpHead,
-	AmpInputMode,
-	AmpInstrument,
-	AmpModelId,
-	AmpPedals,
-	AmpPreferences,
-	AmpRig,
+import * as v from "valibot";
+import {
+	AmpRigSchema,
+	type AmpHead,
+	type AmpInputMode,
+	type AmpInstrument,
+	type AmpModelId,
+	type AmpPedals,
+	type AmpPreferences,
+	type AmpRig,
 } from "#lib/val/AmpSchema.js";
 import { createAmpChain, type AmpChain } from "./ampChain";
 
@@ -288,6 +290,23 @@ class AmpEngine {
 	}
 	setPedal<K extends keyof AmpPedals>(pedal: K, patch: Partial<AmpPedals[K]>) {
 		Object.assign(this.rig.pedals[pedal], patch);
+		this.#apply();
+	}
+	/** The rig as a preset (docs/practice-amp.md, "Presets"): the model, the head and the pedals as they stand. */
+	currentPreset(): AmpRig {
+		return $state.snapshot(this.rig);
+	}
+	/** A preset into the rig in force: the model, its head (the master kept where it is) and the pedals; the instrument follows the model. */
+	applyPreset(data: AmpRig) {
+		const m = AMP_MODELS[data.model];
+		if (m.instrument !== this.prefs.instrument) this.prefs.instrument = m.instrument;
+		const master = this.rig.head.master;
+		// A snapshot, not structuredClone: the data may be a component's $state proxy, which structuredClone refuses.
+		const plain = $state.snapshot(data) as AmpRig;
+		this.prefs[m.instrument] = v.parse(AmpRigSchema, {
+			...plain,
+			head: { ...plain.head, master },
+		});
 		this.#apply();
 	}
 	/** Every pedal off and the head back at the model's defaults. */

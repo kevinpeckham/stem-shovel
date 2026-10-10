@@ -2,6 +2,7 @@
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { inputSources, type ChannelMode, type InputSource } from "#lib/audio/inputs.svelte.js";
 	import AmpPedalsMenu from "#lib/components/AmpPedalsMenu.svelte";
+	import AmpPresets, { type SavedAmpPreset } from "#lib/components/AmpPresets.svelte";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
@@ -13,8 +14,10 @@
 		AMP_INSTRUMENTS,
 		AMP_MID_FREQUENCIES,
 		type AmpInputMode,
+		type AmpInstrument,
 		type AmpModelId,
 	} from "#lib/val/AmpSchema.js";
+	import type { NamedAmpPreset } from "#lib/val/AmpPresetSchema.js";
 	import { onMount } from "svelte";
 
 	/**
@@ -30,8 +33,26 @@
 		metronomeOpen?: boolean;
 		ontuner?: () => void;
 		onmetronome?: () => void;
+		/** The presets (docs/practice-amp.md, "Presets"): the site's six per instrument; without them the slot row does not show. */
+		sitePresets?: Record<AmpInstrument, (NamedAmpPreset | null)[]> | null;
+		/** A signed-in member's account: presets save to it and load from it. */
+		account?: { id: string; name: string; canEdit: boolean } | null;
+		presets?: SavedAmpPreset[];
+		presetAdmin?: boolean;
+		/** Read a `#preset=` share link on mount (the amp's own page). */
+		readLink?: boolean;
 	}
-	let { tunerOpen = false, metronomeOpen = false, ontuner, onmetronome }: Props = $props();
+	let {
+		tunerOpen = false,
+		metronomeOpen = false,
+		ontuner,
+		onmetronome,
+		sitePresets = null,
+		account = null,
+		presets = [],
+		presetAdmin = false,
+		readLink = false,
+	}: Props = $props();
 
 	onMount(() => amp.load());
 	const model = $derived(amp.model);
@@ -470,6 +491,9 @@
 			{/if}
 			{@render knob("Master", head.master, (v) => amp.setHead({ master: v }))}
 		</div>
+		{#if sitePresets}
+			<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />
+		{/if}
 		{#if model.switches.length > 0}
 			<div class="flex flex-wrap gap-2" role="group" aria-label="Switches">
 				{#if model.switches.includes("bright")}

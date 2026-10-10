@@ -10,6 +10,7 @@ import {
 	setAccountFounder,
 	setAppSetting,
 	setSitePianoPreset as setSitePreset,
+	setSiteAmpPreset as setSiteAmp,
 	deleteAppSetting,
 	setUserFounder,
 	waitlistById,
@@ -26,6 +27,7 @@ import { SignUpModeFormSchema } from "#lib/val/SignUpModeSchema.js";
 import { FeaturedSongSchema } from "#lib/val/FeaturedSongSchema.js";
 import { HomeBeatSchema } from "#lib/val/HomeBeatSchema.js";
 import { SitePianoPresetSchema, SitePianoPresetSlotSchema } from "#lib/val/PianoPresetSchema.js";
+import { SiteAmpPresetSchema, SiteAmpPresetSlotSchema } from "#lib/val/AmpPresetSchema.js";
 import { WaitlistAdminSchema } from "#lib/val/WaitlistSchema.js";
 import { waitlistManageUrl } from "#lib/utils/waitlistManageUrl.js";
 import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "#lib/server/email.js";
@@ -157,6 +159,23 @@ export const clearSitePianoPreset = command(
 		return { cleared: true };
 	},
 );
+
+/** The Practice Amp's site presets, one instrument's slot at a time: whatever the amp holds when a system admin saves it there (docs/practice-amp.md, "Presets"). */
+export const setSiteAmpPreset = command(
+	SiteAmpPresetSchema,
+	async ({ instrument, slot, name, data }) => {
+		const { locals } = getRequestEvent();
+		requireSystemAdmin(locals);
+		await setSiteAmp(instrument, slot, { name, data });
+		return { saved: true };
+	},
+);
+export const clearSiteAmpPreset = command(SiteAmpPresetSlotSchema, async ({ instrument, slot }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setSiteAmp(instrument, slot, null);
+	return { cleared: true };
+});
 
 /** Back to the built-in starting beat (from /admin/home). */
 export const clearHomeBeat = form(v.object({}), async () => {

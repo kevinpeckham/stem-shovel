@@ -329,3 +329,47 @@ browser remembers one rig per instrument for now), the phone layout has
 had no pass of its own beyond the container queries, and the latency
 verdicts are from the papers until Kevin's measurements (the fake
 device under test reads 84 ms, which says nothing about hardware).
+
+## Presets (built 2026-10-10)
+
+Kevin: "Tell me more about what you would build for the presets" and
+"proceed". The piano's shape (docs/piano.md, "Presets"), per instrument:
+
+- **What a preset is**: `AmpPresetDataSchema` is the rig (`AmpRigSchema`:
+  the model, the head and the pedals), every field optional with its
+  default so an older preset still parses. The master is the room's
+  level, not the sound's: `amp.applyPreset()` keeps it where it is, and
+  `ampPresetKey` leaves it out when it decides which slot the rig sits
+  on. The input, the trim and Instrument / Line are not in a preset.
+- **Three layers** (`utils/resolveAmpSlots.ts`), six slots per
+  instrument: the site's defaults (an app setting per instrument,
+  `ampPresets:guitar` and `ampPresets:bass`, set from the amp by a system
+  admin through `setSiteAmpPreset` / `clearSiteAmpPreset` in
+  admin.remote.ts); a signed-out browser's own slot saves
+  (`utils/ampSlotOverrides.ts`, `stemshovel.amp.presets.<instrument>`);
+  and a signed-in member's account library, the `amp_preset` table
+  (migration 0085: account, creator, name, instrument, slot, data JSON;
+  at most one of an account's presets per instrument and slot, kept by
+  `freeAmpSlot` in data.ts; up to `MAX_AMP_PRESETS` = 100). Editors save,
+  rename, re-slot and delete (`ampPresets.remote.ts`); viewers load.
+- **On the face** (`AmpPresets.svelte`, under the knobs when a page gives
+  `PracticeAmp` its `sitePresets`): the six slot buttons of the instrument
+  in force, lit on the one the rig matches, dimmed when empty (a click on
+  an empty one opens the save form); ⌘-click or a hold saves to a slot;
+  the bookmarks button is the manage menu with the save form (name, slot,
+  Save / Save in this browser / Save as site default / Copy link), the
+  slots as they stand, the site defaults in full for an admin (save here,
+  rename, move, clear), and the account's library with a search box from
+  six presets up. The line after the buttons names the preset the rig
+  sits on, "edited" once a knob moves off it.
+- **Share links**: `/practice-amp#preset=<base64url {name, data}>`
+  (`encodeAmpPreset` / `decodeAmpPreset`, checked by the schema on the way
+  in), shortened as the piano's are (`shortenShareLink`, kind
+  "practice-amp"); the amp's own page reads it on mount (`readLink`),
+  names it and keeps nothing until saved.
+- **Where it reaches**: the amp page (the current account, as the piano
+  page picks it), and the amp's panel on the looper, the Idea Recorder,
+  the Studio (their account) and the song page (the song's account, for an
+  editor; viewers get the site's and the browser's). Tested:
+  `data.amp.test.ts`, `ampPreset.test.ts`, and the amp's browser spec
+  saves, loads and deletes one.

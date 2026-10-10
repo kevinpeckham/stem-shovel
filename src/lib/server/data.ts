@@ -26,6 +26,13 @@ import {
 	type PresetInstrument,
 } from "#lib/val/PianoPresetSchema.js";
 import {
+	AMP_PRESET_SLOTS,
+	NamedAmpPresetSchema,
+	type AmpPresetData,
+	type NamedAmpPreset,
+} from "#lib/val/AmpPresetSchema.js";
+import type { AmpInstrument } from "#lib/val/AmpSchema.js";
+import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
@@ -184,6 +191,7 @@ const {
 	idea,
 	beat,
 	pianoPreset,
+	ampPreset,
 	progression,
 	chordStyle,
 	songFile,
@@ -6934,4 +6942,153 @@ export async function setSitePianoPreset(
 	const slots = await sitePianoPresets(instrument);
 	slots[slot - 1] = preset;
 	await setAppSetting(siteSettingKey(instrument), JSON.stringify(slots));
+}
+
+// ---- amp presets (docs/practice-amp.md, "Presets") ----
+
+/** The account's amp presets, both instruments: the slotted ones first by slot, then the rest newest first. */
+export async function listAmpPresets(accountId: string) {
+	const rows = await db.query.ampPreset.findMany({
+		where: eq(ampPreset.accountId, accountId),
+		orderBy: [desc(ampPreset.updatedAt)],
+		columns: {
+			id: true,
+			name: true,
+			instrument: true,
+			slot: true,
+			data: true,
+			createdBy: true,
+			updatedAt: true,
+		},
+	});
+	return rows.sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
+}
+
+/** At most one preset of an account on an instrument's slot: the slot comes off whatever held it. */
+async function freeAmpSlot(
+	accountId: string,
+	instrument: AmpInstrument,
+	slot: number,
+	except?: string,
+) {
+	await db
+		.update(ampPreset)
+		.set({ slot: null })
+		.where(
+			and(
+				eq(ampPreset.accountId, accountId),
+				eq(ampPreset.instrument, instrument),
+				eq(ampPreset.slot, slot),
+				...(except ? [ne(ampPreset.id, except)] : []),
+			),
+		);
+}
+
+export async function createAmpPreset(
+	accountId: string,
+	userId: string,
+	name: string,
+	instrument: AmpInstrument,
+	data: AmpPresetData,
+	slot: number | null,
+) {
+	if (slot) await freeAmpSlot(accountId, instrument, slot);
+	const [row] = await db
+		.insert(ampPreset)
+		.values({
+			accountId,
+			createdBy: userId,
+			name: name.trim() || "Untitled preset",
+			instrument,
+			data,
+			slot,
+		})
+		.returning();
+	return row!;
+}
+
+export async function updateAmpPreset(
+	accountId: string,
+	id: string,
+	patch: { name: string; instrument: AmpInstrument; data: AmpPresetData; slot?: number | null },
+) {
+	if (patch.slot) await freeAmpSlot(accountId, patch.instrument, patch.slot, id);
+	const [row] = await db
+		.update(ampPreset)
+		.set({
+			name: patch.name.trim() || "Untitled preset",
+			instrument: patch.instrument,
+			data: patch.data,
+			...(patch.slot === undefined ? {} : { slot: patch.slot }),
+		})
+		.where(and(eq(ampPreset.id, id), eq(ampPreset.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function renameAmpPreset(accountId: string, id: string, name: string) {
+	const [row] = await db
+		.update(ampPreset)
+		.set({ name: name.trim() || "Untitled preset" })
+		.where(and(eq(ampPreset.id, id), eq(ampPreset.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+/** Put a preset on one of its instrument's slot buttons (taking the slot from any other), or take it off (null). */
+export async function setAmpPresetSlot(accountId: string, id: string, slot: number | null) {
+	const current = await db.query.ampPreset.findFirst({
+		where: and(eq(ampPreset.id, id), eq(ampPreset.accountId, accountId)),
+		columns: { instrument: true },
+	});
+	if (!current) return null;
+	if (slot) await freeAmpSlot(accountId, current.instrument, slot, id);
+	const [row] = await db
+		.update(ampPreset)
+		.set({ slot })
+		.where(and(eq(ampPreset.id, id), eq(ampPreset.accountId, accountId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteAmpPreset(accountId: string, id: string) {
+	await db.delete(ampPreset).where(and(eq(ampPreset.id, id), eq(ampPreset.accountId, accountId)));
+}
+
+export async function countAmpPresets(accountId: string) {
+	const [row] = await db
+		.select({ n: count() })
+		.from(ampPreset)
+		.where(eq(ampPreset.accountId, accountId));
+	return row?.n ?? 0;
+}
+
+/** The site's default amp presets for an instrument's six buttons (an app setting per instrument, set from the amp by a system admin), a null for an empty slot. */
+const ampSiteKey = (instrument: AmpInstrument) => `ampPresets:${instrument}`;
+export async function siteAmpPresets(
+	instrument: AmpInstrument,
+): Promise<(NamedAmpPreset | null)[]> {
+	const raw = await getAppSetting(ampSiteKey(instrument));
+	const slots: (NamedAmpPreset | null)[] = Array.from({ length: AMP_PRESET_SLOTS }, () => null);
+	if (!raw) return slots;
+	try {
+		const json = JSON.parse(raw) as unknown[];
+		json.forEach((entry, i) => {
+			const parsed = v.safeParse(NamedAmpPresetSchema, entry);
+			if (i < AMP_PRESET_SLOTS && parsed.success) slots[i] = parsed.output;
+		});
+	} catch {
+		// An unreadable setting is an empty rack.
+	}
+	return slots;
+}
+
+export async function setSiteAmpPreset(
+	instrument: AmpInstrument,
+	slot: number,
+	preset: NamedAmpPreset | null,
+) {
+	const slots = await siteAmpPresets(instrument);
+	slots[slot - 1] = preset;
+	await setAppSetting(ampSiteKey(instrument), JSON.stringify(slots));
 }

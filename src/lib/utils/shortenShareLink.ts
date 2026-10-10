@@ -11,7 +11,7 @@ import { shortLinkTarget } from "#lib/utils/shortLinkTarget.js";
  */
 export async function shortenShareLink(
 	longUrl: string,
-	kind: "chord-player" | "drum-machine" | "piano" | "song" | "project" | "other",
+	kind: "chord-player" | "drum-machine" | "piano" | "practice-amp" | "song" | "project" | "other",
 ): Promise<string> {
 	try {
 		const target = shortLinkTarget(longUrl, window.location.origin);

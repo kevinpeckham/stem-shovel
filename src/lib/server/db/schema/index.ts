@@ -19,6 +19,7 @@ export * from "./drumKit";
 export * from "./drumSample";
 export * from "./beat";
 export * from "./pianoPreset";
+export * from "./ampPreset";
 export * from "./idea";
 export * from "./invitation";
 export * from "./inviteCode";

@@ -113,6 +113,8 @@ export const AMP_MODELS_FOR: Record<AmpInstrument, AmpModel[]> = {
 	guitar: [AMP_MODELS.clean, AMP_MODELS.tweed],
 	bass: [AMP_MODELS.fridge, AMP_MODELS.solid],
 };
+/** An account keeps up to this many amp presets (docs/practice-amp.md, "Presets"). */
+export const MAX_AMP_PRESETS = 100;
 export const AMP_INSTRUMENT_LABELS: Record<AmpInstrument, string> = {
 	guitar: "Guitar",
 	bass: "Bass",

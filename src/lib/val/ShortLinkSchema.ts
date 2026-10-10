@@ -11,6 +11,7 @@ export const SHORT_LINK_KINDS = [
 	"chord-player",
 	"drum-machine",
 	"piano",
+	"practice-amp",
 	"song",
 	"project",
 	"other",

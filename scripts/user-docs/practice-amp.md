@@ -25,6 +25,12 @@ The knobs are an amp's: **Gain** (how hard the preamp is driven), **Bass**, **Mi
 
 The **Pedals** menu is the board, in the order the signal meets them. Before the amp: a **noise gate**, a **compressor**, an **overdrive** (gentle, keeps the lows tight), a **fuzz** and a **wah** (touch or sweep). After it: a **chorus**, a **phaser** or **flanger**, a **delay** (digital or analog) and a **rotary speaker**. **Reset all** takes every pedal off and the head back to its defaults.
 
+## Presets
+
+Under the knobs are six **preset** buttons for the instrument in force (guitar and bass keep their own). A preset is the whole rig: the head, its knobs and switches and every pedal; the master and the input stay as they are. Click a button to load its preset; it lights while the rig matches one. ⌘-click (Ctrl on Windows) or hold a button to save the rig there, or open the bookmarks menu beside the buttons: name the preset, pick a slot, and **Save**. Signed in, presets save to your account's library, where every member sees them (editors keep it; up to a hundred); signed out, a preset lives on the six buttons in this browser. The site's own presets fill any button you have not taken.
+
+**Copy link** in the menu gives a link that opens the amp with the rig as it stands, or with any saved preset by its link icon, for a bandmate to load and save.
+
 ## Latency
 
 What you hear comes back through the computer's input and output, which takes a moment: the amp's status line says how long. Under 15 ms feels direct; up to 30 is playable; beyond that the delay is in the way. Wired headphones or the interface's own headphone jack are the way to keep it short; Bluetooth adds well over a hundred milliseconds and the amp says so when it can tell. **Calibrate** in the Input menu measures the round trip with three clicks through the speakers and the microphone.

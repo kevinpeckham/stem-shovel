@@ -1859,7 +1859,14 @@
 		onminimise={() => toggleAmp()}
 	>
 		<div class="p-2">
-			<PracticeAmp metronomeOpen={metroOpen} onmetronome={() => (metroOpen = !metroOpen)} />
+			<PracticeAmp
+				sitePresets={data.ampSitePresets}
+				account={data.account}
+				presets={data.ampPresets}
+				presetAdmin={data.presetAdmin}
+				metronomeOpen={metroOpen}
+				onmetronome={() => (metroOpen = !metroOpen)}
+			/>
 		</div>
 	</FloatingPanel>
 	<!-- The instruments' panels, as on the looper page: hosted in the Studio's context, they play into an armed track. -->

@@ -33,3 +33,41 @@ test("the amp turns on, hears the input, renders through every head, and turns o
 	await until(page, ([w]) => w.__amp.on === false);
 	expect(errors).toEqual([]);
 });
+
+/**
+ * The presets (docs/practice-amp.md, "Presets"): the bot, an editor in its
+ * account, saves the rig to slot 1 from the manage menu, the slot lights
+ * and names it, and the preset is deleted again from the library.
+ */
+test("saves a preset to a slot and deletes it from the library", async ({ page, errors }) => {
+	await open(page, "/practice-amp", "__amp");
+	const name = `e2e amp ${Date.now()}`;
+	await page.getByRole("button", { name: "Manage presets" }).click();
+	await page.getByRole("textbox", { name: "Preset name" }).fill(name);
+	await page
+		.getByRole("group", { name: "Save to slot" })
+		.getByRole("button", { name: "1" })
+		.click();
+	await page.getByRole("button", { name: "Save", exact: true }).click();
+	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toBeVisible();
+	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
+	// A knob moved off the preset: the slot no longer lights; loading it lights it again.
+	await hooked(page, ([w]) => w.__amp.setHead({ gain: 0.9 }));
+	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toHaveAttribute(
+		"aria-pressed",
+		"false",
+	);
+	await page.getByRole("button", { name: `Preset 1: ${name}` }).click();
+	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
+	page.once("dialog", (d) => d.accept());
+	await page.getByRole("button", { name: "Manage presets" }).click();
+	await page.getByRole("button", { name: `Delete ${name}` }).click();
+	await expect(page.getByRole("button", { name: `Preset 1: ${name}` })).toHaveCount(0);
+	expect(errors).toEqual([]);
+});

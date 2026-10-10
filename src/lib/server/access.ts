@@ -145,6 +145,7 @@ const {
 	idea,
 	beat,
 	pianoPreset,
+	ampPreset,
 	progression,
 	chordStyle,
 	songCredit,
@@ -288,6 +289,14 @@ export async function accountOfChordStyle(styleId: string) {
 export async function accountOfPianoPreset(presetId: string) {
 	const row = await db.query.pianoPreset.findFirst({
 		where: eq(pianoPreset.id, presetId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfAmpPreset(presetId: string) {
+	const row = await db.query.ampPreset.findFirst({
+		where: eq(ampPreset.id, presetId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

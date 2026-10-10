@@ -53,6 +53,11 @@
 			{metronomeOpen}
 			ontuner={toggleTuner}
 			onmetronome={() => (metronomeOpen = !metronomeOpen)}
+			sitePresets={data.sitePresets}
+			account={data.account}
+			presets={data.presets}
+			presetAdmin={data.presetAdmin}
+			readLink
 		/>
 	</div>
 	<FloatingPanel
