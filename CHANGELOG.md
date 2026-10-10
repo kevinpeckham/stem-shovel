@@ -10,6 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The song page's Player and Docs buttons sit in the header** beside Comments, Chat and Attachments, as icons lit while their panel is open (Kevin); the row under the player keeps to uploads, downloads and the demo.
+- **The mix page's header carries the mix's buttons and its name**: comment, download, share, upload, delete beside the Chat and Song buttons, the name renamed in place under the title; the panel keeps to the player, the notes and the comments (Kevin).
+- **The Chart tab's notation view says "No notation yet."** with the how in a tip, kept clear of the Text / Notation toggle (Kevin).
 - **The comments are a panel of their own** on the song page (Kevin), opened from the Comments row under the stems (its label is a button with the count) or by a comment notification's link (`?open=comments`), with the list as the Docs tab had it and + to add one. The Docs panel keeps to Lyrics, Chart and Notes.
 
 ## [0.120.0] - 2026-10-10

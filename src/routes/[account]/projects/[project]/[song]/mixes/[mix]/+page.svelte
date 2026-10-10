@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { afterNavigate, goto, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import MixPanel, { type MixComment, type PanelMix } from "#lib/components/MixPanel.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
@@ -11,7 +12,7 @@
 	import { removeMix, renameMix, setMixNotes } from "#lib/remote/mixes.remote.js";
 	import { shareSong } from "#lib/remote/songs.remote.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
-	import { postJson, uploadMixFile } from "#lib/upload.js";
+	import { postJson, saveAs, uploadMixFile } from "#lib/upload.js";
 	import { demoContentType } from "#lib/utils/demoContentType.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
@@ -38,6 +39,28 @@
 	let membership = $derived(data.memberships?.find((m) => m.accountId === data.account.id));
 	let isAdmin = $derived(membership?.role === "owner" || membership?.role === "admin");
 	let mixPanel = $state<MixPanel | null>(null);
+	// The name, renamed in place in the header (the panel's title row is off here).
+	let renaming = $state(false);
+	let labelDraft = $state("");
+	function startRename() {
+		labelDraft = mix?.label ?? "";
+		renaming = true;
+	}
+	async function commitRename() {
+		if (!renaming || !mix) return;
+		renaming = false;
+		const label = labelDraft.trim();
+		if (label && label !== mix.label) await renameMixRow(mix, label);
+	}
+	function onlabelkeydown(e: KeyboardEvent) {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			void commitRename();
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			renaming = false;
+		}
+	}
 	/** A position on a mix is time, never bars (docs/mixes.md). */
 	const mixPos = (seconds: number) => formatTime(seconds, 2);
 
@@ -239,13 +262,109 @@
 				<span class="opacity-70 text-0.8em">of {data.song.title}</span>
 			</h1>
 			{#if mix}
-				<p class="text-15px opacity-90">
-					{mix.label}{#if mix.uploader}
-						· {mix.uploader.name}{/if} · {formatDate(mix.createdAt)}
+				<p class="flex flex-wrap items-baseline gap-x-2 text-15px opacity-90">
+					{#if renaming}
+						<!-- svelte-ignore a11y_autofocus -->
+						<input
+							class="field w-72 max-w-full py-0"
+							aria-label="Mix name"
+							maxlength="120"
+							autofocus
+							bind:value={labelDraft}
+							onkeydown={onlabelkeydown}
+							onblur={() => void commitRename()}
+						/>
+					{:else}
+						<span>{mix.label}</span>
+						{#if data.canEdit}
+							<button
+								type="button"
+								class="inline-flex h-4 w-4 items-center justify-center rounded bg-blue-300/5 text-11px opacity-90 hover-bg-blue-300/15 hover-text-accent hover-opacity-100 align-middle"
+								title="Rename this mix"
+								aria-label="Rename Mix"
+								onclick={startRename}
+							>
+								<span class="i-ph-pencil block" aria-hidden="true"></span>
+							</button>
+						{/if}
+					{/if}
+					<span class="opacity-70">
+						{#if mix.uploader}· {mix.uploader.name}{/if} · {formatDate(mix.createdAt)}
+					</span>
 				</p>
 			{/if}
 		</div>
-		<div class="flex gap-2">
+		<div class="flex flex-wrap justify-end gap-2">
+			{#if mix && data.canComment}
+				<button
+					type="button"
+					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					title="Comment on this mix"
+					aria-label="Comment on this mix"
+					onclick={() => openComment()}
+				>
+					<span class="block i-ph-chat-circle-dots"></span>
+				</button>
+			{/if}
+			{#if mix}
+				<ContextMenu
+					ariaLabel="Download"
+					title="Download the mix"
+					clearButtonBaseClasses={true}
+					buttonClasses="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					iconClass="i-ph-download-simple"
+					position="bottom right"
+					items={[
+						{
+							id: "mix-download-source",
+							kind: "button",
+							label: `Download .${mix.filename.split(".").pop()} (${formatBytes(mix.sizeBytes)})`,
+							title: "The file as uploaded",
+							iconClass: "i-ph-download-simple",
+							action: () => void saveAs(mix.url, mix.filename),
+						},
+						{
+							id: "mix-download-mp3",
+							kind: "button",
+							label: "Download .mp3",
+							title: "The MP3 made for streaming",
+							iconClass: "i-ph-download-simple",
+							condition: !!mix.playbackUrl && !/\.mp3$/i.test(mix.filename),
+							action: () =>
+								void saveAs(mix.playbackUrl ?? "", `${mix.filename.replace(/\.[^.]+$/, "")}.mp3`),
+						},
+					]}
+				/>
+			{/if}
+			{#if mix && data.canEdit}
+				<button
+					type="button"
+					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					title="Share this mix by email"
+					aria-label="Share mix"
+					onclick={() => sharePanel?.showPopover()}
+				>
+					<span class="block i-ph-paper-plane-tilt"></span>
+				</button>
+				<button
+					type="button"
+					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					title="Upload a new mix"
+					aria-label="Upload a new mix"
+					onclick={() => mixPanel?.pick()}
+				>
+					<span class="block i-ph-upload-simple"></span>
+				</button>
+				<button
+					type="button"
+					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent"
+					title="Remove this mix, its comments and its file"
+					aria-label="Delete Mix"
+					onclick={() => void removeMixRow(mix)}
+				>
+					<span class="block i-ph-trash"></span>
+				</button>
+			{/if}
 			{#if data.chat}
 				<button
 					class="button button-sm bg-blue-300/5 border-current/40 hover-border-accent relative"
@@ -287,6 +406,7 @@
 			{isAdmin}
 			jobs={mixJobs}
 			card={commentCard}
+			header={false}
 			onchoose={(id) => void goto(mixPath(id))}
 			onfiles={(files) => void uploadMixes(files)}
 			onrename={renameMixRow}

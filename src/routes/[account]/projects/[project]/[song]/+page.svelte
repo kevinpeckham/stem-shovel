@@ -1603,8 +1603,39 @@
 				</div>
 			</div>
 
-			<!-- chat, attachments, share, idea recorder, info and settings -->
-			<div class="flex gap-2">
+			<!-- player, docs, comments, chat, attachments, share, info and settings -->
+			<div class="flex flex-wrap justify-end gap-2">
+				<!-- The Player and Docs panels: minimised to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimised. -->
+				<button
+					class="button button-sm {playerMode === 'minimised'
+						? playerEngine?.playing
+							? 'bg-blue-300/5 border-current/40 hover-border-accent text-accent'
+							: 'bg-blue-300/5 border-current/40 hover-border-accent'
+						: 'bg-accent text-oxford border-accent opacity-100'}"
+					type="button"
+					aria-pressed={playerMode !== "minimised"}
+					title={playerMode === "minimised"
+						? playerEngine?.playing
+							? "The player is playing; show it"
+							: "Show the player"
+						: "Minimise the player"}
+					aria-label={playerMode === "minimised" ? "Show the player" : "Minimise the player"}
+					onclick={togglePlayer}
+				>
+					<span class="block i-ph-waveform" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm {docsMode === 'minimised'
+						? 'bg-blue-300/5 border-current/40 hover-border-accent'
+						: 'bg-accent text-oxford border-accent opacity-100'}"
+					type="button"
+					aria-pressed={docsMode !== "minimised"}
+					title={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
+					aria-label={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
+					onclick={toggleDocs}
+				>
+					<span class="block i-ph-files" aria-hidden="true"></span>
+				</button>
 				{#if data.chat}
 					<!-- The chat panel's button (docs/chat.md): a dot while there is something unread. -->
 					<button
@@ -3456,39 +3487,6 @@
 		{#if demoNotice}
 			<p class="w-full text-sm text-red-400" role="alert">{demoNotice}</p>
 		{/if}
-		<!-- The Player and Docs panels: minimised to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimised. -->
-		<button
-			class="button button-sm ml-auto {playerMode === 'minimised'
-				? engine?.playing
-					? 'text-accent'
-					: ''
-				: 'bg-accent text-oxford border-accent opacity-100'}"
-			type="button"
-			aria-pressed={playerMode !== "minimised"}
-			title={playerMode === "minimised"
-				? engine?.playing
-					? "The player is playing; show it"
-					: "Show the player"
-				: "Minimise the player"}
-			aria-label={playerMode === "minimised" ? "Show the player" : "Minimise the player"}
-			onclick={togglePlayer}
-		>
-			<span class="i-ph-waveform" aria-hidden="true"></span>
-			Player
-		</button>
-		<button
-			class="button button-sm {docsMode === 'minimised'
-				? ''
-				: 'bg-accent text-oxford border-accent opacity-100'}"
-			type="button"
-			aria-pressed={docsMode !== "minimised"}
-			title={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
-			aria-label={docsMode === "minimised" ? "Show the docs" : "Minimise the docs"}
-			onclick={toggleDocs}
-		>
-			<span class="i-ph-files" aria-hidden="true"></span>
-			Docs
-		</button>
 	</div>
 {/snippet}
 

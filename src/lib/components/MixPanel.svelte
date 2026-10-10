@@ -73,6 +73,8 @@
 		/** The comment card for the timeline's bubbles (the page's, with its forms). */
 		card: Snippet<[string]>;
 		onfiles?: (files: File[]) => void;
+		/** The title row (the picker, the toolbar, the name and who uploaded it); off on a mix's own page, whose header has them (Kevin). */
+		header?: boolean;
 		/** A mix chosen in the list or the picker; a page per mix goes to it (docs/mixes.md). */
 		onchoose?: (id: string) => void;
 		/** The name typed in place: save it. */
@@ -98,6 +100,7 @@
 		jobs = [],
 		card,
 		onfiles,
+		header = true,
 		onchoose,
 		onrename,
 		onnotes,
@@ -282,153 +285,154 @@
 					ondurationchange={() => (length = audio?.duration ?? 0)}
 				></audio>
 
-				<!-- Title Row -->
-				<div class="grid grid-cols-1 items-start pb-3">
-					<!-- Toolbar -->
-					<div class="flex flex-wrap gap-y-4 justify-between">
-						<div
-							class="flex gap-2 text-12px tracking-wide text-blue-300 uppercase tracking-wider opacity-90"
-						>
-							<span class="flex text-nowrap flex-none">Selected Mix:</span>
-							{#if newestFirst.length > 1}
-								{@const options = newestFirst.map((n) => {
-									return { value: n.id, label: "v" + n.version };
-								})}
-								<ComboBox
-									ariaLabel="Select Mix Version"
-									buttonClasses="px-2 bg-dark border border-current/40 rounded"
-									popoverClasses="min-w-80px"
-									clearDefaultButtonClasses={true}
-									value={mix.id}
-									{options}
-									onchange={(v) => choose(v)}
+				{#if header}
+					<!-- Title Row -->
+					<div class="grid grid-cols-1 items-start pb-3">
+						<!-- Toolbar -->
+						<div class="flex flex-wrap gap-y-4 justify-between">
+							<div
+								class="flex gap-2 text-12px tracking-wide text-blue-300 uppercase tracking-wider opacity-90"
+							>
+								<span class="flex text-nowrap flex-none">Selected Mix:</span>
+								{#if newestFirst.length > 1}
+									{@const options = newestFirst.map((n) => {
+										return { value: n.id, label: "v" + n.version };
+									})}
+									<ComboBox
+										ariaLabel="Select Mix Version"
+										buttonClasses="px-2 bg-dark border border-current/40 rounded"
+										popoverClasses="min-w-80px"
+										clearDefaultButtonClasses={true}
+										value={mix.id}
+										{options}
+										onchange={(v) => choose(v)}
+									/>
+								{/if}
+							</div>
+							<div class="flex justify-end gap-2">
+								<!-- comment -->
+								{#if canComment}
+									<button
+										type="button"
+										class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
+										title="Comment on this mix"
+										aria-label="Comment on this mix"
+										onclick={() => oncomment?.(mix, null)}
+									>
+										<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>
+									</button>
+								{/if}
+
+								<!-- download -->
+								<ContextMenu
+									ariaLabel="Download"
+									title="Download the mix"
+									clearButtonBaseClasses={true}
+									buttonClasses="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
+									iconClass="i-ph-download-simple"
+									items={[
+										{
+											id: "mix-download-source",
+											kind: "button",
+											label: `Download .${mix.filename.split(".").pop()} (${formatBytes(mix.sizeBytes)})`,
+											title: "The file as uploaded",
+											iconClass: "i-ph-download-simple",
+											action: () => void saveAs(mix.url, mix.filename),
+										},
+										{
+											id: "mix-download-mp3",
+											kind: "button",
+											label: "Download .mp3",
+											title: "The MP3 made for streaming",
+											iconClass: "i-ph-download-simple",
+											// An MP3 upload is its own rendition.
+											condition: !!mix.playbackUrl && !/\.mp3$/i.test(mix.filename),
+											action: () =>
+												void saveAs(
+													mix.playbackUrl ?? "",
+													`${mix.filename.replace(/\.[^.]+$/, "")}.mp3`,
+												),
+										},
+									]}
 								/>
-							{/if}
-						</div>
-						<div class="flex justify-end gap-2">
-							<!-- comment -->
-							{#if canComment}
-								<button
-									type="button"
-									class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
-									title="Comment on this mix"
-									aria-label="Comment on this mix"
-									onclick={() => oncomment?.(mix, null)}
-								>
-									<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>
-								</button>
-							{/if}
 
-							<!-- download -->
-							<ContextMenu
-								ariaLabel="Download"
-								title="Download the mix"
-								clearButtonBaseClasses={true}
-								buttonClasses="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
-								iconClass="i-ph-download-simple"
-								items={[
-									{
-										id: "mix-download-source",
-										kind: "button",
-										label: `Download .${mix.filename.split(".").pop()} (${formatBytes(mix.sizeBytes)})`,
-										title: "The file as uploaded",
-										iconClass: "i-ph-download-simple",
-										action: () => void saveAs(mix.url, mix.filename),
-									},
-									{
-										id: "mix-download-mp3",
-										kind: "button",
-										label: "Download .mp3",
-										title: "The MP3 made for streaming",
-										iconClass: "i-ph-download-simple",
-										// An MP3 upload is its own rendition.
-										condition: !!mix.playbackUrl && !/\.mp3$/i.test(mix.filename),
-										action: () =>
-											void saveAs(
-												mix.playbackUrl ?? "",
-												`${mix.filename.replace(/\.[^.]+$/, "")}.mp3`,
-											),
-									},
-								]}
-							/>
+								{#if canEdit}
+									<!-- share by email (the page's popover, aimed at this mix) -->
+									<button
+										type="button"
+										aria-label="Share mix"
+										id="mix-share-button"
+										title="Share this mix by email"
+										onclick={() => onshare?.(mix)}
+										class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
+									>
+										<span class="i-ph-paper-plane-tilt block"></span>
+									</button>
+									<!-- upload (the picker is the one at the foot of the panel) -->
+									<button
+										class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
+										title="Upload a new mix"
+										aria-label="Upload a new mix"
+										type="button"
+										onclick={pick}
+									>
+										<span class="i-ph-upload-simple" aria-hidden="true"></span>
+									</button>
+								{/if}
 
-							{#if canEdit}
-								<!-- share by email (the page's popover, aimed at this mix) -->
-								<button
-									type="button"
-									aria-label="Share mix"
-									id="mix-share-button"
-									title="Share this mix by email"
-									onclick={() => onshare?.(mix)}
-									class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
-								>
-									<span class="i-ph-paper-plane-tilt block"></span>
-								</button>
-								<!-- upload (the picker is the one at the foot of the panel) -->
-								<button
-									class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
-									title="Upload a new mix"
-									aria-label="Upload a new mix"
-									type="button"
-									onclick={pick}
-								>
-									<span class="i-ph-upload-simple" aria-hidden="true"></span>
-								</button>
-							{/if}
-
-							<!-- delete -->
-							{#if canEdit}
-								<button
-									type="button"
-									aria-label="Delete Mix"
-									title="Remove this mix, its comments and its file"
-									id="mix-remove-button"
-									onclick={() => onremove?.(mix)}
-									class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
-								>
-									<span class="i-ph-trash inline-block"></span>
-								</button>
-							{/if}
-						</div>
-					</div>
-
-					<!-- name, version, metadata -->
-					<div class="min-w-0 grow pt-3 sm-pt-1">
-						<div class="flex gap-3 items-baseline min-w-0">
-							{#if renaming}
-								<!-- svelte-ignore a11y_autofocus -->
-								<input
-									class="field font-serif text-1.2em w-full min-w-0 py-0"
-									aria-label="Mix name"
-									maxlength="120"
-									autofocus
-									bind:value={labelDraft}
-									onkeydown={onlabelkeydown}
-									onblur={() => void commitRename()}
-								/>
-							{:else}
-								<span class="font-serif text-1.2em truncate">{mix.label}</span>
+								<!-- delete -->
 								{#if canEdit}
 									<button
 										type="button"
-										class="flex shrink-0 items-center justify-center w-4 h-4 bg-blue-300/5 rounded text-11px opacity-90 hover-bg-blue-300/15 hover-text-accent hover-opacity-100"
-										title="Rename this mix"
-										aria-label="Rename Mix"
-										onclick={startRename}
+										aria-label="Delete Mix"
+										title="Remove this mix, its comments and its file"
+										id="mix-remove-button"
+										onclick={() => onremove?.(mix)}
+										class="button button-xs px-2 bg-blue-300/5 border-current/40 hover-border-accent"
 									>
-										<span class="i-ph-pencil block" aria-hidden="true"></span>
+										<span class="i-ph-trash inline-block"></span>
 									</button>
 								{/if}
-							{/if}
+							</div>
 						</div>
-						<p class="text-12px tabular-nums">
-							<span class="opacity-90">
-								{#if mix.uploader}{mix.uploader.name}{/if} · {formatDate(mix.createdAt)}</span
-							>
-						</p>
-					</div>
-				</div>
 
+						<!-- name, version, metadata -->
+						<div class="min-w-0 grow pt-3 sm-pt-1">
+							<div class="flex gap-3 items-baseline min-w-0">
+								{#if renaming}
+									<!-- svelte-ignore a11y_autofocus -->
+									<input
+										class="field font-serif text-1.2em w-full min-w-0 py-0"
+										aria-label="Mix name"
+										maxlength="120"
+										autofocus
+										bind:value={labelDraft}
+										onkeydown={onlabelkeydown}
+										onblur={() => void commitRename()}
+									/>
+								{:else}
+									<span class="font-serif text-1.2em truncate">{mix.label}</span>
+									{#if canEdit}
+										<button
+											type="button"
+											class="flex shrink-0 items-center justify-center w-4 h-4 bg-blue-300/5 rounded text-11px opacity-90 hover-bg-blue-300/15 hover-text-accent hover-opacity-100"
+											title="Rename this mix"
+											aria-label="Rename Mix"
+											onclick={startRename}
+										>
+											<span class="i-ph-pencil block" aria-hidden="true"></span>
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-12px tabular-nums">
+								<span class="opacity-90">
+									{#if mix.uploader}{mix.uploader.name}{/if} · {formatDate(mix.createdAt)}</span
+								>
+							</p>
+						</div>
+					</div>
+				{/if}
 				<!-- the waveform with the playhead, and the mix's comments on it -->
 				<div class="grid gap-1 w-full relative bg-blue-300/5">
 					<CommentTimeline

@@ -3,6 +3,7 @@
 	import { refreshAll } from "$app/navigation";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 	import {
 		MAX_NOTATION_PER_SONG,
 		NOTATION_ACCEPT,
@@ -321,10 +322,15 @@
 		</ul>
 	{/if}
 	{#if ready.length === 0 && jobs.length === 0}
-		<p class="opacity-70 text-14px">
-			No notation yet.{#if canEdit}
-				Upload MusicXML (.mxl or .musicxml, as Dorico, MuseScore and Sibelius export it) and the
-				score is engraved here, or a PDF of the score.{/if}
+		<!-- Short, and kept clear of the Text / Notation toggle beside it; the how goes in the tip (Kevin). -->
+		<p class="flex max-w-xs items-center gap-1.5 opacity-70 text-14px">
+			{#if canEdit}
+				<InfoTip
+					label="How to add notation"
+					text="Upload MusicXML (.mxl or .musicxml, as Dorico, MuseScore and Sibelius export it) and the score is engraved here, or a PDF of the score."
+				/>
+			{/if}
+			No notation yet.
 		</p>
 	{:else}
 		<ul
