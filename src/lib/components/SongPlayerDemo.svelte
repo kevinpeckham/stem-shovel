@@ -184,7 +184,7 @@
 				openComment(at);
 			}}
 		>
-			<span class="i-ph-chat-circle-dots mr-2" aria-hidden="true"></span>Comment here
+			<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
 		</button>
 	</div>
 {/if}

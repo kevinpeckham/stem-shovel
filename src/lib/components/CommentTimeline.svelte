@@ -98,7 +98,7 @@
 					aria-label="Comments{count ? ` (${count})` : ''}"
 					onclick={onopen}
 				>
-					<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>{heading}{#if count}
+					<span class="i-ph-hands-clapping-bold" aria-hidden="true"></span>{heading}{#if count}
 						({count}){/if}
 				</button>
 			{:else}
@@ -143,7 +143,7 @@
 					aria-expanded={open === c.id}
 					onclick={() => (open = open === c.id ? null : c.id)}
 				>
-					<span class="i-ph-chat-circle-dots-fill"></span>
+					<span class="i-ph-hands-clapping-fill"></span>
 				</button>
 				{#if open === c.id}
 					<div

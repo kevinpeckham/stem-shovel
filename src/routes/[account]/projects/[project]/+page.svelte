@@ -1,5 +1,4 @@
 <script lang="ts">
-	import IconChat from "#lib/components/IconChat.svelte";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import AiToggle from "#lib/components/AiToggle.svelte";
 	import PrivacyToggle from "#lib/components/PrivacyToggle.svelte";
@@ -818,7 +817,7 @@
 				: 'messages'} in the chat on {song.title}"
 			data-chat-badge
 		>
-			<IconChat />{song.chat.unread}
+			<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>{song.chat.unread}
 		</a>
 	{/if}
 {/snippet}

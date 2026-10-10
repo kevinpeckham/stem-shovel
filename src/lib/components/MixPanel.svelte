@@ -319,7 +319,7 @@
 										aria-label="Comment on this mix"
 										onclick={() => oncomment?.(mix, null)}
 									>
-										<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>
+										<span class="i-ph-hands-clapping-bold" aria-hidden="true"></span>
 									</button>
 								{/if}
 

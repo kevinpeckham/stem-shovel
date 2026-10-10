@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **The chat has its own icon**, two speech bubbles (`IconChat`, "Chat" by DinosoftLabs from the Noun Project under its royalty-free licence), on the song and mix pages' header buttons and the project tiles' unread badge, so it reads apart from the comments.
+- **The chat and the comments read apart**: the chat's icon is the speech bubble with dots and the comments' the clapping hands (Kevin), on the header buttons, the Comments row, the timeline's markers, the Comment here menus and the inbox.
 - **The song page's Player and Docs buttons sit in the header** beside Comments, Chat and Attachments, as icons lit while their panel is open (Kevin); the row under the player keeps to uploads, downloads and the demo.
 - **The mix page's header carries the mix's buttons and its name**: comment, download, share, upload, delete beside the Chat and Song buttons, the name renamed in place under the title; the panel keeps to the player, the notes and the comments (Kevin).
 - **The Chart tab's notation view says "No notation yet."** with the how in a tip, kept clear of the Text / Notation toggle (Kevin).
