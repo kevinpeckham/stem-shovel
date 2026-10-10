@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { MIX_ACCEPT } from "#lib/constants/mixFormats.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
+	import InfoTip from "#lib/components/InfoTip.svelte";
 
 	/**
 	 * The song page's Mixes view (docs/mixes.md, "Phase 2"): the mixes
@@ -53,12 +54,16 @@
 	style:min-height={minHeight ? `${minHeight}px` : undefined}
 	aria-label="Mixes"
 >
-	<p class="text-sm opacity-80">
-		The bounces sent for the band's feedback, newest first. Each opens on its own page to listen,
-		comment and download.
-	</p>
+	<div class="flex items-center gap-2">
+		<h3 class="opacity-90 text-15px max-w-740px text-balance">Latest Mixes</h3>
+		<InfoTip
+			text="Mixes are bounces uploaded by a producer or engineer for the band's feedback during the
+	recording, mixing, or mastering phase of a project. Each opens on its own page to listen,
+	comment and download."
+		/>
+	</div>
 	{#if newestFirst.length === 0}
-		<p class="text-dim">
+		<p class="">
 			{canEdit ? "No mixes yet. Upload the first bounce for the band to hear." : "No mixes yet."}
 		</p>
 	{:else}

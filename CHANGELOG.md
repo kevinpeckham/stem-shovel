@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.122.0] - 2026-10-10
+
 ### Added
 
 - **The home page's words are edited in the app.** The headline, the
@@ -20,6 +22,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   page links to the editor. `scripts/user-docs/home-page.md`,
   `splitHomeCopy` (tested), `homeCopy()`; `bun run db:seed-docs` adds the
   doc on each stage.
+
+### Changed
+
+- **The song page's Mixes view opens with "Latest Mixes"** and an info
+  tip explaining what a mix is for, in place of the paragraph above the
+  list.
 
 ## [0.121.0] - 2026-10-10
 
