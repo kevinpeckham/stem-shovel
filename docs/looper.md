@@ -485,3 +485,17 @@ About three and a half days for phase 1; MIDI layers two more.
 - **Memory**: a stereo layer at 48 kHz is 384 KB per second; eight bars
   at 120 bpm is 16 s, 6 MB per layer, a dozen layers under 100 MB; a
   phone is fine up to that, and the layer count can be capped at 16.
+
+## The Practice Amp as a source (2026-10-10)
+
+`"amp"` joined `LoopSource` (docs/practice-amp.md, "The band"): the
+looper hosts the amp's chain in its own context (`amp.hostContext` in
+`#openNow`, as the piano's) and taps `amp.output()` like an instrument's,
+so a layer from the amp is the amp's sound, pedals and all, sample-
+accurately. Arming Amp opens the amp's panel on the page and switches
+the amp on, which opens its input (the line in or the microphone jack)
+through the shared inputs module; the inputs' `listen()` hands the amp
+its source's node under the looper's own `attach`. The source's slider
+under its button is the amp's master. A saved loop's layer carries
+`source: "amp"` (IdeaSchema), and a layer labelled "Amp …" from before
+the field restores as one.

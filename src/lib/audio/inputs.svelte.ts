@@ -94,6 +94,16 @@ class InputSources {
 	#ctx: AudioContext | null = null;
 	#monitorOut: AudioNode | null = null;
 	#onsource: ((source: OutsideSource, node: AudioNode | null) => void) | null = null;
+	/** Who else wants each source's node as it is wired or dropped (the Practice Amp, hosted in the attached page's context). */
+	#listeners = new Set<(source: OutsideSource, node: AudioNode | null) => void>();
+	listen(fn: (source: OutsideSource, node: AudioNode | null) => void): () => void {
+		this.#listeners.add(fn);
+		return () => this.#listeners.delete(fn);
+	}
+	#notify(source: OutsideSource, node: AudioNode | null) {
+		this.#onsource?.(source, node);
+		for (const fn of this.#listeners) fn(source, node);
+	}
 	#streams: Partial<Record<OutsideSource, MediaStream>> = {};
 	#nodes: Partial<Record<OutsideSource, AudioNode>> = {};
 	#gains: Partial<Record<OutsideSource, GainNode>> = {};
@@ -295,7 +305,7 @@ class InputSources {
 		this.labels[source] = null;
 		this.#unwire(source);
 		this.levels[source] = 0;
-		this.#onsource?.(source, null);
+		this.#notify(source, null);
 	}
 
 	/** The audio input devices, for the menus (labels once a microphone was allowed). */
@@ -457,7 +467,7 @@ class InputSources {
 			this.#monitors[source] = monitor;
 		}
 		this.#nodes[source] = gain;
-		this.#onsource?.(source, gain);
+		this.#notify(source, gain);
 	}
 	#unwire(source: OutsideSource) {
 		this.#gains[source]?.disconnect();

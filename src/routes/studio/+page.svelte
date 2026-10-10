@@ -4,6 +4,8 @@
 	import DrumMachine from "#lib/components/DrumMachine.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import Piano from "#lib/components/Piano.svelte";
+	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import { amp } from "#lib/audio/amp.svelte.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import IdeaNotesPanel from "#lib/components/IdeaNotesPanel.svelte";
 	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
@@ -123,6 +125,7 @@
 		return () => {
 			autosaveNow();
 			studio.dispose();
+			void amp.setOn(false);
 		};
 	});
 	// fallow-ignore-next-line policy-violation:stem-shovel-house-rules/svelte-effect-last-resort -- the zoom is bound into the timeline, which changes it from the wheel; this remembers it
@@ -405,6 +408,15 @@
 			if (input.source === "drums" && !drumsOpen) toggleDrums();
 			return;
 		}
+		// The amp's panel comes out and the amp switches on (which opens its own input).
+		if (input.source === "amp") {
+			if (!ampOpen) toggleAmp();
+			if (!amp.on) {
+				const ok = await studio.requestInput("amp");
+				if (!ok) notify(amp.error ?? "The amp could not open its input.", { kind: "error" });
+			}
+			return;
+		}
 		if (inputSources.has(input.source)) return;
 		const ok = await studio.requestInput(input.source);
 		if (!ok) {
@@ -656,6 +668,12 @@
 	let notesMode = $state<PanelMode>("docked");
 	let inputsOpen = $state(false);
 	let metroOpen = $state(false);
+	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): a track's input, as heard. */
+	let ampOpen = $state(false);
+	function toggleAmp(e?: Event) {
+		ampOpen = !ampOpen;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
 	// The instruments' panels (docs/multitrack-recorder.md, phase 2): floating from lg, docked below; the space bar goes to the instrument touched last, else the transport.
 	let drumsOpen = $state(false);
 	let pianoOpen = $state(false);
@@ -867,6 +885,20 @@
 					onclick={toggleChords}
 				>
 					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {ampOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: amp.on
+							? 'text-accent'
+							: ''}"
+					type="button"
+					aria-pressed={ampOpen}
+					aria-label={ampOpen ? "Put the amp away" : "Practice amp"}
+					title={ampOpen ? "Put the amp away" : "Open the practice amp"}
+					onclick={toggleAmp}
+				>
+					<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				</button>
 			{/snippet}
 		</PageCopyHeader>
@@ -1816,6 +1848,19 @@
 		onminimise={() => (metroOpen = false)}
 	>
 		<Metronome />
+	</FloatingPanel>
+	<!-- The Practice Amp's panel (docs/practice-amp.md): hosted in the Studio's context, a track takes it as heard. -->
+	<FloatingPanel
+		open={ampOpen}
+		title="Practice amp"
+		storageKey="stemshovel.studio.amp-panel"
+		width={900}
+		height={440}
+		onminimise={() => toggleAmp()}
+	>
+		<div class="p-2">
+			<PracticeAmp metronomeOpen={metroOpen} onmetronome={() => (metroOpen = !metroOpen)} />
+		</div>
 	</FloatingPanel>
 	<!-- The instruments' panels, as on the looper page: hosted in the Studio's context, they play into an armed track. -->
 	<FloatingPanel

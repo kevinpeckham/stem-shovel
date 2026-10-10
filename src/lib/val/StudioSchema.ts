@@ -22,7 +22,7 @@ import { NanoIdSchema } from "./NanoIdSchema";
 const LocalIdSchema = v.pipe(v.string(), v.nonEmpty(), v.maxLength(32));
 const SecondsSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS * 4));
 
-/** The shared inputs, and the instruments hosted in the Studio's context (phase 2): the piano, the chord player and the drum machine. */
+/** The shared inputs, the instruments hosted in the Studio's context (phase 2: the piano, the chord player and the drum machine), and the Practice Amp (docs/practice-amp.md), hosted too. */
 export const STUDIO_INPUT_SOURCES = [
 	"mic",
 	"line",
@@ -30,6 +30,7 @@ export const STUDIO_INPUT_SOURCES = [
 	"piano",
 	"chords",
 	"drums",
+	"amp",
 ] as const;
 export const StudioInputSourceSchema = v.picklist(STUDIO_INPUT_SOURCES);
 export type StudioInputSource = v.InferOutput<typeof StudioInputSourceSchema>;

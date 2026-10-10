@@ -80,6 +80,7 @@ vi.mock("#lib/audio/studio.svelte.js", () => ({
 		piano: "Piano",
 		chords: "Chord player",
 		drums: "Drum machine",
+		amp: "Practice amp",
 	},
 	STUDIO_INSTRUMENTS: ["piano", "chords", "drums"],
 	isInstrument: (s: string) => ["piano", "chords", "drums"].includes(s),
@@ -351,6 +352,7 @@ describe("StudioTimeline", () => {
 			"Piano",
 			"Chord player",
 			"Drum machine",
+			"Practice amp",
 		]);
 		expect(within(list).getByRole("option", { name: "Microphone · stereo" })).toHaveAttribute(
 			"aria-selected",

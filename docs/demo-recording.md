@@ -689,3 +689,14 @@ demo appears with an MP3 rendition. iOS Safari needs a real phone: Kevin.
 
 Overdubs on stems, effects, and editing beyond a
 trim. Those turn the app into a DAW; the demo is a memo.
+
+## The Practice Amp in a take (2026-10-10)
+
+Amp is a seventh source button (`RecorderInstrument` beside the piano,
+the chord player and the drums; docs/practice-amp.md, "The band"):
+switching it in opens the amp's panel and turns the amp on, and its
+sound reaches the take through `amp.captureStream()`, a MediaStream
+mixed in like an instrument's (the amp has its own context on this page,
+as the instruments do). What lands is what was heard, pedals and all;
+closing the panel switches it out, and leaving the page turns the amp
+off (its input closes).

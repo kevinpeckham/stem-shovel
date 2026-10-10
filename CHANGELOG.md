@@ -8,6 +8,34 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Practice Amp** (docs/practice-amp.md): plug a guitar or a bass into
+  the computer or the phone, directly or through an interface, and play
+  through an amp at `/practice-amp` (Tools menu, footer; works signed
+  out). Four heads built from a preamp, a tone stack, a power stage and
+  a synthesized cabinet impulse (Blackface Clean with spring reverb and
+  tremolo, Tweed Crunch; Fridge with the mid selector and Ultra Lo / Hi,
+  Solid State), a pedal board (noise gate, compressor, overdrive, fuzz,
+  wah, chorus, phaser or flanger, delay, rotary), an input strip with
+  Instrument / Line trim, Set level, Calibrate and a latency verdict, the
+  tuner reading the amp's input and the metronome in its context.
+  Settings are remembered per browser. The amp is a source on the looper
+  and the Idea Recorder, an input in the Studio, and a panel on the song
+  page to play along. User doc `/docs/practice-amp`; page copy
+  `practice-amp-page`; `bun run db:seed-docs` adds both.
+
+### Technical
+
+- The chorus, phaser, tremolo, rotary and compressor stages moved from
+  `pianoFx.ts` into `fxStages.ts` (the piano, the Studio track chain and
+  the amp share them); the fuzz is one shape of `createClipStage`, the
+  overdrive another. The inputs module gained `listen()`. `IdeaSchema`'s
+  loop sources and `STUDIO_INPUT_SOURCES` accept `"amp"`. The tuner
+  takes a `source` node prop. New utils: `biquad`, `cabinetImpulse`,
+  `springImpulse`, `latencyVerdict`, `ampPreferences` (all tested); a
+  browser test `tests/e2e/amp.spec.ts`.
+
 ## [0.122.0] - 2026-10-10
 
 ### Added

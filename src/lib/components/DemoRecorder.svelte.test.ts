@@ -217,6 +217,7 @@ const allOff = {
 	piano: false,
 	chords: false,
 	drums: false,
+	amp: false,
 };
 const take = (over: Partial<Take> = {}): Take => ({
 	id: "t1",
@@ -636,10 +637,10 @@ describe("DemoRecorder: the plain recorder (no sources)", () => {
 });
 
 describe("DemoRecorder: sources mode (the Idea Recorder)", () => {
-	test("renders the six source buttons with their meters, the mix meter, and Record disabled until a source is on", () => {
+	test("renders the seven source buttons with their meters, the mix meter, and Record disabled until a source is on", () => {
 		render(DemoRecorder, { props: props({ sourcesOn: allOff }) });
 		const group = sources();
-		for (const label of ["Microphone", "Line in", "Computer", "Piano", "Chords", "Drums"]) {
+		for (const label of ["Microphone", "Line in", "Computer", "Piano", "Chords", "Drums", "Amp"]) {
 			expect(sourceButton(label)).toHaveAttribute("aria-pressed", "false");
 			expect(within(group).getByRole("meter", { name: `${label} level` })).toBeInTheDocument();
 		}

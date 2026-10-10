@@ -11,6 +11,8 @@
 	import Piano from "#lib/components/Piano.svelte";
 	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
 	import SourceButton from "#lib/components/SourceButton.svelte";
+	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import { amp } from "#lib/audio/amp.svelte.js";
 	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
@@ -39,7 +41,7 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { Attachment } from "svelte/attachments";
-	import { onMount } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 
 	/**
 	 * The looper (docs/looper.md): a loop of bars at a tempo plays round and
@@ -95,6 +97,13 @@
 	let pianoOpen = $state(false);
 	let metroOpen = $state(false);
 	let chordsOpen = $state(false);
+	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): its input through the amp, into a layer. Leaving the page turns the amp off. */
+	let ampOpen = $state(false);
+	function toggleAmp(e?: Event) {
+		ampOpen = !ampOpen;
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	onDestroy(() => void amp.setOn(false));
 	let spaceOwner = $state<"drums" | "piano" | "chords" | null>(null);
 	function toggleDrums(e?: Event) {
 		drumsOpen = !drumsOpen;
@@ -149,14 +158,17 @@
 	/** Arm a source; the microphone asks for permission on its first turn, and an instrument's panel opens if it is not out (Kevin). */
 	/** The armed source's last error, for the screen (the instruments have none). */
 	const armedError = $derived(
-		looper.armed === "piano" || looper.armed === "chords" || looper.armed === "drums"
+		looper.armed === "piano" ||
+			looper.armed === "chords" ||
+			looper.armed === "drums" ||
+			looper.armed === "amp"
 			? null
 			: inputSources.errors[looper.armed],
 	);
 	/** A source button's title: the open device's label for an outside source, else its name. */
 	function sourceLabel(source: LoopSource) {
 		const open =
-			source === "piano" || source === "chords" || source === "drums"
+			source === "piano" || source === "chords" || source === "drums" || source === "amp"
 				? null
 				: inputSources.labels[source];
 		return open ?? LOOP_SOURCE_LABELS[source];
@@ -169,6 +181,10 @@
 		if (source === "piano" && !pianoOpen) togglePiano();
 		if (source === "chords" && !chordsOpen) toggleChords();
 		if (source === "drums" && !drumsOpen) toggleDrums();
+		if (source === "amp") {
+			if (!ampOpen) toggleAmp();
+			if (!amp.on) await amp.setOn(true);
+		}
 	}
 	function clearLoop() {
 		if (looper.layers.length && !confirm("Clear every layer of this loop?")) return;
@@ -396,6 +412,7 @@
 		piano: "i-ph-piano-keys",
 		chords: "i-ph-circle-dashed",
 		drums: "",
+		amp: "i-ph-speaker-high",
 	};
 </script>
 
@@ -465,6 +482,20 @@
 					onclick={toggleChords}
 				>
 					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {ampOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: amp.on
+							? 'text-accent'
+							: ''}"
+					type="button"
+					aria-pressed={ampOpen}
+					aria-label={ampOpen ? "Put the amp away" : "Practice amp"}
+					title={ampOpen ? "Put the amp away" : "Open the practice amp"}
+					onclick={toggleAmp}
+				>
+					<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				</button>
 			{/snippet}
 		</PageCopyHeader>
@@ -633,7 +664,13 @@
 										</label>
 									{:else}
 										{@const inst =
-											source === "drums" ? drumMachine : source === "chords" ? chordPiano : piano}
+											source === "drums"
+												? drumMachine
+												: source === "chords"
+													? chordPiano
+													: source === "amp"
+														? amp
+														: piano}
 										<!-- The instrument's own master volume (the same state its panel's slider moves), so it can be set from here while a layer records. -->
 										<label
 											class="block px-0.5"
@@ -1276,6 +1313,18 @@
 				chordStyles={data.chordStyles}
 				pad={false}
 			/>
+		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={ampOpen}
+		title="Practice amp"
+		storageKey="stemshovel.looper.amp-panel"
+		width={900}
+		height={440}
+		onminimise={() => toggleAmp()}
+	>
+		<div class="p-2">
+			<PracticeAmp metronomeOpen={metroOpen} onmetronome={toggleMetronome} />
 		</div>
 	</FloatingPanel>
 	<FloatingPanel

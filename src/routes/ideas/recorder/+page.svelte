@@ -11,6 +11,8 @@
 	import Metronome from "#lib/components/Metronome.svelte";
 	import DrumMachine from "#lib/components/DrumMachine.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import { amp } from "#lib/audio/amp.svelte.js";
 	import { RECORDER_SOURCES, type RecorderSource } from "#lib/components/DemoRecorder.svelte";
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
@@ -38,7 +40,7 @@
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { refreshAll } from "$app/navigation";
-	import { onMount, tick, untrack } from "svelte";
+	import { onDestroy, onMount, tick, untrack } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
 	import { TakeQueue } from "#lib/audio/takeQueue.svelte.js";
 	import {
@@ -217,6 +219,7 @@
 		piano: false,
 		chords: false,
 		drums: false,
+		amp: false,
 	});
 	const SOURCES_KEY = "stemshovel.recorder.sources";
 	function setSource(source: RecorderSource, on: boolean) {
@@ -229,7 +232,19 @@
 		if (source === "piano" && on && !pianoOpen) togglePiano();
 		if (source === "chords" && on && !chordsOpen) toggleChords();
 		if (source === "drums" && on && !drumsOpen) toggleDrums();
+		if (source === "amp" && on) {
+			if (!ampOpen) toggleAmp();
+			if (!amp.on) void amp.setOn(true);
+		}
 	}
+	/** The Practice Amp (docs/practice-amp.md, "The band"): its panel, and its sound in the take while switched in; closing the panel switches it out. */
+	let ampOpen = $state(false);
+	function toggleAmp(e?: Event) {
+		ampOpen = !ampOpen;
+		if (!ampOpen && sourcesOn.amp) setSource("amp", false);
+		(e?.currentTarget as HTMLElement | null)?.blur();
+	}
+	onDestroy(() => void amp.setOn(false));
 	const pianoInTake = $derived(sourcesOn.piano);
 	const chordsInTake = $derived(sourcesOn.chords);
 	const setChordsInTake = (on: boolean) => setSource("chords", on);
@@ -304,12 +319,15 @@
 	 * so a beat started after Record still lands. An instrument that is not
 	 * playing contributes silence: no cost to the recording, only its idle graph.
 	 */
-	function instrumentStreams(): Partial<Record<"piano" | "drums" | "chords", MediaStream>> {
+	function instrumentStreams(): Partial<Record<"piano" | "drums" | "chords" | "amp", MediaStream>> {
+		const ampStream = sourcesOn.amp ? amp.captureStream() : null;
 		return {
 			...(sourcesOn.piano ? { piano: piano.captureStream() } : {}),
 			// The chord player's own engine (docs/chord-player.md, "Its own engine"): its own capture.
 			...(sourcesOn.chords ? { chords: chordPiano.captureStream() } : {}),
 			...(sourcesOn.drums ? { drums: drumMachine.captureStream() } : {}),
+			// The amp's, once it is on (it opens its input as it switches on).
+			...(ampStream ? { amp: ampStream } : {}),
 		};
 	}
 
@@ -437,6 +455,7 @@
 			sourcesOn.piano = false;
 			sourcesOn.chords = false;
 			sourcesOn.drums = false;
+			sourcesOn.amp = false;
 			drumsSettings = localStorage.getItem(DRUMS_SETTINGS_KEY) !== "0";
 			pianoSettings = localStorage.getItem(PIANO_SETTINGS_KEY) !== "0";
 			notesFloating = localStorage.getItem(NOTES_FLOATING_KEY) === "1";
@@ -781,6 +800,21 @@
 							: ''} transition-transform"
 						aria-hidden="true"
 					></span>
+				</button>
+				<!-- The Practice Amp's panel (docs/practice-amp.md): an instrument through the amp into the take. -->
+				<button
+					class="button button-sm shrink-0 {ampOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: amp.on
+							? 'text-accent'
+							: ''}"
+					type="button"
+					aria-pressed={ampOpen}
+					aria-label={ampOpen ? "Put the amp away" : "Practice amp"}
+					title={ampOpen ? "Put the amp away" : "Open the practice amp"}
+					onclick={toggleAmp}
+				>
+					<span class="i-ph-speaker-high" aria-hidden="true"></span>
 				</button>
 				<!-- The drums: below lg the compact control (play, stop, tempo) as on a phone; from lg one button that
 				     opens and closes the full drum machine's floating panel (Kevin). -->
@@ -1729,6 +1763,20 @@
 		{/if}
 	</div>
 {/snippet}
+
+<!-- The Practice Amp's floating panel (docs/practice-amp.md): its sound goes into the take while Amp is switched in. -->
+<FloatingPanel
+	open={ampOpen}
+	title="Practice amp"
+	storageKey="stemshovel.recorder.amp-panel"
+	width={900}
+	height={440}
+	onminimise={() => toggleAmp()}
+>
+	<div class="p-2">
+		<PracticeAmp metronomeOpen={metroOpen} onmetronome={toggleMetronome} />
+	</div>
+</FloatingPanel>
 
 <!-- The metronome's floating panel (desktop), as the drum machine's. -->
 <FloatingPanel

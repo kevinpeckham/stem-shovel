@@ -32,6 +32,7 @@ import type {
 	StudioTrackKind,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
+import { amp } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
 import { inputSources, outputLatencyMs } from "./inputs.svelte";
 import { chordPiano, piano } from "./piano.svelte";
@@ -104,6 +105,7 @@ export const STUDIO_INPUT_LABELS: Record<StudioInputSource, string> = {
 	piano: "Piano",
 	chords: "Chord player",
 	drums: "Drum machine",
+	amp: "Practice amp",
 };
 /** The instruments the Studio hosts in its own context (phase 2), played from their panels and recorded sample-accurately. */
 export const STUDIO_INSTRUMENTS = ["piano", "chords", "drums"] as const;
@@ -301,6 +303,8 @@ class StudioEngine {
 		chordPiano.hostContext(ctx);
 		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
+		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
+		amp.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/track-capture.js");
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		const master = ctx.createGain();
@@ -1435,9 +1439,7 @@ class StudioEngine {
 		if (this.running) return false;
 		await this.open();
 		const ctx = this.#ctx!;
-		const armed = this.armedTracks.filter(
-			(t) => t.input && (isInstrument(t.input.source) || inputSources.has(t.input.source)),
-		);
+		const armed = this.armedTracks.filter((t) => t.input && this.inputOpen(t.input.source));
 		if (armed.length === 0) {
 			this.notice = "Arm a track with an open input to record.";
 			return false;
@@ -1481,6 +1483,7 @@ class StudioEngine {
 		if (source === "piano") return piano.output();
 		if (source === "chords") return chordPiano.output();
 		if (source === "drums") return drumMachine.output();
+		if (source === "amp") return amp.on ? amp.output() : null;
 		return inputSources.output(source);
 	}
 	#arm(track: StudioTrack, ctx: AudioContext) {
@@ -1633,7 +1636,7 @@ class StudioEngine {
 		const total = cap.chunks.reduce((n, c) => n + (c[0]?.length ?? 0), 0);
 		const lead = Math.round(LEAD_SECONDS * ctx.sampleRate);
 		const input = track?.input;
-		// A microphone or line in by its measured round trip; the computer by its capture delay; a piano or chords part played by hand against what is heard by the output latency; the drums' beat runs on the clock and needs none.
+		// A microphone or line in (and the amp, which is one of them through its chain) by its measured round trip; the computer by its capture delay; a piano or chords part played by hand against what is heard by the output latency; the drums' beat runs on the clock and needs none.
 		const shiftMs =
 			input?.source === "computer"
 				? inputSources.computerLatencyMs
@@ -1811,11 +1814,16 @@ class StudioEngine {
 	async requestInput(source: StudioInputSource): Promise<boolean> {
 		await this.open();
 		if (isInstrument(source)) return true;
+		if (source === "amp") {
+			await amp.setOn(true);
+			return amp.on;
+		}
 		if (source === "computer") return inputSources.requestComputer();
 		return inputSources.requestInput(source);
 	}
 	/** Whether a track's input can be recorded now. */
 	inputOpen(source: StudioInputSource): boolean {
+		if (source === "amp") return amp.on;
 		return isInstrument(source) || inputSources.has(source);
 	}
 	dispose() {

@@ -27,3 +27,7 @@ Your loop stays in this browser as you work, so a reload or a visit days later b
 ## Notes and panels
 
 A loop has a note board under the looper, exactly as an idea has in the Idea Recorder: lyrics, chords, what to try next; it saves as you type, and comes back with the loop. On a desktop, the looper and the notes each have a button in their header to pop out into a panel you can drag and resize, and the same button puts them back.
+
+## The Practice Amp
+
+**Amp** under Record from is the Practice Amp (see its own page in these docs): choosing it opens the amp's panel and turns it on, and a layer recorded from it is what you hear through the amp, pedals and all. The slider under the button is the amp's master.

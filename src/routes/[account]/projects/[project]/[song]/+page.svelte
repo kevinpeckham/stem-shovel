@@ -38,6 +38,8 @@
 	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
 	import type { SongDocSaveKind } from "#lib/val/SongDocKindSchema.js";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import { amp } from "#lib/audio/amp.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemReplacer from "#lib/components/StemReplacer.svelte";
@@ -112,7 +114,7 @@
 	} from "#lib/remote/songs.remote.js";
 	import { afterNavigate, goto, refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
-	import { onMount, tick, untrack, type ComponentProps } from "svelte";
+	import { onDestroy, onMount, tick, type ComponentProps, untrack } from "svelte";
 
 	let { data } = $props();
 
@@ -469,6 +471,9 @@
 	let commentsOpen = $state(false);
 	/** The Attachments panel (docs/uploads-and-blob.md): closed until the toolbar's button opens it; the Uploads menu opens it to pick. */
 	let filesOpen = $state(false);
+	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): play along with the stems or a mix; off again on leaving the page. */
+	let ampOpen = $state(false);
+	onDestroy(() => void amp.setOn(false));
 	// The chat (docs/chat.md) is its own panel, closed until the header's button opens it (Kevin: chat and read the docs at once).
 	// Its messages and read mark live here so closing and reopening keeps them; SongChat binds to them.
 	let chatOpen = $state(false);
@@ -1695,6 +1700,21 @@
 							aria-hidden="true">{fileCount}</span
 						>
 					{/if}
+				</button>
+				<!-- The Practice Amp's panel (docs/practice-amp.md): an instrument through the amp, alongside the song. -->
+				<button
+					class="button button-sm relative {ampOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: amp.on
+							? 'bg-blue-300/5 border-current/40 text-accent'
+							: 'bg-blue-300/5 border-current/40 hover-border-accent'}"
+					type="button"
+					aria-pressed={ampOpen}
+					title={ampOpen ? "Close the practice amp" : "Play along through the practice amp"}
+					aria-label={ampOpen ? "Close the practice amp" : "Practice amp"}
+					onclick={() => (ampOpen = !ampOpen)}
+				>
+					<span class="block i-ph-speaker-high"></span>
 				</button>
 				{#if data.canEdit}
 					<button
@@ -3235,6 +3255,20 @@
 					await notationPanel?.upload(files);
 				}}
 			/>
+		</FloatingPanel>
+	</div>
+	<div class="{ampOpen ? '' : 'hidden'} max-w-full lg:contents">
+		<FloatingPanel
+			open={ampOpen}
+			title="Practice amp"
+			storageKey="stemshovel.song.amp-panel"
+			width={900}
+			height={440}
+			onminimise={() => (ampOpen = false)}
+		>
+			<div class="p-2">
+				<PracticeAmp />
+			</div>
 		</FloatingPanel>
 	</div>
 </main>

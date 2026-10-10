@@ -326,27 +326,32 @@
 				items={[{ id: "pedals", kind: "snippet", snippet: pedals }]}
 			/>
 		</div>
+		<!-- The tuner and the metronome: the page's panels, where the page has them (its own page; a host page shows what it has). -->
 		<div class="flex gap-1 @4xl-ml-auto">
-			<button
-				class="device-button-sm px-3 {tunerOpen ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={tunerOpen}
-				title={tunerOpen ? "Close the tuner" : "Tuner"}
-				onclick={() => ontuner?.()}
-			>
-				<span class="i-ph-waveform" aria-hidden="true"></span>
-				<span class="hidden @2xl-inline">Tuner</span>
-			</button>
-			<button
-				class="device-button-sm px-3 {metronomeOpen ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={metronomeOpen}
-				title={metronomeOpen ? "Close the metronome" : "Metronome"}
-				onclick={() => onmetronome?.()}
-			>
-				<span class="i-ph-metronome" aria-hidden="true"></span>
-				<span class="hidden @2xl-inline">Metronome</span>
-			</button>
+			{#if ontuner}
+				<button
+					class="device-button-sm px-3 {tunerOpen ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={tunerOpen}
+					title={tunerOpen ? "Close the tuner" : "Tuner"}
+					onclick={() => ontuner?.()}
+				>
+					<span class="i-ph-waveform" aria-hidden="true"></span>
+					<span class="hidden @2xl-inline">Tuner</span>
+				</button>
+			{/if}
+			{#if onmetronome}
+				<button
+					class="device-button-sm px-3 {metronomeOpen ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={metronomeOpen}
+					title={metronomeOpen ? "Close the metronome" : "Metronome"}
+					onclick={() => onmetronome?.()}
+				>
+					<span class="i-ph-metronome" aria-hidden="true"></span>
+					<span class="hidden @2xl-inline">Metronome</span>
+				</button>
+			{/if}
 		</div>
 	</div>
 

@@ -466,6 +466,8 @@
 		]),
 		// The hosted instruments, stereo as they sound (docs/multitrack-recorder.md, phase 2).
 		...STUDIO_INSTRUMENTS.map((s) => ({ value: `${s}:stereo`, label: STUDIO_INPUT_LABELS[s] })),
+		// The Practice Amp (docs/practice-amp.md): its sound as heard, stereo.
+		{ value: "amp:stereo", label: STUDIO_INPUT_LABELS.amp },
 	];
 	/** A MIDI track's input is the instrument that plays and records it (phase 3). */
 	const MIDI_INPUT_OPTIONS = INPUT_OPTIONS.filter((o) =>

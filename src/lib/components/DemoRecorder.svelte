@@ -7,7 +7,9 @@
 	 * instruments. Any mix of them is in a take at once; a source's button
 	 * on the device switches it in or out.
 	 */
-	export type RecorderSource = OutsideSource | "piano" | "chords" | "drums";
+	/** The instruments a take can carry: each a MediaStream of its own (the Practice Amp's is what it plays, pedals and all; docs/practice-amp.md). */
+	export type RecorderInstrument = "piano" | "chords" | "drums" | "amp";
+	export type RecorderSource = OutsideSource | RecorderInstrument;
 	export const RECORDER_SOURCES: RecorderSource[] = [
 		"mic",
 		"line",
@@ -15,12 +17,14 @@
 		"piano",
 		"chords",
 		"drums",
+		"amp",
 	];
 	export const RECORDER_SOURCE_LABELS: Record<RecorderSource, string> = {
 		...OUTSIDE_SOURCE_LABELS,
 		piano: "Piano",
 		chords: "Chords",
 		drums: "Drums",
+		amp: "Amp",
 	};
 </script>
 
@@ -49,6 +53,7 @@
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
 	import { piano } from "#lib/audio/piano.svelte.js";
 	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
+	import { amp } from "#lib/audio/amp.svelte.js";
 	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
 	import SourceButton from "#lib/components/SourceButton.svelte";
 	import { recordingMimeType } from "#lib/utils/recordingMimeType.js";
@@ -78,12 +83,13 @@
 		/** The take's sources, when it has them: a loop saved from the looper carries its layers (docs/demo-recording.md, "Takes with sources"); absent or empty on a recorded take. */
 		stems?: { id: string; label: string }[];
 	}
-	const SOURCE_ICONS: Record<OutsideSource | "piano" | "chords", string> = {
+	const SOURCE_ICONS: Record<OutsideSource | "piano" | "chords" | "amp", string> = {
 		mic: "i-ph-microphone",
 		line: "i-ph-plugs",
 		computer: "i-ph-desktop",
 		piano: "i-ph-piano-keys",
 		chords: "i-ph-circle-dashed",
+		amp: "i-ph-speaker-high",
 	};
 	const isOutside = (s: RecorderSource): s is OutsideSource =>
 		s === "mic" || s === "line" || s === "computer";
@@ -100,7 +106,7 @@
 		 */
 		sourcesOn?: Record<RecorderSource, boolean> | null;
 		ontoggle?: (source: RecorderSource, on: boolean) => void;
-		instrumentStreams?: () => Partial<Record<"piano" | "drums" | "chords", MediaStream>>;
+		instrumentStreams?: () => Partial<Record<RecorderInstrument, MediaStream>>;
 
 		/** A stopped take, with its audio: the page queues the upload. */
 		onqueued: (take: {
@@ -181,14 +187,15 @@
 	 * capture stream in this page's context while it is in the take (so the
 	 * meter runs before Record, as the outside sources' do in inputs.svelte.ts).
 	 */
-	let instLevels = $state<Record<"piano" | "drums" | "chords", number>>({
+	let instLevels = $state<Record<RecorderInstrument, number>>({
 		piano: 0,
 		drums: 0,
 		chords: 0,
+		amp: 0,
 	});
 	let instTaps: Partial<
 		Record<
-			"piano" | "drums" | "chords",
+			RecorderInstrument,
 			{ node: AudioNode; analyser: AnalyserNode; buf: Float32Array<ArrayBuffer> }
 		>
 	> = {};
@@ -205,7 +212,7 @@
 		return ctx;
 	}
 	/** An instrument's meter follows its button: tapped while in the take, dropped when out. */
-	function tapInstrument(inst: "piano" | "drums" | "chords", on: boolean) {
+	function tapInstrument(inst: RecorderInstrument, on: boolean) {
 		const had = instTaps[inst];
 		if (on && !had) {
 			const stream = instrumentStreams()[inst];
@@ -225,7 +232,7 @@
 		}
 	}
 	function instMeter() {
-		const keys = Object.keys(instTaps) as ("piano" | "drums" | "chords")[];
+		const keys = Object.keys(instTaps) as RecorderInstrument[];
 		if (keys.length === 0) {
 			instFrame = 0;
 			return;
@@ -246,6 +253,7 @@
 		tapInstrument("piano", sourcesOn.piano);
 		tapInstrument("chords", sourcesOn.chords);
 		tapInstrument("drums", sourcesOn.drums);
+		tapInstrument("amp", sourcesOn.amp);
 	});
 	/**
 	 * The inputs switched in but not yet open (the microphone is in by default,
@@ -1229,7 +1237,7 @@
 									>
 								</label>
 							{:else}
-								{@const inst = source === "drums" ? drumMachine : piano}
+								{@const inst = source === "drums" ? drumMachine : source === "amp" ? amp : piano}
 								<label
 									class="block px-0.5"
 									title="{RECORDER_SOURCE_LABELS[source]} volume: {Math.round(inst.volume * 100)}%"

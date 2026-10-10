@@ -80,3 +80,7 @@ A take stops and saves on its own at 15 minutes (a notice appears at 10), and af
 - Voice processing is switched off so instruments sound like themselves; the level meter shows what the microphone hears.
 - Takes are saved as your browser recorded them (see Quality above) and converted to MP3 for playback; downloads and demos made from a take use the original.
 - On an iPhone or iPad the volume slider is hidden: iOS keeps playback volume on the hardware buttons.
+
+## The Practice Amp
+
+**Amp** among the input sources is the Practice Amp (see its own page in these docs): switching it in opens the amp's panel and turns it on, and what you play through it, pedals and all, goes into the take alongside whatever else is in. Closing the panel switches it out.

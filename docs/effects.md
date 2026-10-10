@@ -11,8 +11,13 @@ tones through the same code offline and measuring the result.
 
 ## Where the code is
 
-- `src/lib/audio/fxStages.ts` — the stages both instruments share: the
-  fuzz, the delay with its analog character, the wah, and the tone stage.
+- `src/lib/audio/fxStages.ts` — the stages the instruments, the Studio's
+  track chain and the Practice Amp share: the fuzz and the overdrive (two
+  shapes of one clip stage), the delay with its analog character, the
+  wah, the tone stage, the compressor, the chorus, the phaser or flanger,
+  the tremolo and the rotary speaker. The amp's own stages (preamp, tone
+  stack, power, cabinet, spring, gate) are in `ampStages.ts`
+  (docs/practice-amp.md).
 - `src/lib/audio/pianoFx.ts` — the piano's chain (`createPianoFx`): voices
   → fuzz → wah → chorus → phaser or flanger → tremolo → rotary → dry bus, with
   reverb and delay sends off the dry bus into the master.

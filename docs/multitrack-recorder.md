@@ -448,3 +448,14 @@ Browser DAWs and the Web Audio literature agree on the shape above:
    playing to a beat is the common case), or strictly phase 2?
 10. **Phones.** Record and basic playback on a phone, with editing a
     desktop matter, acceptable for phase 1?
+
+## The Practice Amp as an input (2026-10-10)
+
+`"amp"` joined `STUDIO_INPUT_SOURCES` (docs/practice-amp.md, "The
+band"): the Studio hosts the amp's chain in its context (`amp.hostContext`
+in `#openNow`) and a track with the amp as its input records
+`amp.output()` as heard. Arming the track opens the amp's panel and
+switches the amp on (`requestInput("amp")`, which opens the amp's own
+input through the shared inputs); `inputOpen("amp")` is whether the amp
+is on. A take from the amp is shifted earlier by the input latency, as a
+microphone's or a line in's is: the amp is one of them through its chain.

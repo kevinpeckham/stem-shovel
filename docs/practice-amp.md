@@ -12,9 +12,9 @@ typical options an amp might have + effects we already have ready to go…
 a control to indicate what kind of instrument is plugged in (bass /
 guitar) and possibly whether it is instrument or line level."
 
-This is the plan before any code: what the app already has to build on,
-what the precedents teach, the design, the phases, and the questions
-that decide the shape. Nothing here is built yet.
+The plan came first (what the app had to build on, what the precedents
+teach, the design, the phases, the questions); "As built" at the end
+says what was made from it on 2026-10-10 and where it differs.
 
 ## What the app already has
 
@@ -259,3 +259,73 @@ from the drum machine the same way, later.
 9. **The tuner change.** Giving `Tuner.svelte` a `source` node prop
    touches the tuner on its own page and the home demo (they would keep
    opening their own stream). Fine to do in phase 1?
+
+## Kevin's answers (2026-10-10)
+
+The names as proposed; Instrument / Line as a switch with a tooltip on
+impedance and the benefit of an interface; phases 1 to 3 together; he
+tests with a bass straight into the computer, straight into the phone,
+and through a USB interface (an iRig-class adapter and a guitar to be
+borrowed); cabinets at my discretion; the speakers allowed with the
+feedback warning; all nine existing pedals plus a noise gate and an
+overdrive; preferences in the browser first; the tuner's source prop in
+phase 1.
+
+## As built
+
+**The chain** (`src/lib/audio/ampChain.ts`): gate → compressor →
+overdrive → fuzz → wah → preamp → tone stack → power stage → cabinet →
+chorus → phaser or flanger → delay (a send) → rotary → tremolo → spring
+→ master (a squared law) → limiter. The pedals are the shared stages of
+`fxStages.ts`: the chorus, phaser, tremolo, rotary and compressor moved
+there out of `pianoFx.ts` (the piano and the Studio's track chain now
+use them too), the fuzz became one shape of a `createClipStage` and the
+overdrive another (a cubic, the lows under 250 Hz left out of the
+clipper). The amp's own stages are in `ampStages.ts`:
+
+- the **preamp**: a high-pass, the signal split so a bass head's
+  fundamentals (under 80 Hz on the Fridge, 60 on the Solid State) pass
+  beside the clipper, a gain of 1 + gain·drive into the model's curve
+  (a biased tanh for the clean, an asymmetric tanh for the tweed, a
+  cubic that goes flat for the solid-state), a low-pass, and a make-up
+  that holds three quarters of the level;
+- the **tone stack**: three biquads ±12 dB with the model's scoop, Bright
+  (fading with the gain), Ultra Lo and Ultra Hi, and the five-position
+  mid selector on the bass heads;
+- the **power stage**: an envelope follower that sags the gain, a soft
+  clip, Presence;
+- the **cabinet**: a ConvolverNode over an impulse synthesized in-house
+  (`utils/cabinetImpulse.ts`: a delta through the box's filters, a
+  reflection off the baffle, a few damped cone modes; measured in its
+  tests), so phase 2's "real impulse" is already the shape of it, with
+  no licence to read. A licensed pack can drop in later as a file;
+- the **spring** (`utils/springImpulse.ts`): a train of chirps that die
+  over a second and a half, two channels with their own jitter;
+- the **gate**: an envelope through a step curve into a gain.
+
+**The engine** (`amp.svelte.ts`, the one `amp`): its own context with
+the interactive latency hint on its page, hosting the metronome and the
+drum machine; `hostContext(ctx)` builds the chain in the looper's or the
+Studio's context instead, as the piano does, and the inputs module
+gained `listen()` so a hosted amp gets its source's node without
+attaching the inputs itself. On its own page Off closes the input;
+hosted, Off only disconnects (the host's other tracks may want the same
+line in). `render()` runs the rig offline over a sawtooth for the
+browser test. Settings are `AmpPreferencesSchema` in localStorage.
+
+**The band** (phase 3): the amp is a source on the looper (`"amp"` in
+`LoopSource`, tapped from `amp.output()` in the looper's context, the
+amp switched on as a layer arms), on the Idea Recorder (a
+`RecorderInstrument` captured through `captureStream()`, wet), and an
+input in the Studio (`"amp"` in `STUDIO_INPUT_SOURCES`, hosted; a take
+is shifted by the input latency like a line in), each page with an amp
+panel beside the instrument panels; and a panel on the song page to
+play along with the stems or a mix. What lands on a take is what was
+heard, pedals and all; the re-amp (a dry take with the settings beside
+it) is not built, and would need a column for the settings on a take.
+
+**Not built yet**: presets in the site library (a table of their own; the
+browser remembers one rig per instrument for now), the phone layout has
+had no pass of its own beyond the container queries, and the latency
+verdicts are from the papers until Kevin's measurements (the fake
+device under test reads 84 ms, which says nothing about hardware).

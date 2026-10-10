@@ -31,7 +31,8 @@ import { createAmpChain, type AmpChain } from "./ampChain";
  * output and one latency. Settings are remembered per browser
  * (utils/ampPreferences.ts). The context, once made, outlives the page
  * as the looper's does; leaving the page turns the amp off, which mutes
- * it and closes the input.
+ * it and closes the input. Hosted (`hostContext`), the amp lives in the
+ * looper's or the Studio's context as a source of theirs.
  */
 class AmpEngine {
 	prefs = $state<AmpPreferences>(parseAmpPreferences({}));
@@ -61,6 +62,44 @@ class AmpEngine {
 	#capture: MediaStreamAudioDestinationNode | null = null;
 	#clipUntil = 0;
 	#loaded = false;
+	/** The context belongs to a host (the looper, the Studio): the amp built its chain there and never attaches the inputs itself. */
+	#hosted = false;
+	#unlisten: (() => void) | null = null;
+
+	/**
+	 * Builds the amp's chain in a host's context instead of one of its own
+	 * (the looper and the Studio, as the piano does), so the host can tap
+	 * `output()` sample-accurately. The host attaches the inputs; the amp
+	 * listens for its source's node. A context the amp already made is
+	 * dropped (its input closed).
+	 */
+	hostContext(ctx: AudioContext) {
+		if (this.#ctx === ctx) return;
+		this.load();
+		if (this.on) void this.setOn(false);
+		this.#unlisten?.();
+		this.#capture = null;
+		if (this.#ctx && !this.#hosted) void this.#ctx.close().catch(() => {});
+		this.#ctx = ctx;
+		this.#hosted = true;
+		this.#build(ctx);
+		this.#unlisten = inputSources.listen((source, node) => {
+			if (source === this.prefs.source && this.on) this.#take(node);
+		});
+	}
+	/** The chain and the meters in a context; the output to its destination. */
+	#build(ctx: AudioContext) {
+		const chain = createAmpChain(ctx, $state.snapshot(this.rig));
+		this.#chain = chain;
+		chain.output.connect(ctx.destination);
+		this.#inAnalyser = ctx.createAnalyser();
+		this.#inAnalyser.fftSize = 1024;
+		chain.input.connect(this.#inAnalyser);
+		this.#outAnalyser = ctx.createAnalyser();
+		this.#outAnalyser.fftSize = 1024;
+		chain.output.connect(this.#outAnalyser);
+		this.outputLatencyMs = outputLatencyMs(ctx);
+	}
 
 	/** The remembered settings, once, in the browser. */
 	load() {
@@ -109,38 +148,34 @@ class AmpEngine {
 			if (session) session.type = "play-and-record";
 			const ctx = new AudioContext({ latencyHint: "interactive" });
 			this.#ctx = ctx;
+			this.#hosted = false;
 			metronome.hostContext(ctx);
 			drumMachine.hostContext(ctx);
-			const chain = createAmpChain(ctx, $state.snapshot(this.rig));
-			this.#chain = chain;
-			chain.output.connect(ctx.destination);
-			this.#inAnalyser = ctx.createAnalyser();
-			this.#inAnalyser.fftSize = 1024;
-			chain.input.connect(this.#inAnalyser);
-			this.#outAnalyser = ctx.createAnalyser();
-			this.#outAnalyser.fftSize = 1024;
-			chain.output.connect(this.#outAnalyser);
-			// The inputs' own monitor would double the dry signal under the amp: it plays into a muted gain.
-			const mute = ctx.createGain();
-			mute.gain.value = 0;
-			mute.connect(ctx.destination);
-			inputSources.attach(ctx, {
-				monitorOut: mute,
-				onsource: (source, node) => {
-					if (source === this.prefs.source) this.#take(node);
-				},
+			this.#build(ctx);
+			this.#unlisten?.();
+			this.#unlisten = inputSources.listen((source, node) => {
+				if (source === this.prefs.source && this.on) this.#take(node);
 			});
-			this.outputLatencyMs = outputLatencyMs(ctx);
+			this.#attachInputs(ctx);
+		} else if (!this.#hosted && inputSources.context !== this.#ctx) {
+			// Another page took the inputs since: back here.
+			this.#attachInputs(this.#ctx);
 		}
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
 		inputSources.setInputGainDb(this.prefs.source, this.trimDb);
-		const ok = inputSources.has(this.prefs.source)
-			? (this.#take(inputSources.output(this.prefs.source)), true)
-			: await inputSources.requestInput(this.prefs.source);
-		if (!ok)
-			this.error = inputSources.errors[this.prefs.source] ?? "The input could not be opened.";
+		const ok =
+			inputSources.has(this.prefs.source) || (await inputSources.requestInput(this.prefs.source));
+		if (ok) this.#take(inputSources.output(this.prefs.source));
+		else this.error = inputSources.errors[this.prefs.source] ?? "The input could not be opened.";
 		void this.#checkOutputs();
 		return ok;
+	}
+	/** The inputs module in the amp's own context. Its own monitor would double the dry signal under the amp: it plays into a muted gain. */
+	#attachInputs(ctx: AudioContext) {
+		const mute = ctx.createGain();
+		mute.gain.value = 0;
+		mute.connect(ctx.destination);
+		inputSources.attach(ctx, { monitorOut: mute, onsource: () => {} });
 	}
 	/** The input's node into the chain (or nothing, when the input closed). */
 	#take(node: AudioNode | null) {
@@ -176,7 +211,8 @@ class AmpEngine {
 			cancelAnimationFrame(this.#frame);
 			this.inputLevel = this.outputLevel = 0;
 			this.#take(null);
-			inputSources.stop(this.prefs.source);
+			// On its own page Off closes the input (the recording light goes out); hosted, the host's other sources may still want it.
+			if (!this.#hosted) inputSources.stop(this.prefs.source);
 			return;
 		}
 		this.starting = true;
@@ -235,6 +271,13 @@ class AmpEngine {
 		this.prefs[m.instrument] = { ...defaultRig(model), pedals: rig.pedals };
 		this.#apply();
 	}
+	/** The master as the looper's and the recorder's source sliders see it, 0 to 1. */
+	get volume(): number {
+		return this.rig.head.master;
+	}
+	setVolume(v: number) {
+		this.setHead({ master: Math.max(0, Math.min(1, v)) });
+	}
 	setHead(patch: Partial<AmpHead>) {
 		Object.assign(this.rig.head, patch);
 		this.#apply();
@@ -267,7 +310,7 @@ class AmpEngine {
 		this.#save();
 		if (this.on) {
 			this.#take(null);
-			inputSources.stop(was);
+			if (!this.#hosted) inputSources.stop(was);
 			await this.open();
 		}
 	}

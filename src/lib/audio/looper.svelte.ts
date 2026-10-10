@@ -2,6 +2,7 @@ import { audioSession } from "#lib/utils/audioSession.js";
 import { inputSources, outputLatencyMs, type InputSource } from "./inputs.svelte";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
 import { tapTempo } from "#lib/utils/tapTempo.js";
+import { amp } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
 import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
 import { metronome } from "./metronome.svelte";
@@ -25,8 +26,16 @@ import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
  * as a take with sources (docs/demo-recording.md, "Takes with sources").
  */
 
-export type LoopSource = "mic" | "line" | "computer" | "piano" | "chords" | "drums";
-export const LOOP_SOURCES: LoopSource[] = ["mic", "line", "computer", "piano", "chords", "drums"];
+export type LoopSource = "mic" | "line" | "computer" | "piano" | "chords" | "drums" | "amp";
+export const LOOP_SOURCES: LoopSource[] = [
+	"mic",
+	"line",
+	"computer",
+	"piano",
+	"chords",
+	"drums",
+	"amp",
+];
 export const LOOP_SOURCE_LABELS: Record<LoopSource, string> = {
 	mic: "Microphone",
 	line: "Line in",
@@ -34,6 +43,7 @@ export const LOOP_SOURCE_LABELS: Record<LoopSource, string> = {
 	piano: "Piano",
 	chords: "Chords",
 	drums: "Drums",
+	amp: "Amp",
 };
 /** The sources that come in through an audio input device (docs/looper.md, "Inputs"): the microphone and a second input, an instrument on an interface say. */
 export type { ChannelMode, InputSource } from "./inputs.svelte";
@@ -96,6 +106,7 @@ class LooperEngine {
 		piano: 0,
 		chords: 0,
 		drums: 0,
+		amp: 0,
 	});
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
@@ -161,6 +172,8 @@ class LooperEngine {
 		chordPiano.hostContext(ctx);
 		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
+		// The Practice Amp too (docs/practice-amp.md, "The band"): its chain in this context, its input through the shared inputs attached below.
+		amp.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/loop-capture.js");
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		const master = ctx.createGain();
@@ -189,6 +202,7 @@ class LooperEngine {
 		// The chord player has its own engine (docs/chord-player.md, "Its own engine"): its own output and gain, so a piano layer and a chords layer are separate sounds.
 		this.#tapSource("chords", chordPiano.output());
 		this.#tapSource("drums", drumMachine.output());
+		this.#tapSource("amp", amp.output()!);
 		// The kit for this context, ahead of the first drums layer (its start must land on bar 1, not after a decode).
 		void drumMachine.readyKit();
 		this.#analyserBuf = new Float32Array(1024);
@@ -363,7 +377,9 @@ class LooperEngine {
 						? "chords"
 						: label.startsWith("Drums")
 							? "drums"
-							: "mic";
+							: label.startsWith("Amp")
+								? "amp"
+								: "mic";
 				if (this.layers.length >= MAX_LOOP_LAYERS) break;
 				const layer: LoopLayer = {
 					id: `${Date.now().toString(36)}i${k}`,
@@ -508,9 +524,9 @@ class LooperEngine {
 		return inputSources.has("mic");
 	}
 	hasSource(source: LoopSource) {
-		return (
-			source === "piano" || source === "chords" || source === "drums" || inputSources.has(source)
-		);
+		if (source === "piano" || source === "chords" || source === "drums") return true;
+		if (source === "amp") return amp.on;
+		return inputSources.has(source);
 	}
 
 	setArmed(source: LoopSource) {
@@ -676,6 +692,11 @@ class LooperEngine {
 			!(await this.requestComputer())
 		)
 			return;
+		// The amp opens its own input (the line in or the microphone jack) as it switches on.
+		if (this.armed === "amp" && !amp.on) {
+			await amp.setOn(true);
+			if (!amp.on) return;
+		}
 		const source = this.armed;
 		// The drums must be ready to start on the bar: the kit decoded before the bar is chosen.
 		if (source === "drums") await drumMachine.readyKit();
