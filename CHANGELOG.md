@@ -39,6 +39,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   a square tremolo on the clean head; a tuner panel on the looper, and the
   looper's and the recorder's tuners reading the amp's input while it is on.
 
+### Changed
+
+- **The song page's Downloads menu** names the stem mixes as such: "Original
+  Stem Mix (MP3)" and "Custom Stem Mix (MP3)" (Kevin).
+- **The wordmark's intrinsic size** is 134 × 24 (the same drawing), so it
+  lays out at its rendered size before the stylesheet arrives (Kevin).
+
 ### Technical
 
 - **Migration 0085**: the `amp_preset` table (account, creator, name,

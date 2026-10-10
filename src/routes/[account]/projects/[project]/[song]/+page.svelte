@@ -3523,7 +3523,7 @@
 							title="An MP3 of the song's default mix"
 						>
 							<span class="i-ph-music-note mr-2" aria-hidden="true"></span>
-							{mixing === "original" ? "Rendering…" : "Original Mix (MP3)"}
+							{mixing === "original" ? "Rendering…" : "Original Stem Mix (MP3)"}
 						</button>
 						<button
 							class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
@@ -3534,7 +3534,7 @@
 							title="An MP3 of what is audible now (mute, solo, faders)"
 						>
 							<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
-							{mixing === "custom" ? "Rendering…" : "Custom Mix (MP3)"}
+							{mixing === "custom" ? "Rendering…" : "Custom Stem Mix (MP3)"}
 						</button>
 					{/if}
 					{#if data.docs.lyrics || data.docs.chart || data.docs.notes}
