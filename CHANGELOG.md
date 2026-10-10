@@ -29,8 +29,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   defaults (a system admin saves them from the amp), a signed-out
   browser's own slots, and a signed-in member's account library with a
   manage menu (save, rename, re-slot, delete, search); share links
-  `/practice-amp#preset=…`. The amp's panel on the looper, the recorder,
-  the Studio and the song page has the same buttons.
+  `#amp=…` on the page they are copied from (a host page opens its amp
+  panel for one). The amp's panel on the looper, the recorder, the Studio
+  and the song page has the same buttons.
+- **Practice Amp extras**: the drum machine in a panel on the amp page; a
+  play-along transport in the song page's amp panel (Play, From the top,
+  Count in: a bar of the metronome, then the stems); the noise gate with
+  attack, hold and release (an AudioWorklet, `static/worklets/amp-gate.js`);
+  a square tremolo on the clean head; a tuner panel on the looper, and the
+  looper's and the recorder's tuners reading the amp's input while it is on.
 
 ### Technical
 

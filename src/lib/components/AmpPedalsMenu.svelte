@@ -96,6 +96,24 @@
 			step: 1,
 			text: `${p.gate.threshold} dB`,
 		})}
+		{@render slider("Attack", p.gate.attack, (v) => amp.setPedal("gate", { attack: v }), {
+			min: 0.0005,
+			max: 0.05,
+			step: 0.0005,
+			text: `${(p.gate.attack * 1000).toFixed(1)} ms`,
+		})}
+		{@render slider("Hold", p.gate.hold, (v) => amp.setPedal("gate", { hold: v }), {
+			min: 0,
+			max: 0.5,
+			step: 0.005,
+			text: `${Math.round(p.gate.hold * 1000)} ms`,
+		})}
+		{@render slider("Release", p.gate.release, (v) => amp.setPedal("gate", { release: v }), {
+			min: 0.01,
+			max: 1,
+			step: 0.005,
+			text: `${Math.round(p.gate.release * 1000)} ms`,
+		})}
 	{/snippet}
 	{@render drawer("Noise gate", p.gate.on ? `${p.gate.threshold} dB` : "off", p.gate.on, gateBody)}
 

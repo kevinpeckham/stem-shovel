@@ -2,7 +2,7 @@ import { audioSession } from "#lib/utils/audioSession.js";
 import { inputSources, outputLatencyMs, type InputSource } from "./inputs.svelte";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
 import { tapTempo } from "#lib/utils/tapTempo.js";
-import { amp } from "./amp.svelte";
+import { amp, loadAmpWorklet } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
 import { loadStoredLoop, saveStoredLoop, type StoredLoop } from "./loopStore";
 import { metronome } from "./metronome.svelte";
@@ -172,9 +172,9 @@ class LooperEngine {
 		chordPiano.hostContext(ctx);
 		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
-		// The Practice Amp too (docs/practice-amp.md, "The band"): its chain in this context, its input through the shared inputs attached below.
-		amp.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/loop-capture.js");
+		// The Practice Amp too (docs/practice-amp.md, "The band"): its chain in this context (its gate worklet first), its input through the shared inputs attached below.
+		amp.hostContext(ctx, { gateWorklet: await loadAmpWorklet(ctx) });
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		const master = ctx.createGain();
 		master.gain.value = this.volume;

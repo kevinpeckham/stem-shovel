@@ -42,18 +42,29 @@ export const AmpHeadSchema = v.object({
 	power: unit(0.25),
 	/** The spring reverb's level (the guitar heads). */
 	reverb: unit(0.2),
-	tremolo: v.optional(v.object({ rate: range(0.5, 12, 4.5), depth: unit(0) }), () => ({
-		rate: 4.5,
-		depth: 0,
-	})),
+	tremolo: v.optional(
+		v.object({
+			rate: range(0.5, 12, 4.5),
+			depth: unit(0),
+			shape: v.optional(v.picklist(["sine", "square"]), "sine"),
+		}),
+		() => ({ rate: 4.5, depth: 0, shape: "sine" as const }),
+	),
 	master: unit(0.7),
 });
 export type AmpHead = v.InferOutput<typeof AmpHeadSchema>;
 
 export const AmpPedalsSchema = v.object({
+	/** The gate (static/worklets/amp-gate.js): threshold in dBFS, attack, hold and release in seconds. */
 	gate: v.optional(
-		v.object({ on: v.optional(v.boolean(), false), threshold: range(-70, -20, -50) }),
-		() => ({ on: false, threshold: -50 }),
+		v.object({
+			on: v.optional(v.boolean(), false),
+			threshold: range(-70, -20, -50),
+			attack: range(0.0005, 0.05, 0.005),
+			hold: range(0, 0.5, 0.05),
+			release: range(0.01, 1, 0.1),
+		}),
+		() => ({ on: false, threshold: -50, attack: 0.005, hold: 0.05, release: 0.1 }),
 	),
 	compressor: v.optional(
 		v.object({

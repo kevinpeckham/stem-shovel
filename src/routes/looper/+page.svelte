@@ -12,6 +12,7 @@
 	import InputSourceSettings from "#lib/components/InputSourceSettings.svelte";
 	import SourceButton from "#lib/components/SourceButton.svelte";
 	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
+	import Tuner from "#lib/components/Tuner.svelte";
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
@@ -41,7 +42,7 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { Attachment } from "svelte/attachments";
-	import { onDestroy, onMount } from "svelte";
+	import { onDestroy, onMount, tick } from "svelte";
 
 	/**
 	 * The looper (docs/looper.md): a loop of bars at a tempo plays round and
@@ -103,7 +104,25 @@
 		ampOpen = !ampOpen;
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
-	onDestroy(() => void amp.setOn(false));
+	onDestroy(() => {
+		tuner?.stop();
+		void amp.setOn(false);
+	});
+	/** The tuner in a panel: it reads the amp's input while the amp is on, the microphone otherwise. */
+	let tuner = $state<Tuner | null>(null);
+	let tunerOpen = $state(false);
+	async function toggleTuner(e?: Event) {
+		(e?.currentTarget as HTMLElement | null)?.blur();
+		tunerOpen = !tunerOpen;
+		if (tunerOpen) {
+			await tick();
+			void tuner?.start();
+		} else tuner?.stop();
+	}
+	onMount(() => {
+		// A preset link (docs/practice-amp.md, "Presets") made on this page: the amp's panel opens and reads it.
+		if (window.location.hash.startsWith("#amp=")) ampOpen = true;
+	});
 	let spaceOwner = $state<"drums" | "piano" | "chords" | null>(null);
 	function toggleDrums(e?: Event) {
 		drumsOpen = !drumsOpen;
@@ -496,6 +515,18 @@
 					onclick={toggleAmp}
 				>
 					<span class="i-ph-speaker-high" aria-hidden="true"></span>
+				</button>
+				<button
+					class="button button-sm shrink-0 {tunerOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={tunerOpen}
+					aria-label={tunerOpen ? "Close the tuner" : "Tuner"}
+					title={tunerOpen ? "Close the tuner" : "Open the tuner"}
+					onclick={toggleTuner}
+				>
+					<span class="i-ph-waveform" aria-hidden="true"></span>
 				</button>
 			{/snippet}
 		</PageCopyHeader>
@@ -1331,7 +1362,21 @@
 				presetAdmin={data.presetAdmin}
 				metronomeOpen={metroOpen}
 				onmetronome={toggleMetronome}
+				{tunerOpen}
+				ontuner={toggleTuner}
 			/>
+		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={tunerOpen}
+		title="Tuner"
+		storageKey="stemshovel.looper.tuner-panel"
+		width={640}
+		height={560}
+		onminimise={() => void toggleTuner()}
+	>
+		<div class="p-3">
+			<Tuner bind:this={tuner} source={() => (amp.on ? amp.inputTap() : null)} />
 		</div>
 	</FloatingPanel>
 	<FloatingPanel

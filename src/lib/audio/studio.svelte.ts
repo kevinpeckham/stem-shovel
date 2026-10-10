@@ -32,7 +32,7 @@ import type {
 	StudioTrackKind,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
-import { amp } from "./amp.svelte";
+import { amp, loadAmpWorklet } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
 import { inputSources, outputLatencyMs } from "./inputs.svelte";
 import { chordPiano, piano } from "./piano.svelte";
@@ -303,9 +303,9 @@ class StudioEngine {
 		chordPiano.hostContext(ctx);
 		drumMachine.hostContext(ctx);
 		metronome.hostContext(ctx);
-		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
-		amp.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/track-capture.js");
+		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
+		amp.hostContext(ctx, { gateWorklet: await loadAmpWorklet(ctx) });
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
 		const master = ctx.createGain();
 		master.gain.value = this.arrangement.master;

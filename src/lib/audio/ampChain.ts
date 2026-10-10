@@ -4,6 +4,7 @@ import {
 	createCabinetStage,
 	createGateStage,
 	createPowerStage,
+	createWorkletGateStage,
 	createPreampStage,
 	createSpringStage,
 	createToneStackStage,
@@ -40,9 +41,18 @@ export interface AmpChain {
 
 const PEAK = 0.5;
 
-export function createAmpChain(ctx: BaseAudioContext, initial: AmpRig): AmpChain {
+export interface AmpChainOptions {
+	/** The gate worklet (static/worklets/amp-gate.js) is loaded into the context: the gate with attack, hold and release. */
+	gateWorklet?: boolean;
+}
+
+export function createAmpChain(
+	ctx: BaseAudioContext,
+	initial: AmpRig,
+	options: AmpChainOptions = {},
+): AmpChain {
 	const input = ctx.createGain();
-	const gate = createGateStage(ctx);
+	const gate = options.gateWorklet ? createWorkletGateStage(ctx) : createGateStage(ctx);
 	input.connect(gate.input);
 	const comp = createCompressorStage(ctx);
 	gate.output.connect(comp.input);
@@ -90,7 +100,7 @@ export function createAmpChain(ctx: BaseAudioContext, initial: AmpRig): AmpChain
 	const update = (rig: AmpRig, tau: number) => {
 		const model = AMP_MODELS[rig.model];
 		const p = rig.pedals;
-		gate.update(p.gate.on, p.gate.threshold, tau);
+		gate.update(p.gate, tau);
 		comp.update(p.compressor, tau);
 		overdrive.update(p.overdrive.drive, p.overdrive.tone, tau);
 		fuzz.update(p.fuzz.drive, p.fuzz.tone, tau);
@@ -107,7 +117,7 @@ export function createAmpChain(ctx: BaseAudioContext, initial: AmpRig): AmpChain
 			{
 				rate: rig.head.tremolo.rate,
 				depth: model.hasTremolo ? rig.head.tremolo.depth : 0,
-				shape: "sine",
+				shape: rig.head.tremolo.shape,
 			},
 			tau,
 		);

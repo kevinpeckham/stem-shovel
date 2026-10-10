@@ -674,6 +674,10 @@
 		ampOpen = !ampOpen;
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
+	onMount(() => {
+		// A preset link (docs/practice-amp.md, "Presets") made on this page: the amp's panel opens and reads it.
+		if (window.location.hash.startsWith("#amp=")) ampOpen = true;
+	});
 	// The instruments' panels (docs/multitrack-recorder.md, phase 2): floating from lg, docked below; the space bar goes to the instrument touched last, else the transport.
 	let drumsOpen = $state(false);
 	let pianoOpen = $state(false);

@@ -1,5 +1,11 @@
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
-import { listAmpPresets, siteAmpPresets } from "#lib/server/data.js";
+import { aiAvailable } from "#lib/server/aiDetect.js";
+import {
+	listAmpPresets,
+	listBeats,
+	listDrumKitManifests,
+	siteAmpPresets,
+} from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
 import copyFallback from "../../../scripts/user-docs/practice-amp-page.md?raw";
@@ -18,6 +24,10 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		: null;
 	const [guitar, bass] = await Promise.all([siteAmpPresets("guitar"), siteAmpPresets("bass")]);
 	return {
+		// The drum machine's panel (a beat to practise to), as the looper has it.
+		kits: await listDrumKitManifests(member?.accountId ?? null),
+		beats: member ? await listBeats(member.accountId) : [],
+		textToBeat: aiAvailable(),
 		sitePresets: { guitar, bass },
 		account: member
 			? { id: member.accountId, name: member.name, canEdit: member.role !== "viewer" }

@@ -2,6 +2,7 @@
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import DrumMachine from "#lib/components/DrumMachine.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import Metronome from "#lib/components/Metronome.svelte";
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
@@ -24,6 +25,8 @@
 	let tuner = $state<Tuner | null>(null);
 	let tunerOpen = $state(false);
 	let metronomeOpen = $state(false);
+	/** The drum machine's panel: a beat to play to, in the amp's own context (hosted by the engine), so it shares the output. */
+	let drumsOpen = $state(false);
 	async function toggleTuner() {
 		tunerOpen = !tunerOpen;
 		if (tunerOpen) {
@@ -53,11 +56,12 @@
 			{metronomeOpen}
 			ontuner={toggleTuner}
 			onmetronome={() => (metronomeOpen = !metronomeOpen)}
+			{drumsOpen}
+			ondrums={() => (drumsOpen = !drumsOpen)}
 			sitePresets={data.sitePresets}
 			account={data.account}
 			presets={data.presets}
 			presetAdmin={data.presetAdmin}
-			readLink
 		/>
 	</div>
 	<FloatingPanel
@@ -71,6 +75,20 @@
 		<div class="p-3">
 			<Tuner bind:this={tuner} source={() => amp.inputTap()} />
 		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={drumsOpen}
+		title="Drum machine"
+		storageKey="stemshovel.amp.drum-panel"
+		onminimise={() => (drumsOpen = false)}
+	>
+		<DrumMachine
+			kits={data.kits}
+			keyboard={drumsOpen}
+			account={data.account}
+			beats={data.beats}
+			textToBeat={data.textToBeat}
+		/>
 	</FloatingPanel>
 	<FloatingPanel
 		open={metronomeOpen}

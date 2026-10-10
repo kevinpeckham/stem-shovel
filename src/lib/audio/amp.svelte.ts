@@ -24,6 +24,22 @@ import {
 } from "#lib/val/AmpSchema.js";
 import { createAmpChain, type AmpChain } from "./ampChain";
 
+/** The gate worklet (static/worklets/amp-gate.js) loaded into a context, once per context; a host loads it before hosting the amp. */
+const workletLoads = new WeakMap<BaseAudioContext, Promise<boolean>>();
+export function loadAmpWorklet(ctx: BaseAudioContext): Promise<boolean> {
+	let loading = workletLoads.get(ctx);
+	if (!loading) {
+		loading = ctx.audioWorklet
+			.addModule("/worklets/amp-gate.js")
+			.then(() => true)
+			.catch(() => false);
+		workletLoads.set(ctx, loading);
+	}
+	return loading;
+}
+/** The contexts whose gate worklet load has succeeded. */
+const workletReady = new WeakSet<BaseAudioContext>();
+
 /**
  * The one Practice Amp on the page (docs/practice-amp.md): an input from
  * the shared inputs module (the line in or the microphone jack) through
@@ -75,8 +91,9 @@ class AmpEngine {
 	 * listens for its source's node. A context the amp already made is
 	 * dropped (its input closed).
 	 */
-	hostContext(ctx: AudioContext) {
+	hostContext(ctx: AudioContext, options: { gateWorklet?: boolean } = {}) {
 		if (this.#ctx === ctx) return;
+		if (options.gateWorklet) workletReady.add(ctx);
 		this.load();
 		if (this.on) void this.setOn(false);
 		this.#unlisten?.();
@@ -91,7 +108,9 @@ class AmpEngine {
 	}
 	/** The chain and the meters in a context; the output to its destination. */
 	#build(ctx: AudioContext) {
-		const chain = createAmpChain(ctx, $state.snapshot(this.rig));
+		const chain = createAmpChain(ctx, $state.snapshot(this.rig), {
+			gateWorklet: workletReady.has(ctx),
+		});
 		this.#chain = chain;
 		chain.output.connect(ctx.destination);
 		this.#inAnalyser = ctx.createAnalyser();
@@ -153,6 +172,7 @@ class AmpEngine {
 			this.#hosted = false;
 			metronome.hostContext(ctx);
 			drumMachine.hostContext(ctx);
+			if (await loadAmpWorklet(ctx)) workletReady.add(ctx);
 			this.#build(ctx);
 			this.#unlisten?.();
 			this.#unlisten = inputSources.listen((source, node) => {
@@ -406,7 +426,8 @@ class AmpEngine {
 	async render(seconds = 1, hz = 110): Promise<{ rms: number; peak: number }> {
 		const rate = 48000;
 		const ctx = new OfflineAudioContext(2, Math.round(seconds * rate), rate);
-		const chain = createAmpChain(ctx, $state.snapshot(this.rig));
+		const gateWorklet = await loadAmpWorklet(ctx);
+		const chain = createAmpChain(ctx, $state.snapshot(this.rig), { gateWorklet });
 		chain.output.connect(ctx.destination);
 		const osc = ctx.createOscillator();
 		osc.type = "sawtooth";

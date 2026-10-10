@@ -40,6 +40,7 @@
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import PracticeAmp from "#lib/components/PracticeAmp.svelte";
 	import { amp } from "#lib/audio/amp.svelte.js";
+	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemReplacer from "#lib/components/StemReplacer.svelte";
@@ -474,6 +475,46 @@
 	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): play along with the stems or a mix; off again on leaving the page. */
 	let ampOpen = $state(false);
 	onDestroy(() => void amp.setOn(false));
+	/**
+	 * The play-along transport in the amp panel's header (docs/practice-amp.md,
+	 * "The band"): the stems from the top or where they are, with a bar of
+	 * clicks first when Count in is on (the metronome, which the amp hosts),
+	 * so the song and the guitar arrive together.
+	 */
+	let ampCountIn = $state(true);
+	let ampCountingIn = $state(false);
+	let ampCountTimer: ReturnType<typeof setTimeout> | null = null;
+	async function ampPlay(fromStart: boolean) {
+		const engine = playerEngine;
+		if (!engine || engine.status !== "ready") return;
+		if (engine.playing && !fromStart) {
+			engine.pause();
+			return;
+		}
+		if (fromStart) engine.seek(0);
+		if (!ampCountIn) {
+			await engine.play();
+			return;
+		}
+		if (ampCountTimer) clearTimeout(ampCountTimer);
+		metronome.load();
+		ampCountingIn = true;
+		await metronome.start();
+		const bar = (60 / metronome.bpm) * metronome.beatsPerBar;
+		ampCountTimer = setTimeout(() => {
+			metronome.stop();
+			ampCountingIn = false;
+			ampCountTimer = null;
+			void engine.play();
+		}, bar * 1000);
+	}
+	function ampStop() {
+		if (ampCountTimer) clearTimeout(ampCountTimer);
+		ampCountTimer = null;
+		if (ampCountingIn) metronome.stop();
+		ampCountingIn = false;
+		playerEngine?.pause();
+	}
 	// The chat (docs/chat.md) is its own panel, closed until the header's button opens it (Kevin: chat and read the docs at once).
 	// Its messages and read mark live here so closing and reopening keeps them; SongChat binds to them.
 	let chatOpen = $state(false);
@@ -3266,6 +3307,47 @@
 			height={440}
 			onminimise={() => (ampOpen = false)}
 		>
+			{#snippet controls()}
+				<!-- The play-along transport: the stems, with a count-in from the metronome. -->
+				<div class="flex items-center gap-1 text-12px" role="group" aria-label="Play along">
+					<button
+						class="button button-xs flex items-center gap-1"
+						type="button"
+						disabled={!playerEngine || playerEngine.status !== "ready"}
+						title={playerEngine?.playing ? "Pause the song" : "Play the song along with the amp"}
+						aria-label={playerEngine?.playing || ampCountingIn ? "Pause the song" : "Play the song"}
+						onclick={() =>
+							playerEngine?.playing || ampCountingIn ? ampStop() : void ampPlay(false)}
+					>
+						<span
+							class={ampCountingIn
+								? "i-ph-metronome"
+								: playerEngine?.playing
+									? "i-ph-pause"
+									: "i-ph-play"}
+							aria-hidden="true"
+						></span>
+						{ampCountingIn ? "Count-in…" : playerEngine?.playing ? "Pause" : "Play"}
+					</button>
+					<button
+						class="button button-xs flex items-center"
+						type="button"
+						disabled={!playerEngine || playerEngine.status !== "ready"}
+						title="From the top, with the count-in"
+						aria-label="Play the song from the top"
+						onclick={() => void ampPlay(true)}
+					>
+						<span class="i-ph-skip-back" aria-hidden="true"></span>
+					</button>
+					<label
+						class="flex items-center gap-1 px-1"
+						title="A bar of clicks before the song starts"
+					>
+						<input type="checkbox" class="accent-maximumYellow" bind:checked={ampCountIn} />
+						Count in
+					</label>
+				</div>
+			{/snippet}
 			<div class="p-2">
 				<PracticeAmp
 					sitePresets={data.ampSitePresets}

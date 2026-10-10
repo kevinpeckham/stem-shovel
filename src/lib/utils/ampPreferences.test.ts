@@ -18,7 +18,13 @@ describe("ampPreferences", () => {
 		});
 		expect(p.bass.head.gain).toBe(0.9);
 		expect(p.bass.head.midFreq).toBe(2);
-		expect(p.bass.pedals.gate).toEqual({ on: false, threshold: -50 });
+		expect(p.bass.pedals.gate).toEqual({
+			on: false,
+			threshold: -50,
+			attack: 0.005,
+			hold: 0.05,
+			release: 0.1,
+		});
 		expect(parseAmpPreferences({ instrument: "banjo" }).instrument).toBe("guitar");
 		expect(parseAmpPreferences("x").guitar.model).toBe("clean");
 	});

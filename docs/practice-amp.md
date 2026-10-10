@@ -301,7 +301,14 @@ clipper). The amp's own stages are in `ampStages.ts`:
   no licence to read. A licensed pack can drop in later as a file;
 - the **spring** (`utils/springImpulse.ts`): a train of chirps that die
   over a second and a half, two channels with their own jitter;
-- the **gate**: an envelope through a step curve into a gain.
+- the **gate**: an AudioWorklet (`static/worklets/amp-gate.js`, since the
+  punch list of 2026-10-10): the louder channel's envelope against the
+  threshold with 3 dB of hysteresis, the gate opening over Attack,
+  waiting Hold under the threshold, then closing over Release; the
+  module is loaded by `loadAmpWorklet` (the engine on its own page, a
+  host before `hostContext`, `render()` offline), and until it is, a
+  native stand-in (an envelope through a step curve into a gain) passes
+  the signal.
 
 **The engine** (`amp.svelte.ts`, the one `amp`): its own context with
 the interactive latency hint on its page, hosting the metronome and the
@@ -373,3 +380,29 @@ Kevin: "Tell me more about what you would build for the presets" and
   editor; viewers get the site's and the browser's). Tested:
   `data.amp.test.ts`, `ampPreset.test.ts`, and the amp's browser spec
   saves, loads and deletes one.
+
+## The punch list (2026-10-10, after the presets)
+
+Kevin picked six items from the list of what was left:
+
+- **A drum beat on the amp page**: the drum machine in a panel beside the
+  tuner and the metronome, hosted in the amp's context already, with the
+  page's kits and the account's beats as the looper has them.
+- **A play-along transport on the song page**: the amp panel's header
+  holds Play / Pause, From the top, and a Count in switch: a bar of the
+  metronome (which the amp hosts, so click and guitar share one output)
+  and then the stems play. It drives the stem engine; the Mixes view
+  lists mixes rather than playing them, so the transport is for the stems.
+- **The gate**: attack, hold and release in a worklet (above).
+- **Tremolo shape**: sine or square on the clean head (`head.tremolo.shape`,
+  a "Trem: square" switch beside Bright).
+- **Preset links on a panel**: the hash key is `#amp=` (the piano's panel
+  reads `#preset=` on the same pages), every amp reads it on mount, a link
+  is copied for the page it was made on, and the looper, the recorder,
+  the Studio and the song page open their amp panel when they arrive
+  with one.
+- **The tuner through the amp on the looper and the recorder**: the
+  looper gained a tuner panel; both pages' tuners take the amp's input
+  while the amp is on and open the microphone otherwise (`Tuner`'s
+  `source` may return null), and the amp's face shows the Tuner button
+  on both.

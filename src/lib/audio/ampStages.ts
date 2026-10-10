@@ -284,18 +284,54 @@ export function createSpringStage(ctx: BaseAudioContext): AmpStage {
 	};
 }
 
+export interface GateSettings {
+	on: boolean;
+	threshold: number;
+	attack: number;
+	hold: number;
+	release: number;
+}
 export interface GateStage {
 	input: AudioNode;
 	output: AudioNode;
-	update(on: boolean, thresholdDb: number, tau: number): void;
+	update(settings: GateSettings, tau: number): void;
 }
 
 /**
- * A noise gate: the signal's envelope (rectified, smoothed over about
- * 10 ms) through a step curve that is 0 under the threshold and 1 a
- * little above it, into the gain the signal passes through. Off, the
- * signal goes round it. The threshold is in dBFS of the input; the
- * follower reads about 0.64 of a peak, which the curve allows for.
+ * The gate as an AudioWorklet (static/worklets/amp-gate.js): a real
+ * attack, hold and release, with hysteresis, once the module is loaded
+ * into the context (`loadAmpWorklet` in amp.svelte.ts); until then the
+ * native gate below stands in.
+ */
+export function createWorkletGateStage(ctx: BaseAudioContext): GateStage {
+	const node = new AudioWorkletNode(ctx, "amp-gate", {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [2],
+		channelCount: 2,
+		channelCountMode: "explicit",
+	});
+	const param = (name: string) => node.parameters.get(name)!;
+	return {
+		input: node,
+		output: node,
+		update(g, tau) {
+			set(ctx, param("threshold"), g.threshold, tau);
+			set(ctx, param("attack"), g.attack, 0);
+			set(ctx, param("hold"), g.hold, 0);
+			set(ctx, param("release"), g.release, 0);
+			set(ctx, param("on"), g.on ? 1 : 0, 0);
+		},
+	};
+}
+
+/**
+ * The native noise gate, the stand-in while the worklet is not loaded:
+ * the signal's envelope (rectified, smoothed over about 10 ms) through a
+ * step curve that is 0 under the threshold and 1 a little above it, into
+ * the gain the signal passes through (no attack, hold or release of its
+ * own). Off, the signal goes round it. The threshold is in dBFS of the
+ * input; the follower reads about 0.64 of a peak, which the curve allows for.
  */
 export function createGateStage(ctx: BaseAudioContext): GateStage {
 	const input = ctx.createGain();
@@ -325,14 +361,14 @@ export function createGateStage(ctx: BaseAudioContext): GateStage {
 	return {
 		input,
 		output,
-		update(on, thresholdDb, tau) {
-			if (thresholdDb !== threshold) {
-				threshold = thresholdDb;
-				const t = 0.64 * 10 ** (thresholdDb / 20);
+		update(g, tau) {
+			if (g.threshold !== threshold) {
+				threshold = g.threshold;
+				const t = 0.64 * 10 ** (g.threshold / 20);
 				step.curve = curve((x) => (x <= t ? 0 : x >= 2 * t ? 1 : (x - t) / t));
 			}
-			set(ctx, dry.gain, on ? 0 : 1, tau);
-			set(ctx, gatedOut.gain, on ? 1 : 0, tau);
+			set(ctx, dry.gain, g.on ? 0 : 1, tau);
+			set(ctx, gatedOut.gain, g.on ? 1 : 0, tau);
 		},
 	};
 }

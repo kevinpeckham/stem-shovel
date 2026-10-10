@@ -245,6 +245,10 @@
 		(e?.currentTarget as HTMLElement | null)?.blur();
 	}
 	onDestroy(() => void amp.setOn(false));
+	onMount(() => {
+		// A preset link (docs/practice-amp.md, "Presets") made on this page: the amp's panel opens and reads it.
+		if (window.location.hash.startsWith("#amp=")) toggleAmp();
+	});
 	const pianoInTake = $derived(sourcesOn.piano);
 	const chordsInTake = $derived(sourcesOn.chords);
 	const setChordsInTake = (on: boolean) => setSource("chords", on);
@@ -1129,7 +1133,7 @@
 				height={520}
 				onminimise={() => toggleTuner()}
 			>
-				<Tuner bind:this={tuner} />
+				<Tuner bind:this={tuner} source={() => (amp.on ? amp.inputTap() : null)} />
 			</FloatingPanel>
 
 			<!-- The piano: in a floating panel from lg (dragged, resized, remembered), docked here under the recorder below
@@ -1781,6 +1785,8 @@
 			presetAdmin={data.presetAdmin}
 			metronomeOpen={metroOpen}
 			onmetronome={toggleMetronome}
+			{tunerOpen}
+			ontuner={() => void toggleTuner()}
 		/>
 	</div>
 </FloatingPanel>

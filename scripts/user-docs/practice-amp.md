@@ -23,13 +23,13 @@ The knobs are an amp's: **Gain** (how hard the preamp is driven), **Bass**, **Mi
 
 ## The pedals
 
-The **Pedals** menu is the board, in the order the signal meets them. Before the amp: a **noise gate**, a **compressor**, an **overdrive** (gentle, keeps the lows tight), a **fuzz** and a **wah** (touch or sweep). After it: a **chorus**, a **phaser** or **flanger**, a **delay** (digital or analog) and a **rotary speaker**. **Reset all** takes every pedal off and the head back to its defaults.
+The **Pedals** menu is the board, in the order the signal meets them. Before the amp: a **noise gate** (threshold, attack, hold and release), a **compressor**, an **overdrive** (gentle, keeps the lows tight), a **fuzz** and a **wah** (touch or sweep). After it: a **chorus**, a **phaser** or **flanger**, a **delay** (digital or analog) and a **rotary speaker**. **Reset all** takes every pedal off and the head back to its defaults.
 
 ## Presets
 
 Under the knobs are six **preset** buttons for the instrument in force (guitar and bass keep their own). A preset is the whole rig: the head, its knobs and switches and every pedal; the master and the input stay as they are. Click a button to load its preset; it lights while the rig matches one. ⌘-click (Ctrl on Windows) or hold a button to save the rig there, or open the bookmarks menu beside the buttons: name the preset, pick a slot, and **Save**. Signed in, presets save to your account's library, where every member sees them (editors keep it; up to a hundred); signed out, a preset lives on the six buttons in this browser. The site's own presets fill any button you have not taken.
 
-**Copy link** in the menu gives a link that opens the amp with the rig as it stands, or with any saved preset by its link icon, for a bandmate to load and save.
+**Copy link** in the menu gives a link that opens the amp, on the page you are on, with the rig as it stands, or with any saved preset by its link icon, for a bandmate to load and save.
 
 ## Latency
 
@@ -41,10 +41,10 @@ On a phone, opening the input turns the speaker down (the phone treats it as a c
 
 The built-in speakers work when the input is the line in or an interface. With the microphone input and the speakers on, the amp feeds back into the microphone: the amp starts with the master down and says so; turn it up carefully, or use headphones.
 
-## The tuner and the metronome
+## The tuner, the metronome and the drums
 
-Both open from the amp's toolbar. The tuner reads the amp's own input, so nothing else opens the microphone; the metronome clicks in the amp's audio, so the click and your playing arrive together.
+All three open from the amp's toolbar. The tuner reads the amp's own input, so nothing else opens the microphone; the metronome clicks in the amp's audio, so the click and your playing arrive together; the drum machine plays a beat to practise to in the same audio. On the Looper and the Idea Recorder the tuner reads the amp's input too while the amp is on.
 
 ## Recording and playing along
 
-The amp is a source on the **Idea Recorder** and the **Looper**, and an input in the **Studio**: choose Amp as the source and what you hear is what lands on the take, pedals and all. On a song's page, the amp panel plays along with the stems or the latest mix.
+The amp is a source on the **Idea Recorder** and the **Looper**, and an input in the **Studio**: choose Amp as the source and what you hear is what lands on the take, pedals and all. On a song's page, the amp panel plays along with the stems: its header has Play, From the top and a **Count in** switch, a bar of the metronome before the song starts so you come in together.

@@ -51,7 +51,7 @@
 		presets?: SavedAmpPreset[];
 		/** A system admin: a preset can be saved as the site's default for its slot. */
 		presetAdmin?: boolean;
-		/** Read a `#preset=` link on mount (the amp's own page). */
+		/** Read a `#amp=` link on mount (every page the amp is on; off in a test). */
 		readLink?: boolean;
 	}
 	let {
@@ -59,7 +59,7 @@
 		account = null,
 		presets = [],
 		presetAdmin = false,
-		readLink = false,
+		readLink = true,
 	}: Props = $props();
 
 	const SLOT_NUMBERS = Array.from({ length: AMP_PRESET_SLOTS }, (_, i) => i + 1);
@@ -88,9 +88,10 @@
 	onMount(() => {
 		overrides = { guitar: loadAmpSlotOverrides("guitar"), bass: loadAmpSlotOverrides("bass") };
 		if (!readLink) return;
+		// `#amp=` rather than the piano's `#preset=`: both panels can be on one page (the looper), each reading its own.
 		const hash = window.location.hash;
-		if (hash.startsWith("#preset=")) {
-			const preset = decodeAmpPreset(hash.slice("#preset=".length));
+		if (hash.startsWith("#amp=")) {
+			const preset = decodeAmpPreset(hash.slice("#amp=".length));
 			if (preset) {
 				loadPreset(preset);
 				notify(`Preset “${preset.name}” loaded from the link; save it to keep it`);
@@ -317,8 +318,9 @@
 	/** A link that opens the amp with a preset: a saved one, or the rig as it stands. */
 	async function copyLink(preset?: NamedAmpPreset) {
 		const p = preset ?? { name: presetLine?.name ?? amp.model.name, data: amp.currentPreset() };
+		// The page the link is copied on, so a bandmate lands where the sound was made (the looper's amp panel opens itself for one).
 		const url = await shortenShareLink(
-			`${window.location.origin}/practice-amp#preset=${encodeAmpPreset(p)}`,
+			`${window.location.origin}${window.location.pathname}#amp=${encodeAmpPreset(p)}`,
 			"practice-amp",
 		);
 		try {

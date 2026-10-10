@@ -31,8 +31,9 @@
 		startOnHover?: boolean;
 		/**
 		 * Listen to a node in another context instead of opening the microphone
-		 * (the Practice Amp's input, docs/practice-amp.md): nothing is opened or
-		 * closed here, and On / Off only starts and stops the reading.
+		 * (the Practice Amp's input, docs/practice-amp.md) when it returns one:
+		 * nothing is opened or closed here, and On / Off only starts and stops
+		 * the reading. Null (the amp off) opens the microphone as usual.
 		 */
 		source?: () => { ctx: AudioContext; node: AudioNode } | null;
 	}
@@ -80,12 +81,9 @@
 	export async function start() {
 		if (running || starting || typeof navigator === "undefined") return;
 		error = null;
-		if (source) {
-			const tap = source();
-			if (!tap) {
-				error = "Turn the amp on first.";
-				return;
-			}
+		// A source given (the amp's input) while it has one; the microphone otherwise, so a page's tuner works with the amp off.
+		const tap = source?.() ?? null;
+		if (tap) {
 			ctx = tap.ctx;
 			analyser = ctx.createAnalyser();
 			analyser.fftSize = WINDOW;

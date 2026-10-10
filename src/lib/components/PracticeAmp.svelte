@@ -5,6 +5,7 @@
 	import AmpPresets, { type SavedAmpPreset } from "#lib/components/AmpPresets.svelte";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import Knob from "#lib/components/Knob.svelte";
 	import { AMP_INSTRUMENT_LABELS, AMP_MODELS_FOR } from "#lib/constants/amp.js";
@@ -33,13 +34,15 @@
 		metronomeOpen?: boolean;
 		ontuner?: () => void;
 		onmetronome?: () => void;
+		drumsOpen?: boolean;
+		ondrums?: () => void;
 		/** The presets (docs/practice-amp.md, "Presets"): the site's six per instrument; without them the slot row does not show. */
 		sitePresets?: Record<AmpInstrument, (NamedAmpPreset | null)[]> | null;
 		/** A signed-in member's account: presets save to it and load from it. */
 		account?: { id: string; name: string; canEdit: boolean } | null;
 		presets?: SavedAmpPreset[];
 		presetAdmin?: boolean;
-		/** Read a `#preset=` share link on mount (the amp's own page). */
+		/** Read a `#amp=` share link on mount (off in a test). */
 		readLink?: boolean;
 	}
 	let {
@@ -47,11 +50,13 @@
 		metronomeOpen = false,
 		ontuner,
 		onmetronome,
+		drumsOpen = false,
+		ondrums,
 		sitePresets = null,
 		account = null,
 		presets = [],
 		presetAdmin = false,
-		readLink = false,
+		readLink = true,
 	}: Props = $props();
 
 	onMount(() => amp.load());
@@ -373,6 +378,18 @@
 					<span class="hidden @2xl-inline">Metronome</span>
 				</button>
 			{/if}
+			{#if ondrums}
+				<button
+					class="device-button-sm px-3 {drumsOpen ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={drumsOpen}
+					title={drumsOpen ? "Close the drum machine" : "Drum machine"}
+					onclick={() => ondrums?.()}
+				>
+					<span class="grid place-items-center" aria-hidden="true"><IconDrumKit /></span>
+					<span class="hidden @2xl-inline">Drums</span>
+				</button>
+			{/if}
 		</div>
 	</div>
 
@@ -494,7 +511,7 @@
 		{#if sitePresets}
 			<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />
 		{/if}
-		{#if model.switches.length > 0}
+		{#if model.switches.length > 0 || model.hasTremolo}
 			<div class="flex flex-wrap gap-2" role="group" aria-label="Switches">
 				{#if model.switches.includes("bright")}
 					{@render toggle("Bright", head.bright, () => amp.setHead({ bright: !head.bright }))}
@@ -504,6 +521,11 @@
 				{/if}
 				{#if model.switches.includes("ultraHi")}
 					{@render toggle("Ultra Hi", head.ultraHi, () => amp.setHead({ ultraHi: !head.ultraHi }))}
+				{/if}
+				{#if model.hasTremolo}
+					{@render toggle("Trem: square", head.tremolo.shape === "square", () =>
+						amp.setTremolo({ shape: head.tremolo.shape === "square" ? "sine" : "square" }),
+					)}
 				{/if}
 			</div>
 		{/if}
