@@ -31,7 +31,7 @@ try {
 	console.log("no __drizzle_migrations table: nothing applied yet");
 	process.exit(1);
 }
-const entries = journal.entries.toSorted((a, b) => a.idx - b.idx);
+const entries = [...journal.entries].sort((a, b) => a.idx - b.idx);
 const done = entries.filter((e) => applied.has(e.when));
 const pending = entries.filter((e) => !applied.has(e.when));
 const last = done.at(-1);
