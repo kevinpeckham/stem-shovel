@@ -9,6 +9,7 @@
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import ProjectPeople from "#lib/components/ProjectPeople.svelte";
 	import { formatTime } from "#lib/utils/formatTime.js";
+	import { songStage } from "#lib/utils/songStage.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 	import { slugify } from "#lib/utils/slugify.js";
@@ -70,19 +71,34 @@
 	// idea — a place for lyrics, a chart, notes and demos.
 	const readyStems = (song: (typeof data.project.songs)[number]) =>
 		song.stems.filter((s) => s.status === "ready").length;
-	const underway = (song: (typeof data.project.songs)[number]) =>
-		readyStems(song) > 0 || song.mixCount > 0;
+	/** The song's stage (docs/mixes.md, "Phase 2"): set in settings, else read from what it holds. */
+	const stageOf = (song: (typeof data.project.songs)[number]) =>
+		songStage({
+			stage: song.stage,
+			isFinished: song.isFinished,
+			hasMix: song.mixCount > 0,
+			hasStem: readyStems(song) > 0,
+		});
 	// The songs in the order the page shows: the project's, or the one a member is dragging into shape until it is saved.
 	let songOrder = $state<string[] | null>(null);
 	let songs = $derived(songOrder ? reorderById(data.project.songs, songOrder) : data.project.songs);
-	let finished = $derived(songs.filter((s) => s.isFinished));
-	let inProgress = $derived(songs.filter((s) => !s.isFinished && underway(s)));
-	let ideas = $derived(songs.filter((s) => !s.isFinished && !underway(s)));
+	// Filed by stage (docs/mixes.md, "Phase 2"): finished, then mixing, arranging and writing (the song ideas); an empty stage shows no section.
+	let finished = $derived(songs.filter((s) => stageOf(s) === "finished"));
+	let mixing = $derived(songs.filter((s) => stageOf(s) === "mixing"));
+	let arranging = $derived(songs.filter((s) => stageOf(s) === "arranging"));
+	let ideas = $derived(songs.filter((s) => stageOf(s) === "writing"));
+	let inProgress = $derived([...mixing, ...arranging]);
 	type Song = (typeof data.project.songs)[number];
-	const groupOf = (song: Song) =>
-		song.isFinished ? "finished" : underway(song) ? "progress" : "ideas";
+	const groupOf = (song: Song) => stageOf(song);
 	const groupIds = (group: string) =>
-		(group === "finished" ? finished : group === "progress" ? inProgress : ideas).map((s) => s.id);
+		(group === "finished"
+			? finished
+			: group === "mixing"
+				? mixing
+				: group === "arranging"
+					? arranging
+					: ideas
+		).map((s) => s.id);
 
 	// Reordering within a list: a grip is dragged (pointer events, so touch works and
 	// the page does not scroll under it) or moved with the arrow keys; the lists follow
@@ -140,14 +156,16 @@
 		moveWithin(song, from + (e.key === "ArrowUp" ? -1 : 1));
 		void commit();
 	}
-	/** What a song plays here (docs/mixes.md): its newest mix when it has one, else the stems' bounce; and what to call it. */
-	const playOf = (song: (typeof data.project.songs)[number]) =>
-		song.latestMix
+	/** What a song plays here (docs/mixes.md): by its stage, the newest mix in mixing or finished, the stems' bounce in arranging, either as a fallback; and what to call it. */
+	const playOf = (song: (typeof data.project.songs)[number]) => {
+		const mix = song.latestMix
 			? { url: song.latestMix.playUrl, source: `Mix v${song.latestMix.version}` }
-			: song.mixUrl
-				? { url: song.mixUrl, source: "Stems mix" }
-				: null;
-	/** The playlist: finished songs, then the ones in progress, as listed, each with its newest mix or its stems' bounce. */
+			: null;
+		const bounce = song.mixUrl ? { url: song.mixUrl, source: "Stems mix" } : null;
+		const s = stageOf(song);
+		return s === "mixing" || s === "finished" ? (mix ?? bounce) : (bounce ?? mix);
+	};
+	/** The playlist: the sections' order (finished, mixing, arranging), each song with its newest mix or its stems' bounce. */
 	let playable = $derived(
 		[...finished, ...inProgress].map((song) => {
 			const play = playOf(song);
@@ -163,7 +181,7 @@
 					id: d.id,
 					title: `${song.title} · ${d.label}`,
 					mixUrl: d.playUrl,
-					idea: !underway(song),
+					idea: stageOf(song) === "writing",
 				})),
 		),
 	);
@@ -447,19 +465,12 @@
 	</section>
 
 	<!-- finished songs -->
-	{#if finished.length > 0}
-		<section class="mt-10">
-			<div class="mb-5">
-				<h2 class="marketing-section-heading">Finished Songs</h2>
-				<p class="opacity-90 text-15px max-w-prose">Done, and marked so in their settings.</p>
-			</div>
-			<ul class="grid grid-cols-1 gap-3 mb-10" data-song-group="finished">
-				{#each finished as song (song.id)}
-					{@render songRow(song)}
-				{/each}
-			</ul>
-		</section>
-	{/if}
+	{@render stageSection(
+		"finished",
+		finished,
+		"Finished Songs",
+		"Done: everything still plays and stays editable.",
+	)}
 
 	<!-- no songs yet -->
 	{#if inProgress.length === 0 && ideas.length === 0}
@@ -478,22 +489,19 @@
 		</section>
 	{/if}
 
-	<!-- songs in progress -->
-	{#if inProgress.length > 0}
-		<section class="mt-10">
-			<div class="mb-5">
-				<h2 class="app-section-heading">Songs in Progress</h2>
-				<p class="app-section-subheading text-balance max-w-prose">
-					Listen here or click on a song name below to view and edit its stems, chart, lyrics etc.
-				</p>
-			</div>
-			<ul class="grid grid-cols-1 gap-3" data-song-group="progress">
-				{#each inProgress as song (song.id)}
-					{@render songRow(song)}
-				{/each}
-			</ul>
-		</section>
-	{/if}
+	<!-- the songs under way, by stage: mixing, then arranging (docs/mixes.md, "Phase 2") -->
+	{@render stageSection(
+		"mixing",
+		mixing,
+		"Mixing",
+		"The engineer's mixes for the band's feedback. Listen here, or open a song for its mixes, chart and lyrics.",
+	)}
+	{@render stageSection(
+		"arranging",
+		arranging,
+		"Arranging",
+		"Stems to play along with and build on. Listen here, or open a song to work on its stems, chart, lyrics etc.",
+	)}
 
 	<!-- song ideas -->
 	{#if ideas.length > 0 && !data.project.isPrivate}
@@ -724,6 +732,22 @@
 	<!-- The tile opens the song page (Kevin: say so). -->
 	<span class="i-ph-arrow-up-right absolute top-3 right-3 text-16px opacity-50" aria-hidden="true"
 	></span>
+{/snippet}
+
+{#snippet stageSection(group: string, list: Song[], heading: string, blurb: string)}
+	{#if list.length > 0}
+		<section class="mt-10">
+			<div class="mb-5">
+				<h2 class="app-section-heading">{heading}</h2>
+				<p class="app-section-subheading text-balance max-w-prose">{blurb}</p>
+			</div>
+			<ul class="grid grid-cols-1 gap-3 {dragging ? 'select-none' : ''}" data-song-group={group}>
+				{#each list as song (song.id)}
+					{@render songRow(song)}
+				{/each}
+			</ul>
+		</section>
+	{/if}
 {/snippet}
 
 {#snippet songRow(song: Song)}

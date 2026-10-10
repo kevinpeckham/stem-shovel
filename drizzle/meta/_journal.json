@@ -589,6 +589,13 @@
       "when": 1791512303905,
       "tag": "0083_mixes",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1791583667791,
+      "tag": "0084_song_stage",
+      "breakpoints": true
     }
   ]
 }

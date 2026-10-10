@@ -1,4 +1,5 @@
 import * as t from "drizzle-orm/sqlite-core";
+import type { SongStage } from "../../../val/SongStageSchema";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type { ArchiveStatus } from "../../../val/ArchiveStatusSchema";
 import type { SongChange } from "../../../val/SongChangeSchema";
@@ -27,8 +28,10 @@ export const song = table(
 		isPrivate: t.integer("is_private", { mode: "boolean" }).default(false).notNull(),
 		/** No AI touches this song; a project's flag covers its songs too. */
 		noAi: t.integer("no_ai", { mode: "boolean" }).default(false).notNull(),
-		/** Done: listed under "Finished Songs" on the project page. Any member toggles it. */
+		/** Done: listed under "Finished Songs" on the project page. Set with the stage. */
 		isFinished: t.integer("is_finished", { mode: "boolean" }).default(false).notNull(),
+		/** The stage set in settings (docs/mixes.md, "Phase 2"); null reads it from what the song holds (utils/songStage.ts). */
+		stage: t.text("stage").$type<SongStage>(),
 		/** Longest ready stem; refreshed whenever stems change. */
 		durationSeconds: t.real("duration_seconds"),
 		/** Optional free text shown under the title. */

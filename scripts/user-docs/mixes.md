@@ -6,7 +6,7 @@ A **mix** is a bounce of the song, usually from the mixing engineer or producer,
 
 Every mix has a page of its own, made for listening and giving feedback: the version and name, the player and waveform, the notes from the mix, the comments on it, download and share, with the other versions listed to switch between. A share link or a notification about a mix opens that page. The song page's player has a **Mixes** view listing the song's mixes, newest first; each opens its page, and **Upload Mix** there (or in the Uploads menu) adds the next version and opens it.
 
-On the project page, a song with mixes plays its newest one from its tile and in the playlist, in place of the stems mixed down (the mixing stage comes after the stems); the player says "Mix v4" so you know what you hear, and the tile counts the mixes.
+On the project page, a song at the Mixing or Finished stage plays its newest mix from its tile and in the playlist, and one at the Arranging stage plays its stems mixed down; the player says "Mix v4" or "Stems mix" so you know what you hear, and the tile names the stage and counts the mixes.
 
 ## Listening
 
