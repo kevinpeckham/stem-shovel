@@ -107,8 +107,9 @@ for a stem player, with stale stems as the default view. Agreed:
    view with nothing in it giving way), a badge by the title naming the
    stage, a notice over the stems in mixing and finished ("these stems
    are from the arranging stage; the studio recording is in Mixes"), the
-   project page's grouping (finished apart, writing under Song Ideas, the
-   rest in progress) and what a tile and the playlist play (the newest mix
+   project page's grouping (Finished Songs, Mixing, Arranging, Song Ideas,
+   in that order, an empty stage showing no section, the phase sentence
+   under each heading) and what a tile and the playlist play (the newest mix
    in mixing and finished, the stems' bounce in arranging, either as a
    fallback), with the stage word first on the tile. Kevin floated
    per-view "Phase:" labels; the stage line on the song replaces them,
