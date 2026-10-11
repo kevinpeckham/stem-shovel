@@ -76,6 +76,7 @@
 	} from "#lib/constants/songChanges.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
 	import { keyLine } from "#lib/utils/keyLine.js";
+	import { keyWindows } from "#lib/utils/keyWindows.js";
 	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
@@ -1042,10 +1043,7 @@
 	function keyBoundaries(): number[] {
 		const sections = data.song.sections.map((s) => s.start).filter((t) => t > 0);
 		if (sections.length >= 1 && data.song.sections.length >= 2) return [0, ...sections];
-		const duration = playerEngine?.duration ?? 0;
-		const out = [0];
-		for (let t = 30; t < duration - 15; t += 30) out.push(t);
-		return out;
+		return keyWindows(playerEngine?.duration ?? 0);
 	}
 	async function scanStems() {
 		if (!playerEngine || playerEngine.status !== "ready") return;
@@ -1493,25 +1491,20 @@
 	 * or time signature yet gets them as its first changes; one that has them
 	 * only hears the detection, so nothing typed is overwritten.
 	 */
-	async function applyDetection(d: Detection) {
-		const parts = [
-			d.tempo.bpm ? `${Math.round(d.tempo.bpm)} bpm` : "",
-			d.key.value,
-			d.tempo.bpm ? d.meter.value : "",
-		].filter(Boolean);
-		if (parts.length === 0) return;
-		const summary = parts.join(" · ");
+	async function applyDetection(d: Detection, keys: KeyChange[] = []) {
+		// The keys through the song where it moves (every ten seconds of the batch), else the one key the whole batch gave.
+		const keyChanges = keys.length
+			? keys
+			: d.key.value
+				? [{ start: 0, value: d.key.value, confidence: d.key.confidence }]
+				: [];
+		const changes = scanChanges(d, keyChanges);
+		if (changes.length === 0) return;
+		const summary = describe(changes);
 		if (data.song.changes.length > 0) {
 			notify(`Detected ${summary}; the song's own settings are kept`, { kind: "info" });
 			return;
 		}
-		const changes = [
-			...(d.tempo.bpm
-				? [{ kind: "tempo" as const, start: 0, value: String(Math.round(d.tempo.bpm)) }]
-				: []),
-			...(d.key.value ? [{ kind: "key" as const, start: 0, value: d.key.value }] : []),
-			...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
-		];
 		try {
 			await saveChanges({ id: data.song.id, changes });
 			await refreshAll();

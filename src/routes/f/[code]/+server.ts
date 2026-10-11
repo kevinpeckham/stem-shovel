@@ -2,7 +2,7 @@ import { presentUrl, readBlob } from "#lib/server/blob.js";
 import { fileByShareCode as attachmentByShareCode, notationByShareCode } from "#lib/server/data.js";
 import { NOTATION_CONTENT_TYPE_OF } from "#lib/constants/notationFormats.js";
 import { attachmentDisposition } from "#lib/utils/attachmentDisposition.js";
-import { error, redirect } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /** A file in a store and the name and type to send it as. */
@@ -37,7 +37,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (download) return stream(file);
 	const presented = await presentUrl(file.url);
 	if (!presented) error(404, "The file is gone.");
-	redirect(302, presented);
+	// A plain 302 to the store: SvelteKit 3's redirect() refuses an external address (the dev server answered 500; Kevin).
+	return new Response(null, {
+		status: 302,
+		headers: { location: presented, "cache-control": "private, no-store" },
+	});
 };
 
 /** The file as an attachment, straight from the store. */

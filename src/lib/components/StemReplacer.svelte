@@ -1,11 +1,17 @@
 <script lang="ts">
 	import {
-		analyse,
-		combineFeatures,
-		extractFeatures,
 		type Detection,
 		type Features,
+		type KeyChange,
+		type KeySegment,
+		analyse,
+		combineFeatures,
+		combineKeySegments,
+		detectKeys,
+		extractFeatures,
+		extractKeySegments,
 	} from "#lib/audio/analysis.js";
+	import { keyWindows } from "#lib/utils/keyWindows.js";
 	import { refreshAll } from "$app/navigation";
 	import { removeStems } from "#lib/remote/songs.remote.js";
 	import type { UploadJob } from "#lib/components/StemUploader.svelte";
@@ -35,7 +41,8 @@
 		jobs?: UploadJob[];
 		notice?: string | null;
 		onuploaded?: () => void;
-		onanalysis?: (detection: Detection) => void;
+		/** What the batch sounds like: tempo, meter and key, and the keys through the song where it moves (docs/audio-engine.md, "Several keys"). */
+		onanalysis?: (detection: Detection, keys: KeyChange[]) => void;
 		/** Rendered as an item inside a menu instead of a button. */
 		menu?: boolean;
 	}
@@ -104,6 +111,7 @@
 		const ctx = new AudioContext({ sampleRate: 32_000 });
 		let failed = 0;
 		const features: Features[] = [];
+		const keySegments: KeySegment[][] = [];
 		for (const [i, job] of jobs.entries()) {
 			const target = plan[i].stem;
 			try {
@@ -126,7 +134,10 @@
 						onProgress: (p) => (job.percent = p),
 						onDecoding: () => (job.status = "decoding"),
 						onDecoded: (buffer) => {
-							if (onanalysis) features.push(extractFeatures(buffer));
+							if (onanalysis) {
+								features.push(extractFeatures(buffer));
+								keySegments.push(extractKeySegments(buffer, keyWindows(buffer.duration)));
+							}
 						},
 					},
 				);
@@ -149,7 +160,8 @@
 		}
 		busy = false;
 		const combined = combineFeatures(features);
-		if (combined && onanalysis) onanalysis(analyse(combined));
+		if (combined && onanalysis)
+			onanalysis(analyse(combined), detectKeys(combineKeySegments(keySegments)));
 		if (failed === 0) jobs = [];
 		await refreshAll();
 		if (failed < plan.length) onuploaded?.();

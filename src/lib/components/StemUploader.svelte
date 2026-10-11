@@ -1,11 +1,17 @@
 <script lang="ts">
 	import {
-		analyse,
-		combineFeatures,
-		extractFeatures,
 		type Detection,
 		type Features,
+		type KeyChange,
+		type KeySegment,
+		analyse,
+		combineFeatures,
+		combineKeySegments,
+		detectKeys,
+		extractFeatures,
+		extractKeySegments,
 	} from "#lib/audio/analysis.js";
+	import { keyWindows } from "#lib/utils/keyWindows.js";
 	import { refreshAll } from "$app/navigation";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import {
@@ -35,7 +41,8 @@
 		/** Called once a batch finishes with at least one stem uploaded. */
 		onuploaded?: () => void;
 		/** Tempo, key and time signature detected from the batch, once every stem in it has decoded. */
-		onanalysis?: (detection: Detection) => void;
+		/** What the batch sounds like: tempo, meter and key, and the keys through the song where it moves (docs/audio-engine.md, "Several keys"). */
+		onanalysis?: (detection: Detection, keys: KeyChange[]) => void;
 		/** Rendered as an item inside a menu instead of a button. */
 		menu?: boolean;
 		/** The button's text ("Add Stems" unless given); the menu item keeps its own. */
@@ -90,6 +97,7 @@
 		const ctx = new AudioContext({ sampleRate: 32_000 });
 		let failed = 0;
 		const features: Features[] = [];
+		const keySegments: KeySegment[][] = [];
 		for (const job of jobs) {
 			try {
 				job.status = "uploading";
@@ -107,7 +115,10 @@
 						onDecoding: () => (job.status = "decoding"),
 						onDecoded: (buffer) => {
 							// Cheap next to the upload itself; the batch is analysed as one mix below.
-							if (onanalysis) features.push(extractFeatures(buffer));
+							if (onanalysis) {
+								features.push(extractFeatures(buffer));
+								keySegments.push(extractKeySegments(buffer, keyWindows(buffer.duration)));
+							}
 						},
 					},
 				);
@@ -122,7 +133,8 @@
 		await ctx.close();
 		busy = false;
 		const combined = combineFeatures(features);
-		if (combined && onanalysis) onanalysis(analyse(combined));
+		if (combined && onanalysis)
+			onanalysis(analyse(combined), detectKeys(combineKeySegments(keySegments)));
 		if (failed === 0) jobs = [];
 		await refreshAll();
 		if (failed < jobs.length || jobs.length === 0) onuploaded?.();

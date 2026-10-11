@@ -300,19 +300,31 @@ than one and a display that names them all.
 - `extractKeySegments(buffer, boundaries)` in `src/lib/audio/analysis.ts`
   takes the chroma of each stretch between boundaries over the whole
   buffer (the tempo looks at the first 90 s; the key looks at all of it),
-  `combineKeySegments` sums the stems', and `detectKeys` runs the
-  Krumhansl-Kessler match per segment and keeps a change wherever the
-  key differs from the one in force with a margin over 0.12, so a
-  doubtful stretch never adds a change nobody meant. Tested with two
-  chords in one buffer: C major then E♭ major, and repeated halves merge.
+  `combineKeySegments` sums the stems', `keyScores` gives every key's
+  profile correlation for a stretch (lifted a little where the bass sits
+  on the tonic), and `detectKeys` finds the best path through the 24
+  keys over all the stretches with a cost for every switch (Viterbi,
+  penalty 0.35 in correlation units): a stretch on its own may lean to a
+  neighbour key (the relative, the fifth), and a stretch where the chroma
+  says little takes the key around it, so what comes out is the few keys
+  the song moves through, each from where it begins. Tested with two
+  chords in one buffer: C major then E♭ major, and repeated quarters
+  merge. On the user's own song (Kevin uploaded it on dev, 2026-10-11)
+  ten-second windows gave G major → E minor → B♭ major → G major where
+  the chart says C, A♭, F and E♭: the relative and dominant neighbours of
+  the right keys, the classic weakness of profile matching on a modal
+  vamp (Fmaj9–Em7 has no C in the bass), which is why the override
+  matters and why the chart's chords would be the better source (a
+  chord-symbol parser, later).
 - **Scan stems** (song settings) reads the keys at the song's sections
-  when it has two or more, else every half minute, writes a key change
-  where each begins (replacing every earlier key change, tempo and meter
-  only at 0:00 as before) and summarises as `keyLine()`
-  (`src/lib/utils/keyLine.ts`): the starting key, then "(also …)" with
-  the others in order of appearance. The song-info popover's line uses
-  the same. Upload-time detection (one batch of stems, no sections yet)
-  still reports one key.
+  when it has two or more, else every ten seconds (`keyWindows`,
+  `src/lib/utils/keyWindows.ts`), writes a key change where each begins
+  (replacing every earlier key change, tempo and meter only at 0:00 as
+  before) and summarises as `keyLine()` (`src/lib/utils/keyLine.ts`): the
+  starting key, then "(also …)" with the others in order of appearance.
+  The song-info popover's line uses the same. **Upload-time detection**
+  (the uploader and the replacer) reads the keys the same way, every ten
+  seconds of the batch, so a song gets its keys from the first upload.
 - The section timeline lists every key under the current section, the
   one in force bright and the rest dim, beside the key lane's markers
   (whose labels clip in a short stretch).

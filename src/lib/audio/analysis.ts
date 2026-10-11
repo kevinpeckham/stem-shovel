@@ -465,26 +465,78 @@ export interface KeyChange {
 	confidence: number;
 }
 
+/** Every key's score for a chroma: the profile correlation, lifted a little where the bass sits on the tonic (as detectKey's tiebreak does). */
+export function keyScores(chroma: Float32Array, bassChroma?: Float32Array): number[] {
+	const total = chroma.reduce((a, b) => a + b, 0);
+	const bassTotal = bassChroma?.reduce((a, b) => a + b, 0) ?? 0;
+	const scores: number[] = [];
+	for (let tonic = 0; tonic < 12; tonic++) {
+		const bass = bassChroma && bassTotal > 0 ? (0.15 * bassChroma[tonic]!) / bassTotal : 0;
+		scores.push(total > 0 ? correlation(chroma, MAJOR, tonic) + bass : 0);
+		scores.push(total > 0 ? correlation(chroma, MINOR, tonic) + bass : 0);
+	}
+	return scores;
+}
+const KEY_NAMES = Array.from({ length: 24 }, (_, i) =>
+	i % 2 === 0 ? `${NOTE_NAMES[i / 2]} major` : `${NOTE_NAMES[(i - 1) / 2]} minor`,
+);
+
 /**
- * A key per segment, as changes: the first segment's key at 0, then a
- * change wherever a segment's key differs from the one in force and the
- * profile is sure enough of it (`minConfidence`; a doubtful segment keeps
- * the key in force rather than adding a change nobody meant). A song that
- * stays in one key comes back as one change.
+ * A key per stretch, as changes, by the path through the 24 keys that
+ * scores best over all the segments with a cost for every switch
+ * (Viterbi): a segment on its own may lean to a neighbour key (the
+ * relative, the fifth), and a stretch where the chroma says little takes
+ * the key around it rather than a key of its own, so what comes out is
+ * the few keys the song really moves through, each from where it begins.
+ * `penalty` is in units of the profile correlation (0.35 keeps a
+ * two-window switch only when it is clear). A song in one key comes back
+ * as one change at 0.
  */
-export function detectKeys(segments: KeySegment[], minConfidence = 0.12): KeyChange[] {
-	const out: KeyChange[] = [];
-	for (const seg of segments) {
-		const key = detectKey(seg.chroma, seg.bassChroma);
-		if (!key.value) continue;
-		const last = out.at(-1);
-		if (!last) {
-			out.push({ start: seg.start, value: key.value, confidence: key.confidence });
-			continue;
+export function detectKeys(segments: KeySegment[], penalty = 0.35): KeyChange[] {
+	const n = segments.length;
+	if (n === 0) return [];
+	const scores = segments.map((s) => keyScores(s.chroma, s.bassChroma));
+	// Silent or near-empty segments score 0 everywhere: they take the path's key for free.
+	const best = Array.from({ length: 24 }, () => 0);
+	const from: number[][] = [];
+	for (let t = 0; t < n; t++) {
+		const row = scores[t]!;
+		const next = Array.from({ length: 24 }, () => 0);
+		const back = Array.from({ length: 24 }, () => 0);
+		let top = 0;
+		for (let k = 0; k < 24; k++) if (best[k]! > best[top]!) top = k;
+		for (let k = 0; k < 24; k++) {
+			const stay = best[k]!;
+			const jump = best[top]! - penalty;
+			if (t === 0 || stay >= jump) {
+				next[k] = (t === 0 ? 0 : stay) + row[k]!;
+				back[k] = k;
+			} else {
+				next[k] = jump + row[k]!;
+				back[k] = top;
+			}
 		}
-		if (key.value === last.value) continue;
-		if (key.confidence < minConfidence) continue;
-		out.push({ start: seg.start, value: key.value, confidence: key.confidence });
+		from.push(back);
+		for (let k = 0; k < 24; k++) best[k] = next[k]!;
+	}
+	let k = 0;
+	for (let i = 0; i < 24; i++) if (best[i]! > best[k]!) k = i;
+	const path = Array.from({ length: n }, () => 0);
+	for (let t = n - 1; t >= 0; t--) {
+		path[t] = k;
+		k = from[t]![k]!;
+	}
+	const out: KeyChange[] = [];
+	for (let t = 0; t < n; t++) {
+		const key = path[t]!;
+		if (out.length && out.at(-1)!.value === KEY_NAMES[key]) continue;
+		const row = scores[t]!;
+		const sorted = [...row].sort((a, b) => b - a);
+		const margin = Math.max(
+			0,
+			Math.min(1, (row[key]! - (sorted[0] === row[key] ? sorted[1]! : sorted[0]!)) * 4),
+		);
+		out.push({ start: segments[t]!.start, value: KEY_NAMES[key]!, confidence: margin });
 	}
 	return out;
 }

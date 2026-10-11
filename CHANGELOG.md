@@ -32,12 +32,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
-- **Several keys in a song**: Scan stems reads the key per section (or per
-  half minute without sections) and writes a key change where each
-  begins; the song's key reads "C major (also A♭ major, F major)", and the
-  section timeline lists every key with the one in force bright and the
-  rest dim (a feature request, and Kevin's note that only the key in force
-  showed). `extractKeySegments` / `detectKeys` in analysis.ts, `keyLine`.
+- **Several keys in a song**: the upload-time detection and Scan stems read
+  the key per section (or per ten seconds without sections) as the best
+  path through the keys with a cost for every switch, and write a key
+  change where each begins; the song's key reads "C major (also A♭ major,
+  F major)", and the section timeline lists every key with the one in
+  force bright and the rest dim (a feature request, and Kevin's note that
+  only the key in force showed). `extractKeySegments` / `keyScores` /
+  `detectKeys` in analysis.ts, `keyLine`, `keyWindows`.
 - **The Practice Amp's knobs in labelled groups**: Gain; EQ (Bass, Mids,
   Treble); Reverb; Tremolo (Depth, Speed); then Presence, Master (the
   power stage's push, formerly Power) and Output (the level, formerly
@@ -66,6 +68,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **Short links on a stage behind a proxy** sent the visitor to an `http://`
+  address nothing answers; the redirect is relative now. **A file's
+  permanent link** (`/f/<code>`) answered 500 since SvelteKit 3 refuses an
+  external redirect; it is a plain 302 to the store.
 - **A hot MP3 could not be uploaded as a stem or a mix**: it decodes past
   full scale and the server refused its peaks ("peaks (0..1) are
   required"); the peaks are clamped at 1 where they are computed.

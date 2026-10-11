@@ -12,11 +12,13 @@ import type { RequestHandler } from "./$types";
  * made, or one that has expired, is a 404. Never cached: a link that
  * expires must stop.
  */
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const link = await resolveShortLink(params.code);
 	if (!link) error(404, "This short link is not one Stem Shovel made, or it has expired.");
+	// A relative Location: the browser resolves it against the address it used, so a stage behind a proxy that
+	// terminates TLS (the dev VM sees http) never sends a visitor to an http address nothing answers (Kevin).
 	return new Response(null, {
 		status: 302,
-		headers: { location: `${url.origin}${link.target}`, "cache-control": "no-store" },
+		headers: { location: link.target, "cache-control": "no-store" },
 	});
 };
