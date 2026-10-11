@@ -97,8 +97,6 @@
 			amp.bluetooth,
 		),
 	);
-	/** The microphone input into the speakers feeds back: the master starts low and the readout says so. */
-	let feedbackWarned = $state(false);
 	/** The jack the inputs module is asked about: the line in stands in while the chord player is the source (no jack is open then). */
 	const jack = $derived<InputSource>(amp.fromChords ? "line" : (amp.source as InputSource));
 	async function power() {
@@ -108,12 +106,20 @@
 		}
 		// The chord player as the input: its panel comes out, since that is what is played.
 		if (amp.fromChords && onchords && !chordsOpen) onchords();
-		if (amp.source === "mic" && !feedbackWarned) {
-			feedbackWarned = true;
-			if (head.master > 0.3) amp.setHead({ master: 0.3 });
-		}
 		await amp.setOn(true);
 		if (amp.error) notify(amp.error, { kind: "error" });
+	}
+	/**
+	 * The amp comes on at the first touch of anything on it (a knob, a menu, an
+	 * input chosen), as the piano wakes on its first touch: a browser starts audio
+	 * and opens an input only from a gesture, so the first one is it. Off is
+	 * then a choice made with the switch, which also closes the input.
+	 */
+	function wake(e: PointerEvent) {
+		if (amp.on || amp.starting) return;
+		// The switch itself and Mute handle their own press.
+		if ((e.target as HTMLElement | null)?.closest("[data-amp-power], [data-amp-mute]")) return;
+		void power();
 	}
 	async function setLevel() {
 		const db = await amp.setLevel();
@@ -304,9 +310,11 @@
 	<AmpPedalsMenu />
 {/snippet}
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="@container device-chrome grid grid-cols-1 gap-4 pb-14 px-3 py-4 @xl-px-5 @xl-pt-5 w-full max-w-full overflow-hidden relative"
 	aria-label="Practice amp"
+	onpointerdowncapture={wake}
 >
 	<div
 		class="absolute bottom-6 left-5 text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
@@ -318,20 +326,46 @@
 	<div class="flex flex-wrap items-end gap-2 @3xl-gap-3">
 		<div>
 			<div class="hidden @4xl-block device-button-group-label text-dark max-w-8">On</div>
-			<button
-				class="w-8 device-button-sm text-15px {amp.on ? 'text-accent' : ''}"
-				type="button"
-				aria-pressed={amp.on}
-				aria-busy={amp.starting}
-				aria-label={amp.on ? "Turn the amp off" : "Turn the amp on"}
-				title={amp.on ? "Turn the amp off" : "Turn the amp on"}
-				onclick={power}
-			>
-				<span
-					class={amp.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
-					aria-hidden="true"
-				></span>
-			</button>
+			<div class="flex gap-px">
+				<button
+					class="device-button-sm px-3 rounded-r-none {amp.on
+						? 'text-accent'
+						: 'ring-2 ring-accent/60'}"
+					type="button"
+					data-amp-power
+					aria-pressed={amp.on}
+					aria-busy={amp.starting}
+					aria-label={amp.on ? "Turn the amp off" : "Turn the amp on"}
+					title={amp.on
+						? "Turn the amp off (closes the input)"
+						: "Turn the amp on (or touch anything on it)"}
+					onclick={power}
+				>
+					<span
+						class={amp.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
+						aria-hidden="true"
+					></span>
+					<span class="hidden @2xl-inline"
+						>{amp.starting ? "Starting…" : amp.on ? "On" : "Off"}</span
+					>
+				</button>
+				<!-- Mute: the output off, the input open and the meters moving; red while engaged. -->
+				<button
+					class="device-button-sm px-3 rounded-l-none {amp.muted ? '!bg-red-600 !text-light' : ''}"
+					type="button"
+					data-amp-mute
+					aria-pressed={amp.muted}
+					aria-label={amp.muted ? "Unmute the amp" : "Mute the amp"}
+					title={amp.muted ? "Unmute" : "Mute the output; the input stays open"}
+					onclick={() => amp.setMuted(!amp.muted)}
+				>
+					<span
+						class={amp.muted ? "i-ph-speaker-slash" : "i-ph-speaker-simple-high"}
+						aria-hidden="true"
+					></span>
+					<span class="hidden @2xl-inline">{amp.muted ? "Muted" : "Mute"}</span>
+				</button>
+			</div>
 		</div>
 		<div>
 			<div class="hidden @4xl-block device-button-group-label text-dark">Instrument</div>
@@ -453,7 +487,9 @@
 	<!-- the readout -->
 	<div class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden">
 		<div
-			class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full text-blue-100 font-mono tabular-nums overflow-hidden select-none"
+			class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full text-blue-100 font-mono tabular-nums overflow-hidden select-none {amp.on
+				? ''
+				: 'opacity-50'}"
 		>
 			<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 				<span class="text-20px leading-none font-sans">{model.name}</span>
@@ -497,8 +533,8 @@
 			</div>
 			<div class="text-12px opacity-80 flex flex-wrap gap-x-3 gap-y-1 font-sans" aria-live="polite">
 				{#if !amp.on}
-					<span
-						>Off · {amp.fromChords
+					<span class="text-light"
+						>Off · touch the amp to turn it on · {amp.fromChords
 							? "chord player"
 							: `${amp.source === "line" ? "line in" : "microphone input"} · ${amp.inputMode} · trim ${trimText(amp.trimDb)}`}</span
 					>
@@ -521,10 +557,14 @@
 			{#if amp.on && verdict.advice}
 				<p class="text-12px font-sans text-wrap opacity-80">{verdict.advice}</p>
 			{/if}
-			{#if amp.on && amp.source === "mic"}
+			{#if amp.on && amp.mutedForFeedback}
 				<p class="text-12px font-sans text-wrap text-amber-200/90">
-					The microphone input into the speakers feeds back: use headphones, or turn the master up
-					slowly.
+					Muted to start: the microphone input into the speakers feeds back. Put headphones on, then
+					press Mute to hear the amp.
+				</p>
+			{:else if amp.on && amp.muted}
+				<p class="text-12px font-sans text-wrap opacity-80">
+					Muted: the input is open, the output off.
 				</p>
 			{/if}
 			{#if amp.error}
@@ -536,7 +576,9 @@
 	<!-- the head -->
 	<div class="grid gap-3">
 		<div
-			class="flex flex-wrap items-start gap-x-4 gap-y-3 @2xl-gap-x-6 [&_svg]-(text-dark)"
+			class="flex flex-wrap items-start gap-x-4 gap-y-3 @2xl-gap-x-6 [&_svg]-(text-dark) {amp.on
+				? ''
+				: 'opacity-60'}"
 			role="group"
 			aria-label="Head"
 		>

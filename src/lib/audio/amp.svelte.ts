@@ -71,6 +71,9 @@ class AmpEngine {
 	bluetooth = $state(false);
 	/** Set level is listening (three seconds). */
 	settingLevel = $state(false);
+	/** The output muted, the input still open (talking over the band, a cable swap); `mutedForFeedback` says the amp did it itself: the microphone input into the speakers. */
+	muted = $state(false);
+	mutedForFeedback = $state(false);
 
 	#ctx: AudioContext | null = null;
 	#chain: AmpChain | null = null;
@@ -115,7 +118,12 @@ class AmpEngine {
 			gateWorklet: workletReady.has(ctx),
 		});
 		this.#chain = chain;
-		chain.output.connect(ctx.destination);
+		// The mute sits after the chain: the meters still move while it is engaged.
+		const mute = ctx.createGain();
+		mute.gain.value = this.muted ? 0 : 1;
+		chain.output.connect(mute);
+		mute.connect(ctx.destination);
+		this.#mute = mute;
 		this.#inAnalyser = ctx.createAnalyser();
 		this.#inAnalyser.fftSize = 1024;
 		chain.input.connect(this.#inAnalyser);
@@ -209,6 +217,11 @@ class AmpEngine {
 			return true;
 		}
 		const source = this.prefs.source;
+		// The microphone input into the speakers feeds back: the amp comes up muted and says so; headphones on, unmute.
+		if (source === "mic" && !this.muted) {
+			this.setMuted(true);
+			this.mutedForFeedback = true;
+		}
 		inputSources.setInputGainDb(source, this.trimDb);
 		const ok = inputSources.has(source) || (await inputSources.requestInput(source));
 		if (ok) this.#take(inputSources.output(source));
@@ -218,6 +231,12 @@ class AmpEngine {
 	}
 	#chordsTapped = false;
 	#chordsGain: GainNode | null = null;
+	#mute: GainNode | null = null;
+	setMuted(on: boolean) {
+		this.muted = on;
+		if (!on) this.mutedForFeedback = false;
+		this.#mute?.gain.setTargetAtTime(on ? 0 : 1, this.#ctx?.currentTime ?? 0, 0.01);
+	}
 	/** The chord player back on the speakers. */
 	#releaseChords() {
 		if (!this.#chordsTapped) return;

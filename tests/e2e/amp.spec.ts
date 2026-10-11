@@ -105,3 +105,21 @@ test("the chord player plays through the amp as its demo input", async ({ page, 
 	await page.getByRole("button", { name: "Turn the amp off" }).click();
 	expect(errors).toEqual([]);
 });
+
+/** The amp comes on at the first touch of anything on it; Mute keeps the input open with the output off. */
+test("turns on at the first touch, and Mute keeps the input while the output is off", async ({
+	page,
+	errors,
+}) => {
+	await open(page, "/practice-amp", "__amp");
+	await page.getByRole("button", { name: "Bass", exact: true }).click();
+	await until(page, ([w]) => w.__amp.on === true);
+	await page.getByRole("button", { name: "Mute the amp" }).click();
+	await until(page, ([w]) => w.__amp.muted === true && w.__amp.on === true);
+	await until(page, ([w]) => w.__amp.inputLevel > 0.01);
+	await page.getByRole("button", { name: "Unmute the amp" }).click();
+	await until(page, ([w]) => w.__amp.muted === false);
+	await page.getByRole("button", { name: "Turn the amp off" }).click();
+	await until(page, ([w]) => w.__amp.on === false);
+	expect(errors).toEqual([]);
+});

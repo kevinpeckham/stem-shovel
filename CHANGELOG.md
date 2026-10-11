@@ -32,6 +32,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
+- **The Practice Amp comes on at the first touch** of anything on it, and
+  Off is unmistakable (the face dims, the readout says so); a **Mute**
+  button beside the switch turns the output off with the input open, and
+  the amp mutes itself for the microphone input into the speakers.
 - **The Practice Amp's demo input**: Chord player as a source, its voices
   taken dry (before its own effects) into the amp with no jack opened, to
   try the amp with nothing plugged in; a Chords button on the amp page

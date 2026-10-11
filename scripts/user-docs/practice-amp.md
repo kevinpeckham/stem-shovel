@@ -43,9 +43,13 @@ What you hear comes back through the computer's input and output, which takes a 
 
 On a phone, opening the input turns the speaker down (the phone treats it as a call), so an interface with its own headphone jack is the setup that works best. A wired headset with a microphone makes that microphone the input.
 
+## On, off and Mute
+
+The amp turns on at the first touch of anything on it, a knob, a menu, an input, since that is what you came to do; the power switch turns it off again, which closes the input (the browser's recording light goes out). Off, the face dims and the readout says so. **Mute** beside the switch turns the output off while the input stays open and the meters keep moving, for talking over the band, swapping a cable or tuning in silence.
+
 ## Playing with the speakers
 
-The built-in speakers work when the input is the line in or an interface. With the microphone input and the speakers on, the amp feeds back into the microphone: the amp starts with the master down and says so; turn it up carefully, or use headphones.
+The built-in speakers work when the input is the line in or an interface. With the microphone input and the speakers on, the amp feeds back into the microphone: the amp comes up muted and says so; put headphones on, then unmute.
 
 ## The tuner, the metronome and the drums
 

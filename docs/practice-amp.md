@@ -384,6 +384,23 @@ Kevin: "Tell me more about what you would build for the presets" and
   `data.amp.test.ts`, `ampPreset.test.ts`, and the amp's browser spec
   saves, loads and deletes one.
 
+## On at the first touch, and Mute (2026-10-11)
+
+Kevin: "it's easy to miss that it isn't on… To what degree could it be
+automatically turned on on load or when an input is selected?" A browser
+starts audio and opens an input only from a gesture, so on-at-load is
+out; the amp comes on at the **first touch** of anything on its face
+(`onpointerdowncapture` on the device, the piano's pattern), which
+covers choosing an input too; the switch stays for Off, which closes the
+input. Off is made unmistakable: the readout dims and says "Off · touch
+the amp to turn it on", the knobs dim, the switch is ringed. A **Mute**
+button beside the switch (`amp.setMuted`, a gain after the chain, so the
+meters still move) turns the output off with the input open; the amp
+engages it itself for the microphone input into the speakers
+(`mutedForFeedback`, the readout explains and asks for headphones), in
+place of the earlier quiet master, which was the hidden state Kevin was
+describing.
+
 ## Captured cabinets (2026-10-10)
 
 Kevin asked about open-source cabinet packs; the usable ones are the
