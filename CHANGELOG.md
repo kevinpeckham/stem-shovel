@@ -32,6 +32,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
+- **The Practice Amp's knobs in labelled groups**: Gain; EQ (Bass, Mids,
+  Treble); Reverb; Tremolo (Depth, Speed); then Presence, Master (the
+  power stage's push, formerly Power) and Output (the level, formerly
+  Master).
 - **The Practice Amp comes on at the first touch** of anything on it, and
   Off is unmistakable (the face dims, the readout says so); a **Mute**
   button beside the switch turns the output off with the input open, and

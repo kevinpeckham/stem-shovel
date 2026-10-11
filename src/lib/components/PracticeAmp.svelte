@@ -573,42 +573,66 @@
 		</div>
 	</div>
 
-	<!-- the head -->
+	<!-- the head: the knobs in labelled groups, lined up as the piano's buttons are (Kevin's order), a blank label keeping an unlabelled group level with the rest -->
 	<div class="grid gap-3">
 		<div
-			class="flex flex-wrap items-start gap-x-4 gap-y-3 @2xl-gap-x-6 [&_svg]-(text-dark) {amp.on
+			class="flex flex-wrap items-start gap-x-5 gap-y-3 @2xl-gap-x-7 [&_svg]-(text-dark) {amp.on
 				? ''
 				: 'opacity-60'}"
 			role="group"
 			aria-label="Head"
 		>
-			{@render knob("Gain", head.gain, (v) => amp.setHead({ gain: v }))}
-			{@render knob("Bass", head.bass, (v) => amp.setHead({ bass: v }))}
-			{@render knob("Mid", head.mid, (v) => amp.setHead({ mid: v }))}
-			{#if model.switches.includes("midFreq")}
-				{@render knob("Mid Hz", head.midFreq, (v) => amp.setHead({ midFreq: Math.round(v) }), {
-					min: 0,
-					max: 4,
-					step: 1,
-					format: (v) => `${AMP_MID_FREQUENCIES[Math.round(v)]} Hz`,
-				})}
-			{/if}
-			{@render knob("Treble", head.treble, (v) => amp.setHead({ treble: v }))}
-			{@render knob("Presence", head.presence, (v) => amp.setHead({ presence: v }))}
-			{@render knob("Power", head.power, (v) => amp.setHead({ power: v }))}
+			{#snippet group(label: string, body: import("svelte").Snippet)}
+				<div role="group" aria-label={label || undefined}>
+					<div class="device-button-group-label text-dark {label ? '' : 'invisible'}">
+						{label || "·"}
+					</div>
+					<div class="flex items-start gap-x-3 @2xl-gap-x-4">{@render body()}</div>
+				</div>
+			{/snippet}
+			{#snippet gainGroup()}
+				{@render knob("Gain", head.gain, (v) => amp.setHead({ gain: v }))}
+			{/snippet}
+			{@render group("", gainGroup)}
+			{#snippet eqGroup()}
+				{@render knob("Bass", head.bass, (v) => amp.setHead({ bass: v }))}
+				{@render knob("Mids", head.mid, (v) => amp.setHead({ mid: v }))}
+				{#if model.switches.includes("midFreq")}
+					{@render knob("Mid Hz", head.midFreq, (v) => amp.setHead({ midFreq: Math.round(v) }), {
+						min: 0,
+						max: 4,
+						step: 1,
+						format: (v) => `${AMP_MID_FREQUENCIES[Math.round(v)]} Hz`,
+					})}
+				{/if}
+				{@render knob("Treble", head.treble, (v) => amp.setHead({ treble: v }))}
+			{/snippet}
+			{@render group("EQ", eqGroup)}
 			{#if model.hasReverb}
-				{@render knob("Reverb", head.reverb, (v) => amp.setHead({ reverb: v }))}
+				{#snippet reverbGroup()}
+					{@render knob("Level", head.reverb, (v) => amp.setHead({ reverb: v }))}
+				{/snippet}
+				{@render group("Reverb", reverbGroup)}
 			{/if}
 			{#if model.hasTremolo}
-				{@render knob("Trem depth", head.tremolo.depth, (v) => amp.setTremolo({ depth: v }))}
-				{@render knob("Trem speed", head.tremolo.rate, (v) => amp.setTremolo({ rate: v }), {
-					min: 0.5,
-					max: 12,
-					step: 0.1,
-					format: (v) => `${v.toFixed(1)} Hz`,
-				})}
+				{#snippet tremoloGroup()}
+					{@render knob("Depth", head.tremolo.depth, (v) => amp.setTremolo({ depth: v }))}
+					{@render knob("Speed", head.tremolo.rate, (v) => amp.setTremolo({ rate: v }), {
+						min: 0.5,
+						max: 12,
+						step: 0.1,
+						format: (v) => `${v.toFixed(1)} Hz`,
+					})}
+				{/snippet}
+				{@render group("Tremolo", tremoloGroup)}
 			{/if}
-			{@render knob("Master", head.master, (v) => amp.setHead({ master: v }))}
+			{#snippet outGroup()}
+				{@render knob("Presence", head.presence, (v) => amp.setHead({ presence: v }))}
+				<!-- Master pushes the power stage (sag and a softer clip); Output is the level into the room. -->
+				{@render knob("Master", head.power, (v) => amp.setHead({ power: v }))}
+				{@render knob("Output", head.master, (v) => amp.setHead({ master: v }))}
+			{/snippet}
+			{@render group("", outGroup)}
 		</div>
 		{#if sitePresets}
 			<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />

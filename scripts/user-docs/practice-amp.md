@@ -25,7 +25,7 @@ Choose **Guitar** or **Bass** and a head:
 
 A **Cabinet** menu beside the head (guitar heads) swaps the modelled cabinet for a captured one: impulse responses of a Marshall 4×12 with Greenbacks and a 4×12 with Vintage 30, Rockdriver and DV-77 speakers, through an SM57 or an e606, from Jester Dyne Productions. The choice is part of a preset.
 
-The knobs are an amp's: **Gain** (how hard the preamp is driven), **Bass**, **Mid** and **Treble**, **Presence**, **Power** (how hard the output stage is pushed: sag and a softer clip), **Reverb** and **Tremolo** on the heads that have them, and **Master**. Switching heads sets the knobs to that head's own starting point; the pedals stay as they were.
+The knobs are an amp's, in groups: **Gain** (how hard the preamp is driven); **EQ** with **Bass**, **Mids** (and **Mid Hz** on the bass heads) and **Treble**; **Reverb** and **Tremolo** (Depth and Speed) on the heads that have them; then **Presence**, **Master** (how hard the output stage is pushed: sag and a softer clip) and **Output**, the level into the room. Switching heads sets the knobs to that head's own starting point; the pedals stay as they were.
 
 ## The pedals
 

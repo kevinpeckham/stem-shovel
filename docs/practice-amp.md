@@ -494,3 +494,15 @@ we can wire that to the practice amp", and "but that signal is not dry".
   page had not).
 - Tested: `tests/e2e/amp.spec.ts` sets the source, switches on, plays a
   note on `__chordPiano`, and sees the amp's output meter move.
+
+## The knobs in groups (2026-10-11)
+
+Kevin's order, lined up as the piano's buttons are (the
+`device-button-group-label` style; an unlabelled group keeps an invisible
+label so its knobs sit level with the rest): Gain alone; **EQ** (Bass,
+Mids, Mid Hz on the bass heads, Treble); **Reverb** (Level) and
+**Tremolo** (Depth, Speed) where the head has them; then Presence,
+**Master** and **Output**. Two knobs were renamed to fit his list: the
+power stage's push, formerly Power, is Master (a Fender's master drives
+the power amp), and the final level, formerly Master, is Output; the
+schema's fields (`power`, `master`) and presets are unchanged.
