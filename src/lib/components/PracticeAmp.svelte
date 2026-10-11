@@ -482,6 +482,26 @@
 				</button>
 			{/if}
 		</div>
+		<!-- The jewel lamp (a classic combo's red pilot light): lit while the amp is on, a dark ruby otherwise. -->
+		<div class="self-center ml-1 @4xl-ml-3" title={amp.on ? "On" : "Off"}>
+			<div
+				class="w-50px h-50px rounded-full border-3 border-slate-900/80 shadow-[inset_0_2px_6px_rgba(0,0,0,0.6),0_1px_2px_rgba(255,255,255,0.15)] transition-all duration-300"
+				role="status"
+				aria-label={amp.on ? "The amp is on" : "The amp is off"}
+				style:background={amp.on
+					? "radial-gradient(circle at 35% 32%, rgba(255,235,235,0.9) 0%, #ff5a5a 18%, #e01212 45%, #8a0808 80%, #5a0404 100%)"
+					: "radial-gradient(circle at 35% 32%, rgba(255,255,255,0.14) 0%, #6b1414 22%, #3a0a0a 60%, #1e0505 100%)"}
+				style:box-shadow={amp.on
+					? "inset 0 2px 6px rgba(0,0,0,0.35), 0 0 18px 6px rgba(255,64,64,0.55), 0 0 2px 1px rgba(255,120,120,0.8)"
+					: "inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 2px rgba(255,255,255,0.15)"}
+			>
+				<!-- The jewel's facets: a faint pinwheel over the glass. -->
+				<div
+					class="w-full h-full rounded-full opacity-35"
+					style="background: repeating-conic-gradient(from 0deg, rgba(255,255,255,0.22) 0deg 12deg, rgba(0,0,0,0.12) 12deg 24deg);"
+				></div>
+			</div>
+		</div>
 	</div>
 
 	<!-- the readout -->
