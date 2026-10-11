@@ -64,6 +64,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   a square tremolo on the clean head; a tuner panel on the looper, and the
   looper's and the recorder's tuners reading the amp's input while it is on.
 
+### Fixed
+
+- **A hot MP3 could not be uploaded as a stem or a mix**: it decodes past
+  full scale and the server refused its peaks ("peaks (0..1) are
+  required"); the peaks are clamped at 1 where they are computed.
+
 ### Changed
 
 - **The song page's Downloads menu** names the stem mixes as such: "Original

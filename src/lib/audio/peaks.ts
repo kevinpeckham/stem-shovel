@@ -26,6 +26,8 @@ export function computePeaks(buffer: AudioBuffer, bins = PEAK_BINS): Float32Arra
 			if (max > peaks[bin]) peaks[bin] = max;
 		}
 	}
+	// A hot MP3 decodes past full scale (the codec's overshoot); the waveform draws at 1 and the server keeps peaks in 0..1 (Kevin: a mix refused as "peaks (0..1) are required").
+	for (let bin = 0; bin < bins; bin++) if (peaks[bin]! > 1) peaks[bin] = 1;
 	return peaks;
 }
 

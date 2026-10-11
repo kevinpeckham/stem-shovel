@@ -15,6 +15,10 @@ describe("computePeaks", () => {
 		const mono = fakeAudioBuffer([new Float32Array([0.5, 0.25, 1])]);
 		expect(round(computePeaks(mono, 6))).toEqual([0, 0.5, 0, 0.25, 0, 1]);
 	});
+	it("clamps a bin at full scale: a hot MP3 decodes past 1 and the server keeps peaks in 0..1", () => {
+		const hot = fakeAudioBuffer([new Float32Array([0.5, 1.4, -1.2, 0.9])]);
+		expect(round(computePeaks(hot, 2))).toEqual([1, 1]);
+	});
 	it("defaults to 1024 bins", () => {
 		expect(computePeaks(fakeAudioBuffer([new Float32Array(8)]))).toHaveLength(1024);
 	});
