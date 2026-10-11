@@ -4,6 +4,10 @@
 		analyse,
 		combineFeatures,
 		extractFeatures,
+		combineKeySegments,
+		detectKeys,
+		extractKeySegments,
+		type KeyChange,
 		type Detection,
 	} from "#lib/audio/analysis.js";
 	import { loadDocMono, saveDocMono, DEFAULT_DOC_MONO } from "#lib/utils/docMonoPreference.js";
@@ -71,6 +75,7 @@
 		type SongChangeKind,
 	} from "#lib/constants/songChanges.js";
 	import { formatSongChange } from "#lib/utils/formatSongChange.js";
+	import { keyLine } from "#lib/utils/keyLine.js";
 	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemState } from "#lib/audio/types.js";
@@ -252,10 +257,17 @@
 
 	// "Written by X, first written June 2019" under the title.
 	// Shown in the song-info popover: the song's fixed tempo, key and meter, and its version.
+	// The key names every key the song moves through ("C major (also A♭ major, F major)", a user's wording).
 	let metaLine = $derived(
-		SONG_CHANGE_KINDS.map((kind) => data.song.changes.find((c) => c.kind === kind))
-			.filter((c) => c !== undefined)
-			.map(formatSongChange)
+		SONG_CHANGE_KINDS.map((kind) =>
+			kind === "key"
+				? keyLine(data.song.changes)
+				: (() => {
+						const c = data.song.changes.find((x) => x.kind === kind);
+						return c ? formatSongChange(c) : "";
+					})(),
+		)
+			.filter((line) => line !== "")
 			.join(" · "),
 	);
 	// Credits by role (song_credit rows with their artist).
@@ -996,19 +1008,45 @@
 	let scanning = $state(false);
 	let scanResult = $state<{
 		detection: Detection;
+		/** The keys through the song, a change each (one for a song that stays put). */
+		keys: KeyChange[];
 		summary: string;
 		current: string;
 		applied: boolean;
 	} | null>(null);
-	function detectionValues(d: Detection): { kind: SongChangeKind; value: string }[] {
+	/** What a scan would write: tempo and time signature at 0:00, and the keys where each begins. */
+	function scanChanges(d: Detection, keys: KeyChange[]): SongChange[] {
 		return [
-			...(d.tempo.bpm ? [{ kind: "tempo" as const, value: String(Math.round(d.tempo.bpm)) }] : []),
-			...(d.key.value ? [{ kind: "key" as const, value: d.key.value }] : []),
-			...(d.tempo.bpm ? [{ kind: "meter" as const, value: d.meter.value }] : []),
+			...(d.tempo.bpm
+				? [{ kind: "tempo" as const, start: 0, value: String(Math.round(d.tempo.bpm)) }]
+				: []),
+			...keys.map((k) => ({ kind: "key" as const, start: k.start, value: k.value })),
+			...(d.tempo.bpm ? [{ kind: "meter" as const, start: 0, value: d.meter.value }] : []),
 		];
 	}
-	const describe = (rows: { kind: SongChangeKind; value: string }[]) =>
-		rows.map((r) => (r.kind === "tempo" ? `${r.value} bpm` : r.value)).join(" · ") || "nothing";
+	/** "120 bpm · C major (also A♭ major) · 4/4", one entry per kind. */
+	const describe = (rows: SongChange[]) =>
+		SONG_CHANGE_KINDS.map((kind) => {
+			if (kind === "key") return keyLine(rows);
+			const c = rows.find((r) => r.kind === kind && r.start === 0);
+			return c ? formatSongChange(c) : "";
+		})
+			.filter((x) => x !== "")
+			.join(" · ") || "nothing";
+	/**
+	 * Where the keys are read: at the song's sections when it has two or more
+	 * (a key change lands on a section line as a rule), else every half
+	 * minute, which finds a change in a song without sections at the cost of
+	 * a coarser start.
+	 */
+	function keyBoundaries(): number[] {
+		const sections = data.song.sections.map((s) => s.start).filter((t) => t > 0);
+		if (sections.length >= 1 && data.song.sections.length >= 2) return [0, ...sections];
+		const duration = playerEngine?.duration ?? 0;
+		const out = [0];
+		for (let t = 30; t < duration - 15; t += 30) out.push(t);
+		return out;
+	}
 	async function scanStems() {
 		if (!playerEngine || playerEngine.status !== "ready") return;
 		scanning = true;
@@ -1016,29 +1054,32 @@
 		try {
 			// Yield first so the button repaints; the analysis blocks the thread for a moment.
 			await new Promise((r) => setTimeout(r, 30));
-			const combined = combineFeatures(playerEngine.buffers().map((b) => extractFeatures(b)));
+			const buffers = playerEngine.buffers();
+			const combined = combineFeatures(buffers.map((b) => extractFeatures(b)));
 			if (!combined) return;
 			const detection = analyse(combined);
-			const values = detectionValues(detection);
+			// The key per section (or half minute), so a song that moves through keys gets each where it begins (docs/audio-engine.md, "Several keys").
+			const boundaries = keyBoundaries();
+			const keys = detectKeys(
+				combineKeySegments(buffers.map((b) => extractKeySegments(b, boundaries))),
+			);
+			const values = scanChanges(detection, keys);
 			if (values.length === 0) {
 				notify("Nothing could be detected from these stems", { kind: "info" });
 				return;
 			}
-			const existing = data.song.changes.filter((c) => c.start === 0);
-			if (existing.length === 0) {
-				await saveChanges({
-					id: data.song.id,
-					changes: [...data.song.changes, ...values.map((r) => ({ ...r, start: 0 }))],
-				});
+			if (data.song.changes.length === 0) {
+				await saveChanges({ id: data.song.id, changes: values });
 				await refreshAll();
 				resetChangeRows();
-				scanResult = { detection, summary: describe(values), current: "", applied: true };
+				scanResult = { detection, keys, summary: describe(values), current: "", applied: true };
 				notify("Tempo, key and time signature set from the stems");
 			} else {
 				scanResult = {
 					detection,
+					keys,
 					summary: describe(values),
-					current: describe(existing.map((c) => ({ kind: c.kind, value: c.value }))),
+					current: describe(data.song.changes),
 					applied: false,
 				};
 			}
@@ -1197,14 +1238,14 @@
 	}
 	async function replaceFromScan() {
 		if (!scanResult) return;
-		const values = detectionValues(scanResult.detection);
+		const values = scanChanges(scanResult.detection, scanResult.keys);
 		const replaced = new Set(values.map((r) => r.kind));
-		const kept = data.song.changes.filter((c) => !(c.start === 0 && replaced.has(c.kind)));
+		// The scan's keys cover the whole song, so every key change goes; tempo and meter only at 0:00, as before.
+		const kept = data.song.changes.filter(
+			(c) => !(replaced.has(c.kind) && (c.kind === "key" || c.start === 0)),
+		);
 		try {
-			await saveChanges({
-				id: data.song.id,
-				changes: [...kept, ...values.map((r) => ({ ...r, start: 0 }))],
-			});
+			await saveChanges({ id: data.song.id, changes: [...kept, ...values] });
 			await refreshAll();
 			resetChangeRows();
 			notify("Tempo, key and time signature replaced from the stems");

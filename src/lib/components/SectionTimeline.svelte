@@ -65,6 +65,13 @@
 		}),
 	);
 	let currentIndex = $derived(blocks.findLastIndex((b) => engine.position >= b.start) ?? -1);
+	/** A song that moves through keys lists them all, in order, the one in force bright and the rest dim (Kevin): a short stretch's key is never hidden. */
+	let keyList = $derived.by(() => {
+		const keys = changes.filter((c) => c.kind === "key").sort((a, b) => a.start - b.start);
+		if (keys.length < 2) return [];
+		const active = keys.findLast((c) => engine.position >= c.start) ?? keys[0];
+		return keys.map((c) => ({ ...c, active: c === active }));
+	});
 </script>
 
 <div
@@ -73,10 +80,23 @@
 	aria-label="Song sections"
 >
 	<!-- <div class="font-500 mb-2 opacity-90">Current Section:</div> -->
-	<div class="flex gap-2 w-full text-14px opacity-95 leading-snug">
+	<div class="grid gap-1 w-full text-14px opacity-95 leading-snug">
 		{#if currentIndex >= 0}
-			<div class="opacity-80">section:</div>
-			<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
+			<div class="flex gap-2">
+				<div class="opacity-80">section:</div>
+				<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
+			</div>
+		{/if}
+		{#if keyList.length > 0}
+			<div class="flex flex-wrap gap-x-2 text-13px" aria-label="Keys">
+				<span class="opacity-80">key:</span>
+				{#each keyList as k (k.start)}
+					<span
+						class={k.active ? "font-600 text-neutral-100" : "opacity-45"}
+						title="{k.value} from {at(k.start)}">{k.value}</span
+					>
+				{/each}
+			</div>
 		{/if}
 	</div>
 

@@ -403,6 +403,92 @@ export function detectKey(chroma: Float32Array, bassChroma?: Float32Array): Dete
 	return { value: first.value, confidence: Math.max(0, Math.min(1, (first.r - second.r) * 4)) };
 }
 
+/** The chroma of one stretch of a song, for a key of its own (docs/audio-engine.md, "Several keys"). */
+export interface KeySegment {
+	/** Seconds. */
+	start: number;
+	chroma: Float32Array;
+	bassChroma: Float32Array;
+}
+
+/**
+ * Chroma per stretch of the whole buffer, the stretches starting at
+ * `boundaries` (seconds, the first at 0: the song's sections, or windows
+ * where it has none), so each can have a key of its own. The whole
+ * length, not the first 90 s the tempo looks at.
+ */
+export function extractKeySegments(buffer: AudioBuffer, boundaries: number[]): KeySegment[] {
+	const sr = buffer.sampleRate;
+	const mono = new Float32Array(buffer.length);
+	for (let c = 0; c < buffer.numberOfChannels; c++) {
+		const data = buffer.getChannelData(c);
+		for (let i = 0; i < buffer.length; i++) mono[i] += data[i] / buffer.numberOfChannels;
+	}
+	const starts = [...new Set([0, ...boundaries])].sort((a, b) => a - b);
+	return starts.map((start, i) => {
+		const from = Math.min(mono.length, Math.max(0, Math.floor(start * sr)));
+		const to =
+			i + 1 < starts.length ? Math.min(mono.length, Math.floor(starts[i + 1]! * sr)) : mono.length;
+		const slice = mono.subarray(from, to);
+		const chroma = new Float32Array(12);
+		const bassChroma = new Float32Array(12);
+		if (slice.length >= CHROMA_FRAME * 2) {
+			chromaOf(slice, sr, chroma, 110, 4200, CHROMA_FRAME);
+			chromaOf(slice, sr, bassChroma, 55, 260, CHROMA_FRAME * 2);
+		}
+		return { start, chroma, bassChroma };
+	});
+}
+
+/** Sums several stems' segments (the same boundaries) into one set, the mix's. */
+export function combineKeySegments(list: KeySegment[][]): KeySegment[] {
+	const first = list[0];
+	if (!first) return [];
+	return first.map((seg, i) => {
+		const chroma = new Float32Array(12);
+		const bassChroma = new Float32Array(12);
+		for (const stem of list) {
+			const s = stem[i];
+			if (!s) continue;
+			for (let c = 0; c < 12; c++) {
+				chroma[c] += s.chroma[c]!;
+				bassChroma[c] += s.bassChroma[c]!;
+			}
+		}
+		return { start: seg.start, chroma, bassChroma };
+	});
+}
+
+export interface KeyChange {
+	start: number;
+	value: string;
+	confidence: number;
+}
+
+/**
+ * A key per segment, as changes: the first segment's key at 0, then a
+ * change wherever a segment's key differs from the one in force and the
+ * profile is sure enough of it (`minConfidence`; a doubtful segment keeps
+ * the key in force rather than adding a change nobody meant). A song that
+ * stays in one key comes back as one change.
+ */
+export function detectKeys(segments: KeySegment[], minConfidence = 0.12): KeyChange[] {
+	const out: KeyChange[] = [];
+	for (const seg of segments) {
+		const key = detectKey(seg.chroma, seg.bassChroma);
+		if (!key.value) continue;
+		const last = out.at(-1);
+		if (!last) {
+			out.push({ start: seg.start, value: key.value, confidence: key.confidence });
+			continue;
+		}
+		if (key.value === last.value) continue;
+		if (key.confidence < minConfidence) continue;
+		out.push({ start: seg.start, value: key.value, confidence: key.confidence });
+	}
+	return out;
+}
+
 export function analyse(features: Features): Detection {
 	const tempo = detectTempo(features.onset, features.fps);
 	return {

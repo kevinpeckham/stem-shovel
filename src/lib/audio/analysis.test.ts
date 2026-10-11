@@ -1,6 +1,15 @@
 import { fakeAudioBuffer } from "../../../tests/helpers/fakeAudioBuffer";
 import { describe, expect, test } from "vite-plus/test";
-import { analyse, combineFeatures, detectKey, extractFeatures, fft } from "./analysis";
+import {
+	analyse,
+	combineFeatures,
+	combineKeySegments,
+	detectKey,
+	detectKeys,
+	extractFeatures,
+	extractKeySegments,
+	fft,
+} from "./analysis";
 
 const SR = 32_000;
 
@@ -103,5 +112,37 @@ describe("key", () => {
 	});
 	test("silence is no key", () => {
 		expect(detectKey(new Float32Array(12)).value).toBe("");
+	});
+});
+
+describe("several keys", { timeout: 30_000 }, () => {
+	/** Two chords one after the other in one buffer: C major for the first half, then E♭ major. */
+	function twoChords(): AudioBuffer {
+		const seconds = 12;
+		const data = new Float32Array(seconds * SR);
+		const half = (seconds / 2) * SR;
+		const play = (midi: number[], from: number, to: number) => {
+			for (const m of midi) {
+				const f = 440 * 2 ** ((m - 69) / 12);
+				for (let i = from; i < to; i++) data[i] += 0.2 * Math.sin((2 * Math.PI * f * i) / SR);
+			}
+		};
+		play([60, 64, 67, 72, 76], 0, half);
+		play([63, 67, 70, 75, 79], half, data.length);
+		return fakeAudioBuffer([data], SR);
+	}
+	test("a key per section: C major then E♭ major, and one change when the halves are one section", () => {
+		const segments = combineKeySegments([extractKeySegments(twoChords(), [0, 6])]);
+		expect(segments.map((s) => s.start)).toEqual([0, 6]);
+		const keys = detectKeys(segments);
+		expect(keys.map((k) => [k.start, k.value])).toEqual([
+			[0, "C major"],
+			[6, "E♭ major"],
+		]);
+		// The same halves split into four: the repeated keys merge into the same two changes.
+		expect(detectKeys(extractKeySegments(twoChords(), [0, 3, 6, 9])).map((k) => k.value)).toEqual([
+			"C major",
+			"E♭ major",
+		]);
 	});
 });

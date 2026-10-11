@@ -57,4 +57,35 @@ describe("SectionTimeline", () => {
 		expect(markers[0].className).not.toContain("border-accent");
 		expect(screen.getByRole("group", { name: "Song sections" })).toHaveTextContent("140 bpm");
 	});
+	test("a song in several keys lists them all, the one in force bright and the rest dim", () => {
+		const changes: SongChange[] = [
+			...fixed,
+			{ kind: "key", start: 0, value: "C major" },
+			{ kind: "key", start: 60, value: "A♭ major" },
+			{ kind: "key", start: 120, value: "F major" },
+		];
+		render(SectionTimeline, {
+			props: { engine: fakeEngine({ position: 70 }), sections: [], changes },
+		});
+		const list = screen.getByLabelText("Keys");
+		expect(Array.from(list.querySelectorAll("span")).map((el) => el.textContent?.trim())).toEqual([
+			"key:",
+			"C major",
+			"A♭ major",
+			"F major",
+		]);
+		const bright = list.querySelector(".font-600");
+		expect(bright?.textContent).toBe("A♭ major");
+		expect(list.querySelectorAll(".opacity-45")).toHaveLength(2);
+	});
+	test("one key lists nothing: the header names it", () => {
+		render(SectionTimeline, {
+			props: {
+				engine: fakeEngine(),
+				sections: [],
+				changes: [...fixed, { kind: "key", start: 0, value: "D major" }],
+			},
+		});
+		expect(screen.queryByLabelText("Keys")).toBeNull();
+	});
 });

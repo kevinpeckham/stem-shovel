@@ -287,3 +287,33 @@ audio capture", seen on 2026-09-19 after playing a song and then opening
 the recorder in the same tab), and either page may follow the other in one
 document. `src/lib/utils/audioSession.ts` is the accessor. Nothing detects
 the switch itself: no web API exposes it.
+
+## Several keys (2026-10-11)
+
+A feature request (2026-10-07: a song in C that passes through A♭, F and
+E♭; "I'd like it if I could override the detected key with something
+like `C major (also A♭ major, F major, E♭ major)`") and Kevin's note
+that the timeline showed only the key in force. The data model already
+kept keys as timed changes; what was missing was a detector for more
+than one and a display that names them all.
+
+- `extractKeySegments(buffer, boundaries)` in `src/lib/audio/analysis.ts`
+  takes the chroma of each stretch between boundaries over the whole
+  buffer (the tempo looks at the first 90 s; the key looks at all of it),
+  `combineKeySegments` sums the stems', and `detectKeys` runs the
+  Krumhansl-Kessler match per segment and keeps a change wherever the
+  key differs from the one in force with a margin over 0.12, so a
+  doubtful stretch never adds a change nobody meant. Tested with two
+  chords in one buffer: C major then E♭ major, and repeated halves merge.
+- **Scan stems** (song settings) reads the keys at the song's sections
+  when it has two or more, else every half minute, writes a key change
+  where each begins (replacing every earlier key change, tempo and meter
+  only at 0:00 as before) and summarises as `keyLine()`
+  (`src/lib/utils/keyLine.ts`): the starting key, then "(also …)" with
+  the others in order of appearance. The song-info popover's line uses
+  the same. Upload-time detection (one batch of stems, no sections yet)
+  still reports one key.
+- The section timeline lists every key under the current section, the
+  one in force bright and the rest dim, beside the key lane's markers
+  (whose labels clip in a short stretch).
+- The override is the rows in settings: add, move or remove key rows.

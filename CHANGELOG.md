@@ -32,6 +32,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
+- **Several keys in a song**: Scan stems reads the key per section (or per
+  half minute without sections) and writes a key change where each
+  begins; the song's key reads "C major (also A♭ major, F major)", and the
+  section timeline lists every key with the one in force bright and the
+  rest dim (a feature request, and Kevin's note that only the key in force
+  showed). `extractKeySegments` / `detectKeys` in analysis.ts, `keyLine`.
 - **The Practice Amp's knobs in labelled groups**: Gain; EQ (Bass, Mids,
   Treble); Reverb; Tremolo (Depth, Speed); then Presence, Master (the
   power stage's push, formerly Power) and Output (the level, formerly
