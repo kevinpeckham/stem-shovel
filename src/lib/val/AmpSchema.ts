@@ -144,10 +144,15 @@ export const AmpPreferencesSchema = v.object({
 	/** The input source: the line in (an interface), the microphone input (an instrument into the jack, an acoustic through the mic), or the chord player's dry voices (a demo without an instrument plugged in). */
 	source: v.optional(v.picklist(["line", "mic", "chords"]), "line"),
 	/** The input trim in dB, per input mode. */
-	trimDb: v.optional(v.object({ instrument: range(-12, 24, 12), line: range(-12, 24, 0) }), () => ({
-		instrument: 12,
-		line: 0,
-	})),
+	/** The input trim in dB: per input mode for a jack, and the chord player's own (its sampled chords sum loud: quiet by default). */
+	trimDb: v.optional(
+		v.object({
+			instrument: range(-12, 24, 12),
+			line: range(-12, 24, 0),
+			chords: range(-24, 24, -12),
+		}),
+		() => ({ instrument: 12, line: 0, chords: -12 }),
+	),
 	guitar: v.optional(AmpRigSchema, () => v.parse(AmpRigSchema, { model: "clean" })),
 	bass: v.optional(AmpRigSchema, () => v.parse(AmpRigSchema, { model: "fridge" })),
 });

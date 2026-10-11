@@ -7,7 +7,7 @@ describe("ampPreferences", () => {
 		expect(p.instrument).toBe("guitar");
 		expect(p.guitar.model).toBe("clean");
 		expect(p.bass.model).toBe("fridge");
-		expect(p.trimDb).toEqual({ instrument: 12, line: 0 });
+		expect(p.trimDb).toEqual({ instrument: 12, line: 0, chords: -12 });
 		expect(defaultRig("tweed").head.gain).toBe(0.55);
 		expect(defaultRig("tweed").pedals.delay.analog).toBe(true);
 	});

@@ -411,20 +411,28 @@ export class PianoEngine {
 	 * built here if it is not yet.
 	 */
 	#dryTap: AudioNode | null = null;
+	/** The tap's level: the Volume slider, which otherwise sits on the master after the effects and would not reach the amp. */
+	#dryGain: GainNode | null = null;
 	tapDry(node: AudioNode | null) {
 		const ctx = this.#graph();
 		const fx = this.#fx!;
 		if (this.#dryTap) {
 			try {
-				fx.input.disconnect(this.#dryTap);
+				fx.input.disconnect(this.#dryGain!);
+				this.#dryGain!.disconnect();
 			} catch {
 				// Already gone with its context.
 			}
 			this.#dryTap = null;
+			this.#dryGain = null;
 		}
 		if (node) {
-			fx.input.connect(node);
+			const gain = ctx.createGain();
+			gain.gain.value = this.volume;
+			fx.input.connect(gain);
+			gain.connect(node);
 			this.#dryTap = node;
+			this.#dryGain = gain;
 			try {
 				fx.master.disconnect(ctx.destination);
 			} catch {
@@ -736,6 +744,7 @@ export class PianoEngine {
 		if (!Number.isFinite(v)) return;
 		this.volume = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
 		this.#fx?.update({ volume: this.volume });
+		this.#dryGain?.gain.setTargetAtTime(this.volume, this.#ctx?.currentTime ?? 0, 0.02);
 		this.#save();
 	}
 	setReverb(v: number) {

@@ -234,15 +234,15 @@
 		{#if !amp.fromChords && inputSources.labels[jack]}
 			<p class="text-12px opacity-70">Open: {inputSources.labels[jack]}.</p>
 		{/if}
-		<div class="border-t border-current/10 pt-3 grid gap-3 {amp.fromChords ? 'hidden' : ''}">
-			<div class="flex items-center gap-2">
+		<div class="border-t border-current/10 pt-3 grid gap-3">
+			<div class="flex items-center gap-2 {amp.fromChords ? 'hidden' : ''}">
 				<span class="device-button-label !mb-0">Plugged in</span>
 				<InfoTip
 					label="Instrument or line"
 					text="A guitar's pickup wants a high-impedance instrument input; a computer's microphone jack is not one, so an instrument plugged straight in is quieter and a little duller than through an audio interface or a guitar-to-USB adapter, which have the right input. The browser cannot change the jack: this switch sets the starting trim (12 dB more for an instrument) and what the meter calls a good level."
 				/>
 			</div>
-			<div class="flex gap-1" role="group" aria-label="Plugged in">
+			<div class="flex gap-1 {amp.fromChords ? 'hidden' : ''}" role="group" aria-label="Plugged in">
 				{#each [["instrument", "Instrument"], ["line", "Line level"]] as const as [id, label] (id)}
 					<button
 						class="device-button-xs px-3 {amp.inputMode === id ? 'text-accent' : ''}"
@@ -257,7 +257,7 @@
 				<input
 					class="w-full accent-maximumYellow"
 					type="range"
-					min="-12"
+					min={amp.fromChords ? -24 : -12}
 					max="24"
 					step="1"
 					value={amp.trimDb}
@@ -274,19 +274,27 @@
 				>
 					{amp.settingLevel ? "Listening… play now" : "Set level"}
 				</button>
-				<button
-					class="device-button-xs px-3"
-					type="button"
-					disabled={!amp.on || inputSources.calibrating}
-					onclick={calibrate}
-				>
-					{inputSources.calibrating ? "Listening…" : "Calibrate latency"}
-				</button>
+				{#if !amp.fromChords}
+					<button
+						class="device-button-xs px-3"
+						type="button"
+						disabled={!amp.on || inputSources.calibrating}
+						onclick={calibrate}
+					>
+						{inputSources.calibrating ? "Listening…" : "Calibrate latency"}
+					</button>
+				{/if}
 			</div>
 			<p class="text-12px opacity-70">
-				Set level listens for three seconds and sets the trim so your loudest notes land with
-				headroom. Calibrate plays three clicks through the speakers and times them with the
-				microphone.
+				{#if amp.fromChords}
+					The chord player's sampled notes are loud and a chord sums louder: the trim starts at −12
+					dB. Set level listens for three seconds and sets it so your loudest chord lands with
+					headroom; the chord player's Volume works too.
+				{:else}
+					Set level listens for three seconds and sets the trim so your loudest notes land with
+					headroom. Calibrate plays three clicks through the speakers and times them with the
+					microphone.
+				{/if}
 			</p>
 		</div>
 	</div>
@@ -495,7 +503,7 @@
 							: `${amp.source === "line" ? "line in" : "microphone input"} · ${amp.inputMode} · trim ${trimText(amp.trimDb)}`}</span
 					>
 				{:else if amp.fromChords}
-					<span>Chord player · dry in, the amp out · {amp.model.name}</span>
+					<span>Chord player · dry in, the amp out · trim {trimText(amp.trimDb)}</span>
 				{:else}
 					<span
 						class={verdict.tone === "good"

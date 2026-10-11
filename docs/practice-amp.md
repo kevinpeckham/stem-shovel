@@ -449,7 +449,13 @@ we can wire that to the practice amp", and "but that signal is not dry".
   puts the master back. No jack is opened; Set level, Calibrate and the
   device menu hide. The amp's instrument follows the chord player's
   sound as it switches on (Electric Bass → the bass heads, anything else
-  → guitar).
+  → guitar). Kevin heard clipping with the chord player's Volume and the
+  amp's Gain both down: the Volume slider sits on the piano's master,
+  after the tap, and a loud sampled chord sums past full scale into a
+  chain that expects peaks near half. So the tap carries a gain that
+  follows the Volume slider, and the chords source has a trim of its own
+  (`trimDb.chords`, −24 to +24 dB, −12 to start) through a gain the amp
+  owns, so Set level works for it as for a jack.
 - **A dry electric guitar**: FreePats' Electric Guitar FSBS (direct), a
   Fender's raw bridge-pickup signal recorded through an instrument
   input, CC0; nineteen loud takes C2 to C#6 as `static/kits/eguitar`

@@ -155,7 +155,9 @@ class AmpEngine {
 		return this.prefs.inputMode;
 	}
 	get trimDb(): number {
-		return this.prefs.trimDb[this.prefs.inputMode];
+		return this.prefs.source === "chords"
+			? this.prefs.trimDb.chords
+			: this.prefs.trimDb[this.prefs.inputMode];
 	}
 	/** The context the amp plays in, for the tuner and a host. */
 	get context(): AudioContext | null {
@@ -195,7 +197,12 @@ class AmpEngine {
 			// The chord player's voices, dry, in this context (hosted here if they were not), and the amp's instrument after its sound.
 			chordPiano.hostContext(this.#ctx);
 			this.#chordsTapped = true;
-			chordPiano.tapDry(this.#chain!.input);
+			// Through the amp's own trim (the source's, −12 dB to start: a sampled chord sums loud), so Set level works here too.
+			this.#chordsGain?.disconnect();
+			this.#chordsGain = this.#ctx.createGain();
+			this.#chordsGain.gain.value = 10 ** (this.trimDb / 20);
+			this.#chordsGain.connect(this.#chain!.input);
+			chordPiano.tapDry(this.#chordsGain);
 			const wants: AmpInstrument = chordPiano.instrument === "bass" ? "bass" : "guitar";
 			if (wants !== this.prefs.instrument) this.setInstrument(wants);
 			void this.#checkOutputs();
@@ -210,11 +217,14 @@ class AmpEngine {
 		return ok;
 	}
 	#chordsTapped = false;
+	#chordsGain: GainNode | null = null;
 	/** The chord player back on the speakers. */
 	#releaseChords() {
 		if (!this.#chordsTapped) return;
 		this.#chordsTapped = false;
 		chordPiano.tapDry(null);
+		this.#chordsGain?.disconnect();
+		this.#chordsGain = null;
 	}
 	/** The inputs module in the amp's own context. Its own monitor would double the dry signal under the amp: it plays into a muted gain. */
 	#attachInputs(ctx: AudioContext) {
@@ -391,10 +401,17 @@ class AmpEngine {
 			inputSources.setInputGainDb(this.prefs.source, this.trimDb);
 	}
 	setTrimDb(db: number) {
+		if (this.prefs.source === "chords") {
+			const v = Math.max(-24, Math.min(24, Math.round(db)));
+			this.prefs.trimDb.chords = v;
+			this.#save();
+			this.#chordsGain?.gain.setTargetAtTime(10 ** (v / 20), this.#ctx?.currentTime ?? 0, 0.02);
+			return;
+		}
 		const v = Math.max(-12, Math.min(24, Math.round(db)));
 		this.prefs.trimDb[this.prefs.inputMode] = v;
 		this.#save();
-		if (this.prefs.source !== "chords") inputSources.setInputGainDb(this.prefs.source, v);
+		inputSources.setInputGainDb(this.prefs.source, v);
 	}
 	/**
 	 * Set level: listens for three seconds of playing and sets the trim so
