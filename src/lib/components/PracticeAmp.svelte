@@ -169,7 +169,7 @@
 			min={opts.min ?? 0}
 			max={opts.max ?? 1}
 			step={opts.step ?? 0.01}
-			size={40}
+			size={56}
 			{label}
 			format={opts.format ?? pct}
 			{oninput}
