@@ -1859,7 +1859,7 @@
 		title="Practice amp"
 		storageKey="stemshovel.studio.amp-panel"
 		width={900}
-		height={440}
+		height={600}
 		onminimise={() => toggleAmp()}
 	>
 		<div class="p-2">

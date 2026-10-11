@@ -3304,7 +3304,7 @@
 			title="Practice amp"
 			storageKey="stemshovel.song.amp-panel"
 			width={900}
-			height={440}
+			height={600}
 			onminimise={() => (ampOpen = false)}
 		>
 			{#snippet controls()}
