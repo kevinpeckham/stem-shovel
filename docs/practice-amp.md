@@ -300,7 +300,10 @@ clipper). The amp's own stages are in `ampStages.ts`:
   tests), so phase 2's "real impulse" is already the shape of it, with
   no licence to read. A licensed pack can drop in later as a file;
 - the **spring** (`utils/springImpulse.ts`): a train of chirps that die
-  over a second and a half, two channels with their own jitter;
+  over a second and a half, two channels with their own jitter, at unit
+  energy (peak-scaled it added twelve times the dry's level and the knob
+  was wet and clipping by halfway, Kevin, 2026-10-11); the wet follows
+  the knob to the power of 1.5, up to 0.8;
 - the **gate**: an AudioWorklet (`static/worklets/amp-gate.js`, since the
   punch list of 2026-10-10): the louder channel's envelope against the
   threshold with 3 dB of hysteresis, the gate opening over Attack,

@@ -337,7 +337,7 @@ export function createCabinetStage(ctx: BaseAudioContext): CabinetStage {
 	};
 }
 
-/** The spring reverb: the dry through, the spring's impulse (utils/springImpulse.ts) at the head's Reverb beside it; shut on a head without one. */
+/** The spring reverb: the dry through, the spring's impulse (utils/springImpulse.ts, unit energy) at the head's Reverb beside it with a taper; shut on a head without one. */
 export function createSpringStage(ctx: BaseAudioContext): AmpStage {
 	const input = ctx.createGain();
 	const output = ctx.createGain();
@@ -358,7 +358,8 @@ export function createSpringStage(ctx: BaseAudioContext): AmpStage {
 		input,
 		output,
 		update(model, head, tau) {
-			set(ctx, wet.gain, model.hasReverb ? head.reverb * 0.8 : 0, tau);
+			// The impulse is at unit energy, so this is the wet against the dry: a gentle taper, −23 dB at the knob's 2, −11 dB at 5, −2 dB at 10.
+			set(ctx, wet.gain, model.hasReverb ? 0.8 * head.reverb ** 1.5 : 0, tau);
 		},
 	};
 }

@@ -5,7 +5,11 @@
  * after, the "boing"), repeating every 28 ms or so and dying over a
  * second and a half, with a diffuse tail under them. Two channels with
  * their own jitter, so the stereo tank is wider than a mono one. Scaled
- * so the loudest echo peaks at 0.5; a wet gain sets the level.
+ * to unit energy (the sum of the squares is 1), so a convolution with it
+ * neither raises nor drops a sustained note's level: the wet gain alone
+ * sets how much spring there is (peak-scaled, the dense train of echoes
+ * came out twelve times louder than the dry, measured, and the knob was
+ * wet and clipping by halfway; Kevin).
  */
 const ECHO_SECONDS = 0.028;
 const CHIRP_SECONDS = 0.006;
@@ -53,9 +57,9 @@ export function springImpulseSamples(
 			low += (white - low) * 0.12;
 			out[i]! += 0.25 * low * Math.exp(-t / DECAY_SECONDS) * Math.min(1, t / 0.03);
 		}
-		let peak = 0;
-		for (const x of out) peak = Math.max(peak, Math.abs(x));
-		if (peak > 0) for (let i = 0; i < n; i++) out[i]! *= 0.5 / peak;
+		let energy = 0;
+		for (const x of out) energy += x * x;
+		if (energy > 0) for (let i = 0; i < n; i++) out[i]! /= Math.sqrt(energy);
 		channels.push(out);
 	}
 	return [channels[0]!, channels[1]!];
