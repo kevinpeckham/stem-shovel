@@ -2,6 +2,9 @@
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
 	import { metronome } from "#lib/audio/metronome.svelte.js";
+	import { chordPiano } from "#lib/audio/piano.svelte.js";
+	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
+	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
 	import DrumMachine from "#lib/components/DrumMachine.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import Metronome from "#lib/components/Metronome.svelte";
@@ -20,13 +23,25 @@
 	let { data } = $props();
 	// The dev server only: the engine on the window, so a browser test can read its state and render the chain.
 	if (import.meta.env.DEV && typeof window !== "undefined")
-		Object.assign(window, { __amp: amp, __inputs: inputSources, __metronome: metronome });
+		Object.assign(window, {
+			__amp: amp,
+			__inputs: inputSources,
+			__metronome: metronome,
+			__chordPiano: chordPiano,
+			__chords: chordPlayer,
+		});
 
 	let tuner = $state<Tuner | null>(null);
 	let tunerOpen = $state(false);
 	let metronomeOpen = $state(false);
 	/** The drum machine's panel: a beat to play to, in the amp's own context (hosted by the engine), so it shares the output. */
 	let drumsOpen = $state(false);
+	/** The chord player's panel: the amp's demo input, its dry voices through the chain (docs/practice-amp.md, "Demo through the chord player"). */
+	let chordsOpen = $state(false);
+	function toggleChords() {
+		chordsOpen = !chordsOpen;
+		if (!chordsOpen) chordPlayer.allOff();
+	}
 	async function toggleTuner() {
 		tunerOpen = !tunerOpen;
 		if (tunerOpen) {
@@ -58,6 +73,8 @@
 			onmetronome={() => (metronomeOpen = !metronomeOpen)}
 			{drumsOpen}
 			ondrums={() => (drumsOpen = !drumsOpen)}
+			{chordsOpen}
+			onchords={toggleChords}
 			sitePresets={data.sitePresets}
 			account={data.account}
 			presets={data.presets}
@@ -75,6 +92,25 @@
 		<div class="p-3">
 			<Tuner bind:this={tuner} source={() => amp.inputTap()} />
 		</div>
+	</FloatingPanel>
+	<FloatingPanel
+		open={chordsOpen}
+		title="Chord player"
+		storageKey="stemshovel.amp.chords-panel"
+		width={760}
+		height={720}
+		onminimise={toggleChords}
+	>
+		<ChordPlayer
+			samplesBase={data.pianoSamplesBase}
+			keyboard={chordsOpen}
+			sitePresets={data.chordPresets}
+			account={data.account}
+			presets={data.pianoPresets}
+			presetAdmin={data.presetAdmin}
+			chordStyles={data.chordStyles}
+			pad={false}
+		/>
 	</FloatingPanel>
 	<FloatingPanel
 		open={drumsOpen}

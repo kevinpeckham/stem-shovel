@@ -1,5 +1,6 @@
-import { inputSources, outputLatencyMs, type InputSource } from "#lib/audio/inputs.svelte.js";
+import { inputSources, outputLatencyMs } from "#lib/audio/inputs.svelte.js";
 import { metronome } from "#lib/audio/metronome.svelte.js";
+import { chordPiano } from "#lib/audio/piano.svelte.js";
 import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
 import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
 import { AMP_MODELS } from "#lib/constants/amp.js";
@@ -15,6 +16,7 @@ import * as v from "valibot";
 import {
 	AmpRigSchema,
 	type AmpHead,
+	type AmpSource,
 	type AmpInputMode,
 	type AmpInstrument,
 	type AmpModelId,
@@ -96,6 +98,7 @@ class AmpEngine {
 		if (options.gateWorklet) workletReady.add(ctx);
 		this.load();
 		if (this.on) void this.setOn(false);
+		this.#releaseChords();
 		this.#unlisten?.();
 		this.#capture = null;
 		if (this.#ctx && !this.#hosted) void this.#ctx.close().catch(() => {});
@@ -141,8 +144,12 @@ class AmpEngine {
 	get model() {
 		return AMP_MODELS[this.rig.model];
 	}
-	get source(): InputSource {
+	get source(): AmpSource {
 		return this.prefs.source;
+	}
+	/** The chord player's dry voices are the input (docs/practice-amp.md, "Demo through the chord player"): no jack is opened. */
+	get fromChords(): boolean {
+		return this.prefs.source === "chords";
 	}
 	get inputMode(): AmpInputMode {
 		return this.prefs.inputMode;
@@ -184,13 +191,30 @@ class AmpEngine {
 			this.#attachInputs(this.#ctx);
 		}
 		if (this.#ctx.state !== "running") await this.#ctx.resume().catch(() => {});
-		inputSources.setInputGainDb(this.prefs.source, this.trimDb);
-		const ok =
-			inputSources.has(this.prefs.source) || (await inputSources.requestInput(this.prefs.source));
-		if (ok) this.#take(inputSources.output(this.prefs.source));
-		else this.error = inputSources.errors[this.prefs.source] ?? "The input could not be opened.";
+		if (this.prefs.source === "chords") {
+			// The chord player's voices, dry, in this context (hosted here if they were not), and the amp's instrument after its sound.
+			chordPiano.hostContext(this.#ctx);
+			this.#chordsTapped = true;
+			chordPiano.tapDry(this.#chain!.input);
+			const wants: AmpInstrument = chordPiano.instrument === "bass" ? "bass" : "guitar";
+			if (wants !== this.prefs.instrument) this.setInstrument(wants);
+			void this.#checkOutputs();
+			return true;
+		}
+		const source = this.prefs.source;
+		inputSources.setInputGainDb(source, this.trimDb);
+		const ok = inputSources.has(source) || (await inputSources.requestInput(source));
+		if (ok) this.#take(inputSources.output(source));
+		else this.error = inputSources.errors[source] ?? "The input could not be opened.";
 		void this.#checkOutputs();
 		return ok;
+	}
+	#chordsTapped = false;
+	/** The chord player back on the speakers. */
+	#releaseChords() {
+		if (!this.#chordsTapped) return;
+		this.#chordsTapped = false;
+		chordPiano.tapDry(null);
 	}
 	/** The inputs module in the amp's own context. Its own monitor would double the dry signal under the amp: it plays into a muted gain. */
 	#attachInputs(ctx: AudioContext) {
@@ -233,8 +257,9 @@ class AmpEngine {
 			cancelAnimationFrame(this.#frame);
 			this.inputLevel = this.outputLevel = 0;
 			this.#take(null);
+			this.#releaseChords();
 			// On its own page Off closes the input (the recording light goes out); hosted, the host's other sources may still want it.
-			if (!this.#hosted) inputSources.stop(this.prefs.source);
+			if (!this.#hosted && this.prefs.source !== "chords") inputSources.stop(this.prefs.source);
 			return;
 		}
 		this.starting = true;
@@ -345,15 +370,16 @@ class AmpEngine {
 		return this.#chain?.cabinetLoaded() ?? "";
 	}
 
-	/** Which jack: the line in or the microphone input (inputs.svelte.ts); an open amp moves to it. */
-	async setSource(source: InputSource) {
+	/** Which input: the line in or the microphone input (inputs.svelte.ts), or the chord player's dry voices; an open amp moves to it. */
+	async setSource(source: AmpSource) {
 		if (source === this.prefs.source) return;
 		const was = this.prefs.source;
 		this.prefs.source = source;
 		this.#save();
 		if (this.on) {
 			this.#take(null);
-			if (!this.#hosted) inputSources.stop(was);
+			this.#releaseChords();
+			if (!this.#hosted && was !== "chords") inputSources.stop(was);
 			await this.open();
 		}
 	}
@@ -361,13 +387,14 @@ class AmpEngine {
 	setInputMode(mode: AmpInputMode) {
 		this.prefs.inputMode = mode;
 		this.#save();
-		if (this.#ctx) inputSources.setInputGainDb(this.prefs.source, this.trimDb);
+		if (this.#ctx && this.prefs.source !== "chords")
+			inputSources.setInputGainDb(this.prefs.source, this.trimDb);
 	}
 	setTrimDb(db: number) {
 		const v = Math.max(-12, Math.min(24, Math.round(db)));
 		this.prefs.trimDb[this.prefs.inputMode] = v;
 		this.#save();
-		inputSources.setInputGainDb(this.prefs.source, v);
+		if (this.prefs.source !== "chords") inputSources.setInputGainDb(this.prefs.source, v);
 	}
 	/**
 	 * Set level: listens for three seconds of playing and sets the trim so

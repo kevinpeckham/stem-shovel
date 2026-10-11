@@ -1,10 +1,14 @@
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import { aiAvailable } from "#lib/server/aiDetect.js";
+import { publicBlobUrl } from "#lib/server/blob.js";
 import {
 	listAmpPresets,
 	listBeats,
+	listChordStyles,
 	listDrumKitManifests,
+	listPianoPresets,
 	siteAmpPresets,
+	sitePianoPresets,
 } from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
@@ -28,6 +32,11 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		kits: await listDrumKitManifests(member?.accountId ?? null),
 		beats: member ? await listBeats(member.accountId) : [],
 		textToBeat: aiAvailable(),
+		// The chord player's panel, the amp's demo input (docs/practice-amp.md, "Demo through the chord player"), as the looper has it.
+		pianoSamplesBase: publicBlobUrl("piano/v1"),
+		chordPresets: await sitePianoPresets("chords"),
+		pianoPresets: member ? await listPianoPresets(member.accountId) : [],
+		chordStyles: member ? await listChordStyles(member.accountId) : [],
 		sitePresets: { guitar, bass },
 		account: member
 			? { id: member.accountId, name: member.name, canEdit: member.role !== "viewer" }

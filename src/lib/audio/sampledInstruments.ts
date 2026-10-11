@@ -24,7 +24,7 @@ export interface SampledSpec {
 	/** The low-pass at the softest and the hardest touch, Hz. */
 	cutoff: [number, number];
 }
-export type SampledInstrumentId = "bass" | "guitar";
+export type SampledInstrumentId = "bass" | "guitar" | "eguitar";
 const range = (from: number, to: number) =>
 	Array.from({ length: to - from + 1 }, (_, i) => from + i);
 export const SAMPLED: Record<SampledInstrumentId, SampledSpec> = {
@@ -47,6 +47,14 @@ export const SAMPLED: Record<SampledInstrumentId, SampledSpec> = {
 		release: 0.06,
 		level: [0.3, 1],
 		cutoff: [2500, 9000],
+	},
+	// FreePats' Electric Guitar FSBS (direct): a Fender's raw bridge-pickup signal, nineteen loud takes C2 to C#6, at pitch; for the Practice Amp (docs/practice-amp.md, "Demo through the chord player").
+	eguitar: {
+		notes: [36, 40, 41, 45, 48, 50, 52, 55, 59, 61, 64, 67, 71, 72, 74, 77, 80, 82, 85],
+		transpose: 0,
+		release: 0.08,
+		level: [0.35, 1],
+		cutoff: [4000, 12000],
 	},
 };
 const NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"];

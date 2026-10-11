@@ -142,6 +142,20 @@ const PATCHES: Record<Exclude<PianoInstrumentId, "grand">, Patch> = {
 		sweepDecay: 0.1,
 		level: 0.7,
 	},
+	// The electric guitar's stand-in while its direct samples load: a plucked string with more edge and a longer ring.
+	eguitar: {
+		partials: [
+			{ type: "triangle", ratio: 1, gain: 1 },
+			{ type: "sawtooth", ratio: 1, gain: 0.25, fade: 0.5 },
+			{ type: "sine", ratio: 3, gain: 0.15, fade: 0.3 },
+		],
+		env: { attack: 0.002, decay: 2, sustain: 0, release: 0.3 },
+		cutoff: 1800,
+		cutoffVelocity: 5000,
+		sweep: 4000,
+		sweepDecay: 0.08,
+		level: 0.7,
+	},
 };
 
 export function startVoice(

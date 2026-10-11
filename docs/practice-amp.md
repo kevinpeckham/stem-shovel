@@ -429,3 +429,42 @@ Kevin picked six items from the list of what was left:
   while the amp is on and open the microphone otherwise (`Tuner`'s
   `source` may return null), and the amp's face shows the Tuner button
   on both.
+
+## Demo through the chord player (2026-10-11)
+
+Kevin, with no electric guitar to hand: "wire up a test or demo mode
+where we can play samples of a dry electric guitar signal through the
+practice amp… put them in the chord-player and wire in the practice
+amp", and "we already have electric bass in the chord-player, perhaps
+we can wire that to the practice amp", and "but that signal is not dry".
+
+- **A third source**: `source: "chords"` beside the line in and the
+  microphone input. The amp hosts the chord player's engine in its
+  context (`chordPiano.hostContext`, a no-op where a host already did)
+  and takes its voices **before the piano chain's effects**:
+  `PianoEngine.tapDry(node)` connects the chain's `input` (the voices'
+  sum) to the amp's chain and takes the piano's master off the speakers,
+  so what reaches the amp is the samples as recorded, with no reverb or
+  pedal of the piano's own, and only the amp is heard; `tapDry(null)`
+  puts the master back. No jack is opened; Set level, Calibrate and the
+  device menu hide. The amp's instrument follows the chord player's
+  sound as it switches on (Electric Bass → the bass heads, anything else
+  → guitar).
+- **A dry electric guitar**: FreePats' Electric Guitar FSBS (direct), a
+  Fender's raw bridge-pickup signal recorded through an instrument
+  input, CC0; nineteen loud takes C2 to C#6 as `static/kits/eguitar`
+  (`bun run samples:eguitar`, 580 KB), a third sampled instrument in
+  `sampledInstruments.ts` ("Electric Guitar (direct)" in the Sound menu,
+  with a synthesized stand-in in `synthVoice.ts` while the samples load).
+  The Electric Bass (FreePats' Yamaha RBX, also a direct recording) was
+  there already, so both heads can be tried without an instrument.
+- **On the amp page**: a Chords button beside Tuner, Metronome and
+  Drums opens the chord player in a panel (the looper's props: the
+  piano samples base, the chord presets, the account's piano presets
+  and chord styles); switching the amp on with Chord player as the source
+  opens the panel. On the looper, the recorder, the Studio and the song
+  page the chord player is already a panel, so the source works there too
+  (the engine hosts the chord player into the amp's context where the
+  page had not).
+- Tested: `tests/e2e/amp.spec.ts` sets the source, switches on, plays a
+  note on `__chordPiano`, and sees the amp's output meter move.

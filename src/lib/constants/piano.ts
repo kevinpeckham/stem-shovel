@@ -24,6 +24,11 @@ export const PIANO_INSTRUMENTS = [
 		label: "Acoustic Guitar",
 		hint: "a sampled nylon-string classical guitar (FreePats)",
 	},
+	{
+		id: "eguitar",
+		label: "Electric Guitar (direct)",
+		hint: "a sampled Fender's raw pickup signal (FreePats), dry: for the Practice Amp",
+	},
 ] as const;
 export type PianoInstrumentId = (typeof PIANO_INSTRUMENTS)[number]["id"];
 export const PIANO_INSTRUMENT_IDS = PIANO_INSTRUMENTS.map((i) => i.id) as PianoInstrumentId[];

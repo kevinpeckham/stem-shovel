@@ -86,3 +86,22 @@ test("a captured cabinet loads and renders", async ({ page, errors }) => {
 	await page.getByRole("button", { name: "Turn the amp off" }).click();
 	expect(errors).toEqual([]);
 });
+
+/**
+ * The demo input (docs/practice-amp.md, "Demo through the chord player"):
+ * with the chord player as the source, a note on its engine comes out of
+ * the amp, dry in and amplified out, with no jack opened.
+ */
+test("the chord player plays through the amp as its demo input", async ({ page, errors }) => {
+	await open(page, "/practice-amp", "__amp");
+	await hooked(page, ([w]) => w.__amp.setSource("chords"));
+	await page.getByRole("button", { name: "Turn the amp on" }).click();
+	await until(page, ([w]) => w.__amp.on === true);
+	await expect(page.getByRole("dialog", { name: "Chord player" })).toBeVisible();
+	await hooked(page, ([w]) => w.__chordPiano.noteOn(52, 0.9));
+	await until(page, ([w]) => w.__amp.outputLevel > 0.005);
+	await hooked(page, ([w]) => w.__chordPiano.noteOff(52));
+	await hooked(page, ([w]) => w.__amp.setSource("line"));
+	await page.getByRole("button", { name: "Turn the amp off" }).click();
+	expect(errors).toEqual([]);
+});

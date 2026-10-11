@@ -99,6 +99,11 @@
 					what: "The piano's Acoustic Guitar: Roberto's 2008 recordings of a Spanish classical guitar for the FreePats project, CC0 public domain, forty-eight notes.",
 				},
 				{
+					name: "FreePats Electric Guitar FSBS (direct)",
+					url: "https://freepats.zenvoid.org/ElectricGuitar/clean-electric-guitar.html",
+					what: "The piano's Electric Guitar (direct): a Fender's raw bridge-pickup signal recorded through an instrument input for the FreePats project, CC0 public domain, nineteen notes; the Practice Amp's demo instrument.",
+				},
+				{
 					name: "Jester's Brutal and Emerald Packs",
 					url: "https://jester-dyne-productions.com",
 					what: "The Practice Amp's captured guitar cabinets: Bastian Karschewski's impulse responses of a Marshall 1960AX with Greenbacks and a 4×12 with Vintage 30, Rockdriver Jr and DV-77 speakers, CC0 public domain. The amp's own cabinets are synthesized.",

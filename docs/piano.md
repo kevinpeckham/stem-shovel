@@ -489,6 +489,9 @@ chord a key plays depends on them (Kevin).
 Two small sampled instruments beside the Grand Piano's tiers, from
 FreePats' CC0 recordings: the Electric Bass (Finger Bass YR, twelve notes
 E1 to D#2, an octave under the key, for the chord player's notes mode)
+the Electric Guitar (direct) (FreePats' FSBS direct set, a Fender's raw
+bridge-pickup signal, nineteen notes C2 to C#6, dry, for the Practice
+Amp; docs/practice-amp.md, "Demo through the chord player"),
 and the Acoustic Guitar (the Spanish classical guitar, forty-eight notes
 G1 to C6). `src/lib/audio/sampledInstruments.ts` is the one module for
 both: a spec per instrument (notes, transpose, release, level and cutoff

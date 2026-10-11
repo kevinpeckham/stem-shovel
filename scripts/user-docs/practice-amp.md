@@ -10,6 +10,10 @@ The amp takes one of the shared inputs: the **line in** (an audio interface or a
 
 Press **Set level** and play for three seconds: the trim is set so your loudest notes land with headroom to spare. The meter under the input shows the level and lights red on a peak at full scale.
 
+## Trying the amp without an instrument
+
+In the **Input** menu, choose **Chord player** instead of a jack: the chord player opens in a panel and whatever you play on it goes through the amp, dry, as if it were plugged in. Set its sound to **Electric Guitar (direct)**, a sampled Fender's raw pickup signal, for the guitar heads, or **Electric Bass** for the bass heads; the amp's Guitar / Bass switch follows the sound as the amp turns on. Nothing opens the microphone this way, so it works anywhere.
+
 ## The heads
 
 Choose **Guitar** or **Bass** and a head:

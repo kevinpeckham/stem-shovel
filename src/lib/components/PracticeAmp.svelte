@@ -22,6 +22,7 @@
 		type AmpInputMode,
 		type AmpInstrument,
 		type AmpModelId,
+		type AmpSource,
 	} from "#lib/val/AmpSchema.js";
 	import type { NamedAmpPreset } from "#lib/val/AmpPresetSchema.js";
 	import { onMount } from "svelte";
@@ -41,6 +42,9 @@
 		onmetronome?: () => void;
 		drumsOpen?: boolean;
 		ondrums?: () => void;
+		/** The chord player's panel on the page: the amp's demo input (docs/practice-amp.md, "Demo through the chord player"). */
+		chordsOpen?: boolean;
+		onchords?: () => void;
 		/** The presets (docs/practice-amp.md, "Presets"): the site's six per instrument; without them the slot row does not show. */
 		sitePresets?: Record<AmpInstrument, (NamedAmpPreset | null)[]> | null;
 		/** A signed-in member's account: presets save to it and load from it. */
@@ -57,6 +61,8 @@
 		onmetronome,
 		drumsOpen = false,
 		ondrums,
+		chordsOpen = false,
+		onchords,
 		sitePresets = null,
 		account = null,
 		presets = [],
@@ -93,11 +99,15 @@
 	);
 	/** The microphone input into the speakers feeds back: the master starts low and the readout says so. */
 	let feedbackWarned = $state(false);
+	/** The jack the inputs module is asked about: the line in stands in while the chord player is the source (no jack is open then). */
+	const jack = $derived<InputSource>(amp.fromChords ? "line" : (amp.source as InputSource));
 	async function power() {
 		if (amp.on) {
 			await amp.setOn(false);
 			return;
 		}
+		// The chord player as the input: its panel comes out, since that is what is played.
+		if (amp.fromChords && onchords && !chordsOpen) onchords();
 		if (amp.source === "mic" && !feedbackWarned) {
 			feedbackWarned = true;
 			if (head.master > 0.3) amp.setHead({ master: 0.3 });
@@ -175,32 +185,33 @@
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
 		<div class="grid gap-2">
 			<span class="device-button-label">Jack</span>
-			<div class="flex gap-1" role="group" aria-label="Input jack">
-				{#each [["line", "Line in"], ["mic", "Microphone input"]] as const as [id, label] (id)}
+			<div class="flex flex-wrap gap-1" role="group" aria-label="Input jack">
+				{#each [["line", "Line in"], ["mic", "Microphone input"], ["chords", "Chord player"]] as const as [id, label] (id)}
 					<button
 						class="device-button-xs px-3 {amp.source === id ? 'text-accent' : ''}"
 						type="button"
 						aria-pressed={amp.source === id}
-						onclick={() => void amp.setSource(id as InputSource)}>{label}</button
+						onclick={() => void amp.setSource(id as AmpSource)}>{label}</button
 					>
 				{/each}
 			</div>
 			<p class="text-12px opacity-70">
 				Line in is an audio interface or a guitar-to-USB adapter; the microphone input is the
 				computer's own jack with an instrument in it (or an acoustic through the microphone, which
-				feeds back through the speakers).
+				feeds back through the speakers). Chord player plays the chord player's own instrument
+				through the amp, dry: its Electric Guitar (direct) or Electric Bass, to try the amp with
+				nothing plugged in.
 			</p>
 		</div>
-		<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+		<div class="grid grid-cols-[1fr_auto] gap-2 items-end {amp.fromChords ? 'hidden' : ''}">
 			<label class="block">
 				<span class="device-button-label">Device</span>
 				<select
 					class="device-field w-full"
 					aria-label="Input device"
-					value={inputSources.deviceIds[amp.source] ?? ""}
+					value={inputSources.deviceIds[jack] ?? ""}
 					onfocus={() => void inputSources.listInputs()}
-					onchange={(e) =>
-						void inputSources.requestInput(amp.source, e.currentTarget.value || null)}
+					onchange={(e) => void inputSources.requestInput(jack, e.currentTarget.value || null)}
 				>
 					<option value="">Default input</option>
 					{#each inputSources.inputs as d (d.id)}<option value={d.id}>{d.label}</option>{/each}
@@ -211,9 +222,8 @@
 				<select
 					class="device-field"
 					aria-label="Input channels"
-					value={inputSources.channelModes[amp.source]}
-					onchange={(e) =>
-						inputSources.setChannelMode(amp.source, e.currentTarget.value as ChannelMode)}
+					value={inputSources.channelModes[jack]}
+					onchange={(e) => inputSources.setChannelMode(jack, e.currentTarget.value as ChannelMode)}
 				>
 					<option value="stereo">Stereo</option>
 					<option value="left">Left only</option>
@@ -221,10 +231,10 @@
 				</select>
 			</label>
 		</div>
-		{#if inputSources.labels[amp.source]}
-			<p class="text-12px opacity-70">Open: {inputSources.labels[amp.source]}.</p>
+		{#if !amp.fromChords && inputSources.labels[jack]}
+			<p class="text-12px opacity-70">Open: {inputSources.labels[jack]}.</p>
 		{/if}
-		<div class="border-t border-current/10 pt-3 grid gap-3">
+		<div class="border-t border-current/10 pt-3 grid gap-3 {amp.fromChords ? 'hidden' : ''}">
 			<div class="flex items-center gap-2">
 				<span class="device-button-label !mb-0">Plugged in</span>
 				<InfoTip
@@ -405,6 +415,18 @@
 					<span class="hidden @2xl-inline">Metronome</span>
 				</button>
 			{/if}
+			{#if onchords}
+				<button
+					class="device-button-sm px-3 {chordsOpen ? 'text-accent' : ''}"
+					type="button"
+					aria-pressed={chordsOpen}
+					title={chordsOpen ? "Close the chord player" : "Chord player"}
+					onclick={() => onchords?.()}
+				>
+					<span class="i-ph-circle-dashed" aria-hidden="true"></span>
+					<span class="hidden @2xl-inline">Chords</span>
+				</button>
+			{/if}
 			{#if ondrums}
 				<button
 					class="device-button-sm px-3 {drumsOpen ? 'text-accent' : ''}"
@@ -468,9 +490,12 @@
 			<div class="text-12px opacity-80 flex flex-wrap gap-x-3 gap-y-1 font-sans" aria-live="polite">
 				{#if !amp.on}
 					<span
-						>Off · {amp.source === "line" ? "line in" : "microphone input"} · {amp.inputMode}
-						· trim {trimText(amp.trimDb)}</span
+						>Off · {amp.fromChords
+							? "chord player"
+							: `${amp.source === "line" ? "line in" : "microphone input"} · ${amp.inputMode} · trim ${trimText(amp.trimDb)}`}</span
 					>
+				{:else if amp.fromChords}
+					<span>Chord player · dry in, the amp out · {amp.model.name}</span>
 				{:else}
 					<span
 						class={verdict.tone === "good"
@@ -479,8 +504,8 @@
 								? "text-red-300"
 								: ""}>Latency {verdict.label}</span
 					>
-					{#if inputSources.labels[amp.source]}<span class="opacity-70"
-							>· {inputSources.labels[amp.source]}</span
+					{#if inputSources.labels[jack]}<span class="opacity-70"
+							>· {inputSources.labels[jack]}</span
 						>{/if}
 					{#if amp.outputLabel}<span class="opacity-70">· out: {amp.outputLabel}</span>{/if}
 				{/if}

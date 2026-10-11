@@ -32,6 +32,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `#amp=…` on the page they are copied from (a host page opens its amp
   panel for one). The amp's panel on the looper, the recorder, the Studio
   and the song page has the same buttons.
+- **The Practice Amp's demo input**: Chord player as a source, its voices
+  taken dry (before its own effects) into the amp with no jack opened, to
+  try the amp with nothing plugged in; a Chords button on the amp page
+  opens the chord player. The piano gains a third sampled instrument,
+  **Electric Guitar (direct)**: FreePats' CC0 recording of a Fender's raw
+  pickup signal (`static/kits/eguitar`, `bun run samples:eguitar`), and
+  the Electric Bass was a direct recording already.
 - **Captured cabinets on the Practice Amp**: a Cabinet menu on the guitar
   heads with eight impulse responses from Jester Dyne Productions'
   Emerald and Brutal packs (CC0; `static/cabs/`, credited on Built With),

@@ -141,8 +141,8 @@ export type AmpRig = v.InferOutput<typeof AmpRigSchema>;
 export const AmpPreferencesSchema = v.object({
 	instrument: v.optional(v.picklist(AMP_INSTRUMENTS), "guitar"),
 	inputMode: v.optional(v.picklist(AMP_INPUT_MODES), "instrument"),
-	/** The input source: the line in (an interface) or the microphone input (an instrument into the jack, an acoustic through the mic). */
-	source: v.optional(v.picklist(["line", "mic"]), "line"),
+	/** The input source: the line in (an interface), the microphone input (an instrument into the jack, an acoustic through the mic), or the chord player's dry voices (a demo without an instrument plugged in). */
+	source: v.optional(v.picklist(["line", "mic", "chords"]), "line"),
 	/** The input trim in dB, per input mode. */
 	trimDb: v.optional(v.object({ instrument: range(-12, 24, 12), line: range(-12, 24, 0) }), () => ({
 		instrument: 12,
@@ -152,3 +152,4 @@ export const AmpPreferencesSchema = v.object({
 	bass: v.optional(AmpRigSchema, () => v.parse(AmpRigSchema, { model: "fridge" })),
 });
 export type AmpPreferences = v.InferOutput<typeof AmpPreferencesSchema>;
+export type AmpSource = AmpPreferences["source"];

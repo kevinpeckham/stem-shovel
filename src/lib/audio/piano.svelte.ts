@@ -76,7 +76,8 @@ function clamp(v: number, min: number, max: number, steps = 100): number {
 }
 
 /** The instruments with a few samples of their own (not the Grand Piano's tiers). */
-const isSampled = (id: string): id is SampledInstrumentId => id === "bass" || id === "guitar";
+const isSampled = (id: string): id is SampledInstrumentId =>
+	id === "bass" || id === "guitar" || id === "eguitar";
 
 export class PianoEngine {
 	/** Where this engine's sound, effects and choices are remembered: the piano's key, or the chord player's own (docs/chord-player.md, "Its own engine"). `ownArpeggiator`: the keys go through the engine's arpeggiator (the piano; the chord player runs its own on its engine). */
@@ -400,6 +401,43 @@ export class PianoEngine {
 		this.#hosted = true;
 		this.#fx = createPianoFx(ctx, this.#fxSettings());
 		this.on = ctx.state === "running";
+	}
+	/**
+	 * The voices before the effects, into a node of the Practice Amp's
+	 * (docs/practice-amp.md, "Demo through the chord player"): the samples
+	 * as recorded, no reverb or pedals of the piano's own, and the piano's
+	 * master taken off the speakers so only the amp is heard. Null hands
+	 * the sound back to the speakers. Call from a gesture; the graph is
+	 * built here if it is not yet.
+	 */
+	#dryTap: AudioNode | null = null;
+	tapDry(node: AudioNode | null) {
+		const ctx = this.#graph();
+		const fx = this.#fx!;
+		if (this.#dryTap) {
+			try {
+				fx.input.disconnect(this.#dryTap);
+			} catch {
+				// Already gone with its context.
+			}
+			this.#dryTap = null;
+		}
+		if (node) {
+			fx.input.connect(node);
+			this.#dryTap = node;
+			try {
+				fx.master.disconnect(ctx.destination);
+			} catch {
+				// Not on the speakers (hosted elsewhere).
+			}
+		} else {
+			try {
+				fx.master.disconnect(ctx.destination);
+			} catch {
+				// Not connected.
+			}
+			fx.master.connect(ctx.destination);
+		}
 	}
 	/** The last node before the destination, for a host to tap (built now if it is not yet; call from a gesture). */
 	output(): AudioNode {
