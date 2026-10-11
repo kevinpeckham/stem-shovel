@@ -482,24 +482,34 @@
 				</button>
 			{/if}
 		</div>
-		<!-- The jewel lamp (a classic combo's red pilot light): lit while the amp is on, a dark ruby otherwise. -->
+		<!-- The jewel lamp (a classic combo's red pilot light) in a chrome housing: lit while the amp is on, a dark ruby otherwise. -->
 		<div class="self-center ml-1 @4xl-ml-3" title={amp.on ? "On" : "Off"}>
 			<div
-				class="w-50px h-50px rounded-full border-3 border-slate-900/80 shadow-[inset_0_2px_6px_rgba(0,0,0,0.6),0_1px_2px_rgba(255,255,255,0.15)] transition-all duration-300"
-				role="status"
-				aria-label={amp.on ? "The amp is on" : "The amp is off"}
-				style:background={amp.on
-					? "radial-gradient(circle at 35% 32%, rgba(255,235,235,0.9) 0%, #ff5a5a 18%, #e01212 45%, #8a0808 80%, #5a0404 100%)"
-					: "radial-gradient(circle at 35% 32%, rgba(255,255,255,0.14) 0%, #6b1414 22%, #3a0a0a 60%, #1e0505 100%)"}
-				style:box-shadow={amp.on
-					? "inset 0 2px 6px rgba(0,0,0,0.35), 0 0 18px 6px rgba(255,64,64,0.55), 0 0 2px 1px rgba(255,120,120,0.8)"
-					: "inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 2px rgba(255,255,255,0.15)"}
+				class="w-46px h-46px rounded-full grid place-items-center shadow-[0_2px_4px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.7)]"
+				style="background: conic-gradient(from 210deg, #f4f6f8 0deg, #9aa3ad 40deg, #e9edf0 80deg, #6b7580 130deg, #d7dce1 180deg, #8e97a1 230deg, #f1f3f5 280deg, #7d8792 330deg, #f4f6f8 360deg);"
 			>
-				<!-- The jewel's facets: a faint pinwheel over the glass. -->
 				<div
-					class="w-full h-full rounded-full opacity-35"
-					style="background: repeating-conic-gradient(from 0deg, rgba(255,255,255,0.22) 0deg 12deg, rgba(0,0,0,0.12) 12deg 24deg);"
-				></div>
+					class="w-38px h-38px rounded-full grid place-items-center"
+					style="background: radial-gradient(circle at 50% 50%, #2a2f36 0%, #3b424b 60%, #c9cfd5 72%, #5d666f 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);"
+				>
+					<div
+						class="w-30px h-30px rounded-full transition-all duration-300"
+						role="status"
+						aria-label={amp.on ? "The amp is on" : "The amp is off"}
+						style:background={amp.on
+							? "radial-gradient(circle at 35% 32%, rgba(255,235,235,0.9) 0%, #ff5a5a 18%, #e01212 45%, #8a0808 80%, #5a0404 100%)"
+							: "radial-gradient(circle at 35% 32%, rgba(255,255,255,0.14) 0%, #6b1414 22%, #3a0a0a 60%, #1e0505 100%)"}
+						style:box-shadow={amp.on
+							? "inset 0 1px 4px rgba(0,0,0,0.35), 0 0 14px 4px rgba(255,64,64,0.6), 0 0 2px 1px rgba(255,120,120,0.8)"
+							: "inset 0 2px 5px rgba(0,0,0,0.7)"}
+					>
+						<!-- The jewel's facets: a faint pinwheel over the glass. -->
+						<div
+							class="w-full h-full rounded-full opacity-35"
+							style="background: repeating-conic-gradient(from 0deg, rgba(255,255,255,0.22) 0deg 12deg, rgba(0,0,0,0.12) 12deg 24deg);"
+						></div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
