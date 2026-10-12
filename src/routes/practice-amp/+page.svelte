@@ -65,7 +65,7 @@
 
 <main class="page-x-padding main-y-padding">
 	<PageCopyHeader copy={data.copy} />
-	<div class="max-w-5xl">
+	<div class="max-w-full overflow-hidden">
 		<PracticeAmp
 			{tunerOpen}
 			{metronomeOpen}

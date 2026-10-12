@@ -17,7 +17,7 @@ test("the amp turns on, hears the input, renders through every head, and turns o
 	await until(page, ([w]) => w.__amp.on === true);
 	// The fake device plays a tone: the input meter reads it within a moment.
 	await until(page, ([w]) => w.__amp.inputLevel > 0.01);
-	await expect(page.getByText(/Latency/)).toBeVisible();
+	await expect(page.getByText(/^Latency/)).toBeVisible();
 	for (const model of ["clean", "tweed", "fridge", "solid"] as const) {
 		await hooked(page, ([w, m]) => w.__amp.setModel(m), model);
 		const r = await hooked(page, ([w]) => w.__amp.render(0.5));

@@ -339,7 +339,7 @@
 
 {#snippet iconButton(icon: string, title: string, onclick: () => void, disabled = false)}
 	<button
-		class="opacity-70 hover-opacity-100 inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
+		class="opacity-70 hover-opacity-100 hover-text-accent inline-grid place-items-center w-6 h-6 text-14px shrink-0 disabled:opacity-20"
 		type="button"
 		{disabled}
 		{title}
@@ -351,9 +351,7 @@
 {/snippet}
 
 {#snippet presetsMenuBlock()}
-	<div
-		class="px-3 pt-2 grid grid-cols-1 gap-3 text-13px text-blue-100/90 [&_span.device-button-label]-(block mb-1)"
-	>
+	<div class="px-3 pt-2 pb-3 grid grid-cols-1 gap-3 gap-y-4 text-13px text-blue-100/90 min-w-380px">
 		<form
 			class="grid gap-2"
 			onsubmit={(e) => {
@@ -362,7 +360,7 @@
 			}}
 		>
 			<label class="block">
-				<span class="device-button-label">Name</span>
+				<span class="block mb-1 text-14px font-600">Name</span>
 				<input
 					class="w-full rounded-md bg-slate-900 border border-current/20 px-2 py-1.5 text-14px"
 					type="text"
@@ -373,11 +371,13 @@
 				/>
 			</label>
 			<div>
-				<span class="device-button-label">Slot ({AMP_INSTRUMENT_LABELS[instrument]})</span>
-				<div class="flex gap-1" role="group" aria-label="Save to slot">
+				<span class="block mt-2 mb-2 text-14px font-600"
+					>Slot ({AMP_INSTRUMENT_LABELS[instrument]})</span
+				>
+				<div class="flex gap-3" role="group" aria-label="Save to slot">
 					{#each SLOT_NUMBERS as n (n)}
 						<button
-							class="device-button-xs w-8 border {saveSlot === n ? 'text-accent' : ''}"
+							class="button-outline"
 							type="button"
 							aria-pressed={saveSlot === n}
 							onclick={() => (saveSlot = saveSlot === n ? null : n)}>{n}</button
@@ -385,27 +385,20 @@
 					{/each}
 				</div>
 			</div>
-			<div class="flex flex-wrap gap-2 items-center">
+			<div class="flex flex-wrap gap-3 items-center mt-2">
 				<button
-					class="device-button-xs px-3 border"
+					class="button-outline"
 					type="submit"
 					disabled={saving || (!account?.canEdit && !saveSlot)}
 					title={account?.canEdit
 						? "Keep the rig as a preset in the account"
 						: "Keep the rig on this slot in this browser"}
-					>{account?.canEdit ? "Save" : "Save in this browser"}</button
 				>
-				{#if presetAdmin}
-					<button
-						class="device-button-xs px-3 border"
-						type="button"
-						disabled={saving || !saveSlot}
-						title="What every visitor's button holds until they save their own"
-						onclick={() => void saveSitePreset()}>Save as site default</button
-					>
-				{/if}
+					<span class="i-ph-floppy-disk" aria-hidden="true"></span>
+					Save</button
+				>
 				<button
-					class="device-button-xs px-3 border"
+					class="button-outline"
 					type="button"
 					title="A link that opens the amp with this rig"
 					onclick={() => void copyLink()}
@@ -413,6 +406,15 @@
 					<span class="i-ph-link" aria-hidden="true"></span>
 					Copy link
 				</button>
+				{#if presetAdmin}
+					<button
+						class="underline underline-offset-4 text-nowrap opacity-90 hover-opacity-100 hover-text-accent"
+						type="button"
+						disabled={saving || !saveSlot}
+						title="What every visitor's button holds until they save their own"
+						onclick={() => void saveSitePreset()}>Save site default</button
+					>
+				{/if}
 			</div>
 			{#if !account}
 				<div class="text-12px opacity-70">
@@ -426,8 +428,9 @@
 			{/if}
 		</form>
 
+		<hr class="border border-current/20" />
 		<div>
-			<span class="device-button-label">On the buttons</span>
+			<span class="block mb-1 text-14px font-600">On the buttons</span>
 			<ul class="m-0 p-0 list-none grid gap-1">
 				{#each SLOT_NUMBERS as n (n)}
 					{@const p = slotAt(n)}
@@ -445,7 +448,9 @@
 							<span class="text-11px opacity-50"
 								>{p.source === "site" ? "site" : p.source === "browser" ? "this browser" : ""}</span
 							>
+
 							{@render iconButton("i-ph-link", `Copy a link to ${p.name}`, () => void copyLink(p))}
+
 							{#if p.source === "browser"}
 								{@render iconButton("i-ph-x", `Clear preset ${n} in this browser`, () =>
 									clearBrowserSlot(n),
@@ -465,9 +470,12 @@
 			</ul>
 		</div>
 
+		<hr class="border border-current/20" />
 		{#if presetAdmin}
 			<div>
-				<span class="device-button-label">Site defaults ({AMP_INSTRUMENT_LABELS[instrument]})</span>
+				<span class="block mb-1 text-14px font-600"
+					>Site Defaults ({AMP_INSTRUMENT_LABELS[instrument]})</span
+				>
 				<ul class="m-0 p-0 list-none grid gap-1" aria-label="Site presets">
 					{#each SLOT_NUMBERS as n (n)}
 						{@const p = site[instrument][n - 1] ?? null}
@@ -515,16 +523,14 @@
 						</li>
 					{/each}
 				</ul>
-				<p class="text-12px opacity-70 mt-1">
-					What every visitor's buttons hold until they save their own; the list above shows yours.
-				</p>
 			</div>
 		{/if}
 
+		<hr class="border border-current/20" />
 		{#if account}
 			<div>
-				<span class="device-button-label"
-					>Saved in {account.name} · {mine.length}
+				<span class="block mb-1 text-14px font-600"
+					>Saved In {account.name} · {mine.length}
 					{AMP_INSTRUMENT_LABELS[instrument].toLowerCase()}</span
 				>
 				{#if mine.length > 5}
@@ -580,49 +586,74 @@
 	</div>
 {/snippet}
 
-<div class="flex flex-wrap items-center gap-2">
-	<span class="text-11px uppercase tracking-wider text-dark/80 select-none">Presets</span>
-	<div class="flex gap-1" role="group" aria-label="Presets">
-		{#each SLOT_NUMBERS as n (n)}
-			{@const p = slotAt(n)}
-			<button
-				class="device-button-xs w-8 border {activeSlot === n - 1 ? 'text-accent' : ''} {p
-					? ''
-					: 'opacity-50'}"
-				type="button"
-				aria-pressed={activeSlot === n - 1}
-				aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
-				title={p
-					? `${p.name} (⌘-click or hold to save here)`
-					: `Empty preset ${n}: click to save the rig here`}
-				onclick={(e) => slotClick(e, n)}
-				onpointerdown={holdStart}
-				onpointerup={holdEnd}
-				onpointerleave={holdEnd}
-				onpointercancel={holdEnd}
-				oncontextmenu={(e) => e.preventDefault()}>{n}</button
+<div>
+	<span
+		class="block mb-2 text-11px uppercase tracking-wider text-dark/80 select-none leading-tight sr-only"
+		>Presets</span
+	>
+	<div class="flex flex-wrap items-center gap-2">
+		<div class="flex gap-1" role="group" aria-label="Presets">
+			{#each SLOT_NUMBERS as n (n)}
+				{@const p = slotAt(n)}
+				<button
+					class="
+						bg-slate-900
+						h-8 relative
+						rounded-md
+						shadow-md
+						w-8
+						{activeSlot === n - 1 ? 'text-green-500' : ''}
+						{p ? '' : 'opacity-80'}"
+					type="button"
+					aria-pressed={activeSlot === n - 1}
+					aria-label="Preset {n}{p ? `: ${p.name}` : ' (empty)'}"
+					title={p
+						? `${p.name} (⌘-click or hold to save here)`
+						: `Empty preset ${n}: click to save the rig here`}
+					onclick={(e) => slotClick(e, n)}
+					onpointerdown={holdStart}
+					onpointerup={holdEnd}
+					onpointerleave={holdEnd}
+					onpointercancel={holdEnd}
+					oncontextmenu={(e) => e.preventDefault()}
+					>{n}
+					<div
+						class="
+							absolute
+							h-4px
+							left-2px
+							rounded-full
+							top-2px
+							w-4px
+							{activeSlot === n - 1
+							? 'bg-green-500 shadow-lg shadow-green-500/20'
+							: 'bg-green-950 shadow-sm shadow-black/20'}"
+					></div>
+				</button>
+			{/each}
+		</div>
+
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div onpointerdowncapture={freshSaveForm}>
+			<ContextMenu
+				ariaLabel="Manage presets"
+				title="Save, name, share and manage presets"
+				iconClass="i-ph-bookmarks-simple"
+				position="bottom right"
+				buttonBaseClasses="w-8 h-8 grid grid-cols-1 rounded-md bg-slate-900 px-2 place-content-center place-items-center"
+				popoverClasses="min-w-80 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+				bind:openState={saveOpen}
+				items={[
+					{ id: "presets-heading", kind: "heading", label: "Presets" },
+					{ id: "presets-body", kind: "snippet", snippet: presetsMenuBlock },
+				]}
+			/>
+		</div>
+
+		{#if presetLine}
+			<span class="text-12px text-dark/80 truncate"
+				>{presetLine.name}{presetLine.edited ? " · edited" : ""}</span
 			>
-		{/each}
+		{/if}
 	</div>
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div onpointerdowncapture={freshSaveForm}>
-		<ContextMenu
-			ariaLabel="Manage presets"
-			title="Save, name, share and manage presets"
-			iconClass="i-ph-bookmarks-simple"
-			position="bottom right"
-			buttonBaseClasses="device-button-xs w-8 px-2"
-			popoverClasses="min-w-80 !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-			bind:openState={saveOpen}
-			items={[
-				{ id: "presets-heading", kind: "heading", label: "Presets" },
-				{ id: "presets-body", kind: "snippet", snippet: presetsMenuBlock },
-			]}
-		/>
-	</div>
-	{#if presetLine}
-		<span class="text-12px text-dark/80 truncate"
-			>{presetLine.name}{presetLine.edited ? " · edited" : ""}</span
-		>
-	{/if}
 </div>

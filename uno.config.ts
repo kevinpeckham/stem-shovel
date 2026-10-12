@@ -124,13 +124,17 @@ export default defineConfig({
 		"bg-oxford-900",
 		"bg-gradient-to-br",
 		"bg-#090E19",
+		"from-blue-950/2",
 		"from-oxfordDark",
 		"to-oxford",
 		"text-slate-100",
 		"max-w-screen",
+		"max-w-full",
+		"min-h-screen",
 		"overflow-x-hidden",
 		"scroll-smooth",
 		"text-on-dark",
+		"to-blue-950/40",
 		"grid",
 		"grid-cols-1",
 		"grid-rows-[auto_1fr_auto]",
@@ -148,7 +152,20 @@ export default defineConfig({
 			from-slate-500/10
 			via-slate-500/60
 			to-slate-500/80
-			rounded-md
+			rounded-lg
+			shadow-xl
+			shadow-oxford-950
+			`,
+		],
+		[
+			"device-chrome-black",
+			`
+			bg-black
+			bg-gradient-to-br
+			from-oxford-800/10
+			via-oxford-850/10
+			to-oxford-900/50
+			rounded-xl
 			shadow-xl
 			shadow-oxford-950
 			`,
@@ -550,6 +567,10 @@ export default defineConfig({
 				hover-opacity-100
 
 			`,
+		],
+		[
+			"button-outline",
+			"flex gap-2 items-center justify-center px-3 py-2 leading-tight border border-current opacity-90 hover-text-accent hover-opacity-100 rounded select-none",
 		],
 		[
 			"button-popover-close",

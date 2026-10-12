@@ -83,12 +83,13 @@
 		<img class="h-6 w-auto" src={wordmark} loading="eager" alt="Stem Shovel wordmark" />
 		<div class="sr-only">Stem Shovel App</div>
 		<!-- The image's baseline is its bottom edge, where the wordmark's letters sit. -->
-		<span class="text-12px uppercase leading-none tracking-wider opacity-80 text-blue-100"
+		<span
+			class="absolute left-4 top-12 sm-left-6 md-left-7 lg-left-0 lg-top-0 lg-relative text-12px uppercase leading-none tracking-wider opacity-80 text-blue-100"
 			>Beta</span
 		>
 	</a>
-	<!-- A phone has room for the three menus' icons alone, close together; from sm up they carry their names. -->
-	<nav aria-label="Primary" class="flex items-center gap-1 sm-gap-4 text-15px">
+
+	<nav aria-label="Primary" class="justify-end flex items-center gap-4 sm-gap-4 text-15px">
 		{#if !member && accountSlug && viewedName}
 			<a class="opacity-60 truncate hover:opacity-100" href="/{accountSlug}/projects"
 				>{viewedName}</a
@@ -97,12 +98,17 @@
 		{#if user && member}
 			<!-- Where a member goes most; the rest is in the menus. Hidden on a phone, where the account menu has it. -->
 			<a
-				class="nav-link hidden sm-inline-block {active(`/${member.slug}/projects`)
+				class="nav-link flex gap-1 items-center {active(`/${member.slug}/projects`)
 					? 'text-accent !decoration-current'
 					: ''}"
-				href="/{member.slug}/projects">Projects</a
+				href="/{member.slug}/projects"
 			>
+				<span class="inline-block i-ph-music-note text-18px"></span>
+				<span class="hidden md-inline-block">Projects</span>
+				<span class="hidden sm-inline-block i-ph-caret-right text-12px" aria-hidden="true"></span>
+			</a>
 		{/if}
+
 		<!-- The instruments: the drum machine and the piano. -->
 		<div class="relative" bind:this={instrumentsMenu}>
 			<button
@@ -117,9 +123,9 @@
 				onclick={() => (openMenu = instrumentsOpen ? null : "instruments")}
 			>
 				<span class="i-ph-piano-keys text-18px" aria-hidden="true"></span>
-				<span class="hidden sm-inline">Instruments</span>
+				<span class="hidden md-inline">Instruments</span>
 				<span
-					class="i-ph-caret-down text-12px transition-transform {instrumentsOpen
+					class="hidden sm-inline i-ph-caret-down text-12px transition-transform {instrumentsOpen
 						? 'rotate-180'
 						: ''}"
 					aria-hidden="true"
@@ -171,6 +177,7 @@
 				</div>
 			{/if}
 		</div>
+
 		<!-- The tools: the Idea Recorder for a member, and the tuner and the metronome for everyone. -->
 		<div class="relative" bind:this={toolsMenu}>
 			<button
@@ -186,9 +193,11 @@
 			>
 				<span class="i-ph-wrench text-18px" aria-hidden="true"></span>
 				<!-- A phone has room for the wrench alone beside the account button. -->
-				<span class="hidden sm-inline">Tools</span>
+				<span class="hidden md-inline">Tools</span>
 				<span
-					class="i-ph-caret-down text-12px transition-transform {toolsOpen ? 'rotate-180' : ''}"
+					class="hidden sm-inline i-ph-caret-down text-12px transition-transform {toolsOpen
+						? 'rotate-180'
+						: ''}"
 					aria-hidden="true"
 				></span>
 			</button>
@@ -279,6 +288,7 @@
 				</div>
 			{/if}
 		</div>
+
 		{#if user}
 			<div class="relative" bind:this={menu}>
 				<button
@@ -292,10 +302,10 @@
 					onclick={() => (openMenu = open ? null : "account")}
 				>
 					<span class="i-ph-user-circle text-18px" aria-hidden="true"></span>
-					<span class="hidden sm-inline max-w-40 truncate">{member?.name ?? user.name}</span>
+					<span class="hidden md-inline max-w-40 truncate">{member?.name ?? user.name}</span>
 					{#if unread > 0}
 						<span
-							class="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"
+							class="sm-ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent sm-px-1.5 py-0.5 text-11px font-700 leading-none text-oxford"
 							aria-label="{unread} unread {unread === 1 ? 'notification' : 'notifications'}"
 							>{unread > 99 ? "99+" : unread}</span
 						>
@@ -308,7 +318,9 @@
 						>
 					{/if}
 					<span
-						class="i-ph-caret-down text-12px transition-transform {open ? 'rotate-180' : ''}"
+						class="hidden sm-inline i-ph-caret-down text-12px transition-transform {open
+							? 'rotate-180'
+							: ''}"
 						aria-hidden="true"
 					></span>
 				</button>
@@ -477,9 +489,11 @@
 					: ''}"
 				href="/pricing">Pricing</a
 			>
-			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}">Sign in</a>
+			<a class="nav-link" href="/sign-in?next={encodeURIComponent(current)}" aria-label="Sign in">
+				<span class="block i-ph-user-circle text-18px" aria-hidden="true"></span>
+			</a>
 			<!-- The call to action: a small solid accent button. A phone has room for one link beside the logo, so Pricing and Sign up hide there (both are in the footer and on the front page). -->
-			<a class="button-accent-solid button-sm hidden sm-flex" href="/sign-up">Sign up</a>
+			<a class="button-accent-solid button-sm hidden sm-flex" href="/sign-up"> Sign up </a>
 		{/if}
 	</nav>
 </header>

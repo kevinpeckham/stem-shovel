@@ -40,6 +40,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   force bright and the rest dim (a feature request, and Kevin's note that
   only the key in force showed). `extractKeySegments` / `keyScores` /
   `detectKeys` in analysis.ts, `keyLine`, `keyWindows`.
+- **The Practice Amp's face, restyled** (Kevin): the knobs on a cream panel
+  with black caps, lamp switches beside their knobs (Bright, Ultra Lo and
+  Hi, Square), the Power and Mute buttons with lamps, the meters with a
+  clip light, outlined toolbar buttons, the readout as a dark window, the
+  presets in the knob row; the header's menus by icon on a phone.
 - **The Practice Amp's knobs in labelled groups**: Gain; EQ (Bass, Mids,
   Treble); Reverb; Tremolo (Depth, Speed); then Presence, Master (the
   power stage's push, formerly Power) and Output (the level, formerly

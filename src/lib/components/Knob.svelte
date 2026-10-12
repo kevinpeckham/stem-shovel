@@ -11,6 +11,13 @@
 	 * slider to assistive technology, with the formatted value as its text.
 	 */
 	interface Props {
+		/** Classes on the level arc's filled part (the amp leaves it as it is). */
+		activeLevelPathClasses?: string;
+		/** Drop the default face classes (fill and stroke) so `knobClasses` can set its own. */
+		clearDefaultKnobClasses?: boolean;
+		knobClasses?: string;
+		/** The level arc round the cap; off, the cap fills the whole knob (the amp's black knobs). */
+		showLevelPath?: boolean;
 		value: number;
 		min?: number;
 		max?: number;
@@ -36,6 +43,9 @@
 		class?: string;
 	}
 	let {
+		activeLevelPathClasses = "",
+		knobClasses = "",
+		clearDefaultKnobClasses = false,
 		value,
 		min = 0,
 		max = 1,
@@ -51,6 +61,7 @@
 		oninput,
 		onchange,
 		class: extra = "",
+		showLevelPath = true,
 	}: Props = $props();
 
 	const SWEEP = 270;
@@ -193,26 +204,37 @@
 			<circle
 				cx={C}
 				cy={C}
-				r="11"
-				class="fill-device-button-face stroke-light/10"
+				r={showLevelPath ? "11" : "20"}
+				class="{clearDefaultKnobClasses
+					? ''
+					: 'fill-device-button-face stroke-light/10'} {knobClasses}"
 				stroke-width="1"
 			/>
-			<path d={track} fill="none" class="stroke-light/10" stroke-width="3" stroke-linecap="round" />
-			{#if fill}
+			{#if showLevelPath}
 				<path
-					d={fill}
+					d={track}
 					fill="none"
-					class="stroke-accent-2"
+					class="stroke-light/10"
 					stroke-width="3"
 					stroke-linecap="round"
 				/>
+				{#if fill}
+					<path
+						d={fill}
+						fill="none"
+						class="stroke-accent-2 {activeLevelPathClasses}"
+						stroke-width="3"
+						stroke-linecap="round"
+					/>
+				{/if}
 			{/if}
+			<!-- knob position indicator -->
 			<line
 				x1={pointerStart.x}
 				y1={pointerStart.y}
 				x2={pointerEnd.x}
 				y2={pointerEnd.y}
-				class="stroke-blue-100"
+				class="stroke-accent-2"
 				stroke-width="2.5"
 				stroke-linecap="round"
 			/>

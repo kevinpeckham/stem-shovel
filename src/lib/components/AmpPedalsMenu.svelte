@@ -300,6 +300,6 @@
 	)}
 
 	<div class="border-t border-current/15 py-3">
-		<button class="device-button-xs px-3" type="button" onclick={reset}>Reset all</button>
+		<button class="button-outline" type="button" onclick={reset}>Reset all</button>
 	</div>
 </div>

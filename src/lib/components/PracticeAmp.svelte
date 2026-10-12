@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { amp } from "#lib/audio/amp.svelte.js";
 	import { inputSources, type ChannelMode, type InputSource } from "#lib/audio/inputs.svelte.js";
+
+	// components
 	import AmpPedalsMenu from "#lib/components/AmpPedalsMenu.svelte";
 	import AmpPresets, { type SavedAmpPreset } from "#lib/components/AmpPresets.svelte";
 	import ComboBox from "#lib/components/ComboBox.svelte";
@@ -8,6 +10,8 @@
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
 	import InfoTip from "#lib/components/InfoTip.svelte";
 	import Knob from "#lib/components/Knob.svelte";
+
+	// constants
 	import {
 		AMP_CABINET_CAPTURES,
 		AMP_INSTRUMENT_LABELS,
@@ -25,6 +29,8 @@
 		type AmpSource,
 	} from "#lib/val/AmpSchema.js";
 	import type { NamedAmpPreset } from "#lib/val/AmpPresetSchema.js";
+
+	// svelte functions
 	import { onMount } from "svelte";
 
 	/**
@@ -99,6 +105,8 @@
 	);
 	/** The jack the inputs module is asked about: the line in stands in while the chord player is the source (no jack is open then). */
 	const jack = $derived<InputSource>(amp.fromChords ? "line" : (amp.source as InputSource));
+
+	// power on function
 	async function power() {
 		if (amp.on) {
 			await amp.setOn(false);
@@ -165,11 +173,15 @@
 )}
 	<div class="grid justify-items-center gap-1 text-center">
 		<Knob
+			activeLevelPathClasses=""
+			clearDefaultKnobClasses={true}
+			knobClasses="fill-dark stroke-light/10"
+			showLevelPath={false}
 			{value}
 			min={opts.min ?? 0}
 			max={opts.max ?? 1}
 			step={opts.step ?? 0.01}
-			size={64}
+			size={54}
 			{label}
 			format={opts.format ?? pct}
 			{oninput}
@@ -187,27 +199,48 @@
 	>
 {/snippet}
 
+{#snippet toggleXs(label: string, on: boolean, onclick: () => void)}
+	<div
+		class="w-4 h-4 rounded-full {on
+			? 'bg-dark p-1px inner-shadow shadow-black/40'
+			: 'p-0.5px bg-dark/40 shadow'}"
+	>
+		<button
+			class="block empty-block aspect-square w-full h-full rounded-full {on
+				? 'bg-green shadow-none'
+				: 'shadow-md bg-green-950 shadow-black/40'}"
+			type="button"
+			aria-pressed={on}
+			aria-label={label}
+			{onclick}
+		></button>
+	</div>
+{/snippet}
+
 {#snippet inputMenu()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
 		<div class="grid gap-2">
-			<span class="device-button-label">Jack</span>
-			<div class="flex flex-wrap gap-1" role="group" aria-label="Input jack">
-				{#each [["line", "Line in"], ["mic", "Microphone input"], ["chords", "Chord player"]] as const as [id, label] (id)}
+			<div class="flex gap-2 items-center mb-2">
+				<span class="font-600 leading-tight">Jack</span>
+				<InfoTip
+					text="Line in is an audio interface or a guitar-to-USB adapter; the microphone input is the
+				computer's own jack with an instrument in it (or an acoustic through the microphone, which
+				feeds back through the speakers). Chord player plays the chord player's own instrument
+				through the amp, dry: its Electric Guitar (direct) or Electric Bass, to try the amp with
+				nothing plugged in."
+				/>
+			</div>
+
+			<div class="flex flex-wrap gap-3" role="group" aria-label="Input jack">
+				{#each [["line", "Line in"], ["mic", "Microphone"], ["chords", "Chord Player"]] as const as [id, label] (id)}
 					<button
-						class="device-button-xs px-3 {amp.source === id ? 'text-accent' : ''}"
+						class="button-outline {amp.source === id ? '!text-accent' : ''}"
 						type="button"
 						aria-pressed={amp.source === id}
 						onclick={() => void amp.setSource(id as AmpSource)}>{label}</button
 					>
 				{/each}
 			</div>
-			<p class="text-12px opacity-70">
-				Line in is an audio interface or a guitar-to-USB adapter; the microphone input is the
-				computer's own jack with an instrument in it (or an acoustic through the microphone, which
-				feeds back through the speakers). Chord player plays the chord player's own instrument
-				through the amp, dry: its Electric Guitar (direct) or Electric Bass, to try the amp with
-				nothing plugged in.
-			</p>
 		</div>
 		<div class="grid grid-cols-[1fr_auto] gap-2 items-end {amp.fromChords ? 'hidden' : ''}">
 			<label class="block">
@@ -271,37 +304,52 @@
 					oninput={(e) => amp.setTrimDb(Number(e.currentTarget.value))}
 				/>
 			</label>
-			<div class="flex flex-wrap gap-2">
-				<button
-					class="device-button-xs px-3"
-					type="button"
-					disabled={!amp.on || amp.settingLevel}
-					onclick={setLevel}
-				>
-					{amp.settingLevel ? "Listening… play now" : "Set level"}
-				</button>
-				{#if !amp.fromChords}
+			{#if amp.fromChords}
+				<p class="text-12px opacity-70">
+					The chord player's sampled notes are loud and a chord sums louder: the trim starts at −12
+					dB. Set level sets it so your loudest chord lands with headroom; the chord player's Volume
+					works too.
+				</p>
+			{/if}
+			<div class="grid grid-cols-2 gap-2">
+				<!-- set level -->
+				<div class="grid grid-cols-1 gap-y-2">
+					<div class="flex gap-2 items-center justify-center">
+						<h6 class="font-500 leading-tight opacity-90">Set Level</h6>
+						<InfoTip
+							text="Set level listens for three seconds and sets the trim so your loudest notes land with headroom."
+						/>
+					</div>
 					<button
-						class="device-button-xs px-3"
+						class="button-outline"
 						type="button"
-						disabled={!amp.on || inputSources.calibrating}
-						onclick={calibrate}
+						disabled={!amp.on || amp.settingLevel}
+						onclick={setLevel}
 					>
-						{inputSources.calibrating ? "Listening…" : "Calibrate latency"}
+						{amp.settingLevel ? "Listening… play now" : "Set"}
 					</button>
+				</div>
+
+				<!-- calibrate -->
+				{#if !amp.fromChords}
+					<div class="grid grid-cols-1 gap-y-2">
+						<div class="flex gap-2 items-center justify-center">
+							<h6 class="font-500 leading-tight opacity-90">Calibrate Latency</h6>
+							<InfoTip
+								text="Calibrate plays three clicks through the speakers and times them with the microphone, for the latency readout."
+							/>
+						</div>
+						<button
+							class="button-outline"
+							type="button"
+							disabled={!amp.on || inputSources.calibrating}
+							onclick={calibrate}
+						>
+							{inputSources.calibrating ? "Listening…" : "Calibrate"}
+						</button>
+					</div>
 				{/if}
 			</div>
-			<p class="text-12px opacity-70">
-				{#if amp.fromChords}
-					The chord player's sampled notes are loud and a chord sums louder: the trim starts at −12
-					dB. Set level listens for three seconds and sets it so your loudest chord lands with
-					headroom; the chord player's Volume works too.
-				{:else}
-					Set level listens for three seconds and sets the trim so your loudest notes land with
-					headroom. Calibrate plays three clicks through the speakers and times them with the
-					microphone.
-				{/if}
-			</p>
 		</div>
 	</div>
 {/snippet}
@@ -310,7 +358,7 @@
 	<AmpPedalsMenu />
 {/snippet}
 
-<div class="grid gap-2">
+<div class="grid gap-4">
 	{#if ontuner || onmetronome || onchords || ondrums}
 		<!-- The companions, above the face rather than on it (Kevin): the page's panels where the page has them, so an embedding of the amp keeps them. -->
 		<div
@@ -381,73 +429,44 @@
 		</div>
 	{/if}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<h2 class="sr-only">Amp</h2>
 	<div
-		class="@container device-chrome grid grid-cols-1 gap-4 pb-14 px-3 py-4 @xl-px-5 @xl-pt-5 w-full max-w-full overflow-hidden relative"
+		class="
+			@container
+			border
+			border-current/10
+			bg-black
+			bg-gradient-to-br
+			from-slate-950/40
+			to-slate-950/60
+			grid
+			grid-cols-1
+			gap-y-6
+			px-8 pt-4
+			pb-24
+			w-full
+			max-w-full
+			overflow-hidden
+			relative
+			rounded-xl
+			shadow-md
+			shadow-oxford
+			h-auto"
 		aria-label="Practice amp"
 		onpointerdowncapture={wake}
 	>
-		<div
-			class="absolute bottom-6 left-5 text-nowrap text-12px uppercase font-sans text-oxford text-shadow opacity-90 font-600 select-none pointer-events-none"
-		>
-			SS Amp 001
-		</div>
-
 		<!-- toolbar -->
-		<div class="flex flex-wrap items-end gap-2 @3xl-gap-3">
+		<h3 class="sr-only">Toolbar</h3>
+		<div class="flex flex-wrap items-end gap-3 @3xl-gap-4 text-14px">
+			<!-- Instrument Select -->
 			<div>
-				<div class="hidden @4xl-block device-button-group-label text-dark max-w-8">On</div>
-				<div class="flex gap-px">
-					<button
-						class="device-button-sm px-3 rounded-r-none {amp.on
-							? 'text-accent'
-							: 'ring-2 ring-accent/60'}"
-						type="button"
-						data-amp-power
-						aria-pressed={amp.on}
-						aria-busy={amp.starting}
-						aria-label={amp.on ? "Turn the amp off" : "Turn the amp on"}
-						title={amp.on
-							? "Turn the amp off (closes the input)"
-							: "Turn the amp on (or touch anything on it)"}
-						onclick={power}
-					>
-						<span
-							class={amp.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
-							aria-hidden="true"
-						></span>
-						<span class="hidden @2xl-inline"
-							>{amp.starting ? "Starting…" : amp.on ? "On" : "Off"}</span
-						>
-					</button>
-					<!-- Mute: the output off, the input open and the meters moving; red while engaged. -->
-					<button
-						class="device-button-sm px-3 rounded-l-none {amp.muted
-							? '!bg-red-600 !text-light'
-							: ''}"
-						type="button"
-						data-amp-mute
-						aria-pressed={amp.muted}
-						aria-label={amp.muted ? "Unmute the amp" : "Mute the amp"}
-						title={amp.muted ? "Unmute" : "Mute the output; the input stays open"}
-						onclick={() => amp.setMuted(!amp.muted)}
-					>
-						<span
-							class={amp.muted ? "i-ph-speaker-slash" : "i-ph-speaker-simple-high"}
-							aria-hidden="true"
-						></span>
-						<span class="hidden @2xl-inline">{amp.muted ? "Muted" : "Mute"}</span>
-					</button>
-				</div>
-			</div>
-			<div>
-				<div class="hidden @4xl-block device-button-group-label text-dark">Instrument</div>
-				<div class="flex gap-px" role="group" aria-label="Instrument">
+				<h4 class="sr-only">Instrument Selection</h4>
+				<div class="flex gap-0px" role="group" aria-label="Instrument">
 					{#each AMP_INSTRUMENTS as i (i)}
 						<button
-							class="device-button-sm px-3 {amp.instrument === i ? 'text-accent' : ''} {i ===
-							'guitar'
-								? 'rounded-r-none'
-								: 'rounded-l-none'}"
+							class="button-outline {amp.instrument === i
+								? 'bg-accent text-dark border border-accent opacity-100'
+								: 'opacity-90 text-accent'} {i === 'guitar' ? 'rounded-r-none' : 'rounded-l-none'}"
 							type="button"
 							aria-pressed={amp.instrument === i}
 							onclick={() => amp.setInstrument(i)}>{AMP_INSTRUMENT_LABELS[i]}</button
@@ -455,134 +474,76 @@
 					{/each}
 				</div>
 			</div>
-			<div class="min-w-40">
-				<div class="hidden @4xl-block device-button-group-label text-dark">Head</div>
+
+			<!-- Input Select -->
+			<div>
+				<h4 class="sr-only">Input Selection</h4>
+				<ContextMenu
+					ariaLabel="Input settings"
+					label="Input"
+					iconClass="i-ph-plugs"
+					buttonBaseClasses="button-outline"
+					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
+					items={[{ id: "input", kind: "snippet", snippet: inputMenu }]}
+				/>
+			</div>
+
+			<!-- Amp Head Select -->
+			<div>
+				<h4 class="sr-only">Head Selection</h4>
 				<ComboBox
 					ariaLabel="Head"
 					clearDefaultButtonClasses={true}
-					popoverClasses="text-15px"
-					buttonClasses="device-button-sm px-3 text-15px w-full"
+					popoverClasses=""
+					buttonClasses="button-outline"
 					options={headOptions}
 					value={amp.rig.model}
 					onchange={(v) => amp.setModel(v as AmpModelId)}
 				/>
 			</div>
+
+			<!-- Cabinet Select -->
 			{#if cabinetOptions.length > 1}
-				<div class="min-w-44">
-					<div class="hidden @4xl-block device-button-group-label text-dark">Cabinet</div>
+				<div>
+					<h4 class="sr-only">Cabinet Selection</h4>
 					<ComboBox
 						ariaLabel="Cabinet"
 						clearDefaultButtonClasses={true}
-						popoverClasses="text-15px"
-						buttonClasses="device-button-sm px-3 text-15px w-full"
+						popoverClasses=""
+						buttonClasses="button-outline"
 						options={cabinetOptions}
 						value={head.cabinet}
 						onchange={(v) => amp.setHead({ cabinet: v as typeof head.cabinet })}
 					/>
 				</div>
 			{/if}
+
 			<div>
-				<div class="hidden @4xl-block device-button-group-label text-dark">Input</div>
-				<ContextMenu
-					ariaLabel="Input settings"
-					label="Input"
-					iconClass="i-ph-plugs"
-					buttonBaseClasses="device-button-sm px-3"
-					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
-					items={[{ id: "input", kind: "snippet", snippet: inputMenu }]}
-				/>
-			</div>
-			<div>
-				<div class="hidden @4xl-block device-button-group-label text-dark">Pedals</div>
+				<h4 class="sr-only">Pedals</h4>
 				<ContextMenu
 					ariaLabel="Pedals"
 					label={onCount > 0 ? `Pedals · ${onCount}` : "Pedals"}
 					iconClass="i-ph-sliders"
-					buttonBaseClasses="device-button-sm px-3"
+					buttonBaseClasses="button-outline"
 					buttonClasses={onCount > 0 ? "text-accent" : ""}
 					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[{ id: "pedals", kind: "snippet", snippet: pedals }]}
 				/>
 			</div>
-			<!-- The jewel lamp (a classic combo's red pilot light) in a chrome housing: lit while the amp is on, a dark ruby otherwise. -->
-			<div class="self-center ml-auto" title={amp.on ? "On" : "Off"}>
-				<div
-					class="w-46px h-46px rounded-full grid place-items-center shadow-[0_2px_4px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.7)]"
-					style="background: conic-gradient(from 210deg, #f4f6f8 0deg, #9aa3ad 40deg, #e9edf0 80deg, #6b7580 130deg, #d7dce1 180deg, #8e97a1 230deg, #f1f3f5 280deg, #7d8792 330deg, #f4f6f8 360deg);"
-				>
-					<div
-						class="w-38px h-38px rounded-full grid place-items-center"
-						style="background: radial-gradient(circle at 50% 50%, #2a2f36 0%, #3b424b 60%, #c9cfd5 72%, #5d666f 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);"
-					>
-						<div
-							class="w-30px h-30px rounded-full transition-all duration-300"
-							role="status"
-							aria-label={amp.on ? "The amp is on" : "The amp is off"}
-							style:background={amp.on
-								? "radial-gradient(circle at 35% 32%, rgba(255,235,235,0.9) 0%, #ff5a5a 18%, #e01212 45%, #8a0808 80%, #5a0404 100%)"
-								: "radial-gradient(circle at 35% 32%, rgba(255,255,255,0.14) 0%, #6b1414 22%, #3a0a0a 60%, #1e0505 100%)"}
-							style:box-shadow={amp.on
-								? "inset 0 1px 4px rgba(0,0,0,0.35), 0 0 14px 4px rgba(255,64,64,0.6), 0 0 2px 1px rgba(255,120,120,0.8)"
-								: "inset 0 2px 5px rgba(0,0,0,0.7)"}
-						>
-							<!-- The jewel's facets: a faint pinwheel over the glass. -->
-							<div
-								class="w-full h-full rounded-full opacity-35"
-								style="background: repeating-conic-gradient(from 0deg, rgba(255,255,255,0.22) 0deg 12deg, rgba(0,0,0,0.12) 12deg 24deg);"
-							></div>
-						</div>
-					</div>
-				</div>
-			</div>
 		</div>
 
 		<!-- the readout -->
-		<div class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden">
+		<div
+			class="grid grid-cols-1 @xl-device-window-bevel-md max-w-full w-full overflow-hidden relative border-light/80"
+		>
 			<div
-				class="grid grid-cols-1 gap-y-2 device-screen max-w-full py-3 w-full text-blue-100 font-mono tabular-nums overflow-hidden select-none {amp.on
-					? ''
-					: 'opacity-50'}"
+				class="grid grid-cols-1 gap-y-2 bg-oxford/20 max-w-full py-3 w-full text-blue-100 font-mono tabular-nums overflow-hidden select-none px-4 py-6 min-h-140px"
 			>
-				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-					<span class="text-20px leading-none font-sans">{model.name}</span>
-					<span class="text-12px opacity-70 font-sans text-wrap">{model.blurb}</span>
+				<div class="grid grid-cols-1 items-baseline gap-x-3 gap-y-3">
+					<div class="text-20px leading-none font-sans">{model.name}</div>
+					<div class="text-12px opacity-70 font-sans text-wrap">{model.blurb}</div>
 				</div>
-				<div class="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 text-12px">
-					<span class="opacity-70">in</span>
-					<span
-						class="block h-1.5 w-full rounded bg-blue-100/10 overflow-hidden"
-						role="meter"
-						aria-label="Input level"
-						aria-valuemin="0"
-						aria-valuemax="100"
-						aria-valuenow={Math.round(amp.inputLevel * 100)}
-					>
-						<span
-							class="block h-full rounded {amp.inputLevel > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
-							style:width="{amp.inputLevel * 100}%"
-						></span>
-					</span>
-					<span
-						class="w-2.5 h-2.5 rounded-full {amp.clip ? 'bg-red-500' : 'bg-blue-100/10'}"
-						title="Clip"
-						aria-label={amp.clip ? "Clipping" : "Not clipping"}
-					></span>
-					<span class="opacity-70">out</span>
-					<span
-						class="block h-1.5 w-full rounded bg-blue-100/10 overflow-hidden"
-						role="meter"
-						aria-label="Output level"
-						aria-valuemin="0"
-						aria-valuemax="100"
-						aria-valuenow={Math.round(amp.outputLevel * 100)}
-					>
-						<span
-							class="block h-full rounded {amp.outputLevel > 0.85 ? 'bg-red-500' : 'bg-green-300'}"
-							style:width="{amp.outputLevel * 100}%"
-						></span>
-					</span>
-					<span class="w-2.5 h-2.5 rounded-full {amp.on ? 'bg-green-400' : 'bg-oxford-800'}"></span>
-				</div>
+
 				<div
 					class="text-12px opacity-80 flex flex-wrap gap-x-3 gap-y-1 font-sans"
 					aria-live="polite"
@@ -628,27 +589,192 @@
 			</div>
 		</div>
 
-		<!-- the head: the knobs in labelled groups, lined up as the piano's buttons are (Kevin's order), a blank label keeping an unlabelled group level with the rest -->
-		<div class="grid gap-3">
+		<!-- the head: the knobs in labeled groups, lined up as the piano's buttons are (Kevin's order), a blank label keeping an unlabelled group level with the rest -->
+		<div
+			class="
+			bg-#BDA784
+			bg-gradient-br
+			from-dark/10
+			grid
+			grid-cols-1
+			gap-y-0
+			inner-shadow
+			max-w-full
+			overflow-x-hidden
+			px-4
+			pt-4
+			pb-6
+			relative
+			rounded-lg
+			text-dark
+			to-black/15
+			via-black/5
+			w-full
+			xl-pr-200px"
+		>
 			<div
-				class="flex flex-wrap items-start gap-x-5 gap-y-3 @2xl-gap-x-7 [&_svg]-(text-dark) {amp.on
-					? ''
-					: 'opacity-60'}"
+				class="
+					flex
+					flex-wrap
+					gap-x-5
+					gap-y-5
+					items-start
+					"
 				role="group"
 				aria-label="Head"
 			>
-				{#snippet group(label: string, body: import("svelte").Snippet)}
-					<div role="group" aria-label={label || undefined}>
-						<div class="device-button-group-label text-dark {label ? '' : 'invisible'}">
-							{label || "·"}
+				<!-- Power & Meters -->
+				<div
+					class="
+					flex
+					gap-x-4
+					gap-y-8
+					w-full
+					sm-grid
+					sm-grid-cols-2
+					xl-absolute
+					xl-grid-cols-1
+					xl-max-w-200px
+					xl-top-6
+					xl-right-6"
+				>
+					<!-- power & mute -->
+					<div class="flex items-center h-auto xl-ml-auto w-full max-w-fit">
+						<!-- <div class="hidden @4xl-block text-dark max-w-8">On</div> -->
+						<div class="flex gap-px bg-dark/60 rounded-md overflow-hidden">
+							<button
+								class="device-button-sm min-w-60px px-3 rounded-r-none bg-slate-950 {amp.on
+									? '!text-light'
+									: ''}"
+								type="button"
+								data-amp-power
+								aria-pressed={amp.on}
+								aria-busy={amp.starting}
+								aria-label={amp.on ? "Turn the amp off" : "Turn the amp on"}
+								title={amp.on
+									? "Turn the amp off (closes the input)"
+									: "Turn the amp on (or touch anything on it)"}
+								onclick={power}
+							>
+								<!-- <span
+									class={amp.starting ? "i-ph-circle-notch animate-spin" : "i-ph-power"}
+									aria-hidden="true"
+								></span> -->
+								<span
+									class="w-2 h-2 rounded-full {amp.on
+										? 'bg-green-500 shadow-md shadow-green-500/20'
+										: 'bg-green-950'} "
+								></span>
+								<span class="hidden @2xl-inline">Power</span>
+							</button>
+							<!-- Mute: the output off, the input open and the meters moving; red while engaged. -->
+							<button
+								class="device-button-sm min-w-60px px-3 rounded-l-none bg-slate-950 {amp.muted
+									? '!text-light '
+									: ''}"
+								type="button"
+								data-amp-mute
+								aria-pressed={amp.muted}
+								aria-label={amp.muted ? "Unmute the amp" : "Mute the amp"}
+								title={amp.muted ? "Unmute" : "Mute the output; the input stays open"}
+								onclick={() => amp.setMuted(!amp.muted)}
+							>
+								<!-- <span
+									class={amp.muted ? "i-ph-speaker-slash" : "i-ph-speaker-simple-high"}
+									aria-hidden="true"
+								></span> -->
+								<span
+									class="w-2 h-2 rounded-full {amp.muted
+										? 'bg-red-500 shadow-md shadow-red-500/20'
+										: 'bg-red-950'} "
+								></span>
+								<span class="hidden @2xl-inline">Mute</span>
+							</button>
 						</div>
-						<div class="flex items-start gap-x-3 @2xl-gap-x-4">{@render body()}</div>
+					</div>
+
+					<!-- level meter -->
+					<div class="w-full grid grid-cols-1 items-center gap-x-2 gap-y-1 text-12px">
+						{#each ["in", "out"] as meter, i}
+							{@const level = meter === "out" ? amp.outputLevel : amp.inputLevel}
+
+							<!-- meter group  -->
+							<div class="grid grid-cols-[20px_1fr_auto] items-center gap-x-3">
+								<!-- label -->
+								<span class="opacity-80 text-dark font-500 uppercase tracking-wide text-right"
+									>{meter}</span
+								>
+
+								<!-- meter -->
+								<div class="bg-dark rounded">
+									<span
+										class="block h-1.5 w-full rounded bg-blue-100/10 overflow-hidden"
+										role="meter"
+										aria-label="{meter}put level"
+										aria-valuemin="0"
+										aria-valuemax="100"
+										aria-valuenow={Math.round(level * 100)}
+									>
+										<span
+											class="block h-full rounded {level > 0.85
+												? 'bg-red-500 shadow-md shadow-red-500'
+												: 'bg-green-500 shadow-md shadow-green-500'}"
+											style:width="{level * 100}%"
+										></span>
+									</span>
+								</div>
+
+								<!-- IN: the clip light, red while a peak reaches full scale; OUT: the power lamp. -->
+								{#if meter === "in"}
+									<span
+										class="w-2.5 h-2.5 rounded-full {amp.clip
+											? 'bg-red-500 shadow-md shadow-red-500/60'
+											: 'bg-red-950'}"
+										title="Clip"
+										aria-label={amp.clip ? "Clipping" : "Not clipping"}
+									></span>
+								{:else}
+									<span
+										class="w-2.5 h-2.5 rounded-full {amp.on
+											? 'bg-green-500 shadow-md shadow-green-500/40'
+											: 'bg-green-950'}"
+										title={amp.on ? "On" : "Off"}
+										aria-label={amp.on ? "The amp is on" : "The amp is off"}
+									></span>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				{#snippet group(label: string, body: import("svelte").Snippet)}
+					<div class="grid grid-cols-1 gap-y-2" role="group" aria-label={label || undefined}>
+						<!-- group heading -->
+						<div
+							class="grid grid-cols-[1fr_auto_1fr] gap-x-2 text-dark text-11px uppercase tracking-wider text-center {label
+								? ''
+								: 'invisible'}"
+						>
+							<div class="flex items-center">
+								<div class="border-t border-black/80 w-full h-1px !empty-block"></div>
+							</div>
+							<div class="leading-none">{label || "·"}</div>
+							<div class="flex items-center">
+								<div class="border-t border-black/80 w-full h-1px !empty-block"></div>
+							</div>
+						</div>
+						<!-- group body -->
+						<div class="flex items-start gap-x-3">{@render body()}</div>
 					</div>
 				{/snippet}
+
+				<!-- gain group -->
 				{#snippet gainGroup()}
 					{@render knob("Gain", head.gain, (v) => amp.setHead({ gain: v }))}
 				{/snippet}
 				{@render group("", gainGroup)}
+
+				<!-- EQ Group -->
 				{#snippet eqGroup()}
 					{@render knob("Bass", head.bass, (v) => amp.setHead({ bass: v }))}
 					{@render knob("Mids", head.mid, (v) => amp.setHead({ mid: v }))}
@@ -661,14 +787,46 @@
 						})}
 					{/if}
 					{@render knob("Treble", head.treble, (v) => amp.setHead({ treble: v }))}
+					{#if model.switches.includes("bright")}
+						<div
+							class="grid grid-cols-1 text-9.5px uppercase tracking-narrow text-dark place-content-center place-items-center"
+						>
+							<div>Bright</div>
+							{@render toggleXs("Bright", head.bright, () => amp.setHead({ bright: !head.bright }))}
+						</div>
+					{/if}
+					{#if model.switches.includes("ultraLo")}
+						<div
+							class="grid grid-cols-1 text-9.5px uppercase tracking-narrow text-dark place-content-center place-items-center"
+						>
+							<div class="leading-tight mb-1">+ Low</div>
+							{@render toggleXs("Ultra Lo", head.ultraLo, () =>
+								amp.setHead({ ultraLo: !head.ultraLo }),
+							)}
+						</div>
+					{/if}
+					{#if model.switches.includes("ultraHi")}
+						<div
+							class="grid grid-cols-1 text-9.5px uppercase tracking-narrow text-dark place-content-center place-items-center"
+						>
+							<div class="leading-tight mb-1">+ High</div>
+							{@render toggleXs("Ultra Hi", head.ultraHi, () =>
+								amp.setHead({ ultraHi: !head.ultraHi }),
+							)}
+						</div>
+					{/if}
 				{/snippet}
 				{@render group("EQ", eqGroup)}
+
+				<!-- Reverb Group -->
 				{#if model.hasReverb}
 					{#snippet reverbGroup()}
 						{@render knob("Level", head.reverb, (v) => amp.setHead({ reverb: v }))}
 					{/snippet}
 					{@render group("Reverb", reverbGroup)}
 				{/if}
+
+				<!-- Tremolo Group -->
 				{#if model.hasTremolo}
 					{#snippet tremoloGroup()}
 						{@render knob("Depth", head.tremolo.depth, (v) => amp.setTremolo({ depth: v }))}
@@ -678,9 +836,21 @@
 							step: 0.1,
 							format: (v) => `${v.toFixed(1)} Hz`,
 						})}
+						{#if model.hasTremolo}
+							<div
+								class="grid grid-cols-1 text-9.5px uppercase tracking-narrow text-dark place-content-center place-items-center"
+							>
+								<div>Square</div>
+								{@render toggleXs("Square", head.tremolo.shape === "square", () =>
+									amp.setTremolo({ shape: head.tremolo.shape === "square" ? "sine" : "square" }),
+								)}
+							</div>
+						{/if}
 					{/snippet}
 					{@render group("Tremolo", tremoloGroup)}
 				{/if}
+
+				<!-- Out Group -->
 				{#snippet outGroup()}
 					{@render knob("Presence", head.presence, (v) => amp.setHead({ presence: v }))}
 					<!-- Master pushes the power stage (sag and a softer clip); Output is the level into the room. -->
@@ -688,32 +858,21 @@
 					{@render knob("Output", head.master, (v) => amp.setHead({ master: v }))}
 				{/snippet}
 				{@render group("", outGroup)}
-			</div>
-			{#if sitePresets}
-				<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />
-			{/if}
-			{#if model.switches.length > 0 || model.hasTremolo}
-				<div class="flex flex-wrap gap-2" role="group" aria-label="Switches">
-					{#if model.switches.includes("bright")}
-						{@render toggle("Bright", head.bright, () => amp.setHead({ bright: !head.bright }))}
-					{/if}
-					{#if model.switches.includes("ultraLo")}
-						{@render toggle("Ultra Lo", head.ultraLo, () =>
-							amp.setHead({ ultraLo: !head.ultraLo }),
-						)}
-					{/if}
-					{#if model.switches.includes("ultraHi")}
-						{@render toggle("Ultra Hi", head.ultraHi, () =>
-							amp.setHead({ ultraHi: !head.ultraHi }),
-						)}
-					{/if}
-					{#if model.hasTremolo}
-						{@render toggle("Trem: square", head.tremolo.shape === "square", () =>
-							amp.setTremolo({ shape: head.tremolo.shape === "square" ? "sine" : "square" }),
-						)}
-					{/if}
+
+				<!-- presets -->
+				{#if sitePresets}
+					<div class="flex items-center h-auto sm-h-90px text-light">
+						<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />
+					</div>
+				{/if}
+
+				<!-- branding -->
+				<div
+					class="absolute bottom-6 right-6 text-nowrap text-12px uppercase font-sans text-dark/80 text-shadow opacity-90 font-600 select-none pointer-events-none"
+				>
+					SS Amp 001
 				</div>
-			{/if}
+			</div>
 		</div>
 	</div>
 </div>
