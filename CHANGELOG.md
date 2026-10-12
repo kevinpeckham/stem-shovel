@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.127.0] - 2026-10-12
+
 ### Technical
 
 - **`bun run smoke:blob` works on the dev VM again**: it runs as the
