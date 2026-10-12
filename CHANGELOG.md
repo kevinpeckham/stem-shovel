@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.124.0] - 2026-10-12
+
 ### Added
 
 - **The Practice Amp's pedals are voiced for the instrument**: on a bass
