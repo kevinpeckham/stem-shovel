@@ -10,6 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Fixed
 
+- **Stem rows on a phone are all the same width**, so the playheads line
+  up: a long stem name widened its row past the screen (the grid's `1fr`
+  column would not shrink below the name), and each waveform was drawn to
+  its own row's width (Kevin's 32-stem song on an iPhone). The name's
+  column is `minmax(0, 1fr)` now and the name cell `min-w-0`, so a long
+  name truncates instead.
 - **A stem upload the network drops is tried again.** Kevin's batch of
   32 lost its first five at once to a TLS error on the multipart create
   call (`ERR_SSL_BAD_RECORD_MAC_ALERT`, a connection settling) with no

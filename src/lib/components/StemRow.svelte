@@ -57,8 +57,8 @@
 <div
 	class="
 		grid
-		grid-cols-[1fr_auto_auto]
-		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_1fr] relative {dragging
+		grid-cols-[minmax(0,1fr)_auto_auto]
+		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_minmax(0,1fr)] relative {dragging
 		? 'opacity-50'
 		: ''}"
 	role="group"
@@ -66,8 +66,8 @@
 	data-stem-row={stem.id}
 	{onkeydown}
 >
-	<!-- track name & meta -->
-	<div class="w-full">
+	<!-- track name & meta: min-w-0 so a long name truncates instead of widening the row (Kevin's phone: rows of different lengths, cursors out of line) -->
+	<div class="w-full min-w-0">
 		<div class="flex min-w-0 items-center gap-2">
 			{#if handle}{@render handle(stem)}{/if}
 			<div
