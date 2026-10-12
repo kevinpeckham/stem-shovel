@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.123.0] - 2026-10-12
+
 ### Added
 
 - **Practice Amp** (docs/practice-amp.md): plug a guitar or a bass into
