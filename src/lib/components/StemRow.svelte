@@ -58,7 +58,7 @@
 	class="
 		grid
 		grid-cols-[minmax(0,1fr)_auto_auto]
-		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[80px_80px_minmax(0,1fr)] relative {dragging
+		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[22%_80px_minmax(0,1fr)] relative {dragging
 		? 'opacity-50'
 		: ''}"
 	role="group"

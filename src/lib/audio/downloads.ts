@@ -31,18 +31,24 @@ export async function saveMix(songId: string, name: string, mode: MixMode, query
 export async function saveStemsZip(
 	stems: { url: string; filename: string; label: string }[],
 	name: string,
+	/** Called as each stem's bytes start into the zip (`done` of `total`), for a notice the listener can watch. */
+	onProgress?: (done: number, total: number) => void,
 ) {
 	const { downloadZip } = await import("client-zip");
 	const seen = new Set<string>();
 	async function* entries() {
+		let done = 0;
 		for (const s of stems) {
 			let filename = s.filename;
 			if (seen.has(filename)) filename = `${s.label}-${filename}`;
 			seen.add(filename);
+			onProgress?.(done, stems.length);
 			const res = await fetch(s.url);
 			if (!res.ok) throw new Error(`${s.label}: ${res.status} ${res.statusText}`);
 			yield { name: filename, input: res };
+			done += 1;
 		}
+		onProgress?.(done, stems.length);
 	}
 	const blob = await downloadZip(entries()).blob();
 	const a = document.createElement("a");

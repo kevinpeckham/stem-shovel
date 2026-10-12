@@ -8,6 +8,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Download Stems says what it is doing.** The menu closes on the click
+  and a big song's zip takes a while (Kevin), so a notice now follows the
+  work, naming the stem going into the zip and its number of the total,
+  then says the browser is saving it, or what went wrong.
+  `saveStemsZip` takes an `onProgress` callback.
+- **A stem's name has more room on a desktop row**: the name column is
+  22 % of the row instead of 80 px (56 px for the text after the grip).
+  The full name is the row's tooltip, as before.
+
+### Technical
+
+- `smoke:urls` knows `/admin/playback`.
+
 ## [0.127.0] - 2026-10-12
 
 ### Technical

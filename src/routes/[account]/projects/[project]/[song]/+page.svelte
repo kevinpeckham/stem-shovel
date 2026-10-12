@@ -1781,11 +1781,36 @@
 			mixing = null;
 		}
 	}
+	// The zip takes a while on a big song and the menu closes on the click (Kevin), so a notice
+	// follows the work: which stem is going in, then the hand-off to the browser's download.
 	async function downloadAll() {
 		if (ready.length === 0 || zipping) return;
 		zipping = "Preparing…";
+		const id = "stems-zip";
+		const count = `${ready.length} ${ready.length === 1 ? "stem" : "stems"}`;
+		notify(`Preparing the stems zip (${count})…`, {
+			id,
+			kind: "info",
+			timeout: null,
+			dismissable: false,
+		});
 		try {
-			await saveStemsZip(ready, downloadStem);
+			await saveStemsZip(ready, downloadStem, (done, total) => {
+				zipping = `Preparing… ${done} of ${total}`;
+				if (done < total)
+					notify(
+						`Preparing the stems zip: ${ready[done]?.label ?? ""} (${done + 1} of ${total})…`,
+						{
+							id,
+							kind: "info",
+							timeout: null,
+							dismissable: false,
+						},
+					);
+			});
+			notify(`Stems zip ready (${count}): your browser is saving it`, { id, kind: "success" });
+		} catch (e) {
+			notify(`Could not prepare the stems zip: ${errorMessage(e)}`, { id, kind: "error" });
 		} finally {
 			zipping = null;
 		}
