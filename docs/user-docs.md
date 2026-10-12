@@ -48,7 +48,13 @@ both takes it once, different changes on both are a conflict).
   merged page. A conflicted page is left alone and the run exits 1.
 - A page whose base cannot be found (its seed version pruned by ten app
   saves since, and the seed changed in between) is reported as such:
-  `--force` overwrites, or the change is merged by hand.
+  `--force` overwrites, or the change is merged by hand. The releases
+  page is never merged (`IN_APP_ONLY`): its seed is the starting text and
+  the page is written in the app alone (releases-page rules).
+- The first production run (2026-10-12) merged thirteen pages and left
+  two conflicts, both where Kevin had shortened a passage the seed later
+  extended; a conflict is the run's answer, not a failure, so the script
+  exits 0.
 
 The release step on production, after the migration and the seed:
 
