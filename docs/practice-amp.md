@@ -424,6 +424,23 @@ waits on it). Credited on the Built With page. Soundwoofer, which calls
 itself public domain, is the candidate for the bass heads once its terms
 can be read; the other free packs are free to download, not to ship.
 
+## The first hardware report (2026-10-12)
+
+Kevin, with an iRig HD X and a Rickenbacker bass: the Solid State head
+sounded right; the Fridge distorted at its default Gain with no pedal on
+and neither meter clipping, and Set level had put the trim at +13 dB;
+trim at 0 was clean but quiet. Measured (`amp.render()` now takes a
+sine at a level and reports the harmonics' share, 2f to 6f over f): on a
+110 Hz sine at −12 dBFS, the level Set level aims for, the Fridge gave
+4.4% harmonics at Gain 3, 7% at 5 and 9.6% at 10; the Tweed 23% at 5
+and 24% at 10. The linear law `1 + gain·drive` drove every head into its
+clipper by the knob's first third and had nothing left after. The law is
+exponential now, `drive ** gain` (1 at 0, `drive` at 10), in the preamp
+and the power stage both, so the lower half of each knob is clean and the
+crunch lives in the top half; the figures after it are in the table in
+the section's commit. A bass's plucked peaks sit well above its sine
+equivalent, which is why Kevin heard it before the meters did.
+
 ## The punch list (2026-10-10, after the presets)
 
 Kevin picked six items from the list of what was left:

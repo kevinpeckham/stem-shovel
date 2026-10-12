@@ -487,20 +487,26 @@ class AmpEngine {
 
 	/**
 	 * The chain rendered offline over a test signal (the dev hook and the
-	 * browser tests): `seconds` of a sawtooth at `hz` peaking at 0.5, through
-	 * the rig in force, as RMS and peak of what comes out.
+	 * browser tests): `seconds` of a sawtooth (or a sine) at `hz` peaking at
+	 * `level`, through the rig in force, as RMS and peak of what comes out
+	 * and, for a sine, the harmonics' share: the energy at 2f to 6f over the
+	 * energy at f, the measure of how much the heads distort it.
 	 */
-	async render(seconds = 1, hz = 110): Promise<{ rms: number; peak: number }> {
+	async render(
+		seconds = 1,
+		hz = 110,
+		options: { level?: number; wave?: OscillatorType } = {},
+	): Promise<{ rms: number; peak: number; harmonics: number }> {
 		const rate = 48000;
 		const ctx = new OfflineAudioContext(2, Math.round(seconds * rate), rate);
 		const gateWorklet = await loadAmpWorklet(ctx);
 		const chain = createAmpChain(ctx, $state.snapshot(this.rig), { gateWorklet });
 		chain.output.connect(ctx.destination);
 		const osc = ctx.createOscillator();
-		osc.type = "sawtooth";
+		osc.type = options.wave ?? "sawtooth";
 		osc.frequency.value = hz;
 		const level = ctx.createGain();
-		level.gain.value = 0.5;
+		level.gain.value = options.level ?? 0.5;
 		osc.connect(level);
 		level.connect(chain.input);
 		osc.start();
@@ -509,11 +515,35 @@ class AmpEngine {
 		let sum = 0;
 		let peak = 0;
 		// Skip the first tenth: the ramps and the convolver settle.
-		for (let i = Math.round(data.length / 10); i < data.length; i++) {
+		const from = Math.round(data.length / 10);
+		for (let i = from; i < data.length; i++) {
 			sum += data[i]! * data[i]!;
 			peak = Math.max(peak, Math.abs(data[i]!));
 		}
-		return { rms: Math.sqrt(sum / (data.length * 0.9)), peak };
+		const tail = data.subarray(from);
+		const at = (f: number) => {
+			const k = (2 * Math.PI * f) / rate;
+			const c = 2 * Math.cos(k);
+			let s0 = 0;
+			let s1 = 0;
+			let s2 = 0;
+			for (let i = 0; i < tail.length; i++) {
+				s0 = tail[i]! + c * s1 - s2;
+				s2 = s1;
+				s1 = s0;
+			}
+			const re = s1 - s2 * Math.cos(k);
+			const im = s2 * Math.sin(k);
+			return re * re + im * im;
+		};
+		const fundamental = at(hz);
+		let overtones = 0;
+		for (let n = 2; n <= 6; n++) overtones += at(hz * n);
+		return {
+			rms: Math.sqrt(sum / (data.length - from)),
+			peak,
+			harmonics: fundamental > 0 ? overtones / fundamental : 0,
+		};
 	}
 }
 

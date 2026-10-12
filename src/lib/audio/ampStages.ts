@@ -107,7 +107,8 @@ export function createPreampStage(ctx: BaseAudioContext, peak: number): AmpStage
 			set(ctx, lows.frequency, p.keepLowsHz ?? 10, tau);
 			set(ctx, lowsGain.gain, p.keepLowsHz ? 1 : 0, tau);
 			set(ctx, highs.frequency, p.keepLowsHz ?? 10, tau);
-			const gain = 1 + head.gain * p.drive;
+			// The knob's law is exponential (1 at 0, `drive` at 10), so its lower half stays clean and the crunch lives in the top half: linear, the Fridge distorted a bass at its default Gain of 3 (Kevin, measured 4% harmonics on a −12 dBFS sine) and had nothing left to give past 5.
+			const gain = p.drive ** head.gain;
 			set(ctx, pre.gain, gain, tau);
 			set(ctx, lp.frequency, p.lowPassHz, tau);
 			const f = PREAMP_SHAPES[p.curve];
@@ -218,7 +219,7 @@ export function createPowerStage(ctx: BaseAudioContext, peak: number): AmpStage 
 		input,
 		output,
 		update(model, head, tau) {
-			const gain = 1 + head.power * model.power.drive;
+			const gain = model.power.drive ** head.power;
 			set(ctx, pre.gain, gain, tau);
 			// The follower reads about 0.6 of the peak for a note: the depth is scaled so full sag at a loud note takes the gain down by `sag`.
 			set(ctx, sagDepth.gain, (-model.power.sag * head.power) / (0.6 * peak), tau);

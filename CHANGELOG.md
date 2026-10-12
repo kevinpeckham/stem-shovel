@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Practice Amp's Gain and Master knobs** follow an exponential law,
+  so a head is clean through the knob's lower half and the crunch lives
+  in the top half: the Fridge distorted a bass at its default Gain with
+  nothing engaged (Kevin's first test with an iRig HD X), since the linear
+  law drove every head into its clipper early.
+
 ## [0.123.1] - 2026-10-12
 
 ### Changed

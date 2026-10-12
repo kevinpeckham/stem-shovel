@@ -17,7 +17,7 @@ export interface AmpModel {
 	blurb: string;
 	preamp: {
 		curve: AmpPreampCurve;
-		/** The gain at full drive, as a multiplier before the clipper. */
+		/** The gain at full Gain, as a multiplier before the clipper (1 at Gain 0, by an exponential law). */
 		drive: number;
 		/** The high-pass before the clipper: what the preamp will not bother distorting. */
 		highPassHz: number;
@@ -35,7 +35,7 @@ export interface AmpModel {
 		scoopDb: number;
 	};
 	power: {
-		/** The gain at full Power before the soft clip. */
+		/** The gain at full Master before the soft clip (1 at 0, by an exponential law). */
 		drive: number;
 		/** How much the supply sags under a loud passage, 0 to 1. */
 		sag: number;
