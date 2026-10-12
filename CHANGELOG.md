@@ -19,6 +19,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   the middle of a bar stays where it is. A key change within a bar of a
   section's start then moves onto it, and a detected section onto a key
   change the same way, so the two line up.
+- **A change on a downbeat no longer reads as the last beat of the bar
+  before**: starts are stored to a tenth of a millisecond, finer than the
+  bar lookup's tolerance was, so a snapped key change showed as "20 | 4"
+  (Kevin's test); `barAt` now allows a thousandth of a beat.
 - **The section timeline's left-hand labels** read in the rows' order,
   "keys:" above "section:", as the lanes sit above the section blocks.
 

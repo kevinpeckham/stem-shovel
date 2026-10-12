@@ -58,6 +58,18 @@ describe("barAt", () => {
 		expect(pos(0)).toBe("0|1");
 		expect(pos(1.5)).toBe("0|4");
 	});
+	test("a downbeat stored to a tenth of a millisecond still reads as beat 1", () => {
+		// 68 bpm: bar 21 begins at 70.588235…, saved as 70.5882 (data.ts rounds starts).
+		const grid = barGrid(
+			[
+				{ kind: "tempo", start: 0, value: "68" },
+				{ kind: "meter", start: 0, value: "4/4" },
+			],
+			null,
+		)!;
+		expect(barAt(grid, 70.5882)).toMatchObject({ bar: 21, beat: 1 });
+		expect(barAt(grid, 56.4706)).toMatchObject({ bar: 17, beat: 1 });
+	});
 	test("secondsAtBar inverts it exactly", () => {
 		for (const t of [0, 2, 3.5, 8, 10, 16, 19, 20.25]) {
 			const p = barAt(grid, t);

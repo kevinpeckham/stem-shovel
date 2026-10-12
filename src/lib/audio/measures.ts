@@ -46,6 +46,9 @@ function beatsBetween(grid: BarGrid, from: number, to: number): number {
 	return beats;
 }
 
+/** Beats of slack when a time sits on a beat line (a tenth of a millisecond at 400 bpm is 0.0007 of a beat). */
+const BEAT_SLACK = 1e-3;
+
 export interface BarPosition {
 	bar: number; // 1 at startAt; 0, -1, … before it
 	beat: number; // 1 … beatsPerBar
@@ -70,7 +73,9 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 		bpb = m.beatsPerBar;
 	}
 	const beats = beatsBetween(grid, segStart, seconds);
-	const whole = Math.floor(beats + 1e-9);
+	// A thousandth of a beat of slack: a start is stored to a tenth of a millisecond (data.ts), coarser than
+	// floating point, so an exact downbeat rounded down must not read as the last beat of the bar before.
+	const whole = Math.floor(beats + BEAT_SLACK);
 	const barsIn = Math.floor(whole / bpb);
 	const beatIn = ((whole % bpb) + bpb) % bpb;
 	return {
