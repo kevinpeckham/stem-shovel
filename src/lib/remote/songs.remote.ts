@@ -33,6 +33,7 @@ import {
 	saveUserNote,
 	setSongVersion as setVersion,
 	mixOwnership,
+	scoreForAi,
 	songForMix,
 	chartExamples,
 	getSongById,
@@ -316,11 +317,14 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
 	const at0 = (kind: string) =>
 		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	// The song's score rides along when it has one: the chart's keys are surer than the ear's (docs/audio-engine.md, "The score as the AI's chart").
+	const score = (await scoreForAi(accountId, id)) ?? null;
 	return aiOrError(
 		askAiAboutMix(
 			song.mixUrl,
 			{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
 			{ userId: user.id, songId: id },
+			score,
 		),
 	);
 });

@@ -1045,8 +1045,15 @@
 		if (sections.length >= 1 && data.song.sections.length >= 2) return [0, ...sections];
 		return keyWindows(playerEngine?.duration ?? 0);
 	}
+	/** The song has a score (MusicXML, or a PDF or image marked as notation): the AI reads it with the mix, surer about the keys than the ear (docs/audio-engine.md, "The score as the AI's chart"). */
+	let hasScore = $derived(notationCount > 0);
 	async function scanStems() {
 		if (!playerEngine || playerEngine.status !== "ready") return;
+		// With a score and the AI at hand, the AI reads the chart and listens; the stems only when it cannot.
+		if (hasScore && data.aiAvailable && !aiBusy) {
+			const answered = await askAiWithScore();
+			if (answered) return;
+		}
 		scanning = true;
 		scanResult = null;
 		try {
@@ -1258,10 +1265,10 @@
 	let aiBusy = $state(false);
 	let aiAnswer = $state<AiAnswer | null>(null);
 	let aiError = $state<string | null>(null);
-	/** The answer came unasked, because the detector's time signature was a close call. */
-	let aiAuto = $state(false);
+	/** Why the answer came unasked: the detector's time signature was a close call, or the song has a score the AI read. */
+	let aiAuto = $state<null | "meter" | "score">(null);
 	async function askAi() {
-		aiAuto = false;
+		aiAuto = null;
 		aiBusy = true;
 		aiError = null;
 		try {
@@ -1273,6 +1280,55 @@
 		}
 	}
 	/**
+	 * "Scan stems" on a song with a score: the AI reads the chart and listens
+	 * to the mix, and the answer is set at once when the song has no settings
+	 * yet, else offered under the rows. False when it could not answer (the
+	 * mix not rendered yet, the gateway down), so the stems are scanned instead.
+	 */
+	async function askAiWithScore(): Promise<boolean> {
+		notify("This song has a score; asking the AI to read it and listen", { kind: "info" });
+		aiAuto = "score";
+		aiBusy = true;
+		aiError = null;
+		try {
+			aiAnswer = await askAiAboutSong({ id: data.song.id });
+			settingsTab = "tempo";
+			if (data.song.changes.length === 0) await useAiAnswer();
+			else
+				notify(`The AI read the score: ${aiLine(aiAnswer)}; open settings to use its answer`, {
+					kind: "info",
+					timeout: 12_000,
+				});
+			return true;
+		} catch (e) {
+			const status = (e as { status?: unknown }).status;
+			notify(
+				status === 409
+					? "The mix is still rendering; scanning the stems meanwhile"
+					: `${errorMessage(e)}; scanning the stems instead`,
+				{ kind: "info" },
+			);
+			aiAuto = null;
+			return false;
+		} finally {
+			aiBusy = false;
+		}
+	}
+	/** An answer as one line: "96 bpm · C major (also A♭ major, F major) · 4/4". */
+	function aiLine(a: AiAnswer): string {
+		const keys = [a.key, ...a.keyChanges.map((c) => c.key)].filter(
+			(k, i, all) => k && all.indexOf(k) === i,
+		);
+		const key = keys.length > 1 ? `${keys[0]} (also ${keys.slice(1).join(", ")})` : (keys[0] ?? "");
+		return [
+			a.tempo === null ? "no fixed tempo" : `${Math.round(a.tempo)} bpm`,
+			key,
+			a.meter === "free" ? "no meter" : a.meter,
+		]
+			.filter(Boolean)
+			.join(" · ");
+	}
+	/**
 	 * Below this the detector's 3/4-or-4/4 lean is a coin toss (a user's 4/4
 	 * song came back 3/4 at 0.08), so the model listens too when it can.
 	 */
@@ -1280,10 +1336,23 @@
 	/** After an upload the mix renders in the background; the check waits for it this long. */
 	const MIX_WAIT_TRIES = 18;
 	const MIX_WAIT_MS = 10_000;
-	async function checkUnsureMeter(d: Detection) {
-		if (!data.aiAvailable || aiBusy || !d.tempo.bpm || d.meter.confidence >= UNSURE_METER) return;
-		notify(`${d.meter.value} time is a close call; asking the AI to listen too`, { kind: "info" });
-		aiAuto = true;
+	/**
+	 * After the detector has set a song's settings: the AI listens too when
+	 * the time signature was a close call, or reads the score when the song
+	 * has one (then its answer replaces the detector's, as the detector's
+	 * replaced nothing: the song had no settings before this upload).
+	 */
+	async function checkUnsureMeter(d: Detection, applied = false) {
+		if (!data.aiAvailable || aiBusy) return;
+		const score = hasScore && applied;
+		if (!score && (!d.tempo.bpm || d.meter.confidence >= UNSURE_METER)) return;
+		notify(
+			score
+				? "This song has a score; asking the AI to read it and listen"
+				: `${d.meter.value} time is a close call; asking the AI to listen too`,
+			{ kind: "info" },
+		);
+		aiAuto = score ? "score" : "meter";
 		aiBusy = true;
 		aiError = null;
 		try {
@@ -1292,6 +1361,11 @@
 					const answer = await askAiAboutSong({ id: data.song.id });
 					aiAnswer = answer;
 					settingsTab = "tempo";
+					if (score) {
+						aiBusy = false;
+						await useAiAnswer();
+						return;
+					}
 					// The card sits in the settings popover, so say here whether the AI agrees.
 					const meter = answer.meter === "free" ? "no fixed meter" : answer.meter;
 					notify(
@@ -1315,7 +1389,7 @@
 					kind: "info",
 				});
 			} else aiError = errorMessage(e);
-			aiAuto = false;
+			aiAuto = null;
 		} finally {
 			aiBusy = false;
 		}
@@ -1333,9 +1407,15 @@
 			...(aiAnswer.meter === "free" ? [] : [{ kind: "meter" as const, value: aiAnswer.meter }]),
 		];
 		const replaced = new Set(at0.map((r) => r.kind));
+		// Every earlier key change goes when the model names the keys through the song (it read the score, or heard a modulation).
+		const keysToo = aiAnswer.keyChanges.length > 0;
 		const rows = changeRows.filter(
 			(r) =>
-				!((r.seconds === 0 && replaced.has(r.kind)) || (r.kind === "tempo" && r.seconds !== 0)),
+				!(
+					(r.seconds === 0 && replaced.has(r.kind)) ||
+					(r.kind === "tempo" && r.seconds !== 0) ||
+					(keysToo && r.kind === "key")
+				),
 		);
 		for (const { kind, value } of at0) {
 			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value });
@@ -1349,10 +1429,27 @@
 				value: String(Math.round(c.bpm)),
 			});
 		}
+		for (const c of aiAnswer.keyChanges) {
+			rows.push({
+				time: editPos(c.at),
+				shown: editPos(c.at),
+				seconds: c.at,
+				kind: "key",
+				value: c.key,
+			});
+		}
+		const line = aiLine(aiAnswer);
+		const fromScore = aiAuto === "score";
 		changeRows = rows;
 		await saveChangeRows();
 		if (changeError) notify(`Could not apply the AI's answer: ${changeError}`, { kind: "error" });
-		else aiAnswer = null;
+		else {
+			aiAnswer = null;
+			if (fromScore)
+				notify(`The AI read the score: ${line} — set as the song's tempo, key and time signature`, {
+					timeout: 12_000,
+				});
+		}
 	}
 	async function saveChangeRows() {
 		changeError = null;
@@ -1515,7 +1612,7 @@
 					timeout: 12_000,
 				},
 			);
-			void checkUnsureMeter(d);
+			void checkUnsureMeter(d, true);
 		} catch (e) {
 			notify(`Detected ${summary}, but it could not be saved: ${errorMessage(e)}`, {
 				kind: "error",
@@ -2276,9 +2373,11 @@
 										class="button button-xs"
 										type="button"
 										disabled={scanning || !playerEngine || playerEngine.status !== "ready"}
-										title={playerEngine?.status === "ready"
-											? "Listen to the loaded stems for tempo, key and time signature"
-											: "Available once every stem has decoded"}
+										title={playerEngine?.status !== "ready"
+											? "Available once every stem has decoded"
+											: hasScore && data.aiAvailable
+												? "The song has a score: the AI reads it and listens to the mix for tempo, keys and time signature"
+												: "Listen to the loaded stems for tempo, key and time signature"}
 										onclick={scanStems}
 									>
 										<span class="i-ph-waveform" aria-hidden="true"></span>
@@ -2311,7 +2410,9 @@
 											class="button button-xs"
 											type="button"
 											disabled={aiBusy}
-											title="Send the rendered mix to a model that listens and reports tempo, key and time signature"
+											title={hasScore
+												? "Send the rendered mix and the score to a model that reads the chart, listens and reports tempo, keys and time signature"
+												: "Send the rendered mix to a model that listens and reports tempo, key and time signature"}
 											onclick={askAi}
 										>
 											<span class="i-ph-sparkle" aria-hidden="true"></span>
@@ -2398,9 +2499,11 @@
 							{/if}
 							{#if aiAnswer}
 								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
-									{aiAuto
+									{aiAuto === "meter"
 										? "The time signature was a close call, so the AI listened too. It hears"
-										: "AI hears"}
+										: aiAuto === "score"
+											? "The AI read the score and listened. It finds"
+											: "AI hears"}
 									<strong
 										>{aiAnswer.tempo === null
 											? "no fixed tempo"
@@ -2409,6 +2512,9 @@
 									>{#if aiAnswer.tempoChanges.length > 0}
 										, then {aiAnswer.tempoChanges
 											.map((c) => `${Math.round(c.bpm)} bpm at ${editPos(c.at)}`)
+											.join(", ")}{/if}{#if aiAnswer.keyChanges.length > 0}
+										, then {aiAnswer.keyChanges
+											.map((c) => `${c.key} at ${editPos(c.at)}`)
 											.join(", ")}{/if}
 									({Math.round(aiAnswer.confidence * 100)}% sure){aiAnswer.notes
 										? ` — ${aiAnswer.notes}`

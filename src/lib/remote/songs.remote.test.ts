@@ -457,6 +457,33 @@ describe("side effects of the editor-gated functions", () => {
 		await expect(call(songs.askAiAboutSong, { id: SONG })).rejects.toMatchObject(httpError(403));
 		expect(aiDetect.askAiAboutMix).not.toHaveBeenCalled();
 	});
+	it("askAiAboutSong sends the song's score along when it has one", async () => {
+		asEditorOf(ACCOUNT);
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			noAi: false,
+			project: { noAi: false },
+			mixUrl: "https://blob/mix.mp3",
+			changes: [{ kind: "key", start: 0, value: "C major" }],
+		});
+		const score = {
+			kind: "musicxml",
+			format: "mxl",
+			url: "https://blob/score.mxl",
+			filename: "score.mxl",
+			title: "",
+		};
+		data.scoreForAi.mockResolvedValue(score);
+		aiDetect.askAiAboutMix.mockResolvedValue({ tempo: 96, key: "C major", keyChanges: [] });
+		await expect(call(songs.askAiAboutSong, { id: SONG })).resolves.toMatchObject({ tempo: 96 });
+		expect(data.scoreForAi).toHaveBeenCalledWith(ACCOUNT, SONG);
+		expect(aiDetect.askAiAboutMix).toHaveBeenCalledWith(
+			"https://blob/mix.mp3",
+			{ tempo: null, key: "C major", meter: null },
+			{ userId: USER, songId: SONG },
+			score,
+		);
+	});
 	it("saveChartDraft refuses to overwrite a chart unless told to", async () => {
 		asEditorOf(ACCOUNT);
 		data.getSongById.mockResolvedValue({ chartMarkdown: "old" });

@@ -329,3 +329,58 @@ than one and a display that names them all.
   one in force bright and the rest dim, beside the key lane's markers
   (whose labels clip in a short stretch).
 - The override is the rows in settings: add, move or remove key rows.
+
+## The score as the AI's chart (2026-10-12)
+
+The profile detector kept hearing neighbour keys on Kevin's modal vamp
+(above), and Kevin's thought was the obvious one: when a song has its
+notation uploaded, go straight to the AI and give it the chart.
+
+- **What goes along.** `scoreForAi(accountId, songId)` in data.ts picks
+  the song's first ready MusicXML (`song_notation`), else its first ready
+  attachment marked as notation (`song_pdf`, a PDF or an image).
+  `askAiAboutMix` takes it as a fourth argument and `loadScore` reads it
+  from Blob: a `.mxl` is unzipped with fflate (`musicXmlFromMxl`,
+  `src/lib/utils/musicXmlFromMxl.ts`: the rootfile `META-INF/container.xml`
+  names, else the first XML outside META-INF), and the XML is boiled down
+  by `musicXmlSummary` (`src/lib/utils/musicXmlSummary.ts`) to one line
+  per measure of the first part that carries `<harmony>` (else the first
+  part): the key signature where it changes (`keyName`: fifths and mode
+  to "E♭ major"), the time signature, `<sound tempo>`, rehearsal marks,
+  `<words>`, repeats (`|:` `:|`), endings, segno/coda/fine, and the chord
+  symbols (root, kind, degrees, bass: "A♭add9/C"; a `<kind text>` wins
+  when the file supplies it). A plain text scan, no XML parser, capped at
+  12 000 characters. The summary rides in the text part after the
+  question, and in the `ai_request` log. A PDF or image goes as a second
+  file part beside the mix (Gemini reads both), as long as mix + file
+  stay under 19 MB; otherwise, or when the file cannot be read, the
+  check runs without it.
+- **What the prompt says.** With a chart attached: take the keys from
+  it (its key signatures and the chords it moves through), use the
+  recording to place each change in seconds by following the bars at the
+  tempo heard, counting repeats as played; when the recording and the
+  chart disagree, say so in `notes` and answer for the recording. With or
+  without a chart the answer now carries `keyChanges` (`{at, key}`, up to
+  24): a passing or borrowed chord is not a change, a section that
+  settles in a new key or a last-chorus modulation is.
+- **On the song page.** "Use these" writes the key changes as key rows,
+  dropping every earlier key row when the answer names any (tempo rows
+  after 0:00 were already replaced the same way). The card says "The AI
+  read the score and listened" and lists the key changes with their
+  times. **Scan stems** on a song with a score and the AI at hand
+  (`hasScore`: a ready notation file or notation attachment;
+  `data.aiAvailable`) calls the AI first (`askAiWithScore`): the answer
+  is saved at once when the song has no settings, else offered under
+  the rows; when it cannot answer (409, the mix not rendered yet; the
+  gateway down) the stems are scanned as before, with a notification
+  saying so. **An upload** still gets the detector's result at once (the
+  mix renders in the background), then `checkUnsureMeter(d, applied)`
+  waits for the mix as it did for a close-call meter and, when the song
+  has a score, replaces the detector's settings with the AI's answer (the
+  detector replaced nothing: the song had no settings before the upload).
+- **Not done.** A deterministic chord-symbol parser mapping bars to
+  seconds would need the tempo map and the repeats played; the model
+  does that alignment by ear, which is the point of sending both. The
+  chart document (markdown) is not sent: its chords are free text, and
+  the model reads a score far better; sending the chart text when there
+  is no score is the next step if the keys still come out wrong.

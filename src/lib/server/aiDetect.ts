@@ -10,6 +10,9 @@ import {
 } from "#lib/val/ChartDraftSchema.js";
 import * as v from "valibot";
 import { ENV } from "varlock/env";
+import { FILE_CONTENT_TYPE_OF } from "#lib/constants/fileFormats.js";
+import { musicXmlFromMxl } from "#lib/utils/musicXmlFromMxl.js";
+import { musicXmlSummary } from "#lib/utils/musicXmlSummary.js";
 
 /**
  * A second opinion on a song's tempo, key and time signature from a model
@@ -23,6 +26,8 @@ const MODEL = "google/gemini-3-flash";
 const DRAFT_MODEL = "anthropic/claude-fable-5-1";
 /** Gemini takes inline audio up to about 20 MB; the mixes are MP3s of a few MB. */
 const MAX_AUDIO_BYTES = 18 * 1024 * 1024;
+/** The mix and a score PDF or image go in one request, under Gemini's inline limit together. */
+const MAX_REQUEST_BYTES = 19 * 1024 * 1024;
 
 export const aiAvailable = () => !!ENV.AI_GATEWAY_API_KEY;
 
@@ -32,7 +37,39 @@ export interface Candidates {
 	meter: string | null;
 }
 
+/**
+ * The score the model reads beside the mix (docs/audio-engine.md, "The
+ * score as the AI's chart"): a MusicXML file as the text summary of its
+ * keys and chords, or a PDF or image of the chart as the file itself.
+ */
+export type ScoreForAi =
+	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
+	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number };
+type ScorePart =
+	| { kind: "text"; text: string }
+	| { kind: "file"; data: Uint8Array; mediaType: string; filename: string };
+
+/** Reads the score from Blob into what the request carries; null when it cannot be read or is too big beside the mix. */
+async function loadScore(score: ScoreForAi, audioBytes: number): Promise<ScorePart | null> {
+	const res = await readBlob(score.url);
+	if (!res.ok) return null;
+	const bytes = new Uint8Array(await res.arrayBuffer());
+	if (score.kind === "musicxml") {
+		const xml = score.format === "mxl" ? musicXmlFromMxl(bytes) : new TextDecoder().decode(bytes);
+		const summary = xml ? musicXmlSummary(xml) : "";
+		return summary ? { kind: "text", text: summary } : null;
+	}
+	if (audioBytes + bytes.byteLength > MAX_REQUEST_BYTES) return null;
+	return {
+		kind: "file",
+		data: bytes,
+		mediaType: FILE_CONTENT_TYPE_OF(score.filename),
+		filename: score.filename,
+	};
+}
+
 const Bpm = v.pipe(v.number(), v.minValue(20), v.maxValue(400));
+const Key = v.pipe(v.string(), v.trim(), v.maxLength(20));
 const AnswerSchema = v.object({
 	/** null = no fixed tempo (rubato, free time). */
 	tempo: v.nullable(Bpm),
@@ -42,7 +79,12 @@ const AnswerSchema = v.object({
 		[],
 	),
 	meter: v.union([v.pipe(v.string(), v.regex(/^\d{1,2}\/\d{1,2}$/)), v.literal("free")]),
-	key: v.pipe(v.string(), v.trim(), v.maxLength(20)),
+	key: Key,
+	/** Key changes after the start, in order; empty when the song stays in one key. */
+	keyChanges: v.optional(
+		v.pipe(v.array(v.object({ at: v.pipe(v.number(), v.minValue(0)), key: Key })), v.maxLength(24)),
+		[],
+	),
 	confidence: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 	notes: v.optional(v.pipe(v.string(), v.maxLength(400)), ""),
 });
@@ -52,12 +94,14 @@ export async function askAiAboutMix(
 	mixUrl: string,
 	candidates: Candidates,
 	who: { userId: string; songId: string },
+	score: ScoreForAi | null = null,
 ): Promise<AiAnswer> {
 	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 	const res = await readBlob(mixUrl);
 	if (!res.ok) throw new Error(`${res.status} ${res.statusText} reading the mix`);
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (bytes.byteLength > MAX_AUDIO_BYTES) throw new Error("The mix is too large to send");
+	const chart = score ? await loadScore(score, bytes.byteLength) : null;
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
 	const known = [
 		candidates.tempo ? `tempo ${candidates.tempo} bpm` : null,
@@ -68,20 +112,31 @@ export async function askAiAboutMix(
 - "tempo": the beats per minute at the start, precise to the beat (not rounded to a multiple of 5 unless it truly is). If the piece has no fixed pulse (rubato, free time, ambient), answer null — that is a valid and common answer; do not invent a number.
 - "tempoChanges": any discrete tempo shifts after the start, as a list of {"at": seconds from the start, "bpm": the new tempo}, in order. Gradual drift or a rallentando at the very end is not a shift; a new section at a clearly different tempo is. Empty list when the tempo holds.
 - "meter": the time signature (like 4/4, 3/4, 6/8, 7/8, or "free" if there is no meter).
-- "key": like "D major" or "B minor"; "atonal" if there is none.
+- "key": the key at the start, like "D major" or "B minor"; "atonal" if there is none.
+- "keyChanges": where the song moves to another key after the start, as a list of {"at": seconds from the start, "key": the new key}, in order. A passing chord or a borrowed chord is not a key change; a section that settles in a new key is, and so is a modulation up a step for the last chorus. Empty list when the song stays in one key.
 - "confidence": 0 to 1 for the whole answer.
 - "notes": one short sentence on anything uncertain, such as a half/double-time ambiguity or a modulation.
-Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 95.5, "bpm": 140}], "meter": "4/4", "key": "D major", "confidence": 0.8, "notes": "..."}`;
+Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 95.5, "bpm": 140}], "meter": "4/4", "key": "D major", "keyChanges": [{"at": 62, "key": "F major"}], "confidence": 0.8, "notes": "..."}${
+		chart
+			? `
+The song's own chart comes with the recording${chart.kind === "text" ? ", as a measure-by-measure summary of its MusicXML (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)" : ""}. Take the keys from the chart: its key signatures and the chords it moves through say what key each part is in, more surely than the ear does. Use the recording to place each key change in seconds: follow the chart's bars at the tempo you hear, counting repeats as played. If the recording and the chart disagree (a different key, a cut section), say so in "notes" and answer for the recording.`
+			: ""
+	}`;
 	const question = known.length
 		? `A detector estimated: ${known.join(", ")}. Confirm or correct each from what you hear; it cannot tell a free tempo or a tempo shift from a steady one, so check those yourself.`
-		: "What are the tempo (or none), any tempo shifts, the time signature and the key?";
+		: "What are the tempo (or none), any tempo shifts, the time signature, the key and any key changes?";
 	const started = Date.now();
+	const attached = chart
+		? chart.kind === "text"
+			? `\n\nCHART (${score?.filename}):\n${chart.text}`
+			: ` and ${chart.filename} (${chart.data.byteLength} bytes)`
+		: "";
 	const log = {
 		kind: "song-check",
 		model: MODEL,
 		userId: who.userId,
 		songId: who.songId,
-		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${bytes.byteLength} bytes):\n${question}`,
+		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${bytes.byteLength} bytes${chart?.kind === "file" ? attached : ""}):\n${question}${chart?.kind === "text" ? attached : ""}`,
 	};
 	let text = "";
 	let usage: { inputTokens?: number; outputTokens?: number } = {};
@@ -94,7 +149,23 @@ Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 
 					role: "user",
 					content: [
 						{ type: "file", data: bytes, mediaType: "audio/mpeg", filename: "mix.mp3" },
-						{ type: "text", text: question },
+						...(chart?.kind === "file"
+							? [
+									{
+										type: "file" as const,
+										data: chart.data,
+										mediaType: chart.mediaType,
+										filename: chart.filename,
+									},
+								]
+							: []),
+						{
+							type: "text",
+							text:
+								chart?.kind === "text"
+									? `${question}\n\nThe chart, from ${score?.filename}:\n${chart.text}`
+									: question,
+						},
 					],
 				},
 			],

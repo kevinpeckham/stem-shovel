@@ -8,6 +8,22 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The AI reads the song's score** when it checks the tempo, key and
+  time signature: a MusicXML file goes along as a measure-by-measure
+  summary of its key signatures, time signatures, tempo marks, repeats,
+  rehearsal marks and chord symbols (`musicXmlSummary`, `musicXmlFromMxl`
+  in `src/lib/utils/`), a notation PDF or image as the file itself, and
+  the prompt tells the model to take the keys from the chart and place
+  each change in seconds by ear. The answer now carries `keyChanges`
+  (`{at, key}`), which "Use these" writes as key rows, replacing the
+  earlier ones. On a song with a score, **Scan stems** goes straight to
+  the AI (the stems are scanned only when it cannot answer), and an
+  upload's detection hands over to the AI once the mix is rendered, its
+  answer replacing the detector's. `scoreForAi` in data.ts picks the
+  score; the summary is logged with the request in `ai_request`.
+
 ## [0.124.0] - 2026-10-12
 
 ### Added
