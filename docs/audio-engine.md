@@ -382,6 +382,26 @@ notation uploaded, go straight to the AI and give it the chart.
   waits for the mix as it did for a close-call meter and, when the song
   has a score, replaces the detector's settings with the AI's answer (the
   detector replaced nothing: the song had no settings before the upload).
+- **A PDF or image is read first (2026-10-12, later the same day).**
+  Kevin's chart is a six-page engraved score (guitar, tab, voice) with
+  key signatures at bars 1, 15, 19, 26, 33 and 40 (C, A♭, F, E♭, F minor,
+  C). Sent to Gemini as a file beside the mix it came back F, A♭, F,
+  A♭, F: the model read the lyrics and chord symbols but not one key
+  signature. The MusicXML path had worked because the keys reach the
+  model as text. So `readChartWithAi(score, bytes, mediaType, who)` has
+  the document-reading model (DRAFT_MODEL, Fable) write the PDF or image
+  into the summary `musicXmlSummary` makes: one line per measure that
+  carries anything, the key from the key signature where it changes,
+  time signature, tempo, rehearsal marks in brackets, words in quotes,
+  repeats and endings, chord symbols after a colon. The text is cached
+  in Redis (`chart:<sha256 of the url>`, a month; Blob pathnames are
+  never reused, so the URL is the version) and logged as `chart-read`
+  with the rest. `loadScore` returns `{text, file}`: the summary, and
+  the file as well when mix + file fit under 19 MB, so Gemini has both.
+  On Kevin's chart the read took 17 s and named C at 1, A♭ at 15, F at
+  19, E♭ at 26 and C at 40, missing only the four flats at 33 (it kept
+  E♭ through the F minor passage). A read that fails (no `m<n>` line)
+  falls back to the file alone.
 - **Not done.** A deterministic chord-symbol parser mapping bars to
   seconds would need the tempo map and the repeats played; the model
   does that alignment by ear, which is the point of sending both. The

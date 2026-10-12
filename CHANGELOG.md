@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **A chart PDF or image is read into text before the AI listens**:
+  Gemini did not read key signatures off a six-page engraved score sent
+  as a file (Kevin's test: F major for a C-major vamp, no E♭ at the solo),
+  so `readChartWithAi` in aiDetect.ts first has Fable read the PDF or
+  image into the same per-measure summary the MusicXML path makes (key
+  signature where it changes, time signature, tempo, rehearsal marks,
+  repeats, chord symbols), cached in Redis by the file's URL for a month
+  and logged as `chart-read`; the listening call then carries the
+  summary and, when it fits beside the mix, the file as well. On the
+  test chart the summary named C, A♭, F, E♭ and C where the score has
+  them.
+
 ### Fixed
 
 - **The AI's key changes, tempo shifts and sections land on the bar

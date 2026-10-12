@@ -11,6 +11,8 @@ import {
 import * as v from "valibot";
 import { ENV } from "varlock/env";
 import { FILE_CONTENT_TYPE_OF } from "#lib/constants/fileFormats.js";
+import { redisConfigured, redisPipeline } from "#lib/server/redis.js";
+import { createHash } from "node:crypto";
 import { musicXmlFromMxl } from "#lib/utils/musicXmlFromMxl.js";
 import { musicXmlSummary } from "#lib/utils/musicXmlSummary.js";
 
@@ -45,27 +47,140 @@ export interface Candidates {
 export type ScoreForAi =
 	| { kind: "musicxml"; format: "mxl" | "musicxml"; url: string; filename: string; title: string }
 	| { kind: "pdf" | "image"; url: string; filename: string; title: string; sizeBytes: number };
-type ScorePart =
-	| { kind: "text"; text: string }
-	| { kind: "file"; data: Uint8Array; mediaType: string; filename: string };
+/** What the request carries for the chart: its per-measure summary as text, the PDF or image itself, or both. */
+interface ScorePart {
+	text?: string;
+	file?: { data: Uint8Array; mediaType: string; filename: string };
+}
 
-/** Reads the score from Blob into what the request carries; null when it cannot be read or is too big beside the mix. */
-async function loadScore(score: ScoreForAi, audioBytes: number): Promise<ScorePart | null> {
+/**
+ * Reads the score from Blob into what the request carries: a MusicXML as
+ * its summary; a PDF or image as the summary a reading model makes of it
+ * (`readChartWithAi`) plus the file itself when it fits beside the mix.
+ * Null when nothing could be read.
+ */
+async function loadScore(
+	score: ScoreForAi,
+	audioBytes: number,
+	who: { userId: string; songId: string },
+): Promise<ScorePart | null> {
 	const res = await readBlob(score.url);
 	if (!res.ok) return null;
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (score.kind === "musicxml") {
 		const xml = score.format === "mxl" ? musicXmlFromMxl(bytes) : new TextDecoder().decode(bytes);
 		const summary = xml ? musicXmlSummary(xml) : "";
-		return summary ? { kind: "text", text: summary } : null;
+		return summary ? { text: summary } : null;
 	}
-	if (audioBytes + bytes.byteLength > MAX_REQUEST_BYTES) return null;
-	return {
-		kind: "file",
-		data: bytes,
-		mediaType: FILE_CONTENT_TYPE_OF(score.filename),
-		filename: score.filename,
+	const mediaType = FILE_CONTENT_TYPE_OF(score.filename);
+	const text = await readChartWithAi(score, bytes, mediaType, who).catch(() => "");
+	const file =
+		audioBytes + bytes.byteLength <= MAX_REQUEST_BYTES
+			? { data: bytes, mediaType, filename: score.filename }
+			: undefined;
+	return text || file ? { text: text || undefined, file } : null;
+}
+
+/** A read chart stays cached this long; the file never changes under its URL (Blob pathnames are never reused). */
+const CHART_CACHE_SECONDS = 30 * 24 * 3600;
+
+/**
+ * A PDF or image of a chart as the per-measure summary `musicXmlSummary`
+ * makes of a MusicXML (docs/audio-engine.md, "The score as the AI's
+ * chart"): a text model that reads documents (DRAFT_MODEL) writes the key
+ * signature where it changes, the time signature, tempo marks, rehearsal
+ * marks and words, repeats and endings, and the chord symbols per measure.
+ * Gemini listening to the mix did not read key signatures off a six-page
+ * engraved score (Kevin's test); read as text, the keys are plain. Cached
+ * in Redis by the file's URL for a month; logged as `chart-read`.
+ */
+export async function readChartWithAi(
+	score: { url: string; filename: string },
+	bytes: Uint8Array,
+	mediaType: string,
+	who: { userId: string; songId: string },
+): Promise<string> {
+	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+	const cacheKey = `chart:${createHash("sha256").update(score.url).digest("hex").slice(0, 32)}`;
+	if (redisConfigured()) {
+		try {
+			const [hit] = await redisPipeline([["GET", cacheKey]]);
+			if (typeof hit === "string" && hit) return hit;
+		} catch {
+			// the cache is a convenience: read the chart again
+		}
+	}
+	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
+	const system = `You read music notation. The attached file is a song's chart or score. Write it out as a plain-text summary, one line per measure that carries anything of note, in exactly this form and nothing else:
+
+Title: <title>
+Part: <the part you read, e.g. "Electric Guitar 1 (3 parts)">
+m<number> key <key> <time signature> tempo <bpm> [<rehearsal mark>] "<words>" |: :| ending <n>: <chord symbols in order, separated by spaces>
+
+Rules:
+- Number the measures from 1 in order through the whole score (count every measure in every system, on every page; the small numbers at the start of a system are measure numbers, use them to keep count).
+- "key": from the key signature, as "C major", "A♭ major", "F minor" (write ♭ and ♯). State it at measure 1 and again at every measure where the key signature changes (naturals cancelling flats or sharps is a change). Prefer the major key for a signature unless the chords plainly sit in the relative minor. A text such as "Key: F Major" in the score confirms it.
+- Write the time signature at measure 1 and where it changes; "tempo <bpm>" where a metronome mark appears.
+- Rehearsal marks in square brackets ("[A Verse]"), other words in quotes ("Chorus", "rit."); lyrics are not words, leave them out.
+- "|:" at a measure that opens a repeat, ":|" at one that closes it, "ending 1" where a first ending starts, and so on; "D.S.", "coda", "fine" as words.
+- Chord symbols after a colon, in the order they occur in the measure, as written (Fmaj9, B♭maj7/F, Cm7, N.C.). A measure with no chord symbol and no mark is left out.
+- Do not invent anything the score does not show; if a page is unreadable, say so on a final line beginning "Note:".`;
+	const started = Date.now();
+	const log = {
+		kind: "chart-read",
+		model: DRAFT_MODEL,
+		userId: who.userId,
+		songId: who.songId,
+		prompt: `SYSTEM:\n${system}\n\nUSER (with ${score.filename}, ${bytes.byteLength} bytes)`,
 	};
+	let text = "";
+	let usage: { inputTokens?: number; outputTokens?: number } = {};
+	try {
+		const result = await generateText({
+			model: gateway(DRAFT_MODEL),
+			system,
+			messages: [
+				{
+					role: "user",
+					content: [
+						mediaType.startsWith("image/")
+							? { type: "image" as const, image: bytes, mediaType }
+							: { type: "file" as const, data: bytes, mediaType, filename: score.filename },
+						{ type: "text", text: "Summarise this chart as instructed." },
+					],
+				},
+			],
+			providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
+		});
+		text = result.text.trim();
+		usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
+	} catch (e) {
+		await logAiRequest({
+			...log,
+			error: e instanceof Error ? e.message : String(e),
+			durationMs: Date.now() - started,
+		});
+		throw e;
+	}
+	const error = /^m\d+/m.test(text) ? null : "The model did not summarise the chart";
+	await logAiRequest({
+		...log,
+		response: text,
+		parsed: error ? null : { lines: text.split("\n").length },
+		error,
+		durationMs: Date.now() - started,
+		inputTokens: usage.inputTokens ?? null,
+		outputTokens: usage.outputTokens ?? null,
+	});
+	if (error) throw new Error(error);
+	if (redisConfigured()) {
+		try {
+			await redisPipeline([["SET", cacheKey, text, "EX", CHART_CACHE_SECONDS]]);
+		} catch {
+			// cached next time, or not
+		}
+	}
+	return text;
 }
 
 const Bpm = v.pipe(v.number(), v.minValue(20), v.maxValue(400));
@@ -100,7 +215,7 @@ async function loadMix(mixUrl: string): Promise<Uint8Array> {
 }
 
 const CHART_NOTE = (chart: ScorePart) =>
-	`The song's own chart comes with the recording${chart.kind === "text" ? ", as a measure-by-measure summary of its MusicXML (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)" : ""}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
+	`The song's own chart comes with the recording${chart.text ? `, as a measure-by-measure summary (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)${chart.file ? " and as the file it was read from" : ""}` : ""}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
 
 /**
  * One question to the listening model about a mix, with the song's score
@@ -122,17 +237,16 @@ async function listen<S extends v.GenericSchema>(opts: {
 	const { mix, chart, score, system, question } = opts;
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
 	const started = Date.now();
-	const attached = chart
-		? chart.kind === "text"
-			? `\n\nCHART (${score?.filename}):\n${chart.text}`
-			: ` and ${chart.filename} (${chart.data.byteLength} bytes)`
+	const withFile = chart?.file
+		? ` and ${chart.file.filename} (${chart.file.data.byteLength} bytes)`
 		: "";
+	const withText = chart?.text ? `\n\nCHART (${score?.filename}):\n${chart.text}` : "";
 	const log = {
 		kind: opts.kind,
 		model: MODEL,
 		userId: opts.who.userId,
 		songId: opts.who.songId,
-		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${mix.byteLength} bytes${chart?.kind === "file" ? attached : ""}):\n${question}${chart?.kind === "text" ? attached : ""}`,
+		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${mix.byteLength} bytes${withFile}):\n${question}${withText}`,
 	};
 	let text = "";
 	let usage: { inputTokens?: number; outputTokens?: number } = {};
@@ -145,22 +259,21 @@ async function listen<S extends v.GenericSchema>(opts: {
 					role: "user",
 					content: [
 						{ type: "file", data: mix, mediaType: "audio/mpeg", filename: "mix.mp3" },
-						...(chart?.kind === "file"
+						...(chart?.file
 							? [
 									{
 										type: "file" as const,
-										data: chart.data,
-										mediaType: chart.mediaType,
-										filename: chart.filename,
+										data: chart.file.data,
+										mediaType: chart.file.mediaType,
+										filename: chart.file.filename,
 									},
 								]
 							: []),
 						{
 							type: "text",
-							text:
-								chart?.kind === "text"
-									? `${question}\n\nThe chart, from ${score?.filename}:\n${chart.text}`
-									: question,
+							text: chart?.text
+								? `${question}\n\nThe chart, from ${score?.filename}:\n${chart.text}`
+								: question,
 						},
 					],
 				},
@@ -209,7 +322,7 @@ export async function askAiAboutMix(
 	score: ScoreForAi | null = null,
 ): Promise<AiAnswer> {
 	const mix = await loadMix(mixUrl);
-	const chart = score ? await loadScore(score, mix.byteLength) : null;
+	const chart = score ? await loadScore(score, mix.byteLength, who) : null;
 	const known = [
 		candidates.tempo ? `tempo ${candidates.tempo} bpm` : null,
 		candidates.key ? `key ${candidates.key}` : null,
@@ -278,7 +391,7 @@ export async function detectSectionsWithAi(
 	score: ScoreForAi | null = null,
 ): Promise<SectionsAnswer> {
 	const mix = await loadMix(mixUrl);
-	const chart = score ? await loadScore(score, mix.byteLength) : null;
+	const chart = score ? await loadScore(score, mix.byteLength, who) : null;
 	const system = `You are a musician with perfect time who knows song form. Listen to the whole recording and split it into its sections (Intro, Verse, Pre-chorus, Chorus, Bridge, Solo, Interlude, Breakdown, Outro; "Verse 2" and "Chorus 2" for repeats when that helps). Report:
 - "sections": the list in order, each {"at": seconds from the start where it begins, "name": its name}. The first begins at 0. A section is a stretch with its own material or function, usually 4 to 32 bars; place each boundary on the downbeat where the new section starts, precise to the tenth of a second. A pickup belongs to the section it leads into.
 - "confidence": 0 to 1 for the whole answer.
