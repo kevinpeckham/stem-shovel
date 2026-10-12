@@ -600,6 +600,7 @@
 			gap-y-0
 			inner-shadow
 			max-w-full
+			min-h-240px
 			overflow-x-hidden
 			px-4
 			pt-4
@@ -861,7 +862,7 @@
 
 				<!-- presets -->
 				{#if sitePresets}
-					<div class="flex items-center h-auto sm-h-90px text-light">
+					<div class="flex items-center h-auto sm-h-90px text-light xl-w-full">
 						<AmpPresets {sitePresets} {account} {presets} {presetAdmin} {readLink} />
 					</div>
 				{/if}
