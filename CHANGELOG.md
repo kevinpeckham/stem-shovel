@@ -8,6 +8,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.123.1] - 2026-10-12
+
+### Changed
+
+- **The Practice Amp's knob panel** keeps a minimum height, and the presets
+  take the row's width on a wide screen (Kevin).
+- **The Idea Recorder and Studio page copy** read as Kevin shortened them,
+  the Studio's Quick Tips with the MIDI track, effects, shortcuts and Save
+  revision folded in.
+
 ### Technical
 
 - **`bun run db:update-docs --merge`** carries the seed files' changes onto
