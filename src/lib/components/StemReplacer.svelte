@@ -78,7 +78,7 @@
 			return;
 		}
 		if (picked.length > MAX_STEMS_PER_SONG) {
-			notice = `A song holds ${MAX_STEMS_PER_SONG} stems at most.`;
+			notice = `A song holds ${MAX_STEMS_PER_SONG} stems at most (and a phone far fewer: see the memory note under the player).`;
 			return;
 		}
 		// Match: exact filename first, then the stem's name against the file's name without its extension.

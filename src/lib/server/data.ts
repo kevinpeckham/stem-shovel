@@ -1133,10 +1133,11 @@ export async function createStem(
 	const owner = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true },
-		with: { stems: { columns: { sortOrder: true } } },
+		with: { stems: { columns: { sortOrder: true, status: true } } },
 	});
 	if (!owner) return null;
-	if (owner.stems.length >= MAX_STEMS_PER_SONG) return "full";
+	// The ceiling counts what is on the song or on its way, not uploads that failed (Kevin: active stems only).
+	if (owner.stems.filter((s) => s.status !== "failed").length >= MAX_STEMS_PER_SONG) return "full";
 	const sortOrder = owner.stems.reduce((m, s) => Math.max(m, s.sortOrder + 1), 0);
 	const id = nanoid(); // needed before insert to build the pathname
 	const [row] = await db

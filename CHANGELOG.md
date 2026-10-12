@@ -10,6 +10,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **No more cap of 32 stems a song.** `MAX_STEMS_PER_SONG` is a sanity
+  ceiling of 256 now, and failed uploads no longer count toward it. What
+  limits a song is the listener's memory, so the app reckons the decoded
+  size instead (`decodedStemBytes`): the uploader notifies when a batch
+  takes a song past a gigabyte decoded, and the player shows a note when
+  the song is past what the device can be expected to hold (a quarter of
+  `navigator.deviceMemory` where known, else the gigabyte).
+- **A load the browser could not finish is noticed.** The engine leaves
+  a marker in sessionStorage while loading; found again at the next load
+  of the same stems, it means the tab was killed (memory, almost always),
+  so the player says so and a warning reaches Sentry with the stem count
+  and the decoded estimate. A load that fails outright is reported too,
+  and names memory when the error looks like it.
+
 - **A chart PDF or image is read into text before the AI listens**:
   Gemini did not read key signatures off a six-page engraved score sent
   as a file (Kevin's test: F major for a C-major vamp, no E♭ at the solo),

@@ -12,6 +12,7 @@
 	import StemRow from "#lib/components/StemRow.svelte";
 	import Transport from "#lib/components/Transport.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
 	import type { MidiSummary } from "#lib/audio/midi.js";
 	import SectionTimeline from "#lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "#lib/audio/measures.js";
@@ -151,6 +152,10 @@
 	// to `onreorder` once, when the move is done.
 	let rowsEl = $state<HTMLElement | null>(null);
 	let dragging = $state<string | null>(null);
+	/** What this device can be expected to hold decoded (utils/stemMemoryBudget): Chrome says its memory, the rest get the soft gigabyte. */
+	const memoryBudget = stemMemoryBudget(
+		typeof navigator === "undefined" ? null : (navigator as { deviceMemory?: number }).deviceMemory,
+	);
 	let orderAtStart: string[] = [];
 	const order = () => engine.stems.map((s) => s.id);
 	const moveTo = (id: string, index: number) => engine.reorder(moveId(order(), id, index));
@@ -208,6 +213,25 @@
 		{/if}
 	</div>
 {:else if engine.status === "loading" || engine.status === "ready"}
+	{#if engine.lastLoadDied}
+		<p
+			class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
+			role="status"
+		>
+			The last attempt to load this song in this tab did not finish, which usually means the browser
+			ran out of memory ({engine.lastLoadDied.stems} stems, about {formatBytes(
+				engine.lastLoadDied.bytes,
+			)} once decoded). Try it on a computer, or with fewer stems.
+		</p>
+	{:else if engine.estimatedBytes > memoryBudget}
+		<p
+			class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
+			role="status"
+		>
+			{engine.stems.length} stems, about {formatBytes(engine.estimatedBytes)} once decoded: more than
+			this device may have free. If the page goes blank or reloads while loading, try it on a computer.
+		</p>
+	{/if}
 	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
 		<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} {keyboard} />
 		{#if onaddsection}

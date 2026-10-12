@@ -17,9 +17,12 @@
 	import {
 		MAX_STEMS_PER_SONG,
 		STEM_ACCEPT,
+		STEM_CONTEXT_RATE,
 		STEM_FORMAT_LIST,
 		STEM_MAX_BYTES,
+		STEM_MEMORY_SOFT_BYTES,
 	} from "#lib/constants/stemFormats.js";
+	import { notify } from "#lib/state/notifications.svelte.js";
 	import { stemContentType } from "#lib/utils/stemContentType.js";
 	import { postJson, type Reservation, uploadStemFile } from "#lib/upload.js";
 
@@ -34,6 +37,8 @@
 		songId: string;
 		/** Stems the song already has, in-flight ones included. */
 		stemCount: number;
+		/** What those stems take once decoded (utils/decodedStemBytes), for the memory warning after the upload. */
+		decodedBytes?: number;
 		/** Progress of the current batch, for the parent to render where it likes. */
 		jobs?: UploadJob[];
 		/** Why a pick was refused (format, size, cap), or null. */
@@ -60,6 +65,7 @@
 	let {
 		songId,
 		stemCount,
+		decodedBytes = 0,
 		jobs = $bindable([]),
 		notice = $bindable(null),
 		onuploaded,
@@ -70,6 +76,7 @@
 	}: Props = $props();
 
 	let busy = $state(false);
+	/** Room under the sanity ceiling (constants/stemFormats.ts): never the question in practice; memory is. */
 	let room = $derived(Math.max(0, MAX_STEMS_PER_SONG - stemCount));
 
 	async function onpick(input: HTMLInputElement) {
@@ -87,15 +94,17 @@
 			return;
 		}
 		if (picked.length > room) {
-			notice = `Only ${room} more ${room === 1 ? "stem" : "stems"} fit in this song (${MAX_STEMS_PER_SONG} max).`;
+			notice = `A song holds ${MAX_STEMS_PER_SONG} stems at most; ${room} more would fit.`;
 			return;
 		}
 		notice = null;
 		busy = true;
 		jobs = picked.map((file) => ({ file, percent: 0, status: "queued" }));
 
-		const ctx = new AudioContext({ sampleRate: 32_000 });
+		const ctx = new AudioContext({ sampleRate: STEM_CONTEXT_RATE });
 		let failed = 0;
+		// What the batch adds to the song's decoded size, for the memory warning after the upload.
+		let addedBytes = 0;
 		const features: Features[] = [];
 		const keySegments: KeySegment[][] = [];
 		for (const job of jobs) {
@@ -114,6 +123,7 @@
 						onProgress: (p) => (job.percent = p),
 						onDecoding: () => (job.status = "decoding"),
 						onDecoded: (buffer) => {
+							addedBytes += buffer.length * buffer.numberOfChannels * 4;
 							// Cheap next to the upload itself; the batch is analysed as one mix below.
 							if (onanalysis) {
 								features.push(extractFeatures(buffer));
@@ -138,6 +148,13 @@
 		if (failed === 0) jobs = [];
 		await refreshAll();
 		if (failed < jobs.length || jobs.length === 0) onuploaded?.();
+		// The soft warning (docs/audio-engine.md, "Memory is the binding limit"): the song is past what a phone holds decoded.
+		const total = decodedBytes + addedBytes;
+		if (total > STEM_MEMORY_SOFT_BYTES && failed < picked.length)
+			notify(
+				`This song's ${stemCount + picked.length - failed} stems come to about ${formatBytes(total)} once decoded for playback: a computer will manage, a phone may not.`,
+				{ kind: "info", timeout: 15_000 },
+			);
 	}
 </script>
 
@@ -149,7 +166,6 @@
 		: ''}"
 	title="Upload new stems to this song."
 >
-	<!-- WAV or FLAC is best; MP3 and AAC play fine but are lossy. {stemCount} of {MAX_STEMS_PER_SONG} stems -->
 	<span class="i-ph-plus {menu ? 'mr-2' : ''}" aria-hidden="true"></span>
 	{busy ? "Uploading…" : label}
 	<input

@@ -7,6 +7,8 @@ import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
 import { FADER_MAX } from "#lib/constants/fader.js";
+import { STEM_MEMORY_SOFT_BYTES } from "#lib/constants/stemFormats.js";
+import { formatBytes } from "#lib/utils/formatBytes.js";
 export { FADER_MAX };
 /** Time constant for gain changes (seconds). ~15 ms avoids zipper noise without feeling laggy. */
 const RAMP = 0.015;
@@ -14,6 +16,63 @@ const RAMP = 0.015;
 const START_LEAD = 0.05;
 /** Stems fetched + decoded at once while loading a song. */
 const LOAD_CONCURRENCY = 3;
+
+/** The sessionStorage marker a load leaves until it finishes; one found at the next load of the same stems means the last did not. */
+const LOAD_MARKER = "stemshovel.loading";
+/** A marker older than this is a stale tab, not a crash. */
+const LOAD_MARKER_FRESH_MS = 15 * 60 * 1000;
+
+function readLoadMarker(sources: StemSource[]) {
+	const key = sources
+		.map((s) => s.id)
+		.sort()
+		.join(",");
+	let died: { stems: number; bytes: number } | null = null;
+	const storage = (): Storage | null => {
+		try {
+			return typeof sessionStorage === "undefined" ? null : sessionStorage;
+		} catch {
+			return null;
+		}
+	};
+	try {
+		const raw = storage()?.getItem(LOAD_MARKER);
+		if (raw) {
+			const m = JSON.parse(raw) as { key?: string; stems?: number; bytes?: number; at?: number };
+			if (m.key === key && typeof m.at === "number" && Date.now() - m.at < LOAD_MARKER_FRESH_MS)
+				died = { stems: m.stems ?? sources.length, bytes: m.bytes ?? 0 };
+		}
+	} catch {
+		died = null;
+	}
+	return {
+		died,
+		write(stems: number, bytes: number) {
+			try {
+				storage()?.setItem(LOAD_MARKER, JSON.stringify({ key, stems, bytes, at: Date.now() }));
+			} catch {
+				// no storage: no marker
+			}
+		},
+		clear() {
+			try {
+				storage()?.removeItem(LOAD_MARKER);
+			} catch {
+				// nothing to clear
+			}
+		},
+	};
+}
+
+/** A warning to Sentry with what the load was carrying; the import is lazy so tests and SSR never load it. */
+async function report(message: string, extra: Record<string, unknown>): Promise<void> {
+	try {
+		const Sentry = await import("@sentry/sveltekit");
+		Sentry.captureMessage(message, { level: "warning", extra });
+	} catch {
+		// no Sentry here
+	}
+}
 /** Waveform resolution. 1024 bins ≈ 8 KB as JSON, which is fine to store per stem. */
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -45,6 +104,22 @@ export class StemEngine {
 
 	anySolo = $derived(this.stems.some((s) => s.soloed));
 	decodedBytes = $derived(this.stems.reduce((sum, s) => sum + s.decodedBytes, 0));
+	/** What the stems will take once decoded: the manifest's duration and channels until each has decoded, then the real figure. */
+	estimatedBytes = $derived(
+		this.stems.reduce(
+			(sum, s) =>
+				sum +
+				(s.decoded ? s.decodedBytes : (s.duration ?? 0) * (s.channels ?? 0) * this.#sampleRate * 4),
+			0,
+		),
+	);
+	/**
+	 * The last attempt to load these same stems in this tab never finished
+	 * (docs/audio-engine.md, "When the browser runs out of memory"): the marker
+	 * `load()` writes to sessionStorage was still there when it began again,
+	 * which is what a tab killed for memory and reloaded looks like.
+	 */
+	lastLoadDied = $state<{ stems: number; bytes: number } | null>(null);
 
 	#ctx: AudioContext | null = null;
 	#masterNode: GainNode | null = null;
@@ -88,6 +163,7 @@ export class StemEngine {
 
 		const ctx = this.#context();
 		const master = this.#masterNode as GainNode;
+		const marker = readLoadMarker(sources);
 
 		// Rows appear immediately from what the manifest knows (duration, peaks
 		// recorded at upload); each is filled in as its file decodes. Playback
@@ -106,6 +182,14 @@ export class StemEngine {
 			decoded: false,
 		}));
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+		if (marker.died) {
+			this.lastLoadDied = { stems: marker.died.stems, bytes: marker.died.bytes };
+			void report("Stem load did not finish last time (likely out of memory)", {
+				stems: marker.died.stems,
+				bytes: marker.died.bytes,
+			});
+		}
+		marker.write(sources.length, this.estimatedBytes);
 
 		const loadOne = async (src: StemSource) => {
 			const res = await fetch(src.url);
@@ -142,9 +226,25 @@ export class StemEngine {
 			this.mixPeaks = Array.from(computeMixPeaks([...this.#buffers.values()], PEAK_BINS));
 			this.#applyGains(true);
 			this.status = "ready";
+			marker.clear();
 		} catch (e) {
+			marker.clear();
 			this.status = "error";
-			this.error = e instanceof Error ? e.message : String(e);
+			const message = e instanceof Error ? e.message : String(e);
+			// A decode that fails with nothing wrong with the file, on a big song, is the browser out of memory.
+			const memory =
+				e instanceof RangeError ||
+				/memory|allocat/i.test(message) ||
+				this.estimatedBytes > STEM_MEMORY_SOFT_BYTES;
+			this.error = memory
+				? `${message}. The browser may have run out of memory: ${sources.length} stems, about ${formatBytes(this.estimatedBytes)} once decoded. Try it on a computer, or with fewer stems.`
+				: message;
+			void report(`Stem load failed: ${message}`, {
+				stems: sources.length,
+				bytes: this.estimatedBytes,
+				loaded: this.loaded,
+				memory,
+			});
 		}
 	}
 

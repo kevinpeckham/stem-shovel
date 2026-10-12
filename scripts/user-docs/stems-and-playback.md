@@ -2,7 +2,7 @@
 
 ## Uploading stems
 
-On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A or AAC, up to 500 MB each and 32 stems per song. The name of the stem comes from the filename; rename it later from the row's ⋯ menu.
+On a song page, **Add Stems** takes one or more audio files: WAV, FLAC, MP3, M4A or AAC, up to 500 MB each. There is no set number of stems a song can hold; what limits a song is the listener's device, since every stem is decoded into memory to play (a four-minute stereo stem is about 60 MB decoded). Past about a gigabyte in all, the uploader says so, and the player shows a note under its header on a device that may not have the room; if a page goes blank or reloads while a big song loads, that is the browser running out of memory, and the player says so the next time. A computer handles far more than a phone. The name of the stem comes from the filename; rename it later from the row's ⋯ menu.
 
 ## Your mix and the default mix
 

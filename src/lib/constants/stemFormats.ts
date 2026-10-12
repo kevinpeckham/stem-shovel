@@ -29,9 +29,16 @@ export const STEM_FORMAT_LIST = Object.keys(STEM_FORMATS)
 export const STEM_MAX_BYTES = 500 * 1024 * 1024;
 
 /**
- * Soft cap on stems per song. The real limit is the listener's browser: every
+ * A sanity ceiling on stems per song, not a limit a band should meet (Kevin
+ * lifted the cap of 32 on 2026-10-12): it bounds the reorder schema and
+ * stops a runaway upload. The real limit is the listener's browser: every
  * stem is decoded to PCM (~128 KB per second per channel at the 32 kHz
- * context), so a 4-minute stereo stem is ~60 MB and a phone gives out well
- * before this number. The cap just keeps a song from growing by accident.
+ * context), so a 4-minute stereo stem is ~60 MB and a phone gives out at a
+ * gigabyte or so. `STEM_MEMORY_SOFT_BYTES` is where the app starts saying so
+ * (docs/audio-engine.md, "Memory is the binding limit").
  */
-export const MAX_STEMS_PER_SONG = 32;
+export const MAX_STEMS_PER_SONG = 256;
+/** Decoded PCM a song's stems add up to before the uploader and the player warn that phones may not manage it. */
+export const STEM_MEMORY_SOFT_BYTES = 1024 ** 3;
+/** The player's context rate: what the decoded size is reckoned at (engine.svelte.ts). */
+export const STEM_CONTEXT_RATE = 32_000;

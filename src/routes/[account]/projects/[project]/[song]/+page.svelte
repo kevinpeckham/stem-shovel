@@ -75,6 +75,7 @@
 	import { formatMonth } from "#lib/utils/formatMonth.js";
 	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
 	import { toRoman } from "#lib/utils/toRoman.js";
+	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import {
@@ -3005,6 +3006,7 @@
 							<StemUploader
 								songId={data.song.id}
 								stemCount={data.song.stems.length}
+								decodedBytes={decodedStemBytes(data.song.stems)}
 								bind:jobs={uploadJobs}
 								bind:notice={uploadNotice}
 								onuploaded={() => (versionOffer = true)}
@@ -3654,6 +3656,7 @@
 					<StemUploader
 						songId={data.song.id}
 						stemCount={data.song.stems.length}
+						decodedBytes={decodedStemBytes(data.song.stems)}
 						bind:jobs={uploadJobs}
 						bind:notice={uploadNotice}
 						onuploaded={() => (versionOffer = true)}

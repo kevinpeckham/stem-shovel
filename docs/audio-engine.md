@@ -15,10 +15,31 @@ fields are `$state`, so components read `engine.position` directly.
   AAC playback rendition when one exists (docs/uploads-and-blob.md), which
   on a 50 Mbps connection took a six-stem song from 68 s to 9 s.
 - **Memory is the binding limit**: ~128 KB per second per channel at the
-  32 kHz context, so a 4-minute stereo stem is ~60 MB decoded. Songs are
-  capped at `MAX_STEMS_PER_SONG` (32) stems, enforced when a stem is
-  reserved. Blob serves files with a 30-day cache header, so repeat loads
-  are decode time, not download time.
+  32 kHz context, so a 4-minute stereo stem is ~60 MB decoded. There is
+  no cap a band meets: `MAX_STEMS_PER_SONG` (256) is a sanity ceiling on
+  the reorder schema and the reserve step (Kevin lifted the cap of 32 on
+  2026-10-12; failed uploads do not count). Instead the app reckons the
+  decoded size (`decodedStemBytes`, duration × channels × 32 kHz × 4) and
+  says so: the uploader notifies after a batch that takes the song past
+  `STEM_MEMORY_SOFT_BYTES` (a gigabyte), and the player shows a note
+  under its header when the estimate passes the device's budget
+  (`stemMemoryBudget`: a quarter of `navigator.deviceMemory` where Chrome
+  reports it, else the gigabyte). Blob serves files with a 30-day cache
+  header, so repeat loads are decode time, not download time.
+- **When the browser runs out of memory** there is no event to catch: iOS
+  kills the tab and reloads it, Chrome shows its error page. So `load()`
+  writes a marker to sessionStorage (`stemshovel.loading`: the stem ids,
+  the count, the estimate, the time) and clears it when the load ends
+  either way; a marker for the same stems less than fifteen minutes old
+  found at the next load means the last never finished, and the engine
+  sets `lastLoadDied`, the player says so ("the last attempt to load this
+  song in this tab did not finish…"), and a warning goes to Sentry with
+  the count and the estimate. A load that fails outright is reported to
+  Sentry too, and when the error is a RangeError, mentions memory or
+  allocation, or the song is past the soft gigabyte, the message under
+  the player says the browser may have run out of memory and what the
+  song weighs. sessionStorage survives a reload in the same tab, which
+  is the case that matters.
 - **Dual-mono files collapse to one channel** after decoding
   (`lib/audio/mono.ts`): if every L/R sample pair is within 1e-3, the stereo
   buffer is replaced by a mono one; real stereo is untouched.
