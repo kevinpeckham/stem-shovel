@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **`bun run smoke:blob` works on the dev VM again**: it runs as the
+  Screenshot Bot through varlock (the preview cookie on every request,
+  the Blob client's token call included), in the bot's account, on
+  127.0.0.1:5173 by default, and posts remote-form fields under the
+  names SvelteKit 3 gives them (`field/<form id>`). It reports the
+  song's stem count from the Stems tab.
+
 ### Fixed
 
 - **Stem rows on a phone are all the same width**, so the playheads line

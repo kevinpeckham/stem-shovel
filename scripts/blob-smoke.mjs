@@ -7,13 +7,55 @@
  *   per file:    POST /api/stems (reserve)  →  upload() to Blob  →  POST /api/stems/<id>/ready
  *
  * Usage: bun run stems && bun run smoke:blob [kick,hats,bass,keys]
+ *
+ * Runs as the Screenshot Bot (the `preview_token` cookie from
+ * PREVIEW_AUTH_TOKEN, docs/agent-screenshots.md), in the account
+ * SMOKE_ACCOUNT names (the bot's own, mmkk, by default), against
+ * SMOKE_BASE (the dev server on 127.0.0.1:5173 by default: `localhost`
+ * can resolve to ::1, which the server does not listen on). Delete the
+ * `smoke-*` project it makes afterwards, through the app.
  */
 import { upload } from "@vercel/blob/client";
 import { parse as devalueParse } from "devalue";
 import { readFile } from "node:fs/promises";
 
-const base = process.env.SMOKE_BASE ?? "http://localhost:5173";
-const account = process.env.SMOKE_ACCOUNT ?? "lightning-jar";
+const base = process.env.SMOKE_BASE ?? "http://127.0.0.1:5173";
+const account = process.env.SMOKE_ACCOUNT ?? "mmkk";
+const token = process.env.PREVIEW_AUTH_TOKEN ?? "";
+if (!token)
+	throw new Error("PREVIEW_AUTH_TOKEN is not set: run through varlock (bun run smoke:blob)");
+
+// Every request to the dev server goes as the bot: the preview cookie, and the origin the
+// remote forms check. Patched into the global fetch, since the Blob client's own call to
+// /api/upload (the token route) must carry them too.
+const plainFetch = globalThis.fetch;
+globalThis.fetch = (input, init = {}) => {
+	const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+	if (!url.startsWith(base)) return plainFetch(input, init);
+	const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : {}));
+	headers.set("cookie", `preview_token=${token}`);
+	headers.set("origin", base);
+	return plainFetch(input, { ...init, headers });
+};
+
+/** A request to the dev server that must answer, not redirect (a sign-in page means the bot is not in). */
+async function fetchAsBot(url, init = {}) {
+	const res = await fetch(url, { ...init, redirect: "manual" });
+	if (res.status >= 300 && res.status < 400) {
+		const to = res.headers.get("location") ?? "";
+		throw new Error(
+			`${url} redirected to ${to}: is the bot signed in (PREVIEW_AUTH_TOKEN) and a member of ${account}?`,
+		);
+	}
+	return res;
+}
+
+/** A hidden input's value by its name, whatever order the attributes come in. */
+function hiddenValue(html, name) {
+	// SvelteKit 3 names a remote form's inputs `field/<form id>` ("accountId/zt7ram/createProject").
+	const tag = html.match(new RegExp(`<input\\b[^>]*name="${name}(?:/[^"]*)?"[^>]*>`))?.[0];
+	return tag?.match(/\bvalue="([^"]*)"/)?.[1];
+}
 const names = (process.argv[2] ?? "kick,hats,bass,keys").split(",");
 const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
 
@@ -23,16 +65,13 @@ const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
  * is where this script runs).
  */
 async function remoteForm(file, name, fields) {
-	const src = await (await fetch(`${base}/src/lib/remote/${file}`)).text();
+	const src = await (await fetchAsBot(`${base}/src/lib/remote/${file}`)).text();
 	const id = src.match(new RegExp(`form\\('([^']+/${name})'\\)`))?.[1];
 	if (!id) throw new Error(`remote form ${name} not found in ${file}`);
 	const body = new FormData();
-	for (const [k, v] of Object.entries(fields)) body.set(k, v);
-	const res = await fetch(`${base}/_app/remote/${id}`, {
-		method: "POST",
-		headers: { origin: base },
-		body,
-	});
+	// The fields carry the form's id in their names, as the rendered inputs do.
+	for (const [k, v] of Object.entries(fields)) body.set(`${k}/${id}`, v);
+	const res = await fetchAsBot(`${base}/_app/remote/${id}`, { method: "POST", body });
 	const json = await res.json();
 	// The payload is devalue-encoded; a handler that redirected reports it here.
 	const data = json.type === "result" ? devalueParse(json.data) : json;
@@ -41,7 +80,7 @@ async function remoteForm(file, name, fields) {
 }
 
 async function post(path, payload) {
-	const res = await fetch(`${base}${path}`, {
+	const res = await fetchAsBot(`${base}${path}`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify(payload),
@@ -78,21 +117,23 @@ function analyzeWav(buf, bins = 1024) {
 	return { durationSeconds: frames / sampleRate, channels, peaks };
 }
 
-const accountId = (await (await fetch(`${base}/${account}/projects`)).text()).match(
-	/name="accountId"[^>]*value="([^"]+)"/,
-)?.[1];
+const accountId = hiddenValue(
+	await (await fetchAsBot(`${base}/${account}/projects`)).text(),
+	"accountId",
+);
+if (!accountId)
+	throw new Error(`no createProject form on /${account}/projects: is the bot an editor there?`);
 const projectUrl = await remoteForm("projects.remote.ts", "createProject", {
 	accountId,
 	name: `Smoke ${stamp}`,
 });
-const projectId = (await (await fetch(`${base}${projectUrl}`)).text()).match(
-	/name="projectId"[^>]*value="([^"]+)"/,
-)?.[1];
+const projectId = hiddenValue(await (await fetchAsBot(`${base}${projectUrl}`)).text(), "projectId");
+if (!projectId) throw new Error(`no createSong form on ${projectUrl}`);
 const songUrl = await remoteForm("songs.remote.ts", "createSong", {
 	projectId,
 	title: "Test loop in D",
 });
-const html = await (await fetch(`${base}${songUrl}`)).text();
+const html = await (await fetchAsBot(`${base}${songUrl}`)).text();
 const songId = html.match(/data-song-id="([^"]+)"/)?.[1];
 if (!songId) throw new Error("song id not found on the song page");
 console.log(`project ${projectUrl} · song ${songUrl} (${songId})`);
@@ -109,6 +150,8 @@ for (const n of names) {
 	const blob = await upload(pathname, bytes, {
 		access: "public",
 		handleUploadUrl: `${base}/api/upload`,
+		// The token route needs the bot's cookie too (the client keeps its own fetch, patched or not).
+		headers: { cookie: `preview_token=${token}`, origin: base },
 		contentType: "audio/wav",
 		multipart: true,
 	});
@@ -119,6 +162,6 @@ for (const n of names) {
 	);
 }
 
-const page = await (await fetch(`${base}${songUrl}`)).text();
-const ready = (page.match(/\d+ (?:stem|stems)(?=,|<)/) ?? ["?"])[0];
+const page = await (await fetchAsBot(`${base}${songUrl}`)).text();
+const ready = `${page.match(/Stems \((\d+)\)/)?.[1] ?? "?"} stems`;
 console.log(`song page reports: ${ready} · open ${base}${songUrl}`);

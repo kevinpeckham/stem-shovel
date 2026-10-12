@@ -298,7 +298,13 @@ in three steps driven by `src/lib/upload.ts`:
 - The store is public with open CORS, which the engine relies on.
 - `bun run smoke:blob [kick,hats,bass,keys]` creates a smoke project + song
   through the remote forms and uploads the generated WAVs through this exact
-  flow against the dev server; delete the `smoke-*` project afterwards.
+  flow against the dev server, as the Screenshot Bot (through varlock for
+  `PREVIEW_AUTH_TOKEN`; the cookie rides on every request, the Blob client's
+  token call included) in the bot's account (`SMOKE_ACCOUNT`, mmkk by
+  default), on `SMOKE_BASE` (127.0.0.1:5173 by default: `localhost` can
+  resolve to ::1, which the server does not listen on). SvelteKit 3 names
+  a remote form's inputs `field/<form id>`, and the script posts them so.
+  Delete the `smoke-*` project afterwards, through the app.
 
 ## Retries (2026-10-12)
 
