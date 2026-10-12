@@ -69,6 +69,25 @@ levels (`stem.gain`).
   (`playThroughSilentSwitch`) so the mix is heard through the ring/silent
   switch.
 
+## Streamed mode (2026-10-12)
+
+Everything above is the buffered mode. A song past the device's memory
+budget (utils/stemMemoryBudget), or any song when the listener or the
+site says so, plays streamed instead (docs/stem-streaming.md): a worker
+decodes a twelve-second window around the playhead from each stem's AAC
+rendition with the browser's AudioDecoder, and one AudioWorkletProcessor
+(`static/worklets/stem-mixer.js`) sums every stem against a single sample
+counter. The engine's public surface is the same: `mode` says which is
+running, `buffering` says the counter is stopped for a window to fill,
+`position` comes from the worklet's reports run forward on the context
+clock, gains go to the worklet as messages with the same 15 ms ramp, and
+`seek` bumps a generation so the old chunks are dropped. The context is
+48 kHz in this mode (the renditions' rate), 32 kHz in the other. The
+analyses that need whole buffers call `decodedBuffers()`, which decodes
+the stems on demand when streamed. Where the browser has no AudioDecoder
+(Safari before 26, Firefox on Android) the mode is never chosen, and a
+streamed load that fails before it is ready falls back to buffered.
+
 ## What sits next to it
 
 The waveform display is not inside the engine: peaks are computed at upload

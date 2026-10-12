@@ -1123,7 +1123,7 @@
 		try {
 			// Yield first so the button repaints; the analysis blocks the thread for a moment.
 			await new Promise((r) => setTimeout(r, 30));
-			const buffers = playerEngine.buffers();
+			const buffers = await playerEngine.decodedBuffers();
 			const combined = combineFeatures(buffers.map((b) => extractFeatures(b)));
 			if (!combined) return;
 			const detection = analyse(combined);
@@ -1200,7 +1200,7 @@
 						? `Listening… (server ${Math.round((100 * stored.doneSeconds) / Math.max(1, stored.duration))}% done)`
 						: "Listening…";
 				const { transcribeNotes } = await import("#lib/audio/transcribe.js");
-				const buffers = playerEngine.buffers();
+				const buffers = await playerEngine.decodedBuffers();
 				const features = buffers.map((b) => extractFeatures(b, 30));
 				const top = Math.max(...features.map((f) => f.tonal), 1e-9);
 				notes = await transcribeNotes(
@@ -2911,9 +2911,28 @@
 							Decoding stem {Math.min(playerEngine.loaded + 1, playerEngine.total)} of {playerEngine.total}…
 						{:else if playerEngine.status === "ready"}
 							{data.manifest.stems.length}
-							{data.manifest.stems.length === 1 ? "stem" : "stems"}, {formatBytes(
-								playerEngine.decodedBytes,
-							)} decoded <span class="i-ph-check text-green-300 align-[-2px]"></span>
+							{data.manifest.stems.length === 1 ? "stem" : "stems"},
+							{#if playerEngine.mode === "streamed"}
+								streamed{#if playerEngine.buffering}, buffering…{:else}
+									<span class="i-ph-check text-green-300 align-[-2px]"></span>{/if}
+								<button
+									class="link-dim ml-1"
+									type="button"
+									title="Decode every stem into memory instead: instant seeking, about 60 MB per four-minute stereo stem"
+									onclick={() => player?.switchMode("buffered")}>play buffered</button
+								>
+							{:else}
+								{formatBytes(playerEngine.decodedBytes)} decoded
+								<span class="i-ph-check text-green-300 align-[-2px]"></span>
+								{#if typeof AudioDecoder !== "undefined"}
+									<button
+										class="link-dim ml-1"
+										type="button"
+										title="Decode a window around the playhead instead of the whole song, so a song of any size fits"
+										onclick={() => player?.switchMode("streamed")}>stream</button
+									>
+								{/if}
+							{/if}
 						{/if}
 					</span>
 				{/if}
@@ -2970,6 +2989,7 @@
 					{/if}
 					<StemPlayer
 						manifest={data.manifest}
+						streaming={data.stemStreaming}
 						showStatus={false}
 						{stemMenu}
 						{stemBadge}

@@ -26,6 +26,7 @@
         "isomorphic-dompurify": "^4.2.0",
         "marked": "18.0.5",
         "marked-footnote": "^1.4.0",
+        "mediabunny": "^1.61.4",
         "nanoid": "6.0.1",
         "parse5": "^8.0.1",
         "pdf-lib": "^1.17.1",
@@ -750,6 +751,10 @@
 
     "@types/deep-eql": ["@types/deep-eql@4.0.2", "", {}, "sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw=="],
 
+    "@types/dom-mediacapture-transform": ["@types/dom-mediacapture-transform@0.1.12", "", { "dependencies": { "@types/dom-webcodecs": "*" } }, "sha512-d7/QsLRwF864A5mgIM/YrfiglHoYn7zgCcAoJgW404r+2DwnNr7EBbLnCWpmOMgH8y0te73L1AV6H1bmauaWFw=="],
+
+    "@types/dom-webcodecs": ["@types/dom-webcodecs@0.1.13", "", {}, "sha512-O5hkiFIcjjszPIYyUSyvScyvrBoV3NOEEZx/pMlsu44TKzWNkLVBBxnxJz42in5n3QIolYOcBYFCPZZ0h8SkwQ=="],
+
     "@types/estree": ["@types/estree@1.0.9", "", {}, "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="],
 
     "@types/hast": ["@types/hast@3.0.5", "", { "dependencies": { "@types/unist": "*" } }, "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g=="],
@@ -1389,6 +1394,8 @@
     "mdast-util-to-hast": ["mdast-util-to-hast@13.2.1", "", { "dependencies": { "@types/hast": "^3.0.0", "@types/mdast": "^4.0.0", "@ungap/structured-clone": "^1.0.0", "devlop": "^1.0.0", "micromark-util-sanitize-uri": "^2.0.0", "trim-lines": "^3.0.0", "unist-util-position": "^5.0.0", "unist-util-visit": "^5.0.0", "vfile": "^6.0.0" } }, "sha512-cctsq2wp5vTsLIcaymblUriiTcZd0CwWtCbLvrOzYCDZoWyMNV8sZ7krj09FSnsiJi3WVsHLM4k6Dq/yaPyCXA=="],
 
     "mdn-data": ["mdn-data@2.27.1", "", {}, "sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ=="],
+
+    "mediabunny": ["mediabunny@1.61.4", "", { "dependencies": { "@types/dom-mediacapture-transform": "^0.1.11", "@types/dom-webcodecs": "0.1.13" } }, "sha512-gZPBi40ldiZGeU2DJxT/Q3hlNiaxfpwNYTfmi0Maq3SoBJT64+W+ySc0Z7t+2JUGxNbkXnLFrDkSS2OQuweOhA=="],
 
     "merge-stream": ["merge-stream@2.0.0", "", {}, "sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w=="],
 

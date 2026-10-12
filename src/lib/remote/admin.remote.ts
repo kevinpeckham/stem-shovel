@@ -20,10 +20,12 @@ import {
 	setUserActive,
 	setAccountStorageLimit,
 	setSignUpMode,
+	setStemStreaming,
 } from "#lib/server/data.js";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "#lib/val/InviteCodeSchema.js";
 import { AccountAdminSchema, AccountStorageLimitSchema } from "#lib/val/AccountAdminSchema.js";
 import { SignUpModeFormSchema } from "#lib/val/SignUpModeSchema.js";
+import { StemStreamingFormSchema } from "#lib/val/StemStreamingSchema.js";
 import { FeaturedSongSchema } from "#lib/val/FeaturedSongSchema.js";
 import { HomeBeatSchema } from "#lib/val/HomeBeatSchema.js";
 import { SitePianoPresetSchema, SitePianoPresetSlotSchema } from "#lib/val/PianoPresetSchema.js";
@@ -112,6 +114,14 @@ export const setStorageLimit = form(AccountStorageLimitSchema, async ({ id, giga
 	const bytes = gigabytes === null ? null : Math.round(gigabytes * 1024 ** 3);
 	if (!(await setAccountStorageLimit(id, bytes))) error(404, "Account not found");
 	return { gigabytes };
+});
+
+/** Stream every song, or only the ones past the device's budget (docs/stem-streaming.md). */
+export const setStemStreamingForm = form(StemStreamingFormSchema, async ({ mode }) => {
+	const { locals } = getRequestEvent();
+	requireSystemAdmin(locals);
+	await setStemStreaming(mode);
+	return { mode };
 });
 
 /** Open sign-up to everyone, or back to invitation-only (the waitlist reappears). */

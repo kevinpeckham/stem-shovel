@@ -144,6 +144,7 @@ import type { ReportPriority } from "#lib/val/BugReportSchema.js";
 import { RELEASES_DOC_SLUG } from "#lib/constants/releasesDoc.js";
 import type { UserDocKind } from "#lib/val/UserDocKindSchema.js";
 import type { SignUpMode } from "#lib/val/SignUpModeSchema.js";
+import type { StemStreaming } from "#lib/val/StemStreamingSchema.js";
 import { accountLimits, storageFits } from "#lib/utils/accountLimits.js";
 import type { BlobAccess } from "#lib/utils/blobAccess.js";
 import { customAlphabet, nanoid } from "nanoid";
@@ -6151,6 +6152,20 @@ export async function signUpMode(): Promise<SignUpMode> {
 export async function setSignUpMode(mode: SignUpMode) {
 	await setAppSetting("signUpMode", mode);
 	signUpModeCache = null;
+}
+
+/** How the site streams stems (docs/stem-streaming.md): the `stemStreaming` app setting, cached for 15 s. */
+let stemStreamingCache: { value: StemStreaming; until: number } | null = null;
+export async function stemStreaming(): Promise<StemStreaming> {
+	if (stemStreamingCache && stemStreamingCache.until > Date.now()) return stemStreamingCache.value;
+	const value = (await getAppSetting("stemStreaming")) === "always" ? "always" : "auto";
+	stemStreamingCache = { value, until: Date.now() + 15_000 };
+	return value;
+}
+
+export async function setStemStreaming(mode: StemStreaming) {
+	await setAppSetting("stemStreaming", mode);
+	stemStreamingCache = null;
 }
 
 /** The person accepted the plan terms at sign-up (the hook records when). */

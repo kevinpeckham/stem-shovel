@@ -8,6 +8,26 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Streamed stem playback** (docs/stem-streaming.md): a song past the
+  device's memory budget no longer decodes every stem into memory. A
+  worker reads each stem's AAC rendition by byte range (mediabunny) and
+  decodes a twelve-second window around the playhead with the browser's
+  own AudioDecoder (WebCodecs); one AudioWorkletProcessor
+  (`static/worklets/stem-mixer.js`) sums every stem against a single
+  sample counter, so the stems stay sample-locked, and stops the counter
+  for all when one stem's window runs dry. Memory is the window, about
+  5 MB a stem. Chrome, Edge, Firefox on a computer and Safari 26 stream;
+  older browsers keep the buffered player. `StemEngine.load()` takes the
+  listener's choice and the site's setting (`stemPlaybackMode`); a
+  streamed load that fails before it is ready falls back to buffered.
+  The player's footer names the mode and switches it (remembered in the
+  browser); `/admin/playback` sets the site to automatic or always.
+  Scan stems and Detect chords on a streamed song decode the stems on
+  demand (`decodedBuffers`). The engine gained `meter()`, the output's
+  peak, for the browser tests.
+
 ## [0.126.0] - 2026-10-12
 
 ### Changed

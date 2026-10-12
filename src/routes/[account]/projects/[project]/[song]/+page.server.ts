@@ -6,6 +6,7 @@ import {
 	listShareLinks,
 	siteAmpPresets,
 	songChat,
+	stemStreaming,
 } from "#lib/server/data.js";
 import { songWantsNotes } from "#lib/utils/songWantsNotes.js";
 import { linkMentions } from "#lib/utils/linkMentions.js";
@@ -85,6 +86,8 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		artists,
 		aiAvailable: canEdit && !noAi && aiAvailable(),
 		noAi,
+		/** How the site streams stems (docs/stem-streaming.md); the player decides per device. */
+		stemStreaming: await stemStreaming(),
 		/** The signed-in person's private note on this song ("mynotes"); null signed out or before the first save. */
 		myNote: myNote && { ...myNote, html: linkMentions(myNote.html, targets) },
 	};

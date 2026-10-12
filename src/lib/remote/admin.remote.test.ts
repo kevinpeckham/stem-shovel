@@ -111,6 +111,14 @@ const cases: Case[] = [
 		outcome: { mode: "open" },
 	},
 	{
+		name: "setStemStreamingForm",
+		fn: admin.setStemStreamingForm,
+		input: { mode: "always" },
+		dataFn: "setStemStreaming",
+		args: ["always"],
+		outcome: { mode: "always" },
+	},
+	{
 		name: "setFeaturedSong",
 		fn: admin.setFeaturedSong,
 		input: { songId: SONG },

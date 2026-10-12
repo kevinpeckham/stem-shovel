@@ -142,7 +142,51 @@ Later, if wanted: an Opus rendition for the browsers without AAC in
 WebCodecs; Int16 windows to halve them again; the same streaming for the
 demos and mixes views (they are single files and need none of this).
 
-## Open questions
+## Kevin's answers (2026-10-12)
+
+"I agree with your recommendations; build it." So: WebCodecs only, no
+Opus rendition for now; automatic by budget with a listener's switch and
+an admin setting; 48 kHz with a twelve-second window; a dry stem pauses
+everything; the analyses decode on demand; admin-forced on dev and
+staging first.
+
+## As built (2026-10-12)
+
+- `static/worklets/stem-mixer.js`: the `Mixer` (queues per stem, the
+  counter, exponential gain ramps, priming at a second, buffering when a
+  stem runs dry, `ended` when every stem has) exported for the Node tests
+  (`src/lib/audio/stemMixer.test.ts`), and the processor shell around it
+  that takes the control messages and the worker's feed port.
+- `src/lib/audio/streamWorker.ts`: mediabunny `Input` + `UrlSource`
+  (4 MB cache a stem) + `AudioSampleSink` per stem; `canDecode()` gates
+  the mode; a seek carries a generation and starts each stem's loop a
+  tenth of a second early, cutting the pre-roll; the loop waits on the
+  worklet's position reports to stay twelve seconds ahead; chunks go to
+  the worklet as transferred planar Float32Arrays; a linear resampler
+  with carried phase covers a context not at the rendition's rate.
+- `src/lib/audio/engine.svelte.ts`: `mode`, `buffering`, `load(sources,
+  {choice, site, ahead})` choosing by `stemPlaybackMode`
+  (`src/lib/utils/stemPlaybackMode.ts`), `#loadStreamed` (the worklet at
+  48 kHz, the worker, the MessageChannel, resolves on `ready`, primes at
+  0), `#seekStream` (generation++, both sides told), position from the
+  worklet's reports run forward on the context clock while not
+  buffering, `decodedBuffers()` for the analyses, `meter()`. A streamed
+  load that throws before ready is reported to Sentry and falls back.
+  `estimatedBytes` in streamed mode is the windows, so the memory
+  banner stays quiet.
+- `StemPlayer.svelte`: the listener's choice in `localStorage`
+  (`stemshovel.stemMode`), the `streaming` prop from the site setting,
+  the footer's "streamed (a 5 MB window a stem) · play buffered" /
+  "decoded in memory · stream instead", and `window.__stems` in dev for
+  the browser tests.
+- The site setting: `stemStreaming` app setting (`StemStreamingSchema`,
+  `stemStreaming()`/`setStemStreaming()` in data.ts, cached 15 s),
+  `setStemStreamingForm` in admin.remote.ts, `/admin/playback`.
+- First run on the dev test song (five stems, Chromium): ready in
+  280 ms, play, pause, seek to 30 s, the end of the song and a mute all
+  behaved; the position ran on without a stutter.
+
+## Open questions (answered above)
 
 1. **Which browsers must stream?** WebCodecs AAC covers Chrome, Edge,
    Firefox on desktop and Safari 26 and later. Older Safari and iOS, and

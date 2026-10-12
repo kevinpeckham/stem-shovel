@@ -9,6 +9,13 @@ import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 import { FADER_MAX } from "#lib/constants/fader.js";
 import { STEM_MEMORY_SOFT_BYTES } from "#lib/constants/stemFormats.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
+import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
+import {
+	stemPlaybackMode,
+	type StemModeChoice,
+	type StemPlaybackMode,
+	type StemStreamingSetting,
+} from "#lib/utils/stemPlaybackMode.js";
 export { FADER_MAX };
 /** Time constant for gain changes (seconds). ~15 ms avoids zipper noise without feeling laggy. */
 const RAMP = 0.015;
@@ -16,6 +23,9 @@ const RAMP = 0.015;
 const START_LEAD = 0.05;
 /** Stems fetched + decoded at once while loading a song. */
 const LOAD_CONCURRENCY = 3;
+/** Streamed mode: seconds decoded ahead of the playhead per stem, and the context rate (the renditions' own). */
+const STREAM_AHEAD = 12;
+const STREAM_RATE = 48000;
 
 /** The sessionStorage marker a load leaves until it finishes; one found at the next load of the same stems means the last did not. */
 const LOAD_MARKER = "stemshovel.loading";
@@ -64,6 +74,15 @@ function readLoadMarker(sources: StemSource[]) {
 	};
 }
 
+/** The stems' upload-time peaks summed and clamped, the streamed mode's stand-in for the mix waveform (no buffers to sum). */
+function sumPeaks(peaks: number[][]): number[] {
+	const bins = peaks.reduce((max, p) => Math.max(max, p.length), 0);
+	if (!bins || peaks.some((p) => p.length !== bins)) return [];
+	const out = Array.from({ length: bins }, () => 0);
+	for (const p of peaks) for (let i = 0; i < bins; i++) out[i] = Math.min(1, out[i]! + (p[i] ?? 0));
+	return out;
+}
+
 /** A warning to Sentry with what the load was carrying; the import is lazy so tests and SSR never load it. */
 async function report(message: string, extra: Record<string, unknown>): Promise<void> {
 	try {
@@ -101,17 +120,29 @@ export class StemEngine {
 	stems = $state<StemState[]>([]);
 	/** Waveform of every stem summed, filled once all of them are decoded. */
 	mixPeaks = $state.raw<number[]>([]);
+	/**
+	 * How the stems play (docs/stem-streaming.md): "buffered" holds every
+	 * stem decoded; "streamed" decodes a window around the playhead in a
+	 * worker and mixes in one worklet, so a song of any size fits.
+	 */
+	mode = $state<StemPlaybackMode>("buffered");
+	/** Streamed and waiting for a stem's window to fill (a seek, a slow network); the counter is stopped. */
+	buffering = $state(false);
 
 	anySolo = $derived(this.stems.some((s) => s.soloed));
 	decodedBytes = $derived(this.stems.reduce((sum, s) => sum + s.decodedBytes, 0));
 	/** What the stems will take once decoded: the manifest's duration and channels until each has decoded, then the real figure. */
 	estimatedBytes = $derived(
-		this.stems.reduce(
-			(sum, s) =>
-				sum +
-				(s.decoded ? s.decodedBytes : (s.duration ?? 0) * (s.channels ?? 0) * this.#sampleRate * 4),
-			0,
-		),
+		this.mode === "streamed"
+			? this.stems.length * (STREAM_AHEAD + 1) * STREAM_RATE * 2 * 4
+			: this.stems.reduce(
+					(sum, s) =>
+						sum +
+						(s.decoded
+							? s.decodedBytes
+							: (s.duration ?? 0) * (s.channels ?? 0) * this.#sampleRate * 4),
+					0,
+				),
 	);
 	/**
 	 * The last attempt to load these same stems in this tab never finished
@@ -130,6 +161,17 @@ export class StemEngine {
 	#offset = 0; // track position (s) the current run started from, or the paused position
 	#raf = 0;
 	readonly #sampleRate: number;
+	// The streamed mode's parts (docs/stem-streaming.md): the decode worker, the mixer worklet, and the
+	// playhead as the worklet last reported it (in its samples, with the context time of the report).
+	#worker: Worker | null = null;
+	#mixer: AudioWorkletNode | null = null;
+	#generation = 0;
+	#streamSample = 0;
+	#streamReportedAt = 0;
+	/** The worklet has reported its counter moving since play or the last seek: only then does the clock run it forward. */
+	#streamRunning = false;
+	#manifest: StemSource[] = [];
+	#analyser: AnalyserNode | null = null;
 
 	/**
 	 * @param sampleRate Context rate. decodeAudioData resamples into it, so 32 kHz
@@ -140,30 +182,38 @@ export class StemEngine {
 	}
 
 	/** Lazily create the context — must not run during SSR. */
-	#context(): AudioContext {
+	#context(sampleRate = this.#sampleRate): AudioContext {
 		if (this.#ctx) return this.#ctx;
-		const ctx = new AudioContext({ sampleRate: this.#sampleRate, latencyHint: "playback" });
+		const ctx = new AudioContext({ sampleRate, latencyHint: "playback" });
 		const master = ctx.createGain();
 		master.connect(ctx.destination);
+		// The output meter (meter()): made here so a first reading is not an empty frame.
+		const analyser = ctx.createAnalyser();
+		analyser.fftSize = 2048;
+		master.connect(analyser);
+		this.#analyser = analyser;
 		this.#ctx = ctx;
 		this.#masterNode = master;
 		return ctx;
 	}
 
 	/**
-	 * Fetch and decode every stem, LOAD_CONCURRENCY at a time. A few in flight
-	 * overlaps network with decoding; more only raises peak memory (compressed +
-	 * decoded data is held for every file in flight) without finishing sooner.
+	 * Load the stems: the rows appear at once from what the manifest knows,
+	 * then either every file is fetched and decoded (buffered) or a worker
+	 * and a worklet stream them (docs/stem-streaming.md), as the listener's
+	 * choice, the site's setting and the device's budget decide
+	 * (utils/stemPlaybackMode). A streamed load that fails before it is
+	 * ready falls back to buffered.
 	 */
-	async load(sources: StemSource[]): Promise<void> {
+	async load(
+		sources: StemSource[],
+		options: { choice?: StemModeChoice | null; site?: StemStreamingSetting; ahead?: number } = {},
+	): Promise<void> {
 		this.#reset();
 		this.status = "loading";
 		this.total = sources.length;
 		this.loaded = 0;
-
-		const ctx = this.#context();
-		const master = this.#masterNode as GainNode;
-		const marker = readLoadMarker(sources);
+		this.#manifest = sources;
 
 		// Rows appear immediately from what the manifest knows (duration, peaks
 		// recorded at upload); each is filled in as its file decodes. Playback
@@ -182,6 +232,52 @@ export class StemEngine {
 			decoded: false,
 		}));
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+
+		const capable =
+			typeof AudioDecoder !== "undefined" &&
+			typeof AudioWorkletNode !== "undefined" &&
+			typeof Worker !== "undefined" &&
+			typeof MessageChannel !== "undefined";
+		this.mode = "buffered";
+		const mode = stemPlaybackMode({
+			estimate: this.estimatedBytes,
+			budget: stemMemoryBudget(
+				typeof navigator === "undefined"
+					? null
+					: (navigator as { deviceMemory?: number }).deviceMemory,
+			),
+			choice: options.choice ?? null,
+			site: options.site ?? "auto",
+			capable,
+		});
+		if (mode === "streamed") {
+			this.mode = "streamed";
+			try {
+				await this.#loadStreamed(sources, options.ahead ?? STREAM_AHEAD);
+				return;
+			} catch (e) {
+				const message = e instanceof Error ? e.message : String(e);
+				void report(`Streamed load fell back to buffered: ${message}`, {
+					stems: sources.length,
+				});
+				this.#teardownStream();
+				this.mode = "buffered";
+				for (const stem of this.stems) stem.decoded = false;
+				this.loaded = 0;
+			}
+		}
+		await this.#loadBuffered(sources);
+	}
+
+	/**
+	 * Fetch and decode every stem, LOAD_CONCURRENCY at a time. A few in flight
+	 * overlaps network with decoding; more only raises peak memory (compressed +
+	 * decoded data is held for every file in flight) without finishing sooner.
+	 */
+	async #loadBuffered(sources: StemSource[]): Promise<void> {
+		const ctx = this.#context();
+		const master = this.#masterNode as GainNode;
+		const marker = readLoadMarker(sources);
 		if (marker.died) {
 			this.lastLoadDied = { stems: marker.died.stems, bytes: marker.died.bytes };
 			void report("Stem load did not finish last time (likely out of memory)", {
@@ -248,6 +344,116 @@ export class StemEngine {
 		}
 	}
 
+	/**
+	 * The streamed mode (docs/stem-streaming.md): the mixer worklet on the
+	 * context, the decode worker, and a MessageChannel between them for the
+	 * chunks; this thread only steers. Resolves when every stem has opened
+	 * (its rendition's index read, its decoder found), and primes the first
+	 * window so play is instant. Throws when a stem cannot be streamed here.
+	 */
+	async #loadStreamed(sources: StemSource[], ahead: number): Promise<void> {
+		const ctx = this.#context(STREAM_RATE);
+		const master = this.#masterNode as GainNode;
+		await ctx.audioWorklet.addModule("/worklets/stem-mixer.js");
+		const mixer = new AudioWorkletNode(ctx, "stem-mixer", {
+			numberOfInputs: 0,
+			numberOfOutputs: 1,
+			outputChannelCount: [2],
+		});
+		mixer.connect(master);
+		mixer.port.onmessage = (e) => this.#fromMixer(e.data);
+		this.#mixer = mixer;
+		const worker = new Worker(new URL("./streamWorker.ts", import.meta.url), { type: "module" });
+		this.#worker = worker;
+		const channel = new MessageChannel();
+		mixer.port.postMessage({ type: "port", port: channel.port1 }, [channel.port1]);
+		worker.postMessage({ type: "port", port: channel.port2 }, [channel.port2]);
+		mixer.port.postMessage({ type: "stems", ids: sources.map((s) => s.id) });
+		this.#applyGains(true);
+		await new Promise<void>((resolve, reject) => {
+			let ready = false;
+			worker.onmessage = (e: MessageEvent) => {
+				const m = e.data;
+				if (m.type === "stem") {
+					const stem = this.stems.find((s) => s.id === m.id);
+					if (stem) {
+						stem.duration = m.duration;
+						stem.channels = m.channels;
+						stem.decoded = true;
+					}
+					this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
+					this.loaded += 1;
+				} else if (m.type === "ready") {
+					ready = true;
+					resolve();
+				} else if (m.type === "error") {
+					const label = this.stems.find((s) => s.id === m.id)?.label ?? "a stem";
+					if (!ready) reject(new Error(`${label}: ${m.message}`));
+					else {
+						// Mid-play: the network or the decoder gave out; stop rather than play a partial mix.
+						this.pause();
+						this.error = `${label}: ${m.message}`;
+						void report(`Stream failed: ${m.message}`, { stems: sources.length });
+					}
+				}
+			};
+			worker.onerror = (ev) => {
+				if (!ready) reject(new Error(ev.message || "The decode worker failed"));
+			};
+			worker.postMessage({
+				type: "load",
+				rate: ctx.sampleRate,
+				ahead,
+				stems: sources.map((s) => ({ id: s.id, url: s.url })),
+			});
+		});
+		this.mixPeaks = sumPeaks(this.stems.map((s) => s.peaks));
+		this.status = "ready";
+		this.#seekStream(0);
+	}
+
+	#fromMixer(m: { type: string; sample?: number; generation?: number; buffering?: boolean }): void {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		if (m.type === "position") {
+			if (m.generation !== this.#generation) return;
+			if (this.playing && (m.sample ?? 0) > this.#streamSample) this.#streamRunning = true;
+			this.#streamSample = m.sample ?? 0;
+			this.#streamReportedAt = ctx.currentTime;
+		} else if (m.type === "state") {
+			this.buffering = !!m.buffering;
+			if (this.buffering) this.#streamReportedAt = ctx.currentTime;
+		} else if (m.type === "ended") {
+			releasePlayback(this.#transport);
+			cancelAnimationFrame(this.#raf);
+			this.playing = false;
+			this.#offset = this.duration;
+			this.position = this.duration;
+		}
+	}
+
+	#seekStream(seconds: number): void {
+		const ctx = this.#ctx;
+		if (!ctx || !this.#mixer || !this.#worker) return;
+		this.#generation += 1;
+		const sample = Math.round(seconds * ctx.sampleRate);
+		this.#streamSample = sample;
+		this.#streamReportedAt = ctx.currentTime;
+		this.#streamRunning = false;
+		this.#mixer.port.postMessage({ type: "seek", sample, generation: this.#generation });
+		this.#worker.postMessage({ type: "seek", seconds, generation: this.#generation });
+	}
+
+	#teardownStream(): void {
+		this.#worker?.postMessage({ type: "dispose" });
+		this.#worker?.terminate();
+		this.#worker = null;
+		this.#mixer?.port.postMessage({ type: "pause" });
+		this.#mixer?.disconnect();
+		this.#mixer = null;
+		this.buffering = false;
+	}
+
 	/** This player as the page's one transport (onlyOnePlays): starting it stops the drums or the metronome. */
 	#transport = { stop: () => this.pause() };
 
@@ -260,6 +466,16 @@ export class StemEngine {
 		// Browsers (iOS especially) start contexts suspended until a user gesture.
 		if (ctx.state !== "running") await ctx.resume();
 		if (this.#offset >= this.duration) this.#offset = 0;
+		if (this.mode === "streamed") {
+			// The worklet primes from where it is (a seek or the load already asked the worker to decode there).
+			if (this.#streamSample !== Math.round(this.#offset * ctx.sampleRate))
+				this.#seekStream(this.#offset);
+			this.#streamRunning = false;
+			this.#mixer?.port.postMessage({ type: "play" });
+			this.playing = true;
+			this.#tick();
+			return;
+		}
 
 		const when = ctx.currentTime + START_LEAD;
 		for (const stem of this.stems) {
@@ -285,6 +501,7 @@ export class StemEngine {
 		if (!this.playing) return;
 		releasePlayback(this.#transport);
 		this.#offset = this.#currentPosition();
+		if (this.mode === "streamed") this.#mixer?.port.postMessage({ type: "pause" });
 		this.#stopSources();
 		cancelAnimationFrame(this.#raf);
 		this.playing = false;
@@ -306,6 +523,13 @@ export class StemEngine {
 	seek(seconds: number): void {
 		if (this.status !== "ready") return;
 		const target = clamp(seconds, 0, this.duration);
+		if (this.mode === "streamed") {
+			// The worklet re-primes and runs on if it was playing; the generation drops the old chunks.
+			this.#offset = target;
+			this.position = target;
+			this.#seekStream(target);
+			return;
+		}
 		const wasPlaying = this.playing;
 		if (wasPlaying) {
 			this.#stopSources();
@@ -366,15 +590,38 @@ export class StemEngine {
 		this.#gains.get(id)?.disconnect();
 		this.#gains.delete(id);
 		this.#buffers.delete(id);
+		if (this.mode === "streamed") {
+			this.#mixer?.port.postMessage({ type: "remove", id });
+			this.#worker?.postMessage({ type: "remove", id });
+			this.#manifest = this.#manifest.filter((s) => s.id !== id);
+		}
 		this.stems = this.stems.filter((s) => s.id !== id);
 		this.duration = this.stems.reduce((max, s) => Math.max(max, s.duration), 0);
 		if (this.#offset > this.duration) this.seek(this.duration);
 		this.#applyGains();
 	}
 
-	/** The decoded stems, for analysis (tempo, key) without fetching anything again. Empty until ready. */
+	/** The decoded stems, for analysis (tempo, key) without fetching anything again. Empty until ready, and in streamed mode. */
 	buffers(): AudioBuffer[] {
 		return [...this.#buffers.values()];
+	}
+
+	/**
+	 * Every stem decoded, for the analyses that need whole buffers (Scan
+	 * stems, Detect chords): the held buffers when buffered; in streamed mode
+	 * each rendition is fetched and decoded now, at the buffered rate, held
+	 * only as long as the caller keeps them (docs/stem-streaming.md).
+	 */
+	async decodedBuffers(): Promise<AudioBuffer[]> {
+		if (this.mode !== "streamed") return this.buffers();
+		const out: AudioBuffer[] = [];
+		for (const src of this.#manifest) {
+			const res = await fetch(src.url);
+			if (!res.ok) throw new Error(`${src.label}: ${res.status} ${res.statusText}`);
+			const scratch = new OfflineAudioContext(1, 1, this.#sampleRate);
+			out.push(await scratch.decodeAudioData(await res.arrayBuffer()));
+		}
+		return out;
 	}
 
 	/**
@@ -390,6 +637,20 @@ export class StemEngine {
 		};
 	}
 
+	/**
+	 * The output's peak over the last analyser frame, 0 to 1: what is coming
+	 * out of the master, whichever mode plays it (the browser tests check the
+	 * streamed mode makes sound). The analyser is made on first use.
+	 */
+	meter(): number {
+		if (!this.#analyser) return 0;
+		const data = new Float32Array(this.#analyser.fftSize);
+		this.#analyser.getFloatTimeDomainData(data);
+		let peak = 0;
+		for (const v of data) peak = Math.max(peak, Math.abs(v));
+		return peak;
+	}
+
 	/** The label is display-only; changing it never needs a reload. */
 	relabel(id: string, label: string): void {
 		const stem = this.stems.find((s) => s.id === id);
@@ -399,9 +660,11 @@ export class StemEngine {
 	/** Release everything, including the AudioContext. Call from component teardown. */
 	dispose(): void {
 		this.#reset();
+		this.#teardownStream();
 		if (this.#ctx) void this.#ctx.close();
 		this.#ctx = null;
 		this.#masterNode = null;
+		this.#analyser = null;
 		this.status = "idle";
 	}
 
@@ -411,13 +674,21 @@ export class StemEngine {
 	#currentPosition(): number {
 		const ctx = this.#ctx;
 		if (!ctx || !this.playing) return this.#offset;
+		if (this.mode === "streamed") {
+			// The worklet's counter as last reported, run forward on the context clock unless it is buffering.
+			const since =
+				this.buffering || !this.#streamRunning
+					? 0
+					: Math.max(0, ctx.currentTime - this.#streamReportedAt);
+			return Math.min(this.duration, this.#streamSample / ctx.sampleRate + since);
+		}
 		// Before `when` has elapsed, currentTime < startedAt; clamp so we never go backwards.
 		return this.#offset + Math.max(0, ctx.currentTime - this.#startedAt);
 	}
 
 	#tick = (): void => {
 		const pos = this.#currentPosition();
-		if (pos >= this.duration) {
+		if (pos >= this.duration && this.mode !== "streamed") {
 			// Reached the end: stop cleanly and park at the end so play() restarts from 0.
 			this.#stopSources();
 			this.playing = false;
@@ -455,6 +726,16 @@ export class StemEngine {
 	#applyGains(immediate = false): void {
 		const ctx = this.#ctx;
 		if (!ctx) return;
+		if (this.mode === "streamed") {
+			for (const stem of this.stems)
+				this.#mixer?.port.postMessage({
+					type: "gain",
+					id: stem.id,
+					value: this.#effectiveGain(stem),
+					immediate,
+				});
+			return;
+		}
 		const now = ctx.currentTime;
 		for (const stem of this.stems) {
 			const node = this.#gains.get(stem.id);
@@ -473,6 +754,8 @@ export class StemEngine {
 	#reset(): void {
 		this.pause();
 		cancelAnimationFrame(this.#raf);
+		this.#teardownStream();
+		this.#manifest = [];
 		for (const node of this.#gains.values()) node.disconnect();
 		this.#gains.clear();
 		this.#buffers.clear();

@@ -26,6 +26,13 @@ class FakeAudioContext {
 	currentTime = 0;
 	destination = {};
 	createGain = fakeGain;
+	/** The output meter the engine makes with its master (engine.meter()). */
+	createAnalyser = () => ({
+		fftSize: 2048,
+		connect() {},
+		disconnect() {},
+		getFloatTimeDomainData() {},
+	});
 	createBuffer(n: number, length: number, sampleRate: number) {
 		return fakeAudioBuffer(
 			Array.from({ length: n }, () => new Float32Array(length)),

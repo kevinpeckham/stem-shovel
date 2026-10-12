@@ -13,11 +13,13 @@
 	import Transport from "#lib/components/Transport.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
+	import type { StemModeChoice, StemStreamingSetting } from "#lib/utils/stemPlaybackMode.js";
 	import type { MidiSummary } from "#lib/audio/midi.js";
 	import SectionTimeline from "#lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "#lib/audio/measures.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { tick } from "svelte";
+	import { dev } from "$app/env";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import { timelineKinds } from "#lib/utils/timelineKinds.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
@@ -50,6 +52,8 @@
 		onaddsection?: (start: number) => void;
 		/** Hands the engine to the parent (for controls rendered outside the player, like the mix download). */
 		onengine?: (engine: StemEngine) => void;
+		/** The site's streaming setting (docs/stem-streaming.md); the listener's own choice in this browser wins. */
+		streaming?: StemStreamingSetting;
 		/** When given, the listener's fader/mute/solo/master changes persist in this browser (localMix). */
 		songId?: string;
 		/** The line under the rows saying how many stems are decoded; the front page's demo hides it. */
@@ -80,6 +84,7 @@
 		showStatus = true,
 		keyboard = true,
 		onreorder,
+		streaming = "auto",
 	}: Props = $props();
 
 	const engine = new StemEngine();
@@ -99,6 +104,8 @@
 		if (songId) saveLocalMix(songId, null);
 	}
 	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
+	// A dev-only hook for the browser tests (tests/e2e): the engine's mode, status and position.
+	if (dev && typeof window !== "undefined") (window as { __stems?: StemEngine }).__stems = engine;
 
 	// Effects only run in the browser (no AudioContext during SSR).
 	//
@@ -122,7 +129,7 @@
 				for (const s of stems) engine.relabel(s.id, s.label);
 				engine.reorder(stems.map((s) => s.id));
 			} else {
-				void engine.load(stems);
+				void engine.load(stems, { choice: modeChoice(), site: streaming });
 				// load() sets up the stems synchronously; the listener's own mix goes on top of the default.
 				if (songId) {
 					const local = loadLocalMix(songId);
@@ -152,6 +159,30 @@
 	// to `onreorder` once, when the move is done.
 	let rowsEl = $state<HTMLElement | null>(null);
 	let dragging = $state<string | null>(null);
+	/** The listener's own playback mode for this browser (docs/stem-streaming.md), or auto. */
+	const MODE_KEY = "stemshovel.stemMode";
+	function modeChoice(): StemModeChoice | null {
+		try {
+			const v = localStorage.getItem(MODE_KEY);
+			return v === "buffered" || v === "streamed" ? v : null;
+		} catch {
+			return null;
+		}
+	}
+	/** Switch modes and load the stems again the other way (the song page's header calls it too). */
+	export function switchMode(to: StemModeChoice) {
+		try {
+			if (to === "auto") localStorage.removeItem(MODE_KEY);
+			else localStorage.setItem(MODE_KEY, to);
+		} catch {
+			// no storage: the choice lasts for this load
+		}
+		void engine.load(manifest.stems, { choice: to === "auto" ? null : to, site: streaming });
+		if (songId) {
+			const local = loadLocalMix(songId);
+			if (local) applyLocalMix(engine, local, defaults);
+		}
+	}
 	/** What this device can be expected to hold decoded (utils/stemMemoryBudget): Chrome says its memory, the rest get the soft gigabyte. */
 	const memoryBudget = stemMemoryBudget(
 		typeof navigator === "undefined" ? null : (navigator as { deviceMemory?: number }).deviceMemory,
@@ -290,9 +321,27 @@
 			enable when every stem is ready.
 		{:else if engine.status === "ready"}
 			{manifest.stems.length}
-			{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.status === "ready"}, {formatBytes(
-					engine.decodedBytes,
-				)} decoded in memory <span class="text-green-300 i-ph-check"></span>{/if}
+			{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.mode === "streamed"},
+				streamed (a {Math.round(engine.estimatedBytes / manifest.stems.length / 1024 / 1024)} MB window
+				a stem){#if engine.buffering}, buffering…{:else}
+					<span class="text-green-300 i-ph-check"></span>{/if}
+				<button
+					class="link-dim ml-2"
+					type="button"
+					title="Decode every stem into memory instead (instant seeking; about 60 MB per four-minute stereo stem)"
+					onclick={() => switchMode("buffered")}>play buffered</button
+				>
+			{:else}, {formatBytes(engine.decodedBytes)} decoded in memory
+				<span class="text-green-300 i-ph-check"></span>
+				{#if typeof AudioDecoder !== "undefined"}
+					<button
+						class="link-dim ml-2"
+						type="button"
+						title="Decode a window around the playhead instead of the whole song (docs: Streaming)"
+						onclick={() => switchMode("streamed")}>stream instead</button
+					>
+				{/if}
+			{/if}
 		{/if}
 	</div>
 {/if}
