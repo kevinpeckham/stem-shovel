@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.126.0] - 2026-10-12
+
 ### Changed
 
 - **No more cap of 32 stems a song.** `MAX_STEMS_PER_SONG` is a sanity
