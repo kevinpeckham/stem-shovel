@@ -900,6 +900,8 @@
 
 	let pending = $derived(data.song.stems.filter((s) => s.status !== "ready"));
 	let uploadJobs = $state<UploadJob[]>([]);
+	/** Whichever uploader is on the page (the panel's or the menu's; they share the jobs), for "Retry failed". */
+	let uploader = $state<StemUploader | null>(null);
 	let uploadNotice = $state<string | null>(null);
 	let ready = $derived(data.song.stems.filter((s) => s.status === "ready" && s.url));
 
@@ -3024,6 +3026,7 @@
 						</p>
 						<div class="mt-4 flex flex-wrap items-center justify-center gap-3">
 							<StemUploader
+								bind:this={uploader}
 								songId={data.song.id}
 								stemCount={data.song.stems.length}
 								decodedBytes={decodedStemBytes(data.song.stems)}
@@ -3133,6 +3136,19 @@
 					</li>
 				{/each}
 			</ul>
+			{#if uploadJobs.some((j) => j.status === "error") && !uploadJobs.some((j) => j.status === "uploading" || j.status === "decoding")}
+				<div class="px-4 py-2">
+					<button
+						class="button button-xs"
+						type="button"
+						title="Upload the files that failed again, to the same stems"
+						onclick={() => uploader?.retryFailed()}
+					>
+						<span class="i-ph-arrow-clockwise" aria-hidden="true"></span>
+						Retry failed
+					</button>
+				</div>
+			{/if}
 		{/if}
 
 		{#if pending.length > 0}
@@ -3674,6 +3690,7 @@
 					}}
 				>
 					<StemUploader
+						bind:this={uploader}
 						songId={data.song.id}
 						stemCount={data.song.stems.length}
 						decodedBytes={decodedStemBytes(data.song.stems)}

@@ -25,12 +25,15 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { stemContentType } from "#lib/utils/stemContentType.js";
 	import { postJson, type Reservation, uploadStemFile } from "#lib/upload.js";
+	import { looksLikeNetwork } from "#lib/utils/withRetries.js";
 
 	export interface UploadJob {
 		file: File;
 		percent: number;
 		status: "queued" | "uploading" | "decoding" | "done" | "error";
 		error?: string;
+		/** The row and pathname reserved for it, kept so "Retry failed" uploads to the same stem. */
+		reservation?: Reservation;
 	}
 
 	interface Props {
@@ -98,21 +101,35 @@
 			return;
 		}
 		notice = null;
-		busy = true;
 		jobs = picked.map((file) => ({ file, percent: 0, status: "queued" }));
+		await run(jobs);
+	}
 
+	/** The jobs that failed, again: the same reservations, so no row is left behind (docs/uploads-and-blob.md, "Retries"). */
+	export async function retryFailed() {
+		const failed = jobs.filter((j) => j.status === "error");
+		for (const job of failed) {
+			job.status = "queued";
+			job.percent = 0;
+			job.error = undefined;
+		}
+		await run(failed);
+	}
+
+	async function run(batch: UploadJob[]) {
+		busy = true;
 		const ctx = new AudioContext({ sampleRate: STEM_CONTEXT_RATE });
-		let failed = 0;
 		// What the batch adds to the song's decoded size, for the memory warning after the upload.
 		let addedBytes = 0;
 		const features: Features[] = [];
 		const keySegments: KeySegment[][] = [];
-		for (const job of jobs) {
+		const one = async (job: UploadJob) => {
 			try {
 				job.status = "uploading";
 				await uploadStemFile(
 					job.file,
-					() =>
+					async () =>
+						job.reservation ??
 						postJson<Reservation>("/api/stems", {
 							songId,
 							filename: job.file.name,
@@ -120,6 +137,7 @@
 						}),
 					{
 						ctx,
+						onReserved: (r) => (job.reservation = r),
 						onProgress: (p) => (job.percent = p),
 						onDecoding: () => (job.status = "decoding"),
 						onDecoded: (buffer) => {
@@ -135,24 +153,36 @@
 				job.status = "done";
 				job.percent = 100;
 			} catch (err) {
-				failed++;
 				job.status = "error";
 				job.error = (err as Error).message;
 			}
+		};
+		for (const job of batch) await one(job);
+		// A second pass, unasked, for what the network dropped (a batch's first files can fail while a
+		// connection settles): the same reservations, once the rest of the batch is through.
+		const dropped = batch.filter(
+			(j) => j.status === "error" && looksLikeNetwork(new Error(j.error ?? "")),
+		);
+		for (const job of dropped) {
+			job.status = "queued";
+			job.percent = 0;
+			job.error = undefined;
 		}
+		for (const job of dropped) await one(job);
+		const failed = batch.filter((j) => j.status === "error").length;
 		await ctx.close();
 		busy = false;
 		const combined = combineFeatures(features);
 		if (combined && onanalysis)
 			onanalysis(analyse(combined), detectKeys(combineKeySegments(keySegments)));
-		if (failed === 0) jobs = [];
+		if (jobs.every((j) => j.status === "done")) jobs = [];
 		await refreshAll();
-		if (failed < jobs.length || jobs.length === 0) onuploaded?.();
+		if (failed < batch.length) onuploaded?.();
 		// The soft warning (docs/audio-engine.md, "Memory is the binding limit"): the song is past what a phone holds decoded.
 		const total = decodedBytes + addedBytes;
-		if (total > STEM_MEMORY_SOFT_BYTES && failed < picked.length)
+		if (total > STEM_MEMORY_SOFT_BYTES && failed < batch.length)
 			notify(
-				`This song's ${stemCount + picked.length - failed} stems come to about ${formatBytes(total)} once decoded for playback: a computer will manage, a phone may not.`,
+				`This song's ${stemCount + batch.length - failed} stems come to about ${formatBytes(total)} once decoded for playback: a computer will manage, a phone may not.`,
 				{ kind: "info", timeout: 15_000 },
 			);
 	}

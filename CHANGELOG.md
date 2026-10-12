@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A stem upload the network drops is tried again.** Kevin's batch of
+  32 lost its first five at once to a TLS error on the multipart create
+  call (`ERR_SSL_BAD_RECORD_MAC_ALERT`, a connection settling) with no
+  retry. Now the transfer is tried three times with a pause between
+  (`withRetries` in `src/lib/utils/`, only for failures with no HTTP
+  answer behind them), a job that still failed for a network reason is
+  run again once the rest of the batch is through, and a **Retry failed**
+  button under the upload list sends what is left to the same stems (the
+  reservation is kept on the job, so no row is left behind). The "Stems
+  not ready" tiles stay the fallback after a reload, when the browser no
+  longer has the files.
+
 ### Added
 
 - **Streamed stem playback** (docs/stem-streaming.md): a song past the

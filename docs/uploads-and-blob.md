@@ -299,3 +299,27 @@ in three steps driven by `src/lib/upload.ts`:
 - `bun run smoke:blob [kick,hats,bass,keys]` creates a smoke project + song
   through the remote forms and uploads the generated WAVs through this exact
   flow against the dev server; delete the `smoke-*` project afterwards.
+
+## Retries (2026-10-12)
+
+Kevin's batch of 32 stems lost its first five in a row to
+`net::ERR_SSL_BAD_RECORD_MAC_ALERT` on `vercel.com/api/blob/mpu`, the
+multipart-create call, before a byte had moved; the Blob client made a
+few attempts of its own and gave up, the app none, and the rest of the
+batch went through once the connection had settled. Three layers now:
+
+- `uploadStemFile` (`src/lib/upload.ts`) wraps the transfer and the
+  ready call in `withRetries` (`src/lib/utils/withRetries.ts`): three
+  attempts, a second and then three seconds apart, only for a failure
+  with no HTTP answer behind it (`looksLikeNetwork`: fetch's TypeError,
+  or wording about the network, TLS, a reset or a timeout); an answer
+  (a 4xx, a refused type) is thrown at once. The reservation allows an
+  overwrite, so a partial blob from the attempt before is replaced.
+- `StemUploader` keeps each job's reservation (`onReserved`) and, once
+  the batch is through, runs the jobs that failed for a network reason
+  once more, unasked, to the same stems.
+- What still fails shows **Retry failed** under the upload list on the
+  song page (`retryFailed()`, exported from the uploader): one press,
+  the files the browser still holds, the same reservations, so no row is
+  left behind. After a reload the files are gone, and the "Stems not
+  ready" tiles with their upload link remain the way back.

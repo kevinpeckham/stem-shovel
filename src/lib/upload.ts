@@ -6,6 +6,7 @@ import { pdfThumbnail } from "#lib/utils/pdfThumbnail.js";
 import { FILE_CONTENT_TYPE_OF, type FileKind } from "#lib/constants/fileFormats.js";
 import { NOTATION_CONTENT_TYPE_OF, notationFormatOf } from "#lib/constants/notationFormats.js";
 import { upload } from "@vercel/blob/client";
+import { withRetries } from "#lib/utils/withRetries.js";
 
 export interface Reservation {
 	stemId: string;
@@ -29,19 +30,27 @@ export async function uploadStemFile(
 		onDecoding?: () => void;
 		/** The decoded audio, for anything else the caller wants to learn from it (tempo, key). */
 		onDecoded?: (buffer: AudioBuffer) => void;
+		/** The reservation, as soon as it is made: a retry of the job can reuse it (the row and the pathname). */
+		onReserved?: (reservation: Reservation) => void;
 	},
 ): Promise<void> {
-	const { stemId, pathname, access = "public" } = await reserve();
+	const reservation = await reserve();
+	opts.onReserved?.(reservation);
+	const { stemId, pathname, access = "public" } = reservation;
 	const contentType = stemContentType(file.name) ?? undefined;
-	const blob = await upload(pathname, file, {
-		access,
-		handleUploadUrl: "/api/upload",
-		// The reservation allows exactly the type derived from the extension; the
-		// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
-		contentType,
-		multipart: true,
-		onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
-	});
+	// The transfer is tried three times when the network drops it (utils/withRetries); the
+	// reservation allows an overwrite, so a partial blob from the attempt before is replaced.
+	const blob = await withRetries(() =>
+		upload(pathname, file, {
+			access,
+			handleUploadUrl: "/api/upload",
+			// The reservation allows exactly the type derived from the extension; the
+			// browser's own guess differs ("audio/x-m4a" for a Voice Memo) and would be refused.
+			contentType,
+			multipart: true,
+			onUploadProgress: ({ percentage }) => opts.onProgress?.(percentage),
+		}),
+	);
 	opts.onDecoding?.();
 	// Channels are reported after the same dual-mono collapse the player does,
 	// so a dual-mono file gets a mono rendition.
@@ -50,16 +59,18 @@ export async function uploadStemFile(
 		opts.ctx,
 	);
 	opts.onDecoded?.(buffer);
-	const ready = await fetch(`/api/stems/${stemId}/ready`, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({
-			url: blob.url,
-			durationSeconds: buffer.duration,
-			channels: buffer.numberOfChannels,
-			peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
+	const ready = await withRetries(() =>
+		fetch(`/api/stems/${stemId}/ready`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({
+				url: blob.url,
+				durationSeconds: buffer.duration,
+				channels: buffer.numberOfChannels,
+				peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
+			}),
 		}),
-	});
+	);
 	if (!ready.ok) throw new Error(await errorText(ready));
 }
 
