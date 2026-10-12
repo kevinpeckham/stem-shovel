@@ -80,6 +80,48 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 	};
 }
 
+/**
+ * `seconds` moved to the nearest bar line when one is within `maxBeats`
+ * of it, else unchanged. For a time placed by ear (the AI's key changes,
+ * sections and tempo shifts, docs/audio-engine.md "Snapped to the bar"):
+ * a chord that comes in on the "and" of four is the next bar's, and a
+ * timestamp a beat late is still this bar's. Before the start, unchanged.
+ */
+export function snapToDownbeat(grid: BarGrid, seconds: number, maxBeats = 1.5): number {
+	if (seconds < grid.startAt) return seconds;
+	const pos = barAt(grid, seconds);
+	const into = pos.beat - 1 + pos.fraction;
+	const bpb = valueAt(grid.meters, seconds).beatsPerBar;
+	const toNext = bpb - into;
+	if (into <= toNext && into <= maxBeats) return secondsAtBar(grid, pos.bar);
+	if (toNext < into && toNext <= maxBeats) return secondsAtBar(grid, pos.bar + 1);
+	return seconds;
+}
+
+/** The length in seconds of the bar `seconds` falls in. */
+export function barSecondsAt(grid: BarGrid, seconds: number): number {
+	const { bar } = barAt(grid, seconds);
+	return secondsAtBar(grid, bar + 1) - secondsAtBar(grid, bar);
+}
+
+/**
+ * `seconds` moved onto the nearest of `anchors` within `within` seconds,
+ * else unchanged: a key change lands on the section that begins beside it,
+ * a section on the key change (docs/audio-engine.md, "Snapped to the bar").
+ */
+export function snapToAnchor(seconds: number, anchors: number[], within: number): number {
+	let best = seconds;
+	let gap = within;
+	for (const a of anchors) {
+		const d = Math.abs(a - seconds);
+		if (d <= gap) {
+			gap = d;
+			best = a;
+		}
+	}
+	return best;
+}
+
 /** Seconds at a bar position: the inverse of `barAt` (bars before the start run negative). */
 export function secondsAtBar(grid: BarGrid, bar: number, beat = 1, fraction = 0): number {
 	// Walk meter segments from the start to find which one holds the bar.

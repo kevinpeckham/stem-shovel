@@ -49,7 +49,15 @@
 	import { type MidiSummary, parseMidi } from "#lib/audio/midi.js";
 	import StemReplacer from "#lib/components/StemReplacer.svelte";
 	import StemUploader, { type UploadJob } from "#lib/components/StemUploader.svelte";
-	import { barGrid, formatPosition, parsePosition, secondsAtBar } from "#lib/audio/measures.js";
+	import {
+		barGrid,
+		barSecondsAt,
+		formatPosition,
+		parsePosition,
+		secondsAtBar,
+		snapToAnchor,
+		snapToDownbeat,
+	} from "#lib/audio/measures.js";
 	import { type MixMode, mixQuery, saveMix, saveStemsZip } from "#lib/audio/downloads.js";
 	import { bumpVersion } from "#lib/utils/bumpVersion.js";
 	import { midiContentType } from "#lib/utils/midiContentType.js";
@@ -1010,10 +1018,18 @@
 			!confirm("Replace the song's sections with the detected ones?")
 		)
 			return;
+		// Each start to the bar line it was heard near, and onto a key change within a bar of it (docs/audio-engine.md, "Snapped to the bar").
+		const grid = posCtx.grid;
+		const keyStarts = data.song.changes.filter((c) => c.kind === "key").map((c) => c.start);
+		const snap = (at: number) => {
+			if (!grid) return at;
+			const bar = snapToDownbeat(grid, at);
+			return snapToAnchor(bar, keyStarts, barSecondsAt(grid, bar));
+		};
 		const sections = sectionsAnswer.sections.map((s, i) => ({
 			index: toRoman(i + 1),
 			name: s.name,
-			start: Math.round(s.at * 10) / 10,
+			start: Math.round(snap(s.at) * 10) / 10,
 		}));
 		await persistSections(sections);
 		if (!sectionError) {
@@ -1454,6 +1470,26 @@
 			...(aiAnswer.meter === "free" ? [] : [{ kind: "meter" as const, value: aiAnswer.meter }]),
 		];
 		const replaced = new Set(at0.map((r) => r.kind));
+		// The model places a change by ear, often a beat early (a chord on the "and" of four); snap each to the bar
+		// line on the grid the answer itself makes (docs/audio-engine.md, "Snapped to the bar").
+		const grid = barGrid(
+			[
+				...at0.map((r) => ({ ...r, start: 0 })),
+				...aiAnswer.tempoChanges.map((c) => ({
+					kind: "tempo" as const,
+					start: c.at,
+					value: String(Math.round(c.bpm)),
+				})),
+			],
+			data.song.startAt,
+		);
+		// … and a key change within a bar of a section's start belongs to that section (they line up in practice).
+		const sectionStarts = data.song.sections.map((s) => s.start);
+		const snap = (at: number) => {
+			if (!grid) return at;
+			const bar = snapToDownbeat(grid, at);
+			return snapToAnchor(bar, sectionStarts, barSecondsAt(grid, bar));
+		};
 		// Every earlier key change goes when the model names the keys through the song (it read the score, or heard a modulation).
 		const keysToo = aiAnswer.keyChanges.length > 0;
 		const rows = changeRows.filter(
@@ -1468,19 +1504,21 @@
 			rows.push({ time: editPos(0), shown: editPos(0), seconds: 0, kind, value });
 		}
 		for (const c of aiAnswer.tempoChanges) {
+			const at = snap(c.at);
 			rows.push({
-				time: editPos(c.at),
-				shown: editPos(c.at),
-				seconds: c.at,
+				time: editPos(at),
+				shown: editPos(at),
+				seconds: at,
 				kind: "tempo",
 				value: String(Math.round(c.bpm)),
 			});
 		}
 		for (const c of aiAnswer.keyChanges) {
+			const at = snap(c.at);
 			rows.push({
-				time: editPos(c.at),
-				shown: editPos(c.at),
-				seconds: c.at,
+				time: editPos(at),
+				shown: editPos(at),
+				seconds: at,
 				kind: "key",
 				value: c.key,
 			});

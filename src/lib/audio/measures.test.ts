@@ -6,7 +6,10 @@ import {
 	formatBarSpan,
 	formatPosition,
 	parsePosition,
+	barSecondsAt,
 	secondsAtBar,
+	snapToAnchor,
+	snapToDownbeat,
 } from "./measures";
 
 const changes: SongChange[] = [
@@ -60,6 +63,51 @@ describe("barAt", () => {
 			const p = barAt(grid, t);
 			expect(secondsAtBar(grid, p.bar, p.beat, p.fraction)).toBeCloseTo(t, 6);
 		}
+	});
+});
+
+describe("snapToDownbeat", () => {
+	// 120 bpm 4/4: a bar is 2 s, a beat 0.5 s.
+	const grid = barGrid(changes.slice(0, 2), null)!;
+	test("a time on the and of four goes to the next bar; a beat late comes back to this one", () => {
+		expect(snapToDownbeat(grid, 3.75)).toBe(4);
+		expect(snapToDownbeat(grid, 4.4)).toBe(4);
+		expect(snapToDownbeat(grid, 4)).toBe(4);
+	});
+	test("a time in the middle of the bar stays where it is", () => {
+		expect(snapToDownbeat(grid, 5)).toBe(5);
+		expect(snapToDownbeat(grid, 4.8)).toBe(4.8);
+	});
+	test("counts beats, so a slow tempo snaps across more seconds", () => {
+		const slow = barGrid(
+			[
+				{ kind: "tempo", start: 0, value: "60" },
+				{ kind: "meter", start: 0, value: "4/4" },
+			],
+			null,
+		)!;
+		expect(snapToDownbeat(slow, 7.2)).toBe(8);
+		expect(snapToDownbeat(slow, 6.4)).toBe(6.4);
+	});
+	test("before the start and in a bar before it, unchanged", () => {
+		const late = barGrid(changes.slice(0, 2), 10)!;
+		expect(snapToDownbeat(late, 3)).toBe(3);
+		expect(snapToDownbeat(late, 11.8)).toBe(12);
+	});
+});
+
+describe("snapToAnchor / barSecondsAt", () => {
+	test("moves onto the nearest anchor within reach, else stays", () => {
+		expect(snapToAnchor(31, [0, 30, 60], 2)).toBe(30);
+		expect(snapToAnchor(29.5, [0, 30, 60], 2)).toBe(30);
+		expect(snapToAnchor(33, [0, 30, 60], 2)).toBe(33);
+		expect(snapToAnchor(45, [], 2)).toBe(45);
+	});
+	test("a bar's length follows the tempo and meter in force", () => {
+		const grid = barGrid(changes, null)!;
+		expect(barSecondsAt(grid, 1)).toBeCloseTo(2);
+		expect(barSecondsAt(grid, 9)).toBeCloseTo(4);
+		expect(barSecondsAt(grid, 17)).toBeCloseTo(3);
 	});
 });
 

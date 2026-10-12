@@ -76,14 +76,15 @@
 >
 	<!-- <div class="font-500 mb-2 opacity-90">Current Section:</div> -->
 	<div class="grid gap-1 w-full text-14px opacity-95 leading-snug">
+		<!-- in the rows' order: the lanes (keys among them) sit above the section blocks -->
+		{#if severalKeys}
+			<div class="text-13px opacity-80">keys:</div>
+		{/if}
 		{#if currentIndex >= 0}
 			<div class="flex gap-2">
 				<div class="opacity-80">section:</div>
 				<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
 			</div>
-		{/if}
-		{#if severalKeys}
-			<div class="text-13px opacity-80">keys:</div>
 		{/if}
 	</div>
 

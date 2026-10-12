@@ -422,3 +422,24 @@ same way, especially when a score is there.
   0:14 …") with "Use these" (a `confirm` before replacing, as the chart
   draft's sections do) and "Dismiss". The 409 shows under the rows as
   "The mix is still rendering".
+
+## Snapped to the bar (2026-10-12)
+
+Kevin's test of the score-read keys: many of the key changes landed on
+beat four of the bar before, where the model heard the chord come in
+early (a pickup, or a timestamp a few hundred milliseconds off).
+`snapToDownbeat(grid, seconds, maxBeats = 1.5)` in
+`src/lib/audio/measures.ts` moves a time to the nearest bar line when
+one is within a beat and a half, forward or back, and leaves a time in
+the middle of a bar alone; before `startAt` nothing moves. "Use these"
+on the tempo and key answer snaps the tempo shifts and key changes on
+the grid the answer itself makes (its tempo and meter at 0 plus its
+tempo shifts, with the song's `startAt`), so a fresh song is snapped
+too; `useSectionsAnswer` snaps the sections on the song's grid
+(`posCtx.grid`), which is null until the song has a tempo and meter, in
+which case the times stay as heard. Then the two are drawn together
+(Kevin: key changes and section starts line up most of the time, and
+none of his did): a snapped key change within a bar's length of a
+section's start moves onto it (`snapToAnchor`, `barSecondsAt`), and a
+snapped section start within a bar of an existing key change moves onto
+that, so whichever is detected second lands on the first.

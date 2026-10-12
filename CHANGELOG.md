@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The AI's key changes, tempo shifts and sections land on the bar
+  line**: the model places them by ear, often on the "and" of four
+  before the bar they belong to (Kevin's test), so each is snapped to the
+  nearest downbeat within a beat and a half (`snapToDownbeat` in
+  `src/lib/audio/measures.ts`), on the grid the answer itself makes for
+  the tempo and key check and the song's grid for sections; a time in
+  the middle of a bar stays where it is. A key change within a bar of a
+  section's start then moves onto it, and a detected section onto a key
+  change the same way, so the two line up.
+- **The section timeline's left-hand labels** read in the rows' order,
+  "keys:" above "section:", as the lanes sit above the section blocks.
+
 ## [0.125.0] - 2026-10-12
 
 ### Added
