@@ -329,7 +329,9 @@ than one and a display that names them all.
   song (the one in force lit, each label clipping in a short stretch), and
   every lane marker is a button that seeks to where its change begins
   (Kevin, 2026-10-12, after testing the score-read keys: the list of keys
-  under the section name went, the lane is the list).
+  under the section name went, the lane is the list; the word "keys:"
+  stays under the section name as the lane's label when the song has
+  two or more keys).
 - The override is the rows in settings: add, move or remove key rows.
 
 ## The score as the AI's chart (2026-10-12)
@@ -386,3 +388,37 @@ notation uploaded, go straight to the AI and give it the chart.
   chart document (markdown) is not sent: its chords are free text, and
   the model reads a score far better; sending the chart text when there
   is no score is the next step if the keys still come out wrong.
+
+## Detect sections (2026-10-12)
+
+Kevin's next ask after the score-read keys: fill the sections in the
+same way, especially when a score is there.
+
+- **Server.** `askAiAboutMix` was split: `loadMix` and `loadScore` fetch
+  the mix and the score, and `listen({kind, who, mix, score, chart,
+  system, question, schema})` makes the Gemini call with the mix (and a
+  PDF or image score) as file parts and the MusicXML summary in the text,
+  logs the request and the reply to `ai_request` under `kind`, and parses
+  the JSON with the valibot schema. `detectSectionsWithAi(mixUrl,
+  context, who, score)` asks for `{sections: [{at, name}], confidence,
+  notes}` (up to 64, names up to 40 characters, the first at 0): a
+  section is a stretch with its own material or function, boundaries on
+  the downbeat to a tenth of a second, a pickup belongs to what it leads
+  into. With a score the prompt says to take the sections from the
+  chart's rehearsal marks, words, double bars, repeats and endings and
+  place them by ear. The question carries the song's tempo and meter,
+  the account's section vocabulary (`sectionVocabulary(accountId,
+  excludeSongId)` in data.ts: every other song's section names, most
+  common first, the top twelve sent) and the song's existing sections,
+  to be kept unless the recording plainly says otherwise.
+- **Remote.** `detectSections` in songs.remote.ts: members, the same
+  gates as `askAiAboutSong` (configured, not `noAi`, the shared
+  `ai:<user>` limit of ten an hour, 409 until the mix is rendered).
+- **Page.** "Detect" beside "Add row" on the Sections panel
+  (`detectSongSections`): with no sections the answer is saved at once
+  (`useSectionsAnswer`: roman-numeral indices, starts rounded to a tenth)
+  and a notification says how many; with sections it shows as a card
+  ("The AI read the score and listened. It finds Intro at 0:00, Verse at
+  0:14 …") with "Use these" (a `confirm` before replacing, as the chart
+  draft's sections do) and "Dismiss". The 409 shows under the rows as
+  "The mix is still rendering".

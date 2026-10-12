@@ -65,6 +65,8 @@
 		}),
 	);
 	let currentIndex = $derived(blocks.findLastIndex((b) => engine.position >= b.start) ?? -1);
+	/** A song that moves through keys gets the word "keys:" under the section name, a label for the key lane (Kevin: the word, not a list; the lane is the list). */
+	let severalKeys = $derived(changes.filter((c) => c.kind === "key").length >= 2);
 </script>
 
 <div
@@ -79,6 +81,9 @@
 				<div class="opacity-80">section:</div>
 				<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
 			</div>
+		{/if}
+		{#if severalKeys}
+			<div class="text-13px opacity-80">keys:</div>
 		{/if}
 	</div>
 

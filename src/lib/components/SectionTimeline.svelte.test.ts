@@ -69,8 +69,9 @@ describe("SectionTimeline", () => {
 		render(SectionTimeline, {
 			props: { engine: fakeEngine({ position: 70, seek }), sections: [], changes },
 		});
-		// The list of keys under the section name went (Kevin): the lane is the list.
-		expect(screen.queryByLabelText("Keys")).toBeNull();
+		// The list of keys under the section name went (Kevin): the word stays as the lane's label, the lane is the list.
+		expect(screen.getByText("keys:")).toBeInTheDocument();
+		expect(screen.queryByText("key:")).toBeNull();
 		const keys = screen.getAllByRole("button", { name: /major/ });
 		expect(keys.map((k) => k.textContent?.trim())).toEqual(["C major", "A♭ major", "F major"]);
 		expect(keys[1].className).toContain("border-accent");
@@ -86,6 +87,6 @@ describe("SectionTimeline", () => {
 				changes: [...fixed, { kind: "key", start: 0, value: "D major" }],
 			},
 		});
-		expect(screen.queryByLabelText("Keys")).toBeNull();
+		expect(screen.queryByText("keys:")).toBeNull();
 	});
 });
