@@ -8,12 +8,14 @@ Add a track, arm it (the red dot), choose its input and press Record: after a ba
 
 ### Quick Tips
 
-- Use wired headphones or the built-in speakers: Bluetooth adds a lot of delay. Calibrate in the Inputs panel measures your microphone's and the takes land in time.
-- Drag a clip along its track or onto another, or drag its ends to trim it; the grid snaps to the beat, Shift drags freely. S splits at the playhead, ⌘D duplicates, Delete removes, ⌘Z undoes.
-- Record over a part again and the earlier take is kept behind the new one; with Loop on, every pass is a take. Step through them in the bar under the timeline.
-- A track's input can be the piano, the chord player or the drum machine: play the panel while recording, and a drum track plays the beat along with the song.
-- Add MIDI track records notes instead of sound: play the piano, chord player or drum machine (or a MIDI keyboard) and the notes land as a clip you can edit in the piano roll (double-click it), quantize, transpose and export; Render to audio track in its menu turns it into sound for a bounce.
-- The sliders button in a track's header opens its compressor, tone and reverb, saved with the song and baked into every bounce.
-- Space plays and stops, R records, Home goes to the start, L loops the region on the ruler (drag its ends).
-- The song saves itself as you work; Save revision in the song's menu keeps a named snapshot you can restore from the Recordings panel.
-- The song's menu bounces the mix to a WAV, adds it to a song as a demo, or adds each track to a song as a stem.
+- Use wired headphones or the built-in speakers; avoid Bluetooth as it adds a lot of delay.
+- Drag a clip along its track or onto another, the grid snaps to the beat
+- Drag the ends of a clip to trim it; S splits at the playhead, ⌘D duplicates, ⌘Z undoes
+- Record over a part again and the earlier take is kept behind the new one
+- With Loop on, every pass is a take. Step through them in the bar under the timeline.
+- A track's input can be the piano, chord player or drum machine: play the panel while recording
+- Add MIDI track records notes instead of sound; edit them in the piano roll, or render to audio for a bounce
+- The sliders button in a track's header opens its compressor, tone and reverb
+- Space plays and stops, R records, Home goes to the start, L loops the region on the ruler
+- The song saves automatically as you work; Save revision keeps a named snapshot you can restore
+- The song's menu bounces the mix to a WAV, or adds it to a song as a demo or as stems
