@@ -10,11 +10,22 @@
  * gives: 20 ms from a slider so nothing clicks, 0 to land at once.
  */
 
+/** How a clipping pedal is voiced for an instrument (the Practice Amp's bass voicing, docs/practice-amp.md); the stage's own numbers without. */
+export interface ClipVoice {
+	/** The band under this goes round the clipper, clean, and is mixed back; 0 keeps nothing aside. */
+	keepLowsHz?: number;
+	/** The Tone knob's range, bottom to top, Hz. */
+	toneHz?: [number, number];
+	/** The high-pass before the clipper. */
+	highPassHz?: number;
+	/** A peaking band at 1 kHz after the clipper, dB: the fuzz's Mids knob. */
+	midsDb?: number;
+}
 export interface FuzzStage {
 	input: AudioNode;
 	output: AudioNode;
-	/** Drive 0 (off, the dry passes) to 1; tone 0 dark to 1 bright. */
-	update(drive: number, tone: number, tau: number): void;
+	/** Drive 0 (off, the dry passes) to 1; tone 0 dark to 1 bright; `voice` re-voices the pedal live. */
+	update(drive: number, tone: number, tau: number, voice?: ClipVoice): void;
 }
 
 export interface DelayStageSettings {
@@ -94,34 +105,55 @@ export function createClipStage(
 	shaper.oversample = "4x";
 	const tone = ctx.createBiquadFilter();
 	tone.type = "lowpass";
+	// The Mids band after the tone, flat unless a voice sets it.
+	const mids = ctx.createBiquadFilter();
+	mids.type = "peaking";
+	mids.frequency.value = 1000;
+	mids.Q.value = 0.8;
 	const wet = ctx.createGain();
 	input.connect(dry);
 	dry.connect(output);
-	let into: AudioNode = input;
-	if (o.highPassHz) {
-		const hp = ctx.createBiquadFilter();
-		hp.type = "highpass";
-		hp.frequency.value = o.highPassHz;
-		hp.Q.value = 0.7;
-		input.connect(hp);
-		into = hp;
-	}
-	into.connect(pre);
+	// Before the clipper: a high-pass (the pedal's own, or the voice's), at 10 Hz where neither wants one.
+	const hp = ctx.createBiquadFilter();
+	hp.type = "highpass";
+	hp.frequency.value = o.highPassHz ?? 10;
+	hp.Q.value = 0.7;
+	input.connect(hp);
+	hp.connect(pre);
 	pre.connect(shaper);
 	shaper.connect(tone);
-	tone.connect(wet);
+	tone.connect(mids);
+	mids.connect(wet);
 	wet.connect(output);
+	// The lows kept clean (a bass voicing): the band under `keepLowsHz` beside the clipper, at the wet's level; shut (10 Hz, gain 0) otherwise.
+	const lows = ctx.createBiquadFilter();
+	lows.type = "lowpass";
+	lows.frequency.value = 10;
+	lows.Q.value = -3;
+	const lowsGain = ctx.createGain();
+	lowsGain.gain.value = 0;
+	input.connect(lows);
+	lows.connect(lowsGain);
+	lowsGain.connect(output);
 	const wetLevel = o.wet ?? 0.9;
 	const set = (param: AudioParam, value: number, tau: number) =>
 		tau ? param.setTargetAtTime(value, ctx.currentTime, tau) : (param.value = value);
 	return {
 		input,
 		output,
-		update(drive, toneAmount, tau) {
+		update(drive, toneAmount, tau, voice = {}) {
 			const amount = Math.min(1, drive * 4);
+			const keep = voice.keepLowsHz ?? 0;
 			set(dry.gain, 1 - amount, tau);
 			set(pre.gain, o.pre(drive), tau);
-			set(tone.frequency, o.tone(toneAmount), tau);
+			const toneHz = voice.toneHz
+				? voice.toneHz[0] * (voice.toneHz[1] / voice.toneHz[0]) ** toneAmount
+				: o.tone(toneAmount);
+			set(tone.frequency, toneHz, tau);
+			set(mids.gain, voice.midsDb ?? 0, tau);
+			set(hp.frequency, Math.max(voice.highPassHz ?? o.highPassHz ?? 10, keep || 10), tau);
+			set(lows.frequency, keep || 10, tau);
+			set(lowsGain.gain, keep ? amount : 0, tau);
 			set(wet.gain, (amount * wetLevel * peak) / o.f(peak * o.pre(drive)), tau);
 		},
 	};
@@ -218,10 +250,15 @@ export interface WahStageSettings {
 	/** Wet level, 0 (off) to 1. */
 	mix: number;
 }
+/** The wah's floor and travel for an instrument (a bass sweeps lower); the stage's own numbers without. */
+export interface WahVoice {
+	floorHz?: number;
+	spanHz?: number;
+}
 export interface WahStage {
 	input: AudioNode;
 	output: AudioNode;
-	update(settings: WahStageSettings, tau: number): void;
+	update(settings: WahStageSettings, tau: number, voice?: WahVoice): void;
 	/** A pedal's position, 0 to 1, drives the filter in place of touch or sweep; null hands it back. */
 	pedal(position: number | null): void;
 }
@@ -295,15 +332,19 @@ export function createWahStage(
 	const followGain = 2 / peak;
 	let pedalDown = false;
 	let last: WahStageSettings | null = null;
+	let floorHz = WAH_FLOOR;
+	let spanHz = WAH_SPAN;
 	const set = (param: AudioParam, value: number, tau: number) =>
 		tau ? param.setTargetAtTime(value, ctx.currentTime, tau) : (param.value = value);
-	const apply = (w: WahStageSettings, tau: number) => {
+	const apply = (w: WahStageSettings, tau: number, voice?: WahVoice) => {
 		last = w;
-		const span = w.range * WAH_SPAN;
+		floorHz = voice?.floorHz ?? floorHz;
+		spanHz = voice?.spanHz ?? spanHz;
+		const span = w.range * spanHz;
 		const touch = !pedalDown && w.mode === "touch";
 		const sweep = !pedalDown && w.mode === "sweep";
 		// Sweep sits in the middle of its travel and swings ±half; touch and the pedal start at the floor.
-		set(filter.frequency, WAH_FLOOR + (sweep ? span / 2 : 0), tau);
+		set(filter.frequency, floorHz + (sweep ? span / 2 : 0), tau);
 		set(filter.Q, w.resonance * maxResonanceDb, tau);
 		set(follow.gain, touch ? w.sensitivity * followGain * span : 0, tau);
 		set(lfo.frequency, w.rate, tau);
@@ -542,16 +583,22 @@ export interface ChorusStageSettings {
 export interface ChorusStage {
 	input: AudioNode;
 	output: AudioNode;
-	update(settings: ChorusStageSettings, tau: number): void;
+	/** `keepLowsHz` leaves the band under it dry (a bass's fundamentals do not wobble); 0 or absent wets everything. */
+	update(settings: ChorusStageSettings, tau: number, voice?: { keepLowsHz?: number }): void;
 }
 
-/** A chorus: the dry through at full, two delays (22 and 28 ms) swept opposite ways by one LFO and panned apart, at `mix`. */
+/** A chorus: the dry through at full, two delays (22 and 28 ms) swept opposite ways by one LFO and panned apart, at `mix`; the wet through a high-pass a voice can raise. */
 export function createChorusStage(ctx: BaseAudioContext): ChorusStage {
 	const input = ctx.createGain();
 	const output = ctx.createGain();
 	input.connect(output);
 	const wet = ctx.createGain();
 	wet.gain.value = 0;
+	const wetHp = ctx.createBiquadFilter();
+	wetHp.type = "highpass";
+	wetHp.frequency.value = 10;
+	wetHp.Q.value = 0.7;
+	wetHp.connect(wet);
 	const sweep = lfo(ctx, 0.8, 0);
 	const inv = ctx.createGain();
 	inv.gain.value = -1;
@@ -567,7 +614,7 @@ export function createChorusStage(ctx: BaseAudioContext): ChorusStage {
 		p.pan.value = pan;
 		input.connect(d);
 		d.connect(p);
-		p.connect(wet);
+		p.connect(wetHp);
 	}
 	wet.connect(output);
 	const set = (param: AudioParam, value: number, tau: number) =>
@@ -575,10 +622,11 @@ export function createChorusStage(ctx: BaseAudioContext): ChorusStage {
 	return {
 		input,
 		output,
-		update(c, tau) {
+		update(c, tau, voice) {
 			set(sweep.osc.frequency, c.rate, tau);
 			set(sweep.gain.gain, c.depth * 0.004, tau);
 			set(wet.gain, c.mix, tau);
+			if (voice) set(wetHp.frequency, voice.keepLowsHz || 10, tau);
 		},
 	};
 }

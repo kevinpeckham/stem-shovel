@@ -1,4 +1,4 @@
-import { AMP_MODELS } from "#lib/constants/amp.js";
+import { AMP_MODELS, AMP_VOICING } from "#lib/constants/amp.js";
 import type { AmpRig } from "#lib/val/AmpSchema.js";
 import {
 	createCabinetStage,
@@ -6,6 +6,7 @@ import {
 	createPowerStage,
 	createWorkletGateStage,
 	createPreampStage,
+	createRoomStage,
 	createSpringStage,
 	createToneStackStage,
 } from "./ampStages";
@@ -25,8 +26,9 @@ import {
  * The Practice Amp's chain (docs/practice-amp.md): the pedals before the
  * amp (gate, compressor, overdrive, fuzz, wah), the amp (preamp, tone
  * stack, power stage, cabinet), the pedals after it (chorus, phaser or
- * flanger, delay, rotary), the head's tremolo and spring, then the
- * master and a limiter. Plain Web Audio on a BaseAudioContext, so the
+ * flanger, delay, rotary, a reverb pedal), the head's tremolo and spring,
+ * then the master and a limiter; the pedals voiced for the instrument the
+ * head is for (AMP_VOICING). Plain Web Audio on a BaseAudioContext, so the
  * same chain renders a take offline (a re-amp). `peak` is what the
  * input peaks near after the trim (a guitar or bass sits around 0.5).
  */
@@ -84,8 +86,11 @@ export function createAmpChain(
 	delay.output.connect(delaySum);
 	const rotary = createRotaryStage(ctx);
 	delaySum.connect(rotary.input);
+	// The reverb pedal, after the rotary and before the head's own tremolo and spring.
+	const room = createRoomStage(ctx);
+	rotary.output.connect(room.input);
 	const tremolo = createTremoloStage(ctx);
-	rotary.output.connect(tremolo.input);
+	room.output.connect(tremolo.input);
 	const spring = createSpringStage(ctx);
 	tremolo.output.connect(spring.input);
 	const master = ctx.createGain();
@@ -102,19 +107,33 @@ export function createAmpChain(
 	const update = (rig: AmpRig, tau: number) => {
 		const model = AMP_MODELS[rig.model];
 		const p = rig.pedals;
+		// The pedals voiced for the instrument the head is for (docs/practice-amp.md, "Voiced for the instrument").
+		const voice = AMP_VOICING[model.instrument];
 		gate.update(p.gate, tau);
 		comp.update(p.compressor, tau);
-		overdrive.update(p.overdrive.drive, p.overdrive.tone, tau);
-		fuzz.update(p.fuzz.drive, p.fuzz.tone, tau);
-		wah.update(p.wah, tau);
+		overdrive.update(p.overdrive.drive, p.overdrive.tone, tau, {
+			keepLowsHz: voice.clipKeepLowsHz,
+			toneHz: voice.overdriveToneHz,
+			highPassHz: voice.overdriveHighPassHz,
+		});
+		fuzz.update(p.fuzz.drive, p.fuzz.tone, tau, {
+			keepLowsHz: voice.clipKeepLowsHz,
+			toneHz: voice.fuzzToneHz,
+			midsDb:
+				p.fuzz.mids < 0.5
+					? voice.fuzzMidsDb[0] * (1 - p.fuzz.mids * 2)
+					: voice.fuzzMidsDb[1] * ((p.fuzz.mids - 0.5) * 2),
+		});
+		wah.update(p.wah, tau, { floorHz: voice.wahFloorHz, spanHz: voice.wahSpanHz });
 		preamp.update(model, rig.head, tau);
 		stack.update(model, rig.head, tau);
 		power.update(model, rig.head, tau);
 		cabinet.update(model, rig.head, tau);
-		chorus.update(p.chorus, tau);
+		chorus.update(p.chorus, tau, { keepLowsHz: voice.chorusKeepLowsHz });
 		phaser.update(p.phaser, tau);
 		delay.update(p.delay, tau);
 		rotary.update(p.rotary.speed, tau);
+		room.update(p.reverb, tau, voice.reverbKeepLowsHz);
 		tremolo.update(
 			{
 				rate: rig.head.tremolo.rate,

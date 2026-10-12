@@ -29,7 +29,9 @@ The knobs are an amp's, in groups: **Gain** (how hard the preamp is driven); **E
 
 ## The pedals
 
-The **Pedals** menu is the board, in the order the signal meets them. Before the amp: a **noise gate** (threshold, attack, hold and release), a **compressor**, an **overdrive** (gentle, keeps the lows tight), a **fuzz** and a **wah** (touch or sweep). After it: a **chorus**, a **phaser** or **flanger**, a **delay** (digital or analog) and a **rotary speaker**. **Reset all** takes every pedal off and the head back to its defaults.
+The **Pedals** menu is the board, in the order the signal meets them. Before the amp: a **noise gate** (threshold, attack, hold and release), a **compressor**, an **overdrive** (gentle, keeps the lows tight), a **fuzz** and a **wah** (touch or sweep). After it: a **chorus**, a **phaser** or **flanger**, a **delay** (digital or analog), a **rotary speaker** and a **reverb** pedal (a room, with Level and Size) for the heads without a reverb of their own. The fuzz has a **Mids** slider: flat in the middle, the scooped sound below it, a lift above. **Reset all** takes every pedal off and the head back to its defaults.
+
+The pedals know which instrument they are on. On a bass head the fuzz and the overdrive leave the lows clean and mix them back under the dirt, their Tone sliders cover a lower range, the wah sweeps lower, the chorus and the reverb leave the bottom dry, and a fresh rig's compressor starts slower and firmer so the pluck gets through. The board says "Voiced for bass" at its foot. Switch to a guitar head and the same pedals voice themselves for a guitar; your settings stay as they were.
 
 ## Presets
 

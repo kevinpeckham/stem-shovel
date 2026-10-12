@@ -8,6 +8,22 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The Practice Amp's pedals are voiced for the instrument**: on a bass
+  head the fuzz and overdrive keep the band under 100 Hz clean and mix it
+  back under the dirt, their Tone ranges sit lower, the wah sweeps from
+  100 Hz, the chorus and the new reverb pedal leave the bottom dry, and a
+  fresh rig's compressor starts with a slower attack and a firmer ratio.
+  The board says "Voiced for bass" at its foot. `AMP_VOICING` in
+  `src/lib/constants/amp.ts` holds the numbers.
+- **A Mids slider on the fuzz**: flat at the centre, a 10 dB scoop at the
+  bottom, a 6 dB lift at the top (a peaking band at 1 kHz after the
+  clipper).
+- **A reverb pedal** (Level and Size, the drum machine's synthesized room)
+  after the rotary, so the bass heads and the Tweed and Solid State have a
+  reverb; the Blackface keeps its spring as well.
+
 ### Fixed
 
 - **The Practice Amp's Gain and Master knobs** follow an exponential law,

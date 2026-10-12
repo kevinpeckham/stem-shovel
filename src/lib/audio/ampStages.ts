@@ -7,6 +7,7 @@ import {
 } from "#lib/constants/amp.js";
 import { magnitudeAt } from "#lib/utils/biquad.js";
 import { cabinetImpulseSamples } from "#lib/utils/cabinetImpulse.js";
+import { reverbImpulse } from "./drumBus";
 import { springImpulseSamples } from "#lib/utils/springImpulse.js";
 
 /**
@@ -361,6 +362,56 @@ export function createSpringStage(ctx: BaseAudioContext): AmpStage {
 		update(model, head, tau) {
 			// The impulse is at unit energy, so this is the wet against the dry: a gentle taper, −23 dB at the knob's 2, −11 dB at 5, −2 dB at 10.
 			set(ctx, wet.gain, model.hasReverb ? 0.8 * head.reverb ** 1.5 : 0, tau);
+		},
+	};
+}
+
+export interface RoomSettings {
+	/** The wet level, 0 (off) to 1. */
+	level: number;
+	/** The room, 0 small to 1 large. */
+	size: number;
+}
+export interface RoomStage {
+	input: AudioNode;
+	output: AudioNode;
+	/** `keepLowsHz` leaves the band under it dry (a bass stays tight under its reverb); 0 wets everything. */
+	update(settings: RoomSettings, tau: number, keepLowsHz?: number): void;
+}
+
+/**
+ * The reverb pedal (docs/practice-amp.md, "Voiced for the instrument"):
+ * the dry through, the drum machine's synthesized room (drumBus.ts,
+ * `reverbImpulse`) beside it at the pedal's level, the wet through a
+ * high-pass a voice can raise. For the heads without a reverb of their
+ * own; on the Blackface it sits after the spring.
+ */
+export function createRoomStage(ctx: BaseAudioContext): RoomStage {
+	const input = ctx.createGain();
+	const output = ctx.createGain();
+	input.connect(output);
+	const hp = ctx.createBiquadFilter();
+	hp.type = "highpass";
+	hp.frequency.value = 10;
+	hp.Q.value = 0.7;
+	const convolver = ctx.createConvolver();
+	const wet = ctx.createGain();
+	wet.gain.value = 0;
+	input.connect(hp);
+	hp.connect(convolver);
+	convolver.connect(wet);
+	wet.connect(output);
+	let size = -1;
+	return {
+		input,
+		output,
+		update(r, tau, keepLowsHz = 0) {
+			if (r.size !== size) {
+				size = r.size;
+				convolver.buffer = reverbImpulse(ctx, size);
+			}
+			set(ctx, wet.gain, r.level * 0.5, tau);
+			set(ctx, hp.frequency, keepLowsHz || 10, tau);
 		},
 	};
 }

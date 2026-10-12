@@ -523,3 +523,48 @@ Mids, Mid Hz on the bass heads, Treble); **Reverb** (Level) and
 power stage's push, formerly Power, is Master (a Fender's master drives
 the power amp), and the final level, formerly Master, is Output; the
 schema's fields (`power`, `master`) and presets are unchanged.
+
+## Voiced for the instrument (2026-10-12)
+
+Kevin's second thought from the hardware pass: the pedals should know
+whether a bass or a guitar is on them (a fuzz on a bass wants its mids
+scooped and its lows kept clean), and the bass heads, which have no
+reverb of their own, want one as a pedal.
+
+**How.** `AMP_VOICING` in `src/lib/constants/amp.ts` holds one voicing
+per instrument; `createAmpChain.update` picks the voicing by the head's
+instrument (`AMP_MODELS[rig.model].instrument`) and hands it to the
+stages each update, so switching heads re-voices the board live and the
+knob settings stay the player's own. The stages take the voicing as an
+optional last argument and keep their own numbers without it (the piano
+and the drum machine share `fxStages.ts` and are untouched).
+
+- **The clippers** (`createClipStage`): a low-pass beside the clipper
+  carries the band under `clipKeepLowsHz` (100 Hz on a bass) round the
+  dirt at the wet's level, a high-pass before the clipper keeps it out of
+  the shaper, and the Tone slider's range is the voicing's (fuzz 300 to
+  3000 Hz on a bass, 700 to 7000 on a guitar; the overdrive 500 to 3000
+  and 1000 to 6000). The nodes are always in the graph, shut at 10 Hz and
+  gain 0 when the voicing keeps nothing aside.
+- **Mids on the fuzz**: a peaking band at 1 kHz, Q 0.8, after the tone;
+  the slider's 0.5 is flat, below it the cut grows to `fuzzMidsDb[0]`
+  (−10 dB), above it the lift to `fuzzMidsDb[1]` (+6 dB).
+- **The wah** sweeps from `wahFloorHz` over `wahSpanHz · range` (100 +
+  1200 Hz on a bass, 350 + 1800 on a guitar); the module constants became
+  the stage's starting values.
+- **The chorus** sends its wet through a high-pass at `chorusKeepLowsHz`
+  (200 Hz on a bass), so the fundamentals do not wobble.
+- **The reverb pedal** (`createRoomStage`, ampStages.ts): the dry through,
+  `reverbImpulse(ctx, size)` from drumBus.ts beside it at `level · 0.5`,
+  the wet through a high-pass at `reverbKeepLowsHz` (150 Hz on a bass).
+  It sits after the rotary and before the head's tremolo and spring, so
+  on the Blackface the spring stays and the pedal adds a room.
+- **The compressor**: `defaultRig` starts a bass rig at attack 20 ms and
+  ratio 6 (a guitar at 10 ms and 4), so the pluck gets through; a saved
+  rig's own numbers are untouched.
+
+Schema: `pedals.fuzz.mids` (0.5) and `pedals.reverb`
+`{ level: 0, size: 0.4 }`, both optional with defaults, so older saved
+preferences, presets and share links parse unchanged (a preset's key
+includes them, so a preset saved before today no longer lights its
+button until re-saved: ampPresetKey rounds and compares every field).

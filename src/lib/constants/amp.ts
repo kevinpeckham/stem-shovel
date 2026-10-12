@@ -173,6 +173,59 @@ export const AMP_MODELS_FOR: Record<AmpInstrument, AmpModel[]> = {
 	guitar: [AMP_MODELS.clean, AMP_MODELS.tweed],
 	bass: [AMP_MODELS.fridge, AMP_MODELS.solid],
 };
+/**
+ * How the pedals are voiced for each instrument (docs/practice-amp.md,
+ * "Voiced for the instrument"): a bass keeps its lows out of the clippers
+ * and the chorus and reverb, the wah sweeps lower, and the compressor
+ * starts slower and firmer. Applied live as the instrument switches; the
+ * knobs' settings are the player's own.
+ */
+export interface AmpVoicing {
+	/** The band under this passes the fuzz and the overdrive clean, mixed back in; 0 keeps nothing aside. */
+	clipKeepLowsHz: number;
+	/** The fuzz Tone knob's range, bottom to top, Hz. */
+	fuzzToneHz: [number, number];
+	/** The overdrive Tone knob's range, and the high-pass before its clipper. */
+	overdriveToneHz: [number, number];
+	overdriveHighPassHz: number;
+	/** The fuzz's Mids knob: the cut at 0 and the lift at 10, dB. */
+	fuzzMidsDb: [number, number];
+	/** The wah's floor and how far it travels above it, Hz. */
+	wahFloorHz: number;
+	wahSpanHz: number;
+	/** The chorus and the reverb pedal leave the band under this dry; 0 wets everything. */
+	chorusKeepLowsHz: number;
+	reverbKeepLowsHz: number;
+	/** The compressor as a fresh rig starts: a bass wants the pluck through and a firmer squeeze. */
+	compressor: { attack: number; ratio: number };
+}
+export const AMP_VOICING: Record<AmpInstrument, AmpVoicing> = {
+	guitar: {
+		clipKeepLowsHz: 0,
+		fuzzToneHz: [700, 7000],
+		overdriveToneHz: [1000, 6000],
+		overdriveHighPassHz: 250,
+		fuzzMidsDb: [-10, 6],
+		wahFloorHz: 350,
+		wahSpanHz: 1800,
+		chorusKeepLowsHz: 0,
+		reverbKeepLowsHz: 0,
+		compressor: { attack: 0.01, ratio: 4 },
+	},
+	bass: {
+		clipKeepLowsHz: 100,
+		fuzzToneHz: [300, 3000],
+		overdriveToneHz: [500, 3000],
+		overdriveHighPassHz: 100,
+		fuzzMidsDb: [-10, 6],
+		wahFloorHz: 100,
+		wahSpanHz: 1200,
+		chorusKeepLowsHz: 200,
+		reverbKeepLowsHz: 150,
+		compressor: { attack: 0.02, ratio: 6 },
+	},
+};
+
 /** An account keeps up to this many amp presets (docs/practice-amp.md, "Presets"). */
 export const MAX_AMP_PRESETS = 100;
 export const AMP_INSTRUMENT_LABELS: Record<AmpInstrument, string> = {

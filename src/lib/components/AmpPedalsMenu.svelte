@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { amp } from "#lib/audio/amp.svelte.js";
+	import { AMP_MODELS } from "#lib/constants/amp.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import type { Attachment } from "svelte/attachments";
 
@@ -8,12 +9,16 @@
 	 * pedal in the order the signal meets them, one open at a time, its
 	 * header lit and saying how much of it is on, as the piano's Effects
 	 * menu. Before the amp: gate, compressor, overdrive, fuzz, wah; after
-	 * it: chorus, phaser or flanger, delay, rotary. "Reset all" takes every
-	 * pedal off and the head back to its model's defaults.
+	 * it: chorus, phaser or flanger, delay, rotary, a reverb pedal. "Reset
+	 * all" takes every pedal off and the head back to its model's defaults.
+	 * The pedals are voiced for the instrument the head is for (AMP_VOICING;
+	 * docs/practice-amp.md, "Voiced for the instrument"), and the board says
+	 * so on a bass.
 	 */
 	const pct = (v: number) => (v > 0 ? `${Math.round(v * 100)}%` : "off");
 	const rig = $derived(amp.rig);
 	const p = $derived(rig.pedals);
+	const forBass = $derived(AMP_MODELS[rig.model].instrument === "bass");
 	function reset() {
 		amp.resetRig();
 		notify("Pedals off, head at its defaults");
@@ -178,6 +183,9 @@
 	{#snippet fuzzBody()}
 		{@render slider("Drive", p.fuzz.drive, (v) => amp.setPedal("fuzz", { drive: v }))}
 		{@render slider("Tone", p.fuzz.tone, (v) => amp.setPedal("fuzz", { tone: v }))}
+		{@render slider("Mids", p.fuzz.mids, (v) => amp.setPedal("fuzz", { mids: v }), {
+			text: p.fuzz.mids === 0.5 ? "flat" : p.fuzz.mids < 0.5 ? "scooped" : "lifted",
+		})}
 	{/snippet}
 	{@render drawer("Fuzz", pct(p.fuzz.drive), p.fuzz.drive > 0, fuzzBody)}
 
@@ -299,7 +307,16 @@
 		rotaryBody,
 	)}
 
-	<div class="border-t border-current/15 py-3">
+	{#snippet reverbBody()}
+		{@render slider("Level", p.reverb.level, (v) => amp.setPedal("reverb", { level: v }))}
+		{@render slider("Size", p.reverb.size, (v) => amp.setPedal("reverb", { size: v }))}
+	{/snippet}
+	{@render drawer("Reverb", pct(p.reverb.level), p.reverb.level > 0, reverbBody)}
+
+	<div class="border-t border-current/15 py-3 flex items-center justify-between gap-3">
 		<button class="button-outline" type="button" onclick={reset}>Reset all</button>
+		{#if forBass}
+			<span class="text-12px opacity-70">Voiced for bass: the lows stay clean</span>
+		{/if}
 	</div>
 </div>

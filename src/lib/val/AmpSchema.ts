@@ -83,7 +83,12 @@ export const AmpPedalsSchema = v.object({
 		drive: 0,
 		tone: 0.5,
 	})),
-	fuzz: v.optional(v.object({ drive: unit(0), tone: unit(0.5) }), () => ({ drive: 0, tone: 0.5 })),
+	/** The fuzz's Mids: 0.5 flat, below it the scooped-mids sound, above it a lift. */
+	fuzz: v.optional(v.object({ drive: unit(0), tone: unit(0.5), mids: unit(0.5) }), () => ({
+		drive: 0,
+		tone: 0.5,
+		mids: 0.5,
+	})),
 	wah: v.optional(
 		v.object({
 			mode: v.optional(v.picklist(["touch", "sweep"]), "touch"),
@@ -126,6 +131,11 @@ export const AmpPedalsSchema = v.object({
 	),
 	rotary: v.optional(v.object({ speed: v.optional(v.picklist(ROTARY_SPEEDS), "off") }), () => ({
 		speed: "off" as const,
+	})),
+	/** A reverb pedal after the amp (a room, not the Blackface's spring), for the heads without one. */
+	reverb: v.optional(v.object({ level: unit(0), size: unit(0.4) }), () => ({
+		level: 0,
+		size: 0.4,
 	})),
 });
 export type AmpPedals = v.InferOutput<typeof AmpPedalsSchema>;

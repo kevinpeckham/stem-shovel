@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { AMP_MODELS } from "#lib/constants/amp.js";
+import { AMP_MODELS, AMP_VOICING } from "#lib/constants/amp.js";
 import {
 	AmpPreferencesSchema,
 	AmpRigSchema,
@@ -11,9 +11,14 @@ import {
 /** The Practice Amp's settings, remembered per browser (docs/practice-amp.md). */
 const KEY = "stemshovel.amp";
 
-/** A rig at the model's own defaults. */
+/** A rig at the model's own defaults, the compressor as the instrument's voicing starts it. */
 export function defaultRig(model: AmpModelId): AmpRig {
-	return v.parse(AmpRigSchema, { model, head: AMP_MODELS[model].defaults });
+	const m = AMP_MODELS[model];
+	return v.parse(AmpRigSchema, {
+		model,
+		head: m.defaults,
+		pedals: { compressor: AMP_VOICING[m.instrument].compressor },
+	});
 }
 
 export function parseAmpPreferences(raw: unknown): AmpPreferences {

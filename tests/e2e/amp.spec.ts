@@ -35,6 +35,38 @@ test("the amp turns on, hears the input, renders through every head, and turns o
 });
 
 /**
+ * Voiced for the instrument (docs/practice-amp.md, "Voiced for the
+ * instrument"): a low E through the fuzz distorts less on a bass head,
+ * where the band under 100 Hz goes round the clipper clean, than on a
+ * guitar head, where it all hits the clipper; the reverb pedal adds to
+ * the render rather than replacing it.
+ */
+test("the fuzz keeps a bass's lows clean, and the reverb pedal sounds", async ({
+	page,
+	errors,
+}) => {
+	await open(page, "/practice-amp", "__amp");
+	const fuzzed = async (model: "clean" | "fridge") => {
+		await hooked(page, ([w, m]) => w.__amp.setModel(m), model);
+		await hooked(page, ([w]) => w.__amp.setPedal("fuzz", { drive: 0.8, tone: 0.5, mids: 0.5 }));
+		return hooked(page, ([w]) => w.__amp.render(0.5, 41.2, { wave: "sine", level: 0.5 }));
+	};
+	const guitar = await fuzzed("clean");
+	const bass = await fuzzed("fridge");
+	expect(guitar.rms).toBeGreaterThan(0.01);
+	expect(bass.rms).toBeGreaterThan(0.01);
+	expect(bass.harmonics).toBeLessThan(guitar.harmonics);
+	await hooked(page, ([w]) => w.__amp.resetRig());
+	const dry = await hooked(page, ([w]) => w.__amp.render(0.5));
+	await hooked(page, ([w]) => w.__amp.setPedal("reverb", { level: 0.8, size: 0.6 }));
+	const wet = await hooked(page, ([w]) => w.__amp.render(0.5));
+	expect(wet.rms).toBeGreaterThan(dry.rms * 0.9);
+	expect(wet.peak).toBeLessThanOrEqual(1);
+	await hooked(page, ([w]) => w.__amp.resetRig());
+	expect(errors).toEqual([]);
+});
+
+/**
  * The presets (docs/practice-amp.md, "Presets"): the bot, an editor in its
  * account, saves the rig to slot 1 from the manage menu, the slot lights
  * and names it, and the preset is deleted again from the library.

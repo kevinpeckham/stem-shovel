@@ -161,6 +161,7 @@
 			p.phaser.mix > 0,
 			p.delay.level > 0,
 			p.rotary.speed !== "off",
+			p.reverb.level > 0,
 		].filter(Boolean).length;
 	});
 </script>

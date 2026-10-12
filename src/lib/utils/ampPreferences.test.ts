@@ -11,6 +11,12 @@ describe("ampPreferences", () => {
 		expect(defaultRig("tweed").head.gain).toBe(0.55);
 		expect(defaultRig("tweed").pedals.delay.analog).toBe(true);
 	});
+	it("starts the compressor as the instrument's voicing has it: slower and firmer on a bass", () => {
+		expect(defaultRig("clean").pedals.compressor).toMatchObject({ attack: 0.01, ratio: 4 });
+		expect(defaultRig("fridge").pedals.compressor).toMatchObject({ attack: 0.02, ratio: 6 });
+		expect(defaultRig("fridge").pedals.fuzz.mids).toBe(0.5);
+		expect(defaultRig("fridge").pedals.reverb).toEqual({ level: 0, size: 0.4 });
+	});
 	it("fills in what an older save lacks and falls back to the defaults on nonsense", () => {
 		const p = parseAmpPreferences({
 			instrument: "bass",
