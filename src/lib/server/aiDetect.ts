@@ -90,41 +90,37 @@ const AnswerSchema = v.object({
 });
 export type AiAnswer = v.InferOutput<typeof AnswerSchema>;
 
-export async function askAiAboutMix(
-	mixUrl: string,
-	candidates: Candidates,
-	who: { userId: string; songId: string },
-	score: ScoreForAi | null = null,
-): Promise<AiAnswer> {
-	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+/** The mix from Blob, as the bytes the model listens to. */
+async function loadMix(mixUrl: string): Promise<Uint8Array> {
 	const res = await readBlob(mixUrl);
 	if (!res.ok) throw new Error(`${res.status} ${res.statusText} reading the mix`);
 	const bytes = new Uint8Array(await res.arrayBuffer());
 	if (bytes.byteLength > MAX_AUDIO_BYTES) throw new Error("The mix is too large to send");
-	const chart = score ? await loadScore(score, bytes.byteLength) : null;
+	return bytes;
+}
+
+const CHART_NOTE = (chart: ScorePart) =>
+	`The song's own chart comes with the recording${chart.kind === "text" ? ", as a measure-by-measure summary of its MusicXML (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)" : ""}. First make sure it is the chart of this recording (the same piece: its harmony, meter and form match what you hear); if it plainly is not, set it aside, answer from the recording alone and say so in "notes".`;
+
+/**
+ * One question to the listening model about a mix, with the song's score
+ * beside it when it has one: the request and the answer logged to
+ * `ai_request` under `kind`, the JSON in the reply parsed with `schema`.
+ * Throws when the model does not answer or answers nonsense.
+ */
+async function listen<S extends v.GenericSchema>(opts: {
+	kind: string;
+	who: { userId: string; songId: string };
+	mix: Uint8Array;
+	score: ScoreForAi | null;
+	chart: ScorePart | null;
+	system: string;
+	question: string;
+	schema: S;
+}): Promise<v.InferOutput<S>> {
+	if (!ENV.AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+	const { mix, chart, score, system, question } = opts;
 	const gateway = createGateway({ apiKey: ENV.AI_GATEWAY_API_KEY });
-	const known = [
-		candidates.tempo ? `tempo ${candidates.tempo} bpm` : null,
-		candidates.key ? `key ${candidates.key}` : null,
-		candidates.meter ? `time signature ${candidates.meter}` : null,
-	].filter(Boolean);
-	const system = `You are a musician with perfect time and pitch. Listen to the whole recording and report:
-- "tempo": the beats per minute at the start, precise to the beat (not rounded to a multiple of 5 unless it truly is). If the piece has no fixed pulse (rubato, free time, ambient), answer null — that is a valid and common answer; do not invent a number.
-- "tempoChanges": any discrete tempo shifts after the start, as a list of {"at": seconds from the start, "bpm": the new tempo}, in order. Gradual drift or a rallentando at the very end is not a shift; a new section at a clearly different tempo is. Empty list when the tempo holds.
-- "meter": the time signature (like 4/4, 3/4, 6/8, 7/8, or "free" if there is no meter).
-- "key": the key at the start, like "D major" or "B minor"; "atonal" if there is none.
-- "keyChanges": where the song moves to another key after the start, as a list of {"at": seconds from the start, "key": the new key}, in order. A passing chord or a borrowed chord is not a key change; a section that settles in a new key is, and so is a modulation up a step for the last chorus. Empty list when the song stays in one key.
-- "confidence": 0 to 1 for the whole answer.
-- "notes": one short sentence on anything uncertain, such as a half/double-time ambiguity or a modulation.
-Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 95.5, "bpm": 140}], "meter": "4/4", "key": "D major", "keyChanges": [{"at": 62, "key": "F major"}], "confidence": 0.8, "notes": "..."}${
-		chart
-			? `
-The song's own chart comes with the recording${chart.kind === "text" ? ", as a measure-by-measure summary of its MusicXML (key signatures, time signatures, tempo marks, repeats, rehearsal marks and chord symbols)" : ""}. Take the keys from the chart: its key signatures and the chords it moves through say what key each part is in, more surely than the ear does. Use the recording to place each key change in seconds: follow the chart's bars at the tempo you hear, counting repeats as played. If the recording and the chart disagree (a different key, a cut section), say so in "notes" and answer for the recording.`
-			: ""
-	}`;
-	const question = known.length
-		? `A detector estimated: ${known.join(", ")}. Confirm or correct each from what you hear; it cannot tell a free tempo or a tempo shift from a steady one, so check those yourself.`
-		: "What are the tempo (or none), any tempo shifts, the time signature, the key and any key changes?";
 	const started = Date.now();
 	const attached = chart
 		? chart.kind === "text"
@@ -132,11 +128,11 @@ The song's own chart comes with the recording${chart.kind === "text" ? ", as a m
 			: ` and ${chart.filename} (${chart.data.byteLength} bytes)`
 		: "";
 	const log = {
-		kind: "song-check",
+		kind: opts.kind,
 		model: MODEL,
-		userId: who.userId,
-		songId: who.songId,
-		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${bytes.byteLength} bytes${chart?.kind === "file" ? attached : ""}):\n${question}${chart?.kind === "text" ? attached : ""}`,
+		userId: opts.who.userId,
+		songId: opts.who.songId,
+		prompt: `SYSTEM:\n${system}\n\nUSER (with mix.mp3, ${mix.byteLength} bytes${chart?.kind === "file" ? attached : ""}):\n${question}${chart?.kind === "text" ? attached : ""}`,
 	};
 	let text = "";
 	let usage: { inputTokens?: number; outputTokens?: number } = {};
@@ -148,7 +144,7 @@ The song's own chart comes with the recording${chart.kind === "text" ? ", as a m
 				{
 					role: "user",
 					content: [
-						{ type: "file", data: bytes, mediaType: "audio/mpeg", filename: "mix.mp3" },
+						{ type: "file", data: mix, mediaType: "audio/mpeg", filename: "mix.mp3" },
 						...(chart?.kind === "file"
 							? [
 									{
@@ -182,9 +178,9 @@ The song's own chart comes with the recording${chart.kind === "text" ? ", as a m
 	}
 	const durationMs = Date.now() - started;
 	const json = text.match(/\{[\s\S]*\}/)?.[0];
-	let parsed: v.SafeParseResult<typeof AnswerSchema> | null = null;
+	let parsed: v.SafeParseResult<S> | null = null;
 	try {
-		parsed = json ? v.safeParse(AnswerSchema, JSON.parse(json)) : null;
+		parsed = json ? v.safeParse(opts.schema, JSON.parse(json)) : null;
 	} catch {
 		parsed = null;
 	}
@@ -204,6 +200,121 @@ The song's own chart comes with the recording${chart.kind === "text" ? ", as a m
 	});
 	if (error || !parsed?.success) throw new Error(error ?? "The model's answer did not make sense");
 	return parsed.output;
+}
+
+export async function askAiAboutMix(
+	mixUrl: string,
+	candidates: Candidates,
+	who: { userId: string; songId: string },
+	score: ScoreForAi | null = null,
+): Promise<AiAnswer> {
+	const mix = await loadMix(mixUrl);
+	const chart = score ? await loadScore(score, mix.byteLength) : null;
+	const known = [
+		candidates.tempo ? `tempo ${candidates.tempo} bpm` : null,
+		candidates.key ? `key ${candidates.key}` : null,
+		candidates.meter ? `time signature ${candidates.meter}` : null,
+	].filter(Boolean);
+	const system = `You are a musician with perfect time and pitch. Listen to the whole recording and report:
+- "tempo": the beats per minute at the start, precise to the beat (not rounded to a multiple of 5 unless it truly is). If the piece has no fixed pulse (rubato, free time, ambient), answer null — that is a valid and common answer; do not invent a number.
+- "tempoChanges": any discrete tempo shifts after the start, as a list of {"at": seconds from the start, "bpm": the new tempo}, in order. Gradual drift or a rallentando at the very end is not a shift; a new section at a clearly different tempo is. Empty list when the tempo holds.
+- "meter": the time signature (like 4/4, 3/4, 6/8, 7/8, or "free" if there is no meter).
+- "key": the key at the start, like "D major" or "B minor"; "atonal" if there is none.
+- "keyChanges": where the song moves to another key after the start, as a list of {"at": seconds from the start, "key": the new key}, in order. A passing chord or a borrowed chord is not a key change; a section that settles in a new key is, and so is a modulation up a step for the last chorus. Empty list when the song stays in one key.
+- "confidence": 0 to 1 for the whole answer.
+- "notes": one short sentence on anything uncertain, such as a half/double-time ambiguity or a modulation.
+Reply with JSON only, no prose, exactly: {"tempo": 128, "tempoChanges": [{"at": 95.5, "bpm": 140}], "meter": "4/4", "key": "D major", "keyChanges": [{"at": 62, "key": "F major"}], "confidence": 0.8, "notes": "..."}${
+		chart
+			? `
+${CHART_NOTE(chart)} Take the keys from the chart: its key signatures and the chords it moves through say what key each part is in, more surely than the ear does. Use the recording to place each key change in seconds: follow the chart's bars at the tempo you hear, counting repeats as played. If the recording and the chart disagree (a different key, a cut section), say so in "notes" and answer for the recording.`
+			: ""
+	}`;
+	const question = known.length
+		? `A detector estimated: ${known.join(", ")}. Confirm or correct each from what you hear; it cannot tell a free tempo or a tempo shift from a steady one, so check those yourself.`
+		: "What are the tempo (or none), any tempo shifts, the time signature, the key and any key changes?";
+	return listen({
+		kind: "song-check",
+		who,
+		mix,
+		score,
+		chart,
+		system,
+		question,
+		schema: AnswerSchema,
+	});
+}
+
+const SectionsAnswerSchema = v.object({
+	sections: v.pipe(
+		v.array(
+			v.object({
+				at: v.pipe(v.number(), v.minValue(0)),
+				name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(40)),
+			}),
+		),
+		v.maxLength(64),
+	),
+	confidence: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	notes: v.optional(v.pipe(v.string(), v.maxLength(400)), ""),
+});
+export type SectionsAnswer = v.InferOutput<typeof SectionsAnswerSchema>;
+
+/**
+ * The song's sections from the listening model (docs/audio-engine.md,
+ * "Detect sections"): where each begins in seconds and its name, the
+ * chart's rehearsal marks and words leading when the song has a score,
+ * the names the account's other songs use as the vocabulary.
+ */
+export async function detectSectionsWithAi(
+	mixUrl: string,
+	context: {
+		tempo: string | null;
+		meter: string | null;
+		existing: { name: string; start: number }[];
+		/** Section names the account's other songs use, most common first. */
+		vocabulary: string[];
+	},
+	who: { userId: string; songId: string },
+	score: ScoreForAi | null = null,
+): Promise<SectionsAnswer> {
+	const mix = await loadMix(mixUrl);
+	const chart = score ? await loadScore(score, mix.byteLength) : null;
+	const system = `You are a musician with perfect time who knows song form. Listen to the whole recording and split it into its sections (Intro, Verse, Pre-chorus, Chorus, Bridge, Solo, Interlude, Breakdown, Outro; "Verse 2" and "Chorus 2" for repeats when that helps). Report:
+- "sections": the list in order, each {"at": seconds from the start where it begins, "name": its name}. The first begins at 0. A section is a stretch with its own material or function, usually 4 to 32 bars; place each boundary on the downbeat where the new section starts, precise to the tenth of a second. A pickup belongs to the section it leads into.
+- "confidence": 0 to 1 for the whole answer.
+- "notes": one short sentence on anything uncertain.
+Reply with JSON only, no prose, exactly: {"sections": [{"at": 0, "name": "Intro"}, {"at": 14.2, "name": "Verse"}], "confidence": 0.8, "notes": "..."}${
+		chart
+			? `
+${CHART_NOTE(chart)} Take the sections from the chart where it marks them (rehearsal marks, words such as "Verse" or "Chorus", double bars, repeats and endings), and use the recording to place each in seconds, following the bars at the tempo you hear and counting repeats as played. If the recording departs from the chart, follow the recording and say so in "notes".`
+			: ""
+	}`;
+	const facts = [
+		context.tempo ? `tempo ${context.tempo} bpm` : null,
+		context.meter ? `time signature ${context.meter}` : null,
+	].filter(Boolean);
+	const question = [
+		facts.length ? `The song's settings say: ${facts.join(", ")}.` : null,
+		context.vocabulary.length
+			? `This band names its sections with words like: ${context.vocabulary.slice(0, 12).join(", ")}. Use those where they fit.`
+			: null,
+		context.existing.length
+			? `It already has sections: ${context.existing.map((s) => `${s.name} at ${s.start.toFixed(1)} s`).join(", ")}. Keep their names and starts unless the recording plainly says otherwise.`
+			: null,
+		"Where does each section of this song begin, and what is it?",
+	]
+		.filter(Boolean)
+		.join(" ");
+	return listen({
+		kind: "sections",
+		who,
+		mix,
+		score,
+		chart,
+		system,
+		question,
+		schema: SectionsAnswerSchema,
+	});
 }
 
 export interface ChartDraftInput {

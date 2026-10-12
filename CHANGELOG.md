@@ -24,6 +24,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   answer replacing the detector's. `scoreForAi` in data.ts picks the
   score; the summary is logged with the request in `ai_request`.
 
+- **Detect sections**: a Detect button on the Sections panel sends the
+  mix (and the score, when the song has one) to the listening model,
+  which marks where each section begins and names it, told the band's
+  own section names (`sectionVocabulary` in data.ts, most common first)
+  and the song's existing sections. With no sections yet the answer is
+  saved at once; otherwise it is offered with "Use these" and a check
+  before replacing. `detectSectionsWithAi` in aiDetect.ts shares the
+  mix-and-score loading and the logged `listen` call with the tempo and
+  key check; logged as `sections` in `ai_request`.
+
 ### Changed
 
 - **The section timeline's key lane is the list of keys**: the "key:"

@@ -484,6 +484,60 @@ describe("side effects of the editor-gated functions", () => {
 			score,
 		);
 	});
+	it("detectSections sends the mix, the score, the band's section names and the existing sections", async () => {
+		asEditorOf(ACCOUNT);
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			noAi: false,
+			project: { noAi: false },
+			mixUrl: "https://blob/mix.mp3",
+			changes: [{ kind: "tempo", start: 0, value: "120" }],
+		});
+		data.scoreForAi.mockResolvedValue(null);
+		data.sectionVocabulary.mockResolvedValue(["Verse", "Chorus"]);
+		data.getSongById.mockResolvedValue({ sections: [{ index: "I", name: "Intro", start: 0 }] });
+		const answer = {
+			sections: [
+				{ at: 0, name: "Intro" },
+				{ at: 30.5, name: "Verse" },
+			],
+			confidence: 0.9,
+			notes: "",
+		};
+		aiDetect.detectSectionsWithAi.mockResolvedValue(answer);
+		await expect(call(songs.detectSections, { id: SONG })).resolves.toEqual(answer);
+		expect(aiDetect.detectSectionsWithAi).toHaveBeenCalledWith(
+			"https://blob/mix.mp3",
+			{
+				tempo: "120",
+				meter: null,
+				existing: [{ name: "Intro", start: 0 }],
+				vocabulary: ["Verse", "Chorus"],
+			},
+			{ userId: USER, songId: SONG },
+			null,
+		);
+	});
+	it("detectSections refuses a song whose project opted out of AI, and waits for the mix", async () => {
+		asEditorOf(ACCOUNT);
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			noAi: false,
+			project: { noAi: true },
+			mixUrl: "https://blob/mix.mp3",
+			changes: [],
+		});
+		await expect(call(songs.detectSections, { id: SONG })).rejects.toMatchObject(httpError(403));
+		data.songForMix.mockResolvedValue({
+			accountId: ACCOUNT,
+			noAi: false,
+			project: { noAi: false },
+			mixUrl: null,
+			changes: [],
+		});
+		await expect(call(songs.detectSections, { id: SONG })).rejects.toMatchObject(httpError(409));
+		expect(aiDetect.detectSectionsWithAi).not.toHaveBeenCalled();
+	});
 	it("saveChartDraft refuses to overwrite a chart unless told to", async () => {
 		asEditorOf(ACCOUNT);
 		data.getSongById.mockResolvedValue({ chartMarkdown: "old" });

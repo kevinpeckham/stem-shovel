@@ -19,7 +19,7 @@
 		type Note,
 	} from "#lib/audio/chords.js";
 	import type { ChartDraftAnswer } from "#lib/val/ChartDraftSchema.js";
-	import type { AiAnswer } from "#lib/server/aiDetect.js";
+	import type { AiAnswer, SectionsAnswer } from "#lib/server/aiDetect.js";
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import IconDrumKit from "#lib/components/IconDrumKit.svelte";
@@ -107,6 +107,7 @@
 		renameStem,
 		reorderStems,
 		askAiAboutSong,
+		detectSections,
 		draftChart,
 		songNotes,
 		saveChartDraft,
@@ -974,6 +975,52 @@
 			sectionError = errorMessage(e);
 		} finally {
 			sectionsSaving = false;
+		}
+	}
+	// "Detect": the listening model splits the mix into sections, with the song's score when it has one
+	// (docs/audio-engine.md, "Detect sections"); saved at once when the song has none, else offered.
+	let sectionsBusy = $state(false);
+	let sectionsAnswer = $state<SectionsAnswer | null>(null);
+	async function detectSongSections() {
+		sectionsBusy = true;
+		sectionsAnswer = null;
+		sectionError = null;
+		try {
+			const answer = await detectSections({ id: data.song.id });
+			if (answer.sections.length === 0) {
+				notify("The AI could not tell the sections apart", { kind: "info" });
+				return;
+			}
+			if (data.song.sections.length === 0) {
+				sectionsAnswer = answer;
+				await useSectionsAnswer();
+			} else sectionsAnswer = answer;
+		} catch (e) {
+			const status = (e as { status?: unknown }).status;
+			sectionError =
+				status === 409 ? "The mix is still rendering; try again in a moment" : errorMessage(e);
+		} finally {
+			sectionsBusy = false;
+		}
+	}
+	async function useSectionsAnswer() {
+		if (!sectionsAnswer) return;
+		if (
+			data.song.sections.length > 0 &&
+			!confirm("Replace the song's sections with the detected ones?")
+		)
+			return;
+		const sections = sectionsAnswer.sections.map((s, i) => ({
+			index: toRoman(i + 1),
+			name: s.name,
+			start: Math.round(s.at * 10) / 10,
+		}));
+		await persistSections(sections);
+		if (!sectionError) {
+			sectionsAnswer = null;
+			notify(`${sections.length} sections set from the AI${hasScore ? " and the score" : ""}`, {
+				timeout: 8000,
+			});
 		}
 	}
 	async function saveSectionRows() {
@@ -2286,30 +2333,70 @@
 						<div>
 							<div class="flex flex-wrap items-center justify-between gap-3">
 								<h3 class="text-15px font-700">Sections</h3>
-								<button
-									class="button button-xs"
-									type="button"
-									onclick={() =>
-										(sectionRows = [
-											...sectionRows,
-											{
-												index: toRoman(sectionRows.length + 1),
-												name: "",
-												time: editPos(0),
-												shown: "",
-												seconds: null,
-											},
-										])}
-								>
-									<span class="i-ph-plus" aria-hidden="true"></span>
-									Add row
-								</button>
+								<div class="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
+									{#if data.aiAvailable}
+										<button
+											class="button button-xs"
+											type="button"
+											disabled={sectionsBusy}
+											title={hasScore
+												? "Send the mix and the score to a model that marks where each section begins"
+												: "Send the mix to a model that listens and marks where each section begins"}
+											onclick={detectSongSections}
+										>
+											<span class="i-ph-sparkle" aria-hidden="true"></span>
+											{sectionsBusy ? "Listening…" : "Detect"}
+										</button>
+									{/if}
+									<button
+										class="button button-xs"
+										type="button"
+										onclick={() =>
+											(sectionRows = [
+												...sectionRows,
+												{
+													index: toRoman(sectionRows.length + 1),
+													name: "",
+													time: editPos(0),
+													shown: "",
+													seconds: null,
+												},
+											])}
+									>
+										<span class="i-ph-plus" aria-hidden="true"></span>
+										Add row
+									</button>
+								</div>
 							</div>
 							<p class="mt-1 text-sm opacity-90">
 								Song structure for the timeline above the stems: a short index (roman numerals,
 								shown on the timeline; the name shows on hover), a name, and where it starts — time,
 								timecode or bars.
 							</p>
+							{#if sectionsAnswer}
+								<p class="mt-2 rounded bg-white/5 px-3 py-2 text-sm">
+									{hasScore ? "The AI read the score and listened. It finds" : "AI hears"}
+									<strong
+										>{sectionsAnswer.sections
+											.map((s) => `${s.name} at ${editPos(s.at)}`)
+											.join(", ")}</strong
+									>
+									({Math.round(sectionsAnswer.confidence * 100)}% sure){sectionsAnswer.notes
+										? ` — ${sectionsAnswer.notes}`
+										: ""}
+									<button
+										class="ml-2 link-dim"
+										type="button"
+										disabled={sectionsSaving}
+										onclick={useSectionsAnswer}>{sectionsSaving ? "Saving…" : "Use these"}</button
+									>
+									<button
+										class="ml-2 link-dim"
+										type="button"
+										onclick={() => (sectionsAnswer = null)}>Dismiss</button
+									>
+								</p>
+							{/if}
 							{#if sectionRows.length > 0}
 								<div class="mt-3 grid gap-2">
 									{#each sectionRows as row, i (i)}

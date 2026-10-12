@@ -34,6 +34,7 @@ import {
 	setSongVersion as setVersion,
 	mixOwnership,
 	scoreForAi,
+	sectionVocabulary,
 	songForMix,
 	chartExamples,
 	getSongById,
@@ -57,7 +58,12 @@ import {
 	StemIdsSchema,
 	DefaultMixSchema,
 } from "#lib/val/SongSchema.js";
-import { aiAvailable, askAiAboutMix, draftChartWithAi } from "#lib/server/aiDetect.js";
+import {
+	aiAvailable,
+	askAiAboutMix,
+	detectSectionsWithAi,
+	draftChartWithAi,
+} from "#lib/server/aiDetect.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
 import { withSongMentions } from "#lib/server/songMentions.js";
 import { ChartDraftSchema, ChartSaveSchema } from "#lib/val/ChartDraftSchema.js";
@@ -325,6 +331,39 @@ export const askAiAboutSong = command(IdSchema, async ({ id }) => {
 			{ tempo: at0("tempo"), key: at0("key"), meter: at0("meter") },
 			{ userId: user.id, songId: id },
 			score,
+		),
+	);
+});
+
+/** Asks the listening model where the song's sections begin, with its score when it has one (members; a few per hour). */
+export const detectSections = command(IdSchema, async ({ id }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, id);
+	if (!aiAvailable()) error(503, "The AI check is not configured");
+	const song = await songForMix(id);
+	if (!song || song.accountId !== accountId) error(404, "Song not found");
+	if (song.noAi || song.project.noAi) error(403, "AI is switched off for this song");
+	if (await rateLimited(`ai:${user.id}`, 10, HOUR)) error(429, "Too many AI checks in one hour.");
+	if (!song.mixUrl) error(409, "The mix has not been rendered yet; try again in a moment.");
+	const at0 = (kind: string) =>
+		song.changes.find((c) => c.kind === kind && c.start === 0)?.value ?? null;
+	const [score, vocabulary, full] = await Promise.all([
+		scoreForAi(accountId, id),
+		sectionVocabulary(accountId, id),
+		getSongById(accountId, id),
+	]);
+	return aiOrError(
+		detectSectionsWithAi(
+			song.mixUrl,
+			{
+				tempo: at0("tempo"),
+				meter: at0("meter"),
+				existing: (full?.sections ?? []).map((s) => ({ name: s.name, start: s.start })),
+				vocabulary: vocabulary ?? [],
+			},
+			{ userId: user.id, songId: id },
+			score ?? null,
 		),
 	);
 });

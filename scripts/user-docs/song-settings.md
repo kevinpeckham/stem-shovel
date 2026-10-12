@@ -18,7 +18,7 @@ When the song has a score (a MusicXML file, or a PDF or image marked as notation
 
 ## Sections
 
-A section has a **numeral** (I, II, III …), a **name** (Intro, Verse, Chorus …) and a **start** position. Sections show as a row above the stems; the numeral is what you see, and the name appears on hover.
+A section has a **numeral** (I, II, III …), a **name** (Intro, Verse, Chorus …) and a **start** position. Sections show as a row above the stems; the numeral is what you see, and the name appears on hover. **Detect** sends the mix to a model that listens and marks where each section begins, naming them the way your other songs do; when the song has a score attached, the chart's rehearsal marks and section words lead. A song with no sections gets them at once; one that has some is shown the answer first, with **Use these** to replace them.
 
 ## Start and end markers
 

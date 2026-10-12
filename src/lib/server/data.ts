@@ -3260,6 +3260,32 @@ export function getSongById(accountId: string, songId: string) {
 }
 
 /** Up to two other songs of the account with a chart and sections, as style examples for an AI draft. */
+/**
+ * The section names the account's other songs use, most common first
+ * ("Verse", "Chorus", "Solo", "Tag"…), as the vocabulary the sections
+ * detector is told to prefer (docs/audio-engine.md, "Detect sections").
+ */
+export async function sectionVocabulary(
+	accountId: string,
+	excludeSongId: string,
+): Promise<string[]> {
+	const rows = await db.query.song.findMany({
+		where: eq(song.accountId, accountId),
+		columns: { id: true, sections: true },
+	});
+	const counts = new Map<string, number>();
+	for (const r of rows) {
+		if (r.id === excludeSongId) continue;
+		for (const s of r.sections) {
+			const name = s.name.trim();
+			if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+		}
+	}
+	return [...counts.entries()]
+		.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+		.map(([n]) => n);
+}
+
 export async function chartExamples(accountId: string, excludeSongId: string) {
 	const rows = await db.query.song.findMany({
 		where: and(eq(song.accountId, accountId), eq(song.status, "active")),
