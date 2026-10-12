@@ -32,6 +32,7 @@ bun run db:system-admin <email>         # make a user the operator (/admin)
 bun run db:super-admin <email>          # owner of every account, audited (docs/security.md)
 bun run db:seed-docs                    # add the starting user docs (scripts/user-docs) where missing
 bun run db:update-docs <slug...>        # refresh those pages from scripts/user-docs after the source changed; a page edited in the app is skipped (--force overwrites; --list / --restore <slug> <n> for its versions)
+bun run db:update-docs --merge [--apply] # carry the seed files' changes onto pages edited in the app (a three-way merge; docs/user-docs.md); dry run without --apply
 bun run db:reset-stage [-- --wipe --admin <email>]   # rebuild dev or staging from the seed (never production); APP_ENV=preview for staging
 ```
 

@@ -25,8 +25,9 @@ the slug listed in `COPY_PAGES` in `scripts/seed-user-docs.ts` (seeded
 with kind "copy"; `bun run db:update-docs <slug>` refreshes it from the
 file as for any doc, unless it was edited in the app since the script
 last wrote it: an edit on the live site is kept, and the file's new text
-is merged by hand or forced with `--force`; `--list` and `--restore`
-bring an earlier version back). `PAGE_COPY` (`src/lib/constants/pageCopy.ts`) maps
+is merged onto it with `bun run db:update-docs --merge` (docs/user-docs.md)
+or forced with `--force`; `--list` and `--restore` bring an earlier
+version back). `PAGE_COPY` (`src/lib/constants/pageCopy.ts`) maps
 the slug to its page: the docs view route redirects a copy doc there (it
 has no page of its own), the editor's "Exit edit mode" goes there, and
 `listUserDocs` lists only kind "doc", so copy docs never appear in the

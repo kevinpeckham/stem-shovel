@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **`bun run db:update-docs --merge`** carries the seed files' changes onto
+  user docs edited in the app with a three-way merge against the seed
+  text each page was last written from (found through git), as a dry run
+  without `--apply`; conflicts print both texts (docs/user-docs.md).
+  `mergeThreeWay` in `src/lib/utils/`. The plain update mode decides
+  "edited in the app" by the page's text, not a version's author.
+
 ## [0.123.0] - 2026-10-12
 
 ### Added
