@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.125.0] - 2026-10-12
+
 ### Added
 
 - **The AI reads the song's score** when it checks the tempo, key and
