@@ -325,9 +325,11 @@ than one and a display that names them all.
   The song-info popover's line uses the same. **Upload-time detection**
   (the uploader and the replacer) reads the keys the same way, every ten
   seconds of the batch, so a song gets its keys from the first upload.
-- The section timeline lists every key under the current section, the
-  one in force bright and the rest dim, beside the key lane's markers
-  (whose labels clip in a short stretch).
+- The section timeline's key lane carries the keys as they lie in the
+  song (the one in force lit, each label clipping in a short stretch), and
+  every lane marker is a button that seeks to where its change begins
+  (Kevin, 2026-10-12, after testing the score-read keys: the list of keys
+  under the section name went, the lane is the list).
 - The override is the rows in settings: add, move or remove key rows.
 
 ## The score as the AI's chart (2026-10-12)

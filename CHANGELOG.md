@@ -24,6 +24,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   answer replacing the detector's. `scoreForAi` in data.ts picks the
   score; the summary is logged with the request in `ai_request`.
 
+### Changed
+
+- **The section timeline's key lane is the list of keys**: the "key:"
+  line under the section name went (Kevin, after testing the score-read
+  keys), and every lane marker (key, tempo, time signature) is a button
+  that jumps the playhead to where its change begins.
+
 ## [0.124.0] - 2026-10-12
 
 ### Added

@@ -50,14 +50,16 @@ describe("SectionTimeline", () => {
 		});
 		const markers = screen.getAllByTitle(/ from /);
 		expect(markers.map((m) => m.getAttribute("title"))).toEqual([
-			"120 bpm from 1 | 1",
-			"140 bpm from 31 | 1",
+			"120 bpm from 1 | 1 · jump there",
+			"140 bpm from 31 | 1 · jump there",
 		]);
 		expect(markers[1].className).toContain("border-accent");
 		expect(markers[0].className).not.toContain("border-accent");
 		expect(screen.getByRole("group", { name: "Song sections" })).toHaveTextContent("140 bpm");
 	});
-	test("a song in several keys lists them all, the one in force bright and the rest dim", () => {
+	test("a song in several keys lays each on the key lane, the one in force lit, and a click on one seeks there", async () => {
+		const user = userEvent.setup();
+		const seek = vi.fn();
 		const changes: SongChange[] = [
 			...fixed,
 			{ kind: "key", start: 0, value: "C major" },
@@ -65,20 +67,18 @@ describe("SectionTimeline", () => {
 			{ kind: "key", start: 120, value: "F major" },
 		];
 		render(SectionTimeline, {
-			props: { engine: fakeEngine({ position: 70 }), sections: [], changes },
+			props: { engine: fakeEngine({ position: 70, seek }), sections: [], changes },
 		});
-		const list = screen.getByLabelText("Keys");
-		expect(Array.from(list.querySelectorAll("span")).map((el) => el.textContent?.trim())).toEqual([
-			"key:",
-			"C major",
-			"A♭ major",
-			"F major",
-		]);
-		const bright = list.querySelector(".font-600");
-		expect(bright?.textContent).toBe("A♭ major");
-		expect(list.querySelectorAll(".opacity-45")).toHaveLength(2);
+		// The list of keys under the section name went (Kevin): the lane is the list.
+		expect(screen.queryByLabelText("Keys")).toBeNull();
+		const keys = screen.getAllByRole("button", { name: /major/ });
+		expect(keys.map((k) => k.textContent?.trim())).toEqual(["C major", "A♭ major", "F major"]);
+		expect(keys[1].className).toContain("border-accent");
+		expect(keys[0].className).not.toContain("border-accent");
+		await user.click(keys[2]);
+		expect(seek).toHaveBeenCalledWith(120);
 	});
-	test("one key lists nothing: the header names it", () => {
+	test("one key draws no marker: the header names it", () => {
 		render(SectionTimeline, {
 			props: {
 				engine: fakeEngine(),

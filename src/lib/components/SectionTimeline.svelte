@@ -65,13 +65,6 @@
 		}),
 	);
 	let currentIndex = $derived(blocks.findLastIndex((b) => engine.position >= b.start) ?? -1);
-	/** A song that moves through keys lists them all, in order, the one in force bright and the rest dim (Kevin): a short stretch's key is never hidden. */
-	let keyList = $derived.by(() => {
-		const keys = changes.filter((c) => c.kind === "key").sort((a, b) => a.start - b.start);
-		if (keys.length < 2) return [];
-		const active = keys.findLast((c) => engine.position >= c.start) ?? keys[0];
-		return keys.map((c) => ({ ...c, active: c === active }));
-	});
 </script>
 
 <div
@@ -87,17 +80,6 @@
 				<div class="truncate max-w-fit font-600 text 15px">{blocks[currentIndex].name}</div>
 			</div>
 		{/if}
-		{#if keyList.length > 0}
-			<div class="flex flex-wrap gap-x-2 text-13px" aria-label="Keys">
-				<span class="opacity-80">key:</span>
-				{#each keyList as k (k.start)}
-					<span
-						class={k.active ? "font-600 text-neutral-100" : "opacity-45"}
-						title="{k.value} from {at(k.start)}">{k.value}</span
-					>
-				{/each}
-			</div>
-		{/if}
 	</div>
 
 	<div
@@ -105,21 +87,24 @@
 		style:padding-top="{lanes.length * LANE_REM}rem"
 	>
 		{#each lanes as lane, li (lane.kind)}
-			<!-- one lane per kind; each marker runs to the next marker of its kind, so its label clips instead of colliding -->
+			<!-- one lane per kind; each marker runs to the next marker of its kind, so its label clips instead of colliding; a click jumps to where it begins (Kevin: the keys as they lie on the timeline, each a place to go) -->
 			{#each lane.markers as m (m.start)}
-				<div
-					class="absolute h-3.5 overflow-hidden border-l pl-1 font-mono leading-3.5 whitespace-nowrap {current.some(
+				<button
+					type="button"
+					class="absolute h-3.5 overflow-hidden border-l pl-1 text-left font-mono leading-3.5 whitespace-nowrap transition-colors disabled-cursor-default {current.some(
 						(c) => c.kind === m.kind && c.start === m.start,
 					)
 						? 'border-accent text-neutral-100'
-						: 'border-white/30'}"
+						: 'border-white/30 hover-text-neutral-100'}"
 					style:top="{li * LANE_REM}rem"
 					style:left="{(m.start / duration) * 100}%"
 					style:width="calc({((m.end - m.start) / duration) * 100}% - 1px)"
-					title="{formatSongChange(m)} from {at(m.start)}"
+					title="{formatSongChange(m)} from {at(m.start)} · jump there"
+					disabled={engine.status !== "ready"}
+					onclick={() => engine.seek(m.start)}
 				>
 					{formatSongChange(m)}
-				</div>
+				</button>
 			{/each}
 		{/each}
 		<div class="relative h-6 mt-1" role="tablist" aria-label="Jump to section">
