@@ -1,13 +1,25 @@
 import { describe, expect, test } from "vite-plus/test";
 import { applyLocalMix, snapshotLocalMix } from "./localMix";
 
-function fakeEngine(stems: { id: string; gain: number; muted?: boolean; soloed?: boolean }[]) {
+function fakeEngine(
+	stems: { id: string; gain: number; pan?: number; muted?: boolean; soloed?: boolean }[],
+) {
 	const e = {
 		master: 1,
-		stems: stems.map((s) => ({ id: s.id, gain: s.gain, muted: !!s.muted, soloed: !!s.soloed })),
+		stems: stems.map((s) => ({
+			id: s.id,
+			gain: s.gain,
+			pan: s.pan ?? 0,
+			muted: !!s.muted,
+			soloed: !!s.soloed,
+		})),
 		setGain(id: string, v: number) {
 			const s = e.stems.find((x) => x.id === id);
 			if (s) s.gain = v;
+		},
+		setPan(id: string, v: number) {
+			const s = e.stems.find((x) => x.id === id);
+			if (s) s.pan = v;
 		},
 		toggleMute(id: string) {
 			const s = e.stems.find((x) => x.id === id);
@@ -72,5 +84,27 @@ describe("applyLocalMix", () => {
 			[0.6, false],
 		]);
 		expect(e.master).toBe(1);
+	});
+
+	test("a pan away from the default is kept, and applied back; a save without pans still applies", () => {
+		const e = fakeEngine([
+			{ id: "a", gain: 1, pan: -0.5 },
+			{ id: "b", gain: 0.6 },
+		]);
+		const snap = snapshotLocalMix(e, defaults);
+		expect(snap?.pans).toEqual({ a: -0.5 });
+		expect(snap?.gains).toEqual({});
+		applyLocalMix(e, null, defaults);
+		expect(e.stems[0]!.pan).toBe(0);
+		applyLocalMix(e, snap, defaults);
+		expect(e.stems[0]!.pan).toBe(-0.5);
+		applyLocalMix(
+			e,
+			{ gains: {}, muted: [], soloed: [], master: 1 },
+			defaults,
+			new Map([["b", 0.3]]),
+		);
+		expect(e.stems[0]!.pan).toBe(0);
+		expect(e.stems[1]!.pan).toBe(0.3);
 	});
 });

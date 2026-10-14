@@ -14,7 +14,12 @@ export function mixQuery(mode: MixMode, engine?: StemEngine | null): string | nu
 	const mix = engine?.mix() ?? { stems: [], master: 1 };
 	if (mix.stems.length === 0) return null;
 	const params = new URLSearchParams();
-	params.set("stems", mix.stems.map((s) => `${s.id}:${s.gain.toFixed(3)}`).join(","));
+	params.set(
+		"stems",
+		mix.stems
+			.map((s) => `${s.id}:${s.gain.toFixed(3)}${s.pan ? `:${s.pan.toFixed(2)}` : ""}`)
+			.join(","),
+	);
 	params.set("master", mix.master.toFixed(3));
 	return `?${params}`;
 }

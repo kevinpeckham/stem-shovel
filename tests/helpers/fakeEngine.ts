@@ -22,6 +22,7 @@ export function fakeEngine(overrides: Partial<StemEngine> = {}): StemEngine {
 		pause: vi.fn(),
 		seek: vi.fn(),
 		setMaster: vi.fn(),
+		setPan: vi.fn(),
 		mix: vi.fn(() => ({ master: 1, stems: [] })),
 		...overrides,
 	} as unknown as StemEngine;

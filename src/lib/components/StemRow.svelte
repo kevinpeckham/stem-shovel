@@ -5,9 +5,12 @@
 	import type { StemState } from "#lib/audio/types.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import type { Snippet } from "svelte";
-	import Waveform from "./Waveform.svelte";
+	import Waveform from "#lib/components/Waveform.svelte";
+	import Slider from "#lib/components/Slider.svelte";
+	import Knob from "#lib/components/Knob.svelte";
 
 	interface Props {
+		i?: number;
 		stem: StemState;
 		engine: StemEngine;
 		/** Row actions, rendered after the waveform (see StemPlayer's `stemMenu`). */
@@ -25,6 +28,7 @@
 	}
 
 	let {
+		i,
 		stem,
 		engine,
 		menu,
@@ -40,10 +44,14 @@
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
 	const progress = $derived(engine.duration > 0 ? engine.position / engine.duration : 0);
 	const span = $derived(engine.duration > 0 ? stem.duration / engine.duration : 1);
+	/** A pan as the knob says it: L 50, C, R 50 (as the Studio's tracks). */
+	const panText = (v: number) =>
+		v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`;
 
 	function onkeydown(e: KeyboardEvent): void {
-		// Focus the row (or anything inside it except the fader) and press M / S.
+		// Focus the row (or anything inside it except the fader and the pan) and press M / S.
 		if (e.target instanceof HTMLInputElement) return;
+		if (e.target instanceof Element && e.target.closest("[data-fader]")) return;
 		if (e.key === "m") engine.toggleMute(stem.id);
 		else if (e.key === "s") engine.toggleSolo(stem.id);
 		else return;
@@ -57,111 +65,94 @@
 <div
 	class="
 		grid
-		grid-cols-[minmax(0,1fr)_auto_auto]
-		items-center gap-x-3 gap-y-2 border-b border-white/10 py-3 sm:grid-cols-[22%_80px_minmax(0,1fr)] relative {dragging
-		? 'opacity-50'
-		: ''}"
+		grid-cols-1
+		items-center
+		gap-x-3
+		gap-y-2
+		border-b
+		border-white/10
+		py-3
+		@4xl-grid-cols-[minmax(14rem,22%)_minmax(0,1fr)]
+		w-full
+		overflow-x-hidden
+		relative {dragging ? 'opacity-50' : ''}
+		"
 	role="group"
 	aria-label={stem.label}
 	data-stem-row={stem.id}
 	{onkeydown}
 >
-	<!-- track name & meta: min-w-0 so a long name truncates instead of widening the row (Kevin's phone: rows of different lengths, cursors out of line) -->
+	<!-- Toolbar: the name, then the controls as the Studio's tracks have them (mute, solo, menu, fader, pan). -->
 	<div class="w-full min-w-0">
-		<div class="flex min-w-0 items-center gap-2">
+		<!-- track name: min-w-0 and truncate on the text itself, so a long name clips instead of widening the row -->
+		<div class="flex min-w-0 items-center gap-2 w-full">
 			{#if handle}{@render handle(stem)}{/if}
-			<div
-				class="truncate text-14.5px font-500 text-blue-300 {silenced
+			<span
+				class="flex min-w-0 gap-1 text-14px font-500 text-blue-300 {silenced
 					? 'opacity-60 text-slate-100'
 					: ''}"
 				title={stem.label}
 			>
-				{stem.label}
-			</div>
+				{#if i !== undefined}<span class="shrink-0">{i + 1} -</span>{/if}
+				<span class="min-w-0 truncate">{stem.label}</span>
+			</span>
 			{#if badge}<div class="absolute left-96px top-3">{@render badge(stem)}</div>{/if}
 		</div>
-		<!-- <div class="text-xs text-dim">
-			{#if !stem.decoded}
-				decoding…{#if stem.duration}
-					{formatTime(stem.duration)}{/if}
-			{:else}
-				{stem.collapsed ? "dual mono → mono" : stem.channels === 1 ? "mono" : "stereo"}, {formatTime(
-					stem.duration,
-				)}
-			{/if}
-		</div> -->
-		<div class="flex gap-1 text-11px mt-1">
-			<button
-				type="button"
-				class="h-6 w-6 rounded border border-white/25 font-500 transition-colors hover:border-white/60 {stem.muted
-					? 'bg-blue-300 text-oxford border-blue-300'
-					: ''}"
-				aria-pressed={stem.muted}
-				aria-label="Mute {stem.label}"
-				onclick={() => engine.toggleMute(stem.id)}
-			>
-				M
-			</button>
-			<button
-				type="button"
-				class="h-6 w-6 rounded border border-white/25 font-semibold transition-colors hover:border-white/60 {stem.soloed
-					? 'bg-accent text-oxford border-accent'
-					: ''}"
-				aria-pressed={stem.soloed}
-				aria-label="Solo {stem.label}"
-				onclick={() => engine.toggleSolo(stem.id)}
-			>
-				S
-			</button>
 
-			{#if menu}
-				<div class="">{@render menu(stem)}</div>
-			{/if}
+		<!-- controls -->
+		<div class="mt-1 flex w-full items-center gap-x-3">
+			<div class="flex items-center gap-1">
+				<button
+					type="button"
+					class="device-fader-button-sm"
+					aria-pressed={stem.muted}
+					aria-label="Mute {stem.label}"
+					onclick={() => engine.toggleMute(stem.id)}>M</button
+				>
+				<button
+					type="button"
+					class="device-fader-button-sm"
+					aria-pressed={stem.soloed}
+					aria-label="Solo {stem.label}"
+					onclick={() => engine.toggleSolo(stem.id)}>S</button
+				>
+				{#if menu}{@render menu(stem)}{/if}
+			</div>
+			<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity.
+			     data-fader: the row's M/S keys leave the fader and the pan alone. -->
+			<div class="contents" data-fader>
+				<Slider
+					class="min-w-16 max-w-24 w-full"
+					value={stem.gain}
+					min={0}
+					max={FADER_MAX}
+					step={0.01}
+					resetTo={1}
+					thickness={5}
+					label="{stem.label} level"
+					title="Level (double-click for unity)"
+					oninput={(v) => engine.setGain(stem.id, v)}
+				/>
+				<!-- The pan as a knob (Knob.svelte), as on a Studio track: the value shows while it turns. -->
+				<Knob
+					value={stem.pan}
+					min={-1}
+					max={1}
+					step={0.05}
+					resetTo={0}
+					bipolar
+					size={22}
+					label="{stem.label} pan"
+					title="Pan (double-click for centre)"
+					format={panText}
+					oninput={(v) => engine.setPan(stem.id, v)}
+				/>
+			</div>
 		</div>
-	</div>
-
-	<!-- mute & solo buttons -->
-	<!-- <div class="flex gap-2">
-		<button
-			type="button"
-			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.muted
-				? 'bg-blue-300 text-oxford border-blue-300'
-				: ''}"
-			aria-pressed={stem.muted}
-			aria-label="Mute {stem.label}"
-			onclick={() => engine.toggleMute(stem.id)}
-		>
-			M
-		</button>
-		<button
-			type="button"
-			class="h-8 w-8 rounded border border-white/25 text-sm font-semibold transition-colors hover:border-white/60 {stem.soloed
-				? 'bg-accent text-oxford border-accent'
-				: ''}"
-			aria-pressed={stem.soloed}
-			aria-label="Solo {stem.label}"
-			onclick={() => engine.toggleSolo(stem.id)}
-		>
-			S
-		</button>
-	</div> -->
-
-	<!-- volume slider -->
-	<div class="flex items-end h-full pb-2">
-		<input
-			type="range"
-			class="w-full accent-blue-300 sm:w-20"
-			min="0"
-			max={FADER_MAX}
-			step="0.01"
-			value={stem.gain}
-			aria-label="{stem.label} level"
-			oninput={(e) => engine.setGain(stem.id, e.currentTarget.valueAsNumber)}
-		/>
 	</div>
 
 	<!-- waveform -->
-	<div class="col-span-3 sm-col-span-1 bg-blue-300/5 rounded">
+	<div class="w-full max-w-full min-w-0 bg-blue-300/5 rounded">
 		{#if roll}
 			<MidiRoll
 				notes={roll.notes}
@@ -186,9 +177,4 @@
 			/>
 		{/if}
 	</div>
-
-	<!-- context menu -->
-	<!-- {#if menu}
-		<div class="row-start-1 col-start-3 sm:col-start-5 sm:row-auto">{@render menu(stem)}</div>
-	{/if} -->
 </div>

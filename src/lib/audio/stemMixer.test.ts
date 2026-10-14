@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 // The worklet's mixing state, apart from its AudioWorkletProcessor shell (static/worklets/stem-mixer.js).
-import { Mixer } from "../../../static/worklets/stem-mixer.js";
+import { Mixer, panWeights } from "../../../static/worklets/stem-mixer.js";
 
 const RATE = 1000;
 const chunk = (len: number, value: number, channels = 1) =>
@@ -89,6 +89,30 @@ describe("Mixer", () => {
 		const quiet = out();
 		m.mix(quiet, 128);
 		expect(Math.abs(quiet[0]![0])).toBeLessThan(1e-3);
+	});
+	it("pans: a mono stem equal-power across the pair, a stereo stem leaning the far channel over", () => {
+		expect(panWeights(0, true)).toEqual({ ll: 1, lr: 0, rl: 1, rr: 0 });
+		expect(panWeights(-1, true).rl).toBeCloseTo(0);
+		expect(panWeights(1, true).ll).toBeCloseTo(0);
+		expect(panWeights(-0.5, true).ll).toBe(1);
+		expect(panWeights(-0.5, true).rl).toBeCloseTo(Math.SQRT1_2);
+		const centre = panWeights(0, false);
+		expect(centre.ll).toBe(1);
+		expect(centre.lr).toBeCloseTo(0);
+		expect(centre.rl).toBe(0);
+		expect(centre.rr).toBeCloseTo(1);
+		expect(panWeights(-1, false)).toMatchObject({ ll: 1, lr: 1, rl: 0 });
+		expect(panWeights(1, false).rr).toBe(1);
+		const m = new Mixer(RATE);
+		m.setStems(["a"]);
+		m.setGain("a", 1, true);
+		m.setPan("a", 1, true);
+		m.playing = true;
+		m.push("a", 0, 0, chunk(5000, 1, 2));
+		const o = out();
+		m.mix(o, 128);
+		expect(o[0]![0]).toBeCloseTo(0);
+		expect(o[1]![0]).toBeCloseTo(2);
 	});
 	it("keeps a second behind the counter and trims the rest", () => {
 		const m = new Mixer(RATE);

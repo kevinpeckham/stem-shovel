@@ -1723,23 +1723,27 @@
 	let player = $state<StemPlayer | null>(null);
 	/** The song's default mix per stem; the faders start here for everyone. */
 	let defaultGains = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.gain ?? 1])));
-	/** The listener moved something (fader, mute, solo or master) away from the default mix. */
+	let defaultPans = $derived(new Map(data.manifest.stems.map((s) => [s.id, s.pan ?? 0])));
+	/** A stem's fader or pan sits away from the song's default mix. */
+	const stemDirty = (s: { id: string; gain: number; pan: number }) =>
+		Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6 ||
+		Math.abs(s.pan - (defaultPans.get(s.id) ?? 0)) > 1e-6;
+	/** The listener moved something (fader, pan, mute, solo or master) away from the default mix. */
 	let mixDirty = $derived(
 		!!playerEngine &&
 			(playerEngine.master !== 1 ||
-				playerEngine.stems.some(
-					(s) => s.muted || s.soloed || Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6,
-				)),
+				playerEngine.stems.some((s) => s.muted || s.soloed || stemDirty(s))),
 	);
-	/** The faders alone differ from the default: there is a new default to save. */
-	let fadersDirty = $derived(
-		!!playerEngine &&
-			playerEngine.stems.some((s) => Math.abs(s.gain - (defaultGains.get(s.id) ?? 1)) > 1e-6),
-	);
+	/** The faders and pans alone differ from the default: there is a new default to save. */
+	let fadersDirty = $derived(!!playerEngine && playerEngine.stems.some(stemDirty));
 	let savingMix = $state(false);
 	async function saveMixAsDefault() {
 		if (!playerEngine || savingMix) return;
-		if (!confirm("Save these fader levels as the default mix for everyone who opens this song?"))
+		if (
+			!confirm(
+				"Save these fader levels and pans as the default mix for everyone who opens this song?",
+			)
+		)
 			return;
 		savingMix = true;
 		try {
@@ -1748,6 +1752,7 @@
 				gains: playerEngine.stems.map((s) => ({
 					id: s.id,
 					gain: Math.round(s.gain * 1000) / 1000,
+					pan: Math.round(s.pan * 100) / 100,
 				})),
 			});
 			player?.forgetLocalMix();
@@ -4374,7 +4379,7 @@
 	{#if row}
 		<details class="relative" data-stem-menu>
 			<summary
-				class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded border border-white/10 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
+				class="device-fader-menu-button-sm cursor-pointer list-none [&::-webkit-details-marker]:hidden"
 				title="{stem.label}: options"
 				aria-label="{stem.label}: options"
 				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary

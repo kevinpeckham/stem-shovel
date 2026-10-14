@@ -307,7 +307,7 @@ describe("editor-gated functions", () => {
 			input: { id: SONG, gains: [{ id: STEM, gain: 0.5 }] },
 			arrange: () => data.setDefaultMix.mockResolvedValue(true),
 			dataFn: "setDefaultMix",
-			args: [ACCOUNT, SONG, [{ id: STEM, gain: 0.5 }]],
+			args: [ACCOUNT, SONG, [{ id: STEM, gain: 0.5, pan: 0 }]],
 			outcome: { saved: 1 },
 		},
 		{

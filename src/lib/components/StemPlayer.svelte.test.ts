@@ -26,6 +26,13 @@ class FakeAudioContext {
 	currentTime = 0;
 	destination = {};
 	createGain = fakeGain;
+	/** The pan after each stem's gain: a StereoPannerNode for stereo, a pair of gains into a merger for mono. */
+	createStereoPanner = () => ({
+		connect() {},
+		disconnect() {},
+		pan: { value: 0, cancelScheduledValues() {}, setTargetAtTime() {} },
+	});
+	createChannelMerger = () => ({ connect() {}, disconnect() {} });
 	/** The output meter the engine makes with its master (engine.meter()). */
 	createAnalyser = () => ({
 		fftSize: 2048,

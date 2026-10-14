@@ -1006,6 +1006,7 @@ export async function manifestFor(s: {
 				channels: st.channels ?? undefined,
 				peaks: st.peaks ?? undefined,
 				gain: st.gain,
+				pan: st.pan,
 			})),
 		),
 	};
@@ -1250,7 +1251,7 @@ async function stemsChanged(songId: string) {
 export async function setDefaultMix(
 	accountId: string,
 	songId: string,
-	gains: { id: string; gain: number }[],
+	gains: { id: string; gain: number; pan?: number }[],
 ) {
 	const owned = await db.query.stem.findMany({
 		where: and(eq(stem.accountId, accountId), eq(stem.songId, songId)),
@@ -1260,7 +1261,10 @@ export async function setDefaultMix(
 	const wanted = gains.filter((g) => ids.has(g.id));
 	if (wanted.length === 0) return false;
 	for (const g of wanted) {
-		await db.update(stem).set({ gain: g.gain }).where(eq(stem.id, g.id));
+		await db
+			.update(stem)
+			.set({ gain: g.gain, pan: g.pan ?? 0 })
+			.where(eq(stem.id, g.id));
 	}
 	await stemsChanged(songId);
 	return true;
@@ -5668,6 +5672,7 @@ export async function songForMix(songId: string) {
 					playbackStatus: true,
 					playbackUrl: true,
 					gain: true,
+					pan: true,
 				},
 				orderBy: [asc(stem.sortOrder)],
 			},

@@ -8,8 +8,35 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A pan knob on every stem row**, beside the fader, as on a Studio
+  track: -1 to 1, double-click for centre, the value shown as L 50 / C /
+  R 50 while it turns. Buffered, a stereo stem goes through a
+  StereoPannerNode; a mono stem through a pair of gains into a merger so
+  it stays at unity in both channels at centre (as it did before pans; a
+  StereoPannerNode would drop it 3 dB) with the far channel falling away
+  on a sine. Streamed, the mixer worklet applies the same two laws
+  (`panWeights`). The pan is part of the listener's own mix kept in the
+  browser (`LocalMix.pans`), of the custom mix download
+  (`?stems=id:gain:pan`, ffmpeg's `pan` filter with the StereoPanner's
+  stereo law, `panFilter`), and of the song's saved default mix
+  (`stem.pan`, migration 0086; `DefaultMixSchema` takes `pan`; the mix
+  key includes a pan only when it is off centre, so existing keys stand).
+  `StemEngine.setPan`, `StemState.pan`, `MixSnapshot.stems[].pan`.
+
 ### Changed
 
+- **Stem rows wear the Studio's controls** (Kevin's layout pass): mute
+  and solo as `device-fader-button-sm`, the ⋯ menu as
+  `device-fader-menu-button-sm`, the fader as the `Slider` component
+  with a double-click to unity, the row numbered, the player wrapped in a
+  container (`@container`) so the row goes two-column at `@4xl` with the
+  name column at `minmax(14rem, 22%)`. The review fixed the Slider's
+  props (it takes `label`, numbers and a value callback, not the input's
+  attributes), the name's truncation (on the text, not its flex parent),
+  a stale `col-span-3` on the waveform in a one-column grid, and moved
+  the dev-only `CQMeasuring` badge from every row to the player.
 - **Download Stems says what it is doing.** The menu closes on the click
   and a big song's zip takes a while (Kevin), so a notice now follows the
   work, naming the stem going into the zip and its number of the total,

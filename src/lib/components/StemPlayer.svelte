@@ -20,6 +20,7 @@
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
 	import { tick } from "svelte";
 	import { dev } from "$app/env";
+	import CQMeasuring from "#lib/components/CQMeasuring.svelte";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import { timelineKinds } from "#lib/utils/timelineKinds.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
@@ -90,13 +91,15 @@
 	const engine = new StemEngine();
 	/** The song's default mix per stem, from the manifest. */
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
+	/** The song's default pans, likewise. */
+	let defaultPans = $derived(new Map(manifest.stems.map((s) => [s.id, s.pan ?? 0])));
 	/** The listener's own mix differs from the default (there is something to reset). */
 	export function hasLocalMix() {
-		return !!snapshotLocalMix(engine, defaults);
+		return !!snapshotLocalMix(engine, defaults, defaultPans);
 	}
 	/** Back to the song's default mix, and forget the local one. */
 	export function resetMix() {
-		applyLocalMix(engine, null, defaults);
+		applyLocalMix(engine, null, defaults, defaultPans);
 		if (songId) saveLocalMix(songId, null);
 	}
 	/** After a member saved the current faders as the default: they are the default now, nothing local left. */
@@ -133,7 +136,7 @@
 				// load() sets up the stems synchronously; the listener's own mix goes on top of the default.
 				if (songId) {
 					const local = loadLocalMix(songId);
-					if (local) applyLocalMix(engine, local, defaults);
+					if (local) applyLocalMix(engine, local, defaults, defaultPans);
 				}
 			}
 			loadedKeys = nextKeys;
@@ -144,7 +147,7 @@
 	$effect(() => {
 		if (!songId) return;
 		const id = songId;
-		const snapshot = snapshotLocalMix(engine, defaults);
+		const snapshot = snapshotLocalMix(engine, defaults, defaultPans);
 		untrack(() => {
 			if (engine.status !== "ready" && engine.status !== "loading") return;
 			if (saveTimer) clearTimeout(saveTimer);
@@ -180,7 +183,7 @@
 		void engine.load(manifest.stems, { choice: to === "auto" ? null : to, site: streaming });
 		if (songId) {
 			const local = loadLocalMix(songId);
-			if (local) applyLocalMix(engine, local, defaults);
+			if (local) applyLocalMix(engine, local, defaults, defaultPans);
 		}
 	}
 	/** What this device can be expected to hold decoded (utils/stemMemoryBudget): Chrome says its memory, the rest get the soft gigabyte. */
@@ -235,116 +238,121 @@
 	</div>
 {/if} -->
 
-{#if engine.status === "error"}
-	<div class="mt-6 p-4">
-		<p class="font-medium">Couldn't load the stems.</p>
-		<p class="mt-1 text-sm text-dim">{engine.error}</p>
-		{#if errorHint}
-			<p class="mt-3 text-sm">{@render errorHint()}</p>
+<div class="@container relative grid grid-cols-1 w-full">
+	<!-- Dev only: where the container's breakpoints fall (CQMeasuring renders nothing in production). -->
+	<CQMeasuring />
+	{#if engine.status === "error"}
+		<div class="mt-6 p-4">
+			<p class="font-medium">Couldn't load the stems.</p>
+			<p class="mt-1 text-sm text-dim">{engine.error}</p>
+			{#if errorHint}
+				<p class="mt-3 text-sm">{@render errorHint()}</p>
+			{/if}
+		</div>
+	{:else if engine.status === "loading" || engine.status === "ready"}
+		{#if engine.lastLoadDied}
+			<p
+				class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
+				role="status"
+			>
+				The last attempt to load this song in this tab did not finish, which usually means the
+				browser ran out of memory ({engine.lastLoadDied.stems} stems, about {formatBytes(
+					engine.lastLoadDied.bytes,
+				)} once decoded). Try it on a computer, or with fewer stems.
+			</p>
+		{:else if engine.estimatedBytes > memoryBudget}
+			<p
+				class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
+				role="status"
+			>
+				{engine.stems.length} stems, about {formatBytes(engine.estimatedBytes)} once decoded: more than
+				this device may have free. If the page goes blank or reloads while loading, try it on a computer.
+			</p>
 		{/if}
-	</div>
-{:else if engine.status === "loading" || engine.status === "ready"}
-	{#if engine.lastLoadDied}
-		<p
-			class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
-			role="status"
-		>
-			The last attempt to load this song in this tab did not finish, which usually means the browser
-			ran out of memory ({engine.lastLoadDied.stems} stems, about {formatBytes(
-				engine.lastLoadDied.bytes,
-			)} once decoded). Try it on a computer, or with fewer stems.
-		</p>
-	{:else if engine.estimatedBytes > memoryBudget}
-		<p
-			class="mb-3 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm"
-			role="status"
-		>
-			{engine.stems.length} stems, about {formatBytes(engine.estimatedBytes)} once decoded: more than
-			this device may have free. If the page goes blank or reloads while loading, try it on a computer.
-		</p>
-	{/if}
-	<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-		<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} {keyboard} />
-		{#if onaddsection}
-			<div class="mt-2 flex justify-end">
-				<button
-					class="button button-xs"
-					type="button"
-					disabled={engine.status !== "ready"}
-					title="Mark a section starting at the current position ({formatPosition(
-						readoutMode(!!barGrid(changes, startAt)),
-						engine.position,
-						{ fps, grid: barGrid(changes, startAt) },
-					)})"
-					onclick={() => onaddsection(engine.position)}
-				>
-					<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
-					Add section at playhead
-				</button>
-			</div>
-		{/if}
-	</div>
+		<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
+			<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} {keyboard} />
+			{#if onaddsection}
+				<div class="mt-2 flex justify-end">
+					<button
+						class="button button-xs"
+						type="button"
+						disabled={engine.status !== "ready"}
+						title="Mark a section starting at the current position ({formatPosition(
+							readoutMode(!!barGrid(changes, startAt)),
+							engine.position,
+							{ fps, grid: barGrid(changes, startAt) },
+						)})"
+						onclick={() => onaddsection(engine.position)}
+					>
+						<span class="i-ph-bookmark-simple" aria-hidden="true"></span>
+						Add section at playhead
+					</button>
+				</div>
+			{/if}
+		</div>
 
-	<section
-		class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start {dragging
-			? 'select-none'
-			: ''}"
-		aria-label="Stems"
-		bind:this={rowsEl}
-	>
-		{#if sections.length > 0 || timelineKinds(changes).length > 0}
-			<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
-		{/if}
-		{#each engine.stems as stem (stem.id)}
-			<StemRow
-				{stem}
-				{engine}
-				menu={stemMenu}
-				badge={stemBadge}
-				roll={midiViews[stem.id] ?? null}
-				oncontext={onstemcontext}
-				handle={onreorder ? grip : undefined}
-				dragging={dragging === stem.id}
-			/>
-		{/each}
-		{#if afterRows}{@render afterRows()}{/if}
-	</section>
+		<section
+			class="border border-current/40 rounded-md px-4 py-3 bg-blue/5 grid grid-cols-1 place-content-start {dragging
+				? 'select-none'
+				: ''}"
+			aria-label="Stems"
+			bind:this={rowsEl}
+		>
+			{#if sections.length > 0 || timelineKinds(changes).length > 0}
+				<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
+			{/if}
+			{#each engine.stems as stem, i (stem.id)}
+				<StemRow
+					{stem}
+					{engine}
+					{i}
+					menu={stemMenu}
+					badge={stemBadge}
+					roll={midiViews[stem.id] ?? null}
+					oncontext={onstemcontext}
+					handle={onreorder ? grip : undefined}
+					dragging={dragging === stem.id}
+				/>
+			{/each}
+			{#if afterRows}{@render afterRows()}{/if}
+		</section>
 
-	<div
-		class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-16px lg-text-13px opacity-90 bg-blue-300/5 {showStatus
-			? ''
-			: 'hidden'}"
-		aria-live="polite"
-	>
-		{#if engine.status === "loading"}
-			Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
-			enable when every stem is ready.
-		{:else if engine.status === "ready"}
-			{manifest.stems.length}
-			{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.mode === "streamed"},
-				streamed (a {Math.round(engine.estimatedBytes / manifest.stems.length / 1024 / 1024)} MB window
-				a stem){#if engine.buffering}, buffering…{:else}
-					<span class="text-green-300 i-ph-check"></span>{/if}
-				<button
-					class="link-dim ml-2"
-					type="button"
-					title="Decode every stem into memory instead (instant seeking; about 60 MB per four-minute stereo stem)"
-					onclick={() => switchMode("buffered")}>play buffered</button
-				>
-			{:else}, {formatBytes(engine.decodedBytes)} decoded in memory
-				<span class="text-green-300 i-ph-check"></span>
-				{#if typeof AudioDecoder !== "undefined"}
+		<div
+			class="mt-3 border border-current/40 rounded-md px-3 py-2 flex items-center gap-2 text-16px lg-text-13px opacity-90 bg-blue-300/5 {showStatus
+				? ''
+				: 'hidden'}"
+			aria-live="polite"
+		>
+			{#if engine.status === "loading"}
+				Decoding stem {Math.min(engine.loaded + 1, engine.total)} of {engine.total}… play and seek
+				enable when every stem is ready.
+			{:else if engine.status === "ready"}
+				{manifest.stems.length}
+				{@html manifest.stems.length === 1 ? "stem" : "stems"}{#if engine.mode === "streamed"},
+					streamed (a {Math.round(engine.estimatedBytes / manifest.stems.length / 1024 / 1024)} MB window
+					a stem){#if engine.buffering}, buffering…{:else}
+						<span class="text-green-300 i-ph-check"></span>{/if}
 					<button
 						class="link-dim ml-2"
 						type="button"
-						title="Decode a window around the playhead instead of the whole song (docs: Streaming)"
-						onclick={() => switchMode("streamed")}>stream instead</button
+						title="Decode every stem into memory instead (instant seeking; about 60 MB per four-minute stereo stem)"
+						onclick={() => switchMode("buffered")}>play buffered</button
 					>
+				{:else}, {formatBytes(engine.decodedBytes)} decoded in memory
+					<span class="text-green-300 i-ph-check"></span>
+					{#if typeof AudioDecoder !== "undefined"}
+						<button
+							class="link-dim ml-2"
+							type="button"
+							title="Decode a window around the playhead instead of the whole song (docs: Streaming)"
+							onclick={() => switchMode("streamed")}>stream instead</button
+						>
+					{/if}
 				{/if}
 			{/if}
-		{/if}
-	</div>
-{/if}
+		</div>
+	{/if}
+</div>
 
 {#snippet grip(stem: StemState)}
 	<button

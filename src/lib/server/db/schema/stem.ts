@@ -29,6 +29,8 @@ export const stem = table(
 		sortOrder: t.integer("sort_order").notNull().default(0),
 		/** The song's default mix: this stem's fader, 0..FADER_MAX (1 = unity). Members save it; listeners start from it. */
 		gain: t.real("gain").notNull().default(1),
+		/** The default mix's pan for this stem, -1 (left) to 1 (right); the player's knob starts here (docs/stem-engine.md, "Pan"). */
+		pan: t.real("pan").notNull().default(0),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

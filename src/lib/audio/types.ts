@@ -11,6 +11,8 @@ export interface StemSource {
 	peaks?: number[];
 	/** The song's default mix fader for this stem (1 when absent). */
 	gain?: number;
+	/** The song's default mix pan for this stem, -1 to 1 (centre when absent). */
+	pan?: number;
 }
 
 /** Reactive per-stem state exposed by the engine to the UI. */
@@ -18,6 +20,7 @@ export interface StemState {
 	id: string;
 	label: string;
 	gain: number; // fader value, 0 .. FADER_MAX
+	pan: number; // -1 (left) .. 1 (right), 0 centre
 	muted: boolean;
 	soloed: boolean;
 	duration: number; // seconds, from the decoded buffer
@@ -31,7 +34,8 @@ export interface StemState {
 /** The audible mix as the engine has it: effective per-stem gains (silent stems omitted) and master. */
 export interface MixSnapshot {
 	master: number;
-	stems: { id: string; gain: number }[];
+	/** Effective gain and pan per audible stem. */
+	stems: { id: string; gain: number; pan: number }[];
 }
 
 export type EngineStatus = "idle" | "loading" | "ready" | "error";

@@ -95,3 +95,25 @@ and drawn on a canvas (`Waveform.svelte`), so the engine never has to walk
 the buffers for drawing. Tempo, key and meter detection
 (`lib/audio/analysis.ts`) run on the decoded buffers at upload, and the
 Idea Recorder uses its own `AudioContext` for the level meter only.
+
+## Pan (2026-10-14)
+
+Every stem row has a pan knob beside the fader, as a Studio track does
+(Kevin). `StemState.pan` runs -1 to 1; `setPan` ramps it over the same
+15 ms as a fader. Buffered, a stereo buffer goes through a
+StereoPannerNode (the Web Audio law: its own channels kept, the far one
+leaning over); a mono buffer goes through a pair of gains into a
+ChannelMerger instead, so it sits at unity in both channels at centre as
+it did before pans (a StereoPannerNode would put a mono source at 0.707
+each side, a 3 dB drop on every mono stem) and the far channel falls
+away on a sine as it turns (`monoPan`). Streamed, the mixer worklet
+applies the same two laws per chunk (`panWeights` in
+`static/worklets/stem-mixer.js`), ramped like the gain. The pan rides
+with the mix everywhere a gain does: the listener's own mix in the
+browser (`LocalMix.pans`, absent in older saves), the custom mix download
+(`?stems=id:gain:pan`; the server's `panFilter` writes ffmpeg's `pan`
+filter with the StereoPanner's stereo law, since the renditions are
+upmixed to stereo first), and the song's saved default mix (`stem.pan`,
+migration 0086, `DefaultMixSchema`, the manifest's `pan`). The original
+mix's key includes a pan only when it is off centre, so every song whose
+stems are centred keeps the key it had and nothing re-renders.

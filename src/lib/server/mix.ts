@@ -34,8 +34,8 @@ const run = promisify(execFile);
 const BITRATE = "192k";
 
 export interface MixRequest {
-	/** Effective gains; a stem left out is silent. */
-	stems: { id: string; gain: number }[];
+	/** Effective gains and pans (-1 to 1, centre when absent); a stem left out is silent. */
+	stems: { id: string; gain: number; pan?: number }[];
 	master: number;
 }
 
@@ -56,17 +56,23 @@ function originalMixKey(song: Pick<Mixable, "stems">) {
 export type MixKeyStem = Pick<
 	Mixable["stems"][number],
 	"id" | "playbackStatus" | "playbackUrl" | "url" | "gain"
->;
+> & { pan?: number | null };
 
 /** The files and the default mix's gains: a saved mix renders a fresh original. */
 export function mixKeyOf(stems: MixKeyStem[]) {
-	const parts = stems.map((s) => `${s.id}:${playbackOrSource(s)}:${s.gain ?? 1}`).sort();
+	// A pan of 0 adds nothing, so a song whose stems are all centred keeps the key it had before pans.
+	const parts = stems
+		.map((s) => `${s.id}:${playbackOrSource(s)}:${s.gain ?? 1}${s.pan ? `:${s.pan}` : ""}`)
+		.sort();
 	return createHash("sha1").update(parts.join("\n")).digest("hex").slice(0, 16);
 }
 
 /** The original mix is the song's default mix: every ready stem at its saved fader. */
 function originalMixRequest(song: Mixable): MixRequest {
-	return { stems: song.stems.map((s) => ({ id: s.id, gain: s.gain ?? 1 })), master: 1 };
+	return {
+		stems: song.stems.map((s) => ({ id: s.id, gain: s.gain ?? 1, pan: s.pan ?? 0 })),
+		master: 1,
+	};
 }
 
 /** True when a custom request is just the original (so the cache can serve it). */
@@ -81,7 +87,7 @@ export function isOriginal(song: Mixable, req: MixRequest) {
 	);
 }
 
-/** Parses `?stems=id:gain,id:gain&master=m` against the song; null when malformed. */
+/** Parses `?stems=id:gain[:pan],id:gain[:pan]&master=m` against the song; null when malformed. */
 export function parseMixRequest(song: Mixable, params: URLSearchParams): MixRequest | null {
 	const stemsParam = params.get("stems");
 	const masterParam = params.get("master") ?? "1";
@@ -90,12 +96,14 @@ export function parseMixRequest(song: Mixable, params: URLSearchParams): MixRequ
 	if (!Number.isFinite(master) || master < 0 || master > 1) return null;
 	const stems: MixRequest["stems"] = [];
 	for (const part of stemsParam.split(",").filter(Boolean)) {
-		const [id, g = "1"] = part.split(":");
+		const [id, g = "1", p = "0"] = part.split(":");
 		const gain = Number(g);
+		const pan = Number(p);
 		if (!song.stems.some((s) => s.id === id)) return null;
 		if (!Number.isFinite(gain) || gain <= 0 || gain > FADER_MAX) return null;
+		if (!Number.isFinite(pan) || pan < -1 || pan > 1) return null;
 		if (stems.some((s) => s.id === id)) return null;
-		stems.push({ id, gain: Math.round(gain * 1000) / 1000 });
+		stems.push({ id, gain: Math.round(gain * 1000) / 1000, pan: Math.round(pan * 100) / 100 });
 	}
 	if (stems.length === 0) return null;
 	return { stems, master: Math.round(master * 1000) / 1000 };
@@ -107,13 +115,29 @@ function playbackOrSource(
 	return s.playbackStatus === "ready" && s.playbackUrl ? s.playbackUrl : s.url;
 }
 
+/**
+ * The pan as ffmpeg's `pan` filter, the StereoPannerNode's stereo law so
+ * the download matches the player: left of centre the right channel leans
+ * into the left, right of centre the other way. Nothing at centre.
+ */
+export function panFilter(pan: number): string {
+	if (!pan) return "";
+	const f = (x: number) => x.toFixed(4);
+	if (pan < 0) {
+		const theta = ((pan + 1) * Math.PI) / 2;
+		return `,pan=stereo|c0=c0+${f(Math.cos(theta))}*c1|c1=${f(Math.sin(theta))}*c1`;
+	}
+	const theta = (pan * Math.PI) / 2;
+	return `,pan=stereo|c0=${f(Math.cos(theta))}*c0|c1=c1+${f(Math.sin(theta))}*c0`;
+}
+
 /** Renders the request to an MP3 and returns its bytes. */
 export async function renderMix(song: Mixable, req: MixRequest): Promise<Buffer> {
 	if (!ffmpegPath) throw new Error("ffmpeg binary is not available on this platform");
 	const inputs = req.stems.map((r) => {
 		const stem = song.stems.find((s) => s.id === r.id);
 		if (!stem) throw new Error(`stem ${r.id} is not in this song`);
-		return { url: playbackOrSource(stem), gain: r.gain };
+		return { url: playbackOrSource(stem), gain: r.gain, pan: r.pan ?? 0 };
 	});
 	const dir = await mkdtemp(join(tmpdir(), "mix-"));
 	try {
@@ -128,8 +152,8 @@ export async function renderMix(song: Mixable, req: MixRequest): Promise<Buffer>
 			}),
 		);
 		const chains = inputs.map(
-			({ gain }, i) =>
-				`[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=${gain}[a${i}]`,
+			({ gain, pan }, i) =>
+				`[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=${gain}${panFilter(pan ?? 0)}[a${i}]`,
 		);
 		const sum = inputs.map((_, i) => `[a${i}]`).join("");
 		const filter = [

@@ -15,6 +15,7 @@ function stem(overrides: Partial<StemState> = {}): StemState {
 		id: "s1",
 		label: "Drums",
 		gain: 1,
+		pan: 0,
 		muted: false,
 		soloed: false,
 		duration: 200,
@@ -33,6 +34,7 @@ function engineWithSpies(overrides: Record<string, unknown> = {}) {
 		toggleMute: vi.fn(),
 		toggleSolo: vi.fn(),
 		setGain: vi.fn(),
+		setPan: vi.fn(),
 		seek: vi.fn(),
 	};
 	return { spies, engine: fakeEngine({ duration: 400, ...spies, ...overrides } as never) };
@@ -55,7 +57,11 @@ describe("StemRow", () => {
 			"aria-pressed",
 			"false",
 		);
-		expect(screen.getByRole("slider", { name: "Drums level" })).toHaveValue("1");
+		expect(screen.getByRole("slider", { name: "Drums level" })).toHaveAttribute(
+			"aria-valuenow",
+			"1",
+		);
+		expect(screen.getByRole("slider", { name: "Drums pan" })).toHaveAttribute("aria-valuenow", "0");
 		expect(screen.getByRole("slider", { name: "Drums position" })).toBeInTheDocument();
 	});
 
@@ -79,13 +85,16 @@ describe("StemRow", () => {
 		);
 	});
 
-	test("the fader sets the gain to its value", async () => {
+	test("the fader sets the gain and the knob the pan, a step at a time from the keyboard", async () => {
 		const { engine, spies } = engineWithSpies();
 		render(StemRow, { props: { stem: stem(), engine } });
 		const fader = screen.getByRole("slider", { name: "Drums level" });
-		expect(fader).toHaveAttribute("max", "1.25");
-		await fireEvent.input(fader, { target: { value: "0.5" } });
-		expect(spies.setGain).toHaveBeenCalledWith("s1", 0.5);
+		expect(fader).toHaveAttribute("aria-valuemax", "1.25");
+		await fireEvent.keyDown(fader, { key: "ArrowLeft" });
+		expect(spies.setGain).toHaveBeenCalledWith("s1", 0.99);
+		const pan = screen.getByRole("slider", { name: "Drums pan" });
+		await fireEvent.keyDown(pan, { key: "ArrowRight" });
+		expect(spies.setPan).toHaveBeenCalledWith("s1", 0.05);
 	});
 
 	test("m and s on anything in the row toggle, except on the fader", async () => {

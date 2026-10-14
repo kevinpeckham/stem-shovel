@@ -37,3 +37,5 @@ If the song has sections, a row above the stems shows them with their numerals; 
 ## MIDI
 
 A stem can carry a MIDI file (from the row's ⋯ menu). It gets a **MIDI** chip beside its name; click the chip to swap the waveform for a piano roll of the notes, and click again to go back. The MIDI file downloads from the same menu.
+
+Beside each stem's fader is a **pan** knob: drag it to place the stem left or right, double-click for centre. The pan is part of your own mix, kept in your browser, of a custom mix download, and of the default mix a member saves for everyone.

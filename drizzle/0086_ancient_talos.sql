@@ -1,0 +1,1 @@
+ALTER TABLE `stem` ADD `pan` real DEFAULT 0 NOT NULL;

@@ -74,6 +74,8 @@ export const DefaultMixSchema = v.object({
 			v.object({
 				id: NanoIdSchema,
 				gain: v.pipe(v.number(), v.minValue(0), v.maxValue(FADER_MAX)),
+				/** -1 (left) to 1 (right); centre when absent. */
+				pan: v.optional(v.pipe(v.number(), v.minValue(-1), v.maxValue(1)), 0),
 			}),
 		),
 		v.minLength(1),

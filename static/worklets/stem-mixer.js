@@ -9,8 +9,10 @@
  * only while playing and primed: every stem has `PRIME` seconds queued
  * from the counter, or has ended. A stem whose queue runs dry mid-play
  * stops the counter for all (a mix with a stem missing is wrong in a way
- * nobody notices) and reports `buffering`. Gains ramp exponentially, as
- * `setTargetAtTime` does on the buffered path.
+ * nobody notices) and reports `buffering`. Gains and pans ramp
+ * exponentially, as `setTargetAtTime` does on the buffered path; the pan
+ * follows the StereoPannerNode's law (equal power for a mono stem, the
+ * Web Audio stereo rule for a stereo one).
  *
  * Control messages (from the main thread): port, stems, gain, play,
  * pause, seek, remove, keep. Reports (to the main thread): position,
@@ -28,6 +30,30 @@ const RAMP = 0.015;
 const REPORT_EVERY = 2048;
 
 /**
+ * The pan as channel weights: `ll` is how much of the left input reaches
+ * the left output, `lr` how much of the right input, and so on. A stereo
+ * stem follows the StereoPannerNode's law (its own channels kept, the far
+ * one leaning over). A mono stem sits at unity in both channels at centre,
+ * as it did before pans (the player upmixed it), and the far channel falls
+ * away on a sine as it turns: the same law the buffered path's pair of
+ * gains applies (engine.svelte.ts, `#monoPan`).
+ */
+export function panWeights(pan, mono) {
+	if (mono) {
+		// The mono data is read as L; R is the same array, so only `ll` and `rl` carry.
+		const wL = pan > 0 ? Math.cos((pan * Math.PI) / 2) : 1;
+		const wR = pan < 0 ? Math.sin(((pan + 1) * Math.PI) / 2) : 1;
+		return { ll: wL, lr: 0, rl: wR, rr: 0 };
+	}
+	if (pan <= 0) {
+		const theta = ((pan + 1) * Math.PI) / 2;
+		return { ll: 1, lr: Math.cos(theta), rl: 0, rr: Math.sin(theta) };
+	}
+	const theta = (pan * Math.PI) / 2;
+	return { ll: Math.cos(theta), lr: 0, rl: Math.sin(theta), rr: 1 };
+}
+
+/**
  * The mixing state apart from the AudioWorkletProcessor shell, so it can be
  * tested in Node (stemMixer.test.ts): the queues, the counter, the ramps.
  */
@@ -35,7 +61,7 @@ export class Mixer {
 	constructor(sampleRate, channels = 2) {
 		this.sampleRate = sampleRate;
 		this.channels = channels;
-		/** id → { queue: [{start, data: Float32Array[]}], gain, target, ended: number | null } */
+		/** id → { queue: [{start, data: Float32Array[]}], gain, target, pan, panTarget, ended: number | null } */
 		this.stems = new Map();
 		this.counter = 0;
 		this.generation = 0;
@@ -48,7 +74,8 @@ export class Mixer {
 
 	setStems(ids) {
 		for (const id of ids)
-			if (!this.stems.has(id)) this.stems.set(id, { queue: [], gain: 0, target: 1, ended: null });
+			if (!this.stems.has(id))
+				this.stems.set(id, { queue: [], gain: 0, target: 1, pan: 0, panTarget: 0, ended: null });
 		for (const id of this.stems.keys()) if (!ids.includes(id)) this.stems.delete(id);
 	}
 
@@ -57,6 +84,13 @@ export class Mixer {
 		if (!stem) return;
 		stem.target = value;
 		if (immediate) stem.gain = value;
+	}
+
+	setPan(id, value, immediate) {
+		const stem = this.stems.get(id);
+		if (!stem) return;
+		stem.panTarget = Math.max(-1, Math.min(1, value));
+		if (immediate) stem.pan = stem.panTarget;
 	}
 
 	remove(id) {
@@ -146,11 +180,14 @@ export class Mixer {
 			if (until > from && this.coverage(stem, from) < until - from) return "buffering";
 		}
 		for (const stem of this.stems.values()) {
-			// The ramp: one step per quantum toward the target, applied evenly across it.
+			// The ramps: one step per quantum toward the targets, applied evenly across it.
 			const g0 = stem.gain;
 			stem.gain += (stem.target - stem.gain) * this.rampK;
 			const g1 = stem.gain;
 			if (g0 === 0 && g1 === 0) continue;
+			const p0 = stem.pan;
+			stem.pan += (stem.panTarget - stem.pan) * this.rampK;
+			const p1 = stem.pan;
 			for (const c of stem.queue) {
 				const cEnd = c.start + c.data[0].length;
 				if (cEnd <= from) continue;
@@ -158,13 +195,22 @@ export class Mixer {
 				const a = Math.max(from, c.start);
 				const b = Math.min(to, cEnd);
 				const mono = c.data.length === 1;
-				for (let ch = 0; ch < out.length; ch++) {
-					const src = mono ? c.data[0] : c.data[Math.min(ch, c.data.length - 1)];
-					const dst = out[ch];
-					for (let s = a; s < b; s++) {
-						const t = (s - from) / frames;
-						dst[s - from] += src[s - c.start] * (g0 + (g1 - g0) * t);
-					}
+				// The pan's channel weights at the quantum's start and end (panWeights), interpolated between.
+				const w0 = panWeights(p0, mono);
+				const w1 = panWeights(p1, mono);
+				const L = c.data[0];
+				const R = mono ? c.data[0] : c.data[1];
+				const outL = out[0];
+				const outR = out[1] ?? out[0];
+				for (let s = a; s < b; s++) {
+					const t = (s - from) / frames;
+					const g = g0 + (g1 - g0) * t;
+					const i = s - c.start;
+					const o = s - from;
+					outL[o] +=
+						g * (L[i] * (w0.ll + (w1.ll - w0.ll) * t) + R[i] * (w0.lr + (w1.lr - w0.lr) * t));
+					outR[o] +=
+						g * (L[i] * (w0.rl + (w1.rl - w0.rl) * t) + R[i] * (w0.rr + (w1.rr - w0.rr) * t));
 				}
 			}
 		}
@@ -210,6 +256,9 @@ if (typeof AudioWorkletProcessor !== "undefined") {
 					break;
 				case "gain":
 					x.setGain(m.id, m.value, !!m.immediate);
+					break;
+				case "pan":
+					x.setPan(m.id, m.value, !!m.immediate);
 					break;
 				case "play":
 					x.playing = true;

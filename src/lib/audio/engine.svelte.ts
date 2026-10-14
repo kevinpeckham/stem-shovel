@@ -74,6 +74,57 @@ function readLoadMarker(sources: StemSource[]) {
 	};
 }
 
+/** A mono stem's channel weights for a pan: unity both sides at centre, the far side falling away on a sine. */
+export function monoPan(pan: number): { left: number; right: number } {
+	return {
+		left: pan > 0 ? Math.cos((pan * Math.PI) / 2) : 1,
+		right: pan < 0 ? Math.sin(((pan + 1) * Math.PI) / 2) : 1,
+	};
+}
+
+/** The pan stage after a stem's gain (see `#panners`): `set` moves it with a ramp (tau 0 sets it at once). */
+function makePanner(
+	ctx: BaseAudioContext,
+	from: AudioNode,
+	to: AudioNode,
+	mono: boolean,
+): { set(pan: number, tau: number): void; disconnect(): void } {
+	const at = (param: AudioParam, value: number, tau: number) => {
+		param.cancelScheduledValues(ctx.currentTime);
+		if (tau) param.setTargetAtTime(value, ctx.currentTime, tau);
+		else param.value = value;
+	};
+	if (!mono) {
+		const panner = ctx.createStereoPanner();
+		from.connect(panner);
+		panner.connect(to);
+		return {
+			set: (pan, tau) => at(panner.pan, pan, tau),
+			disconnect: () => panner.disconnect(),
+		};
+	}
+	const left = ctx.createGain();
+	const right = ctx.createGain();
+	const merger = ctx.createChannelMerger(2);
+	from.connect(left);
+	from.connect(right);
+	left.connect(merger, 0, 0);
+	right.connect(merger, 0, 1);
+	merger.connect(to);
+	return {
+		set: (pan, tau) => {
+			const w = monoPan(pan);
+			at(left.gain, w.left, tau);
+			at(right.gain, w.right, tau);
+		},
+		disconnect: () => {
+			left.disconnect();
+			right.disconnect();
+			merger.disconnect();
+		},
+	};
+}
+
 /** The stems' upload-time peaks summed and clamped, the streamed mode's stand-in for the mix waveform (no buffers to sum). */
 function sumPeaks(peaks: number[][]): number[] {
 	const bins = peaks.reduce((max, p) => Math.max(max, p.length), 0);
@@ -156,6 +207,14 @@ export class StemEngine {
 	#masterNode: GainNode | null = null;
 	#buffers = new Map<string, AudioBuffer>();
 	#gains = new Map<string, GainNode>();
+	/**
+	 * Buffered mode's pan after each stem's gain (the worklet pans itself when
+	 * streamed): a StereoPannerNode for a stereo buffer; for a mono one a pair
+	 * of gains into a merger, so it sits at unity in both channels at centre
+	 * as it did before pans (a StereoPannerNode would drop it 3 dB) and the
+	 * far channel falls away on a sine as it turns (`monoPan`).
+	 */
+	#panners = new Map<string, { set(pan: number, tau: number): void; disconnect(): void }>();
 	#sources = new Map<string, AudioBufferSourceNode>(); // live only while playing
 	#startedAt = 0; // ctx.currentTime at which the current run was scheduled
 	#offset = 0; // track position (s) the current run started from, or the paused position
@@ -222,6 +281,7 @@ export class StemEngine {
 			id: src.id,
 			label: src.label,
 			gain: clamp(src.gain ?? 1, 0, FADER_MAX),
+			pan: clamp(src.pan ?? 0, -1, 1),
 			muted: false,
 			soloed: false,
 			duration: src.duration ?? 0,
@@ -296,9 +356,11 @@ export class StemEngine {
 			const buffer = collapseDualMono(decoded, ctx);
 
 			const gain = ctx.createGain();
-			gain.connect(master);
+			const panner = makePanner(ctx, gain, master, buffer.numberOfChannels === 1);
+			panner.set(this.stems.find((s) => s.id === src.id)?.pan ?? 0, 0);
 			this.#buffers.set(src.id, buffer);
 			this.#gains.set(src.id, gain);
+			this.#panners.set(src.id, panner);
 
 			const stem = this.stems.find((s) => s.id === src.id);
 			if (stem) {
@@ -541,6 +603,20 @@ export class StemEngine {
 		if (wasPlaying) void this.play();
 	}
 
+	/** Pan a stem, -1 (left) to 1 (right); the same 15 ms ramp as the faders. */
+	setPan(id: string, value: number): void {
+		const stem = this.stems.find((s) => s.id === id);
+		if (!stem) return;
+		stem.pan = clamp(value, -1, 1);
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		if (this.mode === "streamed") {
+			this.#mixer?.port.postMessage({ type: "pan", id, value: stem.pan });
+			return;
+		}
+		this.#panners.get(id)?.set(stem.pan, RAMP);
+	}
+
 	setGain(id: string, value: number): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (!stem) return;
@@ -589,6 +665,8 @@ export class StemEngine {
 		}
 		this.#gains.get(id)?.disconnect();
 		this.#gains.delete(id);
+		this.#panners.get(id)?.disconnect();
+		this.#panners.delete(id);
 		this.#buffers.delete(id);
 		if (this.mode === "streamed") {
 			this.#mixer?.port.postMessage({ type: "remove", id });
@@ -632,7 +710,7 @@ export class StemEngine {
 		return {
 			master: this.master,
 			stems: this.stems
-				.map((s) => ({ id: s.id, gain: this.#effectiveGain(s) }))
+				.map((s) => ({ id: s.id, gain: this.#effectiveGain(s), pan: s.pan }))
 				.filter((s) => s.gain > 0),
 		};
 	}
@@ -727,13 +805,15 @@ export class StemEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		if (this.mode === "streamed") {
-			for (const stem of this.stems)
+			for (const stem of this.stems) {
 				this.#mixer?.port.postMessage({
 					type: "gain",
 					id: stem.id,
 					value: this.#effectiveGain(stem),
 					immediate,
 				});
+				this.#mixer?.port.postMessage({ type: "pan", id: stem.id, value: stem.pan, immediate });
+			}
 			return;
 		}
 		const now = ctx.currentTime;
@@ -758,6 +838,8 @@ export class StemEngine {
 		this.#manifest = [];
 		for (const node of this.#gains.values()) node.disconnect();
 		this.#gains.clear();
+		for (const node of this.#panners.values()) node.disconnect();
+		this.#panners.clear();
 		this.#buffers.clear();
 		this.stems = [];
 		this.mixPeaks = [];
