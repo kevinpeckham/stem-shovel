@@ -37,6 +37,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   attributes), the name's truncation (on the text, not its flex parent),
   a stale `col-span-3` on the waveform in a one-column grid, and moved
   the dev-only `CQMeasuring` badge from every row to the player.
+- **The section timeline and the Comments row sit on the stem rows' grid**:
+  one column until the player's container reaches `@4xl`, then a 14rem
+  toolbar column beside the lanes and the mix waveform, so all three
+  start and end where the stems' waveforms do (Kevin fixed the stem
+  column's width; the section row's leftover spacer column went).
 - **Download Stems says what it is doing.** The menu closes on the click
   and a big song's zip takes a while (Kevin), so a notice now follows the
   work, naming the stem going into the zip and its number of the total,

@@ -72,7 +72,7 @@
 		border-b
 		border-white/10
 		py-3
-		@4xl-grid-cols-[minmax(14rem,22%)_minmax(0,1fr)]
+		@4xl-grid-cols-[14rem_minmax(0,1fr)]
 		w-full
 		overflow-x-hidden
 		relative {dragging ? 'opacity-50' : ''}

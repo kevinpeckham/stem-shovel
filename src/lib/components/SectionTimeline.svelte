@@ -69,8 +69,9 @@
 	let severalKeys = $derived(changes.filter((c) => c.kind === "key").length >= 2);
 </script>
 
+<!-- On the stem rows' grid (StemRow.svelte): one column until the player's container reaches @4xl, then the 14rem toolbar column beside the lanes. -->
 <div
-	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 sm:grid-cols-[172px_1fr] leading-none"
+	class="grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b border-white/10 py-2 @4xl-grid-cols-[14rem_minmax(0,1fr)] leading-none"
 	role="group"
 	aria-label="Song sections"
 >
@@ -88,10 +89,7 @@
 		{/if}
 	</div>
 
-	<div
-		class="relative col-span-3 sm-col-span-1 gap-y-1 text-10px"
-		style:padding-top="{lanes.length * LANE_REM}rem"
-	>
+	<div class="relative min-w-0 gap-y-1 text-10px" style:padding-top="{lanes.length * LANE_REM}rem">
 		{#each lanes as lane, li (lane.kind)}
 			<!-- one lane per kind; each marker runs to the next marker of its kind, so its label clips instead of colliding; a click jumps to where it begins (Kevin: the keys as they lie on the timeline, each a place to go) -->
 			{#each lane.markers as m (m.start)}
@@ -151,6 +149,4 @@
 			{/each}
 		</div>
 	</div>
-	<!-- the stem rows end with a menu button; keep the column so the bar lines up with the waveforms -->
-	<div class="hidden sm:block sm:w-8" aria-hidden="true"></div>
 </div>

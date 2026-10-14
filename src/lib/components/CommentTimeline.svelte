@@ -81,9 +81,12 @@
 
 <svelte:window onpointerdown={onwindowpointerdown} onkeydown={onwindowkeydown} />
 
+<!-- On the stem rows' grid (StemRow.svelte): one column, the heading over the waveform, until the
+     player's container reaches @4xl, then the 14rem toolbar column beside it, so the mix waveform
+     starts and ends where the stems' do. -->
 <div
 	class="grid items-center gap-x-3 gap-y-2 py-2 leading-none
-	{heading ? 'grid-cols-[1fr_auto_auto] sm-grid-cols-[172px_1fr]' : 'grid-cols-2 sm-grid-cols-1'}"
+	{heading ? 'grid-cols-1 @4xl-grid-cols-[14rem_minmax(0,1fr)]' : 'grid-cols-2 sm-grid-cols-1'}"
 	role="group"
 	aria-label="Comments on the timeline"
 >
@@ -107,7 +110,7 @@
 		</div>
 	{/if}
 
-	<div class="relative col-span-3 sm-col-span-1" title={canComment ? HOW_TO : undefined}>
+	<div class="relative min-w-0" title={canComment ? HOW_TO : undefined}>
 		<div class={dimWaveform ? "opacity-50" : ""}>
 			<Waveform
 				{peaks}
