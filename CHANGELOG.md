@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.128.0] - 2026-10-14
+
 ### Added
 
 - **A pan knob on every stem row**, beside the fader, as on a Studio
