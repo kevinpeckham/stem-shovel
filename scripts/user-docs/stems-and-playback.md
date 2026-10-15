@@ -38,4 +38,4 @@ If the song has sections, a row above the stems shows them with their numerals; 
 
 A stem can carry a MIDI file (from the row's ⋯ menu). It gets a **MIDI** chip beside its name; click the chip to swap the waveform for a piano roll of the notes, and click again to go back. The MIDI file downloads from the same menu.
 
-Beside each stem's fader is a **pan** knob: drag it to place the stem left or right, double-click for centre. The pan is part of your own mix, kept in your browser, of a custom mix download, and of the default mix a member saves for everyone.
+Beside each stem's fader is a **pan** knob: drag it to place the stem left or right, double-click for centre. The pan is part of your own mix, kept in your browser, of a custom mix download, and of the default mix a member saves for everyone. Under the controls a **level meter** shows what the stem puts into the mix after its fader and pan, with a thin mark that holds the recent peak; the master has one beside its fader. The small square at the meter's end lights red when the level reaches full scale and stays lit until you click it, so a clip you missed is still there to see.

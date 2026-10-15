@@ -28,6 +28,8 @@ const KEEP_BEHIND = 1;
 const RAMP = 0.015;
 /** How often the position is reported, in samples. */
 const REPORT_EVERY = 2048;
+/** How often the meters' peaks are reported, in samples (about 47 a second at 48 kHz). */
+const LEVELS_EVERY = 1024;
 
 /**
  * The pan as channel weights: `ll` is how much of the left input reaches
@@ -70,12 +72,22 @@ export class Mixer {
 		this.buffering = false;
 		this.rampK = 1 - Math.exp(-128 / (RAMP * sampleRate));
 		this.sinceReport = 0;
+		this.masterPeak = 0;
+		this.sinceLevels = 0;
 	}
 
 	setStems(ids) {
 		for (const id of ids)
 			if (!this.stems.has(id))
-				this.stems.set(id, { queue: [], gain: 0, target: 1, pan: 0, panTarget: 0, ended: null });
+				this.stems.set(id, {
+					queue: [],
+					gain: 0,
+					target: 1,
+					pan: 0,
+					panTarget: 0,
+					ended: null,
+					peak: 0,
+				});
 		for (const id of this.stems.keys()) if (!ids.includes(id)) this.stems.delete(id);
 	}
 
@@ -202,21 +214,45 @@ export class Mixer {
 				const R = mono ? c.data[0] : c.data[1];
 				const outL = out[0];
 				const outR = out[1] ?? out[0];
+				let peak = stem.peak;
 				for (let s = a; s < b; s++) {
 					const t = (s - from) / frames;
 					const g = g0 + (g1 - g0) * t;
 					const i = s - c.start;
 					const o = s - from;
-					outL[o] +=
+					const l =
 						g * (L[i] * (w0.ll + (w1.ll - w0.ll) * t) + R[i] * (w0.lr + (w1.lr - w0.lr) * t));
-					outR[o] +=
+					const r =
 						g * (L[i] * (w0.rl + (w1.rl - w0.rl) * t) + R[i] * (w0.rr + (w1.rr - w0.rr) * t));
+					outL[o] += l;
+					outR[o] += r;
+					// The meter's peak for this stem, after its gain and pan.
+					const m = Math.max(Math.abs(l), Math.abs(r));
+					if (m > peak) peak = m;
 				}
+				stem.peak = peak;
 			}
 		}
 		this.counter = to;
 		this.trim();
+		// The master's peak this quantum (meters), before the master gain the main thread applies after the worklet.
+		let master = this.masterPeak;
+		for (const ch of out)
+			for (let i = 0; i < frames; i++) if (Math.abs(ch[i]) > master) master = Math.abs(ch[i]);
+		this.masterPeak = master;
 		return "mixed";
+	}
+
+	/** The peaks since the last take, per stem and for the sum, and start again. */
+	takePeaks() {
+		const stems = {};
+		for (const [id, stem] of this.stems) {
+			stems[id] = stem.peak;
+			stem.peak = 0;
+		}
+		const master = this.masterPeak;
+		this.masterPeak = 0;
+		return { stems, master };
 	}
 
 	/** Chunks wholly behind the counter by more than KEEP_BEHIND go. */
@@ -307,7 +343,15 @@ if (typeof AudioWorkletProcessor !== "undefined") {
 			if (result === "ended") {
 				x.playing = false;
 				this.port.postMessage({ type: "ended", sample: x.counter });
-			} else if (result === "mixed") this.report(false);
+			} else if (result === "mixed") {
+				this.report(false);
+				// The meters: the peaks per stem and of the sum, every LEVELS_EVERY samples.
+				x.sinceLevels += frames;
+				if (x.sinceLevels >= LEVELS_EVERY) {
+					x.sinceLevels = 0;
+					this.port.postMessage({ type: "levels", ...x.takePeaks() });
+				}
+			}
 			return true;
 		}
 	}

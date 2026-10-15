@@ -8,6 +8,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Level meters on every stem row and on the master**, with a peak-hold
+  mark and a clip light that sticks until it is clicked (Kevin). A stem's
+  meter reads after its fader and pan, the master's after its fader, on
+  a dB scale from −48 to unity, amber from −6 dB, red at full scale.
+  Buffered, an AnalyserNode taps each stem's pan output and the master;
+  streamed, the mixer worklet tracks each stem's and the sum's peak per
+  quantum and reports them every 1024 samples. `nextMeter` in
+  `src/lib/utils/meterLevel.ts` holds the fall, the hold and the clip
+  memory; `StemEngine.levels`, `masterLevel`, `resetClips(id?)`;
+  `LevelMeter.svelte`.
+
 ## [0.128.0] - 2026-10-14
 
 ### Added

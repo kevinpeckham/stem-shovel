@@ -114,6 +114,21 @@ describe("Mixer", () => {
 		expect(o[0]![0]).toBeCloseTo(0);
 		expect(o[1]![0]).toBeCloseTo(2);
 	});
+	it("reports each stem's peak after gain and pan, and the sum's, then starts again", () => {
+		const m = new Mixer(RATE);
+		m.setStems(["a", "b"]);
+		m.setGain("a", 0.5, true);
+		m.setGain("b", 1, true);
+		m.playing = true;
+		m.push("a", 0, 0, chunk(5000, 1));
+		m.push("b", 0, 0, chunk(5000, 0.25));
+		m.mix(out(), 128);
+		const peaks = m.takePeaks() as { stems: Record<string, number>; master: number };
+		expect(peaks.stems["a"]).toBeCloseTo(0.5);
+		expect(peaks.stems["b"]).toBeCloseTo(0.25);
+		expect(peaks.master).toBeCloseTo(0.75);
+		expect(m.takePeaks().master).toBe(0);
+	});
 	it("keeps a second behind the counter and trims the rest", () => {
 		const m = new Mixer(RATE);
 		m.setStems(["a"]);

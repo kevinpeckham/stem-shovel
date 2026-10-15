@@ -117,3 +117,25 @@ upmixed to stereo first), and the song's saved default mix (`stem.pan`,
 migration 0086, `DefaultMixSchema`, the manifest's `pan`). The original
 mix's key includes a pan only when it is off centre, so every song whose
 stems are centred keeps the key it had and nothing re-renders.
+
+## Meters (2026-10-15)
+
+Every stem row and the master carry a level meter with a peak-hold mark
+and a clip light that sticks until it is clicked (Kevin). The engine
+keeps `levels` (per stem) and `masterLevel` as `MeterState`
+(`src/lib/utils/meterLevel.ts`: the level shown, falling at 1.6 a second
+once the signal drops; the hold mark, kept a second and a half then
+falling; `clipped`, set by any peak at or over full scale and cleared
+only by `resetClips`). A frame loop (`#meterStep`) runs while playing
+and until the bars have fallen to rest. Buffered, each stem has an
+AnalyserNode on its pan's output (what the stem puts into the sum, after
+fader and pan) and the master's analyser sits after the master gain.
+Streamed, the mixer worklet tracks each stem's peak as it adds the
+stem's samples and the sum's peak per quantum, and posts them every
+1024 samples (`levels`); the engine keeps the highest since the last
+frame so a transient between frames still lights the clip, and scales
+the sum's peak by the master gain, which is applied after the worklet.
+`LevelMeter.svelte` draws the bar on a dB scale (−48 dB to unity;
+amber from −6 dB, red at full scale), the mark as a thin tick, and the
+light as a small square, red while a clip is held; a click resets that
+stem's (or, on the master, everything's).

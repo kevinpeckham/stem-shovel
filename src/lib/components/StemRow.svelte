@@ -8,6 +8,7 @@
 	import Waveform from "#lib/components/Waveform.svelte";
 	import Slider from "#lib/components/Slider.svelte";
 	import Knob from "#lib/components/Knob.svelte";
+	import LevelMeter from "#lib/components/LevelMeter.svelte";
 
 	interface Props {
 		i?: number;
@@ -149,6 +150,13 @@
 				/>
 			</div>
 		</div>
+		<!-- The level after the fader and pan, with a peak-hold mark and a clip light that sticks until clicked (docs/stem-engine.md, "Meters"). -->
+		<LevelMeter
+			class="mt-1.5 max-w-64"
+			state={engine.levels[stem.id]}
+			label={stem.label}
+			onreset={() => engine.resetClips(stem.id)}
+		/>
 	</div>
 
 	<!-- waveform -->

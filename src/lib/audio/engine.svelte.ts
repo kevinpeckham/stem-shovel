@@ -10,6 +10,7 @@ import { FADER_MAX } from "#lib/constants/fader.js";
 import { STEM_MEMORY_SOFT_BYTES } from "#lib/constants/stemFormats.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
 import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
+import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
 import {
 	stemPlaybackMode,
 	type StemModeChoice,
@@ -88,7 +89,7 @@ function makePanner(
 	from: AudioNode,
 	to: AudioNode,
 	mono: boolean,
-): { set(pan: number, tau: number): void; disconnect(): void } {
+): { output: AudioNode; set(pan: number, tau: number): void; disconnect(): void } {
 	const at = (param: AudioParam, value: number, tau: number) => {
 		param.cancelScheduledValues(ctx.currentTime);
 		if (tau) param.setTargetAtTime(value, ctx.currentTime, tau);
@@ -99,6 +100,7 @@ function makePanner(
 		from.connect(panner);
 		panner.connect(to);
 		return {
+			output: panner,
 			set: (pan, tau) => at(panner.pan, pan, tau),
 			disconnect: () => panner.disconnect(),
 		};
@@ -112,6 +114,7 @@ function makePanner(
 	right.connect(merger, 0, 1);
 	merger.connect(to);
 	return {
+		output: merger,
 		set: (pan, tau) => {
 			const w = monoPan(pan);
 			at(left.gain, w.left, tau);
@@ -179,6 +182,15 @@ export class StemEngine {
 	mode = $state<StemPlaybackMode>("buffered");
 	/** Streamed and waiting for a stem's window to fill (a seek, a slow network); the counter is stopped. */
 	buffering = $state(false);
+	/**
+	 * The meters (docs/stem-engine.md, "Meters"): each stem's level after its
+	 * fader and pan, and the master's after the master gain, with a peak-hold
+	 * mark and a clip memory that sticks until `resetClips`. Replaced whole
+	 * every frame while playing (and a moment after), so rows read
+	 * `engine.levels[id]`.
+	 */
+	levels = $state.raw<Record<string, MeterState>>({});
+	masterLevel = $state.raw<MeterState>(METER_ZERO);
 
 	anySolo = $derived(this.stems.some((s) => s.soloed));
 	decodedBytes = $derived(this.stems.reduce((sum, s) => sum + s.decodedBytes, 0));
@@ -214,7 +226,10 @@ export class StemEngine {
 	 * as it did before pans (a StereoPannerNode would drop it 3 dB) and the
 	 * far channel falls away on a sine as it turns (`monoPan`).
 	 */
-	#panners = new Map<string, { set(pan: number, tau: number): void; disconnect(): void }>();
+	#panners = new Map<
+		string,
+		{ output: AudioNode; set(pan: number, tau: number): void; disconnect(): void }
+	>();
 	#sources = new Map<string, AudioBufferSourceNode>(); // live only while playing
 	#startedAt = 0; // ctx.currentTime at which the current run was scheduled
 	#offset = 0; // track position (s) the current run started from, or the paused position
@@ -231,6 +246,12 @@ export class StemEngine {
 	#streamRunning = false;
 	#manifest: StemSource[] = [];
 	#analyser: AnalyserNode | null = null;
+	/** Buffered mode: an analyser per stem after its pan; streamed mode: the worklet's last reported peaks. */
+	#stemAnalysers = new Map<string, AnalyserNode>();
+	#streamPeaks: { stems: Record<string, number>; master: number } = { stems: {}, master: 0 };
+	#meterFrame = 0;
+	#meterAt = 0;
+	#meterBuf: Float32Array<ArrayBuffer> | null = null;
 
 	/**
 	 * @param sampleRate Context rate. decodeAudioData resamples into it, so 32 kHz
@@ -361,6 +382,11 @@ export class StemEngine {
 			this.#buffers.set(src.id, buffer);
 			this.#gains.set(src.id, gain);
 			this.#panners.set(src.id, panner);
+			// The stem's meter taps the pan's output: what this stem puts into the sum.
+			const analyser = ctx.createAnalyser();
+			analyser.fftSize = 1024;
+			panner.output.connect(analyser);
+			this.#stemAnalysers.set(src.id, analyser);
 
 			const stem = this.stems.find((s) => s.id === src.id);
 			if (stem) {
@@ -482,6 +508,12 @@ export class StemEngine {
 			if (this.playing && (m.sample ?? 0) > this.#streamSample) this.#streamRunning = true;
 			this.#streamSample = m.sample ?? 0;
 			this.#streamReportedAt = ctx.currentTime;
+		} else if (m.type === "levels") {
+			const levels = m as unknown as { stems: Record<string, number>; master: number };
+			// The highest since the last frame read it: a transient between frames still lights the clip.
+			for (const [id, peak] of Object.entries(levels.stems))
+				this.#streamPeaks.stems[id] = Math.max(this.#streamPeaks.stems[id] ?? 0, peak);
+			this.#streamPeaks.master = Math.max(this.#streamPeaks.master, levels.master);
 		} else if (m.type === "state") {
 			this.buffering = !!m.buffering;
 			if (this.buffering) this.#streamReportedAt = ctx.currentTime;
@@ -536,6 +568,7 @@ export class StemEngine {
 			this.#mixer?.port.postMessage({ type: "play" });
 			this.playing = true;
 			this.#tick();
+			this.#startMeters();
 			return;
 		}
 
@@ -557,6 +590,7 @@ export class StemEngine {
 		this.#startedAt = when;
 		this.playing = true;
 		this.#tick();
+		this.#startMeters();
 	}
 
 	pause(): void {
@@ -667,6 +701,8 @@ export class StemEngine {
 		this.#gains.delete(id);
 		this.#panners.get(id)?.disconnect();
 		this.#panners.delete(id);
+		this.#stemAnalysers.get(id)?.disconnect();
+		this.#stemAnalysers.delete(id);
 		this.#buffers.delete(id);
 		if (this.mode === "streamed") {
 			this.#mixer?.port.postMessage({ type: "remove", id });
@@ -728,6 +764,69 @@ export class StemEngine {
 		for (const v of data) peak = Math.max(peak, Math.abs(v));
 		return peak;
 	}
+
+	/** Forget a stem's clip (or every stem's and the master's, with no id); the lights go out. */
+	resetClips(id?: string): void {
+		const next: Record<string, MeterState> = {};
+		for (const [k, v] of Object.entries(this.levels))
+			next[k] = id === undefined || k === id ? { ...v, clipped: false } : v;
+		this.levels = next;
+		if (id === undefined) this.masterLevel = { ...this.masterLevel, clipped: false };
+	}
+
+	/**
+	 * The meter loop: each frame, every stem's peak since the last (the
+	 * analyser's latest frame when buffered, the worklet's reports when
+	 * streamed) and the master's, through `nextMeter` for the fall, the hold
+	 * and the clip memory. Runs while playing and for two seconds after, so
+	 * the bars fall to rest; the clips stay.
+	 */
+	#startMeters(): void {
+		cancelAnimationFrame(this.#meterFrame);
+		this.#meterAt = performance.now();
+		this.#meterFrame = requestAnimationFrame(this.#meterStep);
+	}
+	#meterStep = (): void => {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		const now = performance.now();
+		const dt = Math.min(0.1, (now - this.#meterAt) / 1000);
+		this.#meterAt = now;
+		const t = now / 1000;
+		const buf = (this.#meterBuf ??= new Float32Array(2048));
+		const peakOf = (analyser: AnalyserNode | undefined): number => {
+			if (!analyser) return 0;
+			analyser.getFloatTimeDomainData(buf);
+			let peak = 0;
+			for (let i = 0; i < analyser.fftSize; i++) {
+				const v = Math.abs(buf[i]!);
+				if (v > peak) peak = v;
+			}
+			return peak;
+		};
+		const next: Record<string, MeterState> = {};
+		let moving = false;
+		for (const stem of this.stems) {
+			const peak = !this.playing
+				? 0
+				: this.mode === "streamed"
+					? (this.#streamPeaks.stems[stem.id] ?? 0)
+					: peakOf(this.#stemAnalysers.get(stem.id));
+			const state = nextMeter(this.levels[stem.id] ?? METER_ZERO, peak, t, dt);
+			next[stem.id] = state;
+			if (state.level > 0 || state.hold > 0) moving = true;
+		}
+		this.levels = next;
+		const masterPeak = !this.playing
+			? 0
+			: this.mode === "streamed"
+				? this.#streamPeaks.master * this.master
+				: peakOf(this.#analyser ?? undefined);
+		this.masterLevel = nextMeter(this.masterLevel, masterPeak, t, dt);
+		this.#streamPeaks = { stems: {}, master: 0 };
+		if (this.playing || moving || this.masterLevel.level > 0)
+			this.#meterFrame = requestAnimationFrame(this.#meterStep);
+	};
 
 	/** The label is display-only; changing it never needs a reload. */
 	relabel(id: string, label: string): void {
@@ -840,6 +939,11 @@ export class StemEngine {
 		this.#gains.clear();
 		for (const node of this.#panners.values()) node.disconnect();
 		this.#panners.clear();
+		for (const node of this.#stemAnalysers.values()) node.disconnect();
+		this.#stemAnalysers.clear();
+		cancelAnimationFrame(this.#meterFrame);
+		this.levels = {};
+		this.masterLevel = METER_ZERO;
 		this.#buffers.clear();
 		this.stems = [];
 		this.mixPeaks = [];

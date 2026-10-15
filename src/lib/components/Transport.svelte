@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LevelMeter from "#lib/components/LevelMeter.svelte";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
 	import { type BarGrid, formatPosition } from "#lib/audio/measures.js";
 	import { cycleReadoutMode, readoutMode } from "#lib/audio/readout.svelte.js";
@@ -119,16 +120,25 @@
 		</div>
 	</div>
 
-	<label class="ml-auto flex items-center gap-2 text-sm text-dim">
-		Master
-		<input
-			type="range"
-			class="w-32 accent-blue-300"
-			min="0"
-			max="1"
-			step="0.01"
-			value={engine.master}
-			oninput={(e) => engine.setMaster(e.currentTarget.valueAsNumber)}
+	<div class="ml-auto grid gap-1">
+		<label class="flex items-center gap-2 text-sm text-dim">
+			Master
+			<input
+				type="range"
+				class="w-32 accent-blue-300"
+				min="0"
+				max="1"
+				step="0.01"
+				value={engine.master}
+				oninput={(e) => engine.setMaster(e.currentTarget.valueAsNumber)}
+			/>
+		</label>
+		<!-- The master's level after its fader, with a peak-hold mark and a clip light that sticks until clicked. -->
+		<LevelMeter
+			class="ml-auto w-32"
+			state={engine.masterLevel}
+			label="Master"
+			onreset={() => engine.resetClips()}
 		/>
-	</label>
+	</div>
 </div>
