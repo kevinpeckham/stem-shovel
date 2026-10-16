@@ -74,6 +74,9 @@ export class Mixer {
 		this.sinceReport = 0;
 		this.masterPeak = 0;
 		this.sinceLevels = 0;
+		/** The sum of squares and the frames behind it since the last take (the meters' RMS), for the sum. */
+		this.masterSq = 0;
+		this.masterFrames = 0;
 	}
 
 	setStems(ids) {
@@ -87,6 +90,8 @@ export class Mixer {
 					panTarget: 0,
 					ended: null,
 					peak: 0,
+					sq: 0,
+					sqFrames: 0,
 				});
 		for (const id of this.stems.keys()) if (!ids.includes(id)) this.stems.delete(id);
 	}
@@ -215,6 +220,7 @@ export class Mixer {
 				const outL = out[0];
 				const outR = out[1] ?? out[0];
 				let peak = stem.peak;
+				let sq = stem.sq;
 				for (let s = a; s < b; s++) {
 					const t = (s - from) / frames;
 					const g = g0 + (g1 - g0) * t;
@@ -226,33 +232,52 @@ export class Mixer {
 						g * (L[i] * (w0.rl + (w1.rl - w0.rl) * t) + R[i] * (w0.rr + (w1.rr - w0.rr) * t));
 					outL[o] += l;
 					outR[o] += r;
-					// The meter's peak for this stem, after its gain and pan.
+					// The meter's peak for this stem, after its gain and pan, and the squares behind its RMS.
 					const m = Math.max(Math.abs(l), Math.abs(r));
 					if (m > peak) peak = m;
+					sq += l * l + r * r;
 				}
 				stem.peak = peak;
+				stem.sq = sq;
+				stem.sqFrames += b - a;
 			}
 		}
 		this.counter = to;
 		this.trim();
 		// The master's peak this quantum (meters), before the master gain the main thread applies after the worklet.
 		let master = this.masterPeak;
+		let sq = this.masterSq;
 		for (const ch of out)
-			for (let i = 0; i < frames; i++) if (Math.abs(ch[i]) > master) master = Math.abs(ch[i]);
+			for (let i = 0; i < frames; i++) {
+				const v = ch[i];
+				if (Math.abs(v) > master) master = Math.abs(v);
+				sq += v * v;
+			}
 		this.masterPeak = master;
+		this.masterSq = sq;
+		this.masterFrames += frames;
 		return "mixed";
 	}
 
-	/** The peaks since the last take, per stem and for the sum, and start again. */
+	/** The peaks and the RMS since the last take, per stem and for the sum, and start again. */
 	takePeaks() {
 		const stems = {};
+		const rms = {};
 		for (const [id, stem] of this.stems) {
 			stems[id] = stem.peak;
+			// Both channels' squares over the frames (a frame is two samples out).
+			rms[id] = stem.sqFrames > 0 ? Math.sqrt(stem.sq / (2 * stem.sqFrames)) : 0;
 			stem.peak = 0;
+			stem.sq = 0;
+			stem.sqFrames = 0;
 		}
 		const master = this.masterPeak;
+		const masterRms =
+			this.masterFrames > 0 ? Math.sqrt(this.masterSq / (this.channels * this.masterFrames)) : 0;
 		this.masterPeak = 0;
-		return { stems, master };
+		this.masterSq = 0;
+		this.masterFrames = 0;
+		return { stems, master, rms, masterRms };
 	}
 
 	/** Chunks wholly behind the counter by more than KEEP_BEHIND go. */

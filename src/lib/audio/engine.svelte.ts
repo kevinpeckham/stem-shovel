@@ -248,7 +248,12 @@ export class StemEngine {
 	#analyser: AnalyserNode | null = null;
 	/** Buffered mode: an analyser per stem after its pan; streamed mode: the worklet's last reported peaks. */
 	#stemAnalysers = new Map<string, AnalyserNode>();
-	#streamPeaks: { stems: Record<string, number>; master: number } = { stems: {}, master: 0 };
+	#streamPeaks: {
+		stems: Record<string, number>;
+		master: number;
+		rms: Record<string, number>;
+		masterRms: number;
+	} = { stems: {}, master: 0, rms: {}, masterRms: 0 };
 	#meterFrame = 0;
 	#meterAt = 0;
 	#meterBuf: Float32Array<ArrayBuffer> | null = null;
@@ -510,10 +515,18 @@ export class StemEngine {
 			this.#streamSample = m.sample ?? 0;
 			this.#streamReportedAt = ctx.currentTime;
 		} else if (m.type === "levels") {
-			const levels = m as unknown as { stems: Record<string, number>; master: number };
+			const levels = m as unknown as {
+				stems: Record<string, number>;
+				master: number;
+				rms?: Record<string, number>;
+				masterRms?: number;
+			};
 			// The highest since the last frame read it: a transient between frames still lights the clip.
 			for (const [id, peak] of Object.entries(levels.stems))
 				this.#streamPeaks.stems[id] = Math.max(this.#streamPeaks.stems[id] ?? 0, peak);
+			for (const [id, rms] of Object.entries(levels.rms ?? {}))
+				this.#streamPeaks.rms[id] = Math.max(this.#streamPeaks.rms[id] ?? 0, rms);
+			this.#streamPeaks.masterRms = Math.max(this.#streamPeaks.masterRms, levels.masterRms ?? 0);
 			this.#streamPeaks.master = Math.max(this.#streamPeaks.master, levels.master);
 		} else if (m.type === "state") {
 			this.buffering = !!m.buffering;
@@ -795,36 +808,48 @@ export class StemEngine {
 		this.#meterAt = now;
 		const t = now / 1000;
 		const buf = (this.#meterBuf ??= new Float32Array(2048));
-		const peakOf = (analyser: AnalyserNode | undefined): number => {
-			if (!analyser) return 0;
+		/** The analyser's latest frame: its peak and its RMS (the Stage's halo), linear. */
+		const readOf = (analyser: AnalyserNode | undefined): { peak: number; rms: number } => {
+			if (!analyser) return { peak: 0, rms: 0 };
 			analyser.getFloatTimeDomainData(buf);
 			let peak = 0;
-			for (let i = 0; i < analyser.fftSize; i++) {
-				const v = Math.abs(buf[i]!);
+			let sq = 0;
+			const n = analyser.fftSize;
+			for (let i = 0; i < n; i++) {
+				const x = buf[i]!;
+				const v = Math.abs(x);
 				if (v > peak) peak = v;
+				sq += x * x;
 			}
-			return peak;
+			return { peak, rms: Math.sqrt(sq / n) };
 		};
+		const NONE = { peak: 0, rms: 0 };
 		const next: Record<string, MeterState> = {};
 		let moving = false;
 		for (const stem of this.stems) {
-			const peak = !this.playing
-				? 0
+			const read = !this.playing
+				? NONE
 				: this.mode === "streamed"
-					? (this.#streamPeaks.stems[stem.id] ?? 0)
-					: peakOf(this.#stemAnalysers.get(stem.id));
-			const state = nextMeter(this.levels[stem.id] ?? METER_ZERO, peak, t, dt);
+					? {
+							peak: this.#streamPeaks.stems[stem.id] ?? 0,
+							rms: this.#streamPeaks.rms[stem.id] ?? 0,
+						}
+					: readOf(this.#stemAnalysers.get(stem.id));
+			const state = nextMeter(this.levels[stem.id] ?? METER_ZERO, read.peak, t, dt, read.rms);
 			next[stem.id] = state;
-			if (state.level > 0 || state.hold > 0) moving = true;
+			if (state.level > 0 || state.hold > 0 || state.rms > 1e-4) moving = true;
 		}
 		this.levels = next;
-		const masterPeak = !this.playing
-			? 0
+		const masterRead = !this.playing
+			? NONE
 			: this.mode === "streamed"
-				? this.#streamPeaks.master * this.master
-				: peakOf(this.#analyser ?? undefined);
-		this.masterLevel = nextMeter(this.masterLevel, masterPeak, t, dt);
-		this.#streamPeaks = { stems: {}, master: 0 };
+				? {
+						peak: this.#streamPeaks.master * this.master,
+						rms: this.#streamPeaks.masterRms * this.master,
+					}
+				: readOf(this.#analyser ?? undefined);
+		this.masterLevel = nextMeter(this.masterLevel, masterRead.peak, t, dt, masterRead.rms);
+		this.#streamPeaks = { stems: {}, master: 0, rms: {}, masterRms: 0 };
 		if (this.playing || moving || this.masterLevel.level > 0)
 			this.#meterFrame = requestAnimationFrame(this.#meterStep);
 	};

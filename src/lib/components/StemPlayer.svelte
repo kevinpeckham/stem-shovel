@@ -10,6 +10,8 @@
 	import { StemEngine } from "#lib/audio/engine.svelte.js";
 	import type { StemManifest, StemState } from "#lib/audio/types.js";
 	import StemRow from "#lib/components/StemRow.svelte";
+	import MixerStage from "#lib/components/MixerStage.svelte";
+	import { stemMixerModel } from "#lib/audio/mixerModel.js";
 	import Transport from "#lib/components/Transport.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
@@ -18,7 +20,7 @@
 	import SectionTimeline from "#lib/components/SectionTimeline.svelte";
 	import { barGrid, formatPosition } from "#lib/audio/measures.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
-	import { tick } from "svelte";
+	import { onMount, tick } from "svelte";
 	import { dev } from "$app/env";
 	import CQMeasuring from "#lib/components/CQMeasuring.svelte";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
@@ -89,6 +91,26 @@
 	}: Props = $props();
 
 	const engine = new StemEngine();
+	/** Tracks (the rows) or the Stage (docs/visual-mixer.md), remembered in this browser for every player. */
+	const VIEW_KEY = "stemshovel.playerView";
+	let view = $state<"tracks" | "stage">("tracks");
+	// Read after hydration (the server always renders the rows), so the markup matches before it switches.
+	onMount(() => {
+		try {
+			if (localStorage.getItem(VIEW_KEY) === "stage") view = "stage";
+		} catch {
+			// no storage: the rows
+		}
+	});
+	function setView(v: "tracks" | "stage") {
+		view = v;
+		try {
+			localStorage.setItem(VIEW_KEY, v);
+		} catch {
+			// no storage: the choice lasts for this page
+		}
+	}
+	const stageModel = stemMixerModel(engine);
 	/** The song's default mix per stem, from the manifest. */
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
 	/** The song's default pans, likewise. */
@@ -301,22 +323,49 @@
 			aria-label="Stems"
 			bind:this={rowsEl}
 		>
+			<!-- Tracks or the Stage (docs/visual-mixer.md): the same engine either way, so switching changes no sound. -->
+			<div class="flex justify-end -mt-1 mb-1">
+				<span class="inline-flex text-11px" role="group" aria-label="Stems view">
+					<button
+						class="rounded-l border border-current/40 px-2 py-0.5 {view === 'tracks'
+							? 'bg-blue-300 text-dark border-blue-300'
+							: 'opacity-80 hover-opacity-100'}"
+						type="button"
+						aria-pressed={view === "tracks"}
+						title="Tracks: a row per stem with its waveform"
+						onclick={() => setView("tracks")}>Tracks</button
+					>
+					<button
+						class="rounded-r border border-l-0 border-current/40 px-2 py-0.5 {view === 'stage'
+							? 'bg-blue-300 text-dark border-blue-300'
+							: 'opacity-80 hover-opacity-100'}"
+						type="button"
+						aria-pressed={view === "stage"}
+						title="Stage: every stem a puck, left to right is pan, up is level"
+						onclick={() => setView("stage")}>Stage</button
+					>
+				</span>
+			</div>
 			{#if sections.length > 0 || timelineKinds(changes).length > 0}
 				<SectionTimeline {engine} {sections} {changes} {startAt} {endAt} {fps} />
 			{/if}
-			{#each engine.stems as stem, i (stem.id)}
-				<StemRow
-					{stem}
-					{engine}
-					{i}
-					menu={stemMenu}
-					badge={stemBadge}
-					roll={midiViews[stem.id] ?? null}
-					oncontext={onstemcontext}
-					handle={onreorder ? grip : undefined}
-					dragging={dragging === stem.id}
-				/>
-			{/each}
+			{#if view === "stage"}
+				<MixerStage model={stageModel} menu={stemMenu ? stageMenu : undefined} class="my-2" />
+			{:else}
+				{#each engine.stems as stem, i (stem.id)}
+					<StemRow
+						{stem}
+						{engine}
+						{i}
+						menu={stemMenu}
+						badge={stemBadge}
+						roll={midiViews[stem.id] ?? null}
+						oncontext={onstemcontext}
+						handle={onreorder ? grip : undefined}
+						dragging={dragging === stem.id}
+					/>
+				{/each}
+			{/if}
 			{#if afterRows}{@render afterRows()}{/if}
 		</section>
 
@@ -356,6 +405,12 @@
 		</div>
 	{/if}
 </div>
+
+<!-- The rows' ⋯ menu for the Stage's strip, by stem id. -->
+{#snippet stageMenu(id: string)}
+	{@const stem = engine.stems.find((s) => s.id === id)}
+	{#if stem && stemMenu}{@render stemMenu(stem)}{/if}
+{/snippet}
 
 {#snippet grip(stem: StemState)}
 	<button

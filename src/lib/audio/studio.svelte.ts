@@ -1747,12 +1747,13 @@ class StudioEngine {
 		const t = now / 1000;
 		const next: Record<string, MeterState> = {};
 		for (const [id, nodes] of this.#tracks) {
-			const peak = this.running ? peakOf(nodes.analyser, buf) : 0;
-			next[id] = nextMeter(this.levels[id] ?? METER_ZERO, peak, t, dt);
+			const read = this.running ? readOf(nodes.analyser, buf) : NO_READ;
+			next[id] = nextMeter(this.levels[id] ?? METER_ZERO, read.peak, t, dt, read.rms);
 		}
 		this.levels = next;
-		const master = this.running && this.#masterAnalyser ? peakOf(this.#masterAnalyser, buf) : 0;
-		this.masterLevel = nextMeter(this.masterLevel, master, t, dt);
+		const master =
+			this.running && this.#masterAnalyser ? readOf(this.#masterAnalyser, buf) : NO_READ;
+		this.masterLevel = nextMeter(this.masterLevel, master.peak, t, dt, master.rms);
 		this.#meterFrame = requestAnimationFrame(this.#meter);
 	};
 
@@ -1863,14 +1864,17 @@ class StudioEngine {
 }
 
 const round4 = (x: number) => Math.round(x * 10000) / 10000;
-/** The analyser's latest frame's peak, linear (the meters show it on a dB scale). */
-function peakOf(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
+const NO_READ = { peak: 0, rms: 0 };
+/** The analyser's latest frame's peak and RMS, linear (the meters show the peak on a dB scale; the Stage's halo breathes with the RMS). */
+function readOf(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
 	analyser.getFloatTimeDomainData(buf);
 	let peak = 0;
+	let sq = 0;
 	for (const x of buf) {
 		const v = Math.abs(x);
 		if (v > peak) peak = v;
+		sq += x * x;
 	}
-	return peak;
+	return { peak, rms: Math.sqrt(sq / buf.length) };
 }
 export const studio = new StudioEngine();

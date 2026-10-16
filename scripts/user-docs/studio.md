@@ -28,6 +28,8 @@ The ruler shows bars and beats at the song's tempo (set in the **Timing** menu) 
 
 **Loop** (or L) repeats the region on the ruler: the first press makes one a bar long at the playhead; drag its ends to set it. Space plays and stops; Home goes to the start (or the loop's start).
 
+**Tracks / Stage**, beside the zoom buttons, swaps the lanes for a stage: every track a numbered puck, left to right its pan, up its level. Drag a puck to set both at once (Shift keeps one), double-click to center the pan, and use the strip under the stage for mute, solo and the track's menu. The pucks glow with each track's loudness while the song plays. It is the same mix as the lanes; switch back to edit clips.
+
 ## Editing clips
 
 Drag either end of a clip to **trim** it: the left edge moves where the clip begins in its recording, the right edge where it ends; nothing is thrown away, so a trimmed clip can be dragged open again. **Split** (or S) cuts the selected clip at the playhead into two. **Duplicate** (⌘D) puts a copy right after it. The bar under the timeline holds the selected clip's name, its **gain** (double-click the slider for 0 dB) and its **fade in** and **fade out** in seconds, drawn as wedges on the clip. **Import audio…** puts a file (WAV, FLAC, MP3, M4A and the other formats a demo accepts) on the selected clip's track at the playhead.

@@ -26,6 +26,10 @@ The transport above the stems has play/pause, a go-to-beginning button and a rea
 
 Playback starts once every stem has been decoded; the status line under the stems counts them in.
 
+### The Stage
+
+The **Tracks / Stage** switch at the top of the stems turns the rows into a stage: every stem is a numbered puck, left to right is its pan and height is how loud it sounds in the mix (its level plus how hot the recording is, so a quiet take at unity sits below a loud one). Drag a puck to set its level and pan at once; hold **Shift** to move along one axis only; double-click to center the pan, Alt-double-click to return the level to unity. A puck glows with the stem's loudness while the song plays, the bar under the stage shows which way the mix leans, and the master meter sits beside it. Click or Tab to a puck and the strip under the stage shows its name, **M**, **S**, its ⋯ menu and the level and pan readouts; the arrow keys nudge the puck, **M** and **S** mute and solo it. Switching views never changes the sound: it is the same mix, kept the same way.
+
 ## Positions: timecode and bars
 
 The readout shows the position as **timecode** (`minutes:seconds:frames.subframes`, the way Logic Pro does, at the song's frame rate) or as **bars and beats** (`45 | 1`). When the song has a tempo and a time signature, bars are the default; click the readout to switch. Anywhere a position is typed, such as a section start or a comment's spot, either format is accepted, and so is plain `1:23.5`.

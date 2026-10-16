@@ -153,3 +153,22 @@ the knobs and the buttons stay as they are, so a tinted row is a hint.
 A muted or un-soloed row drops its tint with its brightness. The
 manifest carries `tint`, the engine keeps it on `StemState.tint`, and a
 refreshed manifest re-tints in place (`retint`), as a rename relabels.
+
+## The Stage (2026-10-16)
+
+A second view of the same mix (docs/visual-mixer.md has the design and
+the phases): `MixerStage.svelte` draws every track as a puck on a field,
+left to right its pan, up its heard level (the fader in dB plus the
+track's own loudness relative to the loudest, from the stored `peaks`
+through `utils/stemLoudness.ts`), and a drag writes both through the
+`MixerModel` in `src/lib/audio/mixerModel.ts`, which wraps either this
+engine (`stemMixerModel`) or Dawn's (`studioMixerModel`). The geometry is
+`utils/stagePosition.ts`. `StemPlayer` keeps a Tracks / Stage toggle
+(remembered in `localStorage` as `stemshovel.playerView`, read after
+hydration) and swaps the rows for the stage; the timelines, the menu
+snippet and the local mix work as before, since nothing but the view
+changes. For the halos the meters carry an RMS beside the peak
+(`MeterState.rms`, smoothed over 300 ms on the way down): buffered, from
+the same analyser frame as the peak; streamed, the worklet sums the
+squares it already mixes and `takePeaks` posts `rms` and `masterRms`
+with the peaks.

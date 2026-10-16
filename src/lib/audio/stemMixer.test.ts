@@ -123,7 +123,7 @@ describe("Mixer", () => {
 		m.push("a", 0, 0, chunk(5000, 1));
 		m.push("b", 0, 0, chunk(5000, 0.25));
 		m.mix(out(), 128);
-		const peaks = m.takePeaks() as { stems: Record<string, number>; master: number };
+		const peaks = m.takePeaks() as unknown as { stems: Record<string, number>; master: number };
 		expect(peaks.stems["a"]).toBeCloseTo(0.5);
 		expect(peaks.stems["b"]).toBeCloseTo(0.25);
 		expect(peaks.master).toBeCloseTo(0.75);

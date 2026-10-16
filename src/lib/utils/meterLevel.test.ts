@@ -13,6 +13,16 @@ describe("nextMeter", () => {
 		expect(m.hold).toBeLessThan(0.8);
 		expect(m.hold).toBeGreaterThanOrEqual(m.level);
 	});
+	it("takes a louder RMS at once and settles toward a quieter one", () => {
+		let m = nextMeter(METER_ZERO, 0.5, 0, 1 / 60, 0.3);
+		expect(m.rms).toBe(0.3);
+		m = nextMeter(m, 0.5, 0.1, 0.1, 0.1);
+		expect(m.rms).toBeGreaterThan(0.1);
+		expect(m.rms).toBeLessThan(0.3);
+		m = nextMeter(m, 0.5, 1, 1, 0.1);
+		expect(m.rms).toBeCloseTo(0.1, 9);
+		expect(nextMeter(METER_ZERO, 0.5, 0, 1 / 60).rms).toBe(0);
+	});
 	it("remembers a clip until reset", () => {
 		let m = nextMeter(METER_ZERO, 1.02, 0, 1 / 60);
 		expect(m.clipped).toBe(true);

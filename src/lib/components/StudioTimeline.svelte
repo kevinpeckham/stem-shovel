@@ -1,6 +1,6 @@
 <script lang="ts">
 	import LevelMeter from "#lib/components/LevelMeter.svelte";
-	import { STEM_TINTS, stemTintHex } from "#lib/constants/stemTints.js";
+	import { stemTintHex } from "#lib/constants/stemTints.js";
 	import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 	import {
 		isInstrument,
@@ -23,6 +23,7 @@
 	import type { Attachment } from "svelte/attachments";
 	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
+	import StudioTrackMenu from "./StudioTrackMenu.svelte";
 	import Knob from "./Knob.svelte";
 
 	/**
@@ -608,36 +609,6 @@
 
 	{#each engine.arrangement.tracks as track, index (track.id)}
 		<!-- The track's tint (constants/stemTints.ts, as the stem player's): swatches in its menu, none first. -->
-		{#snippet trackTint()}
-			<div class="px-3 py-1.5" role="group" aria-label="{track.name} tint">
-				<div class="mb-1 text-xs text-dim">Tint</div>
-				<div class="flex flex-wrap gap-1.5">
-					<button
-						type="button"
-						class="h-5 w-5 rounded-full border {track.colour
-							? 'border-white/30 hover:border-white/70'
-							: 'border-white ring-1 ring-white/60'} bg-blue-300/60"
-						aria-label="No tint"
-						aria-pressed={!track.colour}
-						title="No tint"
-						onclick={() => engine.setTint(track.id, null)}
-					></button>
-					{#each STEM_TINTS as t (t.id)}
-						<button
-							type="button"
-							class="h-5 w-5 rounded-full border {track.colour === t.id
-								? 'border-white ring-1 ring-white/60'
-								: 'border-white/30 hover:border-white/70'}"
-							style:background-color={t.hex}
-							aria-label="Tint {t.name}"
-							aria-pressed={track.colour === t.id}
-							title={t.name}
-							onclick={() => engine.setTint(track.id, t.id)}
-						></button>
-					{/each}
-				</div>
-			</div>
-		{/snippet}
 		{@const tint = stemTintHex(track.colour)}
 		{@const dim = silenced(track)}
 		{#snippet fxMenu()}
@@ -796,60 +767,8 @@
 							if (e.key === "Enter") e.currentTarget.blur();
 						}}
 					/>
-					<!-- context menu -->
-					<ContextMenu
-						ariaLabel="{track.name} actions"
-						clearButtonBaseClasses={true}
-						buttonClasses="device-fader-menu-button-subtle"
-						position="bottom right"
-						items={[
-							{
-								id: "up",
-								kind: "button",
-								label: "Move up",
-								iconClass: "i-ph-arrow-up",
-								disabled: index === 0,
-								action: () => engine.moveTrack(track.id, index - 1),
-							},
-							{
-								id: "down",
-								kind: "button",
-								label: "Move down",
-								iconClass: "i-ph-arrow-down",
-								disabled: index === engine.arrangement.tracks.length - 1,
-								action: () => engine.moveTrack(track.id, index + 1),
-							},
-							{ id: "d", kind: "divider" },
-							{ id: "tint", kind: "snippet", snippet: trackTint },
-							{ id: "d2", kind: "divider" },
-							{
-								id: "render",
-								kind: "button",
-								label: "Render to audio track",
-								iconClass: "i-ph-waveform",
-								title:
-									"Play the notes through the instrument into a new audio track (in real time), so the song can bounce",
-								condition: isMidi(track),
-								disabled: engine.running || !clipsOf(track).some((c) => c.notes?.length),
-								action: () => onrender?.(track),
-							},
-							{
-								id: "remove",
-								kind: "button",
-								label: "Remove track",
-								iconClass: "i-ph-trash",
-								action: () => {
-									const n = clipsOf(track).length;
-									if (
-										n &&
-										!confirm(`Remove “${track.name}” and its ${n} ${n === 1 ? "clip" : "clips"}?`)
-									)
-										return;
-									engine.removeTrack(track.id);
-								},
-							},
-						]}
-					/>
+					<!-- context menu (StudioTrackMenu: the same actions as the Stage's strip) -->
+					<StudioTrackMenu {track} {index} {onrender} />
 				</div>
 				<!-- The input row: the picker alone; the effects button sits with the transport buttons below (Kevin). -->
 				<div

@@ -8,6 +8,25 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **The Stage: a visual mixer on the stem player and Dawn**
+  (docs/visual-mixer.md, phase 1). A Tracks / Stage switch turns the
+  rows (or Dawn's lanes) into a field where every track is a numbered
+  puck in its tint, left to right its pan, up its heard level (the fader
+  plus the track's own loudness from its stored peaks, so a quiet take
+  sits below a hot one). A drag sets level and pan at once, Shift keeps
+  one axis, a double-click centers the pan (Alt: unity), the arrow keys
+  nudge a focused puck and M / S mute and solo it; the strip under the
+  stage carries the selected track's name, M, S, ⋯ menu and readouts.
+  The pucks' halos breathe with each track's RMS, a bar shows which way
+  the mix leans, and the master meter sits beside it. One component
+  (`MixerStage.svelte`) over a `MixerModel` adapter for either engine;
+  the view is remembered per browser; nothing about the mix changes
+  with the view. The meters gained an RMS beside the peak (buffered
+  from the analyser, streamed from the worklet). Dawn's track menu moved
+  into `StudioTrackMenu.svelte` so the lanes and the strip share it.
+
 ## [0.132.1] - 2026-10-16
 
 ### Fixed

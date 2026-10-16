@@ -23,7 +23,7 @@ const fake = vi.hoisted(() => {
 		phase: "idle" as "idle" | "playing" | "recording" | "counting",
 		position: 0,
 		levels: {} as Record<string, MeterState>,
-		masterLevel: { level: 0, hold: 0, heldAt: 0, clipped: false } as MeterState,
+		masterLevel: { level: 0, hold: 0, heldAt: 0, clipped: false, rms: 0 } as MeterState,
 		decoding: 0,
 		recordFrom: 0,
 		liveTick: 0,
@@ -414,7 +414,13 @@ describe("StudioTimeline", () => {
 	});
 
 	test("the meter follows the track's level on a dB scale, and the clip light sticks until clicked", async () => {
-		const meter = (level: number, clipped = false) => ({ level, hold: level, heldAt: 0, clipped });
+		const meter = (level: number, clipped = false) => ({
+			level,
+			hold: level,
+			heldAt: 0,
+			clipped,
+			rms: level,
+		});
 		fake.levels = { t1: meter(0.5), t2: meter(1, true) };
 		render(StudioTimeline);
 		const meters = screen.getAllByRole("meter");

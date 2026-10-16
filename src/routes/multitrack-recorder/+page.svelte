@@ -14,6 +14,9 @@
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
+	import MixerStage from "#lib/components/MixerStage.svelte";
+	import StudioTrackMenu from "#lib/components/StudioTrackMenu.svelte";
+	import { studioMixerModel } from "#lib/audio/mixerModel.js";
 	import { chordPlayer } from "#lib/audio/chordPlayer.svelte.js";
 	import { drumMachine } from "#lib/audio/drumMachine.svelte.js";
 	import { inputSources } from "#lib/audio/inputs.svelte.js";
@@ -93,6 +96,18 @@
 	let loadedKey = "unloaded";
 	let selected = $state<string | null>(null);
 	let pxPerSecond = $state(40);
+	/** Tracks (the lanes) or the Stage (docs/visual-mixer.md): remembered in this browser. */
+	const VIEW_KEY = "stemshovel.studio.view";
+	let view = $state<"tracks" | "stage">("tracks");
+	function setView(v: "tracks" | "stage") {
+		view = v;
+		try {
+			localStorage.setItem(VIEW_KEY, v);
+		} catch {
+			// no storage: the choice lasts for this page
+		}
+	}
+	const stageModel = studioMixerModel(studio);
 
 	/** Open a song on the device: its arrangement and sources into the engine (once per song). */
 	function openSong(s: StudioSongView | null) {
@@ -118,6 +133,7 @@
 		try {
 			last = localStorage.getItem(LAST_KEY);
 			pxPerSecond = Number(localStorage.getItem("stemshovel.studio.zoom")) || 40;
+			if (localStorage.getItem(VIEW_KEY) === "stage") view = "stage";
 		} catch {
 			// As above.
 		}
@@ -1217,6 +1233,28 @@
 						Grid
 					</label>
 					<span class="ml-auto flex items-center gap-1">
+						<span class="inline-flex" role="group" aria-label="View">
+							<button
+								class="device-button-sm px-3 rounded-r-none {view === 'tracks'
+									? 'text-accent'
+									: ''}"
+								type="button"
+								aria-pressed={view === "tracks"}
+								title="Tracks: the lanes and their clips"
+								onclick={() => setView("tracks")}
+							>
+								<span class="i-ph-rows" aria-hidden="true"></span> Tracks
+							</button>
+							<button
+								class="device-button-sm px-3 rounded-l-none {view === 'stage' ? 'text-accent' : ''}"
+								type="button"
+								aria-pressed={view === "stage"}
+								title="Stage: every track a puck, left to right is pan, up is level"
+								onclick={() => setView("stage")}
+							>
+								<span class="i-ph-circles-three" aria-hidden="true"></span> Stage
+							</button>
+						</span>
 						<button
 							class="device-button-sm px-3"
 							type="button"
@@ -1238,14 +1276,31 @@
 					</span>
 				</div>
 
-				<!-- the timeline -->
-				<StudioTimeline
-					bind:selected
-					bind:pxPerSecond
-					onarm={(t) => void armInput(t)}
-					onrender={(t) => void renderMidiTrack(t)}
-					onopen={openRoll}
-				/>
+				<!-- the timeline, or the Stage (docs/visual-mixer.md) over the same tracks -->
+				{#if view === "stage"}
+					{#snippet stageMenu(id: string)}
+						{@const index = studio.arrangement.tracks.findIndex((t) => t.id === id)}
+						{@const track = studio.arrangement.tracks[index]}
+						{#if track}
+							<StudioTrackMenu
+								{track}
+								{index}
+								onrender={(t) => void renderMidiTrack(t)}
+								buttonClasses="device-fader-menu-button-sm"
+								position="bottom left"
+							/>
+						{/if}
+					{/snippet}
+					<MixerStage model={stageModel} menu={stageMenu} />
+				{:else}
+					<StudioTimeline
+						bind:selected
+						bind:pxPerSecond
+						onarm={(t) => void armInput(t)}
+						onrender={(t) => void renderMidiTrack(t)}
+						onopen={openRoll}
+					/>
+				{/if}
 				<div class="flex flex-wrap items-center gap-2">
 					<button class="device-button-sm px-3" type="button" onclick={() => addTrack()}>
 						<span class="i-ph-plus" aria-hidden="true"></span> Add track
