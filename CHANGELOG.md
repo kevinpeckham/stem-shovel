@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.132.1] - 2026-10-16
+
 ### Fixed
 
 - **The home page demo's stem menu opens on the top layer**, as the
