@@ -498,8 +498,9 @@ the Stem Shovel vein, paired with the descriptive words where needed.
   the addresses while the app is young); `src/routes/studio/+server.ts`
   is a one-line permanent redirect for the dev server, and `vercel.json`
   carries the same redirect for the deployments, answered at the edge
-  as a 308 before any function runs (`/ideas/recorder` and the
-  account-scoped ideas addresses are listed there the same way). The noindex header rule in `vercel.json` already covers
+  as a 308 before any function runs (`/ideas/recorder` is listed there
+  the same way; the account-scoped ideas addresses are not, since a
+  `/:account/ideas` rule at the edge would catch `/docs/ideas` too). The noindex header rule in `vercel.json` already covers
   every path but the public tool pages, so the page stays out of search
   as `/studio` was. `pageCopy.ts` maps `studio-page` to it.
 - **Navigation.** The Tools menu entry reads **Multitrack Recorder**

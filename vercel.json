@@ -19,9 +19,7 @@
 			"permanent": true
 		},
 		{ "source": "/studio", "destination": "/multitrack-recorder", "permanent": true },
-		{ "source": "/ideas/recorder", "destination": "/idea-recorder", "permanent": true },
-		{ "source": "/:account/ideas", "destination": "/idea-recorder", "permanent": true },
-		{ "source": "/:account/ideas/recorder", "destination": "/idea-recorder", "permanent": true }
+		{ "source": "/ideas/recorder", "destination": "/idea-recorder", "permanent": true }
 	],
 	"headers": [
 		{

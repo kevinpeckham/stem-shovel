@@ -40,7 +40,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   a permanent redirect that keeps its `?song=`
   (`src/routes/ideas/recorder/+server.ts` on dev, a `vercel.json`
   redirect at the edge on a deployment; the account-scoped old routes
-  redirect straight there too, both ways). The Tools menu and the header keep
+  redirect straight there too, in SvelteKit only, since an edge rule
+  for `/:account/ideas` would catch `/docs/ideas` as well). The Tools menu and the header keep
   saying Idea Recorder, the footer says Lark, the page title "Lark Idea
   Recorder"; the device, the docs link and the user docs (slugs kept)
   follow; every link in the app points at `/idea-recorder`. The code

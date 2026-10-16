@@ -1,7 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-/** The ideas section is the recorder, which now lives outside the account's URL space (ideas are the user's own). On a deployment vercel.json answers first (a 308 at the edge); this covers the dev server. */
+/** The ideas section is the recorder, which now lives outside the account's URL space (ideas are the user's own). (Not a vercel.json rule: `/:account/ideas` at the edge would catch `/docs/ideas` too; SvelteKit puts static routes first.) */
 export const load: PageServerLoad = () => {
 	redirect(303, "/idea-recorder");
 };

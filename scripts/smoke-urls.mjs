@@ -48,8 +48,8 @@ const ROUTES = [
 		[303],
 		[200],
 	],
-	["[account]/ideas", "/{account}/ideas", [303, 308], [303, 308]],
-	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303, 308], [303, 308]],
+	["[account]/ideas", "/{account}/ideas", [303], [303]],
+	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
 	["idea-recorder", "/idea-recorder", [303], [200]],
 	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/ideas/recorder/+server.ts on dev, 301).
 	["ideas/recorder (server)", "/ideas/recorder", [301, 308], [301, 308]],
