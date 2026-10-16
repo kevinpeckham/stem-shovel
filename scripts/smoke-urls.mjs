@@ -48,16 +48,16 @@ const ROUTES = [
 		[303],
 		[200],
 	],
-	["[account]/ideas", "/{account}/ideas", [303], [303]],
-	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
+	["[account]/ideas", "/{account}/ideas", [303, 308], [303, 308]],
+	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303, 308], [303, 308]],
 	["idea-recorder", "/idea-recorder", [303], [200]],
-	// The old address: a permanent redirect for everyone (src/routes/ideas/recorder/+server.ts).
-	["ideas/recorder (server)", "/ideas/recorder", [301], [301]],
+	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/ideas/recorder/+server.ts on dev, 301).
+	["ideas/recorder (server)", "/ideas/recorder", [301, 308], [301, 308]],
 	["looper", "/looper", [200], [200]],
 	["practice-amp", "/practice-amp", [200], [200]],
 	["multitrack-recorder", "/multitrack-recorder", [303], [200]],
-	// The old address: a permanent redirect for everyone (src/routes/studio/+server.ts).
-	["studio (server)", "/studio", [301], [301]],
+	// The old address: a permanent redirect for everyone (vercel.json on a deployment, 308; src/routes/studio/+server.ts on dev, 301).
+	["studio (server)", "/studio", [301, 308], [301, 308]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],

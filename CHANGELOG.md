@@ -38,8 +38,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Lark idea recorder and the Dawn multitrack recorder), and the page
   moves from `/ideas/recorder` to `/idea-recorder`, with the old address
   a permanent redirect that keeps its `?song=`
-  (`src/routes/ideas/recorder/+server.ts`; the account-scoped old route
-  redirects straight there too). The Tools menu and the header keep
+  (`src/routes/ideas/recorder/+server.ts` on dev, a `vercel.json`
+  redirect at the edge on a deployment; the account-scoped old routes
+  redirect straight there too, both ways). The Tools menu and the header keep
   saying Idea Recorder, the footer says Lark, the page title "Lark Idea
   Recorder"; the device, the docs link and the user docs (slugs kept)
   follow; every link in the app points at `/idea-recorder`. The code
@@ -47,7 +48,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **The Studio is Dawn.** The multitrack recorder is called Dawn (Kevin:
   "Studio" means too many things now; Dawn is the DAW pun in the Stem
   Shovel vein), at `/multitrack-recorder`, with `/studio` a permanent
-  redirect (`src/routes/studio/+server.ts`). The Tools menu says
+  redirect (`src/routes/studio/+server.ts` on dev, a `vercel.json`
+  redirect at the edge on a deployment). The Tools menu says
   Multitrack Recorder, the footer Dawn, the page title "Dawn Multitrack
   Recorder"; the device, its Recordings panel, the docs link, the user
   docs (slugs `studio` and `studio-page` kept, so edited copies survive),
