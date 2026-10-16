@@ -7,6 +7,7 @@ import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
 
 /** Upper limit of a stem fader. Slight boost is handy when auditioning quiet parts. */
 import { FADER_MAX } from "#lib/constants/fader.js";
+import { MixHistory } from "#lib/utils/mixHistory.js";
 import { STEM_MEMORY_SOFT_BYTES } from "#lib/constants/stemFormats.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
 import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
@@ -150,6 +151,12 @@ async function report(message: string, extra: Record<string, unknown>): Promise<
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/** One undo step of the mix: every stem's fader, pan, mute and solo, and the master. */
+interface MixSnap {
+	master: number;
+	stems: { id: string; gain: number; pan: number; muted: boolean; soloed: boolean }[];
+}
+
 /**
  * Multi-stem playback engine on a single AudioContext.
  *
@@ -214,6 +221,17 @@ export class StemEngine {
 	 * which is what a tab killed for memory and reloaded looks like.
 	 */
 	lastLoadDied = $state<{ stems: number; bytes: number } | null>(null);
+	/**
+	 * Undo for the mix (utils/mixHistory.ts): one step per gesture over the
+	 * faders, pans, mutes, solos and master, from the rows, the Stage or the
+	 * keys alike. Cleared by a load (the local mix put on top of a fresh
+	 * load is the starting point, not a move).
+	 */
+	canUndoMix = $state(false);
+	canRedoMix = $state(false);
+	#mixHistory = new MixHistory<MixSnap>();
+	/** Set while a snapshot is being restored, so the setters do not record it. */
+	#restoringMix = false;
 
 	#ctx: AudioContext | null = null;
 	#masterNode: GainNode | null = null;
@@ -655,6 +673,7 @@ export class StemEngine {
 	setPan(id: string, value: number): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (!stem) return;
+		this.#rememberMix();
 		stem.pan = clamp(value, -1, 1);
 		const ctx = this.#ctx;
 		if (!ctx) return;
@@ -668,6 +687,7 @@ export class StemEngine {
 	setGain(id: string, value: number): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (!stem) return;
+		this.#rememberMix();
 		stem.gain = clamp(value, 0, FADER_MAX);
 		this.#applyGains();
 	}
@@ -675,6 +695,7 @@ export class StemEngine {
 	toggleMute(id: string): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (!stem) return;
+		this.#rememberMix();
 		stem.muted = !stem.muted;
 		this.#applyGains();
 	}
@@ -682,17 +703,72 @@ export class StemEngine {
 	toggleSolo(id: string): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (!stem) return;
+		this.#rememberMix();
 		stem.soloed = !stem.soloed;
 		this.#applyGains();
 	}
 
 	setMaster(value: number): void {
+		this.#rememberMix();
 		this.master = clamp(value, 0, 1);
 		const ctx = this.#ctx;
 		const node = this.#masterNode;
 		if (!ctx || !node) return;
 		node.gain.cancelScheduledValues(ctx.currentTime);
 		node.gain.setTargetAtTime(this.master, ctx.currentTime, RAMP);
+	}
+
+	#rememberMix(): void {
+		if (this.#restoringMix) return;
+		if (this.#mixHistory.remember(() => this.#mixSnap(), performance.now())) this.#syncMixHistory();
+	}
+	#mixSnap(): MixSnap {
+		return {
+			master: this.master,
+			stems: this.stems.map((s) => ({
+				id: s.id,
+				gain: s.gain,
+				pan: s.pan,
+				muted: s.muted,
+				soloed: s.soloed,
+			})),
+		};
+	}
+	#applyMixSnap(snap: MixSnap): void {
+		this.#restoringMix = true;
+		try {
+			for (const m of snap.stems) {
+				const stem = this.stems.find((s) => s.id === m.id);
+				if (!stem) continue;
+				this.setGain(m.id, m.gain);
+				this.setPan(m.id, m.pan);
+				if (stem.muted !== m.muted) this.toggleMute(m.id);
+				if (stem.soloed !== m.soloed) this.toggleSolo(m.id);
+			}
+			this.setMaster(snap.master);
+		} finally {
+			this.#restoringMix = false;
+		}
+	}
+	#syncMixHistory(): void {
+		this.canUndoMix = this.#mixHistory.canUndo;
+		this.canRedoMix = this.#mixHistory.canRedo;
+	}
+	/** The mix as it was before the last gesture (a drag, a knob turn, a mute…). */
+	undoMix(): void {
+		const snap = this.#mixHistory.undo(() => this.#mixSnap());
+		if (snap) this.#applyMixSnap(snap);
+		this.#syncMixHistory();
+	}
+	redoMix(): void {
+		const snap = this.#mixHistory.redo(() => this.#mixSnap());
+		if (snap) this.#applyMixSnap(snap);
+		this.#syncMixHistory();
+	}
+	/** Forget the mix's history: after a load, once the listener's own mix is on it. */
+	clearMixHistory(): void {
+		this.#mixHistory.clear();
+		this.#syncMixHistory();
 	}
 
 	/**

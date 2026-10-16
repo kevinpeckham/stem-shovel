@@ -360,11 +360,41 @@
 				{#if menu}{@render menu(t.id)}{/if}
 			</span>
 			<span class="tabular-nums text-dim">{levelText(t.gain)} · {panText(t.pan)}</span>
+			{@render undoButtons()}
 		{:else}
 			<span class="text-dim"
 				>Drag a track to set its level and pan; hold Shift to move along one axis. Height is how
 				loud the track sounds.</span
 			>
+			{@render undoButtons()}
 		{/if}
 	</div>
 </div>
+
+<!-- Undo and redo for mix moves (⌘Z, ⌘⇧Z), when the engine keeps a history: one step per gesture. -->
+{#snippet undoButtons()}
+	{#if model.undo}
+		<span class="ml-auto flex items-center gap-1">
+			<button
+				type="button"
+				class="device-fader-button-sm"
+				title="Undo the last mix move (⌘Z)"
+				aria-label="Undo mix move"
+				disabled={!model.undo.canUndo}
+				onclick={() => model.undo?.undo()}
+			>
+				<span class="i-ph-arrow-counter-clockwise text-13px" aria-hidden="true"></span>
+			</button>
+			<button
+				type="button"
+				class="device-fader-button-sm"
+				title="Redo (⌘⇧Z)"
+				aria-label="Redo mix move"
+				disabled={!model.undo.canRedo}
+				onclick={() => model.undo?.redo()}
+			>
+				<span class="i-ph-arrow-clockwise text-13px" aria-hidden="true"></span>
+			</button>
+		</span>
+	{/if}
+{/snippet}

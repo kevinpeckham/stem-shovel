@@ -38,6 +38,13 @@ export interface MixerModel {
 	toggleSolo(id: string): void;
 	setMaster(value: number): void;
 	resetClips(id?: string): void;
+	/** Undo for mix moves, when the engine keeps one the Stage should offer (Dawn's page has its own buttons and keys). */
+	readonly undo?: {
+		readonly canUndo: boolean;
+		readonly canRedo: boolean;
+		undo(): void;
+		redo(): void;
+	};
 }
 
 /** The stem player's engine as a mixer model; each stem's loudness from its stored peaks, relative to the loudest. */
@@ -86,6 +93,16 @@ export function stemMixerModel(engine: StemEngine): MixerModel {
 		toggleSolo: (id) => engine.toggleSolo(id),
 		setMaster: (v) => engine.setMaster(v),
 		resetClips: (id) => engine.resetClips(id),
+		undo: {
+			get canUndo() {
+				return engine.canUndoMix;
+			},
+			get canRedo() {
+				return engine.canRedoMix;
+			},
+			undo: () => engine.undoMix(),
+			redo: () => engine.redoMix(),
+		},
 	};
 }
 

@@ -172,3 +172,19 @@ changes. For the halos the meters carry an RMS beside the peak
 the same analyser frame as the peak; streamed, the worklet sums the
 squares it already mixes and `takePeaks` posts `rms` and `masterRms`
 with the peaks.
+
+### Undo for the mix (2026-10-16)
+
+Both engines keep an undo step per gesture for mix moves, from the
+rows, the Stage, the knobs or the keys alike (`utils/mixHistory.ts`: a
+change that comes more than 400 ms after the last starts a new step,
+with the state before it as the snapshot, so a drag or a held key is one
+step). The stem engine holds its own stack of fader, pan, mute, solo and
+master snapshots (`undoMix`, `redoMix`, `canUndoMix`, `canRedoMix`;
+cleared by `clearMixHistory`, which the player calls once a load has the
+listener's local mix on it, since that is the starting point and not a
+move). `StemPlayer` binds ⌘Z and ⌘⇧Z on the window (outside text
+entry, when the player has the keys) and the Stage's strip offers the
+two buttons. Dawn's mix moves join its existing arrangement history
+(`#commitMixGesture` before `#commit`), so its Undo button and ⌘Z step
+through edits and moves alike; effects sliders join too.

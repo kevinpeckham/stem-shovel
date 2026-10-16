@@ -25,6 +25,7 @@
 	import CQMeasuring from "#lib/components/CQMeasuring.svelte";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
 	import { timelineKinds } from "#lib/utils/timelineKinds.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 	import { untrack, type Snippet } from "svelte";
 
@@ -163,6 +164,7 @@
 					const local = loadLocalMix(songId);
 					if (local) applyLocalMix(engine, local, defaults, defaultPans);
 				}
+				engine.clearMixHistory(); // the mix as loaded is the starting point, not a move
 			}
 			loadedKeys = nextKeys;
 		});
@@ -210,6 +212,16 @@
 			const local = loadLocalMix(songId);
 			if (local) applyLocalMix(engine, local, defaults, defaultPans);
 		}
+		engine.clearMixHistory();
+	}
+	/** ⌘Z / ⌘⇧Z (Ctrl on Windows) undo and redo mix moves from anywhere on the page but a text field, when this player has the keys. */
+	function onwindowkeydown(e: KeyboardEvent): void {
+		if (!keyboard || e.altKey || !(e.metaKey || e.ctrlKey) || isTextEntry(e.target)) return;
+		if (e.key.toLowerCase() !== "z") return;
+		if (e.shiftKey ? !engine.canRedoMix : !engine.canUndoMix) return;
+		e.preventDefault();
+		if (e.shiftKey) engine.redoMix();
+		else engine.undoMix();
 	}
 	/** What this device can be expected to hold decoded (utils/stemMemoryBudget): Chrome says its memory, the rest get the soft gigabyte. */
 	const memoryBudget = stemMemoryBudget(
@@ -262,6 +274,8 @@
 		{@render headerExtras(engine)}
 	</div>
 {/if} -->
+
+<svelte:window onkeydown={onwindowkeydown} />
 
 <div class="@container relative grid grid-cols-1 w-full">
 	<!-- Dev only: where the container's breakpoints fall (CQMeasuring renders nothing in production). -->

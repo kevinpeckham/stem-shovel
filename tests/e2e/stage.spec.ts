@@ -41,6 +41,17 @@ test("the stem player's Stage drags a puck into the engine", async ({ page, erro
 	}));
 	expect(after.pan).toBeGreaterThan(before.pan);
 	expect(after.gain).toBeLessThan(before.gain);
+	// Undo takes the whole drag back as one step; redo puts it again.
+	await page.locator("[data-stage-strip]").getByRole("button", { name: "Undo mix move" }).click();
+	const undone = await hooked(page, ([w]) => ({
+		gain: w.__stems.stems[0].gain,
+		pan: w.__stems.stems[0].pan,
+	}));
+	expect(undone).toEqual(before);
+	await page.keyboard.press("ControlOrMeta+Shift+z");
+	expect(await hooked(page, ([w]) => w.__stems.stems[0].pan)).toBeCloseTo(after.pan, 9);
+	await page.keyboard.press("ControlOrMeta+z");
+	expect(await hooked(page, ([w]) => w.__stems.stems[0].pan)).toBeCloseTo(before.pan, 9);
 	// The strip shows the selection; M from the keyboard mutes it.
 	await expect(page.locator("[data-stage-strip]")).toContainText("1 -");
 	await first.focus();
@@ -68,7 +79,9 @@ test("Dawn's Stage shows its tracks and keeps their menu", async ({ page, errors
 	await page.keyboard.press("ArrowRight");
 	const pan = await hooked(page, ([w]) => w.__studio.arrangement.tracks.at(-1).pan);
 	expect(pan).toBeCloseTo(0.05, 6);
-	await page.keyboard.press("ArrowLeft");
+	// Dawn's own undo takes the nudge back.
+	await page.keyboard.press("ControlOrMeta+z");
+	expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks.at(-1).pan)).toBeCloseTo(0, 9);
 	const strip = page.locator("[data-stage-strip]");
 	await strip.getByRole("button", { name: /actions$/ }).click();
 	await expect(page.getByRole("button", { name: "Remove track" })).toBeVisible();

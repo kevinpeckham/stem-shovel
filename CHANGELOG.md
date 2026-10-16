@@ -26,6 +26,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   with the view. The meters gained an RMS beside the peak (buffered
   from the analyser, streamed from the worklet). Dawn's track menu moved
   into `StudioTrackMenu.svelte` so the lanes and the strip share it.
+- **Undo for mix moves** (Kevin: undo must cover the Stage). The stem
+  player keeps an undo stack of its faders, pans, mutes, solos and
+  master, one step per gesture (a drag, a knob turn, a held key;
+  `utils/mixHistory.ts`): ⌘Z and ⌘⇧Z from anywhere but a text field,
+  and Undo / Redo buttons in the Stage's strip. In Dawn the same moves,
+  and the effects sliders, now join the arrangement's undo history, so
+  its Undo button and ⌘Z step through edits and mix moves alike (they
+  recorded no step before).
 
 ## [0.132.1] - 2026-10-16
 

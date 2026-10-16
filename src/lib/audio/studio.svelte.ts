@@ -1,4 +1,5 @@
 import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
+import { MixHistory } from "#lib/utils/mixHistory.js";
 import { audioSession } from "#lib/utils/audioSession.js";
 import { appendChunkPeaks, chunkPeaksState } from "#lib/utils/chunkPeaks.js";
 import { coveredClips } from "#lib/utils/coveredClips.js";
@@ -223,6 +224,13 @@ class StudioEngine {
 	#captures: Capture[] = [];
 	#past: StudioArrangement[] = [];
 	#future: StudioArrangement[] = [];
+	/**
+	 * The mix's moves (fader, pan, mute, solo, master, effects) join the undo
+	 * stack one step per gesture (utils/mixHistory.ts decides where a gesture
+	 * starts); the stack itself is `#past`, so ⌘Z steps through edits and
+	 * moves alike. Cleared with the history on open.
+	 */
+	#mixGestures = new MixHistory<null>();
 	#metronomeStopTimer: ReturnType<typeof setTimeout> | null = null;
 	#opening: Promise<void> | null = null;
 	#stopAt = 0;
@@ -381,6 +389,7 @@ class StudioEngine {
 		this.stop();
 		this.#past = [];
 		this.#future = [];
+		this.#mixGestures.clear();
 		this.canUndo = this.canRedo = false;
 		this.#buffers.clear();
 		for (const id of this.#tracks.keys()) this.#dropTrackNodes(id);
@@ -487,13 +496,19 @@ class StudioEngine {
 		this.canRedo = false;
 		this.dirty = true;
 	}
+	/** A mix move: the first change of a gesture snapshots for undo, the rest of the gesture rides on it. */
+	#commitMixGesture() {
+		if (this.#mixGestures.remember(() => null, performance.now())) this.#commit();
+	}
 	undo() {
+		this.#mixGestures.clear();
 		const prev = this.#past.pop();
 		if (!prev) return;
 		this.#future.push(structuredClone($state.snapshot(this.arrangement)));
 		this.#restoreArrangement(prev);
 	}
 	redo() {
+		this.#mixGestures.clear();
 		const next = this.#future.pop();
 		if (!next) return;
 		this.#past.push(structuredClone($state.snapshot(this.arrangement)));
@@ -580,6 +595,7 @@ class StudioEngine {
 	setGain(trackId: string, value: number) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		this.#commitMixGesture();
 		t.gain = Math.max(0, Math.min(STUDIO_FADER_MAX, value));
 		this.dirty = true;
 		this.#applyGains();
@@ -594,15 +610,17 @@ class StudioEngine {
 	setPan(trackId: string, value: number) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		this.#commitMixGesture();
 		t.pan = Math.max(-1, Math.min(1, value));
 		this.dirty = true;
 		const nodes = this.#tracks.get(trackId);
 		if (nodes && this.#ctx) nodes.panner.pan.setTargetAtTime(t.pan, this.#ctx.currentTime, RAMP);
 	}
-	/** A track's effects, live (a slider moves them; no undo step, as the fader). */
+	/** A track's effects, live (a slider's run is one undo step, as a fader's). */
 	setTrackFx(trackId: string, fx: StudioTrackFx) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		this.#commitMixGesture();
 		t.fx = structuredClone(fx);
 		this.dirty = true;
 		this.#tracks.get(trackId)?.chain.update(t.fx, 0.02);
@@ -610,6 +628,7 @@ class StudioEngine {
 	toggleMute(trackId: string) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		this.#commitMixGesture();
 		t.muted = !t.muted;
 		this.dirty = true;
 		this.#applyGains();
@@ -617,6 +636,7 @@ class StudioEngine {
 	toggleSolo(trackId: string) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		this.#commitMixGesture();
 		t.solo = !t.solo;
 		this.dirty = true;
 		this.#applyGains();
@@ -635,6 +655,7 @@ class StudioEngine {
 		this.dirty = true;
 	}
 	setMaster(value: number) {
+		this.#commitMixGesture();
 		this.arrangement.master = Math.max(0, Math.min(1, value));
 		this.dirty = true;
 		if (this.#master && this.#ctx)
