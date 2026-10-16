@@ -6,6 +6,7 @@ import {
 	SongSettingsSchema,
 	SongVersionSchema,
 	StemRenameSchema,
+	StemTintSetSchema,
 } from "./SongSchema";
 
 const id = "V1StGXR8_Z5jdHi6B-myT";
@@ -61,6 +62,14 @@ describe("DefaultMixSchema", () => {
 		expect(v.safeParse(DefaultMixSchema, { id, gains: [] }).success).toBe(false);
 		expect(v.safeParse(DefaultMixSchema, { id, gains: gains(64) }).success).toBe(true);
 		expect(v.safeParse(DefaultMixSchema, { id, gains: gains(65) }).success).toBe(false);
+	});
+});
+
+describe("StemTintSetSchema", () => {
+	it("takes a palette id or null, nothing else", () => {
+		expect(v.parse(StemTintSetSchema, { id, tint: "sage" }).tint).toBe("sage");
+		expect(v.parse(StemTintSetSchema, { id, tint: null }).tint).toBeNull();
+		expect(v.safeParse(StemTintSetSchema, { id, tint: "#ff0000" }).success).toBe(false);
 	});
 });
 

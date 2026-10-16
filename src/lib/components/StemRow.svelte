@@ -8,6 +8,7 @@
 	import Waveform from "#lib/components/Waveform.svelte";
 	import Knob from "#lib/components/Knob.svelte";
 	import LevelMeter from "#lib/components/LevelMeter.svelte";
+	import { stemTintHex } from "#lib/constants/stemTints.js";
 
 	interface Props {
 		i?: number;
@@ -44,6 +45,8 @@
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
 	const progress = $derived(engine.duration > 0 ? engine.position / engine.duration : 0);
 	const span = $derived(engine.duration > 0 ? stem.duration / engine.duration : 1);
+	/** The row's tint (constants/stemTints.ts): the name and the waveform wear it; nothing else does, so it stays a hint. */
+	const tint = $derived(stemTintHex(stem.tint));
 	/** A level as the knob says it: dB, −∞ at the bottom (as the Studio's faders). */
 	const levelText = (v: number) => (v <= 0 ? "−∞ dB" : `${Math.round(20 * Math.log10(v))} dB`);
 	/** A pan as the knob says it: L 50, C, R 50 (as the Studio's tracks). */
@@ -93,6 +96,7 @@
 				class="flex min-w-0 gap-1 text-14px font-500 text-blue-300 {silenced
 					? 'opacity-60 text-slate-100'
 					: ''}"
+				style:color={tint && !silenced ? tint : undefined}
 				title={stem.label}
 			>
 				{#if i !== undefined}<span class="shrink-0">{i + 1} -</span>{/if}
@@ -179,6 +183,7 @@
 				peaks={stem.peaks}
 				{progress}
 				{span}
+				color={tint}
 				dimmed={silenced || !stem.decoded}
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}

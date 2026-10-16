@@ -9,13 +9,24 @@
 		span?: number;
 		/** Draw in the dim colour when the stem is muted or not soloed. */
 		dimmed?: boolean;
+		/** A CSS colour for the bars; the canvas's own `color` (white) without. */
+		color?: string | null;
 		label: string;
 		onseek?: (fraction: number) => void;
 		/** Ctrl / ⌘-click or right-click: a menu for this position instead of a seek. */
 		oncontext?: (fraction: number, x: number, y: number) => void;
 	}
 
-	let { peaks, progress, span = 1, dimmed = false, label, onseek, oncontext }: Props = $props();
+	let {
+		peaks,
+		progress,
+		span = 1,
+		dimmed = false,
+		color = null,
+		label,
+		onseek,
+		oncontext,
+	}: Props = $props();
 
 	// Measured by bind:clientWidth / bind:clientHeight on the wrapper.
 	let width = $state(0);
@@ -31,6 +42,7 @@
 		if (!ctx) return;
 		$effect(() => {
 			if (width === 0 || height === 0) return;
+			void color; // the canvas's colour is a style; a change redraws
 			draw(canvas, ctx, peaks, span, dimmed, width, height);
 		});
 	};
@@ -114,6 +126,7 @@
 	<canvas
 		{@attach waveform}
 		class="absolute inset-0 h-full w-full text-white {dimmed ? 'opacity-20' : 'opacity-90'}"
+		style:color={color ?? undefined}
 	></canvas>
 	<!-- Playhead: positioned by percentage so it stays correct on resize -->
 	<div

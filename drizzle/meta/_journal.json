@@ -610,6 +610,13 @@
       "when": 1791985255008,
       "tag": "0086_ancient_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1792148576751,
+      "tag": "0087_bent_vector",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ import {
 	projectSlugs,
 	removeStemMidi as dropMidi,
 	renameStem as rename,
+	setStemTint as tintStem,
 	reorderStems as reorder,
 	saveSongDoc,
 	saveUserNote,
@@ -55,6 +56,7 @@ import {
 	SongSettingsSchema,
 	SongVersionSetSchema,
 	StemRenameSchema,
+	StemTintSetSchema,
 	StemIdsSchema,
 	DefaultMixSchema,
 } from "#lib/val/SongSchema.js";
@@ -298,6 +300,15 @@ export const renameStem = command(StemRenameSchema, async ({ id, label }) => {
 	const { locals } = getRequestEvent();
 	const { accountId } = await memberOf(locals, accountOfStem, id);
 	const row = await rename(accountId, id, label);
+	if (!row) error(404, "Stem not found");
+	return row;
+});
+
+/** A stem's tint in the player (editors); shared with the song, so everyone sees it. */
+export const setStemTint = command(StemTintSetSchema, async ({ id, tint }) => {
+	const { locals } = getRequestEvent();
+	const { accountId } = await memberOf(locals, accountOfStem, id);
+	const row = await tintStem(accountId, id, tint);
 	if (!row) error(404, "Stem not found");
 	return row;
 });

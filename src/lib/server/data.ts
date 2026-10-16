@@ -1007,6 +1007,7 @@ export async function manifestFor(s: {
 				peaks: st.peaks ?? undefined,
 				gain: st.gain,
 				pan: st.pan,
+				tint: st.tint ?? undefined,
 			})),
 		),
 	};
@@ -1294,6 +1295,16 @@ export async function renameStem(accountId: string, stemId: string, label: strin
 		.set({ label: label.trim() })
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ id: stem.id, label: stem.label });
+	return row ?? null;
+}
+
+/** A stem's tint in the player (constants/stemTints.ts), or null for none. */
+export async function setStemTint(accountId: string, stemId: string, tint: string | null) {
+	const [row] = await db
+		.update(stem)
+		.set({ tint })
+		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
+		.returning({ id: stem.id, tint: stem.tint });
 	return row ?? null;
 }
 

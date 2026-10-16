@@ -75,6 +75,7 @@
 	import { formatMonth } from "#lib/utils/formatMonth.js";
 	import { POSITION_MODE_LABELS } from "#lib/constants/positionModes.js";
 	import { toRoman } from "#lib/utils/toRoman.js";
+	import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 	import { decodedStemBytes } from "#lib/utils/decodedStemBytes.js";
 	import type { SongSection } from "#lib/val/SongSectionSchema.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
@@ -114,6 +115,7 @@
 		deleteStem,
 		removeStemMidi,
 		renameStem,
+		setStemTint,
 		reorderStems,
 		askAiAboutSong,
 		detectSections,
@@ -941,6 +943,16 @@
 	// Rename from the row menu. A prompt keeps this one-click; the load refresh
 	// carries the new label into the player without re-decoding (StemPlayer
 	// relabels in place).
+	/** The row's tint from the menu: saved on the song, the player retints in place on the refresh. */
+	async function tintStem(stemId: string, tint: StemTint | null) {
+		try {
+			await setStemTint({ id: stemId, tint });
+			await refreshAll();
+		} catch (e) {
+			notify(`Could not set the tint: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+
 	async function rename(stemId: string, current: string) {
 		const label = prompt("Stem name", current)?.trim();
 		if (!label || label === current) return;
@@ -4451,6 +4463,35 @@
 					>
 						<span class="i-ph-pencil-simple mr-2" aria-hidden="true"></span>Rename
 					</button>
+					<!-- The row's tint (constants/stemTints.ts): the palette as swatches, none first; shared with the song. -->
+					<div class="px-3 py-1.5" role="group" aria-label="{stem.label}: tint">
+						<div class="mb-1 text-xs text-dim">Tint</div>
+						<div class="flex flex-wrap gap-1.5">
+							<button
+								type="button"
+								class="h-5 w-5 rounded-full border {stem.tint
+									? 'border-white/30 hover:border-white/70'
+									: 'border-white ring-1 ring-white/60'} bg-blue-300/60"
+								aria-label="No tint"
+								aria-pressed={!stem.tint}
+								title="No tint (the player's blue)"
+								onclick={() => tintStem(stem.id, null)}
+							></button>
+							{#each STEM_TINTS as t (t.id)}
+								<button
+									type="button"
+									class="h-5 w-5 rounded-full border {stem.tint === t.id
+										? 'border-white ring-1 ring-white/60'
+										: 'border-white/30 hover:border-white/70'}"
+									style:background-color={t.hex}
+									aria-label="Tint {t.name}"
+									aria-pressed={stem.tint === t.id}
+									title={t.name}
+									onclick={() => tintStem(stem.id, t.id)}
+								></button>
+							{/each}
+						</div>
+					</div>
 					<label
 						class="block w-full cursor-pointer rounded px-3 py-1.5 text-left hover:bg-white/10"
 					>

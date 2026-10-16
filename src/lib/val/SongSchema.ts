@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { STEM_TINT_IDS } from "../constants/stemTints";
 import { FADER_MAX } from "../constants/fader";
 import { NameSchema } from "./NameSchema";
 import { NanoIdSchema } from "./NanoIdSchema";
@@ -90,3 +91,9 @@ export const StemIdsSchema = v.object({
 
 /** Argument of the renameStem command. */
 export const StemRenameSchema = v.object({ id: NanoIdSchema, label: NameSchema });
+
+/** A stem's tint (constants/stemTints.ts), or null for none. */
+export const StemTintSetSchema = v.object({
+	id: NanoIdSchema,
+	tint: v.nullable(v.picklist(STEM_TINT_IDS)),
+});

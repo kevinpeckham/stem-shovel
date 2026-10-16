@@ -1,0 +1,1 @@
+ALTER TABLE `stem` ADD `tint` text;

@@ -129,7 +129,10 @@
 				loadedKeys.size > 0 && [...nextKeys].every(([id, url]) => loadedKeys.get(id) === url);
 			if (sameOrFewer) {
 				for (const id of loadedKeys.keys()) if (!nextKeys.has(id)) engine.remove(id);
-				for (const s of stems) engine.relabel(s.id, s.label);
+				for (const s of stems) {
+					engine.relabel(s.id, s.label);
+					engine.retint(s.id, s.tint ?? null);
+				}
 				engine.reorder(stems.map((s) => s.id));
 			} else {
 				void engine.load(stems, { choice: modeChoice(), site: streaming });

@@ -31,6 +31,8 @@ export const stem = table(
 		gain: t.real("gain").notNull().default(1),
 		/** The default mix's pan for this stem, -1 (left) to 1 (right); the player's knob starts here (docs/stem-engine.md, "Pan"). */
 		pan: t.real("pan").notNull().default(0),
+		/** The row's tint in the player, an id from constants/stemTints.ts, or null for none; shared with the song. */
+		tint: t.text("tint"),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),

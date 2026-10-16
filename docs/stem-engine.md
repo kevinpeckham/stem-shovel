@@ -139,3 +139,17 @@ the sum's peak by the master gain, which is applied after the worklet.
 amber from −6 dB, red at full scale), the mark as a thin tick, and the
 light as a small square, red while a clip is held; a click resets that
 stem's (or, on the master, everything's).
+
+## Tints (2026-10-16)
+
+An editor can tint a stem's row from its ⋯ menu, so a band tells its
+guitars from its keys at a glance (Kevin: controlled, complementary,
+restrained; no rainbow). The palette is `STEM_TINTS` in
+`src/lib/constants/stemTints.ts`: eight hues at one middling lightness
+and low saturation, stored by id on the stem (`stem.tint`, migration 0087) and shared with the song, so everyone sees the same rows. Only the
+name and the waveform wear the colour (`Waveform` takes a `color` prop
+and sets it as the canvas's CSS colour, which `draw` reads); the meter,
+the knobs and the buttons stay as they are, so a tinted row is a hint.
+A muted or un-soloed row drops its tint with its brightness. The
+manifest carries `tint`, the engine keeps it on `StemState.tint`, and a
+refreshed manifest re-tints in place (`retint`), as a rename relabels.

@@ -13,6 +13,8 @@ export interface StemSource {
 	gain?: number;
 	/** The song's default mix pan for this stem, -1 to 1 (centre when absent). */
 	pan?: number;
+	/** The row's tint, an id from constants/stemTints.ts (none when absent). */
+	tint?: string;
 }
 
 /** Reactive per-stem state exposed by the engine to the UI. */
@@ -21,6 +23,7 @@ export interface StemState {
 	label: string;
 	gain: number; // fader value, 0 .. FADER_MAX
 	pan: number; // -1 (left) .. 1 (right), 0 centre
+	tint: string | null; // constants/stemTints.ts id, or null
 	muted: boolean;
 	soloed: boolean;
 	duration: number; // seconds, from the decoded buffer

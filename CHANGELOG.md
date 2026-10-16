@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Stem tints.** A stem's row can wear one of eight restrained colours
+  (`STEM_TINTS` in `src/lib/constants/stemTints.ts`: sea, sage, olive,
+  sand, clay, rose, lilac, slate, all at one middling lightness and low
+  saturation, so a tinted row is a hint against the navy, not a rainbow),
+  chosen from swatches in the row's ⋯ menu by editors and shared with the
+  song (`stem.tint`, migration 0087; `setStemTint`). The name and the
+  waveform take the tint; nothing else does. A refreshed manifest re-tints
+  in place (`StemEngine.retint`), as a rename relabels.
+
 ## [0.129.0] - 2026-10-16
 
 ### Added

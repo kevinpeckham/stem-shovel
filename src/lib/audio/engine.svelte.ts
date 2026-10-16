@@ -303,6 +303,7 @@ export class StemEngine {
 			label: src.label,
 			gain: clamp(src.gain ?? 1, 0, FADER_MAX),
 			pan: clamp(src.pan ?? 0, -1, 1),
+			tint: src.tint ?? null,
 			muted: false,
 			soloed: false,
 			duration: src.duration ?? 0,
@@ -832,6 +833,12 @@ export class StemEngine {
 	relabel(id: string, label: string): void {
 		const stem = this.stems.find((s) => s.id === id);
 		if (stem) stem.label = label;
+	}
+
+	/** The tint is display-only too (constants/stemTints.ts). */
+	retint(id: string, tint: string | null): void {
+		const stem = this.stems.find((s) => s.id === id);
+		if (stem) stem.tint = tint;
 	}
 
 	/** Release everything, including the AudioContext. Call from component teardown. */

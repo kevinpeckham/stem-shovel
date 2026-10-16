@@ -196,6 +196,15 @@ describe("editor-gated functions", () => {
 			outcome: { sent: "friend@example.com" },
 		},
 		{
+			name: "setStemTint",
+			fn: songs.setStemTint,
+			input: { id: STEM, tint: "sage" },
+			arrange: () => data.setStemTint.mockResolvedValue({ id: STEM, tint: "sage" }),
+			dataFn: "setStemTint",
+			args: [ACCOUNT, STEM, "sage"],
+			outcome: { id: STEM, tint: "sage" },
+		},
+		{
 			name: "renameStem",
 			fn: songs.renameStem,
 			input: { id: STEM, label: "Bass" },

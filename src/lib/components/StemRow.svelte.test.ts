@@ -16,6 +16,7 @@ function stem(overrides: Partial<StemState> = {}): StemState {
 		label: "Drums",
 		gain: 1,
 		pan: 0,
+		tint: null,
 		muted: false,
 		soloed: false,
 		duration: 200,
