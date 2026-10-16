@@ -11,7 +11,7 @@ export interface StemSource {
 	peaks?: number[];
 	/** The song's default mix fader for this stem (1 when absent). */
 	gain?: number;
-	/** The song's default mix pan for this stem, -1 to 1 (centre when absent). */
+	/** The song's default mix pan for this stem, -1 to 1 (center when absent). */
 	pan?: number;
 	/** The row's tint, an id from constants/stemTints.ts (none when absent). */
 	tint?: string;
@@ -22,7 +22,7 @@ export interface StemState {
 	id: string;
 	label: string;
 	gain: number; // fader value, 0 .. FADER_MAX
-	pan: number; // -1 (left) .. 1 (right), 0 centre
+	pan: number; // -1 (left) .. 1 (right), 0 center
 	tint: string | null; // constants/stemTints.ts id, or null
 	muted: boolean;
 	soloed: boolean;

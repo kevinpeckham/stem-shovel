@@ -13,7 +13,7 @@ export const TAKE_WARNING_SECONDS = 10 * 60;
 export const SILENCE_STOP_SECONDS = 2 * 60;
 /** The meter's 0..1 level (RMS × 3) under which the input counts as silence: about -50 dBFS. */
 export const SILENCE_LEVEL = 0.01;
-/** Asked of MediaRecorder for a compressed take; Chrome and Firefox honour it, Safari picks its own AAC rate. */
+/** Asked of MediaRecorder for a compressed take; Chrome and Firefox honor it, Safari picks its own AAC rate. */
 export const RECORDING_BITS_PER_SECOND = 256_000;
 /**
  * The file limit: a lossless stereo take at 48 kHz runs about 6 MB a minute

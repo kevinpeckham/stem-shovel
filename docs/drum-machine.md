@@ -74,7 +74,7 @@ and the MIDI ticks.
 
 The sampled kits are Groovie's CC0 one-shots (https://github.com/maximecb/groovie,
 `samples/`), which carry no further provenance; Groovie's README states the
-licence and nothing else about their origin. CC0 asks for no attribution,
+license and nothing else about their origin. CC0 asks for no attribution,
 but the app gives it anyway: on `/built-with` and in the user doc. Each of
 our files is one Groovie file renamed, unchanged (44.1 kHz, 16-bit, mono):
 
@@ -119,9 +119,9 @@ swing and loop points, retrigger and Euclidean fills, a soft synth with
 FM, filters and LFOs, track effects, WAV and MIDI export, MIDI controllers,
 finger-drumming on the keyboard, kits from dropped folders, a pattern
 generator, an MCP server. Its `docs/pattern-json-format.md` is a good
-reference for what a mature pattern model carries. **The GPL-3 licence is
+reference for what a mature pattern model carries. **The GPL-3 license is
 incompatible with our Apache-2.0 code: read it for ideas, copy nothing,
-not the samples either** (their licence is not stated separately).
+not the samples either** (their license is not stated separately).
 
 The gap between them is the roadmap. Groovie is the shape of v1, with a
 model designed from the start so that orDrumbox's features have somewhere
@@ -251,7 +251,7 @@ day.
   (`stepTime(index, bpm, swing)`).
 - `src/lib/components/DrumMachine.svelte`: the device panel, full view
   only in Phase 1. Grid cells are buttons with `aria-pressed`; rows are
-  labelled; the column header carries the beat numbers.
+  labeled; the column header carries the beat numbers.
 - `src/routes/drum-machine/+page.svelte`, and the six registrations a
   tool page needs. A user doc section in `scripts/user-docs/` once it is
   in the recorder.
@@ -497,11 +497,11 @@ view (the recorder's toolbar row) has no breakpoints of its own.
 `DEFAULT_DRUM_PANS` (Kevin: presets, generated and AI-generated beats
 should apply pan as appropriate): the usual place of each drum from the
 audience's side, hats and ride a little right, the floor tom and crash
-left, kick, snare and clap centred. Preset rows that name no pan take
+left, kick, snare and clap centered. Preset rows that name no pan take
 it (`drumPresetProject`), generated rows take it (`newRow`), Text-to-Beat
 rows take it unless the model says `pan` for a row (a percentage, the
 prompt offers it), and a row added by hand or by a MIDI pad takes it.
-The starting beat and the tutorial's kit stay centred (their rows name
+The starting beat and the tutorial's kit stay centered (their rows name
 pan 0, and the pinned share links hold them).
 
 ## The presets' effects (2026-10-01)
@@ -565,7 +565,7 @@ Finger drumming (the "own samples, MIDI input" line above): a MIDI menu
 beside Effects (shown where Web MIDI exists: Chrome and Edge) with
 Connect, the inputs' names once listening, Disconnect, and a Record
 toggle. `drumMachine.connectMidi` is the piano's, every input's note-ons
-going to `hitNote`: General MIDI's drum notes and their usual neighbours
+going to `hitNote`: General MIDI's drum notes and their usual neighbors
 map to voices (`DRUM_MIDI_IN_NOTES`: both kicks, both snares, the pedal
 hat, every tom, both crashes and rides), any other note plays the open
 pattern's rows in order, so a keyboard works too. `hit(voice, velocity)`
@@ -636,9 +636,9 @@ fetched eleven drums from `/kits/acoustic/` and the snare from
 
 **Provenance (the same day).** Each sample row shows its filename, format,
 size, date and uploader, and carries a free-text `source` (migration
-0068; `setDrumSampleSource`, 500 characters: a URL, a pack, a licence),
+0068; `setDrumSampleSource`, 500 characters: a URL, a pack, a license),
 edited from a pencil beside it, so where a file came from is on record.
-The built-in drums show their Groovie file and licence
+The built-in drums show their Groovie file and license
 (`BUILTIN_SAMPLE_FILES`, `BUILTIN_SAMPLES_SOURCE` in constants/drumKits.ts),
 and every row, built-in or uploaded, has a listen button that plays the
 file once as it is.

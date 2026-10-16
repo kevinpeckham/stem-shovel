@@ -215,7 +215,7 @@ erDiagram
   time; a private note's revisions answer only to their owner.
 
 - **song_user_note** — one person's private notepad on a song, the
-  `mynotes` document on the song page: `markdown`, its sanitised `html`
+  `mynotes` document on the song page: `markdown`, its sanitized `html`
   (rendered on save, so a page load renders nothing) and a `version` that
   counts the saves that changed the text, one row per `(song_id, user_id)`.
   Anyone signed in who may view the song keeps one (`data.getUserNote` /
@@ -560,7 +560,7 @@ it is ready. An account kit's samples count against the account's storage.
 | filename, content_type | text                         |                                          |
 | size_bytes             | integer                      |                                          |
 | uploaded_by            | text FK → user (set null)    |                                          |
-| source                 | text                         | provenance, free text (a URL, a licence) |
+| source                 | text                         | provenance, free text (a URL, a license) |
 | created_at, updated_at | timestamp_ms                 |                                          |
 
 ### beat

@@ -1815,13 +1815,13 @@
 									oninput={(e) => drumMachine.setPan(r, Number(e.currentTarget.value))}
 									ondblclick={() => drumMachine.setPan(r, 0)}
 									aria-label="Pan of {voiceLabel(row.voice)}"
-									title="Pan (double-click for the centre)"
+									title="Pan (double-click for the center)"
 								/>
 							</div>
 						</div>
 					</div>
 
-					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover colour is for the empty ones. -->
+					<!-- events. A sounding cell stays lit under the pointer (a touch less opaque, so the hover reads): the device button's hover color is for the empty ones. -->
 					<div class="grid {lineClasses} gap-1 @2xl-gap-6px @4xl-gap-2 touch-pan-y">
 						{#each row.cells as cell, s (s)}
 							{@const now = drumMachine.step === s && drumMachine.playing === drumMachine.current}

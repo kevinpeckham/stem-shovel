@@ -15,7 +15,7 @@ import {
  * The piano's effect chain (docs/piano.md, "Effects"), built once per
  * context and driven by `update`: voices play into `input`, which runs
  * through a fuzz (a hot gain into a soft clipper, a tone low-pass after),
- * a wah (a resonant band-pass whose centre an envelope follower, an LFO
+ * a wah (a resonant band-pass whose center an envelope follower, an LFO
  * or a MIDI pedal moves), a stereo chorus (two short delays swept by one LFO in opposite
  * directions, mixed against the dry signal), a phaser (four all-pass
  * stages swept by an LFO, mixed against the dry signal so notches move
@@ -112,7 +112,7 @@ export interface PianoBounceSettings {
 	beats: number;
 	/** How much of each step is spent on the way, 0 (a jump) to 1. */
 	glide: number;
-	/** Stops in the centre between the sides. */
+	/** Stops in the center between the sides. */
 	centre: boolean;
 	bpm: number;
 }
@@ -172,7 +172,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const input = ctx.createGain();
 
 	// Compressor, first in the chain (Kevin: the bass wants it): the voices' sum squeezed before the
-	// effects colour it (fxStages.ts: a true bypass at amount 0, make-up gain after).
+	// effects color it (fxStages.ts: a true bypass at amount 0, make-up gain after).
 	const comp = createCompressorStage(ctx);
 	comp.update(s.compressor, 0);
 	input.connect(comp.input);
@@ -206,7 +206,7 @@ export function createPianoFx(ctx: BaseAudioContext, initial: PianoFxSettings): 
 	const rotaryOut = rotary.output;
 
 	// The stereo bounce: a panner after the rotary, before the sends (so the room hears the sound move),
-	// its pan written ahead on the clock in steps of the session tempo: left, right (and the centre
+	// its pan written ahead on the clock in steps of the session tempo: left, right (and the center
 	// between, when asked), each step a jump or a glide of up to the whole step. Live, a timer keeps
 	// a second scheduled; offline, the whole render is written at once.
 	const bounce = ctx.createStereoPanner();

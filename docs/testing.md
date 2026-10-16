@@ -51,7 +51,7 @@ Every `+page.svelte` and `+server.ts` under `src/routes` must have a row in
 the script, or it exits 2 naming the missing ones, so new routes join the
 test when they are written. `SMOKE_BASE=https://www.stemshovel.com` runs it
 against production, where the signed-in pass is skipped unless the token is
-recognised there (it is kept out of 1Password on purpose); the dev VM's
+recognized there (it is kept out of 1Password on purpose); the dev VM's
 address bypasses the firewall's bot challenge (docs/security.md).
 
 Vitest, bundled with Vite+ (`vp test`), in two projects configured in

@@ -10,6 +10,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **American spelling in copy** (Kevin): `bun run spell:us`
+  (`scripts/american-spelling.ts`, the table in
+  `src/lib/utils/americanSpelling.ts`) finds UK spellings where a user
+  could read them (strings and comments in code, markup text and label
+  attributes, prose in the docs) and `--apply` rewrites them, case kept;
+  identifiers, keys, props, classes, paths and single lowercase-word
+  strings are never touched. 230 lines corrected; the chord player's
+  new dropdown reads Color.
 - **Each renamed page's heading pairs the name with the words**: Lark
   Idea Recorder, Dawn Multitrack Recorder, Ember Practice Amp, Whirl
   Looper, Palette Chord Player (the copy docs' seed titles; the browser
@@ -21,7 +29,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   "Palette | Chord Player: Free Online Circle of Fifths"; the public page
   moves in `isIndexablePath`, the sitemap, robots.txt and the noindex
   rule; share links carry the new address. The device's "Chord Palette"
-  dropdown is **Colour** now, so the two do not collide. The code keeps
+  dropdown is **Color** now, so the two do not collide. The code keeps
   its names.
 - **The Practice Amp is Ember and the Looper is Whirl**, the brand names
   beside Dawn and Lark, at `/ember` and `/whirl` with the old addresses

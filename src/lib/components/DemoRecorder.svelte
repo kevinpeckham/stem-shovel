@@ -660,7 +660,7 @@
 				if (waveFor === url) wavePeaks = computePeaks(buffer, 2048);
 			})
 			.catch(() => {
-				// A file this browser cannot decode (or fetch): the screen keeps its centre line and the slider still seeks.
+				// A file this browser cannot decode (or fetch): the screen keeps its center line and the slider still seeks.
 			});
 	});
 

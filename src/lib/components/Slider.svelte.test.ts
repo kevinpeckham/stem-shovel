@@ -70,7 +70,7 @@ describe("Slider", () => {
 		expect(thumb()).toHaveStyle({ left: "80%" });
 		expect(popover()).toBeNull();
 	});
-	test("a bipolar slider fills from the centre", () => {
+	test("a bipolar slider fills from the center", () => {
 		render(Slider, {
 			props: bound({ min: -1, max: 1, value: -0.5, bipolar: true, label: "Pan" }).props,
 		});

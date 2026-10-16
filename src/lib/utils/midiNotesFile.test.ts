@@ -35,7 +35,7 @@ describe("notesToMidiBlob and notesFromMidiSummary", () => {
 		expect(summary.notes[0]).toMatchObject({ pitch: 36, channel: DRUM_CHANNEL });
 		expect(summary.notes[0].duration).toBeGreaterThan(0);
 	});
-	it("normalises a parsed file's values: velocity to 0..1, pitch and times clamped and rounded", () => {
+	it("normalizes a parsed file's values: velocity to 0..1, pitch and times clamped and rounded", () => {
 		expect(
 			notesFromMidiSummary({
 				notes: [

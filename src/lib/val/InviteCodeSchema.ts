@@ -10,7 +10,7 @@ export const INVITE_CODE_LENGTH = 12;
 /** How long a code lasts when the form asks for a limit (days). */
 export const INVITE_CODE_EXPIRY_DAYS = [0, 7, 30, 90] as const;
 
-/** A typed code, normalised: separators and case do not matter. */
+/** A typed code, normalized: separators and case do not matter. */
 export const InviteCodeSchema = v.pipe(
 	v.string(),
 	v.transform(normalizeInviteCode),

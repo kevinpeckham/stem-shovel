@@ -75,7 +75,7 @@ function readLoadMarker(sources: StemSource[]) {
 	};
 }
 
-/** A mono stem's channel weights for a pan: unity both sides at centre, the far side falling away on a sine. */
+/** A mono stem's channel weights for a pan: unity both sides at center, the far side falling away on a sine. */
 export function monoPan(pan: number): { left: number; right: number } {
 	return {
 		left: pan > 0 ? Math.cos((pan * Math.PI) / 2) : 1,
@@ -222,7 +222,7 @@ export class StemEngine {
 	/**
 	 * Buffered mode's pan after each stem's gain (the worklet pans itself when
 	 * streamed): a StereoPannerNode for a stereo buffer; for a mono one a pair
-	 * of gains into a merger, so it sits at unity in both channels at centre
+	 * of gains into a merger, so it sits at unity in both channels at center
 	 * as it did before pans (a StereoPannerNode would drop it 3 dB) and the
 	 * far channel falls away on a sine as it turns (`monoPan`).
 	 */

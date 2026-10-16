@@ -396,7 +396,7 @@ describe("StudioTimeline", () => {
 		expect(document.activeElement).not.toBe(name);
 	});
 
-	test("the fader and the pan reach the engine as they move; a double-click centres the pan", async () => {
+	test("the fader and the pan reach the engine as they move; a double-click centers the pan", async () => {
 		render(StudioTimeline);
 		// The fader and the pan are a Slider and a Knob: sliders to assistive technology, moved by the keys here.
 		const level = screen.getByRole("slider", { name: "Guitar level" });

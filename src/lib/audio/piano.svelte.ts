@@ -842,7 +842,7 @@ export class PianoEngine {
 		this.#fx?.update({ compressor: c });
 		this.#save();
 	}
-	/** The stereo bounce: depth (0 is off), how often it switches, the glide and the stop in the centre, any of them. */
+	/** The stereo bounce: depth (0 is off), how often it switches, the glide and the stop in the center, any of them. */
 	setBounce(patch: Partial<PianoBounce>) {
 		const b = parseBounce({ ...this.bounce, ...patch });
 		this.bounce = b;

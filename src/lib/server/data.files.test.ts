@@ -618,7 +618,7 @@ describe("notation files", () => {
 });
 
 describe("demos", () => {
-	test("createDemo reserves the row labelled from the file; null for another account's song, full at the cap", async () => {
+	test("createDemo reserves the row labeled from the file; null for another account's song, full at the cap", async () => {
 		reset({
 			...base(),
 			demo: Array.from({ length: MAX_DEMOS_PER_SONG }, (_, i) => demo(`d${i}`, { songId: "sg2" })),

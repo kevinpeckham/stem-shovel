@@ -4,7 +4,7 @@
 	/**
 	 * A device slider in place of an `<input type="range">`, the knob's
 	 * sibling (Knob.svelte): a track with the value's share filled (from
-	 * the left end, or from the centre for a bipolar control), a round
+	 * the left end, or from the center for a bipolar control), a round
 	 * thumb, and the value's text never, always, or in a small popover
 	 * over the thumb while it moves. A press anywhere on the track jumps
 	 * there and drags from there (Shift makes the drag four times finer),
@@ -21,7 +21,7 @@
 		step?: number;
 		/** The value a double-click returns to (unity on a fader, say). */
 		resetTo?: number;
-		/** The track fills from the centre rather than the left end. */
+		/** The track fills from the center rather than the left end. */
 		bipolar?: boolean;
 		orientation?: "horizontal" | "vertical";
 		/** The track's thickness in pixels; the thumb is twice it. */

@@ -12,7 +12,7 @@ Rows are drums, columns are sixteenth notes. Tap a cell to turn a hit on or off,
 
 A cell can hit at three strengths: normal, accent or ghost. Hold a sounding cell (or right-click it, or shift-click) to step through them.
 
-Each row has a drum picker (twelve to choose from: kick, snare, closed and open hats, clap, rim, three toms, ride, crash and cowbell), **M** to mute it, **S** to solo it and **×** to remove it. **Row** adds another, up to twelve. From a laptop or tablet width up, each row also has a level slider and a pan slider (double-click the pan for the centre). A closed hat cuts off an open hat still ringing, as on a real kit.
+Each row has a drum picker (twelve to choose from: kick, snare, closed and open hats, clap, rim, three toms, ride, crash and cowbell), **M** to mute it, **S** to solo it and **×** to remove it. **Row** adds another, up to twelve. From a laptop or tablet width up, each row also has a level slider and a pan slider (double-click the pan for the center). A closed hat cuts off an open hat still ringing, as on a real kit.
 
 **From the computer keyboard**: press an arrow key and a window of eight steps appears on the first row, outlined in blue with a digit in each cell. The up and down arrows move it between rows and the left and right arrows along the row, eight steps at a time (a shorter window at the end of a 12- or 24-step pattern). <kbd>1</kbd> to <kbd>8</kbd> switch each of its steps on or off, <kbd>Shift</kbd> with a digit steps a sounding cell's velocity (normal, accent, ghost, as a long press does), and <kbd>Esc</kbd> puts the window away. Clicking a cell moves the window to it.
 

@@ -327,7 +327,7 @@
 			draw();
 			const ro = new ResizeObserver(draw);
 			ro.observe(canvas);
-			// A source that decodes after the clip mounted redraws it; so does a change of the track's tint (the canvas's colour).
+			// A source that decodes after the clip mounted redraws it; so does a change of the track's tint (the canvas's color).
 			$effect(() => {
 				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
@@ -370,7 +370,7 @@
 			$effect(() => {
 				void clip.notes?.length;
 				void pxPerSecond;
-				// The track's tint is the canvas's colour: a change redraws.
+				// The track's tint is the canvas's color: a change redraws.
 				void engine.arrangement.tracks.find((t) => t.id === clip.trackId)?.colour;
 				draw();
 			});
@@ -951,7 +951,7 @@
 							bipolar
 							size={26}
 							label="{track.name} pan"
-							title="Pan (double-click for centre)"
+							title="Pan (double-click for center)"
 							format={panText}
 							oninput={(v) => engine.setPan(track.id, v)}
 						/>

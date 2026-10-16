@@ -119,7 +119,7 @@ export function createPreampStage(ctx: BaseAudioContext, peak: number): AmpStage
 }
 
 /**
- * The tone stack: a low shelf, a peaking mid (its centre the model's, or
+ * The tone stack: a low shelf, a peaking mid (its center the model's, or
  * the bass heads' selector) and a high shelf, ±12 dB each from the knobs'
  * middle, with the passive stack's scoop taken from the mids at flat;
  * then the switches: Bright (a +6 dB shelf above 2 kHz that fades as the
@@ -250,7 +250,7 @@ function cabinetImpulse(ctx: BaseAudioContext, id: AmpCabinetId): AudioBuffer {
  * Productions) fetched and decoded into a context, once per context and
  * file, and scaled so the body of the instrument (250 to 800 Hz) passes
  * at unity as the synthesized ones do, so a switch between cabinets is
- * a change of colour and not of level. Null when it cannot be fetched
+ * a change of color and not of level. Null when it cannot be fetched
  * (offline, a test without the files): the synthesized cabinet stays.
  */
 const captures = new WeakMap<BaseAudioContext, Map<string, Promise<AudioBuffer | null>>>();

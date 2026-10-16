@@ -132,7 +132,7 @@ export interface PianoBounce {
 	division: PianoBounceDivision;
 	/** How much of each step is spent moving, 0 (a jump) to 1 (always on the way). */
 	glide: number;
-	/** Stops in the centre on the way across (left, centre, right, centre). */
+	/** Stops in the center on the way across (left, center, right, center). */
 	centre: boolean;
 }
 export const DEFAULT_PIANO_BOUNCE: PianoBounce = {

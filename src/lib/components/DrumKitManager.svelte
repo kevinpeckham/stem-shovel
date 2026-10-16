@@ -148,7 +148,7 @@
 		(s.filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? s.contentType.split("/")[1] ?? "").toUpperCase();
 	async function editSource(s: KitSample) {
 		const source = window.prompt(
-			"Where did this file come from? A URL, a pack's name, a licence…",
+			"Where did this file come from? A URL, a pack's name, a license…",
 			s.source,
 		);
 		if (source === null || source.trim() === s.source) return;

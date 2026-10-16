@@ -149,8 +149,8 @@
 	/**
 	 * The Recordings panel (the ideas and takes, with the search field at its
 	 * top): docked in its column, popped out into a floating panel, or
-	 * minimised to the toolbar's Ideas button, which brings it back the way it
-	 * was (Kevin: one panel with search, expandable to a popover or minimised
+	 * minimized to the toolbar's Ideas button, which brings it back the way it
+	 * was (Kevin: one panel with search, expandable to a popover or minimized
 	 * to an icon; docked by default). Remembered per browser. On a phone the
 	 * same list opens as a full-screen sheet from that button instead.
 	 */
@@ -751,7 +751,7 @@
 				<span class="i-ph-plus" aria-hidden="true"></span>
 				<span class="hidden sm-inline">New Idea</span>
 			</button>
-			<!-- The ideas and takes: on a phone a full-screen sheet from this button (the ⋯ menu's item too); from sm the Recordings panel, which this button minimises and brings back. -->
+			<!-- The ideas and takes: on a phone a full-screen sheet from this button (the ⋯ menu's item too); from sm the Recordings panel, which this button minimizes and brings back. -->
 			<button
 				class="button button-sm shrink-0 sm-hidden"
 				style:anchor-name="--idea-search"
@@ -1306,7 +1306,7 @@
 			</FloatingPanel>
 		</section>
 
-		<!-- Ideas, newest first, each opening to its takes; the current one is open. The panel docks here, floats, or is minimised to the toolbar (recordingsMode). -->
+		<!-- Ideas, newest first, each opening to its takes; the current one is open. The panel docks here, floats, or is minimized to the toolbar (recordingsMode). -->
 		<section
 			class="hidden sm-grid grid-cols-1 content-start gap-2 xl-col-start-1 xl-row-start-2 xl-max-h-640px"
 			aria-label="Ideas"
@@ -1630,7 +1630,7 @@
 						<!--
 							An accordion and nothing more: the row only folds and unfolds; a take
 							loads. The set is the one source of truth (the native toggle is
-							cancelled): a toggle event lands after a re-render from an autosave
+							canceled): a toggle event lands after a re-render from an autosave
 							and the two would otherwise fight over the state.
 						-->
 						<details open={openIdeas.has(i.id) || matchedTakes.has(i.id)}>
@@ -1803,7 +1803,7 @@
 	<Metronome />
 </FloatingPanel>
 
-<!-- The drum machine's floating panel (desktop): dragged by its header, resized by its corner, minimised to the toolbar. -->
+<!-- The drum machine's floating panel (desktop): dragged by its header, resized by its corner, minimized to the toolbar. -->
 <FloatingPanel
 	open={drumsOpen}
 	title="Drum machine"

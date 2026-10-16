@@ -131,14 +131,14 @@ in three steps driven by `src/lib/upload.ts`:
   foot and in the panel's ⋯ menu; a tile opens the file in a
   `FloatingPanel` viewer (an iframe of the store's URL, so the CSP's
   `frame-src` allows both stores; Download first in its header). The Docs
-  panel is a `FloatingPanel` too: docked, floating from lg, or minimised
+  panel is a `FloatingPanel` too: docked, floating from lg, or minimized
   to the action row's Docs button (`docsMode`, `stemshovel.song.docs-mode`),
   its tabs and ⋯ menu (a `ContextMenu`, so nothing is clipped by the
   panel's overflow) in the header; the player spans both columns while
   the panel is away. The player (stems or demos, their tabs in the
   header) is a `FloatingPanel` the same way (`playerMode`,
   `stemshovel.song.player-mode`, the Player button beside Docs), with
-  `keep` so a minimised player stays mounted, hidden: decoded stems and
+  `keep` so a minimized player stays mounted, hidden: decoded stems and
   playback survive, and the button lights while it plays; the Docs panel
   spans both columns while the player is away. Lyrics is the Docs
   panel's first and default tab (Kevin).
@@ -149,7 +149,7 @@ in three steps driven by `src/lib/upload.ts`:
   (`isNotation` in `updateFile`), which the Chart tab's notation view
   lists beside the notation files; the Attachments panel keeps it too.
   **Use as demo** (`useAsDemo({ id })`, audio kind only): a new `demo`
-  row of the song, labelled from the filename, the file copied in Blob
+  row of the song, labeled from the filename, the file copied in Blob
   to the demo's pathname in the song's store (`createDemoFromFile`, the
   shape of adding a recording to a song), ready at once with its MP3
   rendition scheduled (`scheduleDemoPlayback`) and the project told, as
@@ -202,7 +202,7 @@ in three steps driven by `src/lib/upload.ts`:
   attachment or a notation file, or the label of a demo, is a link when
   the document is shown: `<a class="mention" href="/f/<code>">@Title</a>`
   (a demo links to `#demo-<id>` on the page). `utils/linkMentions.ts`
-  runs over the rendered, sanitised HTML in the song page's load
+  runs over the rendered, sanitized HTML in the song page's load
   (`+page.server.ts`) and in `saveDoc`'s answer (so a freshly saved
   document links without a reload), with the targets from
   `utils/mentionTargets.ts` (ready files and notation by title or

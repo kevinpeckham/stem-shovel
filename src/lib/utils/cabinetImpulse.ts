@@ -7,7 +7,7 @@ import { applyBiquad, biquad, magnitudeAt } from "./biquad.js";
  * cone's limit, a resonance where the box and the cone agree, the
  * roll-off above the cone's break-up with a last bump before it, a
  * steeper one above that), plus a few damped modes where a cone rings
- * and a close reflection off the baffle. Made by hand (no licence to
+ * and a close reflection off the baffle. Made by hand (no license to
  * read), fifty milliseconds long, mono, scaled so a kilohertz passes at
  * unity. For a ConvolverNode with `normalize` off.
  */

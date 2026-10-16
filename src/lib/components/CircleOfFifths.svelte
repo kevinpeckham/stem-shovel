@@ -41,7 +41,7 @@
 		showSignatures: boolean;
 		/** The wedges' names as the style makes them ("Cmaj7"); the positions' plain labels without. */
 		labels?: { major: string; minor: string }[];
-		/** The computer keyboard's keys on the wedges, labelled by distance from the key clockwise. */
+		/** The computer keyboard's keys on the wedges, labeled by distance from the key clockwise. */
 		showKeys?: boolean;
 		keyLabels?: { major: string; minor: string }[];
 		/** The key center's drawn index (0 at the top, 6 at the bottom), for the numerals and the highlight. */
@@ -54,7 +54,7 @@
 		pressed: Set<string>;
 		/** The wedge learn mode is waiting for (outlined), by id (docs/chord-player.md, "Learn mode"). */
 		target?: string | null;
-		/** The text in the centre (the chords sounding). */
+		/** The text in the center (the chords sounding). */
 		centre: string;
 		/** The sounding notes under the name, spelled (docs/chord-player.md, "The readout"). */
 		readoutNotes?: SpelledNote[];
@@ -116,7 +116,7 @@
 				}
 			: { w: CIRCLE_SIZE, h: CIRCLE_SIZE, cx: 200, cy: 200, scale: 1 },
 	);
-	/** The readout: the chord name at the hole's centre on every layout (Kevin), lifted a little when the notes show under it; the key mark on the rim at the key. */
+	/** The readout: the chord name at the hole's center on every layout (Kevin), lifted a little when the notes show under it; the key mark on the rim at the key. */
 	const showNotes = $derived(noteReadout !== "off" && readoutNotes.length > 0);
 	const both = $derived(noteReadout === "both");
 	/** Which readout note the arpeggiator is on: the note itself, else the same pitch an octave away (the pattern climbing octaves). */
@@ -162,7 +162,7 @@
 	const majorName = (i: number, p: CirclePosition) => labels[i]?.major ?? p.major.label;
 	const minorName = (i: number, p: CirclePosition) => labels[i]?.minor ?? p.minor.label;
 	/**
-	 * A label's place: a slot's centre at a radius, shifted down by `dy`
+	 * A label's place: a slot's center at a radius, shifted down by `dy`
 	 * (scaled, but never under three quarters, since the small fonts stop
 	 * shrinking at 7). A cut end wedge (15°, `labelScale`) has no room for
 	 * the usual offsets: its labels sit 14 units off in the major ring and
@@ -235,7 +235,7 @@
 		onrelease(e.pointerId);
 	}
 	const idOf = (p: CirclePosition, quality: ChordQuality) => p[quality].id;
-	/** Every wedge's numeral by its distance clockwise from the key: the key's own and its two neighbours (IV I V outside, ii vi iii inside) are the diatonic six. */
+	/** Every wedge's numeral by its distance clockwise from the key: the key's own and its two neighbors (IV I V outside, ii vi iii inside) are the diatonic six. */
 	const NUMERALS: Record<"major" | "minor", string[]> = {
 		major: ["I", "V", "II", "VI", "III", "VII", "♯IV", "♭II", "♭VI", "♭III", "♭VII", "IV"],
 		minor: ["vi", "iii", "vii", "♯iv", "♯i", "♯v", "♯ii", "♭vii", "iv", "i", "v", "ii"],
@@ -426,7 +426,7 @@
 			{/if}
 		{/each}
 	{/if}
-	<!-- the centre: what is sounding -->
+	<!-- the center: what is sounding -->
 	<circle
 		cx={box.cx}
 		cy={box.cy}

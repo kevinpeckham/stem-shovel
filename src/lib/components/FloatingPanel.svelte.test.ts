@@ -51,7 +51,7 @@ describe("FloatingPanel", () => {
 		expect(screen.getByText("Panel body")).toBeInTheDocument();
 	});
 
-	test("the close button minimises; closable={false} leaves it out", async () => {
+	test("the close button minimizes; closable={false} leaves it out", async () => {
 		const user = userEvent.setup();
 		const onminimise = vi.fn();
 		const { unmount } = render(FloatingPanel, { props: { ...base, open: true, onminimise } });

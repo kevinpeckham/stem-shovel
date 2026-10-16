@@ -2,7 +2,7 @@
 
 > **Palette** is the product name since 2026-10-16 (the route is `/palette`, the
 > Instruments menu says Chord Player), and the "Chord Palette" dropdown on the
-> device is **Colour** since the same day, so the two do not collide. The code
+> device is **Color** since the same day, so the two do not collide. The code
 > keeps `chord-player` and `ChordPaletteMenu`.
 
 Scoped 2026-10-03 at Kevin's request: a new instrument that plays every
@@ -220,7 +220,7 @@ map, voicings, seventh types, strums), `src/lib/utils/circleGeometry.ts`
 and `chordNotes.ts` (tested), `src/lib/audio/chordPlayer.svelte.ts` (the
 state and the play through `piano`; settings under
 `stemshovel.chord-player.*`), `CircleOfFifths.svelte` (the SVG: pointer
-capture per finger, `data-index`/`data-quality` on the wedges, the centre
+capture per finger, `data-index`/`data-quality` on the wedges, the center
 readout, the key mark) and `ChordPlayer.svelte` (the device: screen, Power,
 Sound, Chords/Notes, Key, the 7 pad, the five preset buttons with a link to
 the piano page to manage them, the Chords, Circle and Effects menus,
@@ -286,7 +286,7 @@ distance clockwise from the key's drawn index, per ring; the diatonic six
 in accent). With the key labels up, a strip under the circle names the
 other shortcuts (and the key labels are the piano's blue). The arch
 layout (`chordPlayer.layout`, a View button): `circleGeometry.ts` now
-describes a wedge as a slot (centre, angles, scale), `CIRCLE_SLOTS` the
+describes a wedge as a slot (center, angles, scale), `CIRCLE_SLOTS` the
 circle and `ARCH_SLOTS` the arch, a 480 × 320 box with wedges 9 to 3 on
 a 230-radius half circle, the two end wedges cut at the horizontal (15°
 each, labels at 0.8), and 8 and 7 (4 and 5) as leg slots: rectangles whose
@@ -332,7 +332,7 @@ static/kits/bass from `scripts/bass-samples.ts`, the pitch class's sample
 shifted by octaves, an octave under the key; the `synthVoice` bass patch
 stands in until they decode). The arpeggiator is a split button at
 desktop (Arp, and its settings on the caret) and a wrench section on a
-phone; `ChordPresetSettings.arp` saves it with a preset. **The readout** (Kevin): the chord name at the hole's centre on every
+phone; `ChordPresetSettings.arp` saves it with a preset. **The readout** (Kevin): the chord name at the hole's center on every
 layout, and under it the sounding notes from `chordPlayer.soundingSpelled`
 (`utils/noteSpelling.ts`: letter, accidental, octave and the treble-staff
 step, flats for positions 0 and 6 to 11, sharps for 1 to 5), written as

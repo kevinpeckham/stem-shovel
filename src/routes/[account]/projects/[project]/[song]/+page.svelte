@@ -600,7 +600,7 @@
 
 	/**
 	 * The Docs panel (chart, lyrics, notes, comments, PDFs): docked in its
-	 * column, popped out into a floating panel from lg, or minimised to the
+	 * column, popped out into a floating panel from lg, or minimized to the
 	 * action row's Docs button, which brings it back the way it was (Kevin,
 	 * as the Idea Recorder's panels). Remembered per browser.
 	 */
@@ -627,9 +627,9 @@
 	}
 	/**
 	 * The player (the stems or the demos, with their tabs) the same way (Kevin):
-	 * docked, floating from lg, or minimised to the action row's Player button,
+	 * docked, floating from lg, or minimized to the action row's Player button,
 	 * the panel kept mounted so decoded stems and playback survive; the button
-	 * lights while it plays minimised. Remembered per browser.
+	 * lights while it plays minimized. Remembered per browser.
 	 */
 	let playerMode = $state<DocsMode>("docked");
 	let playerRestore: Exclude<DocsMode, "minimised"> = "docked";
@@ -1189,7 +1189,7 @@
 		draftRun++;
 		chordBusy = null;
 		draftBusy = false;
-		notify("Cancelled", { kind: "info" });
+		notify("Canceled", { kind: "info" });
 	}
 	async function detectChords(run = ++draftRun) {
 		const grid = posCtx.grid;
@@ -1897,7 +1897,7 @@
 
 			<!-- player, docs, comments, chat, attachments, share, info and settings -->
 			<div class="flex flex-wrap justify-end gap-2">
-				<!-- The Player and Docs panels: minimised to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimised. -->
+				<!-- The Player and Docs panels: minimized to these buttons and back the way they were (Kevin, as the recorder's Ideas button); Player lit while it plays minimized. -->
 				<button
 					class="button button-sm {playerMode === 'minimised'
 						? playerEngine?.playing
@@ -2894,7 +2894,7 @@
 	>
 		<!-- The box shows the stems or the demos; a song with demos but no stems opens on the demos.
 		     The tabs always show (the Demos view holds Record Demo for a song without demos), in the panel's header.
-		     The panel docks here, floats from lg, or is minimised to the action row's Player button (playerMode), kept mounted. -->
+		     The panel docks here, floats from lg, or is minimized to the action row's Player button (playerMode), kept mounted. -->
 		<FloatingPanel
 			open={playerMode !== "minimised"}
 			floating={playerMode === "floating"}
@@ -3219,7 +3219,7 @@
 		{/if}
 	</section>
 
-	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimised to the action row's Docs button (docsMode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
+	<!-- 3. the Docs panel: chart, lyrics, notes, comments and PDFs (Kevin). Docked in this column, floating from lg, or minimized to the action row's Docs button (docsMode); its tabs and menus in the panel's header. Away from the column the player takes both. -->
 	<section
 		class="{docsMode === 'docked'
 			? `h-full min-h-560px ${playerMode === 'docked' ? '' : 'xl:col-span-2'}`

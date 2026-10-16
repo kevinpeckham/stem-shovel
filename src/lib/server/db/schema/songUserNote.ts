@@ -7,7 +7,7 @@ import { user } from "./user";
 
 /**
  * One person's private notepad on a song (the "mynotes" document on the
- * song page): markdown and its sanitised rendering, one row per user and
+ * song page): markdown and its sanitized rendering, one row per user and
  * song. Only its author ever reads it (data.getUserNote takes the user id);
  * it is never listed, exported or shared. Saved like the shared documents
  * (data.saveUserNote): the version counts saves, and each change also goes

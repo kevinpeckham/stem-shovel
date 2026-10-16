@@ -6,7 +6,7 @@
 	import InfoTip from "#lib/components/InfoTip.svelte";
 
 	/**
-	 * The chord player's Colour menu (once "Chord Palette"; docs/chord-player.md, "Styles":
+	 * The chord player's Color menu (once "Chord Palette"; docs/chord-player.md, "Styles":
 	 * a palette is a chord style in the app's words), the Arpeggiator menu's
 	 * shape: the seventh a major chord takes, explained in an InfoTip, and
 	 * below a divider the owner's controls for palettes of its own.

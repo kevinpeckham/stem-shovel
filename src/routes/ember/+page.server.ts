@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		: null;
 	const [guitar, bass] = await Promise.all([siteAmpPresets("guitar"), siteAmpPresets("bass")]);
 	return {
-		// The drum machine's panel (a beat to practise to), as the looper has it.
+		// The drum machine's panel (a beat to practice to), as the looper has it.
 		kits: await listDrumKitManifests(member?.accountId ?? null),
 		beats: member ? await listBeats(member.accountId) : [],
 		textToBeat: aiAvailable(),

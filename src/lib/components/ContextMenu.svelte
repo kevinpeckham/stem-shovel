@@ -44,7 +44,7 @@
 		disabled?: boolean;
 		/** The trigger's icon; the ⋯ by default. */
 		iconClass?: string;
-		/** Text after the trigger's icon (a labelled button rather than a ⋯). */
+		/** Text after the trigger's icon (a labeled button rather than a ⋯). */
 		label?: string | null;
 		labelClasses?: string | null;
 		items?: ContextMenuItem[] | null;

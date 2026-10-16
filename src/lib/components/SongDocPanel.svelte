@@ -23,7 +23,7 @@
 		hint: string;
 		/** The document's markdown (for the editor). */
 		markdown: string;
-		/** Its rendered, sanitised HTML (for reading). */
+		/** Its rendered, sanitized HTML (for reading). */
 		html: string;
 		version: number;
 		canEdit: boolean;

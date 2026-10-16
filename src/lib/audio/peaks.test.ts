@@ -25,7 +25,7 @@ describe("computePeaks", () => {
 });
 
 describe("computeMixPeaks", () => {
-	it("takes the peaks of the sum, normalised to the loudest bin", () => {
+	it("takes the peaks of the sum, normalized to the loudest bin", () => {
 		const a = fakeAudioBuffer([new Float32Array([1, -1])]);
 		const b = fakeAudioBuffer([new Float32Array([0.5, 0.5])]);
 		expect(round(computeMixPeaks([a, b], 2))).toEqual([1, 0.3333]);
@@ -47,7 +47,7 @@ describe("computeMixPeaks", () => {
 });
 
 describe("combinePeaks", () => {
-	it("combines stored peaks as the root of the sum of squares, normalised", () => {
+	it("combines stored peaks as the root of the sum of squares, normalized", () => {
 		const stems = [
 			{ peaks: [0.6, 0.3], duration: 2 },
 			{ peaks: [0.8, 0], duration: 2 },

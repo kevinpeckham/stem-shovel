@@ -190,7 +190,7 @@ async function decodeFrom(s: StemStream, seconds: number, gen: number): Promise<
 	}
 }
 
-/** The sample's channels as separate Float32Arrays (WebKit hands interleaved; the copy normalises). */
+/** The sample's channels as separate Float32Arrays (WebKit hands interleaved; the copy normalizes). */
 function planar(sample: AudioSample): { timestamp: number; data: Float32Array[] } {
 	const data: Float32Array[] = [];
 	for (let ch = 0; ch < sample.numberOfChannels; ch++) {

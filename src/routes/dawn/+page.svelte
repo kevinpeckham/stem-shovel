@@ -1479,7 +1479,7 @@
 			</section>
 		</FloatingPanel>
 
-		<!-- The songs and the notes, side by side from xl; each docks, floats or minimises. -->
+		<!-- The songs and the notes, side by side from xl; each docks, floats or minimizes. -->
 		<div class="mt-6 grid grid-cols-1 xl-grid-cols-2 gap-6 items-start">
 			<!-- The Recordings panel (Kevin: "Songs" read as the project songs): the user's Studio songs and their revisions. -->
 			<section aria-label="Recordings" class={songsMode === "minimised" ? "hidden" : ""}>

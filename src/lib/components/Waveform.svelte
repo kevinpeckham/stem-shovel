@@ -7,9 +7,9 @@
 		progress: number;
 		/** This stem's length as a fraction of the full song, so shorter stems draw shorter. */
 		span?: number;
-		/** Draw in the dim colour when the stem is muted or not soloed. */
+		/** Draw in the dim color when the stem is muted or not soloed. */
 		dimmed?: boolean;
-		/** A CSS colour for the bars; the canvas's own `color` (white) without. */
+		/** A CSS color for the bars; the canvas's own `color` (white) without. */
 		color?: string | null;
 		label: string;
 		onseek?: (fraction: number) => void;
@@ -42,7 +42,7 @@
 		if (!ctx) return;
 		$effect(() => {
 			if (width === 0 || height === 0) return;
-			void color; // the canvas's colour is a style; a change redraws
+			void color; // the canvas's color is a style; a change redraws
 			draw(canvas, ctx, peaks, span, dimmed, width, height);
 		});
 	};
@@ -62,14 +62,14 @@
 		el.height = Math.round(h * dpr);
 		ctx.scale(dpr, dpr);
 		ctx.clearRect(0, 0, w, h);
-		// The colour is the canvas's own `color` (a text-* utility on the element)
+		// The color is the canvas's own `color` (a text-* utility on the element)
 		// below, so the palette stays in uno.config.ts and nothing is imported.
 		ctx.fillStyle = getComputedStyle(el).color;
 
 		const mid = h / 2;
 		const drawWidth = w * fraction; // stem length in px
 		const bins = data.length;
-		// One vertical bar per CSS pixel, mirrored around the centre line.
+		// One vertical bar per CSS pixel, mirrored around the center line.
 		for (let x = 0; x < drawWidth; x++) {
 			const bin = Math.min(bins - 1, Math.floor((x / drawWidth) * bins));
 			const amp = data[bin] * (mid - 1);

@@ -231,11 +231,11 @@ same controls sit in the levels menu under an Effects heading.
   is not subtracted from the dry, so full mix is louder by about 3.5 dB).
 - **Phaser or Flanger** (one at a time, Kevin's call to save menu space;
   `phaser.mode`): mix (0 = off), rate (0.1 to 5 Hz) and depth, shared.
-  The flanger is a delay centred on 3 ms swept ±2.5 ms at full depth by
+  The flanger is a delay centered on 3 ms swept ±2.5 ms at full depth by
   the same LFO, with 0.5 feedback, in a second wet the mode opens instead
   of the phaser's (measured: a 1 kHz tone swings 14 dB as the comb
   passes). The phaser: four all-pass
-  filters (`BiquadFilterNode`) in series centred at 500, 800, 1300 and 2100 Hz, each moved by
+  filters (`BiquadFilterNode`) in series centered at 500, 800, 1300 and 2100 Hz, each moved by
   the same LFO up to ±400 Hz; `mix` crossfades the dry towards half and
   half with the all-passed signal, where the notches are deepest
   (measured: a 1 kHz tone swings 11 dB as they pass).
@@ -278,9 +278,9 @@ same controls sit in the levels menu under an Effects heading.
   (`metronome.bpm`, the piano listening for changes; `PIANO_BOUNCE_DIVISIONS`
   in constants/piano.ts: an eighth, a beat, two beats, a bar or two bars at
   the metronome's meter). Depth (0 = off) is how far it swings; the path is
-  left and right, or via the centre (left, centre, right, centre); glide is
+  left and right, or via the center (left, center, right, center); glide is
   how much of each step is spent on the way (0 a jump, with a 5 ms ramp
-  against clicks; 1 always moving, so via-the-centre at full glide is a
+  against clicks; 1 always moving, so via-the-center at full glide is a
   triangle through the middle rather than a stop). Each step glides from
   the last target written, and a change of settings from wherever the
   sound is, keeping the pattern's phase. Live, a 250 ms timer keeps a

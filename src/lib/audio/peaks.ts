@@ -35,7 +35,7 @@ export function computePeaks(buffer: AudioBuffer, bins = PEAK_BINS): Float32Arra
  * Peaks of the sum of several buffers — the waveform of the mix as it would
  * play, rather than the sum of each stem's peaks (which overstates where
  * stems cancel). Channels are averaged per stem, bins span the longest
- * buffer, and the result is normalised so the loudest bin is 1.
+ * buffer, and the result is normalized so the loudest bin is 1.
  */
 export function computeMixPeaks(buffers: AudioBuffer[], bins = PEAK_BINS): Float32Array {
 	const peaks = new Float32Array(bins);
@@ -72,7 +72,7 @@ export function computeMixPeaks(buffers: AudioBuffer[], bins = PEAK_BINS): Float
  * A stand-in for `computeMixPeaks` before the audio is decoded, from the
  * per-stem peaks the manifest carries: each stem's bins (which span that
  * stem's own length) are placed on the song's length and combined as the
- * root of the sum of squares, then normalised.
+ * root of the sum of squares, then normalized.
  */
 export function combinePeaks(
 	stems: { peaks: number[]; duration: number }[],

@@ -71,7 +71,7 @@ says what was made from it on 2026-10-10 and where it differs.
   MIT): the NAM inference engine compiled to WebAssembly inside an
   AudioWorklet, single-threaded on purpose because multi-threaded WASM
   "crossed the iOS Jetsam memory limit"; a 64 MB heap; models are `.nam`
-  JSON files loaded by URL, each with its own licence on tone3000. The
+  JSON files loaded by URL, each with its own license on tone3000. The
   lesson: **captured-amp realism is reachable later** without native
   code, at the price of a heavy module and per-model licensing. Not for
   the first version.
@@ -221,7 +221,7 @@ from the drum machine the same way, later.
    the stems or the latest mix. This is where a practice amp becomes part
    of Stem Shovel rather than a tool beside it.
 4. **Captured amps** (optional): Neural Amp Modeler models in a worklet,
-   gated on how phase 2 sounds and on a licence for the models.
+   gated on how phase 2 sounds and on a license for the models.
 
 ## Open questions
 
@@ -243,7 +243,7 @@ from the drum machine the same way, later.
    from measurements on those, not from the papers.
 5. **Cabinet.** Ship the filter model in phase 1 and add impulse
    responses in phase 2? For the impulses: render our own (free of
-   licence, less real) or license a pack (several are sold or given under
+   license, less real) or license a pack (several are sold or given under
    terms that allow use in software; needs a read of the terms).
 6. **Speaker output.** Allow the phone's or laptop's speaker as the
    output with the warnings above, or headphones and interfaces only? (A
@@ -298,7 +298,7 @@ clipper). The amp's own stages are in `ampStages.ts`:
   (`utils/cabinetImpulse.ts`: a delta through the box's filters, a
   reflection off the baffle, a few damped cone modes; measured in its
   tests), so phase 2's "real impulse" is already the shape of it, with
-  no licence to read. A licensed pack can drop in later as a file;
+  no license to read. A licensed pack can drop in later as a file;
 - the **spring** (`utils/springImpulse.ts`): a train of chirps that die
   over a second and a half, two channels with their own jitter, at unit
   energy (peak-scaled it added twelve times the dry's level and the knob

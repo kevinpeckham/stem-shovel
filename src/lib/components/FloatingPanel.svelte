@@ -38,7 +38,7 @@
 		closable?: boolean;
 		/** Extra classes on the panel's root (`h-full` for a docked panel that fills its column). */
 		extraClass?: string;
-		/** Keep the panel mounted while closed, hidden rather than gone (the stem player: its decoded audio and playback survive a minimise). */
+		/** Keep the panel mounted while closed, hidden rather than gone (the stem player: its decoded audio and playback survive a minimize). */
 		keep?: boolean;
 	}
 	let {
@@ -178,7 +178,7 @@
 		aria-label={title}
 		role="dialog"
 	>
-		<!-- The drag handle is a pointer affordance; the toolbar button and Minimise cover the keyboard. -->
+		<!-- The drag handle is a pointer affordance; the toolbar button and Minimize cover the keyboard. -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<header
 			class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 border-b border-current/10 bg-oxford-800 select-none {floating

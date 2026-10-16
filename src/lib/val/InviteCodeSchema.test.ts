@@ -7,7 +7,7 @@ import {
 } from "./InviteCodeSchema";
 
 describe("InviteCodeSchema", () => {
-	test("normalises what was typed", () => {
+	test("normalizes what was typed", () => {
 		expect(v.parse(InviteCodeSchema, "abcd-efgh jk2m")).toBe("ABCDEFGHJK2M");
 	});
 	test("rejects the wrong length", () => {

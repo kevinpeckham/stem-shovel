@@ -47,11 +47,11 @@ docs/stem-engine.md) found most of the foundation built:
 | Inputs, gains, meters, monitor, device    | `src/lib/audio/inputs.svelte.ts` (mic, line, computer; channel modes; `attach(ctx)`; settings per browser)                                     |
 | Latency calibration                       | `inputSources.calibrate()` + `src/lib/utils/findLatency.ts` (three clicks, cross-correlation); `outputLatencyMs(ctx)`                          |
 | Sample-accurate capture                   | `static/worklets/loop-capture.js` (an `AudioWorkletProcessor`, start frame on the context clock, lead-in for the latency shift)                |
-| Synchronised playback, faders, mute, solo | `StemEngine` (`src/lib/audio/engine.svelte.ts`): one `start(when, offset)` per source, `setTargetAtTime` ramps, `#effectiveGain`               |
+| Synchronized playback, faders, mute, solo | `StemEngine` (`src/lib/audio/engine.svelte.ts`): one `start(when, offset)` per source, `setTargetAtTime` ramps, `#effectiveGain`               |
 | Session tempo, click, count-in            | `metronome.svelte.ts` (`hostContext`, `startLookahead`), the looper's count-in                                                                 |
 | Row layout                                | `StemRow.svelte` (grip, label, M/S, fader, waveform cell), `Transport.svelte` (readout in bars or timecode via `readout.svelte.ts`, master)    |
-| Waveforms                                 | `src/lib/audio/peaks.ts` (`computePeaks`), `Waveform.svelte` (canvas, colour from `color`), `RecorderWave.svelte`                              |
-| Panels                                    | `FloatingPanel.svelte` (dock, float, minimise, remembered size); the song page's `playerMode` tri-state                                        |
+| Waveforms                                 | `src/lib/audio/peaks.ts` (`computePeaks`), `Waveform.svelte` (canvas, color from `color`), `RecorderWave.svelte`                               |
+| Panels                                    | `FloatingPanel.svelte` (dock, float, minimize, remembered size); the song page's `playerMode` tri-state                                        |
 | Notes                                     | `IdeaNotesPanel.svelte` + `saveIdeaNotes` (markdown board, autosave, creates the idea on first save)                                           |
 | Upload path for a file per track          | `TakeQueue` (IndexedDB, resumes after a refresh) + `uploadRecordingStemFile` + `recording_stem`; `isRecordingPathname` branch in `/api/upload` |
 | Lossless files                            | `encodeWav24` (24-bit WAV), the jobs function's PCM → FLAC step (`renderRecordings`)                                                           |
@@ -152,7 +152,7 @@ their blobs; the account sweep and `db:sweep-orphans` follow.
 
 ## The engine: `src/lib/audio/studio.svelte.ts`
 
-A `StudioEngine` class in the looper's mould (runes state, one hosted
+A `StudioEngine` class in the looper's mold (runes state, one hosted
 `AudioContext`, the capture worklet) with the stem engine's scheduling.
 
 **Context.** Created on the first gesture at the device's rate (not the
@@ -333,7 +333,7 @@ has one or the other). Decisions, and why:
   never fights the hands); `drumMachine.scheduleHit` plays a voice at a
   time through the pattern's row settings. Notes are queued by the
   look-ahead (`#queueUntil`) a few seconds ahead rather than all at once,
-  and cancelled on stop, seek or an edit. A track's fader scales velocity
+  and canceled on stop, seek or an edit. A track's fader scales velocity
   (there is one piano, so a MIDI track has no audio path of its own: no
   pan, no effects; the instrument's panel has those), mute and solo skip
   the notes, and a clip's gain handle scales velocity too.
@@ -478,7 +478,7 @@ peak-hold mark and the clip memory behave exactly as the stem player's;
 `resetClips(trackId?)` clears a light. The master's meter in the page's
 footer is the same component. A track's tint comes from the stem
 palette (`STEM_TINTS`) and lives in the arrangement's `colour` field,
-which the schema already carried for the lane colour that never got
+which the schema already carried for the lane color that never got
 built: swatches in the track's ⋯ menu (`setTint`), the name and the
 clips' canvases take it (`style:color`, which the drawing reads through
 `getComputedStyle`, and the clip effects re-draw on a change).

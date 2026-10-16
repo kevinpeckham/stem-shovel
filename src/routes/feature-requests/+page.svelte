@@ -28,7 +28,7 @@
 		<h1 class="heading-2">Feature requests</h1>
 		<p class="opacity-90 text-balance">
 			What members have asked for, what we said, and what has shipped. Members give the ones they
-			want a thumbs up: the favourites rise to the top. A new request appears once we have read it.
+			want a thumbs up: the favorites rise to the top. A new request appears once we have read it.
 		</p>
 		<div class="mt-4 flex flex-wrap items-center gap-4">
 			{#if data.user}

@@ -125,7 +125,7 @@
 				{#if menu}{@render menu(stem)}{/if}
 			</div>
 			<!-- The fader and the pan as knobs (Knob.svelte), so the meter fits on the same line (Kevin): the value
-			     shows while a knob turns; a double-click returns the level to unity, the pan to centre.
+			     shows while a knob turns; a double-click returns the level to unity, the pan to center.
 			     data-fader: the row's M/S keys leave the knobs alone. -->
 			<div class="contents" data-fader>
 				<Knob
@@ -149,7 +149,7 @@
 					bipolar
 					size={22}
 					label="{stem.label} pan"
-					title="Pan (double-click for centre)"
+					title="Pan (double-click for center)"
 					format={panText}
 					oninput={(v) => engine.setPan(stem.id, v)}
 				/>

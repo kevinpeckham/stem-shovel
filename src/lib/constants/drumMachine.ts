@@ -188,7 +188,7 @@ export const DRUM_HUMANIZE_MS = 12;
  */
 export const DRUM_PATTERN_VERSION = 9;
 /** General MIDI drum notes, for the MIDI export (channel 10). */
-/** A MIDI note in from a pad or keyboard, to the voice it plays: General MIDI's drums (DRUM_GM_NOTES and the usual neighbours: both kicks, both snares, the pedal hat, every tom, both crashes and rides). Notes off the map play the pattern's rows in order (drumMachine.hitNote). */
+/** A MIDI note in from a pad or keyboard, to the voice it plays: General MIDI's drums (DRUM_GM_NOTES and the usual neighbors: both kicks, both snares, the pedal hat, every tom, both crashes and rides). Notes off the map play the pattern's rows in order (drumMachine.hitNote). */
 export const DRUM_MIDI_IN_NOTES: Record<number, DrumVoiceId> = {
 	35: "kick",
 	36: "kick",

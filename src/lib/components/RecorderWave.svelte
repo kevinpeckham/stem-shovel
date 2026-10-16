@@ -6,7 +6,7 @@
 	 * recording, a strip that scrolls as the take grows, one bar per animation
 	 * frame of the input's level, the newest at the right; with a take loaded,
 	 * the whole take's peaks (decoded once, `computePeaks`) with a playhead,
-	 * clicked or dragged to seek. Both views are normalised the way a phone's
+	 * clicked or dragged to seek. Both views are normalized the way a phone's
 	 * voice memos are (Kevin): the bars scale to the loudest one in view, with
 	 * a floor so silence stays flat rather than blowing up noise, and a
 	 * square-root curve lifts the quiet parts, so a whisper and a shout both
@@ -58,7 +58,7 @@
 		ctx.clearRect(0, 0, w, h);
 		ctx.fillStyle = getComputedStyle(el).color;
 		const mid = h / 2;
-		// The centre line, so an empty screen still reads as a waveform's home.
+		// The center line, so an empty screen still reads as a waveform's home.
 		ctx.globalAlpha = 0.25;
 		ctx.fillRect(0, mid, w, 1);
 		ctx.globalAlpha = 1;
@@ -76,7 +76,7 @@
 			return;
 		}
 		if (!data || data.length === 0) return;
-		// A take: one bar per pixel across the whole width, mirrored about the centre, scaled to its loudest bin.
+		// A take: one bar per pixel across the whole width, mirrored about the center, scaled to its loudest bin.
 		let loudest = SILENCE;
 		for (const v of data) loudest = Math.max(loudest, v);
 		for (let x = 0; x < w; x++) {

@@ -1,5 +1,5 @@
 /**
- * Pitch of a short buffer of samples, for the tuner: McLeod's normalised
+ * Pitch of a short buffer of samples, for the tuner: McLeod's normalized
  * square difference (an autocorrelation scaled so a perfect repeat reads 1),
  * the first strong peak refined by a parabola. Pure functions, tested on
  * synthesized tones (pitch.test.ts).

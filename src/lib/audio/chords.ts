@@ -89,7 +89,7 @@ export function chordOf(
 
 /**
  * One chord per bar (`barStarts` are the bars' start times in seconds, the
- * last entry the end of the analysed span), merged across equal neighbours.
+ * last entry the end of the analyzed span), merged across equal neighbors.
  */
 export function chordsPerBar(notes: Note[], barStarts: number[]): ChordSegment[] {
 	const bars: ChordSegment[] = [];

@@ -82,7 +82,7 @@ describe("checkSignUp", () => {
 		const m = await checkSignUp({ email: "a@b.c", inviteToken: "nope", ...yes }, lookups);
 		expect(m).toMatchObject({ ok: false, message: expect.stringContaining("not valid") });
 	});
-	test("a code is normalised before the lookup", async () => {
+	test("a code is normalized before the lookup", async () => {
 		const r = await checkSignUp(
 			{ email: "a@b.c", inviteCode: " abcd-efgh-jkmn ", ...yes },
 			lookups,

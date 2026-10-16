@@ -4,7 +4,7 @@
  * strength envelope (spectral flux) autocorrelated for the tempo, beat
  * groupings compared for 4/4 against 3/4, and a chroma profile matched
  * against the Krumhansl-Kessler key templates. Features are extracted per
- * stem and summed, so a batch of stems is analysed as one mix.
+ * stem and summed, so a batch of stems is analyzed as one mix.
  */
 export interface Features {
 	/** Onset strength per frame. */
@@ -115,9 +115,9 @@ export function extractFeatures(buffer: AudioBuffer, maxSeconds = 90): Features 
 /**
  * Adds the pitch-class energy of `mono` between `lo` and `hi` Hz into `chroma`
  * and returns how tonal the band is (the share of its energy in peaks).
- * Only spectral peaks count (a bin louder than its two neighbours each side),
+ * Only spectral peaks count (a bin louder than its two neighbors each side),
  * which drops the broadband smear of drums and noise, and each frame's
- * chroma is normalised before it is added, so a loud hit does not outweigh
+ * chroma is normalized before it is added, so a loud hit does not outweigh
  * a quiet bar. On MMKK's real mixes this took the key from 3 of 5 right to
  * 4 of 5, with wider margins.
  */
@@ -484,7 +484,7 @@ const KEY_NAMES = Array.from({ length: 24 }, (_, i) =>
 /**
  * A key per stretch, as changes, by the path through the 24 keys that
  * scores best over all the segments with a cost for every switch
- * (Viterbi): a segment on its own may lean to a neighbour key (the
+ * (Viterbi): a segment on its own may lean to a neighbor key (the
  * relative, the fifth), and a stretch where the chroma says little takes
  * the key around it rather than a key of its own, so what comes out is
  * the few keys the song really moves through, each from where it begins.

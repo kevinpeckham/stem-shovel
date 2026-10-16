@@ -28,7 +28,7 @@ const DrumRowFieldsSchema = v.object({
 	voice: v.picklist(DRUM_VOICE_IDS),
 	/** 0 silent to 1 full; the slider's position, squared into a gain. */
 	level: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
-	/** -1 left, 0 centre, 1 right. */
+	/** -1 left, 0 center, 1 right. */
 	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
 	mute: v.boolean(),
 	/** How much of the row goes to the delay and the reverb, 0 to 1, on top of the dry signal. Absent in rows stored before the effects existed: see DrumRowSchema. */

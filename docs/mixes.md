@@ -80,7 +80,7 @@ song page; (2) arranging, with stems shared, parts added and practice
 mixes downloaded; (3) the studio recording, after which the stems are
 history and the engineer or producer issues mixes for the band's
 approval. The order is typical, not required. The song page as built was
-organised by media type (stems, demos, mixes as sibling tabs) rather than
+organized by media type (stems, demos, mixes as sibling tabs) rather than
 by phase, so in the mixing phase the review was squeezed into a box made
 for a stem player, with stale stems as the default view. Agreed:
 

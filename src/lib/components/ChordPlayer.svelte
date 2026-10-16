@@ -190,9 +190,9 @@
 		minor: "the relative minor as home",
 		honkytonk: "sixths and sevenths",
 		ragtime: "dominant chains",
-		bossa: "soft jazz colours",
+		bossa: "soft jazz colors",
 	};
-	/** The built-in styles and the account's own, for the device's Colour dropdown (once "Chord Palette", renamed when the player became Palette). */
+	/** The built-in styles and the account's own, for the device's Color dropdown (once "Chord Palette", renamed when the player became Palette). */
 	const STYLE_OPTIONS = $derived([
 		...CHORD_STYLES.map((s) => ({ value: s.id, label: s.label, description: STYLE_SHORT[s.id] })),
 		...chordPlayer.customStyles.map((s) => ({
@@ -535,7 +535,7 @@
 			/>
 		</div>
 		<div class="hidden @xl-block min-w-36">
-			<div class="device-button-group-label text-dark hidden @xl-block">Colour</div>
+			<div class="device-button-group-label text-dark hidden @xl-block">Color</div>
 			<!-- A split button (Kevin): the palette (a chord style, `style` in the engine), and on the caret the seventh's kind and your own palettes. -->
 			<div class="flex gap-px" role="group" aria-label="Chord palette">
 				<ComboBox
@@ -1128,7 +1128,7 @@
 {#snippet chordsMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
 		<label class="block">
-			<span class="device-button-label">Colour</span>
+			<span class="device-button-label">Color</span>
 			<select
 				class="device-field w-full"
 				value={chordPlayer.style}

@@ -8,7 +8,7 @@ import { user } from "./user";
  * A bug report or feature request from a signed-in user (the footer's
  * "Report a bug", the Feature Requests page's "Request a feature"): what
  * they typed, plus the page they were on and their browser, captured for
- * them. System admins read, prioritise, answer and close them on /admin and
+ * them. System admins read, prioritize, answer and close them on /admin and
  * get an email when one comes in.
  */
 export const bugReport = table(

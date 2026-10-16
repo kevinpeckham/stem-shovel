@@ -21,7 +21,7 @@ describe("biquad", () => {
 		expect(response("lowpass", 1000, Math.SQRT1_2, 0, 1000)).toBeCloseTo(-3, 0);
 		expect(response("lowpass", 1000, Math.SQRT1_2, 0, 10000)).toBeLessThan(-35);
 	});
-	it("a peaking filter lifts its centre by its gain and leaves the far bands alone", () => {
+	it("a peaking filter lifts its center by its gain and leaves the far bands alone", () => {
 		expect(response("peaking", 1000, 1, 6, 1000)).toBeCloseTo(6, 0);
 		expect(response("peaking", 1000, 1, 6, 50)).toBeCloseTo(0, 0);
 	});

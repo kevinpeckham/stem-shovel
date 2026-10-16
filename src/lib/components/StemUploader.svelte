@@ -142,7 +142,7 @@
 						onDecoding: () => (job.status = "decoding"),
 						onDecoded: (buffer) => {
 							addedBytes += buffer.length * buffer.numberOfChannels * 4;
-							// Cheap next to the upload itself; the batch is analysed as one mix below.
+							// Cheap next to the upload itself; the batch is analyzed as one mix below.
 							if (onanalysis) {
 								features.push(extractFeatures(buffer));
 								keySegments.push(extractKeySegments(buffer, keyWindows(buffer.duration)));

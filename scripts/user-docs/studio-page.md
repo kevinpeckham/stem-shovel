@@ -17,7 +17,7 @@ Add a track, arm it (the red dot), choose its input and press Record: after a ba
 - Add MIDI track records notes instead of sound; edit them in the piano roll, or render to audio for a bounce
 - The sliders button in a track's header opens its compressor, tone and reverb
 - Each track has a level knob and a pan knob, and a meter beside them; the small square at its end lights when the track clips and stays lit until you click it
-- A track's ⋯ menu offers a tint: eight soft colours for its name and clips, so parts tell apart at a glance
+- A track's ⋯ menu offers a tint: eight soft colors for its name and clips, so parts tell apart at a glance
 - Space plays and stops, R records, Home goes to the start, L loops the region on the ruler
 - The song saves automatically as you work; Save revision keeps a named snapshot you can restore
 - The song's menu bounces the mix to a WAV, or adds it to a song as a demo or as stems

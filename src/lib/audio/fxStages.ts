@@ -398,7 +398,7 @@ export interface ToneStage {
  * - **Bottom**, after the intent of the same unit's Big Bottom: bass that
  *   feels bigger. Aphex does it with a phase shift and a compressor on the
  *   low band; a Web Audio compressor has a few milliseconds of lookahead,
- *   and mixing the delayed band back cancelled as much as it added
+ *   and mixing the delayed band back canceled as much as it added
  *   (measured). A harmonic enhancer read as brightness and grit (Kevin); a
  *   parallel sub band lost most of itself to the filters' phase lag; a
  *   Linkwitz-Riley crossover summed flat but its phase rotation put a
@@ -647,10 +647,10 @@ export interface PhaserStage {
 	update(settings: PhaserStageSettings, tau: number): void;
 }
 
-/** The phaser's four all-pass stages, their centre frequencies and how far the LFO moves each. */
+/** The phaser's four all-pass stages, their center frequencies and how far the LFO moves each. */
 const PHASER_STAGES = [500, 800, 1300, 2100];
 const PHASER_SWEEP = 400;
-/** The flanger's delay: its centre, how far full depth sweeps it, and the feedback that sharpens the comb. */
+/** The flanger's delay: its center, how far full depth sweeps it, and the feedback that sharpens the comb. */
 const FLANGER_CENTRE = 0.003;
 const FLANGER_SWEEP = 0.0025;
 const FLANGER_FEEDBACK = 0.5;

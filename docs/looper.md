@@ -14,7 +14,7 @@ A loop station at `/looper`, the user's own page like the Idea Recorder:
 a loop of a fixed length (bars at a tempo) plays round and round while
 layers are recorded onto it one pass at a time, from the microphone, the
 piano or the drum machine. Phase 1 layers are audio; a layer can be
-muted, soloed, levelled or thrown away; the loop can be saved as an
+muted, soloed, leveled or thrown away; the loop can be saved as an
 idea's take (the mix) with the layers as its sources, so it reaches a song
 as stems through what multitrack takes already built. Phase 2 adds MIDI
 layers for the piano and the drums.
@@ -219,7 +219,7 @@ loop and drops a pass still recording, as its title says.
 ## Export and Load (2026-10-02)
 
 Kevin: "besides saving loops as multitrack recordings to the idea
-recorder (perhaps better labelled as 'export'), we should be able to save
+recorder (perhaps better labeled as 'export'), we should be able to save
 and load loops in the looper itself." The Save menu is **Export** (an
 export icon; "Export as take"), and a **Load** menu lists the loops the
 user exported, newest first, with their layer count, length and tempo:
@@ -391,7 +391,7 @@ the events on the idea.
 - `src/routes/looper/+page.svelte` and `+page.server.ts`: user-owned like
   the recorder; skinned as a device like the drum machine and the piano
   (2026-10-02, Kevin: `device-chrome` chassis, `device-screen` with the
-  position, status and progress, labelled `device-button-*` groups,
+  position, status and progress, labeled `device-button-*` groups,
   container-query rows with the root a `@container`), the settings in
   three menus on the device (`ContextMenu` with snippet blocks, the
   piano's effects-menu idiom): **Timing** (a metronome icon; tempo and
@@ -497,5 +497,5 @@ the amp on, which opens its input (the line in or the microphone jack)
 through the shared inputs module; the inputs' `listen()` hands the amp
 its source's node under the looper's own `attach`. The source's slider
 under its button is the amp's master. A saved loop's layer carries
-`source: "amp"` (IdeaSchema), and a layer labelled "Amp …" from before
+`source: "amp"` (IdeaSchema), and a layer labeled "Amp …" from before
 the field restores as one.

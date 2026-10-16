@@ -145,7 +145,7 @@ describe("locals", () => {
 		expect(h.memberFindMany).not.toHaveBeenCalled();
 		expect(resolve).toHaveBeenCalledWith(event);
 	});
-	it("a session fills in the user (booleans normalised) and the active memberships", async () => {
+	it("a session fills in the user (booleans normalized) and the active memberships", async () => {
 		h.getSession.mockResolvedValue({ user: { ...sessionUser, isSystemAdmin: undefined } });
 		h.memberFindMany.mockResolvedValue([
 			membership("a1"),

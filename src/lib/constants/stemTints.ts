@@ -3,7 +3,7 @@
  * restrained palette, every hue at the same middling lightness and low
  * saturation so a tinted row reads as a hint against the navy, never a
  * rainbow (Kevin). Stored by id on the stem, shared with the song; the
- * hex is the one place the colour lives. No tint is the player's blue.
+ * hex is the one place the color lives. No tint is the player's blue.
  */
 export const STEM_TINTS = [
 	{ id: "sea", name: "Sea", hex: "#7FB2C2" },

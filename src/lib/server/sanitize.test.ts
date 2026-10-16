@@ -4,9 +4,9 @@ import { sanitizeHtml } from "./sanitize";
 
 /**
  * sanitizeHtml guards every rendered markdown field (user docs, song notes,
- * comments, support replies). These tests pin its actual behaviour: what is
+ * comments, support replies). These tests pin its actual behavior: what is
  * dropped with its content, what is unwrapped (text kept), which attributes
- * survive, and how URL attributes are scheme-checked. Where the behaviour is
+ * survive, and how URL attributes are scheme-checked. Where the behavior is
  * looser than a reader might expect, the test says so in a comment rather
  * than changing the sanitizer.
  */

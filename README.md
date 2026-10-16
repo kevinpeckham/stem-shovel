@@ -325,6 +325,6 @@ check and the tests without any secret.
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE). Use the code in your own
-projects, modify it, redistribute it; the license grants a patent licence
+projects, modify it, redistribute it; the license grants a patent license
 too and asks only for attribution. Stem Shovel the service is run by
 Lightning Jar. Security reports: [SECURITY.md](SECURITY.md).

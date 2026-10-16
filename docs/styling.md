@@ -22,7 +22,7 @@ Rules:
   `heading-2` sections, `max-w-article` for prose.
 - **Semantic tokens** (`bg-panel`, `bg-row`, `text-dim`, `border-line`,
   `bg-playhead`, `bg-solo`, `text-wave`, `text-waveDim`) are defined with the
-  palette in `uno.config.ts`. The waveform canvas reads its colour from its
+  palette in `uno.config.ts`. The waveform canvas reads its color from its
   own computed `color` (set by `text-wave` / `text-waveDim`), so no module
   exports the palette.
 - **Classes used in `src/app.html` are safelisted**; that file is outside the

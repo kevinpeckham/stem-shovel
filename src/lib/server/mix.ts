@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 
 /**
  * MP3 mixdowns, rendered server-side with ffmpeg from the playback renditions
- * (the sources when a rendition is missing). Two flavours:
+ * (the sources when a rendition is missing). Two flavors:
  *
  * - **original**: every ready stem at unity, master at 1. Deterministic for a
  *   given set of stem files, so it is rendered once and cached in Blob
@@ -34,7 +34,7 @@ const run = promisify(execFile);
 const BITRATE = "192k";
 
 export interface MixRequest {
-	/** Effective gains and pans (-1 to 1, centre when absent); a stem left out is silent. */
+	/** Effective gains and pans (-1 to 1, center when absent); a stem left out is silent. */
 	stems: { id: string; gain: number; pan?: number }[];
 	master: number;
 }
@@ -60,7 +60,7 @@ export type MixKeyStem = Pick<
 
 /** The files and the default mix's gains: a saved mix renders a fresh original. */
 export function mixKeyOf(stems: MixKeyStem[]) {
-	// A pan of 0 adds nothing, so a song whose stems are all centred keeps the key it had before pans.
+	// A pan of 0 adds nothing, so a song whose stems are all centered keeps the key it had before pans.
 	const parts = stems
 		.map((s) => `${s.id}:${playbackOrSource(s)}:${s.gain ?? 1}${s.pan ? `:${s.pan}` : ""}`)
 		.sort();
@@ -117,8 +117,8 @@ function playbackOrSource(
 
 /**
  * The pan as ffmpeg's `pan` filter, the StereoPannerNode's stereo law so
- * the download matches the player: left of centre the right channel leans
- * into the left, right of centre the other way. Nothing at centre.
+ * the download matches the player: left of center the right channel leans
+ * into the left, right of center the other way. Nothing at center.
  */
 export function panFilter(pan: number): string {
 	if (!pan) return "";

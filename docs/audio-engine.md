@@ -8,7 +8,7 @@ fields are `$state`, so components read `engine.position` directly.
 - **Progressive load.** `load()` seeds `engine.stems` from the manifest
   (duration, channels and peaks recorded at upload travel with each stem)
   and fills each entry in as its file decodes. Rows and waveforms render at
-  once, dimmed and labelled "decoding…"; play and seek enable when every stem
+  once, dimmed and labeled "decoding…"; play and seek enable when every stem
   is ready — a partial mix is not the song.
 - **Loading is three stems at a time** (`LOAD_CONCURRENCY`): fetch and decode
   overlap; more in flight only raises peak memory. The manifest URL is the
@@ -46,7 +46,7 @@ fields are `$state`, so components read `engine.position` directly.
 - **Sections timeline** (`SectionTimeline.svelte`): when a song has
   sections (`song.sections`, `[{ name, start }]` in seconds), a row above
   the stems shows a block per section on the same grid as a stem row, so
-  the blocks sit over the waveforms, labelled with the section's `index`
+  the blocks sit over the waveforms, labeled with the section's `index`
   (roman numerals by default, the name on hover — the column is narrow);
   the block containing `engine.position`
   is highlighted and clicking one seeks to its start. Members edit index,
@@ -87,7 +87,7 @@ fields are `$state`, so components read `engine.position` directly.
 - **MIDI view** (`lib/audio/midi.ts`, `MidiRoll.svelte`, `MidiBadge.svelte`):
   a stem with a MIDI file shows a "MIDI" chip beside its name; clicking it
   swaps the row's waveform for a piano roll of the file's notes on the
-  song's time scale (same seek and keyboard behaviour), and back. The file
+  song's time scale (same seek and keyboard behavior), and back. The file
   is fetched from Blob and parsed in the browser once per URL — a small
   SMF reader that merges tracks, follows tempo changes and keeps note
   on/off only.
@@ -95,8 +95,8 @@ fields are `$state`, so components read `engine.position` directly.
   while stems upload, each decoded buffer yields an onset-strength envelope
   (spectral flux, 2048-point FFT, hop 256 = 125 fps) and two chroma
   profiles (8192-point FFT from 110 Hz to 4.2 kHz, and a 16384-point bass
-  one from 55 to 260 Hz; spectral peaks only, each frame normalised, so
-  drums do not smear them); the batch's features are summed and analysed
+  one from 55 to 260 Hz; spectral peaks only, each frame normalized, so
+  drums do not smear them); the batch's features are summed and analyzed
   as one mix: tempo by autocorrelation of the detrended envelope over
   50–210 bpm, candidates outside 80–170 held back (the half- or
   double-time lag often correlates as well as the beat; tuned on MMKK's
@@ -115,7 +115,7 @@ fields are `$state`, so components read `engine.position` directly.
   between a key and its fifth when they rank level. Measured on MMKK's
   mixes (2026-09-16): every declared tempo exact, four of five keys right
   (Mop Heart hears E where A is declared), the 3/4 song in 3/4. Only the first 90 s are
-  analysed. The uploader hands the result to the song page: a song with
+  analyzed. The uploader hands the result to the song page: a song with
   no tempo/key/meter changes yet gets them at 0:00 and a long notice says
   so; one that has them only hears the detection. Tests use synthetic
   click tracks and chords. The synthetic test loop in `static/stems`
@@ -191,7 +191,7 @@ fields are `$state`, so components read `engine.position` directly.
   live run (2026-09-16, Peaceful Dreams): 145 bpm · D major · 4/4 at 95 %,
   in eight seconds, matching the song's settings.
 - **Documents in the panel** (`SongDocPanel.svelte`): one component reads
-  a chart, lyrics or notes document (its sanitised HTML) and, when
+  a chart, lyrics or notes document (its sanitized HTML) and, when
   `editing`, mounts `MarkdownDocEditor` inside a form on the `saveDoc`
   remote form, so the document is edited without leaving the song; a save
   re-renders through `refreshAll()`. The form's fourth kind, `mynotes`,
@@ -209,7 +209,7 @@ fields are `$state`, so components read `engine.position` directly.
   scrolling form. The default `"standalone"` mode is the full-page editor.
   The page renders only the
   active document (a remote form attaches to one element) and closes it
-  through the panel's exported `close()`, which waits a serialise debounce
+  through the panel's exported `close()`, which waits a serialize debounce
   (the WYSIWYG writes markdown 250 ms after a keystroke), saves what is
   unsaved and then leaves edit mode; a save marks the editor clean only if
   nothing changed while it was in flight. The `[doc=songDoc]` route and
@@ -326,13 +326,13 @@ than one and a display that names them all.
   on the tonic), and `detectKeys` finds the best path through the 24
   keys over all the stretches with a cost for every switch (Viterbi,
   penalty 0.35 in correlation units): a stretch on its own may lean to a
-  neighbour key (the relative, the fifth), and a stretch where the chroma
+  neighbor key (the relative, the fifth), and a stretch where the chroma
   says little takes the key around it, so what comes out is the few keys
   the song moves through, each from where it begins. Tested with two
   chords in one buffer: C major then E♭ major, and repeated quarters
   merge. On the user's own song (Kevin uploaded it on dev, 2026-10-11)
   ten-second windows gave G major → E minor → B♭ major → G major where
-  the chart says C, A♭, F and E♭: the relative and dominant neighbours of
+  the chart says C, A♭, F and E♭: the relative and dominant neighbors of
   the right keys, the classic weakness of profile matching on a modal
   vamp (Fmaj9–Em7 has no C in the bass), which is why the override
   matters and why the chart's chords would be the better source (a
@@ -341,7 +341,7 @@ than one and a display that names them all.
   when it has two or more, else every ten seconds (`keyWindows`,
   `src/lib/utils/keyWindows.ts`), writes a key change where each begins
   (replacing every earlier key change, tempo and meter only at 0:00 as
-  before) and summarises as `keyLine()` (`src/lib/utils/keyLine.ts`): the
+  before) and summarizes as `keyLine()` (`src/lib/utils/keyLine.ts`): the
   starting key, then "(also …)" with the others in order of appearance.
   The song-info popover's line uses the same. **Upload-time detection**
   (the uploader and the replacer) reads the keys the same way, every ten
@@ -357,7 +357,7 @@ than one and a display that names them all.
 
 ## The score as the AI's chart (2026-10-12)
 
-The profile detector kept hearing neighbour keys on Kevin's modal vamp
+The profile detector kept hearing neighbor keys on Kevin's modal vamp
 (above), and Kevin's thought was the obvious one: when a song has its
 notation uploaded, go straight to the AI and give it the chart.
 

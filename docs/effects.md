@@ -196,7 +196,7 @@ about 3.5 dB louder than dry; that is the chorus's nature.
 One section, one at a time (a switch at its head), sharing the rate,
 depth and mix sliders and one oscillator.
 
-The **phaser** is four all-pass BiquadFilters in series, centred at 500,
+The **phaser** is four all-pass BiquadFilters in series, centered at 500,
 800, 1300 and 2100 Hz, each moved by the oscillator up to ±400 Hz. An
 all-pass passes every frequency at the same level but shifts their
 phases, so summing the chain with the dry signal cancels some frequencies
@@ -204,7 +204,7 @@ and not others: notches, which the oscillator sweeps. Mix crossfades from
 dry towards half and half, where the notches are deepest. Measured: a
 1 kHz tone swings 11 dB as they pass.
 
-The **flanger** is a DelayNode centred on 3 ms, swept ±2.5 ms at full
+The **flanger** is a DelayNode centered on 3 ms, swept ±2.5 ms at full
 depth by the same oscillator, with 0.5 feedback that sharpens the comb.
 Summed with the dry it makes a comb of evenly spaced notches, which the
 sweep drags through the sound; the short delay is why it sounds like a jet
@@ -265,7 +265,7 @@ sliders:
   decibel.
 - **Bottom** is after the intent of the same unit's Big Bottom: bass that
   feels bigger. Four designs were measured before this one. Aphex's own
-  trick, a compressor on the low band mixed back, cancelled itself
+  trick, a compressor on the low band mixed back, canceled itself
   because a Web Audio compressor carries a few milliseconds of lookahead
   and the delayed band came back out of phase. A harmonic enhancer, the
   band's second and third harmonics mixed back, read as brightness and

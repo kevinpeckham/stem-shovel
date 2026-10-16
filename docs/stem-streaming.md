@@ -50,7 +50,7 @@ Two modes behind the one `StemEngine` API, chosen at `load()`:
    Platform decoders, hundreds of times realtime. Always pass the
    AudioSpecificConfig as `description` (iOS refuses ADTS), feed one
    access unit before a seek target and drop its 1024 samples (AAC frames
-   overlap), normalise output with `copyTo(…, {format: "f32-planar"})`
+   overlap), normalize output with `copyTo(…, {format: "f32-planar"})`
    since WebKit emits interleaved. `isConfigSupported` is not to be
    trusted; a failed first decode is the real test and drops the song to
    buffered mode.

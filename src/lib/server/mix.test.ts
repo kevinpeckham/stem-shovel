@@ -90,13 +90,13 @@ describe("pans", () => {
 		]);
 		expect(parseMixRequest(song, new URLSearchParams("stems=stemA:1:2"))).toBeNull();
 	});
-	test("the ffmpeg pan filter follows the StereoPanner's stereo law and is nothing at centre", () => {
+	test("the ffmpeg pan filter follows the StereoPanner's stereo law and is nothing at center", () => {
 		expect(panFilter(0)).toBe("");
 		expect(panFilter(-1)).toBe(",pan=stereo|c0=c0+1.0000*c1|c1=0.0000*c1");
 		expect(panFilter(1)).toBe(",pan=stereo|c0=0.0000*c0|c1=c1+1.0000*c0");
 		expect(panFilter(0.5)).toBe(",pan=stereo|c0=0.7071*c0|c1=c1+0.7071*c0");
 	});
-	test("a centred pan leaves the mix key as it was; a pan changes it", () => {
+	test("a centered pan leaves the mix key as it was; a pan changes it", () => {
 		const centred = mixKeyOf([{ ...song.stems[0]!, pan: 0 }]);
 		expect(centred).toBe(mixKeyOf([song.stems[0]!]));
 		expect(mixKeyOf([{ ...song.stems[0]!, pan: 0.3 }])).not.toBe(centred);

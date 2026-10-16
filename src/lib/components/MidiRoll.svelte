@@ -4,7 +4,7 @@
 
 	/**
 	 * A piano roll in the waveform's place: the same size, progress, seek and
-	 * keyboard behaviour as Waveform.svelte, drawing the stem's MIDI notes
+	 * keyboard behavior as Waveform.svelte, drawing the stem's MIDI notes
 	 * (x = time on the song's scale, y = pitch) instead of peaks.
 	 */
 	interface Props {

@@ -15,7 +15,7 @@ const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Mentions in rendered markdown (docs/uploads-and-blob.md, "Mentions"): in
- * the text of already-sanitised HTML, `@` followed by a target's label
+ * the text of already-sanitized HTML, `@` followed by a target's label
  * becomes `<a class="mention" href="…">@Label</a>`. Labels match literally
  * and case-insensitively (a title can have spaces), longest first, and
  * only when the label ends at the end of the text, whitespace or

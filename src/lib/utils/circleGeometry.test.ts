@@ -26,7 +26,7 @@ describe("circleGeometry", () => {
 		expect(x90).toBeCloseTo(300);
 		expect(y90).toBeCloseTo(200);
 	});
-	it("centres the first wedge on twelve o'clock and the fourth on three", () => {
+	it("centers the first wedge on twelve o'clock and the fourth on three", () => {
 		expect(wedgeCenter(150, 0)).toEqual([200, 50]);
 		const [x, y] = wedgeCenter(150, 3);
 		expect(x).toBeCloseTo(350);

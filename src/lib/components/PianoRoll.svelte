@@ -207,7 +207,7 @@
 		return picked.reduce((sum, n) => sum + n.v, 0) / picked.length;
 	});
 	const round4 = (x: number) => Math.round(x * 10000) / 10000;
-	/** On opening, the grid scrolled so the clip's notes sit in view (their middle pitch centred), not the top octave. */
+	/** On opening, the grid scrolled so the clip's notes sit in view (their middle pitch centered), not the top octave. */
 	function centreOnNotes(el: HTMLDivElement) {
 		const pitches = notes.map((n) => n.p);
 		const mid = pitches.length ? Math.round((Math.min(...pitches) + Math.max(...pitches)) / 2) : 64;

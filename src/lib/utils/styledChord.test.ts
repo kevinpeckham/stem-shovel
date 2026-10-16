@@ -38,7 +38,7 @@ describe("styledChord", () => {
 		expect(styledChord("fifths", 2, "major", false, "dominant").intervals).toEqual([0, 7, 12]);
 		expect(styledChord("fifths", 3, "minor", false, "dominant").intervals).toEqual([0, 7, 12]);
 	});
-	it("plays honky-tonk sixths, ragtime chains and bossa colours", () => {
+	it("plays honky-tonk sixths, ragtime chains and bossa colors", () => {
 		expect(styledChord("honkytonk", 0, "major", false, "dominant").suffix).toBe("6");
 		expect(styledChord("honkytonk", 0, "major", true, "dominant").suffix).toBe("6/9");
 		expect(styledChord("honkytonk", 3, "major", false, "dominant").suffix).toBe("7"); // VI7

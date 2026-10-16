@@ -23,7 +23,7 @@ Choose **Guitar** or **Bass** and a head:
 - **Fridge** (bass): an all-tube bass head on an 8×10, with the five-position mid selector and the Ultra Lo and Ultra Hi switches.
 - **Solid State** (bass): a modern solid-state combo with a tweeter, clean and tight until it clips.
 
-A **Cabinet** menu beside the head (guitar heads) swaps the modelled cabinet for a captured one: impulse responses of a Marshall 4×12 with Greenbacks and a 4×12 with Vintage 30, Rockdriver and DV-77 speakers, through an SM57 or an e606, from Jester Dyne Productions. The choice is part of a preset.
+A **Cabinet** menu beside the head (guitar heads) swaps the modeled cabinet for a captured one: impulse responses of a Marshall 4×12 with Greenbacks and a 4×12 with Vintage 30, Rockdriver and DV-77 speakers, through an SM57 or an e606, from Jester Dyne Productions. The choice is part of a preset.
 
 The knobs are an amp's, in groups: **Gain** (how hard the preamp is driven); **EQ** with **Bass**, **Mids** (and **Mid Hz** on the bass heads) and **Treble**; **Reverb** and **Tremolo** (Depth and Speed) on the heads that have them; then **Presence**, **Master** (how hard the output stage is pushed: sag and a softer clip) and **Output**, the level into the room. Switching heads sets the knobs to that head's own starting point; the pedals stay as they were.
 
@@ -55,7 +55,7 @@ The built-in speakers work when the input is the line in or an interface. With t
 
 ## The tuner, the metronome and the drums
 
-All three open from the amp's toolbar. The tuner reads the amp's own input, so nothing else opens the microphone; the metronome clicks in the amp's audio, so the click and your playing arrive together; the drum machine plays a beat to practise to in the same audio. On the Looper and the Idea Recorder the tuner reads the amp's input too while the amp is on.
+All three open from the amp's toolbar. The tuner reads the amp's own input, so nothing else opens the microphone; the metronome clicks in the amp's audio, so the click and your playing arrive together; the drum machine plays a beat to practice to in the same audio. On the Looper and the Idea Recorder the tuner reads the amp's input too while the amp is on.
 
 ## Recording and playing along
 

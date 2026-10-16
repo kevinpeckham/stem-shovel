@@ -7,7 +7,7 @@ import { errorMessage } from "#lib/utils/errorMessage.js";
  * the id the engine already uses for it, one file at a time in order. A
  * refresh, a crash or a phone switching apps loses nothing: the page
  * resumes the uploads when it comes back (and the arrangement, autosaved
- * on the server, already names the source). Modelled on the Idea
+ * on the server, already names the source). Modeled on the Idea
  * Recorder's TakeQueue.
  */
 export interface PendingSource {

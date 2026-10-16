@@ -2116,7 +2116,7 @@ export async function revokeInviteCode(accountId: string | null, id: string) {
 	return !!row;
 }
 
-/** The code someone typed (already normalised), with its account, or why it cannot be used. */
+/** The code someone typed (already normalized), with its account, or why it cannot be used. */
 export async function inviteCodeByCode(code: string) {
 	const row = await db.query.inviteCode.findFirst({
 		where: eq(inviteCode.code, code),
@@ -6074,7 +6074,7 @@ export async function getUserNote(
  * save. Same rules as saveSongDoc: the wipe guard, a no-op save (same text)
  * stays on the current version, a change bumps it and writes a revision
  * (song_doc_version, kind "mynotes", the owner's user id; the newest ten per
- * person and song are kept); the sanitised HTML is stored beside the
+ * person and song are kept); the sanitized HTML is stored beside the
  * markdown. With `expectedVersion`, a save over a newer version (another tab
  * of the same person) is refused.
  */

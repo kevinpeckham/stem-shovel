@@ -123,7 +123,7 @@ production 1Password environment and redeploying (`vercel redeploy` of
 the live production deployment). The import-a-SQLite-file option in
 Turso's wizard only creates old-format databases, so it was not used.
 The value had to be written as `libsql://` because `main` was still at
-v0.15.0, which predates the `turso://` normalisation; either form works
+v0.15.0, which predates the `turso://` normalization; either form works
 once that ships. The old database is kept untouched until 2026-09-25 for
 rollback (the two values and a redeploy), then renamed `-legacy` and
 deleted. The plan it followed:

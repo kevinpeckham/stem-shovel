@@ -38,12 +38,12 @@ describe("computePeaks", () => {
 });
 
 describe("computeMixPeaks", () => {
-	test("sums the stems before taking the peak, so cancelling stems cancel", () => {
+	test("sums the stems before taking the peak, so canceling stems cancel", () => {
 		const a = fakeAudioBuffer([Float32Array.from([0.5, 0.5, 0.2, 0.2])]);
 		const b = fakeAudioBuffer([Float32Array.from([-0.5, -0.5, 0.2, 0.2])]);
 		expect(Array.from(computeMixPeaks([a, b], 2))).toEqual([0, 1]);
 	});
-	test("averages channels, spans the longest stem and normalises to 1", () => {
+	test("averages channels, spans the longest stem and normalizes to 1", () => {
 		const stereo = fakeAudioBuffer([Float32Array.from([0.4, 0.4]), Float32Array.from([0.2, 0.2])]);
 		const long = fakeAudioBuffer([Float32Array.from([0.1, 0.1, 0.6, 0.6])]);
 		const peaks = Array.from(computeMixPeaks([stereo, long], 2));

@@ -78,7 +78,7 @@ export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
 	kind: v.optional(StudioTrackKindSchema),
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
-	/** A theme colour name the lane draws in (`studio-lane-<colour>` shortcuts); the default when missing. */
+	/** A theme color name the lane draws in (`studio-lane-<colour>` shortcuts); the default when missing. */
 	colour: v.optional(v.pipe(v.string(), v.maxLength(24))),
 	gain: v.pipe(v.number(), v.minValue(0), v.maxValue(STUDIO_FADER_MAX)),
 	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),

@@ -107,7 +107,7 @@ describe("decodeDrumProject", () => {
 	it("opens the current version in full", () => {
 		expect(decodeDrumProject(links[9])).toEqual(full);
 	});
-	it("opens a version 1 link as a one-pattern project with the pans centred", () => {
+	it("opens a version 1 link as a one-pattern project with the pans centered", () => {
 		expect(decodeDrumProject(links[1])).toEqual({
 			...full,
 			humanize: 0,

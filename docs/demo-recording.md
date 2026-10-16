@@ -41,7 +41,7 @@ a song (a share feature may come later). On `/ideas/recorder` (the user's own pa
   loaded one clears the field.
 - **The list** under the recorder shows the user's ideas newest first as a
   plain accordion (a click on the name only folds or unfolds; the open set
-  is page state and the native toggle is cancelled, because a toggle event
+  is page state and the native toggle is canceled, because a toggle event
   landing after an autosave re-render fought it); clicking a take loads it
   and its idea's title and notes come with it; each take has a menu (Add
   as demo…, Create new song…, Delete take) and each idea one (Delete idea;
@@ -113,7 +113,7 @@ a song (a share feature may come later). On `/ideas/recorder` (the user's own pa
   (`src/lib/constants/trimSilence.ts`).
 - **Tuner** (`Tuner.svelte`, a popover from the header and the public
   `/tuner` page): `src/lib/audio/pitch.ts` reads the pitch of a 4096-sample
-  window twenty times a second with McLeod's normalised square difference
+  window twenty times a second with McLeod's normalized square difference
   (tested on synthesized strings within a cent), `constants/tunings.ts`
   lists the tunings, `utils/tunerPreferences.ts` remembers the tuning and
   A4. It opens the microphone with the recorder's constraints and audio
@@ -169,7 +169,7 @@ pathnames unchanged). A take can go to a song in any account the user
 edits: `addRecordingToSong` and `newSongFromRecording` check editorship of
 the song's or project's account, `copyRecordingToSong` files the demo under
 the song's account (the file copied from the take's store to the song's),
-and the page's song picker spans the user's accounts, labelling projects
+and the page's song picker spans the user's accounts, labeling projects
 with the account's name when there is more than one. The drum machine's
 saved beats and the piano's presets in the panels are the current
 account's. Kevin's ask: "move the route for the idea recorder out of the
@@ -266,7 +266,7 @@ does not sleep mid-take. No monitoring through the speaker (feedback).
 `navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false,
 noiseSuppression: false, autoGainControl: false, channelCount: 1 } })`. The
 three "voice" processors are on by default and ruin a guitar (pumping,
-gated sustain); browsers honour the request on desktop and, from iOS 15,
+gated sustain); browsers honor the request on desktop and, from iOS 15,
 on the phone, though Safari still applies some processing of its own.
 
 `MediaRecorder` on that stream, one recorder per segment
@@ -333,10 +333,10 @@ rendition where there is one, which every browser decodes) through an
 `OfflineAudioContext` and `computePeaks` at 2048 bins, and the canvas
 draws one bar per pixel; the playhead is a separate element at
 `playhead / takeLength`. Click or drag seeks (pointer capture), arrow
-keys nudge. A file the browser cannot decode or fetch leaves the centre
+keys nudge. A file the browser cannot decode or fetch leaves the center
 line and the slider below still seeks. Drawn in the canvas's own `color`
 as `Waveform.svelte` does, so the palette stays in uno.config.ts. Both
-views are normalised as a phone's voice memos are (Kevin: a quiet take
+views are normalized as a phone's voice memos are (Kevin: a quiet take
 should still look like it captured something): bars scale to the loudest
 in view, a floor of 0.02 keeps silence flat, and a square-root curve
 lifts the quiet parts.
@@ -517,7 +517,7 @@ only when available, locked while recording, and the page keeps
 starts, `startMeter` records the sources: the microphone's own
 `getUserMedia` stream (mono or stereo as the preference says, muted tracks
 and all) and each instrument's capture stream (stereo, from the engines'
-MediaStreamDestinations), labelled "Microphone", "Piano", "Drums". Each
+MediaStreamDestinations), labeled "Microphone", "Piano", "Drums". Each
 source gets a `MediaRecorder` of its own in the mix's format (lossless
 where the browser can), started in the same JavaScript tick as the mix's,
 so the files line up within a few milliseconds; `stop()` stops them all,
@@ -638,8 +638,8 @@ title, notes, take label or number (`shownFiltered`, `matchedTakes`; an
 idea whose take matched opens on it). From sm it sits in the Recordings
 `FloatingPanel` in one of three modes, `recordingsMode` (remembered as
 `stemshovel.recorder.recordings-mode`): docked in its column (the
-default), floating (the arrows button), or minimised (the panel's close
-button), and the toolbar's Ideas button minimises it or brings it back
+default), floating (the arrows button), or minimized (the panel's close
+button), and the toolbar's Ideas button minimizes it or brings it back
 the way it was. Below sm the toolbar button opens the same list in the
 full-screen `#idea-search` sheet, which a chosen take closes. The old
 search-only sheet and its `filtered` list are gone.

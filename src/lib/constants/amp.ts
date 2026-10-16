@@ -28,7 +28,7 @@ export interface AmpModel {
 	};
 	tone: {
 		bassHz: number;
-		/** The mid band's centre; null means the head's selector picks it (AMP_MID_FREQUENCIES). */
+		/** The mid band's center; null means the head's selector picks it (AMP_MID_FREQUENCIES). */
 		midHz: number | null;
 		trebleHz: number;
 		/** The passive stack's scoop at flat knobs, in dB taken from the mids. */
@@ -163,10 +163,10 @@ export const AMP_CABINET_CAPTURES: AmpCabinetCapture[] = [
 export const AMP_CABINET_CAPTURE_IDS = AMP_CABINET_CAPTURES.map((c) => c.id);
 /** What each model's own cabinet is called in the Cabinet menu. */
 export const AMP_MODEL_CABINET_LABEL: Record<AmpCabinetId, string> = {
-	"open-2x12": "2×12 open-back (modelled)",
-	"open-1x12": "1×12 open-back (modelled)",
-	"fridge-8x10": "8×10 (modelled)",
-	"combo-4x10": "4×10 with tweeter (modelled)",
+	"open-2x12": "2×12 open-back (modeled)",
+	"open-1x12": "1×12 open-back (modeled)",
+	"fridge-8x10": "8×10 (modeled)",
+	"combo-4x10": "4×10 with tweeter (modeled)",
 };
 
 export const AMP_MODELS_FOR: Record<AmpInstrument, AmpModel[]> = {

@@ -119,7 +119,7 @@ m<number> key <key> <time signature> tempo <bpm> [<rehearsal mark>] "<words>" |:
 
 Rules:
 - Number the measures from 1 in order through the whole score (count every measure in every system, on every page; the small numbers at the start of a system are measure numbers, use them to keep count).
-- "key": from the key signature, as "C major", "A♭ major", "F minor" (write ♭ and ♯). State it at measure 1 and again at every measure where the key signature changes (naturals cancelling flats or sharps is a change). Prefer the major key for a signature unless the chords plainly sit in the relative minor. A text such as "Key: F Major" in the score confirms it.
+- "key": from the key signature, as "C major", "A♭ major", "F minor" (write ♭ and ♯). State it at measure 1 and again at every measure where the key signature changes (naturals canceling flats or sharps is a change). Prefer the major key for a signature unless the chords plainly sit in the relative minor. A text such as "Key: F Major" in the score confirms it.
 - Write the time signature at measure 1 and where it changes; "tempo <bpm>" where a metronome mark appears.
 - Rehearsal marks in square brackets ("[A Verse]"), other words in quotes ("Chorus", "rit."); lyrics are not words, leave them out.
 - "|:" at a measure that opens a repeat, ":|" at one that closes it, "ending 1" where a first ending starts, and so on; "D.S.", "coda", "fine" as words.
@@ -146,7 +146,7 @@ Rules:
 						mediaType.startsWith("image/")
 							? { type: "image" as const, image: bytes, mediaType }
 							: { type: "file" as const, data: bytes, mediaType, filename: score.filename },
-						{ type: "text", text: "Summarise this chart as instructed." },
+						{ type: "text", text: "Summarize this chart as instructed." },
 					],
 				},
 			],
@@ -162,7 +162,7 @@ Rules:
 		});
 		throw e;
 	}
-	const error = /^m\d+/m.test(text) ? null : "The model did not summarise the chart";
+	const error = /^m\d+/m.test(text) ? null : "The model did not summarize the chart";
 	await logAiRequest({
 		...log,
 		response: text,

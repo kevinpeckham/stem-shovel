@@ -103,7 +103,7 @@ Every stem row has a pan knob beside the fader, as a Studio track does
 15 ms as a fader. Buffered, a stereo buffer goes through a
 StereoPannerNode (the Web Audio law: its own channels kept, the far one
 leaning over); a mono buffer goes through a pair of gains into a
-ChannelMerger instead, so it sits at unity in both channels at centre as
+ChannelMerger instead, so it sits at unity in both channels at center as
 it did before pans (a StereoPannerNode would put a mono source at 0.707
 each side, a 3 dB drop on every mono stem) and the far channel falls
 away on a sine as it turns (`monoPan`). Streamed, the mixer worklet
@@ -115,8 +115,8 @@ browser (`LocalMix.pans`, absent in older saves), the custom mix download
 filter with the StereoPanner's stereo law, since the renditions are
 upmixed to stereo first), and the song's saved default mix (`stem.pan`,
 migration 0086, `DefaultMixSchema`, the manifest's `pan`). The original
-mix's key includes a pan only when it is off centre, so every song whose
-stems are centred keeps the key it had and nothing re-renders.
+mix's key includes a pan only when it is off center, so every song whose
+stems are centered keeps the key it had and nothing re-renders.
 
 ## Meters (2026-10-15)
 
@@ -147,8 +147,8 @@ guitars from its keys at a glance (Kevin: controlled, complementary,
 restrained; no rainbow). The palette is `STEM_TINTS` in
 `src/lib/constants/stemTints.ts`: eight hues at one middling lightness
 and low saturation, stored by id on the stem (`stem.tint`, migration 0087) and shared with the song, so everyone sees the same rows. Only the
-name and the waveform wear the colour (`Waveform` takes a `color` prop
-and sets it as the canvas's CSS colour, which `draw` reads); the meter,
+name and the waveform wear the color (`Waveform` takes a `color` prop
+and sets it as the canvas's CSS color, which `draw` reads); the meter,
 the knobs and the buttons stay as they are, so a tinted row is a hint.
 A muted or un-soloed row drops its tint with its brightness. The
 manifest carries `tint`, the engine keeps it on `StemState.tint`, and a

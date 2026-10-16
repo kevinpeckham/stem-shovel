@@ -2,9 +2,9 @@ import { formatTime } from "./formatTime";
 
 /**
  * The Studio ruler's ticks (docs/multitrack-recorder.md, "The page"): on
- * the grid, a major tick per bar labelled every n bars so labels stay at
+ * the grid, a major tick per bar labeled every n bars so labels stay at
  * least 48 px apart, with minor ticks on the beats when they are 14 px
- * apart or more; in free time, a labelled tick every step of a ladder
+ * apart or more; in free time, a labeled tick every step of a ladder
  * chosen so ticks are at least 70 px apart. `x` is in pixels from the
  * timeline's start.
  */

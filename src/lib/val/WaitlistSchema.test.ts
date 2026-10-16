@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { WaitlistJoinSchema, WaitlistPrefsSchema } from "./WaitlistSchema";
 
 describe("WaitlistJoinSchema", () => {
-	test("normalises the address and defaults consent to off", () => {
+	test("normalizes the address and defaults consent to off", () => {
 		expect(v.parse(WaitlistJoinSchema, { email: "  Sam@Example.COM " })).toEqual({
 			email: "sam@example.com",
 			name: "",

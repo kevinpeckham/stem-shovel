@@ -634,7 +634,7 @@
 					class="flex-1 device-button-xs border {engine.bounce.centre ? 'text-accent' : ''}"
 					type="button"
 					aria-pressed={engine.bounce.centre}
-					title="Left, centre, right, centre: a stop in the middle on the way"
+					title="Left, center, right, center: a stop in the middle on the way"
 					onclick={() => engine.setBounce({ centre: true })}>L C R</button
 				>
 			</div>

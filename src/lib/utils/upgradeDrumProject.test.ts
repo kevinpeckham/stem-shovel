@@ -3,7 +3,7 @@ import { DEFAULT_DRUM_FX } from "#lib/constants/drumMachine.js";
 import { upgradeDrumProject } from "./upgradeDrumProject";
 
 describe("upgradeDrumProject", () => {
-	it("wraps a version 1 pattern in a project with centred pans and the voice's usual sends", () => {
+	it("wraps a version 1 pattern in a project with centered pans and the voice's usual sends", () => {
 		const up = upgradeDrumProject({
 			v: 1,
 			bpm: 128,

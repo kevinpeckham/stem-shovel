@@ -121,7 +121,7 @@ class ChordPlayerEngine {
 	showSignatures = $state(false);
 	/** The computer keyboard's keys on the wedges (the piano's key labels toggle). */
 	showKeys = $state(false);
-	/** The circle, or the arch: the key and its neighbours big across the top, the far keys small in the corners, the tritone left out. */
+	/** The circle, or the arch: the key and its neighbors big across the top, the far keys small in the corners, the tritone left out. */
 	layout = $state<"circle" | "arch">("arch");
 	/** The computer keyboard: around the circle from the key, or by degree (1 to 7 are I to VII). */
 	keyMap = $state<ChordKeyMap>("degree");

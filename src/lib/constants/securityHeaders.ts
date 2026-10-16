@@ -7,7 +7,7 @@
  * ROBOTS_NOINDEX (the hook and vercel.json's rule) and a robots meta from
  * the root layout, and robots.txt allows those paths alone. The
  * Content-Security-Policy itself comes from SvelteKit's `csp` option in
- * vite.config.ts so its inline script gets a nonce. Modelled on
+ * vite.config.ts so its inline script gets a nonce. Modeled on
  * lightning-jar/lj-website's vercel.ts.
  */
 /** The X-Robots-Tag / robots meta value for everything search engines may not index. */

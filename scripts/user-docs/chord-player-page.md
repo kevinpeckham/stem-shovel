@@ -15,6 +15,6 @@ Switch Jot on and the pad under the circle writes down what you play: each chord
 - Style puts the sevenths on the buttons: Blues for dominant sevenths everywhere, Jazz for maj7, m7 and m7♭5 by degree, Lush for ninths and thirteenths. Its Voicing spreads them: spread or rich for a fuller sound, bass for a low root.
 - The Strum button staggers the notes as a hand would; it suits the grand piano.
 - Space is the sustain pedal and Escape stops everything, as on the piano.
-- The arch draws the key and its neighbours big and runs the far keys straight on from its ends; the UI menu's Layout brings back the whole circle; with the key at the bottom (the UI menu) it turns over for a thumb on a phone.
+- The arch draws the key and its neighbors big and runs the far keys straight on from its ends; the UI menu's Layout brings back the whole circle; with the key at the bottom (the UI menu) it turns over for a thumb on a phone.
 - The IV button writes each chord's Roman numeral in your key on its wedge, and the UI menu can dim the chords outside the key, so a progression like I, V, vi, IV is there to see.
 - On the pad a chord lasts until the next one starts; to write a rest, leave two beats or more of silence, or tap a chord on the pad and make it one.

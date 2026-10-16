@@ -1,8 +1,8 @@
 /**
  * The SVG geometry of a circle of twelve wedges (docs/chord-player.md),
  * after Håken Lid's svg-circle notebook and Eric Coleman's circle of
- * fifths: a 400 × 400 viewBox centred on (200, 200), angles in degrees
- * clockwise from twelve o'clock, wedge 0 centred on twelve o'clock. The
+ * fifths: a 400 × 400 viewBox centered on (200, 200), angles in degrees
+ * clockwise from twelve o'clock, wedge 0 centered on twelve o'clock. The
  * arch layout (Kevin) keeps the same twelve indices but places them as
  * slots: seven on a bigger arch across the top (the key and three fifths
  * each way), two small ones under each end of the arch, and none for the
@@ -18,7 +18,7 @@ export const R_MAJOR_IN = 130;
 export const R_MINOR_IN = 72;
 
 /**
- * Where a wedge is drawn. An arc slot is a sector of a circle: its centre,
+ * Where a wedge is drawn. An arc slot is a sector of a circle: its center,
  * its angles (clockwise from twelve o'clock) and its size against the
  * circle's. A leg slot is a straight continuation of an arch's end (Kevin):
  * a rectangle whose first edge is the end wedge's face, from `o` (the
@@ -88,7 +88,7 @@ export function segmentPath(
 	].join("");
 }
 
-/** Wedge `index` of `total`, the first centred on twelve o'clock, between two radii. */
+/** Wedge `index` of `total`, the first centered on twelve o'clock, between two radii. */
 export function wedgePath(
 	innerRadius: number,
 	outerRadius: number,

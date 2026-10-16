@@ -99,7 +99,7 @@ export const deleteIdea = form(IdSchema, async ({ id }) => {
 	return { deleted: true };
 });
 
-/** The read view of a note board: the same sanitised renderer as the song documents (any signed-in user). */
+/** The read view of a note board: the same sanitized renderer as the song documents (any signed-in user). */
 export const renderNotes = query(v.pipe(v.string(), v.maxLength(50_000)), async (markdown) => {
 	requireUser(getRequestEvent().locals);
 	return renderMarkdown(markdown);
