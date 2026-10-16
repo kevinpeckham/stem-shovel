@@ -1580,17 +1580,6 @@
 		}
 	}
 
-	// A stem row's menu is a <details>; it closes on Escape, on a click outside
-	// it, and when another menu opens (that click is outside the first).
-	function closeStemMenus(e: Event) {
-		for (const menu of document.querySelectorAll<HTMLDetailsElement>(
-			"details[data-stem-menu][open]",
-		)) {
-			if (e.type === "pointerdown" && menu.contains(e.target as Node)) continue;
-			menu.open = false;
-		}
-	}
-
 	// The MIDI badge toggles a piano roll in place of the row's waveform; files
 	// are fetched from Blob and parsed once per URL.
 	let midiViews = $state<Record<string, MidiSummary>>({});
@@ -1836,13 +1825,9 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === "Escape") {
-			closeStemMenus(e);
-			stemMenuAt = null;
-		}
+		if (e.key === "Escape") stemMenuAt = null;
 	}}
 	onpointerdown={(e) => {
-		closeStemMenus(e);
 		closeStemContext(e);
 	}}
 />
@@ -4389,16 +4374,10 @@
 	{@const dropMidi = removeStemMidi.for(stem.id)}
 	{@const midi = midiJobs[stem.id]}
 	{#if row}
-		<details class="relative" data-stem-menu>
-			<summary
-				class="device-fader-menu-button-sm cursor-pointer list-none [&::-webkit-details-marker]:hidden"
-				title="{stem.label}: options"
-				aria-label="{stem.label}: options"
-				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary
-			>
-			<div
-				class="absolute left-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
-			>
+		<!-- The menu as a ContextMenu (a native popover on the top layer, anchored to the button), so the next
+		     row never covers it (Kevin); the body is one snippet item, as the Studio's track effects are. -->
+		{#snippet stemMenuBody()}
+			<div class="w-56 px-1 text-sm">
 				<div class="truncate px-3 py-1.5 text-xs text-dim">
 					{row.filename} · {formatBytes(row.sizeBytes)}
 				</div>
@@ -4527,6 +4506,16 @@
 				{/if}
 				{#if job?.error}<p class="px-3 py-1 text-xs text-red-400">{job.error}</p>{/if}
 			</div>
-		</details>
+		{/snippet}
+		<ContextMenu
+			ariaLabel="{stem.label}: options"
+			title="{stem.label}: options"
+			clearButtonBaseClasses={true}
+			buttonClasses="device-fader-menu-button-sm"
+			iconClass="i-ph-dots-three-bold"
+			position="bottom left"
+			popoverClasses="!max-h-[calc(100vh-2rem)] overflow-y-auto"
+			items={[{ id: "stem", kind: "snippet", snippet: stemMenuBody }]}
+		/>
 	{/if}
 {/snippet}

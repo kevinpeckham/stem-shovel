@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A stem row's ⋯ menu is no longer covered by the row below**: it is a
+  `ContextMenu` now (a native popover on the top layer, anchored to the
+  button) with the old body as one snippet item, as the Studio's track
+  menus are; the details-based menu and its closing helper went.
+
 ## [0.130.0] - 2026-10-16
 
 ### Added
