@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.133.0] - 2026-10-16
+
 ### Added
 
 - **The Stage: a visual mixer on the stem player and Dawn**
