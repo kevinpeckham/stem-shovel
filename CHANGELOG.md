@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.131.0] - 2026-10-16
+
 ### Changed
 
 - **The Studio's tracks carry over the stem player's last few releases**
