@@ -1,6 +1,6 @@
 # Palette
 
-**Palette** is Stem Shovel's chord player (**Chord Player** in the Instruments menu, **Palette** in the footer, at /palette): the piano's sounds on a circle of fifths. It needs no account: press a chord and hear it, hold it as long as you like, and see which chords sit well together. Beginning songwriters find it a quick way to try a progression before the words are written.
+**Palette** is Stem Shovel's chord player (**Chord Player** in the Instruments menu, **Palette** in the footer, at /chord-player): the piano's sounds on a circle of fifths. It needs no account: press a chord and hear it, hold it as long as you like, and see which chords sit well together. Beginning songwriters find it a quick way to try a progression before the words are written.
 
 ## The circle
 

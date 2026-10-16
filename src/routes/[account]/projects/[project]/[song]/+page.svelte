@@ -3083,7 +3083,7 @@
 							</label>
 							<a
 								class="button button-sm inline-flex items-center gap-2"
-								href="/lark?song={data.song.id}"
+								href="/idea-recorder?song={data.song.id}"
 								title="Idea recorder: record a riff, a melody or a demo for this song"
 							>
 								<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>
@@ -3794,7 +3794,7 @@
 					<a
 						class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
 						role="menuitem"
-						href="/lark?song={data.song.id}"
+						href="/idea-recorder?song={data.song.id}"
 						title="Idea recorder: record a riff, a melody or a demo for this song"
 					>
 						<span class="i-ph-record-fill mr-2 text-red-500" aria-hidden="true"></span>
@@ -3904,7 +3904,7 @@
 		{#if data.canEdit}
 			<a
 				class="button button-sm"
-				href="/lark?song={data.song.id}"
+				href="/idea-recorder?song={data.song.id}"
 				title="Idea recorder: record a riff, a melody or a demo for this song"
 			>
 				<span class="i-ph-record-fill text-red-500" aria-hidden="true"></span>

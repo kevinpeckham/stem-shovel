@@ -55,7 +55,7 @@ describe("GlobalNav", () => {
 		await user.click(screen.getByRole("button", { name: /Tools/ }));
 		expect(screen.getByRole("menuitem", { name: /Idea Recorder/ })).toHaveAttribute(
 			"href",
-			"/lark",
+			"/idea-recorder",
 		);
 		// Opening the account menu closes the tools menu
 		await user.click(screen.getByRole("button", { name: /My Studio/ }));

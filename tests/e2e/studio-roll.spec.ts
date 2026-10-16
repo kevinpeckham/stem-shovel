@@ -11,7 +11,7 @@ test("the piano roll adds, moves, nudges, re-velocities and removes notes", asyn
 	page,
 	errors,
 }) => {
-	await open(page, "/dawn", "__studio");
+	await open(page, "/multitrack-recorder", "__studio");
 	await deleteStudioSongs(page);
 	await page.getByRole("button", { name: "New song" }).click();
 	await expect(page.getByLabel("Song title")).not.toHaveValue("");

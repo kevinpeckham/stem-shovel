@@ -163,7 +163,7 @@
 					<div class=" mt-8">
 						<IdeaRecorderDemo
 							signedIn={!!data.user}
-							recorderHref={data.currentSlug ? "/lark" : null}
+							recorderHref={data.currentSlug ? "/idea-recorder" : null}
 						/>
 					</div>
 				</section>
@@ -282,7 +282,7 @@
 			{@render feature("chords")}
 			<div class="flex flex-wrap items-center gap-x-5">
 				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<a class="link inline-flex items-center gap-1.5 text-14px" href="/palette"
+				<a class="link inline-flex items-center gap-1.5 text-14px" href="/chord-player"
 					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
 				>
 			</div>

@@ -299,11 +299,11 @@
 			ui: chordPlayer.uiSettings,
 			bpm: metronome.bpm,
 		});
-		return `${window.location.origin}/palette#${payload}`;
+		return `${window.location.origin}/chord-player#${payload}`;
 	}
 	async function copyLink() {
 		const url = shareUrl();
-		if (window.location.pathname === "/palette") history.replaceState(null, "", url);
+		if (window.location.pathname === "/chord-player") history.replaceState(null, "", url);
 		// The short form when the server grants one; the long link otherwise.
 		const short = await shortenShareLink(url, "chord-player");
 		try {

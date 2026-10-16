@@ -2,7 +2,7 @@
  * Which paths search engines may index on production: the front page, the
  * user documentation and the blog (the list and each page, not the editors;
  * a draft post carries its own noindex), the Releases page, the tuner, the metronome, the drum machine, the
- * piano, the looper (Whirl, at /whirl), the pricing page and the built-with page. Everything else is a private app. Mirrored by
+ * piano, the looper, the pricing page and the built-with page. Everything else is a private app. Mirrored by
  * src/routes/robots.txt and vercel.json's X-Robots-Tag rule.
  */
 export function isIndexablePath(pathname: string): boolean {
@@ -16,8 +16,8 @@ export function isIndexablePath(pathname: string): boolean {
 			"/metronome",
 			"/drum-machine",
 			"/piano",
-			"/palette",
-			"/whirl",
+			"/chord-player",
+			"/looper",
 			"/pricing",
 			"/built-with",
 		].includes(pathname)

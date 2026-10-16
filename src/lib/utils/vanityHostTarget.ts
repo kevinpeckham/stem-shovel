@@ -5,8 +5,8 @@
  * redirects. Null for any other host.
  */
 const VANITY_HOSTS: Record<string, string> = {
-	"fifths.app": "https://www.stemshovel.com/palette",
-	"chordplayer.dev": "https://www.stemshovel.com/palette",
+	"fifths.app": "https://www.stemshovel.com/chord-player",
+	"chordplayer.dev": "https://www.stemshovel.com/chord-player",
 };
 
 export function vanityHostTarget(host: string): string | null {

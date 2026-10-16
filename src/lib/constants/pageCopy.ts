@@ -5,14 +5,14 @@
  * renders it with `pageCopy()` and falls back to that file until then.
  */
 export const PAGE_COPY: Record<string, string> = {
-	"looper-page": "/whirl",
+	"looper-page": "/looper",
 	"drum-machine-page": "/drum-machine",
 	"piano-page": "/piano",
 	"tuner-page": "/tuner",
 	"metronome-page": "/metronome",
-	"idea-recorder-page": "/lark",
-	"chord-player-page": "/palette",
-	"studio-page": "/dawn",
-	"practice-amp-page": "/ember",
+	"idea-recorder-page": "/idea-recorder",
+	"chord-player-page": "/chord-player",
+	"studio-page": "/multitrack-recorder",
+	"practice-amp-page": "/practice-amp",
 	"home-page": "/",
 };

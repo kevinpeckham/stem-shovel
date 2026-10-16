@@ -60,11 +60,14 @@
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
-	const TOOL_PAGES = ["/tuner", "/metronome", "/ember"];
-	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/palette"];
+	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp"];
+	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
-		TOOL_PAGES.some(active) || active("/lark") || active("/whirl") || active("/dawn"),
+		TOOL_PAGES.some(active) ||
+			active("/idea-recorder") ||
+			active("/looper") ||
+			active("/multitrack-recorder"),
 	);
 </script>
 
@@ -169,7 +172,7 @@
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/palette"
+						href="/chord-player"
 						title="Palette, the chord player"
 						onclick={() => (openMenu = null)}
 					>
@@ -212,12 +215,12 @@
 					{#if member}
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								'/lark',
+								'/idea-recorder',
 							)
 								? 'text-accent'
 								: ''}"
 							role="menuitem"
-							href="/lark"
+							href="/idea-recorder"
 							title="Lark, the idea recorder"
 							onclick={() => (openMenu = null)}
 						>
@@ -227,12 +230,12 @@
 					{#if member}
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								'/dawn',
+								'/multitrack-recorder',
 							)
 								? 'text-accent'
 								: ''}"
 							role="menuitem"
-							href="/dawn"
+							href="/multitrack-recorder"
 							title="Dawn, the multitrack recorder"
 							onclick={() => (openMenu = null)}
 						>
@@ -243,12 +246,12 @@
 					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/whirl',
+							'/looper',
 						)
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/whirl"
+						href="/looper"
 						title="Whirl, the looper"
 						onclick={() => (openMenu = null)}
 					>
@@ -256,12 +259,12 @@
 					</a>
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/ember',
+							'/practice-amp',
 						)
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/ember"
+						href="/practice-amp"
 						title="Ember, the practice amp"
 						onclick={() => (openMenu = null)}
 					>

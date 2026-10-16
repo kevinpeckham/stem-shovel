@@ -9,7 +9,7 @@ test("records a take that lists and uploads, then deletes the bot's ideas", asyn
 	page,
 	errors,
 }) => {
-	await open(page, "/lark", "__inputs");
+	await open(page, "/idea-recorder", "__inputs");
 	const device = page.getByRole("dialog", { name: "Lark" });
 	const list = page.getByRole("dialog", { name: "Recordings" });
 	await device.getByRole("button", { name: "Record", exact: true }).click();

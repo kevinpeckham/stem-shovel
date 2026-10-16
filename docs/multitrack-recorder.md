@@ -1,8 +1,9 @@
 # Multitrack recorder (design draft)
 
 > **Dawn** is the product name since 2026-10-16 ("Dawn: the rename" below): the
-> route is `/dawn`, the Tools menu says Multitrack Recorder, and everything in
-> the code keeps the working name `studio`.
+> route is `/multitrack-recorder` (`/studio` redirects for good), the Tools menu
+> says Multitrack Recorder, and everything in the code keeps the working name
+> `studio`.
 
 Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; phase 3a (MIDI tracks: record, play, edit, import, export, render to audio) and 3b (the piano-roll editor) built 2026-10-08. The plan's phases are complete; "Later" holds what is left. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
@@ -492,17 +493,18 @@ the Stem Shovel vein, paired with the descriptive words where needed.
 
 ### What changes
 
-- **Route.** `/studio` becomes `/dawn`; `src/routes/studio/+page.server.ts`
-  stays as a one-line permanent redirect to `/dawn` (a SvelteKit
-  redirect works on dev and on Vercel alike, where a `vercel.json`
-  rule would cover only the deployments). The noindex header rule in
-  `vercel.json` already covers every path but the public tool pages, so
-  `/dawn` stays out of search as `/studio` was. `pageCopy.ts` maps
-  `studio-page` to `/dawn`.
+- **Route.** `/studio` becomes `/multitrack-recorder` (built first as
+  `/dawn`, then swapped the same day: Kevin keeps the brand names off
+  the addresses while the app is young); `src/routes/studio/+server.ts`
+  is a one-line permanent redirect (a SvelteKit redirect works on dev
+  and on Vercel alike, where a `vercel.json` rule would cover only the
+  deployments). The noindex header rule in `vercel.json` already covers
+  every path but the public tool pages, so the page stays out of search
+  as `/studio` was. `pageCopy.ts` maps `studio-page` to it.
 - **Navigation.** The Tools menu entry reads **Multitrack Recorder**
-  (`GlobalNav.svelte`, with `active("/dawn")`), the footer's tools row
-  reads **Dawn** (`GlobalFooter.svelte`), and the page's `<title>` is
-  "Dawn | Multitrack Recorder". The device's own header, its aria-label
+  (`GlobalNav.svelte`, with `active("/multitrack-recorder")`), the
+  footer's tools row reads **Dawn** (`GlobalFooter.svelte`), and the
+  page's `<title>` is "Dawn Multitrack Recorder". The device's own header, its aria-label
   and the Recordings panel's title say Dawn.
 - **Words on the page.** The copy doc `studio-page` keeps its key (the
   database row is the same document; renaming the key would orphan an
@@ -519,8 +521,8 @@ the Stem Shovel vein, paired with the descriptive words where needed.
   Idea Recorder's input-settings help text, the Practice Amp's panel
   heading on the page, the home page if it names it, README.
 - **Tests and scripts.** The four `studio*.spec.ts` browser tests open
-  `/dawn`; `smoke-urls.mjs` gets `/dawn` (303 anonymous, 200 bot) and
-  expects `/studio` to answer 301 (or 308) for both.
+  `/multitrack-recorder`; `smoke-urls.mjs` gets it (303 anonymous, 200
+  bot) and expects `/studio` to answer 301 for both.
 
 ### What stays
 
@@ -535,8 +537,10 @@ name and `studio` the internal one.
 
 ### Decisions (recommendations in brackets)
 
-1. The route: `/dawn` or `/multitrack-recorder`? [`/dawn`: short, the
-   brand, easy to say; the descriptive words are in the menu and title.]
+1. The route: `/dawn` or `/multitrack-recorder`? [Built as `/dawn`, then
+   Kevin chose `/multitrack-recorder` the same day: the app is young and
+   an address should say what the page is; the brand is in the heading,
+   the title, the footer and the device.]
 2. The Tools menu: "Multitrack Recorder" alone, or "Dawn · Multitrack
    Recorder"? [Alone, since the menu lists what tools do; the footer,
    the title and the device carry the name.]

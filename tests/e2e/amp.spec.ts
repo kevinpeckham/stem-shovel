@@ -10,7 +10,7 @@ test("the amp turns on, hears the input, renders through every head, and turns o
 	page,
 	errors,
 }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	const device = page.getByRole("group", { name: "Head" });
 	await expect(device).toBeVisible();
 	await page.getByRole("button", { name: "Turn the amp on" }).click();
@@ -45,7 +45,7 @@ test("the fuzz keeps a bass's lows clean, and the reverb pedal sounds", async ({
 	page,
 	errors,
 }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	const fuzzed = async (model: "clean" | "fridge") => {
 		await hooked(page, ([w, m]) => w.__amp.setModel(m), model);
 		await hooked(page, ([w]) => w.__amp.setPedal("fuzz", { drive: 0.8, tone: 0.5, mids: 0.5 }));
@@ -72,7 +72,7 @@ test("the fuzz keeps a bass's lows clean, and the reverb pedal sounds", async ({
  * and names it, and the preset is deleted again from the library.
  */
 test("saves a preset to a slot and deletes it from the library", async ({ page, errors }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	const name = `e2e amp ${Date.now()}`;
 	await page.getByRole("button", { name: "Manage presets" }).click();
 	await page.getByRole("textbox", { name: "Preset name" }).fill(name);
@@ -106,7 +106,7 @@ test("saves a preset to a slot and deletes it from the library", async ({ page, 
 
 /** A captured cabinet (docs/practice-amp.md, "Captured cabinets"): chosen on the head, it loads into the chain and the tone still renders. */
 test("a captured cabinet loads and renders", async ({ page, errors }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	await hooked(page, ([w]) => w.__amp.setHead({ cabinet: "greenback-57" }));
 	// The live chain exists once the amp is on; the offline render loads the capture for itself.
 	await page.getByRole("button", { name: "Turn the amp on" }).click();
@@ -125,7 +125,7 @@ test("a captured cabinet loads and renders", async ({ page, errors }) => {
  * the amp, dry in and amplified out, with no jack opened.
  */
 test("the chord player plays through the amp as its demo input", async ({ page, errors }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	await hooked(page, ([w]) => w.__amp.setSource("chords"));
 	await page.getByRole("button", { name: "Turn the amp on" }).click();
 	await until(page, ([w]) => w.__amp.on === true);
@@ -143,7 +143,7 @@ test("turns on at the first touch, and Mute keeps the input while the output is 
 	page,
 	errors,
 }) => {
-	await open(page, "/ember", "__amp");
+	await open(page, "/practice-amp", "__amp");
 	await page.getByRole("button", { name: "Bass", exact: true }).click();
 	await until(page, ([w]) => w.__amp.on === true);
 	await page.getByRole("button", { name: "Mute the amp" }).click();

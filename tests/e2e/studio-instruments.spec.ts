@@ -8,7 +8,7 @@ import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures
  */
 test.describe.serial("Studio instruments", () => {
 	test("a drums track records the drum machine's beat", async ({ page, errors }) => {
-		await open(page, "/dawn", "__studio");
+		await open(page, "/multitrack-recorder", "__studio");
 		// The instrument panels carry transport buttons of their own: the Studio's are inside its device.
 		const device = page.getByRole("dialog", { name: "Dawn" });
 		await deleteStudioSongs(page);
@@ -61,7 +61,7 @@ test.describe.serial("Studio instruments", () => {
 	test("a piano track records the hosted piano, and the settings go with the song", async ({
 		page,
 	}) => {
-		await open(page, "/dawn", "__studio");
+		await open(page, "/multitrack-recorder", "__studio");
 		const device = page.getByRole("dialog", { name: "Dawn" });
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		await page.getByRole("button", { name: "Add track" }).click();
@@ -97,8 +97,10 @@ test.describe.serial("Studio instruments", () => {
 			ms: 30_000,
 		});
 		// The song now carries the piano's preset: the page data says so after a reload.
-		await open(page, "/dawn", "__studio");
-		const html = await page.evaluate(() => fetch("/dawn/__data.json").then((r) => r.text()));
+		await open(page, "/multitrack-recorder", "__studio");
+		const html = await page.evaluate(() =>
+			fetch("/multitrack-recorder/__data.json").then((r) => r.text()),
+		);
 		expect(html).toContain('"piano"');
 		await deleteStudioSongs(page);
 	});

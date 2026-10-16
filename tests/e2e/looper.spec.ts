@@ -9,7 +9,7 @@ test("records a microphone layer the length of the loop and clears it", async ({
 	page,
 	errors,
 }) => {
-	await open(page, "/whirl", "__looper");
+	await open(page, "/looper", "__looper");
 	await page
 		.getByRole("button", { name: /^Microphone/ })
 		.first()

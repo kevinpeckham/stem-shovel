@@ -50,15 +50,12 @@ const ROUTES = [
 	],
 	["[account]/ideas", "/{account}/ideas", [303], [303]],
 	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
-	["lark", "/lark", [303], [200]],
+	["idea-recorder", "/idea-recorder", [303], [200]],
 	// The old address: a permanent redirect for everyone (src/routes/ideas/recorder/+server.ts).
 	["ideas/recorder (server)", "/ideas/recorder", [301], [301]],
-	["whirl", "/whirl", [200], [200]],
-	["ember", "/ember", [200], [200]],
-	// The old addresses: permanent redirects for everyone (src/routes/looper and practice-amp, +server.ts).
-	["looper (server)", "/looper", [301], [301]],
-	["practice-amp (server)", "/practice-amp", [301], [301]],
-	["dawn", "/dawn", [303], [200]],
+	["looper", "/looper", [200], [200]],
+	["practice-amp", "/practice-amp", [200], [200]],
+	["multitrack-recorder", "/multitrack-recorder", [303], [200]],
 	// The old address: a permanent redirect for everyone (src/routes/studio/+server.ts).
 	["studio (server)", "/studio", [301], [301]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
@@ -85,9 +82,7 @@ const ROUTES = [
 	["metronome", "/metronome", [200], [200]],
 	["drum-machine", "/drum-machine", [200], [200]],
 	["piano", "/piano", [200], [200]],
-	["palette", "/palette", [200], [200]],
-	// The old address: a permanent redirect for everyone (src/routes/chord-player/+server.ts).
-	["chord-player (server)", "/chord-player", [301], [301]],
+	["chord-player", "/chord-player", [200], [200]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
 	["built-with", "/built-with", [200], [200]],

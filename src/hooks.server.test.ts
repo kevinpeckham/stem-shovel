@@ -291,7 +291,7 @@ describe("the chord player's vanity domains", () => {
 	it("send every path to the chord player, permanently", async () => {
 		const res = await run(fakeEvent("https://www.fifths.app/anything?x=1"));
 		expect(res.status).toBe(308);
-		expect(res.headers.get("location")).toBe("https://www.stemshovel.com/palette");
+		expect(res.headers.get("location")).toBe("https://www.stemshovel.com/chord-player");
 		expect(resolve).not.toHaveBeenCalled();
 	});
 });

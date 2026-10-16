@@ -22,42 +22,40 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Idea Recorder, Dawn Multitrack Recorder, Ember Practice Amp, Whirl
   Looper, Palette Chord Player (the copy docs' seed titles; the browser
   titles follow without repeating the words).
-- **The Chord Player is Palette**, at `/palette` with `/chord-player`
-  redirecting for good (a `#k=` hash survives it), and the vanity
-  domains fifths.app and chordplayer.dev land there. The Instruments
-  menu keeps saying Chord Player, the footer says Palette, the title
-  "Palette | Chord Player: Free Online Circle of Fifths"; the public page
-  moves in `isIndexablePath`, the sitemap, robots.txt and the noindex
-  rule; share links carry the new address. The device's "Chord Palette"
-  dropdown is **Color** now, so the two do not collide. The code keeps
-  its names.
+- **The Chord Player is Palette**, the brand name in the footer and the
+  page's heading, and its "Chord Palette" dropdown is **Color** now, so
+  the two do not collide. The Instruments menu keeps saying Chord Player,
+  the title is "Palette Chord Player | Free Online Circle of Fifths", and
+  the address stays `/chord-player` (the vanity domains fifths.app and
+  chordplayer.dev land there as before). The code keeps its names.
 - **The Practice Amp is Ember and the Looper is Whirl**, the brand names
-  beside Dawn and Lark, at `/ember` and `/whirl` with the old addresses
-  redirecting for good (a browser keeps an `#amp=` preset hash across the
-  redirect). The Tools menu keeps saying Practice Amp and Looper, the
-  footer says Ember and Whirl, the titles "Ember | Practice Amp: Guitar
-  and Bass Amp in the Browser" and "Whirl | Looper: Free Online Loop
-  Station". The looper's public page moves with it in `isIndexablePath`,
-  the sitemap, robots.txt and `vercel.json`'s noindex rule. The code
-  keeps its names.
+  beside Dawn and Lark. The Tools menu keeps saying Practice Amp and
+  Looper, the footer says Ember and Whirl, the titles "Ember Practice Amp
+  | Guitar and Bass Amp in the Browser" and "Whirl Looper | Free Online
+  Loop Station"; the addresses stay `/practice-amp` and `/looper`. The
+  code keeps its names.
 - **The Idea Recorder is Lark**, the brand name beside Dawn (Kevin: the
-  Lark idea recorder and the Dawn multitrack recorder), at `/lark`, with
-  `/ideas/recorder` a permanent redirect that keeps its `?song=`
+  Lark idea recorder and the Dawn multitrack recorder), and the page
+  moves from `/ideas/recorder` to `/idea-recorder`, with the old address
+  a permanent redirect that keeps its `?song=`
   (`src/routes/ideas/recorder/+server.ts`; the account-scoped old route
-  redirects straight to `/lark` too). The Tools menu and the header keep
-  saying Idea Recorder, the footer says Lark, the page title "Lark | Idea
+  redirects straight there too). The Tools menu and the header keep
+  saying Idea Recorder, the footer says Lark, the page title "Lark Idea
   Recorder"; the device, the docs link and the user docs (slugs kept)
-  follow; every link in the app points at `/lark`. The code keeps its
-  names.
+  follow; every link in the app points at `/idea-recorder`. The code
+  keeps its names.
 - **The Studio is Dawn.** The multitrack recorder is called Dawn (Kevin:
   "Studio" means too many things now; Dawn is the DAW pun in the Stem
-  Shovel vein), at `/dawn`, with `/studio` a permanent redirect
-  (`src/routes/studio/+server.ts`). The Tools menu says Multitrack
-  Recorder, the footer Dawn, the page title "Dawn | Multitrack Recorder";
-  the device, its Recordings panel, the docs link, the user docs (slugs
-  `studio` and `studio-page` kept, so edited copies survive), the
-  built-with page and the sibling docs' mentions follow. Every identifier
-  in the code keeps the working name `studio`.
+  Shovel vein), at `/multitrack-recorder`, with `/studio` a permanent
+  redirect (`src/routes/studio/+server.ts`). The Tools menu says
+  Multitrack Recorder, the footer Dawn, the page title "Dawn Multitrack
+  Recorder"; the device, its Recordings panel, the docs link, the user
+  docs (slugs `studio` and `studio-page` kept, so edited copies survive),
+  the built-with page and the sibling docs' mentions follow. Every
+  identifier in the code keeps the working name `studio`. The brand
+  names stay off the addresses (Kevin, 2026-10-16: the app is young, a
+  descriptive address says what the page is), so the public pages keep
+  theirs and the two members-only pages take descriptive ones.
 
 ## [0.131.0] - 2026-10-16
 
