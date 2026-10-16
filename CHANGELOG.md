@@ -59,6 +59,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   descriptive address says what the page is), so the public pages keep
   theirs and the two members-only pages take descriptive ones.
 
+### Fixed
+
+- **The practice amp's Guitar / Bass toggle kept its label on hover**: the
+  selected half is accent on dark, and the outline button's hover color
+  turned its label accent too, so the word vanished under the pointer.
+  The selected half now keeps its dark label and dims a little instead.
+
 ## [0.131.0] - 2026-10-16
 
 ### Changed

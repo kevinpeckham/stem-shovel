@@ -466,7 +466,7 @@
 					{#each AMP_INSTRUMENTS as i (i)}
 						<button
 							class="button-outline {amp.instrument === i
-								? 'bg-accent text-dark border border-accent opacity-100'
+								? 'bg-accent text-dark hover-text-dark hover-bg-accent/85 border border-accent opacity-100'
 								: 'opacity-90 text-accent'} {i === 'guitar' ? 'rounded-r-none' : 'rounded-l-none'}"
 							type="button"
 							aria-pressed={amp.instrument === i}
