@@ -1,8 +1,8 @@
-# Studio
+# Dawn
 
 Record tracks over what you have, from the microphone, a line in or the computer; arrange the takes on a timeline; keep revisions; send the mix to a song as a demo or the tracks as stems.
 
-## How to use the Studio
+## How to use Dawn
 
 Add a track, arm it (the red dot), choose its input and press Record: after a bar of count-in the take lands on the track where the playhead was while the other tracks play. Stop ends the take and saves it. Press Record again for the next part, on the same track or another.
 

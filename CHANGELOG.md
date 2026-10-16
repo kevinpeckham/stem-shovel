@@ -8,6 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Studio is Dawn.** The multitrack recorder is called Dawn (Kevin:
+  "Studio" means too many things now; Dawn is the DAW pun in the Stem
+  Shovel vein), at `/dawn`, with `/studio` a permanent redirect
+  (`src/routes/studio/+server.ts`). The Tools menu says Multitrack
+  Recorder, the footer Dawn, the page title "Dawn | Multitrack Recorder";
+  the device, its Recordings panel, the docs link, the user docs (slugs
+  `studio` and `studio-page` kept, so edited copies survive), the
+  built-with page and the sibling docs' mentions follow. Every identifier
+  in the code keeps the working name `studio`.
+
 ## [0.131.0] - 2026-10-16
 
 ### Changed

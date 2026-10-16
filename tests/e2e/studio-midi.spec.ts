@@ -11,8 +11,8 @@ test.describe.serial("Studio MIDI", () => {
 		page,
 		errors,
 	}) => {
-		await open(page, "/studio", "__studio");
-		const device = page.getByRole("dialog", { name: "Studio" });
+		await open(page, "/dawn", "__studio");
+		const device = page.getByRole("dialog", { name: "Dawn" });
 		await deleteStudioSongs(page);
 		await page.getByRole("button", { name: "New song" }).click();
 		await expect(page.getByLabel("Song title")).not.toHaveValue("");

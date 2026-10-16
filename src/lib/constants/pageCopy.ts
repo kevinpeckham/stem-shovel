@@ -12,7 +12,7 @@ export const PAGE_COPY: Record<string, string> = {
 	"metronome-page": "/metronome",
 	"idea-recorder-page": "/ideas/recorder",
 	"chord-player-page": "/chord-player",
-	"studio-page": "/studio",
+	"studio-page": "/dawn",
 	"practice-amp-page": "/practice-amp",
 	"home-page": "/",
 };

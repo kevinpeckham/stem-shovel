@@ -59,4 +59,4 @@ All three open from the amp's toolbar. The tuner reads the amp's own input, so n
 
 ## Recording and playing along
 
-The amp is a source on the **Idea Recorder** and the **Looper**, and an input in the **Studio**: choose Amp as the source and what you hear is what lands on the take, pedals and all. On a song's page, the amp panel plays along with the stems: its header has Play, From the top and a **Count in** switch, a bar of the metronome before the song starts so you come in together.
+The amp is a source on the **Idea Recorder** and the **Looper**, and an input in **Dawn**, the multitrack recorder: choose Amp as the source and what you hear is what lands on the take, pedals and all. On a song's page, the amp panel plays along with the stems: its header has Play, From the top and a **Count in** switch, a bar of the metronome before the song starts so you come in together.

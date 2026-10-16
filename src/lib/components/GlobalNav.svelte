@@ -64,7 +64,7 @@
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
-		TOOL_PAGES.some(active) || active("/ideas/recorder") || active("/looper") || active("/studio"),
+		TOOL_PAGES.some(active) || active("/ideas/recorder") || active("/looper") || active("/dawn"),
 	);
 </script>
 
@@ -225,15 +225,17 @@
 					{#if member}
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								'/studio',
+								'/dawn',
 							)
 								? 'text-accent'
 								: ''}"
 							role="menuitem"
-							href="/studio"
+							href="/dawn"
+							title="Dawn, the multitrack recorder"
 							onclick={() => (openMenu = null)}
 						>
-							<span class="i-ph-sliders-horizontal w-1em" aria-hidden="true"></span>Studio
+							<span class="i-ph-sliders-horizontal w-1em" aria-hidden="true"></span>Multitrack
+							Recorder
 						</a>
 					{/if}
 					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->

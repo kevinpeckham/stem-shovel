@@ -1,5 +1,9 @@
 # Multitrack recorder (design draft)
 
+> **Dawn** is the product name since 2026-10-16 ("Dawn: the rename" below): the
+> route is `/dawn`, the Tools menu says Multitrack Recorder, and everything in
+> the code keeps the working name `studio`.
+
 Status: phase 1a shipped in v0.110.0 (2026-10-06); phase 1b (editing, import, punch, take lanes) in v0.111.0 (2026-10-07); phase 2 (the instruments as inputs, the drum machine as a backing, effects per track) built 2026-10-07; phase 3a (MIDI tracks: record, play, edit, import, export, render to audio) and 3b (the piano-roll editor) built 2026-10-08. The plan's phases are complete; "Later" holds what is left. Design written 2026-10-06. Kevin's ask: "a simple
 multi-track recorder. It would use some of the features and layout of the
 stem player, and a lot of the engineering of the idea recorder. It should

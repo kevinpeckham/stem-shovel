@@ -53,7 +53,9 @@ const ROUTES = [
 	["ideas/recorder", "/ideas/recorder", [303], [200]],
 	["looper", "/looper", [200], [200]],
 	["practice-amp", "/practice-amp", [200], [200]],
-	["studio", "/studio", [303], [200]],
+	["dawn", "/dawn", [303], [200]],
+	// The old address: a permanent redirect for everyone (src/routes/studio/+server.ts).
+	["studio (server)", "/studio", [301], [301]],
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],

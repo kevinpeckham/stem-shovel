@@ -10,7 +10,7 @@ import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures
  */
 test.describe.serial("Studio", () => {
 	test("records a take that lands as a clip and uploads", async ({ page, errors }) => {
-		await open(page, "/studio", "__studio");
+		await open(page, "/dawn", "__studio");
 		await deleteStudioSongs(page);
 		await page.getByRole("button", { name: "New song" }).click();
 		await expect(page.getByLabel("Song title")).not.toHaveValue("");
@@ -34,7 +34,7 @@ test.describe.serial("Studio", () => {
 	test("imports a file, trims, splits, fades, duplicates, and keeps it all through a reload", async ({
 		page,
 	}) => {
-		await open(page, "/studio", "__studio");
+		await open(page, "/dawn", "__studio");
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		await hooked(page, ([w]) => w.__studio.seek(5));
 		await page.locator("input[type=file]").setInputFiles(path.resolve("static/stems/keys.wav"));
@@ -83,7 +83,7 @@ test.describe.serial("Studio", () => {
 			ms: 60_000,
 		});
 		await until(page, ([w]) => !w.__studio.dirty, { ms: 10_000 });
-		await open(page, "/studio", "__studio");
+		await open(page, "/dawn", "__studio");
 		await until(page, ([w]) => w.__studio.arrangement.clips.length === 4);
 		await until(page, ([w]) => w.__studio.decoding === 0, { ms: 30_000 });
 		expect(
@@ -94,7 +94,7 @@ test.describe.serial("Studio", () => {
 	test("a loop recording makes a take per pass; punch keeps the region; a revision restores", async ({
 		page,
 	}) => {
-		await open(page, "/studio", "__studio");
+		await open(page, "/dawn", "__studio");
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		await page.getByRole("button", { name: "Add track" }).click();
 		await page.getByRole("button", { name: /Arm Track 1/ }).click(); // disarm
@@ -144,7 +144,7 @@ test.describe.serial("Studio", () => {
 	});
 
 	test("cleans up the bot's songs", async ({ page, errors }) => {
-		await open(page, "/studio", "__studio");
+		await open(page, "/dawn", "__studio");
 		await until(page, ([w]) => !Object.values(w.__studio.sources).some((s: any) => s.pending), {
 			ms: 60_000,
 		});

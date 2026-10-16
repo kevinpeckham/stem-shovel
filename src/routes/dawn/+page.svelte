@@ -63,7 +63,7 @@
 	import { onMount, untrack } from "svelte";
 
 	/**
-	 * The Studio (docs/multitrack-recorder.md): the user's own multitrack
+	 * Dawn, the multitrack recorder (docs/multitrack-recorder.md; "Studio" in the code): the user's own multitrack
 	 * recorder. A song is an idea of kind "song"; its arrangement autosaves
 	 * as it changes and can be kept under a name as a revision; its takes
 	 * upload through a queue as sources. The device holds the transport and
@@ -319,7 +319,7 @@
 		if (!saved) return;
 		drumMachine.load();
 		piano.load();
-		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", title || "Studio");
+		if (saved.drums) drumMachine.loadProject(saved.drums, "replace", title || "Dawn");
 		if (saved.piano) piano.applyPreset(saved.piano);
 		if (saved.chords) chordPlayer.applyPresetSettings(saved.chords);
 	}
@@ -790,7 +790,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Studio"} | Multitrack Recorder</title>
+	<title>{data.copy.title || "Dawn"} | Multitrack Recorder</title>
 	<meta
 		name="description"
 		content="A multitrack recorder in the browser: record tracks from the microphone, a line in or the computer over what you have, arrange clips on a timeline, keep revisions, and bounce the song to a demo or its tracks to stems."
@@ -810,7 +810,7 @@
 						: ''}"
 					type="button"
 					aria-pressed={songsMode !== "minimised"}
-					title="Recordings: your Studio songs and their revisions"
+					title="Recordings: your Dawn songs and their revisions"
 					onclick={() => setMode("songs", songsMode === "minimised" ? "docked" : "minimised")}
 				>
 					<span class="i-ph-list-bullets" aria-hidden="true"></span>
@@ -913,7 +913,7 @@
 			open={true}
 			floating={deviceFloating}
 			closable={false}
-			title="Studio"
+			title="Dawn"
 			storageKey="stemshovel.studio.device-panel"
 			width={1100}
 			height={720}
@@ -941,7 +941,7 @@
 			{/snippet}
 			<section
 				class="device-chrome grid gap-3 px-3 py-4 pb-6 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
-				aria-label="Studio"
+				aria-label="Dawn"
 			>
 				<!-- the song's title -->
 				<div class="flex flex-wrap items-center gap-2">
@@ -1661,8 +1661,8 @@
 		<PageCopySection
 			html={data.copy.bodyHtml}
 			docsHref="/docs/studio"
-			docsLabel="Studio docs"
-			docsLead="Learn more about using the Studio in the user docs."
+			docsLabel="Dawn docs"
+			docsLead="Learn more about using Dawn, the multitrack recorder, in the user docs."
 		/>
 	</main>
 

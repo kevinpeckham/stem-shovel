@@ -51,12 +51,12 @@
 		{
 			title: "Sound",
 			blurb:
-				"Playback, recording, the instruments and the Studio happen in the browser; conversion happens on the server.",
+				"Playback, recording, the instruments and Dawn happen in the browser; conversion happens on the server.",
 			items: [
 				{
 					name: "Web Audio API",
 					url: "https://developer.mozilla.org/docs/Web/API/Web_Audio_API",
-					what: "Plays every stem in sync from one clock, with the faders, mute and solo; the piano, drum machine, chord player, looper and the Studio's tracks and effects are built on it too.",
+					what: "Plays every stem in sync from one clock, with the faders, mute and solo; the piano, drum machine, chord player, looper and Dawn's tracks and effects are built on it too.",
 				},
 				{
 					name: "MediaRecorder",
@@ -66,12 +66,12 @@
 				{
 					name: "AudioWorklet",
 					url: "https://developer.mozilla.org/docs/Web/API/AudioWorklet",
-					what: "Captures the looper's loops and the Studio's takes sample by sample, lossless and lined up with the measured latency.",
+					what: "Captures the looper's loops and Dawn's takes sample by sample, lossless and lined up with the measured latency.",
 				},
 				{
 					name: "Web MIDI API",
 					url: "https://developer.mozilla.org/docs/Web/API/Web_MIDI_API",
-					what: "Lets a MIDI keyboard or pad play the piano, the chord player and the drum machine, and record into the Studio's MIDI tracks.",
+					what: "Lets a MIDI keyboard or pad play the piano, the chord player and the drum machine, and record into Dawn's MIDI tracks.",
 				},
 				{
 					name: "FFmpeg",
@@ -127,7 +127,7 @@
 				{
 					name: "Our own code",
 					url: "https://github.com/kevinpeckham/stem-shovel",
-					what: "Tempo, key and time signature from the stems, the tuner's pitch detection, the synth voices and the electronic drum kit, the effects, and the MIDI files the Studio reads and writes, all written for Stem Shovel.",
+					what: "Tempo, key and time signature from the stems, the tuner's pitch detection, the synth voices and the electronic drum kit, the effects, and the MIDI files Dawn reads and writes, all written for Stem Shovel.",
 				},
 			],
 		},
@@ -154,7 +154,7 @@
 				{
 					name: "IndexedDB",
 					url: "https://developer.mozilla.org/docs/Web/API/IndexedDB_API",
-					what: "Keeps the looper's loop and the Idea Recorder's and the Studio's takes in your browser while they wait to upload, so a dropped connection loses nothing.",
+					what: "Keeps the looper's loop and the Idea Recorder's and Dawn's takes in your browser while they wait to upload, so a dropped connection loses nothing.",
 				},
 				{
 					name: "fflate",

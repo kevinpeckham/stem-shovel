@@ -36,7 +36,8 @@
 		<a class="footer-link" href={recorderHref}>Idea Recorder</a>
 		<a class="footer-link" href="/looper">Looper</a>
 		<a class="footer-link" href="/practice-amp">Practice Amp</a>
-		{#if member}<a class="footer-link" href="/studio">Studio</a>{/if}
+		{#if member}<a class="footer-link" href="/dawn" title="Dawn, the multitrack recorder">Dawn</a
+			>{/if}
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
 	</nav>
