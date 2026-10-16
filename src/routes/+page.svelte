@@ -282,7 +282,7 @@
 			{@render feature("chords")}
 			<div class="flex flex-wrap items-center gap-x-5">
 				<div class="marketing-demo-cta">Try the working demo below.</div>
-				<a class="link inline-flex items-center gap-1.5 text-14px" href="/chord-player"
+				<a class="link inline-flex items-center gap-1.5 text-14px" href="/palette"
 					>Free standalone version <span class="i-ph-arrow-right" aria-hidden="true"></span></a
 				>
 			</div>

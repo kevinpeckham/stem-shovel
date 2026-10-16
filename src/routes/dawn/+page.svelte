@@ -790,7 +790,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Dawn"} | Multitrack Recorder</title>
+	<title>{data.copy.title || "Dawn Multitrack Recorder"}</title>
 	<meta
 		name="description"
 		content="A multitrack recorder in the browser: record tracks from the microphone, a line in or the computer over what you have, arrange clips on a timeline, keep revisions, and bounce the song to a demo or its tracks to stems."

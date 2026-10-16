@@ -436,7 +436,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Whirl"} | Looper: Free Online Loop Station</title>
+	<title>{data.copy.title || "Whirl Looper"} | Free Online Loop Station</title>
 	<meta
 		name="description"
 		content="A free looper in the browser: lay a loop down a layer at a time from the microphone, the piano or the drum machine, with a count-in, a click and latency compensation, then save it as a take with each layer as a stem."

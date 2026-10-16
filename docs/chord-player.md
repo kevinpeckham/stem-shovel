@@ -1,5 +1,10 @@
 # Chord Player: the piano's sounds on a circle of fifths
 
+> **Palette** is the product name since 2026-10-16 (the route is `/palette`, the
+> Instruments menu says Chord Player), and the "Chord Palette" dropdown on the
+> device is **Colour** since the same day, so the two do not collide. The code
+> keeps `chord-player` and `ChordPaletteMenu`.
+
 Scoped 2026-10-03 at Kevin's request: a new instrument that plays every
 sound the piano plays, with the piano's effects, through the Circle of
 Fifths interface of his earlier project

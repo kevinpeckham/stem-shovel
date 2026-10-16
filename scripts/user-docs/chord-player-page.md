@@ -1,8 +1,8 @@
-# Chord Player
+# Palette Chord Player
 
 The piano's sounds on a circle of fifths: press a chord to hear it, hold it as long as you like, and find the chords that go together side by side.
 
-## How to use the Chord Player
+## How to use Palette
 
 Press any wedge of the circle and the chord sounds for as long as you hold it; the outer ring is the major chords, the inner ring their relative minors, and the chords beside any chord are the ones that fit it best. Hold the 7 pad, or Shift, for a seventh. Turn the circle with the Key buttons to your song's key. The Sound menu, the presets and the Effects menu are the piano's: a grand piano, an electric piano, an organ and three synths, with reverb, delay, chorus, fuzz and the rest.
 

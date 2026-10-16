@@ -1,4 +1,4 @@
-# Whirl
+# Whirl Looper
 
 Lay a loop down a layer at a time from the microphone, the piano or the drums, then save it to the Idea Recorder as a take with each layer as a stem.
 

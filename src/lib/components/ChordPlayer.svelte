@@ -192,7 +192,7 @@
 		ragtime: "dominant chains",
 		bossa: "soft jazz colours",
 	};
-	/** The built-in styles and the account's own, for the device's Chord Palette dropdown. */
+	/** The built-in styles and the account's own, for the device's Colour dropdown (once "Chord Palette", renamed when the player became Palette). */
 	const STYLE_OPTIONS = $derived([
 		...CHORD_STYLES.map((s) => ({ value: s.id, label: s.label, description: STYLE_SHORT[s.id] })),
 		...chordPlayer.customStyles.map((s) => ({
@@ -299,11 +299,11 @@
 			ui: chordPlayer.uiSettings,
 			bpm: metronome.bpm,
 		});
-		return `${window.location.origin}/chord-player#${payload}`;
+		return `${window.location.origin}/palette#${payload}`;
 	}
 	async function copyLink() {
 		const url = shareUrl();
-		if (window.location.pathname === "/chord-player") history.replaceState(null, "", url);
+		if (window.location.pathname === "/palette") history.replaceState(null, "", url);
 		// The short form when the server grants one; the long link otherwise.
 		const short = await shortenShareLink(url, "chord-player");
 		try {
@@ -535,7 +535,7 @@
 			/>
 		</div>
 		<div class="hidden @xl-block min-w-36">
-			<div class="device-button-group-label text-dark hidden @xl-block">Chord Palette</div>
+			<div class="device-button-group-label text-dark hidden @xl-block">Colour</div>
 			<!-- A split button (Kevin): the palette (a chord style, `style` in the engine), and on the caret the seventh's kind and your own palettes. -->
 			<div class="flex gap-px" role="group" aria-label="Chord palette">
 				<ComboBox
@@ -555,7 +555,7 @@
 					buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
 					popoverClasses="min-w-72 @xl-min-w-96 max-w-lg !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 					items={[
-						{ id: "style-heading", kind: "heading", label: "Chord Palette" },
+						{ id: "style-heading", kind: "heading", label: "Colour" },
 						{ id: "style-block", kind: "snippet", snippet: styleMenuBlock },
 					]}
 				/>
@@ -1128,7 +1128,7 @@
 {#snippet chordsMenuBlock()}
 	<div class="px-3 pt-3 pb-4 grid gap-4 [&_span.device-button-label]-(block mb-2 text-blue-100/90)">
 		<label class="block">
-			<span class="device-button-label">Chord Palette</span>
+			<span class="device-button-label">Colour</span>
 			<select
 				class="device-field w-full"
 				value={chordPlayer.style}

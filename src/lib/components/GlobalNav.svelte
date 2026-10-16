@@ -61,7 +61,7 @@
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
 	const TOOL_PAGES = ["/tuner", "/metronome", "/ember"];
-	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
+	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/palette"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) || active("/lark") || active("/whirl") || active("/dawn"),
@@ -169,7 +169,8 @@
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/chord-player"
+						href="/palette"
+						title="Palette, the chord player"
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-circle-dashed w-1em" aria-hidden="true"></span>Chord Player

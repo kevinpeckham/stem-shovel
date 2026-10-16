@@ -77,7 +77,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Chord Player"} | Free Online Circle of Fifths Chord Player</title>
+	<title>{data.copy.title || "Palette Chord Player"} | Free Online Circle of Fifths</title>
 	<meta
 		name="description"
 		content="A free chord player in the browser: press the chords of the circle of fifths and hear them on a grand piano, an electric piano, an organ or a synth, with effects, by mouse, touch or the computer keyboard. Helpful for songwriters working out a progression."
@@ -94,7 +94,7 @@
 		open={true}
 		floating={deviceFloating}
 		closable={false}
-		title="Chord Player"
+		title="Palette"
 		storageKey="stemshovel.chord-player.device-panel"
 		width={720}
 		height={960}
@@ -191,7 +191,7 @@
 	<PageCopySection
 		html={data.copy.bodyHtml}
 		docsHref="/docs/chord-player"
-		docsLabel="Chord Player docs"
-		docsLead="Learn more about using the chord player in the user docs."
+		docsLabel="Palette docs"
+		docsLead="Learn more about using Palette, the chord player, in the user docs."
 	/>
 </main>

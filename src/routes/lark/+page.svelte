@@ -724,7 +724,7 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle(`${data.copy.title || "Lark"} | Idea Recorder`)}</title>
+	<title>{pageTitle(data.copy.title || "Lark Idea Recorder")}</title>
 </svelte:head>
 
 <main

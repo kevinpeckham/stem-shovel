@@ -1,4 +1,4 @@
-# Ember
+# Ember Practice Amp
 
 Plug a guitar or a bass into your computer or phone and play it through an amp, with pedals, in your headphones or speakers.
 

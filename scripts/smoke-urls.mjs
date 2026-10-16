@@ -85,7 +85,9 @@ const ROUTES = [
 	["metronome", "/metronome", [200], [200]],
 	["drum-machine", "/drum-machine", [200], [200]],
 	["piano", "/piano", [200], [200]],
-	["chord-player", "/chord-player", [200], [200]],
+	["palette", "/palette", [200], [200]],
+	// The old address: a permanent redirect for everyone (src/routes/chord-player/+server.ts).
+	["chord-player (server)", "/chord-player", [301], [301]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
 	["built-with", "/built-with", [200], [200]],

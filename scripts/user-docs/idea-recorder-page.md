@@ -1,4 +1,4 @@
-# Lark
+# Lark Idea Recorder
 
 Record your demos, riffs, or quick ideas here. An idea is one or more takes and, if you like, a board of notes; hitting Record starts the next take.
 

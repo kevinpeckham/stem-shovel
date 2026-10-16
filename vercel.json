@@ -9,13 +9,13 @@
 		{
 			"source": "/:path*",
 			"has": [{ "type": "host", "value": "fifths.app" }],
-			"destination": "https://www.stemshovel.com/chord-player",
+			"destination": "https://www.stemshovel.com/palette",
 			"permanent": true
 		},
 		{
 			"source": "/:path*",
 			"has": [{ "type": "host", "value": "chordplayer.dev" }],
-			"destination": "https://www.stemshovel.com/chord-player",
+			"destination": "https://www.stemshovel.com/palette",
 			"permanent": true
 		}
 	],
@@ -50,7 +50,7 @@
 			]
 		},
 		{
-			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|piano$|chord-player$|whirl$|pricing$|built-with$).+)",
+			"source": "/((?!docs|blog|releases|tuner$|metronome$|drum-machine$|piano$|palette$|whirl$|pricing$|built-with$).+)",
 			"headers": [
 				{
 					"key": "X-Robots-Tag",

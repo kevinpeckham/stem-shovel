@@ -10,6 +10,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Each renamed page's heading pairs the name with the words**: Lark
+  Idea Recorder, Dawn Multitrack Recorder, Ember Practice Amp, Whirl
+  Looper, Palette Chord Player (the copy docs' seed titles; the browser
+  titles follow without repeating the words).
+- **The Chord Player is Palette**, at `/palette` with `/chord-player`
+  redirecting for good (a `#k=` hash survives it), and the vanity
+  domains fifths.app and chordplayer.dev land there. The Instruments
+  menu keeps saying Chord Player, the footer says Palette, the title
+  "Palette | Chord Player: Free Online Circle of Fifths"; the public page
+  moves in `isIndexablePath`, the sitemap, robots.txt and the noindex
+  rule; share links carry the new address. The device's "Chord Palette"
+  dropdown is **Colour** now, so the two do not collide. The code keeps
+  its names.
 - **The Practice Amp is Ember and the Looper is Whirl**, the brand names
   beside Dawn and Lark, at `/ember` and `/whirl` with the old addresses
   redirecting for good (a browser keeps an `#amp=` preset hash across the
