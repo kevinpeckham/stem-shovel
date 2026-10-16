@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.129.0] - 2026-10-16
+
 ### Added
 
 - **Level meters on every stem row and on the master**, with a peak-hold
