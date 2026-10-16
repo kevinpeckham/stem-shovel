@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.132.0] - 2026-10-16
+
 ### Changed
 
 - **American spelling in copy** (Kevin): `bun run spell:us`
