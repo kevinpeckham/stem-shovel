@@ -20,6 +20,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   `src/lib/utils/meterLevel.ts` holds the fall, the hold and the clip
   memory; `StemEngine.levels`, `masterLevel`, `resetClips(id?)`;
   `LevelMeter.svelte`.
+- **The stem fader is a knob**, beside the pan knob, so the meter sits on
+  the same line as the controls (Kevin): the level shows in dB while it
+  turns, a double-click returns it to unity.
 
 ## [0.128.0] - 2026-10-14
 

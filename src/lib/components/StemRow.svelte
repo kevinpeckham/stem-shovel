@@ -6,7 +6,6 @@
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import type { Snippet } from "svelte";
 	import Waveform from "#lib/components/Waveform.svelte";
-	import Slider from "#lib/components/Slider.svelte";
 	import Knob from "#lib/components/Knob.svelte";
 	import LevelMeter from "#lib/components/LevelMeter.svelte";
 
@@ -45,6 +44,8 @@
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
 	const progress = $derived(engine.duration > 0 ? engine.position / engine.duration : 0);
 	const span = $derived(engine.duration > 0 ? stem.duration / engine.duration : 1);
+	/** A level as the knob says it: dB, −∞ at the bottom (as the Studio's faders). */
+	const levelText = (v: number) => (v <= 0 ? "−∞ dB" : `${Math.round(20 * Math.log10(v))} dB`);
 	/** A pan as the knob says it: L 50, C, R 50 (as the Studio's tracks). */
 	const panText = (v: number) =>
 		v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`;
@@ -119,22 +120,22 @@
 				>
 				{#if menu}{@render menu(stem)}{/if}
 			</div>
-			<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity.
-			     data-fader: the row's M/S keys leave the fader and the pan alone. -->
+			<!-- The fader and the pan as knobs (Knob.svelte), so the meter fits on the same line (Kevin): the value
+			     shows while a knob turns; a double-click returns the level to unity, the pan to centre.
+			     data-fader: the row's M/S keys leave the knobs alone. -->
 			<div class="contents" data-fader>
-				<Slider
-					class="min-w-16 max-w-24 w-full"
+				<Knob
 					value={stem.gain}
 					min={0}
 					max={FADER_MAX}
 					step={0.01}
 					resetTo={1}
-					thickness={5}
+					size={22}
 					label="{stem.label} level"
 					title="Level (double-click for unity)"
+					format={levelText}
 					oninput={(v) => engine.setGain(stem.id, v)}
 				/>
-				<!-- The pan as a knob (Knob.svelte), as on a Studio track: the value shows while it turns. -->
 				<Knob
 					value={stem.pan}
 					min={-1}
@@ -149,14 +150,14 @@
 					oninput={(v) => engine.setPan(stem.id, v)}
 				/>
 			</div>
+			<!-- The level after the fader and pan, with a peak-hold mark and a clip light that sticks until clicked (docs/stem-engine.md, "Meters"). -->
+			<LevelMeter
+				class="min-w-16 flex-1"
+				state={engine.levels[stem.id]}
+				label={stem.label}
+				onreset={() => engine.resetClips(stem.id)}
+			/>
 		</div>
-		<!-- The level after the fader and pan, with a peak-hold mark and a clip light that sticks until clicked (docs/stem-engine.md, "Meters"). -->
-		<LevelMeter
-			class="mt-1.5 max-w-64"
-			state={engine.levels[stem.id]}
-			label={stem.label}
-			onreset={() => engine.resetClips(stem.id)}
-		/>
 	</div>
 
 	<!-- waveform -->
