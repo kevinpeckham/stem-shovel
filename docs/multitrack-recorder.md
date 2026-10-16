@@ -478,3 +478,66 @@ which the schema already carried for the lane colour that never got
 built: swatches in the track's ⋯ menu (`setTint`), the name and the
 clips' canvases take it (`style:color`, which the drawing reads through
 `getComputedStyle`, and the clip effects re-draw on a change).
+
+## Dawn: the rename (planned 2026-10-16)
+
+Kevin: "Studio" means too many things in software now; the descriptive
+term for the Tools menu is "Multitrack Recorder", distinct from the Looper
+and the Idea Recorder, and the brand term is **Dawn**, a pun on DAW in
+the Stem Shovel vein, paired with the descriptive words where needed.
+
+### What changes
+
+- **Route.** `/studio` becomes `/dawn`; `src/routes/studio/+page.server.ts`
+  stays as a one-line permanent redirect to `/dawn` (a SvelteKit
+  redirect works on dev and on Vercel alike, where a `vercel.json`
+  rule would cover only the deployments). The noindex header rule in
+  `vercel.json` already covers every path but the public tool pages, so
+  `/dawn` stays out of search as `/studio` was. `pageCopy.ts` maps
+  `studio-page` to `/dawn`.
+- **Navigation.** The Tools menu entry reads **Multitrack Recorder**
+  (`GlobalNav.svelte`, with `active("/dawn")`), the footer's tools row
+  reads **Dawn** (`GlobalFooter.svelte`), and the page's `<title>` is
+  "Dawn | Multitrack Recorder". The device's own header, its aria-label
+  and the Recordings panel's title say Dawn.
+- **Words on the page.** The copy doc `studio-page` keeps its key (the
+  database row is the same document; renaming the key would orphan an
+  edited copy) and its seed title becomes "Dawn" with the lead "Dawn is
+  a multitrack recorder: record tracks over what you have…". The
+  drum machine's fallback project name ("Studio") and the docs link
+  ("Studio docs") follow.
+- **User docs.** `scripts/user-docs/studio.md` (the guide, slug `studio`,
+  at `/docs/studio`) and `studio-page.md` are rewritten to say Dawn, the
+  slugs unchanged for the same reason as the copy key; the mentions in
+  `idea-recorder.md` (its bigger sibling) and `practice-amp.md` (the
+  band) follow, and the production docs merge carries them.
+- **Elsewhere in the app.** The built-with page's six mentions, the
+  Idea Recorder's input-settings help text, the Practice Amp's panel
+  heading on the page, the home page if it names it, README.
+- **Tests and scripts.** The four `studio*.spec.ts` browser tests open
+  `/dawn`; `smoke-urls.mjs` gets `/dawn` (303 anonymous, 200 bot) and
+  expects `/studio` to answer 301 (or 308) for both.
+
+### What stays
+
+Every identifier: the `studio` engine (`src/lib/audio/studio.svelte.ts`),
+`StudioSchema`, `StudioTimeline.svelte`, `studio.remote.ts`, the
+`/api/studio/*` routes, the `studio_source` and `studio_revision`
+tables, the Blob paths under `accounts/<id>/studio/`, the `studio-page`
+copy key and the `studio` doc slug, and the design doc's own name. None
+of it is seen by a user, and renaming it would be a day of churn for
+nothing. A line at the top of this document says Dawn is the product
+name and `studio` the internal one.
+
+### Decisions (recommendations in brackets)
+
+1. The route: `/dawn` or `/multitrack-recorder`? [`/dawn`: short, the
+   brand, easy to say; the descriptive words are in the menu and title.]
+2. The Tools menu: "Multitrack Recorder" alone, or "Dawn · Multitrack
+   Recorder"? [Alone, since the menu lists what tools do; the footer,
+   the title and the device carry the name.]
+3. Doc slugs: keep `studio` and `studio-page`? [Keep: the edited copies
+   survive, and `/docs/studio` keeps working; a `/docs/dawn` alias can
+   come later if the address matters.]
+4. Casing: Dawn or DAWN? [Dawn, so the pun is there to find rather
+   than an acronym to decode.]
