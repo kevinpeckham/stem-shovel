@@ -14,7 +14,7 @@ describe("isIndexablePath", () => {
 			"/drum-machine",
 			"/piano",
 			"/chord-player",
-			"/looper",
+			"/whirl",
 			"/pricing",
 			"/built-with",
 			"/blog",

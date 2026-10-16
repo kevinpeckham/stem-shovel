@@ -34,8 +34,8 @@
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
 		<a class="footer-link" href={recorderHref} title="Lark, the idea recorder">Lark</a>
-		<a class="footer-link" href="/looper">Looper</a>
-		<a class="footer-link" href="/practice-amp">Practice Amp</a>
+		<a class="footer-link" href="/whirl" title="Whirl, the looper">Whirl</a>
+		<a class="footer-link" href="/ember" title="Ember, the practice amp">Ember</a>
 		{#if member}<a class="footer-link" href="/dawn" title="Dawn, the multitrack recorder">Dawn</a
 			>{/if}
 		<a class="footer-link" href="/tuner">Tuner</a>

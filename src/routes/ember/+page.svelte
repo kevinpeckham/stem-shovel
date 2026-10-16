@@ -56,7 +56,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Practice Amp"} | Guitar and Bass Amp in the Browser</title>
+	<title>{data.copy.title || "Ember"} | Practice Amp: Guitar and Bass Amp in the Browser</title>
 	<meta
 		name="description"
 		content="A free guitar and bass practice amp in the browser: plug in directly or through an audio interface, choose a clean or crunchy guitar head or a tube or solid-state bass head, add pedals, and play in headphones or through the speakers."
@@ -136,9 +136,5 @@
 	>
 		<Metronome />
 	</FloatingPanel>
-	<PageCopySection
-		html={data.copy.bodyHtml}
-		docsHref="/docs/practice-amp"
-		docsLabel="Practice Amp docs"
-	/>
+	<PageCopySection html={data.copy.bodyHtml} docsHref="/docs/practice-amp" docsLabel="Ember docs" />
 </main>

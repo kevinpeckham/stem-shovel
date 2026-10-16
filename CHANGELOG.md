@@ -10,6 +10,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The Practice Amp is Ember and the Looper is Whirl**, the brand names
+  beside Dawn and Lark, at `/ember` and `/whirl` with the old addresses
+  redirecting for good (a browser keeps an `#amp=` preset hash across the
+  redirect). The Tools menu keeps saying Practice Amp and Looper, the
+  footer says Ember and Whirl, the titles "Ember | Practice Amp: Guitar
+  and Bass Amp in the Browser" and "Whirl | Looper: Free Online Loop
+  Station". The looper's public page moves with it in `isIndexablePath`,
+  the sitemap, robots.txt and `vercel.json`'s noindex rule. The code
+  keeps its names.
 - **The Idea Recorder is Lark**, the brand name beside Dawn (Kevin: the
   Lark idea recorder and the Dawn multitrack recorder), at `/lark`, with
   `/ideas/recorder` a permanent redirect that keeps its `?song=`

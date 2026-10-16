@@ -53,8 +53,11 @@ const ROUTES = [
 	["lark", "/lark", [303], [200]],
 	// The old address: a permanent redirect for everyone (src/routes/ideas/recorder/+server.ts).
 	["ideas/recorder (server)", "/ideas/recorder", [301], [301]],
-	["looper", "/looper", [200], [200]],
-	["practice-amp", "/practice-amp", [200], [200]],
+	["whirl", "/whirl", [200], [200]],
+	["ember", "/ember", [200], [200]],
+	// The old addresses: permanent redirects for everyone (src/routes/looper and practice-amp, +server.ts).
+	["looper (server)", "/looper", [301], [301]],
+	["practice-amp (server)", "/practice-amp", [301], [301]],
 	["dawn", "/dawn", [303], [200]],
 	// The old address: a permanent redirect for everyone (src/routes/studio/+server.ts).
 	["studio (server)", "/studio", [301], [301]],

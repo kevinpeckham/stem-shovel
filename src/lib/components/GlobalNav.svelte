@@ -60,11 +60,11 @@
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
-	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp"];
+	const TOOL_PAGES = ["/tuner", "/metronome", "/ember"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
-		TOOL_PAGES.some(active) || active("/lark") || active("/looper") || active("/dawn"),
+		TOOL_PAGES.some(active) || active("/lark") || active("/whirl") || active("/dawn"),
 	);
 </script>
 
@@ -242,24 +242,26 @@
 					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/looper',
+							'/whirl',
 						)
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/looper"
+						href="/whirl"
+						title="Whirl, the looper"
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-repeat w-1em" aria-hidden="true"></span>Looper
 					</a>
 					<a
 						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-							'/practice-amp',
+							'/ember',
 						)
 							? 'text-accent'
 							: ''}"
 						role="menuitem"
-						href="/practice-amp"
+						href="/ember"
+						title="Ember, the practice amp"
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-speaker-high w-1em" aria-hidden="true"></span>Practice Amp

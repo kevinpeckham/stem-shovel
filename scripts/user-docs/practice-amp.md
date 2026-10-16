@@ -1,6 +1,6 @@
-# Practice Amp
+# Ember
 
-**Practice Amp** in the Tools menu (and the footer) turns the browser into a guitar or bass amplifier: plug an instrument into your computer or phone, directly or through an audio interface, and play through an amp with its pedals, in headphones or through the speakers. It works signed out; everything you set is remembered in your browser.
+**Ember** is Stem Shovel's practice amp (**Practice Amp** in the Tools menu, **Ember** in the footer): it turns the browser into a guitar or bass amplifier: plug an instrument into your computer or phone, directly or through an audio interface, and play through an amp with its pedals, in headphones or through the speakers. It works signed out; everything you set is remembered in your browser.
 
 ## Plugging in
 

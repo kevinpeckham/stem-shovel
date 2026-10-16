@@ -436,7 +436,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.copy.title || "Looper"} | Free Online Loop Station</title>
+	<title>{data.copy.title || "Whirl"} | Looper: Free Online Loop Station</title>
 	<meta
 		name="description"
 		content="A free looper in the browser: lay a loop down a layer at a time from the microphone, the piano or the drum machine, with a count-in, a click and latency compensation, then save it as a take with each layer as a stem."
@@ -536,7 +536,7 @@
 			open={true}
 			floating={looperFloating}
 			closable={false}
-			title="Looper"
+			title="Whirl"
 			storageKey="stemshovel.looper.device-panel"
 			width={900}
 			height={640}
@@ -560,7 +560,7 @@
 			{/snippet}
 			<section
 				class="device-chrome grid gap-4 px-3 py-4 pb-8 @xl-px-5 @xl-pt-5 w-full max-w-full relative"
-				aria-label="Looper"
+				aria-label="Whirl"
 			>
 				<!-- the loop's name, as the recorder's idea title: a placeholder until it is typed, editable here, used by Save (Kevin) -->
 				<label class="block device-window-bevel-md">
@@ -976,8 +976,8 @@
 		<PageCopySection
 			html={data.copy.bodyHtml}
 			docsHref="/docs/looper"
-			docsLabel="Looper docs"
-			docsLead="Learn more about using the looper in the user docs."
+			docsLabel="Whirl docs"
+			docsLead="Learn more about using Whirl, the looper, in the user docs."
 		/>
 	</main>
 

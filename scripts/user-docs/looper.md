@@ -1,6 +1,6 @@
-# Looper
+# Whirl
 
-**Looper** in the Tools menu (and the footer) is a loop station that anyone can use, signed in or not: a loop of one to eight bars at a tempo plays round and round while you record layers onto it one pass at a time, from the microphone, the piano or the drum machine. Lay down a beat, add a bass line on the piano, sing over it, and save the whole thing to the Idea Recorder as a take with each layer as its own stem.
+**Whirl** is Stem Shovel's looper (**Looper** in the Tools menu, **Whirl** in the footer), a loop station that anyone can use, signed in or not: a loop of one to eight bars at a tempo plays round and round while you record layers onto it one pass at a time, from the microphone, the piano or the drum machine. Lay down a beat, add a bass line on the piano, sing over it, and save the whole thing to the Idea Recorder as a take with each layer as its own stem.
 
 ## The loop
 

@@ -1,8 +1,8 @@
-# Looper
+# Whirl
 
 Lay a loop down a layer at a time from the microphone, the piano or the drums, then save it to the Idea Recorder as a take with each layer as a stem.
 
-## How to use the Looper
+## How to use Whirl
 
 Choose a source under Record from, press Record, and play a pass of the loop: from the next bar 1 every full pass becomes a layer until you press Finish layer. The layers play round and round while you add more, from the same source or another. Save as take puts the loop in the Idea Recorder with each layer as its own stem.
 

@@ -1,8 +1,8 @@
-# Practice Amp
+# Ember
 
 Plug a guitar or a bass into your computer or phone and play it through an amp, with pedals, in your headphones or speakers.
 
-## How to use the Practice Amp
+## How to use Ember
 
 Choose Guitar or Bass, pick the head, and touch anything on the amp: it turns on and opens your input (the line in of an audio interface, or the microphone jack with an instrument in it) and you hear yourself at once. Set the input with the Input menu: which device, Instrument or Line, and the trim, or press Set level and play for three seconds. Turn the knobs on the head and open the Pedals menu for the board.
 
