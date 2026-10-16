@@ -64,7 +64,7 @@
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onToolPage = $derived(
-		TOOL_PAGES.some(active) || active("/ideas/recorder") || active("/looper") || active("/dawn"),
+		TOOL_PAGES.some(active) || active("/lark") || active("/looper") || active("/dawn"),
 	);
 </script>
 
@@ -211,12 +211,13 @@
 					{#if member}
 						<a
 							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-								'/ideas/recorder',
+								'/lark',
 							)
 								? 'text-accent'
 								: ''}"
 							role="menuitem"
-							href="/ideas/recorder"
+							href="/lark"
+							title="Lark, the idea recorder"
 							onclick={() => (openMenu = null)}
 						>
 							<span class="i-ph-microphone w-1em" aria-hidden="true"></span>Idea Recorder

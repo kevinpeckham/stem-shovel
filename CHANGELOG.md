@@ -10,6 +10,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **The Idea Recorder is Lark**, the brand name beside Dawn (Kevin: the
+  Lark idea recorder and the Dawn multitrack recorder), at `/lark`, with
+  `/ideas/recorder` a permanent redirect that keeps its `?song=`
+  (`src/routes/ideas/recorder/+server.ts`; the account-scoped old route
+  redirects straight to `/lark` too). The Tools menu and the header keep
+  saying Idea Recorder, the footer says Lark, the page title "Lark | Idea
+  Recorder"; the device, the docs link and the user docs (slugs kept)
+  follow; every link in the app points at `/lark`. The code keeps its
+  names.
 - **The Studio is Dawn.** The multitrack recorder is called Dawn (Kevin:
   "Studio" means too many things now; Dawn is the DAW pun in the Stem
   Shovel vein), at `/dawn`, with `/studio` a permanent redirect

@@ -50,7 +50,9 @@ const ROUTES = [
 	],
 	["[account]/ideas", "/{account}/ideas", [303], [303]],
 	["[account]/ideas/recorder", "/{account}/ideas/recorder", [303], [303]],
-	["ideas/recorder", "/ideas/recorder", [303], [200]],
+	["lark", "/lark", [303], [200]],
+	// The old address: a permanent redirect for everyone (src/routes/ideas/recorder/+server.ts).
+	["ideas/recorder (server)", "/ideas/recorder", [301], [301]],
 	["looper", "/looper", [200], [200]],
 	["practice-amp", "/practice-amp", [200], [200]],
 	["dawn", "/dawn", [303], [200]],

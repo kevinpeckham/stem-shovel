@@ -9,8 +9,8 @@ test("records a take that lists and uploads, then deletes the bot's ideas", asyn
 	page,
 	errors,
 }) => {
-	await open(page, "/ideas/recorder", "__inputs");
-	const device = page.getByRole("dialog", { name: "Idea Recorder" });
+	await open(page, "/lark", "__inputs");
+	const device = page.getByRole("dialog", { name: "Lark" });
 	const list = page.getByRole("dialog", { name: "Recordings" });
 	await device.getByRole("button", { name: "Record", exact: true }).click();
 	await expect(device.getByRole("button", { name: "Stop", exact: true })).toBeVisible();

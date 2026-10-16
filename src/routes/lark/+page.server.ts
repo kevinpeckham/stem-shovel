@@ -19,7 +19,7 @@ import {
 import { scheduleRecordingPlayback } from "#lib/server/jobs.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { songTargets } from "#lib/server/songTargets.js";
-import copyFallback from "../../../../scripts/user-docs/idea-recorder-page.md?raw";
+import copyFallback from "../../../scripts/user-docs/idea-recorder-page.md?raw";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
 import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
 import type { Config } from "@sveltejs/adapter-vercel";

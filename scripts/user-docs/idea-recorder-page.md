@@ -1,8 +1,8 @@
-# Idea Recorder
+# Lark
 
 Record your demos, riffs, or quick ideas here. An idea is one or more takes and, if you like, a board of notes; hitting Record starts the next take.
 
-## How to use the Idea Recorder
+## How to use Lark
 
 Press Record and play or sing; press Stop and the take is saved to the idea and listed under Recordings, numbered in order. Switch sources in and out under the screen: the microphone, a line in, the computer's audio, the piano and the drums, in any mix.
 

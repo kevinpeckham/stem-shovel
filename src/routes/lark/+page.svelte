@@ -724,7 +724,7 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle(data.copy.title || "Idea Recorder")}</title>
+	<title>{pageTitle(`${data.copy.title || "Lark"} | Idea Recorder`)}</title>
 </svelte:head>
 
 <main
@@ -968,7 +968,7 @@
 				open={true}
 				floating={recorderFloating}
 				closable={false}
-				title="Idea Recorder"
+				title="Lark"
 				storageKey="stemshovel.recorder.recorder-panel"
 				width={640}
 				height={640}
@@ -1571,8 +1571,8 @@
 		<PageCopySection
 			html={data.copy.bodyHtml}
 			docsHref="/docs/idea-recorder"
-			docsLabel="Idea Recorder docs"
-			docsLead="Learn more about using the Idea Recorder in the user docs."
+			docsLabel="Lark docs"
+			docsLead="Learn more about using Lark, the idea recorder, in the user docs."
 		/>
 	</div>
 </main>

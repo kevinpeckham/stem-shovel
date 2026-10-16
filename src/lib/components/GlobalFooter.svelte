@@ -14,7 +14,7 @@
 	let accountSlug = $derived(page.params.account ?? currentSlug ?? own[0]?.slug);
 	let member = $derived(memberships.find((m) => m.slug === accountSlug));
 	/** A member's recorder (the user's own page, outside the account's URLs); a visitor gets the working demo on the front page. */
-	let recorderHref = $derived(member ? "/ideas/recorder" : "/#idea-recorder");
+	let recorderHref = $derived(member ? "/lark" : "/#idea-recorder");
 
 	/** Which build is running: package.json's version and, when known, the commit. */
 	const build = __BUILD_SHA__ ? `v${__APP_VERSION__} · ${__BUILD_SHA__}` : `v${__APP_VERSION__}`;
@@ -33,7 +33,7 @@
 	</nav>
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Tools">
 		<span class="text-11px uppercase tracking-wider opacity-60">Tools</span>
-		<a class="footer-link" href={recorderHref}>Idea Recorder</a>
+		<a class="footer-link" href={recorderHref} title="Lark, the idea recorder">Lark</a>
 		<a class="footer-link" href="/looper">Looper</a>
 		<a class="footer-link" href="/practice-amp">Practice Amp</a>
 		{#if member}<a class="footer-link" href="/dawn" title="Dawn, the multitrack recorder">Dawn</a
