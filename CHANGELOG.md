@@ -13,7 +13,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **The Studio's tracks carry over the stem player's last few releases**
   (Kevin): the fader is a knob beside the pan knob, a level meter with a
   peak-hold mark and a clip light that sticks until clicked takes the
-  rest of the row (and the master's, in the page's footer, is the same
+  line below them (and the master's, in the page's footer, is the same
   `LevelMeter`), reading peaks after the fader, effects and pan instead of
   the RMS bar; and a track can wear one of the eight stem tints from its
   ⋯ menu, on its name and its clips (the arrangement's `colour` field,

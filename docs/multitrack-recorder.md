@@ -465,8 +465,9 @@ microphone's or a line in's is: the amp is one of them through its chain.
 The Studio took over what the stem player gained over v0.128 to v0.130
 (Kevin). The track row is arm, mute, solo, effects, then a 26 px level
 knob (dB while it turns, double-click for unity; a MIDI track's scales
-velocity as before) and the pan knob, and a `LevelMeter` takes the rest
-of the row: `StudioEngine.levels` and `masterLevel` are `MeterState`s
+velocity as before) and the pan knob, and a `LevelMeter` takes the line
+below (the header is too narrow to share the row, unlike a stem row):
+`StudioEngine.levels` and `masterLevel` are `MeterState`s
 (`src/lib/utils/meterLevel.ts`), fed each frame with the analysers'
 peaks (`peakOf`, in place of the RMS-times-three bar), so the fall, the
 peak-hold mark and the clip memory behave exactly as the stem player's;

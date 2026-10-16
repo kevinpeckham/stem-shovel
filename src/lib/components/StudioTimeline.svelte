@@ -867,9 +867,9 @@
 						popoverClasses="text-11px"
 					/>
 				</div>
-				<!-- Arm, mute, solo and the effects button lead the fader's row; then the level and pan knobs, and the meter takes the room that is left (Kevin: as the stem player's rows). -->
+				<!-- Arm, mute, solo and the effects button lead the fader's row, then the level and pan knobs (Kevin: as the stem player's rows); the meter takes the line below, since the header is narrow. -->
 				<div
-					class="grid grid-cols-[auto_auto_auto_auto_26px_26px_minmax(0,1fr)] place-content-center place-items-center gap-1 min-w-0"
+					class="grid grid-cols-[auto_auto_auto_auto_26px_26px] place-content-center place-items-center gap-1 min-w-0"
 				>
 					<button
 						type="button"
@@ -958,14 +958,14 @@
 					{:else}
 						<span class="h-6 w-6" aria-hidden="true"></span>
 					{/if}
-					<!-- The level after the fader, effects and pan, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
-					<LevelMeter
-						class="min-w-0 w-full"
-						state={engine.levels[track.id]}
-						label={track.name}
-						onreset={() => engine.resetClips(track.id)}
-					/>
 				</div>
+				<!-- The level after the fader, effects and pan, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
+				<LevelMeter
+					class="min-w-0 w-full"
+					state={engine.levels[track.id]}
+					label={track.name}
+					onreset={() => engine.resetClips(track.id)}
+				/>
 			</div>
 			<!-- the lane -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
