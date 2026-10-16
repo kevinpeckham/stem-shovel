@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CommentTimeline from "#lib/components/CommentTimeline.svelte";
+	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import type { DemoComment } from "#lib/constants/demoComments.js";
 	import type { StemEngine } from "#lib/audio/engine.svelte.js";
@@ -252,16 +253,10 @@
 {#snippet stemMenu(stem: StemState)}
 	{@const row = stemRows.get(stem.id)}
 	{#if row}
-		<details class="relative" data-stem-menu>
-			<summary
-				class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded border border-white/10 text-lg leading-none hover:border-white/60 [&::-webkit-details-marker]:hidden"
-				title="{stem.label}: options"
-				aria-label="{stem.label}: options"
-				><span class="i-ph-dots-three-bold" aria-hidden="true"></span></summary
-			>
-			<div
-				class="absolute left-0 z-20 mt-1 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
-			>
+		<!-- The menu as a ContextMenu (a native popover on the top layer, anchored to the button), so the next
+		     row never covers it, as the song page's is (Kevin: the demo kept the old dropdown). -->
+		{#snippet stemMenuBody()}
+			<div class="w-56 px-1 text-sm">
 				<div class="truncate px-3 py-1.5 text-xs text-dim">
 					{row.filename} · {formatBytes(row.sizeBytes)}
 				</div>
@@ -282,6 +277,16 @@
 					</button>
 				{/if}
 			</div>
-		</details>
+		{/snippet}
+		<ContextMenu
+			ariaLabel="{stem.label}: options"
+			title="{stem.label}: options"
+			clearButtonBaseClasses={true}
+			buttonClasses="device-fader-menu-button-sm"
+			iconClass="i-ph-dots-three-bold"
+			position="bottom left"
+			popoverClasses="!max-h-[calc(100vh-2rem)] overflow-y-auto"
+			items={[{ id: "stem", kind: "snippet", snippet: stemMenuBody }]}
+		/>
 	{/if}
 {/snippet}

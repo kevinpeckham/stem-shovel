@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The home page demo's stem menu opens on the top layer**, as the
+  song page's has since 0.131.0: the demo player kept its own
+  `<details>` dropdown, which the next row covered. It is the same
+  ContextMenu popover now (`SongPlayerDemo.svelte`).
+
 ## [0.132.0] - 2026-10-16
 
 ### Changed
