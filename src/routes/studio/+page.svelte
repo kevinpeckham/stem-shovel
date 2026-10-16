@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LevelMeter from "#lib/components/LevelMeter.svelte";
 	import ChordPlayer from "#lib/components/ChordPlayer.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import DrumMachine from "#lib/components/DrumMachine.svelte";
@@ -1080,21 +1081,13 @@
 							aria-label="Master level"
 							oninput={(e) => studio.setMaster(e.currentTarget.valueAsNumber)}
 						/>
-						<span
-							class="block h-1.5 w-16 rounded bg-blue-100/10 overflow-hidden"
-							role="meter"
-							aria-label="Master level meter"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							aria-valuenow={Math.round(studio.masterLevel * 100)}
-						>
-							<span
-								class="block h-full rounded {studio.masterLevel > 0.85
-									? 'bg-red-500'
-									: 'bg-blue-300'}"
-								style:width="{studio.masterLevel * 100}%"
-							></span>
-						</span>
+						<!-- The master's level after its fader, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
+						<LevelMeter
+							class="w-24"
+							state={studio.masterLevel}
+							label="Master"
+							onreset={() => studio.resetClips()}
+						/>
 					</div>
 				</div>
 

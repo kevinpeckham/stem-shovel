@@ -1,3 +1,5 @@
+import type { MeterState } from "#lib/utils/meterLevel.js";
+import { meterWidth } from "#lib/utils/meterLevel.js";
 import { installFakePopover } from "../../../tests/helpers/fakePopover";
 import { defaultTrackFx } from "#lib/audio/trackChain.js";
 import { rulerTicks } from "#lib/utils/rulerTicks.js";
@@ -20,7 +22,8 @@ const fake = vi.hoisted(() => {
 		sources: {} as Record<string, FakeSource>,
 		phase: "idle" as "idle" | "playing" | "recording" | "counting",
 		position: 0,
-		levels: {} as Record<string, number>,
+		levels: {} as Record<string, MeterState>,
+		masterLevel: { level: 0, hold: 0, heldAt: 0, clipped: false } as MeterState,
 		decoding: 0,
 		recordFrom: 0,
 		liveTick: 0,
@@ -48,6 +51,8 @@ const fake = vi.hoisted(() => {
 		removeTrack: vi.fn(),
 		setGain: vi.fn(),
 		setPan: vi.fn(),
+		setTint: vi.fn(),
+		resetClips: vi.fn(),
 		setTrackFx: vi.fn(),
 		toggleMute: vi.fn(),
 		toggleSolo: vi.fn(),
@@ -408,13 +413,31 @@ describe("StudioTimeline", () => {
 		expect(fake.setPan).toHaveBeenLastCalledWith("t2", 0);
 	});
 
-	test("the meter follows the track's level and turns red near the top", () => {
-		fake.levels = { t1: 0.5, t2: 0.9 };
+	test("the meter follows the track's level on a dB scale, and the clip light sticks until clicked", async () => {
+		const meter = (level: number, clipped = false) => ({ level, hold: level, heldAt: 0, clipped });
+		fake.levels = { t1: meter(0.5), t2: meter(1, true) };
 		render(StudioTimeline);
-		const bars = [...document.querySelectorAll(".h-1.w-full > div")] as HTMLElement[];
-		expect(bars.map((b) => b.style.width)).toEqual(["50%", "90%", "0%"]);
-		expect(bars[0]).toHaveClass("bg-blue-300");
-		expect(bars[1]).toHaveClass("bg-red-500");
+		const meters = screen.getAllByRole("meter");
+		expect(meters.map((m) => m.getAttribute("aria-valuenow"))).toEqual([
+			String(Math.round(meterWidth(0.5) * 100)),
+			"100",
+			"0",
+		]);
+		const light = screen.getByRole("button", { name: /Guitar clip: clipped/ });
+		expect(light).toHaveAttribute("aria-pressed", "true");
+		await fireEvent.click(light);
+		expect(fake.resetClips).toHaveBeenCalledWith("t2");
+	});
+	test("a tint from the track's menu reaches the engine, and the name wears it", async () => {
+		const user = userEvent.setup();
+		render(StudioTimeline);
+		await user.click(screen.getByRole("button", { name: "Guitar actions" }));
+		await user.click(
+			within(screen.getByRole("group", { name: "Guitar tint" })).getByRole("button", {
+				name: "Tint Sage",
+			}),
+		);
+		expect(fake.setTint).toHaveBeenCalledWith("t2", "sage");
 	});
 
 	test("the effects menu opens the track's compressor, tone and reverb, and a slider sends the whole fx to the engine", async () => {

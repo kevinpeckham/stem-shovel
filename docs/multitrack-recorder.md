@@ -459,3 +459,21 @@ switches the amp on (`requestInput("amp")`, which opens the amp's own
 input through the shared inputs); `inputOpen("amp")` is whether the amp
 is on. A take from the amp is shifted earlier by the input latency, as a
 microphone's or a line in's is: the amp is one of them through its chain.
+
+## Meters, knobs and tints (2026-10-16)
+
+The Studio took over what the stem player gained over v0.128 to v0.130
+(Kevin). The track row is arm, mute, solo, effects, then a 26 px level
+knob (dB while it turns, double-click for unity; a MIDI track's scales
+velocity as before) and the pan knob, and a `LevelMeter` takes the rest
+of the row: `StudioEngine.levels` and `masterLevel` are `MeterState`s
+(`src/lib/utils/meterLevel.ts`), fed each frame with the analysers'
+peaks (`peakOf`, in place of the RMS-times-three bar), so the fall, the
+peak-hold mark and the clip memory behave exactly as the stem player's;
+`resetClips(trackId?)` clears a light. The master's meter in the page's
+footer is the same component. A track's tint comes from the stem
+palette (`STEM_TINTS`) and lives in the arrangement's `colour` field,
+which the schema already carried for the lane colour that never got
+built: swatches in the track's ⋯ menu (`setTint`), the name and the
+clips' canvases take it (`style:color`, which the drawing reads through
+`getComputedStyle`, and the clip effects re-draw on a change).

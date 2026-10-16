@@ -1,3 +1,4 @@
+import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
 import { audioSession } from "#lib/utils/audioSession.js";
 import { appendChunkPeaks, chunkPeaksState } from "#lib/utils/chunkPeaks.js";
 import { coveredClips } from "#lib/utils/coveredClips.js";
@@ -176,9 +177,14 @@ class StudioEngine {
 	phase = $state<StudioPhase>("idle");
 	/** The playhead, in seconds on the timeline; written every frame while the transport runs. */
 	position = $state(0);
-	/** Each track's level for its meter, 0 to 1. */
-	levels = $state<Record<string, number>>({});
-	masterLevel = $state(0);
+	/**
+	 * The meters (docs/multitrack-recorder.md, "Meters"): each track's level
+	 * after its fader, effects and pan, and the master's, with a peak-hold mark
+	 * and a clip memory that sticks until `resetClips` (utils/meterLevel.ts),
+	 * as the stem player's.
+	 */
+	levels = $state.raw<Record<string, MeterState>>({});
+	masterLevel = $state.raw<MeterState>(METER_ZERO);
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
 	notice = $state<string | null>(null);
@@ -577,6 +583,13 @@ class StudioEngine {
 		t.gain = Math.max(0, Math.min(STUDIO_FADER_MAX, value));
 		this.dirty = true;
 		this.#applyGains();
+	}
+	/** A track's tint (constants/stemTints.ts), kept on the arrangement as `colour`; null for none. */
+	setTint(trackId: string, tint: string | null) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		t.colour = tint ?? undefined;
+		this.dirty = true;
 	}
 	setPan(trackId: string, value: number) {
 		const t = this.#track(trackId);
@@ -1724,21 +1737,33 @@ class StudioEngine {
 
 	// ── Meters ─────────────────────────────────────────────────────────────
 	#meterFrame = 0;
+	#meterAt = 0;
 	#meter = () => {
 		const buf = this.#meterBuf;
 		if (!this.#ctx || !buf) return;
-		const next: Record<string, number> = {};
-		let changed = Object.keys(this.levels).length !== this.#tracks.size;
+		const now = performance.now();
+		const dt = Math.min(0.1, (now - this.#meterAt) / 1000);
+		this.#meterAt = now;
+		const t = now / 1000;
+		const next: Record<string, MeterState> = {};
 		for (const [id, nodes] of this.#tracks) {
-			const level = this.running ? rms(nodes.analyser, buf) : 0;
-			next[id] = level;
-			if (level !== this.levels[id]) changed = true;
+			const peak = this.running ? peakOf(nodes.analyser, buf) : 0;
+			next[id] = nextMeter(this.levels[id] ?? METER_ZERO, peak, t, dt);
 		}
-		if (changed) this.levels = next;
-		const master = this.running && this.#masterAnalyser ? rms(this.#masterAnalyser, buf) : 0;
-		if (master !== this.masterLevel) this.masterLevel = master;
+		this.levels = next;
+		const master = this.running && this.#masterAnalyser ? peakOf(this.#masterAnalyser, buf) : 0;
+		this.masterLevel = nextMeter(this.masterLevel, master, t, dt);
 		this.#meterFrame = requestAnimationFrame(this.#meter);
 	};
+
+	/** Forget a track's clip (or every track's and the master's, with no id); the lights go out. */
+	resetClips(trackId?: string) {
+		const next: Record<string, MeterState> = {};
+		for (const [k, v] of Object.entries(this.levels))
+			next[k] = trackId === undefined || k === trackId ? { ...v, clipped: false } : v;
+		this.levels = next;
+		if (trackId === undefined) this.masterLevel = { ...this.masterLevel, clipped: false };
+	}
 
 	// ── Bounce ─────────────────────────────────────────────────────────────
 	/** The song rendered offline with every track's fader, pan, mute and solo, or one track alone (`trackId`) with its own settings. */
@@ -1838,10 +1863,14 @@ class StudioEngine {
 }
 
 const round4 = (x: number) => Math.round(x * 10000) / 10000;
-function rms(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
+/** The analyser's latest frame's peak, linear (the meters show it on a dB scale). */
+function peakOf(analyser: AnalyserNode, buf: Float32Array<ArrayBuffer>) {
 	analyser.getFloatTimeDomainData(buf);
-	let sum = 0;
-	for (const x of buf) sum += x * x;
-	return Math.min(1, Math.sqrt(sum / buf.length) * 3);
+	let peak = 0;
+	for (const x of buf) {
+		const v = Math.abs(x);
+		if (v > peak) peak = v;
+	}
+	return peak;
 }
 export const studio = new StudioEngine();

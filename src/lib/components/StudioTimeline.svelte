@@ -1,4 +1,6 @@
 <script lang="ts">
+	import LevelMeter from "#lib/components/LevelMeter.svelte";
+	import { STEM_TINTS, stemTintHex } from "#lib/constants/stemTints.js";
 	import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 	import {
 		isInstrument,
@@ -22,7 +24,6 @@
 	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
 	import Knob from "./Knob.svelte";
-	import Slider from "./Slider.svelte";
 
 	/**
 	 * The Studio's timeline (docs/multitrack-recorder.md, "The page"): a
@@ -326,10 +327,11 @@
 			draw();
 			const ro = new ResizeObserver(draw);
 			ro.observe(canvas);
-			// A source that decodes after the clip mounted redraws it.
+			// A source that decodes after the clip mounted redraws it; so does a change of the track's tint (the canvas's colour).
 			$effect(() => {
 				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
+				void engine.arrangement.tracks.find((t) => t.id === clip.trackId)?.colour;
 				draw();
 			});
 			return () => ro.disconnect();
@@ -368,6 +370,8 @@
 			$effect(() => {
 				void clip.notes?.length;
 				void pxPerSecond;
+				// The track's tint is the canvas's colour: a change redraws.
+				void engine.arrangement.tracks.find((t) => t.id === clip.trackId)?.colour;
 				draw();
 			});
 			return () => ro.disconnect();
@@ -603,7 +607,38 @@
 	</div>
 
 	{#each engine.arrangement.tracks as track, index (track.id)}
-		{@const level = engine.levels[track.id] ?? 0}
+		<!-- The track's tint (constants/stemTints.ts, as the stem player's): swatches in its menu, none first. -->
+		{#snippet trackTint()}
+			<div class="px-3 py-1.5" role="group" aria-label="{track.name} tint">
+				<div class="mb-1 text-xs text-dim">Tint</div>
+				<div class="flex flex-wrap gap-1.5">
+					<button
+						type="button"
+						class="h-5 w-5 rounded-full border {track.colour
+							? 'border-white/30 hover:border-white/70'
+							: 'border-white ring-1 ring-white/60'} bg-blue-300/60"
+						aria-label="No tint"
+						aria-pressed={!track.colour}
+						title="No tint"
+						onclick={() => engine.setTint(track.id, null)}
+					></button>
+					{#each STEM_TINTS as t (t.id)}
+						<button
+							type="button"
+							class="h-5 w-5 rounded-full border {track.colour === t.id
+								? 'border-white ring-1 ring-white/60'
+								: 'border-white/30 hover:border-white/70'}"
+							style:background-color={t.hex}
+							aria-label="Tint {t.name}"
+							aria-pressed={track.colour === t.id}
+							title={t.name}
+							onclick={() => engine.setTint(track.id, t.id)}
+						></button>
+					{/each}
+				</div>
+			</div>
+		{/snippet}
+		{@const tint = stemTintHex(track.colour)}
 		{@const dim = silenced(track)}
 		{#snippet fxMenu()}
 			{@const fx = fxOf(track)}
@@ -751,6 +786,7 @@
 						class="min-w-0 w-full bg-transparent text-13px font-500 text-blue-300 outline-none rounded px-1 hover-bg-white/5 focus-bg-white/10 {dim
 							? 'opacity-60'
 							: ''}"
+						style:color={tint && !dim ? tint : undefined}
 						type="text"
 						maxlength="60"
 						value={track.name}
@@ -784,6 +820,8 @@
 								action: () => engine.moveTrack(track.id, index + 1),
 							},
 							{ id: "d", kind: "divider" },
+							{ id: "tint", kind: "snippet", snippet: trackTint },
+							{ id: "d2", kind: "divider" },
 							{
 								id: "render",
 								kind: "button",
@@ -829,9 +867,9 @@
 						popoverClasses="text-11px"
 					/>
 				</div>
-				<!-- Arm, mute, solo and the effects button lead the fader's row; the fader takes the room that is left, the pan knob the end (Kevin). -->
+				<!-- Arm, mute, solo and the effects button lead the fader's row; then the level and pan knobs, and the meter takes the room that is left (Kevin: as the stem player's rows). -->
 				<div
-					class="grid grid-cols-[auto_auto_auto_auto_minmax(0,1fr)_26px] place-content-center place-items-center gap-1 min-w-0"
+					class="grid grid-cols-[auto_auto_auto_auto_26px_26px_minmax(0,1fr)] place-content-center place-items-center gap-1 min-w-0"
 				>
 					<button
 						type="button"
@@ -887,21 +925,20 @@
 							]}
 						/>
 					{/if}
-					<!-- The fader as a slider (Slider.svelte): the level pops up over the thumb while it moves; a double-click returns to unity. -->
-					<Slider
+					<!-- The fader as a knob (Knob.svelte): the level shows while it turns; a double-click returns to unity. -->
+					<Knob
 						value={track.gain}
 						min={0}
 						max={STUDIO_FADER_MAX}
 						step={0.01}
 						resetTo={1}
-						thickness={5}
+						size={26}
 						label="{track.name} level"
 						title={isMidi(track)
 							? "Level (scales the notes' velocity)"
 							: "Level (double-click for unity)"}
 						format={levelText(track)}
 						oninput={(v) => engine.setGain(track.id, v)}
-						class="min-w-0"
 					/>
 					{#if !isMidi(track)}
 						<!-- The pan as a knob (Knob.svelte): the value shows in a popover while it turns. -->
@@ -918,13 +955,16 @@
 							format={panText}
 							oninput={(v) => engine.setPan(track.id, v)}
 						/>
+					{:else}
+						<span class="h-6 w-6" aria-hidden="true"></span>
 					{/if}
-				</div>
-				<div class="h-1 w-full rounded bg-blue-100/10 overflow-hidden" aria-hidden="true">
-					<div
-						class="h-full rounded {level > 0.85 ? 'bg-red-500' : 'bg-blue-300'}"
-						style:width="{level * 100}%"
-					></div>
+					<!-- The level after the fader, effects and pan, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
+					<LevelMeter
+						class="min-w-0 w-full"
+						state={engine.levels[track.id]}
+						label={track.name}
+						onreset={() => engine.resetClips(track.id)}
+					/>
 				</div>
 			</div>
 			<!-- the lane -->
@@ -983,6 +1023,7 @@
 						{#if clip.notes}
 							<canvas
 								class="absolute top-0 bottom-0 h-full text-blue-200 opacity-90"
+								style:color={tint ?? undefined}
 								style:left="{(clip.start - shown.start) * pxPerSecond}px"
 								style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
 								{@attach noteRoll(clip)}
@@ -992,6 +1033,7 @@
 								class="absolute top-0 bottom-0 h-full text-blue-200 {source?.status === 'ready'
 									? 'opacity-90'
 									: 'opacity-30'}"
+								style:color={tint ?? undefined}
 								style:left="{(clip.start - shown.start) * pxPerSecond}px"
 								style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
 								{@attach clipWave(clip)}
