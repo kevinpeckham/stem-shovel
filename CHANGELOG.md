@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.130.0] - 2026-10-16
+
 ### Added
 
 - **Stem tints.** A stem's row can wear one of eight restrained colours
