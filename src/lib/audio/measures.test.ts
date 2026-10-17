@@ -117,33 +117,28 @@ describe("countInBeats", () => {
 		meters: [{ start: 0, beatsPerBar: 4 }],
 		startAt: 0,
 	};
-	test("a bar before the start: four beats of bar −1, held for the whole bar", () => {
+	test("a bar before the start: four beats counting down, held for the whole bar", () => {
 		const c = countInBeats(grid, 0, 1);
-		expect(c.beats.map((b) => [b.at, b.bar, b.beat])).toEqual([
-			[-2, -1, 1],
-			[-1.5, -1, 2],
-			[-1, -1, 3],
-			[-0.5, -1, 4],
+		expect(c.beats.map((b) => [b.at, b.left])).toEqual([
+			[-2, 4],
+			[-1.5, 3],
+			[-1, 2],
+			[-0.5, 1],
 		]);
 		expect(c.hold).toBe(2);
 	});
-	test("two bars count −2 then −1; none counts nothing", () => {
+	test("two bars count eight down to one; none counts nothing", () => {
 		const c = countInBeats(grid, 0, 2);
 		expect(c.beats).toHaveLength(8);
-		expect(c.beats[0]).toEqual({ at: -4, bar: -2, beat: 1 });
-		expect(c.beats[4]).toEqual({ at: -2, bar: -1, beat: 1 });
+		expect(c.beats[0]).toEqual({ at: -4, left: 8 });
+		expect(c.beats[4]).toEqual({ at: -2, left: 4 });
 		expect(countInBeats(grid, 0, 0)).toEqual({ beats: [], hold: 0 });
 	});
 	test("from mid-bar the count-in leads to the next beat line, the stems entering before it", () => {
 		// 2.25 s is bar 2, beat 1 and a half: the entry is beat 2 at 2.5; the four beats before it are 0.5 s to 2 s.
 		const c = countInBeats(grid, 2.25, 1);
 		expect(c.beats.map((b) => b.at)).toEqual([0.5, 1, 1.5, 2]);
-		expect(c.beats.map((b) => [b.bar, b.beat])).toEqual([
-			[-1, 2],
-			[-1, 3],
-			[-1, 4],
-			[0, 1],
-		]);
+		expect(c.beats.map((b) => b.left)).toEqual([4, 3, 2, 1]);
 		expect(c.hold).toBeCloseTo(1.75, 9);
 	});
 	test("with bar 1 after leading silence the count-in sits in the silence and the hold shrinks", () => {

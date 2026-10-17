@@ -256,7 +256,8 @@ which is why the engine says where streamed playback will start
 (`#streamStartAt`, read by `clockAt` until the worklet's counter
 confirms it) and why the plan starts from the playhead rather than the
 clock while the stems hold. The Transport's readout counts the count-in
-as "−1 | 1 … −1 | 4" (the bar relative to the entry's). `click.countIn`
+down, "−1 | 4 … −1 | 1" (the bar before the entry's, the beats left in
+it; `countInBeats` says how many beats are left at each). `click.countIn`
 is 0, 1, 2 or 4 bars, remembered per browser (`stemshovel.clickCountIn`),
 chosen in the Transport beside the click's level; `click.countingIn`
 pulses the button while it runs. A re-plan of the click now adopts a

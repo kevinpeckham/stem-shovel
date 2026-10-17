@@ -22,8 +22,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
-- **The readout counts the count-in**: −1 | 1, −1 | 2 … (−2 for the
-  first of two bars), then the song's own bars.
+- **The readout counts the count-in down**: −1 | 4, −1 | 3, −1 | 2,
+  −1 | 1 (−2 | 4 … for the first of two bars), then the song's own bars.
 
 ## [0.135.0] - 2026-10-17
 

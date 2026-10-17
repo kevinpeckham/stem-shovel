@@ -1,6 +1,6 @@
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { startLookahead } from "#lib/audio/lookahead.js";
-import { countInBeats, nextBeatAt, type BarGrid } from "#lib/audio/measures.js";
+import { beatsPerBarAt, countInBeats, nextBeatAt, type BarGrid } from "#lib/audio/measures.js";
 
 /**
  * A click in time with the stems (docs/stem-engine.md, "The click"): the
@@ -89,14 +89,17 @@ export class StemClick {
 		const { beats, hold } = countInBeats(grid, pos, this.countIn);
 		const before = beats.filter((b) => b.at < pos - 1e-6);
 		if (before.length === 0 || hold <= 0) return null;
+		const bpb = beatsPerBarAt(grid, pos);
 		const nodes: OscillatorNode[] = [];
 		const timers: ReturnType<typeof setTimeout>[] = [];
 		for (const b of before) {
 			const t = at + (b.at - before[0]!.at);
-			nodes.push(this.#tone(ctx, t, b.beat === 1));
+			// The count counts down: the bar as −2, −1 and the beats left in it as 4, 3, 2, 1; the "4" of each bar accented.
+			const beat = ((b.left - 1) % bpb) + 1;
+			nodes.push(this.#tone(ctx, t, beat === bpb));
 			timers.push(
 				setTimeout(
-					() => (this.beat = { bar: b.bar, beat: b.beat }),
+					() => (this.beat = { bar: -Math.ceil(b.left / bpb), beat }),
 					Math.max(0, (t - ctx.currentTime) * 1000),
 				),
 			);
