@@ -8,6 +8,23 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **The count-in hands off cleanly** (Kevin: a pause between the count-in
+  and the track). Streamed, the click's clock was unknown until the
+  worklet's first report, so the song's own "one" at the hand-off was
+  never scheduled and the entry sounded like a hole; the engine now says
+  where streamed playback will start and the click plans on it. The
+  count-in's beats are the song's grid leading up to its entry
+  (`countInBeats`), so from mid-bar or from before bar 1 the "one" is
+  the song's own; and a small drift of the clock no longer drops queued
+  clicks.
+
+### Changed
+
+- **The readout counts the count-in**: −1 | 1, −1 | 2 … (−2 for the
+  first of two bars), then the song's own bars.
+
 ## [0.135.0] - 2026-10-17
 
 ### Added

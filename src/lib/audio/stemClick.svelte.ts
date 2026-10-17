@@ -1,6 +1,6 @@
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import { startLookahead } from "#lib/audio/lookahead.js";
-import { beatsPerBarAt, nextBeatAt, tempoAt, type BarGrid } from "#lib/audio/measures.js";
+import { countInBeats, nextBeatAt, type BarGrid } from "#lib/audio/measures.js";
 
 /**
  * A click in time with the stems (docs/stem-engine.md, "The click"): the
@@ -17,8 +17,10 @@ const LEVEL_KEY = "stemshovel.clickLevel";
 /** Bars of count-in before the stems start when the click is on (0 for none); a bar by default (Kevin). */
 const COUNT_IN_KEY = "stemshovel.clickCountIn";
 export const COUNT_IN_CHOICES = [0, 1, 2, 4] as const;
-/** The clock's origin may drift by this much (the streamed counter's reports) before the beats are re-planned. */
+/** The clock's origin may drift by this much (the streamed counter's reports) before it is taken as moved… */
 const DRIFT_S = 0.005;
+/** …and a move this small is adopted without dropping the clicks already queued (a report's jitter), while a larger one (a seek, a loop's turn) plans again. */
+const SHIFT_S = 0.05;
 
 interface Scheduled {
 	osc: OscillatorNode;
@@ -73,25 +75,28 @@ export class StemClick {
 
 	/**
 	 * The count-in (the engine's prelude): with the click on and bars to
-	 * count, the beats of the bar in force at the playhead, from `at`, the
-	 * first of each bar accented; the stems start as the last beat ends.
+	 * count, the grid's beats leading up to the song's entry
+	 * (`countInBeats`), from `at`; the first of each bar accented. Only the
+	 * beats before the playhead sound here: the stems hold for them, and
+	 * from the playhead on the click's own plan has every beat, the "one"
+	 * the stems enter on included.
 	 */
 	#countInClicks(ctx: AudioContext, at: number): { seconds: number; cancel(): void } | null {
 		const grid = this.#gridOf();
 		if (!this.on || this.countIn <= 0 || !grid) return null;
 		this.#ensureGain(ctx);
 		const pos = this.#engine.position;
-		const beat = 60 / tempoAt(grid, pos);
-		const bpb = beatsPerBarAt(grid, pos);
-		const n = this.countIn * bpb;
+		const { beats, hold } = countInBeats(grid, pos, this.countIn);
+		const before = beats.filter((b) => b.at < pos - 1e-6);
+		if (before.length === 0 || hold <= 0) return null;
 		const nodes: OscillatorNode[] = [];
 		const timers: ReturnType<typeof setTimeout>[] = [];
-		for (let k = 0; k < n; k++) {
-			const t = at + k * beat;
-			nodes.push(this.#tone(ctx, t, k % bpb === 0));
+		for (const b of before) {
+			const t = at + (b.at - before[0]!.at);
+			nodes.push(this.#tone(ctx, t, b.beat === 1));
 			timers.push(
 				setTimeout(
-					() => (this.beat = { bar: -(this.countIn - Math.floor(k / bpb)), beat: (k % bpb) + 1 }),
+					() => (this.beat = { bar: b.bar, beat: b.beat }),
 					Math.max(0, (t - ctx.currentTime) * 1000),
 				),
 			);
@@ -99,10 +104,10 @@ export class StemClick {
 		this.countingIn = true;
 		const done = setTimeout(
 			() => (this.countingIn = false),
-			Math.max(0, (at + n * beat - ctx.currentTime) * 1000),
+			Math.max(0, (at + hold - ctx.currentTime) * 1000),
 		);
 		return {
-			seconds: n * beat,
+			seconds: hold,
 			cancel: () => {
 				for (const o of nodes) {
 					try {
@@ -196,13 +201,16 @@ export class StemClick {
 		if (!this.#gain) this.#start();
 		const origin = engine.clockAt(0);
 		if (origin === null) return;
-		// A play or a seek moves the origin: plan again from where the playhead is.
-		if (this.#origin === null || Math.abs(origin - this.#origin) > DRIFT_S) {
+		// A play, a seek or a loop's turn moves the origin: plan again from where the playhead is. A
+		// report's jitter (streamed) is adopted as it is, so a click already queued is not lost.
+		const shift = this.#origin === null ? Infinity : Math.abs(origin - this.#origin);
+		if (shift > SHIFT_S) {
 			this.#clear();
 			this.#origin = origin;
-			const pos = Math.max(0, ctx.currentTime - origin);
+			// Before the stems start (a count-in), the playhead is ahead of the clock: plan from it.
+			const pos = Math.max(0, ctx.currentTime - origin, engine.position);
 			this.#next = nextBeatAt(grid, pos).at;
-		} else this.#origin = origin;
+		} else if (shift > DRIFT_S) this.#origin = origin;
 		while (this.#next !== null && this.#next <= engine.duration) {
 			const at = origin + this.#next;
 			if (at >= until) break;

@@ -243,11 +243,23 @@ clears both.
 With the click on, Play counts in before the stems start (Kevin: a
 configurable length, a bar by default). The engine takes a `prelude`
 (set by `StemClick`): called in `play()` with the context and the moment
-the stems would start, it schedules the count-in's clicks (the bar in
-force at the playhead: `tempoAt`, `beatsPerBarAt`), says how many
+the stems would start, it schedules the count-in's clicks, says how many
 seconds to hold the stems, and can cancel itself; `play()` starts the
 pass that much later (streamed: the worklet's "play" waits on a timer),
-and `pause` or a seek cancels it. `click.countIn` is 0, 1, 2 or 4 bars,
-remembered per browser (`stemshovel.clickCountIn`), chosen in the
-Transport beside the click's level; `click.countingIn` pulses the
-button while it runs.
+and `pause` or a seek cancels it. The beats come from `countInBeats` in
+`measures.ts`: the grid's own beats leading up to the song's entry (the
+first beat line at or after the playhead; bar 1 itself from before it),
+so the count-in's "one" is the song's and the stems enter on it. Only
+the beats before the playhead sound from the prelude; from the playhead
+on, the click's regular plan has every beat, the entry's "one" included,
+which is why the engine says where streamed playback will start
+(`#streamStartAt`, read by `clockAt` until the worklet's counter
+confirms it) and why the plan starts from the playhead rather than the
+clock while the stems hold. The Transport's readout counts the count-in
+as "−1 | 1 … −1 | 4" (the bar relative to the entry's). `click.countIn`
+is 0, 1, 2 or 4 bars, remembered per browser (`stemshovel.clickCountIn`),
+chosen in the Transport beside the click's level; `click.countingIn`
+pulses the button while it runs. A re-plan of the click now adopts a
+small shift of the clock's origin (a streamed report's jitter) without
+dropping the clicks already queued; only a seek or a loop's turn plans
+again.

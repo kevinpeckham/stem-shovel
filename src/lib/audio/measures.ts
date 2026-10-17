@@ -92,6 +92,39 @@ export const tempoAt = (grid: BarGrid, seconds: number): number =>
 export const beatsPerBarAt = (grid: BarGrid, seconds: number): number =>
 	valueAt(grid.meters, seconds).beatsPerBar;
 
+/**
+ * A count-in of `bars` before the stems start at `seconds` (the click,
+ * stemClick.svelte.ts): the grid's beats leading up to the first beat line
+ * at or after the playhead, so the count-in's "one" is the song's own and
+ * the stems enter on it (from mid-bar, the stems come in before the "one"
+ * as a pickup). Each beat says where it falls in song time (negative or
+ * before the playhead for the ones that sound while the stems hold), its
+ * bar relative to the bar the song enters on (−1 for the bar before) and
+ * its beat in that bar. `hold` is how long the stems wait: the time from
+ * the first count-in beat to the playhead. From before bar 1 (leading
+ * silence), the count leads into bar 1, so the beats between the
+ * playhead and bar 1 sound while the stems play their silence.
+ */
+export function countInBeats(
+	grid: BarGrid,
+	seconds: number,
+	bars: number,
+): { beats: { at: number; bar: number; beat: number }[]; hold: number } {
+	// Before bar 1 (leading silence), the entry is bar 1 itself: the count leads into the music, the
+	// beats between the playhead and bar 1 falling in the silence as the stems already play.
+	const entry =
+		seconds < grid.startAt ? { at: grid.startAt, bar: 1, beat: 1 } : nextBeatAt(grid, seconds);
+	const bpb = beatsPerBarAt(grid, seconds);
+	const n = Math.max(0, Math.round(bars * bpb));
+	const beats: { at: number; bar: number; beat: number }[] = [];
+	for (let k = n; k >= 1; k--) {
+		const at = secondsAtBar(grid, entry.bar, entry.beat - k);
+		const pos = barAt(grid, at);
+		beats.push({ at, bar: pos.bar - entry.bar, beat: pos.beat });
+	}
+	return { beats, hold: beats.length ? Math.max(0, seconds - beats[0]!.at) : 0 };
+}
+
 /** The first beat line at or after `seconds`: when it sounds, whether it opens a bar, and its bar and beat (the click, stemClick.svelte.ts). */
 export function nextBeatAt(
 	grid: BarGrid,

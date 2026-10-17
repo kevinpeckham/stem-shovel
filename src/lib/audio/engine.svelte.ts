@@ -238,6 +238,8 @@ export class StemEngine {
 		null;
 	#prelude: { seconds: number; cancel(): void } | null = null;
 	#streamPlayTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Streamed: the context time playback was asked to start at, until the worklet's counter confirms it (the click plans on it). */
+	#streamStartAt: number | null = null;
 	/**
 	 * Undo for the mix (utils/mixHistory.ts): one step per gesture over the
 	 * faders, pans, mutes, solos and master, from the rows, the Stage or the
@@ -639,6 +641,7 @@ export class StemEngine {
 				this.#streamPlayTimer = null;
 				this.#mixer?.port.postMessage({ type: "play" });
 			};
+			this.#streamStartAt = ctx.currentTime + lead;
 			if (lead > 0) this.#streamPlayTimer = setTimeout(go, lead * 1000);
 			else go();
 			this.playing = true;
@@ -721,6 +724,7 @@ export class StemEngine {
 		releasePlayback(this.#transport);
 		this.#prelude?.cancel();
 		this.#prelude = null;
+		this.#streamStartAt = null;
 		if (this.#streamPlayTimer) {
 			clearTimeout(this.#streamPlayTimer);
 			this.#streamPlayTimer = null;
@@ -1067,7 +1071,10 @@ export class StemEngine {
 		const ctx = this.#ctx;
 		if (!ctx || !this.playing) return null;
 		if (this.mode === "streamed") {
-			if (this.buffering || !this.#streamRunning) return null;
+			if (this.buffering) return null;
+			// Before the counter confirms it ran, the start it was asked for: a count-in's beats land on it.
+			if (!this.#streamRunning)
+				return this.#streamStartAt === null ? null : this.#streamStartAt + (seconds - this.#offset);
 			return this.#streamReportedAt + (seconds - this.#streamSample / ctx.sampleRate);
 		}
 		const pass = this.#activePass();

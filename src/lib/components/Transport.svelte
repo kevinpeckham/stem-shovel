@@ -43,7 +43,12 @@
 	// The readout format is shared with tooltips and the settings rows (#lib/audio/readout).
 	let ctx = $derived({ fps, grid });
 	let mode = $derived(readoutMode(!!grid));
-	let now = $derived(formatPosition(mode, engine.position, ctx));
+	/** The readout: the position, or during a count-in the bar (negative, before the entry) and beat being counted. */
+	let now = $derived(
+		click?.countingIn && click.beat
+			? `${click.beat.bar} | ${click.beat.beat}`
+			: formatPosition(mode, engine.position, ctx),
+	);
 	let total = $derived(formatPosition(mode, endAt ?? engine.duration, ctx));
 	// The other mode, when the song can count bars; timecode alone otherwise.
 	let nextMode = $derived(
