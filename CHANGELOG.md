@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.135.1] - 2026-10-17
+
 ### Fixed
 
 - **The count-in hands off cleanly** (Kevin: a pause between the count-in
