@@ -85,6 +85,26 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 	};
 }
 
+/** The first beat line at or after `seconds`: when it sounds, whether it opens a bar, and its bar and beat (the click, stemClick.svelte.ts). */
+export function nextBeatAt(
+	grid: BarGrid,
+	seconds: number,
+): { at: number; accent: boolean; bar: number; beat: number } {
+	const pos = barAt(grid, seconds);
+	// barAt's slack already rounds a hair before a beat line onto it (fraction 0), so that beat is the one.
+	if (pos.fraction === 0)
+		return {
+			at: secondsAtBar(grid, pos.bar, pos.beat),
+			accent: pos.beat === 1,
+			bar: pos.bar,
+			beat: pos.beat,
+		};
+	const bpb = valueAt(grid.meters, seconds).beatsPerBar;
+	const bar = pos.beat >= bpb ? pos.bar + 1 : pos.bar;
+	const beat = pos.beat >= bpb ? 1 : pos.beat + 1;
+	return { at: secondsAtBar(grid, bar, beat), accent: beat === 1, bar, beat };
+}
+
 /**
  * `seconds` moved to the nearest bar line when one is within `maxBeats`
  * of it, else unchanged. For a time placed by ear (the AI's key changes,

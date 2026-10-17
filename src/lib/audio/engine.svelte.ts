@@ -956,6 +956,27 @@ export class StemEngine {
 	// ---- internals ---------------------------------------------------------
 
 	/** Where the playhead is right now, derived from the context clock. */
+	/**
+	 * The context's time at which song second `seconds` sounds, while
+	 * playing: the click (stemClick.svelte.ts) schedules its beats on it, so
+	 * they land with the stems' samples. Null when paused, or streamed while
+	 * the counter is not running (buffering, or before the worklet's first
+	 * report after a seek).
+	 */
+	clockAt(seconds: number): number | null {
+		const ctx = this.#ctx;
+		if (!ctx || !this.playing) return null;
+		if (this.mode === "streamed") {
+			if (this.buffering || !this.#streamRunning) return null;
+			return this.#streamReportedAt + (seconds - this.#streamSample / ctx.sampleRate);
+		}
+		return this.#startedAt + (seconds - this.#offset);
+	}
+	/** The engine's own context, for anything that must sound on its clock (the click); null before the first load. */
+	get audioContext(): AudioContext | null {
+		return this.#ctx;
+	}
+
 	#currentPosition(): number {
 		const ctx = this.#ctx;
 		if (!ctx || !this.playing) return this.#offset;

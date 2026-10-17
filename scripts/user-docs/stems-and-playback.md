@@ -26,6 +26,8 @@ The transport above the stems has play/pause, a go-to-beginning button and a rea
 
 Playback starts once every stem has been decoded; the status line under the stems counts them in.
 
+When the song has a tempo and a time signature (set in its settings), a **Click** button sits beside the readout: press it and a metronome plays in time with the stems, the first beat of each bar higher, following the song's tempo and meter changes and every seek. A small knob beside the button sets how loud it is. The click is for listening and practice only: it is not part of your mix or of any download, and it is off each time you open a song.
+
 ### The Stage
 
 The **Tracks / Stage** switch at the top of the stems turns the rows into a stage: every stem is a numbered puck, left to right is its pan and height is how loud it sounds in the mix (its level plus how hot the recording is, so a quiet take at unity sits below a loud one). Drag a puck to set its level and pan at once; hold **Shift** to move along one axis only; double-click to center the pan, Alt-double-click to return the level to unity. A puck glows with the stem's loudness while the song plays, the bar under the stage shows which way the mix leans, and the master meter sits beside it. Click or Tab to a puck and the strip under the stage shows its name, **M**, **S**, its ⋯ menu and the level and pan readouts; the arrow keys nudge the puck, **M** and **S** mute and solo it. Switching views never changes the sound: it is the same mix, kept the same way.

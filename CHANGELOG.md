@@ -8,6 +8,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A click in the stem player** (Kevin: a metronome in sync with the
+  stems, easy to turn on from the player, only when the song's tempo is
+  defined). A Click button beside the readout, shown only when the song
+  has a tempo and a time signature, plays a metronome on the stem
+  engine's own clock: `StemClick` (`stemClick.svelte.ts`) schedules each
+  beat at the context time the engine says that song second sounds
+  (`engine.clockAt`), from the grid's beat lines (`nextBeatAt` in
+  `measures.ts`, through tempo and meter changes, bars accented), and
+  re-plans from the playhead after a seek or a pause. A level knob sits
+  beside the button while it is on (remembered per browser; on/off is
+  not). The click is outside the master and the mix downloads. Browser
+  test `click.spec.ts`.
+
 ## [0.133.0] - 2026-10-16
 
 ### Added

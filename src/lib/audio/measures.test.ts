@@ -10,6 +10,7 @@ import {
 	secondsAtBar,
 	snapToAnchor,
 	snapToDownbeat,
+	nextBeatAt,
 } from "./measures";
 
 const changes: SongChange[] = [
@@ -75,6 +76,37 @@ describe("barAt", () => {
 			const p = barAt(grid, t);
 			expect(secondsAtBar(grid, p.bar, p.beat, p.fraction)).toBeCloseTo(t, 6);
 		}
+	});
+});
+
+describe("nextBeatAt", () => {
+	const grid = {
+		tempos: [{ start: 0, bpm: 120 }],
+		meters: [{ start: 0, beatsPerBar: 4 }],
+		startAt: 1,
+	};
+	test("the beat under a position when it sits on one, else the next", () => {
+		expect(nextBeatAt(grid, 1)).toEqual({ at: 1, accent: true, bar: 1, beat: 1 });
+		expect(nextBeatAt(grid, 1.1)).toEqual({ at: 1.5, accent: false, bar: 1, beat: 2 });
+		expect(nextBeatAt(grid, 2.5)).toEqual({ at: 2.5, accent: false, bar: 1, beat: 4 });
+		expect(nextBeatAt(grid, 2.6)).toEqual({ at: 3, accent: true, bar: 2, beat: 1 });
+		// A hair before a line reads as the line (barAt's slack).
+		expect(nextBeatAt(grid, 2.99995).at).toBeCloseTo(3, 9);
+	});
+	test("counts down through bar 0 before the start, accents on its own downbeat", () => {
+		expect(nextBeatAt(grid, 0)).toEqual({ at: 0, accent: false, bar: 0, beat: 3 });
+		expect(nextBeatAt(grid, -1)).toEqual({ at: -1, accent: true, bar: 0, beat: 1 });
+	});
+	test("follows a tempo change", () => {
+		const g = {
+			...grid,
+			startAt: 0,
+			tempos: [
+				{ start: 0, bpm: 120 },
+				{ start: 2, bpm: 60 },
+			],
+		};
+		expect(nextBeatAt(g, 2.1).at).toBeCloseTo(3, 9);
 	});
 });
 

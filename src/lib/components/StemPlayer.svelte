@@ -12,6 +12,7 @@
 	import StemRow from "#lib/components/StemRow.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import { stemMixerModel } from "#lib/audio/mixerModel.js";
+	import { StemClick } from "#lib/audio/stemClick.svelte.js";
 	import Transport from "#lib/components/Transport.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { stemMemoryBudget } from "#lib/utils/stemMemoryBudget.js";
@@ -112,6 +113,8 @@
 		}
 	}
 	const stageModel = stemMixerModel(engine);
+	/** The click in time with the stems (stemClick.svelte.ts), on the song's grid when it has one. */
+	const click = new StemClick(engine, () => barGrid(changes, startAt));
 	/** The song's default mix per stem, from the manifest. */
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
 	/** The song's default pans, likewise. */
@@ -132,6 +135,7 @@
 	untrack(() => onengine)?.(engine); // once, at creation: the engine object never changes
 	// A dev-only hook for the browser tests (tests/e2e): the engine's mode, status and position.
 	if (dev && typeof window !== "undefined") (window as { __stems?: StemEngine }).__stems = engine;
+	if (dev && typeof window !== "undefined") (window as { __click?: StemClick }).__click = click;
 
 	// Effects only run in the browser (no AudioContext during SSR).
 	//
@@ -181,7 +185,10 @@
 			saveTimer = setTimeout(() => saveLocalMix(id, snapshot), 300);
 		});
 	});
-	$effect(() => () => engine.dispose());
+	$effect(() => () => {
+		click.dispose();
+		engine.dispose();
+	});
 
 	// Reordering: a row's grip is dragged up or down the list (pointer events,
 	// so touch works and the page does not scroll under it) or moved with the
@@ -309,7 +316,15 @@
 			</p>
 		{/if}
 		<div class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 mb-5">
-			<Transport {engine} {changes} grid={barGrid(changes, startAt)} {endAt} {fps} {keyboard} />
+			<Transport
+				{engine}
+				{changes}
+				grid={barGrid(changes, startAt)}
+				{endAt}
+				{fps}
+				{keyboard}
+				{click}
+			/>
 			{#if onaddsection}
 				<div class="mt-2 flex justify-end">
 					<button

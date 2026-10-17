@@ -6,6 +6,8 @@
 	import { POSITION_MODE_LABELS, type PositionMode } from "#lib/constants/positionModes.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
+	import type { StemClick } from "#lib/audio/stemClick.svelte.js";
+	import Knob from "#lib/components/Knob.svelte";
 
 	interface Props {
 		engine: StemEngine;
@@ -18,6 +20,8 @@
 		changes?: SongChange[];
 		/** Space and Home from anywhere on the page. Off while another player on the page has them (the home page gives them to the demo in view). */
 		keyboard?: boolean;
+		/** The click in time with the stems (stemClick.svelte.ts); its button shows only with a grid (a tempo and a time signature). */
+		click?: StemClick | null;
 	}
 
 	let {
@@ -27,7 +31,9 @@
 		fps = 25,
 		changes = [],
 		keyboard = true,
+		click = null,
 	}: Props = $props();
+	const clickLevelText = (v: number) => `${Math.round(v * 100)}%`;
 
 	// The readout format is shared with tooltips and the settings rows (#lib/audio/readout).
 	let ctx = $derived({ fps, grid });
@@ -119,6 +125,40 @@
 			<div>{meter}</div>
 		</div>
 	</div>
+
+	{#if click && grid}
+		<!-- The click: a metronome on the stems' own clock (docs/stem-engine.md, "The click"); the level turns beside it while it is on. -->
+		<div class="flex items-center gap-2" data-stem-click>
+			<button
+				type="button"
+				class="grid h-10 w-10 place-items-center rounded-lg border transition-all active:scale-95 {click.on
+					? 'border-accent bg-accent/20 text-accent'
+					: 'border-white/15 bg-white/5 text-neutral-100 hover-bg-white/10 hover-text-accent'}"
+				aria-label="Click"
+				aria-pressed={click.on}
+				title={click.on
+					? "Click: on, in time with the stems (click to turn off)"
+					: "Click: a metronome in time with the song's tempo and time signature"}
+				onclick={() => click.toggle()}
+			>
+				<span class="i-ph-metronome text-20px" aria-hidden="true"></span>
+			</button>
+			{#if click.on}
+				<Knob
+					value={click.level}
+					min={0}
+					max={1}
+					step={0.01}
+					resetTo={0.6}
+					size={22}
+					label="Click level"
+					title="Click level"
+					format={clickLevelText}
+					oninput={(v) => click.setLevel(v)}
+				/>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="ml-auto grid gap-1">
 		<label class="flex items-center gap-2 text-sm text-dim">

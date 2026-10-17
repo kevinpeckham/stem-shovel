@@ -188,3 +188,25 @@ entry, when the player has the keys) and the Stage's strip offers the
 two buttons. Dawn's mix moves join its existing arrangement history
 (`#commitMixGesture` before `#commit`), so its Undo button and ⌘Z step
 through edits and moves alike; effects sliders join too.
+
+## The click (2026-10-17)
+
+A metronome in time with the stems (Kevin: easy and intuitive, right
+from the player, only when the song's tempo is defined). `StemClick`
+(`src/lib/audio/stemClick.svelte.ts`, one per `StemPlayer`) is not the
+page's metronome engine: it schedules its own oscillator clicks on the
+stem engine's context, at the context time the engine says each song
+second sounds (`engine.clockAt(seconds)`: buffered, `startedAt + (seconds
+− offset)`; streamed, the worklet's last reported counter run forward, or
+null while buffering). Each beat comes from the song's grid through
+`nextBeatAt` in `measures.ts` (the first beat line at or after a second,
+through tempo and meter changes, the bar's first beat accented), so a
+seek, a pause or a settings save that moves the tempo re-plans the
+beats from the playhead: the lookahead loop (`lookahead.ts`) notices the
+clock's origin move and drops what it had queued. The click goes to the
+destination through its own gain, outside the master and the mix
+downloads. The Transport shows the button only when the player has a
+grid, with a level knob beside it while it is on; the level is
+remembered per browser, on/off is not (a click nobody asked for is a
+shock). The dev hook `window.__click` carries it for the browser test
+(`tests/e2e/click.spec.ts`).
