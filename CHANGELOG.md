@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.135.0] - 2026-10-17
+
 ### Added
 
 - **Loop playback in the stem player** (Kevin). Click a section on the
