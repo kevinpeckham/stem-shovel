@@ -107,4 +107,34 @@ describe("Waveform", () => {
 		await user.keyboard("{ArrowLeft}");
 		expect(onseek).toHaveBeenLastCalledWith(0);
 	});
+
+	test("the selected stretch is a band over the bars", () => {
+		render(Waveform, {
+			props: { peaks, progress: 0, label: "Drums", range: { from: 0.25, to: 0.5 } },
+		});
+		const band = document.querySelector("[data-range]") as HTMLElement;
+		expect(band.style.left).toBe("25%");
+		expect(band.style.width).toBe("25%");
+	});
+
+	test("a drag across the bars selects a stretch in order, and the click after it does not seek", async () => {
+		const onseek = vi.fn();
+		const onrange = vi.fn();
+		render(Waveform, { props: { peaks, progress: 0, label: "Drums", onseek, onrange } });
+		const slider = rect(screen.getByRole("slider"));
+		slider.setPointerCapture = () => {};
+		await fireEvent.pointerDown(slider, { pointerId: 1, button: 0, clientX: 250 });
+		await fireEvent.pointerMove(slider, { pointerId: 1, clientX: 252 });
+		expect(onrange).not.toHaveBeenCalled();
+		await fireEvent.pointerMove(slider, { pointerId: 1, clientX: 150 });
+		expect(onrange).toHaveBeenLastCalledWith(0.25, 0.75);
+		await fireEvent.pointerUp(slider, { pointerId: 1 });
+		await fireEvent.click(slider, { clientX: 150 });
+		expect(onseek).not.toHaveBeenCalled();
+		// A plain click afterwards seeks as ever.
+		await fireEvent.pointerDown(slider, { pointerId: 2, button: 0, clientX: 150 });
+		await fireEvent.pointerUp(slider, { pointerId: 2 });
+		await fireEvent.click(slider, { clientX: 150 });
+		expect(onseek).toHaveBeenCalledWith(0.25);
+	});
 });

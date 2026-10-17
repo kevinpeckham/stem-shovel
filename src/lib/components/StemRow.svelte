@@ -45,6 +45,14 @@
 	const silenced = $derived(stem.muted || (engine.anySolo && !stem.soloed));
 	const progress = $derived(engine.duration > 0 ? engine.position / engine.duration : 0);
 	const span = $derived(engine.duration > 0 ? stem.duration / engine.duration : 1);
+	/** The selection (engine.loop) as fractions of the song, for the band over the bars. */
+	const range = $derived(
+		engine.loop && engine.duration > 0
+			? { from: engine.loop.start / engine.duration, to: engine.loop.end / engine.duration }
+			: null,
+	);
+	const selectRange = (from: number, to: number) =>
+		engine.setLoop({ start: from * engine.duration, end: to * engine.duration });
 	/** The row's tint (constants/stemTints.ts): the name and the waveform wear it; nothing else does, so it stays a hint. */
 	const tint = $derived(stemTintHex(stem.tint));
 	/** A level as the knob says it: dB, −∞ at the bottom (as the Studio's faders). */
@@ -177,6 +185,7 @@
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}
 				oncontext={context}
+				{range}
 			/>
 		{:else}
 			<Waveform
@@ -188,6 +197,8 @@
 				label={stem.label}
 				onseek={(f) => engine.seek(f * engine.duration)}
 				oncontext={context}
+				{range}
+				onrange={selectRange}
 			/>
 		{/if}
 	</div>

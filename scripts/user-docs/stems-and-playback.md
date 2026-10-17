@@ -26,7 +26,11 @@ The transport above the stems has play/pause, a go-to-beginning button and a rea
 
 Playback starts once every stem has been decoded; the status line under the stems counts them in.
 
-When the song has a tempo and a time signature (set in its settings), a **Click** button sits beside the readout: press it and a metronome plays in time with the stems, the first beat of each bar higher, following the song's tempo and meter changes and every seek. A small knob beside the button sets how loud it is. The click is for listening and practice only: it is not part of your mix or of any download, and it is off each time you open a song.
+When the song has a tempo and a time signature (set in its settings), a **Click** button sits beside the readout: press it and a metronome plays in time with the stems, the first beat of each bar higher, following the song's tempo and meter changes and every seek. A small knob beside the button sets how loud it is, and the **count-in** choice beside that counts a bar (or two, or four) of click before the stems start when you press Play, so you can come in with the band; choose "No count-in" to start at once. The click is for listening and practice only: it is not part of your mix or of any download, and it is off each time you open a song.
+
+### Looping a part of the song
+
+Click a section on the timeline row and it is selected: the stretch is highlighted across every row, and the playhead goes to its start. The **Loop** button (or **L**) then plays that stretch round and round; with nothing selected it loops the whole song. Click the selected section again, or press **Escape**, to clear the selection. To loop a stretch that is not a section, drag across any waveform from where it should start to where it should end; the band appears on every row and Loop uses it. A loop plays seamlessly when the stems are in memory; streamed, there is a short gap at the turn.
 
 ### The Stage
 

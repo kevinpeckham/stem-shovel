@@ -6,8 +6,9 @@
 	import { POSITION_MODE_LABELS, type PositionMode } from "#lib/constants/positionModes.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { type SongChange } from "#lib/val/SongChangeSchema.js";
-	import type { StemClick } from "#lib/audio/stemClick.svelte.js";
+	import { COUNT_IN_CHOICES, type StemClick } from "#lib/audio/stemClick.svelte.js";
 	import Knob from "#lib/components/Knob.svelte";
+	import ComboBox from "#lib/components/ComboBox.svelte";
 
 	interface Props {
 		engine: StemEngine;
@@ -34,6 +35,10 @@
 		click = null,
 	}: Props = $props();
 	const clickLevelText = (v: number) => `${Math.round(v * 100)}%`;
+	const COUNT_IN_OPTIONS = COUNT_IN_CHOICES.map((n) => ({
+		value: String(n),
+		label: n === 0 ? "No count-in" : n === 1 ? "1 bar count-in" : `${n} bars count-in`,
+	}));
 
 	// The readout format is shared with tooltips and the settings rows (#lib/audio/readout).
 	let ctx = $derived({ fps, grid });
@@ -67,6 +72,12 @@
 		} else if (e.key === "Home") {
 			e.preventDefault();
 			engine.seek(0);
+		} else if (e.key === "l" || e.key === "L") {
+			// Loop, as in Dawn.
+			e.preventDefault();
+			if (!e.repeat) engine.toggleLooping();
+		} else if (e.key === "Escape" && engine.loop) {
+			engine.setLoop(null);
 		}
 	}
 
@@ -101,6 +112,23 @@
 			class="{engine.playing ? 'i-ph-pause-fill' : 'i-ph-play-fill'} text-24px"
 			aria-hidden="true"
 		></span>
+	</button>
+
+	<!-- Loop the selection (a section, or a drag across a waveform), or the whole song when nothing is selected (docs/stem-engine.md, "Loop"). -->
+	<button
+		type="button"
+		class="grid h-10 w-10 place-items-center rounded-lg border transition-all active:scale-95 disabled:(opacity-40 cursor-wait) {engine.looping
+			? 'border-accent bg-accent/20 text-accent'
+			: 'border-white/15 bg-white/5 text-neutral-100 hover-bg-white/10 hover-text-accent'}"
+		aria-label="Loop"
+		aria-pressed={engine.looping}
+		title={engine.loop
+			? `Loop the selection (L)${engine.looping ? ": on" : ""} · Escape clears the selection`
+			: `Loop the whole song (L)${engine.looping ? ": on" : ""} · select a section, or drag across a waveform, to loop part of it`}
+		disabled={engine.status !== "ready"}
+		onclick={() => engine.toggleLooping()}
+	>
+		<span class="i-ph-repeat text-20px" aria-hidden="true"></span>
 	</button>
 
 	<div class="bg-black/40 px-3 py-2 rounded-md leading-none flex gap-4">
@@ -141,7 +169,10 @@
 					: "Click: a metronome in time with the song's tempo and time signature"}
 				onclick={() => click.toggle()}
 			>
-				<span class="i-ph-metronome text-20px" aria-hidden="true"></span>
+				<span
+					class="i-ph-metronome text-20px {click.countingIn ? 'animate-pulse' : ''}"
+					aria-hidden="true"
+				></span>
 			</button>
 			{#if click.on}
 				<Knob
@@ -155,6 +186,16 @@
 					title="Click level"
 					format={clickLevelText}
 					oninput={(v) => click.setLevel(v)}
+				/>
+				<!-- The count-in: bars of click before the stems start, when Play is pressed with the click on. -->
+				<ComboBox
+					ariaLabel="Count-in"
+					options={COUNT_IN_OPTIONS}
+					value={String(click.countIn)}
+					onchange={(v) => click.setCountIn(Number(v))}
+					clearDefaultButtonClasses
+					buttonClasses="flex h-8 items-center gap-1 rounded border border-white/15 bg-white/5 px-2 text-12px hover-bg-white/10"
+					popoverClasses="text-12px"
 				/>
 			{/if}
 		</div>

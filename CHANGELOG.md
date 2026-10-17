@@ -8,6 +8,25 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Loop playback in the stem player** (Kevin). Click a section on the
+  timeline row to select it: the stretch is highlighted across every
+  row (the waveforms, the MIDI rolls and the comments row), and the
+  playhead goes to its start; click it again, or press Escape, to clear
+  it. A Loop button in the transport (or L) loops the selection, or the
+  whole song when nothing is selected. A drag across any waveform
+  selects a stretch by hand. Buffered, the loop's seam is sample-exact:
+  playback runs in passes, the next queued at the exact moment the
+  current one ends (`#passes` in `engine.svelte.ts`); streamed, the
+  turn is a seek with a short gap. Browser test `loop.spec.ts`.
+- **A count-in for the click** (Kevin: configurable, a bar by default).
+  With the click on, Play counts in one, two or four bars at the tempo
+  in force before the stems start; "No count-in" starts at once. The
+  choice sits beside the click's level and is remembered per browser.
+  The engine gained a `prelude` the click sets, which `play()` honors
+  and `pause` cancels.
+
 ## [0.134.0] - 2026-10-17
 
 ### Added

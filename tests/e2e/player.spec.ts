@@ -9,6 +9,9 @@ const SONG = process.env.E2E_SONG ?? "/mmkk/projects/badverbs/eat-all-the-clocks
 
 test("decodes the stems, plays, mutes and solos", async ({ page, errors }) => {
 	await open(page, SONG);
+	// The player remembers the bot's last tab (Demos, Mixes); the stems are what this test plays.
+	const stemsTab = page.getByRole("tab", { name: /^Stems/ });
+	if (await stemsTab.count()) await stemsTab.click();
 	const rows = page.locator("[data-stem-row]");
 	test.skip((await rows.count()) === 0, `${SONG} has no stems on this server`);
 	const play = page.getByRole("button", { name: "Play", exact: true });

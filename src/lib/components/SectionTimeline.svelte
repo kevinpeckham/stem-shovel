@@ -65,6 +65,20 @@
 		}),
 	);
 	let currentIndex = $derived(blocks.findLastIndex((b) => engine.position >= b.start) ?? -1);
+	/** The block that is the selection (engine.loop), if one is. */
+	const isSelected = (b: { start: number; end: number }) =>
+		!!engine.loop &&
+		Math.abs(engine.loop.start - b.start) < 1e-6 &&
+		Math.abs(engine.loop.end - b.end) < 1e-6;
+	/** A click selects the section (the loop's stretch, highlighted on every row) and goes to its start; a click on the selected one clears it (docs/stem-engine.md, "Loop"). */
+	function pick(b: { start: number; end: number }) {
+		if (isSelected(b)) {
+			engine.setLoop(null);
+			return;
+		}
+		engine.setLoop({ start: b.start, end: Math.min(b.end, engine.duration || b.end) });
+		engine.seek(b.start);
+	}
 	/** A song that moves through keys gets the word "keys:" under the section name, a label for the key lane (Kevin: the word, not a list; the lane is the list). */
 	let severalKeys = $derived(changes.filter((c) => c.kind === "key").length >= 2);
 </script>
@@ -134,14 +148,21 @@
 					class="absolute top-0 h-full overflow-hidden rounded pl-4px text-left text-11px leading-tight whitespace-nowrap transition-colors disabled-cursor-default {i ===
 					currentIndex
 						? 'border-accent bg-accent/20 text-neutral-100'
-						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'}"
+						: 'border-white/15 bg-white/10 opacity-90 hover-bg-white/10 hover-text-neutral-100'} {isSelected(
+						b,
+					)
+						? 'ring-1 ring-accent bg-accent/30 opacity-100'
+						: ''}"
+					data-selected={isSelected(b) || undefined}
 					style:left="{b.left}%"
 					style:width="calc({b.width}% - 2px)"
 					title="{b.index ? `${b.index} · ` : ''}{b.name} · {ctx.grid
 						? formatBarSpan(ctx.grid, b.start, b.end)
-						: `${at(b.start)} – ${at(b.end)}`}"
+						: `${at(b.start)} – ${at(b.end)}`}{isSelected(b)
+						? ' · selected (click again to clear)'
+						: ' · click to select and go there'}"
 					disabled={engine.status !== "ready"}
-					onclick={() => engine.seek(b.start)}
+					onclick={() => pick(b)}
 				>
 					<!-- the index (roman numerals) fits where a name would not; the name is the tooltip -->
 					{b.index || b.name}

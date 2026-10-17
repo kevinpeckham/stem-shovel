@@ -222,6 +222,23 @@ export class StemEngine {
 	 */
 	lastLoadDied = $state<{ stems: number; bytes: number } | null>(null);
 	/**
+	 * The selected stretch of the song (a section, or a hand-drawn range),
+	 * highlighted on every row, and whether playback loops it (the whole
+	 * song when nothing is selected). Not part of the mix or its undo.
+	 */
+	loop = $state<{ start: number; end: number } | null>(null);
+	looping = $state(false);
+	/**
+	 * Something to sound before the stems start (the click's count-in,
+	 * stemClick.svelte.ts): given the context and the moment the stems would
+	 * start, it schedules itself and says how long to hold them, with a way
+	 * to drop it on a pause. Null when nothing counts in.
+	 */
+	prelude: ((ctx: AudioContext, at: number) => { seconds: number; cancel(): void } | null) | null =
+		null;
+	#prelude: { seconds: number; cancel(): void } | null = null;
+	#streamPlayTimer: ReturnType<typeof setTimeout> | null = null;
+	/**
 	 * Undo for the mix (utils/mixHistory.ts): one step per gesture over the
 	 * faders, pans, mutes, solos and master, from the rows, the Stage or the
 	 * keys alike. Cleared by a load (the local mix put on top of a fresh
@@ -248,7 +265,20 @@ export class StemEngine {
 		string,
 		{ output: AudioNode; set(pan: number, tau: number): void; disconnect(): void }
 	>();
-	#sources = new Map<string, AudioBufferSourceNode>(); // live only while playing
+	/**
+	 * Buffered playback runs in passes (docs/stem-engine.md, "Loop"): each
+	 * pass schedules every stem's source from `from` at context time `when`,
+	 * stopping at `to` when the pass is a loop's; the next pass is queued
+	 * half a second before the end so the seam is sample-exact. Playing
+	 * straight through is one pass with no `to`.
+	 */
+	#passes: {
+		when: number;
+		from: number;
+		to: number | null;
+		sources: Map<string, AudioBufferSourceNode>;
+		chained: boolean;
+	}[] = [];
 	#startedAt = 0; // ctx.currentTime at which the current run was scheduled
 	#offset = 0; // track position (s) the current run started from, or the paused position
 	#raf = 0;
@@ -550,6 +580,11 @@ export class StemEngine {
 			this.buffering = !!m.buffering;
 			if (this.buffering) this.#streamReportedAt = ctx.currentTime;
 		} else if (m.type === "ended") {
+			const region = this.#region();
+			if (region) {
+				this.seek(region.start);
+				return;
+			}
 			releasePlayback(this.#transport);
 			cancelAnimationFrame(this.#raf);
 			this.playing = false;
@@ -592,42 +627,104 @@ export class StemEngine {
 		// Browsers (iOS especially) start contexts suspended until a user gesture.
 		if (ctx.state !== "running") await ctx.resume();
 		if (this.#offset >= this.duration) this.#offset = 0;
+		// The count-in, when there is one: the stems hold for its length.
+		this.#prelude = this.prelude?.(ctx, ctx.currentTime + START_LEAD) ?? null;
+		const lead = this.#prelude?.seconds ?? 0;
 		if (this.mode === "streamed") {
 			// The worklet primes from where it is (a seek or the load already asked the worker to decode there).
 			if (this.#streamSample !== Math.round(this.#offset * ctx.sampleRate))
 				this.#seekStream(this.#offset);
 			this.#streamRunning = false;
-			this.#mixer?.port.postMessage({ type: "play" });
+			const go = () => {
+				this.#streamPlayTimer = null;
+				this.#mixer?.port.postMessage({ type: "play" });
+			};
+			if (lead > 0) this.#streamPlayTimer = setTimeout(go, lead * 1000);
+			else go();
 			this.playing = true;
 			this.#tick();
 			this.#startMeters();
 			return;
 		}
 
-		const when = ctx.currentTime + START_LEAD;
-		for (const stem of this.stems) {
-			const buffer = this.#buffers.get(stem.id);
-			const gain = this.#gains.get(stem.id);
-			if (!buffer || !gain) continue;
-			// A shorter stem that has already ended at this offset simply doesn't play.
-			if (this.#offset >= buffer.duration) continue;
-
-			// Source nodes are one-shot: a fresh one per run.
-			const source = ctx.createBufferSource();
-			source.buffer = buffer;
-			source.connect(gain);
-			source.start(when, this.#offset);
-			this.#sources.set(stem.id, source);
-		}
+		const when = ctx.currentTime + START_LEAD + lead;
+		const region = this.#region();
+		// A loop's pass stops at the region's end; from past the end, the song plays out as usual.
+		const to = region && this.#offset < region.end ? region.end : null;
+		this.#startPass(ctx, this.#offset, when, to);
 		this.#startedAt = when;
 		this.playing = true;
 		this.#tick();
 		this.#startMeters();
 	}
+	/** Every stem's source from `from`, started together at `when` and, for a loop's pass, stopped at `to`. */
+	#startPass(ctx: AudioContext, from: number, when: number, to: number | null): void {
+		const sources = new Map<string, AudioBufferSourceNode>();
+		for (const stem of this.stems) {
+			const buffer = this.#buffers.get(stem.id);
+			const gain = this.#gains.get(stem.id);
+			if (!buffer || !gain) continue;
+			// A shorter stem that has already ended at this offset simply doesn't play.
+			if (from >= buffer.duration) continue;
+			// Source nodes are one-shot: a fresh one per pass.
+			const source = ctx.createBufferSource();
+			source.buffer = buffer;
+			source.connect(gain);
+			source.start(when, from);
+			if (to !== null) source.stop(when + (to - from));
+			sources.set(stem.id, source);
+		}
+		this.#passes.push({ when, from, to, sources, chained: false });
+	}
+	/** The pass sounding now (the last one that has begun), or the one about to. */
+	#activePass() {
+		const ctx = this.#ctx;
+		if (!ctx || this.#passes.length === 0) return null;
+		return this.#passes.findLast((p) => p.when <= ctx.currentTime) ?? this.#passes[0]!;
+	}
+	/** The stretch playback loops, when it does: the selection, else the whole song. Clamped to the song. */
+	#region(): { start: number; end: number } | null {
+		if (!this.looping) return null;
+		const start = clamp(this.loop?.start ?? 0, 0, this.duration);
+		const end = clamp(this.loop?.end ?? this.duration, 0, this.duration);
+		return end - start > 0.05 ? { start, end } : { start: 0, end: this.duration };
+	}
+
+	/** Select a stretch of the song (null clears it); while looping and playing, the passes are planned again from here. */
+	setLoop(region: { start: number; end: number } | null): void {
+		this.loop =
+			region && region.end > region.start
+				? { start: Math.max(0, region.start), end: region.end }
+				: null;
+		if (this.looping && this.playing) this.seek(this.#currentPosition());
+	}
+	/** Loop the selection (or the whole song). Turned on with the playhead outside the selection, playback goes to its start. */
+	setLooping(on: boolean): void {
+		if (this.looping === on) return;
+		this.looping = on;
+		const region = this.#region();
+		if (region) {
+			const pos = this.#currentPosition();
+			if (pos < region.start || pos >= region.end) {
+				this.seek(region.start);
+				return;
+			}
+		}
+		if (this.playing) this.seek(this.#currentPosition());
+	}
+	toggleLooping(): void {
+		this.setLooping(!this.looping);
+	}
 
 	pause(): void {
 		if (!this.playing) return;
 		releasePlayback(this.#transport);
+		this.#prelude?.cancel();
+		this.#prelude = null;
+		if (this.#streamPlayTimer) {
+			clearTimeout(this.#streamPlayTimer);
+			this.#streamPlayTimer = null;
+		}
 		this.#offset = this.#currentPosition();
 		if (this.mode === "streamed") this.#mixer?.port.postMessage({ type: "pause" });
 		this.#stopSources();
@@ -660,6 +757,8 @@ export class StemEngine {
 		}
 		const wasPlaying = this.playing;
 		if (wasPlaying) {
+			this.#prelude?.cancel();
+			this.#prelude = null;
 			this.#stopSources();
 			cancelAnimationFrame(this.#raf);
 			this.playing = false;
@@ -777,15 +876,16 @@ export class StemEngine {
 	 * a stem is removed on the server so the rest need not be decoded again.
 	 */
 	remove(id: string): void {
-		const source = this.#sources.get(id);
-		if (source) {
+		for (const pass of this.#passes) {
+			const source = pass.sources.get(id);
+			if (!source) continue;
 			try {
 				source.stop();
 			} catch {
 				// never started / already ended
 			}
 			source.disconnect();
-			this.#sources.delete(id);
+			pass.sources.delete(id);
 		}
 		this.#gains.get(id)?.disconnect();
 		this.#gains.delete(id);
@@ -970,7 +1070,8 @@ export class StemEngine {
 			if (this.buffering || !this.#streamRunning) return null;
 			return this.#streamReportedAt + (seconds - this.#streamSample / ctx.sampleRate);
 		}
-		return this.#startedAt + (seconds - this.#offset);
+		const pass = this.#activePass();
+		return pass ? pass.when + (seconds - pass.from) : this.#startedAt + (seconds - this.#offset);
 	}
 	/** The engine's own context, for anything that must sound on its clock (the click); null before the first load. */
 	get audioContext(): AudioContext | null {
@@ -988,34 +1089,61 @@ export class StemEngine {
 					: Math.max(0, ctx.currentTime - this.#streamReportedAt);
 			return Math.min(this.duration, this.#streamSample / ctx.sampleRate + since);
 		}
-		// Before `when` has elapsed, currentTime < startedAt; clamp so we never go backwards.
-		return this.#offset + Math.max(0, ctx.currentTime - this.#startedAt);
+		// Before `when` has elapsed, currentTime < when; clamp so we never go backwards.
+		const pass = this.#activePass();
+		if (!pass) return this.#offset + Math.max(0, ctx.currentTime - this.#startedAt);
+		return Math.min(pass.to ?? this.duration, pass.from + Math.max(0, ctx.currentTime - pass.when));
 	}
 
 	#tick = (): void => {
 		const pos = this.#currentPosition();
-		if (pos >= this.duration && this.mode !== "streamed") {
-			// Reached the end: stop cleanly and park at the end so play() restarts from 0.
-			this.#stopSources();
-			this.playing = false;
-			this.#offset = this.duration;
-			this.position = this.duration;
-			return;
+		const region = this.#region();
+		const ctx = this.#ctx;
+		if (this.mode === "streamed") {
+			// Streamed, the seam is a seek: the worklet re-primes at the start (a short gap).
+			if (region && pos >= region.end - 0.02) {
+				this.seek(region.start);
+				this.#raf = requestAnimationFrame(this.#tick);
+				return;
+			}
+		} else if (ctx) {
+			const last = this.#passes.at(-1);
+			if (region && last && last.to !== null && !last.chained) {
+				const ends = last.when + (last.to - last.from);
+				if (ctx.currentTime > ends - 0.5) {
+					this.#startPass(ctx, region.start, ends, region.end);
+					last.chained = true;
+				}
+			}
+			if (pos >= this.duration && !(last && last.to !== null)) {
+				// Reached the end: stop cleanly and park at the end so play() restarts from 0.
+				this.#stopSources();
+				this.playing = false;
+				this.#offset = this.duration;
+				this.position = this.duration;
+				return;
+			}
+			// Passes that have ended are let go (their sources stopped themselves).
+			if (this.#passes.length > 2) {
+				const active = this.#activePass();
+				this.#passes = this.#passes.filter((p) => p === active || p.when > ctx.currentTime);
+			}
 		}
 		this.position = pos;
 		this.#raf = requestAnimationFrame(this.#tick);
 	};
 
 	#stopSources(): void {
-		for (const source of this.#sources.values()) {
-			try {
-				source.stop();
-			} catch {
-				// stop() throws if the source never started or already ended — harmless
+		for (const pass of this.#passes)
+			for (const source of pass.sources.values()) {
+				try {
+					source.stop();
+				} catch {
+					// stop() throws if the source never started or already ended — harmless
+				}
+				source.disconnect();
 			}
-			source.disconnect();
-		}
-		this.#sources.clear();
+		this.#passes = [];
 	}
 
 	/** Mute wins; otherwise any solo silences everything not soloed. */
@@ -1061,6 +1189,8 @@ export class StemEngine {
 
 	#reset(): void {
 		this.pause();
+		this.loop = null;
+		this.looping = false;
 		cancelAnimationFrame(this.#raf);
 		this.#teardownStream();
 		this.#manifest = [];

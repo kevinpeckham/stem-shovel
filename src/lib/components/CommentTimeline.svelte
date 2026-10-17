@@ -26,6 +26,9 @@
 		mixPeaks: number[];
 		stems: { peaks: number[]; duration: number }[];
 		seek: (seconds: number) => void;
+		/** The selected stretch (the stem engine's loop), shown as a band and set by a drag; a mix's player has neither. */
+		loop?: { start: number; end: number } | null;
+		setLoop?: (region: { start: number; end: number } | null) => void;
 	}
 
 	interface Props {
@@ -119,6 +122,12 @@
 				label="Mix"
 				onseek={(f) => engine.seek(f * duration)}
 				oncontext={oncontext ? (f, x, y) => oncontext(f * duration, x, y) : undefined}
+				range={engine.loop && duration > 0
+					? { from: engine.loop.start / duration, to: engine.loop.end / duration }
+					: null}
+				onrange={engine.setLoop
+					? (from, to) => engine.setLoop?.({ start: from * duration, end: to * duration })
+					: undefined}
 			/>
 		</div>
 		{#if canComment && comments.length === 0 && showTip}

@@ -210,3 +210,44 @@ grid, with a level knob beside it while it is on; the level is
 remembered per browser, on/off is not (a click nobody asked for is a
 shock). The dev hook `window.__click` carries it for the browser test
 (`tests/e2e/click.spec.ts`).
+
+## Loop (2026-10-17)
+
+A stretch of the song can be selected and looped (Kevin: a section's
+button highlights it across every row; Loop toggles; nothing selected
+loops the whole song; a hand-drawn stretch is the secondary way). The
+engine holds `loop` (the selection, `{start, end}` or null) and
+`looping` (the toggle); the region that plays round is the selection,
+else the whole song (`#region`). Buffered playback runs in **passes**
+(`#passes`, as Dawn's engine does): a pass schedules every stem's source
+from `from` at context time `when`, and a loop's pass also stops them at
+the region's end; half a second before that end the tick queues the next
+pass from the region's start at exactly that moment, so the seam is
+sample-exact. `#currentPosition` and `clockAt` read the pass that has
+begun. Streamed, the seam is a seek (the worklet re-primes at the start,
+a short gap), and the worklet's `ended` becomes a seek to the start when
+looping. A selection made while looping and playing, or the toggle
+itself, re-plans from the playhead (`seek` to where it is: a 50 ms
+restart); turned on with the playhead outside the selection, playback
+goes to its start, and from past the selection's end the song plays out.
+`SectionTimeline` selects a block on click (again clears) and seeks to
+its start; `Waveform` draws the band (`range`) and turns a drag of more
+than 4 px into `onrange` (the click after it does not seek); `MidiRoll`
+and the comment row's waveform draw the band too (the row's
+`TimelineSource` gained optional `loop` / `setLoop`). The Transport's
+Loop button and the L key toggle; Escape clears the selection. A load
+clears both.
+
+### The count-in (2026-10-17)
+
+With the click on, Play counts in before the stems start (Kevin: a
+configurable length, a bar by default). The engine takes a `prelude`
+(set by `StemClick`): called in `play()` with the context and the moment
+the stems would start, it schedules the count-in's clicks (the bar in
+force at the playhead: `tempoAt`, `beatsPerBarAt`), says how many
+seconds to hold the stems, and can cancel itself; `play()` starts the
+pass that much later (streamed: the worklet's "play" waits on a timer),
+and `pause` or a seek cancels it. `click.countIn` is 0, 1, 2 or 4 bars,
+remembered per browser (`stemshovel.clickCountIn`), chosen in the
+Transport beside the click's level; `click.countingIn` pulses the
+button while it runs.

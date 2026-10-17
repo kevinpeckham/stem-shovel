@@ -15,6 +15,10 @@
 		onseek?: (fraction: number) => void;
 		/** Ctrl / ⌘-click or right-click: a menu for this position instead of a seek. */
 		oncontext?: (fraction: number, x: number, y: number) => void;
+		/** The selected stretch, as fractions of the full song (the loop, docs/stem-engine.md), drawn over the bars. */
+		range?: { from: number; to: number } | null;
+		/** A drag across the bars selects a stretch (fractions, in order); a plain click still seeks. */
+		onrange?: (from: number, to: number) => void;
 	}
 
 	let {
@@ -26,7 +30,12 @@
 		label,
 		onseek,
 		oncontext,
+		range = null,
+		onrange,
 	}: Props = $props();
+	/** A drag in progress: where it began, and whether it has gone far enough to be a selection rather than a click. */
+	let drag: { pointerId: number; x: number; from: number; selecting: boolean } | null = null;
+	let suppressClick = false;
 
 	// Measured by bind:clientWidth / bind:clientHeight on the wrapper.
 	let width = $state(0);
@@ -82,7 +91,32 @@
 		return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
 	}
 
+	function onpointerdown(e: PointerEvent): void {
+		if (!onrange || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+		drag = { pointerId: e.pointerId, x: e.clientX, from: fractionAt(e), selecting: false };
+	}
+	function onpointermove(e: PointerEvent): void {
+		if (!drag || e.pointerId !== drag.pointerId) return;
+		if (!drag.selecting) {
+			if (Math.abs(e.clientX - drag.x) < 4) return;
+			drag.selecting = true;
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		}
+		const to = fractionAt(e);
+		onrange?.(Math.min(drag.from, to), Math.max(drag.from, to));
+	}
+	function onpointerup(e: PointerEvent): void {
+		if (!drag || e.pointerId !== drag.pointerId) return;
+		// The click that follows a selection must not seek.
+		suppressClick = drag.selecting;
+		drag = null;
+	}
+
 	function seekFromPointer(e: MouseEvent): void {
+		if (suppressClick) {
+			suppressClick = false;
+			return;
+		}
 		if ((e.ctrlKey || e.metaKey) && oncontext) {
 			e.preventDefault();
 			oncontext(fractionAt(e), e.clientX, e.clientY);
@@ -116,6 +150,10 @@
 	bind:clientWidth={width}
 	bind:clientHeight={height}
 	onclick={seekFromPointer}
+	{onpointerdown}
+	{onpointermove}
+	{onpointerup}
+	onpointercancel={onpointerup}
 	oncontextmenu={(e) => {
 		if (!oncontext) return;
 		e.preventDefault();
@@ -128,6 +166,15 @@
 		class="absolute inset-0 h-full w-full text-white {dimmed ? 'opacity-20' : 'opacity-90'}"
 		style:color={color ?? undefined}
 	></canvas>
+	{#if range && range.to > range.from}
+		<!-- The selection (the loop): a band over the bars, the same on every row. -->
+		<div
+			class="pointer-events-none absolute inset-y-0 border-x border-accent/70 bg-accent/15"
+			style:left="{range.from * 100}%"
+			style:width="{(range.to - range.from) * 100}%"
+			data-range
+		></div>
+	{/if}
 	<!-- Playhead: positioned by percentage so it stays correct on resize -->
 	<div
 		class="pointer-events-none absolute inset-y-0 w-0.5 bg-accent"

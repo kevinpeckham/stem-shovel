@@ -21,7 +21,10 @@ describe("SectionTimeline", () => {
 		});
 		const blocks = screen.getAllByRole("tab");
 		expect(blocks.map((b) => b.textContent?.trim())).toEqual(["I", "II"]);
-		expect(blocks[0]).toHaveAttribute("title", "I · Intro · 45 bars");
+		expect(blocks[0]).toHaveAttribute(
+			"title",
+			"I · Intro · 45 bars · click to select and go there",
+		);
 		expect(blocks[1]).toHaveAttribute("title", expect.stringContaining("II · Verse · "));
 	});
 	test("the block containing the playhead is selected", () => {
@@ -29,18 +32,37 @@ describe("SectionTimeline", () => {
 		expect(screen.getByRole("tab", { name: "II" })).toHaveAttribute("aria-selected", "true");
 		expect(screen.getByRole("tab", { name: "I" })).toHaveAttribute("aria-selected", "false");
 	});
-	test("clicking a block seeks to its start", async () => {
+	test("clicking a block selects it as the loop's stretch and seeks to its start", async () => {
 		const user = userEvent.setup();
 		const seek = vi.fn();
-		render(SectionTimeline, { props: { engine: fakeEngine({ seek }), sections } });
+		const setLoop = vi.fn();
+		render(SectionTimeline, { props: { engine: fakeEngine({ seek, setLoop }), sections } });
 		await user.click(screen.getByRole("tab", { name: "II" }));
+		expect(setLoop).toHaveBeenCalledWith({ start: 90, end: 256.7 });
 		expect(seek).toHaveBeenCalledWith(90);
+	});
+	test("the selected block is marked, and clicking it again clears the selection", async () => {
+		const user = userEvent.setup();
+		const seek = vi.fn();
+		const setLoop = vi.fn();
+		render(SectionTimeline, {
+			props: { engine: fakeEngine({ seek, setLoop, loop: { start: 90, end: 256.7 } }), sections },
+		});
+		const block = screen.getByRole("tab", { name: "II" });
+		expect(block).toHaveAttribute("data-selected", "true");
+		expect(block).toHaveAttribute(
+			"title",
+			expect.stringContaining("selected (click again to clear)"),
+		);
+		await user.click(block);
+		expect(setLoop).toHaveBeenCalledWith(null);
+		expect(seek).not.toHaveBeenCalled();
 	});
 	test("without a tempo and meter the tooltip falls back to the timecode range", () => {
 		render(SectionTimeline, { props: { engine: fakeEngine(), sections } });
 		expect(screen.getByRole("tab", { name: "I" })).toHaveAttribute(
 			"title",
-			"I · Intro · 00:00:00.00 – 01:30:00.00",
+			"I · Intro · 00:00:00.00 – 01:30:00.00 · click to select and go there",
 		);
 	});
 	test("a kind with a single change at 0:00 draws no marker; a change does, and the one in force is highlighted", () => {

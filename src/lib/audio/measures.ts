@@ -85,6 +85,13 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 	};
 }
 
+/** The tempo in force at `seconds` (the first, before any change). */
+export const tempoAt = (grid: BarGrid, seconds: number): number =>
+	valueAt(grid.tempos, seconds).bpm;
+/** The beats to the bar in force at `seconds`. */
+export const beatsPerBarAt = (grid: BarGrid, seconds: number): number =>
+	valueAt(grid.meters, seconds).beatsPerBar;
+
 /** The first beat line at or after `seconds`: when it sounds, whether it opens a bar, and its bar and beat (the click, stemClick.svelte.ts). */
 export function nextBeatAt(
 	grid: BarGrid,

@@ -20,6 +20,8 @@
 		onseek?: (fraction: number) => void;
 		/** Ctrl / ⌘-click or right-click: a menu for this position instead of a seek. */
 		oncontext?: (fraction: number, x: number, y: number) => void;
+		/** The selected stretch, as fractions of the full song (the loop), drawn over the notes. */
+		range?: { from: number; to: number } | null;
 	}
 
 	let {
@@ -32,6 +34,7 @@
 		label,
 		onseek,
 		oncontext,
+		range = null,
 	}: Props = $props();
 
 	let width = $state(0);
@@ -127,6 +130,14 @@
 		{@attach roll}
 		class="absolute inset-0 h-full w-full text-blue-300 {dimmed ? 'opacity-30' : 'opacity-90'}"
 	></canvas>
+	{#if range && range.to > range.from}
+		<div
+			class="pointer-events-none absolute inset-y-0 border-x border-accent/70 bg-accent/15"
+			style:left="{range.from * 100}%"
+			style:width="{(range.to - range.from) * 100}%"
+			data-range
+		></div>
+	{/if}
 	<div
 		class="pointer-events-none absolute inset-y-0 w-0.5 bg-accent"
 		style:left="{progress * 100}%"
