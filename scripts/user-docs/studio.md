@@ -8,13 +8,13 @@
 
 A track can also take one of the instruments: the **piano**, the **chord player** or the **drum machine**, each in a panel from the toolbar (choosing one as a track's input opens it). They play in Dawn's own audio engine, so what you play on the panel lands on the take exactly as heard, and a piano or chord part played by hand is shifted earlier by your audio output's delay (switch that off in the **Timing** menu). A track armed to the drum machine makes the beat play along from the start whenever the song runs, at the song's tempo; record and the beat is on the take. The drum machine's beat, the piano's preset and the chord player's settings are kept with the song and come back when it is opened.
 
-## Effects on a track
+## Inserts on a track
 
-The sliders button in a track's header opens its effects, the piano's own in a mixer's order: a **compressor** (amount, ratio and make-up gain; at zero the sound goes round it untouched), **tone** (a tilt from dark to bright, air for sparkle above what is there, bottom for weight under 100 Hz) and a **reverb** send (level and size, from a room to a cathedral). They apply as you play and as the song plays, are saved with the song, and are baked into a bounce, a demo and the stems you send to a song. The button lights when any effect is on; **Reset effects** switches them all off.
+The sliders button in a track's header opens its **inserts**: a chain of effects the track's sound passes through in order. Add any of six: an **EQ** (low, mid and high bands), a **compressor** (amount, ratio, attack, release and make-up gain), **tone** (a tilt from dark to bright, air for sparkle, bottom for weight), a **delay** (time, feedback and level, with analog repeats that darken and soften), a **reverb** (level and size, from a room to a cathedral) and a **limiter** (a ceiling the sound never passes). Each insert has a bypass, arrows to move it up or down the chain, and a cross to remove it. They apply as you play and as the song plays, are saved with the song, and are baked into a bounce, a demo and the stems you send to a song. The button lights when the track has any insert. A track that had the old compressor, tone and reverb keeps them as inserts.
 
 ## Automation
 
-Press **A** in a track's header and a lane opens under its clips for the track's volume, pan or reverb (the picker at the lane's right). Click the lane to add a point, drag a point to move it, double-click to remove it; the line between points is what the track does as the song plays, and the knob shows it moving. Turn the level or pan knob while a lane is open and a point lands at the playhead with that value, so you can ride a fader as you listen. Undo takes a point back like any edit, and the bounce, the demo and the stems follow the lanes.
+Press **A** in a track's header and a lane opens under its clips for the track's volume, pan, a send, or any insert parameter marked automatable (the picker in the track's header). Click the lane to add a point, drag a point to move it, double-click to remove it; the line between points is what the track does as the song plays, and the knob shows it moving. Turn the level or pan knob while a lane is open and a point lands at the playhead with that value, so you can ride a fader as you listen. Undo takes a point back like any edit, and the bounce, the demo and the stems follow the lanes.
 
 ## The Practice Amp
 
@@ -53,6 +53,10 @@ A bounce needs sound, so a MIDI track is **rendered to audio** first: **Render t
 ## Songs and revisions
 
 The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Recordings** panel lists every song with its saved revisions and recent autosaves, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.
+
+## The mixer
+
+**Mixer** beside Tracks and Stage shows a strip for every track, every bus and the master. A track's strip has its output (the master or a bus), its inserts, a send knob to each bus, pan, the fader, mute and solo, and a meter. **Add bus** on the master strip makes a bus: a group that tracks can route to or send to, with its own name, tint, inserts, pan, fader, mute and meter, going on to the master; the master has inserts of its own (a limiter is the usual one). Removing a bus sends its tracks back to the master. Every mixer change can be undone, and a bounce, a demo and the stems follow the routing.
 
 ## Bouncing
 

@@ -25,6 +25,24 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   arrangement's version unchanged), utils `automationValueAt`,
   `editAutomation`, `scheduleAutomation`, each tested; the Stage's pucks
   follow automated values. Browser test `studio-automation.spec.ts`.
+- **Dawn: routing and the mixer** (docs/dawn-daw-plan.md, phase D2).
+  A track's fixed three effects become a chain of **inserts** of six
+  kinds (EQ, compressor, tone, delay, reverb, limiter; `InsertPanel.svelte`,
+  reusable for a track, a bus or the master: add, bypass, reorder,
+  remove, a slider per parameter), **buses** that tracks route or send
+  to, each with its own inserts, pan, fader, mute, tint and meter, and
+  **master inserts**; a **Mixer** view beside Tracks and Stage
+  (`MixerConsole.svelte`: a strip per track, bus and master with output
+  picker, inserts, send knobs, pan, fader, mute, solo and meter; Add bus
+  and Remove bus). Automation lanes now cover sends and every
+  automatable insert parameter (keys `send:<bus>`,
+  `insert:<id>:<param>`), on buses too; the lane picker lists what the
+  strip can automate. Every strip is one `stripGraph.ts` the live
+  context and the bounce build alike (`insertChain.ts`, `mixStages.ts`,
+  `constants/studioInserts.ts`); old arrangements' `fx` reads as
+  inserts (`insertsFromFx`) and the schema's version stays 1. Unit,
+  component and browser tests (`studio-mixer.spec.ts`); the user guide
+  gains "Inserts on a track" and "The mixer".
 - **The plan**: `docs/dawn-daw-plan.md`, eight phases from automation to
   routing and a mixer, export, comping, the tempo map and stretch,
   instruments and plugins, collaboration, and scale.

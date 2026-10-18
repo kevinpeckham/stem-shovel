@@ -1,7 +1,8 @@
 import type { MeterState } from "#lib/utils/meterLevel.js";
 import { meterWidth } from "#lib/utils/meterLevel.js";
 import { installFakePopover } from "../../../tests/helpers/fakePopover";
-import { defaultTrackFx } from "#lib/audio/trackChain.js";
+import { automationLanes } from "#lib/utils/automationLanes.js";
+import { insertsOf } from "#lib/utils/insertsFromFx.js";
 import { rulerTicks } from "#lib/utils/rulerTicks.js";
 import type { StudioArrangement, StudioClip, StudioTrack } from "#lib/val/StudioSchema.js";
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
@@ -54,11 +55,23 @@ const fake = vi.hoisted(() => {
 		setTint: vi.fn(),
 		resetClips: vi.fn(),
 		setTrackFx: vi.fn(),
+		setInserts: vi.fn(),
 		setAutomation: vi.fn(),
 		hasAutomation: vi.fn(() => false),
 		automatedValue: vi.fn((id: string, param: string) => {
 			const t = engine.arrangement.tracks.find((x) => x.id === id)!;
 			return param === "volume" ? t.gain : param === "pan" ? t.pan : (t.fx?.reverb.level ?? 0);
+		}),
+		// The lanes as the engine lists them (utils/automationLanes.ts) from the track's state: volume, pan, then its inserts' parameters.
+		lanesOf: vi.fn((id: string) => {
+			const t = engine.arrangement.tracks.find((x) => x.id === id)!;
+			return automationLanes({
+				gain: t.gain,
+				pan: t.pan,
+				sends: t.sends,
+				inserts: insertsOf(t),
+				buses: engine.arrangement.buses ?? [],
+			});
 		}),
 		toggleMute: vi.fn(),
 		toggleSolo: vi.fn(),
@@ -452,79 +465,59 @@ describe("StudioTimeline", () => {
 		expect(fake.setTint).toHaveBeenCalledWith("t2", "sage");
 	});
 
-	test("the effects menu opens the track's compressor, tone and reverb, and a slider sends the whole fx to the engine", async () => {
+	test("the inserts menu opens the track's inserts (its old fx as a list); adding one hands the engine the whole list", async () => {
 		const user = userEvent.setup();
 		render(StudioTimeline);
-		const button = screen.getByRole("button", { name: "Track 1 Playback Effects" });
-		expect(button).toHaveAttribute("title", "Compressor, tone and reverb for this track");
-		expect(button).not.toHaveClass("text-accent");
+		const button = screen.getByRole("button", { name: "Track 1 Inserts" });
+		expect(button).toHaveAttribute("title", expect.stringContaining("Inserts"));
+		expect(button).not.toHaveAttribute("data-active", "true");
 		// A track with effects on shows it on its button.
-		expect(screen.getByRole("button", { name: "Guitar Playback Effects" })).toHaveAttribute(
+		expect(screen.getByRole("button", { name: "Guitar Inserts" })).toHaveAttribute(
 			"data-active",
 			"true",
 		);
 		await user.click(button);
-		const level = screen.getByRole("slider", { name: "Track 1 reverb level" });
-		expect(level).toBeVisible();
-		// Every track's menu is in the DOM (closed ones display:none): the readouts are read within the open one.
-		const menu = within(level.closest("[popover]") as HTMLElement);
-		expect(menu.getByText("Track 1 Playback Effects")).toHaveClass("uppercase");
-		expect(menu.getByText("Level · 0%")).toBeInTheDocument();
-		expect(menu.getByText("Tilt · flat")).toBeInTheDocument();
-		expect(menu.getByText("Size · a hall")).toBeInTheDocument();
-		await fireEvent.input(screen.getByRole("slider", { name: "Track 1 reverb level" }), {
-			target: { value: "0.6" },
-		});
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t1", {
-			...defaultTrackFx(),
-			reverb: { level: 0.6, size: 0.5 },
-		});
-		await fireEvent.input(screen.getByRole("slider", { name: "Track 1 tone tilt" }), {
-			target: { value: "0.5" },
-		});
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t1", {
-			...defaultTrackFx(),
-			tone: { tilt: 0.5, air: 0, bottom: 0 },
-		});
-		await fireEvent.input(screen.getByRole("slider", { name: "Track 1 compressor make-up gain" }), {
-			target: { value: "6" },
-		});
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t1", {
-			...defaultTrackFx(),
-			compressor: { amount: 0, ratio: 4, attack: 0.01, release: 0.25, makeup: 6 },
-		});
-		// The reverb's size rebuilds the impulse, so it waits for the change.
-		const size = screen.getByRole("slider", { name: "Track 1 reverb size" });
-		await fireEvent.input(size, { target: { value: "0.9" } });
-		expect(fake.setTrackFx).toHaveBeenCalledTimes(3);
-		await fireEvent.change(size, { target: { value: "0.9" } });
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t1", {
-			...defaultTrackFx(),
-			reverb: { level: 0, size: 0.9 },
-		});
-		await fireEvent.dblClick(screen.getByRole("slider", { name: "Track 1 tone tilt" }));
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t1", defaultTrackFx());
+		// Every track's menu is in the DOM (closed ones display:none): the panel is read within Track 1's.
+		const panel = within(
+			screen.getByRole("group", { name: "Track 1 inserts" }).closest("[popover]") as HTMLElement,
+		);
+		expect(panel.getByText(/No inserts yet/)).toBeInTheDocument();
+		await user.click(panel.getByRole("button", { name: "Add EQ" }));
+		expect(fake.setInserts).toHaveBeenCalledTimes(1);
+		const [id, list] = fake.setInserts.mock.calls[0]!;
+		expect(id).toBe("t1");
+		expect(list).toHaveLength(1);
+		expect(list[0].kind).toBe("eq");
 	});
 
-	test("a track's effects show their values; a slider patches one field and Reset clears them all", async () => {
+	test("a track's old fx show as inserts; a slider patches one setting and the panel sends the list", async () => {
 		const user = userEvent.setup();
 		render(StudioTimeline);
-		await user.click(screen.getByRole("button", { name: "Guitar Playback Effects" }));
-		const level = screen.getByRole("slider", { name: "Guitar reverb level" });
+		await user.click(screen.getByRole("button", { name: "Guitar Inserts" }));
+		const level = screen.getByRole("slider", { name: "Reverb Level" });
 		expect(level).toHaveValue("0.6");
-		const menu = within(level.closest("[popover]") as HTMLElement);
-		expect(menu.getByText("Level · 60%")).toBeInTheDocument();
-		expect(menu.getByText("Tilt · bright")).toBeInTheDocument();
-		await fireEvent.input(screen.getByRole("slider", { name: "Guitar tone air" }), {
+		expect(screen.getByRole("slider", { name: "Tone Tilt" })).toHaveValue("0.5");
+		await fireEvent.input(screen.getByRole("slider", { name: "Tone Air" }), {
 			target: { value: "0.3" },
 		});
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t2", {
-			compressor: { amount: 0, ratio: 4, attack: 0.01, release: 0.25, makeup: 0 },
-			tone: { tilt: 0.5, air: 0.3, bottom: 0 },
-			reverb: { level: 0.6, size: 0.5 },
-		});
-		await user.click(screen.getByRole("button", { name: "Reset effects" }));
-		expect(fake.setTrackFx).toHaveBeenLastCalledWith("t2", defaultTrackFx());
+		expect(fake.setInserts).toHaveBeenLastCalledWith("t2", [
+			{ id: "fx-tone", kind: "tone", settings: { tilt: 0.5, air: 0.3, bottom: 0 } },
+			{ id: "fx-reverb", kind: "reverb", settings: { level: 0.6, size: 0.5 } },
+		]);
+		await user.click(screen.getByRole("button", { name: "Remove Reverb" }));
+		expect(fake.setInserts).toHaveBeenLastCalledWith("t2", [
+			{ id: "fx-tone", kind: "tone", settings: { tilt: 0.5, air: 0, bottom: 0 } },
+		]);
+	});
+
+	test("the lane picker lists the volume, the pan and the inserts' automatable parameters", async () => {
+		const user = userEvent.setup();
+		render(StudioTimeline);
+		await user.click(screen.getByRole("button", { name: "Automation for Guitar" }));
+		const picker = screen.getByRole("combobox", { name: "Guitar automation parameter" });
+		await user.click(picker);
+		const names = screen.getAllByRole("option").map((o) => o.textContent?.trim());
+		expect(names).toEqual(["Volume", "Pan", "Reverb: Level"]);
 	});
 
 	test("the actions menu moves a track, and removes one after confirming when it has clips", async () => {

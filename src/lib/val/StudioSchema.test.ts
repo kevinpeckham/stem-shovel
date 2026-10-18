@@ -198,5 +198,71 @@ describe("StudioAutomationSchema (D1)", () => {
 		expect(v.safeParse(StudioArrangementSchema, arrangement([tooMany], [])).success).toBe(false);
 		const loud = { ...t, automation: { volume: [{ t: 0, v: 3 }] } };
 		expect(v.safeParse(StudioArrangementSchema, arrangement([loud], [])).success).toBe(false);
+		// D2: a send's and an insert's lane by key; a key outside the shape fails.
+		const keyed = {
+			...t,
+			automation: { "send:b1": [{ t: 0, v: 0.5 }], "insert:i1:level": [{ t: 1, v: 0.2 }] },
+		};
+		expect(v.safeParse(StudioArrangementSchema, arrangement([keyed], [])).success).toBe(true);
+		const odd = { ...t, automation: { reverb: [{ t: 0, v: 0.5 }] } };
+		expect(v.safeParse(StudioArrangementSchema, arrangement([odd], [])).success).toBe(false);
+	});
+});
+
+describe("StudioArrangementSchema: inserts, buses and sends (D2)", () => {
+	test("a bus, a track routed and sending to it, inserts on each and the master", () => {
+		const bus = {
+			id: "b1",
+			name: "Drums",
+			gain: 1,
+			pan: 0,
+			muted: false,
+			inserts: [{ id: "i9", kind: "limiter", settings: { ceiling: -1, release: 0.1 } }],
+		};
+		const t = {
+			...track("t1"),
+			output: "b1",
+			sends: [{ bus: "b1", level: 0.3, pre: true }],
+			inserts: [
+				{
+					id: "i1",
+					kind: "eq",
+					settings: {
+						lowGain: 2,
+						lowFreq: 120,
+						midGain: 0,
+						midFreq: 1000,
+						midQ: 1,
+						highGain: -1,
+						highFreq: 6000,
+					},
+				},
+				{
+					id: "i2",
+					kind: "delay",
+					bypass: true,
+					settings: { time: 0.3, feedback: 0.4, level: 0.2, analog: true },
+				},
+			],
+		};
+		const a = {
+			...arrangement([t], []),
+			buses: [bus],
+			masterInserts: [{ id: "m1", kind: "limiter", settings: { ceiling: -0.5, release: 0.2 } }],
+		};
+		const ok = v.safeParse(StudioArrangementSchema, a);
+		expect(ok.success).toBe(true);
+		if (ok.success) {
+			expect(ok.output.buses?.[0]?.inserts?.[0]?.kind).toBe("limiter");
+			expect(ok.output.tracks[0]!.inserts?.[1]?.bypass).toBe(true);
+			expect(ok.output.masterInserts).toHaveLength(1);
+		}
+		const badKind = { ...t, inserts: [{ id: "i1", kind: "chorus", settings: {} }] };
+		expect(v.safeParse(StudioArrangementSchema, arrangement([badKind], [])).success).toBe(false);
+		const tooManyBuses = {
+			...a,
+			buses: Array.from({ length: 9 }, (_, i) => ({ ...bus, id: `b${i}` })),
+		};
+		expect(v.safeParse(StudioArrangementSchema, tooManyBuses).success).toBe(false);
 	});
 });

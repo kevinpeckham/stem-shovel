@@ -79,7 +79,7 @@ automatable parameters, so D2 adds sends and inserts in one place.
   toggle; a browser spec that draws two points and reads the
   arrangement back through `window.__studio`.
 
-### D2. Routing and the mixer: buses, sends, inserts, master chain
+### D2. Routing and the mixer: buses, sends, inserts, master chain (built on `dawn-daw`, 2026-10-18)
 
 - Schema: `buses[]` (name, gain, pan, fx, output), a track's `output`
   (master or a bus), `sends[]` (bus, level, pre/post), a master `fx`.
@@ -93,6 +93,12 @@ automatable parameters, so D2 adds sends and inserts in one place.
 - A **mixer console** view (strips: fader, pan, inserts, sends, meter,
   output picker) beside Tracks and Stage; the Stage gets bus pucks.
 - Automation on every insert and send parameter.
+- Built: `stripGraph.ts`, `insertChain.ts`, `mixStages.ts`,
+  `constants/studioInserts.ts`, `InsertPanel.svelte`,
+  `MixerConsole.svelte`, keyed lanes; docs/multitrack-recorder.md
+  "Routing and the mixer". Left for later: bus pucks on the Stage, a
+  tempo-synced delay time (D5 brings the tempo map), pre-fader sends
+  in the console (the engine takes `pre`; the knob writes post).
 
 ### D3. Export and delivery
 

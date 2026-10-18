@@ -12,24 +12,14 @@
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { rulerTicks } from "#lib/utils/rulerTicks.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
-	import { defaultTrackFx, trackFxActive } from "#lib/audio/trackChain.js";
-	import type {
-		StudioClip,
-		StudioInput,
-		StudioNote,
-		StudioTrack,
-		StudioTrackFx,
-	} from "#lib/val/StudioSchema.js";
+	import { insertsOf } from "#lib/utils/insertsFromFx.js";
+	import type { StudioClip, StudioInput, StudioNote, StudioTrack } from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
 	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
 	import StudioTrackMenu from "./StudioTrackMenu.svelte";
 	import AutomationLane from "./AutomationLane.svelte";
-	import {
-		STUDIO_AUTOMATION,
-		STUDIO_AUTOMATION_PARAMS,
-		type StudioAutomationParam,
-	} from "#lib/constants/studioAutomation.js";
+	import InsertPanel from "./InsertPanel.svelte";
 	import Knob from "./Knob.svelte";
 
 	/**
@@ -66,8 +56,8 @@
 	const LANE_H = 108;
 	/** An open automation lane under a track's clips (docs/dawn-daw-plan.md, D1). */
 	const AUTO_H = 64;
-	/** Which lane each track shows, if any; a track's row grows by AUTO_H while one is open. */
-	let laneShown = $state<Record<string, StudioAutomationParam>>({});
+	/** Which lane each track shows (its key on `automation`), if any; a track's row grows by AUTO_H while one is open. */
+	let laneShown = $state<Record<string, string>>({});
 	const rowHeight = (trackId: string) => LANE_H + (laneShown[trackId] ? AUTO_H : 0);
 	function toggleLane(trackId: string) {
 		if (laneShown[trackId]) {
@@ -75,10 +65,11 @@
 			laneShown = rest;
 		} else laneShown = { ...laneShown, [trackId]: "volume" };
 	}
-	const AUTOMATION_OPTIONS = STUDIO_AUTOMATION_PARAMS.map((p) => ({
-		value: p,
-		label: STUDIO_AUTOMATION[p].label,
-	}));
+	/** The lane the track shows, from what it can show now (utils/automationLanes.ts): the volume when the picked one is gone (its insert removed, say). */
+	function laneOf(trackId: string) {
+		const lanes = engine.lanesOf(trackId);
+		return lanes.find((l) => l.key === laneShown[trackId]) ?? lanes[0];
+	}
 	/** The rows a vertical drag of `dy` pixels crosses from the track at `index`, with open lanes making rows taller. */
 	function rowsAcross(index: number, dy: number): number {
 		const tracks = engine.arrangement.tracks;
@@ -587,19 +578,6 @@
 	function silenced(t: StudioTrack) {
 		return t.muted || (engine.anySolo && !t.solo);
 	}
-	/** The track's effects as they stand (every effect off when it has none), and a setter for one field. */
-	function fxOf(t: StudioTrack): StudioTrackFx {
-		return t.fx ?? defaultTrackFx();
-	}
-	function setFx<K extends keyof StudioTrackFx>(
-		t: StudioTrack,
-		group: K,
-		patch: Partial<StudioTrackFx[K]>,
-	) {
-		const fx = structuredClone($state.snapshot(fxOf(t)));
-		Object.assign(fx[group], patch);
-		engine.setTrackFx(t.id, fx);
-	}
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
@@ -663,134 +641,15 @@
 		<!-- The track's tint (constants/stemTints.ts, as the stem player's): swatches in its menu, none first. -->
 		{@const tint = stemTintHex(track.colour)}
 		{@const dim = silenced(track)}
-		{#snippet fxMenu()}
-			{@const fx = fxOf(track)}
-			<div
-				class="px-3 pt-2 pb-4 grid gap-4 text-13px [&_span.device-button-label]-(block mb-1 text-blue-100/90) [&_input[type=range]]-(w-full accent-maximumYellow)"
-			>
-				<div class="grid gap-2">
-					<span class="device-button-label">Compressor</span>
-					<label class="block">
-						<span class="text-11px opacity-70"
-							>Amount · {Math.round(fx.compressor.amount * 100)}%</span
-						>
-						<input
-							type="range"
-							min="0"
-							max="1"
-							step="0.01"
-							value={fx.compressor.amount}
-							aria-label="{track.name} compressor amount"
-							oninput={(e) => setFx(track, "compressor", { amount: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-					<label class="block">
-						<span class="text-11px opacity-70">Ratio · {fx.compressor.ratio}:1</span>
-						<input
-							type="range"
-							min="1"
-							max="20"
-							step="1"
-							value={fx.compressor.ratio}
-							aria-label="{track.name} compressor ratio"
-							oninput={(e) => setFx(track, "compressor", { ratio: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-					<label class="block">
-						<span class="text-11px opacity-70">Make-up · {fx.compressor.makeup} dB</span>
-						<input
-							type="range"
-							min="0"
-							max="24"
-							step="1"
-							value={fx.compressor.makeup}
-							aria-label="{track.name} compressor make-up gain"
-							oninput={(e) => setFx(track, "compressor", { makeup: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-				</div>
-				<div class="grid gap-2">
-					<span class="device-button-label">Tone</span>
-					<label class="block">
-						<span class="text-11px opacity-70"
-							>Tilt · {fx.tone.tilt < 0 ? "dark" : fx.tone.tilt > 0 ? "bright" : "flat"}</span
-						>
-						<input
-							type="range"
-							min="-1"
-							max="1"
-							step="0.05"
-							value={fx.tone.tilt}
-							aria-label="{track.name} tone tilt"
-							oninput={(e) => setFx(track, "tone", { tilt: e.currentTarget.valueAsNumber })}
-							ondblclick={() => setFx(track, "tone", { tilt: 0 })}
-						/>
-					</label>
-					<label class="block">
-						<span class="text-11px opacity-70">Air · {Math.round(fx.tone.air * 100)}%</span>
-						<input
-							type="range"
-							min="0"
-							max="1"
-							step="0.05"
-							value={fx.tone.air}
-							aria-label="{track.name} tone air"
-							oninput={(e) => setFx(track, "tone", { air: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-					<label class="block">
-						<span class="text-11px opacity-70">Bottom · {Math.round(fx.tone.bottom * 100)}%</span>
-						<input
-							type="range"
-							min="0"
-							max="1"
-							step="0.05"
-							value={fx.tone.bottom}
-							aria-label="{track.name} tone bottom"
-							oninput={(e) => setFx(track, "tone", { bottom: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-				</div>
-				<div class="grid gap-2">
-					<span class="device-button-label">Reverb</span>
-					<label class="block">
-						<span class="text-11px opacity-70">Level · {Math.round(fx.reverb.level * 100)}%</span>
-						<input
-							type="range"
-							min="0"
-							max="1"
-							step="0.01"
-							value={fx.reverb.level}
-							aria-label="{track.name} reverb level"
-							oninput={(e) => setFx(track, "reverb", { level: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-					<label class="block">
-						<span class="text-11px opacity-70"
-							>Size · {fx.reverb.size < 0.34
-								? "a room"
-								: fx.reverb.size < 0.67
-									? "a hall"
-									: "a cathedral"}</span
-						>
-						<input
-							type="range"
-							min="0"
-							max="1"
-							step="0.05"
-							value={fx.reverb.size}
-							aria-label="{track.name} reverb size"
-							onchange={(e) => setFx(track, "reverb", { size: e.currentTarget.valueAsNumber })}
-						/>
-					</label>
-				</div>
-				<button
-					class="button button-xs justify-self-start"
-					type="button"
-					onclick={() => engine.setTrackFx(track.id, defaultTrackFx())}
-				>
-					<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span> Reset effects
-				</button>
+		{#snippet insertsMenu()}
+			<!-- The track's inserts (InsertPanel.svelte, docs/dawn-daw-plan.md D2): the whole list to the engine on every change. -->
+			<div class="px-3 pt-2 pb-3">
+				<InsertPanel
+					inserts={insertsOf(track)}
+					label={track.name}
+					automated={new Set(Object.keys(track.automation ?? {}))}
+					onchange={(list) => engine.setInserts(track.id, list)}
+				/>
 			</div>
 		{/snippet}
 		<div
@@ -898,17 +757,17 @@
 						</span>
 					{:else}
 						<ContextMenu
-							ariaLabel="{track.name} Playback Effects"
-							dataActive={trackFxActive(track.fx)}
-							title="Compressor, tone and reverb for this track"
+							ariaLabel="{track.name} Inserts"
+							dataActive={insertsOf(track).length > 0}
+							title="Inserts: EQ, compressor, tone, delay, reverb, limiter on this track"
 							iconClass="i-ph-sliders-horizontal"
 							clearButtonBaseClasses={true}
 							buttonClasses="device-fader-menu-button-sm"
 							position="bottom left"
 							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
 							items={[
-								{ id: "fx-heading", kind: "heading", label: `${track.name} Playback Effects` },
-								{ id: "fx", kind: "snippet", snippet: fxMenu },
+								{ id: "fx-heading", kind: "heading", label: `${track.name} inserts` },
+								{ id: "fx", kind: "snippet", snippet: insertsMenu },
 							]}
 						/>
 					{/if}
@@ -957,8 +816,8 @@
 					<!-- Which parameter the open lane shows; here in the sticky header, so it stays in view as the lane scrolls. -->
 					<ComboBox
 						ariaLabel="{track.name} automation parameter"
-						options={AUTOMATION_OPTIONS}
-						value={laneShown[track.id]!}
+						options={engine.lanesOf(track.id).map((l) => ({ value: l.key, label: l.range.label }))}
+						value={laneOf(track.id)?.key ?? "volume"}
 						onchange={(v) => (laneShown = { ...laneShown, [track.id]: v })}
 						clearDefaultButtonClasses
 						buttonClasses="flex w-full items-center gap-1 h-6 px-1.5 rounded border border-accent/40 bg-oxford-800 text-11px text-accent"
@@ -1088,8 +947,9 @@
 						</div>
 					{/if}
 				</div>
-				{#if laneShown[track.id]}
-					{@const param = laneShown[track.id]!}
+				{#if laneShown[track.id] && laneOf(track.id)}
+					{@const choice = laneOf(track.id)!}
+					{@const param = choice.key}
 					<!-- The automation lane (AutomationLane.svelte): the parameter's picker over the curve; a click adds a point, the knobs write one at the playhead. -->
 					<div
 						class="relative border-b border-white/10 bg-black/20"
@@ -1098,14 +958,14 @@
 					>
 						<AutomationLane
 							points={track.automation?.[param] ?? []}
-							range={STUDIO_AUTOMATION[param]}
+							range={choice.range}
 							{pxPerSecond}
 							width={laneWidth}
 							height={AUTO_H}
 							snap={engine.arrangement.gridOn ? (t) => engine.snap(t) : undefined}
 							playhead={engine.running ? engine.position : null}
 							fallback={engine.automatedValue(track.id, param, 0)}
-							label={STUDIO_AUTOMATION[param].label}
+							label={choice.range.label}
 							onchange={(points) => engine.setAutomation(track.id, param, points)}
 						/>
 					</div>

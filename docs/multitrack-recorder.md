@@ -592,3 +592,74 @@ nudge (Shift by more) and Delete removes; every finished gesture is one
 button in the header, with a picker for the parameter, and the row grows
 by `AUTO_H`; a clip dragged across tracks counts the taller rows
 (`rowsAcross`, `rowsToPx`). A MIDI track has no audio path and no lane.
+
+## Routing and the mixer (2026-10-18, docs/dawn-daw-plan.md D2)
+
+The fixed three effects on a track gave way to **inserts**, and every
+strip (a track, a bus, the master) is one `StripGraph`
+(`src/lib/audio/stripGraph.ts`): `fader` (mute, solo, the static level)
+→ `auto` (the volume lane) → the inserts (`insertChain.ts`) → `pan` →
+`meter` and `out`. Sends tap after the inserts (post) or at the fader's
+input (pre), each through its own gain into a bus's input. The live
+context and the offline bounce build the same strips; `render()` builds
+the master, the buses and the tracks on an `OfflineAudioContext` and
+schedules the lanes from zero.
+
+**Inserts** are a typed list, `{id, kind, bypass?, settings}`
+(`StudioInsertSchema`), of six kinds in `constants/studioInserts.ts`:
+`eq` (three bands), `compressor` and `tone` (the instruments' stages
+from `fxStages.ts`), `delay` (a feedback loop with damping, `analog`
+soft clip), `reverb` (the synthesized room) and `limiter` (a fast
+compressor with its knee shut, make-up to the ceiling). Each kind
+names its parameters with a range, step and readout, and marks the
+ones a lane can drive (`automatable`: they are `AudioParam`s on the
+stage); `INSERT_DEFAULTS` is a new insert's settings; a strip holds up
+to `MAX_INSERTS` (8). `mixStages.ts` builds a stage per kind on any
+`BaseAudioContext` (`MixStage {input, output, update, params}`), and
+`insertChain.ts` chains them in order, rewiring only when the ids,
+kinds, order or bypass flags change (a settings change ramps the
+params in place, 20 ms from a slider, 0 for a restore). A track from
+before D2 keeps its `fx`; `utils/insertsFromFx.ts` reads it as the
+equivalent list (`fx-compressor`, `fx-tone`, `fx-reverb`, the active
+ones in the old order) until the panel's first edit writes `inserts`,
+so old arrangements play unchanged and the schema's `version` stays 1.
+
+**Buses** (`StudioBusSchema`: id, name, `colour`, gain, pan, muted,
+inserts, automation) live on `arrangement.buses`, up to
+`MAX_STUDIO_BUSES` (8), and feed the master; a track's `output` names a
+bus (or is unset for the master) and its `sends` (`{bus, level, pre?}`)
+feed buses beside its output. The master carries `masterInserts`. The
+engine keeps a strip per track, per bus and the master
+(`#tracks`, `#buses`, `#masterStrip`), `#routeAll` connects each track
+to its bus or the master and each bus to the master, and `removeBus`
+sends its tracks back to the master and drops the sends to it. A bus
+meters in `levels[busId]` as a track does. Undo covers every mixer
+edit (`setInserts`, `addBus`, `removeBus`, `renameBus`, `setBusGain`,
+`setBusPan`, `toggleBusMute`, `setBusTint`, `setOutput`, `setSend`:
+one `#commit` each).
+
+**Automation keys** generalize D1's three names: a lane's key on
+`automation` is `volume`, `pan`, `send:<busId>` or
+`insert:<insertId>:<param>` (`insertLaneKey`, `sendLaneKey`,
+`parseLaneKey`); `utils/automationLanes.ts` lists what a strip can
+automate now, in the picker's order, with each lane's range and its
+static fallback, and `engine.lanesOf(ownerId)` is that over the live
+state. A bus automates too (its volume, pan and inserts). A strip's
+`param(key)` resolves a key to the `AudioParam` the scheduler drives;
+a lane whose insert is gone is simply not scheduled, and the timeline
+falls back to the volume lane when the picked key disappears.
+
+**Components.** `InsertPanel.svelte` is one list of inserts for any
+owner: a card per insert with a slider per parameter, bypass, move up
+and down, remove, and an Add row of the kinds; every gesture hands the
+owner the whole list (`onchange`), and a parameter under a lane is
+marked. The timeline's sliders button opens it for a track (the lane
+picker in the header now lists the track's lanes from `lanesOf`).
+`MixerConsole.svelte` is the **Mixer** view beside Tracks and Stage: a
+strip per track (output picker, inserts, a send knob per bus, pan, the
+fader, mute and solo, meter), per bus (editable name, actions menu
+with tint and Remove, inserts, pan, fader, mute, meter) and the master
+(Add bus, inserts, fader, meter). Browser spec
+`tests/e2e/studio-mixer.spec.ts`; component tests beside each
+component; unit tests on the schema, `insertsFromFx` and
+`automationLanes`.

@@ -2,7 +2,6 @@ import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js
 import { automationValueAt } from "#lib/utils/automationValueAt.js";
 import { editAutomation } from "#lib/utils/editAutomation.js";
 import { scheduleAutomation } from "#lib/utils/scheduleAutomation.js";
-import { STUDIO_AUTOMATION, type StudioAutomationParam } from "#lib/constants/studioAutomation.js";
 import { MixHistory } from "#lib/utils/mixHistory.js";
 import { audioSession } from "#lib/utils/audioSession.js";
 import { appendChunkPeaks, chunkPeaksState } from "#lib/utils/chunkPeaks.js";
@@ -37,6 +36,10 @@ import type {
 	StudioTrackFx,
 	StudioTrackKind,
 	StudioAutomationPoint,
+	StudioAutomation,
+	StudioBus,
+	StudioInsert,
+	StudioSend,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
@@ -48,7 +51,11 @@ import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
-import { createTrackChain, defaultTrackFx, type TrackChain } from "./trackChain";
+import { createStripGraph, type StripGraph } from "./stripGraph";
+import { insertsOf } from "#lib/utils/insertsFromFx.js";
+import { automationLanes } from "#lib/utils/automationLanes.js";
+import { nanoid as newLocalId } from "nanoid";
+import { MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 
 /**
  * The Studio's engine (docs/multitrack-recorder.md): tracks of clips cut
@@ -139,14 +146,6 @@ function localId(): string {
 	return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-interface TrackNodes {
-	gain: GainNode;
-	/** The volume lane's gain after the fader (docs/dawn-daw-plan.md, D1); unity without a lane. */
-	auto: GainNode;
-	chain: TrackChain;
-	panner: StereoPannerNode;
-	analyser: AnalyserNode;
-}
 interface Playing {
 	clipId: string;
 	src: AudioBufferSourceNode;
@@ -218,10 +217,11 @@ class StudioEngine {
 	#startedDrums = false;
 
 	#ctx: AudioContext | null = null;
-	#master: GainNode | null = null;
-	#masterAnalyser: AnalyserNode | null = null;
+	/** The master strip (stripGraph.ts): its fader is the master level, its inserts the master chain, its meter the master meter. */
+	#masterStrip: StripGraph | null = null;
+	#buses = new Map<string, StripGraph>();
 	#buffers = new Map<string, AudioBuffer>();
-	#tracks = new Map<string, TrackNodes>();
+	#tracks = new Map<string, StripGraph>();
 	#playing: Playing[] = [];
 	/** Each pass under way: the timeline second it began at and the context time it began on. */
 	#passes: { from: number; when: number; to: number | null }[] = [];
@@ -328,16 +328,12 @@ class StudioEngine {
 		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
 		amp.hostContext(ctx, { gateWorklet: await loadAmpWorklet(ctx) });
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
-		const master = ctx.createGain();
-		master.gain.value = this.arrangement.master;
-		const analyser = ctx.createAnalyser();
-		analyser.fftSize = 1024;
-		master.connect(analyser);
-		master.connect(ctx.destination);
-		this.#master = master;
-		this.#masterAnalyser = analyser;
+		const master = createStripGraph(ctx, { inserts: this.arrangement.masterInserts ?? [], pan: 0 });
+		master.fader.gain.value = this.arrangement.master;
+		master.route(ctx.destination);
+		this.#masterStrip = master;
 		this.#meterBuf = new Float32Array(1024);
-		for (const t of this.arrangement.tracks) this.#ensureTrackNodes(t.id);
+		this.#ensureAllStrips();
 		this.#attachInputs();
 		this.outputLatencyMs = outputLatencyMs(ctx);
 		cancelAnimationFrame(this.#meterFrame);
@@ -347,49 +343,85 @@ class StudioEngine {
 	}
 	#attachInputs() {
 		const ctx = this.#ctx;
-		if (!ctx || !this.#master) return;
+		if (!ctx || !this.#masterStrip) return;
 		inputSources.attach(ctx, {
-			monitorOut: this.#master,
+			monitorOut: this.#masterStrip.input,
 			onsource: () => {
 				// A device change while armed: the capture re-feeds on the next record.
 			},
 		});
 	}
-	#ensureTrackNodes(trackId: string): TrackNodes | null {
+	/** Every bus and track as a strip, routed; buses and tracks that are gone dropped. */
+	#ensureAllStrips() {
+		for (const id of Array.from(this.#buses.keys()))
+			if (!this.arrangement.buses?.some((b) => b.id === id)) this.#dropBus(id);
+		for (const b of this.arrangement.buses ?? []) this.#ensureBus(b.id);
+		for (const id of Array.from(this.#tracks.keys()))
+			if (!this.arrangement.tracks.some((t) => t.id === id)) this.#dropTrackNodes(id);
+		for (const t of this.arrangement.tracks) this.#ensureTrackNodes(t.id);
+		this.#routeAll();
+	}
+	#bus(id: string) {
+		return this.arrangement.buses?.find((b) => b.id === id) ?? null;
+	}
+	#ensureBus(busId: string): StripGraph | null {
 		const ctx = this.#ctx;
-		if (!ctx || !this.#master) return null;
-		let nodes = this.#tracks.get(trackId);
-		if (nodes) return nodes;
+		const bus = this.#bus(busId);
+		if (!ctx || !this.#masterStrip || !bus) return null;
+		let strip = this.#buses.get(busId);
+		if (strip) return strip;
+		strip = createStripGraph(ctx, { inserts: insertsOf(bus), pan: bus.pan });
+		strip.fader.gain.value = bus.muted ? 0 : bus.gain;
+		strip.route(this.#masterStrip.input);
+		this.#buses.set(busId, strip);
+		this.#settleAutomation(bus, strip, ctx.currentTime);
+		return strip;
+	}
+	#dropBus(busId: string) {
+		const strip = this.#buses.get(busId);
+		if (!strip) return;
+		strip.dispose();
+		this.#buses.delete(busId);
+	}
+	#ensureTrackNodes(trackId: string): StripGraph | null {
+		const ctx = this.#ctx;
+		if (!ctx || !this.#masterStrip) return null;
+		let strip = this.#tracks.get(trackId);
+		if (strip) return strip;
 		const track = this.arrangement.tracks.find((t) => t.id === trackId);
-		const gain = ctx.createGain();
-		// The fader, the volume lane, the effects (trackChain.ts), the pan, the meter, the master.
-		const auto = ctx.createGain();
-		const chain = createTrackChain(ctx, track?.fx ?? defaultTrackFx());
-		const panner = ctx.createStereoPanner();
-		const analyser = ctx.createAnalyser();
-		analyser.fftSize = 1024;
-		gain.connect(auto);
-		auto.connect(chain.input);
-		chain.output.connect(panner);
-		panner.connect(analyser);
-		panner.connect(this.#master);
-		nodes = { gain, auto, chain, panner, analyser };
-		this.#tracks.set(trackId, nodes);
+		// The fader, the volume lane, the inserts, the pan, the meter, then a bus or the master (stripGraph.ts).
+		strip = createStripGraph(ctx, {
+			inserts: track ? insertsOf(track) : [],
+			pan: track?.pan ?? 0,
+		});
+		this.#tracks.set(trackId, strip);
 		if (track) {
-			gain.gain.value = this.#effectiveGain(track);
-			this.#settleAutomation(track, nodes, ctx.currentTime);
+			strip.fader.gain.value = this.#effectiveGain(track);
+			this.#settleAutomation(track, strip, ctx.currentTime);
 		}
-		return nodes;
+		return strip;
+	}
+	/** Every track to its bus or the master, with its sends; every bus to the master. */
+	#routeAll() {
+		const master = this.#masterStrip;
+		if (!master) return;
+		const busInputs = new Map<string, AudioNode>();
+		for (const [id, strip] of this.#buses) {
+			strip.route(master.input);
+			busInputs.set(id, strip.input);
+		}
+		for (const t of this.arrangement.tracks) {
+			const strip = this.#tracks.get(t.id);
+			if (!strip) continue;
+			const dest = (t.output && busInputs.get(t.output)) || master.input;
+			strip.route(dest);
+			strip.setSends(t.sends ?? [], busInputs, 0);
+		}
 	}
 	#dropTrackNodes(trackId: string) {
-		const nodes = this.#tracks.get(trackId);
-		if (!nodes) return;
-		nodes.gain.disconnect();
-		nodes.auto.disconnect();
-		nodes.chain.input.disconnect();
-		nodes.chain.output.disconnect();
-		nodes.panner.disconnect();
-		nodes.analyser.disconnect();
+		const strip = this.#tracks.get(trackId);
+		if (!strip) return;
+		strip.dispose();
 		this.#tracks.delete(trackId);
 	}
 
@@ -433,7 +465,7 @@ class StudioEngine {
 			};
 		}
 		this.sources = next;
-		for (const t of this.arrangement.tracks) this.#ensureTrackNodes(t.id);
+		this.#ensureAllStrips();
 		this.#applyGains(true);
 		this.position = 0;
 		this.#recount();
@@ -531,12 +563,12 @@ class StudioEngine {
 		this.canUndo = this.#past.length > 0;
 		this.canRedo = this.#future.length > 0;
 		this.dirty = true;
-		for (const id of Array.from(this.#tracks.keys()))
-			if (!a.tracks.some((t) => t.id === id)) this.#dropTrackNodes(id);
-		for (const t of a.tracks) this.#ensureTrackNodes(t.id);
+		this.#ensureAllStrips();
+		this.#masterStrip?.setInserts(a.masterInserts ?? [], 0);
 		this.#applyGains(true);
 		this.#settleAllAutomation();
-		for (const t of a.tracks) this.#tracks.get(t.id)?.chain.update(t.fx ?? defaultTrackFx(), 0);
+		for (const t of a.tracks) this.#tracks.get(t.id)?.setInserts(insertsOf(t), 0);
+		for (const b of a.buses ?? []) this.#buses.get(b.id)?.setInserts(insertsOf(b), 0);
 	}
 	/** A revision restored from the server replaces the arrangement outright (its own undo step). */
 	replaceArrangement(a: StudioArrangement) {
@@ -573,6 +605,7 @@ class StudioEngine {
 		};
 		this.arrangement.tracks.push(track);
 		this.#ensureTrackNodes(track.id);
+		this.#routeAll();
 		return track;
 	}
 	removeTrack(trackId: string) {
@@ -627,7 +660,7 @@ class StudioEngine {
 		t.pan = Math.max(-1, Math.min(1, value));
 		this.dirty = true;
 		const nodes = this.#tracks.get(trackId);
-		if (nodes && this.#ctx) nodes.panner.pan.setTargetAtTime(t.pan, this.#ctx.currentTime, RAMP);
+		if (nodes && this.#ctx) nodes.pan.pan.setTargetAtTime(t.pan, this.#ctx.currentTime, RAMP);
 	}
 	/** A track's effects, live (a slider's run is one undo step, as a fader's). */
 	setTrackFx(trackId: string, fx: StudioTrackFx) {
@@ -636,9 +669,118 @@ class StudioEngine {
 		this.#commitMixGesture();
 		t.fx = structuredClone(fx);
 		this.dirty = true;
-		this.#tracks.get(trackId)?.chain.update(t.fx, 0.02);
-		// A reverb lane keeps the level: the slider's ramp is put back under the curve.
-		if (this.hasAutomation(trackId, "reverb")) this.#afterLaneChange(trackId);
+		this.#tracks.get(trackId)?.setInserts(insertsOf(t), 0.02);
+		this.#afterLaneChange(trackId);
+	}
+
+	// ── Routing (docs/dawn-daw-plan.md, D2): inserts, buses, sends, the master chain ──
+	/** A strip's inserts replaced whole (the panel's edits); `ownerId` names a track, a bus or "master". */
+	setInserts(ownerId: string, inserts: StudioInsert[]) {
+		const list = structuredClone(inserts);
+		if (ownerId === "master") {
+			this.#commitMixGesture();
+			this.arrangement.masterInserts = list.length ? list : undefined;
+			this.dirty = true;
+			this.#masterStrip?.setInserts(list, 0.02);
+			return;
+		}
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		if (!owner) return;
+		this.#commitMixGesture();
+		owner.inserts = list;
+		this.dirty = true;
+		(this.#tracks.get(ownerId) ?? this.#buses.get(ownerId))?.setInserts(list, 0.02);
+		this.#afterLaneChange(ownerId);
+	}
+	/** A new bus, to the master; its id for the caller. */
+	addBus(name = `Bus ${(this.arrangement.buses?.length ?? 0) + 1}`): string | null {
+		if ((this.arrangement.buses?.length ?? 0) >= MAX_STUDIO_BUSES) return null;
+		this.#commit();
+		const bus: StudioBus = { id: newLocalId(), name, gain: 1, pan: 0, muted: false };
+		this.arrangement.buses = [...(this.arrangement.buses ?? []), bus];
+		this.#ensureBus(bus.id);
+		this.#routeAll();
+		return bus.id;
+	}
+	/** The bus goes; tracks routed to it go to the master, sends to it are dropped. */
+	removeBus(busId: string) {
+		if (!this.#bus(busId)) return;
+		this.#commit();
+		this.arrangement.buses = (this.arrangement.buses ?? []).filter((b) => b.id !== busId);
+		for (const t of this.arrangement.tracks) {
+			if (t.output === busId) t.output = undefined;
+			if (t.sends?.some((s) => s.bus === busId)) t.sends = t.sends.filter((s) => s.bus !== busId);
+		}
+		this.#dropBus(busId);
+		this.#routeAll();
+	}
+	renameBus(busId: string, name: string) {
+		const b = this.#bus(busId);
+		if (!b) return;
+		this.#commit();
+		b.name = name.trim().slice(0, 60) || b.name;
+	}
+	setBusGain(busId: string, value: number) {
+		const b = this.#bus(busId);
+		if (!b) return;
+		if (this.writeAutomation(busId, "volume", value)) return;
+		this.#commitMixGesture();
+		b.gain = Math.max(0, Math.min(STUDIO_FADER_MAX, value));
+		this.#applyGains();
+	}
+	setBusPan(busId: string, value: number) {
+		const b = this.#bus(busId);
+		if (!b) return;
+		if (this.writeAutomation(busId, "pan", value)) return;
+		this.#commitMixGesture();
+		b.pan = Math.max(-1, Math.min(1, value));
+		const strip = this.#buses.get(busId);
+		if (strip && this.#ctx) strip.pan.pan.setTargetAtTime(b.pan, this.#ctx.currentTime, RAMP);
+	}
+	toggleBusMute(busId: string) {
+		const b = this.#bus(busId);
+		if (!b) return;
+		this.#commitMixGesture();
+		b.muted = !b.muted;
+		this.#applyGains();
+	}
+	setBusTint(busId: string, tint: string | null) {
+		const b = this.#bus(busId);
+		if (!b) return;
+		b.colour = tint ?? undefined;
+		this.dirty = true;
+	}
+	/** Where a track goes: a bus, or the master with null. */
+	setOutput(trackId: string, busId: string | null) {
+		const t = this.#track(trackId);
+		if (!t || (busId && !this.#bus(busId))) return;
+		this.#commit();
+		t.output = busId ?? undefined;
+		this.#routeAll();
+	}
+	/** A track's send to a bus at a level (0 removes it), post-fader unless `pre`. */
+	setSend(trackId: string, busId: string, level: number, pre?: boolean) {
+		const t = this.#track(trackId);
+		if (!t || !this.#bus(busId)) return;
+		const key = sendLaneKey(busId);
+		if (
+			level > 0 &&
+			t.sends?.some((s) => s.bus === busId) &&
+			this.writeAutomation(trackId, key, level)
+		)
+			return;
+		this.#commitMixGesture();
+		const rest = (t.sends ?? []).filter((s) => s.bus !== busId);
+		const was = t.sends?.find((s) => s.bus === busId);
+		t.sends =
+			level > 0 ? [...rest, { bus: busId, level: Math.min(1, level), pre: pre ?? was?.pre }] : rest;
+		if (t.sends.length === 0) t.sends = undefined;
+		if (level <= 0 && t.automation?.[key]) {
+			const { [key]: _gone, ...lanes } = t.automation;
+			t.automation = Object.keys(lanes).length ? lanes : undefined;
+		}
+		this.dirty = true;
+		this.#routeAll();
 	}
 	toggleMute(trackId: string) {
 		const t = this.#track(trackId);
@@ -673,8 +815,12 @@ class StudioEngine {
 		this.#commitMixGesture();
 		this.arrangement.master = Math.max(0, Math.min(1, value));
 		this.dirty = true;
-		if (this.#master && this.#ctx)
-			this.#master.gain.setTargetAtTime(this.arrangement.master, this.#ctx.currentTime, RAMP);
+		if (this.#masterStrip && this.#ctx)
+			this.#masterStrip.fader.gain.setTargetAtTime(
+				this.arrangement.master,
+				this.#ctx.currentTime,
+				RAMP,
+			);
 	}
 	setBpm(bpm: number) {
 		if (!Number.isFinite(bpm)) return;
@@ -1168,133 +1314,173 @@ class StudioEngine {
 		// With a volume lane the lane is the level (the `auto` node); the fader node keeps mute and solo alone.
 		return track.automation?.volume?.length ? 1 : track.gain;
 	}
+	#busGain(bus: StudioBus) {
+		if (bus.muted) return 0;
+		return bus.automation?.volume?.length ? 1 : bus.gain;
+	}
 	/** Whether a parameter of a track is driven by a lane (docs/dawn-daw-plan.md, D1). */
-	hasAutomation(trackId: string, param: StudioAutomationParam): boolean {
-		return !!this.#track(trackId)?.automation?.[param]?.length;
+	/** Whether a parameter of a strip is driven by a lane (docs/dawn-daw-plan.md, D1 and D2); `ownerId` a track's or a bus's. */
+	hasAutomation(ownerId: string, key: string): boolean {
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		return !!owner?.automation?.[key]?.length;
 	}
 	/**
 	 * A parameter as it sounds at `seconds` (the playhead): the lane's value
 	 * there, else the static one. The knobs and the Stage show this while a
 	 * lane drives.
 	 */
-	automatedValue(trackId: string, param: StudioAutomationParam, seconds = this.position): number {
-		const t = this.#track(trackId);
-		if (!t) return STUDIO_AUTOMATION[param].initial;
-		const lane = t.automation?.[param];
-		const fallback =
-			param === "volume" ? t.gain : param === "pan" ? t.pan : (t.fx?.reverb.level ?? 0);
+	/**
+	 * A parameter as it sounds at `seconds` (the playhead): the lane's value
+	 * there, else the static one (utils/automationLanes.ts says which). The
+	 * knobs, the console and the Stage show this while a lane drives.
+	 */
+	automatedValue(ownerId: string, key: string, seconds = this.position): number {
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		if (!owner) return 0;
+		const choice = this.lanesOf(ownerId).find((l) => l.key === key);
+		const fallback = choice?.fallback ?? 0;
+		const lane = owner.automation?.[key];
 		return lane?.length ? automationValueAt(lane, seconds, fallback) : fallback;
 	}
-	/** The lane's params as the graph has them, with the static value each falls back to and the lane's scale onto the param. */
-	#laneTargets(track: StudioTrack, nodes: TrackNodes) {
-		return [
-			{ param: "volume" as const, target: nodes.auto.gain, fallback: 1, scale: (v: number) => v },
-			{
-				param: "pan" as const,
-				target: nodes.panner.pan,
-				fallback: track.pan,
-				scale: (v: number) => v,
-			},
-			{
-				param: "reverb" as const,
-				target: nodes.chain.params.reverb,
-				fallback: (track.fx?.reverb.level ?? 0) * 0.5,
-				scale: (v: number) => v * 0.5,
-			},
-		];
+	/** The lanes a strip can show (utils/automationLanes.ts), from its state now. */
+	lanesOf(ownerId: string) {
+		const track = this.#track(ownerId);
+		const owner = track ?? this.#bus(ownerId);
+		if (!owner) return [];
+		return automationLanes({
+			gain: owner.gain,
+			pan: owner.pan,
+			sends: track?.sends,
+			inserts: insertsOf(owner),
+			buses: track ? (this.arrangement.buses ?? []) : [],
+		});
 	}
-	/** The lanes of a track scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
+	/** The lane's params as the graph has them, with the static value each falls back to and the lane's scale onto the param. */
+	/** The strip's lanes scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
 	#scheduleLanes(
-		track: StudioTrack,
-		nodes: TrackNodes,
+		owner: { automation?: StudioAutomation },
+		strip: StripGraph,
 		from: number,
 		when: number,
 		to: number | null,
 	) {
-		for (const l of this.#laneTargets(track, nodes)) {
-			const lane = track.automation?.[l.param];
-			if (lane?.length)
-				scheduleAutomation(l.target, lane, {
-					from,
-					when,
-					to,
-					fallback: l.fallback,
-					scale: l.scale,
-				});
+		for (const [key, lane] of Object.entries(owner.automation ?? {})) {
+			const param = strip.param(key);
+			if (param && lane.length) scheduleAutomation(param, lane, { from, when, to, fallback: 0 });
 		}
 	}
+	/** The lanes of a track scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
 	/** The lanes at rest: every curve canceled and each param at its value for the playhead (or its static value without a lane). */
-	#settleAutomation(track: StudioTrack, nodes: TrackNodes, now: number) {
-		for (const l of this.#laneTargets(track, nodes)) {
-			const lane = track.automation?.[l.param];
-			l.target.cancelScheduledValues(now);
-			const value = lane?.length ? l.scale(automationValueAt(lane, this.position, 0)) : l.fallback;
-			if (l.param === "pan" && !lane?.length) continue; // setPan ramps the static pan itself
-			l.target.setValueAtTime(value, now);
+	/**
+	 * The strip's lanes at rest (a stop, a seek, an edit while stopped):
+	 * every curve canceled, the statics put back (the fader's unity on the
+	 * volume node, the pan, the sends, the inserts' settings), then each
+	 * lane's param at its value for the playhead.
+	 */
+	#settleAutomation(
+		owner: {
+			gain: number;
+			pan: number;
+			automation?: StudioAutomation;
+			sends?: StudioSend[];
+			inserts?: StudioInsert[];
+			fx?: StudioTrackFx;
+		},
+		strip: StripGraph,
+		now: number,
+	) {
+		const lanes = owner.automation ?? {};
+		strip.auto.gain.cancelScheduledValues(now);
+		strip.pan.pan.cancelScheduledValues(now);
+		if (!lanes.volume?.length) strip.auto.gain.setValueAtTime(1, now);
+		if (!lanes.pan?.length) strip.pan.pan.setValueAtTime(owner.pan, now);
+		for (const [busId, gain] of strip.sends) {
+			gain.gain.cancelScheduledValues(now);
+			if (lanes[sendLaneKey(busId)]?.length) continue;
+			gain.gain.setValueAtTime(owner.sends?.find((s) => s.bus === busId)?.level ?? 0, now);
+		}
+		strip.setInserts(insertsOf(owner), 0);
+		for (const [key, lane] of Object.entries(lanes)) {
+			const param = strip.param(key);
+			if (!param || !lane.length) continue;
+			param.cancelScheduledValues(now);
+			param.setValueAtTime(automationValueAt(lane, this.position, 0), now);
 		}
 	}
 	/** Every track's lanes settled (a stop, a seek, an edit while stopped). */
+	/** Every strip's lanes settled (a stop, a seek, an edit while stopped). */
 	#settleAllAutomation() {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		for (const t of this.arrangement.tracks) {
-			const nodes = this.#tracks.get(t.id);
-			if (nodes) this.#settleAutomation(t, nodes, ctx.currentTime);
+			const strip = this.#tracks.get(t.id);
+			if (strip) this.#settleAutomation(t, strip, ctx.currentTime);
+		}
+		for (const b of this.arrangement.buses ?? []) {
+			const strip = this.#buses.get(b.id);
+			if (strip) this.#settleAutomation(b, strip, ctx.currentTime);
 		}
 	}
 
 	/** A lane replaced whole (the lane component's gesture), one undo step; an empty lane is removed. */
-	setAutomation(trackId: string, param: StudioAutomationParam, points: StudioAutomationPoint[]) {
-		const t = this.#track(trackId);
-		if (!t) return;
+	/** A lane replaced whole (the lane component's gesture), one undo step; an empty lane is removed. `ownerId` a track's or a bus's. */
+	setAutomation(ownerId: string, key: string, points: StudioAutomationPoint[]) {
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		if (!owner) return;
 		this.#commit();
-		const automation = { ...t.automation };
-		if (points.length) automation[param] = points;
-		else delete automation[param];
-		t.automation = Object.keys(automation).length ? automation : undefined;
-		this.#afterLaneChange(trackId);
+		const automation = { ...owner.automation };
+		if (points.length) automation[key] = points;
+		else delete automation[key];
+		owner.automation = Object.keys(automation).length ? automation : undefined;
+		this.#afterLaneChange(ownerId);
 	}
 	/** A knob touched on a track with a lane: a point at the playhead takes the value (docs/dawn-daw-plan.md, D1: touch write). */
-	writeAutomation(trackId: string, param: StudioAutomationParam, value: number) {
-		const t = this.#track(trackId);
-		const lane = t?.automation?.[param];
-		if (!t || !lane?.length) return false;
+	/** A knob touched on a strip whose lane exists: a point at the playhead takes the value (docs/dawn-daw-plan.md, D1: touch write). */
+	writeAutomation(ownerId: string, key: string, value: number) {
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		const lane = owner?.automation?.[key];
+		if (!owner || !lane?.length) return false;
+		const range = this.lanesOf(ownerId).find((l) => l.key === key)?.range;
+		if (!range) return false;
 		this.#commitMixGesture();
-		const edited = editAutomation(
-			lane,
-			{ kind: "add", t: this.position, v: value },
-			STUDIO_AUTOMATION[param],
-		);
-		t.automation = { ...t.automation, [param]: edited.points };
-		this.#afterLaneChange(trackId);
+		const edited = editAutomation(lane, { kind: "add", t: this.position, v: value }, range);
+		owner.automation = { ...owner.automation, [key]: edited.points };
+		this.#afterLaneChange(ownerId);
 		return true;
 	}
-	#afterLaneChange(trackId: string) {
+	#afterLaneChange(ownerId: string) {
 		this.dirty = true;
 		const ctx = this.#ctx;
-		const t = this.#track(trackId);
-		const nodes = this.#tracks.get(trackId);
-		if (!ctx || !t || !nodes) return;
+		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		const strip = this.#tracks.get(ownerId) ?? this.#buses.get(ownerId);
+		if (!ctx || !owner || !strip) return;
 		this.#applyGains();
 		if (this.running) {
 			// The pass under way carries on with the new lane from here.
 			const pass = this.#passes.findLast((p) => p.when <= ctx.currentTime) ?? this.#passes[0];
 			if (pass) {
 				const now = ctx.currentTime + 0.01;
-				this.#scheduleLanes(t, nodes, pass.from + (now - pass.when), now, pass.to);
+				this.#settleAutomation(owner, strip, now);
+				this.#scheduleLanes(owner, strip, pass.from + (now - pass.when), now, pass.to);
 			}
-		} else this.#settleAutomation(t, nodes, ctx.currentTime);
+		} else this.#settleAutomation(owner, strip, ctx.currentTime);
 	}
 	#applyGains(immediate = false) {
 		const ctx = this.#ctx;
 		if (!ctx) return;
+		const set = (param: AudioParam, g: number) => {
+			if (immediate) param.value = g;
+			else param.setTargetAtTime(g, ctx.currentTime, RAMP);
+		};
 		for (const t of this.arrangement.tracks) {
-			const nodes = this.#tracks.get(t.id);
-			if (!nodes) continue;
-			const g = this.#effectiveGain(t);
-			if (immediate) nodes.gain.gain.value = g;
-			else nodes.gain.gain.setTargetAtTime(g, ctx.currentTime, RAMP);
+			const strip = this.#tracks.get(t.id);
+			if (strip) set(strip.fader.gain, this.#effectiveGain(t));
 		}
+		for (const b of this.arrangement.buses ?? []) {
+			const strip = this.#buses.get(b.id);
+			if (strip) set(strip.fader.gain, this.#busGain(b));
+		}
+		if (this.#masterStrip) set(this.#masterStrip.fader.gain, this.arrangement.master);
 	}
 
 	// ── Transport ──────────────────────────────────────────────────────────
@@ -1359,8 +1545,12 @@ class StudioEngine {
 		const to = loop?.on && from < loop.end ? loop.end : null;
 		this.#passes.push({ from, when, to });
 		for (const t of this.arrangement.tracks) {
-			const nodes = this.#tracks.get(t.id);
-			if (nodes) this.#scheduleLanes(t, nodes, from, when, to);
+			const strip = this.#tracks.get(t.id);
+			if (strip) this.#scheduleLanes(t, strip, from, when, to);
+		}
+		for (const b of this.arrangement.buses ?? []) {
+			const strip = this.#buses.get(b.id);
+			if (strip) this.#scheduleLanes(b, strip, from, when, to);
 		}
 		for (const clip of this.arrangement.clips) this.#startClip(clip, from, when, to);
 		this.#queueMidi(from, when, to);
@@ -1443,7 +1633,7 @@ class StudioEngine {
 		src.buffer = buffer;
 		const gain = ctx.createGain();
 		src.connect(gain);
-		gain.connect(nodes.gain);
+		gain.connect(nodes.input);
 		const at = when + (begins - from);
 		const g = clip.gain;
 		// Fades: the clip's own at its edges, else a few milliseconds so a cut never clicks.
@@ -1905,13 +2095,13 @@ class StudioEngine {
 		this.#meterAt = now;
 		const t = now / 1000;
 		const next: Record<string, MeterState> = {};
-		for (const [id, nodes] of this.#tracks) {
-			const read = this.running ? readOf(nodes.analyser, buf) : NO_READ;
+		for (const [id, strip] of [...this.#tracks, ...this.#buses]) {
+			const read = this.running ? readOf(strip.meter, buf) : NO_READ;
 			next[id] = nextMeter(this.levels[id] ?? METER_ZERO, read.peak, t, dt, read.rms);
 		}
 		this.levels = next;
 		const master =
-			this.running && this.#masterAnalyser ? readOf(this.#masterAnalyser, buf) : NO_READ;
+			this.running && this.#masterStrip ? readOf(this.#masterStrip.meter, buf) : NO_READ;
 		this.masterLevel = nextMeter(this.masterLevel, master.peak, t, dt, master.rms);
 		this.#meterFrame = requestAnimationFrame(this.#meter);
 	};
@@ -1931,33 +2121,33 @@ class StudioEngine {
 		const sampleRate = this.sampleRate;
 		const length = Math.max(1, Math.ceil(this.duration * sampleRate));
 		const off = new OfflineAudioContext(2, length, sampleRate);
-		const master = off.createGain();
-		master.gain.value = trackId ? 1 : this.arrangement.master;
-		master.connect(off.destination);
+		// The master, the buses and the tracks as the live graph has them (stripGraph.ts), the lanes from the song's start.
+		const master = createStripGraph(off, {
+			inserts: trackId ? [] : (this.arrangement.masterInserts ?? []),
+			pan: 0,
+		});
+		master.fader.gain.value = trackId ? 1 : this.arrangement.master;
+		master.route(off.destination);
+		const busInputs = new Map<string, AudioNode>();
+		if (!trackId)
+			for (const b of this.arrangement.buses ?? []) {
+				const strip = createStripGraph(off, { inserts: insertsOf(b), pan: b.pan });
+				strip.fader.gain.value = this.#busGain(b);
+				strip.route(master.input);
+				busInputs.set(b.id, strip.input);
+				this.#scheduleLanes(b, strip, 0, 0, null);
+			}
 		const nodes = new Map<string, GainNode>();
 		for (const t of this.arrangement.tracks) {
 			if (trackId && t.id !== trackId) continue;
 			const g = trackId ? t.gain : this.#effectiveGain(t);
 			if (g <= 0) continue;
-			const gain = off.createGain();
-			gain.gain.value = g;
-			const auto = off.createGain();
-			const chain = createTrackChain(off, t.fx ?? defaultTrackFx());
-			const panner = off.createStereoPanner();
-			panner.pan.value = t.pan;
-			gain.connect(auto);
-			auto.connect(chain.input);
-			chain.output.connect(panner);
-			panner.connect(master);
-			// The lanes from the song's start (docs/dawn-daw-plan.md, D1).
-			this.#scheduleLanes(
-				t,
-				{ gain, auto, chain, panner, analyser: off.createAnalyser() },
-				0,
-				0,
-				null,
-			);
-			nodes.set(t.id, gain);
+			const strip = createStripGraph(off, { inserts: insertsOf(t), pan: t.pan });
+			strip.fader.gain.value = trackId && t.automation?.volume?.length ? 1 : g;
+			strip.route((t.output && busInputs.get(t.output)) || master.input);
+			if (!trackId) strip.setSends(t.sends ?? [], busInputs, 0);
+			this.#scheduleLanes(t, strip, 0, 0, null);
+			nodes.set(t.id, strip.input);
 		}
 		for (const clip of this.arrangement.clips) {
 			// A MIDI clip has no audio of its own: the page renders its track to audio first (renderMidiTrack).
@@ -1999,7 +2189,8 @@ class StudioEngine {
 			playing: this.#playing.length,
 			passes: this.#passes.length,
 			buffers: Array.from(this.#buffers.keys()),
-			master: this.#master?.gain.value ?? null,
+			master: this.#masterStrip?.fader.gain.value ?? null,
+			buses: Array.from(this.#buses.keys()),
 			midiQueued: this.#midiQueue.length - this.#midiNext,
 			midiVoices: this.#midiVoices.length,
 			midiCaptures: this.#midiCaptures.length,

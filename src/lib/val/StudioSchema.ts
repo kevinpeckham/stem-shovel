@@ -7,6 +7,7 @@ import {
 	STUDIO_FADER_MAX,
 } from "../constants/studio";
 import { MAX_AUTOMATION_POINTS } from "../constants/studioAutomation";
+import { INSERT_KINDS, MAX_INSERTS, MAX_SENDS, MAX_STUDIO_BUSES } from "../constants/studioInserts";
 import { MAX_TAKE_BYTES } from "../constants/takeLimits";
 import type { IdeaInstruments } from "./IdeaSchema";
 import { NameSchema } from "./NameSchema";
@@ -86,13 +87,47 @@ const LaneSchema = v.pipe(
 	v.maxLength(MAX_AUTOMATION_POINTS),
 	v.check((pts) => pts.every((p, i) => i === 0 || p.t >= pts[i - 1]!.t), "A lane is in time order"),
 );
-/** A track's lanes, by parameter (constants/studioAutomation.ts); absent means none. */
-export const StudioAutomationSchema = v.object({
-	volume: v.optional(LaneSchema),
-	pan: v.optional(LaneSchema),
-	reverb: v.optional(LaneSchema),
-});
+/**
+ * A strip's lanes by key (docs/dawn-daw-plan.md, D1 and D2): `volume`,
+ * `pan`, `send:<busId>` and `insert:<insertId>:<param>`
+ * (utils/automationLanes.ts); absent means none.
+ */
+export const StudioAutomationSchema = v.record(
+	v.pipe(v.string(), v.regex(/^(volume|pan|send:[\w-]+|insert:[\w-]+:[A-Za-z]+)$/)),
+	LaneSchema,
+);
 export type StudioAutomation = v.InferOutput<typeof StudioAutomationSchema>;
+
+/** An insert (constants/studioInserts.ts): a kind, its settings (numbers, and the delay's `analog`), a local id a lane can name, and an optional bypass. */
+export const StudioInsertSchema = v.object({
+	id: LocalIdSchema,
+	kind: v.picklist(INSERT_KINDS),
+	bypass: v.optional(v.boolean()),
+	settings: v.record(v.string(), v.union([v.number(), v.boolean()])),
+});
+export type StudioInsert = v.InferOutput<typeof StudioInsertSchema>;
+const InsertListSchema = v.pipe(v.array(StudioInsertSchema), v.maxLength(MAX_INSERTS));
+
+/** A send from a track to a bus: post-fader unless `pre`. */
+export const StudioSendSchema = v.object({
+	bus: LocalIdSchema,
+	level: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	pre: v.optional(v.boolean()),
+});
+export type StudioSend = v.InferOutput<typeof StudioSendSchema>;
+
+/** A bus (docs/dawn-daw-plan.md, D2): tracks route to it or send to it; it has its own inserts, level and pan, and goes to the master. */
+export const StudioBusSchema = v.object({
+	id: LocalIdSchema,
+	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
+	colour: v.optional(v.pipe(v.string(), v.maxLength(24))),
+	gain: v.pipe(v.number(), v.minValue(0), v.maxValue(STUDIO_FADER_MAX)),
+	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
+	muted: v.boolean(),
+	inserts: v.optional(InsertListSchema),
+	automation: v.optional(StudioAutomationSchema),
+});
+export type StudioBus = v.InferOutput<typeof StudioBusSchema>;
 
 export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
@@ -108,7 +143,13 @@ export const StudioTrackSchema = v.object({
 	input: v.nullable(StudioInputSchema),
 	/** Automation lanes (docs/dawn-daw-plan.md, D1); absent means the knobs alone. */
 	automation: v.optional(StudioAutomationSchema),
-	/** The track's effects; absent means every effect off. */
+	/** The track's inserts (D2); absent means its old `fx` (utils/insertsFromFx.ts). */
+	inserts: v.optional(InsertListSchema),
+	/** Where the track goes: a bus's id, or the master when absent. */
+	output: v.optional(LocalIdSchema),
+	/** Sends to buses, one per bus at most. */
+	sends: v.optional(v.pipe(v.array(StudioSendSchema), v.maxLength(MAX_SENDS))),
+	/** The track's effects before D2; absent means every effect off. */
 	fx: v.optional(StudioTrackFxSchema),
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
@@ -176,6 +217,10 @@ export const StudioArrangementSchema = v.object({
 	/** Punch: a take is cut to the loop region (recording runs through, the clip keeps the region alone). */
 	punch: v.optional(v.boolean()),
 	master: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	/** The master's inserts (D2), before its fader. */
+	masterInserts: v.optional(InsertListSchema),
+	/** Buses (D2): tracks route or send to them; they go to the master. */
+	buses: v.optional(v.pipe(v.array(StudioBusSchema), v.maxLength(MAX_STUDIO_BUSES))),
 	tracks: v.pipe(v.array(StudioTrackSchema), v.maxLength(MAX_STUDIO_TRACKS)),
 	clips: v.pipe(v.array(StudioClipSchema), v.maxLength(MAX_STUDIO_CLIPS)),
 });

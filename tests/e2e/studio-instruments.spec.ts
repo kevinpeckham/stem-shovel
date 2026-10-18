@@ -36,15 +36,17 @@ test.describe.serial("Studio instruments", () => {
 		expect(take.channels).toBe(2);
 		// The beat was in the take: the loudest bin is well above silence.
 		expect(take.peak).toBeGreaterThan(0.05);
-		// Phase 2b: the track's effects set from the menu are saved on the track and the bounce builds the same chain.
-		await page.getByRole("button", { name: "Track 1 Playback Effects" }).click();
-		await page.getByLabel("Track 1 reverb level").fill("0.6");
-		await page.getByLabel("Track 1 tone tilt").fill("0.5");
-		await page.keyboard.press("Escape");
-		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].fx)).toMatchObject({
-			reverb: { level: 0.6 },
-			tone: { tilt: 0.5 },
+		// D2: the track's inserts set from the panel are saved on the track and the bounce builds the same chain.
+		await page.getByRole("button", { name: "Track 1 Inserts" }).click();
+		await page.getByRole("button", { name: "Add Reverb" }).click();
+		await until(page, ([w]) => w.__studio.arrangement.tracks[0].inserts?.length === 1, {
+			ms: 5_000,
 		});
+		await page.getByRole("slider", { name: "Reverb Level" }).fill("0.6");
+		await page.keyboard.press("Escape");
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].inserts)).toMatchObject([
+			{ kind: "reverb", settings: { level: 0.6 } },
+		]);
 		const rendered = await hooked(page, ([w]) =>
 			w.__studio
 				.render()

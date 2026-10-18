@@ -14,6 +14,7 @@
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
+	import MixerConsole from "#lib/components/MixerConsole.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import StudioTrackMenu from "#lib/components/StudioTrackMenu.svelte";
 	import { studioMixerModel } from "#lib/audio/mixerModel.js";
@@ -96,10 +97,11 @@
 	let loadedKey = "unloaded";
 	let selected = $state<string | null>(null);
 	let pxPerSecond = $state(40);
-	/** Tracks (the lanes) or the Stage (docs/visual-mixer.md): remembered in this browser. */
+	/** Tracks (the lanes), the Stage (docs/visual-mixer.md) or the Mixer (docs/dawn-daw-plan.md, D2): remembered in this browser. */
 	const VIEW_KEY = "stemshovel.studio.view";
-	let view = $state<"tracks" | "stage">("tracks");
-	function setView(v: "tracks" | "stage") {
+	type StudioView = "tracks" | "stage" | "mixer";
+	let view = $state<StudioView>("tracks");
+	function setView(v: StudioView) {
 		view = v;
 		try {
 			localStorage.setItem(VIEW_KEY, v);
@@ -133,7 +135,8 @@
 		try {
 			last = localStorage.getItem(LAST_KEY);
 			pxPerSecond = Number(localStorage.getItem("stemshovel.studio.zoom")) || 40;
-			if (localStorage.getItem(VIEW_KEY) === "stage") view = "stage";
+			const saved = localStorage.getItem(VIEW_KEY);
+			if (saved === "stage" || saved === "mixer") view = saved;
 		} catch {
 			// As above.
 		}
@@ -1246,13 +1249,24 @@
 								<span class="i-ph-rows" aria-hidden="true"></span> Tracks
 							</button>
 							<button
-								class="device-button-sm px-3 rounded-l-none {view === 'stage' ? 'text-accent' : ''}"
+								class="device-button-sm px-3 rounded-none border-x-0 {view === 'stage'
+									? 'text-accent'
+									: ''}"
 								type="button"
 								aria-pressed={view === "stage"}
 								title="Stage: every track a puck, left to right is pan, up is level"
 								onclick={() => setView("stage")}
 							>
 								<span class="i-ph-circles-three" aria-hidden="true"></span> Stage
+							</button>
+							<button
+								class="device-button-sm px-3 rounded-l-none {view === 'mixer' ? 'text-accent' : ''}"
+								type="button"
+								aria-pressed={view === "mixer"}
+								title="Mixer: a strip per track and bus with its inserts, sends, output and fader"
+								onclick={() => setView("mixer")}
+							>
+								<span class="i-ph-faders" aria-hidden="true"></span> Mixer
 							</button>
 						</span>
 						<button
@@ -1292,6 +1306,8 @@
 						{/if}
 					{/snippet}
 					<MixerStage model={stageModel} menu={stageMenu} />
+				{:else if view === "mixer"}
+					<MixerConsole />
 				{:else}
 					<StudioTimeline
 						bind:selected

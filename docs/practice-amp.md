@@ -31,8 +31,8 @@ says what was made from it on 2026-10-10 and where it differs.
   WaveShaper, 4× oversampling, tone, make-up), the delay (digital or
   analog), the wah (touch or sweep) and the tone stage; `pianoFx.ts` has
   the chorus, phaser, flanger, tremolo, rotary and compressor the piano
-  and the chord player use; `trackChain.ts` is the Studio's small
-  per-track chain (compressor, tone, reverb send) and the closest template
+  and the chord player use; `mixStages.ts` wraps them as Dawn's
+  inserts (EQ, compressor, tone, delay, reverb, limiter) and the closest template
   for a new chain. `reverbImpulse()` in `drumBus.ts` synthesizes the
   reverb. docs/effects.md explains every node and how it was measured.
 - **The device-page recipe.** A tool page is `src/routes/<tool>/` with
