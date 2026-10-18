@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import {
 	MAX_STUDIO_CLIPS,
+	MAX_STUDIO_MARKERS,
 	MAX_STUDIO_NOTES_PER_CLIP,
 	MAX_STUDIO_SECONDS,
 	MAX_STUDIO_TRACKS,
@@ -73,6 +74,9 @@ export type StudioTrackFx = v.InferOutput<typeof StudioTrackFxSchema>;
 
 /** An audio track records and plays files; a MIDI track (phase 3) records and plays notes through the instrument its input names. Absent means audio. */
 export const STUDIO_TRACK_KINDS = ["audio", "midi"] as const;
+/** How a clip's fades (and a crossfade between overlapping clips) curve: a straight line, or equal power (a quarter sine), which keeps the level steady through a crossfade. */
+export const STUDIO_FADE_SHAPES = ["linear", "power"] as const;
+export type StudioFadeShape = (typeof STUDIO_FADE_SHAPES)[number];
 export const StudioTrackKindSchema = v.picklist(STUDIO_TRACK_KINDS);
 export type StudioTrackKind = v.InferOutput<typeof StudioTrackKindSchema>;
 
@@ -190,6 +194,8 @@ export const StudioClipSchema = v.pipe(
 		name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
 		/** Other takes recorded for this spot (take lanes): sources the clip can swap to; the one in `sourceId` is the chosen take. */
 		alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
+		/** The shape of the clip's own fades (D4): linear, or equal-power (`power`) as a crossfade needs. Absent means linear. */
+		fadeShape: v.optional(v.picklist(STUDIO_FADE_SHAPES)),
 	}),
 	v.check(
 		(c) => (c.sourceId !== undefined) !== (c.notes !== undefined),
@@ -197,6 +203,14 @@ export const StudioClipSchema = v.pipe(
 	),
 );
 export type StudioClip = v.InferOutput<typeof StudioClipSchema>;
+
+/** A marker on the ruler (D4): a named moment to jump to. */
+export const StudioMarkerSchema = v.object({
+	id: LocalIdSchema,
+	t: SecondsSchema,
+	name: v.pipe(v.string(), v.trim(), v.maxLength(40)),
+});
+export type StudioMarker = v.InferOutput<typeof StudioMarkerSchema>;
 
 export const StudioLoopSchema = v.object({
 	on: v.boolean(),
@@ -223,6 +237,8 @@ export const StudioArrangementSchema = v.object({
 	buses: v.optional(v.pipe(v.array(StudioBusSchema), v.maxLength(MAX_STUDIO_BUSES))),
 	tracks: v.pipe(v.array(StudioTrackSchema), v.maxLength(MAX_STUDIO_TRACKS)),
 	clips: v.pipe(v.array(StudioClipSchema), v.maxLength(MAX_STUDIO_CLIPS)),
+	/** Markers on the ruler (D4), in no particular order. */
+	markers: v.optional(v.pipe(v.array(StudioMarkerSchema), v.maxLength(MAX_STUDIO_MARKERS))),
 });
 export type StudioArrangement = v.InferOutput<typeof StudioArrangementSchema>;
 

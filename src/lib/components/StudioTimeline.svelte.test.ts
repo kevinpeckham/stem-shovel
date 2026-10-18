@@ -46,7 +46,15 @@ const fake = vi.hoisted(() => {
 		setLoop: vi.fn(),
 		trimClip: vi.fn(),
 		moveClip: vi.fn(),
+		moveClips: vi.fn(),
 		deleteClip: vi.fn(),
+		deleteClips: vi.fn(),
+		compFromTake: vi.fn(() => ({ id: "comp-mid" })),
+		get markers() {
+			return engine.arrangement.markers ?? [];
+		},
+		renameMarker: vi.fn(),
+		deleteMarker: vi.fn(),
 		renameTrack: vi.fn(),
 		moveTrack: vi.fn(),
 		removeTrack: vi.fn(),
@@ -562,26 +570,26 @@ describe("StudioTimeline", () => {
 		expect(clipEl("c2")).not.toHaveClass("border-accent");
 		const del = new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true });
 		await fireEvent(timeline(), del);
-		expect(fake.deleteClip).toHaveBeenCalledWith("c1");
+		expect(fake.deleteClips).toHaveBeenCalledWith(["c1"], false);
 		expect(del.defaultPrevented).toBe(true);
 		expect(clipEl("c1")).not.toHaveClass("border-accent");
 		// Nothing selected: the key does nothing.
 		await fireEvent.keyDown(timeline(), { key: "Delete" });
-		expect(fake.deleteClip).toHaveBeenCalledTimes(1);
+		expect(fake.deleteClips).toHaveBeenCalledTimes(1);
 		await rerender({ selected: "c2" });
 		await fireEvent.keyDown(timeline(), { key: "Backspace" });
-		expect(fake.deleteClip).toHaveBeenLastCalledWith("c2");
+		expect(fake.deleteClips).toHaveBeenLastCalledWith(["c2"], false);
 		await rerender({ selected: "c3" });
 		expect(clipEl("c3")).toHaveClass("border-accent");
 		await fireEvent.keyDown(timeline(), { key: "Escape" });
 		expect(clipEl("c3")).not.toHaveClass("border-accent");
-		expect(fake.deleteClip).toHaveBeenCalledTimes(2);
+		expect(fake.deleteClips).toHaveBeenCalledTimes(2);
 		// Typing in the track name bubbles to the timeline but is left alone.
 		await rerender({ selected: "c3" });
 		await fireEvent.keyDown(screen.getAllByRole("textbox", { name: "Track name" })[0], {
 			key: "Backspace",
 		});
-		expect(fake.deleteClip).toHaveBeenCalledTimes(2);
+		expect(fake.deleteClips).toHaveBeenCalledTimes(2);
 		expect(clipEl("c3")).toHaveClass("border-accent");
 	});
 
@@ -800,5 +808,99 @@ describe("StudioTimeline: automation lanes (D1)", () => {
 		render(StudioTimeline);
 		expect(screen.queryByRole("button", { name: "Automation for Keys" })).toBeNull();
 		expect(screen.getByRole("button", { name: "Automation for Guitar" })).toBeInTheDocument();
+	});
+});
+
+describe("StudioTimeline: editing depth (D4)", () => {
+	const clipEl = (id: string) => document.querySelector(`[data-clip="${id}"]`) as HTMLElement;
+	const press = async (id: string, pointerId: number, shiftKey = false) => {
+		await fireEvent.pointerDown(clipEl(id), {
+			button: 0,
+			pointerId,
+			clientX: 300,
+			clientY: 50,
+			shiftKey,
+		});
+		await fireEvent.pointerUp(clipEl(id), { pointerId });
+	};
+	test("Shift-click builds a selection; Delete removes it all and Shift+Delete ripples", async () => {
+		render(StudioTimeline);
+		await press("c1", 1);
+		await press("c2", 2, true);
+		expect(clipEl("c1").dataset.selected).toBe("true");
+		expect(clipEl("c2").dataset.selected).toBe("true");
+		// Shift on a selected clip takes it out again.
+		await press("c1", 3, true);
+		expect(clipEl("c1").dataset.selected).toBeUndefined();
+		await press("c1", 4, true);
+		await fireEvent.keyDown(clipEl("c1"), { key: "Delete", shiftKey: true });
+		expect(fake.deleteClips).toHaveBeenLastCalledWith(["c2", "c1"], true);
+	});
+	test("a selection dragged moves every clip in it together", async () => {
+		render(StudioTimeline);
+		await press("c1", 1);
+		await fireEvent.pointerDown(clipEl("c2"), {
+			button: 0,
+			pointerId: 2,
+			clientX: 220,
+			clientY: 160,
+			shiftKey: true,
+		});
+		await fireEvent.pointerMove(clipEl("c2"), { pointerId: 2, clientX: 300, clientY: 160 });
+		await fireEvent.pointerUp(clipEl("c2"), { pointerId: 2 });
+		// 80 px at 40 px/s is 2 s, snapped to the fake's half second.
+		expect(fake.moveClips).toHaveBeenCalledWith(["c1", "c2"], 2, 0);
+		expect(fake.moveClip).not.toHaveBeenCalled();
+	});
+	test("overlapping clips show an equal-power crossfade on their wedges", () => {
+		fake.arrangement.clips.push(
+			clip({ id: "c4", trackId: "t1", sourceId: "s1", name: "Over", start: 5, duration: 4 }),
+		);
+		render(StudioTimeline);
+		expect(clipEl("c1").querySelector("[data-fade-out]")?.getAttribute("data-fade-out")).toBe(
+			"power",
+		);
+		expect(clipEl("c4").querySelector("[data-fade-in]")?.getAttribute("data-fade-in")).toBe(
+			"power",
+		);
+		// c1's own fade-in stays linear.
+		expect(clipEl("c1").querySelector("[data-fade-in]")?.getAttribute("data-fade-in")).toBe(
+			"linear",
+		);
+	});
+	test("T opens a lane per take under the clip; a swipe takes that region from the take", async () => {
+		const user = userEvent.setup();
+		render(StudioTimeline);
+		expect(screen.queryByRole("button", { name: "Takes for Track 1" })).toBeNull();
+		await user.click(screen.getByRole("button", { name: "Takes for Guitar" }));
+		const lanes = document.querySelectorAll("[data-take-lane]");
+		expect([...lanes].map((l) => (l as HTMLElement).dataset.takeLane)).toEqual(["s3", "s4"]);
+		const lane = screen.getByRole("button", { name: /^Take s3 for Riff/ });
+		await fireEvent.pointerDown(lane, { button: 0, pointerId: 7, clientX: xAt(1), clientY: 10 });
+		await fireEvent.pointerMove(lane, { pointerId: 7, clientX: xAt(2), clientY: 10 });
+		await fireEvent.pointerUp(lane, { pointerId: 7 });
+		expect(fake.compFromTake).toHaveBeenCalledWith("c2", "s3", 1, 2);
+		// A tap too short to mean a region does nothing.
+		await fireEvent.pointerDown(lane, { button: 0, pointerId: 8, clientX: xAt(1), clientY: 10 });
+		await fireEvent.pointerUp(lane, { pointerId: 8 });
+		expect(fake.compFromTake).toHaveBeenCalledTimes(1);
+		await user.click(screen.getByRole("button", { name: "Takes for Guitar" }));
+		expect(document.querySelector("[data-take-lane]")).toBeNull();
+	});
+	test("markers sit on the ruler: a click seeks there, Delete removes one", async () => {
+		const user = userEvent.setup();
+		fake.arrangement.markers = [
+			{ id: "m1", t: 4, name: "Chorus" },
+			{ id: "m2", t: 8.5, name: "Bridge" },
+		];
+		render(StudioTimeline);
+		const chorus = screen.getByRole("button", { name: "Marker Chorus at 0:04.0" });
+		expect(chorus.style.left).toBe(`${4 * PX}px`);
+		await user.click(chorus);
+		expect(fake.seek).toHaveBeenLastCalledWith(4);
+		chorus.focus();
+		await fireEvent.keyDown(chorus, { key: "Delete" });
+		expect(fake.deleteMarker).toHaveBeenCalledWith("m1");
+		expect(screen.getByRole("button", { name: /^Marker Bridge/ })).toBeInTheDocument();
 	});
 });

@@ -266,3 +266,63 @@ describe("StudioArrangementSchema: inserts, buses and sends (D2)", () => {
 		expect(v.safeParse(StudioArrangementSchema, tooManyBuses).success).toBe(false);
 	});
 });
+
+describe("StudioArrangementSchema (D4): fade shapes and markers", () => {
+	const base = () => ({
+		version: 1 as const,
+		bpm: 120,
+		beatsPerBar: 4,
+		gridOn: true,
+		countIn: false,
+		click: false,
+		loop: null,
+		master: 1,
+		tracks: [track("t1")],
+		clips: [],
+	});
+	test("a clip may name its fade shape; an unknown shape is refused", () => {
+		const clip = {
+			id: "c1",
+			trackId: "t1",
+			sourceId,
+			start: 0,
+			offset: 0,
+			duration: 1,
+			gain: 1,
+			fadeIn: 0.1,
+			fadeOut: 0.1,
+			name: "x",
+		};
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), clips: [{ ...clip, fadeShape: "power" }] })
+				.success,
+		).toBe(true);
+		expect(v.safeParse(StudioArrangementSchema, { ...base(), clips: [clip] }).success).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), clips: [{ ...clip, fadeShape: "log" }] })
+				.success,
+		).toBe(false);
+	});
+	test("markers carry an id, a time and a short name, at most 64", () => {
+		const marker = (i: number) => ({ id: `m${i}`, t: i, name: `Mark ${i}` });
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), markers: [marker(1), marker(2)] }).success,
+		).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), markers: [{ id: "m", t: -1, name: "x" }] })
+				.success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				markers: [{ id: "m", t: 1, name: "x".repeat(41) }],
+			}).success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				markers: Array.from({ length: 65 }, (_, i) => marker(i)),
+			}).success,
+		).toBe(false);
+	});
+});

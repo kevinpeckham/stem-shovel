@@ -59,6 +59,25 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   tail. `studioExport.ts`, `ExportPanel.svelte`, `dawproject.ts`,
   `zipBlobs.ts`, `clipNoteEvents.ts`, each tested; browser spec
   `studio-export.spec.ts`; the user guide's "Bouncing and exporting".
+- **Dawn: editing depth** (docs/dawn-daw-plan.md, phase D4).
+  Overlapping clips crossfade equal power (`clipCrossfades`,
+  `fadeCurve`: curves scheduled on the clip's gain, live and in the
+  bounce) and a clip's own fades take a shape, linear or equal power.
+  **Comping**: the T button opens a lane per alternate take under the
+  clip; a swipe over a lane takes that region from the take, the clip
+  split into crossfaded pieces (`compRegion`, `compFromTake`).
+  **Multi-selection** with Shift-click: a selection drags together,
+  Delete removes it all, Shift+Delete ripples the gap closed
+  (`rippleDelete`, `moveClips`, `deleteClips`). The clip bar gained
+  **Reverse**, **Normalize** and **Consolidate** (the selected clips of
+  a track rendered into one recording with gains, fades and crossfades
+  baked in; `mixClipsToChannels`), each a new recording uploaded like an
+  import. **Markers** on the ruler: M or the flag button adds one at
+  the playhead, click jumps, double-click renames, Delete removes;
+  saved with the song (`StudioMarkerSchema`, up to 64). Unit tests on
+  every util, component tests on the timeline, browser spec
+  `studio-editing.spec.ts`; the user guide's "Editing clips", "Takes
+  and comping" and "Markers".
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

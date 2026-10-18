@@ -726,3 +726,64 @@ export module; a component test on the panel.
 Left for later: MP3 delivery (a mix sent to a song as a demo gets its
 rendition from the jobs function already), stem export straight to a
 song with the buses, a loudness history on the master.
+
+## Editing depth (2026-10-18, docs/dawn-daw-plan.md D4)
+
+**Crossfades and fade curves.** Where two clips on a track overlap they
+crossfade: `utils/clipCrossfades.ts` widens the earlier clip's fade-out
+and the later clip's fade-in over the overlap (never past half of
+either clip) and marks those fades equal power, while a clip's own
+longer fade keeps its shape. A clip may set `fadeShape` (`linear` or
+`power`, `STUDIO_FADE_SHAPES`; absent is linear) for its own fades.
+`utils/fadeCurve.ts` is the curve for an `AudioParam`'s
+`setValueCurveAtTime` (a quarter sine for equal power, so sin² + cos²
+holds the level through a crossfade); `scheduleFades` in the engine
+applies the in and out curves to a clip's gain, each at most half the
+span less a hair since curves may not overlap, both live (`#startPass`
+computes the crossfades once per pass and hands each clip its fades)
+and in the bounce. The timeline draws the fades as they play, straight
+wedges for linear and bowed ones for equal power (`data-fade-in`,
+`data-fade-out` carry the shape).
+
+**Comping.** A clip that holds alternate takes gets a **T** in its
+track's header: the take lanes open under the clips, one per alternate
+(`TAKE_H`), each drawing that take over the comp clip's span (the
+selected clip on the track when it has takes, else the first with
+takes). A swipe over a lane is a region; on release the engine's
+`compFromTake(clipId, takeSourceId, from, to)` splits the clip through
+`utils/compRegion.ts` into up to three pieces, the middle playing the
+take with the other takes behind it, the pieces overlapping by a 20 ms
+crossfade so the joins hold their level. One undo step.
+
+**Selection and the clip tools.** Shift-click adds a clip to the
+selection (`selectedIds`, bound beside `selected`, the last clicked
+one the clip bar shows); a selection drags together (`moveClips`, one
+step, bounded by the tracks and zero), Delete removes it all
+(`deleteClips`) and Shift+Delete ripples, closing the gaps on each
+track (`utils/rippleDelete.ts`: the removed clips' spans merged where
+they touch, later clips on the track moved earlier by their length).
+The clip bar's tools each make a **new recording** of the clip's audio
+and hand it to the page's queue as an import (`#sourceFromChannels`:
+an `AudioBuffer` from channel data, the source registered pending, the
+WAV uploaded): **Reverse** (`utils/reverseChannels.ts`), **Normalize**
+(`normalizeBuffer`, the looper's; nothing happens for a clip already
+hot or near silence) and **Consolidate**, which renders the selected
+clips of one track into one recording with their gains, fades and
+crossfades baked in (`utils/mixClipsToChannels.ts`, pure over channel
+data: the same fades as the engine schedules) and replaces them with
+one clip. A fade shape picker sits beside the fades.
+
+**Markers.** `arrangement.markers` (`StudioMarkerSchema`: id, time,
+name; `MAX_STUDIO_MARKERS` 64) sit on the ruler as flags. **M** or the
+flag button in the transport adds one at the playhead (`addMarker`,
+named in order), a click jumps there, a double-click renames, Delete
+on a focused flag removes it; `moveMarker` and `markerFrom(t, step)`
+exist for a later jump-to-next key. Markers go with the song as part
+of the arrangement, so a revision keeps them.
+
+Browser spec `tests/e2e/studio-editing.spec.ts`; unit tests on each
+util; the timeline's component tests cover the selection, the drag of
+a selection, the wedges, the take lanes and the markers. Left for
+later: clip gain envelopes, a range selection on the ruler with
+ripple insert, the song's sections drawn on the ruler, a jump-to-marker
+key.

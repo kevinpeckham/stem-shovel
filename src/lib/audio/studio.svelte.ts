@@ -24,10 +24,17 @@ import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js
 import type { MidiSummary } from "./midi";
 import {
 	MAX_STUDIO_CLIPS,
+	MAX_STUDIO_MARKERS,
 	MAX_STUDIO_NOTES_PER_CLIP,
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
 } from "#lib/constants/studio.js";
+import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
+import { compRegion } from "#lib/utils/compRegion.js";
+import { fadeCurve } from "#lib/utils/fadeCurve.js";
+import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
+import { reverseChannels } from "#lib/utils/reverseChannels.js";
+import { rippleDelete } from "#lib/utils/rippleDelete.js";
 import type {
 	StudioArrangement,
 	StudioClip,
@@ -43,6 +50,8 @@ import type {
 	StudioBus,
 	StudioInsert,
 	StudioSend,
+	StudioFadeShape,
+	StudioMarker,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
@@ -110,6 +119,34 @@ const START_AHEAD = 0.1;
 const RAMP = 0.015;
 /** The shortest fade at a clip's edges, so a cut never clicks. */
 const EDGE_FADE = 0.003;
+/** A clip's fades as stored, in its own shape (no neighbor in play). */
+const fadesOf = (c: StudioClip): EffectiveFades => ({
+	fadeIn: c.fadeIn,
+	fadeOut: c.fadeOut,
+	inShape: c.fadeShape ?? "linear",
+	outShape: c.fadeShape ?? "linear",
+});
+/**
+ * A clip's gain over its playing span: silent at `at`, the in curve to
+ * `peak`, a hold, the out curve back to silence at `at + length`
+ * (utils/fadeCurve.ts for the shapes). The curves never overlap: each is
+ * at most half the span less a hair, which `setValueCurveAtTime` insists
+ * on.
+ */
+function scheduleFades(
+	param: AudioParam,
+	peak: number,
+	at: number,
+	length: number,
+	f: EffectiveFades,
+) {
+	const half = Math.max(0.0005, length / 2 - 0.0005);
+	const inLen = Math.min(f.fadeIn, half);
+	const outLen = Math.min(f.fadeOut, half);
+	param.value = 0;
+	param.setValueCurveAtTime(fadeCurve(f.inShape, "in", peak), at, inLen);
+	param.setValueCurveAtTime(fadeCurve(f.outShape, "out", peak), at + length - outLen, outLen);
+}
 const LOAD_CONCURRENCY = 3;
 /** Frames per peak of a take's live waveform (about a hundredth of a second). */
 export const LIVE_PEAK_FRAMES = 512;
@@ -1051,6 +1088,258 @@ class StudioEngine {
 		const c = this.#clip(clipId);
 		return c ? 1 + (c.alternates?.length ?? 0) : 0;
 	}
+
+	// ── Editing depth (docs/dawn-daw-plan.md, D4) ──────────────────────────
+	/** The shape of a clip's fades: a crossfade with a neighbor is equal power whatever this says. */
+	setClipFadeShape(clipId: string, shape: StudioFadeShape) {
+		const c = this.#clip(clipId);
+		if (!c || (c.fadeShape ?? "linear") === shape) return;
+		this.#commit();
+		if (shape === "linear") delete c.fadeShape;
+		else c.fadeShape = shape;
+		this.#reschedule();
+	}
+	/** Several clips moved together by `dt` seconds and `rows` tracks (a multi-selection dragged): one undo step; none leaves the tracks or goes before zero. */
+	moveClips(clipIds: string[], dt: number, rows = 0) {
+		const clips = clipIds.map((id) => this.#clip(id)).filter((c): c is StudioClip => !!c);
+		if (clips.length === 0 || (dt === 0 && rows === 0)) return;
+		const tracks = this.arrangement.tracks;
+		const indexOf = (c: StudioClip) => tracks.findIndex((t) => t.id === c.trackId);
+		let shift = dt;
+		for (const c of clips) shift = Math.max(shift, -c.start);
+		let step = rows;
+		for (const c of clips) {
+			const i = indexOf(c);
+			step = Math.max(-i, Math.min(tracks.length - 1 - i, step));
+		}
+		if (shift === 0 && step === 0) return;
+		this.#commit();
+		for (const c of clips) {
+			c.start = round4(c.start + shift);
+			if (step) c.trackId = tracks[indexOf(c) + step]!.id;
+		}
+		this.#reschedule();
+	}
+	/** Several clips removed in one step; `ripple` closes the gaps they leave (utils/rippleDelete.ts). */
+	deleteClips(clipIds: string[], ripple = false) {
+		const gone = new Set(clipIds);
+		if (!this.arrangement.clips.some((c) => gone.has(c.id))) return;
+		this.#commit();
+		this.arrangement.clips = ripple
+			? rippleDelete(this.arrangement.clips, gone)
+			: this.arrangement.clips.filter((c) => !gone.has(c.id));
+		for (const id of gone) this.#stopClip(id);
+		if (ripple) this.#reschedule();
+	}
+	/**
+	 * Comping: the region [from, to] of a clip taken from one of its takes
+	 * (utils/compRegion.ts): the clip becomes up to three pieces, the
+	 * middle playing the take, overlapping their neighbors by a short
+	 * equal-power crossfade. Returns the middle piece.
+	 */
+	compFromTake(clipId: string, takeSourceId: string, from: number, to: number): StudioClip | null {
+		const c = this.#clip(clipId);
+		if (!c) return null;
+		const pieces = compRegion(structuredClone($state.snapshot(c)), takeSourceId, from, to);
+		if (!pieces) return null;
+		if (this.arrangement.clips.length - 1 + pieces.length > MAX_STUDIO_CLIPS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
+			return null;
+		}
+		this.#commit();
+		const made = pieces.map((p) => ({ ...p, id: localId() }));
+		const i = this.arrangement.clips.findIndex((x) => x.id === clipId);
+		this.arrangement.clips.splice(i, 1, ...made);
+		this.#stopClip(clipId);
+		this.#reschedule();
+		return made.find((m) => m.sourceId === takeSourceId) ?? made[0]!;
+	}
+	/** A new source from channel data, held here and handed to the page to upload (as an import is). */
+	#sourceFromChannels(
+		channels: Float32Array[],
+		sampleRate: number,
+		label: string,
+		trackId: string,
+	): { sourceId: string; buffer: AudioBuffer } {
+		const length = Math.max(1, channels[0]?.length ?? 1);
+		const buffer = new AudioBuffer({ numberOfChannels: channels.length || 1, length, sampleRate });
+		channels.forEach((ch, i) => buffer.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
+		const sourceId = nanoid();
+		this.#buffers.set(sourceId, buffer);
+		this.sources[sourceId] = {
+			id: sourceId,
+			label,
+			durationSeconds: buffer.duration,
+			sampleRate,
+			channels: buffer.numberOfChannels,
+			peaks: computePeaks(buffer, 1024),
+			status: "ready",
+			pending: true,
+		};
+		this.#recount();
+		this.ontake?.({
+			sourceId,
+			trackId,
+			trackLabel: label,
+			takeNumber: 0,
+			kind: "import",
+			buffer,
+			blob: new Blob([encodeWav24(channels, sampleRate)], { type: "audio/wav" }),
+			filename: `${label}.wav`,
+			durationSeconds: buffer.duration,
+		});
+		return { sourceId, buffer };
+	}
+	/** The clip's span of its source as plain channels, for a tool that makes a new source of it. */
+	#clipChannels(c: StudioClip): { channels: Float32Array[]; sampleRate: number } | null {
+		const buffer = c.sourceId ? this.#buffers.get(c.sourceId) : null;
+		if (!buffer) return null;
+		const sr = buffer.sampleRate;
+		const a = Math.max(0, Math.round(c.offset * sr));
+		const b = Math.min(buffer.length, Math.round((c.offset + c.duration) * sr));
+		if (b <= a) return null;
+		return {
+			channels: Array.from({ length: buffer.numberOfChannels }, (_, ch) =>
+				buffer.getChannelData(ch).slice(a, b),
+			),
+			sampleRate: sr,
+		};
+	}
+	/** The clip on a new source made of its span (reversed, normalized): its takes stay behind it only when `keepTakes`. */
+	#replaceClipSource(c: StudioClip, channels: Float32Array[], sampleRate: number, suffix: string) {
+		const label = `${c.name || "Clip"} (${suffix})`.slice(0, 60);
+		const { sourceId, buffer } = this.#sourceFromChannels(channels, sampleRate, label, c.trackId);
+		this.#commit();
+		c.sourceId = sourceId;
+		c.offset = 0;
+		c.duration = round4(buffer.duration);
+		delete c.alternates;
+		c.name = label;
+		this.#reschedule();
+	}
+	/** The clip's audio back to front, as a new recording of its own. */
+	reverseClip(clipId: string): boolean {
+		const c = this.#clip(clipId);
+		const got = c && this.#clipChannels(c);
+		if (!c || !got) return false;
+		this.#replaceClipSource(c, reverseChannels(got.channels), got.sampleRate, "reversed");
+		return true;
+	}
+	/** The clip's audio brought up to −1 dBFS, as a new recording of its own (a clip already there, or near silence, is left). */
+	normalizeClip(clipId: string): boolean {
+		const c = this.#clip(clipId);
+		const got = c && this.#clipChannels(c);
+		if (!c || !got) return false;
+		const buffer = new AudioBuffer({
+			numberOfChannels: got.channels.length,
+			length: got.channels[0]!.length,
+			sampleRate: got.sampleRate,
+		});
+		got.channels.forEach((ch, i) => buffer.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
+		if (normalizeBuffer(buffer) === 1) return false;
+		this.#replaceClipSource(
+			c,
+			Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i)),
+			got.sampleRate,
+			"normalized",
+		);
+		return true;
+	}
+	/** Clips of one track rendered into one new recording that replaces them (gains, fades and crossfades baked in); null when they span tracks. */
+	consolidateClips(clipIds: string[]): StudioClip | null {
+		const clips = clipIds
+			.map((id) => this.#clip(id))
+			.filter((c): c is StudioClip => !!c && !!c.sourceId);
+		if (clips.length === 0 || new Set(clips.map((c) => c.trackId)).size !== 1) return null;
+		const from = Math.min(...clips.map((c) => c.start));
+		const to = Math.max(...clips.map((c) => c.start + c.duration));
+		const sampleRate = this.sampleRate;
+		const channels = mixClipsToChannels(
+			structuredClone($state.snapshot(clips)),
+			(id) => {
+				const b = this.#buffers.get(id);
+				return b
+					? {
+							channels: Array.from({ length: b.numberOfChannels }, (_, i) => b.getChannelData(i)),
+							sampleRate: b.sampleRate,
+						}
+					: null;
+			},
+			{ from, to, sampleRate },
+		);
+		const first = [...clips].sort((a, b) => a.start - b.start)[0]!;
+		const label = `${first.name || "Clip"} (consolidated)`.slice(0, 60);
+		const { sourceId, buffer } = this.#sourceFromChannels(
+			channels,
+			sampleRate,
+			label,
+			first.trackId,
+		);
+		this.#commit();
+		const gone = new Set(clips.map((c) => c.id));
+		const made: StudioClip = {
+			id: localId(),
+			trackId: first.trackId,
+			sourceId,
+			start: round4(from),
+			offset: 0,
+			duration: round4(buffer.duration),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: label,
+		};
+		const i = this.arrangement.clips.findIndex((c) => c.id === first.id);
+		this.arrangement.clips = this.arrangement.clips.filter((c) => !gone.has(c.id));
+		this.arrangement.clips.splice(Math.min(i, this.arrangement.clips.length), 0, made);
+		for (const id of gone) this.#stopClip(id);
+		this.#reschedule();
+		return made;
+	}
+
+	// ── Markers (D4) ──────────────────────────────────────────────────────
+	get markers(): StudioMarker[] {
+		return this.arrangement.markers ?? [];
+	}
+	addMarker(t = this.position, name?: string): StudioMarker | null {
+		if (this.markers.length >= MAX_STUDIO_MARKERS) {
+			this.notice = `A song holds at most ${MAX_STUDIO_MARKERS} markers.`;
+			return null;
+		}
+		this.#commit();
+		const marker: StudioMarker = {
+			id: localId(),
+			t: round4(Math.max(0, t)),
+			name: name ?? `Marker ${this.markers.length + 1}`,
+		};
+		this.arrangement.markers = [...this.markers, marker].sort((a, b) => a.t - b.t);
+		return marker;
+	}
+	moveMarker(id: string, t: number) {
+		const m = this.markers.find((x) => x.id === id);
+		if (!m || m.t === t) return;
+		this.#commit();
+		m.t = round4(Math.max(0, t));
+		this.arrangement.markers = [...this.markers].sort((a, b) => a.t - b.t);
+	}
+	renameMarker(id: string, name: string) {
+		const m = this.markers.find((x) => x.id === id);
+		const next = name.trim().slice(0, 40);
+		if (!m || !next || m.name === next) return;
+		this.#commit();
+		m.name = next;
+	}
+	deleteMarker(id: string) {
+		if (!this.markers.some((x) => x.id === id)) return;
+		this.#commit();
+		this.arrangement.markers = this.markers.filter((x) => x.id !== id);
+	}
+	/** The marker after (or before) a time, for jumping; null at the ends. */
+	markerFrom(t: number, step: 1 | -1): StudioMarker | null {
+		const list = this.markers;
+		if (step === 1) return list.find((m) => m.t > t + 0.001) ?? null;
+		return [...list].reverse().find((m) => m.t < t - 0.001) ?? null;
+	}
 	setPunch(on: boolean) {
 		this.arrangement.punch = on;
 		this.dirty = true;
@@ -1589,7 +1878,9 @@ class StudioEngine {
 			const strip = this.#buses.get(b.id);
 			if (strip) this.#scheduleLanes(b, strip, from, when, to);
 		}
-		for (const clip of this.arrangement.clips) this.#startClip(clip, from, when, to);
+		const fades = clipCrossfades(this.arrangement.clips);
+		for (const clip of this.arrangement.clips)
+			this.#startClip(clip, from, when, to, fades.get(clip.id));
 		this.#queueMidi(from, when, to);
 	}
 	/** Every note of every MIDI clip that falls in [from, to), queued for the look-ahead from `when`; the first moments fire now. */
@@ -1653,7 +1944,13 @@ class StudioEngine {
 		if (this.#midiVoices.length > 64)
 			this.#midiVoices = this.#midiVoices.filter((v) => v.ends > ctx.currentTime);
 	}
-	#startClip(clip: StudioClip, from: number, when: number, to: number | null) {
+	#startClip(
+		clip: StudioClip,
+		from: number,
+		when: number,
+		to: number | null,
+		fades?: EffectiveFades,
+	) {
 		const ctx = this.#ctx;
 		if (!clip.sourceId) return; // a MIDI clip: its notes are queued by #queueMidi
 		const buffer = this.#buffers.get(clip.sourceId);
@@ -1672,14 +1969,14 @@ class StudioEngine {
 		src.connect(gain);
 		gain.connect(nodes.input);
 		const at = when + (begins - from);
-		const g = clip.gain;
-		// Fades: the clip's own at its edges, else a few milliseconds so a cut never clicks.
-		const fadeIn = begins === clip.start ? Math.max(EDGE_FADE, clip.fadeIn) : EDGE_FADE;
-		const fadeOut = ends === clipEnd ? Math.max(EDGE_FADE, clip.fadeOut) : EDGE_FADE;
-		gain.gain.setValueAtTime(0, at);
-		gain.gain.linearRampToValueAtTime(g, at + Math.min(fadeIn, length / 2));
-		gain.gain.setValueAtTime(g, at + length - Math.min(fadeOut, length / 2));
-		gain.gain.linearRampToValueAtTime(0, at + length);
+		// Fades: the clip's own at its edges (widened over an overlap into a crossfade, utils/clipCrossfades.ts), else a few milliseconds so a cut never clicks.
+		const f = fades ?? fadesOf(clip);
+		scheduleFades(gain.gain, clip.gain, at, length, {
+			fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
+			fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
+			inShape: f.inShape,
+			outShape: f.outShape,
+		});
 		src.start(at, offset, Math.min(length, buffer.duration - offset));
 		const entry: Playing = { clipId: clip.id, src, gain };
 		src.onended = () => {
@@ -2246,6 +2543,7 @@ class StudioEngine {
 			if (clips.length)
 				midi.push(renderMidiClipsOffline(off, into, t.input.source, clips, this.arrangement.bpm));
 		}
+		const fades = clipCrossfades(this.arrangement.clips);
 		for (const clip of this.arrangement.clips) {
 			if (!clip.sourceId) continue; // a MIDI clip: its notes play through the instrument above
 			const buffer = this.#buffers.get(clip.sourceId);
@@ -2258,12 +2556,12 @@ class StudioEngine {
 			const at = clip.start;
 			const len = Math.min(clip.duration, Math.max(0, buffer.duration - clip.offset));
 			if (len <= 0) continue;
-			const fadeIn = Math.min(Math.max(EDGE_FADE, clip.fadeIn), len / 2);
-			const fadeOut = Math.min(Math.max(EDGE_FADE, clip.fadeOut), len / 2);
-			gain.gain.setValueAtTime(0, at);
-			gain.gain.linearRampToValueAtTime(clip.gain, at + fadeIn);
-			gain.gain.setValueAtTime(clip.gain, at + len - fadeOut);
-			gain.gain.linearRampToValueAtTime(0, at + len);
+			const f = fades.get(clip.id) ?? fadesOf(clip);
+			scheduleFades(gain.gain, clip.gain, at, len, {
+				...f,
+				fadeIn: Math.max(EDGE_FADE, f.fadeIn),
+				fadeOut: Math.max(EDGE_FADE, f.fadeOut),
+			});
 			src.start(at, clip.offset, len);
 		}
 		await Promise.all(midi);

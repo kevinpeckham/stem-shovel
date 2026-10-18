@@ -13,6 +13,7 @@
 	import { rulerTicks } from "#lib/utils/rulerTicks.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { insertsOf } from "#lib/utils/insertsFromFx.js";
+	import { clipCrossfades } from "#lib/utils/clipCrossfades.js";
 	import type { StudioClip, StudioInput, StudioNote, StudioTrack } from "#lib/val/StudioSchema.js";
 	import type { Attachment } from "svelte/attachments";
 	import ComboBox from "./ComboBox.svelte";
@@ -34,8 +35,10 @@
 	 * with its ends draggable.
 	 */
 	interface Props {
-		/** The selected clip, if any. */
+		/** The selected clip, if any (the last one clicked: the clip bar shows it). */
 		selected?: string | null;
+		/** Every selected clip (Shift-click adds): dragged, deleted and consolidated together (docs/dawn-daw-plan.md, D4). */
+		selectedIds?: string[];
 		pxPerSecond?: number;
 		/** Ask for the input of a track (the page opens the microphone from the gesture). */
 		onarm?: (track: StudioTrack) => void;
@@ -46,6 +49,7 @@
 	}
 	let {
 		selected = $bindable(null),
+		selectedIds = $bindable([]),
 		pxPerSecond = $bindable(40),
 		onarm,
 		onrender,
@@ -58,7 +62,63 @@
 	const AUTO_H = 64;
 	/** Which lane each track shows (its key on `automation`), if any; a track's row grows by AUTO_H while one is open. */
 	let laneShown = $state<Record<string, string>>({});
-	const rowHeight = (trackId: string) => LANE_H + (laneShown[trackId] ? AUTO_H : 0);
+	/** Take lanes under a track's clips for comping (D4): one per alternate take of the track's comp clip. */
+	const TAKE_H = 44;
+	let takesShown = $state<Record<string, boolean>>({});
+	function toggleTakes(trackId: string) {
+		takesShown = { ...takesShown, [trackId]: !takesShown[trackId] };
+	}
+	/** The clip whose takes a track's lanes show: the selected clip on it when it has takes, else its first clip with takes. */
+	function compClipOf(trackId: string): StudioClip | null {
+		const clips = engine.arrangement.clips.filter(
+			(c) => c.trackId === trackId && c.alternates?.length,
+		);
+		return clips.find((c) => c.id === selected) ?? clips[0] ?? null;
+	}
+	const takeLanes = (trackId: string) =>
+		takesShown[trackId] ? (compClipOf(trackId)?.alternates?.length ?? 0) : 0;
+	const rowHeight = (trackId: string) =>
+		LANE_H + (laneShown[trackId] ? AUTO_H : 0) + takeLanes(trackId) * TAKE_H;
+	/** A swipe over a take lane: the region of the comp clip to take from that take. */
+	let swipe = $state<{
+		clipId: string;
+		sourceId: string;
+		pointerId: number;
+		from: number;
+		to: number;
+	} | null>(null);
+	function onswipedown(e: PointerEvent, clip: StudioClip, sourceId: string) {
+		if (e.button !== 0) return;
+		const t = secondsAtClientX(e.clientX);
+		swipe = { clipId: clip.id, sourceId, pointerId: e.pointerId, from: t, to: t };
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		e.preventDefault();
+	}
+	function onswipemove(e: PointerEvent) {
+		if (!swipe || e.pointerId !== swipe.pointerId) return;
+		swipe.to = secondsAtClientX(e.clientX);
+	}
+	function onswipeup(e: PointerEvent) {
+		if (!swipe || e.pointerId !== swipe.pointerId) return;
+		const sw = swipe;
+		swipe = null;
+		const from = Math.min(sw.from, sw.to);
+		const to = Math.max(sw.from, sw.to);
+		if (to - from < 0.05) return;
+		const made = engine.compFromTake(sw.clipId, sw.sourceId, from, to);
+		if (made) select(made.id);
+	}
+	/** The fades as they play, crossfades over overlaps included (utils/clipCrossfades.ts), for the wedges. */
+	const fades = $derived(clipCrossfades(studio.arrangement.clips));
+	/** One clip selected alone, or added to (Shift) the selection. */
+	function select(id: string, add = false) {
+		selected = id;
+		selectedIds = add ? (selectedIds.includes(id) ? selectedIds : [...selectedIds, id]) : [id];
+	}
+	function clearSelection() {
+		selected = null;
+		selectedIds = [];
+	}
 	function toggleLane(trackId: string) {
 		if (laneShown[trackId]) {
 			const { [trackId]: _gone, ...rest } = laneShown;
@@ -144,7 +204,7 @@
 		scrubbing = true;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		engine.seek(e.shiftKey ? t : engine.snap(t));
-		selected = null;
+		clearSelection();
 		e.preventDefault();
 	}
 	function onrulermove(e: PointerEvent) {
@@ -190,7 +250,7 @@
 
 	function onlanedown(e: PointerEvent, _track: StudioTrack) {
 		if (e.button !== 0 || (e.target as HTMLElement).closest("[data-clip]")) return;
-		selected = null;
+		clearSelection();
 		const t = secondsAtClientX(e.clientX);
 		engine.seek(e.shiftKey ? t : engine.snap(t));
 	}
@@ -213,7 +273,15 @@
 	let drag = $state<Drag | null>(null);
 	function onclipdown(e: PointerEvent, clip: StudioClip) {
 		if (e.button !== 0) return;
-		selected = clip.id;
+		if (e.shiftKey && selectedIds.includes(clip.id) && selectedIds.length > 1) {
+			// Shift on a selected clip takes it out again.
+			selectedIds = selectedIds.filter((id) => id !== clip.id);
+			selected = selectedIds[selectedIds.length - 1] ?? null;
+			e.preventDefault();
+			e.stopPropagation();
+			return;
+		}
+		select(clip.id, e.shiftKey);
 		const el = e.currentTarget as HTMLElement;
 		el.focus({ preventScroll: true });
 		const rect = el.getBoundingClientRect();
@@ -272,18 +340,24 @@
 			return;
 		}
 		const tracks = engine.arrangement.tracks;
+		if (selectedIds.length > 1 && selectedIds.includes(d.clip.id)) {
+			engine.moveClips(selectedIds, d.dt, d.rows);
+			return;
+		}
 		const index = tracks.findIndex((t) => t.id === d.clip.trackId);
 		const target = tracks[index + d.rows]?.id ?? d.clip.trackId;
 		engine.moveClip(d.clip.id, d.clip.start + d.dt, target);
 	}
 	function onkeydown(e: KeyboardEvent) {
 		if (isTextEntry(e.target)) return;
-		if ((e.key === "Delete" || e.key === "Backspace") && selected) {
-			engine.deleteClip(selected);
-			selected = null;
+		const chosen = selectedIds.length ? selectedIds : selected ? [selected] : [];
+		if ((e.key === "Delete" || e.key === "Backspace") && chosen.length) {
+			// Shift closes the gap the clips leave (a ripple delete).
+			engine.deleteClips(chosen, e.shiftKey);
+			clearSelection();
 			e.preventDefault();
 		} else if (e.key === "Escape") {
-			selected = null;
+			clearSelection();
 		}
 	}
 	/** ⌘/Ctrl + wheel zooms around the pointer; a plain wheel scrolls. */
@@ -622,6 +696,31 @@
 					title="Loop region: drag its ends"
 				></div>
 			{/if}
+			<!-- Markers (D4): a flag each; click jumps there, double-click renames, Delete on a focused one removes it. -->
+			{#each engine.markers as m (m.id)}
+				<button
+					type="button"
+					class="absolute bottom-0 z-10 h-4 max-w-32 truncate rounded-t px-1 text-10px leading-4 bg-maximumYellow/80 text-dark hover:bg-maximumYellow focus-visible:ring-1 focus-visible:ring-white"
+					style:left="{m.t * pxPerSecond}px"
+					data-marker={m.id}
+					aria-label="Marker {m.name} at {formatTime(m.t)}"
+					title="{m.name} · {formatTime(m.t)} (double-click to rename, Delete to remove)"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => engine.seek(m.t)}
+					ondblclick={() => {
+						const name = prompt("Marker name", m.name);
+						if (name) engine.renameMarker(m.id, name);
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Delete" || e.key === "Backspace") {
+							// The marker alone: the timeline's own Delete (the selected clips) must not hear it.
+							engine.deleteMarker(m.id);
+							e.preventDefault();
+							e.stopPropagation();
+						}
+					}}>{m.name}</button
+				>
+			{/each}
 			{#each ticks as tick (tick.x)}
 				<div
 					class="absolute bottom-0 {tick.major ? 'h-3 bg-white/40' : 'h-1.5 bg-white/20'} w-px"
@@ -692,6 +791,17 @@
 							aria-label="Automation for {track.name}"
 							title="Automation: a lane of points under the clips for the volume, the pan or the reverb"
 							onclick={() => toggleLane(track.id)}>A</button
+						>
+					{/if}
+					<!-- Take lanes for comping (D4), once a clip on the track holds alternate takes. -->
+					{#if compClipOf(track.id)}
+						<button
+							type="button"
+							class="device-fader-button-sm {takesShown[track.id] ? 'text-accent' : ''}"
+							aria-pressed={!!takesShown[track.id]}
+							aria-label="Takes for {track.name}"
+							title="Takes: a lane per take under the clip; swipe a region to use that take there"
+							onclick={() => toggleTakes(track.id)}>T</button
 						>
 					{/if}
 					<!-- context menu (StudioTrackMenu: the same actions as the Stage's strip) -->
@@ -842,7 +952,9 @@
 						{/each}
 					{/if}
 					{#each clipsOf(track) as clip (clip.id)}
-						{@const dragging = drag?.clip.id === clip.id}
+						{@const dragging =
+							drag?.clip.id === clip.id ||
+							(!!drag && drag.mode === "move" && selectedIds.includes(clip.id))}
 						{@const source = clip.sourceId ? engine.sources[clip.sourceId] : undefined}
 						{@const shown =
 							dragging && drag!.mode === "left" && drag!.moved
@@ -851,12 +963,20 @@
 									? { start: clip.start, duration: drag!.edge - clip.start }
 									: { start: clip.start, duration: clip.duration }}
 						{@const takes = 1 + (clip.alternates?.length ?? 0)}
+						{@const f = fades.get(clip.id) ?? {
+							fadeIn: clip.fadeIn,
+							fadeOut: clip.fadeOut,
+							inShape: "linear",
+							outShape: "linear",
+						}}
 						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 						<div
 							class="absolute top-1 bottom-1 rounded-md border overflow-hidden cursor-grab outline-none touch-none {selected ===
 							clip.id
 								? 'border-accent bg-accent/15 ring-1 ring-accent'
-								: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
+								: selectedIds.includes(clip.id)
+									? 'border-accent/70 bg-accent/10'
+									: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
 								? 'cursor-grabbing opacity-80 z-10'
 								: ''} {dim ? 'opacity-50' : ''}"
 							style:left="{shown.start * pxPerSecond}px"
@@ -865,6 +985,7 @@
 								? `translate(${drag!.dt * pxPerSecond}px, ${rowsToPx(index, drag!.rows)}px)`
 								: undefined}
 							data-clip={clip.id}
+							data-selected={selectedIds.includes(clip.id) || undefined}
 							role="button"
 							tabindex="0"
 							aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
@@ -899,17 +1020,23 @@
 									{@attach clipWave(clip)}
 								></canvas>
 							{/if}
-							<!-- the fades, drawn as wedges over the ends -->
-							{#if clip.fadeIn > 0}
+							<!-- the fades as they play (a crossfade over an overlap widens them), drawn as wedges over the ends: straight for linear, bowed for equal power -->
+							{#if f.fadeIn > 0}
 								<div
-									class="absolute inset-y-0 left-0 pointer-events-none bg-[linear-gradient(to_bottom_right,rgba(0,0,0,0.55)_50%,transparent_50%)]"
-									style:width="{clip.fadeIn * pxPerSecond}px"
+									class="absolute inset-y-0 left-0 pointer-events-none {f.inShape === 'power'
+										? 'bg-[radial-gradient(ellipse_at_bottom_right,transparent_60%,rgba(0,0,0,0.55)_62%)]'
+										: 'bg-[linear-gradient(to_bottom_right,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
+									style:width="{f.fadeIn * pxPerSecond}px"
+									data-fade-in={f.inShape}
 								></div>
 							{/if}
-							{#if clip.fadeOut > 0}
+							{#if f.fadeOut > 0}
 								<div
-									class="absolute inset-y-0 right-0 pointer-events-none bg-[linear-gradient(to_bottom_left,rgba(0,0,0,0.55)_50%,transparent_50%)]"
-									style:width="{clip.fadeOut * pxPerSecond}px"
+									class="absolute inset-y-0 right-0 pointer-events-none {f.outShape === 'power'
+										? 'bg-[radial-gradient(ellipse_at_bottom_left,transparent_60%,rgba(0,0,0,0.55)_62%)]'
+										: 'bg-[linear-gradient(to_bottom_left,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
+									style:width="{f.fadeOut * pxPerSecond}px"
+									data-fade-out={f.outShape}
 								></div>
 							{/if}
 							<!-- the trim handles -->
@@ -947,6 +1074,52 @@
 						</div>
 					{/if}
 				</div>
+				{#if takesShown[track.id] && compClipOf(track.id)}
+					{@const comp = compClipOf(track.id)!}
+					<!-- The take lanes (D4): each alternate take drawn over the comp clip's span; a swipe takes that region from it (engine.compFromTake). -->
+					{#each comp.alternates ?? [] as sourceId (sourceId)}
+						{@const take = engine.sources[sourceId]}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="relative border-b border-white/10 bg-black/20 touch-none"
+							style:height="{TAKE_H}px"
+							data-take-lane={sourceId}
+							data-take-for={comp.id}
+						>
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="absolute top-0.5 bottom-0.5 rounded border border-white/20 bg-white/5 cursor-crosshair overflow-hidden"
+								style:left="{comp.start * pxPerSecond}px"
+								style:width="{Math.max(6, comp.duration * pxPerSecond)}px"
+								role="button"
+								tabindex="-1"
+								aria-label="Take {take?.label ?? sourceId} for {comp.name ||
+									'clip'}: swipe a region to use it"
+								onpointerdown={(e) => onswipedown(e, comp, sourceId)}
+								onpointermove={onswipemove}
+								onpointerup={onswipeup}
+								onpointercancel={onswipeup}
+							>
+								<canvas
+									class="absolute inset-0 h-full w-full text-blue-200/70"
+									style:color={tint ?? undefined}
+									{@attach clipWave({ ...comp, id: `${comp.id}:${sourceId}`, sourceId })}
+								></canvas>
+								<span
+									class="absolute left-1 top-0.5 text-10px leading-none px-1 rounded bg-black/40"
+									>{take?.label ?? "take"}</span
+								>
+								{#if swipe?.clipId === comp.id && swipe.sourceId === sourceId}
+									<div
+										class="absolute inset-y-0 bg-accent/30 border-x border-accent pointer-events-none"
+										style:left="{(Math.min(swipe.from, swipe.to) - comp.start) * pxPerSecond}px"
+										style:width="{Math.abs(swipe.to - swipe.from) * pxPerSecond}px"
+									></div>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				{/if}
 				{#if laneShown[track.id] && laneOf(track.id)}
 					{@const choice = laneOf(track.id)!}
 					{@const param = choice.key}

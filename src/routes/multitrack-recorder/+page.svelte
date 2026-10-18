@@ -103,6 +103,8 @@
 	/** The song the engine holds ("" for none); starts unset so the first open always loads. */
 	let loadedKey = "unloaded";
 	let selected = $state<string | null>(null);
+	/** Every selected clip (D4): Shift-click in the timeline adds; the tools below act on them all. */
+	let selectedIds = $state<string[]>([]);
 	let pxPerSecond = $state(40);
 	/** Tracks (the lanes), the Stage (docs/visual-mixer.md) or the Mixer (docs/dawn-daw-plan.md, D2): remembered in this browser. */
 	const VIEW_KEY = "stemshovel.studio.view";
@@ -815,8 +817,41 @@
 			studio.rewind();
 		} else if (e.key === "l" || e.key === "L") {
 			studio.toggleLoop();
+		} else if (e.key === "m" || e.key === "M") {
+			e.preventDefault();
+			addMarker();
 		}
 	}
+	/** A marker at the playhead (M); the ruler shows it. */
+	function addMarker() {
+		if (!studio.addMarker() && studio.notice) {
+			notify(studio.notice, { kind: "error" });
+			studio.notice = null;
+		}
+	}
+	/** The clip tools (D4): the result of one becomes the selection. */
+	function reverseSelected() {
+		if (selectedClip && !studio.reverseClip(selectedClip.id))
+			notify("Nothing to reverse: the clip's audio is not loaded", { kind: "error" });
+	}
+	function normalizeSelected() {
+		if (selectedClip && !studio.normalizeClip(selectedClip.id))
+			notify("Nothing to do: the clip is already at full level or near silence");
+	}
+	function consolidateSelected() {
+		const made = studio.consolidateClips(
+			selectedIds.length ? selectedIds : selected ? [selected] : [],
+		);
+		if (made) {
+			selected = made.id;
+			selectedIds = [made.id];
+		} else notify("Consolidate takes audio clips on one track", { kind: "error" });
+	}
+	/** Whether the selection can consolidate: audio clips, all on one track. */
+	let canConsolidate = $derived.by(() => {
+		const clips = studio.arrangement.clips.filter((c) => selectedIds.includes(c.id) && c.sourceId);
+		return clips.length > 0 && new Set(clips.map((c) => c.trackId)).size === 1;
+	});
 	const mb = (bytes: number) => `${Math.round(bytes / 1048576)} MB`;
 	/** The position as bars and beats on the grid, else as time. */
 	let readout = $derived.by(() => {
@@ -1214,6 +1249,15 @@
 						<span class="i-ph-repeat" aria-hidden="true"></span>
 					</button>
 					<button
+						class="device-button-sm px-3 min-w-32px"
+						type="button"
+						title="A marker at the playhead (M): a named spot on the ruler to jump to"
+						aria-label="Add marker"
+						onclick={addMarker}
+					>
+						<span class="i-ph-flag" aria-hidden="true"></span>
+					</button>
+					<button
 						class="device-button-sm px-3 min-w-32px {studio.arrangement.punch ? 'text-accent' : ''}"
 						type="button"
 						title="Punch: a take keeps only what falls in the loop region"
@@ -1359,6 +1403,7 @@
 				{:else}
 					<StudioTimeline
 						bind:selected
+						bind:selectedIds
 						bind:pxPerSecond
 						onarm={(t) => void armInput(t)}
 						onrender={(t) => void renderMidiTrack(t)}
@@ -1538,6 +1583,23 @@
 								/>
 								s
 							</label>
+							<label class="flex items-center gap-2">
+								Shape
+								<select
+									class="device-field text-12px py-0"
+									value={clip.fadeShape ?? "linear"}
+									aria-label="Fade shape"
+									title="How the fades curve; where clips overlap they crossfade equal power whatever this says"
+									onchange={(e) =>
+										studio.setClipFadeShape(
+											clip.id,
+											e.currentTarget.value === "power" ? "power" : "linear",
+										)}
+								>
+									<option value="linear">Linear</option>
+									<option value="power">Equal power</option>
+								</select>
+							</label>
 						{/if}
 						<span class="flex items-center gap-1">
 							<button
@@ -1561,15 +1623,48 @@
 							<button
 								class="device-button-xs px-2"
 								type="button"
-								title="Remove (Delete)"
+								title="Remove (Delete); Shift+Delete closes the gap"
 								onclick={() => {
-									studio.deleteClip(clip.id);
+									studio.deleteClips(selectedIds.length ? selectedIds : [clip.id]);
 									selected = null;
+									selectedIds = [];
 								}}
 							>
-								<span class="i-ph-trash" aria-hidden="true"></span> Remove
+								<span class="i-ph-trash" aria-hidden="true"></span> Remove{selectedIds.length > 1
+									? ` ${selectedIds.length}`
+									: ""}
 							</button>
 						</span>
+						{#if clip.sourceId}
+							<!-- The clip tools (D4): each makes a new recording of the clip's audio and uploads it as an import. -->
+							<span class="flex items-center gap-1">
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The clip's audio back to front, as a recording of its own"
+									onclick={reverseSelected}
+								>
+									<span class="i-ph-arrows-left-right" aria-hidden="true"></span> Reverse
+								</button>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The clip's audio brought up to −1 dBFS, as a recording of its own"
+									onclick={normalizeSelected}
+								>
+									<span class="i-ph-arrows-out-line-vertical" aria-hidden="true"></span> Normalize
+								</button>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The selected clips of this track rendered into one recording, gains, fades and crossfades baked in"
+									disabled={!canConsolidate}
+									onclick={consolidateSelected}
+								>
+									<span class="i-ph-arrows-in-line-horizontal" aria-hidden="true"></span> Consolidate
+								</button>
+							</span>
+						{/if}
 						{#if clip.alternates?.length}
 							<span class="flex items-center gap-1 ml-auto">
 								<button

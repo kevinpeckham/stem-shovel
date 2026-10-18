@@ -118,7 +118,7 @@ automatable parameters, so D2 adds sends and inserts in one place.
   `ExportPanel.svelte`, `dawproject.ts`, `zipBlobs.ts`; the LUFS readout
   on the master. docs/multitrack-recorder.md "Export and delivery".
 
-### D4. Editing depth: comping, crossfades, clip tools
+### D4. Editing depth: comping, crossfades, clip tools (built on `dawn-daw`, 2026-10-18)
 
 - Crossfades where clips overlap (equal-power), fade curves.
 - **Comping**: the take lanes opened under a track, swipe a region of
@@ -126,6 +126,13 @@ automatable parameters, so D2 adds sends and inserts in one place.
   no browser DAW documents.
 - Clip gain envelopes, reverse, normalize, consolidate; range and ripple
   edits; multi-selection; markers and the song's sections on the ruler.
+- Built: equal-power crossfades on overlaps and fade shapes
+  (`clipCrossfades`, `fadeCurve`), take lanes with swipe comping
+  (`compRegion`, `compFromTake`), multi-selection with grouped moves
+  and ripple delete (`rippleDelete`), Reverse, Normalize and
+  Consolidate as new recordings (`mixClipsToChannels`), markers on the
+  ruler. Left: gain envelopes, range edits on the ruler, sections drawn
+  on the ruler. docs/multitrack-recorder.md "Editing depth".
 
 ### D5. Time: the tempo map, meters, swing, stretch
 

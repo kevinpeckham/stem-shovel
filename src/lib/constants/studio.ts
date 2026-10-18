@@ -12,6 +12,8 @@ import { MAX_TAKE_SECONDS } from "./takeLimits";
 export const MAX_STUDIO_TRACKS = 16;
 /** Clips across every track. */
 export const MAX_STUDIO_CLIPS = 400;
+/** Markers on the ruler (D4). */
+export const MAX_STUDIO_MARKERS = 64;
 /** Audio files (takes and imports) a song may keep. */
 export const MAX_STUDIO_SOURCES = 64;
 /** A recording stops at this length, as a take does. */

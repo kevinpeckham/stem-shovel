@@ -36,11 +36,21 @@ The ruler shows bars and beats at the song's tempo (set in the **Timing** menu) 
 
 ## Editing clips
 
-Drag either end of a clip to **trim** it: the left edge moves where the clip begins in its recording, the right edge where it ends; nothing is thrown away, so a trimmed clip can be dragged open again. **Split** (or S) cuts the selected clip at the playhead into two. **Duplicate** (⌘D) puts a copy right after it. The bar under the timeline holds the selected clip's name, its **gain** (double-click the slider for 0 dB) and its **fade in** and **fade out** in seconds, drawn as wedges on the clip. **Import audio…** puts a file (WAV, FLAC, MP3, M4A and the other formats a demo accepts) on the selected clip's track at the playhead.
+Drag either end of a clip to **trim** it: the left edge moves where the clip begins in its recording, the right edge where it ends; nothing is thrown away, so a trimmed clip can be dragged open again. **Split** (or S) cuts the selected clip at the playhead into two. **Duplicate** (⌘D) puts a copy right after it. The bar under the timeline holds the selected clip's name, its **gain** (double-click the slider for 0 dB), its **fade in** and **fade out** in seconds, drawn as wedges on the clip, and the fades' **shape**, linear or equal power. **Import audio…** puts a file (WAV, FLAC, MP3, M4A and the other formats a demo accepts) on the selected clip's track at the playhead.
 
-## Takes
+**Shift-click** adds clips to the selection: drag them together, **Remove** them together, or press **Shift+Delete** to remove them and close the gap they leave. Where two clips on a track overlap they **crossfade**, equal power, so the join holds its level; slide one clip a little over its neighbor and the wedges show it.
+
+The clip tools make a new recording of a clip's audio and keep the original behind the scenes: **Reverse** plays it back to front, **Normalize** brings a quiet clip up to −1 dB, and **Consolidate** renders the selected clips of a track into one recording with their gains, fades and crossfades baked in, so a part built from pieces becomes one clip.
+
+## Takes and comping
 
 Record over a part again and the new take takes its place, with the earlier one kept behind it: a clip that covers an older clip end to end keeps that clip's recording as an alternate take, and the bar under the timeline shows **n takes** with arrows to step through them. With **Loop** on, recording runs round the region and every full pass is a take of its own, the last one on top; stop when you have the one you like and step back to compare. **Punch** (the dotted square beside Loop) keeps only what falls inside the loop region: put the playhead a bar or two before the region, press Record, play through, and the clip holds just the region.
+
+To build the best of several takes, press **T** in the track's header: a lane opens under the clip for each take, with its waveform. Swipe across a lane over the bars you want from that take and the clip splits there, the middle piece playing that take with short crossfades at the joins. Swipe again on another lane for another region; every swipe is one undo step.
+
+## Markers
+
+Press **M**, or the flag button in the transport, to put a marker at the playhead: a named flag on the ruler. Click a flag to jump there, double-click to rename it, and press Delete with the flag focused to remove it. Markers are saved with the song.
 
 ## MIDI tracks
 
