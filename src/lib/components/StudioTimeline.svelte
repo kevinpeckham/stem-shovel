@@ -953,6 +953,18 @@
 					label={track.name}
 					onreset={() => engine.resetClips(track.id)}
 				/>
+				{#if laneShown[track.id]}
+					<!-- Which parameter the open lane shows; here in the sticky header, so it stays in view as the lane scrolls. -->
+					<ComboBox
+						ariaLabel="{track.name} automation parameter"
+						options={AUTOMATION_OPTIONS}
+						value={laneShown[track.id]!}
+						onchange={(v) => (laneShown = { ...laneShown, [track.id]: v })}
+						clearDefaultButtonClasses
+						buttonClasses="flex w-full items-center gap-1 h-6 px-1.5 rounded border border-accent/40 bg-oxford-800 text-11px text-accent"
+						popoverClasses="text-11px"
+					/>
+				{/if}
 			</div>
 			<div class="grid grid-rows-[1fr_auto]" style:width="{laneWidth}px">
 				<!-- the lane -->
@@ -1096,17 +1108,6 @@
 							label={STUDIO_AUTOMATION[param].label}
 							onchange={(points) => engine.setAutomation(track.id, param, points)}
 						/>
-						<div class="absolute right-1 top-0.5 z-10">
-							<ComboBox
-								ariaLabel="{track.name} automation parameter"
-								options={AUTOMATION_OPTIONS}
-								value={param}
-								onchange={(v) => (laneShown = { ...laneShown, [track.id]: v })}
-								clearDefaultButtonClasses
-								buttonClasses="flex items-center gap-1 h-5 px-1.5 rounded border border-white/15 bg-oxford-800 text-10px"
-								popoverClasses="text-11px"
-							/>
-						</div>
 					</div>
 				{/if}
 			</div>
