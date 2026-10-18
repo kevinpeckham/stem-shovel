@@ -22,6 +22,8 @@
 		stems: "i-ph-waveform",
 		song: "i-ph-music-notes-plus",
 		demo: "i-ph-microphone",
+		mix: "i-ph-waveform",
+		session: "i-ph-cassette-tape",
 	};
 	const when = (d: Date) =>
 		`${formatDate(d)} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;

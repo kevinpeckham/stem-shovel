@@ -17,6 +17,7 @@ export const NOTIFICATION_KINDS = [
 	"song",
 	"demo",
 	"mix",
+	"session",
 ] as const;
 export const NotificationKindSchema = v.picklist(NOTIFICATION_KINDS);
 export type NotificationKind = v.InferOutput<typeof NotificationKindSchema>;

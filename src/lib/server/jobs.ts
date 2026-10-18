@@ -66,6 +66,9 @@ export const scheduleMixPlayback = (mixIds: string[]) => scheduleJob("mix-playba
 /** Takes (docs/demo-recording.md) get the same MP3. */
 export const scheduleRecordingPlayback = (recordingIds: string[]) =>
 	scheduleJob("recording-playback", recordingIds);
+/** Session recordings (docs/uploads-and-blob.md, "Sessions") become MP3s. */
+export const scheduleSessionPlayback = (recordingIds: string[]) =>
+	scheduleJob("session-playback", recordingIds);
 /** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */
 export const scheduleNotationPdf = (notationId: string) =>
 	scheduleJob("notation-pdf", [notationId]);

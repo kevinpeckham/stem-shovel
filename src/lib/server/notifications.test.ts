@@ -29,6 +29,7 @@ const {
 	notifyComment,
 	notifyDemo,
 	notifyInvitationAccepted,
+	notifySessionRecording,
 	notifySong,
 	notifyStems,
 	prefsOf,
@@ -394,6 +395,49 @@ describe("notifyStems", () => {
 	test("a song of another account notifies nobody", async () => {
 		await notifyStems("a2", "s1", "u2");
 		expect(fake.rows("notification")).toEqual([]);
+	});
+});
+
+describe("notifySessionRecording", () => {
+	const sess = {
+		id: "ses1",
+		accountId: "a1",
+		kind: "show",
+		name: "",
+		startsOn: "2026-10-17",
+		place: "The Elbow Room",
+		notes: "",
+	};
+	const rec = {
+		id: "rec1",
+		accountId: "a1",
+		sessionId: "ses1",
+		title: "Set two",
+		filename: "set2.m4a",
+		status: "ready",
+	};
+	test("every member of the account but the uploader hears, per session, at the Sessions page", async () => {
+		reset(base({ recordingSession: [sess], sessionRecording: [rec] }));
+		await notifySessionRecording("a1", "rec1", "u1");
+		expect(inboxOf("u1")).toEqual([]);
+		expect(inboxOf("u4")).toEqual([]); // on a project only, not in the account
+		expect(inboxOf("u2")).toEqual([
+			expect.objectContaining({
+				kind: "session",
+				title: "New recording in The Elbow Room · Oct 17, 2026",
+				body: 'Ann added "Set two" to The Elbow Room · Oct 17, 2026.',
+				href: "/lj/sessions",
+				subjectId: "ses1",
+			}),
+		]);
+		expect(inboxOf("u3")).toHaveLength(1);
+		await notifySessionRecording("a1", "rec1", "u1");
+		expect(inboxOf("u2")).toEqual([
+			expect.objectContaining({
+				count: 2,
+				body: "Ann added 2 recordings to The Elbow Room · Oct 17, 2026.",
+			}),
+		]);
 	});
 });
 

@@ -3,6 +3,7 @@ import { permalink } from "#lib/utils/permalink.js";
 import { db, schema } from "#lib/server/db/index.js";
 import { sendDigestEmail, sendNotificationEmail } from "#lib/server/email.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
+import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import {
 	DEFAULT_PREFS,
 	digestDue,
@@ -28,6 +29,7 @@ const {
 	project,
 	song,
 	demo,
+	sessionRecording,
 	songMix,
 	account,
 	user: userTable,
@@ -335,6 +337,40 @@ export async function notifyDemo(accountId: string, demoId: string, uploaderId: 
 	});
 }
 
+/** A recording added to a session (docs/uploads-and-blob.md, "Sessions"): every member of the account but the uploader. */
+export async function notifySessionRecording(
+	accountId: string,
+	recordingId: string,
+	uploaderId: string,
+) {
+	const r = await db.query.sessionRecording.findFirst({
+		where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)),
+		columns: { title: true, filename: true, sessionId: true },
+		with: {
+			session: { columns: { name: true, place: true, kind: true, startsOn: true } },
+			account: { columns: { slug: true } },
+		},
+	});
+	if (!r?.session) return;
+	const name = sessionDisplayName(r.session);
+	const who = await nameOf(uploaderId);
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		columns: { userId: true },
+	});
+	const audience = members.map((m) => m.userId).filter((id) => id !== uploaderId);
+	await notifyUsers(audience, {
+		kind: "session",
+		accountId,
+		title: `New recording in ${name}`,
+		body: (n) =>
+			`${who} added ${n === 1 ? `"${r.title || r.filename}"` : `${n} recordings`} to ${name}.`,
+		href: `/${r.account.slug}/sessions`,
+		subjectId: r.sessionId,
+		coalesce: true,
+	});
+}
+
 /** A song created in a project. */
 export async function notifySong(accountId: string, songId: string, creatorId: string) {
 	const s = await songContext(accountId, songId);
@@ -503,7 +539,7 @@ export async function sendDigests(now = new Date()) {
 		if (r.digest === "none" || !digestDue(r.digest, r.digestSentAt, now)) continue;
 		const period = r.digest;
 		const prefs: NotificationPrefs = r;
-		const kinds = (["comment", "stems", "song", "demo"] as const).filter(
+		const kinds = (["comment", "stems", "song", "demo", "mix", "session"] as const).filter(
 			(k) => emailDelivery(k, prefs) === "digest",
 		);
 		if (kinds.length === 0) continue;

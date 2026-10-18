@@ -154,6 +154,7 @@ const {
 	songFile,
 	songNotation,
 	sessionRecording,
+	recordingSession,
 } = schema;
 
 /**
@@ -255,9 +256,17 @@ export async function accountOfMix(mixId: string) {
 	return row?.accountId ?? null;
 }
 
-export async function accountOfSession(sessionId: string) {
+export async function accountOfSessionRecording(recordingId: string) {
 	const row = await db.query.sessionRecording.findFirst({
-		where: eq(sessionRecording.id, sessionId),
+		where: eq(sessionRecording.id, recordingId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
+export async function accountOfRecordingSession(sessionId: string) {
+	const row = await db.query.recordingSession.findFirst({
+		where: eq(recordingSession.id, sessionId),
 		columns: { accountId: true },
 	});
 	return row?.accountId ?? null;

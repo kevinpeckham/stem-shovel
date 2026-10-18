@@ -18,14 +18,18 @@ import type { RequestHandler } from "./$types";
 
 /**
  * Step 1 of a session recording's upload (docs/uploads-and-blob.md,
- * "Sessions"): reserve the row under the account and return the pathname
- * to upload to. A member of the account; the kind, the day and the place
- * come with the file, the rest is edited on the page.
+ * "Sessions"): reserve the row in its session and return the pathname to
+ * upload to. A member of the account; the file's own day comes with it,
+ * and either the session it goes in or the kind and place a new session
+ * of that day would take.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = (await request.json().catch(() => ({}))) as {
 		accountId?: string;
+		/** The session to put it in; without one, the account's session of the file's day (or a new one). */
+		sessionId?: string;
 		kind?: string;
+		/** The file's own day (the recorder's, from its modification time), `YYYY-MM-DD`. */
 		recordedOn?: string;
 		place?: string;
 		filename?: string;
@@ -58,6 +62,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	background(() => checkStorage(accountId));
 	const row = await createSessionRecording(accountId, requireUser(locals).id, {
+		sessionId: typeof body.sessionId === "string" && body.sessionId ? body.sessionId : null,
 		kind,
 		recordedOn,
 		place,
@@ -65,10 +70,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		contentType,
 		sizeBytes,
 	});
+	if (row === null) error(404, "Session not found");
 	if (row === "full")
 		error(409, `An account can keep at most ${MAX_SESSIONS_PER_ACCOUNT} session recordings`);
 	return Response.json({
-		sessionId: row.id,
+		recordingId: row.id,
+		sessionId: row.sessionId,
 		pathname: row.pathname,
 		access: await accessOfPathname(row.pathname),
 	});

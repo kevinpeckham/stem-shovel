@@ -8,6 +8,33 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Sessions are the unit now** (Kevin): a session is one practice or one
+  show, made of its recordings, named by the band ("Battle of the Bands")
+  or called after its place and day; it starts on a day and may run into
+  the next (a show past midnight), never further. An upload is dated by
+  the file's own clock (`file.lastModified`), not the upload's, and joins
+  the session of that day (or the day before's) of the same kind, or a
+  new one of that day; or a chosen session. Recordings move between the
+  sessions of their day and the day before from their Edit, or into a
+  new one named there; a session's menu adds a second session of the
+  same day (an afternoon set and the evening show). Tables
+  `recording_session` and `session_recording` (migrations 0089, which
+  sorts the existing recordings into sessions by day, kind and place,
+  and 0090).
+- **A player, a playlist and a zip** on the Sessions page: the project
+  page's player (`SessionPlayer.svelte`) with a queue, Play all on a
+  session and play on a row, previous and next, Space and Home; each
+  recording gets an MP3 rendition in the jobs function (`session-playback`,
+  the demo's transcode) for playback and **Download MP3s**, a zip of the
+  session's rendered MP3s numbered in order, streamed file by file
+  (`/api/recording-sessions/[id]/mp3.zip`). The native audio elements are
+  gone.
+- **A notification when a recording is added**: every member of the
+  account but the uploader, kind `session`, coalesced per session, reaching
+  email under the demos opt-in and the digest.
+
 ## [0.136.0] - 2026-10-18
 
 ### Added

@@ -16,6 +16,7 @@ export * from "./comment";
 export * from "./commentVersion";
 export * from "./demo";
 export * from "./sessionRecording";
+export * from "./recordingSession";
 export * from "./drumKit";
 export * from "./drumSample";
 export * from "./beat";

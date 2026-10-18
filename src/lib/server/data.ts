@@ -89,6 +89,7 @@ import {
 } from "#lib/constants/notationFormats.js";
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
 import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
+import { dayFitsSession, shiftDay } from "#lib/utils/isoDay.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { slugify } from "#lib/utils/slugify.js";
 import {
@@ -170,6 +171,7 @@ const {
 	songUserNote,
 	demo,
 	sessionRecording,
+	recordingSession,
 	invitation,
 	inviteCode,
 	chatMessage,
@@ -3047,13 +3049,13 @@ export async function deleteAccount(id: string) {
 		.from(drumSample)
 		.where(eq(drumSample.accountId, id));
 	const sessions = await db
-		.select({ url: sessionRecording.url })
+		.select({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl })
 		.from(sessionRecording)
 		.where(eq(sessionRecording.accountId, id));
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
-		...sessions.map((r) => r.url),
+		...sessions.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...samples.map((smp) => smp.url),
 		...mixes.map((m) => m.mixUrl ?? ""),
@@ -3611,16 +3613,85 @@ export async function createDemo(
 	return row;
 }
 
-// ---- Session recordings (docs/uploads-and-blob.md, "Sessions"): the account's practice and show tapes ----
+// ---- Sessions (docs/uploads-and-blob.md, "Sessions"): the account's practices and shows, and their recordings ----
 
 /** Today as `YYYY-MM-DD`, UTC: the fallback when the browser sent no day. */
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-/** Reserves a session recording's row and pathname; "full" past the account's cap. */
+/** The sessions a recording of `day` may belong to: those starting that day or the day before (Kevin: a show past midnight). */
+export async function sessionsNearDay(accountId: string, day: string) {
+	return db.query.recordingSession.findMany({
+		where: and(
+			eq(recordingSession.accountId, accountId),
+			inArray(recordingSession.startsOn, [day, shiftDay(day, -1)]),
+		),
+		orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+	});
+}
+
+export async function createRecordingSession(
+	accountId: string,
+	userId: string,
+	input: { kind: SessionKind; name: string; startsOn: string; place: string; notes?: string },
+) {
+	const [row] = await db
+		.insert(recordingSession)
+		.values({
+			id: nanoid(),
+			accountId,
+			kind: input.kind,
+			name: input.name,
+			startsOn: input.startsOn,
+			place: input.place,
+			notes: input.notes ?? "",
+			createdBy: userId,
+		})
+		.returning();
+	return row!;
+}
+
+export async function updateRecordingSession(
+	accountId: string,
+	sessionId: string,
+	fields: { kind: SessionKind; name: string; startsOn: string; place: string; notes: string },
+) {
+	const [row] = await db
+		.update(recordingSession)
+		.set(fields)
+		.where(and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)))
+		.returning();
+	return row ?? null;
+}
+
+/** The session and every recording in it, files included. */
+export async function deleteRecordingSession(accountId: string, sessionId: string) {
+	const [row] = await db
+		.delete(recordingSession)
+		.where(and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)))
+		.returning({ id: recordingSession.id });
+	if (!row) return false;
+	const gone = await db
+		.delete(sessionRecording)
+		.where(
+			and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.sessionId, sessionId)),
+		)
+		.returning({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl });
+	await deleteBlobs(gone.flatMap((r) => [r.url, r.playbackUrl ?? ""]));
+	return true;
+}
+
+/**
+ * Reserves a recording's row and pathname in a session: the one named, or
+ * else the account's session of the recording's day (or the day before)
+ * with the same kind, newest first, or else a new session of that day
+ * named by its place (utils/sessionName.ts). Null when the named session
+ * is not the account's; "full" past the account's cap.
+ */
 export async function createSessionRecording(
 	accountId: string,
 	userId: string,
 	input: {
+		sessionId: string | null;
 		kind: SessionKind;
 		recordedOn: string | null;
 		place: string;
@@ -3634,16 +3705,41 @@ export async function createSessionRecording(
 		.from(sessionRecording)
 		.where(eq(sessionRecording.accountId, accountId));
 	if (n >= MAX_SESSIONS_PER_ACCOUNT) return "full" as const;
+	const recordedOn = input.recordedOn ?? todayIso();
+	let session: { id: string } | null = null;
+	if (input.sessionId) {
+		session =
+			(await db.query.recordingSession.findFirst({
+				where: and(
+					eq(recordingSession.accountId, accountId),
+					eq(recordingSession.id, input.sessionId),
+				),
+				columns: { id: true },
+			})) ?? null;
+		if (!session) return null;
+	} else {
+		const near = (await sessionsNearDay(accountId, recordedOn)).filter(
+			(s) => s.kind === input.kind,
+		);
+		session =
+			near.find((s) => s.startsOn === recordedOn) ??
+			near[0] ??
+			(await createRecordingSession(accountId, userId, {
+				kind: input.kind,
+				name: "",
+				startsOn: recordedOn,
+				place: input.place,
+			}));
+	}
 	const id = nanoid();
 	const [row] = await db
 		.insert(sessionRecording)
 		.values({
 			id,
 			accountId,
-			kind: input.kind,
+			sessionId: session.id,
 			title: labelFromFilename(input.filename),
-			recordedOn: input.recordedOn ?? todayIso(),
-			place: input.place,
+			recordedOn,
 			url: "",
 			pathname: sessionPathname(accountId, id, input.filename),
 			filename: input.filename,
@@ -3669,12 +3765,12 @@ export async function findUploadingSession(accountId: string, pathname: string) 
 	);
 }
 
-export async function markSessionReady(accountId: string, sessionId: string, url: string) {
+export async function markSessionReady(accountId: string, recordingId: string, url: string) {
 	const [row] = await db
 		.update(sessionRecording)
 		.set({ status: "ready", url })
-		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
-		.returning({ id: sessionRecording.id });
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
+		.returning({ id: sessionRecording.id, sessionId: sessionRecording.sessionId });
 	return row ?? null;
 }
 
@@ -3687,44 +3783,136 @@ export async function recordSessionUrl(pathname: string, url: string) {
 }
 
 /** An upload that did not turn out to be audio: the row and the file go. */
-export async function failSessionRecording(accountId: string, sessionId: string, url: string) {
+export async function failSessionRecording(accountId: string, recordingId: string, url: string) {
 	const [row] = await db
 		.delete(sessionRecording)
-		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
 		.returning({ id: sessionRecording.id });
 	if (row) await deleteBlobs([url]);
 }
 
-/** The account's ready sessions, newest day first (then newest upload), with who uploaded each. */
-export async function listSessionRecordings(accountId: string) {
-	return db.query.sessionRecording.findMany({
-		where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
-		orderBy: [desc(sessionRecording.recordedOn), desc(sessionRecording.createdAt)],
-		with: { uploader: { columns: { id: true, name: true } } },
-	});
+/**
+ * The account's sessions, newest first, each with its ready recordings in
+ * the order they were made (day, then upload), and who uploaded each.
+ * Sessions with nothing ready yet are listed too (a name given before the
+ * upload finished).
+ */
+export async function listRecordingSessions(accountId: string) {
+	const [sessions, recordings] = await Promise.all([
+		db.query.recordingSession.findMany({
+			where: eq(recordingSession.accountId, accountId),
+			orderBy: [desc(recordingSession.startsOn), desc(recordingSession.createdAt)],
+		}),
+		db.query.sessionRecording.findMany({
+			where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
+			orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+			with: { uploader: { columns: { id: true, name: true } } },
+		}),
+	]);
+	return sessions.map((s) => ({
+		...s,
+		recordings: recordings.filter((r) => r.sessionId === s.id),
+	}));
 }
 
+/**
+ * A recording's words and its session: null for a recording or a session
+ * not the account's, "day" when the recording's day is not the session's
+ * or the day after (utils/isoDay.ts).
+ */
 export async function updateSessionRecording(
 	accountId: string,
-	sessionId: string,
-	fields: { kind: SessionKind; title: string; recordedOn: string; place: string; notes: string },
+	recordingId: string,
+	fields: { sessionId: string; title: string; recordedOn: string; notes: string },
 ) {
+	const session = await db.query.recordingSession.findFirst({
+		where: and(
+			eq(recordingSession.accountId, accountId),
+			eq(recordingSession.id, fields.sessionId),
+		),
+		columns: { startsOn: true },
+	});
+	if (!session) return null;
+	if (!dayFitsSession(fields.recordedOn, session.startsOn)) return "day" as const;
 	const [row] = await db
 		.update(sessionRecording)
 		.set(fields)
-		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
 		.returning();
 	return row ?? null;
 }
 
-export async function deleteSessionRecording(accountId: string, sessionId: string) {
+export async function deleteSessionRecording(accountId: string, recordingId: string) {
 	const [row] = await db
 		.delete(sessionRecording)
-		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
-		.returning({ url: sessionRecording.url });
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
+		.returning({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl });
 	if (!row) return false;
-	await deleteBlobs([row.url]);
+	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
+}
+
+/** A session with the recordings whose MP3 is ready, for the download (api/recording-sessions/[id]/mp3.zip). */
+export async function sessionMp3s(accountId: string, sessionId: string) {
+	const session = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+	});
+	if (!session) return null;
+	const recordings = await db.query.sessionRecording.findMany({
+		where: and(
+			eq(sessionRecording.accountId, accountId),
+			eq(sessionRecording.sessionId, sessionId),
+			eq(sessionRecording.status, "ready"),
+			eq(sessionRecording.playbackStatus, "ready"),
+		),
+		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
+		columns: { id: true, title: true, filename: true, playbackUrl: true },
+	});
+	return { session, recordings: recordings.filter((r) => r.playbackUrl) };
+}
+
+/** The MP3 rendition, as a demo's (src/lib/server/transcode.ts). */
+export async function claimSessionPlayback(recordingId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(sessionRecording)
+		.set({ playbackStatus: "pending", playbackStartedAt: now })
+		.where(
+			and(
+				eq(sessionRecording.id, recordingId),
+				eq(sessionRecording.status, "ready"),
+				sql`(${sessionRecording.playbackStatus} is null
+					or (${sessionRecording.playbackStatus} = 'failed' and ${sessionRecording.playbackStartedAt} < ${now.getTime() - PLAYBACK_RETRY_MS})
+					or (${sessionRecording.playbackStatus} = 'pending' and ${sessionRecording.playbackStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS}))`,
+			),
+		)
+		.returning({
+			id: sessionRecording.id,
+			url: sessionRecording.url,
+			pathname: sessionRecording.pathname,
+			playbackUrl: sessionRecording.playbackUrl,
+		});
+	return row ?? null;
+}
+export async function finishSessionPlayback(
+	recordingId: string,
+	r: { url: string; pathname: string; bytes: number },
+) {
+	await db
+		.update(sessionRecording)
+		.set({
+			playbackStatus: "ready",
+			playbackUrl: r.url,
+			playbackPathname: r.pathname,
+			playbackBytes: r.bytes,
+		})
+		.where(eq(sessionRecording.id, recordingId));
+}
+export async function failSessionPlayback(recordingId: string) {
+	await db
+		.update(sessionRecording)
+		.set({ playbackStatus: "failed" })
+		.where(eq(sessionRecording.id, recordingId));
 }
 
 // ---- Files attached to projects and songs (docs/uploads-and-blob.md, "Attachments") ----

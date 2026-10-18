@@ -397,30 +397,52 @@ staying put. The table keeps the name it had when it held PDFs alone
 | uploaded_by            | text FK → user (set null)      |                                                                                                                                |
 | created_at, updated_at | timestamp_ms                   |                                                                                                                                |
 
-### session_recording (`sessionRecording`, `account.sessions`)
+### recording_session (`recordingSession`, `account.recordingSessions`)
 
-A recording of a session (docs/uploads-and-blob.md, "Sessions"): a
-practice or a show, one audio file in Blob that the account's members
-upload, hear and download from `/[account]/sessions` (members only). Filed
-under the account alone, since a session covers many songs; its day is a
-calendar date (`YYYY-MM-DD`, as the uploader's browser gave it) so it
-never shifts with a time zone. The schema file is `sessionRecording.ts`.
+A session (docs/uploads-and-blob.md, "Sessions"): one practice or one
+show, which the recordings of that evening belong to. Named by the band or,
+with no name, called after its place and day (`sessionDisplayName`). It
+starts on a calendar day and may run into the next (a show past midnight),
+never further. Not `session`: Better Auth's sign-in sessions have that
+table. Members only, at `/[account]/sessions`.
 
-| column                 | type                        | notes                                                |
-| ---------------------- | --------------------------- | ---------------------------------------------------- |
-| id                     | text PK                     |                                                      |
-| account_id             | text FK → account (cascade) | indexed, and with recorded_on                        |
-| kind                   | text not null               | practice / show (`SESSION_KINDS`)                    |
-| title                  | text not null default ''    | the filename minus its extension to begin with       |
-| recorded_on            | text not null               | `YYYY-MM-DD`                                         |
-| place                  | text not null default ''    | the rehearsal room, the venue                        |
-| notes                  | text not null default ''    |                                                      |
-| status                 | text                        | uploading / ready (a failed upload's row is removed) |
-| url, pathname          | text                        | `accounts/<a>/sessions/<id>.<ext>`                   |
-| filename, content_type | text                        | the demo formats (`demoContentType`)                 |
-| size_bytes             | integer                     | counts toward the account's storage                  |
-| uploaded_by            | text FK → user (set null)   | indexed                                              |
-| created_at, updated_at | timestamp_ms                |                                                      |
+| column                 | type                        | notes                             |
+| ---------------------- | --------------------------- | --------------------------------- |
+| id                     | text PK                     |                                   |
+| account_id             | text FK → account (cascade) | indexed, and with starts_on       |
+| kind                   | text not null               | practice / show (`SESSION_KINDS`) |
+| name                   | text not null default ''    | '' means "place · day"            |
+| starts_on              | text not null               | `YYYY-MM-DD`                      |
+| place                  | text not null default ''    | the rehearsal room, the venue     |
+| notes                  | text not null default ''    |                                   |
+| created_by             | text FK → user (set null)   | indexed                           |
+| created_at, updated_at | timestamp_ms                |                                   |
+
+### session_recording (`sessionRecording`, `recordingSession.recordings`)
+
+One recording of a session: an audio file in Blob that a member uploaded,
+with its own day (the file's modification time as the uploader's browser
+read it, so the recorder's clock and not the upload's), which may be the
+session's day or the day after. Same lifecycle as a demo, with the same
+MP3 rendition for playback and the session's zip. Migration 0089 made the
+table's rows into sessions (one per account, kind, day and place) and
+0090 dropped the columns that moved.
+
+| column                 | type                                  | notes                                                |
+| ---------------------- | ------------------------------------- | ---------------------------------------------------- |
+| id                     | text PK                               |                                                      |
+| account_id             | text FK → account (cascade)           | indexed, and with recorded_on                        |
+| session_id             | text → recording_session              | indexed                                              |
+| title                  | text not null default ''              | the filename minus its extension to begin with       |
+| recorded_on            | text not null                         | `YYYY-MM-DD`                                         |
+| notes                  | text not null default ''              |                                                      |
+| status                 | text                                  | uploading / ready (a failed upload's row is removed) |
+| url, pathname          | text                                  | `accounts/<a>/sessions/<id>.<ext>`                   |
+| filename, content_type | text                                  | the demo formats (`demoContentType`)                 |
+| size_bytes             | integer                               | counts toward the account's storage                  |
+| playback_*             | status, url, pathname, bytes, started | the MP3, as a demo's                                 |
+| uploaded_by            | text FK → user (set null)             | indexed                                              |
+| created_at, updated_at | timestamp_ms                          |                                                      |
 
 ### song_notation
 

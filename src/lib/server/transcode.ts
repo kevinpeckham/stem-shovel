@@ -3,7 +3,9 @@ import {
 	claimMixPlayback,
 	claimPlayback,
 	claimRecordingPlayback,
+	claimSessionPlayback,
 	failDemoPlayback,
+	failSessionPlayback,
 	failMixPlayback,
 	failPlayback,
 	failRecordingPlayback,
@@ -11,6 +13,7 @@ import {
 	finishMixPlayback,
 	finishPlayback,
 	finishRecordingPlayback,
+	finishSessionPlayback,
 	replaceRecordingSource,
 } from "#lib/server/data.js";
 import { accessOfUrl } from "#lib/utils/blobAccess.js";
@@ -133,6 +136,11 @@ export async function renderRecordings(recordingIds: string[]): Promise<void> {
 	for (const id of recordingIds) await transcodeToMp3(id, RECORDING_TARGET);
 }
 
+/** Session recordings (docs/uploads-and-blob.md, "Sessions") get the same MP3, for playback and the session's download. */
+export async function renderSessions(recordingIds: string[]): Promise<void> {
+	for (const id of recordingIds) await transcodeToMp3(id, SESSION_TARGET);
+}
+
 /** The row family an MP3 is made for: how to claim it, record the result or give up. */
 interface Mp3Target {
 	claim: (id: string) => Promise<{
@@ -169,6 +177,11 @@ const MIX_TARGET: Mp3Target = {
 	claim: claimMixPlayback,
 	finish: finishMixPlayback,
 	fail: failMixPlayback,
+};
+const SESSION_TARGET: Mp3Target = {
+	claim: claimSessionPlayback,
+	finish: finishSessionPlayback,
+	fail: failSessionPlayback,
 };
 const RECORDING_TARGET: Mp3Target = {
 	claim: claimRecordingPlayback,

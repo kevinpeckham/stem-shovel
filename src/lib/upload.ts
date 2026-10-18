@@ -118,6 +118,7 @@ export async function uploadFile(
 }
 
 export interface SessionReservation {
+	recordingId: string;
 	sessionId: string;
 	pathname: string;
 	access?: "public" | "private";
@@ -133,7 +134,7 @@ export async function uploadSessionFile(
 	reserve: () => Promise<SessionReservation>,
 	onProgress?: (percent: number) => void,
 ): Promise<void> {
-	const { sessionId, pathname, access = "public" } = await reserve();
+	const { recordingId, pathname, access = "public" } = await reserve();
 	const blob = await upload(pathname, file, {
 		access,
 		handleUploadUrl: "/api/upload",
@@ -141,7 +142,7 @@ export async function uploadSessionFile(
 		multipart: true,
 		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
 	});
-	const ready = await fetch(`/api/sessions/${sessionId}/ready`, {
+	const ready = await fetch(`/api/sessions/${recordingId}/ready`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ url: blob.url }),

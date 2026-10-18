@@ -333,21 +333,44 @@ batch went through once the connection had settled. Three layers now:
 ## Sessions (2026-10-18)
 
 The band's practice and show recordings (Kevin: an area for members to
-upload practice recordings and others to browse and download; a kind
-tags each as practice or show). One table, `session_recording`
-(docs/data-model.md), filed under the account alone: a session covers
-many songs. The flow is a demo's without the rendition: `POST
-/api/sessions` reserves the row (a member of the account; the kind, the
-day and the place come with the file; `demoContentType` says the type,
-`SESSION_MAX_BYTES` of 2 GB the ceiling, the storage room is checked),
-the browser uploads to `accounts/<a>/sessions/<id>.<ext>` through
-`/api/upload` (the token allows the reserved type and size), and `POST
-/api/sessions/<id>/ready` reads the file's first bytes and keeps the
-row only if they are audio (`startsLikeAudio`), else row and file go.
-The completion webhook's backstop is `recordSessionUrl`. The page
-(`/[account]/sessions`, members only, `listSessionRecordings`) plays each
-file as uploaded in an `<audio>` element and downloads the original;
-`updateSession` and `deleteSession` in `sessions.remote.ts` edit the
-words and remove a recording with its file. The rows join the storage
-sum, the account's deletion (rows and blobs) and the user's (the uploader
-unset).
+upload practice recordings and others to browse and download; shows too,
+tagged by kind; then sessions as the unit: a session is the practice or
+the show, made of its recordings, named or called after its place and
+day, assignable, with a playlist and a zip of the MP3s). Two tables,
+`recording_session` and `session_recording` (docs/data-model.md), under
+the account alone: a session covers many songs.
+
+**Upload.** `POST /api/sessions` reserves a recording's row (a member of
+the account; `demoContentType` says the type, `SESSION_MAX_BYTES` of 2 GB
+the ceiling, the storage room is checked) in a session: the one the body
+names, or else the account's session of the file's own day (the
+browser sends `recordedOn` from `file.lastModified`, the recorder's
+clock) with the same kind, or of the day before (a show past midnight),
+or a new session of that day named by its place
+(`createSessionRecording`). The browser uploads to
+`accounts/<a>/sessions/<id>.<ext>` through `/api/upload` (the token
+allows the reserved type and size), and `POST /api/sessions/<id>/ready`
+reads the file's first bytes and keeps the row only if they are audio,
+then schedules the MP3 (`scheduleSessionPlayback`, the demo's transcode
+with `SESSION_TARGET`) and tells the account's members
+(`notifySessionRecording`, kind `session`, coalesced per session, the
+demo opt-in for email). The completion webhook's backstop is
+`recordSessionUrl`.
+
+**The page** (`/[account]/sessions`, members only,
+`listRecordingSessions`): sessions newest first, each with its ready
+recordings in the order they were made (day, then upload). One
+`SessionPlayer` (the project page's shape) holds a queue: a row's play
+button or a session's Play all fills it with the session's recordings
+(the MP3 once rendered, else the file as uploaded) and plays through
+them. Download MP3s on a session fetches
+`/api/recording-sessions/<id>/mp3.zip` through `downloadBuilt`: the ready
+MP3s numbered in order, stored not compressed, streamed file by file
+(fflate's `Zip` + `ZipPassThrough`), 404 until one is ready.
+`sessions.remote.ts`: `createSession` (a second session of a day, to
+move recordings into), `updateSession`, `deleteSession` (its recordings
+and their files go), `updateRecording` (title, day, notes and the session,
+which must start on the recording's day or the day before:
+`dayFitsSession`, utils/isoDay.ts) and `deleteRecording`. The rows join
+the storage sum, the account's deletion (rows and blobs) and the user's
+(the uploader and creator unset).

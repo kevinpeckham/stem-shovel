@@ -23,8 +23,11 @@ const h = vi.hoisted(() => ({
 		finishMixPlayback: vi.fn(),
 		failMixPlayback: vi.fn(),
 		claimRecordingPlayback: vi.fn(),
+		claimSessionPlayback: vi.fn(),
 		finishRecordingPlayback: vi.fn(),
+		finishSessionPlayback: vi.fn(),
 		failRecordingPlayback: vi.fn(),
+		failSessionPlayback: vi.fn(),
 		replaceRecordingSource: vi.fn(),
 	},
 	blob: {

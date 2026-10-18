@@ -126,6 +126,12 @@ const ROUTES = [
 	["api/demos (server)", "/api/demos", [405], [405]],
 	["api/sessions (server)", "/api/sessions", [405], [405]],
 	["api/sessions/[id]/ready (server)", "/api/sessions/x/ready", [405], [405]],
+	[
+		"api/recording-sessions/[id]/mp3.zip (server)",
+		"/api/recording-sessions/x/mp3.zip",
+		[401],
+		[404],
+	],
 	["api/demos/[id]/ready (server)", "/api/demos/x/ready", [405], [405]],
 	["api/mixes (server)", "/api/mixes", [405], [405]],
 	["api/mixes/[id]/ready (server)", "/api/mixes/x/ready", [405], [405]],

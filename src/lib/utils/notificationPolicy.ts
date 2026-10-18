@@ -34,6 +34,7 @@ export const KIND_PRIORITY: Record<NotificationKind, NotificationPriority> = {
 	song: "normal",
 	demo: "normal",
 	mix: "normal",
+	session: "normal",
 };
 
 /** The opt-in kinds and the setting that turns each on. */
@@ -44,6 +45,7 @@ const OPT_IN: Partial<Record<NotificationKind, keyof NotificationPrefs>> = {
 	song: "emailSongs",
 	demo: "emailDemos",
 	mix: "emailDemos",
+	session: "emailDemos",
 };
 
 /**
