@@ -36,7 +36,7 @@ import {
 	type PianoWah,
 } from "#lib/utils/pianoPreferences.js";
 import type { PianoPresetData } from "#lib/val/PianoPresetSchema.js";
-import { createPianoFx, type PianoFx } from "./pianoFx";
+import { createPianoFx, type PianoFx, type PianoFxSettings } from "./pianoFx";
 import { metronome } from "./metronome.svelte";
 import { Arpeggiator } from "./arpeggiator.svelte";
 import { chordFromKey } from "#lib/utils/chordFromKey.js";
@@ -56,7 +56,7 @@ import {
 	loadSamples,
 	startSampledInstrumentVoice,
 	warmSamples,
-	type SampledInstrumentId,
+	isSampledInstrument,
 } from "./sampledInstruments";
 import { startVoice, type SynthVoice } from "./synthVoice";
 import type { NoteEvent } from "#lib/utils/pairNoteEvents.js";
@@ -75,9 +75,7 @@ function clamp(v: number, min: number, max: number, steps = 100): number {
 	return Math.min(max, Math.max(min, Math.round(v * steps) / steps));
 }
 
-/** The instruments with a few samples of their own (not the Grand Piano's tiers). */
-const isSampled = (id: string): id is SampledInstrumentId =>
-	id === "bass" || id === "guitar" || id === "eguitar";
+const isSampled = isSampledInstrument;
 
 export class PianoEngine {
 	/** Where this engine's sound, effects and choices are remembered: the piano's key, or the chord player's own (docs/chord-player.md, "Its own engine"). `ownArpeggiator`: the keys go through the engine's arpeggiator (the piano; the chord player runs its own on its engine). */
@@ -453,6 +451,10 @@ export class PianoEngine {
 		return this.#fx!.master;
 	}
 
+	/** The effects as they stand, for a chain built elsewhere (Dawn's offline render, audio/midiRender.ts). */
+	fxSettings(): PianoFxSettings {
+		return this.#fxSettings();
+	}
 	#fxSettings() {
 		return {
 			volume: this.volume,

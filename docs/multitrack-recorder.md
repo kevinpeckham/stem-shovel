@@ -663,3 +663,66 @@ with tint and Remove, inserts, pan, fader, mute, meter) and the master
 `tests/e2e/studio-mixer.spec.ts`; component tests beside each
 component; unit tests on the schema, `insertsFromFx` and
 `automationLanes`.
+
+## Export and delivery (2026-10-18, docs/dawn-daw-plan.md D3)
+
+**One offline render for everything.** `render(target)` builds the
+master, the buses and the tracks on an `OfflineAudioContext` as the live
+graph has them (stripGraph.ts), schedules the lanes from zero, and plays
+every MIDI clip through its instrument's own voices on that context
+(`src/lib/audio/midiRender.ts`): the piano and the chord player through
+a copy of their effects chain (`createPianoFx` on the offline context)
+from the Grand's decoded samples or the small sampled instruments
+(an AudioBuffer plays on any context), the synth standing in where a
+sample is not in yet, as the live instrument does; the drums through
+the kit and a drum bus with the machine's effects, each hit through the
+open pattern's row (`drumMachine.rowFor`). A bounce therefore needs no
+real-time pass: the page's "render MIDI tracks first" step is gone, and
+the track menu's **Render to audio track** stays as a way to freeze a
+part. `target.track` renders one track alone with its own settings (a
+stem), `target.bus` one bus with what feeds it (the tracks routed there
+and the sends into it, a track reaching it by its send alone routed
+nowhere else), either without the master's inserts and fader. A second
+of tail (`RENDER_TAIL_S`) lets reverbs and delays ring out.
+
+**Loudness.** `utils/measureLoudness.ts` is ITU-R BS.1770-4 in pure
+TypeScript: the K-weighting designed for the sample rate (libebur128's
+derivation, which lands on the standard's 48 kHz table; the test checks
+the coefficients), 400 ms blocks at 100 ms steps, the absolute gate at
+−70 LUFS and the relative gate 10 LU under the mean, the true peak from
+four-times oversampling with a 12-tap windowed sinc. The constants are
+in `constants/loudness.ts` (−14 LUFS, −1 dBTP: the streaming services'
+reference). `utils/normalizationGain.ts` is the one linear gain that
+reaches the target without the true peak passing the ceiling (ffmpeg's
+loudnorm in its linear mode). The engine carries a live readout too:
+in `open()` the master's output feeds two `IIRFilterNode`s with the
+same coefficients into an analyser per channel, `#readLoudness` sums the
+channels' mean squares each meter frame and averages them over the last
+400 ms and 3 s (`masterLoudness.momentary` and `.shortTerm`, LUFS,
+null when stopped or under the gate); the page shows the short-term
+figure beside the master meter.
+
+**The export** (`src/lib/audio/studioExport.ts`, over an `ExportEngine`
+so a test hands it a fake): `exportSong` renders what the options ask
+(the mix, a stem per track with clips, a stem per bus, a DAWproject),
+measures each buffer, applies the normalization gain when asked, and
+encodes 24-bit (`encodeWav24`) or 16-bit (`encodeWav`) WAV, naming the
+files after the song (`fileSafe`); `bundleExport` zips them
+(`utils/zipBlobs.ts`, fflate's synchronous zip, audio stored, text
+deflated). The DAWproject (`utils/dawproject.ts`, Bitwig's open
+interchange format 1.0) is `project.xml` (the transport, a track per
+track and bus and the master with a channel each: volume, pan, mute,
+solo, destination, sends; the clips in seconds, an audio clip over its
+file with offset and fades, a MIDI clip's notes; the volume and pan
+lanes as `Points` on the channel's parameters), `metadata.xml` (the
+title) and `audio/<sourceId>.wav` per source, zipped with the
+`.dawproject` extension; inserts stay out, since the format names a
+DAW's own devices. `ExportPanel.svelte` is the Export… panel from the
+song's menu (a FloatingPanel): what and how, Export, then each file's
+size, loudness, true peak and the gain applied. Browser spec
+`tests/e2e/studio-export.spec.ts`; unit tests on each util and the
+export module; a component test on the panel.
+
+Left for later: MP3 delivery (a mix sent to a song as a demo gets its
+rendition from the jobs function already), stem export straight to a
+song with the buses, a loudness history on the master.

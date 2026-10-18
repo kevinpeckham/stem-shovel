@@ -14,6 +14,7 @@
 	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
+	import ExportPanel from "#lib/components/ExportPanel.svelte";
 	import MixerConsole from "#lib/components/MixerConsole.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import StudioTrackMenu from "#lib/components/StudioTrackMenu.svelte";
@@ -24,6 +25,12 @@
 	import { metronome } from "#lib/audio/metronome.svelte.js";
 	import { chordPiano, piano } from "#lib/audio/piano.svelte.js";
 	import { isInstrument, studio, type StudioTake } from "#lib/audio/studio.svelte.js";
+	import {
+		bundleExport,
+		exportSong,
+		type ExportFile,
+		type ExportOptions,
+	} from "#lib/audio/studioExport.js";
 	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
@@ -571,23 +578,47 @@
 		if (made) notify(`${track.name} rendered to “${made.name}”; the MIDI track is muted`);
 		else notify(`${track.name} has no notes to render`, { kind: "error" });
 	}
-	/** Every MIDI track with notes rendered to audio first, so a bounce hears it (an offline render cannot run the instruments). */
-	async function renderMidiTracks() {
-		const pending = studio.midiTracksWithClips.filter((t) => !t.muted);
-		for (const t of pending) await renderMidiTrack(t);
-	}
 
 	// ── Bounces: a WAV, a demo, stems ──────────────────────────────────────
 	let bouncing = $state(false);
 	async function downloadMix() {
 		bouncing = true;
 		try {
-			await renderMidiTracks();
 			const mix = await studio.render();
 			downloadBlob(studio.wavOf(mix), `${title || "song"}.wav`);
 		} catch (e) {
 			notify(`Could not bounce: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
+			bouncing = false;
+		}
+	}
+	// ── Export (docs/dawn-daw-plan.md, D3): the panel chooses, studioExport.ts renders, the files download ──
+	let exportOpen = $state(false);
+	let exportStep = $state<string | null>(null);
+	let exportResults = $state<ExportFile[]>([]);
+	async function runExport(options: ExportOptions, zip: boolean) {
+		bouncing = true;
+		exportResults = [];
+		try {
+			const files = await exportSong(
+				studio,
+				title || "song",
+				options,
+				{ name: "Stem Shovel Dawn", version: __APP_VERSION__ },
+				(step) => (exportStep = step),
+			);
+			exportResults = files;
+			if (files.length === 0) return;
+			if (zip && files.length > 1) {
+				exportStep = "Zipping…";
+				const bundle = await bundleExport(title || "song", files);
+				downloadBlob(bundle.blob, bundle.name);
+			} else for (const f of files) downloadBlob(f.blob, f.name);
+			notify(`Exported ${files.length} ${files.length === 1 ? "file" : "files"}`);
+		} catch (e) {
+			notify(`Could not export: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			exportStep = null;
 			bouncing = false;
 		}
 	}
@@ -602,7 +633,6 @@
 		if (!targetSong) return;
 		bouncing = true;
 		try {
-			await renderMidiTracks();
 			const mix = await studio.render();
 			const file = new File([studio.wavOf(mix)], `${title || "song"} (studio).wav`, {
 				type: "audio/wav",
@@ -627,14 +657,12 @@
 		bouncing = true;
 		const ctx = new AudioContext();
 		try {
-			await renderMidiTracks();
 			const target = targetSong;
 			let n = 0;
 			for (const track of studio.arrangement.tracks) {
-				// A MIDI track's notes went into its rendered audio track just above.
-				if (track.kind === "midi") continue;
+				// A MIDI track renders through its instrument offline, as an audio one does from its clips.
 				if (!studio.arrangement.clips.some((c) => c.trackId === track.id)) continue;
-				const buffer = await studio.render(track.id);
+				const buffer = await studio.render({ track: track.id });
 				const file = new File([studio.wavOf(buffer)], `${track.name || "Track"}.wav`, {
 					type: "audio/wav",
 				});
@@ -1009,6 +1037,17 @@
 								action: downloadMix,
 							},
 							{
+								id: "export",
+								kind: "button",
+								label: "Export…",
+								iconClass: "i-ph-export",
+								title: "The mix, stems per track and bus, a DAWproject; normalized if you like",
+								disabled: !studio.arrangement.clips.length,
+								action: () => {
+									exportOpen = true;
+								},
+							},
+							{
 								id: "demo",
 								kind: "snippet",
 								snippet: sendBlock,
@@ -1107,6 +1146,15 @@
 							label="Master"
 							onreset={() => studio.resetClips()}
 						/>
+						<!-- The master's short-term loudness while it plays (docs/dawn-daw-plan.md, D3), K-weighted as the streaming services measure it. -->
+						<span
+							class="tabular-nums text-11px opacity-70 min-w-16"
+							title="Short-term loudness (the last three seconds), as the streaming services measure it; −14 LUFS is their reference"
+							aria-label="Loudness"
+							>{studio.masterLoudness.shortTerm === null
+								? "– LUFS"
+								: `${studio.masterLoudness.shortTerm.toFixed(1)} LUFS`}</span
+						>
 					</div>
 				</div>
 
@@ -1863,6 +1911,29 @@
 				<PianoRoll clipId={rollClip.id} />
 			{/key}
 		{/if}
+	</FloatingPanel>
+
+	<!-- Export (docs/dawn-daw-plan.md, D3): what to render and how; the files download when done. -->
+	<FloatingPanel
+		open={exportOpen}
+		title="Export · {title || 'this song'}"
+		storageKey="stemshovel.studio.export-panel"
+		width={560}
+		height={520}
+		onminimise={() => (exportOpen = false)}
+	>
+		<div class="p-4">
+			<ExportPanel
+				trackCount={studio.arrangement.tracks.filter((t) =>
+					studio.arrangement.clips.some((c) => c.trackId === t.id),
+				).length}
+				busCount={studio.arrangement.buses?.length ?? 0}
+				busy={bouncing}
+				step={exportStep}
+				results={exportResults}
+				onexport={(o, zip) => void runExport(o, zip)}
+			/>
+		</div>
 	</FloatingPanel>
 
 	<FloatingPanel

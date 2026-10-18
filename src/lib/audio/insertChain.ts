@@ -22,7 +22,8 @@ export function createInsertChain(ctx: BaseAudioContext, initial: StudioInsert[]
 	const input = ctx.createGain();
 	const output = ctx.createGain();
 	let stages = new Map<string, { kind: string; stage: MixStage }>();
-	let wiring = "";
+	// Null until the first wiring, so an empty list still connects the input to the output.
+	let wiring: string | null = null;
 	const wiringOf = (list: StudioInsert[]) =>
 		list.map((i) => `${i.id}:${i.kind}:${i.bypass ? 1 : 0}`).join("|");
 

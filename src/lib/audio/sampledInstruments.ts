@@ -25,6 +25,9 @@ export interface SampledSpec {
 	cutoff: [number, number];
 }
 export type SampledInstrumentId = "bass" | "guitar" | "eguitar";
+/** The instruments with a few samples of their own (not the Grand Piano's tiers). */
+export const isSampledInstrument = (id: string): id is SampledInstrumentId =>
+	id === "bass" || id === "guitar" || id === "eguitar";
 const range = (from: number, to: number) =>
 	Array.from({ length: to - from + 1 }, (_, i) => from + i);
 export const SAMPLED: Record<SampledInstrumentId, SampledSpec> = {

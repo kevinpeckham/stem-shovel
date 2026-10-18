@@ -811,7 +811,7 @@ class DrumMachineEngine {
 			ctx,
 			drumKit(this.project.kit),
 			bus,
-			this.#rowFor(voice),
+			this.rowFor(voice),
 			velocity,
 			ctx.currentTime,
 			this.#play,
@@ -819,8 +819,8 @@ class DrumMachineEngine {
 		for (const l of this.#hitListeners) l({ voice, velocity, time: ctx.currentTime });
 		if (this.midiRecord && this.running) this.#record(voice, velocity);
 	}
-	/** The open pattern's row for a voice (its level, pan and sends), or a plain row. */
-	#rowFor(voice: DrumVoiceId) {
+	/** The open pattern's row for a voice (its level, pan and sends), or a plain row; Dawn's offline render plays the drums through it (audio/midiRender.ts). */
+	rowFor(voice: DrumVoiceId) {
 		return (
 			this.pattern.rows.find((r) => r.voice === voice) ?? {
 				voice,
@@ -849,7 +849,7 @@ class DrumMachineEngine {
 			ctx,
 			drumKit(this.project.kit),
 			bus,
-			this.#rowFor(voice),
+			this.rowFor(voice),
 			Math.max(0.01, Math.min(1, velocity)),
 			when,
 			this.#play,

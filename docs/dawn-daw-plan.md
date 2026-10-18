@@ -100,7 +100,7 @@ automatable parameters, so D2 adds sends and inserts in one place.
   tempo-synced delay time (D5 brings the tempo map), pre-fader sends
   in the console (the engine takes `pre`; the knob writes post).
 
-### D3. Export and delivery
+### D3. Export and delivery (built on `dawn-daw`, 2026-10-18)
 
 - Mixdown in the jobs function from the bounced WAV: MP3 and WAV with
   `loudnorm` to −14 LUFS / −1 dBTP (Spotify's reference), a LUFS
@@ -110,6 +110,13 @@ automatable parameters, so D2 adds sends and inserts in one place.
   into the offline context) so a bounce needs no real-time pass.
 - DAWproject export (tracks, clips, fades, tempo, automation, the WAVs)
   for Bitwig, Cubase and Studio One.
+- Built: the loudness measurement and normalization run in the browser
+  (`measureLoudness`, `normalizationGain`), not in the jobs function:
+  no upload, no wait, the same figures; MP3 stays with the demo path
+  (a mix sent to a song gets its rendition there). Offline MIDI through
+  `midiRender.ts`; `render({track|bus})` for stems; `studioExport.ts`,
+  `ExportPanel.svelte`, `dawproject.ts`, `zipBlobs.ts`; the LUFS readout
+  on the master. docs/multitrack-recorder.md "Export and delivery".
 
 ### D4. Editing depth: comping, crossfades, clip tools
 

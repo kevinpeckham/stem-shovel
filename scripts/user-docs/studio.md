@@ -58,9 +58,11 @@ The song's title sits above the screen; **New song** starts another. The song sa
 
 **Mixer** beside Tracks and Stage shows a strip for every track, every bus and the master. A track's strip has its output (the master or a bus), its inserts, a send knob to each bus, pan, the fader, mute and solo, and a meter. **Add bus** on the master strip makes a bus: a group that tracks can route to or send to, with its own name, tint, inserts, pan, fader, mute and meter, going on to the master; the master has inserts of its own (a limiter is the usual one). Removing a bus sends its tracks back to the master. Every mixer change can be undone, and a bounce, a demo and the stems follow the routing.
 
-## Bouncing
+## Bouncing and exporting
 
-The song's menu has **Download mix (WAV)**, the whole song with every fader, pan, mute and solo; **Add mix as demo**, which puts that mix on a song of your choice as a demo; and **Add tracks as stems**, which renders each track on its own with its fader and pan and puts them on the song as stems, ready for the stem player.
+The song's menu has **Download mix (WAV)**, the whole song with every fader, pan, insert, bus and lane as they stand; **Add mix as demo**, which puts that mix on a song of your choice as a demo; and **Add tracks as stems**, which renders each track on its own and puts them on the song as stems, ready for the stem player. A MIDI track renders through its instrument as it is set now, so nothing has to play out loud first.
+
+**Export…** opens a panel with more: the mix, a stem per track, a stem per bus, and a DAWproject file that Bitwig, Cubase and Studio One open with the tracks, clips, fades, levels and automation and the recordings inside. Choose 24-bit or 16-bit WAV, and **Normalize** to bring each file to −14 LUFS with peaks under −1 dBTP, the level the streaming services play at; the panel reports each file's loudness and what it applied. The files come as one zip, or one download each. While the song plays, the readout beside the master meter shows its loudness over the last three seconds in LUFS, so you can see where a mix sits before you export it.
 
 ## Limits
 

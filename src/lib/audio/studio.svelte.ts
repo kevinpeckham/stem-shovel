@@ -1,4 +1,7 @@
 import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
+import { kWeighting, lufsOf } from "#lib/utils/measureLoudness.js";
+import { LOUDNESS_ABSOLUTE_GATE_LUFS } from "#lib/constants/loudness.js";
+import { renderMidiClipsOffline } from "./midiRender";
 import { automationValueAt } from "#lib/utils/automationValueAt.js";
 import { editAutomation } from "#lib/utils/editAutomation.js";
 import { scheduleAutomation } from "#lib/utils/scheduleAutomation.js";
@@ -178,6 +181,14 @@ interface Capture {
 	finish: () => void;
 }
 
+/** What a bounce renders (`render`): the mix when neither is given, else one track or one bus alone. */
+export interface RenderTarget {
+	track?: string | null;
+	bus?: string | null;
+}
+/** Seconds past the last clip a bounce keeps, for reverbs and delays ringing out. */
+const RENDER_TAIL_S = 1;
+
 class StudioEngine {
 	arrangement = $state<StudioArrangement>(emptyArrangement());
 	sources = $state<Record<string, StudioSource>>({});
@@ -192,6 +203,16 @@ class StudioEngine {
 	 */
 	levels = $state.raw<Record<string, MeterState>>({});
 	masterLevel = $state.raw<MeterState>(METER_ZERO);
+	/** The master's loudness while playing (docs/dawn-daw-plan.md, D3): momentary (400 ms) and short-term (3 s) LUFS from a K-weighted tap on the master, null when stopped or silent. */
+	masterLoudness = $state.raw<{ momentary: number | null; shortTerm: number | null }>({
+		momentary: null,
+		shortTerm: null,
+	});
+	/** One analyser per channel after the K-weighting (the standard sums the channels' mean squares). */
+	#loudnessTaps: AnalyserNode[] = [];
+	#loudnessBuf: Float32Array<ArrayBuffer> | null = null;
+	/** The mean squares read from the taps, with the time of each, for the last three seconds. */
+	#loudnessBlocks: { t: number; ms: number }[] = [];
 	/** The context and the capture are open (a gesture did it). */
 	ready = $state(false);
 	notice = $state<string | null>(null);
@@ -333,6 +354,22 @@ class StudioEngine {
 		master.route(ctx.destination);
 		this.#masterStrip = master;
 		this.#meterBuf = new Float32Array(1024);
+		// A K-weighted tap on the master for the LUFS readout (utils/measureLoudness.ts has the design), a channel apiece.
+		const [shelf, highPass] = kWeighting(ctx.sampleRate);
+		const k1 = ctx.createIIRFilter([shelf.b0, shelf.b1, shelf.b2], [1, shelf.a1, shelf.a2]);
+		const k2 = ctx.createIIRFilter(
+			[highPass.b0, highPass.b1, highPass.b2],
+			[1, highPass.a1, highPass.a2],
+		);
+		const split = ctx.createChannelSplitter(2);
+		master.out.connect(k1).connect(k2).connect(split);
+		this.#loudnessTaps = [0, 1].map((ch) => {
+			const tap = ctx.createAnalyser();
+			tap.fftSize = 2048;
+			split.connect(tap, ch);
+			return tap;
+		});
+		this.#loudnessBuf = new Float32Array(2048);
 		this.#ensureAllStrips();
 		this.#attachInputs();
 		this.outputLatencyMs = outputLatencyMs(ctx);
@@ -2103,8 +2140,44 @@ class StudioEngine {
 		const master =
 			this.running && this.#masterStrip ? readOf(this.#masterStrip.meter, buf) : NO_READ;
 		this.masterLevel = nextMeter(this.masterLevel, master.peak, t, dt, master.rms);
+		this.#readLoudness(t);
 		this.#meterFrame = requestAnimationFrame(this.#meter);
 	};
+	/** The LUFS readout from the taps: the channels' mean squares summed per frame, averaged over the last 400 ms and 3 s; cleared when the transport stops. */
+	#readLoudness(t: number) {
+		const buf = this.#loudnessBuf;
+		if (!buf || this.#loudnessTaps.length === 0) return;
+		if (!this.running) {
+			if (this.#loudnessBlocks.length) {
+				this.#loudnessBlocks = [];
+				this.masterLoudness = { momentary: null, shortTerm: null };
+			}
+			return;
+		}
+		let ms = 0;
+		for (const tap of this.#loudnessTaps) {
+			tap.getFloatTimeDomainData(buf);
+			let sq = 0;
+			for (const x of buf) sq += x * x;
+			ms += sq / buf.length;
+		}
+		const blocks = this.#loudnessBlocks;
+		blocks.push({ t, ms });
+		while (blocks.length && blocks[0]!.t < t - 3) blocks.shift();
+		const over = (seconds: number) => {
+			let sum = 0;
+			let n = 0;
+			for (const b of blocks)
+				if (b.t >= t - seconds) {
+					sum += b.ms;
+					n++;
+				}
+			if (!n) return null;
+			const lufs = lufsOf(sum / n);
+			return lufs > LOUDNESS_ABSOLUTE_GATE_LUFS ? Math.round(lufs * 10) / 10 : null;
+		};
+		this.masterLoudness = { momentary: over(0.4), shortTerm: over(3) };
+	}
 
 	/** Forget a track's clip (or every track's and the master's, with no id); the lights go out. */
 	resetClips(trackId?: string) {
@@ -2116,42 +2189,65 @@ class StudioEngine {
 	}
 
 	// ── Bounce ─────────────────────────────────────────────────────────────
-	/** The song rendered offline with every track's fader, pan, mute and solo, or one track alone (`trackId`) with its own settings. */
-	async render(trackId: string | null = null): Promise<AudioBuffer> {
+	/**
+	 * The song rendered offline (docs/dawn-daw-plan.md, D3): the master, the
+	 * buses and the tracks as the live graph has them (stripGraph.ts), the
+	 * lanes from the song's start, and every MIDI clip through its
+	 * instrument's voices on the offline context (midiRender.ts), so no
+	 * real-time pass is needed. `track` renders one track alone with its
+	 * own settings (a stem); `bus` one bus with what feeds it (the tracks
+	 * routed there and the sends into it); either without the master's
+	 * inserts and fader. A second of tail lets reverbs and delays ring out.
+	 */
+	async render(target: RenderTarget = {}): Promise<AudioBuffer> {
+		const trackId = target.track ?? null;
+		const busId = target.bus ?? null;
+		const alone = Boolean(trackId || busId);
 		const sampleRate = this.sampleRate;
-		const length = Math.max(1, Math.ceil(this.duration * sampleRate));
+		const length = Math.max(1, Math.ceil((this.duration + RENDER_TAIL_S) * sampleRate));
 		const off = new OfflineAudioContext(2, length, sampleRate);
-		// The master, the buses and the tracks as the live graph has them (stripGraph.ts), the lanes from the song's start.
 		const master = createStripGraph(off, {
-			inserts: trackId ? [] : (this.arrangement.masterInserts ?? []),
+			inserts: alone ? [] : (this.arrangement.masterInserts ?? []),
 			pan: 0,
 		});
-		master.fader.gain.value = trackId ? 1 : this.arrangement.master;
+		master.fader.gain.value = alone ? 1 : this.arrangement.master;
 		master.route(off.destination);
 		const busInputs = new Map<string, AudioNode>();
-		if (!trackId)
-			for (const b of this.arrangement.buses ?? []) {
-				const strip = createStripGraph(off, { inserts: insertsOf(b), pan: b.pan });
-				strip.fader.gain.value = this.#busGain(b);
-				strip.route(master.input);
-				busInputs.set(b.id, strip.input);
-				this.#scheduleLanes(b, strip, 0, 0, null);
-			}
+		for (const b of this.arrangement.buses ?? []) {
+			if (trackId || (busId && b.id !== busId)) continue;
+			const strip = createStripGraph(off, { inserts: insertsOf(b), pan: b.pan });
+			strip.fader.gain.value = busId ? b.gain : this.#busGain(b);
+			strip.route(master.input);
+			busInputs.set(b.id, strip.input);
+			this.#scheduleLanes(b, strip, 0, 0, null);
+		}
 		const nodes = new Map<string, GainNode>();
 		for (const t of this.arrangement.tracks) {
 			if (trackId && t.id !== trackId) continue;
+			if (busId && t.output !== busId && !t.sends?.some((x) => x.bus === busId && x.level > 0))
+				continue;
 			const g = trackId ? t.gain : this.#effectiveGain(t);
 			if (g <= 0) continue;
 			const strip = createStripGraph(off, { inserts: insertsOf(t), pan: t.pan });
 			strip.fader.gain.value = trackId && t.automation?.volume?.length ? 1 : g;
-			strip.route((t.output && busInputs.get(t.output)) || master.input);
+			// A bus alone: a track reaches it by its output, or by its send alone (its output then goes nowhere).
+			if (busId) strip.route(t.output === busId ? busInputs.get(busId)! : off.createGain());
+			else strip.route((t.output && busInputs.get(t.output)) || master.input);
 			if (!trackId) strip.setSends(t.sends ?? [], busInputs, 0);
 			this.#scheduleLanes(t, strip, 0, 0, null);
 			nodes.set(t.id, strip.input);
 		}
+		// The MIDI tracks' clips, through their instruments offline; the kits and chains build first, the rendering starts after.
+		const midi: Promise<void>[] = [];
+		for (const t of this.arrangement.tracks) {
+			const into = nodes.get(t.id);
+			if (!into || t.kind !== "midi" || !t.input || !isInstrument(t.input.source)) continue;
+			const clips = this.arrangement.clips.filter((c) => c.trackId === t.id && c.notes?.length);
+			if (clips.length)
+				midi.push(renderMidiClipsOffline(off, into, t.input.source, clips, this.arrangement.bpm));
+		}
 		for (const clip of this.arrangement.clips) {
-			// A MIDI clip has no audio of its own: the page renders its track to audio first (renderMidiTrack).
-			if (!clip.sourceId) continue;
+			if (!clip.sourceId) continue; // a MIDI clip: its notes play through the instrument above
 			const buffer = this.#buffers.get(clip.sourceId);
 			const into = nodes.get(clip.trackId);
 			if (!buffer || !into) continue;
@@ -2170,6 +2266,7 @@ class StudioEngine {
 			gain.gain.linearRampToValueAtTime(0, at + len);
 			src.start(at, clip.offset, len);
 		}
+		await Promise.all(midi);
 		return off.startRendering();
 	}
 	/** Any buffer as a 24-bit WAV blob. */

@@ -43,6 +43,27 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   inserts (`insertsFromFx`) and the schema's version stays 1. Unit,
   component and browser tests (`studio-mixer.spec.ts`); the user guide
   gains "Inserts on a track" and "The mixer".
+- **Dawn: export and delivery** (docs/dawn-daw-plan.md, phase D3).
+  **Export…** in the song's menu renders the mix, a stem per track, a
+  stem per bus and a DAWproject (Bitwig's open interchange format:
+  tracks, clips, fades, levels, sends, notes and the volume and pan
+  lanes, with the recordings inside), as 24- or 16-bit WAV, normalized
+  to −14 LUFS and −1 dBTP when asked, one zip or one download each,
+  each file's loudness reported. The loudness is measured in the
+  browser to ITU-R BS.1770-4 (`measureLoudness`: K-weighting, gating,
+  true peak; `normalizationGain`), and the master meter gained a
+  short-term LUFS readout from a K-weighted tap. MIDI tracks now render
+  offline through their instruments' own voices (`midiRender.ts`), so a
+  bounce, a demo and the stems need no real-time pass first; the engine's
+  `render` takes a track or a bus as its target and keeps a second of
+  tail. `studioExport.ts`, `ExportPanel.svelte`, `dawproject.ts`,
+  `zipBlobs.ts`, `clipNoteEvents.ts`, each tested; browser spec
+  `studio-export.spec.ts`; the user guide's "Bouncing and exporting".
+- **Fixed on the branch**: a strip with no inserts was silent (the insert
+  chain never wired its input to its output for an empty list), so every
+  track without an insert played nothing through the D2 graph, live and
+  in a bounce. Caught by the export spec; `insertChain.test.ts` now
+  covers the wiring over a stand-in context.
 - **The plan**: `docs/dawn-daw-plan.md`, eight phases from automation to
   routing and a mixer, export, comping, the tempo map and stretch,
   instruments and plugins, collaboration, and scale.
