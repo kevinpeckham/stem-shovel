@@ -35,17 +35,23 @@
 
 	export async function play(id: string) {
 		if (current === id) {
-			paused = !paused;
+			toggle();
 			return;
 		}
-		// Swapping `src` fires a pause event that flips the bound state: start the new track once the element has it.
+		// The element is paused before its `src` swaps (a play still pending would be interrupted by
+		// the new load and reject), then started once it has the new track; `paused` follows the element.
+		audio?.pause();
 		current = id;
-		paused = false;
 		await tick();
 		await audio?.play().catch(() => {});
 	}
+	function toggle() {
+		if (!audio) return;
+		if (audio.paused) void audio.play().catch(() => {});
+		else audio.pause();
+	}
 	function playAll() {
-		if (track) paused = !paused;
+		if (track) toggle();
 		else if (queue[0]) void play(queue[0].id);
 	}
 	function step(delta: number) {
