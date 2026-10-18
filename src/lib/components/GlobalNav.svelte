@@ -383,6 +383,20 @@
 							</a>
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+									`/${member.slug}/sessions`,
+								)
+									? 'text-accent'
+									: ''}"
+								role="menuitem"
+								href="/{member.slug}/sessions"
+								title="Practice and show recordings"
+								onclick={() => (openMenu = null)}
+							>
+								<span class="i-ph-cassette-tape mr-2 inline-block align-[-2px]" aria-hidden="true"
+								></span>Sessions
+							</a>
+							<a
+								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/settings`,
 								)
 									? 'text-accent'

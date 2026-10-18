@@ -36,6 +36,7 @@ import {
 	copyBlob,
 	deleteBlobs,
 	demoPathname,
+	sessionPathname,
 	songMixPathname,
 	filePathname,
 	projectFilePathname,
@@ -87,6 +88,7 @@ import {
 	type NotationFormat,
 } from "#lib/constants/notationFormats.js";
 import { MAX_DEMOS_PER_SONG } from "#lib/constants/demoFormats.js";
+import { MAX_SESSIONS_PER_ACCOUNT, type SessionKind } from "#lib/constants/sessionRecordings.js";
 import { MAX_STEMS_PER_SONG } from "#lib/constants/stemFormats.js";
 import { slugify } from "#lib/utils/slugify.js";
 import {
@@ -167,6 +169,7 @@ const {
 	songDocVersion,
 	songUserNote,
 	demo,
+	sessionRecording,
 	invitation,
 	inviteCode,
 	chatMessage,
@@ -306,9 +309,15 @@ export async function accountStorageBytes(accountId: string) {
 		.select({ bytes: sql<number | null>`sum(${songNotation.sizeBytes})` })
 		.from(songNotation)
 		.where(and(eq(songNotation.accountId, accountId), ne(songNotation.status, "failed")));
+	// Session recordings (docs/uploads-and-blob.md, "Sessions") are the account's too.
+	const [sessions] = await db
+		.select({ bytes: sql<number | null>`sum(${sessionRecording.sizeBytes})` })
+		.from(sessionRecording)
+		.where(and(eq(sessionRecording.accountId, accountId), ne(sessionRecording.status, "failed")));
 	return (
 		(stems.bytes ?? 0) +
 		(demos.bytes ?? 0) +
+		(sessions.bytes ?? 0) +
 		(songMixes.bytes ?? 0) +
 		(takes.bytes ?? 0) +
 		(takeStems.bytes ?? 0) +
@@ -3037,9 +3046,14 @@ export async function deleteAccount(id: string) {
 		.select({ url: drumSample.url })
 		.from(drumSample)
 		.where(eq(drumSample.accountId, id));
+	const sessions = await db
+		.select({ url: sessionRecording.url })
+		.from(sessionRecording)
+		.where(eq(sessionRecording.accountId, id));
 	await deleteBlobs([
 		...stems.flatMap((r) => [r.url, r.playbackUrl ?? "", r.midiUrl ?? ""]),
 		...demos.flatMap((d) => [d.url, d.playbackUrl ?? ""]),
+		...sessions.map((r) => r.url),
 		...recordings.flatMap((r) => [r.url, r.playbackUrl ?? ""]),
 		...samples.map((smp) => smp.url),
 		...mixes.map((m) => m.mixUrl ?? ""),
@@ -3191,9 +3205,25 @@ export async function setMemberRole(accountId: string, userId: string, role: Mem
 /** The pathname a stem, its MIDI file or a demo was reserved at, so the URL the browser reports can be checked. */
 export async function reservedPathname(
 	accountId: string,
-	kind: "stem" | "midi" | "demo" | "mix" | "recording" | "recording-stem" | "file" | "notation",
+	kind:
+		| "stem"
+		| "midi"
+		| "demo"
+		| "mix"
+		| "recording"
+		| "recording-stem"
+		| "file"
+		| "notation"
+		| "session",
 	id: string,
 ): Promise<string | null> {
+	if (kind === "session") {
+		const r = await db.query.sessionRecording.findFirst({
+			where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, id)),
+			columns: { pathname: true },
+		});
+		return r?.pathname ?? null;
+	}
 	if (kind === "mix") {
 		const r = await db.query.songMix.findFirst({
 			where: and(eq(songMix.accountId, accountId), eq(songMix.id, id)),
@@ -3579,6 +3609,122 @@ export async function createDemo(
 		})
 		.returning();
 	return row;
+}
+
+// ---- Session recordings (docs/uploads-and-blob.md, "Sessions"): the account's practice and show tapes ----
+
+/** Today as `YYYY-MM-DD`, UTC: the fallback when the browser sent no day. */
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+/** Reserves a session recording's row and pathname; "full" past the account's cap. */
+export async function createSessionRecording(
+	accountId: string,
+	userId: string,
+	input: {
+		kind: SessionKind;
+		recordedOn: string | null;
+		place: string;
+		filename: string;
+		contentType: string;
+		sizeBytes: number;
+	},
+) {
+	const [{ n }] = await db
+		.select({ n: sql<number>`count(*)` })
+		.from(sessionRecording)
+		.where(eq(sessionRecording.accountId, accountId));
+	if (n >= MAX_SESSIONS_PER_ACCOUNT) return "full" as const;
+	const id = nanoid();
+	const [row] = await db
+		.insert(sessionRecording)
+		.values({
+			id,
+			accountId,
+			kind: input.kind,
+			title: labelFromFilename(input.filename),
+			recordedOn: input.recordedOn ?? todayIso(),
+			place: input.place,
+			url: "",
+			pathname: sessionPathname(accountId, id, input.filename),
+			filename: input.filename,
+			contentType: input.contentType,
+			sizeBytes: input.sizeBytes,
+			uploadedBy: userId,
+		})
+		.returning();
+	return row!;
+}
+
+/** The reservation an upload token is for (api/upload): this account's, still uploading. */
+export async function findUploadingSession(accountId: string, pathname: string) {
+	return (
+		(await db.query.sessionRecording.findFirst({
+			where: and(
+				eq(sessionRecording.accountId, accountId),
+				eq(sessionRecording.pathname, pathname),
+				eq(sessionRecording.status, "uploading"),
+			),
+			columns: { id: true, contentType: true, sizeBytes: true },
+		})) ?? null
+	);
+}
+
+export async function markSessionReady(accountId: string, sessionId: string, url: string) {
+	const [row] = await db
+		.update(sessionRecording)
+		.set({ status: "ready", url })
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.returning({ id: sessionRecording.id });
+	return row ?? null;
+}
+
+/** Production backstop from Vercel's completion webhook. */
+export async function recordSessionUrl(pathname: string, url: string) {
+	await db
+		.update(sessionRecording)
+		.set({ url, status: "ready" })
+		.where(and(eq(sessionRecording.pathname, pathname), eq(sessionRecording.status, "uploading")));
+}
+
+/** An upload that did not turn out to be audio: the row and the file go. */
+export async function failSessionRecording(accountId: string, sessionId: string, url: string) {
+	const [row] = await db
+		.delete(sessionRecording)
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.returning({ id: sessionRecording.id });
+	if (row) await deleteBlobs([url]);
+}
+
+/** The account's ready sessions, newest day first (then newest upload), with who uploaded each. */
+export async function listSessionRecordings(accountId: string) {
+	return db.query.sessionRecording.findMany({
+		where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
+		orderBy: [desc(sessionRecording.recordedOn), desc(sessionRecording.createdAt)],
+		with: { uploader: { columns: { id: true, name: true } } },
+	});
+}
+
+export async function updateSessionRecording(
+	accountId: string,
+	sessionId: string,
+	fields: { kind: SessionKind; title: string; recordedOn: string; place: string; notes: string },
+) {
+	const [row] = await db
+		.update(sessionRecording)
+		.set(fields)
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.returning();
+	return row ?? null;
+}
+
+export async function deleteSessionRecording(accountId: string, sessionId: string) {
+	const [row] = await db
+		.delete(sessionRecording)
+		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, sessionId)))
+		.returning({ url: sessionRecording.url });
+	if (!row) return false;
+	await deleteBlobs([row.url]);
+	return true;
 }
 
 // ---- Files attached to projects and songs (docs/uploads-and-blob.md, "Attachments") ----

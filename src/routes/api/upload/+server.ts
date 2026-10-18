@@ -8,6 +8,7 @@ import {
 import {
 	findStemByMidiPathname,
 	findUploadingDemo,
+	findUploadingSession,
 	findUploadingMix,
 	findUploadingFile,
 	recordFileUrl,
@@ -20,6 +21,7 @@ import {
 	findUploadingDrumSample,
 	recordDrumSampleUrl,
 	recordDemoUrl,
+	recordSessionUrl,
 	recordMixUrl,
 	recordRecordingUrl,
 	recordStemMidiUrl,
@@ -35,6 +37,7 @@ import {
 	isFilePathname,
 	isNotationPathname,
 	isRecordingPathname,
+	isSessionPathname,
 	isSiteKitPathname,
 	isStudioPathname,
 	recordingAccess,
@@ -45,6 +48,7 @@ import { MIDI_MAX_BYTES } from "#lib/constants/midiFormats.js";
 import { FILE_CONTENT_TYPES, FILE_MAX_BYTES } from "#lib/constants/fileFormats.js";
 import { NOTATION_CONTENT_TYPES, NOTATION_MAX_BYTES } from "#lib/constants/notationFormats.js";
 import { STEM_MAX_BYTES } from "#lib/constants/stemFormats.js";
+import { SESSION_MAX_BYTES } from "#lib/constants/sessionRecordings.js";
 import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 import { error } from "@sveltejs/kit";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
@@ -142,6 +146,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						tokenPayload: JSON.stringify({ id: file.id }),
 					};
 				}
+				// A session recording (docs/uploads-and-blob.md, "Sessions"): the type its name said at reserve time, the size the reservation claimed; the bytes are checked at ready.
+				if (isSessionPathname(pathname)) {
+					const session = await findUploadingSession(accountId, pathname);
+					if (!session) throw new Error(`No reservation for "${pathname}"`);
+					return {
+						allowedContentTypes: [session.contentType],
+						maximumSizeInBytes: Math.min(session.sizeBytes, SESSION_MAX_BYTES),
+						addRandomSuffix: false,
+						allowOverwrite: true,
+						tokenPayload: JSON.stringify({ id: session.id }),
+					};
+				}
 				// A notation file (docs/uploads-and-blob.md, "Notation files"): the types browsers call MusicXML, its own ceiling; the bytes are checked at ready.
 				if (isNotationPathname(pathname)) {
 					const notation = await findUploadingNotation(accountId, pathname);
@@ -187,6 +203,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				else if (isMidi(blob.pathname)) await recordStemMidiUrl(blob.pathname, blob.url);
 				else if (isDemo(blob.pathname)) await recordDemoUrl(blob.pathname, blob.url);
 				else if (isMix(blob.pathname)) await recordMixUrl(blob.pathname, blob.url);
+				else if (isSessionPathname(blob.pathname)) await recordSessionUrl(blob.pathname, blob.url);
 				else if (isFilePathname(blob.pathname)) await recordFileUrl(blob.pathname, blob.url);
 				else if (isNotationPathname(blob.pathname))
 					await recordNotationUrl(blob.pathname, blob.url);

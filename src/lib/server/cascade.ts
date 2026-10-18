@@ -29,6 +29,7 @@ const {
 	comment,
 	commentVersion,
 	demo,
+	sessionRecording,
 	drumKit,
 	drumSample,
 	idea,
@@ -191,6 +192,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(songMix).where(eq(songMix.accountId, accountId));
 	await db.delete(songFile).where(eq(songFile.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
+	await db.delete(sessionRecording).where(eq(sessionRecording.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
 	await db.delete(shareLink).where(eq(shareLink.accountId, accountId));
 	await db.update(shortLink).set({ accountId: null }).where(eq(shortLink.accountId, accountId));
@@ -233,6 +235,10 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	// Their private notes' revisions go with the notes; the shared documents' keep the text and lose the author.
 	await db.delete(songDocVersion).where(eq(songDocVersion.userId, userId));
 	await db.update(demo).set({ uploadedBy: null }).where(eq(demo.uploadedBy, userId));
+	await db
+		.update(sessionRecording)
+		.set({ uploadedBy: null })
+		.where(eq(sessionRecording.uploadedBy, userId));
 	await db.update(songMix).set({ uploadedBy: null }).where(eq(songMix.uploadedBy, userId));
 	await db.update(songFile).set({ uploadedBy: null }).where(eq(songFile.uploadedBy, userId));
 	await db

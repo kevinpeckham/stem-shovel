@@ -1,6 +1,6 @@
 import { getRequestEvent } from "$app/server";
 import { background } from "#lib/server/background.js";
-import { isRecordingPathname } from "#lib/server/blob.js";
+import { isRecordingPathname, isSessionPathname } from "#lib/server/blob.js";
 import { db, schema } from "#lib/server/db/index.js";
 import {
 	logAudit,
@@ -153,6 +153,7 @@ const {
 	artistMember,
 	songFile,
 	songNotation,
+	sessionRecording,
 } = schema;
 
 /**
@@ -254,6 +255,14 @@ export async function accountOfMix(mixId: string) {
 	return row?.accountId ?? null;
 }
 
+export async function accountOfSession(sessionId: string) {
+	const row = await db.query.sessionRecording.findFirst({
+		where: eq(sessionRecording.id, sessionId),
+		columns: { accountId: true },
+	});
+	return row?.accountId ?? null;
+}
+
 export async function accountOfDemo(demoId: string) {
 	const row = await db.query.demo.findFirst({
 		where: eq(demo.id, demoId),
@@ -333,6 +342,13 @@ export async function accountOfRecording(recordingId: string) {
 
 /** The account owning whatever reserved this upload pathname: a stem, its MIDI file, a demo or a recording. */
 export async function accountOfUploadPathname(pathname: string) {
+	if (isSessionPathname(pathname)) {
+		const row = await db.query.sessionRecording.findFirst({
+			where: eq(sessionRecording.pathname, pathname),
+			columns: { accountId: true },
+		});
+		return row?.accountId ?? null;
+	}
 	const fromStem = await accountOfStemPathname(pathname);
 	if (fromStem) return fromStem;
 	if (isRecordingPathname(pathname)) {

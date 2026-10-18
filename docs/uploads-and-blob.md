@@ -329,3 +329,25 @@ batch went through once the connection had settled. Three layers now:
   the files the browser still holds, the same reservations, so no row is
   left behind. After a reload the files are gone, and the "Stems not
   ready" tiles with their upload link remain the way back.
+
+## Sessions (2026-10-18)
+
+The band's practice and show recordings (Kevin: an area for members to
+upload practice recordings and others to browse and download; a kind
+tags each as practice or show). One table, `session_recording`
+(docs/data-model.md), filed under the account alone: a session covers
+many songs. The flow is a demo's without the rendition: `POST
+/api/sessions` reserves the row (a member of the account; the kind, the
+day and the place come with the file; `demoContentType` says the type,
+`SESSION_MAX_BYTES` of 2 GB the ceiling, the storage room is checked),
+the browser uploads to `accounts/<a>/sessions/<id>.<ext>` through
+`/api/upload` (the token allows the reserved type and size), and `POST
+/api/sessions/<id>/ready` reads the file's first bytes and keeps the
+row only if they are audio (`startsLikeAudio`), else row and file go.
+The completion webhook's backstop is `recordSessionUrl`. The page
+(`/[account]/sessions`, members only, `listSessionRecordings`) plays each
+file as uploaded in an `<audio>` element and downloads the original;
+`updateSession` and `deleteSession` in `sessions.remote.ts` edit the
+words and remove a recording with its file. The rows join the storage
+sum, the account's deletion (rows and blobs) and the user's (the uploader
+unset).

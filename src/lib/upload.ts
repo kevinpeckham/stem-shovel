@@ -117,6 +117,38 @@ export async function uploadFile(
 	return (await ready.json()) as { shareCode: string; kind: FileKind };
 }
 
+export interface SessionReservation {
+	sessionId: string;
+	pathname: string;
+	access?: "public" | "private";
+}
+
+/**
+ * A session recording (docs/uploads-and-blob.md, "Sessions"): reserve, send
+ * the bytes to Blob under the content type its name says, report the URL;
+ * the server checks the first bytes are audio before the row is ready.
+ */
+export async function uploadSessionFile(
+	file: File,
+	reserve: () => Promise<SessionReservation>,
+	onProgress?: (percent: number) => void,
+): Promise<void> {
+	const { sessionId, pathname, access = "public" } = await reserve();
+	const blob = await upload(pathname, file, {
+		access,
+		handleUploadUrl: "/api/upload",
+		contentType: demoContentType(file.name) ?? file.type,
+		multipart: true,
+		onUploadProgress: ({ percentage }) => onProgress?.(percentage),
+	});
+	const ready = await fetch(`/api/sessions/${sessionId}/ready`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ url: blob.url }),
+	});
+	if (!ready.ok) throw new Error(await errorText(ready));
+}
+
 export interface NotationReservation {
 	notationId: string;
 	pathname: string;

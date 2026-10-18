@@ -15,6 +15,7 @@ import { chatRead } from "./chatRead";
 import { comment } from "./comment";
 import { commentVersion } from "./commentVersion";
 import { demo } from "./demo";
+import { sessionRecording } from "./sessionRecording";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
 import { progression } from "./progression";
@@ -140,6 +141,7 @@ export const songRelations = relations(song, ({ one, many }) => ({
 	creator: one(user, { fields: [song.createdBy], references: [user.id] }),
 	stems: many(stem),
 	demos: many(demo),
+	sessions: many(sessionRecording),
 	comments: many(comment),
 	mixes: many(songMix),
 	chatMessages: many(chatMessage),
@@ -243,6 +245,11 @@ export const recordingRelations = relations(recording, ({ one, many }) => ({
 
 export const recordingStemRelations = relations(recordingStem, ({ one }) => ({
 	recording: one(recording, { fields: [recordingStem.recordingId], references: [recording.id] }),
+}));
+
+export const sessionRecordingRelations = relations(sessionRecording, ({ one }) => ({
+	account: one(account, { fields: [sessionRecording.accountId], references: [account.id] }),
+	uploader: one(user, { fields: [sessionRecording.uploadedBy], references: [user.id] }),
 }));
 
 export const demoRelations = relations(demo, ({ one }) => ({

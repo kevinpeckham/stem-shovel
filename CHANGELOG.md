@@ -8,6 +8,20 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Sessions: the band's practice and show recordings** (Kevin: an area
+  for members to upload practice recordings and others to browse and
+  download; shows too, tagged by kind). `/[account]/sessions`, in the
+  account menu, for members: upload one or more audio files as a
+  practice or a show with the day and the place, browse them by day
+  (All / Practice / Show), play each in the browser as uploaded, download
+  the original, edit the title, kind, day, place and notes, delete. One
+  table, `session_recording` (migration 0088), under the account alone;
+  the demo's upload flow without the rendition, the file's first bytes
+  checked for audio at ready; counts toward storage. User doc
+  `sessions` (new; `db:seed-docs` adds it). No notification yet.
+
 ## [0.135.1] - 2026-10-17
 
 ### Fixed

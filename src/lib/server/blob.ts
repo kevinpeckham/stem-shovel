@@ -71,6 +71,13 @@ export function demoPathname(accountId: string, songId: string, demoId: string, 
 	return `accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext}`;
 }
 
+/** Blob pathname for a session recording (docs/uploads-and-blob.md, "Sessions"): under the account alone, the extension as uploaded, lower-cased. */
+export function sessionPathname(accountId: string, sessionId: string, filename: string) {
+	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();
+	return `accounts/${accountId}/sessions/${sessionId}.${ext}`;
+}
+export const isSessionPathname = (pathname: string) => pathname.includes("/sessions/");
+
 /** Blob pathname for a file attached to a song (docs/uploads-and-blob.md, "Attachments"): the extension as uploaded, lower-cased. */
 export function filePathname(accountId: string, songId: string, fileId: string, filename: string) {
 	const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "bin").toLowerCase();

@@ -397,6 +397,31 @@ staying put. The table keeps the name it had when it held PDFs alone
 | uploaded_by            | text FK → user (set null)      |                                                                                                                                |
 | created_at, updated_at | timestamp_ms                   |                                                                                                                                |
 
+### session_recording (`sessionRecording`, `account.sessions`)
+
+A recording of a session (docs/uploads-and-blob.md, "Sessions"): a
+practice or a show, one audio file in Blob that the account's members
+upload, hear and download from `/[account]/sessions` (members only). Filed
+under the account alone, since a session covers many songs; its day is a
+calendar date (`YYYY-MM-DD`, as the uploader's browser gave it) so it
+never shifts with a time zone. The schema file is `sessionRecording.ts`.
+
+| column                 | type                        | notes                                                |
+| ---------------------- | --------------------------- | ---------------------------------------------------- |
+| id                     | text PK                     |                                                      |
+| account_id             | text FK → account (cascade) | indexed, and with recorded_on                        |
+| kind                   | text not null               | practice / show (`SESSION_KINDS`)                    |
+| title                  | text not null default ''    | the filename minus its extension to begin with       |
+| recorded_on            | text not null               | `YYYY-MM-DD`                                         |
+| place                  | text not null default ''    | the rehearsal room, the venue                        |
+| notes                  | text not null default ''    |                                                      |
+| status                 | text                        | uploading / ready (a failed upload's row is removed) |
+| url, pathname          | text                        | `accounts/<a>/sessions/<id>.<ext>`                   |
+| filename, content_type | text                        | the demo formats (`demoContentType`)                 |
+| size_bytes             | integer                     | counts toward the account's storage                  |
+| uploaded_by            | text FK → user (set null)   | indexed                                              |
+| created_at, updated_at | timestamp_ms                |                                                      |
+
 ### song_notation
 
 A notation file attached to a song (docs/uploads-and-blob.md, "Notation

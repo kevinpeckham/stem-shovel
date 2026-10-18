@@ -30,6 +30,8 @@ const h = await vi.hoisted(async () => {
 				`accounts/${accountId}/songs/${songId}/${version > 0 ? `${stemId}-v${version}` : stemId}.${ext(filename)}`,
 			demoPathname: (accountId: string, songId: string, demoId: string, filename: string) =>
 				`accounts/${accountId}/songs/${songId}/demos/${demoId}.${ext(filename)}`,
+			sessionPathname: (accountId: string, sessionId: string, filename: string) =>
+				`accounts/${accountId}/sessions/${sessionId}.${ext(filename)}`,
 			studioSourcePathname: (
 				accountId: string,
 				ideaId: string,

@@ -30,6 +30,7 @@ const ORDER = [
 	"comments",
 	"chat",
 	"mixes",
+	"sessions",
 	"downloads-and-sharing",
 	"accounts-and-members",
 	"accounts-and-plans",

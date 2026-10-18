@@ -29,6 +29,7 @@ vi.mock("#lib/server/db/index.js", async () => ({
 vi.mock("#lib/server/data.js", () => data);
 vi.mock("#lib/server/blob.js", () => ({
 	isRecordingPathname: (pathname: string) => pathname.includes("/recordings/"),
+	isSessionPathname: (pathname: string) => pathname.includes("/sessions/"),
 }));
 vi.mock("#lib/server/background.js", () => ({
 	background: (work: () => Promise<void>) => {

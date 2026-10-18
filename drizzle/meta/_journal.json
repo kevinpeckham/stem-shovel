@@ -617,6 +617,13 @@
       "when": 1792148576751,
       "tag": "0087_bent_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "6",
+      "when": 1792287204843,
+      "tag": "0088_last_glorian",
+      "breakpoints": true
     }
   ]
 }
