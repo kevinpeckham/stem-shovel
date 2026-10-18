@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.137.0] - 2026-10-18
+
 ### Added
 
 - **Sessions are the unit now** (Kevin): a session is one practice or one
@@ -34,6 +36,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **A notification when a recording is added**: every member of the
   account but the uploader, kind `session`, coalesced per session, reaching
   email under the demos opt-in and the digest.
+
+### Technical
+
+- **`db:migrate:steps`** (`scripts/migrate-steps.ts`): drizzle-kit's
+  migrate one statement at a time with the same journal rows, for when
+  Turso answers 502 to the batch it sends (migrations 0089 and 0090 on
+  staging and production, 2026-10-18).
 
 ## [0.136.0] - 2026-10-18
 
