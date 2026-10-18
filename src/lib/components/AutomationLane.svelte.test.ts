@@ -42,7 +42,7 @@ describe("AutomationLane", () => {
 	test("the click snaps its time unless Shift is held", async () => {
 		const onchange = vi.fn();
 		render(AutomationLane, {
-			props: { ...base, points: [], onchange, snap: (s) => Math.round(s) },
+			props: { ...base, points: [], onchange, snap: (s: number) => Math.round(s) },
 		});
 		const lane = document.querySelector("[data-automation-lane]")!;
 		await fireEvent.pointerDown(lane, { button: 0, clientX: 160, clientY: 50 });
