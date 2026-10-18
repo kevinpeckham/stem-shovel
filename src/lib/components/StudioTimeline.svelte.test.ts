@@ -54,6 +54,12 @@ const fake = vi.hoisted(() => {
 		setTint: vi.fn(),
 		resetClips: vi.fn(),
 		setTrackFx: vi.fn(),
+		setAutomation: vi.fn(),
+		hasAutomation: vi.fn(() => false),
+		automatedValue: vi.fn((id: string, param: string) => {
+			const t = engine.arrangement.tracks.find((x) => x.id === id)!;
+			return param === "volume" ? t.gain : param === "pan" ? t.pan : (t.fx?.reverb.level ?? 0);
+		}),
 		toggleMute: vi.fn(),
 		toggleSolo: vi.fn(),
 		// Flips the flag as the engine would, so the header's "now armed" path runs.
@@ -754,5 +760,52 @@ describe("StudioTimeline", () => {
 		render(StudioTimeline);
 		expect(document.querySelector(".border-red-500")).toBeNull();
 		expect(fake.livePeaksOf).not.toHaveBeenCalled();
+	});
+});
+
+describe("StudioTimeline: automation lanes (D1)", () => {
+	test("A opens a lane under the track with the volume picked, and hides it again", async () => {
+		const user = userEvent.setup();
+		render(StudioTimeline);
+		const toggle = screen.getByRole("button", { name: "Automation for Guitar" });
+		expect(document.querySelector("[data-automation-for]")).toBeNull();
+		await user.click(toggle);
+		const lane = document.querySelector("[data-automation-for]") as HTMLElement;
+		expect(lane.dataset.automationFor).toBe("t2");
+		expect(toggle).toHaveAttribute("aria-pressed", "true");
+		expect(screen.getByRole("combobox", { name: "Guitar automation parameter" })).toHaveTextContent(
+			"Volume",
+		);
+		await user.click(toggle);
+		expect(document.querySelector("[data-automation-for]")).toBeNull();
+	});
+	test("a click on the lane hands the engine the new lane, snapped to the grid", async () => {
+		const user = userEvent.setup();
+		render(StudioTimeline);
+		await user.click(screen.getByRole("button", { name: "Automation for Guitar" }));
+		const lane = document.querySelector("[data-automation-lane]") as HTMLElement;
+		lane.getBoundingClientRect = () =>
+			({ left: HEADER_W, top: 0, width: 800, height: 64, right: 1000, bottom: 64 }) as DOMRect;
+		await fireEvent.pointerDown(lane, { button: 0, clientX: xAt(1.3), clientY: 32 });
+		expect(fake.setAutomation).toHaveBeenCalledTimes(1);
+		const [id, param, points] = fake.setAutomation.mock.calls[0]!;
+		expect(id).toBe("t2");
+		expect(param).toBe("volume");
+		expect(points).toHaveLength(1);
+		// The fake's snap rounds to the half second.
+		expect(points[0].t).toBe(1.5);
+	});
+	test("a MIDI track has no automation button", () => {
+		fake.arrangement.tracks.push(
+			track({
+				id: "t4",
+				name: "Keys",
+				kind: "midi",
+				input: { source: "piano", channel: "stereo" },
+			}),
+		);
+		render(StudioTimeline);
+		expect(screen.queryByRole("button", { name: "Automation for Keys" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Automation for Guitar" })).toBeInTheDocument();
 	});
 });

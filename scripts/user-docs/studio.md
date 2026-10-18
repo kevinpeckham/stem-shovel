@@ -12,6 +12,10 @@ A track can also take one of the instruments: the **piano**, the **chord player*
 
 The sliders button in a track's header opens its effects, the piano's own in a mixer's order: a **compressor** (amount, ratio and make-up gain; at zero the sound goes round it untouched), **tone** (a tilt from dark to bright, air for sparkle above what is there, bottom for weight under 100 Hz) and a **reverb** send (level and size, from a room to a cathedral). They apply as you play and as the song plays, are saved with the song, and are baked into a bounce, a demo and the stems you send to a song. The button lights when any effect is on; **Reset effects** switches them all off.
 
+## Automation
+
+Press **A** in a track's header and a lane opens under its clips for the track's volume, pan or reverb (the picker at the lane's right). Click the lane to add a point, drag a point to move it, double-click to remove it; the line between points is what the track does as the song plays, and the knob shows it moving. Turn the level or pan knob while a lane is open and a point lands at the playhead with that value, so you can ride a fader as you listen. Undo takes a point back like any edit, and the bounce, the demo and the stems follow the lanes.
+
 ## The Practice Amp
 
 A track can take the **Practice amp** as its input (see its own page in these docs): arming the track opens the amp's panel and turns the amp on, and the take is what you hear through it, pedals and all, shifted earlier by the input's latency like a microphone's.

@@ -15,6 +15,8 @@ export interface TrackChain {
 	input: AudioNode;
 	output: AudioNode;
 	update(fx: StudioTrackFx, tau: number): void;
+	/** The parameters a lane can drive (docs/dawn-daw-plan.md, D1): the reverb's return gain, half the lane's 0..1. */
+	params: { reverb: AudioParam };
 }
 
 /** Every effect off: the chain passes the signal as it is. */
@@ -70,5 +72,5 @@ export function createTrackChain(ctx: BaseAudioContext, initial: StudioTrackFx):
 		ramp(wet.gain, fx.reverb.level * 0.5, tau);
 	};
 	update(initial, 0);
-	return { input, output, update };
+	return { input, output, update, params: { reverb: wet.gain } };
 }

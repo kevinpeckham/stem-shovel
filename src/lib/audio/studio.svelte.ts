@@ -1,4 +1,8 @@
 import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
+import { automationValueAt } from "#lib/utils/automationValueAt.js";
+import { editAutomation } from "#lib/utils/editAutomation.js";
+import { scheduleAutomation } from "#lib/utils/scheduleAutomation.js";
+import { STUDIO_AUTOMATION, type StudioAutomationParam } from "#lib/constants/studioAutomation.js";
 import { MixHistory } from "#lib/utils/mixHistory.js";
 import { audioSession } from "#lib/utils/audioSession.js";
 import { appendChunkPeaks, chunkPeaksState } from "#lib/utils/chunkPeaks.js";
@@ -32,6 +36,7 @@ import type {
 	StudioTrack,
 	StudioTrackFx,
 	StudioTrackKind,
+	StudioAutomationPoint,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
@@ -136,6 +141,8 @@ function localId(): string {
 
 interface TrackNodes {
 	gain: GainNode;
+	/** The volume lane's gain after the fader (docs/dawn-daw-plan.md, D1); unity without a lane. */
+	auto: GainNode;
 	chain: TrackChain;
 	panner: StereoPannerNode;
 	analyser: AnalyserNode;
@@ -355,20 +362,22 @@ class StudioEngine {
 		if (nodes) return nodes;
 		const track = this.arrangement.tracks.find((t) => t.id === trackId);
 		const gain = ctx.createGain();
-		// The fader, the effects (trackChain.ts), the pan, the meter, the master.
+		// The fader, the volume lane, the effects (trackChain.ts), the pan, the meter, the master.
+		const auto = ctx.createGain();
 		const chain = createTrackChain(ctx, track?.fx ?? defaultTrackFx());
 		const panner = ctx.createStereoPanner();
 		const analyser = ctx.createAnalyser();
 		analyser.fftSize = 1024;
-		gain.connect(chain.input);
+		gain.connect(auto);
+		auto.connect(chain.input);
 		chain.output.connect(panner);
 		panner.connect(analyser);
 		panner.connect(this.#master);
-		nodes = { gain, chain, panner, analyser };
+		nodes = { gain, auto, chain, panner, analyser };
 		this.#tracks.set(trackId, nodes);
 		if (track) {
 			gain.gain.value = this.#effectiveGain(track);
-			panner.pan.value = track.pan;
+			this.#settleAutomation(track, nodes, ctx.currentTime);
 		}
 		return nodes;
 	}
@@ -376,6 +385,7 @@ class StudioEngine {
 		const nodes = this.#tracks.get(trackId);
 		if (!nodes) return;
 		nodes.gain.disconnect();
+		nodes.auto.disconnect();
 		nodes.chain.input.disconnect();
 		nodes.chain.output.disconnect();
 		nodes.panner.disconnect();
@@ -525,6 +535,7 @@ class StudioEngine {
 			if (!a.tracks.some((t) => t.id === id)) this.#dropTrackNodes(id);
 		for (const t of a.tracks) this.#ensureTrackNodes(t.id);
 		this.#applyGains(true);
+		this.#settleAllAutomation();
 		for (const t of a.tracks) this.#tracks.get(t.id)?.chain.update(t.fx ?? defaultTrackFx(), 0);
 	}
 	/** A revision restored from the server replaces the arrangement outright (its own undo step). */
@@ -595,6 +606,7 @@ class StudioEngine {
 	setGain(trackId: string, value: number) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		if (this.writeAutomation(trackId, "volume", value)) return;
 		this.#commitMixGesture();
 		t.gain = Math.max(0, Math.min(STUDIO_FADER_MAX, value));
 		this.dirty = true;
@@ -610,6 +622,7 @@ class StudioEngine {
 	setPan(trackId: string, value: number) {
 		const t = this.#track(trackId);
 		if (!t) return;
+		if (this.writeAutomation(trackId, "pan", value)) return;
 		this.#commitMixGesture();
 		t.pan = Math.max(-1, Math.min(1, value));
 		this.dirty = true;
@@ -624,6 +637,8 @@ class StudioEngine {
 		t.fx = structuredClone(fx);
 		this.dirty = true;
 		this.#tracks.get(trackId)?.chain.update(t.fx, 0.02);
+		// A reverb lane keeps the level: the slider's ramp is put back under the curve.
+		if (this.hasAutomation(trackId, "reverb")) this.#afterLaneChange(trackId);
 	}
 	toggleMute(trackId: string) {
 		const t = this.#track(trackId);
@@ -1150,7 +1165,125 @@ class StudioEngine {
 		if (track.muted || (anySolo && !track.solo)) return 0;
 		// A track armed for a punch over its own clips can be silenced while recording.
 		if (this.recording && track.armed && !this.playArmed) return 0;
-		return track.gain;
+		// With a volume lane the lane is the level (the `auto` node); the fader node keeps mute and solo alone.
+		return track.automation?.volume?.length ? 1 : track.gain;
+	}
+	/** Whether a parameter of a track is driven by a lane (docs/dawn-daw-plan.md, D1). */
+	hasAutomation(trackId: string, param: StudioAutomationParam): boolean {
+		return !!this.#track(trackId)?.automation?.[param]?.length;
+	}
+	/**
+	 * A parameter as it sounds at `seconds` (the playhead): the lane's value
+	 * there, else the static one. The knobs and the Stage show this while a
+	 * lane drives.
+	 */
+	automatedValue(trackId: string, param: StudioAutomationParam, seconds = this.position): number {
+		const t = this.#track(trackId);
+		if (!t) return STUDIO_AUTOMATION[param].initial;
+		const lane = t.automation?.[param];
+		const fallback =
+			param === "volume" ? t.gain : param === "pan" ? t.pan : (t.fx?.reverb.level ?? 0);
+		return lane?.length ? automationValueAt(lane, seconds, fallback) : fallback;
+	}
+	/** The lane's params as the graph has them, with the static value each falls back to and the lane's scale onto the param. */
+	#laneTargets(track: StudioTrack, nodes: TrackNodes) {
+		return [
+			{ param: "volume" as const, target: nodes.auto.gain, fallback: 1, scale: (v: number) => v },
+			{
+				param: "pan" as const,
+				target: nodes.panner.pan,
+				fallback: track.pan,
+				scale: (v: number) => v,
+			},
+			{
+				param: "reverb" as const,
+				target: nodes.chain.params.reverb,
+				fallback: (track.fx?.reverb.level ?? 0) * 0.5,
+				scale: (v: number) => v * 0.5,
+			},
+		];
+	}
+	/** The lanes of a track scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
+	#scheduleLanes(
+		track: StudioTrack,
+		nodes: TrackNodes,
+		from: number,
+		when: number,
+		to: number | null,
+	) {
+		for (const l of this.#laneTargets(track, nodes)) {
+			const lane = track.automation?.[l.param];
+			if (lane?.length)
+				scheduleAutomation(l.target, lane, {
+					from,
+					when,
+					to,
+					fallback: l.fallback,
+					scale: l.scale,
+				});
+		}
+	}
+	/** The lanes at rest: every curve canceled and each param at its value for the playhead (or its static value without a lane). */
+	#settleAutomation(track: StudioTrack, nodes: TrackNodes, now: number) {
+		for (const l of this.#laneTargets(track, nodes)) {
+			const lane = track.automation?.[l.param];
+			l.target.cancelScheduledValues(now);
+			const value = lane?.length ? l.scale(automationValueAt(lane, this.position, 0)) : l.fallback;
+			if (l.param === "pan" && !lane?.length) continue; // setPan ramps the static pan itself
+			l.target.setValueAtTime(value, now);
+		}
+	}
+	/** Every track's lanes settled (a stop, a seek, an edit while stopped). */
+	#settleAllAutomation() {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		for (const t of this.arrangement.tracks) {
+			const nodes = this.#tracks.get(t.id);
+			if (nodes) this.#settleAutomation(t, nodes, ctx.currentTime);
+		}
+	}
+
+	/** A lane replaced whole (the lane component's gesture), one undo step; an empty lane is removed. */
+	setAutomation(trackId: string, param: StudioAutomationParam, points: StudioAutomationPoint[]) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		this.#commit();
+		const automation = { ...t.automation };
+		if (points.length) automation[param] = points;
+		else delete automation[param];
+		t.automation = Object.keys(automation).length ? automation : undefined;
+		this.#afterLaneChange(trackId);
+	}
+	/** A knob touched on a track with a lane: a point at the playhead takes the value (docs/dawn-daw-plan.md, D1: touch write). */
+	writeAutomation(trackId: string, param: StudioAutomationParam, value: number) {
+		const t = this.#track(trackId);
+		const lane = t?.automation?.[param];
+		if (!t || !lane?.length) return false;
+		this.#commitMixGesture();
+		const edited = editAutomation(
+			lane,
+			{ kind: "add", t: this.position, v: value },
+			STUDIO_AUTOMATION[param],
+		);
+		t.automation = { ...t.automation, [param]: edited.points };
+		this.#afterLaneChange(trackId);
+		return true;
+	}
+	#afterLaneChange(trackId: string) {
+		this.dirty = true;
+		const ctx = this.#ctx;
+		const t = this.#track(trackId);
+		const nodes = this.#tracks.get(trackId);
+		if (!ctx || !t || !nodes) return;
+		this.#applyGains();
+		if (this.running) {
+			// The pass under way carries on with the new lane from here.
+			const pass = this.#passes.findLast((p) => p.when <= ctx.currentTime) ?? this.#passes[0];
+			if (pass) {
+				const now = ctx.currentTime + 0.01;
+				this.#scheduleLanes(t, nodes, pass.from + (now - pass.when), now, pass.to);
+			}
+		} else this.#settleAutomation(t, nodes, ctx.currentTime);
 	}
 	#applyGains(immediate = false) {
 		const ctx = this.#ctx;
@@ -1225,6 +1358,10 @@ class StudioEngine {
 		const loop = this.arrangement.loop;
 		const to = loop?.on && from < loop.end ? loop.end : null;
 		this.#passes.push({ from, when, to });
+		for (const t of this.arrangement.tracks) {
+			const nodes = this.#tracks.get(t.id);
+			if (nodes) this.#scheduleLanes(t, nodes, from, when, to);
+		}
 		for (const clip of this.arrangement.clips) this.#startClip(clip, from, when, to);
 		this.#queueMidi(from, when, to);
 	}
@@ -1439,6 +1576,7 @@ class StudioEngine {
 		this.phase = "idle";
 		releasePlayback(this.#transport);
 		this.#applyGains();
+		this.#settleAllAutomation();
 	}
 	toggle() {
 		if (this.running) this.stop();
@@ -1803,12 +1941,22 @@ class StudioEngine {
 			if (g <= 0) continue;
 			const gain = off.createGain();
 			gain.gain.value = g;
+			const auto = off.createGain();
 			const chain = createTrackChain(off, t.fx ?? defaultTrackFx());
 			const panner = off.createStereoPanner();
 			panner.pan.value = t.pan;
-			gain.connect(chain.input);
+			gain.connect(auto);
+			auto.connect(chain.input);
 			chain.output.connect(panner);
 			panner.connect(master);
+			// The lanes from the song's start (docs/dawn-daw-plan.md, D1).
+			this.#scheduleLanes(
+				t,
+				{ gain, auto, chain, panner, analyser: off.createAnalyser() },
+				0,
+				0,
+				null,
+			);
 			nodes.set(t.id, gain);
 		}
 		for (const clip of this.arrangement.clips) {

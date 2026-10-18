@@ -551,3 +551,44 @@ name and `studio` the internal one.
    come later if the address matters.]
 4. Casing: Dawn or DAWN? [Dawn, so the pun is there to find rather
    than an acronym to decode.]
+
+## Automation (2026-10-18, docs/dawn-daw-plan.md D1)
+
+Every audio track can carry three lanes of breakpoints: the volume, the
+pan and the reverb send (`constants/studioAutomation.ts`: the range, the
+default and the readout of each). A lane is `{t, v}[]` sorted by time in
+the parameter's own units, on the track as `automation.volume` and the
+rest (`StudioAutomationSchema`, optional so the arrangement's `version`
+stays 1, a thousand points a lane). The arithmetic is pure and tested:
+`utils/automationValueAt.ts` (the value at a time, held outside the
+lane, linear between points), `utils/editAutomation.ts` (add, move,
+remove, clear; a point added on another replaces it) and
+`utils/scheduleAutomation.ts` (a lane onto an `AudioParam` for one pass:
+`cancelScheduledValues`, the value at the pass's start, then a linear
+ramp to every point in the window, so the curve is sample-accurate).
+
+In the engine each track gained an `auto` GainNode after the fader:
+with a volume lane the fader node keeps mute and solo alone
+(`#effectiveGain` returns 1) and the lane drives `auto.gain`; the pan
+lane drives the panner's `pan`, the reverb lane the chain's return gain
+(`TrackChain.params.reverb`, half the lane's 0..1). `#startPass`
+schedules every lane with the clips (`#scheduleLanes`), `#halt`, a
+seek's new pass, undo and redo settle them (`#settleAutomation`: every
+curve canceled, each param at its value for the playhead), and the
+offline bounce schedules the same lanes from zero on the same graph
+shape. `setAutomation(trackId, param, points)` replaces a lane as one
+undo step (the lane component sends the whole lane per gesture);
+`writeAutomation` puts a point at the playhead when a knob is turned on
+a track whose lane exists, which is what `setGain` and `setPan` do first
+("touch write": no mode to learn); `automatedValue(trackId, param,
+seconds)` is what the knobs, the Stage and the lane's readout show.
+
+`AutomationLane.svelte` is reusable over any breakpoint list: the curve
+as a polyline, the points as focusable handles; a click on the lane
+adds a point (snapped to the grid, Shift free), a handle drags in time
+and value with a live preview, double-click removes, the arrow keys
+nudge (Shift by more) and Delete removes; every finished gesture is one
+`onchange`. The timeline shows it under a track's clips from the **A**
+button in the header, with a picker for the parameter, and the row grows
+by `AUTO_H`; a clip dragged across tracks counts the taller rows
+(`rowsAcross`, `rowsToPx`). A MIDI track has no audio path and no lane.

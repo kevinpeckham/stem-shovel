@@ -165,3 +165,38 @@ describe("StudioTrackFxSchema", () => {
 		).toBe(false);
 	});
 });
+
+describe("StudioAutomationSchema (D1)", () => {
+	test("lanes in time order pass and stay on the track; out of order or past the cap fail", () => {
+		const t = {
+			...track("t1"),
+			automation: {
+				volume: [
+					{ t: 0, v: 1 },
+					{ t: 2, v: 0.5 },
+				],
+				pan: [{ t: 1, v: -1 }],
+			},
+		};
+		const ok = v.safeParse(StudioArrangementSchema, arrangement([t], []));
+		expect(ok.success).toBe(true);
+		if (ok.success) expect(ok.output.tracks[0]!.automation?.volume).toHaveLength(2);
+		const backwards = {
+			...t,
+			automation: {
+				volume: [
+					{ t: 2, v: 1 },
+					{ t: 1, v: 1 },
+				],
+			},
+		};
+		expect(v.safeParse(StudioArrangementSchema, arrangement([backwards], [])).success).toBe(false);
+		const tooMany = {
+			...t,
+			automation: { reverb: Array.from({ length: 1001 }, (_, i) => ({ t: i, v: 0.5 })) },
+		};
+		expect(v.safeParse(StudioArrangementSchema, arrangement([tooMany], [])).success).toBe(false);
+		const loud = { ...t, automation: { volume: [{ t: 0, v: 3 }] } };
+		expect(v.safeParse(StudioArrangementSchema, arrangement([loud], [])).success).toBe(false);
+	});
+});

@@ -8,6 +8,27 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Dawn: automation** (docs/dawn-daw-plan.md, phase D1 of the online
+  DAW plan). Every audio track carries lanes of breakpoints for its
+  volume, pan and reverb send: the A button in the header opens one
+  under the clips with a picker for the parameter
+  (`AutomationLane.svelte`, reusable over any breakpoint list: click to
+  add, drag to move, double-click to remove, keys to nudge and delete,
+  one `onchange` per gesture); the knobs read the curve as the playhead
+  passes and turning one writes a point at the playhead; the engine
+  schedules each lane onto its AudioParam per pass
+  (`scheduleAutomation`, sample-accurate ramps) through a new gain node
+  after the fader, settles them on stop, seek and undo, and the bounce
+  applies them from zero. Schema `StudioAutomationSchema` (optional, the
+  arrangement's version unchanged), utils `automationValueAt`,
+  `editAutomation`, `scheduleAutomation`, each tested; the Stage's pucks
+  follow automated values. Browser test `studio-automation.spec.ts`.
+- **The plan**: `docs/dawn-daw-plan.md`, eight phases from automation to
+  routing and a mixer, export, comping, the tempo map and stretch,
+  instruments and plugins, collaboration, and scale.
+
 ## [0.137.0] - 2026-10-18
 
 ### Added

@@ -115,8 +115,9 @@ export function studioMixerModel(engine: typeof studio): MixerModel {
 				number: i + 1,
 				label: t.name,
 				tint: t.colour ?? null,
-				gain: t.gain,
-				pan: t.pan,
+				// A lane drives the level or the pan while the playhead passes (docs/dawn-daw-plan.md, D1).
+				gain: engine.automatedValue(t.id, "volume"),
+				pan: engine.automatedValue(t.id, "pan"),
 				muted: t.muted,
 				soloed: t.solo,
 				mono: false,

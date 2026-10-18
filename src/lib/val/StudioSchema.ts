@@ -6,6 +6,7 @@ import {
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
 } from "../constants/studio";
+import { MAX_AUTOMATION_POINTS } from "../constants/studioAutomation";
 import { MAX_TAKE_BYTES } from "../constants/takeLimits";
 import type { IdeaInstruments } from "./IdeaSchema";
 import { NameSchema } from "./NameSchema";
@@ -74,6 +75,25 @@ export const STUDIO_TRACK_KINDS = ["audio", "midi"] as const;
 export const StudioTrackKindSchema = v.picklist(STUDIO_TRACK_KINDS);
 export type StudioTrackKind = v.InferOutput<typeof StudioTrackKindSchema>;
 
+/** A breakpoint of an automation lane (docs/dawn-daw-plan.md, D1): seconds on the timeline, the value in the parameter's units. */
+export const StudioAutomationPointSchema = v.object({
+	t: SecondsSchema,
+	v: v.pipe(v.number(), v.minValue(-1), v.maxValue(STUDIO_FADER_MAX)),
+});
+export type StudioAutomationPoint = v.InferOutput<typeof StudioAutomationPointSchema>;
+const LaneSchema = v.pipe(
+	v.array(StudioAutomationPointSchema),
+	v.maxLength(MAX_AUTOMATION_POINTS),
+	v.check((pts) => pts.every((p, i) => i === 0 || p.t >= pts[i - 1]!.t), "A lane is in time order"),
+);
+/** A track's lanes, by parameter (constants/studioAutomation.ts); absent means none. */
+export const StudioAutomationSchema = v.object({
+	volume: v.optional(LaneSchema),
+	pan: v.optional(LaneSchema),
+	reverb: v.optional(LaneSchema),
+});
+export type StudioAutomation = v.InferOutput<typeof StudioAutomationSchema>;
+
 export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
 	kind: v.optional(StudioTrackKindSchema),
@@ -86,6 +106,8 @@ export const StudioTrackSchema = v.object({
 	solo: v.boolean(),
 	armed: v.boolean(),
 	input: v.nullable(StudioInputSchema),
+	/** Automation lanes (docs/dawn-daw-plan.md, D1); absent means the knobs alone. */
+	automation: v.optional(StudioAutomationSchema),
 	/** The track's effects; absent means every effect off. */
 	fx: v.optional(StudioTrackFxSchema),
 });
