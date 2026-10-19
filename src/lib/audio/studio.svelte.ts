@@ -40,6 +40,7 @@ import {
 	MAX_STUDIO_NOTES_PER_CLIP,
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
+	STUDIO_MEMORY_WARNING_BYTES,
 } from "#lib/constants/studio.js";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
@@ -84,6 +85,7 @@ import { claimPlayback, releasePlayback } from "./onlyOnePlays";
 import { computePeaks } from "./peaks";
 import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { createStripGraph, type StripGraph } from "./stripGraph";
+import { StudioGraph } from "./studioGraph";
 import { insertsOf } from "#lib/utils/insertsFromFx.js";
 import { automationLanes } from "#lib/utils/automationLanes.js";
 import { nanoid as newLocalId } from "nanoid";
@@ -112,7 +114,8 @@ interface StudioSource {
 	channels: number;
 	/** 1024 bins of the whole file, for the lane at any zoom. */
 	peaks: Float32Array;
-	status: "decoding" | "ready" | "failed";
+	/** "cold": on the server, not decoded here (nothing plays it yet; D8). */
+	status: "cold" | "decoding" | "ready" | "failed";
 	/** Recorded here and not yet on the server (the queue is uploading it). */
 	pending: boolean;
 }
@@ -168,6 +171,8 @@ function scheduleFades(
 	param.setValueCurveAtTime(fadeCurve(f.outShape, "out", peak), at + length - outLen, outLen);
 }
 const LOAD_CONCURRENCY = 3;
+/** What the strip maps read before the context opens. */
+const NO_STRIPS: Map<string, StripGraph> = new Map();
 /** Frames per peak of a take's live waveform (about a hundredth of a second). */
 export const LIVE_PEAK_FRAMES = 512;
 const UNDO_DEPTH = 100;
@@ -233,6 +238,8 @@ interface Capture {
 export interface RenderTarget {
 	track?: string | null;
 	bus?: string | null;
+	/** A track for freezing (D8): its inserts and their lanes baked in, its fader, pan and their lanes left live. */
+	freeze?: boolean;
 }
 /** Seconds past the last clip a bounce keeps, for reverbs and delays ringing out. */
 const RENDER_TAIL_S = 1;
@@ -287,10 +294,21 @@ class StudioEngine {
 
 	#ctx: AudioContext | null = null;
 	/** The master strip (stripGraph.ts): its fader is the master level, its inserts the master chain, its meter the master meter. */
-	#masterStrip: StripGraph | null = null;
-	#buses = new Map<string, StripGraph>();
+	/** The live signal graph (studioGraph.ts, D8): the master, a strip per bus and track; null until the context opens. */
+	#graph: StudioGraph | null = null;
+	get #masterStrip(): StripGraph | null {
+		return this.#graph?.master ?? null;
+	}
+	get #buses(): Map<string, StripGraph> {
+		return this.#graph?.buses ?? NO_STRIPS;
+	}
 	#buffers = new Map<string, AudioBuffer>();
-	#tracks = new Map<string, StripGraph>();
+	/** Where each source's file is, for a cold one fetched on demand (D8). */
+	#urls = new Map<string, string>();
+	#loading = new Map<string, Promise<AudioBuffer | null>>();
+	get #tracks(): Map<string, StripGraph> {
+		return this.#graph?.tracks ?? NO_STRIPS;
+	}
 	#playing: Playing[] = [];
 	/** Each pass under way: the timeline second it began at and the context time it began on. */
 	#passes: { from: number; when: number; to: number | null }[] = [];
@@ -401,10 +419,16 @@ class StudioEngine {
 		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
 		amp.hostContext(ctx, { gateWorklet: await loadAmpWorklet(ctx) });
 		if (ctx.state !== "running") await ctx.resume().catch(() => {});
-		const master = createStripGraph(ctx, { inserts: this.arrangement.masterInserts ?? [], pan: 0 });
-		master.fader.gain.value = this.arrangement.master;
-		master.route(ctx.destination);
-		this.#masterStrip = master;
+		this.#graph = new StudioGraph(
+			ctx,
+			{
+				gainOf: (t) => this.#effectiveGain(t),
+				busGainOf: (b) => this.#busGain(b),
+				settle: (owner, strip, now) => this.#settleAutomation(owner, strip, now),
+			},
+			this.arrangement,
+		);
+		const master = this.#graph.master;
 		this.#meterBuf = new Float32Array(1024);
 		// A K-weighted tap on the master for the LUFS readout (utils/measureLoudness.ts has the design), a channel apiece.
 		const [shelf, highPass] = kWeighting(ctx.sampleRate);
@@ -440,78 +464,27 @@ class StudioEngine {
 			},
 		});
 	}
-	/** Every bus and track as a strip, routed; buses and tracks that are gone dropped. */
+	/** The graph in step with the arrangement (studioGraph.ts): every bus and track a strip, routed; the gone dropped. */
 	#ensureAllStrips() {
-		for (const id of Array.from(this.#buses.keys()))
-			if (!this.arrangement.buses?.some((b) => b.id === id)) this.#dropBus(id);
-		for (const b of this.arrangement.buses ?? []) this.#ensureBus(b.id);
-		for (const id of Array.from(this.#tracks.keys()))
-			if (!this.arrangement.tracks.some((t) => t.id === id)) this.#dropTrackNodes(id);
-		for (const t of this.arrangement.tracks) this.#ensureTrackNodes(t.id);
-		this.#routeAll();
+		this.#graph?.ensureAll(this.arrangement);
 	}
 	#bus(id: string) {
 		return this.arrangement.buses?.find((b) => b.id === id) ?? null;
 	}
 	#ensureBus(busId: string): StripGraph | null {
-		const ctx = this.#ctx;
-		const bus = this.#bus(busId);
-		if (!ctx || !this.#masterStrip || !bus) return null;
-		let strip = this.#buses.get(busId);
-		if (strip) return strip;
-		strip = createStripGraph(ctx, { inserts: insertsOf(bus), pan: bus.pan });
-		strip.fader.gain.value = bus.muted ? 0 : bus.gain;
-		strip.route(this.#masterStrip.input);
-		this.#buses.set(busId, strip);
-		this.#settleAutomation(bus, strip, ctx.currentTime);
-		return strip;
+		return this.#graph?.ensureBus(this.arrangement, busId) ?? null;
 	}
 	#dropBus(busId: string) {
-		const strip = this.#buses.get(busId);
-		if (!strip) return;
-		strip.dispose();
-		this.#buses.delete(busId);
+		this.#graph?.dropBus(busId);
 	}
 	#ensureTrackNodes(trackId: string): StripGraph | null {
-		const ctx = this.#ctx;
-		if (!ctx || !this.#masterStrip) return null;
-		let strip = this.#tracks.get(trackId);
-		if (strip) return strip;
-		const track = this.arrangement.tracks.find((t) => t.id === trackId);
-		// The fader, the volume lane, the inserts, the pan, the meter, then a bus or the master (stripGraph.ts).
-		strip = createStripGraph(ctx, {
-			inserts: track ? insertsOf(track) : [],
-			pan: track?.pan ?? 0,
-		});
-		this.#tracks.set(trackId, strip);
-		if (track) {
-			strip.fader.gain.value = this.#effectiveGain(track);
-			this.#settleAutomation(track, strip, ctx.currentTime);
-		}
-		return strip;
+		return this.#graph?.ensureTrack(this.arrangement, trackId) ?? null;
 	}
-	/** Every track to its bus or the master, with its sends; every bus to the master. */
 	#routeAll() {
-		const master = this.#masterStrip;
-		if (!master) return;
-		const busInputs = new Map<string, AudioNode>();
-		for (const [id, strip] of this.#buses) {
-			strip.route(master.input);
-			busInputs.set(id, strip.input);
-		}
-		for (const t of this.arrangement.tracks) {
-			const strip = this.#tracks.get(t.id);
-			if (!strip) continue;
-			const dest = (t.output && busInputs.get(t.output)) || master.input;
-			strip.route(dest);
-			strip.setSends(t.sends ?? [], busInputs, 0);
-		}
+		this.#graph?.routeAll(this.arrangement);
 	}
 	#dropTrackNodes(trackId: string) {
-		const strip = this.#tracks.get(trackId);
-		if (!strip) return;
-		strip.dispose();
-		this.#tracks.delete(trackId);
+		this.#graph?.dropTrack(trackId);
 	}
 
 	// ── Loading ────────────────────────────────────────────────────────────
@@ -523,6 +496,8 @@ class StudioEngine {
 		this.#mixGestures.clear();
 		this.canUndo = this.canRedo = false;
 		this.#buffers.clear();
+		this.#urls.clear();
+		this.#loading.clear();
 		for (const id of this.#tracks.keys()) this.#dropTrackNodes(id);
 		this.arrangement = song.current ? structuredClone(song.current) : emptyArrangement();
 		// An empty song starts with one track armed to the microphone, so the page never opens bare and Record works at once (Kevin);
@@ -540,8 +515,11 @@ class StudioEngine {
 			});
 		this.dirty = false;
 		this.takeCount = song.sources.reduce((n, s) => Math.max(n, s.takeNumber), 0);
+		// Only what the arrangement plays is decoded now (D8); the rest stays cold on the server until a clip, a take or the sampler asks for it.
+		const needed = this.#referencedSourceIds();
 		const next: Record<string, StudioSource> = {};
 		for (const s of song.sources) {
+			this.#urls.set(s.id, s.url);
 			next[s.id] = {
 				id: s.id,
 				label: s.trackLabel,
@@ -549,7 +527,7 @@ class StudioEngine {
 				sampleRate: s.sampleRate,
 				channels: s.channels,
 				peaks: Float32Array.from(s.peaks),
-				status: "decoding",
+				status: needed.has(s.id) ? "decoding" : "cold",
 				pending: false,
 			};
 		}
@@ -559,7 +537,7 @@ class StudioEngine {
 		this.position = 0;
 		this.#recount();
 		// Decode in order, a few at a time.
-		const queue = [...song.sources];
+		const queue = song.sources.filter((s) => needed.has(s.id));
 		this.decoding = queue.length;
 		const worker = async () => {
 			for (;;) {
@@ -595,6 +573,84 @@ class StudioEngine {
 		let bytes = 0;
 		for (const b of this.#buffers.values()) bytes += b.length * b.numberOfChannels * 4;
 		this.memoryBytes = bytes;
+		// Past the warning line, what nothing plays goes cold on its own (D8).
+		if (bytes > STUDIO_MEMORY_WARNING_BYTES && !this.#releasing) {
+			this.#releasing = true;
+			try {
+				this.releaseUnused();
+			} finally {
+				this.#releasing = false;
+			}
+		}
+	}
+	#releasing = false;
+	/** The sources the arrangement plays: every clip's, their takes aside, and the samplers'. */
+	#referencedSourceIds(): Set<string> {
+		const ids = new Set<string>();
+		for (const c of this.arrangement.clips) if (c.sourceId) ids.add(c.sourceId);
+		for (const t of this.arrangement.tracks) if (t.sampler) ids.add(t.sampler.sourceId);
+		return ids;
+	}
+	/**
+	 * A source decoded and held, fetched from the server when it is cold
+	 * (D8): the buffer, or null when it cannot be had (never uploaded,
+	 * failed). One fetch at a time per source.
+	 */
+	async ensureSource(sourceId: string): Promise<AudioBuffer | null> {
+		const have = this.#buffers.get(sourceId);
+		if (have) return have;
+		const inFlight = this.#loading.get(sourceId);
+		if (inFlight) return inFlight;
+		const url = this.#urls.get(sourceId);
+		const entry = this.sources[sourceId];
+		if (!url || !entry) return null;
+		entry.status = "decoding";
+		this.decoding++;
+		const job = (async () => {
+			try {
+				const res = await fetch(url);
+				if (!res.ok) throw new Error(`${res.status}`);
+				const buffer = await this.#decode(await res.arrayBuffer());
+				if (!this.sources[sourceId]) return null; // another song loaded meanwhile
+				this.#buffers.set(sourceId, buffer);
+				const e = this.sources[sourceId];
+				e.status = "ready";
+				e.durationSeconds = buffer.duration;
+				if (e.peaks.length === 0) e.peaks = computePeaks(buffer, 1024);
+				return buffer;
+			} catch {
+				if (this.sources[sourceId]) this.sources[sourceId].status = "failed";
+				return null;
+			} finally {
+				this.decoding--;
+				this.#loading.delete(sourceId);
+				this.#recount();
+			}
+		})();
+		this.#loading.set(sourceId, job);
+		return job;
+	}
+	/** Every source the arrangement plays, decoded (play, record and a bounce wait for this). */
+	async ensureReferenced(): Promise<void> {
+		await Promise.all([...this.#referencedSourceIds()].map((id) => this.ensureSource(id)));
+	}
+	/** The buffers nothing plays dropped from memory; the sources stay listed, cold, fetched again when wanted. Returns how many went. */
+	releaseUnused(): number {
+		const needed = this.#referencedSourceIds();
+		let n = 0;
+		for (const id of Array.from(this.#buffers.keys())) {
+			const entry = this.sources[id];
+			if (needed.has(id) || !entry || entry.pending || !this.#urls.has(id)) continue;
+			this.#buffers.delete(id);
+			entry.status = "cold";
+			n++;
+		}
+		if (n) {
+			let bytes = 0;
+			for (const b of this.#buffers.values()) bytes += b.length * b.numberOfChannels * 4;
+			this.memoryBytes = bytes;
+		}
+		return n;
 	}
 	bufferOf(sourceId: string): AudioBuffer | null {
 		return this.#buffers.get(sourceId) ?? null;
@@ -603,6 +659,10 @@ class StudioEngine {
 	markSourceSaved(sourceId: string) {
 		const s = this.sources[sourceId];
 		if (s) s.pending = false;
+	}
+	/** Where the song's sources are on the server (the page, after a refresh): a source made here can then go cold and come back (D8). */
+	noteSourceUrls(sources: { id: string; url: string }[]) {
+		for (const src of sources) if (this.sources[src.id]) this.#urls.set(src.id, src.url);
 	}
 	/** A source no clip uses any more, dropped from memory (and, by the page, from the server). */
 	forgetSource(sourceId: string) {
@@ -1051,12 +1111,15 @@ class StudioEngine {
 		this.#commit();
 		t.sampler = next;
 		this.#reschedule();
+		void this.ensureSource(sourceId);
 	}
 	/** A clip over the whole of a recording the song holds, on an audio track at a time (the library's drag). */
 	addClipFromSource(trackId: string, sourceId: string, at: number): StudioClip | null {
 		const t = this.#track(trackId);
 		const src = this.sources[sourceId];
 		if (!t || t.kind === "midi" || !src) return null;
+		if (!this.#buffers.has(sourceId))
+			void this.ensureSource(sourceId).then(() => this.#reschedule());
 		return this.addClip({
 			trackId,
 			sourceId,
@@ -1071,11 +1134,13 @@ class StudioEngine {
 	}
 	#preview: AudioBufferSourceNode | null = null;
 	/** A recording heard on its own, from the start (the library's play); the one before stops. Null stops. */
-	previewSource(sourceId: string | null) {
-		const ctx = this.#ctx;
+	async previewSource(sourceId: string | null): Promise<void> {
 		this.#preview?.stop();
 		this.#preview = null;
-		const buffer = sourceId ? this.#buffers.get(sourceId) : null;
+		if (!sourceId) return;
+		await this.open();
+		const ctx = this.#ctx;
+		const buffer = await this.ensureSource(sourceId);
 		if (!ctx || !buffer) return;
 		const src = ctx.createBufferSource();
 		src.buffer = buffer;
@@ -1247,6 +1312,8 @@ class StudioEngine {
 		const next = step === 1 ? ring[1] : ring[ring.length - 1];
 		c.alternates = ring.filter((id) => id !== next);
 		c.sourceId = next;
+		// A take not heard since the song opened is cold: fetched now, and the pass restarted once it is in.
+		if (!this.#buffers.has(next)) void this.ensureSource(next).then(() => this.#reschedule());
 		const srcEnd = this.#sourceSeconds(c);
 		if (c.offset >= srcEnd) c.offset = 0;
 		c.duration = round4(Math.min(c.duration, srcEnd - c.offset));
@@ -1321,6 +1388,8 @@ class StudioEngine {
 		this.arrangement.clips.splice(i, 1, ...made);
 		this.#stopClip(clipId);
 		this.#reschedule();
+		if (!this.#buffers.has(takeSourceId))
+			void this.ensureSource(takeSourceId).then(() => this.#reschedule());
 		return made.find((m) => m.sourceId === takeSourceId) ?? made[0]!;
 	}
 	/** A new source from channel data, held here and handed to the page to upload (as an import is). */
@@ -1464,6 +1533,76 @@ class StudioEngine {
 		for (const id of gone) this.#stopClip(id);
 		this.#reschedule();
 		return made;
+	}
+
+	// ── Freeze (D8) ───────────────────────────────────────────────────────
+	/**
+	 * A track frozen: its clips (and a MIDI track's notes) rendered through
+	 * its inserts into one recording that takes their place, the inserts
+	 * put away, so a heavy track costs nothing to play. The fader, pan and
+	 * their lanes stay live. Unfreeze brings the clips and inserts back.
+	 */
+	async freezeTrack(trackId: string): Promise<boolean> {
+		const t = this.#track(trackId);
+		if (!t || t.frozen) return false;
+		const clips = this.arrangement.clips.filter((c) => c.trackId === trackId);
+		if (clips.length === 0) return false;
+		const buffer = await this.render({ track: trackId, freeze: true });
+		const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+			buffer.getChannelData(c),
+		);
+		const label = `${t.name || "Track"} (frozen)`.slice(0, 60);
+		const { sourceId } = this.#sourceFromChannels(channels, buffer.sampleRate, label, trackId);
+		this.#commit();
+		const track = this.#track(trackId)!;
+		track.frozen = {
+			clips: structuredClone($state.snapshot(clips)),
+			...(track.inserts ? { inserts: track.inserts } : {}),
+			...(track.fx ? { fx: track.fx } : {}),
+		};
+		delete track.inserts;
+		delete track.fx;
+		const gone = new Set(clips.map((c) => c.id));
+		this.arrangement.clips = this.arrangement.clips.filter((c) => !gone.has(c.id));
+		this.arrangement.clips.push({
+			id: localId(),
+			trackId,
+			sourceId,
+			start: 0,
+			offset: 0,
+			duration: round4(buffer.duration),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: label,
+		});
+		for (const id of gone) this.#stopClip(id);
+		this.#tracks.get(trackId)?.setInserts([], 0);
+		this.#reschedule();
+		return true;
+	}
+	/** The frozen track's clips and inserts back as they were; the rendering stays a recording of the song until a clean-up. */
+	unfreezeTrack(trackId: string): boolean {
+		const t = this.#track(trackId);
+		if (!t?.frozen) return false;
+		this.#commit();
+		const track = this.#track(trackId)!;
+		const frozen = track.frozen!;
+		const rendered = this.arrangement.clips.filter((c) => c.trackId === trackId);
+		this.arrangement.clips = [
+			...this.arrangement.clips.filter((c) => c.trackId !== trackId),
+			...structuredClone($state.snapshot(frozen.clips)),
+		];
+		if (frozen.inserts) track.inserts = frozen.inserts;
+		if (frozen.fx) track.fx = frozen.fx;
+		delete track.frozen;
+		for (const c of rendered) this.#stopClip(c.id);
+		this.#tracks.get(trackId)?.setInserts(insertsOf(track), 0);
+		for (const c of frozen.clips)
+			if (c.sourceId && !this.#buffers.has(c.sourceId))
+				void this.ensureSource(c.sourceId).then(() => this.#reschedule());
+		this.#reschedule();
+		return true;
 	}
 
 	// ── Markers (D4) ──────────────────────────────────────────────────────
@@ -1980,6 +2119,7 @@ class StudioEngine {
 	async play(opts: { from?: number; countIn?: boolean; ahead?: number } = {}): Promise<void> {
 		if (this.running) return;
 		await this.open();
+		await this.ensureReferenced();
 		const ctx = this.#ctx!;
 		claimPlayback(this.#transport);
 		// The instruments MIDI clips play through must be awake before their first note is due.
@@ -2316,6 +2456,7 @@ class StudioEngine {
 	async record(): Promise<boolean> {
 		if (this.running) return false;
 		await this.open();
+		await this.ensureReferenced();
 		const ctx = this.#ctx!;
 		const armed = this.armedTracks.filter((t) => t.input && this.inputOpen(t.input.source));
 		if (armed.length === 0) {
@@ -2659,6 +2800,7 @@ class StudioEngine {
 	 * inserts and fader. A second of tail lets reverbs and delays ring out.
 	 */
 	async render(target: RenderTarget = {}): Promise<AudioBuffer> {
+		await this.ensureReferenced();
 		const trackId = target.track ?? null;
 		const busId = target.bus ?? null;
 		const alone = Boolean(trackId || busId);
@@ -2685,15 +2827,26 @@ class StudioEngine {
 			if (trackId && t.id !== trackId) continue;
 			if (busId && t.output !== busId && !t.sends?.some((x) => x.bus === busId && x.level > 0))
 				continue;
-			const g = trackId ? t.gain : this.#effectiveGain(t);
+			const g = trackId ? (target.freeze ? 1 : t.gain) : this.#effectiveGain(t);
 			if (g <= 0) continue;
-			const strip = createStripGraph(off, { inserts: insertsOf(t), pan: t.pan });
-			strip.fader.gain.value = trackId && t.automation?.volume?.length ? 1 : g;
+			const strip = createStripGraph(off, {
+				inserts: insertsOf(t),
+				pan: trackId && target.freeze ? 0 : t.pan,
+			});
+			strip.fader.gain.value = trackId && t.automation?.volume?.length && !target.freeze ? 1 : g;
 			// A bus alone: a track reaches it by its output, or by its send alone (its output then goes nowhere).
 			if (busId) strip.route(t.output === busId ? busInputs.get(busId)! : off.createGain());
 			else strip.route((t.output && busInputs.get(t.output)) || master.input);
 			if (!trackId) strip.setSends(t.sends ?? [], busInputs, 0);
-			this.#scheduleLanes(t, strip, 0, 0, null);
+			// A freeze bakes the inserts' lanes and leaves the volume and pan (and the sends) to the live strip.
+			const lanes = target.freeze
+				? {
+						automation: Object.fromEntries(
+							Object.entries(t.automation ?? {}).filter(([k]) => k.startsWith("insert:")),
+						),
+					}
+				: t;
+			this.#scheduleLanes(lanes, strip, 0, 0, null);
 			nodes.set(t.id, strip.input);
 		}
 		// The MIDI tracks' clips, through their instruments offline; the kits and chains build first, the rendering starts after.
@@ -2780,6 +2933,8 @@ class StudioEngine {
 		cancelAnimationFrame(this.#frame);
 		cancelAnimationFrame(this.#meterFrame);
 		inputSources.detach(this.#ctx ?? undefined);
+		this.#graph?.dispose();
+		this.#graph = null;
 		void this.#ctx?.close();
 		this.#ctx = null;
 		this.ready = false;

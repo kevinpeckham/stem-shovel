@@ -183,7 +183,7 @@ automatable parameters, so D2 adds sends and inserts in one place.
   real-time co-editing with Yjs and presence.
   docs/multitrack-recorder.md "Collaboration".
 
-### D8. Scale and structure
+### D8. Scale and structure (built in part on `dawn-daw`, 2026-10-19)
 
 - Sources streamed from OPFS and Blob through a playback worklet, FLAC
   renditions in the jobs function, windowed scheduling and freeze, so a
@@ -192,6 +192,13 @@ automatable parameters, so D2 adds sends and inserts in one place.
   persistence) behind the same `studio` facade, persistence and bounce
   orchestration out of the page into a module, operation-based undo.
   Done incrementally from D1 on; this phase finishes it.
+- Built: sources decoded on demand and released when nothing plays
+  them (`ensureSource`, `releaseUnused`, the `cold` status), track
+  freeze and unfreeze, the graph (`studioGraph.ts`) and the autosave
+  (`studioPersistence.svelte.ts`) as modules with tests. Left: the
+  streaming worklet over OPFS, FLAC renditions in the jobs function,
+  windowed scheduling, operation-based undo.
+  docs/multitrack-recorder.md "Scale and structure".
 
 ### Cross-cutting, every phase
 

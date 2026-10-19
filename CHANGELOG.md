@@ -122,6 +122,19 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   differs in from the song now (`diffArrangements`). Browser spec
   `studio-collab.spec.ts` with two pages on one song; the user guide's
   "Working together".
+- **Dawn: scale and structure** (docs/dawn-daw-plan.md, phase D8).
+  Recordings decode on demand: a song opens with only what it plays
+  decoded, the rest cold on the server until a clip, a take, the sampler
+  or the library asks (`ensureSource`), and what nothing plays is
+  unloaded past the memory line or from the song's menu
+  (`releaseUnused`). **Freeze track** renders a track through its
+  inserts into one recording that stands in for its clips, fader and pan
+  still live; **Unfreeze** restores them. The engine's live graph is its
+  own module (`studioGraph.ts`) and the page's autosave another
+  (`studioPersistence.svelte.ts`: the debounce, serialized saves, the
+  base revision and the conflict hand-off), each tested. Browser spec
+  `studio-scale.spec.ts`; the user guide's "Freezing a track" and
+  "Limits".
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

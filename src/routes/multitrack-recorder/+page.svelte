@@ -61,6 +61,7 @@
 		studioComments,
 	} from "#lib/remote/studioComments.remote.js";
 	import StudioComments from "#lib/components/StudioComments.svelte";
+	import { StudioPersistence } from "#lib/audio/studioPersistence.svelte.js";
 	import { diffArrangements } from "#lib/utils/diffArrangements.js";
 	import type { StudioCommentView } from "#lib/val/StudioSchema.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -135,8 +136,6 @@
 	const stageModel = studioMixerModel(studio);
 
 	// ── Collaboration (docs/dawn-daw-plan.md, D7) ────────────────────────
-	/** The newest revision this browser knows of the open song: an autosave sends it, and a newer one from someone else means a reload. */
-	let baseNumber = $state(0);
 	let comments = $state<StudioCommentView[]>([]);
 	let commentsOpen = $state(false);
 	let commentsBusy = $state(false);
@@ -192,8 +191,7 @@
 		if (studio.running) studio.stop();
 		loadedKey = "";
 		openSong(fresh);
-		lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
-		studio.dirty = false;
+		persistence.markSaved(fresh.revisions[0]?.number ?? 0);
 	}
 	/** What a revision's arrangement differs in from the song as it stands now (utils/diffArrangements.ts). */
 	let diffs = $state<Record<string, string[]>>({});
@@ -219,7 +217,7 @@
 		notes = s?.notes ?? "";
 		notesKey++;
 		selected = null;
-		baseNumber = s?.revisions[0]?.number ?? 0;
+		persistence.open(s?.revisions[0]?.number ?? 0);
 		diffs = {};
 		void loadComments(s?.id ?? null);
 		loadInstruments(s?.instruments ?? null);
@@ -343,57 +341,27 @@
 		}
 	}
 
-	// ── Autosave and revisions ─────────────────────────────────────────────
-	let saving = $state(false);
-	let saveTimer: ReturnType<typeof setTimeout> | null = null;
-	let lastSaved = "";
+	// ── Autosave and revisions (studioPersistence.svelte.ts, D8) ──────────
+	const persistence = new StudioPersistence({
+		isDirty: () => studio.dirty,
+		setDirty: (v) => (studio.dirty = v),
+		snapshot: () => $state.snapshot(studio.arrangement),
+		ensureSong,
+		save: (ideaId, data, base) => autosaveArrangement({ ideaId, data, base }),
+		onConflict: async (ideaId) => {
+			notify("Someone else saved this song since you opened it: their version is in", {
+				kind: "error",
+			});
+			await reloadFromServer(ideaId);
+		},
+		notify: (message, opts) => notify(message, opts),
+	});
 	$effect(() => {
 		if (!studio.dirty) return;
 		// Debounced: a burst of edits saves once, a second and a half after the last.
-		scheduleAutosave();
+		persistence.schedule();
 	});
-	function scheduleAutosave() {
-		if (saveTimer) clearTimeout(saveTimer);
-		saveTimer = setTimeout(() => void autosaveNow(), 1500);
-	}
-	/** Saves run one after another: a second call while one is in flight waits for it, so the base it sends is the one the first just made (D7's conflict guard would otherwise see the page's own save as someone else's). */
-	let saveChain: Promise<void> = Promise.resolve();
-	function autosaveNow(): Promise<void> {
-		saveChain = saveChain.then(saveOnce, saveOnce);
-		return saveChain;
-	}
-	async function saveOnce() {
-		if (saveTimer) clearTimeout(saveTimer);
-		saveTimer = null;
-		if (!studio.dirty) return;
-		const snapshot = $state.snapshot(studio.arrangement);
-		const sent = JSON.stringify(snapshot);
-		if (sent === lastSaved) {
-			studio.dirty = false;
-			return;
-		}
-		saving = true;
-		try {
-			const id = await ensureSong();
-			const saved = await autosaveArrangement({ ideaId: id, data: snapshot, base: baseNumber });
-			if (saved.conflict) {
-				notify("Someone else saved this song since you opened it: their version is in", {
-					kind: "error",
-				});
-				await reloadFromServer(id);
-				return;
-			}
-			baseNumber = saved.number;
-			lastSaved = sent;
-			if (JSON.stringify($state.snapshot(studio.arrangement)) === sent) studio.dirty = false;
-			// Edited while the save was out: the flag never flipped, so the effect will not fire; another save follows.
-			else scheduleAutosave();
-		} catch (e) {
-			notify(`Not saved: ${errorMessage(e)}`, { kind: "error" });
-		} finally {
-			saving = false;
-		}
-	}
+	const autosaveNow = () => persistence.saveNow();
 	async function saveRevision() {
 		const name = prompt("Name this revision", `Revision ${(song?.revisions.length ?? 0) + 1}`);
 		if (!name?.trim()) return;
@@ -404,10 +372,8 @@
 				name: name.trim(),
 				data: $state.snapshot(studio.arrangement),
 			});
-			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
-			studio.dirty = false;
 			await refreshAll();
-			baseNumber = song?.revisions[0]?.number ?? baseNumber;
+			persistence.markSaved(song?.revisions[0]?.number ?? persistence.baseNumber);
 			notify(`Revision “${name.trim()}” saved`);
 		} catch (e) {
 			notify(`Revision not saved: ${errorMessage(e)}`, { kind: "error" });
@@ -425,10 +391,8 @@
 			if (studio.running) studio.stop();
 			const { data: arrangement } = await restoreStudioRevision({ id: rev.id });
 			studio.replaceArrangement(arrangement);
-			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
-			studio.dirty = false;
 			await refreshAll();
-			baseNumber = song?.revisions[0]?.number ?? baseNumber;
+			persistence.markSaved(song?.revisions[0]?.number ?? persistence.baseNumber);
 			notify(`Restored “${label}”`);
 		} catch (e) {
 			notify(`Could not restore: ${errorMessage(e)}`, { kind: "error" });
@@ -458,7 +422,11 @@
 	const queue = new StudioQueue({
 		onsaved: (sourceId) => {
 			studio.markSourceSaved(sourceId);
-			void refreshAll();
+			// The refreshed song carries the file's URL, so the recording can go cold and come back (D8).
+			void refreshAll().then(() => {
+				const s = data.songs.find((x) => x.id === songId);
+				if (s) studio.noteSourceUrls(s.sources);
+			});
 		},
 	});
 	let uploading = $derived(queue.items.filter((u) => u.status !== "failed").length);
@@ -532,7 +500,7 @@
 	};
 	/** Leaving with an edit still unsaved (the debounce pending, a save failed): the browser asks first. */
 	function onbeforeunload(e: BeforeUnloadEvent) {
-		if (!studio.dirty && !saving) return;
+		if (!studio.dirty && !persistence.saving) return;
 		e.preventDefault();
 	}
 	/** Record: the song exists first (its takes need a home), the armed inputs are open, then the engine runs. */
@@ -697,6 +665,29 @@
 	function exportMidi(clip: StudioClip) {
 		const blob = studio.midiBlobOf(clip.id);
 		if (blob) downloadBlob(blob, `${clip.name || "clip"}.mid`);
+	}
+	/** A track frozen into one rendering (D8), or thawed; the rendering uploads like an import. */
+	async function freezeTrack(track: StudioTrack) {
+		notify(`Freezing ${track.name}…`);
+		try {
+			if (await studio.freezeTrack(track.id))
+				notify(`${track.name} is frozen: one rendering stands in for its clips`);
+			else notify(`${track.name} has nothing to freeze`, { kind: "error" });
+		} catch (e) {
+			notify(`Could not freeze: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	function unfreezeTrack(track: StudioTrack) {
+		if (studio.unfreezeTrack(track.id)) notify(`${track.name} is back as it was`);
+	}
+	/** The buffers nothing plays dropped from memory (D8); they come back from the server when wanted. */
+	function freeMemory() {
+		const n = studio.releaseUnused();
+		notify(
+			n
+				? `Unloaded ${n} ${n === 1 ? "recording" : "recordings"} nothing plays`
+				: "Everything in memory is in use",
+		);
 	}
 	/** A MIDI track rendered to an audio track (the track's menu), so it can bounce and go to a song. */
 	async function renderMidiTrack(track: StudioTrack) {
@@ -1207,7 +1198,7 @@
 		>
 			{#snippet controls()}
 				<span class="text-12px opacity-70 tabular-nums">
-					{#if saving}saving…{:else if studio.dirty}unsaved{:else if songId}saved{/if}
+					{#if persistence.saving}saving…{:else if studio.dirty}unsaved{:else if songId}saved{/if}
 					{#if uploading}· uploading {uploading}{/if}
 				</span>
 				<button
@@ -1301,6 +1292,15 @@
 									"Shared, every editor of the account opens and works on this song in Dawn; the creator alone shares it",
 								condition: !!song?.own,
 								action: () => void toggleShared(),
+							},
+							{
+								id: "free",
+								kind: "button",
+								label: "Unload recordings nothing plays",
+								iconClass: "i-ph-memory",
+								title:
+									"Drop from memory what no clip plays; it comes back from the server when wanted",
+								action: freeMemory,
 							},
 							{
 								id: "clean",
@@ -1619,6 +1619,8 @@
 						bind:selected
 						bind:selectedIds
 						bind:pxPerSecond
+						onfreeze={(t) => void freezeTrack(t)}
+						onunfreeze={unfreezeTrack}
 						comments={comments
 							.filter((c) => c.at !== null)
 							.map((c) => ({ id: c.id, at: c.at!, by: c.userName }))}

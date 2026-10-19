@@ -14,6 +14,9 @@
 		index: number;
 		/** Render a MIDI track to an audio track (the page says what happened). */
 		onrender?: (track: StudioTrack) => void;
+		/** Freeze the track into one rendering, or bring its clips back (D8; the page says what happened). */
+		onfreeze?: (track: StudioTrack) => void;
+		onunfreeze?: (track: StudioTrack) => void;
 		buttonClasses?: string;
 		position?: "bottom left" | "bottom right";
 	}
@@ -21,6 +24,8 @@
 		track,
 		index,
 		onrender,
+		onfreeze,
+		onunfreeze,
 		buttonClasses = "device-fader-menu-button-subtle",
 		position = "bottom right",
 	}: Props = $props();
@@ -96,6 +101,27 @@
 			condition: isMidi(track),
 			disabled: engine.running || !clipsOf(track).some((c) => c.notes?.length),
 			action: () => onrender?.(track),
+		},
+		{
+			id: "freeze",
+			kind: "button",
+			label: "Freeze track",
+			iconClass: "i-ph-snowflake",
+			title:
+				"Render the clips through the inserts into one recording that stands in for them (the fader and pan stay live), so the track costs nothing to play",
+			condition: !track.frozen,
+			disabled: engine.running || clipsOf(track).length === 0,
+			action: () => onfreeze?.(track),
+		},
+		{
+			id: "unfreeze",
+			kind: "button",
+			label: "Unfreeze track",
+			iconClass: "i-ph-sun",
+			title: "The clips and inserts back as they were",
+			condition: !!track.frozen,
+			disabled: engine.running,
+			action: () => onunfreeze?.(track),
 		},
 		{
 			id: "remove",

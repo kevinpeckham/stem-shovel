@@ -172,6 +172,8 @@ export const StudioTrackSchema = v.object({
 	humanize: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 	/** A sampler track's sound (D6); absent until a recording is chosen. */
 	sampler: v.optional(StudioSamplerSchema),
+	/** Frozen (D8): the clips and inserts put away while one rendering stands in for them; unfreeze restores. */
+	frozen: v.optional(v.lazy(() => StudioFrozenSchema)),
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
 
@@ -241,6 +243,14 @@ export const StudioMarkerSchema = v.object({
 	name: v.pipe(v.string(), v.trim(), v.maxLength(40)),
 });
 export type StudioMarker = v.InferOutput<typeof StudioMarkerSchema>;
+
+/** What a frozen track keeps (D8): its clips as they were, and the inserts (or the old fx) the rendering baked in. */
+export const StudioFrozenSchema = v.object({
+	clips: v.array(StudioClipSchema),
+	inserts: v.optional(InsertListSchema),
+	fx: v.optional(StudioTrackFxSchema),
+});
+export type StudioFrozen = v.InferOutput<typeof StudioFrozenSchema>;
 
 export const StudioLoopSchema = v.object({
 	on: v.boolean(),

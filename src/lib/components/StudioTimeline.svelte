@@ -44,6 +44,9 @@
 		onarm?: (track: StudioTrack) => void;
 		/** Render a MIDI track to an audio track (the track's menu; the page says what happened). */
 		onrender?: (track: StudioTrack) => void;
+		/** Freeze a track into one rendering, or thaw it (D8; the page says what happened). */
+		onfreeze?: (track: StudioTrack) => void;
+		onunfreeze?: (track: StudioTrack) => void;
 		/** Open a MIDI clip's notes in the piano-roll editor (a double-click on the clip). */
 		onopen?: (clip: StudioClip) => void;
 		/** Comments pinned to moments (D7), drawn on the ruler; a click seeks there and opens the thread. */
@@ -56,6 +59,8 @@
 		pxPerSecond = $bindable(40),
 		onarm,
 		onrender,
+		onfreeze,
+		onunfreeze,
 		onopen,
 		comments = [],
 		oncomment,
@@ -867,6 +872,14 @@
 							if (e.key === "Enter") e.currentTarget.blur();
 						}}
 					/>
+					{#if track.frozen}
+						<span
+							class="i-ph-snowflake text-13px text-blue-200"
+							role="img"
+							aria-label="{track.name} is frozen"
+							title="Frozen: one rendering stands in for the clips and inserts (Unfreeze in the menu)"
+						></span>
+					{/if}
 					<!-- The automation lane under the clips (docs/dawn-daw-plan.md, D1): a MIDI track has no audio path to automate. -->
 					{#if !isMidi(track)}
 						<button
@@ -890,7 +903,7 @@
 						>
 					{/if}
 					<!-- context menu (StudioTrackMenu: the same actions as the Stage's strip) -->
-					<StudioTrackMenu {track} {index} {onrender} />
+					<StudioTrackMenu {track} {index} {onrender} {onfreeze} {onunfreeze} />
 				</div>
 				<!-- The input row: the picker alone; the effects button sits with the transport buttons below (Kevin). -->
 				<div
@@ -954,6 +967,7 @@
 						<ContextMenu
 							ariaLabel="{track.name} Inserts"
 							dataActive={insertsOf(track).length > 0}
+							disabled={!!track.frozen}
 							title="Inserts: EQ, compressor, tone, delay, reverb, limiter on this track"
 							iconClass="i-ph-sliders-horizontal"
 							clearButtonBaseClasses={true}

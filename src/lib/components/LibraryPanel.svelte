@@ -14,7 +14,8 @@
 		label: string;
 		durationSeconds: number;
 		channels: number;
-		status: "decoding" | "ready" | "failed";
+		/** "cold": on the server, fetched when played or placed (D8). */
+		status: "cold" | "decoding" | "ready" | "failed";
 		pending: boolean;
 		/** Clips using it. */
 		uses: number;
@@ -62,7 +63,7 @@
 			{#each shown as item (item.id)}
 				<li
 					class="flex items-center gap-2 rounded border border-white/10 px-2 py-1 text-13px cursor-grab {item.status ===
-					'ready'
+						'ready' || item.status === 'cold'
 						? ''
 						: 'opacity-50'}"
 					draggable="true"
@@ -75,7 +76,7 @@
 						class="device-fader-button-sm"
 						aria-pressed={playing === item.id}
 						aria-label={playing === item.id ? `Stop ${item.label}` : `Play ${item.label}`}
-						disabled={item.status !== "ready"}
+						disabled={item.status === "failed" || item.status === "decoding"}
 						onclick={() => onpreview(playing === item.id ? null : item.id)}
 					>
 						<span
@@ -93,7 +94,9 @@
 							? " · saving…"
 							: item.status === "failed"
 								? " · not loaded"
-								: ""}</span
+								: item.status === "cold"
+									? " · on the server"
+									: ""}</span
 					>
 				</li>
 			{/each}

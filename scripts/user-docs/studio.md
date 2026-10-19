@@ -92,6 +92,10 @@ The song's menu has **Download mix (WAV)**, the whole song with every fader, pan
 
 **Export…** opens a panel with more: the mix, a stem per track, a stem per bus, and a DAWproject file that Bitwig, Cubase and Studio One open with the tracks, clips, fades, levels and automation and the recordings inside. Choose 24-bit or 16-bit WAV, and **Normalize** to bring each file to −14 LUFS with peaks under −1 dBTP, the level the streaming services play at; the panel reports each file's loudness and what it applied. The files come as one zip, or one download each. While the song plays, the readout beside the master meter shows its loudness over the last three seconds in LUFS, so you can see where a mix sits before you export it.
 
+## Freezing a track
+
+**Freeze track** in a track's menu renders its clips through its inserts into one recording that stands in for them, so a heavy track costs nothing to play; the fader and pan stay live. A snowflake marks it, and **Unfreeze track** brings the clips and inserts back as they were. A MIDI track freezes the same way, through its instrument.
+
 ## Limits
 
-A song holds up to 16 tracks and 64 recordings, each up to 15 minutes. The screen shows how much decoded audio the page holds; a phone has far less room than a laptop, so keep phone sessions short and record in mono where a single channel will do.
+A song holds up to 16 tracks and 64 recordings, each up to 15 minutes. The screen shows how much decoded audio the page holds; only the recordings the song plays are decoded, the rest wait on the server until a clip, a take or the sampler asks for them, and **Unload recordings nothing plays** in the song's menu drops what no clip uses. A phone has far less room than a laptop, so keep phone sessions short and record in mono where a single channel will do.

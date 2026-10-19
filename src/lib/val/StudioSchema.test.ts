@@ -425,3 +425,48 @@ describe("StudioArrangementSchema (D6): the sampler", () => {
 		).toBe(false);
 	});
 });
+
+describe("StudioArrangementSchema (D8): a frozen track", () => {
+	test("a frozen track keeps its clips and inserts; the clips must be clips", () => {
+		const base = {
+			version: 1 as const,
+			bpm: 120,
+			beatsPerBar: 4,
+			gridOn: true,
+			countIn: false,
+			click: false,
+			loop: null,
+			master: 1,
+			clips: [],
+		};
+		const clip = {
+			id: "c1",
+			trackId: "t1",
+			sourceId,
+			start: 0,
+			offset: 0,
+			duration: 1,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "x",
+		};
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base,
+				tracks: [
+					{
+						...track("t1"),
+						frozen: { clips: [clip], inserts: [{ id: "i1", kind: "eq", settings: {} }] },
+					},
+				],
+			}).success,
+		).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base,
+				tracks: [{ ...track("t1"), frozen: { clips: [{ ...clip, duration: 0 }] } }],
+			}).success,
+		).toBe(false);
+	});
+});

@@ -964,3 +964,68 @@ Browser spec `tests/e2e/studio-collab.spec.ts` (two pages on one song);
 tests on the access helper, the remote functions, the cascade, the diff
 and the panel. Left for later: real-time co-editing and presence, a
 comment's edit, replies, and comments on a mix of a Dawn song.
+
+## Scale and structure (2026-10-19, docs/dawn-daw-plan.md D8)
+
+**Sources on demand.** A song's recordings no longer all live decoded
+in memory. `load` decodes only what the arrangement plays
+(`#referencedSourceIds`: every clip's source, a sampler's recording;
+a clip's other takes count only when chosen) and marks the rest
+`cold`, a fourth `StudioSource.status` beside decoding, ready and
+failed, with the file's URL kept (`#urls`). `ensureSource(id)` fetches
+and decodes a cold one (one fetch at a time per source, `#loading`),
+`ensureReferenced()` every played one, and `play`, `record` and
+`render` wait for it, so a song opens fast and sounds complete.
+Cycling to a cold take, comping from one, dropping one from the
+library and choosing one for the sampler fetch it and restart the
+pass once it is in; the library's play fetches it first (`previewSource`
+is async). `releaseUnused()` drops the buffers nothing plays (cold
+again, listed still; a recording still uploading is kept), and
+`#recount` calls it on its own once memory passes
+`STUDIO_MEMORY_WARNING_BYTES`; the song menu's "Unload recordings
+nothing plays" does it by hand. The timeline draws a cold clip from the
+saved peaks, as it already drew a decoding one. A streaming playback
+worklet over OPFS, the plan's further step, stays open: on-demand
+decoding and release already keep a long session's memory to what it
+plays.
+
+**Freeze.** `freezeTrack(trackId)` renders the track through its
+inserts (`render({ track, freeze: true })`: fader 1, pan 0, only the
+inserts' lanes scheduled; the fader, pan and their lanes stay live),
+makes the rendering a recording of the song (`#sourceFromChannels`,
+uploaded like an import), and puts the clips and the inserts away on
+the track (`frozen: { clips, inserts?, fx? }`, `StudioFrozenSchema`)
+with one clip of the rendering in their place; the strip's inserts are
+emptied. `unfreezeTrack` restores the clips (fetching cold ones) and
+the inserts and drops the rendering's clip (the recording stays for a
+clean-up). The track menu has both; the header shows a snowflake and
+the inserts button is disabled while frozen. A MIDI track freezes the
+same way, through its instrument.
+
+**The engine in modules.** `src/lib/audio/studioGraph.ts` is the live
+signal graph: the master, a strip per bus and per track, kept in step
+with the arrangement (`ensureAll`, `ensureBus`, `ensureTrack`,
+`dropBus`, `dropTrack`, `routeAll`, `stripOf`), with the engine's
+effective gains and automation settle handed in as hooks; the engine
+keeps private getters over it (`#masterStrip`, `#buses`, `#tracks`) so
+the rest reads as before. `src/lib/audio/studioPersistence.svelte.ts`
+is the page's autosave, out of the page: the debounce, the serialized
+saves, the base revision and the conflict hand-off (D7), the re-save
+after an edit during a save, `markSaved` after a named revision, a
+restore or a reload, and `open` on a song change; the page hands in the
+engine's flag and snapshot, `ensureSong`, the remote call and
+`onConflict`, and reads `saving` and `baseNumber`. Tested with fakes
+and timers. The bounce orchestration moved out in D3
+(`studioExport.ts`); the instruments in D6 (`instruments.ts`); the
+inserts, strips and offline render in D2 and D3.
+
+Left for later, named in the plan: the streaming worklet over OPFS and
+Blob, FLAC renditions of sources in the jobs function (the browser
+keeps 24-bit WAV; a FLAC rendition halves the storage), windowed
+scheduling of very long clips, and operation-based undo (the history
+stays whole-document snapshots at depth 100, which the mix gestures
+and every D1–D7 edit already fold into one step each).
+
+Browser spec `tests/e2e/studio-scale.spec.ts`; unit tests on the graph
+over stand-in strips and on the persistence with fake timers; a schema
+test on the frozen track.
