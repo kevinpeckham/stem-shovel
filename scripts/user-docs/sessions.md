@@ -10,6 +10,10 @@ A **session** is one practice or one show. It has a kind (Practice or Show), the
 
 Pick one or more audio files: a phone's voice memo, a recorder's WAV, a board mix from the venue, in any of the formats a demo accepts, up to 2 GB a file. Each file is dated by its own clock (the recorder's, not the upload's) and goes into the session of that day, or the day before's if that is where the evening started, or into a new session of that day named after the place you typed. To put files somewhere particular, choose the session first. An MP3 of each recording renders in the background for playing and for the session's download; the row says "MP3 rendering…" until it is there. Everyone else in the account gets a notification.
 
+## Recording in the app
+
+**Record a session** on the Sessions page opens a recorder with one job: the room, in stereo, from your device's microphone or a line in. Pick the input (and the device, if you have more than one), press **Record**, play the set, press **Stop**. Hear it back, give it a title (it starts as "Practice 7:42 PM"), choose the session or let today's day decide, name the input source, and **Save to sessions**: it uploads like any other recording and the MP3 and waveform follow. Recordings are compressed unless you tick **Lossless**, which makes much larger files. Keep the page open while it records; a phone records only with the screen on.
+
 ## Listening
 
 The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file, named after the recording's title ("Battle of the Bands set 2" saves as battle-of-the-bands-set-2.mp3).

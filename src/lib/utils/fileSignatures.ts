@@ -100,6 +100,16 @@ export function startsLikeAudio(bytes: Uint8Array): boolean {
 	if (ascii(bytes, 0, "RIFF") && ascii(bytes, 8, "WAVE")) return true;
 	if (ascii(bytes, 4, "ftyp")) return true;
 	if (ascii(bytes, 0, "OggS") || ascii(bytes, 0, "fLaC")) return true;
+	// WebM and Matroska (the browser's MediaRecorder): the EBML header; Apple's CAF; AMR from a phone.
+	if (
+		bytes.length >= 4 &&
+		bytes[0] === 0x1a &&
+		bytes[1] === 0x45 &&
+		bytes[2] === 0xdf &&
+		bytes[3] === 0xa3
+	)
+		return true;
+	if (ascii(bytes, 0, "caff") || ascii(bytes, 0, "#!AMR")) return true;
 	return ascii(bytes, 0, "FORM") && (ascii(bytes, 8, "AIFF") || ascii(bytes, 8, "AIFC"));
 }
 

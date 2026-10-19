@@ -77,6 +77,12 @@ describe("fileSignatures by attachment kind", () => {
 		expect(startsLikeAudio(Uint8Array.from([0, 0, 0, 0x20, ...ascii("ftypM4A ")]))).toBe(true);
 		expect(startsLikeAudio(ascii("OggS"))).toBe(true);
 		expect(startsLikeAudio(ascii("fLaC"))).toBe(true);
+		// A WebM from MediaRecorder (the session recorder), a CAF, an AMR memo.
+		expect(startsLikeAudio(Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81]))).toBe(
+			true,
+		);
+		expect(startsLikeAudio(ascii("caff\0\x01"))).toBe(true);
+		expect(startsLikeAudio(ascii("#!AMR\n"))).toBe(true);
 		expect(startsLikeAudio(Uint8Array.from([...ascii("FORM"), 0, 0, 0, 0, ...ascii("AIFF")]))).toBe(
 			true,
 		);

@@ -10,6 +10,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **A session recorder.** Record a session on the Sessions page: one stereo
+  recording of the room from the microphone or the line in, with a level
+  meter, a clock, playback of the take, a title, the session and the input
+  source, saved straight into the sessions (`SessionRecorder.svelte`,
+  `/sessions/record`). Compressed by default, lossless on request.
 - **Share links on session recordings.** A recording's menu has Share…
   with viewing links that open the recording on a page of its own
   (`/sessions/r/<id>`, with the waveform, player and downloads), for
@@ -168,6 +173,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   base revision and the conflict hand-off), each tested. Browser spec
   `studio-scale.spec.ts`; the user guide's "Freezing a track" and
   "Limits".
+- **Fixed**: a WebM, CAF or AMR file uploaded as a session recording was
+  refused as "not audio" by the ready check, which knew only the older
+  signatures (`startsLikeAudio`); the session recorder's own takes hit it.
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

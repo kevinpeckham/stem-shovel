@@ -382,6 +382,29 @@ in `updateSessionRecording`, linked from the row, and listed on the
 song's page under the Demos view (`listSessionRecordingsOfSong`, members
 only) with a link to `/sessions?recording=<id>`.
 
+**The session recorder** (`/[account]/sessions/record`,
+`SessionRecorder.svelte`; Kevin, 2026-10-19: a stripped-down variation
+on the Idea Recorder, available from the Sessions page, with a minimal
+interface, for microphone or line-in stereo recordings). One job: the
+room through the microphone or the line in, in stereo, as one session
+recording. The input comes from `inputSources` (the looper's and the
+Idea Recorder's engine: the chosen device or the default, the voice
+processors off, `channelCount` 2) attached to a context of the page's
+own with a silent monitor; the source's output node feeds a
+`MediaStreamDestination` that a `MediaRecorder` records (`recordingMimeType`:
+compressed by default, Opus or AAC at 256 kbps, since a practice runs an
+hour; lossless on request), with the engine's meter for the level. Record,
+Stop (a track that ends mid-take, a call, keeps what there is), then the
+take plays back in an `<audio>` and a form names it (default "Practice
+7:42 PM", `sessionRecordingTitle`), picks the session (today's, or one of
+the account's) and the input source (the device's label), and Save
+uploads it as the Sessions page does (`uploadSessionFile`; `POST
+/api/sessions` now takes a `title`), then opens the Sessions page on the
+recording. Nothing is kept in the browser: a take is saved or discarded
+(the Idea Recorder's segments, recovery and sources stay its own). A wake
+lock holds a phone's screen; the audio session is "play-and-record" while
+capturing.
+
 **A recording's own page and its viewing links.** Each recording has a
 page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,
 session, day, source, the waveform, a one-track `SessionPlayer` and the

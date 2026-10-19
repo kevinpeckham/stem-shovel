@@ -508,7 +508,16 @@
 
 	{#if data.canEdit}
 		<section class="max-w-article surface mb-6 px-5 py-4" aria-label="Upload recordings">
-			<h2 class="font-600 mb-3">Add recordings</h2>
+			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<h2 class="font-600">Add recordings</h2>
+				<a
+					class="button button-sm"
+					href="/{data.account.slug}/sessions/record"
+					title="Record the room from this device, straight into the sessions"
+				>
+					<span class="i-ph-record-fill text-red-400" aria-hidden="true"></span> Record a session
+				</a>
+			</div>
 			<div class="flex flex-wrap items-end gap-x-4 gap-y-3">
 				<label class="grid gap-1 text-13px text-dim">
 					Session

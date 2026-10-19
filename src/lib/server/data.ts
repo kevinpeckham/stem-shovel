@@ -3777,6 +3777,8 @@ export async function createSessionRecording(
 		place: string;
 		/** Where it was captured ("Room mic"); the upload form's, for every file of the batch. */
 		source?: string;
+		/** A title given before the upload (the session recorder); the filename's stem otherwise. */
+		title?: string;
 		filename: string;
 		contentType: string;
 		sizeBytes: number;
@@ -3820,7 +3822,7 @@ export async function createSessionRecording(
 			id,
 			accountId,
 			sessionId: session.id,
-			title: labelFromFilename(input.filename),
+			title: input.title || labelFromFilename(input.filename),
 			source: input.source ?? "",
 			recordedOn,
 			url: "",
