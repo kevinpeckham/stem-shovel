@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.138.0] - 2026-10-19
+
 ### Added
 
 - **A session recorder.** Record a session on the Sessions page: one stereo
@@ -45,14 +47,6 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Sessions page; `?recording=`, `?session=…&open=chat` and `?demo=` deep
   links. Migration 0092. docs/uploads-and-blob.md "Sessions review",
   docs/chat.md "Sessions"; the user guides for sessions, chat and comments.
-
-### Technical
-
-- **Migration 0091**: `studio_comment` (comments on Dawn songs) and
-  `idea.shared` (a Dawn song opened to the band). Run `bun run db:migrate`
-  (or `db:migrate:steps`) on each stage before deploying.
-
-### Added
 
 - **Dawn: automation** (docs/dawn-daw-plan.md, phase D1 of the online
   DAW plan). Every audio track carries lanes of breakpoints for its
@@ -173,17 +167,36 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   base revision and the conflict hand-off), each tested. Browser spec
   `studio-scale.spec.ts`; the user guide's "Freezing a track" and
   "Limits".
-- **Fixed**: a WebM, CAF or AMR file uploaded as a session recording was
+
+### Fixed
+
+- **A WebM, CAF or AMR file uploaded as a session recording was
   refused as "not audio" by the ready check, which knew only the older
   signatures (`startsLikeAudio`); the session recorder's own takes hit it.
-- **Fixed on the branch**: a strip with no inserts was silent (the insert
+- **A strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and
   in a bounce. Caught by the export spec; `insertChain.test.ts` now
   covers the wiring over a stand-in context.
+
+### Technical
+
+- **Migrations 0091 to 0095**: `studio_comment` and `idea.shared` (Dawn,
+  D7); `session_comment`, `session_chat_message`, `session_chat_read`,
+  `comment.demo_id`, and `peaks`, `duration_seconds` and
+  `peaks_started_at` on `demo` and `session_recording` (0092);
+  `session_recording.source` (0093) and `.song_id` (0094);
+  `share_link.recording_id` (0095). Run `bun run db:migrate` (or
+  `db:migrate:steps`) on each stage before deploying.
+- **Jobs**: `demo-peaks` and `session-peaks` measure waveforms the
+  renders made before this version; the transcode measures them with
+  every new MP3.
 - **The plan**: `docs/dawn-daw-plan.md`, eight phases from automation to
   routing and a mixer, export, comping, the tempo map and stretch,
   instruments and plugins, collaboration, and scale.
+- **FINDINGS.md** at the repo root: gotchas and insights about packages,
+  browser APIs and tools, backfilled from the project's history; the
+  working agreement asks for an entry whenever one surfaces.
 
 ## [0.137.0] - 2026-10-18
 
