@@ -787,3 +787,73 @@ a selection, the wedges, the take lanes and the markers. Left for
 later: clip gain envelopes, a range selection on the ruler with
 ripple insert, the song's sections drawn on the ruler, a jump-to-marker
 key.
+
+## Time (2026-10-19, docs/dawn-daw-plan.md D5)
+
+**The tempo map.** The arrangement keeps its tempo and meter as before
+(`bpm`, `beatsPerBar`: the song's own, from zero) and gains
+`tempoChanges` and `meterChanges` (`StudioTempoChangeSchema`,
+`StudioMeterChangeSchema`: a second and a value, up to 64 each).
+`utils/studioGrid.ts` turns them into the stem player's `BarGrid`
+(`audio/measures.ts`: `barAt`, `secondsAtBar`, `tempoAt`,
+`beatsPerBarAt`, `barSecondsAt`), so Dawn and the stem player count
+bars the same way. The engine's `grid` getter is that grid; `snap` goes
+through `utils/snapToBeat.ts` (the nearest division of a beat on the
+grid, so it follows the changes), `barSeconds` and `beatSeconds` read
+the bar and beat the playhead is in, `quantizeClip` snaps each note
+through the grid at its own moment, the page's readout is `barAt`, and
+the ruler's ticks walk the map bar by bar (`rulerTicks` with `map`; the
+label thinning is decided by the first bar). The single-tempo
+`snapToGrid` and `quantizeNotes` utils are gone. `setTempoChange`,
+`removeTempoChange`, `setMeterChange`, `removeMeterChange` edit the map
+as undo steps (a change at zero is the song's own value); the Timing
+menu adds one at the playhead, and the ruler shows each as a small flag
+at the top (blue for tempo, green for meter): click seeks, double-click
+edits, Delete removes.
+
+**The click and the count-in follow the map.** `play` sets the
+metronome from the tempo and meter at the start and lines its first
+beat up with the bar the start is in (`secondsAtBar` of `barAt`), the
+count-in being that bar's length. Changes inside a pass are queued with
+the MIDI notes (`#queueMidi`, a `QueuedNote` with no clip): when one
+fires, the metronome stops and restarts at the change's moment with
+the new tempo and meter, and the drum machine playing along takes the
+tempo too. A pass rebuilt by a seek or an edit requeues them.
+
+**Swing and humanize.** A MIDI track carries `swing` and `humanize`
+(0 to 1, from the clip bar's sliders when a MIDI clip is selected;
+`setTrackSwing`, `setTrackHumanize`). They apply as the notes play,
+never to the stored notes: `utils/swingNotes.ts` delays the off-beat
+eighth of every beat on the grid toward a triplet feel (two thirds
+through the beat at 1) and scatters time (±30 ms × humanize) and
+velocity (±0.2 × humanize) from a random source a test pins. The live
+queue and the offline render (`renderMidiClipsOffline`'s `feel`) both
+go through it, so a bounce swings as playback does.
+
+**Tempo detection.** `utils/detectTempo.ts`: the energy per 10 ms
+frame, its rises as an onset curve, the autocorrelation over lags from
+240 down to 40 bpm with each lag scored with its neighbors (a period
+that is not a whole number of frames spreads over two), the period
+refined between lags, and a reading outside 70–180 bpm folded into that
+range when the folded lag scores nearly as well. "Detect tempo" on an
+audio clip sets the song's tempo from it.
+
+**Stretch and pitch.** `utils/stretchChannels.ts` is a WSOLA in pure
+TypeScript: 50 ms Hann grains laid down at the ratio, each nudged within
+10 ms to where it continues the last one best (by correlation on a mono
+mix, so stereo stays aligned), the overlaps normalized. A pitch shift is
+`utils/resampleChannels.ts` (linear interpolation at the semitone's
+factor) followed by a stretch back to length. `stretchClip(clipId,
+{ratio, semitones})` makes the result a new recording the clip follows
+(`#replaceClipSource`, uploaded like an import); the clip bar's Length ×
+and Pitch fields with Apply stretch. signalsmith-stretch (the plan's
+pick) was tried and set aside: it loads its worklet from a blob URL,
+which the site's `script-src` refuses; serving its worklet from
+`static/worklets` would need the package's wrapper rebuilt, a later
+step if the WSOLA's quality falls short on transient material.
+
+Browser spec `tests/e2e/studio-time.spec.ts`; unit tests on each util;
+the timeline's component test covers the flags. Left for later:
+beats-anchored clips (notes in beats rather than seconds, so a MIDI
+part follows a tempo change), tap tempo lives on the metronome already,
+tempo ramps between changes.

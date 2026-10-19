@@ -1,5 +1,7 @@
 import { DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
 import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
+import { swingNotes } from "#lib/utils/swingNotes.js";
+import type { BarGrid } from "./measures";
 import type { StudioClip, StudioInputSource } from "#lib/val/StudioSchema.js";
 import { createDrumBus } from "./drumBus";
 import { playDrumHit, type DrumPlayState } from "./drumRender";
@@ -29,8 +31,10 @@ export async function renderMidiClipsOffline(
 	source: StudioInputSource,
 	clips: StudioClip[],
 	bpm: number,
+	feel?: { grid: BarGrid; swing?: number; humanize?: number },
 ): Promise<void> {
-	const events = clips.flatMap((c) => clipNoteEvents(c));
+	const flat = clips.flatMap((c) => clipNoteEvents(c));
+	const events = feel ? swingNotes(flat, feel) : flat;
 	if (events.length === 0) return;
 	if (source === "drums") {
 		const kit = drumKit(drumMachine.project.kit);

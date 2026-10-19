@@ -78,6 +78,21 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   every util, component tests on the timeline, browser spec
   `studio-editing.spec.ts`; the user guide's "Editing clips", "Takes
   and comping" and "Markers".
+- **Dawn: time** (docs/dawn-daw-plan.md, phase D5). A **tempo map**:
+  tempo and meter changes at any second from the Timing menu, flags on
+  the ruler (click to jump, double-click to edit, Delete to remove),
+  with the bars, grid snap, readout, click and count-in following them,
+  on the stem player's bars-and-beats machinery (`studioGrid`,
+  `snapToBeat`, `measures.ts`; changes queued with the notes restart
+  the click on the beat). **Swing and humanize** on a MIDI track from
+  the clip bar, applied as the notes play and in a bounce, the stored
+  notes untouched (`swingNotes`). **Detect tempo** on a recording sets
+  the song's tempo from its onsets (`detectTempo`). **Stretch and
+  pitch**: Length × and Pitch make a new recording of a clip at another
+  length or pitch, a pure WSOLA (`stretchChannels`, `resampleChannels`).
+  Schema `StudioTempoChangeSchema`, `StudioMeterChangeSchema`, a track's
+  `swing` and `humanize`; browser spec `studio-time.spec.ts`; the user
+  guide's "Tempo and meter".
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

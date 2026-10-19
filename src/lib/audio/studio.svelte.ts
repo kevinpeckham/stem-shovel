@@ -12,13 +12,26 @@ import { coveredClips } from "#lib/utils/coveredClips.js";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
 import { normalizeBuffer } from "#lib/utils/normalizeBuffer.js";
 import { sliceBuffer } from "#lib/utils/sliceBuffer.js";
-import { snapToGrid } from "#lib/utils/snapToGrid.js";
+import { snapToBeat } from "#lib/utils/snapToBeat.js";
+import { studioGrid } from "#lib/utils/studioGrid.js";
+import { swingNotes } from "#lib/utils/swingNotes.js";
+import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
+import { detectTempo } from "#lib/utils/detectTempo.js";
+import { stretchChannels } from "#lib/utils/stretchChannels.js";
+import { resampleChannels, semitonesFactor } from "#lib/utils/resampleChannels.js";
+import {
+	barAt,
+	barSecondsAt,
+	beatsPerBarAt,
+	secondsAtBar,
+	tempoAt,
+	type BarGrid,
+} from "./measures";
 import { splitClipAt } from "#lib/utils/splitClipAt.js";
 import { takePieces } from "#lib/utils/takePieces.js";
 import { trimmedClip } from "#lib/utils/trimmedClip.js";
 import { pairNoteEvents, type NoteEvent } from "#lib/utils/pairNoteEvents.js";
 import { sliceNotes } from "#lib/utils/sliceNotes.js";
-import { quantizeNotes } from "#lib/utils/quantizeNotes.js";
 import { notesFromMidiSummary, notesToMidiBlob } from "#lib/utils/midiNotesFile.js";
 import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
 import type { MidiSummary } from "./midi";
@@ -52,6 +65,8 @@ import type {
 	StudioSend,
 	StudioFadeShape,
 	StudioMarker,
+	StudioMeterChange,
+	StudioTempoChange,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
@@ -332,11 +347,16 @@ class StudioEngine {
 	get sampleRate() {
 		return this.#ctx?.sampleRate ?? 48000;
 	}
+	/** The tempo map as a grid (utils/studioGrid.ts, D5): the song's tempo and meter, then each change at its second. */
+	get grid(): BarGrid {
+		return studioGrid(this.arrangement);
+	}
+	/** The length of the bar the playhead is in, and of a beat there. */
 	get barSeconds() {
-		return (this.arrangement.beatsPerBar * 60) / this.arrangement.bpm;
+		return barSecondsAt(this.grid, this.position);
 	}
 	get beatSeconds() {
-		return 60 / this.arrangement.bpm;
+		return 60 / tempoAt(this.grid, this.position);
 	}
 	/** The end of the last clip, or a bar when the song is empty. */
 	get duration() {
@@ -947,7 +967,108 @@ class StudioEngine {
 
 	/** A time on the grid (the nearest beat) when the grid is on; the time itself otherwise. */
 	snap(seconds: number): number {
-		return snapToGrid(seconds, { on: this.arrangement.gridOn, bpm: this.arrangement.bpm });
+		return this.arrangement.gridOn ? snapToBeat(this.grid, seconds) : Math.max(0, seconds);
+	}
+
+	// ── The tempo map (D5) ────────────────────────────────────────────────
+	/** A tempo change at a second (one at that second replaced); at zero it is the song's own tempo. */
+	setTempoChange(start: number, bpm: number) {
+		const v = Math.max(30, Math.min(300, Math.round(bpm)));
+		const at = round4(Math.max(0, start));
+		if (at === 0) return this.setBpm(v);
+		this.#commit();
+		const rest = (this.arrangement.tempoChanges ?? []).filter(
+			(c) => Math.abs(c.start - at) > 0.001,
+		);
+		this.arrangement.tempoChanges = [...rest, { start: at, bpm: v }].sort(
+			(a, b) => a.start - b.start,
+		);
+		this.#reschedule();
+	}
+	removeTempoChange(start: number) {
+		const list = this.arrangement.tempoChanges ?? [];
+		if (!list.some((c) => Math.abs(c.start - start) <= 0.001)) return;
+		this.#commit();
+		this.arrangement.tempoChanges = list.filter((c) => Math.abs(c.start - start) > 0.001);
+		if (!this.arrangement.tempoChanges.length) delete this.arrangement.tempoChanges;
+		this.#reschedule();
+	}
+	setMeterChange(start: number, beatsPerBar: number) {
+		const v = Math.max(2, Math.min(7, Math.round(beatsPerBar)));
+		const at = round4(Math.max(0, start));
+		if (at === 0) return this.setBeatsPerBar(v);
+		this.#commit();
+		const rest = (this.arrangement.meterChanges ?? []).filter(
+			(c) => Math.abs(c.start - at) > 0.001,
+		);
+		this.arrangement.meterChanges = [...rest, { start: at, beatsPerBar: v }].sort(
+			(a, b) => a.start - b.start,
+		);
+		this.#reschedule();
+	}
+	removeMeterChange(start: number) {
+		const list = this.arrangement.meterChanges ?? [];
+		if (!list.some((c) => Math.abs(c.start - start) <= 0.001)) return;
+		this.#commit();
+		this.arrangement.meterChanges = list.filter((c) => Math.abs(c.start - start) > 0.001);
+		if (!this.arrangement.meterChanges.length) delete this.arrangement.meterChanges;
+		this.#reschedule();
+	}
+	get tempoChanges(): StudioTempoChange[] {
+		return this.arrangement.tempoChanges ?? [];
+	}
+	get meterChanges(): StudioMeterChange[] {
+		return this.arrangement.meterChanges ?? [];
+	}
+	/** A MIDI track's feel (utils/swingNotes.ts): swing of the off-beat eighths and humanize, 0 to 1; 0 clears. */
+	setTrackSwing(trackId: string, swing: number) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		const v = Math.round(Math.max(0, Math.min(1, swing)) * 100) / 100;
+		if ((t.swing ?? 0) === v) return;
+		this.#commit();
+		if (v === 0) delete t.swing;
+		else t.swing = v;
+		this.#reschedule();
+	}
+	setTrackHumanize(trackId: string, humanize: number) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		const v = Math.round(Math.max(0, Math.min(1, humanize)) * 100) / 100;
+		if ((t.humanize ?? 0) === v) return;
+		this.#commit();
+		if (v === 0) delete t.humanize;
+		else t.humanize = v;
+		this.#reschedule();
+	}
+	/** The tempo of a clip's audio, from its onsets (utils/detectTempo.ts); null when it cannot tell. */
+	detectClipTempo(clipId: string): number | null {
+		const c = this.#clip(clipId);
+		const got = c && this.#clipChannels(c);
+		return got ? detectTempo(got.channels, got.sampleRate) : null;
+	}
+	/**
+	 * The clip's audio stretched to `ratio` times its length and shifted by
+	 * `semitones`, as a new recording of its own (utils/stretchChannels.ts,
+	 * a WSOLA; the pitch by resampling then stretching back). The clip
+	 * follows the new length.
+	 */
+	stretchClip(clipId: string, o: { ratio?: number; semitones?: number }): boolean {
+		const ratio = Math.max(0.25, Math.min(4, o.ratio ?? 1));
+		const semitones = Math.max(-24, Math.min(24, Math.round(o.semitones ?? 0)));
+		if (Math.abs(ratio - 1) < 1e-6 && semitones === 0) return false;
+		const c = this.#clip(clipId);
+		const got = c && this.#clipChannels(c);
+		if (!c || !got) return false;
+		const factor = semitonesFactor(semitones);
+		const shifted = semitones ? resampleChannels(got.channels, factor) : got.channels;
+		const out = stretchChannels(shifted, ratio * factor, got.sampleRate);
+		const parts = [
+			...(Math.abs(ratio - 1) >= 1e-6 ? [`×${ratio}`] : []),
+			...(semitones ? [`${semitones > 0 ? "+" : ""}${semitones} st`] : []),
+		];
+		this.#replaceClipSource(c, out, got.sampleRate, parts.join(" "));
+		return true;
 	}
 
 	addClip(clip: Omit<StudioClip, "id">): StudioClip | null {
@@ -1351,11 +1472,15 @@ class StudioEngine {
 		const c = this.#clip(clipId);
 		if (!c?.notes?.length) return;
 		this.#commit();
-		c.notes = quantizeNotes(c.notes, {
-			origin: 0,
-			step: this.beatSeconds / division,
-			contentOrigin: c.start - c.offset,
-		});
+		// Each note onto the grid as it stands at that moment (tempo changes included), in the clip's own time.
+		const origin = c.start - c.offset;
+		const grid = this.grid;
+		c.notes = c.notes
+			.map((n) => ({
+				...n,
+				t: round4(Math.max(0, snapToBeat(grid, origin + n.t, division) - origin)),
+			}))
+			.sort((a, b) => a.t - b.t || a.p - b.p);
 		this.#reschedule();
 	}
 	/** A MIDI clip's notes replaced outright (the piano-roll editor's edits), sorted and capped, as one undo step. */
@@ -1831,7 +1956,8 @@ class StudioEngine {
 		}
 		const from = opts.from ?? this.position;
 		const ahead = opts.ahead ?? START_AHEAD;
-		const countIn = opts.countIn ? this.barSeconds : 0;
+		const grid = this.grid;
+		const countIn = opts.countIn ? barSecondsAt(grid, from) : 0;
 		const when = ctx.currentTime + ahead + countIn;
 		this.#stopAt = from;
 		this.#passes = [];
@@ -1848,11 +1974,12 @@ class StudioEngine {
 			this.#startedDrums = true;
 		}
 		if (this.arrangement.click || opts.countIn) {
-			metronome.setBpm(this.arrangement.bpm);
-			metronome.setBeats(this.arrangement.beatsPerBar);
-			// The click runs from the count-in; on the grid its downbeats fall on the song's bars.
-			const bar = this.barSeconds;
-			const firstBeat = opts.countIn ? when - countIn : when - (from % bar);
+			metronome.setBpm(tempoAt(grid, from));
+			metronome.setBeats(beatsPerBarAt(grid, from));
+			// The click runs from the count-in; on the grid its downbeats fall on the song's bars (the bar the start is in, on the tempo map).
+			const bar = barSecondsAt(grid, from);
+			const intoBar = from - secondsAtBar(grid, barAt(grid, from).bar);
+			const firstBeat = opts.countIn ? when - countIn : when - intoBar;
 			void metronome.startAt(firstBeat >= ctx.currentTime ? firstBeat : firstBeat + bar);
 			if (!this.arrangement.click) {
 				this.#metronomeStopTimer = setTimeout(
@@ -1888,6 +2015,7 @@ class StudioEngine {
 		const ctx = this.#ctx;
 		if (!ctx) return;
 		const queue: QueuedNote[] = [];
+		const grid = this.grid;
 		for (const clip of this.arrangement.clips) {
 			if (!clip.notes?.length) continue;
 			const track = this.#track(clip.trackId);
@@ -1895,12 +2023,14 @@ class StudioEngine {
 			if (!track || track.kind !== "midi" || !source || !isInstrument(source)) continue;
 			const clipEnd = clip.start + clip.duration;
 			const ends = to === null ? clipEnd : Math.min(clipEnd, to);
-			const origin = clip.start - clip.offset;
-			for (const n of clip.notes) {
-				const tt = origin + n.t;
-				if (tt < clip.start || tt < from || tt >= ends) continue;
-				const duration = Math.min(n.d, ends - tt);
-				const at = when + (tt - from);
+			// The notes in the window, through the track's swing and humanize (utils/swingNotes.ts, D5).
+			const events = swingNotes(clipNoteEvents(clip, from, ends), {
+				grid,
+				swing: track.swing,
+				humanize: track.humanize,
+			});
+			for (const e of events) {
+				const at = when + (e.at - from);
 				queue.push({
 					at,
 					clipId: clip.id,
@@ -1909,20 +2039,46 @@ class StudioEngine {
 						const t = this.#track(track.id);
 						const gain = t ? this.#effectiveGain(t) : 0;
 						if (gain <= 0) return null;
-						const velocity = Math.min(1, n.v * clip.gain * Math.min(1, gain));
+						const velocity = Math.min(1, e.velocity * Math.min(1, gain));
 						if (source === "drums") {
-							const voice = DRUM_MIDI_IN_NOTES[n.p];
+							const voice = DRUM_MIDI_IN_NOTES[e.pitch];
 							return voice ? drumMachine.scheduleHit(voice, velocity, at) : null;
 						}
 						return (source === "piano" ? piano : chordPiano).scheduleNote(
-							n.p,
+							e.pitch,
 							velocity,
 							at,
-							duration,
+							e.duration,
 						);
 					},
 				});
 			}
+		}
+		// Tempo and meter changes in the window: the click (and the drums playing along) pick up the new pace on the beat they land on.
+		const ends = to ?? Infinity;
+		const changes = [
+			...this.tempoChanges.map((c) => c.start),
+			...this.meterChanges.map((c) => c.start),
+		].filter((t, i, list) => t > from && t < ends && list.indexOf(t) === i);
+		for (const t of changes) {
+			const at = when + (t - from);
+			queue.push({
+				at,
+				clipId: "",
+				fired: false,
+				fire: () => {
+					const bpm = tempoAt(grid, t);
+					const bpb = beatsPerBarAt(grid, t);
+					if (metronome.running) {
+						metronome.stop();
+						metronome.setBpm(bpm);
+						metronome.setBeats(bpb);
+						void metronome.startAt(at);
+					}
+					if (this.#startedDrums && !drumMachine.followTempo) drumMachine.setBpm(bpm);
+					return null;
+				},
+			});
 		}
 		queue.sort((a, b) => a.at - b.at);
 		this.#midiQueue = queue;
@@ -2541,7 +2697,13 @@ class StudioEngine {
 			if (!into || t.kind !== "midi" || !t.input || !isInstrument(t.input.source)) continue;
 			const clips = this.arrangement.clips.filter((c) => c.trackId === t.id && c.notes?.length);
 			if (clips.length)
-				midi.push(renderMidiClipsOffline(off, into, t.input.source, clips, this.arrangement.bpm));
+				midi.push(
+					renderMidiClipsOffline(off, into, t.input.source, clips, this.arrangement.bpm, {
+						grid: this.grid,
+						swing: t.swing,
+						humanize: t.humanize,
+					}),
+				);
 		}
 		const fades = clipCrossfades(this.arrangement.clips);
 		for (const clip of this.arrangement.clips) {

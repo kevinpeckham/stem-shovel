@@ -179,6 +179,7 @@
 				on: engine.arrangement.gridOn,
 				bpm: engine.arrangement.bpm,
 				beatsPerBar: engine.arrangement.beatsPerBar,
+				map: engine.grid,
 			},
 		}),
 	);
@@ -696,6 +697,55 @@
 					title="Loop region: drag its ends"
 				></div>
 			{/if}
+			<!-- Tempo and meter changes (D5): a flag each at the top; double-click edits, Delete on a focused one removes it. -->
+			{#each engine.tempoChanges as c (c.start)}
+				<button
+					type="button"
+					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-blue-300/80 text-dark hover:bg-blue-200 focus-visible:ring-1 focus-visible:ring-white"
+					style:left="{c.start * pxPerSecond}px"
+					data-tempo-change={c.start}
+					aria-label="Tempo change to {c.bpm} bpm at {formatTime(c.start)}"
+					title="{c.bpm} bpm from {formatTime(c.start)} (double-click to edit, Delete to remove)"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => engine.seek(c.start)}
+					ondblclick={() => {
+						const v = Number(prompt("Tempo from here, beats per minute", String(c.bpm)));
+						if (v) engine.setTempoChange(c.start, v);
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Delete" || e.key === "Backspace") {
+							engine.removeTempoChange(c.start);
+							e.preventDefault();
+							e.stopPropagation();
+						}
+					}}>{c.bpm}</button
+				>
+			{/each}
+			{#each engine.meterChanges as c (c.start)}
+				<button
+					type="button"
+					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-green-300/80 text-dark hover:bg-green-200 focus-visible:ring-1 focus-visible:ring-white"
+					style:left="{c.start * pxPerSecond + 22}px"
+					data-meter-change={c.start}
+					aria-label="Meter change to {c.beatsPerBar} beats a bar at {formatTime(c.start)}"
+					title="{c.beatsPerBar}/4 from {formatTime(
+						c.start,
+					)} (double-click to edit, Delete to remove)"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => engine.seek(c.start)}
+					ondblclick={() => {
+						const v = Number(prompt("Beats a bar from here", String(c.beatsPerBar)));
+						if (v) engine.setMeterChange(c.start, v);
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Delete" || e.key === "Backspace") {
+							engine.removeMeterChange(c.start);
+							e.preventDefault();
+							e.stopPropagation();
+						}
+					}}>{c.beatsPerBar}/4</button
+				>
+			{/each}
 			<!-- Markers (D4): a flag each; click jumps there, double-click renames, Delete on a focused one removes it. -->
 			{#each engine.markers as m (m.id)}
 				<button

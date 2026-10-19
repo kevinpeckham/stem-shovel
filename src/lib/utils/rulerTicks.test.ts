@@ -69,3 +69,39 @@ describe("rulerTicks", () => {
 		expect(Math.max(...major.map((t) => t.x))).toBeLessThan(7 * 40);
 	});
 });
+
+describe("rulerTicks with a tempo map (D5)", () => {
+	it("follows a tempo change bar by bar", async () => {
+		const { studioGrid } = await import("./studioGrid");
+		// Two bars at 120 (2 s each), then 60 bpm (4 s a bar), at 20 px/s.
+		const map = studioGrid({ bpm: 120, beatsPerBar: 4, tempoChanges: [{ start: 4, bpm: 60 }] });
+		const ticks = rulerTicks({
+			seconds: 12,
+			pxPerSecond: 20,
+			grid: { on: true, bpm: 120, beatsPerBar: 4, map },
+		});
+		// The first bar is 40 px wide, so labels fall on every other bar.
+		expect(ticks.filter((t) => t.major).map((t) => [t.x, t.label])).toEqual([
+			[0, "1"],
+			[40, null],
+			[80, "3"],
+			[160, null],
+		]);
+		// Beats are 10 px apart in the fast bars (too close to draw) and 20 px in the slow ones.
+		expect(ticks.filter((t) => !t.major).map((t) => t.x)).toEqual([100, 120, 140, 180, 200, 220]);
+	});
+	it("follows a meter change", async () => {
+		const { studioGrid } = await import("./studioGrid");
+		const map = studioGrid({
+			bpm: 120,
+			beatsPerBar: 4,
+			meterChanges: [{ start: 2, beatsPerBar: 3 }],
+		});
+		const ticks = rulerTicks({
+			seconds: 6,
+			pxPerSecond: 40,
+			grid: { on: true, bpm: 120, beatsPerBar: 4, map },
+		});
+		expect(ticks.filter((t) => t.major).map((t) => t.x)).toEqual([0, 80, 140, 200]);
+	});
+});

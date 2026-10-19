@@ -62,6 +62,7 @@
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { downloadBlob } from "#lib/utils/downloadBlob.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
+	import { barAt } from "#lib/audio/measures.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
 	import type {
@@ -858,10 +859,41 @@
 		const a = studio.arrangement;
 		const p = studio.position;
 		if (!a.gridOn) return formatTime(p);
-		const beat = 60 / a.bpm;
-		const beats = Math.floor(p / beat + 1e-6);
-		return `${Math.floor(beats / a.beatsPerBar) + 1} | ${(beats % a.beatsPerBar) + 1}`;
+		// Bars and beats on the tempo map (audio/measures.ts, D5).
+		const pos = barAt(studio.grid, p);
+		return `${pos.bar} | ${pos.beat}`;
 	});
+	// ── The tempo map (D5): a change at the playhead from the Timing menu ──
+	let tempoChangeBpm = $state(120);
+	let meterChangeBeats = $state(4);
+	function addTempoChange() {
+		studio.setTempoChange(studio.position, tempoChangeBpm);
+		notify(`${tempoChangeBpm} bpm from ${formatTime(studio.position)}`);
+	}
+	function addMeterChange() {
+		studio.setMeterChange(studio.position, meterChangeBeats);
+		notify(`${meterChangeBeats} beats a bar from ${formatTime(studio.position)}`);
+	}
+	/** The clip's tempo from its onsets, into the song's tempo. */
+	function detectTempoOfSelected() {
+		if (!selectedClip) return;
+		const bpm = studio.detectClipTempo(selectedClip.id);
+		if (bpm === null) {
+			notify("Could not tell the tempo: too quiet or too short", { kind: "error" });
+			return;
+		}
+		studio.setBpm(bpm);
+		notify(`Detected ${bpm} bpm; the song's tempo follows`);
+	}
+	let stretchRatio = $state(1);
+	let stretchSemitones = $state(0);
+	function stretchSelected() {
+		if (!selectedClip) return;
+		if (!studio.stretchClip(selectedClip.id, { ratio: stretchRatio, semitones: stretchSemitones }))
+			notify("Nothing to stretch: set a ratio or a shift, with the clip's audio loaded", {
+				kind: "error",
+			});
+	}
 	$effect(() => {
 		// The session tempo follows the song's (the metronome panel shows and sets it).
 		const bpm = metronome.bpm;
@@ -1504,6 +1536,44 @@
 									onclick={() => studio.quantizeClip(clip.id, 4)}>¼</button
 								>
 							</span>
+							{@const feelTrack = studio.arrangement.tracks.find((t) => t.id === clip.trackId)}
+							<!-- The track's feel (D5): swing of the off-beat eighths and humanize, as the notes play. -->
+							{#if feelTrack}
+								<label class="flex items-center gap-2">
+									Swing
+									<input
+										type="range"
+										class="w-20 accent-maximumYellow"
+										min="0"
+										max="1"
+										step="0.05"
+										value={feelTrack.swing ?? 0}
+										aria-label="Swing"
+										title="Swing: the off-beat eighths delayed toward a triplet feel, for the whole track"
+										onchange={(e) =>
+											studio.setTrackSwing(feelTrack.id, e.currentTarget.valueAsNumber)}
+									/>
+									<span class="tabular-nums w-8">{Math.round((feelTrack.swing ?? 0) * 100)}%</span>
+								</label>
+								<label class="flex items-center gap-2">
+									Humanize
+									<input
+										type="range"
+										class="w-20 accent-maximumYellow"
+										min="0"
+										max="1"
+										step="0.05"
+										value={feelTrack.humanize ?? 0}
+										aria-label="Humanize"
+										title="Humanize: a little scatter in time and touch, for the whole track"
+										onchange={(e) =>
+											studio.setTrackHumanize(feelTrack.id, e.currentTarget.valueAsNumber)}
+									/>
+									<span class="tabular-nums w-8"
+										>{Math.round((feelTrack.humanize ?? 0) * 100)}%</span
+									>
+								</label>
+							{/if}
 							<span class="flex items-center gap-1" role="group" aria-label="Transpose">
 								Transpose
 								<button
@@ -1662,6 +1732,51 @@
 									onclick={consolidateSelected}
 								>
 									<span class="i-ph-arrows-in-line-horizontal" aria-hidden="true"></span> Consolidate
+								</button>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="The tempo of this recording from its onsets, into the song's tempo"
+									onclick={detectTempoOfSelected}
+								>
+									<span class="i-ph-metronome" aria-hidden="true"></span> Detect tempo
+								</button>
+							</span>
+							<!-- Time-stretch and pitch (D5): a new recording at the ratio and shift; the clip follows its length. -->
+							<span class="flex items-center gap-2" role="group" aria-label="Stretch">
+								<label class="flex items-center gap-1">
+									Length ×
+									<input
+										type="number"
+										class="device-field w-16 text-12px py-0"
+										min="0.25"
+										max="4"
+										step="0.05"
+										bind:value={stretchRatio}
+										aria-label="Stretch ratio"
+									/>
+								</label>
+								<label class="flex items-center gap-1">
+									Pitch
+									<input
+										type="number"
+										class="device-field w-14 text-12px py-0"
+										min="-24"
+										max="24"
+										step="1"
+										bind:value={stretchSemitones}
+										aria-label="Transpose, semitones"
+									/>
+									st
+								</label>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Stretch the clip's audio to the length and pitch, as a recording of its own"
+									disabled={Math.abs(stretchRatio - 1) < 1e-6 && stretchSemitones === 0}
+									onclick={stretchSelected}
+								>
+									<span class="i-ph-arrows-horizontal" aria-hidden="true"></span> Apply stretch
 								</button>
 							</span>
 						{/if}
@@ -1917,6 +2032,49 @@
 					{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
 				</select>
 			</label>
+			<!-- The tempo map (D5): a change from the playhead on, shown as a flag on the ruler. -->
+			<div class="grid gap-2" role="group" aria-label="Changes at the playhead">
+				<span class="device-button-label !mb-0">
+					Changes at {formatTime(studio.position)}
+					{#if studio.tempoChanges.length || studio.meterChanges.length}
+						· {studio.tempoChanges.length + studio.meterChanges.length} on the ruler
+					{/if}
+				</span>
+				<div class="flex items-center gap-2 text-13px">
+					<input
+						type="number"
+						class="device-field w-20 text-12px py-0"
+						min="30"
+						max="300"
+						step="1"
+						bind:value={tempoChangeBpm}
+						aria-label="Tempo at the playhead, beats per minute"
+					/>
+					<button
+						class="device-button-xs px-2"
+						type="button"
+						title="A tempo change at the playhead: this tempo from here on"
+						disabled={studio.position <= 0}
+						onclick={addTempoChange}>Add tempo change</button
+					>
+				</div>
+				<div class="flex items-center gap-2 text-13px">
+					<select
+						class="device-field w-20 text-12px py-0"
+						bind:value={meterChangeBeats}
+						aria-label="Beats per bar at the playhead"
+					>
+						{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
+					</select>
+					<button
+						class="device-button-xs px-2"
+						type="button"
+						title="A meter change at the playhead: this many beats a bar from here on"
+						disabled={studio.position <= 0}
+						onclick={addMeterChange}>Add meter change</button
+					>
+				</div>
+			</div>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
 					type="checkbox"

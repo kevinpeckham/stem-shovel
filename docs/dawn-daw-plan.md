@@ -134,7 +134,7 @@ automatable parameters, so D2 adds sends and inserts in one place.
   ruler. Left: gain envelopes, range edits on the ruler, sections drawn
   on the ruler. docs/multitrack-recorder.md "Editing depth".
 
-### D5. Time: the tempo map, meters, swing, stretch
+### D5. Time: the tempo map, meters, swing, stretch (built on `dawn-daw`, 2026-10-19)
 
 - The arrangement adopts `measures.ts` (`barGrid`, `barAt`,
   `secondsAtBar`): tempo and time-signature changes mid-song, the
@@ -145,6 +145,13 @@ automatable parameters, so D2 adds sends and inserts in one place.
   offline into a new rendition: fit to tempo, stretch by dragging an
   edge, transpose audio; real-time stretch only if live tempo changes
   under stretched clips prove needed.
+- Built: the tempo map on `measures.ts` (`studioGrid`, `snapToBeat`,
+  the ruler, readout, click and count-in following changes queued with
+  the notes), swing and humanize (`swingNotes`), tempo detection
+  (`detectTempo`), stretch and pitch as a pure WSOLA
+  (`stretchChannels`, `resampleChannels`) since signalsmith-stretch's
+  blob-URL worklet fails the CSP. Left: beats-anchored clips, tempo
+  ramps. docs/multitrack-recorder.md "Time".
 
 ### D6. Instruments, effects and the library
 

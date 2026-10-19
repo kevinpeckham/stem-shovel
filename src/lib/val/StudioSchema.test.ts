@@ -326,3 +326,55 @@ describe("StudioArrangementSchema (D4): fade shapes and markers", () => {
 		).toBe(false);
 	});
 });
+
+describe("StudioArrangementSchema (D5): the tempo map and a track's feel", () => {
+	const base = () => ({
+		version: 1 as const,
+		bpm: 120,
+		beatsPerBar: 4,
+		gridOn: true,
+		countIn: false,
+		click: false,
+		loop: null,
+		master: 1,
+		tracks: [track("t1")],
+		clips: [],
+	});
+	test("tempo and meter changes carry a time and a value within the song's own limits", () => {
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				tempoChanges: [{ start: 8, bpm: 132 }],
+				meterChanges: [{ start: 16, beatsPerBar: 3 }],
+			}).success,
+		).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), tempoChanges: [{ start: 8, bpm: 10 }] })
+				.success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				meterChanges: [{ start: 8, beatsPerBar: 4.5 }],
+			}).success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				meterChanges: [{ start: -1, beatsPerBar: 4 }],
+			}).success,
+		).toBe(false);
+	});
+	test("a track's swing and humanize are 0 to 1", () => {
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				tracks: [{ ...track("t1"), swing: 0.5, humanize: 0.2 }],
+			}).success,
+		).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...base(), tracks: [{ ...track("t1"), swing: 1.5 }] })
+				.success,
+		).toBe(false);
+	});
+});

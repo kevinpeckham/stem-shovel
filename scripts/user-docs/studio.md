@@ -48,6 +48,14 @@ Record over a part again and the new take takes its place, with the earlier one 
 
 To build the best of several takes, press **T** in the track's header: a lane opens under the clip for each take, with its waveform. Swipe across a lane over the bars you want from that take and the clip splits there, the middle piece playing that take with short crossfades at the joins. Swipe again on another lane for another region; every swipe is one undo step.
 
+## Tempo and meter
+
+The song's tempo and beats per bar live in the **Timing** menu (the caret beside the tempo button), with **Tap** to tap a tempo in. The song can change pace or meter partway: put the playhead where the change should start, type the new tempo or pick the beats per bar, and press **Add tempo change** or **Add meter change**. The change shows as a small flag at the top of the ruler; the bars, the grid snap, the readout, the click and the count-in all follow it from there on. Click a flag to jump to it, double-click to edit it, and press Delete with it focused to remove it.
+
+**Detect tempo** in the clip bar reads a recording's tempo from its beats and sets the song's tempo to match. **Length ×** and **Pitch** stretch a clip's audio to another length or pitch (1.5 is half again as long; 12 st is an octave up) as a new recording the clip follows; **Apply stretch** does it.
+
+A MIDI clip's bar has **Swing** and **Humanize** for its track: swing delays the off-beat eighths toward a triplet feel, humanize scatters the notes a little in time and touch. Both apply as the notes play and in a bounce; the notes themselves stay where you put them.
+
 ## Markers
 
 Press **M**, or the flag button in the transport, to put a marker at the playhead: a named flag on the ruler. Click a flag to jump there, double-click to rename it, and press Delete with the flag focused to remove it. Markers are saved with the song.

@@ -2,6 +2,7 @@ import type { MeterState } from "#lib/utils/meterLevel.js";
 import { meterWidth } from "#lib/utils/meterLevel.js";
 import { installFakePopover } from "../../../tests/helpers/fakePopover";
 import { automationLanes } from "#lib/utils/automationLanes.js";
+import { studioGrid } from "#lib/utils/studioGrid.js";
 import { insertsOf } from "#lib/utils/insertsFromFx.js";
 import { rulerTicks } from "#lib/utils/rulerTicks.js";
 import type { StudioArrangement, StudioClip, StudioTrack } from "#lib/val/StudioSchema.js";
@@ -53,6 +54,19 @@ const fake = vi.hoisted(() => {
 		get markers() {
 			return engine.arrangement.markers ?? [];
 		},
+		get grid() {
+			return studioGrid(engine.arrangement);
+		},
+		get tempoChanges() {
+			return engine.arrangement.tempoChanges ?? [];
+		},
+		get meterChanges() {
+			return engine.arrangement.meterChanges ?? [];
+		},
+		setTempoChange: vi.fn(),
+		removeTempoChange: vi.fn(),
+		setMeterChange: vi.fn(),
+		removeMeterChange: vi.fn(),
 		renameMarker: vi.fn(),
 		deleteMarker: vi.fn(),
 		renameTrack: vi.fn(),
@@ -902,5 +916,30 @@ describe("StudioTimeline: editing depth (D4)", () => {
 		await fireEvent.keyDown(chorus, { key: "Delete" });
 		expect(fake.deleteMarker).toHaveBeenCalledWith("m1");
 		expect(screen.getByRole("button", { name: /^Marker Bridge/ })).toBeInTheDocument();
+	});
+});
+
+describe("StudioTimeline: the tempo map (D5)", () => {
+	test("the ruler's bars follow a tempo change, and the change is a flag that edits and removes", async () => {
+		const user = userEvent.setup();
+		fake.arrangement.tempoChanges = [{ start: 4, bpm: 60 }];
+		fake.arrangement.meterChanges = [{ start: 8, beatsPerBar: 3 }];
+		render(StudioTimeline);
+		// Bars 1 and 2 are 2 s (80 px) at 120; from 4 s a bar is 4 s (160 px).
+		const labels = [...document.querySelectorAll("[data-ruler-tick]")];
+		void labels;
+		const flag = screen.getByRole("button", { name: "Tempo change to 60 bpm at 0:04.0" });
+		expect(flag.style.left).toBe(`${4 * PX}px`);
+		await user.click(flag);
+		expect(fake.seek).toHaveBeenLastCalledWith(4);
+		flag.focus();
+		await fireEvent.keyDown(flag, { key: "Delete" });
+		expect(fake.removeTempoChange).toHaveBeenCalledWith(4);
+		// The selection's own Delete did not fire.
+		expect(fake.deleteClips).not.toHaveBeenCalled();
+		const meter = screen.getByRole("button", { name: "Meter change to 3 beats a bar at 0:08.0" });
+		expect(meter).toHaveTextContent("3/4");
+		await fireEvent.keyDown(meter, { key: "Backspace" });
+		expect(fake.removeMeterChange).toHaveBeenCalledWith(8);
 	});
 });

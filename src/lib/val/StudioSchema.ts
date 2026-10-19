@@ -155,6 +155,9 @@ export const StudioTrackSchema = v.object({
 	sends: v.optional(v.pipe(v.array(StudioSendSchema), v.maxLength(MAX_SENDS))),
 	/** The track's effects before D2; absent means every effect off. */
 	fx: v.optional(StudioTrackFxSchema),
+	/** A MIDI track's feel (D5): swing of the off-beat eighths (0 straight, 1 a triplet feel) and humanize (a little scatter in time and touch), applied as the notes play. */
+	swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
+	humanize: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
 
@@ -204,6 +207,19 @@ export const StudioClipSchema = v.pipe(
 );
 export type StudioClip = v.InferOutput<typeof StudioClipSchema>;
 
+/** A tempo change (D5): from `start` seconds on, this many beats a minute. */
+export const StudioTempoChangeSchema = v.object({
+	start: v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS)),
+	bpm: v.pipe(v.number(), v.minValue(30), v.maxValue(300)),
+});
+export type StudioTempoChange = v.InferOutput<typeof StudioTempoChangeSchema>;
+/** A meter change (D5): from `start` seconds on, this many beats a bar. */
+export const StudioMeterChangeSchema = v.object({
+	start: v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS)),
+	beatsPerBar: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(7)),
+});
+export type StudioMeterChange = v.InferOutput<typeof StudioMeterChangeSchema>;
+
 /** A marker on the ruler (D4): a named moment to jump to. */
 export const StudioMarkerSchema = v.object({
 	id: LocalIdSchema,
@@ -239,6 +255,9 @@ export const StudioArrangementSchema = v.object({
 	clips: v.pipe(v.array(StudioClipSchema), v.maxLength(MAX_STUDIO_CLIPS)),
 	/** Markers on the ruler (D4), in no particular order. */
 	markers: v.optional(v.pipe(v.array(StudioMarkerSchema), v.maxLength(MAX_STUDIO_MARKERS))),
+	/** The tempo map (D5): changes after the song's own tempo and meter, each at a second (utils/studioGrid.ts). */
+	tempoChanges: v.optional(v.pipe(v.array(StudioTempoChangeSchema), v.maxLength(64))),
+	meterChanges: v.optional(v.pipe(v.array(StudioMeterChangeSchema), v.maxLength(64))),
 });
 export type StudioArrangement = v.InferOutput<typeof StudioArrangementSchema>;
 
