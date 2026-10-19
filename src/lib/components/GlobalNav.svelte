@@ -37,21 +37,25 @@
 	// A visitor sees the name of the account they are viewing.
 	let viewedName = $derived((page.data.account?.name as string | undefined) ?? "");
 
-	// Three menus: Instruments (the drum machine and the piano), Tools
-	// (everyone, every width: the Idea Recorder for a member, the tuner and
-	// the metronome) and the account menu, everything a signed-in user can
-	// reach behind one button instead of a row of links. One open at a time;
-	// outside click or Escape closes it.
-	let openMenu = $state<"instruments" | "tools" | "account" | null>(null);
+	// Four menus: Music (a member's own: projects, sessions, ideas; Kevin,
+	// 2026-10-19, in place of the Projects link), Instruments (the drum
+	// machine and the piano), Tools (everyone, every width: the Idea Recorder
+	// for a member, the tuner and the metronome) and the account menu,
+	// everything a signed-in user can reach behind one button instead of a
+	// row of links. One open at a time; outside click or Escape closes it.
+	let openMenu = $state<"music" | "instruments" | "tools" | "account" | null>(null);
 	let open = $derived(openMenu === "account");
 	let toolsOpen = $derived(openMenu === "tools");
 	let instrumentsOpen = $derived(openMenu === "instruments");
+	let musicOpen = $derived(openMenu === "music");
 	let menu = $state<HTMLDivElement | null>(null);
 	let toolsMenu = $state<HTMLDivElement | null>(null);
 	let instrumentsMenu = $state<HTMLDivElement | null>(null);
+	let musicMenu = $state<HTMLDivElement | null>(null);
 	function onwindowpointerdown(e: PointerEvent) {
 		const t = e.target as Node;
 		if (openMenu === "account" && menu && !menu.contains(t)) openMenu = null;
+		if (openMenu === "music" && musicMenu && !musicMenu.contains(t)) openMenu = null;
 		if (openMenu === "tools" && toolsMenu && !toolsMenu.contains(t)) openMenu = null;
 		if (openMenu === "instruments" && instrumentsMenu && !instrumentsMenu.contains(t))
 			openMenu = null;
@@ -63,6 +67,9 @@
 	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
+	let onMusicPage = $derived(
+		!!member && (active(`/${member.slug}/projects`) || active(`/${member.slug}/sessions`)),
+	);
 	let onToolPage = $derived(
 		TOOL_PAGES.some(active) ||
 			active("/idea-recorder") ||
@@ -99,17 +106,77 @@
 			>
 		{/if}
 		{#if user && member}
-			<!-- Where a member goes most; the rest is in the menus. Hidden on a phone, where the account menu has it. -->
-			<a
-				class="nav-link flex gap-1 items-center {active(`/${member.slug}/projects`)
-					? 'text-accent !decoration-current'
-					: ''}"
-				href="/{member.slug}/projects"
-			>
-				<span class="inline-block i-ph-music-note text-18px"></span>
-				<span class="hidden md-inline-block">Projects</span>
-				<span class="hidden sm-inline-block i-ph-caret-right text-12px" aria-hidden="true"></span>
-			</a>
+			<!-- The band's music: projects, sessions and ideas, behind the note. -->
+			<div class="relative" bind:this={musicMenu}>
+				<button
+					type="button"
+					class="flex items-center gap-1.5 rounded px-2 py-1 opacity-90 hover:opacity-100 hover:text-accent {musicOpen
+						? 'bg-white/10 opacity-100'
+						: ''} {onMusicPage ? 'text-accent' : ''}"
+					aria-haspopup="menu"
+					aria-expanded={musicOpen}
+					aria-controls="music-menu"
+					aria-label="Music"
+					onclick={() => (openMenu = musicOpen ? null : "music")}
+				>
+					<span class="i-ph-music-note text-18px" aria-hidden="true"></span>
+					<span class="hidden md-inline">Music</span>
+					<span
+						class="hidden sm-inline i-ph-caret-down text-12px transition-transform {musicOpen
+							? 'rotate-180'
+							: ''}"
+						aria-hidden="true"
+					></span>
+				</button>
+				{#if musicOpen}
+					<div
+						id="music-menu"
+						class="absolute left-0 top-full z-40 mt-2 w-56 rounded-md border border-white/15 bg-oxford-800 py-1 text-15px shadow-lg shadow-black/50"
+						role="menu"
+						aria-label="Music menu"
+					>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								`/${member.slug}/projects`,
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/{member.slug}/projects"
+							title="Albums and songs, with their stems, demos and mixes"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-folders w-1em" aria-hidden="true"></span>Projects
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								`/${member.slug}/sessions`,
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/{member.slug}/sessions"
+							title="Practice and show recordings"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-cassette-tape w-1em" aria-hidden="true"></span>Sessions
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								'/idea-recorder',
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/idea-recorder"
+							title="Your ideas and takes (Lark, the idea recorder)"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-lightbulb w-1em" aria-hidden="true"></span>Ideas
+						</a>
+					</div>
+				{/if}
+			</div>
 		{/if}
 
 		<!-- The instruments: the drum machine and the piano. -->

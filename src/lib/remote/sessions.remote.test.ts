@@ -30,6 +30,8 @@ const RECORDING_WORDS = {
 	title: "Set two",
 	recordedOn: "2026-10-18",
 	notes: "",
+	source: "",
+	songId: "",
 };
 
 beforeEach(() => {

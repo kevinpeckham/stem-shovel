@@ -366,7 +366,21 @@ button or a session's Play all fills it with the session's recordings
 them. Download MP3s on a session fetches
 `/api/recording-sessions/<id>/mp3.zip` through `downloadBuilt`: the ready
 MP3s numbered in order, stored not compressed, streamed file by file
-(fflate's `Zip` + `ZipPassThrough`), 404 until one is ready.
+(fflate's `Zip` + `ZipPassThrough`), 404 until one is ready. A download
+is named after the recording's title, slugified (`recordingDownloadName`:
+the filename's stem without a title, `recording` without either), the
+zip's entries `01-<slug>.mp3` and the row's menu `<slug>.mp3` and
+`<slug>.<ext>` for the original (Kevin, 2026-10-19). A recording's
+`source` (migration 0093; "Kevin's phone", "Room mic") tells apart
+recordings of one performance from several devices: typed for the batch
+on the upload form (`POST /api/sessions` takes it) or on the recording's
+edit, shown by the title, searched, and slugified after the title in the
+download's name (`set-2-room-mic.mp3`). A recording may be of one of the
+account's songs (`song_id`, migration 0094, set null when the song goes):
+chosen on its edit from `listAccountSongs`, checked against the account
+in `updateSessionRecording`, linked from the row, and listed on the
+song's page under the Demos view (`listSessionRecordingsOfSong`, members
+only) with a link to `/sessions?recording=<id>`.
 `sessions.remote.ts`: `createSession` (a second session of a day, to
 move recordings into), `updateSession`, `deleteSession` (its recordings
 and their files go), `updateRecording` (title, day, notes and the session,

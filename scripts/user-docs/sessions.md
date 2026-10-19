@@ -4,7 +4,7 @@
 
 ## Sessions and recordings
 
-A **session** is one practice or one show. It has a kind (Practice or Show), the day it starts, a place and notes, and a name of its own if you give it one ("Battle of the Bands"); without a name it is called after its place and day ("The Elbow Room · Oct 18, 2026"). A session's **recordings** are the audio files of that evening, each with its own title, day and notes, in the order they were made. A show that runs past midnight is still one session: its recordings may be of the day it starts or the day after, never further.
+A **session** is one practice or one show. It has a kind (Practice or Show), the day it starts, a place and notes, and a name of its own if you give it one ("Battle of the Bands"); without a name it is called after its place and day ("The Elbow Room · Oct 18, 2026"). A session's **recordings** are the audio files of that evening, each with its own title, day and notes, in the order they were made. A recording can carry an **input source** ("Kevin's phone", "Room mic"), so recordings of one performance from several devices stay told apart: set it for a batch as you upload, or on a recording's **Edit**; it shows by the title and goes into the download's name. A recording of one song can be tied to that **song** on its Edit: the row links to the song, and the song's page lists its session recordings under Demos. A show that runs past midnight is still one session: its recordings may be of the day it starts or the day after, never further.
 
 ## Uploading
 
@@ -12,7 +12,7 @@ Pick one or more audio files: a phone's voice memo, a recorder's WAV, a board mi
 
 ## Listening
 
-The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file.
+The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file, named after the recording's title ("Battle of the Bands set 2" saves as battle-of-the-bands-set-2.mp3).
 
 ## Waveforms and comments
 

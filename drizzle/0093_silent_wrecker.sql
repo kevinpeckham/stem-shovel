@@ -1,0 +1,1 @@
+ALTER TABLE `session_recording` ADD `source` text DEFAULT '' NOT NULL;

@@ -67,8 +67,19 @@ test("uploads, plays, names, sorts, zips and deletes a session's recordings", as
 	await page.getByRole("option", { name: /New session/ }).click();
 	await second.getByLabel("New session's name").fill("Acoustic set");
 	await second.getByLabel("Title").fill("Hats only");
+	await second.getByLabel("Input source").fill("Room mic");
+	// The song it records, from the account's songs.
+	await second.getByRole("combobox", { name: /^Song of/ }).click();
+	await page
+		.getByRole("option", { name: /eat all the clocks/i })
+		.first()
+		.click();
 	await second.getByRole("button", { name: "Save", exact: true }).click();
 	await expect(sessions).toHaveCount(2);
+	// The input source shows by the title, the song as a link to its page.
+	const first = page.locator("[data-recording]").first();
+	await expect(first).toContainText("Room mic");
+	await expect(first.getByRole("link", { name: /eat all the clocks/i })).toBeVisible();
 	await expect(page.locator("[data-session] h2")).toHaveText([
 		"Acoustic set",
 		"Battle of the Bands",

@@ -4,6 +4,7 @@ import type { PlaybackStatus } from "../../../val/PlaybackStatusSchema";
 import type { StemStatus } from "../../../val/StemStatusSchema";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
+import { song } from "./song";
 import { user } from "./user";
 
 /**
@@ -30,6 +31,10 @@ export const sessionRecording = table(
 		/** The day it was recorded, `YYYY-MM-DD`. */
 		recordedOn: t.text("recorded_on").notNull(),
 		notes: t.text("notes").notNull().default(""),
+		/** Where it was captured ("Kevin's phone", "Room mic"): tells apart recordings of one performance from several devices; empty for unknown. */
+		source: t.text("source").notNull().default(""),
+		/** The song it is a recording of, when the band says so (one of the account's); a practice's tape may cover a set, so most have none. */
+		songId: t.text("song_id").references(() => song.id, { onDelete: "set null" }),
 		status: t.text("status").$type<StemStatus>().notNull().default("uploading"),
 		url: t.text("url").notNull(),
 		pathname: t.text("pathname").notNull().unique(),
@@ -54,5 +59,6 @@ export const sessionRecording = table(
 		t.index("session_recording_session_idx").on(table.sessionId),
 		t.index("session_recording_day_idx").on(table.accountId, table.recordedOn),
 		t.index("session_recording_uploaded_by_idx").on(table.uploadedBy),
+		t.index("session_recording_song_idx").on(table.songId),
 	],
 );

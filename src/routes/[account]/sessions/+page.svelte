@@ -38,6 +38,7 @@
 	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { dayFitsSession, localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
+	import { recordingDownloadName } from "#lib/utils/recordingDownloadName.js";
 	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
 	import { onMount, tick } from "svelte";
 
@@ -95,6 +96,8 @@
 	// ── Upload ──
 	let kind = $state<SessionKind>("practice");
 	let place = $state("");
+	/** Where the batch was captured ("Room mic"), the same for every file picked (Kevin: one performance from several devices). */
+	let source = $state("");
 	/** "auto": each file's own day picks (or makes) the session; else a session's id. */
 	let intoSession = $state("auto");
 	const sessionOptions = $derived([
@@ -129,6 +132,7 @@
 						postJson<SessionReservation>("/api/sessions", {
 							accountId: data.account.id,
 							sessionId: intoSession === "auto" ? undefined : intoSession,
+							source,
 							kind,
 							// The file's own day (the recorder's clock), not the upload's.
 							recordedOn: localDay(new Date(file.lastModified || Date.now())),
@@ -181,6 +185,8 @@
 		has(r.title) ||
 		has(r.filename) ||
 		has(r.notes) ||
+		has(r.source) ||
+		has(r.song?.title) ||
 		has(r.uploader?.name) ||
 		has(dayText(r.recordedOn)) ||
 		commentsOf(r).some((c) => has(c.title) || has(c.body));
@@ -389,7 +395,22 @@
 
 	// ── Edit a recording ──
 	let editingRecording = $state<string | null>(null);
-	let recordingDraft = $state({ sessionId: "", title: "", recordedOn: "", notes: "", newName: "" });
+	let recordingDraft = $state({
+		sessionId: "",
+		title: "",
+		recordedOn: "",
+		notes: "",
+		source: "",
+		songId: "",
+		newName: "",
+	});
+	/** The song picker: none, then the account's songs with their projects. */
+	const songOptions = $derived([
+		{ value: "", label: "No song", description: "a set, a jam, not one song" },
+		...data.songs.map((s) => ({ value: s.id, label: s.title, description: s.project })),
+	]);
+	const songHref = (r: Recording) =>
+		r.song ? `/${data.account.slug}/projects/${r.song.project.slug}/${r.song.slug}` : null;
 	function startRecordingEdit(r: Recording) {
 		editingSession = null;
 		editingRecording = r.id;
@@ -398,6 +419,8 @@
 			title: r.title,
 			recordedOn: r.recordedOn,
 			notes: r.notes,
+			source: r.source,
+			songId: r.songId ?? "",
 			newName: "",
 		};
 	}
@@ -432,6 +455,8 @@
 				title: recordingDraft.title,
 				recordedOn: recordingDraft.recordedOn,
 				notes: recordingDraft.notes,
+				source: recordingDraft.source,
+				songId: recordingDraft.songId,
 			});
 			editingRecording = null;
 			await invalidateAll();
@@ -513,6 +538,17 @@
 						/>
 					</label>
 				{/if}
+				<label class="grid gap-1 text-13px text-dim">
+					Input source
+					<input
+						class="field"
+						type="text"
+						placeholder="Kevin's phone, Room mic"
+						title="Where these files were captured, to tell apart recordings of one performance from several devices (optional)"
+						maxlength="120"
+						bind:value={source}
+					/>
+				</label>
 				<label class="button-accent cursor-pointer {busy ? 'opacity-60 pointer-events-none' : ''}">
 					<span class="i-ph-upload-simple" aria-hidden="true"></span>
 					{busy ? "Uploading…" : "Choose files"}
@@ -796,6 +832,26 @@
 												Day
 												<input class="field" type="date" bind:value={recordingDraft.recordedOn} />
 											</label>
+											<label class="grid min-w-40 gap-1 text-12px text-dim">
+												Input source
+												<input
+													class="field"
+													type="text"
+													maxlength="120"
+													placeholder="Kevin's phone, Room mic"
+													bind:value={recordingDraft.source}
+												/>
+											</label>
+											<label class="grid gap-1 text-12px text-dim">
+												Song
+												<ComboBox
+													ariaLabel="Song of {titleOf(r)}"
+													options={songOptions}
+													value={recordingDraft.songId}
+													onchange={(v) => (recordingDraft.songId = v)}
+													buttonClasses="min-w-48"
+												/>
+											</label>
 											<label class="grid gap-1 text-12px text-dim">
 												Session
 												<ComboBox
@@ -855,7 +911,18 @@
 											>{i + 1}</span
 										>
 										<span class="min-w-0 grow">
-											<span class="block truncate font-500" title={r.filename}>{titleOf(r)}</span>
+											<span class="block truncate font-500" title={r.filename}
+												>{titleOf(r)}{#if r.source}
+													<span
+														class="ml-1.5 rounded border border-white/20 px-1 text-10px font-400 align-middle opacity-85"
+														title="Input source">{r.source}</span
+													>{/if}{#if r.song}
+													<a
+														class="ml-1.5 text-12px font-400 link-dim"
+														href={songHref(r)}
+														title="The song this records">♪ {r.song.title}</a
+													>{/if}</span
+											>
 											<span class="block text-12px text-dim">
 												{#if r.recordedOn !== s.startsOn}{dayText(r.recordedOn)} ·
 												{/if}{r.uploader?.name ?? "someone"} · {formatBytes(
@@ -897,7 +964,11 @@
 													label: "Download MP3",
 													iconClass: "i-ph-download-simple",
 													condition: r.playbackStatus === "ready" && !!r.playbackUrl,
-													action: () => saveAs(r.playbackUrl!, `${titleOf(r)}.mp3`),
+													action: () =>
+														saveAs(
+															r.playbackUrl!,
+															recordingDownloadName(r.title, r.filename, "mp3", r.source),
+														),
 												},
 												{
 													id: "file",
@@ -905,7 +976,11 @@
 													label: `Download ${r.playbackUrl ? "original" : "file"}`,
 													iconClass: "i-ph-file-audio",
 													title: r.filename,
-													action: () => saveAs(r.url, r.filename),
+													action: () =>
+														saveAs(
+															r.url,
+															recordingDownloadName(r.title, r.filename, undefined, r.source),
+														),
 												},
 												{ id: "d", kind: "divider", condition: data.canEdit },
 												{

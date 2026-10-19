@@ -50,12 +50,21 @@ export type RecordingSessionUpdate = v.InferOutput<typeof RecordingSessionUpdate
 export const RecordingSessionDeleteSchema = v.object({ id: NanoIdSchema });
 
 /** A recording's own words and the session it belongs to (its day must be the session's or the day after). */
+/** Where a recording was captured ("Kevin's phone", "Room mic"); empty for unknown. */
+export const SourceSchema = v.optional(
+	v.pipe(v.string(), v.trim(), v.maxLength(120, "Keep the input source under 120 characters.")),
+	"",
+);
+
 export const SessionRecordingUpdateSchema = v.object({
 	id: NanoIdSchema,
 	sessionId: NanoIdSchema,
 	title: NameSchema,
 	recordedOn: IsoDaySchema,
 	notes: NotesSchema,
+	source: SourceSchema,
+	/** The song it records, one of the account's; "" for none. */
+	songId: v.optional(v.union([NanoIdSchema, v.literal("")]), ""),
 });
 export type SessionRecordingUpdate = v.InferOutput<typeof SessionRecordingUpdateSchema>;
 

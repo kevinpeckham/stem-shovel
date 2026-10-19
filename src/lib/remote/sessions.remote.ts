@@ -58,10 +58,17 @@ export const deleteSession = command(RecordingSessionDeleteSchema, async ({ id }
 /** A recording's title, day and notes, and the session it belongs to (of its day or the day before); an editor of the account. */
 export const updateRecording = command(
 	SessionRecordingUpdateSchema,
-	async ({ id, sessionId, title, recordedOn, notes }) => {
+	async ({ id, sessionId, title, recordedOn, notes, source, songId }) => {
 		const { locals } = getRequestEvent();
 		const { accountId } = await memberOf(locals, accountOfSessionRecording, id);
-		const row = await saveRecording(accountId, id, { sessionId, title, recordedOn, notes });
+		const row = await saveRecording(accountId, id, {
+			sessionId,
+			title,
+			recordedOn,
+			notes,
+			source,
+			songId,
+		});
 		if (row === "day")
 			error(409, "A recording belongs to a session of its own day or the day before.");
 		if (!row) error(404, "Recording or session not found");
@@ -70,6 +77,8 @@ export const updateRecording = command(
 			title: row.title,
 			recordedOn: row.recordedOn,
 			notes: row.notes,
+			source: row.source,
+			songId: row.songId,
 		};
 	},
 );

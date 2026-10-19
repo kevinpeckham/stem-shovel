@@ -21,6 +21,7 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - pyloudnorm
+  - slugified
   - WSOLA
   - libebur
   - sinc

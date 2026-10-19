@@ -3,6 +3,7 @@ import {
 	getUserNote,
 	listAmpPresets,
 	listArtists,
+	listSessionRecordingsOfSong,
 	listShareLinks,
 	siteAmpPresets,
 	songChat,
@@ -49,13 +50,15 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 	// song (file URLs the browser may fetch), manifest, comments, docs — shared with the home demo.
 	const canComment = canCommentProject(song.project, who);
 	const userId = locals.user?.id ?? null;
-	const [view, shareLinks, artists, myNote, chat] = await Promise.all([
+	const [view, shareLinks, artists, myNote, chat, sessionRecordings] = await Promise.all([
 		songView(song),
 		canEdit ? listShareLinks({ songId: song.id }) : [],
 		canEdit ? listArtists(account.id) : [],
 		userId ? getUserNote(song.id, userId) : null,
 		// The chat (docs/chat.md) is the project's own: loaded for someone who may write in it, never for a visitor.
 		songChat(song.id, canComment ? userId : null),
+		// The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"); members only, as the Sessions page.
+		canEdit || canComment ? listSessionRecordingsOfSong(account.id, song.id) : [],
 	]);
 	// `@Chart` in a document links to the attachment, notation file or demo of that name (docs/uploads-and-blob.md, "Mentions").
 	const targets = mentionTargets(song);
@@ -82,6 +85,8 @@ export const load: PageServerLoad = async ({ params, parent, url, locals }) => {
 		/** The song's chat and where this person last read it; null for anyone who may not write in it. */
 		chat,
 		shareLinks,
+		/** Session recordings of this song, for the Demos view; empty for a visitor. */
+		sessionRecordings,
 		/** The account's artist directory, for the credits picker. */
 		artists,
 		aiAvailable: canEdit && !noAi && aiAvailable(),

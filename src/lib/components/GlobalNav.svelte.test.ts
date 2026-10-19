@@ -86,6 +86,30 @@ describe("GlobalNav", () => {
 		await user.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
+	test("a member gets the Music menu: projects, sessions and ideas, behind the note", async () => {
+		const user = userEvent.setup();
+		render(GlobalNav, {
+			props: { user: { name: "Kevin" }, memberships, currentSlug: "mine" },
+		});
+		await user.click(screen.getByRole("button", { name: "Music" }));
+		expect(screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())).toEqual([
+			"Projects",
+			"Sessions",
+			"Ideas",
+		]);
+		expect(screen.getByRole("menuitem", { name: /Sessions/ })).toHaveAttribute(
+			"href",
+			"/mine/sessions",
+		);
+		expect(screen.getByRole("menuitem", { name: /Ideas/ })).toHaveAttribute(
+			"href",
+			"/idea-recorder",
+		);
+		// Opening another menu closes it.
+		await user.click(screen.getByRole("button", { name: /Tools/ }));
+		expect(screen.getAllByRole("menu")).toHaveLength(1);
+		expect(screen.queryByRole("menuitem", { name: /Sessions/ })).toBeNull();
+	});
 	test("a system admin gets the Admin item", async () => {
 		const user = userEvent.setup();
 		render(GlobalNav, {

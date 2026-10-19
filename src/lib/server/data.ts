@@ -6,6 +6,7 @@ import {
 import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
 import { byStatus } from "#lib/utils/byStatus.js";
 import { reorderById } from "#lib/utils/reorderById.js";
+import { sessionDisplayName } from "#lib/utils/sessionName.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 import { flagProfanity } from "#lib/utils/profanity.js";
 import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
@@ -3741,6 +3742,8 @@ export async function createSessionRecording(
 		kind: SessionKind;
 		recordedOn: string | null;
 		place: string;
+		/** Where it was captured ("Room mic"); the upload form's, for every file of the batch. */
+		source?: string;
 		filename: string;
 		contentType: string;
 		sizeBytes: number;
@@ -3785,6 +3788,7 @@ export async function createSessionRecording(
 			accountId,
 			sessionId: session.id,
 			title: labelFromFilename(input.filename),
+			source: input.source ?? "",
 			recordedOn,
 			url: "",
 			pathname: sessionPathname(accountId, id, input.filename),
@@ -3852,7 +3856,13 @@ export async function listRecordingSessions(accountId: string) {
 		db.query.sessionRecording.findMany({
 			where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.status, "ready")),
 			orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
-			with: { uploader: { columns: { id: true, name: true } } },
+			with: {
+				uploader: { columns: { id: true, name: true } },
+				song: {
+					columns: { id: true, title: true, slug: true },
+					with: { project: { columns: { slug: true } } },
+				},
+			},
 		}),
 	]);
 	return sessions.map((s) => ({
@@ -3862,14 +3872,22 @@ export async function listRecordingSessions(accountId: string) {
 }
 
 /**
- * A recording's words and its session: null for a recording or a session
- * not the account's, "day" when the recording's day is not the session's
- * or the day after (utils/isoDay.ts).
+ * A recording's words, its session and the song it is of: null for a
+ * recording, a session or a song not the account's, "day" when the
+ * recording's day is not the session's or the day after (utils/isoDay.ts).
  */
 export async function updateSessionRecording(
 	accountId: string,
 	recordingId: string,
-	fields: { sessionId: string; title: string; recordedOn: string; notes: string },
+	fields: {
+		sessionId: string;
+		title: string;
+		recordedOn: string;
+		notes: string;
+		source?: string;
+		/** The song it records; "" or absent for none. */
+		songId?: string | null;
+	},
 ) {
 	const session = await db.query.recordingSession.findFirst({
 		where: and(
@@ -3880,9 +3898,17 @@ export async function updateSessionRecording(
 	});
 	if (!session) return null;
 	if (!dayFitsSession(fields.recordedOn, session.startsOn)) return "day" as const;
+	const songId = fields.songId || null;
+	if (songId) {
+		const s = await db.query.song.findFirst({
+			where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+			columns: { id: true },
+		});
+		if (!s) return null;
+	}
 	const [row] = await db
 		.update(sessionRecording)
-		.set(fields)
+		.set({ ...fields, songId })
 		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
 		.returning();
 	return row ?? null;
@@ -3913,9 +3939,57 @@ export async function sessionMp3s(accountId: string, sessionId: string) {
 			eq(sessionRecording.playbackStatus, "ready"),
 		),
 		orderBy: [asc(sessionRecording.recordedOn), asc(sessionRecording.createdAt)],
-		columns: { id: true, title: true, filename: true, playbackUrl: true },
+		columns: { id: true, title: true, source: true, filename: true, playbackUrl: true },
 	});
 	return { session, recordings: recordings.filter((r) => r.playbackUrl) };
+}
+
+/** The account's songs for the recording's song picker: title and address, by project. */
+export async function listAccountSongs(accountId: string, accountSlug: string) {
+	const rows = await db.query.song.findMany({
+		where: eq(song.accountId, accountId),
+		columns: { id: true, title: true, slug: true },
+		with: { project: { columns: { name: true, slug: true } } },
+		orderBy: [asc(song.title)],
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		href: `/${accountSlug}/projects/${r.project.slug}/${r.slug}`,
+		project: r.project.name,
+	}));
+}
+
+/** The session recordings the band tied to a song (docs/uploads-and-blob.md, "Sessions"), newest first, with their sessions. */
+export async function listSessionRecordingsOfSong(accountId: string, songId: string) {
+	const rows = await db.query.sessionRecording.findMany({
+		where: and(
+			eq(sessionRecording.accountId, accountId),
+			eq(sessionRecording.songId, songId),
+			eq(sessionRecording.status, "ready"),
+		),
+		orderBy: [desc(sessionRecording.recordedOn), desc(sessionRecording.createdAt)],
+		columns: {
+			id: true,
+			title: true,
+			filename: true,
+			source: true,
+			recordedOn: true,
+			sessionId: true,
+			playbackUrl: true,
+			url: true,
+		},
+		with: { session: { columns: { name: true, place: true, kind: true, startsOn: true } } },
+	});
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title || r.filename,
+		source: r.source,
+		recordedOn: r.recordedOn,
+		sessionId: r.sessionId,
+		session: r.session ? sessionDisplayName(r.session) : "",
+		url: r.playbackUrl ?? r.url,
+	}));
 }
 
 /** The MP3 rendition, as a demo's (src/lib/server/transcode.ts). */

@@ -436,6 +436,8 @@ table's rows into sessions (one per account, kind, day and place) and
 | title                  | text not null default ''              | the filename minus its extension to begin with              |
 | recorded_on            | text not null                         | `YYYY-MM-DD`                                                |
 | notes                  | text not null default ''              |                                                             |
+| source                 | text not null default ''              | the input source ("Room mic"), 0093                         |
+| song_id                | text FK → song (set null) null        | the song it records, when one; indexed (0094)               |
 | status                 | text                                  | uploading / ready (a failed upload's row is removed)        |
 | url, pathname          | text                                  | `accounts/<a>/sessions/<id>.<ext>`                          |
 | filename, content_type | text                                  | the demo formats (`demoContentType`)                        |

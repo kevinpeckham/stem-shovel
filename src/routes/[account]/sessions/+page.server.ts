@@ -1,5 +1,6 @@
 import { requireMember, requireSignedIn } from "#lib/server/access.js";
 import {
+	listAccountSongs,
 	listRecordingSessions,
 	listSessionComments,
 	sessionChatSummaryOf,
@@ -23,12 +24,14 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	requireMember(locals, account.id);
 	const sessions = await listRecordingSessions(account.id);
 	scheduleSessionPeaks(sessionsWantingPeaks(sessions.flatMap((s) => s.recordings)));
-	const [comments, chat] = await Promise.all([
+	const [comments, chat, songs] = await Promise.all([
 		listSessionComments(account.id),
 		sessionChatSummaryOf(
 			sessions.map((s) => s.id),
 			user.id,
 		),
+		// The account's songs, for the recording's song picker (a recording may be of one song).
+		listAccountSongs(account.id, account.slug),
 	]);
-	return { sessions, comments, chat: Object.fromEntries(chat) };
+	return { sessions, comments, chat: Object.fromEntries(chat), songs };
 };

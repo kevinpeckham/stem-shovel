@@ -275,6 +275,7 @@ export const sessionRecordingRelations = relations(sessionRecording, ({ one, man
 		references: [recordingSession.id],
 	}),
 	uploader: one(user, { fields: [sessionRecording.uploadedBy], references: [user.id] }),
+	song: one(song, { fields: [sessionRecording.songId], references: [song.id] }),
 	comments: many(sessionComment),
 }));
 

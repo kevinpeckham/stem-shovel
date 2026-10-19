@@ -113,6 +113,11 @@ export async function deleteSongRows(songIds: string[]): Promise<void> {
 	await db.delete(songNotation).where(inArray(songNotation.songId, songIds));
 	await db.delete(stem).where(inArray(stem.songId, songIds));
 	await db.update(aiRequest).set({ songId: null }).where(inArray(aiRequest.songId, songIds));
+	// A session recording of the song stays with its session, no longer of a song.
+	await db
+		.update(sessionRecording)
+		.set({ songId: null })
+		.where(inArray(sessionRecording.songId, songIds));
 	await db.update(beat).set({ songId: null }).where(inArray(beat.songId, songIds));
 	await deleteAliasesOf(songIds);
 	await db.delete(song).where(inArray(song.id, songIds));

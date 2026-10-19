@@ -118,9 +118,15 @@ describe("createSessionRecording", () => {
 			kind: "show",
 			recordedOn: "2026-10-18",
 			place: "",
+			source: "Room mic",
 			...file,
 		});
-		expect(row).toMatchObject({ sessionId: "p0", title: "Set Two", status: "uploading" });
+		expect(row).toMatchObject({
+			sessionId: "p0",
+			title: "Set Two",
+			status: "uploading",
+			source: "Room mic",
+		});
 		if (row && row !== "full") {
 			expect(row.pathname).toBe(`accounts/${A}/sessions/${row.id}.wav`);
 			expect(await findUploadingSession(A, row.pathname)).toMatchObject({ id: row.id });

@@ -63,6 +63,7 @@
 	import { midiContentType } from "#lib/utils/midiContentType.js";
 	import { formatDate } from "#lib/utils/formatDate.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
+	import { dayText } from "#lib/utils/sessionName.js";
 	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { parseBarsText } from "#lib/utils/parseBarsText.js";
 	import { readoutMode } from "#lib/audio/readout.svelte.js";
@@ -3042,6 +3043,30 @@
 						oncomment={(d) => openComment({ demoId: d.id })}
 						oncontext={(d, seconds, x, y) => (demoMenuAt = { demo: d, seconds, x, y })}
 					/>
+					{#if data.sessionRecordings.length > 0}
+						<!-- The session recordings the band tied to this song (docs/uploads-and-blob.md, "Sessions"): each opens on the Sessions page. -->
+						<section
+							class="mt-4 rounded-md border border-current/40 bg-blue/5 px-4 py-3"
+							aria-label="Session recordings of this song"
+						>
+							<h3 class="mb-2 text-12px uppercase tracking-wider text-blue-300 opacity-90">
+								From sessions ({data.sessionRecordings.length})
+							</h3>
+							<ul class="grid gap-1 text-14px">
+								{#each data.sessionRecordings as r (r.id)}
+									<li class="flex flex-wrap items-baseline gap-x-2">
+										<a
+											class="link-dim font-500"
+											href="/{data.account.slug}/sessions?recording={r.id}"
+											title="Open it on the Sessions page">{r.title}</a
+										>
+										{#if r.source}<span class="text-12px opacity-80">{r.source}</span>{/if}
+										<span class="text-12px text-dim">{r.session} · {dayText(r.recordedOn)}</span>
+									</li>
+								{/each}
+							</ul>
+						</section>
+					{/if}
 				</div>
 			{:else if playerView === "mixes"}
 				<!-- The mixes (docs/mixes.md): a list; each opens on its own page to listen, comment and download. -->

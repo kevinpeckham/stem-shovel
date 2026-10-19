@@ -32,6 +32,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		/** The file's own day (the recorder's, from its modification time), `YYYY-MM-DD`. */
 		recordedOn?: string;
 		place?: string;
+		/** Where the files were captured ("Room mic"), the same for the batch. */
+		source?: string;
 		filename?: string;
 		sizeBytes?: number;
 	};
@@ -51,6 +53,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	const recordedOn = /^\d{4}-\d{2}-\d{2}$/.test(body.recordedOn ?? "") ? body.recordedOn! : null;
 	const place = typeof body.place === "string" ? body.place.trim().slice(0, 120) : "";
+	const source = typeof body.source === "string" ? body.source.trim().slice(0, 120) : "";
 
 	await memberOf(locals, async () => accountId, accountId);
 	const room = await storageRoom(accountId, sizeBytes);
@@ -66,6 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		kind,
 		recordedOn,
 		place,
+		source,
 		filename,
 		contentType,
 		sizeBytes,

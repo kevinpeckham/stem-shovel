@@ -10,6 +10,16 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Session recordings tied to a song.** A recording's Edit picks the song it
+  records, from the account's songs; the row links to it and the song's
+  page lists its session recordings under the Demos view. Migration 0094.
+- **An input source on session recordings** ("Kevin's phone", "Room mic"):
+  typed for a batch on the upload form or on a recording's Edit, shown by
+  the title, searched, and in the download's name (`set-2-room-mic.mp3`).
+  Migration 0093.
+- **Session downloads named after the title.** A recording's MP3 and its
+  original download as the title slugified (`battle-of-the-bands-set-2.mp3`),
+  the zip's entries numbered the same way (`recordingDownloadName`).
 - **Sessions review: waveforms, comments, a chat and a search.** Every
   session recording and every demo now has a waveform, measured on the
   server when the MP3 renders (`measurePeaks`: ffmpeg's PCM streamed into

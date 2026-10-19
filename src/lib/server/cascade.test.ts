@@ -173,6 +173,7 @@ describe("deleteSongRows", () => {
 		]);
 		expect(updates().map((u) => [u.table, u.values])).toEqual([
 			["ai_request", { songId: null }],
+			["session_recording", { songId: null }],
 			["beat", { songId: null }],
 		]);
 		expect(fake.rows("aiRequest")).toEqual([
