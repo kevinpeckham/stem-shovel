@@ -42,7 +42,7 @@ const post = (body: unknown = reserve) =>
 beforeEach(() => {
 	resetRemoteMocks();
 	givenRow("idea", { accountId: ACCOUNT });
-	data.userOwnsIdea.mockResolvedValue(true);
+	data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: USER, shared: false });
 	data.storageRoom.mockResolvedValue({ ok: true });
 	data.createStudioSource.mockResolvedValue(made);
 });
@@ -65,12 +65,16 @@ describe("POST /api/studio/sources", () => {
 		);
 	});
 	it("404 for an idea the caller did not make", async () => {
-		data.userOwnsIdea.mockResolvedValue(false);
+		data.studioSongAccess.mockResolvedValue({
+			accountId: ACCOUNT,
+			createdBy: "someone-else",
+			shared: false,
+		});
 		await expect(post()).rejects.toMatchObject(httpError(404));
 		expect(data.createStudioSource).not.toHaveBeenCalled();
 	});
 	it("404 for an unknown idea", async () => {
-		givenRow("idea", null);
+		data.studioSongAccess.mockResolvedValue(null);
 		await expect(post()).rejects.toMatchObject(httpError(404));
 	});
 	it("409 when the account's storage is full", async () => {

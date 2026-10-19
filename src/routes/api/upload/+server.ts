@@ -1,7 +1,7 @@
 import {
 	accountOfUploadPathname,
 	memberOf,
-	requireOwnIdea,
+	requireStudioAccess,
 	requireSystemAdmin,
 	requireUser,
 } from "#lib/server/access.js";
@@ -70,7 +70,7 @@ const isMidi = (pathname: string) => pathname.includes("/midi/");
 async function studioUploadToken(locals: App.Locals, pathname: string) {
 	const row = await studioSourceOfPathname(pathname);
 	if (!row || row.status !== "uploading") throw new Error(`No reservation for "${pathname}"`);
-	await requireOwnIdea(locals, row.ideaId);
+	await requireStudioAccess(locals, row.ideaId);
 	return {
 		allowedContentTypes: [row.contentType],
 		// The size the reservation claimed (and the quota was checked against) is the most the token allows.

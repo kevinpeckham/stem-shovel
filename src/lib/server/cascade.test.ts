@@ -92,6 +92,7 @@ describe("deleteIdeaRows", () => {
 	test("the Studio rows and the takes' stems go before the takes, the takes before the idea", async () => {
 		await deleteIdeaRows(["i1"]);
 		expect(deletes()).toEqual([
+			"studio_comment",
 			"studio_revision",
 			"studio_source",
 			"recording_stem",
@@ -110,9 +111,15 @@ describe("deleteIdeaRows", () => {
 	});
 	test("an idea without takes skips the stems' delete; no ids means no queries", async () => {
 		await deleteIdeaRows(["i3"]);
-		expect(deletes()).toEqual(["studio_revision", "studio_source", "recording", "idea"]);
+		expect(deletes()).toEqual([
+			"studio_comment",
+			"studio_revision",
+			"studio_source",
+			"recording",
+			"idea",
+		]);
 		await deleteIdeaRows([]);
-		expect(fake.calls.filter((c) => c.op !== "select").length).toBe(4);
+		expect(fake.calls.filter((c) => c.op !== "select").length).toBe(5);
 		expect(fake.rows("recording").map((r) => r.id)).toEqual(["r1", "r2", "r9"]);
 		expect(fake.rows("idea").map((i) => i.id)).toEqual(["i1", "i2"]);
 	});

@@ -914,3 +914,53 @@ one recording), a loop and one-shot library beyond the song's own
 recordings, WAM 2.0 hosting (third-party plugin scripts and their hosts
 fall outside the site's content security policy; a curated set served
 from the site itself would be the way).
+
+## Collaboration (2026-10-19, docs/dawn-daw-plan.md D7)
+
+**Shared songs.** A Dawn song stays the creator's (`idea.createdBy`)
+until they share it: `idea.shared` (migration 0091) opens it to every
+editor of its account. `listStudioSongs(userId, editorAccountIds)` lists
+the user's own songs and the shared ones in the accounts they edit;
+`StudioSongView` carries `shared` and `own`, the Recordings list says
+"shared" or "the band's". `requireStudioAccess(locals, ideaId)`
+(access.ts, over `studioSongAccess`) is the gate for every Studio remote
+function and the three upload routes: the creator always, a member when
+the song is shared and they edit in its account; it answers `own`, which
+sharing (`setStudioShared`, the song menu's "Share with the band") and
+deleting keep for the creator. Sharing notifies the account's editors
+(kind "song", `notifyStudioShared`) with a link to
+`/multitrack-recorder?song=<id>`, which the page opens on load
+(`?open=comments` opens the thread too).
+
+**Two browsers on one song.** Autosave stays last-write-wins with a
+guard rather than a merge: the browser sends `base`, the newest
+revision number it knows (set when a song opens, after each autosave,
+save or restore), and `saveStudioAutosave` refuses with `conflict` when
+a newer revision exists; the page then tells the user and reloads the
+newest from the server (`studioSong`), dropping its own unsaved edits.
+Real-time co-editing with a Yjs document is the later step the plan
+names; this keeps two people from silently overwriting each other.
+
+**Comments.** `studio_comment` (migration 0091: account, idea, author,
+body, `at` seconds or null; deleted with the song and with its author,
+cascade.ts) with `studioComments.remote.ts` (`studioComments`,
+`createStudioComment`, `deleteStudioComment`: anyone who may work on the
+song reads and posts, the author or an owner / admin deletes) and
+`notifyStudioComment` (the creator and everyone who commented, but the
+author; kind "comment"; the link opens the thread). `StudioComments.svelte`
+is the panel: the thread with authors and pins (a pin seeks), a box with
+"At the playhead", Ctrl+Enter posts. The timeline draws pinned comments as
+dots at the ruler's foot (`comments` prop; a click seeks and opens the
+panel).
+
+**Versions compared.** `utils/diffArrangements.ts` reads what differs
+between two arrangements in words (tempo, meter, the map, master, tracks
+added, removed, renamed or re-set, clips added, removed, moved, trimmed
+or re-set, buses, markers); "Compare" on a revision in the Recordings
+panel fetches its arrangement (`studioRevisionData`) and lists the
+differences from the song as it stands.
+
+Browser spec `tests/e2e/studio-collab.spec.ts` (two pages on one song);
+tests on the access helper, the remote functions, the cascade, the diff
+and the panel. Left for later: real-time co-editing and presence, a
+comment's edit, replies, and comments on a mix of a Dawn song.

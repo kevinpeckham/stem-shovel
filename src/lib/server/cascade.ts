@@ -55,6 +55,7 @@ const {
 	songCredit,
 	songDocVersion,
 	stem,
+	studioComment,
 	studioRevision,
 	studioSource,
 	supportRequest,
@@ -121,6 +122,7 @@ export async function deleteProjectRows(projectIds: string[]): Promise<void> {
 /** Ideas with their takes, and a Studio song's sources and revisions (docs/multitrack-recorder.md). */
 export async function deleteIdeaRows(ideaIds: string[]): Promise<void> {
 	if (ideaIds.length === 0) return;
+	await db.delete(studioComment).where(inArray(studioComment.ideaId, ideaIds));
 	await db.delete(studioRevision).where(inArray(studioRevision.ideaId, ideaIds));
 	await db.delete(studioSource).where(inArray(studioSource.ideaId, ideaIds));
 	const takes = await db
@@ -179,6 +181,7 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await deleteSongRows(songs.map((s) => s.id));
 	await db.delete(recordingStem).where(eq(recordingStem.accountId, accountId));
 	await db.delete(recording).where(eq(recording.accountId, accountId));
+	await db.delete(studioComment).where(eq(studioComment.accountId, accountId));
 	await db.delete(studioRevision).where(eq(studioRevision.accountId, accountId));
 	await db.delete(studioSource).where(eq(studioSource.accountId, accountId));
 	await db.delete(beat).where(eq(beat.accountId, accountId));
@@ -268,6 +271,7 @@ export async function deleteUserRows(userId: string): Promise<void> {
 		.set({ recordedBy: null })
 		.where(eq(studioSource.recordedBy, userId));
 	await db.update(studioRevision).set({ savedBy: null }).where(eq(studioRevision.savedBy, userId));
+	await db.delete(studioComment).where(eq(studioComment.userId, userId));
 	await db.update(shareLink).set({ createdBy: null }).where(eq(shareLink.createdBy, userId));
 	await db.update(shortLink).set({ createdBy: null }).where(eq(shortLink.createdBy, userId));
 	await db.update(song).set({ createdBy: null }).where(eq(song.createdBy, userId));

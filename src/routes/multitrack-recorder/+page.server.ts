@@ -41,7 +41,11 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	if (!member) redirect(303, "/accounts");
 	return {
 		account: { id: member.accountId, slug: member.slug, name: member.name, canEdit: true },
-		songs: await listStudioSongs(user.id),
+		// Their own songs and the ones shared with the band in the accounts they edit (D7).
+		songs: await listStudioSongs(
+			user.id,
+			editing.map((m) => m.accountId),
+		),
 		projects: await songTargets(editing),
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("studio-page", copyFallback, locals),

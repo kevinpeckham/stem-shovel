@@ -986,3 +986,18 @@ describe("StudioTimeline: the library's drop (D6)", () => {
 		expect(refused.defaultPrevented).toBe(false);
 	});
 });
+
+describe("StudioTimeline: comments on the ruler (D7)", () => {
+	test("a pinned comment is a dot; a click seeks there and opens the thread", async () => {
+		const user = userEvent.setup();
+		const oncomment = vi.fn();
+		render(StudioTimeline, {
+			props: { comments: [{ id: "k1", at: 2.5, by: "Sam" }], oncomment },
+		});
+		const dot = screen.getByRole("button", { name: "Comment by Sam at 0:02.5" });
+		expect(dot.style.left).toBe(`${2.5 * PX}px`);
+		await user.click(dot);
+		expect(fake.seek).toHaveBeenLastCalledWith(2.5);
+		expect(oncomment).toHaveBeenCalledWith("k1");
+	});
+});

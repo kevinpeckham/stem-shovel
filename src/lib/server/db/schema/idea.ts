@@ -22,6 +22,8 @@ export const idea = table(
 		title: t.text("title").notNull(),
 		/** "idea": recorded in the Idea Recorder, listed there; "loop": saved from the looper, listed in the looper and in the recorder only when asked for (docs/looper.md, "Save and Export"). */
 		kind: t.text("kind").$type<IdeaKind>().notNull().default("idea"),
+		/** A Dawn song shared with the band (docs/dawn-daw-plan.md, D7): every editor of the account may open and work on it; otherwise the creator's alone. */
+		shared: t.integer("shared", { mode: "boolean" }).notNull().default(false),
 		/** Markdown notes on the idea: chords, lyrics, where it might go. */
 		notes: t.text("notes").notNull().default(""),
 		/** The drum machine's project and the piano's sound and effects as they were with this idea (JSON, `IdeaInstrumentsDataSchema`), saved as they change and loaded back with the idea; null before any were saved. */

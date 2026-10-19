@@ -1,5 +1,5 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { requireEditor, requireOwnIdea, requireUser } from "#lib/server/access.js";
+import { requireEditor, requireStudioAccess, requireUser } from "#lib/server/access.js";
 import {
 	createIdea,
 	deleteStudioRevision as removeRevision,
@@ -8,10 +8,14 @@ import {
 	restoreStudioRevision as restoreRevision,
 	saveStudioAutosave,
 	saveStudioRevision as saveRevision,
+	setStudioShared as setShared,
+	studioRevisionData as revisionData,
 	studioRevisionOwner,
 	studioSongView,
 	studioSourceOwner,
 } from "#lib/server/data.js";
+import { background } from "#lib/server/background.js";
+import { notifyStudioShared } from "#lib/server/notifications.js";
 import { NameSchema } from "#lib/val/NameSchema.js";
 import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
@@ -19,6 +23,7 @@ import {
 	StudioAutosaveSchema,
 	StudioRevisionRenameSchema,
 	StudioRevisionSaveSchema,
+	StudioShareSchema,
 } from "#lib/val/StudioSchema.js";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
@@ -30,8 +35,8 @@ import * as v from "valibot";
  * arrangement's revisions and the sources' housekeeping.
  */
 
-/** The caller's own song, else 404: ideas are the user's own, whichever account holds their files. */
-const ownIdea = (id: string) => requireOwnIdea(getRequestEvent().locals, id);
+/** A song the caller may work on, else 404: their own, or one shared with the band in an account they edit (D7). */
+const ownIdea = (id: string) => requireStudioAccess(getRequestEvent().locals, id);
 
 /** A new song in the account (members); the Studio calls it on New song or the first take. */
 export const createStudioSong = command(
@@ -46,11 +51,28 @@ export const createStudioSong = command(
 );
 
 /** The current arrangement, debounced by the browser: an unnamed revision when it changed, nothing otherwise. */
-export const autosaveArrangement = command(StudioAutosaveSchema, async ({ ideaId, data }) => {
+export const autosaveArrangement = command(StudioAutosaveSchema, async ({ ideaId, data, base }) => {
 	const { accountId, userId } = await ownIdea(ideaId);
-	const saved = await saveStudioAutosave(accountId, userId, ideaId, data);
+	const saved = await saveStudioAutosave(accountId, userId, ideaId, data, base);
 	if (!saved) error(404, "Song not found");
 	return saved;
+});
+
+/** Shares a song with the band or takes it back: the creator's call; the band hears when it opens up. */
+export const setStudioShared = command(StudioShareSchema, async ({ ideaId, shared }) => {
+	const { accountId, userId, own } = await ownIdea(ideaId);
+	if (!own) error(403, "Only the song's creator can share it");
+	if (!(await setShared(accountId, ideaId, shared))) error(404, "Song not found");
+	if (shared) background(() => notifyStudioShared(accountId, ideaId, userId));
+	return { shared };
+});
+
+/** A revision's arrangement, for "Compare with now" (utils/diffArrangements.ts). */
+export const studioRevisionData = query(IdSchema, async ({ id }) => {
+	const { accountId } = await ownRevision(id);
+	const data = await revisionData(accountId, id);
+	if (!data) error(404, "Revision not found");
+	return data;
 });
 
 /** The current arrangement kept under a name, for good. */
@@ -103,8 +125,8 @@ export const deleteStudioSource = command(IdSchema, async ({ id }) => {
 
 /** One song as the page loads it, fresh (after an upload or a save). */
 export const studioSong = query(IdSchema, async ({ id }) => {
-	const { accountId } = await ownIdea(id);
-	const song = await studioSongView(accountId, id);
+	const { accountId, userId } = await ownIdea(id);
+	const song = await studioSongView(accountId, id, userId);
 	if (!song) error(404, "Song not found");
 	return song;
 });

@@ -78,11 +78,13 @@ A MIDI track's input can be the **Sampler**: pick one of the song's recordings i
 
 ## Songs and revisions
 
-The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Recordings** panel lists every song with its saved revisions and recent autosaves, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.
+The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Recordings** panel lists every song with its saved revisions and recent autosaves, **Compare** says what a revision differs in from the song as it stands now, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.
 
-## The mixer
+## Working together
 
-**Mixer** beside Tracks and Stage shows a strip for every track, every bus and the master. A track's strip has its output (the master or a bus), its inserts, a send knob to each bus, pan, the fader, mute and solo, and a meter. **Add bus** on the master strip makes a bus: a group that tracks can route to or send to, with its own name, tint, inserts, pan, fader, mute and meter, going on to the master; the master has inserts of its own (a limiter is the usual one). Removing a bus sends its tracks back to the master. Every mixer change can be undone, and a bounce, a demo and the stems follow the routing.
+A song is yours until you share it: **Share with the band** in the song's menu opens it to every editor of the account, who find it in their Recordings panel marked "the band's" and get a notification with a link to it. Anyone on the song can record, edit, mix and comment; only you can share it, stop sharing it or delete it. If two people have the song open, a save by one makes the other's next save reload the latest instead of overwriting it, and says so.
+
+**Comments** in the top row opens the song's thread. Write a comment and leave **At the playhead** on to pin it to a moment: it shows as a dot on the ruler, a click on the dot or on the time in the thread moves the playhead there, and the song's creator and everyone in the thread are notified.
 
 ## Bouncing and exporting
 

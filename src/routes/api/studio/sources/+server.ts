@@ -1,4 +1,4 @@
-import { requireOwnIdea } from "#lib/server/access.js";
+import { requireStudioAccess } from "#lib/server/access.js";
 import { background } from "#lib/server/background.js";
 import { createStudioSource, storageRoom } from "#lib/server/data.js";
 import { checkStorage } from "#lib/server/notifications.js";
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(413, `A recording is at most ${Math.round(MAX_TAKE_BYTES / 1024 / 1024)} MB`);
 	const reserve = parseBody(body, StudioSourceReserveSchema);
 	// The song is the user's own idea (whichever account holds its files); its account's storage is what the source counts against.
-	const { accountId, userId } = await requireOwnIdea(locals, reserve.ideaId);
+	const { accountId, userId } = await requireStudioAccess(locals, reserve.ideaId);
 	const room = await storageRoom(accountId, reserve.sizeBytes);
 	if (!room.ok) {
 		error(

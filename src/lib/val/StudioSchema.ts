@@ -279,6 +279,8 @@ export type StudioArrangement = v.InferOutput<typeof StudioArrangementSchema>;
 export const StudioAutosaveSchema = v.object({
 	ideaId: NanoIdSchema,
 	data: StudioArrangementSchema,
+	/** The newest revision's number the browser knows (D7): a newer one from someone else means the save is refused and the browser reloads. */
+	base: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
 });
 
 /** Argument of saveStudioRevision: the current state kept under a name. */
@@ -351,6 +353,9 @@ export interface StudioRevisionView {
 export interface StudioSongView {
 	id: string;
 	title: string;
+	/** Shared with the band (D7): every editor of the account works on it; `own` says the viewer made it. */
+	shared: boolean;
+	own: boolean;
 	notes: string;
 	createdAt: Date;
 	/** The instruments' settings as they were with the song (the idea's `instruments` JSON); null until an instrument track recorded. */
@@ -360,3 +365,26 @@ export interface StudioSongView {
 	revisions: StudioRevisionView[];
 	sources: StudioSourceView[];
 }
+
+/** A comment on a Dawn song (D7): the text and, when pinned, the moment in the song. */
+export const StudioCommentCreateSchema = v.object({
+	ideaId: NanoIdSchema,
+	body: v.pipe(
+		v.string(),
+		v.trim(),
+		v.minLength(1, "Write something."),
+		v.maxLength(2000, "Keep the comment under 2000 characters."),
+	),
+	at: v.nullable(v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS * 4))),
+});
+export type StudioCommentCreate = v.InferOutput<typeof StudioCommentCreateSchema>;
+export interface StudioCommentView {
+	id: string;
+	userId: string;
+	userName: string;
+	body: string;
+	at: number | null;
+	createdAt: Date;
+}
+/** Argument of setStudioShared: the song and whether the band may work on it. */
+export const StudioShareSchema = v.object({ ideaId: NanoIdSchema, shared: v.boolean() });

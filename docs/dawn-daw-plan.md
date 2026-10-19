@@ -168,13 +168,20 @@ automatable parameters, so D2 adds sends and inserts in one place.
   scripts; a curated set served from the site would be the way).
   docs/multitrack-recorder.md "Instruments and the library".
 
-### D7. Collaboration
+### D7. Collaboration (built in part on `dawn-daw`, 2026-10-19)
 
 - Account-owned songs (the open question in the design doc), members on
   one song, time-anchored comments and the existing notifications;
   named versions with diffs of the document.
 - Real-time co-editing later, with a Yjs document (operation-based undo
   comes with it) and presence; the assets stay in Blob.
+- Built: shared songs (`idea.shared`, `requireStudioAccess`, the band's
+  editors on one song, notified), a conflict guard on autosave (the
+  base revision; a newer one reloads), time-anchored comments
+  (`studio_comment`, the panel, dots on the ruler, notifications) and
+  "Compare" on revisions (`diffArrangements`). Migration 0091. Left:
+  real-time co-editing with Yjs and presence.
+  docs/multitrack-recorder.md "Collaboration".
 
 ### D8. Scale and structure
 

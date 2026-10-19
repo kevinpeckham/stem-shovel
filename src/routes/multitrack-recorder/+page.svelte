@@ -51,7 +51,18 @@
 		renameStudioRevision,
 		restoreStudioRevision,
 		saveStudioRevision,
+		setStudioShared,
+		studioRevisionData,
+		studioSong,
 	} from "#lib/remote/studio.remote.js";
+	import {
+		createStudioComment,
+		deleteStudioComment,
+		studioComments,
+	} from "#lib/remote/studioComments.remote.js";
+	import StudioComments from "#lib/components/StudioComments.svelte";
+	import { diffArrangements } from "#lib/utils/diffArrangements.js";
+	import type { StudioCommentView } from "#lib/val/StudioSchema.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import {
 		postJson,
@@ -73,6 +84,7 @@
 		StudioTrack,
 	} from "#lib/val/StudioSchema.js";
 	import { refreshAll } from "$app/navigation";
+	import { page } from "$app/state";
 	import { onMount, untrack } from "svelte";
 
 	/**
@@ -122,6 +134,84 @@
 	}
 	const stageModel = studioMixerModel(studio);
 
+	// ── Collaboration (docs/dawn-daw-plan.md, D7) ────────────────────────
+	/** The newest revision this browser knows of the open song: an autosave sends it, and a newer one from someone else means a reload. */
+	let baseNumber = $state(0);
+	let comments = $state<StudioCommentView[]>([]);
+	let commentsOpen = $state(false);
+	let commentsBusy = $state(false);
+	const me = $derived(data.user?.id ?? "");
+	const isAdmin = $derived(
+		data.memberships?.some(
+			(m) => m.accountId === data.account.id && (m.role === "owner" || m.role === "admin"),
+		) ?? false,
+	);
+	async function loadComments(id: string | null) {
+		comments = id ? await studioComments({ id }).catch(() => []) : [];
+	}
+	async function postComment(input: { body: string; at: number | null }) {
+		const id = songId;
+		if (!id) return;
+		commentsBusy = true;
+		try {
+			const made = await createStudioComment({ ideaId: id, ...input });
+			comments = [...comments, made];
+		} catch (e) {
+			notify(`Comment not posted: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			commentsBusy = false;
+		}
+	}
+	async function removeComment(id: string) {
+		try {
+			await deleteStudioComment({ id });
+			comments = comments.filter((c) => c.id !== id);
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+	/** Shares the open song with the band, or takes it back (the creator's call). */
+	async function toggleShared() {
+		const s = song;
+		if (!s) return;
+		try {
+			const { shared } = await setStudioShared({ ideaId: s.id, shared: !s.shared });
+			await refreshAll();
+			notify(
+				shared ? "Shared with the band: every editor can open it in Dawn" : "No longer shared",
+			);
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+	/** Someone else saved since this browser loaded: the newest comes in and replaces what is here. */
+	async function reloadFromServer(id: string) {
+		const fresh = await studioSong({ id });
+		const i = data.songs.findIndex((x) => x.id === id);
+		if (i >= 0) data.songs[i] = fresh;
+		if (studio.running) studio.stop();
+		loadedKey = "";
+		openSong(fresh);
+		lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
+		studio.dirty = false;
+	}
+	/** What a revision's arrangement differs in from the song as it stands now (utils/diffArrangements.ts). */
+	let diffs = $state<Record<string, string[]>>({});
+	async function compareRevision(rev: { id: string }) {
+		if (diffs[rev.id]) {
+			const { [rev.id]: _gone, ...rest } = diffs;
+			diffs = rest;
+			return;
+		}
+		try {
+			const then = await studioRevisionData({ id: rev.id });
+			const lines = diffArrangements(then, $state.snapshot(studio.arrangement));
+			diffs = { ...diffs, [rev.id]: lines.length ? lines : ["Nothing differs from now"] };
+		} catch (e) {
+			notify(errorMessage(e), { kind: "error" });
+		}
+	}
+
 	/** Open a song on the device: its arrangement and sources into the engine (once per song). */
 	function openSong(s: StudioSongView | null) {
 		songId = s?.id ?? null;
@@ -129,6 +219,9 @@
 		notes = s?.notes ?? "";
 		notesKey++;
 		selected = null;
+		baseNumber = s?.revisions[0]?.number ?? 0;
+		diffs = {};
+		void loadComments(s?.id ?? null);
 		loadInstruments(s?.instruments ?? null);
 		try {
 			if (s) localStorage.setItem(LAST_KEY, s.id);
@@ -151,7 +244,15 @@
 		} catch {
 			// As above.
 		}
-		openSong(data.songs.find((s) => s.id === last) ?? data.songs[0] ?? null);
+		// A link from a notification (D7): the song it names, and its Comments panel when asked.
+		const wanted = page.url.searchParams.get("song");
+		if (page.url.searchParams.get("open") === "comments") commentsOpen = true;
+		openSong(
+			data.songs.find((s) => s.id === wanted) ??
+				data.songs.find((s) => s.id === last) ??
+				data.songs[0] ??
+				null,
+		);
 		void queue.restore();
 		return () => {
 			autosaveNow();
@@ -249,10 +350,19 @@
 	$effect(() => {
 		if (!studio.dirty) return;
 		// Debounced: a burst of edits saves once, a second and a half after the last.
+		scheduleAutosave();
+	});
+	function scheduleAutosave() {
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => void autosaveNow(), 1500);
-	});
-	async function autosaveNow() {
+	}
+	/** Saves run one after another: a second call while one is in flight waits for it, so the base it sends is the one the first just made (D7's conflict guard would otherwise see the page's own save as someone else's). */
+	let saveChain: Promise<void> = Promise.resolve();
+	function autosaveNow(): Promise<void> {
+		saveChain = saveChain.then(saveOnce, saveOnce);
+		return saveChain;
+	}
+	async function saveOnce() {
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = null;
 		if (!studio.dirty) return;
@@ -265,9 +375,19 @@
 		saving = true;
 		try {
 			const id = await ensureSong();
-			await autosaveArrangement({ ideaId: id, data: snapshot });
+			const saved = await autosaveArrangement({ ideaId: id, data: snapshot, base: baseNumber });
+			if (saved.conflict) {
+				notify("Someone else saved this song since you opened it: their version is in", {
+					kind: "error",
+				});
+				await reloadFromServer(id);
+				return;
+			}
+			baseNumber = saved.number;
 			lastSaved = sent;
 			if (JSON.stringify($state.snapshot(studio.arrangement)) === sent) studio.dirty = false;
+			// Edited while the save was out: the flag never flipped, so the effect will not fire; another save follows.
+			else scheduleAutosave();
 		} catch (e) {
 			notify(`Not saved: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
@@ -287,6 +407,7 @@
 			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
 			studio.dirty = false;
 			await refreshAll();
+			baseNumber = song?.revisions[0]?.number ?? baseNumber;
 			notify(`Revision “${name.trim()}” saved`);
 		} catch (e) {
 			notify(`Revision not saved: ${errorMessage(e)}`, { kind: "error" });
@@ -307,6 +428,7 @@
 			lastSaved = JSON.stringify($state.snapshot(studio.arrangement));
 			studio.dirty = false;
 			await refreshAll();
+			baseNumber = song?.revisions[0]?.number ?? baseNumber;
 			notify(`Restored “${label}”`);
 		} catch (e) {
 			notify(`Could not restore: ${errorMessage(e)}`, { kind: "error" });
@@ -981,6 +1103,18 @@
 					Inputs
 				</button>
 				<button
+					class="button button-sm shrink-0 {commentsOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={commentsOpen}
+					title="Comments on this song, pinned to moments in it"
+					onclick={() => (commentsOpen = !commentsOpen)}
+				>
+					<span class="i-ph-chat-circle-text" aria-hidden="true"></span>
+					Comments{comments.length ? ` ${comments.length}` : ""}
+				</button>
+				<button
 					class="button button-sm shrink-0 {libraryOpen
 						? 'bg-accent text-oxford border-accent opacity-100'
 						: ''}"
@@ -1158,6 +1292,16 @@
 								snippet: sendBlock,
 							},
 							{ id: "d2", kind: "divider" },
+							{
+								id: "share",
+								kind: "button",
+								label: song?.shared ? "Stop sharing with the band" : "Share with the band",
+								iconClass: song?.shared ? "i-ph-users-three" : "i-ph-share-network",
+								title:
+									"Shared, every editor of the account opens and works on this song in Dawn; the creator alone shares it",
+								condition: !!song?.own,
+								action: () => void toggleShared(),
+							},
 							{
 								id: "clean",
 								kind: "button",
@@ -1475,6 +1619,10 @@
 						bind:selected
 						bind:selectedIds
 						bind:pxPerSecond
+						comments={comments
+							.filter((c) => c.at !== null)
+							.map((c) => ({ id: c.id, at: c.at!, by: c.userName }))}
+						oncomment={() => (commentsOpen = true)}
 						onarm={(t) => void armInput(t)}
 						onrender={(t) => void renderMidiTrack(t)}
 						onopen={openRoll}
@@ -1980,7 +2128,11 @@
 												>{s.sources.length}
 												{s.sources.length === 1 ? "take" : "takes"} · {s.revisions.filter(
 													(r) => r.name,
-												).length} saved</span
+												).length} saved{s.shared
+													? s.own
+														? " · shared"
+														: " · the band's"
+													: ""}</span
 											>
 											<ContextMenu
 												ariaLabel="{s.title} actions"
@@ -2006,7 +2158,7 @@
 										</summary>
 										<ul class="px-3 pb-2 grid gap-1 text-13px">
 											{#each s.revisions as rev (rev.id)}
-												<li class="flex items-center gap-2">
+												<li class="flex flex-wrap items-center gap-2">
 													<span class={rev.name ? "" : "opacity-60"}
 														>{rev.name ?? `Autosave ${rev.number}`}</span
 													>
@@ -2019,6 +2171,13 @@
 														})}</span
 													>
 													<span class="ml-auto flex gap-1">
+														<button
+															class="button button-xs"
+															type="button"
+															title="What this revision differs in from the song as it stands now"
+															aria-pressed={!!diffs[rev.id]}
+															onclick={() => void compareRevision(rev)}>Compare</button
+														>
 														<button
 															class="button button-xs"
 															type="button"
@@ -2049,6 +2208,16 @@
 															/>
 														{/if}
 													</span>
+													{#if diffs[rev.id]}
+														<ul
+															class="basis-full grid gap-0.5 pl-4 text-12px opacity-80"
+															aria-label="Changes since {rev.name ?? `autosave ${rev.number}`}"
+														>
+															{#each diffs[rev.id] as line (line)}
+																<li>{line}</li>
+															{/each}
+														</ul>
+													{/if}
 												</li>
 											{:else}
 												<li class="opacity-60">Nothing saved yet.</li>
@@ -2304,6 +2473,33 @@
 				results={exportResults}
 				onexport={(o, zip) => void runExport(o, zip)}
 			/>
+		</div>
+	</FloatingPanel>
+
+	<!-- Comments on the song (docs/dawn-daw-plan.md, D7): a thread pinned to moments; the markers sit on the ruler. -->
+	<FloatingPanel
+		open={commentsOpen}
+		title="Comments · {title || 'this song'}"
+		storageKey="stemshovel.studio.comments-panel"
+		width={460}
+		height={520}
+		onminimise={() => (commentsOpen = false)}
+	>
+		<div class="p-3">
+			{#if songId}
+				<StudioComments
+					{comments}
+					position={studio.position}
+					userId={me}
+					canDelete={(c: StudioCommentView) => c.userId === me || isAdmin}
+					busy={commentsBusy}
+					onpost={(input) => void postComment(input)}
+					ondelete={(id) => void removeComment(id)}
+					onjump={(at) => studio.seek(at)}
+				/>
+			{:else}
+				<p class="text-13px text-dim">Record or import something first: comments go on a song.</p>
+			{/if}
 		</div>
 	</FloatingPanel>
 

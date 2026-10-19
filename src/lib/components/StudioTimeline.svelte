@@ -46,6 +46,9 @@
 		onrender?: (track: StudioTrack) => void;
 		/** Open a MIDI clip's notes in the piano-roll editor (a double-click on the clip). */
 		onopen?: (clip: StudioClip) => void;
+		/** Comments pinned to moments (D7), drawn on the ruler; a click seeks there and opens the thread. */
+		comments?: { id: string; at: number; by: string }[];
+		oncomment?: (id: string) => void;
 	}
 	let {
 		selected = $bindable(null),
@@ -54,6 +57,8 @@
 		onarm,
 		onrender,
 		onopen,
+		comments = [],
+		oncomment,
 	}: Props = $props();
 
 	const HEADER_W = 200;
@@ -759,6 +764,22 @@
 						}
 					}}>{c.beatsPerBar}/4</button
 				>
+			{/each}
+			<!-- Comments (D7): a dot each at the ruler's foot; a click seeks there and opens the thread. -->
+			{#each comments as c (c.id)}
+				<button
+					type="button"
+					class="absolute bottom-0 z-10 h-2 w-2 -translate-x-1/2 rounded-full bg-rose-300 hover:bg-rose-200 focus-visible:ring-1 focus-visible:ring-white"
+					style:left="{c.at * pxPerSecond}px"
+					data-comment-marker={c.id}
+					aria-label="Comment by {c.by} at {formatTime(c.at)}"
+					title="{c.by} at {formatTime(c.at)}"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => {
+						engine.seek(c.at);
+						oncomment?.(c.id);
+					}}
+				></button>
 			{/each}
 			<!-- Markers (D4): a flag each; click jumps there, double-click renames, Delete on a focused one removes it. -->
 			{#each engine.markers as m (m.id)}

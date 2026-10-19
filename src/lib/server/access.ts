@@ -9,6 +9,7 @@ import {
 	projectRoleOf,
 	projectRolesOf,
 	songViewRow,
+	studioSongAccess,
 	userOwnsIdea,
 } from "#lib/server/data.js";
 import {
@@ -334,6 +335,21 @@ export async function accountOfIdea(ideaId: string) {
  * holds their files, so the gate is creatorship, not membership. 401
  * signed out, 404 otherwise. Returns the idea's account and the user.
  */
+/**
+ * A Dawn song the signed-in user may work on (docs/dawn-daw-plan.md, D7):
+ * their own, or one shared with the band when they edit in its account.
+ * 401 signed out, 404 otherwise. Returns the song's account, the user and
+ * whether it is their own (sharing and deleting stay the creator's).
+ */
+export async function requireStudioAccess(locals: App.Locals, ideaId: string) {
+	const user = requireUser(locals);
+	const song = await studioSongAccess(ideaId);
+	if (!song) error(404, "Not found");
+	const own = song.createdBy === user.id;
+	if (!own && !(song.shared && canEdit(locals, song.accountId))) error(404, "Not found");
+	return { accountId: song.accountId, userId: user.id, own };
+}
+
 export async function requireOwnIdea(locals: App.Locals, ideaId: string) {
 	const user = requireUser(locals);
 	const accountId = await accountOfIdea(ideaId);

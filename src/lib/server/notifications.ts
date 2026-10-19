@@ -1,5 +1,11 @@
-import { accountLimitsOf, accountStorageBytes, memberHeadroom } from "#lib/server/data.js";
+import {
+	accountLimitsOf,
+	accountStorageBytes,
+	memberHeadroom,
+	studioCommentAudience,
+} from "#lib/server/data.js";
 import { permalink } from "#lib/utils/permalink.js";
+import { isEditor } from "#lib/server/access.js";
 import { db, schema } from "#lib/server/db/index.js";
 import { sendDigestEmail, sendNotificationEmail } from "#lib/server/email.js";
 import { formatBytes } from "#lib/utils/formatBytes.js";
@@ -33,6 +39,7 @@ const {
 	songMix,
 	account,
 	user: userTable,
+	idea,
 } = schema;
 
 const COALESCE_MS = 30 * 60 * 1000;
@@ -384,6 +391,52 @@ export async function notifySong(accountId: string, songId: string, creatorId: s
 		body: `${who} created "${s.title}".`,
 		href: s.href,
 		subjectId: songId,
+	});
+}
+
+/** A comment on a Dawn song (D7): its creator and the others who commented, but the author; the item opens the song's Comments panel. */
+export async function notifyStudioComment(accountId: string, ideaId: string, authorId: string) {
+	const song = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { title: true },
+	});
+	if (!song) return;
+	const who = await nameOf(authorId);
+	const audience = (await studioCommentAudience(accountId, ideaId)).filter((id) => id !== authorId);
+	await notifyUsers(audience, {
+		kind: "comment",
+		accountId,
+		title: `New comment on ${song.title}`,
+		body: (n) =>
+			n === 1 ? `${who} commented in Dawn.` : `${n} new comments, the latest from ${who}, in Dawn.`,
+		href: `/multitrack-recorder?song=${ideaId}&open=comments`,
+		subjectId: `dawn:${ideaId}`,
+		coalesce: true,
+	});
+}
+
+/** A Dawn song shared with the band (D7): every editor of the account but the one sharing. */
+export async function notifyStudioShared(accountId: string, ideaId: string, byId: string) {
+	const song = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+		columns: { title: true },
+	});
+	if (!song) return;
+	const who = await nameOf(byId);
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		columns: { userId: true, role: true },
+	});
+	const audience = members
+		.filter((m) => m.userId !== byId && isEditor(m.role))
+		.map((m) => m.userId);
+	await notifyUsers(audience, {
+		kind: "song",
+		accountId,
+		title: `${who} shared "${song.title}" in Dawn`,
+		body: "Open it in Dawn to record, edit and mix along.",
+		href: `/multitrack-recorder?song=${ideaId}`,
+		subjectId: `dawn:${ideaId}`,
 	});
 }
 

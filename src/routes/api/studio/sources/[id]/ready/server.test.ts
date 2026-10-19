@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import "../../../../../../../tests/helpers/fakeServerModules";
 import {
 	ACCOUNT,
+	USER,
 	asEditorOf,
 	asSignedOut,
 	fakeId,
@@ -35,7 +36,7 @@ beforeEach(() => {
 	resetRemoteMocks();
 	data.studioSourceOwner.mockResolvedValue({ accountId: ACCOUNT, ideaId: IDEA, pathname });
 	givenRow("idea", { accountId: ACCOUNT });
-	data.userOwnsIdea.mockResolvedValue(true);
+	data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: USER, shared: false });
 	blob.isOurBlobUrl.mockReturnValue(true);
 	data.markStudioSourceReady.mockResolvedValue({ id: SOURCE });
 });
@@ -54,7 +55,11 @@ describe("POST /api/studio/sources/[id]/ready", () => {
 		await expect(post()).rejects.toMatchObject(httpError(404));
 	});
 	it("404 for a source of someone else's song", async () => {
-		data.userOwnsIdea.mockResolvedValue(false);
+		data.studioSongAccess.mockResolvedValue({
+			accountId: ACCOUNT,
+			createdBy: "someone-else",
+			shared: false,
+		});
 		await expect(post()).rejects.toMatchObject(httpError(404));
 		expect(data.markStudioSourceReady).not.toHaveBeenCalled();
 	});

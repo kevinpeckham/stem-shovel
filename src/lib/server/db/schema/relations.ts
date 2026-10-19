@@ -25,6 +25,7 @@ import { drumSample } from "./drumSample";
 import { pianoPreset } from "./pianoPreset";
 import { ampPreset } from "./ampPreset";
 import { idea } from "./idea";
+import { studioComment } from "./studioComment";
 import { recording } from "./recording";
 import { recordingStem } from "./recordingStem";
 import { invitation } from "./invitation";
@@ -224,6 +225,13 @@ export const ideaRelations = relations(idea, ({ one, many }) => ({
 	/** A Studio song's files and arrangement snapshots (docs/multitrack-recorder.md). */
 	sources: many(studioSource),
 	revisions: many(studioRevision),
+	comments: many(studioComment),
+}));
+
+export const studioCommentRelations = relations(studioComment, ({ one }) => ({
+	account: one(account, { fields: [studioComment.accountId], references: [account.id] }),
+	idea: one(idea, { fields: [studioComment.ideaId], references: [idea.id] }),
+	author: one(user, { fields: [studioComment.userId], references: [user.id] }),
 }));
 
 export const studioSourceRelations = relations(studioSource, ({ one }) => ({

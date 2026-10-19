@@ -80,16 +80,22 @@ export async function until<A = undefined>(
 
 /** Deletes every Studio song the bot has, through the app, so a spec leaves nothing behind. */
 export async function deleteStudioSongs(page: Page): Promise<void> {
-	for (let i = 0; i < 10; i++) {
-		if (!(await page.locator("section[aria-label=Recordings] li > details").count())) return;
+	const rows = page.locator("section[aria-label=Recordings] li > details");
+	for (let i = 0; i < 12; i++) {
+		const n = await rows.count();
+		if (!n) return;
 		await page.getByRole("button", { name: "Song actions" }).click();
-		const del = page.getByRole("button", { name: "Delete song" });
+		// The device's menu deletes the open song; the rows' own menus hold a hidden copy each, so only a visible one counts.
+		const del = page.getByRole("button", { name: "Delete song" }).filter({ visible: true });
 		if (!(await del.count())) {
+			// No song open (the one before was just deleted): open the first listed and try again.
 			await page.keyboard.press("Escape");
-			return;
+			await rows.first().locator("summary button").first().click();
+			await page.waitForTimeout(400);
+			continue;
 		}
 		page.once("dialog", (d) => d.accept());
-		await del.click();
-		await page.waitForTimeout(1200);
+		await del.first().click();
+		await expect(rows).toHaveCount(n - 1, { timeout: 15_000 });
 	}
 }

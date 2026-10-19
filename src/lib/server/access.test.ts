@@ -14,6 +14,7 @@ const { fake, data, event, ran } = await vi.hoisted(async () => ({
 		projectRolesOf: vi.fn(),
 		songViewRow: vi.fn(),
 		userOwnsIdea: vi.fn(),
+		studioSongAccess: vi.fn(),
 	},
 	event: {
 		request: new Request("https://x.test/acct/proj/song", { method: "POST" }),
@@ -460,5 +461,29 @@ describe("songViewerOf", () => {
 		expect(data.logAudit).toHaveBeenCalledWith(
 			expect.objectContaining({ userId: "u1", accountId: "a1" }),
 		);
+	});
+});
+
+describe("requireStudioAccess (D7)", () => {
+	test("the creator passes whatever the membership; the band passes only when shared and editing", async () => {
+		expect(await statusOf(() => access.requireStudioAccess(signedOut, "i1"))).toBe(401);
+		data.studioSongAccess.mockResolvedValue(null);
+		expect(await statusOf(() => access.requireStudioAccess(locals("owner"), "i1"))).toBe(404);
+		data.studioSongAccess.mockResolvedValue({ accountId: "a1", createdBy: "u1", shared: false });
+		expect(await access.requireStudioAccess(locals(null), "i1")).toEqual({
+			accountId: "a1",
+			userId: "u1",
+			own: true,
+		});
+		data.studioSongAccess.mockResolvedValue({ accountId: "a1", createdBy: "u2", shared: false });
+		expect(await statusOf(() => access.requireStudioAccess(locals("editor"), "i1"))).toBe(404);
+		data.studioSongAccess.mockResolvedValue({ accountId: "a1", createdBy: "u2", shared: true });
+		expect(await access.requireStudioAccess(locals("editor"), "i1")).toEqual({
+			accountId: "a1",
+			userId: "u1",
+			own: false,
+		});
+		expect(await statusOf(() => access.requireStudioAccess(locals("viewer"), "i1"))).toBe(404);
+		expect(await statusOf(() => access.requireStudioAccess(locals(null), "i1"))).toBe(404);
 	});
 });

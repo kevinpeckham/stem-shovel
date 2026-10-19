@@ -8,6 +8,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Technical
+
+- **Migration 0091**: `studio_comment` (comments on Dawn songs) and
+  `idea.shared` (a Dawn song opened to the band). Run `bun run db:migrate`
+  (or `db:migrate:steps`) on each stage before deploying.
+
 ### Added
 
 - **Dawn: automation** (docs/dawn-daw-plan.md, phase D1 of the online
@@ -105,6 +111,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   the registry, the voice, the panel and the drop; browser spec
   `studio-library.spec.ts`; the user guide's "The sampler" and "The
   library".
+- **Dawn: collaboration** (docs/dawn-daw-plan.md, phase D7). **Share
+  with the band** opens a song to every editor of the account (it lists
+  in their Recordings panel as "the band's", with a notification linking
+  to it); the creator alone shares, stops sharing and deletes. A save from
+  another browser makes the next save here reload the latest rather than
+  overwrite it. **Comments** on a song, pinned to the playhead: a
+  thread panel, dots on the ruler that seek, notifications to the
+  creator and the thread. **Compare** on a revision says what it
+  differs in from the song now (`diffArrangements`). Browser spec
+  `studio-collab.spec.ts` with two pages on one song; the user guide's
+  "Working together".
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

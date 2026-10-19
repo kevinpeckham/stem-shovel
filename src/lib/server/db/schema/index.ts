@@ -47,6 +47,7 @@ export * from "./songMix";
 export * from "./songNotation";
 export * from "./songUserNote";
 export * from "./stem";
+export * from "./studioComment";
 export * from "./studioRevision";
 export * from "./studioSource";
 export * from "./supportRequest";

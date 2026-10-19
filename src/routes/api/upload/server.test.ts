@@ -3,6 +3,7 @@ import "../../../../tests/helpers/fakeServerModules";
 import {
 	ACCOUNT,
 	OTHER_ACCOUNT,
+	USER,
 	asEditorOf,
 	asSystemAdmin,
 	asViewerOf,
@@ -238,7 +239,7 @@ describe("onBeforeGenerateToken: Studio sources (the song's maker)", () => {
 			sizeBytes: 1234,
 		});
 		givenRow("idea", { accountId: ACCOUNT });
-		data.userOwnsIdea.mockResolvedValue(true);
+		data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: USER, shared: false });
 	});
 	it("the maker gets a token for the reserved type, capped at the size the reservation claimed", async () => {
 		await expect(tokenFor(paths.studio)).resolves.toEqual({
@@ -250,7 +251,11 @@ describe("onBeforeGenerateToken: Studio sources (the song's maker)", () => {
 		});
 	});
 	it("another member of the account is refused", async () => {
-		data.userOwnsIdea.mockResolvedValue(false);
+		data.studioSongAccess.mockResolvedValue({
+			accountId: ACCOUNT,
+			createdBy: "someone-else",
+			shared: false,
+		});
 		await expect(tokenFor(paths.studio)).rejects.toMatchObject(httpError(404));
 	});
 	it("a source already uploaded, or never reserved, is refused", async () => {

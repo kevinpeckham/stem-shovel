@@ -79,6 +79,7 @@ import type {
 	StudioArrangement,
 	StudioRevisionView,
 	StudioSongView,
+	StudioCommentView,
 	StudioSourceReserve,
 	StudioSourceView,
 } from "#lib/val/StudioSchema.js";
@@ -204,6 +205,8 @@ const {
 	songNotation,
 	studioSource,
 	studioRevision,
+	studioComment,
+	user,
 } = schema;
 
 // ---- account (org) --------------------------------------------------------
@@ -5542,6 +5545,8 @@ type StudioSongRow = {
 	notes: string;
 	createdAt: Date;
 	instruments: string | null;
+	createdBy: string | null;
+	shared: boolean;
 	sources: (typeof studioSource.$inferSelect)[];
 	revisions: { id: string; number: number; name: string | null; createdAt: Date }[];
 };
@@ -5551,7 +5556,7 @@ type StudioSongRow = {
  * the current arrangement, fetched in one query for every song, since a
  * song's older revisions can hold megabytes the page never reads.
  */
-async function studioSongViews(rows: StudioSongRow[]): Promise<StudioSongView[]> {
+async function studioSongViews(rows: StudioSongRow[], userId: string): Promise<StudioSongView[]> {
 	const newestIds = rows.flatMap((i) => (i.revisions[0] ? [i.revisions[0].id] : []));
 	const current = new Map<string, StudioArrangement>();
 	if (newestIds.length > 0) {
@@ -5565,6 +5570,8 @@ async function studioSongViews(rows: StudioSongRow[]): Promise<StudioSongView[]>
 		rows.map(async (i) => ({
 			id: i.id,
 			title: i.title,
+			shared: i.shared,
+			own: i.createdBy === userId,
 			notes: i.notes,
 			createdAt: i.createdAt,
 			instruments: parseIdeaInstruments(i.instruments),
@@ -5576,28 +5583,157 @@ async function studioSongViews(rows: StudioSongRow[]): Promise<StudioSongView[]>
 }
 
 /** The user's Studio songs (ideas of kind "song", theirs whichever account holds the files), newest first. */
-export async function listStudioSongs(userId: string): Promise<StudioSongView[]> {
+/** The user's Dawn songs (ideas of kind "song", theirs whichever account holds the files) and the songs shared with the band in the accounts they edit (D7), newest first. */
+export async function listStudioSongs(
+	userId: string,
+	editorAccountIds: string[] = [],
+): Promise<StudioSongView[]> {
+	const mine = eq(idea.createdBy, userId);
 	const rows = await db.query.idea.findMany({
-		where: and(eq(idea.createdBy, userId), eq(idea.kind, "song")),
+		where: and(
+			eq(idea.kind, "song"),
+			editorAccountIds.length
+				? or(mine, and(eq(idea.shared, true), inArray(idea.accountId, editorAccountIds)))
+				: mine,
+		),
 		orderBy: [desc(idea.createdAt)],
-		columns: { id: true, title: true, notes: true, createdAt: true, instruments: true },
+		columns: {
+			id: true,
+			title: true,
+			notes: true,
+			createdAt: true,
+			instruments: true,
+			createdBy: true,
+			shared: true,
+		},
 		with: studioSongWith(),
 	});
-	return studioSongViews(rows);
+	return studioSongViews(rows, userId);
+}
+
+/** Who may work on a Dawn song (access.ts requireStudioAccess): its account, its creator and whether it is shared. */
+export async function studioSongAccess(ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.id, ideaId), eq(idea.kind, "song")),
+		columns: { accountId: true, createdBy: true, shared: true },
+	});
+	return row ?? null;
+}
+
+/** Shares a Dawn song with the band, or takes it back. */
+export async function setStudioShared(accountId: string, ideaId: string, shared: boolean) {
+	const res = await db
+		.update(idea)
+		.set({ shared, updatedAt: new Date() })
+		.where(and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")))
+		.returning({ id: idea.id });
+	return res.length > 0;
+}
+
+// ---- Dawn comments (D7) ---------------------------------------------------
+
+function studioCommentView(c: {
+	id: string;
+	userId: string;
+	body: string;
+	at: number | null;
+	createdAt: Date;
+	author: { name: string } | null;
+}): StudioCommentView {
+	return {
+		id: c.id,
+		userId: c.userId,
+		userName: c.author?.name ?? "Someone",
+		body: c.body,
+		at: c.at,
+		createdAt: c.createdAt,
+	};
+}
+
+export async function listStudioComments(
+	accountId: string,
+	ideaId: string,
+): Promise<StudioCommentView[]> {
+	const rows = await db.query.studioComment.findMany({
+		where: and(eq(studioComment.accountId, accountId), eq(studioComment.ideaId, ideaId)),
+		orderBy: [asc(studioComment.createdAt)],
+		with: { author: { columns: { name: true } } },
+	});
+	return rows.map(studioCommentView);
+}
+
+export async function createStudioComment(
+	accountId: string,
+	ideaId: string,
+	userId: string,
+	input: { body: string; at: number | null },
+): Promise<StudioCommentView | null> {
+	const [row] = await db
+		.insert(studioComment)
+		.values({ accountId, ideaId, userId, body: input.body, at: input.at })
+		.returning();
+	if (!row) return null;
+	const author = await db.query.user.findFirst({
+		where: eq(user.id, userId),
+		columns: { name: true },
+	});
+	return studioCommentView({ ...row, author: author ?? null });
+}
+
+export async function studioCommentOwner(id: string) {
+	const row = await db.query.studioComment.findFirst({
+		where: eq(studioComment.id, id),
+		columns: { accountId: true, ideaId: true, userId: true },
+	});
+	return row ?? null;
+}
+
+export async function deleteStudioComment(accountId: string, id: string) {
+	const res = await db
+		.delete(studioComment)
+		.where(and(eq(studioComment.accountId, accountId), eq(studioComment.id, id)))
+		.returning({ id: studioComment.id });
+	return res.length > 0;
+}
+
+/** Who hears about a comment on a Dawn song: its creator and everyone who commented on it. */
+export async function studioCommentAudience(accountId: string, ideaId: string): Promise<string[]> {
+	const [song, rows] = await Promise.all([
+		db.query.idea.findFirst({
+			where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
+			columns: { createdBy: true, title: true },
+		}),
+		db
+			.selectDistinct({ userId: studioComment.userId })
+			.from(studioComment)
+			.where(and(eq(studioComment.accountId, accountId), eq(studioComment.ideaId, ideaId))),
+	]);
+	const ids = new Set(rows.map((r) => r.userId));
+	if (song?.createdBy) ids.add(song.createdBy);
+	return [...ids];
 }
 
 /** One Studio song in the account, or null (the caller checked ownership). */
 export async function studioSongView(
 	accountId: string,
 	ideaId: string,
+	userId = "",
 ): Promise<StudioSongView | null> {
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")),
-		columns: { id: true, title: true, notes: true, createdAt: true, instruments: true },
+		columns: {
+			id: true,
+			title: true,
+			notes: true,
+			createdAt: true,
+			instruments: true,
+			createdBy: true,
+			shared: true,
+		},
 		with: studioSongWith(),
 	});
 	if (!row) return null;
-	const [view] = await studioSongViews([row]);
+	const [view] = await studioSongViews([row], userId);
 	return view;
 }
 
@@ -5784,7 +5920,8 @@ export async function saveStudioAutosave(
 	userId: string,
 	ideaId: string,
 	data: StudioArrangement,
-): Promise<{ id: string; number: number; unchanged: boolean } | null> {
+	base?: number,
+): Promise<{ id: string; number: number; unchanged: boolean; conflict?: boolean } | null> {
 	const owner = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId)),
 		columns: { id: true },
@@ -5794,6 +5931,9 @@ export async function saveStudioAutosave(
 	const newest = await newestStudioRevision(accountId, ideaId);
 	if (newest && newest.hash === hash)
 		return { id: newest.id, number: newest.number, unchanged: true };
+	// Someone else saved since this browser last loaded (D7): nothing is written; the browser reloads the newest.
+	if (base !== undefined && newest && newest.number > base)
+		return { id: newest.id, number: newest.number, unchanged: false, conflict: true };
 	const row = await insertStudioRevision(accountId, userId, ideaId, null, data, hash);
 	const all = await db
 		.select({ id: studioRevision.id, number: studioRevision.number, name: studioRevision.name })
@@ -5867,7 +6007,6 @@ export async function deleteStudioRevision(accountId: string, id: string) {
 }
 
 /** A revision's arrangement, or null (a revision preview, when the page wants one; the restore reads the row itself). */
-// fallow-ignore-next-line unused-export -- part of the Studio's data contract (docs/multitrack-recorder.md); no caller yet
 export async function studioRevisionData(
 	accountId: string,
 	id: string,

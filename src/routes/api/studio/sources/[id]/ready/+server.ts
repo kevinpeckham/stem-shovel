@@ -1,4 +1,4 @@
-import { requireOwnIdea } from "#lib/server/access.js";
+import { requireStudioAccess } from "#lib/server/access.js";
 import { isOurBlobUrl } from "#lib/server/blob.js";
 import { markStudioSourceReady, studioSourceOwner } from "#lib/server/data.js";
 import { parseJsonBody } from "#lib/server/parseJsonBody.js";
@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const ready = await parseJsonBody(request, StudioSourceReadySchema);
 	const source = await studioSourceOwner(params.id);
 	if (!source) error(404, "Song not found");
-	const { accountId } = await requireOwnIdea(locals, source.ideaId);
+	const { accountId } = await requireStudioAccess(locals, source.ideaId);
 	if (!isOurBlobUrl(ready.url, source.pathname)) error(400, "That is not the uploaded file's URL");
 	await markStudioSourceReady(accountId, params.id, ready);
 	return Response.json({ ok: true });

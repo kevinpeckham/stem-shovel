@@ -38,10 +38,10 @@ const arrangement = {
 	clips: [],
 };
 
-/** The idea exists in ACCOUNT; `userOwnsIdea` decides who made it. */
-function givenIdeaOwnedBy(userId: string) {
+/** The song exists in ACCOUNT; `studioSongAccess` says who made it and whether the band may work on it (D7). */
+function givenIdeaOwnedBy(userId: string, shared = false) {
 	givenRow("idea", { accountId: ACCOUNT });
-	data.userOwnsIdea.mockImplementation(async (_account: string, user: string) => user === userId);
+	data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: userId, shared });
 }
 
 beforeEach(resetRemoteMocks);
@@ -85,7 +85,7 @@ describe("the song's own functions (requireOwnIdea)", () => {
 			fn: studio.autosaveArrangement,
 			input: { ideaId: IDEA, data: arrangement },
 			dataFn: "saveStudioAutosave",
-			args: [ACCOUNT, USER, IDEA, arrangement],
+			args: [ACCOUNT, USER, IDEA, arrangement, undefined],
 			result: { id: REVISION, number: 2, name: null },
 		},
 		{
@@ -101,7 +101,7 @@ describe("the song's own functions (requireOwnIdea)", () => {
 			fn: studio.studioSong,
 			input: { id: IDEA },
 			dataFn: "studioSongView",
-			args: [ACCOUNT, IDEA],
+			args: [ACCOUNT, IDEA, USER],
 			result: { id: IDEA, title: "Song" },
 		},
 	];
@@ -118,7 +118,7 @@ describe("the song's own functions (requireOwnIdea)", () => {
 				expect(data[c.dataFn]).not.toHaveBeenCalled();
 			});
 			it("404 for an unknown song", async () => {
-				givenRow("idea", null);
+				data.studioSongAccess.mockResolvedValue(null);
 				asEditorOf(ACCOUNT);
 				await expect(call(c.fn, c.input)).rejects.toMatchObject(httpError(404));
 			});
@@ -220,5 +220,39 @@ describe("deleteStudioSource", () => {
 			deleted: true,
 		});
 		expect(data.deleteStudioSource).toHaveBeenCalledWith(ACCOUNT, SOURCE);
+	});
+});
+
+describe("a song shared with the band (D7)", () => {
+	const CREATOR = fakeId("user-three");
+	it("an editor of the account works on it; a viewer and an outsider do not", async () => {
+		givenIdeaOwnedBy(CREATOR, true);
+		asEditorOf(ACCOUNT);
+		data.saveStudioAutosave.mockResolvedValue({ id: REVISION, number: 3, unchanged: false });
+		await expect(
+			call(studio.autosaveArrangement, { ideaId: IDEA, data: arrangement, base: 2 }),
+		).resolves.toEqual({ id: REVISION, number: 3, unchanged: false });
+		expect(data.saveStudioAutosave).toHaveBeenCalledWith(ACCOUNT, USER, IDEA, arrangement, 2);
+		asViewerOf(ACCOUNT);
+		await expect(
+			call(studio.autosaveArrangement, { ideaId: IDEA, data: arrangement }),
+		).rejects.toMatchObject(httpError(404));
+		asOutsider();
+		await expect(
+			call(studio.autosaveArrangement, { ideaId: IDEA, data: arrangement }),
+		).rejects.toMatchObject(httpError(404));
+	});
+	it("only the creator shares or unshares, and the band hears when it opens up", async () => {
+		givenIdeaOwnedBy(CREATOR, true);
+		asEditorOf(ACCOUNT);
+		await expect(
+			call(studio.setStudioShared, { ideaId: IDEA, shared: false }),
+		).rejects.toMatchObject(httpError(403));
+		givenIdeaOwnedBy(USER);
+		data.setStudioShared.mockResolvedValue(true);
+		await expect(call(studio.setStudioShared, { ideaId: IDEA, shared: true })).resolves.toEqual({
+			shared: true,
+		});
+		expect(data.setStudioShared).toHaveBeenCalledWith(ACCOUNT, IDEA, true);
 	});
 });
