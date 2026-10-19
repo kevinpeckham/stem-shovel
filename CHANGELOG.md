@@ -8,6 +8,25 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Sessions review: waveforms, comments, a chat and a search.** Every
+  session recording and every demo now has a waveform, measured on the
+  server when the MP3 renders (`measurePeaks`: ffmpeg's PCM streamed into
+  `pcm16Peaks`, so an hour's recording costs the phone nothing; a
+  `demo-peaks` / `session-peaks` job measures the ones rendered before).
+  Comments on a recording (`session_comment`) and on a demo
+  (`comment.demo_id`), with positions as time, from the waveform's
+  ⌘-click menu or the heading's pencil, shown as bubbles on the waveform
+  and in a list (`RecordingReview`), edited and deleted by their author
+  (or an admin), with notifications that open the recording or the demo.
+  A chat per session (`session_chat_message`, `session_chat_read`) through
+  the song chat's components and remote functions, which now take a song
+  or a session. A search over sessions, recordings and comments on the
+  Sessions page; `?recording=`, `?session=…&open=chat` and `?demo=` deep
+  links. Migration 0092. docs/uploads-and-blob.md "Sessions review",
+  docs/chat.md "Sessions"; the user guides for sessions, chat and comments.
+
 ### Technical
 
 - **Migration 0091**: `studio_comment` (comments on Dawn songs) and

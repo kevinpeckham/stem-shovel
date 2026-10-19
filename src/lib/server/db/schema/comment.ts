@@ -1,6 +1,7 @@
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import { account } from "./account";
+import { demo } from "./demo";
 import { id, timestamps } from "./columns";
 import { song } from "./song";
 import { songMix } from "./songMix";
@@ -11,7 +12,9 @@ import { user } from "./user";
  * optionally a position in the song (`at`, seconds) so it can sit on the
  * comment timeline under the stems. `editedAt` marks a comment changed
  * after it was posted. `mixId` set makes it feedback on that mix
- * (docs/mixes.md), kept with the mix rather than in the song's stream.
+ * (docs/mixes.md), kept with the mix rather than in the song's stream;
+ * `demoId` set makes it a comment on that demo recording, shown under its
+ * waveform in the song's Demos view.
  */
 export const comment = table(
 	"comment",
@@ -30,6 +33,7 @@ export const comment = table(
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		mixId: t.text("mix_id").references(() => songMix.id, { onDelete: "cascade" }),
+		demoId: t.text("demo_id").references(() => demo.id, { onDelete: "cascade" }),
 		title: t.text("title").notNull(),
 		body: t.text("body").notNull(),
 		at: t.real("at"),
@@ -40,5 +44,6 @@ export const comment = table(
 		t.index("comment_song_idx").on(table.songId, table.createdAt),
 		t.index("comment_user_idx").on(table.userId),
 		t.index("comment_mix_idx").on(table.mixId),
+		t.index("comment_demo_idx").on(table.demoId),
 	],
 );

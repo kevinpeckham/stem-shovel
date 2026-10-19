@@ -23,14 +23,21 @@
 		queue: SessionTrack[];
 		current?: string | null;
 		paused?: boolean;
+		/** The playhead and the length of the current track, for a recording's review row (RecordingReview). */
+		currentTime?: number;
+		duration?: number;
 	}
-	let { queue, current = $bindable(null), paused = $bindable(true) }: Props = $props();
+	let {
+		queue,
+		current = $bindable(null),
+		paused = $bindable(true),
+		currentTime = $bindable(0),
+		duration = $bindable(0),
+	}: Props = $props();
 
 	let track = $derived(queue.find((t) => t.id === current) ?? null);
 	let index = $derived(track ? queue.indexOf(track) : -1);
 	let audio = $state<HTMLAudioElement | null>(null);
-	let currentTime = $state(0);
-	let duration = $state(0);
 	let volume = $state(1);
 
 	export async function play(id: string) {
@@ -63,9 +70,17 @@
 		else paused = true;
 	}
 	function seek(e: Event) {
-		const at = Number((e.currentTarget as HTMLInputElement).value);
+		seekTo(Number((e.currentTarget as HTMLInputElement).value));
+	}
+	/** A comment's Go to, the review row's waveform and the page's menu: the current track to a moment. */
+	export function seekTo(seconds: number) {
+		const at = Math.max(0, duration ? Math.min(seconds, duration) : seconds);
 		if (audio) audio.currentTime = at;
 		currentTime = at;
+	}
+	/** Where the current track is, for the comment form's Playhead button. */
+	export function currentPosition() {
+		return currentTime;
 	}
 	// Space toggles the player as the song transport does; Home rewinds.
 	function onwindowkeydown(e: KeyboardEvent) {

@@ -54,7 +54,30 @@ describe("createComment", () => {
 			body: "Louder",
 			at: null,
 			mixId: "",
+			demoId: "",
 		});
+	});
+	it("a comment on a demo (the Demos view's review): the demo must be this song's, and its position is time", async () => {
+		asViewerOf(ACCOUNT);
+		const DEMO = fakeId("demo-one");
+		data.demoOwnership.mockResolvedValue({ id: DEMO, songId: fakeId("song-two"), label: "Memo" });
+		await expect(call(comments.createComment, { ...input, demoId: DEMO })).rejects.toMatchObject(
+			httpError(404),
+		);
+		data.demoOwnership.mockResolvedValue({ id: DEMO, songId: SONG, label: "Memo" });
+		await expect(
+			call(comments.createComment, { ...input, demoId: DEMO, position: "12|3" }),
+		).rejects.toBeDefined();
+		await expect(
+			call(comments.createComment, { ...input, demoId: DEMO, position: "1:02.5" }),
+		).resolves.toEqual({ id: COMMENT });
+		expect(data.createComment).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			SONG,
+			USER,
+			expect.objectContaining({ demoId: DEMO, at: 62.5 }),
+		);
+		expect(data.songGrid).not.toHaveBeenCalled();
 	});
 	it("feedback on a mix (docs/mixes.md): the mix must be this song's, and the notice names it", async () => {
 		asViewerOf(ACCOUNT);

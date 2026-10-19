@@ -114,6 +114,25 @@ feed, each prefixed with its song's name and linking to that song's
 chat, with no composer, so a conversation lives in one place. Not built;
 the tile badges above are the first step and may be enough.
 
+## Sessions (2026-10-19)
+
+A practice or a show has a chat of its own on the Sessions page
+(docs/uploads-and-blob.md, "Sessions review"): `session_chat_message` and
+`session_chat_read` mirror the song's two tables under a
+`recording_session`, with the same data functions beside the song's
+(`listSessionChatMessages`, `createSessionChatMessage`,
+`sessionChatMessageOwnership`, `updateSessionChatMessage`,
+`deleteSessionChatMessage`, `sessionChatSummaryOf`,
+`markSessionChatRead`). The remote functions are the same five: the
+schemas carry a scope, `songId` or `sessionId` (exactly one, `oneChatScope`,
+a 400 otherwise), `sendMessage`, `markChatRead` and `chatSince` branch on
+it, and `editMessage` and `deleteMessage` find the message in whichever
+table holds it (`ownerOf`). Any member of the account reads and writes
+(`memberOf` on `accountOfRecordingSession`). `SongChat` and `ChatComposer`
+take `sessionId` in place of `songId`; the session page keeps what it
+fetched per session and shows one panel at a time. `notifySessionChat`
+reaches the account's members with `?session=<id>&open=chat`.
+
 ## Not built
 
 Mentions, reactions, attachments in messages, a project-wide chat, and

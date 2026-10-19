@@ -336,6 +336,20 @@
 	}
 
 	let readyDemos = $derived(data.song.demos.filter((d) => d.status === "ready" && d.url));
+	/** While a demo's MP3 renders or its waveform is measured in the jobs function, the page refreshes itself (ten minutes at most). */
+	let demosPending = $derived(
+		readyDemos.some(
+			(d) => d.playbackStatus !== "failed" && (d.playbackStatus !== "ready" || d.peaks === null),
+		),
+	);
+	onMount(() => {
+		let ticks = 0;
+		const timer = setInterval(() => {
+			if (++ticks > 120) return;
+			if (demosPending && !demoBusy && !document.hidden) void refreshAll();
+		}, 5000);
+		return () => clearInterval(timer);
+	});
 	// The mixes view (docs/mixes.md): the song's mixes, the chosen one from ?mix= (a notification's or a share's link).
 	let readyMixes = $derived(data.song.mixes.filter((m) => m.status === "ready" && m.url));
 	let mixList = $state<MixList | null>(null);
@@ -570,6 +584,7 @@
 		openChatFromUrl();
 		openCommentsFromUrl();
 		openMixFromUrl();
+		void openDemoFromUrl();
 	});
 	let chatUnread = $derived(
 		data.chat ? unreadCount(chatMessages, chatReadAt, data.user?.id ?? null) : 0,
@@ -736,15 +751,18 @@
 			.sort((a, b) => a.at - b.at),
 	);
 	let commentPanel = $state<HTMLDivElement | null>(null);
-	let commentDraft = $state<{ id: string | null; title: string; body: string; at: string }>({
-		id: null,
-		title: "",
-		body: "",
-		at: "",
-	});
+	let commentDraft = $state<{
+		id: string | null;
+		title: string;
+		body: string;
+		at: string;
+		/** A comment on a demo recording (docs/uploads-and-blob.md, "Sessions" review): its id; "" for the song's stream. */
+		demoId: string;
+	}>({ id: null, title: "", body: "", at: "", demoId: "" });
 	let commentError = $state<string | null>(null);
+	let demoTarget = $derived(readyDemos.find((d) => d.id === commentDraft.demoId) ?? null);
 	function openComment(draft: Partial<typeof commentDraft> = {}) {
-		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
+		commentDraft = { id: null, title: "", body: "", at: "", demoId: "", ...draft };
 		commentError = null;
 		// The form fields keep what was last typed; push the draft into them explicitly.
 		const f = commentDraft.id ? updateComment.fields : createComment.fields;
@@ -755,6 +773,35 @@
 	}
 	function editComment(c: (typeof data.comments)[number]) {
 		openComment({ id: c.id, title: c.title, body: c.body, at: c.at === null ? "" : editPos(c.at) });
+	}
+	/** A demo's comment: positions are time, the demo panel's playhead (docs/uploads-and-blob.md, "Sessions" review). */
+	function editDemoComment(c: (typeof data.demoComments)[number]) {
+		openComment({
+			id: c.id,
+			demoId: c.demoId,
+			title: c.title,
+			body: c.body,
+			at: c.at === null ? "" : formatTime(c.at, 2),
+		});
+	}
+	/** The ⌘-click menu on a demo's waveform: Seek here, Comment here. */
+	let demoMenuAt = $state<{
+		demo: { id: string; label: string };
+		seconds: number;
+		x: number;
+		y: number;
+	} | null>(null);
+	/** A comment notification's link ends in ?demo=<id>: the Demos view opens on that demo, and the query goes. */
+	async function openDemoFromUrl() {
+		const url = new URL(page.url.href);
+		const id = url.searchParams.get("demo");
+		if (!id) return;
+		url.searchParams.delete("demo");
+		replaceState(url, {});
+		if (!readyDemos.some((d) => d.id === id)) return;
+		showView("demos");
+		await tick();
+		demoPanel?.show(id);
 	}
 
 	// Ctrl / ⌘-click (or right-click) on a waveform: a small menu at the pointer.
@@ -770,6 +817,7 @@
 	}
 	function closeStemContext(e: Event) {
 		if (stemMenuAt && !(e.target as HTMLElement).closest("[data-stem-context]")) stemMenuAt = null;
+		if (demoMenuAt && !(e.target as HTMLElement).closest("[data-demo-context]")) demoMenuAt = null;
 		for (const menu of [settingsNavEl, uploadsMenuEl, downloadsMenuEl]) {
 			if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
 		}
@@ -2988,6 +3036,11 @@
 						minHeight={Math.max(560, stemBoxHeight)}
 						canEdit={data.canEdit}
 						onremove={removeDemo}
+						comments={data.demoComments}
+						canComment={data.canComment}
+						card={demoCommentCard}
+						oncomment={(d) => openComment({ demoId: d.id })}
+						oncontext={(d, seconds, x, y) => (demoMenuAt = { demo: d, seconds, x, y })}
 					/>
 				</div>
 			{:else if playerView === "mixes"}
@@ -4057,7 +4110,10 @@
 		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
 	>
 		<div class="mb-4 flex items-center justify-between gap-4">
-			<h2 class="heading-2 mb-0">{commentDraft.id ? "Edit comment" : "Add a comment"}</h2>
+			<h2 class="heading-2 mb-0">
+				{commentDraft.id ? "Edit comment" : "Add a comment"}{#if demoTarget}
+					on demo "{demoTarget.label}"{/if}
+			</h2>
 			<button
 				class="button button-xs"
 				type="button"
@@ -4109,16 +4165,27 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={POSITION_PLACEHOLDER[mode]}
+							placeholder={commentDraft.demoId ? "0:00.0" : POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
-						<button
-							class="button button-xs shrink-0"
-							type="button"
-							disabled={!playerEngine || playerEngine.status !== "ready"}
-							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
-							>Playhead</button
-						>
+						{#if commentDraft.demoId}
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								disabled={!demoPanel}
+								onclick={() =>
+									remoteForm.fields.position.set(formatTime(demoPanel?.currentPosition() ?? 0, 2))}
+								>Playhead</button
+							>
+						{:else}
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								disabled={!playerEngine || playerEngine.status !== "ready"}
+								onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+								>Playhead</button
+							>
+						{/if}
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
 						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
@@ -4144,6 +4211,7 @@
 				})}
 			>
 				<input {...remoteForm.fields.songId.as("hidden", data.song.id)} />
+				<input {...remoteForm.fields.demoId.as("hidden", commentDraft.demoId)} />
 				<label class="block">
 					<span class="text-sm opacity-80">Title</span>
 					<input
@@ -4172,16 +4240,27 @@
 					<span class="mt-1 flex items-center gap-2">
 						<input
 							class="field font-mono text-sm"
-							placeholder={POSITION_PLACEHOLDER[mode]}
+							placeholder={commentDraft.demoId ? "0:00.0" : POSITION_PLACEHOLDER[mode]}
 							{...remoteForm.fields.position.as("text", commentDraft.at)}
 						/>
-						<button
-							class="button button-xs shrink-0"
-							type="button"
-							disabled={!playerEngine || playerEngine.status !== "ready"}
-							onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
-							>Playhead</button
-						>
+						{#if commentDraft.demoId}
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								disabled={!demoPanel}
+								onclick={() =>
+									remoteForm.fields.position.set(formatTime(demoPanel?.currentPosition() ?? 0, 2))}
+								>Playhead</button
+							>
+						{:else}
+							<button
+								class="button button-xs shrink-0"
+								type="button"
+								disabled={!playerEngine || playerEngine.status !== "ready"}
+								onclick={() => remoteForm.fields.position.set(editPos(playerEngine?.position ?? 0))}
+								>Playhead</button
+							>
+						{/if}
 					</span>
 					{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
 						<p class="mt-1 text-sm text-red-400">{issue.message}</p>
@@ -4192,6 +4271,90 @@
 					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
 				>
 			</form>
+		{/if}
+	</div>
+{/if}
+
+{#snippet demoCommentCard(id: string)}
+	{@const c = data.demoComments.find((x) => x.id === id)}
+	{#if c}
+		{@const remove = deleteComment.for(`demo:${c.id}`)}
+		<div class="flex items-baseline justify-between gap-3">
+			<h3 class="font-600">{c.title}</h3>
+			{#if c.editedAt}<span
+					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
+					>edited</span
+				>{/if}
+		</div>
+		<p class="mt-1 text-12px opacity-70">
+			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
+				· {formatTime(c.at, 1)}{/if}
+		</p>
+		<p class="mt-2 whitespace-pre-line">{c.body}</p>
+		<div class="mt-3 flex gap-3 text-12px">
+			{#if c.at !== null}
+				<button type="button" class="link-dim" onclick={() => demoPanel?.seekTo(c.at ?? 0)}
+					>Go to</button
+				>
+			{/if}
+			{#if canEditComment(c)}
+				<button type="button" class="link-dim" onclick={() => editDemoComment(c)}>Edit</button>
+			{/if}
+			{#if canDeleteComment(c)}
+				<form
+					{...remove.enhance(async ({ submit }) => {
+						if (!confirm(`Delete the comment "${c.title}"?`)) return;
+						await submit();
+						notify("Comment deleted");
+					})}
+				>
+					<input {...remove.fields.id.as("hidden", c.id)} />
+					<button class="link-dim" disabled={!!remove.pending}
+						>{remove.pending ? "Deleting…" : "Delete"}</button
+					>
+				</form>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#if demoMenuAt}
+	<!-- Ctrl / ⌘-click menu on a demo's waveform, at the pointer -->
+	<div
+		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
+		style:left="{Math.min(demoMenuAt.x, window.innerWidth - 240)}px"
+		style:top="{demoMenuAt.y + 4}px"
+		role="menu"
+		data-demo-context
+	>
+		<div class="truncate px-3 py-1.5 text-xs opacity-70">
+			{demoMenuAt.demo.label} · {formatTime(demoMenuAt.seconds, 1)}
+		</div>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			onclick={() => {
+				demoPanel?.seekTo(demoMenuAt?.seconds ?? 0);
+				demoMenuAt = null;
+			}}
+		>
+			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
+		</button>
+		{#if data.canComment}
+			<button
+				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+				type="button"
+				role="menuitem"
+				onclick={() => {
+					const at = formatTime(demoMenuAt?.seconds ?? 0, 2);
+					const demoId = demoMenuAt?.demo.id ?? "";
+					demoMenuAt = null;
+					openComment({ at, demoId });
+				}}
+			>
+				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
+			</button>
 		{/if}
 	</div>
 {/if}

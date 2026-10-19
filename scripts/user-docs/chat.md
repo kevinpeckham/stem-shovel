@@ -28,3 +28,7 @@ Hover a message of your own for **Edit** and **Delete**. An edited message says 
 ## Notifications
 
 A new message reaches everyone on the project in their inbox, folded into one item per song. It goes to email with the same setting as comments (**Settings → Notifications**).
+
+## Sessions
+
+A practice or a show on the Sessions page has a chat of its own, from the **Chat** button in the session's header. It works the same way, for everyone in the account, with a dot on the button for messages you have not seen; a time in a message jumps the session player there.

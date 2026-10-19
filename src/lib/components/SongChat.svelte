@@ -18,7 +18,9 @@
 	 * closing and reopening the panel keeps them.
 	 */
 	interface Props {
-		songId: string;
+		/** The chat's song, or its session (a practice or a show, docs/chat.md "Sessions"): one of them. */
+		songId?: string;
+		sessionId?: string;
 		messages: ChatMessageRow[];
 		readAt: number | null;
 		/** The signed-in person, who may edit their own messages. */
@@ -31,7 +33,8 @@
 		pollMs?: number;
 	}
 	let {
-		songId,
+		songId = "",
+		sessionId = "",
 		messages = $bindable(),
 		readAt = $bindable(),
 		me,
@@ -81,7 +84,7 @@
 		if (!me || marking) return;
 		marking = true;
 		try {
-			const r = await markChatRead({ songId });
+			const r = await markChatRead({ songId, sessionId });
 			readAt = r.readAt;
 		} catch (e) {
 			console.error("[chat] mark read", e);
@@ -95,7 +98,7 @@
 		if (polling || typeof document === "undefined" || document.hidden) return;
 		polling = true;
 		try {
-			const rows = await chatSince({ songId, after: latest });
+			const rows = await chatSince({ songId, sessionId, after: latest });
 			merge(rows);
 			if (othersPast(rows)) {
 				await scrollToEnd();
@@ -150,7 +153,9 @@
 	>
 		{#if messages.length === 0}
 			<p class="opacity-80">
-				{canWrite ? "Nothing yet. Say something about this song." : "Nothing in the chat yet."}
+				{canWrite
+					? `Nothing yet. Say something about this ${sessionId ? "session" : "song"}.`
+					: "Nothing in the chat yet."}
 			</p>
 		{:else}
 			<ol class="grid gap-3">
@@ -190,6 +195,6 @@
 		{/if}
 	</div>
 	{#if canWrite && me}
-		<ChatComposer {songId} onsent={sent} />
+		<ChatComposer {songId} {sessionId} about={sessionId ? "session" : "song"} onsent={sent} />
 	{/if}
 </div>

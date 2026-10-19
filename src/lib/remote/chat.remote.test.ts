@@ -174,3 +174,125 @@ describe("markChatRead and chatSince", () => {
 		expect(data.listChatMessages).toHaveBeenCalledWith(SONG, 5);
 	});
 });
+
+describe('a session\'s chat (docs/chat.md, "Sessions")', () => {
+	const SESSION = fakeId("session-one");
+	beforeEach(() => {
+		givenRow("recordingSession", { accountId: ACCOUNT });
+		data.createSessionChatMessage.mockResolvedValue(ROW);
+		data.listSessionChatMessages.mockResolvedValue([ROW]);
+		data.markSessionChatRead.mockResolvedValue(99);
+	});
+	it("a message names a song or a session, not both and not neither", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.sendMessage, { body: "Hi" })).rejects.toMatchObject(httpError(400));
+		await expect(
+			call(chat.sendMessage, { songId: SONG, sessionId: SESSION, body: "Hi" }),
+		).rejects.toMatchObject(httpError(400));
+		expect(data.createChatMessage).not.toHaveBeenCalled();
+		expect(data.createSessionChatMessage).not.toHaveBeenCalled();
+	});
+	it("a member of the account writes under the session, and the account hears of it", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).resolves.toEqual({
+			message: ROW,
+		});
+		expect(data.createSessionChatMessage).toHaveBeenCalledWith(ACCOUNT, SESSION, USER, "Hi");
+		expect(data.createChatMessage).not.toHaveBeenCalled();
+	});
+	it("404 for a stranger to the account", async () => {
+		asOutsider();
+		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).rejects.toMatchObject(
+			httpError(404),
+		);
+		await expect(call(chat.chatSince, { sessionId: SESSION })).rejects.toMatchObject(
+			httpError(404),
+		);
+	});
+	it("reads, polls and marks the session's chat", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.chatSince, { sessionId: SESSION, after: 7 })).resolves.toEqual([ROW]);
+		expect(data.listSessionChatMessages).toHaveBeenCalledWith(SESSION, 7);
+		await expect(call(chat.markChatRead, { sessionId: SESSION })).resolves.toEqual({ readAt: 99 });
+		expect(data.markSessionChatRead).toHaveBeenCalledWith(SESSION, USER);
+	});
+	it("a session message is edited and deleted through the same forms, found in its own table", async () => {
+		data.chatMessageOwnership.mockResolvedValue(null);
+		data.sessionChatMessageOwnership.mockResolvedValue({
+			id: MESSAGE,
+			sessionId: SESSION,
+			accountId: ACCOUNT,
+			userId: USER,
+		});
+		data.updateSessionChatMessage.mockResolvedValue({ ...ROW, body: "Edited", editedAt: 2 });
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.editMessage, { id: MESSAGE, body: "Edited" })).resolves.toEqual({
+			message: { ...ROW, body: "Edited", editedAt: 2 },
+		});
+		expect(data.updateSessionChatMessage).toHaveBeenCalledWith(MESSAGE, "Edited");
+		await expect(call(chat.deleteMessage, { id: MESSAGE })).resolves.toEqual({ deleted: true });
+		expect(data.deleteSessionChatMessage).toHaveBeenCalledWith(MESSAGE);
+		expect(data.deleteChatMessage).not.toHaveBeenCalled();
+	});
+});
+
+describe('a session\'s chat (docs/chat.md, "Sessions")', () => {
+	const SESSION = fakeId("session-one");
+	beforeEach(() => {
+		givenRow("recordingSession", { accountId: ACCOUNT });
+		data.createSessionChatMessage.mockResolvedValue(ROW);
+		data.listSessionChatMessages.mockResolvedValue([ROW]);
+		data.markSessionChatRead.mockResolvedValue(99);
+	});
+	it("a message names a song or a session, not both and not neither", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.sendMessage, { body: "Hi" })).rejects.toMatchObject(httpError(400));
+		await expect(
+			call(chat.sendMessage, { songId: SONG, sessionId: SESSION, body: "Hi" }),
+		).rejects.toMatchObject(httpError(400));
+		expect(data.createChatMessage).not.toHaveBeenCalled();
+		expect(data.createSessionChatMessage).not.toHaveBeenCalled();
+	});
+	it("a member of the account writes under the session", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).resolves.toEqual({
+			message: ROW,
+		});
+		expect(data.createSessionChatMessage).toHaveBeenCalledWith(ACCOUNT, SESSION, USER, "Hi");
+		expect(data.createChatMessage).not.toHaveBeenCalled();
+	});
+	it("404 for a stranger to the account", async () => {
+		asOutsider();
+		await expect(call(chat.sendMessage, { sessionId: SESSION, body: "Hi" })).rejects.toMatchObject(
+			httpError(404),
+		);
+		await expect(call(chat.chatSince, { sessionId: SESSION })).rejects.toMatchObject(
+			httpError(404),
+		);
+	});
+	it("reads, polls and marks the session's chat", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.chatSince, { sessionId: SESSION, after: 7 })).resolves.toEqual([ROW]);
+		expect(data.listSessionChatMessages).toHaveBeenCalledWith(SESSION, 7);
+		await expect(call(chat.markChatRead, { sessionId: SESSION })).resolves.toEqual({ readAt: 99 });
+		expect(data.markSessionChatRead).toHaveBeenCalledWith(SESSION, USER);
+	});
+	it("a session message is edited and deleted through the same forms, found in its own table", async () => {
+		data.chatMessageOwnership.mockResolvedValue(null);
+		data.sessionChatMessageOwnership.mockResolvedValue({
+			id: MESSAGE,
+			sessionId: SESSION,
+			accountId: ACCOUNT,
+			userId: USER,
+		});
+		data.updateSessionChatMessage.mockResolvedValue({ ...ROW, body: "Edited", editedAt: 2 });
+		asEditorOf(ACCOUNT);
+		await expect(call(chat.editMessage, { id: MESSAGE, body: "Edited" })).resolves.toEqual({
+			message: { ...ROW, body: "Edited", editedAt: 2 },
+		});
+		expect(data.updateSessionChatMessage).toHaveBeenCalledWith(MESSAGE, "Edited");
+		await expect(call(chat.deleteMessage, { id: MESSAGE })).resolves.toEqual({ deleted: true });
+		expect(data.deleteSessionChatMessage).toHaveBeenCalledWith(MESSAGE);
+		expect(data.deleteChatMessage).not.toHaveBeenCalled();
+	});
+});

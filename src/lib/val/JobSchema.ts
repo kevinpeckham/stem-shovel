@@ -10,6 +10,8 @@ export const JOB_KINDS = [
 	"mix-playback",
 	"recording-playback",
 	"session-playback",
+	"demo-peaks",
+	"session-peaks",
 	"notation-pdf",
 ] as const;
 

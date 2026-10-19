@@ -1,29 +1,34 @@
 import {
+	claimDemoPeaks,
 	claimDemoPlayback,
 	claimMixPlayback,
 	claimPlayback,
 	claimRecordingPlayback,
+	claimSessionPeaks,
 	claimSessionPlayback,
 	failDemoPlayback,
 	failSessionPlayback,
 	failMixPlayback,
 	failPlayback,
 	failRecordingPlayback,
+	finishDemoPeaks,
 	finishDemoPlayback,
 	finishMixPlayback,
 	finishPlayback,
 	finishRecordingPlayback,
+	finishSessionPeaks,
 	finishSessionPlayback,
 	replaceRecordingSource,
 } from "#lib/server/data.js";
 import { accessOfUrl } from "#lib/utils/blobAccess.js";
+import { createPcm16Peaks } from "#lib/utils/pcm16Peaks.js";
 import { silenceBounds, type SilenceBounds } from "#lib/utils/silenceBounds.js";
 import { TRIM_MIN_SILENCE_SECONDS, TRIM_NOISE_DB } from "#lib/constants/trimSilence.js";
 import { deleteBlobs, playbackPathname, putBlob, readBlob } from "#lib/server/blob.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes } from "#lib/server/notes.js";
 import ffmpegPath from "ffmpeg-static";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -121,9 +126,87 @@ async function transcodeStem(stemId: string): Promise<string | null> {
 	}
 }
 
-/** Demo recordings become MP3s (192 kbps, source channels up to stereo), one at a time. */
+/** Demo recordings become MP3s (192 kbps, source channels up to stereo), one at a time, each with its waveform measured. */
 export async function renderDemos(demoIds: string[]): Promise<void> {
 	for (const id of demoIds) await transcodeToMp3(id, DEMO_TARGET);
+}
+
+/**
+ * The waveform of a demo or a session recording whose MP3 is there but
+ * was never measured (rendered before the review shipped): fetched and
+ * measured one at a time (docs/uploads-and-blob.md, "Sessions" review).
+ */
+export async function measureDemos(demoIds: string[]): Promise<void> {
+	for (const id of demoIds) await measureRendition(id, claimDemoPeaks, finishDemoPeaks);
+}
+export async function measureSessions(recordingIds: string[]): Promise<void> {
+	for (const id of recordingIds) await measureRendition(id, claimSessionPeaks, finishSessionPeaks);
+}
+async function measureRendition(
+	id: string,
+	claim: (id: string) => Promise<{ id: string; url: string } | null>,
+	finish: (id: string, r: { peaks: number[]; durationSeconds: number }) => Promise<void>,
+): Promise<void> {
+	const claimed = await claim(id);
+	if (!claimed) return;
+	const dir = await mkdtemp(join(tmpdir(), "peaks-"));
+	try {
+		const file = join(dir, "rendition.mp3");
+		const res = await readBlob(claimed.url);
+		if (!res.ok || !res.body)
+			throw new Error(`${res.status} ${res.statusText} fetching ${claimed.url}`);
+		await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
+		await finish(id, await measurePeaks(file));
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+}
+
+/** The waveform's rate: coarse frames of a tenth of a second, reduced to the bins at the end. */
+const PEAKS_RATE = 8000;
+const PEAKS_FRAME = PEAKS_RATE / 10;
+
+/**
+ * A file's waveform peaks and length (src/lib/utils/pcm16Peaks.ts): ffmpeg
+ * decodes it to mono 16-bit PCM on its stdout, folded into peaks as it
+ * streams, so an hour's recording costs a few floats per tenth of a second
+ * and never sits decoded in memory.
+ */
+function measurePeaks(file: string): Promise<{ peaks: number[]; durationSeconds: number }> {
+	return new Promise((resolve, reject) => {
+		if (!ffmpegPath) {
+			reject(new Error("ffmpeg binary is not available on this platform"));
+			return;
+		}
+		const acc = createPcm16Peaks(PEAKS_FRAME);
+		const child = spawn(ffmpegPath, [
+			"-hide_banner",
+			"-loglevel",
+			"error",
+			"-i",
+			file,
+			"-vn",
+			"-ac",
+			"1",
+			"-ar",
+			String(PEAKS_RATE),
+			"-f",
+			"s16le",
+			"-",
+		]);
+		let stderr = "";
+		child.stdout.on("data", (chunk: Buffer) => acc.push(chunk));
+		child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+		child.on("error", reject);
+		child.on("close", (code) => {
+			if (code !== 0) {
+				reject(new Error(`ffmpeg exited ${code} measuring peaks: ${stderr.trim()}`));
+				return;
+			}
+			const { peaks, samples } = acc.finish();
+			resolve({ peaks, durationSeconds: samples / PEAKS_RATE });
+		});
+	});
 }
 
 /** Mixes (docs/mixes.md) get the same MP3. */
@@ -152,8 +235,13 @@ interface Mp3Target {
 		codec?: string | null;
 		trimSilence?: boolean;
 	} | null>;
-	finish: (id: string, r: { url: string; pathname: string; bytes: number }) => Promise<void>;
+	finish: (
+		id: string,
+		r: { url: string; pathname: string; bytes: number; peaks?: number[]; durationSeconds?: number },
+	) => Promise<void>;
 	fail: (id: string) => Promise<void>;
+	/** Demos and session recordings: the MP3's waveform and length are measured with it, for the review's waveform. */
+	measure?: boolean;
 	/** Set on takes: a raw PCM source (Chrome's lossless recording) is kept as FLAC instead, and a trim replaces the source too. */
 	replaceSource?: (
 		id: string,
@@ -172,6 +260,7 @@ const DEMO_TARGET: Mp3Target = {
 	claim: claimDemoPlayback,
 	finish: finishDemoPlayback,
 	fail: failDemoPlayback,
+	measure: true,
 };
 const MIX_TARGET: Mp3Target = {
 	claim: claimMixPlayback,
@@ -182,6 +271,7 @@ const SESSION_TARGET: Mp3Target = {
 	claim: claimSessionPlayback,
 	finish: finishSessionPlayback,
 	fail: failSessionPlayback,
+	measure: true,
 };
 const RECORDING_TARGET: Mp3Target = {
 	claim: claimRecordingPlayback,
@@ -371,7 +461,9 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 		const pathname =
 			claim.pathname.replace(/\.[a-z0-9]+$/i, "") + `.play-${Date.now().toString(36)}.mp3`;
 		const blob = await putBlob(pathname, bytes, "audio/mpeg", accessOfUrl(claim.url));
-		await target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength });
+		// The waveform from the MP3 itself (what plays), so the peaks and the length match it to the sample.
+		const measured = target.measure ? await measurePeaks(output) : {};
+		await target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength, ...measured });
 		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
 	} catch (e) {
 		await target.fail(id);

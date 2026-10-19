@@ -56,6 +56,7 @@ import {
 	deleteBugReportRows,
 	deleteIdeaRows,
 	deleteCommentRows,
+	deleteSessionReviewRows,
 	deleteSongRows,
 	deleteUserDocRows,
 	deleteUserRows,
@@ -173,6 +174,9 @@ const {
 	demo,
 	sessionRecording,
 	recordingSession,
+	sessionComment,
+	sessionChatMessage,
+	sessionChatRead,
 	invitation,
 	inviteCode,
 	chatMessage,
@@ -1461,18 +1465,40 @@ export interface CommentInput {
 	at: number | null;
 	/** Feedback on a mix (docs/mixes.md); empty or absent for the song's own stream. */
 	mixId?: string;
+	/** A comment on a demo recording of the song; empty or absent otherwise. */
+	demoId?: string;
 }
 
 /** A song's comments, oldest first, with who wrote them. */
 /** The song's own comments (no mix), oldest first; a mix's are `listMixComments`. */
 export async function listComments(songId: string) {
 	const rows = await db.query.comment.findMany({
-		where: and(eq(comment.songId, songId), isNull(comment.mixId)),
+		where: and(eq(comment.songId, songId), isNull(comment.mixId), isNull(comment.demoId)),
 		orderBy: [asc(comment.createdAt)],
 		with: { author: { columns: { id: true, name: true } } },
 	});
 	return rows.map((c) => ({
 		id: c.id,
+		userId: c.userId,
+		authorName: c.author.name,
+		title: c.title,
+		body: c.body,
+		at: c.at,
+		createdAt: c.createdAt,
+		editedAt: c.editedAt,
+	}));
+}
+
+/** Comments on the song's demo recordings (docs/uploads-and-blob.md, "Demos" review): every comment with a demo, oldest first, the demo id on each. */
+export async function listDemoComments(songId: string) {
+	const rows = await db.query.comment.findMany({
+		where: and(eq(comment.songId, songId), isNotNull(comment.demoId)),
+		orderBy: [asc(comment.createdAt)],
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return rows.map((c) => ({
+		id: c.id,
+		demoId: c.demoId as string,
 		userId: c.userId,
 		authorName: c.author.name,
 		title: c.title,
@@ -1520,7 +1546,8 @@ export async function createComment(
 			accountId,
 			songId,
 			userId,
-			mixId: input.mixId ?? null,
+			mixId: input.mixId || null,
+			demoId: input.demoId || null,
 			title: input.title,
 			body: input.body,
 			at: input.at,
@@ -1533,7 +1560,15 @@ export async function createComment(
 export async function commentOwnership(id: string) {
 	return db.query.comment.findFirst({
 		where: eq(comment.id, id),
-		columns: { id: true, accountId: true, userId: true, songId: true, mixId: true },
+		columns: { id: true, accountId: true, userId: true, songId: true, mixId: true, demoId: true },
+	});
+}
+
+/** A demo's song and label, for a comment on it (docs/uploads-and-blob.md, "Demos" review). */
+export async function demoOwnership(id: string) {
+	return db.query.demo.findFirst({
+		where: eq(demo.id, id),
+		columns: { id: true, accountId: true, songId: true, label: true },
 	});
 }
 
@@ -3678,7 +3713,15 @@ export async function deleteRecordingSession(accountId: string, sessionId: strin
 		.where(
 			and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.sessionId, sessionId)),
 		)
-		.returning({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl });
+		.returning({
+			id: sessionRecording.id,
+			url: sessionRecording.url,
+			playbackUrl: sessionRecording.playbackUrl,
+		});
+	await deleteSessionReviewRows(
+		[sessionId],
+		gone.map((r) => r.id),
+	);
 	await deleteBlobs(gone.flatMap((r) => [r.url, r.playbackUrl ?? ""]));
 	return true;
 }
@@ -3851,6 +3894,7 @@ export async function deleteSessionRecording(accountId: string, recordingId: str
 		.where(and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)))
 		.returning({ url: sessionRecording.url, playbackUrl: sessionRecording.playbackUrl });
 	if (!row) return false;
+	await db.delete(sessionComment).where(eq(sessionComment.recordingId, recordingId));
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
 }
@@ -3899,7 +3943,7 @@ export async function claimSessionPlayback(recordingId: string) {
 }
 export async function finishSessionPlayback(
 	recordingId: string,
-	r: { url: string; pathname: string; bytes: number },
+	r: { url: string; pathname: string; bytes: number; peaks?: number[]; durationSeconds?: number },
 ) {
 	await db
 		.update(sessionRecording)
@@ -3908,6 +3952,7 @@ export async function finishSessionPlayback(
 			playbackUrl: r.url,
 			playbackPathname: r.pathname,
 			playbackBytes: r.bytes,
+			...(r.peaks ? { peaks: r.peaks, durationSeconds: r.durationSeconds ?? null } : {}),
 		})
 		.where(eq(sessionRecording.id, recordingId));
 }
@@ -3916,6 +3961,245 @@ export async function failSessionPlayback(recordingId: string) {
 		.update(sessionRecording)
 		.set({ playbackStatus: "failed" })
 		.where(eq(sessionRecording.id, recordingId));
+}
+
+/** Which recordings with an MP3 still want their waveform measured (as `demosWantingPeaks`). */
+export function sessionsWantingPeaks(
+	recordings: {
+		id: string;
+		playbackStatus: PlaybackStatus | null;
+		peaks: number[] | null;
+		peaksStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return demosWantingPeaks(recordings, now);
+}
+export async function claimSessionPeaks(recordingId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(sessionRecording)
+		.set({ peaksStartedAt: now })
+		.where(
+			and(
+				eq(sessionRecording.id, recordingId),
+				eq(sessionRecording.playbackStatus, "ready"),
+				isNull(sessionRecording.peaks),
+				sql`(${sessionRecording.peaksStartedAt} is null or ${sessionRecording.peaksStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS})`,
+			),
+		)
+		.returning({ id: sessionRecording.id, playbackUrl: sessionRecording.playbackUrl });
+	return row?.playbackUrl ? { id: row.id, url: row.playbackUrl } : null;
+}
+export async function finishSessionPeaks(
+	recordingId: string,
+	r: { peaks: number[]; durationSeconds: number },
+) {
+	await db
+		.update(sessionRecording)
+		.set({ peaks: r.peaks, durationSeconds: r.durationSeconds })
+		.where(eq(sessionRecording.id, recordingId));
+}
+
+// ---- Sessions review (docs/uploads-and-blob.md, "Sessions"): comments on recordings, a chat per session ----
+
+export interface SessionCommentRow {
+	id: string;
+	recordingId: string;
+	userId: string;
+	authorName: string;
+	title: string;
+	body: string;
+	at: number | null;
+	createdAt: Date;
+	editedAt: Date | null;
+}
+const sessionCommentRow = (c: {
+	id: string;
+	recordingId: string;
+	userId: string;
+	author: { name: string };
+	title: string;
+	body: string;
+	at: number | null;
+	createdAt: Date;
+	editedAt: Date | null;
+}): SessionCommentRow => ({
+	id: c.id,
+	recordingId: c.recordingId,
+	userId: c.userId,
+	authorName: c.author.name,
+	title: c.title,
+	body: c.body,
+	at: c.at,
+	createdAt: c.createdAt,
+	editedAt: c.editedAt,
+});
+
+/** Every comment on the account's recordings, oldest first (the page keys them by recording). */
+export async function listSessionComments(accountId: string): Promise<SessionCommentRow[]> {
+	const rows = await db.query.sessionComment.findMany({
+		where: eq(sessionComment.accountId, accountId),
+		orderBy: [asc(sessionComment.createdAt)],
+		with: { author: { columns: { name: true } } },
+	});
+	return rows.map(sessionCommentRow);
+}
+
+/** Posts a comment on a recording; null when the recording is not the account's. */
+export async function createSessionComment(
+	accountId: string,
+	recordingId: string,
+	userId: string,
+	input: { title: string; body: string; at: number | null },
+) {
+	const r = await db.query.sessionRecording.findFirst({
+		where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)),
+		columns: { id: true },
+	});
+	if (!r) return null;
+	const [row] = await db
+		.insert(sessionComment)
+		.values({ accountId, recordingId, userId, title: input.title, body: input.body, at: input.at })
+		.returning({ id: sessionComment.id });
+	return row;
+}
+
+export async function sessionCommentOwnership(id: string) {
+	return db.query.sessionComment.findFirst({
+		where: eq(sessionComment.id, id),
+		columns: { id: true, accountId: true, userId: true, recordingId: true },
+	});
+}
+
+export async function updateSessionComment(
+	id: string,
+	input: { title: string; body: string; at: number | null },
+) {
+	await db
+		.update(sessionComment)
+		.set({ title: input.title, body: input.body, at: input.at, editedAt: new Date() })
+		.where(eq(sessionComment.id, id));
+}
+
+export async function deleteSessionComment(id: string) {
+	await db.delete(sessionComment).where(eq(sessionComment.id, id));
+}
+
+/** A session's chat (docs/chat.md, "Sessions"): the messages, oldest first, or those changed since `after` (ms). */
+export async function listSessionChatMessages(
+	sessionId: string,
+	after = 0,
+): Promise<ChatMessageRow[]> {
+	const rows = await db.query.sessionChatMessage.findMany({
+		where:
+			after > 0
+				? and(
+						eq(sessionChatMessage.sessionId, sessionId),
+						gt(sessionChatMessage.updatedAt, new Date(after)),
+					)
+				: eq(sessionChatMessage.sessionId, sessionId),
+		orderBy: [asc(sessionChatMessage.createdAt), asc(sessionChatMessage.id)],
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return rows.map(chatRow);
+}
+
+/** Sends a message to a session's chat; null when the session is not the account's. */
+export async function createSessionChatMessage(
+	accountId: string,
+	sessionId: string,
+	userId: string,
+	body: string,
+): Promise<ChatMessageRow | null> {
+	const s = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+		columns: { id: true },
+	});
+	if (!s) return null;
+	const [row] = await db
+		.insert(sessionChatMessage)
+		.values({ accountId, sessionId, userId, body })
+		.returning({ id: sessionChatMessage.id });
+	const made = await db.query.sessionChatMessage.findFirst({
+		where: eq(sessionChatMessage.id, row.id),
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return made ? chatRow(made) : null;
+}
+
+export async function sessionChatMessageOwnership(id: string) {
+	return db.query.sessionChatMessage.findFirst({
+		where: eq(sessionChatMessage.id, id),
+		columns: { id: true, accountId: true, userId: true, sessionId: true },
+	});
+}
+
+export async function updateSessionChatMessage(
+	id: string,
+	body: string,
+): Promise<ChatMessageRow | null> {
+	const now = new Date();
+	await db
+		.update(sessionChatMessage)
+		.set({ body, editedAt: now, updatedAt: now })
+		.where(eq(sessionChatMessage.id, id));
+	const row = await db.query.sessionChatMessage.findFirst({
+		where: eq(sessionChatMessage.id, id),
+		with: { author: { columns: { id: true, name: true } } },
+	});
+	return row ? chatRow(row) : null;
+}
+
+export async function deleteSessionChatMessage(id: string) {
+	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.id, id));
+}
+
+/** Each session's chat at a glance for the Sessions page: how many messages, how many by others unseen, and where the person marked it read. */
+export async function sessionChatSummaryOf(
+	sessionIds: string[],
+	userId: string,
+): Promise<Map<string, { count: number; unread: number; readAt: number | null }>> {
+	const out = new Map<string, { count: number; unread: number; readAt: number | null }>();
+	if (sessionIds.length === 0) return out;
+	const [messages, reads] = await Promise.all([
+		db
+			.select({
+				sessionId: sessionChatMessage.sessionId,
+				userId: sessionChatMessage.userId,
+				createdAt: sessionChatMessage.createdAt,
+			})
+			.from(sessionChatMessage)
+			.where(inArray(sessionChatMessage.sessionId, sessionIds)),
+		db
+			.select({ sessionId: sessionChatRead.sessionId, readAt: sessionChatRead.readAt })
+			.from(sessionChatRead)
+			.where(
+				and(eq(sessionChatRead.userId, userId), inArray(sessionChatRead.sessionId, sessionIds)),
+			),
+	]);
+	const readAt = new Map(reads.map((r) => [r.sessionId, r.readAt.getTime()]));
+	for (const id of sessionIds) out.set(id, { count: 0, unread: 0, readAt: readAt.get(id) ?? null });
+	for (const m of messages) {
+		const s = out.get(m.sessionId)!;
+		s.count += 1;
+		const mark = readAt.get(m.sessionId);
+		if (m.userId !== userId && (mark === undefined || m.createdAt.getTime() > mark)) s.unread += 1;
+	}
+	return out;
+}
+
+/** Marks a session's chat read now for a person; returns the mark (ms). */
+export async function markSessionChatRead(sessionId: string, userId: string): Promise<number> {
+	const readAt = new Date();
+	await db
+		.insert(sessionChatRead)
+		.values({ sessionId, userId, readAt })
+		.onConflictDoUpdate({
+			target: [sessionChatRead.userId, sessionChatRead.sessionId],
+			set: { readAt },
+		});
+	return readAt.getTime();
 }
 
 // ---- Files attached to projects and songs (docs/uploads-and-blob.md, "Attachments") ----
@@ -4511,8 +4795,56 @@ export async function deleteDemo(accountId: string, demoId: string) {
 		.where(and(eq(demo.accountId, accountId), eq(demo.id, demoId)))
 		.returning({ url: demo.url, playbackUrl: demo.playbackUrl });
 	if (!row) return false;
+	await deleteCommentRows(eq(comment.demoId, demoId));
 	await deleteBlobs([row.url, row.playbackUrl ?? ""]);
 	return true;
+}
+
+/**
+ * Which of a song's demos with an MP3 still want their waveform measured
+ * (docs/uploads-and-blob.md, "Demos" review): no peaks yet and no measuring
+ * under way (or one that stalled). A visit with nothing to do posts nothing.
+ */
+export function demosWantingPeaks(
+	demos: {
+		id: string;
+		playbackStatus: PlaybackStatus | null;
+		peaks: number[] | null;
+		peaksStartedAt: Date | null;
+	}[],
+	now = Date.now(),
+) {
+	return demos
+		.filter((d) => d.playbackStatus === "ready" && d.peaks === null)
+		.filter((d) => now - (d.peaksStartedAt?.getTime() ?? 0) > PLAYBACK_STALE_MS)
+		.map((d) => d.id);
+}
+
+/** The lock on measuring a demo's waveform: the row with its MP3, once, unless an earlier claim stalled. */
+export async function claimDemoPeaks(demoId: string) {
+	const now = new Date();
+	const [row] = await db
+		.update(demo)
+		.set({ peaksStartedAt: now })
+		.where(
+			and(
+				eq(demo.id, demoId),
+				eq(demo.playbackStatus, "ready"),
+				isNull(demo.peaks),
+				sql`(${demo.peaksStartedAt} is null or ${demo.peaksStartedAt} < ${now.getTime() - PLAYBACK_STALE_MS})`,
+			),
+		)
+		.returning({ id: demo.id, playbackUrl: demo.playbackUrl });
+	return row?.playbackUrl ? { id: row.id, url: row.playbackUrl } : null;
+}
+export async function finishDemoPeaks(
+	demoId: string,
+	r: { peaks: number[]; durationSeconds: number },
+) {
+	await db
+		.update(demo)
+		.set({ peaks: r.peaks, durationSeconds: r.durationSeconds })
+		.where(eq(demo.id, demoId));
 }
 
 /** Which of a song's ready demos still want an MP3 (same rules as stems' renditions). */
@@ -4554,7 +4886,7 @@ export async function claimDemoPlayback(demoId: string) {
 
 export async function finishDemoPlayback(
 	demoId: string,
-	r: { url: string; pathname: string; bytes: number },
+	r: { url: string; pathname: string; bytes: number; peaks?: number[]; durationSeconds?: number },
 ) {
 	await db
 		.update(demo)
@@ -4563,6 +4895,7 @@ export async function finishDemoPlayback(
 			playbackUrl: r.url,
 			playbackPathname: r.pathname,
 			playbackBytes: r.bytes,
+			...(r.peaks ? { peaks: r.peaks, durationSeconds: r.durationSeconds ?? null } : {}),
 		})
 		.where(eq(demo.id, demoId));
 }

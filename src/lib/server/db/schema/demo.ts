@@ -38,6 +38,10 @@ export const demo = table(
 		playbackPathname: t.text("playback_pathname"),
 		playbackBytes: t.integer("playback_bytes"),
 		playbackStartedAt: t.integer("playback_started_at", { mode: "timestamp_ms" }),
+		/** The MP3's length in seconds and 1024 max-abs values in 0..1 of it (lib/audio/peaks.ts), measured in the jobs function after the render; null until then, `peaksStartedAt` the claim on the measuring. */
+		durationSeconds: t.real("duration_seconds"),
+		peaks: t.text("peaks", { mode: "json" }).$type<number[]>(),
+		peaksStartedAt: t.integer("peaks_started_at", { mode: "timestamp_ms" }),
 		uploadedBy: t.text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
 		...timestamps,
 	},

@@ -1,8 +1,12 @@
 <script lang="ts">
-	import { invalidateAll } from "$app/navigation";
+	import { afterNavigate, invalidateAll, replaceState } from "$app/navigation";
+	import { page } from "$app/state";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
+	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import RecordingReview from "#lib/components/RecordingReview.svelte";
 	import SessionPlayer, { type SessionTrack } from "#lib/components/SessionPlayer.svelte";
+	import SongChat from "#lib/components/SongChat.svelte";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
 	import {
 		SESSION_KIND_LABELS,
@@ -10,6 +14,12 @@
 		SESSION_MAX_BYTES,
 		type SessionKind,
 	} from "#lib/constants/sessionRecordings.js";
+	import { chatSince } from "#lib/remote/chat.remote.js";
+	import {
+		createSessionComment,
+		deleteSessionComment,
+		updateSessionComment,
+	} from "#lib/remote/sessionComments.remote.js";
 	import {
 		createSession,
 		deleteRecording,
@@ -17,15 +27,28 @@
 		updateRecording,
 		updateSession,
 	} from "#lib/remote/sessions.remote.js";
+	import type { ChatMessageRow, SessionCommentRow } from "#lib/server/data.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { postJson, saveAs, uploadSessionFile, type SessionReservation } from "#lib/upload.js";
 	import { downloadBuilt } from "#lib/utils/downloadBuilt.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatDate } from "#lib/utils/formatDate.js";
+	import { formatTime } from "#lib/utils/formatTime.js";
+	import { unreadCount } from "#lib/utils/groupChat.js";
 	import { dayFitsSession, localDay } from "#lib/utils/isoDay.js";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { dayText, sessionDisplayName } from "#lib/utils/sessionName.js";
+	import { onMount, tick } from "svelte";
 
+	/**
+	 * The Sessions page (docs/uploads-and-blob.md, "Sessions"): the band's
+	 * practices and shows with their recordings, the player, the uploads
+	 * and the edits; and the review: each recording's waveform with
+	 * comments on it (RecordingReview, the page's card and popover), a
+	 * chat per session (SongChat in a panel), and a search over sessions,
+	 * recordings and comments.
+	 */
 	let { data } = $props();
 
 	type Session = (typeof data.sessions)[number];
@@ -48,9 +71,11 @@
 	let queue = $state<SessionTrack[]>([]);
 	let current = $state<string | null>(null);
 	let paused = $state(true);
-	function playRecording(s: Session, r: Recording) {
+	let playerTime = $state(0);
+	let playerDuration = $state(0);
+	async function playRecording(s: Session, r: Recording) {
 		if (!queue.some((t) => t.id === r.id)) queue = tracksOf(s);
-		void player?.play(r.id);
+		await player?.play(r.id);
 	}
 	function playSession(s: Session) {
 		if (s.recordings.length === 0) return;
@@ -129,11 +154,165 @@
 		}
 	}
 
-	// ── Browse ──
+	// ── While an MP3 renders or a waveform is measured in the jobs function, the list refreshes itself (for ten minutes at most) ──
+	const pending = $derived(
+		data.sessions
+			.flatMap((s) => s.recordings)
+			.some(
+				(r) => r.playbackStatus !== "failed" && (r.playbackStatus !== "ready" || r.peaks === null),
+			),
+	);
+	onMount(() => {
+		let ticks = 0;
+		const timer = setInterval(() => {
+			if (++ticks > 120) return;
+			if (pending && !busy && !editingSession && !editingRecording && !document.hidden)
+				void invalidateAll();
+		}, 5000);
+		return () => clearInterval(timer);
+	});
+
+	// ── Browse: the kind, and a search over sessions, recordings and comments (as the Ideas page's) ──
 	let filter = $state<"all" | SessionKind>("all");
-	const shown = $derived(
+	let searchText = $state("");
+	const query = $derived(searchText.trim().toLowerCase());
+	const has = (text: string | null | undefined) => !!text && text.toLowerCase().includes(query);
+	const recordingMatches = (r: Recording) =>
+		has(r.title) ||
+		has(r.filename) ||
+		has(r.notes) ||
+		has(r.uploader?.name) ||
+		has(dayText(r.recordedOn)) ||
+		commentsOf(r).some((c) => has(c.title) || has(c.body));
+	const sessionMatches = (s: Session) =>
+		has(nameOf(s)) ||
+		has(s.place) ||
+		has(s.notes) ||
+		has(SESSION_KIND_LABELS[s.kind]) ||
+		has(dayText(s.startsOn));
+	const byKind = $derived(
 		filter === "all" ? data.sessions : data.sessions.filter((s) => s.kind === filter),
 	);
+	const shown = $derived(
+		query ? byKind.filter((s) => sessionMatches(s) || s.recordings.some(recordingMatches)) : byKind,
+	);
+	/** A session found by its own words shows every recording; one found through a recording shows the ones that matched. */
+	const recordingsShown = (s: Session) =>
+		query && !sessionMatches(s) ? s.recordings.filter(recordingMatches) : s.recordings;
+
+	// ── The review: comments on a recording, under its row (docs/uploads-and-blob.md, "Sessions" review) ──
+	let membership = $derived(data.memberships?.find((m) => m.accountId === data.account.id));
+	let isAdmin = $derived(membership?.role === "owner" || membership?.role === "admin");
+	const canEditComment = (c: { userId: string }) => data.user?.id === c.userId;
+	const canDeleteComment = (c: { userId: string }) => canEditComment(c) || isAdmin;
+	const commentsOf = (r: Recording) => data.comments.filter((c) => c.recordingId === r.id);
+	/** The recordings whose review row is open by hand; the one playing is open too. */
+	let expanded = $state<string[]>([]);
+	function toggleReview(r: Recording) {
+		expanded = expanded.includes(r.id) ? expanded.filter((id) => id !== r.id) : [...expanded, r.id];
+	}
+	const reviewOpen = (r: Recording) => expanded.includes(r.id) || current === r.id;
+	const positionOf = (r: Recording) => (current === r.id ? playerTime : 0);
+	const durationOf = (r: Recording) =>
+		current === r.id && playerDuration ? playerDuration : (r.durationSeconds ?? 0);
+	/** A click on a recording's waveform, or a comment's Go to: that recording to the moment, started if it was not playing. */
+	async function seekIn(s: Session, r: Recording, seconds: number) {
+		if (current !== r.id) await playRecording(s, r);
+		player?.seekTo(seconds);
+	}
+	const sessionOf = (r: Recording) => data.sessions.find((s) => s.id === r.sessionId) ?? null;
+	const recordingOf = (id: string) =>
+		data.sessions.flatMap((s) => s.recordings).find((r) => r.id === id) ?? null;
+
+	// ---- the comment popover: one, to post or edit ----
+	let commentPanel = $state<HTMLDivElement | null>(null);
+	let commentDraft = $state<{
+		id: string | null;
+		recordingId: string;
+		title: string;
+		body: string;
+		at: string;
+	}>({ id: null, recordingId: "", title: "", body: "", at: "" });
+	const commentTarget = $derived(recordingOf(commentDraft.recordingId));
+	function openComment(draft: Partial<typeof commentDraft> & { recordingId: string }) {
+		commentDraft = { id: null, title: "", body: "", at: "", ...draft };
+		const f = commentDraft.id ? updateSessionComment.fields : createSessionComment.fields;
+		f.title.set(commentDraft.title);
+		f.body.set(commentDraft.body);
+		f.position.set(commentDraft.at);
+		commentPanel?.showPopover();
+	}
+	function editComment(c: SessionCommentRow) {
+		openComment({
+			id: c.id,
+			recordingId: c.recordingId,
+			title: c.title,
+			body: c.body,
+			at: c.at === null ? "" : formatTime(c.at, 2),
+		});
+	}
+
+	// ---- ⌘-click on a waveform: Seek here, Comment here ----
+	let menuAt = $state<{ recording: Recording; seconds: number; x: number; y: number } | null>(null);
+	function closeMenu(e: Event) {
+		if (menuAt && !(e.target as HTMLElement).closest("[data-recording-context]")) menuAt = null;
+	}
+
+	// ── A chat per session (docs/chat.md, "Sessions"): one panel, the open session's; what was fetched is kept ──
+	let chatFor = $state<string | null>(null);
+	let chats = $state<Record<string, { messages: ChatMessageRow[]; readAt: number | null }>>({});
+	let chatLoading = $state(false);
+	const chatSession = $derived(data.sessions.find((s) => s.id === chatFor) ?? null);
+	async function openChat(s: Session) {
+		if (chatFor === s.id) {
+			chatFor = null;
+			return;
+		}
+		if (!chats[s.id]) {
+			chatLoading = true;
+			try {
+				chats[s.id] = {
+					messages: await chatSince({ sessionId: s.id, after: 0 }),
+					readAt: data.chat[s.id]?.readAt ?? null,
+				};
+			} catch (e) {
+				notify(`Could not open the chat: ${errorMessage(e)}`, { kind: "error" });
+				return;
+			} finally {
+				chatLoading = false;
+			}
+		}
+		chatFor = s.id;
+	}
+	/** Unseen messages by others: from what the page fetched once the chat was opened, else the load's count. */
+	const unreadOf = (s: Session) =>
+		chats[s.id]
+			? unreadCount(chats[s.id].messages, chats[s.id].readAt, data.user?.id ?? null)
+			: (data.chat[s.id]?.unread ?? 0);
+	const chatCountOf = (s: Session) =>
+		chats[s.id] ? chats[s.id].messages.length : (data.chat[s.id]?.count ?? 0);
+
+	// A notification's link: ?recording=<id> opens that recording's review; ?session=<id>&open=chat its chat. The query then goes.
+	afterNavigate(async () => {
+		const url = new URL(page.url.href);
+		const recordingId = url.searchParams.get("recording");
+		const sessionId = url.searchParams.get("session");
+		const open = url.searchParams.get("open");
+		if (!recordingId && !sessionId) return;
+		url.searchParams.delete("recording");
+		url.searchParams.delete("session");
+		url.searchParams.delete("open");
+		replaceState(url, {});
+		if (recordingId && recordingOf(recordingId)) {
+			if (!expanded.includes(recordingId)) expanded = [...expanded, recordingId];
+			await tick();
+			document
+				.querySelector(`[data-recording="${recordingId}"]`)
+				?.scrollIntoView({ block: "center" });
+		}
+		const session = sessionId ? data.sessions.find((s) => s.id === sessionId) : null;
+		if (session && open === "chat") await openChat(session);
+	});
 
 	// ── Edit a session ──
 	let editingSession = $state<string | null>(null);
@@ -372,7 +551,14 @@
 	{/if}
 
 	<div class="max-w-article mb-6">
-		<SessionPlayer bind:this={player} {queue} bind:current bind:paused />
+		<SessionPlayer
+			bind:this={player}
+			{queue}
+			bind:current
+			bind:paused
+			bind:currentTime={playerTime}
+			bind:duration={playerDuration}
+		/>
 	</div>
 
 	{#if data.sessions.length === 0}
@@ -391,7 +577,24 @@
 			{/each}
 			<span class="ml-2 text-dim">{shown.length} {shown.length === 1 ? "session" : "sessions"}</span
 			>
+			<label class="relative ml-auto min-w-0 flex-1 sm-max-w-72">
+				<span class="sr-only">Search sessions</span>
+				<span
+					class="i-ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-dim"
+					aria-hidden="true"
+				></span>
+				<input
+					class="field w-full py-1 pl-7 text-13px"
+					type="search"
+					placeholder="Search sessions, recordings, comments"
+					aria-label="Search sessions"
+					bind:value={searchText}
+				/>
+			</label>
 		</div>
+		{#if query && shown.length === 0}
+			<p class="opacity-80">Nothing matches "{searchText.trim()}".</p>
+		{/if}
 		{#each shown as s (s.id)}
 			{@const nextDay = nextDayOf(s)}
 			<section class="max-w-article surface mb-5" aria-label={nameOf(s)} data-session={s.id}>
@@ -496,6 +699,29 @@
 								>
 									<span class="i-ph-file-zip" aria-hidden="true"></span> Download MP3s
 								</button>
+								{#if data.user}
+									{@const unread = unreadOf(s)}
+									<button
+										class="button button-xs relative"
+										type="button"
+										title={unread
+											? `Chat on ${nameOf(s)}: ${unread} new`
+											: `Chat about ${nameOf(s)}`}
+										aria-label="Chat on {nameOf(s)}{unread ? ` (${unread} new)` : ''}"
+										aria-pressed={chatFor === s.id}
+										disabled={chatLoading}
+										onclick={() => void openChat(s)}
+									>
+										<span class="i-ph-chat-circle-dots" aria-hidden="true"></span>
+										{#if chatCountOf(s)}<span class="tabular-nums">{chatCountOf(s)}</span>{/if}
+										{#if unread}
+											<span
+												class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-oxford"
+												aria-hidden="true"
+											></span>
+										{/if}
+									</button>
+								{/if}
 								{#if data.canEdit}
 									<ContextMenu
 										ariaLabel="{nameOf(s)} actions"
@@ -540,8 +766,10 @@
 					<p class="px-5 py-3 text-13px text-dim">No recordings yet.</p>
 				{:else}
 					<ul class="divide-y divide-white/10 text-15px" aria-label="{nameOf(s)} recordings">
-						{#each s.recordings as r, i (r.id)}
+						{#each recordingsShown(s) as r (r.id)}
+							{@const i = s.recordings.indexOf(r)}
 							{@const playing = current === r.id && !paused}
+							{@const comments = commentsOf(r)}
 							<li
 								class="grid gap-2 px-5 py-2 {current === r.id ? 'bg-white/5' : ''}"
 								data-recording={r.id}
@@ -642,6 +870,23 @@
 												>
 											{/if}
 										</span>
+										<button
+											type="button"
+											class="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-12px tabular-nums {reviewOpen(
+												r,
+											)
+												? 'text-accent'
+												: 'opacity-70 hover-opacity-100'}"
+											title={reviewOpen(r)
+												? "Hide the waveform and comments"
+												: "Waveform and comments"}
+											aria-label="Comments on {titleOf(r)} ({comments.length})"
+											aria-pressed={reviewOpen(r)}
+											onclick={() => toggleReview(r)}
+										>
+											<span class="i-ph-hands-clapping-bold" aria-hidden="true"></span>
+											{#if comments.length}{comments.length}{/if}
+										</button>
 										<ContextMenu
 											ariaLabel="{titleOf(r)} actions"
 											position="bottom right"
@@ -682,6 +927,22 @@
 											]}
 										/>
 									</div>
+									{#if reviewOpen(r)}
+										<div class="pb-2 pl-12">
+											<RecordingReview
+												label={titleOf(r)}
+												peaks={r.peaks}
+												duration={durationOf(r)}
+												position={positionOf(r)}
+												{comments}
+												canComment={!!data.user}
+												card={commentCard}
+												onseek={(seconds) => void seekIn(s, r, seconds)}
+												oncomment={() => openComment({ recordingId: r.id })}
+												oncontext={(seconds, x, y) => (menuAt = { recording: r, seconds, x, y })}
+											/>
+										</div>
+									{/if}
 								{/if}
 							</li>
 						{/each}
@@ -690,4 +951,248 @@
 			</section>
 		{/each}
 	{/if}
+
+	{#if chatSession && chats[chatSession.id]}
+		<FloatingPanel
+			open={true}
+			title="Chat · {nameOf(chatSession)}"
+			storageKey="stemshovel.sessions.chat-panel"
+			width={440}
+			height={600}
+			onminimise={() => (chatFor = null)}
+		>
+			{#key chatSession.id}
+				<SongChat
+					sessionId={chatSession.id}
+					bind:messages={chats[chatSession.id].messages}
+					bind:readAt={chats[chatSession.id].readAt}
+					me={data.user ? { id: data.user.id, name: data.user.name } : null}
+					{isAdmin}
+					canWrite={!!data.user}
+					onseek={(seconds) => {
+						const r = queue.find((t) => t.id === current) && current ? recordingOf(current) : null;
+						const s = r ? sessionOf(r) : null;
+						if (r && s) void seekIn(s, r, seconds);
+					}}
+				/>
+			{/key}
+		</FloatingPanel>
+	{/if}
 </main>
+
+<svelte:window onpointerdown={closeMenu} />
+
+{#snippet commentCard(id: string)}
+	{@const c = data.comments.find((x) => x.id === id)}
+	{#if c}
+		{@const r = recordingOf(c.recordingId)}
+		{@const remove = deleteSessionComment.for(c.id)}
+		<div class="flex items-baseline justify-between gap-3">
+			<h3 class="font-600">{c.title}</h3>
+			{#if c.editedAt}<span
+					class="rounded border border-current/30 px-1 text-9px uppercase tracking-wider"
+					>edited</span
+				>{/if}
+		</div>
+		<p class="mt-1 text-12px opacity-70">
+			{c.authorName} · {formatDate(c.createdAt)}{#if c.at !== null}
+				· {formatTime(c.at, 1)}{/if}
+		</p>
+		<p class="mt-2 whitespace-pre-line">{c.body}</p>
+		<div class="mt-3 flex gap-3 text-12px">
+			{#if c.at !== null && r}
+				{@const s = sessionOf(r)}
+				<button
+					type="button"
+					class="link-dim"
+					onclick={() => {
+						if (s) void seekIn(s, r, c.at ?? 0);
+					}}>Go to</button
+				>
+			{/if}
+			{#if canEditComment(c)}
+				<button type="button" class="link-dim" onclick={() => editComment(c)}>Edit</button>
+			{/if}
+			{#if canDeleteComment(c)}
+				<form
+					{...remove.enhance(async ({ submit }) => {
+						if (!confirm(`Delete the comment "${c.title}"?`)) return;
+						try {
+							await submit();
+						} catch (e) {
+							notify(`Could not delete it: ${errorMessage(e)}`, { kind: "error" });
+							return;
+						}
+						notify("Comment deleted");
+						await invalidateAll();
+					})}
+				>
+					<input {...remove.fields.id.as("hidden", c.id)} />
+					<button class="link-dim" disabled={!!remove.pending}
+						>{remove.pending ? "Deleting…" : "Delete"}</button
+					>
+				</form>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#if menuAt}
+	<!-- Ctrl / ⌘-click menu at the pointer. The handlers read the menu before closing it: a closed block's constants are gone. -->
+	<div
+		class="fixed z-40 w-56 rounded border border-white/15 bg-oxford-800 p-1 text-sm shadow-lg shadow-black/50"
+		style:left="{Math.min(menuAt.x, window.innerWidth - 240)}px"
+		style:top="{menuAt.y + 4}px"
+		role="menu"
+		data-recording-context
+	>
+		<div class="truncate px-3 py-1.5 text-xs opacity-70">
+			{titleOf(menuAt.recording)} · {formatTime(menuAt.seconds, 1)}
+		</div>
+		<button
+			class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+			type="button"
+			role="menuitem"
+			onclick={() => {
+				const menu = menuAt;
+				menuAt = null;
+				const s = menu && sessionOf(menu.recording);
+				if (menu && s) void seekIn(s, menu.recording, menu.seconds);
+			}}
+		>
+			<span class="i-ph-skip-forward mr-2" aria-hidden="true"></span>Seek here
+		</button>
+		{#if data.user}
+			<button
+				class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"
+				type="button"
+				role="menuitem"
+				onclick={() => {
+					const menu = menuAt;
+					menuAt = null;
+					if (menu)
+						openComment({ recordingId: menu.recording.id, at: formatTime(menu.seconds, 2) });
+				}}
+			>
+				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
+			</button>
+		{/if}
+	</div>
+{/if}
+
+{#if data.user}
+	<!-- One popover for posting and editing a comment on a recording. -->
+	<div
+		id="recording-comment"
+		popover="auto"
+		bind:this={commentPanel}
+		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">
+				{commentDraft.id ? "Edit comment" : "Add a comment"}{#if commentTarget}
+					on {titleOf(commentTarget)}{/if}
+			</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="recording-comment"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		{#if commentDraft.id}
+			{@const remoteForm = updateSessionComment}
+			<form
+				class="grid gap-3"
+				{...remoteForm.enhance(async ({ submit }) => {
+					await submit();
+					if (!remoteForm.fields.allIssues()) {
+						notify("Comment updated");
+						commentPanel?.hidePopover();
+						await invalidateAll();
+					}
+				})}
+			>
+				<input {...remoteForm.fields.id.as("hidden", commentDraft.id)} />
+				{@render commentFields(remoteForm)}
+				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
+					>{remoteForm.pending ? "Saving…" : "Save"}</button
+				>
+			</form>
+		{:else}
+			{@const remoteForm = createSessionComment}
+			<form
+				class="grid gap-3"
+				{...remoteForm.enhance(async ({ submit }) => {
+					await submit();
+					if (!remoteForm.fields.allIssues()) {
+						notify("Comment posted");
+						commentPanel?.hidePopover();
+						if (commentDraft.recordingId && !expanded.includes(commentDraft.recordingId))
+							expanded = [...expanded, commentDraft.recordingId];
+						await invalidateAll();
+					}
+				})}
+			>
+				<input {...remoteForm.fields.recordingId.as("hidden", commentDraft.recordingId)} />
+				{@render commentFields(remoteForm)}
+				<button class="button-accent justify-self-start" disabled={!!remoteForm.pending}
+					>{remoteForm.pending ? "Posting…" : "Post comment"}</button
+				>
+			</form>
+		{/if}
+	</div>
+{/if}
+
+{#snippet commentFields(remoteForm: typeof createSessionComment | typeof updateSessionComment)}
+	<label class="block">
+		<span class="text-sm opacity-80">Title</span>
+		<input
+			class="mt-1 field"
+			{...remoteForm.fields.title.as("text", commentDraft.title)}
+			required
+		/>
+		{#each remoteForm.fields.title.issues() ?? [] as issue (issue.message)}
+			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+		{/each}
+	</label>
+	<label class="block">
+		<span class="text-sm opacity-80">Comment</span>
+		<textarea
+			class="mt-1 field text-sm"
+			rows="5"
+			{...remoteForm.fields.body.as("text", commentDraft.body)}
+			required></textarea>
+		{#each remoteForm.fields.body.issues() ?? [] as issue (issue.message)}
+			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+		{/each}
+	</label>
+	<label class="block">
+		<span class="text-sm opacity-80"
+			>Position <span class="opacity-60">(optional, as time)</span></span
+		>
+		<span class="mt-1 flex items-center gap-2">
+			<input
+				class="field font-mono text-sm"
+				placeholder="1:23.4"
+				{...remoteForm.fields.position.as("text", commentDraft.at)}
+			/>
+			<button
+				class="button button-xs shrink-0"
+				type="button"
+				disabled={!player || current !== commentDraft.recordingId}
+				title={current === commentDraft.recordingId
+					? "Where the recording is playing"
+					: "Play the recording to take its position"}
+				onclick={() =>
+					remoteForm.fields.position.set(formatTime(player?.currentPosition() ?? 0, 2))}
+				>Playhead</button
+			>
+		</span>
+		{#each remoteForm.fields.position.issues() ?? [] as issue (issue.message)}
+			<p class="mt-1 text-sm text-red-400">{issue.message}</p>
+		{/each}
+	</label>
+{/snippet}

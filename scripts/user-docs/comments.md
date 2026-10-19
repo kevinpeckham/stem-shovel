@@ -18,3 +18,7 @@ A comment has a short title and the text itself.
 ## Editing and deleting
 
 You can edit and delete your own comments from the list or from the card on the timeline. Account owners and admins can delete anyone's.
+
+## Demos and session recordings
+
+A song's demo recordings and the band's session recordings take comments too, each on its own waveform: in the song's **Demos** view under the demo that plays, and on the Sessions page from a recording's comments button. They work as a song's comments do, with positions as time (1:23.4): ⌘-click, Ctrl-click or right-click the waveform for **Comment here**, or the pencil by the heading for a comment in general. A demo's comments stay with the demo and out of the song's own comments; a notification's link opens the demo or the recording.

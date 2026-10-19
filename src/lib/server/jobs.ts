@@ -69,6 +69,10 @@ export const scheduleRecordingPlayback = (recordingIds: string[]) =>
 /** Session recordings (docs/uploads-and-blob.md, "Sessions") become MP3s. */
 export const scheduleSessionPlayback = (recordingIds: string[]) =>
 	scheduleJob("session-playback", recordingIds);
+/** Measures the waveform of demos and session recordings whose MP3 was rendered before the review (docs/uploads-and-blob.md, "Sessions"). */
+export const scheduleDemoPeaks = (demoIds: string[]) => scheduleJob("demo-peaks", demoIds);
+export const scheduleSessionPeaks = (recordingIds: string[]) =>
+	scheduleJob("session-peaks", recordingIds);
 /** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */
 export const scheduleNotationPdf = (notationId: string) =>
 	scheduleJob("notation-pdf", [notationId]);

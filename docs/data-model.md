@@ -428,21 +428,46 @@ MP3 rendition for playback and the session's zip. Migration 0089 made the
 table's rows into sessions (one per account, kind, day and place) and
 0090 dropped the columns that moved.
 
-| column                 | type                                  | notes                                                |
-| ---------------------- | ------------------------------------- | ---------------------------------------------------- |
-| id                     | text PK                               |                                                      |
-| account_id             | text FK → account (cascade)           | indexed, and with recorded_on                        |
-| session_id             | text → recording_session              | indexed                                              |
-| title                  | text not null default ''              | the filename minus its extension to begin with       |
-| recorded_on            | text not null                         | `YYYY-MM-DD`                                         |
-| notes                  | text not null default ''              |                                                      |
-| status                 | text                                  | uploading / ready (a failed upload's row is removed) |
-| url, pathname          | text                                  | `accounts/<a>/sessions/<id>.<ext>`                   |
-| filename, content_type | text                                  | the demo formats (`demoContentType`)                 |
-| size_bytes             | integer                               | counts toward the account's storage                  |
-| playback_*             | status, url, pathname, bytes, started | the MP3, as a demo's                                 |
-| uploaded_by            | text FK → user (set null)             | indexed                                              |
-| created_at, updated_at | timestamp_ms                          |                                                      |
+| column                 | type                                  | notes                                                       |
+| ---------------------- | ------------------------------------- | ----------------------------------------------------------- |
+| id                     | text PK                               |                                                             |
+| account_id             | text FK → account (cascade)           | indexed, and with recorded_on                               |
+| session_id             | text → recording_session              | indexed                                                     |
+| title                  | text not null default ''              | the filename minus its extension to begin with              |
+| recorded_on            | text not null                         | `YYYY-MM-DD`                                                |
+| notes                  | text not null default ''              |                                                             |
+| status                 | text                                  | uploading / ready (a failed upload's row is removed)        |
+| url, pathname          | text                                  | `accounts/<a>/sessions/<id>.<ext>`                          |
+| filename, content_type | text                                  | the demo formats (`demoContentType`)                        |
+| size_bytes             | integer                               | counts toward the account's storage                         |
+| playback_*             | status, url, pathname, bytes, started | the MP3, as a demo's                                        |
+| uploaded_by            | text FK → user (set null)             | indexed                                                     |
+| created_at, updated_at | timestamp_ms                          |                                                             |
+| duration_seconds       | real null                             | the MP3's length, measured in the jobs function (0092)      |
+| peaks                  | text (JSON) null                      | 1024 max-abs values in 0..1 of the MP3; null until measured |
+| peaks_started_at       | timestamp_ms null                     | the claim on measuring, as playback_started_at              |
+
+### session_comment (`sessionComment`, `sessionRecording.comments`)
+
+A comment on a session's recording (docs/uploads-and-blob.md, "Sessions
+review"): the song comment's shape under a recording. Migration 0092.
+
+| column                 | type                                  | notes                      |
+| ---------------------- | ------------------------------------- | -------------------------- |
+| id                     | text PK                               |                            |
+| account_id             | text FK → account (cascade)           | indexed                    |
+| recording_id           | text FK → session_recording (cascade) | indexed with created_at    |
+| user_id                | text FK → user (cascade)              | indexed; the author        |
+| title, body            | text not null                         |                            |
+| at                     | real null                             | seconds into the recording |
+| edited_at              | timestamp_ms null                     |                            |
+| created_at, updated_at | timestamp_ms                          |                            |
+
+### session_chat_message, session_chat_read
+
+A session's chat (docs/chat.md, "Sessions"): `chat_message` and
+`chat_read` under a `recording_session` instead of a song, column for
+column (`session_id` in place of `song_id`). Migration 0092.
 
 ### song_notation
 

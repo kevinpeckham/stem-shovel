@@ -31,6 +31,9 @@ const {
 	demo,
 	sessionRecording,
 	recordingSession,
+	sessionComment,
+	sessionChatMessage,
+	sessionChatRead,
 	drumKit,
 	drumSample,
 	idea,
@@ -80,6 +83,18 @@ export async function deleteCommentRows(where: SQL): Promise<void> {
 			),
 		);
 	await db.delete(comment).where(where);
+}
+
+/** What a session's review leaves behind (docs/uploads-and-blob.md, "Sessions"): the comments on its recordings, its chat and the read marks. */
+export async function deleteSessionReviewRows(
+	sessionIds: string[],
+	recordingIds: string[],
+): Promise<void> {
+	if (recordingIds.length > 0)
+		await db.delete(sessionComment).where(inArray(sessionComment.recordingId, recordingIds));
+	if (sessionIds.length === 0) return;
+	await db.delete(sessionChatMessage).where(inArray(sessionChatMessage.sessionId, sessionIds));
+	await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
 }
 
 /** Songs and everything hanging off them: stems, demos, attachments, notation files, comments and their revisions, chat messages and read marks, links, doc versions (shared and private), private notes, credits; AI requests lose their song. */
@@ -196,6 +211,17 @@ export async function deleteAccountRows(accountId: string): Promise<void> {
 	await db.delete(songMix).where(eq(songMix.accountId, accountId));
 	await db.delete(songFile).where(eq(songFile.accountId, accountId));
 	await db.delete(demo).where(eq(demo.accountId, accountId));
+	// The read marks hang off the sessions alone, so they go by the sessions' ids; the rest by the account.
+	const sessionIds = (
+		await db
+			.select({ id: recordingSession.id })
+			.from(recordingSession)
+			.where(eq(recordingSession.accountId, accountId))
+	).map((r) => r.id);
+	if (sessionIds.length > 0)
+		await db.delete(sessionChatRead).where(inArray(sessionChatRead.sessionId, sessionIds));
+	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.accountId, accountId));
+	await db.delete(sessionComment).where(eq(sessionComment.accountId, accountId));
 	await db.delete(sessionRecording).where(eq(sessionRecording.accountId, accountId));
 	await db.delete(recordingSession).where(eq(recordingSession.accountId, accountId));
 	await db.delete(stem).where(eq(stem.accountId, accountId));
@@ -232,6 +258,9 @@ export async function deleteUserRows(userId: string): Promise<void> {
 	await deleteCommentRows(eq(comment.userId, userId));
 	await db.delete(chatMessage).where(eq(chatMessage.userId, userId));
 	await db.delete(chatRead).where(eq(chatRead.userId, userId));
+	await db.delete(sessionComment).where(eq(sessionComment.userId, userId));
+	await db.delete(sessionChatMessage).where(eq(sessionChatMessage.userId, userId));
+	await db.delete(sessionChatRead).where(eq(sessionChatRead.userId, userId));
 	await db
 		.update(commentVersion)
 		.set({ editedBy: null })

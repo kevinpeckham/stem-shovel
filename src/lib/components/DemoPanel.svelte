@@ -1,8 +1,9 @@
 <script lang="ts">
+	import RecordingReview, { type ReviewComment } from "#lib/components/RecordingReview.svelte";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { saveAs } from "#lib/upload.js";
-	import { tick } from "svelte";
+	import { tick, type Snippet } from "svelte";
 
 	/**
 	 * The song page's demos view, sharing the player's box with the stem
@@ -10,7 +11,9 @@
 	 * list of demo recordings, each with its own play button and a ⋯ menu
 	 * holding its downloads.
 	 * The page decides which view shows; `pause()` lets it quiet this one
-	 * when the stems take over.
+	 * when the stems take over. Under the transport, the current demo's
+	 * review (RecordingReview, docs/uploads-and-blob.md "Sessions" review):
+	 * its waveform and its comments, through the page's card and menu.
 	 */
 	export interface PanelDemo {
 		id: string;
@@ -19,6 +22,9 @@
 		playbackUrl: string | null;
 		filename: string;
 		sizeBytes: number;
+		/** Measured in the jobs function after the MP3; null until then. */
+		peaks?: number[] | null;
+		durationSeconds?: number | null;
 	}
 	interface Props {
 		demos: PanelDemo[];
@@ -27,13 +33,33 @@
 		/** An editor may remove a demo from its row's menu (Kevin: there was no way on a song with stems). */
 		canEdit?: boolean;
 		onremove?: (demo: PanelDemo) => Promise<void> | void;
+		/** The demos' comments, every demo's together; the panel keeps the current demo's. */
+		comments?: (ReviewComment & { demoId: string })[];
+		canComment?: boolean;
+		/** The comment card for the review's bubbles and list (the page's, with its forms). */
+		card?: Snippet<[string]>;
+		/** Comment on the current demo in general (the review heading's button). */
+		oncomment?: (demo: PanelDemo) => void;
+		/** ⌘-click, Ctrl-click or right-click on the waveform: the page's menu (Seek here, Comment here). */
+		oncontext?: (demo: PanelDemo, seconds: number, x: number, y: number) => void;
 	}
-	let { demos, minHeight = 0, canEdit = false, onremove }: Props = $props();
+	let {
+		demos,
+		minHeight = 0,
+		canEdit = false,
+		onremove,
+		comments = [],
+		canComment = false,
+		card,
+		oncomment,
+		oncontext,
+	}: Props = $props();
 
 	let current = $state<string | null>(null);
 	let paused = $state(true);
 	let track = $derived(demos.find((d) => d.id === current) ?? null);
 	let index = $derived(track ? demos.indexOf(track) : -1);
+	let trackComments = $derived(track ? comments.filter((c) => c.demoId === track.id) : []);
 	let audio = $state<HTMLAudioElement | null>(null);
 	let currentTime = $state(0);
 	let duration = $state(0);
@@ -62,6 +88,20 @@
 	}
 	export function pause() {
 		paused = true;
+	}
+	/** Show a demo (a notification's link, ?demo=) without starting it. */
+	export function show(id: string) {
+		if (demos.some((d) => d.id === id)) current = id;
+	}
+	/** The page's menu (Seek here) and a comment's Go to. */
+	export function seekTo(seconds: number) {
+		const at = Math.max(0, duration ? Math.min(seconds, duration) : seconds);
+		if (audio) audio.currentTime = at;
+		currentTime = at;
+	}
+	/** Where the demo is playing, for the page's comment form (its Playhead button). */
+	export function currentPosition() {
+		return currentTime;
 	}
 	function playAll() {
 		if (track) paused = !paused;
@@ -100,7 +140,7 @@
 
 <div
 	bind:this={panelEl}
-	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4 grid-rows-[auto_auto_1fr]"
+	class="rounded-md border border-current/40 bg-blue/5 px-4 py-3 grid gap-4 content-start"
 	style:min-height={minHeight ? `${minHeight}px` : undefined}
 	aria-label="Demo recordings"
 >
@@ -176,6 +216,20 @@
 		oninput={seek}
 		aria-label="Position"
 	/>
+	{#if track && card}
+		<RecordingReview
+			label={track.label}
+			peaks={track.peaks ?? null}
+			duration={duration || track.durationSeconds || 0}
+			position={currentTime}
+			comments={trackComments}
+			{canComment}
+			{card}
+			onseek={seekTo}
+			oncomment={oncomment ? () => oncomment(track) : undefined}
+			oncontext={oncontext ? (seconds, x, y) => oncontext(track, seconds, x, y) : undefined}
+		/>
+	{/if}
 	{#if demos.length > 0}
 		<ul class="grid gap-2 content-start" aria-label="Demos">
 			{#each demos as d (d.id)}

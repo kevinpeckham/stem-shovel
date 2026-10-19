@@ -374,3 +374,96 @@ which must start on the recording's day or the day before:
 `dayFitsSession`, utils/isoDay.ts) and `deleteRecording`. The rows join
 the storage sum, the account's deletion (rows and blobs) and the user's
 (the uploader and creator unset).
+
+### Sessions review: waveforms, comments and a chat (2026-10-19)
+
+Kevin: a wave visualization and comments on each recording, as the stem
+player has; the same on a song's demos; the chat on the Sessions page;
+and a search as the Ideas page's.
+
+**Waveforms, measured on the server.** A practice recording can run an
+hour; decoding it in the browser for a waveform (as the mix page does for
+a mix without peaks) would cost a gigabyte of memory on a phone. So the
+jobs function measures it: `transcodeToMp3` for demos and session
+recordings (`measure: true` on the target) runs `measurePeaks` on the MP3
+it just made, which has ffmpeg decode the file to mono 16-bit PCM at
+8 kHz on its stdout and folds the stream into peaks as it comes
+(`utils/pcm16Peaks.ts`: a loudest sample per tenth of a second, reduced to
+`PEAK_BINS` at the end, when the length is known), so an hour costs a few
+floats per frame and nothing sits decoded; `finish` stores `peaks` (JSON,
+1024 values in 0..1) and `durationSeconds` on the row. The MP3 is what
+plays, so the waveform matches it to the sample. A demo or recording
+rendered before this shipped has an MP3 and no peaks: the song page and
+the Sessions page schedule `demo-peaks` / `session-peaks` jobs for them
+(`demosWantingPeaks`, `sessionsWantingPeaks`: ready MP3, null peaks, no
+measuring under way or one stalled; `peaks_started_at` is the claim, as
+`playback_started_at` is for the MP3), and `measureDemos` /
+`measureSessions` fetch the MP3 and measure it. Migration 0092 adds the
+columns to `demo` and `session_recording`.
+
+**Comments on a recording.** `session_comment` (docs/data-model.md): a
+title, a body, an optional position in seconds, the author, `edited_at`;
+under the recording and the account. `sessionComments.remote.ts`:
+`createSessionComment`, `updateSessionComment` (the author),
+`deleteSessionComment` (the author or an owner / admin), any member of
+the account posting; a position is time (`parseTime`), since a recording
+has no tempo grid. `notifySessionComment` tells every member of the
+account but the author (kind `comment`, coalesced per recording, the link
+`/<account>/sessions?recording=<id>`, which opens that recording's
+review and scrolls to it). The rows go with the recording, the session,
+the account and the author (`deleteSessionReviewRows`, cascade.ts).
+
+**The review row** (`RecordingReview.svelte`): the recording's waveform
+with the playhead and a bubble at each located comment
+(`CommentTimeline` over a `TimelineSource` made of the row's peaks and the
+player's position; a click seeks, and seeks the player to that recording
+first when another was playing; ⌘-click, Ctrl-click or right-click opens
+the page's menu: Seek here, Comment here with the position filled in),
+then the comments in a list, each drawn by the page's `card` snippet (the
+title, who and when, the position as a Go to, Edit for the author, Delete
+for the author or an admin). It says "The waveform is on its way…" over a
+flat line until the peaks are measured; the page refreshes itself every
+five seconds while an MP3 or a waveform is pending (ten minutes at most).
+Each recording row has a comments button with the count that opens and
+closes the review; the recording that plays has it open. The comment
+popover is the mix page's: one, to post or edit, with a Playhead button
+that reads the player when that recording is the one playing. The
+`SessionPlayer` exposes `seekTo`, `currentPosition` and binds
+`currentTime` and `duration` for it.
+
+**Demos on the song page.** The same review under the current demo in
+the Demos view (`DemoPanel` takes the demos' comments, the page's card and
+callbacks, and shows `RecordingReview` under its transport; `show(id)`,
+`seekTo`, `currentPosition`). A demo's comment is a song comment with
+`demo_id` set (migration 0092; `comment.demoId`, index), as a mix's has
+`mix_id`: `listComments` leaves them out of the song's stream,
+`listDemoComments` lists them for the view (`songView`'s
+`demoComments`), the create form carries `demoId` and the server parses
+the position as time for it; `notifyComment` names the demo and links
+`?demo=<id>`, which the page turns into the Demos view on that demo. The
+comments go with the demo (`deleteDemo`).
+
+**A chat per session** (docs/chat.md "Sessions"): `session_chat_message`
+and `session_chat_read` mirror `chat_message` and `chat_read` under a
+`recording_session`; `chat.remote.ts` takes a scope (`songId` or
+`sessionId`, exactly one: `ChatScopeSchema`, checked in the function) and
+`SongChat` / `ChatComposer` a `sessionId` in place of `songId`, so the
+one set of components serves both. The page loads each session's summary
+(`sessionChatSummaryOf`: count, unread, where this person marked it read)
+for the header's Chat button with its unread dot, fetches a chat's
+messages when its button is pressed (`chatSince` from 0) and keeps them
+for the visit; one `FloatingPanel` shows the open session's chat.
+`notifySessionChat` reaches the account's members (kind `chat`, the link
+`?session=<id>&open=chat`).
+
+**Search.** A field beside the kind filter narrows the list as you type:
+a session stays when its name, place, notes, kind or day match, or when
+any of its recordings does (title, filename, notes, uploader, day, or a
+comment's title or body); a session found through a recording shows only
+the recordings that matched. Nothing leaves the page: the data is the
+load's.
+
+Browser spec `tests/e2e/sessions-review.spec.ts`; `pcm16Peaks` and
+`RecordingReview` have unit and component tests, the remote functions
+authorization tests (`sessionComments.remote.test.ts`, the session cases
+in `chat.remote.test.ts` and the demo case in `comments.remote.test.ts`).

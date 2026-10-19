@@ -70,7 +70,9 @@ describe("SongChat", () => {
 		// The New line sits above "and the bass" (past the mark), never above the reader's own.
 		const sep = screen.getByRole("separator", { name: "New messages" });
 		expect(sep.nextElementSibling).toHaveTextContent("and the bass");
-		await vi.waitFor(() => expect(markChatRead).toHaveBeenCalledWith({ songId: base().songId }));
+		await vi.waitFor(() =>
+			expect(markChatRead).toHaveBeenCalledWith({ songId: base().songId, sessionId: "" }),
+		);
 	});
 	test("a position is a seek button and a URL a link in a new tab", async () => {
 		const onseek = vi.fn();

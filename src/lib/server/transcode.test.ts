@@ -48,6 +48,28 @@ vi.mock("ffmpeg-static", () => ({
 	},
 }));
 vi.mock("node:child_process", () => ({
+	/** The peaks pass (measurePeaks): ffmpeg writes PCM to its stdout; here a second of silence with one loud sample, then exit 0. */
+	spawn: (_file: string, args: string[]) => {
+		h.runs.push(args);
+		const listeners: Record<string, ((...a: unknown[]) => void)[]> = {};
+		const on =
+			(map: Record<string, ((...a: unknown[]) => void)[]>) =>
+			(ev: string, fn: (...a: unknown[]) => void) => {
+				(map[ev] ??= []).push(fn);
+				return undefined;
+			};
+		const stdout = { on: on(listeners) };
+		const errListeners: Record<string, ((...a: unknown[]) => void)[]> = {};
+		const stderr = { on: on(errListeners) };
+		const child = { stdout, stderr, on: on(listeners) };
+		queueMicrotask(() => {
+			const pcm = Buffer.alloc(8000 * 2);
+			pcm.writeInt16LE(16384, 4000 * 2);
+			for (const fn of listeners.data ?? []) fn(pcm);
+			for (const fn of listeners.close ?? []) fn(0);
+		});
+		return child;
+	},
 	execFile: (
 		_file: string,
 		args: string[],
@@ -246,7 +268,6 @@ describe("renderDemos", () => {
 			playbackUrl: null,
 		});
 		await renderDemos(["demo-1"]);
-		expect(h.runs).toHaveLength(1);
 		const args = h.runs[0];
 		expect(args.slice(6)).toEqual([
 			"-vn",
@@ -270,10 +291,17 @@ describe("renderDemos", () => {
 			"audio/mpeg",
 			"public",
 		);
+		// The waveform and the length, measured from the MP3 by a second ffmpeg (the peaks pass is the second run).
+		expect(h.runs).toHaveLength(2);
+		expect(h.runs[1].slice(-7)).toEqual(
+			["-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"].slice(-7),
+		);
 		expect(h.data.finishDemoPlayback).toHaveBeenCalledWith("demo-1", {
 			url: expect.stringMatching(/d1\.play-[a-z0-9]+\.mp3$/),
 			pathname: expect.stringMatching(/d1\.play-[a-z0-9]+\.mp3$/),
 			bytes: expect.any(Number),
+			durationSeconds: 1,
+			peaks: expect.arrayContaining([0.5]),
 		});
 		// A demo is never probed for raw PCM or silence: the one run is the MP3.
 		expect(h.data.replaceRecordingSource).not.toHaveBeenCalled();

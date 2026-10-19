@@ -36,6 +36,7 @@ const {
 	song,
 	demo,
 	sessionRecording,
+	recordingSession,
 	songMix,
 	account,
 	user: userTable,
@@ -254,12 +255,17 @@ export async function notifyComment(
 	songId: string,
 	authorId: string,
 	mix?: { id: string; version: number; label: string },
+	demo?: { id: string; label: string },
 ) {
 	const s = await songContext(accountId, songId);
 	if (!s) return;
 	const who = await nameOf(authorId);
 	const audience = (await projectAudience(accountId, s.projectId)).filter((id) => id !== authorId);
-	const on = mix ? `mix v${mix.version} of ${s.title}` : s.title;
+	const on = mix
+		? `mix v${mix.version} of ${s.title}`
+		: demo
+			? `demo "${demo.label}" of ${s.title}`
+			: s.title;
 	await notifyUsers(audience, {
 		kind: "comment",
 		accountId,
@@ -268,9 +274,13 @@ export async function notifyComment(
 			n === 1
 				? `${who} commented in ${s.project.name}.`
 				: `${n} new comments, the latest from ${who}, in ${s.project.name}.`,
-		// The permalink's redirect keeps the query: the song page opens its Comments panel on it.
-		href: mix ? `${s.href}/mixes/${mix.id}` : `${s.href}?open=comments`,
-		subjectId: mix ? `${songId}:mix:${mix.id}` : songId,
+		// The permalink's redirect keeps the query: the song page opens its Comments panel, or the demo, on it.
+		href: mix
+			? `${s.href}/mixes/${mix.id}`
+			: demo
+				? `${s.href}?demo=${demo.id}`
+				: `${s.href}?open=comments`,
+		subjectId: mix ? `${songId}:mix:${mix.id}` : demo ? `${songId}:demo:${demo.id}` : songId,
 		coalesce: true,
 	});
 }
@@ -374,6 +384,70 @@ export async function notifySessionRecording(
 			`${who} added ${n === 1 ? `"${r.title || r.filename}"` : `${n} recordings`} to ${name}.`,
 		href: `/${r.account.slug}/sessions`,
 		subjectId: r.sessionId,
+		coalesce: true,
+	});
+}
+
+/** Everyone in the account but one person: the audience of a session's review (docs/uploads-and-blob.md, "Sessions"). */
+async function accountAudienceBut(accountId: string, userId: string) {
+	const members = await db.query.accountMember.findMany({
+		where: eq(accountMember.accountId, accountId),
+		columns: { userId: true },
+	});
+	return members.map((m) => m.userId).filter((id) => id !== userId);
+}
+
+/** A comment on a session's recording: every member of the account but the author; the item lands on the recording. */
+export async function notifySessionComment(
+	accountId: string,
+	recordingId: string,
+	authorId: string,
+) {
+	const r = await db.query.sessionRecording.findFirst({
+		where: and(eq(sessionRecording.accountId, accountId), eq(sessionRecording.id, recordingId)),
+		columns: { title: true, filename: true, sessionId: true },
+		with: {
+			session: { columns: { name: true, place: true, kind: true, startsOn: true } },
+			account: { columns: { slug: true } },
+		},
+	});
+	if (!r?.session) return;
+	const name = sessionDisplayName(r.session);
+	const who = await nameOf(authorId);
+	await notifyUsers(await accountAudienceBut(accountId, authorId), {
+		kind: "comment",
+		accountId,
+		title: `New comment on "${r.title || r.filename}"`,
+		body: (n) =>
+			n === 1
+				? `${who} commented on a recording in ${name}.`
+				: `${n} new comments, the latest from ${who}, in ${name}.`,
+		href: `/${r.account.slug}/sessions?recording=${recordingId}`,
+		subjectId: `session-recording:${recordingId}`,
+		coalesce: true,
+	});
+}
+
+/** A message in a session's chat (docs/chat.md, "Sessions"): every member of the account but the author; the item opens the chat. */
+export async function notifySessionChat(accountId: string, sessionId: string, authorId: string) {
+	const s = await db.query.recordingSession.findFirst({
+		where: and(eq(recordingSession.accountId, accountId), eq(recordingSession.id, sessionId)),
+		columns: { name: true, place: true, kind: true, startsOn: true },
+		with: { account: { columns: { slug: true } } },
+	});
+	if (!s) return;
+	const name = sessionDisplayName(s);
+	const who = await nameOf(authorId);
+	await notifyUsers(await accountAudienceBut(accountId, authorId), {
+		kind: "chat",
+		accountId,
+		title: `New message in the chat on ${name}`,
+		body: (n) =>
+			n === 1
+				? `${who} wrote in the chat on ${name}.`
+				: `${n} new messages, the latest from ${who}, on ${name}.`,
+		href: `/${s.account.slug}/sessions?session=${sessionId}&open=chat`,
+		subjectId: `session:${sessionId}`,
 		coalesce: true,
 	});
 }

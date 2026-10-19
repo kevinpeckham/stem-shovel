@@ -1,7 +1,9 @@
 import {
+	demosWantingPeaks,
 	demosWantingPlayback,
 	getSong,
 	listComments,
+	listDemoComments,
 	listMixComments,
 	manifestFor,
 	mixesWantingPlayback,
@@ -9,7 +11,12 @@ import {
 	stemsWantingPlayback,
 } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
-import { scheduleDemoPlayback, scheduleMixPlayback, schedulePlayback } from "#lib/server/jobs.js";
+import {
+	scheduleDemoPeaks,
+	scheduleDemoPlayback,
+	scheduleMixPlayback,
+	schedulePlayback,
+} from "#lib/server/jobs.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 
@@ -22,13 +29,16 @@ export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
 export async function songView(song: SongRow) {
 	schedulePlayback(stemsWantingPlayback(song.stems));
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
+	// A demo rendered before the review shipped has an MP3 and no waveform yet: measured in the jobs function.
+	scheduleDemoPeaks(demosWantingPeaks(song.demos));
 	scheduleMixPlayback(mixesWantingPlayback(song.mixes));
-	// Four independent lookups (file URLs, the manifest, the comments, the mixes' comments) run together.
-	const [presented, manifest, comments, mixComments] = await Promise.all([
+	// Five independent lookups (file URLs, the manifest, the comments, the mixes' and the demos' comments) run together.
+	const [presented, manifest, comments, mixComments, demoComments] = await Promise.all([
 		presentSongFiles(song),
 		manifestFor(song),
 		listComments(song.id),
 		listMixComments(song.id),
+		listDemoComments(song.id),
 	]);
 	return {
 		// The mixes (docs/mixes.md) carry their notes rendered, as the documents are.
@@ -40,6 +50,8 @@ export async function songView(song: SongRow) {
 		comments,
 		/** Feedback on the mixes, every mix's together; the page splits them by `mixId`. */
 		mixComments,
+		/** Comments on the demo recordings, every demo's together; the Demos view keeps the current demo's. */
+		demoComments,
 		docs: {
 			chart: renderMarkdown(song.chartMarkdown),
 			lyrics: renderMarkdown(song.lyricsMarkdown),

@@ -13,10 +13,14 @@
 	 * message, as the server made it, goes to the parent (`onsent`).
 	 */
 	interface Props {
-		songId: string;
+		/** The chat's song, or its session (docs/chat.md "Sessions"): one of them. */
+		songId?: string;
+		sessionId?: string;
+		/** What the box asks for; "song" by default. */
+		about?: string;
 		onsent: (message: ChatMessageRow) => void;
 	}
-	let { songId, onsent }: Props = $props();
+	let { songId = "", sessionId = "", about = "song", onsent }: Props = $props();
 
 	let draft = $state("");
 	let box = $state<HTMLTextAreaElement | null>(null);
@@ -48,13 +52,14 @@
 	{...sendMessage.enhance(({ submit, element }) => send(submit, element))}
 >
 	<input {...sendMessage.fields.songId.as("hidden", songId)} />
+	<input {...sendMessage.fields.sessionId.as("hidden", sessionId)} />
 	<div class="grid grid-cols-[1fr_auto] items-end gap-2">
 		<textarea
 			bind:this={box}
 			class="field w-full text-15px"
 			rows="2"
 			maxlength={CHAT_MESSAGE_MAX}
-			placeholder="Say something about this song… (Enter sends, Shift+Enter for a new line)"
+			placeholder="Say something about this {about}… (Enter sends, Shift+Enter for a new line)"
 			aria-label="Message"
 			bind:value={draft}
 			{...sendMessage.fields.body.as("text")}

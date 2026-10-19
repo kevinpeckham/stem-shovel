@@ -16,6 +16,9 @@ import { comment } from "./comment";
 import { commentVersion } from "./commentVersion";
 import { demo } from "./demo";
 import { sessionRecording } from "./sessionRecording";
+import { sessionComment } from "./sessionComment";
+import { sessionChatMessage } from "./sessionChatMessage";
+import { sessionChatRead } from "./sessionChatRead";
 import { recordingSession } from "./recordingSession";
 import { beat } from "./beat";
 import { chordStyle } from "./chordStyle";
@@ -209,6 +212,7 @@ export const songMixRelations = relations(songMix, ({ one, many }) => ({
 export const commentRelations = relations(comment, ({ one, many }) => ({
 	song: one(song, { fields: [comment.songId], references: [song.id] }),
 	mix: one(songMix, { fields: [comment.mixId], references: [songMix.id] }),
+	demo: one(demo, { fields: [comment.demoId], references: [demo.id] }),
 	author: one(user, { fields: [comment.userId], references: [user.id] }),
 	versions: many(commentVersion),
 }));
@@ -261,21 +265,48 @@ export const recordingSessionRelations = relations(recordingSession, ({ one, man
 	account: one(account, { fields: [recordingSession.accountId], references: [account.id] }),
 	creator: one(user, { fields: [recordingSession.createdBy], references: [user.id] }),
 	recordings: many(sessionRecording),
+	chatMessages: many(sessionChatMessage),
 }));
 
-export const sessionRecordingRelations = relations(sessionRecording, ({ one }) => ({
+export const sessionRecordingRelations = relations(sessionRecording, ({ one, many }) => ({
 	account: one(account, { fields: [sessionRecording.accountId], references: [account.id] }),
 	session: one(recordingSession, {
 		fields: [sessionRecording.sessionId],
 		references: [recordingSession.id],
 	}),
 	uploader: one(user, { fields: [sessionRecording.uploadedBy], references: [user.id] }),
+	comments: many(sessionComment),
 }));
 
-export const demoRelations = relations(demo, ({ one }) => ({
+export const sessionCommentRelations = relations(sessionComment, ({ one }) => ({
+	recording: one(sessionRecording, {
+		fields: [sessionComment.recordingId],
+		references: [sessionRecording.id],
+	}),
+	author: one(user, { fields: [sessionComment.userId], references: [user.id] }),
+}));
+
+export const sessionChatMessageRelations = relations(sessionChatMessage, ({ one }) => ({
+	session: one(recordingSession, {
+		fields: [sessionChatMessage.sessionId],
+		references: [recordingSession.id],
+	}),
+	author: one(user, { fields: [sessionChatMessage.userId], references: [user.id] }),
+}));
+
+export const sessionChatReadRelations = relations(sessionChatRead, ({ one }) => ({
+	session: one(recordingSession, {
+		fields: [sessionChatRead.sessionId],
+		references: [recordingSession.id],
+	}),
+	user: one(user, { fields: [sessionChatRead.userId], references: [user.id] }),
+}));
+
+export const demoRelations = relations(demo, ({ one, many }) => ({
 	account: one(account, { fields: [demo.accountId], references: [account.id] }),
 	song: one(song, { fields: [demo.songId], references: [song.id] }),
 	uploader: one(user, { fields: [demo.uploadedBy], references: [user.id] }),
+	comments: many(comment),
 }));
 
 export const stemRelations = relations(stem, ({ one }) => ({

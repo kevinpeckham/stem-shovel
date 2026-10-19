@@ -14,6 +14,20 @@ Pick one or more audio files: a phone's voice memo, a recorder's WAV, a board mi
 
 The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file.
 
+## Waveforms and comments
+
+Every recording has a comments button at the end of its row, with the count. It opens the recording's waveform, with the playhead once it plays, and its comments underneath; the recording that is playing has it open already. Click the waveform to jump there. To leave a comment at a spot, ⌘-click (Ctrl-click) or right-click the waveform and choose **Comment here**: the position is filled in, as time, and you add a title and what you heard. The pencil by the comments heading leaves a comment about the recording in general, and the **Playhead** button in the form takes the position from where the recording is playing. A comment with a position shows as a bubble on the waveform; **Go to** on it jumps there. You can edit your own comments; you or an admin can delete them. Everyone else in the account gets a notification, and its link opens the recording.
+
+The waveform is drawn on the server when the MP3 renders, so a long recording costs the phone nothing; a recording says "The waveform is on its way…" until it is there.
+
+## Chat
+
+Each session has a chat of its own: press **Chat** in the session's header. It works as a song's chat (see Chat): messages in time order, Enter sends, your own can be edited or deleted, a time like 1:23 in a message is a link that jumps the player there, and a dot on the button marks messages you have not seen. Everyone in the account can read and write, and gets a notification.
+
+## Search
+
+The search field beside the Practice and Show filter narrows the list as you type: a session stays when its name, place, notes, kind or day match, or when any of its recordings does, by title, file name, notes, who uploaded it, its day, or the words of a comment on it. A session found through a recording shows only the recordings that matched.
+
 ## Sorting recordings into sessions
 
 Two sessions on one day, an acoustic set in the afternoon and the show at night, say: choose **New session on this day…** in a session's menu, name it, then open each recording's **Edit** and pick the session from the list, which offers the sessions of the recording's day and the day before, or **New session…** to make one right there. A session's **Edit** changes its name, kind, day, place and notes; **Delete session** removes it with every recording in it.

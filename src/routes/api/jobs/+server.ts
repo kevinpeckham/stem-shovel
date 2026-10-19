@@ -4,6 +4,8 @@ import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
 import { renderNotationPdf } from "#lib/server/notationPdf.js";
 import {
+	measureDemos,
+	measureSessions,
 	renderDemos,
 	renderMixes,
 	renderRecordings,
@@ -54,6 +56,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "session-playback":
 				await renderSessions(ids);
+				break;
+			case "demo-peaks":
+				await measureDemos(ids);
+				break;
+			case "session-peaks":
+				await measureSessions(ids);
 				break;
 			case "notation-pdf":
 				for (const id of ids) await renderNotationPdf(id);

@@ -232,6 +232,14 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Svelte and the page
 
+- **A page that shows the jobs function's results must refresh itself.**
+  The Sessions page loaded once after an upload and never again, so the
+  MP3 and the waveform the jobs function made seconds later stayed
+  "rendering…" until a reload; the earlier browser spec only passed
+  because the second upload outlasted the first file's render. A timer
+  calls `invalidateAll` every few seconds while a row is pending, capped
+  (sessions review, 2026-10-19). The song page already did this for
+  stems' renditions.
 - **Page data is not deeply reactive.** Setting `song.shared = true` on
   an object inside `data.songs` changed nothing on screen; the menu
   label stayed. After a mutation on the server, `refreshAll()` and let
@@ -289,6 +297,28 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Testing
 
+- **A textarea's text joins its label's accessible name.** `getByLabel("Comment",
+  { exact: true })` found the empty box in the create form and nothing in the
+  edit form, where the same label wraps a textarea with text: the name was
+  "Comment Drags after the bridge". Match a filled control by the start of
+  its name (`getByRole("textbox", { name: /^Comment/ })`) or put the label
+  text in `aria-label` (sessions review spec).
+- **A `{@const}` inside an `{#if}` block is read again as the block closes.**
+  A menu's handler set `menuAt = null` and then used `r`, declared as
+  `{@const r = menuAt.recording}` in the `{#if menuAt}` block: the const
+  re-evaluated on null and the page crashed out of its template. Read what
+  a handler needs into a local before clearing the state that shows the
+  block (sessions page menu).
+- **The fakes' `background()` never runs its callback.** A remote test
+  asserting that a notification helper was called sees nothing: the
+  notice runs inside `background(() => notify…)`, and the fake
+  `background` is a bare `vi.fn()`. Assert on `background` being called,
+  or call the captured function (sessions review remote tests).
+- **`form()` refuses a valibot schema wrapped in `v.pipe(…, v.check())`.**
+  The check's input type is the object alone, which the remote `form`
+  overloads do not accept. Keep the form schema a plain `v.object` and do
+  the cross-field check in the function with `error(400)` (`ChatSchema`'s
+  one-of-two scope).
 - **Playwright `count()` counts hidden elements; `getByRole` does not.**
   A closed popover's buttons (display: none) make `count()` non-zero and
   then a `click()` waits forever for visibility. Filter with
