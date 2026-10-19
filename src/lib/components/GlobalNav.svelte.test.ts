@@ -57,6 +57,10 @@ describe("GlobalNav", () => {
 			"href",
 			"/idea-recorder",
 		);
+		expect(screen.getByRole("menuitem", { name: /Session Recorder/ })).toHaveAttribute(
+			"href",
+			"/mine/sessions/record",
+		);
 		// Opening the account menu closes the tools menu
 		await user.click(screen.getByRole("button", { name: /My Studio/ }));
 		expect(screen.getAllByRole("menu")).toHaveLength(1);

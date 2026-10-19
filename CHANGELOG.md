@@ -8,6 +8,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The Tools menu and the footer know the sessions.** Session Recorder
+  joins the Tools menu for a member, and the footer carries a Music row
+  (Projects, Sessions, Session Recorder, Ideas) above the instruments and
+  the tools, as the header's menus do.
+
 ## [0.138.0] - 2026-10-19
 
 ### Added

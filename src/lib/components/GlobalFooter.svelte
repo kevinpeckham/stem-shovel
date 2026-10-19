@@ -24,7 +24,22 @@
 <footer class="page-x-padding pt-8 pb-12 border-t border-white/10">
 	<!-- <span>Stem Shovel</span> -->
 
-	<!-- Three rows of links, tappable on a phone (15px, wrapping): the instruments, the tools, everything else under them. -->
+	<!-- The header's menus as rows of links, tappable on a phone (15px, wrapping): a member's music, the instruments, the tools, everything else under them. -->
+	{#if member}
+		<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Music">
+			<span class="text-11px uppercase tracking-wider opacity-60">Music</span>
+			<a class="footer-link" href="/{member.slug}/projects">Projects</a>
+			<a class="footer-link" href="/{member.slug}/sessions" title="Practice and show recordings"
+				>Sessions</a
+			>
+			<a
+				class="footer-link"
+				href="/{member.slug}/sessions/record"
+				title="The room, in stereo, straight into the band's sessions">Session Recorder</a
+			>
+			<a class="footer-link" href="/idea-recorder" title="Your ideas and takes">Ideas</a>
+		</nav>
+	{/if}
 	<nav class="flex flex-wrap items-center gap-x-6 mb-4 gap-y-3 text-15px" aria-label="Instruments">
 		<span class="text-11px uppercase tracking-wider opacity-60">Instruments</span>
 		<a class="footer-link" href="/drum-machine">Drum Machine</a>
@@ -40,6 +55,11 @@
 				class="footer-link"
 				href="/multitrack-recorder"
 				title="Dawn, the multitrack recorder">Dawn</a
+			>
+			<a
+				class="footer-link"
+				href="/{member.slug}/sessions/record"
+				title="The room, in stereo, straight into the band's sessions">Session Recorder</a
 			>{/if}
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>

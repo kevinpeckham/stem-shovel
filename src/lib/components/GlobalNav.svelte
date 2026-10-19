@@ -74,7 +74,8 @@
 		TOOL_PAGES.some(active) ||
 			active("/idea-recorder") ||
 			active("/looper") ||
-			active("/multitrack-recorder"),
+			active("/multitrack-recorder") ||
+			(!!member && active(`/${member.slug}/sessions/record`)),
 	);
 </script>
 
@@ -308,6 +309,19 @@
 						>
 							<span class="i-ph-sliders-horizontal w-1em" aria-hidden="true"></span>Multitrack
 							Recorder
+						</a>
+						<a
+							class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+								`/${member.slug}/sessions/record`,
+							)
+								? 'text-accent'
+								: ''}"
+							role="menuitem"
+							href="/{member.slug}/sessions/record"
+							title="The room, in stereo, straight into the band's sessions"
+							onclick={() => (openMenu = null)}
+						>
+							<span class="i-ph-record w-1em" aria-hidden="true"></span>Session Recorder
 						</a>
 					{/if}
 					<!-- The looper works signed out (a loop stays in the browser; saving it needs an account), so everyone sees it. -->
