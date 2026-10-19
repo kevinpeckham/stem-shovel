@@ -28,6 +28,10 @@ Each session has a chat of its own: press **Chat** in the session's header. It w
 
 The search field beside the Practice and Show filter narrows the list as you type: a session stays when its name, place, notes, kind or day match, or when any of its recordings does, by title, file name, notes, who uploaded it, its day, or the words of a comment on it. A session found through a recording shows only the recordings that matched.
 
+## Sharing one recording
+
+Sessions are for members, but one recording can go further: choose **Share…** in a recording's menu and make a viewing link. Whoever opens it hears that recording on a page of its own, with the waveform and the downloads, and nothing else of the band's sessions. Links can expire, be limited to a number of uses, and be revoked; **Open its page** shows you the page they land on.
+
 ## Sorting recordings into sessions
 
 Two sessions on one day, an acoustic set in the afternoon and the show at night, say: choose **New session on this day…** in a session's menu, name it, then open each recording's **Edit** and pick the session from the list, which offers the sessions of the recording's day and the day before, or **New session…** to make one right there. A session's **Edit** changes its name, kind, day, place and notes; **Delete session** removes it with every recording in it.

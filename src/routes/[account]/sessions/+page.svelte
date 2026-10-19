@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { afterNavigate, invalidateAll, replaceState } from "$app/navigation";
+	import { afterNavigate, goto, invalidateAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
 	import RecordingReview from "#lib/components/RecordingReview.svelte";
 	import SessionPlayer, { type SessionTrack } from "#lib/components/SessionPlayer.svelte";
+	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import SongChat from "#lib/components/SongChat.svelte";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
 	import {
@@ -256,6 +257,16 @@
 			body: c.body,
 			at: c.at === null ? "" : formatTime(c.at, 2),
 		});
+	}
+
+	// ---- viewing links for one recording (its own page, docs/uploads-and-blob.md "Sessions"): one popover ----
+	let sharePanel = $state<HTMLDivElement | null>(null);
+	let sharing = $state<string | null>(null);
+	const sharingRecording = $derived(sharing ? recordingOf(sharing) : null);
+	const linksOf = (id: string) => data.shareLinks.filter((l) => l.recordingId === id);
+	function openShare(r: Recording) {
+		sharing = r.id;
+		sharePanel?.showPopover();
 	}
 
 	// ---- ⌘-click on a waveform: Seek here, Comment here ----
@@ -982,6 +993,23 @@
 															recordingDownloadName(r.title, r.filename, undefined, r.source),
 														),
 												},
+												{
+													id: "page",
+													kind: "button",
+													label: "Open its page",
+													iconClass: "i-ph-arrow-square-out",
+													title: "The recording on a page of its own, where a viewing link lands",
+													action: () => void goto(`/${data.account.slug}/sessions/r/${r.id}`),
+												},
+												{
+													id: "share",
+													kind: "button",
+													label: `Share…${linksOf(r.id).some((l) => l.state === "open") ? " (linked)" : ""}`,
+													iconClass: "i-ph-paper-plane-tilt",
+													title: "Viewing links for this recording alone",
+													condition: data.canEdit,
+													action: () => openShare(r),
+												},
 												{ id: "d", kind: "divider", condition: data.canEdit },
 												{
 													id: "edit",
@@ -1151,6 +1179,47 @@
 			>
 				<span class="i-ph-hands-clapping-bold mr-2" aria-hidden="true"></span>Comment here
 			</button>
+		{/if}
+	</div>
+{/if}
+
+{#if data.canEdit}
+	<!-- Viewing links for one recording: its own page is where they land (docs/uploads-and-blob.md, "Sessions"). -->
+	<div
+		id="recording-share"
+		popover="auto"
+		bind:this={sharePanel}
+		onbeforetoggle={(e) => {
+			if (e.newState === "closed") void invalidateAll();
+		}}
+		class="m-auto max-h-[calc(100vh-2rem)] overflow-y-auto w-[min(32rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-oxford p-6 text-neutral-100 shadow-2xl shadow-black/60 [&::backdrop]:bg-black/60"
+	>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="heading-2 mb-0">
+				Share{#if sharingRecording}
+					"{titleOf(sharingRecording)}"{/if}
+			</h2>
+			<button
+				class="button button-xs"
+				type="button"
+				popovertarget="recording-share"
+				popovertargetaction="hide"
+			>
+				Close
+			</button>
+		</div>
+		<p class="mb-3 text-sm text-dim">
+			A link opens this one recording on a page of its own, for someone outside the band; the rest
+			of the sessions stay members-only.
+		</p>
+		{#if sharingRecording}
+			{#key sharingRecording.id}
+				<ShareLinks
+					target={{ recordingId: sharingRecording.id }}
+					links={linksOf(sharingRecording.id)}
+					isPrivate={true}
+				/>
+			{/key}
 		{/if}
 	</div>
 {/if}

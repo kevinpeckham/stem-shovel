@@ -104,6 +104,27 @@ describe("createShareLink", () => {
 			{ note: "", maxUses: null, expiresDays: 0 },
 		);
 	});
+	it('a link for a session recording (docs/uploads-and-blob.md, "Sessions"): the recording\'s account, the recording recorded', async () => {
+		const RECORDING = fakeId("rec-one");
+		givenRow("sessionRecording", { accountId: ACCOUNT });
+		asOutsider();
+		await expect(call(share.createShareLink, { recordingId: RECORDING })).rejects.toMatchObject(
+			httpError(404),
+		);
+		asEditorOf(ACCOUNT);
+		await expect(call(share.createShareLink, { recordingId: RECORDING })).resolves.toEqual({
+			code: "abc",
+		});
+		expect(data.createShareLink).toHaveBeenLastCalledWith(
+			ACCOUNT,
+			USER,
+			{ recordingId: RECORDING },
+			{ note: "", maxUses: null, expiresDays: 0 },
+		);
+		await expect(
+			call(share.createShareLink, { recordingId: RECORDING, songId: SONG }),
+		).rejects.toBeDefined();
+	});
 	it("an editor makes one for a song, or a project, under the account and as themselves", async () => {
 		asEditorOf(ACCOUNT);
 		await expect(call(share.createShareLink, { songId: SONG })).resolves.toEqual({ code: "abc" });

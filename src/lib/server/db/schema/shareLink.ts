@@ -3,6 +3,7 @@ import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import { account } from "./account";
 import { id, timestamps } from "./columns";
 import { project } from "./project";
+import { sessionRecording } from "./sessionRecording";
 import { song } from "./song";
 import { songMix } from "./songMix";
 import { user } from "./user";
@@ -25,6 +26,10 @@ export const shareLink = table(
 		songId: t.text("song_id").references(() => song.id, { onDelete: "cascade" }),
 		/** A link made for a mix (docs/mixes.md): the song page opens on it. */
 		mixId: t.text("mix_id").references(() => songMix.id, { onDelete: "set null" }),
+		/** A link for one session recording (docs/uploads-and-blob.md, "Sessions"): opens its own page, members-only otherwise. */
+		recordingId: t
+			.text("recording_id")
+			.references(() => sessionRecording.id, { onDelete: "cascade" }),
 		code: t.text("code").notNull().unique(),
 		note: t.text("note").notNull().default(""),
 		createdBy: t.text("created_by").references(() => user.id, { onDelete: "set null" }),
@@ -40,6 +45,7 @@ export const shareLink = table(
 		t.index("share_link_account_idx").on(table.accountId),
 		t.index("share_link_project_idx").on(table.projectId),
 		t.index("share_link_song_idx").on(table.songId),
+		t.index("share_link_recording_idx").on(table.recordingId),
 		t.index("share_link_created_by_idx").on(table.createdBy),
 	],
 );

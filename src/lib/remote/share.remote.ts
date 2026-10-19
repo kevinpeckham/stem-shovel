@@ -1,6 +1,7 @@
 import { form, getRequestEvent } from "$app/server";
 import {
 	accountOfProject,
+	accountOfSessionRecording,
 	accountOfSong,
 	memberOf,
 	isEditor,
@@ -46,24 +47,30 @@ export const setSongPrivate = form(PrivacySchema, async ({ id, isPrivate }) => {
 	return { isPrivate: isPrivate === "true" };
 });
 
-/** Any member makes a viewing link for a song or a project of their account. */
+/** Any member makes a viewing link for a song, a project or a session recording of their account. */
 export const createShareLink = form(
 	ShareLinkCreateSchema,
-	async ({ songId, mixId, projectId, note, maxUses, expiresDays }) => {
+	async ({ songId, mixId, projectId, recordingId, note, maxUses, expiresDays }) => {
 		const { locals } = getRequestEvent();
 		const user = requireUser(locals);
 		if (await rateLimited(`sharelink:${user.id}`, 60, HOUR))
 			error(429, "Too many links in one hour.");
 		const m = songId
 			? await memberOf(locals, accountOfSong, songId)
-			: await memberOf(locals, accountOfProject, projectId);
+			: recordingId
+				? await memberOf(locals, accountOfSessionRecording, recordingId)
+				: await memberOf(locals, accountOfProject, projectId);
 		// A link made for a mix (docs/mixes.md): the mix must be this song's.
 		if (mixId && (!songId || (await mixOwnership(mixId))?.songId !== songId))
 			error(404, "Mix not found");
 		const row = await create(
 			m.accountId,
 			user.id,
-			songId ? { songId, mixId: mixId || undefined } : { projectId },
+			songId
+				? { songId, mixId: mixId || undefined }
+				: recordingId
+					? { recordingId }
+					: { projectId },
 			{
 				note,
 				maxUses,

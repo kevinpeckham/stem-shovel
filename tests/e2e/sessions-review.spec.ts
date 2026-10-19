@@ -102,6 +102,33 @@ test("comments on a recording's waveform, chats about the session, and searches"
 	await search.fill("");
 	await expect(page.locator("[data-session]")).toHaveCount(1);
 
+	// A viewing link for the recording alone: made from its menu, it opens the recording's own page for a visitor.
+	const row2 = page.locator("[data-recording]").first();
+	await row2.getByRole("button", { name: /actions$/ }).click();
+	await page.getByRole("button", { name: /^Share…/ }).click();
+	const sharePopover = page.locator("#recording-share");
+	await expect(sharePopover).toBeVisible();
+	await sharePopover.getByRole("button", { name: "New link" }).click();
+	// Shown as XXXX-XXXX-XXXX (formatInviteCode); the code itself may hold a dash, so the two inserted ones go by position.
+	const shown = (await sharePopover.locator("code").first().textContent())?.trim() ?? "";
+	const code = shown.slice(0, 4) + shown.slice(5, 9) + shown.slice(10);
+	expect(code).toHaveLength(12);
+	await sharePopover.getByRole("button", { name: "Close" }).click();
+	const visitor = await page.context().browser()!.newContext();
+	const guest = await visitor.newPage();
+	await guest.goto(`/s/${code}`);
+	await expect(guest.locator("[data-recording-title]")).toHaveText("keys");
+	await expect(guest.getByRole("button", { name: "Download MP3" })).toBeVisible();
+	// Without the code the page is not there.
+	const stranger = await visitor.newPage();
+	await visitor.clearCookies();
+	const res = await stranger.goto(
+		page.url().replace(/\/mmkk\/sessions.*$/, "") +
+			`/mmkk/sessions/r/${await row2.getAttribute("data-recording")}`,
+	);
+	expect(res?.status()).toBe(404);
+	await visitor.close();
+
 	await deleteEverySession(page);
 	await expect(page.locator("[data-session]")).toHaveCount(0);
 	expect(errors).toEqual([]);

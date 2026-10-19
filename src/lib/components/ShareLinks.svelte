@@ -24,8 +24,8 @@
 		state: "open" | "revoked" | "expired" | "used up";
 	}
 	interface Props {
-		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; or a project. */
-		target: { songId: string; mixId?: string } | { projectId: string };
+		/** A song, with a mix of it (docs/mixes.md) when the links should open on that mix; a project; or one session recording. */
+		target: { songId: string; mixId?: string } | { projectId: string } | { recordingId: string };
 		links: Link[];
 		isPrivate: boolean;
 	}
@@ -61,6 +61,7 @@
 			createShareLink.fields.songId.set("songId" in target ? target.songId : "");
 			createShareLink.fields.mixId.set("songId" in target ? (target.mixId ?? "") : "");
 			createShareLink.fields.projectId.set("projectId" in target ? target.projectId : "");
+			createShareLink.fields.recordingId.set("recordingId" in target ? target.recordingId : "");
 			await submit();
 			if (createShareLink.result?.code) {
 				notify("Viewing link created");
@@ -72,8 +73,10 @@
 		{#if "songId" in target}
 			<input {...createShareLink.fields.songId.as("hidden", target.songId)} />
 			<input {...createShareLink.fields.mixId.as("hidden", target.mixId ?? "")} />
-		{:else}
+		{:else if "projectId" in target}
 			<input {...createShareLink.fields.projectId.as("hidden", target.projectId)} />
+		{:else}
+			<input {...createShareLink.fields.recordingId.as("hidden", target.recordingId)} />
 		{/if}
 		<label class="block grow">
 			<span class="text-13px text-dim">Note (optional)</span>

@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Share links on session recordings.** A recording's menu has Share…
+  with viewing links that open the recording on a page of its own
+  (`/sessions/r/<id>`, with the waveform, player and downloads), for
+  someone outside the band; nothing else of the sessions. Migration 0095.
 - **Session recordings tied to a song.** A recording's Edit picks the song it
   records, from the account's songs; the row links to it and the song's
   page lists its session recordings under the Demos view. Migration 0094.

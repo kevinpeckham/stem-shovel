@@ -21,6 +21,8 @@ Files are named after the project, the song and the song's version, for example 
 
 By default every song's address works for anyone, signed in or not, so sending the link is sharing. The share button in the song's header emails the link with a note from you.
 
+A session recording can be shared the same way, on its own: see Sessions.
+
 ## Private projects and songs
 
 Any member of the account can make a project or a single song **private** from its settings. A private song opens only for members of the account, for the project's viewers (see _Accounts and members_) and for people holding a **viewing link**. Making a project private covers every song in it.

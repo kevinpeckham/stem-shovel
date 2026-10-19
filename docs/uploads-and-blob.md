@@ -381,6 +381,21 @@ chosen on its edit from `listAccountSongs`, checked against the account
 in `updateSessionRecording`, linked from the row, and listed on the
 song's page under the Demos view (`listSessionRecordingsOfSong`, members
 only) with a link to `/sessions?recording=<id>`.
+
+**A recording's own page and its viewing links.** Each recording has a
+page, `/<account>/sessions/r/<id>` (`sessionRecordingPage`): the title,
+session, day, source, the waveform, a one-track `SessionPlayer` and the
+downloads. The page is where a share link lands: `share_link.recording_id`
+(migration 0095; `ShareLinkCreateSchema` takes exactly one of a song, a
+project or a recording; `createShareLink` checks membership through
+`accountOfSessionRecording`; `/s/<code>` resolves to the page), and
+`canViewRecording` lets in a member of the account or a visitor holding
+the recording's code, nobody else (the tapes are never public, so the
+page is 404 without one). A visitor sees that one recording and nothing
+else of the account's sessions. The Sessions page's row menu has "Open
+its page" and "Share…" (editors: one popover with `ShareLinks` for the
+recording, the links loaded for the page by `listRecordingShareLinks`);
+the recording's page has Share too.
 `sessions.remote.ts`: `createSession` (a second session of a day, to
 move recordings into), `updateSession`, `deleteSession` (its recordings
 and their files go), `updateRecording` (title, day, notes and the session,

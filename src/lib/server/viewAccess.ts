@@ -18,6 +18,8 @@ export interface ShareGrant {
 	code: string;
 	projectId: string | null;
 	songId: string | null;
+	/** A link for one session recording (docs/uploads-and-blob.md, "Sessions"). */
+	recordingId?: string | null;
 }
 
 export interface Viewer {
@@ -82,6 +84,12 @@ export function canViewSong(
 	if (song.project.isRestricted) return onProject || granted;
 	if (!song.isPrivate && !song.project.isPrivate) return true;
 	return who.accountRole !== null || onProject || granted;
+}
+
+/** A session recording (docs/uploads-and-blob.md, "Sessions"): the account's members, or a visitor holding its link; the tapes are never public. */
+export function canViewRecording(recordingId: string, who: Viewer, grants: ShareGrant[]): boolean {
+	if (who.accountRole !== null) return true;
+	return grants.some((g) => g.recordingId === recordingId);
 }
 
 /** Who may change a project and what is in it. */

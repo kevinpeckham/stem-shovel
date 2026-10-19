@@ -2,6 +2,7 @@ import { requireMember, requireSignedIn } from "#lib/server/access.js";
 import {
 	listAccountSongs,
 	listRecordingSessions,
+	listRecordingShareLinks,
 	listSessionComments,
 	sessionChatSummaryOf,
 	sessionsWantingPeaks,
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	requireMember(locals, account.id);
 	const sessions = await listRecordingSessions(account.id);
 	scheduleSessionPeaks(sessionsWantingPeaks(sessions.flatMap((s) => s.recordings)));
-	const [comments, chat, songs] = await Promise.all([
+	const [comments, chat, songs, shareLinks] = await Promise.all([
 		listSessionComments(account.id),
 		sessionChatSummaryOf(
 			sessions.map((s) => s.id),
@@ -32,6 +33,8 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		),
 		// The account's songs, for the recording's song picker (a recording may be of one song).
 		listAccountSongs(account.id, account.slug),
+		// Viewing links for the recordings (docs/uploads-and-blob.md, "Sessions"), keyed by recording on the page.
+		listRecordingShareLinks(account.id),
 	]);
-	return { sessions, comments, chat: Object.fromEntries(chat), songs };
+	return { sessions, comments, chat: Object.fromEntries(chat), songs, shareLinks };
 };

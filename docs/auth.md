@@ -75,8 +75,8 @@ public by URL; editing needs a signed-in member.
   song private from its settings (a private project makes every song in it
   private). Private means a signed-in member of the account, or a visitor
   carrying an open **share link** code. `share_link` rows (any member makes
-  them, for one song or one project; note, optional expiry and use limit,
-  revocable) are 12-character codes; the link is the page URL plus
+  them, for one song, one project or one session recording; note,
+  optional expiry and use limit, revocable) are 12-character codes; the link is the page URL plus
   `?share=<code>`. `[account]/+layout.server.ts` validates an arriving code,
   counts the use, stores it in the `share` cookie (30 days, up to ten
   codes) and hands the open grants to the loaders, which decide with the
