@@ -7,6 +7,7 @@ files:
   - "SECURITY.md"
   - "CHANGELOG.md"
   - "CLAUDE.md"
+  - "FINDINGS.md"
   - "docs/**/*.md"
   - "scripts/user-docs/*.md"
 ignorePaths:
@@ -19,6 +20,7 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
+  - pyloudnorm
   - WSOLA
   - libebur
   - sinc

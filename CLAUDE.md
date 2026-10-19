@@ -164,4 +164,8 @@ varlock + 1Password, adapter-vercel. Full picture: README.md and docs/.
   would notice (features, changes, fixes), never permissions, admin
   actions, security or architecture. A release drafts its section for
   Kevin to paste there.
+- **FINDINGS.md** collects gotchas and insights about packages, browser
+  APIs and tools as they surface: add an entry whenever one does, with
+  where the lesson came from. Conventions go to this file or docs/;
+  findings go there.
 - Do not record in memory what the repo already documents.
