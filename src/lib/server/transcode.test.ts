@@ -90,6 +90,7 @@ vi.mock("node:fs/promises", () => ({
 	readFile: vi.fn(
 		async (file: string) => h.fs.written.get(file) ?? Buffer.from(`bytes of ${file}`),
 	),
+	stat: vi.fn(async () => ({ size: 4321 })),
 	rm: vi.fn(async (dir: string) => {
 		h.fs.removed.push(dir);
 	}),
@@ -305,6 +306,37 @@ describe("renderDemos", () => {
 		});
 		// A demo is never probed for raw PCM or silence: the one run is the MP3.
 		expect(h.data.replaceRecordingSource).not.toHaveBeenCalled();
+	});
+	it("an uploaded MP3 is its own rendition: no encode, the source recorded, the waveform measured from it", async () => {
+		h.data.claimDemoPlayback.mockResolvedValue({
+			url: `${PUBLIC}/accounts/a/songs/s/demos/d1.mp3`,
+			pathname: "accounts/a/songs/s/demos/d1.mp3",
+			playbackUrl: `${PUBLIC}/accounts/a/songs/s/demos/d1.play-old.mp3`,
+		});
+		h.answer.mockImplementation((args) =>
+			args.length === 3
+				? Object.assign(new Error("exit 1"), {
+						stderr: "  Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s",
+					})
+				: { stderr: "" },
+		);
+		await renderDemos(["demo-1"]);
+		// The probe, then the peaks pass; no libmp3lame run and nothing written to Blob.
+		expect(h.runs).toHaveLength(2);
+		expect(h.runs.flat()).not.toContain("libmp3lame");
+		expect(h.blob.putBlob).not.toHaveBeenCalled();
+		expect(h.data.finishDemoPlayback).toHaveBeenCalledWith("demo-1", {
+			url: `${PUBLIC}/accounts/a/songs/s/demos/d1.mp3`,
+			pathname: "accounts/a/songs/s/demos/d1.mp3",
+			bytes: 4321,
+			durationSeconds: 1,
+			peaks: expect.arrayContaining([0.5]),
+		});
+		// The earlier rendition goes; the source, which is now the rendition, stays.
+		expect(h.blob.deleteBlobs).toHaveBeenCalledWith([
+			`${PUBLIC}/accounts/a/songs/s/demos/d1.play-old.mp3`,
+		]);
+		h.answer.mockReset();
 	});
 	it("fails the demo and rethrows on an ffmpeg error", async () => {
 		h.data.claimDemoPlayback.mockResolvedValue({

@@ -30,7 +30,7 @@ import { ensureSongNotes } from "#lib/server/notes.js";
 import ffmpegPath from "ffmpeg-static";
 import { execFile, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
@@ -293,6 +293,18 @@ async function isRawPcm(file: string): Promise<boolean> {
 	return false;
 }
 
+/** Whether a file is an MP3 already (the probe's stream line): it serves as its own rendition (Kevin, 2026-10-19). */
+async function isMp3(file: string): Promise<boolean> {
+	if (!ffmpegPath) return false;
+	try {
+		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+	} catch (e) {
+		const err = String((e as { stderr?: string }).stderr ?? "");
+		return /Audio: mp3/.test(err);
+	}
+	return false;
+}
+
 /**
  * Where a take's sound starts and ends, from a silencedetect pass over the
  * whole file; null when there is nothing worth cutting (src/lib/utils/silenceBounds.ts).
@@ -431,6 +443,21 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 			if (claim.url !== blob.url) await deleteBlobs([claim.url]);
 			input = trimmed;
 		}
+		// An MP3 as uploaded is its own rendition: nothing to encode, one file kept,
+		// played as it came (a second MP3 would cost storage and a little quality).
+		if (input === source && /\.mp3$/i.test(claim.pathname) && (await isMp3(source))) {
+			const { size } = await stat(source);
+			const measured = target.measure ? await measurePeaks(source) : {};
+			await target.finish(id, {
+				url: claim.url,
+				pathname: claim.pathname,
+				bytes: size,
+				...measured,
+			});
+			if (claim.playbackUrl && claim.playbackUrl !== claim.url)
+				await deleteBlobs([claim.playbackUrl]);
+			return;
+		}
 		await run(
 			ffmpegPath,
 			[
@@ -464,7 +491,9 @@ async function transcodeToMp3(id: string, target: Mp3Target): Promise<void> {
 		// The waveform from the MP3 itself (what plays), so the peaks and the length match it to the sample.
 		const measured = target.measure ? await measurePeaks(output) : {};
 		await target.finish(id, { url: blob.url, pathname, bytes: bytes.byteLength, ...measured });
-		if (claim.playbackUrl) await deleteBlobs([claim.playbackUrl]);
+		// The old rendition goes, unless it was the source itself (an MP3 adopted earlier).
+		if (claim.playbackUrl && claim.playbackUrl !== claim.url)
+			await deleteBlobs([claim.playbackUrl]);
 	} catch (e) {
 		await target.fail(id);
 		throw e;

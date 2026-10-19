@@ -433,6 +433,14 @@ Kevin: a wave visualization and comments on each recording, as the stem
 player has; the same on a song's demos; the chat on the Sessions page;
 and a search as the Ideas page's.
 
+**An MP3 as uploaded is its own rendition** (Kevin, 2026-10-19): when the
+source's name says `.mp3` and ffmpeg's probe agrees, `transcodeToMp3`
+skips the encode and records the source's URL as the playback URL (its
+waveform measured from it), so a demo or a session recording uploaded as
+an MP3 is stored once and plays as it came; the earlier rendition, if
+any, goes, and a later render never deletes a rendition that is the
+source itself.
+
 **Waveforms, measured on the server.** A practice recording can run an
 hour; decoding it in the browser for a waveform (as the mix page does for
 a mix without peaks) would cost a gigabyte of memory on a phone. So the

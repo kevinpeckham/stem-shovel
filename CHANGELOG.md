@@ -10,6 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **An uploaded MP3 is kept as its own rendition.** A demo or a session
+  recording uploaded as an MP3 is no longer re-encoded to a second MP3: it
+  is stored once and played as it came, with its waveform measured from it.
 - **The Tools menu and the footer know the sessions.** Session Recorder
   joins the Tools menu for a member, and the footer carries a Music row
   (Projects, Sessions, Session Recorder, Ideas) above the instruments and
