@@ -61,6 +61,9 @@ const ROUTES = [
 	["[account]/settings", "/{account}/settings", [303], [200]],
 	["[account]/artists", "/{account}/artists", [303], [200]],
 	["[account]/sessions", "/{account}/sessions", [303], [200]],
+	["[account]/sessions/record", "/{account}/sessions/record", [303], [200]],
+	// A recording's own page: a member's, or a share link's; nobody else (an id nobody has: 404 either way).
+	["[account]/sessions/r/[recording]", "/{account}/sessions/r/x", [404], [404]],
 	["[account]/artists/[id]", "/{account}/artists/x", [303], [404]],
 	["admin/accounts", "/admin/accounts", [404], [200]],
 	["admin/ai-requests", "/admin/ai-requests", [404], [200]],
