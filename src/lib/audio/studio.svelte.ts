@@ -33,7 +33,6 @@ import { trimmedClip } from "#lib/utils/trimmedClip.js";
 import { pairNoteEvents, type NoteEvent } from "#lib/utils/pairNoteEvents.js";
 import { sliceNotes } from "#lib/utils/sliceNotes.js";
 import { notesFromMidiSummary, notesToMidiBlob } from "#lib/utils/midiNotesFile.js";
-import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
 import type { MidiSummary } from "./midi";
 import {
 	MAX_STUDIO_CLIPS,
@@ -67,12 +66,18 @@ import type {
 	StudioMarker,
 	StudioMeterChange,
 	StudioTempoChange,
+	StudioSampler,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
 import { inputSources, outputLatencyMs } from "./inputs.svelte";
-import { chordPiano, piano } from "./piano.svelte";
+import { INSTRUMENTS, samplerFor } from "./instruments";
+import {
+	isInstrument,
+	STUDIO_INSTRUMENTS,
+	type StudioInstrument,
+} from "#lib/constants/studioInstruments.js";
 import { startLookahead } from "./lookahead";
 import { metronome } from "./metronome.svelte";
 import { claimPlayback, releasePlayback } from "./onlyOnePlays";
@@ -167,20 +172,11 @@ const LOAD_CONCURRENCY = 3;
 export const LIVE_PEAK_FRAMES = 512;
 const UNDO_DEPTH = 100;
 
-export const STUDIO_INPUT_LABELS: Record<StudioInputSource, string> = {
-	mic: "Microphone",
-	line: "Line in",
-	computer: "Computer",
-	piano: "Piano",
-	chords: "Chord player",
-	drums: "Drum machine",
-	amp: "Practice amp",
-};
-/** The instruments the Studio hosts in its own context (phase 2), played from their panels and recorded sample-accurately. */
-export const STUDIO_INSTRUMENTS = ["piano", "chords", "drums"] as const;
-export type StudioInstrument = (typeof STUDIO_INSTRUMENTS)[number];
-export const isInstrument = (s: StudioInputSource): s is StudioInstrument =>
-	s === "piano" || s === "chords" || s === "drums";
+export {
+	isInstrument,
+	STUDIO_INPUT_LABELS,
+	STUDIO_INSTRUMENTS,
+} from "#lib/constants/studioInstruments.js";
 
 function emptyArrangement(): StudioArrangement {
 	return {
@@ -398,9 +394,8 @@ class StudioEngine {
 		const ctx = new AudioContext({ latencyHint: "interactive" });
 		this.#ctx = ctx;
 		// The instruments build their graphs here (docs/looper.md, "One audio context"), so their sound reaches a capture sample-accurately.
-		piano.hostContext(ctx);
-		chordPiano.hostContext(ctx);
-		drumMachine.hostContext(ctx);
+		for (const s of STUDIO_INSTRUMENTS)
+			INSTRUMENTS[s].host(ctx, { bufferOf: (id) => this.#buffers.get(id) ?? null });
 		metronome.hostContext(ctx);
 		await ctx.audioWorklet.addModule("/worklets/track-capture.js");
 		// The Practice Amp too (docs/practice-amp.md, "The band"): a track takes its output as heard, pedals and all.
@@ -1041,6 +1036,59 @@ class StudioEngine {
 		else t.humanize = v;
 		this.#reschedule();
 	}
+	// ── The sampler and the library (D6) ──────────────────────────────────
+	/** A sampler track's sound: a recording of the song's and how it plays (instruments.ts); the first choice brings the defaults. */
+	setSampler(trackId: string, patch: Partial<StudioSampler> & { sourceId?: string }) {
+		const t = this.#track(trackId);
+		if (!t) return;
+		const sourceId = patch.sourceId ?? t.sampler?.sourceId;
+		if (!sourceId) return;
+		const next: StudioSampler = { ...(t.sampler ?? samplerFor(sourceId)), ...patch, sourceId };
+		next.root = Math.max(0, Math.min(127, Math.round(next.root)));
+		next.attack = Math.max(0, Math.min(5, next.attack));
+		next.release = Math.max(0, Math.min(5, next.release));
+		if (JSON.stringify(next) === JSON.stringify(t.sampler)) return;
+		this.#commit();
+		t.sampler = next;
+		this.#reschedule();
+	}
+	/** A clip over the whole of a recording the song holds, on an audio track at a time (the library's drag). */
+	addClipFromSource(trackId: string, sourceId: string, at: number): StudioClip | null {
+		const t = this.#track(trackId);
+		const src = this.sources[sourceId];
+		if (!t || t.kind === "midi" || !src) return null;
+		return this.addClip({
+			trackId,
+			sourceId,
+			start: round4(Math.max(0, at)),
+			offset: 0,
+			duration: round4(src.durationSeconds),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: src.label,
+		});
+	}
+	#preview: AudioBufferSourceNode | null = null;
+	/** A recording heard on its own, from the start (the library's play); the one before stops. Null stops. */
+	previewSource(sourceId: string | null) {
+		const ctx = this.#ctx;
+		this.#preview?.stop();
+		this.#preview = null;
+		const buffer = sourceId ? this.#buffers.get(sourceId) : null;
+		if (!ctx || !buffer) return;
+		const src = ctx.createBufferSource();
+		src.buffer = buffer;
+		src.connect(ctx.destination);
+		src.onended = () => {
+			if (this.#preview === src) this.#preview = null;
+		};
+		src.start();
+		this.#preview = src;
+	}
+	get previewing() {
+		return this.#preview !== null;
+	}
 	/** The tempo of a clip's audio, from its onsets (utils/detectTempo.ts); null when it cannot tell. */
 	detectClipTempo(clipId: string): number | null {
 		const c = this.#clip(clipId);
@@ -1499,15 +1547,8 @@ class StudioEngine {
 		const t = this.#track(trackId);
 		const source = t?.input?.source;
 		const ctx = this.#ctx;
-		if (!source || !isInstrument(source) || !ctx) return;
-		if (source === "drums") {
-			const voice = DRUM_MIDI_IN_NOTES[pitch];
-			if (voice) void drumMachine.hit(voice, velocity);
-			return;
-		}
-		const engine = source === "piano" ? piano : chordPiano;
-		engine.warm();
-		engine.scheduleNote(pitch, velocity, ctx.currentTime + 0.01, duration);
+		if (!t || !source || !isInstrument(source) || !ctx) return;
+		INSTRUMENTS[source].audition({ pitch, velocity, duration }, t);
 	}
 	/** Every note up or down by `semitones`, within the MIDI range. */
 	transposeClip(clipId: string, semitones: number) {
@@ -1945,15 +1986,7 @@ class StudioEngine {
 		const midiSources = new Set(
 			this.midiTracksWithClips.map((t) => t.input!.source as StudioInstrument),
 		);
-		if (midiSources.has("drums")) await drumMachine.readyKit();
-		if (midiSources.has("piano")) {
-			piano.load();
-			piano.warm();
-		}
-		if (midiSources.has("chords")) {
-			chordPiano.load();
-			chordPiano.warm();
-		}
+		for (const s of midiSources) await INSTRUMENTS[s].prepare();
 		const from = opts.from ?? this.position;
 		const ahead = opts.ahead ?? START_AHEAD;
 		const grid = this.grid;
@@ -2040,15 +2073,9 @@ class StudioEngine {
 						const gain = t ? this.#effectiveGain(t) : 0;
 						if (gain <= 0) return null;
 						const velocity = Math.min(1, e.velocity * Math.min(1, gain));
-						if (source === "drums") {
-							const voice = DRUM_MIDI_IN_NOTES[e.pitch];
-							return voice ? drumMachine.scheduleHit(voice, velocity, at) : null;
-						}
-						return (source === "piano" ? piano : chordPiano).scheduleNote(
-							e.pitch,
-							velocity,
-							at,
-							e.duration,
+						return INSTRUMENTS[source].scheduleNote(
+							{ pitch: e.pitch, velocity, at, duration: e.duration },
+							t ?? track,
 						);
 					},
 				});
@@ -2195,8 +2222,7 @@ class StudioEngine {
 		this.#midiVoices = [];
 		this.#midiQueue = [];
 		this.#midiNext = 0;
-		piano.cancelScheduled();
-		chordPiano.cancelScheduled();
+		for (const s of STUDIO_INSTRUMENTS) INSTRUMENTS[s].cancelScheduled();
 	}
 	#stopClip(clipId: string) {
 		for (const p of this.#playing.filter((x) => x.clipId === clipId)) {
@@ -2297,16 +2323,8 @@ class StudioEngine {
 			return false;
 		}
 		// The drums must be ready to start on the bar: the kit decoded before the start is chosen.
-		if (armed.some((t) => t.input?.source === "drums")) await drumMachine.readyKit();
-		const midiArmed = armed.filter((t) => t.kind === "midi");
-		if (midiArmed.some((t) => t.input?.source === "piano")) {
-			piano.load();
-			piano.warm();
-		}
-		if (midiArmed.some((t) => t.input?.source === "chords")) {
-			chordPiano.load();
-			chordPiano.warm();
-		}
+		for (const t of armed)
+			if (t.input && isInstrument(t.input.source)) await INSTRUMENTS[t.input.source].prepare();
 		const session = audioSession();
 		if (session) session.type = "play-and-record";
 		const from = this.position;
@@ -2332,9 +2350,7 @@ class StudioEngine {
 	}
 	/** An input's node in this context: an instrument's master, or the shared input's gain stage. */
 	#inputNode(source: StudioInputSource): AudioNode | null {
-		if (source === "piano") return piano.output();
-		if (source === "chords") return chordPiano.output();
-		if (source === "drums") return drumMachine.output();
+		if (isInstrument(source)) return INSTRUMENTS[source].output();
 		if (source === "amp") return amp.on ? amp.output() : null;
 		return inputSources.output(source);
 	}
@@ -2391,15 +2407,7 @@ class StudioEngine {
 			events.push(e);
 			this.liveTick++;
 		};
-		const off =
-			source === "drums"
-				? drumMachine.onHit((h) => {
-						// A hit has no length of its own: a tenth of a second, the pad's blink.
-						const pitch = DRUM_GM_NOTES[h.voice];
-						push({ on: true, pitch, velocity: h.velocity, time: h.time });
-						push({ on: false, pitch, velocity: 0, time: h.time + 0.1 });
-					})
-				: (source === "piano" ? piano : chordPiano).onNote(push);
+		const off = INSTRUMENTS[source].onNote(push);
 		this.#midiCaptures.push({ trackId: track.id, source, events, off });
 	}
 	/**
@@ -2492,13 +2500,11 @@ class StudioEngine {
 		const shiftMs =
 			input?.source === "computer"
 				? inputSources.computerLatencyMs
-				: input?.source === "piano" || input?.source === "chords"
-					? this.compensateInstruments
+				: input && isInstrument(input.source)
+					? INSTRUMENTS[input.source].latency === "output" && this.compensateInstruments
 						? this.outputLatencyMs
 						: 0
-					: input?.source === "drums"
-						? 0
-						: inputSources.latencyMs;
+					: inputSources.latencyMs;
 		const shift = Math.min(lead, Math.round((shiftMs / 1000) * ctx.sampleRate));
 		const skip = lead + shift;
 		const frames = total - skip;
@@ -2698,7 +2704,7 @@ class StudioEngine {
 			const clips = this.arrangement.clips.filter((c) => c.trackId === t.id && c.notes?.length);
 			if (clips.length)
 				midi.push(
-					renderMidiClipsOffline(off, into, t.input.source, clips, this.arrangement.bpm, {
+					renderMidiClipsOffline(off, into, t, clips, this.arrangement.bpm, {
 						grid: this.grid,
 						swing: t.swing,
 						humanize: t.humanize,

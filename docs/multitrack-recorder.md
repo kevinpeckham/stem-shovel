@@ -857,3 +857,60 @@ the timeline's component test covers the flags. Left for later:
 beats-anchored clips (notes in beats rather than seconds, so a MIDI
 part follows a tempo change), tap tempo lives on the metronome already,
 tempo ramps between changes.
+
+## Instruments and the library (2026-10-19, docs/dawn-daw-plan.md D6)
+
+**The registry.** `src/lib/audio/instruments.ts` holds one adapter per
+entry of `STUDIO_INSTRUMENTS` (`constants/studioInstruments.ts`, with
+`isInstrument` and the input labels, which the engine re-exports for its
+callers): `host(ctx, env)`, `prepare()` (samples, kits), `output()`,
+`scheduleNote(note, track)`, `audition(note, track)`, `onNote(listener)`
+for a hand-played take, `cancelScheduled()`, `latency` ("output" for a
+part played against what is heard, "none" for one on the clock) and
+`renderOffline(off, into, events, bpm, track)` for the bounce. The piano
+and the chord player share one adapter factory, the drums have theirs
+(General MIDI notes to voices, hits as note pairs), and the engine's
+`if` branches became lookups: hosting, play and record readiness, the
+queue's fire, the halt, the capture's input node, the MIDI arm, the
+take's latency shift and the offline render (`midiRender.ts`, now a
+thin wrapper that applies the feel and calls the adapter).
+
+**The sampler.** A fourth instrument, with no keys of its own: a MIDI
+track whose input is the Sampler plays one of the song's recordings
+across the keys. The sound lives on the track (`StudioSamplerSchema`:
+`sourceId`, `root` note, `attack`, `release`, `loop`; `SAMPLER_DEFAULTS`
+and `samplerFor` for the first choice; `setSampler` edits as an undo
+step) and the adapter reads it per note, the recording from the
+engine's buffers through the host `env`. `samplerVoice.ts` is the voice:
+a BufferSource at the rate that moves the root to the key (the twelfth
+root of two a semitone), a gain with the attack in and the release out,
+looping when asked, a square-law velocity. The clip bar shows the
+sampler's settings when a MIDI clip on such a track is selected. A
+sampler take by hand records nothing (its `onNote` is empty); the roll's
+clicks audition through it.
+
+**Presets.** Three subtractive presets on the piano's synth
+(`synthVoice.ts` patches, `constants/piano.ts`): Brass (a saw section
+with a slow bite), Strings (detuned saws that bow in and hold, with
+vibrato) and Bell (inharmonic sines that ring and die away). They are on
+every piano, the chord player's and the Studio's included.
+
+**The library.** `LibraryPanel.svelte` lists every recording the song
+holds (the engine's `sources`: takes, imports, the clip tools' results),
+sorted and filtered, with its length, channels, how many clips use it
+and its upload state; a play button hears it alone (`previewSource`, a
+BufferSource straight to the destination, the one before stopped); a
+row is draggable with `application/x-stemshovel-source` on the drag.
+The timeline's audio lanes take the drop (`onlanedragover`,
+`onlanedrop`): the recording lands as a clip over its whole length at
+the drop's time, snapped (`addClipFromSource`), and becomes the
+selection. The page's Library button opens it as a FloatingPanel.
+
+Browser spec `tests/e2e/studio-library.spec.ts`; `instruments.test.ts`
+over stand-ins for the singletons, `samplerVoice.test.ts` over a fake
+context, `LibraryPanel.svelte.test.ts`, the timeline's drop test. Left
+for later: a soundfont player and multisample kits (the sampler plays
+one recording), a loop and one-shot library beyond the song's own
+recordings, WAM 2.0 hosting (third-party plugin scripts and their hosts
+fall outside the site's content security policy; a curated set served
+from the site itself would be the way).

@@ -15,6 +15,7 @@
 	import PageCopySection from "#lib/components/PageCopySection.svelte";
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
 	import ExportPanel from "#lib/components/ExportPanel.svelte";
+	import LibraryPanel from "#lib/components/LibraryPanel.svelte";
 	import MixerConsole from "#lib/components/MixerConsole.svelte";
 	import MixerStage from "#lib/components/MixerStage.svelte";
 	import StudioTrackMenu from "#lib/components/StudioTrackMenu.svelte";
@@ -355,7 +356,8 @@
 	/** A take from an instrument track landed: that instrument's settings onto the song (the server keeps the others). */
 	let instrumentsToSave: { drums: boolean; piano: boolean; chords: boolean } | null = null;
 	function noteInstrumentTake(source: StudioInputSource | null) {
-		if (!source || !isInstrument(source)) return;
+		// The sampler's sound lives on the track itself, not in a panel's settings.
+		if (!source || !isInstrument(source) || source === "sampler") return;
 		const pending = instrumentsToSave ?? { drums: false, piano: false, chords: false };
 		pending[source] = true;
 		if (!instrumentsToSave) {
@@ -718,6 +720,30 @@
 	let songsMode = $state<PanelMode>("docked");
 	let notesMode = $state<PanelMode>("docked");
 	let inputsOpen = $state(false);
+	/** The library (D6): the song's recordings, to hear and to drag onto a track. */
+	let libraryOpen = $state(false);
+	let previewing = $state<string | null>(null);
+	let libraryItems = $derived(
+		Object.values(studio.sources).map((src) => ({
+			id: src.id,
+			label: src.label,
+			durationSeconds: src.durationSeconds,
+			channels: src.channels,
+			status: src.status,
+			pending: src.pending,
+			uses: studio.arrangement.clips.filter((c) => c.sourceId === src.id).length,
+		})),
+	);
+	function previewSource(id: string | null) {
+		studio.previewSource(id);
+		previewing = id;
+	}
+	/** The recordings a sampler track can play: the song's, by label. */
+	let samplerChoices = $derived(
+		Object.values(studio.sources)
+			.filter((src) => src.status === "ready")
+			.sort((a, b) => a.label.localeCompare(b.label)),
+	);
 	let metroOpen = $state(false);
 	/** The Practice Amp's panel (docs/practice-amp.md, "The band"): a track's input, as heard. */
 	let ampOpen = $state(false);
@@ -953,6 +979,18 @@
 				>
 					<span class="i-ph-plugs" aria-hidden="true"></span>
 					Inputs
+				</button>
+				<button
+					class="button button-sm shrink-0 {libraryOpen
+						? 'bg-accent text-oxford border-accent opacity-100'
+						: ''}"
+					type="button"
+					aria-pressed={libraryOpen}
+					title="Library: the song's recordings, to hear and to drag onto a track"
+					onclick={() => (libraryOpen = !libraryOpen)}
+				>
+					<span class="i-ph-books" aria-hidden="true"></span>
+					Library
 				</button>
 				<button
 					class="button button-sm shrink-0 {metroOpen
@@ -1555,6 +1593,86 @@
 									/>
 									<span class="tabular-nums w-8">{Math.round((feelTrack.swing ?? 0) * 100)}%</span>
 								</label>
+								{#if feelTrack.input?.source === "sampler"}
+									<!-- The sampler's sound (D6): one of the song's recordings across the keys. -->
+									<span class="flex flex-wrap items-center gap-2" role="group" aria-label="Sampler">
+										<select
+											class="device-field text-12px py-0 max-w-40"
+											value={feelTrack.sampler?.sourceId ?? ""}
+											aria-label="Sample"
+											title="The recording the sampler plays, at its root note as it is"
+											onchange={(e) =>
+												e.currentTarget.value &&
+												studio.setSampler(feelTrack.id, { sourceId: e.currentTarget.value })}
+										>
+											<option value="">Choose a recording…</option>
+											{#each samplerChoices as src (src.id)}
+												<option value={src.id}>{src.label}</option>
+											{/each}
+										</select>
+										{#if feelTrack.sampler}
+											<label class="flex items-center gap-1">
+												Root
+												<input
+													type="number"
+													class="device-field w-16 text-12px py-0"
+													min="0"
+													max="127"
+													step="1"
+													value={feelTrack.sampler.root}
+													aria-label="Root note"
+													onchange={(e) =>
+														studio.setSampler(feelTrack.id, {
+															root: e.currentTarget.valueAsNumber,
+														})}
+												/>
+											</label>
+											<label class="flex items-center gap-1">
+												Attack
+												<input
+													type="number"
+													class="device-field w-16 text-12px py-0"
+													min="0"
+													max="5"
+													step="0.01"
+													value={feelTrack.sampler.attack}
+													aria-label="Sampler attack, seconds"
+													onchange={(e) =>
+														studio.setSampler(feelTrack.id, {
+															attack: e.currentTarget.valueAsNumber || 0,
+														})}
+												/>
+											</label>
+											<label class="flex items-center gap-1">
+												Release
+												<input
+													type="number"
+													class="device-field w-16 text-12px py-0"
+													min="0"
+													max="5"
+													step="0.01"
+													value={feelTrack.sampler.release}
+													aria-label="Sampler release, seconds"
+													onchange={(e) =>
+														studio.setSampler(feelTrack.id, {
+															release: e.currentTarget.valueAsNumber || 0,
+														})}
+												/>
+											</label>
+											<label class="flex items-center gap-1">
+												<input
+													type="checkbox"
+													class="accent-maximumYellow"
+													checked={feelTrack.sampler.loop}
+													aria-label="Loop the sample"
+													onchange={(e) =>
+														studio.setSampler(feelTrack.id, { loop: e.currentTarget.checked })}
+												/>
+												Loop
+											</label>
+										{/if}
+									</span>
+								{/if}
 								<label class="flex items-center gap-2">
 									Humanize
 									<input
@@ -2186,6 +2304,23 @@
 				results={exportResults}
 				onexport={(o, zip) => void runExport(o, zip)}
 			/>
+		</div>
+	</FloatingPanel>
+
+	<!-- The library (docs/dawn-daw-plan.md, D6): every recording the song holds, dragged onto a track or heard alone. -->
+	<FloatingPanel
+		open={libraryOpen}
+		title="Library"
+		storageKey="stemshovel.studio.library-panel"
+		width={480}
+		height={520}
+		onminimise={() => {
+			libraryOpen = false;
+			previewSource(null);
+		}}
+	>
+		<div class="p-3">
+			<LibraryPanel items={libraryItems} playing={previewing} onpreview={previewSource} />
 		</div>
 	</FloatingPanel>
 

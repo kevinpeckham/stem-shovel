@@ -64,6 +64,7 @@ const fake = vi.hoisted(() => {
 			return engine.arrangement.meterChanges ?? [];
 		},
 		setTempoChange: vi.fn(),
+		addClipFromSource: vi.fn(() => ({ id: "dropped" })),
 		removeTempoChange: vi.fn(),
 		setMeterChange: vi.fn(),
 		removeMeterChange: vi.fn(),
@@ -126,10 +127,11 @@ vi.mock("#lib/audio/studio.svelte.js", () => ({
 		piano: "Piano",
 		chords: "Chord player",
 		drums: "Drum machine",
+		sampler: "Sampler",
 		amp: "Practice amp",
 	},
-	STUDIO_INSTRUMENTS: ["piano", "chords", "drums"],
-	isInstrument: (s: string) => ["piano", "chords", "drums"].includes(s),
+	STUDIO_INSTRUMENTS: ["piano", "chords", "drums", "sampler"],
+	isInstrument: (s: string) => ["piano", "chords", "drums", "sampler"].includes(s),
 }));
 const { default: StudioTimeline } = await import("./StudioTimeline.svelte");
 
@@ -398,6 +400,7 @@ describe("StudioTimeline", () => {
 			"Piano",
 			"Chord player",
 			"Drum machine",
+			"Sampler",
 			"Practice amp",
 		]);
 		expect(within(list).getByRole("option", { name: "Microphone · stereo" })).toHaveAttribute(
@@ -941,5 +944,45 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		expect(meter).toHaveTextContent("3/4");
 		await fireEvent.keyDown(meter, { key: "Backspace" });
 		expect(fake.removeMeterChange).toHaveBeenCalledWith(8);
+	});
+});
+
+describe("StudioTimeline: the library's drop (D6)", () => {
+	test("a recording dropped on an audio lane lands as a clip at the drop, snapped; a MIDI lane refuses it", () => {
+		fake.arrangement.tracks.push(
+			track({
+				id: "t4",
+				name: "Keys",
+				kind: "midi",
+				input: { source: "sampler", channel: "stereo" },
+			}),
+		);
+		render(StudioTimeline);
+		const lanes = document.querySelectorAll(
+			"[data-track-row] > div:nth-child(2) > div:first-child",
+		);
+		const audioLane = lanes[0] as HTMLElement;
+		const midiLane = lanes[3] as HTMLElement;
+		const dataTransfer = {
+			types: ["application/x-stemshovel-source"],
+			getData: (k: string) => (k === "application/x-stemshovel-source" ? "s9" : ""),
+			dropEffect: "",
+		};
+		const over = new Event("dragover", { bubbles: true, cancelable: true }) as DragEvent;
+		Object.defineProperty(over, "dataTransfer", { value: dataTransfer });
+		audioLane.dispatchEvent(over);
+		expect(over.defaultPrevented).toBe(true);
+		const drop = new MouseEvent("drop", {
+			bubbles: true,
+			cancelable: true,
+			clientX: xAt(3.3),
+		}) as DragEvent;
+		Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+		audioLane.dispatchEvent(drop);
+		expect(fake.addClipFromSource).toHaveBeenCalledWith("t1", "s9", 3.5);
+		const refused = new Event("dragover", { bubbles: true, cancelable: true }) as DragEvent;
+		Object.defineProperty(refused, "dataTransfer", { value: dataTransfer });
+		midiLane.dispatchEvent(refused);
+		expect(refused.defaultPrevented).toBe(false);
 	});
 });

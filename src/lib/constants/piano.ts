@@ -14,6 +14,9 @@ export const PIANO_INSTRUMENTS = [
 	},
 	{ id: "pad", label: "Pad", hint: "slow to swell, slow to fade" },
 	{ id: "pluck", label: "Pluck", hint: "a short, bright pick" },
+	{ id: "brass", label: "Brass", hint: "a saw section with a slow bite, for stabs and swells" },
+	{ id: "strings", label: "Strings", hint: "detuned saws that bow in slowly and hold" },
+	{ id: "bell", label: "Bell", hint: "inharmonic sines that ring and die away" },
 	{
 		id: "bass",
 		label: "Electric Bass",

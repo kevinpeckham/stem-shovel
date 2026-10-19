@@ -33,6 +33,7 @@ export const STUDIO_INPUT_SOURCES = [
 	"piano",
 	"chords",
 	"drums",
+	"sampler",
 	"amp",
 ] as const;
 export const StudioInputSourceSchema = v.picklist(STUDIO_INPUT_SOURCES);
@@ -48,6 +49,17 @@ export const StudioInputSchema = v.object({
 	channel: StudioChannelSchema,
 });
 export type StudioInput = v.InferOutput<typeof StudioInputSchema>;
+
+/** A sampler track's sound (D6): one of the song's recordings played across the keys from its root note, with an envelope, looping if asked. */
+export const StudioSamplerSchema = v.object({
+	sourceId: NanoIdSchema,
+	/** The MIDI note the recording sounds at as it is. */
+	root: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(127)),
+	attack: v.pipe(v.number(), v.minValue(0), v.maxValue(5)),
+	release: v.pipe(v.number(), v.minValue(0), v.maxValue(5)),
+	loop: v.boolean(),
+});
+export type StudioSampler = v.InferOutput<typeof StudioSamplerSchema>;
 
 /** A track's effects (docs/multitrack-recorder.md, phase 2b): the piano chain's compressor, tone and reverb, each off at its zero. */
 export const StudioTrackFxSchema = v.object({
@@ -158,6 +170,8 @@ export const StudioTrackSchema = v.object({
 	/** A MIDI track's feel (D5): swing of the off-beat eighths (0 straight, 1 a triplet feel) and humanize (a little scatter in time and touch), applied as the notes play. */
 	swing: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
 	humanize: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(1))),
+	/** A sampler track's sound (D6); absent until a recording is chosen. */
+	sampler: v.optional(StudioSamplerSchema),
 });
 export type StudioTrack = v.InferOutput<typeof StudioTrackSchema>;
 

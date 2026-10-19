@@ -93,6 +93,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   Schema `StudioTempoChangeSchema`, `StudioMeterChangeSchema`, a track's
   `swing` and `humanize`; browser spec `studio-time.spec.ts`; the user
   guide's "Tempo and meter".
+- **Dawn: instruments and the library** (docs/dawn-daw-plan.md, phase
+  D6). An **instrument registry** (`instruments.ts`): one adapter per
+  instrument, the engine's branches now lookups. A **Sampler**
+  instrument: a MIDI track plays one of the song's recordings across the
+  keys, with root note, attack, release and loop on the track
+  (`StudioSamplerSchema`, `samplerVoice.ts`), offline in a bounce too.
+  Three synth presets on the piano: Brass, Strings, Bell. A **Library**
+  panel of the song's recordings, each to hear alone and to drag onto a
+  track as a clip (`LibraryPanel.svelte`, the timeline's drop). Tests on
+  the registry, the voice, the panel and the drop; browser spec
+  `studio-library.spec.ts`; the user guide's "The sampler" and "The
+  library".
 - **Fixed on the branch**: a strip with no inserts was silent (the insert
   chain never wired its input to its output for an empty list), so every
   track without an insert played nothing through the D2 graph, live and

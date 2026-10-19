@@ -153,13 +153,20 @@ automatable parameters, so D2 adds sends and inserts in one place.
   blob-URL worklet fails the CSP. Left: beats-anchored clips, tempo
   ramps. docs/multitrack-recorder.md "Time".
 
-### D6. Instruments, effects and the library
+### D6. Instruments, effects and the library (built in part on `dawn-daw`, 2026-10-19)
 
 - A **registry** for inputs and instruments (the `if` branches become
   entries), a sampler with kits and a soundfont player, a subtractive
   synth preset set, a loop and one-shot library with drag-to-timeline.
 - WAM 2.0 hosting for a curated handful, and Dawn's own effects wrapped
   as WAMs; parameters, state and automation through the same seams.
+- Built: the registry (`instruments.ts`, the engine's branches as
+  adapter lookups), the sampler (a track's own recording across the
+  keys), three synth presets, the library panel with drag-to-timeline.
+  Left: soundfonts and multisample kits, a loop library beyond the
+  song's recordings, WAM hosting (blocked by the CSP for third-party
+  scripts; a curated set served from the site would be the way).
+  docs/multitrack-recorder.md "Instruments and the library".
 
 ### D7. Collaboration
 

@@ -378,3 +378,50 @@ describe("StudioArrangementSchema (D5): the tempo map and a track's feel", () =>
 		).toBe(false);
 	});
 });
+
+describe("StudioArrangementSchema (D6): the sampler", () => {
+	const base = () => ({
+		version: 1 as const,
+		bpm: 120,
+		beatsPerBar: 4,
+		gridOn: true,
+		countIn: false,
+		click: false,
+		loop: null,
+		master: 1,
+		clips: [],
+	});
+	test("a sampler is an input, and a track's sampler names a recording, a root note and an envelope", () => {
+		const t = {
+			...track("t1"),
+			kind: "midi" as const,
+			input: { source: "sampler" as const, channel: "stereo" as const },
+		};
+		expect(v.safeParse(StudioArrangementSchema, { ...base(), tracks: [t] }).success).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				tracks: [
+					{ ...t, sampler: { sourceId, root: 60, attack: 0.01, release: 0.2, loop: false } },
+				],
+			}).success,
+		).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				tracks: [{ ...t, sampler: { sourceId, root: 128, attack: 0, release: 0, loop: false } }],
+			}).success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioArrangementSchema, {
+				...base(),
+				tracks: [
+					{
+						...t,
+						sampler: { sourceId: "not valid!", root: 60, attack: 0, release: 0, loop: false },
+					},
+				],
+			}).success,
+		).toBe(false);
+	});
+});

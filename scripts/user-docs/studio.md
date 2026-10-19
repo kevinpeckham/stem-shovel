@@ -68,6 +68,14 @@ Press **M**, or the flag button in the transport, to put a marker at the playhea
 
 A bounce needs sound, so a MIDI track is **rendered to audio** first: **Render to audio track** in the track's menu plays its notes through the instrument into a new audio track in real time (the song plays as it does) and mutes the MIDI track; Download mix, Add as demo and Add tracks as stems do this themselves for any MIDI track with notes before they render, and say so. Edit the notes afterwards and render again; the earlier audio track can go.
 
+## The sampler
+
+A MIDI track's input can be the **Sampler**: pick one of the song's recordings in the clip bar and the track plays it across the keys, the **root** note being the key at which it sounds as recorded, with an **attack** and **release** and **loop** if you want it to hold. Record a phrase, chop a word, drop a hit: anything the song holds can be an instrument. The piano also gained **Brass**, **Strings** and **Bell** sounds.
+
+## The library
+
+**Library** in the top row opens every recording the song holds: takes, imports and what the clip tools made. Press play on one to hear it alone, type to find one, and drag one onto a track to place it there as a clip.
+
 ## Songs and revisions
 
 The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Recordings** panel lists every song with its saved revisions and recent autosaves, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.

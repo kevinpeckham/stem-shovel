@@ -249,6 +249,20 @@
 			: engine.arrangement.loop,
 	);
 
+	/** A recording dragged from the library (LibraryPanel.svelte, D6) lands as a clip at the drop, on an audio track. */
+	function onlanedragover(e: DragEvent, track: StudioTrack) {
+		if (isMidi(track) || !e.dataTransfer?.types.includes("application/x-stemshovel-source")) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+	}
+	function onlanedrop(e: DragEvent, track: StudioTrack) {
+		const sourceId = e.dataTransfer?.getData("application/x-stemshovel-source");
+		if (!sourceId || isMidi(track)) return;
+		e.preventDefault();
+		const t = secondsAtClientX(e.clientX);
+		const made = engine.addClipFromSource(track.id, sourceId, e.shiftKey ? t : engine.snap(t));
+		if (made) select(made.id);
+	}
 	function onlanedown(e: PointerEvent, _track: StudioTrack) {
 		if (e.button !== 0 || (e.target as HTMLElement).closest("[data-clip]")) return;
 		clearSelection();
@@ -993,6 +1007,8 @@
 					style:width="{laneWidth}px"
 					style:height="{LANE_H}px"
 					onpointerdown={(e) => onlanedown(e, track)}
+					ondragover={(e) => onlanedragover(e, track)}
+					ondrop={(e) => onlanedrop(e, track)}
 				>
 					{#if engine.arrangement.gridOn}
 						{#each ticks as tick (tick.x)}

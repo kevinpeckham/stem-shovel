@@ -112,6 +112,44 @@ const PATCHES: Record<Exclude<PianoInstrumentId, "grand">, Patch> = {
 		sweepDecay: 0.12,
 		level: 0.7,
 	},
+	// The subtractive presets (docs/dawn-daw-plan.md, D6): a brass section, a string pad and a bell, on the same filter and envelope.
+	brass: {
+		partials: [
+			{ type: "sawtooth", ratio: 1, gain: 0.7, detune: -5 },
+			{ type: "sawtooth", ratio: 1, gain: 0.7, detune: 5 },
+			{ type: "sawtooth", ratio: 2, gain: 0.2 },
+		],
+		env: { attack: 0.06, decay: 0.3, sustain: 0.75, release: 0.2 },
+		cutoff: 600,
+		cutoffVelocity: 2000,
+		sweep: 2500,
+		sweepDecay: 0.25,
+		level: 0.4,
+	},
+	strings: {
+		partials: [
+			{ type: "sawtooth", ratio: 1, gain: 0.45, detune: -14 },
+			{ type: "sawtooth", ratio: 1, gain: 0.45, detune: 14 },
+			{ type: "sawtooth", ratio: 2, gain: 0.2, detune: 6 },
+		],
+		env: { attack: 0.35, decay: 0.5, sustain: 0.9, release: 0.8 },
+		cutoff: 1400,
+		cutoffVelocity: 1200,
+		vibrato: 6,
+		level: 0.35,
+	},
+	bell: {
+		partials: [
+			{ type: "sine", ratio: 1, gain: 1 },
+			{ type: "sine", ratio: 2.76, gain: 0.5, fade: 1.2 },
+			{ type: "sine", ratio: 5.4, gain: 0.3, fade: 0.6 },
+			{ type: "sine", ratio: 8.93, gain: 0.15, fade: 0.3 },
+		],
+		env: { attack: 0.002, decay: 2.5, sustain: 0, release: 1.2 },
+		cutoff: 3000,
+		cutoffVelocity: 6000,
+		level: 0.6,
+	},
 	// A fingered electric bass (Kevin: for the chord player's notes mode): a sine body with a triangle and a touch of saw for the string's growl, a low filter that opens with the pluck and settles, an octave down.
 	bass: {
 		partials: [
