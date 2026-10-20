@@ -1,9 +1,23 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
+	import ComboBox from "#lib/components/ComboBox.svelte";
 	import { pageTitle } from "#lib/utils/pageTitle.js";
 	import { createProject } from "#lib/remote/projects.remote.js";
 	import { clearForm } from "#lib/utils/clearForm.js";
 
 	let { data } = $props();
+
+	/** The user's other accounts, for a switch beside the title (Kevin, 2026-10-20): each one's projects page. */
+	const accountOptions = $derived(
+		(data.memberships ?? []).map((m) => ({
+			value: m.slug,
+			label: m.name,
+			description: m.actingAs ? "acting as owner" : m.role,
+		})),
+	);
+	const canSwitch = $derived(
+		accountOptions.length > 1 && accountOptions.some((o) => o.value === data.account.slug),
+	);
 
 	// The form keeps the last name across navigations (it redirects to the
 	// new project); start each visit empty.
@@ -23,7 +37,25 @@
 				alt=""
 			/>
 		{/if}
-		<h1 class="app-page-heading mb-2">{data.account.name}</h1>
+		<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+			<h1 class="app-page-heading">{data.account.name}</h1>
+			{#if canSwitch}
+				<!-- The combo box's root is full width; a shrink-to-fit wrapper keeps it beside the title. -->
+				<div class="w-auto shrink-0">
+					<ComboBox
+						ariaLabel="Switch account"
+						options={accountOptions}
+						value={data.account.slug}
+						onchange={(slug) => {
+							if (slug !== data.account.slug) void goto(`/${slug}/projects`);
+						}}
+						clearDefaultButtonClasses
+						buttonClasses="flex items-center gap-1.5 rounded border border-white/15 bg-white/5 px-2.5 py-1 text-13px hover-bg-white/10 hover-text-accent"
+						popoverClasses="text-14px"
+					/>
+				</div>
+			{/if}
+		</div>
 	</header>
 
 	<section class="mt-10">
