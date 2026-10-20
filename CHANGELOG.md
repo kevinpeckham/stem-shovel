@@ -19,6 +19,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **The footer names the tools in full**: Lark Idea Recorder, Whirl Looper,
+  Ember Practice Amp, Dawn Multitrack Studio.
 - **The footer's Music row** is Projects, Sessions and Ideas, as the menu;
   the Session Recorder stays in its Tools row.
 
