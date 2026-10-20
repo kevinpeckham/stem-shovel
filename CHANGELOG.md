@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.138.1] - 2026-10-20
+
 ### Changed
 
 - **An uploaded MP3 is kept as its own rendition.** A demo or a session
