@@ -63,7 +63,9 @@
 	data-studio-demo
 >
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div class="min-w-0 truncate text-15px font-600 text-blue-100">Dawn · {song.title}</div>
+		<div class="min-w-0 truncate text-15px font-600 text-oxford text-shadow">
+			Dawn · {song.title}
+		</div>
 		<a class="device-button-sm px-3 text-accent" {href}>Open Dawn</a>
 	</div>
 	<div class="device-screen flex flex-wrap items-end justify-between gap-x-6 gap-y-2 px-4 py-3">
@@ -145,7 +147,7 @@
 		</div>
 	</div>
 	<StudioTimeline bind:selected bind:selectedIds bind:pxPerSecond />
-	<p class="text-12px opacity-70">
+	<p class="text-12px text-dark">
 		Play, mute and solo the tracks, drag a clip, loop a stretch of the ruler: it is the real Dawn on
 		a song of ours. Nothing here is saved; Open Dawn for your own.
 	</p>
