@@ -3,6 +3,7 @@
 	import SongDocsDemo from "#lib/components/SongDocsDemo.svelte";
 	import SongPlayerDemo from "#lib/components/SongPlayerDemo.svelte";
 	import IdeaRecorderDemo from "#lib/components/IdeaRecorderDemo.svelte";
+	import StudioDemo from "#lib/components/StudioDemo.svelte";
 	import WaitlistForm from "#lib/components/WaitlistForm.svelte";
 	import { exampleComments } from "#lib/constants/demoComments.js";
 	import Tuner from "#lib/components/Tuner.svelte";
@@ -30,12 +31,14 @@
 	// least half of it (or half a screen of it) is on screen; none otherwise, so
 	// space scrolls the page as usual and a sliver at the edge takes nothing.
 	let playerShare = $state(0);
+	let dawnShare = $state(0);
 	let drumsShare = $state(0);
 	let pianoShare = $state(0);
 	let chordsShare = $state(0);
 	let spaceTarget = $derived.by(() => {
 		const shares = {
 			player: playerShare,
+			dawn: dawnShare,
 			drums: drumsShare,
 			piano: pianoShare,
 			chords: chordsShare,
@@ -167,6 +170,23 @@
 						/>
 					</div>
 				</section>
+
+				<!-- Dawn Demo: a Dawn song chosen on /admin/home, in the real engine (StudioDemo). -->
+				{#if data.studioDemo}
+					<section class="mt-12 scroll-mt-6" id="dawn">
+						{@render feature("dawn")}
+						<div class="marketing-demo-cta">Try the working demo below.</div>
+						<div class="mt-8" {@attach visibleShare((s) => (dawnShare = s))}>
+							<StudioDemo
+								song={data.studioDemo}
+								href={data.currentSlug
+									? "/multitrack-recorder"
+									: "/sign-in?next=%2Fmultitrack-recorder"}
+								keyboard={spaceTarget === "dawn"}
+							/>
+						</div>
+					</section>
+				{/if}
 			{:else}
 				<img
 					class="w-full h-auto border border-white/40 rounded mt-4 shadow-xl shadow-blue-300/10"

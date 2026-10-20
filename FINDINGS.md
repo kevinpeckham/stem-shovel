@@ -480,6 +480,13 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Packages
 
+- **`@vercel/blob`'s `put` retries, and a stream cannot be read twice.** A
+  Blob-to-Blob copy that handed `fetch`'s body stream to `put` worked until
+  a part failed and the SDK retried: "Response body object should not be
+  disturbed or locked", and a five-stem import stopped at the third. Use
+  the SDK's `copy` within a store (the service copies, nothing passes
+  through the function) and a buffered `Buffer` across stores (`copyBlob`,
+  2026-10-20).
 - **signalsmith-stretch 1.3.2** (MIT, ESM): worklet from a blob URL
   plus WASM; fine where the CSP allows it, set aside here (see Browser
   platform).

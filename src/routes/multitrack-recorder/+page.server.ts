@@ -3,6 +3,7 @@ import { isEditor, requireSignedIn } from "#lib/server/access.js";
 import { aiAvailable } from "#lib/server/aiDetect.js";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import {
+	getAppSetting,
 	listBeats,
 	listChordStyles,
 	listDrumKitManifests,
@@ -47,6 +48,8 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 			editing.map((m) => m.accountId),
 		),
 		projects: await songTargets(editing),
+		// The song the home page demos (docs/multitrack-recorder.md, "The home demo"): marked in the list, not deletable here.
+		homeDemoId: (await getAppSetting("homeStudioSongId")) ?? null,
 		// The page's words (title, intro, the tips under the device) from its copy doc, edited in the app (docs/page-copy.md).
 		copy: await pageCopy("studio-page", copyFallback, locals),
 		// The instruments in the panels (docs/multitrack-recorder.md, phase 2), as the looper page has them: the account's beats, kits and presets.

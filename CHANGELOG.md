@@ -10,6 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **A Dawn demo on the home page**, after the Idea Recorder: a Dawn song
+  chosen on the admin's home settings (one click loads the featured song's
+  stems), in the real engine; visitors play, mute, solo, drag and loop.
 - **Key in Dawn, and the changes both ways.** The Timing menu holds the
   song's key and adds key changes at the playhead, shown as flags on the
   ruler beside the tempo's and the meter's, with the key at the playhead on

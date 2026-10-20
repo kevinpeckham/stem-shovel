@@ -4,6 +4,7 @@ import {
 	createIdea as create,
 	deleteIdea as remove,
 	deleteIdeaIfEmpty,
+	getAppSetting,
 	renameIdea as rename,
 	setIdeaInstruments,
 	setIdeaKind as changeKind,
@@ -88,13 +89,24 @@ export const dropIdeaIfEmpty = command(IdSchema, async ({ id }) => {
 /** Removes the idea and all its takes (files included); a command for the recorder's menu. */
 export const deleteIdeaNow = command(IdSchema, async ({ id }) => {
 	const accountId = await ownIdea(id);
+	await notTheHomeDemo(id);
 	if (!(await remove(accountId, id))) error(404, "Idea not found");
 	return { deleted: true };
 });
 
+/** The Dawn song the home page demos (docs/multitrack-recorder.md, "The home demo") stays until an admin chooses another. */
+async function notTheHomeDemo(id: string) {
+	if ((await getAppSetting("homeStudioSongId")) === id)
+		error(
+			409,
+			"This song is the home page's Dawn demo: choose another on the admin's home settings first.",
+		);
+}
+
 /** Removes the idea and all its takes (files included). */
 export const deleteIdea = form(IdSchema, async ({ id }) => {
 	const accountId = await ownIdea(id);
+	await notTheHomeDemo(id);
 	if (!(await remove(accountId, id))) error(404, "Idea not found");
 	return { deleted: true };
 });

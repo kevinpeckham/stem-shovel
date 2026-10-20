@@ -1,5 +1,5 @@
 import { accessOfUrl, type BlobAccess, blobPathname } from "#lib/utils/blobAccess.js";
-import { del, get, issueSignedToken, presignUrl, put } from "@vercel/blob";
+import { copy, del, get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { ENV } from "varlock/env";
 
 /**
@@ -181,10 +181,25 @@ export function recordingAccess(): BlobAccess {
  * song as a demo). Streams like `moveBlob`; the source stays.
  */
 export async function copyBlob(url: string, toPathname: string, to: BlobAccess): Promise<string> {
+	if (!isOurBlobUrl(url)) throw new Error(`refusing to copy a file outside our stores: ${url}`);
+	// Within one store the service copies the bytes itself (nothing passes through the function).
+	if (accessOfUrl(url) === to) {
+		const copied = await copy(url, toPathname, {
+			access: to,
+			addRandomSuffix: false,
+			allowOverwrite: true,
+			cacheControlMaxAge: 60 * 60 * 24 * 30,
+			...blobAuth(to),
+		});
+		return copied.url;
+	}
+	// Across stores: the file read whole and put, not streamed. A stream handed to `put` is read once, and the
+	// SDK's retry of a failed part then finds it locked ("Response body object should not be disturbed or
+	// locked"), which cut a five-stem import short (2026-10-20).
 	const res = await readBlob(url);
 	if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} reading ${url}`);
 	const contentType = res.headers.get("content-type") ?? "application/octet-stream";
-	const copied = await putBlob(toPathname, res.body, contentType, to);
+	const copied = await putBlob(toPathname, Buffer.from(await res.arrayBuffer()), contentType, to);
 	return copied.url;
 }
 

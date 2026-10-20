@@ -1,12 +1,42 @@
 <script lang="ts">
 	import { pageTitle } from "#lib/utils/pageTitle.js";
-	import { clearHomeBeat, setFeaturedSong } from "#lib/remote/admin.remote.js";
+	import {
+		clearHomeBeat,
+		makeHomeStudioSong,
+		setFeaturedSong,
+		setHomeStudioSong,
+	} from "#lib/remote/admin.remote.js";
+	import { invalidateAll } from "$app/navigation";
+	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import { DRUM_KITS } from "#lib/constants/drumMachine.js";
 	import { refreshAll } from "$app/navigation";
 	import { notify } from "#lib/state/notifications.svelte.js";
 
 	let { data } = $props();
 	let chosen = $derived(data.featuredId);
+	/** The Dawn demo (docs/multitrack-recorder.md, "The home demo"). */
+	let dawnBusy = $state(false);
+	async function makeDawnDemo() {
+		dawnBusy = true;
+		try {
+			const made = await makeHomeStudioSong({});
+			notify(`The featured song's ${made.tracks} stems are the Dawn demo`);
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not make the demo: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			dawnBusy = false;
+		}
+	}
+	async function chooseDawnDemo(ideaId: string) {
+		try {
+			await setHomeStudioSong({ ideaId });
+			notify(ideaId ? "Dawn demo saved" : "Dawn demo cleared");
+			await invalidateAll();
+		} catch (e) {
+			notify(`Could not save: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	let beatKit = $derived(
 		DRUM_KITS.find((k) => k.id === data.homeBeat?.kit)?.label ?? data.homeBeat?.kit,
 	);
@@ -98,4 +128,51 @@
 	{:else}
 		<p class="mt-4 text-dim">None chosen: the built-in starting beat.</p>
 	{/if}
+</section>
+
+<section class="mt-10 max-w-article">
+	<h2 class="heading-2">Dawn demo</h2>
+	<p class="text-sm text-dim">
+		The Dawn song the home page shows after the Idea Recorder, in the real engine: usually the
+		featured song's stems, loaded into a Dawn song of yours. Visitors play it; nothing they do is
+		saved.
+	</p>
+	<p class="mt-3 text-15px">
+		{#if data.studioDemo}
+			Chosen: <strong>{data.studioDemo.title}</strong>
+			<a class="ml-2 text-13px link-dim" href="/multitrack-recorder?song={data.studioDemo.id}"
+				>Open in Dawn</a
+			>
+		{:else}
+			None chosen: the home page shows no Dawn demo.
+		{/if}
+	</p>
+	<div class="mt-4 flex flex-wrap items-center gap-3">
+		<button
+			class="button-accent"
+			type="button"
+			disabled={dawnBusy}
+			onclick={() => void makeDawnDemo()}
+		>
+			{dawnBusy ? "Loading the stems…" : "Make it from the featured song"}
+		</button>
+		{#if data.studioSongs.length}
+			<label class="flex items-center gap-2 text-sm">
+				<span class="text-dim whitespace-nowrap">Or one of yours</span>
+				<select
+					class="field"
+					aria-label="Dawn song for the home demo"
+					value={data.studioDemo?.id ?? ""}
+					onchange={(e) => void chooseDawnDemo(e.currentTarget.value)}
+				>
+					<option value="">None</option>
+					{#each data.studioSongs as s (s.id)}
+						<option value={s.id}
+							>{s.title} · {s.tracks} {s.tracks === 1 ? "track" : "tracks"}</option
+						>
+					{/each}
+				</select>
+			</label>
+		{/if}
+	</div>
 </section>

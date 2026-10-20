@@ -1371,7 +1371,7 @@
 								kind: "button",
 								label: "Delete song",
 								iconClass: "i-ph-trash",
-								condition: !!song,
+								condition: !!song && song.id !== data.homeDemoId,
 								action: () => song && removeSong(song),
 							},
 						]}
@@ -2171,6 +2171,7 @@
 									class="rounded-md border {s.id === songId
 										? 'border-accent/60 bg-accent/5'
 										: 'border-white/10'}"
+									data-home-demo={s.id === data.homeDemoId ? "" : undefined}
 								>
 									<details open={s.id === songId}>
 										<summary class="flex items-center gap-2 px-3 py-2 cursor-pointer list-none">
@@ -2192,7 +2193,7 @@
 													? s.own
 														? " · shared"
 														: " · the band's"
-													: ""}</span
+													: ""}{s.id === data.homeDemoId ? " · home demo" : ""}</span
 											>
 											<ContextMenu
 												ariaLabel="{s.title} actions"
@@ -2211,6 +2212,8 @@
 														kind: "button",
 														label: "Delete song",
 														iconClass: "i-ph-trash",
+														// The home page's demo stays until an admin chooses another (docs/multitrack-recorder.md, "The home demo").
+														condition: s.id !== data.homeDemoId,
 														action: () => removeSong(s),
 													},
 												]}

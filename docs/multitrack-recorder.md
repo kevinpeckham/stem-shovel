@@ -1018,6 +1018,32 @@ the project with the changes saved, then the tracks uploaded as its
 stems as "Add tracks as stems" does) uses the second. Adding tracks to
 an existing song leaves that song's changes alone.
 
+## The home demo (2026-10-20)
+
+Kevin: a section on the home page after the Idea Recorder with a demo
+Dawn, the stems of Eat All the Clocks loaded by default, manageable by
+admins. `StudioDemo.svelte`: the real engine (the page's `studio`
+singleton) and the real `StudioTimeline` in the device chrome, with the
+screen's readout, Play, Pause, To the start, Loop and zoom, and an Open
+Dawn link (the recorder for a member, sign-in otherwise); it loads the
+song on mount and empties the engine on leaving, and takes Space and
+Home while it is the demo in view (the page's `spaceTarget`, a
+`dawn` share beside the player's and the instruments'). Nothing records
+and nothing is saved: the engine's dirty flag has no persistence here.
+The song is the `homeStudioSongId` app setting, read by `homeStudioSong`
+(the view with its sources presented, so a private store's files play
+for a visitor); /admin/home has **Make it from the featured song**
+(`makeHomeStudioSong`: `importSongStemsIntoStudio` of the featured song
+into a Dawn song of the admin's, then the setting) and a select of the
+admin's own Dawn songs (`setHomeStudioSong`; None clears). The home
+page's copy doc gains the `dawn` section (the seed's words until the
+in-app page merges them: `db:update-docs --merge --apply`); without a
+chosen song the section does not show. The chosen song is marked
+"home demo" in Dawn's Recordings list with no Delete, and the idea
+delete commands refuse it (409) until an admin chooses another, so a
+clean-up in Dawn cannot blank the home page (the browser tests'
+`deleteStudioSongs` skips it too).
+
 ## Clip canvases and the GPU (2026-10-20)
 
 Kevin, after importing a song's stems: no waveforms on the tracks. The

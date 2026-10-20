@@ -128,6 +128,24 @@ const cases: Case[] = [
 		outcome: { saved: true },
 	},
 	{
+		name: "setHomeStudioSong (clear)",
+		fn: admin.setHomeStudioSong,
+		input: { ideaId: "" },
+		dataFn: "deleteAppSetting",
+		args: ["homeStudioSongId"],
+		outcome: { cleared: true },
+	},
+	{
+		name: "makeHomeStudioSong",
+		fn: admin.makeHomeStudioSong,
+		input: {},
+		arrange: () =>
+			data.makeHomeStudioSongFromFeatured.mockResolvedValue({ ideaId: SONG, tracks: 5 }),
+		dataFn: "makeHomeStudioSongFromFeatured",
+		args: [SYSADMIN],
+		outcome: { ideaId: SONG, tracks: 5 },
+	},
+	{
 		name: "clearHomeBeat",
 		fn: admin.clearHomeBeat,
 		input: {},

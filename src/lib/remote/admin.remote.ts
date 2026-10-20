@@ -1,6 +1,6 @@
 import { command, form, getRequestEvent } from "$app/server";
 import * as v from "valibot";
-import { requireSuperAdmin, requireSystemAdmin } from "#lib/server/access.js";
+import { requireStudioAccess, requireSuperAdmin, requireSystemAdmin } from "#lib/server/access.js";
 import {
 	createInviteCode,
 	deleteAccount,
@@ -21,6 +21,7 @@ import {
 	setAccountStorageLimit,
 	setSignUpMode,
 	setStemStreaming,
+	makeHomeStudioSongFromFeatured,
 } from "#lib/server/data.js";
 import { InviteCodeIdSchema, SystemInviteCodeCreateSchema } from "#lib/val/InviteCodeSchema.js";
 import { AccountAdminSchema, AccountStorageLimitSchema } from "#lib/val/AccountAdminSchema.js";
@@ -35,6 +36,7 @@ import { waitlistManageUrl } from "#lib/utils/waitlistManageUrl.js";
 import { sendWaitlistConfirmEmail, sendWaitlistInviteEmail } from "#lib/server/email.js";
 import { background } from "#lib/server/background.js";
 import { UserAdminSchema } from "#lib/val/UserAdminSchema.js";
+import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
 import { error } from "@sveltejs/kit";
 
 /**
@@ -140,6 +142,32 @@ export const setFeaturedSong = form(FeaturedSongSchema, async ({ songId }) => {
 		error(400, "That song is not public, or has no stems");
 	await setAppSetting("featuredSongId", songId);
 	return { saved: true };
+});
+
+/** The Dawn song the home page demos: one of the admin's own (or shared with them), or none (system admins). */
+export const setHomeStudioSong = command(
+	v.object({ ideaId: v.union([NanoIdSchema, v.literal("")]) }),
+	async ({ ideaId }) => {
+		const { locals } = getRequestEvent();
+		const user = requireSystemAdmin(locals);
+		if (!ideaId) {
+			await deleteAppSetting("homeStudioSongId");
+			return { cleared: true };
+		}
+		await requireStudioAccess(locals, ideaId);
+		await setAppSetting("homeStudioSongId", ideaId);
+		void user;
+		return { saved: true };
+	},
+);
+
+/** The featured song's stems as a fresh Dawn song of the admin's, made the home demo at once. */
+export const makeHomeStudioSong = command(v.object({}), async () => {
+	const { locals } = getRequestEvent();
+	const user = requireSystemAdmin(locals);
+	const made = await makeHomeStudioSongFromFeatured(user.id);
+	if (!made) error(409, "The featured song has no stems to load.");
+	return made;
 });
 
 /** The beat the home page's drum machine opens with on a first visit: whatever is in the demo when a system admin chooses it from the ⋯ menu there. */

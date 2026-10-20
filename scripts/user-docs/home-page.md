@@ -26,6 +26,12 @@ Mute, solo and download stems or leave comments on the timeline for your collabo
 
 Record your song ideas and demos and save them with integrated notes specific to each idea. Supports multiple takes. Record lossless audio and easily export MP3s or source files.
 
+## Dawn Multitrack Recorder Demo {#dawn}
+
+### Record, Arrange and Mix in the Browser
+
+Dawn is a multitrack recorder and arranger: record over what you have, lay the takes out on a timeline, comp the best parts, mix with inserts and automation, and send the result to a song as a demo or as stems. Here it holds one of our songs, stems and all: play it, mute and solo the tracks, drag a clip, loop a stretch.
+
 ## Song Notes, Charts and Comments {#docs}
 
 ### Charts, Lyrics, Notes and Comments

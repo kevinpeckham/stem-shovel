@@ -7377,6 +7377,31 @@ async function songByPath(accountSlug: string, projectSlug: string, songSlug: st
  * live, else the default. Public means the song and its project are not
  * private and the account is active; nothing else ever reaches the page.
  */
+/**
+ * The Dawn song the home page demos (docs/multitrack-recorder.md, "The
+ * home demo"): the `homeStudioSongId` app setting, as its view (sources
+ * presented); null when none is chosen or it is gone.
+ */
+export async function homeStudioSong(): Promise<StudioSongView | null> {
+	const chosen = await getAppSetting("homeStudioSongId");
+	if (!chosen) return null;
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.id, chosen), eq(idea.kind, "song")),
+		columns: { accountId: true },
+	});
+	return row ? studioSongView(row.accountId, chosen) : null;
+}
+
+/** The featured song's stems as a new Dawn song of the admin's, made the home demo (null without a featured song or its stems). */
+export async function makeHomeStudioSongFromFeatured(userId: string) {
+	const featured = await featuredSong();
+	if (!featured) return null;
+	const made = await importSongStemsIntoStudio(featured.accountId, userId, featured.id);
+	if (!made || made === "empty") return null;
+	await setAppSetting("homeStudioSongId", made.ideaId);
+	return made;
+}
+
 export async function featuredSong() {
 	const chosen = await getAppSetting("featuredSongId");
 	if (chosen) {

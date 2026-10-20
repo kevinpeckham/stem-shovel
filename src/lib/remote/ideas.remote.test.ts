@@ -121,6 +121,13 @@ describe("the idea's own functions (creatorship, not membership)", () => {
 			answer: { deleted: true },
 		},
 	];
+	it("the home page's Dawn demo is not deleted (409) until an admin chooses another", async () => {
+		givenIdeaOwnedBy(USER);
+		asEditorOf(ACCOUNT);
+		data.getAppSetting.mockResolvedValue(IDEA);
+		await expect(call(ideas.deleteIdeaNow, { id: IDEA })).rejects.toMatchObject(httpError(409));
+		expect(data.deleteIdea).not.toHaveBeenCalled();
+	});
 	for (const c of cases) {
 		describe(c.name, () => {
 			it("401 signed out", async () => {

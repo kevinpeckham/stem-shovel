@@ -80,7 +80,8 @@ export async function until<A = undefined>(
 
 /** Deletes every Studio song the bot has, through the app, so a spec leaves nothing behind. */
 export async function deleteStudioSongs(page: Page): Promise<void> {
-	const rows = page.locator("section[aria-label=Recordings] li > details");
+	// The home page's Dawn demo, when it is the bot's, stays (its row carries data-home-demo and no Delete).
+	const rows = page.locator("section[aria-label=Recordings] li:not([data-home-demo]) > details");
 	for (let i = 0; i < 12; i++) {
 		const n = await rows.count();
 		if (!n) return;
