@@ -35,6 +35,7 @@
 	import { RECORDING_BITS_PER_SECOND, SILENCE_LEVEL } from "#lib/constants/takeLimits.js";
 	import { isIOS } from "#lib/utils/isIOS.js";
 	import { audioSession } from "#lib/utils/audioSession.js";
+	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import { playbackMime } from "#lib/utils/playbackMime.js";
 	import type { RecordingFormat, RecordingQuality } from "#lib/utils/recordingMimeType.js";
 	import {
@@ -314,6 +315,22 @@
 	let volume = $state(1);
 	let contextMenuOpen: "open" | "closed" = $state("closed");
 	let loopMode: "looping" | "not-looping" = $state("not-looping");
+	/** A stretch of the take selected by a drag across the waveform (docs/demo-recording.md, "Looping a part"): looping plays it round; null loops the whole take. */
+	let loopRegion = $state<{ start: number; end: number } | null>(null);
+	function selectRegion(from: number, to: number) {
+		if (!hasTake || takeLength <= 0) return;
+		const region = { start: from * takeLength, end: to * takeLength };
+		loopRegion = region.end - region.start > 0.05 ? region : null;
+	}
+	/** The loop's turn: past the selection's end, back to its start (the whole take loops through the element's own `loop`). */
+	function onplaybacktime() {
+		if (loopMode !== "looping" || !loopRegion || playbackPaused) return;
+		if (playhead >= loopRegion.end || playhead < loopRegion.start - 0.5)
+			playhead = loopRegion.start;
+	}
+	function onwindowkeydown(e: KeyboardEvent) {
+		if (e.key === "Escape" && loopRegion && !isTextEntry(e.target)) loopRegion = null;
+	}
 
 	let stream: MediaStream | null = null;
 	let recorder: MediaRecorder | null = null;
@@ -705,6 +722,7 @@
 		if (takeUrl?.startsWith("blob:")) URL.revokeObjectURL(takeUrl);
 		takeUrl = null;
 		take = null;
+		loopRegion = null; // the selection was the old take's
 		playhead = 0; // the transport starts at zero for whatever is loaded next
 	}
 
@@ -926,6 +944,7 @@
 	onbeforeunload={(e) => {
 		if (busy) e.preventDefault();
 	}}
+	onkeydown={onwindowkeydown}
 />
 
 {#if takeUrl && hasTake}
@@ -936,9 +955,17 @@
 		bind:currentTime={playhead}
 		bind:duration={takeDuration}
 		bind:volume
-		loop={loopMode === "looping"}
+		loop={loopMode === "looping" && !loopRegion}
 		preload="auto"
-		onended={() => (playbackPaused = true)}
+		ontimeupdate={onplaybacktime}
+		onended={() => {
+			if (loopMode === "looping" && loopRegion) {
+				playhead = loopRegion.start;
+				playbackPaused = false;
+				return;
+			}
+			playbackPaused = true;
+		}}
 		onerror={(e) => {
 			const code = (e.currentTarget as HTMLAudioElement).error?.code;
 			playbackPaused = true;
@@ -1114,6 +1141,10 @@
 				onseek={(f) => {
 					if (hasTake) playhead = f * takeLength;
 				}}
+				range={hasTake && loopRegion && takeLength > 0
+					? { from: loopRegion.start / takeLength, to: loopRegion.end / takeLength }
+					: null}
+				onrange={hasTake ? selectRegion : undefined}
 			/>
 
 			<!-- input meter, playback controls, recording metadata  -->
@@ -1400,9 +1431,18 @@
 					type="button"
 					disabled={!hasTake}
 					aria-label="Toggle looping playback mode"
-					title="Toggle looping playback mode"
+					aria-pressed={loopMode === "looping"}
+					title={loopRegion
+						? `Loop the selection${loopMode === "looping" ? ": on" : ""} · Escape clears the selection`
+						: `Loop the take${loopMode === "looping" ? ": on" : ""} · drag across the waveform to loop part of it`}
 					onclick={() => {
 						loopMode = loopMode === "looping" ? "not-looping" : "looping";
+						if (
+							loopMode === "looping" &&
+							loopRegion &&
+							(playhead < loopRegion.start || playhead >= loopRegion.end)
+						)
+							playhead = loopRegion.start;
 					}}
 				>
 				</button>

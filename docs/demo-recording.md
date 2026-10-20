@@ -319,6 +319,20 @@ lossless option (capture PCM in an `AudioWorklet`, encode FLAC client-side)
 is possible later if recordings should become stems; it costs a worklet,
 an encoder and the WAV-sized uploads above.
 
+## Looping a part (2026-10-20)
+
+Kevin: looping playback for the Idea Recorder, as the stem player's. The
+take player always looped the whole take (the element's `loop` under
+`loopMode`); now a drag across the take's waveform (`RecorderWave` gains
+`range` and `onrange`, the band drawn as the stem waveform's; a click
+still seeks, and without `onrange` a drag scrubs as before) selects a
+stretch, `loopRegion` in `DemoRecorder`, and with looping on the player
+wraps at its end (`timeupdate` sets the playhead back; the element's
+`loop` is off while a region is set, and `ended` restarts from the
+region's start when the region runs to the take's end). The Loop
+button's title says which it loops; Escape clears the selection, as does
+loading or discarding a take.
+
 ## Waveform (built 2026-10-01)
 
 Kevin's ask, the first of a queue: `RecorderWave.svelte` on the screen

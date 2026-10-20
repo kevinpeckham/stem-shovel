@@ -348,6 +348,22 @@ exported as a take, then imported into an empty loop at 60 bpm became one
 bar of 4 s; imported again into that loop it fitted as a second 4 s
 layer.
 
+## Stems from songs (2026-10-20)
+
+Kevin: importing individual stems from songs into the looper. The Load
+menu's **Import a stem** section (signed in, with an account to edit)
+lists the songs with ready stems in the accounts the user edits
+(`stemsForImport`: title and project, each stem's label and length, and
+the URL to decode, the AAC rendition when it is there and signed when the
+song is private; sixty songs at most), a song picked in a select and its
+stems as buttons. A stem goes through `looper.importTake` as a take with
+no sources (`{ url, title: label, durationSeconds }`), so the same
+"Loop length" and "Start at" choices apply: the loop's length from the
+stem on an empty loop, else the stem fitted and cut from the start
+offset. A stem is the song's full length, so the start offset is how a
+chorus or a riff is picked out; a layer's source is read from its label
+(Piano, Drums, else the microphone), as a take's.
+
 ## Phase 2: MIDI layers
 
 A piano or drum layer kept as events (note on/off with velocity at loop

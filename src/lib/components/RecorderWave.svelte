@@ -27,8 +27,12 @@
 		/** The playhead as a fraction of the take, 0 to 1. */
 		progress: number;
 		onseek?: (fraction: number) => void;
+		/** The selected stretch of the take (the loop, docs/demo-recording.md "Looping a part"), as fractions, drawn as a band. */
+		range?: { from: number; to: number } | null;
+		/** With this, a drag across the take selects a stretch (fractions, in order); a click still seeks. Without it a drag scrubs. */
+		onrange?: (from: number, to: number) => void;
 	}
-	let { peaks, history, recording, progress, onseek }: Props = $props();
+	let { peaks, history, recording, progress, onseek, range = null, onrange }: Props = $props();
 
 	let width = $state(0);
 	let height = $state(0);
@@ -87,20 +91,38 @@
 	}
 
 	let seeking = false;
+	/** A drag that may become a selection: where it began, and whether it has gone far enough to be one rather than a click. */
+	let drag: { x: number; from: number; selecting: boolean } | null = null;
 	function fractionAt(e: PointerEvent): number {
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
 	}
 	function onpointerdown(e: PointerEvent) {
 		if (!peaks || !onseek) return;
-		seeking = true;
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		if (onrange) {
+			drag = { x: e.clientX, from: fractionAt(e), selecting: false };
+			return;
+		}
+		seeking = true;
 		onseek(fractionAt(e));
 	}
 	function onpointermove(e: PointerEvent) {
+		if (drag) {
+			if (!drag.selecting) {
+				if (Math.abs(e.clientX - drag.x) < 4) return;
+				drag.selecting = true;
+			}
+			const to = fractionAt(e);
+			onrange?.(Math.min(drag.from, to), Math.max(drag.from, to));
+			return;
+		}
 		if (seeking && onseek) onseek(fractionAt(e));
 	}
 	function onpointerup() {
+		// A press that never became a selection is a click: it seeks.
+		if (drag && !drag.selecting) onseek?.(drag.from);
+		drag = null;
 		seeking = false;
 	}
 	function onkeydown(e: KeyboardEvent): void {
@@ -138,6 +160,15 @@
 		{@attach wave}
 		class="absolute inset-0 h-full w-full {recording ? 'text-red-400' : 'text-blue-100/80'}"
 	></canvas>
+	{#if peaks && range && range.to > range.from}
+		<!-- The selection (the loop): a band over the take. -->
+		<div
+			class="pointer-events-none absolute inset-y-0 border-x border-accent/70 bg-accent/15"
+			style:left="{range.from * 100}%"
+			style:width="{(range.to - range.from) * 100}%"
+			data-range
+		></div>
+	{/if}
 	{#if peaks}
 		<div
 			class="pointer-events-none absolute inset-y-0 w-0.5 bg-accent"

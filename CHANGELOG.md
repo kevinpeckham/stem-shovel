@@ -19,6 +19,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **Stems from songs in the looper.** Import a stem, in the Load menu: pick
+  a song and press a stem to bring it in as a layer, cut to the loop's
+  length from the start you set.
+- **Looping a part in the Idea Recorder.** Drag across the take's waveform
+  to select a stretch; with looping on it plays round, as the stem player
+  does. Escape clears the selection.
 - **A song's stems into Dawn.** Open stems in Dawn, in the song page's
   Downloads menu, or Load the song's stems in Dawn's Send to a song block:
   each stem on a track of a new Dawn song named after the song, with the

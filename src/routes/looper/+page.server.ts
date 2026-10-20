@@ -12,6 +12,7 @@ import {
 	sitePianoPresets,
 	siteAmpPresets,
 	listAmpPresets,
+	stemsForImport,
 } from "#lib/server/data.js";
 import { pageCopy } from "#lib/server/pageCopy.js";
 import { realMemberships } from "#lib/utils/actingMemberships.js";
@@ -35,6 +36,8 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		loops: locals.user ? await listUserLoops(locals.user.id) : [],
 		// The user's recent takes, to import as layers (docs/looper.md, "Importing a take").
 		takes: locals.user ? await recentTakes(locals.user.id) : [],
+		// The songs with stems in the accounts they edit, to import a stem as a layer (docs/looper.md, "Stems from songs").
+		stemSongs: locals.user ? await stemsForImport(editing.map((m) => m.accountId)) : [],
 		account: member
 			? { id: member.accountId, name: member.name, slug: member.slug, canEdit: true }
 			: null,

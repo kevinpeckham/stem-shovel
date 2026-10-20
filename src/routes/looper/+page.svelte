@@ -424,6 +424,28 @@
 			notify(`Could not import the take: ${errorMessage(e)}`, { kind: "error" });
 		}
 	}
+	/** A song's stem as a layer (docs/looper.md, "Stems from songs"): the stem alone, through the take import's cut and fit. */
+	let stemSongId = $state("");
+	let stemSong = $derived(
+		data.stemSongs.find((s) => s.id === stemSongId) ?? data.stemSongs[0] ?? null,
+	);
+	async function importStem(stem: {
+		id: string;
+		label: string;
+		url: string;
+		durationSeconds: number | null;
+	}) {
+		try {
+			const n = await looper.importTake(
+				{ url: stem.url, title: stem.label, durationSeconds: stem.durationSeconds },
+				[],
+				{ lengthFrom: looper.locked ? "loop" : importLengthFrom, startSeconds: importStart },
+			);
+			notify(`${stem.label} imported as ${n} ${n === 1 ? "layer" : "layers"}`);
+		} catch (e) {
+			notify(`Could not import the stem: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
 	const sourceIcon: Record<LoopSource, string> = {
 		mic: "i-ph-microphone",
 		line: "i-ph-plugs",
@@ -1191,6 +1213,50 @@
 							</li>
 						{/each}
 					</ul>
+				</div>
+			{/if}
+			{#if data.signedIn && data.stemSongs.length > 0}
+				<div
+					class="border-t border-current/10 pt-3 grid gap-3 [&_span.device-button-label]-(block mb-2 text-blue-100/90)"
+					data-import-stems
+				>
+					<div class="text-11px uppercase tracking-wider text-accent">Import a stem</div>
+					<p class="text-12px opacity-70">
+						One stem of a song as a layer, cut to the loop's length from the start you choose above.
+					</p>
+					<label class="block">
+						<span class="device-button-label">Song</span>
+						<select
+							class="device-field w-full"
+							aria-label="Song to import a stem from"
+							value={stemSong?.id ?? ""}
+							onchange={(e) => (stemSongId = e.currentTarget.value)}
+						>
+							{#each data.stemSongs as s (s.id)}
+								<option value={s.id}>{s.title} · {s.project}</option>
+							{/each}
+						</select>
+					</label>
+					{#if stemSong}
+						<ul class="grid gap-1 max-h-60 overflow-y-auto" aria-label="Stems of {stemSong.title}">
+							{#each stemSong.stems as stem (stem.id)}
+								<li>
+									<button
+										class="w-full text-left rounded px-2 py-1.5 hover:bg-white/10 grid gap-0.5 disabled:opacity-50"
+										type="button"
+										disabled={looper.loading || looper.layers.length >= MAX_LOOP_LAYERS}
+										title="Import this stem as a layer"
+										onclick={() => void importStem(stem)}
+									>
+										<span class="text-14px text-blue-100 truncate">{stem.label}</span>
+										<span class="text-12px opacity-70"
+											>{stem.durationSeconds ? `${stem.durationSeconds.toFixed(1)} s` : "—"}</span
+										>
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 				</div>
 			{/if}
 		</div>

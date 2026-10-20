@@ -6632,6 +6632,48 @@ export async function songPicker(accountId: string) {
 	return rows;
 }
 
+/**
+ * The songs with ready stems in the accounts a user edits, for the looper's
+ * "Import a stem" (docs/looper.md, "Stems from songs"): each stem's label,
+ * length and the URL to decode (the AAC rendition when it is there, a
+ * tenth of the WAV; signed when private). Sixty songs at most.
+ */
+export async function stemsForImport(accountIds: string[]) {
+	if (accountIds.length === 0) return [];
+	const rows = await db.query.song.findMany({
+		where: and(inArray(song.accountId, accountIds), eq(song.status, "active")),
+		orderBy: [asc(song.title)],
+		columns: { id: true, title: true, accountId: true },
+		with: {
+			project: { columns: { name: true } },
+			stems: {
+				where: eq(stem.status, "ready"),
+				orderBy: [asc(stem.sortOrder), asc(stem.createdAt)],
+				columns: { id: true, label: true, url: true, playbackUrl: true, durationSeconds: true },
+			},
+		},
+	});
+	const out = [];
+	for (const r of rows) {
+		if (r.stems.length === 0) continue;
+		out.push({
+			id: r.id,
+			title: r.title,
+			project: r.project.name,
+			stems: await Promise.all(
+				r.stems.map(async (st) => ({
+					id: st.id,
+					label: st.label,
+					url: (await presentUrl(st.playbackUrl ?? st.url)) ?? st.url,
+					durationSeconds: st.durationSeconds,
+				})),
+			),
+		});
+		if (out.length >= 60) break;
+	}
+	return out;
+}
+
 /** A song's title and page, for the recorder opened from that song. */
 export async function songLink(accountId: string, songId: string) {
 	const row = await db.query.song.findFirst({

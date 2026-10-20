@@ -10,6 +10,8 @@ A take can carry a name: type it in the field beside "Take N" before you record,
 
 An idea only exists once it has a take or some notes. One that ends up with neither, because its last take or its notes were deleted, is removed on its own.
 
+To work on one part of a take, drag across its waveform to select it: with looping on, the player plays that stretch round; with nothing selected, it loops the whole take. Escape clears the selection, and loading another take drops it.
+
 ## Notes
 
 The panel beside the recorder is a markdown note board for the idea: lyrics, chords, a tuning, anything worth keeping with the takes. It saves as you type. The trash button clears it. On a desktop, the button in the notes header pops them out into a panel you can drag and resize, and the same button puts them back. The recorder and the recordings list have the same button, so the recorder, the notes, the list, the instruments and the tools can all be arranged on the screen however you like.
