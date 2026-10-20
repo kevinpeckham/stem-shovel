@@ -1,4 +1,4 @@
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Dawn's mixer (docs/dawn-daw-plan.md, D2): the Mixer view adds a bus,
@@ -13,6 +13,8 @@ test.describe("Dawn mixer", () => {
 		errors,
 	}) => {
 		await open(page, "/multitrack-recorder", "__studio");
+		// A fresh song: the home demo's song may be the one open (its tracks are not "Track 1").
+		await newStudioSong(page);
 		const addTrack = page.getByRole("button", { name: "Add track", exact: true });
 		await expect(addTrack).toBeVisible({ timeout: 60_000 });
 		await addTrack.click();

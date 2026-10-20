@@ -79,13 +79,27 @@ export async function until<A = undefined>(
 }
 
 /** Deletes every Studio song the bot has, through the app, so a spec leaves nothing behind. */
+/**
+ * New song on the Dawn device, and the device holding it: a song may be
+ * open already (the home demo stays through a cleanup), so the title must
+ * change, not merely be set, and the engine must hold the empty song.
+ */
+export async function newStudioSong(page: Page): Promise<void> {
+	const before = await page.getByLabel("Song title").inputValue();
+	await page.getByRole("button", { name: "New song" }).click();
+	await expect(page.getByLabel("Song title")).not.toHaveValue(before);
+	await expect(page.getByLabel("Song title")).not.toHaveValue("");
+	await until(page, ([w]) => w.__studio.arrangement.clips.length === 0);
+	await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
+}
+
 export async function deleteStudioSongs(page: Page): Promise<void> {
 	// The home page's Dawn demo, when it is the bot's, stays (its row carries data-home-demo and no Delete).
 	const rows = page.locator("section[aria-label=Recordings] li:not([data-home-demo]) > details");
 	for (let i = 0; i < 12; i++) {
 		const n = await rows.count();
 		if (!n) return;
-		await page.getByRole("button", { name: "Song actions" }).click();
+		await page.getByRole("button", { name: "Song actions", exact: true }).click();
 		// The device's menu deletes the open song; the rows' own menus hold a hidden copy each, so only a visible one counts.
 		const del = page.getByRole("button", { name: "Delete song" }).filter({ visible: true });
 		if (!(await del.count())) {

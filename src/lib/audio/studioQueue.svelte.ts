@@ -1,5 +1,6 @@
 import { postJson, uploadStudioSourceFile, type StudioSourceReservation } from "#lib/upload.js";
 import { errorMessage } from "#lib/utils/errorMessage.js";
+import { LOCAL_SONG } from "./studioLocal";
 
 /**
  * The Studio's upload queue (docs/multitrack-recorder.md): a finished take
@@ -27,7 +28,8 @@ export interface PendingSource {
 	blob: Blob;
 }
 interface SourceQueueItem extends PendingSource {
-	status: "waiting" | "uploading" | "failed";
+	/** "kept": a recording of the browser-kept song (studioLocal.ts), held here until a member adopts it into a song. */
+	status: "waiting" | "uploading" | "failed" | "kept";
 	progress: number;
 	error: string | null;
 }
@@ -77,19 +79,50 @@ export class StudioQueue {
 		this.#onsaved = opts.onsaved;
 	}
 
-	/** Sources left by an earlier visit; their uploads resume at once. */
-	async restore() {
+	/** Sources left by an earlier visit; their uploads resume at once. Returns the kept ones (the browser-kept song's). */
+	async restore(): Promise<PendingSource[]> {
 		const left = await stored();
 		for (const t of left.sort((a, b) => a.createdAt - b.createdAt))
 			if (!this.items.some((i) => i.sourceId === t.sourceId))
-				this.items.push({ ...t, status: "waiting", progress: 0, error: null });
+				this.items.push({
+					...t,
+					status: t.ideaId === LOCAL_SONG ? "kept" : "waiting",
+					progress: 0,
+					error: null,
+				});
 		void this.#run();
+		return this.kept;
 	}
-	/** A finished take: on disk first, then in line. Returns at once. */
+	/** A finished take: on disk first, then in line (or kept, for the browser-kept song). Returns at once. */
 	enqueue(t: PendingSource) {
-		this.items.push({ ...t, status: "waiting", progress: 0, error: null });
+		this.items.push({
+			...t,
+			status: t.ideaId === LOCAL_SONG ? "kept" : "waiting",
+			progress: 0,
+			error: null,
+		});
 		void persist(t);
 		void this.#run();
+	}
+	/** The browser-kept song's recordings, oldest first. */
+	get kept(): PendingSource[] {
+		return this.items.filter((i) => i.status === "kept");
+	}
+	/** The kept recordings become a song's (a member saved the browser-kept song to their account): re-filed on disk, then uploaded in order. */
+	async adopt(ideaId: string) {
+		for (const item of this.items)
+			if (item.status === "kept") {
+				item.ideaId = ideaId;
+				item.status = "waiting";
+				await persist({ ...item, ideaId });
+			}
+		void this.#run();
+	}
+	/** The browser-kept song discarded: its recordings go from disk too. */
+	async discardKept() {
+		const gone = this.kept.map((k) => k.sourceId);
+		this.items = this.items.filter((i) => i.status !== "kept");
+		for (const id of gone) await forget(id);
 	}
 	retry(sourceId: string) {
 		const item = this.items.find((i) => i.sourceId === sourceId);

@@ -227,6 +227,44 @@ describe("StudioQueue", () => {
 		await vi.waitFor(() => expect(uploaded).toEqual(["early.wav", "late.wav"]));
 		await vi.waitFor(() => expect(q.items.map((i) => i.sourceId)).toEqual(["dup"]));
 	});
+	it("keeps the browser-kept song's recordings on disk without uploading, until they are adopted into a song", async () => {
+		const q = new StudioQueue({ onsaved: vi.fn() });
+		q.enqueue(source({ sourceId: "k1", ideaId: "local", createdAt: 1000 }));
+		q.enqueue(source({ sourceId: "k2", ideaId: "local", createdAt: 2000 }));
+		await settled();
+		expect(q.items.map((i) => i.status)).toEqual(["kept", "kept"]);
+		expect(q.kept.map((k) => k.sourceId)).toEqual(["k1", "k2"]);
+		expect(h.uploadStudioSourceFile).not.toHaveBeenCalled();
+		await vi.waitFor(async () => expect((await storedRows()).length).toBe(2));
+		// A reload finds them kept still, and reports them.
+		const again = new StudioQueue({ onsaved: vi.fn() });
+		const kept = await again.restore();
+		expect(kept.map((k) => k.sourceId)).toEqual(["k1", "k2"]);
+		expect(again.items.every((i) => i.status === "kept")).toBe(true);
+		expect(h.uploadStudioSourceFile).not.toHaveBeenCalled();
+		// Adopted into a song: re-filed on disk and uploaded in order under that song.
+		const ideaIds: string[] = [];
+		h.postJson.mockImplementation(async (_url: string, body: { ideaId: string }) => {
+			ideaIds.push(body.ideaId);
+			return { sourceId: "x", pathname: "p" };
+		});
+		await again.adopt("idea-9");
+		await vi.waitFor(() => expect(h.uploadStudioSourceFile).toHaveBeenCalledTimes(2));
+		expect(ideaIds).toEqual(["idea-9", "idea-9"]);
+		await vi.waitFor(async () => expect((await storedRows()).length).toBe(0));
+	});
+	it("discards the kept recordings from the list and from disk", async () => {
+		const q = new StudioQueue({ onsaved: vi.fn() });
+		q.enqueue(source({ sourceId: "k1", ideaId: "local" }));
+		q.enqueue(source({ sourceId: "w1", ideaId: "idea-1" }));
+		await vi.waitFor(async () => expect((await storedRows()).length).toBeGreaterThan(0));
+		await q.discardKept();
+		expect(q.kept).toEqual([]);
+		expect(q.items.some((i) => i.sourceId === "k1")).toBe(false);
+		await vi.waitFor(async () =>
+			expect((await storedRows()).map((r) => r.sourceId)).not.toContain("k1"),
+		);
+	});
 	it("reports an HttpError-shaped failure through errorMessage", async () => {
 		h.uploadStudioSourceFile.mockRejectedValueOnce({ status: 413, body: { message: "Too large" } });
 		const q = new StudioQueue({ onsaved: vi.fn() });

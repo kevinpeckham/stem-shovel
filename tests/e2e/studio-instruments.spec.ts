@@ -1,4 +1,4 @@
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * The Studio's instrument inputs (docs/multitrack-recorder.md, phase 2):
@@ -12,8 +12,7 @@ test.describe.serial("Studio instruments", () => {
 		// The instrument panels carry transport buttons of their own: the Studio's are inside its device.
 		const device = page.getByRole("dialog", { name: "Dawn" });
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		// The seeded track's input becomes the drum machine; its panel opens.
 		await page.getByRole("combobox", { name: /Track 1 input/ }).click();
 		await page.getByRole("option", { name: "Drum machine" }).click();

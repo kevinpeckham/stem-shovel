@@ -1,5 +1,5 @@
 import path from "node:path";
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Instruments and the library in Dawn (docs/dawn-daw-plan.md, D6): a
@@ -17,8 +17,7 @@ test.describe("Dawn instruments and library", () => {
 		test.setTimeout(180_000);
 		await open(page, "/multitrack-recorder", "__studio");
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		await hooked(page, ([w]) => w.__studio.seek(0));
 		await page.locator("input[type=file]").setInputFiles(path.resolve("static/stems/keys.wav"));

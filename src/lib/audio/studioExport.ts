@@ -1,5 +1,6 @@
 import { encodeWav } from "#lib/utils/encodeWav.js";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
+import { encodeMp3 } from "./encodeMp3.js";
 import { dawproject } from "#lib/utils/dawproject.js";
 import { measureLoudness, type LoudnessReading } from "#lib/utils/measureLoudness.js";
 import { normalizationGain } from "#lib/utils/normalizationGain.js";
@@ -12,8 +13,9 @@ import type { RenderTarget } from "./studio.svelte";
  * engine that renders a target to a buffer: the mix, a stem per track,
  * a stem per bus, each measured (utils/measureLoudness.ts) and, when
  * asked, brought to the streaming target (utils/normalizationGain.ts),
- * as 24- or 16-bit WAV; a DAWproject of the arrangement with the clips'
- * sources (utils/dawproject.ts). Pure over its engine, so a test hands
+ * as 24- or 16-bit WAV or as a 192 kbps MP3 (encodeMp3.ts); a DAWproject
+ * of the arrangement with the clips' sources (utils/dawproject.ts), always
+ * 24-bit WAV inside. Pure over its engine, so a test hands
  * it a fake; the page downloads what comes back, one by one or zipped.
  */
 export interface ExportEngine {
@@ -27,6 +29,8 @@ export interface ExportOptions {
 	tracks: boolean;
 	buses: boolean;
 	dawproject: boolean;
+	/** The audio files' format; `bits` applies to WAV only. */
+	format: "wav" | "mp3";
 	bits: 16 | 24;
 	normalize: boolean;
 }
@@ -36,6 +40,7 @@ export const EXPORT_DEFAULTS: ExportOptions = {
 	tracks: false,
 	buses: false,
 	dawproject: false,
+	format: "wav",
 	bits: 24,
 	normalize: false,
 };
@@ -52,12 +57,12 @@ export interface ExportFile {
 const channelsOf = (buffer: AudioBuffer) =>
 	Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
 
-/** A rendered buffer as a WAV file, measured, normalized when asked. */
-function fileOf(
+/** A rendered buffer as a WAV or MP3 file, measured, normalized when asked. */
+async function fileOf(
 	name: string,
 	buffer: AudioBuffer,
-	o: Pick<ExportOptions, "bits" | "normalize">,
-): ExportFile {
+	o: Pick<ExportOptions, "format" | "bits" | "normalize">,
+): Promise<ExportFile> {
 	let channels = channelsOf(buffer);
 	const loudness = measureLoudness(channels, buffer.sampleRate);
 	let gain = 1;
@@ -71,9 +76,11 @@ function fileOf(
 			});
 	}
 	const blob =
-		o.bits === 24
-			? new Blob([encodeWav24(channels, buffer.sampleRate)], { type: "audio/wav" })
-			: encodeWav(channels, buffer.sampleRate);
+		o.format === "mp3"
+			? await encodeMp3(channels, buffer.sampleRate)
+			: o.bits === 24
+				? new Blob([encodeWav24(channels, buffer.sampleRate)], { type: "audio/wav" })
+				: encodeWav(channels, buffer.sampleRate);
 	return { name, blob, loudness, gainDb: Math.round(20 * Math.log10(gain) * 10) / 10 };
 }
 
@@ -93,25 +100,34 @@ export async function exportSong(
 ): Promise<ExportFile[]> {
 	const out: ExportFile[] = [];
 	const base = fileSafe(title);
+	const ext = options.format === "mp3" ? "mp3" : "wav";
 	const a = engine.arrangement;
 	const hasClips = (trackId: string) => a.clips.some((c) => c.trackId === trackId);
 	if (options.mix) {
 		onprogress?.("Rendering the mix…");
-		out.push(fileOf(`${base}.wav`, await engine.render(), options));
+		out.push(await fileOf(`${base}.${ext}`, await engine.render(), options));
 	}
 	if (options.tracks)
 		for (const t of a.tracks) {
 			if (!hasClips(t.id)) continue;
 			onprogress?.(`Rendering ${t.name}…`);
 			out.push(
-				fileOf(`${base} - ${fileSafe(t.name)}.wav`, await engine.render({ track: t.id }), options),
+				await fileOf(
+					`${base} - ${fileSafe(t.name)}.${ext}`,
+					await engine.render({ track: t.id }),
+					options,
+				),
 			);
 		}
 	if (options.buses)
 		for (const b of a.buses ?? []) {
 			onprogress?.(`Rendering ${b.name}…`);
 			out.push(
-				fileOf(`${base} - ${fileSafe(b.name)}.wav`, await engine.render({ bus: b.id }), options),
+				await fileOf(
+					`${base} - ${fileSafe(b.name)}.${ext}`,
+					await engine.render({ bus: b.id }),
+					options,
+				),
 			);
 		}
 	if (options.dawproject) {

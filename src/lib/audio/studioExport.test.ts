@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import { bundleExport, EXPORT_DEFAULTS, exportSong, fileSafe } from "./studioExport";
 
+// The MP3 encoder runs LAME in a worker the browser spawns; here it answers with a stand-in blob.
+const encodeMp3 = vi.hoisted(() =>
+	vi.fn(async () => new Blob([new Uint8Array([0xff, 0xfb, 0x90, 0x00])], { type: "audio/mpeg" })),
+);
+vi.mock("./encodeMp3", () => ({ encodeMp3 }));
+
 /** A buffer the way the Web Audio one reads: a sine at an amplitude, stereo, 48 kHz, a second long. */
 function fakeBuffer(amplitude: number, seconds = 1, duty = 1): AudioBuffer {
 	const sampleRate = 48000;
@@ -116,6 +122,30 @@ describe("exportSong", () => {
 		const files = await exportSong(e, "x", { ...EXPORT_DEFAULTS, normalize: true }, app);
 		expect(files[0]!.loudness?.truePeak).toBeCloseTo(-6, 0);
 		expect(files[0]!.gainDb).toBeCloseTo(5, 0);
+	});
+	it("renders the mix and the stems as MP3s, measured and normalized the same way", async () => {
+		const e = engine(0.1);
+		const files = await exportSong(
+			e,
+			"My Song",
+			{ ...EXPORT_DEFAULTS, tracks: true, buses: true, format: "mp3", normalize: true },
+			app,
+		);
+		expect(files.map((f) => f.name)).toEqual([
+			"My Song.mp3",
+			"My Song - Guitar.mp3",
+			"My Song - Drums-FX.mp3",
+		]);
+		expect(files.map((f) => f.blob.type)).toEqual(["audio/mpeg", "audio/mpeg", "audio/mpeg"]);
+		expect(files[0]!.blob.size).toBe(4);
+		expect(encodeMp3).toHaveBeenCalledTimes(3);
+		// The encoder gets the normalized channels at the buffer's rate.
+		const [channels, sampleRate] = encodeMp3.mock.calls[0] as unknown as [Float32Array[], number];
+		expect(sampleRate).toBe(48000);
+		expect(channels).toHaveLength(2);
+		expect(channels[0]!.length).toBe(48000);
+		expect(files[0]!.loudness?.integrated).toBeCloseTo(-20, 0);
+		expect(files[0]!.gainDb).toBeCloseTo(6, 0);
 	});
 	it("writes a DAWproject with the project, the metadata and the clips' sources", async () => {
 		const files = await exportSong(

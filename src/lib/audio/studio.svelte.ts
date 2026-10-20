@@ -307,6 +307,10 @@ class StudioEngine {
 	#buffers = new Map<string, AudioBuffer>();
 	/** Where each source's file is, for a cold one fetched on demand (D8). */
 	#urls = new Map<string, string>();
+	/** Sources held as blobs in this browser (the browser-kept song, studioLocal.ts): decoded from here, never fetched. */
+	#blobs = new Map<string, Blob>();
+	/** Which load the decode workers belong to: a song loaded over one still decoding must not count that one's finishes against its own tally. */
+	#loadGeneration = 0;
 	#loading = new Map<string, Promise<AudioBuffer | null>>();
 	get #tracks(): Map<string, StripGraph> {
 		return this.#graph?.tracks ?? NO_STRIPS;
@@ -491,7 +495,10 @@ class StudioEngine {
 
 	// ── Loading ────────────────────────────────────────────────────────────
 	/** A song from the page: its arrangement and its sources, fetched and decoded three at a time. */
-	async load(song: { current: StudioArrangement | null; sources: StudioSourceView[] }) {
+	async load(song: {
+		current: StudioArrangement | null;
+		sources: (StudioSourceView & { blob?: Blob })[];
+	}) {
 		this.stop();
 		this.#past = [];
 		this.#future = [];
@@ -499,6 +506,7 @@ class StudioEngine {
 		this.canUndo = this.canRedo = false;
 		this.#buffers.clear();
 		this.#urls.clear();
+		this.#blobs.clear();
 		this.#loading.clear();
 		for (const id of this.#tracks.keys()) this.#dropTrackNodes(id);
 		this.arrangement = song.current ? structuredClone(song.current) : emptyArrangement();
@@ -522,6 +530,7 @@ class StudioEngine {
 		const next: Record<string, StudioSource> = {};
 		for (const s of song.sources) {
 			this.#urls.set(s.id, s.url);
+			if (s.blob) this.#blobs.set(s.id, s.blob);
 			next[s.id] = {
 				id: s.id,
 				label: s.trackLabel,
@@ -541,14 +550,13 @@ class StudioEngine {
 		// Decode in order, a few at a time.
 		const queue = song.sources.filter((s) => needed.has(s.id));
 		this.decoding = queue.length;
+		const generation = ++this.#loadGeneration;
 		const worker = async () => {
 			for (;;) {
 				const s = queue.shift();
 				if (!s) return;
 				try {
-					const res = await fetch(s.url);
-					if (!res.ok) throw new Error(`${res.status}`);
-					const buffer = await this.#decode(await res.arrayBuffer());
+					const buffer = await this.#decode(await this.#bytesOf(s.id, s.url));
 					if (!this.sources[s.id]) continue; // another song loaded meanwhile
 					this.#buffers.set(s.id, buffer);
 					const entry = this.sources[s.id];
@@ -559,7 +567,7 @@ class StudioEngine {
 				} catch {
 					if (this.sources[s.id]) this.sources[s.id].status = "failed";
 				} finally {
-					this.decoding--;
+					if (generation === this.#loadGeneration) this.decoding--;
 					this.#recount();
 				}
 			}
@@ -606,14 +614,12 @@ class StudioEngine {
 		if (inFlight) return inFlight;
 		const url = this.#urls.get(sourceId);
 		const entry = this.sources[sourceId];
-		if (!url || !entry) return null;
+		if ((!url && !this.#blobs.has(sourceId)) || !entry) return null;
 		entry.status = "decoding";
 		this.decoding++;
 		const job = (async () => {
 			try {
-				const res = await fetch(url);
-				if (!res.ok) throw new Error(`${res.status}`);
-				const buffer = await this.#decode(await res.arrayBuffer());
+				const buffer = await this.#decode(await this.#bytesOf(sourceId, url ?? ""));
 				if (!this.sources[sourceId]) return null; // another song loaded meanwhile
 				this.#buffers.set(sourceId, buffer);
 				const e = this.sources[sourceId];
@@ -663,6 +669,14 @@ class StudioEngine {
 	markSourceSaved(sourceId: string) {
 		const s = this.sources[sourceId];
 		if (s) s.pending = false;
+	}
+	/** A source's bytes: the blob held here, else the file fetched from the server. */
+	async #bytesOf(sourceId: string, url: string): Promise<ArrayBuffer> {
+		const blob = this.#blobs.get(sourceId);
+		if (blob) return blob.arrayBuffer();
+		const res = await fetch(url);
+		if (!res.ok) throw new Error(`${res.status}`);
+		return res.arrayBuffer();
 	}
 	/** Where the song's sources are on the server (the page, after a refresh): a source made here can then go cold and come back (D8). */
 	noteSourceUrls(sources: { id: string; url: string }[]) {

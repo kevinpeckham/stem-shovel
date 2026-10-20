@@ -10,7 +10,15 @@ describe("ExportPanel", () => {
 		render(ExportPanel, { props: { trackCount: 2, busCount: 1, busy: false, onexport } });
 		await user.click(screen.getByRole("button", { name: "Export" }));
 		expect(onexport).toHaveBeenLastCalledWith(
-			{ mix: true, tracks: false, buses: false, dawproject: false, bits: 24, normalize: false },
+			{
+				mix: true,
+				tracks: false,
+				buses: false,
+				dawproject: false,
+				format: "wav",
+				bits: 24,
+				normalize: false,
+			},
 			true,
 		);
 		await user.click(screen.getByRole("checkbox", { name: /A stem per track/ }));
@@ -21,7 +29,15 @@ describe("ExportPanel", () => {
 		await user.click(screen.getByRole("checkbox", { name: /One zip/ }));
 		await user.click(screen.getByRole("button", { name: "Export" }));
 		expect(onexport).toHaveBeenLastCalledWith(
-			{ mix: true, tracks: true, buses: true, dawproject: true, bits: 16, normalize: true },
+			{
+				mix: true,
+				tracks: true,
+				buses: true,
+				dawproject: true,
+				format: "wav",
+				bits: 16,
+				normalize: true,
+			},
 			false,
 		);
 	});

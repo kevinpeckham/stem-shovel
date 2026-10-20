@@ -1,4 +1,4 @@
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Collaboration in Dawn (docs/dawn-daw-plan.md, D7): a song shared with
@@ -17,8 +17,7 @@ test.describe("Dawn collaboration", () => {
 		test.setTimeout(180_000);
 		await open(page, "/multitrack-recorder", "__studio");
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		// Something to save: a second track; the autosave lands and becomes the base.
 		await page.getByRole("button", { name: "Add track", exact: true }).click();

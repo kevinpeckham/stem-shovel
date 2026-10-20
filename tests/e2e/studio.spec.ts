@@ -1,5 +1,5 @@
 import path from "node:path";
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * The Studio (docs/multitrack-recorder.md) end to end with the fake
@@ -12,8 +12,7 @@ test.describe.serial("Studio", () => {
 	test("records a take that lands as a clip and uploads", async ({ page, errors }) => {
 		await open(page, "/multitrack-recorder", "__studio");
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		// The seeded track is armed to the microphone; the count-in is off for a shorter test.
 		await hooked(page, ([w]) => w.__studio.setCountIn(false));
 		await page.getByRole("button", { name: "Record", exact: true }).click();
@@ -149,7 +148,12 @@ test.describe.serial("Studio", () => {
 			ms: 60_000,
 		});
 		await deleteStudioSongs(page);
-		expect(await page.locator("section[aria-label=Recordings] li > details").count()).toBe(0);
+		// The home demo's song, when it is the bot's, stays (it cannot be deleted while chosen).
+		expect(
+			await page
+				.locator("section[aria-label=Recordings] li:not([data-home-demo]) > details")
+				.count(),
+		).toBe(0);
 		expect(errors).toEqual([]);
 	});
 });

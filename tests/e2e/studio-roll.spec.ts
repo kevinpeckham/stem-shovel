@@ -1,4 +1,4 @@
-import { deleteStudioSongs, expect, hooked, open, test } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test } from "./fixtures";
 
 /**
  * Studio phase 3b (docs/multitrack-recorder.md): the piano-roll editor on
@@ -13,8 +13,7 @@ test("the piano roll adds, moves, nudges, re-velocities and removes notes", asyn
 }) => {
 	await open(page, "/multitrack-recorder", "__studio");
 	await deleteStudioSongs(page);
-	await page.getByRole("button", { name: "New song" }).click();
-	await expect(page.getByLabel("Song title")).not.toHaveValue("");
+	await newStudioSong(page);
 	// A MIDI clip of a rising line, straight into the arrangement (the recorder is another spec's business).
 	await hooked(page, ([w]) => {
 		const s = w.__studio;

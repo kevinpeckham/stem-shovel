@@ -88,15 +88,18 @@
 	</fieldset>
 	<fieldset class="grid gap-1.5" disabled={busy}>
 		<legend class="mb-1 text-11px uppercase tracking-wide opacity-70">How</legend>
-		<div class="flex flex-wrap items-center gap-3" role="radiogroup" aria-label="WAV resolution">
+		<div class="flex flex-wrap items-center gap-3" role="radiogroup" aria-label="Format">
 			<label class="flex items-center gap-2 text-blue-100/90">
 				<input
 					type="radio"
 					class="accent-maximumYellow"
 					name="bits"
 					value={24}
-					checked={options.bits === 24}
-					onchange={() => (options.bits = 24)}
+					checked={options.format === "wav" && options.bits === 24}
+					onchange={() => {
+						options.format = "wav";
+						options.bits = 24;
+					}}
 				/>
 				24-bit WAV
 			</label>
@@ -106,10 +109,25 @@
 					class="accent-maximumYellow"
 					name="bits"
 					value={16}
-					checked={options.bits === 16}
-					onchange={() => (options.bits = 16)}
+					checked={options.format === "wav" && options.bits === 16}
+					onchange={() => {
+						options.format = "wav";
+						options.bits = 16;
+					}}
 				/>
 				16-bit WAV
+			</label>
+			<!-- Encoded in the browser (audio/encodeMp3.ts): the DAWproject's audio stays WAV. -->
+			<label class="flex items-center gap-2 text-blue-100/90">
+				<input
+					type="radio"
+					class="accent-maximumYellow"
+					name="bits"
+					value="mp3"
+					checked={options.format === "mp3"}
+					onchange={() => (options.format = "mp3")}
+				/>
+				MP3 (192 kbps)
 			</label>
 		</div>
 		<label class="flex items-center gap-2 text-blue-100/90">

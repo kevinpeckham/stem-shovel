@@ -1,5 +1,5 @@
 import path from "node:path";
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Time in Dawn (docs/dawn-daw-plan.md, D5): a tempo change from the Timing
@@ -16,8 +16,7 @@ test.describe("Dawn time", () => {
 		test.setTimeout(180_000);
 		await open(page, "/multitrack-recorder", "__studio");
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		// A tempo change to 60 bpm at 4 s, from the Timing menu at the playhead.
 		await hooked(page, ([w]) => w.__studio.seek(4));

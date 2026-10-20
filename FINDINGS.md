@@ -160,6 +160,15 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Browser platform
 
+- **An anchor-positioned popover's `max-height` should be a percentage, not
+  a viewport length.** With `position-area`, the popover's containing block
+  is the grid area beside its anchor, so `max-height: 100%` clamps it to the
+  space below the button and `overflow-y: auto` scrolls it; a
+  `calc(100vh - 2rem)` cap lets a menu opened low on the page run off the
+  bottom, where Playwright cannot scroll it into view (the popover is
+  `position: fixed`) and a user cannot reach the last items. Dawn's Song
+  actions menu, 2026-10-20.
+
 - **A canvas wider than the GPU composites shows nothing, though it draws.**
   Dawn's clip canvases span the whole clip: a 2:27 stem on a Retina screen
   is 11,500 backing pixels at the default zoom and 39,000 zoomed in. Drawing
@@ -486,6 +495,20 @@ belong in CLAUDE.md or docs/, not here.
   disturbed or locked", and a five-stem import stopped at the third. Use
   the SDK's `copy` within a store (the service copies, nothing passes
   through the function) and a buffered `Buffer` across stores (`copyBlob`,
+  2026-10-20).
+- **`@mediabunny/mp3-encoder` 1.62.0** (MPL-2.0, ESM, peer `mediabunny
+  ^1.0.0`): `registerMp3Encoder()` adds LAME as a mediabunny custom
+  encoder, and a custom encoder wins over a native one, so register it
+  only on the first encode (`encodeMp3.ts` imports it dynamically; it is
+  312 kB with the worker and WASM inlined, spawned from a blob URL, so a
+  CSP would need `worker-src blob:`). Three things the types do not say:
+  an explicit `Quality({ bitrate })` reaches LAME unsnapped (mediabunny
+  snaps only the bitrates it derives from a quality level), so snap to
+  the Layer III set yourself; the encoder's `supports` takes only the
+  MPEG rates (48, 44.1, 32 kHz and their halves and quarters), so a 96 kHz
+  buffer needs `transform.sampleRate`; and a planar `AudioSample` is one
+  `Float32Array` with the channels laid end to end, five seconds at a time
+  the way `AudioSample.fromAudioBuffer` does it (Dawn MP3 export,
   2026-10-20).
 - **signalsmith-stretch 1.3.2** (MIT, ESM): worklet from a blob URL
   plus WASM; fine where the CSP allows it, set aside here (see Browser

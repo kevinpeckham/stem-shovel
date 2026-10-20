@@ -36,6 +36,7 @@
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
 	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
 	import { parseMidi } from "#lib/audio/midi.js";
+	import { encodeMp3 } from "#lib/audio/encodeMp3.js";
 	import PianoRoll from "#lib/components/PianoRoll.svelte";
 	import { MAX_TAKE_BYTES } from "#lib/constants/takeLimits.js";
 	import {
@@ -43,6 +44,7 @@
 		deleteIdeaNow,
 		renameIdea,
 		saveIdeaInstruments,
+		saveIdeaNotes,
 	} from "#lib/remote/ideas.remote.js";
 	import {
 		autosaveArrangement,
@@ -64,6 +66,13 @@
 	} from "#lib/remote/studioComments.remote.js";
 	import StudioComments from "#lib/components/StudioComments.svelte";
 	import { StudioPersistence } from "#lib/audio/studioPersistence.svelte.js";
+	import {
+		LOCAL_SONG,
+		clearLocalSong,
+		loadLocalSong,
+		localSourceViews,
+		saveLocalSong,
+	} from "#lib/audio/studioLocal.js";
 	import { diffArrangements } from "#lib/utils/diffArrangements.js";
 	import type { StudioCommentView } from "#lib/val/StudioSchema.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
@@ -119,6 +128,102 @@
 	let title = $state("");
 	let notes = $state("");
 	let notesKey = $state(0);
+	// ── The song kept in the browser (studioLocal.ts; docs/multitrack-recorder.md, "Signed out"): a visitor, or a member of no editing account ──
+	const local = $derived(!data.account);
+	const signInHref = "/sign-in?next=%2Fmultitrack-recorder";
+	/** The browser-kept song came back on this visit ("back from last time"). */
+	let localBack = $state(false);
+	/** A browser-kept song found after sign-in, offered into the account ("Into the account"). */
+	let keptOffer = $state<{ title: string; takes: number } | null>(null);
+	let keptBusy = $state(false);
+	let localNotesTimer: ReturnType<typeof setTimeout> | null = null;
+	function saveLocalNow() {
+		return saveLocalSong({
+			title,
+			notes,
+			arrangement: $state.snapshot(studio.arrangement),
+			savedAt: Date.now(),
+		});
+	}
+	/** The browser-kept song onto the device: its arrangement from the store, its recordings from the queue's kept items. */
+	async function openLocalSong() {
+		const saved = await loadLocalSong();
+		const kept = await queue.restore();
+		const sources = localSourceViews(kept);
+		songId = null;
+		title = saved?.title ?? "";
+		notes = saved?.notes ?? "";
+		notesKey++;
+		selected = null;
+		persistence.open(0);
+		loadedKey = LOCAL_SONG;
+		localBack = !!saved || kept.length > 0;
+		await studio.load({ current: saved?.arrangement ?? null, sources });
+	}
+	/** Signed in with an account: a song kept here from before is offered into it. */
+	async function findKeptSong() {
+		const kept = await queue.restore();
+		const saved = await loadLocalSong();
+		if (!kept.length && !saved?.arrangement.clips.length) return;
+		keptOffer = { title: saved?.title || "Untitled", takes: kept.length };
+	}
+	/** The kept song becomes a song of the account: made, its arrangement and notes saved, its recordings adopted by the queue (uploaded in order), and opened here playing from the blobs meanwhile. */
+	async function saveKept() {
+		if (!data.account) return;
+		keptBusy = true;
+		try {
+			if (studio.running) studio.stop();
+			await autosaveNow();
+			const saved = await loadLocalSong();
+			const kept = queue.kept;
+			const created = await createIdea({
+				accountId: data.account.id,
+				title: saved?.title.trim() || defaultTitle(),
+				kind: "song",
+			});
+			if (saved)
+				await autosaveArrangement({ ideaId: created.id, data: saved.arrangement, base: 0 });
+			if (saved?.notes.trim()) await saveIdeaNotes({ id: created.id, markdown: saved.notes });
+			const sources = localSourceViews(kept);
+			await queue.adopt(created.id);
+			await clearLocalSong();
+			keptOffer = null;
+			await refreshAll();
+			const fresh = data.songs.find((x) => x.id === created.id);
+			if (fresh) openSong({ ...fresh, sources: [...fresh.sources, ...sources] });
+			notify(
+				`“${created.title}” is in ${data.account.name}${kept.length ? `; ${kept.length} ${kept.length === 1 ? "recording is" : "recordings are"} uploading` : ""}`,
+			);
+		} catch (e) {
+			notify(`Could not save the song: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			keptBusy = false;
+		}
+	}
+	async function discardKept() {
+		if (
+			!confirm("Discard the song kept in this browser, recordings and all? This cannot be undone.")
+		)
+			return;
+		await queue.discardKept();
+		await clearLocalSong();
+		keptOffer = null;
+	}
+	/** Signed out: a fresh song means the kept one goes. */
+	async function startOverLocal() {
+		if (!confirm("Start over? The song kept in this browser, recordings and all, goes.")) return;
+		if (studio.running) studio.stop();
+		persistence.cancel();
+		await queue.discardKept();
+		await clearLocalSong();
+		title = "";
+		notes = "";
+		notesKey++;
+		selected = null;
+		localBack = false;
+		persistence.open(0);
+		await studio.load({ current: null, sources: [] });
+	}
 	/** The song the engine holds ("" for none); starts unset so the first open always loads. */
 	let loadedKey = "unloaded";
 	let selected = $state<string | null>(null);
@@ -146,7 +251,7 @@
 	const me = $derived(data.user?.id ?? "");
 	const isAdmin = $derived(
 		data.memberships?.some(
-			(m) => m.accountId === data.account.id && (m.role === "owner" || m.role === "admin"),
+			(m) => m.accountId === data.account?.id && (m.role === "owner" || m.role === "admin"),
 		) ?? false,
 	);
 	async function loadComments(id: string | null) {
@@ -249,13 +354,16 @@
 		// A link from a notification (D7): the song it names, and its Comments panel when asked.
 		const wanted = page.url.searchParams.get("song");
 		if (page.url.searchParams.get("open") === "comments") commentsOpen = true;
-		openSong(
-			data.songs.find((s) => s.id === wanted) ??
-				data.songs.find((s) => s.id === last) ??
-				data.songs[0] ??
-				null,
-		);
-		void queue.restore();
+		if (!data.account) void openLocalSong();
+		else {
+			openSong(
+				data.songs.find((s) => s.id === wanted) ??
+					data.songs.find((s) => s.id === last) ??
+					data.songs[0] ??
+					null,
+			);
+			void findKeptSong();
+		}
 		return () => {
 			autosaveNow();
 			studio.dispose();
@@ -277,6 +385,8 @@
 	/** The song's id, making the song when the device holds none yet (the first take, the first note). */
 	async function ensureSong(): Promise<string> {
 		if (songId) return songId;
+		// No account to hold it: the song is the browser-kept one (studioLocal.ts).
+		if (!data.account) return LOCAL_SONG;
 		const created = await createIdea({
 			accountId: data.account.id,
 			title: title.trim() || defaultTitle(),
@@ -296,6 +406,10 @@
 	async function newSong() {
 		if (studio.running) studio.stop();
 		await autosaveNow();
+		if (!data.account) {
+			await startOverLocal();
+			return;
+		}
 		try {
 			const created = await createIdea({
 				accountId: data.account.id,
@@ -315,6 +429,10 @@
 			return;
 		}
 		title = next;
+		if (!data.account) {
+			void saveLocalNow();
+			return;
+		}
 		try {
 			const id = await ensureSong();
 			await renameIdea({ id, title: next });
@@ -351,7 +469,11 @@
 		setDirty: (v) => (studio.dirty = v),
 		snapshot: () => $state.snapshot(studio.arrangement),
 		ensureSong,
-		save: (ideaId, data, base) => autosaveArrangement({ ideaId, data, base }),
+		save: (ideaId, data, base) =>
+			// The browser-kept song saves to IndexedDB instead (studioLocal.ts).
+			ideaId === LOCAL_SONG
+				? saveLocalNow().then(() => ({ number: base + 1 }))
+				: autosaveArrangement({ ideaId, data, base }),
 		onConflict: async (ideaId) => {
 			notify("Someone else saved this song since you opened it: their version is in", {
 				kind: "error",
@@ -480,7 +602,8 @@
 		}
 	}
 	studio.ontake = (take: StudioTake) => {
-		const id = songId;
+		// Signed out, the take is kept in the browser under the local song (the queue holds it until an account adopts it).
+		const id = songId ?? (data.account ? null : LOCAL_SONG);
 		if (!id) return;
 		noteInstrumentTake(
 			studio.arrangement.tracks.find((t) => t.id === take.trackId)?.input?.source ?? null,
@@ -499,6 +622,8 @@
 			createdAt: Date.now(),
 			blob: take.blob,
 		});
+		// Kept in the browser, the take is as saved as it gets (nothing uploads until an account adopts it).
+		if (id === LOCAL_SONG) studio.markSourceSaved(take.sourceId);
 		// A take is a big change: saved at once, not after the debounce (a reload right after would lose it).
 		void autosaveNow();
 	};
@@ -703,11 +828,17 @@
 
 	// ── Bounces: a WAV, a demo, stems ──────────────────────────────────────
 	let bouncing = $state(false);
-	async function downloadMix() {
+	async function downloadMix(format: "wav" | "mp3" = "wav") {
 		bouncing = true;
 		try {
 			const mix = await studio.render();
-			downloadBlob(studio.wavOf(mix), `${title || "song"}.wav`);
+			if (format === "mp3") {
+				// Encoded in the browser (audio/encodeMp3.ts), signed in or not.
+				const channels = Array.from({ length: mix.numberOfChannels }, (_, i) =>
+					mix.getChannelData(i),
+				);
+				downloadBlob(await encodeMp3(channels, mix.sampleRate), `${title || "song"}.mp3`);
+			} else downloadBlob(studio.wavOf(mix), `${title || "song"}.wav`);
 		} catch (e) {
 			notify(`Could not bounce: ${errorMessage(e)}`, { kind: "error" });
 		} finally {
@@ -1304,14 +1435,17 @@
 						ariaLabel="Song actions"
 						buttonBaseClasses="device-button-sm px-3"
 						position="bottom right"
-						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto whitespace-nowrap [&_li>button]-(whitespace-nowrap)"
+						popoverClasses="min-w-72 max-w-sm !max-h-[calc(100%-0.5rem)] overflow-y-auto whitespace-nowrap [&_li>button]-(whitespace-nowrap)"
 						items={[
 							{
 								id: "rev",
 								kind: "button",
 								label: "Save revision…",
 								iconClass: "i-ph-bookmark-simple",
-								disabled: !studio.arrangement.tracks.length,
+								title: local
+									? "Sign in to keep revisions: the song lives in this browser for now"
+									: undefined,
+								disabled: !studio.arrangement.tracks.length || local,
 								action: saveRevision,
 							},
 							{ id: "d1", kind: "divider" },
@@ -1321,7 +1455,16 @@
 								label: "Download mix (WAV)",
 								iconClass: "i-ph-download-simple",
 								disabled: bouncing || !studio.arrangement.clips.length,
-								action: downloadMix,
+								action: () => void downloadMix("wav"),
+							},
+							{
+								id: "mp3",
+								kind: "button",
+								label: "Download mix (MP3)",
+								iconClass: "i-ph-download-simple",
+								title: "The mix as a 192 kbps MP3, encoded in the browser",
+								disabled: bouncing || !studio.arrangement.clips.length,
+								action: () => void downloadMix("mp3"),
 							},
 							{
 								id: "export",
@@ -1377,6 +1520,44 @@
 						]}
 					/>
 				</div>
+				{#if keptOffer && data.account}
+					<!-- A song kept in this browser from before sign-in (docs/multitrack-recorder.md, "Into the account"). -->
+					<div
+						class="device-window-bevel-md px-3 py-2 text-13px flex flex-wrap items-center gap-x-3 gap-y-2"
+						data-kept-offer
+					>
+						<span
+							>A song from before you signed in is in this browser: <strong
+								>{keptOffer.title}</strong
+							>, {keptOffer.takes}
+							{keptOffer.takes === 1 ? "recording" : "recordings"}.</span
+						>
+						<button
+							class="device-button-sm px-3 text-accent"
+							type="button"
+							disabled={keptBusy}
+							onclick={() => void saveKept()}
+						>
+							{keptBusy ? "Saving…" : `Save to ${data.account.name}`}
+						</button>
+						<button
+							class="device-button-sm px-3"
+							type="button"
+							disabled={keptBusy}
+							onclick={() => void discardKept()}>Discard</button
+						>
+					</div>
+				{:else if local}
+					<p class="text-12px text-dark" data-local-notice>
+						{localBack
+							? "Back from last time: this song is kept in this browser"
+							: "This song is kept in this browser"}, not on Stem Shovel.
+						{#if data.signedIn}<a class="link" href="/accounts">Make or join an account</a>{:else}<a
+								class="link"
+								href={signInHref}>Sign in or create an account</a
+							>{/if} to save it, share it with the band and send it to a song; it comes along.
+					</p>
+				{/if}
 
 				<!-- the screen -->
 				<div
@@ -1583,7 +1764,7 @@
 							iconClass="i-ph-caret-down"
 							position="bottom left"
 							buttonBaseClasses="device-button-sm px-2 !min-w-0 rounded-l-none"
-							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100%-0.5rem)] overflow-y-auto"
 							items={[
 								{ id: "timing-heading", kind: "heading", label: "Timing" },
 								{ id: "timing", kind: "snippet", snippet: timingBlock },
@@ -2162,7 +2343,14 @@
 							></span>
 						</button>
 					{/snippet}
-					{#if data.songs.length === 0}
+					{#if local}
+						<p class="text-dim text-14px" data-local-recordings>
+							This song is kept in this browser, recordings and all. Your songs live here once you
+							{#if data.signedIn}<a class="link" href="/accounts">make or join an account</a
+								>{:else}<a class="link" href={signInHref}>sign in or create an account</a>{/if}: the
+							song kept here is then offered into it.
+						</p>
+					{:else if data.songs.length === 0}
 						<p class="text-dim text-14px">No songs yet. Add a track, arm it and press Record.</p>
 					{:else}
 						<ul class="grid gap-1">
@@ -2319,20 +2507,38 @@
 							></span>
 						</button>
 					{/snippet}
-					{#key `${songId ?? "new"}/${notesKey}`}
-						<IdeaNotesPanel
-							idea={{ id: songId, notes, title: title || "this song" }}
-							ensureIdea={ensureSong}
-							onchange={(m) => (notes = m)}
-							onsaved={async ({ ideaDeleted }) => {
-								if (ideaDeleted) {
-									loadedKey = "";
-									songId = null;
-								}
-								await refreshAll();
-							}}
-						/>
-					{/key}
+					{#if local}
+						<!-- Signed out, the notes live with the song in this browser (studioLocal.ts). -->
+						{#key notesKey}
+							<label class="block">
+								<span class="sr-only">Notes</span>
+								<textarea
+									class="block w-full min-h-200px rounded-md border border-current/40 bg-black/40 px-3 py-2 font-mono text-13px leading-relaxed focus:(border-accent outline-none)"
+									placeholder="Notes: lyrics, chords, a tuning… kept in this browser with the song"
+									value={notes}
+									oninput={(e) => {
+										notes = e.currentTarget.value;
+										if (localNotesTimer) clearTimeout(localNotesTimer);
+										localNotesTimer = setTimeout(() => void saveLocalNow(), 600);
+									}}></textarea>
+							</label>
+						{/key}
+					{:else}
+						{#key `${songId ?? "new"}/${notesKey}`}
+							<IdeaNotesPanel
+								idea={{ id: songId, notes, title: title || "this song" }}
+								ensureIdea={ensureSong}
+								onchange={(m) => (notes = m)}
+								onsaved={async ({ ideaDeleted }) => {
+									if (ideaDeleted) {
+										loadedKey = "";
+										songId = null;
+									}
+									await refreshAll();
+								}}
+							/>
+						{/key}
+					{/if}
 				</FloatingPanel>
 			</section>
 		</div>
@@ -2491,77 +2697,87 @@
 	{/snippet}
 
 	{#snippet sendBlock()}
-		<div class="px-3 py-2 grid gap-2 text-13px">
-			<label class="block">
-				<span class="block mb-1 opacity-80">Send to a song</span>
-				<select
-					class="field w-full"
-					value={targetSong?.id ?? ""}
-					aria-label="Song"
-					onchange={(e) => (targetSongId = e.currentTarget.value)}
-				>
-					{#each data.projects as p (p.id)}
-						{#if p.songs.length}
-							<optgroup label={p.name}>
-								{#each p.songs as s (s.id)}<option value={s.id}>{s.title}</option>{/each}
-							</optgroup>
-						{/if}
-					{/each}
-				</select>
-			</label>
-			<div class="grid gap-2">
-				<button
-					class="button button-xs justify-start"
-					type="button"
-					disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
-					onclick={() => void addAsDemo()}
-				>
-					<span class="i-ph-waveform" aria-hidden="true"></span> Add mix as demo
-				</button>
-				<button
-					class="button button-xs justify-start"
-					type="button"
-					disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
-					onclick={() => void addAsStems()}
-				>
-					<span class="i-ph-stack" aria-hidden="true"></span> Add tracks as stems
-				</button>
+		{#if local}
+			<div class="px-3 py-2 text-13px text-dim whitespace-normal max-w-72">
+				Sending to a song, and loading a song's stems, need an account.
+				{#if data.signedIn}<a class="link" href="/accounts">Make or join one</a>{:else}<a
+						class="link"
+						href={signInHref}>Sign in or create one</a
+					>{/if} and this song comes along.
 			</div>
-			<!-- A fresh song from these tracks, with Dawn's tempo, meter and key as the song's changes. -->
-			<label class="block border-t border-white/10 pt-2">
-				<span class="block mb-1 opacity-80">New song in</span>
-				<select
-					class="field w-full"
-					value={newSongProject?.id ?? ""}
-					aria-label="Project for the new song"
-					onchange={(e) => (newSongProjectId = e.currentTarget.value)}
-				>
-					{#each data.projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-				</select>
-			</label>
-			<div class="grid gap-2">
-				<button
-					class="button button-xs justify-start"
-					type="button"
-					disabled={bouncing || !newSongProject || !studio.arrangement.clips.length}
-					title="A new song named after this one, with its tempo, meter and key, and the tracks as its stems"
-					onclick={() => void newSongFromTracks()}
-				>
-					<span class="i-ph-plus" aria-hidden="true"></span> New song with these tracks
-				</button>
-				<!-- The other way: the song's stems as a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"). -->
-				<button
-					class="button button-xs justify-start"
-					type="button"
-					disabled={bouncing || loadingStems || !targetSong}
-					title="The song's stems as they are now, each on a track of a new Dawn song named after it"
-					onclick={() => void loadSongStems()}
-				>
-					<span class="i-ph-download-simple" aria-hidden="true"></span>
-					{loadingStems ? "Loading…" : "Load the song's stems"}
-				</button>
+		{:else}
+			<div class="px-3 py-2 grid gap-2 text-13px">
+				<label class="block">
+					<span class="block mb-1 opacity-80">Send to a song</span>
+					<select
+						class="field w-full"
+						value={targetSong?.id ?? ""}
+						aria-label="Song"
+						onchange={(e) => (targetSongId = e.currentTarget.value)}
+					>
+						{#each data.projects as p (p.id)}
+							{#if p.songs.length}
+								<optgroup label={p.name}>
+									{#each p.songs as s (s.id)}<option value={s.id}>{s.title}</option>{/each}
+								</optgroup>
+							{/if}
+						{/each}
+					</select>
+				</label>
+				<div class="grid gap-2">
+					<button
+						class="button button-xs justify-start"
+						type="button"
+						disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
+						onclick={() => void addAsDemo()}
+					>
+						<span class="i-ph-waveform" aria-hidden="true"></span> Add mix as demo
+					</button>
+					<button
+						class="button button-xs justify-start"
+						type="button"
+						disabled={bouncing || !targetSong || !studio.arrangement.clips.length}
+						onclick={() => void addAsStems()}
+					>
+						<span class="i-ph-stack" aria-hidden="true"></span> Add tracks as stems
+					</button>
+				</div>
+				<!-- A fresh song from these tracks, with Dawn's tempo, meter and key as the song's changes. -->
+				<label class="block border-t border-white/10 pt-2">
+					<span class="block mb-1 opacity-80">New song in</span>
+					<select
+						class="field w-full"
+						value={newSongProject?.id ?? ""}
+						aria-label="Project for the new song"
+						onchange={(e) => (newSongProjectId = e.currentTarget.value)}
+					>
+						{#each data.projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+					</select>
+				</label>
+				<div class="grid gap-2">
+					<button
+						class="button button-xs justify-start"
+						type="button"
+						disabled={bouncing || !newSongProject || !studio.arrangement.clips.length}
+						title="A new song named after this one, with its tempo, meter and key, and the tracks as its stems"
+						onclick={() => void newSongFromTracks()}
+					>
+						<span class="i-ph-plus" aria-hidden="true"></span> New song with these tracks
+					</button>
+					<!-- The other way: the song's stems as a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"). -->
+					<button
+						class="button button-xs justify-start"
+						type="button"
+						disabled={bouncing || loadingStems || !targetSong}
+						title="The song's stems as they are now, each on a track of a new Dawn song named after it"
+						onclick={() => void loadSongStems()}
+					>
+						<span class="i-ph-download-simple" aria-hidden="true"></span>
+						{loadingStems ? "Loading…" : "Load the song's stems"}
+					</button>
+				</div>
 			</div>
-		</div>
+		{/if}
 	{/snippet}
 
 	<!-- The piano-roll editor: a MIDI clip's notes, floating from lg, docked below (docs/multitrack-recorder.md, phase 3b). -->
@@ -2613,7 +2829,12 @@
 		onminimise={() => (commentsOpen = false)}
 	>
 		<div class="p-3">
-			{#if songId}
+			{#if local}
+				<p class="text-13px text-dim">
+					Comments go on a song in an account. <a class="link" href={signInHref}>Sign in</a> to keep this
+					one there first.
+				</p>
+			{:else if songId}
 				<StudioComments
 					{comments}
 					position={studio.position}

@@ -10,6 +10,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Dawn without an account.** The multitrack recorder works signed out,
+  like the looper: the song lives in the browser (IndexedDB), comes back on
+  the next visit, and is offered into the account after sign-in or sign-up
+  ("Save to your account" uploads the recordings and keeps the arrangement
+  and notes). A member of no editing account gets the same.
+- **MP3 export in Dawn.** Download mix (MP3) in the Song actions menu, and
+  MP3 as a format in Export, encoded in the browser at 192 kbps.
 - **A Dawn demo on the home page**, after the Idea Recorder: a Dawn song
   chosen on the admin's home settings (one click loads the featured song's
   stems), in the real engine; visitors play, mute, solo, drag and loop.

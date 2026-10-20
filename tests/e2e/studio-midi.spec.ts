@@ -1,4 +1,4 @@
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Studio phase 3 (docs/multitrack-recorder.md): a MIDI track records the
@@ -14,8 +14,7 @@ test.describe.serial("Studio MIDI", () => {
 		await open(page, "/multitrack-recorder", "__studio");
 		const device = page.getByRole("dialog", { name: "Dawn" });
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		await page.getByRole("button", { name: "Add MIDI track" }).click();
 		const midi = await hooked(page, ([w]) => {
 			const t = w.__studio.arrangement.tracks.find((x: any) => x.kind === "midi");

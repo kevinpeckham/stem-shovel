@@ -1018,6 +1018,58 @@ the project with the changes saved, then the tracks uploaded as its
 stems as "Add tracks as stems" does) uses the second. Adding tracks to
 an existing song leaves that song's changes alone.
 
+## Signed out (2026-10-20)
+
+Kevin: "Will non-logged-in users be able to record on the Dawn page /
+will it record to localStorage and export a bounce to mp3?" Yes, as the
+looper does (docs/looper.md, "Signed out"). The page's load no longer
+requires sign-in: `account` is null for a visitor, and for a member of
+no editing account (who was sent to /accounts before); `songs` and
+`projects` are empty then, the panels take the null account as the
+looper's do. The song then lives in the browser, in IndexedDB rather
+than localStorage (a take is tens of megabytes of samples; localStorage
+holds about five): `src/lib/audio/studioLocal.ts` keeps the arrangement,
+the title and the notes as one record (`LocalSong`, written by the
+persistence class in place of `autosaveArrangement`, so the debounce and
+the dirty flag work unchanged), and the recordings are the upload
+queue's own pending sources under the idea id `LOCAL_SONG` ("local"):
+`StudioQueue` keeps them on disk as it keeps any take, with the status
+`kept`, and holds them back from uploading. On the page, `openLocalSong`
+loads the record and the kept recordings into the engine, each with its
+blob beside the source view (`localSourceViews`); the engine decodes a
+blob it is handed instead of fetching (`#bytesOf`), because the content
+security policy's `connect-src` refuses a `blob:` URL. A line under the
+title says the song is kept in this browser ("Back from last time" after
+a reload), with a sign-in link; Save revision, comments, sharing, the
+Send block and the Recordings list show a prompt instead. New song means
+start over (the kept song and its recordings go, after a confirm).
+
+## Into the account (2026-10-20)
+
+Kevin: a user who signs up after recording a song signed out can sync it
+with their account. Signed in with an editing account, the page's mount
+runs `findKeptSong`: the queue's kept recordings and the local record;
+when there is a song (a recording, or clips), a bar under the title
+offers it: **Save to <account>** makes the idea (`createIdea`, kind
+song), saves the arrangement as its first autosave and the notes, then
+`queue.adopt(ideaId)` re-files the kept recordings under the song and
+uploads them in order (the usual path: reserve, upload, ready), clears
+the local record, and opens the song with the blobs beside the server's
+sources so it plays at once; the uploads finish in the background.
+**Discard** removes the kept song and its recordings after a confirm.
+The sign-in link carries `next=/multitrack-recorder`, so sign-up, then
+an account, lands back on the page with the offer waiting.
+
+## MP3 export (2026-10-20)
+
+`src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3
+encoder extension (`@mediabunny/mp3-encoder`, loaded on first use, never
+in the page's bundle), 192 kbps constant, mono or stereo. The export
+panel's format choice (`ExportOptions.format`, "wav" or "mp3") makes the
+mix, the per-track and the per-bus files MP3s; the DAWproject's embedded
+audio stays WAV. The device menu's **Download mix (MP3)** encodes the
+mix the same way. Signed in or not.
+
 ## The home demo (2026-10-20)
 
 Kevin: a section on the home page after the Idea Recorder with a demo

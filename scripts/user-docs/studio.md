@@ -56,6 +56,14 @@ The song's tempo and beats per bar live in the **Timing** menu (the caret beside
 
 A MIDI clip's bar has **Swing** and **Humanize** for its track: swing delays the off-beat eighths toward a triplet feel, humanize scatters the notes a little in time and touch. Both apply as the notes play and in a bounce; the notes themselves stay where you put them.
 
+## Without an account
+
+Dawn works signed out: record, arrange, mix and export as anyone does. The song then lives in this browser (IndexedDB, not on Stem Shovel), comes back on your next visit, and goes if you clear the site's data, so download what you want to keep. Sign in, or create an account, and the song kept here is offered into it: **Save to your account** uploads the recordings and keeps everything as it was, after which it saves, shares and sends to songs like any other.
+
+## MP3 export
+
+**Download mix (MP3)** in the Song actions menu, or MP3 as the format in **Export…**, encodes in the browser at 192 kbps; WAV stays the lossless choice.
+
 ## Key
 
 The Timing menu holds the song's **key** ("C major", "F#m", as you like to write it) and **Add key change** at the playhead, for a song that moves through keys; a key change is a violet flag on the ruler, like a tempo change, and the screen names the key at the playhead. Stems loaded from a song bring the song's tempo, time signature and key with them, and **New song with these tracks** in the Send to a song block makes a fresh song that takes Dawn's back.

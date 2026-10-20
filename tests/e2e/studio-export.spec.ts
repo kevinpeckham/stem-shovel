@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { unzipSync, strFromU8 } from "fflate";
-import { deleteStudioSongs, expect, hooked, open, test, until } from "./fixtures";
+import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } from "./fixtures";
 
 /**
  * Export from Dawn (docs/dawn-daw-plan.md, D3): an imported recording on
@@ -21,8 +21,7 @@ test.describe("Dawn export", () => {
 		await open(page, "/multitrack-recorder", "__studio");
 		// A clean slate: an earlier run's song would otherwise load with its clips.
 		await deleteStudioSongs(page);
-		await page.getByRole("button", { name: "New song" }).click();
-		await expect(page.getByLabel("Song title")).not.toHaveValue("");
+		await newStudioSong(page);
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
 		await page.locator("input[type=file]").setInputFiles(path.resolve("static/stems/keys.wav"));
 		await until(page, ([w]) => w.__studio.arrangement.clips.length === 1);
