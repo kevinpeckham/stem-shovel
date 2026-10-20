@@ -12,7 +12,7 @@ Pick one or more audio files: a phone's voice memo, a recorder's WAV, a board mi
 
 ## Recording in the app
 
-**Record a session** on the Sessions page opens a recorder with one job: the room, in stereo, from your device's microphone or a line in. Pick the input (and the device, if you have more than one), press **Record**, play the set, press **Stop**. Hear it back, give it a title (it starts as "Practice 7:42 PM"), choose the session or let today's day decide, name the input source, and **Save to sessions**: it uploads like any other recording and the MP3 and waveform follow. Recordings are compressed unless you tick **Lossless**, which makes much larger files. Keep the page open while it records; a phone records only with the screen on.
+**Record a session** on the Sessions page opens a recorder with one job: the room, in stereo, from your device's microphone or a line in. Pick the input (and the device, if you have more than one), press **Record**, play the set, press **Stop**. Hear it back, give it a title (it starts as "Practice 7:42 PM"), choose the session or let today's day decide, name the input source, and **Save to sessions**: it uploads like any other recording and the MP3 and waveform follow. Recordings are compressed unless you tick **Lossless**, which makes much larger files. **Low cut** rolls off everything under 80 Hz on the way in (60 or 120 if you prefer, or Off), which takes the rumble and handling noise out of a room recording; your choice is remembered. Keep the page open while it records; a phone records only with the screen on.
 
 ## Listening
 

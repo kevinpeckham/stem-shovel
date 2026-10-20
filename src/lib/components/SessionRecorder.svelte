@@ -32,8 +32,10 @@
 	 * uploads as the Sessions page's uploads do and the recording's row
 	 * takes it from there (the MP3, the waveform). Compressed by default
 	 * (Opus or AAC, an hour in a few dozen MB); lossless where the browser
-	 * can, when asked. One take at a time, nothing kept in the browser:
-	 * a take is uploaded or discarded.
+	 * can, when asked. A low cut (a 12 dB/octave high-pass at 60, 80 or
+	 * 120 Hz, on at 80 by default, remembered per browser) takes the rumble
+	 * out of a room recording before it is written. One take at a time,
+	 * nothing kept in the browser: a take is uploaded or discarded.
 	 */
 	interface Props {
 		accountId: string;
@@ -48,6 +50,18 @@
 	let phase = $state<Phase>("idle");
 	let source = $state<InputSource>("mic");
 	let quality = $state<RecordingQuality>("compressed");
+	/** The low cut: 0 for off, or the corner frequency in Hz (a second-order high-pass before the recorder); 80 unless the browser remembers otherwise. */
+	const LOW_CUTS = [60, 80, 120] as const;
+	const LOW_CUT_KEY = "stemshovel.session-recorder.low-cut";
+	let lowCut = $state<number>(80);
+	function setLowCut(hz: number) {
+		lowCut = hz;
+		try {
+			localStorage.setItem(LOW_CUT_KEY, String(hz));
+		} catch {
+			// Private mode: the setting lasts for this page.
+		}
+	}
 	let notice = $state<string | null>(null);
 	let elapsed = $state(0);
 	let format = $state<RecordingFormat | null>(null);
@@ -77,6 +91,13 @@
 
 	onMount(() => {
 		void inputSources.listInputs();
+		try {
+			const saved = localStorage.getItem(LOW_CUT_KEY);
+			if (saved !== null && [0, ...LOW_CUTS].includes(Number(saved) as 0 | 60 | 80 | 120))
+				lowCut = Number(saved);
+		} catch {
+			// Nothing remembered.
+		}
 		// The input went away mid-take (a call, an interface unplugged): keep what there is.
 		unlisten = inputSources.listen((src, node) => {
 			if (src === source && node === null && phase === "recording") {
@@ -115,7 +136,17 @@
 		}
 		const dest = ctx.createMediaStreamDestination();
 		dest.channelCount = 2;
-		node.connect(dest);
+		// The low cut, when on: a Butterworth high-pass (Q 0.707, 12 dB/octave) between the input and the recorder.
+		let tail: AudioNode = node;
+		if (lowCut > 0) {
+			const hp = ctx.createBiquadFilter();
+			hp.type = "highpass";
+			hp.frequency.value = lowCut;
+			hp.Q.value = Math.SQRT1_2;
+			node.connect(hp);
+			tail = hp;
+		}
+		tail.connect(dest);
 		chunks = [];
 		const rec = new MediaRecorder(dest.stream, {
 			mimeType: format.mimeType,
@@ -124,7 +155,7 @@
 		rec.ondataavailable = (e) => {
 			if (e.data.size > 0) chunks.push(e.data);
 		};
-		rec.onstop = () => finish(dest, node);
+		rec.onstop = () => finish(dest, tail);
 		recorder = rec;
 		rec.start(1000);
 		runStart = performance.now();
@@ -288,6 +319,22 @@
 			/>
 			Lossless <span class="opacity-70">(much larger files)</span>
 		</label>
+		<label class="grid gap-1 text-13px text-dim">
+			Low cut
+			<select
+				class="field"
+				aria-label="Low cut"
+				title="A high-pass filter on the way in: takes the rumble and handling noise out of a room recording"
+				disabled={phase !== "idle"}
+				value={String(lowCut)}
+				onchange={(e) => setLowCut(Number(e.currentTarget.value))}
+			>
+				<option value="0">Off</option>
+				{#each LOW_CUTS as hz (hz)}
+					<option value={String(hz)}>{hz} Hz</option>
+				{/each}
+			</select>
+		</label>
 	</div>
 
 	<!-- the meter, the clock and the button -->
@@ -334,7 +381,8 @@
 					{#if phase === "recording"}
 						Recording{#if deviceLabel}
 							from {deviceLabel}{/if}{#if format}
-							· {format.codec}{format.lossless ? " lossless" : ""}{/if}
+							· {format.codec}{format.lossless ? " lossless" : ""}{/if}{#if lowCut}
+							· low cut {lowCut} Hz{/if}
 					{:else if phase === "arming"}
 						Opening the input…
 					{:else if phase === "stopped" && take}

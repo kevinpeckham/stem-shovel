@@ -30,9 +30,11 @@ test("records the room and saves it as a session recording", async ({ page, erro
 	await page.getByRole("link", { name: "Record a session" }).click();
 	await expect(page.getByRole("heading", { level: 1 })).toHaveText("Record a session");
 	const recorder = page.locator("[data-session-recorder]");
+	await expect(recorder.getByLabel("Low cut")).toHaveValue("80");
+	await recorder.getByLabel("Low cut").selectOption("120");
 	await recorder.getByRole("button", { name: "Record" }).click();
 	await expect(recorder.getByRole("button", { name: "Stop" })).toBeVisible({ timeout: 15_000 });
-	await expect(recorder).toContainText(/Recording/);
+	await expect(recorder).toContainText(/Recording.*low cut 120 Hz/);
 	await page.waitForTimeout(3000);
 	await recorder.getByRole("button", { name: "Stop" }).click();
 	await expect(recorder.locator("audio")).toBeVisible();

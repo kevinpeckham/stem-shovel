@@ -10,6 +10,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **A low cut on the session recorder.** A high-pass filter before the
+  recorder, on at 80 Hz by default (60, 120 or Off), remembered per
+  browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
 - **The footer's Music row** is Projects, Sessions and Ideas, as the menu;

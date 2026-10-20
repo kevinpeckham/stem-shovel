@@ -393,7 +393,12 @@ processors off, `channelCount` 2) attached to a context of the page's
 own with a silent monitor; the source's output node feeds a
 `MediaStreamDestination` that a `MediaRecorder` records (`recordingMimeType`:
 compressed by default, Opus or AAC at 256 kbps, since a practice runs an
-hour; lossless on request), with the engine's meter for the level. Record,
+hour; lossless on request), with the engine's meter for the level; a **low
+cut** (Kevin, 2026-10-20: a `BiquadFilterNode` high-pass at 60, 80 or
+120 Hz, Q 0.707, between the input and the recorder, on at 80 Hz by
+default and remembered per browser in `localStorage`, Off a choice)
+takes the rumble out before the file is written, the meter unaffected.
+Record,
 Stop (a track that ends mid-take, a call, keeps what there is), then the
 take plays back in an `<audio>` and a form names it (default "Practice
 7:42 PM", `sessionRecordingTitle`), picks the session (today's, or one of
