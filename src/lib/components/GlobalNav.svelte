@@ -449,33 +449,7 @@
 							<div class="px-4 pt-2 pb-1 text-11px uppercase tracking-wider opacity-60">
 								{member.name} · {member.actingAs ? "acting as owner" : member.role}
 							</div>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-									`/${member.slug}/projects`,
-								)
-									? 'text-accent'
-									: ''}"
-								role="menuitem"
-								href="/{member.slug}/projects"
-								onclick={() => (openMenu = null)}
-							>
-								<span class="i-ph-folders mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Projects
-							</a>
-							<a
-								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
-									`/${member.slug}/sessions`,
-								)
-									? 'text-accent'
-									: ''}"
-								role="menuitem"
-								href="/{member.slug}/sessions"
-								title="Practice and show recordings"
-								onclick={() => (openMenu = null)}
-							>
-								<span class="i-ph-cassette-tape mr-2 inline-block align-[-2px]" aria-hidden="true"
-								></span>Sessions
-							</a>
+							<!-- Projects and Sessions live in the Music menu (Kevin, 2026-10-20); the account menu keeps the account's own. -->
 							<a
 								class="block px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
 									`/${member.slug}/settings`,

@@ -80,9 +80,12 @@ describe("GlobalNav", () => {
 		await user.click(button);
 		const menu = screen.getByRole("menu");
 		expect(menu).toHaveTextContent("My Studio · owner");
-		expect(screen.getByRole("menuitem", { name: /Projects/ })).toHaveAttribute(
+		// Projects and Sessions are the Music menu's; the account menu keeps the account's own items.
+		expect(screen.queryByRole("menuitem", { name: /Projects/ })).toBeNull();
+		expect(screen.queryByRole("menuitem", { name: /Sessions/ })).toBeNull();
+		expect(screen.getByRole("menuitem", { name: /Settings/ })).toHaveAttribute(
 			"href",
-			"/mine/projects",
+			"/mine/settings",
 		);
 		expect(screen.getByRole("menuitem", { name: /The Band/ })).toHaveTextContent("member");
 		expect(screen.getByRole("menuitem", { name: /Your accounts/ })).toBeInTheDocument();

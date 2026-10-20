@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The account menu drops Projects and Sessions**, which the Music menu
+  holds; it keeps the inbox, the account's settings and the rest.
+
 ## [0.138.1] - 2026-10-20
 
 ### Changed
