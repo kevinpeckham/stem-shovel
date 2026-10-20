@@ -83,7 +83,7 @@ describe("GlobalNav", () => {
 		// Projects and Sessions are the Music menu's; the account menu keeps the account's own items.
 		expect(screen.queryByRole("menuitem", { name: /Projects/ })).toBeNull();
 		expect(screen.queryByRole("menuitem", { name: /Sessions/ })).toBeNull();
-		expect(screen.getByRole("menuitem", { name: /Settings/ })).toHaveAttribute(
+		expect(screen.getByRole("menuitem", { name: /Account settings/ })).toHaveAttribute(
 			"href",
 			"/mine/settings",
 		);
