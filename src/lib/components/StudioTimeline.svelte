@@ -407,6 +407,8 @@
 	});
 
 	// ── Waveforms: each clip draws its span of its source ──────────────────
+	/** The widest backing store a clip's canvas gets, under every browser's limit (docs/multitrack-recorder.md). */
+	const MAX_CLIP_CANVAS_PX = 8192;
 	/** Min/max per pixel from the decoded buffer (a few milliseconds a clip), else the stored peaks. */
 	function clipWave(clip: StudioClip): Attachment<HTMLCanvasElement> {
 		return (canvas) => {
@@ -420,26 +422,31 @@
 				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${w}:${h}:${buffer ? "b" : "p"}`;
 				if (next === key) return;
 				key = next;
-				const dpr = devicePixelRatio || 1;
-				canvas.width = Math.round(w * dpr);
-				canvas.height = Math.round(h * dpr);
+				// A canvas wider than what the GPU composites (8,192 px on many Macs; 32,767 is the hard limit) draws into
+				// memory and shows nothing: a 2:27 stem on a Retina screen is 11,500 px at the default zoom, 39,000 zoomed
+				// in (Kevin, 2026-10-20: no waveforms after an import). The backing store is capped and the bars are drawn
+				// per backing pixel, so a long clip is a little coarser, never blank.
+				const scale = Math.min(devicePixelRatio || 1, MAX_CLIP_CANVAS_PX / w);
+				const bw = Math.max(1, Math.round(w * scale));
+				const bh = Math.max(1, Math.round(h * scale));
+				canvas.width = bw;
+				canvas.height = bh;
 				const g = canvas.getContext("2d");
 				if (!g) return;
-				g.scale(dpr, dpr);
-				g.clearRect(0, 0, w, h);
+				g.clearRect(0, 0, bw, bh);
 				g.fillStyle = getComputedStyle(canvas).color;
-				const mid = h / 2;
+				const mid = bh / 2;
 				if (buffer) {
 					const sr = buffer.sampleRate;
 					const from = Math.floor(clip.offset * sr);
 					const span = Math.max(1, Math.floor(clip.duration * sr));
-					const per = span / w;
+					const per = span / bw;
 					const chans = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
 						buffer.getChannelData(c),
 					);
 					// At most 64 samples looked at per pixel: enough for a peak, cheap when zoomed out.
 					const step = Math.max(1, Math.floor(per / 64));
-					for (let x = 0; x < w; x++) {
+					for (let x = 0; x < bw; x++) {
 						const a = from + Math.floor(x * per);
 						const b = Math.min(buffer.length, from + Math.floor((x + 1) * per));
 						let lo = 0;
@@ -458,8 +465,8 @@
 					const peaks = source.peaks;
 					const n = peaks.length;
 					const total = source.durationSeconds || clip.offset + clip.duration;
-					for (let x = 0; x < w; x++) {
-						const t = clip.offset + (x / w) * clip.duration;
+					for (let x = 0; x < bw; x++) {
+						const t = clip.offset + (x / bw) * clip.duration;
 						const p = peaks[Math.min(n - 1, Math.floor((t / total) * n))] ?? 0;
 						const amp = p * (mid - 1);
 						g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));

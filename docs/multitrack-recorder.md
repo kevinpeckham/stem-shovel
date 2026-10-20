@@ -990,6 +990,18 @@ a song is open, and a copy keeps the stems' own revision apart. A direct
 Blob-to-Blob copy (the SDK's `copy`) would spare the function the bytes;
 left for when stems grow.
 
+## Clip canvases and the GPU (2026-10-20)
+
+Kevin, after importing a song's stems: no waveforms on the tracks. The
+data was sound (sources ready, peaks, lengths) and headless Chromium and
+WebKit drew them; on a Retina Mac they were blank. Each clip's canvas
+spans the clip, so a long one passes what the GPU composites (8,192
+backing pixels on many Macs) while still drawing into memory, which is
+why a probe reading the pixels back saw bars. `clipWave` now caps the
+backing store at `MAX_CLIP_CANVAS_PX` (8,192) and draws per backing pixel,
+so a long clip comes out a little coarser and never blank. Drawing only
+the visible window would keep it sharp at every zoom; left for later.
+
 ## Scale and structure (2026-10-19, docs/dawn-daw-plan.md D8)
 
 **Sources on demand.** A song's recordings no longer all live decoded

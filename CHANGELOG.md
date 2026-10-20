@@ -19,6 +19,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **Fixed**: on a Retina screen a long clip's waveform in Dawn came up blank,
+  its canvas past what the GPU shows; the canvas is capped and the bars
+  drawn per backing pixel.
 - **Fixed**: stems with no stored length or waveform (an older upload
   path) imported into Dawn as clips one millisecond long with nothing to
   draw. The engine now runs such a clip to its source's end once the
