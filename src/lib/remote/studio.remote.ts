@@ -1,5 +1,11 @@
 import { command, getRequestEvent, query } from "$app/server";
-import { requireEditor, requireStudioAccess, requireUser } from "#lib/server/access.js";
+import {
+	accountOfSong,
+	memberOf,
+	requireEditor,
+	requireStudioAccess,
+	requireUser,
+} from "#lib/server/access.js";
 import {
 	createIdea,
 	deleteStudioRevision as removeRevision,
@@ -13,6 +19,7 @@ import {
 	studioRevisionOwner,
 	studioSongView,
 	studioSourceOwner,
+	importSongStemsIntoStudio,
 } from "#lib/server/data.js";
 import { background } from "#lib/server/background.js";
 import { notifyStudioShared } from "#lib/server/notifications.js";
@@ -49,6 +56,17 @@ export const createStudioSong = command(
 		return { id: row.id, title: row.title };
 	},
 );
+
+/** A song's ready stems into a new Dawn song of the caller's (docs/multitrack-recorder.md, "A song's stems in"): an editor of the song's account. */
+export const importSongStems = command(v.object({ songId: NanoIdSchema }), async ({ songId }) => {
+	const { locals } = getRequestEvent();
+	const user = requireUser(locals);
+	const { accountId } = await memberOf(locals, accountOfSong, songId);
+	const made = await importSongStemsIntoStudio(accountId, user.id, songId);
+	if (!made) error(404, "Song not found");
+	if (made === "empty") error(409, "This song has no stems to load yet.");
+	return made;
+});
 
 /** The current arrangement, debounced by the browser: an unnamed revision when it changed, nothing otherwise. */
 export const autosaveArrangement = command(StudioAutosaveSchema, async ({ ideaId, data, base }) => {

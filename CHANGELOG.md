@@ -19,6 +19,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **A song's stems into Dawn.** Open stems in Dawn, in the song page's
+  Downloads menu, or Load the song's stems in Dawn's Send to a song block:
+  each stem on a track of a new Dawn song named after the song, with the
+  stems' levels, pans and tints and the song's tempo.
 - **The Sessions page's title and intro are editable** by a system admin,
   as the tool pages' are (the `sessions-page` copy doc; `/sessions` goes to
   the current account's sessions).

@@ -46,6 +46,43 @@ function givenIdeaOwnedBy(userId: string, shared = false) {
 
 beforeEach(resetRemoteMocks);
 
+describe("importSongStems (a song's stems into a new Dawn song)", () => {
+	const SONG = fakeId("song-one");
+	beforeEach(() => {
+		givenRow("song", { accountId: ACCOUNT, projectId: fakeId("proj-one") });
+		data.importSongStemsIntoStudio.mockResolvedValue({ ideaId: IDEA, tracks: 3 });
+	});
+	it("401 signed out", async () => {
+		asSignedOut();
+		await expect(call(studio.importSongStems, { songId: SONG })).rejects.toMatchObject(
+			httpError(401),
+		);
+	});
+	it("404 for an outsider and for a viewer: the song's account must be edited", async () => {
+		asOutsider();
+		await expect(call(studio.importSongStems, { songId: SONG })).rejects.toMatchObject(
+			httpError(404),
+		);
+		asViewerOf(ACCOUNT);
+		await expect(call(studio.importSongStems, { songId: SONG })).rejects.toMatchObject(
+			httpError(404),
+		);
+		expect(data.importSongStemsIntoStudio).not.toHaveBeenCalled();
+	});
+	it("an editor gets the new song, as themselves; a song with no stems is a 409", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(call(studio.importSongStems, { songId: SONG })).resolves.toEqual({
+			ideaId: IDEA,
+			tracks: 3,
+		});
+		expect(data.importSongStemsIntoStudio).toHaveBeenCalledWith(ACCOUNT, USER, SONG);
+		data.importSongStemsIntoStudio.mockResolvedValue("empty");
+		await expect(call(studio.importSongStems, { songId: SONG })).rejects.toMatchObject(
+			httpError(409),
+		);
+	});
+});
+
 describe("createStudioSong", () => {
 	const input = { accountId: ACCOUNT, title: "New song" };
 	it("401 signed out", async () => {

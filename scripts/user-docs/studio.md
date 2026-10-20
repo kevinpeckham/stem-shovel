@@ -76,6 +76,10 @@ A MIDI track's input can be the **Sampler**: pick one of the song's recordings i
 
 **Library** in the top row opens every recording the song holds: takes, imports and what the clip tools made. Press play on one to hear it alone, type to find one, and drag one onto a track to place it there as a clip.
 
+## A song's stems
+
+To work on a song's stems in Dawn, choose **Open stems in Dawn** in the song page's Downloads menu, or in Dawn pick the song under **Send to a song** and press **Load the song's stems**. Each stem lands on a track of its own in a new Dawn song named after the song, with the stems' levels, pans and tints, and the song's tempo on the ruler. The stems themselves stay as they are: Dawn works on copies.
+
 ## Songs and revisions
 
 The song's title sits above the screen; **New song** starts another. The song saves itself a moment after every change. **Save revision…** in the song's menu keeps the arrangement under a name; the **Recordings** panel lists every song with its saved revisions and recent autosaves, **Compare** says what a revision differs in from the song as it stands now, and **Restore** brings one back (the state before it is kept as an autosave, so nothing is lost). Each song has a note board in the **Notes** panel, as an idea does in the Idea Recorder.

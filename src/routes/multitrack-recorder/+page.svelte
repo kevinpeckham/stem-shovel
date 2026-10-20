@@ -54,6 +54,7 @@
 		setStudioShared,
 		studioRevisionData,
 		studioSong,
+		importSongStems,
 	} from "#lib/remote/studio.remote.js";
 	import {
 		createStudioComment,
@@ -747,6 +748,24 @@
 			firstWithSongs?.songs[0] ??
 			null,
 	);
+	/** The chosen song's stems into a new Dawn song, opened here (the current one autosaved first). */
+	let loadingStems = $state(false);
+	async function loadSongStems() {
+		if (!targetSong) return;
+		loadingStems = true;
+		try {
+			if (studio.running) studio.stop();
+			await autosaveNow();
+			const made = await importSongStems({ songId: targetSong.id });
+			await refreshAll();
+			openSong(data.songs.find((s) => s.id === made.ideaId) ?? null);
+			notify(`${made.tracks} ${made.tracks === 1 ? "stem" : "stems"} loaded`);
+		} catch (e) {
+			notify(`Could not load the stems: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			loadingStems = false;
+		}
+	}
 	async function addAsDemo() {
 		if (!targetSong) return;
 		bouncing = true;
@@ -2434,6 +2453,17 @@
 					onclick={() => void addAsStems()}
 				>
 					<span class="i-ph-stack" aria-hidden="true"></span> Add tracks as stems
+				</button>
+				<!-- The other way: the song's stems as a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"). -->
+				<button
+					class="button button-xs justify-start"
+					type="button"
+					disabled={bouncing || loadingStems || !targetSong}
+					title="The song's stems as they are now, each on a track of a new Dawn song named after it"
+					onclick={() => void loadSongStems()}
+				>
+					<span class="i-ph-download-simple" aria-hidden="true"></span>
+					{loadingStems ? "Loading…" : "Load the song's stems"}
 				</button>
 			</div>
 		</div>

@@ -965,6 +965,28 @@ tests on the access helper, the remote functions, the cascade, the diff
 and the panel. Left for later: real-time co-editing and presence, a
 comment's edit, replies, and comments on a mix of a Dawn song.
 
+## A song's stems in (2026-10-20)
+
+Kevin: a way to load the latest stems from a song into Dawn. The song
+page's Downloads menu has **Open stems in Dawn** (editors), and Dawn's
+"Send to a song" block has **Load the song's stems** beside the two
+buttons that go the other way. Both call `importSongStems` (studio
+remote, an editor of the song's account), which runs
+`importSongStemsIntoStudio` on the server: the song's ready stems in their
+order (`MAX_STUDIO_TRACKS` at most), each copied in Blob (`copyBlob`:
+read and put, into the recordings' store) to a source of a new Dawn song
+named after the song (kind "import", the stem's label, channels, length
+and the peaks the stem carries; the rate recorded as 48 kHz, a hint, since
+the browser decodes at its own rate), and the first revision "Stems of
+<song>" laid out with a track per stem (the stem's gain, pan and tint) and
+one clip per track from 0; the song's first tempo and meter changes set
+the grid. The song page then goes to Dawn on the new song; Dawn autosaves
+the open song, refreshes and opens the new one. A new Dawn song each time,
+never tracks added to an open one: the arrangement is the browser's while
+a song is open, and a copy keeps the stems' own revision apart. A direct
+Blob-to-Blob copy (the SDK's `copy`) would spare the function the bytes;
+left for when stems grow.
+
 ## Scale and structure (2026-10-19, docs/dawn-daw-plan.md D8)
 
 **Sources on demand.** A song's recordings no longer all live decoded

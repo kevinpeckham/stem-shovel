@@ -32,6 +32,7 @@
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
 	import MidiBadge from "#lib/components/MidiBadge.svelte";
 	import { createComment, deleteComment, updateComment } from "#lib/remote/comments.remote.js";
+	import { importSongStems } from "#lib/remote/studio.remote.js";
 	import { MAX_MIXES_PER_SONG, MIX_FORMAT_LIST } from "#lib/constants/mixFormats.js";
 	import StemPlayer from "#lib/components/StemPlayer.svelte";
 	import DemoPanel from "#lib/components/DemoPanel.svelte";
@@ -460,6 +461,20 @@
 			await refreshAll();
 		} catch (e) {
 			notify(`Could not remove it: ${errorMessage(e)}`, { kind: "error" });
+		}
+	}
+	/** The song's ready stems into a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"), then Dawn opens on it. */
+	let openingInDawn = $state(false);
+	async function openInDawn() {
+		openingInDawn = true;
+		try {
+			const made = await importSongStems({ songId: data.song.id });
+			notify(`${made.tracks} ${made.tracks === 1 ? "stem" : "stems"} loaded into Dawn`);
+			await goto(`/multitrack-recorder?song=${made.ideaId}`);
+		} catch (e) {
+			notify(`Could not load the stems into Dawn: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			openingInDawn = false;
 		}
 	}
 	/** The stem player's box as last shown; the demos box is at least that tall (560 is the empty box's minimum). */
@@ -3946,6 +3961,19 @@
 							<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
 							{mixing === "custom" ? "Rendering…" : "Custom Stem Mix (MP3)"}
 						</button>
+						{#if data.canEdit}
+							<button
+								class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10 disabled:opacity-50"
+								type="button"
+								role="menuitem"
+								disabled={openingInDawn}
+								onclick={() => void openInDawn()}
+								title="The stems as they are now, each on a track of a new Dawn song"
+							>
+								<span class="i-ph-sliders-horizontal mr-2" aria-hidden="true"></span>
+								{openingInDawn ? "Loading into Dawn…" : "Open stems in Dawn"}
+							</button>
+						{/if}
 					{/if}
 					{#if data.docs.lyrics || data.docs.chart || data.docs.notes}
 						<button

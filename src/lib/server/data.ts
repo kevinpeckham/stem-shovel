@@ -15,6 +15,7 @@ import type { ProjectType } from "#lib/val/ProjectTypeSchema.js";
 import { FOUNDER_SEATS } from "#lib/constants/plans.js";
 import type { SongStage } from "#lib/val/SongStageSchema.js";
 import { MAX_MIXES_PER_SONG } from "#lib/constants/mixFormats.js";
+import { STUDIO_FADER_MAX, MAX_STUDIO_TRACKS } from "#lib/constants/studio.js";
 import type { StemManifest } from "#lib/audio/types.js";
 import { DrumProjectSchema, type DrumProject } from "#lib/val/DrumPatternSchema.js";
 import type { ProgressionData } from "#lib/val/ProgressionSchema.js";
@@ -6274,6 +6275,98 @@ export async function createStudioSource(
 		durationSeconds: reserve.durationSeconds,
 	});
 	return { sourceId: id, pathname, access: recordingAccess() };
+}
+
+/**
+ * A song's stems into a new Dawn song (Kevin, 2026-10-20: "load the latest
+ * stems from a song into the Dawn Multitrack recorder"): the song's ready
+ * stems, in their order, each copied in Blob to a source of the new song
+ * (kind "import", the stem's label, channels, length and peaks) and laid
+ * on a track of its own as one clip from 0, the stem's gain and pan on
+ * the track; the song's first tempo and meter set the grid. The first
+ * revision holds it. null without the song, "empty" without a ready stem.
+ */
+export async function importSongStemsIntoStudio(
+	accountId: string,
+	userId: string,
+	songId: string,
+): Promise<{ ideaId: string; tracks: number } | "empty" | null> {
+	const s = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { id: true, title: true, changes: true },
+		with: { stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] } },
+	});
+	if (!s) return null;
+	const stems = s.stems.filter((st) => st.status === "ready" && st.url).slice(0, MAX_STUDIO_TRACKS);
+	if (stems.length === 0) return "empty";
+	const made = await createIdea(accountId, userId, s.title, "song");
+	const tracks: StudioArrangement["tracks"] = [];
+	const clips: StudioArrangement["clips"] = [];
+	for (const st of stems) {
+		const reserved = await createStudioSource(accountId, userId, {
+			ideaId: made.id,
+			kind: "import",
+			trackLabel: st.label,
+			takeNumber: 0,
+			filename: st.filename,
+			sizeBytes: st.sizeBytes,
+			codec: null,
+			// The row's rate is a hint for the engine's readout; the browser decodes at its own rate either way.
+			sampleRate: 48000,
+			channels: st.channels === 1 ? 1 : 2,
+			durationSeconds: st.durationSeconds ?? 0,
+		});
+		if (!reserved || typeof reserved === "string") continue;
+		const url = await copyBlob(st.url, reserved.pathname, reserved.access);
+		await markStudioSourceReady(accountId, reserved.sourceId, {
+			url,
+			peaks: st.peaks ?? [],
+			durationSeconds: st.durationSeconds ?? 0,
+		});
+		const trackId = nanoid();
+		tracks.push({
+			id: trackId,
+			kind: "audio",
+			name: st.label,
+			colour: st.tint ?? undefined,
+			gain: Math.min(Math.max(st.gain, 0), STUDIO_FADER_MAX),
+			pan: Math.min(Math.max(st.pan, -1), 1),
+			muted: false,
+			solo: false,
+			armed: false,
+			input: null,
+		});
+		clips.push({
+			id: nanoid(),
+			trackId,
+			sourceId: reserved.sourceId,
+			start: 0,
+			offset: 0,
+			duration: Math.max(0.001, st.durationSeconds ?? 0.001),
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: st.label,
+		});
+	}
+	const tempo = s.changes.find((c) => c.kind === "tempo");
+	const meter = s.changes.find((c) => c.kind === "meter");
+	const bpm = Number(tempo?.value);
+	const beats = Number(String(meter?.value ?? "").split("/")[0]);
+	const data: StudioArrangement = {
+		version: 1,
+		bpm: Number.isFinite(bpm) && bpm >= 30 && bpm <= 300 ? bpm : 120,
+		beatsPerBar: Number.isInteger(beats) && beats >= 2 && beats <= 7 ? beats : 4,
+		gridOn: true,
+		countIn: false,
+		click: false,
+		loop: null,
+		master: 1,
+		tracks,
+		clips,
+	};
+	await saveStudioRevision(accountId, userId, made.id, `Stems of ${s.title}`, data);
+	return { ideaId: made.id, tracks: tracks.length };
 }
 
 /** The source reserved under a pathname, for the upload handler's ownership check and token (ideas are the user's own). */
