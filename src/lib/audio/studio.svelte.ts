@@ -14,6 +14,7 @@ import { normalizeBuffer } from "#lib/utils/normalizeBuffer.js";
 import { sliceBuffer } from "#lib/utils/sliceBuffer.js";
 import { snapToBeat } from "#lib/utils/snapToBeat.js";
 import { studioGrid } from "#lib/utils/studioGrid.js";
+import { studioKeyAt } from "#lib/utils/studioChanges.js";
 import { swingNotes } from "#lib/utils/swingNotes.js";
 import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
 import { detectTempo } from "#lib/utils/detectTempo.js";
@@ -66,6 +67,7 @@ import type {
 	StudioFadeShape,
 	StudioMarker,
 	StudioMeterChange,
+	StudioKeyChange,
 	StudioTempoChange,
 	StudioSampler,
 } from "#lib/val/StudioSchema.js";
@@ -1096,6 +1098,41 @@ class StudioEngine {
 	}
 	get meterChanges(): StudioMeterChange[] {
 		return this.arrangement.meterChanges ?? [];
+	}
+	// ── The key (Kevin, 2026-10-20): the song's own from zero, and changes on the ruler, as the stem player's ──
+	/** The song's key as written ("F#m", "A♭ major"); empty clears it. An undo step. */
+	setKey(key: string) {
+		const v = key.trim().slice(0, 20);
+		if ((this.arrangement.key ?? "") === v) return;
+		this.#commit();
+		if (v) this.arrangement.key = v;
+		else delete this.arrangement.key;
+	}
+	/** A key change at a second (one at that second replaced); at zero it is the song's own key. */
+	setKeyChange(start: number, key: string) {
+		const v = key.trim().slice(0, 20);
+		const at = round4(Math.max(0, start));
+		if (!v) return this.removeKeyChange(at);
+		if (at === 0) return this.setKey(v);
+		this.#commit();
+		const rest = (this.arrangement.keyChanges ?? []).filter((c) => Math.abs(c.start - at) > 0.001);
+		this.arrangement.keyChanges = [...rest, { start: at, key: v }].sort(
+			(a, b) => a.start - b.start,
+		);
+	}
+	removeKeyChange(start: number) {
+		const list = this.arrangement.keyChanges ?? [];
+		if (!list.some((c) => Math.abs(c.start - start) <= 0.001)) return;
+		this.#commit();
+		this.arrangement.keyChanges = list.filter((c) => Math.abs(c.start - start) > 0.001);
+		if (!this.arrangement.keyChanges.length) delete this.arrangement.keyChanges;
+	}
+	get keyChanges(): StudioKeyChange[] {
+		return this.arrangement.keyChanges ?? [];
+	}
+	/** The key in force at a second (utils/studioChanges.ts); "" without one. */
+	keyAt(seconds: number): string {
+		return studioKeyAt(this.arrangement, seconds);
 	}
 	/** A MIDI track's feel (utils/swingNotes.ts): swing of the off-beat eighths and humanize, 0 to 1; 0 clears. */
 	setTrackSwing(trackId: string, swing: number) {

@@ -26,12 +26,25 @@ test.describe("Dawn time", () => {
 			.getByRole("spinbutton", { name: "Tempo at the playhead, beats per minute" })
 			.fill("60");
 		await page.getByRole("button", { name: "Add tempo change" }).click();
+		// The song's key, and a key change at the playhead, from the same menu (Kevin, 2026-10-20).
+		await page.getByRole("textbox", { name: "Song key" }).fill("C major");
+		await page.getByRole("textbox", { name: "Song key" }).press("Tab");
+		await page.getByRole("textbox", { name: "Key at the playhead" }).fill("A minor");
+		await page.getByRole("button", { name: "Add key change" }).click();
 		await page.keyboard.press("Escape");
 		expect(await hooked(page, ([w]) => w.__studio.arrangement.tempoChanges)).toEqual([
 			{ start: 4, bpm: 60 },
 		]);
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.key)).toBe("C major");
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.keyChanges)).toEqual([
+			{ start: 4, key: "A minor" },
+		]);
+		expect(await hooked(page, ([w]) => w.__studio.keyAt(5))).toBe("A minor");
 		await expect(
 			page.getByRole("button", { name: "Tempo change to 60 bpm at 0:04.0" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Key change to A minor at 0:04.0" }),
 		).toBeVisible();
 		// The grid follows: a beat is a second from 4 s on, so 5.4 snaps to 5; the readout at 6 s is bar 3, beat 3.
 		expect(await hooked(page, ([w]) => w.__studio.snap(5.4))).toBe(5);

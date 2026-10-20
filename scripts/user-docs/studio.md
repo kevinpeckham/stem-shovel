@@ -56,6 +56,10 @@ The song's tempo and beats per bar live in the **Timing** menu (the caret beside
 
 A MIDI clip's bar has **Swing** and **Humanize** for its track: swing delays the off-beat eighths toward a triplet feel, humanize scatters the notes a little in time and touch. Both apply as the notes play and in a bounce; the notes themselves stay where you put them.
 
+## Key
+
+The Timing menu holds the song's **key** ("C major", "F#m", as you like to write it) and **Add key change** at the playhead, for a song that moves through keys; a key change is a violet flag on the ruler, like a tempo change, and the screen names the key at the playhead. Stems loaded from a song bring the song's tempo, time signature and key with them, and **New song with these tracks** in the Send to a song block makes a fresh song that takes Dawn's back.
+
 ## Markers
 
 Press **M**, or the flag button in the transport, to put a marker at the playhead: a named flag on the ruler. Click a flag to jump there, double-click to rename it, and press Delete with the flag focused to remove it. Markers are saved with the song.

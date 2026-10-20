@@ -1,5 +1,6 @@
 import { command, getRequestEvent, query } from "$app/server";
 import {
+	accountOfProject,
 	accountOfSong,
 	memberOf,
 	requireEditor,
@@ -20,11 +21,14 @@ import {
 	studioSongView,
 	studioSourceOwner,
 	importSongStemsIntoStudio,
+	createSong,
+	updateSongChanges,
 } from "#lib/server/data.js";
 import { background } from "#lib/server/background.js";
-import { notifyStudioShared } from "#lib/server/notifications.js";
+import { notifySong, notifyStudioShared } from "#lib/server/notifications.js";
 import { NameSchema } from "#lib/val/NameSchema.js";
 import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
+import { SongChangesSchema } from "#lib/val/SongChangeSchema.js";
 import { IdSchema } from "#lib/val/SongSchema.js";
 import {
 	StudioAutosaveSchema,
@@ -67,6 +71,21 @@ export const importSongStems = command(v.object({ songId: NanoIdSchema }), async
 	if (made === "empty") error(409, "This song has no stems to load yet.");
 	return made;
 });
+
+/** A fresh song from a Dawn song (docs/multitrack-recorder.md, "Key, and the changes both ways"): made in the project with Dawn's tempo, meter and key as its changes; the page then uploads the tracks as its stems. */
+export const createSongWithChanges = command(
+	v.object({ projectId: NanoIdSchema, title: NameSchema, changes: SongChangesSchema }),
+	async ({ projectId, title, changes }) => {
+		const { locals } = getRequestEvent();
+		const user = requireUser(locals);
+		const { accountId } = await memberOf(locals, accountOfProject, projectId);
+		const row = await createSong(accountId, user.id, projectId, title);
+		const saved = await updateSongChanges(accountId, row.id, changes);
+		if (!saved.ok) error(400, saved.error);
+		background(() => notifySong(accountId, row.id, user.id));
+		return { id: row.id, title: row.title, slug: row.slug };
+	},
+);
 
 /** The current arrangement, debounced by the browser: an unnamed revision when it changed, nothing otherwise. */
 export const autosaveArrangement = command(StudioAutosaveSchema, async ({ ideaId, data, base }) => {

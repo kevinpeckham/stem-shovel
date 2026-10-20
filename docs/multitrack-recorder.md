@@ -990,6 +990,34 @@ a song is open, and a copy keeps the stems' own revision apart. A direct
 Blob-to-Blob copy (the SDK's `copy`) would spare the function the bytes;
 left for when stems grow.
 
+## Key, and the changes both ways (2026-10-20)
+
+Kevin: key, time signature and tempo by section in Dawn, as in the stem
+player, carried in when a song's stems load and carried out to a fresh
+song. The tempo map (D5) already kept tempo and meter changes on the
+ruler; the arrangement now keeps a **key** too: `key` (the song's own
+from zero, as written, up to 20 characters) and `keyChanges`
+(`StudioKeyChangeSchema`, a second and a key). The engine's `setKey`,
+`setKeyChange`, `removeKeyChange` and `keyChanges` work as the tempo
+map's (undo steps; a change at zero is the song's own), `keyAt(seconds)`
+is the key in force (`utils/studioChanges.ts`, `studioKeyAt`), the
+Timing menu has the song's key and "Add key change" at the playhead (the
+value checked as the song settings check a key), the ruler shows a key
+change as a violet flag after the tempo's and the meter's, and the
+screen's line names the key at the playhead.
+
+Both ways through `utils/studioChanges.ts`: `songChangesToStudio` takes
+a song's changes (tempo, key, time signature from a second each) into
+Dawn's shape, the first of each kind the song's own and the rest on the
+ruler (a tempo clamped to 30–300, a time signature's beats a bar alone,
+the note value lost, as Dawn counts quarters), and `studioChangesToSong`
+goes back, the meter over quarters. `importSongStemsIntoStudio` uses the
+first; the Send block's **New song with these tracks** (a project
+picked, `createSongWithChanges` in the studio remote: the song made in
+the project with the changes saved, then the tracks uploaded as its
+stems as "Add tracks as stems" does) uses the second. Adding tracks to
+an existing song leaves that song's changes alone.
+
 ## Clip canvases and the GPU (2026-10-20)
 
 Kevin, after importing a song's stems: no waveforms on the tracks. The

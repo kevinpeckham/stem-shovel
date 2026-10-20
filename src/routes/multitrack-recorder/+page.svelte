@@ -55,6 +55,7 @@
 		studioRevisionData,
 		studioSong,
 		importSongStems,
+		createSongWithChanges,
 	} from "#lib/remote/studio.remote.js";
 	import {
 		createStudioComment,
@@ -74,6 +75,8 @@
 		type Reservation,
 	} from "#lib/upload.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
+	import { songChangeValueError } from "#lib/utils/songChangeValueError.js";
+	import { studioChangesToSong } from "#lib/utils/studioChanges.js";
 	import { downloadBlob } from "#lib/utils/downloadBlob.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { barAt } from "#lib/audio/measures.js";
@@ -789,12 +792,37 @@
 			bouncing = false;
 		}
 	}
-	async function addAsStems() {
-		if (!targetSong) return;
+	/** A fresh song from this Dawn song (Kevin, 2026-10-20): made in the chosen project with Dawn's tempo, meter and key as its changes, then the tracks uploaded as its stems. */
+	let newSongProjectId = $state("");
+	let newSongProject = $derived(
+		data.projects.find((p) => p.id === newSongProjectId) ?? data.projects[0] ?? null,
+	);
+	async function newSongFromTracks() {
+		if (!newSongProject) return;
+		bouncing = true;
+		try {
+			const made = await createSongWithChanges({
+				projectId: newSongProject.id,
+				title: title || "Untitled",
+				changes: studioChangesToSong(studio.arrangement),
+			});
+			bouncing = false;
+			await addAsStems({ id: made.id, title: made.title });
+			await refreshAll();
+			targetSongId = made.id;
+			notify(`"${made.title}" is a song in ${newSongProject.name}, with the tempo, meter and key`);
+		} catch (e) {
+			notify(`Could not make the song: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			bouncing = false;
+		}
+	}
+	async function addAsStems(into: { id: string; title: string } | null = targetSong) {
+		if (!into) return;
 		bouncing = true;
 		const ctx = new AudioContext();
 		try {
-			const target = targetSong;
+			const target = into;
 			let n = 0;
 			for (const track of studio.arrangement.tracks) {
 				// A MIDI track renders through its instrument offline, as an audio one does from its clips.
@@ -1024,6 +1052,16 @@
 	// ── The tempo map (D5): a change at the playhead from the Timing menu ──
 	let tempoChangeBpm = $state(120);
 	let meterChangeBeats = $state(4);
+	let keyChangeText = $state("");
+	function addKeyChange() {
+		const problem = songChangeValueError("key", keyChangeText);
+		if (problem) {
+			notify(problem, { kind: "error" });
+			return;
+		}
+		studio.setKeyChange(studio.position, keyChangeText);
+		notify(`${keyChangeText.trim()} from ${formatTime(studio.position)}`);
+	}
 	function addTempoChange() {
 		studio.setTempoChange(studio.position, tempoChangeBpm);
 		notify(`${tempoChangeBpm} bpm from ${formatTime(studio.position)}`);
@@ -1351,8 +1389,9 @@
 						</div>
 						<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2 tabular-nums">
 							<span
-								>{studio.arrangement.bpm} bpm · {studio.arrangement.beatsPerBar}/4 · {studio
-									.arrangement.tracks.length}
+								>{studio.arrangement.bpm} bpm · {studio.arrangement
+									.beatsPerBar}/4{#if studio.keyAt(studio.position)}
+									· {studio.keyAt(studio.position)}{/if} · {studio.arrangement.tracks.length}
 								{studio.arrangement.tracks.length === 1 ? "track" : "tracks"} · {studio.arrangement
 									.clips.length}
 								{studio.arrangement.clips.length === 1 ? "clip" : "clips"} · {formatTime(
@@ -2344,8 +2383,9 @@
 			<div class="grid gap-2" role="group" aria-label="Changes at the playhead">
 				<span class="device-button-label !mb-0">
 					Changes at {formatTime(studio.position)}
-					{#if studio.tempoChanges.length || studio.meterChanges.length}
-						· {studio.tempoChanges.length + studio.meterChanges.length} on the ruler
+					{#if studio.tempoChanges.length || studio.meterChanges.length || studio.keyChanges.length}
+						· {studio.tempoChanges.length + studio.meterChanges.length + studio.keyChanges.length} on
+						the ruler
 					{/if}
 				</span>
 				<div class="flex items-center gap-2 text-13px">
@@ -2382,7 +2422,36 @@
 						onclick={addMeterChange}>Add meter change</button
 					>
 				</div>
+				<div class="flex items-center gap-2 text-13px">
+					<input
+						type="text"
+						class="device-field w-24 text-12px py-0"
+						maxlength="20"
+						placeholder="F#m"
+						bind:value={keyChangeText}
+						aria-label="Key at the playhead"
+					/>
+					<button
+						class="device-button-xs px-2"
+						type="button"
+						title="A key change at the playhead: this key from here on"
+						disabled={studio.position <= 0}
+						onclick={addKeyChange}>Add key change</button
+					>
+				</div>
 			</div>
+			<label class="block">
+				<span class="device-button-label">Key · {studio.arrangement.key || "none"}</span>
+				<input
+					type="text"
+					class="device-field w-full text-13px"
+					maxlength="20"
+					placeholder="C major, F#m, A♭"
+					aria-label="Song key"
+					value={studio.arrangement.key ?? ""}
+					onchange={(e) => studio.setKey(e.currentTarget.value)}
+				/>
+			</label>
 			<label class="flex items-center gap-2 text-13px text-blue-100/90">
 				<input
 					type="checkbox"
@@ -2453,6 +2522,29 @@
 					onclick={() => void addAsStems()}
 				>
 					<span class="i-ph-stack" aria-hidden="true"></span> Add tracks as stems
+				</button>
+			</div>
+			<!-- A fresh song from these tracks, with Dawn's tempo, meter and key as the song's changes. -->
+			<label class="block border-t border-white/10 pt-2">
+				<span class="block mb-1 opacity-80">New song in</span>
+				<select
+					class="field w-full"
+					value={newSongProject?.id ?? ""}
+					aria-label="Project for the new song"
+					onchange={(e) => (newSongProjectId = e.currentTarget.value)}
+				>
+					{#each data.projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+				</select>
+			</label>
+			<div class="grid gap-2">
+				<button
+					class="button button-xs justify-start"
+					type="button"
+					disabled={bouncing || !newSongProject || !studio.arrangement.clips.length}
+					title="A new song named after this one, with its tempo, meter and key, and the tracks as its stems"
+					onclick={() => void newSongFromTracks()}
+				>
+					<span class="i-ph-plus" aria-hidden="true"></span> New song with these tracks
 				</button>
 				<!-- The other way: the song's stems as a new Dawn song (docs/multitrack-recorder.md, "A song's stems in"). -->
 				<button

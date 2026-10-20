@@ -46,6 +46,49 @@ function givenIdeaOwnedBy(userId: string, shared = false) {
 
 beforeEach(resetRemoteMocks);
 
+describe("createSongWithChanges (a fresh song from a Dawn song)", () => {
+	const PROJECT = fakeId("proj-one");
+	const changes = [
+		{ kind: "tempo", start: 0, value: "100" },
+		{ kind: "meter", start: 0, value: "3/4" },
+		{ kind: "key", start: 0, value: "D" },
+	];
+	beforeEach(() => {
+		givenRow("project", { accountId: ACCOUNT });
+		data.createSong.mockResolvedValue({ id: fakeId("song-new"), title: "Mine", slug: "mine" });
+		data.updateSongChanges.mockResolvedValue({ ok: true, changes });
+	});
+	it("404 for a viewer and an outsider", async () => {
+		asViewerOf(ACCOUNT);
+		await expect(
+			call(studio.createSongWithChanges, { projectId: PROJECT, title: "Mine", changes }),
+		).rejects.toMatchObject(httpError(404));
+		asOutsider();
+		await expect(
+			call(studio.createSongWithChanges, { projectId: PROJECT, title: "Mine", changes }),
+		).rejects.toMatchObject(httpError(404));
+		expect(data.createSong).not.toHaveBeenCalled();
+	});
+	it("an editor makes the song as themselves and its changes are saved", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(
+			call(studio.createSongWithChanges, { projectId: PROJECT, title: "Mine", changes }),
+		).resolves.toEqual({ id: fakeId("song-new"), title: "Mine", slug: "mine" });
+		expect(data.createSong).toHaveBeenCalledWith(ACCOUNT, USER, PROJECT, "Mine");
+		expect(data.updateSongChanges).toHaveBeenCalledWith(ACCOUNT, fakeId("song-new"), changes);
+	});
+	it("a bad change is refused by the schema", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(
+			call(studio.createSongWithChanges, {
+				projectId: PROJECT,
+				title: "Mine",
+				changes: [{ kind: "meter", start: 0, value: "lots" }],
+			}),
+		).rejects.toBeDefined();
+	});
+});
+
 describe("importSongStems (a song's stems into a new Dawn song)", () => {
 	const SONG = fakeId("song-one");
 	beforeEach(() => {

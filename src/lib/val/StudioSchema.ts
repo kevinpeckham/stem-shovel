@@ -235,6 +235,13 @@ export const StudioMeterChangeSchema = v.object({
 	beatsPerBar: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(7)),
 });
 export type StudioMeterChange = v.InferOutput<typeof StudioMeterChangeSchema>;
+/** A key change (Kevin, 2026-10-20): from `start` seconds on, this key, as written ("F#m", "A♭ major"). */
+const KeySchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(20));
+export const StudioKeyChangeSchema = v.object({
+	start: v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS)),
+	key: KeySchema,
+});
+export type StudioKeyChange = v.InferOutput<typeof StudioKeyChangeSchema>;
 
 /** A marker on the ruler (D4): a named moment to jump to. */
 export const StudioMarkerSchema = v.object({
@@ -282,6 +289,9 @@ export const StudioArrangementSchema = v.object({
 	/** The tempo map (D5): changes after the song's own tempo and meter, each at a second (utils/studioGrid.ts). */
 	tempoChanges: v.optional(v.pipe(v.array(StudioTempoChangeSchema), v.maxLength(64))),
 	meterChanges: v.optional(v.pipe(v.array(StudioMeterChangeSchema), v.maxLength(64))),
+	/** The song's key from zero, as written, and the changes after it (the stem player's key changes, both ways). */
+	key: v.optional(KeySchema),
+	keyChanges: v.optional(v.pipe(v.array(StudioKeyChangeSchema), v.maxLength(64))),
 });
 export type StudioArrangement = v.InferOutput<typeof StudioArrangementSchema>;
 

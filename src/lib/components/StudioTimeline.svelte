@@ -823,6 +823,30 @@
 					}}>{c.beatsPerBar}/4</button
 				>
 			{/each}
+			<!-- Key changes: a flag each (violet); double-click edits, Delete on a focused one removes it. -->
+			{#each engine.keyChanges as c (c.start)}
+				<button
+					type="button"
+					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-violet-300/80 text-dark hover:bg-violet-200 focus-visible:ring-1 focus-visible:ring-white"
+					style:left="{c.start * pxPerSecond + 44}px"
+					data-key-change={c.start}
+					aria-label="Key change to {c.key} at {formatTime(c.start)}"
+					title="{c.key} from {formatTime(c.start)} (double-click to edit, Delete to remove)"
+					onpointerdown={(e) => e.stopPropagation()}
+					onclick={() => engine.seek(c.start)}
+					ondblclick={() => {
+						const v = prompt("Key from here", c.key);
+						if (v !== null) engine.setKeyChange(c.start, v);
+					}}
+					onkeydown={(e) => {
+						if (e.key === "Delete" || e.key === "Backspace") {
+							engine.removeKeyChange(c.start);
+							e.preventDefault();
+							e.stopPropagation();
+						}
+					}}>{c.key}</button
+				>
+			{/each}
 			<!-- Comments (D7): a dot each at the ruler's foot; a click seeks there and opens the thread. -->
 			{#each comments as c (c.id)}
 				<button

@@ -7,6 +7,7 @@ import type { ReportKind, ReportVote } from "#lib/val/BugReportSchema.js";
 import { byStatus } from "#lib/utils/byStatus.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { sessionDisplayName } from "#lib/utils/sessionName.js";
+import { songChangesToStudio } from "#lib/utils/studioChanges.js";
 import type { CreditRole } from "#lib/val/CreditRoleSchema.js";
 import { flagProfanity } from "#lib/utils/profanity.js";
 import type { ArtistKind } from "#lib/val/ArtistKindSchema.js";
@@ -6349,14 +6350,10 @@ export async function importSongStemsIntoStudio(
 			name: st.label,
 		});
 	}
-	const tempo = s.changes.find((c) => c.kind === "tempo");
-	const meter = s.changes.find((c) => c.kind === "meter");
-	const bpm = Number(tempo?.value);
-	const beats = Number(String(meter?.value ?? "").split("/")[0]);
+	// The song's tempo, meter and key changes, the first of each from zero and the rest on the ruler (utils/studioChanges.ts).
 	const data: StudioArrangement = {
 		version: 1,
-		bpm: Number.isFinite(bpm) && bpm >= 30 && bpm <= 300 ? bpm : 120,
-		beatsPerBar: Number.isInteger(beats) && beats >= 2 && beats <= 7 ? beats : 4,
+		...songChangesToStudio(s.changes),
 		gridOn: true,
 		countIn: false,
 		click: false,

@@ -60,6 +60,11 @@ const fake = vi.hoisted(() => {
 		get tempoChanges() {
 			return engine.arrangement.tempoChanges ?? [];
 		},
+		get keyChanges() {
+			return engine.arrangement.keyChanges ?? [];
+		},
+		setKeyChange: vi.fn(),
+		removeKeyChange: vi.fn(),
 		get meterChanges() {
 			return engine.arrangement.meterChanges ?? [];
 		},
@@ -927,6 +932,7 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		const user = userEvent.setup();
 		fake.arrangement.tempoChanges = [{ start: 4, bpm: 60 }];
 		fake.arrangement.meterChanges = [{ start: 8, beatsPerBar: 3 }];
+		fake.arrangement.keyChanges = [{ start: 12, key: "F#m" }];
 		render(StudioTimeline);
 		// Bars 1 and 2 are 2 s (80 px) at 120; from 4 s a bar is 4 s (160 px).
 		const labels = [...document.querySelectorAll("[data-ruler-tick]")];
@@ -944,6 +950,12 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		expect(meter).toHaveTextContent("3/4");
 		await fireEvent.keyDown(meter, { key: "Backspace" });
 		expect(fake.removeMeterChange).toHaveBeenCalledWith(8);
+		// A key change is a flag the same way (Kevin, 2026-10-20).
+		const key = screen.getByRole("button", { name: "Key change to F#m at 0:12.0" });
+		expect(key).toHaveTextContent("F#m");
+		expect(key.style.left).toBe(`${12 * PX + 44}px`);
+		await fireEvent.keyDown(key, { key: "Delete" });
+		expect(fake.removeKeyChange).toHaveBeenCalledWith(12);
 	});
 });
 

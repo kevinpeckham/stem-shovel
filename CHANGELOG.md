@@ -8,6 +8,15 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Key in Dawn, and the changes both ways.** The Timing menu holds the
+  song's key and adds key changes at the playhead, shown as flags on the
+  ruler beside the tempo's and the meter's, with the key at the playhead on
+  the screen. Stems loaded from a song bring the song's tempo, time
+  signature and key; New song with these tracks, in the Send to a song
+  block, makes a fresh song with Dawn's.
+
 ## [0.139.0] - 2026-10-20
 
 ### Added
