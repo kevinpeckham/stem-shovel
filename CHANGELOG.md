@@ -19,6 +19,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **The Sessions page's title and intro are editable** by a system admin,
+  as the tool pages' are (the `sessions-page` copy doc; `/sessions` goes to
+  the current account's sessions).
 - **An account switch on the Projects page**, beside the title, for
   someone in more than one account: pick another and land on its projects.
 - **The footer names the tools in full**: Lark Idea Recorder, Whirl Looper,

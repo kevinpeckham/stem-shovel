@@ -55,6 +55,7 @@ const COPY_PAGES = [
 	"chord-player-page",
 	"practice-amp-page",
 	"home-page",
+	"sessions-page",
 ];
 
 const db = drizzle({

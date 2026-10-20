@@ -15,4 +15,6 @@ export const PAGE_COPY: Record<string, string> = {
 	"studio-page": "/multitrack-recorder",
 	"practice-amp-page": "/practice-amp",
 	"home-page": "/",
+	/** The Sessions page is an account's; /sessions goes to the editor's current account. */
+	"sessions-page": "/sessions",
 };

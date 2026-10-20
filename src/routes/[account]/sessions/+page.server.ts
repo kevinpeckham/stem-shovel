@@ -8,6 +8,8 @@ import {
 	sessionsWantingPeaks,
 } from "#lib/server/data.js";
 import { scheduleSessionPeaks } from "#lib/server/jobs.js";
+import { pageCopy } from "#lib/server/pageCopy.js";
+import copyFallback from "../../../../scripts/user-docs/sessions-page.md?raw";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -36,5 +38,13 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		// Viewing links for the recordings (docs/uploads-and-blob.md, "Sessions"), keyed by recording on the page.
 		listRecordingShareLinks(account.id),
 	]);
-	return { sessions, comments, chat: Object.fromEntries(chat), songs, shareLinks };
+	return {
+		sessions,
+		comments,
+		chat: Object.fromEntries(chat),
+		songs,
+		shareLinks,
+		/** The title and the words under it, edited in the app by a system admin (docs/page-copy.md). */
+		copy: await pageCopy("sessions-page", copyFallback, locals),
+	};
 };

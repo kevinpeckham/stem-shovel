@@ -4,6 +4,7 @@
 	import ComboBox from "#lib/components/ComboBox.svelte";
 	import ContextMenu from "#lib/components/ContextMenu.svelte";
 	import FloatingPanel from "#lib/components/FloatingPanel.svelte";
+	import PageCopyHeader from "#lib/components/PageCopyHeader.svelte";
 	import RecordingReview from "#lib/components/RecordingReview.svelte";
 	import SessionPlayer, { type SessionTrack } from "#lib/components/SessionPlayer.svelte";
 	import ShareLinks from "#lib/components/ShareLinks.svelte";
@@ -500,18 +501,14 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle(`Sessions · ${data.account.name}`)}</title>
+	<title>{pageTitle(`${data.copy.title} · ${data.account.name}`)}</title>
 </svelte:head>
 
 <main class="page">
-	<header class="max-w-article mb-6">
-		<h1 class="heading-2">Sessions</h1>
-		<p class="opacity-90 text-balance">
-			The band's tapes: every practice and show with its recordings, for every member of {data
-				.account.name} to hear and download. Upload what the phone or the recorder caught and it lands
-			in the session of its day; name the session, sort the recordings, and it is here for everyone.
-		</p>
-	</header>
+	<!-- The title and the words under it are the page's copy doc, edited in the app by a system admin (docs/page-copy.md). -->
+	<div class="max-w-article">
+		<PageCopyHeader copy={data.copy} class="mb-6" />
+	</div>
 
 	{#if data.canEdit}
 		<section class="max-w-article surface mb-6 px-5 py-4" aria-label="Upload recordings">
