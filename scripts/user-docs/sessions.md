@@ -16,7 +16,7 @@ Pick one or more audio files: a phone's voice memo, a recorder's WAV, a board mi
 
 ## Listening
 
-The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file, named after the recording's title ("Battle of the Bands set 2" saves as battle-of-the-bands-set-2.mp3).
+The player at the top plays a session's recordings in order: press **Play all** on a session, or the play button on any recording, and use the arrows for the previous and next one. Space plays and pauses, Home goes back to the start. To practice one part, drag across the playing recording's waveform to select it and press **Loop** (or L): it plays round until you press Loop again; with nothing selected, Loop repeats the whole recording, and Escape clears the selection. **Download MP3s** on a session saves every rendered MP3 of it in one zip, numbered in order; each recording's menu has its own MP3 and the original file, named after the recording's title ("Battle of the Bands set 2" saves as battle-of-the-bands-set-2.mp3).
 
 ## Waveforms and comments
 

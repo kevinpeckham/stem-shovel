@@ -10,6 +10,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Changed
 
+- **Loop playback for session recordings.** Drag across the playing
+  recording's waveform to select a stretch and press Loop (or L) to play
+  it round, as the stem player does; Escape clears the selection, and with
+  nothing selected Loop repeats the whole recording.
 - **A low cut on the session recorder.** A high-pass filter before the
   recorder, on at 80 Hz by default (60, 120 or Off), remembered per
   browser, for the rumble in a room recording.

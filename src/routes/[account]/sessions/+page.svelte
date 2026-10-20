@@ -75,6 +75,8 @@
 	let paused = $state(true);
 	let playerTime = $state(0);
 	let playerDuration = $state(0);
+	let playerLoop = $state<{ start: number; end: number } | null>(null);
+	let playerLooping = $state(false);
 	async function playRecording(s: Session, r: Recording) {
 		if (!queue.some((t) => t.id === r.id)) queue = tracksOf(s);
 		await player?.play(r.id);
@@ -226,6 +228,11 @@
 	async function seekIn(s: Session, r: Recording, seconds: number) {
 		if (current !== r.id) await playRecording(s, r);
 		player?.seekTo(seconds);
+	}
+	/** A drag across a recording's waveform selects a stretch to loop (the stem player's gesture); the recording starts if it was not playing. */
+	async function loopIn(s: Session, r: Recording, region: { start: number; end: number } | null) {
+		if (current !== r.id) await playRecording(s, r);
+		player?.setLoop(region);
 	}
 	const sessionOf = (r: Recording) => data.sessions.find((s) => s.id === r.sessionId) ?? null;
 	const recordingOf = (id: string) =>
@@ -614,6 +621,8 @@
 			bind:paused
 			bind:currentTime={playerTime}
 			bind:duration={playerDuration}
+			bind:loop={playerLoop}
+			bind:looping={playerLooping}
 		/>
 	</div>
 
@@ -1050,6 +1059,8 @@
 												canComment={!!data.user}
 												card={commentCard}
 												onseek={(seconds) => void seekIn(s, r, seconds)}
+												loop={current === r.id ? playerLoop : null}
+												onloop={(region) => void loopIn(s, r, region)}
 												oncomment={() => openComment({ recordingId: r.id })}
 												oncontext={(seconds, x, y) => (menuAt = { recording: r, seconds, x, y })}
 											/>

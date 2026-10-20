@@ -25,6 +25,8 @@
 	let paused = $state(true);
 	let currentTime = $state(0);
 	let duration = $state(0);
+	let loop = $state<{ start: number; end: number } | null>(null);
+	let looping = $state(false);
 	const length = $derived(duration || r.durationSeconds || 0);
 	let sharePanel = $state<HTMLDivElement | null>(null);
 </script>
@@ -68,6 +70,11 @@
 						if (current !== r.id) void player?.play(r.id);
 						player?.seekTo(f * length);
 					}}
+					range={loop && length > 0 ? { from: loop.start / length, to: loop.end / length } : null}
+					onrange={(from, to) => {
+						if (current !== r.id) void player?.play(r.id);
+						player?.setLoop({ start: from * length, end: to * length });
+					}}
 				/>
 			{:else}
 				<p class="grid h-14 place-items-center text-12px opacity-80">The waveform is on its way…</p>
@@ -80,6 +87,8 @@
 			bind:paused
 			bind:currentTime
 			bind:duration
+			bind:loop
+			bind:looping
 		/>
 		<div class="flex flex-wrap gap-2">
 			{#if r.playbackStatus === "ready" && r.playbackUrl}

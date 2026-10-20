@@ -102,6 +102,26 @@ test("comments on a recording's waveform, chats about the session, and searches"
 	await search.fill("");
 	await expect(page.locator("[data-session]")).toHaveCount(1);
 
+	// A loop: a drag across the waveform selects a stretch, Loop plays it round and the playhead stays inside it.
+	await row.getByRole("button", { name: "Play keys" }).click();
+	await expect(row.getByRole("button", { name: "Pause keys" })).toBeVisible();
+	const wave = review.getByRole("slider", { name: "Mix position" });
+	const rect = (await wave.boundingBox())!;
+	await page.mouse.move(rect.x + rect.width * 0.1, rect.y + rect.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height / 2, { steps: 8 });
+	await page.mouse.up();
+	const loopButton = page.locator("[data-session-player]").getByRole("button", { name: "Loop" });
+	await loopButton.click();
+	await expect(loopButton).toHaveAttribute("aria-pressed", "true");
+	await expect(page.locator("[data-session-player]")).toContainText(/loop 0:0\d/);
+	await page.waitForTimeout(4000);
+	const at = await wave.getAttribute("aria-valuenow");
+	expect(Number(at)).toBeLessThan(30);
+	await loopButton.click();
+	await page.keyboard.press("Escape");
+	await row.getByRole("button", { name: "Pause keys" }).click();
+
 	// A viewing link for the recording alone: made from its menu, it opens the recording's own page for a visitor.
 	const row2 = page.locator("[data-recording]").first();
 	await row2.getByRole("button", { name: /actions$/ }).click();

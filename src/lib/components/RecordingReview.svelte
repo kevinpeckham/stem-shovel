@@ -38,6 +38,9 @@
 		oncontext?: (seconds: number, x: number, y: number) => void;
 		/** The list's heading; "Comments" by default. */
 		heading?: string;
+		/** The selected stretch to loop (the player's, when this recording is the one playing), drawn on the waveform; a drag across it selects (`onloop`). */
+		loop?: { start: number; end: number } | null;
+		onloop?: (region: { start: number; end: number } | null) => void;
 	}
 	let {
 		label,
@@ -51,6 +54,8 @@
 		oncomment,
 		oncontext,
 		heading = "Comments",
+		loop = null,
+		onloop,
 	}: Props = $props();
 
 	let located = $derived(
@@ -73,6 +78,10 @@
 		},
 		stems: [] as { peaks: number[]; duration: number }[],
 		seek: onseek,
+		get loop() {
+			return loop;
+		},
+		setLoop: onloop,
 	});
 </script>
 

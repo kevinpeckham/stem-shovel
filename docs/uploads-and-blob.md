@@ -363,7 +363,12 @@ recordings in the order they were made (day, then upload). One
 `SessionPlayer` (the project page's shape) holds a queue: a row's play
 button or a session's Play all fills it with the session's recordings
 (the MP3 once rendered, else the file as uploaded) and plays through
-them. Download MP3s on a session fetches
+them. A **loop**, as the stem player's (Kevin, 2026-10-20): a drag across
+the playing recording's waveform (the review row's, or the recording's
+page's) selects a stretch (`setLoop`, bound `loop`), the transport's Loop
+button (L) plays it round (`timeupdate` seeks back at its end; with
+nothing selected the whole recording repeats at `ended`), Escape clears
+the selection and another track drops it. Download MP3s on a session fetches
 `/api/recording-sessions/<id>/mp3.zip` through `downloadBuilt`: the ready
 MP3s numbered in order, stored not compressed, streamed file by file
 (fflate's `Zip` + `ZipPassThrough`), 404 until one is ready. A download

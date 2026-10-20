@@ -17,7 +17,10 @@
 	 * the project page's shape: one queue of recordings (a session's, in
 	 * the order they were made), previous and next, the position and the
 	 * volume. A row's play button or a session's Play all fills the queue
-	 * and starts a track; the same track toggles.
+	 * and starts a track; the same track toggles. A loop, as the stem
+	 * player's (docs/stem-engine.md, "Loop"): a stretch selected by a drag
+	 * across the recording's waveform (`setLoop`), or the whole recording,
+	 * played round while Loop is on (L); Escape clears the selection.
 	 */
 	interface Props {
 		queue: SessionTrack[];
@@ -26,6 +29,9 @@
 		/** The playhead and the length of the current track, for a recording's review row (RecordingReview). */
 		currentTime?: number;
 		duration?: number;
+		/** The selected stretch of the current track, in seconds, and whether it plays round. */
+		loop?: { start: number; end: number } | null;
+		looping?: boolean;
 	}
 	let {
 		queue,
@@ -33,6 +39,8 @@
 		paused = $bindable(true),
 		currentTime = $bindable(0),
 		duration = $bindable(0),
+		loop = $bindable(null),
+		looping = $bindable(false),
 	}: Props = $props();
 
 	let track = $derived(queue.find((t) => t.id === current) ?? null);
@@ -49,8 +57,38 @@
 		// the new load and reject), then started once it has the new track; `paused` follows the element.
 		audio?.pause();
 		current = id;
+		loop = null; // the selection was the old track's
 		await tick();
 		await audio?.play().catch(() => {});
+	}
+	/** Select a stretch of the current track (a drag across its waveform); null clears it. Turned on outside it, playback goes to its start. */
+	export function setLoop(region: { start: number; end: number } | null) {
+		loop =
+			region && region.end - region.start > 0.05
+				? { start: Math.max(0, region.start), end: region.end }
+				: null;
+		if (
+			looping &&
+			loop &&
+			audio &&
+			(audio.currentTime < loop.start || audio.currentTime >= loop.end)
+		)
+			seekTo(loop.start);
+	}
+	export function toggleLooping() {
+		looping = !looping;
+		if (
+			looping &&
+			loop &&
+			audio &&
+			(audio.currentTime < loop.start || audio.currentTime >= loop.end)
+		)
+			seekTo(loop.start);
+	}
+	/** The loop's turn: past the selection's end, back to its start (the whole recording repeats from `onended`). */
+	function ontimeupdate() {
+		if (!looping || !loop || !audio) return;
+		if (audio.currentTime >= loop.end) seekTo(loop.start);
 	}
 	function toggle() {
 		if (!audio) return;
@@ -66,6 +104,11 @@
 		if (next) void play(next.id);
 	}
 	function onended() {
+		if (looping && audio) {
+			seekTo(loop?.start ?? 0);
+			void audio.play().catch(() => {});
+			return;
+		}
 		if (queue[index + 1]) step(1);
 		else paused = true;
 	}
@@ -91,6 +134,11 @@
 		} else if (e.key === "Home" && audio) {
 			e.preventDefault();
 			audio.currentTime = 0;
+		} else if ((e.key === "l" || e.key === "L") && track) {
+			e.preventDefault();
+			if (!e.repeat) toggleLooping();
+		} else if (e.key === "Escape" && loop) {
+			loop = null;
 		}
 	}
 	function onwindowkeyup(e: KeyboardEvent) {
@@ -110,6 +158,7 @@
 		bind:duration
 		bind:volume
 		{onended}
+		{ontimeupdate}
 		preload="auto"
 	></audio>
 {/if}
@@ -150,12 +199,29 @@
 		>
 			<span class="i-ph-skip-forward-fill" aria-hidden="true"></span>
 		</button>
+		<!-- Loop the selection (a drag across the recording's waveform), or the whole recording when nothing is selected. -->
+		<button
+			type="button"
+			class="grid h-10 w-10 place-items-center rounded-lg border transition-all active:scale-95 disabled-opacity-40 {looping
+				? 'border-accent bg-accent/20 text-accent'
+				: 'border-white/15 bg-white/5 hover-bg-white/10 hover-text-accent'}"
+			aria-label="Loop"
+			aria-pressed={looping}
+			title={loop
+				? `Loop the selection (L)${looping ? ": on" : ""} · Escape clears the selection`
+				: `Loop the whole recording (L)${looping ? ": on" : ""} · drag across the waveform to loop part of it`}
+			disabled={!track}
+			onclick={toggleLooping}
+		>
+			<span class="i-ph-repeat text-20px" aria-hidden="true"></span>
+		</button>
 	</div>
 	<div class="min-w-0 grow">
 		{#if track}
 			<p class="truncate font-500">{track.title}</p>
 			<p class="truncate text-sm text-dim tabular-nums">
-				{track.session} · {formatTime(currentTime)} / {formatTime(duration)} · {index + 1} of {queue.length}
+				{track.session} · {formatTime(currentTime)} / {formatTime(duration)} · {index + 1} of {queue.length}{#if loop}
+					· loop {formatTime(loop.start)}–{formatTime(loop.end)}{/if}
 			</p>
 		{:else if queue.length}
 			<p class="text-dim">
