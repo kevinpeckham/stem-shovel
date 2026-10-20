@@ -8,7 +8,9 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
-### Changed
+## [0.139.0] - 2026-10-20
+
+### Added
 
 - **Loop playback for session recordings.** Drag across the playing
   recording's waveform to select a stretch and press Loop (or L) to play
@@ -17,17 +19,6 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 - **A low cut on the session recorder.** A high-pass filter before the
   recorder, on at 80 Hz by default (60, 120 or Off), remembered per
   browser, for the rumble in a room recording.
-- **The account menu drops Projects and Sessions**, which the Music menu
-  holds; it keeps the inbox, the account's settings and the rest.
-- **Fixed**: on a Retina screen a long clip's waveform in Dawn came up blank,
-  its canvas past what the GPU shows. Each clip now draws only the window
-  in view, at the screen's own resolution, following the scroll and the
-  zoom.
-- **Fixed**: stems with no stored length or waveform (an older upload
-  path) imported into Dawn as clips one millisecond long with nothing to
-  draw. The engine now runs such a clip to its source's end once the
-  source decodes, and the song page has the jobs function measure those
-  stems, so the stem player draws them too.
 - **Stems from songs in the looper.** Import a stem, in the Load menu: pick
   a song and press a stem to bring it in as a layer, cut to the loop's
   length from the start you set.
@@ -43,10 +34,27 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   the current account's sessions).
 - **An account switch on the Projects page**, beside the title, for
   someone in more than one account: pick another and land on its projects.
+
+### Changed
+
+- **The account menu drops Projects and Sessions**, which the Music menu
+  holds; it keeps the inbox, the account's settings and the rest.
 - **The footer names the tools in full**: Lark Idea Recorder, Whirl Looper,
   Ember Practice Amp, Dawn Multitrack Studio.
 - **The footer's Music row** is Projects, Sessions and Ideas, as the menu;
   the Session Recorder stays in its Tools row.
+
+### Fixed
+
+- **A long clip's waveform in Dawn** came up blank on a Retina screen,
+  its canvas past what the GPU shows. Each clip now draws only the window
+  in view, at the screen's own resolution, following the scroll and the
+  zoom.
+- **Stems with no stored length or waveform** (an older upload
+  path) imported into Dawn as clips one millisecond long with nothing to
+  draw. The engine now runs such a clip to its source's end once the
+  source decodes, and the song page has the jobs function measure those
+  stems, so the stem player draws them too.
 
 ## [0.138.1] - 2026-10-20
 
