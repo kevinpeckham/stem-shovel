@@ -4,19 +4,20 @@
 	import StudioTimeline from "#lib/components/StudioTimeline.svelte";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
-	import type { StudioSongView } from "#lib/val/StudioSchema.js";
+	import type { StudioArrangement, StudioSourceView } from "#lib/val/StudioSchema.js";
 	import { onDestroy, onMount } from "svelte";
 
 	/**
 	 * The home page's Dawn demo (docs/multitrack-recorder.md, "The home
-	 * demo"): a Dawn song an admin chose on /admin/home, usually the featured
-	 * song's stems, in the real engine with the real timeline. Visitors play,
+	 * demo"): a Dawn song an admin chose on /admin/home, or the featured
+	 * song's stems as one, in the real engine with the real timeline. Visitors play,
 	 * mute, solo, zoom, drag clips and loop; nothing is saved and nothing
 	 * records. The engine is the page's singleton, so the demo loads the song
 	 * on mount and empties it on leaving.
 	 */
 	interface Props {
-		song: StudioSongView;
+		/** A Dawn song (the admin's choice), or the featured song's stems as one (utils/studioFromStems.ts). */
+		song: { title: string; current: StudioArrangement | null; sources: StudioSourceView[] };
 		/** Where "Open Dawn" goes: the recorder for a member, sign-in for a visitor. */
 		href: string;
 		/** Space and Home drive the transport while this demo is the one in view. */

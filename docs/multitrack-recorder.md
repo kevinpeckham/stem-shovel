@@ -1089,8 +1089,14 @@ for a visitor); /admin/home has **Make it from the featured song**
 into a Dawn song of the admin's, then the setting) and a select of the
 admin's own Dawn songs (`setHomeStudioSong`; None clears). The home
 page's copy doc gains the `dawn` section (the seed's words until the
-in-app page merges them: `db:update-docs --merge --apply`); without a
-chosen song the section does not show. The chosen song is marked
+in-app page merges them: `db:update-docs --merge --apply`). Without a
+chosen song (Kevin: "I'm not seeing the Dawn demo", production after
+v0.140.0) the demo is the featured song's stems as a Dawn song made on
+the fly, `utils/studioFromStems.ts`: a track and a clip per stem, the
+player manifest's rendition URLs as the sources (the engine fetches them
+as it fetches any file; nothing is copied or saved), the song's tempo,
+meter and key through `songChangesToStudio`. An admin's choice overrides
+it. The chosen song is marked
 "home demo" in Dawn's Recordings list with no Delete, and the idea
 delete commands refuse it (409) until an admin chooses another, so a
 clean-up in Dawn cannot blank the home page (the browser tests'

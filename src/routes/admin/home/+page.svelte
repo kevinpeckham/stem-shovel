@@ -133,9 +133,9 @@
 <section class="mt-10 max-w-article">
 	<h2 class="heading-2">Dawn demo</h2>
 	<p class="text-sm text-dim">
-		The Dawn song the home page shows after the Idea Recorder, in the real engine: usually the
-		featured song's stems, loaded into a Dawn song of yours. Visitors play it; nothing they do is
-		saved.
+		The Dawn song the home page shows after the Idea Recorder, in the real engine. With none chosen
+		it plays the featured song's stems straight from the song; choose one to show an arrangement of
+		your own instead. Visitors play it; nothing they do is saved.
 	</p>
 	<p class="mt-3 text-15px">
 		{#if data.studioDemo}
@@ -144,7 +144,7 @@
 				>Open in Dawn</a
 			>
 		{:else}
-			None chosen: the home page shows no Dawn demo.
+			None chosen: the home page plays the featured song's stems straight from the song.
 		{/if}
 	</p>
 	<div class="mt-4 flex flex-wrap items-center gap-3">

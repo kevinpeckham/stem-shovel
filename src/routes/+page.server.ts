@@ -7,6 +7,7 @@ import {
 	listDrumKitManifests,
 } from "#lib/server/data.js";
 import { homeCopy } from "#lib/server/homeCopy.js";
+import { studioFromStems } from "#lib/utils/studioFromStems.js";
 import { songView } from "#lib/server/songView.js";
 import copyFallback from "../../scripts/user-docs/home-page.md?raw";
 import type { PageServerLoad } from "./$types";
@@ -43,7 +44,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		chordPresets,
 		textToBeat: aiAvailable(),
 		copy,
-		studioDemo,
+		// The Dawn demo: the chosen Dawn song, else the featured song's stems played straight from the song (nothing copied).
+		studioDemo:
+			studioDemo ??
+			studioFromStems({ title: row.title, changes: row.changes, stems: view.manifest.stems }),
 		demo: {
 			...view,
 			comments: [],

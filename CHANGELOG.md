@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **The home page's Dawn demo needs no setup**: with no Dawn song chosen,
+  it plays the featured song's stems straight from the song.
+
 ## [0.140.0] - 2026-10-20
 
 ### Added
