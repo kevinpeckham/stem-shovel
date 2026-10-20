@@ -387,6 +387,20 @@ in `updateSessionRecording`, linked from the row, and listed on the
 song's page under the Demos view (`listSessionRecordingsOfSong`, members
 only) with a link to `/sessions?recording=<id>`.
 
+**Stems measured after the fact** (2026-10-20). Some stems carry no
+`peaks`, `duration_seconds` or `channels` (uploaded by a path that
+reported none; three of Kevin's on dev): the player drew nothing for them
+and an import into Dawn laid each out one millisecond long, the schema's
+floor, with nothing to draw (the bug Kevin met). The song page now
+schedules `stem-metadata` for such stems (`stemsWantingMetadata`), and
+`measureStemMetadata` in the jobs function fetches the file, reads the
+channels from ffmpeg's probe line and the length and peaks from the PCM
+pass (`measurePeaks`), and fills what the row lacked (`finishStemMetadata`,
+what was there standing). The engine, for its part, runs a clip of unknown
+length (one millisecond) to its source's end once the source decodes
+(`#fillUnknownClips`, saved with the song, not an undo step), so an
+import made before the measuring still comes right on its first open.
+
 **The session recorder** (`/[account]/sessions/record`,
 `SessionRecorder.svelte`; Kevin, 2026-10-19: a stripped-down variation
 on the Idea Recorder, available from the Sessions page, with a minimal

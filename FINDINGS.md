@@ -385,6 +385,12 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Database and tooling
 
+- **A schema floor hides a missing value.** A stem with no stored length
+  became a Dawn clip of 0.001 s, the clip schema's minimum, which passed
+  validation and drew nothing: the import had turned "unknown" into
+  "tiny". Treat nullable metadata as unknown all the way down (measure it,
+  or fill it in when the real value appears) rather than clamping it into
+  a valid-looking number (stems into Dawn, 2026-10-20).
 - **Turso answers 502 to drizzle-kit's migration batch now and then
   while single statements go through.** `bun run db:migrate:steps`
   applies the statements one at a time with the same journal rows

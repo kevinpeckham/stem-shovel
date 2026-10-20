@@ -23,6 +23,8 @@ const h = vi.hoisted(() => ({
 		finishMixPlayback: vi.fn(),
 		failMixPlayback: vi.fn(),
 		claimRecordingPlayback: vi.fn(),
+		stemForMetadata: vi.fn(),
+		finishStemMetadata: vi.fn(),
 		claimSessionPlayback: vi.fn(),
 		finishRecordingPlayback: vi.fn(),
 		finishSessionPlayback: vi.fn(),
@@ -258,6 +260,37 @@ describe("renderStems", () => {
 		await expect(renderStems(["stem-1"])).rejects.toThrow("ffmpeg binary is not available");
 		expect(h.data.failPlayback).toHaveBeenCalledWith("stem-1");
 		expect(h.blob.readBlob).not.toHaveBeenCalled();
+	});
+});
+
+describe("measureStemMetadata", () => {
+	it("fetches the stem, reads the channels from the probe and the length and peaks from the PCM pass, and fills the row", async () => {
+		const { measureStemMetadata } = await import("./transcode");
+		h.data.stemForMetadata.mockResolvedValueOnce({
+			id: "stem-1",
+			url: `${PUBLIC}/accounts/a/songs/s/stem-1.wav`,
+			playbackUrl: null,
+			peaks: null,
+			durationSeconds: null,
+			channels: null,
+		});
+		h.answer.mockImplementation((args) =>
+			args.length === 3
+				? Object.assign(new Error("exit 1"), {
+						stderr:
+							"  Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 44100 Hz, mono, s16, 705 kb/s",
+					})
+				: { stderr: "" },
+		);
+		await measureStemMetadata(["stem-1", "stem-gone"]);
+		expect(h.data.finishStemMetadata).toHaveBeenCalledTimes(1);
+		expect(h.data.finishStemMetadata).toHaveBeenCalledWith("stem-1", {
+			channels: 1,
+			durationSeconds: 1,
+			peaks: expect.arrayContaining([0.5]),
+		});
+		expect(h.blob.putBlob).not.toHaveBeenCalled();
+		h.answer.mockReset();
 	});
 });
 

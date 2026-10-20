@@ -980,7 +980,10 @@ and the peaks the stem carries; the rate recorded as 48 kHz, a hint, since
 the browser decodes at its own rate), and the first revision "Stems of
 <song>" laid out with a track per stem (the stem's gain, pan and tint) and
 one clip per track from 0; the song's first tempo and meter changes set
-the grid. The song page then goes to Dawn on the new song; Dawn autosaves
+the grid (a stem with no stored length makes a one-millisecond clip,
+which the engine runs to the source's end once it decodes, and the song
+page schedules the stem's measuring, docs/uploads-and-blob.md "Stems
+measured after the fact"). The song page then goes to Dawn on the new song; Dawn autosaves
 the open song, refreshes and opens the new one. A new Dawn song each time,
 never tracks added to an open one: the arrangement is the browser's while
 a song is open, and a copy keeps the stems' own revision apart. A direct

@@ -553,6 +553,7 @@ class StudioEngine {
 					entry.status = "ready";
 					entry.durationSeconds = buffer.duration;
 					if (entry.peaks.length === 0) entry.peaks = computePeaks(buffer, 1024);
+					this.#fillUnknownClips(s.id, buffer);
 				} catch {
 					if (this.sources[s.id]) this.sources[s.id].status = "failed";
 				} finally {
@@ -617,6 +618,7 @@ class StudioEngine {
 				e.status = "ready";
 				e.durationSeconds = buffer.duration;
 				if (e.peaks.length === 0) e.peaks = computePeaks(buffer, 1024);
+				this.#fillUnknownClips(sourceId, buffer);
 				return buffer;
 			} catch {
 				if (this.sources[sourceId]) this.sources[sourceId].status = "failed";
@@ -676,6 +678,26 @@ class StudioEngine {
 	get unusedSources(): StudioSource[] {
 		const used = new Set(this.arrangement.clips.map((c) => c.sourceId));
 		return Object.values(this.sources).filter((s) => !used.has(s.id) && !s.pending);
+	}
+
+	/**
+	 * A clip laid down before its source's length was known (a stem imported
+	 * with no recorded length: one millisecond, the schema's floor) runs to
+	 * the source's end once the source decodes. Saved with the song, not an
+	 * undo step: nothing the band did.
+	 */
+	#fillUnknownClips(sourceId: string, buffer: AudioBuffer) {
+		let changed = false;
+		for (const c of this.arrangement.clips) {
+			if (c.sourceId !== sourceId || c.duration > 0.001) continue;
+			const length = buffer.duration - c.offset;
+			if (length <= 0.001) continue;
+			c.duration = length;
+			changed = true;
+		}
+		if (!changed) return;
+		this.dirty = true;
+		if (this.running) this.#reschedule();
 	}
 
 	// ── Edits (each snapshots for undo and marks the song dirty) ───────────

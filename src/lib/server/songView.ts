@@ -8,6 +8,7 @@ import {
 	manifestFor,
 	mixesWantingPlayback,
 	presentSongFiles,
+	stemsWantingMetadata,
 	stemsWantingPlayback,
 } from "#lib/server/data.js";
 import { renderMarkdown } from "#lib/server/markdown.js";
@@ -16,6 +17,7 @@ import {
 	scheduleDemoPlayback,
 	scheduleMixPlayback,
 	schedulePlayback,
+	scheduleStemMetadata,
 } from "#lib/server/jobs.js";
 
 export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
@@ -28,6 +30,8 @@ export type SongRow = NonNullable<Awaited<ReturnType<typeof getSong>>>;
  */
 export async function songView(song: SongRow) {
 	schedulePlayback(stemsWantingPlayback(song.stems));
+	// A stem with no stored length, peaks or channels (an older upload path): measured in the jobs function.
+	scheduleStemMetadata(stemsWantingMetadata(song.stems));
 	scheduleDemoPlayback(demosWantingPlayback(song.demos));
 	// A demo rendered before the review shipped has an MP3 and no waveform yet: measured in the jobs function.
 	scheduleDemoPeaks(demosWantingPeaks(song.demos));

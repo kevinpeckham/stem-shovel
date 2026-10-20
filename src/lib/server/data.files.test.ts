@@ -719,6 +719,53 @@ describe("demos", () => {
 	});
 });
 
+describe("stem metadata measured after the fact", () => {
+	test("stemsWantingMetadata names the ready stems missing peaks, a length or channels", async () => {
+		const { stemsWantingMetadata } = await import("./data");
+		const full = {
+			status: "ready",
+			url: "https://b/x.wav",
+			peaks: [0.1],
+			durationSeconds: 3,
+			channels: 2,
+		};
+		expect(
+			stemsWantingMetadata([
+				{ id: "ok", ...full },
+				{ id: "no-peaks", ...full, peaks: null },
+				{ id: "no-length", ...full, durationSeconds: null },
+				{ id: "no-channels", ...full, channels: null },
+				{ id: "uploading", ...full, peaks: null, status: "uploading" },
+			]),
+		).toEqual(["no-peaks", "no-length", "no-channels"]);
+	});
+	test("finishStemMetadata fills what the row lacks and leaves what it has", async () => {
+		const { finishStemMetadata, stemForMetadata } = await import("./data");
+		reset({
+			stem: [
+				stem("s1", {
+					status: "ready",
+					url: "https://b/s1.wav",
+					peaks: null,
+					durationSeconds: 9,
+					channels: null,
+				}),
+				stem("s2", {
+					status: "uploading",
+					url: "",
+					peaks: null,
+					durationSeconds: null,
+					channels: null,
+				}),
+			],
+		});
+		expect(await stemForMetadata("s1")).toMatchObject({ id: "s1", durationSeconds: 9 });
+		expect(await stemForMetadata("s2")).toBeNull();
+		await finishStemMetadata("s1", { peaks: [0.5, 1], durationSeconds: 4, channels: 1 });
+		expect(row("stem", "s1")).toMatchObject({ peaks: [0.5, 1], durationSeconds: 9, channels: 1 });
+	});
+});
+
 describe("stem MIDI files", () => {
 	const upload = { filename: "Bass.mid", contentType: "audio/midi", sizeBytes: 3 };
 	test("reserveStemMidi keeps the previous file until the new one lands; null for another account's stem", async () => {

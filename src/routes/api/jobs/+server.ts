@@ -6,6 +6,7 @@ import { renderNotationPdf } from "#lib/server/notationPdf.js";
 import {
 	measureDemos,
 	measureSessions,
+	measureStemMetadata,
 	renderDemos,
 	renderMixes,
 	renderRecordings,
@@ -62,6 +63,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "session-peaks":
 				await measureSessions(ids);
+				break;
+			case "stem-metadata":
+				await measureStemMetadata(ids);
 				break;
 			case "notation-pdf":
 				for (const id of ids) await renderNotationPdf(id);

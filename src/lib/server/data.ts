@@ -6853,6 +6853,64 @@ const NO_PLAYBACK = {
 const PLAYBACK_RETRY_MS = 60 * 60 * 1000;
 const PLAYBACK_STALE_MS = 15 * 60 * 1000;
 
+/**
+ * Ready stems with no stored length, peaks or channel count (uploaded by a
+ * path that reported none): the jobs function measures them
+ * (`measureStemMetadata`), so the player draws them and an import into
+ * Dawn lays them out at their length.
+ */
+export function stemsWantingMetadata(
+	stems: {
+		id: string;
+		status: string;
+		url: string;
+		peaks: number[] | null;
+		durationSeconds: number | null;
+		channels: number | null;
+	}[],
+) {
+	return stems
+		.filter((s) => s.status === "ready" && s.url)
+		.filter((s) => s.peaks === null || s.durationSeconds === null || s.channels === null)
+		.map((s) => s.id);
+}
+
+/** A ready stem's file and what of its metadata is missing, for the measuring pass; null when it is not ready. */
+export async function stemForMetadata(stemId: string) {
+	const row = await db.query.stem.findFirst({
+		where: and(eq(stem.id, stemId), eq(stem.status, "ready")),
+		columns: {
+			id: true,
+			url: true,
+			playbackUrl: true,
+			peaks: true,
+			durationSeconds: true,
+			channels: true,
+		},
+	});
+	return row?.url ? row : null;
+}
+
+/** Fills the stem's metadata the measuring found, where the row had none; what was there stands. */
+export async function finishStemMetadata(
+	stemId: string,
+	m: { peaks: number[]; durationSeconds: number; channels: number },
+) {
+	const row = await db.query.stem.findFirst({
+		where: eq(stem.id, stemId),
+		columns: { peaks: true, durationSeconds: true, channels: true },
+	});
+	if (!row) return;
+	await db
+		.update(stem)
+		.set({
+			...(row.peaks === null ? { peaks: m.peaks } : {}),
+			...(row.durationSeconds === null ? { durationSeconds: m.durationSeconds } : {}),
+			...(row.channels === null ? { channels: m.channels } : {}),
+		})
+		.where(eq(stem.id, stemId));
+}
+
 /** Which of a song's ready stems still want a rendition (never tried, failed a while ago, or stuck). */
 export function stemsWantingPlayback(
 	stems: {

@@ -12,6 +12,7 @@ export const JOB_KINDS = [
 	"session-playback",
 	"demo-peaks",
 	"session-peaks",
+	"stem-metadata",
 	"notation-pdf",
 ] as const;
 

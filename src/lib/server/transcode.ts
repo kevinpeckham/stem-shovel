@@ -18,6 +18,8 @@ import {
 	finishRecordingPlayback,
 	finishSessionPeaks,
 	finishSessionPlayback,
+	finishStemMetadata,
+	stemForMetadata,
 	replaceRecordingSource,
 } from "#lib/server/data.js";
 import { accessOfUrl } from "#lib/utils/blobAccess.js";
@@ -66,6 +68,48 @@ export async function renderStems(stemIds: string[]): Promise<void> {
 	}
 	for (const id of songIds) await ensureOriginalMix(id);
 	for (const id of songIds) await ensureSongNotes(id);
+}
+
+/**
+ * Stems with no stored length, peaks or channel count (docs/uploads-and-blob.md,
+ * "Stems measured after the fact"): the file is fetched, ffmpeg's probe
+ * gives the channels and the peaks pass the length and the waveform, and
+ * the row takes what it lacked. Idempotent: a repeat measures again and
+ * writes nothing new.
+ */
+export async function measureStemMetadata(stemIds: string[]): Promise<void> {
+	for (const id of stemIds) {
+		const row = await stemForMetadata(id);
+		if (!row) continue;
+		const dir = await mkdtemp(join(tmpdir(), "stem-meta-"));
+		try {
+			const file = join(dir, "source");
+			const res = await readBlob(row.url);
+			if (!res.ok || !res.body)
+				throw new Error(`${res.status} ${res.statusText} fetching ${row.url}`);
+			await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
+			const [channels, measured] = await Promise.all([probeChannels(file), measurePeaks(file)]);
+			await finishStemMetadata(id, { ...measured, channels });
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	}
+}
+
+/** How many channels a file has, from ffmpeg's probe line ("stereo", "mono", "2 channels"); 2 when it says nothing. */
+async function probeChannels(file: string): Promise<number> {
+	if (!ffmpegPath) return 2;
+	try {
+		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
+	} catch (e) {
+		const err = String((e as { stderr?: string }).stderr ?? "");
+		const line = err.match(/Audio: [^\n]*/)?.[0] ?? "";
+		if (/\bmono\b/.test(line)) return 1;
+		const n = line.match(/(\d+) channels/)?.[1];
+		if (n) return Math.max(1, Number(n));
+		return 2;
+	}
+	return 2;
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */

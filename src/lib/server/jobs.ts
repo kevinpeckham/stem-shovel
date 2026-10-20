@@ -73,6 +73,8 @@ export const scheduleSessionPlayback = (recordingIds: string[]) =>
 export const scheduleDemoPeaks = (demoIds: string[]) => scheduleJob("demo-peaks", demoIds);
 export const scheduleSessionPeaks = (recordingIds: string[]) =>
 	scheduleJob("session-peaks", recordingIds);
+/** Measures stems that have no stored length, peaks or channels (docs/uploads-and-blob.md, "Stems measured after the fact"). */
+export const scheduleStemMetadata = (stemIds: string[]) => scheduleJob("stem-metadata", stemIds);
 /** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */
 export const scheduleNotationPdf = (notationId: string) =>
 	scheduleJob("notation-pdf", [notationId]);

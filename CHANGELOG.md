@@ -19,6 +19,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   browser, for the rumble in a room recording.
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **Fixed**: stems with no stored length or waveform (an older upload
+  path) imported into Dawn as clips one millisecond long with nothing to
+  draw. The engine now runs such a clip to its source's end once the
+  source decodes, and the song page has the jobs function measure those
+  stems, so the stem player draws them too.
 - **Stems from songs in the looper.** Import a stem, in the Load menu: pick
   a song and press a stem to bring it in as a layer, cut to the loop's
   length from the start you set.
