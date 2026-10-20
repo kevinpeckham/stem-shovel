@@ -997,10 +997,18 @@ data was sound (sources ready, peaks, lengths) and headless Chromium and
 WebKit drew them; on a Retina Mac they were blank. Each clip's canvas
 spans the clip, so a long one passes what the GPU composites (8,192
 backing pixels on many Macs) while still drawing into memory, which is
-why a probe reading the pixels back saw bars. `clipWave` now caps the
-backing store at `MAX_CLIP_CANVAS_PX` (8,192) and draws per backing pixel,
-so a long clip comes out a little coarser and never blank. Drawing only
-the visible window would keep it sharp at every zoom; left for later.
+why a probe reading the pixels back saw bars. A first fix capped the
+backing store at 8,192 px, which showed the bars but blurred them on a
+Retina screen (Kevin). `clipWave` now draws only the **window in view**:
+the canvas sits inside the clip's box at the window's offset (the
+scroller's view widened by `WINDOW_MARGIN_PX` either side, clipped to the
+clip), at the screen's own resolution, and follows the scroll (a
+`scroll` listener and a `ResizeObserver` on the scroller, one frame at a
+time) and the zoom and trims (the attachment takes the clip's place and
+width in the box and re-runs when they change). The take lanes' canvases
+go the same way. Verified in Chromium and WebKit at scale factor 2,
+zoomed in three steps and scrolled: every canvas the view's width plus
+the margins, drawn.
 
 ## Scale and structure (2026-10-19, docs/dawn-daw-plan.md D8)
 

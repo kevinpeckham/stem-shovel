@@ -406,29 +406,61 @@
 			scroller.scrollLeft = Math.max(0, x - 80);
 	});
 
-	// ── Waveforms: each clip draws its span of its source ──────────────────
-	/** The widest backing store a clip's canvas gets, under every browser's limit (docs/multitrack-recorder.md). */
-	const MAX_CLIP_CANVAS_PX = 8192;
-	/** Min/max per pixel from the decoded buffer (a few milliseconds a clip), else the stored peaks. */
-	function clipWave(clip: StudioClip): Attachment<HTMLCanvasElement> {
+	// ── Waveforms: each clip draws the visible window of its span ──────────
+	/**
+	 * A clip's canvas covers the part of the clip in view (plus a margin on
+	 * either side), not the whole clip: a 2:27 stem on a Retina screen is
+	 * 11,500 backing pixels at the default zoom and 39,000 zoomed in, past
+	 * what the GPU composites, so a whole-clip canvas came up blank (Kevin,
+	 * 2026-10-20), and a capped one blurry. The canvas sits inside the clip's
+	 * box at the window's offset, moves with the scroll, and draws at the
+	 * screen's own resolution. `baseLeft` and `fullWidth` are the clip's
+	 * place and width in the box (a trim under way keeps them, the box's
+	 * overflow masking); the attachment re-runs when they change (a zoom,
+	 * a trim).
+	 */
+	const WINDOW_MARGIN_PX = 320;
+	function clipWave(
+		clip: StudioClip,
+		baseLeft: number,
+		fullWidth: number,
+	): Attachment<HTMLCanvasElement> {
 		return (canvas) => {
 			let key = "";
+			let frame = 0;
 			const draw = () => {
-				const w = canvas.clientWidth;
+				frame = 0;
 				const h = canvas.clientHeight;
-				if (!w || !h || !clip.sourceId) return;
+				if (!h || !clip.sourceId) return;
+				const box = canvas.parentElement;
+				const sc = scroller;
+				// The window: the scroller's view, widened by the margin, clipped to the clip; the whole clip without a scroller.
+				let vx = 0;
+				let vw = fullWidth;
+				if (sc && box) {
+					const clipLeft =
+						box.getBoundingClientRect().left -
+						sc.getBoundingClientRect().left +
+						sc.scrollLeft +
+						baseLeft;
+					vx = Math.max(0, Math.min(fullWidth, sc.scrollLeft - WINDOW_MARGIN_PX - clipLeft));
+					const vEnd = Math.max(
+						0,
+						Math.min(fullWidth, sc.scrollLeft + sc.clientWidth + WINDOW_MARGIN_PX - clipLeft),
+					);
+					vw = Math.max(0, vEnd - vx);
+				}
+				canvas.style.left = `${baseLeft + vx}px`;
+				canvas.style.width = `${vw}px`;
+				if (vw < 1) return;
 				const buffer = engine.bufferOf(clip.sourceId);
 				const source = engine.sources[clip.sourceId];
-				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${w}:${h}:${buffer ? "b" : "p"}`;
+				const dpr = devicePixelRatio || 1;
+				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${vx}:${vw}:${h}:${dpr}:${buffer ? "b" : "p"}:${getComputedStyle(canvas).color}`;
 				if (next === key) return;
 				key = next;
-				// A canvas wider than what the GPU composites (8,192 px on many Macs; 32,767 is the hard limit) draws into
-				// memory and shows nothing: a 2:27 stem on a Retina screen is 11,500 px at the default zoom, 39,000 zoomed
-				// in (Kevin, 2026-10-20: no waveforms after an import). The backing store is capped and the bars are drawn
-				// per backing pixel, so a long clip is a little coarser, never blank.
-				const scale = Math.min(devicePixelRatio || 1, MAX_CLIP_CANVAS_PX / w);
-				const bw = Math.max(1, Math.round(w * scale));
-				const bh = Math.max(1, Math.round(h * scale));
+				const bw = Math.max(1, Math.round(vw * dpr));
+				const bh = Math.max(1, Math.round(h * dpr));
 				canvas.width = bw;
 				canvas.height = bh;
 				const g = canvas.getContext("2d");
@@ -436,11 +468,14 @@
 				g.clearRect(0, 0, bw, bh);
 				g.fillStyle = getComputedStyle(canvas).color;
 				const mid = bh / 2;
+				// The window's span of the clip's source, in seconds from the source's start.
+				const t0 = clip.offset + (vx / fullWidth) * clip.duration;
+				const span = (vw / fullWidth) * clip.duration;
 				if (buffer) {
 					const sr = buffer.sampleRate;
-					const from = Math.floor(clip.offset * sr);
-					const span = Math.max(1, Math.floor(clip.duration * sr));
-					const per = span / bw;
+					const from = Math.floor(t0 * sr);
+					const frames = Math.max(1, Math.floor(span * sr));
+					const per = frames / bw;
 					const chans = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
 						buffer.getChannelData(c),
 					);
@@ -466,24 +501,35 @@
 					const n = peaks.length;
 					const total = source.durationSeconds || clip.offset + clip.duration;
 					for (let x = 0; x < bw; x++) {
-						const t = clip.offset + (x / bw) * clip.duration;
+						const t = t0 + (x / bw) * span;
 						const p = peaks[Math.min(n - 1, Math.floor((t / total) * n))] ?? 0;
 						const amp = p * (mid - 1);
 						g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));
 					}
 				}
 			};
+			const schedule = () => {
+				if (!frame) frame = requestAnimationFrame(draw);
+			};
 			draw();
-			const ro = new ResizeObserver(draw);
-			ro.observe(canvas);
+			// The window follows the scroll and the view's width; the lane's height too.
+			const sc = scroller;
+			sc?.addEventListener("scroll", schedule, { passive: true });
+			const ro = new ResizeObserver(schedule);
+			if (sc) ro.observe(sc);
+			if (canvas.parentElement) ro.observe(canvas.parentElement);
 			// A source that decodes after the clip mounted redraws it; so does a change of the track's tint (the canvas's color).
 			$effect(() => {
 				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
 				void engine.arrangement.tracks.find((t) => t.id === clip.trackId)?.colour;
-				draw();
+				schedule();
 			});
-			return () => ro.disconnect();
+			return () => {
+				sc?.removeEventListener("scroll", schedule);
+				ro.disconnect();
+				if (frame) cancelAnimationFrame(frame);
+			};
 		};
 	}
 
@@ -1118,14 +1164,17 @@
 									{@attach noteRoll(clip)}
 								></canvas>
 							{:else}
+								<!-- Placed and sized by the attachment: the window of the clip in view, at the screen's resolution. -->
 								<canvas
 									class="absolute top-0 bottom-0 h-full text-blue-200 {source?.status === 'ready'
 										? 'opacity-90'
 										: 'opacity-30'}"
 									style:color={tint ?? undefined}
-									style:left="{(clip.start - shown.start) * pxPerSecond}px"
-									style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
-									{@attach clipWave(clip)}
+									{@attach clipWave(
+										clip,
+										(clip.start - shown.start) * pxPerSecond,
+										Math.max(6, clip.duration * pxPerSecond),
+									)}
 								></canvas>
 							{/if}
 							<!-- the fades as they play (a crossfade over an overlap widens them), drawn as wedges over the ends: straight for linear, bowed for equal power -->
@@ -1208,10 +1257,15 @@
 								onpointerup={onswipeup}
 								onpointercancel={onswipeup}
 							>
+								<!-- The lane's box is the clip's width; the attachment keeps the canvas to the window in view. -->
 								<canvas
-									class="absolute inset-0 h-full w-full text-blue-200/70"
+									class="absolute top-0 bottom-0 h-full text-blue-200/70"
 									style:color={tint ?? undefined}
-									{@attach clipWave({ ...comp, id: `${comp.id}:${sourceId}`, sourceId })}
+									{@attach clipWave(
+										{ ...comp, id: `${comp.id}:${sourceId}`, sourceId },
+										0,
+										Math.max(6, comp.duration * pxPerSecond),
+									)}
 								></canvas>
 								<span
 									class="absolute left-1 top-0.5 text-10px leading-none px-1 rounded bg-black/40"

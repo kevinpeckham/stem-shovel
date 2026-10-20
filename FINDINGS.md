@@ -166,9 +166,10 @@ belong in CLAUDE.md or docs/, not here.
   into such a canvas succeeds (`getImageData` reads the bars back), so
   headless probes at scale factor 1 saw nothing wrong, while on Kevin's Mac
   the clips came up blank: the compositor drops textures past its limit
-  (8,192 px on many GPUs; 32,767 is the hard cap). Cap the backing store
-  and draw per backing pixel (`MAX_CLIP_CANVAS_PX`, StudioTimeline), or
-  draw only the visible window (2026-10-20).
+  (8,192 px on many GPUs; 32,767 is the hard cap). A capped backing
+  store shows the bars but blurs them on a Retina screen; draw only the
+  window in view, at full resolution, and follow the scroll (`clipWave`,
+  StudioTimeline, 2026-10-20).
 - **The CSP blocks worklets from blob URLs.** `script-src 'self'
   'wasm-unsafe-eval'` governs `audioWorklet.addModule`; `worker-src
   'self' blob:` does not reach it. signalsmith-stretch builds its
