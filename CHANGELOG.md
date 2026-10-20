@@ -12,6 +12,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **The account menu drops Projects and Sessions**, which the Music menu
   holds; it keeps the inbox, the account's settings and the rest.
+- **The footer's Music row** is Projects, Sessions and Ideas, as the menu;
+  the Session Recorder stays in its Tools row.
 
 ## [0.138.1] - 2026-10-20
 

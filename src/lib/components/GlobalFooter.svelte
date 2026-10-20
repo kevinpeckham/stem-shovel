@@ -32,11 +32,6 @@
 			<a class="footer-link" href="/{member.slug}/sessions" title="Practice and show recordings"
 				>Sessions</a
 			>
-			<a
-				class="footer-link"
-				href="/{member.slug}/sessions/record"
-				title="The room, in stereo, straight into the band's sessions">Session Recorder</a
-			>
 			<a class="footer-link" href="/idea-recorder" title="Your ideas and takes">Ideas</a>
 		</nav>
 	{/if}
