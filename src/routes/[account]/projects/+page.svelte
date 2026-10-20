@@ -51,7 +51,7 @@
 						}}
 						clearDefaultButtonClasses
 						buttonClasses="flex items-center gap-1.5 rounded border border-white/15 bg-white/5 px-2.5 py-1 text-13px hover-bg-white/10 hover-text-accent"
-						popoverClasses="text-14px"
+						popoverClasses="min-w-64 max-w-sm text-14px"
 					/>
 				</div>
 			{/if}
