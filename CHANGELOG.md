@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.140.0] - 2026-10-20
+
 ### Added
 
 - **Dawn without an account.** The multitrack recorder works signed out,
@@ -26,6 +28,31 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   the screen. Stems loaded from a song bring the song's tempo, time
   signature and key; New song with these tracks, in the Send to a song
   block, makes a fresh song with Dawn's.
+
+### Fixed
+
+- **Dawn's Song actions menu ran off the bottom of a short window**, its last
+  items out of reach; it now stops at the window's edge and scrolls.
+- **Opening a song's stems in Dawn could stop partway** when a file copy
+  between storage stores was retried; the copy is buffered, or made by the
+  store itself.
+- **A song loaded over one still decoding** left Dawn's "loading" count below
+  zero.
+
+### Technical
+
+- `@mediabunny/mp3-encoder` (LAME in WASM) behind `src/lib/audio/encodeMp3.ts`,
+  loaded on first use; `ExportOptions.format`.
+- `src/lib/audio/studioLocal.ts`: the browser-kept Dawn song; `StudioQueue`
+  keeps, adopts and discards the `local` idea's sources; the engine decodes a
+  blob handed with a source view (the CSP refuses `blob:` URLs).
+- `homeStudioSongId` app setting, `homeStudioSong`,
+  `makeHomeStudioSongFromFeatured`; the chosen song cannot be deleted (409).
+- `src/lib/utils/studioChanges.ts` both ways; `createSongWithChanges`;
+  `StudioKeyChangeSchema`.
+- `copyBlob` uses the SDK's server-side copy within a store.
+- Browser tests: `newStudioSong` fixture; the home demo's song survives
+  `deleteStudioSongs`.
 
 ## [0.139.0] - 2026-10-20
 
