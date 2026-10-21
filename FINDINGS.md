@@ -41,6 +41,8 @@ belong in CLAUDE.md or docs/, not here.
   rescues it, the matcher alone cannot); and one prompt deterministically
   returned an empty completion (0 output tokens, reproduced) — the
   draft has no retry, so a single retry-on-empty-text would be worth it.
+  (Both shipped in v0.142.0: the missing-tone penalty in `chordOf` and
+  one retry in `draftChartWithAi`; the entry above measures the result.)
   Also reproduced from scratch: kimi with default reasoning spends the
   whole output budget thinking (the Text-to-Beat lesson generalizes to
   every kimi call shape).
