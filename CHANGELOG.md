@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.143.0] - 2026-10-21
+
 ### Added
 
 - **A song's sample rate.** Dawn's Timing menu sets the song's sample rate (44.1, 48, 88.2 or 96 kHz; 48 kHz unless changed): the mix, the stems, the DAWproject, the session bundle and the Sandyne project come out at it on every machine, where before they took the device's rate (44.1 kHz on one Mac, 48 on another). Recording and playback stay at the device's rate; a source at another rate is resampled on the way out. Importing a file at a rate other than the song's says so, and the library shows the odd file's rate. The converter shows the project's rate and lets the viewer choose another.
