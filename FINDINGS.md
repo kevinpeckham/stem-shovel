@@ -7,6 +7,28 @@ Newest at the top of each section; say where the lesson came from so
 the code can be found. Things the repo already documents as conventions
 belong in CLAUDE.md or docs/, not here.
 
+## AI features
+
+- **The chart draft's hint design is measured, and it holds** — a
+  pre-registered external study (stem-bench Study 1,
+  github.com/kevinpeckham/stem-bench: 440 seeded bars, Basic Pitch on
+  synthesized songs, the hint ablated across four arms, five models;
+  full REPORT.md there). What matters to this code: DRAFT_MODEL in the
+  shipped configuration scores 99.8% bar accuracy, +9 points over the
+  matcher alone at about $0.10 a draft, never copies a wrong hint root
+  (0/438) and flags a wrong hint in `notes` in 11/16 songs; cheaper
+  substitutes (haiku, kimi) score BELOW the bare matcher in the same
+  configuration and copy wrong hints at 43–56%, so the hint line is
+  safe for fable and poison for small models. Two actionable specifics:
+  `chordOf`'s −0.04 bare-fifth penalty names root+fifth bars as major
+  or sus when no third sounds (3/28 on a power-chord song — the model
+  rescues it, the matcher alone cannot); and one prompt deterministically
+  returned an empty completion (0 output tokens, reproduced) — the
+  draft has no retry, so a single retry-on-empty-text would be worth it.
+  Also reproduced from scratch: kimi with default reasoning spends the
+  whole output budget thinking (the Text-to-Beat lesson generalizes to
+  every kimi call shape).
+
 ## Web Audio
 
 - **`setValueCurveAtTime` curves may not overlap, not even at their
