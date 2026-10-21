@@ -686,6 +686,11 @@
 		if (!files.length) return;
 		importing = true;
 		try {
+			// A DAWproject (or a zip holding one) is a whole song of its own, opened as a new one (docs/dawproject-plan.md); the rest land on this song.
+			const projects = files.filter((f) => /\.(dawproject|zip)$/i.test(f.name));
+			for (const f of projects) await importDawproject(f);
+			files = files.filter((f) => !projects.includes(f));
+			if (!files.length) return;
 			await ensureSong();
 			let track: StudioTrack | null =
 				studio.arrangement.tracks.find(
@@ -695,11 +700,6 @@
 				studio.addTrack(null, "Imports");
 			let at = studio.position;
 			for (const file of files) {
-				// A DAWproject (or a zip holding one): a whole song, opened as a new one (docs/dawproject-plan.md).
-				if (/\.(dawproject|zip)$/i.test(file.name)) {
-					await importDawproject(file);
-					continue;
-				}
 				if (/\.midi?$/i.test(file.name)) {
 					// A MIDI file: one clip of its notes on a MIDI track (docs/multitrack-recorder.md, phase 3).
 					const midiTrack = midiTrackFor();
@@ -764,7 +764,11 @@
 	 */
 	async function importDawproject(file: File) {
 		const { unzipSync, strFromU8 } = await import("fflate");
-		const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		const baseName = file.name.replace(/\.(dawproject|zip)$/i, "");
+		// A bare project.xml saved with the extension (some examples are): the project alone, no audio.
+		const bare = bytes[0] !== 0x50 || bytes[1] !== 0x4b;
+		const entries = bare ? { "project.xml": bytes } : unzipSync(bytes);
 		const names = Object.keys(entries);
 		const projectName = names.find((n) => /(^|\/)project\.xml$/.test(n));
 		if (!projectName) throw new Error(`${file.name} holds no project.xml: not a DAWproject`);
@@ -773,6 +777,7 @@
 		const read = readDawproject(
 			strFromU8(entries[projectName]!),
 			metaName ? strFromU8(entries[metaName]!) : null,
+			baseName,
 		);
 		// A fresh song to hold it: made in the account, or the browser-kept one started over.
 		if (studio.running) studio.stop();

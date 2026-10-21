@@ -259,6 +259,81 @@ describe("readDawproject", () => {
 		]);
 	});
 
+	it("reads a Bitwig 5.3 export's ways: an empty title, float-noise tempo, a switched-off send and clip, MIDI controller lanes", () => {
+		// Trimmed from a real export (Canon in D, Bitwig Studio 5.3.13, github.com/gmlewis/canon-in-d).
+		const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project version="1.0">
+    <Application name="Bitwig Studio" version="5.3.13"/>
+    <Transport>
+        <Tempo max="666.000000" min="20.000000" unit="bpm" value="100.000167" id="id0" name="Tempo"/>
+        <TimeSignature denominator="4" numerator="4" id="id1"/>
+    </Transport>
+    <Structure>
+        <Track contentType="notes" loaded="true" id="id2" name="Piano" color="#ff5706">
+            <Channel audioChannels="2" destination="id22" role="regular" solo="false" id="id3">
+                <Devices><Vst3Plugin deviceName="TripleCheese" deviceRole="instrument" loaded="true" id="id5" name="TripleCheese"><Parameters/><Enabled value="true" id="id8" name="On/Off"/><State path="plugins/9ff.vstpreset"/></Vst3Plugin></Devices>
+                <Mute value="false" id="id9" name="Mute"/>
+                <Pan max="1.000000" min="0.000000" unit="normalized" value="0.500000" id="id10" name="Pan"/>
+                <Sends>
+                    <Send destination="id17" type="post" id="id26"><Volume max="2.000000" min="0.000000" unit="linear" value="0.5" id="id27" name="Send level"/></Send>
+                    <Send destination="id17" type="post" id="id28"><Enable value="false" id="id30"/><Volume max="2.000000" min="0.000000" unit="linear" value="1.0" id="id29"/></Send>
+                </Sends>
+                <Volume max="2.000000" min="0.000000" unit="linear" value="1.250000" id="id11" name="Volume"/>
+            </Channel>
+        </Track>
+        <Track contentType="audio" loaded="true" id="id16" name="FX">
+            <Channel audioChannels="2" destination="id22" role="effect" solo="false" id="id17">
+                <Mute value="false" id="id18"/><Pan unit="normalized" value="0.5" id="id19"/><Volume unit="linear" value="1.0" id="id20"/>
+            </Channel>
+        </Track>
+        <Track contentType="audio notes" loaded="true" id="id21" name="Master">
+            <Channel audioChannels="2" role="master" solo="false" id="id22">
+                <Mute value="false" id="id23"/><Pan unit="normalized" value="0.5" id="id24"/><Volume unit="linear" value="1.0" id="id25"/>
+            </Channel>
+        </Track>
+    </Structure>
+    <Arrangement id="id34">
+        <Lanes timeUnit="beats" id="id35">
+            <Lanes track="id2" id="id36">
+                <Clips id="id37">
+                    <Clip time="0.0" duration="8.0" playStart="0.0" loopStart="0.0" loopEnd="8.0" enable="true" name="Piano">
+                        <Notes id="id38"><Note time="0.000000" duration="1.000000" channel="0" key="62" vel="0.800000" rel="0.500000"/></Notes>
+                        <Points unit="normalized" id="id39"><Target expression="channelController" channel="0" controller="7"/><RealPoint value="0.787402" interpolation="linear" time="0.000000"/></Points>
+                    </Clip>
+                    <Clip time="8.0" duration="4.0" playStart="0.0" enable="false" name="Muted">
+                        <Notes id="id40"><Note time="0.000000" duration="1.000000" channel="0" key="60" vel="0.8" rel="0.5"/></Notes>
+                    </Clip>
+                </Clips>
+            </Lanes>
+        </Lanes>
+        <TempoAutomation unit="bpm" id="id54"><Target parameter="id0"/><RealPoint value="100.000167" interpolation="linear" time="0.000000"/><RealPoint value="100.000167" interpolation="linear" time="400.000000"/><RealPoint value="50.000083" interpolation="linear" time="400.000000"/></TempoAutomation>
+    </Arrangement>
+    <Scenes id="id55"><Scene name="Scene 1" id="id56"><Lanes id="id57"/></Scene></Scenes>
+</Project>`;
+		const meta = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<MetaData><Title></Title><Artist></Artist><Album></Album><Comment></Comment></MetaData>`;
+		const read = readDawproject(xml, meta, "CanonInD");
+		expect(read.title).toBe("CanonInD");
+		expect(read.notes).toBe("Imported from Bitwig Studio 5.3.13.");
+		const a = read.arrangement;
+		expect(a.bpm).toBe(100);
+		// Two points on beat 400 (a jump written as a ramp of no length) are one step: the ruler keys its flags by time.
+		expect(a.tempoChanges).toEqual([{ start: 240, bpm: 50 }]);
+		expect(a.tracks.map((t) => [t.name, t.kind, t.gain])).toEqual([["Piano", "midi", 1.25]]);
+		expect(a.buses?.map((b) => b.name)).toEqual(["FX"]);
+		// The switched-off send is no send; the live one goes to the effect track.
+		expect(a.tracks[0]!.sends).toEqual([{ bus: a.buses![0]!.id, level: 0.5 }]);
+		// The switched-off clip stays out; the live clip's notes are in seconds at 100 bpm.
+		expect(a.clips.map((c) => [c.name, c.start, c.duration])).toEqual([["Piano", 0, 4.8]]);
+		expect(a.clips[0]!.notes).toEqual([{ t: 0, d: 0.6, p: 62, v: 0.8 }]);
+		expect(read.dropped).toEqual([
+			"TripleCheese on Piano",
+			"MIDI controller automation",
+			"Muted: switched off",
+			"clip launcher scenes",
+		]);
+	});
+
 	it("refuses what is not a project", () => {
 		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
 		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);

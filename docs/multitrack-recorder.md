@@ -1101,7 +1101,13 @@ arrangement, sets the title and notes, and reports what opened and what
 did not (an error-kind notification stays until read). A file missing
 from the archive, over the take ceiling or undecodable loses its clips
 and is reported. Browser spec `tests/e2e/studio-dawproject.spec.ts`: our
-own export opened again, signed in and signed out.
+own export opened again, signed in and signed out. Real Bitwig 5.3
+exports from public repositories read cleanly (docs/dawproject-plan.md,
+phase 3): an empty metadata title falls back to the archive's name, the
+tempo is rounded to two decimals, a send or clip switched off stays out,
+and MIDI controller lanes are reported once. A `.dawproject` that is a
+bare `project.xml` (some published examples are) opens too, without
+audio.
 
 ## A DAWproject into a song's files (2026-10-21)
 

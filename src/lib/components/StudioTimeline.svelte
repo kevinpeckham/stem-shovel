@@ -775,7 +775,8 @@
 				></div>
 			{/if}
 			<!-- Tempo and meter changes (D5): a flag each at the top; double-click edits, Delete on a focused one removes it. -->
-			{#each engine.tempoChanges as c (c.start)}
+			<!-- Keyed by time and place: two changes on one time (a jump an import wrote as two points) must not crash the ruler. -->
+			{#each engine.tempoChanges as c, i (`${c.start}#${i}`)}
 				<button
 					type="button"
 					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-blue-300/80 text-dark hover:bg-blue-200 focus-visible:ring-1 focus-visible:ring-white"
@@ -798,7 +799,7 @@
 					}}>{c.bpm}</button
 				>
 			{/each}
-			{#each engine.meterChanges as c (c.start)}
+			{#each engine.meterChanges as c, i (`${c.start}#${i}`)}
 				<button
 					type="button"
 					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-green-300/80 text-dark hover:bg-green-200 focus-visible:ring-1 focus-visible:ring-white"
@@ -824,7 +825,7 @@
 				>
 			{/each}
 			<!-- Key changes: a flag each (violet); double-click edits, Delete on a focused one removes it. -->
-			{#each engine.keyChanges as c (c.start)}
+			{#each engine.keyChanges as c, i (`${c.start}#${i}`)}
 				<button
 					type="button"
 					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-violet-300/80 text-dark hover:bg-violet-200 focus-visible:ring-1 focus-visible:ring-white"

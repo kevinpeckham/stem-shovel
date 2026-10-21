@@ -168,6 +168,26 @@ Effort: a day and a half for the job, the command, the Files listing and
 
 ### Phase 3: the other DAWs' dialects
 
+**Bitwig's, 2026-10-21.** Kevin owns none of these DAWs, so the files
+came from public repositories: three Bitwig Studio 5.3.13 exports
+(github.com/gmlewis: Canon in D, Dance of the Sugar Plum Fairy and its
+strings alone; MIDI arrangements of thirteen instruments, tempo
+automation, markers, sends, VST3 and built-in devices), a Bitwig 5.0
+example project with a warped drum loop (github.com/designerzen), and two
+small fixtures written by another DAWproject tool (Pulp). All read
+without an error; what they taught, now in the reader and its tests:
+Bitwig writes an empty metadata title (the song is named after the
+archive), tempos with float noise ("100.000167", rounded to two
+decimals), sends switched off with an `<Enable value="false"/>` (no
+send), clips with `enable="false"` (left out, reported), MIDI controller
+lanes as `Points` whose `Target` is an `expression` rather than a
+parameter (reported once as "MIDI controller automation"), a scenes
+section with clip slots (reported), and everything in beats with
+`loopStart`/`loopEnd` on clips (ignored: Dawn clips do not loop). Studio
+One and Cubase exports are still wanted; the probe that runs a folder of
+archives through the reader is easy to recreate (unzip with fflate,
+`readDawproject` under jsdom's `DOMParser`).
+
 Reading real exports from Bitwig, Studio One and Cubase will turn up
 things the specification allows and this plan does not name: nested
 timelines, `Lanes` per clip, clip launcher scenes, comping takes,
@@ -175,6 +195,73 @@ unusual time units, device chains inside channels. Each goes in as a
 parser case with a fixture. Budget half a day per DAW after the first
 real file arrives, and keep the dropped-items report honest: a user who
 sees "did not come across" trusts the rest.
+
+## What the format carries that Dawn lacks (2026-10-21)
+
+Kevin: "as you notice additional specs in the DAWproject file format for
+features Dawn may not currently support, let's create a list of
+additional features to consider adding to Dawn." From the schema
+(`Project.xsd`) and the real Bitwig exports, what a DAWproject can say
+and Dawn cannot yet, roughly in the order a songwriter would miss them:
+
+1. **Clip looping** (`loopStart`, `loopEnd`): a clip that repeats its
+   content for its length. Bitwig writes it on every clip. Dawn plays a
+   clip once; a loop would be a clip property the scheduler honours and
+   the timeline draws as repeats.
+2. **Switched-off clips** (`enable="false"`): a clip kept but silent,
+   the way a muted track is. Cheap: a flag on the clip, a dimmed drawing,
+   a menu item.
+3. **MIDI expression lanes** (`Points` with a `Target expression`:
+   controller, pitch bend, channel and polyphonic pressure, timbre) and
+   **release velocity** on a note (`rel`): CC lanes inside a notes clip.
+   The piano and the chord player take pitch bend and modulation today;
+   lanes would feed them from the clip.
+4. **Automation beyond volume and pan**: a send's level and its on/off,
+   mute as a lane, device parameters, and the master's own lanes. Dawn
+   has send and insert lanes in its schema (`send:<busId>`,
+   `insert:<id>:<param>`) and reads neither from a DAWproject yet; the
+   master has none.
+5. **Tempo ramps**: a `RealPoint` with `interpolation="linear"` between
+   tempos (a ritardando). Dawn's map is steps; a ramp would need the grid
+   and the scheduler to integrate a changing tempo.
+6. **Audio warping and stretch** (`Warps`, `algorithm="stretch"` and
+   kin): a loop at 170 bpm played at 149. Dawn plays files at their own
+   speed; a time-stretch (phase vocoder or granular) in the engine and a
+   warp-marker editor in the timeline are a project of their own.
+7. **Folder tracks**: a group with children that keep their own channels
+   and routing. Dawn flattens a group to a bus; a real hierarchy would
+   collapse in the timeline and mix as one.
+8. **The clip launcher** (`Scenes`, `ClipSlot`): Bitwig's and Live's
+   session view, scenes of clips fired live. Far from Dawn's timeline
+   model; worth knowing it exists in every Bitwig export (eight empty
+   scenes by default).
+9. **Devices and plugins**: built-in device chains with parameters and
+   state, VST3, CLAP and AU plugins with presets in the archive
+   (`plugins/*.vstpreset`). Dawn's inserts are its own; the plan's
+   further-out WAM 2.0 hosting is the only route to carrying a chain.
+10. **Mono tracks** (`audioChannels="1"`): a channel that is one channel.
+    Dawn's strips are stereo throughout; a mono track would halve a
+    mono take's processing and pan as a point source.
+11. **Metadata**: artist, album, original artist, songwriter, producer,
+    year, genre, copyright, comment, website. Dawn has a title and notes;
+    the song page has credits (`songCredit`) that could feed the export
+    and take the import.
+12. **Arbitrary track colours** (`color="#ff5706"`): Dawn has eight
+    tints; a free colour would carry over both ways.
+13. **Take lanes within a track** (`Lanes` nested under a track's lanes):
+    comping lanes. Dawn has alternates behind a clip, which is the same
+    idea in a different shape; nested lanes could map onto them.
+14. **Video** (`Video` clips over a file): a picture track to score to.
+    Not a songwriter's tool today; noted for completeness.
+15. **Cue markers with colours** and **time-signature denominators**
+    other than four (6/8 as 6 over 8, not 6 over 4): the stem player's
+    meter already keeps the denominator; Dawn counts quarters.
+
+The cheap ones (2, the on/off; 11, the metadata; 12, colours; 15's
+denominator) are an afternoon each. The ones a songwriter would feel
+most (1, clip looping; 3, expression lanes; 4, wider automation; 5,
+tempo ramps) are a few days each and worth their own plan. 6, 7, 8, 9
+and 13 are large; 10 and 14 are judgement calls.
 
 ## Recommendations
 

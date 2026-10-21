@@ -52,7 +52,12 @@ type TimeUnit = "beats" | "seconds";
  * anything over Dawn's limits), named for the user. Needs a `DOMParser`
  * (the browser, or jsdom in tests).
  */
-export function readDawproject(projectXml: string, metadataXml?: string | null): DawprojectRead {
+export function readDawproject(
+	projectXml: string,
+	metadataXml?: string | null,
+	/** The title when the metadata names none (Bitwig writes an empty one): the archive's own name, say. */
+	fallbackTitle = "Imported project",
+): DawprojectRead {
 	const doc = new DOMParser().parseFromString(projectXml, "application/xml");
 	if (doc.getElementsByTagName("parsererror").length || doc.documentElement.localName !== "Project")
 		throw new Error("Not a DAWproject: project.xml did not parse");
@@ -81,7 +86,9 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 	// ── Transport, and the tempo map that turns beats into seconds ───────
 	const transport = kid(root, "Transport");
 	const tempoEl = kid(transport, "Tempo");
-	const bpm = clamp(num(tempoEl, "value", 120), 30, 300);
+	// Bitwig writes its tempo with float noise ("100.000167"): two decimals is what a tempo means.
+	const round2 = (v: number) => Math.round(v * 100) / 100;
+	const bpm = clamp(round2(num(tempoEl, "value", 120)), 30, 300);
 	const sigEl = kid(transport, "TimeSignature");
 	const beatsPerBar = clamp(Math.round(num(sigEl, "numerator", 4)), 2, 7);
 	const arrangementEl = kid(root, "Arrangement");
@@ -89,11 +96,14 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 	const tempoSteps: { beat: number; bpm: number }[] = [{ beat: 0, bpm }];
 	for (const p of kids(kid(arrangementEl, "TempoAutomation"), "RealPoint")) {
 		const beat = num(p, "time", 0);
-		const value = clamp(num(p, "value", bpm), 30, 300);
+		const value = clamp(round2(num(p, "value", bpm)), 30, 300);
 		if (beat <= 0) tempoSteps[0] = { beat: 0, bpm: value };
 		else tempoSteps.push({ beat, bpm: value });
 	}
 	tempoSteps.sort((a, b) => a.beat - b.beat);
+	// Two points on one beat (a jump, written as a ramp of no length): the later one is the step; the ruler keys its flags by time.
+	for (let i = tempoSteps.length - 1; i > 0; i--)
+		if (tempoSteps[i]!.beat === tempoSteps[i - 1]!.beat) tempoSteps.splice(i - 1, 1);
 	const beatsToSeconds = (beats: number): number => {
 		let s = 0;
 		for (let i = 0; i < tempoSteps.length; i++) {
@@ -223,6 +233,8 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 		const output = to?.kind === "bus" && to.id !== owner.id ? to.id : undefined;
 		const sends = kids(kid(channel, "Sends"), "Send")
 			.map((s) => {
+				// A send switched off (Bitwig's <Enable value="false"/>) is no send.
+				if (attr(kid(s, "Enable"), "value") === "false") return null;
 				const target = attr(s, "destination");
 				const bus = target ? channelOwner.get(target) : undefined;
 				if (bus?.kind !== "bus" || !busById.has(bus.id)) return null;
@@ -262,6 +274,10 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 			drop(`${name || "A clip"} outside a track`);
 			return;
 		}
+		if (attr(el, "enable") === "false") {
+			drop(`${name || "A clip"}: switched off`);
+			return;
+		}
 		const contentUnit = unitOf(el, unit, "contentTimeUnit");
 		const fadeUnit = unitOf(el, unit, "fadeTimeUnit");
 		const start = seconds(baseSeconds + toSeconds(num(el, "time", 0), unit));
@@ -277,6 +293,8 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 			return;
 		}
 		if (kid(el, "Lanes")) drop(`${name || "A clip"}: nested lanes`);
+		// Automation inside the clip (Bitwig keeps a notes clip's controller lanes here): the same reading, mostly a report.
+		for (const pts of kids(el, "Points")) readPoints(pts, contentUnit);
 		const warps = kid(el, "Warps");
 		const audio = kid(el, "Audio") ?? kid(warps, "Audio");
 		const notesEl = kid(el, "Notes");
@@ -384,14 +402,17 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 		drop(`${name || "A clip"}: nothing Dawn plays`);
 	};
 	const readPoints = (el: Element, unit: TimeUnit) => {
-		const target = attr(kid(el, "Target"), "parameter");
+		const targetEl = kid(el, "Target");
+		const target = attr(targetEl, "parameter");
 		const hit = target ? paramOwner.get(target) : undefined;
 		const pts = kids(el, "RealPoint");
 		if (!hit || hit.owner.kind === "master") {
-			if (pts.length)
-				drop(
-					`automation of ${attr(kid(el, "Target"), "parameter") ?? "a parameter"}${hit ? ` on ${hit.owner.name}` : ""}`,
-				);
+			if (!pts.length) return;
+			// A MIDI expression (a controller, pitch bend, pressure) inside a notes clip: Bitwig's way of keeping CC lanes.
+			const expression = attr(targetEl, "expression");
+			if (expression)
+				drop(`MIDI ${expression === "channelController" ? "controller" : expression} automation`);
+			else drop(`automation of ${target ?? "a parameter"}${hit ? ` on ${hit.owner.name}` : ""}`);
 			return;
 		}
 		const unitAttr = attr(el, "unit");
@@ -461,6 +482,7 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 	const tempoChanges = tempoSteps
 		.slice(1)
 		.map((s) => ({ start: seconds(beatsToSeconds(s.beat)), bpm: s.bpm }))
+		.filter((c, i, all) => c.start > 0 && (i === 0 || c.start !== all[i - 1]!.start))
 		.slice(0, 64);
 	const meterChanges = kids(kid(arrangementEl, "TimeSignatureAutomation"), "TimeSignaturePoint")
 		.map((p) => ({
@@ -470,6 +492,7 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 		.filter((p) => p.beat > 0)
 		.sort((a, b) => a.beat - b.beat)
 		.map((p) => ({ start: seconds(beatsToSeconds(p.beat)), beatsPerBar: p.beatsPerBar }))
+		.filter((c, i, all) => i === 0 || c.start !== all[i - 1]!.start)
 		.slice(0, 64);
 
 	// ── Metadata ─────────────────────────────────────────────────────────
@@ -509,7 +532,7 @@ export function readDawproject(projectXml: string, metadataXml?: string | null):
 		...(meterChanges.length ? { meterChanges } : {}),
 	};
 	return {
-		title: title.slice(0, 120) || "Imported project",
+		title: title.slice(0, 120) || fallbackTitle.slice(0, 120) || "Imported project",
 		notes: noteLines.join("\n"),
 		arrangement,
 		files,
