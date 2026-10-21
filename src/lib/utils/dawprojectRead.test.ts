@@ -334,6 +334,48 @@ describe("readDawproject", () => {
 		]);
 	});
 
+	it("reads a Cubase-bound file's ways: a channelless folder track skipped, colours with an alpha byte, seconds throughout", () => {
+		// The shape a third-party converter writes for Cubase 14 (github.com/poznas/flp-to-dawproject); a Cubase export itself is still wanted.
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Project version="1.0">
+	<Application name="Cubase" version="14.0.5" />
+	<Transport><Tempo unit="bpm" value="130" id="tempo" /><TimeSignature numerator="4" denominator="4" /></Transport>
+	<Structure>
+		<Track contentType="tracks" id="id1" name="Input/Output" color="#929395ff" />
+		<Track contentType="audio" id="id2" name="Track 3" color="#7fb2c2ff">
+			<Channel role="regular" audioChannels="2" id="id3" name="Track 3" destination="id0">
+				<Mute value="false" name="Mute" /><Pan value="0.5" unit="normalized" min="0" max="1" name="Pan" /><Volume value="1" unit="linear" min="0" max="2" name="Volume" />
+			</Channel>
+		</Track>
+	</Structure>
+	<Arrangement>
+		<Lanes timeUnit="seconds">
+			<Lanes track="id1" />
+			<markers id="mk"><Marker time="17.5" name="Chorus"/></markers>
+			<Points unit="bpm" id="tp"><Target parameter="tempo"/><RealPoint time="0.0" value="130.0"/><RealPoint time="10.0" value="140.0"/></Points>
+			<Lanes track="id2">
+				<Clips>
+					<Clip time="35.740385" duration="0.461538" fadeTimeUnit="seconds" contentTimeUnit="seconds" playStart="1.5" name="hit" enable="true">
+						<Audio sampleRate="44100" channels="2" duration="64.396187"><File path="audio/hit.wav" external="false" /></Audio>
+					</Clip>
+				</Clips>
+			</Lanes>
+		</Lanes>
+	</Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "cubase");
+		const a = read.arrangement;
+		// A lowercase <markers> (a converter's slip) reads as markers; tempo points in the lanes are tempo changes.
+		expect(a.markers?.map((m) => [m.t, m.name])).toEqual([[17.5, "Chorus"]]);
+		expect(a.tempoChanges).toEqual([{ start: 10, bpm: 140 }]);
+		expect(a.tracks.map((t) => [t.name, t.colour])).toEqual([["Track 3", "sea"]]);
+		expect(a.tracks[0]!.output).toBeUndefined();
+		expect(a.clips.map((c) => [c.name, c.start, c.duration, c.offset])).toEqual([
+			["hit", 35.7404, 0.4615, 1.5],
+		]);
+		expect(read.dropped).toEqual([]);
+	});
+
 	it("refuses what is not a project", () => {
 		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
 		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);

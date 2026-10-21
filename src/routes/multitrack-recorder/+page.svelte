@@ -856,8 +856,14 @@
 		const tracks = arrangement.tracks.length;
 		const clips = arrangement.clips.length;
 		const opened = `“${read.title}” opened: ${tracks} ${tracks === 1 ? "track" : "tracks"}, ${clips} ${clips === 1 ? "clip" : "clips"}`;
+		// A big session drops hundreds of plugins: the first dozen by name, the rest as a count.
+		const shown = read.dropped.slice(0, 12);
+		const more = read.dropped.length - shown.length;
 		if (read.dropped.length)
-			notify(`${opened}. Did not come across: ${read.dropped.join("; ")}.`, { kind: "error" });
+			notify(
+				`${opened}. Did not come across: ${shown.join("; ")}${more ? `; and ${more} more` : ""}.`,
+				{ kind: "error" },
+			);
 		else notify(opened);
 	}
 	/** A DAWproject attachment opened from a song's Files (docs/dawproject-plan.md, phase 2). */

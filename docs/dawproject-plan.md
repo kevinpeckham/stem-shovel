@@ -188,6 +188,24 @@ One and Cubase exports are still wanted; the probe that runs a folder of
 archives through the reader is easy to recreate (unzip with fflate,
 `readDawproject` under jsdom's `DOMParser`).
 
+**Converters', the same day.** No Cubase, Nuendo or Studio One export is
+published anywhere I could find (GitHub code search over every
+`.dawproject` and `project.xml`), so the next best were files other tools
+wrote for those DAWs: a Reaper drum session of 45 tracks and 1,316 clips
+converted by ProjectConverter 1.2.8 (kept as a reference by
+github.com/poznas/flp-to-dawproject), and that converter's own
+Cubase-bound output. They taught: a lowercase `<markers>` element (names
+now compare without case), tempo automation as `Points` on the Tempo
+parameter inside the lanes rather than `TempoAutomation` (read as tempo
+changes), a folder track with no channel and no children (Cubase's
+"Input/Output", `contentType="tracks"`; skipped), colours with an alpha
+byte (`#a2eabfff`; the tint is the first six digits), hundreds of
+plugins to report (the page shows a dozen and a count), and Dawn's
+limits met for real (the first 16 tracks, 8 buses and 400 clips come in,
+the rest are named). The converter's warps map a whole file across a
+clip, which reads as a stretch and is reported as one; that is the
+converter's doing, not the DAWs'.
+
 Reading real exports from Bitwig, Studio One and Cubase will turn up
 things the specification allows and this plan does not name: nested
 timelines, `Lanes` per clip, clip launcher scenes, comping takes,

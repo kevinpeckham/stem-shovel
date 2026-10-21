@@ -68,8 +68,10 @@ export function readDawproject(
 	};
 
 	// ── Helpers over the DOM ─────────────────────────────────────────────
+	// Element names compared without case: a converter wrote `<markers>` for `<Markers>`, and the schema's names are distinct either way.
+	const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 	const kids = (el: Element | null | undefined, tag: string): Element[] =>
-		el ? Array.from(el.children).filter((c) => c.localName === tag) : [];
+		el ? Array.from(el.children).filter((c) => same(c.localName, tag)) : [];
 	const kid = (el: Element | null | undefined, tag: string): Element | null =>
 		kids(el, tag)[0] ?? null;
 	const attr = (el: Element | null | undefined, name: string): string | null =>
@@ -86,6 +88,9 @@ export function readDawproject(
 	// ── Transport, and the tempo map that turns beats into seconds ───────
 	const transport = kid(root, "Transport");
 	const tempoEl = kid(transport, "Tempo");
+	const tempoParamId = attr(tempoEl, "id");
+	/** Tempo automation written as Points on the Tempo parameter inside the lanes (ProjectConverter's way), in seconds or beats. */
+	const laneTempo: { start: number; bpm: number }[] = [];
 	// Bitwig writes its tempo with float noise ("100.000167"): two decimals is what a tempo means.
 	const round2 = (v: number) => Math.round(v * 100) / 100;
 	const bpm = clamp(round2(num(tempoEl, "value", 120)), 30, 300);
@@ -135,8 +140,13 @@ export function readDawproject(
 	const buses: StudioBus[] = [];
 	let master = 1;
 	const pending: { owner: Owner; channel: Element | null }[] = [];
-	const tint = (hex: string | null) =>
-		hex ? STEM_TINTS.find((t) => t.hex.toLowerCase() === hex.toLowerCase())?.id : undefined;
+	// Cubase writes colours with an alpha byte ("#a2eabfff"); the tint is the first six digits.
+	const tint = (hex: string | null) => {
+		const six = hex?.match(/^#?([0-9a-f]{6})/i)?.[1];
+		return six
+			? STEM_TINTS.find((t) => t.hex.toLowerCase() === `#${six.toLowerCase()}`)?.id
+			: undefined;
+	};
 	const volumeOf = (el: Element | null): number => {
 		if (!el) return 1;
 		const value = num(el, "value", 1);
@@ -173,6 +183,8 @@ export function readDawproject(
 		const role = attr(channel, "role");
 		const children = kids(el, "Track");
 		const trackId = attr(el, "id");
+		// A folder with nothing in it and no channel (Cubase's "Input/Output" track, contentType "tracks") is not a track.
+		if (!channel && children.length === 0) return;
 		if (role === "master") {
 			master = clamp(volumeOf(kid(channel, "Volume")), 0, 1);
 			const owner: Owner = { kind: "master", id: "master", name };
@@ -406,6 +418,14 @@ export function readDawproject(
 		const target = attr(targetEl, "parameter");
 		const hit = target ? paramOwner.get(target) : undefined;
 		const pts = kids(el, "RealPoint");
+		if (target && tempoParamId && target === tempoParamId) {
+			for (const p of pts)
+				laneTempo.push({
+					start: seconds(toSeconds(num(p, "time", 0), unit)),
+					bpm: clamp(round2(num(p, "value", bpm)), 30, 300),
+				});
+			return;
+		}
 		if (!hit || hit.owner.kind === "master") {
 			if (!pts.length) return;
 			// A MIDI expression (a controller, pitch bend, pressure) inside a notes clip: Bitwig's way of keeping CC lanes.
@@ -449,17 +469,17 @@ export function readDawproject(
 		const track = attr(el, "track");
 		const own = track ? (trackOwner.get(track) ?? null) : owner;
 		for (const child of Array.from(el.children)) {
-			switch (child.localName) {
-				case "Lanes":
+			switch (child.localName.toLowerCase()) {
+				case "lanes":
 					readLanes(child, own, here);
 					break;
-				case "Clips":
+				case "clips":
 					for (const c of kids(child, "Clip")) readClip(c, own, unitOf(child, here), 0);
 					break;
-				case "Points":
+				case "points":
 					readPoints(child, unitOf(child, here));
 					break;
-				case "Markers":
+				case "markers":
 					readMarkers(child, here);
 					break;
 				default:
@@ -479,9 +499,14 @@ export function readDawproject(
 	}
 
 	// ── Tempo and meter changes on the ruler ─────────────────────────────
-	const tempoChanges = tempoSteps
-		.slice(1)
-		.map((s) => ({ start: seconds(beatsToSeconds(s.beat)), bpm: s.bpm }))
+	// The tempo map's steps, and any tempo points the lanes carried (a point at zero is the song's own tempo).
+	const atZero = laneTempo.find((c) => c.start === 0);
+	if (atZero && tempoSteps.length === 1) tempoSteps[0] = { beat: 0, bpm: atZero.bpm };
+	const tempoChanges = [
+		...tempoSteps.slice(1).map((s) => ({ start: seconds(beatsToSeconds(s.beat)), bpm: s.bpm })),
+		...laneTempo,
+	]
+		.sort((a, b) => a.start - b.start)
 		.filter((c, i, all) => c.start > 0 && (i === 0 || c.start !== all[i - 1]!.start))
 		.slice(0, 64);
 	const meterChanges = kids(kid(arrangementEl, "TimeSignatureAutomation"), "TimeSignaturePoint")
