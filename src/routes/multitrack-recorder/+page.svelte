@@ -59,6 +59,7 @@
 		studioSong,
 		importSongStems,
 		createSongWithChanges,
+		saveDawproject,
 	} from "#lib/remote/studio.remote.js";
 	import {
 		createStudioComment,
@@ -98,7 +99,7 @@
 		StudioSongView,
 		StudioTrack,
 	} from "#lib/val/StudioSchema.js";
-	import { refreshAll } from "$app/navigation";
+	import { refreshAll, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onMount, untrack } from "svelte";
 
@@ -365,6 +366,8 @@
 					null,
 			);
 			void findKeptSong();
+			// A DAWproject attachment sent here from a song's Files ("Open in Dawn"): fetched and opened as a new song.
+			if (data.openFile?.url) void openAttachment(data.openFile);
 		}
 		return () => {
 			autosaveNow();
@@ -851,6 +854,40 @@
 		if (read.dropped.length)
 			notify(`${opened}. Did not come across: ${read.dropped.join("; ")}.`, { kind: "error" });
 		else notify(opened);
+	}
+	/** A DAWproject attachment opened from a song's Files (docs/dawproject-plan.md, phase 2). */
+	async function openAttachment(file: { url: string; filename: string; title: string }) {
+		importing = true;
+		try {
+			const res = await fetch(file.url);
+			if (!res.ok) throw new Error(`${res.status} fetching ${file.filename}`);
+			await importDawproject(new File([await res.blob()], file.filename));
+			replaceState("/multitrack-recorder", {});
+		} catch (e) {
+			notify(`Could not open ${file.title || file.filename}: ${errorMessage(e)}`, {
+				kind: "error",
+			});
+		} finally {
+			importing = false;
+		}
+	}
+	// ── A DAWproject of this song into a song's files (docs/dawproject-plan.md, phase 2) ──
+	let dawprojectAudio = $state<"flac" | "wav24" | "wav16">("flac");
+	let savingDawproject = $state(false);
+	async function saveDawprojectToSong() {
+		if (!targetSong || !songId) return;
+		savingDawproject = true;
+		try {
+			await autosaveNow();
+			await saveDawproject({ ideaId: songId, songId: targetSong.id, audio: dawprojectAudio });
+			notify(
+				`The DAWproject of “${title || "this song"}” is being made for ${targetSong.title}: you will hear, with its link, when it is in the song's files`,
+			);
+		} catch (e) {
+			notify(`Could not start the DAWproject: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			savingDawproject = false;
+		}
 	}
 	let selectedClip = $derived(studio.arrangement.clips.find((c) => c.id === selected) ?? null);
 	function splitSelected() {
@@ -2849,6 +2886,32 @@
 					>
 						<span class="i-ph-stack" aria-hidden="true"></span> Add tracks as stems
 					</button>
+					<!-- A DAWproject into the song's files, rendered by the jobs function; the link arrives as a notification. -->
+					<div class="flex flex-wrap items-center gap-2">
+						<button
+							class="button button-xs justify-start"
+							type="button"
+							disabled={savingDawproject ||
+								!targetSong ||
+								!songId ||
+								!studio.arrangement.clips.length}
+							title="A DAWproject of this song, made in the background and kept in the song's files with a permanent link; opens in Bitwig, Studio One, Cubase, Nuendo and Dawn"
+							onclick={() => void saveDawprojectToSong()}
+						>
+							<span class="i-ph-archive" aria-hidden="true"></span>
+							{savingDawproject ? "Starting…" : "Save a DAWproject to the song"}
+						</button>
+						<select
+							class="field"
+							aria-label="Audio inside the DAWproject"
+							value={dawprojectAudio}
+							onchange={(e) => (dawprojectAudio = e.currentTarget.value as typeof dawprojectAudio)}
+						>
+							<option value="flac">FLAC</option>
+							<option value="wav24">24-bit WAV</option>
+							<option value="wav16">16-bit WAV</option>
+						</select>
+					</div>
 				</div>
 				<!-- A fresh song from these tracks, with Dawn's tempo, meter and key as the song's changes. -->
 				<label class="block border-t border-white/10 pt-2">

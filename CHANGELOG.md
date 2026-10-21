@@ -15,6 +15,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   tracks, groups as buses, levels, routing, sends, clips with fades, MIDI
   notes, volume and pan automation, tempo and meter changes, markers; what
   cannot come across is named when the song opens.
+- **Save a DAWproject to a song.** From Dawn's Send block: the archive is
+  made in the background (FLAC, or 24- or 16-bit WAV inside), kept in the
+  song's attachments with a permanent link, and announced with a
+  notification; Open in Dawn on the attachment brings it back as a new
+  song. A DAWproject uploaded as an attachment opens the same way.
 
 ## [0.140.1] - 2026-10-21
 

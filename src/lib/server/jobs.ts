@@ -76,5 +76,8 @@ export const scheduleSessionPeaks = (recordingIds: string[]) =>
 /** Measures stems that have no stored length, peaks or channels (docs/uploads-and-blob.md, "Stems measured after the fact"). */
 export const scheduleStemMetadata = (stemIds: string[]) => scheduleJob("stem-metadata", stemIds);
 /** A ready notation file is engraved to a PDF (src/lib/server/notationPdf.ts). */
+/** A DAWproject of a Dawn song rendered into a song's files (docs/dawproject-plan.md, phase 2): the file row made first. */
+export const scheduleDawprojectExport = (fileId: string) =>
+	scheduleJob("dawproject-export", [fileId]);
 export const scheduleNotationPdf = (notationId: string) =>
 	scheduleJob("notation-pdf", [notationId]);

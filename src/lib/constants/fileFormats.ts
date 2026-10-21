@@ -6,7 +6,7 @@
  * is a claim; the server checks the stored bytes by kind at ready) and
  * decides the size ceiling, the signature check and how the page shows it.
  */
-export const FILE_KINDS = ["pdf", "image", "audio", "text", "midi", "other"] as const;
+export const FILE_KINDS = ["pdf", "image", "audio", "text", "midi", "dawproject", "other"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
 
 /** Extension → kind and content type. Anything else is "other", `application/octet-stream`. */
@@ -30,6 +30,8 @@ const EXTENSIONS: Record<string, { kind: FileKind; type: string }> = {
 	markdown: { kind: "text", type: "text/markdown" },
 	mid: { kind: "midi", type: "audio/midi" },
 	midi: { kind: "midi", type: "audio/midi" },
+	// A whole session for Bitwig, Studio One, Cubase or Dawn (docs/dawproject-plan.md).
+	dawproject: { kind: "dawproject", type: "application/vnd.bitwig.dawproject" },
 };
 
 const extensionOf = (filename: string) =>
@@ -63,6 +65,8 @@ export const FILE_MAX_BYTES: Record<FileKind, number> = {
 	audio: 60 * 1024 * 1024,
 	text: 2 * 1024 * 1024,
 	midi: 2 * 1024 * 1024,
+	// Made by the jobs function from a Dawn song (never through the browser's upload); a hand-uploaded one has the same room.
+	dawproject: 1024 * 1024 * 1024,
 	other: 25 * 1024 * 1024,
 };
 export const MAX_FILES_PER_SONG = 40;
@@ -106,6 +110,7 @@ export const FILE_KIND_LABELS: Record<FileKind, string> = {
 	audio: "Audio",
 	text: "Text",
 	midi: "MIDI",
+	dawproject: "DAWproject",
 	other: "File",
 };
 

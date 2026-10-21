@@ -515,6 +515,28 @@ export async function notifyStudioShared(accountId: string, ideaId: string, byId
 }
 
 /** Someone accepted an invitation: the person who sent it hears. */
+/** A DAWproject rendered from a Dawn song (docs/dawproject-plan.md, phase 2): the one who asked gets the link, or the reason it failed. */
+export async function notifyDawprojectExport(
+	userId: string,
+	accountId: string,
+	outcome: { title: string; href: string } | { title: string; failed: string },
+) {
+	await notifyUsers([userId], {
+		kind: "song",
+		accountId,
+		title:
+			"failed" in outcome
+				? `The DAWproject of "${outcome.title}" could not be made`
+				: `The DAWproject of "${outcome.title}" is ready`,
+		body:
+			"failed" in outcome
+				? outcome.failed
+				: "Open it in Bitwig, Studio One, Cubase or Dawn; the link is its permanent address.",
+		href: "failed" in outcome ? "/multitrack-recorder" : outcome.href,
+		subjectId: `dawproject:${outcome.title}:${Date.now()}`,
+	});
+}
+
 export async function notifyInvitationAccepted(
 	accepted: {
 		invitedBy: string | null;

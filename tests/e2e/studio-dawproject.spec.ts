@@ -132,3 +132,80 @@ test("exports a DAWproject and opens it again as a new song", async ({ page, bro
 	);
 	await visitor.context().close();
 });
+
+/**
+ * Phase 2: a DAWproject saved into a song's files by the jobs function
+ * (docs/multitrack-recorder.md, "A DAWproject into a song's files"): from
+ * Dawn's Send block into Eat All the Clocks, the attachment appears once
+ * rendered, Open in Dawn brings it back as a new song, and the file is
+ * removed at the end.
+ */
+test("saves a DAWproject into a song's files and opens it from there", async ({ page, errors }) => {
+	test.setTimeout(300_000);
+	await open(page, "/multitrack-recorder", "__studio");
+	await deleteStudioSongs(page);
+	await newStudioSong(page);
+	await page.getByLabel("Song title").fill("Saved to files");
+	await page.getByLabel("Song title").press("Enter");
+	await page.locator("input[type=file]").setInputFiles(path.resolve("static/stems/bass.wav"));
+	await until(page, ([w]) => w.__studio.arrangement.clips.length === 1);
+	await until(page, ([w]) => !Object.values(w.__studio.sources).some((s: any) => s.pending), {
+		ms: 90_000,
+	});
+	await page.getByRole("button", { name: "Song actions", exact: true }).click();
+	const songSelect = page.getByRole("combobox", { name: "Song", exact: true });
+	const value = await songSelect.evaluate(
+		(el: HTMLSelectElement) =>
+			[...el.options].find((o) => /eat all the clocks/i.test(o.textContent ?? ""))?.value ?? "",
+	);
+	expect(value).not.toBe("");
+	await songSelect.selectOption(value);
+	await page.getByRole("button", { name: "Save a DAWproject to the song" }).click();
+	await expect(page.getByText(/is being made for/)).toBeVisible();
+	await page.keyboard.press("Escape");
+
+	// The attachment lands once the jobs function has rendered it.
+	const songPage = "/mmkk/projects/badverbs/eat-all-the-clocks";
+	const tile = page.getByRole("listitem", { name: "Saved to files (DAWproject)" });
+	for (let i = 0; i < 40; i++) {
+		await open(page, songPage);
+		await page.getByRole("button", { name: /Show the attachments/ }).click();
+		if ((await tile.count()) && (await tile.getByRole("link", { name: "Open in Dawn" }).count()))
+			break;
+		await page.waitForTimeout(5000);
+	}
+	await expect(tile.getByRole("link", { name: "Open in Dawn" })).toBeVisible();
+	// The file is a DAWproject: a zip with project.xml and one FLAC.
+	const code = await tile.evaluate(
+		(el) =>
+			el
+				.querySelector('a[href^="/f/"]')
+				?.getAttribute("href")
+				?.match(/\/f\/([^?/]+)/)?.[1] ?? "",
+	);
+	if (code) {
+		const res = await page.request.get(`/f/${code}?download=1`);
+		expect(res.status()).toBe(200);
+		const inside = unzipSync(new Uint8Array(await res.body()));
+		expect(Object.keys(inside)).toContain("project.xml");
+		expect(Object.keys(inside).some((n) => /^audio\/.*\.flac$/.test(n))).toBe(true);
+	}
+	// Open in Dawn: a new song from the attachment.
+	await tile.getByRole("link", { name: "Open in Dawn" }).click();
+	await page.waitForFunction(() => !!(window as unknown as { __studio?: unknown }).__studio);
+	await expect(page.getByLabel("Song title")).toHaveValue("Saved to files", { timeout: 90_000 });
+	await until(page, ([w]) => w.__studio.arrangement.clips.length === 1, { ms: 60_000 });
+	await until(page, ([w]) => !Object.values(w.__studio.sources).some((s: any) => s.pending), {
+		ms: 90_000,
+	});
+	expect(errors).toEqual([]);
+	// Cleanup: the attachment, then the bot's songs.
+	await open(page, songPage);
+	await page.getByRole("button", { name: /Show the attachments/ }).click();
+	await tile.getByRole("button", { name: "Actions for Saved to files (DAWproject)" }).click();
+	page.once("dialog", (d) => d.accept());
+	await page.getByRole("button", { name: "Remove" }).click();
+	await expect(tile).toHaveCount(0, { timeout: 15_000 });
+	await open(page, "/multitrack-recorder", "__studio");
+	await deleteStudioSongs(page);
+});

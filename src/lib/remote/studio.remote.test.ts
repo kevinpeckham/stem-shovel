@@ -13,7 +13,7 @@ import {
 	fakeId,
 	httpError,
 } from "../../../tests/helpers/fakeRequestEvent";
-import { data, givenRow, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
+import { data, givenRow, jobs, resetRemoteMocks } from "../../../tests/helpers/fakeServerModules";
 
 /**
  * Authorization of the Studio's remote functions: a song is the caller's own
@@ -86,6 +86,59 @@ describe("createSongWithChanges (a fresh song from a Dawn song)", () => {
 				changes: [{ kind: "meter", start: 0, value: "lots" }],
 			}),
 		).rejects.toBeDefined();
+	});
+});
+
+describe("saveDawproject (a DAWproject of a Dawn song into a song's files)", () => {
+	const IDEA = fakeId("idea-dawn");
+	const TARGET = fakeId("song-target");
+	const input = {
+		title: "Mine",
+		revision: 3,
+		arrangement: { version: 1, clips: [{ id: "c1", sourceId: "s1" }], tracks: [] },
+		sources: [],
+	};
+	beforeEach(() => {
+		data.studioSongAccess.mockResolvedValue({ accountId: ACCOUNT, createdBy: USER, shared: false });
+		givenRow("song", { accountId: ACCOUNT });
+		data.studioExportInput.mockResolvedValue(input);
+		data.createDawprojectFile.mockResolvedValue({
+			id: fakeId("file-one"),
+			shareCode: "code0123code0123",
+		});
+	});
+	it("404 for an outsider", async () => {
+		asOutsider();
+		await expect(
+			call(studio.saveDawproject, { ideaId: IDEA, songId: TARGET, audio: "flac" }),
+		).rejects.toMatchObject(httpError(404));
+		expect(data.createDawprojectFile).not.toHaveBeenCalled();
+	});
+	it("an editor who made the Dawn song gets the file row and the job scheduled", async () => {
+		asEditorOf(ACCOUNT);
+		await expect(
+			call(studio.saveDawproject, { ideaId: IDEA, songId: TARGET, audio: "wav24" }),
+		).resolves.toEqual({ fileId: fakeId("file-one"), shareCode: "code0123code0123" });
+		expect(data.createDawprojectFile).toHaveBeenCalledWith(ACCOUNT, USER, TARGET, {
+			ideaId: IDEA,
+			title: "Mine",
+			audio: "wav24",
+		});
+		expect(jobs.scheduleDawprojectExport).toHaveBeenCalledWith(fakeId("file-one"));
+	});
+	it("400 for a Dawn song with nothing in it, 409 for a song with no room", async () => {
+		asEditorOf(ACCOUNT);
+		data.studioExportInput.mockResolvedValueOnce({
+			...input,
+			arrangement: { ...input.arrangement, clips: [] },
+		});
+		await expect(
+			call(studio.saveDawproject, { ideaId: IDEA, songId: TARGET, audio: "flac" }),
+		).rejects.toMatchObject(httpError(400));
+		data.createDawprojectFile.mockResolvedValueOnce("full");
+		await expect(
+			call(studio.saveDawproject, { ideaId: IDEA, songId: TARGET, audio: "flac" }),
+		).rejects.toMatchObject(httpError(409));
 	});
 });
 

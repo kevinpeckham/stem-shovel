@@ -1,5 +1,6 @@
 import { background } from "#lib/server/background.js";
 import { isJobsToken } from "#lib/server/jobs.js";
+import { renderDawprojectExport } from "#lib/server/dawprojectExport.js";
 import { ensureOriginalMix } from "#lib/server/mix.js";
 import { ensureSongNotes, traceTranscriptionDeps } from "#lib/server/notes.js";
 import { renderNotationPdf } from "#lib/server/notationPdf.js";
@@ -69,6 +70,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			case "notation-pdf":
 				for (const id of ids) await renderNotationPdf(id);
+				break;
+			case "dawproject-export":
+				for (const id of ids) await renderDawprojectExport(id);
 				break;
 		}
 	});

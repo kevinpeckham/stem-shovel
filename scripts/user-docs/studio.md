@@ -64,6 +64,10 @@ Dawn works signed out: record, arrange, mix and export as anyone does. The song 
 
 **Import audio, MIDI or DAWproject…** opens a `.dawproject` from Bitwig Studio, Studio One, Cubase or Nuendo (or one Dawn exported) as a new song: the tracks and groups, levels, pans, routing and sends, the clips with their fades, the notes of MIDI clips, volume and pan automation, tempo and time-signature changes, and the markers. Plugins and devices, and anything else Dawn has no place for, are listed in a note when the song opens, so you know what to add back. Works signed out too: the song is kept in this browser like any other.
 
+## A DAWproject in the song's files
+
+**Save a DAWproject to the song**, in the Send to a song block, makes a `.dawproject` of this song in the background (FLAC inside by default, or WAV) and keeps it in the song's attachments with a permanent link; you get a notification when it is ready. From the song's Attachments, **Open in Dawn** brings it back here as a new song, and the download opens in Bitwig Studio, Studio One, Cubase or Nuendo.
+
 ## MP3 export
 
 **Download mix (MP3)** in the Song actions menu, or MP3 as the format in **Export…**, encodes in the browser at 192 kbps; WAV stays the lossless choice.

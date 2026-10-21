@@ -14,6 +14,7 @@ export const JOB_KINDS = [
 	"session-peaks",
 	"stem-metadata",
 	"notation-pdf",
+	"dawproject-export",
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

@@ -23,8 +23,12 @@ import {
 	importSongStemsIntoStudio,
 	createSong,
 	updateSongChanges,
+	createDawprojectFile,
+	studioExportInput,
 } from "#lib/server/data.js";
 import { background } from "#lib/server/background.js";
+import { scheduleDawprojectExport } from "#lib/server/jobs.js";
+import { MAX_FILES_PER_SONG } from "#lib/constants/fileFormats.js";
 import { notifySong, notifyStudioShared } from "#lib/server/notifications.js";
 import { NameSchema } from "#lib/val/NameSchema.js";
 import { NanoIdSchema } from "#lib/val/NanoIdSchema.js";
@@ -84,6 +88,32 @@ export const createSongWithChanges = command(
 		if (!saved.ok) error(400, saved.error);
 		background(() => notifySong(accountId, row.id, user.id));
 		return { id: row.id, title: row.title, slug: row.slug };
+	},
+);
+
+/** A DAWproject of a Dawn song into a song's files (docs/dawproject-plan.md, phase 2): the file row made under the song, the jobs function renders it and the user hears with the link. */
+export const saveDawproject = command(
+	v.object({
+		ideaId: NanoIdSchema,
+		songId: NanoIdSchema,
+		audio: v.picklist(["flac", "wav24", "wav16"]),
+	}),
+	async ({ ideaId, songId, audio }) => {
+		const { locals } = getRequestEvent();
+		const dawn = await requireStudioAccess(locals, ideaId);
+		const { accountId } = await memberOf(locals, accountOfSong, songId);
+		const input = await studioExportInput(dawn.accountId, ideaId);
+		if (!input) error(404, "Song not found");
+		if (!input.arrangement?.clips.length) error(400, "There is nothing in the song to export yet.");
+		const row = await createDawprojectFile(accountId, dawn.userId, songId, {
+			ideaId,
+			title: input.title,
+			audio,
+		});
+		if (!row) error(404, "Song not found");
+		if (row === "full") error(409, `A song can have at most ${MAX_FILES_PER_SONG} attachments`);
+		scheduleDawprojectExport(row.id);
+		return { fileId: row.id, shareCode: row.shareCode };
 	},
 );
 

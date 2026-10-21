@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
 	ensureSongNotes: vi.fn(),
 	traceTranscriptionDeps: vi.fn(),
 	renderNotationPdf: vi.fn(),
+	renderDawprojectExport: vi.fn(),
 	renderStems: vi.fn(),
 	renderDemos: vi.fn(),
 	renderRecordings: vi.fn(),
@@ -33,6 +34,9 @@ vi.mock("#lib/server/notes.js", () => ({
 	traceTranscriptionDeps: h.traceTranscriptionDeps,
 }));
 vi.mock("#lib/server/notationPdf.js", () => ({ renderNotationPdf: h.renderNotationPdf }));
+vi.mock("#lib/server/dawprojectExport.js", () => ({
+	renderDawprojectExport: h.renderDawprojectExport,
+}));
 vi.mock("#lib/server/transcode.js", () => ({
 	renderStems: h.renderStems,
 	renderDemos: h.renderDemos,
@@ -102,5 +106,10 @@ describe("POST /api/jobs", () => {
 		await settled();
 		expect(h.renderNotationPdf).toHaveBeenCalledWith(A);
 		expect(h.traceTranscriptionDeps).not.toHaveBeenCalled();
+	});
+	it("renders a DAWproject export per file id", async () => {
+		await post({ kind: "dawproject-export", ids: [A] });
+		await settled();
+		expect(h.renderDawprojectExport).toHaveBeenCalledWith(A);
 	});
 });

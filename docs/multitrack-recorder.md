@@ -1103,6 +1103,40 @@ from the archive, over the take ceiling or undecodable loses its clips
 and is reported. Browser spec `tests/e2e/studio-dawproject.spec.ts`: our
 own export opened again, signed in and signed out.
 
+## A DAWproject into a song's files (2026-10-21)
+
+docs/dawproject-plan.md, phase 2. The Send block's **Save a DAWproject
+to the song** (with FLAC, 24-bit or 16-bit WAV for the audio inside)
+calls `saveDawproject` in the studio remote: the caller must have Dawn
+access to the song and edit the target song's account; the Dawn song must
+have clips. `createDawprojectFile` makes the attachment row under the
+target song (`kind: "dawproject"`, "<title>.dawproject", status
+uploading, the title "<title> (DAWproject)") with the job's parameters in
+its description as `dawproject-export:<ideaId>:<audio>` until it is
+rendered (no new column: the marker is replaced by a description a user
+reads when the file is ready), and `scheduleDawprojectExport(fileId)`
+posts the `dawproject-export` job. In the jobs function,
+`src/lib/server/dawprojectExport.ts` reads the song's newest revision and
+ready sources (`studioExportInput`), fetches each source a clip plays,
+transcodes it with ffmpeg (FLAC at level 5 by default), writes
+`project.xml` and `metadata.xml` with the same writer the browser's
+export uses, zips it all with fflate (audio stored, text deflated), puts
+the archive at the row's pathname in the song's store
+(`accessOfPathname`), marks the row ready with its size and a
+description, and notifies the user (kind `song`) with the file's
+permanent link `/f/<code>`. A failure removes the row (`failFile`) and
+notifies with the reason. The archive is built in memory: a long song of
+many tracks is the jobs function's memory to carry (300 s budget). The
+song page's Attachments panel shows a DAWproject tile with **Open in
+Dawn** (`/multitrack-recorder?open=<fileId>`): the Dawn page's load
+presents the file's URL for a member who edits its account
+(`dawprojectFileToOpen`, `canEdit`), and the page fetches it and runs
+`importDawproject` on mount, then clears the query. A `.dawproject`
+uploaded by hand as an attachment is typed the same (the ready route
+checks the zip signature) and opens the same way. The file counts
+against the account's storage like any attachment, and the ceiling for
+the kind is 1 GB.
+
 ## The home demo (2026-10-20)
 
 Kevin: a section on the home page after the Idea Recorder with a demo

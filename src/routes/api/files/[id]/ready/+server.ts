@@ -108,6 +108,11 @@ async function startsLikeKind(url: string, kind: FileKind): Promise<boolean> {
 			return startsLikeMidi(head);
 		case "text":
 			return looksLikeText(head);
+		case "dawproject":
+			// A zip: "PK\u0003\u0004" (one uploaded by hand; the jobs function's own never passes here).
+			return (
+				head.length > 4 && head[0] === 0x50 && head[1] === 0x4b && head[2] === 3 && head[3] === 4
+			);
 		case "other":
 			return head.length > 0;
 	}

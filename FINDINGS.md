@@ -316,6 +316,13 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Testing
 
+- **A `// @vitest-environment jsdom` docblock works inside a Vitest
+  project that runs on Node.** The unit project (`src/**/*.test.ts`,
+  environment node) still honours the per-file docblock, so a parser that
+  needs `DOMParser` (utils/dawprojectRead.ts) is tested beside its module
+  without moving it into the jsdom project's `*.svelte.test.ts` pattern
+  (2026-10-21).
+
 - **A textarea's text joins its label's accessible name.** `getByLabel("Comment",
   { exact: true })` found the empty box in the create form and nothing in the
   edit form, where the same label wraps a textarea with text: the name was

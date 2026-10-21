@@ -4422,6 +4422,137 @@ async function songInProject(accountId: string, projectId: string, songId: strin
 	return !!s;
 }
 
+/** The marker a DAWproject file carries in its description while the jobs function renders it (docs/dawproject-plan.md, phase 2): the Dawn song and the audio format. */
+const DAWPROJECT_MARKER = /^dawproject-export:([A-Za-z0-9_-]+):(flac|wav24|wav16)$/;
+export type DawprojectAudio = "flac" | "wav24" | "wav16";
+
+/**
+ * The file row a DAWproject of a Dawn song lands in, under a song of the
+ * account (the song's project, "<title>.dawproject"), status uploading
+ * until the jobs function fills it; the description holds the job's
+ * parameters until then. Null for a song the account lacks, "full" when the
+ * song has no room for another file.
+ */
+export async function createDawprojectFile(
+	accountId: string,
+	userId: string,
+	songId: string,
+	input: { ideaId: string; title: string; audio: DawprojectAudio },
+) {
+	const target = await projectOfSong(accountId, songId);
+	if (!target) return null;
+	const safe =
+		input.title
+			.replace(/[\\/:*?"<>|]+/g, " ")
+			.replace(/\s+/g, " ")
+			.trim()
+			.slice(0, 80) || "song";
+	const row = await createFile({
+		accountId,
+		userId,
+		projectId: target.projectId,
+		songId,
+		filename: `${safe}.dawproject`,
+		sizeBytes: 0,
+		kind: "dawproject",
+	});
+	if (!row || row === "full") return row;
+	const [marked] = await db
+		.update(songFile)
+		.set({
+			title: `${input.title} (DAWproject)`,
+			description: `dawproject-export:${input.ideaId}:${input.audio}`,
+		})
+		.where(eq(songFile.id, row.id))
+		.returning();
+	return marked ?? row;
+}
+
+/** What the jobs function needs to render a DAWproject file: the row still uploading and the marker's Dawn song and audio format; null once done or gone. */
+export async function dawprojectExportJob(fileId: string) {
+	const row = await db.query.songFile.findFirst({
+		where: and(
+			eq(songFile.id, fileId),
+			eq(songFile.status, "uploading"),
+			eq(songFile.kind, "dawproject"),
+		),
+		columns: {
+			id: true,
+			accountId: true,
+			songId: true,
+			pathname: true,
+			shareCode: true,
+			uploadedBy: true,
+			description: true,
+		},
+	});
+	const m = row?.description.match(DAWPROJECT_MARKER);
+	if (!row || !m) return null;
+	return { ...row, ideaId: m[1]!, audio: m[2] as DawprojectAudio };
+}
+
+/** A Dawn song as the DAWproject writer wants it: its title, its newest arrangement and its ready sources with the stores' own URLs (the jobs function reads them directly). */
+export async function studioExportInput(accountId: string, ideaId: string) {
+	const row = await db.query.idea.findFirst({
+		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")),
+		columns: { id: true, title: true },
+		with: {
+			sources: {
+				where: eq(studioSource.status, "ready"),
+				columns: {
+					id: true,
+					url: true,
+					filename: true,
+					trackLabel: true,
+					durationSeconds: true,
+					sampleRate: true,
+					channels: true,
+				},
+			},
+			revisions: {
+				orderBy: [desc(studioRevision.number)],
+				limit: 1,
+				columns: { number: true, data: true },
+			},
+		},
+	});
+	if (!row) return null;
+	const newest = row.revisions[0];
+	return {
+		title: row.title,
+		revision: newest?.number ?? 0,
+		arrangement: newest?.data ?? null,
+		sources: row.sources,
+	};
+}
+
+/** The rendered DAWproject in its row: the file ready, its size and a description a user reads. */
+export async function finishDawprojectFile(
+	accountId: string,
+	fileId: string,
+	data: { url: string; sizeBytes: number; description: string },
+) {
+	const [row] = await db
+		.update(songFile)
+		.set({ ...data, status: "ready" })
+		.where(and(eq(songFile.accountId, accountId), eq(songFile.id, fileId)))
+		.returning({ id: songFile.id, shareCode: songFile.shareCode, title: songFile.title });
+	return row ?? null;
+}
+
+/** A DAWproject attachment to open in Dawn (`/multitrack-recorder?open=<id>`): its account (the caller checks the viewer edits it), file and name. */
+export async function dawprojectFileToOpen(fileId: string) {
+	const row = await db.query.songFile.findFirst({
+		where: and(
+			eq(songFile.id, fileId),
+			eq(songFile.status, "ready"),
+			eq(songFile.kind, "dawproject"),
+		),
+		columns: { accountId: true, url: true, filename: true, title: true },
+	});
+	return row ?? null;
+}
+
 /**
  * Moves a file to a song of its project, or back to the project level
  * (`songId` null). The blob stays where it is: pathnames are ID-based and

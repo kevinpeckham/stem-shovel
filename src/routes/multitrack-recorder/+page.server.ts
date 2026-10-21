@@ -1,8 +1,9 @@
-import { publicBlobUrl } from "#lib/server/blob.js";
-import { isEditor } from "#lib/server/access.js";
+import { presentUrl, publicBlobUrl } from "#lib/server/blob.js";
+import { canEdit, isEditor } from "#lib/server/access.js";
 import { aiAvailable } from "#lib/server/aiDetect.js";
 import { CURRENT_ACCOUNT_COOKIE, pickAccount } from "#lib/server/currentAccount.js";
 import {
+	dawprojectFileToOpen,
 	getAppSetting,
 	listBeats,
 	listChordStyles,
@@ -28,13 +29,25 @@ import type { PageServerLoad } from "./$types";
  * come along as metadata (a URL to fetch on demand, never the audio).
  * Usable signed out, like the looper: the song then lives in the browser.
  */
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	const user = locals.user;
+	// A DAWproject attachment to open here (`?open=<file id>`, the song page's Files): a member who edits its account.
+	const openId = url.searchParams.get("open");
+	const toOpen = openId && user ? await dawprojectFileToOpen(openId) : null;
+	const openFile =
+		toOpen && canEdit(locals, toOpen.accountId)
+			? {
+					url: (await presentUrl(toOpen.url)) ?? "",
+					filename: toOpen.filename,
+					title: toOpen.title,
+				}
+			: null;
 	const editing = realMemberships(locals.memberships).filter((m) => isEditor(m.role));
 	// Signed out, or a member of no editing account: the song lives in the browser (docs/multitrack-recorder.md, "Signed out") until an account takes it.
 	const member = user ? pickAccount(editing, cookies.get(CURRENT_ACCOUNT_COOKIE)) : null;
 	return {
 		signedIn: !!user,
+		openFile,
 		account: member
 			? { id: member.accountId, slug: member.slug, name: member.name, canEdit: true }
 			: null,

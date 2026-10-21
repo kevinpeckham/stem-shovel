@@ -274,7 +274,9 @@
 						? "i-ph-file-text"
 						: kind === "midi"
 							? "i-ph-piano-keys"
-							: "i-ph-file";
+							: kind === "dawproject"
+								? "i-ph-archive"
+								: "i-ph-file";
 
 	/** The file open in its own panel: a PDF or text in the browser's reader, an image, or audio with its player. */
 	let viewing = $state<PanelFile | null>(null);
@@ -372,7 +374,19 @@
 					class="rounded-md border border-white/15 bg-black/20 p-2 grid gap-2 content-start"
 					aria-label={nameOf(f)}
 				>
-					{#if f.kind === "audio"}
+					{#if f.kind === "dawproject"}
+						<!-- A whole session (docs/dawproject-plan.md): opens in Dawn as a new song, or downloads for Bitwig, Studio One, Cubase or Nuendo. -->
+						<div class="grid gap-2 rounded bg-white/5 p-2">
+							<span class="flex items-center gap-2 text-12px opacity-70">
+								<span class="i-ph-archive" aria-hidden="true"></span>DAWproject
+							</span>
+							{#if canEdit}
+								<a class="button button-xs justify-center" href="/multitrack-recorder?open={f.id}">
+									<span class="i-ph-waveform" aria-hidden="true"></span> Open in Dawn
+								</a>
+							{/if}
+						</div>
+					{:else if f.kind === "audio"}
 						<div class="grid gap-1 rounded bg-white/5 p-2">
 							<span class="flex items-center gap-2 text-12px opacity-70">
 								<span class="i-ph-waveform" aria-hidden="true"></span>Audio

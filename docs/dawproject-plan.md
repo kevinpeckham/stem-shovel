@@ -125,6 +125,8 @@ Effort: two days, most of it the parser and its fixtures.
 
 ### Phase 2: save the archive on Stem Shovel, with a link
 
+**Done 2026-10-21**, the jobs-function route (docs/multitrack-recorder.md, "A DAWproject into a song's files").
+
 Today the archive downloads. Kevin: also "a link to such a file in our
 storage". Two routes, one recommended:
 
