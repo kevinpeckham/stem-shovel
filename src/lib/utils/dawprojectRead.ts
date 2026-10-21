@@ -77,7 +77,9 @@ export function readDawproject(
 	const attr = (el: Element | null | undefined, name: string): string | null =>
 		el?.getAttribute(name) ?? null;
 	const num = (el: Element | null | undefined, name: string, fallback: number): number => {
-		const v = Number(attr(el, name));
+		const raw = attr(el, name);
+		if (raw === null || raw.trim() === "") return fallback;
+		const v = Number(raw);
 		return Number.isFinite(v) ? v : fallback;
 	};
 	const bool = (el: Element | null | undefined, name: string): boolean => attr(el, name) === "true";
@@ -271,6 +273,12 @@ export function readDawproject(
 	const sourceByPath = new Map<string, string>();
 	const markers: StudioMarker[] = [];
 	const automation = new Map<string, StudioAutomation>();
+	/** What a clip played, by the clip's id and its content's id, so an alias clip (`reference`) can play the same. */
+	type ClipContent = { sourceId: string; offset: number } | { notes: StudioClip["notes"] };
+	const contentById = new Map<string, ClipContent>();
+	const remember = (el: Element, content: Element | null, played: ClipContent) => {
+		for (const id of [attr(el, "id"), attr(content, "id")]) if (id) contentById.set(id, played);
+	};
 	const sourceFor = (path: string, label: string) => {
 		let id = sourceByPath.get(path);
 		if (!id) {
@@ -296,8 +304,34 @@ export function readDawproject(
 		const durationRaw = attr(el, "duration");
 		let duration = durationRaw === null ? 0 : toSeconds(num(el, "duration", 0), unit);
 		const playStart = num(el, "playStart", 0);
-		const fadeIn = clamp(toSeconds(num(el, "fadeInTime", 0), fadeUnit), 0, 60);
-		const fadeOut = clamp(toSeconds(num(el, "fadeOutTime", 0), fadeUnit), 0, 60);
+		const fadeIn = clamp(round4(toSeconds(num(el, "fadeInTime", 0), fadeUnit)), 0, 60);
+		const fadeOut = clamp(round4(toSeconds(num(el, "fadeOutTime", 0), fadeUnit)), 0, 60);
+		// An alias clip plays another clip's content (the reference writer's "Alias Clip"): the same source or notes, placed here.
+		const reference = attr(el, "reference");
+		if (reference) {
+			const played = contentById.get(reference);
+			if (!played) {
+				drop(`${name || "An alias clip"}: its original is not in the file`);
+				return;
+			}
+			if (clips.length >= MAX_STUDIO_CLIPS) {
+				drop(`${name || "A clip"} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
+				return;
+			}
+			clips.push({
+				id: nanoid(),
+				trackId: owner.id,
+				...("notes" in played ? { notes: played.notes } : { sourceId: played.sourceId }),
+				start,
+				offset: "offset" in played ? played.offset : 0,
+				duration: clamp(seconds(duration) || 0.001, 0.001, MAX_STUDIO_SECONDS),
+				gain: 1,
+				fadeIn,
+				fadeOut,
+				name: name || "Alias",
+			});
+			return;
+		}
 		// Nested clips: a clip holding clips (launcher content written into the arrangement) flattens one level.
 		const nested = kid(el, "Clips");
 		if (nested) {
@@ -358,6 +392,7 @@ export function readDawproject(
 				}
 			}
 			if (!(duration > 0)) duration = Math.max(0.001, fileSeconds - offset);
+			remember(el, audio, { sourceId, offset: seconds(Math.max(0, offset)) });
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -397,6 +432,7 @@ export function readDawproject(
 			}
 			const end = kept.reduce((m, n) => Math.max(m, n.t + n.d), 0);
 			if (!(duration > 0)) duration = Math.max(0.001, end - toSeconds(playStart, contentUnit));
+			remember(el, notesEl, { notes: kept });
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -466,16 +502,22 @@ export function readDawproject(
 	};
 	const readLanes = (el: Element, owner: Owner | null, unit: TimeUnit) => {
 		const here = unitOf(el, unit);
-		const track = attr(el, "track");
-		const own = track ? (trackOwner.get(track) ?? null) : owner;
+		// Any timeline may name its track (the reference writer puts `track` on Clips, Bitwig on Lanes).
+		const ownerOf = (node: Element, fallback: Owner | null) => {
+			const track = attr(node, "track");
+			return track ? (trackOwner.get(track) ?? null) : fallback;
+		};
+		const own = ownerOf(el, owner);
 		for (const child of Array.from(el.children)) {
 			switch (child.localName.toLowerCase()) {
 				case "lanes":
 					readLanes(child, own, here);
 					break;
-				case "clips":
-					for (const c of kids(child, "Clip")) readClip(c, own, unitOf(child, here), 0);
+				case "clips": {
+					const clipOwner = ownerOf(child, own);
+					for (const c of kids(child, "Clip")) readClip(c, clipOwner, unitOf(child, here), 0);
 					break;
+				}
 				case "points":
 					readPoints(child, unitOf(child, here));
 					break;

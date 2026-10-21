@@ -376,6 +376,57 @@ describe("readDawproject", () => {
 		expect(read.dropped).toEqual([]);
 	});
 
+	it("reads the reference writer's shape: the master first with no content type, clips naming their track, no time signature", () => {
+		// As Bitwig's reference library (github.com/bitwig/dawproject) writes its test projects.
+		const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project version="1.0">
+    <Application name="Test" version="1.0"/>
+    <Transport><Tempo unit="bpm" value="155.000000" id="id9"/></Transport>
+    <Structure>
+        <Track contentType="" id="id0" name="Master"><Channel audioChannels="2" role="master" id="id1"><Pan unit="normalized" value="0.500000" id="id3"/><Volume unit="linear" value="1.000000" id="id2"/></Channel></Track>
+        <Track contentType="audio" id="id4" name="Audio"><Channel audioChannels="2" destination="id1" role="regular" id="id5"><Pan unit="normalized" value="0.500000" id="id7"/><Volume unit="linear" value="1.000000" id="id6"/></Channel></Track>
+    </Structure>
+    <Arrangement id="id8">
+        <Lanes timeUnit="beats" id="id10">
+            <Clips track="id4" id="id12">
+                <Clip time="4.0" duration="8.0" contentTimeUnit="seconds" playStart="0.5" playStop="3.097" fadeTimeUnit="beats" fadeInTime="1.0">
+                    <Audio channels="2" sampleRate="44100" duration="3.097" timeUnit="seconds" id="id11"><File path="white-glasses.wav" external="false"/></Audio>
+                </Clip>
+            </Clips>
+        </Lanes>
+    </Arrangement>
+    <Scenes/>
+</Project>`;
+		const read = readDawproject(xml, null, "ref");
+		const a = read.arrangement;
+		expect([a.bpm, a.beatsPerBar, a.master]).toEqual([155, 4, 1]);
+		expect(a.tracks.map((t) => t.name)).toEqual(["Audio"]);
+		// 155 bpm: 4 beats are 1.5484 s, 8 beats 3.0968 s, a one-beat fade 0.3871 s; playStart in seconds.
+		expect(a.clips.map((c) => [c.name, c.start, c.duration, c.offset, c.fadeIn])).toEqual([
+			["white-glasses", 1.5484, 3.0968, 0.5, 0.3871],
+		]);
+		expect(read.files.map((f) => f.path)).toEqual(["white-glasses.wav"]);
+		expect(read.dropped).toEqual(["clip launcher scenes"]);
+	});
+
+	it("plays an alias clip as its original's content, placed where the alias is", () => {
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/></Transport>
+  <Structure><Track contentType="notes" id="tr" name="Keys"><Channel role="regular" id="ch"><Volume unit="linear" value="1" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="beats" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    <Clip time="0.0" duration="4.0" name="Riff" id="clip1"><Notes id="n1"><Note time="0" duration="1" key="60" vel="0.5"/></Notes></Clip>
+    <Clip time="8.0" duration="4.0" reference="n1" name="Alias Riff"/>
+    <Clip time="16.0" duration="4.0" reference="nowhere" name="Lost alias"/>
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "alias");
+		expect(read.arrangement.clips.map((c) => [c.name, c.start, c.notes])).toEqual([
+			["Riff", 0, [{ t: 0, d: 0.5, p: 60, v: 0.5 }]],
+			["Alias Riff", 4, [{ t: 0, d: 0.5, p: 60, v: 0.5 }]],
+		]);
+		expect(read.dropped).toEqual(["Lost alias: its original is not in the file"]);
+	});
+
 	it("refuses what is not a project", () => {
 		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
 		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);

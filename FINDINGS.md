@@ -496,6 +496,17 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Packages
 
+- **Bitwig's DAWproject reference library writes a test corpus.** The
+  repository ships no example projects, but `./gradlew test` (OpenJDK 21)
+  writes twenty into `target/`, covering beats and seconds, offsets,
+  fades, warps, controller automation, alias clips, markers and a plugin:
+  the best stand-in for a real export when no DAW is at hand (2026-10-21).
+- **DawVert converts DAW projects to and from DAWproject from the command
+  line** (`python3 dawvert_cmd.py -i in -ot dawproject -o out`, Python
+  3.12, its requirements in a `uv` venv). It reads Reaper, Ableton Live 11,
+  FL Studio, LMMS and MIDI, among others, and reads DAWproject back into
+  those, so it is a second opinion on a DAWproject writer (2026-10-21).
+
 - **`@vercel/blob`'s `put` retries, and a stream cannot be read twice.** A
   Blob-to-Blob copy that handed `fetch`'s body stream to `put` worked until
   a part failed and the SDK retried: "Response body object should not be

@@ -214,6 +214,30 @@ parser case with a fixture. Budget half a day per DAW after the first
 real file arrives, and keep the dropped-items report honest: a user who
 sees "did not come across" trusts the rest.
 
+**The reference suite and DawVert, the same day.** Kevin: "Are there any
+open source converters that could be installed on this VM?" Two were,
+and they paid off. OpenJDK 21 and Bitwig's reference library
+(`./gradlew test` writes twenty projects into `target/`: audio in beats
+and seconds, with offsets, fades and warps, absolute and relative file
+paths, MIDI controller and pitch-bend automation in clips and on
+tracks, and a "complex" project with alias clips, markers, automation
+and a plugin). They taught the reference writer's own shape: the master
+track first with an empty content type, `Clips` naming their track
+rather than `Lanes` (any timeline may carry `track`), no time signature
+in the transport, and **alias clips** (`reference="<id>"` to a clip or
+its content), which now play their original's notes or source where the
+alias sits. DawVert (Python, in a `uv` venv) converted four public
+Reaper projects and two Ableton Live 11 sets to DAWproject, all of which
+read (DawVert carries little of a Reaper project without its audio;
+Live 9 and 10 sets it refuses). The other way: a Dawn export with audio,
+a bus, a send, automation, a marker and a tempo change went through
+DawVert into a Reaper project (the tracks, the return bus, the items), an
+Ableton set (the tracks, the MIDI clip and its notes) and a MIDI file
+(the notes), which is the first third-party reading of Dawn's writer.
+`scripts/dawproject-probe.ts` runs a folder of archives through the
+reader; the corpus stays outside the repo (the VM's job folder, the
+sources named in the script).
+
 ## What the format carries that Dawn lacks (2026-10-21)
 
 Kevin: "as you notice additional specs in the DAWproject file format for
@@ -280,6 +304,53 @@ denominator) are an afternoon each. The ones a songwriter would feel
 most (1, clip looping; 3, expression lanes; 4, wider automation; 5,
 tempo ramps) are a few days each and worth their own plan. 6, 7, 8, 9
 and 13 are large; 10 and 14 are judgement calls.
+
+## Roadmap: a free online converter (Kevin, 2026-10-21)
+
+Kevin: "Let's add creating our own free online converter to the product
+roadmap for this app." A public page, like the tuner, the metronome and
+the drum machine (indexable, usable signed out, a way in for people who
+have never heard of Stem Shovel): drop a session file, get it back in
+another format, nothing kept unless you sign in and send it to a song or
+open it in Dawn.
+
+What Dawn already has makes the first version cheap: a DAWproject reader
+and writer, a MIDI file reader and writer, a stems-plus-MIDI export, the
+jobs function with ffmpeg for audio transcoding, and the browser's own
+decoding. So the conversions, in the order they come free:
+
+1. **DAWproject → stems and MIDI** (any DAW opens the result; for the
+   DAWs without DAWproject support: Ableton Live, Logic, Pro Tools, FL
+   Studio). The reader, a render per track in the browser, a `.mid` per
+   notes clip, one zip.
+2. **DAWproject → DAWproject** with the audio re-encoded (FLAC to WAV
+   and back, bit depths), the trims applied, a report of what the file
+   holds: a "lint and repack" that also normalises other writers' quirks
+   (the dialects phase 3 found) into clean files for picky importers.
+3. **Reaper `.rpp` ↔ DAWproject.** Reaper's project is a documented text
+   format (every public project on GitHub is readable in an editor), the
+   DAW most likely to be used by Stem Shovel's kind of musician without
+   DAWproject support, and ProjectConverter has shown the mapping works.
+4. **Ableton Live `.als` → DAWproject.** A gzipped XML set; DawVert's
+   reader shows what the tags mean. One way only: Live cannot read
+   DAWproject, and writing a Live set that Live accepts is a deeper hole.
+5. **MIDI → DAWproject**, a type-0 or type-1 file as notes tracks at the
+   file's tempo map: trivial once 1 exists, and a way to open any MIDI
+   file in a DAW with the tempo map intact.
+
+Where it runs: in the browser for everything but audio transcoding (the
+file never leaves the machine, which is the honest pitch for a free
+tool), the jobs function for FLAC and WAV re-encoding when the user is
+signed in and wants the result kept in a song's files. The page would
+live under Tools as "Convert" (`/convert`), with the formats' own words on
+it for search. Each conversion is a pure module beside the DAWproject
+reader and writer (`utils/rpp*.ts`, `utils/als*.ts`), tested against the
+corpus phase 3 gathered, and reusable by Dawn's own import (open a Reaper
+project in Dawn comes free with 3).
+
+Effort: 1 is two days (it is mostly the export panel on a public page);
+2 a day; 3 a week (Reaper's format is wide); 4 three or four days for
+the arrangement, levels and clips, leaving devices out; 5 a day.
 
 ## Recommendations
 
