@@ -20,104 +20,109 @@ ignoreRegExpList:
   - "/\\b[A-Za-z0-9_-]{21}\\b/g" # nanoids
   - "/https?:\\/\\/\\S+/g" # urls
 words:
-  - LMMS
-  - venv
-  - poznas
-  - gmlewis
-  - Nuendo
-  - pyloudnorm
-  - slugified
-  - WSOLA
-  - libebur
-  - sinc
-  - upmixed
-  - muxer
+  - ADSR
+  - ALAC
+  - ALSA
+  - Ampeg
+  - Andalusian
+  - Aphex
+  - arpeggiated
+  - arpeggiator
+  - Audiotool
+  - Authy
+  - Backblaze
+  - Bahiana
+  - BandLab
+  - bebop
+  - Biasior
+  - Biquad
+  - biquads
+  - Buffa
+  - cadeli
+  - Cmaj
+  - Cubase
+  - DAWproject
   - demuxer
   - demuxers
   - demuxes
+  - dorian
+  - Dorico
   - faad
-  - mediabunny
+  - fflate
   - Fmaj
-  - unmute
   - FSBS
+  - gmlewis
+  - Goertzel
   - Greenback
   - Greenbacks
-  - Rockdriver
-  - Karschewski
-  - Jester
-  - Soundwoofer
-  - Trem
-  - Ampeg
-  - biquads
-  - Buffa
-  - micbuffa
-  - Jetsam
-  - Noto
-  - OPFS
-  - shvl
-  - fflate
-  - bebop
-  - Verovio
-  - Dorico
-  - arpeggiated
-  - Mixolydian
   - Greensleeves
-  - Andalusian
-  - Pachelbel
-  - Biasior
-  - Cmaj
-  - Håken
-  - Voicings
-  - voicings
-  - Qwen
-  - Aphex
-  - Linkwitz
-  - Biquad
-  - Goertzel
-  - Kimi
-  - dorian
-  - lydian
-  - mixolydian
-  - Gsus
-  - tonejs
-  - sophiaedu
-  - arpeggiator
-  - ADSR
   - Groovie
-  - SyncMuse
-  - Cubase
-  - mixedinkey
-  - Tauri
-  - Backblaze
-  - Kontakt
-  - notarised
-  - orDrumbox
-  - ordrumbox
-  - maximecb
-  - cadeli
-  - tfjs
+  - Gsus
   - HMAC
-  - ALAC
-  - Authy
-  - Bahiana
-  - demuxer
   - HSTS
+  - Håken
+  - Jester
+  - Jetsam
+  - Karschewski
+  - Kimi
+  - Kontakt
   - Krumhansl
-  - MMKK
-  - TOTP
-  - Turso
-  - unmuted
+  - libaaf
+  - libebur
+  - Limbus
+  - Linkwitz
+  - LMMS
   - LUFS
+  - lydian
+  - maximecb
+  - mediabunny
+  - micbuffa
+  - mixedinkey
+  - Mixolydian
+  - mixolydian
+  - MMKK
+  - muxer
+  - notarised
+  - Noto
+  - Nuendo
+  - OPFS
+  - ordrumbox
+  - orDrumbox
+  - Orka
+  - Pachelbel
   - perc
+  - poznas
+  - PTSL
+  - pyaaf
+  - pyloudnorm
+  - Qwen
+  - Rockdriver
+  - SANDYNE
+  - shvl
+  - signalsmith
+  - sinc
+  - slugified
+  - sophiaedu
+  - Soundation
+  - Soundtrap
+  - Soundwoofer
+  - SyncMuse
+  - Tauri
+  - tfjs
+  - tonejs
+  - TOTP
+  - Trem
+  - Turso
+  - unmute
+  - unmuted
   - untinted
+  - upmixed
+  - venv
+  - Verovio
   - VisiStage
   - visistage
-  - SANDYNE
-  - Limbus
-  - Soundation
-  - Audiotool
-  - BandLab
-  - Soundtrap
-  - DAWproject
-  - signalsmith
+  - voicings
+  - Voicings
+  - Vordio
   - WebCLAP
+  - WSOLA

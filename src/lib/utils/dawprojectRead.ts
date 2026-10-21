@@ -142,7 +142,7 @@ export function readDawproject(
 	const buses: StudioBus[] = [];
 	let master = 1;
 	const pending: { owner: Owner; channel: Element | null }[] = [];
-	// Cubase writes colours with an alpha byte ("#a2eabfff"); the tint is the first six digits.
+	// Cubase writes colors with an alpha byte ("#a2eabfff"); the tint is the first six digits.
 	const tint = (hex: string | null) => {
 		const six = hex?.match(/^#?([0-9a-f]{6})/i)?.[1];
 		return six

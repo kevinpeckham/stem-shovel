@@ -334,7 +334,7 @@ describe("readDawproject", () => {
 		]);
 	});
 
-	it("reads a Cubase-bound file's ways: a channelless folder track skipped, colours with an alpha byte, seconds throughout", () => {
+	it("reads a Cubase-bound file's ways: a channelless folder track skipped, colors with an alpha byte, seconds throughout", () => {
 		// The shape a third-party converter writes for Cubase 14 (github.com/poznas/flp-to-dawproject); a Cubase export itself is still wanted.
 		const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Project version="1.0">

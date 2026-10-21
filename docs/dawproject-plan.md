@@ -77,7 +77,7 @@ What maps, and how:
   `Solo`, and its `destination`: a channel of another track is a bus
   (`buses` gains one per such channel, the master excluded); `Sends` to
   `sends` where the destination is a bus. Nested group tracks flatten:
-  the group becomes a bus, its children tracks routed to it. Colour to
+  the group becomes a bus, its children tracks routed to it. Color to
   `colour` when it is one of ours, else dropped. Over `MAX_STUDIO_TRACKS`
   (16): the first 16 stay, the rest are reported.
 - **Clips**: `Lanes` → `Clips` → `Clip`. `time`, `duration`,
@@ -198,7 +198,7 @@ Cubase-bound output. They taught: a lowercase `<markers>` element (names
 now compare without case), tempo automation as `Points` on the Tempo
 parameter inside the lanes rather than `TempoAutomation` (read as tempo
 changes), a folder track with no channel and no children (Cubase's
-"Input/Output", `contentType="tracks"`; skipped), colours with an alpha
+"Input/Output", `contentType="tracks"`; skipped), colors with an alpha
 byte (`#a2eabfff`; the tint is the first six digits), hundreds of
 plugins to report (the page shows a dozen and a count), and Dawn's
 limits met for real (the first 16 tracks, 8 buses and 400 clips come in,
@@ -288,24 +288,27 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
     year, genre, copyright, comment, website. Dawn has a title and notes;
     the song page has credits (`songCredit`) that could feed the export
     and take the import.
-12. **Arbitrary track colours** (`color="#ff5706"`): Dawn has eight
-    tints; a free colour would carry over both ways.
+12. **Arbitrary track colors** (`color="#ff5706"`): Dawn has eight
+    tints; a free color would carry over both ways.
 13. **Take lanes within a track** (`Lanes` nested under a track's lanes):
     comping lanes. Dawn has alternates behind a clip, which is the same
     idea in a different shape; nested lanes could map onto them.
 14. **Video** (`Video` clips over a file): a picture track to score to.
     Not a songwriter's tool today; noted for completeness.
-15. **Cue markers with colours** and **time-signature denominators**
+15. **Cue markers with colors** and **time-signature denominators**
     other than four (6/8 as 6 over 8, not 6 over 4): the stem player's
     meter already keeps the denominator; Dawn counts quarters.
 
-The cheap ones (2, the on/off; 11, the metadata; 12, colours; 15's
+The cheap ones (2, the on/off; 11, the metadata; 12, colors; 15's
 denominator) are an afternoon each. The ones a songwriter would feel
 most (1, clip looping; 3, expression lanes; 4, wider automation; 5,
 tempo ramps) are a few days each and worth their own plan. 6, 7, 8, 9
 and 13 are large; 10 and 14 are judgement calls.
 
 ## Roadmap: a free online converter (Kevin, 2026-10-21)
+
+The wider plan, which DAWs are the targets, what each can read, and how
+to test the exchange on Linux, Mac and Windows, is docs/daw-interop-plan.md.
 
 Kevin: "Let's add creating our own free online converter to the product
 roadmap for this app." A public page, like the tuner, the metronome and
@@ -325,7 +328,7 @@ decoding. So the conversions, in the order they come free:
    notes clip, one zip.
 2. **DAWproject → DAWproject** with the audio re-encoded (FLAC to WAV
    and back, bit depths), the trims applied, a report of what the file
-   holds: a "lint and repack" that also normalises other writers' quirks
+   holds: a "lint and repack" that also normalizes other writers' quirks
    (the dialects phase 3 found) into clean files for picky importers.
 3. **Reaper `.rpp` ↔ DAWproject.** Reaper's project is a documented text
    format (every public project on GitHub is readable in an editor), the
