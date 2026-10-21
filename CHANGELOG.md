@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **A Sandyne project in Dawn's Export panel** for the free Sandyne DAW (Linux, Mac and Windows): the `.sand` file with the tracks, clips, fades, levels, pans and the MIDI parts' notes, and the recordings beside it, a folder in the export's zip. Sandyne opens it directly.
+
+### Technical
+
+- **Two more DAW checks on the VM** (docs/testing.md): `bun run interop:audacity` has Ubuntu's Audacity read the session bundle's stems and label track over its scripting pipe under Xvfb, and `bun run interop:sandyne` has Sandyne's headless `inspect` and `rendertracks` read the Sandyne project; both judge the result against the fixture arrangement (`scripts/interop/fixture.ts`, shared with the bundle).
+
 ## [0.141.0] - 2026-10-21
 
 ### Added

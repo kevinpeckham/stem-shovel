@@ -7,6 +7,7 @@ import { dawproject } from "#lib/utils/dawproject.js";
 import { measureLoudness, type LoudnessReading } from "#lib/utils/measureLoudness.js";
 import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { normalizationGain } from "#lib/utils/normalizationGain.js";
+import { sandProject } from "#lib/utils/sandProject.js";
 import { sessionMidi } from "#lib/utils/sessionMidi.js";
 import { sessionReadme } from "#lib/utils/sessionReadme.js";
 import { zipBlobs, type ZipEntry } from "#lib/utils/zipBlobs.js";
@@ -24,7 +25,8 @@ import type { RenderTarget } from "./studio.svelte";
  * format (docs/daw-interop-plan.md): every clip as a Broadcast WAV stamped
  * with its position (utils/bext.ts), a stem per track from zero, the
  * tempo map, meters, keys, markers and MIDI parts as a MIDI file
- * (utils/sessionMidi.ts), Audacity labels and a README. Pure over its
+ * (utils/sessionMidi.ts), Audacity labels and a README; a Sandyne project
+ * (utils/sandProject.ts) with its samples beside it. Pure over its
  * engine, so a test hands it a fake; the page downloads what comes back,
  * one by one or zipped (a bundle unzips into the export's zip as a folder).
  */
@@ -41,6 +43,8 @@ export interface ExportOptions {
 	dawproject: boolean;
 	/** The session bundle for Logic, Pro Tools, Live, Audacity and Reaper (always 24-bit WAV inside). */
 	bundle: boolean;
+	/** A Sandyne project (`.sand`) with its samples, for the free Sandyne DAW (24-bit WAV beside it). */
+	sandyne: boolean;
 	/** The audio files' format; `bits` applies to WAV only. */
 	format: "wav" | "mp3";
 	bits: 16 | 24;
@@ -53,6 +57,7 @@ export const EXPORT_DEFAULTS: ExportOptions = {
 	buses: false,
 	dawproject: false,
 	bundle: false,
+	sandyne: false,
 	format: "wav",
 	bits: 24,
 	normalize: false,
@@ -148,24 +153,7 @@ export async function exportSong(
 		}
 	if (options.dawproject) {
 		onprogress?.("Writing the DAWproject…");
-		const entries: ZipEntry[] = [];
-		const audio = new Map<
-			string,
-			{ path: string; durationSeconds: number; sampleRate: number; channels: number }
-		>();
-		for (const c of a.clips) {
-			if (!c.sourceId || audio.has(c.sourceId)) continue;
-			const buffer = engine.bufferOf(c.sourceId);
-			if (!buffer) continue;
-			const path = `audio/${c.sourceId}.wav`;
-			entries.push({ name: path, data: encodeWav24(channelsOf(buffer), buffer.sampleRate) });
-			audio.set(c.sourceId, {
-				path,
-				durationSeconds: buffer.duration,
-				sampleRate: buffer.sampleRate,
-				channels: buffer.numberOfChannels,
-			});
-		}
+		const { entries, audio } = sourceFiles(engine, "audio");
 		const { project, metadata } = dawproject({ title, arrangement: a, audio, application });
 		const text = new TextEncoder();
 		entries.unshift(
@@ -178,7 +166,46 @@ export async function exportSong(
 		});
 	}
 	if (options.bundle) out.push(await sessionBundle(engine, title, application, onprogress));
+	if (options.sandyne) {
+		onprogress?.("Writing the Sandyne project…");
+		const { entries, audio } = sourceFiles(engine, "samples");
+		const text = new TextEncoder();
+		entries.unshift({
+			name: `${base}.sand`,
+			data: text.encode(sandProject({ title, arrangement: a, audio, application })),
+			compress: true,
+		});
+		out.push({
+			name: `${base} Sandyne.zip`,
+			blob: await zipBlobs(entries),
+			entries,
+			folder: `${base} Sandyne`,
+		});
+	}
 	return out;
+}
+
+/** Every clip's source as a 24-bit WAV under `dir/`, once each, with what the project files need to know of it. */
+function sourceFiles(engine: ExportEngine, dir: string) {
+	const entries: ZipEntry[] = [];
+	const audio = new Map<
+		string,
+		{ path: string; durationSeconds: number; sampleRate: number; channels: number }
+	>();
+	for (const c of engine.arrangement.clips) {
+		if (!c.sourceId || audio.has(c.sourceId)) continue;
+		const buffer = engine.bufferOf(c.sourceId);
+		if (!buffer) continue;
+		const path = `${dir}/${c.sourceId}.wav`;
+		entries.push({ name: path, data: encodeWav24(channelsOf(buffer), buffer.sampleRate) });
+		audio.set(c.sourceId, {
+			path,
+			durationSeconds: buffer.duration,
+			sampleRate: buffer.sampleRate,
+			channels: buffer.numberOfChannels,
+		});
+	}
+	return { entries, audio };
 }
 
 /**

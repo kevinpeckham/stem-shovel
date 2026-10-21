@@ -7,12 +7,13 @@ import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } f
  * Export from Dawn (docs/dawn-daw-plan.md, D3): an imported recording on
  * a track routed to a bus, a MIDI clip on a piano track, the LUFS readout
  * while the song plays, then Export… with the mix, the stems per track
- * and bus, a DAWproject, the session bundle and normalization, all in
- * one zip: the zip holds each file, the mix measures at the target, the
- * DAWproject names the tracks and carries the recording, the bundle is a
- * folder with the stamped clip, the stems, the MIDI file, the labels and
- * the README, and the MIDI track's stem has sound in it from the offline
- * render. The bot's songs are deleted at the end.
+ * and bus, a DAWproject, the session bundle, a Sandyne project and
+ * normalization, all in one zip: the zip holds each file, the mix
+ * measures at the target, the DAWproject names the tracks and carries the
+ * recording, the bundle is a folder with the stamped clip, the stems, the
+ * MIDI file, the labels and the README, the Sandyne project is a folder
+ * with the `.sand` and its sample, and the MIDI track's stem has sound in
+ * it from the offline render. The bot's songs are deleted at the end.
  */
 test.describe("Dawn export", () => {
 	test("renders the mix, stems, a DAWproject, a session bundle and a MIDI track offline into one zip", async ({
@@ -92,6 +93,7 @@ test.describe("Dawn export", () => {
 		await panel.getByRole("checkbox", { name: /A stem per bus/ }).check();
 		await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
 		await panel.getByRole("checkbox", { name: /A session bundle/ }).check();
+		await panel.getByRole("checkbox", { name: /A Sandyne project/ }).check();
 		await panel.getByRole("checkbox", { name: /Normalize to -14 LUFS/ }).check();
 		const [download] = await Promise.all([
 			page.waitForEvent("download", { timeout: 120_000 }),
@@ -127,6 +129,11 @@ test.describe("Dawn export", () => {
 		expect(strFromU8(clip.subarray(36, 40))).toBe("bext");
 		expect(strFromU8(zip[`${folder}README.txt`]!)).toContain("Logic Pro");
 		expect(strFromU8(zip[`${folder}labels.txt`]!)).toMatch(/^0\.000000\t0\.000000\tTempo /);
+		// The Sandyne project, a folder: the .sand (JSON naming the tracks) with the recording beside it.
+		const sandFolder = `${base} Sandyne/`;
+		const sand = JSON.parse(strFromU8(zip[`${sandFolder}${base}.sand`]!));
+		expect(sand.tracks.map((t: any) => t.name)).toEqual(["Track 1", ids.midiName]);
+		expect(names.filter((n) => n.startsWith(`${sandFolder}samples/`)).length).toBe(1);
 		// The panel reports the mix at the target.
 		const list = panel.getByRole("list", { name: "Exported files" });
 		await expect(list).toContainText(`${base}.wav`);

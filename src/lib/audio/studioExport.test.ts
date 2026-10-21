@@ -175,6 +175,28 @@ describe("exportSong", () => {
 		expect(fileSafe('  a:b*c?"d<e>f|g\\h/i  ')).toBe("a-b-c-d-e-f-g-h-i");
 		expect(fileSafe("   ")).toBe("untitled");
 	});
+	it("writes a Sandyne project with its samples beside it, a folder in the export's zip", async () => {
+		const e = engine();
+		const files = await exportSong(
+			e,
+			"My Song",
+			{ ...EXPORT_DEFAULTS, mix: false, sandyne: true },
+			app,
+		);
+		expect(files.map((f) => f.name)).toEqual(["My Song Sandyne.zip"]);
+		expect(files[0]!.folder).toBe("My Song Sandyne");
+		const inside = unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()));
+		expect(Object.keys(inside)).toEqual(["My Song.sand", "samples/s1.wav"]);
+		const project = JSON.parse(strFromU8(inside["My Song.sand"]!));
+		expect(project.projectTitle).toBe("My Song");
+		expect(project.tracks.map((t: any) => t.name)).toEqual(["Guitar", "Empty"]);
+		expect(project.contents[0]).toMatchObject({
+			sampleFilePath: "samples/s1.wav",
+			sampleRate: 48000,
+		});
+		expect(e.render).not.toHaveBeenCalled();
+	});
+
 	it("writes a session bundle: stamped clips, stems from zero, the MIDI file, labels and a README, a folder in the export's zip", async () => {
 		const e = engine();
 		const rich: StudioArrangement = {

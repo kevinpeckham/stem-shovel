@@ -556,6 +556,26 @@ belong in CLAUDE.md or docs/, not here.
   project's tempo (12.5 s became 11.75 s). `-cfgfile` keeps all of that
   in a folder of the run's own (scripts/interop/reaper.mjs,
   2026-10-21).
+- **Audacity's scripting pipe (mod-script-pipe) under a virtual display**
+  (scripts/interop/audacity.mjs, 2026-10-21): Ubuntu's `audacity`
+  package carries the module, the AppImage 3.7.9 crashed on this VM
+  (exit 255, no window) and 4.0.1 has no module. A module Audacity has
+  not seen before gets status 4 ("new") in `[Module]` and is not loaded,
+  whatever status the config asked for: name it in `[ModulePath]` and
+  `[ModuleDateTime]` too and status 1 holds. wxWidgets puts the config
+  under `XDG_CONFIG_HOME`, so a run can have its own; `[Directories]
+  TempDir` keeps the autosave out of `/var/tmp`, where a killed run's
+  project brings a crash-recovery dialog next time that blocks the pipe.
+  A pipe response stops at 32 KB (`GetInfo: Type=Commands Format=JSON`
+  never finishes; `Format=Brief` does). `Import2` of a text file shows a
+  modal error that blocks the pipe until dismissed; labels come in
+  through the `ImportLabels:` menu command, whose GTK dialog takes a
+  path after ctrl+L. A command's answer ends with a line starting
+  `BatchCommand finished`; blank lines come before it. Open the `to`
+  pipe with `O_NONBLOCK` to learn whether Audacity is reading (ENXIO
+  when not). `xdotool windowfocus` works without a window manager where
+  `windowactivate` fails; a `pkill -f`/`pgrep -f` pattern that appears
+  in the running shell's own command line kills that shell.
 - **Sandyne (the free DAW) renders and inspects projects from the
   command line with no display**, on a VM with no sound card:
   `sandyne inspect file.sand` and `sandyne rendertracks file.sand
@@ -565,7 +585,15 @@ belong in CLAUDE.md or docs/, not here.
   `~/Applications/Sandyne`. The GUI starts under Xvfb with `--no-gpu`.
   Its `--ws-control` socket speaks TLS with a self-signed certificate it
   writes to `~/.config/Sandyne/control-cert.pem`, so a plain `ws://`
-  client is dropped at the handshake (2026-10-21).
+  client is dropped at the handshake (2026-10-21). A `.sand` written by
+  hand needs only `version`, `global` (bpm, beatsPerBar), `tracks`
+  (trackId, index, type 1 sample or 0 synth with `internalInstrumentId`,
+  name, volume, pan, mute, solo, contentIds) and `contents` (type 1
+  sample with `sampleFilePath` relative to the project file, or type 0
+  notes with `notesData` in beats from the clip; `startBeat`,
+  `lengthBeats`, `contentStartOffset` in beats); `rendertracks` names
+  the files `<title>_NN_<track>.wav`, 24-bit at 44.1 kHz, and starts a
+  note's voice at the head of its render block, a few ms early.
 - **Ardour's headless `ardour8-lua` cannot import.** Import goes through
   `Editor:do_import`, which only the GUI has; `Session.import_files`,
   `RegionFactory` and `ImportStatus` are not bound in the headless

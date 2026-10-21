@@ -1109,6 +1109,23 @@ tests) found its `Channel` children out of the schema's sequence
 (Mute, Pan, Sends, Volume): Bitwig's JAXB reader did not mind, a strict
 one would have. Every writer test now validates.
 
+## A Sandyne project (2026-10-21, docs/daw-interop-plan.md "Sandyne")
+
+The Export panel's **A Sandyne project** writes the song as the free
+Sandyne DAW's own file (`utils/sandProject.ts`): `.sand` is plain JSON,
+read from Sandyne 2.5's files and proved with its headless `inspect` and
+`rendertracks` (`bun run interop:sandyne`, scripts/interop/sandyne.ts).
+One tempo and meter, the master level, the key as the project's scale, a
+sample track per audio track and a synth track per MIDI track (level,
+pan, mute, solo, color), and the clips as contents in beats: a sample
+clip over its file from its offset with its gain and fades, a notes
+clip's notes with velocity 0..127. The clips' sources go beside the file
+as 24-bit WAV under `samples/` (`sourceFiles` in `studioExport.ts`, the
+same helper the DAWproject uses for `audio/`), and the whole thing is a
+folder in the export's zip like the session bundle. Sandyne has one
+tempo, so a song with tempo changes keeps its seconds and not its bars;
+buses, sends, inserts, automation and markers have no place in the file.
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3

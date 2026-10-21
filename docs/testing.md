@@ -122,5 +122,15 @@ to `.interop/` (gitignored) from the static test stems, and
 `scripts/interop/reaper.lua` and judges what it holds against the
 arrangement (clip positions from the Broadcast WAV time references, the
 tempo map, meters, markers and the MIDI part). It needs Reaper at
-`~/opt/reaper/reaper` (`REAPER_BIN`), `Xvfb` and `xdotool`. Run it
-before a release that touches the export formats, like `check:swing`.
+`~/opt/reaper/reaper` (`REAPER_BIN`), `Xvfb` and `xdotool`.
+`bun run interop:audacity` does the same with Ubuntu's Audacity
+(`apt install audacity`, which carries mod-script-pipe): its own settings
+folder under `.interop/` through `XDG_CONFIG_HOME`, the stems through
+`Import2` and the label track through the Import Labels menu command
+with the path typed into its file dialog, then the tracks and labels
+read back over the pipe. `bun run interop:sandyne` needs no display:
+it exports the fixture as a Sandyne project and has Sandyne
+(`~/Applications/Sandyne/sandyne`, `SANDYNE_BIN`) inspect it and render
+a WAV per track, then checks each track's render is silent until its
+first clip. Run them before a release that touches the export formats,
+like `check:swing`.

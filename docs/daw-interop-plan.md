@@ -20,7 +20,7 @@ Windows VMs. Kevin owns Logic Pro on an M1 MacBook Pro.
 | DAW                                                     | Platforms                  | DAWproject                                   | AAF                                              | Timestamped BWF                          | MIDI file with tempo map                          | Scriptable                                                                                                      |
 | ------------------------------------------------------- | -------------------------- | -------------------------------------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Cubase 14.0.20+ Pro and Artist; Cubase 15 every edition | Win, Mac                   | read + write                                 | Pro only (and Nuendo)                            | yes                                      | yes                                               | no file-level API; UI automation                                                                                |
-| Audacity 3.x                                            | Linux, Win, Mac            | no                                           | no                                               | no (imports at 0)                        | notes only, no tempo                              | mod-script-pipe (Python over a named pipe) with the app running                                                 |
+| Audacity 3.x                                            | Linux, Win, Mac            | no                                           | no                                               | no (imports at 0)                        | notes only, no tempo                              | mod-script-pipe (a named pipe) with the app running; `bun run interop:audacity` on the VM                       |
 | Logic Pro                                               | Mac                        | no                                           | read + write                                     | yes ("Move to Original Record Position") | yes (tempo, meter, markers into an empty project) | no API; AppleScript/UI automation                                                                               |
 | Pro Tools Studio and Ultimate                           | Win, Mac                   | no                                           | read + write (Intro and Artist: no)              | yes ("Spot" to timestamp)                | yes                                               | PTSL, a gRPC scripting API since 2022                                                                           |
 | Reaper                                                  | Linux, Win, Mac            | no (an extension can add a project importer) | no (third-party Vordio)                          | yes                                      | yes                                               | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project                                                 |
@@ -300,7 +300,18 @@ Pro Tools; it is a confirmation tier, not a discovery tier.
    markers, the MIDI part's notes. Ardour's headless Lua cannot import
    (FINDINGS.md), so the Ardour check waits for the GUI-under-Xvfb
    route, which is only worth it once there is an AAF to read.
-4. Tier B Audacity: a day.
+4. Tier B Audacity: a day. **Done 2026-10-21**: `bun run interop:audacity`
+   runs Ubuntu's Audacity 3.4 under Xvfb with mod-script-pipe, imports
+   the stems with `Import2` and the labels through the Import Labels
+   menu command (its GTK file dialog typed into with xdotool; Import2
+   refuses a text file with a modal error that blocks the pipe), reads
+   the tracks and labels back and judges them: five tracks from zero to
+   the song's end, every marker, tempo and meter label at its second.
+   Audacity imports a clip at zero whatever its time reference, as the
+   README says, so the check uses the stems. Its own settings live under
+   `.interop/audacity-config` through `XDG_CONFIG_HOME`; a module
+   Audacity has not seen before is "new" (status 4) and stays unloaded,
+   so the config names the module's path and date with status 1.
 5. Kevin's by-hand pass on the MacBook with his Logic Pro and the Live
    and Cubase trials (import the bundle, export an AAF, a Live set and a
    DAWproject): half a day of his time; the exports come back as
@@ -311,7 +322,14 @@ Pro Tools; it is a confirmation tier, not a discovery tier.
    enough: a week, Python in a worker.
 8. A `.sand` writer for Sandyne with `sandyne inspect` and `rendertracks`
    as its headless check on this VM (two days), and Sandyne's own
-   DAWproject export, from the Mac, into the reader corpus.
+   DAWproject export, from the Mac, into the reader corpus. **Writer and
+   check done 2026-10-21**: the Export panel's "A Sandyne project"
+   (`utils/sandProject.ts`, docs/multitrack-recorder.md) and
+   `bun run interop:sandyne`, which needs no display: Sandyne lists every
+   track with its clips and renders each track silent until its first
+   clip (a note's voice starts at the head of its render block, a few ms
+   early). Sample paths resolve against the project file's folder. The
+   corpus export from the Mac stays open.
 9. Tart on the MacBook, then a hosted Mac, then Windows, as the targets'
    user numbers justify.
 
