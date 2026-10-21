@@ -17,17 +17,18 @@ Windows VMs. Kevin owns Logic Pro on an M1 MacBook Pro.
 
 ## What each target can exchange
 
-| DAW                                                     | Platforms                  | DAWproject                                   | AAF                                              | Timestamped BWF                          | MIDI file with tempo map                          | Scriptable                                                                        |
-| ------------------------------------------------------- | -------------------------- | -------------------------------------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Cubase 14.0.20+ Pro and Artist; Cubase 15 every edition | Win, Mac                   | read + write                                 | Pro only (and Nuendo)                            | yes                                      | yes                                               | no file-level API; UI automation                                                  |
-| Audacity 3.x                                            | Linux, Win, Mac            | no                                           | no                                               | no (imports at 0)                        | notes only, no tempo                              | mod-script-pipe (Python over a named pipe) with the app running                   |
-| Logic Pro                                               | Mac                        | no                                           | read + write                                     | yes ("Move to Original Record Position") | yes (tempo, meter, markers into an empty project) | no API; AppleScript/UI automation                                                 |
-| Pro Tools Studio and Ultimate                           | Win, Mac                   | no                                           | read + write (Intro and Artist: no)              | yes ("Spot" to timestamp)                | yes                                               | PTSL, a gRPC scripting API since 2022                                             |
-| Reaper                                                  | Linux, Win, Mac            | no (an extension can add a project importer) | no (third-party Vordio)                          | yes                                      | yes                                               | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project                   |
-| Ardour 8.4+                                             | Linux, Win, Mac            | no                                           | read (libaaf, beta in 8.4, improved through 8.7) | yes ("position at file timestamp")       | yes                                               | Lua, including the headless `luasession`                                          |
-| Bitwig                                                  | Linux, Win, Mac            | read + write                                 | no                                               | yes                                      | yes                                               | no                                                                                |
-| Ableton Live 11, 12                                     | Win, Mac                   | no                                           | no                                               | no (imports at the insert point)         | notes only, no tempo                              | Max for Live and control-surface Python, neither for files; `.als` is gzipped XML |
-| FL Studio, GarageBand                                   | Win, Mac (GarageBand: Mac) | no                                           | no                                               | no                                       | notes only                                        | no                                                                                |
+| DAW                                                     | Platforms                  | DAWproject                                   | AAF                                              | Timestamped BWF                          | MIDI file with tempo map                          | Scriptable                                                                                                      |
+| ------------------------------------------------------- | -------------------------- | -------------------------------------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Cubase 14.0.20+ Pro and Artist; Cubase 15 every edition | Win, Mac                   | read + write                                 | Pro only (and Nuendo)                            | yes                                      | yes                                               | no file-level API; UI automation                                                                                |
+| Audacity 3.x                                            | Linux, Win, Mac            | no                                           | no                                               | no (imports at 0)                        | notes only, no tempo                              | mod-script-pipe (Python over a named pipe) with the app running                                                 |
+| Logic Pro                                               | Mac                        | no                                           | read + write                                     | yes ("Move to Original Record Position") | yes (tempo, meter, markers into an empty project) | no API; AppleScript/UI automation                                                                               |
+| Pro Tools Studio and Ultimate                           | Win, Mac                   | no                                           | read + write (Intro and Artist: no)              | yes ("Spot" to timestamp)                | yes                                               | PTSL, a gRPC scripting API since 2022                                                                           |
+| Reaper                                                  | Linux, Win, Mac            | no (an extension can add a project importer) | no (third-party Vordio)                          | yes                                      | yes                                               | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project                                                 |
+| Ardour 8.4+                                             | Linux, Win, Mac            | no                                           | read (libaaf, beta in 8.4, improved through 8.7) | yes ("position at file timestamp")       | yes                                               | Lua, including the headless `luasession`                                                                        |
+| Bitwig                                                  | Linux, Win, Mac            | read + write                                 | no                                               | yes                                      | yes                                               | no                                                                                                              |
+| Ableton Live 11, 12                                     | Win, Mac                   | no                                           | no                                               | no (imports at the insert point)         | notes only, no tempo                              | Max for Live and control-surface Python, neither for files; `.als` is gzipped XML                               |
+| FL Studio, GarageBand                                   | Win, Mac (GarageBand: Mac) | no                                           | no                                               | no                                       | notes only                                        | no                                                                                                              |
+| Sandyne 2.5 (free, no account)                          | Linux, Win, Mac            | read + write (GUI menus)                     | no                                               | unverified                               | yes, one track per part                           | headless `render`, `rendertracks`, `inspect` on `.sand` (JSON); a replay and a TLS control socket, undocumented |
 
 Three things fall out of the table.
 
@@ -60,6 +61,57 @@ Three things fall out of the table.
    writes, embedded or external essence) and `libaaf` (C, reads;
    `AAFInfo` CLI) are the open tools. Writing it means a Python worker
    or a port, not the browser.
+
+## Sandyne (Kevin, 2026-10-21)
+
+Kevin: "I'm also interested in this new free DAW: https://sandyne.com
+not sure what kind of interop it supports." Looked at and installed on
+the VM (`~/Applications/Sandyne`, 2.5.0.0, the Linux tarball from
+api.sandyne.com; free, no account, the EULA accepted for the install).
+What it supports, from its site, release notes and the binary's own
+strings, and what ran here:
+
+- **DAWproject both ways**, from the File menu ("Import project
+  (.dawproject)…", "Export project as .dawproject…"; export since 1.5,
+  import by 2.5). Its export warns that "Internal instruments/effects
+  and plugin state have no dawproject equivalent" and that step
+  (drum-grid) data has "no v1 dawproject mapping": the arrangement
+  travels, the sounds do not, which is the format's own limit. So Dawn's
+  DAWproject already serves Sandyne, and a Sandyne export is a third
+  real-world writer for Dawn's reader to be tested against.
+- **Reaper `.rpp` import**, stem WAV import and export, MIDI file import
+  (2.5: a multi-track file becomes one track per part) and export.
+- **`.sand` is plain JSON**: `global` (bpm, beatsPerBar, master, a
+  harmony track of chord events, scale), `tracks` (volume, pan, mute,
+  solo, color, an internal instrument or plugin, effects), `contents`
+  (clips: `startBeat`, `lengthBeats`, `contentStartOffset`, notes with
+  beat `start` and `duration`, or `sampleFilePath` with gain and fades
+  in beats). Readable and writable without the application.
+- **Headless commands that need no display** ran on this VM:
+  `sandyne inspect <file.sand>` (title, tempo, tracks, clips, note
+  count, duration) and `sandyne rendertracks <file.sand> --output-dir
+  <dir> --format wav` (one WAV per track; `render` for the mix). That
+  makes a `.sand` written by Dawn checkable by Sandyne itself in a
+  script: inspect must list the tracks and clips, the per-track renders
+  must hold audio where the clips are.
+- **Automation hooks, undocumented**: `--replay <actions.json>` replays
+  an action trace (`{"method": "audio.importFile", "params": {"path",
+  "trackIndex", "beatPos", "name"}}` and `track.create`,
+  `content.notes.set`, `transport.setTempo`, `ui.*`; the guided tours
+  inside the binary use it; no file-import or export method among
+  them), and `--ws-control` opens a TLS WebSocket on port 5555 with
+  `GET_STATE`, `GET_TRACK n`, `GET_CONTENT t c`, `GET_UI_STATE` and a
+  few dialog openers. The GUI under Xvfb starts (`--no-gpu`) with no
+  sound card. Driving the import and export menus would be xdotool
+  work; not done.
+
+What this means for the plan: Sandyne joins the targets as the free DAW
+on every platform, served today by the DAWproject export. A direct
+`.sand` export is cheap (JSON, beats from the tempo map, clips and
+notes, levels and pans, markers have no place yet) and would be the one
+third-party DAW check that runs fully headless on Linux through the
+DAW's own code. Sandyne's DAWproject export, made by hand on Kevin's
+Mac, goes into the reader corpus.
 
 ## What Dawn should export, by target
 
@@ -257,7 +309,10 @@ Pro Tools; it is a confirmation tier, not a discovery tier.
    reference, proven on the MacBook.
 7. AAF writer and reader, if the Logic pass says the bundle is not
    enough: a week, Python in a worker.
-8. Tart on the MacBook, then a hosted Mac, then Windows, as the targets'
+8. A `.sand` writer for Sandyne with `sandyne inspect` and `rendertracks`
+   as its headless check on this VM (two days), and Sandyne's own
+   DAWproject export, from the Mac, into the reader corpus.
+9. Tart on the MacBook, then a hosted Mac, then Windows, as the targets'
    user numbers justify.
 
 ## Open questions

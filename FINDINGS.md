@@ -534,6 +534,16 @@ belong in CLAUDE.md or docs/, not here.
   project's tempo (12.5 s became 11.75 s). `-cfgfile` keeps all of that
   in a folder of the run's own (scripts/interop/reaper.mjs,
   2026-10-21).
+- **Sandyne (the free DAW) renders and inspects projects from the
+  command line with no display**, on a VM with no sound card:
+  `sandyne inspect file.sand` and `sandyne rendertracks file.sand
+  --output-dir out --format wav` (JACK and ALSA complaints on stderr,
+  harmless). Its project file is plain JSON, its Linux build a tarball
+  installed by `install.sh --accept-license` into
+  `~/Applications/Sandyne`. The GUI starts under Xvfb with `--no-gpu`.
+  Its `--ws-control` socket speaks TLS with a self-signed certificate it
+  writes to `~/.config/Sandyne/control-cert.pem`, so a plain `ws://`
+  client is dropped at the handshake (2026-10-21).
 - **Ardour's headless `ardour8-lua` cannot import.** Import goes through
   `Editor:do_import`, which only the GUI has; `Session.import_files`,
   `RegionFactory` and `ImportStatus` are not bound in the headless
