@@ -10,6 +10,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **A session bundle in Dawn's Export panel** for the DAWs that read no project file (Logic Pro, Pro Tools, Ableton Live, Audacity, Reaper, GarageBand): every clip as a 24-bit Broadcast WAV stamped with its position in the song, a stem per track from zero, a MIDI file with the tempo map, time signatures, key signatures, markers and the MIDI tracks' notes, an Audacity label track and a README with each DAW's import path. A folder inside the export's zip, or its own zip.
+- **A DAWproject now carries the markers and the tempo and meter changes** (as Bitwig's tempo and time-signature automation), which Dawn's reader already took back.
 - **Open a DAWproject in Dawn.** Import a `.dawproject` from Bitwig,
   Studio One, Cubase or Nuendo (or Dawn's own export) as a new song:
   tracks, groups as buses, levels, routing, sends, clips with fades, MIDI

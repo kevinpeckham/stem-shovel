@@ -1,7 +1,9 @@
 /**
- * A small Standard MIDI File reader: enough to draw a piano roll. Tracks are
- * merged, tempo changes are honoured when converting ticks to seconds, and
- * only note on/off matter — everything else is skipped.
+ * A small Standard MIDI File reader: enough to draw a piano roll, and to
+ * check what a conductor track says. Tracks are merged, tempo changes are
+ * honored when converting ticks to seconds, and besides note on/off the
+ * tempo, time signature, key signature, marker and track name meta events
+ * are kept (in seconds); everything else is skipped.
  */
 export interface MidiNote {
 	/** Seconds from the start of the file. */
@@ -19,6 +21,13 @@ export interface MidiSummary {
 	duration: number;
 	lowest: number;
 	highest: number;
+	/** The conductor's events, in seconds, in file order. */
+	tempos?: { at: number; bpm: number }[];
+	meters?: { at: number; numerator: number; denominator: number }[];
+	keys?: { at: number; sharps: number; minor: boolean }[];
+	markers?: { at: number; name: string }[];
+	/** Each track's name, where it has one. */
+	trackNames?: string[];
 }
 
 class Reader {
@@ -65,14 +74,20 @@ class Reader {
 
 interface RawEvent {
 	tick: number;
-	kind: "on" | "off" | "tempo";
+	kind: "on" | "off" | "tempo" | "meter" | "key" | "marker";
 	channel: number;
 	pitch: number;
 	velocity: number;
 	usPerQuarter: number;
+	/** A meter's numerator and denominator power, or a key's sharps (signed) and minor flag. */
+	a?: number;
+	b?: number;
+	text?: string;
 }
 
-function readTrack(r: Reader, end: number, events: RawEvent[]) {
+const utf8 = new TextDecoder();
+
+function readTrack(r: Reader, end: number, events: RawEvent[], names: string[]) {
 	let tick = 0;
 	let running = 0;
 	while (r.pos < end) {
@@ -90,9 +105,25 @@ function readTrack(r: Reader, end: number, events: RawEvent[]) {
 		if (status === 0xff) {
 			const meta = r.u8();
 			const len = r.vlq();
+			const blank = { channel: 0, pitch: 0, velocity: 0, usPerQuarter: 0 };
 			if (meta === 0x51 && len === 3) {
 				const usPerQuarter = (r.u8() << 16) | (r.u8() << 8) | r.u8();
-				events.push({ tick, kind: "tempo", channel: 0, pitch: 0, velocity: 0, usPerQuarter });
+				events.push({ tick, kind: "tempo", ...blank, usPerQuarter });
+			} else if (meta === 0x58 && len === 4) {
+				const a = r.u8();
+				const b = r.u8();
+				r.skip(2);
+				events.push({ tick, kind: "meter", ...blank, a, b });
+			} else if (meta === 0x59 && len === 2) {
+				const sf = r.u8();
+				const mi = r.u8();
+				events.push({ tick, kind: "key", ...blank, a: sf > 127 ? sf - 256 : sf, b: mi });
+			} else if (meta === 0x06 || meta === 0x03) {
+				const bytes = new Uint8Array(len);
+				for (let i = 0; i < len; i++) bytes[i] = r.u8();
+				const text = utf8.decode(bytes);
+				if (meta === 0x06) events.push({ tick, kind: "marker", ...blank, text });
+				else names.push(text);
 			} else r.skip(len);
 		} else if (status === 0xf0 || status === 0xf7) {
 			r.skip(r.vlq());
@@ -123,10 +154,11 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 	const ticksPerQuarter = division || 96;
 
 	const events: RawEvent[] = [];
+	const trackNames: string[] = [];
 	for (let t = 0; t < trackCount && !r.done; t++) {
 		if (r.ascii(4) !== "MTrk") break;
 		const length = r.u32();
-		readTrack(r, r.pos + length, events);
+		readTrack(r, r.pos + length, events, trackNames);
 		r.pos = Math.min(r.length, r.pos);
 	}
 	events.sort((a, b) => a.tick - b.tick || (a.kind === "tempo" ? -1 : 0));
@@ -140,12 +172,29 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 
 	const open = new Map<string, { start: number; velocity: number }>();
 	const notes: MidiNote[] = [];
+	const tempos: NonNullable<MidiSummary["tempos"]> = [];
+	const meters: NonNullable<MidiSummary["meters"]> = [];
+	const keys: NonNullable<MidiSummary["keys"]> = [];
+	const markers: NonNullable<MidiSummary["markers"]> = [];
 	for (const e of events) {
 		const at = toSeconds(e.tick);
 		if (e.kind === "tempo") {
 			seconds = at;
 			lastTick = e.tick;
 			usPerQuarter = e.usPerQuarter;
+			tempos.push({ at, bpm: Math.round((60_000_000 / usPerQuarter) * 100) / 100 });
+			continue;
+		}
+		if (e.kind === "meter") {
+			meters.push({ at, numerator: e.a!, denominator: 2 ** e.b! });
+			continue;
+		}
+		if (e.kind === "key") {
+			keys.push({ at, sharps: e.a!, minor: e.b === 1 });
+			continue;
+		}
+		if (e.kind === "marker") {
+			markers.push({ at, name: e.text ?? "" });
 			continue;
 		}
 		const key = `${e.channel}:${e.pitch}`;
@@ -172,5 +221,10 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 		duration,
 		lowest: pitches.length ? Math.min(...pitches) : 60,
 		highest: pitches.length ? Math.max(...pitches) : 72,
+		tempos,
+		meters,
+		keys,
+		markers,
+		trackNames,
 	};
 }

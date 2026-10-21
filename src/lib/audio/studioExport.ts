@@ -1,9 +1,14 @@
+import { audacityLabels } from "#lib/utils/audacityLabels.js";
+import { bextChunk } from "#lib/utils/bext.js";
 import { encodeWav } from "#lib/utils/encodeWav.js";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
 import { encodeMp3 } from "./encodeMp3.js";
 import { dawproject } from "#lib/utils/dawproject.js";
 import { measureLoudness, type LoudnessReading } from "#lib/utils/measureLoudness.js";
+import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { normalizationGain } from "#lib/utils/normalizationGain.js";
+import { sessionMidi } from "#lib/utils/sessionMidi.js";
+import { sessionReadme } from "#lib/utils/sessionReadme.js";
 import { zipBlobs, type ZipEntry } from "#lib/utils/zipBlobs.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import type { RenderTarget } from "./studio.svelte";
@@ -15,8 +20,13 @@ import type { RenderTarget } from "./studio.svelte";
  * asked, brought to the streaming target (utils/normalizationGain.ts),
  * as 24- or 16-bit WAV or as a 192 kbps MP3 (encodeMp3.ts); a DAWproject
  * of the arrangement with the clips' sources (utils/dawproject.ts), always
- * 24-bit WAV inside. Pure over its engine, so a test hands
- * it a fake; the page downloads what comes back, one by one or zipped.
+ * 24-bit WAV inside; a session bundle for the DAWs that read no project
+ * format (docs/daw-interop-plan.md): every clip as a Broadcast WAV stamped
+ * with its position (utils/bext.ts), a stem per track from zero, the
+ * tempo map, meters, keys, markers and MIDI parts as a MIDI file
+ * (utils/sessionMidi.ts), Audacity labels and a README. Pure over its
+ * engine, so a test hands it a fake; the page downloads what comes back,
+ * one by one or zipped (a bundle unzips into the export's zip as a folder).
  */
 export interface ExportEngine {
 	arrangement: StudioArrangement;
@@ -29,6 +39,8 @@ export interface ExportOptions {
 	tracks: boolean;
 	buses: boolean;
 	dawproject: boolean;
+	/** The session bundle for Logic, Pro Tools, Live, Audacity and Reaper (always 24-bit WAV inside). */
+	bundle: boolean;
 	/** The audio files' format; `bits` applies to WAV only. */
 	format: "wav" | "mp3";
 	bits: 16 | 24;
@@ -40,6 +52,7 @@ export const EXPORT_DEFAULTS: ExportOptions = {
 	tracks: false,
 	buses: false,
 	dawproject: false,
+	bundle: false,
 	format: "wav",
 	bits: 24,
 	normalize: false,
@@ -52,6 +65,9 @@ export interface ExportFile {
 	loudness?: LoudnessReading;
 	/** The gain applied, in dB (0 when not normalized). */
 	gainDb?: number;
+	/** A zip's files, for the export's own zip to hold as a folder named `folder` rather than a zip inside a zip. */
+	entries?: ZipEntry[];
+	folder?: string;
 }
 
 const channelsOf = (buffer: AudioBuffer) =>
@@ -161,13 +177,130 @@ export async function exportSong(
 			blob: await zipBlobs(entries, "application/vnd.bitwig.dawproject"),
 		});
 	}
+	if (options.bundle) out.push(await sessionBundle(engine, title, application, onprogress));
 	return out;
 }
 
-/** Everything in one zip, named after the song. */
+/**
+ * The session bundle: `clips/` (each audio clip over [start, start+duration)
+ * with its gain and fades, at its source's rate, with a `bext` whose time
+ * reference is its start in samples), `stems/` (a track render from zero,
+ * stamped at zero), the MIDI file, `labels.txt` and `README.txt`.
+ */
+async function sessionBundle(
+	engine: ExportEngine,
+	title: string,
+	application: { name: string; version: string },
+	onprogress?: (step: string) => void,
+): Promise<ExportFile> {
+	const a = engine.arrangement;
+	const base = fileSafe(title);
+	const date = new Date();
+	const originator = `${application.name} ${application.version}`;
+	const entries: ZipEntry[] = [];
+	const nn = (i: number) => String(i + 1).padStart(2, "0");
+	const history = (sampleRate: number, channels: number) =>
+		`A=PCM,F=${sampleRate},W=24,M=${channels === 1 ? "mono" : "stereo"},T=${originator}`;
+	const sourceOf = (id: string) => {
+		const b = engine.bufferOf(id);
+		return b ? { channels: channelsOf(b), sampleRate: b.sampleRate } : null;
+	};
+	// Clips, in track order, each stamped with its position.
+	const audioClips = a.tracks.flatMap((t) =>
+		a.clips
+			.filter((c) => c.trackId === t.id && c.sourceId && engine.bufferOf(c.sourceId))
+			.sort((x, y) => x.start - y.start)
+			.map((c) => ({ track: t, clip: c })),
+	);
+	const sampleRates: number[] = [];
+	audioClips.forEach(({ track, clip }, i) => {
+		onprogress?.(`Writing clip ${i + 1} of ${audioClips.length}…`);
+		const src = sourceOf(clip.sourceId!)!;
+		const mixed = mixClipsToChannels([clip], sourceOf, {
+			from: clip.start,
+			to: clip.start + clip.duration,
+			sampleRate: src.sampleRate,
+		});
+		const channels = src.channels.length === 1 ? [mixed[0]!] : mixed;
+		const loudness = measureLoudness(channels, src.sampleRate);
+		sampleRates.push(src.sampleRate);
+		const bext = bextChunk({
+			description: `${track.name} - ${clip.name}`,
+			originator,
+			originatorReference: clip.id,
+			date,
+			timeReference: Math.round(clip.start * src.sampleRate),
+			loudness,
+			codingHistory: history(src.sampleRate, channels.length),
+		});
+		entries.push({
+			name: `clips/${nn(i)} ${fileSafe(track.name)} - ${fileSafe(clip.name)} @ ${clip.start.toFixed(3)}s.wav`,
+			data: encodeWav24(channels, src.sampleRate, [bext]),
+		});
+	});
+	// Stems from zero, through each track's own strip.
+	const withClips = a.tracks.filter((t) => a.clips.some((c) => c.trackId === t.id));
+	for (const [i, t] of withClips.entries()) {
+		onprogress?.(`Rendering ${t.name}…`);
+		const buffer = await engine.render({ track: t.id });
+		const channels = channelsOf(buffer);
+		const bext = bextChunk({
+			description: t.name,
+			originator,
+			originatorReference: t.id,
+			date,
+			timeReference: 0,
+			loudness: measureLoudness(channels, buffer.sampleRate),
+			codingHistory: history(buffer.sampleRate, channels.length),
+		});
+		entries.push({
+			name: `stems/${nn(i)} ${fileSafe(t.name)}.wav`,
+			data: encodeWav24(channels, buffer.sampleRate, [bext]),
+		});
+	}
+	onprogress?.("Writing the MIDI file and labels…");
+	const text = new TextEncoder();
+	const midiTracks = a.tracks.filter(
+		(t) => t.kind === "midi" && a.clips.some((c) => c.trackId === t.id && c.notes?.length),
+	).length;
+	entries.unshift(
+		{
+			name: "README.txt",
+			data: text.encode(
+				sessionReadme({
+					title,
+					application,
+					date,
+					clips: audioClips.length,
+					stems: withClips.length,
+					midiTracks,
+					markers: a.markers?.length ?? 0,
+					sampleRates,
+				}),
+			),
+			compress: true,
+		},
+		{ name: `${base}.mid`, data: sessionMidi(a, title) },
+		{ name: "labels.txt", data: text.encode(audacityLabels(a)), compress: true },
+	);
+	return {
+		name: `${base} session.zip`,
+		blob: await zipBlobs(entries),
+		entries,
+		folder: `${base} session`,
+	};
+}
+
+/** Everything in one zip, named after the song; a file that is itself a zip of entries goes in as a folder. */
 export async function bundleExport(title: string, files: ExportFile[]): Promise<ExportFile> {
 	return {
 		name: `${fileSafe(title)}.zip`,
-		blob: await zipBlobs(files.map((f) => ({ name: f.name, data: f.blob }))),
+		blob: await zipBlobs(
+			files.flatMap((f) =>
+				f.entries && f.folder
+					? f.entries.map((e) => ({ ...e, name: `${f.folder}/${e.name}` }))
+					: [{ name: f.name, data: f.blob }],
+			),
+		),
 	};
 }

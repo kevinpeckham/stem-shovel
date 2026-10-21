@@ -1,5 +1,7 @@
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it, vi } from "vite-plus/test";
+import { parseMidi } from "#lib/audio/midi.js";
+import { readBext } from "#lib/utils/bext.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import { bundleExport, EXPORT_DEFAULTS, exportSong, fileSafe } from "./studioExport";
 
@@ -172,5 +174,96 @@ describe("exportSong", () => {
 	it("fileSafe keeps a name a filesystem takes", () => {
 		expect(fileSafe('  a:b*c?"d<e>f|g\\h/i  ')).toBe("a-b-c-d-e-f-g-h-i");
 		expect(fileSafe("   ")).toBe("untitled");
+	});
+	it("writes a session bundle: stamped clips, stems from zero, the MIDI file, labels and a README, a folder in the export's zip", async () => {
+		const e = engine();
+		const rich: StudioArrangement = {
+			...arrangement,
+			markers: [{ id: "m1", t: 0.5, name: "Verse" }],
+			key: "Dm",
+			tracks: [
+				...arrangement.tracks,
+				{ ...arrangement.tracks[0]!, id: "t3", name: "Piano", kind: "midi" },
+			],
+			clips: [
+				// The guitar clip a quarter second in, with a fade; a MIDI clip on the piano.
+				{ ...arrangement.clips[0]!, start: 0.25, duration: 0.5, fadeIn: 0.1 },
+				{
+					id: "c2",
+					trackId: "t3",
+					notes: [{ t: 0, d: 0.5, p: 62, v: 0.8 }],
+					start: 0.5,
+					offset: 0,
+					duration: 1,
+					gain: 1,
+					fadeIn: 0,
+					fadeOut: 0,
+					name: "Chords",
+				},
+			],
+		};
+		const steps: string[] = [];
+		const files = await exportSong(
+			{ ...e, arrangement: rich },
+			"My Song",
+			{ ...EXPORT_DEFAULTS, mix: false, bundle: true },
+			app,
+			(s) => steps.push(s),
+		);
+		expect(files.map((f) => f.name)).toEqual(["My Song session.zip"]);
+		const inside = unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()));
+		expect(Object.keys(inside)).toEqual([
+			"README.txt",
+			"My Song.mid",
+			"labels.txt",
+			"clips/01 Guitar - Take @ 0.250s.wav",
+			"stems/01 Guitar.wav",
+			"stems/02 Piano.wav",
+		]);
+		// The clip: half a second of the source at 48 kHz, stamped at a quarter second (12 000 samples), measured.
+		const clip = inside["clips/01 Guitar - Take @ 0.250s.wav"]!;
+		const bext = readBext(clip)!;
+		expect(bext.timeReference).toBe(12000);
+		expect(bext.description).toBe("Guitar - Take");
+		expect(bext.originator).toBe("Stem Shovel Dawn 0.138.0");
+		expect(bext.codingHistory).toBe("A=PCM,F=48000,W=24,M=stereo,T=Stem Shovel Dawn 0.138.0");
+		expect(bext.loudnessValue).not.toBeNull();
+		const dataSize =
+			new DataView(clip.buffer, clip.byteOffset).getUint32(4, true) + 8 - (44 + 8 + 602 + 56);
+		expect(dataSize).toBe(24000 * 2 * 3);
+		// The stems: a render per track, stamped at zero.
+		expect(e.render).toHaveBeenCalledWith({ track: "t1" });
+		expect(e.render).toHaveBeenCalledWith({ track: "t3" });
+		expect(readBext(inside["stems/02 Piano.wav"]!)!.timeReference).toBe(0);
+		// The MIDI file: the conductor with the key and the marker, the piano's note at half a second.
+		const midi = parseMidi(inside["My Song.mid"]!.buffer.slice(inside["My Song.mid"]!.byteOffset));
+		expect(midi.trackNames).toEqual(["My Song", "Piano"]);
+		expect(midi.keys).toEqual([{ at: 0, sharps: -1, minor: true }]);
+		expect(midi.markers).toEqual([{ at: 0.5, name: "Verse" }]);
+		expect(midi.notes.map((n) => [n.pitch, n.start])).toEqual([[62, 0.5]]);
+		expect(strFromU8(inside["labels.txt"]!)).toContain("0.500000\t0.500000\tVerse");
+		expect(strFromU8(inside["README.txt"]!)).toContain(
+			"1 audio clip, each a 24-bit Broadcast WAV (48 kHz)",
+		);
+		expect(steps).toEqual([
+			"Writing clip 1 of 1…",
+			"Rendering Guitar…",
+			"Rendering Piano…",
+			"Writing the MIDI file and labels…",
+		]);
+		// In the export's own zip, the bundle is a folder, not a zip inside a zip.
+		const all = await bundleExport("My Song", [
+			{ name: "My Song.wav", blob: new Blob([new Uint8Array(4)]) },
+			files[0]!,
+		]);
+		expect(Object.keys(unzipSync(new Uint8Array(await all.blob.arrayBuffer())))).toEqual([
+			"My Song.wav",
+			"My Song session/README.txt",
+			"My Song session/My Song.mid",
+			"My Song session/labels.txt",
+			"My Song session/clips/01 Guitar - Take @ 0.250s.wav",
+			"My Song session/stems/01 Guitar.wav",
+			"My Song session/stems/02 Piano.wav",
+		]);
 	});
 });

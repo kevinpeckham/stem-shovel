@@ -7,13 +7,15 @@ import { deleteStudioSongs, newStudioSong, expect, hooked, open, test, until } f
  * Export from Dawn (docs/dawn-daw-plan.md, D3): an imported recording on
  * a track routed to a bus, a MIDI clip on a piano track, the LUFS readout
  * while the song plays, then Export… with the mix, the stems per track
- * and bus, a DAWproject and normalization, all in one zip: the zip holds
- * each file, the mix measures at the target, the DAWproject names the
- * tracks and carries the recording, and the MIDI track's stem has sound
- * in it from the offline render. The bot's songs are deleted at the end.
+ * and bus, a DAWproject, the session bundle and normalization, all in
+ * one zip: the zip holds each file, the mix measures at the target, the
+ * DAWproject names the tracks and carries the recording, the bundle is a
+ * folder with the stamped clip, the stems, the MIDI file, the labels and
+ * the README, and the MIDI track's stem has sound in it from the offline
+ * render. The bot's songs are deleted at the end.
  */
 test.describe("Dawn export", () => {
-	test("renders the mix, stems, a DAWproject and a MIDI track offline into one zip", async ({
+	test("renders the mix, stems, a DAWproject, a session bundle and a MIDI track offline into one zip", async ({
 		page,
 		errors,
 	}) => {
@@ -23,6 +25,10 @@ test.describe("Dawn export", () => {
 		await deleteStudioSongs(page);
 		await newStudioSong(page);
 		await until(page, ([w]) => w.__studio.arrangement.tracks.length > 0);
+		// An ASCII title: headless Chromium reports a download whose name holds a non-ASCII character
+		// (the default title's middle dots) as "download" (FINDINGS.md, Testing).
+		await page.getByLabel("Song title").fill("Export check");
+		await page.getByLabel("Song title").press("Enter");
 		await page.locator("input[type=file]").setInputFiles(path.resolve("static/stems/keys.wav"));
 		await until(page, ([w]) => w.__studio.arrangement.clips.length === 1);
 		await until(page, ([w]) => !Object.values(w.__studio.sources).some((s: any) => s.pending), {
@@ -85,6 +91,7 @@ test.describe("Dawn export", () => {
 		await panel.getByRole("checkbox", { name: /A stem per track/ }).check();
 		await panel.getByRole("checkbox", { name: /A stem per bus/ }).check();
 		await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
+		await panel.getByRole("checkbox", { name: /A session bundle/ }).check();
 		await panel.getByRole("checkbox", { name: /Normalize to -14 LUFS/ }).check();
 		const [download] = await Promise.all([
 			page.waitForEvent("download", { timeout: 120_000 }),
@@ -107,6 +114,19 @@ test.describe("Dawn export", () => {
 		expect(project).toContain('name="Keys bus"');
 		expect(project).toContain("<Note time=");
 		expect(Object.keys(dawp).filter((n) => n.startsWith("audio/")).length).toBe(1);
+		// The session bundle, a folder: the clip stamped at zero (it starts the song), a stem per track, the MIDI file, labels, README.
+		const folder = `${base} session/`;
+		const bundle = names.filter((n) => n.startsWith(folder)).map((n) => n.slice(folder.length));
+		expect(bundle).toContain("README.txt");
+		expect(bundle).toContain("labels.txt");
+		expect(bundle).toContain(`${base}.mid`);
+		expect(bundle.filter((n) => n.startsWith("clips/")).length).toBe(1);
+		expect(bundle).toContain("stems/01 Track 1.wav");
+		expect(bundle).toContain(`stems/02 ${ids.midiName}.wav`);
+		const clip = zip[names.find((n) => n.startsWith(`${folder}clips/`))!]!;
+		expect(strFromU8(clip.subarray(36, 40))).toBe("bext");
+		expect(strFromU8(zip[`${folder}README.txt`]!)).toContain("Logic Pro");
+		expect(strFromU8(zip[`${folder}labels.txt`]!)).toMatch(/^0\.000000\t0\.000000\tTempo /);
 		// The panel reports the mix at the target.
 		const list = panel.getByRole("list", { name: "Exported files" });
 		await expect(list).toContainText(`${base}.wav`);

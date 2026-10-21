@@ -5,7 +5,8 @@
 
 	/**
 	 * The export panel (docs/dawn-daw-plan.md, D3): what to render (the
-	 * mix, a stem per track, a stem per bus, a DAWproject), how (24- or
+	 * mix, a stem per track, a stem per bus, a DAWproject, a session bundle
+	 * for the DAWs without one, docs/daw-interop-plan.md), how (24- or
 	 * 16-bit WAV, normalized to the streaming target or as mixed), and
 	 * whether the files come as one zip. The caller renders (`onexport`)
 	 * and hands back what it made, shown with each file's loudness. The
@@ -30,6 +31,7 @@
 			options.tracks && trackCount > 0,
 			options.buses && busCount > 0,
 			options.dawproject,
+			options.bundle,
 		].filter(Boolean).length,
 	);
 	const kb = (bytes: number) =>
@@ -84,6 +86,12 @@
 			<input type="checkbox" class="accent-maximumYellow" bind:checked={options.dawproject} />
 			A DAWproject (.dawproject) for Bitwig, Cubase or Studio One: the tracks, clips, fades, levels and
 			automation with the recordings
+		</label>
+		<label class="flex items-center gap-2 text-blue-100/90">
+			<input type="checkbox" class="accent-maximumYellow" bind:checked={options.bundle} />
+			A session bundle for Logic, Pro Tools, Ableton Live, Audacity or Reaper: every clip as a Broadcast
+			WAV stamped with its position, a stem per track from zero, a MIDI file with the tempo map, meters,
+			key, markers and the MIDI parts, and Audacity labels, with a README
 		</label>
 	</fieldset>
 	<fieldset class="grid gap-1.5" disabled={busy}>

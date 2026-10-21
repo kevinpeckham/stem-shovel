@@ -47,7 +47,7 @@ const show = (name: string, project: string, metadata: string | null, entries: s
 				`   dropped: ${r.dropped.slice(0, 6).join(" | ")}${r.dropped.length > 6 ? ` … +${r.dropped.length - 6}` : ""}`,
 			);
 	} catch (e) {
-		console.log(`${name}: ERROR ${e instanceof Error ? e.message : e}`);
+		console.log(`${name}: ERROR ${e instanceof Error ? e.message : String(e)}`);
 	}
 };
 for (const f of readdirSync(dir).sort()) {

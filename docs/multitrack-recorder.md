@@ -1060,6 +1060,55 @@ sources so it plays at once; the uploads finish in the background.
 The sign-in link carries `next=/multitrack-recorder`, so sign-up, then
 an account, lands back on the page with the offer waiting.
 
+## The session bundle (2026-10-21, docs/daw-interop-plan.md)
+
+Of the DAWs Stem Shovel aims at, only Cubase reads DAWproject; Logic,
+Pro Tools, Ableton Live and Audacity read audio files and a MIDI file.
+The export panel's **session bundle** is that lowest common denominator,
+one zip (or a folder inside the export's own zip: `ExportFile.entries`
+and `folder`, which `bundleExport` expands rather than nesting a zip):
+
+- `clips/NN Track - Clip @ 12.500s.wav`: each audio clip over its span
+  with its gain and fades (utils/mixClipsToChannels.ts over the one
+  clip), at its source's rate, mono when the source is, as 24-bit
+  Broadcast WAV. `utils/bext.ts` writes the `bext` chunk (EBU 3285
+  version 2) with the time reference at the clip's start in samples, the
+  originator, the clip's id as the reference, the date, the clip's
+  loudness and true peak, and a coding history line; `encodeWav24` takes
+  extra chunks between `fmt ` and `data`. Logic ("Move to Original
+  Record Position"), Pro Tools ("Spot"), Cubase ("At Origin"), Reaper
+  and Ardour place the file from it. `readBext` reads it back, for the
+  tests and for an import that wants to honor it one day.
+- `stems/NN Track.wav`: a render per track from zero through its strip,
+  stamped at zero, for the DAWs that import at the insert point (Live,
+  Audacity, GarageBand).
+- `Title.mid`: `utils/sessionMidi.ts`, a format 1 file at 480 ppq. The
+  conductor track is named after the song and carries the tempo at zero
+  and each tempo change, the meter and its changes, the key and its
+  changes as key signatures (`utils/keySignatureOf.ts` turns "F#m" or
+  "A♭ major" into sharps and minor; a modal key is skipped) and the
+  markers; then a track per MIDI track with notes, named after it, on
+  its own channel (10 for a drums track). Ticks come through the
+  arrangement's own tempo map (`beatsBetween`, audio/measures.ts), so
+  a note at a second stays there once the DAW applies the tempos.
+  `midiFileTracks` in utils/midiFile.ts writes format 1; `midiMarker`,
+  `midiTrackName` and `midiKeySignature` are the new meta events, and
+  `parseMidi` (audio/midi.ts) now keeps tempos, meters, keys, markers
+  and track names in seconds, which is how the tests read a file back.
+- `labels.txt`: `utils/audacityLabels.ts`, Audacity's label track
+  (start, end, text, tab-separated): the song's tempo, meter and key at
+  zero, every change and every marker by time.
+- `README.txt`: `utils/sessionReadme.ts`, what the folders hold and the
+  menu path that opens them in each DAW.
+
+The DAWproject writer gained the same structure for Cubase: `Markers`
+(seconds), `TempoAutomation` and `TimeSignatureAutomation` as held
+points in beats, which the reader already took. Validating the writer
+against Bitwig's schema (tests/dawproject/, libxml2-wasm in the unit
+tests) found its `Channel` children out of the schema's sequence
+(Mute, Pan, Sends, Volume): Bitwig's JAXB reader did not mind, a strict
+one would have. Every writer test now validates.
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3

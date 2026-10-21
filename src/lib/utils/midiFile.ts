@@ -1,8 +1,11 @@
 /**
- * A Standard MIDI File, format 0: one track of timed events. The drum
- * machine's export and the chord player's progression share it; each lays
- * out its own events (a tempo and time signature first, then notes) and
- * this writes the bytes. Ticks are absolute; events may arrive unsorted.
+ * A Standard MIDI File: format 0 (`midiFile`, one track of timed events)
+ * or format 1 (`midiFileTracks`, a conductor track and one per part). The
+ * drum machine's export and the chord player's progression share the
+ * first; the session bundle (utils/sessionMidi.ts) writes the second.
+ * Each lays out its own events (a tempo and time signature first, then
+ * notes) and this writes the bytes. Ticks are absolute; events may
+ * arrive unsorted.
  */
 export interface MidiEvent {
 	tick: number;
@@ -46,8 +49,40 @@ export function midiProgram(tick: number, channel: number, program: number): Mid
 	return { tick, bytes: [0xc0 | (channel & 0x0f), program & 0x7f] };
 }
 
+/** A text meta event (`type` 0x01 text, 0x03 track name, 0x06 marker), UTF-8. */
+function midiText(tick: number, type: number, text: string): MidiEvent {
+	const bytes = Array.from(new TextEncoder().encode(text)).slice(0, 127);
+	return { tick, bytes: [0xff, type, bytes.length, ...bytes] };
+}
+/** The track's name (a DAW names the part after it). */
+export const midiTrackName = (tick: number, name: string) => midiText(tick, 0x03, name);
+/** A marker on the conductor track: Logic, Pro Tools, Cubase, Reaper and Ardour show it on the ruler. */
+export const midiMarker = (tick: number, name: string) => midiText(tick, 0x06, name);
+/** The key signature meta event: `sharps` −7..7 (negative for flats), major or minor. */
+export function midiKeySignature(tick: number, sharps: number, minor: boolean): MidiEvent {
+	const sf = Math.max(-7, Math.min(7, Math.round(sharps)));
+	return { tick, bytes: [0xff, 0x59, 0x02, sf & 0xff, minor ? 1 : 0] };
+}
+
 /** The file: the events sorted by tick, note-offs before note-ons at the same tick, an end-of-track at `endTick` (or after the last event). */
 export function midiFile(events: MidiEvent[], ppq = MIDI_PPQ, endTick?: number): Blob {
+	const track = encodeTrack(events, endTick);
+	const header = [...ascii("MThd"), ...u32(6), ...u16(0), ...u16(1), ...u16(ppq)];
+	return new Blob([Uint8Array.from([...header, ...track])], { type: "audio/midi" });
+}
+
+/** A format 1 file: the first track is the conductor (tempo, meter, key, markers), the rest the parts; each ends at `endTick` or after its last event. */
+export function midiFileTracks(
+	tracks: { events: MidiEvent[]; endTick?: number }[],
+	ppq = MIDI_PPQ,
+): Blob {
+	const header = [...ascii("MThd"), ...u32(6), ...u16(1), ...u16(tracks.length), ...u16(ppq)];
+	const body = tracks.flatMap((t) => encodeTrack(t.events, t.endTick));
+	return new Blob([Uint8Array.from([...header, ...body])], { type: "audio/midi" });
+}
+
+/** One MTrk chunk: the events in order as delta times, then the end-of-track. */
+function encodeTrack(events: MidiEvent[], endTick?: number): number[] {
 	const sorted = [...events].sort((a, b) => a.tick - b.tick || rank(a) - rank(b));
 	const lastTick = sorted.length ? sorted[sorted.length - 1].tick : 0;
 	sorted.push({ tick: Math.max(lastTick, endTick ?? lastTick), bytes: [0xff, 0x2f, 0x00] });
@@ -57,16 +92,7 @@ export function midiFile(events: MidiEvent[], ppq = MIDI_PPQ, endTick?: number):
 		track.push(...variableLength(e.tick - last), ...e.bytes);
 		last = e.tick;
 	}
-	const header = [
-		...ascii("MThd"),
-		...u32(6),
-		...u16(0),
-		...u16(1),
-		...u16(ppq),
-		...ascii("MTrk"),
-		...u32(track.length),
-	];
-	return new Blob([Uint8Array.from([...header, ...track])], { type: "audio/midi" });
+	return [...ascii("MTrk"), ...u32(track.length), ...track];
 }
 
 /** Meta events first, then note-offs, then everything else, when ticks tie. */

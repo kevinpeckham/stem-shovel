@@ -3,6 +3,10 @@ import { parseMidi } from "#lib/audio/midi.js";
 import {
 	MIDI_PPQ,
 	midiFile,
+	midiFileTracks,
+	midiKeySignature,
+	midiMarker,
+	midiTrackName,
 	midiNoteOff,
 	midiNoteOn,
 	midiProgram,
@@ -75,5 +79,29 @@ describe("midiFile", () => {
 			{ start: 0, duration: 1, pitch: 60, velocity: 80, channel: 2 },
 			{ start: 1, duration: 0.5, pitch: 64, velocity: 90, channel: 2 },
 		]);
+	});
+	it("writes a format 1 file: one MTrk per track, each with its own end", async () => {
+		const b = await bytes(
+			midiFileTracks(
+				[
+					{ events: [midiTrackName(0, "Song"), midiMarker(96, "Verse")], endTick: 192 },
+					{ events: [midiKeySignature(0, -2, true)] },
+				],
+				96,
+			),
+		);
+		expect(b.slice(0, 14)).toEqual([0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, 0, 2, 0, 96]);
+		// Track 1: name "Song" (meta 03), a marker at 96 ticks (meta 06), the end at 192.
+		const t1 = [
+			0, 0xff, 0x03, 4, 0x53, 0x6f, 0x6e, 0x67, 96, 0xff, 0x06, 5, 0x56, 0x65, 0x72, 0x73, 0x65, 96,
+			0xff, 0x2f, 0,
+		];
+		expect(b.slice(14, 22)).toEqual([0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, t1.length]);
+		expect(b.slice(22, 22 + t1.length)).toEqual(t1);
+		// Track 2: a key signature of two flats, minor (0xfe is −2), the end right after.
+		const t2 = [0, 0xff, 0x59, 2, 0xfe, 1, 0, 0xff, 0x2f, 0];
+		const at = 22 + t1.length;
+		expect(b.slice(at, at + 8)).toEqual([0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, t2.length]);
+		expect(b.slice(at + 8)).toEqual(t2);
 	});
 });

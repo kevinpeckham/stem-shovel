@@ -17,17 +17,17 @@ Windows VMs. Kevin owns Logic Pro on an M1 MacBook Pro.
 
 ## What each target can exchange
 
-| DAW | Platforms | DAWproject | AAF | Timestamped BWF | MIDI file with tempo map | Scriptable |
-| --- | --- | --- | --- | --- | --- | --- |
-| Cubase 14.0.20+ Pro and Artist; Cubase 15 every edition | Win, Mac | read + write | Pro only (and Nuendo) | yes | yes | no file-level API; UI automation |
-| Audacity 3.x | Linux, Win, Mac | no | no | no (imports at 0) | notes only, no tempo | mod-script-pipe (Python over a named pipe) with the app running |
-| Logic Pro | Mac | no | read + write | yes ("Move to Original Record Position") | yes (tempo, meter, markers into an empty project) | no API; AppleScript/UI automation |
-| Pro Tools Studio and Ultimate | Win, Mac | no | read + write (Intro and Artist: no) | yes ("Spot" to timestamp) | yes | PTSL, a gRPC scripting API since 2022 |
-| Reaper | Linux, Win, Mac | no (an extension can add a project importer) | no (third-party Vordio) | yes | yes | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project |
-| Ardour 8.4+ | Linux, Win, Mac | no | read (libaaf, beta in 8.4, improved through 8.7) | yes ("position at file timestamp") | yes | Lua, including the headless `luasession` |
-| Bitwig | Linux, Win, Mac | read + write | no | yes | yes | no |
-| Ableton Live 11, 12 | Win, Mac | no | no | no (imports at the insert point) | notes only, no tempo | Max for Live and control-surface Python, neither for files; `.als` is gzipped XML |
-| FL Studio, GarageBand | Win, Mac (GarageBand: Mac) | no | no | no | notes only | no |
+| DAW                                                     | Platforms                  | DAWproject                                   | AAF                                              | Timestamped BWF                          | MIDI file with tempo map                          | Scriptable                                                                        |
+| ------------------------------------------------------- | -------------------------- | -------------------------------------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Cubase 14.0.20+ Pro and Artist; Cubase 15 every edition | Win, Mac                   | read + write                                 | Pro only (and Nuendo)                            | yes                                      | yes                                               | no file-level API; UI automation                                                  |
+| Audacity 3.x                                            | Linux, Win, Mac            | no                                           | no                                               | no (imports at 0)                        | notes only, no tempo                              | mod-script-pipe (Python over a named pipe) with the app running                   |
+| Logic Pro                                               | Mac                        | no                                           | read + write                                     | yes ("Move to Original Record Position") | yes (tempo, meter, markers into an empty project) | no API; AppleScript/UI automation                                                 |
+| Pro Tools Studio and Ultimate                           | Win, Mac                   | no                                           | read + write (Intro and Artist: no)              | yes ("Spot" to timestamp)                | yes                                               | PTSL, a gRPC scripting API since 2022                                             |
+| Reaper                                                  | Linux, Win, Mac            | no (an extension can add a project importer) | no (third-party Vordio)                          | yes                                      | yes                                               | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project                   |
+| Ardour 8.4+                                             | Linux, Win, Mac            | no                                           | read (libaaf, beta in 8.4, improved through 8.7) | yes ("position at file timestamp")       | yes                                               | Lua, including the headless `luasession`                                          |
+| Bitwig                                                  | Linux, Win, Mac            | read + write                                 | no                                               | yes                                      | yes                                               | no                                                                                |
+| Ableton Live 11, 12                                     | Win, Mac                   | no                                           | no                                               | no (imports at the insert point)         | notes only, no tempo                              | Max for Live and control-surface Python, neither for files; `.als` is gzipped XML |
+| FL Studio, GarageBand                                   | Win, Mac (GarageBand: Mac) | no                                           | no                                               | no                                       | notes only                                        | no                                                                                |
 
 Three things fall out of the table.
 

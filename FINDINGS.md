@@ -316,6 +316,26 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Testing
 
+- **Headless Chromium names a download "download" when the `download`
+  attribute holds a non-ASCII character.** `a.download = "Song · Oct 21
+  · 02-32 PM.zip"` (Dawn's default song title, with middle dots) came
+  through Playwright 1.63's `download.suggestedFilename()` as
+  "download"; "Éclair.zip" and an en dash did the same, while the ASCII
+  spelling kept its name. Real Chrome keeps the Unicode name. A spec that
+  reads a download's name gives the song an ASCII title first
+  (studio-export.spec.ts) (2026-10-21).
+- **Validating a writer's XML against its schema finds what a lenient
+  reader hides.** Dawn's DAWproject writer had written `Volume` before
+  `Pan` and `Mute` inside `Channel` since the start; Bitwig's own JAXB
+  reader and Dawn's reader took it, and the first `xmllint --schema
+  Project.xsd` refused it (the schema's sequence is Mute, Pan, Sends,
+  Volume). `libxml2-wasm` (1.3 MB, MIT, `XsdValidator.fromDoc`) runs the
+  same check inside Vitest, so every writer test now validates against
+  the schemas kept in `tests/dawproject/` (2026-10-21).
+- **`import.meta.url` resolves to `/` under the jsdom environment.** A
+  test file that needs a fixture from disk resolves it from
+  `process.cwd()` instead of `new URL(..., import.meta.url)`, which
+  landed on `/tests/...` (2026-10-21).
 - **A `// @vitest-environment jsdom` docblock works inside a Vitest
   project that runs on Node.** The unit project (`src/**/*.test.ts`,
   environment node) still honours the per-file docblock, so a parser that

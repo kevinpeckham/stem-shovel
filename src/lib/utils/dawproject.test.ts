@@ -1,7 +1,26 @@
+// @vitest-environment jsdom
 import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { XmlDocument, XsdValidator } from "libxml2-wasm";
 import { describe, expect, it } from "vite-plus/test";
 import { dawproject } from "./dawproject";
+import { readDawproject } from "./dawprojectRead";
+
+/** Bitwig's schemas (tests/dawproject/README.md): a strict importer's view of the file. */
+const xsd = (name: string) =>
+	readFileSync(resolve(process.cwd(), "tests/dawproject", name), "utf8");
+function validate(xml: string, schema: string) {
+	const validator = XsdValidator.fromDoc(XmlDocument.fromString(xsd(schema)));
+	const doc = XmlDocument.fromString(xml);
+	try {
+		validator.validate(doc);
+	} finally {
+		doc.dispose();
+		validator.dispose();
+	}
+}
 
 const arrangement: StudioArrangement = {
 	version: 1,
@@ -191,5 +210,43 @@ describe("dawproject", () => {
 		}
 		expect(stack).toEqual([]);
 		expect(opens.length).toBeGreaterThan(10);
+	});
+	it("validates against Bitwig's schemas: the elements in the sequence the format fixes", () => {
+		expect(() => validate(project, "Project.xsd")).not.toThrow();
+		expect(() => validate(metadata, "MetaData.xsd")).not.toThrow();
+	});
+	it("writes the markers in seconds and the tempo and meter changes as held points in beats, as the reader takes them back", () => {
+		const rich: StudioArrangement = {
+			...arrangement,
+			bpm: 120,
+			beatsPerBar: 4,
+			markers: [
+				{ id: "m2", t: 8, name: "Chorus" },
+				{ id: "m1", t: 0, name: "Intro <1>" },
+			],
+			// Four bars of 4/4 at 120 are 8 s = 16 beats; the waltz from there at 90 bpm.
+			tempoChanges: [{ start: 8, bpm: 90 }],
+			meterChanges: [{ start: 8, beatsPerBar: 3 }],
+		};
+		const { project: xml } = dawproject({
+			title: "Rich",
+			arrangement: rich,
+			audio: new Map(),
+			application: { name: "Stem Shovel Dawn", version: "0.138.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		expect(xml).toContain('<Markers timeUnit="seconds"');
+		expect(xml).toContain('<Marker time="0.000000" name="Intro &lt;1&gt;"/>');
+		expect(xml).toContain('<Marker time="8.000000" name="Chorus"/>');
+		expect(xml).toContain('<RealPoint time="16.000000" value="90.000000" interpolation="hold"/>');
+		expect(xml).toContain('<TimeSignaturePoint time="16.000000" numerator="3" denominator="4"/>');
+		// The reader's view of it: the same seconds back.
+		const back = readDawproject(xml, null, "Rich");
+		expect(back.arrangement.markers?.map((m) => [m.t, m.name])).toEqual([
+			[0, "Intro <1>"],
+			[8, "Chorus"],
+		]);
+		expect(back.arrangement.tempoChanges).toEqual([{ start: 8, bpm: 90 }]);
+		expect(back.arrangement.meterChanges).toEqual([{ start: 8, beatsPerBar: 3 }]);
 	});
 });

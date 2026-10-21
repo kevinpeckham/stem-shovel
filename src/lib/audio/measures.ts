@@ -36,7 +36,7 @@ const valueAt = <T extends { start: number }>(list: T[], t: number) =>
 	list.findLast((x) => t >= x.start) ?? list[0];
 
 /** Beats elapsed between two times, integrating the tempo in force across its changes. */
-function beatsBetween(grid: BarGrid, from: number, to: number): number {
+export function beatsBetween(grid: BarGrid, from: number, to: number): number {
 	if (to < from) return -beatsBetween(grid, to, from);
 	const cuts = [from, ...grid.tempos.map((t) => t.start).filter((s) => s > from && s < to), to];
 	let beats = 0;

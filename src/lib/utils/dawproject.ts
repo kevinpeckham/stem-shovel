@@ -1,7 +1,9 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
+import { beatsBetween } from "#lib/audio/measures.js";
 import { clipNoteEvents } from "./clipNoteEvents";
+import { studioGrid } from "./studioGrid";
 
 /** An audio file the DAWproject carries for a clip's source: its path inside the archive and what it is. */
 export interface DawprojectAudio {
@@ -25,9 +27,13 @@ export interface DawprojectInput {
  * track and bus and the master (volume, pan, mute, solo, the output and
  * the sends on each channel), the arrangement's clips in seconds (an audio
  * clip over its file, a MIDI clip's notes), the volume and pan lanes as
- * automation points, and `metadata.xml` with the title. Pure: the caller
- * zips the two files with the audio (utils/zipBlobs.ts). Inserts and
- * their automation stay out (the format names a DAW's own devices).
+ * automation points, the markers, the tempo and meter changes as the
+ * arrangement's tempo and time-signature automation (in beats, as Bitwig
+ * writes them; held steps), and `metadata.xml` with the title. Pure: the
+ * caller zips the two files with the audio (utils/zipBlobs.ts). Inserts
+ * and their automation stay out (the format names a DAW's own devices).
+ * Elements come in the schema's order (tests/dawproject/Project.xsd):
+ * the unit tests validate the result against it.
  */
 export function dawproject(input: DawprojectInput): { project: string; metadata: string } {
 	const a = input.arrangement;
@@ -45,8 +51,10 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		`  <Application name="${esc(input.application.name)}" version="${esc(input.application.version)}"/>`,
 	);
 	out("  <Transport>");
-	out(`    <Tempo unit="bpm" value="${num(a.bpm)}" id="${id("tempo")}" name="Tempo"/>`);
-	out(`    <TimeSignature numerator="${a.beatsPerBar}" denominator="4" id="${id("timesig")}"/>`);
+	const tempoId = id("tempo");
+	const timesigId = id("timesig");
+	out(`    <Tempo unit="bpm" value="${num(a.bpm)}" id="${tempoId}" name="Tempo"/>`);
+	out(`    <TimeSignature numerator="${a.beatsPerBar}" denominator="4" id="${timesigId}"/>`);
 	out("  </Transport>");
 
 	// Channels first, so a track's destination and sends can name them.
@@ -77,13 +85,11 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		const p = id("pan");
 		volumeParam.set(o.ownerId, v);
 		panParam.set(o.ownerId, p);
-		out(
-			`        <Volume max="${num(STUDIO_FADER_MAX)}" min="0.000000" unit="linear" value="${num(o.gain)}" id="${v}" name="Volume"/>`,
-		);
+		// The schema's order: Mute, Pan, Sends, Volume (a strict importer refuses any other).
+		out(`        <Mute value="${o.muted ? "true" : "false"}" id="${id("mute")}" name="Mute"/>`);
 		out(
 			`        <Pan max="1.000000" min="0.000000" unit="normalized" value="${num((o.pan + 1) / 2)}" id="${p}" name="Pan"/>`,
 		);
-		out(`        <Mute value="${o.muted ? "true" : "false"}" id="${id("mute")}" name="Mute"/>`);
 		if (o.sends?.length) {
 			out("        <Sends>");
 			for (const s of o.sends) {
@@ -97,6 +103,9 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 			}
 			out("        </Sends>");
 		}
+		out(
+			`        <Volume max="${num(STUDIO_FADER_MAX)}" min="0.000000" unit="linear" value="${num(o.gain)}" id="${v}" name="Volume"/>`,
+		);
 		out("      </Channel>");
 	};
 
@@ -215,6 +224,42 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		out("      </Lanes>");
 	}
 	out("    </Lanes>");
+	// After the lanes, in the schema's order: the markers (seconds), then the tempo and meter
+	// changes as held points in beats, the way Bitwig writes its own and Dawn's reader takes them.
+	const markers = [...(a.markers ?? [])].sort((x, y) => x.t - y.t);
+	if (markers.length) {
+		out(`    <Markers timeUnit="seconds" id="${id("markers")}">`);
+		for (const m of markers) out(`      <Marker time="${num(m.t)}" name="${esc(m.name)}"/>`);
+		out("    </Markers>");
+	}
+	const grid = studioGrid(a);
+	const beat = (seconds: number) => beatsBetween(grid, 0, seconds);
+	const tempoChanges = (a.tempoChanges ?? [])
+		.filter((c) => c.start > 0)
+		.sort((x, y) => x.start - y.start);
+	if (tempoChanges.length) {
+		out(`    <TempoAutomation unit="bpm" timeUnit="beats" id="${id("tempoauto")}">`);
+		out(`      <Target parameter="${tempoId}"/>`);
+		out(`      <RealPoint time="0.000000" value="${num(a.bpm)}" interpolation="hold"/>`);
+		for (const c of tempoChanges)
+			out(
+				`      <RealPoint time="${num(beat(c.start))}" value="${num(c.bpm)}" interpolation="hold"/>`,
+			);
+		out("    </TempoAutomation>");
+	}
+	const meterChanges = (a.meterChanges ?? [])
+		.filter((c) => c.start > 0)
+		.sort((x, y) => x.start - y.start);
+	if (meterChanges.length) {
+		out(`    <TimeSignatureAutomation timeUnit="beats" id="${id("sigauto")}">`);
+		out(`      <Target parameter="${timesigId}"/>`);
+		out(`      <TimeSignaturePoint time="0.000000" numerator="${a.beatsPerBar}" denominator="4"/>`);
+		for (const c of meterChanges)
+			out(
+				`      <TimeSignaturePoint time="${num(beat(c.start))}" numerator="${c.beatsPerBar}" denominator="4"/>`,
+			);
+		out("    </TimeSignatureAutomation>");
+	}
 	out("  </Arrangement>");
 	out("</Project>");
 
