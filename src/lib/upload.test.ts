@@ -103,6 +103,7 @@ describe("uploadStemFile", () => {
 					durationSeconds: 2.5,
 					channels: 2,
 					peaks: [0, 0.5, 1, 0.25],
+					sampleRate: null,
 				},
 			},
 		]);

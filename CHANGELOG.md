@@ -10,10 +10,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **A song's sample rate.** Dawn's Timing menu sets the song's sample rate (44.1, 48, 88.2 or 96 kHz; 48 kHz unless changed): the mix, the stems, the DAWproject, the session bundle and the Sandyne project come out at it on every machine, where before they took the device's rate (44.1 kHz on one Mac, 48 on another). Recording and playback stay at the device's rate; a source at another rate is resampled on the way out. Importing a file at a rate other than the song's says so, and the library shows the odd file's rate. The converter shows the project's rate and lets the viewer choose another.
+- **Stems know their sample rate.** An upload reads the rate from the file's header and keeps it; the stem's menu shows it, and the player marks a stem whose rate differs from the others', since a DAW session built from the downloads would hold one file at an odd rate. Stems play in time whatever their rates, as before.
 - **Convert, a free DAW project converter at `/convert`** (Tools menu): drop a DAWproject from Bitwig Studio, Cubase, Studio One or Nuendo and get it back as a mix, a stem per track or bus, a clean DAWproject, the session bundle for Logic Pro, Pro Tools, Ableton Live, Audacity and Reaper, or a Sandyne project, with 24- or 16-bit WAV or MP3 and normalization. Everything happens in the browser; nothing is uploaded, and it works signed out.
 
 ### Technical
 
+- Migration 0096: `stem.sample_rate` (nullable; filled at upload by `utils/audioSampleRate.ts`, a header reader for WAV, AIFF, FLAC, MP3, MP4 and Ogg, or by the stem-metadata job from ffmpeg's probe line). `StudioArrangement.sampleRate` (optional picklist of `STUDIO_SAMPLE_RATES`); `StudioEngine.render` and `convertEngine` render at `songSampleRate(arrangement)`, and `ExportEngine.resample` (the browser's `OfflineAudioContext`, `audio/resampleBuffer.ts`) brings the project files' and the bundle's clips to the song's rate. `POST /api/stems/[id]/ready` takes an optional `sampleRate`.
 - `utils/unpackDawproject.ts` opens a `.dawproject` archive (or a bare `project.xml`) for Dawn's import and the converter alike; `audio/convertEngine.ts` is an export engine over a read file (faders, pans, buses, the master, no inserts); `ExportEngine.renders` lets an engine decline a track (a MIDI track with no instrument gets no stem).
 
 ## [0.142.0] - 2026-10-21

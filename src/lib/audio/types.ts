@@ -8,6 +8,8 @@ export interface StemSource {
 	// the decoded values replace them.
 	duration?: number;
 	channels?: number;
+	/** The file's own rate, when the upload read one; the player decodes every stem at its own rate either way. */
+	sampleRate?: number;
 	peaks?: number[];
 	/** The song's default mix fader for this stem (1 when absent). */
 	gain?: number;

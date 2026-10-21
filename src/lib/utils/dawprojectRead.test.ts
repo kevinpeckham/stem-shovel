@@ -115,7 +115,7 @@ describe("readDawproject", () => {
 		});
 		// The audio clip over its file, the notes clip with its notes; the source minted once for the file.
 		expect(read.files).toEqual([
-			{ sourceId: expect.any(String), path: "audio/s1.wav", label: "Take 1" },
+			{ sourceId: expect.any(String), path: "audio/s1.wav", label: "Take 1", sampleRate: 48000 },
 		]);
 		expect(
 			a.clips.map((c) => [c.trackId, c.start, c.offset, c.duration, c.fadeIn, c.fadeOut, c.name]),
@@ -430,5 +430,39 @@ describe("readDawproject", () => {
 	it("refuses what is not a project", () => {
 		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
 		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);
+	});
+});
+
+describe("sample rates", () => {
+	it("each file carries the rate its Audio element declares, and the song takes the rate most files have", () => {
+		const clip = (file: string, rate: number, t: number) =>
+			`<Clip time="${t}" duration="1" name="${file}"><Audio algorithm="raw" channels="2" duration="1" sampleRate="${rate}" id="a${t}"><File path="audio/${file}"/></Audio></Clip>`;
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/></Transport>
+  <Structure><Track contentType="audio" id="tr" name="Guitar"><Channel role="regular" id="ch"><Volume unit="linear" value="1" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="seconds" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    ${clip("a.wav", 44100, 0)}${clip("b.wav", 44100, 2)}${clip("c.wav", 48000, 4)}
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "rates");
+		expect(read.files.map((f) => [f.path, f.sampleRate])).toEqual([
+			["audio/a.wav", 44100],
+			["audio/b.wav", 44100],
+			["audio/c.wav", 48000],
+		]);
+		expect(read.arrangement.sampleRate).toBe(44100);
+	});
+	it("a rate a song cannot render at, or none at all, leaves the song's rate unset", () => {
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/></Transport>
+  <Structure><Track contentType="audio" id="tr" name="Guitar"><Channel role="regular" id="ch"><Volume unit="linear" value="1" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="seconds" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    <Clip time="0" duration="1" name="x"><Audio algorithm="raw" channels="2" duration="1" sampleRate="32000" id="a"><File path="audio/x.wav"/></Audio></Clip>
+    <Clip time="2" duration="1" name="y"><Audio algorithm="raw" channels="2" duration="1" id="b"><File path="audio/y.wav"/></Audio></Clip>
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "rates");
+		expect(read.files.map((f) => f.sampleRate)).toEqual([32000, undefined]);
+		expect(read.arrangement.sampleRate).toBeUndefined();
 	});
 });

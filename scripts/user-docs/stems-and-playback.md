@@ -18,6 +18,10 @@ Each stem is kept as uploaded (that is what you download later) and a lighter pl
 
 As stems upload, Stem Shovel listens to them and works out the tempo, the key and whether the song is in four or three. If the song has no tempo, key or time signature yet, they are set for you and a notice says what was found; check them in the song's settings, since detection is a good guess rather than a promise, and change them if the song knows better. A song that already has them keeps its own.
 
+## Sample rates
+
+Stems at different sample rates play together in time: the player decodes every stem at its own rate. Each stem's rate is read from the file when it is uploaded and shown in its menu. When one stem's rate differs from the others', the player marks it beside its name (say "44.1 kHz" among 48 kHz stems), because a DAW session built from the downloads would then hold one file at a different rate; replacing that stem with one at the common rate clears the mark.
+
 ## The player
 
 Every stem gets a row: its waveform, **M** (mute), **S** (solo) and a fader. Solo one or more stems to hear only those; mute drops a stem from the mix. The **Master** fader scales everything. Members can put the rows in any order: drag a stem by the grip before its name (the six dots), or focus the grip and press the arrow keys. The order is the song's, so everyone sees it, and the downloads follow it.

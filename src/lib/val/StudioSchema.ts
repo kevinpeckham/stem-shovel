@@ -6,6 +6,7 @@ import {
 	MAX_STUDIO_SECONDS,
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
+	STUDIO_SAMPLE_RATES,
 } from "../constants/studio";
 import { MAX_AUTOMATION_POINTS } from "../constants/studioAutomation";
 import { INSERT_KINDS, MAX_INSERTS, MAX_SENDS, MAX_STUDIO_BUSES } from "../constants/studioInserts";
@@ -278,6 +279,8 @@ export const StudioArrangementSchema = v.object({
 	/** Punch: a take is cut to the loop region (recording runs through, the clip keeps the region alone). */
 	punch: v.optional(v.boolean()),
 	master: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+	/** The song's sample rate in Hz: the renders, stems and project files come out at it (STUDIO_SAMPLE_RATE_DEFAULT when absent). */
+	sampleRate: v.optional(v.picklist(STUDIO_SAMPLE_RATES)),
 	/** The master's inserts (D2), before its fader. */
 	masterInserts: v.optional(InsertListSchema),
 	/** Buses (D2): tracks route or send to them; they go to the master. */

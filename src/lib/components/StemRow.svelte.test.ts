@@ -176,3 +176,20 @@ describe("StemRow", () => {
 		expect(screen.getByRole("group")).toHaveClass("opacity-50");
 	});
 });
+
+describe("StemRow's note", () => {
+	test("a note shows after the name with its explanation for the pointer and the reader", () => {
+		const { engine } = engineWithSpies();
+		render(StemRow, {
+			props: {
+				stem: stem(),
+				engine,
+				note: { text: "44.1 kHz", title: "This stem is 44.1 kHz; the others are 48 kHz." },
+			},
+		});
+		const mark = screen.getByText("44.1 kHz");
+		expect(mark).toHaveAttribute("title", "This stem is 44.1 kHz; the others are 48 kHz.");
+		expect(mark).toHaveAttribute("aria-label", "This stem is 44.1 kHz; the others are 48 kHz.");
+		expect(labelOf(screen.getByRole("group", { name: "Drums" }))).toHaveTextContent("Drums");
+	});
+});

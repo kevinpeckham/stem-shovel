@@ -55,6 +55,16 @@ describe("POST /api/stems/[id]/ready", () => {
 		await expect(
 			post({ ...body, peaks: Array.from({ length: 4097 }, () => 0) }),
 		).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sampleRate: 44100.5 })).rejects.toMatchObject(httpError(400));
+		await expect(post({ ...body, sampleRate: 1000 })).rejects.toMatchObject(httpError(400));
+	});
+	it("keeps the file's sample rate when the browser read one", async () => {
+		await post({ ...body, sampleRate: 44100 });
+		expect(data.markStemReady).toHaveBeenCalledWith(
+			ACCOUNT,
+			STEM,
+			expect.objectContaining({ sampleRate: 44100 }),
+		);
 	});
 	it("404 for an unknown stem", async () => {
 		givenRow("stem", null);
@@ -82,6 +92,7 @@ describe("POST /api/stems/[id]/ready", () => {
 			durationSeconds: 180.5,
 			channels: 2,
 			peaks: [0, 0.25, 1],
+			sampleRate: null,
 		});
 		expect(jobs.schedulePlayback).toHaveBeenCalledWith([STEM]);
 		expect(background).toHaveBeenCalledTimes(1);

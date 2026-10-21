@@ -698,3 +698,7 @@ belong in CLAUDE.md or docs/, not here.
   brackets escaped** (`## \[0.31.0\]`), so a changelog parser that knows
   only `## [x.y.z]` emptied the Releases page after every in-app edit;
   accept both spellings (0.31.1, `parseChangelog`).
+
+## `decodeAudioData` never says what rate a file was (2026-10-21)
+
+`AudioContext.decodeAudioData` and `OfflineAudioContext.decodeAudioData` resample to the context's rate and return a buffer at that rate; nothing in the result says what the file's own rate was. So a stem uploader or an import that wants to compare a file's rate with the song's has to read the header itself: `utils/audioSampleRate.ts` reads WAV and RF64 (`fmt `), AIFF (`COMM`, an 80-bit float), FLAC (STREAMINFO's 20 bits), MP3 (the first frame header after the ID3v2 tag; the version bits halve or quarter the table), MP4 (the `mp4a`/`alac` sample entry's 16.16 rate, so 96 kHz AAC, rarer than rare, reads as 0 and comes back null) and Ogg (the Vorbis identification header; Opus is always 48 kHz). Surfaced building the sample-rate setting (docs/multitrack-recorder.md "Sample rates"). The flip side is useful: `new OfflineAudioContext(1, 1, rate).decodeAudioData(bytes)` is a free, exact resampler to `rate`, and an `OfflineAudioContext` at the song's rate playing buffers decoded at the device's resamples them on the way (`audio/resampleBuffer.ts`, and how the Studio's offline render now comes out at the song's rate on every machine).

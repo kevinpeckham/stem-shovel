@@ -26,3 +26,11 @@ export const STUDIO_AUTOSAVES_KEPT = 10;
 export const STUDIO_FADER_MAX = FADER_MAX;
 /** Decoded audio past which the device warns (bytes). */
 export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;
+/**
+ * The rates a song may be rendered at (Song settings, docs/multitrack-recorder.md
+ * "Sample rates"): the mix, the stems and the project files come out at the
+ * song's rate on every machine, whatever rate the device records at.
+ */
+export const STUDIO_SAMPLE_RATES = [44100, 48000, 88200, 96000] as const;
+/** A song that names no rate renders at this one. */
+export const STUDIO_SAMPLE_RATE_DEFAULT = 48000;

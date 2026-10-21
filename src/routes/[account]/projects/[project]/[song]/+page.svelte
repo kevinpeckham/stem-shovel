@@ -71,6 +71,7 @@
 	import { notify } from "#lib/state/notifications.svelte.js";
 	import { FRAME_RATES } from "#lib/constants/frameRates.js";
 	import { formatBytes } from "#lib/utils/formatBytes.js";
+	import { formatKhz } from "#lib/utils/formatKhz.js";
 	import { artistLine } from "#lib/utils/artistLine.js";
 	import { CREDIT_ROLE_LABELS } from "#lib/constants/creditRoles.js";
 	import { CREDIT_ROLES, type CreditRole } from "#lib/val/CreditRoleSchema.js";
@@ -4595,7 +4596,9 @@
 		{#snippet stemMenuBody()}
 			<div class="w-56 px-1 text-sm">
 				<div class="truncate px-3 py-1.5 text-xs text-dim">
-					{row.filename} · {formatBytes(row.sizeBytes)}
+					{row.filename} · {formatBytes(row.sizeBytes)}{row.sampleRate
+						? ` · ${formatKhz(row.sampleRate)} kHz`
+						: ""}
 				</div>
 				<button
 					class="block w-full rounded px-3 py-1.5 text-left hover:bg-white/10"

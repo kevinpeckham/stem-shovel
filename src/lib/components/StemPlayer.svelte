@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatKhz } from "#lib/utils/formatKhz.js";
 	import {
 		applyLocalMix,
 		loadLocalMix,
@@ -119,6 +120,30 @@
 	let defaults = $derived(new Map(manifest.stems.map((s) => [s.id, s.gain ?? 1])));
 	/** The song's default pans, likewise. */
 	let defaultPans = $derived(new Map(manifest.stems.map((s) => [s.id, s.pan ?? 0])));
+	/**
+	 * The rate most of the stems share, and a mark for any at another: they play in time here
+	 * (every stem is decoded at the player's rate), but a DAW session built from the downloads
+	 * gets one file at an odd rate (docs/multitrack-recorder.md "Sample rates").
+	 */
+	let commonRate = $derived.by(() => {
+		const counts = new Map<number, number>();
+		for (const s of manifest.stems)
+			if (s.sampleRate) counts.set(s.sampleRate, (counts.get(s.sampleRate) ?? 0) + 1);
+		return [...counts.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+	});
+	let rateNotes = $derived(
+		new Map(
+			manifest.stems
+				.filter((s) => s.sampleRate && commonRate && s.sampleRate !== commonRate)
+				.map((s) => [
+					s.id,
+					{
+						text: `${formatKhz(s.sampleRate!)} kHz`,
+						title: `This stem is ${formatKhz(s.sampleRate!)} kHz; the others are ${formatKhz(commonRate!)} kHz. It plays in time here; a DAW session built from the downloads has one file at a different rate.`,
+					},
+				]),
+		),
+	);
 	/** The listener's own mix differs from the default (there is something to reset). */
 	export function hasLocalMix() {
 		return !!snapshotLocalMix(engine, defaults, defaultPans);
@@ -388,6 +413,7 @@
 						{i}
 						menu={stemMenu}
 						badge={stemBadge}
+						note={rateNotes.get(stem.id) ?? null}
 						roll={midiViews[stem.id] ?? null}
 						oncontext={onstemcontext}
 						handle={onreorder ? grip : undefined}

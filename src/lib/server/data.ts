@@ -1025,6 +1025,7 @@ export async function manifestFor(s: {
 					)) ?? "",
 				duration: st.durationSeconds ?? undefined,
 				channels: st.channels ?? undefined,
+				sampleRate: st.sampleRate ?? undefined,
 				peaks: st.peaks ?? undefined,
 				gain: st.gain,
 				pan: st.pan,
@@ -1240,6 +1241,8 @@ export interface StemDecodeResult {
 	durationSeconds: number;
 	channels: number;
 	peaks: number[];
+	/** The file's own rate from its header; null when the browser could not read one. */
+	sampleRate?: number | null;
 }
 
 /** Step 3: the browser decoded the file; store what it learned and refresh the song length. */
@@ -1252,6 +1255,7 @@ export async function markStemReady(accountId: string, stemId: string, r: StemDe
 			durationSeconds: r.durationSeconds,
 			channels: r.channels,
 			peaks: r.peaks,
+			sampleRate: r.sampleRate ?? null,
 		})
 		.where(and(eq(stem.accountId, accountId), eq(stem.id, stemId)))
 		.returning({ songId: stem.songId });
@@ -6443,8 +6447,8 @@ export async function importSongStemsIntoStudio(
 			filename: st.filename,
 			sizeBytes: st.sizeBytes,
 			codec: null,
-			// The row's rate is a hint for the engine's readout; the browser decodes at its own rate either way.
-			sampleRate: 48000,
+			// The file's own rate when the stem recorded one; the browser decodes at its own rate either way.
+			sampleRate: st.sampleRate ?? 48000,
 			channels: st.channels === 1 ? 1 : 2,
 			durationSeconds: st.durationSeconds ?? 0,
 		});
@@ -7022,11 +7026,11 @@ export async function stemForMetadata(stemId: string) {
 /** Fills the stem's metadata the measuring found, where the row had none; what was there stands. */
 export async function finishStemMetadata(
 	stemId: string,
-	m: { peaks: number[]; durationSeconds: number; channels: number },
+	m: { peaks: number[]; durationSeconds: number; channels: number; sampleRate?: number | null },
 ) {
 	const row = await db.query.stem.findFirst({
 		where: eq(stem.id, stemId),
-		columns: { peaks: true, durationSeconds: true, channels: true },
+		columns: { peaks: true, durationSeconds: true, channels: true, sampleRate: true },
 	});
 	if (!row) return;
 	await db
@@ -7035,6 +7039,7 @@ export async function finishStemMetadata(
 			...(row.peaks === null ? { peaks: m.peaks } : {}),
 			...(row.durationSeconds === null ? { durationSeconds: m.durationSeconds } : {}),
 			...(row.channels === null ? { channels: m.channels } : {}),
+			...(row.sampleRate === null && m.sampleRate ? { sampleRate: m.sampleRate } : {}),
 		})
 		.where(eq(stem.id, stemId));
 }

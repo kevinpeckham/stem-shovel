@@ -88,28 +88,32 @@ export async function measureStemMetadata(stemIds: string[]): Promise<void> {
 			if (!res.ok || !res.body)
 				throw new Error(`${res.status} ${res.statusText} fetching ${row.url}`);
 			await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
-			const [channels, measured] = await Promise.all([probeChannels(file), measurePeaks(file)]);
-			await finishStemMetadata(id, { ...measured, channels });
+			const [probed, measured] = await Promise.all([probeStream(file), measurePeaks(file)]);
+			await finishStemMetadata(id, { ...measured, ...probed });
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
 	}
 }
 
-/** How many channels a file has, from ffmpeg's probe line ("stereo", "mono", "2 channels"); 2 when it says nothing. */
-async function probeChannels(file: string): Promise<number> {
-	if (!ffmpegPath) return 2;
+/**
+ * How many channels a file has ("stereo", "mono", "2 channels"; 2 when it says nothing) and its sample
+ * rate ("48000 Hz"; null when it says nothing), from ffmpeg's probe line.
+ */
+async function probeStream(file: string): Promise<{ channels: number; sampleRate: number | null }> {
+	if (!ffmpegPath) return { channels: 2, sampleRate: null };
 	try {
 		await run(ffmpegPath, ["-hide_banner", "-i", file], { maxBuffer: 1024 * 1024 });
 	} catch (e) {
 		const err = String((e as { stderr?: string }).stderr ?? "");
 		const line = err.match(/Audio: [^\n]*/)?.[0] ?? "";
-		if (/\bmono\b/.test(line)) return 1;
+		const hz = line.match(/(\d+) Hz/)?.[1];
+		const sampleRate = hz ? Number(hz) : null;
+		if (/\bmono\b/.test(line)) return { channels: 1, sampleRate };
 		const n = line.match(/(\d+) channels/)?.[1];
-		if (n) return Math.max(1, Number(n));
-		return 2;
+		return { channels: n ? Math.max(1, Number(n)) : 2, sampleRate };
 	}
-	return 2;
+	return { channels: 2, sampleRate: null };
 }
 
 /** Returns the stem's song id when a rendition was made, null when nothing was done. */

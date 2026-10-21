@@ -1,3 +1,4 @@
+import { audioSampleRate } from "#lib/utils/audioSampleRate.js";
 import { collapseDualMono } from "#lib/audio/mono.js";
 import { computePeaks, PEAK_BINS } from "#lib/audio/peaks.js";
 import { demoContentType } from "#lib/utils/demoContentType.js";
@@ -53,11 +54,11 @@ export async function uploadStemFile(
 	);
 	opts.onDecoding?.();
 	// Channels are reported after the same dual-mono collapse the player does,
-	// so a dual-mono file gets a mono rendition.
-	const buffer = collapseDualMono(
-		await opts.ctx.decodeAudioData(await file.arrayBuffer()),
-		opts.ctx,
-	);
+	// so a dual-mono file gets a mono rendition. The rate comes from the file's
+	// header: the decoder resamples to the context's rate and says nothing of it.
+	const bytes = await file.arrayBuffer();
+	const sampleRate = audioSampleRate(new Uint8Array(bytes));
+	const buffer = collapseDualMono(await opts.ctx.decodeAudioData(bytes), opts.ctx);
 	opts.onDecoded?.(buffer);
 	const ready = await withRetries(() =>
 		fetch(`/api/stems/${stemId}/ready`, {
@@ -68,6 +69,7 @@ export async function uploadStemFile(
 				durationSeconds: buffer.duration,
 				channels: buffer.numberOfChannels,
 				peaks: Array.from(computePeaks(buffer, PEAK_BINS)),
+				sampleRate,
 			}),
 		}),
 	);

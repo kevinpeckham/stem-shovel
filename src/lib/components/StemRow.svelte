@@ -18,6 +18,8 @@
 		menu?: Snippet<[StemState]>;
 		/** Small marks beside the name (a "midi" chip when the stem has a MIDI file). */
 		badge?: Snippet<[StemState]>;
+		/** A short mark after the name with its explanation on hover (StemPlayer: a stem at another sample rate than the others). */
+		note?: { text: string; title: string } | null;
 		/** When given, a piano roll of the stem's MIDI file replaces the waveform. */
 		roll?: MidiSummary | null;
 		/** Ctrl / ⌘-click or right-click on the waveform or roll, with the position in seconds. */
@@ -34,6 +36,7 @@
 		engine,
 		menu,
 		badge,
+		note = null,
 		roll = null,
 		oncontext,
 		handle,
@@ -110,6 +113,13 @@
 				{#if i !== undefined}<span class="shrink-0">{i + 1} -</span>{/if}
 				<span class="min-w-0 truncate">{stem.label}</span>
 			</span>
+			{#if note}
+				<span
+					class="shrink-0 rounded border border-maximumYellow/50 px-1 text-10px leading-4 text-maximumYellow"
+					title={note.title}
+					aria-label={note.title}>{note.text}</span
+				>
+			{/if}
 			{#if badge}<div class="absolute left-96px top-3">{@render badge(stem)}</div>{/if}
 		</div>
 

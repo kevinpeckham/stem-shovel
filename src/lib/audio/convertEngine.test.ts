@@ -59,7 +59,7 @@ const sources = new Map([
 const at = (b: AudioBuffer, ch: number, s: number) => b.getChannelData(ch)[Math.round(s * sr)]!;
 
 describe("convertEngine", () => {
-	const e = convertEngine(arrangement, sources);
+	const e = convertEngine(arrangement, sources, 1000);
 	it("renders a track through its fader and pan: a mono clip hard left keeps the left channel, the right empty", async () => {
 		const b = await e.render({ track: "a" });
 		expect(b.sampleRate).toBe(sr);
@@ -88,6 +88,7 @@ describe("convertEngine", () => {
 				tracks: arrangement.tracks.map((t) => (t.id === "b" ? { ...t, solo: true } : t)),
 			},
 			sources,
+			1000,
 		);
 		expect(at(await soloed.render({ track: "a" }), 0, 0.5)).toBe(0);
 		expect(at(await soloed.render({ track: "b" }), 1, 1.5)).toBeCloseTo(0.6);

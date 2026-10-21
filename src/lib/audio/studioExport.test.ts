@@ -289,3 +289,56 @@ describe("exportSong", () => {
 		]);
 	});
 });
+
+describe("the song's sample rate", () => {
+	/** A buffer at another rate, as the Studio's resampler would make it: the same seconds, that many frames. */
+	const at = (b: AudioBuffer, sampleRate: number): AudioBuffer =>
+		({
+			sampleRate,
+			length: Math.round(b.duration * sampleRate),
+			duration: b.duration,
+			numberOfChannels: b.numberOfChannels,
+			getChannelData: () => new Float32Array(Math.round(b.duration * sampleRate)),
+		}) as unknown as AudioBuffer;
+	it("the project files and the bundle's clips come out at the song's rate when the engine can resample", async () => {
+		const resample = vi.fn(async (b: AudioBuffer, rate: number) => at(b, rate));
+		const e = {
+			...engine(),
+			arrangement: { ...arrangement, sampleRate: 44100 as const },
+			bufferOf: vi.fn((id: string) => (id === "s1" ? at(fakeBuffer(0.5), 48000) : null)),
+			resample,
+		};
+		const files = await exportSong(
+			e,
+			"My Song",
+			{ ...EXPORT_DEFAULTS, mix: false, dawproject: true, bundle: true },
+			app,
+		);
+		expect(resample).toHaveBeenCalledWith(expect.objectContaining({ sampleRate: 48000 }), 44100);
+		const project = files.find((f) => f.name === "My Song.dawproject")!;
+		const xml = strFromU8(
+			unzipSync(new Uint8Array(await project.blob.arrayBuffer()))["project.xml"]!,
+		);
+		expect(xml).toContain('sampleRate="44100"');
+		const bundle = files.find((f) => f.entries)!;
+		const clip = bundle.entries!.find((x) => x.name.startsWith("clips/"))!;
+		const raw = clip.data as ArrayBuffer | Uint8Array;
+		const view =
+			raw instanceof Uint8Array ? new DataView(raw.buffer, raw.byteOffset) : new DataView(raw);
+		// The WAV header's rate, four bytes at 24.
+		expect(view.getUint32(24, true)).toBe(44100);
+	});
+	it("without a resampler the sources keep their rate", async () => {
+		const e = { ...engine(), arrangement: { ...arrangement, sampleRate: 44100 as const } };
+		const files = await exportSong(
+			e,
+			"My Song",
+			{ ...EXPORT_DEFAULTS, mix: false, dawproject: true },
+			app,
+		);
+		const xml = strFromU8(
+			unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()))["project.xml"]!,
+		);
+		expect(xml).toContain('sampleRate="48000"');
+	});
+});

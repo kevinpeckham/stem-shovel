@@ -33,7 +33,10 @@
 		type ExportOptions,
 	} from "#lib/audio/studioExport.js";
 	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
-	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
+	import { STUDIO_MEMORY_WARNING_BYTES, STUDIO_SAMPLE_RATES } from "#lib/constants/studio.js";
+	import { audioSampleRate } from "#lib/utils/audioSampleRate.js";
+	import { formatKhz } from "#lib/utils/formatKhz.js";
+	import { songSampleRate } from "#lib/utils/songSampleRate.js";
 	import { DEMO_ACCEPT, DEMO_FORMATS } from "#lib/constants/demoFormats.js";
 	import { parseMidi } from "#lib/audio/midi.js";
 	import { encodeMp3 } from "#lib/audio/encodeMp3.js";
@@ -730,18 +733,28 @@
 					continue;
 				}
 				let buffer: AudioBuffer;
+				let fileRate: number | null = null;
 				try {
-					buffer = await studio.decodeFile(await file.arrayBuffer());
+					const bytes = await file.arrayBuffer();
+					fileRate = audioSampleRate(new Uint8Array(bytes));
+					buffer = await studio.decodeFile(bytes);
 				} catch {
 					notify(`${file.name} could not be decoded`, { kind: "error" });
 					continue;
 				}
-				const take = studio.importBuffer(track, buffer, { blob: file, filename: file.name }, at);
+				const take = studio.importBuffer(
+					track,
+					buffer,
+					{ blob: file, filename: file.name },
+					at,
+					fileRate ?? undefined,
+				);
 				if (!take) {
 					if (studio.notice) notify(studio.notice, { kind: "error" });
 					studio.notice = null;
 					break;
 				}
+				noteOddRate(file.name, fileRate);
 				studio.ontake?.(take);
 				selected = studio.arrangement.clips[studio.arrangement.clips.length - 1]?.id ?? null;
 				at = studio.snap(at + buffer.duration);
@@ -787,6 +800,7 @@
 		// The audio: each file found in the archive, decoded, adopted under its source id.
 		const takes: StudioTake[] = [];
 		const lost = new Set<string>();
+		const odd: string[] = [];
 		for (const f of read.files) {
 			const bytes = entryOf(f.path);
 			if (!bytes) {
@@ -800,6 +814,9 @@
 				continue;
 			}
 			const filename = f.path.replace(/^.*\//, "") || `${f.label}.wav`;
+			const fileRate = audioSampleRate(bytes) ?? f.sampleRate ?? null;
+			if (fileRate && fileRate !== songSampleRate(read.arrangement))
+				odd.push(`${filename} (${formatKhz(fileRate)} kHz)`);
 			let buffer: AudioBuffer;
 			try {
 				buffer = await studio.decodeFile(
@@ -812,13 +829,22 @@
 			}
 			const ext = filename.replace(/^.*\./, "").toLowerCase();
 			const blob = new Blob([bytes as BlobPart], { type: DEMO_FORMATS[ext] ?? "" });
-			takes.push(studio.adoptSource(f.sourceId, buffer, { blob, filename }, f.label));
+			takes.push(
+				studio.adoptSource(f.sourceId, buffer, { blob, filename }, f.label, fileRate ?? undefined),
+			);
 		}
 		const arrangement = {
 			...read.arrangement,
 			clips: read.arrangement.clips.filter((c) => !c.sourceId || !lost.has(c.sourceId)),
 		};
 		studio.replaceArrangement(arrangement);
+		if (odd.length) {
+			const khz = formatKhz(songSampleRate(arrangement));
+			notify(
+				`${odd.length === 1 ? "One file is" : `${odd.length} files are`} at another rate than the song's ${khz} kHz: ${odd.join(", ")}. They play in time, and exports come out at ${khz} kHz.`,
+				{ kind: "info" },
+			);
+		}
 		for (const t of takes) {
 			t.trackId = arrangement.clips.find((c) => c.sourceId === t.sourceId)?.trackId ?? "";
 			studio.ontake?.(t);
@@ -1153,6 +1179,7 @@
 			label: src.label,
 			durationSeconds: src.durationSeconds,
 			channels: src.channels,
+			sampleRate: src.sampleRate,
 			status: src.status,
 			pending: src.pending,
 			uses: studio.arrangement.clips.filter((c) => c.sourceId === src.id).length,
@@ -1161,6 +1188,15 @@
 	function previewSource(id: string | null) {
 		studio.previewSource(id);
 		previewing = id;
+	}
+	/** An import at another rate than the song's: it plays in time (resampled on load) and the exports come out at the song's rate; worth a word. */
+	function noteOddRate(name: string, rate: number | null) {
+		const song = songSampleRate(studio.arrangement);
+		if (!rate || rate === song) return;
+		notify(
+			`${name} is ${formatKhz(rate)} kHz; this song is ${formatKhz(song)} kHz. It plays in time, and exports come out at ${formatKhz(song)} kHz.`,
+			{ kind: "info" },
+		);
 	}
 	/** The recordings a sampler track can play: the song's, by label. */
 	let samplerChoices = $derived(
@@ -2721,6 +2757,24 @@
 					{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
 				</select>
 			</label>
+			<!-- The song's rate (docs/multitrack-recorder.md "Sample rates"): what the renders come out at; recording stays at the device's. -->
+			<label class="block">
+				<span class="device-button-label">Sample rate</span>
+				<select
+					class="device-field w-full"
+					value={songSampleRate(studio.arrangement)}
+					aria-label="Sample rate"
+					onchange={(e) => studio.setSampleRate(Number(e.currentTarget.value))}
+				>
+					{#each STUDIO_SAMPLE_RATES as r (r)}<option value={r}>{formatKhz(r)} kHz</option>{/each}
+				</select>
+				<span class="mt-1 block text-12px text-blue-100/70">
+					The mix, the stems and the project files come out at this rate{studio.sampleRate !==
+					songSampleRate(studio.arrangement)
+						? `; this device records at ${formatKhz(studio.sampleRate)} kHz, resampled on the way out`
+						: ""}.
+				</span>
+			</label>
 			<!-- The tempo map (D5): a change from the playhead on, shown as a flag on the ruler. -->
 			<div class="grid gap-2" role="group" aria-label="Changes at the playhead">
 				<span class="device-button-label !mb-0">
@@ -3023,7 +3077,12 @@
 		}}
 	>
 		<div class="p-3">
-			<LibraryPanel items={libraryItems} playing={previewing} onpreview={previewSource} />
+			<LibraryPanel
+				items={libraryItems}
+				sampleRate={songSampleRate(studio.arrangement)}
+				playing={previewing}
+				onpreview={previewSource}
+			/>
 		</div>
 	</FloatingPanel>
 

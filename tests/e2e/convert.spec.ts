@@ -66,6 +66,9 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	await expect(summary).toContainText("1 audio, 1 MIDI, over 0:03");
 	await expect(summary).toContainText("1 of 1 decoded");
 	await expect(summary).toContainText("100 bpm, 3/4, 1 marker");
+	// The file is 32 kHz, which no song renders at: the output defaults to 48 kHz and the file is listed as resampled.
+	await expect(page.getByLabel("Sample rate")).toHaveValue("48000");
+	await expect(summary).toContainText("keys.wav (32 kHz) is resampled");
 	const panel = page.locator("[data-export-panel]");
 	await expect(panel.getByText(/A stem per track \(1\)/)).toBeVisible();
 	await panel.getByRole("checkbox", { name: /A stem per track/ }).check();
@@ -83,6 +86,13 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	const folder = "Convert check session/";
 	expect(names).toContain(`${folder}clips/01 Keys - Take @ 0.500s.wav`);
 	expect(names).toContain(`${folder}stems/01 Keys.wav`);
+	// Every WAV at the song's rate: the stem rendered at it, the clip resampled to it.
+	const rateOf = (name: string) => {
+		const d = zip[name]!;
+		return new DataView(d.buffer, d.byteOffset).getUint32(24, true);
+	};
+	expect(rateOf("Convert check - Keys.wav")).toBe(48000);
+	expect(rateOf(`${folder}clips/01 Keys - Take @ 0.500s.wav`)).toBe(48000);
 	expect(names).toContain(`${folder}Convert check.mid`);
 	expect(strFromU8(zip[`${folder}labels.txt`]!)).toContain("0.500000\t0.500000\tVerse");
 	expect(strFromU8(zip[`${folder}README.txt`]!)).toContain("1 MIDI track");

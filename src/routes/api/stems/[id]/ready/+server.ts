@@ -19,8 +19,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		durationSeconds?: number;
 		channels?: number;
 		peaks?: number[];
+		sampleRate?: number | null;
 	};
-	const { url, durationSeconds, channels, peaks } = body;
+	const { url, durationSeconds, channels, peaks, sampleRate } = body;
 	if (
 		typeof url !== "string" ||
 		!url.startsWith("https://") ||
@@ -34,11 +35,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		channels > MAX_AUDIO_CHANNELS ||
 		!Array.isArray(peaks) ||
 		peaks.length > 4096 ||
-		!peaks.every((p) => typeof p === "number" && p >= 0 && p <= 1)
+		!peaks.every((p) => typeof p === "number" && p >= 0 && p <= 1) ||
+		(sampleRate != null &&
+			(!Number.isInteger(sampleRate) || sampleRate < 8000 || sampleRate > 384_000))
 	) {
 		error(
 			400,
-			"url, durationSeconds (up to a day), channels (1 to 8) and peaks (0..1) are required",
+			"url, durationSeconds (up to a day), channels (1 to 8) and peaks (0..1) are required; sampleRate (8000 to 384000 Hz) is optional",
 		);
 	}
 	const { accountId } = await memberOf(locals, accountOfStem, params.id);
@@ -50,6 +53,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		durationSeconds,
 		channels,
 		peaks,
+		sampleRate: sampleRate ?? null,
 	});
 	if (!row) error(404, "Stem not found");
 	schedulePlayback([params.id]);

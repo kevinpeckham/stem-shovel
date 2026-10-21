@@ -10,7 +10,7 @@ in three steps driven by `src/lib/upload.ts`:
 2. `upload()` from `@vercel/blob/client` sends the bytes; `/api/upload`
    (`handleUpload()`) issues a token only for a reserved pathname and only
    for the reserved content type.
-3. The browser decodes the file and `POST`s duration, channels and peaks to
+3. The browser decodes the file and `POST`s duration, channels, peaks and the file's own sample rate (from its header, `utils/audioSampleRate.ts`; docs/multitrack-recorder.md "Sample rates") to
    `/api/stems/[id]/ready`, which marks the row ready and refreshes the
    song's duration. `onUploadCompleted` is a production-only backstop (Blob
    cannot reach localhost).

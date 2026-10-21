@@ -10,6 +10,7 @@ import { normalizationGain } from "#lib/utils/normalizationGain.js";
 import { sandProject } from "#lib/utils/sandProject.js";
 import { sessionMidi } from "#lib/utils/sessionMidi.js";
 import { sessionReadme } from "#lib/utils/sessionReadme.js";
+import { songSampleRate } from "#lib/utils/songSampleRate.js";
 import { zipBlobs, type ZipEntry } from "#lib/utils/zipBlobs.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import type { RenderTarget } from "./studio.svelte";
@@ -36,6 +37,11 @@ export interface ExportEngine {
 	bufferOf(sourceId: string): AudioBuffer | null;
 	/** Whether a track can be rendered at all (an engine with no instrument says no to a MIDI track); every track when absent. */
 	renders?(trackId: string): boolean;
+	/**
+	 * A source's buffer at the song's rate when it was decoded at another (the browser's resampler,
+	 * audio/resampleBuffer.ts); without it the project files and the bundle's clips keep the source's rate.
+	 */
+	resample?(buffer: AudioBuffer, sampleRate: number): Promise<AudioBuffer>;
 }
 
 export interface ExportOptions {
@@ -155,7 +161,7 @@ export async function exportSong(
 		}
 	if (options.dawproject) {
 		onprogress?.("Writing the DAWproject…");
-		const { entries, audio } = sourceFiles(engine, "audio");
+		const { entries, audio } = await sourceFiles(engine, "audio");
 		const { project, metadata } = dawproject({ title, arrangement: a, audio, application });
 		const text = new TextEncoder();
 		entries.unshift(
@@ -170,7 +176,7 @@ export async function exportSong(
 	if (options.bundle) out.push(await sessionBundle(engine, title, application, onprogress));
 	if (options.sandyne) {
 		onprogress?.("Writing the Sandyne project…");
-		const { entries, audio } = sourceFiles(engine, "samples");
+		const { entries, audio } = await sourceFiles(engine, "samples");
 		const text = new TextEncoder();
 		entries.unshift({
 			name: `${base}.sand`,
@@ -187,8 +193,19 @@ export async function exportSong(
 	return out;
 }
 
-/** Every clip's source as a 24-bit WAV under `dir/`, once each, with what the project files need to know of it. */
-function sourceFiles(engine: ExportEngine, dir: string) {
+/** A clip source's buffer at the song's rate where the engine can resample; as decoded otherwise. */
+async function sourceAtSongRate(
+	engine: ExportEngine,
+	sourceId: string,
+): Promise<AudioBuffer | null> {
+	const buffer = engine.bufferOf(sourceId);
+	const rate = songSampleRate(engine.arrangement);
+	if (!buffer || buffer.sampleRate === rate || !engine.resample) return buffer;
+	return engine.resample(buffer, rate);
+}
+
+/** Every clip's source as a 24-bit WAV under `dir/`, once each, at the song's rate, with what the project files need to know of it. */
+async function sourceFiles(engine: ExportEngine, dir: string) {
 	const entries: ZipEntry[] = [];
 	const audio = new Map<
 		string,
@@ -196,7 +213,7 @@ function sourceFiles(engine: ExportEngine, dir: string) {
 	>();
 	for (const c of engine.arrangement.clips) {
 		if (!c.sourceId || audio.has(c.sourceId)) continue;
-		const buffer = engine.bufferOf(c.sourceId);
+		const buffer = await sourceAtSongRate(engine, c.sourceId);
 		if (!buffer) continue;
 		const path = `${dir}/${c.sourceId}.wav`;
 		entries.push({ name: path, data: encodeWav24(channelsOf(buffer), buffer.sampleRate) });
@@ -230,14 +247,21 @@ async function sessionBundle(
 	const nn = (i: number) => String(i + 1).padStart(2, "0");
 	const history = (sampleRate: number, channels: number) =>
 		`A=PCM,F=${sampleRate},W=24,M=${channels === 1 ? "mono" : "stereo"},T=${originator}`;
+	// The sources at the song's rate (one Broadcast WAV per clip, every clip at the one rate a DAW session wants).
+	const buffers = new Map<string, AudioBuffer>();
+	for (const c of a.clips) {
+		if (!c.sourceId || buffers.has(c.sourceId)) continue;
+		const b = await sourceAtSongRate(engine, c.sourceId);
+		if (b) buffers.set(c.sourceId, b);
+	}
 	const sourceOf = (id: string) => {
-		const b = engine.bufferOf(id);
+		const b = buffers.get(id);
 		return b ? { channels: channelsOf(b), sampleRate: b.sampleRate } : null;
 	};
 	// Clips, in track order, each stamped with its position.
 	const audioClips = a.tracks.flatMap((t) =>
 		a.clips
-			.filter((c) => c.trackId === t.id && c.sourceId && engine.bufferOf(c.sourceId))
+			.filter((c) => c.trackId === t.id && c.sourceId && buffers.has(c.sourceId))
 			.sort((x, y) => x.start - y.start)
 			.map((c) => ({ track: t, clip: c })),
 	);

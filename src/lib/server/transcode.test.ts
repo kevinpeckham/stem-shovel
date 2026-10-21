@@ -286,6 +286,7 @@ describe("measureStemMetadata", () => {
 		expect(h.data.finishStemMetadata).toHaveBeenCalledTimes(1);
 		expect(h.data.finishStemMetadata).toHaveBeenCalledWith("stem-1", {
 			channels: 1,
+			sampleRate: 44100,
 			durationSeconds: 1,
 			peaks: expect.arrayContaining([0.5]),
 		});

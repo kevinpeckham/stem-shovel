@@ -41,6 +41,8 @@ export const stem = table(
 		sizeBytes: t.integer("size_bytes").notNull(),
 		durationSeconds: t.real("duration_seconds"),
 		channels: t.integer("channels"),
+		/** The file's own rate in Hz, read from its header at upload (utils/audioSampleRate.ts) or by the metadata job; null when unknown. A stem at another rate than the song's others is marked in the player. */
+		sampleRate: t.integer("sample_rate"),
 		/** 1024 max-abs values in 0..1 (see lib/audio/peaks.ts). ~8 KB per row. */
 		peaks: t.text("peaks", { mode: "json" }).$type<number[]>(),
 		/**

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatKhz } from "#lib/utils/formatKhz.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 
 	/**
@@ -14,6 +15,8 @@
 		label: string;
 		durationSeconds: number;
 		channels: number;
+		/** The file's own rate (a recording's is the device's); shown when it is not the song's. */
+		sampleRate?: number;
 		/** "cold": on the server, fetched when played or placed (D8). */
 		status: "cold" | "decoding" | "ready" | "failed";
 		pending: boolean;
@@ -22,11 +25,13 @@
 	}
 	interface Props {
 		items: LibraryItem[];
+		/** The song's rate (utils/songSampleRate.ts): an item at another is marked. */
+		sampleRate?: number;
 		/** The item playing on its own, if any. */
 		playing: string | null;
 		onpreview: (id: string | null) => void;
 	}
-	let { items, playing, onpreview }: Props = $props();
+	let { items, sampleRate, playing, onpreview }: Props = $props();
 	let filter = $state("");
 	const shown = $derived(
 		items
@@ -88,7 +93,9 @@
 					<span class="shrink-0 tabular-nums opacity-70"
 						>{formatTime(item.durationSeconds)} · {item.channels === 1
 							? "mono"
-							: "stereo"}{item.uses
+							: "stereo"}{item.sampleRate && sampleRate && item.sampleRate !== sampleRate
+							? ` · ${formatKhz(item.sampleRate)} kHz`
+							: ""}{item.uses
 							? ` · ${item.uses} ${item.uses === 1 ? "clip" : "clips"}`
 							: ""}{item.pending
 							? " · saving…"

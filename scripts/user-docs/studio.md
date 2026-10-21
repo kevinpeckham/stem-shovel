@@ -56,6 +56,10 @@ The song's tempo and beats per bar live in the **Timing** menu (the caret beside
 
 A MIDI clip's bar has **Swing** and **Humanize** for its track: swing delays the off-beat eighths toward a triplet feel, humanize scatters the notes a little in time and touch. Both apply as the notes play and in a bounce; the notes themselves stay where you put them.
 
+## Sample rate
+
+A song has a sample rate, 48 kHz unless you change it in the Timing menu (44.1, 48, 88.2 or 96 kHz): the mix, the stems, the DAWproject, the session bundle and the Sandyne project all come out at that rate, on every computer. Recording and playback run at your device's rate; a take or an imported file at another rate is resampled on the way out. When you import a file at a rate other than the song's, Dawn says so; it plays in time either way, and the library shows the odd file's rate beside it.
+
 ## Without an account
 
 Dawn works signed out: record, arrange, mix and export as anyone does. The song then lives in this browser (IndexedDB, not on Stem Shovel), comes back on your next visit, and goes if you clear the site's data, so download what you want to keep. Sign in, or create an account, and the song kept here is offered into it: **Save to your account** uploads the recordings and keeps everything as it was, after which it saves, shares and sends to songs like any other.

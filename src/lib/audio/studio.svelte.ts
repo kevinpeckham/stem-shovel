@@ -1,3 +1,5 @@
+import { resampleBuffer } from "./resampleBuffer.js";
+import { songSampleRate } from "#lib/utils/songSampleRate.js";
 import { METER_ZERO, nextMeter, type MeterState } from "#lib/utils/meterLevel.js";
 import { kWeighting, lufsOf } from "#lib/utils/measureLoudness.js";
 import { LOUDNESS_ABSOLUTE_GATE_LUFS } from "#lib/constants/loudness.js";
@@ -42,6 +44,7 @@ import {
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
 	STUDIO_MEMORY_WARNING_BYTES,
+	STUDIO_SAMPLE_RATES,
 } from "#lib/constants/studio.js";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
@@ -662,6 +665,10 @@ class StudioEngine {
 		}
 		return n;
 	}
+	/** For the export (audio/studioExport.ts): a source at the song's rate when the device decoded it at another. */
+	resample(buffer: AudioBuffer, sampleRate: number): Promise<AudioBuffer> {
+		return resampleBuffer(buffer, sampleRate);
+	}
 	bufferOf(sourceId: string): AudioBuffer | null {
 		return this.#buffers.get(sourceId) ?? null;
 	}
@@ -1024,6 +1031,17 @@ class StudioEngine {
 		this.#commit();
 		this.arrangement.beatsPerBar = v;
 		metronome.setBeats(v);
+	}
+	/**
+	 * The song's sample rate (Song settings, docs/multitrack-recorder.md "Sample
+	 * rates"): the mix, the stems and the project files render at it on every
+	 * machine; recording and playback stay at the device's rate.
+	 */
+	setSampleRate(rate: number) {
+		if (!(STUDIO_SAMPLE_RATES as readonly number[]).includes(rate)) return;
+		if (rate === songSampleRate(this.arrangement)) return;
+		this.#commit();
+		this.arrangement.sampleRate = rate as StudioArrangement["sampleRate"];
 	}
 	setGridOn(on: boolean) {
 		this.arrangement.gridOn = on;
@@ -1958,6 +1976,8 @@ class StudioEngine {
 		buffer: AudioBuffer,
 		file: { blob: Blob; filename: string },
 		start: number,
+		/** The file's own rate (utils/audioSampleRate.ts); the buffer is at the context's. */
+		fileSampleRate?: number,
 	): StudioTake | null {
 		if (this.arrangement.clips.length >= MAX_STUDIO_CLIPS) {
 			this.notice = `A song holds at most ${MAX_STUDIO_CLIPS} clips.`;
@@ -1970,7 +1990,7 @@ class StudioEngine {
 			id: sourceId,
 			label,
 			durationSeconds: buffer.duration,
-			sampleRate: buffer.sampleRate,
+			sampleRate: fileSampleRate ?? buffer.sampleRate,
 			channels: buffer.numberOfChannels,
 			peaks: computePeaks(buffer, 1024),
 			status: "ready",
@@ -2014,13 +2034,15 @@ class StudioEngine {
 		buffer: AudioBuffer,
 		file: { blob: Blob; filename: string },
 		trackLabel: string,
+		/** The file's own rate (utils/audioSampleRate.ts); the buffer is at the context's. */
+		fileSampleRate?: number,
 	): StudioTake {
 		this.#buffers.set(sourceId, buffer);
 		this.sources[sourceId] = {
 			id: sourceId,
 			label: trackLabel.slice(0, 60) || "Import",
 			durationSeconds: buffer.duration,
-			sampleRate: buffer.sampleRate,
+			sampleRate: fileSampleRate ?? buffer.sampleRate,
 			channels: buffer.numberOfChannels,
 			peaks: computePeaks(buffer, 1024),
 			status: "ready",
@@ -2913,7 +2935,8 @@ class StudioEngine {
 		const trackId = target.track ?? null;
 		const busId = target.bus ?? null;
 		const alone = Boolean(trackId || busId);
-		const sampleRate = this.sampleRate;
+		// The song's rate, not the device's: the offline context resamples the sources decoded at the device's.
+		const sampleRate = songSampleRate(this.arrangement);
 		const length = Math.max(1, Math.ceil((this.duration + RENDER_TAIL_S) * sampleRate));
 		const off = new OfflineAudioContext(2, length, sampleRate);
 		const master = createStripGraph(off, {

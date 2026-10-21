@@ -18,5 +18,6 @@ Choose 24-bit or 16-bit WAV, or MP3, and **Normalize** to bring each file to the
 
 - Inserts, sends and plugins have no place in a DAWproject that another DAW can read, so the stems and the mix are the clips through their faders and pans alone. Volume and pan automation travel in the DAWproject, not in the renders.
 - A MIDI track has no instrument here: its notes go into the MIDI file (and the DAWproject), and it gets no stem.
+- Everything comes out at one sample rate: the one most of the project's files have, shown under **Sample rate**, where you can choose another (44.1, 48, 88.2 or 96 kHz). A file at another rate is resampled and listed there.
 - Anything the file holds that could not come across is listed under "Not carried across".
 - Signed in, Dawn's **Import audio, MIDI or DAWproject…** opens the same file as a song you can edit, mix and export from.

@@ -1209,6 +1209,64 @@ checks the zip signature) and opens the same way. The file counts
 against the account's storage like any attachment, and the ceiling for
 the kind is 1 GB.
 
+## Sample rates (2026-10-21)
+
+Kevin asked what happens when a project is 44.1 kHz and a stem 48, or one
+stem differs from the rest. What was true: the stem player decodes every
+stem into one context at 32 kHz, so mixed rates never clash there; the
+renditions and mixes are ffmpeg at 48 kHz; Dawn's context runs at the
+device's rate and every source is resampled to it on decode, so mixed
+imports play in time. The gap was the exports: `render()` and the project
+files took the live context's rate, so the same song exported on a Mac
+with a 44.1 kHz interface and on a Windows laptop gave WAVs at different
+rates, and nothing stored what rate an uploaded stem had.
+
+**A song has a rate.** `arrangement.sampleRate`, optional, one of
+`STUDIO_SAMPLE_RATES` (44.1, 48, 88.2, 96 kHz; `songSampleRate(a)` reads
+it with `STUDIO_SAMPLE_RATE_DEFAULT`, 48 kHz, when absent), set in the
+Timing menu (`setSampleRate`, undoable). `render()` builds its
+`OfflineAudioContext` at the song's rate rather than the device's: the
+`AudioBufferSourceNode`s resample the sources decoded at the device's rate
+on the way, and the instruments build at the offline context's rate as
+they always did. The project files and the bundle's clips go through
+`ExportEngine.resample` (the Studio's is `audio/resampleBuffer.ts`, an
+`OfflineAudioContext` at the target rate playing the buffer, the
+browser's own resampler), so a DAWproject's `audio/`, a Sandyne project's
+`samples/` and the bundle's `clips/` all carry one rate; an engine with no
+resampler (the interop fixture in Node) keeps the sources' rates, and the
+bundle's README still names them. Recording and playback stay at the
+device's rate (the context cannot change it mid-session, and the latency
+path is tuned to it); the Timing menu says so when the two differ.
+
+**Imports say when they differ.** `decodeAudioData` resamples to the
+context's rate and never says what the file was (FINDINGS.md), so
+`utils/audioSampleRate.ts` reads the header (WAV, AIFF, FLAC, MP3, MP4,
+Ogg). A file dropped on Dawn at another rate than the song's gets an
+"info" notification (it plays in time; exports come out at the song's
+rate); a DAWproject import lists its odd files in one; the reader sets the
+song's rate to the one most of the project's `Audio` elements declare,
+when it is one a song may render at, so the odd file is the exception
+and not the rule. `importBuffer` and `adoptSource` record the file's own
+rate on the source (the row's `sample_rate` was the context's before, a
+hint), and the library shows it beside an item whose rate is not the
+song's. The converter page does the same: it decodes at the project's
+common rate, shows it under "Sample rate" with a select to choose another
+(decoding again at the new rate), and lists the resampled files.
+
+**Stems know theirs.** Migration 0096 adds `stem.sample_rate`; the upload
+reads it from the header and `POST /api/stems/[id]/ready` takes it as an
+optional `sampleRate` (8000 to 384000 Hz, else null), and the
+stem-metadata job (`probeStream`, ffmpeg's "48000 Hz") fills it for a stem
+that lacks it when that job runs for other reasons (an older stem that has
+its peaks keeps null until it is replaced: fetching every file again for a
+number was not worth a song's first view). The manifest carries it
+(`StemSource.sampleRate`), the stem's menu on the song page shows it, and
+`StemPlayer` marks a stem whose rate differs from the most common one
+(`rateNotes`, a `note` on `StemRow` with the explanation on hover): the
+player itself does not care, but a DAW session built from the downloads
+would hold one file at an odd rate. `importSongStemsIntoStudio` passes the
+stem's rate to the Dawn source where it is known.
+
 ## The home demo (2026-10-20)
 
 Kevin: a section on the home page after the Idea Recorder with a demo

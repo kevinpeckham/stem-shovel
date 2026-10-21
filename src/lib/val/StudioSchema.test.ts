@@ -470,3 +470,14 @@ describe("StudioArrangementSchema (D8): a frozen track", () => {
 		).toBe(false);
 	});
 });
+
+describe("the song's sample rate", () => {
+	test("one of the rates a song renders at passes; another fails; none is fine", () => {
+		const ok = v.parse(StudioArrangementSchema, { ...arrangement([], []), sampleRate: 44100 });
+		expect(ok.sampleRate).toBe(44100);
+		expect(v.safeParse(StudioArrangementSchema, arrangement([], [])).success).toBe(true);
+		expect(
+			v.safeParse(StudioArrangementSchema, { ...arrangement([], []), sampleRate: 50000 }).success,
+		).toBe(false);
+	});
+});

@@ -8,6 +8,7 @@ import {
 	MAX_STUDIO_SECONDS,
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
+	STUDIO_SAMPLE_RATES,
 } from "#lib/constants/studio.js";
 import type {
 	StudioArrangement,
@@ -24,6 +25,8 @@ export interface DawprojectFile {
 	sourceId: string;
 	path: string;
 	label: string;
+	/** The rate the project says the file has (its `Audio` element), when it says one. */
+	sampleRate?: number;
 }
 
 export interface DawprojectRead {
@@ -279,12 +282,12 @@ export function readDawproject(
 	const remember = (el: Element, content: Element | null, played: ClipContent) => {
 		for (const id of [attr(el, "id"), attr(content, "id")]) if (id) contentById.set(id, played);
 	};
-	const sourceFor = (path: string, label: string) => {
+	const sourceFor = (path: string, label: string, sampleRate: number) => {
 		let id = sourceByPath.get(path);
 		if (!id) {
 			id = nanoid();
 			sourceByPath.set(path, id);
-			files.push({ sourceId: id, path, label });
+			files.push({ sourceId: id, path, label, ...(sampleRate > 0 ? { sampleRate } : {}) });
 		}
 		return id;
 	};
@@ -360,7 +363,7 @@ export function readDawproject(
 					.replace(/^.*\//, "")
 					.replace(/\.[a-z0-9]+$/i, "")
 					.slice(0, 60);
-			const sourceId = sourceFor(path, label);
+			const sourceId = sourceFor(path, label, num(audio, "sampleRate", 0));
 			const fileSeconds = num(audio, "duration", 0);
 			// The offset into the file: through the warps when there are any (content time in the warps' unit).
 			let offset = toSeconds(playStart, contentUnit);
@@ -582,6 +585,14 @@ export function readDawproject(
 			`Imported from ${attr(app, "name") ?? "a DAW"}${attr(app, "version") ? ` ${attr(app, "version")}` : ""}.`,
 		);
 
+	// The song's rate: the one most of the files have, when it is one a song may render at (the odd file is resampled on load).
+	const counts = new Map<number, number>();
+	for (const f of files)
+		if (f.sampleRate) counts.set(f.sampleRate, (counts.get(f.sampleRate) ?? 0) + 1);
+	const common = [...counts.entries()].sort((x, y) => y[1] - x[1])[0]?.[0];
+	const sampleRate = (STUDIO_SAMPLE_RATES as readonly number[]).includes(common ?? 0)
+		? (common as StudioArrangement["sampleRate"])
+		: undefined;
 	const arrangement: StudioArrangement = {
 		version: 1,
 		bpm: tempoSteps[0]!.bpm,
@@ -593,6 +604,7 @@ export function readDawproject(
 		master,
 		tracks,
 		clips,
+		...(sampleRate ? { sampleRate } : {}),
 		...(buses.length ? { buses } : {}),
 		...(markers.length ? { markers } : {}),
 		...(tempoChanges.length ? { tempoChanges } : {}),

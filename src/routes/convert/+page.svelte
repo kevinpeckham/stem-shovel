@@ -10,7 +10,11 @@
 		type ExportFile,
 		type ExportOptions,
 	} from "#lib/audio/studioExport.js";
+	import { STUDIO_SAMPLE_RATES } from "#lib/constants/studio.js";
 	import { notify } from "#lib/state/notifications.svelte.js";
+	import { audioSampleRate } from "#lib/utils/audioSampleRate.js";
+	import { formatKhz } from "#lib/utils/formatKhz.js";
+	import { songSampleRate } from "#lib/utils/songSampleRate.js";
 	import { downloadBlob } from "#lib/utils/downloadBlob.js";
 	import { errorMessage } from "#lib/utils/errorMessage.js";
 	import type { ClipSource } from "#lib/utils/mixClipsToChannels.js";
@@ -22,8 +26,12 @@
 	 * track or bus, a repacked DAWproject or a Sandyne project, all in the
 	 * browser through Dawn's own reader (utils/unpackDawproject.ts), a
 	 * file-based engine (audio/convertEngine.ts) and the Export panel the
-	 * Studio uses. Nothing is uploaded.
+	 * Studio uses. Nothing is uploaded. Everything comes out at one sample
+	 * rate (docs/multitrack-recorder.md "Sample rates"): the one most of the
+	 * project's files have, or the one chosen here; the files are decoded at
+	 * it, and a file at another rate is listed.
 	 */
+	type Unpacked = ReturnType<typeof import("#lib/utils/unpackDawproject.js").unpackDawproject>;
 	let { data } = $props();
 
 	let fileName = $state("");
@@ -36,6 +44,13 @@
 	let results = $state<ExportFile[]>([]);
 	let dragging = $state(false);
 	let input = $state<HTMLInputElement | null>(null);
+	let unpacked = $state.raw<Unpacked | null>(null);
+	/** The output rate: the project's, then the viewer's choice. */
+	let rate = $state(songSampleRate({}));
+	/** Files at another rate than the output's, resampled on the way in. */
+	let odd = $state<string[]>([]);
+	/** Files the browser could not decode this time (the reader's own report stays in `read.dropped`). */
+	let undecoded = $state<string[]>([]);
 
 	const tracks = $derived(read?.arrangement.tracks ?? []);
 	const buses = $derived(read?.arrangement.buses ?? []);
@@ -51,20 +66,41 @@
 		results = [];
 		read = null;
 		engine = null;
-		decoded = 0;
+		unpacked = null;
 		fileName = file.name;
 		try {
 			const { unpackDawproject } = await import("#lib/utils/unpackDawproject.js");
-			const unpacked = unpackDawproject(new Uint8Array(await file.arrayBuffer()), file.name);
-			// The audio, decoded by the browser (an offline context needs no gesture).
+			unpacked = unpackDawproject(new Uint8Array(await file.arrayBuffer()), file.name);
+			for (const f of unpacked.read.files)
+				if (!unpacked.entryOf(f.path))
+					unpacked.read.dropped.push(`${f.label}: its file is not in the archive`);
+			rate = songSampleRate(unpacked.read.arrangement);
+			await decodeAll();
+		} catch (e) {
+			notify(`Could not read ${file.name}: ${errorMessage(e)}`, { kind: "error" });
+		} finally {
+			reading = false;
+		}
+	}
+
+	/** The audio decoded by the browser at the output rate (an offline context needs no gesture); again when the rate changes. */
+	async function decodeAll() {
+		if (!unpacked) return;
+		reading = true;
+		results = [];
+		engine = null;
+		decoded = 0;
+		odd = [];
+		undecoded = [];
+		try {
 			const sources = new Map<string, ClipSource>();
-			const ctx = new OfflineAudioContext(1, 1, 48000);
+			const ctx = new OfflineAudioContext(1, 1, rate);
 			for (const f of unpacked.read.files) {
 				const bytes = unpacked.entryOf(f.path);
-				if (!bytes) {
-					unpacked.read.dropped.push(`${f.label}: its file is not in the archive`);
-					continue;
-				}
+				if (!bytes) continue;
+				const name = f.path.replace(/^.*\//, "");
+				const fileRate = audioSampleRate(bytes) ?? f.sampleRate;
+				if (fileRate && fileRate !== rate) odd.push(`${name} (${formatKhz(fileRate)} kHz)`);
 				try {
 					const buffer = await ctx.decodeAudioData(
 						bytes.buffer.slice(
@@ -80,15 +116,15 @@
 					});
 					decoded += 1;
 				} catch {
-					unpacked.read.dropped.push(
-						`${f.label}: ${f.path.replace(/^.*\//, "")} could not be decoded`,
-					);
+					undecoded.push(`${f.label}: ${name} could not be decoded`);
 				}
 			}
-			engine = convertEngine(unpacked.read.arrangement, sources);
-			read = unpacked.read;
-		} catch (e) {
-			notify(`Could not read ${file.name}: ${errorMessage(e)}`, { kind: "error" });
+			const arrangement = {
+				...unpacked.read.arrangement,
+				sampleRate: rate as (typeof STUDIO_SAMPLE_RATES)[number],
+			};
+			engine = convertEngine(arrangement, sources);
+			read = { ...unpacked.read, arrangement };
 		} finally {
 			reading = false;
 		}
@@ -202,6 +238,28 @@
 					</dd>
 					<dt class="opacity-70">Audio files</dt>
 					<dd>{decoded} of {read.files.length} decoded</dd>
+					<dt class="opacity-70"><label for="convert-rate">Sample rate</label></dt>
+					<dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
+						<select
+							id="convert-rate"
+							class="rounded border border-white/20 bg-transparent px-2 py-0.5 text-13px"
+							value={rate}
+							disabled={reading || busy}
+							onchange={(e) => {
+								rate = Number(e.currentTarget.value);
+								void decodeAll();
+							}}
+						>
+							{#each STUDIO_SAMPLE_RATES as r (r)}<option value={r}>{formatKhz(r)} kHz</option
+								>{/each}
+						</select>
+						{#if odd.length}
+							<span class="text-13px opacity-80">
+								{odd.join(", ")}
+								{odd.length === 1 ? "is" : "are"} resampled
+							</span>
+						{/if}
+					</dd>
 					<dt class="opacity-70">Tempo</dt>
 					<dd>
 						{read.arrangement.bpm} bpm, {read.arrangement.beatsPerBar}/4{read.arrangement.key
@@ -213,13 +271,13 @@
 							: ""}
 					</dd>
 				</dl>
-				{#if read.dropped.length}
+				{#if read.dropped.length || undecoded.length}
 					<details class="text-13px">
 						<summary class="cursor-pointer opacity-80">
-							Not carried across ({read.dropped.length})
+							Not carried across ({read.dropped.length + undecoded.length})
 						</summary>
 						<ul class="mt-1 list-disc pl-5 opacity-80">
-							{#each read.dropped as line (line)}
+							{#each [...read.dropped, ...undecoded] as line (line)}
 								<li>{line}</li>
 							{/each}
 						</ul>

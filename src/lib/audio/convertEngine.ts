@@ -1,5 +1,7 @@
 import { mixClipsToChannels, type ClipSource } from "#lib/utils/mixClipsToChannels.js";
 import { panWeightsOf } from "#lib/utils/panBalance.js";
+import { songSampleRate } from "#lib/utils/songSampleRate.js";
+import { resampleBuffer } from "./resampleBuffer.js";
 import type { StudioArrangement, StudioTrack } from "#lib/val/StudioSchema.js";
 import type { ExportEngine } from "./studioExport.js";
 
@@ -14,14 +16,15 @@ import type { ExportEngine } from "./studioExport.js";
  * are not rendered (the DAWproject keeps the automation). A MIDI track has
  * no instrument here, so it is not renderable: its notes go to the MIDI
  * file. Buffers are real `AudioBuffer`s in the browser and plain objects
- * where there is none (tests).
+ * where there is none (tests). Everything renders at the song's rate
+ * (`arrangement.sampleRate`, the page's choice; utils/songSampleRate.ts).
  */
 export function convertEngine(
 	arrangement: StudioArrangement,
 	sources: Map<string, ClipSource>,
+	/** The rate to render at: the song's (the page decodes the files at it; a source at another rate is read nearest-sample). */
+	sampleRate: number = songSampleRate(arrangement),
 ): ExportEngine {
-	const rates = [...sources.values()].map((s) => s.sampleRate);
-	const sampleRate = rates.length ? Math.max(...rates) : 48000;
 	const songEnd = arrangement.clips.reduce((m, c) => Math.max(m, c.start + c.duration), 0);
 	const sourceOf = (id: string) => sources.get(id) ?? null;
 	const anySolo = arrangement.tracks.some((t) => t.solo);
@@ -55,6 +58,7 @@ export function convertEngine(
 			return s ? bufferOf(s.channels, s.sampleRate) : null;
 		},
 		renders,
+		...(typeof OfflineAudioContext !== "undefined" ? { resample: resampleBuffer } : {}),
 		async render(target) {
 			if (target?.track) return bufferOf(trackChannels(trackOf(target.track)), sampleRate);
 			if (target?.bus) return bufferOf(busChannels(target.bus), sampleRate);
