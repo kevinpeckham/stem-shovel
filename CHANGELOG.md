@@ -8,10 +8,18 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.140.1] - 2026-10-21
+
 ### Changed
 
 - **The home page's Dawn demo needs no setup**: with no Dawn song chosen,
   it plays the featured song's stems straight from the song.
+
+### Technical
+
+- `src/lib/utils/studioFromStems.ts`: a Dawn song from a player manifest's
+  stems, the renditions as sources. The smoke expects `/multitrack-recorder`
+  to answer 200 signed out.
 
 ## [0.140.0] - 2026-10-20
 
