@@ -52,6 +52,8 @@ There is no reader, and nothing saves the archive on Stem Shovel.
 
 ### Phase 1: open a DAWproject in Dawn (the reader)
 
+**Done 2026-10-21** (docs/multitrack-recorder.md, "Opening a DAWproject").
+
 A pure parser beside the writer, `utils/dawprojectRead.ts`:
 `readDawproject(xml: string): { title, arrangement: StudioArrangement,
 files: { sourceId, path, trackLabel }[], dropped: string[] }`. It takes

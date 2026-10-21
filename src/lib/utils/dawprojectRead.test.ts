@@ -1,0 +1,266 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from "vite-plus/test";
+import type { StudioArrangement } from "#lib/val/StudioSchema.js";
+import { dawproject } from "./dawproject";
+import { readDawproject } from "./dawprojectRead";
+
+const arrangement: StudioArrangement = {
+	version: 1,
+	bpm: 124,
+	beatsPerBar: 3,
+	gridOn: true,
+	countIn: false,
+	click: false,
+	loop: null,
+	master: 0.9,
+	buses: [{ id: "b1", name: "Drums & FX", gain: 0.8, pan: 0.2, muted: false, colour: "sea" }],
+	tracks: [
+		{
+			id: "t1",
+			name: 'Guitar "lead" <solo>',
+			gain: 0.7,
+			pan: -0.5,
+			muted: false,
+			solo: true,
+			armed: false,
+			input: null,
+			colour: "rose",
+			sends: [{ bus: "b1", level: 0.4 }],
+			automation: {
+				volume: [
+					{ t: 0, v: 0.2 },
+					{ t: 4, v: 1 },
+				],
+				pan: [{ t: 1, v: -1 }],
+			},
+		},
+		{
+			id: "t2",
+			name: "Keys",
+			kind: "midi",
+			gain: 1,
+			pan: 0,
+			muted: true,
+			solo: false,
+			armed: false,
+			input: { source: "piano", channel: "stereo" },
+			output: "b1",
+		},
+	],
+	clips: [
+		{
+			id: "c1",
+			trackId: "t1",
+			sourceId: "s1",
+			start: 2,
+			offset: 0.5,
+			duration: 10,
+			gain: 1,
+			fadeIn: 0.1,
+			fadeOut: 0.25,
+			name: "Take 1",
+		},
+		{
+			id: "c3",
+			trackId: "t2",
+			notes: [
+				{ t: 0, d: 0.5, p: 60, v: 0.8 },
+				{ t: 1, d: 0.5, p: 64, v: 1 },
+			],
+			start: 4,
+			offset: 0,
+			duration: 2,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "Chords",
+		},
+	],
+};
+
+describe("readDawproject", () => {
+	it("reads back what the writer wrote: the round trip up to ids", () => {
+		const written = dawproject({
+			title: "Round trip",
+			arrangement,
+			audio: new Map([
+				["s1", { path: "audio/s1.wav", durationSeconds: 30, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.141.0" },
+		});
+		const read = readDawproject(written.project, written.metadata);
+		expect(read.title).toBe("Round trip");
+		expect(read.notes).toContain("Imported from Stem Shovel Dawn 0.141.0");
+		const a = read.arrangement;
+		expect([a.bpm, a.beatsPerBar, a.master]).toEqual([124, 3, 0.9]);
+		expect(a.buses?.map((b) => [b.name, b.gain, b.pan, b.muted, b.colour])).toEqual([
+			["Drums & FX", 0.8, 0.2, false, "sea"],
+		]);
+		expect(a.tracks.map((t) => [t.name, t.kind, t.gain, t.pan, t.muted, t.solo, t.colour])).toEqual(
+			[
+				['Guitar "lead" <solo>', "audio", 0.7, -0.5, false, true, "rose"],
+				["Keys", "midi", 1, 0, true, false, undefined],
+			],
+		);
+		// Routing and sends name the bus by its new id.
+		expect(a.tracks[1]!.output).toBe(a.buses![0]!.id);
+		expect(a.tracks[1]!.input).toEqual({ source: "piano", channel: "stereo" });
+		expect(a.tracks[0]!.sends).toEqual([{ bus: a.buses![0]!.id, level: 0.4 }]);
+		expect(a.tracks[0]!.automation).toEqual({
+			volume: [
+				{ t: 0, v: 0.2 },
+				{ t: 4, v: 1 },
+			],
+			pan: [{ t: 1, v: -1 }],
+		});
+		// The audio clip over its file, the notes clip with its notes; the source minted once for the file.
+		expect(read.files).toEqual([
+			{ sourceId: expect.any(String), path: "audio/s1.wav", label: "Take 1" },
+		]);
+		expect(
+			a.clips.map((c) => [c.trackId, c.start, c.offset, c.duration, c.fadeIn, c.fadeOut, c.name]),
+		).toEqual([
+			[a.tracks[0]!.id, 2, 0.5, 10, 0.1, 0.25, "Take 1"],
+			[a.tracks[1]!.id, 4, 0, 2, 0, 0, "Chords"],
+		]);
+		expect(a.clips[0]!.sourceId).toBe(read.files[0]!.sourceId);
+		expect(a.clips[1]!.notes).toEqual([
+			{ t: 0, d: 0.5, p: 60, v: 0.8 },
+			{ t: 1, d: 0.5, p: 64, v: 1 },
+		]);
+		expect(read.dropped).toEqual([]);
+	});
+
+	it("reads another DAW's dialect: beats, a group as a bus, devices and stretch reported, tempo automation, markers", () => {
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Project version="1.0">
+  <Application name="Bitwig Studio" version="5.3"/>
+  <Transport>
+    <Tempo unit="bpm" value="120" id="tempo"/>
+    <TimeSignature numerator="4" denominator="4" id="sig"/>
+  </Transport>
+  <Structure>
+    <Track contentType="audio" loaded="true" id="group" name="Band" color="#7fb2c2">
+      <Channel audioChannels="2" role="regular" solo="false" destination="masterch" id="groupch">
+        <Volume unit="decibel" value="-6" id="gvol"/>
+        <Pan unit="normalized" value="0.5" id="gpan"/>
+        <Mute value="false" id="gmute"/>
+        <Devices><Device deviceName="Pro-Q 3" deviceRole="audioFX" id="d1"/></Devices>
+      </Channel>
+      <Track contentType="audio" loaded="true" id="drums" name="Drums">
+        <Channel audioChannels="2" role="regular" solo="true" destination="groupch" id="drumsch">
+          <Volume unit="linear" value="1.2" id="dvol"/>
+          <Pan unit="normalized" value="0.25" id="dpan"/>
+          <Mute value="false" id="dmute"/>
+          <Sends><Send destination="fxch" type="pre" id="send1"><Volume unit="linear" value="0.3" id="sv"/></Send></Sends>
+        </Channel>
+      </Track>
+    </Track>
+    <Track contentType="notes" loaded="true" id="synth" name="Synth">
+      <Channel audioChannels="2" role="regular" solo="false" destination="masterch" id="synthch">
+        <Volume unit="linear" value="0.9" id="svol"/><Pan unit="normalized" value="0.5" id="span"/><Mute value="false" id="smute"/>
+        <Devices><Vst3Plugin deviceName="Serum" deviceRole="instrument" id="d2"/></Devices>
+      </Channel>
+    </Track>
+    <Track contentType="audio" loaded="true" id="fx" name="Reverb">
+      <Channel audioChannels="2" role="effect" solo="false" destination="masterch" id="fxch">
+        <Volume unit="linear" value="1" id="fvol"/><Pan unit="normalized" value="0.5" id="fpan"/><Mute value="false" id="fmute"/>
+      </Channel>
+    </Track>
+    <Track contentType="audio notes" loaded="true" id="master" name="Master">
+      <Channel audioChannels="2" role="master" solo="false" id="masterch">
+        <Volume unit="linear" value="0.8" id="mvol"/><Pan unit="normalized" value="0.5" id="mpan"/><Mute value="false" id="mmute"/>
+      </Channel>
+    </Track>
+  </Structure>
+  <Arrangement id="arr">
+    <TempoAutomation unit="bpm" id="ta"><Target parameter="tempo"/><RealPoint time="0" value="120" interpolation="hold"/><RealPoint time="8" value="60" interpolation="hold"/></TempoAutomation>
+    <TimeSignatureAutomation id="tsa"><TimeSignaturePoint time="8" numerator="3" denominator="4"/></TimeSignatureAutomation>
+    <Markers id="mk"><Marker time="4" name="Verse"/></Markers>
+    <Lanes timeUnit="beats" id="lanes">
+      <Lanes track="drums" id="l1">
+        <Clips id="cl1">
+          <Clip time="4" duration="8" contentTimeUnit="beats" playStart="2" fadeTimeUnit="seconds" fadeInTime="0.5" name="Loop">
+            <Warps contentTimeUnit="seconds" id="w">
+              <Audio algorithm="stretch" channels="2" duration="20" sampleRate="44100" id="au"><File path="audio/loop.flac"/></Audio>
+              <Warp time="0" contentTime="1"/>
+              <Warp time="8" contentTime="3"/>
+            </Warps>
+          </Clip>
+          <Clip time="12" contentTimeUnit="beats" name="Plain">
+            <Audio algorithm="raw" channels="1" duration="5" sampleRate="48000" id="au2"><File path="audio/loop.flac"/></Audio>
+          </Clip>
+        </Clips>
+        <Points unit="linear" id="pts"><Target parameter="dvol"/><RealPoint time="0" value="1"/><RealPoint time="4" value="0.5"/></Points>
+        <Points unit="linear" id="pts2"><Target parameter="d1param"/><RealPoint time="0" value="1"/></Points>
+      </Lanes>
+      <Lanes track="synth" id="l2">
+        <Clips id="cl2">
+          <Clip time="0" duration="4" contentTimeUnit="beats" playStart="0" name="Riff">
+            <Notes id="n"><Note time="0" duration="1" channel="0" key="60" vel="0.5"/><Note time="2" duration="0.5" channel="0" key="67" vel="1"/></Notes>
+          </Clip>
+        </Clips>
+      </Lanes>
+    </Lanes>
+  </Arrangement>
+  <Scenes id="sc"/>
+</Project>`;
+		const read = readDawproject(
+			xml,
+			"<MetaData><Title>Night Drive</Title><Artist>Bad Verbs</Artist><Comment>demo</Comment></MetaData>",
+		);
+		const a = read.arrangement;
+		expect(read.title).toBe("Night Drive");
+		expect(read.notes).toBe("Artist: Bad Verbs\ndemo\nImported from Bitwig Studio 5.3.");
+		// 120 bpm until beat 8 (4 s), then 60: beat 12 is at 8 s.
+		expect([a.bpm, a.beatsPerBar, a.master]).toEqual([120, 4, 0.8]);
+		expect(a.tempoChanges).toEqual([{ start: 4, bpm: 60 }]);
+		expect(a.meterChanges).toEqual([{ start: 4, beatsPerBar: 3 }]);
+		expect(a.markers?.map((m) => [m.t, m.name])).toEqual([[2, "Verse"]]);
+		// The group is a bus (-6 dB ≈ 0.5012), the effect track another; the drums route to the group and send to the reverb pre-fader.
+		expect(a.buses?.map((b) => [b.name, Math.round(b.gain * 1000) / 1000, b.colour])).toEqual([
+			["Band", 0.501, "sea"],
+			["Reverb", 1, undefined],
+		]);
+		expect(a.tracks.map((t) => [t.name, t.kind, t.gain, t.pan, t.solo])).toEqual([
+			["Drums", "audio", 1.2, -0.5, true],
+			["Synth", "midi", 0.9, 0, false],
+		]);
+		expect(a.tracks[0]!.output).toBe(a.buses![0]!.id);
+		expect(a.tracks[0]!.sends).toEqual([{ bus: a.buses![1]!.id, level: 0.3, pre: true }]);
+		// Beats to seconds: the clip at beat 4 is 2 s in, 8 beats long is 4 s; the fade stays in seconds.
+		const loop = a.clips.find((c) => c.name === "Loop")!;
+		expect([loop.start, loop.duration, loop.fadeIn]).toEqual([2, 4, 0.5]);
+		// playStart 2 beats through the warps (0→1 s, 8→3 s): 1.5 s into the file; the warps stretch 2 s of file over 4 s of clip.
+		expect(loop.offset).toBe(1.5);
+		// A clip with no duration runs to the file's end from its offset; the same file is one source.
+		const plain = a.clips.find((c) => c.name === "Plain")!;
+		expect([plain.start, plain.offset, plain.duration]).toEqual([8, 0, 5]);
+		expect(read.files).toHaveLength(1);
+		expect(plain.sourceId).toBe(loop.sourceId);
+		// The notes in beats to seconds; the volume automation on the drums, in seconds.
+		const riff = a.clips.find((c) => c.name === "Riff")!;
+		expect(riff.notes).toEqual([
+			{ t: 0, d: 0.5, p: 60, v: 0.5 },
+			{ t: 1, d: 0.25, p: 67, v: 1 },
+		]);
+		expect(a.tracks[0]!.automation).toEqual({
+			volume: [
+				{ t: 0, v: 1 },
+				{ t: 2, v: 0.5 },
+			],
+		});
+		expect(read.dropped).toEqual([
+			"Pro-Q 3 on Band",
+			"Serum on Synth",
+			"Loop: stretched (plays at the file's own speed here)",
+			"automation of d1param",
+			"clip launcher scenes",
+		]);
+	});
+
+	it("refuses what is not a project", () => {
+		expect(() => readDawproject("<nope/>")).toThrow(/Not a DAWproject/);
+		expect(() => readDawproject("<Project><Broken")).toThrow(/Not a DAWproject/);
+	});
+});

@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Open a DAWproject in Dawn.** Import a `.dawproject` from Bitwig,
+  Studio One, Cubase or Nuendo (or Dawn's own export) as a new song:
+  tracks, groups as buses, levels, routing, sends, clips with fades, MIDI
+  notes, volume and pan automation, tempo and meter changes, markers; what
+  cannot come across is named when the song opens.
+
 ## [0.140.1] - 2026-10-21
 
 ### Changed

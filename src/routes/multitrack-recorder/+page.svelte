@@ -34,7 +34,8 @@
 	} from "#lib/audio/studioExport.js";
 	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
-	import { DEMO_ACCEPT } from "#lib/constants/demoFormats.js";
+	import { DEMO_ACCEPT, DEMO_FORMATS } from "#lib/constants/demoFormats.js";
+	import { readDawproject } from "#lib/utils/dawprojectRead.js";
 	import { parseMidi } from "#lib/audio/midi.js";
 	import { encodeMp3 } from "#lib/audio/encodeMp3.js";
 	import PianoRoll from "#lib/components/PianoRoll.svelte";
@@ -210,8 +211,9 @@
 		keptOffer = null;
 	}
 	/** Signed out: a fresh song means the kept one goes. */
-	async function startOverLocal() {
-		if (!confirm("Start over? The song kept in this browser, recordings and all, goes.")) return;
+	async function startOverLocal(ask = true) {
+		if (ask && !confirm("Start over? The song kept in this browser, recordings and all, goes."))
+			return;
 		if (studio.running) studio.stop();
 		persistence.cancel();
 		await queue.discardKept();
@@ -690,6 +692,11 @@
 				studio.addTrack(null, "Imports");
 			let at = studio.position;
 			for (const file of files) {
+				// A DAWproject (or a zip holding one): a whole song, opened as a new one (docs/dawproject-plan.md).
+				if (/\.(dawproject|zip)$/i.test(file.name)) {
+					await importDawproject(file);
+					continue;
+				}
 				if (/\.midi?$/i.test(file.name)) {
 					// A MIDI file: one clip of its notes on a MIDI track (docs/multitrack-recorder.md, phase 3).
 					const midiTrack = midiTrackFor();
@@ -743,6 +750,107 @@
 		} finally {
 			importing = false;
 		}
+	}
+	/**
+	 * A DAWproject opened as a new song (docs/dawproject-plan.md, phase 1):
+	 * the archive unzipped in the browser, `project.xml` read into Dawn's
+	 * shape (utils/dawprojectRead.ts), each audio file decoded and adopted
+	 * as a source under the id the reader minted (uploaded by the queue
+	 * signed in, kept in the browser signed out), the arrangement replaced,
+	 * the title and notes set, and a report of what did not come across.
+	 */
+	async function importDawproject(file: File) {
+		const { unzipSync, strFromU8 } = await import("fflate");
+		const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+		const names = Object.keys(entries);
+		const projectName = names.find((n) => /(^|\/)project\.xml$/.test(n));
+		if (!projectName) throw new Error(`${file.name} holds no project.xml: not a DAWproject`);
+		const prefix = projectName.slice(0, -"project.xml".length);
+		const metaName = names.find((n) => n === `${prefix}metadata.xml`);
+		const read = readDawproject(
+			strFromU8(entries[projectName]!),
+			metaName ? strFromU8(entries[metaName]!) : null,
+		);
+		// A fresh song to hold it: made in the account, or the browser-kept one started over.
+		if (studio.running) studio.stop();
+		if (data.account) {
+			await autosaveNow();
+			const created = await createIdea({
+				accountId: data.account.id,
+				title: read.title,
+				kind: "song",
+			});
+			await refreshAll();
+			openSong(data.songs.find((s) => s.id === created.id) ?? null);
+		} else {
+			if (
+				studio.arrangement.clips.length &&
+				!confirm(`Open “${read.title}” in place of the song kept in this browser?`)
+			)
+				return;
+			await startOverLocal(false);
+			title = read.title;
+		}
+		// The audio: each file found in the archive, decoded, adopted under its source id.
+		const entryOf = (path: string) => {
+			const clean = path.replace(/^\.\//, "");
+			return (
+				entries[`${prefix}${clean}`] ??
+				entries[clean] ??
+				entries[names.find((n) => n.endsWith(`/${clean}`)) ?? ""]
+			);
+		};
+		const takes: StudioTake[] = [];
+		const lost = new Set<string>();
+		for (const f of read.files) {
+			const bytes = entryOf(f.path);
+			if (!bytes) {
+				read.dropped.push(`${f.label}: its file is not in the archive`);
+				lost.add(f.sourceId);
+				continue;
+			}
+			if (bytes.byteLength > MAX_TAKE_BYTES) {
+				read.dropped.push(`${f.label}: over the ${Math.round(MAX_TAKE_BYTES / 1048576)} MB limit`);
+				lost.add(f.sourceId);
+				continue;
+			}
+			const filename = f.path.replace(/^.*\//, "") || `${f.label}.wav`;
+			let buffer: AudioBuffer;
+			try {
+				buffer = await studio.decodeFile(
+					bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+				);
+			} catch {
+				read.dropped.push(`${f.label}: ${filename} could not be decoded`);
+				lost.add(f.sourceId);
+				continue;
+			}
+			const ext = filename.replace(/^.*\./, "").toLowerCase();
+			const blob = new Blob([bytes as BlobPart], { type: DEMO_FORMATS[ext] ?? "" });
+			takes.push(studio.adoptSource(f.sourceId, buffer, { blob, filename }, f.label));
+		}
+		const arrangement = {
+			...read.arrangement,
+			clips: read.arrangement.clips.filter((c) => !c.sourceId || !lost.has(c.sourceId)),
+		};
+		studio.replaceArrangement(arrangement);
+		for (const t of takes) {
+			t.trackId = arrangement.clips.find((c) => c.sourceId === t.sourceId)?.trackId ?? "";
+			studio.ontake?.(t);
+		}
+		notes = read.notes;
+		notesKey++;
+		if (data.account && songId && read.notes.trim())
+			await saveIdeaNotes({ id: songId, markdown: read.notes });
+		if (!data.account) await saveLocalNow();
+		selected = null;
+		selectedIds = [];
+		const tracks = arrangement.tracks.length;
+		const clips = arrangement.clips.length;
+		const opened = `“${read.title}” opened: ${tracks} ${tracks === 1 ? "track" : "tracks"}, ${clips} ${clips === 1 ? "clip" : "clips"}`;
+		if (read.dropped.length)
+			notify(`${opened}. Did not come across: ${read.dropped.join("; ")}.`, { kind: "error" });
+		else notify(opened);
 	}
 	let selectedClip = $derived(studio.arrangement.clips.find((c) => c.id === selected) ?? null);
 	function splitSelected() {
@@ -1883,11 +1991,11 @@
 					</button>
 					<label class="device-button-sm px-3 cursor-pointer {importing ? 'opacity-60' : ''}">
 						<span class="i-ph-file-audio" aria-hidden="true"></span>
-						{importing ? "Importing…" : "Import audio or MIDI…"}
+						{importing ? "Importing…" : "Import audio, MIDI or DAWproject…"}
 						<input
 							type="file"
 							class="sr-only"
-							accept="{DEMO_ACCEPT},.mid,.midi"
+							accept="{DEMO_ACCEPT},.mid,.midi,.dawproject,.zip"
 							multiple
 							disabled={importing}
 							onchange={(e) => {

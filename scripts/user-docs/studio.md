@@ -60,6 +60,10 @@ A MIDI clip's bar has **Swing** and **Humanize** for its track: swing delays the
 
 Dawn works signed out: record, arrange, mix and export as anyone does. The song then lives in this browser (IndexedDB, not on Stem Shovel), comes back on your next visit, and goes if you clear the site's data, so download what you want to keep. Sign in, or create an account, and the song kept here is offered into it: **Save to your account** uploads the recordings and keeps everything as it was, after which it saves, shares and sends to songs like any other.
 
+## Opening a DAWproject
+
+**Import audio, MIDI or DAWproject…** opens a `.dawproject` from Bitwig Studio, Studio One, Cubase or Nuendo (or one Dawn exported) as a new song: the tracks and groups, levels, pans, routing and sends, the clips with their fades, the notes of MIDI clips, volume and pan automation, tempo and time-signature changes, and the markers. Plugins and devices, and anything else Dawn has no place for, are listed in a note when the song opens, so you know what to add back. Works signed out too: the song is kept in this browser like any other.
+
 ## MP3 export
 
 **Download mix (MP3)** in the Song actions menu, or MP3 as the format in **Export…**, encodes in the browser at 192 kbps; WAV stays the lossless choice.

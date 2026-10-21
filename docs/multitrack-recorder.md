@@ -1070,6 +1070,39 @@ mix, the per-track and the per-bus files MP3s; the DAWproject's embedded
 audio stays WAV. The device menu's **Download mix (MP3)** encodes the
 mix the same way. Signed in or not.
 
+## Opening a DAWproject (2026-10-21)
+
+docs/dawproject-plan.md, phase 1. `utils/dawprojectRead.ts` reads a
+`project.xml` (and `metadata.xml`) into Dawn's shape: the transport with
+its tempo and time-signature automation as `tempoChanges` and
+`meterChanges`; beats converted to seconds through that tempo map
+(Bitwig and Studio One write beats, we write seconds; a timeline's
+`timeUnit` is inherited downward, and a clip's `contentTimeUnit` and
+`fadeTimeUnit` apply to its content and fades); a regular track to a
+track (`notes` content to a MIDI track with the piano as its input), a
+group track or an effect track to a bus, the master's volume; each
+channel's volume (linear, decibel or normalized), pan (normalized or
+signed), mute, solo, destination (a bus, else the master) and sends; the
+clips in seconds, an audio clip over its file with one source minted per
+distinct path and its `playStart` through the warps when there are any
+(a stretch the warps imply is reported and ignored, since Dawn has none),
+a clip holding clips flattened one level; a notes clip's notes; the
+volume and pan `Points` on a channel's own parameters as automation
+lanes; the markers. What it cannot carry it names in `dropped`:
+devices, other automation, nested lanes, scenes, anything over Dawn's
+limits. Needs `DOMParser`; its test runs under jsdom. The page's
+`importDawproject` (the file input and "Import audio, MIDI or
+DAWproject…" accept `.dawproject` and `.zip`) unzips with fflate, reads,
+makes a new song (an idea in the account, or the browser-kept one
+started over after a confirm when it had clips), decodes each audio file
+and adopts it as a source under the reader's id (`studio.adoptSource`,
+then `ontake` so the queue uploads it or keeps it), replaces the
+arrangement, sets the title and notes, and reports what opened and what
+did not (an error-kind notification stays until read). A file missing
+from the archive, over the take ceiling or undecodable loses its clips
+and is reported. Browser spec `tests/e2e/studio-dawproject.spec.ts`: our
+own export opened again, signed in and signed out.
+
 ## The home demo (2026-10-20)
 
 Kevin: a section on the home page after the Idea Recorder with a demo

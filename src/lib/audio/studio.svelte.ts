@@ -2003,6 +2003,42 @@ class StudioEngine {
 			durationSeconds: buffer.duration,
 		};
 	}
+	/**
+	 * A decoded file as a source under an id the caller minted, without a clip
+	 * (a DAWproject's audio, docs/dawproject-plan.md: the arrangement that
+	 * names it is replaced afterwards). The take goes to the queue as an
+	 * import does.
+	 */
+	adoptSource(
+		sourceId: string,
+		buffer: AudioBuffer,
+		file: { blob: Blob; filename: string },
+		trackLabel: string,
+	): StudioTake {
+		this.#buffers.set(sourceId, buffer);
+		this.sources[sourceId] = {
+			id: sourceId,
+			label: trackLabel.slice(0, 60) || "Import",
+			durationSeconds: buffer.duration,
+			sampleRate: buffer.sampleRate,
+			channels: buffer.numberOfChannels,
+			peaks: computePeaks(buffer, 1024),
+			status: "ready",
+			pending: true,
+		};
+		this.#recount();
+		return {
+			sourceId,
+			trackId: "",
+			trackLabel: trackLabel.slice(0, 60) || "Import",
+			takeNumber: 0,
+			kind: "import",
+			buffer,
+			blob: file.blob,
+			filename: file.filename,
+			durationSeconds: buffer.duration,
+		};
+	}
 	/** The file decoded in the engine's context (its rate), for an import. */
 	async decodeFile(bytes: ArrayBuffer): Promise<AudioBuffer> {
 		await this.open();
