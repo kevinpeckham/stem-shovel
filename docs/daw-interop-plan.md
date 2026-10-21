@@ -8,12 +8,12 @@ write, and how to test the exchange, on Linux by automation first, then
 on Mac and Windows virtual machines.
 
 Kevin, 2026-10-21: Fender Studio Pro is out (lower adoption than the
-alternatives). The targets are **Cubase, Audacity, Logic** and a fourth
-(the message said Cubase twice; to confirm), with **Pro Tools** as a nice
-to have: the app is for individual songwriters, musicians, bands and
-freelance producers and engineers, not the entrenched professional
-studio. The testing plan: Linux first, automated as far as it goes, then
-Mac VMs, then Windows VMs.
+alternatives). The targets are **Cubase, Audacity, Logic and Ableton
+Live**, with **Pro Tools** as a nice to have: the app is for individual
+songwriters, musicians, bands and freelance producers and engineers, not
+the entrenched professional studio. The testing plan: Linux first,
+automated as far as it goes, then Mac VMs (on the radar, not next), then
+Windows VMs. Kevin owns Logic Pro on an M1 MacBook Pro.
 
 ## What each target can exchange
 
@@ -26,7 +26,8 @@ Mac VMs, then Windows VMs.
 | Reaper | Linux, Win, Mac | no (an extension can add a project importer) | no (third-party Vordio) | yes | yes | ReaScript (Lua, Python, EEL); `.RPP` is a readable text project |
 | Ardour 8.4+ | Linux, Win, Mac | no | read (libaaf, beta in 8.4, improved through 8.7) | yes ("position at file timestamp") | yes | Lua, including the headless `luasession` |
 | Bitwig | Linux, Win, Mac | read + write | no | yes | yes | no |
-| Ableton Live, FL Studio, GarageBand | Win, Mac (GarageBand: Mac) | no | no | no | yes (Live: notes only, no tempo) | Live: Max for Live; FL: no; GarageBand: no |
+| Ableton Live 11, 12 | Win, Mac | no | no | no (imports at the insert point) | notes only, no tempo | Max for Live and control-surface Python, neither for files; `.als` is gzipped XML |
+| FL Studio, GarageBand | Win, Mac (GarageBand: Mac) | no | no | no | notes only | no |
 
 Three things fall out of the table.
 
@@ -46,7 +47,14 @@ Three things fall out of the table.
    markers (meta events) that Logic, Pro Tools, Cubase, Reaper and
    Ardour read into the project; Audacity reads only the notes. Audacity
    takes its markers from a label track text file instead.
-3. **AAF is the only structured format Logic and Pro Tools read**, and
+3. **Ableton Live reads no exchange format at all.** Its own set,
+   `.als`, is gzipped XML (DawVert reads and writes it, and its writer's
+   sets open in Live), and a set carries what Dawn has: audio clips at
+   positions, tempo and its automation, time signature changes, locators
+   (the markers), track names, levels, pans and colors. A minimal `.als`
+   writer is the way to give Live users a one-click open; until then
+   they get the stems from zero and the MIDI clips.
+4. **AAF is the only structured format Logic and Pro Tools read**, and
    Ardour reads it too, which makes it testable on Linux. It is a binary
    structured-storage container. `pyaaf2` (Python, pure, reads and
    writes, embedded or external essence) and `libaaf` (C, reads;
@@ -63,6 +71,12 @@ Three things fall out of the table.
   three additions (timestamps, labels, README) and serves all four
   targets today. It is also conversion 1 of the free converter.
 - **DAWproject** for Cubase (and Bitwig, Studio One): done.
+- **An Ableton Live set** (`.als`): audio tracks with clips at their
+  positions, tempo, meters, locators, levels, pans, colors, the notes
+  clips as MIDI clips; sample references relative to the zip. DawVert's
+  Ableton writer is the reference for the tags and Live's own exports
+  (public sets in the corpus) for what Live accepts. Checked on Linux by
+  DawVert reading it back, proven only in Live itself (Mac tier).
 - **AAF** for Logic and Pro Tools: a later phase, after the session
   bundle has been proven in Logic by hand, and only if users ask for a
   one-click open rather than an import of a folder.
@@ -142,10 +156,38 @@ Order: Reaper and Ardour first (both script from the command line,
 both read timestamps and MIDI, Ardour reads AAF), Audacity third (its
 pipe is the fiddliest), Bitwig only on demand.
 
-### Tier C: Mac VMs (the higher priority)
+### Tier C: Mac VMs (the higher priority; on the radar, not next)
+
+Before any VM: Kevin owns Logic Pro on an M1 MacBook Pro, so the first
+Logic pass needs nothing new. Import the session bundle by hand, export
+the project as AAF, send both results back as fixtures. That answers
+whether the bundle is enough for Logic and gives the AAF reader its
+first real file. Live has a 90-day trial and Cubase a 60-day one for the
+same by-hand pass on the same machine.
 
 macOS virtual machines are licensed only on Apple hardware, at most two
-guests per host. The options:
+guests per host, and hosted ones carry Apple's 24-hour minimum rental.
+The recommendation, in two steps:
+
+1. **Tart on the M1 MacBook Pro** (Cirrus Labs, free for personal and
+   small-company use; Apple's Virtualization framework). `brew install
+   cirruslabs/cli/tart`, clone a vanilla macOS image (about 25 GB; the
+   guest and the host both on macOS 15 or newer so the guest can sign in
+   to an Apple ID and the App Store, which is how Logic installs; the
+   trials are plain downloads), install Logic, Live and Cubase, then keep
+   that image as the pristine copy and `tart clone` it for each run:
+   APFS makes the clone instant and the run leaves the original alone.
+   Give the guest 8 GB and 4 cores. Scripts reach it over SSH (`tart
+   ip`) and its screen through `tart run` or VNC. UTM is the by-hand
+   alternative with a window and a menu; Parallels Desktop (paid) the
+   polished one; Tart is the one a script drives.
+2. **A hosted Mac when a nightly run is wanted**: Scaleway's Apple
+   silicon Mac minis or AWS EC2 Mac (both by the hour with the 24-hour
+   minimum, under a dollar an hour for the smaller ones) are reachable
+   from this VM over SSH, so the whole run, including the DAWs' trials
+   or licenses, can be driven from here on a schedule. MacStadium's Orka
+   is the enterprise version of the same. Not worth it until the
+   by-hand pass on the MacBook has settled what the scripts should check.
 
 - **Kevin's Mac with Tart** (Cirrus Labs; Apple's Virtualization
   framework on Apple silicon; free for personal and small use): a vanilla
@@ -160,16 +202,16 @@ guests per host. The options:
   the whole run can be automated from this VM; costs a few dollars an
   hour and the same licensing per DAW.
 
-In the guest: **Logic Pro** (90-day trial from Apple's site, no App
-Store needed; no scripting API, so AppleScript "System Events" and
+In the guest: **Logic Pro** (Kevin's own license through the App Store,
+or the 90-day trial from Apple's site; no scripting API, so AppleScript "System Events" and
 keyboard shortcuts open File > Import and File > Export > Project as AAF;
 Logic's project package is readable enough to check what landed), **Pro
 Tools Studio** (30-day trial; PTSL scripts import session data and
 export AAF with no UI), **Cubase** (Pro trial on a Steinberg ID; no file
 API, UI automation; the first real Cubase DAWproject export and the
-answer to whether 15 carries tempo and markers), **GarageBand** and
-**Ableton Live Lite** (free; import-only checks of the stems from
-zero). Audio devices are absent in a VM; none of these checks needs one,
+answer to whether 15 carries tempo and markers), **Ableton Live** (the
+90-day trial; opens the `.als` Dawn writes and the stems from zero; UI
+automation only) and **GarageBand** (free; the stems from zero). Audio devices are absent in a VM; none of these checks needs one,
 and Logic and Pro Tools start without one.
 
 ### Tier D: Windows VMs (later)
@@ -189,20 +231,21 @@ Pro Tools; it is a confirmation tier, not a discovery tier.
    also the public converter's first conversion.
 3. Tier B Reaper and Ardour scripts: two days, including the installs.
 4. Tier B Audacity: a day.
-5. A Tart image on Kevin's Mac with Logic Pro trial and Cubase trial, a
-   by-hand pass first (import the bundle, export a DAWproject and an
-   AAF): half a day of Kevin's time; the exports come back as fixtures.
-6. AAF writer and reader, if the Logic pass says the bundle is not
+5. Kevin's by-hand pass on the MacBook with his Logic Pro and the Live
+   and Cubase trials (import the bundle, export an AAF, a Live set and a
+   DAWproject): half a day of his time; the exports come back as
+   fixtures and the DAWproject answers the Cubase 15 question.
+6. The `.als` writer for Live: three or four days, DawVert as the
+   reference, proven on the MacBook.
+7. AAF writer and reader, if the Logic pass says the bundle is not
    enough: a week, Python in a worker.
-7. Tier C automation, then Tier D, as the targets' user numbers justify.
+8. Tart on the MacBook, then a hosted Mac, then Windows, as the targets'
+   user numbers justify.
 
 ## Open questions
 
-- The fourth target DAW (the message named Cubase twice). Ableton Live,
-  GarageBand, FL Studio and Reaper are the likely candidates for the
-  audience; the table covers them.
-- Does Kevin's Mac have Apple silicon and room for a 25 GB image, and
-  does he own Logic Pro or want the trial?
+- Room on the MacBook for a 25 GB image plus the three DAWs (about
+  45 GB with Live and Cubase, without Logic's sound library).
 - Reaper's license for the VM after the evaluation (about 60 USD).
 - Which DAWs' AAF dialect to write first when the AAF writer comes:
   Logic's and Pro Tools' differ, and the forums say Logic's reader is
