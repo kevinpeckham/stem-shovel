@@ -17,4 +17,5 @@ export const PAGE_COPY: Record<string, string> = {
 	"home-page": "/",
 	/** The Sessions page is an account's; /sessions goes to the editor's current account. */
 	"sessions-page": "/sessions",
+	"convert-page": "/convert",
 };

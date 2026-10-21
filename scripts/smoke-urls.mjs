@@ -88,6 +88,7 @@ const ROUTES = [
 	["drum-machine", "/drum-machine", [200], [200]],
 	["piano", "/piano", [200], [200]],
 	["chord-player", "/chord-player", [200], [200]],
+	["convert", "/convert", [200], [200]],
 	["pricing", "/pricing", [200], [200]],
 	["blog", "/blog", [200], [200]],
 	["built-with", "/built-with", [200], [200]],

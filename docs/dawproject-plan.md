@@ -325,7 +325,16 @@ decoding. So the conversions, in the order they come free:
 1. **DAWproject → stems and MIDI** (any DAW opens the result; for the
    DAWs without DAWproject support: Ableton Live, Logic, Pro Tools, FL
    Studio). The reader, a render per track in the browser, a `.mid` per
-   notes clip, one zip.
+   notes clip, one zip. **Done 2026-10-21** as `/convert` (Tools menu,
+   footer, sitemap; page copy `convert-page`): the archive through
+   `utils/unpackDawproject.ts` (shared with Dawn's import), the audio
+   decoded by an offline context, `audio/convertEngine.ts` as the export
+   engine (clips through fader and pan, buses, the master; no inserts,
+   sends or automation; a MIDI track is not renderable, the new
+   `ExportEngine.renders`), and the Studio's own Export panel, so the
+   page converts to the mix, stems per track and bus, a DAWproject (step
+   2's repack, minus the lint and the FLAC re-encode), the session
+   bundle and a Sandyne project. tests/e2e/convert.spec.ts.
 2. **DAWproject → DAWproject** with the audio re-encoded (FLAC to WAV
    and back, bit depths), the trims applied, a report of what the file
    holds: a "lint and repack" that also normalizes other writers' quirks

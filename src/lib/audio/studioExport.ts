@@ -34,6 +34,8 @@ export interface ExportEngine {
 	arrangement: StudioArrangement;
 	render(target?: RenderTarget): Promise<AudioBuffer>;
 	bufferOf(sourceId: string): AudioBuffer | null;
+	/** Whether a track can be rendered at all (an engine with no instrument says no to a MIDI track); every track when absent. */
+	renders?(trackId: string): boolean;
 }
 
 export interface ExportOptions {
@@ -130,7 +132,7 @@ export async function exportSong(
 	}
 	if (options.tracks)
 		for (const t of a.tracks) {
-			if (!hasClips(t.id)) continue;
+			if (!hasClips(t.id) || engine.renders?.(t.id) === false) continue;
 			onprogress?.(`Rendering ${t.name}…`);
 			out.push(
 				await fileOf(
@@ -266,7 +268,9 @@ async function sessionBundle(
 		});
 	});
 	// Stems from zero, through each track's own strip.
-	const withClips = a.tracks.filter((t) => a.clips.some((c) => c.trackId === t.id));
+	const withClips = a.tracks.filter(
+		(t) => a.clips.some((c) => c.trackId === t.id) && engine.renders?.(t.id) !== false,
+	);
 	for (const [i, t] of withClips.entries()) {
 		onprogress?.(`Rendering ${t.name}…`);
 		const buffer = await engine.render({ track: t.id });

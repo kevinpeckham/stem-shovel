@@ -56,6 +56,7 @@ const COPY_PAGES = [
 	"practice-amp-page",
 	"home-page",
 	"sessions-page",
+	"convert-page",
 ];
 
 const db = drizzle({

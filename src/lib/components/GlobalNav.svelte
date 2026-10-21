@@ -64,7 +64,7 @@
 		if (e.key === "Escape") openMenu = null;
 	}
 	const active = (href: string) => current === href || current.startsWith(`${href}/`);
-	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp"];
+	const TOOL_PAGES = ["/tuner", "/metronome", "/practice-amp", "/convert"];
 	const INSTRUMENT_PAGES = ["/drum-machine", "/piano", "/chord-player"];
 	let onInstrumentPage = $derived(INSTRUMENT_PAGES.some(active));
 	let onMusicPage = $derived(
@@ -374,6 +374,19 @@
 						onclick={() => (openMenu = null)}
 					>
 						<span class="i-ph-metronome w-1em" aria-hidden="true"></span>Metronome
+					</a>
+					<a
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-white/10 hover:text-accent {active(
+							'/convert',
+						)
+							? 'text-accent'
+							: ''}"
+						role="menuitem"
+						href="/convert"
+						title="DAW project converter"
+						onclick={() => (openMenu = null)}
+					>
+						<span class="i-ph-arrows-left-right w-1em" aria-hidden="true"></span>Convert
 					</a>
 				</div>
 			{/if}

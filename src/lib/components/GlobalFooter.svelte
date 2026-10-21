@@ -61,6 +61,7 @@
 			>{/if}
 		<a class="footer-link" href="/tuner">Tuner</a>
 		<a class="footer-link" href="/metronome">Metronome</a>
+		<a class="footer-link" href="/convert" title="DAW project converter">Convert</a>
 	</nav>
 	<div class="flex flex-wrap items-center gap-x-6 mb-8 gap-y-3 text-15px">
 		<span class="text-11px uppercase tracking-wider opacity-60">More</span>

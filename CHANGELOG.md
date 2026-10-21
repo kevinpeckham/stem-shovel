@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Convert, a free DAW project converter at `/convert`** (Tools menu): drop a DAWproject from Bitwig Studio, Cubase, Studio One or Nuendo and get it back as a mix, a stem per track or bus, a clean DAWproject, the session bundle for Logic Pro, Pro Tools, Ableton Live, Audacity and Reaper, or a Sandyne project, with 24- or 16-bit WAV or MP3 and normalization. Everything happens in the browser; nothing is uploaded, and it works signed out.
+
+### Technical
+
+- `utils/unpackDawproject.ts` opens a `.dawproject` archive (or a bare `project.xml`) for Dawn's import and the converter alike; `audio/convertEngine.ts` is an export engine over a read file (faders, pans, buses, the master, no inserts); `ExportEngine.renders` lets an engine decline a track (a MIDI track with no instrument gets no stem).
+
 ## [0.142.0] - 2026-10-21
 
 ### Added

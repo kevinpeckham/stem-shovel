@@ -35,7 +35,6 @@
 	import { StudioQueue } from "#lib/audio/studioQueue.svelte.js";
 	import { STUDIO_MEMORY_WARNING_BYTES } from "#lib/constants/studio.js";
 	import { DEMO_ACCEPT, DEMO_FORMATS } from "#lib/constants/demoFormats.js";
-	import { readDawproject } from "#lib/utils/dawprojectRead.js";
 	import { parseMidi } from "#lib/audio/midi.js";
 	import { encodeMp3 } from "#lib/audio/encodeMp3.js";
 	import PianoRoll from "#lib/components/PianoRoll.svelte";
@@ -763,22 +762,8 @@
 	 * the title and notes set, and a report of what did not come across.
 	 */
 	async function importDawproject(file: File) {
-		const { unzipSync, strFromU8 } = await import("fflate");
-		const bytes = new Uint8Array(await file.arrayBuffer());
-		const baseName = file.name.replace(/\.(dawproject|zip)$/i, "");
-		// A bare project.xml saved with the extension (some examples are): the project alone, no audio.
-		const bare = bytes[0] !== 0x50 || bytes[1] !== 0x4b;
-		const entries = bare ? { "project.xml": bytes } : unzipSync(bytes);
-		const names = Object.keys(entries);
-		const projectName = names.find((n) => /(^|\/)project\.xml$/.test(n));
-		if (!projectName) throw new Error(`${file.name} holds no project.xml: not a DAWproject`);
-		const prefix = projectName.slice(0, -"project.xml".length);
-		const metaName = names.find((n) => n === `${prefix}metadata.xml`);
-		const read = readDawproject(
-			strFromU8(entries[projectName]!),
-			metaName ? strFromU8(entries[metaName]!) : null,
-			baseName,
-		);
+		const { unpackDawproject } = await import("#lib/utils/unpackDawproject.js");
+		const { read, entryOf } = unpackDawproject(new Uint8Array(await file.arrayBuffer()), file.name);
 		// A fresh song to hold it: made in the account, or the browser-kept one started over.
 		if (studio.running) studio.stop();
 		if (data.account) {
@@ -800,14 +785,6 @@
 			title = read.title;
 		}
 		// The audio: each file found in the archive, decoded, adopted under its source id.
-		const entryOf = (path: string) => {
-			const clean = path.replace(/^\.\//, "");
-			return (
-				entries[`${prefix}${clean}`] ??
-				entries[clean] ??
-				entries[names.find((n) => n.endsWith(`/${clean}`)) ?? ""]
-			);
-		};
 		const takes: StudioTake[] = [];
 		const lost = new Set<string>();
 		for (const f of read.files) {

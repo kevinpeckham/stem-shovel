@@ -19,8 +19,8 @@ reaches for: the Idea Recorder (takes from the microphone, with notes),
 a chromatic tuner, a metronome, a piano and synth, and a drum machine (a step sequencer with
 patterns, presets, two sampled kits and a synthesized one, WAV and MIDI
 downloads, share links, saved beats, and a tutorial), the last three free
-and public at `/tuner`, `/metronome`, `/drum-machine` and `/piano` and gathered in
-the header's Tools menu. Every member has an inbox with optional email
+and public at `/tuner`, `/metronome`, `/drum-machine` and `/piano`, and a DAW
+project converter at `/convert`, all gathered in the header's Tools menu. Every member has an inbox with optional email
 digests. Sign-up is open by default (an operator can switch it back to
 invitations and the waitlist), with a plan step; the free plan carries
 storage and seat limits.
@@ -67,7 +67,7 @@ usage, plan). The recorder's toolbar carries the metronome, the drums and
 the tuner (a wrench menu on a phone), so a take can be recorded to a click
 or a beat that stays off the microphone. Neutral pages: `/` (the front
 page with live demos of a public song, the recorder, the tuner and the
-drum machine), `/tuner`, `/metronome`, `/drum-machine` (the tools, public
+drum machine), `/tuner`, `/metronome`, `/drum-machine`, `/convert` (the tools, public
 and indexable), `/inbox` and `/settings/notifications`, `/docs` (user
 documentation, editable by system admins) and `/releases`, `/blog`,
 `/pricing`, `/built-with`, `/feature-requests`, `/support`, `/waitlist`,
