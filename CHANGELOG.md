@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.142.0] - 2026-10-21
+
 ### Added
 
 - **A Sandyne project in Dawn's Export panel** for the free Sandyne DAW (Linux, Mac and Windows): the `.sand` file with the tracks, clips, fades, levels, pans and the MIDI parts' notes, and the recordings beside it, a folder in the export's zip. Sandyne opens it directly.
