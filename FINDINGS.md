@@ -9,6 +9,22 @@ belong in CLAUDE.md or docs/, not here.
 
 ## AI features
 
+- **The v0.142.0 matcher re-measured in the shipped configuration**
+  (stem-bench Amendment 2, the re-run the matcher brief asked for; full
+  tables in the repo's REPORT.md "Production response"). Hint accuracy
+  over the bench's stored transcriptions: 90.5% → 96.4% (the one-bar gap
+  against the brief's own re-score of 423/397 is the silent bar, truth
+  N.C. and matcher N.C., which the bench's registered equivalence counts
+  correct). The shipped arm per model, old → new hints: fable 99.8 →
+  99.3% (noise; zero wrong hints propagated under either matcher, all
+  rescued), gemini-flash 94.3 → 98.2%, gpt-oss 85.9 → 92.0%, haiku
+  87.5 → 92.5%, kimi 75.5 → 94.8%. One precision for the question as
+  asked: the flip rate is measured in the wrong-hint arm, which does not
+  involve the matcher, so it is unchanged by construction — what the new
+  matcher changes is hint quality and error propagation (fable: still
+  zero). The substitution read sharpens: haiku, kimi and gpt-oss now sit
+  BELOW the bare v0.142 matcher's 96.4% in the shipped configuration;
+  only fable and gemini add value over the matcher they are given.
 - **The chart draft's hint design is measured, and it holds** — a
   pre-registered external study (stem-bench Study 1,
   github.com/kevinpeckham/stem-bench: 440 seeded bars, Basic Pitch on
