@@ -516,6 +516,31 @@ belong in CLAUDE.md or docs/, not here.
 
 ## Packages
 
+- **Reaper runs headless under Xvfb and takes a ReaScript on its command
+  line.** `Xvfb :99` then `reaper -cfgfile <ini> -nosplash -new
+  script.lua` runs the script at startup with no display, sound card or
+  license step (the evaluation build asks nothing); the script saves
+  with `Main_SaveProjectEx` and quits with action 40004. Dialogs it
+  raises anyway (no audio device, the MIDI import options, "create
+  directory?") are answered by `xdotool windowfocus` + `key Return`;
+  `windowactivate` fails because the bare display has no window
+  manager. `InsertMedia(file, 1 | 4096)` places a Broadcast WAV at its
+  `bext` time reference (Dawn's clips landed to the sample), and
+  `GetMediaFileMetadata(source, "BWF:TimeReference")` reads the raw
+  value. The MIDI import dialog's choices live in reaper.ini as
+  `midiimport`, a bit set: 1 expands the file's tracks to Reaper
+  tracks, 2 imports the tempo map, 4 imports the markers; a marker
+  imported without the tempo map lands at its tick position read at the
+  project's tempo (12.5 s became 11.75 s). `-cfgfile` keeps all of that
+  in a folder of the run's own (scripts/interop/reaper.mjs,
+  2026-10-21).
+- **Ardour's headless `ardour8-lua` cannot import.** Import goes through
+  `Editor:do_import`, which only the GUI has; `Session.import_files`,
+  `RegionFactory` and `ImportStatus` are not bound in the headless
+  interpreter, and no Dummy backend is listed on Ubuntu's 8.4 package
+  (`AudioEngine:start` answers −1). An Ardour check needs the GUI under
+  Xvfb, driven by its own action scripts, or its session XML written by
+  hand (2026-10-21).
 - **Bitwig's DAWproject reference library writes a test corpus.** The
   repository ships no example projects, but `./gradlew test` (OpenJDK 21)
   writes twenty into `target/`, covering beats and seconds, offsets,

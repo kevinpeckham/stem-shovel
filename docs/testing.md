@@ -112,3 +112,15 @@ tests (spread attributes, `enhance()`, `fields.<name>.as()`, `for()`), and
 `tests/setup-components.ts` stubs `ResizeObserver` for components that bind
 their size. Component tests cover Notifications, ProjectPlayer,
 SectionTimeline, Transport, PrivacyToggle, GlobalNav and CommentTimeline.
+
+## DAW checks (scripts/interop, docs/daw-interop-plan.md)
+
+Real DAWs on this VM read what Dawn exports, outside Vitest and CI:
+`bun run interop:bundle` writes a fixture session bundle and DAWproject
+to `.interop/` (gitignored) from the static test stems, and
+`bun run interop:reaper` runs Reaper under a virtual display with
+`scripts/interop/reaper.lua` and judges what it holds against the
+arrangement (clip positions from the Broadcast WAV time references, the
+tempo map, meters, markers and the MIDI part). It needs Reaper at
+`~/opt/reaper/reaper` (`REAPER_BIN`), `Xvfb` and `xdotool`. Run it
+before a release that touches the export formats, like `check:swing`.

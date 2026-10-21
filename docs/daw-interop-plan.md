@@ -124,7 +124,8 @@ the VM before a release that touches the exchange formats, like
 `check:swing`.
 
 1. **Reaper** (native Linux, 60-day fully functional evaluation, then a
-   license): ReaScript in Lua or Python drives it from the command
+   license; installed 2026-10-21 under `~/opt/reaper`, Reaper 7.82):
+   ReaScript in Lua or Python drives it from the command
    line (`reaper -nosplash -new` with a startup script), imports the
    session bundle's BWF files "at timestamp" and the `.mid`, saves an
    `.RPP`, and the test reads the text project back: items at the right
@@ -227,9 +228,26 @@ Pro Tools; it is a confirmation tier, not a discovery tier.
 ## Order of work
 
 1. Tier A additions (schema validation, MIDI and BWF read-back): a day.
+   **Done 2026-10-21**: the writer's tests validate against Bitwig's
+   schemas (tests/dawproject/, libxml2-wasm) and found the `Channel`
+   children out of the schema's order; `parseMidi` reads the conductor's
+   meta events back; `readBext` reads the time reference back.
 2. The session bundle export (timestamps, labels, README): a day; it is
-   also the public converter's first conversion.
+   also the public converter's first conversion. **Done 2026-10-21**
+   (docs/multitrack-recorder.md, "The session bundle"); the DAWproject
+   now carries markers and tempo and meter changes too.
 3. Tier B Reaper and Ardour scripts: two days, including the installs.
+   **Reaper done 2026-10-21**: `bun run interop:bundle` writes a fixture
+   bundle and DAWproject to `.interop/` (gitignored) from the static
+   stems; `bun run interop:reaper` runs Reaper 7.82 (`~/opt/reaper`,
+   the Linux build) under Xvfb with `scripts/interop/reaper.lua`, which
+   inserts the clips at their BWF time references, the MIDI file with
+   its tempo map and markers, saves the project and reports; the runner
+   judges the result against the arrangement. Every check passes: the
+   four clips to the sample, the tempo and meter change, the three
+   markers, the MIDI part's notes. Ardour's headless Lua cannot import
+   (FINDINGS.md), so the Ardour check waits for the GUI-under-Xvfb
+   route, which is only worth it once there is an AAF to read.
 4. Tier B Audacity: a day.
 5. Kevin's by-hand pass on the MacBook with his Logic Pro and the Live
    and Cubase trials (import the bundle, export an AAF, a Live set and a

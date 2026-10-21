@@ -39,3 +39,6 @@ static/stems/*.wav
 coverage/
 # Playwright's traces and artefacts from bun run test:e2e
 .screenshots/e2e/
+
+# DAW interoperability fixtures and results (scripts/interop)
+.interop/
