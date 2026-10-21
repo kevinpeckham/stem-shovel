@@ -490,17 +490,30 @@ ${examples ? `THIS BAND'S CHARTS, FOR STYLE:\n${examples}` : "No example charts 
 	let text = "";
 	let usage: { inputTokens?: number; outputTokens?: number } = {};
 	try {
-		const result = await generateText({
-			model: gateway(DRAFT_MODEL),
-			system,
-			prompt: question,
-			maxOutputTokens: 8000,
-			// Fable thinks adaptively by default and can spend the whole output budget on
-			// it for 150 bars of notes; low effort answered in 50 s where default hit the cap.
-			providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
-		});
-		text = result.text;
-		usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
+		// A prompt can come back with no text at all (0 output tokens, reproducible for
+		// one song in stem-bench Study 1, FINDINGS.md "AI features"): one more try.
+		for (let attempt = 1; attempt <= 2 && !text.trim(); attempt++) {
+			const result = await generateText({
+				model: gateway(DRAFT_MODEL),
+				system,
+				prompt: question,
+				maxOutputTokens: 8000,
+				// Fable thinks adaptively by default and can spend the whole output budget on
+				// it for 150 bars of notes; low effort answered in 50 s where default hit the cap.
+				providerOptions: { anthropic: { thinking: { type: "adaptive" }, effort: "low" } },
+			});
+			text = result.text;
+			usage = { inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens };
+			if (!text.trim() && attempt === 1)
+				await logAiRequest({
+					...log,
+					response: "",
+					error: "The model returned an empty completion; retried",
+					durationMs: Date.now() - started,
+					inputTokens: usage.inputTokens ?? null,
+					outputTokens: usage.outputTokens ?? null,
+				});
+		}
 	} catch (e) {
 		await logAiRequest({
 			...log,

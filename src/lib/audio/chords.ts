@@ -65,13 +65,23 @@ export function chordOf(
 		for (const t of TEMPLATES) {
 			const inChord = new Set(t.intervals.map((i) => (root + i) % 12));
 			let inside = 0;
-			for (let pc = 0; pc < 12; pc++) if (inChord.has(pc)) inside += profile[pc];
+			let missing = 0;
+			for (let pc = 0; pc < 12; pc++) {
+				if (!inChord.has(pc)) continue;
+				inside += profile[pc];
+				if (profile[pc] < total * 0.05) missing += 1;
+			}
 			// Share of the profile the chord explains, less a little per tone beyond
-			// a triad (a seventh must earn its place) and for the bare fifth.
-			let score = inside / total - 0.03 * Math.max(0, t.intervals.length - 3);
-			if (t.suffix === "5") score -= 0.04;
-			if (bass !== null && bass === root) score += 0.18;
-			scored.push({ chord: `${NAMES[root]}${t.suffix}`, root, score });
+			// a triad (a seventh must earn its place) and more per chord tone that
+			// does not sound: a bar of root and fifth is a power chord, not a major
+			// or a sus with its third or its second missing (stem-bench Study 1,
+			// FINDINGS.md "AI features").
+			const score = inside / total - 0.03 * Math.max(0, t.intervals.length - 3) - 0.08 * missing;
+			scored.push({
+				chord: `${NAMES[root]}${t.suffix}`,
+				root,
+				score: bass !== null && bass === root ? score + 0.18 : score,
+			});
 		}
 	}
 	scored.sort((a, b) => b.score - a.score);

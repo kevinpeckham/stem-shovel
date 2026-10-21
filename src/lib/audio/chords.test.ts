@@ -16,6 +16,13 @@ describe("chordOf", () => {
 	test("a bass note outside the chord is shown as a slash chord", () => {
 		expect(chordOf(profileOf([7, 11, 2, 7, 11, 2]), 11).chord).toBe("G/B");
 	});
+	test("root and fifth alone are a power chord, with or without a faint third", () => {
+		expect(chordOf(profileOf([2, 9]), 2).chord).toBe("D5");
+		expect(chordOf(profileOf([2, 9, 2, 9, 2, 9, 2, 9, 2, 9]), 2).chord).toBe("D5");
+		// A third that sounds makes it the triad again; a sus needs its second or fourth.
+		expect(chordOf(profileOf([2, 6, 9]), 2).chord).toBe("D");
+		expect(chordOf(profileOf([2, 7, 9]), 2).chord).toBe("Dsus4");
+	});
 	test("silence is no chord", () => {
 		expect(chordOf(profileOf([]), null).chord).toBe("N.C.");
 	});

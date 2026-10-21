@@ -12,6 +12,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **A Sandyne project in Dawn's Export panel** for the free Sandyne DAW (Linux, Mac and Windows): the `.sand` file with the tracks, clips, fades, levels, pans and the MIDI parts' notes, and the recordings beside it, a folder in the export's zip. Sandyne opens it directly.
 
+### Fixed
+
+- **A bar of root and fifth is a power chord** in the detected chords (and the hint the chart draft gets): the matcher now counts a chord tone that does not sound against the chord, so "D5" wins over "D" or "Dsus4" when no third, second or fourth is there, and a minor seventh that does not sound no longer makes an "m7". On stem-bench Study 1's 440 seeded bars the matcher goes from 397 to 423 right, the power-chord song from 2 to 19 of 28, with no bar lost.
+- **The chart draft tries once more** when the model returns an empty completion, which one song reproduced; the empty attempt is logged.
+
 ### Technical
 
 - **Two more DAW checks on the VM** (docs/testing.md): `bun run interop:audacity` has Ubuntu's Audacity read the session bundle's stems and label track over its scripting pipe under Xvfb, and `bun run interop:sandyne` has Sandyne's headless `inspect` and `rendertracks` read the Sandyne project; both judge the result against the fixture arrangement (`scripts/interop/fixture.ts`, shared with the bundle).
