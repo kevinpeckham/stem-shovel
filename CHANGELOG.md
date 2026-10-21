@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.141.0] - 2026-10-21
+
 ### Added
 
 - **A session bundle in Dawn's Export panel** for the DAWs that read no project file (Logic Pro, Pro Tools, Ableton Live, Audacity, Reaper, GarageBand): every clip as a 24-bit Broadcast WAV stamped with its position in the song, a stem per track from zero, a MIDI file with the tempo map, time signatures, key signatures, markers and the MIDI tracks' notes, an Audacity label track and a README with each DAW's import path. A folder inside the export's zip, or its own zip.
@@ -24,6 +26,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
   song's attachments with a permanent link, and announced with a
   notification; Open in Dawn on the attachment brings it back as a new
   song. A DAWproject uploaded as an attachment opens the same way.
+
+### Technical
+
+- **The DAWproject writer is validated against Bitwig's schemas** (`tests/dawproject/`, libxml2-wasm in the unit tests), which found its `Channel` children out of the schema's sequence; the order is fixed. `parseMidi` keeps tempo, meter, key, marker and track-name events; `encodeWav24` takes extra chunks; `utils/bext.ts` writes and reads the Broadcast Wave chunk.
+- **DAW checks on the VM** (`scripts/interop`, docs/testing.md): `bun run interop:bundle` writes a fixture bundle and DAWproject, `bun run interop:reaper` has Reaper read it headless under Xvfb and judges the result. The plan for the targets (Cubase, Audacity, Logic, Ableton Live, Pro Tools, Sandyne) and the Linux, Mac and Windows tiers is docs/daw-interop-plan.md.
+- **The DAWproject reader was read against** Bitwig 5.3 exports, Bitwig's reference suite, converters' Cubase-bound files and DawVert conversions (docs/dawproject-plan.md); OpenJDK and DawVert live on the VM for it.
 
 ## [0.140.1] - 2026-10-21
 
