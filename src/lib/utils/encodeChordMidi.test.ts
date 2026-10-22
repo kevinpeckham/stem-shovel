@@ -34,6 +34,7 @@ describe("encodeChordMidi", () => {
 			pitch: 60,
 			velocity: 40,
 			channel: 0,
+			track: 0,
 		});
 	});
 });

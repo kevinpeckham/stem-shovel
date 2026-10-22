@@ -83,6 +83,19 @@ describe("unpackProject", () => {
 		expect(Array.from(p.entryOf("/home/me/Media/take.wav")!)).toEqual([1, 2]);
 		expect(Array.from(p.entryOf("Media/take.wav")!)).toEqual([1, 2]);
 	});
+	it("takes a MIDI file as a project of MIDI tracks with nothing to find", () => {
+		// A format 0 file: one tempo, one note on channel 1.
+		const mid = new Uint8Array([
+			0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96, 0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 0x12,
+			0, 0xff, 0x51, 3, 0x07, 0xa1, 0x20, 0, 0x90, 60, 100, 0x60, 0x80, 60, 0, 0, 0xff, 0x2f, 0,
+		]);
+		const p = unpackProject(mid, "riff.mid");
+		expect(p.format).toBe("midi");
+		expect(p.read.title).toBe("riff");
+		expect(p.read.arrangement.bpm).toBe(120);
+		expect(p.read.arrangement.clips[0]!.notes).toEqual([{ t: 0, d: 0.5, p: 60, v: 0.7874 }]);
+		expect(p.entryOf("anything")).toBeUndefined();
+	});
 	it("takes a DAWproject as before, the loose files standing in for a missing entry", () => {
 		const zip = zipSync({ "project.xml": strToU8(dawproject) });
 		const p = unpackProject(zip, "night.dawproject", new Map([["take.wav", new Uint8Array([3])]]));

@@ -27,9 +27,9 @@ const parse = async (blob: Blob) => parseMidi(await blob.arrayBuffer()).notes;
 describe("encodeDrumMidi", () => {
 	it("puts each hit on channel 10 at its step, velocity from the cell and the level, muted rows left out", async () => {
 		expect(await parse(encodeDrumMidi(bar, 120, 0))).toEqual([
-			{ start: 0, duration: 0.0625, pitch: 36, velocity: 100, channel: 9 },
-			{ start: 0.125, duration: 0.0625, pitch: 42, velocity: 38, channel: 9 },
-			{ start: 0.5, duration: 0.0625, pitch: 36, velocity: 127, channel: 9 },
+			{ start: 0, duration: 0.0625, pitch: 36, velocity: 100, channel: 9, track: 0 },
+			{ start: 0.125, duration: 0.0625, pitch: 42, velocity: 38, channel: 9, track: 0 },
+			{ start: 0.5, duration: 0.0625, pitch: 36, velocity: 127, channel: 9, track: 0 },
 		]);
 	});
 	it("moves a swung step late, as the player does", async () => {

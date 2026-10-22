@@ -19,6 +19,7 @@ import type {
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
+import { readReport } from "./readReport";
 import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -53,14 +54,7 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		throw new Error("Not a Live set: the XML did not parse as one");
 	const liveSet = kid(doc.documentElement, "LiveSet");
 	if (!liveSet) throw new Error("Not a Live set: no LiveSet in the file");
-	const dropped: string[] = [];
-	const fixed: string[] = [];
-	const drop = (what: string) => {
-		if (!dropped.includes(what)) dropped.push(what);
-	};
-	const fix = (what: string) => {
-		if (!fixed.includes(what)) fixed.push(what);
-	};
+	const { dropped, fixed, drop, fix } = readReport();
 
 	// ── The master: tempo, its automation, the time signature, the volume ──
 	const master = kid(liveSet, "MasterTrack") ?? kid(liveSet, "MainTrack");

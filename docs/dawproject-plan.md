@@ -424,7 +424,28 @@ decoding. So the conversions, in the order they come free:
    `LoopEnd` of 16 beats over 8 seconds of file).
 5. **MIDI → DAWproject**, a type-0 or type-1 file as notes tracks at the
    file's tempo map: trivial once 1 exists, and a way to open any MIDI
-   file in a DAW with the tempo map intact.
+   file in a DAW with the tempo map intact. **Done 2026-10-22.**
+   `utils/midiRead.ts` reads a Standard MIDI File into Dawn's shape
+   through `utils/unpackProject.ts` (format "midi": the `MThd` head or a
+   `.mid`/`.midi` name) on top of `audio/midi.ts`, which now keeps each
+   note's track index, the track names by index, the track count and a
+   count of the channel events it skips. A format 1 file's tracks become
+   MIDI tracks (a track on channel 10 a drums track; a named track with no
+   notes is reported) with one clip of their notes from the first to the
+   last, split at Dawn's note limit; the conductor's name is the title. A
+   format 0 file's channels become the tracks (one channel alone takes the
+   track's or the file's name). The tempo map (steps at the file's tempo
+   events, already in seconds), the meters (numerator clamped to Dawn's 2
+   to 7, a denominator other than 4 reported), the key and its changes
+   (from the key signature: sharps to Dawn's spelling, "Bb", "F#m") and the
+   markers come from the conductor. Controllers, pitch bend, pressure and
+   program changes are counted and reported; there is no audio to find.
+   The reader round-trips the session bundle's own MIDI file
+   (utils/sessionMidi.ts) in its test; the convert page accepts `.mid`
+   and `.midi` and tests/e2e/convert.spec.ts covers a file to a
+   DAWproject. Dawn's own import keeps its earlier behavior (a MIDI file
+   lands as a clip on the current song); the converter is where a MIDI
+   file becomes a project.
 
 Where it runs: in the browser for everything but audio transcoding (the
 file never leaves the machine, which is the honest pitch for a free

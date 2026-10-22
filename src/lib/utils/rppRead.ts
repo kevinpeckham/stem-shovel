@@ -19,6 +19,7 @@ import type {
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
+import { readReport } from "./readReport";
 import { nearestStemTint } from "./nearestStemTint";
 
 /** A block of the project: `<NAME args…` to its `>`, holding lines (as tokens) and blocks in order. */
@@ -123,14 +124,7 @@ const seconds = (v: number) => Math.round(v * 1_000_000) / 1_000_000;
  */
 export function readRpp(text: string, fallbackTitle = "Reaper project"): DawprojectRead {
 	const project = parseRpp(text);
-	const dropped: string[] = [];
-	const fixed: string[] = [];
-	const drop = (what: string) => {
-		if (!dropped.includes(what)) dropped.push(what);
-	};
-	const fix = (what: string) => {
-		if (!fixed.includes(what)) fixed.push(what);
-	};
+	const { dropped, fixed, drop, fix } = readReport();
 
 	// ── Tempo map: the project's tempo and meter, then the tempo envelope's points, in seconds ──
 	const tempoLine = lineOf(project, "TEMPO");

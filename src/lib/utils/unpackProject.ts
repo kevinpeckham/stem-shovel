@@ -1,10 +1,11 @@
 import { gunzipSync, strFromU8, unzipSync } from "fflate";
 import { readAls } from "./alsRead";
 import type { DawprojectRead } from "./dawprojectRead";
+import { readMidi } from "./midiRead";
 import { readRpp } from "./rppRead";
 import { unpackDawproject } from "./unpackDawproject";
 
-export type ProjectFormat = "dawproject" | "reaper" | "ableton";
+export type ProjectFormat = "dawproject" | "reaper" | "ableton" | "midi";
 
 export interface UnpackedProject {
 	read: DawprojectRead;
@@ -20,7 +21,8 @@ const REAPER_HEAD = "<REAPER_PROJECT";
  * one; utils/unpackDawproject.ts), a Reaper `.rpp` (utils/rppRead.ts) or
  * an Ableton Live set `.als` (gzipped XML, or the XML itself;
  * utils/alsRead.ts), bare or inside a zip with its media (a Live project
- * folder zipped, say). The converter and Dawn's import take any. A
+ * folder zipped, say), or a Standard MIDI File (utils/midiRead.ts: its
+ * tracks as MIDI tracks, no audio). The converter takes any. A
  * Reaper project or a Live set names its media by path and carries none,
  * so the media come as `loose` files (dropped beside it, by name) or in
  * the zip; `entryOf` finds a file by its path (a Live set's relative to
@@ -32,7 +34,7 @@ export function unpackProject(
 	fileName: string,
 	loose: Map<string, Uint8Array> = new Map(),
 ): UnpackedProject {
-	const baseName = fileName.replace(/\.(dawproject|zip|rpp|als)$/i, "");
+	const baseName = fileName.replace(/\.(dawproject|zip|rpp|als|midi?)$/i, "");
 	const byName = (entries: Record<string, Uint8Array>, path: string) => {
 		const clean = path.replace(/^\.\//, "");
 		const name = clean.replace(/^.*[\\/]/, "");
@@ -45,6 +47,9 @@ export function unpackProject(
 		);
 	};
 	const head = strFromU8(bytes.slice(0, REAPER_HEAD.length));
+	if (head.startsWith("MThd") || /\.midi?$/i.test(fileName)) {
+		return { read: readMidi(bytes, baseName), format: "midi", entryOf: () => undefined };
+	}
 	if (head === REAPER_HEAD || (/\.rpp$/i.test(fileName) && bytes[0] !== 0x50)) {
 		return {
 			read: readRpp(strFromU8(bytes), baseName),

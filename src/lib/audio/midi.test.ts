@@ -26,8 +26,8 @@ describe("parseMidi", () => {
 			smf([0, 0x90, 60, 100, 96, 0x80, 60, 0, 0, 0x90, 64, 80, 48, 0x80, 64, 0, 0, 0xff, 0x2f, 0]),
 		);
 		expect(notes).toEqual([
-			{ start: 0, duration: 0.5, pitch: 60, velocity: 100, channel: 0 },
-			{ start: 0.5, duration: 0.25, pitch: 64, velocity: 80, channel: 0 },
+			{ start: 0, duration: 0.5, pitch: 60, velocity: 100, channel: 0, track: 0 },
+			{ start: 0.5, duration: 0.25, pitch: 64, velocity: 80, channel: 0, track: 0 },
 		]);
 		expect(duration).toBe(0.75);
 		expect([lowest, highest]).toEqual([60, 64]);
@@ -37,7 +37,9 @@ describe("parseMidi", () => {
 		const { notes } = parseMidi(
 			smf([0, 0xff, 0x51, 3, 0x0f, 0x42, 0x40, 0, 0x90, 60, 90, 96, 60, 0, 0, 0xff, 0x2f, 0]),
 		);
-		expect(notes).toEqual([{ start: 0, duration: 1, pitch: 60, velocity: 90, channel: 0 }]);
+		expect(notes).toEqual([
+			{ start: 0, duration: 1, pitch: 60, velocity: 90, channel: 0, track: 0 },
+		]);
 	});
 	test("rejects other files", () => {
 		expect(() => parseMidi(new Uint8Array([1, 2, 3, 4]).buffer)).toThrow(/Not a MIDI file/);

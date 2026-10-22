@@ -270,3 +270,104 @@ test("reads an Ableton Live set with its sample and converts it to a DAWproject"
 	expect(Object.keys(project).filter((n) => n.startsWith("audio/"))).toHaveLength(1);
 	expect(errors).toEqual([]);
 });
+
+/**
+ * A MIDI file (docs/dawproject-plan.md, roadmap step 5): a format 1 file
+ * with a conductor track and a part is read as a project of MIDI tracks
+ * and comes back as a DAWproject with the tempo map, the note and the
+ * marker intact; there is no audio to decode.
+ */
+test("reads a MIDI file and converts it to a DAWproject", async ({ page, errors }) => {
+	test.setTimeout(120_000);
+	const vlq = (n: number) => (n < 128 ? [n] : [0x80 | (n >> 7), n & 0x7f]);
+	const chunk = (tag: string, body: number[]) => [
+		...Array.from(tag, (c) => c.charCodeAt(0)),
+		(body.length >> 24) & 0xff,
+		(body.length >> 16) & 0xff,
+		(body.length >> 8) & 0xff,
+		body.length & 0xff,
+		...body,
+	];
+	const text = (meta: number, s: string) => [
+		0xff,
+		meta,
+		s.length,
+		...Array.from(s, (c) => c.charCodeAt(0)),
+	];
+	// 96 ticks a quarter; the conductor: name, 90 bpm (666667 µs), 4/4, a marker at beat 3; the part: a note at 0 for 72 ticks.
+	const conductor = [
+		0,
+		...text(0x03, "MIDI check"),
+		0,
+		0xff,
+		0x51,
+		3,
+		0x0a,
+		0x2c,
+		0x2b,
+		0,
+		0xff,
+		0x58,
+		4,
+		4,
+		2,
+		24,
+		8,
+		...vlq(288),
+		...text(0x06, "Verse"),
+		0,
+		0xff,
+		0x2f,
+		0,
+	];
+	const part = [
+		0,
+		...text(0x03, "Piano"),
+		0,
+		0x90,
+		60,
+		100,
+		...vlq(72),
+		0x80,
+		60,
+		0,
+		0,
+		0xff,
+		0x2f,
+		0,
+	];
+	const bytes = Uint8Array.from([
+		...chunk("MThd", [0, 1, 0, 2, 0, 96]),
+		...chunk("MTrk", conductor),
+		...chunk("MTrk", part),
+	]);
+	const dir = await mkdtemp(path.join(tmpdir(), "convert-mid-"));
+	const file = path.join(dir, "midi-check.mid");
+	await writeFile(file, bytes);
+	await page.goto("/convert", { waitUntil: "networkidle" });
+	await page.locator("input[type=file]").setInputFiles([file]);
+	const summary = page.getByLabel("What the file holds");
+	await expect(summary).toContainText("midi-check.mid (MIDI file)");
+	await expect(summary).toContainText("Piano");
+	await expect(summary).toContainText("0 audio, 1 MIDI, over 0:01");
+	await expect(summary).toContainText("0 of 0 decoded");
+	await expect(summary).toContainText("90 bpm, 4/4, 1 marker");
+	await expect(page.getByRole("heading", { level: 2, name: "MIDI check" })).toBeVisible();
+	const panel = page.locator("[data-export-panel]");
+	await panel.getByRole("checkbox", { name: /The mix/ }).uncheck();
+	await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
+	const [download] = await Promise.all([
+		page.waitForEvent("download", { timeout: 60_000 }),
+		panel.getByRole("button", { name: "Export" }).click(),
+	]);
+	expect(download.suggestedFilename()).toBe("MIDI check.dawproject");
+	const project = unzipSync(new Uint8Array(await readFile((await download.path())!)));
+	const xml = strFromU8(project["project.xml"]!);
+	expect(xml).toContain('<Tempo unit="bpm" value="90.000000"');
+	expect(xml).toContain('name="Piano"');
+	// 72 ticks of 96 at 90 bpm: half a second.
+	expect(xml).toContain('<Note time="0.000000" duration="0.500000" channel="0" key="60"');
+	expect(xml).toContain('<Marker time="2.000000" name="Verse"/>');
+	expect(Object.keys(project).filter((n) => n.startsWith("audio/"))).toHaveLength(0);
+	expect(errors).toEqual([]);
+});

@@ -76,8 +76,8 @@ describe("midiFile", () => {
 			midiNoteOff(144, 2, 64),
 		]);
 		expect(parseMidi(await blob.arrayBuffer()).notes).toEqual([
-			{ start: 0, duration: 1, pitch: 60, velocity: 80, channel: 2 },
-			{ start: 1, duration: 0.5, pitch: 64, velocity: 90, channel: 2 },
+			{ start: 0, duration: 1, pitch: 60, velocity: 80, channel: 2, track: 0 },
+			{ start: 1, duration: 0.5, pitch: 64, velocity: 90, channel: 2, track: 0 },
 		]);
 	});
 	it("writes a format 1 file: one MTrk per track, each with its own end", async () => {

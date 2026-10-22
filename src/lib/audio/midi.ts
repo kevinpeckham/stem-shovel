@@ -13,6 +13,8 @@ export interface MidiNote {
 	pitch: number;
 	velocity: number;
 	channel: number;
+	/** The file's track the note came from, from 0 (the conductor of a format 1 file is 0). */
+	track: number;
 }
 
 export interface MidiSummary {
@@ -28,6 +30,12 @@ export interface MidiSummary {
 	markers?: { at: number; name: string }[];
 	/** Each track's name, where it has one. */
 	trackNames?: string[];
+	/** The name of each track by its index, undefined where it has none. */
+	trackNameAt?: (string | undefined)[];
+	/** How many tracks the file declares. */
+	trackCount?: number;
+	/** Channel events besides notes (controllers, pitch bend, program changes, pressure), skipped. */
+	otherEvents?: number;
 }
 
 class Reader {
@@ -79,6 +87,7 @@ interface RawEvent {
 	pitch: number;
 	velocity: number;
 	usPerQuarter: number;
+	track: number;
 	/** A meter's numerator and denominator power, or a key's sharps (signed) and minor flag. */
 	a?: number;
 	b?: number;
@@ -87,9 +96,17 @@ interface RawEvent {
 
 const utf8 = new TextDecoder();
 
-function readTrack(r: Reader, end: number, events: RawEvent[], names: string[]) {
+function readTrack(
+	r: Reader,
+	end: number,
+	events: RawEvent[],
+	names: string[],
+	track: number,
+	nameAt: (string | undefined)[],
+): number {
 	let tick = 0;
 	let running = 0;
+	let others = 0;
 	while (r.pos < end) {
 		tick += r.vlq();
 		let status = r.u8();
@@ -105,7 +122,7 @@ function readTrack(r: Reader, end: number, events: RawEvent[], names: string[]) 
 		if (status === 0xff) {
 			const meta = r.u8();
 			const len = r.vlq();
-			const blank = { channel: 0, pitch: 0, velocity: 0, usPerQuarter: 0 };
+			const blank = { channel: 0, pitch: 0, velocity: 0, usPerQuarter: 0, track };
 			if (meta === 0x51 && len === 3) {
 				const usPerQuarter = (r.u8() << 16) | (r.u8() << 8) | r.u8();
 				events.push({ tick, kind: "tempo", ...blank, usPerQuarter });
@@ -123,7 +140,10 @@ function readTrack(r: Reader, end: number, events: RawEvent[], names: string[]) 
 				for (let i = 0; i < len; i++) bytes[i] = r.u8();
 				const text = utf8.decode(bytes);
 				if (meta === 0x06) events.push({ tick, kind: "marker", ...blank, text });
-				else names.push(text);
+				else {
+					names.push(text);
+					nameAt[track] ??= text;
+				}
 			} else r.skip(len);
 		} else if (status === 0xf0 || status === 0xf7) {
 			r.skip(r.vlq());
@@ -131,15 +151,26 @@ function readTrack(r: Reader, end: number, events: RawEvent[], names: string[]) 
 			const pitch = r.u8();
 			const velocity = r.u8();
 			const on = type === 0x90 && velocity > 0;
-			events.push({ tick, kind: on ? "on" : "off", channel, pitch, velocity, usPerQuarter: 0 });
+			events.push({
+				tick,
+				kind: on ? "on" : "off",
+				channel,
+				pitch,
+				velocity,
+				usPerQuarter: 0,
+				track,
+			});
 		} else if (type === 0xa0 || type === 0xb0 || type === 0xe0) {
 			r.skip(2);
+			others++;
 		} else if (type === 0xc0 || type === 0xd0) {
 			r.skip(1);
+			others++;
 		} else {
 			break; // unknown; stop reading this track rather than misalign
 		}
 	}
+	return others;
 }
 
 export function parseMidi(buffer: ArrayBuffer): MidiSummary {
@@ -155,10 +186,12 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 
 	const events: RawEvent[] = [];
 	const trackNames: string[] = [];
+	const trackNameAt: (string | undefined)[] = [];
+	let otherEvents = 0;
 	for (let t = 0; t < trackCount && !r.done; t++) {
 		if (r.ascii(4) !== "MTrk") break;
 		const length = r.u32();
-		readTrack(r, r.pos + length, events, trackNames);
+		otherEvents += readTrack(r, r.pos + length, events, trackNames, t, trackNameAt);
 		r.pos = Math.min(r.length, r.pos);
 	}
 	events.sort((a, b) => a.tick - b.tick || (a.kind === "tempo" ? -1 : 0));
@@ -197,7 +230,7 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 			markers.push({ at, name: e.text ?? "" });
 			continue;
 		}
-		const key = `${e.channel}:${e.pitch}`;
+		const key = `${e.track}:${e.channel}:${e.pitch}`;
 		if (e.kind === "on") {
 			open.set(key, { start: at, velocity: e.velocity });
 		} else {
@@ -210,6 +243,7 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 				pitch: e.pitch,
 				velocity: o.velocity,
 				channel: e.channel,
+				track: e.track,
 			});
 		}
 	}
@@ -226,5 +260,8 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 		keys,
 		markers,
 		trackNames,
+		trackNameAt,
+		trackCount,
+		otherEvents,
 	};
 }

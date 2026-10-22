@@ -1161,6 +1161,19 @@ markers. Devices, session-view clips, deactivated and transposed clips are
 listed in the note when the song opens. One way: Dawn writes no Live set
 (the session bundle is the way into Live).
 
+## A MIDI file as a project (2026-10-22, docs/dawproject-plan.md step 5)
+
+The convert page takes a Standard MIDI File (`utils/midiRead.ts` through
+`utils/unpackProject.ts`, format "midi") as a project of MIDI tracks: a
+format 1 file's tracks, a format 0 file's channels (channel 10 a drums
+track), each with one clip of its notes; the tempo map, meters, key and
+its changes and markers from the conductor; the conductor's name as the
+title. Controllers and the like are counted in the report. From there the
+exports are the DAWproject, the Reaper project, the Sandyne project and
+the session bundle, with the tempo map intact. Dawn's **Import audio,
+MIDI or a project…** still lands a MIDI file as a clip on the current
+song, as before.
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3

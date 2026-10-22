@@ -39,8 +39,8 @@ describe("notesToMidiBlob and notesFromMidiSummary", () => {
 		expect(
 			notesFromMidiSummary({
 				notes: [
-					{ start: -0.1, duration: 0, pitch: 130, velocity: 100, channel: 0 },
-					{ start: 1.23456, duration: 0.5, pitch: 60, velocity: 0.5, channel: 0 },
+					{ start: -0.1, duration: 0, pitch: 130, velocity: 100, channel: 0, track: 0 },
+					{ start: 1.23456, duration: 0.5, pitch: 60, velocity: 0.5, channel: 0, track: 0 },
 				],
 				duration: 2,
 				lowest: 60,
