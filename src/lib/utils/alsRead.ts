@@ -358,6 +358,12 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					drop(`${name} on ${s.name}: MIDI on an audio track`);
 					continue;
 				}
+				// The clip's envelopes (MIDI controllers, pitch bend, device parameters): the targets are numbered per set, so they are reported, not read.
+				const envelopes = kids(path(clip, "Envelopes", "Envelopes"), "ClipEnvelope").length;
+				if (envelopes)
+					drop(
+						`${name} on ${s.name}: ${envelopes} clip ${envelopes === 1 ? "envelope" : "envelopes"}`,
+					);
 				// The notes in content beats, unrolled over the clip: the first pass from the play start, then the loop again.
 				const notes: StudioNote[] = [];
 				const source: { time: number; duration: number; pitch: number; velocity: number }[] = [];

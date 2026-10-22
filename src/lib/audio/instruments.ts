@@ -1,6 +1,9 @@
 import { DRUM_GM_NOTES, DRUM_MIDI_IN_NOTES } from "#lib/constants/drumMachine.js";
 import { SAMPLER_DEFAULTS, type StudioInstrument } from "#lib/constants/studioInstruments.js";
+import type { ClipLaneEvent } from "#lib/utils/clipLaneEvents.js";
 import type { ClipNoteEvent } from "#lib/utils/clipNoteEvents.js";
+import type { LaneEvent } from "#lib/utils/lanesFromEvents.js";
+import { BEND_RANGE_SEMITONES } from "#lib/constants/studioLanes.js";
 import type { NoteEvent } from "#lib/utils/pairNoteEvents.js";
 import type { StudioTrack } from "#lib/val/StudioSchema.js";
 import { createDrumBus } from "./drumBus";
@@ -47,6 +50,10 @@ export interface InstrumentAdapter {
 	audition(note: Omit<ScheduledNote, "at">, track: StudioTrack): void;
 	/** The notes played by hand, each stamped by the context's clock. */
 	onNote(listener: (e: NoteEvent) => void): () => void;
+	/** An expression change on the context's clock (a clip's lane: the pedal, a wheel, the bend); an instrument with no use for it drops it. */
+	scheduleControl?(control: ClipLaneEvent, track: StudioTrack): void;
+	/** The expression played by hand (the pedal, the wheels, the bend), each stamped by the context's clock. */
+	onControl?(listener: (e: LaneEvent) => void): () => void;
 	cancelScheduled(): void;
 	renderOffline(
 		off: OfflineAudioContext,
@@ -54,6 +61,7 @@ export interface InstrumentAdapter {
 		events: ClipNoteEvent[],
 		bpm: number,
 		track: StudioTrack,
+		controls?: ClipLaneEvent[],
 	): Promise<void>;
 }
 
@@ -78,13 +86,27 @@ function pianoAdapter(id: "piano" | "chords", engine: PianoEngine): InstrumentAd
 			engine.scheduleNote(n.pitch, n.velocity, ctx.currentTime + 0.01, n.duration);
 		},
 		onNote: (l) => engine.onNote(l),
+		scheduleControl: (c) => engine.scheduleControl(c),
+		onControl: (l) => engine.onControl(l),
 		cancelScheduled: () => engine.cancelScheduled(),
-		async renderOffline(off, into, events) {
+		async renderOffline(off, into, events, _bpm, _track, controls = []) {
 			// The current sound through a copy of the effects chain on the offline context: the Grand's samples or a small sampled instrument once decoded (an AudioBuffer plays on any context), the synth standing in as the live instrument does.
 			const fx = createPianoFx(off, engine.fxSettings());
 			fx.master.disconnect();
 			fx.master.connect(into);
 			const instrument = engine.instrument;
+			// The bend lane offline: each voice starts at the bend in force and glides with every change while it sounds.
+			const bends = controls
+				.filter((c) => c.kind === "bend")
+				.map((c) => ({ at: c.at, semitones: (c.value - 0.5) * 2 * BEND_RANGE_SEMITONES }));
+			const bendAt = (t: number) => {
+				let s = 0;
+				for (const b of bends) {
+					if (b.at > t) break;
+					s = b.semitones;
+				}
+				return s;
+			};
 			for (const e of events) {
 				const voice =
 					instrument === "grand"
@@ -102,6 +124,12 @@ function pianoAdapter(id: "piano" | "chords", engine: PianoEngine): InstrumentAd
 						e.velocity,
 						e.at,
 					);
+				if (bends.length) {
+					const start = bendAt(e.at);
+					if (start) played.bend?.(start, e.at);
+					for (const b of bends)
+						if (b.at > e.at && b.at < e.at + e.duration) played.bend?.(b.semitones, b.at);
+				}
 				played.release(e.at + e.duration);
 			}
 			fx.dispose();

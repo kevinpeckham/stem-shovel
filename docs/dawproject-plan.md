@@ -179,11 +179,13 @@ without an error; what they taught, now in the reader and its tests:
 Bitwig writes an empty metadata title (the song is named after the
 archive), tempos with float noise ("100.000167", rounded to two
 decimals), sends switched off with an `<Enable value="false"/>` (no
-send), clips with `enable="false"` (left out, reported), MIDI controller
+send), clips with `enable="false"` (kept, switched off), MIDI controller
 lanes as `Points` whose `Target` is an `expression` rather than a
-parameter (reported once as "MIDI controller automation"), a scenes
-section with clip slots (reported), and everything in beats with
-`loopStart`/`loopEnd` on clips (ignored: Dawn clips do not loop). Studio
+parameter, beside the `Notes` inside the clip (kept as the clip's
+expression lanes; the schema's clip allows one child, so this form of
+Bitwig's own does not validate against it), a scenes section with clip
+slots (reported), and everything in beats with `loopStart`/`loopEnd` on
+every clip (a loop the clip's own length is no loop). Studio
 One and Cubase exports are still wanted; the probe that runs a folder of
 archives through the reader is easy to recreate (unzip with fflate,
 `readDawproject` under jsdom's `DOMParser`).
@@ -258,8 +260,13 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
 3. **MIDI expression lanes** (`Points` with a `Target expression`:
    controller, pitch bend, channel and polyphonic pressure, timbre) and
    **release velocity** on a note (`rel`): CC lanes inside a notes clip.
-   The piano and the chord player take pitch bend and modulation today;
-   lanes would feed them from the clip.
+   Done 2026-10-22 for controllers, the pitch bend and channel pressure:
+   `lanes` on the clip, recorded from the piano's pedal, wheels and bend
+   (the piano had taken none of them from a clip before; the bend is new
+   on its voices), played back through the piano, edited in the roll,
+   read and written by the DAWproject, Reaper and MIDI file code
+   (docs/multitrack-recorder.md "Expression lanes"). Still open:
+   polyphonic pressure, timbre and release velocity.
 4. **Automation beyond volume and pan**: a send's level and its on/off,
    mute as a lane, device parameters, and the master's own lanes. Dawn
    has send and insert lanes in its schema (`send:<busId>`,

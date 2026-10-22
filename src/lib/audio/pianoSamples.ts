@@ -224,6 +224,8 @@ export function nearestPianoSample(midi: number): { sample: number; rate: number
 
 export interface SampledVoice {
 	release(when: number): void;
+	/** The pitch bent by `semitones` from `at` (a few milliseconds' glide), on top of the sample's own rate. */
+	bend?(semitones: number, at: number): void;
 }
 
 /**
@@ -273,6 +275,10 @@ export function startSampledVoice(
 	}
 	let released = false;
 	return {
+		bend(semitones, at) {
+			for (const s of sources)
+				s.playbackRate.setTargetAtTime(rate * 2 ** (semitones / 12), at, 0.005);
+		},
 		release(at) {
 			if (released) return;
 			released = true;

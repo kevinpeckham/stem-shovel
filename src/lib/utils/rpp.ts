@@ -1,6 +1,7 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
+import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
 import { studioGrid } from "./studioGrid";
@@ -165,16 +166,30 @@ export function rppProject(input: RppProjectInput): string {
 				Math.max(0, Math.min(127, Math.round(v)))
 					.toString(16)
 					.padStart(2, "0");
+			const hex14 = (v: number) => {
+				const n = Math.max(0, Math.min(16383, Math.round(v)));
+				return `${hex(n & 0x7f)} ${hex(n >> 7)}`;
+			};
 			for (const e of clipNoteEvents(c)) {
 				events.push({
 					tick: ticks(e.at),
-					order: 1,
+					order: 2,
 					bytes: `90 ${hex(e.pitch)} ${hex(e.velocity * 127)}`,
 				});
 				events.push({ tick: ticks(e.at + e.duration), order: 0, bytes: `80 ${hex(e.pitch)} 00` });
 			}
+			// The expression lanes as controller, bend and pressure events, before the notes at the same tick.
+			for (const e of clipLaneEvents(c)) {
+				const bytes =
+					e.kind === "bend"
+						? `e0 ${hex14(e.value * 16383)}`
+						: e.kind === "pressure"
+							? `d0 ${hex(e.value * 127)}`
+							: `b0 ${hex(e.controller ?? 0)} ${hex(e.value * 127)}`;
+				events.push({ tick: ticks(e.at), order: 1, bytes });
+			}
 			const end = ticks(c.start + c.duration);
-			events.push({ tick: end, order: 2, bytes: "b0 7b 00" });
+			events.push({ tick: end, order: 3, bytes: "b0 7b 00" });
 			events.sort((x, y) => x.tick - y.tick || x.order - y.order);
 			let at = 0;
 			for (const e of events) {

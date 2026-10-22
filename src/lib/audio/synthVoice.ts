@@ -12,6 +12,8 @@ import { frequencyOfMidi } from "./pitch";
  */
 export interface SynthVoice {
 	release(when: number): void;
+	/** The pitch bent by `semitones` from `at` (a few milliseconds' glide), on top of the voice's own tuning. */
+	bend?(semitones: number, at: number): void;
 }
 
 interface Envelope {
@@ -254,6 +256,12 @@ export function startVoice(
 
 	let released = false;
 	return {
+		bend(semitones, at) {
+			oscillators.forEach((osc, i) => {
+				const own = patch.partials[i]?.detune ?? 0;
+				osc.detune.setTargetAtTime(own + semitones * 100, at, 0.005);
+			});
+		},
 		release(at: number) {
 			if (released) return;
 			released = true;

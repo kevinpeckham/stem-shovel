@@ -16,9 +16,11 @@ import type {
 	StudioNote,
 	StudioSend,
 	StudioTrack,
+	StudioClipLane,
 } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
+import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
 import { readReport } from "./readReport";
 import { nearestStemTint } from "./nearestStemTint";
 
@@ -467,7 +469,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				continue;
 			}
 			if (source.args[0] === "MIDI") {
-				const notes = midiNotes(source, start - offset, offset + duration, {
+				const { notes, lanes } = midiNotes(source, start - offset, offset + duration, {
 					beatsAt,
 					secondsAt,
 				});
@@ -479,7 +481,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 					drop(`${name} on ${p.name}: over the ${MAX_STUDIO_NOTES_PER_CLIP}-note limit`);
 					continue;
 				}
-				clips.push({ ...base, notes });
+				clips.push({ ...base, notes, ...(lanes.length ? { lanes } : {}) });
 				if (track.kind !== "midi") {
 					if (clips.some((c) => c.trackId === track.id && c.sourceId)) {
 						drop(`${name} on ${p.name}: MIDI on a track with audio`);
@@ -566,7 +568,7 @@ function midiNotes(
 	/** Where the clip ends in its content's seconds: a note still open at the last event closes there. */
 	end: number,
 	map: { beatsAt: (s: number) => number; secondsAt: (b: number) => number },
-): StudioNote[] {
+): { notes: StudioNote[]; lanes: StudioClipLane[] } {
 	const ppq = Math.max(1, numAt(lineOf(source, "HASDATA"), 2, 960));
 	const ign = lineOf(source, "IGNTEMPO");
 	const ownTempo = ign && numAt(ign, 1, 0) === 1 ? numAt(ign, 2, 120) : null;
@@ -577,6 +579,7 @@ function midiNotes(
 		return map.secondsAt(originBeats + beats) - Math.max(0, origin);
 	};
 	const notes: StudioNote[] = [];
+	const controls: LaneEvent[] = [];
 	const open = new Map<number, { t: number; v: number }>();
 	let ticks = 0;
 	const close = (pitch: number, now: number) => {
@@ -605,8 +608,16 @@ function midiNotes(
 			close(d1, now);
 			open.set(d1, { t: now, v: clamp(round4(d2 / 127), 0, 1) });
 		} else if (kind === 0x80 || (kind === 0x90 && d2 === 0)) close(d1, now);
+		else if (kind === 0xb0 && d1 < 120)
+			controls.push({ at: now, kind: "cc", controller: d1, value: d2 / 127 });
+		else if (kind === 0xe0)
+			controls.push({ at: now, kind: "bend", value: ((d2 << 7) | d1) / 16383 });
+		else if (kind === 0xd0) controls.push({ at: now, kind: "pressure", value: d1 / 127 });
 	}
 	for (const pitch of open.keys())
 		close(pitch, Math.max(at(ticks), end, open.get(pitch)!.t + 0.001));
-	return notes.sort((a, b) => a.t - b.t || a.p - b.p);
+	return {
+		notes: notes.sort((a, b) => a.t - b.t || a.p - b.p),
+		lanes: lanesFromEvents(controls, 0, Math.max(end, at(ticks), 0.001)),
+	};
 }

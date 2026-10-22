@@ -17,8 +17,19 @@ export interface MidiNote {
 	track: number;
 }
 
+/** A controller, pitch bend or channel pressure change, in seconds from the start of the file, its value normalized 0..1 (the bend 0.5 at center). */
+export interface MidiControl {
+	at: number;
+	kind: "cc" | "bend" | "pressure";
+	controller?: number;
+	value: number;
+	channel: number;
+	track: number;
+}
 export interface MidiSummary {
 	notes: MidiNote[];
+	/** The controllers, pitch bends and channel pressure, in file order. */
+	controls?: MidiControl[];
 	/** End of the last note, in seconds. */
 	duration: number;
 	lowest: number;
@@ -34,7 +45,7 @@ export interface MidiSummary {
 	trackNameAt?: (string | undefined)[];
 	/** How many tracks the file declares. */
 	trackCount?: number;
-	/** Channel events besides notes (controllers, pitch bend, program changes, pressure), skipped. */
+	/** Channel events kept nowhere: program changes and polyphonic pressure. */
 	otherEvents?: number;
 }
 
@@ -82,7 +93,7 @@ class Reader {
 
 interface RawEvent {
 	tick: number;
-	kind: "on" | "off" | "tempo" | "meter" | "key" | "marker";
+	kind: "on" | "off" | "tempo" | "meter" | "key" | "marker" | "cc" | "bend" | "pressure";
 	channel: number;
 	pitch: number;
 	velocity: number;
@@ -160,10 +171,45 @@ function readTrack(
 				usPerQuarter: 0,
 				track,
 			});
-		} else if (type === 0xa0 || type === 0xb0 || type === 0xe0) {
+		} else if (type === 0xb0) {
+			const controller = r.u8();
+			const value = r.u8();
+			events.push({
+				tick,
+				kind: "cc",
+				channel,
+				pitch: controller,
+				velocity: value,
+				usPerQuarter: 0,
+				track,
+			});
+		} else if (type === 0xe0) {
+			const lsb = r.u8();
+			const msb = r.u8();
+			events.push({
+				tick,
+				kind: "bend",
+				channel,
+				pitch: 0,
+				velocity: (msb << 7) | lsb,
+				usPerQuarter: 0,
+				track,
+			});
+		} else if (type === 0xd0) {
+			const value = r.u8();
+			events.push({
+				tick,
+				kind: "pressure",
+				channel,
+				pitch: 0,
+				velocity: value,
+				usPerQuarter: 0,
+				track,
+			});
+		} else if (type === 0xa0) {
 			r.skip(2);
 			others++;
-		} else if (type === 0xc0 || type === 0xd0) {
+		} else if (type === 0xc0) {
 			r.skip(1);
 			others++;
 		} else {
@@ -205,6 +251,7 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 
 	const open = new Map<string, { start: number; velocity: number }>();
 	const notes: MidiNote[] = [];
+	const controls: MidiControl[] = [];
 	const tempos: NonNullable<MidiSummary["tempos"]> = [];
 	const meters: NonNullable<MidiSummary["meters"]> = [];
 	const keys: NonNullable<MidiSummary["keys"]> = [];
@@ -230,6 +277,17 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 			markers.push({ at, name: e.text ?? "" });
 			continue;
 		}
+		if (e.kind === "cc" || e.kind === "bend" || e.kind === "pressure") {
+			controls.push({
+				at,
+				kind: e.kind,
+				...(e.kind === "cc" ? { controller: e.pitch } : {}),
+				value: e.kind === "bend" ? e.velocity / 16383 : e.velocity / 127,
+				channel: e.channel,
+				track: e.track,
+			});
+			continue;
+		}
 		const key = `${e.track}:${e.channel}:${e.pitch}`;
 		if (e.kind === "on") {
 			open.set(key, { start: at, velocity: e.velocity });
@@ -252,6 +310,7 @@ export function parseMidi(buffer: ArrayBuffer): MidiSummary {
 	const pitches = notes.map((n) => n.pitch);
 	return {
 		notes,
+		controls,
 		duration,
 		lowest: pitches.length ? Math.min(...pitches) : 60,
 		highest: pitches.length ? Math.max(...pitches) : 72,

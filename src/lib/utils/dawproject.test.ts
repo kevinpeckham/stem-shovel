@@ -268,6 +268,38 @@ describe("dawproject", () => {
 		expect(readDawproject(xml, metadata, "Off").arrangement.clips[0]!.muted).toBe(true);
 	});
 
+	it("writes a notes clip's expression lanes as held Points on an expression target, and the reader keeps them", () => {
+		const lanes = [
+			{
+				kind: "cc" as const,
+				controller: 64,
+				points: [
+					{ t: 0.25, v: 1 },
+					{ t: 1.5, v: 0 },
+				],
+			},
+			{ kind: "bend" as const, points: [{ t: 1, v: 0.75 }] },
+		];
+		const withLanes: StudioArrangement = {
+			...arrangement,
+			clips: arrangement.clips.map((c) => (c.id === "c3" ? { ...c, lanes } : c)),
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Lanes",
+			arrangement: withLanes,
+			audio: new Map([
+				["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.138.0" },
+		});
+		// Written as Bitwig writes its own exports, Points beside the Notes inside the Clip; the schema's clip allows one child, so this form does not validate against it (FINDINGS.md).
+		expect(xml).toContain('<Target expression="channelController" channel="0" controller="64"/>');
+		expect(xml).toContain('<RealPoint time="0.250000" value="1.000000" interpolation="hold"/>');
+		expect(xml).toContain('<Target expression="pitchBend" channel="0"/>');
+		const back = readDawproject(xml, metadata, "Lanes");
+		expect(back.arrangement.clips.find((c) => c.name === "Chords")!.lanes).toEqual(lanes);
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

@@ -8,6 +8,7 @@ import {
 import type { StudioClip, StudioMarker, StudioNote, StudioTrack } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectRead } from "./dawprojectRead";
+import { lanesFromEvents } from "./lanesFromEvents";
 import { readReport } from "./readReport";
 import { DRUM_CHANNEL } from "./midiNotesFile";
 
@@ -123,7 +124,13 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 		list.push(n);
 		byTrack.set(n.track, list);
 	}
-	type Part = { name: string; notes: MidiSummary["notes"]; drums: boolean };
+	type Part = {
+		name: string;
+		notes: MidiSummary["notes"];
+		drums: boolean;
+		controls: NonNullable<MidiSummary["controls"]>;
+	};
+	const controls = summary.controls ?? [];
 	const parts: Part[] = [];
 	const nameAt = summary.trackNameAt ?? [];
 	const trackCount = summary.trackCount ?? byTrack.size;
@@ -142,6 +149,7 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 							: `Channel ${c + 1}`,
 				notes: only.filter((n) => n.channel === c),
 				drums: c === DRUM_CHANNEL,
+				controls: controls.filter((x) => x.channel === c),
 			});
 	} else {
 		for (let t = 0; t < Math.max(trackCount, ...byTrack.keys()) + 1; t++) {
@@ -154,6 +162,7 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 				name: nameAt[t]?.trim() || `Track ${t + 1}`,
 				notes,
 				drums: notes.every((n) => n.channel === DRUM_CHANNEL),
+				controls: controls.filter((x) => x.track === t),
 			});
 		}
 	}
@@ -194,6 +203,12 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 				p: clamp(Math.round(n.pitch), 0, 127),
 				v: clamp(round4(n.velocity / 127), 0, 1),
 			}));
+			// The part's controllers, bends and pressure over this clip's span as its lanes (the first clip takes what came before it).
+			const lanes = lanesFromEvents(
+				p.controls.filter((x) => i === 0 || x.at >= start),
+				start,
+				Math.max(end, start + 0.001),
+			);
 			clips.push({
 				id: nanoid(),
 				trackId: track.id,
@@ -205,6 +220,7 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 				fadeIn: 0,
 				fadeOut: 0,
 				name: i === 0 ? name : `${name} ${Math.floor(i / MAX_STUDIO_NOTES_PER_CLIP) + 1}`,
+				...(lanes.length ? { lanes } : {}),
 			});
 		}
 		if (sorted.length > MAX_STUDIO_NOTES_PER_CLIP)

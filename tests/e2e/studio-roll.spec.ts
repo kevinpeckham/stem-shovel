@@ -79,6 +79,29 @@ test("the piano roll adds, moves, nudges, re-velocities and removes notes", asyn
 	await page.keyboard.press("Escape");
 	await page.getByRole("button", { name: "Undo" }).click();
 	expect((await pitches()).map((n: number[]) => n[1])).toEqual([60, 62, 64, 65, 67, 75]);
+
+	// An expression lane: Sustain from the Lane menu, a point by a click at 1 s (held to the next), then the lane removed.
+	await page.getByLabel("Add an expression lane").selectOption("cc:64");
+	const lane = roll.locator('[data-lane="cc:64"]');
+	await expect(lane).toBeVisible();
+	const lanes = () =>
+		hooked(page, ([w]) =>
+			(w.__studio.arrangement.clips[0].lanes ?? []).map((l: any) => [
+				l.kind,
+				l.controller,
+				l.points,
+			]),
+		);
+	expect(await lanes()).toEqual([["cc", 64, []]]);
+	// The lanes sit pinned to the bottom of the roll's view: a click a second in, near the top of the lane, is a point at 1 s near full.
+	const lb = (await lane.boundingBox())!;
+	await page.mouse.click(lb.x + 56 + 1 * px + 2, lb.y + 8);
+	const [[, , points]] = await lanes();
+	expect(points).toHaveLength(1);
+	expect(points[0].t).toBe(1);
+	expect(points[0].v).toBeGreaterThan(0.7);
+	await page.getByRole("button", { name: "Remove the Sustain lane" }).click();
+	expect(await lanes()).toEqual([]);
 	expect(errors).toEqual([]);
 	await deleteStudioSongs(page);
 });

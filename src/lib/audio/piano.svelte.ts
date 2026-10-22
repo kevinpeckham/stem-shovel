@@ -60,6 +60,8 @@ import {
 } from "./sampledInstruments";
 import { startVoice, type SynthVoice } from "./synthVoice";
 import type { NoteEvent } from "#lib/utils/pairNoteEvents.js";
+import type { LaneEvent } from "#lib/utils/lanesFromEvents.js";
+import { BEND_RANGE_SEMITONES } from "#lib/constants/studioLanes.js";
 
 /**
  * The one piano on the page (docs/piano.md): notes come in from the
@@ -177,6 +179,69 @@ export class PianoEngine {
 	#scheduled = new Set<SynthVoice>();
 	/** Who hears every note the keys start and stop (the Studio, recording a MIDI track). */
 	#noteListeners = new Set<(e: NoteEvent) => void>();
+	/** Who hears the pedal, the wheels and the bend as they move (the Studio, recording a MIDI track's expression lanes). */
+	#controlListeners = new Set<(e: LaneEvent) => void>();
+	/** The pitch bend in force, in semitones: every voice sounding and every voice to come. */
+	#bend = 0;
+	/** Timers for expression a host scheduled ahead (a Studio clip's lanes), cleared on cancel. */
+	#controlTimers = new Set<ReturnType<typeof setTimeout>>();
+	/** Whether a host's lane put the pedal down or rode the wah, so a cancel lets go of only what it set. */
+	#laneSustain = false;
+	#laneWah = false;
+	/** Hear each expression change as it happens: the sustain pedal (CC 64) from any source, a wheel or pedal and the pitch bend from a MIDI device. */
+	onControl(listener: (e: LaneEvent) => void): () => void {
+		this.#controlListeners.add(listener);
+		return () => this.#controlListeners.delete(listener);
+	}
+	#emitControl(e: Omit<LaneEvent, "at">) {
+		if (this.#controlListeners.size === 0 || !this.#ctx) return;
+		const event: LaneEvent = { ...e, at: this.#ctx.currentTime };
+		for (const l of this.#controlListeners) l(event);
+	}
+	/** The pitch bend, in semitones, from `at` (now when not given): every voice sounding glides there, and voices to come start there. */
+	setBend(semitones: number, at?: number) {
+		const ctx = this.#ctx;
+		this.#bend = semitones;
+		if (!ctx) return;
+		const when = at ?? ctx.currentTime;
+		for (const v of this.#voices.values()) v.bend?.(semitones, when);
+		for (const v of this.#scheduled) v.bend?.(semitones, when);
+	}
+	/**
+	 * An expression change a host schedules (a Studio clip's lanes): the
+	 * bend on the clock, the pedal and the wah at their moment through a
+	 * timer. A controller the piano has no use for is dropped.
+	 */
+	scheduleControl(e: LaneEvent) {
+		const ctx = this.#ctx;
+		if (!ctx) return;
+		if (e.kind === "bend") {
+			this.setBend((e.value - 0.5) * 2 * BEND_RANGE_SEMITONES, Math.max(ctx.currentTime, e.at));
+			return;
+		}
+		if (e.kind !== "cc") return;
+		const later = (fn: () => void) => {
+			const timer = setTimeout(
+				() => {
+					this.#controlTimers.delete(timer);
+					fn();
+				},
+				Math.max(0, (e.at - ctx.currentTime) * 1000),
+			);
+			this.#controlTimers.add(timer);
+		};
+		if (e.controller === 64)
+			later(() => {
+				const down = e.value >= 0.5;
+				this.#laneSustain = down;
+				this.setSustain(down);
+			});
+		else if (e.controller === 1 || e.controller === 11 || e.controller === 4)
+			later(() => {
+				this.#laneWah = true;
+				this.#fx?.wahPedal(e.value);
+			});
+	}
 	/** Hear each note on and off as the piano sounds it (the keys, the computer keyboard, a MIDI device, the chord player), stamped with the context's clock. Returns the way to stop listening. */
 	onNote(listener: (e: NoteEvent) => void): () => void {
 		this.#noteListeners.add(listener);
@@ -199,6 +264,7 @@ export class PianoEngine {
 		if (midi < 0 || midi > 127 || ctx.state !== "running") return () => {};
 		const voice = this.#voiceAt(midi, Math.max(0.01, Math.min(1, velocity)), at);
 		if (!voice) return () => {};
+		if (this.#bend) voice.bend?.(this.#bend, at);
 		this.#scheduled.add(voice);
 		voice.release(at + Math.max(0.01, duration));
 		const forget = setTimeout(
@@ -211,11 +277,22 @@ export class PianoEngine {
 			voice.release(ctx.currentTime);
 		};
 	}
-	/** Every scheduled note cut now (a stop or a seek). */
+	/** Every scheduled note cut now (a stop or a seek), the scheduled expression dropped, and what a lane set let go: the bend centered, the pedal up, the wah's pedal released. */
 	cancelScheduled() {
 		const ctx = this.#ctx;
 		for (const v of this.#scheduled) if (ctx) v.release(ctx.currentTime);
 		this.#scheduled.clear();
+		for (const t of this.#controlTimers) clearTimeout(t);
+		this.#controlTimers.clear();
+		if (this.#bend !== 0) this.setBend(0);
+		if (this.#laneSustain) {
+			this.#laneSustain = false;
+			this.setSustain(false);
+		}
+		if (this.#laneWah) {
+			this.#laneWah = false;
+			this.#fx?.wahPedal(null);
+		}
 	}
 	/** A voice for the current instrument started at `when`: the Grand's samples, a small sampled instrument, or a synth (the Electric Piano standing in while samples load). */
 	#voiceAt(midi: number, velocity: number, when: number): SynthVoice | null {
@@ -678,6 +755,7 @@ export class PianoEngine {
 			else this.#samples();
 			voice = startVoice(ctx, this.#fx!.input, sampled ?? "epiano", midi, velocity, now);
 		}
+		if (this.#bend) voice.bend?.(this.#bend, now);
 		this.#voices.set(midi, voice);
 		this.#order.push(midi);
 		this.sounding = this.#held.sounding;
@@ -698,6 +776,7 @@ export class PianoEngine {
 	setSustain(on: boolean) {
 		if (this.sustain === on) return;
 		this.sustain = on;
+		this.#emitControl({ kind: "cc", controller: 64, value: on ? 1 : 0 });
 		for (const midi of this.#held.setSustain(on)) this.#stop(midi);
 		this.sounding = this.#held.sounding;
 	}
@@ -958,8 +1037,19 @@ export class PianoEngine {
 		} else if (kind === 0xb0 && (note === 1 || note === 11 || note === 4)) {
 			// The mod wheel, an expression pedal or a foot controller rides the wah while it sends.
 			this.#fx?.wahPedal(value / 127);
+			this.#emitControl({ kind: "cc", controller: note, value: value / 127 });
 		} else if (kind === 0xb0 && (note === 120 || note === 123)) {
 			this.allOff();
+		} else if (kind === 0xb0) {
+			// Any other controller: not the piano's to play, but a recording keeps it.
+			this.#emitControl({ kind: "cc", controller: note, value: value / 127 });
+		} else if (kind === 0xe0) {
+			// The pitch bend: 14 bits, 8192 at center, a whole tone each way.
+			const bend = ((value << 7) | note) / 16383;
+			this.setBend((bend - 0.5) * 2 * BEND_RANGE_SEMITONES);
+			this.#emitControl({ kind: "bend", value: bend });
+		} else if (kind === 0xd0) {
+			this.#emitControl({ kind: "pressure", value: note / 127 });
 		}
 	};
 	disconnectMidi() {

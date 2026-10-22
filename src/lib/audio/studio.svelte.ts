@@ -36,7 +36,14 @@ import { takePieces } from "#lib/utils/takePieces.js";
 import { trimmedClip } from "#lib/utils/trimmedClip.js";
 import { pairNoteEvents, type NoteEvent } from "#lib/utils/pairNoteEvents.js";
 import { sliceNotes } from "#lib/utils/sliceNotes.js";
-import { notesFromMidiSummary, notesToMidiBlob } from "#lib/utils/midiNotesFile.js";
+import { sliceLanes } from "#lib/utils/sliceLanes.js";
+import { lanesFromEvents, type LaneEvent } from "#lib/utils/lanesFromEvents.js";
+import { clipLaneEvents } from "#lib/utils/clipLaneEvents.js";
+import {
+	lanesFromMidiSummary,
+	notesFromMidiSummary,
+	notesToMidiBlob,
+} from "#lib/utils/midiNotesFile.js";
 import type { MidiSummary } from "./midi";
 import {
 	MAX_STUDIO_CLIPS,
@@ -74,6 +81,7 @@ import type {
 	StudioKeyChange,
 	StudioTempoChange,
 	StudioSampler,
+	StudioClipLane,
 } from "#lib/val/StudioSchema.js";
 import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
@@ -219,6 +227,8 @@ interface MidiCapture {
 	trackId: string;
 	source: StudioInstrument;
 	events: NoteEvent[];
+	/** The pedal, the wheels and the bend as they moved, for the take's expression lanes. */
+	controls: LaneEvent[];
 	/** Stops listening. */
 	off: () => void;
 }
@@ -1857,6 +1867,7 @@ class StudioEngine {
 		}
 		let end = 0;
 		for (const n of notes) end = Math.max(end, n.t + n.d);
+		const lanes = lanesFromMidiSummary(summary, end);
 		return this.addClip({
 			trackId: track.id,
 			notes,
@@ -1867,6 +1878,7 @@ class StudioEngine {
 			fadeIn: 0,
 			fadeOut: 0,
 			name: name.replace(/\.[a-z0-9]+$/i, "").slice(0, 60) || "MIDI",
+			...(lanes.length ? { lanes } : {}),
 		});
 	}
 	/** A MIDI clip's notes (what the clip shows of them) as a Standard MIDI File at the song's tempo. */
@@ -1881,11 +1893,15 @@ class StudioEngine {
 			p: e.pitch,
 			v: e.velocity,
 		}));
-		return notesToMidiBlob(played, {
-			bpm: this.arrangement.bpm,
-			beatsPerBar: this.arrangement.beatsPerBar,
-			drums: track?.input?.source === "drums",
-		});
+		return notesToMidiBlob(
+			played,
+			{
+				bpm: this.arrangement.bpm,
+				beatsPerBar: this.arrangement.beatsPerBar,
+				drums: track?.input?.source === "drums",
+			},
+			clipLaneEvents(c).map((e) => ({ ...e, at: e.at - c.start })),
+		);
 	}
 	/** The MIDI tracks that hold notes: what a bounce renders to audio first. */
 	get midiTracksWithClips(): StudioTrack[] {
@@ -1900,6 +1916,7 @@ class StudioEngine {
 		start: number,
 		duration: number,
 		name: string,
+		lanes: StudioClipLane[] = [],
 	) {
 		const { covered } = coveredClips(this.arrangement.clips, {
 			trackId: track.id,
@@ -1922,7 +1939,18 @@ class StudioEngine {
 			fadeIn: 0,
 			fadeOut: 0,
 			name,
+			...(lanes.length ? { lanes } : {}),
 		});
+	}
+	/** A notes clip's expression lanes replaced (the roll's lane editor): one undo step per gesture. */
+	setClipLanes(clipId: string, lanes: StudioClipLane[]) {
+		const c = this.#clip(clipId);
+		if (!c?.notes) return;
+		this.#commit();
+		if (lanes.length)
+			c.lanes = lanes.map((l) => ({ ...l, points: [...l.points].sort((a, b) => a.t - b.t) }));
+		else delete c.lanes;
+		this.#reschedule();
 	}
 	/**
 	 * A MIDI track rendered to audio (docs/multitrack-recorder.md, phase 3):
@@ -2415,6 +2443,21 @@ class StudioEngine {
 					},
 				});
 			}
+			// The clip's expression lanes (utils/clipLaneEvents.ts): the pedal, the wheels and the bend, through the instrument on the same clock.
+			const instrument = INSTRUMENTS[source];
+			if (instrument.scheduleControl)
+				for (const e of clipLaneEvents(clip, from, ends)) {
+					const at = when + (e.at - from);
+					queue.push({
+						at,
+						clipId: clip.id,
+						fired: false,
+						fire: () => {
+							instrument.scheduleControl?.({ ...e, at }, this.#track(track.id) ?? track);
+							return null;
+						},
+					});
+				}
 		}
 		// Tempo and meter changes in the window: the click (and the drums playing along) pick up the new pace on the beat they land on.
 		const ends = to ?? Infinity;
@@ -2744,12 +2787,18 @@ class StudioEngine {
 		const source = track.input?.source;
 		if (!source || !isInstrument(source)) return;
 		const events: NoteEvent[] = [];
+		const controls: LaneEvent[] = [];
 		const push = (e: NoteEvent) => {
 			events.push(e);
 			this.liveTick++;
 		};
-		const off = INSTRUMENTS[source].onNote(push);
-		this.#midiCaptures.push({ trackId: track.id, source, events, off });
+		const offNotes = INSTRUMENTS[source].onNote(push);
+		const offControls = INSTRUMENTS[source].onControl?.((e) => controls.push(e)) ?? (() => {});
+		const off = () => {
+			offNotes();
+			offControls();
+		};
+		this.#midiCaptures.push({ trackId: track.id, source, events, controls, off });
 	}
 	/**
 	 * The notes of each MIDI capture as clips: paired from the pass's start
@@ -2778,6 +2827,8 @@ class StudioEngine {
 			const track = this.#track(cap.trackId);
 			if (!track || cap.events.length === 0) continue;
 			const notes = pairNoteEvents(cap.events, { from: when, shift, end });
+			// The expression over the whole pass, from the same zero as the notes; sliced per piece below.
+			const lanes = lanesFromEvents(cap.controls, when + shift, end);
 			const pieces = takePieces({
 				from,
 				duration: Math.max(0.01, end - when - shift),
@@ -2794,7 +2845,14 @@ class StudioEngine {
 					pieces.length > 1
 						? `${label} · Take ${takeNumber}.${k + 1}`
 						: `${label} · Take ${takeNumber}`;
-				this.#landMidiClip(track, part, piece.start, piece.to - piece.from, name);
+				this.#landMidiClip(
+					track,
+					part,
+					piece.start,
+					piece.to - piece.from,
+					name,
+					sliceLanes(lanes, piece.from, piece.to),
+				);
 			});
 		}
 		this.liveTick++;

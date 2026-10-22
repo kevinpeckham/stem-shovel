@@ -1174,6 +1174,92 @@ the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
 
+## Expression lanes (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 3)
+
+A notes clip can carry expression: `lanes?: StudioClipLane[]` on
+`StudioClip`, each `{ kind: "cc" | "bend" | "pressure", controller?,
+points: { t, v }[] }` (`src/lib/constants/studioLanes.ts`: at most
+`MAX_STUDIO_LANES` lanes of `MAX_STUDIO_LANE_POINTS` points). A point is
+a breakpoint held until the next one, MIDI's own way: `t` in content
+seconds like a note's, `v` normalized 0..1 whatever the lane (a
+controller or the pressure as value/127, the bend with 0.5 at center,
+`BEND_RANGE_SEMITONES` = 2 each way). `laneDefault(kind)` is what a lane
+means when nothing sets it (the pedal up, the bend centered), and
+`laneLabel` names one ("Sustain", "Modulation", "Pitch bend", "CC 17";
+`CC_NAMES`).
+
+`utils/clipLaneEvents.ts` turns a clip's lanes into changes on the
+song's clock the way `clipNoteEvents` does its notes: in each pass of
+the clip (utils/clipSegments.ts) the value in force where the pass
+starts, then every point inside it, and at the clip's end each lane back
+to its default so nothing rides into the next clip. `utils/lanesFromEvents.ts`
+goes the other way, from a stream of changes (a take's pedal and wheel, a
+MIDI file's controllers, a Reaper item's events, a DAWproject's expression
+points) to lanes timed from an origin: a change before the origin becomes
+the value at zero, repeats and a leading default are dropped, an
+over-long lane is thinned evenly. `utils/sliceLanes.ts` cuts the lanes of
+a take into its pieces as `sliceNotes` cuts the notes.
+
+**Instruments** (`src/lib/audio/instruments.ts`): the adapter grew
+`onControl(listener)` (the pedal, the wheels and the bend as they move,
+stamped with the context's clock) and `scheduleControl(event, track)` (a
+lane event on the clock), both optional, and `renderOffline` takes the
+clip's lane events as a sixth argument. The piano implements all three:
+`PianoEngine.onControl` is fed from `setSustain` (CC 64, so the pedal on
+the panel, the computer keyboard and a MIDI device all count), from the
+MIDI handler for every controller, the pitch bend (0xE0, 14 bits) and the
+channel pressure (0xD0); `setBend(semitones, at)` moves every voice
+sounding and every scheduled voice through the new `bend?(semitones,
+at)` on `SynthVoice` and `SampledVoice` (the synth through the
+oscillators' detune on top of each partial's own, the samples through
+`playbackRate`, a 5 ms glide), and voices started while a bend is in
+force start bent. `scheduleControl` sets the bend on the clock and puts
+the pedal (CC 64 at or above half) or the wah (CC 1, 11 and 4, as a MIDI
+device rides it) at its moment through a timer; `cancelScheduled` drops
+the timers and lets go of what a lane set (bend centered, pedal up, wah
+released) so a stop or a seek leaves the panel as the player had it.
+Offline the bend lane is applied per voice (the bend in force at its
+start, every change while it sounds); the pedal and the wah are not
+rendered offline (the voices' releases are already in the notes). The
+drum machine and the sampler take no expression.
+
+**The engine**: `#armMidi` subscribes to `onControl` beside `onNote`,
+`#finishMidiCaptures` builds the pass's lanes with `lanesFromEvents`
+from the loop start and slices them per piece, and `#landMidiClip` puts
+them on the clip. `#queueMidi` queues the clip's lane events beside the
+notes (each fires `scheduleControl` on the instrument). `setClipLanes`
+replaces a clip's lanes (one undo step). `midiBlobOf` (Export MIDI) and
+`importMidi` carry them; `renderMidiClipsOffline` hands them to
+`renderOffline`; the session bundle's MIDI file writes them.
+
+**Files**: `audio/midi.ts` now keeps controllers, pitch bends and
+channel pressure (`summary.controls`, normalized) instead of counting
+them; program changes and polyphonic pressure are still `otherEvents`.
+`midiFile.ts` has `midiControl`, `midiPitchBend`, `midiPressure` and
+`midiLaneEvent`; `notesToMidiBlob` takes the lane events and
+`lanesFromMidiSummary` reads them back; `midiRead` gives each part's
+clips the lanes of its channel or track. The Reaper writer puts the lane
+events in the item as `b0 cc vv`, `e0 lsb msb` and `d0 vv` lines before
+the notes at the same tick, and `rppRead` reads them back (a value rides
+as 7 bits, so 0.5 returns as 64/127). The DAWproject writer writes each
+lane as `<Points unit="normalized">` with a `<Target expression=…>`
+(`channelController` with its `controller`, `pitchBend`,
+`channelPressure`) and `interpolation="hold"` points beside the clip's
+`Notes`, as Bitwig writes its own exports; `dawprojectRead` keeps such
+Points as lanes (polyphonic pressure and timbre are reported). A Live
+set's MIDI clip envelopes are reported, not read: their targets are
+numbered per set. Sandyne has no place for them.
+
+**The roll**: a **Lane** menu in the piano roll's toolbar adds a lane
+(Sustain, Modulation, Expression, Breath, Foot pedal, Brightness, Pitch
+bend, Pressure; one of each); each lane is an `AutomationLane` row under
+the notes, in content time, scrolling with the grid (click adds a point
+on the grid, drag moves it, double-click removes it, the bend bipolar
+and read in semitones), with its name and a remove button in the keys
+column. Keys inside the lanes do not reach the roll's handler, so Delete
+there removes a point, not the notes. The arrangement diff names a
+change as "expression". Browser spec: `tests/e2e/studio-roll.spec.ts`.
+
 ## Looping a clip (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 1)
 
 A clip can repeat its content: `loop: { start, end }` on `StudioClip`,

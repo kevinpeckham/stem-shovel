@@ -1,3 +1,4 @@
+import { clipLaneEvents } from "#lib/utils/clipLaneEvents.js";
 import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
 import { swingNotes } from "#lib/utils/swingNotes.js";
 import type { StudioClip, StudioTrack } from "#lib/val/StudioSchema.js";
@@ -25,5 +26,6 @@ export async function renderMidiClipsOffline(
 	const flat = clips.flatMap((c) => clipNoteEvents(c));
 	const events = feel ? swingNotes(flat, feel) : flat;
 	if (events.length === 0) return;
-	await INSTRUMENTS[source].renderOffline(off, into, events, bpm, track);
+	const controls = clips.flatMap((c) => clipLaneEvents(c));
+	await INSTRUMENTS[source].renderOffline(off, into, events, bpm, track, controls);
 }

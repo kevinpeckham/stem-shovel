@@ -82,6 +82,7 @@ export function diffArrangements(before: StudioArrangement, after: StudioArrange
 			changes.push("fades");
 		if (was.sourceId !== c.sourceId) changes.push("another take");
 		if (!same(was.notes, c.notes)) changes.push("notes");
+		if (!same(was.lanes, c.lanes)) changes.push("expression");
 		if (was.name !== c.name) changes.push(`renamed from ${clipName(was)}`);
 		if (changes.length) out.push(`Clip ${clipName(c)}: ${changes.join(", ")}`);
 	}

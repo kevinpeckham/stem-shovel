@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Expression lanes on MIDI clips in Dawn.** A notes clip carries the sustain pedal, the modulation wheel and the other controllers, the pitch bend and the key pressure as lanes of points, each held until the next. The pedal, the wheels and the bend you move while recording land in the clip (the sustain pedal from the panel and the computer keyboard too), play back through the piano (the bend glides every voice sounding, two semitones each way), render into a mix, and go out in the clip's MIDI file, the session bundle, a DAWproject (as Bitwig's own expression points) and a Reaper project. A MIDI file's, a DAWproject's and a Reaper project's controllers come in as lanes. The piano roll's **Lane** menu adds a lane under the notes (Sustain, Modulation, Expression, Breath, Foot pedal, Brightness, Pitch bend, Pressure): click to add a point, drag it, double-click to remove it; the lane's name and a remove button sit beside it.
+
+### Technical
+
+- `lanes?: StudioClipLane[]` on `StudioClip` (`src/lib/constants/studioLanes.ts`, `utils/clipLaneEvents.ts`, `utils/lanesFromEvents.ts`, `utils/sliceLanes.ts`); the instrument adapter's optional `onControl` and `scheduleControl` and a `controls` argument to `renderOffline`; `bend?(semitones, at)` on `SynthVoice` and `SampledVoice`; `PianoEngine.onControl`, `setBend`, `scheduleControl`; `audio/midi.ts` keeps controllers, bends and pressure in `summary.controls`; `midiFile.ts` `midiControl`, `midiPitchBend`, `midiPressure`, `midiLaneEvent` (docs/multitrack-recorder.md "Expression lanes").
+
 ## [0.148.0] - 2026-10-22
 
 ### Added

@@ -215,6 +215,46 @@ describe("rppProject", () => {
 		expect(readRpp(text, "Off").arrangement.clips[0]!.muted).toBe(true);
 	});
 
+	it("writes a notes clip's expression lanes as controller, bend and pressure events, and reads them back", () => {
+		const keys = arrangement.clips.find((c) => c.name === "Chords")!;
+		const lanes = [
+			{
+				kind: "cc" as const,
+				controller: 64,
+				points: [
+					{ t: 0.5, v: 1 },
+					{ t: 2, v: 0 },
+				],
+			},
+			{ kind: "bend" as const, points: [{ t: 1, v: 0.75 }] },
+			{ kind: "pressure" as const, points: [{ t: 1.5, v: 0.5 }] },
+		];
+		const text = rppProject({
+			title: "Lanes",
+			arrangement: { ...arrangement, clips: [{ ...keys, lanes }] },
+			audio,
+			application: app,
+		});
+		// The sustain down a beat in (960 ticks at 120 bpm), the bend 3/4 up (12287 of 16383, low 7 bits first) at the next beat, and every lane back to rest at the clip's end.
+		expect(text).toContain("E 960 b0 40 7f\n");
+		expect(text).toContain("e0 7f 5f\n");
+		expect(text).toContain("d0 40\n");
+		const back = readRpp(text, "Lanes").arrangement.clips[0]!;
+		expect(back.lanes).toEqual([
+			{
+				kind: "cc",
+				controller: 64,
+				points: [
+					{ t: 0.5, v: 1 },
+					{ t: 2, v: 0 },
+				],
+			},
+			{ kind: "bend", points: [{ t: 1, v: 0.75 }] },
+			// The pressure rides as 7 bits: 0.5 comes back as 64/127.
+			{ kind: "pressure", points: [{ t: 1.5, v: 0.5039 }] },
+		]);
+	});
+
 	it("writes a looped clip as a section of its file looped, or as an item per pass when it plays into its loop", () => {
 		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
 		const inside = { ...base, offset: 1.5, duration: 5, loop: { start: 1, end: 3 } };

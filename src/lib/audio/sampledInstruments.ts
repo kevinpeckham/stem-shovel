@@ -159,6 +159,9 @@ export function startSampledInstrumentVoice(
 	source.start(when);
 	let released = false;
 	return {
+		bend(semitones, at) {
+			source.playbackRate.setTargetAtTime(rate * 2 ** (semitones / 12), at, 0.005);
+		},
 		release(at) {
 			if (released) return;
 			released = true;

@@ -1,6 +1,7 @@
 import { STEM_TINTS } from "#lib/constants/stemTints.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
 import { MAX_SENDS, MAX_STUDIO_BUSES } from "#lib/constants/studioInserts.js";
+import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
 import {
 	MAX_STUDIO_CLIPS,
 	MAX_STUDIO_MARKERS,
@@ -388,8 +389,35 @@ export function readDawproject(
 			return;
 		}
 		if (kid(el, "Lanes")) drop(`${name || "A clip"}: nested lanes`);
-		// Automation inside the clip (Bitwig keeps a notes clip's controller lanes here): the same reading, mostly a report.
-		for (const pts of kids(el, "Points")) readPoints(pts, contentUnit);
+		// Automation inside the clip: an expression target (Bitwig keeps a notes clip's controller lanes here) becomes a lane of the clip; anything else is read as the track's, mostly a report.
+		const laneEvents: LaneEvent[] = [];
+		for (const pts of kids(el, "Points")) {
+			const expression = attr(kid(pts, "Target"), "expression");
+			if (!expression) {
+				readPoints(pts, contentUnit);
+				continue;
+			}
+			const kind =
+				expression === "channelController"
+					? "cc"
+					: expression === "pitchBend"
+						? "bend"
+						: expression === "channelPressure"
+							? "pressure"
+							: null;
+			if (!kind) {
+				drop(`${name || "A clip"}: ${expression} expression`);
+				continue;
+			}
+			const controller = kind === "cc" ? num(kid(pts, "Target"), "controller", 0) : undefined;
+			for (const p of kids(pts, "RealPoint"))
+				laneEvents.push({
+					at: toSeconds(num(p, "time", 0), contentUnit),
+					kind,
+					...(kind === "cc" ? { controller } : {}),
+					value: clamp(num(p, "value", 0), 0, 1),
+				});
+		}
 		const warps = kid(el, "Warps");
 		const audio = kid(el, "Audio") ?? kid(warps, "Audio");
 		const notesEl = kid(el, "Notes");
@@ -490,6 +518,11 @@ export function readDawproject(
 				toSeconds(playStart, contentUnit),
 				duration,
 			);
+			const lanes = lanesFromEvents(
+				laneEvents,
+				0,
+				Math.max(end, duration + toSeconds(playStart, contentUnit), 0.001),
+			);
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -503,6 +536,7 @@ export function readDawproject(
 				name: name || "Notes",
 				...off,
 				...(loop ? { loop } : {}),
+				...(lanes.length ? { lanes } : {}),
 			});
 			return;
 		}

@@ -44,6 +44,41 @@ export function midiNoteOn(
 export function midiNoteOff(tick: number, channel: number, note: number): MidiEvent {
 	return { tick, bytes: [0x80 | (channel & 0x0f), note & 0x7f, 0] };
 }
+/** A controller change (CC), its value 0..127. */
+export function midiControl(
+	tick: number,
+	channel: number,
+	controller: number,
+	value: number,
+): MidiEvent {
+	return {
+		tick,
+		bytes: [
+			0xb0 | (channel & 0x0f),
+			controller & 0x7f,
+			Math.max(0, Math.min(127, Math.round(value))),
+		],
+	};
+}
+/** A pitch bend, 14 bits with 8192 at center. */
+export function midiPitchBend(tick: number, channel: number, value: number): MidiEvent {
+	const v = Math.max(0, Math.min(16383, Math.round(value)));
+	return { tick, bytes: [0xe0 | (channel & 0x0f), v & 0x7f, (v >> 7) & 0x7f] };
+}
+/** Channel pressure (aftertouch), 0..127. */
+export function midiPressure(tick: number, channel: number, value: number): MidiEvent {
+	return { tick, bytes: [0xd0 | (channel & 0x0f), Math.max(0, Math.min(127, Math.round(value)))] };
+}
+/** An expression change of a clip's lane (utils/clipLaneEvents.ts) as the MIDI event it is. */
+export function midiLaneEvent(
+	tick: number,
+	channel: number,
+	e: { kind: "cc" | "bend" | "pressure"; controller?: number; value: number },
+): MidiEvent {
+	if (e.kind === "bend") return midiPitchBend(tick, channel, e.value * 16383);
+	if (e.kind === "pressure") return midiPressure(tick, channel, e.value * 127);
+	return midiControl(tick, channel, e.controller ?? 0, e.value * 127);
+}
 /** A program change (an instrument), for a chord track a DAW should voice as a piano. */
 export function midiProgram(tick: number, channel: number, program: number): MidiEvent {
 	return { tick, bytes: [0xc0 | (channel & 0x0f), program & 0x7f] };

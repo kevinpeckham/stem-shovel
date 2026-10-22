@@ -27,12 +27,16 @@ export function startSamplerVoice(
 	gain.connect(out);
 	const source = ctx.createBufferSource();
 	source.buffer = buffer;
-	source.playbackRate.value = 2 ** ((pitch - settings.root) / 12);
+	const rate = 2 ** ((pitch - settings.root) / 12);
+	source.playbackRate.value = rate;
 	source.loop = settings.loop;
 	source.connect(gain);
 	source.start(when);
 	let released = false;
 	return {
+		bend(semitones, at) {
+			source.playbackRate.setTargetAtTime(rate * 2 ** (semitones / 12), at, 0.005);
+		},
 		release(at) {
 			if (released) return;
 			released = true;

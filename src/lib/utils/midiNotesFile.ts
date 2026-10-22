@@ -1,8 +1,11 @@
 import type { MidiSummary } from "../audio/midi";
-import type { StudioNote } from "../val/StudioSchema";
+import type { StudioClipLane, StudioNote } from "../val/StudioSchema";
+import type { ClipLaneEvent } from "./clipLaneEvents";
+import { lanesFromEvents } from "./lanesFromEvents";
 import {
 	MIDI_PPQ,
 	midiFile,
+	midiLaneEvent,
 	midiNoteOff,
 	midiNoteOn,
 	midiTempo,
@@ -17,11 +20,14 @@ export const DRUM_CHANNEL = 9;
  * A MIDI clip's notes as a Standard MIDI File (docs/multitrack-recorder.md,
  * phase 3: Export MIDI): the song's tempo and meter first, so a DAW lays
  * the notes on its grid as the Studio had them, then every note on channel
- * 1 (channel 10 for drums). Ticks from seconds at the tempo given.
+ * 1 (channel 10 for drums), and the expression changes (`controls`, seconds
+ * from the same zero) as the controller, bend and pressure events they
+ * are. Ticks from seconds at the tempo given.
  */
 export function notesToMidiBlob(
 	notes: StudioNote[],
 	song: { bpm: number; beatsPerBar: number; drums?: boolean },
+	controls: ClipLaneEvent[] = [],
 ): Blob {
 	const channel = song.drums ? DRUM_CHANNEL : 0;
 	const tick = (seconds: number) => Math.round((seconds * song.bpm * MIDI_PPQ) / 60);
@@ -37,7 +43,17 @@ export function notesToMidiBlob(
 		events.push(midiNoteOff(off, channel, n.p));
 		end = Math.max(end, off);
 	}
+	for (const c of controls) {
+		const at = tick(c.at);
+		events.push(midiLaneEvent(at, channel, c));
+		end = Math.max(end, at);
+	}
 	return midiFile(events, MIDI_PPQ, end);
+}
+
+/** A parsed MIDI file's controllers, bends and pressure (every track merged) as a clip's expression lanes, from the file's zero. */
+export function lanesFromMidiSummary(summary: MidiSummary, end: number): StudioClipLane[] {
+	return lanesFromEvents(summary.controls ?? [], 0, Math.max(end, 0.001));
 }
 
 /** A parsed MIDI file's notes (seconds already, every track merged) as a clip's notes. */

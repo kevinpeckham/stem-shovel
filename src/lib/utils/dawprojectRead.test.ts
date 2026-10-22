@@ -331,11 +331,11 @@ describe("readDawproject", () => {
 		// Bitwig writes loopStart/loopEnd on every clip; one the clip's own length is no loop.
 		expect(a.clips[0]!.loop).toBeUndefined();
 		expect(a.clips[0]!.notes).toEqual([{ t: 0, d: 0.6, p: 62, v: 0.8 }]);
-		expect(read.dropped).toEqual([
-			"TripleCheese on Piano",
-			"MIDI controller automation",
-			"clip launcher scenes",
+		// The clip's CC 7 lane (a Bitwig expression Points inside the clip) comes along as an expression lane.
+		expect(a.clips[0]!.lanes).toEqual([
+			{ kind: "cc", controller: 7, points: [{ t: 0, v: 0.7874 }] },
 		]);
+		expect(read.dropped).toEqual(["TripleCheese on Piano", "clip launcher scenes"]);
 	});
 
 	it("reads a Cubase-bound file's ways: a channelless folder track skipped, colors with an alpha byte, seconds throughout", () => {

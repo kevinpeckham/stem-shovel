@@ -1,8 +1,10 @@
 import { beatsBetween } from "#lib/audio/measures.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
+import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { keySignatureOf } from "./keySignatureOf";
 import {
+	midiLaneEvent,
 	midiFileTracks,
 	midiKeySignature,
 	midiMarker,
@@ -64,7 +66,7 @@ export function sessionMidi(a: StudioArrangement, title: string): Blob {
 		}
 		const events: MidiEvent[] = [midiTrackName(0, t.name)];
 		let end = 0;
-		for (const c of clips)
+		for (const c of clips) {
 			for (const n of clipNoteEvents(c)) {
 				const on = tick(n.at);
 				const off = Math.max(on + 1, tick(n.at + n.duration));
@@ -72,6 +74,13 @@ export function sessionMidi(a: StudioArrangement, title: string): Blob {
 				events.push(midiNoteOff(off, channel, n.pitch));
 				end = Math.max(end, off);
 			}
+			// The expression lanes as the controller, bend and pressure events they are.
+			for (const e of clipLaneEvents(c)) {
+				const at = tick(e.at);
+				events.push(midiLaneEvent(at, channel, e));
+				end = Math.max(end, at);
+			}
+		}
 		tracks.push({ events, endTick: end });
 	}
 	return midiFileTracks(tracks, SESSION_PPQ);

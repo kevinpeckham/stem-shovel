@@ -4,7 +4,16 @@
 	import { editNotes, rollNoteLabel, rollRows, snapRollTime } from "#lib/utils/pianoRoll.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
-	import type { StudioNote } from "#lib/val/StudioSchema.js";
+	import type { StudioClipLane, StudioNote } from "#lib/val/StudioSchema.js";
+	import AutomationLane from "./AutomationLane.svelte";
+	import { laneLabel } from "#lib/utils/laneLabel.js";
+	import {
+		BEND_RANGE_SEMITONES,
+		LANE_CHOICES,
+		MAX_STUDIO_LANES,
+		laneDefault,
+	} from "#lib/constants/studioLanes.js";
+	import type { AutomationRange } from "#lib/constants/studioAutomation.js";
 
 	/**
 	 * The piano-roll editor (docs/multitrack-recorder.md, phase 3b): one
@@ -26,6 +35,52 @@
 	let drums = $derived(track?.input?.source === "drums");
 	let notes = $derived(clip?.notes ?? []);
 	let rows = $derived(rollRows(notes, drums));
+	/** The clip's expression lanes (constants/studioLanes.ts), each an AutomationLane under the notes in content time. */
+	let lanes = $derived(clip?.lanes ?? []);
+	const LANE_H = 56;
+	const laneKey = (l: { kind: string; controller?: number }) =>
+		l.kind === "cc" ? `cc:${l.controller}` : l.kind;
+	function laneRange(lane: StudioClipLane): AutomationRange {
+		return {
+			label: laneLabel(lane),
+			min: 0,
+			max: 1,
+			initial: laneDefault(lane.kind),
+			format: (v) =>
+				lane.kind === "bend"
+					? `${((v - 0.5) * 2 * BEND_RANGE_SEMITONES).toFixed(2)} st`
+					: String(Math.round(v * 127)),
+			...(lane.kind === "bend" ? { bipolar: true } : {}),
+		};
+	}
+	function setLane(index: number, points: StudioClipLane["points"]) {
+		if (!clip) return;
+		engine.setClipLanes(
+			clip.id,
+			lanes.map((l, k) => (k === index ? { ...l, points } : l)),
+		);
+	}
+	function addLane(key: string) {
+		if (!clip || !key) return;
+		const choice = LANE_CHOICES.find((c) => laneKey(c) === key);
+		if (!choice || lanes.some((l) => laneKey(l) === key) || lanes.length >= MAX_STUDIO_LANES)
+			return;
+		engine.setClipLanes(clip.id, [
+			...lanes,
+			{
+				kind: choice.kind,
+				...(choice.controller !== undefined ? { controller: choice.controller } : {}),
+				points: [],
+			},
+		]);
+	}
+	function removeLane(index: number) {
+		if (!clip) return;
+		engine.setClipLanes(
+			clip.id,
+			lanes.filter((_, k) => k !== index),
+		);
+	}
 
 	const ROW_H = 14;
 	const KEYS_W = 56;
@@ -263,6 +318,29 @@
 				/>
 				<span class="tabular-nums w-9">{Math.round(selectedVelocity * 100)}%</span>
 			</label>
+			<label class="flex items-center gap-1">
+				Lane
+				<select
+					class="device-field text-12px py-0"
+					aria-label="Add an expression lane"
+					value=""
+					disabled={lanes.length >= MAX_STUDIO_LANES}
+					onchange={(e) => {
+						addLane(e.currentTarget.value);
+						e.currentTarget.value = "";
+					}}
+				>
+					<option value="">Add…</option>
+					{#each LANE_CHOICES as choice (laneKey(choice))}
+						<option
+							value={laneKey(choice)}
+							disabled={lanes.some((l) => laneKey(l) === laneKey(choice))}
+						>
+							{laneLabel(choice)}
+						</option>
+					{/each}
+				</select>
+			</label>
 			<span class="flex items-center gap-1 ml-auto">
 				<button
 					class="device-button-xs px-2"
@@ -398,10 +476,50 @@
 					{/if}
 				</div>
 			</div>
+			<!-- The expression lanes (constants/studioLanes.ts): one AutomationLane each, in the clip's content time, scrolling sideways with the grid and pinned to the bottom of the view while the pitches scroll; the keys bubble no further (Delete here removes a point, not the notes). -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="sticky bottom-0 z-20 bg-dark" onkeydown={(e) => e.stopPropagation()}>
+				{#each lanes as lane, i (laneKey(lane))}
+					<div
+						class="relative flex border-t border-white/10"
+						style:width="{KEYS_W + width}px"
+						style:height="{LANE_H}px"
+						data-lane={laneKey(lane)}
+					>
+						<div
+							class="sticky left-0 z-10 flex shrink-0 items-start bg-oxford-900 border-r border-white/10 p-1"
+							style:width="{KEYS_W}px"
+						>
+							<button
+								type="button"
+								class="device-button-xs px-1"
+								aria-label="Remove the {laneLabel(lane)} lane"
+								title="Remove the {laneLabel(lane)} lane"
+								onclick={() => removeLane(i)}
+							>
+								<span class="i-ph-x" aria-hidden="true"></span>
+							</button>
+						</div>
+						<AutomationLane
+							points={lane.points}
+							range={laneRange(lane)}
+							{pxPerSecond}
+							{width}
+							height={LANE_H}
+							snap={(s) => Math.round(s / step) * step}
+							{playhead}
+							fallback={laneDefault(lane.kind)}
+							label={laneLabel(lane)}
+							onchange={(points) => setLane(i, points)}
+						/>
+					</div>
+				{/each}
+			</div>
 		</div>
 		<p class="text-11px text-dim">
 			Click to add a note · drag it or its right edge · Shift selects more, Shift-drag ignores the
-			grid · arrows nudge (Shift an octave) · Delete removes
+			grid · arrows nudge (Shift an octave) · Delete removes · a lane: click adds a point, drag
+			moves it, double-click removes it
 		</p>
 	{/if}
 </div>

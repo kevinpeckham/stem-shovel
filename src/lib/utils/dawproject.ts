@@ -2,6 +2,7 @@ import { stemTintHex } from "#lib/constants/stemTints.js";
 import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
+import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
 
@@ -189,6 +190,40 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 					`              <Note time="${num(e.at)}" duration="${num(e.duration)}" channel="0" key="${e.pitch}" vel="${num(e.velocity)}" rel="${num(e.velocity)}"/>`,
 				);
 			out("            </Notes>");
+			// The expression lanes as the format's own: Points on an expression target, held to the next (Bitwig's CC lanes), from the clip's start.
+			const byLane = new Map<
+				string,
+				{ expression: string; controller?: number; points: { t: number; v: number }[] }
+			>();
+			for (const e of clipLaneEvents({ ...c, start: 0 })) {
+				const key = e.kind === "cc" ? `cc:${e.controller}` : e.kind;
+				const lane =
+					byLane.get(key) ??
+					byLane
+						.set(key, {
+							expression:
+								e.kind === "cc"
+									? "channelController"
+									: e.kind === "bend"
+										? "pitchBend"
+										: "channelPressure",
+							controller: e.controller,
+							points: [],
+						})
+						.get(key)!;
+				if (e.at < c.duration) lane.points.push({ t: e.at, v: e.value });
+			}
+			for (const lane of byLane.values()) {
+				out(`            <Points unit="normalized" id="${id("pts")}">`);
+				out(
+					`              <Target expression="${lane.expression}" channel="0"${lane.controller !== undefined ? ` controller="${lane.controller}"` : ""}/>`,
+				);
+				for (const p of lane.points)
+					out(
+						`              <RealPoint time="${num(p.t)}" value="${num(p.v)}" interpolation="hold"/>`,
+					);
+				out("            </Points>");
+			}
 			out("          </Clip>");
 			return;
 		}

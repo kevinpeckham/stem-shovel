@@ -4,7 +4,7 @@ Free DAW project converter that works in your browser. Drop a DAWproject from Bi
 
 ## How to use Convert
 
-Choose a `.dawproject` file, or a Reaper `.rpp` or an Ableton Live `.als` together with its media files, or a MIDI file, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders, Live's groups and returns), the clips with their fades, levels and pans, the volume and pan automation, the MIDI parts' notes, the tempo and time-signature changes and the markers (Live's locators), and decodes the audio. Then pick what you want:
+Choose a `.dawproject` file, or a Reaper `.rpp` or an Ableton Live `.als` together with its media files, or a MIDI file, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders, Live's groups and returns), the clips with their fades, levels and pans, the volume and pan automation, the MIDI parts' notes with their controller, pitch-bend and pressure lanes, the tempo and time-signature changes and the markers (Live's locators), and decodes the audio. Then pick what you want:
 
 - **The mix**: every track and bus through its fader and pan, as one WAV or MP3.
 - **A stem per track**, or per bus, from the start of the project.
@@ -23,5 +23,5 @@ Choose 24-bit or 16-bit WAV, or MP3, and **Normalize** to bring each file to the
 - Anything the file holds that could not come across is listed under "Not carried across".
 - A Reaper project or a Live set names its recordings by path and holds none: choose or drop them together with the `.rpp` or `.als` (or a zip of the project folder), and each is found by its name. One not given is listed under "Not carried across".
 - A Live set comes across one way, from the arrangement view: a looped clip stays a looped clip (a DAWproject or a Reaper project made from it loops it too), a warped clip plays at its file's own speed here (the summary says when Live had it at another tempo), a deactivated clip comes across switched off, and devices, session clips and transposed clips are listed under "Not carried across".
-- A MIDI file comes in as a project of MIDI tracks (a track per track of the file, or per channel of a single-track file, channel 10 as drums) with its tempo map, time signatures, key and markers, so a DAWproject or a Reaper project made from it opens in the DAW with the tempo map intact. Controllers, pitch bend and program changes are left out and counted under "Not carried across".
+- A MIDI file comes in as a project of MIDI tracks (a track per track of the file, or per channel of a single-track file, channel 10 as drums) with its tempo map, time signatures, key and markers, so a DAWproject or a Reaper project made from it opens in the DAW with the tempo map intact. Controllers, pitch bend and channel pressure come along as lanes of the MIDI parts; program changes are counted under "Not carried across".
 - Signed in, Dawn's **Import audio, MIDI or a project…** opens the same file as a song you can edit, mix and export from.

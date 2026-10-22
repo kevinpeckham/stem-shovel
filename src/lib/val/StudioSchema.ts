@@ -9,6 +9,11 @@ import {
 	STUDIO_SAMPLE_RATES,
 } from "../constants/studio";
 import { MAX_AUTOMATION_POINTS } from "../constants/studioAutomation";
+import {
+	MAX_STUDIO_LANE_POINTS,
+	MAX_STUDIO_LANES,
+	STUDIO_LANE_KINDS,
+} from "../constants/studioLanes";
 import { INSERT_KINDS, MAX_INSERTS, MAX_SENDS, MAX_STUDIO_BUSES } from "../constants/studioInserts";
 import { MAX_TAKE_BYTES } from "../constants/takeLimits";
 import type { IdeaInstruments } from "./IdeaSchema";
@@ -193,6 +198,30 @@ export const StudioNoteSchema = v.object({
 });
 export type StudioNote = v.InferOutput<typeof StudioNoteSchema>;
 
+/** A breakpoint of an expression lane: content seconds like a note's `t`, a normalized value held until the next point. */
+export const StudioLanePointSchema = v.object({
+	t: SecondsSchema,
+	v: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+});
+export type StudioLanePoint = v.InferOutput<typeof StudioLanePointSchema>;
+/**
+ * An expression lane of a notes clip (constants/studioLanes.ts): a
+ * controller (`cc` with its number), the pitch bend (0.5 at center) or
+ * the channel pressure, as points over the clip's content.
+ */
+export const StudioClipLaneSchema = v.pipe(
+	v.object({
+		kind: v.picklist(STUDIO_LANE_KINDS),
+		controller: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(127))),
+		points: v.pipe(v.array(StudioLanePointSchema), v.maxLength(MAX_STUDIO_LANE_POINTS)),
+	}),
+	v.check(
+		(l) => l.kind !== "cc" || l.controller !== undefined,
+		"A controller lane names its controller",
+	),
+);
+export type StudioClipLane = v.InferOutput<typeof StudioClipLaneSchema>;
+
 /** The shortest loop a clip can have, so a song's loops never queue more than a few thousand passes. */
 export const MIN_CLIP_LOOP_SECONDS = 0.1;
 
@@ -223,6 +252,8 @@ export const StudioClipSchema = v.pipe(
 		 * A loop over the content (docs/multitrack-recorder.md, "Looping a clip"): content seconds, like `offset`. The clip plays from
 		 * `offset` to `end`, then `start` to `end` again and again for its `duration` (utils/clipSegments.ts). Absent means it plays once.
 		 */
+		/** A notes clip's expression lanes (constants/studioLanes.ts): one per controller, bend or pressure, played with the notes. */
+		lanes: v.optional(v.pipe(v.array(StudioClipLaneSchema), v.maxLength(MAX_STUDIO_LANES))),
 		/** Switched off (docs/multitrack-recorder.md, "Switched-off clips"): kept on the timeline, dimmed, playing nothing. Absent means on. */
 		muted: v.optional(v.boolean()),
 		loop: v.optional(
