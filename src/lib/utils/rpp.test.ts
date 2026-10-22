@@ -255,6 +255,54 @@ describe("rppProject", () => {
 		]);
 	});
 
+	it("writes the mute, send and master envelopes (the mute inverted and square, the send's after its receive), and reads them back", () => {
+		const bass = arrangement.tracks.find((t) => t.id === "t-bass")!;
+		const mute = [
+			{ t: 0, v: 0 },
+			{ t: 2, v: 1 },
+		];
+		const send = [
+			{ t: 0, v: 0.5 },
+			{ t: 4, v: 1 },
+		];
+		const masterAutomation = {
+			volume: [
+				{ t: 0, v: 1 },
+				{ t: 4, v: 0.5 },
+			],
+			mute: [{ t: 1, v: 1 }],
+		};
+		const text = rppProject({
+			title: "Wide",
+			arrangement: {
+				...arrangement,
+				masterAutomation,
+				tracks: arrangement.tracks.map((t) =>
+					t.id === bass.id ? { ...t, automation: { ...t.automation, mute, "send:b1": send } } : t,
+				),
+			},
+			audio,
+			application: app,
+		});
+		// Reaper's mute envelope: 0 muted, 1 on, each point held (shape 1).
+		expect(text).toContain(
+			"    <MUTEENV\n      ACT 1 -1\n      VIS 1 1 1\n      ARM 0\n      DEFSHAPE 1 -1 -1\n      PT 0 1 1\n      PT 2 0 1\n    >\n",
+		);
+		expect(text).toMatch(/AUXRECV \d+ 3 0\.5 [^\n]*\n    <AUXVOLENV\n      ACT 1 -1\n/);
+		expect(text).toContain("      PT 4 1 0\n");
+		expect(text).toContain(
+			"  <MASTERVOLENV\n    ACT 1 -1\n    VIS 1 1 1\n    ARM 0\n    DEFSHAPE 0 -1 -1\n    PT 0 1 0\n    PT 4 0.5 0\n  >\n",
+		);
+		// Reaper's master has no mute envelope: the master's mute lane stays out.
+		expect(text).not.toContain("MASTERMUTEENV");
+		const back = readRpp(text, "Wide").arrangement;
+		const bassBack = back.tracks.find((t) => t.name === "Bass")!;
+		const busBack = back.buses![0]!;
+		expect(bassBack.automation?.mute).toEqual(mute);
+		expect(bassBack.automation?.[`send:${busBack.id}`]).toEqual(send);
+		expect(back.masterAutomation).toEqual({ volume: masterAutomation.volume });
+	});
+
 	it("writes a looped clip as a section of its file looped, or as an item per pass when it plays into its loop", () => {
 		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
 		const inside = { ...base, offset: 1.5, duration: 5, loop: { start: 1, end: 3 } };

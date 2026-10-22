@@ -78,4 +78,53 @@ test.describe("Dawn automation", () => {
 		await deleteStudioSongs(page);
 		expect(errors).toEqual([]);
 	});
+
+	test("opens the master's own lane and steps a mute lane on a track", async ({ page, errors }) => {
+		await open(page, "/multitrack-recorder", "__studio");
+		const addTrack = page.getByRole("button", { name: "Add track", exact: true });
+		await expect(addTrack).toBeVisible({ timeout: 60_000 });
+		await addTrack.click();
+		// The master row sits under the tracks; its A button opens a lane of the master's own.
+		const master = page.locator("[data-mix-row='master']");
+		await master.getByRole("button", { name: "Automation for Master" }).click();
+		const masterLane = page.locator("[data-automation-for='master'] [data-automation-lane]");
+		await expect(masterLane).toBeVisible();
+		const mb = (await masterLane.boundingBox())!;
+		await page.mouse.click(mb.x + 10, mb.y + mb.height - 8);
+		await until(
+			page,
+			([w]) => (w.__studio.arrangement.masterAutomation?.volume?.length ?? 0) === 1,
+			{ ms: 5_000 },
+		);
+		expect(
+			await hooked(page, ([w]) => w.__studio.automatedValue("master", "volume", 10)),
+		).toBeLessThan(0.3);
+		// A mute lane on the track: a switch, so a click in the upper half is 1 (muted) and the value holds to the next point.
+		const track = page.locator("[data-track-row]").first();
+		await track.getByRole("button", { name: /^Automation for/ }).click();
+		await track.getByRole("combobox", { name: "Track 1 automation parameter" }).click();
+		await page.getByRole("option", { name: "Mute" }).click();
+		const lane = page
+			.locator("[data-automation-for]:not([data-automation-for='master']) [data-automation-lane]")
+			.first();
+		await expect(lane).toBeVisible();
+		const box = (await lane.boundingBox())!;
+		await page.mouse.click(box.x + 90, box.y + 12);
+		await until(
+			page,
+			([w]) => (w.__studio.arrangement.tracks[0].automation?.mute?.length ?? 0) === 1,
+			{ ms: 5_000 },
+		);
+		const point = await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].automation.mute[0]);
+		expect(point.v).toBe(1);
+		expect(
+			await hooked(
+				page,
+				([w, at]) => w.__studio.automatedValue(w.__studio.arrangement.tracks[0].id, "mute", at),
+				point.t + 5,
+			),
+		).toBe(1);
+		await deleteStudioSongs(page);
+		expect(errors).toEqual([]);
+	});
 });

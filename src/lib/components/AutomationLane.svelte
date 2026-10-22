@@ -50,7 +50,7 @@
 	const vAt = (y: number) =>
 		range.min + (1 - (y - PAD) / (height - 2 * PAD)) * (range.max - range.min);
 
-	/** The polyline: the first value held from zero, the last held to the lane's end. */
+	/** The polyline: the first value held from zero, the last held to the lane's end; a stepped range draws each value held flat to the next point. */
 	const path = $derived.by(() => {
 		if (points.length === 0) {
 			const y = yOf(fallback);
@@ -58,7 +58,13 @@
 		}
 		const first = points[0]!;
 		const last = points[points.length - 1]!;
-		const inner = points.map((p) => `L${xOf(p.t)},${yOf(p.v)}`).join(" ");
+		const inner = points
+			.map((p, i) =>
+				range.step && i > 0
+					? `L${xOf(p.t)},${yOf(points[i - 1]!.v)} L${xOf(p.t)},${yOf(p.v)}`
+					: `L${xOf(p.t)},${yOf(p.v)}`,
+			)
+			.join(" ");
 		return `M0,${yOf(first.v)} ${inner} L${width},${yOf(last.v)}`;
 	});
 
@@ -149,7 +155,9 @@
 		e.stopPropagation();
 	}
 	const readout = $derived(
-		playhead === null ? null : range.format(automationValueAt(points, playhead, fallback)),
+		playhead === null
+			? null
+			: range.format(automationValueAt(points, playhead, fallback, range.step)),
 	);
 </script>
 

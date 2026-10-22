@@ -300,6 +300,53 @@ describe("dawproject", () => {
 		expect(back.arrangement.clips.find((c) => c.name === "Chords")!.lanes).toEqual(lanes);
 	});
 
+	it("writes the mute, send and master lanes (bool points for a mute), and the reader keeps them", () => {
+		const t1 = arrangement.tracks[0]!;
+		const busId = t1.sends![0]!.bus;
+		const mute = [
+			{ t: 1, v: 1 },
+			{ t: 3, v: 0 },
+		];
+		const send = [
+			{ t: 0, v: 0.2 },
+			{ t: 2, v: 0.8 },
+		];
+		const wide: StudioArrangement = {
+			...arrangement,
+			masterAutomation: {
+				volume: [
+					{ t: 0, v: 1 },
+					{ t: 4, v: 0.5 },
+				],
+				mute: [{ t: 2, v: 1 }],
+			},
+			buses: arrangement.buses!.map((b) => ({ ...b, automation: { mute } })),
+			tracks: arrangement.tracks.map((t) =>
+				t.id === t1.id
+					? { ...t, automation: { ...t.automation, mute, [`send:${busId}`]: send } }
+					: t,
+			),
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Wide",
+			arrangement: wide,
+			audio: new Map([
+				["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.138.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		expect(xml).toContain('<BoolPoint time="1.000000" value="true"/>');
+		expect(xml).toContain('<BoolPoint time="3.000000" value="false"/>');
+		const back = readDawproject(xml, metadata, "Wide").arrangement;
+		const t = back.tracks[0]!;
+		const b = back.buses![0]!;
+		expect(t.automation?.mute).toEqual(mute);
+		expect(t.automation?.[`send:${b.id}`]).toEqual(send);
+		expect(b.automation).toEqual({ mute });
+		expect(back.masterAutomation).toEqual(wide.masterAutomation);
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

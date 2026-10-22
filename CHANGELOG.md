@@ -10,6 +10,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Mute lanes, and lanes for the buses and the master, in Dawn.** Every track's automation picker offers **Mute**: a switch drawn in steps, held from each point to the next, beside the track's own mute button. Under the tracks the timeline now shows a thin row per bus and one for the master, each with an **A** button opening its own lane (volume, mute and its inserts; a bus's pan too), and the master fader writes to its lane at the playhead like a track's knob. A DAWproject carries the mute, send and master lanes both ways, a Reaper project writes and reads them as its own envelopes, and a Live set's track on/off, send and master envelopes come in as lanes.
+
 - **Expression lanes on MIDI clips in Dawn.** A notes clip carries the sustain pedal, the modulation wheel and the other controllers, the pitch bend and the key pressure as lanes of points, each held until the next. The pedal, the wheels and the bend you move while recording land in the clip (the sustain pedal from the panel and the computer keyboard too), play back through the piano (the bend glides every voice sounding, two semitones each way), render into a mix, and go out in the clip's MIDI file, the session bundle, a DAWproject (as Bitwig's own expression points) and a Reaper project. A MIDI file's, a DAWproject's and a Reaper project's controllers come in as lanes. The piano roll's **Lane** menu adds a lane under the notes (Sustain, Modulation, Expression, Breath, Foot pedal, Brightness, Pitch bend, Pressure): click to add a point, drag it, double-click to remove it; the lane's name and a remove button sit beside it.
 
 ### Technical

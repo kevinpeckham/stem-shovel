@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { scheduleAutomation, type SchedulableParam } from "./scheduleAutomation";
+import { scheduleAutomation, STEP_RAMP, type SchedulableParam } from "./scheduleAutomation";
 
 function recorder() {
 	const calls: [string, number, number][] = [];
@@ -45,6 +45,40 @@ describe("scheduleAutomation", () => {
 			["ramp", 0, 6],
 			["ramp", 0.5, 8],
 		]);
+	});
+	it("a held lane steps to each point through a short ramp, scaled (the mute lane onto a gain)", () => {
+		const { param, calls } = recorder();
+		// On until a second in, muted from three: the first value holds before the lane, as every lane's does.
+		const mute = [
+			{ t: 1, v: 0 },
+			{ t: 3, v: 1 },
+		];
+		scheduleAutomation(param, mute, {
+			from: 0,
+			when: 10,
+			to: null,
+			fallback: 0,
+			scale: (v) => 1 - v,
+			hold: true,
+		});
+		expect(calls).toEqual([
+			["cancel", NaN, 10],
+			["set", 1, 10],
+			["ramp", 1, 11 - STEP_RAMP],
+			["ramp", 1, 11],
+			["ramp", 1, 13 - STEP_RAMP],
+			["ramp", 0, 13],
+		]);
+		// A point at the pass's start steps from `when` itself, never before it.
+		const second = recorder();
+		scheduleAutomation(second.param, mute, {
+			from: 0.999,
+			when: 10,
+			to: null,
+			fallback: 0,
+			hold: true,
+		});
+		expect(second.calls[2]).toEqual(["ramp", 0, 10]);
 	});
 	it("an empty lane sets the fallback and nothing else", () => {
 		const { param, calls } = recorder();

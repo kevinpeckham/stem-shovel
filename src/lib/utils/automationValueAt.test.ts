@@ -23,6 +23,13 @@ describe("automationValueAt", () => {
 		expect(automationValueAt(lane, 3, 0)).toBe(0.5);
 		expect(automationValueAt(lane, 4, 0)).toBe(0.5);
 	});
+	it("holds each value to the next point on a stepped lane", () => {
+		expect(automationValueAt(lane, 2, 0, true)).toBe(0);
+		expect(automationValueAt(lane, 2.99, 0, true)).toBe(0);
+		expect(automationValueAt(lane, 3, 0, true)).toBe(0.5);
+		expect(automationValueAt(lane, 4, 0, true)).toBe(0.5);
+		expect(automationValueAt(lane, 0, 0.9, true)).toBe(0);
+	});
 	it("handles one point", () => {
 		expect(automationValueAt([{ t: 2, v: 0.3 }], 0, 0)).toBe(0.3);
 		expect(automationValueAt([{ t: 2, v: 0.3 }], 5, 0)).toBe(0.3);

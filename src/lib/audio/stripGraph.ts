@@ -5,16 +5,18 @@ import { createInsertChain, type InsertChain } from "./insertChain";
  * One strip of Dawn's mixer (docs/dawn-daw-plan.md, D2), for a track, a
  * bus or the master, built the same on the live context and the offline
  * one: `fader` (mute, solo and the static level) → `auto` (the volume
- * lane) → the inserts → `pan` → `meter` and `out`. Sends tap the signal
- * after the inserts and before the pan (post-fader), or at the fader's
- * input (pre), each through its own gain into a bus's `input`. `param`
- * names what a lane can drive: the volume, the pan, a send, or an
+ * lane) → `mute` (the mute lane, a gain of 0 while it says muted) → the
+ * inserts → `pan` → `meter` and `out`. Sends tap the signal after the
+ * inserts and before the pan (post-fader), or at the fader's input
+ * (pre), each through its own gain into a bus's `input`. `param` names
+ * what a lane can drive: the volume, the pan, the mute, a send, or an
  * insert's parameter (utils/automationLanes.ts).
  */
 export interface StripGraph {
 	input: GainNode;
 	fader: GainNode;
 	auto: GainNode;
+	mute: GainNode;
 	chain: InsertChain;
 	pan: StereoPannerNode;
 	meter: AnalyserNode;
@@ -37,6 +39,7 @@ export function createStripGraph(
 	const input = ctx.createGain();
 	const fader = input;
 	const auto = ctx.createGain();
+	const mute = ctx.createGain();
 	const chain = createInsertChain(ctx, o.inserts);
 	const pan = ctx.createStereoPanner();
 	pan.pan.value = o.pan;
@@ -44,7 +47,8 @@ export function createStripGraph(
 	meter.fftSize = o.meterSize ?? 1024;
 	const out = ctx.createGain();
 	fader.connect(auto);
-	auto.connect(chain.input);
+	auto.connect(mute);
+	mute.connect(chain.input);
 	chain.output.connect(pan);
 	pan.connect(meter);
 	pan.connect(out);
@@ -55,6 +59,7 @@ export function createStripGraph(
 		input,
 		fader,
 		auto,
+		mute,
 		chain,
 		pan,
 		meter,
@@ -98,6 +103,7 @@ export function createStripGraph(
 		param(key) {
 			if (key === "volume") return auto.gain;
 			if (key === "pan") return pan.pan;
+			if (key === "mute") return mute.gain;
 			const send = /^send:(.+)$/.exec(key);
 			if (send) return sends.get(send[1]!)?.gain ?? null;
 			const insert = /^insert:([^:]+):(.+)$/.exec(key);
@@ -107,6 +113,7 @@ export function createStripGraph(
 		dispose() {
 			input.disconnect();
 			auto.disconnect();
+			mute.disconnect();
 			chain.dispose();
 			pan.disconnect();
 			meter.disconnect();

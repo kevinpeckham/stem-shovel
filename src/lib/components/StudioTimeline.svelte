@@ -173,6 +173,16 @@
 		return px;
 	}
 	const engine = studio;
+	/** The mix rows under the tracks (docs/multitrack-recorder.md, "Wider automation"): a bus's and the master's lanes have no clips, only a header and, open, a lane. */
+	const MIX_H = 32;
+	const mixRows = $derived([
+		...(engine.arrangement.buses ?? []).map((b) => ({
+			id: b.id,
+			name: b.name,
+			kind: "bus" as const,
+		})),
+		{ id: "master", name: "Master", kind: "master" as const },
+	]);
 	let scroller = $state<HTMLDivElement | null>(null);
 	let viewWidth = $state(0);
 	// The lanes stretch past the last clip so there is room to record and to scroll.
@@ -999,7 +1009,7 @@
 							class="device-fader-button-sm {laneShown[track.id] ? 'text-accent' : ''}"
 							aria-pressed={!!laneShown[track.id]}
 							aria-label="Automation for {track.name}"
-							title="Automation: a lane of points under the clips for the volume, the pan or the reverb"
+							title="Automation: a lane of points under the clips for the volume, the pan, the mute, a send or an insert"
 							onclick={() => toggleLane(track.id)}>A</button
 						>
 					{/if}
@@ -1375,6 +1385,73 @@
 			No tracks yet. Add one and arm it to record.
 		</div>
 	{/if}
+	<!-- The buses and the master: a thin row each, an A button opening a lane of their own (volume, mute, inserts; a bus's pan too). -->
+	{#each mixRows as row (row.id)}
+		<div
+			class="flex"
+			style:width="{HEADER_W + laneWidth}px"
+			style:height="{MIX_H + (laneShown[row.id] ? AUTO_H : 0)}px"
+			data-mix-row={row.id}
+		>
+			<div
+				class="sticky left-0 z-10 shrink-0 grid content-start gap-1 overflow-hidden border-r border-b border-white/10 border-l-2 border-l-transparent bg-oxford-900 px-2 py-1"
+				style:width="{HEADER_W}px"
+			>
+				<div class="flex items-center gap-1.5 min-w-0">
+					<span
+						class="min-w-0 grow truncate px-1 text-12px font-500 {row.kind === 'master'
+							? 'text-maximumYellow'
+							: 'text-blue-300'}">{row.name}</span
+					>
+					<button
+						type="button"
+						class="device-fader-button-sm {laneShown[row.id] ? 'text-accent' : ''}"
+						aria-pressed={!!laneShown[row.id]}
+						aria-label="Automation for {row.name}"
+						title="Automation: a lane of points for the {row.kind === 'master'
+							? 'master'
+							: 'bus'}'s volume, mute or inserts"
+						onclick={() => toggleLane(row.id)}>A</button
+					>
+				</div>
+				{#if laneShown[row.id]}
+					<ComboBox
+						ariaLabel="{row.name} automation parameter"
+						options={engine.lanesOf(row.id).map((l) => ({ value: l.key, label: l.range.label }))}
+						value={laneOf(row.id)?.key ?? "volume"}
+						onchange={(v) => (laneShown = { ...laneShown, [row.id]: v })}
+						clearDefaultButtonClasses
+						buttonClasses="flex w-full items-center gap-1 h-6 px-1.5 rounded border border-accent/40 bg-oxford-800 text-11px text-accent"
+						popoverClasses="text-11px"
+					/>
+				{/if}
+			</div>
+			<div class="grid grid-rows-[1fr_auto] border-b border-white/10" style:width="{laneWidth}px">
+				<div></div>
+				{#if laneShown[row.id] && laneOf(row.id)}
+					{@const choice = laneOf(row.id)!}
+					{@const param = choice.key}
+					<div class="relative bg-black/20" style:height="{AUTO_H}px" data-automation-for={row.id}>
+						<AutomationLane
+							points={(row.kind === "master"
+								? engine.arrangement.masterAutomation
+								: engine.arrangement.buses?.find((b) => b.id === row.id)?.automation)?.[param] ??
+								[]}
+							range={choice.range}
+							{pxPerSecond}
+							width={laneWidth}
+							height={AUTO_H}
+							snap={engine.arrangement.gridOn ? (t) => engine.snap(t) : undefined}
+							playhead={engine.running ? engine.position : null}
+							fallback={engine.automatedValue(row.id, param, 0)}
+							label={choice.range.label}
+							onchange={(points) => engine.setAutomation(row.id, param, points)}
+						/>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/each}
 
 	<!-- The playhead over every lane: below the sticky headers (z-10) and the ruler, so it hides behind them as the lanes scroll. -->
 	<div

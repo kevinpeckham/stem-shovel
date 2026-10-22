@@ -7,7 +7,7 @@ import {
 	STUDIO_SAMPLE_RATES,
 } from "#lib/constants/studio.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
-import { MAX_SENDS, MAX_STUDIO_BUSES } from "#lib/constants/studioInserts.js";
+import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import type {
 	StudioAutomationPoint,
 	StudioBus,
@@ -237,11 +237,77 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 
 	// ── Tracks: folders as buses, receives as sends, items as clips ──
 	const trackBlocks = blocksOf(project, "TRACK");
+	/** An envelope block's points as a lane: the pan one the other way up from the knob, the mute one inverted (0 is muted in Reaper), a send's within 0..1. */
+	const pointsOf = (
+		envBlock: Block,
+		kind: "volume" | "pan" | "mute" | "send",
+	): StudioAutomationPoint[] | undefined => {
+		const pts = linesOf(envBlock, "PT")
+			.map((p) => ({
+				t: seconds(Math.max(0, numAt(p, 1, 0))),
+				v:
+					kind === "pan"
+						? clamp(round4(-numAt(p, 2, 0)), -1, 1)
+						: kind === "mute"
+							? numAt(p, 2, 1) >= 0.5
+								? 0
+								: 1
+							: clamp(round4(numAt(p, 2, 1)), 0, kind === "send" ? 1 : STUDIO_FADER_MAX),
+			}))
+			.sort((a, b) => a.t - b.t)
+			.slice(0, MAX_AUTOMATION_POINTS);
+		if (
+			kind !== "mute" &&
+			pts.some((_, i) => i > 0 && numAt(linesOf(envBlock, "PT")[i], 3, 0) !== 0)
+		)
+			fix("Envelope shapes other than linear read as linear");
+		return pts.length ? pts : undefined;
+	};
+	const laneOf = (block: Block, name: string, kind: "volume" | "pan" | "mute") => {
+		const envBlock = blocksOf(block, name)[0];
+		return envBlock ? pointsOf(envBlock, kind) : undefined;
+	};
+	const automationOf = (block: Block) => {
+		const volume = laneOf(block, "VOLENV2", "volume");
+		const pan = laneOf(block, "PANENV2", "pan");
+		const mute = laneOf(block, "MUTEENV", "mute");
+		if (blocksOf(block, "VOLENV").length) drop("Pre-FX volume envelopes");
+		if (blocksOf(block, "WIDTHENV2").length) drop("Width envelopes");
+		return volume || pan || mute
+			? {
+					...(volume ? { volume } : {}),
+					...(pan ? { pan } : {}),
+					...(mute ? { mute } : {}),
+				}
+			: undefined;
+	};
+	/** A receive's volume envelope: the AUXVOLENV block that follows its AUXRECV line. */
+	const receiveLanes = (block: Block): (StudioAutomationPoint[] | undefined)[] => {
+		const lanes: (StudioAutomationPoint[] | undefined)[] = [];
+		for (const x of block.body) {
+			if (!isBlock(x)) {
+				if (x[0] === "AUXRECV") lanes.push(undefined);
+			} else if (x.name === "AUXVOLENV" && lanes.length)
+				lanes[lanes.length - 1] = pointsOf(x, "send");
+		}
+		return lanes;
+	};
+	// The master's own volume envelope, at the project's level (Reaper's master has no mute envelope).
+	const masterVolumeLane = laneOf(project, "MASTERVOLENV", "volume")?.map((p) => ({
+		...p,
+		v: Math.min(1, p.v),
+	}));
+	const masterAutomation = masterVolumeLane ? { volume: masterVolumeLane } : undefined;
 	type Parsed = {
 		block: Block;
 		name: string;
 		folderDepth: number;
-		receives: { from: number; level: number; pre: boolean }[];
+		receives: {
+			from: number;
+			level: number;
+			pre: boolean;
+			lane?: StudioAutomationPoint[];
+		}[];
 		hasItems: boolean;
 		index: number;
 	};
@@ -252,10 +318,11 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			block,
 			name: (lineOf(block, "NAME")?.[1] ?? "").trim().slice(0, 60) || `Track ${index + 1}`,
 			folderDepth: kind === 1 ? 1 : kind === 2 ? numAt(bus, 2, -1) : 0,
-			receives: linesOf(block, "AUXRECV").map((r) => ({
+			receives: linesOf(block, "AUXRECV").map((r, i) => ({
 				from: numAt(r, 1, -1),
 				level: clamp(round4(numAt(r, 3, 1)), 0, 1),
 				pre: numAt(r, 2, 0) !== 0,
+				lane: receiveLanes(block)[i],
 			})),
 			hasItems: blocksOf(block, "ITEM").length > 0,
 			index,
@@ -281,35 +348,6 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 		if (!tint) fix("Track colors outside Dawn's palette, left uncolored");
 		else fix("Track colors read as the nearest of Dawn's tints");
 		return tint;
-	};
-	const laneOf = (
-		block: Block,
-		name: string,
-		pan: boolean,
-	): StudioAutomationPoint[] | undefined => {
-		const envBlock = blocksOf(block, name)[0];
-		if (!envBlock) return undefined;
-		const pts = linesOf(envBlock, "PT")
-			.map((p) => ({
-				t: seconds(Math.max(0, numAt(p, 1, 0))),
-				// Reaper keeps a pan envelope the other way up from its pan knob: +1 is left.
-				v: pan
-					? clamp(round4(-numAt(p, 2, 0)), -1, 1)
-					: clamp(round4(numAt(p, 2, 1)), 0, STUDIO_FADER_MAX),
-			}))
-			.sort((a, b) => a.t - b.t)
-			.slice(0, MAX_AUTOMATION_POINTS);
-		if (pts.some((_, i) => i > 0 && numAt(linesOf(envBlock, "PT")[i], 3, 0) !== 0))
-			fix("Envelope shapes other than linear read as linear");
-		return pts.length ? pts : undefined;
-	};
-	const automationOf = (block: Block) => {
-		const volume = laneOf(block, "VOLENV2", false);
-		const pan = laneOf(block, "PANENV2", true);
-		if (blocksOf(block, "VOLENV").length) drop("Pre-FX volume envelopes");
-		if (blocksOf(block, "MUTEENV").length || blocksOf(block, "WIDTHENV2").length)
-			drop("Mute and width envelopes");
-		return volume || pan ? { ...(volume ? { volume } : {}), ...(pan ? { pan } : {}) } : undefined;
 	};
 	for (const p of parsed) {
 		const block = p.block;
@@ -382,6 +420,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			if (sends.some((s) => s.bus === bus.id) || sends.length >= MAX_SENDS) continue;
 			sends.push({ bus: bus.id, level: r.level, ...(r.pre ? { pre: true } : {}) });
 			track.sends = sends;
+			if (r.lane) track.automation = { ...track.automation, [sendLaneKey(bus.id)]: r.lane };
 		}
 	}
 
@@ -540,6 +579,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			click: false,
 			loop: null,
 			master,
+			...(masterAutomation ? { masterAutomation } : {}),
 			tracks,
 			clips,
 			...(sampleRate ? { sampleRate } : {}),

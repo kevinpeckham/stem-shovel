@@ -38,6 +38,14 @@ mkdirSync(out, { recursive: true });
 const arrangement: StudioArrangement = {
 	...fixture,
 	sampleRate: 48000,
+	// The master's own lane: full until 6 s, then (over 10 ms) silent; a render across 6 s shows Reaper honors it.
+	masterAutomation: {
+		volume: [
+			{ t: 0, v: 1 },
+			{ t: 6, v: 1 },
+			{ t: 6.01, v: 0 },
+		],
+	},
 	buses: [{ id: "b-drums", name: "Drums", colour: "sea", gain: 0.9, pan: 0, muted: false }],
 	tracks: fixture.tracks.map((t) =>
 		t.id === "t-kick"
@@ -49,7 +57,18 @@ const arrangement: StudioArrangement = {
 							...t,
 							sends: [{ bus: "b-drums", level: 0.5, pre: true }],
 							// The lane differs from the knob (-0.3), so the pan Reaper shows in read mode tells which way its envelope runs.
-							automation: { pan: [{ t: 0, v: 0.6 }] },
+							// The send lane rides the receive on Drums; the mute lane mutes the Bass from 3 s (Reaper's envelope says 0 there).
+							automation: {
+								pan: [{ t: 0, v: 0.6 }],
+								"send:b-drums": [
+									{ t: 0, v: 0.5 },
+									{ t: 2, v: 1 },
+								],
+								mute: [
+									{ t: 0, v: 0 },
+									{ t: 3, v: 1 },
+								],
+							},
 						}
 					: t.id === "t-keys"
 						? {
@@ -148,9 +167,15 @@ interface Got {
 		solo: boolean;
 		folderDepth: number;
 		color?: { r: number; g: number; b: number };
-		receives: { from: string; volume: number; mode: number }[];
+		receives: {
+			from: string;
+			volume: number;
+			mode: number;
+			volumeEnvelope?: { at: number; value: number }[];
+		}[];
 		volumeEnvelope?: { at: number; value: number }[];
 		panEnvelope?: { at: number; value: number }[];
+		muteEnvelope?: { at: number; value: number; shape: number }[];
 		items: {
 			name?: string;
 			position: number;
@@ -170,6 +195,8 @@ interface Got {
 	sampleRate: number;
 	notes: string;
 	masterVolume: number;
+	masterVolumeEnvelope?: { at: number; value: number }[];
+	mixRender?: string;
 	render?: string;
 	log: string[];
 }
@@ -227,6 +254,27 @@ check(
 		near(keysEnv[1]!.at, 4) &&
 		near(keysEnv[1]!.value, 0.5),
 	`Keys volume envelope: 1 at 0, 0.5 at 4 s (${keysEnv?.map((p) => `${p.value.toFixed(2)}@${p.at}`).join(", ") ?? "none"})`,
+);
+const muteEnv = byName.get("Bass")?.muteEnvelope;
+check(
+	muteEnv?.length === 2 &&
+		near(muteEnv[0]!.value, 1) &&
+		near(muteEnv[1]!.at, 3) &&
+		near(muteEnv[1]!.value, 0) &&
+		muteEnv[1]!.shape === 1,
+	`Bass mute envelope: on (1) at 0, muted (0) from 3 s, square (${muteEnv?.map((p) => `${p.value}@${p.at} s${p.shape}`).join(", ") ?? "none"})`,
+);
+const recvEnv = recv?.volumeEnvelope;
+check(
+	recvEnv?.length === 2 &&
+		near(recvEnv[0]!.value, 0.5) &&
+		near(recvEnv[1]!.at, 2) &&
+		near(recvEnv[1]!.value, 1),
+	`Drums' receive from Bass has its volume envelope: 0.5 at 0, 1 at 2 s (${recvEnv?.map((p) => `${p.value.toFixed(2)}@${p.at}`).join(", ") ?? "none"})`,
+);
+check(
+	got.masterVolumeEnvelope?.length === 3 && near(got.masterVolumeEnvelope[2]!.value, 0),
+	`master volume envelope: three points, 0 at 6.01 s (${got.masterVolumeEnvelope?.map((p) => `${p.value.toFixed(2)}@${p.at}`).join(", ") ?? "none"})`,
 );
 const bassEnv = byName.get("Bass")?.panEnvelope;
 check(bassEnv?.length === 1, `Bass has a pan envelope with one point (${bassEnv?.length ?? 0})`);
@@ -301,6 +349,23 @@ for (const m of arrangement.markers ?? []) {
 	);
 }
 check(near(got.sampleRate, 48000), `project sample rate 48000 (${got.sampleRate})`);
+// Reaper's own render of the whole mix from 5 to 7 s: the master volume envelope, 0 from 6 s, leaves the second half silent.
+if (got.mixRender && existsSync(got.mixRender)) {
+	const wav = readWav(got.mixRender);
+	const ch = wav.channels[0]!;
+	// The first 40 % against the last 40 %: the ramp and the decay of the hit just after 6 s stay out of both.
+	const rms = (a: Float32Array) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+	const first = rms(ch.subarray(0, Math.floor(ch.length * 0.4)));
+	const second = rms(ch.subarray(Math.floor(ch.length * 0.6)));
+	check(
+		first > 0.001 && second < first / 100,
+		`Reaper renders the mix silenced by the master volume envelope from 6 s: ${first.toFixed(4)} RMS then ${second.toFixed(6)}`,
+	);
+} else
+	check(
+		false,
+		`Reaper rendered the mix for the master volume check (${got.mixRender ?? "no render"})`,
+	);
 check(
 	near(got.masterVolume, arrangement.master),
 	`master volume ${arrangement.master} (${got.masterVolume.toFixed(3)})`,
@@ -334,6 +399,21 @@ if (existsSync(saved)) {
 	check(
 		near(bass?.automation?.pan?.[0]?.v, 0.6),
 		`read back: Bass pan lane 0.6 (${bass?.automation?.pan?.[0]?.v})`,
+	);
+	check(
+		bass?.automation?.mute?.length === 2 &&
+			bass.automation.mute[1]!.v === 1 &&
+			near(bass.automation.mute[1]!.t, 3),
+		`read back: Bass mute lane muted from 3 s (${JSON.stringify(bass?.automation?.mute)})`,
+	);
+	const sendLane = bass?.automation?.[`send:${b.buses?.[0]?.id}`];
+	check(
+		sendLane?.length === 2 && near(sendLane[1]!.v, 1) && near(sendLane[1]!.t, 2),
+		`read back: Bass send lane to Drums 0.5 → 1 at 2 s (${JSON.stringify(sendLane)})`,
+	);
+	check(
+		b.masterAutomation?.volume?.length === 3 && near(b.masterAutomation.volume[2]!.v, 0),
+		`read back: the master volume lane (${JSON.stringify(b.masterAutomation)})`,
 	);
 	check(
 		b.tracks

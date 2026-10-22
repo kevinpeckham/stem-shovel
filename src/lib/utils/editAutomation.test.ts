@@ -19,6 +19,15 @@ describe("editAutomation", () => {
 		lane = editAutomation(lane.points, { kind: "add", t: -1, v: -3 }, range);
 		expect(lane.points[0]).toEqual({ t: 0, v: 0 });
 	});
+	it("snaps a stepped lane's point to the nearer end of its range", () => {
+		const step = { min: 0, max: 1, step: true };
+		expect(editAutomation([], { kind: "add", t: 1, v: 0.6 }, step).points).toEqual([
+			{ t: 1, v: 1 },
+		]);
+		expect(editAutomation([], { kind: "add", t: 1, v: 0.4 }, step).points).toEqual([
+			{ t: 1, v: 0 },
+		]);
+	});
 	it("a point added on top of another replaces it", () => {
 		const lane = editAutomation([{ t: 2, v: 0.5 }], { kind: "add", t: 2.01, v: 0.9 }, range);
 		expect(lane.points).toEqual([{ t: 2.01, v: 0.9 }]);

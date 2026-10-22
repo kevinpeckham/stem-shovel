@@ -111,11 +111,12 @@ const LaneSchema = v.pipe(
 );
 /**
  * A strip's lanes by key (docs/dawn-daw-plan.md, D1 and D2): `volume`,
- * `pan`, `send:<busId>` and `insert:<insertId>:<param>`
+ * `pan`, `mute` (a switch: 1 muted, 0 on, held to the next point),
+ * `send:<busId>` and `insert:<insertId>:<param>`
  * (utils/automationLanes.ts); absent means none.
  */
 export const StudioAutomationSchema = v.record(
-	v.pipe(v.string(), v.regex(/^(volume|pan|send:[\w-]+|insert:[\w-]+:[A-Za-z]+)$/)),
+	v.pipe(v.string(), v.regex(/^(volume|pan|mute|send:[\w-]+|insert:[\w-]+:[A-Za-z]+)$/)),
 	LaneSchema,
 );
 export type StudioAutomation = v.InferOutput<typeof StudioAutomationSchema>;
@@ -332,6 +333,8 @@ export const StudioArrangementSchema = v.object({
 	sampleRate: v.optional(v.picklist(STUDIO_SAMPLE_RATES)),
 	/** The master's inserts (D2), before its fader. */
 	masterInserts: v.optional(InsertListSchema),
+	/** The master's own lanes (docs/multitrack-recorder.md, "Wider automation"): `volume`, `mute` and its inserts' parameters. */
+	masterAutomation: v.optional(StudioAutomationSchema),
 	/** Buses (D2): tracks route or send to them; they go to the master. */
 	buses: v.optional(v.pipe(v.array(StudioBusSchema), v.maxLength(MAX_STUDIO_BUSES))),
 	tracks: v.pipe(v.array(StudioTrackSchema), v.maxLength(MAX_STUDIO_TRACKS)),

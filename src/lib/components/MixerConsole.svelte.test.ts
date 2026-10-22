@@ -21,6 +21,8 @@ const fake = vi.hoisted(() => {
 		},
 		automatedValue: vi.fn((id: string, key: string) => {
 			const track = engine.arrangement.tracks.find((x) => x.id === id);
+			// The master is an owner too: its fader reads through the same call.
+			if (id === "master") return key === "volume" ? engine.arrangement.master : 0;
 			const owner = track ?? engine.arrangement.buses?.find((b) => b.id === id);
 			if (!owner) return 0;
 			if (key === "volume") return owner.gain;

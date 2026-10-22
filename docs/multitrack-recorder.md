@@ -1174,6 +1174,67 @@ the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
 
+## Wider automation (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 4)
+
+Three things beyond the volume and pan lanes. **A mute lane** on every
+strip: the key `mute` on `automation`, a switch (`STUDIO_AUTOMATION.mute`
+is a `step` range: 1 muted, 0 on, held to the next point). A stepped
+range runs through the lane code as a flag: `automationValueAt(points,
+t, fallback, hold)` takes the last point at or before `t`,
+`scheduleAutomation` with `hold` reaches each value through a 5 ms ramp
+(`STEP_RAMP`) instead of a line to the next point, `editAutomation`
+snaps a stepped point to the nearer end of its range, and
+`AutomationLane` draws the steps. `laneTransfer(key)`
+(utils/automationLanes.ts) says how a lane lands on its param: the mute
+lane's 1 is a gain of 0, held; everything else rides as it is. The strip
+gained a `mute` GainNode after `auto` (stripGraph.ts: `fader` → `auto` →
+`mute` → the inserts), `param("mute")` names it, and the engine's
+`#scheduleLanes` and `#settleAutomation` apply the transfer. The strip's
+own mute button stays on the fader, so the lane's fallback is 0 (on): a
+muted track with a mute lane is muted either way.
+
+**The master's own lanes**: `masterAutomation` on the arrangement
+(`volume`, `mute` and its inserts' parameters; the master has no pan).
+The engine's lane methods take `"master"` as an owner id (`lanesOf`,
+`automatedValue`, `setAutomation`, `writeAutomation`, `hasAutomation`),
+through `#owner`/`#masterOwner` and `#setOwnerAutomation`; the master
+strip's lanes are scheduled with every pass and the offline render,
+settled with the rest, and its fader reads unity while a volume lane
+drives (`#masterGain`); `setMaster` touch-writes the lane when one
+exists, and the mixer's master slider shows the automated level.
+
+**Bus and master rows in the timeline**: under the tracks, one thin row
+per bus and one for the master (`MIX_H`, `data-mix-row`), each with its
+name and an **A** button; open, the row grows by `AUTO_H` with the
+parameter picker in its header and an `AutomationLane` in its lane area
+(`data-automation-for` is the bus id or "master"). Buses had lanes in
+the schema and the engine since D2 but nowhere to edit them; now they
+and the master do, in the one place with a time axis.
+
+**Files.** The DAWproject writer writes a mute lane as `<Points>` of
+`BoolPoint`s on the channel's `Mute` parameter, a send lane as real
+points on the `Send`'s own `Volume` parameter, and the master's lanes on
+its channel (`<Lanes track="…master…">`); the reader registers the
+`Mute` and each send's `Volume` ids beside the volume and pan
+(`paramOwner` keys `mute` and `send:<busId>`), reads `BoolPoint`s as
+the mute lane, keeps the master's volume and mute as `masterAutomation`
+(its pan automation is reported), and still reports a device
+parameter's automation (Dawn's inserts have no device in the format).
+The Reaper writer writes `<MUTEENV` with the value inverted (Reaper's 0
+is muted) and shape 1 (square) on every point, an `<AUXVOLENV` right
+after the `AUXRECV` line of the receive it belongs to (where Reaper
+keeps it), and `<MASTERVOLENV` at the project's level after
+`MASTER_VOLUME`; the master's mute lane stays out (Reaper's master has
+no mute envelope; it drops one on save). The reader reads them back the
+same way (a receive's envelope is the AUXVOLENV block that follows its
+line). The
+Live reader reads a track's `Speaker` envelope (bool events; the
+speaker on is the mute lane's 0), each send holder's `Send` envelope,
+and the master's `Volume` and `Speaker` envelopes. Verified in Reaper
+7.82 by a rendered probe and `bun run interop:rpp` (FINDINGS.md). Sandyne
+has no automation. The arrangement diff names "Master automation
+changed". Browser spec: `tests/e2e/studio-automation.spec.ts`.
+
 ## Expression lanes (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 3)
 
 A notes clip can carry expression: `lanes?: StudioClipLane[]` on

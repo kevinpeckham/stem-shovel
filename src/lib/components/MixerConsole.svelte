@@ -314,9 +314,9 @@
 			min="0"
 			max="1"
 			step="0.01"
-			value={engine.arrangement.master}
+			value={engine.automatedValue("master", "volume")}
 			aria-label="Master level"
-			aria-valuetext={levelText(engine.arrangement.master)}
+			aria-valuetext={levelText(engine.automatedValue("master", "volume"))}
 			oninput={(e) => engine.setMaster(e.currentTarget.valueAsNumber)}
 		/>
 		<LevelMeter

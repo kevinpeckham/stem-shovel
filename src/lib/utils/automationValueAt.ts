@@ -6,13 +6,15 @@ export interface AutomationPoint {
 
 /**
  * A lane's value at `t`: the first point's before it, the last point's
- * after it, a straight line between neighbors; `fallback` for an empty
+ * after it, a straight line between neighbors (or, `hold`, the last
+ * point at or before `t`, a stepped lane's way); `fallback` for an empty
  * lane (the parameter's static value).
  */
 export function automationValueAt(
 	points: readonly AutomationPoint[],
 	t: number,
 	fallback: number,
+	hold = false,
 ): number {
 	if (points.length === 0) return fallback;
 	if (t <= points[0]!.t) return points[0]!.v;
@@ -28,6 +30,6 @@ export function automationValueAt(
 	}
 	const a = points[lo]!;
 	const b = points[hi]!;
-	if (b.t === a.t) return b.v;
+	if (hold || b.t === a.t) return hold && b.t <= t ? b.v : a.v;
 	return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t);
 }

@@ -1,6 +1,7 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
+import { sendLaneKey } from "#lib/constants/studioInserts.js";
 import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
@@ -105,16 +106,34 @@ export function rppProject(input: RppProjectInput): string {
 	const indexOf = new Map(rows.map((r, i) => [r.id, i]));
 	const childrenOf = (busId: string) => a.tracks.filter((t) => t.output === busId);
 
-	const envelope = (name: string, lane: { t: number; v: number }[], pan: boolean) => {
+	/**
+	 * An envelope block: the pan one the other way up from the knob, the
+	 * mute one inverted (Reaper's 0 is muted, Dawn's 1 is) and square
+	 * (shape 1: each point held to the next), at `depth` (a track's at 2,
+	 * the master's at 1).
+	 */
+	const envelope = (
+		name: string,
+		lane: { t: number; v: number }[],
+		o: { pan?: boolean; mute?: boolean; depth?: number } = {},
+	) => {
 		if (!lane.length) return;
-		out(2, `<${name}`);
-		out(3, "ACT 1 -1");
-		out(3, "VIS 1 1 1");
-		out(3, "ARM 0");
-		out(3, "DEFSHAPE 0 -1 -1");
-		for (const p of lane) out(3, `PT ${num(p.t)} ${num(pan ? -p.v : p.v)} 0`);
-		out(2, ">");
+		const d = o.depth ?? 2;
+		out(d, `<${name}`);
+		out(d + 1, "ACT 1 -1");
+		out(d + 1, "VIS 1 1 1");
+		out(d + 1, "ARM 0");
+		out(d + 1, `DEFSHAPE ${o.mute ? 1 : 0} -1 -1`);
+		for (const p of lane)
+			out(
+				d + 1,
+				`PT ${num(p.t)} ${num(o.mute ? (p.v >= 0.5 ? 0 : 1) : o.pan ? -p.v : p.v)} ${o.mute ? 1 : 0}`,
+			);
+		out(d, ">");
 	};
+	// The master's own envelopes, at the project's level (after MASTER_VOLUME; nothing else is written between).
+	envelope("MASTERVOLENV", a.masterAutomation?.volume ?? [], { depth: 1 });
+	// The master's mute lane has no envelope in Reaper (its master track has volume, pan, width and play rate only): not written.
 	const colour = (id: string | undefined) => {
 		const hex = stemTintHex(id);
 		if (!hex) return;
@@ -238,13 +257,17 @@ export function rppProject(input: RppProjectInput): string {
 		if (bus)
 			for (const t of a.tracks)
 				for (const s of t.sends ?? [])
-					if (s.bus === bus.id && indexOf.has(t.id))
+					if (s.bus === bus.id && indexOf.has(t.id)) {
 						out(
 							2,
 							`AUXRECV ${indexOf.get(t.id)} ${s.pre ? 3 : 0} ${num(s.level)} 0 0 0 0 0 0 -1 0 -1 0`,
 						);
-		envelope("VOLENV2", strip.automation?.volume ?? [], false);
-		envelope("PANENV2", strip.automation?.pan ?? [], true);
+						// The send's lane, as Reaper keeps it: an AUXVOLENV right after the receive it belongs to.
+						envelope("AUXVOLENV", t.automation?.[sendLaneKey(bus.id)] ?? []);
+					}
+		envelope("VOLENV2", strip.automation?.volume ?? []);
+		envelope("PANENV2", strip.automation?.pan ?? [], { pan: true });
+		envelope("MUTEENV", strip.automation?.mute ?? [], { mute: true });
 		if (track) for (const c of a.clips) if (c.trackId === track.id) item(c);
 		out(1, ">");
 	}

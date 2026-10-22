@@ -14,7 +14,7 @@ The sliders button in a track's header opens its **inserts**: a chain of effects
 
 ## Automation
 
-Press **A** in a track's header and a lane opens under its clips for the track's volume, pan, a send, or any insert parameter marked automatable (the picker in the track's header). Click the lane to add a point, drag a point to move it, double-click to remove it; the line between points is what the track does as the song plays, and the knob shows it moving. Turn the level or pan knob while a lane is open and a point lands at the playhead with that value, so you can ride a fader as you listen. Undo takes a point back like any edit, and the bounce, the demo and the stems follow the lanes.
+Press **A** in a track's header and a lane opens under its clips for the track's volume, pan, mute, a send, or any insert parameter marked automatable (the picker in the track's header). The **Mute** lane is a switch: a click in its upper half mutes from there, in its lower half turns it back on, and each point holds until the next. Click the lane to add a point, drag a point to move it, double-click to remove it; the line between points is what the track does as the song plays, and the knob shows it moving. Turn the level or pan knob while a lane is open and a point lands at the playhead with that value, so you can ride a fader as you listen. Undo takes a point back like any edit, and the bounce, the demo and the stems follow the lanes. Under the tracks sits a thin row for each bus and one for the master, each with its own **A**: a bus lane rides its level, pan, mute, sends or inserts, and the master's its level, mute or inserts, with the master slider writing a point at the playhead while its lane is open.
 
 ## The Practice Amp
 

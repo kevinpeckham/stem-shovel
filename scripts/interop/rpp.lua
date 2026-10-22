@@ -51,8 +51,7 @@ end
 reaper.Main_openProject("noprompt:" .. rpp)
 local result = { app = reaper.GetAppVersion(), tracks = {}, tempos = {}, markers = {}, log = log }
 
-local function envelopePoints(tr, name)
-  local env = reaper.GetTrackEnvelopeByName(tr, name)
+local function pointsOf(env)
   if not env then return nil end
   local points = {}
   for i = 0, reaper.CountEnvelopePoints(env) - 1 do
@@ -60,6 +59,19 @@ local function envelopePoints(tr, name)
     points[#points + 1] = { at = time, value = value, shape = shape }
   end
   return points
+end
+local function envelopePoints(tr, name)
+  return pointsOf(reaper.GetTrackEnvelopeByName(tr, name))
+end
+-- The master's envelopes by their chunk names: GetTrackEnvelopeByName(master, "Volume") finds nothing (FINDINGS.md).
+local function masterEnvelope(name)
+  local master = reaper.GetMasterTrack(0)
+  for i = 0, reaper.CountTrackEnvelopes(master) - 1 do
+    local env = reaper.GetTrackEnvelope(master, i)
+    local _, chunk = reaper.GetEnvelopeStateChunk(env, "", false)
+    if chunk:sub(1, #name + 1) == "<" .. name then return pointsOf(env) end
+  end
+  return nil
 end
 
 for i = 0, reaper.CountTracks(0) - 1 do
@@ -78,6 +90,7 @@ for i = 0, reaper.CountTracks(0) - 1 do
     items = {},
     volumeEnvelope = envelopePoints(tr, "Volume"),
     panEnvelope = envelopePoints(tr, "Pan"),
+    muteEnvelope = envelopePoints(tr, "Mute"),
   }
   for s = 0, reaper.GetTrackNumSends(tr, -1) - 1 do
     local src = reaper.GetTrackSendInfo_Value(tr, -1, s, "P_SRCTRACK")
@@ -86,6 +99,7 @@ for i = 0, reaper.CountTracks(0) - 1 do
       from = srcName,
       volume = reaper.GetTrackSendInfo_Value(tr, -1, s, "D_VOL"),
       mode = reaper.GetTrackSendInfo_Value(tr, -1, s, "I_SENDMODE"),
+      volumeEnvelope = pointsOf(reaper.GetTrackSendInfo_Value(tr, -1, s, "P_ENV:<VOLENV")),
     }
   end
   for j = 0, reaper.CountTrackMediaItems(tr) - 1 do
@@ -141,6 +155,7 @@ result.sampleRate = reaper.GetSetProjectInfo(0, "PROJECT_SRATE", 0, false)
 result.sampleRateUsed = reaper.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
 result.notes = reaper.GetSetProjectNotes(0, false, "")
 result.masterVolume = reaper.GetMediaTrackInfo_Value(reaper.GetMasterTrack(0), "D_VOL")
+result.masterVolumeEnvelope = masterEnvelope("MASTERVOLENV")
 
 -- Which way the pan envelope runs: the Bass track alone, in automation read mode so its envelope drives the pan,
 -- rendered over two seconds; the louder channel of the file says where the envelope put it.
@@ -168,6 +183,14 @@ if bass then
   reaper.SetMediaTrackInfo_Value(bass, "I_AUTOMODE", 0)
   result.render = out .. "/bass-pan.wav"
 end
+-- The whole mix from 5 to 7 s, the master in read mode: its volume envelope, 0 from 6 s, should silence the second half.
+reaper.SetMediaTrackInfo_Value(reaper.GetMasterTrack(0), "I_AUTOMODE", 1)
+reaper.GetSetProjectInfo(0, "RENDER_STARTPOS", 5, true)
+reaper.GetSetProjectInfo(0, "RENDER_ENDPOS", 7, true)
+reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "mix-master-volume", true)
+reaper.Main_OnCommand(42230, 0)
+reaper.SetMediaTrackInfo_Value(reaper.GetMasterTrack(0), "I_AUTOMODE", 0)
+result.mixRender = out .. "/mix-master-volume.wav"
 
 reaper.Main_SaveProjectEx(0, out .. "/reaper-saved.RPP", 0)
 local f = io.open(out .. "/result.json", "w")

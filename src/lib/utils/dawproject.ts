@@ -2,6 +2,7 @@ import { stemTintHex } from "#lib/constants/stemTints.js";
 import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
+import { parseLaneKey } from "./automationLanes";
 import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
@@ -65,6 +66,9 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 	const trackChannel = new Map<string, string>();
 	const volumeParam = new Map<string, string>();
 	const panParam = new Map<string, string>();
+	const muteParam = new Map<string, string>();
+	/** A send's volume parameter by `<ownerId>:<busId>`, for its lane. */
+	const sendParam = new Map<string, string>();
 	for (const t of a.tracks) trackChannel.set(t.id, id("ch"));
 
 	const channel = (o: {
@@ -75,7 +79,7 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		muted: boolean;
 		solo?: boolean;
 		destination?: string;
-		sends?: { destination: string; level: number; pre?: boolean }[];
+		sends?: { destination: string; bus: string; level: number; pre?: boolean }[];
 		ownerId: string;
 	}) => {
 		const dest = o.destination ? ` destination="${o.destination}"` : "";
@@ -84,10 +88,12 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		);
 		const v = id("vol");
 		const p = id("pan");
+		const m = id("mute");
 		volumeParam.set(o.ownerId, v);
 		panParam.set(o.ownerId, p);
+		muteParam.set(o.ownerId, m);
 		// The schema's order: Mute, Pan, Sends, Volume (a strict importer refuses any other).
-		out(`        <Mute value="${o.muted ? "true" : "false"}" id="${id("mute")}" name="Mute"/>`);
+		out(`        <Mute value="${o.muted ? "true" : "false"}" id="${m}" name="Mute"/>`);
 		out(
 			`        <Pan max="1.000000" min="0.000000" unit="normalized" value="${num((o.pan + 1) / 2)}" id="${p}" name="Pan"/>`,
 		);
@@ -97,8 +103,10 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 				out(
 					`          <Send destination="${s.destination}" type="${s.pre ? "pre" : "post"}" id="${id("send")}">`,
 				);
+				const sv = id("sendvol");
+				sendParam.set(`${o.ownerId}:${s.bus}`, sv);
 				out(
-					`            <Volume max="1.000000" min="0.000000" unit="linear" value="${num(s.level)}" id="${id("sendvol")}" name="Send"/>`,
+					`            <Volume max="1.000000" min="0.000000" unit="linear" value="${num(s.level)}" id="${sv}" name="Send"/>`,
 				);
 				out("          </Send>");
 			}
@@ -129,7 +137,12 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 			destination: (t.output && busChannel.get(t.output)) || masterChannel,
 			sends: (t.sends ?? [])
 				.filter((s) => busChannel.has(s.bus))
-				.map((s) => ({ destination: busChannel.get(s.bus)!, level: s.level, pre: s.pre })),
+				.map((s) => ({
+					destination: busChannel.get(s.bus)!,
+					bus: s.bus,
+					level: s.level,
+					pre: s.pre,
+				})),
 			ownerId: t.id,
 		});
 		out("    </Track>");
@@ -153,7 +166,8 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		});
 		out("    </Track>");
 	}
-	out(`    <Track contentType="audio notes" loaded="true" id="${id("track")}" name="Master">`);
+	const masterTrackId = id("track");
+	out(`    <Track contentType="audio notes" loaded="true" id="${masterTrackId}" name="Master">`);
 	channel({
 		chId: masterChannel,
 		role: "master",
@@ -167,16 +181,44 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 
 	out(`  <Arrangement id="${id("arr")}">`);
 	out(`    <Lanes timeUnit="seconds" id="${id("lanes")}">`);
-	const points = (ownerId: string, key: "volume" | "pan", lane: { t: number; v: number }[]) => {
-		const target = (key === "volume" ? volumeParam : panParam).get(ownerId);
+	/** The parameter a lane names, when the format has it: the volume, the pan, the mute (a bool), a send's volume; an insert's parameter has no device here. */
+	const targetOf = (ownerId: string, key: string): string | undefined => {
+		if (key === "volume") return volumeParam.get(ownerId);
+		if (key === "pan") return panParam.get(ownerId);
+		if (key === "mute") return muteParam.get(ownerId);
+		const send = parseLaneKey(key);
+		return send?.kind === "send" ? sendParam.get(`${ownerId}:${send.bus}`) : undefined;
+	};
+	const points = (ownerId: string, key: string, lane: { t: number; v: number }[]) => {
+		const target = targetOf(ownerId, key);
 		if (!target || !lane.length) return;
-		out(`        <Points unit="${key === "volume" ? "linear" : "normalized"}" id="${id("pts")}">`);
+		if (key === "mute") {
+			// A switch: bool points, held to the next (the mute lane's 1 is muted, the parameter's true).
+			out(`        <Points id="${id("pts")}">`);
+			out(`          <Target parameter="${target}"/>`);
+			for (const p of lane)
+				out(`          <BoolPoint time="${num(p.t)}" value="${p.v >= 0.5 ? "true" : "false"}"/>`);
+			out("        </Points>");
+			return;
+		}
+		out(`        <Points unit="${key === "pan" ? "normalized" : "linear"}" id="${id("pts")}">`);
 		out(`          <Target parameter="${target}"/>`);
 		for (const p of lane)
 			out(
 				`          <RealPoint time="${num(p.t)}" value="${num(key === "pan" ? (p.v + 1) / 2 : p.v)}" interpolation="linear"/>`,
 			);
 		out("        </Points>");
+	};
+	/** Whether a strip has a lane the format can carry. */
+	const carries = (
+		ownerId: string,
+		automation: Record<string, { t: number; v: number }[]> | undefined,
+	) => Object.entries(automation ?? {}).some(([k, lane]) => lane.length && targetOf(ownerId, k));
+	const lanesOf = (
+		ownerId: string,
+		automation: Record<string, { t: number; v: number }[]> | undefined,
+	) => {
+		for (const [key, lane] of Object.entries(automation ?? {})) points(ownerId, key, lane);
 	};
 	const clipOf = (c: StudioClip) => {
 		if (c.notes) {
@@ -250,15 +292,19 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 			for (const c of clips) clipOf(c);
 			out("        </Clips>");
 		}
-		points(t.id, "volume", t.automation?.volume ?? []);
-		points(t.id, "pan", t.automation?.pan ?? []);
+		lanesOf(t.id, t.automation);
 		out("      </Lanes>");
 	}
 	for (const b of a.buses ?? []) {
-		if (!b.automation?.volume?.length && !b.automation?.pan?.length) continue;
+		if (!carries(b.id, b.automation)) continue;
 		out(`      <Lanes track="${busTrackIds.get(b.id)}" id="${id("lane")}">`);
-		points(b.id, "volume", b.automation?.volume ?? []);
-		points(b.id, "pan", b.automation?.pan ?? []);
+		lanesOf(b.id, b.automation);
+		out("      </Lanes>");
+	}
+	// The master's own lanes (its volume and mute; it has no pan here).
+	if (carries("master", a.masterAutomation)) {
+		out(`      <Lanes track="${masterTrackId}" id="${id("lane")}">`);
+		lanesOf("master", a.masterAutomation);
 		out("      </Lanes>");
 	}
 	out("    </Lanes>");

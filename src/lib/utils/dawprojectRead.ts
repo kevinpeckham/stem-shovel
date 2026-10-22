@@ -1,6 +1,6 @@
 import { STEM_TINTS } from "#lib/constants/stemTints.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
-import { MAX_SENDS, MAX_STUDIO_BUSES } from "#lib/constants/studioInserts.js";
+import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
 import {
 	MAX_STUDIO_CLIPS,
@@ -163,7 +163,8 @@ export function readDawproject(
 	// ── Structure: tracks, buses, the master, and the parameters automation may name ──
 	type Owner = { kind: "track" | "bus" | "master"; id: string; name: string };
 	const channelOwner = new Map<string, Owner>();
-	const paramOwner = new Map<string, { owner: Owner; key: "volume" | "pan" }>();
+	/** The parameters a lane may name, by id: a strip's volume, pan or mute, or a send's volume (`send:<busId>`). */
+	const paramOwner = new Map<string, { owner: Owner; key: string }>();
 	const trackOwner = new Map<string, Owner>();
 	const tracks: StudioTrack[] = [];
 	const buses: StudioBus[] = [];
@@ -204,8 +205,10 @@ export function readDawproject(
 	const registerParams = (channel: Element | null, owner: Owner) => {
 		const v = attr(kid(channel, "Volume"), "id");
 		const p = attr(kid(channel, "Pan"), "id");
+		const m = attr(kid(channel, "Mute"), "id");
 		if (v) paramOwner.set(v, { owner, key: "volume" });
 		if (p) paramOwner.set(p, { owner, key: "pan" });
+		if (m) paramOwner.set(m, { owner, key: "mute" });
 		const ch = attr(channel, "id");
 		if (ch) channelOwner.set(ch, owner);
 		for (const d of Array.from(kid(channel, "Devices")?.children ?? []))
@@ -287,6 +290,9 @@ export function readDawproject(
 				const target = attr(s, "destination");
 				const bus = target ? channelOwner.get(target) : undefined;
 				if (bus?.kind !== "bus" || !busById.has(bus.id)) return null;
+				// The send's volume parameter, so a lane on it lands on the track as its send lane.
+				const sendVolume = attr(kid(s, "Volume"), "id");
+				if (sendVolume) paramOwner.set(sendVolume, { owner, key: sendLaneKey(bus.id) });
 				return {
 					bus: bus.id,
 					level: clamp(num(kid(s, "Volume"), "value", 1), 0, 1),
@@ -555,27 +561,37 @@ export function readDawproject(
 				});
 			return;
 		}
-		if (!hit || hit.owner.kind === "master") {
-			if (!pts.length) return;
+		const bools = kids(el, "BoolPoint");
+		if (!hit || (hit.owner.kind === "master" && hit.key === "pan")) {
+			if (!pts.length && !bools.length) return;
 			// A MIDI expression (a controller, pitch bend, pressure) inside a notes clip: Bitwig's way of keeping CC lanes.
 			const expression = attr(targetEl, "expression");
 			if (expression)
 				drop(`MIDI ${expression === "channelController" ? "controller" : expression} automation`);
-			else drop(`automation of ${target ?? "a parameter"}${hit ? ` on ${hit.owner.name}` : ""}`);
+			else if (hit) drop("the master's pan automation");
+			else drop(`automation of ${target ?? "a parameter"}`);
 			return;
 		}
 		const unitAttr = attr(el, "unit");
-		const lane = pts
-			.map((p) => {
-				const raw = num(p, "value", 0);
-				const v =
-					hit.key === "pan"
-						? clamp(round4(raw * 2 - 1), -1, 1)
-						: unitAttr === "decibel"
-							? clamp(round4(Math.pow(10, raw / 20)), 0, STUDIO_FADER_MAX)
-							: clamp(raw, 0, STUDIO_FADER_MAX);
-				return { t: seconds(toSeconds(num(p, "time", 0), unit)), v };
-			})
+		// The mute as bool points (a switch, held to the next); every other lane as real points in its units.
+		const lane = (
+			hit.key === "mute"
+				? bools.map((p) => ({
+						t: seconds(toSeconds(num(p, "time", 0), unit)),
+						v: attr(p, "value") === "true" ? 1 : 0,
+					}))
+				: pts.map((p) => {
+						const raw = num(p, "value", 0);
+						const top = hit.key.startsWith("send:") ? 1 : STUDIO_FADER_MAX;
+						const v =
+							hit.key === "pan"
+								? clamp(round4(raw * 2 - 1), -1, 1)
+								: unitAttr === "decibel"
+									? clamp(round4(Math.pow(10, raw / 20)), 0, top)
+									: clamp(raw, 0, top);
+						return { t: seconds(toSeconds(num(p, "time", 0), unit)), v };
+					})
+		)
 			.sort((a, b) => a.t - b.t)
 			.slice(0, MAX_AUTOMATION_POINTS);
 		if (!lane.length) return;
@@ -627,11 +643,13 @@ export function readDawproject(
 	readMarkers(kid(arrangementEl, "Markers"), "beats");
 	if (beatsUsed) fix("Times in beats, converted to seconds through the tempo map");
 	if (kid(root, "Scenes")) drop("clip launcher scenes");
+	let masterAutomation: StudioAutomation | undefined;
 	for (const [ownerId, lanes] of automation) {
 		const t = tracks.find((x) => x.id === ownerId);
 		const b = buses.find((x) => x.id === ownerId);
 		if (t) t.automation = lanes;
 		else if (b) b.automation = lanes;
+		else if (ownerId === "master") masterAutomation = lanes;
 	}
 
 	// ── Tempo and meter changes on the ruler ─────────────────────────────
@@ -693,6 +711,7 @@ export function readDawproject(
 		click: false,
 		loop: null,
 		master,
+		...(masterAutomation ? { masterAutomation } : {}),
 		tracks,
 		clips,
 		...(sampleRate ? { sampleRate } : {}),

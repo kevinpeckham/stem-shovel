@@ -6,7 +6,7 @@ import { FADER_MAX } from "./fader";
  * parameter's own units. D2 registers every insert and send parameter
  * the same way.
  */
-export const STUDIO_AUTOMATION_PARAMS = ["volume", "pan", "reverb"] as const;
+export const STUDIO_AUTOMATION_PARAMS = ["volume", "pan", "mute", "reverb"] as const;
 export type StudioAutomationParam = (typeof STUDIO_AUTOMATION_PARAMS)[number];
 
 export interface AutomationRange {
@@ -19,6 +19,8 @@ export interface AutomationRange {
 	format: (v: number) => string;
 	/** The arc fills from the center (a pan) rather than the bottom. */
 	bipolar?: boolean;
+	/** A switch, not a curve: the lane holds each point's value to the next (no ramp), and a point is either end of the range. */
+	step?: boolean;
 }
 
 const db = (v: number) => (v <= 0 ? "−∞ dB" : `${(20 * Math.log10(v)).toFixed(1)} dB`);
@@ -33,6 +35,15 @@ export const STUDIO_AUTOMATION: Record<StudioAutomationParam, AutomationRange> =
 		bipolar: true,
 		format: (v) =>
 			v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`,
+	},
+	/** The mute as a lane: 1 muted, 0 on, held to the next point; the strip's own mute button stays beside it. */
+	mute: {
+		label: "Mute",
+		min: 0,
+		max: 1,
+		initial: 0,
+		step: true,
+		format: (v) => (v >= 0.5 ? "Muted" : "On"),
 	},
 	reverb: { label: "Reverb", min: 0, max: 1, initial: 0, format: (v) => `${Math.round(v * 100)}%` },
 };

@@ -547,7 +547,7 @@ describe("StudioTimeline", () => {
 		const picker = screen.getByRole("combobox", { name: "Guitar automation parameter" });
 		await user.click(picker);
 		const names = screen.getAllByRole("option").map((o) => o.textContent?.trim());
-		expect(names).toEqual(["Volume", "Pan", "Reverb: Level"]);
+		expect(names).toEqual(["Volume", "Pan", "Mute", "Reverb: Level"]);
 	});
 
 	test("the actions menu moves a track, and removes one after confirming when it has clips", async () => {

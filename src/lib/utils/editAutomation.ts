@@ -19,18 +19,23 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
  * range: a point added within `AUTOMATION_MERGE_SECONDS` of another
  * replaces it (a click on a point moves it rather than doubling it); a
  * moved point keeps its place in the order only by its new time; the
- * lane never grows past `MAX_AUTOMATION_POINTS`. The index returned is
- * where the edited point landed (null after a remove or a clear), so a
- * selection can follow it.
+ * lane never grows past `MAX_AUTOMATION_POINTS`. On a `step` range (a
+ * switch) a point's value is whichever end of the range it is nearer.
+ * The index returned is where the edited point landed (null after a
+ * remove or a clear), so a selection can follow it.
  */
 export function editAutomation(
 	points: readonly AutomationPoint[],
 	edit: AutomationEdit,
-	range: { min: number; max: number },
+	range: { min: number; max: number; step?: boolean },
 ): { points: AutomationPoint[]; index: number | null } {
 	const fix = (p: AutomationPoint): AutomationPoint => ({
 		t: round4(Math.max(0, p.t)),
-		v: round4(clamp(p.v, range.min, range.max)),
+		v: range.step
+			? p.v >= (range.min + range.max) / 2
+				? range.max
+				: range.min
+			: round4(clamp(p.v, range.min, range.max)),
 	});
 	if (edit.kind === "clear") return { points: [], index: null };
 	if (edit.kind === "remove")

@@ -23,6 +23,7 @@ export function diffArrangements(before: StudioArrangement, after: StudioArrange
 	if (before.master !== after.master)
 		out.push(`Master ${Math.round(before.master * 100)}% → ${Math.round(after.master * 100)}%`);
 	if (!same(before.masterInserts, after.masterInserts)) out.push("Master inserts changed");
+	if (!same(before.masterAutomation, after.masterAutomation)) out.push("Master automation changed");
 
 	const name = (tr: StudioTrack) => tr.name || "a track";
 	const beforeTracks = new Map(before.tracks.map((x) => [x.id, x]));

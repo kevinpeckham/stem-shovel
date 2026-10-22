@@ -7,7 +7,7 @@ import {
 	STUDIO_FADER_MAX,
 } from "#lib/constants/studio.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
-import { MAX_SENDS, MAX_STUDIO_BUSES } from "#lib/constants/studioInserts.js";
+import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import type {
 	StudioAutomationPoint,
 	StudioBus,
@@ -175,27 +175,53 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		else fix("Gray, white and black tracks left uncolored");
 		return tint;
 	};
+	/** An envelope's events as a lane by the parameter's kind: the pan signed, a send within 0..1, the speaker (Live's track on/off, bool events) as the mute lane inverted. */
 	const laneOf = (
 		envelopes: ReturnType<typeof envelopesOf>,
 		target: string | null,
-		pan: boolean,
+		kind: "volume" | "pan" | "send" | "mute",
 	): StudioAutomationPoint[] | undefined => {
 		if (!target) return undefined;
 		const env = envelopes.find((e) => e.pointee === target);
 		if (!env) return undefined;
 		const pts = env.events
-			.filter((e) => e.kind === "FloatEvent" && Number.isFinite(e.time))
+			.filter(
+				(e) => e.kind === (kind === "mute" ? "BoolEvent" : "FloatEvent") && Number.isFinite(e.time),
+			)
 			.map((e) => ({
 				t: seconds(beatsToSeconds(Math.max(0, e.time))),
-				v: pan
-					? clamp(round4(Number(e.value)), -1, 1)
-					: clamp(round4(Number(e.value)), 0, STUDIO_FADER_MAX),
+				v:
+					kind === "pan"
+						? clamp(round4(Number(e.value)), -1, 1)
+						: kind === "mute"
+							? e.value === "true"
+								? 0
+								: 1
+							: clamp(round4(Number(e.value)), 0, kind === "send" ? 1 : STUDIO_FADER_MAX),
 			}))
 			.sort((a, b) => a.t - b.t)
 			.filter((p, i, all) => i === 0 || p.t !== all[i - 1]!.t || p.v !== all[i - 1]!.v)
 			.slice(0, MAX_AUTOMATION_POINTS);
 		return pts.length ? pts : undefined;
 	};
+	// The master's own lanes: its volume (within Dawn's 0..1) and its on/off switch as the mute.
+	const masterVolumeLane = laneOf(
+		masterEnvelopes,
+		attr(path(masterMixer, "Volume", "AutomationTarget"), "Id"),
+		"volume",
+	)?.map((p) => ({ ...p, v: Math.min(1, p.v) }));
+	const masterMuteLane = laneOf(
+		masterEnvelopes,
+		attr(path(masterMixer, "Speaker", "AutomationTarget"), "Id"),
+		"mute",
+	);
+	const masterAutomation =
+		masterVolumeLane || masterMuteLane
+			? {
+					...(masterVolumeLane ? { volume: masterVolumeLane } : {}),
+					...(masterMuteLane ? { mute: masterMuteLane } : {}),
+				}
+			: undefined;
 	type Strip = {
 		el: Element;
 		kind: "audio" | "midi" | "group" | "return";
@@ -220,8 +246,13 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 	for (const s of strips) {
 		const mixer = path(s.el, "DeviceChain", "Mixer");
 		const envelopes = envelopesOf(s.el);
-		const volume = laneOf(envelopes, attr(path(mixer, "Volume", "AutomationTarget"), "Id"), false);
-		const pan = laneOf(envelopes, attr(path(mixer, "Pan", "AutomationTarget"), "Id"), true);
+		const volume = laneOf(
+			envelopes,
+			attr(path(mixer, "Volume", "AutomationTarget"), "Id"),
+			"volume",
+		);
+		const pan = laneOf(envelopes, attr(path(mixer, "Pan", "AutomationTarget"), "Id"), "pan");
+		const mute = laneOf(envelopes, attr(path(mixer, "Speaker", "AutomationTarget"), "Id"), "mute");
 		const colour = colourOf(s.el);
 		const rawGain = round4(num(path(mixer, "Volume", "Manual"), 1));
 		if (rawGain > STUDIO_FADER_MAX)
@@ -234,8 +265,14 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			gain: clamp(rawGain, 0, STUDIO_FADER_MAX),
 			pan: clamp(round4(num(path(mixer, "Pan", "Manual"), 0)), -1, 1),
 			muted: value(path(mixer, "Speaker", "Manual")) === "false",
-			...(volume || pan
-				? { automation: { ...(volume ? { volume } : {}), ...(pan ? { pan } : {}) } }
+			...(volume || pan || mute
+				? {
+						automation: {
+							...(volume ? { volume } : {}),
+							...(pan ? { pan } : {}),
+							...(mute ? { mute } : {}),
+						},
+					}
 				: {}),
 		};
 		for (const d of kids(path(s.el, "DeviceChain", "DeviceChain", "Devices"), null))
@@ -279,12 +316,18 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			if (busId && buses.some((b) => b.id === busId)) track.output = busId;
 		}
 		const sends: StudioSend[] = [];
+		const trackEnvelopes = envelopesOf(s.el);
 		kids(path(s.el, "DeviceChain", "Mixer", "Sends"), "TrackSendHolder").forEach((h, i) => {
 			const level = clamp(round4(num(path(h, "Send", "Manual"), 0)), 0, 1);
 			const bus = returnIds[i];
+			// The send's envelope rides as its lane; a send with one is carried even when its knob sits off.
+			const lane = bus
+				? laneOf(trackEnvelopes, attr(path(h, "Send", "AutomationTarget"), "Id"), "send")
+				: undefined;
 			// Live's "off" send sits at -70 dB (0.000316): nothing to carry.
-			if (!bus || level < 0.001 || sends.length >= MAX_SENDS) return;
+			if (!bus || (level < 0.001 && !lane) || sends.length >= MAX_SENDS) return;
 			sends.push({ bus, level });
+			if (lane) track.automation = { ...track.automation, [sendLaneKey(bus)]: lane };
 		});
 		if (sends.length) track.sends = sends;
 	}
@@ -637,6 +680,7 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			click: false,
 			loop: null,
 			master: masterVolume,
+			...(masterAutomation ? { masterAutomation } : {}),
 			tracks,
 			clips,
 			...(buses.length ? { buses } : {}),

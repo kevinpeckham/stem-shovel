@@ -86,6 +86,12 @@ describe("diffArrangements", () => {
 			"Clip Clip c1: moved to Bass, moved 0.00 s → 1.50 s, trimmed, fades",
 		]);
 	});
+	it("names the master's automation changing", () => {
+		const after = { ...base(), masterAutomation: { volume: [{ t: 0, v: 0.5 }] } };
+		expect(diffArrangements(base(), after)).toContain("Master automation changed");
+		expect(diffArrangements(after, after)).not.toContain("Master automation changed");
+	});
+
 	it("reads buses, markers, routing, the tempo map and the master", () => {
 		const after = base();
 		after.master = 0.8;

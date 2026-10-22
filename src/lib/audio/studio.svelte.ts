@@ -102,7 +102,7 @@ import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { createStripGraph, type StripGraph } from "./stripGraph";
 import { StudioGraph } from "./studioGraph";
 import { insertsOf } from "#lib/utils/insertsFromFx.js";
-import { automationLanes } from "#lib/utils/automationLanes.js";
+import { automationLanes, laneTransfer } from "#lib/utils/automationLanes.js";
 import { nanoid as newLocalId } from "nanoid";
 import { MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 
@@ -223,6 +223,16 @@ interface Playing {
 	gain: GainNode;
 }
 /** A MIDI track recording (phase 3): the instrument's note events as they come, until Stop pairs them into a clip. */
+/** What the lane code needs of a strip's owner: a track, a bus, or the master as `#masterOwner` presents it. */
+interface LaneOwner {
+	gain: number;
+	pan: number;
+	automation?: StudioAutomation;
+	sends?: StudioSend[];
+	inserts?: StudioInsert[];
+	fx?: StudioTrackFx;
+}
+
 interface MidiCapture {
 	trackId: string;
 	source: StudioInstrument;
@@ -1018,6 +1028,7 @@ class StudioEngine {
 		this.dirty = true;
 	}
 	setMaster(value: number) {
+		if (this.writeAutomation("master", "volume", value)) return;
 		this.#commitMixGesture();
 		this.arrangement.master = Math.max(0, Math.min(1, value));
 		this.dirty = true;
@@ -2172,11 +2183,36 @@ class StudioEngine {
 		if (bus.muted) return 0;
 		return bus.automation?.volume?.length ? 1 : bus.gain;
 	}
+	/** The master fader's level: unity while its volume lane drives (the `auto` node has the level), else the knob's. */
+	#masterGain() {
+		return this.arrangement.masterAutomation?.volume?.length ? 1 : this.arrangement.master;
+	}
+	/** The master as a strip's owner for the lane code: its level, no pan, its inserts and its own lanes. */
+	#masterOwner(): LaneOwner {
+		return {
+			gain: this.arrangement.master,
+			pan: 0,
+			automation: this.arrangement.masterAutomation,
+			inserts: this.arrangement.masterInserts,
+		};
+	}
+	/** A strip's owner by id: a track, a bus, or the master ("master"). */
+	#owner(ownerId: string): LaneOwner | null {
+		if (ownerId === "master") return this.#masterOwner();
+		return this.#track(ownerId) ?? this.#bus(ownerId);
+	}
+	/** A strip's lanes replaced: on the track or bus, or on the arrangement for the master. */
+	#setOwnerAutomation(ownerId: string, automation: StudioAutomation | undefined) {
+		if (ownerId === "master") this.arrangement.masterAutomation = automation;
+		else {
+			const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+			if (owner) owner.automation = automation;
+		}
+	}
 	/** Whether a parameter of a track is driven by a lane (docs/dawn-daw-plan.md, D1). */
 	/** Whether a parameter of a strip is driven by a lane (docs/dawn-daw-plan.md, D1 and D2); `ownerId` a track's or a bus's. */
 	hasAutomation(ownerId: string, key: string): boolean {
-		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
-		return !!owner?.automation?.[key]?.length;
+		return !!this.#owner(ownerId)?.automation?.[key]?.length;
 	}
 	/**
 	 * A parameter as it sounds at `seconds` (the playhead): the lane's value
@@ -2189,15 +2225,21 @@ class StudioEngine {
 	 * knobs, the console and the Stage show this while a lane drives.
 	 */
 	automatedValue(ownerId: string, key: string, seconds = this.position): number {
-		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		const owner = this.#owner(ownerId);
 		if (!owner) return 0;
 		const choice = this.lanesOf(ownerId).find((l) => l.key === key);
 		const fallback = choice?.fallback ?? 0;
 		const lane = owner.automation?.[key];
-		return lane?.length ? automationValueAt(lane, seconds, fallback) : fallback;
+		return lane?.length ? automationValueAt(lane, seconds, fallback, choice?.range.step) : fallback;
 	}
-	/** The lanes a strip can show (utils/automationLanes.ts), from its state now. */
+	/** The lanes a strip can show (utils/automationLanes.ts), from its state now; "master" for the master's. */
 	lanesOf(ownerId: string) {
+		if (ownerId === "master")
+			return automationLanes({
+				gain: this.arrangement.master,
+				inserts: this.arrangement.masterInserts ?? [],
+				buses: [],
+			});
 		const track = this.#track(ownerId);
 		const owner = track ?? this.#bus(ownerId);
 		if (!owner) return [];
@@ -2220,7 +2262,8 @@ class StudioEngine {
 	) {
 		for (const [key, lane] of Object.entries(owner.automation ?? {})) {
 			const param = strip.param(key);
-			if (param && lane.length) scheduleAutomation(param, lane, { from, when, to, fallback: 0 });
+			if (param && lane.length)
+				scheduleAutomation(param, lane, { from, when, to, fallback: 0, ...laneTransfer(key) });
 		}
 	}
 	/** The lanes of a track scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
@@ -2231,22 +2274,13 @@ class StudioEngine {
 	 * volume node, the pan, the sends, the inserts' settings), then each
 	 * lane's param at its value for the playhead.
 	 */
-	#settleAutomation(
-		owner: {
-			gain: number;
-			pan: number;
-			automation?: StudioAutomation;
-			sends?: StudioSend[];
-			inserts?: StudioInsert[];
-			fx?: StudioTrackFx;
-		},
-		strip: StripGraph,
-		now: number,
-	) {
+	#settleAutomation(owner: LaneOwner, strip: StripGraph, now: number) {
 		const lanes = owner.automation ?? {};
 		strip.auto.gain.cancelScheduledValues(now);
+		strip.mute.gain.cancelScheduledValues(now);
 		strip.pan.pan.cancelScheduledValues(now);
 		if (!lanes.volume?.length) strip.auto.gain.setValueAtTime(1, now);
+		if (!lanes.mute?.length) strip.mute.gain.setValueAtTime(1, now);
 		if (!lanes.pan?.length) strip.pan.pan.setValueAtTime(owner.pan, now);
 		for (const [busId, gain] of strip.sends) {
 			gain.gain.cancelScheduledValues(now);
@@ -2257,8 +2291,9 @@ class StudioEngine {
 		for (const [key, lane] of Object.entries(lanes)) {
 			const param = strip.param(key);
 			if (!param || !lane.length) continue;
+			const { scale, hold } = laneTransfer(key);
 			param.cancelScheduledValues(now);
-			param.setValueAtTime(automationValueAt(lane, this.position, 0), now);
+			param.setValueAtTime(scale(automationValueAt(lane, this.position, 0, hold)), now);
 		}
 	}
 	/** Every track's lanes settled (a stop, a seek, an edit while stopped). */
@@ -2274,39 +2309,41 @@ class StudioEngine {
 			const strip = this.#buses.get(b.id);
 			if (strip) this.#settleAutomation(b, strip, ctx.currentTime);
 		}
+		if (this.#masterStrip)
+			this.#settleAutomation(this.#masterOwner(), this.#masterStrip, ctx.currentTime);
 	}
 
 	/** A lane replaced whole (the lane component's gesture), one undo step; an empty lane is removed. */
 	/** A lane replaced whole (the lane component's gesture), one undo step; an empty lane is removed. `ownerId` a track's or a bus's. */
 	setAutomation(ownerId: string, key: string, points: StudioAutomationPoint[]) {
-		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		const owner = this.#owner(ownerId);
 		if (!owner) return;
 		this.#commit();
 		const automation = { ...owner.automation };
 		if (points.length) automation[key] = points;
 		else delete automation[key];
-		owner.automation = Object.keys(automation).length ? automation : undefined;
+		this.#setOwnerAutomation(ownerId, Object.keys(automation).length ? automation : undefined);
 		this.#afterLaneChange(ownerId);
 	}
 	/** A knob touched on a track with a lane: a point at the playhead takes the value (docs/dawn-daw-plan.md, D1: touch write). */
 	/** A knob touched on a strip whose lane exists: a point at the playhead takes the value (docs/dawn-daw-plan.md, D1: touch write). */
 	writeAutomation(ownerId: string, key: string, value: number) {
-		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
+		const owner = this.#owner(ownerId);
 		const lane = owner?.automation?.[key];
 		if (!owner || !lane?.length) return false;
 		const range = this.lanesOf(ownerId).find((l) => l.key === key)?.range;
 		if (!range) return false;
 		this.#commitMixGesture();
 		const edited = editAutomation(lane, { kind: "add", t: this.position, v: value }, range);
-		owner.automation = { ...owner.automation, [key]: edited.points };
+		this.#setOwnerAutomation(ownerId, { ...owner.automation, [key]: edited.points });
 		this.#afterLaneChange(ownerId);
 		return true;
 	}
 	#afterLaneChange(ownerId: string) {
 		this.dirty = true;
 		const ctx = this.#ctx;
-		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
-		const strip = this.#tracks.get(ownerId) ?? this.#buses.get(ownerId);
+		const owner = this.#owner(ownerId);
+		const strip = this.#graph?.stripOf(ownerId) ?? null;
 		if (!ctx || !owner || !strip) return;
 		this.#applyGains();
 		if (this.running) {
@@ -2334,7 +2371,7 @@ class StudioEngine {
 			const strip = this.#buses.get(b.id);
 			if (strip) set(strip.fader.gain, this.#busGain(b));
 		}
-		if (this.#masterStrip) set(this.#masterStrip.fader.gain, this.arrangement.master);
+		if (this.#masterStrip) set(this.#masterStrip.fader.gain, this.#masterGain());
 	}
 
 	// ── Transport ──────────────────────────────────────────────────────────
@@ -2401,6 +2438,8 @@ class StudioEngine {
 			const strip = this.#buses.get(b.id);
 			if (strip) this.#scheduleLanes(b, strip, from, when, to);
 		}
+		if (this.#masterStrip)
+			this.#scheduleLanes(this.#masterOwner(), this.#masterStrip, from, when, to);
 		const fades = clipCrossfades(this.arrangement.clips);
 		for (const clip of this.arrangement.clips)
 			this.#startClip(clip, from, when, to, fades.get(clip.id));
@@ -3070,8 +3109,9 @@ class StudioEngine {
 			inserts: alone ? [] : (this.arrangement.masterInserts ?? []),
 			pan: 0,
 		});
-		master.fader.gain.value = alone ? 1 : this.arrangement.master;
+		master.fader.gain.value = alone ? 1 : this.#masterGain();
 		master.route(off.destination);
+		if (!alone) this.#scheduleLanes(this.#masterOwner(), master, 0, 0, null);
 		const busInputs = new Map<string, AudioNode>();
 		for (const b of this.arrangement.buses ?? []) {
 			if (trackId || (busId && b.id !== busId)) continue;

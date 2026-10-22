@@ -35,6 +35,22 @@ const set = `<?xml version="1.0" encoding="UTF-8"?>
 						<FloatEvent Id="3" Time="8" Value="0.5" />
 					</Events></Automation>
 				</AutomationEnvelope>
+				<AutomationEnvelope Id="1">
+					<EnvelopeTarget><PointeeId Value="1104" /></EnvelopeTarget>
+					<Automation><Events>
+						<FloatEvent Id="0" Time="-63072000" Value="0.25" />
+						<FloatEvent Id="1" Time="4" Value="0.25" />
+						<FloatEvent Id="2" Time="8" Value="1" />
+					</Events></Automation>
+				</AutomationEnvelope>
+				<AutomationEnvelope Id="2">
+					<EnvelopeTarget><PointeeId Value="1105" /></EnvelopeTarget>
+					<Automation><Events>
+						<BoolEvent Id="0" Time="-63072000" Value="true" />
+						<BoolEvent Id="1" Time="8" Value="false" />
+						<BoolEvent Id="2" Time="12" Value="true" />
+					</Events></Automation>
+				</AutomationEnvelope>
 			</Envelopes></AutomationEnvelopes>
 			<TrackGroupId Value="10" />
 			<DeviceChain>
@@ -43,7 +59,7 @@ const set = `<?xml version="1.0" encoding="UTF-8"?>
 						<TrackSendHolder Id="0"><Send><Manual Value="0.0003162277571" /><AutomationTarget Id="1103" /></Send></TrackSendHolder>
 						<TrackSendHolder Id="1"><Send><Manual Value="0.25" /><AutomationTarget Id="1104" /></Send></TrackSendHolder>
 					</Sends>
-					<Speaker><Manual Value="true" /></Speaker>
+					<Speaker><Manual Value="true" /><AutomationTarget Id="1105" /></Speaker>
 					<Pan><Manual Value="-0.5" /><AutomationTarget Id="1101" /></Pan>
 					<Volume><Manual Value="1.99526238" /><AutomationTarget Id="1102" /></Volume>
 				</Mixer>
@@ -203,10 +219,26 @@ const set = `<?xml version="1.0" encoding="UTF-8"?>
 					<EnumEvent Id="1" Time="16" Value="200" />
 				</Events></Automation>
 			</AutomationEnvelope>
+			<AutomationEnvelope Id="2">
+				<EnvelopeTarget><PointeeId Value="12" /></EnvelopeTarget>
+				<Automation><Events>
+					<FloatEvent Id="0" Time="-63072000" Value="0.8" />
+					<FloatEvent Id="1" Time="0" Value="0.8" />
+					<FloatEvent Id="2" Time="16" Value="1.5" />
+				</Events></Automation>
+			</AutomationEnvelope>
+			<AutomationEnvelope Id="3">
+				<EnvelopeTarget><PointeeId Value="13" /></EnvelopeTarget>
+				<Automation><Events>
+					<BoolEvent Id="0" Time="-63072000" Value="true" />
+					<BoolEvent Id="1" Time="24" Value="false" />
+				</Events></Automation>
+			</AutomationEnvelope>
 		</Envelopes></AutomationEnvelopes>
 		<DeviceChain>
 			<Mixer>
 				<Volume><Manual Value="0.8" /><AutomationTarget Id="12" /></Volume>
+				<Speaker><Manual Value="true" /><AutomationTarget Id="13" /></Speaker>
 				<Tempo><Manual Value="120" /><AutomationTarget Id="8" /></Tempo>
 				<TimeSignature><Manual Value="201" /><AutomationTarget Id="10" /></TimeSignature>
 			</Mixer>
@@ -232,6 +264,17 @@ describe("readAls", () => {
 		expect(a.bpm).toBe(120);
 		expect(a.beatsPerBar).toBe(4);
 		expect(a.master).toBe(0.8);
+		// The master's own lanes: its volume kept within Dawn's 0..1, its speaker as the mute (off at beat 24: 8 s + 8 beats at 90 bpm).
+		expect(a.masterAutomation).toEqual({
+			volume: [
+				{ t: 0, v: 0.8 },
+				{ t: 8, v: 1 },
+			],
+			mute: [
+				{ t: 0, v: 0 },
+				{ t: 13.333333, v: 1 },
+			],
+		});
 		// Beat 16 at 120 bpm is 8 s; from there 90 bpm and 3/4.
 		expect(a.tempoChanges).toEqual([{ start: 8, bpm: 90 }]);
 		expect(a.meterChanges).toEqual([{ start: 8, beatsPerBar: 3 }]);
@@ -253,10 +296,22 @@ describe("readAls", () => {
 		expect(kick.colour).toBeDefined();
 		expect(kick.output).toBe(busByName("Drums").id);
 		expect(kick.sends).toEqual([{ bus: a.buses![2]!.id, level: 0.25 }]);
+		// The send envelope rides as the send's lane (beat 4 is 2 s, beat 8 is 4 s); the speaker envelope is the mute
+		// lane the other way up (the speaker off at beat 8 is muted, 1, from 4 s; on again at beat 12, 6 s).
 		expect(kick.automation).toEqual({
 			volume: [
 				{ t: 0, v: 1 },
 				{ t: 4, v: 0.5 },
+			],
+			mute: [
+				{ t: 0, v: 0 },
+				{ t: 4, v: 1 },
+				{ t: 6, v: 0 },
+			],
+			[`send:${a.buses![2]!.id}`]: [
+				{ t: 0, v: 0.25 },
+				{ t: 2, v: 0.25 },
+				{ t: 4, v: 1 },
 			],
 		});
 		expect(busByName("Drums").gain).toBe(0.8);

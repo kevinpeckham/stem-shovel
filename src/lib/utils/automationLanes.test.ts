@@ -23,21 +23,26 @@ describe("automationLanes", () => {
 		expect(lanes.map((l) => l.key)).toEqual([
 			"volume",
 			"pan",
+			"mute",
 			"send:b1",
 			"send:b2",
 			"insert:i1:feedback",
 			"insert:i1:level",
 		]);
 		expect(lanes[0]!.fallback).toBe(0.8);
-		expect(lanes[2]!.fallback).toBe(0.4);
-		expect(lanes[3]!.fallback).toBe(0);
-		expect(lanes[2]!.range.label).toBe("Send: Reverb bus");
-		expect(lanes[4]!.range.label).toBe("Delay: Feedback");
-		expect(lanes[4]!.fallback).toBe(0.5);
+		// The mute lane's fallback is on (0): the strip's own mute button stays the fader's.
+		expect(lanes[2]!.fallback).toBe(0);
+		expect(lanes[2]!.range.step).toBe(true);
+		expect(lanes[3]!.fallback).toBe(0.4);
+		expect(lanes[4]!.fallback).toBe(0);
+		expect(lanes[3]!.range.label).toBe("Send: Reverb bus");
+		expect(lanes[5]!.range.label).toBe("Delay: Feedback");
+		expect(lanes[5]!.fallback).toBe(0.5);
 	});
 	it("a bus strip has no pan lane when none is given", () => {
 		expect(automationLanes({ gain: 1, inserts: [], buses: [] }).map((l) => l.key)).toEqual([
 			"volume",
+			"mute",
 		]);
 	});
 	it("parseLaneKey reads sends and inserts, and nothing else", () => {

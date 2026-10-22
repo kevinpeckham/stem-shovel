@@ -268,10 +268,13 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    (docs/multitrack-recorder.md "Expression lanes"). Still open:
    polyphonic pressure, timbre and release velocity.
 4. **Automation beyond volume and pan**: a send's level and its on/off,
-   mute as a lane, device parameters, and the master's own lanes. Dawn
-   has send and insert lanes in its schema (`send:<busId>`,
-   `insert:<id>:<param>`) and reads neither from a DAWproject yet; the
-   master has none.
+   mute as a lane, device parameters, and the master's own lanes. Done
+   2026-10-22 for the send's level, the mute (a stepped lane) and the
+   master's volume and mute: read and written by the DAWproject and
+   Reaper code, read from a Live set, edited in the timeline's new bus
+   and master rows (docs/multitrack-recorder.md "Wider automation").
+   Still open: a send's on/off (no such switch in Dawn) and device
+   parameters (Dawn's inserts have no device in the format; item 9).
 5. **Tempo ramps**: a `RealPoint` with `interpolation="linear"` between
    tempos (a ritardando). Dawn's map is steps; a ramp would need the grid
    and the scheduler to integrate a changing tempo.

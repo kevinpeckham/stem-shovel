@@ -733,6 +733,15 @@ belong in CLAUDE.md or docs/, not here.
 
 `typescript@7.0.2` on npm is the Go compiler: a `tsc` binary per platform (`@typescript/typescript-linux-x64` and sixteen siblings) and not the JavaScript API that tooling loads. With it installed, `bun run check` and `bun run lint` both died before doing anything, in Vite's config hook ("Cannot read properties of undefined (reading 'readFile')": something in SvelteKit's or vite-plugin-svelte's config resolution reaches for `ts.sys`, which is not there). The peer ranges say as much: svelte-check 4.7.7 wants `^5 || ^6`, @sveltejs/kit 3.1 `^6`; only vite-plus's core admits `^7`. Reverted to 6.0.3. Try again when svelte-check and kit declare 7 in their peers (`npm view svelte-check peerDependencies`).
 
+## Reaper's mute, send and master envelopes, from a rendered probe (2026-10-22)
+
+From a probe project rendered by Reaper 7.82 under Xvfb (a sine item with a `<MUTEENV`, a receive with an `<AUXVOLENV`, a `<MASTERVOLENV`), for the wider automation (utils/rpp.ts, utils/rppRead.ts).
+
+- **A mute envelope's 0 is muted, 1 is on.** The render was silent where the envelope sat at 0 and sounded where it sat at 1, so Dawn's mute lane (1 muted) goes out inverted, with shape 1 (square) on every point and `DEFSHAPE 1`, and comes back the same way.
+- **A send's envelopes live on the receiving track, right after the `AUXRECV` line they belong to**: Reaper read an `<AUXVOLENV` placed there (the send was silent until its point), and when asked through the API (`GetTrackSendInfo_Value(track, -1, i, "P_ENV:<PANENV")`) it saved the new `<AUXPANENV` in the same place. The reader walks a track's body in order and gives each `AUXRECV` the `AUXVOLENV` block that follows it.
+- **The master's envelopes are project-level blocks after `MASTER_VOLUME`** (`<MASTERVOLENV`, kin to `<MASTERPLAYSPEEDENV` in the corpus): the render came out at a quarter where its point said 0.25, and the interop's mix render went silent where the envelope reached 0. `GetTrackEnvelopeByName(master, "Volume")` found nothing, so the interop probe reads the master's envelopes by chunk name (`GetTrackEnvelope` + `GetEnvelopeStateChunk`). **The master has no mute envelope**: a `<MASTERMUTEENV` block written by hand was dropped when Reaper saved the project (its master carries volume, pan, width and play rate envelopes only), so Dawn's master mute lane is not written to a Reaper project.
+- **Reaper renders from a script with `GetSetProjectInfo(0, "RENDER_*")` and `Main_OnCommand(42230, 0)`**: `RENDER_BOUNDSFLAG` 1 (the whole project), `RENDER_FILE` a folder, `RENDER_PATTERN` the name, `RENDER_FORMAT` a base64 config (`ZXZhdyAQAAAA`: WAV, 32-bit float); the render answered its "Error opening devices" and query dialogs through xdotool as the interop runner does.
+
 ## Bitwig's DAWproject expression lanes sit where the schema allows one child (2026-10-22)
 
 From writing the clip expression lanes (utils/dawproject.ts, docs/dawproject-plan.md item 3).
