@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Convert step 3, Reaper projects both ways.** Drop a Reaper `.rpp` (with its media files beside it, or a zip of the project folder) on the converter and it reads as a DAWproject does: the tracks with their levels, pans, mutes, solos, colors and volume and pan envelopes, folders as buses and receives as sends, each item's active take as a clip with its offset, volume and fades over its file, MIDI items' notes through the tempo map, the tempo envelope with its time signatures, markers and regions, the project notes and sample rate. And the Export panel, on the converter and in Dawn, writes **A Reaper project**: an `.rpp` with a `media` folder that Reaper opens as it is, a folder per bus, a receive per send, envelopes, MIDI items, the tempo map and markers. Dawn's **Import audio, MIDI or a project…** opens a Reaper project as a new song. `bun run interop:rpp` has Reaper 7.82 open a written project and judges every part of it through Reaper's own API, then reads Reaper's re-saved file back.
+
 ## [0.144.0] - 2026-10-22
 
 ### Added

@@ -1126,6 +1126,24 @@ folder in the export's zip like the session bundle. Sandyne has one
 tempo, so a song with tempo changes keeps its seconds and not its bars;
 buses, sends, inserts, automation and markers have no place in the file.
 
+## A Reaper project (2026-10-22, docs/dawproject-plan.md step 3)
+
+The Export panel's **A Reaper project** writes the song as Reaper's own
+`.rpp` (`utils/rpp.ts`) with its media in `media/` beside it, a folder in
+the export's zip like the Sandyne project: the tempo map as the tempo
+envelope's points with their time signatures, the markers, the key and
+title in the project notes, the sample rate, the master's volume; a track
+per track with its volume, pan, mute, solo, color and envelopes; a
+folder track per bus holding the tracks routed to it, with a receive per
+send; an item per clip over its file with offset, volume and fades, or a
+MIDI item with the notes as events in ticks. Inserts stay out (Reaper's
+FX are its plugins), and a MIDI item has no instrument in Reaper until
+one is added. The import side (`utils/rppRead.ts`, through
+`utils/unpackProject.ts`) opens a Reaper project as a new song the way a
+DAWproject opens, the media chosen beside it (Reaper's project names its
+files by path and holds none). `bun run interop:rpp` proves both against
+Reaper itself (docs/daw-interop-plan.md, tier B).
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3
@@ -1231,7 +1249,7 @@ on the way, and the instruments build at the offline context's rate as
 they always did. The project files and the bundle's clips go through
 `ExportEngine.resample` (the Studio's is `audio/resampleBuffer.ts`, an
 `OfflineAudioContext` at the target rate playing the buffer, the
-browser's own resampler), so a DAWproject's `audio/`, a Sandyne project's
+browser's own resampler), so a DAWproject's `audio/`, a Reaper project's `media/`, a Sandyne project's
 `samples/` and the bundle's `clips/` all carry one rate; an engine with no
 resampler (the interop fixture in Node) keeps the sources' rates, and the
 bundle's README still names them. Recording and playback stay at the

@@ -21,17 +21,18 @@
 	import type { DawprojectRead } from "#lib/utils/dawprojectRead.js";
 
 	/**
-	 * Convert (docs/dawproject-plan.md "Roadmap", step 1): drop a DAWproject,
-	 * get it back as stems and MIDI (the session bundle), a mix, a stem per
-	 * track or bus, a repacked DAWproject or a Sandyne project, all in the
-	 * browser through Dawn's own reader (utils/unpackDawproject.ts), a
+	 * Convert (docs/dawproject-plan.md "Roadmap", steps 1 to 3): drop a
+	 * DAWproject or a Reaper project (with its media beside it), get it back
+	 * as stems and MIDI (the session bundle), a mix, a stem per track or
+	 * bus, a repacked DAWproject, a Sandyne project or a Reaper project, all
+	 * in the browser through Dawn's own readers (utils/unpackProject.ts), a
 	 * file-based engine (audio/convertEngine.ts) and the Export panel the
 	 * Studio uses. Nothing is uploaded. Everything comes out at one sample
 	 * rate (docs/multitrack-recorder.md "Sample rates"): the one most of the
 	 * project's files have, or the one chosen here; the files are decoded at
 	 * it, and a file at another rate is listed.
 	 */
-	type Unpacked = ReturnType<typeof import("#lib/utils/unpackDawproject.js").unpackDawproject>;
+	type Unpacked = import("#lib/utils/unpackProject.js").UnpackedProject;
 	let { data } = $props();
 
 	let fileName = $state("");
@@ -61,7 +62,10 @@
 	const mmss = (s: number) =>
 		`${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-	async function openFile(file: File) {
+	/** The project among the files (a `.dawproject`, `.rpp` or zip; else the first), the rest its media by name. */
+	async function openFiles(files: File[]) {
+		const file = files.find((f) => /\.(dawproject|rpp|zip)$/i.test(f.name)) ?? files[0];
+		if (!file) return;
 		reading = true;
 		results = [];
 		read = null;
@@ -69,11 +73,18 @@
 		unpacked = null;
 		fileName = file.name;
 		try {
-			const { unpackDawproject } = await import("#lib/utils/unpackDawproject.js");
-			unpacked = unpackDawproject(new Uint8Array(await file.arrayBuffer()), file.name);
+			const loose = new Map<string, Uint8Array>();
+			for (const f of files)
+				if (f !== file) loose.set(f.name, new Uint8Array(await f.arrayBuffer()));
+			const { unpackProject } = await import("#lib/utils/unpackProject.js");
+			unpacked = unpackProject(new Uint8Array(await file.arrayBuffer()), file.name, loose);
 			for (const f of unpacked.read.files)
 				if (!unpacked.entryOf(f.path))
-					unpacked.read.dropped.push(`${f.label}: its file is not in the archive`);
+					unpacked.read.dropped.push(
+						unpacked.format === "reaper"
+							? `${f.label}: ${f.path.replace(/^.*[\\/]/, "")} was not dropped with the project`
+							: `${f.label}: its file is not in the archive`,
+					);
 			rate = songSampleRate(unpacked.read.arrangement);
 			await decodeAll();
 		} catch (e) {
@@ -163,7 +174,7 @@
 	<title>{data.copy.title || "Convert"} | Free Online DAW Project Converter</title>
 	<meta
 		name="description"
-		content="Convert a DAWproject (Bitwig Studio, Cubase, Studio One, Nuendo) to stems and MIDI for Logic Pro, Pro Tools, Ableton Live, Audacity or Reaper, to a mix, or to a Sandyne project, free, in your browser. Nothing is uploaded."
+		content="Convert a DAWproject (Bitwig Studio, Cubase, Studio One, Nuendo) or a Reaper project (.rpp) to stems and MIDI for Logic Pro, Pro Tools, Ableton Live, Audacity or Reaper, to a mix, to a Reaper project, or to a Sandyne project, free, in your browser. Nothing is uploaded."
 	/>
 </svelte:head>
 
@@ -185,23 +196,25 @@
 			ondrop={(e) => {
 				e.preventDefault();
 				dragging = false;
-				const file = e.dataTransfer?.files[0];
-				if (file) void openFile(file);
+				const files = Array.from(e.dataTransfer?.files ?? []);
+				if (files.length) void openFiles(files);
 			}}
 		>
 			<input
 				bind:this={input}
 				type="file"
-				accept=".dawproject,.zip,application/vnd.bitwig.dawproject,application/zip"
+				accept=".dawproject,.rpp,.zip,.wav,.flac,.mp3,.aif,.aiff,.ogg,.m4a,application/vnd.bitwig.dawproject,application/zip"
+				multiple
 				class="sr-only"
 				aria-label="Project file"
 				onchange={(e) => {
-					const file = (e.currentTarget as HTMLInputElement).files?.[0];
-					if (file) void openFile(file);
+					const files = Array.from((e.currentTarget as HTMLInputElement).files ?? []);
+					if (files.length) void openFiles(files);
 				}}
 			/>
 			<p class="mb-3 text-15px text-blue-100/90">
-				Drop a <code>.dawproject</code> here, or choose one. It is read in your browser and never uploaded.
+				Drop a <code>.dawproject</code> or a Reaper <code>.rpp</code> here (with its media files beside
+				it), or choose them. They are read in your browser and never uploaded.
 			</p>
 			<button
 				type="button"
@@ -225,7 +238,7 @@
 					aria-label="What the file holds"
 				>
 					<dt class="opacity-70">File</dt>
-					<dd>{fileName}</dd>
+					<dd>{fileName} ({unpacked?.format === "reaper" ? "Reaper project" : "DAWproject"})</dd>
 					<dt class="opacity-70">Tracks</dt>
 					<dd>
 						{tracks.length}{buses.length

@@ -17,6 +17,7 @@ describe("ExportPanel", () => {
 				dawproject: false,
 				bundle: false,
 				sandyne: false,
+				reaper: false,
 				format: "wav",
 				bits: 24,
 				normalize: false,
@@ -31,6 +32,7 @@ describe("ExportPanel", () => {
 		await user.click(screen.getByRole("checkbox", { name: /Normalize to -14 LUFS/ }));
 		await user.click(screen.getByRole("checkbox", { name: /One zip/ }));
 		await user.click(screen.getByRole("checkbox", { name: /Trim the project files/ }));
+		await user.click(screen.getByRole("checkbox", { name: /A Reaper project/ }));
 		await user.click(screen.getByRole("button", { name: "Export" }));
 		expect(onexport).toHaveBeenLastCalledWith(
 			{
@@ -40,6 +42,7 @@ describe("ExportPanel", () => {
 				dawproject: true,
 				bundle: false,
 				sandyne: false,
+				reaper: true,
 				format: "wav",
 				bits: 16,
 				normalize: true,

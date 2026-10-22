@@ -6,7 +6,8 @@
 	/**
 	 * The export panel (docs/dawn-daw-plan.md, D3): what to render (the
 	 * mix, a stem per track, a stem per bus, a DAWproject, a session bundle
-	 * for the DAWs without one, a Sandyne project; docs/daw-interop-plan.md),
+	 * for the DAWs without one, a Sandyne project, a Reaper project;
+	 * docs/daw-interop-plan.md),
 	 * how (24- or
 	 * 16-bit WAV, normalized to the streaming target or as mixed), and
 	 * whether the files come as one zip. The caller renders (`onexport`)
@@ -34,6 +35,7 @@
 			options.dawproject,
 			options.bundle,
 			options.sandyne,
+			options.reaper,
 		].filter(Boolean).length,
 	);
 	const kb = (bytes: number) =>
@@ -100,12 +102,17 @@
 			A Sandyne project (.sand) with its samples, for the free Sandyne DAW: the tracks, clips, fades,
 			levels and the MIDI parts' notes
 		</label>
+		<label class="flex items-center gap-2 text-blue-100/90">
+			<input type="checkbox" class="accent-maximumYellow" bind:checked={options.reaper} />
+			A Reaper project (.rpp) with its media: the tracks, folders for the buses, clips, fades, levels,
+			pans, volume and pan envelopes, the MIDI parts' notes, the tempo map and markers
+		</label>
 		<label class="ml-6 flex items-center gap-2 text-blue-100/90">
 			<input
 				type="checkbox"
 				class="accent-maximumYellow"
 				bind:checked={options.trim}
-				disabled={!options.dawproject && !options.sandyne}
+				disabled={!options.dawproject && !options.sandyne && !options.reaper}
 			/>
 			Trim the project files' recordings to what plays: one file per clip, nothing a clip skips
 		</label>

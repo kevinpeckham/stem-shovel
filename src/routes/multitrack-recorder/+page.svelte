@@ -688,10 +688,14 @@
 		if (!files.length) return;
 		importing = true;
 		try {
-			// A DAWproject (or a zip holding one) is a whole song of its own, opened as a new one (docs/dawproject-plan.md); the rest land on this song.
-			const projects = files.filter((f) => /\.(dawproject|zip)$/i.test(f.name));
-			for (const f of projects) await importDawproject(f);
+			// A DAWproject (or a zip holding one) or a Reaper project is a whole song of its own, opened as a new one
+			// (docs/dawproject-plan.md); the other files are a Reaper project's media when it names them, else they land on this song.
+			const projects = files.filter((f) => /\.(dawproject|rpp|zip)$/i.test(f.name));
 			files = files.filter((f) => !projects.includes(f));
+			for (const f of projects) {
+				const used = await importDawproject(f, files);
+				files = files.filter((x) => !used.includes(x));
+			}
 			if (!files.length) return;
 			await ensureSong();
 			let track: StudioTrack | null =
@@ -774,9 +778,18 @@
 	 * signed in, kept in the browser signed out), the arrangement replaced,
 	 * the title and notes set, and a report of what did not come across.
 	 */
-	async function importDawproject(file: File) {
-		const { unpackDawproject } = await import("#lib/utils/unpackDawproject.js");
-		const { read, entryOf } = unpackDawproject(new Uint8Array(await file.arrayBuffer()), file.name);
+	async function importDawproject(file: File, loose: File[] = []): Promise<File[]> {
+		const { unpackProject } = await import("#lib/utils/unpackProject.js");
+		const looseBytes = new Map<string, Uint8Array>();
+		for (const f of loose) looseBytes.set(f.name, new Uint8Array(await f.arrayBuffer()));
+		const { read, entryOf, format } = unpackProject(
+			new Uint8Array(await file.arrayBuffer()),
+			file.name,
+			looseBytes,
+		);
+		const used = loose.filter((f) =>
+			read.files.some((r) => entryOf(r.path) === looseBytes.get(f.name)),
+		);
 		// A fresh song to hold it: made in the account, or the browser-kept one started over.
 		if (studio.running) studio.stop();
 		if (data.account) {
@@ -793,7 +806,7 @@
 				studio.arrangement.clips.length &&
 				!confirm(`Open “${read.title}” in place of the song kept in this browser?`)
 			)
-				return;
+				return used;
 			await startOverLocal(false);
 			title = read.title;
 		}
@@ -804,7 +817,11 @@
 		for (const f of read.files) {
 			const bytes = entryOf(f.path);
 			if (!bytes) {
-				read.dropped.push(`${f.label}: its file is not in the archive`);
+				read.dropped.push(
+					format === "reaper"
+						? `${f.label}: ${f.path.replace(/^.*[\\/]/, "")} was not chosen with the project`
+						: `${f.label}: its file is not in the archive`,
+				);
 				lost.add(f.sourceId);
 				continue;
 			}
@@ -871,6 +888,7 @@
 				{ kind: "error" },
 			);
 		else notify(opened);
+		return used;
 	}
 	/** A DAWproject attachment opened from a song's Files (docs/dawproject-plan.md, phase 2). */
 	async function openAttachment(file: { url: string; filename: string; title: string }) {
@@ -2055,11 +2073,11 @@
 					</button>
 					<label class="device-button-sm px-3 cursor-pointer {importing ? 'opacity-60' : ''}">
 						<span class="i-ph-file-audio" aria-hidden="true"></span>
-						{importing ? "Importing…" : "Import audio, MIDI or DAWproject…"}
+						{importing ? "Importing…" : "Import audio, MIDI or a project…"}
 						<input
 							type="file"
 							class="sr-only"
-							accept="{DEMO_ACCEPT},.mid,.midi,.dawproject,.zip"
+							accept="{DEMO_ACCEPT},.mid,.midi,.dawproject,.rpp,.zip"
 							multiple
 							disabled={importing}
 							onchange={(e) => {

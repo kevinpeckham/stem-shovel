@@ -75,6 +75,7 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	await panel.getByRole("checkbox", { name: /A session bundle/ }).check();
 	await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
 	await panel.getByRole("checkbox", { name: /Trim the project files/ }).check();
+	await panel.getByRole("checkbox", { name: /A Reaper project/ }).check();
 	const [download] = await Promise.all([
 		page.waitForEvent("download", { timeout: 60_000 }),
 		panel.getByRole("button", { name: "Export" }).click(),
@@ -92,6 +93,13 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	const header = new DataView(trimmed.buffer, trimmed.byteOffset);
 	// Two seconds at the song's 48 kHz, 24-bit, however many channels the file has (the test stem is mono).
 	expect(header.getUint32(40, true)).toBe(2 * 48000 * header.getUint16(22, true) * 3);
+	// The Reaper project as a folder: the clip over its trimmed media, the MIDI part as events.
+	expect(names).toContain("Convert check Reaper/Convert check.rpp");
+	const rppText = strFromU8(zip["Convert check Reaper/Convert check.rpp"]!);
+	expect(rppText).toContain("TEMPO 100 3 4 0");
+	expect(rppText).toContain('NAME "Take"');
+	expect(rppText).toContain("<SOURCE MIDI");
+	expect(names.filter((n) => n.startsWith("Convert check Reaper/media/"))).toHaveLength(1);
 	expect(names).toContain("Convert check - Keys.wav");
 	expect(names).not.toContain("Convert check - Piano.wav");
 	const folder = "Convert check session/";
@@ -110,5 +118,83 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	await expect(panel.getByRole("list", { name: "Exported files" })).toContainText(
 		"Convert check.wav",
 	);
+	expect(errors).toEqual([]);
+});
+
+/**
+ * A Reaper project dropped with its media beside it: the page finds the
+ * file by name, reports the Reaper format, and converts to a DAWproject
+ * holding the clip over the media and the notes of the MIDI item.
+ */
+test("reads a Reaper project with its media and converts it to a DAWproject", async ({
+	page,
+	errors,
+}) => {
+	test.setTimeout(120_000);
+	const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
+  SAMPLERATE 48000 0 0
+  TEMPO 90 4 4 0
+  MARKER 1 2 Verse 0 0 1
+  <TRACK
+    NAME Keys
+    VOLPAN 0.8 0 -1 -1 1
+    MUTESOLO 0 0 0
+    <ITEM
+      POSITION 0.5
+      LENGTH 2
+      NAME Take
+      VOLPAN 1 0 1 -1
+      SOFFS 0
+      <SOURCE WAVE
+        FILE "/somewhere/else/keys.wav"
+      >
+    >
+  >
+  <TRACK
+    NAME Piano
+    <ITEM
+      POSITION 1
+      LENGTH 1
+      NAME Chords
+      SOFFS 0 0
+      <SOURCE MIDI
+        HASDATA 1 960 QN
+        E 0 90 3c 66
+        E 720 80 3c 00
+        E 720 b0 7b 00
+      >
+    >
+  >
+>`;
+	const dir = await mkdtemp(path.join(tmpdir(), "convert-rpp-"));
+	const file = path.join(dir, "reaper-check.rpp");
+	await writeFile(file, rpp);
+	await page.goto("/convert", { waitUntil: "networkidle" });
+	await page
+		.locator("input[type=file]")
+		.setInputFiles([file, path.resolve("static/stems/keys.wav")]);
+	const summary = page.getByLabel("What the file holds");
+	await expect(summary).toContainText("reaper-check.rpp (Reaper project)");
+	await expect(summary).toContainText("Keys, Piano");
+	await expect(summary).toContainText("1 audio, 1 MIDI, over 0:03");
+	await expect(summary).toContainText("1 of 1 decoded");
+	await expect(summary).toContainText("90 bpm, 4/4, 1 marker");
+	const panel = page.locator("[data-export-panel]");
+	await panel.getByRole("checkbox", { name: /The mix/ }).uncheck();
+	await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
+	const [download] = await Promise.all([
+		page.waitForEvent("download", { timeout: 60_000 }),
+		panel.getByRole("button", { name: "Export" }).click(),
+	]);
+	expect(download.suggestedFilename()).toBe("reaper-check.dawproject");
+	const project = unzipSync(new Uint8Array(await readFile((await download.path())!)));
+	const xml = strFromU8(project["project.xml"]!);
+	expect(xml).toContain('<Tempo unit="bpm" value="90.000000"');
+	expect(xml).toContain('name="Keys"');
+	expect(xml).toContain('<Clip time="0.500000" duration="2.000000"');
+	// The note at 0 lasting 720 ticks at 90 bpm: half a second.
+	expect(xml).toContain('<Note time="0.000000" duration="0.500000" channel="0" key="60"');
+	expect(xml).toContain('<Marker time="2.000000" name="Verse"/>');
+	expect(Object.keys(project).filter((n) => n.startsWith("audio/"))).toHaveLength(1);
 	expect(errors).toEqual([]);
 });

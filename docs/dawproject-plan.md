@@ -355,6 +355,28 @@ decoding. So the conversions, in the order they come free:
    format (every public project on GitHub is readable in an editor), the
    DAW most likely to be used by Stem Shovel's kind of musician without
    DAWproject support, and ProjectConverter has shown the mapping works.
+   **Done 2026-10-22**, both ways: `utils/rppRead.ts` reads a project
+   into the same shape the DAWproject reader gives (tracks with levels,
+   pans, mutes, solos, colors and volume and pan envelopes; folders as
+   buses and receives as sends; each item's active take as a clip in
+   seconds with its offset, volume and fades over its media file, or a
+   MIDI take's notes through the tempo map; the tempo envelope's points
+   with their time signatures; markers and regions; the notes; the sample
+   rate), reporting what has no place in Dawn and what it normalized, and
+   `utils/rpp.ts` writes one (`ExportOptions.reaper`, "A Reaper project"
+   on the Export panel: a folder per bus holding its tracks, a receive per
+   send, envelopes, items over `media/` beside the file, MIDI items as
+   events in ticks, the tempo map, markers, the key in the project notes).
+   `utils/unpackProject.ts` opens either kind of file, a Reaper project's
+   media coming as the files dropped beside it or inside a zip; the
+   converter and Dawn's import ("Import audio, MIDI or a project…") take
+   both. The corpus is Reaper's own saving of the interop bundle
+   (tests/rpp/reaper-7.82.RPP); `bun run interop:rpp`
+   (scripts/interop/rpp.ts, rpp.lua) has Reaper 7.82 open a written
+   project under Xvfb and judges what it holds through its API, then reads
+   Reaper's re-saved file back through the reader: every check passes,
+   including the pan envelope, which Reaper stores the other way up from
+   its knob (FINDINGS.md).
 4. **Ableton Live `.als` → DAWproject.** A gzipped XML set; DawVert's
    reader shows what the tags mean. One way only: Live cannot read
    DAWproject, and writing a Live set that Live accepts is a deeper hole.

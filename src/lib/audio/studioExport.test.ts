@@ -164,6 +164,21 @@ describe("exportSong", () => {
 		expect(strFromU8(entries["metadata.xml"]!)).toContain("<Title>Exiles</Title>");
 		expect(entries["audio/s1.wav"]!.length).toBe(44 + 48000 * 2 * 3);
 	});
+	it("writes a Reaper project with its media beside it, a folder in the export's zip", async () => {
+		const files = await exportSong(
+			engine(),
+			"My Song",
+			{ ...EXPORT_DEFAULTS, mix: false, reaper: true },
+			app,
+		);
+		expect(files.map((f) => f.name)).toEqual(["My Song Reaper.zip"]);
+		expect(files[0]!.folder).toBe("My Song Reaper");
+		const inside = unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()));
+		expect(Object.keys(inside).sort()).toEqual(["My Song.rpp", "media/s1.wav"]);
+		const text = strFromU8(inside["My Song.rpp"]!);
+		expect(text).toContain('FILE "media/s1.wav"');
+		expect(text).toContain("|Title: My Song");
+	});
 	it("the repack: the audio at 16 bits, and trimmed to what each clip plays, the clips rewritten from zero", async () => {
 		// The clip plays half a second from a quarter second in; the source is a second long.
 		const e = {

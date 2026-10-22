@@ -7,6 +7,7 @@ import { dawproject } from "#lib/utils/dawproject.js";
 import { measureLoudness, type LoudnessReading } from "#lib/utils/measureLoudness.js";
 import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { normalizationGain } from "#lib/utils/normalizationGain.js";
+import { rppProject } from "#lib/utils/rpp.js";
 import { sandProject } from "#lib/utils/sandProject.js";
 import { sessionMidi } from "#lib/utils/sessionMidi.js";
 import { sessionReadme } from "#lib/utils/sessionReadme.js";
@@ -53,6 +54,8 @@ export interface ExportOptions {
 	bundle: boolean;
 	/** A Sandyne project (`.sand`) with its samples, for the free Sandyne DAW (24-bit WAV beside it). */
 	sandyne: boolean;
+	/** A Reaper project (`.rpp`) with its media beside it (utils/rpp.ts). */
+	reaper?: boolean;
 	/** The audio files' format; `bits` applies to WAV only (the project files' audio is always WAV, at `bits`). */
 	format: "wav" | "mp3";
 	bits: 16 | 24;
@@ -71,6 +74,7 @@ export const EXPORT_DEFAULTS: ExportOptions = {
 	dawproject: false,
 	bundle: false,
 	sandyne: false,
+	reaper: false,
 	format: "wav",
 	bits: 24,
 	trim: false,
@@ -194,6 +198,22 @@ export async function exportSong(
 			blob: await zipBlobs(entries),
 			entries,
 			folder: `${base} Sandyne`,
+		});
+	}
+	if (options.reaper) {
+		onprogress?.("Writing the Reaper project…");
+		const { entries, audio, arrangement } = await sourceFiles(engine, "media", options);
+		const text = new TextEncoder();
+		entries.unshift({
+			name: `${base}.rpp`,
+			data: text.encode(rppProject({ title, arrangement, audio, application })),
+			compress: true,
+		});
+		out.push({
+			name: `${base} Reaper.zip`,
+			blob: await zipBlobs(entries),
+			entries,
+			folder: `${base} Reaper`,
 		});
 	}
 	return out;
