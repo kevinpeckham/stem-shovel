@@ -465,4 +465,44 @@ describe("sample rates", () => {
 		expect(read.files.map((f) => f.sampleRate)).toEqual([32000, undefined]);
 		expect(read.arrangement.sampleRate).toBeUndefined();
 	});
+	it("reports what it normalized: float tempo, beats, decibels, alpha colors, a missing time signature, an alias", () => {
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="100.000167" id="t"/></Transport>
+  <Structure>
+    <Track contentType="tracks" id="io" name="Input/Output"/>
+    <Track contentType="audio" id="tr" name="Guitar" color="#e0a0a0ff"><Channel role="regular" id="ch"><Volume unit="decibel" value="-6" id="v"/></Channel></Track>
+    <Track contentType="notes" id="tr2" name="Keys"><Channel role="regular" id="ch2"><Volume unit="linear" value="1" id="v2"/></Channel></Track>
+  </Structure>
+  <Arrangement id="arr">
+    <TempoAutomation unit="bpm" timeUnit="beats" id="ta"><Target parameter="t"/><RealPoint time="0" value="100" interpolation="hold"/><RealPoint time="8" value="120" interpolation="linear"/></TempoAutomation>
+    <Lanes timeUnit="beats" id="l"><Lanes track="tr2" id="l2"><Clips id="c">
+      <Clip time="0.0" duration="4.0" name="Riff" id="clip1"><Notes id="n1"><Note time="0" duration="1" key="60" vel="0.5"/></Notes></Clip>
+      <Clip time="8.0" duration="4.0" reference="n1" name="Alias Riff"/>
+    </Clips></Lanes></Lanes>
+  </Arrangement>
+</Project>`;
+		const read = readDawproject(xml, null, "lint");
+		expect(read.fixed).toEqual([
+			"Tempo 100.000167 read as 100",
+			"No time signature: 4/4 assumed",
+			"Tempo ramps read as steps",
+			"Input/Output: an empty folder, skipped",
+			"Colors with an alpha byte, read as six digits",
+			"Colors outside Dawn's palette, left uncolored",
+			"Levels in decibels, converted to linear",
+			"Alias Riff: an alias, written as a copy",
+			"Times in beats, converted to seconds through the tempo map",
+		]);
+		expect(read.dropped).toEqual([]);
+	});
+	it("a clean file in seconds normalizes nothing", () => {
+		const xml = `<Project version="1.0">
+  <Transport><Tempo unit="bpm" value="120" id="t"/><TimeSignature numerator="4" denominator="4" id="s"/></Transport>
+  <Structure><Track contentType="audio" id="tr" name="Guitar"><Channel role="regular" id="ch"><Volume unit="linear" value="0.8" id="v"/></Channel></Track></Structure>
+  <Arrangement id="arr"><Lanes timeUnit="seconds" id="l"><Lanes track="tr" id="l2"><Clips id="c">
+    <Clip time="1" duration="2" name="Take"><Audio algorithm="raw" channels="2" duration="2" sampleRate="48000" id="a"><File path="audio/take.wav"/></Audio></Clip>
+  </Clips></Lanes></Lanes></Arrangement>
+</Project>`;
+		expect(readDawproject(xml, null, "clean").fixed).toEqual([]);
+	});
 });

@@ -73,6 +73,8 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	await expect(panel.getByText(/A stem per track \(1\)/)).toBeVisible();
 	await panel.getByRole("checkbox", { name: /A stem per track/ }).check();
 	await panel.getByRole("checkbox", { name: /A session bundle/ }).check();
+	await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
+	await panel.getByRole("checkbox", { name: /Trim the project files/ }).check();
 	const [download] = await Promise.all([
 		page.waitForEvent("download", { timeout: 60_000 }),
 		panel.getByRole("button", { name: "Export" }).click(),
@@ -81,6 +83,15 @@ test("reads a DAWproject and converts it to a session bundle and stems", async (
 	const zip = unzipSync(new Uint8Array(await readFile((await download.path())!)));
 	const names = Object.keys(zip).sort();
 	expect(names).toContain("Convert check.wav");
+	// The repack: the clip's two seconds of the four-second file, played from zero.
+	const repack = unzipSync(zip["Convert check.dawproject"]!);
+	const audio = Object.keys(repack).filter((n) => n.startsWith("audio/"));
+	expect(audio).toHaveLength(1);
+	expect(strFromU8(repack["project.xml"]!)).toContain('playStart="0.000000"');
+	const trimmed = repack[audio[0]!]!;
+	const header = new DataView(trimmed.buffer, trimmed.byteOffset);
+	// Two seconds at the song's 48 kHz, 24-bit, however many channels the file has (the test stem is mono).
+	expect(header.getUint32(40, true)).toBe(2 * 48000 * header.getUint16(22, true) * 3);
 	expect(names).toContain("Convert check - Keys.wav");
 	expect(names).not.toContain("Convert check - Piano.wav");
 	const folder = "Convert check session/";

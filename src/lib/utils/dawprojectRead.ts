@@ -37,6 +37,8 @@ export interface DawprojectRead {
 	files: DawprojectFile[];
 	/** What did not come across, in words for the import report. */
 	dropped: string[];
+	/** What came across changed: another writer's ways read into Dawn's (float-noise tempos, beats, decibels, alpha colors…), in words for the report. */
+	fixed: string[];
 }
 
 type TimeUnit = "beats" | "seconds";
@@ -66,6 +68,10 @@ export function readDawproject(
 		throw new Error("Not a DAWproject: project.xml did not parse");
 	const root = doc.documentElement;
 	const dropped: string[] = [];
+	const fixed: string[] = [];
+	const fix = (what: string) => {
+		if (!fixed.includes(what)) fixed.push(what);
+	};
 	const drop = (what: string) => {
 		if (!dropped.includes(what)) dropped.push(what);
 	};
@@ -98,15 +104,26 @@ export function readDawproject(
 	const laneTempo: { start: number; bpm: number }[] = [];
 	// Bitwig writes its tempo with float noise ("100.000167"): two decimals is what a tempo means.
 	const round2 = (v: number) => Math.round(v * 100) / 100;
-	const bpm = clamp(round2(num(tempoEl, "value", 120)), 30, 300);
+	const rawBpm = num(tempoEl, "value", 120);
+	const bpm = clamp(round2(rawBpm), 30, 300);
+	if (!tempoEl) fix("No tempo: 120 bpm assumed");
+	else if (bpm !== rawBpm) fix(`Tempo ${rawBpm} read as ${bpm}`);
 	const sigEl = kid(transport, "TimeSignature");
 	const beatsPerBar = clamp(Math.round(num(sigEl, "numerator", 4)), 2, 7);
+	if (!sigEl) fix("No time signature: 4/4 assumed");
+	else {
+		const numerator = num(sigEl, "numerator", 4);
+		const denominator = num(sigEl, "denominator", 4);
+		if (numerator !== beatsPerBar || denominator !== 4)
+			fix(`Time signature ${numerator}/${denominator} read as ${beatsPerBar}/4`);
+	}
 	const arrangementEl = kid(root, "Arrangement");
 	/** Tempo steps by beat, the song's own first; a tempo automation's points become steps (Dawn's map is steps). */
 	const tempoSteps: { beat: number; bpm: number }[] = [{ beat: 0, bpm }];
 	for (const p of kids(kid(arrangementEl, "TempoAutomation"), "RealPoint")) {
 		const beat = num(p, "time", 0);
 		const value = clamp(round2(num(p, "value", bpm)), 30, 300);
+		if (beat > 0 && attr(p, "interpolation") === "linear") fix("Tempo ramps read as steps");
 		if (beat <= 0) tempoSteps[0] = { beat: 0, bpm: value };
 		else tempoSteps.push({ beat, bpm: value });
 	}
@@ -125,7 +142,12 @@ export function readDawproject(
 		}
 		return s;
 	};
-	const toSeconds = (v: number, unit: TimeUnit) => (unit === "beats" ? beatsToSeconds(v) : v);
+	let beatsUsed = false;
+	const toSeconds = (v: number, unit: TimeUnit) => {
+		if (unit !== "beats") return v;
+		if (v !== 0) beatsUsed = true;
+		return beatsToSeconds(v);
+	};
 	/** The time unit an element names in `name` ("timeUnit", "contentTimeUnit", "fadeTimeUnit"), else the one inherited. */
 	const unitOf = (
 		el: Element | null | undefined,
@@ -148,15 +170,20 @@ export function readDawproject(
 	// Cubase writes colors with an alpha byte ("#a2eabfff"); the tint is the first six digits.
 	const tint = (hex: string | null) => {
 		const six = hex?.match(/^#?([0-9a-f]{6})/i)?.[1];
-		return six
-			? STEM_TINTS.find((t) => t.hex.toLowerCase() === `#${six.toLowerCase()}`)?.id
-			: undefined;
+		if (!six) return undefined;
+		if (hex!.replace(/^#/, "").length > 6) fix("Colors with an alpha byte, read as six digits");
+		const id = STEM_TINTS.find((t) => t.hex.toLowerCase() === `#${six.toLowerCase()}`)?.id;
+		if (!id) fix("Colors outside Dawn's palette, left uncolored");
+		return id;
 	};
 	const volumeOf = (el: Element | null): number => {
 		if (!el) return 1;
 		const value = num(el, "value", 1);
 		const unit = attr(el, "unit");
-		if (unit === "decibel") return clamp(round4(Math.pow(10, value / 20)), 0, STUDIO_FADER_MAX);
+		if (unit === "decibel") {
+			fix("Levels in decibels, converted to linear");
+			return clamp(round4(Math.pow(10, value / 20)), 0, STUDIO_FADER_MAX);
+		}
 		if (unit === "normalized") return clamp(round4(value * num(el, "max", 1)), 0, STUDIO_FADER_MAX);
 		return clamp(value, 0, STUDIO_FADER_MAX);
 	};
@@ -189,7 +216,10 @@ export function readDawproject(
 		const children = kids(el, "Track");
 		const trackId = attr(el, "id");
 		// A folder with nothing in it and no channel (Cubase's "Input/Output" track, contentType "tracks") is not a track.
-		if (!channel && children.length === 0) return;
+		if (!channel && children.length === 0) {
+			fix(`${name}: an empty folder, skipped`);
+			return;
+		}
 		if (role === "master") {
 			master = clamp(volumeOf(kid(channel, "Volume")), 0, 1);
 			const owner: Owner = { kind: "master", id: "master", name };
@@ -321,6 +351,7 @@ export function readDawproject(
 				drop(`${name || "A clip"} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
 				return;
 			}
+			fix(`${name || "An alias clip"}: an alias, written as a copy`);
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -535,6 +566,7 @@ export function readDawproject(
 	const rootLanes = kid(arrangementEl, "Lanes");
 	if (rootLanes) readLanes(rootLanes, null, unitOf(rootLanes, "beats"));
 	readMarkers(kid(arrangementEl, "Markers"), "beats");
+	if (beatsUsed) fix("Times in beats, converted to seconds through the tempo map");
 	if (kid(root, "Scenes")) drop("clip launcher scenes");
 	for (const [ownerId, lanes] of automation) {
 		const t = tracks.find((x) => x.id === ownerId);
@@ -616,5 +648,6 @@ export function readDawproject(
 		arrangement,
 		files,
 		dropped,
+		fixed,
 	};
 }

@@ -271,6 +271,18 @@
 							: ""}
 					</dd>
 				</dl>
+				{#if read.fixed.length}
+					<details class="text-13px">
+						<summary class="cursor-pointer opacity-80">
+							Normalized ({read.fixed.length})
+						</summary>
+						<ul class="mt-1 list-disc pl-5 opacity-80">
+							{#each read.fixed as line (line)}
+								<li>{line}</li>
+							{/each}
+						</ul>
+					</details>
+				{/if}
 				{#if read.dropped.length || undecoded.length}
 					<details class="text-13px">
 						<summary class="cursor-pointer opacity-80">

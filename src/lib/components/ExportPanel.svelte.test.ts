@@ -20,6 +20,7 @@ describe("ExportPanel", () => {
 				format: "wav",
 				bits: 24,
 				normalize: false,
+				trim: false,
 			},
 			true,
 		);
@@ -29,6 +30,7 @@ describe("ExportPanel", () => {
 		await user.click(screen.getByRole("radio", { name: "16-bit WAV" }));
 		await user.click(screen.getByRole("checkbox", { name: /Normalize to -14 LUFS/ }));
 		await user.click(screen.getByRole("checkbox", { name: /One zip/ }));
+		await user.click(screen.getByRole("checkbox", { name: /Trim the project files/ }));
 		await user.click(screen.getByRole("button", { name: "Export" }));
 		expect(onexport).toHaveBeenLastCalledWith(
 			{
@@ -41,6 +43,7 @@ describe("ExportPanel", () => {
 				format: "wav",
 				bits: 16,
 				normalize: true,
+				trim: true,
 			},
 			false,
 		);
@@ -50,6 +53,8 @@ describe("ExportPanel", () => {
 		render(ExportPanel, { props: { trackCount: 0, busCount: 0, busy: false, onexport: vi.fn() } });
 		expect(screen.getByRole("checkbox", { name: /A stem per track/ })).toBeDisabled();
 		expect(screen.getByRole("checkbox", { name: /A stem per bus/ })).toBeDisabled();
+		// The trim belongs to the project files: nothing to trim until one is chosen.
+		expect(screen.getByRole("checkbox", { name: /Trim the project files/ })).toBeDisabled();
 		await user.click(screen.getByRole("checkbox", { name: /The mix/ }));
 		expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
 	});

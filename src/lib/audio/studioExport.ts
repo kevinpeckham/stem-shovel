@@ -53,10 +53,15 @@ export interface ExportOptions {
 	bundle: boolean;
 	/** A Sandyne project (`.sand`) with its samples, for the free Sandyne DAW (24-bit WAV beside it). */
 	sandyne: boolean;
-	/** The audio files' format; `bits` applies to WAV only. */
+	/** The audio files' format; `bits` applies to WAV only (the project files' audio is always WAV, at `bits`). */
 	format: "wav" | "mp3";
 	bits: 16 | 24;
 	normalize: boolean;
+	/**
+	 * The project files' audio trimmed to what plays: one file per clip over [offset, offset + duration)
+	 * and the clip from its start, so nothing a clip skips travels (the converter's repack; docs/dawproject-plan.md).
+	 */
+	trim?: boolean;
 }
 
 export const EXPORT_DEFAULTS: ExportOptions = {
@@ -68,6 +73,7 @@ export const EXPORT_DEFAULTS: ExportOptions = {
 	sandyne: false,
 	format: "wav",
 	bits: 24,
+	trim: false,
 	normalize: false,
 };
 
@@ -161,8 +167,8 @@ export async function exportSong(
 		}
 	if (options.dawproject) {
 		onprogress?.("Writing the DAWproject…");
-		const { entries, audio } = await sourceFiles(engine, "audio");
-		const { project, metadata } = dawproject({ title, arrangement: a, audio, application });
+		const { entries, audio, arrangement } = await sourceFiles(engine, "audio", options);
+		const { project, metadata } = dawproject({ title, arrangement, audio, application });
 		const text = new TextEncoder();
 		entries.unshift(
 			{ name: "project.xml", data: text.encode(project), compress: true },
@@ -176,11 +182,11 @@ export async function exportSong(
 	if (options.bundle) out.push(await sessionBundle(engine, title, application, onprogress));
 	if (options.sandyne) {
 		onprogress?.("Writing the Sandyne project…");
-		const { entries, audio } = await sourceFiles(engine, "samples");
+		const { entries, audio, arrangement } = await sourceFiles(engine, "samples", options);
 		const text = new TextEncoder();
 		entries.unshift({
 			name: `${base}.sand`,
-			data: text.encode(sandProject({ title, arrangement: a, audio, application })),
+			data: text.encode(sandProject({ title, arrangement, audio, application })),
 			compress: true,
 		});
 		out.push({
@@ -204,27 +210,67 @@ async function sourceAtSongRate(
 	return engine.resample(buffer, rate);
 }
 
-/** Every clip's source as a 24-bit WAV under `dir/`, once each, at the song's rate, with what the project files need to know of it. */
-async function sourceFiles(engine: ExportEngine, dir: string) {
+/**
+ * The audio the project files carry, as WAV at `options.bits` under `dir/`, at
+ * the song's rate, with what the project files need to know of it, and the
+ * arrangement to write: every clip's source once each, as it is; or, with
+ * `options.trim`, one file per clip holding only what the clip plays, and
+ * the clips rewritten to play those from zero (the repack's trim).
+ */
+async function sourceFiles(
+	engine: ExportEngine,
+	dir: string,
+	options: Pick<ExportOptions, "bits" | "trim">,
+) {
 	const entries: ZipEntry[] = [];
 	const audio = new Map<
 		string,
 		{ path: string; durationSeconds: number; sampleRate: number; channels: number }
 	>();
-	for (const c of engine.arrangement.clips) {
-		if (!c.sourceId || audio.has(c.sourceId)) continue;
-		const buffer = await sourceAtSongRate(engine, c.sourceId);
-		if (!buffer) continue;
-		const path = `${dir}/${c.sourceId}.wav`;
-		entries.push({ name: path, data: encodeWav24(channelsOf(buffer), buffer.sampleRate) });
-		audio.set(c.sourceId, {
-			path,
-			durationSeconds: buffer.duration,
-			sampleRate: buffer.sampleRate,
-			channels: buffer.numberOfChannels,
-		});
+	const encode = (channels: Float32Array[], sampleRate: number) =>
+		options.bits === 16 ? encodeWav(channels, sampleRate) : encodeWav24(channels, sampleRate);
+	const a = engine.arrangement;
+	if (!options.trim) {
+		for (const c of a.clips) {
+			if (!c.sourceId || audio.has(c.sourceId)) continue;
+			const buffer = await sourceAtSongRate(engine, c.sourceId);
+			if (!buffer) continue;
+			const path = `${dir}/${c.sourceId}.wav`;
+			entries.push({ name: path, data: encode(channelsOf(buffer), buffer.sampleRate) });
+			audio.set(c.sourceId, {
+				path,
+				durationSeconds: buffer.duration,
+				sampleRate: buffer.sampleRate,
+				channels: buffer.numberOfChannels,
+			});
+		}
+		return { entries, audio, arrangement: a };
 	}
-	return { entries, audio };
+	const clips: StudioArrangement["clips"] = [];
+	for (const c of a.clips) {
+		const buffer = c.sourceId ? await sourceAtSongRate(engine, c.sourceId) : null;
+		if (!buffer) {
+			clips.push(c);
+			continue;
+		}
+		const sr = buffer.sampleRate;
+		const from = Math.min(buffer.length, Math.max(0, Math.round(c.offset * sr)));
+		const to = Math.min(
+			buffer.length,
+			Math.max(from + 1, Math.round((c.offset + c.duration) * sr)),
+		);
+		const channels = channelsOf(buffer).map((ch) => ch.slice(from, to));
+		const path = `${dir}/${c.id}.wav`;
+		entries.push({ name: path, data: encode(channels, sr) });
+		audio.set(c.id, {
+			path,
+			durationSeconds: (to - from) / sr,
+			sampleRate: sr,
+			channels: channels.length,
+		});
+		clips.push({ ...c, sourceId: c.id, offset: 0 });
+	}
+	return { entries, audio, arrangement: { ...a, clips } };
 }
 
 /**

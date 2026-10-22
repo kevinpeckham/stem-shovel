@@ -858,7 +858,10 @@
 		selectedIds = [];
 		const tracks = arrangement.tracks.length;
 		const clips = arrangement.clips.length;
-		const opened = `“${read.title}” opened: ${tracks} ${tracks === 1 ? "track" : "tracks"}, ${clips} ${clips === 1 ? "clip" : "clips"}`;
+		const fixedNote = read.fixed.length
+			? ` Read into Dawn's ways: ${read.fixed.slice(0, 6).join("; ")}${read.fixed.length > 6 ? `; and ${read.fixed.length - 6} more` : ""}.`
+			: "";
+		const opened = `“${read.title}” opened: ${tracks} ${tracks === 1 ? "track" : "tracks"}, ${clips} ${clips === 1 ? "clip" : "clips"}${fixedNote}`;
 		// A big session drops hundreds of plugins: the first dozen by name, the rest as a count.
 		const shown = read.dropped.slice(0, 12);
 		const more = read.dropped.length - shown.length;

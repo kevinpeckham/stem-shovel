@@ -164,6 +164,30 @@ describe("exportSong", () => {
 		expect(strFromU8(entries["metadata.xml"]!)).toContain("<Title>Exiles</Title>");
 		expect(entries["audio/s1.wav"]!.length).toBe(44 + 48000 * 2 * 3);
 	});
+	it("the repack: the audio at 16 bits, and trimmed to what each clip plays, the clips rewritten from zero", async () => {
+		// The clip plays half a second from a quarter second in; the source is a second long.
+		const e = {
+			...engine(),
+			arrangement: {
+				...arrangement,
+				clips: [{ ...arrangement.clips[0]!, offset: 0.25, duration: 0.5 }],
+			},
+		};
+		const files = await exportSong(
+			e,
+			"Trim",
+			{ ...EXPORT_DEFAULTS, mix: false, dawproject: true, bits: 16, trim: true },
+			app,
+		);
+		const entries = unzipSync(new Uint8Array(await files[0]!.blob.arrayBuffer()));
+		expect(Object.keys(entries).sort()).toEqual(["audio/c1.wav", "metadata.xml", "project.xml"]);
+		// 44 bytes of header, then two bytes a sample, two channels, half a second at 48 kHz.
+		expect(entries["audio/c1.wav"]!.length).toBe(44 + 24000 * 2 * 2);
+		const xml = strFromU8(entries["project.xml"]!);
+		expect(xml).toContain('<File path="audio/c1.wav"/>');
+		expect(xml).toContain('playStart="0.000000"');
+		expect(xml).toContain('duration="0.500000"');
+	});
 	it("bundles files into one zip named after the song", async () => {
 		const files = await exportSong(engine(), "A/B: C", { ...EXPORT_DEFAULTS, tracks: true }, app);
 		const zip = await bundleExport("A/B: C", files);

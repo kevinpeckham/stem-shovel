@@ -339,6 +339,18 @@ decoding. So the conversions, in the order they come free:
    and back, bit depths), the trims applied, a report of what the file
    holds: a "lint and repack" that also normalizes other writers' quirks
    (the dialects phase 3 found) into clean files for picky importers.
+   **Done 2026-10-22**, in the browser: the audio comes out as WAV at the
+   panel's bit depth (16 or 24; FLAC and MP3 in, WAV out, so "back to
+   FLAC" stays the jobs function's, through Dawn's "DAWproject in the
+   song's files" for a signed-in user), `ExportOptions.trim` writes one
+   file per clip holding only what the clip plays with the clip rewritten
+   from zero (`sourceFiles` in audio/studioExport.ts; the Sandyne project
+   takes it too), and the reader reports what it read into Dawn's ways
+   (`DawprojectRead.fixed`: float-noise tempos, beats to seconds,
+   decibels to linear, alpha colors and colors outside the palette, an
+   empty folder, a missing time signature, tempo ramps as steps, an alias
+   as a copy) under "Normalized" on the page beside "Not carried across",
+   and in Dawn's import notification.
 3. **Reaper `.rpp` ↔ DAWproject.** Reaper's project is a documented text
    format (every public project on GitHub is readable in an editor), the
    DAW most likely to be used by Stem Shovel's kind of musician without

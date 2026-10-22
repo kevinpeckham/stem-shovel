@@ -100,6 +100,15 @@
 			A Sandyne project (.sand) with its samples, for the free Sandyne DAW: the tracks, clips, fades,
 			levels and the MIDI parts' notes
 		</label>
+		<label class="ml-6 flex items-center gap-2 text-blue-100/90">
+			<input
+				type="checkbox"
+				class="accent-maximumYellow"
+				bind:checked={options.trim}
+				disabled={!options.dawproject && !options.sandyne}
+			/>
+			Trim the project files' recordings to what plays: one file per clip, nothing a clip skips
+		</label>
 	</fieldset>
 	<fieldset class="grid gap-1.5" disabled={busy}>
 		<legend class="mb-1 text-11px uppercase tracking-wide opacity-70">How</legend>
