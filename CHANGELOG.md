@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.148.0] - 2026-10-22
+
 ### Added
 
 - **Clip looping in Dawn.** **Loop** in the clip bar (Shift+L) makes what a clip shows its loop; drag its right edge out past the recording's end and the loop plays round to fill it, drawn pass by pass with a faint line at each join and a ↻ beside the name. A looped clip splits, moves, comps, consolidates, reverses, exports and diffs as what it plays. The DAWproject carries the loop (`loopStart`/`loopEnd`) both ways, a Reaper project writes it as a looping section (or an item per pass) and reads one back, a Sandyne project gets a content per pass, and a Live set's looped clips come in as looped clips instead of copies.
