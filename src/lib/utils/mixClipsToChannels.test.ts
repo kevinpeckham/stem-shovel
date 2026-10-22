@@ -19,9 +19,26 @@ describe("mixClipsToChannels", () => {
 	const sources = {
 		a: { channels: [constant(0.5, 100)], sampleRate: 10 },
 		b: { channels: [constant(0.2, 100), constant(0.4, 100)], sampleRate: 10 },
+		// A second of 1 then silence: a loop over that second repeats it.
+		c: { channels: [new Float32Array(100).map((_, i) => (i < 10 ? 1 : 0))], sampleRate: 10 },
 	};
 	const sourceOf = (id: string) =>
 		(sources as Record<string, { channels: Float32Array[]; sampleRate: number }>)[id] ?? null;
+	it("repeats a looped clip's loop, pass after pass, from where it starts", () => {
+		const looped = clip({
+			id: "l",
+			sourceId: "c",
+			start: 0,
+			duration: 3,
+			offset: 0.5,
+			loop: { start: 0, end: 1 },
+		});
+		const out = mixClipsToChannels([looped], sourceOf, { from: 0, to: 3, sampleRate: 10 });
+		expect(Array.from(out[0]!)).toEqual(Array.from({ length: 30 }, () => 1));
+		const once = clip({ id: "o", sourceId: "c", start: 0, duration: 3 });
+		const plain = mixClipsToChannels([once], sourceOf, { from: 0, to: 3, sampleRate: 10 });
+		expect(Array.from(plain[0]!).slice(10)).toEqual(Array.from({ length: 20 }, () => 0));
+	});
 	it("lays each clip at its place from its offset with its gain; mono goes to both sides", () => {
 		const out = mixClipsToChannels(
 			[

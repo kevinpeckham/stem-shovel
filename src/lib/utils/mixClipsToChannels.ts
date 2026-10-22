@@ -1,5 +1,6 @@
 import type { StudioClip } from "#lib/val/StudioSchema.js";
 import { clipCrossfades } from "./clipCrossfades";
+import { clipSegments } from "./clipSegments";
 import { fadeCurve } from "./fadeCurve";
 
 /** What a clip's source holds: its channels and rate (an AudioBuffer, or a test's arrays). */
@@ -34,17 +35,22 @@ export function mixClipsToChannels(
 		const outCurve = fadeCurve(f.outShape, "out", 1, 256);
 		const startSample = Math.round((c.start - range.from) * sr);
 		const n = Math.round(c.duration * sr);
+		// Each pass of the clip (utils/clipSegments.ts) reads its own stretch of the source; the fades span the whole clip.
+		const segments = clipSegments(c);
+		let seg = 0;
 		for (let i = 0; i < n; i++) {
 			const at = startSample + i;
-			if (at < 0 || at >= length) continue;
 			const t = i / sr;
+			while (seg < segments.length - 1 && t >= segments[seg + 1]!.start - c.start) seg++;
+			if (at < 0 || at >= length) continue;
 			let g = c.gain;
 			if (f.fadeIn > 0 && t < f.fadeIn)
 				g *= inCurve[Math.min(255, Math.floor((t / f.fadeIn) * 255))]!;
 			const left = c.duration - t;
 			if (f.fadeOut > 0 && left < f.fadeOut)
 				g *= outCurve[Math.min(255, Math.floor((1 - left / f.fadeOut) * 255))]!;
-			const srcIndex = Math.round((c.offset + t) * src.sampleRate);
+			const s = segments[seg]!;
+			const srcIndex = Math.round((s.offset + (t - (s.start - c.start))) * src.sampleRate);
 			for (let ch = 0; ch < 2; ch++) {
 				const data = src.channels[Math.min(ch, src.channels.length - 1)]!;
 				const v = srcIndex < data.length ? data[srcIndex]! : 0;

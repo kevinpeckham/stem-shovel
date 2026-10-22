@@ -2,6 +2,7 @@ import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
 import { clipNoteEvents } from "./clipNoteEvents";
+import { clipSegments } from "./clipSegments";
 import { studioGrid } from "./studioGrid";
 
 /** An audio file the project refers to for a clip's source: its path beside the `.rpp` file. */
@@ -124,9 +125,29 @@ export function rppProject(input: RppProjectInput): string {
 	const item = (c: StudioClip) => {
 		const audio = c.sourceId ? input.audio.get(c.sourceId) : undefined;
 		if (!c.notes && !audio) return;
+		// A looped audio clip: Reaper loops an item over its source, so the loop becomes a SECTION of the file with LOOP 1 when the
+		// clip starts inside it; a clip that plays into its loop from before it goes out as one item per pass instead.
+		const loop = audio && c.loop;
+		if (loop && (c.offset < loop.start || c.offset >= loop.end)) {
+			for (const seg of clipSegments(c)) {
+				const first = seg.start === c.start;
+				const last = seg.start + seg.duration >= c.start + c.duration;
+				item({
+					...c,
+					loop: undefined,
+					start: seg.start,
+					offset: seg.offset,
+					duration: seg.duration,
+					fadeIn: first ? c.fadeIn : 0,
+					fadeOut: last ? c.fadeOut : 0,
+				});
+			}
+			return;
+		}
 		out(2, "<ITEM");
 		out(3, `POSITION ${num(c.start)}`);
 		out(3, `LENGTH ${num(c.duration)}`);
+		if (loop) out(3, "LOOP 1");
 		out(3, `FADEIN 1 ${num(c.fadeIn)} 0 1 0 0 0`);
 		out(3, `FADEOUT 1 ${num(c.fadeOut)} 0 1 0 0 0`);
 		out(3, "MUTE 0 0");
@@ -161,6 +182,17 @@ export function rppProject(input: RppProjectInput): string {
 				at = e.tick;
 			}
 			out(4, "IGNTEMPO 0 120 4 4");
+			out(3, ">");
+		} else if (audio && loop) {
+			out(3, `SOFFS ${num(c.offset - loop.start)}`);
+			out(3, "PLAYRATE 1 1 0 -1 0 0.0025");
+			out(3, "<SOURCE SECTION");
+			out(4, `LENGTH ${num(loop.end - loop.start)}`);
+			out(4, `STARTPOS ${num(loop.start)}`);
+			out(4, "OVERLAP 0.01");
+			out(4, "<SOURCE WAVE");
+			out(5, `FILE ${q(audio.path)}`);
+			out(4, ">");
 			out(3, ">");
 		} else if (audio) {
 			out(3, `SOFFS ${num(c.offset)}`);

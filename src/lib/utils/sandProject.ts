@@ -1,6 +1,7 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { clipNoteEvents } from "./clipNoteEvents";
+import { clipSegments } from "./clipSegments";
 import { keySignatureOf } from "./keySignatureOf";
 
 /** An audio file the project refers to for a clip's source: its path beside the `.sand` file. */
@@ -43,11 +44,11 @@ export function sandProject(input: SandProjectInput): string {
 		const trackIndex = tracks.length;
 		const contentIds: number[] = [];
 		for (const c of a.clips.filter((c) => c.trackId === t.id).sort((x, y) => x.start - y.start)) {
-			const content = contentOf(c, beats, input.audio);
-			if (!content) continue;
-			const id = nextContentId++;
-			contentIds.push(id);
-			contents.push({ id, trackIndex, ...content });
+			for (const content of contentsOf(c, beats, input.audio)) {
+				const id = nextContentId++;
+				contentIds.push(id);
+				contents.push({ id, trackIndex, ...content });
+			}
 		}
 		tracks.push(trackOf(t, trackIndex, contentIds));
 	}
@@ -78,14 +79,30 @@ function globalOf(a: StudioArrangement) {
 	};
 }
 
-/** A clip as a Sandyne content; null for an audio clip whose sample is missing. */
-function contentOf(
+/** A clip as Sandyne contents: one, or one per pass of a looped clip (Sandyne has no clip loop); none for an audio clip whose sample is missing. */
+function contentsOf(
 	c: StudioClip,
 	beats: (seconds: number) => number,
 	audio: Map<string, SandAudio>,
 ) {
-	if (c.notes) return notesContent(c, beats);
-	return sampleContent(c, beats, c.sourceId ? audio.get(c.sourceId) : undefined);
+	const passes = c.loop
+		? clipSegments(c).map((seg, i, all) => ({
+				...c,
+				loop: undefined,
+				start: seg.start,
+				offset: seg.offset,
+				duration: seg.duration,
+				fadeIn: i === 0 ? c.fadeIn : 0,
+				fadeOut: i === all.length - 1 ? c.fadeOut : 0,
+			}))
+		: [c];
+	return passes
+		.map((pass) =>
+			pass.notes
+				? notesContent(pass, beats)
+				: sampleContent(pass, beats, pass.sourceId ? audio.get(pass.sourceId) : undefined),
+		)
+		.filter((x) => x !== null);
 }
 
 /** A track as Sandyne's: a sample track, or a synth track for a MIDI track, with its strip and color. */

@@ -27,6 +27,31 @@ describe("clipNoteEvents", () => {
 		expect(clipNoteEvents(clip, 0, 10.5).map((e) => e.pitch)).toEqual([62]);
 		expect(clipNoteEvents(clip, 0, 10.5)[0]!.duration).toBe(0.5);
 	});
+	it("sounds a looped clip's notes in every pass, each cut at the pass's end", () => {
+		const looped = {
+			start: 10,
+			offset: 1,
+			duration: 4,
+			gain: 1,
+			loop: { start: 1, end: 2 },
+			notes: [
+				{ t: 1, d: 0.5, p: 60, v: 1 },
+				{ t: 1.75, d: 1, p: 62, v: 1 },
+				{ t: 2.5, d: 1, p: 64, v: 1 }, // past the loop: never
+			],
+		};
+		expect(clipNoteEvents(looped).map((e) => [e.at, e.duration, e.pitch])).toEqual([
+			[10, 0.5, 60],
+			[10.75, 0.25, 62],
+			[11, 0.5, 60],
+			[11.75, 0.25, 62],
+			[12, 0.5, 60],
+			[12.75, 0.25, 62],
+			[13, 0.5, 60],
+			[13.75, 0.25, 62],
+		]);
+		expect(clipNoteEvents(looped, 11.5, 12.5).map((e) => e.at)).toEqual([11.75, 12]);
+	});
 	it("is empty for an audio clip", () => {
 		expect(clipNoteEvents({ start: 0, offset: 0, duration: 1, gain: 1 })).toEqual([]);
 	});

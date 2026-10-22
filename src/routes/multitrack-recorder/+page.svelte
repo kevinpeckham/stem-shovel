@@ -939,6 +939,10 @@
 		const copy = studio.duplicateClip(selectedClip.id);
 		if (copy) selected = copy.id;
 	}
+	function toggleLoopSelected() {
+		if (!selectedClip) return;
+		studio.setClipLoop(selectedClip.id, !selectedClip.loop);
+	}
 	function addTrack(kind: "audio" | "midi" = "audio") {
 		const t =
 			kind === "midi"
@@ -1309,6 +1313,11 @@
 		if ((e.key === "s" || e.key === "S") && selectedClip) {
 			e.preventDefault();
 			splitSelected();
+			return;
+		}
+		if (e.key === "L" && e.shiftKey && selectedClip) {
+			e.preventDefault();
+			toggleLoopSelected();
 			return;
 		}
 		if (e.code === "Space") {
@@ -2089,7 +2098,8 @@
 						/>
 					</label>
 					<span class="text-12px text-dark/80 ml-auto hidden @2xl-inline">
-						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⌘-wheel zooms
+						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⇧L loop clip ·
+						⌘-wheel zooms
 					</span>
 				</div>
 				{#if selectedClip}
@@ -2386,6 +2396,19 @@
 								onclick={duplicateSelected}
 							>
 								<span class="i-ph-copy" aria-hidden="true"></span> Duplicate
+							</button>
+							<!-- Loop (docs/multitrack-recorder.md, "Looping a clip"): what the clip shows becomes its loop, and its right edge drags out to repeat it. -->
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								aria-pressed={!!clip.loop}
+								aria-label="Loop clip"
+								title={clip.loop
+									? "Looped: play once again, and trim the clip back to what it holds (Shift+L)"
+									: "Loop what the clip shows: drag its right edge out to repeat it (Shift+L)"}
+								onclick={toggleLoopSelected}
+							>
+								<span class="i-ph-repeat" aria-hidden="true"></span> Loop
 							</button>
 							<button
 								class="device-button-xs px-2"

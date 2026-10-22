@@ -203,6 +203,41 @@ describe("rppProject", () => {
 		]);
 	});
 
+	it("writes a looped clip as a section of its file looped, or as an item per pass when it plays into its loop", () => {
+		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
+		const inside = { ...base, offset: 1.5, duration: 5, loop: { start: 1, end: 3 } };
+		const one = rppProject({
+			title: "Loop",
+			arrangement: { ...arrangement, clips: [inside] },
+			audio,
+			application: app,
+		});
+		expect(one).toContain(
+			'      LENGTH 5\n      LOOP 1\n      FADEIN 1 0.5 0 1 0 0 0\n      FADEOUT 1 1 0 1 0 0 0\n      MUTE 0 0\n      NAME "Bass take"\n      VOLPAN 0.7 0 1 -1\n      SOFFS 0.5\n      PLAYRATE 1 1 0 -1 0 0.0025\n      <SOURCE SECTION\n        LENGTH 2\n        STARTPOS 1\n        OVERLAP 0.01\n        <SOURCE WAVE\n          FILE "media/s-bass.wav"\n        >\n      >\n',
+		);
+		const back = readRpp(one, "Loop").arrangement.clips[0]!;
+		expect([back.start, back.offset, back.duration, back.loop]).toEqual([
+			1.25,
+			1.5,
+			5,
+			{ start: 1, end: 3 },
+		]);
+		const before = { ...base, offset: 0, duration: 5, loop: { start: 1, end: 3 } };
+		const many = rppProject({
+			title: "Loop",
+			arrangement: { ...arrangement, clips: [before] },
+			audio,
+			application: app,
+		});
+		const items = many.split("<ITEM").slice(1);
+		expect(items).toHaveLength(2);
+		expect(items[0]).toContain("POSITION 1.25\n      LENGTH 3\n      FADEIN 1 0.5 ");
+		expect(items[0]).toContain("FADEOUT 1 0 ");
+		expect(items[1]).toContain("POSITION 4.25\n      LENGTH 2\n      FADEIN 1 0 ");
+		expect(items[1]).toContain("FADEOUT 1 1 ");
+		expect(items[1]).toContain("SOFFS 1\n");
+	});
+
 	it("round-trips through the reader: the same tracks, buses, routing, clips, notes, tempo map and markers", () => {
 		const read = readRpp(text, "Exiles");
 		const b = read.arrangement;

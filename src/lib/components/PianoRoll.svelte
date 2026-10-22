@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { clipContentTime } from "#lib/utils/clipSegments.js";
 	import { studio } from "#lib/audio/studio.svelte.js";
 	import { editNotes, rollNoteLabel, rollRows, snapRollTime } from "#lib/utils/pianoRoll.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
@@ -32,9 +33,11 @@
 	/** The grid step as a fraction of a beat: 1, 1/2 or 1/4; snapping and a new note's length. */
 	let division = $state<1 | 2 | 4>(2);
 	let step = $derived(engine.beatSeconds / division);
+	/** Where the clip's content ends on the roll: its loop's end when it loops, else its offset plus its length. */
+	let contentEnd = $derived(clip ? (clip.loop ? clip.loop.end : clip.offset + clip.duration) : 0);
 	/** How far the roll runs: the clip's content, a bar of room past it. */
 	let seconds = $derived.by(() => {
-		let end = clip ? clip.offset + clip.duration : 0;
+		let end = contentEnd;
 		for (const n of notes) end = Math.max(end, n.t + n.d);
 		return end + engine.barSeconds;
 	});
@@ -44,7 +47,9 @@
 	/** The playhead inside this clip's content, or null when it is elsewhere. */
 	let playhead = $derived.by(() => {
 		if (!clip || !engine.running) return null;
-		const t = engine.position - (clip.start - clip.offset);
+		const into = engine.position - clip.start;
+		if (into < 0 || into > clip.duration) return null;
+		const t = clipContentTime(clip, into);
 		return t >= 0 && t <= seconds ? t : null;
 	});
 
@@ -355,7 +360,7 @@
 					{/if}
 					<div
 						class="absolute inset-y-0 bg-black/40 pointer-events-none"
-						style:left="{(clip.offset + clip.duration) * pxPerSecond}px"
+						style:left="{contentEnd * pxPerSecond}px"
 						style:right="0"
 					></div>
 					{#each shown as note, i (i)}

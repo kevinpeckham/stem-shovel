@@ -325,6 +325,8 @@ describe("readDawproject", () => {
 		expect(a.tracks[0]!.sends).toEqual([{ bus: a.buses![0]!.id, level: 0.5 }]);
 		// The switched-off clip stays out; the live clip's notes are in seconds at 100 bpm.
 		expect(a.clips.map((c) => [c.name, c.start, c.duration])).toEqual([["Piano", 0, 4.8]]);
+		// Bitwig writes loopStart/loopEnd on every clip; one the clip's own length is no loop.
+		expect(a.clips[0]!.loop).toBeUndefined();
 		expect(a.clips[0]!.notes).toEqual([{ t: 0, d: 0.6, p: 62, v: 0.8 }]);
 		expect(read.dropped).toEqual([
 			"TripleCheese on Piano",

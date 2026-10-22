@@ -24,6 +24,22 @@ describe("splitClipAt", () => {
 		expect(splitClipAt(clip, 6)).toBeNull();
 		expect(splitClipAt(clip, 1)).toBeNull();
 	});
+	it("cuts a looped clip where its passes stand, both parts keeping the loop", () => {
+		const looped = { ...clip, loop: { start: 1, end: 2 } };
+		const r = splitClipAt(looped, 4.5);
+		expect(r?.left).toMatchObject({
+			start: 2,
+			offset: 1,
+			duration: 2.5,
+			loop: { start: 1, end: 2 },
+		});
+		expect(r?.right).toMatchObject({
+			start: 4.5,
+			offset: 1.5,
+			duration: 1.5,
+			loop: { start: 1, end: 2 },
+		});
+	});
 	it("leaves the clip it was given untouched", () => {
 		splitClipAt(clip, 3);
 		expect(clip.duration).toBe(4);

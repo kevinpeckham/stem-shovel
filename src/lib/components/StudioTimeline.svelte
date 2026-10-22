@@ -18,6 +18,8 @@
 	import type { Attachment } from "svelte/attachments";
 	import ComboBox from "./ComboBox.svelte";
 	import ContextMenu from "./ContextMenu.svelte";
+	import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
+	import { clipSegments } from "#lib/utils/clipSegments.js";
 	import StudioTrackMenu from "./StudioTrackMenu.svelte";
 	import AutomationLane from "./AutomationLane.svelte";
 	import InsertPanel from "./InsertPanel.svelte";
@@ -456,7 +458,7 @@
 				const buffer = engine.bufferOf(clip.sourceId);
 				const source = engine.sources[clip.sourceId];
 				const dpr = devicePixelRatio || 1;
-				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${vx}:${vw}:${h}:${dpr}:${buffer ? "b" : "p"}:${getComputedStyle(canvas).color}`;
+				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${clip.loop?.start}:${clip.loop?.end}:${vx}:${vw}:${h}:${dpr}:${buffer ? "b" : "p"}:${getComputedStyle(canvas).color}`;
 				if (next === key) return;
 				key = next;
 				const bw = Math.max(1, Math.round(vw * dpr));
@@ -468,22 +470,31 @@
 				g.clearRect(0, 0, bw, bh);
 				g.fillStyle = getComputedStyle(canvas).color;
 				const mid = bh / 2;
-				// The window's span of the clip's source, in seconds from the source's start.
-				const t0 = clip.offset + (vx / fullWidth) * clip.duration;
+				// The window's span of the clip, in seconds from the clip's start; each pixel reads the source where the clip's pass has it (utils/clipSegments.ts).
+				const c0 = (vx / fullWidth) * clip.duration;
 				const span = (vw / fullWidth) * clip.duration;
+				const segs = clipSegments(clip);
+				let si = 0;
+				const sourceAt = (t: number) => {
+					while (si < segs.length - 1 && t >= segs[si + 1]!.start - clip.start) si++;
+					const seg = segs[si]!;
+					return {
+						at: seg.offset + (t - (seg.start - clip.start)),
+						end: seg.offset + seg.duration,
+					};
+				};
 				if (buffer) {
 					const sr = buffer.sampleRate;
-					const from = Math.floor(t0 * sr);
-					const frames = Math.max(1, Math.floor(span * sr));
-					const per = frames / bw;
+					const per = Math.max(1, Math.floor(span * sr)) / bw;
 					const chans = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
 						buffer.getChannelData(c),
 					);
 					// At most 64 samples looked at per pixel: enough for a peak, cheap when zoomed out.
 					const step = Math.max(1, Math.floor(per / 64));
 					for (let x = 0; x < bw; x++) {
-						const a = from + Math.floor(x * per);
-						const b = Math.min(buffer.length, from + Math.floor((x + 1) * per));
+						const src = sourceAt(c0 + (x / bw) * span);
+						const a = Math.floor(src.at * sr);
+						const b = Math.min(buffer.length, Math.floor(src.end * sr), a + Math.floor(per));
 						let lo = 0;
 						let hi = 0;
 						for (const data of chans)
@@ -501,12 +512,19 @@
 					const n = peaks.length;
 					const total = source.durationSeconds || clip.offset + clip.duration;
 					for (let x = 0; x < bw; x++) {
-						const t = t0 + (x / bw) * span;
+						const t = sourceAt(c0 + (x / bw) * span).at;
 						const p = peaks[Math.min(n - 1, Math.floor((t / total) * n))] ?? 0;
 						const amp = p * (mid - 1);
 						g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));
 					}
 				}
+				// Where a looped clip's passes meet: a faint line.
+				g.globalAlpha = 0.45;
+				for (const seg of segs.slice(1)) {
+					const x = Math.round(((seg.start - clip.start - c0) / span) * bw);
+					if (x > 0 && x < bw) g.fillRect(x, 0, 1, bh);
+				}
+				g.globalAlpha = 1;
 			};
 			const schedule = () => {
 				if (!frame) frame = requestAnimationFrame(draw);
@@ -542,7 +560,7 @@
 				const h = canvas.clientHeight;
 				const notes = clip.notes ?? [];
 				if (!w || !h) return;
-				const next = `${clip.id}:${clip.offset}:${clip.duration}:${w}:${h}:${notes.length}:${notes.map((n) => n.t + n.p).join(",").length}`;
+				const next = `${clip.id}:${clip.offset}:${clip.duration}:${clip.loop?.start}:${clip.loop?.end}:${w}:${h}:${notes.length}:${notes.map((n) => n.t + n.p).join(",").length}`;
 				if (next === key) return;
 				key = next;
 				const dpr = devicePixelRatio || 1;
@@ -552,12 +570,28 @@
 				if (!g) return;
 				g.scale(dpr, dpr);
 				g.clearRect(0, 0, w, h);
-				drawRoll(
-					g,
-					notes.filter((n) => n.t + n.d > clip.offset && n.t < clip.offset + clip.duration),
-					{ w, h, origin: clip.offset, seconds: clip.duration },
-					getComputedStyle(canvas).color,
-				);
+				const color = getComputedStyle(canvas).color;
+				if (clip.loop) {
+					// A looped clip: the notes as they play, pass after pass (utils/clipNoteEvents.ts), from the clip's start; a faint line where the passes meet.
+					const played = clipNoteEvents({ ...clip, gain: 1 }).map((e) => ({
+						t: e.at - clip.start,
+						d: e.duration,
+						p: e.pitch,
+						v: e.velocity,
+					}));
+					drawRoll(g, played, { w, h, origin: 0, seconds: clip.duration }, color);
+					g.fillStyle = color;
+					g.globalAlpha = 0.45;
+					for (const seg of clipSegments(clip).slice(1))
+						g.fillRect(Math.round(((seg.start - clip.start) / clip.duration) * w), 0, 1, h);
+					g.globalAlpha = 1;
+				} else
+					drawRoll(
+						g,
+						notes.filter((n) => n.t + n.d > clip.offset && n.t < clip.offset + clip.duration),
+						{ w, h, origin: clip.offset, seconds: clip.duration },
+						color,
+					);
 			};
 			draw();
 			const ro = new ResizeObserver(draw);
@@ -1227,7 +1261,9 @@
 							<span
 								class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
 							>
-								{clip.name}{takes > 1 ? ` · ${takes} takes` : ""}{source?.pending
+								{clip.name}{clip.loop ? " ↻" : ""}{takes > 1
+									? ` · ${takes} takes`
+									: ""}{source?.pending
 									? " · saving…"
 									: source?.status === "failed"
 										? " · not loaded"

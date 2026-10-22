@@ -247,9 +247,10 @@ additional features to consider adding to Dawn." From the schema
 and Dawn cannot yet, roughly in the order a songwriter would miss them:
 
 1. **Clip looping** (`loopStart`, `loopEnd`): a clip that repeats its
-   content for its length. Bitwig writes it on every clip. Dawn plays a
-   clip once; a loop would be a clip property the scheduler honours and
-   the timeline draws as repeats.
+   content for its length. Bitwig writes it on every clip. Done
+   2026-10-22: `loop` on the clip, unrolled through `utils/clipSegments.ts`
+   everywhere (docs/multitrack-recorder.md "Looping a clip"); the reader
+   keeps a loop that comes round within the clip, the writer emits it.
 2. **Switched-off clips** (`enable="false"`): a clip kept but silent,
    the way a muted track is. Cheap: a flag on the clip, a dimmed drawing,
    a menu item.

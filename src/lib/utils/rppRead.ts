@@ -452,10 +452,17 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			// The source: a media file (wrapped in a SECTION when the take plays a part of it), or MIDI.
 			let source = blocksOf(take, "SOURCE")[0];
 			let sectionStart = 0;
+			let sectionLength = 0;
 			if (source?.args[0] === "SECTION") {
 				sectionStart = numAt(lineOf(source, "STARTPOS"), 1, 0);
+				sectionLength = numAt(lineOf(source, "LENGTH"), 1, 0);
 				source = blocksOf(source, "SOURCE")[0];
 			}
+			// An item longer than its section with LOOP on repeats the section: Dawn's loop over that stretch of the file.
+			const loopsSection =
+				sectionLength > 0 &&
+				numAt(lineOf(own, "LOOP"), 1, 1) === 1 &&
+				duration > sectionLength - offset + 0.001;
 			if (!source) {
 				drop(`${name} on ${p.name}: no source`);
 				continue;
@@ -506,7 +513,15 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				sourceByPath.set(path, sourceId);
 				files.push({ sourceId, path, label: `${p.name} - ${name}` });
 			}
-			clips.push({ ...base, offset: seconds(offset + Math.max(0, sectionStart)), sourceId });
+			const sectionFrom = Math.max(0, sectionStart);
+			clips.push({
+				...base,
+				offset: seconds(sectionFrom + (loopsSection ? offset % sectionLength : offset)),
+				sourceId,
+				...(loopsSection
+					? { loop: { start: seconds(sectionFrom), end: seconds(sectionFrom + sectionLength) } }
+					: {}),
+			});
 		}
 	}
 	if (blocksOf(project, "MASTERFXLIST").some((f) => f.body.some((x) => isBlock(x))))

@@ -3,6 +3,8 @@ import { gunzipSync, strFromU8 } from "fflate";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { readAls } from "./alsRead";
+import { clipNoteEvents } from "./clipNoteEvents";
+import { clipSegments } from "./clipSegments";
 
 /** A set with one of everything the reader carries: Live's own "<Tag Value='…'/>" idiom, cut down to the tags that matter. */
 const set = `<?xml version="1.0" encoding="UTF-8"?>
@@ -267,32 +269,46 @@ describe("readAls", () => {
 		expect(read.fixed).toContain("Kick at 6 dB: Dawn's fader stops at 1.94 dB");
 	});
 
-	it("unrolls a looped warped audio clip over its length, keeps an unwarped clip's start in the file, and skips a deactivated one", () => {
+	it("keeps a looped warped audio clip as one looped clip, keeps an unwarped clip's start in the file, and skips a deactivated one", () => {
 		const kickClips = a.clips.filter((c) => c.trackId === byName("Kick").id);
 		expect(
 			kickClips.map((c) => [c.name, c.start, c.offset, c.duration, c.gain, c.fadeIn, c.fadeOut]),
 		).toEqual([
-			// Beats 4 to 12 at 120 bpm, a 4-beat loop twice: 2 s each from the file's start; the fades at the outer edges only.
-			["Kick loop", 2, 0, 2, 0.5, 0.25, 0],
-			["Kick loop", 4, 0, 2, 0.5, 0, 0.5],
+			// Beats 4 to 12 at 120 bpm, a 4-beat loop twice: one clip of 4 s looping the file's first 2 s.
+			["Kick loop", 2, 0, 4, 0.5, 0.25, 0.5],
 			// An unwarped clip: its loop start is seconds into the file; two beats long, at the 90 bpm the tempo turns to at beat 16.
 			["Hit", 8, 1.5, 1.333333, 1, 0, 0],
 		]);
+		expect(kickClips[0]!.loop).toEqual({ start: 0, end: 2 });
+		expect(clipSegments(kickClips[0]!)).toEqual([
+			{ start: 2, offset: 0, duration: 2 },
+			{ start: 4, offset: 0, duration: 2 },
+		]);
+		expect(kickClips[1]!.loop).toBeUndefined();
 		expect(new Set(kickClips.map((c) => c.sourceId)).size).toBe(2);
 		expect(read.files.map((f) => [f.path, f.sampleRate])).toEqual([
 			["Samples/Imported/kick.wav", 48000],
 			["/Users/me/Downloads/hit.aif", 44100],
 		]);
-		expect(read.fixed).toContain("Kick loop on Kick: a looped clip, its loop repeated to fill it");
+		expect(read.fixed.some((f) => f.startsWith("Kick loop"))).toBe(false);
 		expect(read.dropped).toContain("Muted on Kick: deactivated");
 		expect(read.dropped).toContain("Hit on Kick: transposed (plays at the file's own pitch here)");
 	});
 
-	it("unrolls a looped MIDI clip's notes from its start marker, skipping disabled notes", () => {
+	it("keeps a looped MIDI clip's loop and start marker, skipping disabled notes", () => {
 		const riff = a.clips.find((c) => c.name === "Riff")!;
-		expect([riff.start, riff.offset, riff.duration]).toEqual([4, 0, 4]);
-		// Starts a beat into the 4-beat loop: beats 1..4 of the loop, then 0..4, then 0..1: 8 beats at 120 bpm; the G that runs past the loop's end stops there.
+		// Starts a beat into the 4-beat loop (content seconds at 120 bpm): the notes once, in content time, the loop over the first 2 s.
+		expect([riff.start, riff.offset, riff.duration]).toEqual([4, 0.5, 4]);
+		expect(riff.loop).toEqual({ start: 0, end: 2 });
 		expect(riff.notes!.map((n) => [n.t, n.d, n.p, n.v])).toEqual([
+			[0, 0.5, 60, 1],
+			[1, 0.25, 60, 0.5039],
+			[1.75, 1, 67, 0.7874],
+		]);
+		// Played: beats 1..4 of the loop, then 0..4, then 0..1; the G that runs past the loop's end stops there.
+		expect(
+			clipNoteEvents(riff).map((e) => [e.at - riff.start, e.duration, e.pitch, e.velocity]),
+		).toEqual([
 			[0.5, 0.25, 60, 0.5039],
 			[1.25, 0.25, 67, 0.7874],
 			[1.5, 0.5, 60, 1],
@@ -345,13 +361,18 @@ describe("readAls on a set Live 12.2.1 saved (tests/als)", () => {
 		expect(a.tracks.filter((t) => t.kind === "midi")).toHaveLength(7);
 		expect(a.tracks.find((t) => t.name === "Hats")!.gain).toBe(0.6972);
 		expect(a.tracks.every((t) => !t.sends)).toBe(true);
-		// Six clips of 64 beats at 124 bpm (30.97 s), each a loop of 16, 8 or 4 beats repeated.
+		// Six clips of 64 beats at 124 bpm (30.97 s), each a loop of 16, 8 or 4 beats of a 120 bpm file (8, 4 or 2 s), kept as loops.
 		expect(read.files).toHaveLength(6);
 		expect(read.files[0]!.path).toBe("Samples/Imported/MARS_PK_120_kick_lunar.wav");
 		const kick = a.clips.filter((c) => c.name === "MARS_PK_120_kick_lunar");
-		expect(kick).toHaveLength(4);
-		expect(kick[3]!.start + kick[3]!.duration).toBeCloseTo((64 * 60) / 124, 3);
-		expect(a.clips.filter((c) => c.name === "MARS_PK_120_hihat_islander")).toHaveLength(16);
+		expect(kick).toHaveLength(1);
+		expect(kick[0]!.start + kick[0]!.duration).toBeCloseTo((64 * 60) / 124, 3);
+		expect(kick[0]!.loop!.start).toBe(0);
+		expect(kick[0]!.loop!.end).toBeCloseTo(8, 3);
+		expect(clipSegments(kick[0]!)).toHaveLength(4);
+		const hats = a.clips.filter((c) => c.name === "MARS_PK_120_hihat_islander");
+		expect(hats).toHaveLength(1);
+		expect(clipSegments(hats[0]!)).toHaveLength(16);
 		expect(a.clips.every((c) => c.offset === 0)).toBe(true);
 		// A 120 bpm loop warped to 124 is reported; so is the transposed percussion.
 		expect(read.dropped).toContain(

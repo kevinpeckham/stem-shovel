@@ -19,6 +19,7 @@ import { studioGrid } from "#lib/utils/studioGrid.js";
 import { studioKeyAt } from "#lib/utils/studioChanges.js";
 import { swingNotes } from "#lib/utils/swingNotes.js";
 import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
+import { clipSegments } from "#lib/utils/clipSegments.js";
 import { detectTempo } from "#lib/utils/detectTempo.js";
 import { stretchChannels } from "#lib/utils/stretchChannels.js";
 import { resampleChannels, semitonesFactor } from "#lib/utils/resampleChannels.js";
@@ -74,6 +75,7 @@ import type {
 	StudioTempoChange,
 	StudioSampler,
 } from "#lib/val/StudioSchema.js";
+import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import { amp, loadAmpWorklet } from "./amp.svelte";
 import { drumMachine } from "./drumMachine.svelte";
@@ -1324,12 +1326,13 @@ class StudioEngine {
 	/**
 	 * Trim: a new left edge moves `start` and `offset` together (no earlier
 	 * than the source's own start), a new right edge sets the duration (no
-	 * later than the source's end). A clip keeps at least 10 ms.
+	 * later than the source's end; a looped clip has no end to reach). A
+	 * clip keeps at least 10 ms.
 	 */
 	trimClip(clipId: string, edges: { start?: number; end?: number }) {
 		const c = this.#clip(clipId);
 		if (!c) return;
-		const next = trimmedClip(c, edges, this.#sourceSeconds(c));
+		const next = trimmedClip(c, edges, c.loop ? Number.POSITIVE_INFINITY : this.#sourceSeconds(c));
 		if (!next) return;
 		this.#commit();
 		Object.assign(c, next);
@@ -1376,6 +1379,36 @@ class StudioEngine {
 		c.fadeOut = round4(fadeOut);
 		this.#reschedule();
 	}
+	/**
+	 * Loop (docs/multitrack-recorder.md, "Looping a clip"): on, the clip's
+	 * content as it stands becomes the loop and the clip can be dragged
+	 * longer to repeat it; off, the clip plays once and shrinks to what its
+	 * source holds. A span sets the loop in content seconds outright.
+	 */
+	setClipLoop(clipId: string, loop: boolean | { start: number; end: number }) {
+		const c = this.#clip(clipId);
+		if (!c) return;
+		if (loop === false) {
+			if (!c.loop) return;
+			this.#commit();
+			delete c.loop;
+			const srcEnd = this.#sourceSeconds(c);
+			if (c.offset >= srcEnd) c.offset = 0;
+			c.duration = round4(Math.max(0.01, Math.min(c.duration, srcEnd - c.offset)));
+			c.fadeIn = Math.min(c.fadeIn, c.duration / 2);
+			c.fadeOut = Math.min(c.fadeOut, c.duration / 2);
+		} else {
+			const span =
+				loop === true
+					? { start: c.offset, end: c.offset + c.duration }
+					: { start: Math.max(0, loop.start), end: loop.end };
+			if (!(span.end - span.start >= MIN_CLIP_LOOP_SECONDS)) return;
+			if (c.loop && c.loop.start === span.start && c.loop.end === span.end) return;
+			this.#commit();
+			c.loop = { start: round4(span.start), end: round4(span.end) };
+		}
+		this.#reschedule();
+	}
 	/** A copy of the clip right after it (snapped to the grid when on). Returns the copy. */
 	duplicateClip(clipId: string): StudioClip | null {
 		const c = this.#clip(clipId);
@@ -1407,7 +1440,7 @@ class StudioEngine {
 		if (!this.#buffers.has(next)) void this.ensureSource(next).then(() => this.#reschedule());
 		const srcEnd = this.#sourceSeconds(c);
 		if (c.offset >= srcEnd) c.offset = 0;
-		c.duration = round4(Math.min(c.duration, srcEnd - c.offset));
+		if (!c.loop) c.duration = round4(Math.min(c.duration, srcEnd - c.offset));
 		this.#reschedule();
 	}
 	/** How many takes a clip holds (the chosen one included). */
@@ -1519,18 +1552,30 @@ class StudioEngine {
 		});
 		return { sourceId, buffer };
 	}
-	/** The clip's span of its source as plain channels, for a tool that makes a new source of it. */
+	/** The clip's span of its source as plain channels (a looped clip's passes laid end to end), for a tool that makes a new source of it. */
 	#clipChannels(c: StudioClip): { channels: Float32Array[]; sampleRate: number } | null {
 		const buffer = c.sourceId ? this.#buffers.get(c.sourceId) : null;
 		if (!buffer) return null;
 		const sr = buffer.sampleRate;
-		const a = Math.max(0, Math.round(c.offset * sr));
-		const b = Math.min(buffer.length, Math.round((c.offset + c.duration) * sr));
-		if (b <= a) return null;
+		const spans = clipSegments(c)
+			.map((seg) => ({
+				a: Math.max(0, Math.round(seg.offset * sr)),
+				b: Math.min(buffer.length, Math.round((seg.offset + seg.duration) * sr)),
+			}))
+			.filter((x) => x.b > x.a);
+		const total = spans.reduce((n, x) => n + (x.b - x.a), 0);
+		if (!total) return null;
 		return {
-			channels: Array.from({ length: buffer.numberOfChannels }, (_, ch) =>
-				buffer.getChannelData(ch).slice(a, b),
-			),
+			channels: Array.from({ length: buffer.numberOfChannels }, (_, ch) => {
+				const data = buffer.getChannelData(ch);
+				const out = new Float32Array(total);
+				let at = 0;
+				for (const x of spans) {
+					out.set(data.subarray(x.a, x.b), at);
+					at += x.b - x.a;
+				}
+				return out;
+			}),
 			sampleRate: sr,
 		};
 	}
@@ -1543,6 +1588,7 @@ class StudioEngine {
 		c.offset = 0;
 		c.duration = round4(buffer.duration);
 		delete c.alternates;
+		delete c.loop;
 		c.name = label;
 		this.#reschedule();
 	}
@@ -1819,7 +1865,14 @@ class StudioEngine {
 		const c = this.#clip(clipId);
 		if (!c?.notes) return null;
 		const track = this.#track(c.trackId);
-		return notesToMidiBlob(sliceNotes(c.notes, c.offset, c.offset + c.duration), {
+		// What the clip plays (a looped clip's repeats too), as notes from the clip's start.
+		const played = clipNoteEvents({ ...c, gain: 1 }).map((e) => ({
+			t: e.at - c.start,
+			d: e.duration,
+			p: e.pitch,
+			v: e.velocity,
+		}));
+		return notesToMidiBlob(played, {
 			bpm: this.arrangement.bpm,
 			beatsPerBar: this.arrangement.beatsPerBar,
 			drums: track?.input?.source === "drums",
@@ -2412,32 +2465,37 @@ class StudioEngine {
 		if (!ctx || !buffer || !nodes) return;
 		const clipEnd = clip.start + clip.duration;
 		if (clipEnd <= from || (to !== null && clip.start >= to)) return;
-		const begins = Math.max(clip.start, from);
-		const ends = to === null ? clipEnd : Math.min(clipEnd, to);
-		const offset = clip.offset + (begins - clip.start);
-		const length = ends - begins;
-		if (length <= 0 || offset >= buffer.duration) return;
-		const src = ctx.createBufferSource();
-		src.buffer = buffer;
-		const gain = ctx.createGain();
-		src.connect(gain);
-		gain.connect(nodes.input);
-		const at = when + (begins - from);
 		// Fades: the clip's own at its edges (widened over an overlap into a crossfade, utils/clipCrossfades.ts), else a few milliseconds so a cut never clicks.
 		const f = fades ?? fadesOf(clip);
-		scheduleFades(gain.gain, clip.gain, at, length, {
-			fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
-			fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
-			inShape: f.inShape,
-			outShape: f.outShape,
-		});
-		src.start(at, offset, Math.min(length, buffer.duration - offset));
-		const entry: Playing = { clipId: clip.id, src, gain };
-		src.onended = () => {
-			this.#playing = this.#playing.filter((p) => p !== entry);
-			gain.disconnect();
-		};
-		this.#playing.push(entry);
+		// A source per pass of the clip (utils/clipSegments.ts): one for a clip without a loop, the loop's repeats for one with.
+		for (const seg of clipSegments(clip)) {
+			const segEnd = seg.start + seg.duration;
+			if (segEnd <= from || (to !== null && seg.start >= to)) continue;
+			const begins = Math.max(seg.start, from);
+			const ends = to === null ? segEnd : Math.min(segEnd, to);
+			const offset = seg.offset + (begins - seg.start);
+			const length = ends - begins;
+			if (length <= 0 || offset >= buffer.duration) continue;
+			const src = ctx.createBufferSource();
+			src.buffer = buffer;
+			const gain = ctx.createGain();
+			src.connect(gain);
+			gain.connect(nodes.input);
+			const at = when + (begins - from);
+			scheduleFades(gain.gain, clip.gain, at, length, {
+				fadeIn: begins === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
+				fadeOut: ends === clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
+				inShape: f.inShape,
+				outShape: f.outShape,
+			});
+			src.start(at, offset, Math.min(length, buffer.duration - offset));
+			const entry: Playing = { clipId: clip.id, src, gain };
+			src.onended = () => {
+				this.#playing = this.#playing.filter((p) => p !== entry);
+				gain.disconnect();
+			};
+			this.#playing.push(entry);
+		}
 	}
 	/** The look-ahead: when a loop pass ends within reach, the next pass is already queued. */
 	#queueUntil = (until: number) => {
@@ -3002,20 +3060,22 @@ class StudioEngine {
 			const buffer = this.#buffers.get(clip.sourceId);
 			const into = nodes.get(clip.trackId);
 			if (!buffer || !into) continue;
-			const src = off.createBufferSource();
-			src.buffer = buffer;
-			const gain = off.createGain();
-			src.connect(gain).connect(into);
-			const at = clip.start;
-			const len = Math.min(clip.duration, Math.max(0, buffer.duration - clip.offset));
-			if (len <= 0) continue;
 			const f = fades.get(clip.id) ?? fadesOf(clip);
-			scheduleFades(gain.gain, clip.gain, at, len, {
-				...f,
-				fadeIn: Math.max(EDGE_FADE, f.fadeIn),
-				fadeOut: Math.max(EDGE_FADE, f.fadeOut),
-			});
-			src.start(at, clip.offset, len);
+			const clipEnd = clip.start + clip.duration;
+			for (const seg of clipSegments(clip)) {
+				const src = off.createBufferSource();
+				src.buffer = buffer;
+				const gain = off.createGain();
+				src.connect(gain).connect(into);
+				const len = Math.min(seg.duration, Math.max(0, buffer.duration - seg.offset));
+				if (len <= 0) continue;
+				scheduleFades(gain.gain, clip.gain, seg.start, len, {
+					...f,
+					fadeIn: seg.start === clip.start ? Math.max(EDGE_FADE, f.fadeIn) : EDGE_FADE,
+					fadeOut: seg.start + seg.duration >= clipEnd ? Math.max(EDGE_FADE, f.fadeOut) : EDGE_FADE,
+				});
+				src.start(seg.start, seg.offset, len);
+			}
 		}
 		await Promise.all(midi);
 		return off.startRendering();

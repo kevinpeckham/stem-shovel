@@ -48,6 +48,15 @@ describe("diffArrangements", () => {
 	it("is empty when nothing differs", () => {
 		expect(diffArrangements(base(), base())).toEqual([]);
 	});
+	it("names a loop switched on, moved or off", () => {
+		const on = base();
+		on.clips[0] = clip("c1", "t1", 0, { loop: { start: 0, end: 2 } });
+		expect(diffArrangements(base(), on)).toEqual(["Clip Clip c1: looped"]);
+		const moved = base();
+		moved.clips[0] = clip("c1", "t1", 0, { loop: { start: 1, end: 2 } });
+		expect(diffArrangements(on, moved)).toEqual(["Clip Clip c1: loop moved"]);
+		expect(diffArrangements(on, base())).toEqual(["Clip Clip c1: loop off"]);
+	});
 	it("reads tracks added, removed, renamed and re-set, and the tempo", () => {
 		const after = base();
 		after.bpm = 124;

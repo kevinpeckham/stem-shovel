@@ -194,8 +194,10 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		}
 		const audio = c.sourceId ? input.audio.get(c.sourceId) : undefined;
 		if (!audio) return;
+		// A looped clip says so in the format's own words (loopStart/loopEnd in content seconds); its notes are unrolled above.
+		const loop = c.loop ? ` loopStart="${num(c.loop.start)}" loopEnd="${num(c.loop.end)}"` : "";
 		out(
-			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}" fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
+			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}"${loop} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
 		);
 		out(
 			`            <Audio algorithm="raw" channels="${audio.channels}" duration="${num(audio.durationSeconds)}" sampleRate="${audio.sampleRate}" id="${id("audio")}">`,

@@ -1153,9 +1153,9 @@ project folder with its `Samples/`) the way they take a Reaper project:
 the samples chosen beside the set and found by the set's own relative
 paths or by name. The tracks with their levels, pans, mutes, colors and
 envelopes, a group as a bus and a return as a bus the sends feed, the
-arrangement's clips in seconds through the tempo map (a looped clip
-unrolled, a warped clip's file offsets through its warp markers, an
-unwarped clip's in seconds), the MIDI clips' notes, the tempo and its
+arrangement's clips in seconds through the tempo map (a looped clip kept
+as one, "Looping a clip" below, a warped clip's file offsets through its
+warp markers, an unwarped clip's in seconds), the MIDI clips' notes, the tempo and its
 automation as steps, the time signature and its changes, the locators as
 markers. Devices, session-view clips, deactivated and transposed clips are
 listed in the note when the song opens. One way: Dawn writes no Live set
@@ -1173,6 +1173,48 @@ exports are the DAWproject, the Reaper project, the Sandyne project and
 the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
+
+## Looping a clip (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 1)
+
+A clip can repeat its content: `loop: { start, end }` on `StudioClip`,
+content seconds like `offset`, at least `MIN_CLIP_LOOP_SECONDS` (0.1 s)
+long. The clip plays from `offset` to `end`, then `start` to `end` again
+and again for its `duration`; an `offset` at or past the loop's end starts
+inside the loop. `utils/clipSegments.ts` is the one place that unrolls it:
+`clipSegments(clip)` gives the passes as `{ start, offset, duration }`, and
+`clipContentTime(clip, t)` the content second `t` seconds in. Everything
+that reads a clip's content goes through it: the engine schedules a
+buffer source per pass (`#startClip`, the offline render) with the clip's
+own fades on the outer edges and the click-guard fades between passes;
+`mixClipsToChannels`, `clipNoteEvents` (a note sounds in every pass, cut at
+the pass's end), the timeline's waveform and note roll (a faint line where
+the passes meet, the clip's label marked ↻), the piano roll (its dimming
+stops at the loop's end, the playhead through the passes), `splitClipAt`
+(the right part starts where the passes stand at the cut and keeps the
+loop), the clip tools (`#clipChannels` lays the passes end to end, so
+Reverse, Normalize and Consolidate work on what plays), the export's trim
+and the session bundle, a clip's MIDI export, and the revision diff
+("looped", "loop moved", "loop off").
+
+**Loop** in the clip bar (Shift+L; L alone is the transport's loop) makes what the clip shows its loop
+(`setClipLoop(id, true)`: `[offset, offset + duration]`), after which the
+right edge drags out past the recording's end to repeat it
+(`trimmedClip` is given no source bound for a looped clip). Off again, the
+clip plays once and shrinks to what its recording holds from its offset.
+Another take through `cycleTake` keeps a looped clip's length; a clip
+tool's new recording clears the loop (what it made is the unrolled audio).
+
+The writers: the DAWproject carries `loopStart`/`loopEnd` in content
+seconds (its own words), and `dawprojectRead` keeps them when the loop
+comes round within the clip (Bitwig writes a loop the clip's own length on
+every clip; that is no loop). A Reaper project writes a looped clip that
+starts inside its loop as a `SOURCE SECTION` of the file with `LOOP 1`,
+which Reaper plays round; one that plays into its loop from before it
+goes out as an item per pass, and `rppRead` reads a looping section back
+as a loop. Sandyne has no clip loop: a content per pass. A Live set's
+looped clips (`LoopOn`) come in as looped clips when the tempo holds
+across the clip (content seconds at one tempo match the song's beats);
+over a tempo change they are unrolled as before, and the note says so.
 
 ## MP3 export (2026-10-20)
 

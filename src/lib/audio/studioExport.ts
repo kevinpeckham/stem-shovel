@@ -1,4 +1,5 @@
 import { audacityLabels } from "#lib/utils/audacityLabels.js";
+import { clipSegments } from "#lib/utils/clipSegments.js";
 import { bextChunk } from "#lib/utils/bext.js";
 import { encodeWav } from "#lib/utils/encodeWav.js";
 import { encodeWav24 } from "#lib/utils/encodeWav24.js";
@@ -274,21 +275,37 @@ async function sourceFiles(
 			continue;
 		}
 		const sr = buffer.sampleRate;
-		const from = Math.min(buffer.length, Math.max(0, Math.round(c.offset * sr)));
-		const to = Math.min(
-			buffer.length,
-			Math.max(from + 1, Math.round((c.offset + c.duration) * sr)),
-		);
-		const channels = channelsOf(buffer).map((ch) => ch.slice(from, to));
+		// What the clip plays, pass by pass for a looped clip (utils/clipSegments.ts), laid end to end as one file.
+		const spans = clipSegments(c)
+			.map((seg) => {
+				const from = Math.min(buffer.length, Math.max(0, Math.round(seg.offset * sr)));
+				const to = Math.min(
+					buffer.length,
+					Math.max(from + 1, Math.round((seg.offset + seg.duration) * sr)),
+				);
+				return { from, to };
+			})
+			.filter((x) => x.to > x.from);
+		const total = spans.reduce((n, x) => n + (x.to - x.from), 0);
+		const channels = channelsOf(buffer).map((ch) => {
+			const out = new Float32Array(total);
+			let at = 0;
+			for (const x of spans) {
+				out.set(ch.subarray(x.from, x.to), at);
+				at += x.to - x.from;
+			}
+			return out;
+		});
 		const path = `${dir}/${c.id}.wav`;
 		entries.push({ name: path, data: encode(channels, sr) });
 		audio.set(c.id, {
 			path,
-			durationSeconds: (to - from) / sr,
+			durationSeconds: total / sr,
 			sampleRate: sr,
 			channels: channels.length,
 		});
-		clips.push({ ...c, sourceId: c.id, offset: 0 });
+		const { loop: _loop, ...rest } = c;
+		clips.push({ ...rest, sourceId: c.id, offset: 0 });
 	}
 	return { entries, audio, arrangement: { ...a, clips } };
 }

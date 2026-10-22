@@ -1,12 +1,14 @@
+import { clipContentTime } from "./clipSegments";
 import type { ClipSpan } from "./trimmedClip";
 
 /**
  * A clip split at a time inside it (docs/multitrack-recorder.md, "Editing
  * clips"): the left part keeps the start and the fade-in, the right part
- * takes the rest of the source and the fade-out. Null when the cut would
+ * takes the rest of the source (a looped clip's, from where its passes
+ * stand at the cut) and the fade-out. Null when the cut would
  * fall within 10 ms of either end. The caller gives the right part its id.
  */
-export function splitClipAt<C extends ClipSpan>(
+export function splitClipAt<C extends ClipSpan & { loop?: { start: number; end: number } }>(
 	clip: C,
 	at: number,
 ): { left: C; right: Omit<C, "fadeIn"> & { fadeIn: number } } | null {
@@ -19,7 +21,8 @@ export function splitClipAt<C extends ClipSpan>(
 		right: {
 			...clip,
 			start: round4(at),
-			offset: round4(clip.offset + cut),
+			// Where the clip's content stands at the cut: a looped clip's right part starts inside the loop and keeps it.
+			offset: round4(clipContentTime(clip, cut)),
 			duration: round4(clip.duration - cut),
 			fadeIn: 0,
 			fadeOut: Math.min(clip.fadeOut, (clip.duration - cut) / 2),

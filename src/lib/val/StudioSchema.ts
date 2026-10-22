@@ -193,6 +193,9 @@ export const StudioNoteSchema = v.object({
 });
 export type StudioNote = v.InferOutput<typeof StudioNoteSchema>;
 
+/** The shortest loop a clip can have, so a song's loops never queue more than a few thousand passes. */
+export const MIN_CLIP_LOOP_SECONDS = 0.1;
+
 /**
  * A clip: `duration` seconds of its source from `offset`, placed at `start`
  * on the timeline. An audio clip names its source; a MIDI clip carries its
@@ -216,6 +219,19 @@ export const StudioClipSchema = v.pipe(
 		alternates: v.optional(v.pipe(v.array(NanoIdSchema), v.maxLength(32))),
 		/** The shape of the clip's own fades (D4): linear, or equal-power (`power`) as a crossfade needs. Absent means linear. */
 		fadeShape: v.optional(v.picklist(STUDIO_FADE_SHAPES)),
+		/**
+		 * A loop over the content (docs/multitrack-recorder.md, "Looping a clip"): content seconds, like `offset`. The clip plays from
+		 * `offset` to `end`, then `start` to `end` again and again for its `duration` (utils/clipSegments.ts). Absent means it plays once.
+		 */
+		loop: v.optional(
+			v.pipe(
+				v.object({ start: SecondsSchema, end: SecondsSchema }),
+				v.check(
+					(l) => l.end - l.start >= MIN_CLIP_LOOP_SECONDS,
+					"A loop is at least a tenth of a second",
+				),
+			),
+		),
 	}),
 	v.check(
 		(c) => (c.sourceId !== undefined) !== (c.notes !== undefined),

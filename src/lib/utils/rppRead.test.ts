@@ -224,6 +224,48 @@ describe("readRpp", () => {
 		]);
 	});
 
+	it("keeps an item that loops a section of its file as a looped clip", () => {
+		const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
+  TEMPO 120 4 4 0
+  <TRACK
+    NAME Kick
+    <ITEM
+      POSITION 1
+      LENGTH 5
+      LOOP 1
+      NAME Looped
+      SOFFS 0.5
+      <SOURCE SECTION
+        STARTPOS 1
+        LENGTH 2
+        <SOURCE WAVE
+          FILE "Media/kick.wav"
+        >
+      >
+    >
+    <ITEM
+      POSITION 8
+      LENGTH 1.5
+      LOOP 1
+      NAME Once
+      SOFFS 0
+      <SOURCE SECTION
+        STARTPOS 1
+        LENGTH 2
+        <SOURCE WAVE
+          FILE "Media/kick.wav"
+        >
+      >
+    >
+  >
+>`;
+		const clips = readRpp(rpp, "loop").arrangement.clips;
+		expect(clips.map((c) => [c.name, c.start, c.offset, c.duration, c.loop])).toEqual([
+			["Looped", 1, 1.5, 5, { start: 1, end: 3 }],
+			["Once", 8, 1, 1.5, undefined],
+		]);
+	});
+
 	it("takes a MIDI take at its own tempo when it ignores the project's, and refuses what is not a project", () => {
 		const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
   TEMPO 120 4 4 0

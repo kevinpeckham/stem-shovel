@@ -136,6 +136,41 @@ test.describe("Dawn editing", () => {
 		// Undo brings the piece back.
 		await page.keyboard.press("ControlOrMeta+z");
 		expect(await hooked(page, ([w]) => w.__studio.arrangement.clips.length)).toBe(2);
+
+		// Loop: L makes the first piece's content its loop, and its right edge then drags past the recording's end to repeat it.
+		await page.locator("[data-clip]").first().click();
+		await page.keyboard.press("Shift+L");
+		const looped = await hooked(
+			page,
+			([w]) => [...w.__studio.arrangement.clips].sort((a: any, b: any) => a.start - b.start)[0],
+		);
+		expect(looped.loop).toEqual({ start: 0, end: looped.duration });
+		await expect(page.getByRole("button", { name: "Loop clip" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await hooked(page, ([w, id]) => w.__studio.trimClip(id, { end: 40 }), looped.id);
+		const stretched = await hooked(
+			page,
+			([w, id]) => w.__studio.arrangement.clips.find((c: any) => c.id === id),
+			looped.id,
+		);
+		expect(stretched.duration).toBeGreaterThan(looped.duration);
+		await expect(page.locator(`[data-clip="${looped.id}"]`)).toContainText("↻");
+		// Off again: the clip plays once, trimmed back to what its recording holds from its offset.
+		await page.keyboard.press("Shift+L");
+		const once = await hooked(
+			page,
+			([w, id]) => w.__studio.arrangement.clips.find((c: any) => c.id === id),
+			looped.id,
+		);
+		expect(once.loop).toBeUndefined();
+		const sourceSeconds = await hooked(
+			page,
+			([w, id]) => w.__studio.sources[id].durationSeconds,
+			once.sourceId,
+		);
+		expect(once.duration).toBeCloseTo(sourceSeconds - once.offset, 2);
 		expect(errors).toEqual([]);
 		await deleteStudioSongs(page);
 	});

@@ -10,6 +10,7 @@ import {
 	STUDIO_FADER_MAX,
 	STUDIO_SAMPLE_RATES,
 } from "#lib/constants/studio.js";
+import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import type {
 	StudioArrangement,
 	StudioAutomation,
@@ -337,6 +338,21 @@ export function readDawproject(
 		const durationRaw = attr(el, "duration");
 		let duration = durationRaw === null ? 0 : toSeconds(num(el, "duration", 0), unit);
 		const playStart = num(el, "playStart", 0);
+		// A loop over the content (loopStart/loopEnd, content time): kept as Dawn's own loop when it has length.
+		const loopStartRaw = attr(el, "loopStart");
+		const loopEndRaw = attr(el, "loopEnd");
+		// Kept only when the loop comes round within the clip (Bitwig writes one on every clip, the clip's own length).
+		const loopOf = (toContent: (v: number) => number, offset: number, length: number) => {
+			if (loopStartRaw === null || loopEndRaw === null) return undefined;
+			const start = round4(Math.max(0, toContent(Number(loopStartRaw))));
+			const end = round4(toContent(Number(loopEndRaw)));
+			if (!(end > start) || length <= end - Math.min(offset, end) + 0.001) return undefined;
+			if (end - start < MIN_CLIP_LOOP_SECONDS) {
+				fix(`${name || "A clip"}: a loop shorter than a tenth of a second, played once`);
+				return undefined;
+			}
+			return { start, end };
+		};
 		const fadeIn = clamp(round4(toSeconds(num(el, "fadeInTime", 0), fadeUnit)), 0, 60);
 		const fadeOut = clamp(round4(toSeconds(num(el, "fadeOutTime", 0), fadeUnit)), 0, 60);
 		// An alias clip plays another clip's content (the reference writer's "Alias Clip"): the same source or notes, placed here.
@@ -427,6 +443,7 @@ export function readDawproject(
 			}
 			if (!(duration > 0)) duration = Math.max(0.001, fileSeconds - offset);
 			remember(el, audio, { sourceId, offset: seconds(Math.max(0, offset)) });
+			const loop = loopOf((v) => toSeconds(v, contentUnit), Math.max(0, offset), duration);
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -438,6 +455,7 @@ export function readDawproject(
 				fadeIn,
 				fadeOut,
 				name: label,
+				...(loop ? { loop } : {}),
 			});
 			return;
 		}
@@ -467,6 +485,11 @@ export function readDawproject(
 			const end = kept.reduce((m, n) => Math.max(m, n.t + n.d), 0);
 			if (!(duration > 0)) duration = Math.max(0.001, end - toSeconds(playStart, contentUnit));
 			remember(el, notesEl, { notes: kept });
+			const loop = loopOf(
+				(v) => toSeconds(v, contentUnit),
+				toSeconds(playStart, contentUnit),
+				duration,
+			);
 			clips.push({
 				id: nanoid(),
 				trackId: owner.id,
@@ -478,6 +501,7 @@ export function readDawproject(
 				fadeIn: 0,
 				fadeOut: 0,
 				name: name || "Notes",
+				...(loop ? { loop } : {}),
 			});
 			return;
 		}

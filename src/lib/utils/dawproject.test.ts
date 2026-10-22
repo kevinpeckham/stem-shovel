@@ -249,4 +249,28 @@ describe("dawproject", () => {
 		expect(back.arrangement.tempoChanges).toEqual([{ start: 8, bpm: 90 }]);
 		expect(back.arrangement.meterChanges).toEqual([{ start: 8, beatsPerBar: 3 }]);
 	});
+
+	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
+		const looped: StudioArrangement = {
+			...arrangement,
+			clips: [{ ...arrangement.clips[0]!, duration: 10, loop: { start: 0.5, end: 2.5 } }],
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Looped",
+			arrangement: looped,
+			audio: new Map([
+				["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.138.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		expect(xml).toContain('playStart="0.500000" loopStart="0.500000" loopEnd="2.500000"');
+		const back = readDawproject(xml, metadata, "Looped");
+		expect(back.arrangement.clips[0]).toMatchObject({
+			start: 2,
+			offset: 0.5,
+			duration: 10,
+			loop: { start: 0.5, end: 2.5 },
+		});
+	});
 });

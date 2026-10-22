@@ -17,6 +17,7 @@ import type {
 	StudioSend,
 	StudioTrack,
 } from "#lib/val/StudioSchema.js";
+import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
 import { readReport } from "./readReport";
@@ -107,6 +108,9 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		for (const s of tempoSteps) if (s.beat <= beat) t = s.bpm;
 		return t;
 	};
+	/** Whether one tempo holds from one beat to another: no step lands between them. */
+	const steadyAcross = (from: number, to: number): boolean =>
+		!tempoSteps.some((st) => st.beat > from && st.beat < to);
 	// The time signature is an enum: numerator = value mod 99 + 1, denominator = 2 to the power of value div 99.
 	const sigOf = (v: number) => ({ numerator: (v % 99) + 1, denominator: 2 ** Math.floor(v / 99) });
 	let beatsPerBar = 4;
@@ -374,6 +378,52 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					}
 				}
 				const loopLength = loopOn ? loopEnd - loopStart : Infinity;
+				// A loop that comes round within the clip, at one tempo throughout: kept as Dawn's own loop, the notes in content seconds at that tempo.
+				if (
+					keepsLoop(
+						loopOn,
+						loopLength,
+						loopEnd - playStart,
+						lengthBeats,
+						steadyAcross(startBeat, endBeat),
+					)
+				) {
+					const spb = 60 / tempoAt(startBeat);
+					const from = Math.min(playStart, loopStart);
+					for (const n of source) {
+						if (n.time < from || n.time >= loopEnd) continue;
+						notes.push({
+							t: seconds(n.time * spb),
+							d: Math.max(0.001, seconds(n.duration * spb)),
+							p: n.pitch,
+							v: n.velocity,
+						});
+					}
+					if (!notes.length) {
+						drop(`${name} on ${s.name}: no notes`);
+						continue;
+					}
+					if (notes.length > MAX_STUDIO_NOTES_PER_CLIP) {
+						drop(`${name} on ${s.name}: over the ${MAX_STUDIO_NOTES_PER_CLIP}-note limit`);
+						continue;
+					}
+					if (clips.length >= MAX_STUDIO_CLIPS) {
+						drop(`${name} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
+						continue;
+					}
+					clips.push({
+						id: nanoid(),
+						...base,
+						fadeIn: 0,
+						fadeOut: 0,
+						notes: notes.sort((a, b) => a.t - b.t),
+						start: clipStart,
+						offset: seconds(playStart * spb),
+						duration: seconds(clipEnd - clipStart),
+						loop: { start: seconds(loopStart * spb), end: seconds(loopEnd * spb) },
+					});
+					continue;
+				}
 				let passStart = playStart;
 				let consumed = 0;
 				let passes = 0;
@@ -398,7 +448,10 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					if (!loopOn || !(loopLength > 0)) break;
 					passStart = loopStart;
 				}
-				if (passes > 1) fix(`${name} on ${s.name}: a looped clip, its loop repeated to fill it`);
+				if (passes > 1)
+					fix(
+						`${name} on ${s.name}: a looped clip over a tempo change, its loop repeated to fill it`,
+					);
 				if (!notes.length) {
 					drop(`${name} on ${s.name}: no notes`);
 					continue;
@@ -491,7 +544,37 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					...(sampleRate ? { sampleRate } : {}),
 				});
 			}
-			// Unrolled over the clip: an unwarped clip's loop values are seconds of the sample, a warped one's are beats.
+			// An unwarped clip's loop values are seconds of the sample, a warped one's are beats (through the warp markers).
+			const contentSec = (v: number) => seconds(Math.max(0, warped ? secAtBeat(v) : v));
+			const toBeats = (contentSpan: number) =>
+				warped ? contentSpan : (contentSpan * tempoAt(startBeat)) / 60;
+			// A loop that comes round within the clip, at one tempo throughout: kept as Dawn's own loop over the sample.
+			if (
+				keepsLoop(
+					loopOn,
+					toBeats(loopEnd - loopStart),
+					toBeats(loopEnd - playStart),
+					lengthBeats,
+					steadyAcross(startBeat, endBeat),
+				) &&
+				contentSec(loopEnd) - contentSec(loopStart) >= MIN_CLIP_LOOP_SECONDS
+			) {
+				if (clips.length >= MAX_STUDIO_CLIPS) {
+					drop(`${name} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
+					continue;
+				}
+				clips.push({
+					id: nanoid(),
+					...base,
+					sourceId,
+					start: clipStart,
+					offset: contentSec(playStart),
+					duration: seconds(clipEnd - clipStart),
+					loop: { start: contentSec(loopStart), end: contentSec(loopEnd) },
+				});
+				continue;
+			}
+			// Else unrolled over the clip, a pass per repeat.
 			let passStart = playStart;
 			let consumed = 0;
 			let passes = 0;
@@ -524,7 +607,10 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 				if (!loopOn) break;
 				passStart = loopStart;
 			}
-			if (passes > 1) fix(`${name} on ${s.name}: a looped clip, its loop repeated to fill it`);
+			if (passes > 1)
+				fix(
+					`${name} on ${s.name}: a looped clip over a tempo change, its loop repeated to fill it`,
+				);
 		}
 	}
 	if (sessionClips)
@@ -595,6 +681,28 @@ function hueOf(hex: string): number | undefined {
 }
 
 /** A device's name: what the user called it, a plug-in's own name, else Live's tag for it ("Compressor2" is the Compressor). */
+/**
+ * Whether a Live clip's loop comes across as Dawn's own: the loop is on and
+ * has length, the clip runs past the loop's end from where it starts playing
+ * (so the loop comes round at least once), and the tempo holds across the
+ * clip (content seconds at one tempo match the song).
+ */
+function keepsLoop(
+	loopOn: boolean,
+	loopBeats: number,
+	firstPassBeats: number,
+	lengthBeats: number,
+	steady: boolean,
+): boolean {
+	return (
+		loopOn &&
+		Number.isFinite(loopBeats) &&
+		loopBeats > 0 &&
+		lengthBeats > firstPassBeats + 1e-6 &&
+		steady
+	);
+}
+
 function deviceName(d: Element): string {
 	const plugin =
 		value(path(d, "PluginDesc", "VstPluginInfo", "PlugName")) ||

@@ -190,6 +190,37 @@ describe("sandProject", () => {
 		// The note at 1.5 s into the content, offset 1 s: half a second after the clip's start, a beat in.
 		expect(notes.notesData).toEqual([{ note: 64, velocity: 64, start: 1, duration: 1 }]);
 	});
+	it("lays a looped clip out as a content per pass, the fades at the outer edges", () => {
+		const looped = JSON.parse(
+			sandProject({
+				title: "Loop",
+				arrangement: {
+					...arrangement,
+					clips: [{ ...arrangement.clips[0]!, offset: 1, duration: 5, loop: { start: 1, end: 3 } }],
+				},
+				audio: new Map([
+					["s1", { path: "samples/s1.wav", durationSeconds: 30, sampleRate: 48000, channels: 2 }],
+				]),
+				application: { name: "Stem Shovel Dawn", version: "0.141.0" },
+			}),
+		);
+		// 2.5 s at 120 bpm is beat 5; passes of 2, 2 and 1 s (4, 4 and 2 beats).
+		expect(
+			looped.contents.map((c: Record<string, number>) => [
+				c.startBeat,
+				c.lengthBeats,
+				c.contentStartOffset,
+				c.fadeInBeats,
+				c.fadeOutBeats,
+			]),
+		).toEqual([
+			[5, 4, 2, 1, 0],
+			[9, 4, 2, 0, 0],
+			[13, 2, 2, 0, 2],
+		]);
+		expect(looped.tracks[0].contentIds).toEqual([1, 2, 3]);
+	});
+
 	it("leaves a clip without its audio out, and the key out when it is no key", () => {
 		expect(p.contents.length).toBe(3);
 		const noKey = JSON.parse(
