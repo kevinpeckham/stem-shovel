@@ -10,11 +10,14 @@ Switch Jot on and the pad under the circle writes down what you play: each chord
 
 ### Quick Tips
 
-- Play from the computer keyboard: the number row plays the majors round the circle from your key, the row below it the minors, and Shift adds the seventh; or switch the UI menu to the map by degree, where 1, 4, 5 is I–IV–V. The keyboard button shows each wedge's key.
-- Notes mode turns the circle into twelve single notes, for a melody over a chord you remember.
-- Style puts the sevenths on the buttons: Blues for dominant sevenths everywhere, Jazz for maj7, m7 and m7♭5 by degree, Lush for ninths and thirteenths. Its Voicing spreads them: spread or rich for a fuller sound, bass for a low root.
-- The Strum button staggers the notes as a hand would; it suits the grand piano.
-- Space is the sustain pedal and Escape stops everything, as on the piano.
-- The arch draws the key and its neighbors big and runs the far keys straight on from its ends; the UI menu's Layout brings back the whole circle; with the key at the bottom (the UI menu) it turns over for a thumb on a phone.
-- The IV button writes each chord's Roman numeral in your key on its wedge, and the UI menu can dim the chords outside the key, so a progression like I, V, vi, IV is there to see.
-- On the pad a chord lasts until the next one starts; to write a rest, leave two beats or more of silence, or tap a chord on the pad and make it one.
+- Select the key you want to play in to find the right chords
+- Try out the default presets to get started quickly
+- Hold down the Shift key to play sevenths
+- Hold down the spacebar for sustain
+- Try applying delay, reverb or other effects in the Effects Menu
+- Tap the Arpeggio button to play arpeggiated chords
+- Double-click the Arpeggio button to latch the arpeggiator on
+- Tap the Strum button to strum chords
+- Set the bpm in the tempo / metronome menu
+- Notes mode turns the circle into twelve single notes
+- Tap the keyboard button to see which keys on the keyboard correspond to which chords in the player
