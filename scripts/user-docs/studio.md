@@ -66,7 +66,7 @@ Dawn works signed out: record, arrange, mix and export as anyone does. The song 
 
 ## Opening a DAWproject
 
-**Import audio, MIDI or a project…** opens a `.dawproject` from Bitwig Studio, Studio One, Cubase or Nuendo (or one Dawn exported), or a Reaper project (`.rpp`, chosen together with its media files), as a new song: the tracks and groups, levels, pans, routing and sends, the clips with their fades, the notes of MIDI clips, volume and pan automation, tempo and time-signature changes, and the markers. Plugins and devices, and anything else Dawn has no place for, are listed in a note when the song opens, so you know what to add back. Works signed out too: the song is kept in this browser like any other.
+**Import audio, MIDI or a project…** opens a `.dawproject` from Bitwig Studio, Studio One, Cubase or Nuendo (or one Dawn exported), a Reaper project (`.rpp`) or an Ableton Live set (`.als`), each chosen together with its media files, as a new song: the tracks and groups, levels, pans, routing and sends, the clips with their fades, the notes of MIDI clips, volume and pan automation, tempo and time-signature changes, and the markers. A Live set's looped clips are laid out as many times as they play, and its warped clips play at their files' own speed. Plugins and devices, and anything else Dawn has no place for, are listed in a note when the song opens, so you know what to add back. Works signed out too: the song is kept in this browser like any other.
 
 ## A DAWproject in the song's files
 

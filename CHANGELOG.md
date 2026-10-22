@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Ableton Live sets into the converter and Dawn** (docs/dawproject-plan.md, roadmap step 4): `utils/alsRead.ts` reads a Live set (`.als`, Live 9 to 12, gzipped or plain XML, bare or as a zip of the project folder) through `utils/unpackProject.ts` (format "ableton"): the tracks with their levels, pans, mutes, colors (the nearest of Dawn's tints by hue; `constants/liveColors.ts` is Live's palette) and volume and pan envelopes, groups and returns as buses with the routing and sends, the arrangement's clips in seconds through the tempo map (looped clips unrolled, warped clips' offsets through their warp markers, unwarped clips' in seconds), the MIDI clips' notes, the tempo and its automation as steps, the time signature and its changes, the locators as markers; devices, session clips, deactivated and transposed clips reported. The convert page and Dawn's import accept `.als`; tests/als holds a Live 12.2.1 set (MIT) as the corpus, tests/e2e/convert.spec.ts the round trip to a DAWproject.
+
 ## [0.145.0] - 2026-10-22
 
 ### Added

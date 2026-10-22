@@ -688,9 +688,9 @@
 		if (!files.length) return;
 		importing = true;
 		try {
-			// A DAWproject (or a zip holding one) or a Reaper project is a whole song of its own, opened as a new one
-			// (docs/dawproject-plan.md); the other files are a Reaper project's media when it names them, else they land on this song.
-			const projects = files.filter((f) => /\.(dawproject|rpp|zip)$/i.test(f.name));
+			// A DAWproject (or a zip holding one), a Reaper project or a Live set is a whole song of its own, opened as a new one
+			// (docs/dawproject-plan.md); the other files are that project's media when it names them, else they land on this song.
+			const projects = files.filter((f) => /\.(dawproject|rpp|als|zip)$/i.test(f.name));
 			files = files.filter((f) => !projects.includes(f));
 			for (const f of projects) {
 				const used = await importDawproject(f, files);
@@ -818,7 +818,7 @@
 			const bytes = entryOf(f.path);
 			if (!bytes) {
 				read.dropped.push(
-					format === "reaper"
+					format !== "dawproject"
 						? `${f.label}: ${f.path.replace(/^.*[\\/]/, "")} was not chosen with the project`
 						: `${f.label}: its file is not in the archive`,
 				);
@@ -2077,7 +2077,7 @@
 						<input
 							type="file"
 							class="sr-only"
-							accept="{DEMO_ACCEPT},.mid,.midi,.dawproject,.rpp,.zip"
+							accept="{DEMO_ACCEPT},.mid,.midi,.dawproject,.rpp,.als,.zip"
 							multiple
 							disabled={importing}
 							onchange={(e) => {

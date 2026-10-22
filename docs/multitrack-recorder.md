@@ -1144,6 +1144,23 @@ DAWproject opens, the media chosen beside it (Reaper's project names its
 files by path and holds none). `bun run interop:rpp` proves both against
 Reaper itself (docs/daw-interop-plan.md, tier B).
 
+## Opening an Ableton Live set (2026-10-22, docs/dawproject-plan.md step 4)
+
+**Import audio, MIDI or a project…** and the convert page take an Ableton
+Live set (`.als`, gzipped XML as Live writes it, or a zip of the Live
+project folder with its `Samples/`) the way they take a Reaper project:
+`utils/alsRead.ts` through `utils/unpackProject.ts` (format "ableton"),
+the samples chosen beside the set and found by the set's own relative
+paths or by name. The tracks with their levels, pans, mutes, colors and
+envelopes, a group as a bus and a return as a bus the sends feed, the
+arrangement's clips in seconds through the tempo map (a looped clip
+unrolled, a warped clip's file offsets through its warp markers, an
+unwarped clip's in seconds), the MIDI clips' notes, the tempo and its
+automation as steps, the time signature and its changes, the locators as
+markers. Devices, session-view clips, deactivated and transposed clips are
+listed in the note when the song opens. One way: Dawn writes no Live set
+(the session bundle is the way into Live).
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3

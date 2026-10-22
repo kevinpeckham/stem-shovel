@@ -380,6 +380,48 @@ decoding. So the conversions, in the order they come free:
 4. **Ableton Live `.als` → DAWproject.** A gzipped XML set; DawVert's
    reader shows what the tags mean. One way only: Live cannot read
    DAWproject, and writing a Live set that Live accepts is a deeper hole.
+   **Done 2026-10-22.** `utils/alsRead.ts` reads a set (Live 9 to 12:
+   `MasterTrack` or Live 12's `MainTrack`, `Color` or Live 9's
+   `ColorIndex`) into Dawn's shape through `utils/unpackProject.ts`
+   (format "ableton": a bare `.als`, gzipped or the XML itself, or a zip
+   of the Live project folder with its `Samples/`; the set's `Backup/`
+   copies are skipped). The tempo and its automation (as steps at the
+   points: Live ramps between them), the time signature and its changes
+   (an enum: numerator = value mod 99 + 1, denominator = 2 to the power of
+   value div 99; the master's envelope with `PointeeId` 10), the locators
+   as markers, the master's volume; a track per audio and MIDI track with
+   volume (Live's fader runs to +6 dB, clamped to Dawn's and reported),
+   pan, `Speaker` as the mute, the color as the nearest of Dawn's tints by
+   hue (`constants/liveColors.ts` is Live's palette by index; RGB distance
+   finds nothing, Live's colors being saturated) and the volume and pan
+   envelopes (`AutomationEnvelopes` by the mixer's `AutomationTarget` ids);
+   a group track as a bus the tracks with its `TrackGroupId` route to, a
+   return track as a bus the `Sends/TrackSendHolder` levels feed by index
+   (−70 dB, 0.000316, is off; a group inside a group goes to the master,
+   reported). The arrangement's clips (`MainSequencer/Sample` or
+   `ClipTimeable`, then `ArrangerAutomation/Events`) in seconds through
+   the tempo map, `CurrentStart`/`CurrentEnd` being song beats: an audio
+   clip over its `SampleRef/FileRef` (`RelativePath` when it stays inside
+   the project folder, else `Path`), a warped clip's content beats mapped
+   to the sample's seconds through its `WarpMarkers` (reported when Live
+   plays the file at another speed than the song's tempo, more than 2 %
+   off), an unwarped clip's `Loop/LoopStart` being seconds into the file;
+   a looped clip (`LoopOn`) unrolled over its length from
+   `LoopStart + StartRelative`, a clip per pass with the fades at the outer
+   edges only; `SampleVolume` as the gain, `Fades` in beats; a MIDI clip's
+   `KeyTracks` notes (velocity 0 to 127, `IsEnabled`) unrolled the same
+   way, a note that crosses the loop's end stopped there as Live stops it.
+   Left out and reported: devices and plug-ins (named by `UserName`, the
+   VST or VST3 plug-in's name, or Live's tag), session-view clips (counted),
+   deactivated clips, transposed clips (`PitchCoarse`/`PitchFine`), clip
+   envelopes, track delays, crossfades. The corpus is tests/als (a Live
+   12.2.1 set under MIT, with its owner's paths made generic) plus three
+   Live 11 sets and a Live 9 and 10 template read in the scratchpad; the
+   convert page and Dawn's import accept `.als`; tests/e2e/convert.spec.ts
+   covers the round trip to a DAWproject. Not proven in Live itself (there
+   is no Linux Live); the reader's beat and warp arithmetic is checked
+   against the sets' own numbers (a 120 bpm loop in a 124 bpm set, the
+   `LoopEnd` of 16 beats over 8 seconds of file).
 5. **MIDI → DAWproject**, a type-0 or type-1 file as notes tracks at the
    file's tempo map: trivial once 1 exists, and a way to open any MIDI
    file in a DAW with the tempo map intact.

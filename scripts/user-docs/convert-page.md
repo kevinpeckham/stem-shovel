@@ -1,10 +1,10 @@
 # Convert
 
-Free DAW project converter that works in your browser. Drop a DAWproject from Bitwig Studio, Cubase, Studio One or Nuendo, or a Reaper project, and get it back as stems and MIDI for any DAW, as a mix, as a Reaper project, or as a project for the free Sandyne DAW. Nothing is uploaded.
+Free DAW project converter that works in your browser. Drop a DAWproject from Bitwig Studio, Cubase, Studio One or Nuendo, a Reaper project or an Ableton Live set, and get it back as stems and MIDI for any DAW, as a mix, as a Reaper project, or as a project for the free Sandyne DAW. Nothing is uploaded.
 
 ## How to use Convert
 
-Choose a `.dawproject` file, or a Reaper `.rpp` together with its media files, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders), the clips with their fades, levels and pans, the volume and pan automation, the MIDI parts' notes, the tempo and time-signature changes and the markers, and decodes the audio. Then pick what you want:
+Choose a `.dawproject` file, or a Reaper `.rpp` or an Ableton Live `.als` together with its media files, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders, Live's groups and returns), the clips with their fades, levels and pans, the volume and pan automation, the MIDI parts' notes, the tempo and time-signature changes and the markers (Live's locators), and decodes the audio. Then pick what you want:
 
 - **The mix**: every track and bus through its fader and pan, as one WAV or MP3.
 - **A stem per track**, or per bus, from the start of the project.
@@ -21,5 +21,6 @@ Choose 24-bit or 16-bit WAV, or MP3, and **Normalize** to bring each file to the
 - A MIDI track has no instrument here: its notes go into the MIDI file (and the DAWproject), and it gets no stem.
 - Everything comes out at one sample rate: the one most of the project's files have, shown under **Sample rate**, where you can choose another (44.1, 48, 88.2 or 96 kHz). A file at another rate is resampled and listed there.
 - Anything the file holds that could not come across is listed under "Not carried across".
-- A Reaper project names its recordings by path and holds none: choose or drop them together with the `.rpp` (or a zip of the project folder), and each is found by its name. One not given is listed under "Not carried across".
+- A Reaper project or a Live set names its recordings by path and holds none: choose or drop them together with the `.rpp` or `.als` (or a zip of the project folder), and each is found by its name. One not given is listed under "Not carried across".
+- A Live set comes across one way, from the arrangement view: a looped clip is laid out as many times as it plays, a warped clip plays at its file's own speed here (the summary says when Live had it at another tempo), and devices, session clips, and deactivated or transposed clips are listed under "Not carried across".
 - Signed in, Dawn's **Import audio, MIDI or a project…** opens the same file as a song you can edit, mix and export from.

@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { strToU8, unzipSync, strFromU8, zipSync } from "fflate";
+import { gzipSync, strToU8, unzipSync, strFromU8, zipSync } from "fflate";
 import { expect, test } from "./fixtures";
 
 /**
@@ -193,6 +193,78 @@ test("reads a Reaper project with its media and converts it to a DAWproject", as
 	expect(xml).toContain('name="Keys"');
 	expect(xml).toContain('<Clip time="0.500000" duration="2.000000"');
 	// The note at 0 lasting 720 ticks at 90 bpm: half a second.
+	expect(xml).toContain('<Note time="0.000000" duration="0.500000" channel="0" key="60"');
+	expect(xml).toContain('<Marker time="2.000000" name="Verse"/>');
+	expect(Object.keys(project).filter((n) => n.startsWith("audio/"))).toHaveLength(1);
+	expect(errors).toEqual([]);
+});
+
+/**
+ * An Ableton Live set (docs/dawproject-plan.md, roadmap step 4): a small
+ * set made here, gzipped as Live writes it, with its sample chosen beside
+ * it, is read and comes back as a DAWproject with the clip, the note, the
+ * tempo and the locator where Live had them.
+ */
+test("reads an Ableton Live set with its sample and converts it to a DAWproject", async ({
+	page,
+	errors,
+}) => {
+	test.setTimeout(120_000);
+	const als = `<?xml version="1.0" encoding="UTF-8"?>
+<Ableton MajorVersion="5" MinorVersion="11.0_11300" Creator="Ableton Live 11.3.13"><LiveSet><Tracks>
+<AudioTrack Id="1"><Name><EffectiveName Value="Keys" /></Name><Color Value="21" /><TrackGroupId Value="-1" /><DeviceChain>
+<Mixer><Sends /><Speaker><Manual Value="true" /></Speaker><Pan><Manual Value="0" /></Pan><Volume><Manual Value="1" /></Volume></Mixer>
+<MainSequencer><ClipSlotList /><Sample><ArrangerAutomation><Events>
+<AudioClip Id="0" Time="0.75"><CurrentStart Value="0.75" /><CurrentEnd Value="3.75" />
+<Loop><LoopStart Value="0" /><LoopEnd Value="3" /><StartRelative Value="0" /><LoopOn Value="false" /></Loop>
+<Name Value="Take" /><Disabled Value="false" /><IsWarped Value="true" />
+<SampleRef><FileRef><RelativePath Value="Samples/Imported/keys.wav" /><Path Value="/Users/me/Live check Project/Samples/Imported/keys.wav" /></FileRef><DefaultSampleRate Value="32000" /></SampleRef>
+<Fades><FadeInLength Value="0" /><FadeOutLength Value="0" /></Fades><SampleVolume Value="1" />
+<WarpMarkers><WarpMarker Id="0" SecTime="0" BeatTime="0" /><WarpMarker Id="1" SecTime="2" BeatTime="3" /></WarpMarkers>
+</AudioClip></Events></ArrangerAutomation></Sample></MainSequencer><DeviceChain><Devices /></DeviceChain></DeviceChain></AudioTrack>
+<MidiTrack Id="2"><Name><EffectiveName Value="Piano" /></Name><Color Value="24" /><TrackGroupId Value="-1" /><DeviceChain>
+<Mixer><Sends /><Speaker><Manual Value="true" /></Speaker><Pan><Manual Value="0" /></Pan><Volume><Manual Value="1" /></Volume></Mixer>
+<MainSequencer><ClipSlotList /><ClipTimeable><ArrangerAutomation><Events>
+<MidiClip Id="0" Time="1.5"><CurrentStart Value="1.5" /><CurrentEnd Value="3" />
+<Loop><LoopStart Value="0" /><LoopEnd Value="1.5" /><StartRelative Value="0" /><LoopOn Value="false" /></Loop>
+<Name Value="Chords" /><Disabled Value="false" />
+<Notes><KeyTracks><KeyTrack Id="0"><Notes><MidiNoteEvent Time="0" Duration="0.75" Velocity="101.6" IsEnabled="true" NoteId="1" /></Notes><MidiKey Value="60" /></KeyTrack></KeyTracks></Notes>
+</MidiClip></Events></ArrangerAutomation></ClipTimeable></MainSequencer><DeviceChain><Devices /></DeviceChain></DeviceChain></MidiTrack>
+</Tracks>
+<MasterTrack><AutomationEnvelopes><Envelopes>
+<AutomationEnvelope Id="0"><EnvelopeTarget><PointeeId Value="10" /></EnvelopeTarget><Automation><Events><EnumEvent Id="0" Time="-63072000" Value="201" /></Events></Automation></AutomationEnvelope>
+</Envelopes></AutomationEnvelopes>
+<DeviceChain><Mixer><Volume><Manual Value="1" /></Volume><Tempo><Manual Value="90" /><AutomationTarget Id="8" /></Tempo><TimeSignature><Manual Value="201" /><AutomationTarget Id="10" /></TimeSignature></Mixer></DeviceChain></MasterTrack>
+<Locators><Locators><Locator Id="0"><Time Value="3" /><Name Value="Verse" /></Locator></Locators></Locators>
+</LiveSet></Ableton>`;
+	const dir = await mkdtemp(path.join(tmpdir(), "convert-als-"));
+	const file = path.join(dir, "live-check.als");
+	await writeFile(file, gzipSync(strToU8(als)));
+	await page.goto("/convert", { waitUntil: "networkidle" });
+	await page
+		.locator("input[type=file]")
+		.setInputFiles([file, path.resolve("static/stems/keys.wav")]);
+	const summary = page.getByLabel("What the file holds");
+	await expect(summary).toContainText("live-check.als (Live set)");
+	await expect(summary).toContainText("Keys, Piano");
+	await expect(summary).toContainText("1 audio, 1 MIDI, over 0:03");
+	await expect(summary).toContainText("1 of 1 decoded");
+	await expect(summary).toContainText("90 bpm, 4/4, 1 marker");
+	const panel = page.locator("[data-export-panel]");
+	await panel.getByRole("checkbox", { name: /The mix/ }).uncheck();
+	await panel.getByRole("checkbox", { name: /A DAWproject/ }).check();
+	const [download] = await Promise.all([
+		page.waitForEvent("download", { timeout: 60_000 }),
+		panel.getByRole("button", { name: "Export" }).click(),
+	]);
+	expect(download.suggestedFilename()).toBe("live-check.dawproject");
+	const project = unzipSync(new Uint8Array(await readFile((await download.path())!)));
+	const xml = strFromU8(project["project.xml"]!);
+	expect(xml).toContain('<Tempo unit="bpm" value="90.000000"');
+	expect(xml).toContain('name="Keys"');
+	// Beats 0.75 to 3.75 at 90 bpm: half a second in, two seconds long.
+	expect(xml).toContain('<Clip time="0.500000" duration="2.000000"');
+	// The note at the clip's start, three quarters of a beat: half a second.
 	expect(xml).toContain('<Note time="0.000000" duration="0.500000" channel="0" key="60"');
 	expect(xml).toContain('<Marker time="2.000000" name="Verse"/>');
 	expect(Object.keys(project).filter((n) => n.startsWith("audio/"))).toHaveLength(1);

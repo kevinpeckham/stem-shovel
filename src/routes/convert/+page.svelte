@@ -21,8 +21,9 @@
 	import type { DawprojectRead } from "#lib/utils/dawprojectRead.js";
 
 	/**
-	 * Convert (docs/dawproject-plan.md "Roadmap", steps 1 to 3): drop a
-	 * DAWproject or a Reaper project (with its media beside it), get it back
+	 * Convert (docs/dawproject-plan.md "Roadmap", steps 1 to 4): drop a
+	 * DAWproject, a Reaper project or an Ableton Live set (with its media
+	 * beside it), get it back
 	 * as stems and MIDI (the session bundle), a mix, a stem per track or
 	 * bus, a repacked DAWproject, a Sandyne project or a Reaper project, all
 	 * in the browser through Dawn's own readers (utils/unpackProject.ts), a
@@ -62,9 +63,9 @@
 	const mmss = (s: number) =>
 		`${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-	/** The project among the files (a `.dawproject`, `.rpp` or zip; else the first), the rest its media by name. */
+	/** The project among the files (a `.dawproject`, `.rpp`, `.als` or zip; else the first), the rest its media by name. */
 	async function openFiles(files: File[]) {
-		const file = files.find((f) => /\.(dawproject|rpp|zip)$/i.test(f.name)) ?? files[0];
+		const file = files.find((f) => /\.(dawproject|rpp|als|zip)$/i.test(f.name)) ?? files[0];
 		if (!file) return;
 		reading = true;
 		results = [];
@@ -81,7 +82,7 @@
 			for (const f of unpacked.read.files)
 				if (!unpacked.entryOf(f.path))
 					unpacked.read.dropped.push(
-						unpacked.format === "reaper"
+						unpacked.format !== "dawproject"
 							? `${f.label}: ${f.path.replace(/^.*[\\/]/, "")} was not dropped with the project`
 							: `${f.label}: its file is not in the archive`,
 					);
@@ -174,7 +175,7 @@
 	<title>{data.copy.title || "Convert"} | Free Online DAW Project Converter</title>
 	<meta
 		name="description"
-		content="Convert a DAWproject (Bitwig Studio, Cubase, Studio One, Nuendo) or a Reaper project (.rpp) to stems and MIDI for Logic Pro, Pro Tools, Ableton Live, Audacity or Reaper, to a mix, to a Reaper project, or to a Sandyne project, free, in your browser. Nothing is uploaded."
+		content="Convert a DAWproject (Bitwig Studio, Cubase, Studio One, Nuendo), a Reaper project (.rpp) or an Ableton Live set (.als) to stems and MIDI for Logic Pro, Pro Tools, Ableton Live, Audacity or Reaper, to a mix, to a Reaper project, or to a Sandyne project, free, in your browser. Nothing is uploaded."
 	/>
 </svelte:head>
 
@@ -203,7 +204,7 @@
 			<input
 				bind:this={input}
 				type="file"
-				accept=".dawproject,.rpp,.zip,.wav,.flac,.mp3,.aif,.aiff,.ogg,.m4a,application/vnd.bitwig.dawproject,application/zip"
+				accept=".dawproject,.rpp,.als,.zip,.wav,.flac,.mp3,.aif,.aiff,.ogg,.m4a,application/vnd.bitwig.dawproject,application/zip"
 				multiple
 				class="sr-only"
 				aria-label="Project file"
@@ -213,8 +214,9 @@
 				}}
 			/>
 			<p class="mb-3 text-15px text-blue-100/90">
-				Drop a <code>.dawproject</code> or a Reaper <code>.rpp</code> here (with its media files beside
-				it), or choose them. They are read in your browser and never uploaded.
+				Drop a <code>.dawproject</code>, a Reaper <code>.rpp</code> or an Ableton Live
+				<code>.als</code> here (with its media files beside it), or choose them. They are read in your
+				browser and never uploaded.
 			</p>
 			<button
 				type="button"
@@ -238,7 +240,13 @@
 					aria-label="What the file holds"
 				>
 					<dt class="opacity-70">File</dt>
-					<dd>{fileName} ({unpacked?.format === "reaper" ? "Reaper project" : "DAWproject"})</dd>
+					<dd>
+						{fileName} ({unpacked?.format === "reaper"
+							? "Reaper project"
+							: unpacked?.format === "ableton"
+								? "Live set"
+								: "DAWproject"})
+					</dd>
 					<dt class="opacity-70">Tracks</dt>
 					<dd>
 						{tracks.length}{buses.length
