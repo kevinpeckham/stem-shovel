@@ -232,7 +232,9 @@ if (mode === "list") {
 				);
 			continue;
 		}
-		if (base.text === page.doc.markdown) {
+		// The app's editor saves with its own trailing newlines: compared and merged as the seed files are, normalized.
+		const pageText = normalize(page.doc.markdown);
+		if (base.text === pageText) {
 			// Not edited in the app since: the seed goes on as it is.
 			console.log(
 				`${slug}: not edited in the app; the seed replaces it${apply ? "" : " (--apply)"}`,
@@ -245,7 +247,7 @@ if (mode === "list") {
 			}
 			continue;
 		}
-		const merged = mergeThreeWay(base.text, page.doc.markdown, seed, {
+		const merged = mergeThreeWay(base.text, pageText, seed, {
 			ours: "the page as edited in the app",
 			theirs: "the seed file",
 		});
@@ -299,7 +301,7 @@ if (mode === "list") {
 		// Edited in the app: the page's text is not the seed it was written from (or, without a base, its newest version carries an author).
 		const newest = page.versions[0];
 		const base = await baseOf(slug, page.versions);
-		const edited = base ? base.text !== page.doc.markdown : !!newest?.createdBy;
+		const edited = base ? base.text !== normalize(page.doc.markdown) : !!newest?.createdBy;
 		if (edited && !force) {
 			console.log(
 				`${slug}: skipped, edited in the app since the script last wrote it${newest?.createdBy ? ` (v${newest.versionNumber}, ${newest.author?.email ?? newest.createdBy})` : ""}; --merge carries the source's changes onto it, or --force overwrites (the edit stays in --list)`,
