@@ -62,4 +62,32 @@ describe("mergeThreeWay", () => {
 		expect(r.text).toContain("The microphone and a line in.");
 		expect(r.text).toContain("Amp is a source too.");
 	});
+	it("trailing whitespace and non-breaking spaces are no difference: the page's own text comes through", () => {
+		// The app's editor saved the list with trailing spaces and a non-breaking space; the seed is clean.
+		const ours = base.replace("Intro.", "Intro.  ").replace("The mic and", "The\u00a0mic and");
+		const theirs = base.replace("## Inputs", "## Inputs and sources");
+		const r = mergeThreeWay(base, ours, theirs);
+		expect(r.conflicts).toEqual([]);
+		expect(r.text).toContain("## Inputs and sources");
+		expect(r.text).toContain("Intro.  ");
+	});
+	it("with prefer, a region changed differently on both sides takes that side and is reported, with no markers", () => {
+		const ours = base.replace("Intro.", "Intro, Kevin's way.");
+		const theirs = base
+			.replace("Intro.", "Intro, the seed's way.")
+			.replace("## Inputs", "## Sources");
+		const r = mergeThreeWay(base, ours, theirs, { prefer: "ours" });
+		expect(r.conflicts).toEqual([
+			{
+				base: ["Intro."],
+				ours: ["Intro, Kevin's way."],
+				theirs: ["Intro, the seed's way."],
+				taken: "ours",
+			},
+		]);
+		expect(r.text).not.toContain("<<<<<<<");
+		expect(r.text).toContain("Intro, Kevin's way.");
+		// The seed's other change still lands.
+		expect(r.text).toContain("## Sources");
+	});
 });

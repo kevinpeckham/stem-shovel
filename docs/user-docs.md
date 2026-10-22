@@ -42,10 +42,25 @@ both takes it once, different changes on both are a conflict).
 - **Dry run first**: `--merge` alone prints, per page whose file differs
   from it, whether the seed simply replaces it (never edited), merges
   cleanly (with the lines the seed brings), or conflicts (both texts of
-  each conflicting region, for the app's editor); nothing is written.
-  `--apply` writes the clean ones, as two versions each: the seed text
+  each conflicting region, for the app's editor, under `--strict`; the
+  page's own text otherwise, see below); nothing is written.
+  `--apply` writes the merges, as two versions each: the seed text
   (the next merge's base, since it matches a git revision) and then the
-  merged page. A conflicted page is left alone and the run exits 1.
+  merged page. Under `--strict` a conflicted page is left alone.
+- **The page always wins** (2026-10-22). Kevin kept meeting conflicts on
+  blocks he had just written, twice on text the seed and the page agreed
+  on but for a trailing blank line or a non-breaking space the app's
+  editor had saved ("I need to be able to easily make edits"). So the
+  merge now compares lines with trailing whitespace and non-breaking
+  spaces ignored, and a region both sides changed differently keeps the
+  page's text, with a note of what the seed wanted there; the seed's other
+  changes still land, and nothing blocks. That note is for whoever changed
+  the seed (make the seed say what the page says, or carry the change
+  another way), not a task for the editor. `--strict` brings back the
+  conflict (markers printed, the page left alone) for the rare case where
+  the seed's side must win and someone wants to see both first; `--force`
+  writes the seed whole. Every version stays in `user_doc_version` either
+  way (`--list`, `--restore`).
 - A page whose base cannot be found (its seed version pruned by ten app
   saves since, and the seed changed in between) is reported as such:
   `--force` overwrites, or the change is merged by hand. The releases

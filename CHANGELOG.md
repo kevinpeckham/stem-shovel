@@ -10,6 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- **User docs merge: the page always wins.** `db:update-docs --merge` compares lines with trailing whitespace and non-breaking spaces ignored (the app's editor adds them), and a region changed on both sides keeps the page's text with a note of what the seed wanted; the seed's other changes still land and nothing blocks. `--strict` restores the conflict markers (docs/user-docs.md).
 - **Packages updated** (2026-10-22): vite-plus 1.3.0 (with its Vite core alias; Dependabot's advisory on Vitest serving files its deny list should hide, dev server and Vitest only), SvelteKit 3.1, adapter-vercel 7.0.1, Svelte tooling, UnoCSS 66.11, Playwright 1.64, Vitest coverage 5.0.5, better-auth 1.7.12 and the passkey plugin, the AI SDK and gateway, Sentry 11.8, Vercel Blob 2.8.2, Drizzle ORM 0.45.4 and kit 0.31.11, marked 18.1, nanoid 6.0.2, mediabunny 1.62, isomorphic-dompurify 4.6, resend 6.34, varlock 1.23, devalue 6, fallow 3.34, cspell 10.4, jsdom 30.1, woof-editor 0.3.0. TypeScript stays on 6: version 7 is the Go compiler, a separate check against svelte-check and tsgolint.
 
 ## [0.143.0] - 2026-10-21

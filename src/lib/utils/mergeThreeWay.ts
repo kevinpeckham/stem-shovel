@@ -6,12 +6,19 @@
  * anchors; between two anchors each side either kept the base's lines or
  * changed them, and a region changed on one side only takes that side,
  * one changed the same way on both takes it once, and one changed
- * differently on both is a conflict, written with markers and reported.
+ * differently on both is a conflict: written with markers and reported,
+ * or, with `prefer`, taken from that side and reported (the user docs:
+ * the page as edited in the app always wins, and the run says what the
+ * seed wanted there). Lines are compared with trailing whitespace and
+ * non-breaking spaces ignored, since an editor adds those on its own; the
+ * text that comes out is each side's as written.
  */
 export interface MergeConflict {
 	base: string[];
 	ours: string[];
 	theirs: string[];
+	/** The side taken, when `prefer` settled it. */
+	taken?: "ours" | "theirs";
 }
 export interface MergeResult {
 	/** The merged text; with conflicts, `<<<<<<<` / `=======` / `>>>>>>>` blocks mark them. */
@@ -47,18 +54,31 @@ export function lcsMatch(a: string[], b: string[]): Map<number, number> {
 }
 
 const same = (x: string[], y: string[]) => x.length === y.length && x.every((l, i) => l === y[i]);
+/** A line as compared: trailing whitespace gone, a non-breaking space a space. */
+const key = (l: string) => l.replace(/\u00a0/g, " ").replace(/\s+$/, "");
+
+export interface MergeOptions {
+	ours?: string;
+	theirs?: string;
+	/** A region changed differently on both sides takes this side instead of markers; still reported. */
+	prefer?: "ours" | "theirs";
+}
 
 export function mergeThreeWay(
 	base: string,
 	ours: string,
 	theirs: string,
-	labels: { ours: string; theirs: string } = { ours: "ours", theirs: "theirs" },
+	options: MergeOptions = {},
 ): MergeResult {
+	const labels = { ours: options.ours ?? "ours", theirs: options.theirs ?? "theirs" };
 	const o = base.split("\n");
 	const a = ours.split("\n");
 	const b = theirs.split("\n");
-	const ma = lcsMatch(o, a);
-	const mb = lcsMatch(o, b);
+	const ok = o.map(key);
+	const ak = a.map(key);
+	const bk = b.map(key);
+	const ma = lcsMatch(ok, ak);
+	const mb = lcsMatch(ok, bk);
 	const out: string[] = [];
 	const conflicts: MergeConflict[] = [];
 	let added = 0;
@@ -72,20 +92,27 @@ export function mergeThreeWay(
 		const os = o.slice(oFrom, oTo);
 		const as = a.slice(aFrom, aTo);
 		const bs = b.slice(bFrom, bTo);
-		if (same(as, os) && same(bs, os)) out.push(...os);
-		else if (same(as, os)) {
+		const osk = ok.slice(oFrom, oTo);
+		const ask = ak.slice(aFrom, aTo);
+		const bsk = bk.slice(bFrom, bTo);
+		if (same(ask, osk) && same(bsk, osk)) out.push(...as);
+		else if (same(ask, osk)) {
 			out.push(...bs);
-			added += bs.filter((l) => !os.includes(l)).length;
-			removed += os.filter((l) => !bs.includes(l)).length;
-		} else if (same(bs, os) || same(as, bs)) out.push(...as);
-		else {
+			added += bsk.filter((l) => !osk.includes(l)).length;
+			removed += osk.filter((l) => !bsk.includes(l)).length;
+		} else if (same(bsk, osk) || same(ask, bsk)) out.push(...as);
+		else if (options.prefer) {
+			conflicts.push({ base: os, ours: as, theirs: bs, taken: options.prefer });
+			out.push(...(options.prefer === "ours" ? as : bs));
+		} else {
 			conflicts.push({ base: os, ours: as, theirs: bs });
 			out.push(`<<<<<<< ${labels.ours}`, ...as, "=======", ...bs, `>>>>>>> ${labels.theirs}`);
 		}
 	};
 	for (const i of anchors) {
 		region(i, ma.get(i)!, mb.get(i)!);
-		out.push(o[i]!);
+		// The anchor as the page has it (the same line but for trailing whitespace).
+		out.push(a[ma.get(i)!]!);
 		oFrom = i + 1;
 		aFrom = ma.get(i)! + 1;
 		bFrom = mb.get(i)! + 1;

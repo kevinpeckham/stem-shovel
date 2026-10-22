@@ -27,9 +27,12 @@
  * text the page was last written from, found as the newest git revision of
  * the file that is also a saved version of the page (git keeps every seed
  * text; the page keeps its versions). A change in the seed alone lands on
- * the page, Kevin's edits stay, and a region both changed is printed as a
- * conflict and the page left alone, for the app's editor. Without
- * `--apply` nothing is written: the merged text is printed to read first.
+ * the page, Kevin's edits stay, and a region both changed keeps the page's
+ * own text (the page is what Kevin edits; it always wins) with a note of
+ * what the seed wanted there, for whoever changed the seed to carry over
+ * another way. `--strict` makes such a region a conflict instead: printed,
+ * the page left alone. Without `--apply` nothing is written: the merged
+ * text is printed to read first.
  *
  * No import of src/lib/server (it pulls in $app/*).
  */
@@ -46,6 +49,8 @@ const run = promisify(execFile);
 const args = process.argv.slice(2);
 const force = args.includes("--force");
 const apply = args.includes("--apply");
+/** A merge conflict blocks the page (markers printed, nothing written) instead of the page's own text winning. */
+const strict = args.includes("--strict");
 const mode = args.includes("--list")
 	? "list"
 	: args.includes("--restore")
@@ -56,7 +61,7 @@ const mode = args.includes("--list")
 const rest = args.filter((a) => !a.startsWith("--"));
 if (rest.length === 0 && mode !== "merge") {
 	console.error(
-		"usage: bun run db:update-docs [--force] <slug> [<slug> ...]\n       bun run db:update-docs --list <slug>\n       bun run db:update-docs --restore <slug> <version>\n       bun run db:update-docs --merge [--apply] [<slug> ...]",
+		"usage: bun run db:update-docs [--force] <slug> [<slug> ...]\n       bun run db:update-docs --list <slug>\n       bun run db:update-docs --restore <slug> <version>\n       bun run db:update-docs --merge [--apply] [--strict] [<slug> ...]",
 	);
 	process.exit(2);
 }
@@ -250,8 +255,9 @@ if (mode === "list") {
 		const merged = mergeThreeWay(base.text, pageText, seed, {
 			ours: "the page as edited in the app",
 			theirs: "the seed file",
+			prefer: strict ? undefined : "ours",
 		});
-		if (merged.conflicts.length > 0) {
+		if (strict && merged.conflicts.length > 0) {
 			conflicted++;
 			console.log(
 				`${slug}: ${merged.conflicts.length} conflict${merged.conflicts.length === 1 ? "" : "s"} (base: ${base.from}); left alone. Settle in the app's editor:`,
@@ -265,9 +271,17 @@ if (mode === "list") {
 			continue;
 		}
 		clean++;
+		const kept = merged.conflicts.length;
 		console.log(
-			`${slug}: merges cleanly (base: ${base.from}; +${merged.added} −${merged.removed} lines from the seed, the app's edits kept)${apply ? "" : " (--apply to write)"}`,
+			`${slug}: merges (base: ${base.from}; +${merged.added} −${merged.removed} lines from the seed, the app's edits kept${kept ? `, ${kept} region${kept === 1 ? "" : "s"} where the page's own text stays over the seed's` : ""})${apply ? "" : " (--apply to write)"}`,
 		);
+		// Where the page's text won: what the seed wanted there, for whoever changed the seed (not a job for the editor).
+		for (const c of merged.conflicts) {
+			console.log("  --- the page keeps:");
+			console.log(c.ours.map((l) => `  | ${l}`).join("\n") || "  | (nothing)");
+			console.log("  --- the seed wanted:");
+			console.log(c.theirs.map((l) => `  | ${l}`).join("\n") || "  | (nothing)");
+		}
 		if (!apply) {
 			// What would change on the page: the lines the seed brings, in context.
 			const before = new Set(page.doc.markdown.split("\n"));
@@ -282,9 +296,9 @@ if (mode === "list") {
 			written++;
 		}
 	}
-	// A conflict is the run's answer, not its failure: exit 0, so the runner adds no noise under the summary.
+	// A conflict (--strict) is the run's answer, not its failure: exit 0, so the runner adds no noise under the summary.
 	console.log(
-		`${clean} page${clean === 1 ? "" : "s"} merge cleanly, ${conflicted} need${conflicted === 1 ? "s" : ""} a hand${apply ? `; ${written} written` : "; nothing written (--apply)"}`,
+		`${clean} page${clean === 1 ? "" : "s"} merge${clean === 1 ? "s" : ""}${strict ? `, ${conflicted} need${conflicted === 1 ? "s" : ""} a hand` : ""}${apply ? `; ${written} written` : "; nothing written (--apply)"}`,
 	);
 } else {
 	for (const slug of rest) {
