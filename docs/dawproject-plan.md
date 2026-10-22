@@ -252,8 +252,9 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    everywhere (docs/multitrack-recorder.md "Looping a clip"); the reader
    keeps a loop that comes round within the clip, the writer emits it.
 2. **Switched-off clips** (`enable="false"`): a clip kept but silent,
-   the way a muted track is. Cheap: a flag on the clip, a dimmed drawing,
-   a menu item.
+   the way a muted track is. Done 2026-10-22: `muted` on the clip, the
+   Off button (Shift+M), read and written by every reader and writer
+   (docs/multitrack-recorder.md "Switched-off clips").
 3. **MIDI expression lanes** (`Points` with a `Target expression`:
    controller, pitch bend, channel and polyphonic pressure, timbre) and
    **release velocity** on a note (`rel`): CC lanes inside a notes clip.

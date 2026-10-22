@@ -203,6 +203,18 @@ describe("rppProject", () => {
 		]);
 	});
 
+	it("writes a switched-off clip as a muted item, and reads it back off", () => {
+		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
+		const text = rppProject({
+			title: "Off",
+			arrangement: { ...arrangement, clips: [{ ...base, muted: true }] },
+			audio,
+			application: app,
+		});
+		expect(text).toContain("      MUTE 1 0\n");
+		expect(readRpp(text, "Off").arrangement.clips[0]!.muted).toBe(true);
+	});
+
 	it("writes a looped clip as a section of its file looped, or as an item per pass when it plays into its loop", () => {
 		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
 		const inside = { ...base, offset: 1.5, duration: 5, loop: { start: 1, end: 3 } };

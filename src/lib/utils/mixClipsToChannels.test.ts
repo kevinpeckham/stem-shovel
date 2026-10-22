@@ -24,6 +24,11 @@ describe("mixClipsToChannels", () => {
 	};
 	const sourceOf = (id: string) =>
 		(sources as Record<string, { channels: Float32Array[]; sampleRate: number }>)[id] ?? null;
+	it("plays nothing of a switched-off clip", () => {
+		const off = clip({ id: "m", sourceId: "a", start: 0, duration: 1, muted: true });
+		const out = mixClipsToChannels([off], sourceOf, { from: 0, to: 1, sampleRate: 10 });
+		expect(Array.from(out[0]!)).toEqual(Array.from({ length: 10 }, () => 0));
+	});
 	it("repeats a looped clip's loop, pass after pass, from where it starts", () => {
 		const looped = clip({
 			id: "l",

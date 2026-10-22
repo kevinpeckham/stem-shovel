@@ -223,6 +223,8 @@ export const StudioClipSchema = v.pipe(
 		 * A loop over the content (docs/multitrack-recorder.md, "Looping a clip"): content seconds, like `offset`. The clip plays from
 		 * `offset` to `end`, then `start` to `end` again and again for its `duration` (utils/clipSegments.ts). Absent means it plays once.
 		 */
+		/** Switched off (docs/multitrack-recorder.md, "Switched-off clips"): kept on the timeline, dimmed, playing nothing. Absent means on. */
+		muted: v.optional(v.boolean()),
 		loop: v.optional(
 			v.pipe(
 				v.object({ start: SecondsSchema, end: SecondsSchema }),

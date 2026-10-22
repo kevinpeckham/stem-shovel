@@ -25,6 +25,7 @@ export function clipCrossfades<
 		fadeIn: number;
 		fadeOut: number;
 		fadeShape?: StudioFadeShape;
+		muted?: boolean;
 	},
 >(clips: C[]): Map<string, EffectiveFades> {
 	const out = new Map<string, EffectiveFades>();
@@ -35,8 +36,9 @@ export function clipCrossfades<
 			inShape: c.fadeShape ?? "linear",
 			outShape: c.fadeShape ?? "linear",
 		});
+	// A switched-off clip plays nothing, so it makes no crossfade with its neighbors.
 	const byTrack = new Map<string, C[]>();
-	for (const c of clips)
+	for (const c of clips.filter((c) => !c.muted))
 		(byTrack.get(c.trackId) ?? byTrack.set(c.trackId, []).get(c.trackId)!).push(c);
 	for (const list of byTrack.values()) {
 		const sorted = [...list].sort((a, b) => a.start - b.start || a.duration - b.duration);

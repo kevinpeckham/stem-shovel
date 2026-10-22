@@ -344,7 +344,7 @@ async function sessionBundle(
 	// Clips, in track order, each stamped with its position.
 	const audioClips = a.tracks.flatMap((t) =>
 		a.clips
-			.filter((c) => c.trackId === t.id && c.sourceId && buffers.has(c.sourceId))
+			.filter((c) => c.trackId === t.id && c.sourceId && !c.muted && buffers.has(c.sourceId))
 			.sort((x, y) => x.start - y.start)
 			.map((c) => ({ track: t, clip: c })),
 	);

@@ -27,7 +27,7 @@ export function mixClipsToChannels(
 	const out = [new Float32Array(length), new Float32Array(length)];
 	const fades = clipCrossfades(clips);
 	for (const c of clips) {
-		if (!c.sourceId) continue;
+		if (!c.sourceId || c.muted) continue;
 		const src = sourceOf(c.sourceId);
 		if (!src || src.channels.length === 0) continue;
 		const f = fades.get(c.id)!;

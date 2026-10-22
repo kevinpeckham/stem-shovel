@@ -943,6 +943,10 @@
 		if (!selectedClip) return;
 		studio.setClipLoop(selectedClip.id, !selectedClip.loop);
 	}
+	function toggleMutedSelected() {
+		if (!selectedClip) return;
+		studio.setClipMuted(selectedClip.id, !selectedClip.muted);
+	}
 	function addTrack(kind: "audio" | "midi" = "audio") {
 		const t =
 			kind === "midi"
@@ -1318,6 +1322,11 @@
 		if (e.key === "L" && e.shiftKey && selectedClip) {
 			e.preventDefault();
 			toggleLoopSelected();
+			return;
+		}
+		if (e.key === "M" && e.shiftKey && selectedClip) {
+			e.preventDefault();
+			toggleMutedSelected();
 			return;
 		}
 		if (e.code === "Space") {
@@ -2098,8 +2107,8 @@
 						/>
 					</label>
 					<span class="text-12px text-dark/80 ml-auto hidden @2xl-inline">
-						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⇧L loop clip ·
-						⌘-wheel zooms
+						Space play · R record · Home start · L loop · S split · ⌘D duplicate · ⇧L loop clip · ⇧M
+						clip off · ⌘-wheel zooms
 					</span>
 				</div>
 				{#if selectedClip}
@@ -2409,6 +2418,19 @@
 								onclick={toggleLoopSelected}
 							>
 								<span class="i-ph-repeat" aria-hidden="true"></span> Loop
+							</button>
+							<!-- Switched off (docs/multitrack-recorder.md, "Switched-off clips"): the clip stays, dimmed, and plays nothing. -->
+							<button
+								class="device-button-xs px-2"
+								type="button"
+								aria-pressed={!!clip.muted}
+								aria-label="Switch clip off"
+								title={clip.muted
+									? "Switched off: plays nothing; press to switch it on again (Shift+M)"
+									: "Switch the clip off: it stays here, dimmed, and plays nothing (Shift+M)"}
+								onclick={toggleMutedSelected}
+							>
+								<span class="i-ph-speaker-slash" aria-hidden="true"></span> Off
 							</button>
 							<button
 								class="device-button-xs px-2"

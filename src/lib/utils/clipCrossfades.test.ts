@@ -32,6 +32,11 @@ describe("clipCrossfades", () => {
 		// b is 0.6 s long: the crossfade into it is at most 0.3.
 		expect(m.get("b")!.fadeIn).toBe(0.3);
 	});
+	it("makes no crossfade with a switched-off clip", () => {
+		const m = clipCrossfades([clip("a", 0, 4), clip("b", 3.5, 4, { muted: true })]);
+		expect(m.get("a")!.fadeOut).toBe(0);
+		expect(m.get("b")!.fadeIn).toBe(0);
+	});
 	it("only looks within a track", () => {
 		const m = clipCrossfades([clip("a", 0, 4), { ...clip("b", 3, 4), trackId: "other" }]);
 		expect(m.get("a")!.fadeOut).toBe(0);

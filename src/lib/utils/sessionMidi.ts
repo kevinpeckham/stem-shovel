@@ -53,7 +53,7 @@ export function sessionMidi(a: StudioArrangement, title: string): Blob {
 	let nextChannel = 0;
 	for (const t of a.tracks) {
 		if (t.kind !== "midi") continue;
-		const clips = a.clips.filter((c) => c.trackId === t.id && c.notes?.length);
+		const clips = a.clips.filter((c) => c.trackId === t.id && c.notes?.length && !c.muted);
 		if (!clips.length) continue;
 		let channel: number;
 		if (t.input?.source === "drums") channel = DRUM_CHANNEL;

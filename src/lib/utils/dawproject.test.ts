@@ -250,6 +250,24 @@ describe("dawproject", () => {
 		expect(back.arrangement.meterChanges).toEqual([{ start: 8, beatsPerBar: 3 }]);
 	});
 
+	it('writes a switched-off clip as enable="false", and the reader keeps it off', () => {
+		const off: StudioArrangement = {
+			...arrangement,
+			clips: [{ ...arrangement.clips[0]!, muted: true }],
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Off",
+			arrangement: off,
+			audio: new Map([
+				["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.138.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		expect(xml).toContain('playStart="0.500000" enable="false" fadeTimeUnit="seconds"');
+		expect(readDawproject(xml, metadata, "Off").arrangement.clips[0]!.muted).toBe(true);
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

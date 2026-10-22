@@ -171,6 +171,16 @@ test.describe("Dawn editing", () => {
 			once.sourceId,
 		);
 		expect(once.duration).toBeCloseTo(sourceSeconds - once.offset, 2);
+
+		// Switched off: Shift+M keeps the clip, dimmed, playing nothing; again switches it on.
+		await page.keyboard.press("Shift+M");
+		await expect(page.locator(`[data-clip="${looped.id}"]`)).toHaveAttribute("data-muted", "true");
+		await expect(page.getByRole("button", { name: "Switch clip off" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await page.keyboard.press("Shift+M");
+		await expect(page.locator(`[data-clip="${looped.id}"]`)).not.toHaveAttribute("data-muted");
 		expect(errors).toEqual([]);
 		await deleteStudioSongs(page);
 	});

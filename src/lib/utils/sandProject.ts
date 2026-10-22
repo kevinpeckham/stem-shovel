@@ -85,6 +85,8 @@ function contentsOf(
 	beats: (seconds: number) => number,
 	audio: Map<string, SandAudio>,
 ) {
+	// A switched-off clip plays nothing, and Sandyne's contents have no switch: left out.
+	if (c.muted) return [];
 	const passes = c.loop
 		? clipSegments(c).map((seg, i, all) => ({
 				...c,

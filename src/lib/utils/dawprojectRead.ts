@@ -328,10 +328,8 @@ export function readDawproject(
 			drop(`${name || "A clip"} outside a track`);
 			return;
 		}
-		if (attr(el, "enable") === "false") {
-			drop(`${name || "A clip"}: switched off`);
-			return;
-		}
+		// A switched-off clip (enable="false") comes across as one: kept, playing nothing.
+		const off = attr(el, "enable") === "false" ? { muted: true as const } : {};
 		const contentUnit = unitOf(el, unit, "contentTimeUnit");
 		const fadeUnit = unitOf(el, unit, "fadeTimeUnit");
 		const start = seconds(baseSeconds + toSeconds(num(el, "time", 0), unit));
@@ -379,6 +377,7 @@ export function readDawproject(
 				fadeIn,
 				fadeOut,
 				name: name || "Alias",
+				...off,
 			});
 			return;
 		}
@@ -455,6 +454,7 @@ export function readDawproject(
 				fadeIn,
 				fadeOut,
 				name: label,
+				...off,
 				...(loop ? { loop } : {}),
 			});
 			return;
@@ -501,6 +501,7 @@ export function readDawproject(
 				fadeIn: 0,
 				fadeOut: 0,
 				name: name || "Notes",
+				...off,
 				...(loop ? { loop } : {}),
 			});
 			return;

@@ -269,7 +269,7 @@ describe("readAls", () => {
 		expect(read.fixed).toContain("Kick at 6 dB: Dawn's fader stops at 1.94 dB");
 	});
 
-	it("keeps a looped warped audio clip as one looped clip, keeps an unwarped clip's start in the file, and skips a deactivated one", () => {
+	it("keeps a looped warped audio clip as one looped clip, keeps an unwarped clip's start in the file, and a deactivated one switched off", () => {
 		const kickClips = a.clips.filter((c) => c.trackId === byName("Kick").id);
 		expect(
 			kickClips.map((c) => [c.name, c.start, c.offset, c.duration, c.gain, c.fadeIn, c.fadeOut]),
@@ -278,7 +278,10 @@ describe("readAls", () => {
 			["Kick loop", 2, 0, 4, 0.5, 0.25, 0.5],
 			// An unwarped clip: its loop start is seconds into the file; two beats long, at the 90 bpm the tempo turns to at beat 16.
 			["Hit", 8, 1.5, 1.333333, 1, 0, 0],
+			// Beats 20 to 24 at the 90 bpm from beat 16: deactivated in Live, switched off here.
+			["Muted", 10.666667, 0, 2.666666, 1, 0, 0],
 		]);
+		expect(kickClips.map((c) => c.muted)).toEqual([undefined, undefined, true]);
 		expect(kickClips[0]!.loop).toEqual({ start: 0, end: 2 });
 		expect(clipSegments(kickClips[0]!)).toEqual([
 			{ start: 2, offset: 0, duration: 2 },
@@ -291,7 +294,7 @@ describe("readAls", () => {
 			["/Users/me/Downloads/hit.aif", 44100],
 		]);
 		expect(read.fixed.some((f) => f.startsWith("Kick loop"))).toBe(false);
-		expect(read.dropped).toContain("Muted on Kick: deactivated");
+		expect(read.dropped.some((d) => d.startsWith("Muted"))).toBe(false);
 		expect(read.dropped).toContain("Hit on Kick: transposed (plays at the file's own pitch here)");
 	});
 

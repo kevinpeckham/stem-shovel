@@ -1216,6 +1216,21 @@ looped clips (`LoopOn`) come in as looped clips when the tempo holds
 across the clip (content seconds at one tempo match the song's beats);
 over a tempo change they are unrolled as before, and the note says so.
 
+## Switched-off clips (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 2)
+
+A clip can be switched off: `muted?: boolean` on `StudioClip`. It stays on
+the timeline, dimmed (`opacity-35 saturate-50`, `data-muted`, "· off" in its
+label), and plays nothing: `#startClip`, `#queueMidi`, the offline render
+and the MIDI tracks' offline render skip it, `mixClipsToChannels` and
+`clipCrossfades` leave it out (so it widens no neighbor's fade), the
+session bundle's clips and MIDI file leave it out, and the revision diff
+says "switched off" / "switched on". **Off** in the clip bar (Shift+M; M
+alone drops a marker) toggles it through `setClipMuted`. The DAWproject
+writes and reads it as `enable="false"`, a Reaper project as `MUTE 1 0`
+both ways, a Live set's `Disabled` clips come in off, and a Sandyne
+project leaves it out (its contents have no switch). Before this, the
+readers dropped such clips with a note.
+
 ## MP3 export (2026-10-20)
 
 `src/lib/audio/encodeMp3.ts`: LAME in WASM through mediabunny's MP3

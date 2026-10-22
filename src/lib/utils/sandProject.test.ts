@@ -190,6 +190,23 @@ describe("sandProject", () => {
 		// The note at 1.5 s into the content, offset 1 s: half a second after the clip's start, a beat in.
 		expect(notes.notesData).toEqual([{ note: 64, velocity: 64, start: 1, duration: 1 }]);
 	});
+	it("leaves a switched-off clip out", () => {
+		const off = JSON.parse(
+			sandProject({
+				title: "Off",
+				arrangement: {
+					...arrangement,
+					clips: arrangement.clips.map((c) => (c.id === "c3" ? { ...c, muted: true } : c)),
+				},
+				audio: new Map([
+					["s1", { path: "samples/s1.wav", durationSeconds: 30, sampleRate: 48000, channels: 2 }],
+				]),
+				application: { name: "Stem Shovel Dawn", version: "0.141.0" },
+			}),
+		);
+		expect(off.contents.map((c: { name: string }) => c.name)).not.toContain("Take 0");
+	});
+
 	it("lays a looped clip out as a content per pass, the fades at the outer edges", () => {
 		const looped = JSON.parse(
 			sandProject({

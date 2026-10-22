@@ -1191,7 +1191,7 @@
 									? 'border-accent/70 bg-accent/10'
 									: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
 								? 'cursor-grabbing opacity-80 z-10'
-								: ''} {dim ? 'opacity-50' : ''}"
+								: ''} {dim ? 'opacity-50' : ''} {clip.muted ? 'opacity-35 saturate-50' : ''}"
 							style:left="{shown.start * pxPerSecond}px"
 							style:width="{Math.max(6, shown.duration * pxPerSecond)}px"
 							style:transform={dragging && drag!.mode === "move"
@@ -1199,6 +1199,7 @@
 								: undefined}
 							data-clip={clip.id}
 							data-selected={selectedIds.includes(clip.id) || undefined}
+							data-muted={clip.muted || undefined}
 							role="button"
 							tabindex="0"
 							aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
@@ -1261,7 +1262,7 @@
 							<span
 								class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
 							>
-								{clip.name}{clip.loop ? " ↻" : ""}{takes > 1
+								{clip.name}{clip.loop ? " ↻" : ""}{clip.muted ? " · off" : ""}{takes > 1
 									? ` · ${takes} takes`
 									: ""}{source?.pending
 									? " · saving…"

@@ -416,10 +416,8 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				drop(
 					`${name} on ${p.name}: ${takes.length - 1} other ${takes.length === 2 ? "take" : "takes"}`,
 				);
-			if (numAt(lineOf(own, "MUTE"), 1, 0) !== 0) {
-				drop(`${name} on ${p.name}: muted`);
-				continue;
-			}
+			// A muted item comes across switched off: kept, playing nothing.
+			const muted = numAt(lineOf(own, "MUTE"), 1, 0) !== 0;
 			if (clips.length >= MAX_STUDIO_CLIPS) {
 				drop(`${name} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
 				continue;
@@ -447,6 +445,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				fadeOut: clamp(seconds(numAt(fadeOut, 2, 0)), 0, 60),
 				name,
 				...(shaped ? { fadeShape: "power" as const } : {}),
+				...(muted ? { muted: true as const } : {}),
 			};
 			if (shaped) fix("Fade shapes other than linear read as equal power");
 			// The source: a media file (wrapped in a SECTION when the take plays a part of it), or MIDI.

@@ -1409,6 +1409,15 @@ class StudioEngine {
 		}
 		this.#reschedule();
 	}
+	/** Switched off (docs/multitrack-recorder.md, "Switched-off clips"): the clip stays, dimmed, and plays nothing. */
+	setClipMuted(clipId: string, muted: boolean) {
+		const c = this.#clip(clipId);
+		if (!c || !!c.muted === muted) return;
+		this.#commit();
+		if (muted) c.muted = true;
+		else delete c.muted;
+		this.#reschedule();
+	}
 	/** A copy of the clip right after it (snapped to the grid when on). Returns the copy. */
 	duplicateClip(clipId: string): StudioClip | null {
 		const c = this.#clip(clipId);
@@ -1927,7 +1936,9 @@ class StudioEngine {
 	async renderMidiTrack(trackId: string): Promise<StudioTrack | null> {
 		const track = this.#track(trackId);
 		if (!track || track.kind !== "midi" || !track.input || this.running) return null;
-		const clips = this.arrangement.clips.filter((c) => c.trackId === trackId && c.notes?.length);
+		const clips = this.arrangement.clips.filter(
+			(c) => c.trackId === trackId && c.notes?.length && !c.muted,
+		);
 		if (clips.length === 0) return null;
 		let end = 0;
 		for (const c of clips) end = Math.max(end, c.start + c.duration);
@@ -2374,7 +2385,7 @@ class StudioEngine {
 		const queue: QueuedNote[] = [];
 		const grid = this.grid;
 		for (const clip of this.arrangement.clips) {
-			if (!clip.notes?.length) continue;
+			if (!clip.notes?.length || clip.muted) continue;
 			const track = this.#track(clip.trackId);
 			const source = track?.input?.source;
 			if (!track || track.kind !== "midi" || !source || !isInstrument(source)) continue;
@@ -2464,7 +2475,7 @@ class StudioEngine {
 		const nodes = this.#tracks.get(clip.trackId);
 		if (!ctx || !buffer || !nodes) return;
 		const clipEnd = clip.start + clip.duration;
-		if (clipEnd <= from || (to !== null && clip.start >= to)) return;
+		if (clip.muted || clipEnd <= from || (to !== null && clip.start >= to)) return;
 		// Fades: the clip's own at its edges (widened over an overlap into a crossfade, utils/clipCrossfades.ts), else a few milliseconds so a cut never clicks.
 		const f = fades ?? fadesOf(clip);
 		// A source per pass of the clip (utils/clipSegments.ts): one for a clip without a loop, the loop's repeats for one with.
@@ -3044,7 +3055,9 @@ class StudioEngine {
 		for (const t of this.arrangement.tracks) {
 			const into = nodes.get(t.id);
 			if (!into || t.kind !== "midi" || !t.input || !isInstrument(t.input.source)) continue;
-			const clips = this.arrangement.clips.filter((c) => c.trackId === t.id && c.notes?.length);
+			const clips = this.arrangement.clips.filter(
+				(c) => c.trackId === t.id && c.notes?.length && !c.muted,
+			);
 			if (clips.length)
 				midi.push(
 					renderMidiClipsOffline(off, into, t, clips, this.arrangement.bpm, {
@@ -3056,7 +3069,7 @@ class StudioEngine {
 		}
 		const fades = clipCrossfades(this.arrangement.clips);
 		for (const clip of this.arrangement.clips) {
-			if (!clip.sourceId) continue; // a MIDI clip: its notes play through the instrument above
+			if (!clip.sourceId || clip.muted) continue; // a MIDI clip: its notes play through the instrument above; a switched-off clip plays nothing
 			const buffer = this.#buffers.get(clip.sourceId);
 			const into = nodes.get(clip.trackId);
 			if (!buffer || !into) continue;

@@ -48,6 +48,12 @@ describe("diffArrangements", () => {
 	it("is empty when nothing differs", () => {
 		expect(diffArrangements(base(), base())).toEqual([]);
 	});
+	it("names a clip switched off and on again", () => {
+		const off = base();
+		off.clips[0] = clip("c1", "t1", 0, { muted: true });
+		expect(diffArrangements(base(), off)).toEqual(["Clip Clip c1: switched off"]);
+		expect(diffArrangements(off, base())).toEqual(["Clip Clip c1: switched on"]);
+	});
 	it("names a loop switched on, moved or off", () => {
 		const on = base();
 		on.clips[0] = clip("c1", "t1", 0, { loop: { start: 0, end: 2 } });

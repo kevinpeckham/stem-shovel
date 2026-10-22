@@ -73,6 +73,7 @@ export function diffArrangements(before: StudioArrangement, after: StudioArrange
 		if (was.trackId !== c.trackId) changes.push(`moved to ${trackOf(c)}`);
 		if (was.start !== c.start) changes.push(`moved ${t(was.start)} → ${t(c.start)}`);
 		if (was.offset !== c.offset || was.duration !== c.duration) changes.push("trimmed");
+		if (!!was.muted !== !!c.muted) changes.push(c.muted ? "switched off" : "switched on");
 		if (!!was.loop !== !!c.loop) changes.push(c.loop ? "looped" : "loop off");
 		else if (was.loop && c.loop && (was.loop.start !== c.loop.start || was.loop.end !== c.loop.end))
 			changes.push("loop moved");

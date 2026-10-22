@@ -315,10 +315,8 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			const name =
 				(value(kid(clip, "Name")) ?? "").trim().slice(0, 60) ||
 				(clip.localName === "MidiClip" ? "MIDI clip" : "Clip");
-			if (value(kid(clip, "Disabled")) === "true") {
-				drop(`${name} on ${s.name}: deactivated`);
-				continue;
-			}
+			// A deactivated clip comes across switched off: kept, playing nothing.
+			const muted = value(kid(clip, "Disabled")) === "true";
 			const startBeat = Math.max(
 				0,
 				num(kid(clip, "CurrentStart"), Number(clip.getAttribute("Time")) || 0),
@@ -353,6 +351,7 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					60,
 				),
 				name,
+				...(muted ? { muted: true as const } : {}),
 			};
 			if (clip.localName === "MidiClip") {
 				if (track.kind !== "midi") {

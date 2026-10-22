@@ -150,7 +150,7 @@ export function rppProject(input: RppProjectInput): string {
 		if (loop) out(3, "LOOP 1");
 		out(3, `FADEIN 1 ${num(c.fadeIn)} 0 1 0 0 0`);
 		out(3, `FADEOUT 1 ${num(c.fadeOut)} 0 1 0 0 0`);
-		out(3, "MUTE 0 0");
+		out(3, `MUTE ${c.muted ? 1 : 0} 0`);
 		out(3, `NAME ${q(c.name)}`);
 		out(3, `VOLPAN ${num(c.gain)} 0 1 -1`);
 		if (c.notes) {

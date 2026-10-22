@@ -196,7 +196,7 @@ describe("readRpp", () => {
 				{ t: 1, v: 0.5 },
 			],
 		});
-		// The selected take wins; its section start adds to the offset; the muted item stays out; a file is one source.
+		// The selected take wins; its section start adds to the offset; the muted item comes across switched off; a file is one source.
 		expect(
 			a.clips.map((c) => [
 				c.name,
@@ -207,13 +207,19 @@ describe("readRpp", () => {
 				c.fadeIn,
 				c.fadeOut,
 				c.fadeShape,
+				c.muted,
 			]),
 		).toEqual([
-			["Second take", 1, 2, 0.25, 1, 0.1, 0.25, "power"],
-			["Bass", 0, 4, 0, 1, 0, 0, undefined],
+			["Second take", 1, 2, 0.25, 1, 0.1, 0.25, "power", undefined],
+			["Muted", 5, 1, 0, 1, 0, 0, undefined, true],
+			["Bass", 0, 4, 0, 1, 0, 0, undefined, undefined],
 		]);
-		expect(read.files.map((f) => f.path)).toEqual(["Media/kick-2.flac", "/home/me/Media/kick.wav"]);
-		expect(read.dropped).toEqual(["Second take on Kick: 1 other take", "Muted on Kick: muted"]);
+		expect(read.files.map((f) => f.path)).toEqual([
+			"Media/kick-2.flac",
+			"Media/kick.wav",
+			"/home/me/Media/kick.wav",
+		]);
+		expect(read.dropped).toEqual(["Second take on Kick: 1 other take"]);
 		expect(read.fixed).toEqual([
 			"Time signature 6/8 at the start read as 6/4",
 			"Regions read as markers at their start",

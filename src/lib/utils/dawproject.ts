@@ -181,7 +181,7 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		if (c.notes) {
 			const events = clipNoteEvents({ ...c, start: 0, offset: c.offset, gain: 1 });
 			out(
-				`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="0.000000" name="${esc(c.name)}">`,
+				`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="0.000000"${c.muted ? ' enable="false"' : ""} name="${esc(c.name)}">`,
 			);
 			out(`            <Notes id="${id("notes")}">`);
 			for (const e of events)
@@ -196,8 +196,9 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		if (!audio) return;
 		// A looped clip says so in the format's own words (loopStart/loopEnd in content seconds); its notes are unrolled above.
 		const loop = c.loop ? ` loopStart="${num(c.loop.start)}" loopEnd="${num(c.loop.end)}"` : "";
+		// A switched-off clip is the format's enable="false".
 		out(
-			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}"${loop} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
+			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}"${loop}${c.muted ? ' enable="false"' : ""} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
 		);
 		out(
 			`            <Audio algorithm="raw" channels="${audio.channels}" duration="${num(audio.durationSeconds)}" sampleRate="${audio.sampleRate}" id="${id("audio")}">`,
