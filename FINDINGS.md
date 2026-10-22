@@ -9,6 +9,28 @@ belong in CLAUDE.md or docs/, not here.
 
 ## AI features
 
+- **Text-to-Beat's reasoning-off choice is measured — and the env-var
+  model swap is a hazard** (stem-bench Study 2, 2026-10-22; full tables
+  in the repo's REPORT.md). The production call shape, ported verbatim
+  and run on 25 beat prompts with 49 mechanical checks against four
+  other models: the hard-coded claim in textToBeat.ts is upheld beyond
+  its wording for the shipped model — kimi-k2.6 with default reasoning
+  scored 44% vs 95% with reasoning off, at 20× latency and 30× output
+  tokens, because its thinking exhausted even an 8,000-token budget on
+  14/25 prompts and the retry cannot replay an empty assistant turn
+  (the gateway 400s). The hazard: `TEXT_TO_BEAT_MODEL` exists so models
+  can be swapped without a deploy, but **gemini-3.5-flash ignores
+  `reasoning: { effort: "none" }`**, thinks ~3,000 tokens regardless,
+  and under the 1500-token `MAX_OUTPUT_TOKENS` burned to the cap and
+  returned nothing on 25/25 prompts (with an 8k cap: 25/25 valid, 99%
+  on checks, and FASTER than its broken off-arm). A swap to a model
+  that disobeys the reasoning field silently kills the feature; worth
+  either a per-model output budget, a one-request smoke on swap, or
+  both. Anthropic models are indifferent to the field (haiku identical
+  arms at 92%; fable 100% both arms, adaptive thinking costing only
+  1.4× tokens); gpt-oss-120b is the one model reasoning helps (77% →
+  92%, not significant, 2.8× cost — mostly rescuing its weak first-try
+  format validity).
 - **The v0.142.0 matcher re-measured in the shipped configuration**
   (stem-bench Amendment 2, the re-run the matcher brief asked for; full
   tables in the repo's REPORT.md "Production response"). Hint accuracy
