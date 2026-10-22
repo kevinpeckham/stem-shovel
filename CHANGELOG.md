@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.147.0] - 2026-10-22
+
 ### Added
 
 - **MIDI files into the converter** (docs/dawproject-plan.md, roadmap step 5): `utils/midiRead.ts` reads a Standard MIDI File through `utils/unpackProject.ts` (format "midi") as a project of MIDI tracks (a format 1 file's tracks, a format 0 file's channels, channel 10 as drums), each with one clip of its notes, with the tempo map, meters, key and its changes and markers from the conductor and the conductor's name as the title; controllers and the like are counted in the report. `audio/midi.ts` keeps each note's track, the names by track, the track count and the skipped events. The convert page accepts `.mid` and `.midi`; tests/e2e/convert.spec.ts covers a file to a DAWproject.
