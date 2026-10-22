@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.144.0] - 2026-10-22
+
 ### Added
 
 - **Convert step 2, the lint and repack.** The DAWproject (and the Sandyne project) comes out with its audio as WAV at the chosen bit depth, and a **Trim** option writes one recording per clip holding only what the clip plays, so nothing a clip skips travels. The page lists what the reader read into Dawn's ways under "Normalized" (a float-noise tempo, times in beats, levels in decibels, colors with an alpha byte or outside the palette, an empty folder, a missing time signature, tempo ramps, aliases), beside "Not carried across"; Dawn's import notification says the same.
