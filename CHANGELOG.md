@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.143.1] - 2026-10-22
+
 ### Technical
 
 - **User docs merge: the page always wins.** `db:update-docs --merge` compares lines with trailing whitespace and non-breaking spaces ignored (the app's editor adds them), and a region changed on both sides keeps the page's text with a note of what the seed wanted; the seed's other changes still land and nothing blocks. `--strict` restores the conflict markers (docs/user-docs.md).
