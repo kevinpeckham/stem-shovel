@@ -9,6 +9,34 @@ belong in CLAUDE.md or docs/, not here.
 
 ## AI features
 
+- **The song-check reads; it does not hear** (stem-bench Study 4,
+  2026-10-23; full tables in the repo's REPORT.md). `askAiAboutMix`
+  measured against synthesized mixes whose tempo, meter and key are
+  true by construction, with the pulse mechanically verified in the
+  audio (committed onset-autocorrelation instrument) and the detector
+  candidates ablated. Blind, the production model (and gemini
+  3.5-flash alike) pins tempo to a genre prior at confidence 1.0
+  (1-2/12 correct on drummed 60-140 bpm mixes), names wrong keys
+  (1-2/12) and finds zero tempo or key changes; handed WRONG detector
+  candidates it echoes them (production: 10-12/12 per field); handed
+  the song's chart it is perfect on every field and places all six
+  changes within four seconds. What this means for the code: (1) the
+  second opinion must never override the DSP detector on tempo or
+  meter — where the two disagree, the detector is the likelier ear;
+  (2) the feature's real value is the chart-anchoring path (score
+  summary beside the mix), which turns it into a precise
+  change-placement tool; consider gating the no-chart path or
+  shrinking its claims; (3) the `confidence` field is uninformative
+  (1.0 on fabricated answers) and should not drive UI; (4) the swap
+  space is gemini-only (gpt-4o-audio-preview is not on the gateway;
+  Anthropic models take no audio), and 3.5-flash is the better
+  listener only in that it pushes back on wrong tempo/meter
+  candidates where 3-flash echoes everything — both still swallow a
+  wrong key. One honesty note: the production model once invented a
+  tempo for a pulseless pad unprompted (gate failed by letter) while
+  resisting a false "120 bpm" suggestion on the same pads; 3.5-flash
+  ran the probe clean.
+
 - **chart-read measured: the model reads sheet music; the PDF path is
   the weak link** (stem-bench Study 3, 2026-10-23; full tables in the
   repo's REPORT.md). A registered round trip — Verovio-engraved scores
