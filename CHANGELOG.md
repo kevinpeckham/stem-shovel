@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.151.0] - 2026-10-23
+
 ### Added
 
 - **Time signatures over any note in Dawn.** **Beat note** beside Beats per bar in the Timing menu is the time signature's bottom number (2, 4, 8 or 16), and a meter change on the ruler takes one too, so 6/8 is six eighths a bar and the click, grid, snap and quantize count them. The tempo stays in quarter notes a minute, as a DAW counts it. The bottom number travels in every file both ways: DAWproject, Reaper, Live sets, MIDI files and Sandyne; the Audacity labels print it.
