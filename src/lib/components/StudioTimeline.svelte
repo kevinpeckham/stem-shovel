@@ -1318,6 +1318,7 @@
 							data-selected={selectedIds.includes(clip.id) || undefined}
 							data-muted={clip.muted || undefined}
 							data-warp={clip.warp ? warpText(clip) : undefined}
+							data-anchor={clip.anchor}
 							role="button"
 							tabindex="0"
 							aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
@@ -1325,7 +1326,9 @@
 								: ''}"
 							title="{clip.name} · {formatTime(clip.start)} – {formatTime(
 								clip.start + clip.duration,
-							)}{clip.warp ? ` · stretched ${warpText(clip)}` : ''}"
+							)}{clip.warp ? ` · stretched ${warpText(clip)}` : ''}{clip.anchor === 'beats'
+								? ' · follows the tempo'
+								: ''}"
 							onpointerdown={(e) => onclipdown(e, clip)}
 							onpointermove={onclipmove}
 							onpointerup={onclipup}

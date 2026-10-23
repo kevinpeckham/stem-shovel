@@ -167,6 +167,23 @@ test.describe("Dawn time", () => {
 			return p;
 		});
 		expect(peak).toBeGreaterThan(0.01);
+		// Beats-anchored (docs/multitrack-recorder.md "Beats-anchored clips"): Follow tempo on the clip, then the song's
+		// tempo halved from the Timing menu: the clip and its notes keep their beats, so everything lands twice as late.
+		// (The song's tempo is whatever Detect tempo read from the recording, so the factor comes from it.)
+		const wasBpm = await hooked(page, ([w]) => w.__studio.arrangement.bpm);
+		await page.getByRole("checkbox", { name: "Follow tempo" }).check();
+		await page.getByRole("button", { name: "Timing" }).click();
+		await page.getByRole("slider", { name: "Tempo" }).fill("60");
+		await page.keyboard.press("Escape");
+		await until(page, ([w]) => w.__studio.arrangement.bpm === 60);
+		const followed = await hooked(page, ([w]) =>
+			w.__studio.arrangement.clips.find((c: any) => c.id === "swing-clip"),
+		);
+		const factor = wasBpm / 60;
+		expect(followed.anchor).toBe("beats");
+		expect(followed.duration).toBeCloseTo(2 * factor, 3);
+		for (const [i, t] of [0, 0.25, 0.5, 0.75, 1, 1.25].entries())
+			expect(followed.notes[i].t).toBeCloseTo(t * factor, 3);
 		// The flag's Delete takes the change away, the readout back to the straight count.
 		await page.getByRole("button", { name: "Tempo change to 60 bpm at 0:04.0" }).focus();
 		await page.keyboard.press("Delete");

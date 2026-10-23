@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Clips that follow the tempo.** **Follow tempo** in the clip bar keeps a clip's place and length in beats when the song's tempo changes: a MIDI clip's notes and expression move with the grid (through ramps too), and an audio clip is stretched to fit, pitch kept. New MIDI clips follow the tempo from the start, whether recorded, drawn, dropped as a MIDI file or brought in from a Live set, a Reaper project, a DAWproject or a MIDI file; a recording keeps its seconds unless you turn it on. One undo takes a tempo edit and the clips it moved back together.
+
+### Technical
+
+- `anchor` on `StudioClip` (`CLIP_ANCHORS`); `utils/retimeClip.ts` carries a clip from one grid to another; the engine's `#retimeAnchored` inside every tempo edit (docs/multitrack-recorder.md "Beats-anchored clips").
+
 ## [0.151.0] - 2026-10-23
 
 ### Added

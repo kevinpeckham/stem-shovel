@@ -223,6 +223,7 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 				id: nanoid(),
 				trackId: track.id,
 				notes,
+				anchor: "beats",
 				start,
 				offset: 0,
 				duration: Math.max(0.001, seconds(end - start)),

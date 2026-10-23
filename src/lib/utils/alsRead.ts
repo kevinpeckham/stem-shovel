@@ -468,6 +468,7 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 						fadeIn: 0,
 						fadeOut: 0,
 						notes: notes.sort((a, b) => a.t - b.t),
+						anchor: "beats",
 						start: clipStart,
 						offset: seconds(playStart * spb),
 						duration: seconds(clipEnd - clipStart),

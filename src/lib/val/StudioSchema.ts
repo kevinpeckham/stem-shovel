@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import {
 	BEAT_UNITS,
+	CLIP_ANCHORS,
 	MAX_STUDIO_CLIPS,
 	MAX_STUDIO_MARKERS,
 	MAX_STUDIO_NOTES_PER_CLIP,
@@ -281,6 +282,11 @@ export const StudioClipSchema = v.pipe(
 		muted: v.optional(v.boolean()),
 		/** The clip's audio stretched, pitch kept (docs/multitrack-recorder.md "Warping a clip"); absent means the file's own speed. */
 		warp: v.optional(StudioWarpSchema),
+		/**
+		 * What the clip holds to when the tempo map changes (docs/multitrack-recorder.md "Beats-anchored clips"): `beats` keeps
+		 * its place and length in beats (a MIDI clip's notes with it; an audio clip stretched to fit), `seconds` (and absent) its seconds.
+		 */
+		anchor: v.optional(v.picklist(CLIP_ANCHORS)),
 		loop: v.optional(
 			v.pipe(
 				v.object({ start: SecondsSchema, end: SecondsSchema }),

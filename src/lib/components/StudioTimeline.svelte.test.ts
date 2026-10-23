@@ -1043,6 +1043,19 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 	});
 });
 
+describe("StudioTimeline: beats-anchored clips (D5)", () => {
+	test("a clip that follows the tempo is marked, and its title says so", () => {
+		fake.arrangement.clips[0]!.anchor = "beats";
+		render(StudioTimeline);
+		const el = document.querySelector('[data-clip="c1"]') as HTMLElement;
+		expect(el.dataset.anchor).toBe("beats");
+		expect(el.title).toContain("follows the tempo");
+		expect(
+			(document.querySelector('[data-clip="c2"]') as HTMLElement).dataset.anchor,
+		).toBeUndefined();
+	});
+});
+
 describe("StudioTimeline: the library's drop (D6)", () => {
 	test("a recording dropped on an audio lane lands as a clip at the drop, snapped; a MIDI lane refuses it", () => {
 		fake.arrangement.tracks.push(

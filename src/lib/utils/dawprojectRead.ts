@@ -552,6 +552,7 @@ export function readDawproject(
 				id: nanoid(),
 				trackId: owner.id,
 				notes: kept,
+				anchor: "beats",
 				start,
 				offset: seconds(toSeconds(playStart, contentUnit)),
 				duration: clamp(seconds(duration) || 0.001, 0.001, MAX_STUDIO_SECONDS),

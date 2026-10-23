@@ -21,6 +21,8 @@ ignoreRegExpList:
   - "/https?:\\/\\/\\S+/g" # urls
 words:
   - AUXVOLENV
+  - retime
+  - retimed
   - Unwarp
   - unwarped
   - tsgolint

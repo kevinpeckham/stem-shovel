@@ -530,7 +530,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 					drop(`${name} on ${p.name}: over the ${MAX_STUDIO_NOTES_PER_CLIP}-note limit`);
 					continue;
 				}
-				clips.push({ ...base, notes, ...(lanes.length ? { lanes } : {}) });
+				clips.push({ ...base, notes, anchor: "beats", ...(lanes.length ? { lanes } : {}) });
 				if (track.kind !== "midi") {
 					if (clips.some((c) => c.trackId === track.id && c.sourceId)) {
 						drop(`${name} on ${p.name}: MIDI on a track with audio`);

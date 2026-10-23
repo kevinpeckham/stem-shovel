@@ -35,6 +35,7 @@ import {
 	type BarGrid,
 } from "./measures";
 import { BEAT_UNITS } from "#lib/constants/studio.js";
+import { retimeClip } from "#lib/utils/retimeClip.js";
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { BeatUnit } from "#lib/val/StudioSchema.js";
 import { splitClipAt } from "#lib/utils/splitClipAt.js";
@@ -1140,8 +1141,47 @@ class StudioEngine {
 		const v = Math.max(30, Math.min(300, Math.round(bpm)));
 		if (v === this.arrangement.bpm) return;
 		this.#commit();
+		const before = this.grid;
 		this.arrangement.bpm = v;
 		metronome.setBpm(v);
+		this.#retimeAnchored(before);
+	}
+	/**
+	 * Beats-anchored clips (docs/multitrack-recorder.md "Beats-anchored
+	 * clips") carried from the tempo map as it was (`before`) to the map as
+	 * it is now: a MIDI clip's every moment keeps its beat; an audio clip's
+	 * start keeps its beat and its content is stretched to keep its length
+	 * in beats (within the hand range). Called by every tempo edit, inside
+	 * its undo step.
+	 */
+	#retimeAnchored(before: BarGrid) {
+		const after = this.grid;
+		let moved = false;
+		for (const c of this.arrangement.clips) {
+			if (c.anchor !== "beats") continue;
+			const { clip, stretch } = retimeClip(c, before, after);
+			if (clip.start !== c.start || clip.duration !== c.duration || c.notes) {
+				c.start = clip.start;
+				c.offset = clip.offset;
+				c.duration = clip.duration;
+				if (clip.notes) c.notes = clip.notes;
+				if (clip.lanes) c.lanes = clip.lanes;
+				if (clip.loop) c.loop = clip.loop;
+				moved = true;
+			}
+			if (c.sourceId && Math.abs(stretch - 1) > 1e-6)
+				moved = this.#scaleClipBy(c, stretch) || moved;
+		}
+		if (moved) this.#reschedule();
+	}
+	/** What a clip holds to when the tempo changes: its beats (a MIDI clip's default) or its seconds. */
+	setClipAnchor(clipId: string, anchor: "beats" | "seconds") {
+		const c = this.#clip(clipId);
+		if (!c || (c.anchor ?? "seconds") === anchor) return;
+		this.#commit();
+		if (anchor === "seconds") delete c.anchor;
+		else c.anchor = anchor;
+		this.dirty = true;
 	}
 	/**
 	 * The song's meter from zero: beats a bar, and the note a beat is (the
@@ -1239,6 +1279,7 @@ class StudioEngine {
 		const at = round4(Math.max(0, start));
 		if (at === 0) return this.setBpm(v);
 		this.#commit();
+		const before = this.grid;
 		const list = this.arrangement.tempoChanges ?? [];
 		const was = list.find((c) => Math.abs(c.start - at) <= 0.001);
 		const rest = list.filter((c) => Math.abs(c.start - at) > 0.001);
@@ -1247,6 +1288,7 @@ class StudioEngine {
 			...rest,
 			{ start: at, bpm: v, ...(curve ? { ramp: curve } : {}) },
 		].sort((a, b) => a.start - b.start);
+		this.#retimeAnchored(before);
 		this.#reschedule();
 	}
 	/** The ramp of the tempo change at a second: on along `ramp`, or off (a step) with null. */
@@ -1259,8 +1301,10 @@ class StudioEngine {
 		const list = this.arrangement.tempoChanges ?? [];
 		if (!list.some((c) => Math.abs(c.start - start) <= 0.001)) return;
 		this.#commit();
+		const before = this.grid;
 		this.arrangement.tempoChanges = list.filter((c) => Math.abs(c.start - start) > 0.001);
 		if (!this.arrangement.tempoChanges.length) delete this.arrangement.tempoChanges;
+		this.#retimeAnchored(before);
 		this.#reschedule();
 	}
 	setMeterChange(start: number, beatsPerBar: number, unit?: number) {
@@ -1442,7 +1486,9 @@ class StudioEngine {
 			return null;
 		}
 		this.#commit();
-		const c = { ...clip, id: localId() };
+		// A new notes clip follows the tempo unless told otherwise (docs/multitrack-recorder.md "Beats-anchored clips").
+		const anchor = clip.notes && clip.anchor === undefined ? { anchor: "beats" as const } : {};
+		const c = { ...clip, ...anchor, id: localId() };
 		this.arrangement.clips.push(c);
 		return c;
 	}
@@ -1642,12 +1688,18 @@ class StudioEngine {
 	 * the content, so the clip keeps playing what it played, longer or shorter.
 	 */
 	#scaleClip(c: StudioClip, factor: number): boolean {
+		this.#commit();
+		if (!this.#scaleClipBy(c, factor)) return false;
+		this.#reschedule();
+		return true;
+	}
+	/** The scaling itself, inside a caller's undo step and without a reschedule. */
+	#scaleClipBy(c: StudioClip, factor: number): boolean {
 		const current = c.warp ?? uniformWarp(1, Math.max(1, this.#fileSeconds(c)));
 		const have = this.#ratioOf(c);
 		const ratio = Math.max(WARP_RATIO_MIN, Math.min(WARP_RATIO_MAX, have * factor));
 		const f = ratio / have;
 		if (!(f > 0) || Math.abs(f - 1) < 1e-6) return false;
-		this.#commit();
 		const next = scaleWarp(current, f);
 		c.offset = round4(c.offset * f);
 		c.duration = round4(Math.max(0.01, c.duration * f));
@@ -1657,7 +1709,6 @@ class StudioEngine {
 		const r = warpUniformRatio(next);
 		if (r !== null && Math.abs(r - 1) < 1e-6) delete c.warp;
 		else c.warp = next;
-		this.#reschedule();
 		return true;
 	}
 	/**
@@ -2216,6 +2267,7 @@ class StudioEngine {
 			id: localId(),
 			trackId: track.id,
 			notes,
+			anchor: "beats",
 			start: round4(start),
 			offset: 0,
 			duration: round4(duration),

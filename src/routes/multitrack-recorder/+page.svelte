@@ -2481,6 +2481,18 @@
 									: ""}
 							</button>
 						</span>
+						<!-- Beats-anchored (docs/multitrack-recorder.md "Beats-anchored clips"): the clip keeps its beats when the tempo changes, a MIDI clip's notes with it, an audio clip stretched to fit. -->
+						<label
+							class="flex items-center gap-1 text-11px text-white/70"
+							title="When the tempo changes, keep the clip's place and length in beats (a MIDI clip's notes move with it; an audio clip is stretched, pitch kept) instead of its seconds"
+							><input
+								type="checkbox"
+								checked={clip.anchor === "beats"}
+								aria-label="Follow tempo"
+								onchange={(e) =>
+									studio.setClipAnchor(clip.id, e.currentTarget.checked ? "beats" : "seconds")}
+							/> Follow tempo</label
+						>
 						{#if clip.sourceId}
 							<!-- The clip tools (D4): each makes a new recording of the clip's audio and uploads it as an import. -->
 							<span class="flex items-center gap-1">

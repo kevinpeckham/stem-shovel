@@ -47,6 +47,8 @@ export const MAX_STUDIO_WARP_POINTS = 512;
  * and the MIDI file count it.
  */
 export const BEAT_UNITS = [2, 4, 8, 16] as const;
+/** What a clip holds to when the tempo changes (docs/multitrack-recorder.md "Beats-anchored clips"): its seconds, or its beats. */
+export const CLIP_ANCHORS = ["seconds", "beats"] as const;
 /** How far a clip can be stretched or squeezed by hand: a quarter to four times its length (the WSOLA's comfortable range). */
 export const WARP_RATIO_MIN = 0.25;
 export const WARP_RATIO_MAX = 4;

@@ -853,10 +853,9 @@ which the site's `script-src` refuses; serving its worklet from
 step if the WSOLA's quality falls short on transient material.
 
 Browser spec `tests/e2e/studio-time.spec.ts`; unit tests on each util;
-the timeline's component test covers the flags. Left for later:
-beats-anchored clips (notes in beats rather than seconds, so a MIDI
-part follows a tempo change), tap tempo lives on the metronome already.
-Tempo ramps came 2026-10-23 ("Tempo ramps" below).
+the timeline's component test covers the flags. Tap tempo lives on the
+metronome already. Tempo ramps came 2026-10-23 ("Tempo ramps" below),
+and beats-anchored clips the same day ("Beats-anchored clips" below).
 
 ## Instruments and the library (2026-10-19, docs/dawn-daw-plan.md D6)
 
@@ -1247,6 +1246,58 @@ address as the website when neither it nor its project is private; the
 origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
+
+## Beats-anchored clips (2026-10-23, docs/dawn-daw-plan.md D5)
+
+Dawn keeps every time in seconds (a clip's `start`, `offset`, `duration`,
+`loop`, a note's `t` and `d`, a lane point's `t`), so a tempo change
+used to leave a MIDI part where it was in seconds and so off the new
+grid. A clip's `anchor` (`CLIP_ANCHORS` in constants/studio.ts:
+`seconds`, the default and the absent value, or `beats`) says what it
+holds to when the tempo map changes. The times stay seconds either way:
+a beats-anchored clip is **retimed** at the moment of a tempo edit, not
+read in beats at play time, so the players, the writers and the
+rest of the engine see nothing new.
+
+`src/lib/utils/retimeClip.ts` does the arithmetic: given the grid as it
+was and the grid as it is, every moment of the clip keeps its beat
+(`beatsBetween` on the old grid, `secondsAfterBeats` on the new), ramps
+and all. A MIDI clip's start, end, offset, loop, notes and lane points
+all move; its content maps through the clip's content zero (`start −
+offset` on the timeline), so a note in the middle of a ramp lands on
+the beat it had. An audio clip's start moves and its content comes back
+as one `stretch` factor (the new length over the old), since a file
+cannot follow a ramp beat by beat; the engine stretches it through the
+warp (`#scaleClipBy`, the body of the by-hand scaling without its undo
+step and reschedule), within the hand range `WARP_RATIO_MIN..MAX`.
+
+The engine's `#retimeAnchored(before)` runs inside every tempo edit
+(`setBpm`, `setTempoChange`, `setTempoRamp` through it,
+`removeTempoChange`), after the edit's own `#commit`, so one undo takes
+the tempo and the clips back together. Meter changes do not retime
+anything: a beat keeps its length. `setClipAnchor(clipId, anchor)` is
+the toggle, **Follow tempo** in the clip bar; the timeline marks an
+anchored clip with `data-anchor="beats"` and "follows the tempo" in its
+title. Nothing moves when the anchor is switched: the clip's seconds at
+that moment are its beats from then on.
+
+**Defaults.** An existing clip has no anchor and keeps its seconds, as
+before. New MIDI clips follow the tempo: the ones a Live set, a Reaper
+project, a DAWproject or a MIDI file brings in (those formats keep notes
+in beats, so this matches what the file meant) and the ones the engine
+makes (`addClip` sets `anchor: "beats"` on a notes clip that names
+none, which covers the piano roll's new clip, a MIDI file dropped on a
+track and a recorded take's landing). An audio clip never anchors by
+itself; the toggle is there for a loop or a beat that should stretch
+with the song. The DAWproject writer still writes seconds for an
+anchored clip (its readers take either); writing `timeUnit="beats"`
+for anchored notes clips is a refinement for later.
+
+Tests: `retimeClip.test.ts` (a MIDI clip through a halving, through a
+change inside the clip, an audio clip's factor), the timeline's
+component test (the mark), `tests/e2e/studio-time.spec.ts` (Follow
+tempo, then the Timing menu's slider to 60: the clip's notes land twice
+as late).
 
 ## Warping a clip (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 6)
 

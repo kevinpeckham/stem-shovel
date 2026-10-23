@@ -153,7 +153,9 @@ automatable parameters, so D2 adds sends and inserts in one place.
   blob-URL worklet fails the CSP. Tempo ramps came 2026-10-23
   (docs/multitrack-recorder.md "Tempo ramps"), and a non-destructive
   stretch the same day: a clip's `warp`, rendered in a worker
-  ("Warping a clip"). Left: beats-anchored clips.
+  ("Warping a clip"), and beats-anchored clips the same day: a clip's
+  `anchor` retimed at each tempo edit ("Beats-anchored clips"). D5 is
+  complete.
 
 ### D6. Instruments, effects and the library (built in part on `dawn-daw`, 2026-10-19)
 
