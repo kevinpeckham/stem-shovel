@@ -43,6 +43,20 @@
 	};
 	const sendLevel = (t: StudioTrack, busId: string) =>
 		engine.automatedValue(t.id, sendLaneKey(busId));
+	/** The sends a track shows (docs/multitrack-recorder.md "Caps", the send list): the ones in use, with a level or a lane. */
+	const sendsInUse = (t: StudioTrack) =>
+		buses.filter(
+			(b) =>
+				(t.sends?.some((s) => s.bus === b.id && s.level > 0) ?? false) ||
+				(t.automation?.[sendLaneKey(b.id)]?.length ?? 0) > 0,
+		);
+	/** What Add send offers: the buses not yet sent to, groups left out (a send into a folder is a parallel route almost nobody wants). */
+	const sendChoices = (t: StudioTrack) => {
+		const used = new Set(sendsInUse(t).map((b) => b.id));
+		return buses.filter((b) => !used.has(b.id) && !b.folder);
+	};
+	/** A new send starts at half (−6 dB), so the knob shows and the ear hears it; a send at none is hidden again. */
+	const NEW_SEND_LEVEL = 0.5;
 	function fader(id: string, v: number, bus = false) {
 		if (bus) engine.setBusGain(id, v);
 		else engine.setGain(id, v);
@@ -127,7 +141,7 @@
 				{@render inserts(track.id, track, track.name)}
 				{#if buses.length}
 					<div class="grid gap-1" role="group" aria-label="{track.name} sends">
-						{#each buses as bus (bus.id)}
+						{#each sendsInUse(track) as bus (bus.id)}
 							<div class="flex items-center gap-1.5 text-10px">
 								<Knob
 									value={sendLevel(track, bus.id)}
@@ -144,6 +158,25 @@
 								<span class="truncate opacity-70">{bus.name}</span>
 							</div>
 						{/each}
+						{#if sendChoices(track).length}
+							<!-- Keyed on the sends in use, so the picker comes back empty once a choice has become a knob. -->
+							{#key sendsInUse(track).length}
+								<ComboBox
+									ariaLabel="{track.name} add send"
+									options={[
+										{ value: "", label: "Add send…" },
+										...sendChoices(track).map((b) => ({ value: b.id, label: b.name })),
+									]}
+									value=""
+									onchange={(v) => {
+										if (v) engine.setSend(track.id, v, NEW_SEND_LEVEL);
+									}}
+									clearDefaultButtonClasses
+									buttonClasses="flex w-full items-center gap-1 h-6 px-1 rounded border border-dashed border-white/15 bg-oxford-800 text-10px text-dim text-left truncate"
+									popoverClasses="text-11px"
+								/>
+							{/key}
+						{/if}
 					</div>
 				{/if}
 				<div class="flex items-center justify-center gap-2">

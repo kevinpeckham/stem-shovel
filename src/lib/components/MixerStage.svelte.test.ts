@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeAll, describe, expect, test } from "vite-plus/test";
-import type { MixerModel, MixerTrack } from "#lib/audio/mixerModel.js";
+import type { MixerGroup, MixerModel, MixerTrack } from "#lib/audio/mixerModel.js";
 import { METER_ZERO } from "#lib/utils/meterLevel.js";
 import { gainAtY, xOfPan, yOfGain } from "#lib/utils/stagePosition.js";
 import MixerStage from "./MixerStage.svelte";
@@ -22,7 +22,11 @@ beforeAll(() => {
 		({ x: 0, y: 0, left: 0, top: 0, width: 400, height: 300, right: 400, bottom: 300 }) as DOMRect;
 });
 
-function fake(levels: MixerModel["levels"] = { a: { ...METER_ZERO, rms: 0.5 } }): MixerModel & {
+function fake(
+	levels: MixerModel["levels"] = { a: { ...METER_ZERO, rms: 0.5 } },
+	groups?: MixerGroup[],
+	extraTracks: MixerTrack[] = [],
+): MixerModel & {
 	calls: Record<string, unknown[][]>;
 } {
 	const tracks: MixerTrack[] = [
@@ -50,6 +54,7 @@ function fake(levels: MixerModel["levels"] = { a: { ...METER_ZERO, rms: 0.5 } })
 			mono: false,
 			loudness: -6,
 		},
+		...extraTracks,
 	];
 	const calls: Record<string, unknown[][]> = {};
 	const log = (name: string, ...args: unknown[]) => (calls[name] ??= []).push(args);
@@ -74,6 +79,21 @@ function fake(levels: MixerModel["levels"] = { a: { ...METER_ZERO, rms: 0.5 } })
 		toggleSolo: (id) => log("toggleSolo", id),
 		setMaster: (v) => log("setMaster", v),
 		resetClips: (id) => log("resetClips", id),
+		...(groups
+			? {
+					get groups() {
+						return groups;
+					},
+					setGroupGain: (id, v) => log("setGroupGain", id, v),
+					setGroupPan: (id, v) => log("setGroupPan", id, v),
+					toggleGroupMute: (id) => log("toggleGroupMute", id),
+					toggleGroupCollapsed: (id) => {
+						log("toggleGroupCollapsed", id);
+						groups.find((g) => g.id === id)!.collapsed = !groups.find((g) => g.id === id)!
+							.collapsed;
+					},
+				}
+			: {}),
 	};
 }
 
@@ -157,5 +177,88 @@ describe("MixerStage", () => {
 		const meter = screen.getByRole("meter", { name: "Mix balance" });
 		expect(Number(meter.getAttribute("aria-valuenow"))).toBeLessThan(0);
 		expect(screen.getByRole("meter", { name: "Master level" })).toBeTruthy();
+	});
+
+	test("pucks on one spot spread into a ring, the first naming the ring and counting the rest", () => {
+		const twin: MixerTrack = {
+			id: "c",
+			number: 3,
+			label: "Guitar 2",
+			tint: null,
+			gain: 1,
+			pan: 0,
+			muted: false,
+			soloed: false,
+			mono: true,
+			loudness: 0,
+		};
+		const model = fake(undefined, undefined, [twin]);
+		render(MixerStage, { props: { model } });
+		const a = screen.getByRole("button", { name: "1, Guitar: 0 dB, C" });
+		const c = screen.getByRole("button", { name: "3, Guitar 2: 0 dB, C" });
+		expect(a.dataset.stageCluster).toBe("2");
+		expect(a.style.marginTop).toBe("-30px");
+		expect(c.style.marginTop).toBe("30px");
+		expect(a.textContent).toContain("Guitar +1");
+		expect(c.textContent).not.toContain("Guitar 2");
+		// The lone bass sits where it was.
+		const b = screen.getByRole("button", { name: /^2, A very long bass synth name/ });
+		expect(b.dataset.stageCluster).toBeUndefined();
+		expect(b.style.marginLeft).toBe("");
+	});
+
+	test("a group is a puck of its own: dragged it writes the bus, folded it hides its tracks", async () => {
+		const groups: MixerGroup[] = [
+			{
+				id: "g",
+				label: "Band",
+				tint: "sea",
+				gain: 1,
+				pan: 0.5,
+				muted: false,
+				collapsed: false,
+				trackIds: ["a"],
+			},
+		];
+		const model = fake(undefined, groups);
+		render(MixerStage, { props: { model } });
+		const g = screen.getByRole("button", { name: "Group Band: 0 dB, R 50" });
+		expect(g.dataset.stageKind).toBe("group");
+		expect(g.style.left).toBe(`${xOfPan(0.5) * 100}%`);
+		await fireEvent.pointerDown(g, { pointerId: 1, button: 0, clientX: 300, clientY: 100 });
+		await fireEvent.pointerMove(g, { pointerId: 1, clientX: 200, clientY: 100 });
+		await fireEvent.pointerUp(g, { pointerId: 1 });
+		expect(model.calls.setGroupPan?.at(-1)).toEqual(["g", 0]);
+		expect(model.calls.setPan).toBeUndefined();
+		// The strip: mute and fold, no solo and no menu; F folds too.
+		await fireEvent.click(screen.getByRole("button", { name: "Mute Band" }));
+		expect(model.calls.toggleGroupMute?.at(-1)).toEqual(["g"]);
+		expect(screen.queryByRole("button", { name: "Solo Band" })).toBeNull();
+		await fireEvent.click(screen.getByRole("button", { name: "Fold Band" }));
+		expect(model.calls.toggleGroupCollapsed?.at(-1)).toEqual(["g"]);
+	});
+
+	test("a folded group hides the tracks under it behind its puck", async () => {
+		const model = fake(undefined, [
+			{
+				id: "g",
+				label: "Band",
+				tint: "sea",
+				gain: 1,
+				pan: 0.5,
+				muted: false,
+				collapsed: true,
+				trackIds: ["a"],
+			},
+		]);
+		render(MixerStage, { props: { model } });
+		expect(screen.queryByRole("button", { name: "1, Guitar: 0 dB, C" })).toBeNull();
+		expect(
+			screen.getByRole("button", { name: /^2, A very long bass synth name/ }),
+		).toBeInTheDocument();
+		const g = screen.getByRole("button", { name: "Group Band: 0 dB, R 50, folded" });
+		g.focus();
+		await tick();
+		expect(screen.getByRole("button", { name: "Unfold Band" })).toBeInTheDocument();
 	});
 });

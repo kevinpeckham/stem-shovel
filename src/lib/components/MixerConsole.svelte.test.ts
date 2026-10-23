@@ -168,16 +168,34 @@ describe("MixerConsole", () => {
 		expect(fake.setOutput).toHaveBeenLastCalledWith("t3", null);
 	});
 
-	test("a send knob per bus on each audio track, at the send's level", () => {
+	test("a knob per send in use on each audio track; Add send offers the rest, groups left out", async () => {
+		const user = userEvent.setup();
+		fake.arrangement.buses = [
+			...fake.arrangement.buses!,
+			{ id: "g1", name: "Band", gain: 1, pan: 0, muted: false, folder: true },
+			{ id: "b3", name: "Verb", gain: 1, pan: 0, muted: false },
+		];
 		render(MixerConsole);
 		expect(screen.getByRole("slider", { name: "Vocal send to Drums" })).toHaveAttribute(
 			"aria-valuenow",
 			"0.25",
 		);
-		expect(screen.getByRole("slider", { name: "Guitar send to Drums" })).toHaveAttribute(
-			"aria-valuenow",
-			"0",
-		);
+		// Guitar sends nowhere: no knob, and Add send lists Drums and Verb but not the group.
+		expect(screen.queryByRole("slider", { name: "Guitar send to Drums" })).toBeNull();
+		await user.click(screen.getByRole("combobox", { name: "Guitar add send" }));
+		expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual([
+			"Add send…",
+			"Drums",
+			"Verb",
+		]);
+		await user.click(screen.getByRole("option", { name: "Verb" }));
+		expect(fake.setSend).toHaveBeenLastCalledWith("t1", "b3", 0.5);
+		// Vocal's picker leaves out the Drums send it already has.
+		await user.click(screen.getByRole("combobox", { name: "Vocal add send" }));
+		expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual([
+			"Add send…",
+			"Verb",
+		]);
 		expect(screen.queryByRole("slider", { name: "Keys send to Drums" })).toBeNull();
 	});
 

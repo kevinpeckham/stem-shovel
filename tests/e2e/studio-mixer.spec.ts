@@ -29,14 +29,13 @@ test.describe("Dawn mixer", () => {
 		const busId = await hooked(page, ([w]) => w.__studio.arrangement.buses[0].id);
 		expect(await hooked(page, ([w]) => w.__studio.diagnostics().buses)).toEqual([busId]);
 
-		// The track's output goes to the bus; a send to it too (the knob is a slider).
+		// The track's output goes to the bus; a send to it too, from the Add send picker (the knob is a slider, shown once the send is in use).
 		await console_.getByRole("combobox", { name: "Track 1 output" }).click();
 		await page.getByRole("option", { name: "Bus 1" }).click();
 		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].output)).toBe(busId);
-		await hooked(page, ([w, arg]) => w.__studio.setSend(arg.trackId, arg.busId, 0.5), {
-			trackId,
-			busId,
-		});
+		await expect(console_.getByRole("slider", { name: "Track 1 send to Bus 1" })).toHaveCount(0);
+		await console_.getByRole("combobox", { name: "Track 1 add send" }).click();
+		await page.getByRole("option", { name: "Bus 1" }).click();
 		await expect(console_.getByRole("slider", { name: "Track 1 send to Bus 1" })).toHaveAttribute(
 			"aria-valuenow",
 			"0.5",

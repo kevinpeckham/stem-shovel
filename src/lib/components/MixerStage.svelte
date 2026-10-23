@@ -4,6 +4,7 @@
 	import { stemTintHex } from "#lib/constants/stemTints.js";
 	import { meterWidth } from "#lib/utils/meterLevel.js";
 	import { panBalance } from "#lib/utils/panBalance.js";
+	import { spreadPucks } from "#lib/utils/spreadPucks.js";
 	import {
 		gainAtY,
 		nudgeGain,
@@ -54,18 +55,55 @@
 	let adjusting = $state<string | null>(null);
 	let settle: ReturnType<typeof setTimeout> | null = null;
 
+	/**
+	 * What sits on the field: the tracks themselves (their own objects, so
+	 * a handler reads the live level and pan), and a group (a folder bus,
+	 * docs/multitrack-recorder.md "The Stage: group pucks and clusters")
+	 * as a puck of its own; `kindOf` tells them apart by id.
+	 */
+	type Puck = MixerTrack & { collapsed?: boolean };
 	const tracks = $derived(model.tracks);
-	const byId = $derived(new Map(tracks.map((t) => [t.id, t])));
+	const groups = $derived(model.groups ?? []);
+	const groupIds = $derived(new Set(groups.map((g) => g.id)));
+	const kindOf = (p: MixerTrack): "track" | "group" => (groupIds.has(p.id) ? "group" : "track");
+	/** The tracks under a folded group hide behind its puck. */
+	const hidden = $derived(new Set(groups.filter((g) => g.collapsed).flatMap((g) => g.trackIds)));
+	const pucks = $derived<Puck[]>([
+		...tracks.filter((t) => !hidden.has(t.id)),
+		...groups.map((g) => ({
+			id: g.id,
+			number: 0,
+			label: g.label,
+			tint: g.tint,
+			gain: g.gain,
+			pan: g.pan,
+			muted: g.muted,
+			soloed: false,
+			mono: false,
+			loudness: 0,
+			collapsed: g.collapsed,
+		})),
+	]);
+	const byId = $derived(new Map(pucks.map((p) => [p.id, p])));
 	const selectedTrack = $derived(selected ? (byId.get(selected) ?? null) : null);
-	/** Past about a dozen tracks the names hide when the stage is narrow, so pucks stay readable. */
-	const dense = $derived(tracks.length > 12);
-	const silenced = (t: MixerTrack) => t.muted || (model.anySolo && !t.soloed);
+	/** Past about a dozen pucks the names hide when the stage is narrow, so pucks stay readable. */
+	const dense = $derived(pucks.length > 12);
+	/** A group's puck is never soloed out: soloing is a track's affair. */
+	const silenced = (t: MixerTrack) =>
+		t.muted || (kindOf(t) !== "group" && model.anySolo && !t.soloed);
 	const colorOf = (t: MixerTrack) => stemTintHex(t.tint) ?? BLUE;
+	/** A write to a puck's own side of the engine: a track's knobs, or the group's bus. */
+	const setGain = (p: Puck, v: number) =>
+		kindOf(p) === "group" ? model.setGroupGain?.(p.id, v) : model.setGain(p.id, v);
+	const setPan = (p: Puck, v: number) =>
+		kindOf(p) === "group" ? model.setGroupPan?.(p.id, v) : model.setPan(p.id, v);
+	const toggleMute = (p: Puck) =>
+		kindOf(p) === "group" ? model.toggleGroupMute?.(p.id) : model.toggleMute(p.id);
 	const levelText = (v: number) => (v <= 0 ? "−∞ dB" : `${Math.round(20 * Math.log10(v))} dB`);
 	const panText = (v: number) =>
 		v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`;
-	const describe = (t: MixerTrack) =>
-		`${t.number}, ${t.label}: ${levelText(t.gain)}, ${panText(t.pan)}${t.muted ? ", muted" : ""}${t.soloed ? ", solo" : ""}`;
+	const describe = (t: Puck) =>
+		`${kindOf(t) === "group" ? `Group ${t.label}` : `${t.number}, ${t.label}`}: ${levelText(t.gain)}, ${panText(t.pan)}${t.muted ? ", muted" : ""}${t.soloed ? ", solo" : ""}${t.collapsed ? ", folded" : ""}`;
 	/** The unity line's height, for the dashed mark across the stage. */
 	const unityY = yOfGain(1, 0);
 	/** The field's top and bottom keep a margin, so a puck at the top (or the floor) stays whole and its readout fits. */
@@ -73,6 +111,17 @@
 	const PAD_BOTTOM = 0.08;
 	/** A level fraction (0 the floor, 1 the top) as the field's CSS top, in percent. */
 	const topOf = (y: number) => (PAD_TOP + (1 - y) * (1 - PAD_TOP - PAD_BOTTOM)) * 100;
+	/** Pucks on one spot spread into a ring (utils/spreadPucks.ts), in the field's pixels (a stand-in size before layout). */
+	const spread = $derived(
+		spreadPucks(
+			pucks.map((p) => ({
+				id: p.id,
+				x: xOfPan(p.pan) * (width || 400),
+				y: (topOf(yOfGain(p.gain, p.loudness)) / 100) * (height || 300),
+			})),
+		),
+	);
+	const spreadOf = (id: string) => spread.get(id) ?? { dx: 0, dy: 0, index: 0, count: 1 };
 
 	/** Where the mix leans this frame: each track's RMS through its pan. */
 	const balance = $derived(
@@ -89,7 +138,7 @@
 		if (!sticky) settle = setTimeout(() => (adjusting = null), 700);
 	}
 
-	function down(e: PointerEvent, t: MixerTrack) {
+	function down(e: PointerEvent, t: Puck) {
 		if (e.button !== 0) return;
 		e.preventDefault();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -120,10 +169,12 @@
 		} else drag.axis = null;
 		const x = drag.x0 + dx / rect.width;
 		const y = drag.y0 - dy / rect.height;
-		if (drag.axis !== "y") model.setPan(drag.id, panAtX(x));
-		else model.setPan(drag.id, drag.pan0);
-		if (drag.axis !== "x") model.setGain(drag.id, gainAtY(y, drag.loudness));
-		else model.setGain(drag.id, drag.gain0);
+		const p = byId.get(drag.id);
+		if (!p) return;
+		if (drag.axis !== "y") setPan(p, panAtX(x));
+		else setPan(p, drag.pan0);
+		if (drag.axis !== "x") setGain(p, gainAtY(y, drag.loudness));
+		else setGain(p, drag.gain0);
 		touched(drag.id, true);
 	}
 	function up(e: PointerEvent) {
@@ -133,31 +184,34 @@
 			e.currentTarget instanceof HTMLElement ? (e.currentTarget.dataset.stagePuck ?? "") : "",
 		);
 	}
-	function dblclick(e: MouseEvent, t: MixerTrack) {
-		if (e.altKey) model.setGain(t.id, 1);
-		else model.setPan(t.id, 0);
+	function dblclick(e: MouseEvent, t: Puck) {
+		if (e.altKey) setGain(t, 1);
+		else setPan(t, 0);
 		touched(t.id);
 	}
-	function key(e: KeyboardEvent, t: MixerTrack) {
+	function key(e: KeyboardEvent, t: Puck) {
 		const big = e.shiftKey;
 		switch (e.key) {
 			case "ArrowLeft":
-				model.setPan(t.id, nudgePan(t.pan, big ? -0.2 : -0.05));
+				setPan(t, nudgePan(t.pan, big ? -0.2 : -0.05));
 				break;
 			case "ArrowRight":
-				model.setPan(t.id, nudgePan(t.pan, big ? 0.2 : 0.05));
+				setPan(t, nudgePan(t.pan, big ? 0.2 : 0.05));
 				break;
 			case "ArrowUp":
-				model.setGain(t.id, nudgeGain(t.gain, big ? 3 : 1));
+				setGain(t, nudgeGain(t.gain, big ? 3 : 1));
 				break;
 			case "ArrowDown":
-				model.setGain(t.id, nudgeGain(t.gain, big ? -3 : -1));
+				setGain(t, nudgeGain(t.gain, big ? -3 : -1));
 				break;
 			case "m":
-				model.toggleMute(t.id);
+				toggleMute(t);
 				break;
 			case "s":
-				model.toggleSolo(t.id);
+				if (kindOf(t) === "track") model.toggleSolo(t.id);
+				break;
+			case "f":
+				if (kindOf(t) === "group") model.toggleGroupCollapsed?.(t.id);
 				break;
 			case "Escape":
 				selected = null;
@@ -186,12 +240,13 @@
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 		ctx.clearRect(0, 0, w, h);
-		for (const t of tracks) {
+		for (const t of pucks) {
 			const rms = model.levels[t.id]?.rms ?? 0;
 			const loud = meterWidth(rms);
 			if (loud <= 0 || silenced(t)) continue;
-			const cx = xOfPan(t.pan) * w;
-			const cy = (topOf(yOfGain(t.gain, t.loudness)) / 100) * h;
+			const sp = spreadOf(t.id);
+			const cx = xOfPan(t.pan) * w + sp.dx * dpr;
+			const cy = (topOf(yOfGain(t.gain, t.loudness)) / 100) * h + sp.dy * dpr;
 			const r = (22 + 70 * loud) * dpr;
 			const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
 			const color = colorOf(t);
@@ -239,25 +294,32 @@
 			></div>
 			<span class="absolute right-2 -translate-y-full pb-0.5" style:top="{topOf(0)}%">−48 dB</span>
 		</div>
-		{#each tracks as t (t.id)}
+		{#each pucks as t (t.id)}
 			{@const x = xOfPan(t.pan)}
 			{@const y = yOfGain(t.gain, t.loudness)}
 			{@const color = colorOf(t)}
 			{@const dim = silenced(t)}
 			{@const isSelected = selected === t.id}
+			{@const sp = spreadOf(t.id)}
+			<!-- A group's puck is a rounded square with a folder; pucks on one spot sit in a ring (margin offsets), the first keeping the label. -->
 			<button
 				type="button"
-				class="absolute -translate-x-1/2 -translate-y-1/2 touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-playhead {drag?.id ===
-				t.id
-					? 'cursor-grabbing'
-					: 'cursor-grab'}"
+				class="absolute -translate-x-1/2 -translate-y-1/2 touch-none outline-none focus-visible:ring-2 focus-visible:ring-playhead {kindOf(
+					t,
+				) === 'group'
+					? 'rounded-lg'
+					: 'rounded-full'} {drag?.id === t.id ? 'cursor-grabbing' : 'cursor-grab'}"
 				style:left="{x * 100}%"
 				style:top="{topOf(y)}%"
+				style:margin-left={sp.dx ? `${sp.dx}px` : undefined}
+				style:margin-top={sp.dy ? `${sp.dy}px` : undefined}
 				style:z-index={isSelected ? 200 : 100 - Math.round(y * 90)}
 				aria-label={describe(t)}
 				aria-pressed={isSelected}
 				title={t.label}
 				data-stage-puck={t.id}
+				data-stage-kind={kindOf(t)}
+				data-stage-cluster={sp.count > 1 ? sp.count : undefined}
 				onpointerdown={(e) => down(e, t)}
 				onpointermove={move}
 				onpointerup={up}
@@ -267,27 +329,38 @@
 				onfocus={() => (selected = t.id)}
 			>
 				<span
-					class="grid h-10 w-10 place-items-center rounded-full border-2 text-12px font-600 tabular-nums transition-opacity {t.muted
-						? 'border-dashed'
-						: ''} {dim ? 'opacity-40' : ''} {t.soloed
+					class="grid h-10 w-10 place-items-center border-2 text-12px font-600 tabular-nums transition-opacity {kindOf(
+						t,
+					) === 'group'
+						? 'rounded-lg'
+						: 'rounded-full'} {t.muted ? 'border-dashed' : ''} {dim ? 'opacity-40' : ''} {t.soloed
 						? 'ring-2 ring-white/80 ring-offset-1 ring-offset-black/40'
 						: ''}"
 					style:border-color={color}
 					style:background-color="{color}{isSelected ? '55' : '30'}"
 					style:color={dim ? undefined : color}
 				>
-					{t.number}
+					{#if kindOf(t) === "group"}
+						<span
+							class="{t.collapsed ? 'i-ph-folder-simple' : 'i-ph-folder-open'} text-16px"
+							aria-hidden="true"
+						></span>
+					{:else}
+						{t.number}
+					{/if}
 				</span>
-				<!-- The name beside the puck (not under it, so stacked pucks keep their names apart), truncated. -->
-				<span
-					class="pointer-events-none absolute left-full top-1/2 ml-1 max-w-28 -translate-y-1/2 truncate text-11px leading-tight {dense &&
-					!isSelected
-						? 'hidden @3xl-block'
-						: ''} {dim ? 'opacity-50' : 'opacity-90'}"
-					style:color={dim ? undefined : color}
-				>
-					{t.label}
-				</span>
+				<!-- The name beside the puck (not under it, so stacked pucks keep their names apart), truncated; a ring's first puck names the ring and counts the rest. -->
+				{#if sp.index === 0}
+					<span
+						class="pointer-events-none absolute left-full top-1/2 ml-1 max-w-28 -translate-y-1/2 truncate text-11px leading-tight {dense &&
+						!isSelected
+							? 'hidden @3xl-block'
+							: ''} {dim ? 'opacity-50' : 'opacity-90'}"
+						style:color={dim ? undefined : color}
+					>
+						{t.label}{sp.count > 1 ? ` +${sp.count - 1}` : ""}
+					</span>
+				{/if}
 				{#if adjusting === t.id}
 					<span
 						class="pointer-events-none absolute -top-6 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-white/15 bg-dark px-1 text-10px leading-4 tabular-nums text-light shadow"
@@ -339,7 +412,11 @@
 				class="flex min-w-0 max-w-full items-center gap-1 font-500"
 				style:color={silenced(t) ? undefined : colorOf(t)}
 			>
-				<span class="shrink-0">{t.number} -</span>
+				{#if kindOf(t) === "group"}
+					<span class="i-ph-folder-simple shrink-0 text-14px" aria-hidden="true"></span>
+				{:else}
+					<span class="shrink-0">{t.number} -</span>
+				{/if}
 				<span class="min-w-0 truncate" title={t.label}>{t.label}</span>
 			</span>
 			<span class="flex items-center gap-1">
@@ -348,16 +425,33 @@
 					class="device-fader-button-sm"
 					aria-pressed={t.muted}
 					aria-label="Mute {t.label}"
-					onclick={() => model.toggleMute(t.id)}>M</button
+					onclick={() => toggleMute(t)}>M</button
 				>
-				<button
-					type="button"
-					class="device-fader-button-sm"
-					aria-pressed={t.soloed}
-					aria-label="Solo {t.label}"
-					onclick={() => model.toggleSolo(t.id)}>S</button
-				>
-				{#if menu}{@render menu(t.id)}{/if}
+				{#if kindOf(t) === "group"}
+					<!-- Fold (F): the group's tracks hide behind its puck, as the timeline folds them away. -->
+					<button
+						type="button"
+						class="device-fader-button-sm"
+						aria-pressed={t.collapsed}
+						aria-label="{t.collapsed ? 'Unfold' : 'Fold'} {t.label}"
+						title="Fold the group's tracks behind its puck (F)"
+						onclick={() => model.toggleGroupCollapsed?.(t.id)}
+					>
+						<span
+							class="{t.collapsed ? 'i-ph-caret-right' : 'i-ph-caret-down'} text-13px"
+							aria-hidden="true"
+						></span>
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="device-fader-button-sm"
+						aria-pressed={t.soloed}
+						aria-label="Solo {t.label}"
+						onclick={() => model.toggleSolo(t.id)}>S</button
+					>
+					{#if menu}{@render menu(t.id)}{/if}
+				{/if}
 			</span>
 			<span class="tabular-nums text-dim">{levelText(t.gain)} · {panText(t.pan)}</span>
 			{@render undoButtons()}

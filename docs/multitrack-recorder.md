@@ -1249,6 +1249,49 @@ origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
 
+## The Stage: group pucks and clusters (2026-10-23)
+
+Two things forty tracks showed on the Stage. Tracks at the same pan and
+level were one dot, and dragging took whichever was on top; and the
+Stage had no idea of groups, which the routing plan had left as "bus
+pucks later".
+
+**Clusters.** `src/lib/utils/spreadPucks.ts` takes the pucks' pixel
+positions and lays the ones within a few pixels of each other in a ring
+around the shared point, six to a ring and a wider ring beyond, each a
+easy to grab puck; a puck alone stays put. The Stage applies the offsets
+as margins on the puck (its `left` and `top` stay the true pan and
+level, so a drag starts from the right place), the first of a ring
+keeps the label and counts the rest ("Guitar +11"), and the halos
+follow the offsets. `data-stage-cluster` carries the ring's size. A
+puck leaves the ring as soon as its level or pan differs.
+
+**Group pucks.** `MixerModel` (audio/mixerModel.ts) gains optional
+`groups` (`MixerGroup`: the folder bus's id, name, tint, level, pan,
+mute, fold and the ids of the tracks under it) and the writes for them
+(`setGroupGain`, `setGroupPan`, `toggleGroupMute`,
+`toggleGroupCollapsed`); Dawn's model fills them from the folder buses
+through `busDescendants`, and the stem player has none. The Stage draws
+every puck from one list: the tracks not under a folded group, then the
+groups as rounded squares with a folder (open or shut) in the group's
+color, described as "Group Band: 0 dB, R 50, folded". A drag, the
+arrows and a double-click write the bus; M mutes it; F folds it; S does
+nothing on a group. The strip under the field shows a group's mute and
+a Fold button in place of Solo and the menu. The fold is the engine's
+`collapsed`, the same state the timeline's group rows use, so folding
+in one view folds in the other.
+
+**The mixer's send lists** got shorter the same day: a track's strip
+shows a knob only for the sends in use (a level above none, or a lane),
+and an **Add send** picker lists the other buses, groups left out (a
+send into a folder is a parallel route almost nobody wants; one already
+made keeps its knob). A new send starts at half (−6 dB), so the knob
+shows and the ear hears it.
+
+Tests: `spreadPucks.test.ts`; the Stage's component test (a ring of
+two, a group puck dragged, muted and folded); the mixer's (sends in
+use, the picker's choices).
+
 ## Folder tracks (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 7)
 
 A group is a bus with a row in the timeline. `StudioBus` gains two

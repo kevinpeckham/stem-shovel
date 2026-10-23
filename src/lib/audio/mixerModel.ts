@@ -1,6 +1,7 @@
 import type { StemEngine } from "#lib/audio/engine.svelte.js";
 import type { studio } from "#lib/audio/studio.svelte.js";
 import type { MeterState } from "#lib/utils/meterLevel.js";
+import { busDescendants } from "#lib/utils/busDescendants.js";
 import { loudnessFromPeaks, relativeLoudness } from "#lib/utils/stemLoudness.js";
 
 /**
@@ -26,8 +27,28 @@ export interface MixerTrack {
 	loudness: number;
 }
 
+/** A group on the Stage (Dawn's folder bus; docs/multitrack-recorder.md "The Stage: group pucks and clusters"): a puck of its own that folds its tracks away. */
+export interface MixerGroup {
+	id: string;
+	label: string;
+	tint: string | null;
+	gain: number;
+	pan: number;
+	muted: boolean;
+	/** Folded: the tracks under it hide behind its puck. */
+	collapsed: boolean;
+	/** The tracks under it, at any depth. */
+	trackIds: string[];
+}
+
 export interface MixerModel {
 	readonly tracks: MixerTrack[];
+	/** The groups, when the engine has them (Dawn); the stem player has none. */
+	readonly groups?: MixerGroup[];
+	setGroupGain?(id: string, value: number): void;
+	setGroupPan?(id: string, value: number): void;
+	toggleGroupMute?(id: string): void;
+	toggleGroupCollapsed?(id: string): void;
 	readonly master: number;
 	readonly anySolo: boolean;
 	readonly levels: Record<string, MeterState>;
@@ -124,6 +145,26 @@ export function studioMixerModel(engine: typeof studio): MixerModel {
 				loudness: 0,
 			}));
 		},
+		get groups() {
+			const buses = engine.arrangement.buses ?? [];
+			return buses
+				.filter((b) => b.folder)
+				.map((b) => {
+					const within = busDescendants(buses, b.id);
+					return {
+						id: b.id,
+						label: b.name,
+						tint: b.colour ?? null,
+						gain: engine.automatedValue(b.id, "volume"),
+						pan: engine.automatedValue(b.id, "pan"),
+						muted: b.muted,
+						collapsed: !!engine.collapsed[b.id],
+						trackIds: engine.arrangement.tracks
+							.filter((t) => t.output && within.has(t.output))
+							.map((t) => t.id),
+					};
+				});
+		},
 		get master() {
 			return engine.arrangement.master;
 		},
@@ -140,6 +181,10 @@ export function studioMixerModel(engine: typeof studio): MixerModel {
 		setPan: (id, v) => engine.setPan(id, v),
 		toggleMute: (id) => engine.toggleMute(id),
 		toggleSolo: (id) => engine.toggleSolo(id),
+		setGroupGain: (id, v) => engine.setBusGain(id, v),
+		setGroupPan: (id, v) => engine.setBusPan(id, v),
+		toggleGroupMute: (id) => engine.toggleBusMute(id),
+		toggleGroupCollapsed: (id) => engine.toggleGroupCollapsed(id),
 		setMaster: (v) => engine.setMaster(v),
 		resetClips: (id) => engine.resetClips(id),
 	};
