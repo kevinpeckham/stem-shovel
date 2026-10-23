@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.150.0] - 2026-10-23
+
 ### Added
 
 - **Stretch a clip without a new recording in Dawn.** Type the tempo a recording was made at into **Clip tempo** in the clip bar and press **Fit to song**: the clip plays at the song's tempo, pitch kept, its label reading "×1.14" or so; **Unwarp** puts it back. Alt-drag a clip's right edge to stretch it by hand, or warp a drifting performance beat by beat: Alt-click a clip to add a warp marker, drag the marker so the hit under it lands on the grid, Delete to remove it. The stretch travels: a DAWproject carries it as warps, a Reaper project as the take's play rate or stretch markers, and a Live set's warped clips come in warped instead of at the file's own speed.
