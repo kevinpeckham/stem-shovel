@@ -626,7 +626,8 @@ so old arrangements play unchanged and the schema's `version` stays 1.
 
 **Buses** (`StudioBusSchema`: id, name, `colour`, gain, pan, muted,
 inserts, automation, and since "Folder tracks" below `output` and
-`folder`) live on `arrangement.buses`, up to `MAX_STUDIO_BUSES` (8),
+`folder`) live on `arrangement.buses`, up to `MAX_STUDIO_BUSES` (16
+since groups became buses on 2026-10-23; 8 before),
 and feed the master or another bus; a track's `output` names a bus (or
 is unset for the master) and its `sends` (`{bus, level, pre?}`) feed
 buses beside its output. The master carries `masterInserts`. The
@@ -1303,6 +1304,13 @@ every folder that ends there (`ISBUS 2 -n`); the DAWproject writer
 nests a bus's tracks and the buses routed to it inside its `<Track>`,
 the format's own folders. Items on a Reaper folder are still dropped (a
 group holds no clips, as in Logic, Live and Bitwig).
+
+Groups share the bus ceiling, so `MAX_STUDIO_BUSES` went from 8 to 16
+(`constants/studioInserts.ts`), the track count: a nested Reaper or
+Bitwig project with a folder per section and a few returns passed eight
+at once. The sends cap follows it (one send per bus). No migration: the
+arrangement is a document on the song, and a higher ceiling accepts
+every song the lower one did.
 
 Tests: `studioRows.test.ts`, `busDescendants.test.ts`, the timeline's
 and the mixer's component tests, the nested cases in `rpp.test.ts`,

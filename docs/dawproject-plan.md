@@ -203,7 +203,7 @@ changes), a folder track with no channel and no children (Cubase's
 "Input/Output", `contentType="tracks"`; skipped), colors with an alpha
 byte (`#a2eabfff`; the tint is the first six digits), hundreds of
 plugins to report (the page shows a dozen and a count), and Dawn's
-limits met for real (the first 16 tracks, 8 buses and 400 clips come in,
+limits met for real (the first 16 tracks, 16 buses and 400 clips come in,
 the rest are named). The converter's warps map a whole file across a
 clip, which reads as a stretch and is reported as one; that is the
 converter's doing, not the DAWs'.

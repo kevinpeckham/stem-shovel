@@ -1,3 +1,4 @@
+import { MAX_STUDIO_BUSES } from "#lib/constants/studioInserts.js";
 import { describe, expect, test } from "vite-plus/test";
 import * as v from "valibot";
 import { MAX_STUDIO_NOTES_PER_CLIP, MAX_STUDIO_TRACKS } from "../constants/studio";
@@ -263,7 +264,7 @@ describe("StudioArrangementSchema: inserts, buses and sends (D2)", () => {
 		expect(v.safeParse(StudioArrangementSchema, arrangement([badKind], [])).success).toBe(false);
 		const tooManyBuses = {
 			...a,
-			buses: Array.from({ length: 9 }, (_, i) => ({ ...bus, id: `b${i}` })),
+			buses: Array.from({ length: MAX_STUDIO_BUSES + 1 }, (_, i) => ({ ...bus, id: `b${i}` })),
 		};
 		expect(v.safeParse(StudioArrangementSchema, tooManyBuses).success).toBe(false);
 	});

@@ -150,8 +150,8 @@ export const INSERT_DEFAULTS: Record<InsertKind, Record<string, number | boolean
 
 /** Inserts a track, a bus or the master may carry. */
 export const MAX_INSERTS = 8;
-/** Buses a song may have. */
-export const MAX_STUDIO_BUSES = 8;
+/** Buses a song may have, groups included (docs/multitrack-recorder.md "Folder tracks"): as many as tracks, since a group is a bus. */
+export const MAX_STUDIO_BUSES = 16;
 /** Sends a track may have (one per bus at most). */
 export const MAX_SENDS = MAX_STUDIO_BUSES;
 
