@@ -9,6 +9,29 @@ belong in CLAUDE.md or docs/, not here.
 
 ## AI features
 
+- **chart-read measured: the model reads sheet music; the PDF path is
+  the weak link** (stem-bench Study 3, 2026-10-23; full tables in the
+  repo's REPORT.md). A registered round trip — Verovio-engraved scores
+  with every fact known, graded against this repo's own
+  `musicXmlSummary` of the source XML — across fable, opus, haiku and
+  gemini-flash. The shipped model reads engraved notation from a clean
+  PNG at 98.8% exact chord recall, 100% precision, zero measure-count
+  drift, keys at 91.7% within a measure, about $0.06 a score — the
+  "read as text, the keys are plain" anecdote holds under measurement.
+  The actionable part: three of four models lose 20+ points of chord
+  recall when the SAME page arrives as a PDF instead of a PNG (fable
+  98.8 to 76.0; repeat dots collapse hardest), so `readChartWithAi`
+  should rasterize PDF uploads app-side and send images rather than
+  trusting each provider's internal PDF pipeline. Do not point this
+  surface at haiku (1.2% chord recall, 15-measure drift, writes a
+  stub) and keep an unreadable-page guard in mind if the model ever
+  changes: gemini fabricated a key and meter from an 80 px smear
+  instead of saying it could not read it, while every anthropic model
+  declined honestly. Calibration note for any future probe of this
+  kind: vision models read far below human-legible resolution (7/8
+  chords off a 150 px smear), so unreadability must be calibrated by
+  model behavior, not eyesight.
+
 - **Text-to-Beat's reasoning-off choice is measured — and the env-var
   model swap is a hazard** (stem-bench Study 2, 2026-10-22; full tables
   in the repo's REPORT.md). The production call shape, ported verbatim
