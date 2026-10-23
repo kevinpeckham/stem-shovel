@@ -1281,9 +1281,13 @@ reads as mono and a mono track writes `audioChannels="1"` (Bitwig and
 Cubase honor it). A one-channel stem opened in Dawn (`studioFromStems`)
 is mono, so the song sounds as the stem player played it. Reaper has no
 mono track (`NCHAN` is two at least) and Live none either, so those
-readers and writers leave the flag alone. A track recorded from one
-channel stays stereo until switched: the recording's channel is a
-property of the take, and a track can hold both kinds.
+readers and writers leave the flag alone. A track with nothing on it
+yet follows its input when armed, or when its input changes while armed
+(`utils/monoForInput.ts`, from `toggleArm` and `setInput`): one channel
+makes it mono, both make it stereo, so a bass on the left input records
+onto a mono track without a visit to the mixer. A track that holds
+clips is left alone whatever the input: its recordings may be of either
+kind, and a flip would move their level (Kevin's call, 2026-10-23).
 
 **The Stage** reads `mono` through the mixer model, so a mono puck pans
 as a position (the balance bar already knew the law) and is described

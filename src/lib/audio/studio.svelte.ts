@@ -126,6 +126,7 @@ import { playThroughSilentSwitch } from "./playThroughSilentSwitch";
 import { createStripGraph, type StripGraph } from "./stripGraph";
 import { StudioGraph } from "./studioGraph";
 import { insertsOf } from "#lib/utils/insertsFromFx.js";
+import { monoForInput } from "#lib/utils/monoForInput.js";
 import { automationLanes, laneTransfer } from "#lib/utils/automationLanes.js";
 import { nanoid as newLocalId } from "nanoid";
 import { MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
@@ -1194,12 +1195,25 @@ class StudioEngine {
 		t.armed = !t.armed;
 		if (t.armed && !t.input) t.input = { source: "mic", channel: "stereo" };
 		this.dirty = true;
+		this.#followInputChannels(t);
 	}
 	setInput(trackId: string, input: StudioInput | null) {
 		const t = this.#track(trackId);
 		if (!t || this.recording) return;
 		t.input = input;
 		this.dirty = true;
+		this.#followInputChannels(t);
+	}
+	/** An empty armed track takes its input's channel count as its mono setting (utils/monoForInput.ts). */
+	#followInputChannels(t: StudioTrack) {
+		const mono = monoForInput(
+			t,
+			this.arrangement.clips.some((c) => c.trackId === t.id),
+		);
+		if (mono === null) return;
+		if (mono) t.mono = true;
+		else delete t.mono;
+		this.#tracks.get(t.id)?.setMono(mono);
 	}
 	setMaster(value: number) {
 		if (this.writeAutomation("master", "volume", value)) return;

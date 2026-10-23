@@ -10,7 +10,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
-- **Mono tracks in Dawn.** A **Mono** switch on a track's mixer strip sums it to one channel and pans it as a point source: at full level on both sides at center, the far side falling away as it turns, the way the stem player plays a mono stem. The inserts process one channel. A one-channel stem opened in Dawn is mono from the start, and a DAWproject carries the setting both ways.
+- **Mono tracks in Dawn.** A **Mono** switch on a track's mixer strip sums it to one channel and pans it as a point source: at full level on both sides at center, the far side falling away as it turns, the way the stem player plays a mono stem. The inserts process one channel. An empty track follows its input when you arm it, so a bass on one channel of the line in records onto a mono track by itself; a one-channel stem opened in Dawn is mono from the start, and a DAWproject carries the setting both ways.
 
 ### Technical
 
