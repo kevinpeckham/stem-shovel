@@ -485,4 +485,45 @@ describe("dawproject", () => {
 			loop: { start: 0.5, end: 2.5 },
 		});
 	});
+
+	it("nests a bus's tracks and the buses routed to it inside its Track, and reads the groups back", () => {
+		const nested: StudioArrangement = {
+			...arrangement,
+			tracks: [
+				{ ...arrangement.tracks[0]!, id: "kick", name: "Kick", output: "kit", sends: undefined },
+				{
+					...arrangement.tracks[0]!,
+					id: "bass",
+					name: "Bass",
+					output: undefined,
+					sends: undefined,
+				},
+			],
+			clips: [],
+			buses: [
+				{ id: "drums", name: "Drums", gain: 1, pan: 0, muted: false, folder: true },
+				{ id: "kit", name: "Kit", gain: 1, pan: 0, muted: false, folder: true, output: "drums" },
+			],
+		};
+		const written = dawproject({
+			title: "Nested",
+			arrangement: nested,
+			audio: new Map(),
+			application: { name: "Stem Shovel Dawn", version: "0.152.0" },
+		});
+		const names = [...written.project.matchAll(/<Track [^>]*name="([^"]+)"/g)].map((m) => m[1]);
+		expect(names).toEqual(["Bass", "Drums", "Kit", "Kick", "Master"]);
+		// Kick's Track closes before Kit's, Kit's before Drums': the format's own folders.
+		const kick = written.project.indexOf('name="Kick"');
+		const closes = [...written.project.matchAll(/<\/Track>/g)].map((m) => m.index!);
+		expect(closes.filter((i) => i > kick).length).toBeGreaterThanOrEqual(4);
+		const back = readDawproject(written.project, written.metadata, "Nested").arrangement;
+		const bus = (name: string) => back.buses!.find((b) => b.name === name)!;
+		expect(back.buses!.map((b) => [b.name, !!b.folder])).toEqual([
+			["Drums", true],
+			["Kit", true],
+		]);
+		expect(bus("Kit").output).toBe(bus("Drums").id);
+		expect(back.tracks.find((t) => t.name === "Kick")!.output).toBe(bus("Kit").id);
+	});
 });

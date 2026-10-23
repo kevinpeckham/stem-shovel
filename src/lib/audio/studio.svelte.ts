@@ -36,6 +36,7 @@ import {
 } from "./measures";
 import { BEAT_UNITS } from "#lib/constants/studio.js";
 import { retimeClip } from "#lib/utils/retimeClip.js";
+import { busDescendants } from "#lib/utils/busDescendants.js";
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { BeatUnit } from "#lib/val/StudioSchema.js";
 import { splitClipAt } from "#lib/utils/splitClipAt.js";
@@ -345,6 +346,8 @@ class StudioEngine {
 	canRedo = $state(false);
 	/** The arrangement changed since the page last saved it (the page clears it). */
 	dirty = $state(false);
+	/** Groups folded to their header in the timeline, by bus id (docs/multitrack-recorder.md "Folder tracks"); a view state, not saved. */
+	collapsed = $state<Record<string, boolean>>({});
 	/** The output path's latency as the browser reports it, for the Inputs panel. */
 	outputLatencyMs = $state(0);
 	/** Hear the armed tracks' existing clips while recording over them (off: punch over them in silence). */
@@ -1005,27 +1008,91 @@ class StudioEngine {
 		(this.#tracks.get(ownerId) ?? this.#buses.get(ownerId))?.setInserts(list, 0.02);
 		this.#afterLaneChange(ownerId);
 	}
-	/** A new bus, to the master; its id for the caller. */
-	addBus(name = `Bus ${(this.arrangement.buses?.length ?? 0) + 1}`): string | null {
+	/** A new bus, to the master; its id for the caller. A `folder` bus is a group (docs/multitrack-recorder.md "Folder tracks"). */
+	addBus(name = `Bus ${(this.arrangement.buses?.length ?? 0) + 1}`, folder = false): string | null {
 		if ((this.arrangement.buses?.length ?? 0) >= MAX_STUDIO_BUSES) return null;
 		this.#commit();
-		const bus: StudioBus = { id: newLocalId(), name, gain: 1, pan: 0, muted: false };
+		const bus: StudioBus = {
+			id: newLocalId(),
+			name,
+			gain: 1,
+			pan: 0,
+			muted: false,
+			...(folder ? { folder: true } : {}),
+		};
 		this.arrangement.buses = [...(this.arrangement.buses ?? []), bus];
 		this.#ensureBus(bus.id);
 		this.#routeAll();
 		return bus.id;
 	}
-	/** The bus goes; tracks routed to it go to the master, sends to it are dropped. */
+	/** A new group: a folder bus named for its number, with a row in the timeline. */
+	addGroup(name?: string): string | null {
+		const n = (this.arrangement.buses ?? []).filter((b) => b.folder).length + 1;
+		return this.addBus(name ?? `Group ${n}`, true);
+	}
+	/** The bus goes; what was routed to it goes where it went (its output bus, or the master), sends to it are dropped. */
 	removeBus(busId: string) {
-		if (!this.#bus(busId)) return;
+		const gone = this.#bus(busId);
+		if (!gone) return;
 		this.#commit();
+		const to = gone.output && this.#bus(gone.output) ? gone.output : undefined;
 		this.arrangement.buses = (this.arrangement.buses ?? []).filter((b) => b.id !== busId);
+		for (const b of this.arrangement.buses) if (b.output === busId) b.output = to;
 		for (const t of this.arrangement.tracks) {
-			if (t.output === busId) t.output = undefined;
+			if (t.output === busId) t.output = to;
 			if (t.sends?.some((s) => s.bus === busId)) t.sends = t.sends.filter((s) => s.bus !== busId);
 		}
 		this.#dropBus(busId);
 		this.#routeAll();
+	}
+	/** A bus shown as a group in the timeline, or back to a plain bus (what routes to it stays routed). */
+	setBusFolder(busId: string, folder: boolean) {
+		const b = this.#bus(busId);
+		if (!b || !!b.folder === folder) return;
+		this.#commit();
+		if (folder) b.folder = true;
+		else delete b.folder;
+	}
+	/** Where a bus goes: another bus (never one that feeds it, which would loop), or the master with null. */
+	setBusOutput(busId: string, to: string | null) {
+		const b = this.#bus(busId);
+		if (!b || (b.output ?? null) === to) return;
+		if (to && (!this.#bus(to) || busDescendants(this.arrangement.buses ?? [], busId).has(to)))
+			return;
+		this.#commit();
+		if (to) b.output = to;
+		else delete b.output;
+		this.#routeAll();
+	}
+	/**
+	 * A track into a group (its output goes to the group's bus, and it moves
+	 * to sit after the group's last track so the group reads as one block),
+	 * or out of every group with null (to the master).
+	 */
+	groupTrack(trackId: string, groupId: string | null) {
+		const t = this.#track(trackId);
+		if (!t || (groupId && !this.#bus(groupId)?.folder)) return;
+		if ((t.output ?? null) === groupId) return;
+		this.#commit();
+		t.output = groupId ?? undefined;
+		if (groupId) {
+			const tracks = this.arrangement.tracks;
+			const members = tracks.filter((x) => x.output === groupId && x.id !== trackId);
+			const last = members.length ? tracks.indexOf(members[members.length - 1]!) : -1;
+			const from = tracks.indexOf(t);
+			if (last >= 0 && from !== last + 1) {
+				tracks.splice(from, 1);
+				tracks.splice(from < last ? last : last + 1, 0, t);
+			}
+		}
+		this.#routeAll();
+	}
+	/** A group's row folded to its header (not saved with the song). */
+	toggleGroupCollapsed(busId: string) {
+		if (this.collapsed[busId]) {
+			const { [busId]: _gone, ...rest } = this.collapsed;
+			this.collapsed = rest;
+		} else this.collapsed = { ...this.collapsed, [busId]: true };
 	}
 	renameBus(busId: string, name: string) {
 		const b = this.#bus(busId);
@@ -3442,19 +3509,35 @@ class StudioEngine {
 		master.fader.gain.value = alone ? 1 : this.#masterGain();
 		master.route(off.destination);
 		if (!alone) this.#scheduleLanes(this.#masterOwner(), master, 0, 0, null);
+		const buses = this.arrangement.buses ?? [];
+		// A bus alone sums what routes into it, the buses under it included (docs/multitrack-recorder.md "Folder tracks").
+		const within = busId ? busDescendants(buses, busId) : null;
 		const busInputs = new Map<string, AudioNode>();
-		for (const b of this.arrangement.buses ?? []) {
-			if (trackId || (busId && b.id !== busId)) continue;
+		const busStrips: [StudioBus, ReturnType<typeof createStripGraph>][] = [];
+		for (const b of buses) {
+			if (trackId || (within && !within.has(b.id))) continue;
 			const strip = createStripGraph(off, { inserts: insertsOf(b), pan: b.pan });
-			strip.fader.gain.value = busId ? b.gain : this.#busGain(b);
-			strip.route(master.input);
+			strip.fader.gain.value = b.id === busId ? b.gain : this.#busGain(b);
 			busInputs.set(b.id, strip.input);
+			busStrips.push([b, strip]);
 			this.#scheduleLanes(b, strip, 0, 0, null);
+		}
+		// Each bus to its output bus (never into a loop) or the master; the bus rendered alone to the master.
+		for (const [b, strip] of busStrips) {
+			const to =
+				b.id !== busId && b.output && !busDescendants(buses, b.id).has(b.output)
+					? busInputs.get(b.output)
+					: undefined;
+			strip.route(to ?? master.input);
 		}
 		const nodes = new Map<string, GainNode>();
 		for (const t of this.arrangement.tracks) {
 			if (trackId && t.id !== trackId) continue;
-			if (busId && t.output !== busId && !t.sends?.some((x) => x.bus === busId && x.level > 0))
+			if (
+				within &&
+				!(t.output && within.has(t.output)) &&
+				!t.sends?.some((x) => x.bus === busId && x.level > 0)
+			)
 				continue;
 			const g = trackId ? (target.freeze ? 1 : t.gain) : this.#effectiveGain(t);
 			if (g <= 0) continue;
@@ -3463,8 +3546,8 @@ class StudioEngine {
 				pan: trackId && target.freeze ? 0 : t.pan,
 			});
 			strip.fader.gain.value = trackId && t.automation?.volume?.length && !target.freeze ? 1 : g;
-			// A bus alone: a track reaches it by its output, or by its send alone (its output then goes nowhere).
-			if (busId) strip.route(t.output === busId ? busInputs.get(busId)! : off.createGain());
+			// A bus alone: a track reaches it by its output (through a bus under it, maybe), or by its send alone (its output then goes nowhere).
+			if (within) strip.route((t.output && busInputs.get(t.output)) || off.createGain());
 			else strip.route((t.output && busInputs.get(t.output)) || master.input);
 			if (!trackId) strip.setSends(t.sends ?? [], busInputs, 0);
 			// A freeze bakes the inserts' lanes and leaves the volume and pan (and the sends) to the live strip.

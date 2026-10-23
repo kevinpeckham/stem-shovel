@@ -1,4 +1,5 @@
 import { BEAT_UNITS } from "#lib/constants/studio.js";
+import { busDescendants } from "./busDescendants";
 import { colourOfHex } from "./colourOfHex";
 import {
 	DAWPROJECT_METADATA_FIELDS,
@@ -269,6 +270,8 @@ export function readDawproject(
 					gain: volumeOf(kid(channel, "Volume")),
 					pan: panOf(kid(channel, "Pan")),
 					muted: bool(kid(channel, "Mute"), "value"),
+					// A track with tracks inside it is a group (docs/multitrack-recorder.md "Folder tracks").
+					...(children.length ? { folder: true } : {}),
 				};
 				buses.push(bus);
 				const owner: Owner = { kind: "bus", id: bus.id, name };
@@ -332,6 +335,10 @@ export function readDawproject(
 			const track = tracks.find((t) => t.id === owner.id)!;
 			if (output) track.output = output;
 			if (sends.length) track.sends = sends;
+		} else if (owner.kind === "bus" && output) {
+			// A bus into another (a group in a group, an effect track into a group), never into one that feeds it.
+			const bus = busById.get(owner.id)!;
+			if (!busDescendants(buses, owner.id).has(output)) bus.output = output;
 		}
 	}
 

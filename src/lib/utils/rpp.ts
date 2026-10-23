@@ -1,5 +1,5 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
-import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
+import type { StudioArrangement, StudioBus, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatUnitAt, beatsBetween, beatsPerBarAt } from "#lib/audio/measures.js";
 import { sendLaneKey } from "#lib/constants/studioInserts.js";
 import { clipLaneEvents } from "./clipLaneEvents";
@@ -97,18 +97,34 @@ export function rppProject(input: RppProjectInput): string {
 	markers.forEach((m, i) => out(1, `MARKER ${i + 1} ${num(m.t)} ${q(m.name)} 0 0 1`));
 	out(1, `MASTER_VOLUME ${num(a.master)} 0 -1 -1 1`);
 
-	// The order: tracks to the master, then each bus as a folder holding the tracks routed to it.
-	type Row = { kind: "track"; id: string } | { kind: "bus"; id: string };
+	// The order: tracks to the master, then each bus as a folder holding the tracks routed to it and the buses routed
+	// to it as folders inside it (docs/multitrack-recorder.md "Folder tracks"). A folder opens with ISBUS 1 1 and its
+	// last row closes it, closing every folder that ends there (ISBUS 2 -n).
+	type Row = { kind: "track" | "bus"; id: string; opens: boolean; closes: number };
 	const buses = a.buses ?? [];
+	const busIds = new Set(buses.map((b) => b.id));
 	const rows: Row[] = [];
+	const placed = new Set<string>();
+	const emitBus = (b: StudioBus) => {
+		if (placed.has(b.id)) return;
+		placed.add(b.id);
+		const row: Row = { kind: "bus", id: b.id, opens: false, closes: 0 };
+		rows.push(row);
+		const before = rows.length;
+		for (const t of a.tracks)
+			if (t.output === b.id) rows.push({ kind: "track", id: t.id, opens: false, closes: 0 });
+		for (const sub of buses) if (sub.output === b.id) emitBus(sub);
+		if (rows.length > before) {
+			row.opens = true;
+			rows[rows.length - 1]!.closes++;
+		}
+	};
 	for (const t of a.tracks)
-		if (!t.output || !buses.some((b) => b.id === t.output)) rows.push({ kind: "track", id: t.id });
-	for (const b of buses) {
-		rows.push({ kind: "bus", id: b.id });
-		for (const t of a.tracks) if (t.output === b.id) rows.push({ kind: "track", id: t.id });
-	}
+		if (!t.output || !busIds.has(t.output))
+			rows.push({ kind: "track", id: t.id, opens: false, closes: 0 });
+	for (const b of buses) if (!b.output || !busIds.has(b.output)) emitBus(b);
+	for (const b of buses) emitBus(b); // a bus in a circle of outputs comes out at the top
 	const indexOf = new Map(rows.map((r, i) => [r.id, i]));
-	const childrenOf = (busId: string) => a.tracks.filter((t) => t.output === busId);
 
 	/**
 	 * An envelope block: the pan one the other way up from the knob, the
@@ -266,11 +282,7 @@ export function rppProject(input: RppProjectInput): string {
 		colour(strip.colour);
 		out(2, `VOLPAN ${num(strip.gain)} ${num(strip.pan)} -1 -1 1`);
 		out(2, `MUTESOLO ${strip.muted ? 1 : 0} ${track?.solo ? 1 : 0} 0`);
-		if (bus) out(2, `ISBUS ${childrenOf(bus.id).length ? "1 1" : "0 0"}`);
-		else if (track?.output && buses.some((b) => b.id === track.output)) {
-			const kids = childrenOf(track.output);
-			out(2, `ISBUS ${kids[kids.length - 1]?.id === track.id ? "2 -1" : "0 0"}`);
-		} else out(2, "ISBUS 0 0");
+		out(2, `ISBUS ${row.opens ? "1 1" : row.closes ? `2 -${row.closes}` : "0 0"}`);
 		out(2, "MAINSEND 1 0");
 		if (bus)
 			for (const t of a.tracks)

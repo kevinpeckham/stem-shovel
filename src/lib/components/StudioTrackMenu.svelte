@@ -31,6 +31,17 @@
 	}: Props = $props();
 	const engine = studio;
 	const isMidi = (t: StudioTrack) => t.kind === "midi";
+	/** The groups (folder buses, docs/multitrack-recorder.md "Folder tracks") the track can join. */
+	const groups = $derived((engine.arrangement.buses ?? []).filter((b) => b.folder));
+	const groupValue = $derived(
+		track.output && groups.some((g) => g.id === track.output) ? track.output : "",
+	);
+	function pickGroup(value: string) {
+		if (value === "new") {
+			const id = engine.addGroup();
+			if (id) engine.groupTrack(track.id, id);
+		} else engine.groupTrack(track.id, value || null);
+	}
 	const clipsOf = (t: StudioTrack) => engine.arrangement.clips.filter((c) => c.trackId === t.id);
 </script>
 
@@ -86,6 +97,25 @@
 	</div>
 {/snippet}
 
+<!-- The group the track sits in (docs/multitrack-recorder.md "Folder tracks"): one of the song's groups, none, or a new one. -->
+{#snippet trackGroup()}
+	<div class="px-3 py-1.5">
+		<div class="mb-1 text-xs text-dim">Group</div>
+		<select
+			class="device-field w-full text-12px py-0"
+			aria-label="{track.name} group"
+			value={groupValue}
+			onchange={(e) => pickGroup(e.currentTarget.value)}
+		>
+			<option value="">No group</option>
+			{#each groups as g (g.id)}
+				<option value={g.id}>{g.name}</option>
+			{/each}
+			<option value="new">New group…</option>
+		</select>
+	</div>
+{/snippet}
+
 <ContextMenu
 	ariaLabel="{track.name} actions"
 	clearButtonBaseClasses={true}
@@ -110,6 +140,7 @@
 		},
 		{ id: "d", kind: "divider" },
 		{ id: "tint", kind: "snippet", snippet: trackTint },
+		{ id: "group", kind: "snippet", snippet: trackGroup },
 		{ id: "d2", kind: "divider" },
 		{
 			id: "render",

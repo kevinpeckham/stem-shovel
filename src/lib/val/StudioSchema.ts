@@ -142,7 +142,13 @@ export const StudioSendSchema = v.object({
 });
 export type StudioSend = v.InferOutput<typeof StudioSendSchema>;
 
-/** A bus (docs/dawn-daw-plan.md, D2): tracks route to it or send to it; it has its own inserts, level and pan, and goes to the master. */
+/**
+ * A bus (docs/dawn-daw-plan.md, D2): tracks route to it or send to it; it
+ * has its own inserts, level and pan, and goes to the master, or to
+ * another bus (`output`). A `folder` bus is a group (docs/multitrack-recorder.md
+ * "Folder tracks"): the tracks and buses routed to it sit under it in the
+ * timeline, which collapses them to one row.
+ */
 export const StudioBusSchema = v.object({
 	id: LocalIdSchema,
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
@@ -152,6 +158,10 @@ export const StudioBusSchema = v.object({
 	muted: v.boolean(),
 	inserts: v.optional(InsertListSchema),
 	automation: v.optional(StudioAutomationSchema),
+	/** Where the bus goes: another bus's id, or the master when absent. */
+	output: v.optional(LocalIdSchema),
+	/** A group: shown as a row in the timeline with what routes to it under it. */
+	folder: v.optional(v.boolean()),
 });
 export type StudioBus = v.InferOutput<typeof StudioBusSchema>;
 

@@ -625,10 +625,11 @@ ones in the old order) until the panel's first edit writes `inserts`,
 so old arrangements play unchanged and the schema's `version` stays 1.
 
 **Buses** (`StudioBusSchema`: id, name, `colour`, gain, pan, muted,
-inserts, automation) live on `arrangement.buses`, up to
-`MAX_STUDIO_BUSES` (8), and feed the master; a track's `output` names a
-bus (or is unset for the master) and its `sends` (`{bus, level, pre?}`)
-feed buses beside its output. The master carries `masterInserts`. The
+inserts, automation, and since "Folder tracks" below `output` and
+`folder`) live on `arrangement.buses`, up to `MAX_STUDIO_BUSES` (8),
+and feed the master or another bus; a track's `output` names a bus (or
+is unset for the master) and its `sends` (`{bus, level, pre?}`) feed
+buses beside its output. The master carries `masterInserts`. The
 engine keeps a strip per track, per bus and the master
 (`#tracks`, `#buses`, `#masterStrip`), `#routeAll` connects each track
 to its bus or the master and each bus to the master, and `removeBus`
@@ -1246,6 +1247,67 @@ address as the website when neither it nor its project is private; the
 origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
+
+## Folder tracks (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 7)
+
+A group is a bus with a row in the timeline. `StudioBus` gains two
+fields: `folder`, which puts the bus in the timeline as a **group** with
+the tracks routed to it under its row, and `output`, which routes the
+bus to another bus instead of the master, so a group sits inside a
+group (Logic's Summing Stacks, Reaper's folders, Live's Group Tracks,
+the nested `<Track>` of a DAWproject). Membership is routing: a track is
+in the group its `output` names, and nothing else is stored, so the
+mixer, the sends, mute and solo and the stems need no new idea. A
+plain bus (no `folder`) with tracks routed to it stays out of the
+timeline as before.
+
+`src/lib/utils/studioRows.ts` turns the arrangement into the rows the
+timeline shows: tracks in their order, a group's row opening where its
+first track sits and gathering its tracks (and the groups routed to it)
+under it with a depth, a collapsed group keeping its row and hiding what
+is under it, an empty group last. `busDescendants.ts` is the bus and
+every bus routed into it, transitively and safe on a circle; the engine
+uses it to refuse a `setBusOutput` that would loop, the graphs to route
+a looping bus to the master instead, and `render({ bus })` to sum a
+group's stem from the buses under it as well as its tracks.
+
+The engine: `addGroup` (a folder bus named by number), `setBusFolder`,
+`setBusOutput`, `groupTrack(trackId, groupId | null)` (the output, and
+the track moved to sit after the group's last member so the group reads
+as one block), `toggleGroupCollapsed` on `engine.collapsed`, a view
+state that is not saved. `removeBus` sends what was routed to the bus
+where the bus went (its output bus, or the master), so removing an
+inner group keeps its tracks in the outer one. `studioGraph.routeAll`
+and the offline render route each bus to its output bus or the master.
+
+The timeline iterates `studioRows` instead of the tracks:
+`StudioGroupRow.svelte` is the group's row (fold, name, mute, a menu
+with Ungroup and Remove group, and a lane that sketches every clip under
+the group in its color, so a folded group still shows where its music
+is), and a track's header is indented by its depth. The clip drag
+counts the rows shown (`rowsAcross` over the rows, a group's row passed
+on to the next track in the drag's direction), and the drop finds the
+target track from the row it landed on. A track's menu has **Group**: the
+song's groups, none, or **New group…**; the page's **Add group** button
+makes an empty one; a bus's strip in the mixer has the **Group** toggle
+and the bus's **Output** (the master, or any bus that does not feed it).
+
+Readers and writers keep the tree: the Reaper reader marks a folder a
+group and routes a folder inside a folder to it (the "goes to the master
+here" note is gone; a receive-only track is still a plain bus); the Live
+reader the same for Group Tracks (returns stay plain buses); the
+DAWproject reader marks a track with tracks inside it a group and takes
+a bus channel's `destination` as its output. The Reaper writer nests a
+bus routed to a bus as a folder inside the folder, the last row closing
+every folder that ends there (`ISBUS 2 -n`); the DAWproject writer
+nests a bus's tracks and the buses routed to it inside its `<Track>`,
+the format's own folders. Items on a Reaper folder are still dropped (a
+group holds no clips, as in Logic, Live and Bitwig).
+
+Tests: `studioRows.test.ts`, `busDescendants.test.ts`, the timeline's
+and the mixer's component tests, the nested cases in `rpp.test.ts`,
+`rppRead.test.ts`, `dawproject.test.ts` and `alsRead.test.ts`, and the
+group step of `tests/e2e/studio-mixer.spec.ts`.
 
 ## Beats-anchored clips (2026-10-23, docs/dawn-daw-plan.md D5)
 

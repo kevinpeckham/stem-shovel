@@ -381,12 +381,9 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			}
 			const id = nanoid();
 			idOf.set(p.index, id);
-			buses.push({ id, ...common });
+			// A folder is a group (docs/multitrack-recorder.md "Folder tracks"); a receive-only track a plain bus.
+			buses.push({ id, ...common, ...(isFolder(p) ? { folder: true } : {}) });
 			if (p.hasItems) drop(`Items on the folder ${p.name}`);
-			if (parentOf.has(p.index)) {
-				const parent = parsed[parentOf.get(p.index)!]!;
-				drop(`${p.name} inside the folder ${parent.name}: goes to the master here`);
-			}
 		} else {
 			if (tracks.length >= MAX_STUDIO_TRACKS) {
 				drop(`${p.name} (over the ${MAX_STUDIO_TRACKS}-track limit)`);
@@ -404,14 +401,20 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			});
 		}
 	}
-	// Routing: a folder's children go to it; a bus's receives are sends from their source tracks.
+	// Routing: a folder's children go to it, a folder in a folder too; a bus's receives are sends from their source tracks.
 	for (const p of parsed) {
 		const id = idOf.get(p.index);
-		const track = tracks.find((t) => t.id === id);
-		if (!track) continue;
 		const parent = parentOf.get(p.index);
 		const busId = parent !== undefined ? idOf.get(parent) : undefined;
-		if (busId && buses.some((b) => b.id === busId)) track.output = busId;
+		const into = busId && buses.some((b) => b.id === busId) ? busId : undefined;
+		const bus = buses.find((b) => b.id === id);
+		if (bus) {
+			if (into) bus.output = into;
+			continue;
+		}
+		const track = tracks.find((t) => t.id === id);
+		if (!track) continue;
+		if (into) track.output = into;
 		const mainSend = lineOf(p.block, "MAINSEND");
 		if (mainSend && numAt(mainSend, 1, 1) === 0 && !track.output)
 			fix(`${p.name} sends to no output in Reaper: goes to the master here`);

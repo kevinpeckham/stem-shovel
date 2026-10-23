@@ -297,6 +297,8 @@ describe("readAls", () => {
 	it("reads the tracks with their levels, pans, mutes, colors and envelopes; a group and the returns as buses; the routing and sends", () => {
 		expect(a.tracks.map((t) => t.name)).toEqual(["Kick", "Keys"]);
 		expect(a.buses!.map((b) => b.name)).toEqual(["Drums", "A-Reverb", "B-Delay"]);
+		// A Live group is a group here (docs/multitrack-recorder.md "Folder tracks"); a return a plain bus.
+		expect(a.buses!.map((b) => !!b.folder)).toEqual([true, false, false]);
 		const kick = byName("Kick");
 		expect(kick.kind).toBeUndefined();
 		expect(kick.gain).toBe(1.25);

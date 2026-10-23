@@ -42,6 +42,25 @@ test.describe("Dawn mixer", () => {
 			"0.5",
 		);
 
+		// Folder tracks (docs/multitrack-recorder.md "Folder tracks"): the bus becomes a group from its strip; back on the
+		// tracks its row holds Track 1, folds it away and brings it back; Add group makes another; its menu removes it.
+		await console_.getByRole("checkbox", { name: "Bus 1 is a group" }).check();
+		await until(page, ([w]) => w.__studio.arrangement.buses[0].folder === true);
+		await page.getByRole("button", { name: "Tracks", exact: true }).click();
+		const groupRow = page.locator(`[data-group-row="${busId}"]`);
+		await expect(groupRow).toBeVisible();
+		await expect(page.locator(`[data-track-row="${trackId}"]`)).toBeVisible();
+		await groupRow.getByRole("button", { name: "Collapse Bus 1" }).click();
+		await expect(page.locator(`[data-track-row="${trackId}"]`)).toHaveCount(0);
+		await groupRow.getByRole("button", { name: "Expand Bus 1" }).click();
+		await expect(page.locator(`[data-track-row="${trackId}"]`)).toBeVisible();
+		await page.getByRole("button", { name: "Add group" }).click();
+		await until(page, ([w]) => w.__studio.arrangement.buses.length === 2);
+		await page.getByRole("button", { name: "Group 2 actions" }).click();
+		await page.getByRole("button", { name: "Remove group" }).click();
+		await until(page, ([w]) => w.__studio.arrangement.buses.length === 1);
+		await page.getByRole("button", { name: "Mixer", exact: true }).click();
+
 		// An EQ insert on the track; its Low slider writes the setting.
 		await console_.getByRole("button", { name: "Track 1 inserts" }).click();
 		await page.getByRole("button", { name: "Add EQ" }).click();

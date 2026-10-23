@@ -9,6 +9,7 @@
 	import { sendLaneKey } from "#lib/constants/studioInserts.js";
 	import { studio } from "#lib/audio/studio.svelte.js";
 	import { insertsOf } from "#lib/utils/insertsFromFx.js";
+	import { busDescendants } from "#lib/utils/busDescendants.js";
 	import type { StudioInsert, StudioTrack } from "#lib/val/StudioSchema.js";
 
 	/**
@@ -32,6 +33,14 @@
 		{ value: "", label: "Master" },
 		...buses.map((b) => ({ value: b.id, label: b.name })),
 	]);
+	/** Where a bus can go (docs/multitrack-recorder.md "Folder tracks"): the master, or a bus that does not feed it. */
+	const busOutputOptions = (busId: string) => {
+		const within = busDescendants(buses, busId);
+		return [
+			{ value: "", label: "Master" },
+			...buses.filter((b) => !within.has(b.id)).map((b) => ({ value: b.id, label: b.name })),
+		];
+	};
 	const sendLevel = (t: StudioTrack, busId: string) =>
 		engine.automatedValue(t.id, sendLaneKey(busId));
 	function fader(id: string, v: number, bus = false) {
@@ -271,6 +280,29 @@
 					</div>
 				{/snippet}
 			</div>
+			<!-- A group (docs/multitrack-recorder.md "Folder tracks"): the bus gets a row in the timeline with its tracks under it; and where the bus goes. -->
+			<label
+				class="flex items-center gap-1.5 text-10px text-dim"
+				title="Show the bus as a group in the timeline: the tracks routed to it sit under its row, which folds them away"
+				><input
+					type="checkbox"
+					checked={!!bus.folder}
+					aria-label="{bus.name} is a group"
+					onchange={(e) => engine.setBusFolder(bus.id, e.currentTarget.checked)}
+				/> Group</label
+			>
+			<label class="grid gap-0.5 text-10px text-dim">
+				Output
+				<ComboBox
+					ariaLabel="{bus.name} output"
+					options={busOutputOptions(bus.id)}
+					value={bus.output ?? ""}
+					onchange={(v) => engine.setBusOutput(bus.id, v || null)}
+					clearDefaultButtonClasses
+					buttonClasses="flex w-full items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate"
+					popoverClasses="text-11px"
+				/>
+			</label>
 			<span class="text-10px text-dim">Bus · to the master</span>
 			{@render inserts(bus.id, bus, bus.name)}
 			<div class="flex items-center justify-center">

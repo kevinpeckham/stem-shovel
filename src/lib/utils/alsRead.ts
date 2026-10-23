@@ -287,12 +287,9 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			}
 			const id = nanoid();
 			idOf.set(s.id, id);
-			buses.push({ id, ...common });
+			// A group is a group here too (docs/multitrack-recorder.md "Folder tracks"); a return a plain bus.
+			buses.push({ id, ...common, ...(s.kind === "group" ? { folder: true } : {}) });
 			if (s.kind === "return") returnIds.push(id);
-			if (s.kind === "group" && s.groupId && s.groupId !== "-1") {
-				const parent = strips.find((x) => x.id === s.groupId);
-				drop(`${s.name} inside the group ${parent?.name ?? s.groupId}: goes to the master here`);
-			}
 			continue;
 		}
 		if (tracks.length >= MAX_STUDIO_TRACKS) {
@@ -309,6 +306,13 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			armed: false,
 			input: s.kind === "midi" ? { source: "piano", channel: "stereo" } : null,
 		});
+	}
+	// A group inside a group goes to it.
+	for (const s of strips) {
+		const bus = buses.find((b) => b.id === idOf.get(s.id));
+		if (!bus || s.kind !== "group" || !s.groupId || s.groupId === "-1") continue;
+		const parentId = idOf.get(s.groupId);
+		if (parentId && buses.some((b) => b.id === parentId)) bus.output = parentId;
 	}
 	// Routing: a grouped track goes to its group; a send holder's level goes to the return of the same index.
 	for (const s of strips) {

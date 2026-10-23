@@ -85,6 +85,14 @@ const fake = vi.hoisted(() => {
 		renameTrack: vi.fn(),
 		moveTrack: vi.fn(),
 		removeTrack: vi.fn(),
+		collapsed: {} as Record<string, boolean>,
+		toggleGroupCollapsed: vi.fn(),
+		renameBus: vi.fn(),
+		toggleBusMute: vi.fn(),
+		setBusFolder: vi.fn(),
+		removeBus: vi.fn(),
+		addGroup: vi.fn(() => "g2"),
+		groupTrack: vi.fn(),
 		setGain: vi.fn(),
 		setPan: vi.fn(),
 		setTint: vi.fn(),
@@ -1040,6 +1048,58 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		expect(key.style.left).toBe(`${12 * PX + 44}px`);
 		await fireEvent.keyDown(key, { key: "Delete" });
 		expect(fake.removeKeyChange).toHaveBeenCalledWith(12);
+	});
+});
+
+describe("StudioTimeline: folder tracks", () => {
+	test("a group's row holds its tracks, sketches their clips, folds, and the track menu moves a track in or out", async () => {
+		const user = userEvent.setup();
+		fake.arrangement.buses = [
+			{ id: "g1", name: "Band", gain: 1, pan: 0, muted: false, folder: true, colour: "sea" },
+			{ id: "b2", name: "FX", gain: 1, pan: 0, muted: false },
+		];
+		fake.arrangement.tracks[0]!.output = "g1";
+		fake.arrangement.tracks[2]!.output = "g1";
+		render(StudioTimeline);
+		// The group row opens where Take 1's track sits and gathers Vox under it; the plain bus has no row.
+		const rowIds = [...document.querySelectorAll("[data-track-row],[data-group-row]")].map(
+			(el) => (el as HTMLElement).dataset.groupRow ?? (el as HTMLElement).dataset.trackRow,
+		);
+		expect(rowIds).toEqual(["g1", "t1", "t2", "t3"]);
+		expect(document.querySelectorAll("[data-group-clip]").length).toBe(2);
+		await user.click(screen.getByRole("button", { name: "Collapse Band" }));
+		expect(fake.toggleGroupCollapsed).toHaveBeenCalledWith("g1");
+		await user.click(screen.getByRole("button", { name: "Mute Band" }));
+		expect(fake.toggleBusMute).toHaveBeenCalledWith("g1");
+		await user.click(screen.getByRole("button", { name: "Band actions" }));
+		await user.click(screen.getByRole("button", { name: "Ungroup" }));
+		expect(fake.setBusFolder).toHaveBeenCalledWith("g1", false);
+		// A track's menu: the group select lists the groups alone; New group asks the engine for one and joins it.
+		await user.click(screen.getByRole("button", { name: "Guitar actions" }));
+		const pick = screen.getByRole("combobox", { name: "Guitar group" });
+		expect([...pick.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
+			"No group",
+			"Band",
+			"New group…",
+		]);
+		await user.selectOptions(pick, "g1");
+		expect(fake.groupTrack).toHaveBeenLastCalledWith("t2", "g1");
+		await user.selectOptions(pick, "new");
+		expect(fake.addGroup).toHaveBeenCalled();
+		expect(fake.groupTrack).toHaveBeenLastCalledWith("t2", "g2");
+	});
+
+	test("a folded group hides its tracks and their clips", () => {
+		fake.arrangement.buses = [
+			{ id: "g1", name: "Band", gain: 1, pan: 0, muted: false, folder: true },
+		];
+		fake.arrangement.tracks[0]!.output = "g1";
+		fake.collapsed = { g1: true };
+		render(StudioTimeline);
+		expect(document.querySelector('[data-track-row="t1"]')).toBeNull();
+		expect(document.querySelector('[data-clip="c1"]')).toBeNull();
+		expect(screen.getByRole("button", { name: "Expand Band" })).toBeInTheDocument();
+		fake.collapsed = {};
 	});
 });
 

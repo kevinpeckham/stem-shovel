@@ -480,4 +480,48 @@ describe("rppProject", () => {
 		expect(read.dropped).toEqual([]);
 		expect(read.fixed).toEqual([]);
 	});
+
+	it("writes a bus routed to a bus as a folder inside a folder, the last row closing both, and reads it back", () => {
+		const nested: StudioArrangement = {
+			...arrangement,
+			tracks: [
+				{ ...arrangement.tracks[0]!, id: "kick", name: "Kick", output: "kit", sends: undefined },
+				{ ...arrangement.tracks[0]!, id: "room", name: "Room", output: "drums", sends: undefined },
+				{
+					...arrangement.tracks[0]!,
+					id: "bass",
+					name: "Bass",
+					output: undefined,
+					sends: undefined,
+				},
+			],
+			clips: [],
+			buses: [
+				{ id: "drums", name: "Drums", gain: 1, pan: 0, muted: false, folder: true },
+				{ id: "kit", name: "Kit", gain: 1, pan: 0, muted: false, folder: true, output: "drums" },
+			],
+		};
+		const text = rppProject({
+			title: "Nested",
+			arrangement: nested,
+			audio: new Map(),
+			application: app,
+		});
+		const rows = [
+			...text.matchAll(/^    NAME "?([^"\n]+)"?\n(?:.*\n)*?    ISBUS (-?\d+ -?\d+)$/gm),
+		].map((m) => [m[1], m[2]]);
+		// Bass to the master first; Drums opens, Room sits in it, Kit opens inside it, Kick closes both.
+		expect(rows).toEqual([
+			["Bass", "0 0"],
+			["Drums", "1 1"],
+			["Room", "0 0"],
+			["Kit", "1 1"],
+			["Kick", "2 -2"],
+		]);
+		const back = readRpp(text, "nested").arrangement;
+		const bus = (name: string) => back.buses!.find((b) => b.name === name)!;
+		expect(bus("Kit").output).toBe(bus("Drums").id);
+		expect(back.tracks.find((t) => t.name === "Kick")!.output).toBe(bus("Kit").id);
+		expect(back.tracks.find((t) => t.name === "Room")!.output).toBe(bus("Drums").id);
+	});
 });

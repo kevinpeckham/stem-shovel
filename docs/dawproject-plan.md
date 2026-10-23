@@ -290,8 +290,11 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    editor the same day: markers on the selected clip, Alt-click to add,
    drag onto the grid, Delete to remove ("Editing markers").
 7. **Folder tracks**: a group with children that keep their own channels
-   and routing. Dawn flattens a group to a bus; a real hierarchy would
-   collapse in the timeline and mix as one.
+   and routing. **Done 2026-10-23**: a `folder` bus is a group with a row
+   in the timeline that folds its tracks away, a bus's `output` nests a
+   group in a group, and the readers and writers keep the tree
+   (docs/multitrack-recorder.md "Folder tracks"). A folder's own clips
+   are still dropped on the way in.
 8. **The clip launcher** (`Scenes`, `ClipSlot`): Bitwig's and Live's
    session view, scenes of clips fired live. Far from Dawn's timeline
    model; worth knowing it exists in every Bitwig export (eight empty

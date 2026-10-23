@@ -10,11 +10,13 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Groups (folder tracks).** A group is a row in Dawn's timeline that holds tracks and folds them away: **Add group** makes one, a track joins from the **Group** entry of its menu, and the row has a fold arrow, a name, a mute for everything under it and a sketch of the clips below. A group is also a bus in the mixer, where any bus's strip has a **Group** switch and an **Output** that sends a bus into another, so groups nest. A stem of a group holds everything under it. Reaper folders, Live groups and the nested tracks of a Bitwig or Cubase DAWproject come in as groups, nested as they were, and go back out the same way.
 - **Clips that follow the tempo.** **Follow tempo** in the clip bar keeps a clip's place and length in beats when the song's tempo changes: a MIDI clip's notes and expression move with the grid (through ramps too), and an audio clip is stretched to fit, pitch kept. New MIDI clips follow the tempo from the start, whether recorded, drawn, dropped as a MIDI file or brought in from a Live set, a Reaper project, a DAWproject or a MIDI file; a recording keeps its seconds unless you turn it on. One undo takes a tempo edit and the clips it moved back together.
 
 ### Technical
 
 - `anchor` on `StudioClip` (`CLIP_ANCHORS`); `utils/retimeClip.ts` carries a clip from one grid to another; the engine's `#retimeAnchored` inside every tempo edit (docs/multitrack-recorder.md "Beats-anchored clips").
+- `folder` and `output` on `StudioBus`; `utils/studioRows.ts` (the timeline's rows) and `utils/busDescendants.ts`; `StudioGroupRow.svelte`; the graphs route buses to buses; the Reaper and DAWproject writers nest folders (docs/multitrack-recorder.md "Folder tracks").
 
 ## [0.151.0] - 2026-10-23
 

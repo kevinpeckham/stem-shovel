@@ -22,6 +22,9 @@
 	import { clipSegments } from "#lib/utils/clipSegments.js";
 	import { warpKey, warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
 	import StudioTrackMenu from "./StudioTrackMenu.svelte";
+	import StudioGroupRow from "./StudioGroupRow.svelte";
+	import { studioRows, type StudioRow } from "#lib/utils/studioRows.js";
+	import { busDescendants } from "#lib/utils/busDescendants.js";
 	import AutomationLane from "./AutomationLane.svelte";
 	import InsertPanel from "./InsertPanel.svelte";
 	import Knob from "./Knob.svelte";
@@ -92,6 +95,23 @@
 		takesShown[trackId] ? (compClipOf(trackId)?.alternates?.length ?? 0) : 0;
 	const rowHeight = (trackId: string) =>
 		LANE_H + (laneShown[trackId] ? AUTO_H : 0) + takeLanes(trackId) * TAKE_H;
+	/** A group's row (StudioGroupRow.svelte, docs/multitrack-recorder.md "Folder tracks"). */
+	const GROUP_H = 28;
+	/** The rows as shown: tracks under their groups, a folded group's tracks left out (utils/studioRows.ts). */
+	const rows = $derived(studioRows(studio.arrangement, studio.collapsed));
+	const rowHeightOf = (row: StudioRow) =>
+		row.kind === "group" ? GROUP_H : rowHeight(row.track.id);
+	/** Where a track's row sits among the rows shown; −1 when folded away. */
+	const rowIndexOf = (trackId: string) =>
+		rows.findIndex((r) => r.kind === "track" && r.track.id === trackId);
+	/** The clips of every track under a group, for its sketch. */
+	function groupClipsOf(busId: string): StudioClip[] {
+		const within = busDescendants(studio.arrangement.buses ?? [], busId);
+		const ids = new Set(
+			studio.arrangement.tracks.filter((t) => t.output && within.has(t.output)).map((t) => t.id),
+		);
+		return studio.arrangement.clips.filter((c) => ids.has(c.trackId));
+	}
 	/** A swipe over a take lane: the region of the comp clip to take from that take. */
 	let swipe = $state<{
 		clipId: string;
@@ -143,34 +163,40 @@
 		const lanes = engine.lanesOf(trackId);
 		return lanes.find((l) => l.key === laneShown[trackId]) ?? lanes[0];
 	}
-	/** The rows a vertical drag of `dy` pixels crosses from the track at `index`, with open lanes making rows taller. */
+	/** The rows shown that a vertical drag of `dy` pixels crosses from the row at `index`, with open lanes making rows taller. */
 	function rowsAcross(index: number, dy: number): number {
-		const tracks = engine.arrangement.tracks;
-		let rows = 0;
+		let n = 0;
 		let left = dy;
 		if (dy > 0) {
-			while (index + rows + 1 < tracks.length) {
-				const h = rowHeight(tracks[index + rows]!.id);
+			while (index + n + 1 < rows.length) {
+				const h = rowHeightOf(rows[index + n]!);
 				if (left < h / 2) break;
 				left -= h;
-				rows++;
+				n++;
 			}
 		} else {
-			while (index + rows - 1 >= 0) {
-				const h = rowHeight(tracks[index + rows - 1]!.id);
+			while (index + n - 1 >= 0) {
+				const h = rowHeightOf(rows[index + n - 1]!);
 				if (-left < h / 2) break;
 				left += h;
-				rows--;
+				n--;
 			}
 		}
-		return rows;
+		// A clip lands on a track: a group's row passes it on in the drag's direction, or back if none lies that way.
+		const dir = n > 0 ? 1 : -1;
+		let at = index + n;
+		while (at >= 0 && at < rows.length && rows[at]!.kind === "group") at += dir;
+		if (at < 0 || at >= rows.length) {
+			at = index + n;
+			while (at !== index && rows[at]!.kind === "group") at -= dir;
+		}
+		return at - index;
 	}
-	/** Pixels a clip dragged `rows` tracks moves, with open lanes making rows taller. */
-	function rowsToPx(index: number, rows: number): number {
-		const tracks = engine.arrangement.tracks;
+	/** Pixels a clip dragged `n` rows moves, with open lanes making rows taller. */
+	function rowsToPx(index: number, n: number): number {
 		let px = 0;
-		if (rows > 0) for (let i = index; i < index + rows; i++) px += rowHeight(tracks[i]!.id);
-		else for (let i = index - 1; i >= index + rows; i--) px -= rowHeight(tracks[i]!.id);
+		if (n > 0) for (let i = index; i < index + n; i++) px += rowHeightOf(rows[i]!);
+		else for (let i = index - 1; i >= index + n; i--) px -= rowHeightOf(rows[i]!);
 		return px;
 	}
 	const engine = studio;
@@ -368,9 +394,9 @@
 		const raw = drag.clip.start + dx / pxPerSecond;
 		const start = e.shiftKey ? Math.max(0, raw) : engine.snap(raw);
 		drag.dt = start - drag.clip.start;
-		const index = engine.arrangement.tracks.findIndex((t) => t.id === drag!.clip.trackId);
-		const rows = rowsAcross(index, dy);
-		drag.rows = Math.max(-index, Math.min(engine.arrangement.tracks.length - 1 - index, rows));
+		const index = rowIndexOf(drag.clip.trackId);
+		if (index < 0) return;
+		drag.rows = Math.max(-index, Math.min(rows.length - 1 - index, rowsAcross(index, dy)));
 	}
 	function onclipup(e: PointerEvent) {
 		if (!drag || e.pointerId !== drag.pointerId) return;
@@ -390,12 +416,15 @@
 			return;
 		}
 		const tracks = engine.arrangement.tracks;
+		// The row the clip landed on, as a track (rowsAcross never lands on a group), then the step in the track list.
+		const landed = rows[rowIndexOf(d.clip.trackId) + d.rows];
+		const target = landed?.kind === "track" ? landed.track.id : d.clip.trackId;
+		const step =
+			tracks.findIndex((t) => t.id === target) - tracks.findIndex((t) => t.id === d.clip.trackId);
 		if (selectedIds.length > 1 && selectedIds.includes(d.clip.id)) {
-			engine.moveClips(selectedIds, d.dt, d.rows);
+			engine.moveClips(selectedIds, d.dt, step);
 			return;
 		}
-		const index = tracks.findIndex((t) => t.id === d.clip.trackId);
-		const target = tracks[index + d.rows]?.id ?? d.clip.trackId;
 		engine.moveClip(d.clip.id, d.clip.start + d.dt, target);
 	}
 	// ── Warp markers (docs/multitrack-recorder.md "Warping a clip", editing markers) ──
@@ -873,8 +902,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 <div
 	class="relative w-full overflow-auto rounded-md border border-white/10 bg-dark select-none outline-none focus-visible:ring-2 focus-visible:ring-playhead"
-	style:max-height="min(70vh, {engine.arrangement.tracks.reduce((h, t) => h + rowHeight(t.id), 0) +
-		140}px)"
+	style:max-height="min(70vh, {rows.reduce((h, r) => h + rowHeightOf(r), 0) + 140}px)"
 	role="application"
 	aria-label="Timeline"
 	tabindex="0"
@@ -1055,469 +1083,492 @@
 		</div>
 	</div>
 
-	{#each engine.arrangement.tracks as track, index (track.id)}
-		<!-- The track's tint (constants/stemTints.ts, as the stem player's): swatches in its menu, none first. -->
-		{@const tint = stemTintHex(track.colour)}
-		{@const dim = silenced(track)}
-		{#snippet insertsMenu()}
-			<!-- The track's inserts (InsertPanel.svelte, docs/dawn-daw-plan.md D2): the whole list to the engine on every change. -->
-			<div class="px-3 pt-2 pb-3">
-				<InsertPanel
-					inserts={insertsOf(track)}
-					label={track.name}
-					automated={new Set(Object.keys(track.automation ?? {}))}
-					onchange={(list) => engine.setInserts(track.id, list)}
-				/>
-			</div>
-		{/snippet}
-		<div
-			class="flex"
-			style:width="{HEADER_W + laneWidth}px"
-			style:height="{rowHeight(track.id)}px"
-			data-track-row={track.id}
-		>
-			<!-- the header -->
+	{#each rows as row (row.kind === "group" ? `group:${row.bus.id}` : row.track.id)}
+		{#if row.kind === "group"}
+			<!-- A group's row (docs/multitrack-recorder.md "Folder tracks"): the folder bus's header and a sketch of the clips under it. -->
+			<StudioGroupRow
+				bus={row.bus}
+				depth={row.depth}
+				collapsed={row.collapsed}
+				clips={groupClipsOf(row.bus.id)}
+				{laneWidth}
+				{pxPerSecond}
+				headerWidth={HEADER_W}
+				height={GROUP_H}
+			/>
+		{:else}
+			{@const track = row.track}
+			{@const index = engine.arrangement.tracks.indexOf(track)}
+			<!-- The track's tint (constants/stemTints.ts, as the stem player's): swatches in its menu, none first. -->
+			{@const tint = stemTintHex(track.colour)}
+			{@const dim = silenced(track)}
+			{#snippet insertsMenu()}
+				<!-- The track's inserts (InsertPanel.svelte, docs/dawn-daw-plan.md D2): the whole list to the engine on every change. -->
+				<div class="px-3 pt-2 pb-3">
+					<InsertPanel
+						inserts={insertsOf(track)}
+						label={track.name}
+						automated={new Set(Object.keys(track.automation ?? {}))}
+						onchange={(list) => engine.setInserts(track.id, list)}
+					/>
+				</div>
+			{/snippet}
 			<div
-				class="sticky left-0 z-10 shrink-0 grid content-between gap-1 overflow-hidden border-r border-b border-white/10 border-l-2 bg-oxford-900 px-2 py-1.5 {track.armed
-					? 'border-l-red-500'
-					: 'border-l-transparent'}"
-				style:width="{HEADER_W}px"
+				class="flex"
+				style:width="{HEADER_W + laneWidth}px"
+				style:height="{rowHeight(track.id)}px"
+				data-track-row={track.id}
 			>
+				<!-- the header -->
 				<div
-					class="grid grid-cols-[minmax(0,1fr)_auto_26px] items-center gap-1.5 min-w-0 w-full place-content-center place-items-center"
+					class="sticky left-0 z-10 shrink-0 grid content-between gap-1 overflow-hidden border-r border-b border-white/10 border-l-2 bg-oxford-900 px-2 py-1.5 {track.armed
+						? 'border-l-red-500'
+						: 'border-l-transparent'}"
+					style:width="{HEADER_W}px"
+					style:padding-left={row.depth ? `${8 + row.depth * 12}px` : undefined}
 				>
-					<!-- track name -->
-					<input
-						class="min-w-0 w-full bg-transparent text-13px font-500 text-blue-300 outline-none rounded px-1 hover-bg-white/5 focus-bg-white/10 {dim
-							? 'opacity-60'
-							: ''}"
-						style:color={tint && !dim ? tint : undefined}
-						type="text"
-						maxlength="60"
-						value={track.name}
-						aria-label="Track name"
-						onchange={(e) => engine.renameTrack(track.id, e.currentTarget.value)}
-						onkeydown={(e) => {
-							if (e.key === "Enter") e.currentTarget.blur();
-						}}
-					/>
-					{#if track.frozen}
-						<span
-							class="i-ph-snowflake text-13px text-blue-200"
-							role="img"
-							aria-label="{track.name} is frozen"
-							title="Frozen: one rendering stands in for the clips and inserts (Unfreeze in the menu)"
-						></span>
-					{/if}
-					<!-- The automation lane under the clips (docs/dawn-daw-plan.md, D1): a MIDI track has no audio path to automate. -->
-					{#if !isMidi(track)}
-						<button
-							type="button"
-							class="device-fader-button-sm {laneShown[track.id] ? 'text-accent' : ''}"
-							aria-pressed={!!laneShown[track.id]}
-							aria-label="Automation for {track.name}"
-							title="Automation: a lane of points under the clips for the volume, the pan, the mute, a send or an insert"
-							onclick={() => toggleLane(track.id)}>A</button
-						>
-					{/if}
-					<!-- Take lanes for comping (D4), once a clip on the track holds alternate takes. -->
-					{#if compClipOf(track.id)}
-						<button
-							type="button"
-							class="device-fader-button-sm {takesShown[track.id] ? 'text-accent' : ''}"
-							aria-pressed={!!takesShown[track.id]}
-							aria-label="Takes for {track.name}"
-							title="Takes: a lane per take under the clip; swipe a region to use that take there"
-							onclick={() => toggleTakes(track.id)}>T</button
-						>
-					{/if}
-					<!-- context menu (StudioTrackMenu: the same actions as the Stage's strip) -->
-					<StudioTrackMenu {track} {index} {onrender} {onfreeze} {onunfreeze} />
-				</div>
-				<!-- The input row: the picker alone; the effects button sits with the transport buttons below (Kevin). -->
-				<div
-					class="grid grid-cols-1 place-content-center place-items-center gap-1.5 min-w-0 w-full"
-				>
-					<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
-					<ComboBox
-						ariaLabel="{track.name} input"
-						options={isMidi(track) ? MIDI_INPUT_OPTIONS : AUDIO_INPUT_OPTIONS}
-						value={inputValue(track)}
-						disabled={engine.recording}
-						onchange={(v) => pickInput(track, v)}
-						clearDefaultButtonClasses
-						buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
-						popoverClasses="text-11px"
-					/>
-				</div>
-				<!-- Arm, mute, solo and the effects button lead the fader's row, then the level and pan knobs (Kevin: as the stem player's rows); the meter takes the line below, since the header is narrow. -->
-				<div
-					class="grid grid-cols-[auto_auto_auto_auto_26px_26px] place-content-center place-items-center gap-1 min-w-0"
-				>
-					<button
-						type="button"
-						class="device-fader-button-record-sm"
-						aria-pressed={track.armed}
-						aria-label="Arm {track.name} for recording"
-						title="Arm for recording"
-						disabled={engine.recording}
-						onclick={() => {
-							engine.toggleArm(track.id);
-							const t = engine.arrangement.tracks.find((x) => x.id === track.id);
-							if (t?.armed) onarm?.(t);
-						}}
-					>
-						●
-					</button>
-					<button
-						type="button"
-						class="device-fader-button-sm"
-						aria-pressed={track.muted}
-						aria-label="Mute {track.name}"
-						onclick={() => engine.toggleMute(track.id)}>M</button
-					>
-					<button
-						type="button"
-						class="device-fader-button-sm"
-						aria-pressed={track.solo}
-						aria-label="Solo {track.name}"
-						onclick={() => engine.toggleSolo(track.id)}>S</button
-					>
-					{#if isMidi(track)}
-						<span
-							class="device-fader-button-sm"
-							role="img"
-							aria-label="MIDI track"
-							title="A MIDI track: notes, played through its instrument (its panel has the sound and effects)"
-						>
-							<span class="i-ph-piano-keys text-13px" aria-hidden="true"></span>
-						</span>
-					{:else}
-						<ContextMenu
-							ariaLabel="{track.name} Inserts"
-							dataActive={insertsOf(track).length > 0}
-							disabled={!!track.frozen}
-							title="Inserts: EQ, compressor, tone, delay, reverb, limiter on this track"
-							iconClass="i-ph-sliders-horizontal"
-							clearButtonBaseClasses={true}
-							buttonClasses="device-fader-menu-button-sm"
-							position="bottom left"
-							popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
-							items={[
-								{ id: "fx-heading", kind: "heading", label: `${track.name} inserts` },
-								{ id: "fx", kind: "snippet", snippet: insertsMenu },
-							]}
-						/>
-					{/if}
-					<!-- The fader as a knob (Knob.svelte): the level shows while it turns; a double-click returns to unity. -->
-					<Knob
-						value={engine.automatedValue(track.id, "volume")}
-						min={0}
-						max={STUDIO_FADER_MAX}
-						step={0.01}
-						resetTo={1}
-						size={26}
-						label="{track.name} level"
-						title={isMidi(track)
-							? "Level (scales the notes' velocity)"
-							: "Level (double-click for unity)"}
-						format={levelText(track)}
-						oninput={(v) => engine.setGain(track.id, v)}
-					/>
-					{#if !isMidi(track)}
-						<!-- The pan as a knob (Knob.svelte): the value shows in a popover while it turns. -->
-						<Knob
-							value={engine.automatedValue(track.id, "pan")}
-							min={-1}
-							max={1}
-							step={0.05}
-							resetTo={0}
-							bipolar
-							size={26}
-							label="{track.name} pan"
-							title="Pan (double-click for center)"
-							format={panText}
-							oninput={(v) => engine.setPan(track.id, v)}
-						/>
-					{:else}
-						<span class="h-6 w-6" aria-hidden="true"></span>
-					{/if}
-				</div>
-				<!-- The level after the fader, effects and pan, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
-				<LevelMeter
-					class="min-w-0 w-full"
-					state={engine.levels[track.id]}
-					label={track.name}
-					onreset={() => engine.resetClips(track.id)}
-				/>
-				{#if laneShown[track.id]}
-					<!-- Which parameter the open lane shows; here in the sticky header, so it stays in view as the lane scrolls. -->
-					<ComboBox
-						ariaLabel="{track.name} automation parameter"
-						options={engine.lanesOf(track.id).map((l) => ({ value: l.key, label: l.range.label }))}
-						value={laneOf(track.id)?.key ?? "volume"}
-						onchange={(v) => (laneShown = { ...laneShown, [track.id]: v })}
-						clearDefaultButtonClasses
-						buttonClasses="flex w-full items-center gap-1 h-6 px-1.5 rounded border border-accent/40 bg-oxford-800 text-11px text-accent"
-						popoverClasses="text-11px"
-					/>
-				{/if}
-			</div>
-			<div class="grid grid-rows-[1fr_auto]" style:width="{laneWidth}px">
-				<!-- the lane -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="relative border-b border-white/10 {track.armed ? 'bg-red-500/5' : ''}"
-					style:width="{laneWidth}px"
-					style:height="{LANE_H}px"
-					onpointerdown={(e) => onlanedown(e, track)}
-					ondragover={(e) => onlanedragover(e, track)}
-					ondrop={(e) => onlanedrop(e, track)}
-				>
-					{#if engine.arrangement.gridOn}
-						{#each ticks as tick (tick.x)}
-							{#if tick.major}
-								<div class="absolute inset-y-0 w-px bg-white/6" style:left="{tick.x}px"></div>
-							{/if}
-						{/each}
-					{/if}
-					{#each clipsOf(track) as clip (clip.id)}
-						{@const dragging =
-							drag?.clip.id === clip.id ||
-							(!!drag && drag.mode === "move" && selectedIds.includes(clip.id))}
-						{@const source = clip.sourceId ? engine.sources[clip.sourceId] : undefined}
-						{@const shown =
-							dragging && drag!.mode === "left" && drag!.moved
-								? { start: drag!.edge, duration: clip.start + clip.duration - drag!.edge }
-								: dragging && (drag!.mode === "right" || drag!.mode === "stretch") && drag!.moved
-									? { start: clip.start, duration: drag!.edge - clip.start }
-									: { start: clip.start, duration: clip.duration }}
-						{@const takes = 1 + (clip.alternates?.length ?? 0)}
-						{@const f = fades.get(clip.id) ?? {
-							fadeIn: clip.fadeIn,
-							fadeOut: clip.fadeOut,
-							inShape: "linear",
-							outShape: "linear",
-						}}
-						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-						<div
-							class="absolute top-1 bottom-1 rounded-md border overflow-hidden cursor-grab outline-none touch-none {selected ===
-							clip.id
-								? 'border-accent bg-accent/15 ring-1 ring-accent'
-								: selectedIds.includes(clip.id)
-									? 'border-accent/70 bg-accent/10'
-									: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
-								? 'cursor-grabbing opacity-80 z-10'
-								: ''} {dim ? 'opacity-50' : ''} {clip.muted ? 'opacity-35 saturate-50' : ''}"
-							style:left="{shown.start * pxPerSecond}px"
-							style:width="{Math.max(6, shown.duration * pxPerSecond)}px"
-							style:transform={dragging && drag!.mode === "move"
-								? `translate(${drag!.dt * pxPerSecond}px, ${rowsToPx(index, drag!.rows)}px)`
-								: undefined}
-							data-clip={clip.id}
-							data-selected={selectedIds.includes(clip.id) || undefined}
-							data-muted={clip.muted || undefined}
-							data-warp={clip.warp ? warpText(clip) : undefined}
-							data-anchor={clip.anchor}
-							role="button"
-							tabindex="0"
-							aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
-								? ` (${clip.notes.length} ${clip.notes.length === 1 ? 'note' : 'notes'})`
-								: ''}"
-							title="{clip.name} · {formatTime(clip.start)} – {formatTime(
-								clip.start + clip.duration,
-							)}{clip.warp ? ` · stretched ${warpText(clip)}` : ''}{clip.anchor === 'beats'
-								? ' · follows the tempo'
-								: ''}"
-							onpointerdown={(e) => onclipdown(e, clip)}
-							onpointermove={onclipmove}
-							onpointerup={onclipup}
-							onpointercancel={onclipup}
-							ondblclick={() => clip.notes && onopen?.(clip)}
-						>
-							<!-- The drawing keeps the clip's own width and place while an edge is dragged, so the trim masks it (the clip's overflow is hidden) rather than squeezing it; it is redrawn once the trim lands. -->
-							{#if clip.notes}
-								<canvas
-									class="absolute top-0 bottom-0 h-full text-blue-200 opacity-90"
-									style:color={tint ?? undefined}
-									style:left="{(clip.start - shown.start) * pxPerSecond}px"
-									style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
-									{@attach noteRoll(clip)}
-								></canvas>
-							{:else}
-								<!-- Placed and sized by the attachment: the window of the clip in view, at the screen's resolution. -->
-								<canvas
-									class="absolute top-0 bottom-0 h-full text-blue-200 {source?.status === 'ready'
-										? 'opacity-90'
-										: 'opacity-30'}"
-									style:color={tint ?? undefined}
-									{@attach clipWave(
-										clip,
-										(clip.start - shown.start) * pxPerSecond,
-										Math.max(6, clip.duration * pxPerSecond),
-									)}
-								></canvas>
-							{/if}
-							<!-- the fades as they play (a crossfade over an overlap widens them), drawn as wedges over the ends: straight for linear, bowed for equal power -->
-							{#if f.fadeIn > 0}
-								<div
-									class="absolute inset-y-0 left-0 pointer-events-none {f.inShape === 'power'
-										? 'bg-[radial-gradient(ellipse_at_bottom_right,transparent_60%,rgba(0,0,0,0.55)_62%)]'
-										: 'bg-[linear-gradient(to_bottom_right,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
-									style:width="{f.fadeIn * pxPerSecond}px"
-									data-fade-in={f.inShape}
-								></div>
-							{/if}
-							{#if f.fadeOut > 0}
-								<div
-									class="absolute inset-y-0 right-0 pointer-events-none {f.outShape === 'power'
-										? 'bg-[radial-gradient(ellipse_at_bottom_left,transparent_60%,rgba(0,0,0,0.55)_62%)]'
-										: 'bg-[linear-gradient(to_bottom_left,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
-									style:width="{f.fadeOut * pxPerSecond}px"
-									data-fade-out={f.outShape}
-								></div>
-							{/if}
-							<!-- the trim handles -->
-							<div class="absolute inset-y-0 left-0 w-7px cursor-ew-resize"></div>
-							<div class="absolute inset-y-0 right-0 w-7px cursor-ew-resize"></div>
-							<!-- the warp markers of the selected clip: a line with a flag, dragged onto the grid; Alt-click or Delete removes one -->
-							{#if selected === clip.id && clip.warp && !dragging}
-								{#each warpMarkersOf(clip) as m (m.index)}
-									<button
-										type="button"
-										class="absolute top-0 bottom-0 w-9px -ml-1 p-0 border-0 bg-transparent cursor-col-resize outline-none focus-visible:ring-1 focus-visible:ring-amber-300 touch-none"
-										style:left="{(markerAt(clip, m) - clip.offset) * pxPerSecond}px"
-										data-warp-marker={m.index}
-										aria-label="Warp marker at {formatTime(
-											clip.start + markerAt(clip, m) - clip.offset,
-										)}"
-										title="Warp marker: drag the audio here onto the grid (Shift for free); Delete or Alt-click removes it"
-										onpointerdown={(e) => onmarkerdown(e, clip, m.index)}
-										onpointermove={onmarkermove}
-										onpointerup={onmarkerup}
-										onpointercancel={onmarkerup}
-										onkeydown={(e) => onmarkerkey(e, clip, m.index)}
-										ondblclick={(e) => e.stopPropagation()}
-									>
-										<span class="absolute inset-y-0 left-1 w-px bg-amber-300/80" aria-hidden="true"
-										></span>
-										<span
-											class="absolute top-0 left-0 w-9px h-6px bg-amber-300 [clip-path:polygon(0_0,100%_0,50%_100%)]"
-											aria-hidden="true"
-										></span>
-									</button>
-								{/each}
-							{/if}
-							<span
-								class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
-							>
-								{clip.name}{clip.loop ? " ↻" : ""}{clip.warp ? ` ${warpText(clip)}` : ""}{clip.muted
-									? " · off"
-									: ""}{takes > 1 ? ` · ${takes} takes` : ""}{source?.pending
-									? " · saving…"
-									: source?.status === "failed"
-										? " · not loaded"
-										: ""}
-							</span>
-						</div>
-					{/each}
-					<!-- a take on its way: the red band grows from where recording began, its waveform drawn as the chunks arrive -->
-					{#if track.armed && (engine.phase === "recording" || engine.phase === "counting")}
-						<div
-							class="absolute top-1 bottom-1 rounded-md border border-red-500 bg-red-500/20 pointer-events-none overflow-hidden"
-							style:left="{engine.recordFrom * pxPerSecond}px"
-							style:width="{Math.max(2, (engine.position - engine.recordFrom) * pxPerSecond)}px"
-						>
-							{#if isMidi(track)}
-								<canvas
-									class="absolute inset-0 h-full w-full text-red-200 opacity-90"
-									{@attach liveNotes(track.id)}
-								></canvas>
-							{:else}
-								<canvas
-									class="absolute inset-0 h-full w-full text-red-200 opacity-90"
-									{@attach liveWave(track.id)}
-								></canvas>
-							{/if}
-						</div>
-					{/if}
-				</div>
-				{#if takesShown[track.id] && compClipOf(track.id)}
-					{@const comp = compClipOf(track.id)!}
-					<!-- The take lanes (D4): each alternate take drawn over the comp clip's span; a swipe takes that region from it (engine.compFromTake). -->
-					{#each comp.alternates ?? [] as sourceId (sourceId)}
-						{@const take = engine.sources[sourceId]}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="relative border-b border-white/10 bg-black/20 touch-none"
-							style:height="{TAKE_H}px"
-							data-take-lane={sourceId}
-							data-take-for={comp.id}
-						>
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<div
-								class="absolute top-0.5 bottom-0.5 rounded border border-white/20 bg-white/5 cursor-crosshair overflow-hidden"
-								style:left="{comp.start * pxPerSecond}px"
-								style:width="{Math.max(6, comp.duration * pxPerSecond)}px"
-								role="button"
-								tabindex="-1"
-								aria-label="Take {take?.label ?? sourceId} for {comp.name ||
-									'clip'}: swipe a region to use it"
-								onpointerdown={(e) => onswipedown(e, comp, sourceId)}
-								onpointermove={onswipemove}
-								onpointerup={onswipeup}
-								onpointercancel={onswipeup}
-							>
-								<!-- The lane's box is the clip's width; the attachment keeps the canvas to the window in view. -->
-								<canvas
-									class="absolute top-0 bottom-0 h-full text-blue-200/70"
-									style:color={tint ?? undefined}
-									{@attach clipWave(
-										{ ...comp, id: `${comp.id}:${sourceId}`, sourceId },
-										0,
-										Math.max(6, comp.duration * pxPerSecond),
-									)}
-								></canvas>
-								<span
-									class="absolute left-1 top-0.5 text-10px leading-none px-1 rounded bg-black/40"
-									>{take?.label ?? "take"}</span
-								>
-								{#if swipe?.clipId === comp.id && swipe.sourceId === sourceId}
-									<div
-										class="absolute inset-y-0 bg-accent/30 border-x border-accent pointer-events-none"
-										style:left="{(Math.min(swipe.from, swipe.to) - comp.start) * pxPerSecond}px"
-										style:width="{Math.abs(swipe.to - swipe.from) * pxPerSecond}px"
-									></div>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				{/if}
-				{#if laneShown[track.id] && laneOf(track.id)}
-					{@const choice = laneOf(track.id)!}
-					{@const param = choice.key}
-					<!-- The automation lane (AutomationLane.svelte): the parameter's picker over the curve; a click adds a point, the knobs write one at the playhead. -->
 					<div
-						class="relative border-b border-white/10 bg-black/20"
-						style:height="{AUTO_H}px"
-						data-automation-for={track.id}
+						class="grid grid-cols-[minmax(0,1fr)_auto_26px] items-center gap-1.5 min-w-0 w-full place-content-center place-items-center"
 					>
-						<AutomationLane
-							points={track.automation?.[param] ?? []}
-							range={choice.range}
-							{pxPerSecond}
-							width={laneWidth}
-							height={AUTO_H}
-							snap={engine.arrangement.gridOn ? (t) => engine.snap(t) : undefined}
-							playhead={engine.running ? engine.position : null}
-							fallback={engine.automatedValue(track.id, param, 0)}
-							label={choice.range.label}
-							onchange={(points) => engine.setAutomation(track.id, param, points)}
+						<!-- track name -->
+						<input
+							class="min-w-0 w-full bg-transparent text-13px font-500 text-blue-300 outline-none rounded px-1 hover-bg-white/5 focus-bg-white/10 {dim
+								? 'opacity-60'
+								: ''}"
+							style:color={tint && !dim ? tint : undefined}
+							type="text"
+							maxlength="60"
+							value={track.name}
+							aria-label="Track name"
+							onchange={(e) => engine.renameTrack(track.id, e.currentTarget.value)}
+							onkeydown={(e) => {
+								if (e.key === "Enter") e.currentTarget.blur();
+							}}
+						/>
+						{#if track.frozen}
+							<span
+								class="i-ph-snowflake text-13px text-blue-200"
+								role="img"
+								aria-label="{track.name} is frozen"
+								title="Frozen: one rendering stands in for the clips and inserts (Unfreeze in the menu)"
+							></span>
+						{/if}
+						<!-- The automation lane under the clips (docs/dawn-daw-plan.md, D1): a MIDI track has no audio path to automate. -->
+						{#if !isMidi(track)}
+							<button
+								type="button"
+								class="device-fader-button-sm {laneShown[track.id] ? 'text-accent' : ''}"
+								aria-pressed={!!laneShown[track.id]}
+								aria-label="Automation for {track.name}"
+								title="Automation: a lane of points under the clips for the volume, the pan, the mute, a send or an insert"
+								onclick={() => toggleLane(track.id)}>A</button
+							>
+						{/if}
+						<!-- Take lanes for comping (D4), once a clip on the track holds alternate takes. -->
+						{#if compClipOf(track.id)}
+							<button
+								type="button"
+								class="device-fader-button-sm {takesShown[track.id] ? 'text-accent' : ''}"
+								aria-pressed={!!takesShown[track.id]}
+								aria-label="Takes for {track.name}"
+								title="Takes: a lane per take under the clip; swipe a region to use that take there"
+								onclick={() => toggleTakes(track.id)}>T</button
+							>
+						{/if}
+						<!-- context menu (StudioTrackMenu: the same actions as the Stage's strip) -->
+						<StudioTrackMenu {track} {index} {onrender} {onfreeze} {onunfreeze} />
+					</div>
+					<!-- The input row: the picker alone; the effects button sits with the transport buttons below (Kevin). -->
+					<div
+						class="grid grid-cols-1 place-content-center place-items-center gap-1.5 min-w-0 w-full"
+					>
+						<!-- The input picker (ComboBox.svelte), sized and typed as the select it replaced. -->
+						<ComboBox
+							ariaLabel="{track.name} input"
+							options={isMidi(track) ? MIDI_INPUT_OPTIONS : AUDIO_INPUT_OPTIONS}
+							value={inputValue(track)}
+							disabled={engine.recording}
+							onchange={(v) => pickInput(track, v)}
+							clearDefaultButtonClasses
+							buttonClasses="flex w-full min-w-0 items-center gap-1 h-6 px-1 rounded border border-white/15 bg-oxford-800 text-11px text-left truncate disabled-opacity-60"
+							popoverClasses="text-11px"
 						/>
 					</div>
-				{/if}
+					<!-- Arm, mute, solo and the effects button lead the fader's row, then the level and pan knobs (Kevin: as the stem player's rows); the meter takes the line below, since the header is narrow. -->
+					<div
+						class="grid grid-cols-[auto_auto_auto_auto_26px_26px] place-content-center place-items-center gap-1 min-w-0"
+					>
+						<button
+							type="button"
+							class="device-fader-button-record-sm"
+							aria-pressed={track.armed}
+							aria-label="Arm {track.name} for recording"
+							title="Arm for recording"
+							disabled={engine.recording}
+							onclick={() => {
+								engine.toggleArm(track.id);
+								const t = engine.arrangement.tracks.find((x) => x.id === track.id);
+								if (t?.armed) onarm?.(t);
+							}}
+						>
+							●
+						</button>
+						<button
+							type="button"
+							class="device-fader-button-sm"
+							aria-pressed={track.muted}
+							aria-label="Mute {track.name}"
+							onclick={() => engine.toggleMute(track.id)}>M</button
+						>
+						<button
+							type="button"
+							class="device-fader-button-sm"
+							aria-pressed={track.solo}
+							aria-label="Solo {track.name}"
+							onclick={() => engine.toggleSolo(track.id)}>S</button
+						>
+						{#if isMidi(track)}
+							<span
+								class="device-fader-button-sm"
+								role="img"
+								aria-label="MIDI track"
+								title="A MIDI track: notes, played through its instrument (its panel has the sound and effects)"
+							>
+								<span class="i-ph-piano-keys text-13px" aria-hidden="true"></span>
+							</span>
+						{:else}
+							<ContextMenu
+								ariaLabel="{track.name} Inserts"
+								dataActive={insertsOf(track).length > 0}
+								disabled={!!track.frozen}
+								title="Inserts: EQ, compressor, tone, delay, reverb, limiter on this track"
+								iconClass="i-ph-sliders-horizontal"
+								clearButtonBaseClasses={true}
+								buttonClasses="device-fader-menu-button-sm"
+								position="bottom left"
+								popoverClasses="min-w-72 max-w-sm !max-h-[calc(100vh-2rem)] overflow-y-auto"
+								items={[
+									{ id: "fx-heading", kind: "heading", label: `${track.name} inserts` },
+									{ id: "fx", kind: "snippet", snippet: insertsMenu },
+								]}
+							/>
+						{/if}
+						<!-- The fader as a knob (Knob.svelte): the level shows while it turns; a double-click returns to unity. -->
+						<Knob
+							value={engine.automatedValue(track.id, "volume")}
+							min={0}
+							max={STUDIO_FADER_MAX}
+							step={0.01}
+							resetTo={1}
+							size={26}
+							label="{track.name} level"
+							title={isMidi(track)
+								? "Level (scales the notes' velocity)"
+								: "Level (double-click for unity)"}
+							format={levelText(track)}
+							oninput={(v) => engine.setGain(track.id, v)}
+						/>
+						{#if !isMidi(track)}
+							<!-- The pan as a knob (Knob.svelte): the value shows in a popover while it turns. -->
+							<Knob
+								value={engine.automatedValue(track.id, "pan")}
+								min={-1}
+								max={1}
+								step={0.05}
+								resetTo={0}
+								bipolar
+								size={26}
+								label="{track.name} pan"
+								title="Pan (double-click for center)"
+								format={panText}
+								oninput={(v) => engine.setPan(track.id, v)}
+							/>
+						{:else}
+							<span class="h-6 w-6" aria-hidden="true"></span>
+						{/if}
+					</div>
+					<!-- The level after the fader, effects and pan, with a peak-hold mark and a clip light that sticks until clicked (as the stem player's). -->
+					<LevelMeter
+						class="min-w-0 w-full"
+						state={engine.levels[track.id]}
+						label={track.name}
+						onreset={() => engine.resetClips(track.id)}
+					/>
+					{#if laneShown[track.id]}
+						<!-- Which parameter the open lane shows; here in the sticky header, so it stays in view as the lane scrolls. -->
+						<ComboBox
+							ariaLabel="{track.name} automation parameter"
+							options={engine
+								.lanesOf(track.id)
+								.map((l) => ({ value: l.key, label: l.range.label }))}
+							value={laneOf(track.id)?.key ?? "volume"}
+							onchange={(v) => (laneShown = { ...laneShown, [track.id]: v })}
+							clearDefaultButtonClasses
+							buttonClasses="flex w-full items-center gap-1 h-6 px-1.5 rounded border border-accent/40 bg-oxford-800 text-11px text-accent"
+							popoverClasses="text-11px"
+						/>
+					{/if}
+				</div>
+				<div class="grid grid-rows-[1fr_auto]" style:width="{laneWidth}px">
+					<!-- the lane -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="relative border-b border-white/10 {track.armed ? 'bg-red-500/5' : ''}"
+						style:width="{laneWidth}px"
+						style:height="{LANE_H}px"
+						onpointerdown={(e) => onlanedown(e, track)}
+						ondragover={(e) => onlanedragover(e, track)}
+						ondrop={(e) => onlanedrop(e, track)}
+					>
+						{#if engine.arrangement.gridOn}
+							{#each ticks as tick (tick.x)}
+								{#if tick.major}
+									<div class="absolute inset-y-0 w-px bg-white/6" style:left="{tick.x}px"></div>
+								{/if}
+							{/each}
+						{/if}
+						{#each clipsOf(track) as clip (clip.id)}
+							{@const dragging =
+								drag?.clip.id === clip.id ||
+								(!!drag && drag.mode === "move" && selectedIds.includes(clip.id))}
+							{@const source = clip.sourceId ? engine.sources[clip.sourceId] : undefined}
+							{@const shown =
+								dragging && drag!.mode === "left" && drag!.moved
+									? { start: drag!.edge, duration: clip.start + clip.duration - drag!.edge }
+									: dragging && (drag!.mode === "right" || drag!.mode === "stretch") && drag!.moved
+										? { start: clip.start, duration: drag!.edge - clip.start }
+										: { start: clip.start, duration: clip.duration }}
+							{@const takes = 1 + (clip.alternates?.length ?? 0)}
+							{@const f = fades.get(clip.id) ?? {
+								fadeIn: clip.fadeIn,
+								fadeOut: clip.fadeOut,
+								inShape: "linear",
+								outShape: "linear",
+							}}
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+							<div
+								class="absolute top-1 bottom-1 rounded-md border overflow-hidden cursor-grab outline-none touch-none {selected ===
+								clip.id
+									? 'border-accent bg-accent/15 ring-1 ring-accent'
+									: selectedIds.includes(clip.id)
+										? 'border-accent/70 bg-accent/10'
+										: 'border-blue-300/50 bg-blue-300/15 hover-bg-blue-300/20'} {dragging
+									? 'cursor-grabbing opacity-80 z-10'
+									: ''} {dim ? 'opacity-50' : ''} {clip.muted ? 'opacity-35 saturate-50' : ''}"
+								style:left="{shown.start * pxPerSecond}px"
+								style:width="{Math.max(6, shown.duration * pxPerSecond)}px"
+								style:transform={dragging && drag!.mode === "move"
+									? `translate(${drag!.dt * pxPerSecond}px, ${rowsToPx(rowIndexOf(track.id), drag!.rows)}px)`
+									: undefined}
+								data-clip={clip.id}
+								data-selected={selectedIds.includes(clip.id) || undefined}
+								data-muted={clip.muted || undefined}
+								data-warp={clip.warp ? warpText(clip) : undefined}
+								data-anchor={clip.anchor}
+								role="button"
+								tabindex="0"
+								aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
+									? ` (${clip.notes.length} ${clip.notes.length === 1 ? 'note' : 'notes'})`
+									: ''}"
+								title="{clip.name} · {formatTime(clip.start)} – {formatTime(
+									clip.start + clip.duration,
+								)}{clip.warp ? ` · stretched ${warpText(clip)}` : ''}{clip.anchor === 'beats'
+									? ' · follows the tempo'
+									: ''}"
+								onpointerdown={(e) => onclipdown(e, clip)}
+								onpointermove={onclipmove}
+								onpointerup={onclipup}
+								onpointercancel={onclipup}
+								ondblclick={() => clip.notes && onopen?.(clip)}
+							>
+								<!-- The drawing keeps the clip's own width and place while an edge is dragged, so the trim masks it (the clip's overflow is hidden) rather than squeezing it; it is redrawn once the trim lands. -->
+								{#if clip.notes}
+									<canvas
+										class="absolute top-0 bottom-0 h-full text-blue-200 opacity-90"
+										style:color={tint ?? undefined}
+										style:left="{(clip.start - shown.start) * pxPerSecond}px"
+										style:width="{Math.max(6, clip.duration * pxPerSecond)}px"
+										{@attach noteRoll(clip)}
+									></canvas>
+								{:else}
+									<!-- Placed and sized by the attachment: the window of the clip in view, at the screen's resolution. -->
+									<canvas
+										class="absolute top-0 bottom-0 h-full text-blue-200 {source?.status === 'ready'
+											? 'opacity-90'
+											: 'opacity-30'}"
+										style:color={tint ?? undefined}
+										{@attach clipWave(
+											clip,
+											(clip.start - shown.start) * pxPerSecond,
+											Math.max(6, clip.duration * pxPerSecond),
+										)}
+									></canvas>
+								{/if}
+								<!-- the fades as they play (a crossfade over an overlap widens them), drawn as wedges over the ends: straight for linear, bowed for equal power -->
+								{#if f.fadeIn > 0}
+									<div
+										class="absolute inset-y-0 left-0 pointer-events-none {f.inShape === 'power'
+											? 'bg-[radial-gradient(ellipse_at_bottom_right,transparent_60%,rgba(0,0,0,0.55)_62%)]'
+											: 'bg-[linear-gradient(to_bottom_right,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
+										style:width="{f.fadeIn * pxPerSecond}px"
+										data-fade-in={f.inShape}
+									></div>
+								{/if}
+								{#if f.fadeOut > 0}
+									<div
+										class="absolute inset-y-0 right-0 pointer-events-none {f.outShape === 'power'
+											? 'bg-[radial-gradient(ellipse_at_bottom_left,transparent_60%,rgba(0,0,0,0.55)_62%)]'
+											: 'bg-[linear-gradient(to_bottom_left,rgba(0,0,0,0.55)_50%,transparent_50%)]'}"
+										style:width="{f.fadeOut * pxPerSecond}px"
+										data-fade-out={f.outShape}
+									></div>
+								{/if}
+								<!-- the trim handles -->
+								<div class="absolute inset-y-0 left-0 w-7px cursor-ew-resize"></div>
+								<div class="absolute inset-y-0 right-0 w-7px cursor-ew-resize"></div>
+								<!-- the warp markers of the selected clip: a line with a flag, dragged onto the grid; Alt-click or Delete removes one -->
+								{#if selected === clip.id && clip.warp && !dragging}
+									{#each warpMarkersOf(clip) as m (m.index)}
+										<button
+											type="button"
+											class="absolute top-0 bottom-0 w-9px -ml-1 p-0 border-0 bg-transparent cursor-col-resize outline-none focus-visible:ring-1 focus-visible:ring-amber-300 touch-none"
+											style:left="{(markerAt(clip, m) - clip.offset) * pxPerSecond}px"
+											data-warp-marker={m.index}
+											aria-label="Warp marker at {formatTime(
+												clip.start + markerAt(clip, m) - clip.offset,
+											)}"
+											title="Warp marker: drag the audio here onto the grid (Shift for free); Delete or Alt-click removes it"
+											onpointerdown={(e) => onmarkerdown(e, clip, m.index)}
+											onpointermove={onmarkermove}
+											onpointerup={onmarkerup}
+											onpointercancel={onmarkerup}
+											onkeydown={(e) => onmarkerkey(e, clip, m.index)}
+											ondblclick={(e) => e.stopPropagation()}
+										>
+											<span
+												class="absolute inset-y-0 left-1 w-px bg-amber-300/80"
+												aria-hidden="true"
+											></span>
+											<span
+												class="absolute top-0 left-0 w-9px h-6px bg-amber-300 [clip-path:polygon(0_0,100%_0,50%_100%)]"
+												aria-hidden="true"
+											></span>
+										</button>
+									{/each}
+								{/if}
+								<span
+									class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
+								>
+									{clip.name}{clip.loop ? " ↻" : ""}{clip.warp
+										? ` ${warpText(clip)}`
+										: ""}{clip.muted ? " · off" : ""}{takes > 1
+										? ` · ${takes} takes`
+										: ""}{source?.pending
+										? " · saving…"
+										: source?.status === "failed"
+											? " · not loaded"
+											: ""}
+								</span>
+							</div>
+						{/each}
+						<!-- a take on its way: the red band grows from where recording began, its waveform drawn as the chunks arrive -->
+						{#if track.armed && (engine.phase === "recording" || engine.phase === "counting")}
+							<div
+								class="absolute top-1 bottom-1 rounded-md border border-red-500 bg-red-500/20 pointer-events-none overflow-hidden"
+								style:left="{engine.recordFrom * pxPerSecond}px"
+								style:width="{Math.max(2, (engine.position - engine.recordFrom) * pxPerSecond)}px"
+							>
+								{#if isMidi(track)}
+									<canvas
+										class="absolute inset-0 h-full w-full text-red-200 opacity-90"
+										{@attach liveNotes(track.id)}
+									></canvas>
+								{:else}
+									<canvas
+										class="absolute inset-0 h-full w-full text-red-200 opacity-90"
+										{@attach liveWave(track.id)}
+									></canvas>
+								{/if}
+							</div>
+						{/if}
+					</div>
+					{#if takesShown[track.id] && compClipOf(track.id)}
+						{@const comp = compClipOf(track.id)!}
+						<!-- The take lanes (D4): each alternate take drawn over the comp clip's span; a swipe takes that region from it (engine.compFromTake). -->
+						{#each comp.alternates ?? [] as sourceId (sourceId)}
+							{@const take = engine.sources[sourceId]}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="relative border-b border-white/10 bg-black/20 touch-none"
+								style:height="{TAKE_H}px"
+								data-take-lane={sourceId}
+								data-take-for={comp.id}
+							>
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+									class="absolute top-0.5 bottom-0.5 rounded border border-white/20 bg-white/5 cursor-crosshair overflow-hidden"
+									style:left="{comp.start * pxPerSecond}px"
+									style:width="{Math.max(6, comp.duration * pxPerSecond)}px"
+									role="button"
+									tabindex="-1"
+									aria-label="Take {take?.label ?? sourceId} for {comp.name ||
+										'clip'}: swipe a region to use it"
+									onpointerdown={(e) => onswipedown(e, comp, sourceId)}
+									onpointermove={onswipemove}
+									onpointerup={onswipeup}
+									onpointercancel={onswipeup}
+								>
+									<!-- The lane's box is the clip's width; the attachment keeps the canvas to the window in view. -->
+									<canvas
+										class="absolute top-0 bottom-0 h-full text-blue-200/70"
+										style:color={tint ?? undefined}
+										{@attach clipWave(
+											{ ...comp, id: `${comp.id}:${sourceId}`, sourceId },
+											0,
+											Math.max(6, comp.duration * pxPerSecond),
+										)}
+									></canvas>
+									<span
+										class="absolute left-1 top-0.5 text-10px leading-none px-1 rounded bg-black/40"
+										>{take?.label ?? "take"}</span
+									>
+									{#if swipe?.clipId === comp.id && swipe.sourceId === sourceId}
+										<div
+											class="absolute inset-y-0 bg-accent/30 border-x border-accent pointer-events-none"
+											style:left="{(Math.min(swipe.from, swipe.to) - comp.start) * pxPerSecond}px"
+											style:width="{Math.abs(swipe.to - swipe.from) * pxPerSecond}px"
+										></div>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					{/if}
+					{#if laneShown[track.id] && laneOf(track.id)}
+						{@const choice = laneOf(track.id)!}
+						{@const param = choice.key}
+						<!-- The automation lane (AutomationLane.svelte): the parameter's picker over the curve; a click adds a point, the knobs write one at the playhead. -->
+						<div
+							class="relative border-b border-white/10 bg-black/20"
+							style:height="{AUTO_H}px"
+							data-automation-for={track.id}
+						>
+							<AutomationLane
+								points={track.automation?.[param] ?? []}
+								range={choice.range}
+								{pxPerSecond}
+								width={laneWidth}
+								height={AUTO_H}
+								snap={engine.arrangement.gridOn ? (t) => engine.snap(t) : undefined}
+								playhead={engine.running ? engine.position : null}
+								fallback={engine.automatedValue(track.id, param, 0)}
+								label={choice.range.label}
+								onchange={(points) => engine.setAutomation(track.id, param, points)}
+							/>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 	{/each}
 	{#if engine.arrangement.tracks.length === 0}
 		<div class="px-4 py-10 text-center text-dim text-14px" style:width="{HEADER_W + laneWidth}px">

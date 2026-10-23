@@ -135,7 +135,8 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 
 	out("  <Structure>");
 	const trackIds = new Map<string, string>();
-	for (const t of a.tracks) {
+	const busIds = new Set((a.buses ?? []).map((b) => b.id));
+	const trackEl = (t: (typeof a.tracks)[number]) => {
 		const tid = id("track");
 		trackIds.set(t.id, tid);
 		const color = stemTintHex(t.colour);
@@ -161,9 +162,14 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 			ownerId: t.id,
 		});
 		out("    </Track>");
-	}
+	};
+	// A bus as a track with the tracks routed to it inside it, and the buses routed to it inside it too (a folder;
+	// docs/multitrack-recorder.md "Folder tracks"): the format's own nesting, which readers take as a group.
 	const busTrackIds = new Map<string, string>();
-	for (const b of a.buses ?? []) {
+	const placed = new Set<string>();
+	const busEl = (b: NonNullable<typeof a.buses>[number]) => {
+		if (placed.has(b.id)) return;
+		placed.add(b.id);
 		const tid = id("track");
 		busTrackIds.set(b.id, tid);
 		const color = stemTintHex(b.colour);
@@ -176,11 +182,16 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 			gain: b.gain,
 			pan: b.pan,
 			muted: b.muted,
-			destination: masterChannel,
+			destination: (b.output && busChannel.get(b.output)) || masterChannel,
 			ownerId: b.id,
 		});
+		for (const t of a.tracks) if (t.output === b.id) trackEl(t);
+		for (const sub of a.buses ?? []) if (sub.output === b.id) busEl(sub);
 		out("    </Track>");
-	}
+	};
+	for (const t of a.tracks) if (!t.output || !busIds.has(t.output)) trackEl(t);
+	for (const b of a.buses ?? []) if (!b.output || !busIds.has(b.output)) busEl(b);
+	for (const b of a.buses ?? []) busEl(b); // a bus in a circle of outputs comes out at the top
 	const masterTrackId = id("track");
 	out(`    <Track contentType="audio notes" loaded="true" id="${masterTrackId}" name="Master">`);
 	channel({

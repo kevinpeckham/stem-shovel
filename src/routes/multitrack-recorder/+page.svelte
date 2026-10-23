@@ -2123,6 +2123,17 @@
 					>
 						<span class="i-ph-piano-keys" aria-hidden="true"></span> Add MIDI track
 					</button>
+					<button
+						class="device-button-sm px-3"
+						type="button"
+						title="A group: a row that holds tracks and folds them away, with a bus of its own in the mixer (a track joins from its menu)"
+						onclick={() => {
+							if (!studio.addGroup())
+								notify("A song holds at most eight buses and groups", { kind: "error" });
+						}}
+					>
+						<span class="i-ph-folder-simple" aria-hidden="true"></span> Add group
+					</button>
 					<label class="device-button-sm px-3 cursor-pointer {importing ? 'opacity-60' : ''}">
 						<span class="i-ph-file-audio" aria-hidden="true"></span>
 						{importing ? "Importing…" : "Import audio, MIDI or a project…"}

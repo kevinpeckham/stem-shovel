@@ -1,4 +1,5 @@
 import { insertsOf } from "#lib/utils/insertsFromFx.js";
+import { busDescendants } from "#lib/utils/busDescendants.js";
 import type { StudioArrangement, StudioBus, StudioTrack } from "#lib/val/StudioSchema.js";
 import { createStripGraph, type StripGraph } from "./stripGraph";
 
@@ -80,12 +81,21 @@ export class StudioGraph {
 		}
 		return strip;
 	}
-	/** Every track to its bus or the master, with its sends; every bus to the master. */
+	/**
+	 * Every track to its bus or the master, with its sends; every bus to its
+	 * output bus (docs/multitrack-recorder.md "Folder tracks") or the master.
+	 * A bus whose output would feed back into it goes to the master instead.
+	 */
 	routeAll(a: StudioArrangement) {
 		const busInputs = new Map<string, AudioNode>();
+		for (const [id, strip] of this.buses) busInputs.set(id, strip.input);
 		for (const [id, strip] of this.buses) {
-			strip.route(this.master.input);
-			busInputs.set(id, strip.input);
+			const bus = a.buses?.find((b) => b.id === id);
+			const to =
+				bus?.output && !busDescendants(a.buses ?? [], id).has(bus.output)
+					? busInputs.get(bus.output)
+					: undefined;
+			strip.route(to ?? this.master.input);
 		}
 		for (const t of a.tracks) {
 			const strip = this.tracks.get(t.id);

@@ -231,6 +231,44 @@ describe("readRpp", () => {
 		]);
 	});
 
+	it("keeps a folder inside a folder: groups in groups, each track to its own folder", () => {
+		const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
+  TEMPO 120 4 4 0
+  <TRACK
+    NAME Drums
+    ISBUS 1 1
+  >
+  <TRACK
+    NAME Kit
+    ISBUS 1 1
+  >
+  <TRACK
+    NAME Kick
+    ISBUS 2 -1
+  >
+  <TRACK
+    NAME Room
+    ISBUS 2 -1
+  >
+  <TRACK
+    NAME Bass
+    ISBUS 0 0
+  >
+>`;
+		const a = readRpp(rpp, "nested").arrangement;
+		const bus = (name: string) => a.buses!.find((b) => b.name === name)!;
+		const track = (name: string) => a.tracks.find((t) => t.name === name)!;
+		expect(a.buses!.map((b) => [b.name, !!b.folder])).toEqual([
+			["Drums", true],
+			["Kit", true],
+		]);
+		expect(bus("Drums").output).toBeUndefined();
+		expect(bus("Kit").output).toBe(bus("Drums").id);
+		expect(track("Kick").output).toBe(bus("Kit").id);
+		expect(track("Room").output).toBe(bus("Drums").id);
+		expect(track("Bass").output).toBeUndefined();
+	});
+
 	it("keeps an item that loops a section of its file as a looped clip", () => {
 		const rpp = `<REAPER_PROJECT 0.1 "7.0/test" 0 0
   TEMPO 120 4 4 0

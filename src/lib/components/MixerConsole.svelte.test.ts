@@ -40,6 +40,8 @@ const fake = vi.hoisted(() => {
 		setMaster: vi.fn(),
 		addBus: vi.fn(),
 		removeBus: vi.fn(),
+		setBusFolder: vi.fn(),
+		setBusOutput: vi.fn(),
 		renameBus: vi.fn(),
 		setBusGain: vi.fn(),
 		setBusPan: vi.fn(),
@@ -221,5 +223,24 @@ describe("MixerConsole", () => {
 		expect(fake.removeBus).toHaveBeenCalledWith("b1");
 		await user.click(screen.getByRole("button", { name: "Add bus" }));
 		expect(fake.addBus).toHaveBeenCalledTimes(1);
+	});
+
+	test("a bus becomes a group from its strip, and routes to another bus that does not feed it", async () => {
+		const user = userEvent.setup();
+		fake.arrangement.buses = [
+			{ id: "b1", name: "Drums", gain: 0.9, pan: 0.2, muted: false },
+			{ id: "b2", name: "Band", gain: 1, pan: 0, muted: false, folder: true, output: "b1" },
+		];
+		render(MixerConsole);
+		await user.click(screen.getByRole("checkbox", { name: "Drums is a group" }));
+		expect(fake.setBusFolder).toHaveBeenCalledWith("b1", true);
+		expect(screen.getByRole("checkbox", { name: "Band is a group" })).toBeChecked();
+		// Drums cannot go to Band, which feeds it; Band can come back to the master.
+		await user.click(screen.getByRole("combobox", { name: "Drums output" }));
+		expect(screen.queryByRole("option", { name: "Band" })).toBeNull();
+		await user.click(screen.getByRole("option", { name: "Master" }));
+		await user.click(screen.getByRole("combobox", { name: "Band output" }));
+		await user.click(screen.getByRole("option", { name: "Master" }));
+		expect(fake.setBusOutput).toHaveBeenLastCalledWith("b2", null);
 	});
 });
