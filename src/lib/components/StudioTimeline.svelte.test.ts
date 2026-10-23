@@ -44,6 +44,9 @@ const fake = vi.hoisted(() => {
 		clipBufferOf: vi.fn(() => null),
 		warping: 0,
 		stretchClipTo: vi.fn(),
+		addWarpPoint: vi.fn(),
+		moveWarpPoint: vi.fn(),
+		removeWarpPoint: vi.fn(),
 		livePeaksOf: vi.fn(() => [0.2, 0.8]),
 		seek: vi.fn(),
 		snap: vi.fn((t: number) => Math.round(t * 2) / 2),
@@ -691,6 +694,41 @@ describe("StudioTimeline", () => {
 		await fireEvent.pointerUp(c1, at(336, 10, { altKey: true }));
 		expect(fake.stretchClipTo).toHaveBeenCalledWith("c1", 6);
 		expect(fake.trimClip).not.toHaveBeenCalled();
+	});
+
+	test("warp markers: Alt-click adds one, the selected clip's markers drag onto the grid, Delete and Alt-click take one out", async () => {
+		fake.arrangement.clips[0]!.warp = [
+			{ at: 0, source: 0 },
+			{ at: 2, source: 1.5 },
+			{ at: 6, source: 4 },
+		];
+		render(StudioTimeline, { props: { selected: "c1" } });
+		const c1 = clipEl("c1");
+		// The clip spans 2 s to 6 s: 300 px to 460 px past the header (jsdom's own rects are empty).
+		c1.getBoundingClientRect = () =>
+			({ left: 300, right: 460, width: 160, top: 0, bottom: 100, height: 100 }) as DOMRect;
+		// The points at the clip's edges are not markers; the one at 2 s of content is, 80 px in.
+		const markers = c1.querySelectorAll("[data-warp-marker]");
+		expect(markers).toHaveLength(1);
+		const marker = markers[0] as HTMLElement;
+		expect(marker.style.left).toBe("80px");
+		expect(marker.getAttribute("aria-label")).toBe("Warp marker at 0:04.0");
+		// Dragged 20 px: half a second later, snapped to the half-second grid; the preview follows, then the engine is told.
+		await fireEvent.pointerDown(marker, at(180));
+		await fireEvent.pointerMove(marker, at(200));
+		expect(marker.style.left).toBe("100px");
+		await fireEvent.pointerUp(marker, at(200));
+		expect(fake.moveWarpPoint).toHaveBeenCalledWith("c1", 1, 2.5);
+		expect(fake.moveClip).not.toHaveBeenCalled();
+		// Alt on the clip's body adds a marker at that second of content (the lane starts at the header; 4.5 s on the timeline).
+		await fireEvent.pointerDown(c1, at(380, 10, { altKey: true }));
+		expect(fake.addWarpPoint).toHaveBeenCalledWith("c1", 2.5);
+		// Delete on a focused marker, or Alt-click on it, takes it out.
+		await fireEvent.keyDown(marker, { key: "Delete" });
+		expect(fake.removeWarpPoint).toHaveBeenCalledWith("c1", 1);
+		expect(fake.deleteClips).not.toHaveBeenCalled();
+		await fireEvent.pointerDown(marker, at(180, 10, { altKey: true }));
+		expect(fake.removeWarpPoint).toHaveBeenCalledTimes(2);
 	});
 
 	test("a warped clip wears its stretch on its label", async () => {

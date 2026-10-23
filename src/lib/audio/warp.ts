@@ -1,3 +1,4 @@
+import { WARP_RATIO_MAX, WARP_RATIO_MIN } from "#lib/constants/studio.js";
 import { stretchChannels } from "#lib/utils/stretchChannels.js";
 import type { StudioWarp, StudioWarpPoint } from "#lib/val/StudioSchema.js";
 
@@ -99,6 +100,50 @@ export function warpPointsOver(warp: StudioWarp, end: number): StudioWarpPoint[]
 		...inside,
 		{ at: round6(end), source: round6(warpSourceAt(warp, end)) },
 	];
+}
+
+/**
+ * A marker added at content second `at`, pinned where the map already
+ * puts the file (so nothing moves until it is dragged); null when a point
+ * is there already.
+ */
+export function warpWithPoint(warp: StudioWarp, at: number): StudioWarp | null {
+	if (!(at >= 0) || warp.some((p) => Math.abs(p.at - at) < 0.01)) return null;
+	return [...warp, { at: round6(at), source: round6(warpSourceAt(warp, at)) }].sort(
+		(a, b) => a.at - b.at,
+	);
+}
+
+/**
+ * The point `index` dragged to content second `at`: it stays at least ten
+ * milliseconds inside its neighbors and keeps the segment on either side
+ * within the hand range of stretch; null when it cannot move at all.
+ */
+export function warpWithPointMoved(warp: StudioWarp, index: number, at: number): StudioWarp | null {
+	const p = warp[index];
+	if (!p || !Number.isFinite(at)) return null;
+	const prev = warp[index - 1];
+	const next = warp[index + 1];
+	let lo = prev ? prev.at + 0.01 : 0;
+	let hi = next ? next.at - 0.01 : Number.POSITIVE_INFINITY;
+	if (prev && p.source > prev.source) {
+		lo = Math.max(lo, prev.at + (p.source - prev.source) * WARP_RATIO_MIN);
+		hi = Math.min(hi, prev.at + (p.source - prev.source) * WARP_RATIO_MAX);
+	}
+	if (next && next.source > p.source) {
+		lo = Math.max(lo, next.at - (next.source - p.source) * WARP_RATIO_MAX);
+		hi = Math.min(hi, next.at - (next.source - p.source) * WARP_RATIO_MIN);
+	}
+	if (lo > hi) return null;
+	const clamped = round6(Math.min(hi, Math.max(lo, at)));
+	if (Math.abs(clamped - p.at) < 1e-6) return null;
+	return warp.map((q, i) => (i === index ? { at: clamped, source: q.source } : q));
+}
+
+/** The point `index` taken out, its neighbors' segments joining; null when fewer than two points would remain. */
+export function warpWithoutPoint(warp: StudioWarp, index: number): StudioWarp | null {
+	const out = warp.filter((_, i) => i !== index);
+	return out.length >= 2 && out.length < warp.length ? out : null;
 }
 
 /** A key for a cache of warped renderings: the points, nothing else. */

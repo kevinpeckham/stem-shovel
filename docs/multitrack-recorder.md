@@ -1232,6 +1232,24 @@ times) and removes a warp that lands back on 1. The clip's label and
 draws the rendering once it is in, and the peaks through the warp map
 until then. The destructive **Length × / Apply stretch** stays as it was.
 
+**Editing markers.** The selected clip shows its warp points inside what
+it plays as markers (`data-warp-marker`, an amber line with a flag;
+points at or beyond the clip's edges are not shown). **Alt-click** on
+the body of an audio clip adds a marker there (`addWarpPoint`:
+`warpWithPoint` pins the new point where the map already has the file,
+and a plain clip gets a straight warp over its file to hold it, so
+nothing moves until the marker does). **Dragging a marker** moves that
+point's content second (`moveWarpPoint`, `warpWithPointMoved`): the audio
+between it and its neighbors stretches to follow, the clip's own window
+stays, the marker's place on the timeline snaps to the grid unless
+Shift is held (a transient dragged onto a beat line); it stays ten
+milliseconds inside its neighbors and keeps each neighboring segment
+within the hand range. **Arrow keys** nudge a focused marker by a
+hundredth of a second (a tenth with Shift); **Delete**, or **Alt-click**
+on the marker, removes it (`removeWarpPoint`, `warpWithoutPoint`), and
+the last pair gone takes the warp with it through `setClipWarp(null)`.
+Alt on a clip's right edge still stretches the whole clip.
+
 **Files.** DAWproject: the writer puts a warped clip's `Audio`
 (`algorithm="stretch"`) inside `Warps contentTimeUnit="seconds"` with a
 `Warp time= contentTime=` per point from zero to the end of what the clip

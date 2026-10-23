@@ -9,6 +9,9 @@ import {
 	warpRatioAt,
 	warpSourceAt,
 	warpUniformRatio,
+	warpWithPoint,
+	warpWithPointMoved,
+	warpWithoutPoint,
 } from "./warp";
 
 const sine = (hz: number, seconds: number, sampleRate: number, amp = 0.5) => {
@@ -111,5 +114,25 @@ describe("warp", () => {
 		// A uniform warp over a longer file: the content runs the file's length times the ratio.
 		const [longer] = renderWarp([tone], sampleRate, uniformWarp(1.25));
 		expect(longer!.length).toBe(Math.round(2.5 * sampleRate));
+	});
+	it("adds a marker where the map already is, moves one within its neighbors and the hand range, and takes one out", () => {
+		const w = uniformWarp(1, 8);
+		const added = warpWithPoint(w, 4)!;
+		expect(added).toEqual([
+			{ at: 0, source: 0 },
+			{ at: 4, source: 4 },
+			{ at: 8, source: 8 },
+		]);
+		expect(warpWithPoint(added, 4.005)).toBeNull();
+		// Dragged a second later: the first four file seconds over five, the last four over three.
+		const moved = warpWithPointMoved(added, 1, 5)!;
+		expect(moved[1]).toEqual({ at: 5, source: 4 });
+		expect(warpRatioAt(moved, 1)).toBeCloseTo(1.25, 6);
+		expect(warpRatioAt(moved, 6)).toBeCloseTo(0.75, 6);
+		// Too far: held where the segment after it reaches a quarter of its length.
+		expect(warpWithPointMoved(added, 1, 7.9)![1]!.at).toBeCloseTo(7, 6);
+		expect(warpWithPointMoved(added, 1, 4)).toBeNull();
+		expect(warpWithoutPoint(moved, 1)).toEqual(w);
+		expect(warpWithoutPoint(w, 0)).toBeNull();
 	});
 });

@@ -286,9 +286,9 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    engine playing a WSOLA rendering made in a worker, Alt-drag and a
    Clip tempo field to set it, read and written by DAWproject and
    Reaper (play rate or stretch markers), read from Live
-   (docs/multitrack-recorder.md "Warping a clip"). Still open: a
-   warp-marker editor in the timeline (an uneven warp can be kept,
-   scaled and removed, not drawn point by point).
+   (docs/multitrack-recorder.md "Warping a clip"), and the warp-marker
+   editor the same day: markers on the selected clip, Alt-click to add,
+   drag onto the grid, Delete to remove ("Editing markers").
 7. **Folder tracks**: a group with children that keep their own channels
    and routing. Dawn flattens a group to a bus; a real hierarchy would
    collapse in the timeline and mix as one.

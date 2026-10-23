@@ -113,6 +113,17 @@ test.describe("Dawn time", () => {
 			return p;
 		});
 		expect(warpedPeak).toBeGreaterThan(0.01);
+		// Warp markers: Alt-click on the clip adds one where the pointer is; Delete on the focused marker takes it out.
+		await page
+			.locator("[data-clip]")
+			.first()
+			.click({ modifiers: ["Alt"], position: { x: 120, y: 30 } });
+		await until(page, ([w]) => w.__studio.arrangement.clips[0].warp.length === 3);
+		const marker = page.locator("[data-warp-marker]").first();
+		await expect(marker).toBeVisible();
+		await marker.focus();
+		await page.keyboard.press("Delete");
+		await until(page, ([w]) => w.__studio.arrangement.clips[0].warp.length === 2);
 		await page.getByRole("button", { name: "Unwarp" }).click();
 		const unwarped = await hooked(page, ([w]) => w.__studio.arrangement.clips[0]);
 		expect(unwarped.warp).toBeUndefined();

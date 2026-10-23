@@ -64,6 +64,9 @@ import {
 	warpKey,
 	warpSourceAt,
 	warpUniformRatio,
+	warpWithPoint,
+	warpWithPointMoved,
+	warpWithoutPoint,
 } from "./warp.js";
 import { renderWarpAsync } from "./warpRenderer.js";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
@@ -1628,6 +1631,47 @@ class StudioEngine {
 		const r = warpUniformRatio(next);
 		if (r !== null && Math.abs(r - 1) < 1e-6) delete c.warp;
 		else c.warp = next;
+		this.#reschedule();
+		return true;
+	}
+	/**
+	 * Warp markers (docs/multitrack-recorder.md "Warping a clip", editing
+	 * markers): one added at content second `at`, pinned where the map has
+	 * the file (a plain clip gets a straight warp over its file to hold it),
+	 * so nothing moves until it is dragged.
+	 */
+	addWarpPoint(clipId: string, at: number): boolean {
+		const c = this.#clip(clipId);
+		if (!c?.sourceId) return false;
+		const next = warpWithPoint(c.warp ?? uniformWarp(1, Math.max(1, this.#fileSeconds(c))), at);
+		if (!next) return false;
+		this.#commit();
+		c.warp = next;
+		this.#reschedule();
+		return true;
+	}
+	/** The marker `index` dragged to content second `at`: the audio on either side of it stretches to follow; the clip's own window stays. */
+	moveWarpPoint(clipId: string, index: number, at: number): boolean {
+		const c = this.#clip(clipId);
+		if (!c?.warp) return false;
+		const next = warpWithPointMoved(c.warp, index, at);
+		if (!next) return false;
+		this.#commit();
+		c.warp = next;
+		this.#reschedule();
+		return true;
+	}
+	/** The marker `index` taken out, its neighbors' stretches joining; the last pair gone takes the warp with it. */
+	removeWarpPoint(clipId: string, index: number): boolean {
+		const c = this.#clip(clipId);
+		if (!c?.warp?.[index]) return false;
+		const next = warpWithoutPoint(c.warp, index);
+		if (!next) {
+			this.setClipWarp(clipId, null);
+			return true;
+		}
+		this.#commit();
+		c.warp = next;
 		this.#reschedule();
 		return true;
 	}

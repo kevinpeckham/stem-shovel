@@ -309,6 +309,13 @@
 	}
 	const EDGE_PX = 7;
 	let drag = $state<Drag | null>(null);
+	/** What a press on a clip begins: a trim at either edge (within a few pixels), a stretch with Alt on the right edge of an audio clip (docs/multitrack-recorder.md "Warping a clip"), else a move. */
+	function pressModeOf(e: PointerEvent, rect: DOMRect, clip: StudioClip): Drag["mode"] {
+		if (rect.width <= EDGE_PX * 3) return "move";
+		if (e.clientX - rect.left <= EDGE_PX) return "left";
+		if (rect.right - e.clientX > EDGE_PX) return "move";
+		return e.altKey && clip.sourceId ? "stretch" : "right";
+	}
 	function onclipdown(e: PointerEvent, clip: StudioClip) {
 		if (e.button !== 0) return;
 		if (e.shiftKey && selectedIds.includes(clip.id) && selectedIds.length > 1) {
@@ -322,16 +329,14 @@
 		select(clip.id, e.shiftKey);
 		const el = e.currentTarget as HTMLElement;
 		el.focus({ preventScroll: true });
-		const rect = el.getBoundingClientRect();
-		// Alt on the right edge of an audio clip stretches it (docs/multitrack-recorder.md "Warping a clip") instead of trimming.
-		const mode =
-			rect.width > EDGE_PX * 3 && e.clientX - rect.left <= EDGE_PX
-				? "left"
-				: rect.width > EDGE_PX * 3 && rect.right - e.clientX <= EDGE_PX
-					? e.altKey && clip.sourceId
-						? "stretch"
-						: "right"
-					: "move";
+		const mode = pressModeOf(e, el.getBoundingClientRect(), clip);
+		if (mode === "move" && e.altKey && clip.sourceId) {
+			// Alt on the clip's body: a warp marker there (docs/multitrack-recorder.md "Warping a clip", editing markers).
+			engine.addWarpPoint(clip.id, clip.offset + (secondsAtClientX(e.clientX) - clip.start));
+			e.preventDefault();
+			e.stopPropagation();
+			return;
+		}
 		drag = {
 			clip,
 			pointerId: e.pointerId,
@@ -392,6 +397,79 @@
 		const index = tracks.findIndex((t) => t.id === d.clip.trackId);
 		const target = tracks[index + d.rows]?.id ?? d.clip.trackId;
 		engine.moveClip(d.clip.id, d.clip.start + d.dt, target);
+	}
+	// ── Warp markers (docs/multitrack-recorder.md "Warping a clip", editing markers) ──
+	interface MarkerDrag {
+		clip: StudioClip;
+		index: number;
+		pointerId: number;
+		startX: number;
+		/** The marker's content second as it is dragged (the preview). */
+		at: number;
+		moved: boolean;
+	}
+	let markerDrag = $state<MarkerDrag | null>(null);
+	/** The selected clip's warp points inside what it shows, with their indexes in the warp. */
+	function warpMarkersOf(clip: StudioClip): { index: number; at: number }[] {
+		if (!clip.warp) return [];
+		const end = clip.offset + clip.duration;
+		return clip.warp
+			.map((p, index) => ({ index, at: p.at }))
+			.filter((m) => m.at > clip.offset + 0.001 && m.at < end - 0.001);
+	}
+	function markerAt(clip: StudioClip, m: { index: number; at: number }): number {
+		return markerDrag?.clip.id === clip.id && markerDrag.index === m.index ? markerDrag.at : m.at;
+	}
+	function onmarkerdown(e: PointerEvent, clip: StudioClip, index: number) {
+		if (e.button !== 0) return;
+		e.stopPropagation();
+		e.preventDefault();
+		if (e.altKey) {
+			engine.removeWarpPoint(clip.id, index);
+			return;
+		}
+		const el = e.currentTarget as HTMLElement;
+		el.focus({ preventScroll: true });
+		el.setPointerCapture(e.pointerId);
+		markerDrag = {
+			clip,
+			index,
+			pointerId: e.pointerId,
+			startX: e.clientX,
+			at: clip.warp![index]!.at,
+			moved: false,
+		};
+	}
+	function onmarkermove(e: PointerEvent) {
+		if (!markerDrag || e.pointerId !== markerDrag.pointerId) return;
+		const d = markerDrag;
+		const dx = e.clientX - d.startX;
+		if (!d.moved && Math.abs(dx) < 2) return;
+		d.moved = true;
+		// The marker's place on the timeline snaps to the grid unless Shift is held, as a clip does.
+		const raw = d.clip.warp![d.index]!.at + dx / pxPerSecond;
+		const timeline = d.clip.start + raw - d.clip.offset;
+		const snapped = e.shiftKey ? timeline : engine.snap(timeline);
+		d.at = Math.max(0, snapped - d.clip.start + d.clip.offset);
+	}
+	function onmarkerup(e: PointerEvent) {
+		if (!markerDrag || e.pointerId !== markerDrag.pointerId) return;
+		const d = markerDrag;
+		markerDrag = null;
+		if (d.moved) engine.moveWarpPoint(d.clip.id, d.index, d.at);
+	}
+	function onmarkerkey(e: KeyboardEvent, clip: StudioClip, index: number) {
+		const p = clip.warp?.[index];
+		if (!p) return;
+		if (e.key === "Delete" || e.key === "Backspace") {
+			engine.removeWarpPoint(clip.id, index);
+		} else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+			// A hundredth of a second a step, a tenth with Shift.
+			const step = (e.shiftKey ? 0.1 : 0.01) * (e.key === "ArrowLeft" ? -1 : 1);
+			engine.moveWarpPoint(clip.id, index, p.at + step);
+		} else return;
+		e.preventDefault();
+		e.stopPropagation();
 	}
 	function onkeydown(e: KeyboardEvent) {
 		if (isTextEntry(e.target)) return;
@@ -1294,6 +1372,34 @@
 							<!-- the trim handles -->
 							<div class="absolute inset-y-0 left-0 w-7px cursor-ew-resize"></div>
 							<div class="absolute inset-y-0 right-0 w-7px cursor-ew-resize"></div>
+							<!-- the warp markers of the selected clip: a line with a flag, dragged onto the grid; Alt-click or Delete removes one -->
+							{#if selected === clip.id && clip.warp && !dragging}
+								{#each warpMarkersOf(clip) as m (m.index)}
+									<button
+										type="button"
+										class="absolute top-0 bottom-0 w-9px -ml-1 p-0 border-0 bg-transparent cursor-col-resize outline-none focus-visible:ring-1 focus-visible:ring-amber-300 touch-none"
+										style:left="{(markerAt(clip, m) - clip.offset) * pxPerSecond}px"
+										data-warp-marker={m.index}
+										aria-label="Warp marker at {formatTime(
+											clip.start + markerAt(clip, m) - clip.offset,
+										)}"
+										title="Warp marker: drag the audio here onto the grid (Shift for free); Delete or Alt-click removes it"
+										onpointerdown={(e) => onmarkerdown(e, clip, m.index)}
+										onpointermove={onmarkermove}
+										onpointerup={onmarkerup}
+										onpointercancel={onmarkerup}
+										onkeydown={(e) => onmarkerkey(e, clip, m.index)}
+										ondblclick={(e) => e.stopPropagation()}
+									>
+										<span class="absolute inset-y-0 left-1 w-px bg-amber-300/80" aria-hidden="true"
+										></span>
+										<span
+											class="absolute top-0 left-0 w-9px h-6px bg-amber-300 [clip-path:polygon(0_0,100%_0,50%_100%)]"
+											aria-hidden="true"
+										></span>
+									</button>
+								{/each}
+							{/if}
 							<span
 								class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
 							>
