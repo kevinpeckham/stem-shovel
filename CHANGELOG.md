@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.152.0] - 2026-10-23
+
 ### Added
 
 - **Groups (folder tracks).** A group is a row in Dawn's timeline that holds tracks and folds them away: **Add group** makes one, a track joins from the **Group** entry of its menu, and the row has a fold arrow, a name, a mute for everything under it and a sketch of the clips below. A group is also a bus in the mixer, where any bus's strip has a **Group** switch and an **Output** that sends a bus into another, so groups nest. A stem of a group holds everything under it. Reaper folders, Live groups and the nested tracks of a Bitwig or Cubase DAWproject come in as groups, nested as they were, and go back out the same way. Since groups are buses, a song now holds sixteen buses and groups together, up from eight.
