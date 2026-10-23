@@ -190,6 +190,33 @@ describe("sandProject", () => {
 		// The note at 1.5 s into the content, offset 1 s: half a second after the clip's start, a beat in.
 		expect(notes.notesData).toEqual([{ note: 64, velocity: 64, start: 1, duration: 1 }]);
 	});
+	it("writes a warped clip's offset in the file's seconds (Sandyne has no stretch)", () => {
+		const warped = JSON.parse(
+			sandProject({
+				title: "Warped",
+				audio: new Map([
+					["s1", { path: "samples/s1.wav", durationSeconds: 30, sampleRate: 48000, channels: 2 }],
+				]),
+				application: { name: "Stem Shovel Dawn", version: "0.150.0" },
+				arrangement: {
+					...arrangement,
+					clips: [
+						{
+							...arrangement.clips[0]!,
+							offset: 3,
+							warp: [
+								{ at: 0, source: 0 },
+								{ at: 1.5, source: 1 },
+							],
+						},
+					],
+				},
+			}),
+		);
+		// Content 3 s is file 2 s; at 120 bpm that is 4 beats.
+		expect(warped.contents[0]).toMatchObject({ contentStartOffset: 4 });
+	});
+
 	it("leaves a switched-off clip out", () => {
 		const off = JSON.parse(
 			sandProject({

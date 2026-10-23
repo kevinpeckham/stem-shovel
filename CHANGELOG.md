@@ -10,10 +10,12 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Added
 
+- **Stretch a clip without a new recording in Dawn.** Type the tempo a recording was made at into **Clip tempo** in the clip bar and press **Fit to song**: the clip plays at the song's tempo, pitch kept, its label reading "×1.14" or so; **Unwarp** puts it back. Alt-drag a clip's right edge to stretch it by hand. The stretch travels: a DAWproject carries it as warps, a Reaper project as the take's play rate or stretch markers, and a Live set's warped clips come in warped instead of at the file's own speed.
 - **Tempo ramps in Dawn.** A tempo change can be reached gradually, a ritardando or an accelerando: tick **Ramp** in the Timing menu when adding one, or press **R** on a change's flag on the ruler (its flag then reads "⟋60"). The grid, the snap, the click and the quantize follow the tempo as it moves. A DAWproject and a Live set bring their ramps in and a DAWproject takes them out; a Reaper project both ways too, with Reaper's own curve (linear in seconds, where the others run linear over the beats) kept as such; the session bundle's MIDI file carries a ramp as a tempo event per beat.
 
 ### Technical
 
+- `warp` on `StudioClip` (points from the clip's content seconds to the file's; the offset, duration and loop in warped seconds), `audio/warp.ts` for the map and its WSOLA rendering, `workers/warp.worker.ts` + `audio/warpRenderer.ts` to make it off the page, `clipBufferOf` on the engine and `ExportEngine`, `mixClipsToChannels`' source lookup given the clip; DAWproject `Warps` both ways, Reaper `PLAYRATE`/`SM` both ways, Live warp markers read (docs/multitrack-recorder.md "Warping a clip").
 - `ramp?: "time" | "beats"` on `StudioTempoChange` (`TEMPO_CURVES`); `audio/measures.ts` integrates ramps through tempo segments (`secondsAfterBeats` and `tempoSteadyAcross` exported); `utils/tempoPointsOf.ts`, `utils/tempoPointsGrid.ts` (writers), `utils/tempoPointsToSeconds.ts` (readers); the Reaper writer stamps the time signature only on the first point and where the meter changes (docs/multitrack-recorder.md "Tempo ramps", FINDINGS.md).
 
 ## [0.149.0] - 2026-10-23

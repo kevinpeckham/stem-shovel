@@ -368,6 +368,59 @@ describe("rppProject", () => {
 		expect(items[1]).toContain("SOFFS 1\n");
 	});
 
+	it("writes a warp of one ratio as the take's play rate with its pitch kept, an uneven one as stretch markers, and reads them back", () => {
+		const base = arrangement.clips.find((c) => c.name === "Bass take")!;
+		// Half speed: the file's seconds run twice as long; the clip plays content 1 s to 5 s, which is file 0.5 s to 2.5 s.
+		const even = {
+			...base,
+			offset: 1,
+			duration: 4,
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+			],
+		};
+		const one = rppProject({
+			title: "Warp",
+			arrangement: { ...arrangement, clips: [even] },
+			audio,
+			application: app,
+		});
+		expect(one).toContain(
+			"      SOFFS 0.5\n      PLAYRATE 0.5 1 0 -1 0 0.0025\n      <SOURCE WAVE\n",
+		);
+		const evenBack = readRpp(one, "Warp");
+		expect(evenBack.arrangement.clips[0]).toMatchObject({ offset: 1, duration: 4 });
+		expect(evenBack.arrangement.clips[0]!.warp).toEqual([
+			{ at: 0, source: 0 },
+			{ at: 2, source: 1 },
+		]);
+		expect(evenBack.fixed).toContain("Play rates kept as warps, pitch kept (Dawn's own stretch)");
+		// Uneven: the first second of file over two seconds, the next over one; markers from the item's start.
+		const uneven = {
+			...base,
+			offset: 0,
+			duration: 3,
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+				{ at: 3, source: 2 },
+			],
+		};
+		const two = rppProject({
+			title: "Warp",
+			arrangement: { ...arrangement, clips: [uneven] },
+			audio,
+			application: app,
+		});
+		expect(two).toContain(
+			"      SOFFS 0\n      PLAYRATE 1 1 0 -1 0 0.0025\n      SM 0 0\n      SM 2 1\n      SM 3 2\n      <SOURCE WAVE\n",
+		);
+		const unevenBack = readRpp(two, "Warp");
+		expect(unevenBack.arrangement.clips[0]!.warp).toEqual(uneven.warp);
+		expect(unevenBack.fixed).toContain("Stretch markers kept as warps (Dawn's own stretch)");
+	});
+
 	it("round-trips through the reader: the same tracks, buses, routing, clips, notes, tempo map and markers", () => {
 		const read = readRpp(text, "Exiles");
 		const b = read.arrangement;

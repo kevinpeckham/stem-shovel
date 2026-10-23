@@ -1174,6 +1174,91 @@ the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
 
+## Warping a clip (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 6)
+
+A clip's audio can play slower or faster than its file, pitch kept, with
+no new recording: `warp` on `StudioClip` (`StudioWarpSchema`,
+`StudioWarpPoint` in StudioSchema.ts) is a list of points mapping the
+clip's **content seconds** (`at`) to the **file's seconds** (`source`),
+straight between neighbors and carried on past the first and last point
+at the segment's own rate (`src/lib/audio/warp.ts`: `warpSourceAt`,
+`warpContentAt`, `warpRatioAt`, `warpUniformRatio`, `uniformWarp`,
+`scaleWarp`, `warpFromPoints`, `warpPointsOver`, `warpKey`). The clip's
+`offset`, `duration` and `loop` are seconds of that warped content, not
+the file, so `clipSegments`, trims, splits, crossfades and the writers'
+unrolling know nothing of the warp: it stretches the audio _under_ the
+clip. A loop at 170 bpm fitted to a song at 149 is two points,
+`{0, 0}` and `{1.1409, 1}`; a Live set's beat-by-beat markers are a few
+hundred (`MAX_STUDIO_WARP_POINTS`).
+
+**The rendering.** `renderWarp(channels, sampleRate, warp)` makes the
+warped content from the file, a segment at a time through the WSOLA
+(`utils/stretchChannels.ts`, the stretch the clip tools already used),
+neighbors crossfaded over five milliseconds, a held file position
+silence. It runs in a worker (`workers/warp.worker.ts` through
+`audio/warpRenderer.ts`, the channels copied and transferred; without a
+Worker, as in a test, it runs in place) because a whole file takes a
+second or more. The engine keeps the result per source and warp
+(`#warped`, keyed by `warpKey`; `warping` counts renderings under way;
+`#pruneWarped` drops what no clip asks for; `memoryBytes` counts them):
+`clipBufferOf(clip)` is what a clip plays, the source for a plain clip,
+the rendering for a warped one, null while it renders (the pass restarts
+and the timeline redraws when it lands). `#startClip`, `render` (after
+`ensureWarped`), `#clipChannels` (so Reverse, Normalize, Detect tempo and
+Apply stretch work on the content as it plays, and `#replaceClipSource`
+drops the warp: the new recording has it baked in), the consolidate's
+`mixClipsToChannels` (whose `sourceOf` now gets the clip too) and
+`#fillUnknownClips` all go through it; `#sourceSeconds` runs the file's
+length through the warp for a trim's bound. `ExportEngine.clipBufferOf`
+carries the same to the export: the session bundle's clip files and the
+repack's trimmed files hold the warped content (the trimmed clip loses
+its warp), the untrimmed project files keep the source and the warp;
+`convertEngine` renders a warp in place, cached.
+
+**Editing.** `setClipWarp(clipId, warp | null)` re-times the content and
+maps the offset, duration and loop through the old map and the new, so
+the clip keeps playing what it played; `stretchClipTo(clipId, seconds)`
+is the timeline's **Alt-drag of a clip's right edge** (`mode: "stretch"`,
+previewed like a trim): the whole file by one factor, the offset and
+loop riding along; `fitClipTempo(clipId, bpm)` is the clip bar's **Clip
+tempo** field and **Fit to song**: the recording's own tempo typed in,
+the clip stretched so it plays at the song's tempo where it sits
+(`clipTempoOf` is the field's value: the song's tempo times the stretch,
+null for an uneven warp, shown as "uneven"); **Unwarp** is
+`setClipWarp(id, null)`. Both go through `#scaleClip`, which keeps the
+overall ratio within `WARP_RATIO_MIN`..`WARP_RATIO_MAX` (a quarter to four
+times) and removes a warp that lands back on 1. The clip's label and
+`data-warp` carry "×1.14" (or "warped" for an uneven one); the waveform
+draws the rendering once it is in, and the peaks through the warp map
+until then. The destructive **Length × / Apply stretch** stays as it was.
+
+**Files.** DAWproject: the writer puts a warped clip's `Audio`
+(`algorithm="stretch"`) inside `Warps contentTimeUnit="seconds"` with a
+`Warp time= contentTime=` per point from zero to the end of what the clip
+plays (`warpPointsOver`); the reader turns a clip's Warps into points in
+seconds (through the clip's and the Warps' units) and keeps them with
+`warpFromPoints` when they stretch, else folds them into the offset as
+before, noting "Warped audio kept, stretched by Dawn's own algorithm".
+Reaper: one ratio goes out as the take's `PLAYRATE` with its
+preserve-pitch flag on and the `SOFFS` and a section's `STARTPOS`/`LENGTH`
+in the file's seconds; an uneven warp as `SM <take position> <source
+position>` stretch markers over a plain item (a looped clip warped
+unevenly is unrolled pass by pass); the reader takes `SM` lines (over the
+play rate) or the play rate alone as the warp, and the item's offsets
+through it. `bun run interop:rpp` opens both in Reaper and reads back
+the play rate, the pitch flag, the offset and the markers (FINDINGS.md).
+Live: a warped clip's `WarpMarker`s (a sample second against a beat) are
+warp points at the beat's seconds at the song's tempo, kept when they
+stretch; its loop and start are then in those warped seconds, and a clip
+of whole passes is kept at whole passes against the rounding. Sandyne has
+no stretch: a warped clip's offset goes out in the file's seconds and
+plays at the file's own speed. The session MIDI file and Audacity labels
+are untouched.
+
+Browser spec: `tests/e2e/studio-time.spec.ts` (Fit to song, the worker's
+rendering, Unwarp); unit tests on `audio/warp.ts`, the timeline's
+Alt-drag and badge, each format's round trip.
+
 ## Tempo ramps (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 5)
 
 A tempo change can be reached gradually: `ramp` on `StudioTempoChange`

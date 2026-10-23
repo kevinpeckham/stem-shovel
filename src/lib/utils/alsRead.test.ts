@@ -434,17 +434,24 @@ describe("readAls on a set Live 12.2.1 saved (tests/als)", () => {
 		const kick = a.clips.filter((c) => c.name === "MARS_PK_120_kick_lunar");
 		expect(kick).toHaveLength(1);
 		expect(kick[0]!.start + kick[0]!.duration).toBeCloseTo((64 * 60) / 124, 3);
+		// The 120 bpm kick loop is warped to 124: its 8 s of file run 16 beats, 7.742 s at the song's tempo, as the clip's warp
+		// (docs/multitrack-recorder.md "Warping a clip"); its loop is in those warped seconds.
 		expect(kick[0]!.loop!.start).toBe(0);
-		expect(kick[0]!.loop!.end).toBeCloseTo(8, 3);
+		expect(kick[0]!.loop!.end).toBeCloseTo((16 * 60) / 124, 3);
+		expect(kick[0]!.warp!.slice(0, 2)).toEqual([
+			{ at: 0, source: 0 },
+			{ at: 7.741935, source: 8.000023 },
+		]);
 		expect(clipSegments(kick[0]!)).toHaveLength(4);
 		const hats = a.clips.filter((c) => c.name === "MARS_PK_120_hihat_islander");
 		expect(hats).toHaveLength(1);
 		expect(clipSegments(hats[0]!)).toHaveLength(16);
 		expect(a.clips.every((c) => c.offset === 0)).toBe(true);
-		// A 120 bpm loop warped to 124 is reported; so is the transposed percussion.
-		expect(read.dropped).toContain(
-			"MARS_PK_120_kick_lunar on Kick: warped from 120 to 124 bpm (plays at the file's own speed here)",
+		// The warped loops are kept (and said so); the transposed percussion is reported.
+		expect(read.fixed).toContain(
+			"Warped clips kept, stretched by Dawn's own algorithm (Live's warp markers as warp points)",
 		);
+		expect(read.dropped.some((d) => d.includes("warped from"))).toBe(false);
 		expect(read.dropped).toContain(
 			"RU_PP_120_perc_modular_pulse_C on Percussion 1: transposed (plays at the file's own pitch here)",
 		);

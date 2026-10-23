@@ -8,6 +8,7 @@ import { tempoPointsOf } from "./tempoPointsOf";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
 import { studioGrid } from "./studioGrid";
+import { warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
 
 /** An audio file the project refers to for a clip's source: its path beside the `.rpp` file. */
 export interface RppAudio {
@@ -150,7 +151,11 @@ export function rppProject(input: RppProjectInput): string {
 		// A looped audio clip: Reaper loops an item over its source, so the loop becomes a SECTION of the file with LOOP 1 when the
 		// clip starts inside it; a clip that plays into its loop from before it goes out as one item per pass instead.
 		const loop = audio && c.loop;
-		if (loop && (c.offset < loop.start || c.offset >= loop.end)) {
+		// A warp (docs/multitrack-recorder.md "Warping a clip"): one ratio goes out as the take's play rate with the pitch kept,
+		// an uneven one as stretch markers over a plain item, so a looped clip warped unevenly is unrolled pass by pass.
+		const ratio = c.warp ? warpUniformRatio(c.warp) : 1;
+		const toFile = (t: number) => (c.warp ? warpSourceAt(c.warp, t) : t);
+		if (loop && (c.offset < loop.start || c.offset >= loop.end || ratio === null)) {
 			for (const seg of clipSegments(c)) {
 				const first = seg.start === c.start;
 				const last = seg.start + seg.duration >= c.start + c.duration;
@@ -220,19 +225,29 @@ export function rppProject(input: RppProjectInput): string {
 			out(4, "IGNTEMPO 0 120 4 4");
 			out(3, ">");
 		} else if (audio && loop) {
-			out(3, `SOFFS ${num(c.offset - loop.start)}`);
-			out(3, "PLAYRATE 1 1 0 -1 0 0.0025");
+			out(3, `SOFFS ${num(toFile(c.offset) - toFile(loop.start))}`);
+			out(3, `PLAYRATE ${num(1 / (ratio ?? 1))} 1 0 -1 0 0.0025`);
 			out(3, "<SOURCE SECTION");
-			out(4, `LENGTH ${num(loop.end - loop.start)}`);
-			out(4, `STARTPOS ${num(loop.start)}`);
+			out(4, `LENGTH ${num(toFile(loop.end) - toFile(loop.start))}`);
+			out(4, `STARTPOS ${num(toFile(loop.start))}`);
 			out(4, "OVERLAP 0.01");
 			out(4, "<SOURCE WAVE");
 			out(5, `FILE ${q(audio.path)}`);
 			out(4, ">");
 			out(3, ">");
 		} else if (audio) {
-			out(3, `SOFFS ${num(c.offset)}`);
-			out(3, "PLAYRATE 1 1 0 -1 0 0.0025");
+			out(3, `SOFFS ${num(toFile(c.offset))}`);
+			out(3, `PLAYRATE ${num(1 / (ratio ?? 1))} 1 0 -1 0 0.0025`);
+			if (c.warp && ratio === null) {
+				// Stretch markers: a take-time position (seconds from the item's start) against a source position.
+				const end = c.offset + c.duration;
+				const points = [
+					{ at: c.offset, source: toFile(c.offset) },
+					...c.warp.filter((p) => p.at > c.offset + 1e-6 && p.at < end - 1e-6),
+					{ at: end, source: toFile(end) },
+				];
+				for (const p of points) out(3, `SM ${num(p.at - c.offset)} ${num(p.source)}`);
+			}
 			out(3, "<SOURCE WAVE");
 			out(4, `FILE ${q(audio.path)}`);
 			out(3, ">");

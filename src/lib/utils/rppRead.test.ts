@@ -66,14 +66,15 @@ describe("readRpp", () => {
 		]);
 		expect(midi.notes![0]!.v).toBe(0.8976);
 		expect(midi.notes![6]!.v).toBe(1);
-		// Reaper's import stretched the clips (its own doing in that run): reported, as the DAWproject reader does.
-		expect(read.dropped).toEqual([
-			"01 Kick - Kick take @ 0.000s.wav on 01 Kick - Kick take @ 0.000s: stretched (plays at the file's own speed here)",
-			"02 Hats - Hats take @ 2.000s.wav on 02 Hats - Hats take @ 2.000s: stretched (plays at the file's own speed here)",
-			"03 Bass - Bass take @ 1.250s.wav on 03 Bass - Bass take @ 1.250s: stretched (plays at the file's own speed here)",
-			"04 Keys - Keys take @ 2.500s.wav on 04 Keys - Keys take @ 2.500s: stretched (plays at the file's own speed here)",
+		// Reaper's import stretched the clips (its own doing in that run) by play rates under one: each comes across as a warp of
+		// one ratio, the kick's 1/0.90909 = 1.1 (docs/multitrack-recorder.md "Warping a clip").
+		expect(read.dropped).toEqual([]);
+		expect(read.fixed).toEqual(["Play rates kept as warps, pitch kept (Dawn's own stretch)"]);
+		expect(audio[0]!.warp).toEqual([
+			{ at: 0, source: 0 },
+			{ at: 1.1, source: 1 },
 		]);
-		expect(read.fixed).toEqual([]);
+		expect(audio.every((c) => c.warp?.length === 2)).toBe(true);
 	});
 
 	it("reads folders as buses, receives as sends, envelopes as lanes, colors, fades, offsets, other takes, regions, notes", () => {

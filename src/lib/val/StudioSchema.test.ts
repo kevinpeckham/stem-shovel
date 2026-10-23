@@ -5,6 +5,7 @@ import {
 	StudioArrangementSchema,
 	StudioSourceReserveSchema,
 	StudioTrackFxSchema,
+	StudioWarpSchema,
 } from "./StudioSchema";
 
 const sourceId = "V1StGXR8_Z5jdHi6B-myT";
@@ -481,6 +482,32 @@ describe("the song's sample rate", () => {
 		expect(v.safeParse(StudioArrangementSchema, arrangement([], [])).success).toBe(true);
 		expect(
 			v.safeParse(StudioArrangementSchema, { ...arrangement([], []), sampleRate: 50000 }).success,
+		).toBe(false);
+	});
+});
+
+describe("StudioWarpSchema (warping a clip)", () => {
+	test("takes points that run forward in the clip and the file, and refuses ones that do not", () => {
+		expect(
+			v.safeParse(StudioWarpSchema, [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+				{ at: 3, source: 1 },
+			]).success,
+		).toBe(true);
+		expect(v.safeParse(StudioWarpSchema, [{ at: 0, source: 0 }]).success).toBe(false);
+		expect(
+			v.safeParse(StudioWarpSchema, [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+				{ at: 2, source: 2 },
+			]).success,
+		).toBe(false);
+		expect(
+			v.safeParse(StudioWarpSchema, [
+				{ at: 0, source: 2 },
+				{ at: 2, source: 1 },
+			]).success,
 		).toBe(false);
 	});
 });

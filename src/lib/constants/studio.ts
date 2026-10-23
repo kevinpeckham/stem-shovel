@@ -34,3 +34,12 @@ export const STUDIO_MEMORY_WARNING_BYTES = 400 * 1024 * 1024;
 export const STUDIO_SAMPLE_RATES = [44100, 48000, 88200, 96000] as const;
 /** A song that names no rate renders at this one. */
 export const STUDIO_SAMPLE_RATE_DEFAULT = 48000;
+/**
+ * A clip's warp (docs/multitrack-recorder.md "Warping a clip"): points
+ * mapping the clip's content seconds to the file's. A loop fitted to a
+ * tempo is two; a Live set's beat-by-beat markers run to a few hundred.
+ */
+export const MAX_STUDIO_WARP_POINTS = 512;
+/** How far a clip can be stretched or squeezed by hand: a quarter to four times its length (the WSOLA's comfortable range). */
+export const WARP_RATIO_MIN = 0.25;
+export const WARP_RATIO_MAX = 4;

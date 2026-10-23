@@ -8,6 +8,8 @@ import { tempoPointsOf } from "./tempoPointsOf";
 import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
+import { clipSegments } from "./clipSegments";
+import { warpPointsOver } from "#lib/audio/warp.js";
 
 /** An audio file the DAWproject carries for a clip's source: its path inside the archive and what it is. */
 export interface DawprojectAudio {
@@ -279,11 +281,21 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		out(
 			`          <Clip time="${num(c.start)}" duration="${num(c.duration)}" contentTimeUnit="seconds" playStart="${num(c.offset)}"${loop}${c.muted ? ' enable="false"' : ""} fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" name="${esc(c.name)}">`,
 		);
+		// A warped clip (docs/multitrack-recorder.md "Warping a clip"): the Audio inside Warps, a Warp per point mapping the clip's
+		// content seconds to the file's, from zero to the end of what the clip plays.
+		const pad = c.warp ? "  " : "";
+		if (c.warp) out(`            <Warps contentTimeUnit="seconds" id="${id("warps")}">`);
 		out(
-			`            <Audio algorithm="raw" channels="${audio.channels}" duration="${num(audio.durationSeconds)}" sampleRate="${audio.sampleRate}" id="${id("audio")}">`,
+			`${pad}            <Audio algorithm="${c.warp ? "stretch" : "raw"}" channels="${audio.channels}" duration="${num(audio.durationSeconds)}" sampleRate="${audio.sampleRate}" id="${id("audio")}">`,
 		);
-		out(`              <File path="${esc(audio.path)}"/>`);
-		out("            </Audio>");
+		out(`${pad}              <File path="${esc(audio.path)}"/>`);
+		out(`${pad}            </Audio>`);
+		if (c.warp) {
+			const end = clipSegments(c).reduce((m, s) => Math.max(m, s.offset + s.duration), 0);
+			for (const p of warpPointsOver(c.warp, end))
+				out(`              <Warp time="${num(p.at)}" contentTime="${num(p.source)}"/>`);
+			out("            </Warps>");
+		}
 		out("          </Clip>");
 	};
 	for (const t of a.tracks) {

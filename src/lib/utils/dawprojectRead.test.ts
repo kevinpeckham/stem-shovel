@@ -231,8 +231,14 @@ describe("readDawproject", () => {
 		// Beats to seconds: the clip at beat 4 is 2 s in, 8 beats long is 4 s; the fade stays in seconds.
 		const loop = a.clips.find((c) => c.name === "Loop")!;
 		expect([loop.start, loop.duration, loop.fadeIn]).toEqual([2, 4, 0.5]);
-		// playStart 2 beats through the warps (0→1 s, 8→3 s): 1.5 s into the file; the warps stretch 2 s of file over 4 s of clip.
-		expect(loop.offset).toBe(1.5);
+		// The warps stretch 2 s of file (1 s to 3 s) over 4 s of clip: kept as the clip's warp, the playStart of 2 beats a second
+		// into that warped content (docs/multitrack-recorder.md "Warping a clip").
+		expect(loop.offset).toBe(1);
+		expect(loop.warp).toEqual([
+			{ at: 0, source: 1 },
+			{ at: 4, source: 3 },
+		]);
+		expect(read.fixed).toContain("Warped audio kept, stretched by Dawn's own algorithm");
 		// A clip with no duration runs to the file's end from its offset; the same file is one source.
 		const plain = a.clips.find((c) => c.name === "Plain")!;
 		expect([plain.start, plain.offset, plain.duration]).toEqual([8, 0, 5]);
@@ -253,7 +259,6 @@ describe("readDawproject", () => {
 		expect(read.dropped).toEqual([
 			"Pro-Q 3 on Band",
 			"Serum on Synth",
-			"Loop: stretched (plays at the file's own speed here)",
 			"automation of d1param",
 			"clip launcher scenes",
 		]);

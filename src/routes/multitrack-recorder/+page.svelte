@@ -93,6 +93,7 @@
 	import { downloadBlob } from "#lib/utils/downloadBlob.js";
 	import { formatTime } from "#lib/utils/formatTime.js";
 	import { barAt } from "#lib/audio/measures.js";
+	import { warpUniformRatio } from "#lib/audio/warp.js";
 	import { isTextEntry } from "#lib/utils/isTextEntry.js";
 	import type { IdeaInstruments } from "#lib/val/IdeaSchema.js";
 	import type {
@@ -1428,6 +1429,30 @@
 	}
 	let stretchRatio = $state(1);
 	let stretchSemitones = $state(0);
+	// Warping (docs/multitrack-recorder.md "Warping a clip"): the clip's own tempo typed in, the clip stretched to play it at the song's.
+	let clipTempoField = $state<{ clipId: string; bpm: number } | null>(null);
+	const clipTempoShown = (clip: StudioClip) =>
+		clipTempoField?.clipId === clip.id ? clipTempoField.bpm : studio.clipTempoOf(clip);
+	function fitSelectedTempo() {
+		if (!selectedClip) return;
+		const bpm = clipTempoShown(selectedClip);
+		if (!bpm || !(bpm > 0)) return;
+		if (!studio.fitClipTempo(selectedClip.id, bpm)) {
+			notify("Nothing to change: the clip already plays at that tempo", { kind: "error" });
+			return;
+		}
+		clipTempoField = null;
+		const ratio = selectedClip.warp ? warpUniformRatio(selectedClip.warp) : 1;
+		notify(
+			`${bpm} bpm fitted to the song${ratio ? ` (×${ratio.toFixed(2)}, pitch kept)` : ", pitch kept"}`,
+		);
+	}
+	function unwarpSelected() {
+		if (!selectedClip?.warp) return;
+		studio.setClipWarp(selectedClip.id, null);
+		clipTempoField = null;
+		notify("Back to the recording's own speed");
+	}
 	function stretchSelected() {
 		if (!selectedClip) return;
 		if (!studio.stretchClip(selectedClip.id, { ratio: stretchRatio, semitones: stretchSemitones }))
@@ -2489,6 +2514,52 @@
 								>
 									<span class="i-ph-metronome" aria-hidden="true"></span> Detect tempo
 								</button>
+							</span>
+							<!-- Warp (docs/multitrack-recorder.md "Warping a clip"): the recording's own tempo, and the clip stretched (pitch kept) to play it at the song's; Alt-drag of the clip's right edge stretches by hand. -->
+							<span class="flex items-center gap-2" role="group" aria-label="Warp">
+								<label class="flex items-center gap-1">
+									Clip tempo
+									<input
+										type="number"
+										class="device-field w-18 text-12px py-0"
+										min="20"
+										max="400"
+										step="0.1"
+										value={clipTempoShown(clip) ?? ""}
+										placeholder="uneven"
+										aria-label="Clip tempo, beats per minute"
+										oninput={(e) => {
+											const bpm = Number((e.currentTarget as HTMLInputElement).value);
+											clipTempoField = bpm > 0 ? { clipId: clip.id, bpm } : null;
+										}}
+										onkeydown={(e) => {
+											if (e.key === "Enter") fitSelectedTempo();
+										}}
+									/>
+									bpm
+								</label>
+								<button
+									class="device-button-xs px-2"
+									type="button"
+									title="Stretch the clip so a recording at that tempo plays at the song's, pitch kept (no new recording); Alt-drag its right edge stretches by hand"
+									onclick={fitSelectedTempo}
+								>
+									<span class="i-ph-arrows-out-line-horizontal" aria-hidden="true"></span> Fit to song
+								</button>
+								{#if clip.warp}
+									{@const ratio = warpUniformRatio(clip.warp)}
+									<span class="text-11px text-white/70" data-warp-readout
+										>{ratio === null ? "warped unevenly" : `×${ratio.toFixed(2)}`}</span
+									>
+									<button
+										class="device-button-xs px-2"
+										type="button"
+										title="Back to the recording's own speed"
+										onclick={unwarpSelected}
+									>
+										<span class="i-ph-arrow-counter-clockwise" aria-hidden="true"></span> Unwarp
+									</button>
+								{/if}
 							</span>
 							<!-- Time-stretch and pitch (D5): a new recording at the ratio and shift; the clip follows its length. -->
 							<span class="flex items-center gap-2" role="group" aria-label="Stretch">

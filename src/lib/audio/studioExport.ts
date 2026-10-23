@@ -14,7 +14,7 @@ import { sessionMidi } from "#lib/utils/sessionMidi.js";
 import { sessionReadme } from "#lib/utils/sessionReadme.js";
 import { songSampleRate } from "#lib/utils/songSampleRate.js";
 import { zipBlobs, type ZipEntry } from "#lib/utils/zipBlobs.js";
-import type { StudioArrangement } from "#lib/val/StudioSchema.js";
+import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import type { RenderTarget } from "./studio.svelte";
 
 /**
@@ -37,6 +37,8 @@ export interface ExportEngine {
 	arrangement: StudioArrangement;
 	render(target?: RenderTarget): Promise<AudioBuffer>;
 	bufferOf(sourceId: string): AudioBuffer | null;
+	/** A warped clip's content as it plays (docs/multitrack-recorder.md "Warping a clip"); the source itself when absent. */
+	clipBufferOf?(clip: StudioClip): AudioBuffer | null;
 	/** Whether a track can be rendered at all (an engine with no instrument says no to a MIDI track); every track when absent. */
 	renders?(trackId: string): boolean;
 	/**
@@ -225,7 +227,16 @@ async function sourceAtSongRate(
 	engine: ExportEngine,
 	sourceId: string,
 ): Promise<AudioBuffer | null> {
-	const buffer = engine.bufferOf(sourceId);
+	return atSongRate(engine, engine.bufferOf(sourceId));
+}
+/** What a clip plays at the song's rate: a warped clip's rendering (the engine's, when it has one), else its source. */
+async function clipAtSongRate(engine: ExportEngine, clip: StudioClip): Promise<AudioBuffer | null> {
+	if (!clip.sourceId) return null;
+	const buffer =
+		clip.warp && engine.clipBufferOf ? engine.clipBufferOf(clip) : engine.bufferOf(clip.sourceId);
+	return atSongRate(engine, buffer);
+}
+async function atSongRate(engine: ExportEngine, buffer: AudioBuffer | null) {
 	const rate = songSampleRate(engine.arrangement);
 	if (!buffer || buffer.sampleRate === rate || !engine.resample) return buffer;
 	return engine.resample(buffer, rate);
@@ -269,7 +280,8 @@ async function sourceFiles(
 	}
 	const clips: StudioArrangement["clips"] = [];
 	for (const c of a.clips) {
-		const buffer = c.sourceId ? await sourceAtSongRate(engine, c.sourceId) : null;
+		// A warped clip's file is its warped content, so the trimmed clip needs no warp of its own.
+		const buffer = c.sourceId ? await clipAtSongRate(engine, c) : null;
 		if (!buffer) {
 			clips.push(c);
 			continue;
@@ -304,7 +316,7 @@ async function sourceFiles(
 			sampleRate: sr,
 			channels: channels.length,
 		});
-		const { loop: _loop, ...rest } = c;
+		const { loop: _loop, warp: _warp, ...rest } = c;
 		clips.push({ ...rest, sourceId: c.id, offset: 0 });
 	}
 	return { entries, audio, arrangement: { ...a, clips } };
@@ -332,26 +344,28 @@ async function sessionBundle(
 		`A=PCM,F=${sampleRate},W=24,M=${channels === 1 ? "mono" : "stereo"},T=${originator}`;
 	// The sources at the song's rate (one Broadcast WAV per clip, every clip at the one rate a DAW session wants).
 	const buffers = new Map<string, AudioBuffer>();
+	// A warped clip's file is its warped content, kept under the clip's own id.
+	const keyOf = (c: StudioClip) => (c.warp ? c.id : c.sourceId!);
 	for (const c of a.clips) {
-		if (!c.sourceId || buffers.has(c.sourceId)) continue;
-		const b = await sourceAtSongRate(engine, c.sourceId);
-		if (b) buffers.set(c.sourceId, b);
+		if (!c.sourceId || buffers.has(keyOf(c))) continue;
+		const b = await clipAtSongRate(engine, c);
+		if (b) buffers.set(keyOf(c), b);
 	}
-	const sourceOf = (id: string) => {
-		const b = buffers.get(id);
+	const sourceOf = (id: string, clip?: StudioClip) => {
+		const b = buffers.get(clip ? keyOf(clip) : id);
 		return b ? { channels: channelsOf(b), sampleRate: b.sampleRate } : null;
 	};
 	// Clips, in track order, each stamped with its position.
 	const audioClips = a.tracks.flatMap((t) =>
 		a.clips
-			.filter((c) => c.trackId === t.id && c.sourceId && !c.muted && buffers.has(c.sourceId))
+			.filter((c) => c.trackId === t.id && c.sourceId && !c.muted && buffers.has(keyOf(c)))
 			.sort((x, y) => x.start - y.start)
 			.map((c) => ({ track: t, clip: c })),
 	);
 	const sampleRates: number[] = [];
 	audioClips.forEach(({ track, clip }, i) => {
 		onprogress?.(`Writing clip ${i + 1} of ${audioClips.length}…`);
-		const src = sourceOf(clip.sourceId!)!;
+		const src = sourceOf(clip.sourceId!, clip)!;
 		const mixed = mixClipsToChannels([clip], sourceOf, {
 			from: clip.start,
 			to: clip.start + clip.duration,

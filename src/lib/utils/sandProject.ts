@@ -3,6 +3,7 @@ import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
 import { keySignatureOf } from "./keySignatureOf";
+import { warpSourceAt } from "#lib/audio/warp.js";
 
 /** An audio file the project refers to for a clip's source: its path beside the `.sand` file. */
 export interface SandAudio {
@@ -151,7 +152,8 @@ function sampleContent(c: StudioClip, beats: (seconds: number) => number, audio?
 		name: c.name,
 		startBeat: beats(c.start),
 		lengthBeats: beats(c.duration),
-		contentStartOffset: beats(c.offset),
+		// Sandyne has no stretch: a warped clip's offset goes out in the file's seconds and the file plays at its own speed.
+		contentStartOffset: beats(c.warp ? warpSourceAt(c.warp, c.offset) : c.offset),
 		sampleFilePath: audio.path,
 		sampleRate: audio.sampleRate,
 		sampleLengthSeconds: audio.durationSeconds,

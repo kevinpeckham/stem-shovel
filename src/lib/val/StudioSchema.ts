@@ -7,6 +7,7 @@ import {
 	MAX_STUDIO_TRACKS,
 	STUDIO_FADER_MAX,
 	STUDIO_SAMPLE_RATES,
+	MAX_STUDIO_WARP_POINTS,
 } from "../constants/studio";
 import { MAX_AUTOMATION_POINTS } from "../constants/studioAutomation";
 import {
@@ -226,6 +227,26 @@ export type StudioClipLane = v.InferOutput<typeof StudioClipLaneSchema>;
 /** The shortest loop a clip can have, so a song's loops never queue more than a few thousand passes. */
 export const MIN_CLIP_LOOP_SECONDS = 0.1;
 
+/** A warp point (docs/multitrack-recorder.md "Warping a clip"): the clip's content second `at` plays the file's second `source`. */
+export const StudioWarpPointSchema = v.object({ at: SecondsSchema, source: SecondsSchema });
+export type StudioWarpPoint = v.InferOutput<typeof StudioWarpPointSchema>;
+/**
+ * A clip's warp: at least two points, `at` strictly rising and `source`
+ * never falling, the map running straight between them and on past the
+ * ends at the last segment's rate (audio/warp.ts). The clip's `offset`,
+ * `duration` and `loop` are seconds of the warped content, not the file.
+ */
+export const StudioWarpSchema = v.pipe(
+	v.array(StudioWarpPointSchema),
+	v.minLength(2),
+	v.maxLength(MAX_STUDIO_WARP_POINTS),
+	v.check(
+		(w) => w.every((p, i) => i === 0 || (p.at > w[i - 1]!.at && p.source >= w[i - 1]!.source)),
+		"Warp points run forward in both the clip and the file",
+	),
+);
+export type StudioWarp = v.InferOutput<typeof StudioWarpSchema>;
+
 /**
  * A clip: `duration` seconds of its source from `offset`, placed at `start`
  * on the timeline. An audio clip names its source; a MIDI clip carries its
@@ -257,6 +278,8 @@ export const StudioClipSchema = v.pipe(
 		lanes: v.optional(v.pipe(v.array(StudioClipLaneSchema), v.maxLength(MAX_STUDIO_LANES))),
 		/** Switched off (docs/multitrack-recorder.md, "Switched-off clips"): kept on the timeline, dimmed, playing nothing. Absent means on. */
 		muted: v.optional(v.boolean()),
+		/** The clip's audio stretched, pitch kept (docs/multitrack-recorder.md "Warping a clip"); absent means the file's own speed. */
+		warp: v.optional(StudioWarpSchema),
 		loop: v.optional(
 			v.pipe(
 				v.object({ start: SecondsSchema, end: SecondsSchema }),

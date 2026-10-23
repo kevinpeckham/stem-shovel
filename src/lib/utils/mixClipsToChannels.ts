@@ -19,7 +19,7 @@ export interface ClipSource {
  */
 export function mixClipsToChannels(
 	clips: StudioClip[],
-	sourceOf: (sourceId: string) => ClipSource | null,
+	sourceOf: (sourceId: string, clip?: StudioClip) => ClipSource | null,
 	range: { from: number; to: number; sampleRate: number },
 ): Float32Array[] {
 	const sr = range.sampleRate;
@@ -28,7 +28,8 @@ export function mixClipsToChannels(
 	const fades = clipCrossfades(clips);
 	for (const c of clips) {
 		if (!c.sourceId || c.muted) continue;
-		const src = sourceOf(c.sourceId);
+		// The clip itself goes along: a warped clip's source is the rendering of its warp (docs/multitrack-recorder.md "Warping a clip").
+		const src = sourceOf(c.sourceId, c);
 		if (!src || src.channels.length === 0) continue;
 		const f = fades.get(c.id)!;
 		const inCurve = fadeCurve(f.inShape, "in", 1, 256);

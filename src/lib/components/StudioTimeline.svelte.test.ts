@@ -41,6 +41,9 @@ const fake = vi.hoisted(() => {
 			return engine.phase === "recording";
 		},
 		bufferOf: vi.fn(() => null),
+		clipBufferOf: vi.fn(() => null),
+		warping: 0,
+		stretchClipTo: vi.fn(),
 		livePeaksOf: vi.fn(() => [0.2, 0.8]),
 		seek: vi.fn(),
 		snap: vi.fn((t: number) => Math.round(t * 2) / 2),
@@ -674,6 +677,30 @@ describe("StudioTimeline", () => {
 		expect(c1.style.width).toBe("120px");
 		await fireEvent.pointerUp(c1, at(216));
 		expect(fake.trimClip).toHaveBeenLastCalledWith("c1", { end: 5 });
+	});
+
+	test("Alt on a clip's right edge stretches it to where the edge is dropped, previewed like a trim", async () => {
+		render(StudioTimeline);
+		const c1 = clipEl("c1");
+		c1.getBoundingClientRect = () =>
+			({ left: 100, right: 260, width: 160, top: 0, bottom: 100, height: 100 }) as DOMRect;
+		await fireEvent.pointerDown(c1, at(256, 10, { altKey: true }));
+		await fireEvent.pointerMove(c1, at(336, 10, { altKey: true }));
+		// The clip (2 s to 6 s) is shown out to 8 s while the edge is held.
+		expect(c1.style.width).toBe("240px");
+		await fireEvent.pointerUp(c1, at(336, 10, { altKey: true }));
+		expect(fake.stretchClipTo).toHaveBeenCalledWith("c1", 6);
+		expect(fake.trimClip).not.toHaveBeenCalled();
+	});
+
+	test("a warped clip wears its stretch on its label", async () => {
+		fake.arrangement.clips[0]!.warp = [
+			{ at: 0, source: 0 },
+			{ at: 4.5, source: 3 },
+		];
+		render(StudioTimeline);
+		expect(clipEl("c1").dataset.warp).toBe("×1.50");
+		expect(clipEl("c1").textContent).toContain("×1.50");
 	});
 
 	test("a press on the ruler seeks there, snapped unless Shift is held, and clears the selection", async () => {

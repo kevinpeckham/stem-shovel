@@ -150,8 +150,10 @@ automatable parameters, so D2 adds sends and inserts in one place.
   the notes), swing and humanize (`swingNotes`), tempo detection
   (`detectTempo`), stretch and pitch as a pure WSOLA
   (`stretchChannels`, `resampleChannels`) since signalsmith-stretch's
-  blob-URL worklet fails the CSP. Left: beats-anchored clips, tempo
-  ramps. docs/multitrack-recorder.md "Time".
+  blob-URL worklet fails the CSP. Tempo ramps came 2026-10-23
+  (docs/multitrack-recorder.md "Tempo ramps"), and a non-destructive
+  stretch the same day: a clip's `warp`, rendered in a worker
+  ("Warping a clip"). Left: beats-anchored clips.
 
 ### D6. Instruments, effects and the library (built in part on `dawn-daw`, 2026-10-19)
 

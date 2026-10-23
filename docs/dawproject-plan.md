@@ -281,9 +281,14 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    Live do), the grid and the click integrating them, read and written
    by every format (docs/multitrack-recorder.md "Tempo ramps").
 6. **Audio warping and stretch** (`Warps`, `algorithm="stretch"` and
-   kin): a loop at 170 bpm played at 149. Dawn plays files at their own
-   speed; a time-stretch (phase vocoder or granular) in the engine and a
-   warp-marker editor in the timeline are a project of their own.
+   kin): a loop at 170 bpm played at 149. Done 2026-10-23 as `warp` on
+   a clip (points from the clip's content seconds to the file's), the
+   engine playing a WSOLA rendering made in a worker, Alt-drag and a
+   Clip tempo field to set it, read and written by DAWproject and
+   Reaper (play rate or stretch markers), read from Live
+   (docs/multitrack-recorder.md "Warping a clip"). Still open: a
+   warp-marker editor in the timeline (an uneven warp can be kept,
+   scaled and removed, not drawn point by point).
 7. **Folder tracks**: a group with children that keep their own channels
    and routing. Dawn flattens a group to a bus; a real hierarchy would
    collapse in the timeline and mix as one.

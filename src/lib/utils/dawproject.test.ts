@@ -379,6 +379,47 @@ describe("dawproject", () => {
 		expect(changes.slice(1).every((c) => c.ramp === "beats")).toBe(true);
 	});
 
+	it("writes a warped clip's Audio inside Warps with a point per warp point, and the reader keeps the warp", () => {
+		// 170 bpm content at 120: the file runs 1.4167 times as long; the clip plays 2 s to 6 s of that content.
+		const warped: StudioArrangement = {
+			...arrangement,
+			clips: [
+				{
+					...arrangement.clips[0]!,
+					offset: 2,
+					duration: 4,
+					warp: [
+						{ at: 0, source: 0 },
+						{ at: 1.416667, source: 1 },
+					],
+				},
+			],
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Warped",
+			arrangement: warped,
+			audio: new Map([
+				["s1", { path: "audio/guitar.wav", durationSeconds: 30.5, sampleRate: 48000, channels: 2 }],
+			]),
+			application: { name: "Stem Shovel Dawn", version: "0.150.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		expect(xml).toMatch(
+			/<Warps contentTimeUnit="seconds" id="warps\d+">\n\s+<Audio algorithm="stretch"/,
+		);
+		expect(xml).toContain(
+			'<Warp time="0.000000" contentTime="0.000000"/>\n              <Warp time="1.416667" contentTime="1.000000"/>\n              <Warp time="6.000000" contentTime="4.235293"/>',
+		);
+		const back = readDawproject(xml, metadata, "Warped");
+		expect(back.arrangement.clips[0]).toMatchObject({ start: 2, offset: 2, duration: 4 });
+		expect(back.arrangement.clips[0]!.warp).toEqual([
+			{ at: 0, source: 0 },
+			{ at: 1.416667, source: 1 },
+			{ at: 6, source: 4.235293 },
+		]);
+		expect(back.fixed).toContain("Warped audio kept, stretched by Dawn's own algorithm");
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

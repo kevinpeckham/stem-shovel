@@ -20,6 +20,7 @@
 	import ContextMenu from "./ContextMenu.svelte";
 	import { clipNoteEvents } from "#lib/utils/clipNoteEvents.js";
 	import { clipSegments } from "#lib/utils/clipSegments.js";
+	import { warpKey, warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
 	import StudioTrackMenu from "./StudioTrackMenu.svelte";
 	import AutomationLane from "./AutomationLane.svelte";
 	import InsertPanel from "./InsertPanel.svelte";
@@ -298,8 +299,8 @@
 		pointerId: number;
 		startX: number;
 		startY: number;
-		/** Moving the clip, or trimming one of its edges (a press within a few pixels of it). */
-		mode: "move" | "left" | "right";
+		/** Moving the clip, trimming one of its edges (a press within a few pixels of it), or stretching it (Alt on the right edge). */
+		mode: "move" | "left" | "right" | "stretch";
 		/** The preview: the offset in seconds (a move), or the edge's new time (a trim), and the rows down. */
 		dt: number;
 		edge: number;
@@ -322,11 +323,14 @@
 		const el = e.currentTarget as HTMLElement;
 		el.focus({ preventScroll: true });
 		const rect = el.getBoundingClientRect();
+		// Alt on the right edge of an audio clip stretches it (docs/multitrack-recorder.md "Warping a clip") instead of trimming.
 		const mode =
 			rect.width > EDGE_PX * 3 && e.clientX - rect.left <= EDGE_PX
 				? "left"
 				: rect.width > EDGE_PX * 3 && rect.right - e.clientX <= EDGE_PX
-					? "right"
+					? e.altKey && clip.sourceId
+						? "stretch"
+						: "right"
 					: "move";
 		drag = {
 			clip,
@@ -335,7 +339,7 @@
 			startY: e.clientY,
 			mode,
 			dt: 0,
-			edge: mode === "right" ? clip.start + clip.duration : clip.start,
+			edge: mode === "right" || mode === "stretch" ? clip.start + clip.duration : clip.start,
 			rows: 0,
 			moved: false,
 		};
@@ -374,6 +378,10 @@
 		}
 		if (d.mode === "right") {
 			engine.trimClip(d.clip.id, { end: d.edge });
+			return;
+		}
+		if (d.mode === "stretch") {
+			engine.stretchClipTo(d.clip.id, d.edge - d.clip.start);
 			return;
 		}
 		const tracks = engine.arrangement.tracks;
@@ -465,10 +473,11 @@
 				canvas.style.left = `${baseLeft + vx}px`;
 				canvas.style.width = `${vw}px`;
 				if (vw < 1) return;
-				const buffer = engine.bufferOf(clip.sourceId);
+				// A warped clip draws the rendering of its warp once it is in (docs/multitrack-recorder.md "Warping a clip"); until then its peaks, read through the warp.
+				const buffer = engine.clipBufferOf(clip);
 				const source = engine.sources[clip.sourceId];
 				const dpr = devicePixelRatio || 1;
-				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${clip.loop?.start}:${clip.loop?.end}:${vx}:${vw}:${h}:${dpr}:${buffer ? "b" : "p"}:${getComputedStyle(canvas).color}`;
+				const next = `${clip.sourceId}:${clip.offset}:${clip.duration}:${clip.loop?.start}:${clip.loop?.end}:${clip.warp ? warpKey(clip.warp) : ""}:${vx}:${vw}:${h}:${dpr}:${buffer ? "b" : "p"}:${getComputedStyle(canvas).color}`;
 				if (next === key) return;
 				key = next;
 				const bw = Math.max(1, Math.round(vw * dpr));
@@ -522,7 +531,8 @@
 					const n = peaks.length;
 					const total = source.durationSeconds || clip.offset + clip.duration;
 					for (let x = 0; x < bw; x++) {
-						const t = sourceAt(c0 + (x / bw) * span).at;
+						const content = sourceAt(c0 + (x / bw) * span).at;
+						const t = clip.warp ? warpSourceAt(clip.warp, content) : content;
 						const p = peaks[Math.min(n - 1, Math.floor((t / total) * n))] ?? 0;
 						const amp = p * (mid - 1);
 						g.fillRect(x, mid - amp, 1, Math.max(1, amp * 2));
@@ -550,6 +560,7 @@
 			$effect(() => {
 				void (clip.sourceId && engine.sources[clip.sourceId]?.status);
 				void engine.decoding;
+				void engine.warping;
 				void engine.arrangement.tracks.find((t) => t.id === clip.trackId)?.colour;
 				schedule();
 			});
@@ -686,6 +697,11 @@
 		};
 	}
 
+	/** A warped clip's badge: its one stretch as "×1.14", or "warped" when its segments differ. */
+	function warpText(clip: StudioClip): string {
+		const ratio = clip.warp ? warpUniformRatio(clip.warp) : null;
+		return ratio === null ? "warped" : `×${ratio.toFixed(2)}`;
+	}
 	function clipsOf(track: StudioTrack) {
 		return engine.arrangement.clips.filter((c) => c.trackId === track.id);
 	}
@@ -1190,7 +1206,7 @@
 						{@const shown =
 							dragging && drag!.mode === "left" && drag!.moved
 								? { start: drag!.edge, duration: clip.start + clip.duration - drag!.edge }
-								: dragging && drag!.mode === "right" && drag!.moved
+								: dragging && (drag!.mode === "right" || drag!.mode === "stretch") && drag!.moved
 									? { start: clip.start, duration: drag!.edge - clip.start }
 									: { start: clip.start, duration: clip.duration }}
 						{@const takes = 1 + (clip.alternates?.length ?? 0)}
@@ -1218,6 +1234,7 @@
 							data-clip={clip.id}
 							data-selected={selectedIds.includes(clip.id) || undefined}
 							data-muted={clip.muted || undefined}
+							data-warp={clip.warp ? warpText(clip) : undefined}
 							role="button"
 							tabindex="0"
 							aria-label="{clip.name || 'Clip'} at {formatTime(clip.start)}{clip.notes
@@ -1225,7 +1242,7 @@
 								: ''}"
 							title="{clip.name} · {formatTime(clip.start)} – {formatTime(
 								clip.start + clip.duration,
-							)}"
+							)}{clip.warp ? ` · stretched ${warpText(clip)}` : ''}"
 							onpointerdown={(e) => onclipdown(e, clip)}
 							onpointermove={onclipmove}
 							onpointerup={onclipup}
@@ -1280,9 +1297,9 @@
 							<span
 								class="absolute left-1 top-0.5 text-10px leading-none truncate max-w-[calc(100%-8px)] px-1 rounded bg-black/40"
 							>
-								{clip.name}{clip.loop ? " ↻" : ""}{clip.muted ? " · off" : ""}{takes > 1
-									? ` · ${takes} takes`
-									: ""}{source?.pending
+								{clip.name}{clip.loop ? " ↻" : ""}{clip.warp ? ` ${warpText(clip)}` : ""}{clip.muted
+									? " · off"
+									: ""}{takes > 1 ? ` · ${takes} takes` : ""}{source?.pending
 									? " · saving…"
 									: source?.status === "failed"
 										? " · not loaded"

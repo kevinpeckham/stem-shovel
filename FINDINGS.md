@@ -756,6 +756,14 @@ belong in CLAUDE.md or docs/, not here.
 
 `typescript@7.0.2` on npm is the Go compiler: a `tsc` binary per platform (`@typescript/typescript-linux-x64` and sixteen siblings) and not the JavaScript API that tooling loads. With it installed, `bun run check` and `bun run lint` both died before doing anything, in Vite's config hook ("Cannot read properties of undefined (reading 'readFile')": something in SvelteKit's or vite-plugin-svelte's config resolution reaches for `ts.sys`, which is not there). The peer ranges say as much: svelte-check 4.7.7 wants `^5 || ^6`, @sveltejs/kit 3.1 `^6`; only vite-plus's core admits `^7`. Reverted to 6.0.3. Try again when svelte-check and kit declare 7 in their peers (`npm view svelte-check peerDependencies`).
 
+## Reaper's play rate, start offset and stretch markers, from a probe (2026-10-23)
+
+From `bun run interop:rpp` opening Dawn's project in Reaper 7.82 and reading the items back through the API (`GetMediaItemTakeInfo_Value`, `GetTakeStretchMarker`), for Dawn's clip warps (utils/rpp.ts, utils/rppRead.ts).
+
+- **`PLAYRATE <rate> <preserve pitch> …` on a take is the rate the source plays at**: 0.8 plays a file over 1.25 times its length; the second field 1 keeps the pitch (`B_PPITCH`). The item's `LENGTH` stays in project seconds.
+- **`SOFFS` (`D_STARTOFFS`) is in the source's own seconds, whatever the play rate**: a clip starting 1.25 s into content at rate 0.8 starts 1.0 s into the file.
+- **`SM <position> <source position>` lines on a take are stretch markers**, read back as written by `GetTakeStretchMarker`: the position in take time (seconds from the item's start at play rate 1; the API documents take time as the item position times the play rate), the source position in the file's seconds. Dawn writes an uneven warp as markers over a plain item at rate 1, and reads markers with their positions divided by the rate.
+
 ## Reaper's tempo ramps are linear in seconds, and a time signature on a point starts a measure (2026-10-23)
 
 From a probe project opened in Reaper 7.82 under Xvfb and asked through its API (`TimeMap2_GetDividedBpmAtTime`, `TimeMap2_timeToQN`, `GetTempoTimeSigMarker`), for Dawn's tempo ramps (utils/rpp.ts, utils/rppRead.ts, audio/measures.ts).

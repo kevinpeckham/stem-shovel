@@ -25,6 +25,7 @@ import { unzipSync } from "fflate";
 import { exportSong } from "#lib/audio/studioExport.js";
 import { readRpp } from "#lib/utils/rppRead.js";
 import { studioGrid } from "#lib/utils/studioGrid.js";
+import { warpSourceAt, warpUniformRatio } from "#lib/audio/warp.js";
 import { beatsBetween } from "#lib/audio/measures.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import { arrangement as fixture, engine as fixtureEngine, readWav } from "./fixture";
@@ -42,6 +43,44 @@ const arrangement: StudioArrangement = {
 	sampleRate: 48000,
 	// A tempo ramp after the clips: from the 100 at 8 s down to 60 at 20 s, linear in seconds (Reaper's own curve).
 	tempoChanges: [...(fixture.tempoChanges ?? []), { start: 20, bpm: 60, ramp: "time" }],
+	// Two warped clips after the takes (docs/multitrack-recorder.md "Warping a clip"): the hats at four fifths speed, one ratio,
+	// as the take's play rate with the pitch kept; the keys unevenly, as stretch markers.
+	clips: [
+		...fixture.clips,
+		{
+			id: "Hats slow",
+			trackId: "t-hats",
+			sourceId: "hats",
+			start: 14,
+			offset: 1.25,
+			duration: 4,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "Hats slow",
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 1.25, source: 1 },
+			],
+		},
+		{
+			id: "Keys uneven",
+			trackId: "t-keys",
+			sourceId: "keys",
+			start: 13,
+			offset: 0,
+			duration: 3,
+			gain: 1,
+			fadeIn: 0,
+			fadeOut: 0,
+			name: "Keys uneven",
+			warp: [
+				{ at: 0, source: 0 },
+				{ at: 2, source: 1 },
+				{ at: 3, source: 2 },
+			],
+		},
+	],
 	// The master's own lane: full until 6 s, then (over 10 ms) silent; a render across 6 s shows Reaper honors it.
 	masterAutomation: {
 		volume: [
@@ -189,6 +228,9 @@ interface Got {
 			fadeIn: number;
 			fadeOut: number;
 			offset?: number;
+			playrate?: number;
+			preservePitch?: number;
+			stretchMarkers?: { pos: number; src: number }[];
 			file?: string;
 			sampleRate?: number;
 			notes?: { at: number; ends: number; pitch: number; velocity: number }[];
@@ -327,6 +369,19 @@ for (const c of arrangement.clips) {
 		check(
 			last && near(last.ends - last.at, 0.5, 0.01),
 			`${c.name}: the last note half a second long at 100 bpm (${last ? (last.ends - last.at).toFixed(3) : "missing"})`,
+		);
+	} else if (c.warp) {
+		// A warped clip: the offset in the file's seconds; one ratio as the play rate with the pitch kept, an uneven warp as
+		// stretch markers at their take positions and source positions.
+		const ratio = warpUniformRatio(c.warp);
+		check(
+			near(g.offset, warpSourceAt(c.warp, c.offset)) &&
+				(ratio === null
+					? near(g.playrate ?? 0, 1) &&
+						JSON.stringify(g.stretchMarkers?.map((m) => [m.pos, m.src])) ===
+							JSON.stringify(c.warp.map((p) => [p.at - c.offset, p.source]))
+					: near(g.playrate ?? 0, 1 / ratio) && g.preservePitch === 1),
+			`${c.name}: ${ratio === null ? "stretch markers" : `play rate ${(1 / ratio).toFixed(3)}, pitch kept`} (offset ${g.offset?.toFixed(3)}, rate ${g.playrate?.toFixed(3)}, pitch ${g.preservePitch}, markers ${JSON.stringify(g.stretchMarkers ?? [])})`,
 		);
 	} else {
 		check(

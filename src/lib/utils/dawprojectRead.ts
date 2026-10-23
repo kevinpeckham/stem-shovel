@@ -3,6 +3,7 @@ import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
 import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
 import { studioGrid } from "./studioGrid";
+import { warpFromPoints } from "#lib/audio/warp.js";
 import { tempoPointsToSeconds } from "./tempoPointsToSeconds";
 import { secondsAfterBeats } from "#lib/audio/measures.js";
 import {
@@ -16,6 +17,7 @@ import {
 } from "#lib/constants/studio.js";
 import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import type {
+	StudioWarp,
 	StudioArrangement,
 	StudioAutomation,
 	StudioBus,
@@ -443,33 +445,24 @@ export function readDawproject(
 					.slice(0, 60);
 			const sourceId = sourceFor(path, label, num(audio, "sampleRate", 0));
 			const fileSeconds = num(audio, "duration", 0);
-			// The offset into the file: through the warps when there are any (content time in the warps' unit).
+			// The offset into the file, and the warp (docs/multitrack-recorder.md "Warping a clip"): the Warps' points map the
+			// clip's content time to the file's; kept as Dawn's warp when they stretch, else folded into the offset.
 			let offset = toSeconds(playStart, contentUnit);
+			let warp: StudioWarp | undefined;
 			if (warps) {
-				const points = kids(warps, "Warp")
-					.map((w) => ({ time: num(w, "time", 0), content: num(w, "contentTime", 0) }))
-					.sort((a, b) => a.time - b.time);
 				const contentUnitOfWarps = unitOf(warps, "seconds", "contentTimeUnit");
-				if (points.length) {
-					const at = (t: number) => {
-						const after = points.findIndex((p) => p.time > t);
-						const a = points[after === -1 ? points.length - 1 : Math.max(0, after - 1)]!;
-						const b = points[after === -1 ? points.length - 1 : after]!;
-						const content =
-							b.time === a.time
-								? a.content
-								: a.content + ((t - a.time) * (b.content - a.content)) / (b.time - a.time);
-						return toSeconds(content, contentUnitOfWarps);
-					};
-					offset = at(playStart);
-					const last = points[points.length - 1]!;
-					const first = points[0]!;
-					if (points.length > 1 && last.time > first.time) {
-						const clipSpan = toSeconds(last.time, contentUnit) - toSeconds(first.time, contentUnit);
-						const fileSpan = at(last.time) - at(first.time);
-						if (clipSpan > 0 && Math.abs(fileSpan / clipSpan - 1) > 0.02)
-							drop(`${label}: stretched (plays at the file's own speed here)`);
-					}
+				const points = kids(warps, "Warp").map((w) => ({
+					at: toSeconds(num(w, "time", 0), contentUnit),
+					source: toSeconds(num(w, "contentTime", 0), contentUnitOfWarps),
+				}));
+				const kept = warpFromPoints(points);
+				if (kept) {
+					warp = kept;
+					fix("Warped audio kept, stretched by Dawn's own algorithm");
+				} else if (points.length) {
+					// The file at its own speed from the first point: the offset shifts by what the points say.
+					const first = [...points].sort((a, b) => a.at - b.at)[0]!;
+					offset = Math.max(0, first.source + (offset - first.at));
 				}
 			}
 			if (!(duration > 0)) duration = Math.max(0.001, fileSeconds - offset);
@@ -488,6 +481,7 @@ export function readDawproject(
 				name: label,
 				...off,
 				...(loop ? { loop } : {}),
+				...(warp ? { warp } : {}),
 			});
 			return;
 		}

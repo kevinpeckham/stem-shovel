@@ -88,6 +88,36 @@ test.describe("Dawn time", () => {
 			ms: 60_000,
 		});
 
+		// Warping (docs/multitrack-recorder.md "Warping a clip"): the clip told it was recorded a quarter faster than the song
+		// is stretched to fit, pitch kept, no new recording; its rendering comes from the worker and the track renders.
+		const field = page.getByRole("spinbutton", { name: "Clip tempo, beats per minute" });
+		const songBpm = Number(await field.inputValue());
+		expect(songBpm).toBeGreaterThan(0);
+		await field.fill(String(songBpm * 1.25));
+		await page.getByRole("button", { name: "Fit to song" }).click();
+		await expect(page.locator("[data-clip]").first()).toHaveAttribute("data-warp", "×1.25");
+		const warped = await hooked(page, ([w]) => w.__studio.arrangement.clips[0]);
+		expect(warped.sourceId).toBe(after.sourceId);
+		expect(warped.duration).toBeCloseTo(after.duration * 1.25, 1);
+		await until(
+			page,
+			([w]) =>
+				w.__studio.warping === 0 && !!w.__studio.clipBufferOf(w.__studio.arrangement.clips[0]),
+			{ ms: 60_000 },
+		);
+		const warpedPeak = await hooked(page, async ([w]) => {
+			const b = await w.__studio.render({ track: w.__studio.arrangement.clips[0].trackId });
+			let p = 0;
+			const d = b.getChannelData(0);
+			for (let i = 0; i < d.length; i += 11) p = Math.max(p, Math.abs(d[i]));
+			return p;
+		});
+		expect(warpedPeak).toBeGreaterThan(0.01);
+		await page.getByRole("button", { name: "Unwarp" }).click();
+		const unwarped = await hooked(page, ([w]) => w.__studio.arrangement.clips[0]);
+		expect(unwarped.warp).toBeUndefined();
+		expect(unwarped.duration).toBeCloseTo(after.duration, 1);
+
 		// A MIDI track with notes on the off-beats: swing from the clip bar lands on the track; the render still sounds.
 		await page.getByRole("button", { name: "Add MIDI track" }).click();
 		await until(page, ([w]) => w.__studio.arrangement.tracks.some((t: any) => t.kind === "midi"));

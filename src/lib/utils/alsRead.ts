@@ -23,6 +23,7 @@ import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
 import { readReport } from "./readReport";
 import { studioGrid } from "./studioGrid";
 import { tempoPointsToSeconds } from "./tempoPointsToSeconds";
+import { warpFromPoints } from "#lib/audio/warp.js";
 import {
 	secondsAfterBeats,
 	tempoAt as gridTempoAt,
@@ -567,17 +568,17 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					? a.sec
 					: a.sec + ((beat - a.beat) * (b.sec - a.sec)) / (b.beat - a.beat);
 			};
-			if (warped && warpMarkers.length >= 2) {
-				// The speed Live plays the sample at: its beats per second against the song's tempo at the clip.
-				const a = warpMarkers[0]!;
-				const b = warpMarkers[warpMarkers.length - 1]!;
-				const impliedBpm =
-					b.sec > a.sec ? ((b.beat - a.beat) / (b.sec - a.sec)) * 60 : tempoAt(startBeat);
-				if (Math.abs(impliedBpm / tempoAt(startBeat) - 1) > 0.02)
-					drop(
-						`${name} on ${s.name}: warped from ${round2(impliedBpm)} to ${round2(tempoAt(startBeat))} bpm (plays at the file's own speed here)`,
-					);
-			}
+			// A warped clip (docs/multitrack-recorder.md "Warping a clip"): Live's markers pin the sample's seconds to beats, and the
+			// beats play at the song's tempo, so each marker is a warp point at its beat's seconds; kept when they stretch the sample.
+			const bpmHere = tempoAt(startBeat);
+			const warp =
+				warped && warpMarkers.length >= 2
+					? warpFromPoints(warpMarkers.map((w) => ({ at: (w.beat * 60) / bpmHere, source: w.sec })))
+					: null;
+			if (warp)
+				fix(
+					`Warped clips kept, stretched by Dawn's own algorithm (Live's warp markers as warp points)`,
+				);
 			if (num(kid(clip, "PitchCoarse"), 0) !== 0 || num(kid(clip, "PitchFine"), 0) !== 0)
 				drop(`${name} on ${s.name}: transposed (plays at the file's own pitch here)`);
 			let sourceId = sourceByPath.get(filePath);
@@ -591,8 +592,10 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					...(sampleRate ? { sampleRate } : {}),
 				});
 			}
-			// An unwarped clip's loop values are seconds of the sample, a warped one's are beats (through the warp markers).
-			const contentSec = (v: number) => seconds(Math.max(0, warped ? secAtBeat(v) : v));
+			// An unwarped clip's loop values are seconds of the sample; a warped one's are beats: of the warped content (at the
+			// song's tempo) when the warp is kept, else of the sample through the markers.
+			const contentSec = (v: number) =>
+				seconds(Math.max(0, warp ? (v * 60) / bpmHere : warped ? secAtBeat(v) : v));
 			const toBeats = (contentSpan: number) =>
 				warped ? contentSpan : (contentSpan * tempoAt(startBeat)) / 60;
 			// A loop that comes round within the clip, at one tempo throughout: kept as Dawn's own loop over the sample.
@@ -610,14 +613,25 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					drop(`${name} (over the ${MAX_STUDIO_CLIPS}-clip limit)`);
 					continue;
 				}
+				// A clip of whole passes stays whole passes: the loop's ends are rounded to the sample, and a hair past the last
+				// pass would be a pass of its own.
+				const loop = { start: contentSec(loopStart), end: contentSec(loopEnd) };
+				const span = seconds(clipEnd - clipStart);
+				const passesOf = (span - (loop.end - contentSec(playStart))) / (loop.end - loop.start) + 1;
+				const whole = Math.round(passesOf);
+				const duration =
+					Math.abs(passesOf - whole) * (loop.end - loop.start) < 0.001
+						? seconds(loop.end - contentSec(playStart) + (whole - 1) * (loop.end - loop.start))
+						: span;
 				clips.push({
 					id: nanoid(),
 					...base,
 					sourceId,
 					start: clipStart,
 					offset: contentSec(playStart),
-					duration: seconds(clipEnd - clipStart),
-					loop: { start: contentSec(loopStart), end: contentSec(loopEnd) },
+					duration,
+					loop,
+					...(warp ? { warp } : {}),
 				});
 				continue;
 			}
@@ -644,8 +658,9 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 					...base,
 					sourceId,
 					start: from,
-					offset: seconds(Math.max(0, warped ? secAtBeat(passStart) : passStart)),
+					offset: contentSec(passStart),
 					duration: seconds(to - from),
+					...(warp ? { warp } : {}),
 					...(passes > 0 ? { fadeIn: 0 } : {}),
 					...(consumed + passLength < lengthBeats ? { fadeOut: 0 } : {}),
 				});

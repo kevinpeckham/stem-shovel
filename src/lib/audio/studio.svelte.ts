@@ -54,7 +54,18 @@ import {
 	STUDIO_FADER_MAX,
 	STUDIO_MEMORY_WARNING_BYTES,
 	STUDIO_SAMPLE_RATES,
+	WARP_RATIO_MAX,
+	WARP_RATIO_MIN,
 } from "#lib/constants/studio.js";
+import {
+	scaleWarp,
+	uniformWarp,
+	warpContentAt,
+	warpKey,
+	warpSourceAt,
+	warpUniformRatio,
+} from "./warp.js";
+import { renderWarpAsync } from "./warpRenderer.js";
 import { clipCrossfades, type EffectiveFades } from "#lib/utils/clipCrossfades.js";
 import { compRegion } from "#lib/utils/compRegion.js";
 import { fadeCurve } from "#lib/utils/fadeCurve.js";
@@ -72,6 +83,7 @@ import type {
 	StudioTrack,
 	StudioTrackFx,
 	StudioTrackKind,
+	StudioWarp,
 	StudioAutomationPoint,
 	StudioAutomation,
 	StudioBus,
@@ -304,6 +316,8 @@ class StudioEngine {
 	memoryBytes = $state(0);
 	/** How many sources are still decoding. */
 	decoding = $state(0);
+	/** How many warped renderings are under way (docs/multitrack-recorder.md "Warping a clip"). */
+	warping = $state(0);
 	/** The recording pass under way began here on the timeline. */
 	recordFrom = $state(0);
 	/** Takes recorded in this song so far (the next take's number is one more). */
@@ -332,6 +346,9 @@ class StudioEngine {
 		return this.#graph?.buses ?? NO_STRIPS;
 	}
 	#buffers = new Map<string, AudioBuffer>();
+	/** The warped clips' content, rendered from their sources (audio/warp.ts), by source and warp. */
+	#warped = new Map<string, AudioBuffer>();
+	#warpJobs = new Map<string, Promise<void>>();
 	/** Where each source's file is, for a cold one fetched on demand (D8). */
 	#urls = new Map<string, string>();
 	/** Sources held as blobs in this browser (the browser-kept song, studioLocal.ts): decoded from here, never fetched. */
@@ -610,6 +627,7 @@ class StudioEngine {
 	#recount() {
 		let bytes = 0;
 		for (const b of this.#buffers.values()) bytes += b.length * b.numberOfChannels * 4;
+		for (const b of this.#warped.values()) bytes += b.length * b.numberOfChannels * 4;
 		this.memoryBytes = bytes;
 		// Past the warning line, what nothing plays goes cold on its own (D8).
 		if (bytes > STUDIO_MEMORY_WARNING_BYTES && !this.#releasing) {
@@ -696,6 +714,64 @@ class StudioEngine {
 	bufferOf(sourceId: string): AudioBuffer | null {
 		return this.#buffers.get(sourceId) ?? null;
 	}
+	/**
+	 * The audio a clip plays (docs/multitrack-recorder.md "Warping a clip"):
+	 * its source, or, for a warped clip, the rendering of its warp, made in
+	 * a worker the first time it is asked for and null until it is in (the
+	 * pass restarts and the timeline redraws then).
+	 */
+	clipBufferOf(clip: StudioClip): AudioBuffer | null {
+		if (!clip.sourceId) return null;
+		const source = this.#buffers.get(clip.sourceId) ?? null;
+		if (!clip.warp || !source) return source;
+		const key = `${clip.sourceId}|${warpKey(clip.warp)}`;
+		const have = this.#warped.get(key);
+		if (have) return have;
+		void this.#renderWarped(key, source, $state.snapshot(clip.warp) as StudioWarp);
+		return null;
+	}
+	#renderWarped(key: string, source: AudioBuffer, warp: StudioWarp): Promise<void> {
+		const running = this.#warpJobs.get(key);
+		if (running) return running;
+		this.warping++;
+		const channels = Array.from({ length: source.numberOfChannels }, (_, c) =>
+			source.getChannelData(c),
+		);
+		const job = renderWarpAsync(channels, source.sampleRate, warp)
+			.then((out) => {
+				const buffer = new AudioBuffer({
+					numberOfChannels: out.length || 1,
+					length: Math.max(1, out[0]?.length ?? 1),
+					sampleRate: source.sampleRate,
+				});
+				out.forEach((ch, i) => buffer.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
+				this.#warped.set(key, buffer);
+				this.#pruneWarped();
+				this.#recount();
+				if (this.running) this.#reschedule();
+			})
+			.catch(() => {})
+			.finally(() => {
+				this.#warpJobs.delete(key);
+				this.warping--;
+			});
+		this.#warpJobs.set(key, job);
+		return job;
+	}
+	/** Renderings no clip asks for any more are let go. */
+	#pruneWarped() {
+		const live = new Set(
+			this.arrangement.clips
+				.filter((c) => c.sourceId && c.warp)
+				.map((c) => `${c.sourceId}|${warpKey(c.warp!)}`),
+		);
+		for (const key of Array.from(this.#warped.keys())) if (!live.has(key)) this.#warped.delete(key);
+	}
+	/** Every warped clip's rendering in: a render or an export waits for them. */
+	async ensureWarped(): Promise<void> {
+		for (const c of this.arrangement.clips) if (c.warp && c.sourceId) this.clipBufferOf(c);
+		await Promise.all(Array.from(this.#warpJobs.values()));
+	}
 	/** The queue finished uploading a take: the source is on the server under the same id. */
 	markSourceSaved(sourceId: string) {
 		const s = this.sources[sourceId];
@@ -737,7 +813,7 @@ class StudioEngine {
 		let changed = false;
 		for (const c of this.arrangement.clips) {
 			if (c.sourceId !== sourceId || c.duration > 0.001) continue;
-			const length = buffer.duration - c.offset;
+			const length = (c.warp ? warpContentAt(c.warp, buffer.duration) : buffer.duration) - c.offset;
 			if (length <= 0.001) continue;
 			c.duration = length;
 			changed = true;
@@ -1375,7 +1451,19 @@ class StudioEngine {
 			for (const n of c.notes) end = Math.max(end, n.t + n.d);
 			return Math.max(end, c.offset + c.duration);
 		}
-		return (c.sourceId && this.sources[c.sourceId]?.durationSeconds) || c.offset + c.duration;
+		const file = c.sourceId && this.sources[c.sourceId]?.durationSeconds;
+		// A warped clip's content runs the file's length through its warp (audio/warp.ts).
+		return file ? (c.warp ? warpContentAt(c.warp, file) : file) : c.offset + c.duration;
+	}
+	/** How long a clip's file runs, in its own seconds. */
+	#fileSeconds(c: StudioClip) {
+		const known =
+			(c.sourceId &&
+				(this.sources[c.sourceId]?.durationSeconds || this.#buffers.get(c.sourceId)?.duration)) ||
+			0;
+		if (known) return known;
+		const end = c.offset + c.duration;
+		return c.warp ? warpSourceAt(c.warp, end) : end;
 	}
 	/**
 	 * Trim: a new left edge moves `start` and `offset` together (no earlier
@@ -1462,6 +1550,86 @@ class StudioEngine {
 			c.loop = { start: round4(span.start), end: round4(span.end) };
 		}
 		this.#reschedule();
+	}
+	// ── Warping (docs/multitrack-recorder.md, "Warping a clip") ──────────────
+	/**
+	 * The clip's content re-timed through `warp` (audio/warp.ts), what it
+	 * shows kept: its offset, duration and loop follow the file through the
+	 * old map and the new. Null returns the file's own speed.
+	 */
+	setClipWarp(clipId: string, warp: StudioWarp | null) {
+		const c = this.#clip(clipId);
+		if (!c?.sourceId || (!warp && !c.warp)) return;
+		if (warp && c.warp && warpKey(warp) === warpKey(c.warp)) return;
+		this.#commit();
+		const toSource = (t: number) => (c.warp ? warpSourceAt(c.warp, t) : t);
+		const toContent = (s: number) => (warp ? warpContentAt(warp, s) : s);
+		const map = (t: number) => round4(Math.max(0, toContent(toSource(t))));
+		const end = map(c.offset + c.duration);
+		c.offset = map(c.offset);
+		c.duration = round4(Math.max(0.01, end - c.offset));
+		if (c.loop) {
+			const loop = { start: map(c.loop.start), end: map(c.loop.end) };
+			if (loop.end - loop.start >= MIN_CLIP_LOOP_SECONDS) c.loop = loop;
+			else delete c.loop;
+		}
+		c.fadeIn = Math.min(c.fadeIn, c.duration / 2);
+		c.fadeOut = Math.min(c.fadeOut, c.duration / 2);
+		if (warp) c.warp = warp;
+		else delete c.warp;
+		this.#reschedule();
+	}
+	/** The clip stretched by hand to `duration` seconds on the timeline (Alt-drag of its right edge): the whole file by one factor, pitch kept. */
+	stretchClipTo(clipId: string, duration: number): boolean {
+		const c = this.#clip(clipId);
+		if (!c?.sourceId || !(duration > 0.01)) return false;
+		return this.#scaleClip(c, duration / c.duration);
+	}
+	/** The clip told its recording's own tempo: stretched so that tempo lands on the song's where the clip sits, pitch kept. */
+	fitClipTempo(clipId: string, clipBpm: number): boolean {
+		const c = this.#clip(clipId);
+		if (!c?.sourceId || !(clipBpm > 0)) return false;
+		const want = clipBpm / tempoAt(this.grid, c.start);
+		return this.#scaleClip(c, want / this.#ratioOf(c));
+	}
+	/** A clip's own tempo as its warp has it: the song's tempo where it sits times its stretch; null for a clip warped unevenly. */
+	clipTempoOf(clip: StudioClip): number | null {
+		const song = tempoAt(this.grid, clip.start);
+		if (!clip.warp) return Math.round(song * 10) / 10;
+		const ratio = warpUniformRatio(clip.warp);
+		return ratio === null ? null : Math.round(song * ratio * 10) / 10;
+	}
+	/** How much longer a clip's content runs than its file: its one ratio, or the mean over an uneven warp. */
+	#ratioOf(c: StudioClip): number {
+		if (!c.warp) return 1;
+		const uniform = warpUniformRatio(c.warp);
+		if (uniform !== null) return uniform;
+		const file = this.#fileSeconds(c);
+		return file > 0 ? warpContentAt(c.warp, file) / file : 1;
+	}
+	/**
+	 * Every content second of the clip `factor` times as long, the overall
+	 * stretch kept within the hand range: the offset, duration and loop ride
+	 * the content, so the clip keeps playing what it played, longer or shorter.
+	 */
+	#scaleClip(c: StudioClip, factor: number): boolean {
+		const current = c.warp ?? uniformWarp(1, Math.max(1, this.#fileSeconds(c)));
+		const have = this.#ratioOf(c);
+		const ratio = Math.max(WARP_RATIO_MIN, Math.min(WARP_RATIO_MAX, have * factor));
+		const f = ratio / have;
+		if (!(f > 0) || Math.abs(f - 1) < 1e-6) return false;
+		this.#commit();
+		const next = scaleWarp(current, f);
+		c.offset = round4(c.offset * f);
+		c.duration = round4(Math.max(0.01, c.duration * f));
+		if (c.loop) c.loop = { start: round4(c.loop.start * f), end: round4(c.loop.end * f) };
+		c.fadeIn = Math.min(c.fadeIn, c.duration / 2);
+		c.fadeOut = Math.min(c.fadeOut, c.duration / 2);
+		const r = warpUniformRatio(next);
+		if (r !== null && Math.abs(r - 1) < 1e-6) delete c.warp;
+		else c.warp = next;
+		this.#reschedule();
+		return true;
 	}
 	/** Switched off (docs/multitrack-recorder.md, "Switched-off clips"): the clip stays, dimmed, and plays nothing. */
 	setClipMuted(clipId: string, muted: boolean) {
@@ -1617,7 +1785,7 @@ class StudioEngine {
 	}
 	/** The clip's span of its source as plain channels (a looped clip's passes laid end to end), for a tool that makes a new source of it. */
 	#clipChannels(c: StudioClip): { channels: Float32Array[]; sampleRate: number } | null {
-		const buffer = c.sourceId ? this.#buffers.get(c.sourceId) : null;
+		const buffer = this.clipBufferOf(c);
 		if (!buffer) return null;
 		const sr = buffer.sampleRate;
 		const spans = clipSegments(c)
@@ -1652,6 +1820,8 @@ class StudioEngine {
 		c.duration = round4(buffer.duration);
 		delete c.alternates;
 		delete c.loop;
+		// The new recording is the clip's content as it played, warp and all: nothing left to warp.
+		delete c.warp;
 		c.name = label;
 		this.#reschedule();
 	}
@@ -1694,8 +1864,8 @@ class StudioEngine {
 		const sampleRate = this.sampleRate;
 		const channels = mixClipsToChannels(
 			structuredClone($state.snapshot(clips)),
-			(id) => {
-				const b = this.#buffers.get(id);
+			(id, clip) => {
+				const b = clip ? this.clipBufferOf(clip) : this.#buffers.get(id);
 				return b
 					? {
 							channels: Array.from({ length: b.numberOfChannels }, (_, i) => b.getChannelData(i)),
@@ -2588,7 +2758,7 @@ class StudioEngine {
 	) {
 		const ctx = this.#ctx;
 		if (!clip.sourceId) return; // a MIDI clip: its notes are queued by #queueMidi
-		const buffer = this.#buffers.get(clip.sourceId);
+		const buffer = this.clipBufferOf(clip);
 		const nodes = this.#tracks.get(clip.trackId);
 		if (!ctx || !buffer || !nodes) return;
 		const clipEnd = clip.start + clip.duration;
@@ -3133,6 +3303,7 @@ class StudioEngine {
 	 */
 	async render(target: RenderTarget = {}): Promise<AudioBuffer> {
 		await this.ensureReferenced();
+		await this.ensureWarped();
 		const trackId = target.track ?? null;
 		const busId = target.bus ?? null;
 		const alone = Boolean(trackId || busId);
@@ -3203,7 +3374,7 @@ class StudioEngine {
 		const fades = clipCrossfades(this.arrangement.clips);
 		for (const clip of this.arrangement.clips) {
 			if (!clip.sourceId || clip.muted) continue; // a MIDI clip: its notes play through the instrument above; a switched-off clip plays nothing
-			const buffer = this.#buffers.get(clip.sourceId);
+			const buffer = this.clipBufferOf(clip);
 			const into = nodes.get(clip.trackId);
 			if (!buffer || !into) continue;
 			const f = fades.get(clip.id) ?? fadesOf(clip);

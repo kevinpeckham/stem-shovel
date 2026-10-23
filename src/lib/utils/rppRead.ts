@@ -25,6 +25,7 @@ import { studioGrid } from "./studioGrid";
 import { beatsBetween, secondsAfterBeats } from "#lib/audio/measures.js";
 import { readReport } from "./readReport";
 import { nearestStemTint } from "./nearestStemTint";
+import { uniformWarp, warpContentAt, warpFromPoints } from "#lib/audio/warp.js";
 
 /** A block of the project: `<NAME args…` to its `>`, holding lines (as tokens) and blocks in order. */
 interface Block {
@@ -542,8 +543,27 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				drop(`${name} on ${p.name}: a ${source.args[0] === "VIDEO" ? "video" : "subproject"}`);
 				continue;
 			}
-			if (Math.abs(playrate - 1) > 0.0001)
-				drop(`${name} on ${p.name}: stretched (plays at the file's own speed here)`);
+			// The warp (docs/multitrack-recorder.md "Warping a clip"): the take's stretch markers (SM, a take-time position in
+			// seconds against a source position), or its play rate alone as one ratio over the file. Take time runs at the play
+			// rate, so a marker's position over the rate is seconds of the item.
+			const markers = take.body
+				.filter((x): x is string[] => Array.isArray(x) && x[0] === "SM" && typeof x[1] === "string")
+				.map((x) => ({ at: Number(x[1]) / playrate, source: Number(x[2]) }));
+			const warp =
+				markers.length >= 2
+					? warpFromPoints(markers)
+					: Math.abs(playrate - 1) > 0.0001
+						? uniformWarp(1 / playrate)
+						: null;
+			if (warp)
+				fix(
+					markers.length >= 2
+						? "Stretch markers kept as warps (Dawn's own stretch)"
+						: "Play rates kept as warps, pitch kept (Dawn's own stretch)",
+				);
+			// A marker's position counts from the item's start, which plays the source from its start offset.
+			const toContent = (sourceSeconds: number) =>
+				warp ? warpContentAt(warp, sourceSeconds) : sourceSeconds;
 			let sourceId = sourceByPath.get(path);
 			if (!sourceId) {
 				sourceId = nanoid();
@@ -551,13 +571,21 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				files.push({ sourceId, path, label: `${p.name} - ${name}` });
 			}
 			const sectionFrom = Math.max(0, sectionStart);
+			// The offset and a section's loop are seconds of the file; a warped clip keeps them in its content's seconds.
+			const fileOffset = sectionFrom + (loopsSection ? offset % sectionLength : offset);
 			clips.push({
 				...base,
-				offset: seconds(sectionFrom + (loopsSection ? offset % sectionLength : offset)),
+				offset: seconds(toContent(fileOffset)),
 				sourceId,
 				...(loopsSection
-					? { loop: { start: seconds(sectionFrom), end: seconds(sectionFrom + sectionLength) } }
+					? {
+							loop: {
+								start: seconds(toContent(sectionFrom)),
+								end: seconds(toContent(sectionFrom + sectionLength)),
+							},
+						}
 					: {}),
+				...(warp ? { warp } : {}),
 			});
 		}
 	}

@@ -2,7 +2,8 @@ import { mixClipsToChannels, type ClipSource } from "#lib/utils/mixClipsToChanne
 import { panWeightsOf } from "#lib/utils/panBalance.js";
 import { songSampleRate } from "#lib/utils/songSampleRate.js";
 import { resampleBuffer } from "./resampleBuffer.js";
-import type { StudioArrangement, StudioTrack } from "#lib/val/StudioSchema.js";
+import type { StudioArrangement, StudioClip, StudioTrack } from "#lib/val/StudioSchema.js";
+import { renderWarp, warpKey } from "./warp.js";
 import type { ExportEngine } from "./studioExport.js";
 
 /**
@@ -26,7 +27,21 @@ export function convertEngine(
 	sampleRate: number = songSampleRate(arrangement),
 ): ExportEngine {
 	const songEnd = arrangement.clips.reduce((m, c) => Math.max(m, c.start + c.duration), 0);
-	const sourceOf = (id: string) => sources.get(id) ?? null;
+	// A warped clip plays the rendering of its warp (audio/warp.ts), made once here and kept.
+	const warped = new Map<string, ClipSource>();
+	const sourceOf = (id: string, clip?: StudioClip): ClipSource | null => {
+		const src = sources.get(id) ?? null;
+		if (!src || !clip?.warp) return src;
+		const key = `${id}|${warpKey(clip.warp)}`;
+		const have = warped.get(key);
+		if (have) return have;
+		const made = {
+			channels: renderWarp(src.channels, src.sampleRate, clip.warp),
+			sampleRate: src.sampleRate,
+		};
+		warped.set(key, made);
+		return made;
+	};
 	const anySolo = arrangement.tracks.some((t) => t.solo);
 	const renders = (trackId: string) =>
 		arrangement.tracks.find((t) => t.id === trackId)?.kind !== "midi";
@@ -55,6 +70,10 @@ export function convertEngine(
 		arrangement,
 		bufferOf: (id) => {
 			const s = sources.get(id);
+			return s ? bufferOf(s.channels, s.sampleRate) : null;
+		},
+		clipBufferOf: (clip) => {
+			const s = clip.sourceId ? sourceOf(clip.sourceId, clip) : null;
 			return s ? bufferOf(s.channels, s.sampleRate) : null;
 		},
 		renders,

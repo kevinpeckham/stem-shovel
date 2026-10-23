@@ -117,6 +117,14 @@ for i = 0, reaper.CountTracks(0) - 1 do
       it.name = takeName
       it.offset = reaper.GetMediaItemTakeInfo_Value(take, "D_STARTOFFS")
       it.takeVolume = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
+      it.playrate = reaper.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE")
+      it.preservePitch = reaper.GetMediaItemTakeInfo_Value(take, "B_PPITCH")
+      -- The take's stretch markers: a position in take time against a source position.
+      it.stretchMarkers = {}
+      for m = 0, reaper.GetTakeNumStretchMarkers(take) - 1 do
+        local _, pos, srcpos = reaper.GetTakeStretchMarker(take, m)
+        it.stretchMarkers[#it.stretchMarkers + 1] = { pos = pos, src = srcpos }
+      end
       if reaper.TakeIsMIDI(take) then
         local _, n = reaper.MIDI_CountEvts(take)
         it.notes = {}
