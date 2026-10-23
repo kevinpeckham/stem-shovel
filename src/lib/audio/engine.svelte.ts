@@ -1,6 +1,7 @@
 import { playThroughSilentSwitch } from "#lib/audio/playThroughSilentSwitch.js";
 import { reorderById } from "#lib/utils/reorderById.js";
 import { claimPlayback, releasePlayback } from "#lib/audio/onlyOnePlays.js";
+import { monoPan } from "#lib/utils/monoPan.js";
 import { collapseDualMono } from "./mono";
 import { computeMixPeaks, computePeaks, PEAK_BINS } from "./peaks";
 import type { EngineStatus, MixSnapshot, StemSource, StemState } from "./types";
@@ -73,14 +74,6 @@ function readLoadMarker(sources: StemSource[]) {
 				// nothing to clear
 			}
 		},
-	};
-}
-
-/** A mono stem's channel weights for a pan: unity both sides at center, the far side falling away on a sine. */
-export function monoPan(pan: number): { left: number; right: number } {
-	return {
-		left: pan > 0 ? Math.cos((pan * Math.PI) / 2) : 1,
-		right: pan < 0 ? Math.sin(((pan + 1) * Math.PI) / 2) : 1,
 	};
 }
 

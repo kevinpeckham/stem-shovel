@@ -968,6 +968,16 @@ class StudioEngine {
 		t.colour = colourValue(tint);
 		this.dirty = true;
 	}
+	/** A mono track (docs/multitrack-recorder.md "Mono tracks"): its strip sums to one channel and pans as a point source. */
+	setMono(trackId: string, mono: boolean) {
+		const t = this.#track(trackId);
+		if (!t || !!t.mono === mono) return;
+		this.#commitMixGesture();
+		if (mono) t.mono = true;
+		else delete t.mono;
+		this.dirty = true;
+		this.#tracks.get(trackId)?.setMono(mono);
+	}
 	setPan(trackId: string, value: number) {
 		const t = this.#track(trackId);
 		if (!t) return;
@@ -3544,6 +3554,7 @@ class StudioEngine {
 			const strip = createStripGraph(off, {
 				inserts: insertsOf(t),
 				pan: trackId && target.freeze ? 0 : t.pan,
+				mono: !!t.mono,
 			});
 			strip.fader.gain.value = trackId && t.automation?.volume?.length && !target.freeze ? 1 : g;
 			// A bus alone: a track reaches it by its output (through a bus under it, maybe), or by its send alone (its output then goes nowhere).
@@ -3618,6 +3629,9 @@ class StudioEngine {
 		return {
 			context: ctx ? { state: ctx.state, time: ctx.currentTime, sampleRate: ctx.sampleRate } : null,
 			tracks: Array.from(this.#tracks.keys()),
+			monoTracks: Array.from(this.#tracks.entries())
+				.filter(([, s]) => s.mono)
+				.map(([id]) => id),
 			playing: this.#playing.length,
 			passes: this.#passes.length,
 			buffers: Array.from(this.#buffers.keys()),

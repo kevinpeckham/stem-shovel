@@ -8,6 +8,14 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Mono tracks in Dawn.** A **Mono** switch on a track's mixer strip sums it to one channel and pans it as a point source: at full level on both sides at center, the far side falling away as it turns, the way the stem player plays a mono stem. The inserts process one channel. A one-channel stem opened in Dawn is mono from the start, and a DAWproject carries the setting both ways.
+
+### Technical
+
+- `mono` on `StudioTrack`; `stripGraph.ts` swaps its pan stage live (`setMono`; a ConstantSourceNode's offset through two WaveShapers as the pan parameter); `utils/monoPan.ts` holds the law the stem player's engine used (docs/multitrack-recorder.md "Mono tracks").
+
 ## [0.153.0] - 2026-10-23
 
 ### Added

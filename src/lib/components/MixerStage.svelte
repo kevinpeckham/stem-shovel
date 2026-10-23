@@ -103,7 +103,7 @@
 	const panText = (v: number) =>
 		v === 0 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`;
 	const describe = (t: Puck) =>
-		`${kindOf(t) === "group" ? `Group ${t.label}` : `${t.number}, ${t.label}`}: ${levelText(t.gain)}, ${panText(t.pan)}${t.muted ? ", muted" : ""}${t.soloed ? ", solo" : ""}${t.collapsed ? ", folded" : ""}`;
+		`${kindOf(t) === "group" ? `Group ${t.label}` : `${t.number}, ${t.label}`}: ${levelText(t.gain)}, ${panText(t.pan)}${t.muted ? ", muted" : ""}${t.soloed ? ", solo" : ""}${t.collapsed ? ", folded" : ""}${t.mono && kindOf(t) === "track" ? ", mono" : ""}`;
 	/** The unity line's height, for the dashed mark across the stage. */
 	const unityY = yOfGain(1, 0);
 	/** The field's top and bottom keep a margin, so a puck at the top (or the floor) stays whole and its readout fits. */

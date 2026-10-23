@@ -127,7 +127,7 @@ export function stemMixerModel(engine: StemEngine): MixerModel {
 	};
 }
 
-/** Dawn's engine as a mixer model: its tracks pan as stereo (a StereoPannerNode each); loudness is the fader alone until a track carries a measured figure. */
+/** Dawn's engine as a mixer model; loudness is the fader alone until a track carries a measured figure. */
 export function studioMixerModel(engine: typeof studio): MixerModel {
 	return {
 		get tracks() {
@@ -141,7 +141,8 @@ export function studioMixerModel(engine: typeof studio): MixerModel {
 				pan: engine.automatedValue(t.id, "pan"),
 				muted: t.muted,
 				soloed: t.solo,
-				mono: false,
+				// A mono track pans as a point source (docs/multitrack-recorder.md "Mono tracks"); the rest as stereo (a StereoPannerNode each).
+				mono: !!t.mono,
 				loudness: 0,
 			}));
 		},

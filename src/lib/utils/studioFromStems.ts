@@ -56,6 +56,8 @@ export function studioFromStems(song: {
 			solo: false,
 			armed: false,
 			input: null,
+			// A one-channel stem plays as a mono track (docs/multitrack-recorder.md "Mono tracks"), as the stem player plays it.
+			...(st.channels === 1 ? { mono: true } : {}),
 		});
 		clips.push({
 			id: nanoid(),

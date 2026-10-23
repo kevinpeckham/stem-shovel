@@ -304,8 +304,11 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    (`plugins/*.vstpreset`). Dawn's inserts are its own; the plan's
    further-out WAM 2.0 hosting is the only route to carrying a chain.
 10. **Mono tracks** (`audioChannels="1"`): a channel that is one channel.
-    Dawn's strips are stereo throughout; a mono track would halve a
-    mono take's processing and pan as a point source.
+    Done 2026-10-23: `mono` on a track, the strip summing to one channel
+    through the inserts and panning as a point source, the mixer's Mono
+    switch, read and written by the DAWproject code, set for a
+    one-channel stem opened in Dawn (docs/multitrack-recorder.md "Mono
+    tracks").
 11. **Metadata**: artist, album, original artist, songwriter, producer,
     year, genre, copyright, comment, website. Done 2026-10-23: every
     field both ways, the song page's credits, songwriter, year and

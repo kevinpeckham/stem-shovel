@@ -1249,6 +1249,49 @@ origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
 
+## Mono tracks (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 10)
+
+Dawn's strips were stereo throughout: a mono take (most recordings, a
+microphone or one side of the line in) went through a StereoPannerNode,
+which spreads one channel to two at −3 dB a side and pans as a balance.
+Two costs: the inserts processed two channels of the same signal, and a
+mono source sat 3 dB under where the stem player plays the same stem
+(unity both sides at center, `monoPan`).
+
+**The flag.** `mono?: boolean` on `StudioTrack`; absent means stereo, so
+no saved song changes. The mixer strip's **Mono** switch sets it
+(`setMono`), undoable as a mix move; a MIDI track has none (its
+instrument is stereo).
+
+**The strip.** `stripGraph.ts` builds its pan stage from a `PanStage`:
+stereo is the StereoPannerNode as before; mono is the input gain with
+`channelCount` 1 explicit (so the inserts process one channel), then
+after the chain a summing gain into two gains and a ChannelMerger. The
+pan is a ConstantSourceNode's `offset`, turned into each gain's weight by
+two WaveShapers carrying the mono law (`utils/monoPan.ts`,
+`monoPanCurves`), so the one `offset` is the AudioParam a pan lane
+schedules and `settle` writes, exactly as it did `pan.pan`. `strip.pan`
+is now `{ pan: AudioParam }` (a StereoPannerNode satisfies it) and
+`strip.setMono(bool)` swaps the stage live, the pan value carried over,
+the sources on the input untouched. The offline render builds the same
+strips (`mono: !!t.mono`), so a bounce, a stem and a freeze match.
+
+**Where it comes from.** A DAWproject track with `audioChannels="1"`
+reads as mono and a mono track writes `audioChannels="1"` (Bitwig and
+Cubase honor it). A one-channel stem opened in Dawn (`studioFromStems`)
+is mono, so the song sounds as the stem player played it. Reaper has no
+mono track (`NCHAN` is two at least) and Live none either, so those
+readers and writers leave the flag alone. A track recorded from one
+channel stays stereo until switched: the recording's channel is a
+property of the take, and a track can hold both kinds.
+
+**The Stage** reads `mono` through the mixer model, so a mono puck pans
+as a position (the balance bar already knew the law) and is described
+"…, mono".
+
+Tests: `monoPan.test.ts`; the mixer's switch; the DAWproject round trip
+with a mono guitar; the stems import's mono drum.
+
 ## The Stage: group pucks and clusters (2026-10-23)
 
 Two things forty tracks showed on the Stage. Tracks at the same pan and
@@ -1259,7 +1302,7 @@ pucks later".
 **Clusters.** `src/lib/utils/spreadPucks.ts` takes the pucks' pixel
 positions and lays the ones within a few pixels of each other in a ring
 around the shared point, six to a ring and a wider ring beyond, each a
-easy to grab puck; a puck alone stays put. The Stage applies the offsets
+puck of its own to grab; a puck alone stays put. The Stage applies the offsets
 as margins on the puck (its `left` and `top` stay the true pan and
 level, so a drag starts from the right place), the first of a ring
 keeps the label and counts the rest ("Guitar +11"), and the halos

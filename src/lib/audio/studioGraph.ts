@@ -73,6 +73,7 @@ export class StudioGraph {
 		strip = createStripGraph(this.ctx, {
 			inserts: track ? insertsOf(track) : [],
 			pan: track?.pan ?? 0,
+			mono: !!track?.mono,
 		});
 		this.tracks.set(trackId, strip);
 		if (track) {

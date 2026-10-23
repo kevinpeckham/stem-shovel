@@ -185,6 +185,8 @@ export const StudioTrackSchema = v.object({
 	output: v.optional(LocalIdSchema),
 	/** Sends to buses, one per bus at most. */
 	sends: v.optional(v.pipe(v.array(StudioSendSchema), v.maxLength(MAX_SENDS))),
+	/** A mono track (docs/multitrack-recorder.md "Mono tracks"): summed to one channel, panned as a point source; absent means stereo. */
+	mono: v.optional(v.boolean()),
 	/** The track's effects before D2; absent means every effect off. */
 	fx: v.optional(StudioTrackFxSchema),
 	/** A MIDI track's feel (D5): swing of the off-beat eighths (0 straight, 1 a triplet feel) and humanize (a little scatter in time and touch), applied as the notes play. */

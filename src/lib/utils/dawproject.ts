@@ -89,6 +89,8 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 	const channel = (o: {
 		chId: string;
 		role: "regular" | "effect" | "master";
+		/** One for a mono track (docs/multitrack-recorder.md "Mono tracks"); two otherwise. */
+		channels?: number;
 		gain: number;
 		pan: number;
 		muted: boolean;
@@ -99,7 +101,7 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 	}) => {
 		const dest = o.destination ? ` destination="${o.destination}"` : "";
 		out(
-			`      <Channel audioChannels="2" role="${o.role}" solo="${o.solo ? "true" : "false"}"${dest} id="${o.chId}">`,
+			`      <Channel audioChannels="${o.channels ?? 2}" role="${o.role}" solo="${o.solo ? "true" : "false"}"${dest} id="${o.chId}">`,
 		);
 		const v = id("vol");
 		const p = id("pan");
@@ -146,6 +148,7 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		channel({
 			chId: trackChannel.get(t.id)!,
 			role: "regular",
+			channels: t.mono ? 1 : 2,
 			gain: t.gain,
 			pan: t.pan,
 			muted: t.muted,

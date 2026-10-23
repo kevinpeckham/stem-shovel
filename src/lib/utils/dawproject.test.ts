@@ -43,6 +43,7 @@ const arrangement: StudioArrangement = {
 			armed: false,
 			input: null,
 			colour: "rose",
+			mono: true,
 			sends: [
 				{ bus: "b1", level: 0.4 },
 				{ bus: "gone", level: 1 },
@@ -147,7 +148,7 @@ describe("dawproject", () => {
 			)!;
 		expect(bus[1]).toBe(master);
 		expect(project).toContain(
-			`<Channel audioChannels="2" role="regular" solo="true" destination="${master}" id="`,
+			`<Channel audioChannels="1" role="regular" solo="true" destination="${master}" id="`,
 		);
 		expect(project).toContain(
 			`<Channel audioChannels="2" role="regular" solo="false" destination="${bus[2]}" id="`,

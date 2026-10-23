@@ -49,6 +49,7 @@ const fake = vi.hoisted(() => {
 		setBusTint: vi.fn(),
 		setOutput: vi.fn(),
 		setSend: vi.fn(),
+		setMono: vi.fn(),
 	};
 	return engine;
 });
@@ -142,6 +143,14 @@ describe("MixerConsole", () => {
 			target: { value: "0.6" },
 		});
 		expect(fake.setMaster).toHaveBeenLastCalledWith(0.6);
+	});
+
+	test("the Mono switch makes a track a point source and back; a MIDI track has none", async () => {
+		const user = userEvent.setup();
+		render(MixerConsole);
+		await user.click(screen.getByRole("checkbox", { name: "Guitar is mono" }));
+		expect(fake.setMono).toHaveBeenLastCalledWith("t1", true);
+		expect(screen.queryByRole("checkbox", { name: "Keys is mono" })).toBeNull();
 	});
 
 	test("the output picker routes a track to a bus or back to the master", async () => {

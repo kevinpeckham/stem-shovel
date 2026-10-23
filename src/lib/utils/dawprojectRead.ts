@@ -297,6 +297,8 @@ export function readDawproject(
 				solo: bool(channel, "solo"),
 				armed: false,
 				input: kind === "midi" ? { source: "piano", channel: "stereo" } : null,
+				// A one-channel audio track is mono in Dawn (docs/multitrack-recorder.md "Mono tracks").
+				...(kind === "audio" && attr(channel, "audioChannels") === "1" ? { mono: true } : {}),
 			};
 			tracks.push(track);
 			const owner: Owner = { kind: "track", id: track.id, name };

@@ -40,6 +40,10 @@ test.describe("Dawn mixer", () => {
 			"aria-valuenow",
 			"0.5",
 		);
+		// Mono (docs/multitrack-recorder.md "Mono tracks"): the strip's pan stage swaps live; the rest of the run plays and bounces through it.
+		await console_.getByRole("checkbox", { name: "Track 1 is mono" }).click();
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].mono)).toBe(true);
+		expect(await hooked(page, ([w]) => w.__studio.diagnostics().monoTracks)).toEqual([trackId]);
 
 		// Folder tracks (docs/multitrack-recorder.md "Folder tracks"): the bus becomes a group from its strip; back on the
 		// tracks its row holds Track 1, folds it away and brings it back; Add group makes another; its menu removes it.

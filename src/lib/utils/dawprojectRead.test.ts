@@ -18,6 +18,7 @@ const arrangement: StudioArrangement = {
 		{
 			id: "t1",
 			name: 'Guitar "lead" <solo>',
+			mono: true,
 			gain: 0.7,
 			pan: -0.5,
 			muted: false,
@@ -96,6 +97,8 @@ describe("readDawproject", () => {
 		expect(a.buses?.map((b) => [b.name, b.gain, b.pan, b.muted, b.colour])).toEqual([
 			["Drums & FX", 0.8, 0.2, false, "sea"],
 		]);
+		// The mono guitar comes back mono (audioChannels="1"); the rest stereo.
+		expect(a.tracks.map((t) => t.mono)).toEqual([true, undefined]);
 		expect(a.tracks.map((t) => [t.name, t.kind, t.gain, t.pan, t.muted, t.solo, t.colour])).toEqual(
 			[
 				['Guitar "lead" <solo>', "audio", 0.7, -0.5, false, true, "rose"],

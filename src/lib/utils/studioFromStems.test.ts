@@ -34,6 +34,7 @@ describe("studioFromStems", () => {
 			["Guitar", 1.2, -0.25, "#abc"],
 			["Drums", 1.2, -0.25, "#abc"],
 		]);
+		expect(made!.current.tracks.map((t) => t.mono)).toEqual([undefined, true]);
 		expect(made!.current.clips.map((c) => [c.trackId, c.sourceId, c.duration])).toEqual([
 			[made!.current.tracks[0]!.id, made!.sources[0]!.id, 12.5],
 			[made!.current.tracks[1]!.id, made!.sources[1]!.id, 12.5],

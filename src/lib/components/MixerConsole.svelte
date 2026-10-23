@@ -138,6 +138,17 @@
 						popoverClasses="text-11px"
 					/>
 				</label>
+				<!-- A mono track (docs/multitrack-recorder.md "Mono tracks"): one channel through the inserts, panned as a point source. -->
+				<label
+					class="flex items-center gap-1.5 text-10px text-dim"
+					title="Sum the track to one channel and pan it as a point source: at unity on both sides at center, the far side falling away as it turns"
+					><input
+						type="checkbox"
+						checked={!!track.mono}
+						aria-label="{track.name} is mono"
+						onchange={(e) => engine.setMono(track.id, e.currentTarget.checked)}
+					/> Mono</label
+				>
 				{@render inserts(track.id, track, track.name)}
 				{#if buses.length}
 					<div class="grid gap-1" role="group" aria-label="{track.name} sends">

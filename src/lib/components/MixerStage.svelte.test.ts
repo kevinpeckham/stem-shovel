@@ -101,7 +101,7 @@ describe("MixerStage", () => {
 	test("places each puck by its pan and heard level, numbered and named", () => {
 		const model = fake();
 		render(MixerStage, { props: { model } });
-		const a = screen.getByRole("button", { name: "1, Guitar: 0 dB, C" });
+		const a = screen.getByRole("button", { name: "1, Guitar: 0 dB, C, mono" });
 		const b = screen.getByRole("button", { name: /^2, A very long bass synth name/ });
 		expect(a.style.left).toBe("50%");
 		expect(b.style.left).toBe(`${xOfPan(-0.5) * 100}%`);
@@ -194,8 +194,8 @@ describe("MixerStage", () => {
 		};
 		const model = fake(undefined, undefined, [twin]);
 		render(MixerStage, { props: { model } });
-		const a = screen.getByRole("button", { name: "1, Guitar: 0 dB, C" });
-		const c = screen.getByRole("button", { name: "3, Guitar 2: 0 dB, C" });
+		const a = screen.getByRole("button", { name: "1, Guitar: 0 dB, C, mono" });
+		const c = screen.getByRole("button", { name: "3, Guitar 2: 0 dB, C, mono" });
 		expect(a.dataset.stageCluster).toBe("2");
 		expect(a.style.marginTop).toBe("-30px");
 		expect(c.style.marginTop).toBe("30px");
@@ -252,7 +252,7 @@ describe("MixerStage", () => {
 			},
 		]);
 		render(MixerStage, { props: { model } });
-		expect(screen.queryByRole("button", { name: "1, Guitar: 0 dB, C" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "1, Guitar: 0 dB, C, mono" })).toBeNull();
 		expect(
 			screen.getByRole("button", { name: /^2, A very long bass synth name/ }),
 		).toBeInTheDocument();
