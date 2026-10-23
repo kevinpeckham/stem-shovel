@@ -21,6 +21,8 @@ import type {
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
+import { studioGrid } from "./studioGrid";
+import { beatsBetween, secondsAfterBeats } from "#lib/audio/measures.js";
 import { readReport } from "./readReport";
 import { nearestStemTint } from "./nearestStemTint";
 
@@ -140,7 +142,8 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 	if (tempoLine)
 		beatsPerBar = meterOf(numAt(tempoLine, 2, 4), numAt(tempoLine, 3, 4), "at the start");
 	else fix("No tempo: 120 bpm, 4/4 assumed");
-	const steps: { start: number; bpm: number; beatsPerBar: number }[] = [
+	/** The tempo map's points in seconds: a point whose shape is 0 ramps linearly (in seconds, Reaper's curve) to the next, which carries the ramp. */
+	const steps: { start: number; bpm: number; beatsPerBar: number; ramp?: "time" }[] = [
 		{ start: 0, bpm, beatsPerBar },
 	];
 	const env = blocksOf(project, "TEMPOENVEX")[0];
@@ -154,9 +157,11 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				sig: numAt(p, 6, 0) === 1 ? numAt(p, 4, 0) : 0,
 			}))
 			.sort((a, b) => a.start - b.start);
+		let rampNext = false;
 		for (const p of points) {
-			if (p.shape === 0 && p.start > 0) fix("Tempo ramps read as steps");
 			const last = steps[steps.length - 1]!;
+			const ramp = rampNext && p.start > last.start && p.bpm !== last.bpm;
+			rampNext = p.shape === 0;
 			// The time signature rides on the point as (denominator << 16) | numerator; 0 keeps the current one.
 			const meter = p.sig
 				? meterOf(p.sig & 0xffff, p.sig >> 16, `at ${seconds(p.start)} s`)
@@ -167,38 +172,30 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 				beatsPerBar = meter;
 			} else if (p.start === last.start)
 				steps[steps.length - 1] = { ...last, bpm: p.bpm, beatsPerBar: meter };
-			else steps.push({ start: seconds(p.start), bpm: p.bpm, beatsPerBar: meter });
+			else
+				steps.push({
+					start: seconds(p.start),
+					bpm: p.bpm,
+					beatsPerBar: meter,
+					...(ramp ? { ramp: "time" } : {}),
+				});
 		}
+		if (steps.some((s) => s.ramp)) fix("Tempo ramps kept, linear in seconds");
 	}
-	const beatsAt = (s: number): number => {
-		let beats = 0;
-		for (let i = 0; i < steps.length; i++) {
-			const step = steps[i]!;
-			const next = steps[i + 1];
-			const end = next && next.start < s ? next.start : s;
-			if (end > step.start) beats += ((end - step.start) * step.bpm) / 60;
-			if (!next || next.start >= s) break;
-		}
-		return beats;
-	};
-	const secondsAt = (beats: number): number => {
-		let s = 0;
-		let b = 0;
-		for (let i = 0; i < steps.length; i++) {
-			const step = steps[i]!;
-			const next = steps[i + 1];
-			const stepBeats = next ? ((next.start - step.start) * step.bpm) / 60 : Infinity;
-			if (!next || b + stepBeats >= beats) return s + ((beats - b) * 60) / step.bpm;
-			s = next.start;
-			b += stepBeats;
-		}
-		return s;
-	};
+	// A point that repeats the tempo is a meter change's, or nothing: dropped unless a ramp leaves from it.
 	const tempoChanges = steps
 		.slice(1)
-		.filter((s, i, all) => s.bpm !== (i === 0 ? steps[0]! : all[i - 1]!).bpm)
-		.map((s) => ({ start: s.start, bpm: s.bpm }))
+		.filter(
+			(s, i, all) =>
+				s.ramp !== undefined ||
+				s.bpm !== (i === 0 ? steps[0]! : all[i - 1]!).bpm ||
+				all[i + 1]?.ramp !== undefined,
+		)
+		.map((s) => ({ start: s.start, bpm: s.bpm, ...(s.ramp ? { ramp: s.ramp } : {}) }))
 		.slice(0, 64);
+	const tempoGrid = studioGrid({ bpm, beatsPerBar, tempoChanges });
+	const beatsAt = (s: number): number => beatsBetween(tempoGrid, 0, s);
+	const secondsAt = (beats: number): number => secondsAfterBeats(tempoGrid, 0, beats);
 	const meterChanges = steps
 		.slice(1)
 		.filter((s, i, all) => s.beatsPerBar !== (i === 0 ? steps[0]! : all[i - 1]!).beatsPerBar)

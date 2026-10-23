@@ -21,6 +21,13 @@ import { MIN_CLIP_LOOP_SECONDS } from "#lib/val/StudioSchema.js";
 import { nanoid } from "nanoid";
 import type { DawprojectFile, DawprojectRead } from "./dawprojectRead";
 import { readReport } from "./readReport";
+import { studioGrid } from "./studioGrid";
+import { tempoPointsToSeconds } from "./tempoPointsToSeconds";
+import {
+	secondsAfterBeats,
+	tempoAt as gridTempoAt,
+	tempoSteadyAcross,
+} from "#lib/audio/measures.js";
 import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -76,41 +83,33 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		}));
 	const masterEnvelopes = envelopesOf(master);
 	// An event at −63072000 (two years before the song) is the value before any point: read as beat 0.
-	/** Tempo steps by beat: the song's own first, then the tempo automation's points (Live ramps between them). */
-	const tempoSteps: { beat: number; bpm: number }[] = [{ beat: 0, bpm }];
+	/**
+	 * The tempo map by beat: the song's own first, then the tempo automation's points. Live draws its tempo lane
+	 * as straight lines between the points, so each pair with different tempos is a ramp (kept, linear over the
+	 * beats); two points on one beat are a jump.
+	 */
+	const tempoPoints: { beat: number; bpm: number; ramp?: boolean }[] = [{ beat: 0, bpm }];
 	const tempoEnv = masterEnvelopes.find((e) => e.pointee === tempoTarget);
 	if (tempoEnv) {
-		const points = tempoEnv.events
-			.filter((e) => e.kind === "FloatEvent" && Number.isFinite(e.time))
-			.map((e) => ({ beat: Math.max(0, e.time), bpm: clamp(round2(Number(e.value)), 30, 300) }))
-			.sort((a, b) => a.beat - b.beat);
-		for (const p of points) {
-			const last = tempoSteps[tempoSteps.length - 1]!;
-			if (p.beat === last.beat) tempoSteps[tempoSteps.length - 1] = p;
-			else tempoSteps.push(p);
-		}
-		if (tempoSteps.length > 1) fix("Tempo automation read as steps at its points");
-		bpm = tempoSteps[0]!.bpm;
+		for (const e of tempoEnv.events)
+			if (e.kind === "FloatEvent" && Number.isFinite(e.time))
+				tempoPoints.push({
+					beat: Math.max(0, e.time),
+					bpm: clamp(round2(Number(e.value)), 30, 300),
+					ramp: true,
+				});
+		// The song's own tempo is the lane's first value, not the Tempo's Manual.
+		if (tempoEnv.events.length) tempoPoints.shift();
 	}
-	const beatsToSeconds = (beats: number): number => {
-		let s = 0;
-		for (let i = 0; i < tempoSteps.length; i++) {
-			const step = tempoSteps[i]!;
-			const next = tempoSteps[i + 1];
-			const end = next && next.beat < beats ? next.beat : beats;
-			if (end > step.beat) s += ((end - step.beat) * 60) / step.bpm;
-			if (!next || next.beat >= beats) break;
-		}
-		return s;
-	};
-	const tempoAt = (beat: number): number => {
-		let t = tempoSteps[0]!.bpm;
-		for (const s of tempoSteps) if (s.beat <= beat) t = s.bpm;
-		return t;
-	};
-	/** Whether one tempo holds from one beat to another: no step lands between them. */
+	const tempoMap = tempoPointsToSeconds(tempoPoints);
+	bpm = tempoMap[0]!.bpm;
+	if (tempoMap.some((c) => c.ramp)) fix("Tempo ramps kept, linear over the beats");
+	const tempoGrid = studioGrid({ bpm, beatsPerBar: 4, tempoChanges: tempoMap.slice(1) });
+	const beatsToSeconds = (beats: number): number => secondsAfterBeats(tempoGrid, 0, beats);
+	const tempoAt = (beat: number): number => gridTempoAt(tempoGrid, beatsToSeconds(beat));
+	/** Whether one tempo holds from one beat to another: no change between them, no ramp across. */
 	const steadyAcross = (from: number, to: number): boolean =>
-		!tempoSteps.some((st) => st.beat > from && st.beat < to);
+		tempoSteadyAcross(tempoGrid, beatsToSeconds(from), beatsToSeconds(to));
 	// The time signature is an enum: numerator = value mod 99 + 1, denominator = 2 to the power of value div 99.
 	const sigOf = (v: number) => ({ numerator: (v % 99) + 1, denominator: 2 ** Math.floor(v / 99) });
 	let beatsPerBar = 4;
@@ -131,9 +130,9 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			else meterPoints.push({ beat: e.time, beatsPerBar: meterOf(v, `at beat ${e.time}`) });
 		}
 	} else fix("No time signature: 4/4 assumed");
-	const tempoChanges = tempoSteps
+	const tempoChanges = tempoMap
 		.slice(1)
-		.map((s) => ({ start: seconds(beatsToSeconds(s.beat)), bpm: s.bpm }))
+		.map((s) => ({ ...s, start: seconds(s.start) }))
 		.filter((c, i, all) => c.start > 0 && (i === 0 || c.start !== all[i - 1]!.start))
 		.slice(0, 64);
 	const meterChanges = meterPoints

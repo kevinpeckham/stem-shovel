@@ -826,8 +826,12 @@
 					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-blue-300/80 text-dark hover:bg-blue-200 focus-visible:ring-1 focus-visible:ring-white"
 					style:left="{c.start * pxPerSecond}px"
 					data-tempo-change={c.start}
-					aria-label="Tempo change to {c.bpm} bpm at {formatTime(c.start)}"
-					title="{c.bpm} bpm from {formatTime(c.start)} (double-click to edit, Delete to remove)"
+					aria-label="Tempo {c.ramp ? 'ramp' : 'change'} to {c.bpm} bpm at {formatTime(c.start)}"
+					title="{c.bpm} bpm {c.ramp
+						? `reached at ${formatTime(c.start)}, ramping from the tempo before`
+						: `from ${formatTime(c.start)}`} (double-click to edit, R {c.ramp
+						? 'makes it a step'
+						: 'makes it a ramp'}, Delete to remove)"
 					onpointerdown={(e) => e.stopPropagation()}
 					onclick={() => engine.seek(c.start)}
 					ondblclick={() => {
@@ -839,8 +843,12 @@
 							engine.removeTempoChange(c.start);
 							e.preventDefault();
 							e.stopPropagation();
+						} else if (e.key === "r" || e.key === "R") {
+							engine.setTempoRamp(c.start, c.ramp ? null : "beats");
+							e.preventDefault();
+							e.stopPropagation();
 						}
-					}}>{c.bpm}</button
+					}}>{c.ramp ? "⟋" : ""}{c.bpm}</button
 				>
 			{/each}
 			{#each engine.meterChanges as c, i (`${c.start}#${i}`)}

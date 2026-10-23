@@ -15,7 +15,8 @@ export function audacityLabels(a: StudioArrangement): string {
 	];
 	if (a.key) lines.push({ t: 0, text: `Key ${a.key}` });
 	for (const c of a.tempoChanges ?? [])
-		if (c.start > 0) lines.push({ t: c.start, text: `Tempo ${trim(c.bpm)}` });
+		if (c.start > 0)
+			lines.push({ t: c.start, text: `Tempo ${trim(c.bpm)}${c.ramp ? " (ramp)" : ""}` });
 	for (const c of a.meterChanges ?? [])
 		if (c.start > 0) lines.push({ t: c.start, text: `Meter ${c.beatsPerBar}/4` });
 	for (const c of a.keyChanges ?? [])

@@ -344,7 +344,10 @@ describe("StudioArrangementSchema (D5): the tempo map and a track's feel", () =>
 		expect(
 			v.safeParse(StudioArrangementSchema, {
 				...base(),
-				tempoChanges: [{ start: 8, bpm: 132 }],
+				tempoChanges: [
+					{ start: 8, bpm: 132 },
+					{ start: 16, bpm: 90, ramp: "beats" },
+				],
 				meterChanges: [{ start: 16, beatsPerBar: 3 }],
 			}).success,
 		).toBe(true);

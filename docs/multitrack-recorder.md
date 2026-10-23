@@ -855,8 +855,8 @@ step if the WSOLA's quality falls short on transient material.
 Browser spec `tests/e2e/studio-time.spec.ts`; unit tests on each util;
 the timeline's component test covers the flags. Left for later:
 beats-anchored clips (notes in beats rather than seconds, so a MIDI
-part follows a tempo change), tap tempo lives on the metronome already,
-tempo ramps between changes.
+part follows a tempo change), tap tempo lives on the metronome already.
+Tempo ramps came 2026-10-23 ("Tempo ramps" below).
 
 ## Instruments and the library (2026-10-19, docs/dawn-daw-plan.md D6)
 
@@ -1173,6 +1173,78 @@ exports are the DAWproject, the Reaper project, the Sandyne project and
 the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
+
+## Tempo ramps (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 5)
+
+A tempo change can be reached gradually: `ramp` on `StudioTempoChange`
+(`TEMPO_CURVES`, `TempoCurve` in StudioSchema.ts) says the tempo moves
+from the change before it (or the song's own tempo, from zero) to this
+one's `bpm`, arriving at its `start`. Two curves, because the DAWs
+disagree and Dawn keeps each ramp as its source meant it: **"time"**
+moves the tempo linearly with the seconds (Reaper's curve, probed in
+Reaper 7.82: 90 bpm halfway down a 120→60 ramp, twelve beats across
+eight seconds; FINDINGS.md), **"beats"** linearly with the beats (a
+DAWproject's and Live's lanes, drawn over a beat ruler: each beat a
+little longer than the last, the classical ritardando), which is
+exponential in seconds. The ruler's own ramps are "beats".
+
+**The grid integrates them.** `audio/measures.ts` works in tempo
+segments (`TempoSegment`: from one change to the next, with the curve
+the next one names): `bpmIn` is the tempo at a second within one,
+`beatsIn` the beats across a span (the mean tempo times the length on
+"time"; the tempo's change over its log rate on "beats"), `secondsIn`
+the inverse (a quadratic's root, or a log). `beatsBetween`, `tempoAt`
+and the now-exported `secondsAfterBeats` go through them, so `barAt`,
+`secondsAtBar`, the snap, the ruler's ticks, the quantize, the swing and
+every file's beat conversions follow a ramp with no further change;
+`tempoSteadyAcross(grid, from, to)` says whether one tempo holds across
+a span (a reader's question). The stem player's `barGrid` makes no
+ramps. The engine's click restarts the metronome at every beat line
+inside a ramp (`#rampBeats`, queued with the tempo and meter changes in
+`#queueMidi`), so the click follows the tempo as it moves, and the drum
+machine playing along takes each beat's tempo.
+
+**Editing.** `setTempoChange(start, bpm, ramp?)` keeps a change's ramp
+unless told otherwise; `setTempoRamp(start, curve | null)` switches it.
+The ruler's flag reads "⟋60" for a ramp (aria "Tempo ramp to 60 bpm at
+…"), and **R** on a focused flag makes a change a ramp (over the beats)
+or a ramp a step; the Timing menu's **Ramp** checkbox adds the next
+change as one.
+
+**Files.** `utils/tempoPointsOf.ts` turns the map into the points a
+DAW's lane takes: the song's tempo at zero, each change, each point
+saying whether it runs linear to the next; a ramp of the file's own
+curve is one such pair, a ramp of the other curve is laid down as a
+point at every bar line inside it, each linear to the next (within a
+hair of the true curve). `utils/tempoPointsGrid.ts` is the grid the DAW
+will make of those points, and each writer converts its beats and ticks
+through that grid rather than the arrangement's own, so what the DAW
+reads lands where Dawn meant it. The DAWproject writer gives the point
+before a ramp `interpolation="linear"` (timeUnit beats, so the file's
+curve is "beats"); the reader takes a "linear" point as a ramp to the
+next and converts the lane to seconds with
+`utils/tempoPointsToSeconds.ts` (the beats over the log mean of the two
+tempos; a point repeating the tempo kept only when a ramp leaves from
+it; two points on one beat a jump, the stretch before them held),
+reporting "Tempo ramps kept, linear over the beats". The Reaper writer
+sets shape 0 on the point a ramp leaves from (`TEMPOENVEX`; Reaper's
+curve is "time"), and stamps the time signature only on the first point
+and where the meter changes: a point carrying one starts a measure in
+Reaper, which pads the bar before it when the point is off a bar line
+(probed: 34 quarter notes at a ramp's end instead of 32). The reader
+makes a shape-0 point's successor a "time" ramp ("Tempo ramps kept,
+linear in seconds"); `bun run interop:rpp` checks Reaper's tempo halfway
+down a ramp and its quarter-note count at the ramp's end against
+Dawn's. The Live reader takes every pair of tempo events with different
+values as a "beats" ramp (Live draws its lane as lines between the
+points), no longer "read as steps". The session bundle's MIDI file
+carries a ramp as a tempo event at every beat line inside it, its ticks
+through that stepped map (`sessionMidi.ts`); a MIDI file read stays
+steps. Audacity labels say "(ramp)". A song's changes
+(`studioChangesToSong`) keep a ramp's end as a step.
+
+Browser spec: `tests/e2e/studio-time.spec.ts` (R on the flag); unit
+tests on measures, `tempoPointsToSeconds`, each format's round trip.
 
 ## Wider automation (2026-10-22, docs/dawproject-plan.md "What the format carries that Dawn lacks" 4)
 

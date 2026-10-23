@@ -4,7 +4,7 @@ Free DAW project converter that works in your browser. Drop a DAWproject from Bi
 
 ## How to use Convert
 
-Choose a `.dawproject` file, or a Reaper `.rpp` or an Ableton Live `.als` together with its media files, or a MIDI file, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders, Live's groups and returns), the clips with their fades, levels and pans, the volume, pan, mute and send automation (the master's too), the MIDI parts' notes with their controller, pitch-bend and pressure lanes, the tempo and time-signature changes and the markers (Live's locators), and decodes the audio. Then pick what you want:
+Choose a `.dawproject` file, or a Reaper `.rpp` or an Ableton Live `.als` together with its media files, or a MIDI file, or drop them on the page. Convert reads the project in your browser: the tracks and buses (Reaper's folders, Live's groups and returns), the clips with their fades, levels and pans, the volume, pan, mute and send automation (the master's too), the tempo map with its ramps, the MIDI parts' notes with their controller, pitch-bend and pressure lanes, the tempo and time-signature changes and the markers (Live's locators), and decodes the audio. Then pick what you want:
 
 - **The mix**: every track and bus through its fader and pan, as one WAV or MP3.
 - **A stem per track**, or per bus, from the start of the project.

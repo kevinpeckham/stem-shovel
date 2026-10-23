@@ -29,6 +29,14 @@ describe("studioGrid", () => {
 			[8, 60],
 		]);
 		expect(tempoAt(g, 5)).toBe(240);
+		// A ramp rides along to the grid.
+		expect(
+			studioGrid({ bpm: 120, beatsPerBar: 4, tempoChanges: [{ start: 8, bpm: 60, ramp: "time" }] })
+				.tempos,
+		).toEqual([
+			{ start: 0, bpm: 120 },
+			{ start: 8, bpm: 60, ramp: "time" },
+		]);
 		expect(tempoAt(g, 9)).toBe(60);
 		// Bars 1 and 2 at 120 in 4/4 end at 4 s; from there 3/4 at 240 bpm: a bar is 0.75 s.
 		expect(secondsAtBar(g, 3)).toBe(4);

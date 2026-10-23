@@ -24,6 +24,8 @@ import { dirname, join, resolve } from "node:path";
 import { unzipSync } from "fflate";
 import { exportSong } from "#lib/audio/studioExport.js";
 import { readRpp } from "#lib/utils/rppRead.js";
+import { studioGrid } from "#lib/utils/studioGrid.js";
+import { beatsBetween } from "#lib/audio/measures.js";
 import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 import { arrangement as fixture, engine as fixtureEngine, readWav } from "./fixture";
 
@@ -38,6 +40,8 @@ mkdirSync(out, { recursive: true });
 const arrangement: StudioArrangement = {
 	...fixture,
 	sampleRate: 48000,
+	// A tempo ramp after the clips: from the 100 at 8 s down to 60 at 20 s, linear in seconds (Reaper's own curve).
+	tempoChanges: [...(fixture.tempoChanges ?? []), { start: 20, bpm: 60, ramp: "time" }],
 	// The master's own lane: full until 6 s, then (over 10 ms) silent; a render across 6 s shows Reaper honors it.
 	masterAutomation: {
 		volume: [
@@ -190,7 +194,12 @@ interface Got {
 			notes?: { at: number; ends: number; pitch: number; velocity: number }[];
 		}[];
 	}[];
-	tempos: { at: number; bpm: number; numerator: number; denominator: number }[];
+	tempos: { at: number; bpm: number; numerator: number; denominator: number; linear: boolean }[];
+	/** Reaper's tempo at 14 s: halfway down the ramp, 80 if the ramp is linear in seconds. */
+	bpmAt14: number;
+	/** Reaper's quarter notes at 20 s: the 16 to 8 s plus 12 s at the ramp's mean tempo of 80. */
+	beatsAt20: number;
+	beatsAt8: number;
 	markers: { at: number; name: string; region: boolean }[];
 	sampleRate: number;
 	notes: string;
@@ -334,10 +343,27 @@ const tempos = [
 	{ at: 0, bpm: arrangement.bpm, numerator: arrangement.beatsPerBar },
 	...(arrangement.tempoChanges ?? []).map((t) => ({ at: t.start, bpm: t.bpm, numerator: 3 })),
 ];
+check(
+	got.tempos.find((g) => near(g.at, 8, 0.01))?.linear === true &&
+		got.tempos.find((g) => near(g.at, 20, 0.01))?.linear === false,
+	`the tempo point at 8 s ramps to the one at 20 s (${got.tempos.map((g) => `${g.bpm}@${g.at}${g.linear ? " ramp" : ""}`).join(", ")})`,
+);
+check(
+	near(got.bpmAt14, 80, 0.01),
+	`Reaper's tempo at 14 s is 80, halfway down the ramp (${got.bpmAt14})`,
+);
+const beatsAt20 = beatsBetween(studioGrid(arrangement), 0, 20);
+check(
+	near(got.beatsAt8, 16, 0.001) && near(got.beatsAt20, beatsAt20, 0.001),
+	`Reaper counts the beats to 20 s as Dawn does (${got.beatsAt20} vs ${beatsAt20.toFixed(4)}; 16 to 8 s: ${got.beatsAt8})`,
+);
 for (const t of tempos) {
 	const hit = got.tempos.find((g) => near(g.at, t.at, 0.01));
+	// A point that changes no meter carries no time signature (-1/-1 in Reaper's API): it would start a measure otherwise.
+	const sigOk =
+		hit && (hit.numerator === -1 ? true : hit.numerator === t.numerator && hit.denominator === 4);
 	check(
-		hit && near(hit.bpm, t.bpm, 0.01) && hit.numerator === t.numerator && hit.denominator === 4,
+		hit && near(hit.bpm, t.bpm, 0.01) && sigOk,
 		`tempo ${t.bpm} in ${t.numerator}/4 at ${t.at} s (${hit ? `${hit.bpm} in ${hit.numerator}/${hit.denominator} at ${hit.at.toFixed(3)}` : "missing"})`,
 	);
 }

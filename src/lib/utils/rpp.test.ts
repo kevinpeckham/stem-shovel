@@ -255,6 +255,36 @@ describe("rppProject", () => {
 		]);
 	});
 
+	it("writes a tempo ramp over the seconds as a linear point, one over the beats bar by bar, and reads them back", () => {
+		const text = rppProject({
+			title: "Ramps",
+			arrangement: {
+				...arrangement,
+				bpm: 120,
+				beatsPerBar: 4,
+				meterChanges: [],
+				tempoChanges: [
+					{ start: 8, bpm: 60, ramp: "time" },
+					{ start: 12, bpm: 90, ramp: "beats" },
+				],
+			},
+			audio,
+			application: app,
+		});
+		// Shape 0 on the point a ramp leaves from (Reaper's tempo is then linear in seconds to the next point).
+		// The time signature rides only on the first point (a stamped point starts a measure in Reaper).
+		expect(text).toContain(`    PT 0 120 0 ${(4 << 16) | 4} 0 1\n    PT 8 60 0 0 0 0\n`);
+		const back = readRpp(text, "Ramps");
+		expect(back.fixed).toContain("Tempo ramps kept, linear in seconds");
+		const changes = back.arrangement.tempoChanges!;
+		expect(changes[0]).toEqual({ start: 8, bpm: 60, ramp: "time" });
+		// The ramp over the beats went out bar by bar: more than one point, the last reaching 90 at 12 s.
+		expect(changes.length).toBeGreaterThan(2);
+		expect(changes.at(-1)!.bpm).toBe(90);
+		expect(changes.at(-1)!.start).toBeCloseTo(12, 2);
+		expect(changes.slice(1).every((c) => c.ramp === "time")).toBe(true);
+	});
+
 	it("writes the mute, send and master envelopes (the mute inverted and square, the send's after its receive), and reads them back", () => {
 		const bass = arrangement.tracks.find((t) => t.id === "t-bass")!;
 		const mute = [

@@ -276,8 +276,10 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    Still open: a send's on/off (no such switch in Dawn) and device
    parameters (Dawn's inserts have no device in the format; item 9).
 5. **Tempo ramps**: a `RealPoint` with `interpolation="linear"` between
-   tempos (a ritardando). Dawn's map is steps; a ramp would need the grid
-   and the scheduler to integrate a changing tempo.
+   tempos (a ritardando). Done 2026-10-23: `ramp` on a tempo change, on
+   two curves ("time" as Reaper runs them, "beats" as a DAWproject and
+   Live do), the grid and the click integrating them, read and written
+   by every format (docs/multitrack-recorder.md "Tempo ramps").
 6. **Audio warping and stretch** (`Warps`, `algorithm="stretch"` and
    kin): a loop at 170 bpm played at 149. Dawn plays files at their own
    speed; a time-stretch (phase vocoder or granular) in the engine and a

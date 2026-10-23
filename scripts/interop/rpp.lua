@@ -155,6 +155,10 @@ result.sampleRate = reaper.GetSetProjectInfo(0, "PROJECT_SRATE", 0, false)
 result.sampleRateUsed = reaper.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
 result.notes = reaper.GetSetProjectNotes(0, false, "")
 result.masterVolume = reaper.GetMediaTrackInfo_Value(reaper.GetMasterTrack(0), "D_VOL")
+-- The tempo ramp: Reaper's own tempo halfway down it, and its beat count at its end.
+result.bpmAt14 = reaper.TimeMap2_GetDividedBpmAtTime(0, 14)
+result.beatsAt20 = reaper.TimeMap2_timeToQN(0, 20)
+result.beatsAt8 = reaper.TimeMap2_timeToQN(0, 8)
 result.masterVolumeEnvelope = masterEnvelope("MASTERVOLENV")
 
 -- Which way the pan envelope runs: the Bass track alone, in automation read mode so its envelope drives the pan,

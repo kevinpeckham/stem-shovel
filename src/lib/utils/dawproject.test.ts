@@ -347,6 +347,38 @@ describe("dawproject", () => {
 		expect(back.masterAutomation).toEqual(wide.masterAutomation);
 	});
 
+	it("writes a tempo ramp over the beats as a linear point, one over the seconds bar by bar, and the reader keeps them", () => {
+		const ramped: StudioArrangement = {
+			...arrangement,
+			bpm: 120,
+			beatsPerBar: 4,
+			meterChanges: [],
+			tempoChanges: [
+				{ start: 8, bpm: 60, ramp: "beats" },
+				{ start: 12, bpm: 90, ramp: "time" },
+			],
+		};
+		const { project: xml, metadata } = dawproject({
+			title: "Ramps",
+			arrangement: ramped,
+			audio: new Map(),
+			application: { name: "Stem Shovel Dawn", version: "0.150.0" },
+		});
+		expect(() => validate(xml, "Project.xsd")).not.toThrow();
+		// The point before a ramp runs linear to the next; eight seconds from 120 down to 60 over the beats is 11.54 beats.
+		expect(xml).toContain('<RealPoint time="0.000000" value="120.000000" interpolation="linear"/>');
+		expect(xml).toContain('<RealPoint time="11.541560" value="60.000000" interpolation="linear"/>');
+		const back = readDawproject(xml, metadata, "Ramps");
+		expect(back.fixed).toContain("Tempo ramps kept, linear over the beats");
+		const changes = back.arrangement.tempoChanges!;
+		expect(changes[0]).toEqual({ start: 8, bpm: 60, ramp: "beats" });
+		// The ramp over the seconds came out as a ramp per bar, the last reaching 90 at 12 s.
+		expect(changes.length).toBeGreaterThan(2);
+		expect(changes.at(-1)!.bpm).toBe(90);
+		expect(changes.at(-1)!.start).toBeCloseTo(12, 2);
+		expect(changes.slice(1).every((c) => c.ramp === "beats")).toBe(true);
+	});
+
 	it("writes a clip's loop as loopStart/loopEnd, and the reader keeps it", () => {
 		const looped: StudioArrangement = {
 			...arrangement,

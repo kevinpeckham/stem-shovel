@@ -274,10 +274,23 @@ export const StudioClipSchema = v.pipe(
 );
 export type StudioClip = v.InferOutput<typeof StudioClipSchema>;
 
-/** A tempo change (D5): from `start` seconds on, this many beats a minute. */
+/**
+ * How a tempo ramp runs (docs/multitrack-recorder.md "Tempo ramps"): "time"
+ * moves the tempo linearly with the seconds (Reaper's way), "beats" linearly
+ * with the beats (a DAWproject's and Live's: each beat a little longer than
+ * the last, the classical ritardando).
+ */
+export const TEMPO_CURVES = ["time", "beats"] as const;
+export type TempoCurve = (typeof TEMPO_CURVES)[number];
+/**
+ * A tempo change (D5): from `start` seconds on, this many beats a minute. With
+ * `ramp`, the tempo moves from the one before it to `bpm`, arriving at
+ * `start`, along that curve.
+ */
 export const StudioTempoChangeSchema = v.object({
 	start: v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS)),
 	bpm: v.pipe(v.number(), v.minValue(30), v.maxValue(300)),
+	ramp: v.optional(v.picklist(TEMPO_CURVES)),
 });
 export type StudioTempoChange = v.InferOutput<typeof StudioTempoChangeSchema>;
 /** A meter change (D5): from `start` seconds on, this many beats a bar. */

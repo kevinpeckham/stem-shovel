@@ -1,4 +1,5 @@
 import type { BarGrid } from "#lib/audio/measures.js";
+import type { TempoCurve } from "#lib/val/StudioSchema.js";
 
 /**
  * The arrangement's tempo map as a BarGrid (audio/measures.ts, the stem
@@ -9,7 +10,7 @@ import type { BarGrid } from "#lib/audio/measures.js";
 export function studioGrid(a: {
 	bpm: number;
 	beatsPerBar: number;
-	tempoChanges?: { start: number; bpm: number }[];
+	tempoChanges?: { start: number; bpm: number; ramp?: TempoCurve }[];
 	meterChanges?: { start: number; beatsPerBar: number }[];
 }): BarGrid {
 	const tempos = [

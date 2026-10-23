@@ -1390,6 +1390,8 @@
 	});
 	// ── The tempo map (D5): a change at the playhead from the Timing menu ──
 	let tempoChangeBpm = $state(120);
+	/** Whether the next tempo change ramps to its tempo from the one before (a ritardando or accelerando) rather than jumping. */
+	let tempoChangeRamp = $state(false);
 	let meterChangeBeats = $state(4);
 	let keyChangeText = $state("");
 	function addKeyChange() {
@@ -1402,8 +1404,12 @@
 		notify(`${keyChangeText.trim()} from ${formatTime(studio.position)}`);
 	}
 	function addTempoChange() {
-		studio.setTempoChange(studio.position, tempoChangeBpm);
-		notify(`${tempoChangeBpm} bpm from ${formatTime(studio.position)}`);
+		studio.setTempoChange(studio.position, tempoChangeBpm, tempoChangeRamp ? "beats" : null);
+		notify(
+			tempoChangeRamp
+				? `${tempoChangeBpm} bpm reached at ${formatTime(studio.position)}, ramping from the tempo before`
+				: `${tempoChangeBpm} bpm from ${formatTime(studio.position)}`,
+		);
 	}
 	function addMeterChange() {
 		studio.setMeterChange(studio.position, meterChangeBeats);
@@ -2866,6 +2872,11 @@
 						title="A tempo change at the playhead: this tempo from here on"
 						disabled={studio.position <= 0}
 						onclick={addTempoChange}>Add tempo change</button
+					>
+					<label
+						class="flex items-center gap-1 text-11px text-white/70"
+						title="Reach the tempo gradually from the tempo before, each beat a little longer or shorter than the last"
+						><input type="checkbox" bind:checked={tempoChangeRamp} /> Ramp</label
 					>
 				</div>
 				<div class="flex items-center gap-2 text-13px">

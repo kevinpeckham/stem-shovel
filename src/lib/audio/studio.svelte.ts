@@ -25,6 +25,7 @@ import { stretchChannels } from "#lib/utils/stretchChannels.js";
 import { resampleChannels, semitonesFactor } from "#lib/utils/resampleChannels.js";
 import {
 	barAt,
+	nextBeatAt,
 	barSecondsAt,
 	beatsPerBarAt,
 	secondsAtBar,
@@ -61,6 +62,7 @@ import { mixClipsToChannels } from "#lib/utils/mixClipsToChannels.js";
 import { reverseChannels } from "#lib/utils/reverseChannels.js";
 import { rippleDelete } from "#lib/utils/rippleDelete.js";
 import type {
+	TempoCurve,
 	StudioArrangement,
 	StudioClip,
 	StudioInput,
@@ -1104,20 +1106,51 @@ class StudioEngine {
 		return this.arrangement.gridOn ? snapToBeat(this.grid, seconds) : Math.max(0, seconds);
 	}
 
+	/** The beat lines inside the tempo ramps between `from` and `to` (a ramp runs from the change before it up to its own second). */
+	#rampBeats(grid: BarGrid, from: number, to: number): number[] {
+		const out: number[] = [];
+		const tempos = grid.tempos;
+		for (let i = 1; i < tempos.length; i++) {
+			const c = tempos[i]!;
+			if (!c.ramp) continue;
+			const lo = Math.max(from, tempos[i - 1]!.start);
+			const hi = Math.min(to, c.start);
+			let t = nextBeatAt(grid, lo).at;
+			for (let guard = 0; guard < 10000 && t < hi; guard++) {
+				if (t > lo) out.push(t);
+				t = nextBeatAt(grid, t + 0.0005).at;
+			}
+		}
+		return out;
+	}
+
 	// ── The tempo map (D5) ────────────────────────────────────────────────
-	/** A tempo change at a second (one at that second replaced); at zero it is the song's own tempo. */
-	setTempoChange(start: number, bpm: number) {
+	/**
+	 * A tempo change at a second (one at that second replaced, its ramp kept
+	 * unless `ramp` says otherwise); at zero it is the song's own tempo. With
+	 * `ramp`, the tempo climbs or falls to this one from the tempo before it
+	 * along that curve (docs/multitrack-recorder.md "Tempo ramps").
+	 */
+	setTempoChange(start: number, bpm: number, ramp?: TempoCurve | null) {
 		const v = Math.max(30, Math.min(300, Math.round(bpm)));
 		const at = round4(Math.max(0, start));
 		if (at === 0) return this.setBpm(v);
 		this.#commit();
-		const rest = (this.arrangement.tempoChanges ?? []).filter(
-			(c) => Math.abs(c.start - at) > 0.001,
-		);
-		this.arrangement.tempoChanges = [...rest, { start: at, bpm: v }].sort(
-			(a, b) => a.start - b.start,
-		);
+		const list = this.arrangement.tempoChanges ?? [];
+		const was = list.find((c) => Math.abs(c.start - at) <= 0.001);
+		const rest = list.filter((c) => Math.abs(c.start - at) > 0.001);
+		const curve = ramp === undefined ? was?.ramp : (ramp ?? undefined);
+		this.arrangement.tempoChanges = [
+			...rest,
+			{ start: at, bpm: v, ...(curve ? { ramp: curve } : {}) },
+		].sort((a, b) => a.start - b.start);
 		this.#reschedule();
+	}
+	/** The ramp of the tempo change at a second: on along `ramp`, or off (a step) with null. */
+	setTempoRamp(start: number, ramp: TempoCurve | null) {
+		const c = (this.arrangement.tempoChanges ?? []).find((x) => Math.abs(x.start - start) <= 0.001);
+		if (!c || (c.ramp ?? null) === ramp) return;
+		this.setTempoChange(c.start, c.bpm, ramp);
 	}
 	removeTempoChange(start: number) {
 		const list = this.arrangement.tempoChanges ?? [];
@@ -2499,10 +2532,12 @@ class StudioEngine {
 				}
 		}
 		// Tempo and meter changes in the window: the click (and the drums playing along) pick up the new pace on the beat they land on.
+		// Through a ramp, every beat line is such a moment: the click follows the tempo as it moves.
 		const ends = to ?? Infinity;
 		const changes = [
 			...this.tempoChanges.map((c) => c.start),
 			...this.meterChanges.map((c) => c.start),
+			...this.#rampBeats(grid, from, ends),
 		].filter((t, i, list) => t > from && t < ends && list.indexOf(t) === i);
 		for (const t of changes) {
 			const at = when + (t - from);

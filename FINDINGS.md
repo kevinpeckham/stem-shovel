@@ -756,6 +756,14 @@ belong in CLAUDE.md or docs/, not here.
 
 `typescript@7.0.2` on npm is the Go compiler: a `tsc` binary per platform (`@typescript/typescript-linux-x64` and sixteen siblings) and not the JavaScript API that tooling loads. With it installed, `bun run check` and `bun run lint` both died before doing anything, in Vite's config hook ("Cannot read properties of undefined (reading 'readFile')": something in SvelteKit's or vite-plugin-svelte's config resolution reaches for `ts.sys`, which is not there). The peer ranges say as much: svelte-check 4.7.7 wants `^5 || ^6`, @sveltejs/kit 3.1 `^6`; only vite-plus's core admits `^7`. Reverted to 6.0.3. Try again when svelte-check and kit declare 7 in their peers (`npm view svelte-check peerDependencies`).
 
+## Reaper's tempo ramps are linear in seconds, and a time signature on a point starts a measure (2026-10-23)
+
+From a probe project opened in Reaper 7.82 under Xvfb and asked through its API (`TimeMap2_GetDividedBpmAtTime`, `TimeMap2_timeToQN`, `GetTempoTimeSigMarker`), for Dawn's tempo ramps (utils/rpp.ts, utils/rppRead.ts, audio/measures.ts).
+
+- **A `TEMPOENVEX` point with shape 0 ramps the tempo linearly with the seconds to the next point**: 120 at 0 s ramping to 60 at 8 s gave 90 bpm at 4 s and twelve quarter notes at 8 s (the mean tempo times the span), where a ramp linear over the beats (a DAWproject's or Live's lane) would give 84.85 and 11.54. Dawn keeps a Reaper ramp on a "time" curve and a DAWproject's or Live's on a "beats" curve, and a writer lays a ramp of the other curve down bar by bar.
+- **A point carrying a time signature starts a new measure, and Reaper pads the partial bar before it**: with 3/4 from 8 s and a point at 20 s (16 beats later, a third of a bar into bar 10) stamped 3/4, Reaper counted 34 quarter notes at 20 s instead of 32 and put the marker at measure 10; the same point with no time signature (`PT 20 60 1 0 0 0`, the marker reading -1/-1) counted 32. Dawn's writer now stamps the signature only on the first point and where the meter changes, as Reaper's own `(denominator << 16) | numerator` with the "0 1" flag after it.
+- **`TimeMap2_timeToBeats` returns beats within the measure, the measure, its length, then the full beat count, then the denominator**; `TimeMap2_timeToQN` is the plain quarter-note count and the one to compare across meters.
+
 ## Reaper's mute, send and master envelopes, from a rendered probe (2026-10-22)
 
 From a probe project rendered by Reaper 7.82 under Xvfb (a sine item with a `<MUTEENV`, a receive with an `<AUXVOLENV`, a `<MASTERVOLENV`), for the wider automation (utils/rpp.ts, utils/rppRead.ts).

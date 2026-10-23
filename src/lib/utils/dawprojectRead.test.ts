@@ -489,7 +489,6 @@ describe("sample rates", () => {
 		expect(read.fixed).toEqual([
 			"Tempo 100.000167 read as 100",
 			"No time signature: 4/4 assumed",
-			"Tempo ramps read as steps",
 			"Input/Output: an empty folder, skipped",
 			"Colors with an alpha byte, read as six digits",
 			"Colors outside Dawn's palette, left uncolored",

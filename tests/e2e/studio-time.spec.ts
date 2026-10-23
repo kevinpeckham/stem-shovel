@@ -48,6 +48,20 @@ test.describe("Dawn time", () => {
 		// The grid follows: a beat is a second from 4 s on, so 5.4 snaps to 5; the readout at 6 s is bar 3, beat 3.
 		expect(await hooked(page, ([w]) => w.__studio.snap(5.4))).toBe(5);
 		expect(await hooked(page, ([w]) => w.__studio.snap(1.4))).toBe(1.5);
+		// R on the flag makes the change a ramp: the tempo slides from 120 down to 60 over the first four seconds,
+		// so halfway through them it is between, and the beats across them are fewer than at 120.
+		await page.getByRole("button", { name: "Tempo change to 60 bpm at 0:04.0" }).press("r");
+		await expect(
+			page.getByRole("button", { name: "Tempo ramp to 60 bpm at 0:04.0" }),
+		).toBeVisible();
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tempoChanges)).toEqual([
+			{ start: 4, bpm: 60, ramp: "beats" },
+		]);
+		expect(await hooked(page, ([w]) => w.__studio.snap(1.4))).not.toBe(1.5);
+		await page.getByRole("button", { name: "Tempo ramp to 60 bpm at 0:04.0" }).press("r");
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tempoChanges)).toEqual([
+			{ start: 4, bpm: 60 },
+		]);
 		await hooked(page, ([w]) => w.__studio.seek(6));
 		await expect(page.getByText("3 | 3")).toBeVisible();
 

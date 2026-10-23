@@ -2,6 +2,9 @@ import { STEM_TINTS } from "#lib/constants/stemTints.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
 import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
+import { studioGrid } from "./studioGrid";
+import { tempoPointsToSeconds } from "./tempoPointsToSeconds";
+import { secondsAfterBeats } from "#lib/audio/measures.js";
 import {
 	MAX_STUDIO_CLIPS,
 	MAX_STUDIO_MARKERS,
@@ -120,30 +123,25 @@ export function readDawproject(
 			fix(`Time signature ${numerator}/${denominator} read as ${beatsPerBar}/4`);
 	}
 	const arrangementEl = kid(root, "Arrangement");
-	/** Tempo steps by beat, the song's own first; a tempo automation's points become steps (Dawn's map is steps). */
-	const tempoSteps: { beat: number; bpm: number }[] = [{ beat: 0, bpm }];
+	/**
+	 * The tempo automation's points by beat, the song's own tempo first; a point interpolated "linear" ramps
+	 * to the next (Dawn keeps the ramp, linear over the beats). Two points on one beat are a jump: the later counts.
+	 */
+	const tempoPoints: { beat: number; bpm: number; ramp?: boolean }[] = [{ beat: 0, bpm }];
 	for (const p of kids(kid(arrangementEl, "TempoAutomation"), "RealPoint")) {
-		const beat = num(p, "time", 0);
+		const beat = Math.max(0, num(p, "time", 0));
 		const value = clamp(round2(num(p, "value", bpm)), 30, 300);
-		if (beat > 0 && attr(p, "interpolation") === "linear") fix("Tempo ramps read as steps");
-		if (beat <= 0) tempoSteps[0] = { beat: 0, bpm: value };
-		else tempoSteps.push({ beat, bpm: value });
+		tempoPoints.push({ beat, bpm: value, ramp: attr(p, "interpolation") === "linear" });
 	}
-	tempoSteps.sort((a, b) => a.beat - b.beat);
-	// Two points on one beat (a jump, written as a ramp of no length): the later one is the step; the ruler keys its flags by time.
-	for (let i = tempoSteps.length - 1; i > 0; i--)
-		if (tempoSteps[i]!.beat === tempoSteps[i - 1]!.beat) tempoSteps.splice(i - 1, 1);
-	const beatsToSeconds = (beats: number): number => {
-		let s = 0;
-		for (let i = 0; i < tempoSteps.length; i++) {
-			const step = tempoSteps[i]!;
-			const next = tempoSteps[i + 1];
-			const end = next && next.beat < beats ? next.beat : beats;
-			if (end > step.beat) s += ((end - step.beat) * 60) / step.bpm;
-			if (!next || next.beat >= beats) break;
-		}
-		return s;
-	};
+	const tempoMap = tempoPointsToSeconds(tempoPoints);
+	const tempoSteps = tempoMap;
+	if (tempoMap.some((c) => c.ramp)) fix("Tempo ramps kept, linear over the beats");
+	const tempoGrid = studioGrid({
+		bpm: tempoMap[0]!.bpm,
+		beatsPerBar: 4,
+		tempoChanges: tempoMap.slice(1),
+	});
+	const beatsToSeconds = (beats: number): number => secondsAfterBeats(tempoGrid, 0, beats);
 	let beatsUsed = false;
 	const toSeconds = (v: number, unit: TimeUnit) => {
 		if (unit !== "beats") return v;
@@ -653,11 +651,11 @@ export function readDawproject(
 	}
 
 	// ── Tempo and meter changes on the ruler ─────────────────────────────
-	// The tempo map's steps, and any tempo points the lanes carried (a point at zero is the song's own tempo).
+	// The tempo map's changes and ramps, and any tempo points the lanes carried (a point at zero is the song's own tempo).
 	const atZero = laneTempo.find((c) => c.start === 0);
-	if (atZero && tempoSteps.length === 1) tempoSteps[0] = { beat: 0, bpm: atZero.bpm };
+	if (atZero && tempoSteps.length === 1) tempoSteps[0] = { start: 0, bpm: atZero.bpm };
 	const tempoChanges = [
-		...tempoSteps.slice(1).map((s) => ({ start: seconds(beatsToSeconds(s.beat)), bpm: s.bpm })),
+		...tempoSteps.slice(1).map((s) => ({ ...s, start: seconds(s.start) })),
 		...laneTempo,
 	]
 		.sort((a, b) => a.start - b.start)

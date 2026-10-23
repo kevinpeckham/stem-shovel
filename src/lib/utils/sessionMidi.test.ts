@@ -114,6 +114,22 @@ describe("sessionMidi", () => {
 			{ at: 8, name: "Bridge" },
 		]);
 	});
+	it("writes a tempo ramp as the tempo at every beat line inside it, its own point last", async () => {
+		const blob = sessionMidi(
+			{ ...arrangement, tempoChanges: [{ start: 8, bpm: 90, ramp: "time" }] },
+			"Ramp",
+		);
+		const m = parseMidi(new Uint8Array(await blob.arrayBuffer()).buffer);
+		const tempos = m.tempos!;
+		expect(tempos[0]).toEqual({ at: 0, bpm: 120 });
+		expect(tempos.at(-1)!.bpm).toBe(90);
+		expect(tempos.at(-1)!.at).toBeCloseTo(8, 3);
+		// Eight seconds from 120 down to 90, linear in seconds: 14 beats, a tempo event on each, each slower than the last.
+		expect(tempos.length).toBe(15);
+		expect(tempos.every((t, i) => i === 0 || t.bpm < tempos[i - 1]!.bpm)).toBe(true);
+		expect(tempos[7]!.bpm).toBeCloseTo(120 - (30 * tempos[7]!.at) / 8, 1);
+	});
+
 	it("lays the notes at their seconds through the tempo map, the drums on channel 10", async () => {
 		const m = parseMidi(await sessionMidi(arrangement, "Song").arrayBuffer());
 		const notes = m.notes.map((n) => [

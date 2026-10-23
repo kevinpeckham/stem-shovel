@@ -69,6 +69,7 @@ const fake = vi.hoisted(() => {
 			return engine.arrangement.meterChanges ?? [];
 		},
 		setTempoChange: vi.fn(),
+		setTempoRamp: vi.fn(),
 		addClipFromSource: vi.fn(() => ({ id: "dropped" })),
 		removeTempoChange: vi.fn(),
 		setMeterChange: vi.fn(),
@@ -928,6 +929,15 @@ describe("StudioTimeline: editing depth (D4)", () => {
 });
 
 describe("StudioTimeline: the tempo map (D5)", () => {
+	test("a ramp's flag says so, and R makes it a step again", async () => {
+		fake.arrangement.tempoChanges = [{ start: 4, bpm: 60, ramp: "beats" }];
+		render(StudioTimeline);
+		const ramp = screen.getByRole("button", { name: "Tempo ramp to 60 bpm at 0:04.0" });
+		expect(ramp).toHaveTextContent("⟋60");
+		await fireEvent.keyDown(ramp, { key: "r" });
+		expect(fake.setTempoRamp).toHaveBeenLastCalledWith(4, null);
+	});
+
 	test("the ruler's bars follow a tempo change, and the change is a flag that edits and removes", async () => {
 		const user = userEvent.setup();
 		fake.arrangement.tempoChanges = [{ start: 4, bpm: 60 }];
@@ -946,6 +956,9 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		expect(fake.removeTempoChange).toHaveBeenCalledWith(4);
 		// The selection's own Delete did not fire.
 		expect(fake.deleteClips).not.toHaveBeenCalled();
+		// R makes the change a ramp (over the beats).
+		await fireEvent.keyDown(flag, { key: "r" });
+		expect(fake.setTempoRamp).toHaveBeenCalledWith(4, "beats");
 		const meter = screen.getByRole("button", { name: "Meter change to 3 beats a bar at 0:08.0" });
 		expect(meter).toHaveTextContent("3/4");
 		await fireEvent.keyDown(meter, { key: "Backspace" });

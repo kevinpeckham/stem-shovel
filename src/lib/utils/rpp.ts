@@ -1,8 +1,10 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
-import { beatsBetween } from "#lib/audio/measures.js";
+import { beatsBetween, beatsPerBarAt } from "#lib/audio/measures.js";
 import { sendLaneKey } from "#lib/constants/studioInserts.js";
 import { clipLaneEvents } from "./clipLaneEvents";
+import { tempoPointsGrid } from "./tempoPointsGrid";
+import { tempoPointsOf } from "./tempoPointsOf";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { clipSegments } from "./clipSegments";
 import { studioGrid } from "./studioGrid";
@@ -49,7 +51,11 @@ export function rppProject(input: RppProjectInput): string {
 	const q = (s: string) => `"${s.replace(/["\r\n]/g, " ")}"`;
 	const lines: string[] = [];
 	const out = (depth: number, s: string) => lines.push(`${"  ".repeat(depth)}${s}`);
-	const grid = studioGrid(a);
+	// The tempo map as Reaper's points (a ramp over the beats going out bar by bar), and the grid Reaper will make of
+	// them: the MIDI ticks below go through that grid, so each note lands at its second once Reaper applies the map.
+	const meterChanges = (a.meterChanges ?? []).filter((c) => c.start > 0);
+	const points = tempoPointsOf(studioGrid(a), a.bpm, a.tempoChanges ?? [], "time", meterChanges);
+	const grid = tempoPointsGrid(points, "time", a);
 
 	out(
 		0,
@@ -65,27 +71,23 @@ export function rppProject(input: RppProjectInput): string {
 	out(1, ">");
 	if (a.sampleRate) out(1, `SAMPLERATE ${a.sampleRate} 0 0`);
 	out(1, `TEMPO ${num(a.bpm)} ${a.beatsPerBar} 4 0`);
-	// The tempo map: every tempo and meter change as a held point, the time signature on each as (4 << 16) | beats.
-	const changes = new Map<number, { bpm?: number; beatsPerBar?: number }>();
-	for (const c of a.tempoChanges ?? [])
-		if (c.start > 0) changes.set(c.start, { ...changes.get(c.start), bpm: c.bpm });
-	for (const c of a.meterChanges ?? [])
-		if (c.start > 0) changes.set(c.start, { ...changes.get(c.start), beatsPerBar: c.beatsPerBar });
-	if (changes.size) {
+	// The tempo map: a point per tempo and meter change, the time signature as (4 << 16) | beats on the first point and
+	// where the meter changes only (a point carrying one starts a measure in Reaper, which pads the bar before a point
+	// off a bar line; FINDINGS.md). A point's shape 0 ramps the tempo linearly in seconds to the next point (Reaper's own curve).
+	if (points.length > 1) {
 		out(1, "<TEMPOENVEX");
 		out(2, "ACT 1 -1");
 		out(2, "VIS 1 0 1");
 		out(2, "ARM 0");
 		out(2, "DEFSHAPE 1 -1 -1");
-		let bpm = a.bpm;
-		let beatsPerBar = a.beatsPerBar;
-		const sig = () => (4 << 16) | beatsPerBar;
 		// Reaper takes the time signature on a point only with the flag after it (its own files carry "0 1").
-		out(2, `PT 0 ${num(bpm)} 1 ${sig()} 0 1`);
-		for (const [start, c] of [...changes].sort((x, y) => x[0] - y[0])) {
-			if (c.bpm !== undefined) bpm = c.bpm;
-			if (c.beatsPerBar !== undefined) beatsPerBar = c.beatsPerBar;
-			out(2, `PT ${num(start)} ${num(bpm)} 1 ${sig()} 0 1`);
+		for (const p of points) {
+			const meter = beatsPerBarAt(grid, p.start);
+			const stamped = p.start === 0 || meterChanges.some((m) => m.start === p.start);
+			out(
+				2,
+				`PT ${num(p.start)} ${num(p.bpm)} ${p.linear ? 0 : 1} ${stamped ? (4 << 16) | meter : 0} 0 ${stamped ? 1 : 0}`,
+			);
 		}
 		out(1, ">");
 	}

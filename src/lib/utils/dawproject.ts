@@ -3,6 +3,8 @@ import { STUDIO_FADER_MAX } from "#lib/constants/studio.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import { beatsBetween } from "#lib/audio/measures.js";
 import { parseLaneKey } from "./automationLanes";
+import { tempoPointsGrid } from "./tempoPointsGrid";
+import { tempoPointsOf } from "./tempoPointsOf";
 import { clipLaneEvents } from "./clipLaneEvents";
 import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
@@ -316,18 +318,21 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 		for (const m of markers) out(`      <Marker time="${num(m.t)}" name="${esc(m.name)}"/>`);
 		out("    </Markers>");
 	}
-	const grid = studioGrid(a);
-	const beat = (seconds: number) => beatsBetween(grid, 0, seconds);
 	const tempoChanges = (a.tempoChanges ?? [])
 		.filter((c) => c.start > 0)
 		.sort((x, y) => x.start - y.start);
+	// A point's interpolation runs from it to the next: "linear" before a ramp. A ramp that is linear in seconds
+	// (Reaper's kind) is laid down as a point per bar line, each linear to the next, which follows it closely; the
+	// beats below go through the grid those points make, so they land where the DAW will put them.
+	const tempoPoints = tempoPointsOf(studioGrid(a), a.bpm, tempoChanges);
+	const grid = tempoPointsGrid(tempoPoints, "beats", a);
+	const beat = (seconds: number) => beatsBetween(grid, 0, seconds);
 	if (tempoChanges.length) {
 		out(`    <TempoAutomation unit="bpm" timeUnit="beats" id="${id("tempoauto")}">`);
 		out(`      <Target parameter="${tempoId}"/>`);
-		out(`      <RealPoint time="0.000000" value="${num(a.bpm)}" interpolation="hold"/>`);
-		for (const c of tempoChanges)
+		for (const p of tempoPoints)
 			out(
-				`      <RealPoint time="${num(beat(c.start))}" value="${num(c.bpm)}" interpolation="hold"/>`,
+				`      <RealPoint time="${num(beat(p.start))}" value="${num(p.bpm)}" interpolation="${p.linear ? "linear" : "hold"}"/>`,
 			);
 		out("    </TempoAutomation>");
 	}

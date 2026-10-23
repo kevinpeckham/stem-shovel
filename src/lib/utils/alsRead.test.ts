@@ -210,6 +210,8 @@ const set = `<?xml version="1.0" encoding="UTF-8"?>
 					<FloatEvent Id="0" Time="-63072000" Value="120" />
 					<FloatEvent Id="1" Time="16" Value="120" />
 					<FloatEvent Id="2" Time="16" Value="90" />
+					<FloatEvent Id="3" Time="32" Value="90" />
+					<FloatEvent Id="4" Time="40" Value="60" />
 				</Events></Automation>
 			</AutomationEnvelope>
 			<AutomationEnvelope Id="1">
@@ -275,14 +277,21 @@ describe("readAls", () => {
 				{ t: 13.333333, v: 1 },
 			],
 		});
-		// Beat 16 at 120 bpm is 8 s; from there 90 bpm and 3/4.
-		expect(a.tempoChanges).toEqual([{ start: 8, bpm: 90 }]);
+		// Beat 16 at 120 bpm is 8 s; from there 90 bpm and 3/4, held to beat 32 (18.67 s), then a ramp down to 60 over
+		// the next eight beats (Live draws its tempo lane as lines between the points): 8 × 60 × ln(60/90) / (60 − 90)
+		// = 6.4874 s long. The point the ramp leaves from stays, though it repeats the tempo.
+		expect(a.tempoChanges).toEqual([
+			{ start: 8, bpm: 90 },
+			{ start: 18.666667, bpm: 90 },
+			{ start: 25.154108, bpm: 60, ramp: "beats" },
+		]);
+		expect(read.fixed).toContain("Tempo ramps kept, linear over the beats");
 		expect(a.meterChanges).toEqual([{ start: 8, beatsPerBar: 3 }]);
 		expect(a.markers!.map((m) => [m.t, m.name])).toEqual([
 			[0, "Intro"],
 			[8, "Verse"],
 		]);
-		expect(read.fixed).toContain("Tempo automation read as steps at its points");
+		expect(read.fixed).not.toContain("Tempo automation read as steps at its points");
 	});
 
 	it("reads the tracks with their levels, pans, mutes, colors and envelopes; a group and the returns as buses; the routing and sends", () => {

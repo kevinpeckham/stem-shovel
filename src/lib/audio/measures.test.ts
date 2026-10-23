@@ -3,6 +3,11 @@ import { describe, expect, test } from "vite-plus/test";
 import {
 	barAt,
 	barGrid,
+	beatsBetween,
+	secondsAfterBeats,
+	tempoAt,
+	tempoSteadyAcross,
+	type BarGrid,
 	formatBarSpan,
 	formatPosition,
 	parsePosition,
@@ -243,5 +248,66 @@ describe("formatBarSpan", () => {
 		expect(formatBarSpan(grid, 0, 2)).toBe("1 bar");
 		expect(formatBarSpan(grid, 0, 0.5)).toBe("1 beat");
 		expect(formatBarSpan(grid, 3, 3)).toBe("0 bars");
+	});
+});
+
+describe("tempo ramps", () => {
+	// 120 to 60 over the first eight seconds, linear in seconds: Reaper's curve, probed in Reaper 7.82 (FINDINGS.md).
+	const inTime: BarGrid = {
+		tempos: [
+			{ start: 0, bpm: 120 },
+			{ start: 8, bpm: 60, ramp: "time" },
+		],
+		meters: [{ start: 0, beatsPerBar: 4 }],
+		startAt: 0,
+	};
+	test("linear in seconds: the mean tempo times the span, the tempo halfway is the mean", () => {
+		expect(beatsBetween(inTime, 0, 8)).toBeCloseTo(12, 9);
+		expect(tempoAt(inTime, 4)).toBe(90);
+		expect(tempoAt(inTime, 2)).toBe(105);
+		expect(tempoAt(inTime, 8)).toBe(60);
+		expect(tempoAt(inTime, 20)).toBe(60);
+		// Reaper's own numbers for the same ramp: beat 4 at 2.14359 s, beat 8 at 4.68629 s, beat 12 at 8 s.
+		expect(secondsAfterBeats(inTime, 0, 4)).toBeCloseTo(2.14359, 4);
+		expect(secondsAtBar(inTime, 3)).toBeCloseTo(4.68629, 4);
+		expect(secondsAtBar(inTime, 4)).toBeCloseTo(8, 9);
+		expect(secondsAtBar(inTime, 5)).toBeCloseTo(12, 9);
+		expect(barAt(inTime, 4.68629)).toEqual({ bar: 3, beat: 1, fraction: 0 });
+	});
+	test("linear in beats: each beat a little longer than the last, exponential in seconds", () => {
+		const inBeats: BarGrid = {
+			...inTime,
+			tempos: [
+				{ start: 0, bpm: 120 },
+				{ start: 8, bpm: 60, ramp: "beats" },
+			],
+		};
+		// The beats over the ramp: its length over the log mean of the tempos (8 s at 86.56 bpm).
+		expect(beatsBetween(inBeats, 0, 8)).toBeCloseTo((8 * 60) / (60 * Math.log(2)), 9);
+		expect(tempoAt(inBeats, 4)).toBeCloseTo(120 * Math.SQRT1_2, 9);
+		const b = beatsBetween(inBeats, 1, 5);
+		expect(secondsAfterBeats(inBeats, 1, b)).toBeCloseTo(5, 9);
+		expect(secondsAfterBeats(inBeats, 5, -b)).toBeCloseTo(1, 9);
+		expect(beatsBetween(inBeats, 0, secondsAtBar(inBeats, 3))).toBeCloseTo(8, 9);
+	});
+	test("a ramp over a span and backwards agree, across its end into the held tempo", () => {
+		const b = beatsBetween(inTime, 6, 10);
+		expect(b).toBeCloseTo(((75 + 60) / 2) * (2 / 60) + 2, 9);
+		expect(secondsAfterBeats(inTime, 6, b)).toBeCloseTo(10, 9);
+		expect(secondsAfterBeats(inTime, 10, -b)).toBeCloseTo(6, 9);
+		expect(tempoSteadyAcross(inTime, 2, 3)).toBe(false);
+		expect(tempoSteadyAcross(inTime, 8, 12)).toBe(true);
+		expect(tempoSteadyAcross(inTime, 9, 12)).toBe(true);
+	});
+	test("a ramp to the same tempo, or to a change at the same second, is a step", () => {
+		const flat: BarGrid = {
+			...inTime,
+			tempos: [
+				{ start: 0, bpm: 120 },
+				{ start: 8, bpm: 120, ramp: "time" },
+			],
+		};
+		expect(beatsBetween(flat, 0, 8)).toBe(16);
+		expect(tempoAt(flat, 4)).toBe(120);
 	});
 });
