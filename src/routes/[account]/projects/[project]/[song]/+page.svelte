@@ -471,6 +471,11 @@
 		try {
 			const made = await importSongStems({ songId: data.song.id });
 			notify(`${made.tracks} ${made.tracks === 1 ? "stem" : "stems"} loaded into Dawn`);
+			if (made.left)
+				notify(
+					`${made.left} ${made.left === 1 ? "stem" : "stems"} left behind: a Dawn song holds at most ${made.tracks} tracks`,
+					{ kind: "error" },
+				);
 			await goto(`/multitrack-recorder?song=${made.ideaId}`);
 		} catch (e) {
 			notify(`Could not load the stems into Dawn: ${errorMessage(e)}`, { kind: "error" });

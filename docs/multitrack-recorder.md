@@ -133,7 +133,7 @@ song's menu removes files no revision references.
 Times are seconds (a tenth of a millisecond, as song sections are);
 `offset` is where in the source the clip begins; a split makes two clips
 with offsets `o` and `o + (t − start)`; a trim moves `start`/`offset`/
-`duration` only. Caps: 16 tracks, 400 clips, 64 sources, a 15-minute
+`duration` only. Caps: 64 tracks, 1000 clips, 64 sources, a 15-minute
 song (`MAX_TAKE_SECONDS`), `MAX_TAKE_BYTES` per source, counted against
 the account's storage like takes.
 
@@ -626,8 +626,8 @@ so old arrangements play unchanged and the schema's `version` stays 1.
 
 **Buses** (`StudioBusSchema`: id, name, `colour`, gain, pan, muted,
 inserts, automation, and since "Folder tracks" below `output` and
-`folder`) live on `arrangement.buses`, up to `MAX_STUDIO_BUSES` (16
-since groups became buses on 2026-10-23; 8 before),
+`folder`) live on `arrangement.buses`, up to `MAX_STUDIO_BUSES` (32
+since 2026-10-23; 8 before groups became buses),
 and feed the master or another bus; a track's `output` names a bus (or
 is unset for the master) and its `sends` (`{bus, level, pre?}`) feed
 buses beside its output. The master carries `masterInserts`. The
@@ -1306,11 +1306,28 @@ the format's own folders. Items on a Reaper folder are still dropped (a
 group holds no clips, as in Logic, Live and Bitwig).
 
 Groups share the bus ceiling, so `MAX_STUDIO_BUSES` went from 8 to 16
-(`constants/studioInserts.ts`), the track count: a nested Reaper or
-Bitwig project with a folder per section and a few returns passed eight
-at once. The sends cap follows it (one send per bus). No migration: the
-arrangement is a document on the song, and a higher ceiling accepts
-every song the lower one did.
+(`constants/studioInserts.ts`): a nested Reaper or Bitwig project with
+a folder per section and a few returns passed eight at once. The sends
+cap follows it (one send per bus). No migration: the arrangement is a
+document on the song, and a higher ceiling accepts every song the lower
+one did. The same day the caps moved again ("Caps" below).
+
+## Caps (2026-10-23)
+
+The track count was the plan's sizing guess (16, "Open questions" 7)
+and the stem player's own cap had long since gone (256 stems a song as
+a sanity bound), so a song with twenty stems opened in Dawn with four
+left behind and no word of it. Now `MAX_STUDIO_TRACKS` is 64, the same
+as `MAX_STUDIO_SOURCES` (one recording a track is the common case),
+`MAX_STUDIO_CLIPS` 1000 and `MAX_STUDIO_BUSES` 32. The real ceiling is
+decoded audio in memory (a 15-minute stereo recording at 48 kHz is some
+345 MB of samples), which the readout shows; a track costs a strip of a
+few nodes and a meter read a frame, and the timeline scrolls inside its
+box with groups to fold a big session. The readers' drop notes count
+from the constants. The two bridges from a song's stems into Dawn
+(`utils/studioFromStems.ts` in the browser, `importSongStemsIntoStudio` on the
+server) say how many stems they left behind when a song has more than
+the cap, instead of dropping them silently.
 
 Tests: `studioRows.test.ts`, `busDescendants.test.ts`, the timeline's
 and the mixer's component tests, the nested cases in `rpp.test.ts`,

@@ -6427,14 +6427,15 @@ export async function importSongStemsIntoStudio(
 	accountId: string,
 	userId: string,
 	songId: string,
-): Promise<{ ideaId: string; tracks: number } | "empty" | null> {
+): Promise<{ ideaId: string; tracks: number; left: number } | "empty" | null> {
 	const s = await db.query.song.findFirst({
 		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
 		columns: { id: true, title: true, changes: true },
 		with: { stems: { orderBy: [asc(stem.sortOrder), asc(stem.createdAt)] } },
 	});
 	if (!s) return null;
-	const stems = s.stems.filter((st) => st.status === "ready" && st.url).slice(0, MAX_STUDIO_TRACKS);
+	const ready = s.stems.filter((st) => st.status === "ready" && st.url);
+	const stems = ready.slice(0, MAX_STUDIO_TRACKS);
 	if (stems.length === 0) return "empty";
 	const made = await createIdea(accountId, userId, s.title, "song");
 	const tracks: StudioArrangement["tracks"] = [];
@@ -6499,7 +6500,8 @@ export async function importSongStemsIntoStudio(
 		clips,
 	};
 	await saveStudioRevision(accountId, userId, made.id, `Stems of ${s.title}`, data);
-	return { ideaId: made.id, tracks: tracks.length };
+	// `left`: stems past the track cap, so the page can say so (docs/multitrack-recorder.md "Caps").
+	return { ideaId: made.id, tracks: tracks.length, left: ready.length - stems.length };
 }
 
 /** The source reserved under a pathname, for the upload handler's ownership check and token (ideas are the user's own). */

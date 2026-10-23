@@ -29,8 +29,15 @@ export function studioFromStems(song: {
 	title: string;
 	changes: SongChange[];
 	stems: ManifestStem[];
-}): { title: string; current: StudioArrangement; sources: StudioSourceView[] } | null {
-	const stems = song.stems.filter((st) => st.url).slice(0, MAX_STUDIO_TRACKS);
+}): {
+	title: string;
+	current: StudioArrangement;
+	sources: StudioSourceView[];
+	/** Stems past the track cap, left behind (docs/multitrack-recorder.md "Caps"). */
+	left: number;
+} | null {
+	const withUrl = song.stems.filter((st) => st.url);
+	const stems = withUrl.slice(0, MAX_STUDIO_TRACKS);
 	if (stems.length === 0) return null;
 	const tracks: StudioArrangement["tracks"] = [];
 	const clips: StudioArrangement["clips"] = [];
@@ -80,6 +87,7 @@ export function studioFromStems(song: {
 	}
 	return {
 		title: song.title,
+		left: withUrl.length - stems.length,
 		current: {
 			version: 1,
 			...songChangesToStudio(song.changes),

@@ -8,10 +8,16 @@ import { MAX_TAKE_SECONDS } from "./takeLimits";
  * JSON stays small enough to snapshot on every edit.
  */
 
-/** Tracks a song may hold. */
-export const MAX_STUDIO_TRACKS = 16;
-/** Clips across every track. */
-export const MAX_STUDIO_CLIPS = 400;
+/**
+ * Tracks a song may hold: as many as its recordings (`MAX_STUDIO_SOURCES`),
+ * since one recording a track is the common case; decoded audio in memory
+ * is the real ceiling, and the page shows it (16 until 2026-10-23, when the
+ * stem player's own cap had long been lifted; docs/multitrack-recorder.md
+ * "Caps").
+ */
+export const MAX_STUDIO_TRACKS = 64;
+/** Clips across every track: a handful a track at the track count. */
+export const MAX_STUDIO_CLIPS = 1000;
 /** Markers on the ruler (D4). */
 export const MAX_STUDIO_MARKERS = 64;
 /** Audio files (takes and imports) a song may keep. */

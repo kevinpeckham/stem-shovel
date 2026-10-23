@@ -134,4 +134,4 @@ The song's menu has **Download mix (WAV)**, the whole song with every fader, pan
 
 ## Limits
 
-A song holds up to 16 tracks and 64 recordings, each up to 15 minutes. The screen shows how much decoded audio the page holds; only the recordings the song plays are decoded, the rest wait on the server until a clip, a take or the sampler asks for them, and **Unload recordings nothing plays** in the song's menu drops what no clip uses. A phone has far less room than a laptop, so keep phone sessions short and record in mono where a single channel will do.
+A song holds up to 64 tracks and 64 recordings, each up to 15 minutes, and up to 32 buses and groups. The screen shows how much decoded audio the page holds; only the recordings the song plays are decoded, the rest wait on the server until a clip, a take or the sampler asks for them, and **Unload recordings nothing plays** in the song's menu drops what no clip uses. A phone has far less room than a laptop, so keep phone sessions short and record in mono where a single channel will do.

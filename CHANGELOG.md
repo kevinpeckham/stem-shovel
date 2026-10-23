@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Changed
+
+- **Bigger songs in Dawn.** A song holds up to 64 tracks (from 16), 1000 clips (from 400) and 32 buses and groups (from 16); the amount of audio in memory, which the readout shows, is the real limit. Opening a song's stems in Dawn now says when stems were left behind instead of dropping them quietly.
+
 ## [0.152.0] - 2026-10-23
 
 ### Added

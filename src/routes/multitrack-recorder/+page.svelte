@@ -2129,7 +2129,7 @@
 						title="A group: a row that holds tracks and folds them away, with a bus of its own in the mixer (a track joins from its menu)"
 						onclick={() => {
 							if (!studio.addGroup())
-								notify("A song holds at most sixteen buses and groups", { kind: "error" });
+								notify("A song holds at most thirty-two buses and groups", { kind: "error" });
 						}}
 					>
 						<span class="i-ph-folder-simple" aria-hidden="true"></span> Add group
