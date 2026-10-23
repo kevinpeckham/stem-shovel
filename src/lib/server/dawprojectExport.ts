@@ -3,11 +3,13 @@ import {
 	dawprojectExportJob,
 	failFile,
 	finishDawprojectFile,
+	songExportMetadata,
 	studioExportInput,
 	type DawprojectAudio,
 } from "#lib/server/data.js";
 import { notifyDawprojectExport } from "#lib/server/notifications.js";
 import { accessOfPathname } from "#lib/server/relocate.js";
+import { SITE_ORIGIN } from "#lib/server/siteOrigin.js";
 import { dawproject, type DawprojectAudio as DawprojectAudioFile } from "#lib/utils/dawproject.js";
 import ffmpegPath from "ffmpeg-static";
 import { strToU8, zipSync, type Zippable } from "fflate";
@@ -105,8 +107,16 @@ export async function renderDawprojectExport(fileId: string): Promise<void> {
 				channels: s.channels,
 			});
 		}
+		// The song page's people and address, with the Dawn song's notes as the comment (docs/multitrack-recorder.md "Song metadata in the files").
+		const meta = job.songId ? await songExportMetadata(job.accountId, job.songId) : null;
+		const { path, ...people } = meta ?? { path: "" };
 		const { project, metadata } = dawproject({
 			title,
+			metadata: {
+				...people,
+				...(path ? { website: `${SITE_ORIGIN}${path}` } : {}),
+				comment: input.notes.trim().slice(0, 2000),
+			},
 			arrangement: a,
 			audio,
 			application: { name: "Stem Shovel Dawn", version: __APP_VERSION__ },

@@ -784,6 +784,14 @@ belong in CLAUDE.md or docs/, not here.
 
 `typescript@7.0.2` on npm is the Go compiler: a `tsc` binary per platform (`@typescript/typescript-linux-x64` and sixteen siblings) and not the JavaScript API that tooling loads. With it installed, `bun run check` and `bun run lint` both died before doing anything, in Vite's config hook ("Cannot read properties of undefined (reading 'readFile')": something in SvelteKit's or vite-plugin-svelte's config resolution reaches for `ts.sys`, which is not there). The peer ranges say as much: svelte-check 4.7.7 wants `^5 || ^6`, @sveltejs/kit 3.1 `^6`; only vite-plus's core admits `^7`. Reverted to 6.0.3. Try again when svelte-check and kit declare 7 in their peers (`npm view svelte-check peerDependencies`).
 
+## Reaper's tempo is quarter notes a minute in any time signature; the transport shows the "divided" one (2026-10-23)
+
+From a probe (a project with `TEMPO 120 6 8` and a tempo point carrying `(8 << 16) | 6`, opened in Reaper 7.82 under Xvfb and read through the API), for Dawn's time-signature denominators (utils/rpp.ts, utils/rppRead.ts).
+
+- **`TEMPO` and the `PT` points store the quarter-note tempo.** At 120 in 6/8, `TimeMap2_timeToQN(0, 1.5)` is 3: 120 quarter notes a minute, a 6/8 measure three of them (1.5 s; `TimeMap2_beatsToTime(0, 0, 1)` = 1.5).
+- **`TimeMap2_GetDividedBpmAtTime` is 240 there**: the tempo in beats of the bottom number, which is what Reaper's transport displays ("240" for that 6/8). `TimeMap_GetTimeSigAtTime` returns 120, the stored tempo, with 6/8.
+- So a DAW-style tempo (Live, Bitwig, a MIDI file and Dawn all count quarter notes) goes into an `.rpp` unscaled whatever the signature, and the `(denominator << 16) | numerator` on a point carries the bottom number.
+
 ## Reaper's play rate, start offset and stretch markers, from a probe (2026-10-23)
 
 From `bun run interop:rpp` opening Dawn's project in Reaper 7.82 and reading the items back through the API (`GetMediaItemTakeInfo_Value`, `GetTakeStretchMarker`), for Dawn's clip warps (utils/rpp.ts, utils/rppRead.ts).

@@ -17,6 +17,8 @@ import { startLookahead } from "./lookahead";
 class MetronomeEngine {
 	bpm = $state(120);
 	beatsPerBar = $state(4);
+	/** The note a beat is (the time signature's bottom number; Dawn's "Time-signature denominators"): the tempo stays in quarter notes, so a beat of 6/8 at 120 is half as long. Not remembered; 4 unless a song sets it. */
+	beatUnit = $state(4);
 	/** The session swing (docs/audio-engine.md, "One tempo for the page"), 0 straight to 1 a triplet feel: the drums and the chord player follow it and set it; the click itself stays straight. */
 	swing = $state(0);
 	running = $state(false);
@@ -79,7 +81,7 @@ class MetronomeEngine {
 			this.#click(this.#nextTime, b === 0);
 			const delay = Math.max(0, (this.#nextTime - ctx.currentTime) * 1000);
 			this.#visualTimers.push(setTimeout(() => (this.beat = b), delay));
-			this.#nextTime += 60 / this.bpm;
+			this.#nextTime += 60 / ((this.bpm * 4) / this.beatUnit);
 			this.#nextBeat = (b + 1) % this.beatsPerBar;
 		}
 		this.#visualTimers = this.#visualTimers.slice(-16);
@@ -134,6 +136,10 @@ class MetronomeEngine {
 		this.beatsPerBar = n;
 		this.#nextBeat = 0;
 		this.#save();
+	}
+	/** The note a beat is, from a song's meter (2, 4, 8 or 16); the click's spacing follows from the next beat on. */
+	setBeatUnit(unit: number) {
+		this.beatUnit = [2, 4, 8, 16].includes(unit) ? unit : 4;
 	}
 	/** Tap tempo: the average of the last taps sets the tempo. */
 	tap() {

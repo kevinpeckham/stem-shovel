@@ -4,6 +4,7 @@ import {
 	barAt,
 	barGrid,
 	beatsBetween,
+	beatTempoAt,
 	secondsAfterBeats,
 	tempoAt,
 	tempoSteadyAcross,
@@ -60,6 +61,26 @@ describe("barAt", () => {
 		expect(pos(16)).toBe("6|1"); // 8 s at 60 bpm = 8 beats = 2 bars
 		expect(pos(19)).toBe("7|1"); // 3/4 from here: 3 beats a bar
 		expect(pos(20)).toBe("7|2");
+	});
+	test("a meter with a beat unit counts quarter-note tempo in beats of that note: 6/8 at 120 is a bar and a half a second", () => {
+		const g: BarGrid = {
+			tempos: [{ start: 0, bpm: 120 }],
+			meters: [
+				{ start: 0, beatsPerBar: 6, beatUnit: 8 },
+				{ start: 6, beatsPerBar: 4, beatUnit: 4 },
+			],
+			startAt: 0,
+		};
+		expect(barAt(g, 1.5)).toEqual({ bar: 2, beat: 1, fraction: 0 });
+		expect(barAt(g, 0.75)).toEqual({ bar: 1, beat: 4, fraction: 0 });
+		expect(secondsAtBar(g, 3)).toBe(3);
+		expect(secondsAtBar(g, 1, 2)).toBe(0.25);
+		expect(nextBeatAt(g, 0.1).at).toBe(0.25);
+		expect(beatTempoAt(g, 1)).toBe(240);
+		// Four bars of 6/8 by 6 s, then 4/4 at the same tempo: bar 5 opens at 6 s, bar 6 at 8 s.
+		expect(barAt(g, 6)).toEqual({ bar: 5, beat: 1, fraction: 0 });
+		expect(secondsAtBar(g, 6)).toBe(8);
+		expect(beatTempoAt(g, 7)).toBe(120);
 	});
 	test("runs through bar 0 before the start, like a DAW", () => {
 		expect(pos(0)).toBe("0|1");

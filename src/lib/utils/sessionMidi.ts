@@ -72,9 +72,11 @@ function conductorOf(
 ): MidiEvent[] {
 	const conductor: MidiEvent[] = [midiTrackName(0, title), midiTempo(0, a.bpm)];
 	for (const t of tempos) conductor.push(midiTempo(tick(t.start), t.bpm));
-	conductor.push(midiTimeSignature(0, a.beatsPerBar, 2, 24));
-	for (const c of a.meterChanges ?? [])
-		if (c.start > 0) conductor.push(midiTimeSignature(tick(c.start), c.beatsPerBar, 2, 24));
+	// The bottom number as its power of two, the click every beat of the bar (24 MIDI clocks a quarter).
+	const sig = (at: number, m: { beatsPerBar: number; beatUnit?: number }) =>
+		midiTimeSignature(at, m.beatsPerBar, Math.log2(m.beatUnit ?? 4), 96 / (m.beatUnit ?? 4));
+	conductor.push(sig(0, a));
+	for (const c of a.meterChanges ?? []) if (c.start > 0) conductor.push(sig(tick(c.start), c));
 	const keys = [{ start: 0, key: a.key ?? "" }, ...(a.keyChanges ?? []).filter((c) => c.start > 0)];
 	for (const k of keys) {
 		const sig = keySignatureOf(k.key);

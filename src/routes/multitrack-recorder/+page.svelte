@@ -1048,6 +1048,8 @@
 				options,
 				{ name: "Stem Shovel Dawn", version: __APP_VERSION__ },
 				(step) => (exportStep = step),
+				// The song's notes ride as the DAWproject's comment (docs/multitrack-recorder.md "Song metadata in the files").
+				notes.trim() ? { comment: notes.trim().slice(0, 2000) } : undefined,
 			);
 			exportResults = files;
 			if (files.length === 0) return;
@@ -1394,6 +1396,7 @@
 	/** Whether the next tempo change ramps to its tempo from the one before (a ritardando or accelerando) rather than jumping. */
 	let tempoChangeRamp = $state(false);
 	let meterChangeBeats = $state(4);
+	let meterChangeUnit = $state(4);
 	let keyChangeText = $state("");
 	function addKeyChange() {
 		const problem = songChangeValueError("key", keyChangeText);
@@ -1413,8 +1416,8 @@
 		);
 	}
 	function addMeterChange() {
-		studio.setMeterChange(studio.position, meterChangeBeats);
-		notify(`${meterChangeBeats} beats a bar from ${formatTime(studio.position)}`);
+		studio.setMeterChange(studio.position, meterChangeBeats, meterChangeUnit);
+		notify(`${meterChangeBeats}/${meterChangeUnit} from ${formatTime(studio.position)}`);
 	}
 	/** The clip's tempo from its onsets, into the song's tempo. */
 	function detectTempoOfSelected() {
@@ -1809,8 +1812,8 @@
 						</div>
 						<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2 tabular-nums">
 							<span
-								>{studio.arrangement.bpm} bpm · {studio.arrangement
-									.beatsPerBar}/4{#if studio.keyAt(studio.position)}
+								>{studio.arrangement.bpm} bpm · {studio.arrangement.beatsPerBar}/{studio.arrangement
+									.beatUnit ?? 4}{#if studio.keyAt(studio.position)}
 									· {studio.keyAt(studio.position)}{/if} · {studio.arrangement.tracks.length}
 								{studio.arrangement.tracks.length === 1 ? "track" : "tracks"} · {studio.arrangement
 									.clips.length}
@@ -2889,17 +2892,33 @@
 					onclick={() => metronome.tap()}>Tap</button
 				>
 			</div>
-			<label class="block">
-				<span class="device-button-label">Beats per bar</span>
-				<select
-					class="device-field w-full"
-					value={studio.arrangement.beatsPerBar}
-					aria-label="Beats per bar"
-					onchange={(e) => studio.setBeatsPerBar(Number(e.currentTarget.value))}
-				>
-					{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
-				</select>
-			</label>
+			<!-- The meter: beats a bar over the note a beat is (docs/multitrack-recorder.md "Time-signature denominators"); the tempo stays in quarter notes. -->
+			<div class="grid grid-cols-2 gap-2">
+				<label class="block">
+					<span class="device-button-label">Beats per bar</span>
+					<select
+						class="device-field w-full"
+						value={studio.arrangement.beatsPerBar}
+						aria-label="Beats per bar"
+						onchange={(e) => studio.setBeatsPerBar(Number(e.currentTarget.value))}
+					>
+						{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
+					</select>
+				</label>
+				<label class="block">
+					<span class="device-button-label">Beat note</span>
+					<select
+						class="device-field w-full"
+						value={studio.arrangement.beatUnit ?? 4}
+						aria-label="Beat note"
+						title="The time signature's bottom number: 8 for 6/8. The tempo stays in quarter notes a minute, as a DAW counts it."
+						onchange={(e) =>
+							studio.setBeatsPerBar(studio.arrangement.beatsPerBar, Number(e.currentTarget.value))}
+					>
+						{#each [2, 4, 8, 16] as n (n)}<option value={n}>{n}</option>{/each}
+					</select>
+				</label>
+			</div>
 			<!-- The song's rate (docs/multitrack-recorder.md "Sample rates"): what the renders come out at; recording stays at the device's. -->
 			<label class="block">
 				<span class="device-button-label">Sample rate</span>
@@ -2952,11 +2971,19 @@
 				</div>
 				<div class="flex items-center gap-2 text-13px">
 					<select
-						class="device-field w-20 text-12px py-0"
+						class="device-field w-16 text-12px py-0"
 						bind:value={meterChangeBeats}
 						aria-label="Beats per bar at the playhead"
 					>
 						{#each [2, 3, 4, 5, 6, 7] as n (n)}<option value={n}>{n}</option>{/each}
+					</select>
+					<span class="text-white/50">/</span>
+					<select
+						class="device-field w-16 text-12px py-0"
+						bind:value={meterChangeUnit}
+						aria-label="Beat note at the playhead"
+					>
+						{#each [2, 4, 8, 16] as n (n)}<option value={n}>{n}</option>{/each}
 					</select>
 					<button
 						class="device-button-xs px-2"

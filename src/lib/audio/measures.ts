@@ -7,10 +7,14 @@ import type { SongChange } from "#lib/val/SongChangeSchema.js";
 import type { TempoCurve } from "#lib/val/StudioSchema.js";
 
 /**
- * Bars and beats from seconds. Tempo is beats per minute where a beat is the
- * meter's bottom number (6/8 at 120 = 120 eighth notes a minute), so a bar is
- * `top` beats long. Before the first tempo or meter change, that first value
- * applies. `startAt` is where bar 1 begins (leading silence, a count-in);
+ * Bars and beats from seconds. Tempo is beats per minute, a bar `beatsPerBar`
+ * beats long. A meter with a `beatUnit` (Dawn's grids, utils/studioGrid.ts;
+ * docs/multitrack-recorder.md "Time-signature denominators") counts the tempo
+ * in quarter notes as DAWs and MIDI files do, and a beat of the bar is one
+ * note of that unit: 6/8 at 120 is six eighths a bar, a bar and a half a
+ * second. Without one (the stem player's song changes) a beat is the tempo's
+ * own, whatever the bottom number (6/8 at 120 = 120 eighth notes a minute).
+ * Before the first tempo or meter change, that first value applies. `startAt` is where bar 1 begins (leading silence, a count-in);
  * earlier positions count down through bar 0, -1, … as a DAW does. A tempo
  * with `ramp` is reached gradually from the one before it (Dawn's tempo
  * ramps, docs/multitrack-recorder.md): "time" has the tempo move linearly
@@ -18,9 +22,12 @@ import type { TempoCurve } from "#lib/val/StudioSchema.js";
  */
 export interface BarGrid {
 	tempos: { start: number; bpm: number; ramp?: TempoCurve }[];
-	meters: { start: number; beatsPerBar: number }[];
+	meters: { start: number; beatsPerBar: number; beatUnit?: number }[];
 	startAt: number;
 }
+
+/** Tempo beats (quarter notes, when the meter names a unit) in one beat of the bar: a half for eighths, two for halves, one without a unit. */
+const beatLength = (m: { beatUnit?: number }) => (m.beatUnit ? 4 / m.beatUnit : 1);
 
 /**
  * One stretch of the tempo map: from `t0` at `b0` to `t1` (the next change,
@@ -129,14 +136,16 @@ export function barAt(grid: BarGrid, seconds: number): BarPosition {
 	const segs = grid.meters.filter((m) => m.start > grid.startAt).sort((a, b) => a.start - b.start);
 	let bar = 1;
 	let segStart = grid.startAt;
-	let bpb = valueAt(grid.meters, grid.startAt).beatsPerBar;
+	let meter = valueAt(grid.meters, grid.startAt);
+	let bpb = meter.beatsPerBar;
 	for (const m of segs) {
 		if (seconds < m.start) break;
-		bar += Math.ceil(beatsBetween(grid, segStart, m.start) / bpb - 1e-9);
+		bar += Math.ceil(beatsBetween(grid, segStart, m.start) / beatLength(meter) / bpb - 1e-9);
 		segStart = m.start;
+		meter = m;
 		bpb = m.beatsPerBar;
 	}
-	const beats = beatsBetween(grid, segStart, seconds);
+	const beats = beatsBetween(grid, segStart, seconds) / beatLength(meter);
 	// A thousandth of a beat of slack: a start is stored to a tenth of a millisecond (data.ts), coarser than
 	// floating point, so an exact downbeat rounded down must not read as the last beat of the bar before.
 	const whole = Math.floor(beats + BEAT_SLACK);
@@ -155,6 +164,12 @@ export const tempoAt = (grid: BarGrid, seconds: number): number =>
 /** The beats to the bar in force at `seconds`. */
 export const beatsPerBarAt = (grid: BarGrid, seconds: number): number =>
 	valueAt(grid.meters, seconds).beatsPerBar;
+/** The note a beat of the bar is at `seconds` (4 for a quarter), where the meter names one. */
+export const beatUnitAt = (grid: BarGrid, seconds: number): number =>
+	valueAt(grid.meters, seconds).beatUnit ?? 4;
+/** The tempo at `seconds` in beats of the bar a minute: the click's and the piano roll's tempo (240 for 6/8 at 120 quarter notes). */
+export const beatTempoAt = (grid: BarGrid, seconds: number): number =>
+	tempoAt(grid, seconds) / beatLength(valueAt(grid.meters, seconds));
 
 /**
  * A count-in of `bars` before the stems start at `seconds` (the click,
@@ -254,15 +269,19 @@ export function secondsAtBar(grid: BarGrid, bar: number, beat = 1, fraction = 0)
 	const segs = grid.meters.filter((m) => m.start > grid.startAt).sort((a, b) => a.start - b.start);
 	let segBar = 1;
 	let segStart = grid.startAt;
-	let bpb = valueAt(grid.meters, grid.startAt).beatsPerBar;
+	let meter = valueAt(grid.meters, grid.startAt);
+	let bpb = meter.beatsPerBar;
 	for (const m of segs) {
-		const barsIn = Math.ceil(beatsBetween(grid, segStart, m.start) / bpb - 1e-9);
+		const barsIn = Math.ceil(
+			beatsBetween(grid, segStart, m.start) / beatLength(meter) / bpb - 1e-9,
+		);
 		if (bar < segBar + barsIn) break;
 		segBar += barsIn;
 		segStart = m.start;
+		meter = m;
 		bpb = m.beatsPerBar;
 	}
-	const beats = (bar - segBar) * bpb + (beat - 1) + fraction;
+	const beats = ((bar - segBar) * bpb + (beat - 1) + fraction) * beatLength(meter);
 	return secondsAfterBeats(grid, segStart, beats);
 }
 

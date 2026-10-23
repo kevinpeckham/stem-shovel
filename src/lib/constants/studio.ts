@@ -40,6 +40,13 @@ export const STUDIO_SAMPLE_RATE_DEFAULT = 48000;
  * tempo is two; a Live set's beat-by-beat markers run to a few hundred.
  */
 export const MAX_STUDIO_WARP_POINTS = 512;
+/**
+ * The note a beat of the bar can be (the time signature's bottom number;
+ * docs/multitrack-recorder.md "Time-signature denominators"): 6/8 is six
+ * eighths a bar. The tempo stays in quarter notes a minute, as every DAW
+ * and the MIDI file count it.
+ */
+export const BEAT_UNITS = [2, 4, 8, 16] as const;
 /** How far a clip can be stretched or squeezed by hand: a quarter to four times its length (the WSOLA's comfortable range). */
 export const WARP_RATIO_MIN = 0.25;
 export const WARP_RATIO_MAX = 4;

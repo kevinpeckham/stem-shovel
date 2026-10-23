@@ -29,7 +29,8 @@ import {
 	tempoAt as gridTempoAt,
 	tempoSteadyAcross,
 } from "#lib/audio/measures.js";
-import { STEM_TINTS, type StemTint } from "#lib/constants/stemTints.js";
+import { BEAT_UNITS } from "#lib/constants/studio.js";
+import { colourOfHex } from "./colourOfHex";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const round4 = (v: number) => Math.round(v * 10000) / 10000;
@@ -113,24 +114,28 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		tempoSteadyAcross(tempoGrid, beatsToSeconds(from), beatsToSeconds(to));
 	// The time signature is an enum: numerator = value mod 99 + 1, denominator = 2 to the power of value div 99.
 	const sigOf = (v: number) => ({ numerator: (v % 99) + 1, denominator: 2 ** Math.floor(v / 99) });
-	let beatsPerBar = 4;
-	const meterPoints: { beat: number; beatsPerBar: number }[] = [];
+	/** A time signature as Dawn's meter: 2 to 7 beats of a half, quarter, eighth or sixteenth (Live's tempo is quarter notes a minute, as Dawn's). */
+	type Meter = { beatsPerBar: number; beatUnit: number };
+	let meter: Meter = { beatsPerBar: 4, beatUnit: 4 };
+	const meterPoints: ({ beat: number } & Meter)[] = [];
 	const sigEnv = masterEnvelopes.find((e) => e.pointee === sigTarget);
-	const meterOf = (v: number, where: string) => {
+	const meterOf = (v: number, where: string): Meter => {
 		const { numerator, denominator } = sigOf(v);
 		const n = clamp(Math.round(numerator), 2, 7);
-		if (n !== numerator || denominator !== 4)
-			fix(`Time signature ${numerator}/${denominator} ${where} read as ${n}/4`);
-		return n;
+		const unit = (BEAT_UNITS as readonly number[]).includes(denominator) ? denominator : 4;
+		if (n !== numerator || denominator !== unit)
+			fix(`Time signature ${numerator}/${denominator} ${where} read as ${n}/${unit}`);
+		return { beatsPerBar: n, beatUnit: unit };
 	};
 	if (sigEnv) {
 		for (const e of sigEnv.events.filter((x) => x.kind === "EnumEvent")) {
 			const v = Number(e.value);
 			if (!Number.isFinite(v)) continue;
-			if (e.time <= 0) beatsPerBar = meterOf(v, "at the start");
-			else meterPoints.push({ beat: e.time, beatsPerBar: meterOf(v, `at beat ${e.time}`) });
+			if (e.time <= 0) meter = meterOf(v, "at the start");
+			else meterPoints.push({ beat: e.time, ...meterOf(v, `at beat ${e.time}`) });
 		}
 	} else fix("No time signature: 4/4 assumed");
+	const beatsPerBar = meter.beatsPerBar;
 	const tempoChanges = tempoMap
 		.slice(1)
 		.map((s) => ({ ...s, start: seconds(s.start) }))
@@ -138,7 +143,11 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		.slice(0, 64);
 	const meterChanges = meterPoints
 		.sort((a, b) => a.beat - b.beat)
-		.map((p) => ({ start: seconds(beatsToSeconds(p.beat)), beatsPerBar: p.beatsPerBar }))
+		.map((p) => ({
+			start: seconds(beatsToSeconds(p.beat)),
+			beatsPerBar: p.beatsPerBar,
+			...(p.beatUnit !== 4 ? { beatUnit: p.beatUnit as 2 | 8 | 16 } : {}),
+		}))
 		.filter((c, i, all) => i === 0 || c.start !== all[i - 1]!.start)
 		.slice(0, 64);
 	const masterVolume = clamp(round4(num(path(masterMixer, "Volume", "Manual"), 1)), 0, 1);
@@ -166,15 +175,9 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 	const buses: StudioBus[] = [];
 	const idOf = new Map<string, string>();
 	const returnIds: string[] = [];
-	const colourOf = (el: Element | null) => {
-		const index = num(kid(el, "Color") ?? kid(el, "ColorIndex"), -1);
-		const hex = LIVE_COLORS[index];
-		if (!hex) return undefined;
-		const tint = liveTint(hex);
-		if (tint) fix("Colors read as the nearest of Dawn's tints by hue");
-		else fix("Gray, white and black tracks left uncolored");
-		return tint;
-	};
+	// A track's color from Live's palette by index, kept as it is (docs/multitrack-recorder.md "Track colors").
+	const colourOf = (el: Element | null) =>
+		colourOfHex(LIVE_COLORS[num(kid(el, "Color") ?? kid(el, "ColorIndex"), -1)]);
 	/** An envelope's events as a lane by the parameter's kind: the pan signed, a send within 0..1, the speaker (Live's track on/off, bool events) as the mute lane inverted. */
 	const laneOf = (
 		envelopes: ReturnType<typeof envelopesOf>,
@@ -689,6 +692,7 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 			version: 1,
 			bpm,
 			beatsPerBar,
+			...(meter.beatUnit !== 4 ? { beatUnit: meter.beatUnit as 2 | 8 | 16 } : {}),
 			gridOn: true,
 			countIn: false,
 			click: false,
@@ -706,41 +710,6 @@ export function readAls(xml: string, fallbackTitle = "Live set"): DawprojectRead
 		dropped,
 		fixed,
 	};
-}
-
-/**
- * The tint nearest a Live color by hue: Live's palette is saturated and
- * Dawn's is not, so RGB distance (utils/nearestStemTint.ts) finds nothing;
- * a gray, white or black gets none.
- */
-function liveTint(hex: string): StemTint | undefined {
-	const hue = hueOf(hex);
-	if (hue === undefined) return undefined;
-	let best: StemTint | undefined;
-	let bestD = 360;
-	for (const t of STEM_TINTS) {
-		const h = hueOf(t.hex)!;
-		const d = Math.min(Math.abs(h - hue), 360 - Math.abs(h - hue));
-		if (d < bestD) {
-			bestD = d;
-			best = t.id;
-		}
-	}
-	return best;
-}
-/** A color's hue in degrees, or none when it has too little saturation to have one. */
-function hueOf(hex: string): number | undefined {
-	const r = parseInt(hex.slice(1, 3), 16) / 255;
-	const g = parseInt(hex.slice(3, 5), 16) / 255;
-	const b = parseInt(hex.slice(5, 7), 16) / 255;
-	const max = Math.max(r, g, b);
-	const min = Math.min(r, g, b);
-	const d = max - min;
-	const l = (max + min) / 2;
-	const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-	if (sat < 0.15) return undefined;
-	const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-	return (((h * 60) % 360) + 360) % 360;
 }
 
 /** A device's name: what the user called it, a plug-in's own name, else Live's tag for it ("Compressor2" is the Compressor). */

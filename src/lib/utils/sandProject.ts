@@ -73,7 +73,7 @@ function globalOf(a: StudioArrangement) {
 	return {
 		bpm: a.bpm,
 		beatsPerBar: a.beatsPerBar,
-		beatUnit: 4,
+		beatUnit: a.beatUnit ?? 4,
 		masterVolume: a.master,
 		masterPan: 0,
 		...(scale ? { scaleRoot: scale.root, scaleType: scale.minor ? 1 : 0 } : {}),

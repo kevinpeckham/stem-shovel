@@ -4499,7 +4499,7 @@ export async function dawprojectExportJob(fileId: string) {
 export async function studioExportInput(accountId: string, ideaId: string) {
 	const row = await db.query.idea.findFirst({
 		where: and(eq(idea.accountId, accountId), eq(idea.id, ideaId), eq(idea.kind, "song")),
-		columns: { id: true, title: true },
+		columns: { id: true, title: true, notes: true },
 		with: {
 			sources: {
 				where: eq(studioSource.status, "ready"),
@@ -4524,6 +4524,7 @@ export async function studioExportInput(accountId: string, ideaId: string) {
 	const newest = row.revisions[0];
 	return {
 		title: row.title,
+		notes: row.notes,
 		revision: newest?.number ?? 0,
 		arrangement: newest?.data ?? null,
 		sources: row.sources,
@@ -8490,4 +8491,45 @@ export async function setSiteAmpPreset(
 	const slots = await siteAmpPresets(instrument);
 	slots[slot - 1] = preset;
 	await setAppSetting(ampSiteKey(instrument), JSON.stringify(slots));
+}
+
+/**
+ * What a song page knows that a DAWproject's metadata can carry
+ * (utils/dawproject.ts, docs/multitrack-recorder.md "Song metadata in the
+ * files"): the performers as the artist, the composers (or the songwriter
+ * line) as the songwriter, the producers, the year it was written, and the
+ * song's path on the site when it is public (the caller puts the origin in
+ * front). Null when the song is not the account's.
+ */
+export async function songExportMetadata(accountId: string, songId: string) {
+	const row = await db.query.song.findFirst({
+		where: and(eq(song.accountId, accountId), eq(song.id, songId)),
+		columns: { slug: true, isPrivate: true, songwriter: true, writtenOn: true },
+		with: {
+			credits: {
+				orderBy: [asc(songCredit.sortOrder), asc(songCredit.createdAt)],
+				columns: { role: true },
+				with: { artist: { columns: { name: true } } },
+			},
+			project: {
+				columns: { slug: true, isPrivate: true },
+				with: { account: { columns: { slug: true } } },
+			},
+		},
+	});
+	if (!row) return null;
+	const names = (role: CreditRole) =>
+		row.credits
+			.filter((c) => c.role === role)
+			.map((c) => c.artist.name)
+			.join(", ");
+	const year = row.writtenOn?.match(/^(\d{4})/)?.[1] ?? "";
+	const isPublic = !row.isPrivate && !row.project.isPrivate;
+	return {
+		artist: names("performer"),
+		songwriter: names("composer") || row.songwriter,
+		producer: names("producer"),
+		year,
+		path: isPublic ? `/${row.project.account.slug}/projects/${row.project.slug}/${row.slug}` : "",
+	};
 }

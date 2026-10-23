@@ -478,6 +478,6 @@ describe("rppProject", () => {
 			[4.5, 0.5, 71, 0.5984],
 		]);
 		expect(read.dropped).toEqual([]);
-		expect(read.fixed).toEqual(["Track colors read as the nearest of Dawn's tints"]);
+		expect(read.fixed).toEqual([]);
 	});
 });

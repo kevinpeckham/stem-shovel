@@ -11,14 +11,14 @@ import type { StudioArrangement } from "#lib/val/StudioSchema.js";
 export function audacityLabels(a: StudioArrangement): string {
 	const lines: { t: number; text: string }[] = [
 		{ t: 0, text: `Tempo ${trim(a.bpm)}` },
-		{ t: 0, text: `Meter ${a.beatsPerBar}/4` },
+		{ t: 0, text: `Meter ${a.beatsPerBar}/${a.beatUnit ?? 4}` },
 	];
 	if (a.key) lines.push({ t: 0, text: `Key ${a.key}` });
 	for (const c of a.tempoChanges ?? [])
 		if (c.start > 0)
 			lines.push({ t: c.start, text: `Tempo ${trim(c.bpm)}${c.ramp ? " (ramp)" : ""}` });
 	for (const c of a.meterChanges ?? [])
-		if (c.start > 0) lines.push({ t: c.start, text: `Meter ${c.beatsPerBar}/4` });
+		if (c.start > 0) lines.push({ t: c.start, text: `Meter ${c.beatsPerBar}/${c.beatUnit ?? 4}` });
 	for (const c of a.keyChanges ?? [])
 		if (c.start > 0) lines.push({ t: c.start, text: `Key ${c.key}` });
 	for (const m of a.markers ?? []) lines.push({ t: m.t, text: m.name });

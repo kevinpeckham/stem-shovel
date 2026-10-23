@@ -13,12 +13,17 @@ import type { TempoCurve } from "#lib/val/StudioSchema.js";
 export function tempoPointsGrid(
 	points: { start: number; bpm: number; linear: boolean }[],
 	curve: TempoCurve,
-	meter: { beatsPerBar: number; meterChanges?: { start: number; beatsPerBar: number }[] },
+	meter: {
+		beatsPerBar: number;
+		beatUnit?: number;
+		meterChanges?: { start: number; beatsPerBar: number; beatUnit?: number }[];
+	},
 ): BarGrid {
 	const first = points[0] ?? { start: 0, bpm: 120, linear: false };
 	return studioGrid({
 		bpm: first.bpm,
 		beatsPerBar: meter.beatsPerBar,
+		beatUnit: meter.beatUnit,
 		tempoChanges: points.slice(1).map((p, i) => ({
 			start: p.start,
 			bpm: p.bpm,

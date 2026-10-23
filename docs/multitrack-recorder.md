@@ -1174,6 +1174,80 @@ the session bundle, with the tempo map intact. Dawn's **Import audio,
 MIDI or a project…** still lands a MIDI file as a clip on the current
 song, as before.
 
+## Time-signature denominators (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 15)
+
+A meter is beats a bar over the note a beat is: `beatUnit` on the
+arrangement and on a `StudioMeterChange` (`BeatUnitSchema`: 2, 4, 8 or
+16, `BEAT_UNITS` in constants/studio.ts; absent means a quarter, as every
+saved song has it). **The tempo stays in quarter notes a minute**, as a
+DAWproject, a Live set, a Reaper project (FINDINGS.md: Reaper stores the
+quarter-note tempo and shows the "divided" one in its transport) and the
+MIDI file all count it, so 6/8 at 120 is six eighths a bar, a bar and a
+half a second, and the files carry the tempo untouched. `audio/measures.ts`
+takes the unit on a grid's meters (`beatLength`: tempo beats in one beat
+of the bar) in `barAt` and `secondsAtBar`, so bars, beat lines, snap,
+quantize, the count-in and the ramps' beat lines all follow;
+`beatTempoAt` is the tempo in beats of the bar (240 for that 6/8), which
+the piano roll's `beatSeconds` uses, and `beatUnitAt` the unit in force.
+The page's metronome keeps the song's quarter-note tempo (the page syncs
+the two, so a click at 240 would have become the song's tempo) and gets
+the unit through `metronome.setBeatUnit`, spacing its clicks by it. A grid whose meters name no unit (the stem player's
+`barGrid` from a song's changes) keeps its own convention, a beat being
+the tempo's own; `studioGrid` always names one. Because the two count
+differently, the bridge between a Dawn song and a song's changes
+(`utils/studioChanges.ts`) scales the tempo through the unit in force:
+the player's "6/8 at 96" (96 eighths a minute) is Dawn's 48, and back.
+
+Setting it: **Beat note** beside Beats per bar in the Timing menu
+(`setBeatsPerBar(beats, unit)`), a second select on the meter-change row
+(`setMeterChange(start, beats, unit)`), and a flag's double-click takes
+"6/8". The ruler's corner, the flags, the page's readout, the converter's
+summary, the Audacity labels, `diffArrangements` and the Compare view
+all print `beats/unit`. Files: DAWproject `denominator` both ways;
+Reaper `TEMPO bpm beats unit` and the points' `(unit << 16) | beats`
+both ways; a Live set's enum (`2 ** floor(v / 99)`) read; the MIDI file's
+time signature meta event written with the unit's power of two and a
+click every beat of the bar (`96 / unit` clocks), read back by
+`midiRead`; Sandyne's `beatUnit`. A denominator outside the four (a
+`/3`) reads as a quarter with a "read as" note, as before.
+
+## Track colors (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 12)
+
+A track's or bus's `colour` is a tint id from the stem player's palette
+(constants/stemTints.ts) **or any `#rrggbb`**: `stemTintHex` gives a hex
+back as it is, so the timeline, the mixer and the writers need nothing
+new, and the engine's `setTint`/`setBusTint` keep a hex in lower case
+(`colourValue`). The tint groups in a track's menu and a bus's strip end
+in an **Any color** swatch over the browser's color picker; it wears the
+color once one is chosen. Reading: `utils/colourOfHex.ts` turns a file's
+color into the palette tint when it is one of Dawn's own exactly (a
+color Dawn wrote, coming back) and keeps any other, so a DAWproject's
+`color`, a Reaper `PEAKCOL` and a Live palette index all come in as the
+DAW had them; the former "nearest tint" and "left uncolored" notes are
+gone (and with them `nearestStemTint` and the hue match). The stem
+player's own stems keep their picklist of tints: a Dawn color stays in
+Dawn.
+
+## Song metadata in the files (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 11)
+
+`metadata.xml` carries more than the title: `val/DawprojectMetadataSchema.ts`
+names the fields in Bitwig's order (artist, album, original artist,
+composer, songwriter, producer, arranger, year, genre, copyright,
+website, comment), each a line. The writer (`dawproject(input.metadata)`)
+puts out the ones with a value, validated against MetaData.xsd in the
+tests; the reader keeps them on `DawprojectRead.metadata` and writes each
+into the notes as "Label: value" (the comment as itself), so an import
+shows them and the page saves them with the song. Sources: the browser's
+export sends the Dawn song's notes as the comment; the jobs function's
+export into a song's files (`server/dawprojectExport.ts`) adds the song
+page's people and address through `songExportMetadata` in data.ts (the
+performers as the artist, the composers or the songwriter line as the
+songwriter, the producers, the year from `writtenOn`, the song's public
+address as the website when neither it nor its project is private; the
+origin added in the jobs function, so data.ts stays free of the env). An
+import does not make credits of what it reads: artists are rows the
+account curates (songs.remote.ts), and the notes keep the names in view.
+
 ## Warping a clip (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 6)
 
 A clip's audio can play slower or faster than its file, pitch kept, with

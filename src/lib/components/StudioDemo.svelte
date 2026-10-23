@@ -77,8 +77,8 @@
 			</div>
 			<div class="mt-2 text-12px opacity-70 flex flex-wrap gap-x-2 tabular-nums">
 				<span
-					>{studio.arrangement.bpm} bpm · {studio.arrangement
-						.beatsPerBar}/4{#if studio.keyAt(studio.position)}
+					>{studio.arrangement.bpm} bpm · {studio.arrangement.beatsPerBar}/{studio.arrangement
+						.beatUnit ?? 4}{#if studio.keyAt(studio.position)}
 						· {studio.keyAt(studio.position)}{/if} · {studio.arrangement.tracks.length}
 					{studio.arrangement.tracks.length === 1 ? "track" : "tracks"} · {formatTime(
 						studio.duration,

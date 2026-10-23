@@ -890,7 +890,7 @@
 			style:width="{HEADER_W}px"
 		>
 			{engine.arrangement.gridOn
-				? `${engine.arrangement.bpm} bpm · ${engine.arrangement.beatsPerBar}/4`
+				? `${engine.arrangement.bpm} bpm · ${engine.arrangement.beatsPerBar}/${engine.arrangement.beatUnit ?? 4}`
 				: "Free time"}
 		</div>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -951,15 +951,20 @@
 					class="absolute top-0 z-10 h-3.5 rounded-b px-1 text-9px leading-3.5 bg-green-300/80 text-dark hover:bg-green-200 focus-visible:ring-1 focus-visible:ring-white"
 					style:left="{c.start * pxPerSecond + 22}px"
 					data-meter-change={c.start}
-					aria-label="Meter change to {c.beatsPerBar} beats a bar at {formatTime(c.start)}"
-					title="{c.beatsPerBar}/4 from {formatTime(
+					aria-label="Meter change to {c.beatsPerBar}/{c.beatUnit ?? 4} at {formatTime(c.start)}"
+					title="{c.beatsPerBar}/{c.beatUnit ?? 4} from {formatTime(
 						c.start,
 					)} (double-click to edit, Delete to remove)"
 					onpointerdown={(e) => e.stopPropagation()}
 					onclick={() => engine.seek(c.start)}
 					ondblclick={() => {
-						const v = Number(prompt("Beats a bar from here", String(c.beatsPerBar)));
-						if (v) engine.setMeterChange(c.start, v);
+						// "6/8", or the beats alone over the note it has.
+						const text = prompt(
+							"Meter from here (6/8, or beats a bar)",
+							`${c.beatsPerBar}/${c.beatUnit ?? 4}`,
+						);
+						const [n, d] = (text ?? "").split("/").map((x) => Number(x.trim()));
+						if (n) engine.setMeterChange(c.start, n, d || (c.beatUnit ?? 4));
 					}}
 					onkeydown={(e) => {
 						if (e.key === "Delete" || e.key === "Backspace") {
@@ -967,7 +972,7 @@
 							e.preventDefault();
 							e.stopPropagation();
 						}
-					}}>{c.beatsPerBar}/4</button
+					}}>{c.beatsPerBar}/{c.beatUnit ?? 4}</button
 				>
 			{/each}
 			<!-- Key changes: a flag each (violet); double-click edits, Delete on a focused one removes it. -->

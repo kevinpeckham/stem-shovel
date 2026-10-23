@@ -198,6 +198,48 @@ describe("dawproject", () => {
 	it("writes the title in the metadata", () => {
 		expect(metadata).toContain("<Title>Exiles &amp; Endtimes</Title>");
 	});
+	it("writes the metadata's fields in the schema's order and the meter's bottom number, as the reader takes them back", () => {
+		const written = dawproject({
+			title: "Waltz",
+			metadata: {
+				comment: "First take, late",
+				website: "https://www.stemshovel.com/band/projects/p/waltz",
+				artist: "Bad Verbs",
+				producer: "A. Producer",
+				originalArtist: "",
+			},
+			arrangement: { ...arrangement, beatUnit: 8, meterChanges: [{ start: 8, beatsPerBar: 4 }] },
+			audio: new Map(),
+			application: { name: "Stem Shovel Dawn", version: "0.151.0" },
+		});
+		expect(written.metadata).toBe(
+			[
+				'<?xml version="1.0" encoding="UTF-8"?>',
+				"<MetaData>",
+				"  <Title>Waltz</Title>",
+				"  <Artist>Bad Verbs</Artist>",
+				"  <Producer>A. Producer</Producer>",
+				"  <Website>https://www.stemshovel.com/band/projects/p/waltz</Website>",
+				"  <Comment>First take, late</Comment>",
+				"</MetaData>",
+				"",
+			].join("\n"),
+		);
+		expect(() => validate(written.metadata, "MetaData.xsd")).not.toThrow();
+		expect(() => validate(written.project, "Project.xsd")).not.toThrow();
+		expect(written.project).toContain('<TimeSignature numerator="3" denominator="8"');
+		expect(written.project).toContain('numerator="3" denominator="8"/>');
+		expect(written.project).toContain('numerator="4" denominator="4"/>');
+		const back = readDawproject(written.project, written.metadata, "Waltz");
+		expect([back.arrangement.beatsPerBar, back.arrangement.beatUnit]).toEqual([3, 8]);
+		expect(back.arrangement.meterChanges).toEqual([{ start: 8, beatsPerBar: 4 }]);
+		expect(back.metadata).toEqual({
+			artist: "Bad Verbs",
+			producer: "A. Producer",
+			website: "https://www.stemshovel.com/band/projects/p/waltz",
+			comment: "First take, late",
+		});
+	});
 	it("is well-formed: every opened element closes", () => {
 		const opens = (project.match(/<([A-Za-z]+)[\s>]/g) ?? []).filter((m) => !m.endsWith("/"));
 		const stack: string[] = [];

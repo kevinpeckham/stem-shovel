@@ -1,7 +1,7 @@
 /**
  * Ableton Live's track and clip color palette by index (`Color` in a Live
- * set, 0 to 69), as Live 11 draws it; a set's colors come in through
- * the nearest of Dawn's tints by hue (utils/alsRead.ts). The values are DawVert's reading
+ * set, 0 to 69), as Live 11 draws it; a set's tracks come in wearing these
+ * colors as they are (utils/alsRead.ts). The values are DawVert's reading
  * of Live's palette (data_main/dataset/ableton.dset).
  */
 export const LIVE_COLORS = [

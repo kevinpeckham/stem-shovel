@@ -7,7 +7,7 @@ describe("studioGrid", () => {
 		const g = studioGrid({ bpm: 120, beatsPerBar: 4 });
 		expect(g).toEqual({
 			tempos: [{ start: 0, bpm: 120 }],
-			meters: [{ start: 0, beatsPerBar: 4 }],
+			meters: [{ start: 0, beatsPerBar: 4, beatUnit: 4 }],
 			startAt: 0,
 		});
 		expect(barAt(g, 5)).toEqual({ bar: 3, beat: 3, fraction: 0 });

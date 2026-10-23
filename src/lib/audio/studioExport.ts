@@ -16,6 +16,7 @@ import { songSampleRate } from "#lib/utils/songSampleRate.js";
 import { zipBlobs, type ZipEntry } from "#lib/utils/zipBlobs.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
 import type { RenderTarget } from "./studio.svelte";
+import type { DawprojectMetadata } from "#lib/val/DawprojectMetadataSchema.js";
 
 /**
  * An export of a song from Dawn (docs/dawn-daw-plan.md, D3), over any
@@ -139,6 +140,8 @@ export async function exportSong(
 	options: ExportOptions,
 	application: { name: string; version: string },
 	onprogress?: (step: string) => void,
+	/** The DAWproject's metadata besides the title (the song's notes as its comment; docs/multitrack-recorder.md "Song metadata in the files"). */
+	metadata?: DawprojectMetadata,
 ): Promise<ExportFile[]> {
 	const out: ExportFile[] = [];
 	const base = fileSafe(title);
@@ -175,11 +178,11 @@ export async function exportSong(
 	if (options.dawproject) {
 		onprogress?.("Writing the DAWproject…");
 		const { entries, audio, arrangement } = await sourceFiles(engine, "audio", options);
-		const { project, metadata } = dawproject({ title, arrangement, audio, application });
+		const written = dawproject({ title, metadata, arrangement, audio, application });
 		const text = new TextEncoder();
 		entries.unshift(
-			{ name: "project.xml", data: text.encode(project), compress: true },
-			{ name: "metadata.xml", data: text.encode(metadata), compress: true },
+			{ name: "project.xml", data: text.encode(written.project), compress: true },
+			{ name: "metadata.xml", data: text.encode(written.metadata), compress: true },
 		);
 		out.push({
 			name: `${base}.dawproject`,

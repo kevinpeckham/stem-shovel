@@ -304,22 +304,29 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
     Dawn's strips are stereo throughout; a mono track would halve a
     mono take's processing and pan as a point source.
 11. **Metadata**: artist, album, original artist, songwriter, producer,
-    year, genre, copyright, comment, website. Dawn has a title and notes;
-    the song page has credits (`songCredit`) that could feed the export
-    and take the import.
-12. **Arbitrary track colors** (`color="#ff5706"`): Dawn has eight
-    tints; a free color would carry over both ways.
+    year, genre, copyright, comment, website. Done 2026-10-23: every
+    field both ways, the song page's credits, songwriter, year and
+    address feeding the export into a song's files, the Dawn song's
+    notes as the comment, an import's fields into the notes
+    (docs/multitrack-recorder.md "Song metadata in the files").
+12. **Arbitrary track colors** (`color="#ff5706"`): Done 2026-10-23: a
+    track's `colour` takes any `#rrggbb` beside the tints, an "Any
+    color" swatch sets it, and every reader keeps a DAW's color as it
+    was ("Track colors").
 13. **Take lanes within a track** (`Lanes` nested under a track's lanes):
     comping lanes. Dawn has alternates behind a clip, which is the same
     idea in a different shape; nested lanes could map onto them.
 14. **Video** (`Video` clips over a file): a picture track to score to.
     Not a songwriter's tool today; noted for completeness.
 15. **Cue markers with colors** and **time-signature denominators**
-    other than four (6/8 as 6 over 8, not 6 over 4): the stem player's
-    meter already keeps the denominator; Dawn counts quarters.
+    other than four (6/8 as 6 over 8, not 6 over 4). The denominator
+    done 2026-10-23: `beatUnit` on the song and a meter change, the
+    tempo kept in quarter notes as the formats count it, read and
+    written by every format ("Time-signature denominators"). Cue
+    marker colors remain.
 
 The cheap ones (2, the on/off; 11, the metadata; 12, colors; 15's
-denominator) are an afternoon each. The ones a songwriter would feel
+denominator) were an afternoon each, and are done. The ones a songwriter would feel
 most (1, clip looping; 3, expression lanes; 4, wider automation; 5,
 tempo ramps) are a few days each and worth their own plan. 6, 7, 8, 9
 and 13 are large; 10 and 14 are judgement calls.

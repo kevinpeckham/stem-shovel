@@ -24,7 +24,8 @@ import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
 import { studioGrid } from "./studioGrid";
 import { beatsBetween, secondsAfterBeats } from "#lib/audio/measures.js";
 import { readReport } from "./readReport";
-import { nearestStemTint } from "./nearestStemTint";
+import { colourOfHex } from "./colourOfHex";
+import { BEAT_UNITS } from "#lib/constants/studio.js";
 import { uniformWarp, warpContentAt, warpFromPoints } from "#lib/audio/warp.js";
 
 /** A block of the project: `<NAME args…` to its `>`, holding lines (as tokens) and blocks in order. */
@@ -134,19 +135,21 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 	// ── Tempo map: the project's tempo and meter, then the tempo envelope's points, in seconds ──
 	const tempoLine = lineOf(project, "TEMPO");
 	let bpm = clamp(round2(numAt(tempoLine, 1, 120)), 30, 300);
-	let beatsPerBar = clamp(Math.round(numAt(tempoLine, 2, 4)), 2, 7);
-	const meterOf = (num: number, den: number, where: string) => {
+	/** A time signature as Dawn's meter: 2 to 7 beats of a half, quarter, eighth or sixteenth; Reaper's tempo is quarter notes a minute as Dawn's (FINDINGS.md). */
+	type Meter = { beatsPerBar: number; beatUnit: number };
+	const meterOf = (num: number, den: number, where: string): Meter => {
 		const n = clamp(Math.round(num), 2, 7);
-		if (n !== num || den !== 4) fix(`Time signature ${num}/${den} ${where} read as ${n}/4`);
-		return n;
+		const unit = (BEAT_UNITS as readonly number[]).includes(den) ? den : 4;
+		if (n !== num || den !== unit)
+			fix(`Time signature ${num}/${den} ${where} read as ${n}/${unit}`);
+		return { beatsPerBar: n, beatUnit: unit };
 	};
-	if (tempoLine)
-		beatsPerBar = meterOf(numAt(tempoLine, 2, 4), numAt(tempoLine, 3, 4), "at the start");
+	let meter: Meter = { beatsPerBar: clamp(Math.round(numAt(tempoLine, 2, 4)), 2, 7), beatUnit: 4 };
+	if (tempoLine) meter = meterOf(numAt(tempoLine, 2, 4), numAt(tempoLine, 3, 4), "at the start");
 	else fix("No tempo: 120 bpm, 4/4 assumed");
 	/** The tempo map's points in seconds: a point whose shape is 0 ramps linearly (in seconds, Reaper's curve) to the next, which carries the ramp. */
-	const steps: { start: number; bpm: number; beatsPerBar: number; ramp?: "time" }[] = [
-		{ start: 0, bpm, beatsPerBar },
-	];
+	const steps: ({ start: number; bpm: number; ramp?: "time" } & Meter)[] = [];
+	steps.push({ start: 0, bpm, ...meter });
 	const env = blocksOf(project, "TEMPOENVEX")[0];
 	if (env) {
 		const points = linesOf(env, "PT")
@@ -164,20 +167,19 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			const ramp = rampNext && p.start > last.start && p.bpm !== last.bpm;
 			rampNext = p.shape === 0;
 			// The time signature rides on the point as (denominator << 16) | numerator; 0 keeps the current one.
-			const meter = p.sig
+			const here: Meter = p.sig
 				? meterOf(p.sig & 0xffff, p.sig >> 16, `at ${seconds(p.start)} s`)
-				: last.beatsPerBar;
+				: { beatsPerBar: last.beatsPerBar, beatUnit: last.beatUnit };
 			if (p.start <= 0) {
-				steps[0] = { start: 0, bpm: p.bpm, beatsPerBar: meter };
+				steps[0] = { start: 0, bpm: p.bpm, ...here };
 				bpm = p.bpm;
-				beatsPerBar = meter;
-			} else if (p.start === last.start)
-				steps[steps.length - 1] = { ...last, bpm: p.bpm, beatsPerBar: meter };
+				meter = here;
+			} else if (p.start === last.start) steps[steps.length - 1] = { ...last, bpm: p.bpm, ...here };
 			else
 				steps.push({
 					start: seconds(p.start),
 					bpm: p.bpm,
-					beatsPerBar: meter,
+					...here,
 					...(ramp ? { ramp: "time" } : {}),
 				});
 		}
@@ -194,13 +196,21 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 		)
 		.map((s) => ({ start: s.start, bpm: s.bpm, ...(s.ramp ? { ramp: s.ramp } : {}) }))
 		.slice(0, 64);
+	const beatsPerBar = meter.beatsPerBar;
 	const tempoGrid = studioGrid({ bpm, beatsPerBar, tempoChanges });
 	const beatsAt = (s: number): number => beatsBetween(tempoGrid, 0, s);
 	const secondsAt = (beats: number): number => secondsAfterBeats(tempoGrid, 0, beats);
 	const meterChanges = steps
 		.slice(1)
-		.filter((s, i, all) => s.beatsPerBar !== (i === 0 ? steps[0]! : all[i - 1]!).beatsPerBar)
-		.map((s) => ({ start: s.start, beatsPerBar: s.beatsPerBar }))
+		.filter((s, i, all) => {
+			const before = i === 0 ? steps[0]! : all[i - 1]!;
+			return s.beatsPerBar !== before.beatsPerBar || s.beatUnit !== before.beatUnit;
+		})
+		.map((s) => ({
+			start: s.start,
+			beatsPerBar: s.beatsPerBar,
+			...(s.beatUnit !== 4 ? { beatUnit: s.beatUnit as 2 | 8 | 16 } : {}),
+		}))
 		.slice(0, 64);
 
 	// ── Markers (a region's start carries its name; its end line is skipped), the notes, the rate, the master ──
@@ -339,13 +349,15 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 	const tracks: StudioTrack[] = [];
 	const buses: StudioBus[] = [];
 	const idOf = new Map<number, string>();
+	// A color as Reaper keeps it (0x01BBGGRR with the flag): one of Dawn's own palette comes back as its tint, any other
+	// as it is (docs/multitrack-recorder.md "Track colors").
 	const colourOf = (block: Block) => {
 		const v = numAt(lineOf(block, "PEAKCOL"), 1, 0);
 		if (!(v & 0x1000000)) return undefined;
-		const tint = nearestStemTint(v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff);
-		if (!tint) fix("Track colors outside Dawn's palette, left uncolored");
-		else fix("Track colors read as the nearest of Dawn's tints");
-		return tint;
+		const hex = [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff]
+			.map((n) => n.toString(16).padStart(2, "0"))
+			.join("");
+		return colourOfHex(hex);
 	};
 	for (const p of parsed) {
 		const block = p.block;
@@ -599,6 +611,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			version: 1,
 			bpm,
 			beatsPerBar,
+			...(meter.beatUnit !== 4 ? { beatUnit: meter.beatUnit as 2 | 8 | 16 } : {}),
 			gridOn: true,
 			countIn: false,
 			click: false,

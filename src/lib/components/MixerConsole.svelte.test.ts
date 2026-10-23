@@ -215,6 +215,8 @@ describe("MixerConsole", () => {
 		await user.click(screen.getByRole("button", { name: "Drums actions" }));
 		await user.click(screen.getByRole("button", { name: "No tint" }));
 		expect(fake.setBusTint).toHaveBeenCalledWith("b1", null);
+		await fireEvent.input(screen.getByLabelText("Any color"), { target: { value: "#ff5706" } });
+		expect(fake.setBusTint).toHaveBeenCalledWith("b1", "#ff5706");
 		await user.click(screen.getByRole("button", { name: "Remove bus" }));
 		expect(fake.removeBus).toHaveBeenCalledWith("b1");
 		await user.click(screen.getByRole("button", { name: "Add bus" }));

@@ -500,6 +500,12 @@ describe("StudioTimeline", () => {
 			}),
 		);
 		expect(fake.setTint).toHaveBeenCalledWith("t2", "sage");
+		// Any color (docs/multitrack-recorder.md "Track colors"): the picker's value reaches the engine as it is.
+		await fireEvent.input(
+			within(screen.getByRole("group", { name: "Guitar tint" })).getByLabelText("Any color"),
+			{ target: { value: "#ff5706" } },
+		);
+		expect(fake.setTint).toHaveBeenCalledWith("t2", "#ff5706");
 	});
 
 	test("the inserts menu opens the track's inserts (its old fx as a list); adding one hands the engine the whole list", async () => {
@@ -1024,7 +1030,7 @@ describe("StudioTimeline: the tempo map (D5)", () => {
 		// R makes the change a ramp (over the beats).
 		await fireEvent.keyDown(flag, { key: "r" });
 		expect(fake.setTempoRamp).toHaveBeenCalledWith(4, "beats");
-		const meter = screen.getByRole("button", { name: "Meter change to 3 beats a bar at 0:08.0" });
+		const meter = screen.getByRole("button", { name: "Meter change to 3/4 at 0:08.0" });
 		expect(meter).toHaveTextContent("3/4");
 		await fireEvent.keyDown(meter, { key: "Backspace" });
 		expect(fake.removeMeterChange).toHaveBeenCalledWith(8);

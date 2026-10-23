@@ -6,6 +6,7 @@ import {
 	StudioSourceReserveSchema,
 	StudioTrackFxSchema,
 	StudioWarpSchema,
+	StudioMeterChangeSchema,
 } from "./StudioSchema";
 
 const sourceId = "V1StGXR8_Z5jdHi6B-myT";
@@ -482,6 +483,18 @@ describe("the song's sample rate", () => {
 		expect(v.safeParse(StudioArrangementSchema, arrangement([], [])).success).toBe(true);
 		expect(
 			v.safeParse(StudioArrangementSchema, { ...arrangement([], []), sampleRate: 50000 }).success,
+		).toBe(false);
+	});
+});
+
+describe("the beat unit (time-signature denominators)", () => {
+	test("a half, quarter, eighth or sixteenth on the song and a meter change; anything else refused", () => {
+		expect(
+			v.safeParse(StudioMeterChangeSchema, { start: 8, beatsPerBar: 6, beatUnit: 8 }).success,
+		).toBe(true);
+		expect(v.safeParse(StudioMeterChangeSchema, { start: 8, beatsPerBar: 6 }).success).toBe(true);
+		expect(
+			v.safeParse(StudioMeterChangeSchema, { start: 8, beatsPerBar: 6, beatUnit: 3 }).success,
 		).toBe(false);
 	});
 });

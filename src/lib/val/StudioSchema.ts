@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import {
+	BEAT_UNITS,
 	MAX_STUDIO_CLIPS,
 	MAX_STUDIO_MARKERS,
 	MAX_STUDIO_NOTES_PER_CLIP,
@@ -157,7 +158,7 @@ export const StudioTrackSchema = v.object({
 	id: LocalIdSchema,
 	kind: v.optional(StudioTrackKindSchema),
 	name: v.pipe(v.string(), v.trim(), v.maxLength(60)),
-	/** A theme color name the lane draws in (`studio-lane-<colour>` shortcuts); the default when missing. */
+	/** A tint id (constants/stemTints.ts) or any `#rrggbb` color the lane draws in; the default when missing. */
 	colour: v.optional(v.pipe(v.string(), v.maxLength(24))),
 	gain: v.pipe(v.number(), v.minValue(0), v.maxValue(STUDIO_FADER_MAX)),
 	pan: v.pipe(v.number(), v.minValue(-1), v.maxValue(1)),
@@ -316,10 +317,14 @@ export const StudioTempoChangeSchema = v.object({
 	ramp: v.optional(v.picklist(TEMPO_CURVES)),
 });
 export type StudioTempoChange = v.InferOutput<typeof StudioTempoChangeSchema>;
-/** A meter change (D5): from `start` seconds on, this many beats a bar. */
+/** The note a beat of the bar is (constants/studio.ts BEAT_UNITS); absent means a quarter. */
+export const BeatUnitSchema = v.picklist(BEAT_UNITS);
+export type BeatUnit = v.InferOutput<typeof BeatUnitSchema>;
+/** A meter change (D5): from `start` seconds on, this many beats a bar, of this note (a quarter when absent). */
 export const StudioMeterChangeSchema = v.object({
 	start: v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_STUDIO_SECONDS)),
 	beatsPerBar: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(7)),
+	beatUnit: v.optional(BeatUnitSchema),
 });
 export type StudioMeterChange = v.InferOutput<typeof StudioMeterChangeSchema>;
 /** A key change (Kevin, 2026-10-20): from `start` seconds on, this key, as written ("F#m", "A♭ major"). */
@@ -357,6 +362,8 @@ export const StudioArrangementSchema = v.object({
 	version: v.literal(1),
 	bpm: v.pipe(v.number(), v.minValue(30), v.maxValue(300)),
 	beatsPerBar: v.pipe(v.number(), v.integer(), v.minValue(2), v.maxValue(7)),
+	/** The note a beat of the bar is, from zero (the time signature's bottom number); a quarter when absent. */
+	beatUnit: v.optional(BeatUnitSchema),
 	/** Bars on the ruler and snapping; off is free time. */
 	gridOn: v.boolean(),
 	countIn: v.boolean(),

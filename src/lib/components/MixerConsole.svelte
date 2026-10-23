@@ -247,6 +247,26 @@
 									onclick={() => engine.setBusTint(bus.id, t.id)}
 								></button>
 							{/each}
+							<!-- Any color (docs/multitrack-recorder.md "Track colors"): a round swatch over the browser's color picker; it wears the color once one is chosen. -->
+							<label
+								class="relative h-5 w-5 overflow-hidden rounded-full border cursor-pointer {(bus.colour?.startsWith(
+									'#',
+								) ?? false)
+									? 'border-white ring-1 ring-white/60'
+									: 'border-white/30 hover:border-white/70'}"
+								style:background={(bus.colour?.startsWith("#") ?? false)
+									? bus.colour
+									: "conic-gradient(#c98a9c, #d2bc8f, #95b59a, #7fb2c2, #a99bc9, #c98a9c)"}
+								title="Any color"
+							>
+								<input
+									type="color"
+									class="absolute -inset-2 h-9 w-9 cursor-pointer opacity-0"
+									aria-label="Any color"
+									value={stemTintHex(bus.colour) ?? "#7fb2c2"}
+									oninput={(e) => engine.setBusTint(bus.id, e.currentTarget.value)}
+								/>
+							</label>
 						</div>
 					</div>
 				{/snippet}

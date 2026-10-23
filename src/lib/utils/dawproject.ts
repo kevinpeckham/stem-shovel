@@ -10,6 +10,10 @@ import { clipNoteEvents } from "./clipNoteEvents";
 import { studioGrid } from "./studioGrid";
 import { clipSegments } from "./clipSegments";
 import { warpPointsOver } from "#lib/audio/warp.js";
+import {
+	DAWPROJECT_METADATA_FIELDS,
+	type DawprojectMetadata,
+} from "#lib/val/DawprojectMetadataSchema.js";
 
 /** An audio file the DAWproject carries for a clip's source: its path inside the archive and what it is. */
 export interface DawprojectAudio {
@@ -21,6 +25,8 @@ export interface DawprojectAudio {
 
 export interface DawprojectInput {
 	title: string;
+	/** The rest of `metadata.xml` (val/DawprojectMetadataSchema.ts): the artist, the writers, the year, a comment… */
+	metadata?: DawprojectMetadata;
 	arrangement: StudioArrangement;
 	/** By source id: the audio the archive holds for each audio clip (a clip whose source is missing is left out). */
 	audio: Map<string, DawprojectAudio>;
@@ -41,6 +47,9 @@ export interface DawprojectInput {
  * Elements come in the schema's order (tests/dawproject/Project.xsd):
  * the unit tests validate the result against it.
  */
+/** A metadata field's element name: the field capitalized (`originalArtist` is `OriginalArtist`). */
+const metaTag = (field: string) => field[0]!.toUpperCase() + field.slice(1);
+
 export function dawproject(input: DawprojectInput): { project: string; metadata: string } {
 	const a = input.arrangement;
 	let n = 0;
@@ -60,7 +69,9 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 	const tempoId = id("tempo");
 	const timesigId = id("timesig");
 	out(`    <Tempo unit="bpm" value="${num(a.bpm)}" id="${tempoId}" name="Tempo"/>`);
-	out(`    <TimeSignature numerator="${a.beatsPerBar}" denominator="4" id="${timesigId}"/>`);
+	out(
+		`    <TimeSignature numerator="${a.beatsPerBar}" denominator="${a.beatUnit ?? 4}" id="${timesigId}"/>`,
+	);
 	out("  </Transport>");
 
 	// Channels first, so a track's destination and sends can name them.
@@ -354,20 +365,26 @@ export function dawproject(input: DawprojectInput): { project: string; metadata:
 	if (meterChanges.length) {
 		out(`    <TimeSignatureAutomation timeUnit="beats" id="${id("sigauto")}">`);
 		out(`      <Target parameter="${timesigId}"/>`);
-		out(`      <TimeSignaturePoint time="0.000000" numerator="${a.beatsPerBar}" denominator="4"/>`);
+		out(
+			`      <TimeSignaturePoint time="0.000000" numerator="${a.beatsPerBar}" denominator="${a.beatUnit ?? 4}"/>`,
+		);
 		for (const c of meterChanges)
 			out(
-				`      <TimeSignaturePoint time="${num(beat(c.start))}" numerator="${c.beatsPerBar}" denominator="4"/>`,
+				`      <TimeSignaturePoint time="${num(beat(c.start))}" numerator="${c.beatsPerBar}" denominator="${c.beatUnit ?? 4}"/>`,
 			);
 		out("    </TimeSignatureAutomation>");
 	}
 	out("  </Arrangement>");
 	out("</Project>");
 
+	// The metadata in the schema's order (tests/dawproject/MetaData.xsd); an empty field is left out.
 	const metadata = [
 		'<?xml version="1.0" encoding="UTF-8"?>',
 		"<MetaData>",
 		`  <Title>${esc(input.title)}</Title>`,
+		...DAWPROJECT_METADATA_FIELDS.filter((f) => input.metadata?.[f]?.trim()).map(
+			(f) => `  <${metaTag(f)}>${esc(input.metadata![f]!.trim())}</${metaTag(f)}>`,
+		),
 		"</MetaData>",
 		"",
 	].join("\n");

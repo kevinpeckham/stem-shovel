@@ -1,4 +1,9 @@
-import { STEM_TINTS } from "#lib/constants/stemTints.js";
+import { BEAT_UNITS } from "#lib/constants/studio.js";
+import { colourOfHex } from "./colourOfHex";
+import {
+	DAWPROJECT_METADATA_FIELDS,
+	type DawprojectMetadata,
+} from "#lib/val/DawprojectMetadataSchema.js";
 import { MAX_AUTOMATION_POINTS } from "#lib/constants/studioAutomation.js";
 import { MAX_SENDS, MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
 import { lanesFromEvents, type LaneEvent } from "./lanesFromEvents";
@@ -38,8 +43,10 @@ export interface DawprojectFile {
 
 export interface DawprojectRead {
 	title: string;
-	/** The metadata's artist and comment, as lines for the song's notes. */
+	/** The metadata's fields (the artist, the writers, the comment…) as lines for the song's notes, with where the file came from. */
 	notes: string;
+	/** The metadata besides the title, as the file had it (DAWproject archives; the other readers have none). */
+	metadata?: DawprojectMetadata;
 	arrangement: StudioArrangement;
 	files: DawprojectFile[];
 	/** What did not come across, in words for the import report. */
@@ -47,6 +54,22 @@ export interface DawprojectRead {
 	/** What came across changed: another writer's ways read into Dawn's (float-noise tempos, beats, decibels, alpha colors…), in words for the report. */
 	fixed: string[];
 }
+
+/** The metadata fields' labels in the notes ("Original artist: …"); the comment goes in as itself. */
+const META_LABELS: Record<(typeof DAWPROJECT_METADATA_FIELDS)[number], string> = {
+	artist: "Artist",
+	album: "Album",
+	originalArtist: "Original artist",
+	composer: "Composer",
+	songwriter: "Songwriter",
+	producer: "Producer",
+	arranger: "Arranger",
+	year: "Year",
+	genre: "Genre",
+	copyright: "Copyright",
+	website: "Website",
+	comment: "Comment",
+};
 
 type TimeUnit = "beats" | "seconds";
 
@@ -116,14 +139,19 @@ export function readDawproject(
 	if (!tempoEl) fix("No tempo: 120 bpm assumed");
 	else if (bpm !== rawBpm) fix(`Tempo ${rawBpm} read as ${bpm}`);
 	const sigEl = kid(transport, "TimeSignature");
-	const beatsPerBar = clamp(Math.round(num(sigEl, "numerator", 4)), 2, 7);
+	/** A time signature as Dawn's meter: 2 to 7 beats of a half, quarter, eighth or sixteenth (docs/multitrack-recorder.md "Time-signature denominators"). */
+	const meterOf = (el: Element | null, fallbackBeats: number) => {
+		const numerator = num(el, "numerator", fallbackBeats);
+		const denominator = num(el, "denominator", 4);
+		const beatsPerBar = clamp(Math.round(numerator), 2, 7);
+		const beatUnit = (BEAT_UNITS as readonly number[]).includes(denominator) ? denominator : 4;
+		if (numerator !== beatsPerBar || denominator !== beatUnit)
+			fix(`Time signature ${numerator}/${denominator} read as ${beatsPerBar}/${beatUnit}`);
+		return { beatsPerBar, beatUnit };
+	};
+	const meter = meterOf(sigEl, 4);
+	const beatsPerBar = meter.beatsPerBar;
 	if (!sigEl) fix("No time signature: 4/4 assumed");
-	else {
-		const numerator = num(sigEl, "numerator", 4);
-		const denominator = num(sigEl, "denominator", 4);
-		if (numerator !== beatsPerBar || denominator !== 4)
-			fix(`Time signature ${numerator}/${denominator} read as ${beatsPerBar}/4`);
-	}
 	const arrangementEl = kid(root, "Arrangement");
 	/**
 	 * The tempo automation's points by beat, the song's own tempo first; a point interpolated "linear" ramps
@@ -170,14 +198,13 @@ export function readDawproject(
 	const buses: StudioBus[] = [];
 	let master = 1;
 	const pending: { owner: Owner; channel: Element | null }[] = [];
-	// Cubase writes colors with an alpha byte ("#a2eabfff"); the tint is the first six digits.
+	// Cubase writes colors with an alpha byte ("#a2eabfff"); the color is the first six digits. One of Dawn's own
+	// palette comes back as its tint, any other is kept as it is (docs/multitrack-recorder.md "Track colors").
 	const tint = (hex: string | null) => {
 		const six = hex?.match(/^#?([0-9a-f]{6})/i)?.[1];
 		if (!six) return undefined;
 		if (hex!.replace(/^#/, "").length > 6) fix("Colors with an alpha byte, read as six digits");
-		const id = STEM_TINTS.find((t) => t.hex.toLowerCase() === `#${six.toLowerCase()}`)?.id;
-		if (!id) fix("Colors outside Dawn's palette, left uncolored");
-		return id;
+		return colourOfHex(six);
 	};
 	const volumeOf = (el: Element | null): number => {
 		if (!el) return 1;
@@ -656,28 +683,32 @@ export function readDawproject(
 		.filter((c, i, all) => c.start > 0 && (i === 0 || c.start !== all[i - 1]!.start))
 		.slice(0, 64);
 	const meterChanges = kids(kid(arrangementEl, "TimeSignatureAutomation"), "TimeSignaturePoint")
-		.map((p) => ({
-			beat: num(p, "time", 0),
-			beatsPerBar: clamp(Math.round(num(p, "numerator", beatsPerBar)), 2, 7),
-		}))
+		.map((p) => ({ beat: num(p, "time", 0), ...meterOf(p, beatsPerBar) }))
 		.filter((p) => p.beat > 0)
 		.sort((a, b) => a.beat - b.beat)
-		.map((p) => ({ start: seconds(beatsToSeconds(p.beat)), beatsPerBar: p.beatsPerBar }))
+		.map((p) => ({
+			start: seconds(beatsToSeconds(p.beat)),
+			beatsPerBar: p.beatsPerBar,
+			...(p.beatUnit !== 4 ? { beatUnit: p.beatUnit as 2 | 8 | 16 } : {}),
+		}))
 		.filter((c, i, all) => i === 0 || c.start !== all[i - 1]!.start)
 		.slice(0, 64);
 
-	// ── Metadata ─────────────────────────────────────────────────────────
+	// ── Metadata: every field the file has, each a line of the notes, the comment as itself ──
 	let title = "";
 	const noteLines: string[] = [];
+	const metadata: DawprojectMetadata = {};
 	if (metadataXml) {
 		const meta = new DOMParser().parseFromString(metadataXml, "application/xml");
 		if (!meta.getElementsByTagName("parsererror").length) {
 			const text = (tag: string) => meta.getElementsByTagName(tag)[0]?.textContent?.trim() ?? "";
 			title = text("Title");
-			const artist = text("Artist");
-			const comment = text("Comment");
-			if (artist) noteLines.push(`Artist: ${artist}`);
-			if (comment) noteLines.push(comment);
+			for (const field of DAWPROJECT_METADATA_FIELDS) {
+				const value = text(field[0]!.toUpperCase() + field.slice(1));
+				if (!value) continue;
+				metadata[field] = value;
+				noteLines.push(field === "comment" ? value : `${META_LABELS[field]}: ${value}`);
+			}
 		}
 	}
 	const app = kid(root, "Application");
@@ -698,6 +729,7 @@ export function readDawproject(
 		version: 1,
 		bpm: tempoSteps[0]!.bpm,
 		beatsPerBar,
+		...(meter.beatUnit !== 4 ? { beatUnit: meter.beatUnit as 2 | 8 | 16 } : {}),
 		gridOn: true,
 		countIn: false,
 		click: false,
@@ -715,6 +747,7 @@ export function readDawproject(
 	return {
 		title: title.slice(0, 120) || fallbackTitle.slice(0, 120) || "Imported project",
 		notes: noteLines.join("\n"),
+		...(Object.keys(metadata).length ? { metadata } : {}),
 		arrangement,
 		files,
 		dropped,

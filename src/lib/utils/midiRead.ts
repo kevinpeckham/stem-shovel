@@ -11,6 +11,7 @@ import type { DawprojectRead } from "./dawprojectRead";
 import { lanesFromEvents } from "./lanesFromEvents";
 import { readReport } from "./readReport";
 import { DRUM_CHANNEL } from "./midiNotesFile";
+import { BEAT_UNITS } from "#lib/constants/studio.js";
 
 /** Times to a tenth of a millisecond, as Dawn keeps its clips: a tick through the tempo map lands a hair off a second otherwise. */
 const seconds = (v: number) => Math.round(v * 10000) / 10000;
@@ -81,22 +82,31 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 		.map((t) => ({ start: t.at, bpm: t.bpm }))
 		.filter((c, i, all) => (i === 0 ? c.bpm !== bpm : c.bpm !== all[i - 1]!.bpm))
 		.slice(0, 64);
+	/** A time signature as Dawn's meter: 2 to 7 beats of a half, quarter, eighth or sixteenth (the file's tempo is quarter notes a minute, as Dawn's). */
 	const meterOf = (m: { numerator: number; denominator: number }, where: string) => {
 		const n = clamp(Math.round(m.numerator), 2, 7);
-		if (n !== m.numerator || m.denominator !== 4)
-			fix(`Time signature ${m.numerator}/${m.denominator} ${where} read as ${n}/4`);
-		return n;
+		const unit = (BEAT_UNITS as readonly number[]).includes(m.denominator) ? m.denominator : 4;
+		if (n !== m.numerator || m.denominator !== unit)
+			fix(`Time signature ${m.numerator}/${m.denominator} ${where} read as ${n}/${unit}`);
+		return { beatsPerBar: n, beatUnit: unit };
 	};
 	const meters = summary.meters ?? [];
 	const first = meters.find((m) => m.at === 0) ?? meters[0];
-	const beatsPerBar = first ? meterOf(first, "at the start") : 4;
+	const meter = first ? meterOf(first, "at the start") : { beatsPerBar: 4, beatUnit: 4 };
+	const beatsPerBar = meter.beatsPerBar;
 	if (!first) fix("No time signature in the file: 4/4 assumed");
 	const meterChanges = meters
 		.filter((m) => m.at > 0)
-		.map((m) => ({ start: seconds(m.at), beatsPerBar: meterOf(m, `at ${seconds(m.at)} s`) }))
-		.filter((c, i, all) =>
-			i === 0 ? c.beatsPerBar !== beatsPerBar : c.beatsPerBar !== all[i - 1]!.beatsPerBar,
-		)
+		.map((m) => ({ start: seconds(m.at), ...meterOf(m, `at ${seconds(m.at)} s`) }))
+		.filter((c, i, all) => {
+			const before = i === 0 ? meter : all[i - 1]!;
+			return c.beatsPerBar !== before.beatsPerBar || c.beatUnit !== before.beatUnit;
+		})
+		.map((c) => ({
+			start: c.start,
+			beatsPerBar: c.beatsPerBar,
+			...(c.beatUnit !== 4 ? { beatUnit: c.beatUnit as 2 | 8 | 16 } : {}),
+		}))
 		.slice(0, 64);
 	const keyName = (k: { sharps: number; minor: boolean }) =>
 		(k.minor ? MINOR : MAJOR)[clamp(Math.round(k.sharps), -7, 7) + 7]!;
@@ -239,6 +249,7 @@ function fromSummary(summary: MidiSummary, fallbackTitle: string): DawprojectRea
 			version: 1,
 			bpm,
 			beatsPerBar,
+			...(meter.beatUnit !== 4 ? { beatUnit: meter.beatUnit as 2 | 8 | 16 } : {}),
 			gridOn: true,
 			countIn: false,
 			click: false,

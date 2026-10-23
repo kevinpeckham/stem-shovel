@@ -28,10 +28,15 @@ import {
 	nextBeatAt,
 	barSecondsAt,
 	beatsPerBarAt,
+	beatTempoAt,
+	beatUnitAt,
 	secondsAtBar,
 	tempoAt,
 	type BarGrid,
 } from "./measures";
+import { BEAT_UNITS } from "#lib/constants/studio.js";
+import { stemTintHex } from "#lib/constants/stemTints.js";
+import type { BeatUnit } from "#lib/val/StudioSchema.js";
 import { splitClipAt } from "#lib/utils/splitClipAt.js";
 import { takePieces } from "#lib/utils/takePieces.js";
 import { trimmedClip } from "#lib/utils/trimmedClip.js";
@@ -288,6 +293,16 @@ export interface RenderTarget {
 /** Seconds past the last clip a bounce keeps, for reverbs and delays ringing out. */
 const RENDER_TAIL_S = 1;
 
+/** A beat unit as the schema has it: one of BEAT_UNITS, else a quarter. */
+const beatUnitOf = (unit: number): BeatUnit =>
+	(BEAT_UNITS as readonly number[]).includes(unit) ? (unit as BeatUnit) : 4;
+/** A color as the arrangement keeps it: a palette tint's id or a `#rrggbb` in lower case; undefined for none or nonsense. */
+const colourValue = (tint: string | null): string | undefined => {
+	if (!tint) return undefined;
+	if (/^#[0-9a-f]{6}$/i.test(tint)) return tint.toLowerCase();
+	return stemTintHex(tint) ? tint : undefined;
+};
+
 class StudioEngine {
 	arrangement = $state<StudioArrangement>(emptyArrangement());
 	sources = $state<Record<string, StudioSource>>({});
@@ -423,7 +438,7 @@ class StudioEngine {
 		return barSecondsAt(this.grid, this.position);
 	}
 	get beatSeconds() {
-		return 60 / tempoAt(this.grid, this.position);
+		return 60 / beatTempoAt(this.grid, this.position);
 	}
 	/** The end of the last clip, or a bar when the song is empty. */
 	get duration() {
@@ -942,11 +957,11 @@ class StudioEngine {
 		this.dirty = true;
 		this.#applyGains();
 	}
-	/** A track's tint (constants/stemTints.ts), kept on the arrangement as `colour`; null for none. */
+	/** A track's color: a tint id (constants/stemTints.ts) or any `#rrggbb` (docs/multitrack-recorder.md "Track colors"), kept on the arrangement as `colour`; null for none. */
 	setTint(trackId: string, tint: string | null) {
 		const t = this.#track(trackId);
 		if (!t) return;
-		t.colour = tint ?? undefined;
+		t.colour = colourValue(tint);
 		this.dirty = true;
 	}
 	setPan(trackId: string, value: number) {
@@ -1044,7 +1059,7 @@ class StudioEngine {
 	setBusTint(busId: string, tint: string | null) {
 		const b = this.#bus(busId);
 		if (!b) return;
-		b.colour = tint ?? undefined;
+		b.colour = colourValue(tint);
 		this.dirty = true;
 	}
 	/** Where a track goes: a bus, or the master with null. */
@@ -1128,13 +1143,22 @@ class StudioEngine {
 		this.arrangement.bpm = v;
 		metronome.setBpm(v);
 	}
-	setBeatsPerBar(n: number) {
+	/**
+	 * The song's meter from zero: beats a bar, and the note a beat is (the
+	 * time signature's bottom number, docs/multitrack-recorder.md
+	 * "Time-signature denominators"); the unit alone left as it was.
+	 */
+	setBeatsPerBar(n: number, unit?: number) {
 		if (!Number.isFinite(n)) return;
 		const v = Math.max(2, Math.min(7, Math.round(n)));
-		if (v === this.arrangement.beatsPerBar) return;
+		const u = unit === undefined ? (this.arrangement.beatUnit ?? 4) : beatUnitOf(unit);
+		if (v === this.arrangement.beatsPerBar && u === (this.arrangement.beatUnit ?? 4)) return;
 		this.#commit();
 		this.arrangement.beatsPerBar = v;
+		if (u === 4) delete this.arrangement.beatUnit;
+		else this.arrangement.beatUnit = u;
 		metronome.setBeats(v);
+		metronome.setBeatUnit(u);
 	}
 	/**
 	 * The song's sample rate (Song settings, docs/multitrack-recorder.md "Sample
@@ -1239,17 +1263,19 @@ class StudioEngine {
 		if (!this.arrangement.tempoChanges.length) delete this.arrangement.tempoChanges;
 		this.#reschedule();
 	}
-	setMeterChange(start: number, beatsPerBar: number) {
+	setMeterChange(start: number, beatsPerBar: number, unit?: number) {
 		const v = Math.max(2, Math.min(7, Math.round(beatsPerBar)));
+		const u = beatUnitOf(unit ?? 4);
 		const at = round4(Math.max(0, start));
-		if (at === 0) return this.setBeatsPerBar(v);
+		if (at === 0) return this.setBeatsPerBar(v, u);
 		this.#commit();
 		const rest = (this.arrangement.meterChanges ?? []).filter(
 			(c) => Math.abs(c.start - at) > 0.001,
 		);
-		this.arrangement.meterChanges = [...rest, { start: at, beatsPerBar: v }].sort(
-			(a, b) => a.start - b.start,
-		);
+		this.arrangement.meterChanges = [
+			...rest,
+			{ start: at, beatsPerBar: v, ...(u !== 4 ? { beatUnit: u } : {}) },
+		].sort((a, b) => a.start - b.start);
 		this.#reschedule();
 	}
 	removeMeterChange(start: number) {
@@ -2656,6 +2682,7 @@ class StudioEngine {
 		if (this.arrangement.click || opts.countIn) {
 			metronome.setBpm(tempoAt(grid, from));
 			metronome.setBeats(beatsPerBarAt(grid, from));
+			metronome.setBeatUnit(beatUnitAt(grid, from));
 			// The click runs from the count-in; on the grid its downbeats fall on the song's bars (the bar the start is in, on the tempo map).
 			const bar = barSecondsAt(grid, from);
 			const intoBar = from - secondsAtBar(grid, barAt(grid, from).bar);
@@ -2766,6 +2793,7 @@ class StudioEngine {
 						metronome.stop();
 						metronome.setBpm(bpm);
 						metronome.setBeats(bpb);
+						metronome.setBeatUnit(beatUnitAt(grid, t));
 						void metronome.startAt(at);
 					}
 					if (this.#startedDrums && !drumMachine.followTempo) drumMachine.setBpm(bpm);

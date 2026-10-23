@@ -285,9 +285,9 @@
 					</dd>
 					<dt class="opacity-70">Tempo</dt>
 					<dd>
-						{read.arrangement.bpm} bpm, {read.arrangement.beatsPerBar}/4{read.arrangement.key
-							? `, ${read.arrangement.key}`
-							: ""}{read.arrangement.tempoChanges?.length
+						{read.arrangement.bpm} bpm, {read.arrangement.beatsPerBar}/{read.arrangement.beatUnit ??
+							4}{read.arrangement.key ? `, ${read.arrangement.key}` : ""}{read.arrangement
+							.tempoChanges?.length
 							? `, ${read.arrangement.tempoChanges.length} tempo ${read.arrangement.tempoChanges.length === 1 ? "change" : "changes"}`
 							: ""}{read.arrangement.markers?.length
 							? `, ${read.arrangement.markers.length} ${read.arrangement.markers.length === 1 ? "marker" : "markers"}`

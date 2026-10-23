@@ -8,6 +8,17 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Time signatures over any note in Dawn.** **Beat note** beside Beats per bar in the Timing menu is the time signature's bottom number (2, 4, 8 or 16), and a meter change on the ruler takes one too, so 6/8 is six eighths a bar and the click, grid, snap and quantize count them. The tempo stays in quarter notes a minute, as a DAW counts it. The bottom number travels in every file both ways: DAWproject, Reaper, Live sets, MIDI files and Sandyne; the Audacity labels print it.
+- **Any color on a track or bus.** The tint swatches in a track's menu and a bus's strip end in an **Any color** swatch over your browser's color picker. A DAW's own track colors now come in as they were from a DAWproject, a Reaper project or a Live set, instead of the nearest of Dawn's tints or none.
+- **Song details in the DAWproject.** The file's metadata carries the song's notes as its comment, and an export into a song's files adds the song page's performers as the artist, its composers (or songwriter line) as the songwriter, its producers, the year it was written and its public address. An imported DAWproject's metadata (artist, album, songwriter, producer, year, genre, copyright, website, comment…) lands in the song's notes, a line each, and the converter's summary shows the meter as the file had it.
+
+### Technical
+
+- `beatUnit` on `StudioArrangement` and `StudioMeterChange` (`BEAT_UNITS`), `beatUnit` on a BarGrid's meters with `beatTempoAt`/`beatUnitAt` in audio/measures.ts (a meter without a unit keeps the stem player's convention), `studioGrid` naming the unit on every meter, `studioChanges` scaling the tempo between the player's beat-of-the-bottom-number and Dawn's quarter notes; `colour` taking a `#rrggbb` beside a tint id, `stemTintHex` passing one through, `utils/colourOfHex.ts` for the readers (`nearestStemTint` and the Live hue match removed); `val/DawprojectMetadataSchema.ts`, `metadata` on the DAWproject writer's input and the reader's result, `songExportMetadata` in data.ts (docs/multitrack-recorder.md "Time-signature denominators", "Track colors", "Song metadata in the files").
+- Reaper stores the quarter-note tempo whatever the signature's bottom number and shows the "divided" one in its transport (FINDINGS.md), so Dawn's tempo goes into an `.rpp` unscaled.
+
 ## [0.150.0] - 2026-10-23
 
 ### Added

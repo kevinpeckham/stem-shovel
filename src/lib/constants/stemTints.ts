@@ -20,7 +20,13 @@ export type StemTint = (typeof STEM_TINTS)[number]["id"];
 
 export const STEM_TINT_IDS = STEM_TINTS.map((t) => t.id) as [StemTint, ...StemTint[]];
 
-/** The hex for a tint id, or null for none (and for an id the palette no longer has). */
+/**
+ * The hex for a tint id, a `#rrggbb` as it is (Dawn's free track colors,
+ * docs/multitrack-recorder.md "Track colors"), or null for none (and for an
+ * id the palette no longer has).
+ */
 export function stemTintHex(id: string | null | undefined): string | null {
+	if (!id) return null;
+	if (/^#[0-9a-f]{6}$/i.test(id)) return id;
 	return STEM_TINTS.find((t) => t.id === id)?.hex ?? null;
 }

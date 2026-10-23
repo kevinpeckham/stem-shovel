@@ -13,8 +13,10 @@ export function diffArrangements(before: StudioArrangement, after: StudioArrange
 	const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 	const t = (s: number) => `${s.toFixed(2)} s`;
 	if (before.bpm !== after.bpm) out.push(`Tempo ${before.bpm} → ${after.bpm} bpm`);
-	if (before.beatsPerBar !== after.beatsPerBar)
-		out.push(`Meter ${before.beatsPerBar}/4 → ${after.beatsPerBar}/4`);
+	if (before.beatsPerBar !== after.beatsPerBar || (before.beatUnit ?? 4) !== (after.beatUnit ?? 4))
+		out.push(
+			`Meter ${before.beatsPerBar}/${before.beatUnit ?? 4} → ${after.beatsPerBar}/${after.beatUnit ?? 4}`,
+		);
 	if (
 		!same(before.tempoChanges, after.tempoChanges) ||
 		!same(before.meterChanges, after.meterChanges)

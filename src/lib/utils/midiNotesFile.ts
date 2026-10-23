@@ -26,14 +26,19 @@ export const DRUM_CHANNEL = 9;
  */
 export function notesToMidiBlob(
 	notes: StudioNote[],
-	song: { bpm: number; beatsPerBar: number; drums?: boolean },
+	song: { bpm: number; beatsPerBar: number; beatUnit?: number; drums?: boolean },
 	controls: ClipLaneEvent[] = [],
 ): Blob {
 	const channel = song.drums ? DRUM_CHANNEL : 0;
 	const tick = (seconds: number) => Math.round((seconds * song.bpm * MIDI_PPQ) / 60);
 	const events: MidiEvent[] = [
 		midiTempo(0, song.bpm),
-		midiTimeSignature(0, song.beatsPerBar, 2, 24),
+		midiTimeSignature(
+			0,
+			song.beatsPerBar,
+			Math.log2(song.beatUnit ?? 4),
+			96 / (song.beatUnit ?? 4),
+		),
 	];
 	let end = 0;
 	for (const n of notes) {

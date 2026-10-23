@@ -169,13 +169,15 @@ describe("readRpp", () => {
 		expect(read.notes).toBe("A song\nin two lines");
 		expect(a.bpm).toBe(90);
 		expect(a.beatsPerBar).toBe(6);
+		expect(a.beatUnit).toBe(8);
 		expect(a.master).toBe(0.5);
 		expect(a.sampleRate).toBe(48000);
 		expect(a.markers?.map((m) => [m.t, m.name])).toEqual([
 			[1.5, "Verse one"],
 			[4, "Chorus"],
 		]);
-		expect(a.buses?.map((b) => [b.name, b.gain, b.colour])).toEqual([["Drums", 0.8, "sea"]]);
+		// Reaper's own color, kept as it is (near Dawn's sea, not it).
+		expect(a.buses?.map((b) => [b.name, b.gain, b.colour])).toEqual([["Drums", 0.8, "#7fcec6"]]);
 		expect(a.buses![0]!.automation).toEqual({
 			volume: [
 				{ t: 0, v: 1 },
@@ -222,9 +224,7 @@ describe("readRpp", () => {
 		]);
 		expect(read.dropped).toEqual(["Second take on Kick: 1 other take"]);
 		expect(read.fixed).toEqual([
-			"Time signature 6/8 at the start read as 6/4",
 			"Regions read as markers at their start",
-			"Track colors read as the nearest of Dawn's tints",
 			"Envelope shapes other than linear read as linear",
 			"Bass sends to no output in Reaper: goes to the master here",
 			"Fade shapes other than linear read as equal power",

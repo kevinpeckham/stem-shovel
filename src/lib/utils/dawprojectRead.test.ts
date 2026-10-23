@@ -207,11 +207,19 @@ describe("readDawproject", () => {
 </Project>`;
 		const read = readDawproject(
 			xml,
-			"<MetaData><Title>Night Drive</Title><Artist>Bad Verbs</Artist><Comment>demo</Comment></MetaData>",
+			"<MetaData><Title>Night Drive</Title><Artist>Bad Verbs</Artist><Songwriter>K. Peckham</Songwriter><Year>2026</Year><Comment>demo</Comment></MetaData>",
 		);
 		const a = read.arrangement;
 		expect(read.title).toBe("Night Drive");
-		expect(read.notes).toBe("Artist: Bad Verbs\ndemo\nImported from Bitwig Studio 5.3.");
+		expect(read.notes).toBe(
+			"Artist: Bad Verbs\nSongwriter: K. Peckham\nYear: 2026\ndemo\nImported from Bitwig Studio 5.3.",
+		);
+		expect(read.metadata).toEqual({
+			artist: "Bad Verbs",
+			songwriter: "K. Peckham",
+			year: "2026",
+			comment: "demo",
+		});
 		// 120 bpm until beat 8 (4 s), then 60: beat 12 is at 8 s.
 		expect([a.bpm, a.beatsPerBar, a.master]).toEqual([120, 4, 0.8]);
 		expect(a.tempoChanges).toEqual([{ start: 4, bpm: 60 }]);
@@ -496,7 +504,6 @@ describe("sample rates", () => {
 			"No time signature: 4/4 assumed",
 			"Input/Output: an empty folder, skipped",
 			"Colors with an alpha byte, read as six digits",
-			"Colors outside Dawn's palette, left uncolored",
 			"Levels in decibels, converted to linear",
 			"Alias Riff: an alias, written as a copy",
 			"Times in beats, converted to seconds through the tempo map",

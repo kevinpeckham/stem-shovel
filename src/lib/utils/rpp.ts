@@ -1,6 +1,6 @@
 import { stemTintHex } from "#lib/constants/stemTints.js";
 import type { StudioArrangement, StudioClip } from "#lib/val/StudioSchema.js";
-import { beatsBetween, beatsPerBarAt } from "#lib/audio/measures.js";
+import { beatUnitAt, beatsBetween, beatsPerBarAt } from "#lib/audio/measures.js";
 import { sendLaneKey } from "#lib/constants/studioInserts.js";
 import { clipLaneEvents } from "./clipLaneEvents";
 import { tempoPointsGrid } from "./tempoPointsGrid";
@@ -71,8 +71,9 @@ export function rppProject(input: RppProjectInput): string {
 	for (const n of notes) out(2, `|${n}`);
 	out(1, ">");
 	if (a.sampleRate) out(1, `SAMPLERATE ${a.sampleRate} 0 0`);
-	out(1, `TEMPO ${num(a.bpm)} ${a.beatsPerBar} 4 0`);
-	// The tempo map: a point per tempo and meter change, the time signature as (4 << 16) | beats on the first point and
+	// Reaper's tempo is quarter notes a minute whatever the signature's bottom number (FINDINGS.md), as Dawn's is.
+	out(1, `TEMPO ${num(a.bpm)} ${a.beatsPerBar} ${a.beatUnit ?? 4} 0`);
+	// The tempo map: a point per tempo and meter change, the time signature as (denominator << 16) | beats on the first point and
 	// where the meter changes only (a point carrying one starts a measure in Reaper, which pads the bar before a point
 	// off a bar line; FINDINGS.md). A point's shape 0 ramps the tempo linearly in seconds to the next point (Reaper's own curve).
 	if (points.length > 1) {
@@ -83,11 +84,11 @@ export function rppProject(input: RppProjectInput): string {
 		out(2, "DEFSHAPE 1 -1 -1");
 		// Reaper takes the time signature on a point only with the flag after it (its own files carry "0 1").
 		for (const p of points) {
-			const meter = beatsPerBarAt(grid, p.start);
+			const meter = (beatUnitAt(grid, p.start) << 16) | beatsPerBarAt(grid, p.start);
 			const stamped = p.start === 0 || meterChanges.some((m) => m.start === p.start);
 			out(
 				2,
-				`PT ${num(p.start)} ${num(p.bpm)} ${p.linear ? 0 : 1} ${stamped ? (4 << 16) | meter : 0} 0 ${stamped ? 1 : 0}`,
+				`PT ${num(p.start)} ${num(p.bpm)} ${p.linear ? 0 : 1} ${stamped ? meter : 0} 0 ${stamped ? 1 : 0}`,
 			);
 		}
 		out(1, ">");
