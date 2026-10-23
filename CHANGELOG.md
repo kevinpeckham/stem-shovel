@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.149.0] - 2026-10-23
+
 ### Added
 
 - **Mute lanes, and lanes for the buses and the master, in Dawn.** Every track's automation picker offers **Mute**: a switch drawn in steps, held from each point to the next, beside the track's own mute button. Under the tracks the timeline now shows a thin row per bus and one for the master, each with an **A** button opening its own lane (volume, mute and its inserts; a bus's pan too), and the master fader writes to its lane at the playhead like a track's knob. A DAWproject carries the mute, send and master lanes both ways, a Reaper project writes and reads them as its own envelopes, and a Live set's track on/off, send and master envelopes come in as lanes.
@@ -16,6 +18,7 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ### Technical
 
+- `mute` as an automation key and `masterAutomation` on the arrangement (`StudioSchema`); `AutomationRange.step` with `hold` in `automationValueAt`/`scheduleAutomation` (`STEP_RAMP`), `laneTransfer` in `utils/automationLanes.ts`, a `mute` gain in `stripGraph.ts`; `scripts/interop/rpp.ts` probes the mute, receive and master envelopes by render (docs/multitrack-recorder.md "Wider automation").
 - `lanes?: StudioClipLane[]` on `StudioClip` (`src/lib/constants/studioLanes.ts`, `utils/clipLaneEvents.ts`, `utils/lanesFromEvents.ts`, `utils/sliceLanes.ts`); the instrument adapter's optional `onControl` and `scheduleControl` and a `controls` argument to `renderOffline`; `bend?(semitones, at)` on `SynthVoice` and `SampledVoice`; `PianoEngine.onControl`, `setBend`, `scheduleControl`; `audio/midi.ts` keeps controllers, bends and pressure in `summary.controls`; `midiFile.ts` `midiControl`, `midiPitchBend`, `midiPressure`, `midiLaneEvent` (docs/multitrack-recorder.md "Expression lanes").
 
 ## [0.148.0] - 2026-10-22
