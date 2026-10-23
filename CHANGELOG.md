@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.153.0] - 2026-10-23
+
 ### Added
 
 - **Groups on the Stage.** A group is a puck of its own on Dawn's Stage, a rounded square with a folder that sets the whole group's level and pan; fold it from its strip or with F and its tracks hide behind it, the same fold as the timeline's.
@@ -17,6 +19,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 - **Shorter send lists in the mixer.** A track's strip shows a knob only for the sends in use, and **Add send** offers the other buses, groups left out. A new send starts at −6 dB.
 - **Bigger songs in Dawn.** A song holds up to 64 tracks (from 16), 1000 clips (from 400) and 32 buses and groups (from 16); the amount of audio in memory, which the readout shows, is the real limit. Opening a song's stems in Dawn now says when stems were left behind instead of dropping them quietly.
+
+### Technical
+
+- `MAX_STUDIO_TRACKS = 64`, `MAX_STUDIO_CLIPS = 1000`, `MAX_STUDIO_BUSES = 32`; `importSongStemsIntoStudio` and `studioFromStems` return `left`. `MixerModel.groups` (`MixerGroup`) with `setGroupGain`/`setGroupPan`/`toggleGroupMute`/`toggleGroupCollapsed`, filled by Dawn's model; `utils/spreadPucks.ts` lays clustered pucks in rings (docs/multitrack-recorder.md "The Stage: group pucks and clusters").
 
 ## [0.152.0] - 2026-10-23
 
