@@ -9,6 +9,31 @@ belong in CLAUDE.md or docs/, not here.
 
 ## AI features
 
+- **Correction to the chart-read finding, and the composed-pipeline
+  result** (stem-bench Study 5 + Study 3 Correction, 2026-10-24; full
+  tables in the repo's REPORT.md). Study 5 composed the real path
+  (engraved page, chart-read, chart-anchored song-check) and its
+  anatomy caught a fixture bug that corrects Study 3: the bench's PDF
+  generator silently dropped every chord accidental (a WinAnsi font
+  cannot encode music glyphs), so the models in the PDF arm were
+  correctly reading corrupted pages, not failing at PDFs. Corrected
+  numbers: fable reads a CLEAN PDF at 99.3% chord recall, equal to
+  images. **The earlier "rasterize PDFs app-side" guidance is
+  withdrawn** — unnecessary for clean PDFs, useless for corrupt ones
+  (the corruption is in the drawn page). The replacement guidance: add
+  a key-vs-chords consistency check on chart-read output — a score
+  whose key signature says flats while every chord prints natural is
+  the signature of accidental-dropping PDF generation in the wild, and
+  fable already flags exactly this unprompted in its Note line; treat
+  that Note as a first-class signal (surface it to the user) rather
+  than prose. The composed-pipeline result itself: with a competent
+  reader the chain equals the truth-fed ceiling (zero added errors,
+  both formats), the song-check inherits chart-read's accuracy 1:1,
+  and the one reader omission was rescued by the listener reading the
+  chart's chord content. Surfacing the chart summary for user
+  correction before it anchors the song-check protects everything
+  downstream.
+
 - **The song-check reads; it does not hear** (stem-bench Study 4,
   2026-10-23; full tables in the repo's REPORT.md). `askAiAboutMix`
   measured against synthesized mixes whose tempo, meter and key are
