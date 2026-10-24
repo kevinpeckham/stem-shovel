@@ -129,7 +129,8 @@ import { insertsOf } from "#lib/utils/insertsFromFx.js";
 import { monoForInput } from "#lib/utils/monoForInput.js";
 import { automationLanes, laneTransfer } from "#lib/utils/automationLanes.js";
 import { nanoid as newLocalId } from "nanoid";
-import { MAX_STUDIO_BUSES, sendLaneKey } from "#lib/constants/studioInserts.js";
+import { MAX_STUDIO_BUSES, insertLaneKey, sendLaneKey } from "#lib/constants/studioInserts.js";
+import { delaySyncSeconds, withSyncedDelays } from "#lib/utils/withSyncedDelays.js";
 
 /**
  * The Studio's engine (docs/multitrack-recorder.md): tracks of clips cut
@@ -881,11 +882,11 @@ class StudioEngine {
 		this.canRedo = this.#future.length > 0;
 		this.dirty = true;
 		this.#ensureAllStrips();
-		this.#masterStrip?.setInserts(a.masterInserts ?? [], 0);
+		this.#masterStrip?.setInserts(this.#synced(a.masterInserts ?? []), 0);
 		this.#applyGains(true);
 		this.#settleAllAutomation();
-		for (const t of a.tracks) this.#tracks.get(t.id)?.setInserts(insertsOf(t), 0);
-		for (const b of a.buses ?? []) this.#buses.get(b.id)?.setInserts(insertsOf(b), 0);
+		for (const t of a.tracks) this.#tracks.get(t.id)?.setInserts(this.#synced(insertsOf(t)), 0);
+		for (const b of a.buses ?? []) this.#buses.get(b.id)?.setInserts(this.#synced(insertsOf(b)), 0);
 	}
 	/** A revision restored from the server replaces the arrangement outright (its own undo step). */
 	replaceArrangement(a: StudioArrangement) {
@@ -996,7 +997,7 @@ class StudioEngine {
 		this.#commitMixGesture();
 		t.fx = structuredClone(fx);
 		this.dirty = true;
-		this.#tracks.get(trackId)?.setInserts(insertsOf(t), 0.02);
+		this.#tracks.get(trackId)?.setInserts(this.#synced(insertsOf(t)), 0.02);
 		this.#afterLaneChange(trackId);
 	}
 
@@ -1008,7 +1009,7 @@ class StudioEngine {
 			this.#commitMixGesture();
 			this.arrangement.masterInserts = list.length ? list : undefined;
 			this.dirty = true;
-			this.#masterStrip?.setInserts(list, 0.02);
+			this.#masterStrip?.setInserts(this.#synced(list), 0.02);
 			return;
 		}
 		const owner = this.#track(ownerId) ?? this.#bus(ownerId);
@@ -1016,8 +1017,23 @@ class StudioEngine {
 		this.#commitMixGesture();
 		owner.inserts = list;
 		this.dirty = true;
-		(this.#tracks.get(ownerId) ?? this.#buses.get(ownerId))?.setInserts(list, 0.02);
+		(this.#tracks.get(ownerId) ?? this.#buses.get(ownerId))?.setInserts(this.#synced(list), 0.02);
 		this.#afterLaneChange(ownerId);
+	}
+	/** Inserts as the strips hear them now: a synced delay's time from the tempo at the playhead (utils/withSyncedDelays.ts). */
+	#synced(inserts: StudioInsert[], at = this.position): StudioInsert[] {
+		return withSyncedDelays(inserts, tempoAt(this.grid, at));
+	}
+	/** A send's tap: before the fader (`pre`) or after the inserts (post), the level kept. */
+	setSendPre(trackId: string, busId: string, pre: boolean) {
+		const t = this.#track(trackId);
+		const send = t?.sends?.find((s) => s.bus === busId);
+		if (!t || !send || !!send.pre === pre) return;
+		this.#commitMixGesture();
+		if (pre) send.pre = true;
+		else delete send.pre;
+		this.dirty = true;
+		this.#routeAll();
 	}
 	/** A new bus, to the master; its id for the caller. A `folder` bus is a group (docs/multitrack-recorder.md "Folder tracks"). */
 	addBus(name = `Bus ${(this.arrangement.buses?.length ?? 0) + 1}`, folder = false): string | null {
@@ -2179,7 +2195,7 @@ class StudioEngine {
 		if (frozen.fx) track.fx = frozen.fx;
 		delete track.frozen;
 		for (const c of rendered) this.#stopClip(c.id);
-		this.#tracks.get(trackId)?.setInserts(insertsOf(track), 0);
+		this.#tracks.get(trackId)?.setInserts(this.#synced(insertsOf(track)), 0);
 		for (const c of frozen.clips)
 			if (c.sourceId && !this.#buffers.has(c.sourceId))
 				void this.ensureSource(c.sourceId).then(() => this.#reschedule());
@@ -2670,7 +2686,7 @@ class StudioEngine {
 	/** The lane's params as the graph has them, with the static value each falls back to and the lane's scale onto the param. */
 	/** The strip's lanes scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
 	#scheduleLanes(
-		owner: { automation?: StudioAutomation },
+		owner: { automation?: StudioAutomation; inserts?: StudioInsert[] },
 		strip: StripGraph,
 		from: number,
 		when: number,
@@ -2681,6 +2697,26 @@ class StudioEngine {
 			if (param && lane.length)
 				scheduleAutomation(param, lane, { from, when, to, fallback: 0, ...laneTransfer(key) });
 		}
+		// A synced delay's time follows the tempo map through the pass: set at the start, then at every tempo step and ramp beat.
+		const grid = this.grid;
+		for (const insert of owner.inserts ?? []) {
+			const sync = typeof insert.settings.sync === "number" ? insert.settings.sync : 0;
+			if (insert.kind !== "delay" || insert.bypass || !(sync > 0)) continue;
+			const param = strip.param(insertLaneKey(insert.id, "time"));
+			if (!param) continue;
+			param.cancelScheduledValues(when);
+			param.setValueAtTime(delaySyncSeconds(sync, tempoAt(grid, from)), when);
+			for (const t of this.#tempoSteps(grid, from, to ?? Infinity))
+				param.setValueAtTime(delaySyncSeconds(sync, tempoAt(grid, t)), when + (t - from));
+		}
+	}
+	/** Where the tempo or the meter moves within (from, to): each change's start and every beat of a ramp. */
+	#tempoSteps(grid: BarGrid, from: number, to: number): number[] {
+		return [
+			...this.tempoChanges.map((c) => c.start),
+			...this.meterChanges.map((c) => c.start),
+			...this.#rampBeats(grid, from, to),
+		].filter((t, i, list) => t > from && t < to && list.indexOf(t) === i);
 	}
 	/** The lanes of a track scheduled for a pass: song second `from` at context time `when`, to `to` (null: the end). */
 	/** The lanes at rest: every curve canceled and each param at its value for the playhead (or its static value without a lane). */
@@ -2703,7 +2739,7 @@ class StudioEngine {
 			if (lanes[sendLaneKey(busId)]?.length) continue;
 			gain.gain.setValueAtTime(owner.sends?.find((s) => s.bus === busId)?.level ?? 0, now);
 		}
-		strip.setInserts(insertsOf(owner), 0);
+		strip.setInserts(this.#synced(insertsOf(owner)), 0);
 		for (const [key, lane] of Object.entries(lanes)) {
 			const param = strip.param(key);
 			if (!param || !lane.length) continue;
@@ -2918,12 +2954,7 @@ class StudioEngine {
 		// Tempo and meter changes in the window: the click (and the drums playing along) pick up the new pace on the beat they land on.
 		// Through a ramp, every beat line is such a moment: the click follows the tempo as it moves.
 		const ends = to ?? Infinity;
-		const changes = [
-			...this.tempoChanges.map((c) => c.start),
-			...this.meterChanges.map((c) => c.start),
-			...this.#rampBeats(grid, from, ends),
-		].filter((t, i, list) => t > from && t < ends && list.indexOf(t) === i);
-		for (const t of changes) {
+		for (const t of this.#tempoSteps(grid, from, ends)) {
 			const at = when + (t - from);
 			queue.push({
 				at,
@@ -3527,7 +3558,7 @@ class StudioEngine {
 		const length = Math.max(1, Math.ceil((this.duration + RENDER_TAIL_S) * sampleRate));
 		const off = new OfflineAudioContext(2, length, sampleRate);
 		const master = createStripGraph(off, {
-			inserts: alone ? [] : (this.arrangement.masterInserts ?? []),
+			inserts: alone ? [] : this.#synced(this.arrangement.masterInserts ?? [], 0),
 			pan: 0,
 		});
 		master.fader.gain.value = alone ? 1 : this.#masterGain();
@@ -3540,7 +3571,7 @@ class StudioEngine {
 		const busStrips: [StudioBus, ReturnType<typeof createStripGraph>][] = [];
 		for (const b of buses) {
 			if (trackId || (within && !within.has(b.id))) continue;
-			const strip = createStripGraph(off, { inserts: insertsOf(b), pan: b.pan });
+			const strip = createStripGraph(off, { inserts: this.#synced(insertsOf(b), 0), pan: b.pan });
 			strip.fader.gain.value = b.id === busId ? b.gain : this.#busGain(b);
 			busInputs.set(b.id, strip.input);
 			busStrips.push([b, strip]);
@@ -3566,7 +3597,7 @@ class StudioEngine {
 			const g = trackId ? (target.freeze ? 1 : t.gain) : this.#effectiveGain(t);
 			if (g <= 0) continue;
 			const strip = createStripGraph(off, {
-				inserts: insertsOf(t),
+				inserts: this.#synced(insertsOf(t), 0),
 				pan: trackId && target.freeze ? 0 : t.pan,
 				mono: !!t.mono,
 			});
@@ -3581,6 +3612,7 @@ class StudioEngine {
 						automation: Object.fromEntries(
 							Object.entries(t.automation ?? {}).filter(([k]) => k.startsWith("insert:")),
 						),
+						inserts: insertsOf(t),
 					}
 				: t;
 			this.#scheduleLanes(lanes, strip, 0, 0, null);

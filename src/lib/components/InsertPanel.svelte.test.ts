@@ -41,6 +41,23 @@ describe("InsertPanel", () => {
 		expect(onchange.mock.calls.at(-1)![0][1].settings.analog).toBe(false);
 	});
 
+	test("a delay's Sync holds its time to a note value of the song; Free gives the slider back", async () => {
+		const user = userEvent.setup();
+		const onchange = vi.fn();
+		const inserts = [{ id: "d", kind: "delay" as const, settings: { ...INSERT_DEFAULTS.delay } }];
+		const view = render(InsertPanel, { props: { inserts, onchange, label: "Guitar" } });
+		expect(screen.getByRole("slider", { name: "Delay Time" })).toBeEnabled();
+		await user.selectOptions(screen.getByRole("combobox", { name: "Delay sync" }), "0.75");
+		expect(onchange.mock.calls.at(-1)![0][0].settings.sync).toBe(0.75);
+		await view.rerender({
+			inserts: inserts.map((i) => ({ ...i, settings: { ...i.settings, sync: 0.75 } })),
+		});
+		expect(screen.getByRole("slider", { name: "Delay Time" })).toBeDisabled();
+		expect(screen.getByText(/1\/8 dotted at the song's tempo/)).toBeInTheDocument();
+		await user.selectOptions(screen.getByRole("combobox", { name: "Delay sync" }), "0");
+		expect(onchange.mock.calls.at(-1)![0][0].settings.sync).toBe(0);
+	});
+
 	test("an automated parameter says so", () => {
 		render(InsertPanel, {
 			props: {

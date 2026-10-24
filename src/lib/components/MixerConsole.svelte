@@ -153,6 +153,7 @@
 				{#if buses.length}
 					<div class="grid gap-1" role="group" aria-label="{track.name} sends">
 						{#each sendsInUse(track) as bus (bus.id)}
+							{@const pre = !!track.sends?.find((s) => s.bus === bus.id)?.pre}
 							<div class="flex items-center gap-1.5 text-10px">
 								<Knob
 									value={sendLevel(track, bus.id)}
@@ -167,6 +168,20 @@
 									oninput={(v) => engine.setSend(track.id, bus.id, v)}
 								/>
 								<span class="truncate opacity-70">{bus.name}</span>
+								<!-- The tap (docs/multitrack-recorder.md "Pre-fader sends and a tempo-synced delay"): before the fader, or after the inserts. -->
+								<button
+									type="button"
+									class="ml-auto shrink-0 rounded border px-1 leading-4 text-9px uppercase {pre
+										? 'border-maximumYellow/60 text-maximumYellow'
+										: 'border-white/15 text-dim'}"
+									aria-pressed={pre}
+									aria-label="{track.name} send to {bus.name} pre-fader"
+									title={pre
+										? "Pre-fader: the send ignores the fader and the inserts"
+										: "Post-fader: the send follows the fader and the inserts"}
+									onclick={() => engine.setSendPre(track.id, bus.id, !pre)}
+									>{pre ? "pre" : "post"}</button
+								>
 							</div>
 						{/each}
 						{#if sendChoices(track).length}

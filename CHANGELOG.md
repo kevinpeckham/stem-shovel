@@ -8,6 +8,11 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Added
+
+- **Pre-fader sends.** Each send in a track's mixer strip has a small **post**/**pre** button: pre-fader, the send ignores the fader and the inserts, so a reverb or a monitor mix can hold steady while the track rides.
+- **A delay that follows the tempo.** The delay insert's new **Sync** picks a note value (a sixteenth to a half note, triplets and dotted values too) and its time then comes from the song's tempo, through tempo changes and ramps; Free gives the slider back.
+
 ### Fixed
 
 - **A folder's own clips come along.** Opening a Reaper project whose folder track holds items, or a DAWproject whose group has clips of its own, used to drop them. They now land on a track named after the folder, in its color, inside the group.

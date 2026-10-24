@@ -49,6 +49,7 @@ const fake = vi.hoisted(() => {
 		setBusTint: vi.fn(),
 		setOutput: vi.fn(),
 		setSend: vi.fn(),
+		setSendPre: vi.fn(),
 		setMono: vi.fn(),
 	};
 	return engine;
@@ -199,6 +200,11 @@ describe("MixerConsole", () => {
 		]);
 		await user.click(screen.getByRole("option", { name: "Verb" }));
 		expect(fake.setSend).toHaveBeenLastCalledWith("t1", "b3", 0.5);
+		// The send's tap: Vocal's Drums send is post-fader; the button asks for pre.
+		const tap = screen.getByRole("button", { name: "Vocal send to Drums pre-fader" });
+		expect(tap).toHaveAttribute("aria-pressed", "false");
+		await user.click(tap);
+		expect(fake.setSendPre).toHaveBeenLastCalledWith("t3", "b1", true);
 		// Vocal's picker leaves out the Drums send it already has.
 		await user.click(screen.getByRole("combobox", { name: "Vocal add send" }));
 		expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual([

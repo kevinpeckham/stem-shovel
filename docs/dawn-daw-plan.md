@@ -98,9 +98,9 @@ automatable parameters, so D2 adds sends and inserts in one place.
   `MixerConsole.svelte`, keyed lanes; docs/multitrack-recorder.md
   "Routing and the mixer". Group pucks came with folder tracks on
   2026-10-23 (docs/multitrack-recorder.md "The Stage: group pucks and
-  clusters"). Left for later: a
-  tempo-synced delay time (D5 brings the tempo map), pre-fader sends
-  in the console (the engine takes `pre`; the knob writes post).
+  clusters"). The tempo-synced delay time and the console's pre-fader
+  switch came 2026-10-24 (docs/multitrack-recorder.md "Pre-fader sends
+  and a tempo-synced delay"); nothing of D2 is left.
 
 ### D3. Export and delivery (built on `dawn-daw`, 2026-10-18)
 

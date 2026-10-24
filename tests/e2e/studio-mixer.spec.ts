@@ -44,6 +44,9 @@ test.describe("Dawn mixer", () => {
 		await console_.getByRole("checkbox", { name: "Track 1 is mono" }).click();
 		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].mono)).toBe(true);
 		expect(await hooked(page, ([w]) => w.__studio.diagnostics().monoTracks)).toEqual([trackId]);
+		// The send's tap flips to pre-fader (docs/multitrack-recorder.md "Pre-fader sends and a tempo-synced delay").
+		await console_.getByRole("button", { name: "Track 1 send to Bus 1 pre-fader" }).click();
+		expect(await hooked(page, ([w]) => w.__studio.arrangement.tracks[0].sends[0].pre)).toBe(true);
 
 		// Folder tracks (docs/multitrack-recorder.md "Folder tracks"): the bus becomes a group from its strip; back on the
 		// tracks its row holds Track 1, folds it away and brings it back; Add group makes another; its menu removes it.

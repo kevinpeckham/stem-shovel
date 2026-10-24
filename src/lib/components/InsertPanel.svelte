@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		DELAY_SYNCS,
 		INSERT_DEFAULTS,
 		INSERT_KINDS,
 		INSERT_LABELS,
@@ -63,6 +64,7 @@
 		<p class="text-dim">No inserts yet: the signal passes as it is.</p>
 	{/if}
 	{#each inserts as insert, index (insert.id)}
+		{@const synced = insert.kind === "delay" && num(insert, "sync") > 0}
 		<section
 			class="rounded border border-white/10 px-3 py-2 grid gap-2 {insert.bypass
 				? 'opacity-60'
@@ -110,24 +112,42 @@
 			<div class="grid gap-1.5">
 				{#each INSERT_PARAMS[insert.kind] as p (p.key)}
 					{@const driven = automated.has(`insert:${insert.id}:${p.key}`)}
+					{@const held = synced && p.key === "time"}
 					<label class="block">
 						<span class="text-11px opacity-70">
-							{p.label} · {p.format(num(insert, p.key))}{#if driven}
+							{p.label} · {held
+								? `${DELAY_SYNCS.find((o) => o.value === num(insert, "sync"))?.label ?? "synced"} at the song's tempo`
+								: p.format(num(insert, p.key))}{#if driven}
 								<span class="ml-1 text-accent">(automated)</span>{/if}
 						</span>
 						<input
 							type="range"
-							class="w-full accent-maximumYellow {driven ? 'opacity-50' : ''}"
+							class="w-full accent-maximumYellow {driven || held ? 'opacity-50' : ''}"
 							min={p.min}
 							max={p.max}
 							step={p.step}
 							value={num(insert, p.key)}
+							disabled={held}
 							aria-label="{INSERT_LABELS[insert.kind]} {p.label}"
 							oninput={(e) => set(index, p.key, e.currentTarget.valueAsNumber)}
 						/>
 					</label>
 				{/each}
 				{#if insert.kind === "delay"}
+					<!-- The time as a note value of the song (docs/multitrack-recorder.md "Pre-fader sends and a tempo-synced delay"): the engine sets the seconds from the tempo, through its changes. -->
+					<label class="flex items-center gap-2 text-11px opacity-80">
+						Sync
+						<select
+							class="device-field grow text-11px py-0"
+							aria-label="Delay sync"
+							value={String(num(insert, "sync"))}
+							onchange={(e) => set(index, "sync", Number(e.currentTarget.value))}
+						>
+							{#each DELAY_SYNCS as o (o.value)}
+								<option value={String(o.value)}>{o.label}</option>
+							{/each}
+						</select>
+					</label>
 					<label class="flex items-center gap-2 text-11px opacity-80">
 						<input
 							type="checkbox"

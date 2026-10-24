@@ -127,7 +127,8 @@ function createDelayInsert(ctx: BaseAudioContext): MixStage {
 	return {
 		input,
 		output,
-		params: { feedback: feedback.gain, level: wet.gain },
+		// `time` is here for the engine's tempo sync (scheduled as the tempo steps), not for a lane: the panel marks it not automatable.
+		params: { time: delay.delayTime, feedback: feedback.gain, level: wet.gain },
 		update(s, tau) {
 			ramp(ctx, delay.delayTime, num(s, "time", 0.375), tau);
 			ramp(ctx, feedback.gain, num(s, "feedback", 0.35), tau);

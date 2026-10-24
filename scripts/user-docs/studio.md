@@ -10,7 +10,7 @@ A track can also take one of the instruments: the **piano**, the **chord player*
 
 ## Inserts on a track
 
-The sliders button in a track's header opens its **inserts**: a chain of effects the track's sound passes through in order. Add any of six: an **EQ** (low, mid and high bands), a **compressor** (amount, ratio, attack, release and make-up gain), **tone** (a tilt from dark to bright, air for sparkle, bottom for weight), a **delay** (time, feedback and level, with analog repeats that darken and soften), a **reverb** (level and size, from a room to a cathedral) and a **limiter** (a ceiling the sound never passes). Each insert has a bypass, arrows to move it up or down the chain, and a cross to remove it. They apply as you play and as the song plays, are saved with the song, and are baked into a bounce, a demo and the stems you send to a song. The button lights when the track has any insert. A track that had the old compressor, tone and reverb keeps them as inserts.
+The sliders button in a track's header opens its **inserts**: a chain of effects the track's sound passes through in order. Add any of six: an **EQ** (low, mid and high bands), a **compressor** (amount, ratio, attack, release and make-up gain), **tone** (a tilt from dark to bright, air for sparkle, bottom for weight), a **delay** (time, or **Sync** to a note value that follows the song's tempo; feedback and level, with analog repeats that darken and soften), a **reverb** (level and size, from a room to a cathedral) and a **limiter** (a ceiling the sound never passes). Each insert has a bypass, arrows to move it up or down the chain, and a cross to remove it. They apply as you play and as the song plays, are saved with the song, and are baked into a bounce, a demo and the stems you send to a song. The button lights when the track has any insert. A track that had the old compressor, tone and reverb keeps them as inserts.
 
 ## Automation
 
@@ -31,6 +31,8 @@ A sung or played take reaches the computer a little late (the microphone's and t
 The ruler shows bars and beats at the song's tempo (set in the **Timing** menu) when **Grid** is on, or minutes and seconds when it is off. Zoom with the buttons on the right or ⌘-wheel over the timeline. Click a clip to select it; drag it along its track or up and down onto another track. With the grid on it snaps to the beat; hold Shift to place it freely. **Delete** removes the selected clip; **Undo** and **Redo** (⌘Z, ⌘⇧Z) step through every edit and every mix move (a fader, pan, mute, solo, master or effect change counts as one step per gesture). A removed clip's recording stays with the song until you choose **Clean up unused recordings** in the song's menu.
 
 **Loop** (or L) repeats the region on the ruler: the first press makes one a bar long at the playhead; drag its ends to set it. Space plays and stops; Home goes to the start (or the loop's start).
+
+**Sends.** A track's strip in the mixer shows a knob for each send in use and **Add send** for a new one. The small **post**/**pre** button beside a send puts it before the fader (pre: the send holds steady while the track rides) or after the fader and inserts (post).
 
 **Mono.** A **Mono** switch on a track's strip in the mixer sums the track to one channel and pans it as a single point: at full level on both sides at center, the far side fading as it turns, the way a mono stem plays in the stem player. An empty track follows its input when you arm it (one channel: mono; both: stereo), and stems with one channel come into Dawn as mono tracks.
 

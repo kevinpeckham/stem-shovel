@@ -31,6 +31,21 @@ export interface InsertParam {
 	automatable?: boolean;
 }
 
+/** The delay's time range in seconds (the slider's, and what a synced time is kept within). */
+export const DELAY_TIME_MIN = 0.02;
+export const DELAY_TIME_MAX = 2;
+/** What a delay's time can follow instead of the slider (docs/multitrack-recorder.md "Pre-fader sends and a tempo-synced delay"): a note value in beats of the song, 0 for the slider. */
+export const DELAY_SYNCS: { value: number; label: string }[] = [
+	{ value: 0, label: "Free" },
+	{ value: 0.25, label: "1/16" },
+	{ value: 1 / 3, label: "1/8 triplet" },
+	{ value: 0.5, label: "1/8" },
+	{ value: 0.75, label: "1/8 dotted" },
+	{ value: 1, label: "1/4" },
+	{ value: 1.5, label: "1/4 dotted" },
+	{ value: 2, label: "1/2" },
+];
+
 const dB = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)} dB`;
 const hz = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)} kHz` : `${Math.round(v)} Hz`);
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -109,7 +124,14 @@ export const INSERT_PARAMS: Record<InsertKind, InsertParam[]> = {
 		{ key: "bottom", label: "Bottom", min: 0, max: 1, step: 0.05, format: pct },
 	],
 	delay: [
-		{ key: "time", label: "Time", min: 0.02, max: 2, step: 0.01, format: ms },
+		{
+			key: "time",
+			label: "Time",
+			min: DELAY_TIME_MIN,
+			max: DELAY_TIME_MAX,
+			step: 0.01,
+			format: ms,
+		},
 		{
 			key: "feedback",
 			label: "Feedback",

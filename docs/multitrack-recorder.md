@@ -1249,6 +1249,40 @@ origin added in the jobs function, so data.ts stays free of the env). An
 import does not make credits of what it reads: artists are rows the
 account curates (songs.remote.ts), and the notes keep the names in view.
 
+## Pre-fader sends and a tempo-synced delay (2026-10-24)
+
+The two items the routing phase left "for later" (docs/dawn-daw-plan.md
+D2).
+
+**The send's tap.** A send has carried `pre` since D2 (the strip taps
+the fader's input instead of the inserts' output, `stripGraph.ts`
+`setSends`), and the Reaper and DAWproject code read and wrote it, but
+the console's knob always wrote post. Each send row in the mixer now
+ends with a small **post**/**pre** button (`setSendPre`, undoable as a
+mix move; `aria-label` "{track} send to {bus} pre-fader",
+`aria-pressed` when pre), and `#routeAll` re-taps the send.
+
+**The delay's time as a note value.** A delay insert's settings gain
+`sync` (beats of the song: 0.25 a sixteenth, 1/3 an eighth triplet, 0.5
+an eighth, 0.75 a dotted eighth, 1 a quarter, 1.5 a dotted quarter, 2 a
+half; 0 for the slider; `DELAY_SYNCS` in constants/studioInserts.ts).
+The panel's **Sync** select sets it and holds the Time slider, its
+readout naming the note. The engine resolves the time in two places.
+Whenever a strip is handed its inserts (`#synced`, around every
+`setInserts` and the render's `createStripGraph`), `withSyncedDelays`
+(utils/withSyncedDelays.ts) replaces a synced delay's `time` with the
+seconds at the tempo of the playhead (or of the song's start for a
+render), so the chain's own `ramp` lands on the right value. Then, when
+a pass or a render is scheduled, `#scheduleLanes` sets the delay stage's
+`time` AudioParam (exposed in `params` for this, not marked automatable
+so no lane offers it) at the pass's start and at every tempo step and
+ramp beat (`#tempoSteps`, factored out of the metronome's queue), so a
+song with tempo changes keeps the repeats on the beat through them. The
+stored `time` stays the slider's value, so Free gives it back.
+
+Tests: `withSyncedDelays.test.ts`; the panel's Sync; the mixer's tap
+button; the e2e mixer run flips a send to pre.
+
 ## Mono tracks (2026-10-23, docs/dawproject-plan.md "What the format carries that Dawn lacks" 10)
 
 Dawn's strips were stereo throughout: a mono take (most recordings, a
