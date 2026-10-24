@@ -197,6 +197,13 @@ describe("readDawproject", () => {
         <Points unit="linear" id="pts"><Target parameter="dvol"/><RealPoint time="0" value="1"/><RealPoint time="4" value="0.5"/></Points>
         <Points unit="linear" id="pts2"><Target parameter="d1param"/><RealPoint time="0" value="1"/></Points>
       </Lanes>
+      <Lanes track="group" id="l3">
+        <Clips id="cl3">
+          <Clip time="0" duration="4" contentTimeUnit="beats" name="Band stem">
+            <Audio algorithm="raw" channels="2" duration="20" sampleRate="44100" id="au3"><File path="audio/loop.flac"/></Audio>
+          </Clip>
+        </Clips>
+      </Lanes>
       <Lanes track="synth" id="l2">
         <Clips id="cl2">
           <Clip time="0" duration="4" contentTimeUnit="beats" playStart="0" name="Riff">
@@ -236,8 +243,14 @@ describe("readDawproject", () => {
 		expect(a.tracks.map((t) => [t.name, t.kind, t.gain, t.pan, t.solo])).toEqual([
 			["Drums", "audio", 1.2, -0.5, true],
 			["Synth", "midi", 0.9, 0, false],
+			["Band", "audio", 1, 0, false],
 		]);
 		expect(a.tracks[0]!.output).toBe(a.buses![0]!.id);
+		// The group's own clip plays from a track named after it, inside the group, in its color.
+		const band = a.tracks[2]!;
+		expect([band.output, band.colour]).toEqual([a.buses![0]!.id, "sea"]);
+		expect(a.clips.find((c) => c.name === "Band stem")?.trackId).toBe(band.id);
+		expect(read.fixed).toContain("Band: its own clips on a track of their own inside it");
 		expect(a.tracks[0]!.sends).toEqual([{ bus: a.buses![1]!.id, level: 0.3, pre: true }]);
 		// Beats to seconds: the clip at beat 4 is 2 s in, 8 beats long is 4 s; the fade stays in seconds.
 		const loop = a.clips.find((c) => c.name === "Loop")!;

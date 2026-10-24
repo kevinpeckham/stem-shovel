@@ -241,6 +241,14 @@ describe("readRpp", () => {
   <TRACK
     NAME Kit
     ISBUS 1 1
+    <ITEM
+      POSITION 0
+      LENGTH 2
+      NAME Overheads
+      <SOURCE WAVE
+        FILE "Media/oh.wav"
+      >
+    >
   >
   <TRACK
     NAME Kick
@@ -255,7 +263,8 @@ describe("readRpp", () => {
     ISBUS 0 0
   >
 >`;
-		const a = readRpp(rpp, "nested").arrangement;
+		const read = readRpp(rpp, "nested");
+		const a = read.arrangement;
 		const bus = (name: string) => a.buses!.find((b) => b.name === name)!;
 		const track = (name: string) => a.tracks.find((t) => t.name === name)!;
 		expect(a.buses!.map((b) => [b.name, !!b.folder])).toEqual([
@@ -267,6 +276,13 @@ describe("readRpp", () => {
 		expect(track("Kick").output).toBe(bus("Kit").id);
 		expect(track("Room").output).toBe(bus("Drums").id);
 		expect(track("Bass").output).toBeUndefined();
+		// The folder's own item lands on a track named after it, inside it.
+		expect(a.tracks.map((t) => t.name)).toEqual(["Kit", "Kick", "Room", "Bass"]);
+		expect(track("Kit").output).toBe(bus("Kit").id);
+		expect(a.clips.map((c) => [c.name, c.trackId, c.duration])).toEqual([
+			["Overheads", track("Kit").id, 2],
+		]);
+		expect(read.fixed).toContain("Items on the folder Kit: on a track of their own inside it");
 	});
 
 	it("keeps an item that loops a section of its file as a looped clip", () => {

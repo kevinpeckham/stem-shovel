@@ -1392,8 +1392,12 @@ a bus channel's `destination` as its output. The Reaper writer nests a
 bus routed to a bus as a folder inside the folder, the last row closing
 every folder that ends there (`ISBUS 2 -n`); the DAWproject writer
 nests a bus's tracks and the buses routed to it inside its `<Track>`,
-the format's own folders. Items on a Reaper folder are still dropped (a
-group holds no clips, as in Logic, Live and Bitwig).
+the format's own folders. A group holds no clips in Dawn (as in Logic
+and Live), so a folder's own items in Reaper and a group's own clips in
+a DAWproject (Bitwig allows them) land on a track named after the folder,
+in its color, routed into it (2026-10-24; the readers note it under
+"fixed"); the writers then put that track back inside the folder, so a
+round trip keeps the music, one track richer.
 
 Groups share the bus ceiling, so `MAX_STUDIO_BUSES` went from 8 to 16
 (`constants/studioInserts.ts`): a nested Reaper or Bitwig project with

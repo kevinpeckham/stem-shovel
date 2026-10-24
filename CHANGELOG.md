@@ -8,6 +8,10 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+### Fixed
+
+- **A folder's own clips come along.** Opening a Reaper project whose folder track holds items, or a DAWproject whose group has clips of its own, used to drop them. They now land on a track named after the folder, in its color, inside the group.
+
 ## [0.154.0] - 2026-10-23
 
 ### Added

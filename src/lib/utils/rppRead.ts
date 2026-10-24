@@ -359,6 +359,8 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			.join("");
 		return colourOfHex(hex);
 	};
+	/** The track made for a folder's own items, by the folder's index. */
+	const itemsTrackOf = new Map<number, string>();
 	for (const p of parsed) {
 		const block = p.block;
 		const volpan = lineOf(block, "VOLPAN");
@@ -383,7 +385,28 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 			idOf.set(p.index, id);
 			// A folder is a group (docs/multitrack-recorder.md "Folder tracks"); a receive-only track a plain bus.
 			buses.push({ id, ...common, ...(isFolder(p) ? { folder: true } : {}) });
-			if (p.hasItems) drop(`Items on the folder ${p.name}`);
+			// A folder's own items (a group holds no clips in Dawn) play from a track of their own inside it.
+			if (p.hasItems) {
+				if (tracks.length >= MAX_STUDIO_TRACKS)
+					drop(`Items on the folder ${p.name} (over the ${MAX_STUDIO_TRACKS}-track limit)`);
+				else {
+					const own = nanoid();
+					itemsTrackOf.set(p.index, own);
+					tracks.push({
+						id: own,
+						name: p.name,
+						...(colour ? { colour } : {}),
+						gain: 1,
+						pan: 0,
+						muted: false,
+						solo: false,
+						armed: false,
+						input: null,
+						output: id,
+					});
+					fix(`Items on the folder ${p.name}: on a track of their own inside it`);
+				}
+			}
 		} else {
 			if (tracks.length >= MAX_STUDIO_TRACKS) {
 				drop(`${p.name} (over the ${MAX_STUDIO_TRACKS}-track limit)`);
@@ -442,7 +465,7 @@ export function readRpp(text: string, fallbackTitle = "Reaper project"): Dawproj
 	const files: DawprojectFile[] = [];
 	const sourceByPath = new Map<string, string>();
 	for (const p of parsed) {
-		const trackId = idOf.get(p.index);
+		const trackId = itemsTrackOf.get(p.index) ?? idOf.get(p.index);
 		const track = tracks.find((t) => t.id === trackId);
 		if (!track) continue;
 		for (const item of blocksOf(p.block, "ITEM")) {

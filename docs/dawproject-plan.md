@@ -294,7 +294,7 @@ and Dawn cannot yet, roughly in the order a songwriter would miss them:
    in the timeline that folds its tracks away, a bus's `output` nests a
    group in a group, and the readers and writers keep the tree
    (docs/multitrack-recorder.md "Folder tracks"). A folder's own clips
-   are still dropped on the way in.
+   land on a track of their own inside it (2026-10-24).
 8. **The clip launcher** (`Scenes`, `ClipSlot`): Bitwig's and Live's
    session view, scenes of clips fired live. Far from Dawn's timeline
    model; worth knowing it exists in every Bitwig export (eight empty

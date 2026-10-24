@@ -365,10 +365,43 @@ export function readDawproject(
 		}
 		return id;
 	};
-	const readClip = (el: Element, owner: Owner | null, unit: TimeUnit, baseSeconds: number) => {
+	/** The track made for a bus's own clips, by the bus's id. */
+	const ownClipsTrack = new Map<string, Owner>();
+	/** A clip on a bus (a group's own clips, as Bitwig and a Reaper folder allow) plays from a track of its own inside the bus. */
+	const trackForBusClips = (bus: Owner, el: Element): Owner | null => {
+		const have = ownClipsTrack.get(bus.id);
+		if (have) return have;
+		if (tracks.length >= MAX_STUDIO_TRACKS) return null;
+		const colour = buses.find((b) => b.id === bus.id)?.colour;
+		const kind = el.getElementsByTagName("Notes").length ? "midi" : "audio";
+		const track: StudioTrack = {
+			id: nanoid(),
+			kind,
+			name: bus.name,
+			...(colour ? { colour } : {}),
+			gain: 1,
+			pan: 0,
+			muted: false,
+			solo: false,
+			armed: false,
+			input: kind === "midi" ? { source: "piano", channel: "stereo" } : null,
+			output: bus.id,
+		};
+		tracks.push(track);
+		const owner: Owner = { kind: "track", id: track.id, name: bus.name };
+		ownClipsTrack.set(bus.id, owner);
+		fix(`${bus.name}: its own clips on a track of their own inside it`);
+		return owner;
+	};
+	const readClip = (el: Element, given: Owner | null, unit: TimeUnit, baseSeconds: number) => {
 		const name = (attr(el, "name") ?? "").trim().slice(0, 60);
+		const owner = given?.kind === "bus" ? trackForBusClips(given, el) : given;
 		if (!owner || owner.kind !== "track") {
-			drop(`${name || "A clip"} outside a track`);
+			drop(
+				given?.kind === "bus"
+					? `${name || "A clip"} on ${given.name} (over the ${MAX_STUDIO_TRACKS}-track limit)`
+					: `${name || "A clip"} outside a track`,
+			);
 			return;
 		}
 		// A switched-off clip (enable="false") comes across as one: kept, playing nothing.
