@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.159.0] - 2026-10-24
+
 ### Added
 
 - **Changes on a version** in the song's text history. Beside View on each earlier version of the chart, lyrics, notes or your own note, **Changes** shows what differs between that version and the text as it is now, line by line, with long unchanged stretches folded away.
