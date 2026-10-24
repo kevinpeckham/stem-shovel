@@ -8,6 +8,8 @@ Releases are cut with the `/release` skill (see `.claude/skills/release/SKILL.md
 
 ## [Unreleased]
 
+## [0.158.0] - 2026-10-24
+
 ### Added
 
 - **Clip gain lines in Dawn.** The clip bar's **Gain line** button draws a line over the selected clip: press the clip to add a point, drag points up or down and along the grid (Shift for free timing), nudge with the arrow keys, remove one with Delete or Alt-click, or **Clear line**. The line rides a phrase without automating the track's fader; it plays, bounces and consolidates with the clip, and a revision's Compare names it. Project exports to Reaper and DAWproject leave it out for now.
